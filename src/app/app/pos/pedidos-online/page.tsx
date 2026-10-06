@@ -1,315 +1,246 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+/**
+ * Pedidos online — listado (Figma 447:195914, estados 448:202716 cargando,
+ * 448:203467 sin resultados y 448:204070 error). Cabecera con «Confirmar
+ * pendientes», seis KPI del periodo, buscador con filtros en chips, tabla con
+ * la promesa de cada pedido («A tiempo») y paginación. La vista «Tablero»
+ * conserva las columnas por estado.
+ *
+ * El periodo se calcula en la zona de la organización (nunca la del navegador)
+ * y confirmar —uno o varios— pasa siempre por `webOrderConfirmationService`,
+ * que crea la venta, la comanda y el cobro: no se cambia el estado a mano.
+ */
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
+import {
+  Bell,
+  BellOff,
+  CheckCircle,
+  Clock,
+  Coins,
+  Download,
+  Loader2,
+  Package,
+  Plus,
+  Printer,
+  RefreshCw,
+  Settings,
+  ShoppingBag,
+  TriangleAlert,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  RefreshCw, 
-  Bell, 
-  BellOff,
-  Volume2,
-  VolumeX,
-  Loader2,
-  LayoutGrid,
-  List,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Store,
-  Bike,
-  Truck,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  ArrowLeft,
-  ShoppingBag,
-  MapPin,
-  Phone,
-  CalendarClock,
-  Coins,
-  Download,
-  Printer,
-  Package,
-  X,
-  UtensilsCrossed,
-} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  BranchBadgeActiva,
+  BulkActionBar,
+  CampoFecha,
+  FilterChips,
+  FilterPanel,
+  FormField,
+  KpiStrip,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  RowActionsMenu,
+  SearchInput,
+  SegmentedControl,
+  StatCard,
+  type AccionFila,
+  type AccionMasiva,
+  type ChipFiltro,
+  type EstadoTabla,
+} from '@/components/kit';
+import { clasesBoton } from '@/components/kit/botonClases';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
-import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
-import { WebOrderStats } from '@/components/pos/pedidos-online/WebOrderStats';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
-import { PaymentStatusBadge } from '@/components/pos/pedidos-online/PaymentStatusBadge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  webOrdersService, 
-  type WebOrder, 
+import { TablaPedidosOnline, metodoDePago } from '@/components/pos/pedidos-online/listado/TablaPedidosOnline';
+import {
+  webOrdersService,
+  type WebOrder,
   type WebOrderStatus,
   type DeliveryType,
   type PaymentStatus,
-  type OrderSource
+  type OrderSource,
 } from '@/lib/services/webOrdersService';
 import { claveAvisoCobro, webOrderConfirmationService, type ErrorCobroEnCaja } from '@/lib/services/webOrderConfirmationService';
-import { useTranslations } from 'next-intl';
 import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { PERIODOS_LISTADO, rangosDelPeriodo, variacionPct, type PeriodoListado } from '@/lib/pos/pedidosWeb/listadoPedidos';
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
-import { CopyableId } from '@/components/common/CopyableId';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { CampoFecha } from '@/components/kit/CampoFecha';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { todayInTz } from '@/lib/utils/dateCore';
 
-interface LocalFilters {
-  status?: WebOrderStatus[];
+interface FiltrosListado {
+  status?: WebOrderStatus;
   delivery_type?: DeliveryType;
   source?: OrderSource;
-  payment_status?: PaymentStatus[];
-  search?: string;
-  is_scheduled?: boolean;
-  date_from?: string;
-  date_to?: string;
+  payment_status?: PaymentStatus;
 }
 
-type DatePreset = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
+const ESTADOS_FILTRO: readonly WebOrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready', 'in_delivery', 'delivered', 'cancelled'];
+const ENTREGAS_FILTRO: readonly DeliveryType[] = ['delivery_own', 'delivery_third_party', 'pickup', 'dine_in'];
+const ORIGENES_FILTRO: readonly OrderSource[] = ['website', 'mobile_app', 'whatsapp', 'phone'];
+const PAGOS_FILTRO: readonly PaymentStatus[] = ['pending', 'paid', 'partial', 'refunded', 'failed'];
 
-const ITEMS_PER_PAGE = 20;
+interface Estadisticas {
+  total_orders: number;
+  pending_orders: number;
+  completed_orders: number;
+  cancelled_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  unconfirmed_orders: number;
+  on_time_pct: number | null;
+}
+
+/** Escapa texto del cliente antes de escribirlo en la ventana de impresión. */
+function esc(valor: unknown): string {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export default function PedidosOnlinePage() {
-  // Moneda base de la organización para la impresión y la exportación.
   const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations('pedidosOnlineListado');
   const tPedido = useTranslations('pedidoWeb');
-  /** Etiqueta corta del tipo de entrega; «Comer aquí · Mesa N» para el QR de mesa. */
-  const etiquetaTipoCorta = (o: WebOrder): string => {
-    const tipo = tipoEntregaEfectivo(o);
-    if (tipo === 'dine_in') {
-      const mesa = mesaDelPedido(o);
-      return mesa ? tPedido('comerAquiMesa', { mesa }) : tPedido('comerAqui');
-    }
-    return tPedido(`tipoCorto.${tipo}`);
-  };
   const { getToday } = useFormatDate();
+  const { timezone } = useOrgTimezone();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
-  const orgTypeId = organization?.type_id ?? 3; // default retail
+  const orgTypeId = organization?.type_id ?? 3; // por defecto, comercio
 
-  // Defaults de tiempo según tipo de organización:
-  // - Restaurante (1): 30 min preparación, 30 min traslado
-  // - Retail (3): 1 día empacado, 5 días entrega (nacional Colombia)
-  // - Otros: 30 min / 60 min
+  // Tiempos por defecto según el tipo de organización:
+  // restaurante (1) 30 min + 30 min; comercio (3) 1 día de empacado + 5 de entrega.
   const isRetail = orgTypeId === 3;
-  
+
   const [orders, setOrders] = useState<WebOrder[]>([]);
-  const [stats, setStats] = useState({
-    total_orders: 0,
-    pending_orders: 0,
-    completed_orders: 0,
-    cancelled_orders: 0,
-    total_revenue: 0,
-    avg_order_value: 0,
-  });
-  const [previousStats, setPreviousStats] = useState({
-    total_orders: 0,
-    pending_orders: 0,
-    completed_orders: 0,
-    cancelled_orders: 0,
-    total_revenue: 0,
-    avg_order_value: 0,
-  });
+  const [stats, setStats] = useState<Estadisticas | null>(null);
+  const [previousStats, setPreviousStats] = useState<Estadisticas | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<LocalFilters>({});
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [filtros, setFiltros] = useState<FiltrosListado>({});
+  const [busqueda, setBusqueda] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
-  const [datePreset, setDatePreset] = useState<DatePreset>('today');
+  const [periodo, setPeriodo] = useState<PeriodoListado>('today');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [tamanoPagina, setTamanoPagina] = useState(20);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [ahora, setAhora] = useState(() => new Date());
 
-  // Dialogs
-  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; orderId: string | null }>({ 
-    open: false, 
-    orderId: null 
-  });
+  // Diálogos. Confirmar admite varios pedidos («Confirmar pendientes»).
+  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; orderId: string | null }>({ open: false, orderId: null });
   const [rejectReason, setRejectReason] = useState('');
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; orderId: string | null }>({
-    open: false,
-    orderId: null
-  });
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; orderIds: string[] }>({ open: false, orderIds: [] });
   const [markAsPaid, setMarkAsPaid] = useState(false);
-  const [prepTime, setPrepTime] = useState<EstimatedTime>(
-    isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' }
-  );
-  const [transitTime, setTransitTime] = useState<EstimatedTime>(
-    isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' }
-  );
+  const [prepTime, setPrepTime] = useState<EstimatedTime>(isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' });
+  const [transitTime, setTransitTime] = useState<EstimatedTime>(isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' });
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Calcular rango de fecha según preset
-  const getDateRange = useCallback((): { from?: string; to?: string } => {
-    const now = new Date();
-    const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0,0,0,0); return c.toISOString(); };
-    const endOfDay = (d: Date) => { const c = new Date(d); c.setHours(23,59,59,999); return c.toISOString(); };
-    switch (datePreset) {
-      case 'today':
-        return { from: startOfDay(now), to: endOfDay(now) };
-      case 'yesterday': {
-        const y = new Date(now); y.setDate(y.getDate() - 1);
-        return { from: startOfDay(y), to: endOfDay(y) };
-      }
-      case 'last7': {
-        const d = new Date(now); d.setDate(d.getDate() - 7);
-        return { from: startOfDay(d), to: endOfDay(now) };
-      }
-      case 'last30': {
-        const d = new Date(now); d.setDate(d.getDate() - 30);
-        return { from: startOfDay(d), to: endOfDay(now) };
-      }
-      case 'custom':
-        return {
-          from: customDateFrom ? new Date(customDateFrom + 'T00:00:00').toISOString() : undefined,
-          to: customDateTo ? new Date(customDateTo + 'T23:59:59').toISOString() : undefined,
-        };
-      default:
-        return {};
-    }
-  }, [datePreset, customDateFrom, customDateTo]);
+  // El tipo de organización llega después del primer render: los tiempos por
+  // defecto se ajustan cuando se conoce (antes quedaban siempre los de comercio).
+  useEffect(() => {
+    setPrepTime(isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' });
+    setTransitTime(isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' });
+  }, [isRetail]);
 
-  // Rango del período ANTERIOR equivalente "a la misma hora" para comparar
-  const getComparisonRange = useCallback((): { from?: string; to?: string } => {
-    const now = new Date();
-    const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
-    const endOfDay = (d: Date) => { const c = new Date(d); c.setHours(23,59,59,999); return c; };
-    // Desplaza una fecha N días hacia atrás conservando la hora
-    const shiftDays = (d: Date, days: number) => { const c = new Date(d); c.setDate(c.getDate() - days); return c; };
-    switch (datePreset) {
-      case 'today': {
-        // Ayer desde las 00:00 hasta la misma hora actual
-        const prevStart = startOfDay(shiftDays(now, 1));
-        const prevTo = shiftDays(now, 1);
-        return { from: prevStart.toISOString(), to: prevTo.toISOString() };
-      }
-      case 'yesterday': {
-        // Antier completo (ayer ya es un día cerrado)
-        const db = shiftDays(now, 2);
-        return { from: startOfDay(db).toISOString(), to: endOfDay(db).toISOString() };
-      }
-      case 'last7': {
-        // Los 7 días anteriores al rango actual, hasta el mismo instante
-        const prevTo = shiftDays(now, 7);
-        const prevFrom = startOfDay(shiftDays(now, 14));
-        return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
-      }
-      case 'last30': {
-        const prevTo = shiftDays(now, 30);
-        const prevFrom = startOfDay(shiftDays(now, 60));
-        return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
-      }
-      case 'custom': {
-        if (!customDateFrom || !customDateTo) return {};
-        const from = new Date(customDateFrom + 'T00:00:00');
-        const to = new Date(customDateTo + 'T23:59:59');
-        const duration = to.getTime() - from.getTime();
-        const prevTo = new Date(from.getTime() - 1);
-        const prevFrom = new Date(from.getTime() - duration - 1);
-        return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
-      }
-      default:
-        return {};
-    }
-  }, [datePreset, customDateFrom, customDateTo]);
+  // La columna «A tiempo» cuenta minutos: se refresca sola cada 30 s.
+  useEffect(() => {
+    const id = setInterval(() => setAhora(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const rangos = useCallback(
+    () => rangosDelPeriodo(periodo, timezone, todayInTz(timezone), new Date(), { desde: customDateFrom, hasta: customDateTo }),
+    [periodo, timezone, customDateFrom, customDateTo],
+  );
 
   const loadOrders = useCallback(async () => {
     try {
-      const dateRange = getDateRange();
-      const comparisonRange = getComparisonRange();
-      const mergedFilters = { ...filters, date_from: dateRange.from, date_to: dateRange.to, branch_id: branchFilter ?? undefined };
+      const { actual, anterior } = rangos();
+      const consulta = {
+        status: filtros.status ? [filtros.status] : undefined,
+        delivery_type: filtros.delivery_type,
+        source: filtros.source,
+        payment_status: filtros.payment_status ? [filtros.payment_status] : undefined,
+        search: busqueda.trim() || undefined,
+        date_from: actual.from,
+        date_to: actual.to,
+        branch_id: branchFilter ?? undefined,
+      };
       const [ordersData, statsData, prevStatsData] = await Promise.all([
-        webOrdersService.getOrders(mergedFilters),
-        webOrdersService.getOrderStats(dateRange.from, dateRange.to, branchFilter ?? undefined),
-        webOrdersService.getOrderStats(comparisonRange.from, comparisonRange.to, branchFilter ?? undefined)
+        webOrdersService.getOrders(consulta),
+        webOrdersService.getOrderStats(actual.from, actual.to, branchFilter ?? undefined),
+        anterior ? webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined) : Promise.resolve(null),
       ]);
       setOrders(ordersData);
       setStats(statsData);
       setPreviousStats(prevStatsData);
-      setCurrentPage(1);
+      setErrorCarga(false);
+      setAhora(new Date());
     } catch (error) {
-      console.error('Error loading orders:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los pedidos',
-        variant: 'destructive',
-      });
+      console.error('Error cargando pedidos online:', error);
+      setErrorCarga(true);
     } finally {
       setLoading(false);
     }
-  }, [filters, getDateRange, getComparisonRange, toast, branchFilter]);
+  }, [filtros, busqueda, rangos, branchFilter]);
 
   useEffect(() => {
-    loadOrders();
+    setLoading(true);
+    void loadOrders();
   }, [loadOrders]);
 
-  // Auto-refresh cada 30 segundos
+  // Volver a la primera página cuando cambia lo que se pide.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filtros, busqueda, periodo, customDateFrom, customDateTo, branchFilter]);
+
+  // Actualización automática cada 30 s.
   useEffect(() => {
     if (!autoRefresh) return;
-    
-    const interval = setInterval(() => {
-      loadOrders();
-    }, 30000);
-
+    const interval = setInterval(() => void loadOrders(), 30_000);
     return () => clearInterval(interval);
   }, [autoRefresh, loadOrders]);
 
-  // Suscripción a cambios en tiempo real
-  // Se usa un debounce (800ms) para agrupar ráfagas de cambios (ej. cuando se
-  // actualizan varios campos de un pedido a la vez) y evitar múltiples
-  // recargas seguidas que dispararían 3 consultas paralelas cada una.
+  // Tiempo real, con debounce de 800 ms para agrupar ráfagas de cambios.
   useEffect(() => {
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleReload = () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       reloadTimer = setTimeout(() => {
         reloadTimer = null;
-        loadOrders();
+        void loadOrders();
       }, 800);
     };
 
     webOrdersService.subscribeToOrders((payload) => {
       if (payload.eventType === 'INSERT' && payload.new.status === 'pending') {
-        // Nuevo pedido - reproducir sonido
-        if (soundEnabled) {
-          playNotificationSound();
-        }
-        toast({
-          title: '🔔 Nuevo pedido',
-          description: `Pedido ${payload.new.order_number} recibido`,
-        });
+        if (soundEnabled) playNotificationSound();
+        toast({ title: t('nuevoPedido'), description: t('nuevoPedidoDetalle', { numero: payload.new.order_number }) });
       }
-      // Recargar pedidos (con debounce para agrupar cambios)
       scheduleReload();
     }, branchFilter);
 
@@ -317,40 +248,31 @@ export default function PedidosOnlinePage() {
       if (reloadTimer) clearTimeout(reloadTimer);
       webOrdersService.unsubscribeFromOrders();
     };
-  }, [soundEnabled, loadOrders, toast, branchFilter]);
+  }, [soundEnabled, loadOrders, toast, branchFilter, t]);
 
   const playNotificationSound = () => {
     try {
       const audio = new Audio('/sounds/notification.mp3');
       audio.play().catch(() => {});
     } catch {
-      console.log('Could not play notification sound');
+      /* sin audio en este navegador */
     }
   };
 
-  const handleConfirmOrder = async () => {
-    if (!confirmDialog.orderId) return;
-    
-    setActionLoading(true);
-    try {
-      // Obtener pedido completo con items para el servicio de confirmación
-      const order = await webOrdersService.getOrderById(confirmDialog.orderId);
-      if (!order) throw new Error('Pedido no encontrado');
-
-      const result = await webOrderConfirmationService.confirmOrder(order, {
-        prepMs: timeToMs(prepTime),
-        transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
-        markAsPaid,
-      });
+  // ── Confirmar (uno o varios) ────────────────────────────────────────────
+  const confirmarUno = async (orderId: string): Promise<{ ok: boolean; numero: string }> => {
+    const order = await webOrdersService.getOrderById(orderId);
+    if (!order) throw new Error('Pedido no encontrado');
+    const result = await webOrderConfirmationService.confirmOrder(order, {
+      prepMs: timeToMs(prepTime),
+      transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
+      markAsPaid,
+    });
+    if (!result.yaConfirmado) void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
+    if (confirmDialog.orderIds.length === 1) {
       if (result.yaConfirmado) {
-        toast({
-          title: tPedido('confirmacion.yaConfirmado'),
-          description: tPedido('confirmacion.yaConfirmadoDetalle'),
-        });
-        setConfirmDialog({ open: false, orderId: null });
-        setMarkAsPaid(false);
-        loadOrders();
-        return;
+        toast({ title: tPedido('confirmacion.yaConfirmado'), description: tPedido('confirmacion.yaConfirmadoDetalle') });
+        return { ok: true, numero: order.order_number };
       }
       const listo = tPedido('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime) });
       const parts = result.tableSessionId
@@ -364,55 +286,70 @@ export default function PedidosOnlinePage() {
         title: result.completadoAhora ? tPedido('confirmacion.completada') : tPedido('confirmacion.confirmado'),
         description: parts.join(' · '),
       });
-      if (result.cobroPendiente) {
-        toast({
-          title: tPedido('cobro.pendienteTrasConfirmar'),
-          description: tPedido(`cobro.${claveAvisoCobro(result.cobroPendiente)}`),
-          variant: 'destructive',
-        });
-      }
-      if ((result.stockErrors ?? []).length > 0) {
-        toast({
-          title: tPedido('confirmacion.stockFallido', { n: result.stockErrors!.length }),
-          description: result.stockErrors!.slice(0, 3).join(' · '),
-          variant: 'destructive',
-        });
-      }
-      void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
-      setConfirmDialog({ open: false, orderId: null });
-      setMarkAsPaid(false);
-      loadOrders();
-    } catch (error: unknown) {
-      console.error('Error confirmando pedido:', error);
+    }
+    if (result.cobroPendiente) {
       toast({
-        title: tPedido('confirmacion.error'),
-        description: (error as { message?: string } | null)?.message || 'No se pudo confirmar el pedido',
+        title: tPedido('cobro.pendienteTrasConfirmar'),
+        description: `${order.order_number} · ${tPedido(`cobro.${claveAvisoCobro(result.cobroPendiente)}`)}`,
         variant: 'destructive',
       });
-    } finally {
-      setActionLoading(false);
     }
+    if ((result.stockErrors ?? []).length > 0) {
+      toast({
+        title: tPedido('confirmacion.stockFallido', { n: result.stockErrors!.length }),
+        description: result.stockErrors!.slice(0, 3).join(' · '),
+        variant: 'destructive',
+      });
+    }
+    return { ok: true, numero: order.order_number };
+  };
+
+  const handleConfirmOrder = async () => {
+    const ids = confirmDialog.orderIds;
+    if (ids.length === 0) return;
+    setActionLoading(true);
+    const fallidos: string[] = [];
+    let hechos = 0;
+    // En serie: cada confirmación crea venta, comanda y movimientos de stock.
+    for (const id of ids) {
+      try {
+        await confirmarUno(id);
+        hechos++;
+      } catch (error: unknown) {
+        console.error('Error confirmando pedido:', error);
+        const numero = orders.find((o) => o.id === id)?.order_number ?? id.slice(0, 8);
+        fallidos.push(numero);
+        if (ids.length === 1) {
+          toast({
+            title: tPedido('confirmacion.error'),
+            description: (error as { message?: string } | null)?.message || t('confirmarLote.errorUno'),
+            variant: 'destructive',
+          });
+        }
+      }
+    }
+    if (ids.length > 1) {
+      if (hechos > 0) toast({ title: t('confirmarLote.resultado', { ok: hechos }) });
+      if (fallidos.length > 0) toast({ title: t('confirmarLote.fallidos', { n: fallidos.length, pedidos: fallidos.join(', ') }), variant: 'destructive' });
+    }
+    setActionLoading(false);
+    setConfirmDialog({ open: false, orderIds: [] });
+    setMarkAsPaid(false);
+    setSelectedOrders(new Set());
+    void loadOrders();
   };
 
   const handleRejectOrder = async () => {
     if (!rejectDialog.orderId || !rejectReason.trim()) return;
-    
     setActionLoading(true);
     try {
       await webOrdersService.rejectOrder(rejectDialog.orderId, rejectReason);
-      toast({
-        title: 'Pedido rechazado',
-        description: 'El cliente será notificado',
-      });
+      toast({ title: t('rechazo.hecho'), description: t('rechazo.hechoDetalle') });
       setRejectDialog({ open: false, orderId: null });
       setRejectReason('');
-      loadOrders();
+      void loadOrders();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudo rechazar el pedido',
-        variant: 'destructive',
-      });
+      toast({ title: t('rechazo.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -421,65 +358,26 @@ export default function PedidosOnlinePage() {
   const handleUpdateStatus = async (orderId: string, status: WebOrderStatus) => {
     try {
       await webOrdersService.updateOrderStatus(orderId, status);
-      toast({
-        title: 'Estado actualizado',
-        description: `Pedido marcado como ${getStatusLabel(status)}`,
-      });
-      loadOrders();
+      toast({ title: t('estadoActualizado', { estado: t(`estados.${status}`) }) });
+      void loadOrders();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el estado',
-        variant: 'destructive',
-      });
+      toast({ title: t('estadoError'), variant: 'destructive' });
     }
   };
 
-  const toggleSelectOrder = (orderId: string) => {
-    setSelectedOrders(prev => {
-      const next = new Set(prev);
-      if (next.has(orderId)) next.delete(orderId);
-      else next.add(orderId);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    const pageOrders = orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-    const allSelected = pageOrders.length > 0 && pageOrders.every(o => selectedOrders.has(o.id));
-    setSelectedOrders(prev => {
-      const next = new Set(prev);
-      if (allSelected) {
-        pageOrders.forEach(o => next.delete(o.id));
-      } else {
-        pageOrders.forEach(o => next.add(o.id));
-      }
-      return next;
-    });
-  };
-
-  const clearSelection = () => setSelectedOrders(new Set());
-
-  const getSelectedOrders = () => orders.filter(o => selectedOrders.has(o.id));
+  const getSelectedOrders = () => orders.filter((o) => selectedOrders.has(o.id));
 
   const handleBulkStatusChange = async (status: WebOrderStatus) => {
     const selected = getSelectedOrders();
     if (selected.length === 0) return;
     setBulkActionLoading(true);
     try {
-      await Promise.all(selected.map(o => webOrdersService.updateOrderStatus(o.id, status)));
-      toast({
-        title: 'Acción masiva completada',
-        description: `${selected.length} pedido(s) marcado(s) como ${getStatusLabel(status)}`,
-      });
-      clearSelection();
-      loadOrders();
+      await Promise.all(selected.map((o) => webOrdersService.updateOrderStatus(o.id, status)));
+      toast({ title: t('masivo.hecho', { n: selected.length, estado: t(`estados.${status}`) }) });
+      setSelectedOrders(new Set());
+      void loadOrders();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron actualizar todos los pedidos',
-        variant: 'destructive',
-      });
+      toast({ title: t('estadoError'), variant: 'destructive' });
     } finally {
       setBulkActionLoading(false);
     }
@@ -490,14 +388,10 @@ export default function PedidosOnlinePage() {
     if (selected.length === 0) return;
     setBulkActionLoading(true);
     try {
-      // Cada pedido se cobra en la caja de su sede (fn_cobrar_pedido_web_en_caja):
-      // factura, pago y arqueo. Sin la migración E4, el comportamiento anterior.
-      // Un pedido que no se puede cobrar no corta el lote: se resume al final.
+      // Cada pedido se cobra en la caja de su sede (fn_cobrar_pedido_web_en_caja).
       const r = await webOrderConfirmationService.cobrarVariosEnCaja(selected, (id) => webOrdersService.getOrderById(id));
       const hechos = r.cobrados.length + r.respaldo.length;
-      if (hechos > 0) {
-        toast({ title: tPedido('cobro.lote.titulo'), description: tPedido('cobro.lote.cobrados', { n: hechos }) });
-      }
+      if (hechos > 0) toast({ title: tPedido('cobro.lote.titulo'), description: tPedido('cobro.lote.cobrados', { n: hechos }) });
       for (const [codigo, numeros] of Object.entries(r.pendientes)) {
         if (!numeros || numeros.length === 0) continue;
         toast({
@@ -506,8 +400,8 @@ export default function PedidosOnlinePage() {
           variant: 'destructive',
         });
       }
-      clearSelection();
-      loadOrders();
+      setSelectedOrders(new Set());
+      void loadOrders();
     } catch {
       toast({ title: tPedido('cobro.error'), description: tPedido('cobro.lote.error'), variant: 'destructive' });
     } finally {
@@ -515,866 +409,523 @@ export default function PedidosOnlinePage() {
     }
   };
 
-  const handleBulkPrint = () => {
-    const selected = getSelectedOrders();
-    if (selected.length === 0) return;
+  const fechaHora = (iso: string) => formatDateTimeInTz(iso, timezone, { locale: 'es-CO', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  const etiquetaEntrega = (o: WebOrder): string => {
+    const tipo = tipoEntregaEfectivo(o);
+    if (tipo === 'dine_in') {
+      const mesa = mesaDelPedido(o);
+      return mesa ? tPedido('comerAquiMesa', { mesa }) : tPedido('comerAqui');
+    }
+    return t(`entregas.${tipo}`);
+  };
+
+  const imprimirPedidos = (lista: readonly WebOrder[]) => {
+    if (lista.length === 0) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    const html = selected.map(order => `
+    const html = lista
+      .map(
+        (order) => `
       <div style="page-break-after: always; padding: 20px; font-family: sans-serif;">
-        <h2 style="margin:0 0 8px;">${order.order_number}</h2>
-        <p style="margin:0 0 4px;color:#555;">${new Date(order.created_at).toLocaleString('es-CO')}</p>
+        <h2 style="margin:0 0 8px;">${esc(order.order_number)}</h2>
+        <p style="margin:0 0 4px;color:#555;">${esc(fechaHora(order.created_at))}</p>
         <hr style="margin:8px 0;"/>
-        <p style="margin:0 0 4px;"><strong>Cliente:</strong> ${order.customer_name || order.customer?.full_name || 'N/A'}</p>
-        <p style="margin:0 0 4px;"><strong>Teléfono:</strong> ${order.customer_phone || order.customer?.phone || 'N/A'}</p>
-        <p style="margin:0 0 4px;"><strong>Entrega:</strong> ${tipoEntregaEfectivo(order) === 'dine_in' ? etiquetaTipoCorta(order) : order.delivery_type === 'pickup' ? 'Retiro en tienda' : order.delivery_type === 'delivery_own' ? 'Delivery propio' : 'Delivery tercero'}</p>
-        ${esDomicilio(order.delivery_type) && order.delivery_address?.address ? `<p style="margin:0 0 4px;"><strong>Dirección:</strong> ${order.delivery_address.address}</p>` : ''}
-        ${order.delivery_address?.city ? `<p style="margin:0 0 4px;"><strong>Ciudad:</strong> ${order.delivery_address.city}</p>` : ''}
+        <p style="margin:0 0 4px;"><strong>${esc(t('columnas.cliente'))}:</strong> ${esc(order.customer_name || order.customer?.full_name || '—')}</p>
+        <p style="margin:0 0 4px;"><strong>${esc(t('impresion.telefono'))}:</strong> ${esc(order.customer_phone || order.customer?.phone || '—')}</p>
+        <p style="margin:0 0 4px;"><strong>${esc(t('columnas.entrega'))}:</strong> ${esc(etiquetaEntrega(order))}</p>
+        ${esDomicilio(order.delivery_type) && order.delivery_address?.address ? `<p style="margin:0 0 4px;"><strong>${esc(t('impresion.direccion'))}:</strong> ${esc(order.delivery_address.address)}${order.delivery_address.city ? `, ${esc(order.delivery_address.city)}` : ''}</p>` : ''}
         <hr style="margin:8px 0;"/>
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr style="border-bottom:1px solid #ddd;text-align:left;">
-              <th style="padding:4px 0;">Producto</th>
-              <th style="padding:4px 8px;text-align:center;">Cant.</th>
-              <th style="padding:4px 8px;text-align:right;">Precio</th>
-              <th style="padding:4px 0;text-align:right;">Total</th>
+              <th style="padding:4px 0;">${esc(t('impresion.producto'))}</th>
+              <th style="padding:4px 8px;text-align:center;">${esc(t('impresion.cantidad'))}</th>
+              <th style="padding:4px 8px;text-align:right;">${esc(t('impresion.precio'))}</th>
+              <th style="padding:4px 0;text-align:right;">${esc(t('columnas.total'))}</th>
             </tr>
           </thead>
           <tbody>
-            ${(order.items || []).map(item => `
+            ${(order.items || [])
+              .map(
+                (item) => `
               <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:4px 0;">${item.product_name}</td>
-                <td style="padding:4px 8px;text-align:center;">${item.quantity}</td>
-                <td style="padding:4px 8px;text-align:right;">${moneda.formatear(Number(item.unit_price || 0))}</td>
-                <td style="padding:4px 0;text-align:right;">${moneda.formatear(Number(item.total || 0))}</td>
-              </tr>
-            `).join('')}
+                <td style="padding:4px 0;">${esc(item.product_name)}</td>
+                <td style="padding:4px 8px;text-align:center;">${esc(item.quantity)}</td>
+                <td style="padding:4px 8px;text-align:right;">${esc(moneda.formatear(Number(item.unit_price || 0)))}</td>
+                <td style="padding:4px 0;text-align:right;">${esc(moneda.formatear(Number(item.total || 0)))}</td>
+              </tr>`,
+              )
+              .join('')}
           </tbody>
         </table>
         <div style="text-align:right;margin-top:8px;">
-          <strong style="font-size:18px;">Total: ${moneda.formatear(order.total)}</strong>
+          <strong style="font-size:18px;">${esc(t('columnas.total'))}: ${esc(moneda.formatear(order.total))}</strong>
         </div>
-        ${order.customer_notes ? `<div style="margin-top:8px;padding:8px;background:#fffbea;border-radius:4px;"><strong>Notas:</strong> ${order.customer_notes}</div>` : ''}
-        <p style="margin-top:12px;color:#999;font-size:12px;">Método de pago: ${getPaymentLabel(order.payment_method)} · ${order.payment_status}</p>
-      </div>
-    `).join('');
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Pedidos - Imprimir</title></head><body>${html}</body></html>`);
+        ${order.customer_notes ? `<div style="margin-top:8px;padding:8px;background:#fffbea;border-radius:4px;"><strong>${esc(t('impresion.notas'))}:</strong> ${esc(order.customer_notes)}</div>` : ''}
+        <p style="margin-top:12px;color:#999;font-size:12px;">${esc(metodoDePago(order))} · ${esc(t(`pagos.${order.payment_status}`))}</p>
+      </div>`,
+      )
+      .join('');
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(t('titulo'))}</title></head><body>${html}</body></html>`);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => printWindow.print(), 500);
-    toast({
-      title: 'Preparando impresión',
-      description: `${selected.length} pedido(s) listos para imprimir`,
-    });
   };
 
-  const handleBulkExport = () => {
-    const selected = getSelectedOrders();
-    if (selected.length === 0) return;
+  const exportarCsv = (lista: readonly WebOrder[]) => {
+    if (lista.length === 0) return;
     // La moneda va en el encabezado: el número queda crudo para la hoja de cálculo.
-    const headers = ['Pedido', 'Cliente', 'Email', 'Telefono', 'Estado', 'Entrega', `Total (${moneda.code})`, 'Metodo Pago', 'Fecha'];
-    const rows = selected.map(o => [
+    const headers = [
+      t('columnas.pedido'),
+      t('columnas.cliente'),
+      t('impresion.correo'),
+      t('impresion.telefono'),
+      t('columnas.estado'),
+      t('columnas.entrega'),
+      `${t('columnas.total')} (${moneda.code})`,
+      t('columnas.pago'),
+      t('impresion.fecha'),
+    ];
+    const rows = lista.map((o) => [
       o.order_number,
       o.customer_name || o.customer?.full_name || '',
       o.customer_email || o.customer?.email || '',
       o.customer_phone || o.customer?.phone || '',
-      getStatusLabel(o.status),
-      etiquetaTipoCorta(o),
+      t(`estados.${o.status}`),
+      etiquetaEntrega(o),
       o.total.toString(),
-      getPaymentLabel(o.payment_method),
-      new Date(o.created_at).toLocaleString('es-CO'),
+      metodoDePago(o),
+      fechaHora(o.created_at),
     ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `pedidos_${getToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({
-      title: 'Exportación completada',
-      description: `${selected.length} pedido(s) exportado(s) a CSV`,
-    });
+    toast({ title: t('exportado', { n: lista.length }) });
   };
 
-  const getStatusLabel = (status: WebOrderStatus): string => {
-    const labels: Record<WebOrderStatus, string> = {
-      pending: 'Pendiente',
-      confirmed: 'Confirmado',
-      preparing: 'Preparando',
-      ready: 'Listo',
-      in_delivery: 'En camino',
-      delivered: 'Entregado',
-      cancelled: 'Cancelado',
-      rejected: 'Rechazado',
-      expired: 'Expirado',
-    };
-    return labels[status];
+  const handleViewDetails = (orderId: string) => router.push(`/app/pos/pedidos-online/${orderId}`);
+
+  // ── Datos derivados ─────────────────────────────────────────────────────
+  const pendientesIds = useMemo(() => orders.filter((o) => o.status === 'pending').map((o) => o.id), [orders]);
+  const sinConfirmar = stats?.unconfirmed_orders ?? 0;
+  const pagina = orders.slice((currentPage - 1) * tamanoPagina, currentPage * tamanoPagina);
+  const hayFiltros = Object.values(filtros).some(Boolean) || busqueda.trim() !== '';
+
+  const estadoTabla: EstadoTabla = loading && orders.length === 0
+    ? 'cargando'
+    : errorCarga && orders.length === 0
+      ? 'error'
+      : orders.length === 0
+        ? hayFiltros
+          ? 'sinResultados'
+          : 'vacio'
+        : 'listo';
+
+  const nombrePeriodo = t(`periodos.${periodo}`);
+  const comparacion = t(`comparacion.${periodo}`);
+  const detalleVariacion = (actual: number, anterior: number | null | undefined) => {
+    const v = variacionPct(actual, anterior);
+    if (v === null) return { detalle: undefined, tendencia: undefined };
+    return { detalle: t('kpis.vs', { pct: Math.abs(v), comparacion }), tendencia: v >= 0 ? ('sube' as const) : ('baja' as const) };
+  };
+  const vPedidos = detalleVariacion(stats?.total_orders ?? 0, previousStats?.total_orders);
+  const vEntregados = detalleVariacion(stats?.completed_orders ?? 0, previousStats?.completed_orders);
+  const vCancelados = detalleVariacion(stats?.cancelled_orders ?? 0, previousStats?.cancelled_orders);
+
+  const chips: ChipFiltro[] = [
+    { clave: 'periodo', etiqueta: t('chips.periodo', { valor: nombrePeriodo }) },
+    filtros.status ? { clave: 'status', etiqueta: t('chips.estado', { valor: t(`estadosFiltro.${filtros.status}`) }) } : null,
+    filtros.delivery_type ? { clave: 'delivery_type', etiqueta: t('chips.entrega', { valor: t(`entregas.${filtros.delivery_type}`) }) } : null,
+    filtros.source ? { clave: 'source', etiqueta: t('chips.origen', { valor: t(`origenes.${filtros.source}`) }) } : null,
+    filtros.payment_status ? { clave: 'payment_status', etiqueta: t('chips.pago', { valor: t(`pagos.${filtros.payment_status}`) }) } : null,
+  ].filter((c): c is ChipFiltro => c !== null && (c.clave !== 'periodo' || periodo !== 'all'));
+
+  const quitarChip = (clave: string) => {
+    if (clave === 'periodo') setPeriodo('all');
+    else setFiltros((f) => ({ ...f, [clave]: undefined }));
+  };
+  const limpiarFiltros = () => {
+    setFiltros({});
+    setBusqueda('');
+    setPeriodo('today');
   };
 
-  const getStatusColor = (status: WebOrderStatus): string => {
-    const colors: Record<WebOrderStatus, string> = {
-      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      preparing: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      ready: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      in_delivery: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      delivered: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-      cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      rejected: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-      expired: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-    };
-    return colors[status];
+  const filtrarPendientes = () => setFiltros((f) => ({ ...f, status: f.status === 'pending' ? undefined : 'pending' }));
+
+  const accionesCabecera: AccionFila[] = [
+    {
+      id: 'sonido',
+      etiqueta: soundEnabled ? t('acciones.sonidoOn') : t('acciones.sonidoOff'),
+      icono: soundEnabled ? VolumeX : Volume2,
+      onSelect: () => setSoundEnabled((v) => !v),
+    },
+    {
+      id: 'auto',
+      etiqueta: autoRefresh ? t('acciones.autoOn') : t('acciones.autoOff'),
+      icono: autoRefresh ? BellOff : Bell,
+      onSelect: () => setAutoRefresh((v) => !v),
+    },
+    {
+      id: 'avisos',
+      etiqueta: t('acciones.avisosCliente'),
+      icono: Settings,
+      separadorAntes: true,
+      onSelect: () => router.push('/app/configuracion/pos/avisos-cliente'),
+    },
+  ];
+
+  const sustantivo = {
+    singular: t('sustantivo.singular'),
+    plural: t('sustantivo.plural'),
+    genero: t('sustantivo.genero') === 'femenino' ? ('femenino' as const) : ('masculino' as const),
   };
 
-  const getPaymentLabel = (method?: string): string => {
-    if (!method) return '—';
-    const labels: Record<string, string> = {
-      cash: 'Efectivo',
-      transfer: 'Transferencia',
-      wompi: 'Wompi',
-      wompi_co: 'Wompi',
-      nequi: 'Nequi',
-      daviplata: 'Daviplata',
-      pse: 'PSE',
-      card: 'Tarjeta',
-      mp_checkout: 'MercadoPago',
-      stripe_payments: 'Stripe',
-      payu_co: 'PayU',
-      paypal_checkout: 'PayPal',
-    };
-    return labels[method] || method;
-  };
+  const seleccion = getSelectedOrders();
+  const accionesMasivas: AccionMasiva[] = [
+    {
+      id: 'confirmar',
+      etiqueta: t('masivo.confirmar'),
+      icono: CheckCircle,
+      deshabilitada: !seleccion.some((o) => o.status === 'pending'),
+      motivo: t('masivo.soloPendientes'),
+      onClick: () => setConfirmDialog({ open: true, orderIds: seleccion.filter((o) => o.status === 'pending').map((o) => o.id) }),
+    },
+    { id: 'cobrar', etiqueta: t('masivo.cobrar'), icono: Coins, cargando: bulkActionLoading, onClick: () => void handleBulkMarkPaid() },
+    { id: 'imprimir', etiqueta: t('masivo.imprimir'), icono: Printer, onClick: () => imprimirPedidos(seleccion) },
+  ];
+  const accionesMasivasSecundarias: AccionFila[] = [
+    { id: 'preparar', etiqueta: t('masivo.preparar'), icono: Clock, onSelect: () => void handleBulkStatusChange('preparing') },
+    { id: 'listos', etiqueta: t('masivo.listos'), icono: Package, onSelect: () => void handleBulkStatusChange('ready') },
+    { id: 'entregados', etiqueta: t('masivo.entregados'), icono: CheckCircle, onSelect: () => void handleBulkStatusChange('delivered') },
+    { id: 'exportar', etiqueta: t('masivo.exportar'), icono: Download, separadorAntes: true, onSelect: () => exportarCsv(seleccion) },
+  ];
 
-  const getPaymentDetailLabel = (detail?: string): string | null => {
-    if (!detail) return null;
-    const labels: Record<string, string> = {
-      bancolombia_transfer: 'Bancolombia',
-      card: 'Tarjeta',
-      nequi: 'Nequi',
-      pse: 'PSE',
-      bancolombia_collect: 'Bancolombia Collect',
-      daviplata: 'Daviplata',
-    };
-    return labels[detail] || detail;
-  };
+  const kpiCargando = !stats && !errorCarga;
+  const subtitulo = stats
+    ? t('subtitulo', { total: stats.total_orders, pendientes: sinConfirmar })
+    : errorCarga
+      ? undefined
+      : t('cargando');
 
-  const handleViewDetails = (orderId: string) => {
-    router.push(`/app/pos/pedidos-online/${orderId}`);
-  };
-
-  // Agrupar pedidos por estado para vista tipo Kanban
+  // Tablero por estado (vista «Tablero»).
   const KANBAN_PAGE_SIZE = 10;
   const [kanbanPages, setKanbanPages] = useState<Record<string, number>>({ pending: 1, confirmed: 1, preparing: 1, ready: 1 });
+  const columnasTablero: { clave: string; titulo: string; pedidos: WebOrder[]; punto: string }[] = [
+    { clave: 'pending', titulo: t('estadosFiltro.pending'), pedidos: orders.filter((o) => o.status === 'pending'), punto: 'bg-warning' },
+    { clave: 'confirmed', titulo: t('estadosFiltro.confirmed'), pedidos: orders.filter((o) => o.status === 'confirmed'), punto: 'bg-info' },
+    { clave: 'preparing', titulo: t('estadosFiltro.preparing'), pedidos: orders.filter((o) => o.status === 'preparing'), punto: 'bg-warning' },
+    { clave: 'ready', titulo: t('tableroListos'), pedidos: orders.filter((o) => ['ready', 'in_delivery'].includes(o.status)), punto: 'bg-success' },
+  ];
 
-  const pendingOrders = orders.filter(o => o.status === 'pending');
-  const confirmedOrders = orders.filter(o => o.status === 'confirmed');
-  const preparingOrders = orders.filter(o => o.status === 'preparing');
-  const readyOrders = orders.filter(o => ['ready', 'in_delivery'].includes(o.status));
-
-  const paginateKanban = (items: WebOrder[], key: string) => items.slice(0, (kanbanPages[key] || 1) * KANBAN_PAGE_SIZE);
-  const hasMoreKanban = (items: WebOrder[], key: string) => items.length > (kanbanPages[key] || 1) * KANBAN_PAGE_SIZE;
-  const showMoreKanban = (key: string) => setKanbanPages(prev => ({ ...prev, [key]: (prev[key] || 1) + 1 }));
+  const campoSelect = (
+    etiqueta: string,
+    valor: string | undefined,
+    opciones: readonly string[],
+    rotulo: (v: string) => string,
+    onCambio: (v: string | undefined) => void,
+  ) => (
+    <FormField etiqueta={etiqueta}>
+      {(c) => (
+        <Select value={valor ?? 'todos'} onValueChange={(v) => onCambio(v === 'todos' ? undefined : v)}>
+          <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">{t('filtros.todos')}</SelectItem>
+            {opciones.map((o) => (
+              <SelectItem key={o} value={o}>
+                {rotulo(o)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </FormField>
+  );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <a href="/app/pos">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </a>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              Pedidos Online
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">POS / Pedidos Online</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center border dark:border-gray-700 rounded-md overflow-hidden">
-            <Button
-              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('kanban')}
-              className="rounded-none"
-              title="Vista Kanban"
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas px-4 pb-24 pt-4 sm:px-6 lg:gap-5 lg:pt-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={subtitulo}
+        icono={ShoppingBag}
+        cargando={loading}
+        migas={[{ etiqueta: 'POS', href: '/app/pos' }, { etiqueta: t('titulo') }]}
+        acciones={
+          <>
+            <button
+              type="button"
+              onClick={() => void loadOrders()}
+              disabled={loading}
+              aria-label={t('acciones.actualizar')}
+              title={t('acciones.actualizar')}
+              className={clasesBoton({ variante: 'secundario', tamano: 'md', className: 'w-10 px-0' })}
             >
-              <LayoutGrid className="h-4 w-4 dark:text-gray-300" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="rounded-none"
-              title="Vista Lista"
+              <RefreshCw aria-hidden="true" className={loading ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => exportarCsv(orders)}
+              disabled={orders.length === 0}
+              className={clasesBoton({ variante: 'secundario', tamano: 'md' })}
             >
-              <List className="h-4 w-4 dark:text-gray-300" />
-            </Button>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.exportar')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDialog({ open: true, orderIds: pendientesIds })}
+              disabled={pendientesIds.length === 0}
+              className={clasesBoton({ variante: 'primario', tamano: 'md' })}
+            >
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.confirmarPendientes', { n: pendientesIds.length })}
+            </button>
+            <RowActionsMenu orientacion="horizontal" tamano="md" titulo={t('titulo')} acciones={accionesCabecera} />
+          </>
+        }
+        movil={{
+          subtitulo: stats ? t('subtituloMovil', { total: stats.total_orders, pendientes: sinConfirmar }) : undefined,
+        }}
+        debajo={
+          <div className="flex w-full items-center justify-between gap-3">
+            <BranchBadgeActiva tamano="sm" />
+            <SegmentedControl
+              etiqueta={t('vista.etiqueta')}
+              tamano="sm"
+              valor={viewMode}
+              onValorChange={setViewMode}
+              tonoActivo="marca"
+              opciones={[
+                { valor: 'list', etiqueta: t('vista.lista') },
+                { valor: 'kanban', etiqueta: t('vista.tablero') },
+              ]}
+            />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido'}
-            className="dark:border-gray-600"
-          >
-            {soundEnabled ? <Volume2 className="h-4 w-4 dark:text-gray-300" /> : <VolumeX className="h-4 w-4 dark:text-gray-300" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            title={autoRefresh ? 'Desactivar auto-refresh' : 'Activar auto-refresh'}
-            className="dark:border-gray-600"
-          >
-            {autoRefresh ? <Bell className="h-4 w-4 dark:text-gray-300" /> : <BellOff className="h-4 w-4 dark:text-gray-300" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadOrders()}
-            disabled={loading}
-            className="dark:border-gray-600"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 dark:text-gray-300 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline dark:text-gray-300">Actualizar</span>
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Estadísticas */}
-      <WebOrderStats stats={stats} previousStats={previousStats} isLoading={loading} datePreset={datePreset} />
+      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={6} className="hidden sm:grid">
+        <StatCard
+          tamano="sm"
+          etiqueta={periodo === 'today' ? t('kpis.pedidosHoy') : t('kpis.pedidos')}
+          cargando={kpiCargando}
+          valor={stats ? stats.total_orders.toLocaleString('es-CO') : '—'}
+          detalle={vPedidos.detalle}
+          tendencia={vPedidos.tendencia}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={t('kpis.pendientes')}
+          cargando={kpiCargando}
+          valor={stats ? sinConfirmar.toLocaleString('es-CO') : '—'}
+          tono={sinConfirmar > 0 ? 'advertencia' : 'neutro'}
+          iconoDetalle={sinConfirmar > 0 ? TriangleAlert : undefined}
+          detalle={sinConfirmar > 0 ? t('kpis.filtrarPendientes') : t('kpis.sinPendientes')}
+          resaltada={filtros.status === 'pending'}
+          onClick={sinConfirmar > 0 ? filtrarPendientes : undefined}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={t('kpis.entregados')}
+          cargando={kpiCargando}
+          valor={stats ? stats.completed_orders.toLocaleString('es-CO') : '—'}
+          tono={vEntregados.tendencia === 'baja' ? 'peligro' : 'exito'}
+          detalle={vEntregados.detalle}
+          tendencia={vEntregados.tendencia}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={t('kpis.cancelados')}
+          cargando={kpiCargando}
+          valor={stats ? stats.cancelled_orders.toLocaleString('es-CO') : '—'}
+          tono={vCancelados.tendencia === 'sube' ? 'peligro' : vCancelados.tendencia === 'baja' ? 'exito' : 'neutro'}
+          detalle={vCancelados.detalle}
+          tendencia={vCancelados.tendencia}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={t('kpis.aTiempo')}
+          cargando={kpiCargando}
+          valor={stats?.on_time_pct != null ? `${stats.on_time_pct} %` : '—'}
+          tono={stats?.on_time_pct == null ? 'neutro' : stats.on_time_pct >= 80 ? 'exito' : 'advertencia'}
+          tendencia={stats?.on_time_pct != null && stats.on_time_pct >= 80 ? 'sube' : undefined}
+          detalle={stats?.on_time_pct != null ? t('kpis.contraPrometido') : t('kpis.sinMedir')}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={t('kpis.ingresos')}
+          cargando={kpiCargando}
+          valor={stats ? moneda.formatear(stats.total_revenue) : '—'}
+          detalle={stats ? t('kpis.ticket', { valor: moneda.formatear(Math.round(stats.avg_order_value)) }) : undefined}
+        />
+      </KpiStrip>
 
-      {/* Observabilidad de la tienda (stock reservado, reservas huérfanas y
-          pedidos por expirar), plegada. Vivía suelta en el inicio; el Figma
-          del inicio (445:137185) solo conserva el conteo «N expiran en menos
-          de 30 min» en el bloque «Hoy», así que el panel completo vive aquí,
-          donde se atienden los pedidos. */}
-      <WebCommerceObservability organizationId={organization?.id} withinMinutes={30} />
-
-      {/* Filtro de fechas */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
-            <span className="text-sm font-medium mr-1 dark:text-gray-100">Período:</span>
-            {([
-              { value: 'today', label: 'Hoy' },
-              { value: 'yesterday', label: 'Ayer' },
-              { value: 'last7', label: 'Últimos 7 días' },
-              { value: 'last30', label: 'Últimos 30 días' },
-              { value: 'custom', label: 'Personalizado' },
-            ] as { value: DatePreset; label: string }[]).map((opt) => (
-              <Button
-                key={opt.value}
-                variant={datePreset === opt.value ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setDatePreset(opt.value)}
-              >
-                {opt.label}
-              </Button>
-            ))}
-            {datePreset === 'custom' && (
-              <div className="flex items-center gap-2 ml-2">
-                <CampoFecha
-                  aria-label="Desde"
-                  tamano="sm"
-                  valor={customDateFrom}
-                  onValorChange={setCustomDateFrom}
-                  className="w-40"
-                />
-                <span className="text-sm text-muted-foreground dark:text-gray-400">a</span>
-                <CampoFecha
-                  aria-label="Hasta"
-                  tamano="sm"
-                  valor={customDateTo}
-                  onValorChange={setCustomDateTo}
-                  className="w-40"
-                />
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Filtros */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="p-4">
-          <WebOrderFilters 
-            activeFilters={filters}
-            onFilterChange={setFilters}
+      <ListToolbar
+        busqueda={
+          <SearchInput
+            value={busqueda}
+            onChange={setBusqueda}
+            cargando={loading && orders.length > 0}
+            placeholder={t('buscar.placeholder')}
+            etiqueta={t('buscar.etiqueta')}
           />
-        </CardContent>
-      </Card>
-
-      {/* Vista de pedidos */}
-      {loading ? (
-        viewMode === 'list' ? (
-          /* ─── Skeleton Vista Lista ─── */
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[1100px]">
-                  <thead>
-                    <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
-                      {['', 'Pedido', 'Cliente', 'Estado', 'Entrega', 'Items', 'Pago', 'Total', 'Tiempo', 'Acciones'].map((h, idx) => (
-                        <th key={idx} className="text-left p-3 font-medium dark:text-gray-100">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <tr key={i} className="border-b dark:border-gray-700">
-                        <td className="p-3"><Skeleton className="h-4 w-4" /></td>
-                        <td className="p-3"><Skeleton className="h-4 w-28" /></td>
-                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-20" /></div></td>
-                        <td className="p-3"><Skeleton className="h-5 w-20 rounded-full" /></td>
-                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-3 w-16" /><Skeleton className="h-3 w-20" /></div></td>
-                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-3 w-20" /><Skeleton className="h-3 w-24" /></div></td>
-                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-4 w-16 rounded-full" /><Skeleton className="h-3 w-20" /></div></td>
-                        <td className="p-3"><Skeleton className="h-4 w-16" /></td>
-                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-3 w-24" /><Skeleton className="h-3 w-12" /></div></td>
-                        <td className="p-3"><div className="flex justify-center gap-1"><Skeleton className="h-7 w-20" /><Skeleton className="h-7 w-7" /></div></td>
-                      </tr>
+        }
+        filtros={
+          <FilterPanel
+            conteo={chips.length}
+            onLimpiar={limpiarFiltros}
+            titulo={t('filtros.titulo')}
+            textoVerResultados={t('filtros.verN', { count: orders.length })}
+          >
+            <FormField etiqueta={t('filtros.periodo')}>
+              {(c) => (
+                <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoListado)}>
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERIODOS_LISTADO.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {t(`periodos.${p}`)}
+                      </SelectItem>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          /* ─── Skeleton Vista Kanban ─── */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {['Pendientes', 'Confirmados', 'Preparando', 'Listos'].map((col) => (
-              <div key={col} className="space-y-3 sm:space-y-4">
-                <div className="flex items-center gap-2 p-2 bg-muted/50 dark:bg-gray-800/50 rounded-lg">
-                  <Skeleton className="w-3 h-3 rounded-full" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex justify-between">
-                        <Skeleton className="h-5 w-28" />
-                        <Skeleton className="h-5 w-20 rounded-full" />
-                      </div>
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-8 w-full rounded-lg" />
-                      <div className="space-y-1">
-                        <Skeleton className="h-3 w-full" />
-                        <Skeleton className="h-3 w-3/4" />
-                      </div>
-                      <div className="flex justify-between border-t dark:border-gray-700 pt-3">
-                        <Skeleton className="h-4 w-12" />
-                        <Skeleton className="h-5 w-20" />
-                      </div>
-                      <div className="flex gap-2">
-                        <Skeleton className="h-8 flex-1" />
-                        <Skeleton className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ))}
-          </div>
-        )
-      ) : orders.length === 0 ? (
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-8 sm:p-12 text-center">
-            <p className="text-muted-foreground dark:text-gray-300">No hay pedidos que mostrar</p>
-          </CardContent>
-        </Card>
-      ) : viewMode === 'list' ? (
-        /* ─── Vista Lista ─── */
-        <div className="space-y-3">
-          {/* Barra de acciones masivas */}
-          {selectedOrders.size > 0 && (
-            <div className="flex items-center justify-between gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium dark:text-blue-200">{selectedOrders.size} seleccionado(s)</span>
-                <Button variant="ghost" size="sm" className="h-7 px-2 dark:text-gray-300" onClick={clearSelection}>
-                  <X className="h-3 w-3 mr-1" />
-                  Limpiar
-                </Button>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs dark:text-white"
-                  disabled={bulkActionLoading}
-                  onClick={() => handleBulkStatusChange('confirmed')}
-                >
-                  <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
-                  Confirmar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs dark:text-white"
-                  disabled={bulkActionLoading}
-                  onClick={() => handleBulkStatusChange('preparing')}
-                >
-                  <Clock className="h-3 w-3 mr-1 dark:text-white" />
-                  En proceso
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs dark:text-white"
-                  disabled={bulkActionLoading}
-                  onClick={() => handleBulkStatusChange('ready')}
-                >
-                  <Package className="h-3 w-3 mr-1 dark:text-white" />
-                  Listos
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs dark:text-white"
-                  disabled={bulkActionLoading}
-                  onClick={() => handleBulkStatusChange('delivered')}
-                >
-                  <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
-                  Entregados
-                </Button>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-7 text-xs dark:text-white"
-                  disabled={bulkActionLoading}
-                  onClick={handleBulkMarkPaid}
-                >
-                  <Coins className="h-3 w-3 mr-1 dark:text-white" />
-                  Marcar pagados
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs dark:border-gray-600 dark:text-gray-200"
-                  onClick={handleBulkPrint}
-                >
-                  <Printer className="h-3 w-3 mr-1 dark:text-gray-300" />
-                  Imprimir
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs dark:border-gray-600 dark:text-gray-200"
-                  onClick={handleBulkExport}
-                >
-                  <Download className="h-3 w-3 mr-1 dark:text-gray-300" />
-                  Exportar CSV
-                </Button>
-              </div>
-            </div>
-          )}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[1100px]">
-                <thead>
-                  <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
-                    <th className="text-left p-3 w-10">
-                      <Checkbox
-                        checked={(() => {
-                          const pageOrders = orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-                          return pageOrders.length > 0 && pageOrders.every(o => selectedOrders.has(o.id));
-                        })()}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[180px]">Pedido</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[180px]">Cliente</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Estado</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[200px]">Entrega</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[220px]">Items</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Pago</th>
-                    <th className="text-right p-3 font-medium dark:text-gray-100">Total</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Tiempo</th>
-                    <th className="text-center p-3 font-medium dark:text-gray-100">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(order => {
-                    const minutesSince = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
-                    const timeSince = minutesSince < 60 ? `${minutesSince} min` : `${Math.floor(minutesSince / 60)}h ${minutesSince % 60}min`;
-                    return (
-                    <tr key={order.id} className={`border-b dark:border-gray-700 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors ${selectedOrders.has(order.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
-                      <td className="p-3">
-                        <Checkbox
-                          checked={selectedOrders.has(order.id)}
-                          onCheckedChange={() => toggleSelectOrder(order.id)}
-                        />
-                      </td>
-                      <td className="p-3 min-w-[180px]">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <CopyableId
-                              label={order.order_number}
-                              copyValue={order.id}
-                              onClick={() => handleViewDetails(order.id)}
-                              iconSize={12}
-                              className="font-medium text-xs sm:text-sm break-all sm:break-normal"
-                            />
-                            {order.is_scheduled && (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                                <CalendarClock className="h-3 w-3" />
-                                Programado
-                              </span>
-                            )}
-                            {order.tip_amount > 0 && (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                                <Coins className="h-3 w-3" />
-                                Propina
-                              </span>
-                            )}
-                          </div>
-                          {order.customer_notes && (
-                            <span className="text-xs text-yellow-700 dark:text-yellow-300 break-words whitespace-normal" title={order.customer_notes}>
-                              📝 {order.customer_notes}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 min-w-[180px]">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="dark:text-gray-300">{order.customer_name || order.customer?.full_name || '—'}</span>
-                          {(order.customer_phone || order.customer?.phone) && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {order.customer_phone || order.customer?.phone}
-                            </span>
-                          )}
-                          {(order.customer_email || order.customer?.email) && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 break-words whitespace-normal" title={order.customer_email || order.customer?.email}>
-                              {order.customer_email || order.customer?.email}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusLabel(order.status)}
-                        </span>
-                      </td>
-                      <td className="p-3 min-w-[200px]">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="flex items-center gap-1 text-xs dark:text-gray-300">
-                            {tipoEntregaEfectivo(order) === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
-                            {tipoEntregaEfectivo(order) === 'dine_in' && <UtensilsCrossed className="h-3 w-3 dark:text-gray-400" />}
-                            {order.delivery_type === 'delivery_own' && <Bike className="h-3 w-3 dark:text-gray-400" />}
-                            {order.delivery_type === 'delivery_third_party' && <Truck className="h-3 w-3 dark:text-gray-400" />}
-                            {etiquetaTipoCorta(order)}
-                          </span>
-                          {esDomicilio(order.delivery_type) && order.delivery_address?.address && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 break-words whitespace-normal" title={order.delivery_address.address}>
-                              <MapPin className="h-3 w-3 flex-shrink-0" />
-                              <span className="break-words whitespace-normal">{order.delivery_address.address}</span>
-                            </span>
-                          )}
-                          {esDomicilio(order.delivery_type) && order.delivery_address?.city && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400">
-                              {order.delivery_address.city}
-                              {(order.delivery_address.state || order.delivery_address.department) && `, ${order.delivery_address.state || order.delivery_address.department}`}
-                              {order.delivery_address.country && `, ${order.delivery_address.country}`}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 min-w-[220px]">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-medium dark:text-gray-200">{order.items?.length || 0} producto(s)</span>
-                          <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 sm:max-w-[220px]">
-                            {order.items?.slice(0, 2).map((item, idx) => (
-                              <div key={idx} className="flex justify-between gap-1">
-                                <span className="break-words whitespace-normal">{item.quantity}x {item.product_name}</span>
-                              </div>
-                            ))}
-                            {(order.items?.length || 0) > 2 && (
-                              <span className="text-xs">+{order.items!.length - 2} más...</span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex flex-col gap-1">
-                          <PaymentStatusBadge status={order.payment_status} />
-                          <span className="text-xs text-muted-foreground dark:text-gray-400">
-                            {getPaymentLabel(order.payment_method)}
-                            {order.payment_method_detail && ` · ${getPaymentDetailLabel(order.payment_method_detail)}`}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-right font-semibold dark:text-gray-100">${order.total.toLocaleString()}</td>
-                      <td className="p-3 text-xs text-muted-foreground dark:text-gray-400 w-[140px] min-w-[140px] sm:w-auto sm:min-w-0">
-                        <div className="flex flex-col gap-1">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 dark:text-gray-400 flex-shrink-0" />
-                            <span className="whitespace-nowrap">{new Date(order.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, {new Date(order.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </span>
-                          <span className="font-medium text-muted-foreground dark:text-gray-400 whitespace-nowrap pl-4">
-                            {timeSince}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center justify-center gap-1">
-                          {order.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="h-7 text-xs dark:text-white"
-                                onClick={() => setConfirmDialog({ open: true, orderId: order.id })}
-                              >
-                                <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
-                                Confirmar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="h-7 w-7 p-0"
-                                onClick={() => setRejectDialog({ open: true, orderId: order.id })}
-                              >
-                                <XCircle className="h-3 w-3 dark:text-white" />
-                              </Button>
-                            </>
-                          )}
-                          {order.status === 'confirmed' && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs dark:text-white"
-                              onClick={() => handleUpdateStatus(order.id, 'preparing')}
-                            >
-                              <Clock className="h-3 w-3 mr-1 dark:text-white" />
-                              Preparar
-                            </Button>
-                          )}
-                          {order.status === 'preparing' && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs dark:text-white"
-                              onClick={() => handleUpdateStatus(order.id, 'ready')}
-                            >
-                              Listo
-                            </Button>
-                          )}
-                          {order.status === 'ready' && !esDomicilio(order.delivery_type) && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs dark:text-white"
-                              onClick={() => handleUpdateStatus(order.id, 'delivered')}
-                            >
-                              Entregado
-                            </Button>
-                          )}
-                          {order.status === 'ready' && esDomicilio(order.delivery_type) && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs dark:text-white"
-                              onClick={() => handleUpdateStatus(order.id, 'in_delivery')}
-                            >
-                              Enviar
-                            </Button>
-                          )}
-                          {order.status === 'in_delivery' && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 text-xs dark:text-white"
-                              onClick={() => handleUpdateStatus(order.id, 'delivered')}
-                            >
-                              Entregado
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0 dark:border-gray-600"
-                            onClick={() => handleViewDetails(order.id)}
-                          >
-                            <Eye className="h-3 w-3 dark:text-gray-300" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {/* Paginación lista */}
-            {orders.length > ITEMS_PER_PAGE && (
-              <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t dark:border-gray-700">
-                <span className="text-sm text-muted-foreground dark:text-gray-300">
-                  {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, orders.length)} de {orders.length}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="dark:border-gray-600"
-                  >
-                    <ChevronLeft className="h-4 w-4 dark:text-gray-300" />
-                  </Button>
-                  <span className="text-sm px-2 dark:text-gray-300">
-                    {currentPage} / {Math.ceil(orders.length / ITEMS_PER_PAGE)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage >= Math.ceil(orders.length / ITEMS_PER_PAGE)}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="dark:border-gray-600"
-                  >
-                    <ChevronRight className="h-4 w-4 dark:text-gray-300" />
-                  </Button>
-                </div>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            {periodo === 'custom' && (
+              <div className="grid grid-cols-2 gap-2">
+                <CampoFecha aria-label={t('filtros.desde')} tamano="sm" valor={customDateFrom} onValorChange={setCustomDateFrom} />
+                <CampoFecha aria-label={t('filtros.hasta')} tamano="sm" valor={customDateTo} onValorChange={setCustomDateTo} />
               </div>
             )}
-          </CardContent>
-        </Card>
-        </div>
+            {campoSelect(t('filtros.estado'), filtros.status, ESTADOS_FILTRO, (v) => t(`estadosFiltro.${v}`), (v) => setFiltros((f) => ({ ...f, status: v as WebOrderStatus | undefined })))}
+            {campoSelect(t('filtros.entrega'), filtros.delivery_type, ENTREGAS_FILTRO, (v) => t(`entregas.${v}`), (v) => setFiltros((f) => ({ ...f, delivery_type: v as DeliveryType | undefined })))}
+            {campoSelect(t('filtros.origen'), filtros.source, ORIGENES_FILTRO, (v) => t(`origenes.${v}`), (v) => setFiltros((f) => ({ ...f, source: v as OrderSource | undefined })))}
+            {campoSelect(t('filtros.pago'), filtros.payment_status, PAGOS_FILTRO, (v) => t(`pagos.${v}`), (v) => setFiltros((f) => ({ ...f, payment_status: v as PaymentStatus | undefined })))}
+          </FilterPanel>
+        }
+        chips={chips.length > 0 ? <FilterChips chips={chips} onQuitar={quitarChip} onLimpiarTodo={limpiarFiltros} /> : undefined}
+      />
+
+      {viewMode === 'list' ? (
+        <TablaPedidosOnline
+          pedidos={pagina}
+          estado={estadoTabla}
+          timezone={timezone}
+          ahora={ahora}
+          seleccion={selectedOrders}
+          onSeleccionChange={setSelectedOrders}
+          onAbrir={(o) => handleViewDetails(o.id)}
+          onConfirmar={(o) => setConfirmDialog({ open: true, orderIds: [o.id] })}
+          onRechazar={(o) => setRejectDialog({ open: true, orderId: o.id })}
+          onCambiarEstado={(o, e) => void handleUpdateStatus(o.id, e)}
+          onImprimir={(o) => imprimirPedidos([o])}
+          onReintentar={() => {
+            setLoading(true);
+            void loadOrders();
+          }}
+          onLimpiarFiltros={limpiarFiltros}
+          termino={busqueda.trim() || undefined}
+          pie={
+            orders.length > 0 ? (
+              <Pagination
+                pagina={currentPage}
+                tamano={tamanoPagina}
+                total={orders.length}
+                onPaginaChange={setCurrentPage}
+                onTamanoChange={(n) => {
+                  setTamanoPagina(n);
+                  setCurrentPage(1);
+                }}
+                sustantivo={sustantivo}
+              />
+            ) : undefined
+          }
+        />
       ) : (
-        /* ─── Vista Kanban ─── */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {/* Columna: Pendientes */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Pendientes ({pendingOrders.length})</span>
-            </div>
-            {paginateKanban(pendingOrders, 'pending').map(order => (
-              <WebOrderCard
-                key={order.id}
-                order={order}
-                onConfirm={(id) => setConfirmDialog({ open: true, orderId: id })}
-                onReject={(id) => setRejectDialog({ open: true, orderId: id })}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
-            {hasMoreKanban(pendingOrders, 'pending') && (
-              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('pending')}>
-                Ver más ({pendingOrders.length - (kanbanPages.pending || 1) * KANBAN_PAGE_SIZE} restantes)
-              </Button>
-            )}
-            {pendingOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
-                Sin pedidos pendientes
-              </p>
-            )}
-          </div>
-
-          {/* Columna: Confirmados */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <div className="w-3 h-3 bg-blue-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Confirmados ({confirmedOrders.length})</span>
-            </div>
-            {paginateKanban(confirmedOrders, 'confirmed').map(order => (
-              <WebOrderCard
-                key={order.id}
-                order={order}
-                onUpdateStatus={handleUpdateStatus}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
-            {hasMoreKanban(confirmedOrders, 'confirmed') && (
-              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('confirmed')}>
-                Ver más ({confirmedOrders.length - (kanbanPages.confirmed || 1) * KANBAN_PAGE_SIZE} restantes)
-              </Button>
-            )}
-            {confirmedOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
-                Sin pedidos confirmados
-              </p>
-            )}
-          </div>
-
-          {/* Columna: En preparación */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <div className="w-3 h-3 bg-orange-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Preparando ({preparingOrders.length})</span>
-            </div>
-            {paginateKanban(preparingOrders, 'preparing').map(order => (
-              <WebOrderCard
-                key={order.id}
-                order={order}
-                onUpdateStatus={handleUpdateStatus}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
-            {hasMoreKanban(preparingOrders, 'preparing') && (
-              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('preparing')}>
-                Ver más ({preparingOrders.length - (kanbanPages.preparing || 1) * KANBAN_PAGE_SIZE} restantes)
-              </Button>
-            )}
-            {preparingOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
-                Nada en preparación
-              </p>
-            )}
-          </div>
-
-          {/* Columna: Listos / En camino */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Listos / En camino ({readyOrders.length})</span>
-            </div>
-            {paginateKanban(readyOrders, 'ready').map(order => (
-              <WebOrderCard
-                key={order.id}
-                order={order}
-                onUpdateStatus={handleUpdateStatus}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
-            {hasMoreKanban(readyOrders, 'ready') && (
-              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('ready')}>
-                Ver más ({readyOrders.length - (kanbanPages.ready || 1) * KANBAN_PAGE_SIZE} restantes)
-              </Button>
-            )}
-            {readyOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
-                Sin pedidos listos
-              </p>
-            )}
-          </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          {columnasTablero.map((col) => {
+            const visibles = col.pedidos.slice(0, (kanbanPages[col.clave] || 1) * KANBAN_PAGE_SIZE);
+            const restantes = col.pedidos.length - visibles.length;
+            return (
+              <div key={col.clave} className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2">
+                  <span aria-hidden="true" className={`size-2.5 rounded-full ${col.punto}`} />
+                  <span className="text-sm font-medium text-fg">{col.titulo}</span>
+                  <span className="ml-auto text-xs tabular-nums text-fg-secondary">{col.pedidos.length}</span>
+                </div>
+                {visibles.map((order) => (
+                  <WebOrderCard
+                    key={order.id}
+                    order={order}
+                    onConfirm={(id) => setConfirmDialog({ open: true, orderIds: [id] })}
+                    onReject={(id) => setRejectDialog({ open: true, orderId: id })}
+                    onUpdateStatus={handleUpdateStatus}
+                    onViewDetails={handleViewDetails}
+                  />
+                ))}
+                {restantes > 0 && (
+                  <button
+                    type="button"
+                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm', anchoCompleto: true })}
+                    onClick={() => setKanbanPages((p) => ({ ...p, [col.clave]: (p[col.clave] || 1) + 1 }))}
+                  >
+                    {t('tableroVerMas', { n: restantes })}
+                  </button>
+                )}
+                {col.pedidos.length === 0 && <p className="py-4 text-center text-sm text-fg-secondary">{t('tableroVacio')}</p>}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Dialog: Confirmar pedido */}
-      <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, orderId: open ? confirmDialog.orderId : null })}>
-        <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      {/* Observabilidad de la tienda (stock reservado, reservas huérfanas y
+          pedidos por expirar), plegada. No está en el Figma del listado: vive
+          aquí porque es donde se atienden los pedidos (ver el inicio, 445:137185). */}
+      <WebCommerceObservability organizationId={organization?.id} withinMinutes={30} />
+
+      {selectedOrders.size > 0 && viewMode === 'list' && (
+        <BulkActionBar
+          seleccionados={selectedOrders.size}
+          total={orders.length}
+          onSeleccionarTodos={() => setSelectedOrders(new Set(orders.map((o) => o.id)))}
+          sustantivo={sustantivo}
+          acciones={accionesMasivas}
+          accionesSecundarias={accionesMasivasSecundarias}
+          onLimpiar={() => setSelectedOrders(new Set())}
+        />
+      )}
+
+      {/* Diálogo: confirmar uno o varios pedidos */}
+      <Dialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => {
+          if (actionLoading) return;
+          setConfirmDialog({ open, orderIds: open ? confirmDialog.orderIds : [] });
+        }}
+      >
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Confirmar pedido</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Indica el tiempo estimado de preparación
+            <DialogTitle>
+              {confirmDialog.orderIds.length > 1 ? t('confirmarLote.titulo', { n: confirmDialog.orderIds.length }) : t('confirmar.titulo')}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDialog.orderIds.length > 1 ? t('confirmarLote.descripcion') : t('confirmar.descripcion')}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="prep-time-list" className="dark:text-gray-200">
-                Tiempo de preparación (Listo aprox)
-              </Label>
-              <div className="flex gap-2 mt-2">
+              <Label htmlFor="prep-time-list">{t('confirmar.preparacion')}</Label>
+              <div className="mt-2 flex gap-2">
                 <Input
                   id="prep-time-list"
                   type="number"
@@ -1383,26 +934,21 @@ export default function PedidosOnlinePage() {
                   min={1}
                   className="flex-1"
                 />
-                <Select
-                  value={prepTime.unit}
-                  onValueChange={(unit: TimeUnit) => setPrepTime({ ...prepTime, unit })}
-                >
+                <Select value={prepTime.unit} onValueChange={(unit: TimeUnit) => setPrepTime({ ...prepTime, unit })}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="minutes">Minutos</SelectItem>
-                    <SelectItem value="hours">Horas</SelectItem>
-                    <SelectItem value="days">Días</SelectItem>
+                    <SelectItem value="minutes">{t('confirmar.minutos')}</SelectItem>
+                    <SelectItem value="hours">{t('confirmar.horas')}</SelectItem>
+                    <SelectItem value="days">{t('confirmar.dias')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <Label htmlFor="transit-time-list" className="dark:text-gray-200">
-                Tiempo de traslado (Entrega aprox)
-              </Label>
-              <div className="flex gap-2 mt-2">
+              <Label htmlFor="transit-time-list">{t('confirmar.traslado')}</Label>
+              <div className="mt-2 flex gap-2">
                 <Input
                   id="transit-time-list"
                   type="number"
@@ -1411,93 +957,76 @@ export default function PedidosOnlinePage() {
                   min={0}
                   className="flex-1"
                 />
-                <Select
-                  value={transitTime.unit}
-                  onValueChange={(unit: TimeUnit) => setTransitTime({ ...transitTime, unit })}
-                >
+                <Select value={transitTime.unit} onValueChange={(unit: TimeUnit) => setTransitTime({ ...transitTime, unit })}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="minutes">Minutos</SelectItem>
-                    <SelectItem value="hours">Horas</SelectItem>
-                    <SelectItem value="days">Días</SelectItem>
+                    <SelectItem value="minutes">{t('confirmar.minutos')}</SelectItem>
+                    <SelectItem value="hours">{t('confirmar.horas')}</SelectItem>
+                    <SelectItem value="days">{t('confirmar.dias')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-sm text-muted-foreground dark:text-gray-400 mt-2">
-                Tiempo desde que está listo hasta que llega al cliente. Pon 0 si es retiro en tienda.
-              </p>
+              <p className="mt-2 text-sm text-fg-secondary">{t('confirmar.trasladoAyuda')}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="mark-as-paid"
-                checked={markAsPaid}
-                onCheckedChange={(checked) => setMarkAsPaid(checked === true)}
-              />
-              <Label htmlFor="mark-as-paid" className="text-sm font-medium cursor-pointer dark:text-gray-200">
-                Marcar como pagado
+            <div className="flex items-center gap-2">
+              <Checkbox id="mark-as-paid" checked={markAsPaid} onCheckedChange={(checked) => setMarkAsPaid(checked === true)} />
+              <Label htmlFor="mark-as-paid" className="cursor-pointer text-sm font-medium">
+                {t('confirmar.marcarPagado')}
               </Label>
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
+              disabled={actionLoading}
               onClick={() => {
-                setConfirmDialog({ open: false, orderId: null });
+                setConfirmDialog({ open: false, orderIds: [] });
                 setMarkAsPaid(false);
               }}
-              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              Cancelar
+              {t('confirmar.volver')}
             </Button>
-            <Button onClick={handleConfirmOrder} disabled={actionLoading} className="dark:text-white">
-              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin dark:text-white" />}
-              Confirmar pedido
+            <Button onClick={() => void handleConfirmOrder()} disabled={actionLoading}>
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {confirmDialog.orderIds.length > 1 ? t('confirmarLote.accion', { n: confirmDialog.orderIds.length }) : t('confirmar.accion')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Rechazar pedido */}
+      {/* Diálogo: rechazar pedido */}
       <Dialog open={rejectDialog.open} onOpenChange={(open) => setRejectDialog({ open, orderId: open ? rejectDialog.orderId : null })}>
-        <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">Rechazar pedido</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Indica el motivo del rechazo. El cliente será notificado.
-            </DialogDescription>
+            <DialogTitle>{t('rechazo.titulo')}</DialogTitle>
+            <DialogDescription>{t('rechazo.descripcion')}</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="reject-reason" className="dark:text-gray-200">Motivo del rechazo</Label>
+          <div className="py-2">
+            <Label htmlFor="reject-reason">{t('rechazo.motivo')}</Label>
             <Textarea
               id="reject-reason"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Ej: Producto agotado, fuera de horario de entrega..."
+              placeholder={t('rechazo.placeholder')}
               className="mt-2"
               rows={3}
             />
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setRejectDialog({ open: false, orderId: null });
                 setRejectReason('');
               }}
-              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              Cancelar
+              {t('confirmar.volver')}
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleRejectOrder} 
-              disabled={actionLoading || !rejectReason.trim()}
-              className="dark:text-white"
-            >
-              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin dark:text-white" />}
-              Rechazar pedido
+            <Button variant="destructive" onClick={() => void handleRejectOrder()} disabled={actionLoading || !rejectReason.trim()}>
+              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('rechazo.accion')}
             </Button>
           </DialogFooter>
         </DialogContent>

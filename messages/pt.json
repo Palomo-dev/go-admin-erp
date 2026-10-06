@@ -33845,5 +33845,234 @@
       },
       "historialPedido": "Histórico do pedido"
     }
+  },
+  "pedidosOnlineListado": {
+    "titulo": "Pedidos online",
+    "subtitulo": "{total, plural, one {# pedido} other {# pedidos}} no período · {pendientes} aguardando confirmação",
+    "subtituloMovil": "{total} pedidos · {pendientes} sem confirmar",
+    "cargando": "Carregando pedidos…",
+    "nuevoPedido": "Novo pedido",
+    "nuevoPedidoDetalle": "Chegou o pedido {numero}",
+    "estadoActualizado": "Pedido marcado como {estado}",
+    "estadoError": "Não foi possível atualizar o status",
+    "exportado": "{n, plural, one {# pedido exportado} other {# pedidos exportados}} para CSV",
+    "tableroListos": "Prontos / A caminho",
+    "tableroVacio": "Sem pedidos",
+    "tableroVerMas": "Ver mais {n}",
+    "acciones": {
+      "actualizar": "Atualizar",
+      "exportar": "Exportar",
+      "confirmarPendientes": "Confirmar pendentes · {n}",
+      "sonidoOn": "Silenciar o alerta sonoro",
+      "sonidoOff": "Ativar o alerta sonoro",
+      "autoOn": "Pausar a atualização automática",
+      "autoOff": "Ativar a atualização automática",
+      "avisosCliente": "Avisos ao cliente"
+    },
+    "vista": {
+      "etiqueta": "Visualização",
+      "lista": "Lista",
+      "tablero": "Quadro"
+    },
+    "kpis": {
+      "etiqueta": "Resumo do período",
+      "pedidosHoy": "Pedidos hoje",
+      "pedidos": "Pedidos",
+      "pendientes": "Pendentes",
+      "filtrarPendientes": "Filtrar pendentes",
+      "sinPendientes": "Nada para confirmar",
+      "entregados": "Entregues",
+      "cancelados": "Cancelados",
+      "aTiempo": "No prazo",
+      "contraPrometido": "Contra o prometido",
+      "sinMedir": "Sem entregas medidas",
+      "ingresos": "Receita",
+      "ticket": "Ticket médio {valor}",
+      "vs": "{pct} % vs {comparacion}"
+    },
+    "comparacion": {
+      "today": "ontem",
+      "yesterday": "anteontem",
+      "last7": "os 7 dias anteriores",
+      "last30": "os 30 dias anteriores",
+      "custom": "o período anterior",
+      "all": "o período anterior"
+    },
+    "buscar": {
+      "placeholder": "Buscar por n.º do pedido, cliente, telefone, e-mail, endereço ou produto…",
+      "etiqueta": "Buscar pedidos"
+    },
+    "filtros": {
+      "titulo": "Filtros",
+      "periodo": "Período",
+      "estado": "Status",
+      "entrega": "Entrega",
+      "origen": "Origem",
+      "pago": "Pagamento",
+      "todos": "Todos",
+      "desde": "De",
+      "hasta": "Até",
+      "verN": "{count, plural, one {Ver # pedido} other {Ver # pedidos}}"
+    },
+    "periodos": {
+      "today": "Hoje",
+      "yesterday": "Ontem",
+      "last7": "Últimos 7 dias",
+      "last30": "Últimos 30 dias",
+      "custom": "Personalizado",
+      "all": "Tudo"
+    },
+    "chips": {
+      "periodo": "Período: {valor}",
+      "estado": "Status: {valor}",
+      "entrega": "Entrega: {valor}",
+      "origen": "Origem: {valor}",
+      "pago": "Pagamento: {valor}"
+    },
+    "estados": {
+      "pending": "Pendente",
+      "confirmed": "Confirmado",
+      "preparing": "Em preparo",
+      "ready": "Pronto",
+      "in_delivery": "A caminho",
+      "delivered": "Entregue",
+      "cancelled": "Cancelado",
+      "rejected": "Recusado",
+      "expired": "Expirado"
+    },
+    "estadosFiltro": {
+      "pending": "Pendentes",
+      "confirmed": "Confirmados",
+      "preparing": "Em preparo",
+      "ready": "Prontos",
+      "in_delivery": "A caminho",
+      "delivered": "Entregues",
+      "cancelled": "Cancelados"
+    },
+    "pagos": {
+      "pending": "Pagamento pendente",
+      "paid": "Pago",
+      "partial": "Pagamento parcial",
+      "refunded": "Reembolsado",
+      "failed": "Pagamento recusado"
+    },
+    "entregas": {
+      "pickup": "Retirada na loja",
+      "delivery_own": "Entrega própria",
+      "delivery_third_party": "Entrega terceirizada",
+      "dine_in": "Comer no local",
+      "dineInMesa": "Comer no local · {mesa}"
+    },
+    "origenes": {
+      "website": "Loja online",
+      "mobile_app": "App",
+      "whatsapp": "WhatsApp",
+      "phone": "Telefone",
+      "otro": "Outro canal",
+      "qrMesa": "{origen} (QR da mesa)"
+    },
+    "columnas": {
+      "etiqueta": "Pedidos online",
+      "pedido": "Pedido",
+      "cliente": "Cliente",
+      "estado": "Status",
+      "entrega": "Entrega",
+      "aTiempo": "No prazo",
+      "pago": "Pagamento",
+      "total": "Total"
+    },
+    "promesa": {
+      "sinConfirmar": "Sem confirmar",
+      "listo": "Pronto {hora}",
+      "listoSinHora": "Sem hora de pronto",
+      "entrega": "Entrega {hora}",
+      "entregaSinHora": "Sem hora de entrega",
+      "entregado": "Entregue {hora}",
+      "entregadoSinHora": "Entregue",
+      "cancelado": "Cancelado {hora}",
+      "canceladoSinHora": "Cancelado",
+      "haceSinPromesa": "há {n} min · sem promessa",
+      "faltan": "faltam {n} min",
+      "retraso": "+{n} min de atraso",
+      "aTiempo": "no prazo",
+      "antes": "{n} min antes"
+    },
+    "filaAcciones": {
+      "ver": "Ver detalhe",
+      "confirmar": "Confirmar",
+      "preparar": "Iniciar preparo",
+      "listo": "Marcar pronto",
+      "enviar": "Enviar para entrega",
+      "entregado": "Marcar entregue",
+      "imprimir": "Imprimir",
+      "rechazar": "Recusar…"
+    },
+    "masivo": {
+      "confirmar": "Confirmar",
+      "soloPendientes": "Só pedidos pendentes são confirmados",
+      "cobrar": "Cobrar no caixa",
+      "imprimir": "Imprimir",
+      "preparar": "Passar para preparo",
+      "listos": "Marcar prontos",
+      "entregados": "Marcar entregues",
+      "exportar": "Exportar CSV",
+      "hecho": "{n, plural, one {# pedido marcado} other {# pedidos marcados}} como {estado}"
+    },
+    "sustantivo": {
+      "singular": "pedido",
+      "plural": "pedidos",
+      "genero": "masculino"
+    },
+    "vacio": {
+      "titulo": "Ainda não há pedidos neste período",
+      "descripcion": "Os pedidos da loja online, do app e do QR da mesa aparecem aqui na hora."
+    },
+    "sinResultados": {
+      "descripcion": "Tente outro período ou remova algum filtro."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os pedidos"
+    },
+    "confirmar": {
+      "titulo": "Confirmar pedido",
+      "descripcion": "Informe quanto tempo leva para ficar pronto. A venda é criada e a comanda vai para a cozinha.",
+      "preparacion": "Tempo de preparo (pronto aprox.)",
+      "traslado": "Tempo de deslocamento (entrega aprox.)",
+      "trasladoAyuda": "De pronto até chegar ao cliente. Use 0 para retirada ou consumo no local.",
+      "minutos": "Minutos",
+      "horas": "Horas",
+      "dias": "Dias",
+      "marcarPagado": "Marcar como pago",
+      "volver": "Voltar",
+      "accion": "Confirmar pedido"
+    },
+    "confirmarLote": {
+      "titulo": "Confirmar {n} pedidos pendentes",
+      "descripcion": "Os mesmos tempos valem para todos. Cada pedido cria sua venda e sua comanda.",
+      "accion": "Confirmar {n} pedidos",
+      "resultado": "{ok, plural, one {# pedido confirmado} other {# pedidos confirmados}}",
+      "fallidos": "{n, plural, one {# pedido não pôde ser confirmado} other {# pedidos não puderam ser confirmados}}: {pedidos}",
+      "errorUno": "Não foi possível confirmar o pedido"
+    },
+    "rechazo": {
+      "titulo": "Recusar pedido",
+      "descripcion": "Informe o motivo. O cliente é avisado.",
+      "motivo": "Motivo da recusa",
+      "placeholder": "Ex.: produto esgotado, fora do horário de entrega…",
+      "accion": "Recusar pedido",
+      "hecho": "Pedido recusado",
+      "hechoDetalle": "O cliente é avisado",
+      "error": "Não foi possível recusar o pedido"
+    },
+    "impresion": {
+      "telefono": "Telefone",
+      "correo": "E-mail",
+      "direccion": "Endereço",
+      "producto": "Produto",
+      "cantidad": "Qtd.",
+      "precio": "Preço",
+      "notas": "Observações",
+      "fecha": "Data"
+    }
   }
 }

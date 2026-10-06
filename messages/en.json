@@ -33948,5 +33948,234 @@
       },
       "historialPedido": "Order history"
     }
+  },
+  "pedidosOnlineListado": {
+    "titulo": "Online orders",
+    "subtitulo": "{total, plural, one {# order} other {# orders}} in the period · {pendientes} awaiting confirmation",
+    "subtituloMovil": "{total} orders · {pendientes} unconfirmed",
+    "cargando": "Loading orders…",
+    "nuevoPedido": "New order",
+    "nuevoPedidoDetalle": "Order {numero} just arrived",
+    "estadoActualizado": "Order marked as {estado}",
+    "estadoError": "Couldn't update the status",
+    "exportado": "{n, plural, one {# order exported} other {# orders exported}} to CSV",
+    "tableroListos": "Ready / On the way",
+    "tableroVacio": "No orders",
+    "tableroVerMas": "Show {n} more",
+    "acciones": {
+      "actualizar": "Refresh",
+      "exportar": "Export",
+      "confirmarPendientes": "Confirm pending · {n}",
+      "sonidoOn": "Mute the sound alert",
+      "sonidoOff": "Turn on the sound alert",
+      "autoOn": "Pause auto-refresh",
+      "autoOff": "Turn on auto-refresh",
+      "avisosCliente": "Customer notifications"
+    },
+    "vista": {
+      "etiqueta": "View",
+      "lista": "List",
+      "tablero": "Board"
+    },
+    "kpis": {
+      "etiqueta": "Period summary",
+      "pedidosHoy": "Orders today",
+      "pedidos": "Orders",
+      "pendientes": "Pending",
+      "filtrarPendientes": "Filter by pending",
+      "sinPendientes": "Nothing to confirm",
+      "entregados": "Delivered",
+      "cancelados": "Cancelled",
+      "aTiempo": "On time",
+      "contraPrometido": "Against the promised time",
+      "sinMedir": "No deliveries measured",
+      "ingresos": "Revenue",
+      "ticket": "Avg. ticket {valor}",
+      "vs": "{pct} % vs {comparacion}"
+    },
+    "comparacion": {
+      "today": "yesterday",
+      "yesterday": "the day before",
+      "last7": "the previous 7 days",
+      "last30": "the previous 30 days",
+      "custom": "the previous period",
+      "all": "the previous period"
+    },
+    "buscar": {
+      "placeholder": "Search by order no., customer, phone, email, address or product…",
+      "etiqueta": "Search orders"
+    },
+    "filtros": {
+      "titulo": "Filters",
+      "periodo": "Period",
+      "estado": "Status",
+      "entrega": "Delivery",
+      "origen": "Source",
+      "pago": "Payment",
+      "todos": "All",
+      "desde": "From",
+      "hasta": "To",
+      "verN": "{count, plural, one {Show # order} other {Show # orders}}"
+    },
+    "periodos": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "custom": "Custom",
+      "all": "All time"
+    },
+    "chips": {
+      "periodo": "Period: {valor}",
+      "estado": "Status: {valor}",
+      "entrega": "Delivery: {valor}",
+      "origen": "Source: {valor}",
+      "pago": "Payment: {valor}"
+    },
+    "estados": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "in_delivery": "On the way",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected",
+      "expired": "Expired"
+    },
+    "estadosFiltro": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "in_delivery": "On the way",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "pagos": {
+      "pending": "Payment pending",
+      "paid": "Paid",
+      "partial": "Partially paid",
+      "refunded": "Refunded",
+      "failed": "Payment failed"
+    },
+    "entregas": {
+      "pickup": "Store pickup",
+      "delivery_own": "Own delivery",
+      "delivery_third_party": "Third-party delivery",
+      "dine_in": "Dine in",
+      "dineInMesa": "Dine in · {mesa}"
+    },
+    "origenes": {
+      "website": "Web store",
+      "mobile_app": "Mobile app",
+      "whatsapp": "WhatsApp",
+      "phone": "Phone",
+      "otro": "Other channel",
+      "qrMesa": "{origen} (table QR)"
+    },
+    "columnas": {
+      "etiqueta": "Online orders",
+      "pedido": "Order",
+      "cliente": "Customer",
+      "estado": "Status",
+      "entrega": "Delivery",
+      "aTiempo": "On time",
+      "pago": "Payment",
+      "total": "Total"
+    },
+    "promesa": {
+      "sinConfirmar": "Unconfirmed",
+      "listo": "Ready {hora}",
+      "listoSinHora": "No ready time",
+      "entrega": "Delivery {hora}",
+      "entregaSinHora": "No delivery time",
+      "entregado": "Delivered {hora}",
+      "entregadoSinHora": "Delivered",
+      "cancelado": "Cancelled {hora}",
+      "canceladoSinHora": "Cancelled",
+      "haceSinPromesa": "{n} min ago · no promise",
+      "faltan": "{n} min left",
+      "retraso": "+{n} min late",
+      "aTiempo": "on time",
+      "antes": "{n} min early"
+    },
+    "filaAcciones": {
+      "ver": "View details",
+      "confirmar": "Confirm",
+      "preparar": "Start preparing",
+      "listo": "Mark ready",
+      "enviar": "Send out for delivery",
+      "entregado": "Mark delivered",
+      "imprimir": "Print",
+      "rechazar": "Reject…"
+    },
+    "masivo": {
+      "confirmar": "Confirm",
+      "soloPendientes": "Only pending orders can be confirmed",
+      "cobrar": "Charge at register",
+      "imprimir": "Print",
+      "preparar": "Move to preparing",
+      "listos": "Mark ready",
+      "entregados": "Mark delivered",
+      "exportar": "Export CSV",
+      "hecho": "{n, plural, one {# order marked} other {# orders marked}} as {estado}"
+    },
+    "sustantivo": {
+      "singular": "order",
+      "plural": "orders",
+      "genero": "masculino"
+    },
+    "vacio": {
+      "titulo": "No orders in this period yet",
+      "descripcion": "Orders from the web store, the app and the table QR show up here instantly."
+    },
+    "sinResultados": {
+      "descripcion": "Try another period or remove a filter."
+    },
+    "error": {
+      "titulo": "Couldn't load the orders"
+    },
+    "confirmar": {
+      "titulo": "Confirm order",
+      "descripcion": "Say how long it takes to be ready. The sale is created and the ticket goes to the kitchen.",
+      "preparacion": "Preparation time (approx. ready)",
+      "traslado": "Travel time (approx. delivery)",
+      "trasladoAyuda": "From ready until it reaches the customer. Use 0 for pickup or dine in.",
+      "minutos": "Minutes",
+      "horas": "Hours",
+      "dias": "Days",
+      "marcarPagado": "Mark as paid",
+      "volver": "Back",
+      "accion": "Confirm order"
+    },
+    "confirmarLote": {
+      "titulo": "Confirm {n} pending orders",
+      "descripcion": "The same times apply to all. Each order creates its own sale and kitchen ticket.",
+      "accion": "Confirm {n} orders",
+      "resultado": "{ok, plural, one {# order confirmed} other {# orders confirmed}}",
+      "fallidos": "{n, plural, one {# order couldn't be confirmed} other {# orders couldn't be confirmed}}: {pedidos}",
+      "errorUno": "Couldn't confirm the order"
+    },
+    "rechazo": {
+      "titulo": "Reject order",
+      "descripcion": "Give the reason. The customer is notified.",
+      "motivo": "Reason for rejection",
+      "placeholder": "E.g. out of stock, outside delivery hours…",
+      "accion": "Reject order",
+      "hecho": "Order rejected",
+      "hechoDetalle": "The customer is notified",
+      "error": "Couldn't reject the order"
+    },
+    "impresion": {
+      "telefono": "Phone",
+      "correo": "Email",
+      "direccion": "Address",
+      "producto": "Product",
+      "cantidad": "Qty",
+      "precio": "Price",
+      "notas": "Notes",
+      "fecha": "Date"
+    }
   }
 }

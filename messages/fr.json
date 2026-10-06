@@ -33845,5 +33845,234 @@
       },
       "historialPedido": "Historique de la commande"
     }
+  },
+  "pedidosOnlineListado": {
+    "titulo": "Commandes en ligne",
+    "subtitulo": "{total, plural, one {# commande} other {# commandes}} sur la période · {pendientes} à confirmer",
+    "subtituloMovil": "{total} commandes · {pendientes} non confirmées",
+    "cargando": "Chargement des commandes…",
+    "nuevoPedido": "Nouvelle commande",
+    "nuevoPedidoDetalle": "La commande {numero} vient d'arriver",
+    "estadoActualizado": "Commande marquée comme {estado}",
+    "estadoError": "Impossible de mettre à jour le statut",
+    "exportado": "{n, plural, one {# commande exportée} other {# commandes exportées}} en CSV",
+    "tableroListos": "Prêtes / En route",
+    "tableroVacio": "Aucune commande",
+    "tableroVerMas": "Voir {n} de plus",
+    "acciones": {
+      "actualizar": "Actualiser",
+      "exportar": "Exporter",
+      "confirmarPendientes": "Confirmer en attente · {n}",
+      "sonidoOn": "Couper l'alerte sonore",
+      "sonidoOff": "Activer l'alerte sonore",
+      "autoOn": "Suspendre l'actualisation automatique",
+      "autoOff": "Activer l'actualisation automatique",
+      "avisosCliente": "Notifications client"
+    },
+    "vista": {
+      "etiqueta": "Vue",
+      "lista": "Liste",
+      "tablero": "Tableau"
+    },
+    "kpis": {
+      "etiqueta": "Résumé de la période",
+      "pedidosHoy": "Commandes du jour",
+      "pedidos": "Commandes",
+      "pendientes": "En attente",
+      "filtrarPendientes": "Filtrer les commandes en attente",
+      "sinPendientes": "Rien à confirmer",
+      "entregados": "Livrées",
+      "cancelados": "Annulées",
+      "aTiempo": "À l'heure",
+      "contraPrometido": "Par rapport à l'heure promise",
+      "sinMedir": "Aucune livraison mesurée",
+      "ingresos": "Recettes",
+      "ticket": "Panier moyen {valor}",
+      "vs": "{pct} % vs {comparacion}"
+    },
+    "comparacion": {
+      "today": "hier",
+      "yesterday": "avant-hier",
+      "last7": "les 7 jours précédents",
+      "last30": "les 30 jours précédents",
+      "custom": "la période précédente",
+      "all": "la période précédente"
+    },
+    "buscar": {
+      "placeholder": "Rechercher par n° de commande, client, téléphone, e-mail, adresse ou produit…",
+      "etiqueta": "Rechercher des commandes"
+    },
+    "filtros": {
+      "titulo": "Filtres",
+      "periodo": "Période",
+      "estado": "Statut",
+      "entrega": "Livraison",
+      "origen": "Origine",
+      "pago": "Paiement",
+      "todos": "Tous",
+      "desde": "Du",
+      "hasta": "Au",
+      "verN": "{count, plural, one {Voir # commande} other {Voir # commandes}}"
+    },
+    "periodos": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "last7": "7 derniers jours",
+      "last30": "30 derniers jours",
+      "custom": "Personnalisée",
+      "all": "Tout"
+    },
+    "chips": {
+      "periodo": "Période : {valor}",
+      "estado": "Statut : {valor}",
+      "entrega": "Livraison : {valor}",
+      "origen": "Origine : {valor}",
+      "pago": "Paiement : {valor}"
+    },
+    "estados": {
+      "pending": "En attente",
+      "confirmed": "Confirmée",
+      "preparing": "En préparation",
+      "ready": "Prête",
+      "in_delivery": "En route",
+      "delivered": "Livrée",
+      "cancelled": "Annulée",
+      "rejected": "Refusée",
+      "expired": "Expirée"
+    },
+    "estadosFiltro": {
+      "pending": "En attente",
+      "confirmed": "Confirmées",
+      "preparing": "En préparation",
+      "ready": "Prêtes",
+      "in_delivery": "En route",
+      "delivered": "Livrées",
+      "cancelled": "Annulées"
+    },
+    "pagos": {
+      "pending": "Paiement en attente",
+      "paid": "Payée",
+      "partial": "Paiement partiel",
+      "refunded": "Remboursée",
+      "failed": "Paiement échoué"
+    },
+    "entregas": {
+      "pickup": "Retrait en magasin",
+      "delivery_own": "Livraison propre",
+      "delivery_third_party": "Livraison par un tiers",
+      "dine_in": "Sur place",
+      "dineInMesa": "Sur place · {mesa}"
+    },
+    "origenes": {
+      "website": "Boutique en ligne",
+      "mobile_app": "App mobile",
+      "whatsapp": "WhatsApp",
+      "phone": "Téléphone",
+      "otro": "Autre canal",
+      "qrMesa": "{origen} (QR de table)"
+    },
+    "columnas": {
+      "etiqueta": "Commandes en ligne",
+      "pedido": "Commande",
+      "cliente": "Client",
+      "estado": "Statut",
+      "entrega": "Livraison",
+      "aTiempo": "À l'heure",
+      "pago": "Paiement",
+      "total": "Total"
+    },
+    "promesa": {
+      "sinConfirmar": "Non confirmée",
+      "listo": "Prête {hora}",
+      "listoSinHora": "Sans heure de préparation",
+      "entrega": "Livraison {hora}",
+      "entregaSinHora": "Sans heure de livraison",
+      "entregado": "Livrée {hora}",
+      "entregadoSinHora": "Livrée",
+      "cancelado": "Annulée {hora}",
+      "canceladoSinHora": "Annulée",
+      "haceSinPromesa": "il y a {n} min · sans promesse",
+      "faltan": "encore {n} min",
+      "retraso": "+{n} min de retard",
+      "aTiempo": "à l'heure",
+      "antes": "{n} min d'avance"
+    },
+    "filaAcciones": {
+      "ver": "Voir le détail",
+      "confirmar": "Confirmer",
+      "preparar": "Lancer la préparation",
+      "listo": "Marquer prête",
+      "enviar": "Envoyer en livraison",
+      "entregado": "Marquer livrée",
+      "imprimir": "Imprimer",
+      "rechazar": "Refuser…"
+    },
+    "masivo": {
+      "confirmar": "Confirmer",
+      "soloPendientes": "Seules les commandes en attente se confirment",
+      "cobrar": "Encaisser",
+      "imprimir": "Imprimer",
+      "preparar": "Passer en préparation",
+      "listos": "Marquer prêtes",
+      "entregados": "Marquer livrées",
+      "exportar": "Exporter en CSV",
+      "hecho": "{n, plural, one {# commande marquée} other {# commandes marquées}} comme {estado}"
+    },
+    "sustantivo": {
+      "singular": "commande",
+      "plural": "commandes",
+      "genero": "femenino"
+    },
+    "vacio": {
+      "titulo": "Aucune commande sur cette période",
+      "descripcion": "Les commandes de la boutique en ligne, de l'app et du QR de table apparaissent ici instantanément."
+    },
+    "sinResultados": {
+      "descripcion": "Essayez une autre période ou retirez un filtre."
+    },
+    "error": {
+      "titulo": "Impossible de charger les commandes"
+    },
+    "confirmar": {
+      "titulo": "Confirmer la commande",
+      "descripcion": "Indiquez le délai de préparation. La vente est créée et le bon part en cuisine.",
+      "preparacion": "Temps de préparation (prête vers)",
+      "traslado": "Temps de trajet (livraison vers)",
+      "trasladoAyuda": "De « prête » jusqu'à l'arrivée chez le client. Mettez 0 pour un retrait ou sur place.",
+      "minutos": "Minutes",
+      "horas": "Heures",
+      "dias": "Jours",
+      "marcarPagado": "Marquer comme payée",
+      "volver": "Retour",
+      "accion": "Confirmer la commande"
+    },
+    "confirmarLote": {
+      "titulo": "Confirmer {n} commandes en attente",
+      "descripcion": "Les mêmes délais s'appliquent à toutes. Chaque commande crée sa vente et son bon de cuisine.",
+      "accion": "Confirmer {n} commandes",
+      "resultado": "{ok, plural, one {# commande confirmée} other {# commandes confirmées}}",
+      "fallidos": "{n, plural, one {# commande n'a pas pu être confirmée} other {# commandes n'ont pas pu être confirmées}} : {pedidos}",
+      "errorUno": "Impossible de confirmer la commande"
+    },
+    "rechazo": {
+      "titulo": "Refuser la commande",
+      "descripcion": "Indiquez le motif. Le client est prévenu.",
+      "motivo": "Motif du refus",
+      "placeholder": "Ex. : produit épuisé, hors horaires de livraison…",
+      "accion": "Refuser la commande",
+      "hecho": "Commande refusée",
+      "hechoDetalle": "Le client est prévenu",
+      "error": "Impossible de refuser la commande"
+    },
+    "impresion": {
+      "telefono": "Téléphone",
+      "correo": "E-mail",
+      "direccion": "Adresse",
+      "producto": "Produit",
+      "cantidad": "Qté",
+      "precio": "Prix",
+      "notas": "Notes",
+      "fecha": "Date"
+    }
   }
 }

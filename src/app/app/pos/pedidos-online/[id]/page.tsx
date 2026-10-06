@@ -2,7 +2,11 @@
 
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { DollarSign, Loader2 } from 'lucide-react';
+import { clasesBoton } from '@/components/kit';
 import { useWebOrderDetail } from './hooks/useWebOrderDetail';
+import { useTrazabilidadPedido } from './hooks/useTrazabilidadPedido';
 import {
   OrderHeader,
   OrderLoadingState,
@@ -13,10 +17,13 @@ import {
   OrderActionsCard,
   OrderCustomerCard,
   OrderDeliveryCard,
+  OrderPaymentsCard,
+  OrderDocumentsCard,
   ConfirmOrderDialog,
   CancelOrderDialog,
+  CobrarPedidoDialog,
 } from './components';
-import { AssignDeliveryDialog } from '@/components/pos/pedidos-online';
+import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-online';
 
 export default function WebOrderDetailPage() {
   const params = useParams();
@@ -51,9 +58,15 @@ export default function WebOrderDetailPage() {
     handleConvertToSale,
     handleCreateShipment,
     handleCobrar,
+    cobroDialogo,
+    abrirCobro,
+    cerrarCobro,
+    avisoStock,
     sinCajaAbierta,
     loadOrder,
   } = useWebOrderDetail(orderId);
+  const t = useTranslations('pedidoWeb');
+  const trazabilidad = useTrazabilidadPedido(order);
 
   // Estado de carga
   if (loading) {
@@ -65,17 +78,45 @@ export default function WebOrderDetailPage() {
     return <OrderNotFoundState />;
   }
 
+  // Caja de la sede a la que entra el cobro (fn_caja_abierta_para, la regla de la RPC).
+  // Sin E4 aplicada el cobro usa el respaldo sin caja: no se anuncia caja ni se bloquea.
+  const cobro = cobroDelPedido(order);
+  const sede = order.branch?.name ?? '';
+  const cajaConocida = trazabilidad.cobroEnCaja && trazabilidad.cajaId !== null;
+  const sinCaja = trazabilidad.cobroEnCaja && !trazabilidad.cargando && (trazabilidad.cajaId === null || sinCajaAbierta);
+  const cajaEtiqueta = cajaConocida ? t('cobro.entraACaja', { caja: trazabilidad.cajaId ?? '', sede }) : null;
+  const cajaDeLaSede = cajaConocida ? t('pagos.cajaAbierta', { caja: trazabilidad.cajaId ?? '', sede }) : null;
+
+  const confirmarCobro = async (valor: { metodo: string; referencia: string | null }) => {
+    const hecho = await handleCobrar(cobroDialogo.entregar, valor);
+    if (!hecho) void trazabilidad.recargar();
+  };
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <OrderHeader order={order} />
+      <OrderHeader
+        order={order}
+        porCobrarEnCaja={cobro.puedeCobrar}
+        reservaActiva={trazabilidad.reservaActiva}
+        onCobrarYEntregar={cobro.cobraYEntrega ? () => abrirCobro(true) : undefined}
+        cobrarDeshabilitado={sinCaja}
+        isLoading={actionLoading}
+        avisoStock={avisoStock}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-6">
           <OrderProductsCard order={order} />
-          <OrderNotesCard order={order} />
+          <OrderNotesCard order={order} comandaId={trazabilidad.comandaId} />
           <OrderTimelineCard order={order} />
+          <OrderDocumentsCard
+            order={order}
+            factura={trazabilidad.factura}
+            comandaId={trazabilidad.comandaId}
+            cajaEtiqueta={cajaDeLaSede}
+          />
         </div>
 
         {/* Columna lateral */}
@@ -90,8 +131,9 @@ export default function WebOrderDetailPage() {
             onMarkDelivered={handleMarkDelivered}
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
-            onCobrar={handleCobrar}
-            sinCajaAbierta={sinCajaAbierta}
+            onCobrar={abrirCobro}
+            sinCajaAbierta={sinCaja}
+            cajaEtiqueta={cajaEtiqueta}
             isLoading={actionLoading}
           />
           <OrderCustomerCard order={order} />
@@ -106,8 +148,29 @@ export default function WebOrderDetailPage() {
               }
             }}
           />
+          <OrderPaymentsCard
+            order={order}
+            pagos={trazabilidad.pagos}
+            porCobrarEnCaja={cobro.puedeCobrar}
+            cajaEtiqueta={cajaDeLaSede}
+          />
         </div>
       </div>
+
+      {/* Móvil (Figma 1982:946211): «Cobrar y entregar» fijo abajo */}
+      {cobro.cobraYEntrega && (
+        <div className="sticky bottom-0 -mx-4 border-t border-line bg-surface p-4 sm:hidden">
+          <button
+            type="button"
+            className={clasesBoton({ variante: 'primario', tamano: 'lg', anchoCompleto: true })}
+            onClick={() => abrirCobro(true)}
+            disabled={actionLoading || sinCaja}
+          >
+            {actionLoading ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <DollarSign className="size-5" aria-hidden="true" />}
+            {t('cobro.cobrarYEntregar')}
+          </button>
+        </div>
+      )}
 
       {/* Diálogos */}
       <ConfirmOrderDialog
@@ -122,6 +185,17 @@ export default function WebOrderDetailPage() {
         markAsPaid={markAsPaid}
         onMarkAsPaidChange={setMarkAsPaid}
         isLoading={actionLoading}
+      />
+
+      <CobrarPedidoDialog
+        order={order}
+        abierto={cobroDialogo.abierto}
+        onAbiertoChange={(abierto) => (abierto ? abrirCobro(cobroDialogo.entregar) : cerrarCobro())}
+        entregar={cobroDialogo.entregar}
+        cajaId={trazabilidad.cajaId}
+        cobroEnCaja={trazabilidad.cobroEnCaja}
+        cargando={actionLoading}
+        onConfirmar={confirmarCobro}
       />
 
       <CancelOrderDialog

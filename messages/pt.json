@@ -4983,7 +4983,10 @@
         "recibidoInsuficiente": "O valor recebido não cobre o pagamento."
       },
       "retenciones": "Retenções",
-      "netoPagado": "Líquido {neto} · Pago {pagado}"
+      "netoPagado": "Líquido {neto} · Pago {pagado}",
+      "importe": "Valor",
+      "recibidoCorto": "Recebido",
+      "cambioValor": "Troco: {monto}"
     },
     "vista": {
       "etiqueta": "Visualização",
@@ -29367,7 +29370,7 @@
         "pais": "País",
         "obligatorio": "Este dado é obrigatório.",
         "correoInvalido": "Digite um e-mail válido.",
-        "telefonoInvalido": "Digite o telefone com o código do país.",
+        "telefonoInvalido": "Confira o número: está incompleto ou não corresponde ao país escolhido.",
         "datosRealesTitulo": "O registrador exige dados reais",
         "datosRealesTexto": "Você pode receber um e-mail para confirmá-los. O domínio é seu: você pode levá-lo para outro provedor quando quiser.",
         "atras": "Voltar",
@@ -31984,6 +31987,31 @@
         "cobrados": "{n, plural, one {# pedido cobrado} other {# pedidos cobrados}}",
         "pendientes": "{n, plural, one {# pedido sem cobrar} other {# pedidos sem cobrar}}: {pedidos}",
         "error": "Não foi possível cobrar os pedidos selecionados."
+      },
+      "entraACaja": "Entra no Caixa {caja} · {sede} · aberto",
+      "sinCajaAcciones": "A filial não tem caixa aberto. O pedido continua pronto e sem cobrança.",
+      "registrarPago": "Registrar pagamento",
+      "marcarEntregado": "Marcar como entregue",
+      "dialogo": {
+        "tituloEntregar": "Cobrar e entregar {numero}",
+        "titulo": "Cobrar {numero}",
+        "descripcionEntregar": "Entra no Caixa {caja} · {sede} · aberto. Ao cobrar, são criadas a venda e a fatura, e o pedido passa para Entregue.",
+        "descripcion": "Entra no Caixa {caja} · {sede} · aberto. Ao cobrar, são registrados o pagamento e a fatura.",
+        "descripcionSinCaja": "Ao cobrar, o pedido fica pago."
+      },
+      "exitoEntregar": "{numero} cobrado e entregue · {monto} {metodo} · Caixa {caja} de {sede}",
+      "exito": "{numero} cobrado · {monto} {metodo} · Caixa {caja} de {sede}",
+      "metodos": {
+        "cash": "Dinheiro",
+        "card": "Cartão",
+        "transfer": "Transferência",
+        "qr": "QR"
+      },
+      "metodoEn": {
+        "cash": "em dinheiro",
+        "card": "no cartão",
+        "transfer": "por transferência",
+        "qr": "por QR"
       }
     },
     "tipoCorto": {
@@ -31998,6 +32026,55 @@
       "titulo": "Novo pedido web {numero} · {entrega}",
       "contenido": "Total {total}",
       "contenidoSede": "Total {total} · {sede}"
+    },
+    "detalle": {
+      "recibido": "Recebido {fecha}",
+      "origen": "Origem: {canal} · {numero}",
+      "porCobrar": "A cobrar no caixa",
+      "reservaActiva": "Reserva de estoque ativa",
+      "volver": "Voltar",
+      "verVenta": "Ver venda POS",
+      "canales": {
+        "website": "Web",
+        "mobile_app": "App",
+        "whatsapp": "WhatsApp",
+        "phone": "Telefone"
+      },
+      "avisoStock": "Pedido confirmado, mas o estoque da receita não foi suficiente: {detalle}. A comanda saiu; ajuste o estoque ou avise o cliente."
+    },
+    "notas": {
+      "notaCocina": "Nota para a cozinha: {nota}",
+      "paraCocina": "Para a cozinha",
+      "paraCocinaComanda": "Para a cozinha · impressa na comanda #{comanda}"
+    },
+    "pagos": {
+      "titulo": "Pagamentos",
+      "estado": "Status",
+      "porCobrar": "A cobrar",
+      "pagado": "Pago",
+      "parcial": "Pagamento parcial",
+      "reembolsado": "Reembolsado",
+      "fallido": "Pagamento falhou",
+      "alEntregar": "na entrega",
+      "sinCobrar": "sem cobrança",
+      "cajaAbierta": "Caixa {caja} · {sede} · aberto",
+      "sinCaja": "Sem caixa aberto na filial",
+      "sinPagos": "Nenhum pagamento registrado"
+    },
+    "documentos": {
+      "titulo": "Documentos e rastreabilidade",
+      "venta": "Venda POS",
+      "factura": "Fatura de venda",
+      "comanda": "Comanda da cozinha",
+      "origen": "Origem",
+      "caja": "Caixa",
+      "seCreaAlConfirmar": "criada ao confirmar",
+      "seEmiteAlCobrar": "emitida ao cobrar",
+      "sinComanda": "sem comanda",
+      "origenValor": "{canal} · {numero}",
+      "comandaValor": "#{id}",
+      "cajaValor": "Caixa {caja} · {sede} · aberto",
+      "sinCaja": "sem caixa aberto"
     }
   }
 }

@@ -8,12 +8,11 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import { claveAvisoCobro, CobroEnCajaError, webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
-import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
+import { metodoDeCobroEnCaja, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
-
-/** Métodos que se cobran en la caja del local; cualquier otro se cobra como efectivo. */
 
 /** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
 function mensajeDeError(error: unknown): string | undefined {
@@ -50,8 +49,18 @@ interface UseWebOrderDetailReturn {
   handleCancelOrder: () => Promise<void>;
   handleConvertToSale: () => Promise<void>;
   handleCreateShipment: () => Promise<void>;
-  /** Cobra en la caja de la sede (E4); con `entregar`, además marca el pedido entregado. */
-  handleCobrar: (entregar: boolean) => Promise<void>;
+  /**
+   * Cobra en la caja de la sede (E4); con `entregar`, además marca el pedido
+   * entregado. `metodo` y `referencia` llegan del diálogo «Cobrar y entregar»;
+   * sin ellos, el método del pedido. Devuelve true si el cobro quedó hecho.
+   */
+  handleCobrar: (entregar: boolean, valor?: { metodo?: string | null; referencia?: string | null }) => Promise<boolean>;
+  /** Diálogo «Cobrar y entregar» (Figma 1982:946157): abierto y si entrega al cobrar. */
+  cobroDialogo: { abierto: boolean; entregar: boolean };
+  abrirCobro: (entregar: boolean) => void;
+  cerrarCobro: () => void;
+  /** Líneas sin stock de receta de la última confirmación: aviso persistente (Figma 1982:903). */
+  avisoStock: string[];
   /** Último cobro rechazado porque la sede no tiene caja abierta. */
   sinCajaAbierta: boolean;
   loadOrder: () => Promise<void>;
@@ -83,6 +92,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   );
   const [markAsPaid, setMarkAsPaid] = useState(false);
   const [sinCajaAbierta, setSinCajaAbierta] = useState(false);
+  const [cobroDialogo, setCobroDialogo] = useState<{ abierto: boolean; entregar: boolean }>({ abierto: false, entregar: false });
+  const [avisoStock, setAvisoStock] = useState<string[]>([]);
+  const { formatear } = useMonedaOrganizacion();
 
   const loadOrder = useCallback(async () => {
     try {
@@ -193,14 +205,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         });
       }
       // Receta o insumos sin stock: la confirmación sigue, pero el equipo lo ve
-      // para decidir (rechazar con motivo o ajustar el inventario).
-      if (erroresStock.length > 0) {
-        toast({
-          title: t('confirmacion.stockFallido', { n: erroresStock.length }),
-          description: erroresStock.slice(0, 3).join(' · '),
-          variant: 'destructive',
-        });
-      }
+      // para decidir (rechazar con motivo o ajustar el inventario). Aviso
+      // persistente bajo los chips de la cabecera, no un toast que se va.
+      setAvisoStock(erroresStock);
       void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
       setConfirmDialogOpen(false);
       setMarkAsPaid(false);
@@ -350,21 +357,35 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     }
   };
 
-  const handleCobrar = async (entregar: boolean) => {
-    if (!order) return;
+  const handleCobrar = async (
+    entregar: boolean,
+    valor?: { metodo?: string | null; referencia?: string | null },
+  ): Promise<boolean> => {
+    if (!order) return false;
     setActionLoading(true);
     setSinCajaAbierta(false);
+    // El diálogo solo ofrece métodos de caja; cualquier otro valor cae en la regla única.
+    const metodo: MetodoCobroEnCaja = metodoDeCobroEnCaja(valor?.metodo ?? order.payment_method);
     try {
       const cobro = await webOrderConfirmationService.cobrarEnCaja(order, {
-        metodo: metodoDeCobroEnCaja(order.payment_method),
-        referencia: order.payment_reference ?? null,
+        metodo,
+        referencia: valor?.referencia?.trim() || order.payment_reference || null,
       });
       if (entregar && order.status !== 'delivered') await updateOrderStatus('delivered');
+      const datos = {
+        numero: order.order_number,
+        monto: formatear(order.total),
+        metodo: t(`cobro.metodoEn.${metodo}`),
+        caja: cobro.cashSessionId,
+        sede: order.branch?.name ?? '',
+      };
       toast({
-        title: cobro.yaCobrado ? t('cobro.yaCobrado') : t('cobro.hecho'),
+        title: cobro.yaCobrado ? t('cobro.yaCobrado') : entregar ? t('cobro.exitoEntregar', datos) : t('cobro.exito', datos),
         description: cobro.invoiceNumber ? t('cobro.factura', { numero: cobro.invoiceNumber }) : undefined,
       });
+      setCobroDialogo((d) => ({ ...d, abierto: false }));
       loadOrder();
+      return true;
     } catch (error: unknown) {
       if (error instanceof CobroEnCajaError && error.codigo === 'NO_OPEN_CASH_SESSION') {
         setSinCajaAbierta(true);
@@ -378,7 +399,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
             title: t('cobro.marcadoPagado'),
             description: sinFactura ? t('cobro.sinFacturaDetalle') : undefined,
           });
+          setCobroDialogo((d) => ({ ...d, abierto: false }));
           loadOrder();
+          return true;
         } catch (fallbackError: unknown) {
           console.error('Error marking as paid:', fallbackError);
           toast({ title: 'Error', description: mensajeDeError(fallbackError) || 'No se pudo marcar como pagado', variant: 'destructive' });
@@ -392,7 +415,11 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     } finally {
       setActionLoading(false);
     }
+    return false;
   };
+
+  const abrirCobro = useCallback((entregar: boolean) => setCobroDialogo({ abierto: true, entregar }), []);
+  const cerrarCobro = useCallback(() => setCobroDialogo((d) => ({ ...d, abierto: false })), []);
 
   return {
     order,
@@ -423,6 +450,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     handleConvertToSale,
     handleCreateShipment,
     handleCobrar,
+    cobroDialogo,
+    abrirCobro,
+    cerrarCobro,
+    avisoStock,
     sinCajaAbierta,
     loadOrder,
   };

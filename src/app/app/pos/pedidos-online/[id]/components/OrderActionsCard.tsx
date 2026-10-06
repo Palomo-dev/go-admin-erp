@@ -19,6 +19,8 @@ interface OrderActionsCardProps {
   onMarkAsPaid?: () => void;
   onCobrar?: (entregar: boolean) => void;
   sinCajaAbierta?: boolean;
+  /** «Entra a Caja N · {sede} · abierta», bajo «Cobrar y entregar». */
+  cajaEtiqueta?: string | null;
   isLoading?: boolean;
 }
 
@@ -36,6 +38,7 @@ export function OrderActionsCard({
   onMarkAsPaid,
   onCobrar,
   sinCajaAbierta,
+  cajaEtiqueta,
   isLoading = false,
 }: OrderActionsCardProps) {
   return (
@@ -61,6 +64,7 @@ export function OrderActionsCard({
           onMarkAsPaid={onMarkAsPaid}
           onCobrar={onCobrar}
           sinCajaAbierta={sinCajaAbierta}
+          cajaEtiqueta={cajaEtiqueta}
           isLoading={isLoading}
         />
       </CardContent>

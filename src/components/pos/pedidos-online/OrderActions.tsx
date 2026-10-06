@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { clasesBoton } from '@/components/kit';
+import { cobroDelPedido } from './cobroPedido';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { 
   CheckCircle, 
@@ -15,8 +17,9 @@ import {
   Receipt,
   Loader2,
   DollarSign,
+  ExternalLink,
 } from 'lucide-react';
-import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
+import type { WebOrder } from '@/lib/services/webOrdersService';
 
 interface OrderActionsProps {
   order: WebOrder;
@@ -32,8 +35,10 @@ interface OrderActionsProps {
   onMarkAsPaid?: () => void;
   /** Cobrar en la caja de la sede (E4); `entregar` también lo marca entregado. */
   onCobrar?: (entregar: boolean) => void;
-  /** El último cobro falló porque la sede no tiene caja abierta. */
+  /** La sede no tiene caja abierta: «Cobrar y entregar» queda deshabilitado (Figma 1982:841). */
   sinCajaAbierta?: boolean;
+  /** «Entra a Caja N · {sede} · abierta», ya traducido; null si no se conoce la caja. */
+  cajaEtiqueta?: string | null;
   isLoading?: boolean;
   variant?: 'full' | 'compact';
 }
@@ -52,6 +57,7 @@ export function OrderActions({
   onMarkAsPaid,
   onCobrar,
   sinCajaAbierta = false,
+  cajaEtiqueta = null,
   isLoading = false,
   variant = 'full',
 }: OrderActionsProps) {
@@ -64,11 +70,14 @@ export function OrderActions({
   const isDelivered = order.status === 'delivered';
   // Recoger y «Comer aquí» no salen a domicilio: de «Listo» pasan a «Entregado».
   const isPickup = !esDomicilio(order.delivery_type);
-  // «Comer aquí» agregado a la cuenta de la mesa: se cobra en la mesa, no aquí.
-  const seCobraEnLaMesa = !!order.table_session_id;
   const canCancel = ['pending', 'confirmed'].includes(order.status);
   // Un «Comer aquí» agregado a la mesa no tiene venta propia: su venta es la de la mesa.
   const canConvertToSale = isDelivered && !order.sale_id && !order.table_session_id;
+  // Cobro en la caja de la sede (pago en el local o contraentrega). Listo para
+  // entregar sin cobrar aún: «Cobrar y entregar» es la primaria (Figma 1981:175699).
+  const cobro = cobroDelPedido(order);
+  const puedeCobrar = !!onCobrar && cobro.puedeCobrar;
+  const cobraYEntrega = !!onCobrar && cobro.cobraYEntrega;
 
   if (variant === 'compact') {
     return (
@@ -160,7 +169,54 @@ export function OrderActions({
         </Button>
       )}
 
-      {((isReady && isPickup) || isInDelivery) && (
+      {/* «Cobrar y entregar»: primaria de marca, con la caja a la que entra el dinero */}
+      {cobraYEntrega && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            className={clasesBoton({ variante: 'primario', anchoCompleto: true })}
+            onClick={() => onCobrar?.(true)}
+            disabled={isLoading || sinCajaAbierta}
+          >
+            {isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <DollarSign className="size-4" aria-hidden="true" />}
+            {t('cobro.cobrarYEntregar')}
+          </button>
+          {sinCajaAbierta ? (
+            <>
+              <p className="text-sm text-danger-text" role="alert">{t('cobro.sinCajaAcciones')}</p>
+              <Link href="/app/pos/cajas" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+                <ExternalLink className="size-4" aria-hidden="true" />
+                {t('cobro.abrirCaja')}
+              </Link>
+            </>
+          ) : (
+            cajaEtiqueta && <p className="text-sm text-fg-secondary">{cajaEtiqueta}</p>
+          )}
+          <button
+            type="button"
+            className={clasesBoton({ variante: 'fantasma', anchoCompleto: true })}
+            onClick={() => onCobrar?.(false)}
+            disabled={isLoading || sinCajaAbierta}
+          >
+            <DollarSign className="size-4" aria-hidden="true" />
+            {t('cobro.registrarPago')}
+          </button>
+          {/* Entregar sin cobrar (crédito, pago ya conciliado): se conserva como secundaria */}
+          {onMarkDelivered && (
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'fantasma', anchoCompleto: true })}
+              onClick={onMarkDelivered}
+              disabled={isLoading}
+            >
+              <CheckCircle className="size-4" aria-hidden="true" />
+              {t('cobro.marcarEntregado')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {((isReady && isPickup) || isInDelivery) && !cobraYEntrega && (
         <Button className="w-full" onClick={onMarkDelivered} disabled={isLoading}>
           {isLoading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -171,27 +227,28 @@ export function OrderActions({
         </Button>
       )}
 
-      {/* Cobrar en la caja de la sede (pago en el local o contraentrega) */}
-      {order.payment_status !== 'paid' && onCobrar && !isPending && !seCobraEnLaMesa && (
-        <div className="space-y-1">
-          <Button
-            variant="outline"
-            className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
-            onClick={() => onCobrar((isReady && isPickup) || isInDelivery)}
-            disabled={isLoading}
+      {/* Cobrar antes de que esté listo: secundaria; la primaria es el paso del estado */}
+      {puedeCobrar && !cobraYEntrega && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}
+            onClick={() => onCobrar?.(false)}
+            disabled={isLoading || sinCajaAbierta}
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <DollarSign className="h-4 w-4 mr-2" />
-            )}
-            {(isReady && isPickup) || isInDelivery ? t('cobro.cobrarYEntregar') : t('cobro.cobrar')}
-          </Button>
-          {sinCajaAbierta && (
-            <p className="text-xs text-red-600 dark:text-red-400" role="alert">
-              {t('cobro.sinCaja')}{' '}
-              <Link href="/app/pos/cajas" className="underline">{t('cobro.abrirCaja')}</Link>
-            </p>
+            {isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <DollarSign className="size-4" aria-hidden="true" />}
+            {t('cobro.cobrar')}
+          </button>
+          {sinCajaAbierta ? (
+            <>
+              <p className="text-sm text-danger-text" role="alert">{t('cobro.sinCaja')}</p>
+              <Link href="/app/pos/cajas" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+                <ExternalLink className="size-4" aria-hidden="true" />
+                {t('cobro.abrirCaja')}
+              </Link>
+            </>
+          ) : (
+            cajaEtiqueta && <p className="text-sm text-fg-secondary">{cajaEtiqueta}</p>
           )}
         </div>
       )}

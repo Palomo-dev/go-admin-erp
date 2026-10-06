@@ -43,7 +43,8 @@ const DELIVERY_TYPE_CONFIG: Record<DeliveryType, {
   dine_in: {
     label: 'Comer aquí',
     icon: UtensilsCrossed,
-    color: 'text-amber-600 dark:text-amber-400'
+    // Neutro (Figma 1981:175699): «Comer aquí» no es un aviso.
+    color: 'text-fg-secondary'
   },
 };
 

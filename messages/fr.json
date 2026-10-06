@@ -29266,7 +29266,25 @@
         "conflicto": "Quelqu'un d'autre a enregistré une version plus récente. Nous avons rechargé ton brouillon : réessaie.",
         "seccionDesconocida": "Section",
         "tuMarca": "Ta marque",
-        "inicio": "Accueil"
+        "inicio": "Accueil",
+        "modo": "Comment l’appliquer",
+        "completaTitulo": "Modèle complet",
+        "completaDescripcion": "Nouveaux en-tête, pied de page, pages, sections et menus, avec les données de ton entreprise.",
+        "estiloTitulo": "Style uniquement",
+        "estiloDescripcion": "Les couleurs et les polices changent. Ton contenu est conservé.",
+        "paginas": "Pages : {lista}",
+        "avisoCompletaTitulo": "Ton site actuel reste dans l’historique",
+        "avisoCompletaDescripcion": "L’en-tête, le pied de page, les pages, les sections et les menus sont remplacés. Tes pages légales et de boutique sont conservées, et le reste reste dans l’historique : tu peux annuler. Un brouillon est créé : rien ne change en ligne avant la publication.",
+        "avisoEstiloTitulo": "Change le style, garde ton contenu",
+        "avisoEstiloDescripcion": "Les couleurs et les polices changent. Tes pages, sections, textes, photos, carte et menus restent tels quels. Un brouillon est créé : rien ne change en ligne avant la publication.",
+        "usarCompleta": "Utiliser le modèle complet",
+        "usarEstilo": "Appliquer le style uniquement",
+        "listoCompleta": "Ton brouillon a maintenant le modèle «{nombre}» complet.",
+        "ocultasUna": "1 section reste masquée jusqu’à ce que tu ajoutes tes données.",
+        "ocultas": "{n} sections restent masquées jusqu’à ce que tu ajoutes tes données (équipe, avis, chiffres…).",
+        "deshacer": "Annuler",
+        "deshecho": "Nous avons rétabli ton site précédent.",
+        "noDeshecho": "Impossible d’annuler. Tu le trouveras dans l’historique de l’éditeur."
       }
     },
     "dominios": {

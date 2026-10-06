@@ -29266,7 +29266,25 @@
         "conflicto": "Outra pessoa salvou uma versão mais nova. Recarregamos seu rascunho: tente de novo.",
         "seccionDesconocida": "Seção",
         "tuMarca": "Sua marca",
-        "inicio": "Início"
+        "inicio": "Início",
+        "modo": "Como aplicar",
+        "completaTitulo": "Modelo completo",
+        "completaDescripcion": "Novos cabeçalho, rodapé, páginas, seções e menus, com os dados do seu negócio.",
+        "estiloTitulo": "Só o estilo",
+        "estiloDescripcion": "Mudam as cores e as fontes. Seu conteúdo é mantido.",
+        "paginas": "Páginas: {lista}",
+        "avisoCompletaTitulo": "Seu site atual fica no histórico",
+        "avisoCompletaDescripcion": "O cabeçalho, o rodapé, as páginas, as seções e os menus são substituídos. Suas páginas legais e da loja são mantidas, e o resto fica no histórico: você pode desfazer. Um rascunho é criado: nada muda on-line até você publicar.",
+        "avisoEstiloTitulo": "Mude o estilo, mantenha seu conteúdo",
+        "avisoEstiloDescripcion": "Mudam as cores e as fontes. Suas páginas, seções, textos, fotos, cardápio e menus ficam como estão. Um rascunho é criado: nada muda on-line até você publicar.",
+        "usarCompleta": "Usar modelo completo",
+        "usarEstilo": "Aplicar só o estilo",
+        "listoCompleta": "Seu rascunho agora tem o modelo «{nombre}» completo.",
+        "ocultasUna": "1 seção fica oculta até você colocar seus dados.",
+        "ocultas": "{n} seções ficam ocultas até você colocar seus dados (equipe, avaliações, números…).",
+        "deshacer": "Desfazer",
+        "deshecho": "Voltamos ao seu site anterior.",
+        "noDeshecho": "Não foi possível desfazer. Você o encontra no histórico do editor."
       }
     },
     "dominios": {

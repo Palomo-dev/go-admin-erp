@@ -29369,7 +29369,25 @@
         "conflicto": "Someone else saved a newer version. We reloaded your draft: try again.",
         "seccionDesconocida": "Section",
         "tuMarca": "Your brand",
-        "inicio": "Home"
+        "inicio": "Home",
+        "modo": "How to apply it",
+        "completaTitulo": "Full template",
+        "completaDescripcion": "New header, footer, pages, sections and menus, filled with your business data.",
+        "estiloTitulo": "Style only",
+        "estiloDescripcion": "Colors and fonts change. Your content is kept.",
+        "paginas": "Pages: {lista}",
+        "avisoCompletaTitulo": "Your current site stays in the history",
+        "avisoCompletaDescripcion": "The header, footer, pages, sections and menus are replaced. Your legal and store pages are kept, and everything else stays in the history: you can undo it. A draft is created: nothing changes online until you publish.",
+        "avisoEstiloTitulo": "Change the style, keep your content",
+        "avisoEstiloDescripcion": "Colors and fonts change. Your pages, sections, texts, photos, menu and navigation stay exactly as they are. A draft is created: nothing changes online until you publish.",
+        "usarCompleta": "Use full template",
+        "usarEstilo": "Apply style only",
+        "listoCompleta": "Your draft now has the full «{nombre}» template.",
+        "ocultasUna": "1 section stays hidden until you add your data.",
+        "ocultas": "{n} sections stay hidden until you add your data (team, reviews, figures…).",
+        "deshacer": "Undo",
+        "deshecho": "We restored your previous site.",
+        "noDeshecho": "We couldn’t undo it. You’ll find it in the editor history."
       }
     },
     "dominios": {

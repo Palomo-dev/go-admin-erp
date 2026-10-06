@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useTranslations } from 'next-intl';
+import { asignarSucursalesMiembro } from '@/lib/services/miembrosService';
 
 interface Branch {
   id: string;
@@ -48,7 +49,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
         id: branch.id.toString()
       }));
       setBranches(branchesWithStringIds);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al obtener sucursales:', err);
       setError(t('errorLoadingBranches'));
     }
@@ -82,7 +83,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       // Convertimos a array de IDs
       const assignedIds = assignmentsData?.map(item => item.branch_id.toString()) || [];
       setAssignedBranches(assignedIds);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al obtener asignaciones:', err);
       setError(t('errorLoadingAssignments'));
     } finally {
@@ -111,71 +112,26 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       setSaving(true);
       setError(null);
       setSuccess(null);
-      
-      // El memberId ya es directamente el id de organization_members
-      const organizationMemberId = memberId;
-      
-      // Verificar permisos del usuario actual antes de proceder
-      const { data: currentUserPerms, error: permsError } = await supabase
-        .from('organization_members')
-        .select(`
-          id,
-          organization_id,
-          role_id,
-          is_super_admin,
-          roles!inner(name)
-        `)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .single();
-        
-      if (permsError || !currentUserPerms) {
-        throw new Error(t('noPermissions'));
-      }
-      
-      console.log('Current user permissions:', currentUserPerms);
-        
-      // Primero eliminamos todas las asignaciones actuales
-      const { error: deleteError } = await supabase
-        .from('member_branches')
-        .delete()
-        .eq('organization_member_id', organizationMemberId);
 
-      if (deleteError) throw deleteError;
-        
-      // Luego creamos las nuevas asignaciones
-      if (assignedBranches.length > 0) {
-        const assignmentsToInsert = assignedBranches.map(branchId => ({
-          organization_member_id: organizationMemberId,
-          branch_id: branchId
-        }));
-          
-        const { error: insertError } = await supabase
-          .from('member_branches')
-          .insert(assignmentsToInsert);
+      // Una sola RPC transaccional (auditoría 2026-10, P0-10): antes era
+      // DELETE + INSERT desde el navegador y, si el INSERT fallaba, el miembro
+      // quedaba sin filas = con acceso a TODAS las sucursales. El permiso lo
+      // decide la base (misma guarda que las demás acciones de miembros).
+      // Sin ninguna marcada sigue significando «todas», pero ahora es una
+      // decisión explícita y nunca el resultado de un fallo a medias.
+      await asignarSucursalesMiembro(
+        memberId,
+        assignedBranches.length === 0 ? { todas: true } : { todas: false, sucursales: assignedBranches }
+      );
 
-        if (insertError) throw insertError;
-      }
-        
       setSuccess(t('assignmentsUpdated'));
-        
+
       // Cerrar modal después de un breve delay
       setTimeout(() => {
         onClose();
       }, 1000);
-    } catch (err: any) {
-      console.error('Error al guardar asignaciones:', err);
-      console.error('Error details:', {
-        code: err.code,
-        message: err.message,
-        details: err.details,
-        hint: err.hint,
-        memberId,
-        assignedBranches,
-        organizationId
-      });
-      setError(err.message || t('errorSaving'));
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : t('errorSaving'));
     } finally {
       setSaving(false);
     }

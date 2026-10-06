@@ -1,4 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useTranslations } from 'next-intl';
 import { Branch, BranchFormData, BRANCH_TYPES, OpeningHours, BranchFeatures } from '@/types/branch';
 import {
   RESERVED_SLUGS,
@@ -17,6 +18,10 @@ import { useSession } from '@/lib/hooks/useSession';
 import { ShoppingCart, LinkIcon } from 'lucide-react';
 import ImageUploader from '@/components/common/ImageUploader';
 import { BranchTimezoneField } from './BranchTimezoneField';
+import { errorTurnos, esHorarioPorDefecto, normalizarDia, turnosDelDia } from '@/lib/organizacion/horarioSede';
+import { urlPublicaSede } from '@/lib/organizacion/sucursales';
+import { slugChocaConPagina } from '@/lib/organizacion/slugSede';
+import type { TurnoHorario } from '@/types/branch';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -26,6 +31,12 @@ type BranchFormProps = {
   hideSubmitButton?: boolean;
   noFormWrapper?: boolean;
   hideStatusSection?: boolean; // Hide Estado section (for signup flow)
+  /**
+   * Sin la barra superior («Nueva Sucursal» + Guardar): la pone quien lo
+   * contiene. Organización › Sucursales lo abre en un panel del kit que ya
+   * tiene título y un único «Guardar» en el pie (Figma 08, sección 6).
+   */
+  ocultarCabecera?: boolean;
 };
 
 export interface BranchFormRef {
@@ -60,6 +71,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     hideSubmitButton = false,
     noFormWrapper = false,
     hideStatusSection = false,
+    ocultarCabecera = false,
   },
   ref
 ) => {
@@ -67,7 +79,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   const parseOpeningHours = (json: string | undefined): OpeningHours => {
     try {
       return json ? JSON.parse(json) : JSON.parse(defaultOpeningHours);
-    } catch (e) {
+    } catch {
       return JSON.parse(defaultOpeningHours);
     }
   };
@@ -75,7 +87,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   const parseFeatures = (json: string | undefined): BranchFeatures => {
     try {
       return json ? JSON.parse(json) : JSON.parse(defaultFeatures);
-    } catch (e) {
+    } catch {
       return JSON.parse(defaultFeatures);
     }
   };
@@ -85,6 +97,14 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     parseOpeningHours(initialData.opening_hours ? JSON.stringify(initialData.opening_hours) : undefined)
   );
   
+  // ¿El usuario tocó el horario? Una sede sin horario guardado (nueva, o existente con
+  // opening_hours en null) que no lo toca se guarda SIN horario en vez del valor por defecto:
+  // con él, el sitio web decía «Cerrado» a restaurantes abiertos.
+  const [horarioTocado, setHorarioTocado] = useState(false);
+  const tH = useTranslations('org.acceso.sucursales.formulario.horario');
+  const DIAS_SEMANA = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+  const nombreDia = (dia: string) => ((DIAS_SEMANA as readonly string[]).includes(dia) ? tH(`dias.${dia}`) : dia);
+
   const [featuresObj, setFeaturesObj] = useState<BranchFeatures>(
     parseFeatures(initialData.features ? JSON.stringify(initialData.features) : undefined)
   );
@@ -165,6 +185,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   
   // Handle opening hours changes
   const handleHoursChange = (day: string, field: string, value: string | boolean) => {
+    setHorarioTocado(true);
     setOpeningHoursObj(prev => ({
       ...prev,
       [day]: {
@@ -173,6 +194,22 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
       }
     }));
   };
+
+  // Turnos partidos: open/close quedan como apertura del primero y cierre del último.
+  const setTurnos = (day: string, turnos: TurnoHorario[]) => {
+    setHorarioTocado(true);
+    setOpeningHoursObj(prev => {
+      const actual = prev[day as keyof OpeningHours];
+      const base = { closed: actual?.closed ?? false, open: turnos[0]?.open ?? '09:00', close: turnos[turnos.length - 1]?.close ?? '18:00' };
+      return { ...prev, [day]: turnos.length >= 2 ? { ...base, tramos: turnos } : base };
+    });
+  };
+  const turnosParaEditar = (day: string): TurnoHorario[] => {
+    const d = openingHoursObj[day as keyof OpeningHours];
+    const turnos = turnosDelDia({ ...d, closed: false });
+    return turnos.length > 0 ? turnos : [{ open: d?.open || '09:00', close: d?.close || '18:00' }];
+  };
+  const horarioSinRevisar = !horarioTocado && esHorarioPorDefecto(openingHoursObj);
   
   // Handle features changes
   const handleFeatureChange = (feature: string, checked: boolean) => {
@@ -212,9 +249,11 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     // Construir formWithPublished PRIMERO: si el usuario ingresa subdomain o
     // custom_domain sin marcar el toggle, se auto-publica. Usar variable local
     // (no setForm + leer form) para evitar closure stale.
+    // El subdominio propio de la sede ya no publica: `<sub>.goadmin.io` el sitio lo resuelve
+    // como OTRA organización. Publicar es explícito o por dominio propio.
     const formWithPublished = {
       ...form,
-      is_web_published: form.is_web_published || !!(form.subdomain || form.custom_domain),
+      is_web_published: form.is_web_published || !!form.custom_domain,
     };
 
     // Validar branch_type obligatorio al publicar
@@ -252,19 +291,46 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     const coverUrlError = validateUrl(formWithPublished.website_cover_url || '', 'La URL de portada');
     if (coverUrlError) { setError(coverUrlError); return; }
 
+    // Turnos del horario: sin solapes y solo el último puede pasar la medianoche.
+    for (const [dia, valor] of Object.entries(openingHoursObj)) {
+      if (!valor || valor.closed) continue;
+      const problema = errorTurnos(turnosParaEditar(dia));
+      if (problema) {
+        setError(tH('errorDia', { dia: nombreDia(dia), problema: tH(`errores.${problema}`) }));
+        return;
+      }
+    }
+
+    // Slug igual a una página del sitio: la sede o la página quedarían inalcanzables.
+    if (formWithPublished.is_web_published && formWithPublished.slug && formWithPublished.organization_id) {
+      const choca = await slugChocaConPagina(supabase, formWithPublished.organization_id, formWithPublished.slug);
+      if (choca) {
+        setError(tH('slugChocaPagina', { slug: formWithPublished.slug }));
+        return;
+      }
+    }
+
     // Normalizar branch_type vacío a null antes de construir el payload
     const normalizedBranchType = formWithPublished.branch_type || null;
+
+    // Sede sin horario guardado (nueva, o existente con opening_hours en null) y sin tocar la
+    // sección: no se guarda el valor por defecto. En la edición, opening_hours undefined hace que
+    // branchService.updateBranch no toque la columna y la sede sigue en null.
+    const guardarSinHorario = !initialData.opening_hours && !horarioTocado;
+    const horarioNormalizado = Object.fromEntries(
+      Object.entries(openingHoursObj).map(([dia, valor]) => [dia, normalizarDia(valor)]),
+    );
 
     try {
       const formWithJson = {
         ...formWithPublished,
         branch_type: normalizedBranchType, // '' → null
-        opening_hours: JSON.stringify(openingHoursObj),
+        opening_hours: guardarSinHorario ? undefined : JSON.stringify(horarioNormalizado),
         features: JSON.stringify(featuresObj),
       };
       await onSubmit(formWithJson);
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar la sucursal');
+    } catch (err) {
+      setError((err instanceof Error && err.message) || 'Error al guardar la sucursal');
     }
   };
   
@@ -280,6 +346,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   const formContent = (
     <>
       {/* Toolbar */}
+      {!ocultarCabecera && (
       <div className="sticky top-0 z-10 flex justify-between items-center p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 border-b dark:border-gray-700">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
@@ -313,6 +380,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           </div>
         )}
       </div>
+      )}
       {/* Contenido del formulario */}
       <div className="p-4 sm:p-6 space-y-8 bg-white dark:bg-gray-900">
         {/* Información básica */}
@@ -478,29 +546,30 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Horarios de apertura</h3>
+            {horarioSinRevisar && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                {tH('sinRevisar')}
+              </span>
+            )}
           </div>
+          {horarioSinRevisar && (
+            <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+              {tH('avisoSinRevisar')}
+            </p>
+          )}
           <div className="overflow-x-auto">
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-1">
               <table className="w-full min-w-[600px] border-collapse">
                 <thead>
                   <tr className="bg-blue-50 dark:bg-blue-900/20 rounded-t-lg">
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tl-lg">Día</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Abierto</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Hora apertura</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tr-lg">Hora cierre</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tl-lg">{tH('dia')}</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{tH('abierto')}</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tr-lg" colSpan={2}>{tH('turnos')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day, index) => {
-                    const dayLabel = {
-                      monday: 'Lunes',
-                      tuesday: 'Martes',
-                      wednesday: 'Miércoles',
-                      thursday: 'Jueves',
-                      friday: 'Viernes',
-                      saturday: 'Sábado',
-                      sunday: 'Domingo'
-                    }[day];
+                  {DIAS_SEMANA.map((day, index) => {
+                    const dayLabel = nombreDia(day);
                     
                     const dayHours = openingHoursObj[day as keyof OpeningHours] || { open: '09:00', close: '18:00', closed: false };
                     const isLast = index === 6;
@@ -516,26 +585,52 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                               onChange={(e) => handleHoursChange(day, 'closed', !e.target.checked)}
                               className="checkbox checkbox-sm checkbox-primary"
                             />
-                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{!dayHours.closed ? 'Sí' : 'No'}</span>
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{!dayHours.closed ? tH('si') : tH('no')}</span>
                           </label>
                         </td>
-                        <td className="p-3">
-                          <input
-                            type="time"
-                            value={dayHours.open || '09:00'}
-                            onChange={(e) => handleHoursChange(day, 'open', e.target.value)}
-                            disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
-                          />
-                        </td>
-                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`}>
-                          <input
-                            type="time"
-                            value={dayHours.close || '18:00'}
-                            onChange={(e) => handleHoursChange(day, 'close', e.target.value)}
-                            disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
-                          />
+                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`} colSpan={2}>
+                          {/* Turnos del día: uno o varios (turno partido: 12:00–15:00 y 19:00–23:00). */}
+                          <div className="flex flex-col gap-2">
+                            {turnosParaEditar(day).map((turno, i, turnos) => (
+                              <div key={i} className="flex flex-wrap items-center gap-2">
+                                <input
+                                  type="time"
+                                  aria-label={tH('aperturaTurno', { dia: dayLabel, n: i + 1 })}
+                                  value={turno.open}
+                                  onChange={(e) => setTurnos(day, turnos.map((t, j) => (j === i ? { ...t, open: e.target.value } : t)))}
+                                  disabled={dayHours.closed}
+                                  className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
+                                />
+                                <span className="text-xs text-gray-500" aria-hidden="true">{tH('a')}</span>
+                                <input
+                                  type="time"
+                                  aria-label={tH('cierreTurno', { dia: dayLabel, n: i + 1 })}
+                                  value={turno.close}
+                                  onChange={(e) => setTurnos(day, turnos.map((t, j) => (j === i ? { ...t, close: e.target.value } : t)))}
+                                  disabled={dayHours.closed}
+                                  className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
+                                />
+                                {turnos.length > 1 && !dayHours.closed && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setTurnos(day, turnos.filter((_, j) => j !== i))}
+                                    className="text-xs font-medium text-red-600 hover:underline dark:text-red-400"
+                                  >
+                                    {tH('quitarTurno')}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {!dayHours.closed && turnosParaEditar(day).length < 4 && (
+                              <button
+                                type="button"
+                                onClick={() => setTurnos(day, [...turnosParaEditar(day), { open: '19:00', close: '23:00' }])}
+                                className="self-start text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                              >
+                                {tH('anadirTurno')}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -700,26 +795,14 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
               )}
             </div>
 
-            {/* subdomain */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Subdominio
-              </label>
-              <div className="flex items-center">
-                <input
-                  type="text"
-                  name="subdomain"
-                  value={form.subdomain || ''}
-                  onChange={(e) => handleDomainChange('subdomain', e.target.value)}
-                  placeholder="hotel"
-                  className="input input-bordered flex-1 bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
-                />
-                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">.goadmin.io</span>
+            {/* subdomain: ya no se ofrece. `<sub>.goadmin.io` el sitio lo resuelve como OTRA
+                organización; la sede se publica por ruta (/<slug>) o por dominio propio. */}
+            {initialData.subdomain && (
+              <div className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+                Esta sede tiene el subdominio «{initialData.subdomain}», que el sitio web no usa para la
+                sede. Su dirección pública es la de abajo.
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Único global. Ej: <code>hotel</code> → https://hotel.goadmin.io
-              </p>
-            </div>
+            )}
 
             {/* custom_domain */}
             <div>
@@ -809,7 +892,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                     </span>
                     <span className="block text-xs text-gray-500 dark:text-gray-400">
                       Si está activo, el outlet tiene sitio público accesible por
-                      subdominio, dominio propio o path.
+                      su ruta (/slug) o por su dominio propio.
                     </span>
                   </span>
                 </label>
@@ -824,17 +907,12 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 URL pública del outlet:
               </p>
               <code className="text-sm text-blue-800 dark:text-blue-200 break-all">
-                {form.custom_domain
-                  ? `https://${form.custom_domain}`
-                  : form.subdomain
-                    ? `https://${form.subdomain}.goadmin.io`
-                    : form.slug
-                      ? (orgCustomDomain
-                          ? `https://${orgCustomDomain}/${form.slug}`
-                          : orgSubdomain
-                            ? `https://${orgSubdomain}.goadmin.io/${form.slug}`
-                            : 'Configura un dominio o subdominio de organización para tener URL pública')
-                      : '— configura slug, subdominio o dominio para ver la URL'}
+                {urlPublicaSede(
+                  { custom_domain: form.custom_domain, slug: form.slug },
+                  { dominio: orgCustomDomain, subdominio: orgSubdomain },
+                ) ?? (form.slug
+                  ? 'Configura un dominio o subdominio de organización para tener URL pública'
+                  : '— configura el slug o un dominio propio para ver la URL')}
               </code>
             </div>
           )}

@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimits, getClientIp, type RateLimitResult } from '@/lib/security/rateLimit';
 import { resolveSelfOrigin } from '@/lib/security/requestOrigin';
+import { errorDeCupo } from '@/lib/services/cupoPlanService';
 import {
   getServerOrgContext,
   getServerOrgContextFor,
@@ -62,6 +63,19 @@ const ROL_NO_INVITABLE = 1;
 function invitacionNoValida() {
   return NextResponse.json({ error: 'Invitación no válida o vencida' }, { status: 404 });
 }
+
+/**
+ * La base rechaza invitar por encima del cupo del plan (disparador
+ * `trg_cupo_plan_invitacion`, auditoría 2026-10 P0-4): 409 con su mensaje
+ * («El plan permite 10 usuarios y ya están ocupados 10…»), no un 500.
+ */
+function sinCupo(error: { hint?: string | null; message?: string | null } | null) {
+  const cupo = errorDeCupo(error);
+  return cupo ? NextResponse.json({ error: cupo.mensaje, code: cupo.codigo }, { status: 409 }) : null;
+}
+
+/** Estados desde los que se puede reenviar: pendiente (vigente o vencida) o ya marcada vencida (P1-5). */
+const REENVIABLES = ['pending', 'expired'];
 
 function demasiadasPeticiones(rl: RateLimitResult & { blockedKey?: string }, ip: string) {
   const retryAfter = Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000));
@@ -146,7 +160,7 @@ export async function POST(request: Request) {
         console.error('Error buscando la invitación:', error);
         return NextResponse.json({ error: 'Error consultando la invitación' }, { status: 500 });
       }
-      if (!fila || fila.status !== 'pending') {
+      if (!fila || !REENVIABLES.includes(String(fila.status))) {
         console.warn('Reenvío de invitación inexistente o no pendiente:', invitationId, 'ip:', ip);
         return invitacionNoValida();
       }
@@ -172,15 +186,18 @@ export async function POST(request: Request) {
       const rlEmail = await checkRateLimits([{ key: `invite:send:email:${email}`, opts: INVITE_EMAIL_LIMIT }]);
       if (!rlEmail.allowed) return demasiadasPeticiones(rlEmail, ip);
 
-      // Código nuevo y vigencia renovada: el enlace anterior deja de servir.
+      // Código nuevo y vigencia renovada: el enlace anterior deja de servir. Una
+      // vencida vuelve a `pending` y vuelve a ocupar cupo (lo comprueba la base).
       const code = generarCodigoInvitacion();
       const { data: actualizada, error: updError } = await admin
         .from('invitations')
-        .update({ code, expires_at: vence() })
+        .update({ code, expires_at: vence(), status: 'pending' })
         .eq('id', invitationId)
-        .eq('status', 'pending')
+        .in('status', REENVIABLES)
         .select('id')
         .maybeSingle();
+      const cupoReenvio = sinCupo(updError);
+      if (cupoReenvio) return cupoReenvio;
       if (updError || !actualizada) {
         console.error('No se pudo renovar la invitación:', invitationId, updError);
         return invitacionNoValida();
@@ -244,6 +261,8 @@ export async function POST(request: Request) {
         })
         .select(SELECT_INVITACION)
         .single();
+      const cupoAlta = sinCupo(insError);
+      if (cupoAlta) return cupoAlta;
       if (insError || !creada) {
         console.error('Error creando la invitación:', insError);
         return NextResponse.json({ error: 'No se pudo crear la invitación' }, { status: 500 });
@@ -317,16 +336,31 @@ async function validarDatosNuevos(
     if (!cargo) return invalido();
   }
 
-  const { data: pendiente } = await admin
+  // Una pendiente VENCIDA no bloquea (auditoría 2026-10, P1-5): ya no se puede
+  // aceptar, así que se marca `expired` y se crea la nueva. Antes respondía
+  // YA_INVITADO y el admin no tenía forma de volver a invitar a esa persona.
+  const { data: pendientes } = await admin
     .from('invitations')
-    .select('id')
+    .select('id, expires_at')
     .eq('email', email)
     .eq('organization_id', organizationId)
-    .eq('status', 'pending')
-    .limit(1)
-    .maybeSingle();
-  if (pendiente) {
+    .eq('status', 'pending');
+  const ahora = Date.now();
+  const vencidas = (pendientes ?? []).filter((p) => p.expires_at && new Date(p.expires_at as string).getTime() < ahora);
+  if ((pendientes ?? []).length > vencidas.length) {
     return NextResponse.json({ error: 'Ya existe una invitación activa para este correo', code: 'YA_INVITADO' }, { status: 409 });
+  }
+  if (vencidas.length > 0) {
+    const { error: errVencidas } = await admin
+      .from('invitations')
+      .update({ status: 'expired' })
+      .in('id', vencidas.map((v) => v.id as number))
+      .eq('organization_id', organizationId)
+      .eq('status', 'pending');
+    if (errVencidas) {
+      console.error('No se pudieron marcar como vencidas las invitaciones anteriores:', errVencidas.message);
+      return NextResponse.json({ error: 'No se pudo crear la invitación' }, { status: 500 });
+    }
   }
 
   const { data: perfil } = await admin.from('profiles').select('id').eq('email', email).limit(1).maybeSingle();

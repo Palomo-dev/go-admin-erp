@@ -1,735 +1,410 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/config';
-import { OrganizationInfoSkeleton } from './OrganizationSkeletons';
+/**
+ * Formulario de Organización › Marca › Información (Figma 08, sección 4).
+ *
+ * Cuatro secciones del kit, en el mismo orden que el diseño: Identidad,
+ * Ubicación, Datos fiscales y Marca y dominios. Un solo «Guardar cambios» (con
+ * «Descartar») al pie; al guardar, aviso del kit con «Deshacer» que vuelve a
+ * lo último guardado. El departamento se deriva del municipio DANE (no se
+ * elige aparte) y el DV se calcula del NIT. El título lo pone el PageHeader
+ * de la página: aquí no se repite.
+ *
+ * También lo usa Configuración › General.
+ */
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Building2, FileText, ImageIcon, MapPin, Palette } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { supabase } from '@/lib/supabase/config';
+import { FormField, FormSection, clasesBoton } from '@/components/kit';
 import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
 import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
+import { DOMINIO_SITIOS } from '@/lib/organizacion/sucursales';
+import { calcularDv } from '@/lib/utils/nitDv';
+import { OrganizationInfoSkeleton } from './OrganizationSkeletons';
 
-interface OrganizationProps {
+interface DatosOrganizacion {
   id: number;
   name: string;
+  legal_name: string;
   type: string;
-  logo_url?: string;
-  website?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postal_code?: string;
-  tax_id?: string;
-  nit?: string;
-  dv?: string;
-  municipality_id?: string;
-  created_at: string;
-  description?: string;
-  email?: string;
-  status?: string;
-  owner_user_id?: string;
-  subscription_status?: string;
-  subscription_plan?: string;
-  subscription_ends_at?: string;
-  primary_color?: string;
-  secondary_color?: string;
-  subdomain?: string;
-  custom_domain?: string;
+  logo_url: string;
+  website: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  tax_id: string;
+  dv: string;
+  municipality_id: string;
+  economic_activity: string;
+  registration_code: string;
+  graphic_representation_name: string;
+  description: string;
+  email: string;
+  primary_color: string;
+  secondary_color: string;
+  subdomain: string;
+  custom_domain: string;
 }
 
-interface MunicipalityOption {
+interface Municipio {
   id: string;
   name: string;
   code: string;
   state_name: string;
 }
 
-function calcularDV(nit: string): string {
-  const nitLimpio = nit.replace(/[^0-9]/g, '');
-  if (!nitLimpio) return '';
-  const pesos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
-  const nitReverse = nitLimpio.split('').reverse().join('');
-  let suma = 0;
-  for (let i = 0; i < nitReverse.length; i++) {
-    suma += parseInt(nitReverse[i], 10) * (pesos[i] || pesos[pesos.length - 1]);
-  }
-  const residuo = suma % 11;
-  return (residuo === 0 || residuo === 1) ? residuo.toString() : (11 - residuo).toString();
+const CAMPO =
+  'h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-fg-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 disabled:bg-subtle disabled:text-fg-secondary';
+const AREA =
+  'w-full resize-y rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20';
+
+const COLOR_PRIMARIO = '#3B82F6';
+const COLOR_SECUNDARIO = '#1E40AF';
+
+function texto(v: unknown): string {
+  return v == null ? '' : String(v);
 }
 
 export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
-  const [formData, setFormData] = useState<Partial<OrganizationProps>>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const t = useTranslations('org.orgInfo');
-  const [organizationTypes, setOrganizationTypes] = useState<{id: number, description: string}[]>([]);
-  const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
-  
-  useEffect(() => {
-    if (orgData) {
-      fetchOrganizationDetails(orgData);
+  const ti = useTranslations('org.acceso.informacion');
+  const tf = useTranslations('org.acceso.informacion.form');
+  const [datos, setDatos] = useState<DatosOrganizacion | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorTelefono, setErrorTelefono] = useState<string | null>(null);
+  const [tipos, setTipos] = useState<{ id: number; description: string }[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  // Lo último guardado: «Deshacer» del aviso y «Descartar» vuelven a esto.
+  const guardado = useRef<DatosOrganizacion | null>(null);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setErrorCarga(false);
+    try {
+      const [org, tiposRes, munis] = await Promise.all([
+        supabase.from('organizations').select('*').eq('id', orgData).single(),
+        supabase.from('organization_types').select('id, description').order('description'),
+        supabase.from('municipalities').select('id, name, code, state_name').order('name').limit(2000),
+      ]);
+      if (org.error) throw org.error;
+      const d = org.data as Record<string, unknown>;
+      const listaTipos = (tiposRes.data ?? []) as { id: number; description: string }[];
+      const cargados: DatosOrganizacion = {
+        id: Number(d.id),
+        name: texto(d.name),
+        legal_name: texto(d.legal_name),
+        type: listaTipos.find((x) => x.id === d.type_id)?.description ?? '',
+        logo_url: texto(d.logo_url),
+        website: texto(d.website),
+        phone: texto(d.phone),
+        address: texto(d.address),
+        city: texto(d.city),
+        state: texto(d.state),
+        country: texto(d.country),
+        postal_code: texto(d.postal_code),
+        tax_id: texto(d.tax_id ?? d.nit),
+        dv: texto(d.dv),
+        municipality_id: texto(d.municipality_id),
+        economic_activity: texto(d.economic_activity),
+        registration_code: texto(d.registration_code),
+        graphic_representation_name: texto(d.graphic_representation_name),
+        description: texto(d.description),
+        email: texto(d.email),
+        primary_color: texto(d.primary_color) || COLOR_PRIMARIO,
+        secondary_color: texto(d.secondary_color) || COLOR_SECUNDARIO,
+        subdomain: texto(d.subdomain),
+        custom_domain: texto(d.custom_domain),
+      };
+      setTipos(listaTipos);
+      setMunicipios((munis.data ?? []) as Municipio[]);
+      setDatos(cargados);
+      guardado.current = cargados;
+    } catch (e) {
+      console.warn('[informacion] carga', e instanceof Error ? e.message : e);
+      setErrorCarga(true);
+    } finally {
+      setCargando(false);
     }
-    fetchOrganizationTypes();
   }, [orgData]);
 
-  const fetchOrganizationDetails = async (orgId: number) => {
-    try {
-      setLoading(true);
-      
-      console.log('Fetching organization details for ID:', orgId);
-      
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', orgId)
-        .single();
+  useEffect(() => {
+    if (orgData) void cargar();
+  }, [orgData, cargar]);
 
-      if (error) throw error;
+  const cambiar = <K extends keyof DatosOrganizacion>(campo: K, valor: DatosOrganizacion[K]) =>
+    setDatos((d) => (d ? { ...d, [campo]: valor } : d));
 
-      console.log('Organization data:', data);
-
-      // Get organization type description
-      let typeDescription = '';
-      if (data.type_id) {
-        const { data: typeData, error: typeError } = await supabase
-          .from('organization_types')
-          .select('description')
-          .eq('id', parseInt(data.type_id))
-          .single();
-          
-        if (!typeError && typeData) {
-          typeDescription = typeData.description;
-        }
-      }
-      
-      setFormData({
-        id: data.id,
-        name: data.name,
-        type: typeDescription,
-        logo_url: data.logo_url || '',
-        website: data.website || '',
-        phone: data.phone || '',
-        address: data.address || '',
-        city: data.city || '',
-        state: data.state || '',
-        country: data.country || '',
-        postal_code: data.postal_code || '',
-        tax_id: data.tax_id || data.nit || '',
-        nit: data.nit || data.tax_id || '',
-        dv: data.dv?.toString() || '',
-        municipality_id: data.municipality_id || '',
-        created_at: data.created_at,
-        description: data.description || '',
-        email: data.email || '',
-        status: data.status || '',
-        owner_user_id: data.owner_user_id || '',
-        subscription_status: data.subscription_status || '',
-        subscription_plan: data.subscription_plan || '',
-        subscription_ends_at: data.subscription_ends_at || '',
-        primary_color: data.primary_color || '#3B82F6',
-        secondary_color: data.secondary_color || '#1E40AF',
-        subdomain: data.subdomain || '',
-        custom_domain: data.custom_domain || ''
-      });
-
-      // Cargar municipios filtrando por el state/departamento de la org
-      if (data.state) {
-        const { data: munis } = await supabase
-          .from('municipalities')
-          .select('id, name, code, state_name')
-          .ilike('state_name', data.state)
-          .order('name');
-        if (munis) setMunicipalities(munis);
-      }
-      // Si no hay state, cargar todos
-      if (!data.state || municipalities.length === 0) {
-        const { data: allMunis } = await supabase
-          .from('municipalities')
-          .select('id, name, code, state_name')
-          .order('name')
-          .limit(500);
-        if (allMunis) setMunicipalities(allMunis);
-      }
-    } catch (err: any) {
-      console.error('Error fetching organization details:', err);
-      setError(err.message || t('errorLoading'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchOrganizationTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('organization_types')
-        .select('id, description')
-        .order('description');
-        
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        setOrganizationTypes(data);
-      }
-    } catch (err: any) {
-      console.error('Error fetching organization types:', err);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const alCambiar = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => {
-      const next = { ...prev, [name]: value };
-      // Auto-calcular DV cuando cambia el tax_id/NIT
+    setDatos((d) => {
+      if (!d) return d;
+      const sig = { ...d, [name]: value } as DatosOrganizacion;
       if (name === 'tax_id') {
-        const dvCalculado = calcularDV(value);
-        if (dvCalculado) next.dv = dvCalculado;
+        const dv = calcularDv(value);
+        sig.dv = dv === null ? '' : String(dv);
       }
-      return next;
+      return sig;
     });
   };
 
-  const handleMunicipalityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const muniId = e.target.value;
-    const selected = municipalities.find(m => m.id === muniId);
-    setFormData((prev) => ({
-      ...prev,
-      municipality_id: muniId,
-      city: selected?.name || prev.city,
-      state: selected?.state_name || prev.state,
-    }));
+  const alCambiarMunicipio = (e: ChangeEvent<HTMLSelectElement>) => {
+    const m = municipios.find((x) => x.id === e.target.value);
+    setDatos((d) => (d ? { ...d, municipality_id: e.target.value, city: m?.name ?? d.city, state: m?.state_name ?? d.state } : d));
   };
 
-  const handleStateChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const stateValue = e.target.value;
-    setFormData((prev) => ({ ...prev, state: stateValue }));
-    // Recargar municipios filtrados por el nuevo state
-    const { data: munis } = await supabase
-      .from('municipalities')
-      .select('id, name, code, state_name')
-      .ilike('state_name', stateValue)
-      .order('name');
-    if (munis) setMunicipalities(munis);
+  /** Escribe en `organizations` (RLS: solo quien administra la organización). */
+  const escribir = async (d: DatosOrganizacion) => {
+    const tipo = tipos.find((x) => x.description === d.type);
+    const fila: Record<string, unknown> = {
+      name: d.name,
+      type_id: tipo?.id ?? null,
+      logo_url: d.logo_url || null,
+      website: d.website || null,
+      phone: d.phone || null,
+      address: d.address || null,
+      city: d.city || null,
+      country: d.country || null,
+      postal_code: d.postal_code || null,
+      tax_id: d.tax_id || null,
+      nit: d.tax_id || null,
+      dv: d.dv ? parseInt(d.dv, 10) : null,
+      state: d.state || null,
+      municipality_id: d.municipality_id || null,
+      economic_activity: d.economic_activity || null,
+      registration_code: d.registration_code || null,
+      graphic_representation_name: d.graphic_representation_name || null,
+      description: d.description || null,
+      email: d.email || null,
+      primary_color: d.primary_color,
+      secondary_color: d.secondary_color,
+      subdomain: d.subdomain || null,
+      custom_domain: d.custom_domain || null,
+      updated_at: new Date().toISOString(),
+    };
+    // `legal_name` es NOT NULL: si se deja vacío, se conserva el que había.
+    if (d.legal_name.trim()) fila.legal_name = d.legal_name.trim();
+    const { error } = await supabase.from('organizations').update(fila).eq('id', d.id);
+    return error;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errorTelefono = mensajeErrorTelefono(formData.phone, paisIsoDeOrganizacion(null, formData.country) ?? undefined);
-    if (errorTelefono) {
-      setError(`Teléfono: ${errorTelefono}`);
+  const deshacer = async (anterior: DatosOrganizacion) => {
+    const err = await escribir(anterior);
+    if (err) {
+      toast.error(ti('toasts.errorDeshacer'), { description: err.message });
       return;
     }
-    
+    setDatos(anterior);
+    guardado.current = anterior;
+    toast.success(ti('toasts.deshecho'));
+  };
+
+  const guardar = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!datos) return;
+    const errTel = mensajeErrorTelefono(datos.phone, paisIsoDeOrganizacion(null, datos.country) ?? undefined);
+    setErrorTelefono(errTel ?? null);
+    if (errTel) return;
+    setGuardando(true);
     try {
-      setSaving(true);
-      setError(null);
-      setSuccess(null);
-      
-      // Get the type_id from the type name
-      let type_id = null;
-      if (formData.type) {
-        const matchingType = organizationTypes.find(type => type.description === formData.type);
-        if (matchingType) {
-          type_id = matchingType.id;
-        }
-      }
-      
-      console.log('Updating organization with type_id:', type_id);
-      
-      // Update organization in the database
-      const { error } = await supabase
-        .from('organizations')
-        .update({
-          name: formData.name,
-          type_id: type_id,
-          logo_url: formData.logo_url,
-          website: formData.website,
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          country: formData.country,
-          postal_code: formData.postal_code,
-          tax_id: formData.tax_id,
-          nit: formData.tax_id,
-          dv: formData.dv ? parseInt(formData.dv, 10) : null,
-          state: formData.state || null,
-          municipality_id: formData.municipality_id || null,
-          description: formData.description,
-          email: formData.email,
-          primary_color: formData.primary_color,
-          secondary_color: formData.secondary_color,
-          subdomain: formData.subdomain,
-          custom_domain: formData.custom_domain,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', formData.id);
-      
-      if (error) throw error;
-      
-      // No need to use localStorage for organization data
-      // This data should be fetched from the database when needed
-      
-      setSuccess(t('successUpdate'));
-    } catch (err: any) {
-      console.error('Error updating organization:', err);
-      setError(err.message || t('errorUpdating'));
+      const anterior = guardado.current;
+      const err = await escribir(datos);
+      if (err) throw err;
+      guardado.current = datos;
+      toast.success(t('successUpdate'), anterior ? { action: { label: ti('deshacer'), onClick: () => void deshacer(anterior) } } : undefined);
+    } catch (err) {
+      toast.error(t('errorUpdating'), { description: err instanceof Error ? err.message : undefined });
     } finally {
-      setSaving(false);
+      setGuardando(false);
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const subirLogo = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    
+    if (!file || !datos) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t('maxFileSize'));
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('onlyImages'));
+      return;
+    }
     try {
-      setError(null);
-      
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError(t('maxFileSize'));
-        return;
-      }
-      
-      // Check file type
-      if (!file.type.match('image.*')) {
-        setError(t('onlyImages'));
-        return;
-      }
-      
-      // Upload file to Supabase Storage
-      const fileName = `org-${formData.id}-${Date.now()}-${file.name}`;
-      const { data, error } = await supabase.storage
-        .from('logos')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      
+      const nombre = `org-${datos.id}-${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage.from('logos').upload(nombre, file, { cacheControl: '3600', upsert: true });
       if (error) throw error;
-      
-      // Get public URL
-      const { data: publicUrl } = supabase.storage
-        .from('logos')
-        .getPublicUrl(data.path);
-      
-      // Update form data with new logo URL
-      setFormData((prev) => ({ ...prev, logo_url: publicUrl.publicUrl }));
-    } catch (err: any) {
-      console.error('Error uploading logo:', err);
-      setError(err.message || t('errorUploadLogo'));
+      const { data: publica } = supabase.storage.from('logos').getPublicUrl(data.path);
+      cambiar('logo_url', publica.publicUrl);
+      toast.info(tf('logoListo'));
+    } catch (err) {
+      toast.error(t('errorUploadLogo'), { description: err instanceof Error ? err.message : undefined });
     }
   };
 
-  if (loading) {
-    return <OrganizationInfoSkeleton />;
+  if (cargando) return <OrganizationInfoSkeleton />;
+  if (errorCarga || !datos) {
+    return (
+      <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-line-danger bg-danger-subtle p-4">
+        <p className="text-sm font-semibold text-danger-text">{tf('errorCarga')}</p>
+        <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => void cargar()}>
+          {tf('reintentar')}
+        </button>
+      </div>
+    );
   }
 
+  const cambios = JSON.stringify(datos) !== JSON.stringify(guardado.current);
+  const municipio = municipios.find((m) => m.id === datos.municipality_id);
+
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg dark:bg-gray-800">
-      <div className="px-4 py-5 sm:px-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">{t('subtitle')}</p>
-      </div>
-      
-      {error && (
-        <div className="mx-6 my-2 bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
-            </div>
+    <form onSubmit={guardar} className="flex flex-col gap-4 lg:gap-6" noValidate>
+      <FormSection titulo={tf('identidad.titulo')} descripcion={tf('identidad.descripcion')} icono={Building2} columnas={2}>
+        <div id="logo" className="flex scroll-mt-24 items-center gap-4 md:col-span-2">
+          {datos.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element -- logo del bucket público, tamaño fijo
+            <img src={datos.logo_url} alt={tf('logoAlt', { nombre: datos.name })} className="size-16 rounded-lg border border-line object-contain" />
+          ) : (
+            <span aria-hidden="true" className="flex size-16 items-center justify-center rounded-lg border border-line bg-subtle text-fg-muted">
+              <ImageIcon className="size-6" strokeWidth={1.5} />
+            </span>
+          )}
+          <div className="flex flex-col gap-1">
+            <label className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+              {datos.logo_url ? t('changeLogo') : tf('subirLogo')}
+              <input type="file" className="sr-only" accept="image/*" onChange={(e) => void subirLogo(e)} />
+            </label>
+            <p className="text-xs text-fg-muted">{t('logoHint')}</p>
           </div>
         </div>
-      )}
-      
-      {success && (
-        <div className="mx-6 my-2 bg-green-50 border-l-4 border-green-500 p-4 dark:bg-green-900/30 dark:border-green-400">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-500 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-green-700 dark:text-green-200">{success}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="border-t border-gray-200 dark:border-gray-700">
-        <form onSubmit={handleSubmit}>
-          <dl>
-            {/* Organization Logo */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('logo')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <div className="flex items-center space-x-4">
-                  {formData.logo_url ? (
-                    <img 
-                      src={formData.logo_url} 
-                      alt="Logo" 
-                      className="w-16 h-16 object-contain border border-gray-200 rounded-md dark:border-gray-700"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 flex items-center justify-center border border-gray-200 rounded-md bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
-                      <svg className="h-8 w-8 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4 4h16v16H4V4z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div>
-                    <label htmlFor="logo" className="cursor-pointer px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-900">
-                      {t('changeLogo')}
-                      <input
-                        type="file"
-                        id="logo"
-                        className="sr-only"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                      />
-                    </label>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('logoHint')}</p>
-                  </div>
-                </div>
-              </dd>
-            </div>
-            
-            {/* Organization Name */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('name')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="name"
-                  id="name"
-                  value={formData.name || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('namePlaceholder')}
-                  required
-                />
-              </dd>
-            </div>
-            
-            {/* Organization Description */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('description')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <textarea
-                  name="description"
-                  id="description"
-                  value={formData.description || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('descriptionPlaceholder')}
-                  rows={3}
-                />
-              </dd>
-            </div>
-            
-            {/* Organization Email */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('email')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="email"
-                  name="email"
-                  id="email"
-                  value={formData.email || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="email@organizacion.com"
-                />
-              </dd>
-            </div>
-            
-            {/* Organization Type */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('type')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <select
-                  name="type"
-                  id="type"
-                  value={formData.type || ''}
-                  onChange={handleChange}
-                  className="block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  required
-                >
-                  <option value="" disabled>{t('selectType')}</option>
-                  {organizationTypes.map((type) => (
-                    <option key={type.id} value={type.description}>
-                      {type.description}
-                    </option>
-                  ))}
-                </select>
-              </dd>
-            </div>
-            
-            {/* Contact Information Section */}
-            <div className="bg-white px-4 py-5 sm:px-6 dark:bg-gray-800">
-              <h4 className="text-md font-medium text-gray-900 dark:text-gray-50">{t('contactInfo')}</h4>
-            </div>
-            
-            {/* Website */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('website')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="url"
-                  name="website"
-                  id="website"
-                  value={formData.website || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="https://ejemplo.com"
-                />
-              </dd>
-            </div>
-            
-            {/* Phone */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('phone')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <PhoneInput
-                  id="phone"
-                  name="phone"
-                  value={formData.phone || ''}
-                  onChange={(v) => setFormData((prev) => ({ ...prev, phone: v }))}
-                  defaultIso={paisIsoDeOrganizacion(null, formData.country) ?? undefined}
-                />
-              </dd>
-            </div>
-            
-            {/* Address Section */}
-            <div className="bg-white px-4 py-5 sm:px-6 dark:bg-gray-800">
-              <h4 className="text-md font-medium text-gray-900 dark:text-gray-50">{t('addressSection')}</h4>
-            </div>
-            
-            {/* Address */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('street')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="address"
-                  id="address"
-                  value={formData.address || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('streetPlaceholder')}
-                />
-              </dd>
-            </div>
-            
-            {/* Departamento / Estado */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Departamento / Estado</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="state"
-                  id="state"
-                  value={formData.state || ''}
-                  onChange={handleStateChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="Ej: Antioquia, Cundinamarca..."
-                />
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Al cambiar el departamento, se cargan los municipios de DIAN correspondientes</p>
-              </dd>
-            </div>
+        <FormField etiqueta={tf('identidad.nombre')} obligatorio>
+          <input name="name" value={datos.name} onChange={alCambiar} className={CAMPO} required placeholder={t('namePlaceholder')} />
+        </FormField>
+        <FormField etiqueta={tf('identidad.razonSocial')} ayuda={tf('identidad.razonSocialAyuda')}>
+          <input name="legal_name" value={datos.legal_name} onChange={alCambiar} className={CAMPO} />
+        </FormField>
+        <FormField etiqueta={tf('identidad.tipo')}>
+          <select name="type" value={datos.type} onChange={alCambiar} className={CAMPO}>
+            <option value="">{t('selectType')}</option>
+            {tipos.map((x) => (
+              <option key={x.id} value={x.description}>
+                {x.description}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField etiqueta={tf('identidad.correo')}>
+          <input type="email" name="email" value={datos.email} onChange={alCambiar} className={CAMPO} placeholder={t('emailPlaceholder')} />
+        </FormField>
+        <FormField etiqueta={t('phone')} error={errorTelefono} ayuda={tf('identidad.telefonoAyuda')}>
+          {(campo) => (
+            <PhoneInput
+              id={campo.id}
+              name="phone"
+              value={datos.phone}
+              onChange={(v) => cambiar('phone', v)}
+              defaultIso={paisIsoDeOrganizacion(null, datos.country) ?? undefined}
+            />
+          )}
+        </FormField>
+        <FormField etiqueta={tf('identidad.web')}>
+          <input type="url" name="website" value={datos.website} onChange={alCambiar} className={CAMPO} placeholder={t('websitePlaceholder')} />
+        </FormField>
+        <FormField etiqueta={t('description')} className="md:col-span-2">
+          <textarea name="description" value={datos.description} onChange={alCambiar} className={AREA} rows={3} placeholder={t('descriptionPlaceholder')} />
+        </FormField>
+      </FormSection>
 
-            {/* Municipio / Ciudad (select de DIAN) */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Municipio / Ciudad</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <select
-                  name="municipality_id"
-                  id="municipality_id"
-                  value={formData.municipality_id || ''}
-                  onChange={handleMunicipalityChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                >
-                  <option value="">-- Seleccione municipio --</option>
-                  {municipalities.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.code})
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Municipio registrado ante DIAN. Se actualiza automáticamente la ciudad y departamento.</p>
-              </dd>
-            </div>
-            
-            {/* Country */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('country')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="country"
-                  id="country"
-                  value={formData.country || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('countryPlaceholder')}
-                />
-              </dd>
-            </div>
-            
-            {/* Postal Code */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('postalCode')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="postal_code"
-                  id="postal_code"
-                  value={formData.postal_code || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="12345"
-                />
-              </dd>
-            </div>
-            
-            {/* Tax ID / NIT */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('taxId')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="tax_id"
-                  id="tax_id"
-                  value={formData.tax_id || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('taxIdPlaceholder')}
-                />
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">NIT sin guión. El DV se calcula automáticamente.</p>
-              </dd>
-            </div>
+      <FormSection titulo={tf('ubicacion.titulo')} icono={MapPin} columnas={2}>
+        <FormField etiqueta={t('country')}>
+          <input name="country" value={datos.country} onChange={alCambiar} className={CAMPO} placeholder={t('countryPlaceholder')} />
+        </FormField>
+        <FormField etiqueta={tf('ubicacion.municipio')} ayuda={tf('ubicacion.municipioAyuda')}>
+          <select name="municipality_id" value={datos.municipality_id} onChange={alCambiarMunicipio} className={CAMPO}>
+            <option value="">{tf('ubicacion.elegirMunicipio')}</option>
+            {municipios.map((m) => (
+              <option key={m.id} value={m.id}>
+                {`${m.name} · ${m.state_name} · ${m.code}`}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField etiqueta={tf('ubicacion.departamento')} ayuda={tf('ubicacion.departamentoAyuda')}>
+          <input value={municipio?.state_name ?? datos.state} readOnly disabled className={CAMPO} />
+        </FormField>
+        <FormField etiqueta={tf('ubicacion.direccion')}>
+          <input name="address" value={datos.address} onChange={alCambiar} className={CAMPO} placeholder={t('streetPlaceholder')} />
+        </FormField>
+        <FormField etiqueta={t('postalCode')} ayuda={tf('ubicacion.postalAyuda')}>
+          <input name="postal_code" value={datos.postal_code} onChange={alCambiar} className={CAMPO} inputMode="numeric" maxLength={6} />
+        </FormField>
+      </FormSection>
 
-            {/* DV - Dígito de verificación (auto-calculado) */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">DV (Auto)</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="dv"
-                  id="dv"
-                  value={formData.dv || ''}
-                  onChange={handleChange}
-                  maxLength={1}
-                  readOnly
-                  className="block w-20 border border-gray-200 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-gray-600 sm:text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                  placeholder="Auto"
-                />
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Calculado automáticamente desde el NIT</p>
-              </dd>
-            </div>
-            
-            {/* Primary Color */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('primaryColor')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center dark:text-gray-50">
+      <FormSection titulo={tf('fiscales.titulo')} icono={FileText} columnas={2}>
+        <FormField etiqueta={tf('fiscales.nit')} ayuda={tf('fiscales.nitAyuda')}>
+          <input name="tax_id" value={datos.tax_id} onChange={alCambiar} className={CAMPO} inputMode="numeric" placeholder={t('taxIdPlaceholder')} />
+        </FormField>
+        <FormField etiqueta={tf('fiscales.dv')} ayuda={tf('fiscales.dvAyuda')}>
+          <input value={datos.dv} readOnly disabled className={CAMPO} />
+        </FormField>
+        <FormField etiqueta={tf('fiscales.ciiu')}>
+          <input name="economic_activity" value={datos.economic_activity} onChange={alCambiar} className={CAMPO} inputMode="numeric" />
+        </FormField>
+        <FormField etiqueta={tf('fiscales.registro')}>
+          <input name="registration_code" value={datos.registration_code} onChange={alCambiar} className={CAMPO} />
+        </FormField>
+        <FormField etiqueta={tf('fiscales.representacion')} ayuda={tf('fiscales.representacionAyuda')} className="md:col-span-2">
+          <input name="graphic_representation_name" value={datos.graphic_representation_name} onChange={alCambiar} className={CAMPO} />
+        </FormField>
+      </FormSection>
+
+      <FormSection titulo={tf('marca.titulo')} descripcion={tf('marca.descripcion')} icono={Palette} columnas={2}>
+        {(['primary_color', 'secondary_color'] as const).map((campo) => (
+          <FormField key={campo} etiqueta={campo === 'primary_color' ? tf('marca.primario') : tf('marca.secundario')}>
+            {(c) => (
+              <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  name="primary_color"
-                  id="primary_color"
-                  value={formData.primary_color || '#3B82F6'}
-                  onChange={handleChange}
-                  className="h-8 w-8 rounded-md border border-gray-300 mr-2 dark:border-gray-600"
+                  aria-label={campo === 'primary_color' ? tf('marca.primario') : tf('marca.secundario')}
+                  value={datos[campo]}
+                  onChange={(e) => cambiar(campo, e.target.value)}
+                  className="size-10 shrink-0 cursor-pointer rounded-lg border border-line-strong bg-surface p-1"
                 />
-                <input
-                  type="text"
-                  name="primary_color"
-                  value={formData.primary_color || '#3B82F6'}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="#3B82F6"
-                />
-              </dd>
-            </div>
-            
-            {/* Secondary Color */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('secondaryColor')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center dark:text-gray-50">
-                <input
-                  type="color"
-                  name="secondary_color"
-                  id="secondary_color"
-                  value={formData.secondary_color || '#1E40AF'}
-                  onChange={handleChange}
-                  className="h-8 w-8 rounded-md border border-gray-300 mr-2 dark:border-gray-600"
-                />
-                <input
-                  type="text"
-                  name="secondary_color"
-                  value={formData.secondary_color || '#1E40AF'}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="#1E40AF"
-                />
-              </dd>
-            </div>
-            
-            {/* Subdomain */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-800">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('subdomain')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center dark:text-gray-50">
-                <input
-                  type="text"
-                  name="subdomain"
-                  id="subdomain"
-                  value={formData.subdomain || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('subdomainPlaceholder')}
-                />
-                <span className="ml-2 text-gray-500 dark:text-gray-400">.goadmin.io</span>
-              </dd>
-            </div>
-            
-            {/* Custom Domain */}
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('customDomain')}</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="text"
-                  name="custom_domain"
-                  id="custom_domain"
-                  value={formData.custom_domain || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder={t('customDomainPlaceholder')}
-                />
-                <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">{t('customDomainHint')}</p>
-              </dd>
-            </div>
-            
-            {/* Submit Button */}
-            <div className="bg-gray-50 px-4 py-5 sm:px-6 dark:bg-gray-900">
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                >
-                  {saving ? t('saving') : t('saveChanges')}
-                </button>
+                <input id={c.id} aria-describedby={c['aria-describedby']} value={datos[campo]} onChange={(e) => cambiar(campo, e.target.value)} className={`${CAMPO} font-mono`} />
               </div>
-            </div>
-          </dl>
-        </form>
+            )}
+          </FormField>
+        ))}
+        <FormField etiqueta={tf('marca.subdominio')} ayuda={datos.subdomain ? `${datos.subdomain}.${DOMINIO_SITIOS}` : tf('marca.subdominioAyuda')}>
+          <input name="subdomain" value={datos.subdomain} onChange={alCambiar} className={CAMPO} placeholder={t('subdomainPlaceholder')} />
+        </FormField>
+        <FormField etiqueta={tf('marca.dominio')} ayuda={tf('marca.dominioAyuda')}>
+          <input name="custom_domain" value={datos.custom_domain} onChange={alCambiar} className={CAMPO} placeholder={t('customDomainPlaceholder')} />
+        </FormField>
+      </FormSection>
+
+      <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t border-line bg-canvas/95 px-4 py-3 backdrop-blur lg:mx-0 lg:rounded-xl lg:border lg:px-4">
+        <button
+          type="button"
+          className={clasesBoton({ variante: 'secundario' })}
+          disabled={!cambios || guardando}
+          onClick={() => {
+            if (guardado.current) setDatos(guardado.current);
+            setErrorTelefono(null);
+          }}
+        >
+          {tf('descartar')}
+        </button>
+        <button type="submit" className={clasesBoton()} disabled={!cambios || guardando} aria-busy={guardando || undefined}>
+          {guardando ? t('saving') : tf('guardar')}
+        </button>
       </div>
-    </div>
+    </form>
   );
 }

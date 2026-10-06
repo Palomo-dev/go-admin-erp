@@ -6,6 +6,7 @@ import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
 import { getRateLimitStore } from '@/lib/security/rateLimitStore';
 import { LONGITUD_MINIMA_CONTRASENA } from '@/lib/auth/politicaContrasena';
 import { validarContrasenaServidor } from '@/lib/auth/servidorAcceso';
+import { errorDeCupo } from '@/lib/services/cupoPlanService';
 
 /**
  * Acepta una invitación SIN sesión previa: crea la cuenta del invitado con la
@@ -170,6 +171,14 @@ export async function POST(request: Request) {
       p_user_id: userId,
     });
 
+    // El plan ya no tiene sitio (disparador de cupo, auditoría 2026-10 P0-4):
+    // la persona lo tiene que saber; el admin decide si compra usuarios o
+    // libera uno. La cuenta creada arriba queda sin organización y la
+    // invitación sigue pendiente para cuando haya sitio.
+    const cupo = errorDeCupo(acceptError);
+    if (cupo) {
+      return NextResponse.json({ error: cupo.mensaje, code: cupo.codigo }, { status: 409 });
+    }
     if (acceptError) {
       console.error('Error en accept_invitation_atomic:', acceptError);
       return NextResponse.json(

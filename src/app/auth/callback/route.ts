@@ -414,15 +414,9 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
           phone: signupData.branchPhone || signupData.organizationPhone || null,
           email: signupData.branchEmail || signupData.organizationEmail || user.email || null,
           manager_id: user.id,
-          opening_hours: signupData.branchOpeningHours || {
-            monday: { open: '09:00', close: '18:00', closed: false },
-            tuesday: { open: '09:00', close: '18:00', closed: false },
-            wednesday: { open: '09:00', close: '18:00', closed: false },
-            thursday: { open: '09:00', close: '18:00', closed: false },
-            friday: { open: '09:00', close: '18:00', closed: false },
-            saturday: { open: '10:00', close: '15:00', closed: false },
-            sunday: { closed: true }
-          },
+          // Sin horario en el registro → null. Antes se inventaba L-V 09:00-18:00 y el sitio
+          // web mostraba «Cerrado» a un restaurante abierto (76 de 80 sedes lo tenían).
+          opening_hours: signupData.branchOpeningHours || null,
           updated_at: new Date().toISOString()
         })
         .eq('organization_id', orgData.id)

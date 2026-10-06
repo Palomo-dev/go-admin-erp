@@ -19,15 +19,31 @@
 import { NextResponse } from 'next/server';
 import { withOrg, hasOrgAdminOrPermission, isOrgAdminContext } from '@/lib/utils/orgContext';
 import { resolverAlcanceSucursal } from '@/lib/security/alcanceSucursal';
+import { PERMISO_FACTURACION } from '@/lib/stripe/contextoFacturacion';
+import { capacidadesNavServidor } from '@/lib/navigation/capacidadesNav.server';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withOrg(async (ctx) => {
   const esAdmin = isOrgAdminContext(ctx);
 
-  const [gestionarNotificaciones, crearSucursal, alcance] = await Promise.all([
-    hasOrgAdminOrPermission(ctx, 'notifications.manage'),
+  // Organización (auditoría 2026-10, P1-2): las pantallas de Organización
+  // decidían «¿es admin?» en el navegador con `role_id === 2 || 1`, ignorando
+  // `is_super_admin`, `admin.full_access` y `billing_management`. Ahora usan
+  // estas tres, con el MISMO criterio que el servidor aplica en cada ruta:
+  // - gestionarOrganizacion: `withOrg({ admin: true })` (admin o admin.full_access)
+  //   — Información, Sucursales, Módulos;
+  // - gestionarMiembros: `requireOrgAdmin` de /api/auth/invite (admin) —
+  //   Miembros e Invitaciones;
+  // - gestionarFacturacion: `contextoDeFacturacion` (admin o billing_management).
+  //
+  // Las del menú (`PaginaNav.requiere`) salen de `capacidadesNavServidor`, la
+  // MISMA función que usa `seccionesVisiblesServidor` (buscador e inicio).
+  const [nav, crearSucursal, gestionarOrganizacion, gestionarFacturacion, alcance] = await Promise.all([
+    capacidadesNavServidor(ctx),
     hasOrgAdminOrPermission(ctx, 'branches.create'),
+    hasOrgAdminOrPermission(ctx),
+    hasOrgAdminOrPermission(ctx, PERMISO_FACTURACION),
     // Misma regla que branchService.getAccessibleBranches, sin el nombre del rol.
     resolverAlcanceSucursal(ctx).catch((err: unknown) => {
       console.error('[api/me/capacidades] sucursales', err instanceof Error ? err.message : err);
@@ -45,8 +61,13 @@ export const GET = withOrg(async (ctx) => {
       organizationId: ctx.organizationId,
       esAdmin,
       capacidades: {
-        gestionarNotificaciones,
+        gestionarNotificaciones: nav.has('gestionarNotificaciones'),
+        verAnaliticaWeb: nav.has('verAnaliticaWeb'),
+        variasSedes: nav.has('variasSedes'),
         crearSucursal,
+        gestionarOrganizacion,
+        gestionarMiembros: esAdmin,
+        gestionarFacturacion,
       },
       sucursales: {
         permitidas,

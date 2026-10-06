@@ -41,8 +41,6 @@ import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
 import { bloqueVisible } from '@/lib/dashboard/preferenciasInicio';
 import { claveOcultarPasos, mostrarPrimerosPasos, type PrimerosPasos as DatosPasos } from '@/lib/dashboard/primerosPasos';
 import type { FechasPeriodo, HorasPeriodo, PeriodoInicio } from '@/lib/dashboard/periodo';
-import { CATALOGO_NAV } from '@/lib/navigation/catalog';
-import { RUTA_ANALITICA_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
@@ -62,13 +60,6 @@ import { BotonTurno, TurnoCard, useTurnoInicio } from '@/components/inicio/Turno
 import { usePreferenciasInicio } from '@/components/inicio/usePreferenciasInicio';
 import { useLecturaInicio, type LecturaInicio } from '@/components/inicio/useLecturaInicio';
 import { CLAVE_PERIODO } from '@/components/inicio/textosPeriodo';
-
-/**
- * «Ver analítica web»: la página «Analítica» del módulo Sitio web. Sale del
- * catálogo (su acceso lo decide `GET /api/analitica-web`).
- */
-const PAGINA_ANALITICA_WEB = RUTA_ANALITICA_SITIO_WEB;
-const HAY_ANALITICA = CATALOGO_NAV.some((m) => m.paginas.some((p) => p.href === PAGINA_ANALITICA_WEB));
 
 type Fase = LecturaInicio<unknown>['fase'];
 
@@ -162,6 +153,10 @@ function InicioContent() {
   const [faseVentas, setFaseVentas] = useState<Fase>('cargando');
   const [faseActividad, setFaseActividad] = useState<Fase>('cargando');
   const [pasosOcultos, setPasosOcultos] = useState(false);
+  // «Ver analítica web» del «⋯»: el enlace que el servidor resolvió para ESTA
+  // persona (`hrefAnalitica` de /api/inicio/tienda-web, con la misma regla que
+  // el menú lateral). Sin él, la acción no se ofrece.
+  const [hrefAnalitica, setHrefAnalitica] = useState<string | null>(null);
   // «Tu turno» (Figma 631:21816): estado calculado en el servidor sobre la
   // marcación de HRM; marcar sigue siendo el flujo existente (/marcar).
   const turno = useTurnoInicio(organization?.id, versionHoy);
@@ -311,6 +306,8 @@ function InicioContent() {
   }
 
   const verVentas = bloqueVisible(prefs, 'ventas');
+  // Si la tarjeta «Tienda web» no se monta, su último aviso no vale.
+  const hrefAnaliticaVisible = bloqueVisible(prefs, 'tiendaWeb') ? hrefAnalitica : null;
   // La actividad no está en el móvil del diseño (448:205216): ni se consulta.
   const verActividad = bloqueVisible(prefs, 'actividad') && esEscritorio;
   // Error de la fila entera (445:137833): si fallan los dos bloques visibles,
@@ -348,8 +345,10 @@ function InicioContent() {
       id: 'analitica',
       etiqueta: t('tiendaWeb.verAnalitica'),
       icono: BarChart3,
-      onSelect: () => router.push(PAGINA_ANALITICA_WEB),
-      oculta: !canSeeFinancialDashboard || !HAY_ANALITICA,
+      onSelect: () => {
+        if (hrefAnaliticaVisible) router.push(hrefAnaliticaVisible);
+      },
+      oculta: !canSeeFinancialDashboard || !hrefAnaliticaVisible,
     },
   ];
 
@@ -361,7 +360,9 @@ function InicioContent() {
             {error === 'module_not_activated' && t('errors.moduleNotActivated')}
             {error === 'insufficient_permissions' && t('errors.insufficientPermissions')}
             {error === 'plan_limit_reached' && t('errors.planLimitReached')}
-            {!['module_not_activated', 'insufficient_permissions', 'plan_limit_reached'].includes(error) && t('errors.unexpected')}
+            {error === 'job_position_no_access' && t('errors.jobPositionNoAccess')}
+            {!['module_not_activated', 'insufficient_permissions', 'plan_limit_reached', 'job_position_no_access'].includes(error) &&
+              t('errors.unexpected')}
           </AlertDescription>
         </Alert>
       )}
@@ -534,6 +535,7 @@ function InicioContent() {
                 version={versionDatos}
                 refresco={refresco}
                 onFalloRefresco={falloRefresco}
+                onHrefAnalitica={setHrefAnalitica}
               />
             )}
 

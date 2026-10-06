@@ -28,6 +28,7 @@
  *   prueba de contrato la compara con el sitio cuando el repositorio está al lado).
  */
 import type { EstiloBoton, MovimientoSitio, RadioSitio, TokensEstilo } from '@/lib/website/v2/tokensEstilo';
+import { CONTRASTE_AA, contraste } from '@/lib/utils/contrasteColor';
 
 export const VERSION_CATALOGO_PLANTILLAS = 1 as const;
 
@@ -388,6 +389,18 @@ export function claseDeFuentes(titulos: string, cuerpo: string): ClaseFuentes {
 /** Blanco y casi negro para el modo de las plantillas del sitio (como las pinta el sitio público). */
 const FONDO_CLARO = '#FFFFFF';
 const TEXTO_OSCURO_SOBRE_FONDO = '#FFFFFF';
+/** Texto por defecto de las plantillas claras cuando el secundario del preset no se lee sobre blanco. */
+const TEXTO_CLARO_POR_DEFECTO = '#1A1A1A';
+
+/**
+ * Texto de una plantilla clara: el secundario del preset solo si se lee sobre el fondo (AA). Varios
+ * presets traen como secundario un color de fondo o de acento (#F7FAFC, #FFFFFF, #FF7043…) y el
+ * texto quedaba casi blanco sobre blanco o naranja.
+ */
+export function textoPlantillaClara(secundario: string, fondo: string = FONDO_CLARO): string {
+  const razon = contraste(secundario, fondo);
+  return razon !== null && razon >= CONTRASTE_AA ? secundario.toUpperCase() : TEXTO_CLARO_POR_DEFECTO;
+}
 
 function plantillaDesdeBase(p: PlantillaBaseSitio): PlantillaCatalogo | null {
   const giro = GIRO_DE_NEGOCIO[p.business_type];
@@ -409,7 +422,7 @@ function plantillaDesdeBase(p: PlantillaBaseSitio): PlantillaCatalogo | null {
       giro,
       modo: p.theme_mode,
       fondo: oscuro ? p.colors.secondary.toUpperCase() : FONDO_CLARO,
-      texto: oscuro ? TEXTO_OSCURO_SOBRE_FONDO : p.colors.secondary.toUpperCase(),
+      texto: oscuro ? TEXTO_OSCURO_SOBRE_FONDO : textoPlantillaClara(p.colors.secondary),
       acento: p.colors.primary.toUpperCase(),
       fuenteTitulos: p.fonts.heading,
       fuenteCuerpo: p.fonts.body,

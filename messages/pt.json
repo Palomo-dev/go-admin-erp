@@ -1238,7 +1238,8 @@
         "agotado": "Esgotado",
         "disponible": "Disponível",
         "hastaOpcional": "Até (opcional)"
-      }
+      },
+      "errorTitulo": "Erro"
     },
     "domains": {
       "title": "Domínios",
@@ -30344,7 +30345,13 @@
           "pagina": "Página · {titulo}",
           "whatsapp": "WhatsApp do site",
           "maps": "Como chegar (mapa da unidade)",
-          "elegirEnlace": "Escolha para onde leva"
+          "elegirEnlace": "Escolha para onde leva",
+          "rutas": {
+            "reservas": "Reservas online",
+            "agendar": "Agendar horário",
+            "consultar-pedido": "Consultar pedido",
+            "mi-cuenta": "Minha conta"
+          }
         },
         "barra": {
           "titulo": "Barra superior",
@@ -30607,7 +30614,9 @@
         "legacyTitulo": "É publicado ao salvar",
         "legacyDescripcion": "Neste site, «Salvar e publicar» leva as alterações para o site.",
         "vacioTitulo": "Escolha uma seção",
-        "vacioDescripcion": "Clique em uma seção da lista ou da tela para editar layout, conteúdo e estilo."
+        "vacioDescripcion": "Clique em uma seção da lista ou da tela para editar layout, conteúdo e estilo.",
+        "quitarChip": "Remover {valor}",
+        "anadirAChip": "Adicionar a {campo}"
       },
       "campo": {
         "elegir": "Escolha uma opção"

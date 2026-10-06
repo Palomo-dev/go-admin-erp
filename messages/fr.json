@@ -1238,7 +1238,8 @@
         "agotado": "Épuisé",
         "disponible": "Disponible",
         "hastaOpcional": "Jusqu’au (facultatif)"
-      }
+      },
+      "errorTitulo": "Erreur"
     },
     "domains": {
       "title": "Domaines",
@@ -30344,7 +30345,13 @@
           "pagina": "Page · {titulo}",
           "whatsapp": "WhatsApp du site",
           "maps": "Itinéraire (carte du site)",
-          "elegirEnlace": "Choisissez la destination"
+          "elegirEnlace": "Choisissez la destination",
+          "rutas": {
+            "reservas": "Réservations en ligne",
+            "agendar": "Prendre rendez-vous",
+            "consultar-pedido": "Suivre la commande",
+            "mi-cuenta": "Mon compte"
+          }
         },
         "barra": {
           "titulo": "Barre supérieure",
@@ -30607,7 +30614,9 @@
         "legacyTitulo": "Enregistrer publie",
         "legacyDescripcion": "Sur ce site, « Enregistrer et publier » envoie les modifications sur le web.",
         "vacioTitulo": "Choisissez une section",
-        "vacioDescripcion": "Cliquez sur une section de la liste ou du canevas pour modifier sa mise en page, son contenu et son style."
+        "vacioDescripcion": "Cliquez sur une section de la liste ou du canevas pour modifier sa mise en page, son contenu et son style.",
+        "quitarChip": "Retirer {valor}",
+        "anadirAChip": "Ajouter à {campo}"
       },
       "campo": {
         "elegir": "Choisissez une option"

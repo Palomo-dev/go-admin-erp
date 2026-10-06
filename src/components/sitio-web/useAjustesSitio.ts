@@ -76,7 +76,7 @@ export function useAjustesSitio(): AjustesSitio {
       setSettings(data);
     } catch (error) {
       console.error('Error cargando los ajustes del sitio:', error);
-      toast({ title: 'Error', description: t('errorLoadingConfig'), variant: 'destructive' });
+      toast({ title: t('errorTitulo'), description: t('errorLoadingConfig'), variant: 'destructive' });
     } finally {
       setCargando(false);
     }
@@ -111,7 +111,7 @@ export function useAjustesSitio(): AjustesSitio {
         toast({ title: t('saved'), description: t('savedDesc') });
       } catch (error) {
         console.error('Error guardando los ajustes del sitio:', error);
-        toast({ title: 'Error', description: t('errorSaving'), variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t('errorSaving'), variant: 'destructive' });
       } finally {
         setGuardando(false);
       }
@@ -142,7 +142,7 @@ export function useAjustesSitio(): AjustesSitio {
       } catch (error) {
         console.error('Error cambiando la publicación del sitio:', error);
         toast({
-          title: 'Error',
+          title: t('errorTitulo'),
           description: publicado ? t('errorPublishing') : t('errorUnpublishing'),
           variant: 'destructive',
         });
@@ -165,7 +165,7 @@ export function useAjustesSitio(): AjustesSitio {
         toast({ title: t('templateReset'), description: t('templateResetDesc') });
       } catch (error) {
         console.error('Error restableciendo la plantilla:', error);
-        toast({ title: 'Error', description: t('errorResettingTemplate'), variant: 'destructive' });
+        toast({ title: t('errorTitulo'), description: t('errorResettingTemplate'), variant: 'destructive' });
       }
     },
     [organizationId, toast, t]

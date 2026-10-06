@@ -1238,7 +1238,8 @@
         "agotado": "Sold out",
         "disponible": "Available",
         "hastaOpcional": "Until (optional)"
-      }
+      },
+      "errorTitulo": "Error"
     },
     "domains": {
       "title": "Domains",
@@ -30344,7 +30345,13 @@
           "pagina": "Page · {titulo}",
           "whatsapp": "Site WhatsApp",
           "maps": "Directions (location map)",
-          "elegirEnlace": "Choose where it goes"
+          "elegirEnlace": "Choose where it goes",
+          "rutas": {
+            "reservas": "Online bookings",
+            "agendar": "Book an appointment",
+            "consultar-pedido": "Track order",
+            "mi-cuenta": "My account"
+          }
         },
         "barra": {
           "titulo": "Top bar",
@@ -30607,7 +30614,9 @@
         "legacyTitulo": "Saving publishes",
         "legacyDescripcion": "On this site “Save and publish” takes the changes to the web.",
         "vacioTitulo": "Choose a section",
-        "vacioDescripcion": "Click a section in the list or on the canvas to edit its layout, content and style."
+        "vacioDescripcion": "Click a section in the list or on the canvas to edit its layout, content and style.",
+        "quitarChip": "Remove {valor}",
+        "anadirAChip": "Add to {campo}"
       },
       "campo": {
         "elegir": "Choose an option"

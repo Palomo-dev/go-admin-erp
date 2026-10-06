@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import { cn } from '@/utils/Utils';
+import { useTextosEditor } from '../textos';
 
 interface CampoListaProps {
   campo: ContentFieldDef;
@@ -106,6 +107,7 @@ export function etiquetaChip(campo: ContentFieldDef, v: string | number): string
 }
 
 export function CampoChips({ campo, valor, onCambiar, deshabilitado }: CampoListaProps) {
+  const t = useTextosEditor();
   const id = useId();
   const [nuevo, setNuevo] = useState('');
   const chips = chipsDe(campo, valor);
@@ -125,7 +127,7 @@ export function CampoChips({ campo, valor, onCambiar, deshabilitado }: CampoList
             {etiquetaChip(campo, v)}
             <button
               type="button"
-              aria-label={`Quitar ${etiquetaChip(campo, v)}`}
+              aria-label={t('inspector.quitarChip', { valor: etiquetaChip(campo, v) })}
               disabled={deshabilitado || chips.length === 1}
               onClick={() => onCambiar(chips.filter((x) => x !== v))}
               className="flex size-6 items-center justify-center rounded-full hover:bg-brand-tint-hover disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -138,7 +140,7 @@ export function CampoChips({ campo, valor, onCambiar, deshabilitado }: CampoList
       {!lleno && (
         <div className="flex items-center gap-2">
           <label htmlFor={`${id}-nuevo`} className="sr-only">
-            {`Añadir a ${campo.label}`}
+            {t('inspector.anadirAChip', { campo: campo.label })}
           </label>
           <Input
             id={`${id}-nuevo`}
@@ -159,7 +161,7 @@ export function CampoChips({ campo, valor, onCambiar, deshabilitado }: CampoList
             type="button"
             onClick={anadir}
             disabled={deshabilitado || !nuevo.trim()}
-            aria-label={`Añadir a ${campo.label}`}
+            aria-label={t('inspector.anadirAChip', { campo: campo.label })}
             className={cn(
               'flex size-9 items-center justify-center rounded-lg border border-line-strong text-fg hover:bg-hover disabled:opacity-50',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',

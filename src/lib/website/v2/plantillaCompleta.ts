@@ -746,12 +746,18 @@ export function opcionesEncabezadoPlantilla(shell: ShellPlantilla, ruta: (slug: 
   };
 }
 
-/** Opciones del pie de la lámina. «Hecho con…» es una decisión de la organización: se conserva. */
+/**
+ * Opciones del pie de la lámina. «Hecho con…»: sale solo en las láminas que lo traen
+ * (`show_powered_by: true` en su shell); en las demás nace apagado. Si la organización ya lo había
+ * cambiado, su decisión se conserva. El default del contrato (true, lo de hoy) no cambia: los
+ * sitios que no aplican una plantilla siguen igual.
+ */
 export function opcionesPiePlantilla(shell: ShellPlantilla, anteriores: Record<string, unknown>): Record<string, unknown> {
   return {
     footer_show_contact: true,
     footer_show_social: true,
     footer_columns: 3,
+    show_powered_by: false,
     ...shell.pie.opciones,
     ...('show_powered_by' in anteriores ? { show_powered_by: anteriores.show_powered_by } : {}),
   };
@@ -777,9 +783,19 @@ function itemsMenuPie(clave: ClaveMenuPie, c: ContextoMenus): { nombre: string; 
   const legales = (excluir: readonly string[] = []) =>
     c.paginas.filter((p) => esPaginaLegal(p) && !esPlantillaTienda(p) && !excluir.includes(p.slug)).map((p) => itemPagina(p, c.generarId));
   switch (clave) {
-    case 'legal':
+    case 'legal': {
       // Con «Políticas» en el mismo pie, la de la estadía va allá y no se repite.
-      return { nombre: 'Legales', items: legales(c.menusPedidos.includes('politicas') ? ['politica-estadia'] : []) };
+      // «Tratamiento de datos» (Ley 1581 de 2012, Colombia) apunta a la política de privacidad;
+      // el sitio lo pinta en la barra inferior del pie, como en las láminas.
+      const privacidad = c.paginas.find((p) => ['privacidad', 'politica-de-privacidad', 'politica-privacidad'].includes(p.slug));
+      return {
+        nombre: 'Legales',
+        items: [
+          ...legales(c.menusPedidos.includes('politicas') ? ['politica-estadia'] : []),
+          ...(privacidad ? [{ ...itemPagina(privacidad, c.generarId), etiqueta: 'Tratamiento de datos' }] : []),
+        ],
+      };
+    }
     case 'politicas':
       return {
         nombre: 'Políticas',

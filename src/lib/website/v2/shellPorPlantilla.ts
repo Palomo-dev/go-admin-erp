@@ -205,7 +205,7 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
     pie: {
       composicion: 'three_columns',
       menus: ['ayuda', 'envios-devoluciones', 'legal'],
-      opciones: { footer_background: 'tema', footer_show_newsletter: true, footer_show_payment_methods: true, mobile_footer_style: 'accordion' },
+      opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_newsletter: true, footer_show_payment_methods: true, mobile_footer_style: 'accordion' },
     },
   },
   retail_classic: {
@@ -215,7 +215,7 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       boton2: null,
       opciones: conBarra('tienda', { show_topbar: true, topbar_show_free_shipping: true, search_style: 'icon', show_header_cart: true, show_header_auth: true, mobile_menu_style: 'drawer' }),
     },
-    pie: { composicion: 'default', menus: ['ayuda', 'envios', 'legal'], opciones: { footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'accordion' } },
+    pie: { composicion: 'default', menus: ['ayuda', 'envios', 'legal'], opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'accordion' } },
   },
   retail_bold: {
     encabezado: {
@@ -224,7 +224,7 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       boton2: null,
       opciones: conBarra('tienda', { show_topbar: true, search_style: 'icon', show_header_cart: true, show_header_auth: true, mobile_menu_style: 'tabs' }),
     },
-    pie: { composicion: 'minimal', menus: ['ayuda', 'legal'], opciones: { footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'stacked' } },
+    pie: { composicion: 'minimal', menus: ['ayuda', 'legal'], opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'stacked' } },
   },
   retail_elegant: {
     encabezado: {
@@ -233,7 +233,7 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       boton2: null,
       opciones: conBarra('tienda', { logo_position: 'center', search_style: 'icon', show_header_cart: true, show_header_auth: true, mobile_menu_style: 'fullscreen' }),
     },
-    pie: { composicion: 'centered', menus: ['atencion', 'envios', 'legal'], opciones: { footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'accordion' } },
+    pie: { composicion: 'centered', menus: ['atencion', 'envios', 'legal'], opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'accordion' } },
   },
   // ─── Hotel ─────────────────────────────────────────────────────────────────────────────────
   hotel_luxury: {

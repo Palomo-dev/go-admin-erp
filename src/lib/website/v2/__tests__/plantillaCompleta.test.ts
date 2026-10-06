@@ -16,6 +16,7 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 
 import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio } from '@/lib/website/contrato/documentoSitio';
 import { construirCatalogo, contarPorGiro, plantillaPorId, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import type { Giro } from '@/components/sitio-web/paginas/plantillasPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
 import { OPCIONES_SHELL, normalizarOpcionShell } from '@/lib/website/v2/mapeoAjustes';
@@ -189,9 +190,31 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
         else if (i.tipo === 'custom') expect(RUTAS_SITIO_PUBLICO).toContain(i.url);
       }
     }
-    // Ninguna página se repite entre dos menús del pie.
-    const enPie = pie.flatMap((m) => m.items.filter((i) => i.tipo === 'page').map((i) => (i as { paginaId: string }).paginaId));
+    // Ninguna página se repite entre dos menús del pie («Tratamiento de datos» es a propósito un
+    // segundo enlace a la política de privacidad: va en la barra inferior del pie).
+    const enPie = pie.flatMap((m) =>
+      m.items.filter((i) => i.tipo === 'page' && i.etiqueta !== 'Tratamiento de datos').map((i) => (i as { paginaId: string }).paginaId),
+    );
     expect(new Set(enPie).size).toBe(enPie.length);
+  });
+
+  it('pie según la lámina: «Hecho con…» solo si la lámina lo trae; la tienda sin columna Contacto; «Tratamiento de datos» a la privacidad', () => {
+    const shell = shellDePlantilla(plantilla.id, plantilla.giro as Giro);
+    const opciones = documento.shell.footer.opciones;
+    // El borrador de prueba ya lo había apagado: la decisión de la organización se conserva.
+    expect(opciones.show_powered_by).toBe(false);
+    // Sin decisión previa: solo las láminas que lo traen. true es el default del contrato (ausente = true).
+    const sinEleccion = borradorImportado();
+    sinEleccion.shell.footer.opciones = {};
+    const limpio = armar(plantilla, DATOS, sinEleccion).documento.shell.footer.opciones;
+    expect(limpio.show_powered_by ?? true).toBe(shell.pie.opciones.show_powered_by === true);
+    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(false);
+    const legales = documento.menus.find((m) => m.nombre === 'Legales' && documento.shell.footer.menuIds.includes(m.id));
+    if (legales) {
+      const tratamiento = legales.items.find((i) => i.etiqueta === 'Tratamiento de datos');
+      const privacidad = documento.paginas.find((p) => p.slug === 'privacidad');
+      expect(tratamiento && tratamiento.tipo === 'page' ? tratamiento.paginaId : null).toBe(privacidad?.id ?? null);
+    }
   });
 
   it('no copia anuncios de ejemplo de las láminas (no inventa precios ni promociones)', () => {
@@ -300,7 +323,7 @@ describe('restaurante: «Noir Omakase» sobre el sitio importado (caso de la org
     const terminos = documento.paginas.find((p) => p.slug === 'terminos')!;
     expect(terminos.secciones[0].contenido.body).toBe('Texto real de la organización');
     const legales = documento.menus.find((m) => m.nombre === 'Legales')!;
-    expect(legales.items.map((i) => i.etiqueta).sort()).toEqual(['Política de privacidad', 'Términos y condiciones']);
+    expect(legales.items.map((i) => i.etiqueta).sort()).toEqual(['Política de privacidad', 'Tratamiento de datos', 'Términos y condiciones']);
   });
 
   it('aplica el estilo de la plantilla', () => {

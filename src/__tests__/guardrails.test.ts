@@ -3878,3 +3878,34 @@ describe('Paquete E: la UI de Pedidos online no escribe web_orders.payment_statu
     }
   });
 });
+
+describe('43. Teléfono: un solo componente (kit/PhoneInput) en toda la app', () => {
+  // El dueño vio en Dominios › titular un `<Input type="tel">` suelto («+57 313…»
+  // escrito a mano) y en el alta de organización el selector de país con otro
+  // alto que el resto de campos. Todo teléfono pasa por `kit/PhoneInput` (o
+  // `kit/PhoneField`, que lo envuelve). Excepciones:
+  // - `kit/PhoneInput.tsx`: es el propio componente.
+  // - `voice/dock/Keypad.tsx`: marcador del softphone; escribe dígitos y DTMF
+  //   (`*`, `#`), no es un campo de formulario.
+  const PERMITIDOS = new Set(['components/kit/PhoneInput.tsx', 'components/voice/dock/Keypad.tsx']);
+  const archivos = [path.join(SRC_ROOT, 'components'), path.join(SRC_ROOT, 'app')]
+    .flatMap((d) => walkDir(d))
+    .filter((f) => f.endsWith('.tsx') && !isExcluded(f));
+
+  test('ningún formulario declara su propio input type="tel"', () => {
+    const infractores = archivos
+      .filter((f) => !PERMITIDOS.has(rel(f)))
+      .filter((f) => /type=["']tel["']|tipo:\s*'tel'/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('ui/phone-input y kit/acceso/PhoneField solo reexportan el kit', () => {
+    const ui = readFile(path.join(SRC_ROOT, 'components/ui/phone-input.tsx'));
+    const acceso = readFile(path.join(SRC_ROOT, 'components/kit/acceso/PhoneField.tsx'));
+    for (const contenido of [ui, acceso]) {
+      const codigo = stripAllComments(contenido).trim();
+      expect(codigo.split('\n').every((l) => !l.trim() || /^export\s/.test(l.trim()))).toBe(true);
+    }
+  });
+});

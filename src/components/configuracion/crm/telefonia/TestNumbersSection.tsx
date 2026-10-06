@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { FormField } from '@/components/kit/FormField';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import {
   MAX_ETIQUETA_NUMERO_PRUEBA,
@@ -201,14 +202,13 @@ export function TestNumbersSection() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <FormField etiqueta={t('etiquetaNumero')} error={invalido ? t('invalido') : null} obligatorio>
-                <Input
-                  type="tel"
-                  inputMode="tel"
+                <PhoneInput
+                  formato="e164"
                   autoComplete="off"
-                  placeholder="+57 300 000 0000"
                   value={telefono}
                   disabled={guardando}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  onChange={setTelefono}
+                  showValidation={false}
                 />
               </FormField>
               <FormField etiqueta={t('etiquetaNombre')}>

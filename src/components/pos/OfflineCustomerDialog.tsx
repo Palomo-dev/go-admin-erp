@@ -19,6 +19,7 @@ import { WifiOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { FormField, KbdButton, PanelAdaptable } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { POSService } from '@/lib/services/posService';
 import type { Customer } from './types';
@@ -142,7 +143,7 @@ export function OfflineCustomerDialog({ open, onOpenChange, onCreated }: Offline
             <Input id="offline-customer-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
           </FormField>
           <FormField etiqueta={t('telefono')}>
-            <Input id="offline-customer-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="off" />
+            <PhoneInput id="offline-customer-phone" value={phone} onChange={setPhone} autoComplete="off" />
           </FormField>
         </div>
         {error && (

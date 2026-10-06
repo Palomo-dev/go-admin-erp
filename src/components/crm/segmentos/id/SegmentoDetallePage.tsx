@@ -33,8 +33,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { SegmentosService } from '../SegmentosService';
+import { SegmentosService, type ClienteSegmento } from '../SegmentosService';
 import { Segment, FilterRule, FILTER_FIELDS, FILTER_OPERATORS } from '../types';
+import { filtroParaGuardar, normalizarFiltroSegmento, type FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 interface SegmentoDetallePageProps {
@@ -48,7 +49,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
   const { formatDate } = useFormatDate();
   
   const [segment, setSegment] = useState<Segment | null>(null);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<ClienteSegmento[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(searchParams?.get('edit') === 'true');
   const [isSaving, setIsSaving] = useState(false);
@@ -59,6 +60,8 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
   const [description, setDescription] = useState('');
   const [isDynamic, setIsDynamic] = useState(true);
   const [filters, setFilters] = useState<FilterRule[]>([]);
+  // Grupos «O todos estos» del constructor: aquí se edita el primero y los demás se conservan.
+  const [otrosGrupos, setOtrosGrupos] = useState<FilterRule[][]>([]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -81,8 +84,10 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       setName(segmentData.name);
       setDescription(segmentData.description || '');
       setIsDynamic(segmentData.is_dynamic);
-      setFilters(segmentData.filter_json || []);
-    } catch (error) {
+      const filtro = normalizarFiltroSegmento(segmentData.filter_json);
+      setFilters((filtro?.grupos[0] ?? []) as FilterRule[]);
+      setOtrosGrupos((filtro?.grupos.slice(1) ?? []) as FilterRule[][]);
+    } catch {
       toast({ title: 'Error', description: 'No se pudo cargar el segmento', variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -104,7 +109,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       const updated = await SegmentosService.updateSegment(segmentId, {
         name,
         description: description || undefined,
-        filter_json: filters,
+        filter_json: filtroParaGuardar([filters, ...otrosGrupos]) as FilterRule[] | FiltroSegmento,
         is_dynamic: isDynamic,
       });
 
@@ -113,7 +118,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
         setIsEditing(false);
         loadData();
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'No se pudo actualizar', variant: 'destructive' });
     } finally {
       setIsSaving(false);
@@ -126,7 +131,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       const count = await SegmentosService.recalculateSegment(segmentId);
       toast({ title: 'Recálculo completado', description: `${count} clientes en el segmento` });
       loadData();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'No se pudo recalcular', variant: 'destructive' });
     } finally {
       setIsRecalculating(false);
@@ -285,6 +290,11 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
               )}
             </CardHeader>
             <CardContent>
+              {otrosGrupos.length > 0 && (
+                <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                  Se edita el primer grupo. {otrosGrupos.length === 1 ? 'Hay 1 grupo «O todos estos» más' : `Hay ${otrosGrupos.length} grupos «O todos estos» más`}: se conserva al guardar.
+                </p>
+              )}
               {filters.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">Sin reglas definidas</p>
               ) : (
@@ -304,7 +314,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                               {FILTER_FIELDS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                          <Select value={filter.operator} onValueChange={(v) => updateFilter(index, { operator: v as any })}>
+                          <Select value={filter.operator} onValueChange={(v) => updateFilter(index, { operator: v as FilterRule['operator'] })}>
                             <SelectTrigger className="w-32 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
                             <SelectContent className="border-gray-200 dark:border-gray-700">
                               {operators.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}

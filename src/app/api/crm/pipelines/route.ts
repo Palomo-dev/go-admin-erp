@@ -4,11 +4,15 @@ import { readOrgBody } from '@/lib/security/organizationBody';
 import { CRM_PERMISOS, CrmHttpError, exigirPermisoCrm, respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
 import { getPipelineTemplateById } from '@/lib/services/crm/pipelineTemplates';
 import { crearPipeline, datosDePipeline, pipelineAltaSchema } from '@/lib/services/crm/pipelineWriteService';
+import { monedaBaseDe, periodoDesdeQuery, resumenAbiertasPorPipeline } from '@/lib/services/crm/oportunidadesLecturaService';
 
 /**
  * /api/crm/pipelines — CRM ola 1 (plan §4.3, M6).
  *
  * GET  pipelines de la organización con sus etapas (`crm.opportunities.view`).
+ *      Con `?resumen=1` (y `today=YYYY-MM-DD` de la organización) añade
+ *      `resumen` = abiertas por pipeline y moneda + tasas (selector de embudo,
+ *      Figma 1821:189325). Opcional: los demás llamadores no pagan esa lectura.
  * POST «Nuevo pipeline» desde plantilla y/o con etapas propias
  *      (`crm.pipelines.manage`), en una transacción con
  *      `crm_create_pipeline_with_stages`.
@@ -27,7 +31,10 @@ export async function GET(request: NextRequest) {
       .eq('organization_id', ctx.organizationId)
       .order('created_at', { ascending: true });
     if (error) throw error;
-    return NextResponse.json({ success: true, data: data ?? [] });
+    const sp = new URL(request.url).searchParams;
+    if (sp.get('resumen') !== '1') return NextResponse.json({ success: true, data: data ?? [] });
+    const resumen = await resumenAbiertasPorPipeline(ctx, { base: await monedaBaseDe(ctx), hoy: periodoDesdeQuery(sp).hoy });
+    return NextResponse.json({ success: true, data: data ?? [], resumen }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     return respuestaErrorCrm(error, 'GET /api/crm/pipelines');
   }

@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { EmailBlockEditor } from './editor/EmailBlockEditor';
 import { EmailHtmlEditor } from './EmailHtmlEditor';
 import { EmailPreview } from './EmailPreview';
@@ -109,22 +109,24 @@ export function ComposeEmailDialogFull({ open, onOpenChange, opportunityId, cust
           </div>
           {showAttachments && <AttachmentsPanel opportunityId={opportunityId} customerId={cid} value={c.attachments} onChange={c.setAttachments} />}
 
-          <Tabs value={tab} onValueChange={changeTab}>
-            <TabsList aria-label="Modo de edición">
-              <TabsTrigger value="blocks" className="gap-1"><Blocks className="h-3.5 w-3.5" aria-hidden="true" /> Bloques</TabsTrigger>
-              <TabsTrigger value="html" className="gap-1"><Code2 className="h-3.5 w-3.5" aria-hidden="true" /> HTML</TabsTrigger>
-              <TabsTrigger value="preview" className="gap-1"><Eye className="h-3.5 w-3.5" aria-hidden="true" /> Vista previa</TabsTrigger>
-            </TabsList>
-            <TabsContent value="blocks" className="mt-2">
-              <EmailBlockEditor value={c.doc} onChange={c.setDoc} context={c.context} heightClassName="h-[48vh]" />
-            </TabsContent>
-            <TabsContent value="html" className="mt-2">
-              <EmailHtmlEditor value={c.html} onChange={c.setHtml} context={c.context} minHeight={320} />
-            </TabsContent>
-            <TabsContent value="preview" className="mt-2">
-              <EmailPreview data={c.preview} loading={c.previewLoading} error={c.previewError} heightClassName="h-[44vh]" />
-            </TabsContent>
-          </Tabs>
+          {/* Bloques / HTML / Vista previa: vistas del mismo correo → control segmentado (regla de pestañas 2026-10-06). */}
+          <div>
+            <SegmentedControl
+              etiqueta="Modo de edición"
+              valor={tab}
+              onValorChange={changeTab}
+              opciones={[
+                { valor: 'blocks', etiqueta: 'Bloques', icono: Blocks },
+                { valor: 'html', etiqueta: 'HTML', icono: Code2 },
+                { valor: 'preview', etiqueta: 'Vista previa', icono: Eye },
+              ]}
+            />
+            <div className="mt-2">
+              {tab === 'blocks' && <EmailBlockEditor value={c.doc} onChange={c.setDoc} context={c.context} heightClassName="h-[48vh]" />}
+              {tab === 'html' && <EmailHtmlEditor value={c.html} onChange={c.setHtml} context={c.context} minHeight={320} />}
+              {tab === 'preview' && <EmailPreview data={c.preview} loading={c.previewLoading} error={c.previewError} heightClassName="h-[44vh]" />}
+            </div>
+          </div>
         </div>
 
         <DialogFooter>

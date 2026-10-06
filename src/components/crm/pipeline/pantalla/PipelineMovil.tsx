@@ -42,11 +42,12 @@ export function PipelineMovil(p: PipelineMovilProps) {
   const total = totalDeEtapa(p.resumen, etapa.id, p.hoy);
   return (
     <div className="flex flex-col gap-3">
-      <div role="tablist" aria-label={t('etapasAria')} className="-mx-4 flex gap-2 overflow-x-auto px-4">
+      {/* Chips de etapa: eligen qué columna se ve (un FILTRO de la misma vista), no son pestañas → radiogroup. */}
+      <div role="radiogroup" aria-label={t('etapasAria')} className="-mx-4 flex gap-2 overflow-x-auto px-4">
         {p.etapas.map((e) => {
           const activa = e.id === etapa.id;
           return (
-            <button key={e.id} type="button" role="tab" aria-selected={activa} onClick={() => setElegida(e.id)} className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px]', activa ? 'border-brand bg-brand-tint font-medium text-brand-deep' : 'border-line-strong text-fg')}>
+            <button key={e.id} type="button" role="radio" aria-checked={activa} onClick={() => setElegida(e.id)} className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px]', activa ? 'border-brand bg-brand-tint font-medium text-brand-deep' : 'border-line-strong text-fg')}>
               {activa && <Check aria-hidden="true" className="size-3.5" />}
               {t('chipEtapa', { etapa: e.name, n: p.tablero[e.id]?.total ?? totalDeEtapa(p.resumen, e.id, p.hoy).cantidad })}
             </button>

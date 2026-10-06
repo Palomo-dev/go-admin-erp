@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
-import type { ChannelIdentity, DuplicateGroup, IdentityFilters, MergeResult } from './types';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import type { ChannelIdentity, IdentityFilters } from './types';
 
 class IdentidadesService {
   private organizationId: number;
@@ -117,93 +118,6 @@ class IdentidadesService {
     return identities;
   }
 
-  async getDuplicates(): Promise<DuplicateGroup[]> {
-    // Obtener todos los customers con email o phone
-    const { data: customers, error } = await supabase
-      .from('customers')
-      .select('id, full_name, email, phone, created_at')
-      .eq('organization_id', this.organizationId);
-
-    if (error || !customers) {
-      console.error('Error fetching customers for duplicates:', error);
-      return [];
-    }
-
-    // Buscar duplicados por email
-    const emailGroups: Record<string, DuplicateGroup> = {};
-    const phoneGroups: Record<string, DuplicateGroup> = {};
-
-    for (const customer of customers) {
-      // Agrupar por email (excluyendo widget.local)
-      if (customer.email && !customer.email.includes('@widget.local')) {
-        const emailKey = customer.email.toLowerCase();
-        if (!emailGroups[emailKey]) {
-          emailGroups[emailKey] = {
-            identity_type: 'email',
-            identity_value: customer.email,
-            customers: []
-          };
-        }
-        emailGroups[emailKey].customers.push({
-          id: customer.id,
-          full_name: customer.full_name,
-          email: customer.email,
-          phone: customer.phone,
-          conversations_count: 0,
-          opportunities_count: 0,
-          last_activity: null
-        });
-      }
-
-      // Agrupar por teléfono
-      if (customer.phone) {
-        const phoneKey = customer.phone.replace(/\D/g, '');
-        if (!phoneGroups[phoneKey]) {
-          phoneGroups[phoneKey] = {
-            identity_type: 'phone',
-            identity_value: customer.phone,
-            customers: []
-          };
-        }
-        phoneGroups[phoneKey].customers.push({
-          id: customer.id,
-          full_name: customer.full_name,
-          email: customer.email,
-          phone: customer.phone,
-          conversations_count: 0,
-          opportunities_count: 0,
-          last_activity: null
-        });
-      }
-    }
-
-    // Filtrar solo duplicados (más de 1 cliente)
-    const duplicates: DuplicateGroup[] = [
-      ...Object.values(emailGroups).filter(g => g.customers.length > 1),
-      ...Object.values(phoneGroups).filter(g => g.customers.length > 1)
-    ];
-
-    // Obtener conteos para duplicados
-    for (const group of duplicates) {
-      for (const customer of group.customers) {
-        const [convResult, oppResult] = await Promise.all([
-          supabase
-            .from('conversations')
-            .select('id', { count: 'exact' })
-            .eq('customer_id', customer.id),
-          supabase
-            .from('opportunities')
-            .select('id', { count: 'exact' })
-            .eq('customer_id', customer.id)
-        ]);
-        customer.conversations_count = convResult.count || 0;
-        customer.opportunities_count = oppResult.count || 0;
-      }
-    }
-
-    return duplicates;
-  }
-
   async updateIdentity(
     id: string, 
     updates: Partial<Pick<ChannelIdentity, 'identity_value' | 'verified'>>
@@ -239,72 +153,6 @@ class IdentidadesService {
     }
 
     return true;
-  }
-
-  async mergeCustomers(
-    primaryCustomerId: string, 
-    secondaryCustomerIds: string[]
-  ): Promise<MergeResult> {
-    try {
-      // Actualizar conversaciones
-      for (const secondaryId of secondaryCustomerIds) {
-        await supabase
-          .from('conversations')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Actualizar oportunidades
-        await supabase
-          .from('opportunities')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Actualizar campaign_contacts
-        await supabase
-          .from('campaign_contacts')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId);
-
-        // Actualizar activities (la tabla NO tiene customer_id; usa related_type + related_id)
-        await supabase
-          .from('activities')
-          .update({ related_id: primaryCustomerId })
-          .eq('related_type', 'customer')
-          .eq('related_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Actualizar identidades
-        await supabase
-          .from('customer_channel_identities')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Marcar cliente secundario como inactivo
-        await supabase
-          .from('customers')
-          .update({ 
-            is_active: false,
-            metadata: { merged_into: primaryCustomerId, merged_at: new Date().toISOString() }
-          })
-          .eq('id', secondaryId)
-          .eq('organization_id', this.organizationId);
-      }
-
-      return {
-        success: true,
-        message: `${secondaryCustomerIds.length} cliente(s) fusionado(s) correctamente`,
-        mergedCustomerId: primaryCustomerId
-      };
-    } catch (error) {
-      console.error('Error merging customers:', error);
-      return {
-        success: false,
-        message: 'Error al fusionar clientes'
-      };
-    }
   }
 
   async getChannels() {
@@ -374,7 +222,8 @@ class IdentidadesService {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `identidades_${new Date().toISOString().split('T')[0]}.csv`;
+    // Día del nombre del archivo: la fecha de hoy sin pasar por UTC.
+    link.download = `identidades_${todayInTz()}.csv`;
     link.click();
   }
 }

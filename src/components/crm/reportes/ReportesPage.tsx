@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileDown, RefreshCw, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
 import { useOrganization, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { cn } from '@/utils/Utils';
@@ -24,11 +24,12 @@ import type {
 } from './types';
 
 export function ReportesPage() {
-  const { organization } = useOrganization();
+  // Suscribe la página al cambio de organización (la carga lee `getOrganizationId()`).
+  useOrganization();
   const { branchFilter } = useBranch();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('atencion');
+  const [activeTab, setActiveTab] = useState<'atencion' | 'ventas' | 'marketing'>('atencion');
   
   const [filters, setFilters] = useState<ReportFilters>({
     dateFrom: null,
@@ -198,35 +199,37 @@ export function ReportesPage() {
       {/* Stats generales */}
       <ReportesStats stats={conversationStats} loading={loading} />
 
-      {/* Tabs de reportes */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-gray-100 dark:bg-gray-800">
-          <TabsTrigger value="atencion">Atención</TabsTrigger>
-          <TabsTrigger value="ventas">Ventas</TabsTrigger>
-          <TabsTrigger value="marketing">Marketing</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="atencion" className="space-y-4">
-          {/* Gráficos principales */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ConversationPieChart stats={conversationStats} loading={loading} />
-            <ChannelBarChart metrics={channelMetrics} loading={loading} />
-          </div>
-          {/* Detalle por canal */}
-          <ReportesCanales metrics={channelMetrics} loading={loading} />
-        </TabsContent>
-
-        <TabsContent value="ventas" className="space-y-4">
-          {/* Gráfico de embudo */}
-          <PipelineFunnelChart metrics={pipelineMetrics} loading={loading} />
-          {/* Detalle de etapas */}
-          <ReportesEmbudo metrics={pipelineMetrics} loading={loading} />
-        </TabsContent>
-
-        <TabsContent value="marketing" className="space-y-4">
-          <ReportesCampanas metrics={campaignMetrics} loading={loading} />
-        </TabsContent>
-      </Tabs>
+      {/* Secciones de reportes: `TabBar` sm (vive dentro de una pestaña de Inicio; regla de pestañas 2026-10-06). */}
+      <TabBar
+        id="crm-reportes"
+        etiqueta="Secciones de reportes"
+        tamano="sm"
+        valor={activeTab}
+        onValorChange={setActiveTab}
+        pestanas={[
+          { valor: 'atencion', etiqueta: 'Atención' },
+          { valor: 'ventas', etiqueta: 'Ventas' },
+          { valor: 'marketing', etiqueta: 'Marketing' },
+        ]}
+      />
+      <div role="tabpanel" id={idPanel('crm-reportes', activeTab)} aria-labelledby={idPestana('crm-reportes', activeTab)} className="space-y-4">
+        {activeTab === 'atencion' && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ConversationPieChart stats={conversationStats} loading={loading} />
+              <ChannelBarChart metrics={channelMetrics} loading={loading} />
+            </div>
+            <ReportesCanales metrics={channelMetrics} loading={loading} />
+          </>
+        )}
+        {activeTab === 'ventas' && (
+          <>
+            <PipelineFunnelChart metrics={pipelineMetrics} loading={loading} />
+            <ReportesEmbudo metrics={pipelineMetrics} loading={loading} />
+          </>
+        )}
+        {activeTab === 'marketing' && <ReportesCampanas metrics={campaignMetrics} loading={loading} />}
+      </div>
     </div>
   );
 }

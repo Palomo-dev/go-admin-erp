@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import {
   Select,
   SelectContent,
@@ -294,16 +294,21 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
           </div>
 
           {/* Cliente: existente o nuevo */}
-          <Tabs value={customerMode} onValueChange={(v) => setCustomerMode(v as CustomerMode)}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="existing">Cliente existente</TabsTrigger>
-              <TabsTrigger value="new">
-                <UserPlus className="h-3.5 w-3.5 mr-1" />
-                Cliente nuevo
-              </TabsTrigger>
-            </TabsList>
+          {/* Existente / nuevo alterna el contenido del mismo campo → control segmentado (regla de pestañas 2026-10-06). */}
+          <div>
+            <SegmentedControl
+              etiqueta="Cliente"
+              anchoCompleto
+              valor={customerMode}
+              onValorChange={setCustomerMode}
+              opciones={[
+                { valor: 'existing', etiqueta: 'Cliente existente' },
+                { valor: 'new', etiqueta: 'Cliente nuevo', icono: UserPlus },
+              ]}
+            />
 
-            <TabsContent value="existing" className="pt-3">
+            {customerMode === 'existing' ? (
+            <div className="pt-3">
               <CustomerSearchSelect
                 customers={customerResults}
                 selectedCustomerId={customerId}
@@ -314,9 +319,9 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
                 allowEmpty={false}
                 label="Cliente *"
               />
-            </TabsContent>
-
-            <TabsContent value="new" className="pt-3 space-y-3">
+            </div>
+            ) : (
+            <div className="pt-3 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="lead-customer-first" className="text-gray-700 dark:text-gray-300">
@@ -383,8 +388,9 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
                   className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                 />
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+            )}
+          </div>
 
           {/* Origen */}
           <div className="space-y-2">

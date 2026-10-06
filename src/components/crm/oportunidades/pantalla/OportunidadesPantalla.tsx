@@ -8,7 +8,7 @@ import { Download, Plus, Target, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/kit/PageHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { SearchInput } from '@/components/kit/SearchInput';
-import { TabBar } from '@/components/kit/TabBar';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
 import { useOpcionUrl } from '@/components/kit/useParametroUrl';
@@ -27,13 +27,13 @@ import { alternarSeleccion, csvOportunidades, estadoPantalla, permisosPantalla, 
 
 /**
  * Oportunidades (CRM ola 3B, plan §4.4; Figma 773:23160 y sus estados 773:*,
- * móvil 775:* y 845:82719): pestañas por estado con conteo, 4 KPI en moneda
+ * móvil 775:* y 845:82719): filtro de estado con conteo (control segmentado), 4 KPI en moneda
  * base, búsqueda por nombre o cliente, filtros, orden y paginación en el
  * servidor, selección masiva y menú «⋯». Las 42 oportunidades 'lead'
  * heredadas llevan la etiqueta «Lead» (D2). Toda escritura, por `/api/crm/**`.
  */
 const ORDENES: OrdenOportunidades[] = ['cierre', 'creada', 'monto', 'proximo', 'nombre'];
-/** Pestañas de estado. La elegida va en `?estado=` (la misma clave de los listados del kit); sin ella, «Abiertas». */
+/** Filtro de estado. El elegido va en `?estado=` (la misma clave de los listados del kit); sin ella, «Abiertas». */
 const ESTADOS: readonly PestanaEstado[] = ['open', 'won', 'lost', 'all'];
 
 export function OportunidadesPantalla() {
@@ -123,12 +123,15 @@ export function OportunidadesPantalla() {
         </div>
       ) : (
         <>
-          <TabBar
+          {/* Regla de pestañas (2026-10-06): el estado FILTRA la misma lista, no es otra sección → control segmentado (sigue en `?estado=`). */}
+          <SegmentedControl
             id="oportunidades-estado"
             etiqueta={t('pestanas.aria')}
             valor={estado}
             onValorChange={setEstado}
-            pestanas={ESTADOS.map((v) => ({ valor: v, etiqueta: t(`pestanas.${v}`), contador: c ? (v === 'all' ? c.total : c[v]) : undefined }))}
+            anchoCompleto={!escritorio}
+            className="self-start max-sm:self-stretch"
+            opciones={ESTADOS.map((v) => ({ valor: v, etiqueta: t(`pestanas.${v}`), contador: c ? (v === 'all' ? c.total : c[v]) : undefined }))}
           />
           <KpisOportunidades resumen={d.resumen} hoy={hoy} cargando={!d.resumen && !d.errorResumen} error={d.errorResumen ? t('errorKpi') : null} onReintentar={d.recargar} />
           <div className="flex flex-wrap items-center gap-2">

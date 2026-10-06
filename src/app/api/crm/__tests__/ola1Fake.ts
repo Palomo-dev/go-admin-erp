@@ -12,7 +12,7 @@
 export type Row = Record<string, unknown>;
 
 interface Filtro {
-  k: 'eq' | 'in' | 'is' | 'not_is' | 'ilike' | 'gte' | 'lt' | 'lte' | 'or';
+  k: 'eq' | 'in' | 'is' | 'not_is' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte' | 'or';
   col: string;
   v: unknown;
 }
@@ -100,6 +100,8 @@ function cumple(row: Row, f: Filtro): boolean {
       return f.v === null ? v === null || v === undefined : v === f.v;
     case 'not_is':
       return f.v === null ? v !== null && v !== undefined : v !== f.v;
+    case 'gt':
+      return String(v) > String(f.v);
     case 'gte':
       return String(v) >= String(f.v);
     case 'lt':
@@ -170,6 +172,7 @@ export function fakeSupabase(db: Ola1Db) {
         return c;
       },
       ilike: (col: string, v: unknown) => (filtros.push({ k: 'ilike', col, v }), c),
+      gt: (col: string, v: unknown) => (filtros.push({ k: 'gt', col, v }), c),
       gte: (col: string, v: unknown) => (filtros.push({ k: 'gte', col, v }), c),
       lt: (col: string, v: unknown) => (filtros.push({ k: 'lt', col, v }), c),
       lte: (col: string, v: unknown) => (filtros.push({ k: 'lte', col, v }), c),

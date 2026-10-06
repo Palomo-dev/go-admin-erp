@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -304,16 +304,16 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
           Pronóstico acumulado
         </h3>
         
-        <Tabs 
-          value={selectedView} 
-          onValueChange={(value: string) => setSelectedView(value as 'monthly' | 'quarterly')}
-          className="w-auto"
-        >
-          <TabsList className="bg-gray-100 dark:bg-gray-800">
-            <TabsTrigger value="monthly">Mensual</TabsTrigger>
-            <TabsTrigger value="quarterly">Trimestral</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <SegmentedControl
+          etiqueta="Periodo del pronóstico"
+          tamano="sm"
+          valor={selectedView}
+          onValorChange={setSelectedView}
+          opciones={[
+            { valor: 'monthly', etiqueta: 'Mensual' },
+            { valor: 'quarterly', etiqueta: 'Trimestral' },
+          ]}
+        />
       </div>
 
       <div className="h-72 w-full">

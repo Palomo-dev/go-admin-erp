@@ -4,7 +4,12 @@
  * Pestaña «Voces» de /app/crm/agentes-ia — rediseño UX 2026-09-14 (brief 6.1,
  * referencia ElevenLabs «Voces › Explorar»).
  *
- * Tres vistas, una acción principal cada una:
+ * Regla de pestañas (2026-10-06): «Voces» es una SECCIÓN de la página (su
+ * `TabBar`); aquí dentro Biblioteca / Mis voces es la VISTA y va en un
+ * `SegmentedControl` con `?vista=` (Figma 1668:165932). «Clonar una voz» es
+ * una acción (botón), no una vista: abre el asistente en el mismo lugar.
+ *
+ * Una acción principal por vista:
  *  - Biblioteca: la biblioteca pública de ElevenLabs en tarjetas con avatar,
  *    etiquetas, «Escuchar» y «Añadir a mis voces» (`voces/VoiceLibraryGrid`).
  *  - Mis voces: las guardadas y clonadas; predeterminada en un clic, asignar a
@@ -22,19 +27,27 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Library, Mic, UserRound } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { AlertTriangle, ArrowLeft, Mic } from "lucide-react";
+import { SegmentedControl } from "@/components/kit/SegmentedControl";
+import { clasesBoton } from "@/components/kit/botonClases";
+import { useOpcionUrl } from "@/components/kit/useParametroUrl";
 import { PROVIDERS_SETTINGS_HREF, useVoiceCatalog } from "./useVoiceCatalog";
 import { VoiceLibraryGrid } from "./voces/VoiceLibraryGrid";
 import { MyVoicesPanel } from "./voces/MyVoicesPanel";
 import { CloneVoiceWizard } from "./voces/CloneVoiceWizard";
 
-type View = "biblioteca" | "mias" | "clonar";
+const VISTAS = ["biblioteca", "mias"] as const;
 
 export function VoicesPanel() {
+  const t = useTranslations("crm.agentesIa.voces");
   const catalog = useVoiceCatalog();
-  const [view, setView] = useState<View>("biblioteca");
+  const [view, setViewUrl] = useOpcionUrl("vista", VISTAS, "biblioteca");
+  const [clonando, setClonando] = useState(false);
+  const setView = (v: (typeof VISTAS)[number]) => {
+    setClonando(false);
+    setViewUrl(v);
+  };
   const { voices, tts, account, reload } = catalog;
 
   const ownedVoiceIds = useMemo(
@@ -73,52 +86,43 @@ export function VoicesPanel() {
         </div>
       )}
 
-      <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-        {/* UX móvil: tres columnas iguales, icono sobre etiqueta a 375 px (antes `inline-flex` medía 417 px y desbordaba). */}
-        <TabsList aria-label="Vistas de voces" className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto">
-          <TabsTrigger value="biblioteca" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
-            <Library className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="max-w-full truncate">Biblioteca</span>
-          </TabsTrigger>
-          {/* R10: el lector anuncia «Mis voces, 5 voces», no «Mis voces5». */}
-          <TabsTrigger
-            value="mias"
-            className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm"
-            aria-label={voices.length > 0 ? `Mis voces, ${voices.length}` : undefined}
-          >
-            <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="flex min-w-0 max-w-full items-center gap-1">
-              <span className="truncate">Mis voces</span>
-              {voices.length > 0 && (
-                <Badge variant="secondary" className="h-4 shrink-0 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs" aria-hidden="true">
-                  {voices.length}
-                </Badge>
-              )}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="clonar" className="min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm">
-            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="max-w-full truncate">Clonar mi voz</span>
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-wrap items-center gap-2">
+        <SegmentedControl
+          etiqueta={t("vistasAria")}
+          valor={view}
+          onValorChange={setView}
+          opciones={[
+            { valor: "biblioteca", etiqueta: t("biblioteca") },
+            { valor: "mias", etiqueta: t("mias"), contador: voices.length > 0 ? voices.length : undefined },
+          ]}
+        />
+        <span className="flex-1" />
+        {!clonando && (
+          <button type="button" className={clasesBoton({ tamano: "sm" })} onClick={() => setClonando(true)}>
+            <Mic aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t("clonar")}
+          </button>
+        )}
+      </div>
 
-        <TabsContent value="biblioteca" className="pt-4">
-          <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload()} account={account} />
-        </TabsContent>
-
-        <TabsContent value="mias" className="pt-4">
-          <MyVoicesPanel catalog={catalog} onGoToLibrary={() => setView("biblioteca")} onGoToClone={() => setView("clonar")} />
-        </TabsContent>
-
-        <TabsContent value="clonar" className="pt-4">
+      {clonando ? (
+        <div className="space-y-3">
+          <button type="button" className={clasesBoton({ variante: "fantasma", tamano: "sm" })} onClick={() => setClonando(false)}>
+            <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t("volver")}
+          </button>
           <CloneVoiceWizard
             account={account}
             onCreated={() => {
               void reload();
             }}
           />
-        </TabsContent>
-      </Tabs>
+        </div>
+      ) : view === "biblioteca" ? (
+        <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload()} account={account} />
+      ) : (
+        <MyVoicesPanel catalog={catalog} onGoToLibrary={() => setView("biblioteca")} onGoToClone={() => setClonando(true)} />
+      )}
     </div>
   );
 }

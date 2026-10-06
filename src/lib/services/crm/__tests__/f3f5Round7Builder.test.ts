@@ -239,7 +239,10 @@ describe('VOZR7B-U · unverified_announcement', () => {
 
   it('U.2 · la UI marca la grabación no acreditada: `consent_method` viaja en la lista y en el timeline, y CallPlayer/CallRow/CallEntry lo enseñan con icono + texto', () => {
     const list = src('src/lib/services/crm/callManagementService.ts');
-    expect(list).toContain('call_consents(consent_type, method)');
+    // Desde 2026-10-06 la lista sale de la RPC `crm_calls_list`, que devuelve
+    // `consent_method` del acta de GRABACIÓN (verificado por MCP); el servicio
+    // lo mapea en `filaDeListadoLlamadas` (conducta en f3f5Round8Builder B.3).
+    expect(list).toContain("rpc('crm_calls_list'");
     expect(list).toContain('consent_method:');
     const tl = src('src/lib/services/crm/timeline/sources.ts');
     expect(tl).toContain('call_consents(consent_type, method)');
@@ -256,9 +259,12 @@ describe('VOZR7B-U · unverified_announcement', () => {
     const player = src('src/components/voice/CallPlayer.tsx');
     expect(player).toContain('UnverifiedConsentBadge');
     expect(player).toMatch(/consents/); // relee la acta del detalle
-    for (const f of ['src/components/voice/CallRow.tsx', 'src/components/voice/CallRowDetail.tsx', 'src/components/crm/timeline/entries/CallEntry.tsx']) {
+    for (const f of ['src/components/voice/CallRowDetail.tsx', 'src/components/crm/timeline/entries/CallEntry.tsx']) {
       expect(src(f)).toContain('consentMethod={call.consent_method}');
     }
+    // La fila del listado (kit) ya no incrusta el reproductor: «Oír» abre el
+    // detalle (con CallPlayer) y la fila marca el aviso con el mismo distintivo.
+    expect(src('src/components/voice/CallRow.tsx')).toContain('<UnverifiedConsentBadge method={call.consent_method} />');
     for (const f of ['src/components/voice/ConsentBadge.tsx', 'src/components/voice/CallPlayer.tsx', 'src/components/voice/CallRow.tsx', 'src/components/voice/CallRowDetail.tsx']) {
       expect(src(f).split(/\r?\n/).length).toBeLessThanOrEqual(300);
     }

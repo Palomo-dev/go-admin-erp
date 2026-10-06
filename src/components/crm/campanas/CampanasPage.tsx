@@ -1,149 +1,275 @@
 'use client';
 
-/** /app/crm/campanas (FASE-16 §5.1): lista con estado efectivo, progreso, métricas en vivo (realtime `campaigns`) y acciones. */
-import { useCallback, useEffect, useState } from 'react';
+/**
+ * /app/crm/campanas — listado UNIFICADO de campañas de mensajes (WhatsApp,
+ * correo) y de voz (Figma CRM 1395:17 listo, 1404:829863 vacío, 1404:830283
+ * cargando, 1404:830739 error).
+ *
+ * Una sola petición (`GET /api/crm/campaigns/unified` → RPC
+ * `crm_campaigns_unificadas`) trae filas, total por canal y `canManage`. Las de
+ * voz abren su detalle en marcha (`/app/crm/campanas/voz/[id]`), donde están
+ * pausa, reanudación y parada de emergencia; las de mensajes conservan aquí
+ * sus acciones de siempre (`CampanasService`).
+ */
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Copy, Eye, Mail, Megaphone, MessageCircle, MoreVertical, Pause, Play, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useToast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
+import { useTranslations } from 'next-intl';
+import { Bot, Copy, Eye, Mail, MessageSquare, Pause, Play, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { SearchInput } from '@/components/kit/SearchInput';
+import { DataTable, type ColumnaTabla, type EstadoTabla } from '@/components/kit/DataTable';
+import { Pagination } from '@/components/kit/Pagination';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { BarraProgreso } from '@/components/kit/BarraProgreso';
+import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
+import { clasesBoton } from '@/components/kit/botonClases';
+import type { AccionFila } from '@/components/kit/acciones';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { pedirCrm, ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
+import { CANALES_CAMPANA, TAMANO_PAGINA_CAMPANAS, type CampanaUnificada, type CanalCampana } from '@/lib/services/crm/campaignsUnificadasLogica';
 import { CampanasService } from './CampanasService';
-import { CAMPAIGN_STATUS_CONFIG, type Campaign } from './types';
+import { accionesCampanaMensajes, estadoFilaCampana, parametrosCampanas, rutaCampana, type AccionCampana } from './campanasListaLogica';
 
-function progressOf(c: Campaign): { done: number; total: number; pct: number } {
-  const counts = c.statistics.counts;
-  const total = c.statistics.total_contacts ?? counts?.total ?? 0;
-  const done = counts ? counts.sent + counts.failed + counts.skipped : c.statistics.sent_count ?? 0;
-  return { done, total, pct: total ? Math.min(100, Math.round((done / total) * 100)) : 0 };
+interface Respuesta {
+  rows: CampanaUnificada[];
+  total: number;
+  porCanal: Record<CanalCampana, number>;
+  canManage: boolean;
 }
 
+const ICONO_CANAL = { voice: Bot, whatsapp: MessageSquare, email: Mail } as const;
+
 export function CampanasPage() {
+  const t = useTranslations('crm.campanasLista');
   const router = useRouter();
-  const { formatDate } = useFormatDate();
-  const { toast } = useToast();
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deleteTarget, setDeleteTarget] = useState<Campaign | null>(null);
-  // Lanzar/pausar/reanudar/cancelar exigen admin de organización: sin ese rol
-  // las acciones no se ofrecen (antes se ofrecían y devolvían 403 en un toast
-  // genérico — tester r1 · fallo 8).
-  const [canManage, setCanManage] = useState(false);
+  const entero = useFormatoEntero();
+  const [canal, setCanal] = useState<CanalCampana>('all');
+  const [q, setQ] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const [revision, setRevision] = useState(0);
+  const [datos, setDatos] = useState<Respuesta | null>(null);
+  const [estado, setEstado] = useState<EstadoTabla>('cargando');
+  const [borrar, setBorrar] = useState<CampanaUnificada | null>(null);
+  const [ocupado, setOcupado] = useState(false);
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setIsLoading(true);
-    try { const r = await CampanasService.getCampaignsWithPermissions(); setCampaigns(r.data); setCanManage(r.can_manage === true); } catch (e) { toast({ title: 'Error', description: e instanceof Error ? e.message : 'No se pudieron cargar las campañas', variant: 'destructive' }); } finally { setIsLoading(false); }
-  }, [toast]);
-
-  useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    // `campaigns` no está en la publicación `supabase_realtime`: abrir un canal
-    // consume conexiones del pool de Realtime sin recibir eventos. Si se
-    // publica en el futuro, basta con agregarla a REALTIME_PUBLISHED_TABLES.
-    if (!isRealtimePublished('campaigns')) return;
-    const ch = supabase.channel('campaigns-list').on('postgres_changes', { event: '*', schema: 'public', table: 'campaigns', filter: `organization_id=eq.${getOrganizationId()}` }, () => void load(true)).subscribe();
-    return () => { void supabase.removeChannel(ch); };
-  }, [load]);
+    const ctrl = new AbortController();
+    setEstado('cargando');
+    pedirCrm<Respuesta>(`/api/crm/campaigns/unified?${parametrosCampanas({ channel: canal, q, page: pagina })}`, { signal: ctrl.signal })
+      .then(({ data }) => {
+        if (ctrl.signal.aborted) return;
+        setDatos(data);
+        setEstado(data.rows.length ? 'listo' : q.trim() || canal !== 'all' ? 'sinResultados' : 'vacio');
+      })
+      .catch((e: unknown) => {
+        if (!ctrl.signal.aborted) setEstado(e instanceof ErrorApiCrm && (e.status === 401 || e.status === 403) ? 'sinPermiso' : 'error');
+      });
+    return () => ctrl.abort();
+  }, [canal, q, pagina, revision]);
 
-  const act = async (fn: () => Promise<unknown>, ok: string) => {
-    try { await fn(); toast({ title: ok }); await load(true); } catch (e) { toast({ title: 'No se pudo completar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' }); }
+  const recargar = () => setRevision((n) => n + 1);
+
+  const ejecutar = async (c: CampanaUnificada, accion: AccionCampana) => {
+    if (accion === 'eliminar') return setBorrar(c);
+    setOcupado(true);
+    try {
+      if (accion === 'pausar') await CampanasService.pause(c.id);
+      else if (accion === 'reanudar') await CampanasService.resume(c.id);
+      else if (accion === 'cancelar') await CampanasService.cancel(c.id);
+      else if (accion === 'duplicar') await CampanasService.duplicateCampaign(c.id);
+      toast({ title: t(`ok.${accion}`) });
+      recargar();
+    } catch (e) {
+      toast({ title: t('errores.accion'), description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+    } finally {
+      setOcupado(false);
+    }
   };
 
-  const stats = { total: campaigns.length, sending: campaigns.filter((c) => c.effective_status === 'sending').length, scheduled: campaigns.filter((c) => c.effective_status === 'scheduled').length, sent: campaigns.filter((c) => c.effective_status === 'sent').length, draft: campaigns.filter((c) => c.effective_status === 'draft').length };
+  const ICONO_ACCION = { pausar: Pause, reanudar: Play, cancelar: XCircle, duplicar: Copy, eliminar: Trash2 } as const;
+  const acciones = (c: CampanaUnificada): AccionFila[] => [
+    { id: 'ver', etiqueta: t('acciones.ver'), icono: Eye, onSelect: () => router.push(rutaCampana(c)) },
+    ...(c.source === 'message'
+      ? accionesCampanaMensajes(c.status, datos?.canManage === true).map((a) => ({
+          id: a,
+          etiqueta: t(`acciones.${a}`),
+          icono: ICONO_ACCION[a],
+          destructiva: a === 'eliminar',
+          deshabilitada: ocupado,
+          onSelect: () => void ejecutar(c, a),
+        }))
+      : []),
+  ];
+
+  const resultado = (c: CampanaUnificada) => {
+    if (c.progress.total === 0) return <span className="text-fg-muted">—</span>;
+    const r = c.result;
+    return c.source === 'voice' ? (
+      <span className="text-[13px] text-fg-secondary">
+        {t('resultado.voz', { completadas: entero(r.completed ?? 0), fallidas: entero(r.failed ?? 0) })}
+        {(r.active ?? 0) > 0 && <span className="block text-success-text">{t('resultado.enCurso', { n: entero(r.active) })}</span>}
+      </span>
+    ) : (
+      <span className="text-[13px] text-fg-secondary">{t('resultado.mensajes', { entregados: entero(r.delivered ?? 0), leidos: entero(r.read ?? 0), respondieron: entero(r.replied ?? 0) })}</span>
+    );
+  };
+
+  const nombre = (c: CampanaUnificada) => (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-medium text-fg">{c.name}</p>
+      {c.contentName && <p className="truncate text-xs text-fg-secondary">{t(c.source === 'voice' ? 'contenido.agente' : 'contenido.plantilla', { nombre: c.contentName })}</p>}
+    </div>
+  );
+  const canalCelda = (c: CampanaUnificada) => {
+    const Icono = ICONO_CANAL[c.channel as keyof typeof ICONO_CANAL] ?? Send;
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[13px] text-fg">
+        <Icono aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
+        {t(`canales.${c.channel in ICONO_CANAL ? c.channel : 'otro'}`)}
+      </span>
+    );
+  };
+  const estadoCelda = (c: CampanaUnificada) => {
+    const e = estadoFilaCampana(c);
+    return <StatusBadge estado={e.clave} etiqueta={t(`estados.${e.clave}`)} tono={e.tono} />;
+  };
+  const progreso = (c: CampanaUnificada) =>
+    c.progress.total > 0 ? (
+      <BarraProgreso valor={c.progress.pct} etiqueta={t('columnas.progreso')} textoValor={t('progreso', { hechos: entero(c.progress.done), total: entero(c.progress.total) })} tamano="sm" />
+    ) : (
+      <span className="text-[13px] text-fg-muted">{t('sinAudiencia')}</span>
+    );
+
+  const columnas: ColumnaTabla<CampanaUnificada>[] = [
+    { id: 'nombre', encabezado: t('columnas.campana'), celda: nombre },
+    { id: 'canal', encabezado: t('columnas.canal'), celda: canalCelda, ocultarDebajo: 'sm' },
+    { id: 'segmento', encabezado: t('columnas.segmento'), celda: (c) => <span className="text-[13px] text-fg-secondary">{c.segmentName ?? '—'}</span>, ocultarDebajo: 'lg' },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: estadoCelda },
+    { id: 'progreso', encabezado: t('columnas.progreso'), celda: progreso, ocultarDebajo: 'md', ancho: 200 },
+    { id: 'resultado', encabezado: t('columnas.resultado'), celda: resultado, ocultarDebajo: 'xl' },
+  ];
+
+  const nueva = (
+    <Link href="/app/crm/campanas/nuevo" className={clasesBoton({ variante: 'primario' })}>
+      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {t('nueva')}
+    </Link>
+  );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/crm"><Button variant="ghost" size="icon" aria-label="Volver"><ArrowLeft className="h-5 w-5" /></Button></Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3"><div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><Megaphone className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" /></div>Campañas</h1>
-            <p className="text-gray-500 dark:text-gray-400">CRM / Campañas · WhatsApp y email masivo</p>
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={Send}
+        migas={[{ etiqueta: t('migas.crm'), href: '/app/crm' }, { etiqueta: t('titulo') }]}
+        acciones={
+          <>
+            <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={recargar} disabled={estado === 'cargando'} aria-label={t('actualizar')}>
+              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </button>
+            <Link href="/app/crm/agentes-ia?pestana=campanas" className={clasesBoton({ variante: 'secundario' })}>
+              <Bot aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevaVoz')}
+            </Link>
+            {nueva}
+          </>
+        }
+        movil={{ accion: nueva }}
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SegmentedControl<CanalCampana>
+          etiqueta={t('canal')}
+          valor={canal}
+          onValorChange={(v) => {
+            setCanal(v);
+            setPagina(1);
+          }}
+          opciones={CANALES_CAMPANA.map((v) => ({ valor: v, etiqueta: t(`filtros.${v}`), contador: datos?.porCanal[v] }))}
+        />
+        <SearchInput
+          className="w-full sm:ml-auto sm:max-w-xs"
+          value={q}
+          onChange={(v) => {
+            setQ(v);
+            setPagina(1);
+          }}
+          etiqueta={t('buscar')}
+          placeholder={t('buscar')}
+          pistaAtajo={false}
+        />
+      </div>
+
+      <DataTable
+        columnas={columnas}
+        filas={estado === 'listo' ? datos?.rows ?? [] : []}
+        obtenerId={(c) => `${c.source}:${c.id}`}
+        etiqueta={t('titulo')}
+        estado={estado}
+        onFilaClick={(c) => router.push(rutaCampana(c))}
+        etiquetaFila={(c) => c.name}
+        acciones={acciones}
+        tarjetaMovil={(c) => (
+          <div className="space-y-2 p-4">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">{nombre(c)}</div>
+              {estadoCelda(c)}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {canalCelda(c)}
+              {c.segmentName && <span className="text-xs text-fg-secondary">{c.segmentName}</span>}
+            </div>
+            {progreso(c)}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => void load()} disabled={isLoading} aria-label="Actualizar"><RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} /></Button>
-          <Link href="/app/crm/campanas/nuevo"><Button className="bg-emerald-600 hover:bg-emerald-700 text-white"><Plus className="h-4 w-4 mr-2" />Nueva campaña</Button></Link>
-        </div>
-      </div>
+        )}
+        termino={q.trim() || undefined}
+        vacio={{ icono: Send, titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), accion: { etiqueta: t('nueva'), href: '/app/crm/campanas/nuevo', icono: Plus } }}
+        sinResultados={{ titulo: t('sinResultados.titulo'), descripcion: t('sinResultados.descripcion') }}
+        error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
+        onReintentar={recargar}
+        onLimpiarFiltros={() => {
+          setQ('');
+          setCanal('all');
+          setPagina(1);
+        }}
+        filasEsqueleto={6}
+        pie={
+          (datos?.total ?? 0) > TAMANO_PAGINA_CAMPANAS ? (
+            <Pagination pagina={pagina} tamano={TAMANO_PAGINA_CAMPANAS} total={datos?.total ?? 0} onPaginaChange={setPagina} sustantivo={{ singular: t('sustantivo.uno'), plural: t('sustantivo.otros') }} cargando={estado === 'cargando'} />
+          ) : undefined
+        }
+      />
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
-        {[['Total', stats.total], ['Borradores', stats.draft], ['Programadas', stats.scheduled], ['Enviando', stats.sending], ['Enviadas', stats.sent]].map(([label, n]) => (
-          <Card key={String(label)} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardContent className="p-3 sm:pt-4 sm:px-4"><p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{n}</p><p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{label}</p></CardContent></Card>
-        ))}
-      </div>
-
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-                <TableHead>Campaña</TableHead>
-                <TableHead className="hidden sm:table-cell">Canal</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="hidden md:table-cell w-56">Progreso</TableHead>
-                <TableHead className="hidden lg:table-cell">Entregados · Leídos · Resp.</TableHead>
-                <TableHead className="hidden lg:table-cell">Costo</TableHead>
-                <TableHead className="hidden xl:table-cell">Programada</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? Array.from({ length: 5 }).map((_, i) => <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-10 w-full" /></TableCell></TableRow>)
-                : campaigns.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12"><Megaphone className="h-12 w-12 mx-auto text-gray-400 mb-4" /><h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No hay campañas</h3><p className="text-gray-500 mb-4">Envía una plantilla de WhatsApp a un segmento, una etapa del pipeline o una selección.</p><Link href="/app/crm/campanas/nuevo"><Button className="bg-emerald-600 hover:bg-emerald-700 text-white"><Plus className="h-4 w-4 mr-2" />Crear campaña</Button></Link></TableCell></TableRow>
-                ) : campaigns.map((c) => {
-                  const st = CAMPAIGN_STATUS_CONFIG[c.effective_status] ?? CAMPAIGN_STATUS_CONFIG.draft;
-                  const p = progressOf(c);
-                  const k = c.statistics.counts;
-                  const es = c.effective_status;
-                  return (
-                    <TableRow key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => router.push(`/app/crm/campanas/${c.id}`)}>
-                      <TableCell className="py-2 sm:py-3"><p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">{c.name}</p><p className="text-[11px] text-gray-500 truncate max-w-[200px]">{c.statistics.audience?.source === 'segment' ? 'Segmento' : c.statistics.audience?.source === 'stage' ? 'Etapas del pipeline' : 'Selección manual'} · {c.statistics.total_contacts ?? 0} contactos</p></TableCell>
-                      <TableCell className="hidden sm:table-cell">{c.channel === 'email' ? <span className="inline-flex items-center gap-1 text-xs"><Mail className="h-3.5 w-3.5 text-blue-600" />Email</span> : <span className="inline-flex items-center gap-1 text-xs"><MessageCircle className="h-3.5 w-3.5 text-emerald-600" />WhatsApp</span>}</TableCell>
-                      <TableCell><Badge className={`${st.bgColor} ${st.color} text-[10px] sm:text-xs`}>{st.label}</Badge></TableCell>
-                      <TableCell className="hidden md:table-cell"><div className="space-y-1"><Progress value={p.pct} className="h-2" aria-label={`Progreso ${p.pct}%`} /><p className="text-[11px] text-gray-500">{p.done} / {p.total}</p></div></TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs text-gray-600 dark:text-gray-300">{k ? `${k.delivered} · ${k.read} · ${k.replied}` : '—'}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs text-gray-600 dark:text-gray-300">{c.statistics.estimated_cost != null ? `≈ $${Number(c.statistics.estimated_cost).toFixed(2)}` : '—'}{k?.cost ? ` · real $${k.cost.toFixed(2)}` : ''}</TableCell>
-                      <TableCell className="hidden xl:table-cell text-xs text-gray-600 dark:text-gray-300">{c.scheduled_at ? formatDate(c.scheduled_at) : '—'}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Acciones"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => router.push(`/app/crm/campanas/${c.id}`)}><Eye className="h-4 w-4 mr-2" />Ver detalle</DropdownMenuItem>
-                            {canManage && (es === 'sending' || es === 'scheduled') && <DropdownMenuItem onClick={() => void act(() => CampanasService.pause(c.id), 'Campaña pausada')}><Pause className="h-4 w-4 mr-2" />Pausar</DropdownMenuItem>}
-                            {canManage && es === 'paused' && <DropdownMenuItem onClick={() => void act(() => CampanasService.resume(c.id), 'Campaña reanudada')}><Play className="h-4 w-4 mr-2" />Reanudar</DropdownMenuItem>}
-                            {canManage && ['sending', 'scheduled', 'paused'].includes(es) && <DropdownMenuItem onClick={() => void act(() => CampanasService.cancel(c.id), 'Campaña cancelada')}><XCircle className="h-4 w-4 mr-2" />Cancelar</DropdownMenuItem>}
-                            <DropdownMenuItem onClick={() => void act(() => CampanasService.duplicateCampaign(c.id), 'Campaña duplicada')}><Copy className="h-4 w-4 mr-2" />Duplicar</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600" disabled={es === 'sending'} onClick={() => setDeleteTarget(c)}><Trash2 className="h-4 w-4 mr-2" />Eliminar</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <AlertDialogContent className="bg-white dark:bg-gray-900">
-          <AlertDialogHeader><AlertDialogTitle>¿Eliminar campaña?</AlertDialogTitle><AlertDialogDescription>Se borran sus contactos y métricas. Los mensajes ya enviados permanecen en las conversaciones.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => { if (deleteTarget) void act(() => CampanasService.deleteCampaign(deleteTarget.id), 'Campaña eliminada'); setDeleteTarget(null); }}>Eliminar</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        abierto={!!borrar}
+        onAbiertoChange={(a) => !a && setBorrar(null)}
+        titulo={t('borrar.titulo')}
+        descripcion={t('borrar.descripcion')}
+        textoConfirmar={t('borrar.confirmar')}
+        tono="peligro"
+        icono={Trash2}
+        cargando={ocupado}
+        onConfirmar={async () => {
+          if (!borrar) return;
+          setOcupado(true);
+          try {
+            await CampanasService.deleteCampaign(borrar.id);
+            toast({ title: t('ok.eliminar') });
+            setBorrar(null);
+            recargar();
+          } catch (e) {
+            toast({ title: t('errores.accion'), description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+          } finally {
+            setOcupado(false);
+          }
+        }}
+      />
     </div>
   );
 }

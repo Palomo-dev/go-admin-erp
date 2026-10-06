@@ -1,358 +1,161 @@
 'use client';
 
+/**
+ * Constructor de segmentos (Figma CRM 1384:825677 «Constructor — conteo en
+ * vivo» y 1388:1979 «conteo no disponible»).
+ *
+ * - Grupos de reglas: «Todos estos» y «O todos estos» (Y dentro, O entre
+ *   grupos), el formato de `segmentosFiltroLogica`, que entienden igual el
+ *   conteo, el recálculo y la materialización de campañas.
+ * - El conteo se pide al SERVIDOR mientras se escribe (`useConteoSegmento`).
+ * - Al guardar, el conteo definitivo lo escribe el servidor
+ *   (`/api/crm/segments/[id]/recount`); si aún no está disponible, el segmento
+ *   queda guardado igual y se avisa.
+ */
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import {
-  ArrowLeft,
-  Filter,
-  Plus,
-  Trash2,
-  Eye,
-  Loader2,
-  Users,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { useTranslations } from 'next-intl';
+import { Loader2, Plus } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { FormField } from '@/components/kit/FormField';
+import { Tarjeta } from '@/components/kit/Tarjeta';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { CLASE_AREA, CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { filtroParaGuardar, type FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
 import { SegmentosService } from '../SegmentosService';
-import { FilterRule, FILTER_FIELDS, FILTER_OPERATORS } from '../types';
+import type { FilterRule } from '../types';
+import { ConteoEnVivoSegmento } from './ConteoEnVivoSegmento';
+import { GrupoReglasSegmento } from './GrupoReglasSegmento';
+import { useConteoSegmento } from './useConteoSegmento';
+import { gruposParaContar } from './conteoSegmentoLogica';
+import { anadirGrupo, anadirRegla, actualizarRegla, puedeAnadirGrupo, quitarGrupo, quitarRegla, reglaNueva } from './reglasSegmentoLogica';
+
+type Tipo = 'dinamico' | 'estatico';
 
 export function SegmentoNuevoPage() {
+  const t = useTranslations('crm.segmentos.constructor');
   const router = useRouter();
-  const { toast } = useToast();
-  
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isDynamic, setIsDynamic] = useState(true);
-  const [filters, setFilters] = useState<FilterRule[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isPreviewing, setIsPreviewing] = useState(false);
-  const [previewData, setPreviewData] = useState<{ customers: any[]; count: number } | null>(null);
+  const [nombre, setNombre] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [tipo, setTipo] = useState<Tipo>('dinamico');
+  const [grupos, setGrupos] = useState<FilterRule[][]>([[reglaNueva()]]);
+  const [guardando, setGuardando] = useState(false);
+  const [intentado, setIntentado] = useState(false);
+  const conteo = useConteoSegmento(grupos);
 
-  const addFilter = () => {
-    setFilters([...filters, { field: 'full_name', operator: 'contains', value: '' }]);
-  };
+  const errorNombre = intentado && !nombre.trim() ? t('datos.nombreObligatorio') : null;
 
-  const updateFilter = (index: number, updates: Partial<FilterRule>) => {
-    const newFilters = [...filters];
-    newFilters[index] = { ...newFilters[index], ...updates };
-    setFilters(newFilters);
-  };
-
-  const removeFilter = (index: number) => {
-    setFilters(filters.filter((_, i) => i !== index));
-  };
-
-  const getFieldType = (fieldValue: string): string => {
-    const field = FILTER_FIELDS.find(f => f.value === fieldValue);
-    return field?.type || 'text';
-  };
-
-  const handlePreview = async () => {
-    setIsPreviewing(true);
+  const guardar = async () => {
+    setIntentado(true);
+    if (!nombre.trim() || guardando) return;
+    setGuardando(true);
     try {
-      const result = await SegmentosService.previewFilter(filters);
-      setPreviewData(result);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo obtener la vista previa',
-        variant: 'destructive',
+      const segmento = await SegmentosService.createSegment({
+        name: nombre.trim(),
+        description: descripcion.trim() || undefined,
+        filter_json: filtroParaGuardar(gruposParaContar(grupos)) as FilterRule[] | FiltroSegmento,
+        is_dynamic: tipo === 'dinamico',
       });
-    } finally {
-      setIsPreviewing(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      toast({
-        title: 'Error',
-        description: 'El nombre es requerido',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const segment = await SegmentosService.createSegment({
-        name,
-        description: description || undefined,
-        filter_json: filters,
-        is_dynamic: isDynamic,
-      });
-
-      if (segment) {
-        // Recalcular para obtener el conteo inicial
-        await SegmentosService.recalculateSegment(segment.id);
-        
-        toast({
-          title: 'Segmento creado',
-          description: 'El segmento se ha creado correctamente',
-        });
-        router.push(`/app/crm/segmentos/${segment.id}`);
+      if (!segmento) throw new Error('crear');
+      try {
+        await SegmentosService.recalculateSegment(segmento.id);
+        toast({ title: t('ok.creado') });
+      } catch {
+        toast({ title: t('ok.creado'), description: t('ok.sinConteo') });
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo crear el segmento',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
+      router.push(`/app/crm/segmentos/${segmento.id}`);
+    } catch {
+      toast({ title: t('errores.crear'), variant: 'destructive' });
+      setGuardando(false);
     }
   };
+
+  const botonGuardar = (
+    <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => void guardar()} disabled={guardando}>
+      {guardando && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
+      {guardando ? t('guardando') : t('guardar')}
+    </button>
+  );
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/crm/segmentos">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Filter className="h-6 w-6 text-blue-600" />
+    <div className="min-h-screen space-y-6 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        variante="form"
+        volverA="/app/crm/segmentos"
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        migas={[{ etiqueta: t('migas.crm'), href: '/app/crm' }, { etiqueta: t('migas.segmentos'), href: '/app/crm/segmentos' }, { etiqueta: t('migas.nuevo') }]}
+        acciones={
+          <>
+            <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => router.push('/app/crm/segmentos')}>
+              {t('cancelar')}
+            </button>
+            {botonGuardar}
+          </>
+        }
+        movil={{ accion: botonGuardar }}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+        <div className="min-w-0 space-y-4">
+          <Tarjeta titulo={t('datos.titulo')}>
+            <div className="space-y-4">
+              <FormField etiqueta={t('datos.nombre')} obligatorio error={errorNombre}>
+                <input className={CLASE_CAMPO} value={nombre} maxLength={120} onChange={(e) => setNombre(e.target.value)} placeholder={t('datos.nombrePlaceholder')} />
+              </FormField>
+              <FormField etiqueta={t('datos.descripcion')}>
+                <textarea className={CLASE_AREA} value={descripcion} maxLength={500} onChange={(e) => setDescripcion(e.target.value)} placeholder={t('datos.descripcionPlaceholder')} />
+              </FormField>
+              <FormField etiqueta={t('datos.tipo')} ayuda={tipo === 'dinamico' ? t('datos.ayudaDinamico') : t('datos.ayudaEstatico')}>
+                {(campo) => (
+                  <SegmentedControl<Tipo>
+                    aria-labelledby={campo.idEtiqueta}
+                    aria-describedby={campo['aria-describedby']}
+                    opciones={[
+                      { valor: 'dinamico', etiqueta: t('datos.dinamico') },
+                      { valor: 'estatico', etiqueta: t('datos.estatico') },
+                    ]}
+                    valor={tipo}
+                    onValorChange={setTipo}
+                  />
+                )}
+              </FormField>
+            </div>
+          </Tarjeta>
+
+          <div className="space-y-3">
+            <h2 className="text-base font-semibold text-fg">{t('grupos.titulo')}</h2>
+            {grupos.map((reglas, g) => (
+              <div key={g} className="space-y-3">
+                {g > 0 && (
+                  <div className="flex items-center gap-3" aria-hidden="true">
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="rounded-full bg-brand-tint px-2.5 py-0.5 text-xs font-semibold uppercase text-brand">{t('grupos.o')}</span>
+                    <span className="h-px flex-1 bg-line" />
+                  </div>
+                )}
+                <GrupoReglasSegmento
+                  indice={g}
+                  reglas={reglas}
+                  onCambiarRegla={(r, regla) => setGrupos((gs) => actualizarRegla(gs, g, r, regla))}
+                  onQuitarRegla={(r) => setGrupos((gs) => quitarRegla(gs, g, r))}
+                  onAnadirRegla={() => setGrupos((gs) => anadirRegla(gs, g))}
+                  onQuitarGrupo={() => setGrupos((gs) => quitarGrupo(gs, g))}
+                />
               </div>
-              Nuevo Segmento
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              CRM / Segmentos / Nuevo
-            </p>
+            ))}
+            <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => setGrupos(anadirGrupo)} disabled={!puedeAnadirGrupo(grupos)}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('grupos.anadirO')}
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.back()}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !name.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              'Crear Segmento'
-            )}
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulario principal */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Información básica */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-gray-100">
-                Información del segmento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Nombre *</Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej: Clientes VIP de Bogotá"
-                  className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
-                <RichTextEditor
-                  value={description}
-                  onChange={setDescription}
-                  placeholder="Describe el propósito del segmento..."
-                  className="dark:bg-gray-900 dark:border-gray-700"
-                />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Segmento dinámico</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Se recalcula automáticamente cuando cambian los datos
-                  </p>
-                </div>
-                <Switch
-                  checked={isDynamic}
-                  onCheckedChange={setIsDynamic}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Builder de filtros */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-gray-900 dark:text-gray-100">
-                Reglas de filtro
-              </CardTitle>
-              <Button variant="outline" size="sm" onClick={addFilter}>
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar regla
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {filters.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No hay reglas definidas</p>
-                  <p className="text-sm">Agrega reglas para filtrar clientes</p>
-                </div>
-              ) : (
-                filters.map((filter, index) => {
-                  const fieldType = getFieldType(filter.field);
-                  const operators = FILTER_OPERATORS[fieldType] || FILTER_OPERATORS.text;
-
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg"
-                    >
-                      <Select
-                        value={filter.field}
-                        onValueChange={(value) => updateFilter(index, { field: value, operator: 'contains', value: '' })}
-                      >
-                        <SelectTrigger className="w-40 bg-white dark:bg-gray-800 dark:text-gray-200">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="border-gray-200 dark:border-gray-700">
-                          {FILTER_FIELDS.map((field) => (
-                            <SelectItem key={field.value} value={field.value}>
-                              {field.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select
-                        value={filter.operator}
-                        onValueChange={(value) => updateFilter(index, { operator: value as any })}
-                      >
-                        <SelectTrigger className="w-36 bg-white dark:bg-gray-800 dark:text-gray-200">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="border-gray-200 dark:border-gray-700">
-                          {operators.map((op) => (
-                            <SelectItem key={op.value} value={op.value}>
-                              {op.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {!['is_empty', 'is_not_empty'].includes(filter.operator) && (
-                        <Input
-                          value={String(filter.value)}
-                          onChange={(e) => updateFilter(index, { value: e.target.value })}
-                          placeholder="Valor"
-                          className="flex-1 min-w-[120px] bg-white dark:bg-gray-800 dark:text-gray-200"
-                        />
-                      )}
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeFilter(index)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  );
-                })
-              )}
-
-              {filters.length > 0 && (
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={handlePreview}
-                    disabled={isPreviewing}
-                  >
-                    {isPreviewing ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Eye className="h-4 w-4 mr-2" />
-                    )}
-                    Probar filtro
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Preview */}
-        <div className="space-y-6">
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Vista previa
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {previewData ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <span className="text-gray-700 dark:text-gray-300">Clientes encontrados</span>
-                    <Badge className="bg-blue-600 text-white">{previewData.count}</Badge>
-                  </div>
-                  
-                  {previewData.customers.length > 0 ? (
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {previewData.customers.map((customer) => (
-                        <div
-                          key={customer.id}
-                          className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
-                        >
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
-                            {customer.full_name || 'Sin nombre'}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {customer.email || customer.phone || 'Sin contacto'}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-center text-gray-500 dark:text-gray-400 py-4">
-                      No se encontraron clientes
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Usa &quot;Probar filtro&quot; para ver los resultados</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <div className="lg:sticky lg:top-4">
+          <ConteoEnVivoSegmento {...conteo} />
         </div>
       </div>
     </div>

@@ -11,28 +11,27 @@
  *
  * El botón solo aparece si el SERVIDOR dice que este usuario puede ejecutarlo
  * (`puede_ejecutar` del diagnóstico, mismo predicado que exige la ruta). El
- * cliente no decide permisos.
+ * cliente no decide permisos. Es secundario (Figma 1811:909230 §5): la
+ * campaña ya llama sola cada pasada del planificador.
+ *
+ * El diagnóstico lo lee el panel una vez (`useDiagnosticoVoz`) y lo comparte
+ * con las tarjetas, que pintan los motivos como chips.
  */
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { AlertTriangle, CheckCircle2, Info, Loader2, PhoneOutgoing, RefreshCw } from "lucide-react";
-import { describeError, logError } from "@/lib/utils/errorMessage";
-import { fetchJson } from "@/lib/utils/fetchJson";
-import type { DiagnosticoVoz, Motivo } from "@/lib/services/crm/voiceCampaignDiagnostics";
+import { describeError } from "@/lib/utils/errorMessage";
+import type { Motivo } from "@/lib/services/crm/voiceCampaignDiagnostics";
+import type { EstadoDiagnosticoVoz } from "./useDiagnosticoVoz";
 
 interface Props {
+  /** Diagnóstico compartido con las tarjetas (`useDiagnosticoVoz`). */
+  estado: EstadoDiagnosticoVoz;
   /** Se llama tras ejecutar la cola para que la lista de campañas se recargue. */
   onRan?: () => void;
-}
-
-interface DiagnosticoRespuesta {
-  success?: boolean;
-  error?: string;
-  data?: DiagnosticoVoz;
-  puede_ejecutar?: boolean;
 }
 
 interface EjecucionRespuesta {
@@ -57,36 +56,10 @@ function textoMotivo(t: ReturnType<typeof useTranslations>, m: Motivo): string {
   }
 }
 
-export function CampaignRunNow({ onRan }: Props) {
+export function CampaignRunNow({ estado, onRan }: Props) {
   const t = useTranslations("vozCampanasDisparo");
-  const [diag, setDiag] = useState<DiagnosticoVoz | null>(null);
-  const [puedeEjecutar, setPuedeEjecutar] = useState(false);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { diag, puedeEjecutar, cargando, error, recargar: cargar } = estado;
   const [ejecutando, setEjecutando] = useState(false);
-
-  const cargar = useCallback(async () => {
-    setCargando(true);
-    setError(null);
-    try {
-      const json = await fetchJson<DiagnosticoRespuesta>(
-        "/api/crm/voice-agents/campaigns/diagnostics",
-        { cache: "no-store" },
-      );
-      if (!json?.success || !json.data) throw new Error(json?.error || t("errorDiagnostico"));
-      setDiag(json.data);
-      setPuedeEjecutar(json.puede_ejecutar === true);
-    } catch (err) {
-      logError("[CampaignRunNow] diagnóstico", err);
-      setError(describeError(err));
-    } finally {
-      setCargando(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void cargar();
-  }, [cargar]);
 
   const ejecutar = async () => {
     setEjecutando(true);
@@ -144,7 +117,7 @@ export function CampaignRunNow({ onRan }: Props) {
             )}
           </Button>
           {puedeEjecutar && (
-            <Button size="sm" onClick={() => void ejecutar()} disabled={ejecutando}>
+            <Button size="sm" variant="outline" onClick={() => void ejecutar()} disabled={ejecutando}>
               {ejecutando ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
               ) : null}

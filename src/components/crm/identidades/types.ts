@@ -6,7 +6,7 @@ export interface ChannelIdentity {
   identity_type: 'phone' | 'email' | 'whatsapp_id' | string;
   identity_value: string;
   verified: boolean;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
   first_seen_at: string | null;
   last_seen_at: string | null;
   created_at: string;
@@ -24,19 +24,6 @@ export interface ChannelIdentity {
   };
 }
 
-export interface DuplicateGroup {
-  identity_type: string;
-  identity_value: string;
-  customers: {
-    id: string;
-    full_name: string | null;
-    email: string | null;
-    phone: string | null;
-    conversations_count: number;
-    opportunities_count: number;
-    last_activity: string | null;
-  }[];
-}
 
 export interface IdentityFilters {
   search: string;
@@ -46,8 +33,3 @@ export interface IdentityFilters {
   showDuplicates: boolean;
 }
 
-export interface MergeResult {
-  success: boolean;
-  message: string;
-  mergedCustomerId?: string;
-}

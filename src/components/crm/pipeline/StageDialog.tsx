@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { idPanel, idPestana, TabBar } from "@/components/kit/TabBar";
 import { Loader2, Plus, Save, Trophy, XCircle } from "lucide-react";
 // F6 (ronda 2): la pestaña vivía en `StageConfigDialog`, que se quedó sin
 // importadores cuando F2 borró `KanbanColumn`. Se monta aquí, que es el diálogo
@@ -93,6 +93,11 @@ export function StageDialog({
 
   const isEdit = mode === "edit";
   const showAgentTab = isEdit && Boolean(stageId);
+  const [seccion, setSeccion] = useState<"etapa" | "agente">("etapa");
+  // Cada apertura empieza en «Etapa» (antes lo hacía el `defaultValue` de las Tabs al montarse).
+  useEffect(() => {
+    if (open) setSeccion("etapa");
+  }, [open, stageId]);
 
   const stageForm = (
         <form onSubmit={handleSubmit}>
@@ -252,16 +257,22 @@ export function StageDialog({
         </DialogHeader>
 
         {showAgentTab ? (
-          <Tabs defaultValue="etapa" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="etapa">Etapa</TabsTrigger>
-              <TabsTrigger value="agente">Agente IA</TabsTrigger>
-            </TabsList>
-            <TabsContent value="etapa">{stageForm}</TabsContent>
-            <TabsContent value="agente" className="pt-4">
-              <StageAgentTab stageId={stageId as string} />
-            </TabsContent>
-          </Tabs>
+          // Etapa / Agente IA son SECCIONES del diálogo → `TabBar` (regla de pestañas 2026-10-06).
+          <div className="w-full">
+            <TabBar
+              id="etapa-dialogo"
+              etiqueta="Secciones de la etapa"
+              valor={seccion}
+              onValorChange={setSeccion}
+              pestanas={[
+                { valor: "etapa", etiqueta: "Etapa" },
+                { valor: "agente", etiqueta: "Agente IA" },
+              ]}
+            />
+            <div role="tabpanel" id={idPanel("etapa-dialogo", seccion)} aria-labelledby={idPestana("etapa-dialogo", seccion)} className="pt-4">
+              {seccion === "etapa" ? stageForm : <StageAgentTab stageId={stageId as string} />}
+            </div>
+          </div>
         ) : (
           stageForm
         )}

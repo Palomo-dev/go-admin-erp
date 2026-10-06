@@ -19,6 +19,7 @@ import { Keypad } from './dock/Keypad';
 import { CallControls } from './dock/CallControls';
 import { LiveNote } from './dock/LiveNote';
 import { CallDispositionDialog } from './CallDispositionDialog';
+import { OPEN_SOFTPHONE_EVENT } from './softphoneUi';
 
 export function SoftphoneDock() {
   const sp = useSoftphone();
@@ -27,6 +28,13 @@ export function SoftphoneDock() {
   const [dtmf, setDtmf] = useState('');
   const [showKeypad, setShowKeypad] = useState(false);
   const [dispositionOpen, setDispositionOpen] = useState(false);
+
+  // «Llamar» de las pantallas (p. ej. /app/crm/llamadas) despliega ESTE marcador.
+  useEffect(() => {
+    const abrir = () => setCollapsed(false);
+    window.addEventListener(OPEN_SOFTPHONE_EVENT, abrir);
+    return () => window.removeEventListener(OPEN_SOFTPHONE_EVENT, abrir);
+  }, []);
 
   const makeCall = sp.available ? sp.makeCall : null;
   const lastEnded = sp.available ? sp.lastEndedCall : null;

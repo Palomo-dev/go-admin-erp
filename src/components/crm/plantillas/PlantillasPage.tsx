@@ -3,18 +3,21 @@
 /**
  * /app/crm/plantillas — pestañas por canal. Email (F7) y WhatsApp (F16:
  * `@/components/crm/whatsapp/WhatsAppTemplatesTab`, cargado con next/dynamic
- * para no arrastrar su bundle en la pestaña de email). Pestaña activa en
- * `?tab=` (email | whatsapp).
+ * para no arrastrar su bundle en la pestaña de email). Cada canal es una
+ * SECCIÓN → `TabBar` del kit con `?pestana=` (regla de pestañas 2026-10-06);
+ * los enlaces viejos con `?tab=whatsapp` siguen abriendo WhatsApp.
  */
 
-import { useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Mail, MessageCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { FileText } from 'lucide-react';
+import { PageHeader } from '@/components/kit/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
+import { useParametrosUrl } from '@/components/kit/useParametroUrl';
 import { TabErrorBoundary } from './TabErrorBoundary';
 import { TemplateList } from './TemplateList';
+import { SincronizarMeta } from './SincronizarMeta';
 
 /**
  * Fallback real de error (tester r1 #11): `loading` de next/dynamic es el
@@ -48,50 +51,47 @@ const WhatsAppTemplatesTab = dynamic(
 );
 
 type Tab = 'email' | 'whatsapp';
-const TABS: { id: Tab; label: string; icon: typeof Mail }[] = [
-  { id: 'email', label: 'Email', icon: Mail },
-  { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'email', label: 'Email' },
+  { id: 'whatsapp', label: 'WhatsApp' },
 ];
 
+/** `?pestana=` (regla nueva) o `?tab=` (enlaces de antes); por defecto, Email. */
+export function canalPlantillasDeUrl(pestana: string | null, tab: string | null): Tab {
+  return (pestana ?? tab) === 'whatsapp' ? 'whatsapp' : 'email';
+}
+
 export function PlantillasPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const active = useMemo<Tab>(() => {
-    const p = searchParams?.get('tab');
-    return p === 'whatsapp' ? 'whatsapp' : 'email';
-  }, [searchParams]);
-
-  const setTab = useCallback((value: string) => {
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    params.set('tab', value);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, router, pathname]);
+  const url = useParametrosUrl();
+  const active = canalPlantillasDeUrl(url.leer('pestana'), url.leer('tab'));
+  const setTab = (value: Tab) => url.fijar({ pestana: value === 'email' ? null : value, tab: null });
+  const t = useTranslations('crm.plantillas');
 
   return (
     <div className="space-y-4 p-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Plantillas</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Correos y mensajes reutilizables con variables del CRM.</p>
-      </div>
-      <Tabs value={active} onValueChange={setTab} className="space-y-4">
-        <TabsList aria-label="Canal de plantillas">
-          {TABS.map((t) => (
-            <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
-              <t.icon className="h-4 w-4" aria-hidden="true" /> {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <TabsContent value="email" className="focus-visible:outline-none">
+      {/* «Sincronizar con Meta» va en la cabecera de la pestaña WhatsApp; en móvil
+          (el PageHeader no se dibuja bajo lg) se repite bajo las pestañas. */}
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={FileText}
+        acciones={active === 'whatsapp' ? <SincronizarMeta /> : undefined}
+      />
+      <TabBar id="plantillas" etiqueta="Canal de plantillas" valor={active} onValorChange={setTab} pestanas={TABS.map((t) => ({ valor: t.id, etiqueta: t.label }))} />
+      {active === 'whatsapp' && (
+        <div className="flex justify-end lg:hidden">
+          <SincronizarMeta />
+        </div>
+      )}
+      <div role="tabpanel" id={idPanel('plantillas', active)} aria-labelledby={idPestana('plantillas', active)}>
+        {active === 'email' ? (
           <TabErrorBoundary label="Email"><TemplateList /></TabErrorBoundary>
-        </TabsContent>
-        <TabsContent value="whatsapp" className="focus-visible:outline-none">
-          {/* Doble red: el `.catch()` del dynamic cubre el fallo de import y el
-              límite de error cubre un throw en tiempo de render (tester r2 #11). */}
+        ) : (
+          // Doble red: el `.catch()` del dynamic cubre el fallo de import y el
+          // límite de error cubre un throw en tiempo de render (tester r2 #11).
           <TabErrorBoundary label="WhatsApp" fallback={<WhatsAppTabUnavailable />}><WhatsAppTemplatesTab /></TabErrorBoundary>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

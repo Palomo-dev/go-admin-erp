@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileDown, RefreshCw, Fingerprint, Plus } from 'lucide-react';
+import { FileDown, RefreshCw, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,10 +22,11 @@ import { IdentidadesStats } from './IdentidadesStats';
 import { IdentidadesTable } from './IdentidadesTable';
 import { DuplicadosPanel } from './DuplicadosPanel';
 import { createIdentidadesService } from './IdentidadesService';
-import type { ChannelIdentity, DuplicateGroup, IdentityFilters } from './types';
+import type { ChannelIdentity, IdentityFilters } from './types';
 
 export function IdentidadesPage() {
-  const { organization } = useOrganization();
+  // Mantiene cargada la organización activa (getOrganizationId la lee).
+  useOrganization();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,7 +44,6 @@ export function IdentidadesPage() {
 
   // Datos
   const [identities, setIdentities] = useState<ChannelIdentity[]>([]);
-  const [duplicates, setDuplicates] = useState<DuplicateGroup[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     phone: 0,
@@ -73,11 +73,6 @@ export function IdentidadesPage() {
       setChannels(channelsData);
       setIdentities(identitiesData);
       setStats(statsData);
-
-      if (filters.showDuplicates) {
-        const duplicatesData = await service.getDuplicates();
-        setDuplicates(duplicatesData);
-      }
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
@@ -170,26 +165,6 @@ export function IdentidadesPage() {
     }
   };
 
-  const handleMerge = async (primaryId: string, secondaryIds: string[]) => {
-    const orgId = getOrganizationId();
-    const service = createIdentidadesService(orgId);
-    
-    const result = await service.mergeCustomers(primaryId, secondaryIds);
-    if (result.success) {
-      toast({
-        title: 'Clientes fusionados',
-        description: result.message
-      });
-      loadData();
-    } else {
-      toast({
-        title: 'Error',
-        description: result.message,
-        variant: 'destructive'
-      });
-    }
-  };
-
   const handleExportCSV = async () => {
     const orgId = getOrganizationId();
     const service = createIdentidadesService(orgId);
@@ -250,11 +225,8 @@ export function IdentidadesPage() {
 
       {/* Contenido principal */}
       {filters.showDuplicates ? (
-        <DuplicadosPanel
-          duplicates={duplicates}
-          loading={loading}
-          onMerge={handleMerge}
-        />
+        // Duplicados y fusión: servidor y RPC transaccional (DuplicadosPanel).
+        <DuplicadosPanel onCambio={loadData} />
       ) : (
         <IdentidadesTable
           identities={identities}

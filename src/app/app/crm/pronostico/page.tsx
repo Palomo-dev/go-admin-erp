@@ -6,8 +6,14 @@
  * navegación: el pronóstico anterior vive en la pestaña «Forecast».
  */
 
+import { Suspense } from 'react';
 import { RevenueOsPage } from '@/components/crm/revenueos/RevenueOsPage';
 
+// La sección elegida vive en `?pestana=` (useSearchParams necesita Suspense).
 export default function PronosticoPage() {
-  return <RevenueOsPage />;
+  return (
+    <Suspense fallback={null}>
+      <RevenueOsPage />
+    </Suspense>
+  );
 }

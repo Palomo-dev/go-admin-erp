@@ -16,6 +16,8 @@ import { AnimatePresence, FadeIn, StaggerItem } from '@/components/shared/motion
 import type { Objection } from '@/lib/services/crm/objectionService';
 import { cn } from '@/utils/Utils';
 import { CategoryBadge } from './categoryMeta';
+import { FrecuenciaEnLlamadas } from './FrecuenciaEnLlamadas';
+import type { ResumenFrecuencia } from './frecuenciaObjecionesLogica';
 
 interface Props {
   objection: Objection;
@@ -23,6 +25,9 @@ interface Props {
   onToggle: (objection: Objection) => void;
   onEdit: (objection: Objection) => void;
   onDelete: (objection: Objection) => void;
+  /** Frecuencia en llamadas de los últimos 90 días (servidor). `undefined` = aún cargando o sin permiso. */
+  frecuencia?: ResumenFrecuencia | null;
+  onVerLlamadas?: (objection: Objection) => void;
 }
 
 function IconAction({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
@@ -99,7 +104,7 @@ export function ObjectionGuidance({ objection, defaultOpen = false, compact = fa
   );
 }
 
-export function ObjectionCard({ objection, toggling, onToggle, onEdit, onDelete }: Props) {
+export function ObjectionCard({ objection, toggling, onToggle, onEdit, onDelete, frecuencia, onVerLlamadas }: Props) {
   const switchId = `objection-active-${objection.id}`;
   const signals = objection.detection_signals ?? [];
 
@@ -141,6 +146,8 @@ export function ObjectionCard({ objection, toggling, onToggle, onEdit, onDelete 
       )}
 
       <ObjectionGuidance objection={objection} />
+
+      {frecuencia !== undefined && <FrecuenciaEnLlamadas resumen={frecuencia} onVer={onVerLlamadas ? () => onVerLlamadas(objection) : undefined} />}
 
       <div className="mt-auto flex items-center justify-end gap-0.5 border-t border-gray-100 pt-2 dark:border-gray-800">
         <IconAction label={`Editar ${objection.title}`} onClick={() => onEdit(objection)}>

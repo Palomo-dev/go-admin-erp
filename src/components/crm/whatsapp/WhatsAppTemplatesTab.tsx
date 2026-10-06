@@ -2,12 +2,13 @@
 
 /**
  * WhatsAppTemplatesTab (FASE-16 §5.2): plantillas HSM de la org — estado de
- * aprobación, calidad, crear/editar (DRAFT), enviar a aprobación, sincronizar
- * desde Meta/Twilio. F7 la monta en /app/crm/plantillas (tab WhatsApp) con
+ * aprobación, calidad, crear/editar (DRAFT) y enviar a aprobación. La
+ * sincronización con Meta/Twilio está en la cabecera de la página
+ * (`plantillas/SincronizarMeta`). F7 la monta en /app/crm/plantillas (tab WhatsApp) con
  * next/dynamic: import('@/components/crm/whatsapp/WhatsAppTemplatesTab').
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +19,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import { waApi, ApiError, type ChannelSummary, type WhatsAppTemplate } from './api';
 import { HsmEditorDialog } from './HsmEditorDialog';
+import { EVENTO_PLANTILLAS_SINCRONIZADAS } from '@/components/crm/plantillas/sincronizacionMetaLogica';
 
 const STATUS: Record<string, { label: string; variant: 'success' | 'warning' | 'destructive' | 'secondary' | 'outline' }> = {
   APPROVED: { label: 'Aprobada', variant: 'success' },
@@ -42,7 +44,6 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
   const [items, setItems] = useState<WhatsAppTemplate[]>([]);
   const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [editing, setEditing] = useState<WhatsAppTemplate | null | 'new'>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -59,6 +60,13 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  // «Sincronizar con Meta» vive en la cabecera de la página (`SincronizarMeta`):
+  // al terminar avisa y aquí se recarga la lista.
+  useEffect(() => {
+    const recargar = () => void load();
+    window.addEventListener(EVENTO_PLANTILLAS_SINCRONIZADAS, recargar);
+    return () => window.removeEventListener(EVENTO_PLANTILLAS_SINCRONIZADAS, recargar);
+  }, [load]);
 
   // Realtime: el webhook message_template_status_update actualiza templates.metadata
   // `templates` no está en la publicación `supabase_realtime`: abrir un canal consume
@@ -72,17 +80,6 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
   }, [load]);
-
-  const sync = async () => {
-    setSyncing(true);
-    try {
-      const r = await waApi.syncTemplates();
-      toast({ title: 'Sincronizado con el proveedor', description: `${r.created} nuevas · ${r.updated} actualizadas · ${r.total} en el WABA` });
-      await load();
-    } catch (e) {
-      toast({ title: 'No se pudo sincronizar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally { setSyncing(false); }
-  };
 
   const submit = async (t: WhatsAppTemplate) => {
     setBusyId(t.id);
@@ -109,7 +106,6 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
           {!effectiveCanEdit && !loading && <p className="text-xs text-gray-500 dark:text-gray-400">Solo lectura: crear, aprobar, eliminar y sincronizar plantillas requiere rol de administrador de la organización.</p>}
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => void sync()} disabled={syncing || !effectiveCanEdit}>{syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" aria-hidden="true" />}Sincronizar</Button>
           <Button type="button" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setEditing('new')} disabled={!effectiveCanEdit}><Plus className="h-4 w-4 mr-1" aria-hidden="true" />Crear plantilla</Button>
         </div>
       </div>

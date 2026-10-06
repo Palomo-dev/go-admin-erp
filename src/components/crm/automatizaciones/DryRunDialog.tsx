@@ -5,6 +5,10 @@
  * regla con ella —condición por condición y acción por acción— sin ejecutar
  * nada. Usa el mismo `dry_run` del servidor que existía; solo cambia cómo se
  * muestra.
+ *
+ * «Últimos 30 días» (Figma CRM 1379:776) repite en el servidor los eventos
+ * capturados contra la regla, con la misma decisión del motor
+ * (`/api/crm/automation-rules/[id]/replay`).
  */
 
 import { useEffect, useState } from 'react';
@@ -16,6 +20,12 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/utils/Utils';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { useTranslations } from 'next-intl';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import type { ReplayAutomatizacion } from '@/lib/services/crm/automation/automationReplay';
+import { ReplayResultado } from './ReplayResultado';
+import { rutaReplay, type ModoPrueba } from './replayLogica';
 import type { ConditionTrace, ConditionRule } from '@/lib/services/crm/automation/conditionsDsl';
 import { describeAction, describeCondition, describeSkipReason, formatNumberEs, type HumanizerLookups } from '@/lib/services/crm/automation/ruleHumanizer';
 import { chipClass } from './SentenceBlock';
@@ -45,6 +55,9 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<DryRunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modo, setModo] = useState<ModoPrueba>('una');
+  const [historial, setHistorial] = useState<ReplayAutomatizacion | null>(null);
+  const tReplay = useTranslations('crm.automatizaciones.replay');
   const { hits, loading, error: searchError } = useOpportunitySearch(query, open);
   const onCloseAutoFocus = useReturnFocus(open); // H1: vuelve a «Probar en seco» de la tarjeta.
 
@@ -55,6 +68,8 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
     setSelectedName(null);
     setResult(null);
     setError(null);
+    setModo('una');
+    setHistorial(null);
   }, [open, rule?.id]);
 
   const run = async () => {
@@ -62,7 +77,8 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
     setRunning(true);
     setError(null);
     try {
-      setResult(await onRun(rule.id, selected));
+      if (modo === 'historial') setHistorial((await pedirCrm<ReplayAutomatizacion>(rutaReplay(rule.id), { method: 'POST', cuerpo: {} })).data);
+      else setResult(await onRun(rule.id, selected));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -89,6 +105,25 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
           </DialogDescription>
         </DialogHeader>
 
+        <SegmentedControl<ModoPrueba>
+          etiqueta={tReplay('modo')}
+          valor={modo}
+          onValorChange={(v) => { setModo(v); setError(null); }}
+          opciones={[{ valor: 'una', etiqueta: tReplay('modoUna') }, { valor: 'historial', etiqueta: tReplay('modoHistorial') }]}
+        />
+
+        {modo === 'historial' ? (
+          <div className="space-y-3">
+            <p className="text-sm text-fg-secondary">{tReplay('explicacion')}</p>
+            {error && (
+              <Alert variant="destructive">
+                <AlertTitle>No se pudo probar</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {historial && rule && <ReplayResultado resultado={historial} rule={rule} lookups={lookups} />}
+          </div>
+        ) : (
         <div className="space-y-3">
           <div>
             <Label htmlFor="dry-search" className="text-xs text-gray-700 dark:text-gray-300">Oportunidad</Label>
@@ -186,11 +221,12 @@ export function DryRunDialog({ open, rule, lookups, onOpenChange, onRun }: Props
             </section>
           )}
         </div>
+        )}
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
           <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={running || !rule} onClick={() => void run()}>
-            {running ? 'Probando…' : result ? 'Probar de nuevo' : 'Probar'}
+            {running ? 'Probando…' : (modo === 'historial' ? historial : result) ? 'Probar de nuevo' : 'Probar'}
           </Button>
         </DialogFooter>
       </DialogContent>

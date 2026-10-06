@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { Check, ChevronDown, Kanban, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { cn } from '@/utils/Utils';
 
 /**
@@ -11,7 +12,8 @@ import { cn } from '@/utils/Utils';
  * tipo y cuántas etapas tienen, «Nuevo pipeline», «Usar como por defecto»,
  * «Editar etapas» y «Eliminar pipeline». Lo que no se puede hacer se ve
  * deshabilitado CON su motivo (ya es el por defecto; tiene oportunidades; sin
- * permiso). Los permisos llegan resueltos del servidor.
+ * permiso). Los permisos llegan resueltos del servidor. Cada embudo dice sus
+ * abiertas y su valor en la moneda base (`GET /api/crm/pipelines?resumen=1`).
  */
 export interface PipelineSelector {
   id: string;
@@ -21,8 +23,33 @@ export interface PipelineSelector {
   stages?: readonly unknown[] | null;
 }
 
+/** Abiertas de un pipeline ya en la moneda base (`abiertasDePipeline`). */
+export interface AbiertasSelector {
+  cantidad: number;
+  total: number | null;
+  base: string;
+  sinTasa: number;
+}
+
+/**
+ * Línea de detalle de un embudo: «23 abiertas · $ 184.500.000 · 9 etapas»
+ * (Figma 1821:189325). Sin resumen (cargando o falló) queda «9 etapas»; el
+ * monto se omite si ninguna abierta se pudo convertir a la base.
+ */
+export function lineaPipeline(t: (clave: string, valores?: Record<string, string | number>) => string, x: PipelineSelector, a: AbiertasSelector | null | undefined): string {
+  const partes: string[] = [];
+  if (a) {
+    partes.push(t('abiertas', { n: a.cantidad }));
+    if (a.cantidad > 0 && a.total !== null) partes.push(formatMoneda(a.total, a.base));
+  }
+  partes.push(t('etapas', { n: x.stages?.length ?? 0 }));
+  return partes.join(' · ');
+}
+
 export interface SelectorPipelineProps {
   pipelines: readonly PipelineSelector[];
+  /** «N abiertas · monto» de cada embudo; sin él solo se cuentan las etapas. */
+  abiertas?: (pipelineId: string) => AbiertasSelector | null;
   actualId: string | null;
   onElegir: (id: string) => void;
   /** Oportunidades del pipeline actual (guarda de «Eliminar»). */
@@ -64,7 +91,7 @@ export function SelectorPipeline(p: SelectorPipelineProps) {
                 <span className="truncate font-medium">{x.name}</span>
                 {x.is_default ? <Badge tono="marca" tamano="sm">{t('porDefecto')}</Badge> : x.pipeline_type && TIPO[x.pipeline_type] ? <Badge tono="neutro" tamano="sm">{t(`tipos.${TIPO[x.pipeline_type]}`)}</Badge> : null}
               </span>
-              <span className="text-xs text-fg-secondary">{t('etapas', { n: x.stages?.length ?? 0 })}</span>
+              <span className="text-xs text-fg-secondary">{lineaPipeline(t, x, p.abiertas?.(x.id))}</span>
             </span>
             {x.id === p.actualId && <Check aria-hidden="true" className="size-4 text-brand" />}
           </DropdownMenuItem>

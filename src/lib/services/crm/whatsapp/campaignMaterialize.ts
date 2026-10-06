@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { normalizarFiltroSegmento } from '../segmentosFiltroLogica';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { canContact } from './consent';
 import { countryFromPhone, defaultCountryOf, getOrgSettings, normalizePhoneDigits, resolveChannel } from './channelService';
@@ -103,12 +104,21 @@ export async function resolveAudience(orgId: number, audience: CampaignAudience,
   if (audience.source === 'segment' && audience.segment_id) {
     const { data: seg } = await service.from('segments').select('id, filter_json').eq('id', audience.segment_id).eq('organization_id', orgId).maybeSingle();
     if (!seg) throw new WhatsAppError('NOT_FOUND', 'Segmento no encontrado', 404);
-    let q = service.from('customers').select('id').eq('organization_id', orgId);
-    const rules = ((seg as { filter_json?: unknown }).filter_json ?? []) as FilterRule[];
-    if (Array.isArray(rules)) for (const r of rules) q = applySegmentRule(q, r);
-    const { data, error } = await q.limit(limit);
-    if (error) throw new WhatsAppError('INTERNAL', `Segmento: ${error.message}`, 500);
-    for (const r of (data ?? []) as Array<{ id: string }>) add(r.id, null);
+    // Formato único del filtro (`segmentosFiltroLogica`): Y dentro de cada grupo,
+    // O entre grupos. Falla CERRADO: un formato desconocido o un campo que esta
+    // consulta no sabe aplicar NO se ignora (antes un objeto o un campo fuera de
+    // la lista dejaban la audiencia en TODOS los clientes de la organización).
+    const filtro = normalizarFiltroSegmento((seg as { filter_json?: unknown }).filter_json);
+    if (!filtro) throw new WhatsAppError('VALIDATION', 'El filtro del segmento no tiene un formato válido', 400);
+    const noSoportado = filtro.grupos.flat().find((r) => !SEGMENT_FIELDS.has(r.field));
+    if (noSoportado) throw new WhatsAppError('VALIDATION', `El segmento filtra por «${noSoportado.field}», que las campañas aún no admiten`, 400);
+    for (const grupo of filtro.grupos.length ? filtro.grupos : [[]]) {
+      let q = service.from('customers').select('id').eq('organization_id', orgId);
+      for (const r of grupo) q = applySegmentRule(q, { field: r.field, operator: r.operator, value: r.value });
+      const { data, error } = await q.limit(limit);
+      if (error) throw new WhatsAppError('INTERNAL', `Segmento: ${error.message}`, 500);
+      for (const r of (data ?? []) as Array<{ id: string }>) add(r.id, null);
+    }
   } else if (audience.source === 'stage') {
     let q = service.from('opportunities').select('id, customer_id').eq('organization_id', orgId).eq('status', 'open').in('stage_id', audience.stage_ids ?? []);
     if (audience.pipeline_id) q = q.eq('pipeline_id', audience.pipeline_id);

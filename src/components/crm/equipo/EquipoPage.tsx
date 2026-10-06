@@ -1,22 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { Users, Target, Gauge, MapPin } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslations } from 'next-intl';
+import { Users, Target } from 'lucide-react';
+import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
+import { useOpcionUrl } from '@/components/kit/useParametroUrl';
 import { EquipoSidebar } from './EquipoSidebar';
 import { EquiposTab, AsignarTab, PerformanceTab, TerritoriosTab } from './tabs';
 
-type Tab = 'equipos' | 'asignar' | 'performance' | 'territorios';
-
-const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
-  { key: 'equipos', label: 'Equipos', icon: Users },
-  { key: 'asignar', label: 'Asignar Oportunidades', icon: Target },
-  { key: 'performance', label: 'Performance', icon: Gauge },
-  { key: 'territorios', label: 'Territorios', icon: MapPin },
-];
+/** Secciones de Equipo → `TabBar` con `?pestana=` (regla de pestañas 2026-10-06). */
+const TABS = ['equipos', 'asignar', 'performance', 'territorios'] as const;
 
 export function EquipoPage() {
-  const [tab, setTab] = useState<Tab>('equipos');
+  const t = useTranslations('crm.equipo');
+  const [tab, setTab] = useOpcionUrl('pestana', TABS, 'equipos');
 
   return (
     <div className="space-y-6 p-6">
@@ -56,38 +52,14 @@ export function EquipoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal - 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Tabs estilo Configuracion */}
-          <div className="border-b border-gray-200 dark:border-gray-700 pb-2">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-              <div className="overflow-x-auto">
-                <TabsList className="bg-transparent h-auto p-0 gap-1">
-                  {TABS.map((t) => {
-                    const Icon = t.icon;
-                    return (
-                      <TabsTrigger
-                        key={t.key}
-                        value={t.key}
-                        className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20"
-                      >
-                        <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
-                          <Icon className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
-                        </div>
-                        <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
-                          {t.label}
-                        </span>
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-              </div>
-            </Tabs>
-          </div>
+          <TabBar id="equipo" etiqueta={t('pestanas.aria')} valor={tab} onValorChange={setTab} pestanas={TABS.map((v) => ({ valor: v, etiqueta: t(`pestanas.${v}`) }))} />
 
-          {/* Contenido del tab activo */}
-          {tab === 'equipos' && <EquiposTab />}
-          {tab === 'asignar' && <AsignarTab />}
-          {tab === 'performance' && <PerformanceTab />}
-          {tab === 'territorios' && <TerritoriosTab />}
+          <div role="tabpanel" id={idPanel('equipo', tab)} aria-labelledby={idPestana('equipo', tab)}>
+            {tab === 'equipos' && <EquiposTab />}
+            {tab === 'asignar' && <AsignarTab />}
+            {tab === 'performance' && <PerformanceTab />}
+            {tab === 'territorios' && <TerritoriosTab />}
+          </div>
         </div>
 
         {/* Sidebar derecho - 1/3 */}

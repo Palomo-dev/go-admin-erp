@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { AlertTriangle, Loader2, MessageCircle, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { toast } from '@/components/ui/use-toast';
 import { ChannelSelect } from './compose/ChannelSelect';
 import { WindowBadge } from './compose/WindowBadge';
@@ -125,19 +125,30 @@ export function ComposeWhatsAppDialog(props: ComposeWhatsAppDialogProps) {
                   </div>
                 </div>
               )}
-              <Tabs value={c.tab} onValueChange={(v) => c.setTab(v as 'text' | 'template')}>
-                <TabsList className="h-8">
-                  <TabsTrigger value="text" className="text-xs" disabled={!!textDisabledReason && mode === 'single'} aria-disabled={!!textDisabledReason} title={textDisabledReason}>Texto</TabsTrigger>
-                  <TabsTrigger value="template" className="text-xs" disabled={!c.capabilities.templates} title={!c.capabilities.templates ? 'El canal QR no admite plantillas' : undefined}>Plantilla</TabsTrigger>
-                </TabsList>
-                <TabsContent value="text" className="mt-2">
-                  <MessageForm value={c.text} onChange={c.setText} disabled={!!textDisabledReason && mode === 'single'} disabledReason={textDisabledReason} media={c.media} onMedia={c.setMedia} allowMedia={c.capabilities.media && mode === 'single'} opportunityId={opportunityId} scheduledAt={c.scheduledAt} onScheduledAt={c.setScheduledAt} firstName={firstName} />
-                  {mode === 'bulk' && <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">Texto libre solo llega a contactos con ventana de 24 h abierta; el resto se excluye. Usa una plantilla para llegar a todos.</p>}
-                </TabsContent>
-                <TabsContent value="template" className="mt-2">
-                  <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} />
-                </TabsContent>
-              </Tabs>
+              {/* Texto / Plantilla: alterna el contenido del mismo mensaje → control segmentado (regla de pestañas 2026-10-06). */}
+              <div>
+                <SegmentedControl
+                  etiqueta="Tipo de mensaje"
+                  tamano="sm"
+                  valor={c.tab}
+                  onValorChange={(v) => c.setTab(v)}
+                  opciones={[
+                    { valor: 'text', etiqueta: 'Texto', deshabilitada: !!textDisabledReason && mode === 'single' },
+                    { valor: 'template', etiqueta: 'Plantilla', deshabilitada: !c.capabilities.templates },
+                  ]}
+                />
+                {!c.capabilities.templates && <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">El canal QR no admite plantillas</p>}
+                {c.tab === 'text' ? (
+                  <div className="mt-2">
+                    <MessageForm value={c.text} onChange={c.setText} disabled={!!textDisabledReason && mode === 'single'} disabledReason={textDisabledReason} media={c.media} onMedia={c.setMedia} allowMedia={c.capabilities.media && mode === 'single'} opportunityId={opportunityId} scheduledAt={c.scheduledAt} onScheduledAt={c.setScheduledAt} firstName={firstName} />
+                    {mode === 'bulk' && <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">Texto libre solo llega a contactos con ventana de 24 h abierta; el resto se excluye. Usa una plantilla para llegar a todos.</p>}
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} />
+                  </div>
+                )}
+              </div>
               {mode === 'bulk' && (
                 <BulkAudience recipients={props.recipients ?? []} result={bulk.result} calculating={bulk.calculating} onCalculate={() => void bulk.calculate()} throttle={bulk.throttle} onThrottle={bulk.setThrottle} respectHours={bulk.respectHours} onRespectHours={bulk.setRespectHours} optinConfirmed={bulk.optinConfirmed} onOptinConfirmed={bulk.setOptinConfirmed} requireOptin={c.preview?.category === 'marketing'} disabled={busy} />
               )}

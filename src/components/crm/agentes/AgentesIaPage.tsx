@@ -3,21 +3,25 @@
 /**
  * /app/crm/agentes-ia — catálogo de agentes IA de voz de la organización (FASE 06).
  *
- * Cierra C-F6-16 (no había UI). Tres pestañas: Agentes, Voces y Campañas.
+ * Cierra C-F6-16 (no había UI). Tres SECCIONES: Agentes, Voces y Campañas.
  * Todo pasa por rutas con `getServerOrgContext()`: cero organización en el cliente.
  *
- * UX móvil (UXM-D): pestañas a tres columnas iguales y CTA a ancho completo a
- * 375 px; la pestaña es estado controlado para que el editor pueda llevar a
- * «Voces» desde su estado vacío.
+ * Regla de pestañas (2026-10-06): las secciones son `TabBar` (subrayado) con
+ * `?pestana=`; dentro de «Voces», Biblioteca/Mis voces es la VISTA y va en un
+ * `SegmentedControl` (antes era al revés: control segmentado arriba y pestañas
+ * debajo). El editor puede llevar a «Voces» desde su estado vacío.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
-import { Bot, Loader2, Plus, Mic, Megaphone } from "lucide-react";
-import { LoadErrorState } from "@/components/common/LoadErrorState";
+import { Bot, Plus } from "lucide-react";
+import { EmptyState } from "@/components/kit/EmptyState";
+import { PageHeader } from "@/components/kit/PageHeader";
+import { idPanel, idPestana, TabBar } from "@/components/kit/TabBar";
+import { clasesBoton } from "@/components/kit/botonClases";
+import { useOpcionUrl, useParametrosUrl } from "@/components/kit/useParametroUrl";
 import { describeError, logError } from "@/lib/utils/errorMessage";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { AgentEditorDialog, type AgentDraft } from "./AgentEditorDialog";
@@ -37,25 +41,32 @@ export interface VoiceAgentListItem {
   allowed_tools: string[];
 }
 
-const PURPOSE_LABELS: Record<string, string> = {
-  qualify_lead: "Calificar contacto",
-  confirm_demo: "Confirmar demo",
-  follow_up_proposal: "Seguimiento de propuesta",
-  reactivate_cold: "Reactivar frío",
-  collect_payment: "Cobro",
-  nps_survey: "Encuesta NPS",
-  renewal_reminder: "Renovación",
-  sell_product: "Vender producto",
-  book_meeting: "Agendar reunión",
-  custom: "Personalizado",
-};
+/** `voice_agents.purpose_type` (CHECK de 10 opciones) → clave `crm.agentesIa.propositos.*`. */
+const PROPOSITOS: readonly string[] = [
+  "qualify_lead",
+  "confirm_demo",
+  "follow_up_proposal",
+  "reactivate_cold",
+  "collect_payment",
+  "nps_survey",
+  "renewal_reminder",
+  "sell_product",
+  "book_meeting",
+  "custom",
+];
+
+const SECCIONES = ["agentes", "voces", "campanas"] as const;
 
 export function AgentesIaPage() {
+  const t = useTranslations("crm.agentesIa");
   const [agents, setAgents] = useState<VoiceAgentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AgentDraft | null>(null);
-  const [tab, setTab] = useState<"agentes" | "voces" | "campanas">("agentes");
+  const [tab] = useOpcionUrl("pestana", SECCIONES, "agentes");
+  const url = useParametrosUrl();
+  // Cambiar de sección limpia la vista de la anterior (`?vista=` de Voces).
+  const setTab = (v: (typeof SECCIONES)[number]) => url.fijar({ pestana: v === "agentes" ? null : v, vista: null });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,128 +101,98 @@ export function AgentesIaPage() {
         }
       );
       if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
-      toast({ title: agent.is_active ? "Agente desactivado" : "Agente activado" });
+      toast({ title: agent.is_active ? t("desactivado") : t("activado") });
       void load();
     } catch (err) {
       logError("[AgentesIaPage] cambiar estado de agente", err);
       toast({
-        title: "No se pudo cambiar el estado",
+        title: t("errorEstado"),
         description: describeError(err),
         variant: "destructive",
       });
     }
   };
 
+  const nuevo = (
+    <button type="button" className={clasesBoton()} onClick={() => setEditing({ mode: "create" })}>
+      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {t("nuevo")}
+    </button>
+  );
+
   return (
-    <div className="space-y-5 p-4 md:space-y-6 md:p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <Bot className="mt-1 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Agentes IA de voz</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Quién llama, con qué voz y con qué objetivo. El guion por etapa se configura en el embudo.
-            </p>
-          </div>
-        </div>
-        <Button className="w-full sm:w-auto" onClick={() => setEditing({ mode: "create" })}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-          Nuevo agente
-        </Button>
-      </header>
+    <div className="flex min-h-full w-full min-w-0 flex-col gap-4 bg-canvas p-4 lg:p-6">
+      <PageHeader
+        titulo={t("titulo")}
+        subtitulo={t("subtitulo")}
+        icono={Bot}
+        migas={[{ etiqueta: t("migas.crm"), href: "/app/crm" }, { etiqueta: t("titulo") }]}
+        acciones={nuevo}
+        movil={{ titulo: t("titulo"), accion: (
+          <button type="button" aria-label={t("nuevo")} onClick={() => setEditing({ mode: "create" })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover">
+            <Plus aria-hidden="true" className="size-5" />
+          </button>
+        ) }}
+        debajo={
+          <TabBar
+            id="agentes-ia"
+            etiqueta={t("pestanas.aria")}
+            valor={tab}
+            onValorChange={setTab}
+            pestanas={SECCIONES.map((v) => ({ valor: v, etiqueta: t(`pestanas.${v}`), contador: v === "agentes" && !loading && !error ? agents.length : undefined }))}
+          />
+        }
+      />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto" aria-label="Secciones">
-          <TabsTrigger value="agentes" className="gap-1.5 px-2 sm:px-3">
-            <Bot className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Agentes
-          </TabsTrigger>
-          <TabsTrigger value="voces" className="gap-1.5 px-2 sm:px-3">
-            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Voces
-          </TabsTrigger>
-          <TabsTrigger value="campanas" className="gap-1.5 px-2 sm:px-3">
-            <Megaphone className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Campañas
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="agentes" className="pt-4">
-          {loading && (
-            <div className="flex items-center gap-2 py-10 text-gray-500 dark:text-gray-400">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Cargando agentes…
+      <div role="tabpanel" id={idPanel("agentes-ia", tab)} aria-labelledby={idPestana("agentes-ia", tab)} className="min-w-0">
+        {tab === "agentes" &&
+          (loading ? (
+            <ul aria-busy="true" aria-label={t("cargando")} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {[0, 1, 2, 3].map((i) => (
+                <li key={i} className="h-36 animate-pulse rounded-xl border border-line bg-subtle" />
+              ))}
+            </ul>
+          ) : error ? (
+            <div className="rounded-xl border border-line bg-surface">
+              <EmptyState variante="error" titulo={t("error.titulo")} descripcion={error} onReintentar={() => void load()} />
             </div>
-          )}
-
-          {!loading && error && (
-            <LoadErrorState
-              title="No se pudieron cargar los agentes"
-              message={error}
-              onRetry={() => void load()}
-              isRetrying={loading}
-            />
-          )}
-
-          {!loading && !error && agents.length === 0 && (
-            <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center dark:border-gray-700">
-              <Bot className="mx-auto h-8 w-8 text-gray-400" aria-hidden="true" />
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Todavía no hay agentes. Crea uno y luego dile en cada etapa del embudo qué debe conseguir.
-              </p>
-              <Button className="mt-4" onClick={() => setEditing({ mode: "create" })}>
-                Crear el primer agente
-              </Button>
+          ) : agents.length === 0 ? (
+            <div className="rounded-xl border border-line bg-surface">
+              <EmptyState variante="empty" icono={Bot} titulo={t("vacio.titulo")} descripcion={t("vacio.descripcion")} accion={{ etiqueta: t("vacio.crear"), onClick: () => setEditing({ mode: "create" }), icono: Plus }} />
             </div>
-          )}
-
-          {!loading && !error && agents.length > 0 && (
-            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Agentes">
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label={t("pestanas.agentes")}>
               {agents.map((a) => (
-                <li
-                  key={a.id}
-                  className="min-w-0 rounded-lg border border-gray-200 p-4 dark:border-gray-700 dark:bg-gray-900"
-                >
+                <li key={a.id} className="min-w-0 rounded-xl border border-line bg-surface p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="break-words font-medium text-gray-900 dark:text-gray-100">{a.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {PURPOSE_LABELS[a.purpose_type] ?? a.purpose_type} · {a.llm_model} · {a.language}
+                      <p className="break-words font-medium text-fg">{a.name}</p>
+                      <p className="text-xs text-fg-secondary">
+                        {PROPOSITOS.includes(a.purpose_type) ? t(`propositos.${a.purpose_type}`) : a.purpose_type} · {a.llm_model} · {a.language}
                       </p>
                     </div>
-                    <Badge variant={a.is_active ? "success" : "secondary"} className="shrink-0">
-                      {a.is_active ? "Activo" : "Inactivo"}
+                    <Badge tono={a.is_active ? "exito" : "neutro"} tamano="sm" className="shrink-0">
+                      {a.is_active ? t("activo") : t("inactivo")}
                     </Badge>
                   </div>
-                  <p className="mt-2 break-all text-xs text-gray-500 dark:text-gray-400">
-                    {a.voice_ref_id
-                      ? "Voz del catálogo (puede ser la voz clonada del vendedor)"
-                      : a.voice_id
-                        ? `Voz: ${a.voice_id}`
-                        : "Sin voz propia: se usará la voz por defecto"}
+                  <p className="mt-2 break-all text-xs text-fg-secondary">
+                    {a.voice_ref_id ? t("vozCatalogo") : a.voice_id ? t("vozId", { id: a.voice_id }) : t("vozDefecto")}
                   </p>
                   <div className="mt-3 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setEditing({ mode: "edit", id: a.id })}>
-                      Editar
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => toggleActive(a)}>
-                      {a.is_active ? "Desactivar" : "Activar"}
-                    </Button>
+                    <button type="button" className={clasesBoton({ variante: "secundario", tamano: "sm" })} onClick={() => setEditing({ mode: "edit", id: a.id })}>
+                      {t("editar")}
+                    </button>
+                    <button type="button" className={clasesBoton({ variante: "fantasma", tamano: "sm" })} onClick={() => toggleActive(a)}>
+                      {a.is_active ? t("desactivar") : t("activar")}
+                    </button>
                   </div>
                 </li>
               ))}
             </ul>
-          )}
-        </TabsContent>
-
-        <TabsContent value="voces" className="pt-4">
-          <VoicesPanel />
-        </TabsContent>
-
-        <TabsContent value="campanas" className="pt-4">
-          <AgentCampaignsPanel agents={agents} />
-        </TabsContent>
-      </Tabs>
+          ))}
+        {tab === "voces" && <VoicesPanel />}
+        {tab === "campanas" && <AgentCampaignsPanel agents={agents} />}
+      </div>
 
       {editing && (
         <AgentEditorDialog

@@ -479,9 +479,13 @@ describe('4. Rutas', () => {
     expect(http).toMatch(/requireOrgAdminOrPermission\(ctx\)/);
     expect(orgContext).toMatch(/if \(opts\?\.admin\) await requireOrgAdminOrPermission\(ctx\)/);
     // Y el panel no decide el permiso por su cuenta: lo pregunta al servidor.
+    // Desde 2026-10-06 el diagnóstico (y `puede_ejecutar`) lo lee una sola vez
+    // `useDiagnosticoVoz`, compartido por el panel y las tarjetas (chips).
+    const hook = CODIGO('src/components/crm/agentes/campanas/useDiagnosticoVoz.ts');
+    expect(hook).toMatch(/setPuedeEjecutar\(json\.puede_ejecutar === true\)/);
     const panel = CODIGO('src/components/crm/agentes/campanas/CampaignRunNow.tsx');
-    expect(panel).toMatch(/puede_ejecutar/);
-    expect(panel).not.toMatch(/role_?[Nn]ame|is_super_admin/);
+    expect(panel).toMatch(/puedeEjecutar/);
+    for (const src of [hook, panel]) expect(src).not.toMatch(/role_?[Nn]ame|is_super_admin/);
   });
 
   test('V22 · los dos caminos del CRON siguen siendo fail-closed por CRON_SECRET (no se debilitan)', () => {

@@ -119,10 +119,15 @@ export interface CallFilters {
   /** metadata.disposition_outcome */
   outcome?: string;
   has_recording?: boolean;
-  /** Búsqueda en from_number/to_number */
+  /**
+   * Búsqueda en número, nombre del cliente y TRANSCRIPCIÓN completada
+   * (`crm_calls_list`: `websearch_to_tsquery` sobre `call_transcripts.full_text`).
+   */
   q?: string;
   from_date?: string;
   to_date?: string;
+  /** `to_date` es el inicio del día siguiente (lo pone `normalizarFechasLlamadas`). */
+  to_date_exclusive?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -619,81 +624,112 @@ export interface CallListRow extends CallRecord {
    * `null` sin acta.
    */
   consent_method: string | null;
+  /**
+   * Sentimiento del análisis IA más reciente (`call_analyses.sentiment`:
+   * positive · neutral · negative · mixed), columna «Sentimiento» del Figma
+   * 1351:18. `null` sin análisis.
+   */
+  sentiment: CallSentiment | null;
 }
 
+export type CallSentiment = 'positive' | 'neutral' | 'negative' | 'mixed';
+
+/** El análisis más reciente de una llamada (una llamada puede re-analizarse). */
+export function sentimientoReciente(analisis: readonly { sentiment: string | null; created_at: string | null }[] | null | undefined): CallSentiment | null {
+  let mejor: { sentiment: string | null; created_at: string | null } | null = null;
+  for (const a of analisis ?? []) {
+    if (!a.sentiment) continue;
+    if (!mejor || (a.created_at ?? '') > (mejor.created_at ?? '')) mejor = a;
+  }
+  const s = mejor?.sentiment;
+  return s === 'positive' || s === 'neutral' || s === 'negative' || s === 'mixed' ? s : null;
+}
+
+/** Cifras del MISMO ámbito que el listado (filtros, permiso y sucursal), calculadas en la base. */
+export interface CallsListStats {
+  /** Llamadas en el ámbito filtrado (el nombre viene de la RPC; no es solo «hoy»). */
+  totalToday: number;
+  /** Duración media (s) de las contestadas por una persona. */
+  avgDuration: number;
+  missed: number;
+  /** Contestadas por una persona (`answered_by = 'human'`). */
+  answered: number;
+  /** Segundos de voz de las completadas que no son registro manual. */
+  voiceSeconds: number;
+  /** `comm_settings.voice_minutes_remaining`; `null` = ilimitado. */
+  remainingVoiceMinutes: number | null;
+  voiceConfigured: boolean;
+}
+
+export interface CallsListResult {
+  data: CallListRow[];
+  count: number;
+  stats: CallsListStats;
+  /** El servidor resolvió `crm.calls.view_all`: sin él solo ves las tuyas. */
+  canViewAll: boolean;
+}
+
+type FilaRpcLlamada = CallRecord & {
+  customer?: CallListRow['customer'];
+  opportunity?: CallListRow['opportunity'];
+  user?: CallListRow['user'];
+  recordings?: CallListRow['recordings'] | null;
+  analysis?: { sentiment?: string | null } | null;
+  consent_method?: string | null;
+  disposition_outcome?: string | null;
+};
+
+/** Fila de `crm_calls_list` → `CallListRow` (sin grabaciones borradas). */
+export function filaDeListadoLlamadas(r: FilaRpcLlamada): CallListRow {
+  const { customer, opportunity, user, recordings, analysis, consent_method, disposition_outcome, ...rest } = r;
+  return {
+    ...(rest as CallRecord),
+    customer: customer ?? null,
+    opportunity: opportunity ?? null,
+    user: user ?? null,
+    recordings: (recordings ?? []).filter((x) => x.status !== 'deleted'),
+    disposition_outcome: disposition_outcome ?? (r.metadata?.disposition_outcome as string | undefined) ?? null,
+    consent_method: consent_method ?? null,
+    sentiment: sentimientoReciente(analysis ? [{ sentiment: analysis.sentiment ?? null, created_at: null }] : null),
+  };
+}
+
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
+
 /**
- * Lista llamadas con cliente, oportunidad, usuario (profiles) y grabaciones.
- * Los filtros son los de `CallFilters`; `user_id` acepta 'me' resuelto por el llamador.
+ * Lista llamadas con cliente, oportunidad, usuario, grabaciones, sentimiento y
+ * cifras, en UNA consulta: la RPC `crm_calls_list` (migraciones
+ * 20260930220920 y 20261002152633, aplicadas). Ella resuelve en la base:
+ *  - la organización (`fn_assert_acceso_org`) y la pertenencia activa;
+ *  - `crm.calls.view_all`: sin ese permiso solo devuelve las del usuario y
+ *    rechaza con 42501 si se pide la de otro (`sin_permiso`);
+ *  - el alcance por sucursal del cliente y de la oportunidad;
+ *  - la búsqueda `q` en número, nombre del cliente y TRANSCRIPCIÓN.
+ * Lanza el error de PostgREST tal cual: la ruta lo traduce con `respuestaErrorCrm`.
  */
 export async function listCallsWithRelations(
   organizationId: number,
   supabase: SupabaseClient,
   filters?: CallFilters
-): Promise<{ data: CallListRow[]; count: number }> {
-  let query = supabase
-    .from('calls')
-    .select(
-      '*, customers:customer_id(id, full_name, first_name, last_name, phone), opportunities:opportunity_id(id, name), call_recordings(id, status, duration_seconds, channels), call_consents(consent_type, method)',
-      { count: 'exact' }
-    )
-    .eq('organization_id', organizationId)
-    .order('started_at', { ascending: false, nullsFirst: false });
-
-  if (filters?.status) query = query.eq('status', filters.status);
-  if (filters?.direction) query = query.eq('direction', filters.direction);
-  if (filters?.mode) query = query.eq('mode', filters.mode);
-  if (filters?.customer_id) query = query.eq('customer_id', filters.customer_id);
-  if (filters?.user_id) query = query.eq('user_id', filters.user_id);
-  if (filters?.opportunity_id) query = query.eq('opportunity_id', filters.opportunity_id);
-  if (filters?.provider_call_sid) query = query.eq('provider_call_sid', filters.provider_call_sid);
-  if (filters?.outcome) query = query.eq('metadata->>disposition_outcome', filters.outcome);
-  if (filters?.q) {
-    const filter = ilikeAnyOf(['to_number', 'from_number'], filters.q);
-    if (filter) query = query.or(filter);
-  }
-  if (filters?.from_date) query = query.gte('started_at', filters.from_date);
-  if (filters?.to_date) query = query.lte('started_at', filters.to_date);
-  if (filters?.has_recording === true) query = query.eq('recording_enabled', true);
-
-  const limit = Math.min(200, Math.max(1, filters?.limit ?? 50));
-  const offset = Math.max(0, filters?.offset ?? 0);
-  query = query.range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
-  if (error) {
-    console.error('[callManagementService.listCallsWithRelations] error:', error.message);
-    return { data: [], count: 0 };
-  }
-
-  type Raw = CallRecord & {
-    customers?: CallListRow['customer'] | CallListRow['customer'][] | null;
-    opportunities?: CallListRow['opportunity'] | CallListRow['opportunity'][] | null;
-    call_recordings?: CallListRow['recordings'] | null;
-    call_consents?: { consent_type: string; method: string }[] | null;
+): Promise<CallsListResult> {
+  const p: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(filters ?? {})) if (v !== undefined && v !== null && v !== '') p[k] = v;
+  const { data, error } = await supabase.rpc('crm_calls_list', { p_org: organizationId, p_filters: p });
+  if (error) throw error;
+  const raw = (data ?? {}) as { data?: FilaRpcLlamada[]; count?: number; stats?: Partial<CallsListStats>; canViewAll?: boolean };
+  const s = raw.stats ?? {};
+  return {
+    data: (raw.data ?? []).map(filaDeListadoLlamadas),
+    count: num(raw.count),
+    stats: {
+      totalToday: num(s.totalToday),
+      avgDuration: num(s.avgDuration),
+      missed: num(s.missed),
+      answered: num(s.answered),
+      voiceSeconds: num(s.voiceSeconds),
+      remainingVoiceMinutes: s.remainingVoiceMinutes === null || s.remainingVoiceMinutes === undefined ? null : num(s.remainingVoiceMinutes),
+      voiceConfigured: s.voiceConfigured === true,
+    },
+    canViewAll: raw.canViewAll === true,
   };
-  const rows = (data ?? []) as Raw[];
-  const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter((u): u is string => Boolean(u))));
-  const users = new Map<string, CallListRow['user']>();
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', userIds);
-    for (const p of (profiles ?? []) as NonNullable<CallListRow['user']>[]) users.set(p.id, p);
-  }
-
-  const first = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
-  const mapped: CallListRow[] = rows.map((r) => {
-    const { customers, opportunities, call_recordings, call_consents, ...rest } = r;
-    const recordings = (call_recordings ?? []).filter((x) => x.status !== 'deleted');
-    return {
-      ...(rest as CallRecord),
-      customer: first(customers),
-      opportunity: first(opportunities),
-      user: r.user_id ? users.get(r.user_id) ?? null : null,
-      recordings,
-      disposition_outcome: (r.metadata?.disposition_outcome as string | undefined) ?? null,
-      consent_method: (call_consents ?? []).find((c) => c.consent_type === 'recording')?.method ?? null,
-    };
-  });
-
-  const filtered = filters?.has_recording === true ? mapped.filter((m) => m.recordings.some((x) => x.status === 'ready')) : mapped;
-  return { data: filtered, count: count ?? filtered.length };
 }

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { ApiError } from '@/components/crm/whatsapp/api';
 import { ChannelSelect } from '@/components/crm/whatsapp/compose/ChannelSelect';
 import { TemplatePicker } from '@/components/crm/whatsapp/compose/TemplatePicker';
@@ -116,11 +117,19 @@ export function CampanaNuevaPage() {
             <div className="space-y-4">
               <div><Label htmlFor="camp-name" className="text-xs">Nombre de la campaña</Label><Input id="camp-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Novedades septiembre" className="bg-gray-50 dark:bg-gray-900" /></div>
               <ChannelSelect channels={c.channels} value={c.channelId} onChange={c.setChannelId} loading={c.loadingChannels} />
-              <div className="flex gap-2 text-xs">
-                <button type="button" className={`px-3 py-1.5 rounded-md border ${c.tab === 'template' ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300' : 'border-gray-200 dark:border-gray-700'}`} onClick={() => c.setTab('template')} disabled={!c.capabilities.templates}>Plantilla aprobada (recomendado)</button>
-                <button type="button" className={`px-3 py-1.5 rounded-md border ${c.tab === 'text' ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300' : 'border-gray-200 dark:border-gray-700'}`} onClick={() => c.setTab('text')}>Texto libre (solo ventana abierta)</button>
-              </div>
-              {c.tab === 'template' ? <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} onCreateTemplate={() => router.push('/app/crm/plantillas?tab=whatsapp')} />
+              {/* Tipo de mensaje: alterna el contenido del mismo paso → control segmentado del kit (regla de pestañas 2026-10-06). */}
+              <SegmentedControl
+                etiqueta="Tipo de mensaje"
+                tamano="sm"
+                valor={c.tab}
+                onValorChange={(v) => c.setTab(v)}
+                className="max-w-full flex-wrap"
+                opciones={[
+                  { valor: 'template', etiqueta: 'Plantilla aprobada (recomendado)', deshabilitada: !c.capabilities.templates },
+                  { valor: 'text', etiqueta: 'Texto libre (solo ventana abierta)' },
+                ]}
+              />
+              {c.tab === 'template' ? <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} onCreateTemplate={() => router.push('/app/crm/plantillas?pestana=whatsapp')} />
                 : <MessageForm value={c.text} onChange={c.setText} media={null} onMedia={() => undefined} allowMedia={false} scheduledAt={null} onScheduledAt={() => undefined} />}
               {c.preview && c.preview.missing.length > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">Variables sin valor por defecto ({c.preview.missing.join(', ')}): escríbelas arriba; se aplicarán a todos los contactos.</p>}
             </div>

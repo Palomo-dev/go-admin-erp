@@ -14647,10 +14647,10 @@
     "iniciarSesionDeNuevo": "Iniciar sesión de nuevo"
   },
   "posMesaLiberar": {
-    "titulo": "¿Liberar la mesa {mesa}?",
+    "titulo": "Liberar {mesa}",
     "tituloConSaldo": "La mesa {mesa} tiene saldo pendiente",
     "descripcion": "Se cerrará la cuenta de la mesa y quedará libre.",
-    "descripcionConSaldo": "Antes de liberarla, decide qué pasa con lo que falta por cobrar.",
+    "descripcionConSaldo": "Resuélvelo antes de soltar la mesa.",
     "cargando": "Cargando la cuenta de la mesa…",
     "sinDato": "—",
     "sinCliente": "Sin cliente",
@@ -14664,7 +14664,8 @@
       "cliente": "Cliente",
       "total": "Total",
       "pagado": "Pagado",
-      "saldo": "Saldo"
+      "saldo": "Saldo",
+      "abiertaHace": "Abierta hace"
     },
     "tiempo": {
       "minutos": "{m} min",
@@ -14683,16 +14684,18 @@
     "opciones": {
       "cobrar": {
         "titulo": "Cobrar ahora",
-        "descripcion": "Abre el cobro del POS con la cuenta de esta mesa."
+        "descripcion": "Abre el cobro del POS con la cuenta de esta mesa.",
+        "descripcionImporte": "Abre el cobro por {importe}."
       },
       "cartera": {
-        "titulo": "Dejar como cuenta por cobrar del cliente",
+        "titulo": "Pasar a cuentas por cobrar",
         "descripcion": "Se factura a crédito al cliente, se descuenta el inventario y el saldo pasa a su cartera.",
-        "existente": "La factura ya está en la cartera del cliente: solo se libera la mesa."
+        "existente": "La factura ya está en la cartera del cliente: solo se libera la mesa.",
+        "descripcionCliente": "Queda como deuda de {cliente} con su factura."
       },
       "anular": {
         "titulo": "Anular la venta",
-        "descripcion": "La venta queda anulada con el motivo y la cocina pendiente se cancela. Requiere permiso."
+        "descripcion": "Requiere permiso de anular y motivo. Revierte pagos si la caja sigue abierta."
       }
     },
     "motivo": {
@@ -14704,9 +14707,10 @@
     "acciones": {
       "liberar": "Liberar mesa",
       "cobrar": "Ir a cobrar",
-      "cartera": "Dejar en cartera y liberar",
+      "cartera": "Pasar a cuentas por cobrar",
       "anular": "Anular venta y liberar",
-      "elegir": "Elige una opción"
+      "elegir": "Elige una opción",
+      "cobrarImporte": "Cobrar {importe}"
     },
     "motivos": {
       "sin_caja": "Abre una caja para poder cobrar.",
@@ -14745,7 +14749,13 @@
       "anulada": "Venta anulada. Ítems de cocina cancelados: {n}.",
       "sinCocinar": "Siguen en cocina sin cocinar: {n}.",
       "errorTitulo": "No se pudo liberar la mesa"
-    }
+    },
+    "cerrar": "Cerrar",
+    "cancelar": "Cancelar",
+    "resumen": "Resumen de la cuenta",
+    "avisoSaldo": "La cuenta tiene saldo: {saldo}",
+    "avisoSaldoCocina": "Resuélvelo antes de soltar la mesa. {n, plural, one {Un plato sigue} other {# platos siguen}} en preparación.",
+    "sinSaldoTitulo": "La cuenta está en cero"
   },
   "posNotasLinea": {
     "errorExcluirImpuesto": "No se pudo guardar «Excluir impuesto»",
@@ -32868,6 +32878,609 @@
       "comandaValor": "#{id}",
       "cajaValor": "Caja {caja} · {sede} · abierta",
       "sinCaja": "sin caja abierta"
+    }
+  },
+  "posMesasFlujo": {
+    "mesa": "Mesa",
+    "volverPlano": "Volver al plano",
+    "verCuenta": "Ver cuenta · {total}",
+    "estados": {
+      "libre": "Libre",
+      "ocupada": "Ocupada",
+      "porCobrar": "Por cobrar"
+    },
+    "estaciones": {
+      "hot_kitchen": "Cocina caliente",
+      "cold_kitchen": "Cocina fría",
+      "bar": "Bar",
+      "cashier": "Caja",
+      "all": "Cocina",
+      "general": "Cocina"
+    },
+    "metodos": {
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "transfer": "Transferencia",
+      "qr": "QR",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "credit_card": "Tarjeta",
+      "debit_card": "Tarjeta"
+    },
+    "pantalla": {
+      "cargando": "Cargando la mesa",
+      "errorTitulo": "No se pudo cargar la {mesa}",
+      "errorDescripcion": "Revisa la conexión y vuelve a intentar. La cuenta y las rondas enviadas no se perdieron.",
+      "sinPermisoTitulo": "No tienes acceso a esta sucursal",
+      "sinPermisoDescripcion": "Esta mesa es de una sucursal de la que no eres miembro. Pide acceso al administrador de la organización.",
+      "volverPlano": "Volver al plano",
+      "noActualizada": "No se pudo actualizar la mesa. Se muestra lo último que se cargó."
+    },
+    "cabecera": {
+      "volver": "Volver al plano",
+      "mesaZona": "{mesa} · {zona}",
+      "abierta": "Tiempo con la cuenta abierta",
+      "meseroComensales": "{mesero} · {n, plural, one {# comensal} other {# comensales}}",
+      "comensales": "{n, plural, one {# comensal} other {# comensales}}",
+      "precuenta": "Pre-cuenta"
+    },
+    "cuenta": {
+      "etiqueta": "Cuenta de la {mesa}",
+      "titulo": "{mesa} · Cuenta",
+      "tituloVacio": "Carrito",
+      "enCocina": "{n} en cocina",
+      "consumidorFinal": "Consumidor final",
+      "consumidorFinalIniciales": "CF",
+      "cambiarCliente": "Cliente: {nombre}. Cambiar (F2)",
+      "comensales": "{n, plural, one {# comensal} other {# comensales}}",
+      "editarNotaMesa": "Nota de la mesa: comensales, alergias e instrucciones",
+      "porEnviar": "Por enviar",
+      "porEnviarDetalle": "{n, plural, one {# línea} other {# líneas}} · se envían juntas",
+      "ronda": "Ronda {n}",
+      "rondaEstado": "Ronda {n} · {estado}",
+      "estadoRonda": {
+        "en_cocina": "en cocina",
+        "preparando": "preparando",
+        "lista": "lista para servir",
+        "servida": "servida"
+      },
+      "enviada": "enviada",
+      "servida": "servida",
+      "lineasContraida": "{n, plural, one {# línea} other {# líneas}} (contraída)",
+      "directas": "Sin cocina",
+      "directasDetalle": "se sirven directo",
+      "impuestoIncluido": "inc. {impuesto}",
+      "impuesto": "Impuesto {tasa}",
+      "subtotal": "Subtotal",
+      "abonado": "Pagado por partes",
+      "total": "Total",
+      "precuenta": "Pre-cuenta",
+      "dividir": "Dividir",
+      "enviar": "Enviar a cocina ({n})",
+      "cobrarMesa": "Cobrar mesa",
+      "cobrar": "Cobrar",
+      "abrirCaja": "Abrir caja para cobrar",
+      "vacioTitulo": "Agrega productos para empezar",
+      "vacioDescripcion": "Busca por nombre o código (F2) o escanea. Las notas y los modificadores se agregan desde cada línea."
+    },
+    "linea": {
+      "precioUnidad": "{cantidad} × {precio}",
+      "enviada": "enviada",
+      "lista": "lista",
+      "cantidadDe": "Cantidad de {nombre}",
+      "menos": "Restar una unidad de {nombre}",
+      "mas": "Sumar una unidad de {nombre}",
+      "enCocinaBloqueada": "La cocina ya la tiene: para restar o quitar se pide el motivo",
+      "unidades": "{n} und",
+      "comensalN": "Comensal {n}",
+      "alergia": "Alergia",
+      "notaCocina": "Cocina: {nota}",
+      "moverA": "Mover a otra mesa",
+      "restarUna": "Restar una unidad",
+      "estado": {
+        "por_enviar": "Por enviar",
+        "en_cocinaMin": "En cocina · {min} min",
+        "preparandoMin": "Preparando · {min} min",
+        "lista": "Lista para servir",
+        "servida": "Servida",
+        "cancelada": "Anulada",
+        "sin_cocina": "Sin cocina"
+      },
+      "acciones": {
+        "nota": "Nota de la línea",
+        "modificadores": "Variantes y modificadores",
+        "comensal": "Comensal de la línea",
+        "servido": "Marcar servido",
+        "quitar": "Quitar",
+        "anular": "Anular con motivo"
+      }
+    },
+    "nota": {
+      "titulo": "Nota de la mesa · {mesa}",
+      "comensales": "Comensales",
+      "menosComensales": "Un comensal menos",
+      "masComensales": "Un comensal más",
+      "alergias": "Alergias e intolerancias",
+      "alergiasAyuda": "de toda la mesa",
+      "alergiasComunes": {
+        "mani": "Maní",
+        "lacteos": "Lácteos",
+        "gluten": "Gluten",
+        "mariscos": "Mariscos",
+        "huevo": "Huevo"
+      },
+      "otra": "Otra…",
+      "otraPlaceholder": "Escribe la alergia",
+      "avisoAlergiaMesa": "Alergia en la mesa: {alergias}. Cada comanda de esta mesa lleva el aviso en rojo.",
+      "avisoAlergiaLineas": "{alergias}. Cada comanda de esta mesa lleva el aviso en rojo.",
+      "instrucciones": "Instrucciones para cocina",
+      "instruccionesAyuda": "van en cada comanda",
+      "ritmo": "Ritmo de salida",
+      "ritmos": {
+        "junto": "Todo junto",
+        "tiempos": "Por tiempos",
+        "aviso": "Esperar aviso"
+      },
+      "notaCliente": "Nota para el recibo del cliente",
+      "notaClienteAyuda": "sale impresa en el ticket",
+      "pie": "Se guarda en la mesa y viaja con la próxima comanda.",
+      "guardar": "Guardar"
+    },
+    "editorLinea": {
+      "titulo": "{producto} · nota y comensal",
+      "paraQuien": "Para quién",
+      "general": "General",
+      "comensalCorto": "C{n}",
+      "notasRapidas": "Notas rápidas",
+      "notaLibre": "Nota libre para cocina",
+      "asiQueda": "Así queda en la línea y en la comanda",
+      "cocina": "Cocina: {nota}",
+      "sinNota": "Sin nota para cocina",
+      "alergiaLinea": "Alergia: {nota}{comensal}",
+      "esAlergia": "Es alergia: la cocina la confirma antes de empezar",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar"
+    },
+    "menu": {
+      "etiqueta": "Más acciones de la mesa",
+      "precuenta": "Pre-cuenta",
+      "pedirCuenta": "Pedir la cuenta",
+      "dividir": "Dividir la cuenta",
+      "mover": "Mover o unir mesas",
+      "cambiarMesero": "Cambiar mesero",
+      "comensales": "Comensales · {n}",
+      "nota": "Nota de la mesa",
+      "historial": "Historial de la mesa",
+      "liberar": "Liberar mesa"
+    },
+    "mesero": {
+      "titulo": "Cambiar mesero",
+      "guardar": "Guardar",
+      "placeholder": "Elige el mesero",
+      "tu": "{nombre} (tú)"
+    },
+    "abrir": {
+      "titulo": "Abrir {mesa}",
+      "tituloZona": "Abrir {mesa} · {zona}",
+      "cerrar": "Cerrar",
+      "cancelar": "Cancelar",
+      "abrir": "Abrir mesa",
+      "abrirYTomar": "Abrir mesa y tomar pedido",
+      "reserva": "Reserva de {nombre} · {hora} · {n, plural, one {# persona} other {# personas}}",
+      "reservaLigada": "{llegada}. Al sentarla, la cuenta queda ligada a la reserva.",
+      "reservaLigadaCorta": "Al sentarla, la cuenta queda ligada a la reserva.",
+      "verReserva": "Ver reserva",
+      "sentar": "Sentar esta reserva en la {mesa}",
+      "sentarCorto": "Sentar esta reserva",
+      "aLaHora": "Llegó a la hora",
+      "llega": "Llega en {min} min",
+      "tarde": "Va {min} min tarde",
+      "comensales": "Comensales",
+      "comensalesOtro": "Número de comensales",
+      "otro": "Otro",
+      "masQueCapacidad": "La mesa es para {n}: puedes abrirla igual.",
+      "mesero": "Mesero",
+      "meseroPlaceholder": "Elige el mesero",
+      "tu": "{nombre} (tú)",
+      "cliente": "Cliente (opcional)",
+      "clienteBuscar": "Buscar por nombre, documento, correo o teléfono",
+      "clienteAyuda": "Al enfocar se abren los recientes debajo del campo · Alt+N crea un cliente"
+    },
+    "mover": {
+      "titulo": "Mover desde la {mesa}",
+      "tituloZona": "Mover desde la {mesa} · {zona}",
+      "cerrar": "Cerrar",
+      "cancelar": "Cancelar",
+      "modo": "Qué mover",
+      "modos": {
+        "cuenta": "Toda la cuenta",
+        "productos": "Algunos productos",
+        "unir": "Unir mesas"
+      },
+      "productosAMover": "Productos a mover (solo los pendientes de pago)",
+      "sinProductos": "No hay productos pendientes de pago para mover.",
+      "lineaCantidad": "{n} × {nombre}",
+      "comensal": "Comensal {n}",
+      "enCocina": "en cocina",
+      "mesaDestino": "Mesa destino",
+      "sinDestinos": "No hay mesas disponibles para este movimiento.",
+      "ayudaCuenta": "La cuenta completa, con sus rondas, su cliente y su reserva, pasa a una mesa libre.",
+      "ayudaUnir": "La cuenta de esta mesa entra en la de la mesa elegida y esta mesa queda libre.",
+      "elegidaProductos": "{mesa} elegida. Los platos en cocina se mueven con su comanda y la cocina recibe el cambio de mesa. Una mesa libre abre su cuenta al recibir productos.",
+      "elegidaCuenta": "{mesa} elegida. La cocina ve la mesa nueva en sus comandas.",
+      "elegidaUnir": "{mesa} elegida. Se suman los comensales y las comandas pasan a esa mesa.",
+      "eligeMesa": "Elige la mesa destino",
+      "moverCuenta": "Mover la cuenta a la {mesa}",
+      "moverProductos": "Mover {n, plural, one {# producto} other {# productos}} a la {mesa}",
+      "unirCon": "Unir con la {mesa}"
+    },
+    "dividir": {
+      "titulo": "Dividir cuenta · {mesa}",
+      "tituloTableta": "Dividir la cuenta · {mesa}",
+      "cerrar": "Cerrar",
+      "cancelar": "Cancelar",
+      "modo": "Cómo dividir",
+      "modos": {
+        "comensal": "Por comensal",
+        "iguales": "Partes iguales",
+        "items": "Por ítems",
+        "productos": "Por productos"
+      },
+      "ayudaComensalTableta": "Se precarga con el comensal de cada línea. Lo «General» (entradas, bebidas para compartir) se reparte en partes iguales entre los {n}.",
+      "ayuda": "Las líneas se reparten por el comensal que ya tienen; lo general se reparte en partes iguales. Las notas de cocina no pasan a los recibos; la nota para el cliente sale en cada recibo.",
+      "partes": "Partes",
+      "menosPartes": "Una parte menos",
+      "masPartes": "Una parte más",
+      "producto": "Producto",
+      "unidadesDe": "Unidades de {producto} en la parte {parte}",
+      "sinAsignar": "Faltan {n, plural, one {# unidad} other {# unidades}} por asignar.",
+      "lineaParte": "{nombre} ×{n}",
+      "totalImpuestos": "Total + impuestos",
+      "cobrarPrimera": "Cobrar {parte} · {importe}",
+      "cobrar": "Cobrar",
+      "dividirEn": "Dividir en {n} partes"
+    },
+    "partes": {
+      "titulo": "Cobrar por partes · {mesa} · {n, plural, one {# comensal} other {# comensales}}",
+      "cerrar": "Cerrar",
+      "comensal": "Comensal {n}",
+      "parte": "Parte {n}",
+      "estado": {
+        "pendiente": "Pendiente",
+        "cobrando": "Cobrando",
+        "pagada": "Pagada"
+      },
+      "cobrarParte": "Cobrar esta parte",
+      "cobrando": "Cobrando…",
+      "detalleProductos": "{n, plural, one {# producto} other {# productos}} · {nombres}",
+      "detalleMonto": "Parte del total, por monto",
+      "detalleIgual": "1 de {n} partes iguales del total",
+      "masGeneral": "+ 1/{n} de lo general",
+      "soloGeneral": "1/{n} de lo general",
+      "pagadoCon": "Pagado con {metodo} · {hora}",
+      "resumen": "Resumen de las partes",
+      "total": "Total de la mesa",
+      "pagado": "Pagado",
+      "falta": "Falta",
+      "volver": "Volver a la cuenta",
+      "unir": "Unir partes pendientes",
+      "unidas": "Partes pendientes",
+      "cobrarSiguiente": "Cobrar {parte} · {importe}",
+      "todoPagado": "Todo pagado",
+      "lineaCobro": "{parte} · {mesa}",
+      "saldo": "Saldo de la {mesa}"
+    },
+    "precuenta": {
+      "titulo": "Pre-cuenta · {mesa} · {n, plural, one {# comensal} other {# comensales}}",
+      "noFactura": "No es una factura. El cobro se hace al cerrar la cuenta.",
+      "cerrar": "Cerrar",
+      "imprimir": "Imprimir pre-cuenta",
+      "cobrar": "Cobrar",
+      "abrirCaja": "Abrir caja para cobrar",
+      "linea": "{n} × {nombre}",
+      "subtotal": "Subtotal",
+      "descuentos": "Descuentos",
+      "baseGravable": "Base gravable",
+      "abonado": "Pagado por partes",
+      "total": "Total",
+      "propinaTitulo": "Propina voluntaria sugerida",
+      "propinaTexto": "La propina es voluntaria y es de los trabajadores. Puede aceptarla, cambiarla o no darla.",
+      "sinPropina": "Sin propina",
+      "porcentaje": "{pct} % · {valor}",
+      "otroValor": "Otro valor",
+      "propinaBase": "Calculada sobre {base}: subtotal después de descuentos, antes de impuestos. No forma parte de la factura."
+    },
+    "cobro": {
+      "titulo": "Cobrar {mesa}",
+      "tituloZona": "Cobrar {mesa} · {zona}",
+      "cobrada": "¡{mesa} cobrada!",
+      "cobradaDetalle": "Venta {numero} · la mesa pasa a «Por limpiar»",
+      "volverPlano": "Volver al plano",
+      "parteCobrada": "¡Parte cobrada!",
+      "parteCobradaDetalle": "Venta {numero} · faltan las demás partes",
+      "volverPartes": "Volver a las partes"
+    },
+    "anular": {
+      "titulo": "Quitar {producto} de la cuenta",
+      "tituloRestar": "Restar una unidad de {producto}",
+      "descripcion": "La cocina ya lo tiene: recibe una comanda de ajuste con el motivo.",
+      "confirmar": "Quitar y avisar a cocina",
+      "confirmarRestar": "Restar y avisar a cocina"
+    },
+    "avisos": {
+      "sinCaja": "No hay caja abierta en esta sucursal",
+      "sinCajaDetalle": "Puedes tomar pedidos y enviar rondas. Para cobrar, abre la caja o pídelo en caja.",
+      "abrirCaja": "Abrir caja · F9",
+      "sinConexion": "Sin conexión · {n, plural, =0 {nada en cola} one {# cambio en cola} other {# cambios en cola}}",
+      "sinConexionDetalle": "La ronda se envía a cocina y se imprime cuando vuelva la señal. Cobrar necesita conexión.",
+      "abandonada": "Mesa abierta hace {tiempo} sin movimiento",
+      "abandonadaDetalle": "Tiene {saldo} sin cobrar y {n, plural, =0 {nada en cocina} one {# plato sin entregar} other {# platos sin entregar}}. Cóbrala, pásala a cartera o anúlala con motivo.",
+      "resolver": "Resolver"
+    },
+    "toast": {
+      "abierta": "{mesa} abierta",
+      "agregado": "{producto} agregado",
+      "agregadoDetalle": "Queda «Por enviar» en la {mesa}",
+      "sinPrecio": "{producto} no tiene precio vigente",
+      "errorAgregar": "No se pudo agregar el producto",
+      "cliente": "Cliente: {nombre}",
+      "consumidorFinal": "La cuenta queda a consumidor final",
+      "notaGuardada": "Nota de la mesa guardada",
+      "rondaEnviada": "Ronda {n} enviada a cocina",
+      "estacion": "{estacion}: {n}",
+      "impresa": "impresa en cada estación",
+      "sinImpresora": "una estación no tiene impresora: salió por el navegador",
+      "rondaEnCola": "Ronda {n} en cola",
+      "rondaEnColaDetalle": "Se enviará a cocina al volver la conexión",
+      "colaEnviada": "Las rondas en cola se enviaron a cocina",
+      "ajusteEnviado": "Ajuste enviado a cocina",
+      "cuentaPedida": "{mesa} pidió la cuenta",
+      "precuentaImpresa": "Pre-cuenta enviada a la impresora de caja",
+      "precuentaNavegador": "Pre-cuenta lista para imprimir",
+      "cobrada": "{mesa} cobrada",
+      "cobradaDetalle": "La mesa pasa a «Por limpiar»",
+      "cobradoSinLiberar": "Cobrado; falta liberar la {mesa}",
+      "reintentarLiberar": "Reintentar liberar",
+      "liberada": "{mesa} liberada · pasa a «Por limpiar»",
+      "movido": {
+        "cuenta": "Cuenta movida a la {mesa}",
+        "productos": "{n, plural, one {# producto movido} other {# productos movidos}} a la {mesa}",
+        "unir": "Mesas unidas en la {mesa}"
+      }
+    },
+    "errores": {
+      "error": "No se pudo completar la acción. Intenta de nuevo.",
+      "cliente": "No se pudo asignar el cliente",
+      "nota": "No se pudo guardar la nota de la mesa",
+      "linea": "No se pudo guardar la línea",
+      "ronda": "No se pudo enviar la ronda",
+      "servido": "No se pudo marcar como servido",
+      "cantidad": "No se pudo cambiar la cantidad",
+      "anular": "No se pudo anular el plato",
+      "modificadores": "No se pudieron cambiar los modificadores",
+      "mover": "No se pudo mover",
+      "mesero": "No se pudo cambiar el mesero",
+      "sinProductos": "Agrega productos antes de cobrar",
+      "mesa_ocupada": "La mesa ya tiene una cuenta abierta.",
+      "mesa_sin_cuenta": "La mesa destino no tiene cuenta abierta: usa «Toda la cuenta».",
+      "cuenta_con_pagos": "La cuenta ya tiene pagos: no se puede unir. Cobra el resto o mueve los productos.",
+      "linea_invalida": "Algún producto ya se pagó o no es de esta cuenta.",
+      "sin_acceso_sucursal": "No tienes acceso a la sucursal de esa mesa.",
+      "sin_acceso": "No tienes acceso a esta organización.",
+      "mesero_invalido": "El mesero no es miembro activo de la organización.",
+      "cliente_invalido": "El cliente no es de esta organización.",
+      "comensales_invalidos": "Indica entre 1 y 99 comensales.",
+      "reserva_no_sentable": "La reserva ya no se puede sentar.",
+      "mesa_de_otra_sede": "La mesa es de otra sede.",
+      "sesion_cerrada": "La cuenta de la mesa ya se cerró."
+    }
+  },
+  "posMesasPlano": {
+    "mesa": {
+      "etiqueta": "{mesa}, {estado}",
+      "personas": "{n} pers.",
+      "reservada": "Reservada",
+      "limpiar": "Limpiar",
+      "porLimpiar": "Por limpiar",
+      "comensalesTiempo": "{n}/{cap} · {tiempo}",
+      "comensalesTiempoCorto": "{n}/{cap} · {tiempo}",
+      "platoListo": "{n, plural, one {Plato listo} other {# platos listos}}",
+      "abandonada": "Abierta sin movimiento",
+      "estados": {
+        "libre": "Libre",
+        "ocupada": "Ocupada",
+        "por_cobrar": "Por cobrar",
+        "reservada": "Reservada",
+        "por_limpiar": "Por limpiar"
+      }
+    },
+    "leyenda": {
+      "etiqueta": "Filtrar por estado",
+      "libre": "Libres · {n}",
+      "ocupada": "Ocupadas · {n}",
+      "por_cobrar": "Por cobrar · {n}",
+      "reservada": "Reservadas · {n}",
+      "por_limpiar": "Por limpiar · {n}"
+    },
+    "zona": {
+      "mesas": "{n, plural, one {# mesa} other {# mesas}}",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "ocupadas": "{n, plural, one {# ocupada} other {# ocupadas}}",
+      "porCobrar": "{n} por cobrar",
+      "coinciden": "{n} de {total} mesas coinciden con los filtros",
+      "verPlano": "Ver en el plano",
+      "qr": "QR de las mesas de la zona"
+    },
+    "resumen": {
+      "tituloZona": "{mesa} · {zona}",
+      "abrir": "Abrir mesa",
+      "verReserva": "Ver reserva",
+      "marcarLista": "Marcar lista",
+      "verCuenta": "Ver cuenta",
+      "comensales": "{n}/{cap} comensales · {tiempo}",
+      "importe": "{importe} · {n, plural, one {# producto} other {# productos}}",
+      "capacidad": "{n, plural, one {Para # persona} other {Para # personas}}",
+      "reserva": "Reserva de {nombre} · {hora}",
+      "porLimpiar": "Cobrada: falta dejarla lista",
+      "mesero": "{nombre} · mesero",
+      "agregar": "Agregar productos",
+      "pedirCuenta": "Pedir cuenta",
+      "masAcciones": "Más acciones"
+    },
+    "plano": {
+      "sinZona": "Sin zona",
+      "todas": "Todas",
+      "zonas": "Zonas del plano",
+      "editarEnPantallaGrande": "Para editar el plano usa un computador o una tablet.",
+      "editar": "Editar plano",
+      "alejar": "Alejar",
+      "acercar": "Acercar",
+      "ajustar": "Ajustar",
+      "rejilla": "Rejilla",
+      "pantallaCompleta": "Pantalla completa"
+    },
+    "editor": {
+      "barra": "Edición del plano",
+      "editando": "Editando plano",
+      "deshacer": "Deshacer",
+      "rehacer": "Rehacer",
+      "alinear": "Alinear",
+      "duplicar": "Duplicar",
+      "eliminar": "Eliminar",
+      "botonMesa": "Mesa",
+      "botonZona": "Zona",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar cambios",
+      "guardarN": "Guardar cambios ({n})",
+      "zonaNueva": "Zona {n}",
+      "zonaVacia": "Zona vacía: agrega mesas con «+ Mesa».",
+      "prefijoMesa": "Mesa",
+      "mesa": {
+        "sinZona": "Sin zona",
+        "conCuenta": "con cuenta abierta",
+        "nueva": "nueva",
+        "cerrar": "Cerrar",
+        "nombre": "Nombre o número",
+        "zona": "Zona",
+        "forma": "Forma",
+        "formas": {
+          "cuadrada": "Cuadrada",
+          "redonda": "Redonda",
+          "larga": "Larga",
+          "barra": "Barra"
+        },
+        "capacidad": "Capacidad",
+        "menos": "Una persona menos",
+        "mas": "Una persona más",
+        "personas": "{n, plural, one {persona · # silla} other {personas · # sillas}}",
+        "tamano": "Tamaño",
+        "rotacion": "Rotación",
+        "posicion": "Posición (se cambia arrastrando o con flechas)",
+        "avisoCuenta": "Tiene una cuenta abierta: puedes moverla, pero no eliminarla ni bajar su capacidad por debajo de {n} comensales.",
+        "duplicar": "Duplicar",
+        "eliminar": "Eliminar"
+      },
+      "zona": {
+        "titulo": "Zona · {zona}",
+        "mesas": "{n, plural, one {# mesa en esta zona} other {# mesas en esta zona}}",
+        "cerrar": "Cerrar",
+        "nombre": "Nombre de la zona",
+        "color": "Color (6 tonos del manual)",
+        "tono": "Tono {n}",
+        "orden": "Orden",
+        "pestana": "Pestaña {n} de {total}",
+        "subir": "Subir la pestaña",
+        "bajar": "Bajar la pestaña",
+        "avisoEliminar": "Para eliminar la zona, primero mueve sus {n} mesas a otra zona.",
+        "eliminar": "Eliminar zona"
+      }
+    },
+    "lote": {
+      "titulo": "Agregar mesas en lote",
+      "descripcion": "Crea varias mesas iguales de una vez; después las ubicas en el plano.",
+      "crear": "{n, plural, one {Crear # mesa} other {Crear # mesas}}",
+      "crearSinN": "Crear mesas",
+      "zona": "Zona",
+      "zonaAyuda": "Escribe una zona nueva o elige una existente.",
+      "desde": "Desde el número",
+      "cantidad": "Cuántas",
+      "capacidad": "Personas por mesa",
+      "forma": "Forma",
+      "resumen": "Mesa {desde} a Mesa {hasta}: {n} mesas de {cap} personas."
+    },
+    "vacio": {
+      "titulo": "Arma tu salón",
+      "descripcion": "Crea una zona, agrega tus mesas y ubícalas en el plano. Puedes crear varias mesas de una vez.",
+      "crearZona": "Crear zona",
+      "lote": "Agregar mesas en lote",
+      "crearYAgregar": "Crear y agregar mesas",
+      "zonaAyuda": "Salón, Terraza, Barra…",
+      "paso1": {
+        "titulo": "Crea una zona",
+        "detalle": "Salón, Terraza, Barra…"
+      },
+      "paso2": {
+        "titulo": "Agrega mesas",
+        "detalle": "Número, capacidad y forma; en lote: 10 mesas de 4"
+      },
+      "paso3": {
+        "titulo": "Ubícalas en el plano",
+        "detalle": "Arrastra, gira y alinea a la rejilla"
+      }
+    },
+    "cabecera": {
+      "cargando": "cargando…",
+      "editando": "editando el plano de {zona}",
+      "haceSeg": "actualizado hace {n} s",
+      "haceMin": "actualizado hace {n} min"
+    },
+    "errores": {
+      "cargar": "No se pudieron actualizar las mesas",
+      "lista": "No se pudo marcar la mesa como lista",
+      "cuenta": "No se pudo pedir la cuenta",
+      "guardar": "No se pudo guardar",
+      "eliminar": "No se pudo eliminar la mesa",
+      "plano": "No se pudo guardar el plano. Revisa la conexión e inténtalo de nuevo.",
+      "lote": "No se pudieron crear las mesas"
+    },
+    "toast": {
+      "lista": "{mesa} quedó lista",
+      "cuentaPedida": "{mesa}: cuenta pedida",
+      "mesaCreada": "{mesa} creada",
+      "mesaGuardada": "{mesa} guardada",
+      "mesaEliminada": "{mesa} eliminada",
+      "comensales": "{mesa}: {n} comensales",
+      "noBorradas": "{n, plural, one {Una mesa tiene cuenta abierta y no se eliminó} other {# mesas tienen cuenta abierta y no se eliminaron}}",
+      "sinColumnas": "Plano guardado. La forma, el tamaño y el color de las zonas se guardarán cuando se active la actualización del plano.",
+      "planoGuardado": "Plano guardado",
+      "lote": "{n, plural, one {# mesa creada} other {# mesas creadas}}",
+      "zonaRenombrada": "Zona renombrada a {zona}",
+      "zonaEliminada": "Zona eliminada: sus mesas quedaron sin zona",
+      "combinadas": "Mesas combinadas",
+      "movida": "Cuenta movida"
+    },
+    "acciones": {
+      "lote": "Agregar mesas en lote",
+      "loteZona": "Agregar mesas a esta zona",
+      "editarPlano": "Editar plano",
+      "mas": "Más"
+    },
+    "filtros": {
+      "buscar": "Buscar mesa (número o nombre)",
+      "buscarCorto": "Buscar mesa",
+      "chipEstado": "Estado: {estados}"
+    },
+    "densidad": {
+      "etiqueta": "Densidad",
+      "comoda": "Cómoda",
+      "compacta": "Compacta"
+    },
+    "estados": {
+      "errorTitulo": "No se pudieron cargar las mesas",
+      "errorDescripcion": "Revisa la conexión e inténtalo de nuevo. Las cuentas abiertas no se pierden.",
+      "sinPermisoTitulo": "No tienes acceso a esta sucursal",
+      "sinPermisoDescripcion": "Las mesas viven en una sucursal de la que no eres miembro. Pide acceso al administrador de la organización.",
+      "volverPos": "Volver al POS"
     }
   }
 }

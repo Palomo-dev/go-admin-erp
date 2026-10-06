@@ -103,19 +103,27 @@ export class MesasService {
       // Items pendientes en cocina (sin entregar) por sesión
       const sessionIds = (sesiones || []).map((s) => s.id);
       const pendingKitchenBySession: Record<string, number> = {};
+      // Platos listos sin servir (campana del plano) y último movimiento de cocina (mesa abandonada, S7).
+      const readyKitchenBySession: Record<string, number> = {};
+      const lastActivityBySession: Record<string, string> = {};
 
       if (sessionIds.length > 0) {
         const { data: kitchenTickets } = await supabase
           .from('kitchen_tickets')
-          .select('table_session_id, kitchen_ticket_items(id, status)')
+          .select('table_session_id, updated_at, kitchen_ticket_items(id, status)')
           .in('table_session_id', sessionIds);
 
-        kitchenTickets?.forEach((ticket: { table_session_id: string; kitchen_ticket_items: Array<{ status: string }> | null }) => {
+        kitchenTickets?.forEach((ticket: { table_session_id: string; updated_at?: string | null; kitchen_ticket_items: Array<{ status: string }> | null }) => {
           const pendientes = (ticket.kitchen_ticket_items || []).filter(
-            (i) => i.status !== 'delivered'
+            (i) => i.status !== 'delivered' && i.status !== 'cancelled'
           ).length;
           pendingKitchenBySession[ticket.table_session_id] =
             (pendingKitchenBySession[ticket.table_session_id] || 0) + pendientes;
+          const listos = (ticket.kitchen_ticket_items || []).filter((i) => i.status === 'ready').length;
+          readyKitchenBySession[ticket.table_session_id] = (readyKitchenBySession[ticket.table_session_id] || 0) + listos;
+          if (ticket.updated_at && (!lastActivityBySession[ticket.table_session_id] || ticket.updated_at > lastActivityBySession[ticket.table_session_id])) {
+            lastActivityBySession[ticket.table_session_id] = ticket.updated_at;
+          }
         });
       }
 
@@ -158,9 +166,17 @@ export class MesasService {
           return sum + (pendingKitchenBySession[s.id] || 0);
         }, 0);
 
+        const readyKitchenItems = sesionesDeMesa.reduce((sum, s) => sum + (readyKitchenBySession[s.id] || 0), 0);
+        const lastActivityAt = [sesionPrincipal.updated_at, lastActivityBySession[sesionPrincipal.id]]
+          .filter((v): v is string => !!v)
+          .sort()
+          .pop() ?? null;
+
         return {
           ...mesa,
           totalAmount,
+          readyKitchenItems,
+          lastActivityAt,
           session: {
             ...sesionPrincipal,
             customers: customers, // Solo sesión principal

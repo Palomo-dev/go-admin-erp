@@ -14647,10 +14647,10 @@
     "iniciarSesionDeNuevo": "Sign in again"
   },
   "posMesaLiberar": {
-    "titulo": "Release table {mesa}?",
+    "titulo": "Release {mesa}",
     "tituloConSaldo": "Table {mesa} has a balance due",
     "descripcion": "The table bill will be closed and the table will be free.",
-    "descripcionConSaldo": "Before releasing it, decide what happens with the unpaid amount.",
+    "descripcionConSaldo": "Resolve it before releasing the table.",
     "cargando": "Loading the table bill…",
     "sinDato": "—",
     "sinCliente": "No customer",
@@ -14664,7 +14664,8 @@
       "cliente": "Customer",
       "total": "Total",
       "pagado": "Paid",
-      "saldo": "Balance"
+      "saldo": "Balance",
+      "abiertaHace": "Open for"
     },
     "tiempo": {
       "minutos": "{m} min",
@@ -14683,16 +14684,18 @@
     "opciones": {
       "cobrar": {
         "titulo": "Charge now",
-        "descripcion": "Opens the POS checkout with this table’s bill."
+        "descripcion": "Opens the POS checkout with this table’s bill.",
+        "descripcionImporte": "Opens the charge for {importe}."
       },
       "cartera": {
-        "titulo": "Leave it as the customer’s receivable",
+        "titulo": "Move to receivables",
         "descripcion": "It is invoiced on credit to the customer, inventory is deducted and the balance goes to their receivables.",
-        "existente": "The invoice is already in the customer’s receivables: the table is just released."
+        "existente": "The invoice is already in the customer’s receivables: the table is just released.",
+        "descripcionCliente": "Stays as a debt of {cliente} with its invoice."
       },
       "anular": {
         "titulo": "Void the sale",
-        "descripcion": "The sale is voided with the reason and pending kitchen orders are cancelled. Requires permission."
+        "descripcion": "Requires void permission and a reason. Reverses payments if the register is still open."
       }
     },
     "motivo": {
@@ -14704,9 +14707,10 @@
     "acciones": {
       "liberar": "Release table",
       "cobrar": "Go to checkout",
-      "cartera": "Leave on account and release",
+      "cartera": "Move to receivables",
       "anular": "Void sale and release",
-      "elegir": "Choose an option"
+      "elegir": "Choose an option",
+      "cobrarImporte": "Charge {importe}"
     },
     "motivos": {
       "sin_caja": "Open a cash register to charge.",
@@ -14745,7 +14749,13 @@
       "anulada": "Sale voided. Kitchen items cancelled: {n}.",
       "sinCocinar": "Still in the kitchen, not cooked: {n}.",
       "errorTitulo": "The table could not be released"
-    }
+    },
+    "cerrar": "Close",
+    "cancelar": "Cancel",
+    "resumen": "Bill summary",
+    "avisoSaldo": "The bill has a balance: {saldo}",
+    "avisoSaldoCocina": "Resolve it before releasing the table. {n, plural, one {One dish is} other {# dishes are}} still being prepared.",
+    "sinSaldoTitulo": "The bill is at zero"
   },
   "posNotasLinea": {
     "errorExcluirImpuesto": "Could not save “Exclude tax”",
@@ -32868,6 +32878,609 @@
       "comandaValor": "#{id}",
       "cajaValor": "Register {caja} · {sede} · open",
       "sinCaja": "no open register"
+    }
+  },
+  "posMesasFlujo": {
+    "mesa": "Table",
+    "volverPlano": "Back to floor plan",
+    "verCuenta": "View bill · {total}",
+    "estados": {
+      "libre": "Free",
+      "ocupada": "Occupied",
+      "porCobrar": "To charge"
+    },
+    "estaciones": {
+      "hot_kitchen": "Hot kitchen",
+      "cold_kitchen": "Cold kitchen",
+      "bar": "Bar",
+      "cashier": "Cashier",
+      "all": "Kitchen",
+      "general": "Kitchen"
+    },
+    "metodos": {
+      "cash": "Cash",
+      "card": "Card",
+      "transfer": "Transfer",
+      "qr": "QR",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "credit_card": "Card",
+      "debit_card": "Card"
+    },
+    "pantalla": {
+      "cargando": "Loading the table",
+      "errorTitulo": "Couldn't load {mesa}",
+      "errorDescripcion": "Check the connection and try again. The bill and the rounds already sent were not lost.",
+      "sinPermisoTitulo": "You don't have access to this branch",
+      "sinPermisoDescripcion": "This table belongs to a branch you are not a member of. Ask the organization administrator for access.",
+      "volverPlano": "Back to floor plan",
+      "noActualizada": "Couldn't refresh the table. Showing the last data loaded."
+    },
+    "cabecera": {
+      "volver": "Back to floor plan",
+      "mesaZona": "{mesa} · {zona}",
+      "abierta": "Time with the bill open",
+      "meseroComensales": "{mesero} · {n, plural, one {# guest} other {# guests}}",
+      "comensales": "{n, plural, one {# guest} other {# guests}}",
+      "precuenta": "Pre-bill"
+    },
+    "cuenta": {
+      "etiqueta": "Bill for {mesa}",
+      "titulo": "{mesa} · Bill",
+      "tituloVacio": "Cart",
+      "enCocina": "{n} in kitchen",
+      "consumidorFinal": "Walk-in customer",
+      "consumidorFinalIniciales": "WC",
+      "cambiarCliente": "Customer: {nombre}. Change (F2)",
+      "comensales": "{n, plural, one {# guest} other {# guests}}",
+      "editarNotaMesa": "Table note: guests, allergies and instructions",
+      "porEnviar": "To send",
+      "porEnviarDetalle": "{n, plural, one {# line} other {# lines}} · sent together",
+      "ronda": "Round {n}",
+      "rondaEstado": "Round {n} · {estado}",
+      "estadoRonda": {
+        "en_cocina": "in kitchen",
+        "preparando": "preparing",
+        "lista": "ready to serve",
+        "servida": "served"
+      },
+      "enviada": "sent",
+      "servida": "served",
+      "lineasContraida": "{n, plural, one {# line} other {# lines}} (collapsed)",
+      "directas": "No kitchen",
+      "directasDetalle": "served directly",
+      "impuestoIncluido": "incl. {impuesto}",
+      "impuesto": "Tax {tasa}",
+      "subtotal": "Subtotal",
+      "abonado": "Paid in parts",
+      "total": "Total",
+      "precuenta": "Pre-bill",
+      "dividir": "Split",
+      "enviar": "Send to kitchen ({n})",
+      "cobrarMesa": "Charge table",
+      "cobrar": "Charge",
+      "abrirCaja": "Open register to charge",
+      "vacioTitulo": "Add products to start",
+      "vacioDescripcion": "Search by name or code (F2) or scan. Notes and modifiers are added from each line."
+    },
+    "linea": {
+      "precioUnidad": "{cantidad} × {precio}",
+      "enviada": "sent",
+      "lista": "ready",
+      "cantidadDe": "Quantity of {nombre}",
+      "menos": "Remove one unit of {nombre}",
+      "mas": "Add one unit of {nombre}",
+      "enCocinaBloqueada": "The kitchen already has it: removing or reducing asks for a reason",
+      "unidades": "{n} pcs",
+      "comensalN": "Guest {n}",
+      "alergia": "Allergy",
+      "notaCocina": "Kitchen: {nota}",
+      "moverA": "Move to another table",
+      "restarUna": "Remove one unit",
+      "estado": {
+        "por_enviar": "To send",
+        "en_cocinaMin": "In kitchen · {min} min",
+        "preparandoMin": "Preparing · {min} min",
+        "lista": "Ready to serve",
+        "servida": "Served",
+        "cancelada": "Voided",
+        "sin_cocina": "No kitchen"
+      },
+      "acciones": {
+        "nota": "Line note",
+        "modificadores": "Variants and modifiers",
+        "comensal": "Line guest",
+        "servido": "Mark served",
+        "quitar": "Remove",
+        "anular": "Void with reason"
+      }
+    },
+    "nota": {
+      "titulo": "Table note · {mesa}",
+      "comensales": "Guests",
+      "menosComensales": "One guest fewer",
+      "masComensales": "One more guest",
+      "alergias": "Allergies and intolerances",
+      "alergiasAyuda": "for the whole table",
+      "alergiasComunes": {
+        "mani": "Peanut",
+        "lacteos": "Dairy",
+        "gluten": "Gluten",
+        "mariscos": "Shellfish",
+        "huevo": "Egg"
+      },
+      "otra": "Other…",
+      "otraPlaceholder": "Type the allergy",
+      "avisoAlergiaMesa": "Allergy at the table: {alergias}. Every ticket for this table carries the warning in red.",
+      "avisoAlergiaLineas": "{alergias}. Every ticket for this table carries the warning in red.",
+      "instrucciones": "Kitchen instructions",
+      "instruccionesAyuda": "go on every ticket",
+      "ritmo": "Serving pace",
+      "ritmos": {
+        "junto": "All together",
+        "tiempos": "By courses",
+        "aviso": "Wait for call"
+      },
+      "notaCliente": "Note for the customer's receipt",
+      "notaClienteAyuda": "printed on the receipt",
+      "pie": "Saved on the table and sent with the next ticket.",
+      "guardar": "Save"
+    },
+    "editorLinea": {
+      "titulo": "{producto} · note and guest",
+      "paraQuien": "For whom",
+      "general": "Shared",
+      "comensalCorto": "G{n}",
+      "notasRapidas": "Quick notes",
+      "notaLibre": "Free note for the kitchen",
+      "asiQueda": "How it shows on the line and the ticket",
+      "cocina": "Kitchen: {nota}",
+      "sinNota": "No kitchen note",
+      "alergiaLinea": "Allergy: {nota}{comensal}",
+      "esAlergia": "It's an allergy: the kitchen confirms it before starting",
+      "cancelar": "Cancel",
+      "guardar": "Save"
+    },
+    "menu": {
+      "etiqueta": "More table actions",
+      "precuenta": "Pre-bill",
+      "pedirCuenta": "Request the bill",
+      "dividir": "Split the bill",
+      "mover": "Move or join tables",
+      "cambiarMesero": "Change server",
+      "comensales": "Guests · {n}",
+      "nota": "Table note",
+      "historial": "Table history",
+      "liberar": "Release table"
+    },
+    "mesero": {
+      "titulo": "Change server",
+      "guardar": "Save",
+      "placeholder": "Choose the server",
+      "tu": "{nombre} (you)"
+    },
+    "abrir": {
+      "titulo": "Open {mesa}",
+      "tituloZona": "Open {mesa} · {zona}",
+      "cerrar": "Close",
+      "cancelar": "Cancel",
+      "abrir": "Open table",
+      "abrirYTomar": "Open table and take order",
+      "reserva": "Reservation for {nombre} · {hora} · {n, plural, one {# person} other {# people}}",
+      "reservaLigada": "{llegada}. When seated, the bill is linked to the reservation.",
+      "reservaLigadaCorta": "When seated, the bill is linked to the reservation.",
+      "verReserva": "View reservation",
+      "sentar": "Seat this reservation at {mesa}",
+      "sentarCorto": "Seat this reservation",
+      "aLaHora": "Arrived on time",
+      "llega": "Arrives in {min} min",
+      "tarde": "{min} min late",
+      "comensales": "Guests",
+      "comensalesOtro": "Number of guests",
+      "otro": "Other",
+      "masQueCapacidad": "The table seats {n}: you can open it anyway.",
+      "mesero": "Server",
+      "meseroPlaceholder": "Choose the server",
+      "tu": "{nombre} (you)",
+      "cliente": "Customer (optional)",
+      "clienteBuscar": "Search by name, ID, email or phone",
+      "clienteAyuda": "Recent customers open below the field on focus · Alt+N creates a customer"
+    },
+    "mover": {
+      "titulo": "Move from {mesa}",
+      "tituloZona": "Move from {mesa} · {zona}",
+      "cerrar": "Close",
+      "cancelar": "Cancel",
+      "modo": "What to move",
+      "modos": {
+        "cuenta": "Whole bill",
+        "productos": "Some products",
+        "unir": "Join tables"
+      },
+      "productosAMover": "Products to move (unpaid only)",
+      "sinProductos": "There are no unpaid products to move.",
+      "lineaCantidad": "{n} × {nombre}",
+      "comensal": "Guest {n}",
+      "enCocina": "in kitchen",
+      "mesaDestino": "Destination table",
+      "sinDestinos": "No tables are available for this move.",
+      "ayudaCuenta": "The whole bill, with its rounds, customer and reservation, moves to a free table.",
+      "ayudaUnir": "This table's bill is merged into the chosen table's and this table becomes free.",
+      "elegidaProductos": "{mesa} chosen. Dishes in the kitchen move with their ticket and the kitchen gets the table change. A free table opens its bill when it receives products.",
+      "elegidaCuenta": "{mesa} chosen. The kitchen sees the new table on its tickets.",
+      "elegidaUnir": "{mesa} chosen. Guests are added up and the tickets move to that table.",
+      "eligeMesa": "Choose the destination table",
+      "moverCuenta": "Move the bill to {mesa}",
+      "moverProductos": "Move {n, plural, one {# product} other {# products}} to {mesa}",
+      "unirCon": "Join with {mesa}"
+    },
+    "dividir": {
+      "titulo": "Split bill · {mesa}",
+      "tituloTableta": "Split the bill · {mesa}",
+      "cerrar": "Close",
+      "cancelar": "Cancel",
+      "modo": "How to split",
+      "modos": {
+        "comensal": "By guest",
+        "iguales": "Equal parts",
+        "items": "By items",
+        "productos": "By products"
+      },
+      "ayudaComensalTableta": "Pre-filled with each line's guest. \"Shared\" items (starters, drinks to share) are split equally among the {n}.",
+      "ayuda": "Lines are split by the guest they already have; shared items are split equally. Kitchen notes don't go on receipts; the customer note prints on every receipt.",
+      "partes": "Parts",
+      "menosPartes": "One part fewer",
+      "masPartes": "One more part",
+      "producto": "Product",
+      "unidadesDe": "Units of {producto} in part {parte}",
+      "sinAsignar": "{n, plural, one {# unit} other {# units}} still to assign.",
+      "lineaParte": "{nombre} ×{n}",
+      "totalImpuestos": "Total + taxes",
+      "cobrarPrimera": "Charge {parte} · {importe}",
+      "cobrar": "Charge",
+      "dividirEn": "Split into {n} parts"
+    },
+    "partes": {
+      "titulo": "Charge in parts · {mesa} · {n, plural, one {# guest} other {# guests}}",
+      "cerrar": "Close",
+      "comensal": "Guest {n}",
+      "parte": "Part {n}",
+      "estado": {
+        "pendiente": "Pending",
+        "cobrando": "Charging",
+        "pagada": "Paid"
+      },
+      "cobrarParte": "Charge this part",
+      "cobrando": "Charging…",
+      "detalleProductos": "{n, plural, one {# product} other {# products}} · {nombres}",
+      "detalleMonto": "Part of the total, by amount",
+      "detalleIgual": "1 of {n} equal parts of the total",
+      "masGeneral": "+ 1/{n} of shared items",
+      "soloGeneral": "1/{n} of shared items",
+      "pagadoCon": "Paid by {metodo} · {hora}",
+      "resumen": "Parts summary",
+      "total": "Table total",
+      "pagado": "Paid",
+      "falta": "Remaining",
+      "volver": "Back to the bill",
+      "unir": "Join pending parts",
+      "unidas": "Pending parts",
+      "cobrarSiguiente": "Charge {parte} · {importe}",
+      "todoPagado": "All paid",
+      "lineaCobro": "{parte} · {mesa}",
+      "saldo": "Balance of {mesa}"
+    },
+    "precuenta": {
+      "titulo": "Pre-bill · {mesa} · {n, plural, one {# guest} other {# guests}}",
+      "noFactura": "This is not an invoice. Payment is taken when the bill is closed.",
+      "cerrar": "Close",
+      "imprimir": "Print pre-bill",
+      "cobrar": "Charge",
+      "abrirCaja": "Open register to charge",
+      "linea": "{n} × {nombre}",
+      "subtotal": "Subtotal",
+      "descuentos": "Discounts",
+      "baseGravable": "Taxable base",
+      "abonado": "Paid in parts",
+      "total": "Total",
+      "propinaTitulo": "Suggested voluntary tip",
+      "propinaTexto": "The tip is voluntary and goes to the staff. The guest can accept it, change it or not give it.",
+      "sinPropina": "No tip",
+      "porcentaje": "{pct} % · {valor}",
+      "otroValor": "Other amount",
+      "propinaBase": "Calculated on {base}: subtotal after discounts, before taxes. Not part of the invoice."
+    },
+    "cobro": {
+      "titulo": "Charge {mesa}",
+      "tituloZona": "Charge {mesa} · {zona}",
+      "cobrada": "{mesa} charged!",
+      "cobradaDetalle": "Sale {numero} · the table moves to \"To clean\"",
+      "volverPlano": "Back to floor plan",
+      "parteCobrada": "Part charged!",
+      "parteCobradaDetalle": "Sale {numero} · the other parts are still pending",
+      "volverPartes": "Back to the parts"
+    },
+    "anular": {
+      "titulo": "Remove {producto} from the bill",
+      "tituloRestar": "Remove one unit of {producto}",
+      "descripcion": "The kitchen already has it: it gets an adjustment ticket with the reason.",
+      "confirmar": "Remove and notify kitchen",
+      "confirmarRestar": "Reduce and notify kitchen"
+    },
+    "avisos": {
+      "sinCaja": "There's no open register at this branch",
+      "sinCajaDetalle": "You can take orders and send rounds. To charge, open the register or ask at the register.",
+      "abrirCaja": "Open register · F9",
+      "sinConexion": "Offline · {n, plural, =0 {nothing queued} one {# change queued} other {# changes queued}}",
+      "sinConexionDetalle": "The round is sent to the kitchen and printed when the signal is back. Charging needs a connection.",
+      "abandonada": "Table open for {tiempo} with no activity",
+      "abandonadaDetalle": "It has {saldo} unpaid and {n, plural, =0 {nothing in the kitchen} one {# dish not delivered} other {# dishes not delivered}}. Charge it, move it to receivables or void it with a reason.",
+      "resolver": "Resolve"
+    },
+    "toast": {
+      "abierta": "{mesa} opened",
+      "agregado": "{producto} added",
+      "agregadoDetalle": "Stays \"To send\" on {mesa}",
+      "sinPrecio": "{producto} has no current price",
+      "errorAgregar": "Couldn't add the product",
+      "cliente": "Customer: {nombre}",
+      "consumidorFinal": "The bill goes to walk-in customer",
+      "notaGuardada": "Table note saved",
+      "rondaEnviada": "Round {n} sent to kitchen",
+      "estacion": "{estacion}: {n}",
+      "impresa": "printed at each station",
+      "sinImpresora": "a station has no printer: it printed from the browser",
+      "rondaEnCola": "Round {n} queued",
+      "rondaEnColaDetalle": "It will be sent to the kitchen when the connection is back",
+      "colaEnviada": "Queued rounds were sent to the kitchen",
+      "ajusteEnviado": "Adjustment sent to kitchen",
+      "cuentaPedida": "{mesa} requested the bill",
+      "precuentaImpresa": "Pre-bill sent to the register printer",
+      "precuentaNavegador": "Pre-bill ready to print",
+      "cobrada": "{mesa} charged",
+      "cobradaDetalle": "The table moves to \"To clean\"",
+      "cobradoSinLiberar": "Charged; {mesa} still needs to be released",
+      "reintentarLiberar": "Retry release",
+      "liberada": "{mesa} released · moves to \"To clean\"",
+      "movido": {
+        "cuenta": "Bill moved to {mesa}",
+        "productos": "{n, plural, one {# product moved} other {# products moved}} to {mesa}",
+        "unir": "Tables joined at {mesa}"
+      }
+    },
+    "errores": {
+      "error": "Couldn't complete the action. Try again.",
+      "cliente": "Couldn't assign the customer",
+      "nota": "Couldn't save the table note",
+      "linea": "Couldn't save the line",
+      "ronda": "Couldn't send the round",
+      "servido": "Couldn't mark as served",
+      "cantidad": "Couldn't change the quantity",
+      "anular": "Couldn't void the dish",
+      "modificadores": "Couldn't change the modifiers",
+      "mover": "Couldn't move",
+      "mesero": "Couldn't change the server",
+      "sinProductos": "Add products before charging",
+      "mesa_ocupada": "The table already has an open bill.",
+      "mesa_sin_cuenta": "The destination table has no open bill: use \"Whole bill\".",
+      "cuenta_con_pagos": "The bill already has payments: it can't be joined. Charge the rest or move the products.",
+      "linea_invalida": "A product was already paid or isn't on this bill.",
+      "sin_acceso_sucursal": "You don't have access to that table's branch.",
+      "sin_acceso": "You don't have access to this organization.",
+      "mesero_invalido": "The server is not an active member of the organization.",
+      "cliente_invalido": "The customer doesn't belong to this organization.",
+      "comensales_invalidos": "Enter between 1 and 99 guests.",
+      "reserva_no_sentable": "The reservation can no longer be seated.",
+      "mesa_de_otra_sede": "The table belongs to another branch.",
+      "sesion_cerrada": "The table's bill is already closed."
+    }
+  },
+  "posMesasPlano": {
+    "mesa": {
+      "etiqueta": "{mesa}, {estado}",
+      "personas": "{n} ppl",
+      "reservada": "Reserved",
+      "limpiar": "Clean",
+      "porLimpiar": "To clean",
+      "comensalesTiempo": "{n}/{cap} · {tiempo}",
+      "comensalesTiempoCorto": "{n}/{cap} · {tiempo}",
+      "platoListo": "{n, plural, one {Dish ready} other {# dishes ready}}",
+      "abandonada": "Open with no activity",
+      "estados": {
+        "libre": "Free",
+        "ocupada": "Occupied",
+        "por_cobrar": "To charge",
+        "reservada": "Reserved",
+        "por_limpiar": "To clean"
+      }
+    },
+    "leyenda": {
+      "etiqueta": "Filter by status",
+      "libre": "Free · {n}",
+      "ocupada": "Occupied · {n}",
+      "por_cobrar": "To charge · {n}",
+      "reservada": "Reserved · {n}",
+      "por_limpiar": "To clean · {n}"
+    },
+    "zona": {
+      "mesas": "{n, plural, one {# table} other {# tables}}",
+      "libres": "{n} free",
+      "ocupadas": "{n} occupied",
+      "porCobrar": "{n} to charge",
+      "coinciden": "{n} of {total} tables match the filters",
+      "verPlano": "View on floor plan",
+      "qr": "QR codes for the zone's tables"
+    },
+    "resumen": {
+      "tituloZona": "{mesa} · {zona}",
+      "abrir": "Open table",
+      "verReserva": "View reservation",
+      "marcarLista": "Mark ready",
+      "verCuenta": "View bill",
+      "comensales": "{n}/{cap} guests · {tiempo}",
+      "importe": "{importe} · {n, plural, one {# product} other {# products}}",
+      "capacidad": "{n, plural, one {For # person} other {For # people}}",
+      "reserva": "Reservation for {nombre} · {hora}",
+      "porLimpiar": "Charged: needs to be made ready",
+      "mesero": "{nombre} · server",
+      "agregar": "Add products",
+      "pedirCuenta": "Request bill",
+      "masAcciones": "More actions"
+    },
+    "plano": {
+      "sinZona": "No zone",
+      "todas": "All",
+      "zonas": "Floor plan zones",
+      "editarEnPantallaGrande": "To edit the floor plan use a computer or a tablet.",
+      "editar": "Edit floor plan",
+      "alejar": "Zoom out",
+      "acercar": "Zoom in",
+      "ajustar": "Fit",
+      "rejilla": "Grid",
+      "pantallaCompleta": "Full screen"
+    },
+    "editor": {
+      "barra": "Floor plan editing",
+      "editando": "Editing floor plan",
+      "deshacer": "Undo",
+      "rehacer": "Redo",
+      "alinear": "Align",
+      "duplicar": "Duplicate",
+      "eliminar": "Delete",
+      "botonMesa": "Table",
+      "botonZona": "Zone",
+      "cancelar": "Cancel",
+      "guardar": "Save changes",
+      "guardarN": "Save changes ({n})",
+      "zonaNueva": "Zone {n}",
+      "zonaVacia": "Empty zone: add tables with \"+ Table\".",
+      "prefijoMesa": "Table",
+      "mesa": {
+        "sinZona": "No zone",
+        "conCuenta": "with an open bill",
+        "nueva": "new",
+        "cerrar": "Close",
+        "nombre": "Name or number",
+        "zona": "Zone",
+        "forma": "Shape",
+        "formas": {
+          "cuadrada": "Square",
+          "redonda": "Round",
+          "larga": "Long",
+          "barra": "Bar"
+        },
+        "capacidad": "Capacity",
+        "menos": "One person fewer",
+        "mas": "One more person",
+        "personas": "{n, plural, one {person · # chair} other {people · # chairs}}",
+        "tamano": "Size",
+        "rotacion": "Rotation",
+        "posicion": "Position (change it by dragging or with the arrow keys)",
+        "avisoCuenta": "It has an open bill: you can move it, but not delete it or lower its capacity below {n} guests.",
+        "duplicar": "Duplicate",
+        "eliminar": "Delete"
+      },
+      "zona": {
+        "titulo": "Zone · {zona}",
+        "mesas": "{n, plural, one {# table in this zone} other {# tables in this zone}}",
+        "cerrar": "Close",
+        "nombre": "Zone name",
+        "color": "Color (6 brand tones)",
+        "tono": "Tone {n}",
+        "orden": "Order",
+        "pestana": "Tab {n} of {total}",
+        "subir": "Move tab up",
+        "bajar": "Move tab down",
+        "avisoEliminar": "To delete the zone, first move its {n} tables to another zone.",
+        "eliminar": "Delete zone"
+      }
+    },
+    "lote": {
+      "titulo": "Add tables in bulk",
+      "descripcion": "Create several identical tables at once; then place them on the floor plan.",
+      "crear": "{n, plural, one {Create # table} other {Create # tables}}",
+      "crearSinN": "Create tables",
+      "zona": "Zone",
+      "zonaAyuda": "Type a new zone or pick an existing one.",
+      "desde": "Starting number",
+      "cantidad": "How many",
+      "capacidad": "People per table",
+      "forma": "Shape",
+      "resumen": "Table {desde} to Table {hasta}: {n} tables for {cap} people."
+    },
+    "vacio": {
+      "titulo": "Set up your dining room",
+      "descripcion": "Create a zone, add your tables and place them on the floor plan. You can create several tables at once.",
+      "crearZona": "Create zone",
+      "lote": "Add tables in bulk",
+      "crearYAgregar": "Create and add tables",
+      "zonaAyuda": "Dining room, Terrace, Bar…",
+      "paso1": {
+        "titulo": "Create a zone",
+        "detalle": "Dining room, Terrace, Bar…"
+      },
+      "paso2": {
+        "titulo": "Add tables",
+        "detalle": "Number, capacity and shape; in bulk: 10 tables for 4"
+      },
+      "paso3": {
+        "titulo": "Place them on the floor plan",
+        "detalle": "Drag, rotate and snap to the grid"
+      }
+    },
+    "cabecera": {
+      "cargando": "loading…",
+      "editando": "editing the floor plan of {zona}",
+      "haceSeg": "updated {n} s ago",
+      "haceMin": "updated {n} min ago"
+    },
+    "errores": {
+      "cargar": "Couldn't refresh the tables",
+      "lista": "Couldn't mark the table as ready",
+      "cuenta": "Couldn't request the bill",
+      "guardar": "Couldn't save",
+      "eliminar": "Couldn't delete the table",
+      "plano": "Couldn't save the floor plan. Check the connection and try again.",
+      "lote": "Couldn't create the tables"
+    },
+    "toast": {
+      "lista": "{mesa} is ready",
+      "cuentaPedida": "{mesa}: bill requested",
+      "mesaCreada": "{mesa} created",
+      "mesaGuardada": "{mesa} saved",
+      "mesaEliminada": "{mesa} deleted",
+      "comensales": "{mesa}: {n} guests",
+      "noBorradas": "{n, plural, one {One table has an open bill and was not deleted} other {# tables have an open bill and were not deleted}}",
+      "sinColumnas": "Floor plan saved. Shape, size and zone color will be saved once the floor plan update is enabled.",
+      "planoGuardado": "Floor plan saved",
+      "lote": "{n, plural, one {# table created} other {# tables created}}",
+      "zonaRenombrada": "Zone renamed to {zona}",
+      "zonaEliminada": "Zone deleted: its tables are now without a zone",
+      "combinadas": "Tables combined",
+      "movida": "Bill moved"
+    },
+    "acciones": {
+      "lote": "Add tables in bulk",
+      "loteZona": "Add tables to this zone",
+      "editarPlano": "Edit floor plan",
+      "mas": "More"
+    },
+    "filtros": {
+      "buscar": "Search table (number or name)",
+      "buscarCorto": "Search table",
+      "chipEstado": "Status: {estados}"
+    },
+    "densidad": {
+      "etiqueta": "Density",
+      "comoda": "Comfortable",
+      "compacta": "Compact"
+    },
+    "estados": {
+      "errorTitulo": "Couldn't load the tables",
+      "errorDescripcion": "Check the connection and try again. Open bills are not lost.",
+      "sinPermisoTitulo": "You don't have access to this branch",
+      "sinPermisoDescripcion": "The tables belong to a branch you are not a member of. Ask the organization administrator for access.",
+      "volverPos": "Back to POS"
     }
   }
 }

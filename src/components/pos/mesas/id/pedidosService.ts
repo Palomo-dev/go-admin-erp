@@ -101,7 +101,7 @@ export class PedidosService {
                 display_order
               )
             ),
-            kitchen_ticket_items(id, status, cancelled_at, adjustment_kind)
+            kitchen_ticket_items(id, status, cancelled_at, adjustment_kind, kitchen_ticket_id)
           `)
           .in('sale_id', saleIds)
           .order('created_at', { ascending: true });
@@ -258,8 +258,9 @@ export class PedidosService {
    */
   static async agregarProductos(
     sessionId: string,
-    productos: ProductToAdd[]
-  ): Promise<void> {
+    productos: ProductToAdd[],
+    opciones: { porEnviar?: boolean } = {}
+  ): Promise<string[]> {
     const organizationId = getOrganizationId();
     const branchId = getCurrentBranchId();
 
@@ -432,6 +433,9 @@ export class PedidosService {
             ...(p.modifiers && p.modifiers.length > 0 ? { modifiers: p.modifiers } : {}),
             // Origen del peso (manual en fase 2): el cobro lo valida y lo audita «Pesos manuales».
             ...(p.pesaje ? { pesaje: p.pesaje } : {}),
+            // Flujo de rondas (Figma D3/D5): la línea nace «por enviar» y la comanda
+            // la crea `pos_mesa_enviar_ronda` al pulsar «Enviar a cocina».
+            ...(opciones.porEnviar ? { por_enviar: true } : {}),
           },
         });
       }
@@ -444,6 +448,12 @@ export class PedidosService {
       if (itemsError) {
         console.error('Error insertando items de venta:', itemsError);
         throw new Error(`Error al insertar items: ${itemsError.message || JSON.stringify(itemsError)}`);
+      }
+
+      // Rondas: sin comanda todavía; la ronda la envía la persona (D5).
+      if (opciones.porEnviar) {
+        await this.recalcularTotalVenta(saleId!);
+        return (insertedItems || []).map((item: { id: string }) => item.id);
       }
 
       // 3. Filtrar items que requieren preparación (kitchen ticket)
@@ -512,6 +522,7 @@ export class PedidosService {
 
       // 5. Actualizar total de la venta
       await this.recalcularTotalVenta(saleId!);
+      return (insertedItems || []).map((item: { id: string }) => item.id);
     } catch (error) {
       console.error('Error agregando productos:', {
         sessionId,

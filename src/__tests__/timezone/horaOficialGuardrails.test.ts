@@ -75,7 +75,6 @@ const ALLOW_LIST: Record<string, string> = {
   // Falsos positivos: el `created_at: new Date()` es de un objeto local de la UI
   // (nota de la sesión, línea de la cuenta dividida), no de la fila que se escribe.
   'src/app/app/parking/sesiones/[id]/page.tsx': 'nota local de la sesión de parqueo (estado de React), no es una fila de payments',
-  'src/app/app/pos/mesas/[id]/page.tsx': 'línea sintética de la cuenta dividida (objeto en memoria), no es una fila de sales/table_sessions',
   // Frente CRM (otro equipo trabaja src/**/crm/**): el trigger trg_00_hora_oficial
   // ya impone now() en sales.sale_date; queda para que ese frente quite el new Date().
   'src/lib/services/crm/posCrmLink.ts': 'CRM: sales.sale_date con new Date(); la base lo reemplaza por now() (trigger). Pendiente del frente CRM',

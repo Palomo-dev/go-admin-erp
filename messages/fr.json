@@ -11792,10 +11792,10 @@
     "iniciarSesionDeNuevo": "Se reconnecter"
   },
   "posMesaLiberar": {
-    "titulo": "Libérer la table {mesa} ?",
+    "titulo": "Libérer {mesa}",
     "tituloConSaldo": "La table {mesa} a un solde dû",
     "descripcion": "L’addition de la table sera clôturée et la table sera libre.",
-    "descripcionConSaldo": "Avant de la libérer, décidez quoi faire du montant restant.",
+    "descripcionConSaldo": "Réglez-le avant de libérer la table.",
     "cargando": "Chargement de l’addition…",
     "sinDato": "—",
     "sinCliente": "Sans client",
@@ -11809,7 +11809,8 @@
       "cliente": "Client",
       "total": "Total",
       "pagado": "Payé",
-      "saldo": "Solde"
+      "saldo": "Solde",
+      "abiertaHace": "Ouverte depuis"
     },
     "tiempo": {
       "minutos": "{m} min",
@@ -11828,16 +11829,18 @@
     "opciones": {
       "cobrar": {
         "titulo": "Encaisser maintenant",
-        "descripcion": "Ouvre l’encaissement du POS avec l’addition de cette table."
+        "descripcion": "Ouvre l’encaissement du POS avec l’addition de cette table.",
+        "descripcionImporte": "Ouvre l'encaissement de {importe}."
       },
       "cartera": {
-        "titulo": "Laisser en compte client",
+        "titulo": "Passer en créances",
         "descripcion": "La vente est facturée à crédit au client, le stock est déduit et le solde passe dans ses créances.",
-        "existente": "La facture est déjà dans les créances du client : la table est seulement libérée."
+        "existente": "La facture est déjà dans les créances du client : la table est seulement libérée.",
+        "descripcionCliente": "Reste comme dette de {cliente} avec sa facture."
       },
       "anular": {
         "titulo": "Annuler la vente",
-        "descripcion": "La vente est annulée avec le motif et les commandes en cuisine sont annulées. Nécessite une autorisation."
+        "descripcion": "Nécessite le droit d'annuler et un motif. Rembourse les paiements si la caisse est encore ouverte."
       }
     },
     "motivo": {
@@ -11849,9 +11852,10 @@
     "acciones": {
       "liberar": "Libérer la table",
       "cobrar": "Aller à l’encaissement",
-      "cartera": "Mettre en compte et libérer",
+      "cartera": "Passer en créances",
       "anular": "Annuler la vente et libérer",
-      "elegir": "Choisissez une option"
+      "elegir": "Choisissez une option",
+      "cobrarImporte": "Encaisser {importe}"
     },
     "motivos": {
       "sin_caja": "Ouvrez une caisse pour encaisser.",
@@ -11890,7 +11894,13 @@
       "anulada": "Vente annulée. Articles de cuisine annulés : {n}.",
       "sinCocinar": "Toujours en cuisine, non cuisinés : {n}.",
       "errorTitulo": "La table n’a pas pu être libérée"
-    }
+    },
+    "cerrar": "Fermer",
+    "cancelar": "Annuler",
+    "resumen": "Résumé de l'addition",
+    "avisoSaldo": "L'addition a un solde : {saldo}",
+    "avisoSaldoCocina": "Réglez-le avant de libérer la table. {n, plural, one {Un plat est} other {# plats sont}} encore en préparation.",
+    "sinSaldoTitulo": "L'addition est à zéro"
   },
   "posNotasLinea": {
     "errorExcluirImpuesto": "Impossible d’enregistrer « Exclure la taxe »",
@@ -32765,6 +32775,609 @@
       "comandaValor": "#{id}",
       "cajaValor": "Caisse {caja} · {sede} · ouverte",
       "sinCaja": "aucune caisse ouverte"
+    }
+  },
+  "posMesasFlujo": {
+    "mesa": "Table",
+    "volverPlano": "Retour au plan",
+    "verCuenta": "Voir l'addition · {total}",
+    "estados": {
+      "libre": "Libre",
+      "ocupada": "Occupée",
+      "porCobrar": "À encaisser"
+    },
+    "estaciones": {
+      "hot_kitchen": "Cuisine chaude",
+      "cold_kitchen": "Cuisine froide",
+      "bar": "Bar",
+      "cashier": "Caisse",
+      "all": "Cuisine",
+      "general": "Cuisine"
+    },
+    "metodos": {
+      "cash": "Espèces",
+      "card": "Carte",
+      "transfer": "Virement",
+      "qr": "QR",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "credit_card": "Carte",
+      "debit_card": "Carte"
+    },
+    "pantalla": {
+      "cargando": "Chargement de la table",
+      "errorTitulo": "Impossible de charger {mesa}",
+      "errorDescripcion": "Vérifiez la connexion et réessayez. L'addition et les tournées envoyées ne sont pas perdues.",
+      "sinPermisoTitulo": "Vous n'avez pas accès à cette succursale",
+      "sinPermisoDescripcion": "Cette table appartient à une succursale dont vous n'êtes pas membre. Demandez l'accès à l'administrateur de l'organisation.",
+      "volverPlano": "Retour au plan",
+      "noActualizada": "Impossible d'actualiser la table. Les dernières données chargées sont affichées."
+    },
+    "cabecera": {
+      "volver": "Retour au plan",
+      "mesaZona": "{mesa} · {zona}",
+      "abierta": "Temps avec l'addition ouverte",
+      "meseroComensales": "{mesero} · {n, plural, one {# couvert} other {# couverts}}",
+      "comensales": "{n, plural, one {# couvert} other {# couverts}}",
+      "precuenta": "Pré-addition"
+    },
+    "cuenta": {
+      "etiqueta": "Addition de {mesa}",
+      "titulo": "{mesa} · Addition",
+      "tituloVacio": "Panier",
+      "enCocina": "{n} en cuisine",
+      "consumidorFinal": "Client de passage",
+      "consumidorFinalIniciales": "CP",
+      "cambiarCliente": "Client : {nombre}. Changer (F2)",
+      "comensales": "{n, plural, one {# couvert} other {# couverts}}",
+      "editarNotaMesa": "Note de la table : couverts, allergies et instructions",
+      "porEnviar": "À envoyer",
+      "porEnviarDetalle": "{n, plural, one {# ligne} other {# lignes}} · envoyées ensemble",
+      "ronda": "Tournée {n}",
+      "rondaEstado": "Tournée {n} · {estado}",
+      "estadoRonda": {
+        "en_cocina": "en cuisine",
+        "preparando": "en préparation",
+        "lista": "prête à servir",
+        "servida": "servie"
+      },
+      "enviada": "envoyée",
+      "servida": "servie",
+      "lineasContraida": "{n, plural, one {# ligne} other {# lignes}} (repliée)",
+      "directas": "Sans cuisine",
+      "directasDetalle": "servies directement",
+      "impuestoIncluido": "TTC {impuesto}",
+      "impuesto": "Taxe {tasa}",
+      "subtotal": "Sous-total",
+      "abonado": "Payé en parts",
+      "total": "Total",
+      "precuenta": "Pré-addition",
+      "dividir": "Diviser",
+      "enviar": "Envoyer en cuisine ({n})",
+      "cobrarMesa": "Encaisser la table",
+      "cobrar": "Encaisser",
+      "abrirCaja": "Ouvrir la caisse pour encaisser",
+      "vacioTitulo": "Ajoutez des produits pour commencer",
+      "vacioDescripcion": "Cherchez par nom ou code (F2) ou scannez. Les notes et les modificateurs s'ajoutent depuis chaque ligne."
+    },
+    "linea": {
+      "precioUnidad": "{cantidad} × {precio}",
+      "enviada": "envoyée",
+      "lista": "prête",
+      "cantidadDe": "Quantité de {nombre}",
+      "menos": "Retirer une unité de {nombre}",
+      "mas": "Ajouter une unité de {nombre}",
+      "enCocinaBloqueada": "La cuisine l'a déjà : pour réduire ou retirer, un motif est demandé",
+      "unidades": "{n} u.",
+      "comensalN": "Couvert {n}",
+      "alergia": "Allergie",
+      "notaCocina": "Cuisine : {nota}",
+      "moverA": "Déplacer vers une autre table",
+      "restarUna": "Retirer une unité",
+      "estado": {
+        "por_enviar": "À envoyer",
+        "en_cocinaMin": "En cuisine · {min} min",
+        "preparandoMin": "En préparation · {min} min",
+        "lista": "Prête à servir",
+        "servida": "Servie",
+        "cancelada": "Annulée",
+        "sin_cocina": "Sans cuisine"
+      },
+      "acciones": {
+        "nota": "Note de la ligne",
+        "modificadores": "Variantes et modificateurs",
+        "comensal": "Couvert de la ligne",
+        "servido": "Marquer servie",
+        "quitar": "Retirer",
+        "anular": "Annuler avec motif"
+      }
+    },
+    "nota": {
+      "titulo": "Note de la table · {mesa}",
+      "comensales": "Couverts",
+      "menosComensales": "Un couvert de moins",
+      "masComensales": "Un couvert de plus",
+      "alergias": "Allergies et intolérances",
+      "alergiasAyuda": "de toute la table",
+      "alergiasComunes": {
+        "mani": "Arachide",
+        "lacteos": "Produits laitiers",
+        "gluten": "Gluten",
+        "mariscos": "Fruits de mer",
+        "huevo": "Œuf"
+      },
+      "otra": "Autre…",
+      "otraPlaceholder": "Saisissez l'allergie",
+      "avisoAlergiaMesa": "Allergie à la table : {alergias}. Chaque bon de cette table porte l'alerte en rouge.",
+      "avisoAlergiaLineas": "{alergias}. Chaque bon de cette table porte l'alerte en rouge.",
+      "instrucciones": "Instructions pour la cuisine",
+      "instruccionesAyuda": "figurent sur chaque bon",
+      "ritmo": "Rythme d'envoi",
+      "ritmos": {
+        "junto": "Tout ensemble",
+        "tiempos": "Par plats",
+        "aviso": "Attendre le signal"
+      },
+      "notaCliente": "Note pour le reçu du client",
+      "notaClienteAyuda": "imprimée sur le ticket",
+      "pie": "Enregistrée sur la table et envoyée avec le prochain bon.",
+      "guardar": "Enregistrer"
+    },
+    "editorLinea": {
+      "titulo": "{producto} · note et couvert",
+      "paraQuien": "Pour qui",
+      "general": "Commun",
+      "comensalCorto": "C{n}",
+      "notasRapidas": "Notes rapides",
+      "notaLibre": "Note libre pour la cuisine",
+      "asiQueda": "Ainsi sur la ligne et sur le bon",
+      "cocina": "Cuisine : {nota}",
+      "sinNota": "Sans note pour la cuisine",
+      "alergiaLinea": "Allergie : {nota}{comensal}",
+      "esAlergia": "C'est une allergie : la cuisine la confirme avant de commencer",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer"
+    },
+    "menu": {
+      "etiqueta": "Autres actions de la table",
+      "precuenta": "Pré-addition",
+      "pedirCuenta": "Demander l'addition",
+      "dividir": "Diviser l'addition",
+      "mover": "Déplacer ou joindre des tables",
+      "cambiarMesero": "Changer de serveur",
+      "comensales": "Couverts · {n}",
+      "nota": "Note de la table",
+      "historial": "Historique de la table",
+      "liberar": "Libérer la table"
+    },
+    "mesero": {
+      "titulo": "Changer de serveur",
+      "guardar": "Enregistrer",
+      "placeholder": "Choisissez le serveur",
+      "tu": "{nombre} (vous)"
+    },
+    "abrir": {
+      "titulo": "Ouvrir {mesa}",
+      "tituloZona": "Ouvrir {mesa} · {zona}",
+      "cerrar": "Fermer",
+      "cancelar": "Annuler",
+      "abrir": "Ouvrir la table",
+      "abrirYTomar": "Ouvrir la table et prendre la commande",
+      "reserva": "Réservation de {nombre} · {hora} · {n, plural, one {# personne} other {# personnes}}",
+      "reservaLigada": "{llegada}. En l'installant, l'addition est liée à la réservation.",
+      "reservaLigadaCorta": "En l'installant, l'addition est liée à la réservation.",
+      "verReserva": "Voir la réservation",
+      "sentar": "Installer cette réservation à {mesa}",
+      "sentarCorto": "Installer cette réservation",
+      "aLaHora": "Arrivée à l'heure",
+      "llega": "Arrive dans {min} min",
+      "tarde": "{min} min de retard",
+      "comensales": "Couverts",
+      "comensalesOtro": "Nombre de couverts",
+      "otro": "Autre",
+      "masQueCapacidad": "La table est pour {n} : vous pouvez l'ouvrir quand même.",
+      "mesero": "Serveur",
+      "meseroPlaceholder": "Choisissez le serveur",
+      "tu": "{nombre} (vous)",
+      "cliente": "Client (facultatif)",
+      "clienteBuscar": "Chercher par nom, document, e-mail ou téléphone",
+      "clienteAyuda": "Au focus, les clients récents s'ouvrent sous le champ · Alt+N crée un client"
+    },
+    "mover": {
+      "titulo": "Déplacer depuis {mesa}",
+      "tituloZona": "Déplacer depuis {mesa} · {zona}",
+      "cerrar": "Fermer",
+      "cancelar": "Annuler",
+      "modo": "Que déplacer",
+      "modos": {
+        "cuenta": "Toute l'addition",
+        "productos": "Certains produits",
+        "unir": "Joindre des tables"
+      },
+      "productosAMover": "Produits à déplacer (non payés uniquement)",
+      "sinProductos": "Aucun produit non payé à déplacer.",
+      "lineaCantidad": "{n} × {nombre}",
+      "comensal": "Couvert {n}",
+      "enCocina": "en cuisine",
+      "mesaDestino": "Table de destination",
+      "sinDestinos": "Aucune table disponible pour ce déplacement.",
+      "ayudaCuenta": "Toute l'addition, avec ses tournées, son client et sa réservation, passe à une table libre.",
+      "ayudaUnir": "L'addition de cette table rejoint celle de la table choisie et cette table devient libre.",
+      "elegidaProductos": "{mesa} choisie. Les plats en cuisine se déplacent avec leur bon et la cuisine reçoit le changement de table. Une table libre ouvre son addition en recevant des produits.",
+      "elegidaCuenta": "{mesa} choisie. La cuisine voit la nouvelle table sur ses bons.",
+      "elegidaUnir": "{mesa} choisie. Les couverts s'additionnent et les bons passent à cette table.",
+      "eligeMesa": "Choisissez la table de destination",
+      "moverCuenta": "Déplacer l'addition vers {mesa}",
+      "moverProductos": "Déplacer {n, plural, one {# produit} other {# produits}} vers {mesa}",
+      "unirCon": "Joindre à {mesa}"
+    },
+    "dividir": {
+      "titulo": "Diviser l'addition · {mesa}",
+      "tituloTableta": "Diviser l'addition · {mesa}",
+      "cerrar": "Fermer",
+      "cancelar": "Annuler",
+      "modo": "Comment diviser",
+      "modos": {
+        "comensal": "Par couvert",
+        "iguales": "Parts égales",
+        "items": "Par articles",
+        "productos": "Par produits"
+      },
+      "ayudaComensalTableta": "Prérempli avec le couvert de chaque ligne. Le « Commun » (entrées, boissons à partager) est réparti à parts égales entre les {n}.",
+      "ayuda": "Les lignes sont réparties selon leur couvert ; le commun est réparti à parts égales. Les notes de cuisine ne figurent pas sur les reçus ; la note client apparaît sur chaque reçu.",
+      "partes": "Parts",
+      "menosPartes": "Une part de moins",
+      "masPartes": "Une part de plus",
+      "producto": "Produit",
+      "unidadesDe": "Unités de {producto} dans la part {parte}",
+      "sinAsignar": "Il reste {n, plural, one {# unité} other {# unités}} à attribuer.",
+      "lineaParte": "{nombre} ×{n}",
+      "totalImpuestos": "Total + taxes",
+      "cobrarPrimera": "Encaisser {parte} · {importe}",
+      "cobrar": "Encaisser",
+      "dividirEn": "Diviser en {n} parts"
+    },
+    "partes": {
+      "titulo": "Encaisser par parts · {mesa} · {n, plural, one {# couvert} other {# couverts}}",
+      "cerrar": "Fermer",
+      "comensal": "Couvert {n}",
+      "parte": "Part {n}",
+      "estado": {
+        "pendiente": "En attente",
+        "cobrando": "Encaissement",
+        "pagada": "Payée"
+      },
+      "cobrarParte": "Encaisser cette part",
+      "cobrando": "Encaissement…",
+      "detalleProductos": "{n, plural, one {# produit} other {# produits}} · {nombres}",
+      "detalleMonto": "Part du total, par montant",
+      "detalleIgual": "1 sur {n} parts égales du total",
+      "masGeneral": "+ 1/{n} du commun",
+      "soloGeneral": "1/{n} du commun",
+      "pagadoCon": "Payé par {metodo} · {hora}",
+      "resumen": "Résumé des parts",
+      "total": "Total de la table",
+      "pagado": "Payé",
+      "falta": "Reste",
+      "volver": "Retour à l'addition",
+      "unir": "Joindre les parts en attente",
+      "unidas": "Parts en attente",
+      "cobrarSiguiente": "Encaisser {parte} · {importe}",
+      "todoPagado": "Tout est payé",
+      "lineaCobro": "{parte} · {mesa}",
+      "saldo": "Solde de {mesa}"
+    },
+    "precuenta": {
+      "titulo": "Pré-addition · {mesa} · {n, plural, one {# couvert} other {# couverts}}",
+      "noFactura": "Ce n'est pas une facture. L'encaissement se fait à la clôture de l'addition.",
+      "cerrar": "Fermer",
+      "imprimir": "Imprimer la pré-addition",
+      "cobrar": "Encaisser",
+      "abrirCaja": "Ouvrir la caisse pour encaisser",
+      "linea": "{n} × {nombre}",
+      "subtotal": "Sous-total",
+      "descuentos": "Remises",
+      "baseGravable": "Base imposable",
+      "abonado": "Payé en parts",
+      "total": "Total",
+      "propinaTitulo": "Pourboire volontaire suggéré",
+      "propinaTexto": "Le pourboire est volontaire et revient au personnel. Le client peut l'accepter, le modifier ou ne pas le donner.",
+      "sinPropina": "Sans pourboire",
+      "porcentaje": "{pct} % · {valor}",
+      "otroValor": "Autre montant",
+      "propinaBase": "Calculé sur {base} : sous-total après remises, avant taxes. Ne fait pas partie de la facture."
+    },
+    "cobro": {
+      "titulo": "Encaisser {mesa}",
+      "tituloZona": "Encaisser {mesa} · {zona}",
+      "cobrada": "{mesa} encaissée !",
+      "cobradaDetalle": "Vente {numero} · la table passe à « À nettoyer »",
+      "volverPlano": "Retour au plan",
+      "parteCobrada": "Part encaissée !",
+      "parteCobradaDetalle": "Vente {numero} · il reste les autres parts",
+      "volverPartes": "Retour aux parts"
+    },
+    "anular": {
+      "titulo": "Retirer {producto} de l'addition",
+      "tituloRestar": "Retirer une unité de {producto}",
+      "descripcion": "La cuisine l'a déjà : elle reçoit un bon d'ajustement avec le motif.",
+      "confirmar": "Retirer et prévenir la cuisine",
+      "confirmarRestar": "Réduire et prévenir la cuisine"
+    },
+    "avisos": {
+      "sinCaja": "Aucune caisse ouverte dans cette succursale",
+      "sinCajaDetalle": "Vous pouvez prendre des commandes et envoyer des tournées. Pour encaisser, ouvrez la caisse ou demandez à la caisse.",
+      "abrirCaja": "Ouvrir la caisse · F9",
+      "sinConexion": "Hors ligne · {n, plural, =0 {rien en attente} one {# modification en attente} other {# modifications en attente}}",
+      "sinConexionDetalle": "La tournée est envoyée en cuisine et imprimée au retour du réseau. L'encaissement nécessite une connexion.",
+      "abandonada": "Table ouverte depuis {tiempo} sans activité",
+      "abandonadaDetalle": "Elle a {saldo} non encaissé et {n, plural, =0 {rien en cuisine} one {# plat non livré} other {# plats non livrés}}. Encaissez-la, passez-la en créances ou annulez-la avec un motif.",
+      "resolver": "Résoudre"
+    },
+    "toast": {
+      "abierta": "{mesa} ouverte",
+      "agregado": "{producto} ajouté",
+      "agregadoDetalle": "Reste « À envoyer » sur {mesa}",
+      "sinPrecio": "{producto} n'a pas de prix en vigueur",
+      "errorAgregar": "Impossible d'ajouter le produit",
+      "cliente": "Client : {nombre}",
+      "consumidorFinal": "L'addition passe au client de passage",
+      "notaGuardada": "Note de la table enregistrée",
+      "rondaEnviada": "Tournée {n} envoyée en cuisine",
+      "estacion": "{estacion} : {n}",
+      "impresa": "imprimée à chaque poste",
+      "sinImpresora": "un poste n'a pas d'imprimante : impression depuis le navigateur",
+      "rondaEnCola": "Tournée {n} en attente",
+      "rondaEnColaDetalle": "Elle sera envoyée en cuisine au retour de la connexion",
+      "colaEnviada": "Les tournées en attente ont été envoyées en cuisine",
+      "ajusteEnviado": "Ajustement envoyé en cuisine",
+      "cuentaPedida": "{mesa} a demandé l'addition",
+      "precuentaImpresa": "Pré-addition envoyée à l'imprimante de caisse",
+      "precuentaNavegador": "Pré-addition prête à imprimer",
+      "cobrada": "{mesa} encaissée",
+      "cobradaDetalle": "La table passe à « À nettoyer »",
+      "cobradoSinLiberar": "Encaissé ; il reste à libérer {mesa}",
+      "reintentarLiberar": "Réessayer de libérer",
+      "liberada": "{mesa} libérée · passe à « À nettoyer »",
+      "movido": {
+        "cuenta": "Addition déplacée vers {mesa}",
+        "productos": "{n, plural, one {# produit déplacé} other {# produits déplacés}} vers {mesa}",
+        "unir": "Tables jointes à {mesa}"
+      }
+    },
+    "errores": {
+      "error": "Impossible de terminer l'action. Réessayez.",
+      "cliente": "Impossible d'attribuer le client",
+      "nota": "Impossible d'enregistrer la note de la table",
+      "linea": "Impossible d'enregistrer la ligne",
+      "ronda": "Impossible d'envoyer la tournée",
+      "servido": "Impossible de marquer comme servie",
+      "cantidad": "Impossible de modifier la quantité",
+      "anular": "Impossible d'annuler le plat",
+      "modificadores": "Impossible de modifier les modificateurs",
+      "mover": "Impossible de déplacer",
+      "mesero": "Impossible de changer de serveur",
+      "sinProductos": "Ajoutez des produits avant d'encaisser",
+      "mesa_ocupada": "La table a déjà une addition ouverte.",
+      "mesa_sin_cuenta": "La table de destination n'a pas d'addition ouverte : utilisez « Toute l'addition ».",
+      "cuenta_con_pagos": "L'addition a déjà des paiements : impossible de la joindre. Encaissez le reste ou déplacez les produits.",
+      "linea_invalida": "Un produit a déjà été payé ou n'appartient pas à cette addition.",
+      "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale de cette table.",
+      "sin_acceso": "Vous n'avez pas accès à cette organisation.",
+      "mesero_invalido": "Le serveur n'est pas un membre actif de l'organisation.",
+      "cliente_invalido": "Le client n'appartient pas à cette organisation.",
+      "comensales_invalidos": "Indiquez entre 1 et 99 couverts.",
+      "reserva_no_sentable": "La réservation ne peut plus être installée.",
+      "mesa_de_otra_sede": "La table appartient à une autre succursale.",
+      "sesion_cerrada": "L'addition de la table est déjà clôturée."
+    }
+  },
+  "posMesasPlano": {
+    "mesa": {
+      "etiqueta": "{mesa}, {estado}",
+      "personas": "{n} pers.",
+      "reservada": "Réservée",
+      "limpiar": "Nettoyer",
+      "porLimpiar": "À nettoyer",
+      "comensalesTiempo": "{n}/{cap} · {tiempo}",
+      "comensalesTiempoCorto": "{n}/{cap} · {tiempo}",
+      "platoListo": "{n, plural, one {Plat prêt} other {# plats prêts}}",
+      "abandonada": "Ouverte sans activité",
+      "estados": {
+        "libre": "Libre",
+        "ocupada": "Occupée",
+        "por_cobrar": "À encaisser",
+        "reservada": "Réservée",
+        "por_limpiar": "À nettoyer"
+      }
+    },
+    "leyenda": {
+      "etiqueta": "Filtrer par statut",
+      "libre": "Libres · {n}",
+      "ocupada": "Occupées · {n}",
+      "por_cobrar": "À encaisser · {n}",
+      "reservada": "Réservées · {n}",
+      "por_limpiar": "À nettoyer · {n}"
+    },
+    "zona": {
+      "mesas": "{n, plural, one {# table} other {# tables}}",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "ocupadas": "{n, plural, one {# occupée} other {# occupées}}",
+      "porCobrar": "{n} à encaisser",
+      "coinciden": "{n} sur {total} tables correspondent aux filtres",
+      "verPlano": "Voir sur le plan",
+      "qr": "QR des tables de la zone"
+    },
+    "resumen": {
+      "tituloZona": "{mesa} · {zona}",
+      "abrir": "Ouvrir la table",
+      "verReserva": "Voir la réservation",
+      "marcarLista": "Marquer prête",
+      "verCuenta": "Voir l'addition",
+      "comensales": "{n}/{cap} couverts · {tiempo}",
+      "importe": "{importe} · {n, plural, one {# produit} other {# produits}}",
+      "capacidad": "{n, plural, one {Pour # personne} other {Pour # personnes}}",
+      "reserva": "Réservation de {nombre} · {hora}",
+      "porLimpiar": "Encaissée : reste à la préparer",
+      "mesero": "{nombre} · serveur",
+      "agregar": "Ajouter des produits",
+      "pedirCuenta": "Demander l'addition",
+      "masAcciones": "Plus d'actions"
+    },
+    "plano": {
+      "sinZona": "Sans zone",
+      "todas": "Toutes",
+      "zonas": "Zones du plan",
+      "editarEnPantallaGrande": "Pour modifier le plan, utilisez un ordinateur ou une tablette.",
+      "editar": "Modifier le plan",
+      "alejar": "Dézoomer",
+      "acercar": "Zoomer",
+      "ajustar": "Ajuster",
+      "rejilla": "Grille",
+      "pantallaCompleta": "Plein écran"
+    },
+    "editor": {
+      "barra": "Modification du plan",
+      "editando": "Modification du plan",
+      "deshacer": "Annuler",
+      "rehacer": "Rétablir",
+      "alinear": "Aligner",
+      "duplicar": "Dupliquer",
+      "eliminar": "Supprimer",
+      "botonMesa": "Table",
+      "botonZona": "Zone",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer les modifications",
+      "guardarN": "Enregistrer les modifications ({n})",
+      "zonaNueva": "Zone {n}",
+      "zonaVacia": "Zone vide : ajoutez des tables avec « + Table ».",
+      "prefijoMesa": "Table",
+      "mesa": {
+        "sinZona": "Sans zone",
+        "conCuenta": "avec addition ouverte",
+        "nueva": "nouvelle",
+        "cerrar": "Fermer",
+        "nombre": "Nom ou numéro",
+        "zona": "Zone",
+        "forma": "Forme",
+        "formas": {
+          "cuadrada": "Carrée",
+          "redonda": "Ronde",
+          "larga": "Longue",
+          "barra": "Comptoir"
+        },
+        "capacidad": "Capacité",
+        "menos": "Une personne de moins",
+        "mas": "Une personne de plus",
+        "personas": "{n, plural, one {personne · # chaise} other {personnes · # chaises}}",
+        "tamano": "Taille",
+        "rotacion": "Rotation",
+        "posicion": "Position (se modifie en glissant ou avec les flèches)",
+        "avisoCuenta": "Elle a une addition ouverte : vous pouvez la déplacer, mais pas la supprimer ni réduire sa capacité en dessous de {n} couverts.",
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer"
+      },
+      "zona": {
+        "titulo": "Zone · {zona}",
+        "mesas": "{n, plural, one {# table dans cette zone} other {# tables dans cette zone}}",
+        "cerrar": "Fermer",
+        "nombre": "Nom de la zone",
+        "color": "Couleur (6 tons de la charte)",
+        "tono": "Ton {n}",
+        "orden": "Ordre",
+        "pestana": "Onglet {n} sur {total}",
+        "subir": "Monter l'onglet",
+        "bajar": "Descendre l'onglet",
+        "avisoEliminar": "Pour supprimer la zone, déplacez d'abord ses {n} tables vers une autre zone.",
+        "eliminar": "Supprimer la zone"
+      }
+    },
+    "lote": {
+      "titulo": "Ajouter des tables en lot",
+      "descripcion": "Créez plusieurs tables identiques d'un coup ; placez-les ensuite sur le plan.",
+      "crear": "{n, plural, one {Créer # table} other {Créer # tables}}",
+      "crearSinN": "Créer des tables",
+      "zona": "Zone",
+      "zonaAyuda": "Saisissez une nouvelle zone ou choisissez-en une existante.",
+      "desde": "À partir du numéro",
+      "cantidad": "Combien",
+      "capacidad": "Personnes par table",
+      "forma": "Forme",
+      "resumen": "Table {desde} à Table {hasta} : {n} tables de {cap} personnes."
+    },
+    "vacio": {
+      "titulo": "Aménagez votre salle",
+      "descripcion": "Créez une zone, ajoutez vos tables et placez-les sur le plan. Vous pouvez créer plusieurs tables d'un coup.",
+      "crearZona": "Créer une zone",
+      "lote": "Ajouter des tables en lot",
+      "crearYAgregar": "Créer et ajouter des tables",
+      "zonaAyuda": "Salle, Terrasse, Bar…",
+      "paso1": {
+        "titulo": "Créez une zone",
+        "detalle": "Salle, Terrasse, Bar…"
+      },
+      "paso2": {
+        "titulo": "Ajoutez des tables",
+        "detalle": "Numéro, capacité et forme ; en lot : 10 tables de 4"
+      },
+      "paso3": {
+        "titulo": "Placez-les sur le plan",
+        "detalle": "Glissez, tournez et alignez sur la grille"
+      }
+    },
+    "cabecera": {
+      "cargando": "chargement…",
+      "editando": "modification du plan de {zona}",
+      "haceSeg": "actualisé il y a {n} s",
+      "haceMin": "actualisé il y a {n} min"
+    },
+    "errores": {
+      "cargar": "Impossible d'actualiser les tables",
+      "lista": "Impossible de marquer la table comme prête",
+      "cuenta": "Impossible de demander l'addition",
+      "guardar": "Impossible d'enregistrer",
+      "eliminar": "Impossible de supprimer la table",
+      "plano": "Impossible d'enregistrer le plan. Vérifiez la connexion et réessayez.",
+      "lote": "Impossible de créer les tables"
+    },
+    "toast": {
+      "lista": "{mesa} est prête",
+      "cuentaPedida": "{mesa} : addition demandée",
+      "mesaCreada": "{mesa} créée",
+      "mesaGuardada": "{mesa} enregistrée",
+      "mesaEliminada": "{mesa} supprimée",
+      "comensales": "{mesa} : {n} couverts",
+      "noBorradas": "{n, plural, one {Une table a une addition ouverte et n'a pas été supprimée} other {# tables ont une addition ouverte et n'ont pas été supprimées}}",
+      "sinColumnas": "Plan enregistré. La forme, la taille et la couleur des zones seront enregistrées quand la mise à jour du plan sera activée.",
+      "planoGuardado": "Plan enregistré",
+      "lote": "{n, plural, one {# table créée} other {# tables créées}}",
+      "zonaRenombrada": "Zone renommée en {zona}",
+      "zonaEliminada": "Zone supprimée : ses tables sont désormais sans zone",
+      "combinadas": "Tables combinées",
+      "movida": "Addition déplacée"
+    },
+    "acciones": {
+      "lote": "Ajouter des tables en lot",
+      "loteZona": "Ajouter des tables à cette zone",
+      "editarPlano": "Modifier le plan",
+      "mas": "Plus"
+    },
+    "filtros": {
+      "buscar": "Chercher une table (numéro ou nom)",
+      "buscarCorto": "Chercher une table",
+      "chipEstado": "Statut : {estados}"
+    },
+    "densidad": {
+      "etiqueta": "Densité",
+      "comoda": "Confortable",
+      "compacta": "Compacte"
+    },
+    "estados": {
+      "errorTitulo": "Impossible de charger les tables",
+      "errorDescripcion": "Vérifiez la connexion et réessayez. Les additions ouvertes ne sont pas perdues.",
+      "sinPermisoTitulo": "Vous n'avez pas accès à cette succursale",
+      "sinPermisoDescripcion": "Les tables appartiennent à une succursale dont vous n'êtes pas membre. Demandez l'accès à l'administrateur de l'organisation.",
+      "volverPos": "Retour au POS"
     }
   }
 }

@@ -1,1945 +1,1239 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  Plus,
-  Users,
-  ChefHat,
-  UserCircle,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { SearchSelect } from '@/components/ui/search-select';
-import {
-  StatusBadge,
-  Tarjeta,
-  EmptyState,
-  ListaDatos,
-  FilaDato,
-  Dialogo,
-  FormField,
-  CampoNumero,
-  KpiStrip,
-  StatCard,
-} from '@/components/kit';
-import { PageHeaderSkeleton } from '@/components/common/PageSkeletons';
-import { formatCurrency } from '@/utils/Utils';
-import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
-import { OrderItemCard } from '@/components/pos/mesas/id/OrderItemCard';
-import { PreCuentaDialog } from '@/components/pos/mesas/id/PreCuentaDialog';
-import { TransferItemDialog } from '@/components/pos/mesas/id/TransferItemDialog';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { ShoppingCart, WifiOff, X } from 'lucide-react';
+import { Dialogo, DialogoMotivo, KbdButton, useAtajos, type AccionFila } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { clasesBadgeTono } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
-import { type OccupiedSpace } from '@/components/pos/CustomerSelector';
-import { MesaDetailHeader } from '@/components/pos/mesas/id/MesaDetailHeader';
-import { MesaStatsCards } from '@/components/pos/mesas/id/MesaStatsCards';
-import { MesaActionsSidebar } from '@/components/pos/mesas/id/MesaActionsSidebar';
+import { CustomerSelector } from '@/components/pos/CustomerSelector';
+import { CartTabs } from '@/components/pos/CartTabs';
+import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
+import { CabeceraPos } from '@/components/pos/venta/CabeceraPos';
+import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
+import { CajasService } from '@/components/pos/cajas/CajasService';
+import type { CashSession } from '@/components/pos/cajas/types';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
+import { usePesarConBascula } from '@/components/pos/venta/peso/usePesarConBascula';
+import { useNotasRapidas } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { SessionTimelineDialog } from '@/components/pos/mesas/id/SessionTimelineDialog';
-import { CombinarMesasDialog } from '@/components/pos/mesas/CombinarMesasDialog';
-import { SplitBillDialog, type BillSplit } from '@/components/pos/mesas/id/SplitBillDialog';
-import { SplitPaymentSelector } from '@/components/pos/mesas/id/SplitPaymentSelector';
 import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
 import { MesasService } from '@/components/pos/mesas/mesasService';
-import { VentasService, type CashSession } from '@/components/pos/ventas';
-import { PrintService } from '@/lib/services/printService';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { PrintJobsService } from '@/lib/services/printJobsService';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { branchService } from '@/lib/services/branchService';
-import type {
-  TableSessionWithDetails,
-  ProductToAdd,
-  PreCuenta,
-  SaleItem,
-} from '@/components/pos/mesas/id/types';
-import type { Cart, CartItem, Customer, Sale, CheckoutData, CobroVentaExistente } from '@/components/pos/types';
+import { LiberarMesaDialog } from '@/components/pos/mesas/LiberarMesaDialog';
+import { LiberacionMesaError } from '@/components/pos/mesas/liberacionMesaCliente';
+import { useReservasMesas } from '@/components/pos/mesas/useReservasMesas';
+import { vistaMesaPlano, type VistaMesaPlano } from '@/components/pos/mesas/plano/estadoMesaPlano';
+import { PantallaMesa, type EstadoPantallaMesa, type ModoPantallaMesa } from '@/components/pos/mesas/cuenta/PantallaMesa';
+import { PanelCuentaMesa, type EstadoCobroMesa } from '@/components/pos/mesas/cuenta/PanelCuentaMesa';
+import { CabeceraMesa } from '@/components/pos/mesas/cuenta/CabeceraMesa';
+import { MenuMesa } from '@/components/pos/mesas/cuenta/MenuMesa';
+import { FilaClienteMesa, FilaNotaMesa } from '@/components/pos/mesas/cuenta/FilasCuentaMesa';
+import { NotaMesaPanel } from '@/components/pos/mesas/cuenta/NotaMesaPanel';
+import { EditorLineaMesa } from '@/components/pos/mesas/cuenta/EditorLineaMesa';
+import { AbrirMesaFlujo } from '@/components/pos/mesas/cuenta/AbrirMesaFlujo';
+import { MoverMesaDialog } from '@/components/pos/mesas/cuenta/MoverMesaDialog';
+import { DividirCuentaDialog } from '@/components/pos/mesas/cuenta/DividirCuentaDialog';
+import { CobrarPartesDialog } from '@/components/pos/mesas/cuenta/CobrarPartesDialog';
+import { PreCuentaMesaDialog } from '@/components/pos/mesas/cuenta/PreCuentaMesaDialog';
+import { imprimirPreCuentaMesa, imprimirRondaMesa } from '@/components/pos/mesas/cuenta/impresionMesa';
+import {
+  agruparCuenta,
+  mesaAbandonada,
+  minutosDesde,
+  textoDuracion,
+  totalesCuenta,
+  unirPendientes,
+  type LineaMesa,
+  type ParteCobro,
+  type ParteMesa,
+} from '@/components/pos/mesas/cuenta/cuentaMesaLogica';
+import {
+  agregarProductoMesa,
+  asignarClienteMesa,
+  cargarCuentaMesa,
+  codigoError,
+  enviarRondaMesa,
+  guardarLineaMesa,
+  guardarNotaMesa,
+  listarMeseros,
+  marcarEstadoMesa,
+  marcarServido,
+  moverMesa,
+  type CuentaMesa,
+  type ModoMover,
+  type OpcionMesero,
+} from '@/components/pos/mesas/cuenta/cuentaMesaService';
 import { POSService } from '@/lib/services/posService';
-import type { TableWithSession } from '@/components/pos/mesas/types';
+import { branchService } from '@/lib/services/branchService';
+import { supabase } from '@/lib/supabase/config';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { useTranslations } from 'next-intl';
-import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
-import { LiberacionMesaError, type ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
-import { abonadoPendiente, esDivisionPorMonto, saldoDeLineas } from '@/lib/pos/mesas/cuentaDividida';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { esMedido } from '@/lib/pos/peso/modoVenta';
+import { ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import type { Cart, CartItem, CartItemModifier, CheckoutData, CobroVentaExistente, Customer, Product, Sale } from '@/components/pos/types';
+import type { SaleItem } from '@/components/pos/mesas/id/types';
+import { cn } from '@/utils/Utils';
 
-export default function MesaDetallePage() {
-  const tLiberar = useTranslations('posMesaLiberar');
-  const tCocina = useTranslations('posCocina');
-  const tMesas = useTranslations('posMesas');
-  const avisoLiberacion = useAvisoLiberacion();
-  const { timezone } = useOrgTimezone();
+/** Pequeña cola de rondas sin conexión (S5): se envían solas al volver la red. */
+const CLAVE_COLA = 'pos-mesas-rondas-en-cola';
+type RondaEnCola = { sesionId: string; roundKey: string };
+function leerCola(): RondaEnCola[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLAVE_COLA) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+function escribirCola(cola: RondaEnCola[]) {
+  try {
+    localStorage.setItem(CLAVE_COLA, JSON.stringify(cola));
+  } catch {
+    /* sin almacenamiento: la ronda se reintenta a mano */
+  }
+}
+
+export default function MesaCuentaPage() {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
+  const tableId = params?.id as string;
+  const t = useTranslations('posMesasFlujo');
+  const tCocina = useTranslations('posCocina');
   const { organization, branch_id } = useOrganization();
-  const { branchFilter } = useBranch();
-  const tableId = params?.id as string; // UUID
-  const [currentBranch, setCurrentBranch] = useState<any>(null);
+  const { branchFilter, selectedBranchId } = useBranch();
+  const { timezone } = useOrgTimezone();
+  const moneda = useMonedaOrganizacion();
+  const { formatear } = moneda;
+  const escritorio = useMediaQuery('(min-width: 1280px)');
+  const tableta = useMediaQuery('(min-width: 1024px)');
+  const modo: ModoPantallaMesa = escritorio ? 'escritorio' : tableta ? 'tableta' : 'movil';
 
-  const [session, setSession] = useState<TableSessionWithDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const [showPreCuenta, setShowPreCuenta] = useState(false);
-  const [preCuenta, setPreCuenta] = useState<PreCuenta | null>(null);
-  const [itemToTransfer, setItemToTransfer] = useState<SaleItem | null>(null);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
-  const [selectedRoom, setSelectedRoom] = useState<OccupiedSpace | undefined>();
-  const [showCombinar, setShowCombinar] = useState(false);
-  const [todasLasMesas, setTodasLasMesas] = useState<TableWithSession[]>([]);
-  const [showEditarComensales, setShowEditarComensales] = useState(false);
-  const [comensalesInput, setComensalesInput] = useState(2);
-  const [showSplitBill, setShowSplitBill] = useState(false);
-  const [billSplits, setBillSplits] = useState<BillSplit[] | null>(null);
-  const [currentSplitIndex, setCurrentSplitIndex] = useState(0);
-  const [paidSplitIds, setPaidSplitIds] = useState<string[]>([]);
-  const [showSplitSelector, setShowSplitSelector] = useState(false);
-  const [mesaNombre, setMesaNombre] = useState<string>('Mesa');
-  const [serverName, setServerName] = useState<string | undefined>();
-  const [showEditarMesero, setShowEditarMesero] = useState(false);
-  const [meseroSeleccionado, setMeseroSeleccionado] = useState<string>('');
-  const [orgMembers, setOrgMembers] = useState<{ value: string; label: string; sublabel?: string }[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  const [showHistorial, setShowHistorial] = useState(false);
-  const [cashSession, setCashSession] = useState<CashSession | null>(null);
-  const [showLiberarConfirm, setShowLiberarConfirm] = useState(false);
-  const [cajaVerificada, setCajaVerificada] = useState(false);
-  // «Cobrar ahora» desde el plano llega con ?cobrar=1: se abre el cobro una vez.
-  const [cobroPendiente, setCobroPendiente] = useState(false);
+  const [cuenta, setCuenta] = useState<CuentaMesa | null>(null);
+  const [estado, setEstado] = useState<EstadoPantallaMesa>('cargando');
+  const [ahora, setAhora] = useState(() => new Date());
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [meseros, setMeseros] = useState<OpcionMesero[]>([]);
+  const [carts, setCarts] = useState<Cart[]>([]);
+  const [caja, setCaja] = useState<CashSession | null>(null);
+  const [requiereCaja, setRequiereCaja] = useState(true);
+  const [sucursal, setSucursal] = useState<{ name?: string; address?: string; phone?: string } | null>(null);
+  const [enLinea, setEnLinea] = useState(true);
+  const [cola, setCola] = useState<RondaEnCola[]>([]);
+  const [mesasPlano, setMesasPlano] = useState<VistaMesaPlano[]>([]);
+
+  // Diálogos
+  const [abrir, setAbrir] = useState(false);
+  const pendienteAlAbrir = useRef<null | (() => void)>(null);
+  const [clienteAbierto, setClienteAbierto] = useState(false);
+  const [notaAbierta, setNotaAbierta] = useState(false);
+  const [guardandoNota, setGuardandoNota] = useState(false);
+  const [editor, setEditor] = useState<{ linea: LineaMesa; soloComensal: boolean } | null>(null);
+  const [guardandoLinea, setGuardandoLinea] = useState(false);
+  const [mover, setMover] = useState<{ modo: ModoMover; lineaId: string | null } | null>(null);
+  const [moviendo, setMoviendo] = useState(false);
+  const [dividir, setDividir] = useState(false);
+  const [partes, setPartes] = useState<ParteCobro[] | null>(null);
+  const [partesAbierto, setPartesAbierto] = useState(false);
+  const [precuenta, setPrecuenta] = useState(false);
+  const [imprimiendo, setImprimiendo] = useState(false);
+  const [cobro, setCobro] = useState<{ parte: ParteCobro | null; propina: { porcentaje: number | null; valor: number } | null } | null>(null);
+  const [liberar, setLiberar] = useState(false);
+  const [historial, setHistorial] = useState(false);
+  const [anular, setAnular] = useState<{ linea: LineaMesa; restar: boolean } | null>(null);
+  const [anulando, setAnulando] = useState(false);
+  const [aperturaCaja, setAperturaCaja] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [modificar, setModificar] = useState<{ linea: LineaMesa; producto: Product } | null>(null);
+  const [meseroAbierto, setMeseroAbierto] = useState(false);
+  const liberacionFallida = useRef(false);
+  const [hojaMovil, setHojaMovil] = useState(false);
+
+  const sesion = cuenta?.sesion ?? null;
+  const mesaNombre = cuenta?.mesa.nombre ?? t('mesa');
+  const agrupada = useMemo(() => agruparCuenta(cuenta?.lineas ?? [], cuenta?.comandas ?? []), [cuenta]);
+  const totales = useMemo(() => totalesCuenta(cuenta?.lineas ?? []), [cuenta]);
+  const notasRapidasDatos = useNotasRapidas(cuenta?.mesa.branchId ?? branch_id ?? null, !!cuenta);
+  const notasRapidas = useMemo(
+    () => (notasRapidasDatos?.notas ?? []).filter((n) => n.kind === 'kitchen' || n.kind === 'allergy').map((n) => ({ texto: n.label, alergia: n.kind === 'allergy' })),
+    [notasRapidasDatos],
+  );
+  const decimales = moneda.decimals ?? 0;
+
+  // Impuestos con su nombre («Impoconsumo 8 %»).
+  const [impuestos, setImpuestos] = useState<Array<{ name: string; rate: number }>>([]);
+  const nombreImpuesto = useCallback(
+    (tasa: number) => {
+      const iguales = impuestos.filter((i) => Number(i.rate) === Number(tasa));
+      const pct = `${new Intl.NumberFormat(moneda.locale, { maximumFractionDigits: 2 }).format(Number(tasa))} %`;
+      return iguales.length === 1 ? `${iguales[0].name} ${pct}` : t('cuenta.impuesto', { tasa: pct });
+    },
+    [impuestos, t, moneda.locale],
+  );
+
+  // ── Carga ────────────────────────────────────────────────────────────────
+  const cargar = useCallback(
+    async (silencioso = false) => {
+      if (!silencioso) setEstado((e) => (e === 'lista' ? e : 'cargando'));
+      try {
+        const c = await cargarCuentaMesa(tableId);
+        setCuenta(c);
+        setEstado('lista');
+        if (!c.sesion && !silencioso) setAbrir(true);
+      } catch (error) {
+        const codigo = (error as { code?: string })?.code ?? codigoError(error);
+        if (silencioso && cuenta) {
+          toast.error(t('pantalla.noActualizada'));
+          return;
+        }
+        setEstado(codigo === '42501' || codigo === 'sin_acceso' || codigo === 'mesa_no_encontrada' ? 'sinPermiso' : 'error');
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tableId, t],
+  );
 
   useEffect(() => {
-    cargarDatos();
-    loadCashSession();
-  }, [tableId, branchFilter]);
+    void cargar();
+  }, [cargar, branchFilter]);
 
   useEffect(() => {
-    try {
-      if (new URLSearchParams(window.location.search).get('cobrar') === '1') setCobroPendiente(true);
-    } catch {
-      /* sin query: nada que hacer */
-    }
+    const id = setInterval(() => setAhora(new Date()), 30_000);
+    return () => clearInterval(id);
   }, []);
 
-  // Suscripción realtime para kitchen_ticket_items (actualizar estados de cocina)
   useEffect(() => {
-    if (!session?.id) return;
-    let cleanup: (() => void) | undefined;
-
-    (async () => {
-      const { supabase } = await import('@/lib/supabase/config');
-      const channel = supabase
-        .channel(`kitchen-ticket-items-${session.id}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'kitchen_ticket_items', filter: `organization_id=eq.${session.organization_id}` },
-          () => {
-            cargarDatos(true);
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'kitchen_tickets', filter: `table_session_id=eq.${session.id}` },
-          () => {
-            cargarDatos(true);
-          }
-        )
-        .subscribe();
-
-      cleanup = () => {
-        supabase.removeChannel(channel);
-      };
-    })();
-
+    let vigente = true;
+    supabase.auth.getUser().then(({ data }) => vigente && setUsuarioId(data.user?.id ?? null));
+    POSService.getOrganizationTaxes()
+      .then((tx) => vigente && setImpuestos(((tx ?? []) as Array<{ name: string; rate: number | string; is_active?: boolean }>).filter((x) => x.is_active !== false).map((x) => ({ name: x.name, rate: Number(x.rate) }))))
+      .catch(() => undefined);
+    CajasService.getActiveSession().then((s) => vigente && setCaja(s)).catch(() => undefined);
+    ConfiguracionService.getRequireCashSessionConfig()
+      .then((c) => vigente && setRequiereCaja(c.require_cash_session !== false))
+      .catch(() => undefined);
     return () => {
-      cleanup?.();
+      vigente = false;
     };
-  }, [session?.id]);
+  }, []);
 
-  // Cargar información de la sucursal
   useEffect(() => {
-    const loadBranch = async () => {
-      if (branch_id) {
-        try {
-          const branchData = await branchService.getBranchById(branch_id);
-          setCurrentBranch(branchData);
-        } catch (error) {
-          console.error('Error cargando sucursal:', error);
-        }
-      }
-    };
-    loadBranch();
+    if (!organization?.id) return;
+    listarMeseros(organization.id).then(setMeseros).catch(() => setMeseros([]));
+  }, [organization?.id]);
+
+  useEffect(() => {
+    if (!branch_id) return;
+    branchService.getBranchById(branch_id).then((b) => setSucursal(b as typeof sucursal)).catch(() => undefined);
   }, [branch_id]);
 
-  // Cargar nombre de mesa (con o sin sesión)
+  // Pestañas del carrito (escritorio): los carritos del mostrador de la sede.
+  const cargarCarritos = useCallback(() => {
+    if (!escritorio) return;
+    POSService.getActiveCarts(selectedBranchId).then(setCarts).catch(() => setCarts([]));
+  }, [escritorio, selectedBranchId]);
+  useEffect(() => cargarCarritos(), [cargarCarritos]);
+
+  // Tiempo real: la cocina cambia el estado de las líneas de esta mesa.
   useEffect(() => {
-    const cargarNombreMesa = async () => {
-      if (session?.restaurant_tables?.name) {
-        setMesaNombre(session.restaurant_tables.name);
-      } else {
-        // Si no hay sesión, cargar el nombre de la mesa directamente
+    if (!sesion?.id) return;
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    const recargar = () => {
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => void cargar(true), 400);
+    };
+    const canal = supabase
+      .channel(`mesa-cuenta-${sesion.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_tickets', filter: `table_session_id=eq.${sesion.id}` }, recargar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_ticket_items', filter: `organization_id=eq.${sesion.organization_id}` }, recargar)
+      .subscribe();
+    return () => {
+      if (espera) clearTimeout(espera);
+      supabase.removeChannel(canal);
+    };
+  }, [sesion?.id, sesion?.organization_id, cargar]);
+
+  // Sin conexión (S5): rondas en cola; al volver la red se envían solas.
+  useEffect(() => {
+    setEnLinea(typeof navigator === 'undefined' ? true : navigator.onLine);
+    setCola(leerCola());
+    const on = () => setEnLinea(true);
+    const off = () => setEnLinea(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  // Plano para «Mover» (D7).
+  const { activas: reservasActivas } = useReservasMesas([], branchFilter);
+  const cargarMesasPlano = useCallback(async () => {
+    const mesas = await MesasService.obtenerMesasConSesiones();
+    setMesasPlano(mesas.map((m) => vistaMesaPlano(m, reservasActivas.get(m.id))));
+  }, [reservasActivas]);
+
+  // ── Acciones ─────────────────────────────────────────────────────────────
+  const conSesion = (accion: () => void) => {
+    if (sesion) accion();
+    else {
+      pendienteAlAbrir.current = accion;
+      setAbrir(true);
+    }
+  };
+
+  const agregarLinea = async (producto: Product, modificadores: CartItemModifier[] | undefined, cantidad: number, extra?: { precio?: number; pesaje?: CartItem['pesaje'] }) => {
+    if (!sesion) return null;
+    try {
+      const ids = await agregarProductoMesa(sesion.id, producto, modificadores, cantidad, extra as never);
+      await cargar(true);
+      toast.success(t('toast.agregado', { producto: producto.name }), { description: t('toast.agregadoDetalle', { mesa: mesaNombre }) });
+      return ids[0] ?? null;
+    } catch (error) {
+      toast.error(
+        error instanceof ProductoSinPrecioError
+          ? t('toast.sinPrecio', { producto: producto.name })
+          : t('toast.errorAgregar'),
+      );
+      return null;
+    }
+  };
+
+  const pesar = usePesarConBascula<CartItemModifier>({
+    agregar: ({ producto, precio, cantidad, pesaje, modifiers }) => agregarLinea(producto, modifiers, cantidad, { precio, pesaje }),
+    deshacer: async (id) => {
+      await PedidosService.eliminarItem(id);
+      await cargar(true);
+    },
+    cambiar: async (id, cantidad) => {
+      await PedidosService.actualizarCantidadItem(id, cantidad);
+      await cargar(true);
+    },
+  });
+
+  const alElegirProducto = (producto: Product, modificadores?: CartItemModifier[], cantidad = 1) =>
+    conSesion(async () => {
+      if (esMedido(producto)) {
         try {
-          const { supabase } = await import('@/lib/supabase/config');
-          let tableQuery = supabase
-            .from('restaurant_tables')
-            .select('name, zone')
-            .eq('id', tableId);
-          if (branchFilter != null) tableQuery = tableQuery.eq('branch_id', branchFilter);
-          const { data } = await tableQuery.single();
-          if (data) {
-            setMesaNombre(data.name || 'Mesa');
-          }
-        } catch (error) {
-          console.error('Error cargando nombre de mesa:', error);
+          const base = await POSService.precioVigenteProducto(producto.id, producto.name);
+          const extras = (modificadores ?? []).reduce((s, m) => s + (Number(m.extraPrice) || 0), 0);
+          await pesar.abrirAgregar(producto, { modifiers: modificadores, precio: base + extras });
+        } catch {
+          toast.error(t('toast.sinPrecio', { producto: producto.name }));
         }
-      }
-    };
-    cargarNombreMesa();
-  }, [session, tableId, branchFilter]);
-
-  const loadCashSession = async () => {
-    try {
-      const session = await VentasService.getCurrentCashSession(branch_id ?? null);
-      setCashSession(session);
-    } catch (error) {
-      console.error('Error loading cash session:', error);
-    } finally {
-      setCajaVerificada(true);
-    }
-  };
-
-  // Carga los datos de la mesa. Si `silencioso` es true, no muestra el
-  // skeleton de carga (usado tras mutaciones para que la UX sea fluida).
-  const cargarDatos = async (silencioso = false) => {
-    if (!silencioso) setIsLoading(true);
-    try {
-      const detalles = await PedidosService.obtenerDetalleMesa(tableId);
-      
-      if (!detalles) {
-        // No hay sesión activa, NO crear automáticamente
-        // La sesión se creará cuando se agregue el primer producto o cliente
-        setSession(null);
-        setSelectedCustomer(undefined);
-        setSelectedRoom(undefined);
-      } else {
-        setSession(detalles);
-        
-        // Cargar nombre del mesero (server_id)
-        if (detalles.server_id) {
-          const { supabase } = await import('@/lib/supabase/config');
-          const { data: serverProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', detalles.server_id)
-            .single();
-          if (serverProfile) {
-            const name = `${serverProfile.first_name || ''} ${serverProfile.last_name || ''}`.trim() ||
-              undefined;
-            setServerName(name);
-          } else {
-            setServerName(undefined);
-          }
-        } else {
-          setServerName(undefined);
-        }
-        
-        // Si la venta tiene customer_id, cargar el customer
-        if (detalles.sales?.customer_id) {
-          const { supabase } = await import('@/lib/supabase/config');
-          let customerQuery = supabase
-            .from('customers')
-            .select('*')
-            .eq('id', detalles.sales.customer_id);
-          if (branchFilter != null) customerQuery = customerQuery.eq('branch_id', branchFilter);
-          const { data: customer } = await customerQuery.single();
-          
-          if (customer) {
-            setSelectedCustomer(customer);
-          }
-          
-          // Si además tiene reservation_id, intentar cargar info del espacio
-          if (detalles.sales.reservation_id) {
-            let reservationQuery = supabase
-              .from('reservations')
-              .select(`
-                id,
-                checkin,
-                checkout,
-                reservation_spaces!inner (
-                  space_id,
-                  spaces!inner (
-                    id,
-                    label
-                  )
-                ),
-                folios!inner (
-                  id
-                )
-              `)
-              .eq('id', detalles.sales.reservation_id);
-            if (branchFilter != null) reservationQuery = reservationQuery.eq('branch_id', branchFilter);
-            const { data: reservation } = await reservationQuery.single();
-            
-            if (reservation && reservation.reservation_spaces?.[0]) {
-              const reservationSpace = reservation.reservation_spaces[0];
-              const space = Array.isArray(reservationSpace.spaces) 
-                ? reservationSpace.spaces[0] 
-                : reservationSpace.spaces;
-              
-              const room: OccupiedSpace = {
-                space_id: space.id,
-                space_label: space.label,
-                reservation_id: reservation.id,
-                customer_id: customer.id,
-                customer_name: customer.full_name,
-                customer_email: customer.email,
-                customer_phone: customer.phone,
-                checkin: reservation.checkin,
-                checkout: reservation.checkout,
-                folio_id: reservation.folios?.[0]?.id,
-              };
-              setSelectedRoom(room);
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: error?.message || 'No se pudieron cargar los detalles de la mesa',
-        variant: 'destructive',
-      });
-    } finally {
-      if (!silencioso) setIsLoading(false);
-    }
-  };
-
-  // Función auxiliar para crear sesión si no existe
-  const asegurarSesion = async (): Promise<TableSessionWithDetails> => {
-    if (session) {
-      // Si la sesión existe pero no tiene server_id, asignar el usuario actual
-      if (!session.server_id) {
-        const { supabase } = await import('@/lib/supabase/config');
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          let sessionUpdateQuery = supabase
-            .from('table_sessions')
-            .update({ server_id: user.id })
-            .eq('id', session.id);
-          if (branchFilter != null) sessionUpdateQuery = sessionUpdateQuery.eq('branch_id', branchFilter);
-          await sessionUpdateQuery;
-          // Cargar perfil del usuario
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', user.id)
-            .single();
-          if (profile) {
-            const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
-              undefined;
-            setServerName(name);
-          }
-          setSession({ ...session, server_id: user.id });
-        }
-      }
-      return session;
-    }
-
-    // Crear nueva sesión
-    const { supabase } = await import('@/lib/supabase/config');
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      throw new Error('Usuario no autenticado');
-    }
-    
-    const nuevaSesion = await PedidosService.iniciarSesion(
-      tableId,
-      user.id,
-      2
-    );
-    setSession(nuevaSesion);
-
-    // Establecer serverName inmediatamente con el perfil del usuario actual
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('id', user.id)
-      .single();
-    if (profile) {
-      const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
-        undefined;
-      setServerName(name);
-    }
-
-    return nuevaSesion;
-  };
-
-  const handleAddProducts = async (productos: ProductToAdd[], chargeType?: 'room_charge' | 'direct_payment') => {
-    try {
-      // Asegurar que exista sesión antes de agregar productos
-      const sesionActual = await asegurarSesion();
-      
-      await PedidosService.agregarProductos(sesionActual.id, productos);
-      
-      // 🔗 INTEGRACIÓN POS → PMS: Si hay folio asociado, agregar items también al folio
-      if (selectedRoom?.folio_id) {
-        console.log('Sincronizando items con folio:', selectedRoom.folio_id, 'chargeType:', chargeType);
-        
-        const FoliosService = (await import('@/lib/services/foliosService')).default;
-        const now = new Date().toISOString();
-        const isDirectPayment = chargeType === 'direct_payment';
-        
-        for (const producto of productos) {
-          await FoliosService.addFolioItem({
-            folio_id: selectedRoom.folio_id,
-            source: 'pos',
-            description: producto.product_name,
-            amount: producto.unit_price * producto.quantity,
-            created_by: organization?.user?.id,
-            payment_status: isDirectPayment ? 'paid' : 'pending',
-            charge_type: chargeType || 'room_charge',
-            paid_at: isDirectPayment ? now : null,
-            payment_method: isDirectPayment ? 'pos' : null,
-          });
-        }
-        
-        // Si es pago directo, registrar payment en payments
-        if (isDirectPayment) {
-          const totalAmount = productos.reduce((sum, p) => sum + p.unit_price * p.quantity, 0);
-          await FoliosService.addPayment({
-            source: 'folio',
-            source_id: selectedRoom.folio_id,
-            method: 'pos',
-            amount: totalAmount,
-            status: 'completed',
-          });
-        }
-        
-        console.log('Items sincronizados con folio exitosamente');
-      }
-      
-      await cargarDatos(true);
-      toast({
-        title: 'Productos agregados',
-        description: selectedRoom?.folio_id 
-          ? chargeType === 'direct_payment'
-            ? 'Los productos se han añadido al pedido y pagados directamente'
-            : 'Los productos se han añadido al pedido y al folio de la habitación'
-          : 'Los productos se han añadido al pedido',
-      });
-    } catch (error) {
-      console.error('Error agregando productos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron agregar los productos',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number, motivo?: string) => {
-    try {
-      // Si el plato ya está en cocina, sale una comanda de ajuste (+/−) y la
-      // original no cambia; restar exige motivo.
-      await PedidosService.actualizarCantidadItem(itemId, newQuantity, motivo);
-      await cargarDatos(true);
-      
-      // 🔗 INTEGRACIÓN POS → PMS: Sincronizar folio después de actualizar cantidad
-      if (selectedRoom?.folio_id && session) {
-        await syncSaleItemsToFolio();
-      }
-      
-      toast({
-        title: 'Cantidad actualizada',
-        description: 'La cantidad del item se ha actualizado',
-      });
-    } catch (error) {
-      console.error('Error actualizando cantidad:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la cantidad',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleDeleteItem = async (itemId: string, motivo?: string) => {
-    try {
-      // Un plato ya enviado no se borra de la comanda: se anula con motivo y
-      // la cocina recibe el ajuste.
-      await PedidosService.eliminarItem(itemId, motivo);
-      
-      // 🔗 INTEGRACIÓN POS → PMS: Sincronizar folio después de eliminar
-      if (selectedRoom?.folio_id && session) {
-        await syncSaleItemsToFolio();
-      }
-      
-      await cargarDatos(true);
-      toast({
-        title: 'Item eliminado',
-        description: 'El item se ha eliminado del pedido',
-      });
-    } catch (error) {
-      console.error('Error eliminando item:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar el item',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  /**
-   * 🔗 Sincronizar items de venta POS con folio de PMS
-   * Elimina items POS anteriores del folio y agrega los actuales
-   */
-  const syncSaleItemsToFolio = async () => {
-    if (!selectedRoom?.folio_id || !session?.sale_items) return;
-
-    try {
-      console.log('🔄 Sincronizando items de POS con folio...');
-      const FoliosService = (await import('@/lib/services/foliosService')).default;
-      
-      // 1. Obtener todos los items del folio con source='pos'
-      const folio = await FoliosService.getFolioById(selectedRoom.folio_id);
-      const posItems = folio?.items?.filter(item => item.source === 'pos') || [];
-      
-      // 2. Eliminar items POS anteriores
-      for (const item of posItems) {
-        await FoliosService.deleteFolioItem(item.id, selectedRoom.folio_id);
-      }
-      
-      // 3. Agregar items actuales de la venta (preservando payment_status y charge_type)
-      for (const saleItem of session.sale_items) {
-        const existingItem = posItems.find(pi => pi.description === (saleItem.product?.name || 'Producto'));
-        await FoliosService.addFolioItem({
-          folio_id: selectedRoom.folio_id,
-          source: 'pos',
-          description: saleItem.product?.name || 'Producto',
-          amount: Number(saleItem.total),
-          created_by: organization?.user?.id,
-          payment_status: existingItem?.payment_status || 'pending',
-          charge_type: existingItem?.charge_type || 'room_charge',
-          paid_at: existingItem?.paid_at || null,
-          payment_method: existingItem?.payment_method || null,
-        });
-      }
-      
-      console.log('✅ Folio sincronizado con', session.sale_items.length, 'items');
-    } catch (error) {
-      console.error('❌ Error sincronizando folio:', error);
-    }
-  };
-
-  const imprimirPreCuenta = async (cuenta: PreCuenta, forcePDF = false) => {
-    // Impresión física por el Print Agent (estación 'cashier'), best-effort.
-    // Si hay impresora de caja configurada, sale por ella; si no, fallback al navegador.
-    // Si forcePDF=true (botón "Imprimir" del diálogo), salta la física y va directo al PDF.
-    // Los datos del negocio se arman una sola vez: antes habia dos versiones,
-    // y la del fallback por navegador omitia el correo, la ciudad y el regimen,
-    // asi que el mismo ticket salia distinto segun por donde se imprimiera.
-    const businessInfo = organization ? {
-      name: organization.name || '',
-      nit: (organization as any).nit || (organization as any).tax_id || '',
-      phone: (organization as any).phone || '',
-      address: (organization as any).address || '',
-      email: (organization as any).email || '',
-      city: (organization as any).city || '',
-      logoUrl: (organization as any).logo_url || undefined,
-      fiscal_responsibilities: (organization as any).fiscal_responsibilities || undefined,
-    } : undefined;
-    const branchInfo = currentBranch ? {
-      name: currentBranch.name || '',
-      address: currentBranch.address || '',
-      phone: currentBranch.phone || '',
-    } : undefined;
-
-    if (branch_id && !forcePDF) {
-      try {
-        const { enqueued } = await PrintJobsService.enqueuePreCuenta(branch_id, {
-          tableId,
-          tableName: session?.restaurant_tables?.name || mesaNombre,
-          serverName,
-          createdAt: new Date().toISOString(),
-          subtotal: cuenta.subtotal,
-          taxTotal: cuenta.tax_total,
-          discountTotal: cuenta.discount_total,
-          total: cuenta.total,
-          items: cuenta.items.map((item) => {
-            const notesObj = typeof item.notes === 'string' ? (() => { try { return JSON.parse(item.notes || '{}'); } catch { return {}; } })() : (item.notes || {});
-            return {
-              productName: item.product?.name || 'Producto',
-              quantity: item.quantity,
-              unitPrice: item.unit_price,
-              total: item.total,
-              taxAmount: item.tax_amount,
-              discountAmount: item.discount_amount,
-              variantData: item.product?.variant_data || null,
-              modifiers: Array.isArray(notesObj?.modifiers) ? notesObj.modifiers.map((m: any) => ({ name: m.name, extraPrice: m.extraPrice || 0 })) : null,
-            };
-          }),
-          businessName: businessInfo?.name,
-          businessNit: businessInfo?.nit,
-          businessPhone: businessInfo?.phone,
-          businessAddress: businessInfo?.address,
-          businessEmail: businessInfo?.email,
-          businessCity: businessInfo?.city,
-          businessFiscalResponsibilities: businessInfo?.fiscal_responsibilities,
-          businessLogoUrl: businessInfo?.logoUrl,
-          branchName: branchInfo?.name,
-          branchAddress: branchInfo?.address,
-          branchPhone: branchInfo?.phone,
-        });
-        if (enqueued > 0) return;
-      } catch (err) {
-        console.warn('No se pudo encolar impresión física de pre-cuenta:', err);
-      }
-    }
-
-    PrintService.printPreCuenta(
-      session?.restaurant_tables?.name || mesaNombre,
-      cuenta.items,
-      cuenta.subtotal,
-      cuenta.tax_total,
-      cuenta.discount_total,
-      cuenta.total,
-      businessInfo,
-      branchInfo,
-      serverName,
-      undefined,
-      timezone,
-    );
-  };
-
-  const handleGenerarPreCuenta = async () => {
-    if (!session) return;
-
-    if (!session?.sale_items || session.sale_items.length === 0) {
-      toast({
-        title: 'Sin productos',
-        description: 'No hay productos para generar la cuenta',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const cuenta = await PedidosService.generarPreCuenta(tableId);
-      setPreCuenta(cuenta);
-      setShowPreCuenta(true);
-      await imprimirPreCuenta(cuenta);
-    } catch (error) {
-      console.error('Error generando pre-cuenta:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo generar la pre-cuenta',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleSolicitarCuenta = async () => {
-    if (!session) return;
-
-    if (!session?.sale_items || session.sale_items.length === 0) {
-      toast({
-        title: 'Sin productos',
-        description: 'No hay productos para solicitar la cuenta',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      // Actualizar estado a bill_requested
-      await PedidosService.solicitarCuenta(session.id);
-      await cargarDatos(true);
-      
-      // Mostrar diálogo de división si hay más de 1 comensal
-      if (session.customers > 1) {
-        toast({
-          title: 'Cuenta solicitada',
-          description: '¿Deseas dividir la cuenta entre comensales?',
-        });
-        // Abrir automáticamente el diálogo de división
-        setShowSplitBill(true);
-      } else {
-        toast({
-          title: 'Cuenta solicitada',
-          description: 'La mesa ha solicitado la cuenta',
-        });
-        // Si es solo 1 comensal, ir directo al checkout
-        setShowCheckout(true);
-      }
-    } catch (error) {
-      console.error('Error solicitando cuenta:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo solicitar la cuenta',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleEnviarComanda = async () => {
-    if (!session) return;
-
-    try {
-      const ticketsEnviados = await PedidosService.enviarComandaCocina(session.id, {
-        mesa: '',
-        ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
-        mas: (n) => tCocina('impreso.mas', { cantidad: n }),
-        menos: (n) => tCocina('impreso.menos', { cantidad: n }),
-        anular: tCocina('impreso.anular'),
-        notaCambiada: tCocina('impreso.nota'),
-        alergia: tCocina('impreso.alergia'),
-      });
-      toast({
-        title: 'Comanda enviada',
-        description: 'La comanda se ha enviado a cocina',
-      });
-
-      // Impresión: consolidar todos los tickets en una sola comanda
-      // para evitar que salga una comanda por cada ronda de platos.
-      if (ticketsEnviados.length > 0) {
-        const allItems = ticketsEnviados.flatMap((t) => t.items);
-        const firstTicketId = ticketsEnviados[0].ticketId;
-        const createdAt = ticketsEnviados[0].createdAt;
-
-        let enqueuedToFisico = false;
-
-        if (branch_id) {
-          try {
-            const businessInfo = organization ? {
-              name: organization.name || '',
-              nit: (organization as any).nit || (organization as any).tax_id || '',
-              phone: (organization as any).phone || '',
-              address: (organization as any).address || '',
-            } : undefined;
-            const branchInfo = currentBranch ? {
-              name: currentBranch.name || '',
-              address: currentBranch.address || '',
-              phone: currentBranch.phone || '',
-            } : undefined;
-
-            const { enqueued } = await PrintJobsService.enqueueKitchenTicket(branch_id, {
-              ticketId: firstTicketId,
-              tableName: mesaNombre,
-              serverName,
-              createdAt,
-              items: allItems,
-              businessName: businessInfo?.name,
-              branchName: branchInfo?.name,
-            });
-            enqueuedToFisico = enqueued > 0;
-          } catch (err) {
-            console.warn('No se pudo encolar comanda física:', err);
-          }
-        }
-
-        if (!enqueuedToFisico) {
-          const businessInfo = organization ? {
-            name: organization.name || '',
-            nit: (organization as any).nit || (organization as any).tax_id || '',
-            phone: (organization as any).phone || '',
-            address: (organization as any).address || '',
-          } : undefined;
-          const branchInfo = currentBranch ? {
-            name: currentBranch.name || '',
-            address: currentBranch.address || '',
-            phone: currentBranch.phone || '',
-          } : undefined;
-          PrintService.printComanda(
-            mesaNombre,
-            serverName,
-            allItems,
-            businessInfo,
-            branchInfo,
-          );
-        }
-      }
-    } catch (error) {
-      console.error('Error enviando comanda:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo enviar la comanda',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleTransferItem = async (
-    itemId: string,
-    toTableId: string,
-    quantity: number
-  ) => {
-    try {
-      await PedidosService.transferirItem(itemId, toTableId, quantity);
-      await cargarDatos(true);
-      toast({
-        title: 'Item transferido',
-        description: 'El item se ha transferido exitosamente',
-      });
-    } catch (error: any) {
-      console.error('Error transfiriendo item:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo transferir el item',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const cargarMesasParaCombinar = async () => {
-    try {
-      const mesas = await MesasService.obtenerMesasConSesiones();
-      setTodasLasMesas(mesas);
-      setShowCombinar(true);
-    } catch (error) {
-      console.error('Error cargando mesas:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las mesas',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleCombinarMesas = async (
-    mesaPrincipalId: string,
-    mesasACombinar: string[]
-  ) => {
-    try {
-      await MesasService.combinarMesas(mesaPrincipalId, mesasACombinar);
-      toast({
-        title: 'Mesas combinadas',
-        description: 'Las mesas se han combinado exitosamente',
-      });
-      
-      // Si la mesa actual fue combinada, redirigir a la mesa principal
-      if (mesasACombinar.includes(tableId)) {
-        router.push(`/app/pos/mesas/${mesaPrincipalId}`);
-      } else {
-        // Si esta es la mesa principal, recargar datos
-        await cargarDatos(true);
-      }
-      
-      setShowCombinar(false);
-    } catch (error: any) {
-      console.error('Error combinando mesas:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudieron combinar las mesas',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleAbrirEditarComensales = () => {
-    if (session) {
-      setComensalesInput(session.customers || 2);
-      setShowEditarComensales(true);
-    }
-  };
-
-  const cargarMiembrosOrganizacion = async () => {
-    if (!organization?.id || orgMembers.length > 0) return;
-    setLoadingMembers(true);
-    try {
-      const { supabase } = await import('@/lib/supabase/config');
-      const { data, error } = await supabase.rpc('get_profiles_by_organization', { org_id: organization.id });
-      if (error) throw error;
-      const opciones = (data || [])
-        .filter((m: any) => m.is_active !== false)
-        .map((m: any) => {
-          const userId = m.user_id || m.id;
-          const fullName = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || 'Sin nombre';
-          return { value: userId, label: fullName, sublabel: m.email };
-        });
-      setOrgMembers(opciones);
-    } catch (error) {
-      console.error('Error cargando miembros de la organización:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los miembros de la organización',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
-
-  const handleAbrirEditarMesero = async () => {
-    if (!session) return;
-    setMeseroSeleccionado(session.server_id || '');
-    setShowEditarMesero(true);
-    await cargarMiembrosOrganizacion();
-  };
-
-  const handleGuardarMesero = async () => {
-    if (!session || !meseroSeleccionado) return;
-
-    try {
-      await MesasService.cambiarMesero(session.id, meseroSeleccionado);
-      const seleccionado = orgMembers.find((m) => m.value === meseroSeleccionado);
-      setServerName(seleccionado?.label);
-      setSession({ ...session, server_id: meseroSeleccionado });
-      toast({
-        title: 'Mesero actualizado',
-        description: seleccionado ? `${seleccionado.label} asignado a la mesa` : 'Mesero asignado',
-      });
-      setShowEditarMesero(false);
-    } catch (error: any) {
-      console.error('Error cambiando mesero:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo cambiar el mesero',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleGuardarComensales = async () => {
-    if (!session) return;
-
-    try {
-      await PedidosService.actualizarComensales(session.id, comensalesInput);
-      await cargarDatos(true);
-      toast({
-        title: 'Comensales actualizados',
-        description: `Ahora hay ${comensalesInput} comensales en la mesa`,
-      });
-      setShowEditarComensales(false);
-    } catch (error: any) {
-      console.error('Error actualizando comensales:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo actualizar la cantidad de comensales',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // La mesa quedó libre desde el diálogo «Liberar mesa» (con o sin saldo).
-  const handleMesaLiberada = (resultado: ResultadoLiberacion) => {
-    toast(avisoLiberacion(resultado, mesaNombre));
-    setBillSplits(null);
-    setPaidSplitIds([]);
-    setCurrentSplitIndex(0);
-    router.push('/app/pos/mesas');
-  };
-
-  // Liberar tras cobrar: si el servidor dice que aún hay saldo, se pide
-  // resolverlo en el diálogo en vez de soltar la mesa con la cuenta abierta.
-  const liberarTrasCobro = async (): Promise<boolean> => {
-    try {
-      await MesasService.liberarMesa(tableId);
-      return true;
-    } catch (error) {
-      if (error instanceof LiberacionMesaError && error.codigo === 'saldo_pendiente') {
-        await cargarDatos(true);
-        setShowLiberarConfirm(true);
-        return false;
-      }
-      throw error;
-    }
-  };
-
-  // Convertir sesión a formato Cart para CheckoutDialog
-  const convertSessionToCart = (): Cart => {
-    if (!session || !session.sale_id) {
-      throw new Error('No hay sesión o venta activa');
-    }
-    if (!branch_id) {
-      throw new Error('Se requiere una sucursal para procesar');
-    }
-
-    // Tras un abono de cuenta dividida (partes por monto, o una parte que llevó
-    // una fracción de un plato) se cobra el SALDO, no las líneas enteras: el
-    // servidor rechaza un cobro mayor que lo que falta (pago_excede_saldo).
-    if (abonadoPendiente(session.sale_items || []) > 0) {
-      return convertSplitToCart({
-        id: 'saldo',
-        name: tLiberar('campos.saldo'),
-        items: [],
-        total: saldoDeLineas(session.sale_items || []),
-      });
-    }
-
-    // La tasa y el modo de impuesto de lo que se cobra los decide el diálogo
-    // de cobro, como siempre y como en el mostrador (unificar los motores de
-    // impuestos es decisión pendiente): aquí no se cambia su cálculo.
-    const items = lineasSinPagarComoCarrito().map((item) => ({ ...item, tax_rate: 0, tax_included: undefined }));
-
-    // Usar totales calculados por el hook useMesaTaxes (MesaTaxBreakdown) si están disponibles
-    // Esto asegura que el CheckoutDialog reciba los mismos totales que muestra el sidebar
-    const hookSubtotal = calculatedTaxTotals?.subtotal ?? null;
-    const hookTaxTotal = calculatedTaxTotals?.taxTotal ?? null;
-    const hookTotal = calculatedTaxTotals?.total ?? null;
-    const hookTaxIncluded = calculatedTaxTotals?.taxIncluded ?? false;
-
-    const subtotal = hookSubtotal ?? items.reduce((sum, item) => sum + (Number(item.unit_price) * Number(item.quantity)), 0);
-    const taxTotal = hookTaxTotal ?? items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-    const discountTotal = items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
-    const grandTotal = hookTotal ?? (subtotal + taxTotal - discountTotal);
-
-    // Si el hook calculó impuestos, distribuir proporcionalmente por item para que CheckoutDialog vea tax_amount por item
-    if (hookTaxTotal && hookTaxTotal > 0 && items.length > 0) {
-      const itemsBaseTotal = items.reduce((sum, item) => sum + (Number(item.unit_price) * Number(item.quantity)), 0);
-      if (itemsBaseTotal > 0) {
-        items.forEach(item => {
-          const itemBase = Number(item.unit_price) * Number(item.quantity);
-          item.tax_amount = Math.round((itemBase / itemsBaseTotal) * hookTaxTotal * 100) / 100;
-        });
-      }
-    }
-
-    return {
-      id: session.sale_id,
-      organization_id: session.organization_id,
-      branch_id: branch_id,
-      customer_id: selectedCustomer?.id || undefined,
-      status: 'active',
-      items,
-      total: grandTotal,
-      subtotal,
-      tax_amount: taxTotal,
-      tax_total: taxTotal,
-      tax_included: hookTaxIncluded,
-      discount_amount: discountTotal,
-      discount_total: discountTotal,
-      created_at: session.opened_at,
-      updated_at: session.opened_at,
-      customer: selectedCustomer,
-    };
-  };
-
-  // Líneas sin pagar de la cuenta como líneas de carrito. Llevan la tasa y el
-  // modo de impuesto guardados en la línea (si los tiene) para que el cobro
-  // use los mismos con los que se calculó al pedir.
-  const lineasSinPagarComoCarrito = (): CartItem[] => {
-    if (!session || !session.sale_id) return [];
-    const unpaidItems = (session.sale_items || []).filter(item => !(item as any).paid_at);
-
-    return unpaidItems.map((item) => {
-      // Obtener nombre del producto de múltiples fuentes
-      const productData = (item as any).product;
-      // notes puede ser string o objeto JSON
-      const notesObj = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
-      const productName = productData?.name || notesObj?.product_name || 'Producto';
-      
-      return {
-        id: item.id,
-        cart_id: session.sale_id!,
-        product_id: item.product_id || 0,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.unit_price),
-        total: Number(item.total),
-        tax_amount: Number(item.tax_amount || 0),
-        tax_rate: Number(item.tax_rate) || 0,
-        tax_included: item.tax_included ?? undefined,
-        discount_amount: Number(item.discount_amount || 0),
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        product: {
-          id: item.product_id || productData?.id || 0,
-          name: productName,
-          sku: productData?.sku || '',
-          status: 'active',
-          organization_id: session.organization_id,
-        } as any,
-      };
-    });
-  };
-
-  // Cobro de la mesa: el mismo cobro del POS (pos_checkout_v1 en modo
-  // 'settle' sobre la venta de la sesión), en una transacción e idempotente
-  // por el intento del diálogo. El servidor valida la sesión, recalcula la
-  // cuenta con la regla única, valida precios y descuentos, registra pagos,
-  // factura, propina, comisión, stock ('mesa_sale') y seriales, y marca las
-  // líneas pagadas de una cuenta dividida. Antes lo hacía el navegador en N
-  // escrituras (completarVentaMesa), con la cartera escrita a mano y sin
-  // idempotencia. La mesa la libera después pos_mesa_liberar (saldo 0).
-  const handleProcessPayment = async (checkoutData: CheckoutData): Promise<Sale> => {
-    if (!session?.sale_id) {
-      throw new Error('No hay venta asociada a la sesión');
-    }
-
-    const splitActual = billSplits && billSplits.length > 0 ? billSplits[currentSplitIndex] : null;
-    // Cobro por MONTO (partes iguales, montos o el saldo tras un abono): la
-    // línea del carrito es virtual y el servidor abona el pago a las líneas.
-    const porMonto = splitActual ? splitActual.items.length === 0 : abonadoPendiente(session.sale_items || []) > 0;
-    const idsDelCobro = new Set(checkoutData.cart.items.map((i) => String(i.id)));
-    const settle: CobroVentaExistente = {
-      sale_id: session.sale_id,
-      table_session_id: session.id,
-      ...(splitActual
-        ? {
-            split_id: splitActual.id,
-            paid_sale_item_ids: splitActual.items.map((si) => String(si.item.id)),
-          }
-        : {}),
-      ...(splitActual || porMonto
-        ? {
-            lineas_sin_cobrar: lineasSinPagarComoCarrito().filter(
-              (i) => !idsDelCobro.has(String(i.id))
-                && (session.sale_items || []).some((si) => si.id === i.id && si.sale_id === session.sale_id),
-            ),
-          }
-        : {}),
-    };
-
-    return POSService.checkout({ ...checkoutData, settle });
-  };
-
-  const handleCheckout = () => {
-    if (!session?.sale_items || session.sale_items.length === 0) {
-      toast({
-        title: 'Sin productos',
-        description: 'Agrega productos antes de procesar el pago',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Si hay splits configurados, verificar items sin asignar
-    if (billSplits && billSplits.length > 0) {
-      // Detectar items sin asignar
-      const allCurrentItems = session.sale_items.filter(item => !item.paid_at);
-      const itemsInSplits = billSplits.flatMap(split => split.items.map(si => si.item.id));
-      // Partes por monto: no llevan platos, no hay «sin asignar» (el saldo lo da el servidor).
-      const unassignedItems = esDivisionPorMonto(billSplits) ? [] : allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
-
-      if (unassignedItems.length > 0) {
-        const unassignedTotal = unassignedItems.reduce((sum, item) => sum + Number(item.total), 0);
-        
-        toast({
-          title: 'Divide la cuenta nuevamente',
-          description: `Hay ${unassignedItems.length} producto(s) por ${formatCurrency(unassignedTotal)} sin asignar. Debes dividir de nuevo para incluirlos.`,
-          variant: 'destructive',
-        });
         return;
       }
-      
-      setShowSplitSelector(true);
-    } else {
-      setShowCheckout(true);
+      await agregarLinea(producto, modificadores, cantidad);
+    });
+
+  // La mesa se abrió en `AbrirMesaFlujo`: recarga y sigue con lo que la persona quería hacer.
+  const alAbrirMesa = async () => {
+    await cargar(true);
+    const pendiente = pendienteAlAbrir.current;
+    pendienteAlAbrir.current = null;
+    pendiente?.();
+  };
+
+  const alElegirCliente = async (cliente?: Customer) => {
+    if (!sesion) return;
+    try {
+      await asignarClienteMesa(sesion.id, sesion.sale_id, cliente?.id ?? null);
+      await cargar(true);
+      toast.success(cliente ? t('toast.cliente', { nombre: cliente.full_name ?? '' }) : t('toast.consumidorFinal'));
+    } catch {
+      toast.error(t('errores.cliente'));
     }
   };
 
-  // «Cobrar ahora» desde el plano (?cobrar=1): abrir el cobro cuando la mesa y
-  // la caja estén cargadas; sin caja no se abre (el botón del cobro exige caja).
-  useEffect(() => {
-    if (!cobroPendiente || isLoading || !cajaVerificada || !session) return;
-    setCobroPendiente(false);
+  const alGuardarNota = async (nota: Parameters<typeof guardarNotaMesa>[1], comensales: number) => {
+    if (!sesion) return;
+    setGuardandoNota(true);
     try {
-      window.history.replaceState(null, '', window.location.pathname);
+      await guardarNotaMesa(sesion.id, nota, comensales);
+      setNotaAbierta(false);
+      await cargar(true);
+      toast.success(t('toast.notaGuardada'));
     } catch {
-      /* sin historial: no pasa nada */
+      toast.error(t('errores.nota'));
+    } finally {
+      setGuardandoNota(false);
     }
-    if (cashSession) handleCheckout();
-    else toast({ title: tLiberar('motivos.sin_caja'), variant: 'destructive' });
-    // Se dispara una sola vez (cobroPendiente se apaga arriba); handleCheckout y
-    // toast se recrean en cada render y no deben volver a dispararlo.
+  };
+
+  const alGuardarLinea = async (cambio: { comensal: number | null; notaCocina: string; alergia: boolean }) => {
+    if (!editor) return;
+    setGuardandoLinea(true);
+    try {
+      await guardarLineaMesa(
+        editor.linea.id,
+        editor.soloComensal ? { comensal: cambio.comensal } : { comensal: cambio.comensal, notaCocina: cambio.notaCocina, alergia: cambio.alergia },
+      );
+      setEditor(null);
+      await cargar(true);
+    } catch {
+      toast.error(t('errores.linea'));
+    } finally {
+      setGuardandoLinea(false);
+    }
+  };
+
+  const enviarRonda = async () => {
+    if (!sesion || agrupada.porEnviar.length === 0) return;
+    const roundKey = crypto.randomUUID();
+    if (!enLinea) {
+      const nueva = [...leerCola(), { sesionId: sesion.id, roundKey }];
+      escribirCola(nueva);
+      setCola(nueva);
+      toast.warning(t('toast.rondaEnCola', { n: (agrupada.rondas[0]?.numero ?? 0) + 1 }), { description: t('toast.rondaEnColaDetalle') });
+      return;
+    }
+    setEnviando(true);
+    try {
+      const r = await enviarRondaMesa(sesion, roundKey);
+      const impresion = await imprimirRondaMesa({
+        sesionId: sesion.id,
+        branchId: branch_id ?? null,
+        mesa: mesaNombre,
+        mesero: cuenta?.meseroNombre,
+        organizacion: organization as unknown as Record<string, unknown>,
+        sucursal,
+        textos: {
+          mesa: '',
+          ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
+          mas: (n) => tCocina('impreso.mas', { cantidad: n }),
+          menos: (n) => tCocina('impreso.menos', { cantidad: n }),
+          anular: tCocina('impreso.anular'),
+          notaCambiada: tCocina('impreso.nota'),
+          alergia: tCocina('impreso.alergia'),
+        },
+      }).catch(() => ({ impresas: 0, sinImpresora: false }));
+      await cargar(true);
+      const estaciones = r.estaciones
+        .map((e) => t('toast.estacion', { estacion: t.has(`estaciones.${e.station || 'general'}`) ? t(`estaciones.${e.station || 'general'}`) : e.station, n: e.lineas }))
+        .join(' · ');
+      toast.success(t('toast.rondaEnviada', { n: r.ronda ?? '' }), {
+        description: [estaciones, impresion.sinImpresora ? t('toast.sinImpresora') : impresion.impresas > 0 ? t('toast.impresa') : null]
+          .filter(Boolean)
+          .join(' · '),
+      });
+    } catch (error) {
+      toast.error(t('errores.ronda'), { description: t.has(`errores.${codigoError(error)}`) ? t(`errores.${codigoError(error)}`) : undefined });
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  // Al volver la red, las rondas en cola salen solas (idempotentes por su round_key).
+  useEffect(() => {
+    if (!enLinea || cola.length === 0 || !sesion) return;
+    let vigente = true;
+    (async () => {
+      const restantes: RondaEnCola[] = [];
+      for (const r of cola) {
+        if (r.sesionId !== sesion.id) {
+          restantes.push(r);
+          continue;
+        }
+        try {
+          await enviarRondaMesa(sesion, r.roundKey);
+        } catch {
+          restantes.push(r);
+        }
+      }
+      if (!vigente) return;
+      escribirCola(restantes);
+      setCola(restantes);
+      await cargar(true);
+      toast.success(t('toast.colaEnviada'));
+    })();
+    return () => {
+      vigente = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cobroPendiente, isLoading, cajaVerificada, session, cashSession]);
+  }, [enLinea]);
 
-  // Convertir un split a formato Cart
-  const convertSplitToCart = (split: BillSplit): Cart => {
-    if (!session || !session.sale_id) {
-      throw new Error('No hay sesión o venta activa');
+  const alServido = async (linea: LineaMesa) => {
+    try {
+      await marcarServido([linea.id]);
+      await cargar(true);
+    } catch {
+      toast.error(t('errores.servido'));
     }
-    if (!branch_id) {
-      throw new Error('Se requiere una sucursal para procesar');
-    }
+  };
 
-    // Si es división equitativa (sin items asignados), crear un item virtual
-    const items = split.items.length > 0 
-      ? split.items.map((splitItem) => ({
-          id: splitItem.item.id,
-          cart_id: session.sale_id!,
-          product_id: splitItem.item.product_id || 0,
-          quantity: splitItem.quantity,
-          unit_price: Number(splitItem.item.unit_price),
-          discount: 0,
-          tax: Number(splitItem.item.tax_amount) || 0,
-          total: (Number(splitItem.item.unit_price) * splitItem.quantity),
-          note: typeof splitItem.item.notes === 'object' ? (splitItem.item.notes as any)?.extra : splitItem.item.notes,
-          name: splitItem.item.product?.name || 'Producto',
-          sku: splitItem.item.product?.sku || '',
-          product: splitItem.item.product || { 
-            id: splitItem.item.product_id || 0, 
-            name: 'Producto', 
-            sku: '' 
-          } as any,
-          created_at: splitItem.item.created_at,
-          updated_at: splitItem.item.updated_at,
-        }))
-      : [{
-          // Item virtual para división por monto (partes iguales, montos o el
-          // saldo tras un abono). Impuesto incluido y tasa 0: el cobro es
-          // exactamente el importe de la parte; el impuesto ya está en las líneas.
-          id: `split-${split.id}`,
-          cart_id: session.sale_id!,
+  const alCantidad = async (linea: LineaMesa, n: number) => {
+    try {
+      if (n <= 0) await PedidosService.eliminarItem(linea.id);
+      else await PedidosService.actualizarCantidadItem(linea.id, n);
+      await cargar(true);
+    } catch {
+      toast.error(t('errores.cantidad'));
+    }
+  };
+
+  const alAnular = async (motivo: string) => {
+    if (!anular) return;
+    setAnulando(true);
+    try {
+      if (anular.restar && anular.linea.cantidad > 1) await PedidosService.actualizarCantidadItem(anular.linea.id, anular.linea.cantidad - 1, motivo);
+      else await PedidosService.eliminarItem(anular.linea.id, motivo);
+      setAnular(null);
+      await cargar(true);
+      toast.success(t('toast.ajusteEnviado'));
+    } catch {
+      toast.error(t('errores.anular'));
+    } finally {
+      setAnulando(false);
+    }
+  };
+
+  const alModificadores = async (linea: LineaMesa) => {
+    if (!linea.productoId) return;
+    const producto = await POSService.getProductById(linea.productoId).catch(() => null);
+    const padreId = (producto as unknown as { parent_product_id?: number | null } | null)?.parent_product_id;
+    const padre = padreId ? await POSService.getProductById(padreId).catch(() => null) : producto;
+    if (!padre) {
+      toast.error(t('errores.modificadores'));
+      return;
+    }
+    setModificar({ linea, producto: padre });
+  };
+
+  const alCambiarVariante = async (variante: { id: number; name?: string } & Partial<Product>, modificadores: CartItemModifier[], cantidad: number) => {
+    if (!modificar || !sesion) return;
+    const linea = modificar.linea;
+    setModificar(null);
+    try {
+      await PedidosService.eliminarItem(linea.id);
+      await agregarProductoMesa(sesion.id, { ...(modificar.producto as Product), ...(variante as Product) }, modificadores, cantidad, { comensal: linea.comensal });
+      await cargar(true);
+    } catch {
+      toast.error(t('errores.modificadores'));
+      await cargar(true);
+    }
+  };
+
+  const alMover = async (destino: VistaMesaPlano, modoMover: ModoMover, lineaIds: string[]) => {
+    if (!sesion) return;
+    setMoviendo(true);
+    try {
+      await moverMesa(sesion.id, tableId, destino.id, modoMover, lineaIds);
+      setMover(null);
+      toast.success(t(`toast.movido.${modoMover}`, { mesa: destino.nombre, n: lineaIds.length }));
+      if (modoMover === 'productos') await cargar(true);
+      else router.push(`/app/pos/mesas/${destino.id}`);
+    } catch (error) {
+      toast.error(t('errores.mover'), { description: t.has(`errores.${codigoError(error)}`) ? t(`errores.${codigoError(error)}`) : undefined });
+    } finally {
+      setMoviendo(false);
+    }
+  };
+
+  const alCambiarMesero = async (meseroId: string) => {
+    if (!sesion) return;
+    try {
+      await MesasService.cambiarMesero(sesion.id, meseroId);
+      setMeseroAbierto(false);
+      await cargar(true);
+    } catch {
+      toast.error(t('errores.mesero'));
+    }
+  };
+
+  const alPedirCuenta = async () => {
+    if (!sesion) return;
+    try {
+      await MesasService.solicitarCuenta(sesion.id);
+      await cargar(true);
+      toast.success(t('toast.cuentaPedida', { mesa: mesaNombre }));
+    } catch {
+      toast.error(t('errores.error'));
+    }
+  };
+
+  const imprimirPrecuenta = async (soloNavegador: boolean) => {
+    if (!cuenta?.sesion) return;
+    setImprimiendo(true);
+    try {
+      const items = (cuenta.sesion.sale_items ?? []).filter((i) => !i.paid_at) as SaleItem[];
+      const destino = await imprimirPreCuentaMesa({
+        branchId: branch_id ?? null,
+        tableId,
+        mesa: mesaNombre,
+        mesero: cuenta.meseroNombre,
+        items,
+        subtotal: totales.subtotal,
+        impuesto: totales.impuestos.reduce((s, i) => s + i.importe, 0),
+        descuento: totales.descuento,
+        total: totales.saldo,
+        timezone,
+        organizacion: organization as unknown as Record<string, unknown>,
+        sucursal,
+        soloNavegador,
+      });
+      toast.success(destino === 'impresora' ? t('toast.precuentaImpresa') : t('toast.precuentaNavegador'));
+    } finally {
+      setImprimiendo(false);
+    }
+  };
+
+  // ── Cobro (D10, D8b, D11) ────────────────────────────────────────────────
+  const sinCaja = requiereCaja && !caja;
+  const estadoCobro: EstadoCobroMesa = sinCaja ? 'sinCaja' : agrupada.porEnviar.length + agrupada.rondas.length + agrupada.directas.length === 0 ? 'vacio' : 'listo';
+
+  const abrirCobro = (parte: ParteCobro | null = null, propina: { porcentaje: number | null; valor: number } | null = null) => {
+    if (sinCaja) {
+      setAperturaCaja(true);
+      return;
+    }
+    if (!sesion?.sale_id) {
+      toast.error(t('errores.sinProductos'));
+      return;
+    }
+    liberacionFallida.current = false;
+    setCobro({ parte, propina });
+  };
+
+  const lineasSinPagarComoCarrito = (): CartItem[] =>
+    (cuenta?.lineas ?? [])
+      .filter((l) => !l.pagada && l.cantidad > 0)
+      .map((l) => ({
+        id: l.id,
+        cart_id: sesion?.sale_id ?? '',
+        product_id: l.productoId ?? 0,
+        quantity: l.cantidad,
+        unit_price: l.precioUnitario,
+        total: l.total,
+        tax_amount: l.impuesto,
+        tax_rate: l.tasaImpuesto,
+        tax_included: l.impuestoIncluido,
+        discount_amount: l.descuento,
+        created_at: l.creadaAt ?? '',
+        updated_at: l.creadaAt ?? '',
+        product: { id: l.productoId ?? 0, name: l.variante ? `${l.nombre} · ${l.variante}` : l.nombre, sku: '', status: 'active', organization_id: sesion?.organization_id ?? 0 } as unknown as Product,
+      }));
+
+  const carritoDelCobro = (): Cart | null => {
+    if (!sesion?.sale_id || !cobro) return null;
+    const branch = Number(branch_id ?? cuenta?.mesa.branchId ?? 0);
+    const virtual = (importe: number, nombre: string): Cart => ({
+      id: sesion.sale_id!,
+      organization_id: sesion.organization_id,
+      branch_id: branch,
+      customer_id: cuenta?.cliente?.id,
+      customer: cuenta?.cliente ?? undefined,
+      items: [
+        {
+          id: `parte-${cobro.parte?.id ?? 'saldo'}`,
+          cart_id: sesion.sale_id!,
           product_id: 0,
           quantity: 1,
-          unit_price: split.total,
-          discount: 0,
-          tax: 0,
+          unit_price: importe,
+          total: importe,
           tax_rate: 0,
           tax_amount: 0,
           tax_included: true,
-          total: split.total,
-          note: `División equitativa - ${split.name}`,
-          name: `División equitativa - ${split.name}`,
-          sku: 'DIV-EQUAL',
-          product: { 
-            id: 0, 
-            name: `División equitativa - ${split.name}`, 
-            sku: 'DIV-EQUAL' 
-          } as any,
+          discount_amount: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }];
-
-    return {
-      id: session.sale_id,
-      organization_id: session.organization_id,
-      branch_id: branch_id,
-      customer_id: selectedCustomer?.id,
-      customer: selectedCustomer,
-      items,
-      ...(split.items.length === 0 ? { tax_included: true } : {}),
-      subtotal: split.total,
+          product: { id: 0, name: nombre, sku: 'MESA-PARTE', status: 'active', organization_id: sesion.organization_id } as unknown as Product,
+        } as CartItem,
+      ],
+      tax_included: true,
+      subtotal: importe,
       tax_amount: 0,
       tax_total: 0,
       discount_amount: 0,
       discount_total: 0,
-      total: split.total,
-      status: 'active' as const,
-      created_at: session.opened_at,
-      updated_at: session.opened_at,
+      total: importe,
+      status: 'active',
+      created_at: sesion.opened_at,
+      updated_at: sesion.opened_at,
+    });
+    // Una parte (por monto) o el saldo tras un abono: línea virtual por el importe.
+    if (cobro.parte) return virtual(cobro.parte.importe, t('partes.lineaCobro', { parte: cobro.parte.comensal ? t('partes.comensal', { n: cobro.parte.comensal }) : t('partes.parte', { n: cobro.parte.nombre }), mesa: mesaNombre }));
+    if (totales.abonado > 0) return virtual(totales.saldo, t('partes.saldo', { mesa: mesaNombre }));
+    const items = lineasSinPagarComoCarrito().map((i) => ({ ...i, tax_rate: 0, tax_included: undefined }));
+    return {
+      id: sesion.sale_id,
+      organization_id: sesion.organization_id,
+      branch_id: branch,
+      customer_id: cuenta?.cliente?.id,
+      customer: cuenta?.cliente ?? undefined,
+      status: 'active',
+      items,
+      total: totales.total,
+      subtotal: totales.subtotal,
+      tax_amount: totales.impuestos.reduce((s, i) => s + i.importe, 0),
+      tax_total: totales.impuestos.reduce((s, i) => s + i.importe, 0),
+      tax_included: items.some((i) => (i.tax_amount ?? 0) > 0),
+      discount_amount: totales.descuento,
+      discount_total: totales.descuento,
+      created_at: sesion.opened_at,
+      updated_at: sesion.opened_at,
     };
   };
 
-  const handleOpenSplitBill = () => {
-    if (!session?.sale_items || session.sale_items.length === 0) {
-      toast({
-        title: 'Sin productos',
-        description: 'No hay productos para dividir',
-        variant: 'destructive',
+  // El mismo cobro del POS (pos_checkout_v1 en modo settle) y, si el saldo queda en
+  // 0, la mesa se libera y pasa a «Por limpiar» en el mismo paso (D11).
+  const procesarPago = async (checkoutData: CheckoutData): Promise<Sale> => {
+    if (!sesion?.sale_id) throw new Error('sin_venta');
+    const porMonto = !!cobro?.parte || totales.abonado > 0;
+    const idsDelCobro = new Set(checkoutData.cart.items.map((i) => String(i.id)));
+    const settle: CobroVentaExistente = {
+      sale_id: sesion.sale_id,
+      table_session_id: sesion.id,
+      ...(porMonto ? { lineas_sin_cobrar: lineasSinPagarComoCarrito().filter((i) => !idsDelCobro.has(String(i.id))) } : {}),
+    };
+    const venta = await POSService.checkout({ ...checkoutData, settle });
+    // Saldo según el servidor (no un temporizador): solo con 0 se libera la mesa.
+    let saldo = 0;
+    try {
+      const { data } = await supabase.rpc('fn_pos_mesa_saldo', { p_sale_id: sesion.sale_id });
+      saldo = Number((data as { saldo?: number } | null)?.saldo ?? 0);
+    } catch {
+      saldo = cobro?.parte ? Math.max(0, totales.saldo - cobro.parte.importe) : 0;
+    }
+    if (cobro?.parte && partes) {
+      const metodo = checkoutData.payments?.[0]?.method;
+      const hora = formatTimeInTz(new Date(), timezone);
+      const nuevas = partes.map((p) =>
+        p.id === cobro.parte!.id
+          ? { ...p, estado: 'pagada' as const, pagadaCon: t('partes.pagadoCon', { metodo: t.has(`metodos.${metodo}`) ? t(`metodos.${metodo}`) : metodo ?? '', hora }) }
+          : p,
+      );
+      setPartes(nuevas);
+    }
+    if (saldo <= 0.5) {
+      try {
+        await MesasService.liberarMesa(tableId);
+        await marcarEstadoMesa(tableId, 'cleaning').catch(() => false);
+      } catch (error) {
+        liberacionFallida.current = !(error instanceof LiberacionMesaError && error.codigo === 'saldo_pendiente');
+      }
+    }
+    return venta;
+  };
+
+  const alTerminarCobro = async () => {
+    const parte = cobro?.parte ?? null;
+    setCobro(null);
+    if (liberacionFallida.current) {
+      // S8: cobrado, pero la mesa no se soltó. Nunca «Error al completar pago».
+      toast.error(t('toast.cobradoSinLiberar', { mesa: mesaNombre }), {
+        duration: 15000,
+        action: { label: t('toast.reintentarLiberar'), onClick: () => setLiberar(true) },
       });
+      await cargar(true);
       return;
     }
-    setShowSplitBill(true);
-  };
-
-  const handleConfirmSplit = (splits: BillSplit[]) => {
-    // Filtrar splits válidos:
-    // - División por items: deben tener items Y total > 0
-    // - División equitativa: solo necesitan total > 0 (items puede estar vacío)
-    const validSplits = splits.filter(s => s.total > 0);
-    
-    setBillSplits(validSplits);
-    setPaidSplitIds([]); // Reset pagos
-    
-    if (validSplits.length === 0) {
-      toast({
-        title: 'No hay items asignados',
-        description: 'Asigna productos a los comensales o usa división equitativa',
-        variant: 'destructive',
-      });
+    const c = await cargarCuentaMesa(tableId).catch(() => null);
+    if (!c?.sesion) {
+      toast.success(t('toast.cobrada', { mesa: mesaNombre }), { description: t('toast.cobradaDetalle') });
+      router.push('/app/pos/mesas');
       return;
     }
-    
-    // Detectar si es división equitativa (todos tienen items vacíos)
-    const isEqualSplit = validSplits.every(s => s.items.length === 0);
-    
-    toast({
-      title: 'Cuenta dividida',
-      description: isEqualSplit 
-        ? `Cuenta dividida equitativamente entre ${validSplits.length} comensal${validSplits.length > 1 ? 'es' : ''}`
-        : `La cuenta se dividió entre ${validSplits.length} comensal${validSplits.length > 1 ? 'es' : ''}`,
-    });
+    setCuenta(c);
+    if (parte) setPartesAbierto(true);
   };
 
-  const handleCancelSplit = () => {
-    setBillSplits(null);
-    setCurrentSplitIndex(0);
-    setPaidSplitIds([]);
-    toast({
-      title: 'División cancelada',
-      description: 'Se restauró la cuenta completa',
-    });
+  const alDividir = (lista: ParteMesa[], cobrarPrimera: boolean) => {
+    const nuevas: ParteCobro[] = lista.map((p) => ({ ...p, estado: 'pendiente' }));
+    setDividir(false);
+    if (cobrarPrimera && nuevas[0]) {
+      nuevas[0] = { ...nuevas[0], estado: 'cobrando' };
+      setPartes(nuevas);
+      abrirCobro(nuevas[0]);
+    } else {
+      setPartes(nuevas);
+      setPartesAbierto(true);
+    }
   };
 
-  // Seleccionar un split para pagar
-  const handleSelectSplitToPay = (splitId: string) => {
-    const split = billSplits?.find(s => s.id === splitId);
-    if (!split) return;
-
-    const splitIndex = billSplits?.findIndex(s => s.id === splitId) || 0;
-    setCurrentSplitIndex(splitIndex);
-    setShowSplitSelector(false);
-    setShowCheckout(true);
+  const alCobrarParte = (parte: ParteCobro) => {
+    if (!partes) return;
+    setPartes(partes.map((p) => (p.id === parte.id ? { ...p, estado: 'cobrando' } : p.estado === 'cobrando' ? { ...p, estado: 'pendiente' } : p)));
+    setPartesAbierto(false);
+    abrirCobro({ ...parte, estado: 'cobrando' });
   };
 
-  // Cerrar mesa con pagos parciales
-  const handleFinishWithPartialPayments = async () => {
+  // Partes de esta cuenta en la sesión del navegador (sobreviven a recargar la página).
+  useEffect(() => {
+    if (!sesion?.id) return;
     try {
-      if (!billSplits || paidSplitIds.length === 0) {
-        toast({
-          title: 'Error',
-          description: 'Debe procesar al menos un pago',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Detectar items sin asignar (agregados después de dividir)
-      const allCurrentItems = session?.sale_items?.filter(item => !item.paid_at) || [];
-      const itemsInSplits = billSplits.flatMap(split => split.items.map(si => si.item.id));
-      const unassignedItems = esDivisionPorMonto(billSplits) ? [] : allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
-
-      if (unassignedItems.length > 0) {
-        const unassignedTotal = unassignedItems.reduce((sum, item) => sum + Number(item.total), 0);
-        
-        toast({
-          title: 'Hay productos sin asignar',
-          description: `${unassignedItems.length} producto(s) por ${formatCurrency(unassignedTotal)} fueron agregados después de dividir. Por favor, divide la cuenta nuevamente.`,
-          variant: 'destructive',
-        });
-        
-        // Cancelar división para forzar a dividir de nuevo
-        setBillSplits(null);
-        setPaidSplitIds([]);
-        setShowSplitSelector(false);
-        return;
-      }
-
-      // Con pagos pendientes, el diálogo «Liberar mesa» muestra el saldo y pide
-      // resolverlo (cobrar, cartera o anular); sin saldo es una confirmación.
-      setShowSplitSelector(false);
-      setShowLiberarConfirm(true);
-    } catch (error: any) {
-      console.error('Error liberando mesa:', error);
-      toast({
-        title: 'Error',
-        description: error?.message || 'No se pudo liberar la mesa',
-        variant: 'destructive',
-      });
+      const v = sessionStorage.getItem(`mesa-partes-${sesion.id}`);
+      if (v && !partes) setPartes(JSON.parse(v));
+    } catch {
+      /* nada guardado */
     }
-  };
-
-  const handleCheckoutComplete = async (sale: Sale) => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesion?.id]);
+  useEffect(() => {
+    if (!sesion?.id) return;
     try {
-      // Si hay splits, marcar como pagado y volver al selector
-      if (billSplits && billSplits.length > 0) {
-        const currentSplit = billSplits[currentSplitIndex];
-
-        // Las líneas del split ya quedaron pagadas en el servidor, en la misma
-        // transacción del cobro (paid_sale_item_ids de pos_checkout_v1).
-
-        // Marcar split como pagado
-        const newPaidIds = [...paidSplitIds, currentSplit.id];
-        setPaidSplitIds(newPaidIds);
-
-        toast({
-          title: `Pago completado`,
-          description: `${currentSplit.name}: ${formatCurrency(currentSplit.total)}`,
-        });
-
-        setShowCheckout(false);
-        
-        // Recargar datos de la mesa para reflejar items pagados
-        await cargarDatos(true);
-
-        // Verificar si todos están pagados
-        if (newPaidIds.length === billSplits.length) {
-          // Verificar si hay items sin asignar antes de liberar
-          const allCurrentItems = session?.sale_items?.filter(item => !item.paid_at) || [];
-          const itemsInSplits = billSplits.flatMap(split => split.items.map(si => si.item.id));
-          const unassignedItems = esDivisionPorMonto(billSplits) ? [] : allCurrentItems.filter(item => !itemsInSplits.includes(item.id));
-
-          if (unassignedItems.length > 0) {
-            const unassignedTotal = unassignedItems.reduce((sum, item) => sum + Number(item.total), 0);
-            
-            toast({
-              title: 'Hay productos sin asignar',
-              description: `${unassignedItems.length} producto(s) por ${formatCurrency(unassignedTotal)} fueron agregados después. Divide la cuenta nuevamente para incluirlos.`,
-              variant: 'destructive',
-            });
-            
-            // Cancelar división para forzar a dividir de nuevo
-            setBillSplits(null);
-            setPaidSplitIds([]);
-            setShowSplitSelector(false);
-            return;
-          }
-
-          // Todos los splits pagados y sin items pendientes, liberar mesa
-          setTimeout(async () => {
-            try {
-              // Solo se suelta si el servidor confirma saldo 0; si no, abre el diálogo.
-              if (!(await liberarTrasCobro())) return;
-            } catch (error: unknown) {
-              console.error('Error liberando mesa:', error);
-              toast({
-                title: tLiberar('toast.errorTitulo'),
-                description:
-                  error instanceof LiberacionMesaError && tLiberar.has(`errores.${error.codigo}`)
-                    ? tLiberar(`errores.${error.codigo}`)
-                    : tLiberar('errores.error_interno'),
-                variant: 'destructive',
-              });
-              return;
-            }
-
-            toast({
-              title: '¡Todos los pagos completados!',
-              description: `${billSplits.length} pagos procesados. Mesa liberada.`,
-            });
-
-            // Limpiar splits y volver a mesas
-            setBillSplits(null);
-            setPaidSplitIds([]);
-            setCurrentSplitIndex(0);
-            router.push('/app/pos/mesas');
-          }, 1500);
-        } else {
-          // Volver al selector para elegir siguiente pago
-          setTimeout(() => {
-            setShowSplitSelector(true);
-          }, 1000);
-        }
-      } else {
-        // Pago único sin división: se libera solo si el servidor confirma saldo 0
-        // (un cobro parcial abre el diálogo «Liberar mesa» para resolver el resto).
-        setShowCheckout(false);
-        if (!(await liberarTrasCobro())) return;
-
-        toast({
-          title: 'Venta completada',
-          description: `Total: ${formatCurrency(sale.total)}. Mesa liberada.`,
-        });
-
-        // Volver a mesas
-        router.push('/app/pos/mesas');
-      }
-    } catch (error: any) {
-      console.error('Error completando checkout:', error);
-      toast({
-        title: 'Error al completar pago',
-        description: error?.message || 'No se pudo completar el pago',
-        variant: 'destructive',
-      });
+      if (partes) sessionStorage.setItem(`mesa-partes-${sesion.id}`, JSON.stringify(partes));
+      else sessionStorage.removeItem(`mesa-partes-${sesion.id}`);
+    } catch {
+      /* sin almacenamiento */
     }
-  };
+  }, [partes, sesion?.id]);
 
-  const handleCustomerSelect = async (customer?: Customer, room?: OccupiedSpace) => {
-    try {
-      console.log('handleCustomerSelect llamado con:', { customer, room });
-      
-      // Si se selecciona un cliente y no hay sesión, crearla
-      if (customer && !session) {
-        await asegurarSesion();
-      }
-      
-      setSelectedCustomer(customer);
-      setSelectedRoom(room);
-      
-      // Si se seleccionó una habitación con reserva, actualizar la venta con reservation_id
-      if (room && session) {
-        console.log('Actualizando venta con reservation_id:', room.reservation_id);
-        const { supabase } = await import('@/lib/supabase/config');
-        
-        let saleUpdateQuery = supabase
-          .from('sales')
-          .update({
-            customer_id: customer?.id,
-            reservation_id: room.reservation_id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', session.sale_id);
-        if (branchFilter != null) saleUpdateQuery = saleUpdateQuery.eq('branch_id', branchFilter);
-        const { error } = await saleUpdateQuery;
-        
-        if (error) {
-          console.error('Error actualizando venta:', error);
-          throw error;
-        }
-        
-        console.log('Venta actualizada exitosamente con customer_id y reservation_id');
-        
-        // 🔗 INTEGRACIÓN POS → PMS: Si ya hay items, sincronizarlos con el folio
-        if (room.folio_id && session?.sale_items && session.sale_items.length > 0) {
-          console.log('📦 Sincronizando', session.sale_items.length, 'items existentes con folio...');
-          const FoliosService = (await import('@/lib/services/foliosService')).default;
-          
-          for (const saleItem of session.sale_items) {
-            await FoliosService.addFolioItem({
-              folio_id: room.folio_id,
-              source: 'pos',
-              description: saleItem.product?.name || 'Producto',
-              amount: Number(saleItem.total),
-              created_by: organization?.user?.id,
-            });
-          }
-          
-          console.log('✅ Items existentes sincronizados con folio');
-        }
-        
-        // Recargar datos para reflejar los cambios
-        await cargarDatos(true);
-      }
+  // ── Atajos (F8 enviar, F4 cobrar, F9 caja, P pre-cuenta) ─────────────────
+  const dialogoAbierto = abrir || notaAbierta || !!editor || !!mover || dividir || partesAbierto || precuenta || !!cobro || liberar || !!anular || aperturaCaja || clienteAbierto;
+  useAtajos(
+    [
+      { tecla: 'F8', descripcion: t('cuenta.enviar', { n: agrupada.porEnviar.length }), accion: () => void enviarRonda(), cuando: () => agrupada.porEnviar.length > 0 },
+      { tecla: 'F4', descripcion: t('cuenta.cobrarMesa'), accion: () => abrirCobro(), cuando: () => !sinCaja },
+      { tecla: 'F9', descripcion: t('cuenta.abrirCaja'), accion: () => setAperturaCaja(true), cuando: () => sinCaja },
+      { tecla: 'P', descripcion: t('cuenta.precuenta'), accion: () => setPrecuenta(true), cuando: () => !!sesion },
+    ],
+    { activo: !dialogoAbierto },
+  );
 
-      toast({
-        title: 'Cliente asignado',
-        description: room 
-          ? `${customer?.full_name} - ${room.space_label}${room.folio_id && session?.sale_items?.length ? ' (Items sincronizados con folio)' : ''}` 
-          : customer?.full_name,
-      });
-    } catch (error: any) {
-      console.error('Error al seleccionar cliente:', error);
-      toast({
-        title: 'Error',
-        description: error?.message || 'Error al asignar cliente',
-        variant: 'destructive',
-      });
-    }
-  };
+  // ── Composición ──────────────────────────────────────────────────────────
+  const minutosAbierta = minutosDesde(sesion?.opened_at, ahora);
+  const abandonada = !!sesion && mesaAbandonada(sesion.opened_at, cuenta?.ultimoMovimiento, ahora);
+  const comensales = sesion?.customers || 1;
+  const alergiasLineas = (cuenta?.lineas ?? [])
+    .filter((l) => l.alergia && !l.pagada)
+    .map((l) => (l.comensal ? `${l.notaCocina} (C${l.comensal})` : l.notaCocina ?? ''))
+    .filter(Boolean);
 
-  const getTiempoSesion = () => {
-    if (!session?.opened_at) return '';
-    
-    const inicio = new Date(session.opened_at);
-    const ahora = new Date();
-    const diff = Math.floor((ahora.getTime() - inicio.getTime()) / 60000);
-    
-    if (diff < 60) return `${diff} min`;
-    const horas = Math.floor(diff / 60);
-    const minutos = diff % 60;
-    return `${horas}h ${minutos}m`;
-  };
+  const menu = (
+    <MenuMesa
+      comensales={comensales}
+      tamano={modo === 'escritorio' ? 'sm' : 'md'}
+      deshabilitado={!sesion}
+      onPrecuenta={() => setPrecuenta(true)}
+      onPedirCuenta={() => void alPedirCuenta()}
+      onDividir={() => setDividir(true)}
+      onMover={() => {
+        void cargarMesasPlano();
+        setMover({ modo: 'cuenta', lineaId: null });
+      }}
+      onCambiarMesero={() => setMeseroAbierto(true)}
+      onComensales={() => setNotaAbierta(true)}
+      onNota={() => setNotaAbierta(true)}
+      onHistorial={() => setHistorial(true)}
+      onLiberar={() => setLiberar(true)}
+    />
+  );
 
-  const getEstadoBadge = () => {
-    if (!session) return null;
+  const masAcciones = (l: LineaMesa): AccionFila[] => [
+    {
+      id: 'mover',
+      etiqueta: t('linea.moverA'),
+      icono: ShoppingCart,
+      onSelect: () => {
+        void cargarMesasPlano();
+        setMover({ modo: 'productos', lineaId: l.id });
+      },
+    },
+    ...(!l.porEnviar && l.cantidad > 1 && l.estado !== 'cancelada'
+      ? [{ id: 'restar', etiqueta: t('linea.restarUna'), icono: X, onSelect: () => setAnular({ linea: l, restar: true }) }]
+      : []),
+  ];
 
-    // Interino: `estadoTono` del kit aún no conoce `bill_requested`; se pasa el tono.
-    if (session.status === 'bill_requested') {
-      return <StatusBadge estado="bill_requested" etiqueta={tMesas('estados.bill_requested')} tono="advertencia" tamano="md" />;
-    }
-    return <StatusBadge estado="active" etiqueta={tMesas('detalle.activa')} tamano="md" />;
-  };
-
-  // Estado para totales calculados por MesaTaxBreakdown (hook useMesaTaxes)
-  // Debe ir antes de cualquier return condicional para cumplir Rules of Hooks
-  const [calculatedTaxTotals, setCalculatedTaxTotals] = useState<{
-    subtotal: number;
-    taxTotal: number;
-    total: number;
-    taxIncluded: boolean;
-  } | null>(null);
-
-  const handleTaxTotalsChange = useCallback((totals: { subtotal: number; taxTotal: number; total: number; taxIncluded: boolean }) => {
-    setCalculatedTaxTotals(totals);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-canvas p-3 sm:p-4 md:p-6">
-        <div className="space-y-6">
-          <PageHeaderSkeleton />
-          <KpiStrip columnas={5}>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <StatCard key={i} etiqueta="" valor="" cargando />
-            ))}
-          </KpiStrip>
-          <Tarjeta>
-            <div className="flex flex-col gap-4">
-              <Skeleton className="h-5 w-32" />
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="size-10 rounded-lg" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-5 w-16" />
-                </div>
-              ))}
-            </div>
-          </Tarjeta>
-        </div>
-      </div>
-    );
-  }
-
-  // Calcular datos de items (manejar caso de mesa vacía)
-  const allItems = session?.sale_items || [];
-  const items = allItems.filter(item => !(item as any).paid_at);
-  const paidItems = allItems.filter(item => (item as any).paid_at);
-  
-  // Detectar items sin asignar a ningún split (agregados después de dividir)
-  const itemsInSplits = billSplits?.flatMap(split => split.items.map(si => si.item.id)) || [];
-  const unassignedItems = esDivisionPorMonto(billSplits) ? [] : items.filter(item => !itemsInSplits.includes(item.id));
-  
-  // Totales base desde items (fallback si el hook no ha calculado aún)
-  const fallbackTotal = items.reduce((sum, item) => sum + Number(item.total), 0);
-  const fallbackSubtotal = items.reduce((sum, item) => sum + Number(item.unit_price) * Number(item.quantity), 0);
-  const fallbackTaxes = fallbackTotal - fallbackSubtotal;
-  
-  // Usar totales del hook si están disponibles, sino fallback
-  const subtotal = calculatedTaxTotals?.subtotal ?? fallbackSubtotal;
-  const taxes = calculatedTaxTotals?.taxTotal ?? fallbackTaxes;
-  // Cuenta dividida: lo ya abonado a líneas que siguen sin pagar se descuenta
-  // (el servidor abona cada cobro a las líneas; paid_amount, 20260929060000).
-  const total = Math.max(0, (calculatedTaxTotals?.total ?? fallbackTotal) - abonadoPendiente(items));
-  
-  const totalPaid = paidItems.reduce((sum, item) => sum + Number(item.total), 0);
-
-  return (
-    <div className="min-h-screen bg-canvas">
-      <SessionTimelineDialog
-        open={showHistorial}
-        onOpenChange={setShowHistorial}
-        tableId={tableId}
+  const panel = (
+    <div className="relative h-full">
+      {/* Ancla de los paneles laterales (nota de la línea, T3). */}
+      <EditorLineaMesa
+        abierto={!!editor}
+        onAbiertoChange={(v) => !v && setEditor(null)}
+        ancla={<span className="pointer-events-none absolute left-0 top-36 size-0" aria-hidden="true" />}
+        linea={editor?.linea ?? null}
+        comensales={comensales}
+        notasRapidas={notasRapidas}
+        soloComensal={editor?.soloComensal}
+        alergiasMesa={cuenta?.nota.alergias ?? []}
+        guardando={guardandoLinea}
+        onGuardar={(c) => void alGuardarLinea(c)}
       />
-
-      {/* Cabecera + contenido en 2 columnas */}
-      <div className="space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-6 md:px-6">
-        <MesaDetailHeader
-          mesaNombre={mesaNombre}
-          session={session}
-          onRefresh={cargarDatos}
-          onCombinar={cargarMesasParaCombinar}
-          onAddProduct={() => setShowAddProduct(true)}
-          onVerHistorial={() => setShowHistorial(true)}
-          getEstadoBadge={getEstadoBadge}
-        />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          
-          {/* Columna Principal - Pedidos */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Stats Cards */}
-            <MesaStatsCards
-              customers={session?.customers || 0}
-              tiempoSesion={getTiempoSesion()}
-              itemsCount={items.length}
-              total={total}
-              serverName={serverName}
-              onEditarComensales={handleAbrirEditarComensales}
-              onEditarMesero={handleAbrirEditarMesero}
-            />
-
-            {/* Lista de Productos */}
-            <Tarjeta
-              titulo={tMesas('pedido.titulo')}
-              descripcion={
-                paidItems.length > 0
-                  ? tMesas('pedido.resumenConPagados', {
-                      n: items.length,
-                      pagados: paidItems.length,
-                      importe: formatCurrency(totalPaid),
-                    })
-                  : tMesas('pedido.resumen', { n: items.length })
-              }
-              accion={
-                // En móvil la cabecera se muda a la barra del shell: la acción frecuente queda a mano aquí.
-                items.length > 0 ? (
-                  <Button size="sm" className="gap-1.5 lg:hidden" onClick={() => setShowAddProduct(true)}>
-                    <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                    {tMesas('pedido.agregar')}
-                  </Button>
-                ) : undefined
-              }
-            >
-              <div>
-                {items.length === 0 ? (
-                  <EmptyState
-                    compacto
-                    icono={ChefHat}
-                    titulo={tMesas('pedido.vacioTitulo')}
-                    descripcion={tMesas('pedido.vacioDescripcion')}
-                    accion={{ etiqueta: tMesas('pedido.agregarPrimero'), icono: Plus, onClick: () => setShowAddProduct(true) }}
-                  />
-                ) : (
-                  <>
-                    <div className="space-y-3">
-                      {items.map((item) => (
-                        <OrderItemCard
-                          key={item.id}
-                          item={item}
-                          onUpdateQuantity={handleUpdateQuantity}
-                          onDelete={handleDeleteItem}
-                          onTransfer={(itemId) => {
-                            const itemData = items.find((i) => i.id === itemId);
-                            if (itemData) setItemToTransfer(itemData);
-                          }}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Items Pagados */}
-                    {paidItems.length > 0 && (
-                      <div className="mt-4 border-t border-line pt-4">
-                        <h3 className="mb-1 text-sm font-semibold text-fg">
-                          {tMesas('pedido.pagadosTitulo', { n: paidItems.length })}
-                        </h3>
-                        <ListaDatos etiqueta={tMesas('pedido.pagadosTitulo', { n: paidItems.length })} divisores>
-                          {paidItems.map((item) => (
-                            <FilaDato
-                              key={item.id}
-                              etiqueta={item.product?.name || tMesas('pedido.producto')}
-                              descripcion={`${item.quantity} × ${formatCurrency(Number(item.unit_price))}`}
-                              valor={formatCurrency(Number(item.total))}
-                              accesorio={<StatusBadge estado="pagado" tamano="sm" />}
-                            />
-                          ))}
-                        </ListaDatos>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </Tarjeta>
-          </div>
-
-          {/* Sidebar Derecho - Resumen y Acciones */}
-          <MesaActionsSidebar
-            selectedCustomer={selectedCustomer}
-            selectedRoom={selectedRoom}
-            onCustomerSelect={handleCustomerSelect}
-            subtotal={subtotal}
-            taxes={taxes}
-            total={total}
-            itemsCount={items.length}
-            sessionStatus={session?.status}
-            customers={session?.customers || 0}
-            billSplits={billSplits}
-            unassignedItemsCount={unassignedItems.length}
-            unassignedItemsTotal={unassignedItems.reduce((sum, item) => sum + Number(item.total), 0)}
-            taxItems={items.map(item => ({
-              product_id: item.product_id,
-              quantity: Number(item.quantity),
-              unit_price: Number(item.unit_price),
-              total: Number(item.total),
-              tax_amount: Number(item.tax_amount || 0),
-            }))}
-            onTaxTotalsChange={handleTaxTotalsChange}
-            onEnviarComanda={handleEnviarComanda}
-            onGenerarPreCuenta={handleGenerarPreCuenta}
-            onSolicitarCuenta={handleSolicitarCuenta}
-            onOpenSplitBill={handleOpenSplitBill}
-            onCancelSplit={handleCancelSplit}
-            onCheckout={handleCheckout}
-            onLiberarMesa={() => setShowLiberarConfirm(true)}
-            cashSessionActive={!!cashSession}
-          />
-        </div>
-      </div>
-
-      {/* Modales */}
-      <AddProductDialog
-        open={showAddProduct}
-        onOpenChange={setShowAddProduct}
-        onAddProducts={handleAddProducts}
-        comensales={session?.customers || 1}
-        selectedRoom={selectedRoom ? { space_label: selectedRoom.space_label, folio_id: selectedRoom.folio_id } : null}
-      />
-
-      <PreCuentaDialog
-        open={showPreCuenta}
-        onOpenChange={setShowPreCuenta}
-        preCuenta={preCuenta}
-        tableName={session?.restaurant_tables?.name || mesaNombre}
-        onPrint={() => preCuenta && imprimirPreCuenta(preCuenta, true)}
-        onGenerateBill={() => {
-          setShowPreCuenta(false);
-          setShowCheckout(true);
-        }}
-        onSplitBill={() => {
-          setShowPreCuenta(false);
-          setShowSplitBill(true);
-        }}
-        customers={session?.customers || 2}
-      />
-
-      <TransferItemDialog
-        open={!!itemToTransfer}
-        onOpenChange={(open) => !open && setItemToTransfer(null)}
-        item={itemToTransfer}
-        currentTableId={tableId}
-        onTransfer={handleTransferItem}
-      />
-
-      {/* Checkout Dialog */}
-      {showCheckout && session && (
-        <CheckoutDialog
-          cart={
-            billSplits && billSplits.length > 0
-              ? convertSplitToCart(billSplits[currentSplitIndex])
-              : convertSessionToCart()
-          }
-          open={showCheckout}
-          onOpenChange={setShowCheckout}
-          onCheckoutComplete={handleCheckoutComplete}
-          onProcessPayment={handleProcessPayment}
-          organization={organization ? {
-            name: organization.name,
-            legal_name: (organization as any).legal_name,
-            nit: (organization as any).nit,
-            tax_id: (organization as any).tax_id,
-            address: (organization as any).address,
-            city: (organization as any).city,
-            phone: (organization as any).phone,
-            email: (organization as any).email
-          } : undefined}
-          currentUser={(organization as any)?.user ? {
-            name: [(organization as any).user.first_name, (organization as any).user.last_name].filter(Boolean).join(' ') || (organization as any).user.email,
-            email: (organization as any).user.email
-          } : undefined}
-          branch={currentBranch ? {
-            name: currentBranch.name,
-            address: currentBranch.address,
-            city: currentBranch.city,
-            phone: currentBranch.phone
-          } : undefined}
-        />
-      )}
-
-      {/* Indicador de progreso de splits */}
-      {showCheckout && billSplits && billSplits.length > 0 && (
-        <div className="fixed top-4 right-4 z-[60] bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg">
-          <div className="flex items-center gap-3">
-            <Users className="h-5 w-5" />
-            <div>
-              <p className="font-semibold">{billSplits[currentSplitIndex].name}</p>
-              <p className="text-xs opacity-90">
-                {paidSplitIds.length} de {billSplits.length} pagados | {formatCurrency(billSplits[currentSplitIndex].total)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Combinar Mesas Dialog */}
-      <CombinarMesasDialog
-        open={showCombinar}
-        onOpenChange={setShowCombinar}
-        mesas={todasLasMesas}
-        onCombinar={handleCombinarMesas}
-      />
-
-      {/* Split Bill Dialog */}
-      <SplitBillDialog
-        open={showSplitBill}
-        onOpenChange={setShowSplitBill}
-        items={session?.sale_items || []}
-        total={total}
-        comensales={session?.customers || 2}
-        onConfirmSplit={handleConfirmSplit}
-      />
-
-      {/* Split Payment Selector */}
-      {billSplits && (
-        <SplitPaymentSelector
-          open={showSplitSelector}
-          onOpenChange={setShowSplitSelector}
-          splits={billSplits}
-          paidSplits={paidSplitIds}
-          onSelectSplit={handleSelectSplitToPay}
-          onFinishAndClose={handleFinishWithPartialPayments}
-        />
-      )}
-
-      {/* Editar Comensales Dialog */}
-      <Dialogo
-        abierto={showEditarComensales}
-        onAbiertoChange={setShowEditarComensales}
-        titulo={tMesas('comensales.titulo')}
-        icono={Users}
-        ancho={440}
-        primario={{ etiqueta: tMesas('comun.guardar'), onClick: handleGuardarComensales, deshabilitada: comensalesInput < 1 }}
-      >
-        <FormField etiqueta={tMesas('comensales.cantidad')} ayuda={tMesas('comensales.ayuda')}>
-          <CampoNumero
-            valor={comensalesInput}
-            // Vacío = 0: «Guardar» queda deshabilitado hasta que haya al menos 1.
-            onValorChange={(v) => setComensalesInput(v ?? 0)}
-            minimo={1}
-            maximo={99}
-            decimales={0}
-            alinear="izquierda"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && comensalesInput >= 1) {
-                handleGuardarComensales();
-              }
-            }}
-          />
-        </FormField>
-
-        {/* Atajos 1–10 */}
-        <div role="group" aria-label={tMesas('comensales.atajos')} className="grid grid-cols-5 gap-2">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-            <Button
-              key={num}
-              type="button"
-              variant={comensalesInput === num ? 'default' : 'outline'}
-              size="sm"
-              aria-pressed={comensalesInput === num}
-              onClick={() => setComensalesInput(num)}
-              className="font-semibold tabular-nums"
-            >
-              {num}
-            </Button>
-          ))}
-        </div>
-      </Dialogo>
-
-      <Dialogo
-        abierto={showEditarMesero}
-        onAbiertoChange={setShowEditarMesero}
-        titulo={tMesas('mesero.titulo')}
-        icono={UserCircle}
-        ancho={440}
-        primario={{ etiqueta: tMesas('comun.guardar'), onClick: handleGuardarMesero, deshabilitada: !meseroSeleccionado }}
-      >
-        <FormField etiqueta={tMesas('mesero.etiqueta')}>
-          {() => (
-            <SearchSelect
-              options={orgMembers}
-              value={meseroSeleccionado}
-              onValueChange={setMeseroSeleccionado}
-              placeholder={loadingMembers ? tMesas('mesero.cargando') : tMesas('mesero.placeholder')}
-              searchPlaceholder={tMesas('mesero.buscar')}
-              disabled={loadingMembers}
-            />
-          )}
-        </FormField>
-      </Dialogo>
-
-      {/* Liberar mesa: con saldo pide resolverlo (cobrar, cartera o anular) */}
-      <LiberarMesaDialog
-        abierto={showLiberarConfirm}
-        onAbiertoChange={setShowLiberarConfirm}
-        tableId={tableId}
+      <PanelCuentaMesa
         mesaNombre={mesaNombre}
-        cajaAbierta={!!cashSession}
-        onCobrar={handleCheckout}
-        onLiberada={handleMesaLiberada}
+        cuenta={agrupada}
+        totales={totales}
+        formatear={formatear}
+        nombreImpuesto={nombreImpuesto}
+        ahora={ahora}
+        menu={menu}
+        cliente={
+          <CustomerSelector
+            selectedCustomer={cuenta?.cliente ?? undefined}
+            onCustomerSelect={(c) => void alElegirCliente(c)}
+            open={clienteAbierto}
+            onOpenChange={setClienteAbierto}
+            atajo="F2"
+            disparador={<FilaClienteMesa nombre={cuenta?.cliente?.full_name ?? null} disabled={!sesion} />}
+          />
+        }
+        nota={
+          <NotaMesaPanel
+            abierto={notaAbierta}
+            onAbiertoChange={setNotaAbierta}
+            ancla={<FilaNotaMesa nota={cuenta?.nota ?? { alergias: [], instrucciones: '', ritmo: 'junto', notaCliente: '' }} comensales={comensales} alergiasLineas={alergiasLineas} onClick={() => setNotaAbierta(true)} />}
+            mesaNombre={mesaNombre}
+            nota={cuenta?.nota ?? { alergias: [], instrucciones: '', ritmo: 'junto', notaCliente: '' }}
+            comensales={comensales}
+            capacidad={cuenta?.mesa.capacidad ?? 4}
+            avisoLineas={alergiasLineas.length > 0 ? t('nota.avisoAlergiaLineas', { alergias: alergiasLineas.join(', ') }) : null}
+            guardando={guardandoNota}
+            onGuardar={(n, c) => void alGuardarNota(n, c)}
+          />
+        }
+        acciones={{
+          onCantidad: (l, n) => void alCantidad(l, n),
+          onNota: (l) => setEditor({ linea: l, soloComensal: !l.porEnviar }),
+          onModificadores: (l) => void alModificadores(l),
+          onComensal: (l) => setEditor({ linea: l, soloComensal: !l.porEnviar }),
+          onQuitar: (l) => void alCantidad(l, 0),
+          onServido: (l) => void alServido(l),
+          onAnular: (l) => setAnular({ linea: l, restar: false }),
+          masAcciones,
+        }}
+        onPrecuenta={() => setPrecuenta(true)}
+        onDividir={() => setDividir(true)}
+        onEnviar={() => void enviarRonda()}
+        enviando={enviando}
+        onCobrar={() => abrirCobro()}
+        estadoCobro={estadoCobro}
+        onAbrirCaja={() => setAperturaCaja(true)}
+        deshabilitada={!sesion}
       />
     </div>
+  );
+
+  const aviso = !enLinea || cola.length > 0 ? (
+    <AvisoTonal
+      tono="neutro"
+      icono={WifiOff}
+      titulo={t('avisos.sinConexion', { n: cola.length })}
+      descripcion={t('avisos.sinConexionDetalle')}
+      compacto
+    />
+  ) : sinCaja ? (
+    <AvisoTonal
+      tono="advertencia"
+      titulo={t('avisos.sinCaja')}
+      descripcion={t('avisos.sinCajaDetalle')}
+      accion={{ etiqueta: t('avisos.abrirCaja'), onClick: () => setAperturaCaja(true) }}
+      compacto
+    />
+  ) : abandonada ? (
+    <AvisoTonal
+      tono="advertencia"
+      titulo={t('avisos.abandonada', { tiempo: textoDuracion(minutosAbierta) })}
+      descripcion={t('avisos.abandonadaDetalle', { saldo: formatear(totales.saldo), n: agrupada.enCocina })}
+      accion={{ etiqueta: t('avisos.resolver'), onClick: () => setLiberar(true) }}
+      compacto
+    />
+  ) : null;
+
+  const pestanaMesa = (
+    <div className="flex items-center rounded-md border border-line-brand bg-surface text-brand-deep shadow-sm">
+      <span role="tab" aria-selected="true" className="flex h-8 items-center gap-1.5 px-2.5 text-sm font-medium">
+        <ShoppingCart aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {mesaNombre}
+        <span className={cn(clasesBadgeTono('marca', 'suave', 'sm'), 'tabular-nums')}>{formatear(totales.saldo)}</span>
+        <span className={cn(clasesBadgeTono('neutro', 'suave', 'sm'), 'min-w-5 justify-center tabular-nums')}>{agrupada.porEnviar.length + agrupada.rondas.reduce((s, r) => s + r.lineas.length, 0)}</span>
+      </span>
+      <button type="button" aria-label={t('volverPlano')} title={t('volverPlano')} onClick={() => router.push('/app/pos/mesas')} className="mr-1 flex size-6 items-center justify-center rounded text-fg-muted hover:bg-hover hover:text-fg">
+        <X aria-hidden="true" className="size-3.5" />
+      </button>
+    </div>
+  );
+
+  const catalogo = <ProductSearch onProductSelect={(p, m, c) => alElegirProducto(p, m, c)} bloqueado={!!cobro} />;
+
+  return (
+    <div className="h-full">
+      <PantallaMesa
+        modo={modo}
+        estado={estado}
+        mesaNombre={mesaNombre}
+        cabeceraPos={
+          <CabeceraPos
+            organizacionNombre={organization?.name}
+            cajaAbierta={!!caja}
+            cierreBloqueado={false}
+            onCaja={() => setAperturaCaja(true)}
+            carritosActivos={carts.filter((c) => c.status === 'active').length}
+            carritosEnEspera={carts.filter((c) => c.status === 'hold').length}
+          />
+        }
+        pestanas={
+          <CartTabs
+            carts={carts}
+            activeCartId=""
+            onCartSelect={(id) => router.push(`/app/pos?carrito=${encodeURIComponent(id)}`)}
+            onNewCart={() => router.push('/app/pos')}
+            onRemoveCart={async (id) => {
+              await POSService.removeCart(id).catch(() => undefined);
+              cargarCarritos();
+            }}
+            atajosActivos={!dialogoAbierto}
+            pestanaFija={pestanaMesa}
+          />
+        }
+        cabeceraMesa={
+          <CabeceraMesa
+            mesa={mesaNombre}
+            zona={cuenta?.mesa.zona ?? null}
+            estado={sesion?.status === 'bill_requested' ? t('estados.porCobrar') : sesion ? t('estados.ocupada') : t('estados.libre')}
+            tonoEstado={sesion?.status === 'bill_requested' ? 'advertencia' : 'marca'}
+            minutos={minutosAbierta}
+            critico={abandonada}
+            mesero={cuenta?.meseroNombre ?? null}
+            comensales={comensales}
+            onVolver={() => router.push('/app/pos/mesas')}
+            onPrecuenta={sesion ? () => setPrecuenta(true) : undefined}
+            menu={menu}
+          />
+        }
+        aviso={aviso}
+        catalogo={catalogo}
+        panel={modo === 'movil' ? null : panel}
+        barraMovil={
+          modo === 'movil' ? (
+            <>
+              <KbdButton variante="primario" tamano="lg" anchoCompleto onClick={() => setHojaMovil(true)}>
+                {t('verCuenta', { total: formatear(totales.saldo) })}
+              </KbdButton>
+              <Sheet open={hojaMovil} onOpenChange={setHojaMovil}>
+                <SheetContent side="bottom" hideCloseButton className="flex h-[92dvh] flex-col gap-2 rounded-t-2xl border-line bg-canvas p-3">
+                  <SheetTitle className="sr-only">{t('cuenta.titulo', { mesa: mesaNombre })}</SheetTitle>
+                  <SheetDescription className="sr-only">{t('cuenta.titulo', { mesa: mesaNombre })}</SheetDescription>
+                  {panel}
+                </SheetContent>
+              </Sheet>
+            </>
+          ) : null
+        }
+        onReintentar={() => void cargar()}
+        onVolver={() => router.push('/app/pos/mesas')}
+      />
+
+      {pesar.dialogo}
+
+      <AbrirMesaFlujo
+        abierto={abrir}
+        onAbiertoChange={(v) => {
+          setAbrir(v);
+          if (!v) pendienteAlAbrir.current = null;
+        }}
+        mesa={cuenta ? { id: tableId, nombre: mesaNombre, zona: cuenta.mesa.zona ?? null, capacidad: cuenta.mesa.capacidad ?? 4 } : null}
+        reserva={reservasActivas.get(tableId)}
+        tableta={modo !== 'escritorio'}
+        onAbierta={() => void alAbrirMesa()}
+      />
+
+      {cuenta && (
+        <MoverMesaDialog
+          abierto={!!mover}
+          onAbiertoChange={(v) => !v && setMover(null)}
+          mesaNombre={mesaNombre}
+          zona={cuenta.mesa.zona}
+          mesaId={tableId}
+          lineas={cuenta.lineas}
+          mesas={mesasPlano}
+          formatear={formatear}
+          moviendo={moviendo}
+          modoInicial={mover?.modo}
+          lineaInicial={mover?.lineaId}
+          onMover={(d, m, ids) => void alMover(d, m, ids)}
+        />
+      )}
+
+      <DividirCuentaDialog
+        abierto={dividir}
+        onAbiertoChange={setDividir}
+        mesaNombre={mesaNombre}
+        lineas={cuenta?.lineas ?? []}
+        comensales={comensales}
+        formatear={formatear}
+        decimales={decimales}
+        tableta={modo !== 'escritorio'}
+        onCobrarPrimera={(p) => alDividir(p, true)}
+        onDividir={(p) => alDividir(p, false)}
+      />
+
+      {partes && (
+        <CobrarPartesDialog
+          abierto={partesAbierto}
+          onAbiertoChange={setPartesAbierto}
+          mesaNombre={mesaNombre}
+          partes={partes}
+          comensales={comensales}
+          formatear={formatear}
+          saldoServidor={totales.saldo}
+          onCobrar={alCobrarParte}
+          onUnir={() => setPartes(unirPendientes(partes, t('partes.unidas')))}
+          onVolver={() => setPartesAbierto(false)}
+        />
+      )}
+
+      <PreCuentaMesaDialog
+        abierto={precuenta}
+        onAbiertoChange={setPrecuenta}
+        mesaNombre={mesaNombre}
+        comensales={comensales}
+        lineas={cuenta?.lineas ?? []}
+        totales={totales}
+        formatear={formatear}
+        nombreImpuesto={nombreImpuesto}
+        imprimiendo={imprimiendo}
+        onImprimir={() => void imprimirPrecuenta(true)}
+        sinCaja={sinCaja}
+        onCobrar={(propina) => {
+          setPrecuenta(false);
+          abrirCobro(null, propina);
+        }}
+      />
+
+      {cobro && (() => {
+        const cart = carritoDelCobro();
+        if (!cart) return null;
+        return (
+          <CheckoutDialog
+            key={`${cart.id}-${cobro.parte?.id ?? 'todo'}`}
+            cart={cart}
+            open
+            onOpenChange={(v) => {
+              if (!v) {
+                setCobro(null);
+                if (cobro.parte && partes) setPartes(partes.map((p) => (p.estado === 'cobrando' ? { ...p, estado: 'pendiente' } : p)));
+              }
+            }}
+            onCheckoutComplete={() => void alTerminarCobro()}
+            onProcessPayment={procesarPago}
+            organization={organization ? { name: organization.name } : undefined}
+            branch={sucursal ? { name: sucursal.name, address: sucursal.address, phone: sucursal.phone } : undefined}
+            contextoMesa={{
+              titulo: cuenta?.mesa.zona ? t('cobro.tituloZona', { mesa: mesaNombre, zona: cuenta.mesa.zona }) : t('cobro.titulo', { mesa: mesaNombre }),
+              meseroId: sesion?.server_id ?? null,
+              propinaPorcentaje: cobro.propina?.porcentaje ?? null,
+              propinaValor: cobro.propina?.valor ?? null,
+              postVenta: cobro.parte
+                ? { titulo: t('cobro.parteCobrada'), descripcion: t('cobro.parteCobradaDetalle'), primaria: t('cobro.volverPartes') }
+                : { titulo: t('cobro.cobrada', { mesa: mesaNombre }), descripcion: t('cobro.cobradaDetalle'), primaria: t('cobro.volverPlano') },
+            }}
+          />
+        );
+      })()}
+
+      <LiberarMesaDialog
+        abierto={liberar}
+        onAbiertoChange={setLiberar}
+        tableId={tableId}
+        mesaNombre={mesaNombre}
+        cajaAbierta={!sinCaja}
+        onCobrar={() => abrirCobro()}
+        onLiberada={async () => {
+          await marcarEstadoMesa(tableId, 'cleaning').catch(() => false);
+          toast.success(t('toast.liberada', { mesa: mesaNombre }));
+          router.push('/app/pos/mesas');
+        }}
+      />
+
+      <SessionTimelineDialog open={historial} onOpenChange={setHistorial} tableId={tableId} />
+
+      <DialogoMotivo
+        abierto={!!anular}
+        onAbiertoChange={(v) => !v && setAnular(null)}
+        titulo={anular?.restar ? t('anular.tituloRestar', { producto: anular.linea.nombre }) : t('anular.titulo', { producto: anular?.linea.nombre ?? '' })}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={anular?.restar ? t('anular.confirmarRestar') : t('anular.confirmar')}
+        onConfirmar={(m) => alAnular(m)}
+        cargando={anulando}
+        minimo={3}
+      />
+
+      {modificar && (
+        <VariantSelectorDialog
+          open
+          onOpenChange={(v) => !v && setModificar(null)}
+          product={{ id: modificar.producto.id, name: modificar.producto.name, sku: modificar.producto.sku, price: modificar.producto.price ?? null }}
+          onSelectVariant={(v, m, c) => void alCambiarVariante(v as never, m as unknown as CartItemModifier[], c)}
+          sucursal={{ filtro: branchFilter }}
+          conCantidad
+          cantidadInicial={modificar.linea.cantidad}
+        />
+      )}
+
+      <MeseroDialog
+        abierto={meseroAbierto}
+        onAbiertoChange={setMeseroAbierto}
+        meseros={meseros}
+        actual={sesion?.server_id ?? null}
+        usuarioId={usuarioId}
+        onGuardar={(id) => void alCambiarMesero(id)}
+      />
+
+      {!caja && (
+        <AperturaCajaDialog
+          open={aperturaCaja}
+          onOpenChange={setAperturaCaja}
+          onSessionOpened={(s) => {
+            setCaja(s);
+            setAperturaCaja(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** «Cambiar mesero» (T5): los miembros activos de la organización. */
+function MeseroDialog({
+  abierto,
+  onAbiertoChange,
+  meseros,
+  actual,
+  usuarioId,
+  onGuardar,
+}: {
+  abierto: boolean;
+  onAbiertoChange: (v: boolean) => void;
+  meseros: OpcionMesero[];
+  actual: string | null;
+  usuarioId: string | null;
+  onGuardar: (id: string) => void;
+}) {
+  const t = useTranslations('posMesasFlujo.mesero');
+  const [elegido, setElegido] = useState<string | null>(actual);
+  useEffect(() => {
+    if (abierto) setElegido(actual);
+  }, [abierto, actual]);
+  return (
+    <Dialogo
+      abierto={abierto}
+      onAbiertoChange={onAbiertoChange}
+      titulo={t('titulo')}
+      ancho={440}
+      primario={{ etiqueta: t('guardar'), onClick: () => elegido && onGuardar(elegido), deshabilitada: !elegido }}
+    >
+      <Select value={elegido ?? ''} onValueChange={setElegido}>
+        <SelectTrigger aria-label={t('titulo')} className="h-10 border-line-strong bg-surface">
+          <SelectValue placeholder={t('placeholder')} />
+        </SelectTrigger>
+        <SelectContent>
+          {meseros.map((m) => (
+            <SelectItem key={m.id} value={m.id}>
+              {m.id === usuarioId ? t('tu', { nombre: m.nombre }) : m.nombre}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Dialogo>
   );
 }

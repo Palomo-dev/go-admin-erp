@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, ChefHat, Info, Loader2, LogOut } from 'lucide-react';
-import { Dialogo, StatusBadge } from '@/components/kit';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { FilaDato, KbdButton, ListaDatos } from '@/components/kit';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { DialogoMesa } from './cuenta/DialogoMesa';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 import { MOTIVO_MAX, MOTIVO_MIN, type AccionLiberacion, type OpcionLiberacion } from '@/lib/pos/mesas/liberacionMesa';
@@ -35,6 +37,8 @@ export interface LiberarMesaDialogProps {
   onCobrar: () => void;
   /** La mesa quedó libre. */
   onLiberada: (resultado: ResultadoLiberacion) => void;
+  /** Resumen ya leído (arnés y pruebas): no se consulta el servidor al abrir. */
+  estadoPrecargado?: EstadoLiberacion | null;
 }
 
 type Eleccion = 'cobrar' | Exclude<AccionLiberacion, 'liberar'>;
@@ -76,6 +80,7 @@ export function LiberarMesaDialog({
   cajaAbierta,
   onCobrar,
   onLiberada,
+  estadoPrecargado,
 }: LiberarMesaDialogProps) {
   const t = useTranslations('posMesaLiberar');
   const { formatear } = useMonedaOrganizacion();
@@ -89,6 +94,12 @@ export function LiberarMesaDialog({
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
+    if (estadoPrecargado) {
+      setEstado(estadoPrecargado);
+      const o = estadoPrecargado.decision.opciones;
+      setEleccion(!estadoPrecargado.decision.requiereResolucion ? null : o.cobrar.disponible && cajaAbierta ? 'cobrar' : o.cartera.disponible ? 'cartera' : null);
+      return;
+    }
     if (!tableId) return;
     setCargando(true);
     setErrorCarga(null);
@@ -108,7 +119,7 @@ export function LiberarMesaDialog({
     } finally {
       setCargando(false);
     }
-  }, [tableId, cajaAbierta]);
+  }, [tableId, cajaAbierta, estadoPrecargado]);
 
   useEffect(() => {
     if (!abierto) {
@@ -152,7 +163,8 @@ export function LiberarMesaDialog({
     }
   };
 
-  let primario: Parameters<typeof Dialogo>[0]['primario'];
+  // Primario del pie (Figma D12): responde a la elección.
+  let primario: { etiqueta: string; onClick: () => void; destructiva?: boolean; cargando?: boolean; deshabilitada?: boolean; motivo?: string };
   if (!decision) {
     primario = { etiqueta: t('acciones.liberar'), onClick: () => undefined, deshabilitada: true, motivo: t('cargando') };
   } else if (decision.bloqueo) {
@@ -161,7 +173,7 @@ export function LiberarMesaDialog({
     primario = { etiqueta: t('acciones.liberar'), onClick: () => void ejecutar('liberar'), cargando: enviando };
   } else if (eleccion === 'cobrar') {
     primario = {
-      etiqueta: t('acciones.cobrar'),
+      etiqueta: resumen?.venta ? t('acciones.cobrarImporte', { importe: formatear(resumen.venta.saldo) }) : t('acciones.cobrar'),
       onClick: () => {
         onAbiertoChange(false);
         onCobrar();
@@ -186,7 +198,9 @@ export function LiberarMesaDialog({
   }
 
   const nombre = resumen?.mesa.nombre ?? mesaNombre ?? '';
+  const titulo = resumen?.mesa.zona ? `${nombre} · ${resumen.mesa.zona}` : nombre;
   const venta = resumen?.venta;
+  const enPreparacion = resumen?.cocina.filter((c) => c.estado !== 'ready' && c.estado !== 'delivered').length ?? 0;
 
   const opciones: { id: Eleccion; opcion: OpcionLiberacion; motivoNo?: string }[] = decision
     ? [
@@ -201,14 +215,30 @@ export function LiberarMesaDialog({
     : [];
 
   return (
-    <Dialogo
+    <DialogoMesa
       abierto={abierto}
       onAbiertoChange={onAbiertoChange}
-      titulo={requiere ? t('tituloConSaldo', { mesa: nombre }) : t('titulo', { mesa: nombre })}
-      descripcion={requiere ? t('descripcionConSaldo') : t('descripcion')}
-      icono={requiere ? AlertTriangle : LogOut}
+      titulo={t('titulo', { mesa: titulo })}
+      textoCerrar={t('cerrar')}
+      ocupado={enviando}
       ancho={560}
-      primario={primario}
+      pie={
+        <>
+          <KbdButton variante="fantasma" tamano="md" onClick={() => onAbiertoChange(false)} disabled={enviando}>
+            {t('cancelar')}
+          </KbdButton>
+          <KbdButton
+            variante={primario.destructiva ? 'destructivo' : 'primario'}
+            tamano="md"
+            onClick={primario.onClick}
+            cargando={primario.cargando}
+            disabled={primario.deshabilitada}
+            title={primario.deshabilitada ? primario.motivo : undefined}
+          >
+            {primario.etiqueta}
+          </KbdButton>
+        </>
+      }
     >
       {cargando && !estado && (
         <p className="flex items-center gap-2 text-sm text-fg-secondary" role="status">
@@ -225,65 +255,26 @@ export function LiberarMesaDialog({
 
       {resumen && (
         <>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-fg-secondary">{t('campos.mesa')}</dt>
-            <dd className="text-right font-medium text-fg">
-              {resumen.mesa.nombre}
-              {resumen.mesa.zona ? ` · ${resumen.mesa.zona}` : ''}
-            </dd>
-            <dt className="text-fg-secondary">{t('campos.mesero')}</dt>
-            <dd className="text-right text-fg">{resumen.sesion?.mesero ?? t('sinDato')}</dd>
-            <dt className="text-fg-secondary">{t('campos.tiempo')}</dt>
-            <dd className="text-right text-fg">
-              {resumen.sesion ? duracion(t, resumen.sesion.minutos_abierta) : t('sinDato')}
-            </dd>
-            <dt className="text-fg-secondary">{t('campos.cliente')}</dt>
-            <dd className="text-right text-fg">{resumen.cliente?.nombre ?? t('sinCliente')}</dd>
-          </dl>
-
-          {venta && (
-            <dl className="grid grid-cols-3 gap-2 rounded-lg border border-line p-3 text-sm">
-              <div>
-                <dt className="text-fg-secondary">{t('campos.total')}</dt>
-                <dd className="font-medium tabular-nums text-fg">{formatear(venta.total)}</dd>
-              </div>
-              <div>
-                <dt className="text-fg-secondary">{t('campos.pagado')}</dt>
-                <dd className="font-medium tabular-nums text-fg">{formatear(venta.pagado)}</dd>
-              </div>
-              <div>
-                <dt className="text-fg-secondary">{t('campos.saldo')}</dt>
-                <dd className={cn('font-semibold tabular-nums', venta.saldo > 0 ? 'text-danger-text' : 'text-fg')}>
-                  {formatear(venta.saldo)}
-                </dd>
-              </div>
-            </dl>
+          {requiere && venta ? (
+            <AvisoTonal
+              tono="advertencia"
+              rol="alert"
+              titulo={t('avisoSaldo', { saldo: formatear(venta.saldo) })}
+              descripcion={enPreparacion > 0 ? t('avisoSaldoCocina', { n: enPreparacion }) : t('descripcionConSaldo')}
+            />
+          ) : (
+            !decision?.bloqueo && (
+              <AvisoTonal tono="informacion" titulo={t('sinSaldoTitulo')} descripcion={t('sinSaldo')} />
+            )
           )}
 
-          {resumen.cocina.length > 0 && (
-            <section aria-labelledby={`${idMotivo}-cocina`} className="flex flex-col gap-2">
-              <h3 id={`${idMotivo}-cocina`} className="flex items-center gap-2 text-sm font-medium text-fg">
-                <ChefHat aria-hidden className="size-4" strokeWidth={1.5} />
-                {t('cocina.titulo', { n: resumen.cocina.length })}
-              </h3>
-              <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-                {resumen.cocina.map((item, i) => (
-                  <li key={`${item.ticket_id}-${i}`} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="min-w-0 truncate text-fg">
-                      {Number(item.cantidad)} × {item.producto}
-                    </span>
-                    <StatusBadge
-                      estado={item.estado}
-                      etiqueta={t.has(`cocina.estados.${item.estado}`) ? t(`cocina.estados.${item.estado}`) : item.estado}
-                    />
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-fg-secondary">
-                {eleccion === 'anular' ? t('cocina.alAnular') : t('cocina.alLiberar')}
-              </p>
-            </section>
-          )}
+          <ListaDatos etiqueta={t('resumen')}>
+            <FilaDato etiqueta={t('campos.mesero')} valor={resumen.sesion?.mesero ?? t('sinDato')} />
+            <FilaDato etiqueta={t('campos.abiertaHace')} valor={resumen.sesion ? duracion(t, resumen.sesion.minutos_abierta) : t('sinDato')} />
+            {venta && <FilaDato etiqueta={t('campos.total')} valor={formatear(venta.total)} tono="fuerte" tamano="lg" />}
+            {venta && <FilaDato etiqueta={t('campos.pagado')} valor={formatear(venta.pagado)} />}
+            {venta && <FilaDato etiqueta={t('campos.saldo')} valor={formatear(venta.saldo)} tono={venta.saldo > 0 ? 'peligro' : 'neutro'} />}
+          </ListaDatos>
 
           {decision?.bloqueo && (
             <p role="alert" className="flex items-start gap-2 rounded-lg bg-warning-subtle p-3 text-sm text-warning-text">
@@ -293,18 +284,26 @@ export function LiberarMesaDialog({
           )}
 
           {requiere && !decision?.bloqueo && (
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-1 text-sm font-medium text-fg">{t('queHacer')}</legend>
+            <fieldset className="flex flex-col gap-3">
+              <legend className="sr-only">{t('queHacer')}</legend>
               {opciones.map(({ id, opcion, motivoNo }) => {
                 const inputId = `${idMotivo}-${id}`;
                 const razon = !opcion.disponible ? motivoNo ?? (opcion.motivo ? t(`motivos.${opcion.motivo}`) : undefined) : undefined;
+                const descripcion =
+                  id === 'cobrar' && venta
+                    ? t('opciones.cobrar.descripcionImporte', { importe: formatear(venta.saldo) })
+                    : id === 'cartera' && decision?.opciones.cartera.modo === 'existente'
+                      ? t('opciones.cartera.existente')
+                      : id === 'cartera' && resumen.cliente?.nombre
+                        ? t('opciones.cartera.descripcionCliente', { cliente: resumen.cliente.nombre })
+                        : t(`opciones.${id}.descripcion`);
                 return (
                   <label
                     key={id}
                     htmlFor={inputId}
                     className={cn(
-                      'flex cursor-pointer items-start gap-3 rounded-lg border p-3',
-                      eleccion === id ? 'border-brand bg-brand-tint' : 'border-line',
+                      'flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3',
+                      eleccion === id ? 'border-line-brand bg-brand-tint' : 'border-line bg-surface',
                       !opcion.disponible && 'cursor-not-allowed opacity-60',
                     )}
                   >
@@ -312,20 +311,14 @@ export function LiberarMesaDialog({
                       id={inputId}
                       type="radio"
                       name={`${idMotivo}-eleccion`}
-                      className="mt-1 size-4 shrink-0 accent-brand"
+                      className="mt-0.5 size-4 shrink-0 accent-brand-action"
                       checked={eleccion === id}
                       disabled={!opcion.disponible || enviando}
                       onChange={() => setEleccion(id)}
                     />
                     <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className={cn('text-sm font-medium', id === 'anular' ? 'text-danger-text' : 'text-fg')}>
-                        {t(`opciones.${id}.titulo`)}
-                      </span>
-                      <span className="text-xs text-fg-secondary">
-                        {id === 'cartera' && decision?.opciones.cartera.modo === 'existente'
-                          ? t('opciones.cartera.existente')
-                          : t(`opciones.${id}.descripcion`)}
-                      </span>
+                      <span className="text-sm font-semibold text-fg">{t(`opciones.${id}.titulo`)}</span>
+                      <span className="text-[13px] text-fg-secondary">{descripcion}</span>
                       {razon && <span className="text-xs text-warning-text">{razon}</span>}
                     </span>
                   </label>
@@ -354,13 +347,6 @@ export function LiberarMesaDialog({
             </div>
           )}
 
-          {!requiere && !decision?.bloqueo && (
-            <p className="flex items-start gap-2 rounded-lg bg-info-subtle p-3 text-sm text-info-text">
-              <Info aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
-              {t('sinSaldo')}
-            </p>
-          )}
-
           {errorAccion && (
             <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text">
               {textoError(errorAccion)}
@@ -368,6 +354,6 @@ export function LiberarMesaDialog({
           )}
         </>
       )}
-    </Dialogo>
+    </DialogoMesa>
   );
 }

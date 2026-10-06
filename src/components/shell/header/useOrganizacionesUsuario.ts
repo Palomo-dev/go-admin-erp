@@ -15,6 +15,9 @@ export interface OrganizacionUsuario {
   rol: string | null;
   plan: string | null;
   estado: 'activa' | 'prueba' | 'suspendida';
+  /** Decidido en el servidor (super admin o rol 1/2). */
+  puedeAdministrar?: boolean;
+  esPropietario?: boolean;
 }
 
 let cache: OrganizacionUsuario[] | null = null;

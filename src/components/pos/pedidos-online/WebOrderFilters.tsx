@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -16,7 +17,8 @@ import {
   CalendarClock,
   DollarSign,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  UtensilsCrossed
 } from 'lucide-react';
 import type { WebOrderStatus, DeliveryType, PaymentStatus, OrderSource } from '@/lib/services/webOrdersService';
 import { SearchInput } from '@/components/kit/SearchInput';
@@ -63,9 +65,13 @@ const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon:
   { value: 'pickup', label: 'Retiro', icon: <Store className="h-4 w-4 dark:text-gray-300" /> },
   { value: 'delivery_own', label: 'Delivery propio', icon: <Bike className="h-4 w-4 dark:text-gray-300" /> },
   { value: 'delivery_third_party', label: 'Terceros', icon: <Truck className="h-4 w-4 dark:text-gray-300" /> },
+  // «Comer aquí» (QR de mesa). Texto en pantalla: `pedidoWeb.comerAqui` (i18n).
+  { value: 'dine_in', label: 'Comer aquí', icon: <UtensilsCrossed className="h-4 w-4 dark:text-gray-300" /> },
 ];
 
 export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFiltersProps) {
+  const t = useTranslations('pedidoWeb');
+  const etiquetaTipo = (o?: { value: string; label: string }) => (o?.value === 'dine_in' ? t('comerAqui') : o?.label);
   const [search, setSearch] = useState(activeFilters.search || '');
 
   // Sincronizar search cuando activeFilters.search cambia externamente (Limpiar)
@@ -161,7 +167,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               className={`gap-1 flex-shrink-0 whitespace-nowrap ${isActive ? 'dark:text-white' : 'dark:border-gray-600'}`}
             >
               {option.icon}
-              {option.label}
+              {etiquetaTipo(option)}
             </Button>
           );
         })}
@@ -243,7 +249,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
           ))}
           {activeFilters.delivery_type && (
             <Badge variant="secondary" className="gap-1">
-              {DELIVERY_TYPE_OPTIONS.find(d => d.value === activeFilters.delivery_type)?.label}
+              {etiquetaTipo(DELIVERY_TYPE_OPTIONS.find(d => d.value === activeFilters.delivery_type))}
               <X 
                 className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => handleDeliveryTypeChange('all')}

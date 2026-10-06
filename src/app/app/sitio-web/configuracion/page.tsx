@@ -1,27 +1,13 @@
 'use client';
 
 /**
- * /app/sitio-web/configuracion — «Configuración» (Figma 01b): información,
- * horarios, redes y galería (Branding › Contenido) y código propio, píxeles y
- * analítica (Branding › Avanzado). Cada bloque guarda por su cuenta.
+ * /app/sitio-web/configuracion — «Configuración del sitio» (Figma B/12-01…12-06):
+ * un solo formulario con índice lateral y una sola barra de guardado. Las
+ * pestañas viejas de Branding (Contenido y Avanzado) dejan de usarse aquí: redes
+ * van a SEO y redes, píxeles a Analítica y horario a la sucursal.
  */
-import { BrandingAdvancedTab, BrandingContentTab } from '@/components/organization/branding';
-import { MarcoSitioWeb, EstadoAjustes } from '@/components/sitio-web/MarcoSitioWeb';
-import { useAjustesSitio } from '@/components/sitio-web/useAjustesSitio';
+import { ConfiguracionSitio } from '@/components/sitio-web/configuracion/ConfiguracionSitio';
 
 export default function ConfiguracionSitioWebPage() {
-  const a = useAjustesSitio();
-
-  return (
-    <MarcoSitioWeb href="/app/sitio-web/configuracion">
-      <EstadoAjustes cargando={a.cargando} hayAjustes={!!a.settings} onReintentar={() => void a.recargar()}>
-        {a.settings && (
-          <div className="space-y-4 sm:space-y-6">
-            <BrandingContentTab settings={a.settings} onSave={a.guardar} onUploadImage={a.subirImagen} isSaving={a.guardando} />
-            <BrandingAdvancedTab settings={a.settings} onSave={a.guardar} isSaving={a.guardando} />
-          </div>
-        )}
-      </EstadoAjustes>
-    </MarcoSitioWeb>
-  );
+  return <ConfiguracionSitio />;
 }

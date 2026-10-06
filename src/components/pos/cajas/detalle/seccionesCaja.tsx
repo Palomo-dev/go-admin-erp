@@ -11,7 +11,7 @@
  * cierre ciego sin permiso el servidor no manda las cifras y aquí se ve
  * «Oculto».
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowDownCircle, ArrowUpCircle, Banknote, CreditCard, FileText, Info, ListChecks, Printer, Receipt, Wallet } from 'lucide-react';
@@ -35,7 +35,7 @@ import { useEtiquetaMetodoPago } from '../paymentMethodLabels';
 import { Oculto } from '../listado/comunes';
 import { useFechaHoraCaja } from '../comunesCaja';
 import { BADGE_ESTADO_VENTA, estadoVenta } from '@/lib/pos/ventas/estadoVenta';
-import type { ArqueoResumen, MovimientoResumen, ResumenCaja, VentaTurno } from '@/lib/pos/cajas/resumenServidor';
+import type { ArqueoResumen, MovimientoResumen, OrigenVentaTurno, ResumenCaja, VentaTurno, VentasWebTurno } from '@/lib/pos/cajas/resumenServidor';
 
 type Formatear = (v: number) => string;
 
@@ -325,23 +325,107 @@ export function TablaArqueos({ arqueos, formatear, visible }: { arqueos: readonl
   );
 }
 
+/** Texto de la columna «Origen»: «Web» + «W-1043 · recoger», «Mesa 4 · Terraza» o «POS» (Figma 3b). */
+function useOrigenVenta(): (o: OrigenVentaTurno | undefined, pedidoWeb?: string | null) => ReactNode {
+  const t = useTranslations('cajas.ficha');
+  return function origenVenta(o, pedidoWeb) {
+    if (!o) return pedidoWeb ? t('origenWeb', { numero: pedidoWeb }) : t('origenPos');
+    if (o.tipo === 'mesa') return o.zona ? t('origenMesaZona', { mesa: o.mesa, zona: o.zona }) : o.mesa;
+    if (o.tipo === 'pos') return t('origenPos');
+    const entrega =
+      o.entrega === 'dine_in'
+        ? o.mesa
+          ? t('entregaWeb.mesa', { mesa: o.mesa })
+          : t('entregaWeb.dine_in')
+        : o.entrega === 'pickup'
+          ? t('entregaWeb.pickup')
+          : t('entregaWeb.domicilio');
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <StatusBadge estado="web" tono="informacion" apariencia="contorno" etiqueta={t('etiquetaWeb')} />
+        <span>{t('origenWebDetalle', { numero: o.pedido, entrega })}</span>
+      </span>
+    );
+  };
+}
+
+/**
+ * Tarjetas de la pestaña Ventas (Figma 3b): efectivo esperado, ventas web
+ * cobradas en esta caja y lo pagado en línea, que queda fuera del arqueo.
+ */
+function TarjetasVentasWeb({ web, efectivoEsperado, formatear }: { web: VentasWebTurno; efectivoEsperado: number | null | undefined; formatear: Formatear }) {
+  const t = useTranslations('cajas.ficha');
+  const etiquetaMetodo = useEtiquetaMetodoPago();
+  const metodos = web.enLinea.metodos.map(etiquetaMetodo).join(', ');
+  return (
+    <KpiStrip etiqueta={t('tarjetasWeb')}>
+      <StatCard
+        etiqueta={t('tarjetaEsperado')}
+        icono={Wallet}
+        valor={efectivoEsperado === undefined || efectivoEsperado === null ? <Oculto /> : formatear(efectivoEsperado)}
+        detalle={t('tarjetaEsperadoDetalle')}
+      />
+      <StatCard
+        etiqueta={t('tarjetaWeb')}
+        icono={Receipt}
+        valor={t('tarjetaWebValor', { n: web.enCaja.cantidad, total: formatear(web.enCaja.total) })}
+        detalle={t('tarjetaWebDetalle')}
+        tono={web.enCaja.cantidad > 0 ? 'exito' : 'neutro'}
+      />
+      <StatCard
+        etiqueta={t('tarjetaEnLinea')}
+        icono={CreditCard}
+        valor={formatear(web.enLinea.total)}
+        detalle={metodos ? t('tarjetaEnLineaDetalle', { metodos }) : t('tarjetaEnLineaSinMetodo')}
+      />
+    </KpiStrip>
+  );
+}
+
 /** Ventas del turno; cada fila abre la venta. */
-export function TablaVentasTurno({ ventas, formatear, truncadas }: { ventas: readonly VentaTurno[]; formatear: Formatear; truncadas?: boolean }) {
+export function TablaVentasTurno({
+  ventas,
+  formatear,
+  truncadas,
+  web,
+  efectivoEsperado,
+}: {
+  ventas: readonly VentaTurno[];
+  formatear: Formatear;
+  truncadas?: boolean;
+  /** Cifras de pedidos web del turno; sin ellas (o sin pedidos web) no se pintan las tarjetas. */
+  web?: VentasWebTurno;
+  /** Efectivo esperado ya enmascarado por el servidor (null = oculto por cierre ciego). */
+  efectivoEsperado?: number | null;
+}) {
   const t = useTranslations('cajas.ficha');
   const tEstados = useTranslations('posVentas.estados');
   const router = useRouter();
   const fechaHora = useFechaHoraCaja();
+  const etiquetaMetodo = useEtiquetaMetodoPago();
+  const origen = useOrigenVenta();
   const p = usePaginado(ventas, 10);
   const estado = (v: VentaTurno) => estadoVenta({ status: v.status, payment_status: v.payment_status });
+  const metodo = (v: VentaTurno) => (!v.metodo ? '—' : v.metodo === 'mixed' ? t('metodoMixto') : etiquetaMetodo(v.metodo));
+  const enEfectivo = (v: VentaTurno) => {
+    if (v.en_linea) return <StatusBadge estado="neutro" tono="neutro" etiqueta={t('enLinea')} />;
+    if (v.metodo === 'cash') return <StatusBadge estado="paid" tono="exito" etiqueta={t('enEfectivoSi')} />;
+    return v.metodo ? <StatusBadge estado="neutro" tono="neutro" etiqueta={metodo(v)} /> : '—';
+  };
   const columnas: ColumnaTabla<VentaTurno>[] = [
     { id: 'fecha', encabezado: t('columnas.fecha'), celda: (v) => fechaHora(v.created_at) },
     { id: 'numero', encabezado: t('columnas.numero'), variante: 'mono', celda: (v) => v.numero ?? t('sinNumero') },
+    { id: 'origen', encabezado: t('columnas.origen'), ocultarDebajo: 'md', celda: (v) => origen(v.origen, v.pedido_web) },
+    { id: 'metodo', encabezado: t('columnas.metodo'), ocultarDebajo: 'lg', celda: (v) => metodo(v) },
+    { id: 'enEfectivo', encabezado: t('columnas.enEfectivo'), ocultarDebajo: 'lg', celda: (v) => enEfectivo(v) },
     { id: 'cliente', encabezado: t('columnas.cliente'), ocultarDebajo: 'md', celda: (v) => v.cliente || t('consumidorFinal') },
     { id: 'estado', encabezado: t('columnas.estado'), celda: (v) => <StatusBadge estado={BADGE_ESTADO_VENTA[estado(v)]} etiqueta={tEstados(estado(v))} /> },
     { id: 'total', encabezado: t('columnas.total'), variante: 'importe', celda: (v) => formatear(v.total) },
   ];
+  const conTarjetas = !!web && (web.enCaja.cantidad > 0 || web.enLinea.cantidad > 0);
   return (
     <div className="flex flex-col gap-2">
+      {conTarjetas && <TarjetasVentasWeb web={web} efectivoEsperado={efectivoEsperado} formatear={formatear} />}
       {truncadas && <p className="text-xs text-fg-muted">{t('ventasTruncadas')}</p>}
       <DataTable
         etiqueta={t('ventasTitulo')}
@@ -357,7 +441,7 @@ export function TablaVentasTurno({ ventas, formatear, truncadas }: { ventas: rea
           <ListCard
             icono={Receipt}
             titulo={v.numero ?? t('sinNumero')}
-            meta={fechaHora(v.created_at)}
+            meta={<span className="flex flex-col">{fechaHora(v.created_at)}<span>{origen(v.origen, v.pedido_web)}</span></span>}
             valor={formatear(v.total)}
             estado={<StatusBadge estado={BADGE_ESTADO_VENTA[estado(v)]} etiqueta={tEstados(estado(v))} tamano="sm" />}
             onClick={() => router.push(`/app/pos/ventas/${v.id}`)}

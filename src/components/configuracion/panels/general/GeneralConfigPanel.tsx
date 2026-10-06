@@ -1,150 +1,51 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+/**
+ * Configuración › General.
+ *
+ * Antes era una SEGUNDA copia de Organización (Información, Miembros,
+ * Invitaciones, Sucursales y Mis organizaciones con los componentes viejos), y
+ * por aquí seguían vivos el `confirm()` nativo, el «¿es admin?» por `role_id`
+ * y el desactivar organizaciones desde el navegador (auditoría 2026-10, P0-9,
+ * P1-2 y P2-1). Regla 7: una sola implementación. Aquí quedan los datos de la
+ * organización y su zona horaria (Fase A: la zona tiene que poder fijarse
+ * aunque la organización no tenga el módulo de calendario; General es
+ * `isCore: true`), y accesos a las pantallas de Organización.
+ */
 import dynamic from 'next/dynamic';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Building2, MailPlus, MapPin, Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { EmptyState, RelatedLinkCard } from '@/components/kit';
 import { useOrgAdmin } from '@/components/organization/useOrgAdmin';
-import {
-  OrganizationInfoSkeleton,
-  MembersSkeleton,
-  InvitationsSkeleton,
-  BranchesSkeleton,
-  OrganizationListSkeleton,
-} from '@/components/organization/OrganizationSkeletons';
-import { Building2, Users, Mail, MapPin, Layers } from 'lucide-react';
+import { OrganizationInfoSkeleton } from '@/components/organization/OrganizationSkeletons';
 
 const OrganizationInfoTab = dynamic(() => import('@/components/organization/OrganizationInfoTab'), {
   loading: () => <OrganizationInfoSkeleton />,
 });
-const MembersTab = dynamic(() => import('@/components/organization/MembersTab'), {
-  loading: () => <MembersSkeleton />,
+const OrganizationTimezoneCard = dynamic(() => import('@/components/organization/OrganizationTimezoneCard'), {
+  loading: () => <div className="h-40 animate-pulse rounded-xl bg-subtle" />,
 });
-const InvitationsTab = dynamic(() => import('@/components/organization/InvitationsTab'), {
-  loading: () => <InvitationsSkeleton />,
-});
-const BranchesTab = dynamic(() => import('@/components/organization/BranchesTab'), {
-  loading: () => <BranchesSkeleton />,
-});
-const ManageOrganizationsTab = dynamic(() => import('@/components/organization/ManageOrganizationsTab'), {
-  loading: () => <OrganizationListSkeleton />,
-});
-// Fase A: la zona de la organizacion tiene que poder fijarse aunque la
-// organizacion no tenga contratado el modulo de calendario. General es
-// `isCore: true`; Configuracion > Calendario no.
-const OrganizationTimezoneCard = dynamic(
-  () => import('@/components/organization/OrganizationTimezoneCard'),
-  { loading: () => <div className="h-40 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" /> },
-);
-
-const TABS = [
-  { id: 'informacion', label: 'Información', icon: Building2 },
-  { id: 'miembros', label: 'Miembros', icon: Users },
-  { id: 'invitaciones', label: 'Invitaciones', icon: Mail },
-  { id: 'sucursales', label: 'Sucursales', icon: MapPin },
-  { id: 'organizaciones', label: 'Mis Organizaciones', icon: Layers },
-] as const;
 
 export function GeneralConfigPanel() {
-  const [activeTab, setActiveTab] = useState<string>('informacion');
-  const { orgId, isOrgAdmin, userBranches, loading, error } = useOrgAdmin();
+  const t = useTranslations('org.acceso.configuracionGeneral');
+  const { orgId, isOrgAdmin, loading, error, refresh } = useOrgAdmin();
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex gap-2 border-b pb-2">
-          {TABS.map((tab) => (
-            <div key={tab.id} className="h-10 w-28 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-          ))}
-        </div>
-        <OrganizationInfoSkeleton />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      </div>
-    );
-  }
-
-  if (!isOrgAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-sm text-yellow-700 dark:text-yellow-300">
-          No tienes permisos de administrador para ver esta configuración.
-        </p>
-      </div>
-    );
-  }
-
-  if (orgId === null) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          No se pudo determinar la organización activa.
-        </p>
-      </div>
-    );
+  if (loading) return <OrganizationInfoSkeleton />;
+  if (error) return <EmptyState variante="error" titulo={t('error.titulo')} descripcion={t('error.descripcion')} onReintentar={refresh} />;
+  if (!isOrgAdmin || orgId === null) {
+    return <EmptyState variante="forbidden" titulo={t('sinPermiso.titulo')} descripcion={t('sinPermiso.descripcion')} accion={{ etiqueta: t('sinPermiso.inicio'), href: '/app/inicio' }} />;
   }
 
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="border-b pb-2">
-          <TabsList className="bg-transparent h-auto p-0 gap-1 flex flex-wrap">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20"
-                >
-                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
-                    <Icon className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
-                  </div>
-                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
-                    {tab.label}
-                  </span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </div>
-
-        <TabsContent value="informacion" className="mt-6 space-y-6">
-          <Suspense fallback={<OrganizationInfoSkeleton />}>
-            <OrganizationInfoTab orgData={orgId} />
-          </Suspense>
-          <OrganizationTimezoneCard />
-        </TabsContent>
-
-        <TabsContent value="miembros" className="mt-6">
-          <Suspense fallback={<MembersSkeleton />}>
-            <MembersTab orgId={orgId} />
-          </Suspense>
-        </TabsContent>
-
-        <TabsContent value="invitaciones" className="mt-6">
-          <Suspense fallback={<InvitationsSkeleton />}>
-            <InvitationsTab orgId={orgId} />
-          </Suspense>
-        </TabsContent>
-
-        <TabsContent value="sucursales" className="mt-6">
-          <Suspense fallback={<BranchesSkeleton />}>
-            <BranchesTab orgId={orgId} userBranches={userBranches} />
-          </Suspense>
-        </TabsContent>
-
-        <TabsContent value="organizaciones" className="mt-6">
-          <Suspense fallback={<OrganizationListSkeleton />}>
-            <ManageOrganizationsTab />
-          </Suspense>
-        </TabsContent>
-      </Tabs>
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <RelatedLinkCard icono={Users} etiqueta={t('enlaces.miembros')} valor={t('enlaces.valor')} href="/app/organizacion/miembros" textoAccion={t('enlaces.abrir')} />
+        <RelatedLinkCard icono={MailPlus} etiqueta={t('enlaces.invitaciones')} valor={t('enlaces.valor')} href="/app/organizacion/invitaciones" textoAccion={t('enlaces.abrir')} />
+        <RelatedLinkCard icono={MapPin} etiqueta={t('enlaces.sucursales')} valor={t('enlaces.valor')} href="/app/organizacion/sucursales" textoAccion={t('enlaces.abrir')} />
+        <RelatedLinkCard icono={Building2} etiqueta={t('enlaces.misOrganizaciones')} valor={t('enlaces.valor')} href="/app/organizacion/mis-organizaciones" textoAccion={t('enlaces.abrir')} />
+      </div>
+      <OrganizationInfoTab orgData={orgId} />
+      <OrganizationTimezoneCard />
     </div>
   );
 }

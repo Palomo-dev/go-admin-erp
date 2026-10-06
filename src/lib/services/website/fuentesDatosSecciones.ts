@@ -13,10 +13,11 @@
  * conteos, nunca los datos).
  *
  * Solo se declaran las secciones cuya fuente el sitio público realmente carga
- * (`app/[[...slug]]/page.tsx` de goadmin-websites). Las de clases, rutas, flota
- * y entrenadores leen `data.classes`, `data.routes`, `data.vehicles`, que el
- * sitio hoy no precarga: marcarlas aquí diría «faltan datos» o «todo bien»
- * sin relación con lo que de verdad pinta la web.
+ * (`app/[[...slug]]/page.tsx` de goadmin-websites). Desde 2026-10-06 el sitio
+ * carga también `class_schedule` (gym_classes), `routes` (transport_routes),
+ * `fleet_showcase` (vehicles) y `membership_plans` (membership_plans), con los
+ * mismos filtros que se cuentan aquí (lib/website/datosSecciones.ts del sitio).
+ * Entrenadores (`trainers`) sigue sin precarga: no se declara.
  */
 
 export type FuenteDatos =
@@ -28,7 +29,11 @@ export type FuenteDatos =
   | 'tarifas_parqueo'
   | 'planes_parqueo'
   | 'mesas'
-  | 'sedes';
+  | 'sedes'
+  | 'clases'
+  | 'rutas'
+  | 'flota'
+  | 'planes_membresia';
 
 export interface DefinicionFuente {
   /** Lo que la sección necesita, tras «necesita» («habitaciones creadas en Hotel»). */
@@ -96,6 +101,30 @@ export const FUENTES_DATOS: Readonly<Record<FuenteDatos, DefinicionFuente>> = {
     modulo: 'Sedes',
     href: '/app/organizacion/sucursales',
   },
+  clases: {
+    necesita: 'clases programadas en Membresías',
+    falta: 'aún no tiene clases activas próximas o recurrentes',
+    modulo: 'Clases',
+    href: '/app/membresias/clases',
+  },
+  rutas: {
+    necesita: 'rutas creadas en Transporte',
+    falta: 'aún no tiene rutas activas',
+    modulo: 'Rutas',
+    href: '/app/transporte/rutas',
+  },
+  flota: {
+    necesita: 'vehículos creados en Transporte',
+    falta: 'aún no tiene vehículos activos',
+    modulo: 'Vehículos',
+    href: '/app/transporte/vehiculos',
+  },
+  planes_membresia: {
+    necesita: 'planes creados en Membresías',
+    falta: 'aún no tiene planes de membresía activos',
+    modulo: 'Planes',
+    href: '/app/membresias/planes',
+  },
 };
 
 export const LISTA_FUENTES = Object.keys(FUENTES_DATOS) as FuenteDatos[];
@@ -117,6 +146,10 @@ export const FUENTE_DE_SECCION: Readonly<Record<string, FuenteDatos>> = {
   parking_availability: 'zonas_parqueo',
   parking_pricing: 'tarifas_parqueo',
   parking_pass_plans: 'planes_parqueo',
+  class_schedule: 'clases',
+  routes: 'rutas',
+  fleet_showcase: 'flota',
+  membership_plans: 'planes_membresia',
 };
 
 /** Registros por fuente. Una fuente ausente = no se pudo contar (no se avisa). */

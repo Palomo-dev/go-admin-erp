@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe/server';
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
+import { precioComplemento, type TipoComplemento } from '@/lib/stripe/preciosCompras';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -23,11 +24,6 @@ function createSupabaseClient() {
     },
   });
 }
-
-const FALLBACK_PRICES: Record<string, number> = {
-  extra_users: 1000,
-  extra_branches: 800,
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,24 +67,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener el plan actual de la organización
-    const { data: planData } = await supabase
-      .rpc('get_current_plan', { org_id: organizationId });
-
-    const planCode = planData?.[0]?.plan_code || planData?.[0]?.code || 'free';
-
-    // Obtener precio del addon desde addon_pricing
-    const { data: addonPricing } = await supabase
-      .from('addon_pricing')
-      .select('unit_price_monthly_cents, currency, min_quantity, max_quantity')
-      .eq('plan_code', planCode)
-      .eq('addon_type', addonType)
-      .eq('is_active', true)
-      .single();
-
-    const unitPriceCents = addonPricing?.unit_price_monthly_cents || FALLBACK_PRICES[addonType];
-    const currency = addonPricing?.currency || 'usd';
-    const maxQty = addonPricing?.max_quantity;
+    // Precio: la misma función que muestra el desglose del diálogo de compra
+    // (`/api/organizacion/compras/precio`), para no cobrar otro número.
+    const precio = await precioComplemento(supabase, organizationId, addonType as TipoComplemento);
+    const unitPriceCents = precio.unitarioCentavos;
+    const currency = precio.moneda;
+    const maxQty = precio.maximo;
 
     if (maxQty && quantity > maxQty) {
       return NextResponse.json(
@@ -97,9 +81,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (quantity < (addonPricing?.min_quantity || 1)) {
+    if (quantity < precio.minimo) {
       return NextResponse.json(
-        { error: `La cantidad mínima es ${addonPricing?.min_quantity || 1}` },
+        { error: `La cantidad mínima es ${precio.minimo}` },
         { status: 400 }
       );
     }

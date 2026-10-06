@@ -25,6 +25,9 @@ import { ObjectionEditorSheet } from './ObjectionEditorSheet';
 import { ObjectionsEmptyState } from './ObjectionsEmptyState';
 import { ObjectionsToolbar } from './ObjectionsToolbar';
 import { useObjections } from './useObjections';
+import { useFrecuenciaObjeciones } from './useFrecuenciaObjeciones';
+import { resumenesPorObjecion } from './frecuenciaObjecionesLogica';
+import { HojaFrecuenciaObjecion } from './HojaFrecuenciaObjecion';
 
 export function ObjecionesPage() {
   const { objections, loading, loaded, error, reload, save, toggle, remove } = useObjections();
@@ -35,6 +38,11 @@ export function ObjecionesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [refocusSwitchId, setRefocusSwitchId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [revisionFrecuencia, setRevisionFrecuencia] = useState(0);
+  const [enLlamadas, setEnLlamadas] = useState<Objection | null>(null);
+  // Frecuencia en llamadas (90 días), una sola petición para todas las tarjetas.
+  const frecuencia = useFrecuenciaObjeciones(null, true, revisionFrecuencia);
+  const resumenes = useMemo(() => (frecuencia.datos ? resumenesPorObjecion(frecuencia.datos.frequencies) : null), [frecuencia.datos]);
   // «Nueva objeción» es el fallback de foco: el botón que abrió puede haberse
   // desmontado (tarjeta borrada, estado vacío tras crear la primera).
   const newButtonRef = useRef<HTMLButtonElement>(null);
@@ -96,6 +104,7 @@ export function ObjecionesPage() {
     setRefreshing(true);
     try {
       await reload();
+      setRevisionFrecuencia((n) => n + 1);
     } finally {
       setRefreshing(false);
     }
@@ -155,6 +164,8 @@ export function ObjecionesPage() {
                       onToggle={(x) => void onToggle(x)}
                       onEdit={(x) => openEditor(x)}
                       onDelete={(x) => setDeleteTarget(x)}
+                      frecuencia={frecuencia.estado === 'listo' && resumenes ? resumenes.get(o.id) ?? null : undefined}
+                      onVerLlamadas={setEnLlamadas}
                     />
                   ))}
                 </AnimatePresence>
@@ -170,6 +181,8 @@ export function ObjecionesPage() {
           onSave={save}
           returnFocusFallback={() => newButtonRef.current}
         />
+
+        <HojaFrecuenciaObjecion objecion={enLlamadas} onCerrar={() => setEnLlamadas(null)} />
 
         <ConfirmDialog
           open={deleteTarget !== null}

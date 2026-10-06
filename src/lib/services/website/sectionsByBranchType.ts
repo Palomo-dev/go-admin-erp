@@ -151,6 +151,29 @@ const RECOMENDADAS_POR_TIPO_DE_PAGINA: Readonly<Record<string, IdGrupoSecciones>
   category_detail: 'pagina_categoria',
 };
 
+/**
+ * Tipo de sede que recomienda secciones cuando la página no es de una sede con `branch_type`
+ * (sitio principal o sede sin tipo): sale del giro del sitio (`organizations.type_id` vía
+ * `giroDesdeTipo`, o el giro elegido en el asistente). Así un restaurante ve primero Carta,
+ * Reservar y Horario aunque edite el sitio principal. `otro` → sin recomendadas.
+ */
+export function tipoSedeDesdeGiro(giro: string | null | undefined): BranchType | null {
+  switch (giro) {
+    case 'restaurante':
+      return 'restaurant';
+    case 'hotel':
+      return 'hotel';
+    case 'tienda':
+      return 'retail';
+    case 'servicios':
+      return 'services';
+    case 'gimnasio':
+      return 'gym';
+    default:
+      return null;
+  }
+}
+
 /** Tipo de sede en palabras, para el subtítulo de «Recomendadas». */
 export const NOMBRE_TIPO_SEDE: Readonly<Record<BranchType, string>> = {
   restaurant: 'restaurante',

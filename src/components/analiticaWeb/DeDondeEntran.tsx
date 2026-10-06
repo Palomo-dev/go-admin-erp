@@ -25,8 +25,11 @@
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, MapPin, X } from 'lucide-react';
-import { PaginationCompact, calcularRango } from '@/components/kit';
+import type { LucideIcon } from 'lucide-react';
+import { PaginationCompact, SegmentedControl, Tarjeta as TarjetaKit, calcularRango, clasesBoton, useEsEscritorio } from '@/components/kit';
+import { useTextosSeoAnalitica } from '@/components/sitio-web/seoanalitica/textos';
+import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '@/components/sitio-web/ui/iconosSitio';
+import { ICONO_GEO_ANALITICA } from './iconosAnalitica';
 import type { DatosAnalitica } from '@/lib/analiticaWeb/analiticaWeb';
 import { sinUbicacion } from '@/lib/analiticaWeb/analiticaWeb';
 import { CIUDADES_POR_PAGINA, agregarPorPais, ciudadesParaTabla, nombreRegion, valoresRegionMapa } from '@/lib/analiticaWeb/mapa';
@@ -46,21 +49,28 @@ function nombrePais(codigo: string, locale: string): string {
   }
 }
 
-function Tarjeta({ titulo, detalle, accion, children }: { titulo: string; detalle?: string; accion?: React.ReactNode; children: React.ReactNode }) {
+/** Tarjeta del kit (rounded-xl, borde de token) con el detalle a la derecha del título. */
+function Tarjeta({ titulo, icono, detalle, accion, children }: { titulo: string; icono: LucideIcon; detalle?: string; accion?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-fg">{titulo}</h3>
-        {detalle && <p className="text-xs text-fg-secondary">{detalle}</p>}
-        {accion}
-      </div>
-      {children}
-    </section>
+    <TarjetaKit
+      titulo={titulo}
+      icono={icono}
+      className="min-w-0"
+      accion={
+        detalle || accion ? (
+          <>
+            {detalle && <p className="text-xs text-fg-muted">{detalle}</p>}
+            {accion}
+          </>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col gap-3">{children}</div>
+    </TarjetaKit>
   );
 }
 
-const claseBoton =
-  'inline-flex h-8 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-sm text-fg hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
+const claseBoton = clasesBoton({ variante: 'secundario', tamano: 'sm' });
 
 interface Props {
   datos: DatosAnalitica;
@@ -70,6 +80,8 @@ interface Props {
 
 export function DeDondeEntran({ datos, cargandoPais, onElegirPais }: Props) {
   const t = useTranslations('analiticaWeb.geo');
+  const ts = useTextosSeoAnalitica();
+  const escritorio = useEsEscritorio();
   const locale = useLocale();
   const nf = new Intl.NumberFormat(locale);
   const valoresPais = useMemo(() => agregarPorPais(datos.paises), [datos.paises]);
@@ -77,9 +89,9 @@ export function DeDondeEntran({ datos, cargandoPais, onElegirPais }: Props) {
 
   if (sinUbicacion(datos)) {
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-dashed border-line-strong bg-subtle p-4" data-testid="sin-ubicacion">
+      <div className="flex flex-col gap-3 rounded-xl border border-dashed border-line-strong bg-subtle p-4" data-testid="sin-ubicacion">
         <p className="flex items-center gap-2 text-sm font-semibold text-fg">
-          <MapPin className="h-4 w-4 text-brand" aria-hidden="true" />
+          <ICONO_GEO_ANALITICA.sinUbicacion className={`${CLASE_TAMANO_ICONO.base} shrink-0 text-fg-secondary`} strokeWidth={TRAZO_ICONO} aria-hidden="true" />
           {t('sinUbicacionTitulo')}
         </p>
         <p className="text-sm text-fg-secondary">{t('sinUbicacionTexto', { n: datos.visitasSinUbicacionTotal ?? 0 })}</p>
@@ -91,10 +103,59 @@ export function DeDondeEntran({ datos, cargandoPais, onElegirPais }: Props) {
   const max = Math.max(1, ...datos.paises.map((p) => p.visitantes));
   const totalVisitantes = datos.paises.reduce((n, p) => n + p.visitantes, 0);
 
+  if (!escritorio) {
+    // Móvil (Figma B/09-02): Mundo / Colombia, el mapa y la lista de países.
+    const vista = datos.pais === 'CO' ? 'colombia' : 'mundo';
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+        <SegmentedControl<'mundo' | 'colombia'>
+          opciones={[
+            { valor: 'mundo', etiqueta: ts('analitica.geo.mundo') },
+            { valor: 'colombia', etiqueta: ts('analitica.geo.colombia') },
+          ]}
+          valor={vista}
+          onValorChange={(v) => onElegirPais(v === 'colombia' ? 'CO' : null)}
+          etiqueta={t('titulo')}
+          tamano="sm"
+        />
+        {vista === 'mundo' ? (
+          <>
+            <MapaVisitas tipo="mundo" valores={valoresPais} nombreDe={nombreForma} seleccionado={datos.pais} onElegir={onElegirPais} etiqueta={t('mapa.mundoAria')} testId="mapa-mundo" />
+            <ul className="flex flex-col divide-y divide-line">
+              {datos.paises.map((p) => (
+                <li key={p.pais}>
+                  <button
+                    type="button"
+                    onClick={() => onElegirPais(p.pais)}
+                    className="flex w-full items-center justify-between gap-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-medium text-fg">{nombrePais(p.pais, locale)}</span>
+                      <span className="truncate text-xs text-fg-secondary">{ts('analitica.geo.filaPais', { sesiones: nf.format(p.sesiones) })}</span>
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-fg">{nf.format(p.visitantes)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {datos.paises.some((p) => p.pais === 'CO') && (
+              <button type="button" onClick={() => onElegirPais('CO')} className={clasesBoton({ variante: 'secundario', tamano: 'md' }) + ' w-full'}>
+                {ts('analitica.geo.verColombia')}
+              </button>
+            )}
+          </>
+        ) : (
+          <DetallePais key="CO" datos={datos} pais="CO" cargandoPais={cargandoPais} onVolver={() => onElegirPais(null)} />
+        )}
+        <p className="text-xs text-fg-muted">{t('privacidad')}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Tarjeta titulo={t('mapaMundoTitulo')} detalle={t('resumenPaises', { n: datos.paises.length, v: nf.format(totalVisitantes) })}>
+        <Tarjeta titulo={t('mapaMundoTitulo')} icono={ICONO_GEO_ANALITICA.mundo} detalle={t('resumenPaises', { n: datos.paises.length, v: nf.format(totalVisitantes) })}>
           <MapaVisitas
             tipo="mundo"
             valores={valoresPais}
@@ -106,7 +167,7 @@ export function DeDondeEntran({ datos, cargandoPais, onElegirPais }: Props) {
           />
         </Tarjeta>
 
-        <Tarjeta titulo={t('porPaisTitulo')}>
+        <Tarjeta titulo={t('porPaisTitulo')} icono={ICONO_GEO_ANALITICA.pais}>
           <table className="w-full text-sm">
             <caption className="sr-only">{t('porPaisTitulo')}</caption>
             <thead>
@@ -145,8 +206,7 @@ export function DeDondeEntran({ datos, cargandoPais, onElegirPais }: Props) {
 
       {datos.pais && <DetallePais key={datos.pais} datos={datos} pais={datos.pais} cargandoPais={cargandoPais} onVolver={() => onElegirPais(null)} />}
 
-      <p className="text-xs text-fg-secondary">{t('privacidad')}</p>
-      <p className="text-xs text-fg-secondary">{t('sinCruceConPedidos')}</p>
+      <p className="text-xs text-fg-muted">{t('sinCruceConPedidos')}</p>
     </div>
   );
 }
@@ -176,7 +236,7 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
 
   const volver = (
     <button type="button" onClick={onVolver} className={claseBoton}>
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+      <ICONO_GEO_ANALITICA.volver className={`${CLASE_TAMANO_ICONO.base} shrink-0`} strokeWidth={TRAZO_ICONO} aria-hidden="true" />
       {t('volver')}
     </button>
   );
@@ -184,7 +244,7 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
   return (
     <div className={`grid grid-cols-1 gap-4 ${esColombia ? 'lg:grid-cols-2' : ''}`} aria-busy={cargandoPais}>
       {esColombia && (
-        <Tarjeta titulo={t('porDepartamento', { pais: nombre })} accion={volver}>
+        <Tarjeta titulo={t('porDepartamento', { pais: nombre })} icono={ICONO_GEO_ANALITICA.region} accion={volver}>
           <MapaVisitas
             tipo="colombia"
             valores={valoresRegion}
@@ -199,12 +259,12 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
         </Tarjeta>
       )}
 
-      <Tarjeta titulo={t('porCiudad', { pais: nombre })} accion={esColombia ? undefined : volver}>
+      <Tarjeta titulo={t('porCiudad', { pais: nombre })} icono={ICONO_GEO_ANALITICA.ciudad} accion={esColombia ? undefined : volver}>
         {nombreRegionElegida && (
           <p className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary" aria-live="polite">
             <span className="font-medium text-fg">{t('filtroRegion', { region: nombreRegionElegida })}</span>
             <button type="button" onClick={() => setRegion(null)} className="inline-flex items-center gap-1 rounded text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              <X className="h-3 w-3" aria-hidden="true" />
+              <ICONO_GEO_ANALITICA.quitarFiltro className={`${CLASE_TAMANO_ICONO.meta} shrink-0`} strokeWidth={TRAZO_ICONO} aria-hidden="true" />
               {t('quitarFiltro')}
             </button>
           </p>

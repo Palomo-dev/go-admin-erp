@@ -130,7 +130,8 @@ describe('importarSitioLegacy', () => {
     expect(documento.identidad.alturaLogo).toEqual({ mode: 'value', value: 56 });
     expect(documento.seo.palabrasClave).toEqual({ mode: 'clear' });
     expect(documento.contenido.redesSociales).toEqual({ mode: 'value', value: { instagram: 'https://example.com/ig' } });
-    expect(documento.contenido.horarios).toEqual({ mode: 'clear' });
+    // Horario único (paquete F): el horario vive en la sede, no en el documento.
+    expect(documento.contenido.horarios).toBeUndefined();
   });
 
   test('D12: las columnas sin efecto, comercio e integraciones no entran al documento', () => {

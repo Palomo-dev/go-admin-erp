@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { evaluateICPCriteria, type ICPCriterion, type ICPOperator } from './icpService';
+import { evaluateICPCriteria, type ICPCriterion, type ICPOperator, type OpportunityData } from './icpService';
 
 /**
  * Servicio CRM - Motor de asignación automática de leads.
@@ -26,7 +26,16 @@ export interface AssignmentParams {
    * estrategia `territory` los usa en vez de leer `opportunities`.
    */
   opportunityData?: OpportunityFacts;
+  /**
+   * Datos del cliente cuando se SIMULA (cliente hipotético): la estrategia
+   * `territory` los usa en vez de leer `customers`. Mismos campos que
+   * `CAMPOS_CLIENTE_TERRITORIO`.
+   */
+  customerData?: Record<string, unknown>;
 }
+
+/** Campos de `customers` que evalúan los criterios de territorio. */
+export const CAMPOS_CLIENTE_TERRITORIO = ['company_size', 'branches_count', 'current_software', 'lifecycle_stage', 'city', 'vertical_id'] as const;
 
 /** Campos de `opportunities` que evalúan los criterios de territorio. */
 export interface OpportunityFacts {
@@ -121,7 +130,7 @@ async function loadCustomerData(
 ): Promise<Record<string, unknown> | null> {
   const { data, error } = await supabase
     .from('customers')
-    .select('company_size, branches_count, current_software, lifecycle_stage, city, vertical_id')
+    .select(CAMPOS_CLIENTE_TERRITORIO.join(', '))
     .eq('id', customerId)
     .eq('organization_id', orgId)
     .maybeSingle();
@@ -131,7 +140,7 @@ async function loadCustomerData(
     return null;
   }
 
-  return data as Record<string, unknown>;
+  return data as unknown as Record<string, unknown>;
 }
 
 /**
@@ -157,6 +166,61 @@ async function loadOpportunityData(
   }
 
   return data as Record<string, unknown>;
+}
+
+// ─── Territorios ─────────────────────────────────────────────────────────────
+
+export interface TerritorioEvaluable {
+  id: string;
+  name: string;
+  criteria: TerritoryCriteria | null;
+}
+
+/** Reglas de un territorio en el formato de `evaluateICPCriteria`. */
+function criteriosDeTerritorio(orgId: number, t: TerritorioEvaluable): ICPCriterion[] {
+  return (t.criteria?.rules ?? []).map((r, idx) => ({
+    id: `territory-${t.id}-${idx}`,
+    organization_id: orgId,
+    icp_profile_id: t.id,
+    field_key: r.field_key,
+    operator: r.operator,
+    value: r.value,
+    weight: r.weight ?? 1,
+    is_required: r.is_required ?? false,
+    created_at: '',
+    updated_at: '',
+  }));
+}
+
+/** Territorios (con reglas) con los que coincide un cliente, con su fit. */
+export function territoriosQueCoinciden(
+  orgId: number,
+  territories: readonly TerritorioEvaluable[],
+  customerData: Record<string, unknown>,
+  opportunityData: OpportunityData = {},
+): { id: string; name: string; assigned_user_id?: string; fitScore: number }[] {
+  const out: { id: string; name: string; assigned_user_id?: string; fitScore: number }[] = [];
+  for (const t of territories) {
+    const reglas = criteriosDeTerritorio(orgId, t);
+    if (reglas.length === 0) continue;
+    const r = evaluateICPCriteria(reglas, customerData, opportunityData);
+    if (r.matched) out.push({ id: t.id, name: t.name, assigned_user_id: t.criteria?.assigned_user_id, fitScore: r.fit_score });
+  }
+  return out;
+}
+
+/** El territorio que gana la asignación: el de mayor fit (el primero si empatan). */
+export function mejorTerritorio(
+  orgId: number,
+  territories: readonly TerritorioEvaluable[],
+  customerData: Record<string, unknown>,
+  opportunityData: OpportunityData = {},
+): { id: string; name: string; assigned_user_id?: string; fitScore: number } | null {
+  let mejor: { id: string; name: string; assigned_user_id?: string; fitScore: number } | null = null;
+  for (const t of territoriosQueCoinciden(orgId, territories, customerData, opportunityData)) {
+    if (!mejor || t.fitScore > mejor.fitScore) mejor = t;
+  }
+  return mejor;
 }
 
 // ─── Estrategias ─────────────────────────────────────────────────────────────
@@ -240,7 +304,8 @@ async function assignTerritory(
   opportunityId: string | undefined,
   members: { user_id: string }[],
   supabase: SupabaseClient,
-  opportunityFacts?: OpportunityFacts
+  opportunityFacts?: OpportunityFacts,
+  customerFacts?: Record<string, unknown>
 ): Promise<AssignmentResult> {
   // 1. Cargar territories activas de la org
   const { data: territories, error } = await supabase
@@ -260,48 +325,17 @@ async function assignTerritory(
     };
   }
 
-  // 2. Cargar datos del customer y oportunidad
-  const customerData = await loadCustomerData(orgId, customerId, supabase);
+  // 2. Cargar datos del customer y oportunidad (o los de la simulación)
+  const customerData = customerFacts ?? (await loadCustomerData(orgId, customerId, supabase));
   if (!customerData) {
     throw new AssignmentError(`Customer no encontrado: ${customerId}`);
   }
 
   const opportunityData = opportunityFacts ?? (await loadOpportunityData(orgId, opportunityId, supabase));
 
-  // 3. Evaluar cada territorio y quedarse con el de mayor fit_score que matchee
-  let bestTerritory: { id: string; name: string; assigned_user_id?: string; fitScore: number } | null = null;
-
-  for (const t of territories as { id: string; name: string; criteria: TerritoryCriteria }[]) {
-    const criteria = t.criteria || {};
-    const rules = criteria.rules || [];
-
-    if (rules.length === 0) continue;
-
-    // Adaptar rules al formato ICPCriterion que espera evaluateICPCriteria
-    const icpCriteria: ICPCriterion[] = rules.map((r, idx) => ({
-      id: `territory-${t.id}-${idx}`,
-      organization_id: orgId,
-      icp_profile_id: t.id,
-      field_key: r.field_key,
-      operator: r.operator,
-      value: r.value,
-      weight: r.weight ?? 1,
-      is_required: r.is_required ?? false,
-      created_at: '',
-      updated_at: '',
-    }));
-
-    const result = evaluateICPCriteria(icpCriteria, customerData, opportunityData);
-
-    if (result.matched && (!bestTerritory || result.fit_score > bestTerritory.fitScore)) {
-      bestTerritory = {
-        id: t.id,
-        name: t.name,
-        assigned_user_id: criteria.assigned_user_id,
-        fitScore: result.fit_score,
-      };
-    }
-  }
+  // 3. El territorio con mayor fit_score que coincide (misma función que los
+  // conteos y la simulación de asignación).
+  const bestTerritory = mejorTerritorio(orgId, territories as TerritorioEvaluable[], customerData, opportunityData);
 
   // 4. Si no hay territorio que matchee → fallback round_robin
   if (!bestTerritory) {
@@ -450,7 +484,8 @@ export async function assignLead(
         opportunityId,
         members,
         supabase,
-        opportunityData
+        opportunityData,
+        params.customerData
       );
       break;
 

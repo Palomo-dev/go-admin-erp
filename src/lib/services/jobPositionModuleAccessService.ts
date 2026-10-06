@@ -1,5 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
+import {
+  modulosVisiblesCargo,
+  resolverCargoMiembro,
+  type FilaAccesoModulo,
+  type MiembroCargo,
+} from '@/lib/navigation/accesoCargo';
 
 export interface ModuleAccess {
   module_code: string;
@@ -45,35 +51,21 @@ export const jobPositionModuleAccessService = {
    * Obtener los códigos de módulos visibles para un cargo
    * Si no hay registros, retorna null (significa que no hay restricciones)
    * `db`: el cliente de quien llama (el de sesión en un route handler).
+   * La regla vive en `modulosVisiblesCargo` (accesoCargo.ts), la misma que usa
+   * el middleware: una sola consulta y ninguna segunda implementación.
    */
   async getVisibleModuleCodes(jobPositionId: string, db: SupabaseClient = supabase): Promise<string[] | null> {
-    // Primero verificar si existen registros para este cargo
-    const { data: allRecords, error: countError } = await db
-      .from('job_position_module_access')
-      .select('module_code')
-      .eq('job_position_id', jobPositionId);
-
-    if (countError) {
-      console.error('Error getting visible module codes:', countError);
-      return null;
-    }
-
-    // Si no hay registros, no hay restricciones
-    if (!allRecords || allRecords.length === 0) return null;
-
-    // Si hay registros, filtrar por can_view = true
     const { data, error } = await db
       .from('job_position_module_access')
-      .select('module_code')
-      .eq('job_position_id', jobPositionId)
-      .eq('can_view', true);
+      .select('module_code, can_view, can_access')
+      .eq('job_position_id', jobPositionId);
 
     if (error) {
       console.error('Error getting visible module codes:', error);
       return null;
     }
 
-    return (data || []).map(d => d.module_code);
+    return modulosVisiblesCargo((data ?? []) as FilaAccesoModulo[]);
   },
 
   /**
@@ -180,7 +172,9 @@ export const jobPositionModuleAccessService = {
     visibleModules: string[] | null;
     visiblePages: string[] | null;
   }> {
-    // Verificar si es super admin
+    // Cargo efectivo: super admin → sin restricción; si organization_members no
+    // trae el cargo, el del empleo activo. Misma regla que el middleware
+    // (`resolverCargoMiembro`, accesoCargo.ts).
     const { data: memberData } = await db
       .from('organization_members')
       .select('is_super_admin, job_position_id, id')
@@ -188,26 +182,17 @@ export const jobPositionModuleAccessService = {
       .eq('organization_id', organizationId)
       .maybeSingle();
 
-    if (memberData?.is_super_admin) {
-      return { visibleModules: null, visiblePages: null };
-    }
-
-    let jobPositionId = memberData?.job_position_id;
-
-    // Fallback: si no hay job_position_id en organization_members,
-    // buscar el cargo asignado via employments.position_id
-    if (!jobPositionId && memberData?.id) {
+    const jobPositionId = await resolverCargoMiembro(memberData as MiembroCargo | null, async (memberId) => {
       const { data: employmentData } = await db
         .from('employments')
         .select('position_id')
-        .eq('organization_member_id', memberData.id)
+        .eq('organization_member_id', memberId)
         .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
-
-      if (employmentData?.position_id) {
-        jobPositionId = employmentData.position_id;
-      }
-    }
+      return (employmentData?.position_id as string | null | undefined) ?? null;
+    });
 
     if (!jobPositionId) {
       return { visibleModules: null, visiblePages: null };

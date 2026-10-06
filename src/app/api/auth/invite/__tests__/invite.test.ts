@@ -59,6 +59,8 @@ let roleRow: Row | null;
 let branchRow: Row | null;
 let jobPositionRow: Row | null;
 let existsInAuth: boolean;
+/** Error de la base al escribir la fila (p. ej. el disparador de cupo, P0-4). */
+let errorDeEscritura: (PostgrestError & { hint?: string }) | null;
 let authUsers: Array<{ id: string; email: string; user_metadata: Row }>;
 let selectSpy: jest.Mock;
 const insertSpy = jest.fn();
@@ -79,8 +81,11 @@ interface Builder {
   limit(...args: unknown[]): Builder;
   insert(...args: unknown[]): Builder;
   update(...args: unknown[]): Builder;
+  in(...args: unknown[]): Builder;
   maybeSingle(): Promise<{ data: Row | null; error: PostgrestError | null }>;
   single(): Promise<{ data: Row | null; error: PostgrestError | null }>;
+  /** `await` directo de la consulta: lista (búsqueda de pendientes del mismo correo). */
+  then<T>(res: (v: { data: Row[] | null; error: PostgrestError | null }) => T, rej?: (e: unknown) => T): Promise<T>;
 }
 
 /** Doble mínimo de PostgREST: valida columnas de `invitations` y aplica los `.eq()`. */
@@ -117,6 +122,7 @@ function makeAdmin() {
 
       const resolver = async () => {
         if (error) return { data: null, error };
+        if ((insertado || actualizado) && errorDeEscritura) return { data: null, error: errorDeEscritura };
         if (insertado) {
           return { data: { id: 500, ...insertado, organizations: { name: 'Organización Demo' } }, error: null };
         }
@@ -160,8 +166,25 @@ function makeAdmin() {
           actualizado = payload;
           return builder;
         },
+        in(col: string, vals: unknown[]) {
+          predicates.push((row) => vals.map(String).includes(String(row[col])));
+          return builder;
+        },
         maybeSingle: resolver,
         single: resolver,
+        then(res, rej) {
+          const lista = async () => {
+            if (error) return { data: null, error };
+            const row = rowOf();
+            const match = !!row && predicates.every((p) => p(row));
+            if (actualizado) {
+              if (match && row) Object.assign(row, actualizado);
+              return { data: null, error: null };
+            }
+            return { data: match && row ? [row] : [], error: null };
+          };
+          return lista().then(res, rej);
+        },
       };
       return builder;
     },
@@ -307,6 +330,7 @@ beforeEach(() => {
   branchRow = { id: 10, organization_id: ORG_ID, is_active: true };
   jobPositionRow = null;
   existsInAuth = false;
+  errorDeEscritura = null;
   authUsers = [];
   contextoDeSesion = () => ADMIN_CTX;
 
@@ -512,6 +536,37 @@ describe('POST /api/auth/invite · alta', () => {
     expect(insertSpy).not.toHaveBeenCalled();
   });
 
+  it('una pendiente VENCIDA no bloquea: se marca expired y se crea la nueva (P1-5)', async () => {
+    pendingDuplicate = {
+      id: 3,
+      email: 'persona@ejemplo.com',
+      organization_id: ORG_ID,
+      status: 'pending',
+      expires_at: '2020-01-01T00:00:00Z',
+    };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(200);
+    expect(updateSpy).toHaveBeenCalledWith('invitations', { status: 'expired' });
+    expect(insertSpy).toHaveBeenCalledWith('invitations', expect.objectContaining({ status: 'pending' }));
+  });
+
+  it('una pendiente con vigencia en el futuro sigue siendo 409', async () => {
+    pendingDuplicate = {
+      id: 3,
+      email: 'persona@ejemplo.com',
+      organization_id: ORG_ID,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+    };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(409);
+    expect(updateSpy).not.toHaveBeenCalledWith('invitations', { status: 'expired' });
+  });
+
   it('un miembro activo de la organización es 409 YA_MIEMBRO', async () => {
     profileRow = { id: 'u-x', email: 'persona@ejemplo.com' };
     membershipRow = { id: 8, user_id: 'u-x', organization_id: ORG_ID, is_active: true };
@@ -643,5 +698,65 @@ describe('POST /api/auth/invite · origin', () => {
     expect(llamada<[string, InviteArgs]>(inviteUserByEmail)[1].redirectTo).toMatch(
       /^https:\/\/app\.goadmin\.io\/auth\/invite\?invite_code=[0-9a-f]{64}$/
     );
+  });
+});
+
+// --- Cupo del plan en la base (auditoría 2026-10, P0-4) y reenvío de vencidas (P1-5)
+describe('POST /api/auth/invite · cupo del plan y vencidas', () => {
+  const RECHAZO_CUPO = {
+    code: 'P0001',
+    hint: 'cupo_plan_usuarios',
+    message: 'El plan permite 10 usuarios y ya están ocupados 10 (9 activos y 1 invitaciones pendientes). Compra usuarios adicionales, cambia de plan o revoca una invitación.',
+  };
+
+  it('alta fuera del cupo: 409 con el mensaje de la base y sin correo', async () => {
+    errorDeEscritura = RECHAZO_CUPO;
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({ error: RECHAZO_CUPO.message, code: 'CUPO_PLAN_USUARIOS' });
+    noSeMandoNingunCorreo();
+  });
+
+  it('reenviar una vencida fuera del cupo: 409, sin correo', async () => {
+    errorDeEscritura = RECHAZO_CUPO;
+
+    const res = await POST(req(REENVIO));
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toMatchObject({ code: 'CUPO_PLAN_USUARIOS' });
+    noSeMandoNingunCorreo();
+  });
+
+  it('otro error al crear sigue siendo 500 genérico', async () => {
+    errorDeEscritura = { code: '23505', message: 'duplicate key value violates unique constraint' };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(500);
+    noSeMandoNingunCorreo();
+  });
+
+  it('una invitación ya marcada expired se puede reenviar: vuelve a pending con código y vigencia nuevos', async () => {
+    inviteRow = { ...inviteRow!, status: 'expired' };
+
+    const res = await POST(req(REENVIO));
+
+    expect(res.status).toBe(200);
+    const [, cambios] = llamada<[string, Row]>(updateSpy);
+    expect(cambios).toMatchObject({ status: 'pending' });
+    expect(cambios.code).not.toBe(CODIGO_VIEJO);
+    expect(new Date(String(cambios.expires_at)).getTime()).toBeGreaterThan(Date.now());
+    expect(inviteUserByEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('una usada o revocada no se reenvía', async () => {
+    for (const status of ['used', 'revoked']) {
+      inviteRow = { ...inviteRow!, status };
+      const res = await POST(req(REENVIO));
+      expect(res.status).toBe(404);
+    }
+    noSeMandoNingunCorreo();
   });
 });

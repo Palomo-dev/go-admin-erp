@@ -1,16 +1,32 @@
 'use client';
 
+/**
+ * Organización activa y si la persona la administra, para las pantallas de
+ * Organización y Configuración › General.
+ *
+ * Auditoría 2026-10 (P1-2, P1-3): antes esto leía `organization_members` desde
+ * el navegador, tomaba la organización de `localStorage` (y si no coincidía,
+ * la PRIMERA membresía, en silencio) y decidía «¿es admin?» con
+ * el id del rol (1 o 2) en el navegador. La pantalla podía mostrar una organización
+ * mientras las APIs (cookie de sesión) actuaban sobre otra, y quien el servidor
+ * autoriza por `admin.full_access` veía «Sin permisos».
+ *
+ * Ahora la organización y el permiso salen de `GET /api/me/capacidades` (la
+ * misma organización que usan las rutas y el mismo criterio que
+ * `withOrg({ admin: true })`). La API pública del hook no cambia.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { useCapacidades } from '@/lib/navigation/useCapacidades';
 
 interface BranchAssignment {
   branch_id: number;
   branch_name?: string;
-  role_id?: number;
 }
 
 interface UseOrgAdminReturn {
   orgId: number | null;
+  /** @deprecated Ya no se expone el rol: los permisos se resuelven en el servidor. Siempre `null`. */
   userRole: number | null;
   isOrgAdmin: boolean;
   userBranches: BranchAssignment[];
@@ -19,114 +35,69 @@ interface UseOrgAdminReturn {
   refresh: () => void;
 }
 
+interface FilaSede {
+  branch_id: number;
+  branches: { name: string | null } | { name: string | null }[] | null;
+}
+
 export function useOrgAdmin(): UseOrgAdminReturn {
-  const [orgId, setOrgId] = useState<number | null>(null);
-  const [userRole, setUserRole] = useState<number | null>(null);
+  const { datos, cargando, error: errorCapacidades, recargar } = useCapacidades();
+  const orgId = datos.organizationId;
   const [userBranches, setUserBranches] = useState<BranchAssignment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    recargar();
+  }, [recargar]);
 
+  // Sedes asignadas a la persona en la organización de la sesión (solo para mostrar).
   useEffect(() => {
-    const fetchOrgData = async () => {
-      try {
-        setLoading(true);
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setError('No hay sesión activa');
-          return;
-        }
-
-        const userId = session.user.id;
-        const currentOrgId = localStorage.getItem('currentOrganizationId');
-
-        const { data: memberData, error: memberError } = await supabase
-          .from('organization_members')
-          .select(`
-            organization_id,
-            role_id,
-            is_super_admin,
-            organizations!inner (
-              id,
-              name,
-              type_id,
-              status
-            )
-          `)
-          .eq('user_id', userId)
-          .eq('is_active', true);
-
-        if (memberError) {
-          console.error('Error fetching organization data:', memberError);
-          setError('Error al cargar la organización');
-          return;
-        }
-
-        if (!memberData || memberData.length === 0) {
-          setError('No perteneces a ninguna organización');
-          return;
-        }
-
-        let selectedOrg = memberData[0];
-        if (currentOrgId) {
-          const foundOrg = memberData.find(
-            (member) => member.organization_id.toString() === currentOrgId
-          );
-          if (foundOrg) selectedOrg = foundOrg;
-        }
-
-        setOrgId(selectedOrg.organization_id);
-        setUserRole(selectedOrg.role_id);
-
-        // Fetch branch assignments
-        const { data: orgMemberData } = await supabase
-          .from('organization_members')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('organization_id', selectedOrg.organization_id)
-          .single();
-
-        if (orgMemberData) {
-          const { data: branchData } = await supabase
-            .from('member_branches')
-            .select(`
-              branch_id,
-              branches ( name )
-            `)
-            .eq('organization_member_id', orgMemberData.id);
-
-          if (branchData && branchData.length > 0) {
-            const branches = branchData.map((assignment: any) => ({
-              branch_id: assignment.branch_id,
-              branch_name: assignment.branches?.name,
-              role_id: selectedOrg.role_id,
-            }));
-            setUserBranches(branches);
-          }
-        }
-      } catch (err) {
-        console.error('Error in useOrgAdmin:', err);
-        setError('Error inesperado');
-      } finally {
-        setLoading(false);
+    if (!orgId) {
+      setUserBranches([]);
+      return;
+    }
+    let vivo = true;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: miembro } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('organization_id', orgId)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!miembro) {
+        if (vivo) setUserBranches([]);
+        return;
       }
+      const { data } = await supabase
+        .from('member_branches')
+        .select('branch_id, branches ( name )')
+        .eq('organization_member_id', miembro.id);
+      if (!vivo) return;
+      setUserBranches(
+        ((data ?? []) as FilaSede[]).map((f) => {
+          const sede = Array.isArray(f.branches) ? f.branches[0] : f.branches;
+          return { branch_id: f.branch_id, branch_name: sede?.name ?? undefined };
+        })
+      );
+    })().catch((e: unknown) => console.warn('[useOrgAdmin] sedes de la persona', e instanceof Error ? e.message : e));
+    return () => {
+      vivo = false;
     };
-
-    fetchOrgData();
-  }, [refreshKey]);
-
-  const isOrgAdmin = userRole === 2 || userRole === 1;
+  }, [orgId, refreshKey]);
 
   return {
     orgId,
-    userRole,
-    isOrgAdmin,
+    userRole: null,
+    isOrgAdmin: datos.capacidades.gestionarOrganizacion === true || datos.esAdmin,
     userBranches,
-    loading,
-    error,
+    loading: cargando,
+    error: errorCapacidades ? 'No se pudo cargar la organización' : null,
     refresh,
   };
 }

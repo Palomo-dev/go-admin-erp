@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { reservasMesasService } from '@/components/pos/reservas-mesas/reservasMesasService';
+import { reservasMesasService, type RestaurantReservation } from '@/components/pos/reservas-mesas/reservasMesasService';
 import {
   diasAConsultar,
   reservasActivasPorMesa,
@@ -24,7 +24,17 @@ const TIC_MS = 60_000;
  * El reloj avanza cada minuto: una reserva entra y sale de «reservada» sin
  * recargar la página.
  */
-export function useReservasMesas(mesas: readonly TableWithSession[], branchFilter: number | null) {
+/**
+ * @param onReservaWeb aviso de una reserva NUEVA del sitio (tiempo real, D3):
+ *   la pantalla de Mesas muestra el mismo toast que Reservas.
+ */
+export function useReservasMesas(
+  mesas: readonly TableWithSession[],
+  branchFilter: number | null,
+  onReservaWeb?: (reserva: Partial<RestaurantReservation>) => void,
+) {
+  const avisoRef = useRef(onReservaWeb);
+  avisoRef.current = onReservaWeb;
   const { resolveFor, isLoading: zonaCargando } = useOrgTimezone();
   const [ahora, setAhora] = useState(() => new Date());
   const [reservas, setReservas] = useState<ReservaParaMesa[]>([]);
@@ -66,6 +76,16 @@ export function useReservasMesas(mesas: readonly TableWithSession[], branchFilte
       cancelado = true;
     };
   }, [desde, hasta, branchFilter, version, zonaCargando]);
+
+  // Tiempo real (migración D3): una reserva nueva o un cambio de estado hecho en
+  // otra pantalla (o desde el sitio) refresca las mesas apartadas sin recargar.
+  useEffect(() => {
+    const cancelar = reservasMesasService.subscribeToReservations(({ tipo, reserva }) => {
+      if (tipo === 'INSERT' && reserva.source === 'website') avisoRef.current?.(reserva);
+      setVersion((v) => v + 1);
+    }, branchFilter);
+    return cancelar;
+  }, [branchFilter]);
 
   const activas: Map<string, ReservaActivaMesa> = useMemo(
     () => reservasActivasPorMesa(reservas, ahora, zonaDe),

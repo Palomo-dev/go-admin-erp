@@ -3,14 +3,19 @@
 /**
  * Tarjeta de una campaña (UXM-D): estado legible, destino en lenguaje humano,
  * agente, topes y una sola acción (Activar / Parada de emergencia) a ancho
- * completo en móvil.
+ * completo en móvil. En marcha, la línea «llama sola cada N min · próxima
+ * pasada» y los motivos que la frenan como chips (`CampaignBlockChips`).
  */
 
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, OctagonX, Play } from "lucide-react";
+import { ChevronRight, Loader2, OctagonX, Play } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { clasesBoton } from "@/components/kit/botonClases";
 import type { PipelineOption, StageOption } from "@/components/crm/shared/useCrmLookups";
+import type { DiagnosticoCampana, Motivo } from "@/lib/services/crm/voiceCampaignDiagnostics";
+import { CampaignBlockChips } from "./CampaignBlockChips";
 import {
   campaignCanActivate,
   campaignStatusView,
@@ -24,9 +29,13 @@ interface Props {
   busy: boolean;
   onActivate: (c: CampaignRow) => void;
   onStop: (c: CampaignRow) => void;
+  /** Diagnóstico de ESTA campaña (chips «por qué no marca»). */
+  diagnostico?: DiagnosticoCampana;
+  motivosOrganizacion?: readonly Motivo[];
 }
 
-export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate, onStop }: Props) {
+export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate, onStop, diagnostico, motivosOrganizacion = [] }: Props) {
+  const t = useTranslations("crm.campanaVoz");
   const status = campaignStatusView(c);
   const canActivate = campaignCanActivate(c);
   return (
@@ -65,12 +74,17 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
           </dd>
         </div>
       </dl>
+      <CampaignBlockChips campana={diagnostico} organizacion={motivosOrganizacion} />
       {status.detail && (
         <p className="mt-2 break-words text-xs text-red-700 dark:text-red-300" role="status">
           {status.detail}
         </p>
       )}
-      <div className="mt-3">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <a href={`/app/crm/campanas/voz/${encodeURIComponent(c.id)}`} className={`${clasesBoton({ variante: "secundario", tamano: "sm" })} w-full sm:w-auto`}>
+          {t("verDetalle")}
+          <ChevronRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        </a>
         {canActivate ? (
           <Button
             size="sm"

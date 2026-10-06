@@ -326,12 +326,52 @@ export async function evaluateTrigger(
 
   const matching: AutomationRule[] = [];
   for (const rule of (rules ?? []) as AutomationRule[]) {
-    if (options?.eventType && rule.event && rule.event !== options.eventType) continue;
-    if (!matchesTriggerConfig(rule, triggerType, triggerPayload)) continue;
+    if (!reglaCoincideConEvento(rule, triggerType, options?.eventType ?? null, triggerPayload)) continue;
     if (!evaluateConditionTree(rule.conditions, ctx).result) continue;
     matching.push(rule);
   }
   return matching;
+}
+
+/**
+ * ¿Le corresponde este evento a la regla? (columna `event` + ámbito de
+ * `matchesTriggerConfig`). La usan el motor (`evaluateTrigger`) y la prueba en
+ * seco retroactiva, para que los dos digan lo mismo.
+ */
+export function reglaCoincideConEvento(
+  rule: Pick<AutomationRule, 'event' | 'trigger_config' | 'pipeline_id' | 'stage_id'>,
+  triggerType: AutomationTriggerType,
+  eventType: string | null,
+  payload: Record<string, unknown>,
+): boolean {
+  if (eventType && rule.event && rule.event !== eventType) return false;
+  return matchesTriggerConfig(rule, triggerType, payload);
+}
+
+/**
+ * Por qué una regla ACTIVA no se ejecutaría con este contexto: condiciones,
+ * `run_once_per_opportunity` o `cooldown_hours`, en ese orden. `null` = se
+ * ejecutaría. `haCorrido(desde?)` responde si ya hubo una ejecución (real o, en
+ * la simulación, simulada). Única fuente de la decisión: la usan
+ * `executeAutomationRule` y la prueba en seco retroactiva.
+ */
+export async function motivoParaNoAplicar(
+  rule: Pick<AutomationRule, 'conditions' | 'run_once_per_opportunity' | 'cooldown_hours'>,
+  ctx: RuleContext,
+  opportunityId: string | null,
+  now: Date,
+  haCorrido: (desdeIso?: string) => Promise<boolean>,
+): Promise<{ motivo: 'conditions_not_met' | 'run_once_per_opportunity' | 'cooldown' | null; trace: ReturnType<typeof evaluateConditionTree>['trace'] }> {
+  const evaluated = evaluateConditionTree(rule.conditions, ctx);
+  if (!evaluated.result) return { motivo: 'conditions_not_met', trace: evaluated.trace };
+  if (opportunityId && rule.run_once_per_opportunity && (await haCorrido())) {
+    return { motivo: 'run_once_per_opportunity', trace: evaluated.trace };
+  }
+  if (opportunityId && (rule.cooldown_hours ?? 0) > 0) {
+    const since = new Date(now.getTime() - rule.cooldown_hours * 3_600_000).toISOString();
+    if (await haCorrido(since)) return { motivo: 'cooldown', trace: evaluated.trace };
+  }
+  return { motivo: null, trace: evaluated.trace };
 }
 
 /** Coincidencia del ámbito de la regla (etapa / pipeline / campo / evento). */
@@ -498,20 +538,12 @@ export async function executeAutomationRule(
     supabase,
   );
 
-  // 3. Condiciones.
-  const evaluated = evaluateConditionTree(automationRule.conditions, ctx);
-  if (!evaluated.result) {
-    return skip('conditions_not_met', { trace: evaluated.trace });
-  }
-
-  // 4. run_once / cooldown.
-  if (opportunityId && automationRule.run_once_per_opportunity) {
-    if (await alreadyRan(supabase, orgId, ruleId, opportunityId)) return skip('run_once_per_opportunity');
-  }
-  if (opportunityId && (automationRule.cooldown_hours ?? 0) > 0) {
-    const since = new Date(now.getTime() - automationRule.cooldown_hours * 3_600_000).toISOString();
-    if (await alreadyRan(supabase, orgId, ruleId, opportunityId, since)) return skip('cooldown');
-  }
+  // 3. Condiciones, run_once y cooldown (misma decisión que la prueba en seco).
+  const decision = await motivoParaNoAplicar(automationRule, ctx, opportunityId, now, (since) =>
+    alreadyRan(supabase, orgId, ruleId, opportunityId as string, since),
+  );
+  if (decision.motivo === 'conditions_not_met') return skip('conditions_not_met', { trace: decision.trace });
+  if (decision.motivo) return skip(decision.motivo);
 
   const actions = (automationRule.actions || []) as AutomationAction[];
   const run = await insertRun(supabase, {
@@ -566,6 +598,16 @@ export async function executeAutomationRule(
   return finished;
 }
 
+/** Plan de acciones que se mostraría en una prueba en seco (sin ejecutar nada). */
+export function planDeAcciones(rule: Pick<AutomationRule, 'actions'>): { index: number; type: string | null; implemented: boolean }[] {
+  return (rule.actions || []).map((a, i) => ({
+    index: i,
+    type: a?.type ?? null,
+    implemented: (AUTOMATION_ACTION_TYPES as readonly string[]).includes(String(a?.type))
+      && !(NOT_IMPLEMENTED_ACTIONS as readonly string[]).includes(String(a?.type)),
+  }));
+}
+
 /**
  * Ejecución en seco: evalúa condiciones y devuelve el plan sin tocar nada
  * (no escribe `automation_runs`).
@@ -588,12 +630,7 @@ export async function testRunAutomationRule(
   const r = rule as AutomationRule;
   const ctx = await loadRuleContext({ orgId, opportunityId }, supabase);
   const evaluated = evaluateConditionTree(r.conditions, ctx);
-  const plan = (r.actions || []).map((a, i) => ({
-    index: i,
-    type: a?.type ?? null,
-    implemented: (AUTOMATION_ACTION_TYPES as readonly string[]).includes(String(a?.type))
-      && !(NOT_IMPLEMENTED_ACTIONS as readonly string[]).includes(String(a?.type)),
-  }));
+  const plan = planDeAcciones(r);
 
   return {
     matched: r.is_active && evaluated.result,

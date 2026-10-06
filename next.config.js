@@ -7,12 +7,18 @@
  */
 const REDIRECCIONES_SITIO_WEB = [
   { source: '/app/organizacion/branding', destination: '/app/sitio-web', permanent: true },
-  { source: '/app/organizacion/branding/reviews', destination: '/app/sitio-web/tienda', permanent: true },
+  // Las reseñas son de productos del catálogo web: llegan a la pestaña Reseñas de Tienda.
+  { source: '/app/organizacion/branding/reviews', destination: '/app/sitio-web/tienda?tab=resenas', permanent: true },
   { source: '/app/organizacion/branding/editor/:pageId', destination: '/app/sitio-web/editor/:pageId', permanent: true },
   { source: '/app/organizacion/branding/:path*', destination: '/app/sitio-web', permanent: true },
   { source: '/organizacion/branding/editor/:pageId', destination: '/app/sitio-web/editor/:pageId', permanent: true },
   { source: '/app/organizacion/dominios', destination: '/app/sitio-web/dominios', permanent: true },
   { source: '/app/inicio/analitica-web', destination: '/app/sitio-web/analitica', permanent: true },
+  // Menú y navegación es una vista de Páginas (Figma A/04c), sin entrada propia.
+  { source: '/app/sitio-web/menu', destination: '/app/sitio-web/paginas/menu', permanent: true },
+  // «Reservas web» (Figma B/P01-P13) es la pestaña Configuración de POS ›
+  // Reservas de mesas; no se duplica como página del módulo (P12 nota 1).
+  { source: '/app/sitio-web/reservas', destination: '/app/pos/reservas-mesas?tab=configuracion', permanent: true },
 ];
 
 /** @type {import('next').NextConfig} */

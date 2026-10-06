@@ -6,7 +6,7 @@ import { Check, Kanban, Pencil, Plus, Star, type LucideIcon } from 'lucide-react
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
-import { TIPO, type PipelineSelector } from './SelectorPipeline';
+import { lineaPipeline, TIPO, type AbiertasSelector, type PipelineSelector } from './SelectorPipeline';
 
 /**
  * Selector de embudo en móvil (Figma CRM 1815:175513, hoja 1821:189325): el
@@ -15,13 +15,14 @@ import { TIPO, type PipelineSelector } from './SelectorPipeline';
  * actual) y las acciones «Nuevo pipeline», «Editar etapas» y «Usar como por
  * defecto», deshabilitadas CON su motivo como en el selector de escritorio.
  *
- * Los conteos por pipeline (abiertas, monto) del Figma no se pintan:
- * `/api/crm/pipelines` no los trae y el cliente solo conoce los del actual.
+ * Cada embudo dice «N abiertas · monto · N etapas» con el resumen de
+ * `GET /api/crm/pipelines?resumen=1` (monto en la moneda base).
  */
 export interface SelectorPipelineMovilProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
   pipelines: readonly PipelineSelector[];
+  abiertas?: (pipelineId: string) => AbiertasSelector | null;
   actualId: string | null;
   onElegir: (id: string) => void;
   puedeGestionar: boolean;
@@ -86,7 +87,7 @@ export function SelectorPipelineMovil(p: SelectorPipelineMovilProps) {
                       <Badge tono="neutro" tamano="sm">{t(`tipos.${TIPO[x.pipeline_type]}`)}</Badge>
                     ) : null}
                   </span>
-                  <span className="text-[13px] text-fg-secondary">{t('etapas', { n: x.stages?.length ?? 0 })}</span>
+                  <span className="text-[13px] text-fg-secondary">{lineaPipeline(t, x, p.abiertas?.(x.id))}</span>
                 </span>
                 {esActual && <Check aria-hidden="true" className="size-5 shrink-0 text-brand" />}
               </button>

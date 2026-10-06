@@ -290,6 +290,71 @@ export async function resumenOportunidades(
   return { ...agregado, tasas, truncado, base: opciones.base };
 }
 
+// ─── Abiertas por pipeline (selector de embudo) ─────────────────────────────
+
+export interface AbiertasPipelineApi {
+  cantidad: number;
+  grupos: GrupoMonedaApi[];
+}
+
+export interface ResumenPipelinesApi {
+  base: string;
+  /** pipeline_id → abiertas (cantidad y monto por moneda). Un pipeline sin abiertas no aparece. */
+  por_pipeline: Record<string, AbiertasPipelineApi>;
+  tasas: ResumenOportunidadesApi['tasas'];
+  truncado: boolean;
+}
+
+/** Agrupa filas abiertas por pipeline y moneda (pura; la prueba la usa directo). */
+export function agregarAbiertasPorPipeline(
+  filas: readonly { pipeline_id: string; amount: number | string | null; currency: string | null }[],
+  base: string,
+): Record<string, AbiertasPipelineApi> {
+  const mapa = new Map<string, Map<string, GrupoMonedaApi>>();
+  for (const r of filas) {
+    const grupos = mapa.get(r.pipeline_id) ?? new Map<string, GrupoMonedaApi>();
+    sumar(grupos, (r.currency ?? '').trim().toUpperCase() || base, num(r.amount));
+    mapa.set(r.pipeline_id, grupos);
+  }
+  const salida: Record<string, AbiertasPipelineApi> = {};
+  mapa.forEach((grupos, id) => {
+    const lista = [...grupos.values()];
+    salida[id] = { cantidad: lista.reduce((s, g) => s + g.cantidad, 0), grupos: lista };
+  });
+  return salida;
+}
+
+/**
+ * «N abiertas · $ monto» de cada pipeline de la organización (Figma 1821:189325,
+ * hoja «Embudos» y selector de escritorio). Lee 3 columnas de las abiertas en
+ * páginas de 1000 hasta `TOPE_RESUMEN`, igual que el resumen del tablero; el
+ * monto se convierte a la base en la interfaz con las tasas que se devuelven.
+ */
+export async function resumenAbiertasPorPipeline(ctx: CrmSesion, opciones: { base: string; hoy: string | null }): Promise<ResumenPipelinesApi> {
+  const filas: { pipeline_id: string; amount: number | string | null; currency: string | null }[] = [];
+  let truncado = false;
+  for (let desde = 0; ; desde += PAGINA_RESUMEN) {
+    const { data, error } = await ctx.supabase
+      .from('opportunities')
+      .select('pipeline_id, amount, currency')
+      .eq('organization_id', ctx.organizationId)
+      .eq('status', 'open')
+      .order('id', { ascending: true })
+      .range(desde, desde + PAGINA_RESUMEN - 1);
+    if (error) throw error;
+    const pagina = (data ?? []) as typeof filas;
+    filas.push(...pagina);
+    if (pagina.length < PAGINA_RESUMEN) break;
+    if (filas.length >= TOPE_RESUMEN) {
+      truncado = true;
+      break;
+    }
+  }
+  const monedas = [...new Set(filas.map((r) => (r.currency ?? '').trim().toUpperCase()).filter((m) => /^[A-Z]{3}$/.test(m) && m !== opciones.base))];
+  const tasas = await tasasDe(ctx, monedas.length ? [...monedas, opciones.base] : [], opciones.hoy);
+  return { base: opciones.base, por_pipeline: agregarAbiertasPorPipeline(filas, opciones.base), tasas, truncado };
+}
+
 /** Parámetros de periodo del resumen (`period_from`/`period_to` `date`, `since` instante). */
 export function periodoDesdeQuery(sp: URLSearchParams) {
   const desde = sp.get('period_from');

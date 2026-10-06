@@ -57,7 +57,9 @@ export type MotivoCodigo =
   | 'objetivos_sin_telefono'
   | 'objetivos_sin_consentimiento'
   | 'twilio_no_verificable'
-  | 'sin_politica_datos';
+  | 'sin_politica_datos'
+  /** Filas que el despachador reprogramó por la Ley 2300 (fuera de horario o tope semanal) y esperan su ventana. */
+  | 'ley2300_reprogramadas';
 
 export interface Motivo {
   codigo: MotivoCodigo;
@@ -67,12 +69,29 @@ export interface Motivo {
   datos?: Record<string, number | string>;
 }
 
+/**
+ * Motivo de la compuerta REAL de reclamo (`crm_voice_call_claim_motivo`, la
+ * misma función que decide `fn_claim_voice_agent_calls`) con cuántas filas
+ * pendientes de la campaña frena y la próxima hora programada.
+ */
+export interface BloqueoCompuerta {
+  motivo: string;
+  cantidad: number;
+  proximo: string | null;
+}
+
 export interface DiagnosticoCampana {
   id: string;
   nombre: string;
   estado: string;
   /** Vacío = esta campaña puede marcar ahora mismo. */
   motivos: Motivo[];
+  /**
+   * Pendientes agrupadas por el motivo de la compuerta (solo campañas en
+   * marcha). `null` = la RPC `crm_voice_campana_bloqueos` aún no existe
+   * (migración pendiente 20261006210000): el panel usa solo `motivos`.
+   */
+  compuerta?: BloqueoCompuerta[] | null;
 }
 
 export interface DiagnosticoVoz {
@@ -183,18 +202,63 @@ export async function diagnosticarCampanasDeVoz(
 
   const campanas: DiagnosticoCampana[] = [];
   for (const c of campanasRaw) {
-    campanas.push({
-      id: c.id,
-      nombre: c.name,
-      estado: c.status,
-      motivos: await diagnosticarUna(orgId, supabase, c),
-    });
+    const motivos = await diagnosticarUna(orgId, supabase, c);
+    const enMarcha = c.status === 'running' && !c.emergency_stop;
+    const compuerta = enMarcha ? await bloqueosDeCompuerta(orgId, supabase, c.id) : null;
+    // Sin la RPC, las reprogramadas por la Ley 2300 se cuentan desde las filas
+    // que el propio despachador marcó (`last_error_code = 'LEY2300'`).
+    if (enMarcha && compuerta === null) {
+      const ley = await reprogramadasLey2300(orgId, supabase, c.id);
+      if (ley) motivos.push(ley);
+    }
+    campanas.push({ id: c.id, nombre: c.name, estado: c.status, motivos, compuerta });
   }
 
   const puedeLlamar =
     !organizacion.some((m) => m.bloquea) && campanas.some((c) => c.motivos.every((m) => !m.bloquea));
 
   return { organizacion, campanas, puedeLlamar };
+}
+
+/** ¿La RPC todavía no existe? (PostgREST la busca en su caché de esquema). */
+function rpcInexistente(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === 'PGRST202' || error.code === '42883' || /could not find the function/i.test(error.message ?? ''));
+}
+
+/**
+ * Motivos de la compuerta real para las pendientes de una campaña
+ * (`crm_voice_campana_bloqueos`, solo service_role). `null` si la migración
+ * aún no se aplicó; cualquier otro error se propaga (fail-closed: el panel
+ * muestra el error, no un «todo listo» falso).
+ */
+async function bloqueosDeCompuerta(orgId: number, supabase: SupabaseClient, campaignId: string): Promise<BloqueoCompuerta[] | null> {
+  const { data, error } = await supabase.rpc('crm_voice_campana_bloqueos', { p_org: orgId, p_campaign: campaignId, p_limite: 200 });
+  if (rpcInexistente(error)) return null;
+  if (error) throw new Error(`crm_voice_campana_bloqueos: ${error.message}`);
+  return ((data ?? []) as { motivo: string; cantidad: number; proximo: string | null }[]).map((r) => ({
+    motivo: r.motivo,
+    cantidad: Number(r.cantidad) || 0,
+    proximo: r.proximo ?? null,
+  }));
+}
+
+/** Pendientes reprogramadas por la Ley 2300 que aún esperan su ventana. */
+async function reprogramadasLey2300(orgId: number, supabase: SupabaseClient, campaignId: string): Promise<Motivo | null> {
+  const { data, count, error } = await supabase
+    .from('voice_agent_calls')
+    .select('scheduled_at', { count: 'exact' })
+    .eq('organization_id', orgId)
+    .eq('campaign_id', campaignId)
+    .eq('status', 'pending')
+    .eq('last_error_code', 'LEY2300')
+    .gt('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(1);
+  if (error) throw new Error(`voice_agent_calls: ${error.message}`);
+  const n = count ?? 0;
+  if (n === 0) return null;
+  const proxima = (data?.[0] as { scheduled_at?: string } | undefined)?.scheduled_at ?? '';
+  return { codigo: 'ley2300_reprogramadas', bloquea: false, datos: { n, proxima } };
 }
 
 async function diagnosticarUna(

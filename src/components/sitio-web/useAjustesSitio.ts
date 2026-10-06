@@ -14,8 +14,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
 import { websiteSettingsService, type WebsiteSettings } from '@/lib/services/websiteSettingsService';
+import { useUrlSitio } from './useUrlSitio';
 
 export type TipoImagenSitio = 'favicon' | 'og_image' | 'hero' | 'gallery';
 
@@ -24,6 +24,10 @@ export interface AjustesSitio {
   organizationName: string | undefined;
   organizationTypeId: number | null;
   subdominio: string | null;
+  /** Host público (dominio propio principal verificado o `<subdominio>.goadmin.io`). */
+  hostSitio: string | null;
+  /** `https://<hostSitio>`, o `null`. */
+  urlSitio: string | null;
   settings: WebsiteSettings | null;
   cargando: boolean;
   guardando: boolean;
@@ -56,21 +60,9 @@ export function useAjustesSitio(): AjustesSitio {
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [subdominio, setSubdominio] = useState<string | null>(null);
-
-  const cargarSubdominio = useCallback(async () => {
-    if (!organizationId) return;
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('subdomain')
-      .eq('id', organizationId)
-      .single();
-    if (error) {
-      console.error('Error cargando el subdominio:', error);
-      return;
-    }
-    setSubdominio(data?.subdomain || null);
-  }, [organizationId]);
+  // Subdominio y dominio propio: una sola consulta y una sola regla (useUrlSitio).
+  const sitio = useUrlSitio(organizationId);
+  const recargarUrl = sitio.recargar;
 
   const cargarAjustes = useCallback(async () => {
     if (!organizationId) return;
@@ -92,12 +84,11 @@ export function useAjustesSitio(): AjustesSitio {
 
   useEffect(() => {
     void cargarAjustes();
-    void cargarSubdominio();
-  }, [cargarAjustes, cargarSubdominio]);
+  }, [cargarAjustes]);
 
   const recargar = useCallback(async () => {
-    await Promise.all([cargarAjustes(), cargarSubdominio()]);
-  }, [cargarAjustes, cargarSubdominio]);
+    await Promise.all([cargarAjustes(), recargarUrl()]);
+  }, [cargarAjustes, recargarUrl]);
 
   const guardar = useCallback(
     async (data: Partial<WebsiteSettings>) => {
@@ -184,7 +175,9 @@ export function useAjustesSitio(): AjustesSitio {
     organizationId,
     organizationName: organization?.name,
     organizationTypeId: organization?.type_id ?? null,
-    subdominio,
+    subdominio: sitio.subdominio,
+    hostSitio: sitio.host,
+    urlSitio: sitio.url,
     settings,
     cargando,
     guardando,

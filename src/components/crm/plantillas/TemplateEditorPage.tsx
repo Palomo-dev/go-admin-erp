@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Blocks, Code2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { EmailBlockEditor } from '@/components/crm/email/editor/EmailBlockEditor';
 import { EmailHtmlEditor } from '@/components/crm/email/EmailHtmlEditor';
 import { EmailPreview } from '@/components/crm/email/EmailPreview';
@@ -69,18 +69,22 @@ export function TemplateEditorPage({ templateId }: { templateId?: string }) {
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Tabs value={ed.form.engine} onValueChange={(v) => switchEngine(v as TemplateEngine)}>
-          <TabsList aria-label="Modo de edición">
-            <TabsTrigger value="blocks" className="gap-1"><Blocks className="h-3.5 w-3.5" aria-hidden="true" /> Bloques</TabsTrigger>
-            <TabsTrigger value="html" className="gap-1"><Code2 className="h-3.5 w-3.5" aria-hidden="true" /> HTML</TabsTrigger>
-          </TabsList>
-          <TabsContent value="blocks" className="mt-3">
-            <EmailBlockEditor value={ed.form.doc} onChange={(doc) => ed.patch({ doc })} context={ed.context} heightClassName="h-[65vh]" />
-          </TabsContent>
-          <TabsContent value="html" className="mt-3">
-            <EmailHtmlEditor value={ed.form.html} onChange={(html) => ed.patch({ html })} context={ed.context} minHeight={520} />
-          </TabsContent>
-        </Tabs>
+        {/* Bloques / HTML: dos VISTAS del mismo cuerpo → control segmentado (regla de pestañas 2026-10-06). */}
+        <div className="min-w-0">
+          <SegmentedControl
+            etiqueta="Modo de edición"
+            valor={ed.form.engine}
+            onValorChange={(v) => switchEngine(v)}
+            opciones={[
+              { valor: 'blocks' as TemplateEngine, etiqueta: 'Bloques', icono: Blocks },
+              { valor: 'html' as TemplateEngine, etiqueta: 'HTML', icono: Code2 },
+            ]}
+          />
+          <div className="mt-3">
+            {ed.form.engine === 'html' && <EmailHtmlEditor value={ed.form.html} onChange={(html) => ed.patch({ html })} context={ed.context} minHeight={520} />}
+            {ed.form.engine === 'blocks' && <EmailBlockEditor value={ed.form.doc} onChange={(doc) => ed.patch({ doc })} context={ed.context} heightClassName="h-[65vh]" />}
+          </div>
+        </div>
         <EmailPreview data={ed.preview} loading={ed.previewLoading} error={ed.previewError} heightClassName="h-[58vh]" />
       </div>
 

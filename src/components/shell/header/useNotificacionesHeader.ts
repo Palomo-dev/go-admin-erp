@@ -17,8 +17,11 @@
  * - la lectura es por persona (`notification_reads`) y «marcar todas» va por
  *   RPC atómica.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useTaskReminders } from '@/lib/hooks/useTaskReminders';
 import { useOptimizedModules } from '@/hooks/useOptimizedModules';
 
@@ -388,9 +391,49 @@ export function useNotificacionesHeader(organizationId: string | null) {
 
   const recordatorios = pmActivo ? taskReminders : [];
 
+  // Pedido web nuevo (E6): el texto de la base es neutro (lo usa el push); en
+  // la campana el título y el total se arman aquí, traducidos y con la moneda
+  // del pedido (o la de la organización) y su formato.
+  const tPedido = useTranslations('pedidoWeb');
+  const moneda = useMonedaOrganizacion();
+  const presentar = useCallback(
+    (n: NotificacionHeader): NotificacionHeader => {
+      const p = n.payload ?? {};
+      if (p.type !== 'web_order_created') return n;
+      const total = Number(p.total);
+      const numero = typeof p.order_number === 'string' ? p.order_number : '';
+      if (!numero || !Number.isFinite(total)) return n;
+      const tipo = typeof p.delivery_type === 'string' ? p.delivery_type : '';
+      const mesa = typeof p.table_name === 'string' && p.table_name ? p.table_name : null;
+      const entrega =
+        tipo === 'dine_in'
+          ? mesa
+            ? tPedido('comerAquiMesa', { mesa })
+            : tPedido('comerAqui')
+          : tipo === 'pickup'
+            ? tPedido('aviso.recoger')
+            : tPedido('aviso.domicilio');
+      const formatear = crearFormateadorMoneda(moneda.paraDocumento(typeof p.currency === 'string' ? p.currency : null));
+      const sede = typeof p.branch_name === 'string' && p.branch_name ? p.branch_name : null;
+      return {
+        ...n,
+        payload: {
+          ...p,
+          title: tPedido('aviso.titulo', { numero, entrega }),
+          content: sede
+            ? tPedido('aviso.contenidoSede', { total: formatear(total), sede })
+            : tPedido('aviso.contenido', { total: formatear(total) }),
+        },
+      };
+    },
+    [tPedido, moneda],
+  );
+  const miasPresentadas = useMemo(() => mias.map(presentar), [mias, presentar]);
+  const todasPresentadas = useMemo(() => todas.map(presentar), [todas, presentar]);
+
   return {
-    mias,
-    todas,
+    mias: miasPresentadas,
+    todas: todasPresentadas,
     noLeidasMias,
     noLeidasTodas,
     cargando,

@@ -1,5 +1,6 @@
 'use client';
 
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
 import { useWebOrderDetail } from './hooks/useWebOrderDetail';
 import {
@@ -49,7 +50,8 @@ export default function WebOrderDetailPage() {
     handleCancelOrder,
     handleConvertToSale,
     handleCreateShipment,
-    handleMarkAsPaid,
+    handleCobrar,
+    sinCajaAbierta,
     loadOrder,
   } = useWebOrderDetail(orderId);
 
@@ -88,7 +90,8 @@ export default function WebOrderDetailPage() {
             onMarkDelivered={handleMarkDelivered}
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
-            onMarkAsPaid={handleMarkAsPaid}
+            onCobrar={handleCobrar}
+            sinCajaAbierta={sinCajaAbierta}
             isLoading={actionLoading}
           />
           <OrderCustomerCard order={order} />
@@ -114,7 +117,7 @@ export default function WebOrderDetailPage() {
         onPrepTimeChange={setPrepTime}
         transitTime={transitTime}
         onTransitTimeChange={setTransitTime}
-        isDelivery={order?.delivery_type !== 'pickup'}
+        isDelivery={esDomicilio(order?.delivery_type)}
         onConfirm={handleConfirmOrder}
         markAsPaid={markAsPaid}
         onMarkAsPaidChange={setMarkAsPaid}

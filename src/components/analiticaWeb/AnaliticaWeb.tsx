@@ -1,44 +1,39 @@
 'use client';
 
 /**
- * Pantalla «Analítica web» (Figma 03 › 464:237482: listo 464:237485, sin
- * ubicación 465:241025, cargando 465:241434, móvil 465:241800 / 465:241980).
+ * Cuerpo de «Analítica» del módulo Sitio web (Figma B/09-01 escritorio,
+ * B/09-02 móvil, B/09-03 estados; E-analitica/02 y 16). La cabecera la pone la
+ * página con `MarcoSitioWeb` («Actualizar», «Exportar CSV»); el estado vive en
+ * `useAnaliticaWeb` (una sola lectura de cada ruta del servidor).
  *
- * Datos: `GET /api/analitica-web` (organización de la sesión, permiso en el
- * servidor, RPC `fn_analitica_web`). Aquí no se calcula nada de negocio salvo
- * derivados de presentación (`lib/analiticaWeb`).
+ * Se conserva lo que ya había (KPIs, embudo, evolución y geografía) y se
+ * añaden fuentes, páginas más vistas, conversión a pedido y a reserva (esta,
+ * solo restaurante) y el hueco de «Píxeles y medición».
  *
- * - Periodo: atajos + personalizado; «hoy» en la zona de la sucursal activa o,
- *   si no tiene, de la organización (`useFormatDate().getToday()`, regla única).
- * - Sucursal: la del header. Las visitas son de la tienda (no tienen sucursal);
- *   los pedidos y la venta media sí la respetan.
+ * Datos: `GET /api/analitica-web` (RPC `fn_analitica_web`) y
+ * `GET /api/sitio-web/analitica/trafico` (RPC `fn_analitica_web_trafico`).
+ * Aquí no se calcula negocio salvo derivados de presentación (`lib/analiticaWeb`).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Download, RefreshCw } from 'lucide-react';
-import { SegmentedControl, DateRangeButton, type RangoFechas } from '@/components/kit';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { useBranchOpcional } from '@/lib/context/BranchContext';
-import { useOrganization } from '@/lib/hooks/useOrganization';
+import { toast } from 'sonner';
+import { BranchBadge, DateRangeButton, EmptyState, KpiStrip, SegmentedControl, StatCard, StatusBadge, Tarjeta, useEsEscritorio } from '@/components/kit';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   PERIODOS_ANALITICA,
-  csvAnalitica,
   embudo as calcularEmbudo,
   indicadores as calcularIndicadores,
-  rangoDePeriodo,
-  type DatosAnalitica,
   type PeriodoAnalitica,
 } from '@/lib/analiticaWeb/analiticaWeb';
-import { debeAbrirColombia } from '@/lib/analiticaWeb/mapa';
+import { useTextosSeoAnalitica } from '@/components/sitio-web/seoanalitica/textos';
 import { GraficoVisitas } from './GraficoVisitas';
 import { DeDondeEntran } from './DeDondeEntran';
-
-type Estado =
-  | { tipo: 'cargando' }
-  | { tipo: 'error' }
-  | { tipo: 'sinPermiso' }
-  | { tipo: 'listo'; datos: DatosAnalitica; puedeExportar: boolean };
+import { ConversionPedido, ConversionReserva, DeDondeLlegan, PaginasMasVistas } from './BloquesTrafico';
+import type { AnaliticaWebEstado } from './useAnaliticaWeb';
+import { ICONO_BLOQUE_ANALITICA, ICONO_KPI_ANALITICA } from './iconosAnalitica';
+import { ICONO_ACCION_SEO } from '@/components/sitio-web/seoanalitica/iconosSeoAnalitica';
+import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '@/components/sitio-web/ui/iconosSitio';
 
 const ETIQUETA_PERIODO: Record<Exclude<PeriodoAnalitica, 'personalizado'>, string> = {
   hoy: 'today',
@@ -49,300 +44,282 @@ const ETIQUETA_PERIODO: Record<Exclude<PeriodoAnalitica, 'personalizado'>, strin
   año: 'year',
 };
 
-function Tarjeta({ etiqueta, valor, detalle }: { etiqueta: string; valor: string; detalle?: string }) {
+export interface AnaliticaWebProps {
+  a: AnaliticaWebEstado;
+  /** Dirección pública (para «Copiar enlace» del vacío). */
+  host: string | null;
+  /** «Píxeles y medición» (B/09-01): lo pone la página del módulo. */
+  pixeles?: ReactNode;
+}
+
+/** Esqueleto de B/09-03 y de cada bloque de E-analitica/02. */
+export function EsqueletoAnalitica() {
   return (
-    <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-line bg-surface p-3">
-      <p className="truncate text-xs font-medium text-fg-secondary">{etiqueta}</p>
-      <p className="text-xl font-semibold tabular-nums text-fg">{valor}</p>
-      {detalle && <p className="truncate text-xs text-fg-secondary">{detalle}</p>}
+    <div className="flex flex-col gap-4 lg:gap-6" aria-busy="true" data-testid="esqueleto-analitica">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
     </div>
   );
 }
 
-function Seccion({ titulo, children, accion }: { titulo: string; children: React.ReactNode; accion?: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-fg">{titulo}</h2>
-        {accion}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-export function AnaliticaWeb() {
+export function AnaliticaWeb({ a, host, pixeles }: AnaliticaWebProps) {
+  const esRestaurante = a.trafico.conReservas;
   const t = useTranslations('analiticaWeb');
   const tp = useTranslations('home.periods');
+  const ts = useTextosSeoAnalitica();
   const locale = useLocale();
-  const { getToday } = useFormatDate();
-  const sucursalCtx = useBranchOpcional();
-  const { organization } = useOrganization();
   const moneda = useMonedaOrganizacion();
+  const escritorio = useEsEscritorio();
 
-  const [periodo, setPeriodo] = useState<PeriodoAnalitica>('30d');
-  const [rangoCustom, setRangoCustom] = useState<RangoFechas | null>(null);
-  const [comparar, setComparar] = useState(true);
-  const [pais, setPais] = useState<string | null>(null);
-  const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
-  const [cargandoPais, setCargandoPais] = useState(false);
-  const pedido = useRef(0);
-
-  const hoy = getToday();
-  const sucursal = sucursalCtx?.branchFilter ?? null;
-  const rango = useMemo(
-    () => (periodo === 'personalizado' && rangoCustom ? rangoCustom : rangoDePeriodo(periodo === 'personalizado' ? '30d' : periodo, hoy)),
-    [periodo, rangoCustom, hoy],
-  );
-
-  const cargar = useCallback(
-    async (opciones?: { soloPais?: boolean }) => {
-      const id = ++pedido.current;
-      if (opciones?.soloPais) setCargandoPais(true);
-      else setEstado({ tipo: 'cargando' });
-      const qs = new URLSearchParams({ desde: rango.desde, hasta: rango.hasta });
-      if (sucursal !== null) qs.set('sucursal', String(sucursal));
-      if (pais) qs.set('pais', pais);
-      try {
-        const res = await fetch(`/api/analitica-web?${qs.toString()}`, { cache: 'no-store' });
-        if (id !== pedido.current) return;
-        if (res.status === 403) {
-          setEstado({ tipo: 'sinPermiso' });
-          return;
-        }
-        if (!res.ok) throw new Error(String(res.status));
-        const json = (await res.json()) as { datos: DatosAnalitica; puedeExportar: boolean };
-        if (id !== pedido.current) return;
-        setEstado({ tipo: 'listo', datos: json.datos, puedeExportar: json.puedeExportar });
-      } catch {
-        if (id === pedido.current) setEstado({ tipo: 'error' });
-      } finally {
-        if (id === pedido.current) setCargandoPais(false);
-      }
-    },
-    [rango.desde, rango.hasta, sucursal, pais],
-  );
-
-  // Si la mayoría de los visitantes son de Colombia, se abre su mapa por
-  // departamento, salvo que la persona ya haya elegido (o vuelto al mundo).
-  const paisElegidoPorUsuario = useRef(false);
-  const elegirPais = useCallback((p: string | null) => {
-    paisElegidoPorUsuario.current = true;
-    setPais(p);
-  }, []);
-  useEffect(() => {
-    if (estado.tipo !== 'listo' || pais !== null || paisElegidoPorUsuario.current) return;
-    if (debeAbrirColombia(estado.datos.paises)) {
-      paisElegidoPorUsuario.current = true;
-      setPais('CO');
-    }
-  }, [estado, pais]);
-
-  // Periodo o sucursal: recarga completa. País: solo la parte geográfica.
-  const ultimaClave = useRef('');
-  useEffect(() => {
-    const clave = `${rango.desde}|${rango.hasta}|${sucursal ?? ''}`;
-    const soloPais = clave === ultimaClave.current;
-    ultimaClave.current = clave;
-    void cargar({ soloPais });
-  }, [cargar, rango.desde, rango.hasta, sucursal]);
-
-  const nf = useMemo(() => new Intl.NumberFormat(locale), [locale]);
-  const pf = useMemo(() => new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 }), [locale]);
-  const var1 = (v: number | null) =>
-    v === null ? t('kpi.sinComparacion') : t('kpi.vsAnterior', { v: `${v >= 0 ? '+' : '−'}${nf.format(Math.abs(Math.round(v * 10) / 10))} %` });
-
-  const exportar = () => {
-    if (estado.tipo !== 'listo') return;
-    const csv = csvAnalitica(estado.datos, {
-      fecha: t('csv.fecha'),
-      visitantes: t('csv.visitantes'),
-      pedidos: t('csv.pedidos'),
-      visitantesAnterior: t('csv.visitantesAnterior'),
-      pedidosAnterior: t('csv.pedidosAnterior'),
-      pais: t('csv.pais'),
-      sesiones: t('csv.sesiones'),
-    });
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analitica-web_${rango.desde}_${rango.hasta}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const nf = new Intl.NumberFormat(locale);
+  const pf = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const signo = (v: number) => `${v >= 0 ? '+' : '−'}${nf.format(Math.abs(Math.round(v * 10) / 10))}`;
+  const var1 = (v: number | null) => (v === null ? t('kpi.sinComparacion') : ts('analitica.kpi.vsAnterior', { v: `${signo(v)} %` }));
 
   const opcionesPeriodo = [
     ...PERIODOS_ANALITICA.map((p) => ({ valor: p as PeriodoAnalitica, etiqueta: tp(ETIQUETA_PERIODO[p]) })),
     { valor: 'personalizado' as PeriodoAnalitica, etiqueta: tp('custom') },
   ];
-  const numSucursales = sucursalCtx?.branches.length ?? 0;
-  const nombreSucursal = sucursal !== null ? sucursalCtx?.branches.find((b) => Number(b.id) === sucursal)?.name : undefined;
 
-  return (
-    <div className="flex flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-fg">{t('titulo')}</h1>
-          <p className="text-sm text-fg-secondary">
-            {organization?.name ? t('subtitulo', { organizacion: organization.name }) : t('subtituloSinOrg')}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void cargar()}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-sm font-medium text-fg hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            {t('actualizar')}
-          </button>
-          {estado.tipo === 'listo' && estado.puedeExportar && (
-            <button
-              type="button"
-              onClick={exportar}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-sm font-medium text-fg hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              {t('exportar')}
-            </button>
-          )}
-        </div>
-      </header>
+  const filtros = (
+    <div className="flex min-w-0 flex-wrap items-center gap-2 lg:gap-3">
+      {a.nombreSucursal ? (
+        <BranchBadge alcance="una" nombre={a.nombreSucursal} />
+      ) : (
+        <BranchBadge alcance="todas" cantidad={a.numSucursales} />
+      )}
+      {escritorio && <p className="min-w-0 flex-1 truncate text-xs text-fg-secondary">{ts('analitica.notaSucursal')}</p>}
+      {escritorio ? (
+        <SegmentedControl<PeriodoAnalitica>
+          opciones={opcionesPeriodo}
+          valor={a.periodo}
+          onValorChange={a.setPeriodo}
+          etiqueta={tp('label')}
+          tamano="sm"
+          className="max-w-full overflow-x-auto [scrollbar-width:none]"
+        />
+      ) : (
+        <select
+          aria-label={tp('label')}
+          value={a.periodo}
+          onChange={(e) => a.setPeriodo(e.target.value as PeriodoAnalitica)}
+          className="ml-auto h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {opcionesPeriodo.map((o) => (
+            <option key={o.valor} value={o.valor}>
+              {o.etiqueta}
+            </option>
+          ))}
+        </select>
+      )}
+      {a.periodo === 'personalizado' && (
+        <DateRangeButton valor={a.rangoCustom ?? a.rango} onValorChange={a.setRangoCustom} hoy={a.hoy} etiqueta={tp('customRange')} />
+      )}
+    </div>
+  );
 
-      <div className="flex flex-col gap-2">
-        <p className="text-xs text-fg-secondary">
-          <span className="font-medium text-fg">
-            {nombreSucursal ? t('sucursal', { nombre: nombreSucursal }) : t('todasSucursales', { n: numSucursales })}
-          </span>{' '}
-          · {t('notaSucursal')}
-        </p>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <SegmentedControl<PeriodoAnalitica>
-            opciones={opcionesPeriodo}
-            valor={periodo}
-            onValorChange={setPeriodo}
-            etiqueta={tp('label')}
-            tamano="sm"
-            className="max-w-full overflow-x-auto [scrollbar-width:none]"
-          />
-          {periodo === 'personalizado' && (
-            <DateRangeButton valor={rangoCustom ?? rango} onValorChange={setRangoCustom} hoy={hoy} etiqueta={tp('customRange')} />
-          )}
-          <label className="inline-flex items-center gap-2 text-sm text-fg">
-            <input type="checkbox" checked={comparar} onChange={(e) => setComparar(e.target.checked)} className="h-4 w-4 accent-brand" />
-            {t('compararAnterior')}
-          </label>
+  if (a.estado.tipo === 'cargando') {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-6">
+        {filtros}
+        <span role="status" className="sr-only">
+          {t('cargando')}
+        </span>
+        <EsqueletoAnalitica />
+      </div>
+    );
+  }
+  if (a.estado.tipo === 'sinPermiso') {
+    return (
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState variante="forbidden" titulo={ts('analitica.estados.sinPermisoTitulo')} descripcion={ts('analitica.estados.sinPermisoTexto')} />
+      </div>
+    );
+  }
+  if (a.estado.tipo === 'error') {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-6">
+        {filtros}
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="error" titulo={ts('analitica.estados.errorTitulo')} descripcion={ts('analitica.estados.errorTexto')} onReintentar={a.actualizar} />
         </div>
       </div>
+    );
+  }
+  if (a.vacio) {
+    const copiar = async () => {
+      if (!host) return;
+      try {
+        await navigator.clipboard.writeText(`https://${host}`);
+        toast.success(ts('analitica.acciones.enlaceCopiado'));
+      } catch {
+        // El portapapeles puede no estar disponible (http o permisos): no pasa nada.
+      }
+    };
+    return (
+      <div className="flex flex-col gap-4 lg:gap-6">
+        {filtros}
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            variante="empty"
+            titulo={ts('analitica.estados.vacioTitulo')}
+            descripcion={host ? ts('analitica.estados.vacioTexto', { host }) : ts('analitica.estados.vacioTextoSinHost')}
+            accion={host ? { etiqueta: ts('analitica.acciones.copiarEnlace'), icono: ICONO_ACCION_SEO.copiarEnlace, onClick: () => void copiar() } : undefined}
+          />
+        </div>
+        {pixeles}
+      </div>
+    );
+  }
 
-      {estado.tipo === 'cargando' && (
-        <div role="status" aria-live="polite" className="flex flex-col gap-4">
-          <span className="sr-only">{t('cargando')}</span>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-lg bg-subtle" />
+  const d = a.estado.datos;
+  const k = calcularIndicadores(d);
+  const e = calcularEmbudo(d.actual);
+  const conv = k.conversion.diferenciaPp;
+  const ventaMedia = k.ventaMedia.variacion;
+
+  return (
+    <div className="flex flex-col gap-4 lg:gap-6">
+      {filtros}
+
+      <div data-testid="kpis">
+        <KpiStrip columnas={5} etiqueta={t('kpi.visitantes')} className={escritorio ? undefined : 'grid-flow-row grid-cols-2 overflow-visible pb-0'}>
+          <StatCard
+            etiqueta={t('kpi.visitantes')}
+            icono={ICONO_KPI_ANALITICA.visitantes}
+            valor={nf.format(k.visitantes.valor)}
+            detalle={var1(k.visitantes.variacion)}
+          />
+          <StatCard
+            etiqueta={t('kpi.sesiones')}
+            icono={ICONO_KPI_ANALITICA.sesiones}
+            valor={nf.format(k.sesiones.valor)}
+            detalle={ts('analitica.kpi.nuevos', {
+              v: k.sesiones.variacion === null ? t('kpi.sinComparacion') : `${signo(k.sesiones.variacion)} %`,
+              pct: pf.format(k.sesiones.pctNuevos),
+            })}
+          />
+          {escritorio && (
+            <StatCard
+              etiqueta={t('kpi.pedidos')}
+              icono={ICONO_KPI_ANALITICA.pedidos}
+              valor={nf.format(k.pedidos.valor)}
+              detalle={ts('analitica.kpi.pendientes', {
+                v: k.pedidos.variacion === null ? t('kpi.sinComparacion') : `${signo(k.pedidos.variacion)} %`,
+                n: nf.format(k.pedidos.pendientes),
+              })}
+            />
+          )}
+          <StatCard
+            etiqueta={t('kpi.conversion')}
+            icono={ICONO_KPI_ANALITICA.conversion}
+            valor={pf.format(k.conversion.valor)}
+            detalle={conv === null ? t('kpi.sinComparacion') : ts('analitica.kpi.ppVsAnterior', { v: signo(conv) })}
+            tono={conv === null ? 'neutro' : conv >= 0 ? 'exito' : 'peligro'}
+            tendencia={conv === null ? undefined : conv >= 0 ? 'sube' : 'baja'}
+          />
+          <StatCard
+            etiqueta={t('kpi.ventaMedia')}
+            icono={ICONO_KPI_ANALITICA.ventaMedia}
+            valor={k.ventaMedia.valor === null ? '—' : moneda.formatear(k.ventaMedia.valor)}
+            detalle={
+              ventaMedia === null
+                ? t('kpi.sinComparacion')
+                : a.nombreSucursal
+                  ? ts('analitica.kpi.ventaMediaSucursal', { v: `${signo(ventaMedia)} %`, sucursal: a.nombreSucursal })
+                  : `${signo(ventaMedia)} %`
+            }
+            tono={ventaMedia === null ? 'neutro' : ventaMedia >= 0 ? 'exito' : 'peligro'}
+            tendencia={ventaMedia === null ? undefined : ventaMedia >= 0 ? 'sube' : 'baja'}
+          />
+        </KpiStrip>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <Tarjeta titulo={t('embudo.titulo')} icono={ICONO_BLOQUE_ANALITICA.embudo}>
+          <ol className="flex flex-col gap-3" data-testid="embudo">
+            {[
+              { etiqueta: t('embudo.visitantes'), valor: e.visitantes, ancho: 1, detalle: '', color: 'bg-brand' },
+              { etiqueta: t('embudo.pedidos'), valor: e.pedidos, ancho: e.pctPedidos, detalle: t('embudo.deVisitantes', { pct: pf.format(e.pctPedidos) }), color: 'bg-warning' },
+              {
+                etiqueta: t('embudo.completados'),
+                valor: e.completados,
+                ancho: e.pctPedidos * e.pctCompletados,
+                detalle: t('embudo.dePedidos', { pct: pf.format(e.pctCompletados) }),
+                color: 'bg-success',
+              },
+            ].map((paso) => (
+              <li key={paso.etiqueta} className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 text-[13px] lg:grid-cols-[88px_minmax(0,1fr)_minmax(0,140px)]">
+                <span className="text-fg-secondary">{paso.etiqueta}</span>
+                <span className="relative block h-7 rounded-md bg-subtle">
+                  <span
+                    className={`absolute inset-y-0 left-0 flex items-center rounded-md px-2 text-xs font-semibold text-fg-on-brand tabular-nums ${paso.color}`}
+                    style={{ width: `${Math.max(14, Math.min(100, paso.ancho * 100))}%` }}
+                  >
+                    {nf.format(paso.valor)}
+                  </span>
+                </span>
+                <span className="col-span-2 truncate text-right text-xs text-fg-muted lg:col-span-1">{paso.detalle}</span>
+              </li>
             ))}
+          </ol>
+          <p className="mt-3 text-xs text-fg-muted">
+            {t('embudo.abandono', { pct: pf.format(e.pctAbandono), n: e.cancelados })} {t('embudo.nota')}
+          </p>
+        </Tarjeta>
+
+        {escritorio && (
+          <Tarjeta>
+            <GraficoVisitas serie={d.serie} titulo={t('grafico.titulo')} />
+          </Tarjeta>
+        )}
+      </div>
+
+      {escritorio && (
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+            <DeDondeLlegan trafico={a.trafico} />
+            <PaginasMasVistas trafico={a.trafico} />
           </div>
-          <div className="h-64 animate-pulse rounded-lg bg-subtle" />
+          <div className={`grid grid-cols-1 gap-4 lg:gap-6 ${esRestaurante ? 'lg:grid-cols-2' : ''}`}>
+            <ConversionPedido trafico={a.trafico} />
+            {esRestaurante && <ConversionReserva trafico={a.trafico} />}
+          </div>
+          {pixeles}
+        </>
+      )}
+
+      <section aria-labelledby="analitica-web-geo" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="analitica-web-geo" className="flex items-center gap-2 text-base font-semibold text-fg">
+            <ICONO_BLOQUE_ANALITICA.geo aria-hidden="true" className={`${CLASE_TAMANO_ICONO.base} shrink-0 text-fg-secondary`} strokeWidth={TRAZO_ICONO} />
+            {t('geo.titulo')}
+            <StatusBadge estado="nuevo" etiqueta={ts('analitica.geo.nuevo')} />
+          </h2>
+          {escritorio && <p className="text-xs text-fg-muted">{ts('analitica.geo.privacidad')}</p>}
         </div>
+        <DeDondeEntran datos={d} cargandoPais={a.cargandoPais} onElegirPais={a.elegirPais} />
+      </section>
+
+      {!escritorio && (
+        <>
+          <Tarjeta>
+            <GraficoVisitas serie={d.serie} titulo={t('grafico.titulo')} />
+          </Tarjeta>
+          <DeDondeLlegan trafico={a.trafico} />
+          <PaginasMasVistas trafico={a.trafico} />
+          <ConversionPedido trafico={a.trafico} />
+          {esRestaurante && <ConversionReserva trafico={a.trafico} />}
+          {pixeles}
+        </>
       )}
-
-      {estado.tipo === 'sinPermiso' && (
-        <p role="alert" className="rounded-lg border border-line bg-subtle p-4 text-sm text-fg">
-          {t('sinPermiso')}
-        </p>
-      )}
-
-      {estado.tipo === 'error' && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-subtle p-4">
-          <p className="text-sm text-fg">{t('error')}</p>
-          <button
-            type="button"
-            onClick={() => void cargar()}
-            className="inline-flex h-8 items-center rounded-md border border-line-strong bg-surface px-3 text-sm font-medium text-fg hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            {t('reintentar')}
-          </button>
-        </div>
-      )}
-
-      {estado.tipo === 'listo' && (() => {
-        const d = estado.datos;
-        const k = calcularIndicadores(d);
-        const e = calcularEmbudo(d.actual);
-        return (
-          <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="kpis">
-              <Tarjeta etiqueta={t('kpi.visitantes')} valor={nf.format(k.visitantes.valor)} detalle={comparar ? var1(k.visitantes.variacion) : undefined} />
-              <Tarjeta
-                etiqueta={t('kpi.sesiones')}
-                valor={nf.format(k.sesiones.valor)}
-                detalle={t('kpi.nuevos', { pct: pf.format(k.sesiones.pctNuevos) })}
-              />
-              <Tarjeta
-                etiqueta={t('kpi.pedidos')}
-                valor={nf.format(k.pedidos.valor)}
-                detalle={t('kpi.pendientes', { n: k.pedidos.pendientes })}
-              />
-              <Tarjeta
-                etiqueta={t('kpi.conversion')}
-                valor={pf.format(k.conversion.valor)}
-                detalle={
-                  comparar
-                    ? k.conversion.diferenciaPp === null
-                      ? t('kpi.sinComparacion')
-                      : t('kpi.ppVsAnterior', {
-                          v: `${k.conversion.diferenciaPp >= 0 ? '+' : '−'}${nf.format(Math.abs(Math.round(k.conversion.diferenciaPp * 10) / 10))}`,
-                        })
-                    : undefined
-                }
-              />
-              <Tarjeta
-                etiqueta={t('kpi.ventaMedia')}
-                valor={k.ventaMedia.valor === null ? '—' : moneda.formatear(k.ventaMedia.valor)}
-                detalle={comparar ? var1(k.ventaMedia.variacion) : undefined}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Seccion titulo={t('embudo.titulo')}>
-                <ol className="flex flex-col gap-2" data-testid="embudo">
-                  {[
-                    { etiqueta: t('embudo.visitantes'), valor: e.visitantes, ancho: 1, detalle: '' },
-                    { etiqueta: t('embudo.pedidos'), valor: e.pedidos, ancho: e.pctPedidos, detalle: t('embudo.deVisitantes', { pct: pf.format(e.pctPedidos) }) },
-                    { etiqueta: t('embudo.completados'), valor: e.completados, ancho: e.pctPedidos * e.pctCompletados, detalle: t('embudo.dePedidos', { pct: pf.format(e.pctCompletados) }) },
-                  ].map((paso) => (
-                    <li key={paso.etiqueta} className="flex flex-col gap-1">
-                      <div className="flex items-baseline justify-between gap-2 text-sm">
-                        <span className="text-fg">{paso.etiqueta}</span>
-                        <span className="tabular-nums text-fg">
-                          {nf.format(paso.valor)} {paso.detalle && <span className="text-xs text-fg-secondary">· {paso.detalle}</span>}
-                        </span>
-                      </div>
-                      <span className="block h-2 rounded-full bg-brand/80" style={{ width: `${Math.max(2, Math.min(100, paso.ancho * 100))}%` }} aria-hidden="true" />
-                    </li>
-                  ))}
-                </ol>
-                <p className="text-xs text-fg-secondary">
-                  {t('embudo.abandono', { pct: pf.format(e.pctAbandono), n: e.cancelados })} {t('embudo.nota')}
-                </p>
-              </Seccion>
-
-              <Seccion titulo={t('grafico.titulo')}>
-                <GraficoVisitas serie={d.serie} comparar={comparar} />
-                <p className="text-xs text-fg-secondary">{t('zona', { zona: d.zona })}</p>
-              </Seccion>
-            </div>
-
-            <section aria-labelledby="analitica-web-geo" className="flex flex-col gap-3">
-              <h2 id="analitica-web-geo" className="text-base font-semibold text-fg">
-                {t('geo.titulo')}
-              </h2>
-              <DeDondeEntran datos={d} cargandoPais={cargandoPais} onElegirPais={elegirPais} />
-            </section>
-          </>
-        );
-      })()}
     </div>
   );
 }

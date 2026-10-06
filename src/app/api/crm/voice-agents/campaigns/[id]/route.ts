@@ -1,4 +1,7 @@
 /**
+ * GET /api/crm/voice-agents/campaigns/[id] — Detalle de la campaña en marcha
+ *   (Figma 1809:144962): cifras, llamadas en vivo y recientes, panel «Hoy».
+ *   `?page=` pagina el historial de 25. Permisos y alcance en la base.
  * PATCH /api/crm/voice-agents/campaigns/[id] — Actualiza una campaña.
  * DELETE /api/crm/voice-agents/campaigns/[id] — Elimina una campaña.
  */
@@ -10,6 +13,28 @@ import {
   updateCampaign,
   deleteCampaign,
 } from '@/lib/services/crm/voiceAgentService';
+import { leerDetalleCampanaVoz } from '@/lib/services/crm/voiceCampaignDetailService';
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, {}, { request });
+    const { id } = await params;
+    const pagina = Number(new URL(request.url).searchParams.get('page'));
+    const page = Number.isInteger(pagina) && pagina >= 1 && pagina <= 100000 ? pagina : 1;
+    const data = await leerDetalleCampanaVoz(ctx.organizationId, ctx.supabase, id, page);
+    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    return respuestaErrorCrm(error, 'GET /api/crm/voice-agents/campaigns/[id]');
+  }
+}
 
 export async function PATCH(
   request: NextRequest,

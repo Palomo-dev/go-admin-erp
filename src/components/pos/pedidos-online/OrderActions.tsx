@@ -1,6 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { 
   CheckCircle, 
   XCircle, 
@@ -27,6 +30,10 @@ interface OrderActionsProps {
   onConvertToSale?: () => void;
   onPrint?: () => void;
   onMarkAsPaid?: () => void;
+  /** Cobrar en la caja de la sede (E4); `entregar` también lo marca entregado. */
+  onCobrar?: (entregar: boolean) => void;
+  /** El último cobro falló porque la sede no tiene caja abierta. */
+  sinCajaAbierta?: boolean;
   isLoading?: boolean;
   variant?: 'full' | 'compact';
 }
@@ -43,18 +50,25 @@ export function OrderActions({
   onConvertToSale,
   onPrint,
   onMarkAsPaid,
+  onCobrar,
+  sinCajaAbierta = false,
   isLoading = false,
   variant = 'full',
 }: OrderActionsProps) {
+  const t = useTranslations('pedidoWeb');
   const isPending = order.status === 'pending';
   const isConfirmed = order.status === 'confirmed';
   const isPreparing = order.status === 'preparing';
   const isReady = order.status === 'ready';
   const isInDelivery = order.status === 'in_delivery';
   const isDelivered = order.status === 'delivered';
-  const isPickup = order.delivery_type === 'pickup';
+  // Recoger y «Comer aquí» no salen a domicilio: de «Listo» pasan a «Entregado».
+  const isPickup = !esDomicilio(order.delivery_type);
+  // «Comer aquí» agregado a la cuenta de la mesa: se cobra en la mesa, no aquí.
+  const seCobraEnLaMesa = !!order.table_session_id;
   const canCancel = ['pending', 'confirmed'].includes(order.status);
-  const canConvertToSale = isDelivered && !order.sale_id;
+  // Un «Comer aquí» agregado a la mesa no tiene venta propia: su venta es la de la mesa.
+  const canConvertToSale = isDelivered && !order.sale_id && !order.table_session_id;
 
   if (variant === 'compact') {
     return (
@@ -157,8 +171,33 @@ export function OrderActions({
         </Button>
       )}
 
-      {/* Marcar como pagado (si no está pagado) */}
-      {order.payment_status !== 'paid' && onMarkAsPaid && !isPending && (
+      {/* Cobrar en la caja de la sede (pago en el local o contraentrega) */}
+      {order.payment_status !== 'paid' && onCobrar && !isPending && !seCobraEnLaMesa && (
+        <div className="space-y-1">
+          <Button
+            variant="outline"
+            className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+            onClick={() => onCobrar((isReady && isPickup) || isInDelivery)}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <DollarSign className="h-4 w-4 mr-2" />
+            )}
+            {(isReady && isPickup) || isInDelivery ? t('cobro.cobrarYEntregar') : t('cobro.cobrar')}
+          </Button>
+          {sinCajaAbierta && (
+            <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+              {t('cobro.sinCaja')}{' '}
+              <Link href="/app/pos/cajas" className="underline">{t('cobro.abrirCaja')}</Link>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Respaldo: marcar como pagado (solo si no se pasa onCobrar) */}
+      {order.payment_status !== 'paid' && !onCobrar && onMarkAsPaid && !isPending && (
         <Button
           variant="outline"
           className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"

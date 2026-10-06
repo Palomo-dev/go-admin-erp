@@ -23,6 +23,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import {
   RESERVATION_SOURCE_LABELS,
+  ORIGENES_DEL_EQUIPO,
   type RestaurantReservation,
   type CreateReservationInput,
   type UpdateReservationInput,
@@ -326,13 +327,12 @@ export function ReservaFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(RESERVATION_SOURCE_LABELS) as [ReservationSource, string][]).map(
-                    ([key, label]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    )
-                  )}
+                  {/* «Website» solo lo pone el sitio: el equipo crea con su propio origen. */}
+                  {ORIGENES_DEL_EQUIPO.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {RESERVATION_SOURCE_LABELS[key]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

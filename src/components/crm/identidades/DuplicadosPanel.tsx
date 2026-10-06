@@ -1,261 +1,169 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertTriangle, Users, MessageSquare, Target, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { cn } from '@/utils/Utils';
-import type { DuplicateGroup } from './types';
+/**
+ * Posibles duplicados (Figma CRM 1436:19 listo, 1438:1130 buscando, 1438:721
+ * vacío, 1438:1553 error). Los grupos los arma el servidor
+ * (`GET /api/crm/customer-merges/duplicates` → `crm_find_duplicates`: mismo
+ * teléfono, correo o documento). Fusionar es una transacción
+ * (`POST /api/crm/customer-merges`) que se puede deshacer 30 días; «No son el
+ * mismo» deja de proponer la pareja.
+ */
 
-interface DuplicadosPanelProps {
-  duplicates: DuplicateGroup[];
-  loading?: boolean;
-  onMerge: (primaryId: string, secondaryIds: string[]) => Promise<void>;
-}
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Fingerprint, Mail, Merge, Phone, UserX } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { pedirCrm, ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
+import type { CampoFusion, ClienteDuplicado, GrupoDuplicados } from '@/lib/services/crm/customerMergeLogica';
+import { DialogoFusion } from './DialogoFusion';
+import { choicesParaApi, claveErrorFusion, nombreCliente, tipoIdentidad } from './fusionLogica';
 
-export function DuplicadosPanel({ duplicates, loading, onMerge }: DuplicadosPanelProps) {
-  const [selectedGroup, setSelectedGroup] = useState<DuplicateGroup | null>(null);
-  const [primaryCustomer, setPrimaryCustomer] = useState<string | null>(null);
-  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-  const [merging, setMerging] = useState(false);
-  const [showMergeDialog, setShowMergeDialog] = useState(false);
+type Estado = 'cargando' | 'listo' | 'error' | 'sinPermiso';
+interface Respuesta { grupos: GrupoDuplicados[]; puedeFusionar: boolean; puedeDeshacer: boolean }
 
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Posibles Duplicados
-        </h3>
-        <div className="animate-pulse space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+const ICONO = { phone: Phone, email: Mail, document: Fingerprint, otro: Fingerprint } as const;
 
-  if (duplicates.length === 0) {
-    return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-            <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
-          </div>
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          Sin duplicados
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400">
-          No se encontraron identidades duplicadas en tu base de datos
-        </p>
-      </div>
-    );
-  }
+export function DuplicadosPanel({ onCambio }: { onCambio?: () => void }) {
+  const t = useTranslations('crm.duplicados');
+  const entero = useFormatoEntero();
+  const [estado, setEstado] = useState<Estado>('cargando');
+  const [datos, setDatos] = useState<Respuesta | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [abierto, setAbierto] = useState<GrupoDuplicados | null>(null);
+  const [fusionando, setFusionando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSelectPrimary = (customerId: string) => {
-    setPrimaryCustomer(customerId);
-    // Auto-seleccionar los demás como secundarios
-    if (selectedGroup) {
-      setSelectedCustomers(
-        selectedGroup.customers
-          .filter(c => c.id !== customerId)
-          .map(c => c.id)
-      );
-    }
-  };
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setEstado('cargando');
+    pedirCrm<Respuesta>('/api/crm/customer-merges/duplicates', { signal: ctrl.signal })
+      .then(({ data }) => {
+        if (ctrl.signal.aborted) return;
+        setDatos(data);
+        setEstado('listo');
+      })
+      .catch((e: unknown) => {
+        if (!ctrl.signal.aborted) setEstado(e instanceof ErrorApiCrm && (e.status === 401 || e.status === 403) ? 'sinPermiso' : 'error');
+      });
+    return () => ctrl.abort();
+  }, [revision]);
 
-  const handleToggleSecondary = (customerId: string) => {
-    setSelectedCustomers(prev => 
-      prev.includes(customerId)
-        ? prev.filter(id => id !== customerId)
-        : [...prev, customerId]
-    );
-  };
+  const recargar = useCallback(() => {
+    setRevision((n) => n + 1);
+    onCambio?.();
+  }, [onCambio]);
 
-  const handleMerge = async () => {
-    if (!primaryCustomer || selectedCustomers.length === 0) return;
-    
-    setMerging(true);
+  const deshacer = async (mergeId: string) => {
     try {
-      await onMerge(primaryCustomer, selectedCustomers);
-      setShowMergeDialog(false);
-      setSelectedGroup(null);
-      setPrimaryCustomer(null);
-      setSelectedCustomers([]);
-    } finally {
-      setMerging(false);
+      await pedirCrm(`/api/crm/customer-merges/${encodeURIComponent(mergeId)}/undo`, { method: 'POST', cuerpo: {} });
+      toast({ title: t('deshecha') });
+      recargar();
+    } catch (e) {
+      toast({ title: t('noDeshecha'), description: t(`errores.${claveErrorFusion(e instanceof ErrorApiCrm ? e.codigo : null)}`), variant: 'destructive' });
     }
   };
+
+  const fusionar = async (principal: ClienteDuplicado, secundario: ClienteDuplicado, elecciones: Partial<Record<CampoFusion, string>>) => {
+    setFusionando(true);
+    setError(null);
+    try {
+      const { data } = await pedirCrm<{ id: string }>('/api/crm/customer-merges', {
+        method: 'POST',
+        cuerpo: { primary_id: principal.id, secondary_id: secundario.id, choices: choicesParaApi(elecciones, secundario.id) },
+      });
+      setAbierto(null);
+      toast({
+        title: t('fusionada', { nombre: nombreCliente(principal) ?? t('fusion.sinNombre') }),
+        description: t('fusionadaDetalle'),
+        action: datos?.puedeDeshacer ? (
+          <ToastAction altText={t('deshacer')} onClick={() => void deshacer(data.id)}>
+            {t('deshacer')}
+          </ToastAction>
+        ) : undefined,
+      });
+      recargar();
+    } catch (e) {
+      // La RPC es una transacción: si falló, nada cambió.
+      setError(t(`errores.${claveErrorFusion(e instanceof ErrorApiCrm ? e.codigo : null)}`));
+    } finally {
+      setFusionando(false);
+    }
+  };
+
+  const noSonElMismo = async (g: GrupoDuplicados) => {
+    const [a, b] = g.customers;
+    try {
+      await pedirCrm('/api/crm/customer-merges/exclusions', { method: 'POST', cuerpo: { a: a.id, b: b.id } });
+      toast({ title: t('excluida') });
+      recargar();
+    } catch {
+      toast({ title: t('errores.generico'), variant: 'destructive' });
+    }
+  };
+
+  if (estado === 'cargando' && !datos) {
+    return (
+      <div aria-busy="true" aria-label={t('buscando')} className="space-y-3">
+        {[0, 1, 2].map((i) => <div key={i} className="h-28 animate-pulse rounded-xl border border-line bg-subtle" />)}
+      </div>
+    );
+  }
+  if (estado === 'error' || estado === 'sinPermiso') {
+    return <EmptyState variante={estado === 'sinPermiso' ? 'forbidden' : 'error'} titulo={t(estado === 'sinPermiso' ? 'sinPermiso' : 'error')} onReintentar={estado === 'error' ? recargar : undefined} />;
+  }
+  const grupos = datos?.grupos ?? [];
+  if (grupos.length === 0) {
+    return <EmptyState icono={Fingerprint} titulo={t('vacio.titulo')} descripcion={t('vacio.descripcion')} />;
+  }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <AlertTriangle className="h-5 w-5 text-orange-500" />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Posibles Duplicados ({duplicates.length})
-        </h3>
-      </div>
-
-      <div className="space-y-4">
-        {duplicates.map((group, index) => (
-          <div
-            key={index}
-            className="border border-orange-200 dark:border-orange-800 rounded-lg p-4 bg-orange-50/50 dark:bg-orange-900/10"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                  {group.identity_type === 'phone' ? 'Teléfono' : 
-                   group.identity_type === 'email' ? 'Email' : group.identity_type}
-                </Badge>
-                <code className="ml-2 text-sm font-mono bg-white dark:bg-gray-800 px-2 py-0.5 rounded">
-                  {group.identity_value}
-                </code>
+    <section aria-labelledby="duplicados-titulo" className="space-y-3">
+      <h2 id="duplicados-titulo" className="text-base font-semibold text-fg">{t('titulo', { n: grupos.length, valor: entero(grupos.length) })}</h2>
+      <ul className="space-y-3">
+        {grupos.map((g) => {
+          const tipo = tipoIdentidad(g.identity_type);
+          const Icono = ICONO[tipo];
+          return (
+            <li key={`${g.identity_type}:${g.identity_value}`} className="space-y-3 rounded-xl border border-line bg-surface p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Icono aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg">{t(`mismo.${tipo}`, { valor: g.identity_value })}</p>
+                {datos?.puedeFusionar && (
+                  <div className="flex gap-2">
+                    {g.customers.length === 2 && (
+                      <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => void noSonElMismo(g)}>
+                        <UserX aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                        {t('noSonElMismo')}
+                      </button>
+                    )}
+                    <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => { setError(null); setAbierto(g); }}>
+                      <Merge aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                      {t('revisar')}
+                    </button>
+                  </div>
+                )}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSelectedGroup(group);
-                  setPrimaryCustomer(null);
-                  setSelectedCustomers([]);
-                  setShowMergeDialog(true);
-                }}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                Unificar
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {group.customers.map((customer) => (
-                <div
-                  key={customer.id}
-                  className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white text-sm">
-                      {customer.full_name || 'Sin nombre'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {customer.email || customer.phone || '-'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {customer.conversations_count}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Target className="h-3 w-3" />
-                      {customer.opportunities_count}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Diálogo de fusión */}
-      <AlertDialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
-        <AlertDialogContent className="max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unificar Clientes</AlertDialogTitle>
-            <AlertDialogDescription>
-              Selecciona el cliente principal. Los demás clientes seleccionados serán fusionados en él.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {selectedGroup && (
-            <div className="space-y-3 my-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Identidad duplicada: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                  {selectedGroup.identity_value}
-                </code>
-              </p>
-
-              <div className="space-y-2">
-                {selectedGroup.customers.map((customer) => (
-                  <div
-                    key={customer.id}
-                    className={cn(
-                      'flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors',
-                      primaryCustomer === customer.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-                    )}
-                    onClick={() => handleSelectPrimary(customer.id)}
-                  >
-                    <div className="flex-shrink-0">
-                      {primaryCustomer === customer.id ? (
-                        <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                          <Check className="h-3 w-3 text-white" />
-                        </div>
-                      ) : (
-                        <Checkbox
-                          checked={selectedCustomers.includes(customer.id)}
-                          onCheckedChange={() => handleToggleSecondary(customer.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {customer.full_name || 'Sin nombre'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {customer.email || customer.phone || '-'}
-                      </p>
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      <span>{customer.conversations_count} conv.</span>
-                      <span className="mx-1">•</span>
-                      <span>{customer.opportunities_count} ops.</span>
-                    </div>
-                    {primaryCustomer === customer.id && (
-                      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                        Principal
-                      </Badge>
-                    )}
-                  </div>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {g.customers.map((c) => (
+                  <li key={c.id} className="min-w-0 rounded-lg bg-subtle px-3 py-2">
+                    <p className="truncate text-sm text-fg">{nombreCliente(c) ?? t('fusion.sinNombre')}</p>
+                    <p className="truncate text-xs text-fg-secondary">{t('conteos', { conversaciones: c.conversations_count, oportunidades: c.opportunities_count })}</p>
+                  </li>
                 ))}
-              </div>
+              </ul>
+              {g.customers.length > 2 && <StatusBadge estado="varios" etiqueta={t('varios', { n: g.customers.length })} tono="advertencia" tamano="sm" />}
+            </li>
+          );
+        })}
+      </ul>
+      {!datos?.puedeFusionar && <p className="text-xs text-fg-secondary">{t('soloLectura')}</p>}
 
-              {primaryCustomer && selectedCustomers.length > 0 && (
-                <p className="text-sm text-orange-600 dark:text-orange-400">
-                  ⚠️ Se fusionarán {selectedCustomers.length} cliente(s) en el cliente principal.
-                  Las conversaciones, oportunidades y actividades serán transferidas.
-                </p>
-              )}
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleMerge}
-              disabled={!primaryCustomer || selectedCustomers.length === 0 || merging}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {merging ? 'Fusionando...' : 'Fusionar clientes'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      <DialogoFusion grupo={abierto} fusionando={fusionando} error={error} onCerrar={() => setAbierto(null)} onFusionar={(p, s, e) => void fusionar(p, s, e)} />
+    </section>
   );
 }

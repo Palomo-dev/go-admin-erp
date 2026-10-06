@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server';
 import { getServerUserClient } from '@/lib/supabase/server-user';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { isOrgAdminLike } from '@/lib/utils/orgAdmin';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,16 @@ type EstadoOrg = 'activa' | 'prueba' | 'suspendida';
 
 interface MembresiaFila {
   organization_id: number;
-  organizations: { id: number; name: string; logo_url: string | null; status: string | null; subdomain: string | null } | null;
+  role_id: number | null;
+  is_super_admin: boolean | null;
+  organizations: {
+    id: number;
+    name: string;
+    logo_url: string | null;
+    status: string | null;
+    subdomain: string | null;
+    owner_user_id: string | null;
+  } | null;
   roles: { name: string | null } | null;
 }
 
@@ -45,7 +55,9 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('organization_members')
-    .select('organization_id, organizations:organizations (id, name, logo_url, status, subdomain), roles:roles (name)')
+    .select(
+      'organization_id, role_id, is_super_admin, organizations:organizations (id, name, logo_url, status, subdomain, owner_user_id), roles:roles (name)'
+    )
     .eq('user_id', user.id)
     .eq('is_active', true);
 
@@ -90,6 +102,11 @@ export async function GET() {
         rol: m.roles?.name ?? null,
         plan: plan?.name ?? null,
         estado,
+        // Decidido aquí, en el servidor, con el mismo criterio que
+        // `requireOrgAdmin` (super admin o rol 1/2). «Mis organizaciones» lo
+        // usa para ofrecer o no «Desactivar»; la ruta lo vuelve a comprobar.
+        puedeAdministrar: isOrgAdminLike({ isSuperAdmin: m.is_super_admin === true, roleId: Number(m.role_id ?? 0) }),
+        esPropietario: org.owner_user_id === user.id,
       };
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));

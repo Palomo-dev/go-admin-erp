@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { enviarCorreoEstadoPedido } from '@/lib/services/orderStatusEmailService';
 
 function getSupabaseClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -165,6 +166,14 @@ export async function PATCH(
         { error: 'Error al actualizar pedido', details: error.message },
         { status: 500 }
       );
+    }
+
+    // Aviso al cliente del nuevo estado (best-effort: nunca falla la
+    // actualización). La organización sale del propio pedido, no del body.
+    if (body.status && data?.organization_id) {
+      await enviarCorreoEstadoPedido(supabase, Number(data.organization_id), orderId);
+    } else {
+      // Sin cambio de estado: no hay aviso que mandar.
     }
 
     return NextResponse.json({

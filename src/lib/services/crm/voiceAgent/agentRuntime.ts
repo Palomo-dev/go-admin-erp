@@ -342,12 +342,7 @@ export async function buildRuntimeConfig(
   // Un agente sin la primera no puede registrar un «no me vuelva a llamar» aunque el
   // guardarraíl obligatorio le ordene respetarlo; sin la segunda no puede colgar
   // después de registrarlo. Se añaden siempre, se hayan desmarcado o no en la UI.
-  const stageTools = stage?.allowedTools?.length ? stage.allowedTools : null;
-  const agentTools = agent.allowed_tools?.length ? agent.allowed_tools : null;
-  const configuredTools = stageTools || agentTools || ['get_customer_context'];
-  const allowedTools = Array.from(new Set([...configuredTools, ...MANDATORY_TOOLS])).filter((t) =>
-    ALL_TOOL_NAMES.includes(t)
-  );
+  const allowedTools = herramientasPermitidasVoz(stage?.allowedTools, agent.allowed_tools);
 
   const systemPrompt = buildSystemPrompt({
     organizationName,
@@ -383,7 +378,7 @@ export async function buildRuntimeConfig(
     greeting,
     // Modelo del agente; si no tiene, el de conversación de la organización
     // (ai_settings → entorno → default de modelRouter). Nunca cableado aquí.
-    model: agent.llm_model?.trim() || resolveModel('conversation', await loadOrgModelSettings(supabase, orgId)).model,
+    model: await modeloVozDelAgente(supabase, orgId, agent.llm_model),
     temperature: Number(agent.temperature ?? 0.7),
     maxTurns: agent.max_turns ?? 20,
     maxDurationSeconds: agent.max_duration_seconds ?? 300,
@@ -395,6 +390,28 @@ export async function buildRuntimeConfig(
     consentMessage,
     recordingEnabled,
   };
+}
+
+/**
+ * Herramientas de una llamada: las de la etapa mandan; si la etapa no define
+ * ninguna, las del agente; si tampoco, solo `get_customer_context`. Siempre se
+ * añaden las obligatorias (`MANDATORY_TOOLS`, Ley 1581) y se descartan las que
+ * no existen. La usan la llamada real y la prueba del editor: una sola regla.
+ */
+export function herramientasPermitidasVoz(
+  stageTools: readonly string[] | null | undefined,
+  agentTools: readonly string[] | null | undefined,
+): string[] {
+  const configuredTools = stageTools?.length ? stageTools : agentTools?.length ? agentTools : ['get_customer_context'];
+  return Array.from(new Set([...configuredTools, ...MANDATORY_TOOLS])).filter((t) => ALL_TOOL_NAMES.includes(t));
+}
+
+/**
+ * Modelo de la llamada: el del agente; si no tiene, el de conversación de la
+ * organización (ai_settings → entorno → default de modelRouter). Nunca cableado.
+ */
+export async function modeloVozDelAgente(supabase: SupabaseClient, orgId: number, llmModel: string | null | undefined): Promise<string> {
+  return llmModel?.trim() || resolveModel('conversation', await loadOrgModelSettings(supabase, orgId)).model;
 }
 
 /** Valor por defecto de `max_tokens` de cada turno hablado (frases cortas). */
@@ -609,6 +626,76 @@ export interface FragmentoConocimiento {
 /** Tope del bloque de conocimiento en el prompt (caracteres): la llamada no debe volverse un monólogo. */
 export const MAX_CONOCIMIENTO_VOZ = 6000;
 
+/** Etiqueta que deja un fragmento solo para el chat (no va a las llamadas). */
+export const ETIQUETA_SOLO_CHAT = 'solo-chat';
+/** Cuántos fragmentos activos se leen, por prioridad, antes de aplicar el tope. */
+export const MAX_FRAGMENTOS_LEIDOS_VOZ = 30;
+
+export interface FilaFragmentoVoz {
+  id?: string;
+  title: string | null;
+  content: string | null;
+  tags: string[] | null;
+  priority?: number | null;
+}
+
+export interface SeleccionConocimientoVoz {
+  /** Lo que entra al prompt, en orden de prioridad. */
+  incluidos: (FragmentoConocimiento & { id?: string; priority: number | null })[];
+  /** Etiquetados `solo-chat`: activos, pero no van a las llamadas. */
+  soloChat: { id?: string; title: string }[];
+  /** No caben en `MAX_CONOCIMIENTO_VOZ`: desde el primero que no cabe, ninguno más entra. */
+  fueraDelTope: { id?: string; title: string; priority: number | null }[];
+  /** Caracteres usados por `incluidos`. */
+  caracteres: number;
+}
+
+/**
+ * Criterio ÚNICO de qué fragmentos llegan a la llamada (regla dura 7): lo usan
+ * el runtime del agente y «Qué sabe el agente» del editor. Las filas llegan
+ * ya ordenadas por prioridad; se saltan `solo-chat` y los vacíos; al primero
+ * que no cabe en el tope se corta (los siguientes tampoco entran).
+ */
+export function seleccionarConocimientoVoz(filas: readonly FilaFragmentoVoz[]): SeleccionConocimientoVoz {
+  const sel: SeleccionConocimientoVoz = { incluidos: [], soloChat: [], fueraDelTope: [], caracteres: 0 };
+  let cortado = false;
+  for (const f of filas) {
+    const title = (f.title ?? '').trim();
+    if ((f.tags ?? []).some((t) => t.toLowerCase() === ETIQUETA_SOLO_CHAT)) {
+      sel.soloChat.push({ id: f.id, title });
+      continue;
+    }
+    const content = (f.content ?? '').trim();
+    if (!content) continue;
+    if (cortado || sel.caracteres + content.length > MAX_CONOCIMIENTO_VOZ) {
+      cortado = true;
+      sel.fueraDelTope.push({ id: f.id, title, priority: f.priority ?? null });
+      continue;
+    }
+    sel.caracteres += content.length;
+    sel.incluidos.push({ id: f.id, title, content, priority: f.priority ?? null });
+  }
+  return sel;
+}
+
+/**
+ * Fragmentos activos de la organización por prioridad (los mismos que usa el
+ * chat con IA). Lanza si la lectura falla: quien llama decide (el runtime
+ * sigue sin ellos; la pantalla muestra el error).
+ */
+export async function leerFragmentosVoz(supabase: SupabaseClient, orgId: number): Promise<FilaFragmentoVoz[]> {
+  const { data, error } = await supabase
+    .from('knowledge_fragments')
+    .select('id, title, content, tags, priority')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('priority', { ascending: false, nullsFirst: false })
+    .order('updated_at', { ascending: false })
+    .limit(MAX_FRAGMENTOS_LEIDOS_VOZ);
+  if (error) throw new Error(`knowledge_fragments: ${error.message}`);
+  return (data ?? []) as FilaFragmentoVoz[];
+}
+
 /**
  * Fragmentos activos de la base de conocimiento de la organización (Chat ›
  * Base de conocimiento), los mismos que usa el chat con IA, por prioridad.
@@ -619,27 +706,12 @@ export async function cargarConocimientoVoz(
   supabase: SupabaseClient,
   orgId: number,
 ): Promise<FragmentoConocimiento[]> {
-  const { data, error } = await supabase
-    .from('knowledge_fragments')
-    .select('title, content, tags, priority')
-    .eq('organization_id', orgId)
-    .eq('is_active', true)
-    .order('priority', { ascending: false, nullsFirst: false })
-    .order('updated_at', { ascending: false })
-    .limit(30);
-  if (error) {
-    console.warn('[agentRuntime] knowledge_fragments:', error.message);
+  let filas: FilaFragmentoVoz[];
+  try {
+    filas = await leerFragmentosVoz(supabase, orgId);
+  } catch (e) {
+    console.warn('[agentRuntime]', e instanceof Error ? e.message : e);
     return [];
   }
-  const fragmentos: FragmentoConocimiento[] = [];
-  let total = 0;
-  for (const f of (data ?? []) as { title: string; content: string; tags: string[] | null }[]) {
-    if ((f.tags ?? []).some((t) => t.toLowerCase() === 'solo-chat')) continue;
-    const content = (f.content ?? '').trim();
-    if (!content) continue;
-    if (total + content.length > MAX_CONOCIMIENTO_VOZ) break;
-    total += content.length;
-    fragmentos.push({ title: (f.title ?? '').trim(), content });
-  }
-  return fragmentos;
+  return seleccionarConocimientoVoz(filas).incluidos.map(({ title, content }) => ({ title, content }));
 }

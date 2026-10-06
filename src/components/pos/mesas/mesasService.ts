@@ -54,8 +54,8 @@ export class MesasService {
         ?.filter(s => s.sale_id)
         .map(s => s.sale_id) || [];
 
-      let itemsBySale: Record<string, number> = {};
-      let saleTotals: Record<string, number> = {};
+      const itemsBySale: Record<string, number> = {};
+      const saleTotals: Record<string, number> = {};
 
       if (saleIds.length > 0) {
         const { data: items } = await supabase
@@ -86,7 +86,7 @@ export class MesasService {
       const serverIds = Array.from(
         new Set((sesiones || []).map((s) => s.server_id).filter(Boolean))
       );
-      let serverNames: Record<string, string> = {};
+      const serverNames: Record<string, string> = {};
 
       if (serverIds.length > 0) {
         const { data: profiles } = await supabase
@@ -102,7 +102,7 @@ export class MesasService {
 
       // Items pendientes en cocina (sin entregar) por sesión
       const sessionIds = (sesiones || []).map((s) => s.id);
-      let pendingKitchenBySession: Record<string, number> = {};
+      const pendingKitchenBySession: Record<string, number> = {};
 
       if (sessionIds.length > 0) {
         const { data: kitchenTickets } = await supabase
@@ -110,9 +110,9 @@ export class MesasService {
           .select('table_session_id, kitchen_ticket_items(id, status)')
           .in('table_session_id', sessionIds);
 
-        kitchenTickets?.forEach((ticket: any) => {
+        kitchenTickets?.forEach((ticket: { table_session_id: string; kitchen_ticket_items: Array<{ status: string }> | null }) => {
           const pendientes = (ticket.kitchen_ticket_items || []).filter(
-            (i: any) => i.status !== 'delivered'
+            (i) => i.status !== 'delivered'
           ).length;
           pendingKitchenBySession[ticket.table_session_id] =
             (pendingKitchenBySession[ticket.table_session_id] || 0) + pendientes;
@@ -167,7 +167,7 @@ export class MesasService {
             serverName: sesionPrincipal.server_id ? serverNames[sesionPrincipal.server_id] : undefined,
             pendingKitchenItems,
             // Agregar información de items para la UI
-            sale_items: Array(totalItems).fill(null).map((_, i) => ({ id: `item-${i}` })) as any
+            sale_items: Array.from({ length: totalItems }, (_, i) => ({ id: `item-${i}` }))
           },
         };
       });
@@ -654,8 +654,9 @@ export class MesasService {
       }
 
       // Crear nuevas sesiones para cada mesa destino
+      let primeraSesionNueva: { id: string; mesa: string } | null = null;
       for (const mesaDestinoId of mesasDestino) {
-        const { error: insertError } = await supabase
+        const { data: nueva, error: insertError } = await supabase
           .from('table_sessions')
           .insert({
             organization_id: sesionOriginal.organization_id,
@@ -664,12 +665,33 @@ export class MesasService {
             customers: Math.floor(sesionOriginal.customers / mesasDestino.length),
             status: 'active',
             notes: `Dividida desde mesa ${mesaOrigenId}`,
-          });
+          })
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
+        if (!primeraSesionNueva && nueva) primeraSesionNueva = { id: String(nueva.id), mesa: mesaDestinoId };
 
         // Marcar mesa como ocupada
         await this.cambiarEstadoMesa(mesaDestinoId, 'occupied');
+      }
+
+      // La reserva sentada en la sesión original sigue con el grupo: se pasa a
+      // la primera sesión nueva ANTES de cerrar la original. Si no, el trigger
+      // de D4 (`trg_reserva_completar_al_cerrar_mesa`) la daría por
+      // «Completada» sin venta mientras el grupo sigue en la mesa. Antes de D4
+      // no existe `table_session_id`: el error 42703/PGRST204 se ignora y no
+      // hay nada que mover.
+      if (primeraSesionNueva) {
+        const { error: errReserva } = await supabase
+          .from('restaurant_reservations')
+          .update({ table_session_id: primeraSesionNueva.id, restaurant_table_id: primeraSesionNueva.mesa })
+          .eq('organization_id', sesionOriginal.organization_id)
+          .eq('table_session_id', sesionId)
+          .eq('status', 'seated');
+        if (errReserva && !['42703', 'PGRST204'].includes(errReserva.code ?? '')) {
+          console.error('Error moviendo la reserva al dividir la mesa:', errReserva);
+        }
       }
 
       // Cerrar sesión original
@@ -723,7 +745,7 @@ export class MesasService {
       if (updateError) throw updateError;
 
       // Actualizar kitchen_tickets si existen
-      const { error: ticketsError } = await supabase
+      await supabase
         .from('kitchen_tickets')
         .update({ table_session_id: sesionId })
         .eq('table_session_id', sesionId);

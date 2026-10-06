@@ -10,6 +10,10 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { requireOrgId } from '../useEquipoData';
 import type { Territory, SalesTeam } from '../types';
 import { TerritoryDialog, DeleteConfirmDialog } from '../dialogs';
+import { useConteosTerritorios } from '../useConteosTerritorios';
+import { ConteoTerritorio } from '../ConteoTerritorio';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { useTranslations } from 'next-intl';
 
 type TerritoryWithStats = Territory & { _teamCount?: number; _oppCount?: number; _oppAmount?: number };
 
@@ -27,6 +31,10 @@ export function TerritoriosTab() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', criteria: '{}', is_active: true });
   const [criteriaError, setCriteriaError] = useState<string | null>(null);
+  // Clientes por territorio: servidor, mismo motor que la asignación automática.
+  const [revisionConteo, setRevisionConteo] = useState(0);
+  const conteos = useConteosTerritorios(revisionConteo);
+  const tConteo = useTranslations('crm.equipoAsignacion.territorios');
 
   const load = useCallback(async () => {
     setIsRefreshing(true);
@@ -63,6 +71,7 @@ export function TerritoriosTab() {
   }, [toast]);
 
   useEffect(() => { load(); }, [load]);
+  const recargar = () => { void load(); setRevisionConteo((n) => n + 1); };
 
   const handleSave = async () => {
     if (!form.name.trim()) {
@@ -91,7 +100,7 @@ export function TerritoriosTab() {
         toast({ title: 'Territorio creado' });
       }
       setDialogOpen(false);
-      load();
+      recargar();
     } catch {
       toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
     } finally {
@@ -105,7 +114,7 @@ export function TerritoriosTab() {
       const { error } = await supabase.from('territories').delete().eq('id', toDelete.id);
       if (error) throw error;
       toast({ title: 'Territorio eliminado' });
-      load();
+      recargar();
     } catch {
       toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
     } finally {
@@ -130,7 +139,7 @@ export function TerritoriosTab() {
           {territories.length} territorio{territories.length !== 1 ? 's' : ''}
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={load} disabled={isRefreshing}>
+          <Button variant="outline" size="sm" onClick={recargar} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
           <Button size="sm" onClick={() => {
@@ -143,6 +152,16 @@ export function TerritoriosTab() {
           </Button>
         </div>
       </div>
+
+      {conteos.datos && territories.length > 0 && (
+        <AvisoTonal
+          tono={conteos.datos.parcial ? 'advertencia' : 'informacion'}
+          compacto
+          titulo={tConteo('resumen', { sin: conteos.datos.sinTerritorio, evaluados: conteos.datos.evaluados })}
+          descripcion={conteos.datos.parcial ? tConteo('parcial') : undefined}
+        />
+      )}
+      {conteos.estado === 'error' && <AvisoTonal tono="advertencia" compacto titulo={tConteo('error')} />}
 
       {/* Grid de territorios */}
       {territories.length === 0 ? (
@@ -180,6 +199,8 @@ export function TerritoriosTab() {
                       </Button>
                     </div>
                   </div>
+
+                  <ConteoTerritorio conteo={conteos.datos?.territorios.find((c) => c.id === t.id)} cargando={conteos.estado === 'cargando'} />
 
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">

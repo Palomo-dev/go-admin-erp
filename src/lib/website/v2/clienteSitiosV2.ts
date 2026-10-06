@@ -7,6 +7,7 @@
  */
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import type { LoteLegacy, RespuestaGuardadoLegacy } from '@/lib/website/editorLegacy';
 import type {
   BorradorSitio,
   CodigoErrorSitio,
@@ -17,6 +18,12 @@ import type {
   RevisionResumen,
   SitioResumen,
 } from './tipos';
+import type {
+  InstantaneaBorrador,
+  MotivoInstantanea,
+  ProgramacionPublicacion,
+  RevisionConDocumento,
+} from './tiposEditor';
 
 export class ErrorApiSitio extends Error {
   constructor(
@@ -45,9 +52,13 @@ function cabeceras(): HeadersInit {
 }
 
 async function pedir<T>(ruta: string, init?: { method?: string; body?: unknown }): Promise<T> {
+  return pedirUrl<T>(`${BASE}${ruta}`, init);
+}
+
+async function pedirUrl<T>(url: string, init?: { method?: string; body?: unknown }): Promise<T> {
   let respuesta: Response;
   try {
-    respuesta = await fetch(`${BASE}${ruta}`, {
+    respuesta = await fetch(url, {
       method: init?.method ?? 'GET',
       headers: cabeceras(),
       credentials: 'same-origin',
@@ -75,6 +86,12 @@ async function pedir<T>(ruta: string, init?: { method?: string; body?: unknown }
 }
 
 export const clienteSitiosV2 = {
+  /**
+   * «Guardar y publicar» de los sitios sin borrador V2: un solo lote al servidor, que exige
+   * `website.sites.edit` y `website.sites.publish` (ver src/lib/website/editorLegacy.ts).
+   */
+  guardarLegacy: (lote: LoteLegacy) =>
+    pedirUrl<RespuestaGuardadoLegacy>('/api/sitio-web/editor/guardar', { method: 'POST', body: lote }),
   listar: async () => (await pedir<{ sitios: SitioResumen[] }>('')).sitios,
   crear: (branchId: number | null) => pedir<ResultadoCreacion>('', { method: 'POST', body: { branchId } }),
   borrador: (sitioId: string) => pedir<BorradorSitio>(`/${sitioId}/draft`),
@@ -90,9 +107,35 @@ export const clienteSitiosV2 = {
   /** Token del enlace privado de la vista previa del borrador (caduca en 24 h). */
   vistaPrevia: (sitioId: string, paginaId: string | null) =>
     pedir<{ token: string; caducaEn: string }>(`/${sitioId}/vista-previa`, { method: 'POST', body: { paginaId } }),
+  /** Una versión publicada con su documento (base de «Combinar» y «Ver esta versión»). */
+  revision: async (sitioId: string, revisionId: string) =>
+    (await pedir<{ revision: RevisionConDocumento }>(`/${sitioId}/revisions/${revisionId}`)).revision,
+  programaciones: async (sitioId: string) =>
+    (await pedir<{ programaciones: ProgramacionPublicacion[] }>(`/${sitioId}/programaciones`)).programaciones,
+  programar: async (sitioId: string, version: number, ejecutarEn: string, nota: string | null) =>
+    (
+      await pedir<{ programacion: ProgramacionPublicacion }>(`/${sitioId}/programaciones`, {
+        method: 'POST',
+        body: { version, ejecutarEn, nota },
+      })
+    ).programacion,
+  cancelarProgramacion: (sitioId: string, id: string) =>
+    pedir<{ ok: true }>(`/${sitioId}/programaciones?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  instantaneas: async (sitioId: string) =>
+    (await pedir<{ instantaneas: InstantaneaBorrador[] }>(`/${sitioId}/instantaneas`)).instantaneas,
+  crearInstantanea: (sitioId: string, documento: DocumentoSitio, version: number, motivo: MotivoInstantanea) =>
+    pedir<{ instantanea: InstantaneaBorrador }>(`/${sitioId}/instantaneas`, {
+      method: 'POST',
+      body: { accion: 'crear', documento, version, motivo },
+    }),
+  restaurarInstantanea: (sitioId: string, instantaneaId: string, version: number) =>
+    pedir<ResultadoGuardado>(`/${sitioId}/instantaneas`, { method: 'POST', body: { accion: 'restaurar', instantaneaId, version } }),
   llevarMenu: (sitioId: string, menuId: string, version: number) =>
     pedir<ResultadoGuardado & { menuId: string; copiado: boolean }>(`/${sitioId}/menus`, {
       method: 'POST',
       body: { menuId, version },
     }),
+  /** Despublicar o volver a mostrar el sitio en la web (Configuración › Zona de peligro). */
+  visibilidad: (sitioId: string, publicado: boolean) =>
+    pedir<{ publicado: boolean; publicadoEn: string | null }>(`/${sitioId}/visibilidad`, { method: 'POST', body: { publicado } }),
 };

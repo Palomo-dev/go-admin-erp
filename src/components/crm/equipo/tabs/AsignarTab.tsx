@@ -21,6 +21,7 @@ import type { Opportunity, SalesTeam, OrgMember } from '../types';
 import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { editarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
+import { SimulacionAsignacion } from '../SimulacionAsignacion';
 
 export function AsignarTab() {
   const { toast } = useToast();
@@ -105,6 +106,9 @@ export function AsignarTab() {
 
   return (
     <div className="space-y-4">
+      {/* «¿A quién le llegaría?»: simulación en el servidor, sin asignar nada. */}
+      <SimulacionAsignacion equipos={teams.map((t) => ({ id: t.id, name: t.name }))} />
+
       {/* Filtros */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">

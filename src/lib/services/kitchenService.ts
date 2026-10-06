@@ -1,4 +1,14 @@
 import { supabase } from '@/lib/supabase/config';
+import { mesaDelPedido, tipoEntregaEfectivo, type TipoEntregaWeb } from '@/lib/pos/pedidosWeb/tipoEntrega';
+
+/** Pedido web del que nace una comanda (`source = 'web'`): origen visible en Comandas. */
+export interface PedidoWebDeComanda {
+  id: string;
+  order_number: string;
+  tipo: TipoEntregaWeb;
+  mesa: string | null;
+  customer_notes: string | null;
+}
 
 export interface KitchenTicket {
   id: number;
@@ -23,6 +33,10 @@ export interface KitchenTicket {
   allergy_ack_at?: string | null;
   allergy_ack_by?: string | null;
   cancelled_at?: string | null;
+  /** Pedido web de la comanda (columna de la migración E2; null en las del POS). */
+  web_order_id?: string | null;
+  /** Origen «Web W-xxxx · Recoger / Mesa N» y nota del cliente (solo comandas web). */
+  pedido_web?: PedidoWebDeComanda | null;
   table_sessions?: {
     id: string;
     restaurant_table_id: string | null;
@@ -197,10 +211,87 @@ class KitchenService {
         });
       }
 
-      return tickets as KitchenTicket[];
+      return (await this.adjuntarPedidosWeb(tickets as KitchenTicket[], filters?.organizationId)) as KitchenTicket[];
     } catch (error) {
       console.error('Error obteniendo tickets de cocina:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Adjunta a las comandas web su pedido (número, tipo de entrega, mesa y nota
+   * del cliente). Una sola consulta por carga. Se busca por
+   * `kitchen_tickets.web_order_id` (E2) y, para las comandas anteriores, por
+   * `web_orders.sale_id`. Solo columnas que existen antes y después de E1/E2:
+   * la mesa sale de la marca «[Comer aquí] Mesa: X» que el sitio deja en
+   * internal_notes. Si la consulta falla, Comandas sigue igual (sin origen).
+   */
+  private async adjuntarPedidosWeb(tickets: KitchenTicket[], organizationId?: number): Promise<KitchenTicket[]> {
+    const web = tickets.filter((t) => t.source === 'web');
+    if (web.length === 0) return tickets;
+    const ids = Array.from(new Set(web.map((t) => t.web_order_id).filter((x): x is string => !!x)));
+    const ventas = Array.from(new Set(web.map((t) => t.sale_id).filter((x): x is string => !!x)));
+    const filtros = [
+      ...(ids.length ? [`id.in.(${ids.join(',')})`] : []),
+      ...(ventas.length ? [`sale_id.in.(${ventas.join(',')})`] : []),
+    ];
+    if (filtros.length === 0) return tickets;
+    try {
+      let q = supabase
+        .from('web_orders')
+        .select('id, sale_id, order_number, delivery_type, customer_notes, internal_notes')
+        .or(filtros.join(','));
+      if (organizationId) q = q.eq('organization_id', organizationId);
+      const { data, error } = await q;
+      if (error) throw error;
+      const filas = (data ?? []) as Array<{ id: string; sale_id: string | null; order_number: string; delivery_type: string | null; customer_notes: string | null; internal_notes: string | null }>;
+      const porId = new Map(filas.map((f) => [f.id, f]));
+      const porVenta = new Map(filas.filter((f) => f.sale_id).map((f) => [f.sale_id as string, f]));
+      return tickets.map((t) => {
+        if (t.source !== 'web') return t;
+        const f = (t.web_order_id && porId.get(t.web_order_id)) || (t.sale_id && porVenta.get(t.sale_id)) || null;
+        if (!f) return t;
+        return {
+          ...t,
+          pedido_web: {
+            id: f.id,
+            order_number: f.order_number,
+            tipo: tipoEntregaEfectivo(f),
+            mesa: t.table_sessions?.restaurant_tables?.name ?? mesaDelPedido(f),
+            customer_notes: f.customer_notes?.trim() || null,
+          },
+        };
+      });
+    } catch (err) {
+      console.warn('No se pudo leer el pedido web de las comandas:', err);
+      return tickets;
+    }
+  }
+
+  /**
+   * Avisa al cliente del pedido web de una comanda (correo de estado) cuando
+   * la comanda pasa a «en preparación» o «lista». El pedido lo avanza el
+   * trigger `trg_comanda_web_avanza_pedido` (E5); el aviso solo sale si el
+   * pedido de verdad quedó en ese estado (sin E5, no se repite el anterior).
+   */
+  private async avisarPedidoWeb(ticket: { source?: string | null; sale_id?: string | null; web_order_id?: string | null; organization_id?: number }, status: KitchenTicket['status']) {
+    if (ticket.source !== 'web' || (status !== 'preparing' && status !== 'ready')) return;
+    try {
+      let orderId = ticket.web_order_id ?? null;
+      if (!orderId && ticket.sale_id) {
+        const { data } = await supabase
+          .from('web_orders')
+          .select('id')
+          .eq('sale_id', ticket.sale_id)
+          .limit(1)
+          .maybeSingle();
+        orderId = data?.id ?? null;
+      }
+      if (!orderId) return;
+      const { webOrdersService } = await import('./webOrdersService');
+      await webOrdersService.avisarCambioEstado(orderId, status);
+    } catch (err) {
+      console.warn('No se pudo avisar al cliente del pedido web:', err);
     }
   }
 
@@ -251,6 +342,7 @@ class KitchenService {
 
       if (itemsError) throw itemsError;
 
+      void this.avisarPedidoWeb(data as KitchenTicket, status);
       return data;
     } catch (error) {
       console.error('Error actualizando estado del ticket:', error);

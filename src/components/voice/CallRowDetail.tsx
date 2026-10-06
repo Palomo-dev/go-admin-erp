@@ -1,13 +1,15 @@
 'use client';
 
 /**
- * CallRowDetail — contenido de la fila expandida en CallsTable (FASE-04 §5.2):
+ * CallRowDetail — contenido de la hoja de detalle de CallsTable (FASE-04 §5.2,
+ * Figma 1363:20):
  * reproductor completo + transcripción (clic → seek) + análisis IA.
- * En < 768 px muestra pestañas; en escritorio dos columnas.
+ * En < 768 px muestra pestañas (`TabBar` sm del kit: dos secciones de la
+ * llamada, regla de pestañas 2026-10-06); en escritorio dos columnas.
  */
 
 import { useState, useCallback } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
 import { CallPlayer } from './CallPlayer';
 import { CallLinkPanel } from './CallLinkPanel';
 import { CallTranscriptPanel, CallAnalysisPanel, useCallIntelligence } from '@/components/crm/calls';
@@ -22,6 +24,8 @@ export function CallRowDetail({ call }: CallRowDetailProps) {
   const [seekToMs, setSeekToMs] = useState<number | null>(null);
   const [currentMs, setCurrentMs] = useState(0);
   const [linkVersion, setLinkVersion] = useState(0);
+  const [seccion, setSeccion] = useState<'transcript' | 'analysis'>('transcript');
+  const idTabs = `llamada-${call.id}`;
   const onSeek = useCallback((ms: number) => setSeekToMs(ms + 0.001 * Math.random()), []); // valor distinto en cada clic
   const onTime = useCallback((ms: number) => setCurrentMs(ms), []);
 
@@ -32,7 +36,7 @@ export function CallRowDetail({ call }: CallRowDetailProps) {
     : null;
 
   return (
-    <div className="space-y-3 bg-gray-50 p-3 dark:bg-gray-900/60">
+    <div className="space-y-3">
       {/* Panel de vinculación: aparece si falta cliente o oportunidad */}
       <CallLinkPanel
         key={`link-${linkVersion}`}
@@ -48,18 +52,26 @@ export function CallRowDetail({ call }: CallRowDetailProps) {
         <CallTranscriptPanel callId={call.id} state={state} onSeek={onSeek} currentMs={currentMs} />
         <CallAnalysisPanel callId={call.id} state={state} opportunityId={call.opportunity_id} />
       </div>
-      <Tabs defaultValue="transcript" className="md:hidden">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="transcript">Transcripción</TabsTrigger>
-          <TabsTrigger value="analysis">Análisis IA</TabsTrigger>
-        </TabsList>
-        <TabsContent value="transcript">
-          <CallTranscriptPanel callId={call.id} state={state} onSeek={onSeek} currentMs={currentMs} />
-        </TabsContent>
-        <TabsContent value="analysis">
-          <CallAnalysisPanel callId={call.id} state={state} opportunityId={call.opportunity_id} />
-        </TabsContent>
-      </Tabs>
+      <div className="md:hidden">
+        <TabBar
+          id={idTabs}
+          etiqueta="Secciones de la llamada"
+          tamano="sm"
+          valor={seccion}
+          onValorChange={setSeccion}
+          pestanas={[
+            { valor: 'transcript', etiqueta: 'Transcripción' },
+            { valor: 'analysis', etiqueta: 'Análisis IA' },
+          ]}
+        />
+        <div role="tabpanel" id={idPanel(idTabs, seccion)} aria-labelledby={idPestana(idTabs, seccion)} className="pt-2">
+          {seccion === 'transcript' ? (
+            <CallTranscriptPanel callId={call.id} state={state} onSeek={onSeek} currentMs={currentMs} />
+          ) : (
+            <CallAnalysisPanel callId={call.id} state={state} opportunityId={call.opportunity_id} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

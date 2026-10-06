@@ -4,11 +4,13 @@
  * DELETE /api/crm/stage-agents?id=… — la elimina.
  *
  * La organización SIEMPRE sale de la sesión (`getServerOrgContext`), nunca del body.
- * Solo el dueño/administrador de la organización puede escribir.
+ * Solo el dueño/administrador de la organización puede escribir; el GET lo dice
+ * en `puede_editar` (mismo predicado que `requireOrgAdmin`) para que el editor
+ * del agente no ofrezca controles que el POST rechazaría.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, isOrgAdminContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getStageAgent,
@@ -40,10 +42,10 @@ export async function GET(request: NextRequest) {
 
     if (stageId) {
       const data = await getStageAgent(ctx.supabase, ctx.organizationId, stageId, channel);
-      return NextResponse.json({ success: true, data }, { status: 200 });
+      return NextResponse.json({ success: true, data, puede_editar: isOrgAdminContext(ctx) }, { status: 200 });
     }
     const data = await listStageAgents(ctx.supabase, ctx.organizationId, pipelineId || undefined);
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    return NextResponse.json({ success: true, data, puede_editar: isOrgAdminContext(ctx) }, { status: 200 });
   } catch (error) {
     return fail(error);
   }

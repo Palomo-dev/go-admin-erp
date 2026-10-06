@@ -3,6 +3,8 @@
 /**
  * Pestaña «Guion» del editor de agente (UXM-D): primera frase, cómo se
  * identifica como IA e instrucciones. Los guardarraíles no son configurables.
+ * «Qué sabe el agente» (Figma 1804:905093) va justo debajo, en el paso 1 del
+ * editor (`AgentEditorDialog`): la base de conocimiento que también llega a la llamada.
  */
 
 import React from "react";

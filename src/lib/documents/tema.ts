@@ -9,6 +9,7 @@
 
 import tokens from '@/styles/figma-tokens.json';
 import { colorHexSeguro } from './escape';
+import { contraste as contrasteHex } from '@/lib/utils/contrasteColor';
 
 const P = (tokens as { primitivos: Record<string, string> }).primitivos;
 
@@ -35,18 +36,9 @@ export interface TemaDocumento {
   infoSuave: string;
 }
 
-function luminancia(hex: string): number {
-  const canal = (i: number) => {
-    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * canal(1) + 0.7152 * canal(3) + 0.0722 * canal(5);
-}
-
-/** Contraste WCAG entre dos colores hex. */
+/** Contraste WCAG entre dos colores hex (implementación única: `@/lib/utils/contrasteColor`). */
 export function contraste(a: string, b: string): number {
-  const [l1, l2] = [luminancia(a), luminancia(b)].sort((x, y) => y - x);
-  return (l1 + 0.05) / (l2 + 0.05);
+  return contrasteHex(a, b) ?? 1;
 }
 
 /** Color de acento: el de la organización si se lee texto blanco encima (≥ 4.5:1). */

@@ -76,7 +76,6 @@ import type { NextRequest } from 'next/server';
 import {
   reconcileConsentsWithoutRecording,
   RECONCILE_ALERT_AFTER_DEFERRALS,
-  RECONCILE_ALERT_AFTER_DAYS,
   RECONCILE_DEFERRED_AT_KEY,
   RECONCILE_DEFERRALS_KEY,
 } from '@/lib/services/crm/consentReconcileService';
@@ -379,15 +378,19 @@ describe('VOZR8B-H4 · consent_method por conducta', () => {
     expect(isUnverifiedConsent('')).toBe(false);
   });
 
-  it('B.3 · listCallsWithRelations mapea `consent_method` de la acta de grabación del embed (y null sin acta o con acta de otro tipo)', async () => {
-    fake = seed({
-      calls: [
-        callRow({ id: CALL_ID, user_id: null, call_consents: [{ consent_type: 'marketing', method: 'sms' }, { consent_type: 'recording', method: 'unverified_announcement' }], call_recordings: [] }),
-        callRow({ id: CALL_B, user_id: null, call_consents: [{ consent_type: 'marketing', method: 'sms' }], call_recordings: [] }),
-        callRow({ id: 'cccccccc-0000-4000-8000-000000000105', user_id: null, call_consents: null, call_recordings: [] }),
-      ],
-    });
-    const { data } = await listCallsWithRelations(ORG, fake.client());
+  it('B.3 · listCallsWithRelations mapea `consent_method` de la acta de grabación (y null sin acta o con acta de otro tipo)', async () => {
+    // Desde 2026-10-06 la lista sale de la RPC `crm_calls_list`: ella elige el
+    // acta de tipo `recording` más reciente (verificado por MCP) y devuelve
+    // `consent_method` ya resuelto; aquí se prueba que el servicio lo respeta.
+    const filas = [
+      { ...callRow({ id: CALL_ID, user_id: null }), recordings: [], consent_method: 'unverified_announcement' },
+      { ...callRow({ id: CALL_B, user_id: null }), recordings: [], consent_method: null },
+      { ...callRow({ id: 'cccccccc-0000-4000-8000-000000000105', user_id: null }), recordings: [] },
+    ];
+    const llamadas: { fn: string; args: Record<string, unknown> }[] = [];
+    const cliente = { rpc: async (fn: string, args: Record<string, unknown>) => (llamadas.push({ fn, args }), { data: { data: filas, count: 3 }, error: null }) };
+    const { data } = await listCallsWithRelations(ORG, cliente as never);
+    expect(llamadas[0]).toEqual({ fn: 'crm_calls_list', args: { p_org: ORG, p_filters: {} } });
     const byId = new Map(data.map((r) => [r.id, r.consent_method]));
     expect(byId.get(CALL_ID)).toBe('unverified_announcement');
     expect(byId.get(CALL_B)).toBeNull();

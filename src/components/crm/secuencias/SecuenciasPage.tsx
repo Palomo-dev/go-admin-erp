@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { AnimatePresence, StaggerItem, StaggerList } from '@/components/shared/motion';
 import { SequenceCard } from './SequenceCard';
 import { SequenceEmptyState } from './SequenceEmptyState';
@@ -107,26 +108,8 @@ export function SecuenciasPage() {
             className="sm:max-w-xs sm:flex-1"
             etiqueta="Buscar secuencia por nombre"
           />
-          <div role="group" aria-label="Filtrar por estado" className="flex gap-1.5">
-            {FILTERS.map((f) => {
-              const selected = status === f.value;
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setStatus(f.value)}
-                  className={`rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                    selected
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Filtro de estado de la misma lista → control segmentado del kit (regla de pestañas 2026-10-06). */}
+          <SegmentedControl etiqueta="Filtrar por estado" valor={status} onValorChange={setStatus} opciones={FILTERS.map((f) => ({ valor: f.value, etiqueta: f.label }))} />
           {!loading && (
             <p className="text-sm text-gray-500 dark:text-gray-400 sm:ml-auto" aria-live="polite">
               {filtered.length} de {sequences.length}

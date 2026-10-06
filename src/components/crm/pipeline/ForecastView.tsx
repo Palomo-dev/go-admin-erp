@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SegmentedControl } from "@/components/kit/SegmentedControl";
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { currencyService } from "@/lib/services/currencyService";
@@ -63,6 +63,7 @@ interface ForecastViewProps {
 }
 
 const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
+  const [vistaPronostico, setVistaPronostico] = useState<"chart" | "monthly" | "table">("chart");
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forecastData, setForecastData] = useState<ForecastMonth[]>([]);
@@ -383,26 +384,21 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
       <ForecastSidebar pipelineId={pipelineId} />
       
       <div className="flex-1 space-y-4">
-        <Tabs defaultValue="chart" className="space-y-4">
-          <TabsList className="flex-wrap h-auto gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2">
-            <TabsTrigger value="chart" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">
-              <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Gráfico de pronóstico</span>
-              <span className="sm:hidden">Gráfico</span>
-            </TabsTrigger>
-            <TabsTrigger value="monthly" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">
-              <LineChart className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Pronóstico Mensual</span>
-              <span className="sm:hidden">Mensual</span>
-            </TabsTrigger>
-            <TabsTrigger value="table" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">
-              <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Tabla de oportunidades</span>
-              <span className="sm:hidden">Tabla</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Gráfico / Mensual / Tabla: VISTAS del mismo pronóstico → control segmentado (regla de pestañas 2026-10-06). */}
+        <div className="space-y-4">
+          <SegmentedControl
+            etiqueta="Vista del pronóstico"
+            valor={vistaPronostico}
+            onValorChange={setVistaPronostico}
+            opciones={[
+              { valor: "chart", etiqueta: "Gráfico", icono: BarChart3 },
+              { valor: "monthly", etiqueta: "Mensual", icono: LineChart },
+              { valor: "table", etiqueta: "Tabla", icono: Calendar },
+            ]}
+          />
 
-          <TabsContent value="chart" className="space-y-3 sm:space-y-4">
+          {vistaPronostico === "chart" && (
+          <div className="space-y-3 sm:space-y-4">
             <ForecastChart pipelineId={pipelineId} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               <ForecastByStageChart pipelineId={pipelineId} />
@@ -411,13 +407,17 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
             <div className="mt-3 sm:mt-4">
               <WeightedFunnelChart pipelineId={pipelineId} />
             </div>
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="monthly" className="space-y-4">
+          {vistaPronostico === "monthly" && (
+          <div className="space-y-4">
             <MonthlyForecastView pipelineId={pipelineId} />
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="table" className="space-y-4">
+          {vistaPronostico === "table" && (
+          <div className="space-y-4">
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Oportunidades por mes</h3>
@@ -513,8 +513,9 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
                 </table>
               </div>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+        </div>
       </div>
     </div>
   );

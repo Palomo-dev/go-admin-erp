@@ -141,6 +141,44 @@ export function repartirTotalesPedidoWeb(order: WebOrder): RepartoPedidoWeb {
   };
 }
 
+/** Línea de `sale_items` de un pedido web, sin `sale_id` (lo pone quien la inserta). */
+export interface LineaVentaPedidoWeb {
+  product_id: number | null;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  tax_amount: number;
+  discount_amount: number;
+  notes: Record<string, unknown>;
+}
+
+/**
+ * Líneas de venta de un pedido web, con el descuento de pedido prorrateado.
+ * Una sola implementación para la confirmación desde el POS
+ * (`webOrderConfirmationService`), la del servidor (`webOrderServerConfirmation`)
+ * y las RPC `fn_confirmar_pedido_web_completo` / `pos_mesa_agregar_pedido_web`,
+ * que las reciben ya calculadas (el prorrateo no se porta a SQL).
+ */
+export function lineasVentaPedidoWeb(
+  order: WebOrder,
+  reparto: RepartoPedidoWeb = repartirTotalesPedidoWeb(order),
+): LineaVentaPedidoWeb[] {
+  return reparto.items.map(({ item, descuento, total }) => ({
+    product_id: item.product_id,
+    quantity: numero(item.quantity),
+    unit_price: numero(item.unit_price),
+    total,
+    tax_amount: numero(item.tax_amount),
+    discount_amount: descuento,
+    notes: {
+      product_name: item.product_name,
+      from_web_order: order.order_number,
+      ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
+      ...(item.notes ? { customer_notes: item.notes } : {}),
+    },
+  }));
+}
+
 export interface InvoiceItemWebInsert {
   invoice_id: string;
   invoice_sales_id: string;

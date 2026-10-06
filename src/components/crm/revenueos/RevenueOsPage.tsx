@@ -21,9 +21,11 @@ import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
+import { useOpcionUrl } from '@/components/kit/useParametroUrl';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { ForecastDashboard } from '@/components/crm/pronostico';
+import { PronosticoTrimestre } from '@/components/crm/pronostico/trimestre/PronosticoTrimestre';
 import { useRevenueDashboard, type DashboardRange } from './useRevenueDashboard';
 import { RevenueRangeControl } from './RevenueRangeControl';
 import { KpiTiles } from './KpiTiles';
@@ -34,10 +36,13 @@ import { RevenueMathPanel } from './RevenueMathPanel';
 import { fmtMonth, SIN_MONEDA } from './formatters';
 import { addMonthsPlain } from '@/lib/services/crm/revenueOs/dateRange';
 
+/** Secciones del panel → `TabBar` con `?pestana=` (regla de pestañas 2026-10-06). */
 const TABS = [
   { value: 'resumen', label: 'Resumen' },
   { value: 'embudo', label: 'Embudo' },
   { value: 'forecast', label: 'Forecast' },
+  // Pronóstico trimestral por categorías (Figma CRM 1431:19): su propia carga.
+  { value: 'trimestre', label: 'Por categoría' },
   { value: 'cohortes', label: 'Cohortes' },
   { value: 'matematica', label: 'Matemática comercial' },
 ] as const;
@@ -60,7 +65,7 @@ const PANEL = 'mt-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-g
 export function RevenueOsPage() {
   const [range, setRange] = useState<DashboardRange>({ start: null, end: null });
   const { data, lastPeriod, canEditInputs, loading, error, reload } = useRevenueDashboard(range);
-  const [tab, setTab] = useState<(typeof TABS)[number]['value']>('resumen');
+  const [tab, setTab] = useOpcionUrl('pestana', TABS.map((t) => t.value), 'resumen');
   // Con error el hook vacía `data`: el panel anterior no se pinta (sus cifras no corresponden a lo pedido).
 
   const currency = data?.currency ?? null;
@@ -106,16 +111,11 @@ export function RevenueOsPage() {
         <LoadErrorState title="No se pudo cargar el panel Revenue OS" message={error} onRetry={() => void reload()} isRetrying={loading} />
       )}
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1" aria-label="Secciones de Revenue OS">
-          {TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value} className="text-xs sm:text-sm">
-              {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <TabBar id="revenue-os" etiqueta="Secciones de Revenue OS" valor={tab} onValorChange={setTab} pestanas={TABS.map((t) => ({ valor: t.value, etiqueta: t.label }))} />
+      <div role="tabpanel" id={idPanel('revenue-os', tab)} aria-labelledby={idPestana('revenue-os', tab)}>
 
-        <TabsContent value="resumen" className="mt-4 space-y-4">
+        {tab === 'resumen' && (
+        <div className="mt-4 space-y-4">
           {!data && loading && !error ? (
             <PanelSkeleton />
           ) : data ? (
@@ -124,29 +124,43 @@ export function RevenueOsPage() {
               <RevenueTrendChart rows={data.revenue_metrics} currency={currency} />
             </>
           ) : null}
-        </TabsContent>
+        </div>
+        )}
 
-        <TabsContent value="embudo" className={PANEL}>
+        {tab === 'embudo' && (
+        <div className={PANEL}>
           {!data && loading && !error ? (
             <Skeleton className="h-64 w-full" />
           ) : data ? (
             <FunnelPanel funnel={data.pipeline_funnel} pipelineNames={data.pipeline_names} currency={currency} />
           ) : null}
-        </TabsContent>
+        </div>
+        )}
 
-        <TabsContent value="forecast" className="mt-4">
+        {tab === 'forecast' && (
+        <div className="mt-4">
           {data ? <ForecastDashboard currency={currency} /> : null}
-        </TabsContent>
+        </div>
+        )}
 
-        <TabsContent value="cohortes" className={PANEL}>
+        {tab === 'trimestre' && (
+        <div className="mt-4">
+          <PronosticoTrimestre />
+        </div>
+        )}
+
+        {tab === 'cohortes' && (
+        <div className={PANEL}>
           {!data && loading && !error ? (
             <Skeleton className="h-48 w-full" />
           ) : data ? (
             <CohortTable rows={data.cohort_retention} today={data.period.today} />
           ) : null}
-        </TabsContent>
+        </div>
+        )}
 
-        <TabsContent value="matematica" className="mt-4">
+        {tab === 'matematica' && (
+        <div className="mt-4">
           {!data && loading && !error ? (
             <Skeleton className="h-64 w-full" />
           ) : data ? (
@@ -159,8 +173,9 @@ export function RevenueOsPage() {
               currency={currency}
             />
           ) : null}
-        </TabsContent>
-      </Tabs>
+        </div>
+        )}
+      </div>
     </div>
   );
 }

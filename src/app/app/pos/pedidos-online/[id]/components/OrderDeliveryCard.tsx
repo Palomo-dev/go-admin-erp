@@ -1,12 +1,17 @@
 'use client';
 
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Truck, Store, Bike, Navigation, UserPlus } from 'lucide-react';
+import { MapPin, Clock, Truck, Store, Bike, Navigation, UserPlus, UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { DeliveryTrackingCard } from '@/components/pos/pedidos-online';
 import type { WebOrder, DeliveryType } from '@/lib/services/webOrdersService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 
 interface OrderDeliveryCardProps {
   order: WebOrder;
@@ -34,31 +39,34 @@ const DELIVERY_TYPE_CONFIG: Record<DeliveryType, {
     icon: Truck, 
     color: 'text-purple-600 dark:text-purple-400' 
   },
+  // Texto en pantalla: `pedidoWeb.comerAqui` / `comerAquiMesa` (i18n).
+  dine_in: {
+    label: 'Comer aquí',
+    icon: UtensilsCrossed,
+    color: 'text-amber-600 dark:text-amber-400'
+  },
 };
 
 export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true }: OrderDeliveryCardProps) {
-  const config = DELIVERY_TYPE_CONFIG[order.delivery_type];
+  const t = useTranslations('pedidoWeb');
+  const { timezone } = useOrgTimezone();
+  const tipo = tipoEntregaEfectivo(order);
+  const mesa = mesaDelPedido(order);
+  const config = tipo === 'dine_in'
+    ? { ...DELIVERY_TYPE_CONFIG.dine_in, label: mesa ? t('comerAquiMesa', { mesa }) : t('comerAqui') }
+    : DELIVERY_TYPE_CONFIG[tipo];
   const Icon = config.icon;
   const address = order.delivery_address;
+  const domicilio = esDomicilio(order.delivery_type);
   const isOwnDelivery = order.delivery_type === 'delivery_own';
   const canAssignDelivery = isOwnDelivery && ['confirmed', 'preparing', 'ready'].includes(order.status);
   const shouldShowTracking = isOwnDelivery && showTracking && ['in_delivery', 'delivered'].includes(order.status);
 
-  const formatTime = (date: string) => {
-    return new Date(date).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  // Horas en la zona de la organización, nunca en la del navegador.
+  const formatTime = (date: string) => formatTimeInTz(date, timezone);
 
-  const formatDateTime = (date: string) => {
-    return new Date(date).toLocaleString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDateTime = (date: string) =>
+    formatDateTimeInTz(date, timezone, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   const baseCard = (
     <Card>
@@ -80,8 +88,19 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
           )}
         </div>
 
+        {/* «Comer aquí» agregado a la cuenta de la mesa (E3): ir a POS › Mesas */}
+        {tipo === 'dine_in' && order.restaurant_table_id && order.table_session_id && (
+          <Link
+            href={`/app/pos/mesas/${order.restaurant_table_id}`}
+            className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <UtensilsCrossed className="h-3 w-3" />
+            {t('verMesa')}
+          </Link>
+        )}
+
         {/* Dirección de entrega */}
-        {order.delivery_type !== 'pickup' && address?.address && (
+        {domicilio && address?.address && (
           <div className="space-y-1">
             <p className="flex items-start gap-2 text-sm">
               <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground dark:text-gray-400" />
@@ -136,7 +155,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
           </div>
         )}
 
-        {order.estimated_delivery_at && order.delivery_type !== 'pickup' && (
+        {order.estimated_delivery_at && domicilio && (
           <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
             <Truck className="h-4 w-4 dark:text-purple-400" />
             <span className="dark:text-gray-200">Entrega aprox: {formatTime(order.estimated_delivery_at)}</span>

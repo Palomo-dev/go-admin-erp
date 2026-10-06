@@ -22,13 +22,17 @@ export const SUBDOMAIN_REGEX = DNS_LABEL_REGEX;
  * Slugs reservados del router público — no pueden usarse como slug de outlet
  * porque colisionarían con las rutas del sitio web (menu, productos, checkout,
  * etc.). Si se usan, el outlet no sería accesible por path.
+ *
+ * Debe CONTENER `SLUGS_RESERVADOS` de goadmin-websites/lib/outlet/rutaSitio.ts
+ * (lo comprueban src/__tests__/slugsReservados.test.ts y, del lado del sitio,
+ * scripts/verify-sedes.mjs). `validateSlug` lo rechaza al guardar.
  */
 export const RESERVED_SLUGS = [
   'home', 'menu', 'productos', 'categorias', 'espacios', 'servicios',
   'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
   'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout',
   'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api', 'admin',
-  'app', 'www',
+  'app', 'www', 'contacto', 'nosotros', 'vista-previa',
 ];
 
 /**

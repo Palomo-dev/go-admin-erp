@@ -1,8 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { CreditCardIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+/**
+ * «Método de pago» de Organización › Plan y facturación (Figma 08, sección 9):
+ * tarjeta del kit con las tarjetas guardadas en Stripe, la predeterminada
+ * marcada, «Gestionar facturación» (portal de Stripe) y quitar una tarjeta con
+ * ConfirmDialog (antes `confirm()` nativo, auditoría 2026-10 P2-1). Los métodos
+ * los resuelve el servidor por la organización
+ * (`/api/subscriptions/payment-methods`).
+ */
+import { useCallback, useEffect, useState } from 'react';
+import { CreditCard, ExternalLink, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { cn } from '@/utils/Utils';
 import { PaymentMethodSkeleton } from './OrganizationSkeletons';
 
 interface PaymentMethod {
@@ -15,266 +26,189 @@ interface PaymentMethod {
 }
 
 interface PaymentMethodCardProps {
+  /**
+   * Solo se mira si hay cliente de Stripe (verdadero/falso): los métodos los
+   * resuelve el servidor por la organización (`/api/subscriptions/payment-methods`).
+   */
   stripeCustomerId: string | null;
   organizationId: number;
   onPaymentMethodUpdated?: () => void;
   initialPaymentMethods?: PaymentMethod[];
 }
 
-const brandLogos: Record<string, string> = {
-  visa: '💳 Visa',
-  mastercard: '💳 Mastercard',
-  amex: '💳 Amex',
-  discover: '💳 Discover',
-  diners: '💳 Diners',
-  jcb: '💳 JCB',
-  unionpay: '💳 UnionPay',
+const MARCAS: Record<string, string> = {
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  amex: 'Amex',
+  discover: 'Discover',
+  diners: 'Diners',
+  jcb: 'JCB',
+  unionpay: 'UnionPay',
 };
 
-export default function PaymentMethodCard({ 
-  stripeCustomerId,
-  organizationId,
-  onPaymentMethodUpdated,
-  initialPaymentMethods
-}: PaymentMethodCardProps) {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods || []);
-  const [loading, setLoading] = useState(!initialPaymentMethods || initialPaymentMethods.length === 0);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+function mensaje(e: unknown, respaldo: string): string {
+  return e instanceof Error && e.message ? e.message : respaldo;
+}
+
+export default function PaymentMethodCard({ stripeCustomerId, organizationId, onPaymentMethodUpdated, initialPaymentMethods }: PaymentMethodCardProps) {
   const t = useTranslations('org.paymentMethod');
+  const [metodos, setMetodos] = useState<PaymentMethod[]>(initialPaymentMethods ?? []);
+  const [cargando, setCargando] = useState(!initialPaymentMethods || initialPaymentMethods.length === 0);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // Confirmación del kit en lugar de `confirm()` nativo (auditoría 2026-10, P2-1).
+  const [porQuitar, setPorQuitar] = useState<string | null>(null);
+
+  const cargar = useCallback(async () => {
+    if (!stripeCustomerId || !organizationId) return;
+    setCargando(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/subscriptions/payment-methods?organizationId=${organizationId}`, { cache: 'no-store' });
+      const json = (await res.json().catch(() => ({}))) as { paymentMethods?: PaymentMethod[]; error?: string };
+      if (!res.ok) throw new Error(json.error || t('errorLoading'));
+      setMetodos(json.paymentMethods ?? []);
+    } catch (e) {
+      setError(mensaje(e, t('errorLoading')));
+    } finally {
+      setCargando(false);
+    }
+  }, [stripeCustomerId, organizationId, t]);
 
   useEffect(() => {
-    if (stripeCustomerId && (!initialPaymentMethods || initialPaymentMethods.length === 0)) {
-      loadPaymentMethods();
-    } else {
-      setLoading(false);
-    }
-  }, [stripeCustomerId]);
+    if (stripeCustomerId && (!initialPaymentMethods || initialPaymentMethods.length === 0)) void cargar();
+    else setCargando(false);
+  }, [stripeCustomerId, initialPaymentMethods, cargar]);
 
-  const loadPaymentMethods = async () => {
-    if (!stripeCustomerId || !organizationId) return;
-    
+  const quitar = async (id: string) => {
+    setOcupado(id);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch(`/api/subscriptions/payment-methods?organizationId=${organizationId}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || t('errorLoading'));
-      }
-      
-      setPaymentMethods(result.paymentMethods || []);
-    } catch (err: any) {
-      console.error('Error loading payment methods:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeletePaymentMethod = async (paymentMethodId: string) => {
-    if (!confirm(t('confirmDelete'))) return;
-    
-    try {
-      setActionLoading(paymentMethodId);
-      setError(null);
-      
-      const response = await fetch('/api/subscriptions/payment-methods', {
+      const res = await fetch('/api/subscriptions/payment-methods', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          organizationId,
-          action: 'delete',
-          paymentMethodId 
-        }),
+        body: JSON.stringify({ organizationId, action: 'delete', paymentMethodId: id }),
       });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || t('errorDeleting'));
-      }
-      
-      // Recargar métodos de pago
-      await loadPaymentMethods();
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || t('errorDeleting'));
+      setPorQuitar(null);
+      await cargar();
       onPaymentMethodUpdated?.();
-      
-    } catch (err: any) {
-      console.error('Error deleting payment method:', err);
-      setError(err.message);
+    } catch (e) {
+      setError(mensaje(e, t('errorDeleting')));
     } finally {
-      setActionLoading(null);
+      setOcupado(null);
     }
   };
 
-  const handleOpenBillingPortal = async () => {
+  const abrirPortal = async () => {
     if (!stripeCustomerId || !organizationId) return;
-    
+    setOcupado('portal');
+    setError(null);
     try {
-      setActionLoading('portal');
-      setError(null);
-      
-      const response = await fetch('/api/subscriptions/billing-portal', {
+      const res = await fetch('/api/subscriptions/billing-portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          organizationId,
-          returnUrl: window.location.href,
-        }),
+        body: JSON.stringify({ organizationId, returnUrl: window.location.href }),
       });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || t('errorPortal'));
-      }
-      
-      if (result.url) {
-        window.location.href = result.url;
-      }
-      
-    } catch (err: any) {
-      console.error('Error opening billing portal:', err);
-      setError(err.message);
-    } finally {
-      setActionLoading(null);
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error || t('errorPortal'));
+      window.location.href = json.url;
+    } catch (e) {
+      setError(mensaje(e, t('errorPortal')));
+      setOcupado(null);
     }
-  };
-
-  const formatBrand = (brand: string) => {
-    return brandLogos[brand.toLowerCase()] || `💳 ${brand}`;
   };
 
   if (!stripeCustomerId) {
     return (
-      <div className="bg-white shadow rounded-lg dark:bg-gray-800">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('description')}</p>
+      <Tarjeta titulo={t('title')} descripcion={t('description')} icono={CreditCard}>
+        <div className="flex flex-col items-center gap-1 py-4 text-center">
+          <p className="text-sm font-medium text-fg">{t('noPaymentMethod')}</p>
+          <p className="text-[13px] text-fg-secondary">{t('noPaymentMethodDesc')}</p>
         </div>
-        <div className="p-4 sm:p-6">
-          <div className="text-center py-6">
-            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <h4 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">{t('noPaymentMethod')}</h4>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {t('noPaymentMethodDesc')}
-            </p>
-          </div>
-        </div>
-      </div>
+      </Tarjeta>
     );
   }
 
-  if (loading) {
-    return <PaymentMethodSkeleton />;
-  }
+  if (cargando) return <PaymentMethodSkeleton />;
 
   return (
-    <div className="bg-white shadow rounded-lg dark:bg-gray-800">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center dark:border-gray-700">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('description')}</p>
-        </div>
-        <button
-          onClick={handleOpenBillingPortal}
-          disabled={actionLoading === 'portal'}
-          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
-        >
-          {actionLoading === 'portal' ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2 dark:border-gray-300"></div>
-              {t('opening')}
-            </>
-          ) : (
-            <>
-              <PencilIcon className="h-4 w-4 mr-1" />
-              {t('manageBilling')}
-            </>
-          )}
+    <Tarjeta
+      titulo={t('title')}
+      descripcion={t('description')}
+      icono={CreditCard}
+      accion={
+        <button type="button" onClick={() => void abrirPortal()} disabled={ocupado === 'portal'} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+          {ocupado === 'portal' ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <ExternalLink aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+          {ocupado === 'portal' ? t('opening') : t('manageBilling')}
         </button>
-      </div>
-      
-      <div className="p-4 sm:p-6">
-        {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
-            <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
-          </div>
-        )}
-        
-        {paymentMethods.length === 0 ? (
-          <div className="text-center py-6">
-            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <h4 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">{t('noPaymentMethods')}</h4>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {t('addPaymentMethodDesc')}
-            </p>
-            <button
-              onClick={handleOpenBillingPortal}
-              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              {t('addPaymentMethod')}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {paymentMethods.map((pm) => (
-              <div 
-                key={pm.id} 
-                className={`flex items-center justify-between p-4 rounded-lg border ${
-                  pm.isDefault ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'
-                }`}
+      }
+    >
+      {error && (
+        <p role="alert" className="mb-3 rounded-lg border border-line-danger bg-danger-subtle p-3 text-[13px] text-danger-text">
+          {error}
+        </p>
+      )}
+      {metodos.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-4 text-center">
+          <p className="text-sm font-medium text-fg">{t('noPaymentMethods')}</p>
+          <p className="text-[13px] text-fg-secondary">{t('addPaymentMethodDesc')}</p>
+          <button type="button" onClick={() => void abrirPortal()} className={clasesBoton({ tamano: 'sm' })}>
+            <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('addPaymentMethod')}
+          </button>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {metodos.map((pm) => {
+            const unica = metodos.length === 1;
+            return (
+              <li
+                key={pm.id}
+                className={cn('flex items-center justify-between gap-3 rounded-xl border p-3', pm.isDefault ? 'border-line-brand bg-brand-tint' : 'border-line')}
               >
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-8 bg-gradient-to-r from-gray-700 to-gray-900 rounded flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        {pm.brand.toUpperCase().substring(0, 4)}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-50">
-                      {formatBrand(pm.brand)} •••• {pm.last4}
+                <div className="flex min-w-0 items-center gap-3">
+                  <span aria-hidden="true" className="flex h-8 w-12 shrink-0 items-center justify-center rounded-md bg-fg text-[11px] font-bold uppercase text-surface">
+                    {pm.brand.slice(0, 4)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-fg">
+                      {MARCAS[pm.brand.toLowerCase()] ?? pm.brand} •••• {pm.last4}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t('expires')} {pm.expMonth.toString().padStart(2, '0')}/{pm.expYear}
+                    <p className="text-xs text-fg-secondary">
+                      {t('expires')} {String(pm.expMonth).padStart(2, '0')}/{pm.expYear}
                     </p>
                   </div>
-                  {pm.isDefault && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
-                      {t('default')}
-                    </span>
-                  )}
+                  {pm.isDefault && <StatusBadge estado="predeterminada" tono="marca" etiqueta={t('default')} tamano="sm" />}
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleDeletePaymentMethod(pm.id)}
-                    disabled={actionLoading === pm.id || paymentMethods.length === 1}
-                    className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-500 dark:hover:text-red-300"
-                    title={paymentMethods.length === 1 ? t('cantDeleteOnly') : t('delete')}
-                  >
-                    {actionLoading === pm.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 dark:border-red-300"></div>
-                    ) : (
-                      <TrashIcon className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+                <button
+                  type="button"
+                  onClick={() => setPorQuitar(pm.id)}
+                  disabled={ocupado === pm.id || unica}
+                  aria-label={`${t('delete')} ${MARCAS[pm.brand.toLowerCase()] ?? pm.brand} •••• ${pm.last4}`}
+                  title={unica ? t('cantDeleteOnly') : t('delete')}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-danger-text disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  {ocupado === pm.id ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <ConfirmDialog
+        open={porQuitar !== null}
+        onOpenChange={(o) => !o && ocupado === null && setPorQuitar(null)}
+        title={t('delete')}
+        description={t('confirmDelete')}
+        confirmLabel={t('delete')}
+        variant="destructive"
+        loading={ocupado !== null && ocupado === porQuitar}
+        onConfirm={async () => {
+          if (porQuitar) await quitar(porQuitar);
+        }}
+      />
+    </Tarjeta>
   );
 }

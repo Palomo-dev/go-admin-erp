@@ -9,6 +9,7 @@ import {
   Bell, ExternalLink, User, DollarSign, Hotel, Package,
   ClipboardList, CreditCard, UserPlus, Calendar, AlertTriangle,
   Hash, Clock, TrendingDown, Building2, Mail, Info, AlertCircle, RefreshCw, Trash2, X,
+  ShoppingBag, UtensilsCrossed,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -61,6 +62,9 @@ const TONOS: Record<Tono, { chip: string; badge: string }> = {
 
 // ── Helpers de tipo ────────────────────────────────────
 export function getTypeIcon(type: string) {
+  // Pedido web nuevo (E6) y reserva de mesa web (D3): antes caían en Bell/Hotel.
+  if (type === 'web_order_created') return ShoppingBag;
+  if (type.startsWith('restaurant_reservation')) return UtensilsCrossed;
   if (type.includes('invoice') || type.includes('payment') || type.includes('ar_') || type.includes('ap_')) return DollarSign;
   if (type.includes('reservation') || type.includes('checkin') || type.includes('checkout') || type.includes('housekeeping') || type.includes('no_show')) return Hotel;
   if (type.includes('opportunity') || type.includes('task_')) return ClipboardList;
@@ -85,6 +89,7 @@ const TIPOS_CON_ETIQUETA = new Set([
   'calendar_event_assigned', 'calendar_event_cancelled',
   'subscription_cancelled', 'trial_ended', 'trial_expiring', 'payment_failed', 'ai_credits_low',
   'new_member', 'role_changed',
+  'web_order_created', 'restaurant_reservation_created', 'restaurant_reservation_cancelled',
 ]);
 
 /** Traductor de `header.notificationDetail` (lo crea el componente con `useTranslations`). */
@@ -103,6 +108,10 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
       return p.invoice_id ? { url: `/app/finanzas/facturas-compra/${p.invoice_id}`, accion: 'viewInvoice' } : { url: '/app/finanzas/facturas-compra', accion: 'viewInvoices' };
     case 'payment_registered':
       return { url: '/app/finanzas', accion: 'viewFinance' };
+    case 'web_order_created':
+      return { url: p.href || (p.order_id ? `/app/pos/pedidos-online/${p.order_id}` : '/app/pos/pedidos-online'), accion: 'viewWebOrder' };
+    case 'restaurant_reservation_created': case 'restaurant_reservation_cancelled':
+      return { url: p.href || '/app/pos/reservas-mesas', accion: 'viewTableReservations' };
     case 'reservation_created': case 'checkin': case 'checkout': case 'reservation_cancelled': case 'no_show':
       return p.reservation_id ? { url: `/app/pms/reservas/${p.reservation_id}`, accion: 'viewReservation' } : { url: '/app/pms/reservas', accion: 'viewReservations' };
     case 'housekeeping_assigned':

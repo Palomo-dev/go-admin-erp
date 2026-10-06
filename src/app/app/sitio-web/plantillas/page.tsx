@@ -1,34 +1,13 @@
 'use client';
 
 /**
- * /app/sitio-web/plantillas — «Plantillas» (Figma 01b): restablecer el sitio a
- * una plantilla. Viene de Branding › Publicación (bloque «Restablecer»).
+ * /app/sitio-web/plantillas — «Plantillas» (Figma A/06b-06e): galería por giro,
+ * vista previa y «Usar esta plantilla», que crea un borrador y conserva el
+ * contenido (`GaleriaPlantillas`). Ya no usa BrandingPublishTab ni
+ * `resetToTemplate`.
  */
-import { useTranslations } from 'next-intl';
-import { BrandingPublishTab } from '@/components/organization/branding';
-import { MarcoSitioWeb, EstadoAjustes } from '@/components/sitio-web/MarcoSitioWeb';
-import { useAjustesSitio } from '@/components/sitio-web/useAjustesSitio';
+import { GaleriaPlantillas } from '@/components/sitio-web/diseno/GaleriaPlantillas';
 
 export default function PlantillasSitioWebPage() {
-  const tb = useTranslations('org.branding');
-  const a = useAjustesSitio();
-
-  return (
-    <MarcoSitioWeb href="/app/sitio-web/plantillas">
-      <EstadoAjustes cargando={a.cargando} hayAjustes={!!a.settings} onReintentar={() => void a.recargar()}>
-        {a.settings && (
-          <BrandingPublishTab
-            vista="plantillas"
-            settings={a.settings}
-            organizationName={a.organizationName || tb('myOrganization')}
-            subdomain={a.subdominio || undefined}
-            onPublish={a.publicar}
-            onUnpublish={a.despublicar}
-            onResetToTemplate={a.restablecerPlantilla}
-            isPublishing={a.guardando}
-          />
-        )}
-      </EstadoAjustes>
-    </MarcoSitioWeb>
-  );
+  return <GaleriaPlantillas />;
 }

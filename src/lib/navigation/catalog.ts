@@ -140,6 +140,13 @@ export interface PaginaNav {
    * `shell/header/cabeceraMovil.tsx`).
    */
   pantallaCompleta?: boolean;
+  /**
+   * Línea de ayuda bajo el nombre, en español como valor canónico (igual que
+   * `nombre`); se traduce con `nav.descripciones.<clavePagina(href)>`. Solo la
+   * pinta el nivel 2 del menú móvil en los módulos con `drawer: 'filas'`
+   * (Figma 01c: «Solo restaurantes», «Checkout, pagos y envíos»…).
+   */
+  descripcion?: string;
 }
 
 export interface ModuloNav {
@@ -161,9 +168,32 @@ export interface ModuloNav {
   rutas: string[];
   /** Páginas en orden. Si solo queda una visible, el módulo es un enlace directo. */
   paginas: PaginaNav[];
+  /**
+   * Cómo pinta sus páginas el nivel 2 del menú móvil. `'grupos'` (por defecto):
+   * filas de texto bajo los rótulos de grupo (MobileDrawerNivel2 622:13996).
+   * `'filas'`: sin rótulos, cada fila con icono, descripción opcional y chevron
+   * (Figma 01c, módulo Sitio web). Opt-in por módulo: los demás no cambian.
+   */
+  drawer?: 'grupos' | 'filas';
+  /**
+   * Subtítulo dinámico de la cabecera del nivel 2 móvil. Es un identificador,
+   * no un texto: lo resuelve `shell/sidebar/subtitulosModulo.tsx`.
+   * `'dominioSitio'` = la URL pública del sitio (Figma 01c, «tu-marca.goadmin.io»).
+   */
+  subtitulo?: 'dominioSitio';
 }
 
-export type CapacidadNav = 'gestionarNotificaciones';
+/**
+ * Capacidades que puede exigir una página, calculadas en el servidor
+ * (`capacidadesNav.server.ts`, servidas por `GET /api/me/capacidades`):
+ *  - gestionarNotificaciones: admin o `notifications.manage`;
+ *  - verAnaliticaWeb: la misma regla que `GET /api/analitica-web`;
+ *  - variasSedes: la organización tiene más de una sucursal activa.
+ */
+export type CapacidadNav = 'gestionarNotificaciones' | 'verAnaliticaWeb' | 'variasSedes';
+
+/** Todas las capacidades del menú, en una sola lista (cliente y servidor). */
+export const CAPACIDADES_NAV: readonly CapacidadNav[] = ['gestionarNotificaciones', 'verAnaliticaWeb', 'variasSedes'];
 
 export const SECCIONES: { codigo: CodigoSeccion; etiqueta: string }[] = [
   { codigo: 'principal', etiqueta: 'sectionMain' },
@@ -248,17 +278,34 @@ export const CATALOGO_NAV: ModuloNav[] = [
     icono: Globe,
     seccion: 'ventas',
     rutas: ['/app/sitio-web'],
+    // Figma 01c: en móvil, filas con icono, descripción y chevron, y la URL
+    // pública del sitio bajo el título.
+    drawer: 'filas',
+    subtitulo: 'dominioSitio',
+    // Carta (solo restaurantes) y Tienda (solo comercio) se ocultan por giro
+    // con filas `is_active = false` en organization_module_pages (Figma 01e;
+    // migración 20261006220000_sitio_web_paginas_por_giro). «Sedes en la web»
+    // depende de una capacidad del servidor (`variasSedes`), que se recalcula
+    // sola al crear la segunda sede. «Analítica» exige la misma regla que su API.
     paginas: [
       { href: '/app/sitio-web', nombre: 'Resumen', icono: Home, grupo: 'Tu sitio' },
       { href: '/app/sitio-web/paginas', nombre: 'Páginas', icono: FileText, grupo: 'Tu sitio' },
       { href: '/app/sitio-web/diseno', nombre: 'Diseño', icono: Wand2, grupo: 'Tu sitio' },
       { href: '/app/sitio-web/plantillas', nombre: 'Plantillas', icono: LayoutGrid, grupo: 'Tu sitio' },
-      { href: '/app/sitio-web/carta', nombre: 'Carta', icono: UtensilsCrossed, grupo: 'Según tu negocio' },
-      { href: '/app/sitio-web/tienda', nombre: 'Tienda', icono: ShoppingBag, grupo: 'Según tu negocio' },
-      { href: '/app/sitio-web/ventas', nombre: 'Ventas en línea', icono: ShoppingCart, grupo: 'Vender y crecer' },
+      { href: '/app/sitio-web/carta', nombre: 'Carta', icono: UtensilsCrossed, grupo: 'Según tu negocio', descripcion: 'Solo restaurantes' },
+      { href: '/app/sitio-web/tienda', nombre: 'Tienda', icono: ShoppingBag, grupo: 'Según tu negocio', descripcion: 'Solo comercio' },
+      { href: '/app/sitio-web/ventas', nombre: 'Ventas en línea', icono: ShoppingCart, grupo: 'Vender y crecer', descripcion: 'Checkout, pagos y envíos' },
       { href: '/app/sitio-web/dominios', nombre: 'Dominios', icono: Link2, grupo: 'Vender y crecer' },
       { href: '/app/sitio-web/seo', nombre: 'SEO y redes', icono: Search, grupo: 'Vender y crecer' },
-      { href: '/app/sitio-web/analitica', nombre: 'Analítica', icono: BarChart3, grupo: 'Vender y crecer' },
+      { href: '/app/sitio-web/analitica', nombre: 'Analítica', icono: BarChart3, grupo: 'Vender y crecer', requiere: 'verAnaliticaWeb' },
+      {
+        href: '/app/sitio-web/sedes',
+        nombre: 'Sedes en la web',
+        icono: MapPin,
+        grupo: 'Ajustes del sitio',
+        requiere: 'variasSedes',
+        descripcion: 'Si tienes más de una sede',
+      },
       { href: '/app/sitio-web/configuracion', nombre: 'Configuración', icono: Settings, grupo: 'Ajustes del sitio' },
     ],
   },
@@ -513,15 +560,24 @@ export const CATALOGO_NAV: ModuloNav[] = [
     etiqueta: 'myOrganization',
     icono: Building2,
     seccion: 'organizacion',
-    rutas: ['/app/organizacion'],
+    // Cuatro grupos (Figma 08 «Acceso y organización», 2026-10-06): Equipo,
+    // Sedes, Plan y facturación, Marca. «Compras» es el historial de compras de
+    // cupo (/app/plan/historial). Sitio web y Dominios viven en el módulo Sitio
+    // web desde el 2026-10-05: no vuelven aquí.
+    // PENDIENTE: el diseño pone «Roles y permisos» dentro de Equipo. Su página
+    // (/app/roles) pertenece hoy al módulo `roles` (bloque de abajo) y un href
+    // no puede estar en dos módulos (`filtrar.test.ts`): se mueve aquí cuando
+    // ese bloque se pliegue en este.
+    rutas: ['/app/organizacion', '/app/plan'],
     paginas: [
-      { href: '/app/organizacion/informacion', nombre: 'Información', icono: Info },
-      { href: '/app/organizacion/sucursales', nombre: 'Sucursales', icono: MapPin },
-      { href: '/app/organizacion/miembros', nombre: 'Miembros', icono: UserCheck },
-      { href: '/app/organizacion/invitaciones', nombre: 'Invitaciones', icono: UserPlus },
-      { href: '/app/organizacion/modulos', nombre: 'Módulos', icono: Grid3x3 },
-      { href: '/app/organizacion/plan', nombre: 'Mi plan', icono: CreditCard },
-      { href: '/app/organizacion/mis-organizaciones', nombre: 'Mis organizaciones', icono: Building2 },
+      { href: '/app/organizacion/miembros', nombre: 'Miembros', icono: UserCheck, grupo: 'Equipo' },
+      { href: '/app/organizacion/invitaciones', nombre: 'Invitaciones', icono: UserPlus, grupo: 'Equipo' },
+      { href: '/app/organizacion/sucursales', nombre: 'Sucursales', icono: MapPin, grupo: 'Sedes' },
+      { href: '/app/organizacion/plan', nombre: 'Plan', icono: CreditCard, grupo: 'Plan y facturación' },
+      { href: '/app/plan/historial', nombre: 'Compras', icono: Receipt, grupo: 'Plan y facturación' },
+      { href: '/app/organizacion/modulos', nombre: 'Módulos', icono: Grid3x3, grupo: 'Plan y facturación' },
+      { href: '/app/organizacion/informacion', nombre: 'Información', icono: Info, grupo: 'Marca' },
+      { href: '/app/organizacion/mis-organizaciones', nombre: 'Mis organizaciones', icono: Building2, grupo: 'Marca' },
     ],
   },
   {

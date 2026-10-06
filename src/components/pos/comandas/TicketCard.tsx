@@ -154,7 +154,16 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   const statusInfo = getStatusInfo(ticket.status);
   const StatusIcon = statusInfo.icon;
   
-  const tableName = ticket.table_sessions?.restaurant_tables?.name || (ticket.source === 'pos' ? 'POS' : t('tarjeta.mesa'));
+  // Comanda web: «Web W-xxxx» y debajo «Recoger / Domicilio / Mesa N».
+  const pedidoWeb = ticket.pedido_web ?? null;
+  const origenWeb = pedidoWeb
+    ? pedidoWeb.tipo === 'dine_in'
+      ? (pedidoWeb.mesa ? t('tarjeta.webMesa', { mesa: pedidoWeb.mesa }) : t('tarjeta.webComerAqui'))
+      : pedidoWeb.tipo === 'pickup' ? t('tarjeta.webRecoger') : t('tarjeta.webDomicilio')
+    : null;
+  const tableName = pedidoWeb
+    ? t('tarjeta.web', { numero: pedidoWeb.order_number })
+    : ticket.table_sessions?.restaurant_tables?.name || (ticket.source === 'pos' ? 'POS' : ticket.source === 'web' ? t('tarjeta.webSinPedido') : t('tarjeta.mesa'));
   const zoneName = ticket.table_sessions?.restaurant_tables?.zone || '';
   const serverName = ticket.table_sessions?.serverName || ticket.server_name || null;
 
@@ -215,7 +224,12 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
               <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
                 {tableName}
               </h3>
-              {zoneName && (
+              {origenWeb && (
+                <Badge className="text-xs bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-200">
+                  {origenWeb}
+                </Badge>
+              )}
+              {zoneName && !pedidoWeb && (
                 <Badge variant="outline" className="text-xs">
                   {zoneName}
                 </Badge>
@@ -299,6 +313,14 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
               {t('confirmarAlergia')}
             </Button>
           )}
+        </div>
+      )}
+
+      {/* Nota del cliente del pedido web (para todo el pedido) */}
+      {pedidoWeb?.customer_notes && (
+        <div className="bg-yellow-50 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 px-3 sm:px-4 py-2 text-sm flex items-start gap-1">
+          <StickyNote aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5" />
+          <span className="break-words"><span className="font-semibold">{t('tarjeta.notaCliente')}:</span> {pedidoWeb.customer_notes}</span>
         </div>
       )}
 
@@ -443,6 +465,20 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                     )}
                   </div>
                   
+                  {(() => {
+                    // Nota de la línea: la copia de la comanda o, en comandas web
+                    // viejas sin copia, la nota del cliente guardada en la venta.
+                    const notasVenta = item.sale_items?.notes;
+                    const notaCliente = !item.notes && notasVenta && typeof notasVenta === 'object' && typeof notasVenta.customer_notes === 'string'
+                      ? notasVenta.customer_notes
+                      : null;
+                    return notaCliente ? (
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
+                        <StickyNote aria-hidden="true" className="mr-1 inline h-4 w-4 align-text-bottom" />
+                        {notaCliente}
+                      </p>
+                    ) : null;
+                  })()}
                   {item.notes && (
                     <p className={item.is_allergy
                       ? 'mt-2 text-sm font-bold text-red-700 dark:text-red-400 flex items-start gap-1'

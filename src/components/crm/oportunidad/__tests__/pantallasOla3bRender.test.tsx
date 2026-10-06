@@ -486,14 +486,22 @@ describe('drawer y móvil', () => {
   test('móvil: una columna a la vez con chips de etapa', async () => {
     simularAncho(390);
     renderConIdioma(<PipelinePantalla />);
-    await screen.findByRole('tab', { name: /Calificación · 1/ });
-    fireEvent.click(screen.getByRole('tab', { name: /Propuesta · 1/ }));
+    // Los chips de etapa son un filtro de la vista (radio), no pestañas (regla de pestañas 2026-10-06).
+    await screen.findByRole('radio', { name: /Calificación · 1/ });
+    fireEvent.click(screen.getByRole('radio', { name: /Propuesta · 1/ }));
     await screen.findByText('Renovación licencias 2027');
   });
 });
 
-describe('pestañas en la URL (regla de pestañas 2026-10-05)', () => {
-  const seleccionada = (nombre: RegExp) => screen.getByRole('tab', { name: nombre }).getAttribute('aria-selected');
+describe('pestañas en la URL (regla de pestañas 2026-10-05, refinada el 2026-10-06)', () => {
+  /**
+   * Regla del 2026-10-06: secciones → `TabBar` (role tab, `aria-selected`);
+   * vista o filtro → `SegmentedControl` (role radio, `aria-checked`).
+   */
+  const seleccionada = (nombre: RegExp) => {
+    const pestana = screen.queryByRole('tab', { name: nombre });
+    return pestana ? pestana.getAttribute('aria-selected') : screen.getByRole('radio', { name: nombre }).getAttribute('aria-checked');
+  };
   const pidio = (estado: string) => llamadas.some((l) => l.url.startsWith('/api/crm/opportunities?') && l.url.includes(`status=${estado}`));
 
   test('Oportunidades: sin `?estado=` abre «Abiertas»; la pestaña va a la URL y «atrás» la devuelve', async () => {
@@ -503,13 +511,15 @@ describe('pestañas en la URL (regla de pestañas 2026-10-05)', () => {
     expect(seleccionada(/^Abiertas/)).toBe('true');
     expect(pidio('open')).toBe(true);
 
-    fireEvent.click(screen.getByRole('tab', { name: /^Ganadas/ }));
+    // El estado filtra la misma lista: control segmentado (radio), no pestaña.
+    expect(screen.queryByRole('tab', { name: /^Ganadas/ })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /^Ganadas/ }));
     expect(push).toHaveBeenLastCalledWith('/app/crm/oportunidades?estado=won', { scroll: false });
     await waitFor(() => expect(seleccionada(/^Ganadas/)).toBe('true'));
     await waitFor(() => expect(pidio('won')).toBe(true));
 
     // «Abiertas» es el valor por defecto: no se escribe.
-    fireEvent.click(screen.getByRole('tab', { name: /^Abiertas/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Abiertas/ }));
     expect(push).toHaveBeenLastCalledWith('/app/crm/oportunidades', { scroll: false });
 
     // «Atrás» / «adelante» del navegador cambian la URL sin pasar por la pantalla.
@@ -526,7 +536,7 @@ describe('pestañas en la URL (regla de pestañas 2026-10-05)', () => {
     expect(seleccionada(/^Perdidas/)).toBe('true');
     expect(pidio('lost')).toBe(true);
     // Cambiar de pestaña conserva el resto de la URL.
-    fireEvent.click(screen.getByRole('tab', { name: /^Todas/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Todas/ }));
     expect(push).toHaveBeenLastCalledWith('/app/crm/oportunidades?estado=all&otra=1', { scroll: false });
     unmount();
 
@@ -545,7 +555,10 @@ describe('pestañas en la URL (regla de pestañas 2026-10-05)', () => {
     expect(seleccionada(/^Kanban/)).toBe('true');
     expect(llamadas.some((l) => l.url.startsWith('/api/crm/pipelines/p1/board?'))).toBe(true);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Tabla' }));
+    // Secciones en `TabBar`; Kanban/Tabla es la vista de «Oportunidades» (control segmentado).
+    expect(screen.getByRole('tablist', { name: 'Secciones del pipeline' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Oportunidades' }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Tabla' }));
     expect(push).toHaveBeenLastCalledWith('/app/crm/pipeline?vista=tabla', { scroll: false });
     await waitFor(() => expect(seleccionada(/^Tabla/)).toBe('true'));
 
@@ -596,13 +609,14 @@ describe('pestañas en la URL (regla de pestañas 2026-10-05)', () => {
         <PipelinePantalla />
       </CabeceraMovilProvider>,
     );
-    await screen.findByRole('tab', { name: /Calificación · 1/ });
+    await screen.findByRole('radio', { name: /Calificación · 1/ });
     // El selector de escritorio sigue en el DOM (oculto por CSS): se busca el de la cabecera móvil.
     const titulo = await screen.findByTestId('titulo-movil');
     expect(titulo.getAttribute('aria-label')).toBe('Embudo: Ventas');
     expect(titulo.textContent).toContain('Ventas ▾');
-    // En móvil no hay pestañas de vista: el tablero es una columna a la vez.
-    expect(screen.queryByRole('tablist', { name: 'Vista del pipeline' })).toBeNull();
+    // En móvil no hay pestañas de sección ni vistas: el tablero es una columna a la vez.
+    expect(screen.queryByRole('tablist', { name: 'Secciones del pipeline' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Vista del pipeline' })).toBeNull();
 
     fireEvent.click(titulo);
     const hoja = await screen.findByRole('dialog', { name: 'Pipelines de la organización' });

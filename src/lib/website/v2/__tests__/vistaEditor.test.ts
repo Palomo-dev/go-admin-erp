@@ -13,6 +13,7 @@ import {
   fijarModoCampo,
   nuevoIdSeccion,
   paginaAVista,
+  propagarSeccionesHeredadas,
   restablecerSeccion,
 } from '../vistaEditor';
 
@@ -151,5 +152,49 @@ describe('herencia de sede (D6)', () => {
 
     sede = restablecerSeccion(sede, principal, 'p1', 's1');
     expect(estadoSecciones(sede, principal).s1).toBe('hereda');
+  });
+});
+
+describe('herencia de secciones al publicar el principal', () => {
+  test('la sede recibe lo que heredaba y conserva lo que personalizó', () => {
+    const anterior = documento();
+    const sede = documentoSedeDesdeBase(anterior);
+    sede.paginas[0].secciones[1].contenido = { titulo: 'Solo en esta sede' };
+    const nueva = documento();
+    nueva.paginas[0].secciones[0].contenido = { title: 'Nuevo' };
+    nueva.paginas[0].secciones[1].contenido = { titulo: 'Del principal' };
+    const r = propagarSeccionesHeredadas(sede, anterior, nueva);
+    expect(r?.secciones).toBe(1);
+    expect(r?.documento.paginas[0].secciones[0].contenido).toEqual({ title: 'Nuevo' });
+    expect(r?.documento.paginas[0].secciones[1].contenido).toEqual({ titulo: 'Solo en esta sede' });
+    expect(estadoSecciones(r!.documento, nueva).s1).toBe('hereda');
+    expect(sede.paginas[0].secciones[0].contenido).toEqual({ title: 'Hola' });
+  });
+
+  test('una sección nueva del principal entra en la sede tras la que la precede en el principal', () => {
+    const anterior = documento();
+    const sede = documentoSedeDesdeBase(anterior);
+    const nueva = documento();
+    nueva.paginas[0].secciones.splice(1, 0, { id: 's-cta', tipo: 'cta', variante: null, version: 1, contenido: { title: 'Reserva' }, diseno: {}, visibilidad: { movil: true, escritorio: true } });
+    const r = propagarSeccionesHeredadas(sede, anterior, nueva);
+    expect(r?.secciones).toBe(1);
+    expect(r?.documento.paginas[0].secciones.map((s) => s.id)).toEqual(['s1', 's-cta', 's2']);
+    expect(propagarSeccionesHeredadas(r!.documento, nueva, nueva)).toBeNull();
+  });
+
+  test('una sección que el principal quitó sale de la sede solo si la sede la heredaba sin cambios', () => {
+    const anterior = documento();
+    const sede = documentoSedeDesdeBase(anterior);
+    sede.paginas[0].secciones[1].contenido = { titulo: 'Personalizada' };
+    const nueva = documento();
+    nueva.paginas[0].secciones = [];
+    const r = propagarSeccionesHeredadas(sede, anterior, nueva);
+    expect(r?.secciones).toBe(1);
+    expect(r?.documento.paginas[0].secciones.map((s) => s.id)).toEqual(['s2']);
+  });
+
+  test('sin cambios en el principal no hay nada que guardar (idempotente)', () => {
+    const base = documento();
+    expect(propagarSeccionesHeredadas(documentoSedeDesdeBase(base), base, base)).toBeNull();
   });
 });

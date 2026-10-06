@@ -19,7 +19,7 @@ import {
   RECOMENDADAS_POR_TIPO,
   coincideBusqueda,
   filtrarCatalogo,
-  getSectionCatalogForBranch,
+  getSectionCatalogForBranch, tipoSedeDesdeGiro,
   normalizarBusqueda,
 } from '../sectionsByBranchType';
 
@@ -122,5 +122,16 @@ describe('búsqueda', () => {
   test('búsqueda vacía devuelve el catálogo entero', () => {
     const c = getSectionCatalogForBranch('hotel');
     expect(filtrarCatalogo(c, '   ').coincidencias).toBe(c.total);
+  });
+});
+
+describe('recomendadas sin tipo de sede (sitio principal)', () => {
+  test('salen del giro del sitio: un restaurante ve primero Carta, Reservar y Horario', () => {
+    expect(tipoSedeDesdeGiro('restaurante')).toBe('restaurant');
+    expect(tipoSedeDesdeGiro('tienda')).toBe('retail');
+    expect(tipoSedeDesdeGiro('otro')).toBeNull();
+    expect(tipoSedeDesdeGiro(null)).toBeNull();
+    const tipos = getSectionCatalogForBranch(tipoSedeDesdeGiro('restaurante')).recomendadas.map((s) => s.type);
+    expect(tipos).toEqual(expect.arrayContaining(['menu_full', 'reservation', 'hours_location']));
   });
 });

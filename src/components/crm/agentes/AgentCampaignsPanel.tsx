@@ -35,6 +35,8 @@ import { buildCampaignBody, type CampaignRow } from "./campanas/campaignModel";
 import { CampaignTargetPicker } from "./campanas/CampaignTargetPicker";
 import { CampaignCard } from "./campanas/CampaignCard";
 import { CampaignRunNow } from "./campanas/CampaignRunNow";
+import { useDiagnosticoVoz } from "./campanas/useDiagnosticoVoz";
+import { useTranslations } from "next-intl";
 
 interface Props {
   agents: VoiceAgentListItem[];
@@ -71,6 +73,8 @@ function CampaignsPanelInner({
   const [pipelineId, setPipelineId] = useState<string | null>(null);
   const [stageId, setStageId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string>("");
+  const tDisparo = useTranslations("vozCampanasDisparo");
+  const diagnostico = useDiagnosticoVoz(tDisparo("errorDiagnostico"));
   const activeAgents = agents.filter((a) => a.is_active);
   const selectableAgents = activeAgents.length > 0 ? activeAgents : agents;
   const effectiveAgentId = agentId || selectableAgents[0]?.id || "";
@@ -149,6 +153,8 @@ function CampaignsPanelInner({
       if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
       toast({ title: ok });
       void load();
+      // Activar o detener cambia lo que la compuerta dice de la campaña.
+      void diagnostico.recargar();
     } catch (err) {
       toast({
         title: "No se pudo actualizar",
@@ -168,7 +174,7 @@ function CampaignsPanelInner({
         (`ScheduledTask 'voice_campaigns'`) y este bloque permite forzarla y, sobre
         todo, ver POR QUÉ no marca cuando falta algo.
       */}
-      <CampaignRunNow onRan={() => void load()} />
+      <CampaignRunNow estado={diagnostico} onRan={() => void load()} />
 
       <section
         aria-labelledby="c-new-title"
@@ -258,6 +264,8 @@ function CampaignsPanelInner({
               stages={lookups.stages}
               pipelines={lookups.pipelines}
               busy={patching === c.id}
+              diagnostico={diagnostico.diag?.campanas.find((d) => d.id === c.id)}
+              motivosOrganizacion={diagnostico.diag?.organizacion ?? []}
               onActivate={(row) =>
                 void patch(row.id, { status: "running", emergency_stop: false }, "Campaña activada")
               }

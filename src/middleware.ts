@@ -12,6 +12,7 @@ import {
   getProjectRef,
   MW_DB_BUDGET_MS,
 } from '@/lib/supabase/edge-rest';
+import { cargoPuedeEntrarAModulo, resolverCargoMiembro } from '@/lib/navigation/accesoCargo';
 
 const ACTIVITY_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
 
@@ -700,15 +701,24 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
   if (!org) return null; // Sin organizacion identificable: permitir
   const organizationId = org.id;
 
-  // Consultas independientes en paralelo: modulo activo en la org + cargo del usuario.
-  const [moduleRows, memberRows] = await Promise.all([
+  // Consultas independientes en paralelo: modulo activo en la org + si es
+  // núcleo + cargo del usuario.
+  const [moduleRows, coreRows, memberRows] = await Promise.all([
     edgeSelect<{ is_active: boolean }>(
       `organization_modules?select=is_active&organization_id=eq.${organizationId}` +
         `&module_code=eq.${encodeURIComponent(moduleCode)}&is_active=eq.true&limit=1`,
       { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
-    edgeSelect<{ job_position_id: string | null }>(
-      `organization_members?select=job_position_id&user_id=eq.${encodeURIComponent(userId)}` +
+    // Un módulo base (modules.is_core) está activo para toda organización,
+    // igual que en moduleManagementService.getActiveModules: si alguien apagó su
+    // fila en organization_modules, no por eso desaparece. Se lee de `modules`,
+    // sin lista cableada.
+    edgeSelect<{ is_core: boolean | null }>(
+      `modules?select=is_core&code=eq.${encodeURIComponent(moduleCode)}&limit=1`,
+      { deadline: ctx.deadline, accessToken: ctx.accessToken }
+    ),
+    edgeSelect<{ id: number; is_super_admin: boolean | null; job_position_id: string | null }>(
+      `organization_members?select=id,is_super_admin,job_position_id&user_id=eq.${encodeURIComponent(userId)}` +
         `&organization_id=eq.${organizationId}&is_active=eq.true&limit=1`,
       { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
@@ -716,26 +726,36 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
 
   // 1. La organizacion tiene el modulo activo
   if (moduleRows === null) return null; // consulta fallida -> permitir
-  if (moduleRows.length === 0) {
+  if (moduleRows.length === 0 && !coreRows?.[0]?.is_core) {
     const redirectUrl = new URL('/app/inicio', ctx.request.url);
     redirectUrl.searchParams.set('error', 'module_not_activated');
     redirectUrl.searchParams.set('module', moduleCode);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // 2. El cargo del usuario tiene acceso al modulo
+  // 2. El cargo del usuario tiene acceso al modulo. El cargo y la regla son los
+  // mismos que usa el menú (accesoCargo.ts): super admin sin restricción,
+  // respaldo en employments y «cargo sin filas = sin restricción».
   if (!memberRows || memberRows.length === 0) return null; // fallback: permitir
-  const jobPositionId = memberRows[0].job_position_id;
+  const jobPositionId = await resolverCargoMiembro(memberRows[0], async (memberId) => {
+    const rows = await edgeSelect<{ position_id: string | null }>(
+      `employments?select=position_id&organization_member_id=eq.${encodeURIComponent(String(memberId))}` +
+        `&status=eq.active&order=created_at.desc&limit=1`,
+      { deadline: ctx.deadline, accessToken: ctx.accessToken }
+    );
+    return rows?.[0]?.position_id ?? null; // consulta fallida -> sin cargo (fail open, como el resto del gate)
+  });
   if (!jobPositionId) return null;
 
-  const accessRows = await edgeSelect<{ can_access: boolean }>(
-    `job_position_module_access?select=can_access&job_position_id=eq.${encodeURIComponent(jobPositionId)}` +
-      `&module_code=eq.${encodeURIComponent(moduleCode)}&limit=1`,
+  // Todas las filas del cargo en UNA consulta: hace falta saber si el cargo
+  // tiene alguna configuración, no solo la fila de este módulo.
+  const accessRows = await edgeSelect<{ module_code: string; can_access: boolean }>(
+    `job_position_module_access?select=module_code,can_access&job_position_id=eq.${encodeURIComponent(jobPositionId)}`,
     { deadline: ctx.deadline, accessToken: ctx.accessToken }
   );
 
   if (accessRows === null) return null; // consulta fallida -> permitir
-  if (accessRows.length === 0 || !accessRows[0].can_access) {
+  if (!cargoPuedeEntrarAModulo(accessRows, moduleCode)) {
     const redirectUrl = new URL('/app/inicio', ctx.request.url);
     redirectUrl.searchParams.set('error', 'job_position_no_access');
     redirectUrl.searchParams.set('module', moduleCode);

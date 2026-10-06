@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import type { ConteoSegmento } from '@/lib/services/crm/segmentosConteoService';
+import { normalizarFiltroSegmento, type FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import {
   Segment,
@@ -7,6 +10,29 @@ import {
   SegmentStats,
   FilterRule,
 } from './types';
+
+/** Cliente de la vista del segmento (columnas reales de `customers`). */
+export interface ClienteSegmento {
+  id: string;
+  full_name: string | null;
+  email?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  tags?: string[] | null;
+  created_at?: string | null;
+}
+
+/** Lo que `applyFilter` usa del constructor de consultas de PostgREST. */
+interface ConsultaFiltrable<Q> {
+  eq(columna: string, valor: unknown): Q;
+  neq(columna: string, valor: unknown): Q;
+  contains(columna: string, valor: unknown): Q;
+  ilike(columna: string, patron: string): Q;
+  not(columna: string, operador: string, valor: unknown): Q;
+  gt(columna: string, valor: unknown): Q;
+  lt(columna: string, valor: unknown): Q;
+  is(columna: string, valor: null): Q;
+}
 
 class SegmentosServiceClass {
   private getOrgId(): number {
@@ -27,7 +53,7 @@ class SegmentosServiceClass {
       }
 
       return data || [];
-    } catch (error) {
+    } catch {
       console.warn('Error en getSegments');
       return [];
     }
@@ -48,7 +74,7 @@ class SegmentosServiceClass {
       }
 
       return data;
-    } catch (error) {
+    } catch {
       console.warn('Error en getSegmentById');
       return null;
     }
@@ -78,7 +104,7 @@ class SegmentosServiceClass {
       }
 
       return data;
-    } catch (error) {
+    } catch {
       console.error('Error en createSegment');
       return null;
     }
@@ -86,7 +112,7 @@ class SegmentosServiceClass {
 
   async updateSegment(id: string, input: UpdateSegmentInput): Promise<Segment | null> {
     try {
-      const updateData: Record<string, any> = {
+      const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
 
@@ -109,7 +135,7 @@ class SegmentosServiceClass {
       }
 
       return data;
-    } catch (error) {
+    } catch {
       console.error('Error en updateSegment');
       return null;
     }
@@ -129,7 +155,7 @@ class SegmentosServiceClass {
       }
 
       return true;
-    } catch (error) {
+    } catch {
       console.error('Error en deleteSegment');
       return false;
     }
@@ -146,7 +172,7 @@ class SegmentosServiceClass {
         filter_json: original.filter_json || undefined,
         is_dynamic: original.is_dynamic,
       });
-    } catch (error) {
+    } catch {
       console.error('Error en duplicateSegment');
       return null;
     }
@@ -162,13 +188,13 @@ class SegmentosServiceClass {
         static: segments.filter(s => !s.is_dynamic).length,
         totalCustomers: segments.reduce((sum, s) => sum + (s.customer_count || 0), 0),
       };
-    } catch (error) {
+    } catch {
       console.warn('Error en getStats');
       return { total: 0, dynamic: 0, static: 0, totalCustomers: 0 };
     }
   }
 
-  async getSegmentCustomers(segmentId: string, limit = 50): Promise<any[]> {
+  async getSegmentCustomers(segmentId: string, limit = 50): Promise<ClienteSegmento[]> {
     try {
       const segment = await this.getSegmentById(segmentId);
       if (!segment) return [];
@@ -179,11 +205,17 @@ class SegmentosServiceClass {
         .select('id, full_name, email, phone, city, tags, created_at')
         .eq('organization_id', this.getOrgId());
 
-      // Aplicar filtros del segmento
-      if (segment.filter_json && Array.isArray(segment.filter_json)) {
-        for (const rule of segment.filter_json) {
-          query = this.applyFilter(query, rule);
-        }
+      // Con varios grupos (O) PostgREST no puede aplicar el filtro sin
+      // interpolar texto en `.or()` (guardarraíl de búsqueda de clientes): se
+      // muestra la muestra del servidor. Un formato desconocido no lista a todos.
+      const filtro = normalizarFiltroSegmento(segment.filter_json);
+      if (!filtro) return [];
+      if (filtro.grupos.length > 1) {
+        const { muestra } = await this.previewFilter(filtro);
+        return muestra.map((m) => ({ id: m.id, full_name: m.nombre }));
+      }
+      for (const rule of filtro.grupos[0] ?? []) {
+        query = this.applyFilter(query, rule as FilterRule);
       }
 
       const { data, error } = await query.limit(limit);
@@ -193,62 +225,30 @@ class SegmentosServiceClass {
         return [];
       }
 
-      return data || [];
-    } catch (error) {
+      return (data || []) as ClienteSegmento[];
+    } catch {
       console.warn('Error en getSegmentCustomers');
       return [];
     }
   }
 
-  async previewFilter(filters: FilterRule[], limit = 20): Promise<{ customers: any[]; count: number }> {
-    try {
-      let query = supabase
-        .from('customers')
-        .select('id, full_name, email, phone, city, tags', { count: 'exact' })
-        .eq('organization_id', this.getOrgId());
-
-      for (const rule of filters) {
-        query = this.applyFilter(query, rule);
-      }
-
-      const { data, count, error } = await query.limit(limit);
-
-      if (error) {
-        console.warn('Error en preview:', error.message);
-        return { customers: [], count: 0 };
-      }
-
-      return { customers: data || [], count: count || 0 };
-    } catch (error) {
-      console.warn('Error en previewFilter');
-      return { customers: [], count: 0 };
-    }
+  /**
+   * Conteo y muestra en el SERVIDOR (`POST /api/crm/segments/preview` →
+   * `crm_segment_preview`). Antes se contaba aquí, en el navegador, solo con Y.
+   * Lanza `ErrorApiCrm` (503 sin la migración, 504 si tarda, 400 filtro inválido).
+   */
+  async previewFilter(filtro: FilterRule[] | FiltroSegmento): Promise<ConteoSegmento> {
+    const { data } = await pedirCrm<ConteoSegmento>('/api/crm/segments/preview', { method: 'POST', cuerpo: { filter_json: filtro } });
+    return data;
   }
 
+  /** Recalcula `customer_count` en el servidor con el mismo conteo del constructor. */
   async recalculateSegment(id: string): Promise<number> {
-    try {
-      const segment = await this.getSegmentById(id);
-      if (!segment) return 0;
-
-      const { count } = await this.previewFilter(segment.filter_json || []);
-
-      await supabase
-        .from('segments')
-        .update({
-          customer_count: count,
-          last_run_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
-
-      return count;
-    } catch (error) {
-      console.error('Error en recalculateSegment');
-      return 0;
-    }
+    const { data } = await pedirCrm<{ customer_count: number }>(`/api/crm/segments/${encodeURIComponent(id)}/recount`, { method: 'POST' });
+    return data.customer_count;
   }
 
-  private applyFilter(query: any, rule: FilterRule): any {
+  private applyFilter<Q extends ConsultaFiltrable<Q>>(query: Q, rule: FilterRule): Q {
     const { field, operator, value } = rule;
 
     switch (operator) {

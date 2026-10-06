@@ -1,9 +1,13 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Truck, Store, Bike, Navigation } from 'lucide-react';
+import { MapPin, Clock, Truck, Store, Bike, Navigation, UtensilsCrossed } from 'lucide-react';
 import type { DeliveryType } from '@/lib/services/webOrdersService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 
 interface DeliveryAddress {
   address?: string;
@@ -19,6 +23,8 @@ interface DeliveryAddress {
 
 interface DeliveryInfoProps {
   deliveryType: DeliveryType;
+  /** «Comer aquí»: nombre de la mesa (`mesaDelPedido`). */
+  mesa?: string | null;
   deliveryPartner?: string;
   deliveryAddress?: DeliveryAddress;
   scheduledAt?: string;
@@ -31,10 +37,13 @@ const DELIVERY_TYPE_CONFIG = {
   pickup: { label: 'Retiro en tienda', icon: Store, color: 'text-blue-600 dark:text-blue-400' },
   delivery_own: { label: 'Delivery propio', icon: Bike, color: 'text-green-600 dark:text-green-400' },
   delivery_third_party: { label: 'Delivery terceros', icon: Truck, color: 'text-purple-600 dark:text-purple-400' },
+  // Texto en pantalla: `pedidoWeb.comerAqui` / `comerAquiMesa` (i18n).
+  dine_in: { label: 'Comer aquí', icon: UtensilsCrossed, color: 'text-amber-600 dark:text-amber-400' },
 };
 
 export function DeliveryInfo({
   deliveryType,
+  mesa,
   deliveryPartner,
   deliveryAddress,
   scheduledAt,
@@ -42,24 +51,20 @@ export function DeliveryInfo({
   estimatedDeliveryAt,
   variant = 'inline',
 }: DeliveryInfoProps) {
-  const config = DELIVERY_TYPE_CONFIG[deliveryType];
+  const t = useTranslations('pedidoWeb');
+  const { timezone } = useOrgTimezone();
+  const base = DELIVERY_TYPE_CONFIG[deliveryType] ?? DELIVERY_TYPE_CONFIG.pickup;
+  const config = deliveryType === 'dine_in'
+    ? { ...base, label: mesa ? t('comerAquiMesa', { mesa }) : t('comerAqui') }
+    : base;
   const Icon = config.icon;
+  const domicilio = esDomicilio(deliveryType);
 
-  const formatTime = (date: string) => {
-    return new Date(date).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  // Horas en la zona de la organización, nunca en la del navegador.
+  const formatTime = (date: string) => formatTimeInTz(date, timezone);
 
-  const formatDateTime = (date: string) => {
-    return new Date(date).toLocaleString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDateTime = (date: string) =>
+    formatDateTimeInTz(date, timezone, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   if (variant === 'card') {
     return (
@@ -81,7 +86,7 @@ export function DeliveryInfo({
             )}
           </div>
 
-          {deliveryType !== 'pickup' && deliveryAddress?.address && (
+          {domicilio && deliveryAddress?.address && (
             <div className="space-y-1">
               <p className="flex items-start gap-2 text-sm">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground dark:text-gray-400" />
@@ -132,7 +137,7 @@ export function DeliveryInfo({
             </div>
           )}
 
-          {estimatedDeliveryAt && deliveryType !== 'pickup' && (
+          {estimatedDeliveryAt && domicilio && (
             <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
               <Truck className="h-4 w-4" />
               <span className="dark:text-gray-200">Entrega aprox: {formatTime(estimatedDeliveryAt)}</span>

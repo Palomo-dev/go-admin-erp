@@ -1,38 +1,32 @@
 'use client';
 
 /**
- * CallRow — una fila del historial de llamadas (FASE-03 §5.2).
+ * Celdas de una fila del listado de Llamadas (Figma 1351:18) y su tarjeta móvil.
  *
- * Extraído de `CallsTable.tsx` en la ronda 3 de F3: al añadir `CallButton`, los
- * `data-*` y el manejo de teclado (M8), la tabla pasó de 289 a 330 líneas y
- * rompió la regla de ≤300. Aquí vive la fila (celdas, atajos de teclado y el
- * detalle expandible); la tabla se queda con carga, filtros y cabecera.
- *
- * `data-phone`/`data-customer-id`/`data-opportunity-id` + `tabIndex` son lo que
- * permite que Ctrl+Shift+C vuelva a llamar al contacto de la fila enfocada.
+ * La tabla es el `DataTable` del kit (`CallsTable`); aquí vive lo que pinta
+ * cada celda. La fecha sale en la zona de la ORGANIZACIÓN (`useFormatDate()`),
+ * nunca en la del navegador. Textos en `crm.llamadas.*`.
  */
 
-import { Fragment } from 'react';
-import { PhoneIncoming, PhoneOutgoing, ChevronDown, ChevronRight, Monitor, Smartphone, Bot, PenLine } from 'lucide-react';
+import { Bot, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, Smartphone, Voicemail, PenLine, Monitor } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
-import { TableCell, TableRow } from '@/components/ui/table';
-import { CallPlayer } from './CallPlayer';
-import { CallRowDetail } from './CallRowDetail';
-import { CallButton } from './CallButton';
-import type { CallListRow, CallStatus } from '@/lib/services/crm/callManagementService';
-import { DISPOSITION_LABELS } from '@/lib/services/crm/callDispositionService';
+import { ListCard } from '@/components/kit/ListCard';
+import { cn } from '@/utils/Utils';
+import type { CallListRow, CallSentiment, CallStatus } from '@/lib/services/crm/callManagementService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { UnverifiedConsentBadge } from './ConsentBadge';
+import {
+  estadoGrabacion,
+  formatDuration,
+  numeroContraparte,
+  resultadoDeLlamada,
+  tipoDeLlamada,
+} from './callsListadoLogica';
 
-export function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-}
+export { formatDuration } from './callsListadoLogica';
 
-export function formatDuration(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return '—';
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
+/** Estado técnico de la llamada (lo usan el detalle y los filtros heredados). */
 export const STATUS_LABELS: Record<CallStatus, string> = {
   dialing: 'Marcando',
   ringing: 'Timbrando',
@@ -45,19 +39,13 @@ export const STATUS_LABELS: Record<CallStatus, string> = {
   voicemail: 'Buzón',
 };
 
-const STATUS_VARIANTS: Record<CallStatus, 'secondary' | 'success' | 'destructive' | 'warning' | 'info'> = {
-  dialing: 'secondary',
-  ringing: 'warning',
-  in_progress: 'info',
-  completed: 'success',
-  failed: 'destructive',
-  busy: 'destructive',
-  no_answer: 'secondary',
-  canceled: 'secondary',
-  voicemail: 'info',
+/** Sentimiento del último análisis IA (columna «Sentimiento», Figma 1351:18). */
+export const SENTIMENT_VIEW: Record<CallSentiment, { tono: 'exito' | 'neutro' | 'peligro' | 'advertencia'; punto: string }> = {
+  positive: { tono: 'exito', punto: 'bg-success' },
+  neutral: { tono: 'neutro', punto: 'bg-fg' },
+  negative: { tono: 'peligro', punto: 'bg-danger' },
+  mixed: { tono: 'advertencia', punto: 'bg-warning' },
 };
-
-const OUTCOME_LABELS: Record<string, string> = { ...DISPOSITION_LABELS, canceled: 'Cancelada', failed: 'Fallida' };
 
 export const MODE_ICONS: Record<string, { icon: typeof Monitor; label: string }> = {
   browser: { icon: Monitor, label: 'Navegador' },
@@ -67,92 +55,137 @@ export const MODE_ICONS: Record<string, { icon: typeof Monitor; label: string }>
   inbound: { icon: PhoneIncoming, label: 'Entrante' },
 };
 
-interface CallRowProps {
-  call: CallListRow;
-  isOpen: boolean;
-  onToggle: () => void;
+const ICONO_TIPO: Record<string, typeof Monitor> = {
+  agenteIa: Bot,
+  entrante: PhoneIncoming,
+  entrantePerdida: PhoneMissed,
+  salienteBuzon: Voicemail,
+  salienteCelular: Smartphone,
+  salienteManual: PenLine,
+  salienteWeb: PhoneOutgoing,
+};
+
+/** Nombre del contacto o `null` (número desconocido). */
+export function nombreContacto(call: CallListRow): string | null {
+  return call.customer?.full_name || [call.customer?.first_name, call.customer?.last_name].filter(Boolean).join(' ') || null;
 }
 
-export function CallRow({ call, isOpen, onToggle }: CallRowProps) {
-  const mode = MODE_ICONS[call.mode] ?? MODE_ICONS.browser;
-  const ModeIcon = mode.icon;
-  const contactName = call.customer?.full_name || [call.customer?.first_name, call.customer?.last_name].filter(Boolean).join(' ') || null;
-  const userName = call.user ? [call.user.first_name, call.user.last_name].filter(Boolean).join(' ') || call.user.email : '—';
-  const outcome = call.disposition_outcome ? OUTCOME_LABELS[call.disposition_outcome] ?? call.disposition_outcome : '—';
-  const ready = call.recordings.some((r) => r.status === 'ready');
-  const processing = !ready && call.recordings.some((r) => r.status === 'processing');
-  const counterpart = call.direction === 'inbound' ? call.from_number : call.to_number;
+export function nombreUsuario(call: CallListRow): string | null {
+  if (!call.user) return null;
+  return [call.user.first_name, call.user.last_name].filter(Boolean).join(' ') || call.user.email || null;
+}
 
+/** `data-*` de la fila: Ctrl+Shift+C del softphone llama al contacto enfocado. */
+export function datosContactoLlamada(call: CallListRow): Record<`data-${string}`, string | undefined> {
+  return {
+    'data-phone': numeroContraparte(call) || undefined,
+    'data-customer-id': call.customer?.id ?? undefined,
+    'data-opportunity-id': call.opportunity_id ?? undefined,
+    'data-display-name': nombreContacto(call) ?? undefined,
+  };
+}
+
+export function FechaLlamada({ call }: { call: CallListRow }) {
+  const { formatDateTime } = useFormatDate();
+  return <span className="whitespace-nowrap tabular-nums">{formatDateTime(call.started_at ?? call.created_at) || '—'}</span>;
+}
+
+export function ClienteLlamada({ call }: { call: CallListRow }) {
+  const t = useTranslations('crm.llamadas');
+  const nombre = nombreContacto(call);
+  const numero = numeroContraparte(call);
   return (
-    <Fragment>
-      <TableRow
-        className="cursor-pointer border-gray-200 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-gray-700 dark:hover:bg-gray-700/40"
-        onClick={onToggle}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
-        tabIndex={0}
-        aria-expanded={isOpen}
-        aria-label={`Llamada con ${contactName ?? counterpart}`}
-        data-phone={counterpart || undefined}
-        data-customer-id={call.customer?.id ?? undefined}
-        data-opportunity-id={call.opportunity_id ?? undefined}
-        data-display-name={contactName ?? undefined}
-      >
-        <TableCell className="pr-0 text-gray-400">{isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</TableCell>
-        <TableCell className="text-sm text-gray-600 dark:text-gray-300">{formatDate(call.started_at ?? call.created_at)}</TableCell>
-        <TableCell>
-          <span className={`inline-flex items-center gap-1 text-xs ${call.direction === 'inbound' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'}`} title={mode.label}>
-            {call.direction === 'inbound' ? <PhoneIncoming size={14} aria-hidden="true" /> : <PhoneOutgoing size={14} aria-hidden="true" />}
-            <ModeIcon size={13} aria-hidden="true" />
-            <span className="sr-only">{call.direction === 'inbound' ? 'Entrante' : 'Saliente'} · {mode.label}</span>
-          </span>
-        </TableCell>
-        <TableCell className="text-sm">
-          <div className="flex items-center gap-1">
-            <div className="text-gray-900 dark:text-gray-100">{contactName ?? <span className="font-mono">{counterpart}</span>}</div>
-            <CallButton
-              phoneNumber={counterpart}
-              customerId={call.customer?.id ?? null}
-              opportunityId={call.opportunity_id ?? null}
-              displayName={contactName}
-              size="icon"
-              className="h-6 w-6"
-            />
-          </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {contactName && <span className="font-mono">{counterpart}</span>}
-            {call.opportunity?.name && <span> › {call.opportunity.name}</span>}
-          </div>
-        </TableCell>
-        <TableCell className="text-sm text-gray-600 dark:text-gray-300">{userName}</TableCell>
-        <TableCell className="text-sm tabular-nums text-gray-600 dark:text-gray-300">{formatDuration(call.duration_seconds)}</TableCell>
-        <TableCell className="text-sm text-gray-600 dark:text-gray-300">{outcome}</TableCell>
-        <TableCell>
-          <Badge variant={STATUS_VARIANTS[call.status] ?? 'secondary'} className="text-[10px]">
-            {STATUS_LABELS[call.status] ?? call.status}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-          {ready ? (
-            <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} consentMethod={call.consent_method} />
-          ) : processing ? (
-            <span className="text-[10px] text-gray-500 dark:text-gray-400" title="Procesando grabación…">…</span>
-          ) : (
-            <span className="text-gray-300 dark:text-gray-600">—</span>
-          )}
-        </TableCell>
-      </TableRow>
-      {isOpen && (
-        <TableRow className="border-gray-200 dark:border-gray-700">
-          <TableCell colSpan={9} className="p-0">
-            <CallRowDetail call={call} />
-          </TableCell>
-        </TableRow>
-      )}
-    </Fragment>
+    <div className="min-w-0">
+      <p className={cn('truncate text-sm font-medium text-fg', !nombre && 'tabular-nums')}>{nombre ?? numero}</p>
+      <p className="truncate text-xs text-fg-secondary">
+        {call.opportunity?.name ?? (nombre ? <span className="tabular-nums">{numero}</span> : t('numeroDesconocido'))}
+      </p>
+    </div>
+  );
+}
+
+export function TipoLlamada({ call }: { call: CallListRow }) {
+  const t = useTranslations('crm.llamadas');
+  const tipo = tipoDeLlamada(call);
+  const Icono = ICONO_TIPO[tipo] ?? PhoneOutgoing;
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 text-[13px]', tipo === 'entrantePerdida' ? 'text-danger-text' : 'text-fg-secondary')}>
+      <Icono aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+      <span className="truncate">{t(`tipos.${tipo}`)}</span>
+    </span>
+  );
+}
+
+export function QuienLlamada({ call }: { call: CallListRow }) {
+  const t = useTranslations('crm.llamadas');
+  const nombre = nombreUsuario(call);
+  if (nombre) return <span className="truncate text-[13px] text-fg">{nombre}</span>;
+  if (call.mode === 'ai_agent') return <span className="text-[13px] text-fg">{t('tipos.agenteIa')}</span>;
+  return <span className="text-[13px] text-fg-secondary">{call.direction === 'inbound' ? t('lineaPrincipal') : '—'}</span>;
+}
+
+export function ResultadoLlamada({ call }: { call: CallListRow }) {
+  const t = useTranslations('crm.llamadas');
+  const r = resultadoDeLlamada(call);
+  if (!r) return <span className="text-fg-muted">—</span>;
+  return (
+    <Badge tono={r.tono} tamano="sm" className="max-w-full truncate">
+      {t(`resultados.${r.clave}`)}
+    </Badge>
+  );
+}
+
+export function SentimientoLlamada({ call }: { call: CallListRow }) {
+  const t = useTranslations('crm.llamadas');
+  const s = call.sentiment ? SENTIMENT_VIEW[call.sentiment] : null;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[13px] text-fg">
+      <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', s ? s.punto : 'bg-line-strong')} />
+      {call.sentiment ? t(`sentimientos.${call.sentiment}`) : <span className="text-fg-muted">—<span className="sr-only">{t('sinAnalisis')}</span></span>}
+    </span>
+  );
+}
+
+export function GrabacionLlamada({ call, onOir }: { call: CallListRow; onOir: () => void }) {
+  const t = useTranslations('crm.llamadas');
+  const estado = estadoGrabacion(call);
+  if (estado === 'ninguna') return <span className="text-fg-muted">—</span>;
+  if (estado === 'procesando') return <span className="text-xs text-fg-secondary">{t('grabacionProcesando')}</span>;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOir();
+      }}
+      className="inline-flex items-center gap-1 rounded text-[13px] font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      aria-label={t('oirAria', { nombre: nombreContacto(call) ?? numeroContraparte(call) })}
+    >
+      <Play aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+      {t('oir')}
+    </button>
+    {/* Grabación sin aviso acreditado (Ley 1581): icono + texto, nunca solo color. */}
+    <UnverifiedConsentBadge method={call.consent_method} />
+    </span>
+  );
+}
+
+/** Tarjeta móvil (< lg): una por llamada, sin scroll horizontal. */
+export function TarjetaLlamada({ call, onAbrir }: { call: CallListRow; onAbrir: () => void }) {
+  const t = useTranslations('crm.llamadas');
+  const { formatDateTime } = useFormatDate();
+  const tipo = tipoDeLlamada(call);
+  const r = resultadoDeLlamada(call);
+  return (
+    <ListCard
+      inicio="icono"
+      icono={ICONO_TIPO[tipo] ?? PhoneOutgoing}
+      titulo={nombreContacto(call) ?? numeroContraparte(call)}
+      subtitulo={`${t(`tipos.${tipo}`)} · ${formatDateTime(call.started_at ?? call.created_at)}`}
+      estado={r ? <Badge tono={r.tono} tamano="sm">{t(`resultados.${r.clave}`)}</Badge> : undefined}
+      valor={<span className="tabular-nums">{formatDuration(call.duration_seconds)}</span>}
+      onClick={onAbrir}
+    />
   );
 }

@@ -32,6 +32,15 @@ export const CRM_PERMISOS = {
   leadsEditar: 'crm.leads.edit',
   leadsAsignar: 'crm.leads.assign',
   leadsConvertir: 'crm.leads.convert',
+  // Verificados por MCP en `permissions` el 2026-10-06 (migraciones de la
+  // ola de llamadas, campañas, pronóstico, identidades y segmentos).
+  clientesVer: 'crm.customers.view',
+  clientesFusionar: 'crm.customers.merge',
+  llamadasVerTodas: 'crm.calls.view_all',
+  campanasGestionar: 'crm.campaigns.manage',
+  segmentosGestionar: 'crm.segments.manage',
+  pronosticoVerTodo: 'crm.forecast.view_all',
+  pronosticoAjustar: 'crm.forecast.adjust',
 } as const;
 
 export type CrmPermiso = (typeof CRM_PERMISOS)[keyof typeof CRM_PERMISOS];

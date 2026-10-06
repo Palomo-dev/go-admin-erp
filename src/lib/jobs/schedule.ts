@@ -42,3 +42,24 @@ export const VERCEL_SCHEDULE_KINDS: Readonly<Record<string, readonly ScheduledKi
 
 /** Todos los schedules válidos para `JOBS_RUN_PATH` en `vercel.json`. */
 export const JOBS_RUN_SCHEDULES: readonly string[] = [DRAIN_SCHEDULE, ...Object.keys(VERCEL_SCHEDULE_KINDS)];
+
+/**
+ * Minutos entre pasadas de una tarea programada con cron de intervalo
+ * («*\/N * * * *»), leídos de `VERCEL_SCHEDULE_KINDS`. `null` si la tarea no
+ * está programada o su cron no es de intervalo (p. ej. diaria). Lo usa el panel
+ * de campañas de voz para decir «llama sola cada N min» sin cablear el 5.
+ */
+export function intervaloMinutosDe(kind: ScheduledKind): number | null {
+  for (const [cron, kinds] of Object.entries(VERCEL_SCHEDULE_KINDS)) {
+    if (!kinds.includes(kind)) continue;
+    const m = /^\*\/(\d{1,2}) \* \* \* \*$/.exec(cron);
+    return m ? Number(m[1]) : null;
+  }
+  return null;
+}
+
+/** Siguiente múltiplo de `minutos` (las pasadas caen en minutos redondos UTC, y toda zona horaria real es múltiplo de 5 min). */
+export function proximaPasada(minutos: number, ahora: Date = new Date()): Date {
+  const paso = Math.max(1, Math.round(minutos)) * 60_000;
+  return new Date(Math.floor(ahora.getTime() / paso) * paso + paso);
+}

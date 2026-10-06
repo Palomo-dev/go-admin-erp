@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { healthScoreService } from '@/lib/services/crm/healthScoreService';
 import type { HealthScoreResult, HealthBand } from '@/lib/services/crm/healthScoreService';
 import { RefreshCw, HeartPulse, AlertTriangle, CheckCircle2, CircleDot, Users, type LucideIcon } from 'lucide-react';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { HealthCustomerGrid } from './HealthCustomerGrid';
@@ -149,27 +149,14 @@ export function SaludView({ organizationId }: SaludViewProps) {
         })}
       </dl>
 
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto" role="group" aria-label="Filtrar por banda de salud">
-        {filters.map((f) => {
-          const Icon = f.icon;
-          const isActive = filter === f.key;
-          return (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => setFilter(f.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-t ${
-                isActive ? 'border-blue-600 text-blue-700 dark:text-blue-400' : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              <Icon className={`h-3.5 w-3.5 ${f.color}`} aria-hidden="true" />
-              {f.label}
-              {counts[f.key] > 0 && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{counts[f.key]}</Badge>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Filtro por banda: no es otra sección → control segmentado del kit (regla de pestañas 2026-10-06). */}
+      <SegmentedControl
+        etiqueta="Filtrar por banda de salud"
+        valor={filter}
+        onValorChange={setFilter}
+        className="max-w-full overflow-x-auto"
+        opciones={filters.map((f) => ({ valor: f.key, etiqueta: f.label, icono: f.icon, contador: counts[f.key] > 0 ? counts[f.key] : undefined }))}
+      />
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">

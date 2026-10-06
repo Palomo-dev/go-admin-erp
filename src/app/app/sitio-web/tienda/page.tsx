@@ -1,27 +1,13 @@
 'use client';
 
 /**
- * /app/sitio-web/tienda — «Tienda» (Figma 01b): por ahora, la moderación de
- * reseñas de productos que vivía huérfana en /app/organizacion/branding/reviews
- * (fuera de cualquier menú). Catálogo web y destacados quedan pendientes.
+ * /app/sitio-web/tienda — «Tienda» (Figma A/01b y A/04i): catálogo web por
+ * sede, plantillas de producto y categoría, y reseñas como una pestaña (el
+ * panel de moderación existente). `?tab=resenas` llega desde la redirección
+ * de Branding › Reseñas.
  */
-import { Loader2 } from 'lucide-react';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { ReviewsModerationPanel } from '@/components/organization/reviews/ReviewsModerationPanel';
-import { MarcoSitioWeb } from '@/components/sitio-web/MarcoSitioWeb';
+import { PantallaTienda } from '@/components/sitio-web/ventas/PantallaTienda';
 
 export default function TiendaSitioWebPage() {
-  const { organization, isLoading } = useOrganization();
-
-  return (
-    <MarcoSitioWeb href="/app/sitio-web/tienda">
-      {isLoading || !organization ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
-        </div>
-      ) : (
-        <ReviewsModerationPanel organizationId={organization.id} />
-      )}
-    </MarcoSitioWeb>
-  );
+  return <PantallaTienda />;
 }

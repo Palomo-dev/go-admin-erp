@@ -1,11 +1,13 @@
 // Tipos para Segmentos
+import type { FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
 
 export interface Segment {
   id: string;
   organization_id: number;
   name: string;
   description: string | null;
-  filter_json: FilterRule[] | null;
+  /** Lista de reglas (un grupo) o `{ grupos }` (O entre grupos): ver `segmentosFiltroLogica`. */
+  filter_json: FilterRule[] | FiltroSegmento | null;
   is_dynamic: boolean;
   customer_count: number;
   last_run_at: string | null;
@@ -38,14 +40,14 @@ export type FilterOperator =
 export interface CreateSegmentInput {
   name: string;
   description?: string;
-  filter_json?: FilterRule[];
+  filter_json?: FilterRule[] | FiltroSegmento;
   is_dynamic?: boolean;
 }
 
 export interface UpdateSegmentInput {
   name?: string;
   description?: string;
-  filter_json?: FilterRule[];
+  filter_json?: FilterRule[] | FiltroSegmento;
   is_dynamic?: boolean;
 }
 
@@ -56,17 +58,22 @@ export interface SegmentStats {
   totalCustomers: number;
 }
 
-// Campos disponibles para filtrar
+// Campos disponibles para filtrar: SOLO columnas reales de `customers`
+// (verificadas por MCP el 2026-10-06) y las mismas de la lista blanca de
+// `crm_segment_preview`. Antes había `country`, `last_interaction_at` e
+// `is_active`, que no existen: la consulta fallaba y el conteo daba 0.
 export const FILTER_FIELDS = [
   { value: 'full_name', label: 'Nombre completo', type: 'text' },
+  { value: 'company_name', label: 'Empresa', type: 'text' },
   { value: 'email', label: 'Email', type: 'text' },
   { value: 'phone', label: 'Teléfono', type: 'text' },
   { value: 'city', label: 'Ciudad', type: 'text' },
-  { value: 'country', label: 'País', type: 'text' },
+  { value: 'lifecycle_stage', label: 'Etapa del ciclo', type: 'text' },
+  { value: 'lead_source', label: 'Origen', type: 'text' },
   { value: 'tags', label: 'Etiquetas', type: 'array' },
   { value: 'created_at', label: 'Fecha de registro', type: 'date' },
-  { value: 'last_interaction_at', label: 'Última interacción', type: 'date' },
-  { value: 'is_active', label: 'Activo', type: 'boolean' },
+  { value: 'last_contact_at', label: 'Último contacto', type: 'date' },
+  { value: 'health_score', label: 'Salud', type: 'number' },
 ] as const;
 
 export const FILTER_OPERATORS: Record<string, { value: FilterOperator; label: string }[]> = {
@@ -96,5 +103,12 @@ export const FILTER_OPERATORS: Record<string, { value: FilterOperator; label: st
   ],
   boolean: [
     { value: 'equals', label: 'Es' },
+  ],
+  number: [
+    { value: 'equals', label: 'Es igual a' },
+    { value: 'greater_than', label: 'Mayor que' },
+    { value: 'less_than', label: 'Menor que' },
+    { value: 'is_empty', label: 'Está vacío' },
+    { value: 'is_not_empty', label: 'No está vacío' },
   ],
 };

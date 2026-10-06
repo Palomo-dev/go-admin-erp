@@ -143,13 +143,16 @@ describe("UXM-D · guardas estáticas (375 px)", () => {
     expect(panel).toContain("useCrmLookups");
     expect(panel).toContain("CampaignTargetPicker");
   });
-  test("el editor es una hoja h-dvh con cuerpo desplazable, pie sobre el área segura y 4 pasos", () => {
+  test("el editor es una hoja h-dvh con cuerpo desplazable, pie sobre el área segura y 5 pasos", () => {
     const editor = read("AgentEditorDialog.tsx");
     expect(editor).toContain("h-dvh");
     expect(editor).toContain("min-h-0 flex-1 overflow-y-auto");
     expect(editor).toContain("env(safe-area-inset-bottom)");
-    expect(editor).toContain("grid-cols-4");
-    for (const t of ["AgentPurposeTab", "AgentScriptTab", "AgentVoiceTab", "AgentToolsTab"]) expect(editor).toContain(t);
+    // Figma 1313:773321 → 1318:775924: es un ASISTENTE de 5 pasos (no secciones
+    // libres), así que va con el `Stepper` del kit, no con `TabBar` ni píldoras.
+    expect(editor).toContain("<Stepper");
+    expect(read("editor/pasosEditorLogica.ts")).toMatch(/PASOS_EDITOR = \['proposito', 'etapas', 'voz', 'herramientas', 'probar'\] as const/);
+    for (const t of ["AgentPurposeTab", "AgentScriptTab", "QueSabeElAgente", "AgentStagesStep", "AgentVoiceTab", "AgentToolsTab", "AgentComplianceCards", "AgentTestStep"]) expect(editor).toContain(t);
   });
   test("la pestaña Voz reutiliza tarjetas, avatar y reproductor compartidos", () => {
     const tab = read("editor/AgentVoiceTab.tsx");
@@ -167,7 +170,10 @@ describe("UXM-D · guardas estáticas (375 px)", () => {
     for (const f of ["voces/VoiceLibraryGrid.tsx", "voces/MyVoicesPanel.tsx", "AgentesIaPage.tsx"]) {
       expect({ f, ok: /grid grid-cols-1 gap-3/.test(read(f)) }).toEqual({ f, ok: true });
     }
-    expect(read("VoicesPanel.tsx")).toContain("grid h-auto w-full grid-cols-3");
+    // Regla de pestañas (2026-10-06): dentro de la sección «Voces», Biblioteca / Mis voces es
+    // un control segmentado del kit (antes, píldoras de shadcn a tres columnas).
+    expect(read("VoicesPanel.tsx")).toContain("<SegmentedControl");
+    expect(read("VoicesPanel.tsx")).not.toContain("@/components/ui/tabs");
     expect(read("voces/VoiceCard.tsx")).toContain("grid grid-cols-2 items-center gap-2");
     const filters = read("voces/VoiceLibraryFilters.tsx");
     expect(filters).toContain("Filtros");

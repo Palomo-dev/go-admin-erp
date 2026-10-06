@@ -12,6 +12,7 @@
  * la misma del bloque «Hoy»). Sin tienda (ni pedidos ni visitas nunca) o sin
  * permiso de ventas, no se pinta. Sin importes: `web_orders` no guarda moneda.
  */
+import { useEffect } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,6 +36,12 @@ export interface TarjetaTiendaWebProps {
   version?: number;
   refresco?: number;
   onFalloRefresco?: () => void;
+  /**
+   * Avisa al inicio si la persona ve la página de analítica (lo decide el
+   * servidor: `hrefAnalitica` de `GET /api/inicio/tienda-web`), para la acción
+   * «Ver analítica web» del menú «⋯». `null` = no la ve o no hay dato.
+   */
+  onHrefAnalitica?: (href: string | null) => void;
 }
 
 function Casilla({
@@ -69,11 +76,27 @@ function Casilla({
   );
 }
 
-export function TarjetaTiendaWeb({ organizationId, periodo, horas, fechas, sucursal, version = 0, refresco, onFalloRefresco }: TarjetaTiendaWebProps) {
+export function TarjetaTiendaWeb({
+  organizationId,
+  periodo,
+  horas,
+  fechas,
+  sucursal,
+  version = 0,
+  refresco,
+  onFalloRefresco,
+  onHrefAnalitica,
+}: TarjetaTiendaWebProps) {
   const t = useTranslations('home.tiendaWeb');
   const locale = useLocale();
   const url = `/api/inicio/tienda-web?${queryPeriodo({ periodo, horas, fechas, sucursal })}`;
   const { estado, recargar } = useLecturaInicio<TiendaWeb>(url, organizationId, version, { refresco, onFalloRefresco });
+
+  // Antes de los `return null`: las reglas de hooks exigen el mismo orden.
+  const hrefAnalitica = estado.fase === 'listo' ? estado.datos.hrefAnalitica ?? null : null;
+  useEffect(() => {
+    onHrefAnalitica?.(hrefAnalitica);
+  }, [hrefAnalitica, onHrefAnalitica]);
 
   if (estado.fase === 'sinPermiso') return null;
   if (estado.fase === 'listo' && !estado.datos.activa) return null;

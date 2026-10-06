@@ -7,7 +7,8 @@ import { Kanban, Plus, Settings } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { PageHeader } from '@/components/kit/PageHeader';
 import { SearchInput } from '@/components/kit/SearchInput';
-import { TabBar } from '@/components/kit/TabBar';
+import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
@@ -35,7 +36,7 @@ import { SelectorPipelineMovil } from './SelectorPipelineMovil';
 import { NuevoPipelineAsistente } from './NuevoPipelineAsistente';
 import { EtapasPipeline } from './EtapasPipeline';
 import { EstadoTablero, SinEmbudoVentas } from './EstadosPipeline';
-import { elegirPipeline, usePipelines } from './usePipelines';
+import { abiertasDePipeline, elegirPipeline, usePipelines } from './usePipelines';
 import { useTableroPipeline } from './useTableroPipeline';
 
 /**
@@ -46,13 +47,28 @@ import { useTableroPipeline } from './useTableroPipeline';
  * con reversión) y drawer. Estados: cargando, vacío, sin resultados, error,
  * sin permiso y sin embudo de ventas. Todo por `/api/crm/**`.
  *
- * La vista y el embudo van en la URL (`?vista=` y `?pipeline=<id>`): sin
- * `pipeline`, o con uno que ya no existe, abre el POR DEFECTO, si no el
- * primero de ventas, si no el primero (`elegirPipeline`). En móvil el título
- * «<pipeline> ▾» de la cabecera abre `SelectorPipelineMovil`.
+ * Regla de pestañas (2026-10-06): las SECCIONES (Oportunidades · Pronóstico ·
+ * Clientes · Automatización) son `TabBar` con `?pestana=`; dentro de
+ * «Oportunidades», Kanban/Tabla es la VISTA de los mismos datos y va en un
+ * `SegmentedControl` con `?vista=`. Un enlace viejo `?vista=pronostico` (o
+ * clientes, automatización) sigue abriendo esa sección.
+ *
+ * El embudo va en `?pipeline=<id>`: sin él, o con uno que ya no existe, abre
+ * el POR DEFECTO, si no el primero de ventas, si no el primero
+ * (`elegirPipeline`). En móvil el título «<pipeline> ▾» de la cabecera abre
+ * `SelectorPipelineMovil`; ahí no hay pestañas ni vistas (PATRONES §3).
  */
-type Vista = 'kanban' | 'tabla' | 'pronostico' | 'clientes' | 'automatizacion';
-const VISTAS: readonly Vista[] = ['kanban', 'tabla', 'pronostico', 'clientes', 'automatizacion'];
+type Seccion = 'oportunidades' | 'pronostico' | 'clientes' | 'automatizacion';
+const SECCIONES: readonly Seccion[] = ['oportunidades', 'pronostico', 'clientes', 'automatizacion'];
+type Vista = 'kanban' | 'tabla';
+const VISTAS: readonly Vista[] = ['kanban', 'tabla'];
+
+/** Sección de la URL; `?vista=` de antes de la regla (pronostico…) cuenta como sección. */
+export function seccionPipelineDeUrl(pestana: string | null, vista: string | null): Seccion {
+  if (pestana && (SECCIONES as readonly string[]).includes(pestana)) return pestana as Seccion;
+  if (vista && vista !== 'oportunidades' && (SECCIONES as readonly string[]).includes(vista)) return vista as Seccion;
+  return 'oportunidades';
+}
 
 export function PipelinePantalla() {
   const t = useTranslations('crm.oportunidad.pipeline');
@@ -64,7 +80,7 @@ export function PipelinePantalla() {
   const moneda = useMonedaOrganizacion();
   const cat = useCatalogosCrm();
   const permisos = permisosPantalla(cat.permisos);
-  const pls = usePipelines();
+  const pls = usePipelines(hoy);
   const url = useParametrosUrl();
   const pipelineUrl = url.leer('pipeline');
   // Un id de la URL que no está en la lista (borrado, de otra organización) no cuenta como elegido.
@@ -72,8 +88,13 @@ export function PipelinePantalla() {
   const setElegido = (id: string | null) => url.fijar({ pipeline: id });
   const pipelineId = elegirPipeline(pls.lista ?? [], elegido);
   const [vistaUrl, setVista] = useOpcionUrl('vista', VISTAS, 'kanban');
-  // En móvil no hay pestañas de vista (PATRONES §3): un enlace con `?vista=` no deja a nadie sin salida.
+  const seccionUrl = seccionPipelineDeUrl(url.leer('pestana'), url.leer('vista'));
+  const setSeccion = (s: Seccion) => url.fijar({ pestana: s === 'oportunidades' ? null : s, vista: null });
+  // En móvil no hay pestañas ni vistas (PATRONES §3): un enlace con `?pestana=` o `?vista=` no deja a nadie sin salida.
+  const seccion: Seccion = escritorio ? seccionUrl : 'oportunidades';
   const vista: Vista = escritorio ? vistaUrl : 'kanban';
+  const enOportunidades = seccion === 'oportunidades';
+  const abiertasDe = (id: string) => abiertasDePipeline(pls.resumen, id, hoy);
   const [selectorMovil, setSelectorMovil] = useState(false);
   const [filtros, setFiltros] = useState<Filtros>(filtrosVacios);
   const [drawer, setDrawer] = useState<string | null>(null);
@@ -157,6 +178,7 @@ export function PipelinePantalla() {
               {pls.lista && pls.lista.length > 0 && (
                 <SelectorPipeline
                   pipelines={pls.lista}
+                  abiertas={abiertasDe}
                   actualId={mostrarSinEmbudo ? null : pipelineId}
                   onElegir={setElegido}
                   oportunidadesActual={total}
@@ -193,42 +215,41 @@ export function PipelinePantalla() {
         <EstadoTablero estado="sinPermiso" puedeCrear={false} onCrear={() => undefined} onLimpiar={() => undefined} onReintentar={() => undefined} />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* En móvil no hay pestañas: sin el espaciador, el buscador ocupa el ancho (PATRONES §3). */}
-            {escritorio && (
+          {escritorio && (
+            <TabBar id="pipeline-seccion" etiqueta={t('secciones.aria')} valor={seccion} onValorChange={setSeccion} pestanas={SECCIONES.map((v) => ({ valor: v, etiqueta: t(`secciones.${v}`) }))} />
+          )}
+          {enOportunidades && (
+            <div className="flex flex-wrap items-center gap-2">
+              {escritorio && <SegmentedControl etiqueta={t('vistas.aria')} valor={vista} onValorChange={setVista} opciones={VISTAS.map((v) => ({ valor: v, etiqueta: t(`vistas.${v}`) }))} />}
+              {/* En móvil no hay vistas: sin el espaciador, el buscador ocupa el ancho (PATRONES §3). */}
+              {escritorio && <span className="flex-1" />}
+              <SearchInput value={filtros.q} onChange={(q) => setFiltros({ ...filtros, q })} placeholder={t('buscar')} etiqueta={t('buscar')} cargando={tablero.cargando} className="min-w-0 flex-1 sm:w-72 sm:flex-none" />
+              <FiltrosOportunidades filtros={filtros} onFiltros={setFiltros} usuarios={cat.usuarios} />
+            </div>
+          )}
+          <div role={escritorio ? 'tabpanel' : undefined} id={escritorio ? idPanel('pipeline-seccion', seccion) : undefined} aria-labelledby={escritorio ? idPestana('pipeline-seccion', seccion) : undefined} className="flex min-w-0 flex-col gap-4">
+            {enOportunidades && <ChipsFiltrosOportunidades filtros={filtros} onFiltros={setFiltros} usuarios={cat.usuarios} />}
+            {enOportunidades && (estado === 'error' || estado === 'vacio' || estado === 'sinResultados') ? (
+              <EstadoTablero estado={estado} puedeCrear={permisos.crear} onCrear={() => setNueva({ etapaId: null })} onLimpiar={() => setFiltros(filtrosVacios())} onReintentar={() => { tablero.recargar(); pls.recargar(); }} />
+            ) : enOportunidades && vista === 'kanban' ? (
               <>
-                <TabBar id="pipeline-vista" etiqueta={t('vistas.aria')} valor={vista} onValorChange={setVista} pestanas={VISTAS.map((v) => ({ valor: v, etiqueta: t(`vistas.${v}`) }))} />
-                <span className="flex-1" />
+                {escritorio && <KpisOportunidades resumen={resumen} hoy={hoy} cargando={estado === 'cargando'} />}
+                {escritorio ? (
+                  <KanbanTablero etapas={etapas} tablero={tablero.tablero} resumen={resumen} hoy={hoy} moneda={moneda} usuarios={cat.usuarios} usuarioId={cat.usuarioId} permisos={permisos} acciones={acciones} mover={tablero.mover} onAbrir={setDrawer} onCrear={(e) => setNueva({ etapaId: e })} onConfigurarEtapa={(id) => { setEditarEtapa(id); setEtapasAbierto(true); }} onCargarMas={tablero.cargarMas} onReintentarColumna={tablero.reintentarColumna} />
+                ) : (
+                  <PipelineMovil etapas={etapas} tablero={tablero.tablero} resumen={resumen} hoy={hoy} usuarios={cat.usuarios} usuarioId={cat.usuarioId} permisos={permisos} acciones={acciones} onAbrir={setDrawer} onCargarMas={tablero.cargarMas} />
+                )}
               </>
-            )}
-            {(vista === 'kanban' || vista === 'tabla') && (
-              <>
-                <SearchInput value={filtros.q} onChange={(q) => setFiltros({ ...filtros, q })} placeholder={t('buscar')} etiqueta={t('buscar')} cargando={tablero.cargando} className="min-w-0 flex-1 sm:w-72 sm:flex-none" />
-                <FiltrosOportunidades filtros={filtros} onFiltros={setFiltros} usuarios={cat.usuarios} />
-              </>
-            )}
+            ) : enOportunidades ? (
+              <TablaPipeline pipelineId={pipelineId} query={query} etapas={etapasFlujo} usuarios={cat.usuarios} usuarioId={cat.usuarioId} permisos={permisos} acciones={acciones} onAbrir={setDrawer} />
+            ) : pipelineId && seccion === 'pronostico' ? (
+              <ForecastView pipelineId={pipelineId} />
+            ) : pipelineId && seccion === 'clientes' ? (
+              <ClientsView pipelineId={pipelineId} />
+            ) : pipelineId ? (
+              <AutomationsView pipelineId={pipelineId} />
+            ) : null}
           </div>
-          {(vista === 'kanban' || vista === 'tabla') && <ChipsFiltrosOportunidades filtros={filtros} onFiltros={setFiltros} usuarios={cat.usuarios} />}
-          {(vista === 'kanban' || vista === 'tabla') && (estado === 'error' || estado === 'vacio' || estado === 'sinResultados') ? (
-            <EstadoTablero estado={estado} puedeCrear={permisos.crear} onCrear={() => setNueva({ etapaId: null })} onLimpiar={() => setFiltros(filtrosVacios())} onReintentar={() => { tablero.recargar(); pls.recargar(); }} />
-          ) : vista === 'kanban' ? (
-            <>
-              {escritorio && <KpisOportunidades resumen={resumen} hoy={hoy} cargando={estado === 'cargando'} />}
-              {escritorio ? (
-                <KanbanTablero etapas={etapas} tablero={tablero.tablero} resumen={resumen} hoy={hoy} moneda={moneda} usuarios={cat.usuarios} usuarioId={cat.usuarioId} permisos={permisos} acciones={acciones} mover={tablero.mover} onAbrir={setDrawer} onCrear={(e) => setNueva({ etapaId: e })} onConfigurarEtapa={(id) => { setEditarEtapa(id); setEtapasAbierto(true); }} onCargarMas={tablero.cargarMas} onReintentarColumna={tablero.reintentarColumna} />
-              ) : (
-                <PipelineMovil etapas={etapas} tablero={tablero.tablero} resumen={resumen} hoy={hoy} usuarios={cat.usuarios} usuarioId={cat.usuarioId} permisos={permisos} acciones={acciones} onAbrir={setDrawer} onCargarMas={tablero.cargarMas} />
-              )}
-            </>
-          ) : vista === 'tabla' ? (
-            <TablaPipeline pipelineId={pipelineId} query={query} etapas={etapasFlujo} usuarios={cat.usuarios} usuarioId={cat.usuarioId} permisos={permisos} acciones={acciones} onAbrir={setDrawer} />
-          ) : pipelineId && vista === 'pronostico' ? (
-            <ForecastView pipelineId={pipelineId} />
-          ) : pipelineId && vista === 'clientes' ? (
-            <ClientsView pipelineId={pipelineId} />
-          ) : pipelineId ? (
-            <AutomationsView pipelineId={pipelineId} />
-          ) : null}
         </>
       )}
 
@@ -241,6 +262,7 @@ export function PipelinePantalla() {
           abierto={selectorMovil}
           onAbiertoChange={setSelectorMovil}
           pipelines={pls.lista}
+          abiertas={abiertasDe}
           actualId={mostrarSinEmbudo ? null : pipelineId}
           onElegir={setElegido}
           puedeGestionar={permisos.gestionarPipelines}

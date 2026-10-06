@@ -51,6 +51,7 @@ const MAX_NOTAS = 1000;
 export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpen, onOpenChange }: CierreCajaDialogProps) {
   const t = useTranslations('cajas.cerrarCaja');
   const tMetodo = useTranslations('cajas.cierre.tiposMovimiento');
+  const tFicha = useTranslations('cajas.ficha');
   const [internalOpen, setInternalOpen] = useState(false);
   const controlled = controlledOpen !== undefined;
   const open = controlled ? controlledOpen : internalOpen;
@@ -212,7 +213,19 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-fg">
-                          {tMetodo(CLAVE_TIPO[m.type] ?? 'otro')}
+                          {m.pedidoWeb
+                            ? tFicha('origenWebDetalle', {
+                                numero: m.pedidoWeb.numero,
+                                entrega:
+                                  m.pedidoWeb.entrega === 'dine_in'
+                                    ? m.pedidoWeb.mesa
+                                      ? tFicha('entregaWeb.mesa', { mesa: m.pedidoWeb.mesa })
+                                      : tFicha('entregaWeb.dine_in')
+                                    : m.pedidoWeb.entrega === 'pickup'
+                                      ? tFicha('entregaWeb.pickup')
+                                      : tFicha('entregaWeb.domicilio'),
+                              })
+                            : tMetodo(CLAVE_TIPO[m.type] ?? 'otro')}
                           {m.reference ? ` #${m.reference}` : ''}
                         </p>
                         <p className="truncate text-xs text-fg-muted">

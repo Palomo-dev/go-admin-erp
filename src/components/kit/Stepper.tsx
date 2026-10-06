@@ -11,6 +11,10 @@ import { cn } from '@/utils/Utils';
  *   completados llevan ✓ en azul, el actual va resaltado y los pendientes en gris.
  * - Móvil: «Paso 2 de 5 · Mapeo» y una barra de avance (los círculos no caben).
  *
+ * - `variante="segmentos"` (asistente del sitio web, Figma A/03a-03h): en todos
+ *   los tamaños, «Paso 1 de 6 · Giro y objetivo» sobre una barra de N
+ *   segmentos (hechos y actual en azul acción, pendientes en gris).
+ *
  * Es una `ol` con `aria-current="step"` en el paso actual. Los pasos
  * completados pueden ser botones (`onPasoClick`) para volver atrás; los
  * pendientes nunca (no se salta un paso sin validar el anterior).
@@ -31,12 +35,31 @@ export interface StepperProps<V extends string = string> {
   etiqueta: string;
   /** A la derecha en escritorio («Origen: archivo · Sucursal destino: Centro»). */
   extra?: React.ReactNode;
+  /** `pasos` (por defecto): círculos en escritorio. `segmentos`: texto y barra segmentada siempre. */
+  variante?: 'pasos' | 'segmentos';
   className?: string;
 }
 
-export function Stepper<V extends string>({ pasos, actual, onPasoClick, resumenMovil, etiqueta, extra, className }: StepperProps<V>) {
+export function Stepper<V extends string>({ pasos, actual, onPasoClick, resumenMovil, etiqueta, extra, variante = 'pasos', className }: StepperProps<V>) {
   const indice = Math.max(0, pasos.findIndex((p) => p.valor === actual));
   const total = pasos.length;
+  if (variante === 'segmentos') {
+    return (
+      <div className={cn('flex flex-col gap-1.5', className)}>
+        <p className="text-xs font-medium leading-4 text-fg-secondary" aria-live="polite">
+          {resumenMovil(indice + 1, total, pasos[indice]?.etiqueta ?? '')}
+        </p>
+        <ol aria-label={etiqueta} className="flex w-full gap-1">
+          {pasos.map((p, i) => (
+            <li key={p.valor} aria-current={i === indice ? 'step' : undefined} className="flex-1">
+              <span className="sr-only">{p.etiqueta}</span>
+              <span aria-hidden="true" className={cn('block h-1 rounded-full', i <= indice ? 'bg-brand-action' : 'bg-line-strong')} />
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {/* Móvil */}

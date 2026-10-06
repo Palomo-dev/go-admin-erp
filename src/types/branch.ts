@@ -77,6 +77,16 @@ export interface DayHours {
   open: string;
   close: string;
   closed: boolean;
+  /**
+   * Turnos partidos (2 o más, ordenados, sin solapes). Si existe manda sobre open/close, que
+   * quedan como apertura del primero y cierre del último. Ver lib/organizacion/horarioSede.ts.
+   */
+  tramos?: TurnoHorario[];
+}
+
+export interface TurnoHorario {
+  open: string;
+  close: string;
 }
 
 export interface BranchFeatures {

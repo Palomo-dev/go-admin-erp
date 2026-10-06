@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, LogOut, Users, UtensilsCrossed, LayoutGrid, Map as MapIcon, Receipt, History } from 'lucide-react';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, LogOut, Users, UtensilsCrossed, LayoutGrid, Map as MapIcon, Receipt, History, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -52,6 +52,8 @@ import { estadoVisualMesa, mesaOcupada, type ReservaActivaMesa } from '@/compone
 import { ReservaMesaPanel } from '@/components/pos/mesas/ReservaMesaPanel';
 import { CambiarMesaReservaDialog } from '@/components/pos/mesas/CambiarMesaReservaDialog';
 import { reservasMesasService } from '@/components/pos/reservas-mesas/reservasMesasService';
+import { useMensajeErrorReserva } from '@/components/pos/reservas-mesas/useMensajeErrorReserva';
+import { MesaQrDialog, type MesaParaQr } from '@/components/pos/mesas/MesaQrDialog';
 
 export default function MesasPage() {
   const avisoLiberacion = useAvisoLiberacion();
@@ -92,11 +94,25 @@ export default function MesasPage() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   // Reservas confirmadas que apartan una mesa ahora (ventana de 60 min, zona de la sede)
-  const { activas: reservasActivas, recargar: recargarReservas } = useReservasMesas(mesas, branchFilter);
+  const tReservas = useTranslations('posReservasMesas');
+  const mensajeErrorReserva = useMensajeErrorReserva();
+  // Reserva web nueva en tiempo real: el mismo toast que la pantalla de Reservas.
+  const { activas: reservasActivas, recargar: recargarReservas } = useReservasMesas(mesas, branchFilter, (reserva) =>
+    toast({
+      title: tReservas('tiempoReal.nueva'),
+      description: tReservas('tiempoReal.detalle', {
+        nombre: reserva.customer_name ?? '',
+        personas: reserva.party_size ?? 0,
+        hora: (reserva.reservation_time ?? '').slice(0, 5),
+      }),
+    }),
+  );
   const [mesaReservada, setMesaReservada] = useState<TableWithSession | null>(null);
   const [showCambiarMesaReserva, setShowCambiarMesaReserva] = useState(false);
   const [confirmarNoShow, setConfirmarNoShow] = useState(false);
   const [accionReservaEnCurso, setAccionReservaEnCurso] = useState(false);
+  // «QR de la mesa»: una mesa (menú de la tarjeta) o todas las visibles (menú ⋯).
+  const [qr, setQr] = useState<{ mesas: MesaParaQr[]; titulo: string } | null>(null);
   const reservaDelPanel: ReservaActivaMesa | undefined = mesaReservada ? reservasActivas.get(mesaReservada.id) : undefined;
   const estadoDe = (m: TableWithSession) => estadoVisualMesa(m, reservasActivas.get(m.id));
   // Mesas que no pueden recibir una reserva movida ahora mismo (ocupadas o ya apartadas)
@@ -413,40 +429,31 @@ export default function MesasPage() {
     }
   };
 
-  // «Sentar y abrir cuenta»: el mismo flujo de abrir sesión de mesa
-  // (MesasService.abrirSesion) y la reserva pasa a «seated» con el servicio
-  // de reservas (reservasMesasService.changeStatus). Sin lógica duplicada.
+  // «Sentar y abrir cuenta»: `reservasMesasService.sentarReserva` (RPC
+  // `pos_reserva_sentar`) abre la cuenta y marca la reserva en una sola
+  // transacción; antes eran dos llamadas y la segunda podía fallar sola.
   const handleSentarReserva = async () => {
     const mesa = mesaReservada;
     const activa = reservaDelPanel;
     if (!mesa || !activa) return;
     setAccionReservaEnCurso(true);
     try {
-      await MesasService.abrirSesion(mesa.id, { customers: activa.reserva.party_size });
-    } catch (error) {
-      console.error('Error abriendo sesión de mesa reservada:', error);
-      toast({
-        title: t('reserva.avisos.error'),
-        description: (error as { message?: string } | null)?.message || t('reserva.avisos.errorSentar'),
-        variant: 'destructive',
-      });
-      setAccionReservaEnCurso(false);
-      return;
-    }
-    try {
-      await reservasMesasService.changeStatus(activa.reserva.id, 'seated');
+      // Una transacción (pos_reserva_sentar): abre la cuenta y deja la reserva
+      // «Sentada» unida a ella; al cerrar la mesa, la base la pasa a «Completada».
+      await reservasMesasService.sentarReserva(activa.reserva.id, mesa.id, activa.reserva.party_size);
       toast({
         title: t('reserva.avisos.sentadaTitulo'),
         description: t('reserva.avisos.sentada', { mesa: mesa.name, nombre: activa.reserva.customer_name }),
       });
     } catch (error) {
-      // La cuenta ya está abierta: no se deshace; se avisa para marcarla a mano.
-      console.error('Error marcando la reserva como sentada:', error);
+      console.error('Error sentando la reserva:', error);
       toast({
-        title: t('reserva.avisos.sentadaTitulo'),
-        description: t('reserva.avisos.sentadaSinMarcar'),
+        title: t('reserva.avisos.error'),
+        description: mensajeErrorReserva(error, t('reserva.avisos.errorSentar')),
         variant: 'destructive',
       });
+      setAccionReservaEnCurso(false);
+      return;
     }
     setAccionReservaEnCurso(false);
     setMesaReservada(null);
@@ -598,6 +605,16 @@ export default function MesasPage() {
       onSelect: handleToggleModoCombinar,
     },
     { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: () => setShowHistorial(true), separadorAntes: true },
+    {
+      id: 'qr',
+      etiqueta: t('qr.todas'),
+      icono: QrCode,
+      onSelect: () =>
+        setQr({
+          mesas: mesasFiltradas.map((m) => ({ id: m.id, name: m.name, zone: m.zone ?? null })),
+          titulo: zonaFiltro !== 'todas' ? zonaFiltro : t('qr.tituloTodas'),
+        }),
+    },
   ];
 
   const tarjetasDe = (lista: TableWithSession[]) =>
@@ -617,6 +634,7 @@ export default function MesasPage() {
           setComensales(mesa.session?.customers || 2);
         }}
         onClick={() => handleMesaClick(mesa)}
+        onQr={() => setQr({ mesas: [{ id: mesa.id, name: mesa.name, zone: mesa.zone ?? null }], titulo: mesa.name })}
         modoCombinar={modoCombinar}
         isSelected={mesasParaCombinar.includes(mesa.id)}
         selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
@@ -929,6 +947,13 @@ export default function MesasPage() {
         ocupado={accionReservaEnCurso}
       />
 
+      <MesaQrDialog
+        abierto={!!qr}
+        onAbiertoChange={(abierto) => !abierto && setQr(null)}
+        mesas={qr?.mesas ?? []}
+        titulo={qr?.titulo ?? ''}
+      />
+
       <CambiarMesaReservaDialog
         activa={reservaDelPanel}
         abierto={showCambiarMesaReserva && !!reservaDelPanel}
@@ -1014,6 +1039,7 @@ interface MesaCardWithMenuProps {
   onLiberar: () => void;
   onSolicitarCuenta?: () => void;
   onEditarComensales: () => void;
+  onQr: () => void;
   modoCombinar?: boolean;
   isSelected?: boolean;
   selectionIndex?: number;
@@ -1028,6 +1054,7 @@ function MesaCardWithMenu({
   onLiberar,
   onSolicitarCuenta,
   onEditarComensales,
+  onQr,
   modoCombinar = false,
   isSelected = false,
   selectionIndex,
@@ -1046,6 +1073,7 @@ function MesaCardWithMenu({
   // Menú ⋯ siempre visible (antes solo con hover: inalcanzable en táctil).
   const acciones: AccionFila[] = [
     { id: 'editar', etiqueta: t('acciones.editarMesa'), icono: Settings, onSelect: onEdit },
+    { id: 'qr', etiqueta: t('qr.accion'), icono: QrCode, onSelect: onQr },
     ...(mesa.session
       ? [
           ...(onSolicitarCuenta

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
-import type { DevicePreview } from '../EditorHeader';
+import type { DispositivoInspector as DevicePreview } from '@/components/sitio-web/ui/dispositivos';
 import FooterLayoutSelector from '../FooterLayoutSelector';
 import FooterPreviewMockup from '../FooterPreviewMockup';
 import FooterOptionsPanel from '../FooterOptionsPanel';
@@ -24,7 +24,8 @@ export interface FooterInspectorProps {
   onCerrar: () => void;
 }
 
-export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMenus, onCerrar }: FooterInspectorProps) {
+/** Ajustes del pie con sus valores por defecto (los usan el inspector y el editor en el celular). */
+export function opcionesPie(settings: WebsiteSettings) {
   const opciones = {
     footer_style: settings.footer_style || 'default',
     footer_columns: settings.footer_columns ?? 4,
@@ -47,7 +48,13 @@ export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMen
     mobile_footer_show_hours: settings.mobile_footer_show_hours ?? false,
   };
 
-  const mockup = (isMobile: boolean) => (
+  return { opciones, movil };
+}
+
+/** Boceto del pie con los ajustes sin guardar (inspector y editor en el celular). */
+export function BocetoPie({ settings, isMobile }: { settings: WebsiteSettings; isMobile: boolean }) {
+  const { opciones, movil } = opcionesPie(settings);
+  return (
     <FooterPreviewMockup
       layout={opciones.footer_style}
       columns={opciones.footer_columns}
@@ -69,6 +76,11 @@ export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMen
       mobileShowHours={movil.mobile_footer_show_hours}
     />
   );
+}
+
+export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMenus, onCerrar }: FooterInspectorProps) {
+  const { opciones, movil } = opcionesPie(settings);
+  const mockup = (isMobile: boolean) => <BocetoPie settings={settings} isMobile={isMobile} />;
 
   return (
     <InspectorZonaGlobal

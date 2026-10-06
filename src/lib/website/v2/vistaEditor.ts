@@ -29,6 +29,11 @@ import {
   igualesEstructural,
 } from './mapeoAjustes';
 import { fijarCampo, leerCampo, structuredCloneSeguro, valorPropioDe } from './rutasDocumento';
+import {
+  visibilidadAlDocumento,
+  visibilidadDeSeccion,
+  visibilidadDesdeDocumento,
+} from './estiloSeccion';
 
 // ─── Páginas y secciones ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +47,19 @@ function textoSeo(campo: CampoHeredable<string> | undefined): string | null {
   return campo && campo.mode === 'value' ? campo.value : null;
 }
 
+/**
+ * `settings` de la vista: el `diseno` de la sección y, si la visibilidad no es la misma en los
+ * tres dispositivos, `settings.visibilidad` `{ computador, tableta, celular }` (estilo por
+ * sección, «Mostrar en»). Es la misma forma que guarda el modo legacy.
+ */
+function settingsDeSeccion(seccion: SeccionSitio): Record<string, unknown> {
+  const settings = structuredCloneSeguro(seccion.diseno ?? {}) as Record<string, unknown>;
+  delete settings.visibilidad;
+  const v = visibilidadDesdeDocumento(seccion.visibilidad);
+  if (!(v.computador === v.tableta && v.tableta === v.celular)) settings.visibilidad = v;
+  return settings;
+}
+
 export function seccionAVista(seccion: SeccionSitio, pagina: PaginaSitio, indice: number, ctx: ContextoVista): WebsitePageSection {
   return {
     id: seccion.id,
@@ -50,9 +68,9 @@ export function seccionAVista(seccion: SeccionSitio, pagina: PaginaSitio, indice
     section_type: seccion.tipo,
     section_variant: seccion.variante ?? 'default',
     content: structuredCloneSeguro(seccion.contenido) as WebsitePageSection['content'],
-    settings: structuredCloneSeguro(seccion.diseno ?? {}) as WebsitePageSection['settings'],
+    settings: settingsDeSeccion(seccion) as WebsitePageSection['settings'],
     sort_order: indice,
-    is_visible: seccion.visibilidad?.escritorio !== false || seccion.visibilidad?.movil !== false,
+    is_visible: seccion.visibilidad?.escritorio !== false || seccion.visibilidad?.movil !== false || seccion.visibilidad?.tableta === true,
     created_at: '',
     updated_at: '',
     branch_id: ctx.branchId,
@@ -94,8 +112,8 @@ export function paginasDesdeDocumento(documento: DocumentoSitio, ctx: ContextoVi
 
 /** Vuelve a convertir una sección del editor; conserva `version`, `fuente` y visibilidad fina. */
 function seccionDesdeVista(vista: WebsitePageSection, original: SeccionSitio | undefined): SeccionSitio {
-  const visibilidadOriginal = original?.visibilidad;
-  const visibleOriginal = visibilidadOriginal ? visibilidadOriginal.escritorio || visibilidadOriginal.movil : true;
+  const diseno = structuredCloneSeguro(vista.settings ?? original?.diseno ?? {}) as Record<string, unknown>;
+  delete diseno.visibilidad;
   const seccion: SeccionSitio = {
     id: vista.id,
     tipo: vista.section_type,
@@ -104,11 +122,11 @@ function seccionDesdeVista(vista: WebsitePageSection, original: SeccionSitio | u
       original && original.variante === null && vista.section_variant === 'default' ? null : vista.section_variant ?? null,
     version: original?.version ?? 1,
     contenido: structuredCloneSeguro(vista.content ?? {}),
-    diseno: structuredCloneSeguro(vista.settings ?? original?.diseno ?? {}),
-    visibilidad:
-      visibilidadOriginal && visibleOriginal === vista.is_visible
-        ? { ...visibilidadOriginal }
-        : { movil: vista.is_visible, escritorio: vista.is_visible },
+    diseno,
+    // La visibilidad fina viaja en `settings.visibilidad`; si no está, el ojo decide los tres.
+    visibilidad: visibilidadAlDocumento(
+      visibilidadDeSeccion({ is_visible: vista.is_visible, settings: vista.settings as Record<string, unknown> | null }),
+    ),
   };
   if (original?.fuente) seccion.fuente = structuredCloneSeguro(original.fuente);
   return seccion;
@@ -285,6 +303,69 @@ export function estadoSecciones(sede: DocumentoSitio, base: DocumentoSitio | nul
     }
   }
   return estados;
+}
+
+/**
+ * Herencia real de secciones al publicar el principal, en el borrador de una sede:
+ * - Cada sección que seguía IGUAL a la del principal publicado antes (`baseAnterior`) pasa a ser
+ *   la del principal recién publicado (`baseNueva`).
+ * - Una sección que el principal añadió (no estaba en `baseAnterior`) entra en la sede justo
+ *   después de la sección que la precede en el principal; si ninguna anterior existe en la sede,
+ *   va al principio de la página.
+ * - Una sección que el principal quitó y que la sede heredaba sin cambios sale de la sede.
+ * Lo que la sede personalizó y sus secciones propias no se tocan, y el orden de la sede se
+ * respeta (reordenar el principal no reordena las sedes: la sede pudo ordenar a su manera).
+ * Devuelve `null` si no cambia nada. Puro.
+ */
+export function propagarSeccionesHeredadas(
+  sede: DocumentoSitio,
+  baseAnterior: DocumentoSitio,
+  baseNueva: DocumentoSitio,
+): { documento: DocumentoSitio; secciones: number } | null {
+  const anterior = new Map<string, string>();
+  for (const p of baseAnterior.paginas) for (const s of p.secciones) anterior.set(`${p.id}/${s.id}`, serializarDeterminista(s));
+  const nueva = new Map<string, SeccionSitio>();
+  for (const p of baseNueva.paginas) for (const s of p.secciones) nueva.set(`${p.id}/${s.id}`, s);
+  const copia = structuredCloneSeguro(sede);
+  let secciones = 0;
+  for (const p of copia.paginas) {
+    const lista: SeccionSitio[] = [];
+    for (const s of p.secciones) {
+      const clave = `${p.id}/${s.id}`;
+      const previa = anterior.get(clave);
+      const heredaba = previa === serializarDeterminista(s);
+      const actual = nueva.get(clave);
+      if (heredaba && !actual) {
+        // El principal la quitó y la sede la seguía heredando tal cual: sale.
+        secciones += 1;
+        continue;
+      }
+      if (!heredaba || !actual || serializarDeterminista(actual) === serializarDeterminista(s)) {
+        lista.push(s);
+        continue;
+      }
+      secciones += 1;
+      lista.push(structuredCloneSeguro(actual));
+    }
+    const enPrincipal = baseNueva.paginas.find((x) => x.id === p.id)?.secciones ?? [];
+    const enSede = new Set(lista.map((s) => s.id));
+    enPrincipal.forEach((s, i) => {
+      if (anterior.has(`${p.id}/${s.id}`) || enSede.has(s.id)) return;
+      let pos = 0;
+      for (let k = i - 1; k >= 0; k -= 1) {
+        const idx = lista.findIndex((x) => x.id === enPrincipal[k].id);
+        if (idx >= 0) {
+          pos = idx + 1;
+          break;
+        }
+      }
+      lista.splice(pos, 0, structuredCloneSeguro(s));
+      enSede.add(s.id);
+      secciones += 1;
+    });
+    p.secciones = lista;
+  }
+  return secciones > 0 ? { documento: copia, secciones } : null;
 }
 
 /** Copia a la sede la sección del principal (botón «Restablecer»). */

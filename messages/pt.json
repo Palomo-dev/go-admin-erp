@@ -30084,7 +30084,10 @@
         "enTodas": "Em todas",
         "enTodasAyuda": "\"Em todas\" muda o site principal. Ao publicá-lo, a mudança passa para o rascunho de cada unidade que usa esta seção e chega ao site dela quando essa unidade for publicada.",
         "ahoraPrincipal": "Agora você edita o site principal",
-        "ahoraPrincipalDescripcion": "Aplicamos sua mudança aqui. Ao publicar, ela passa para o rascunho de cada unidade que usa esta seção."
+        "ahoraPrincipalDescripcion": "Aplicamos sua mudança aqui. Ao publicar, ela passa para o rascunho de cada unidade que usa esta seção.",
+        "crearSitioDescripcionPlantilla": "A unidade começa com o modelo de {tipo}: páginas, seções e menus desse tipo de negócio, em rascunho. Herda do site principal o logo, as cores e o que você não personalizar. Nada é publicado até você decidir.",
+        "sinSitioTitulo": "{sede} ainda não tem seu site",
+        "crearConPlantilla": "Criar com o modelo de {tipo}"
       },
       "adopcion": {
         "activarTitulo": "Ativar o rascunho no site de {sitio}",
@@ -31719,6 +31722,31 @@
           "cancelar": "Continuar editando"
         }
       }
+    },
+    "plantillaSede": {
+      "tipos": {
+        "restaurant": "Restaurante",
+        "hotel": "Hotel",
+        "retail": "Loja",
+        "gym": "Academia",
+        "transport": "Transporte",
+        "parking": "Estacionamento",
+        "services": "Serviços"
+      },
+      "accion": "Aplicar o modelo de {tipo} a esta unidade",
+      "titulo": "Aplicar o modelo de {tipo} a {sede}",
+      "descripcion": "Substitui o rascunho da unidade pela estrutura de {tipo}: páginas, seções e menus. O rascunho atual fica no histórico como salvamento automático e você pode restaurá-lo. Nada muda on-line até você publicar.",
+      "descripcionPendiente": "O site de {sede} tem alterações próprias, por isso não foi substituído ao mudar o tipo de negócio. Se você aplicar o modelo de {tipo}, o rascunho atual fica no histórico e pode ser restaurado. Nada muda on-line até você publicar.",
+      "confirmar": "Aplicar modelo",
+      "ahoraNo": "Agora não",
+      "aplicada": "Modelo de {tipo} aplicado a {sede}",
+      "creada": "O site de {sede} foi criado com o modelo de {tipo}",
+      "enBorrador": "Ficou em rascunho. Publique a unidade pelo editor quando estiver pronta.",
+      "sinCambios": "{sede} já tem o modelo de {tipo}",
+      "error": "Não foi possível aplicar o modelo",
+      "noDisponible": "Aplicar um modelo à unidade é ativado quando a migração for aplicada.",
+      "avisoFormulario": "O site da unidade é criado com o modelo de {tipo}. Fica em rascunho até você publicá-lo.",
+      "avisoCambioTipo": "Ao salvar, o site da unidade passa para o modelo de {tipo}. Se já tiver alterações próprias, elas são mantidas: perguntaremos antes de aplicá-lo."
     }
   },
   "roles": {

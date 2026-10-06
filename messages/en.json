@@ -30187,7 +30187,10 @@
         "enTodas": "At all locations",
         "enTodasAyuda": "\"At all locations\" changes the main site. When you publish it, the change goes to the draft of each location that uses this section and reaches its website when that location is published.",
         "ahoraPrincipal": "You are now editing the main site",
-        "ahoraPrincipalDescripcion": "We applied your change here. When you publish, it goes to the draft of each location that uses this section."
+        "ahoraPrincipalDescripcion": "We applied your change here. When you publish, it goes to the draft of each location that uses this section.",
+        "crearSitioDescripcionPlantilla": "The location starts with the {tipo} template: pages, sections and menus for that business type, as a draft. It inherits the logo, colors and anything you do not customize from the main site. Nothing is published until you decide.",
+        "sinSitioTitulo": "{sede} does not have its site yet",
+        "crearConPlantilla": "Create with the {tipo} template"
       },
       "adopcion": {
         "activarTitulo": "Activate the draft on {sitio}'s website",
@@ -31822,6 +31825,31 @@
           "cancelar": "Keep editing"
         }
       }
+    },
+    "plantillaSede": {
+      "tipos": {
+        "restaurant": "Restaurant",
+        "hotel": "Hotel",
+        "retail": "Store",
+        "gym": "Gym",
+        "transport": "Transport",
+        "parking": "Parking",
+        "services": "Services"
+      },
+      "accion": "Apply the {tipo} template to this location",
+      "titulo": "Apply the {tipo} template to {sede}",
+      "descripcion": "Replaces the location draft with the {tipo} structure: pages, sections and menus. The current draft stays in the history as an autosave and you can restore it. Nothing changes online until you publish.",
+      "descripcionPendiente": "The {sede} site has its own changes, so it was not replaced when the business type changed. If you apply the {tipo} template, the current draft stays in the history and you can restore it. Nothing changes online until you publish.",
+      "confirmar": "Apply template",
+      "ahoraNo": "Not now",
+      "aplicada": "{tipo} template applied to {sede}",
+      "creada": "The {sede} site was created with the {tipo} template",
+      "enBorrador": "It is a draft. Publish the location from the editor when it is ready.",
+      "sinCambios": "{sede} already has the {tipo} template",
+      "error": "The template could not be applied",
+      "noDisponible": "Applying a template to a location turns on once its migration is applied.",
+      "avisoFormulario": "Your location site is created with the {tipo} template. It stays as a draft until you publish it.",
+      "avisoCambioTipo": "When you save, the location site switches to the {tipo} template. If it already has its own changes they are kept: we will ask before applying it."
     }
   },
   "roles": {

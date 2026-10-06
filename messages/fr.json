@@ -30084,7 +30084,10 @@
         "enTodas": "Dans tous",
         "enTodasAyuda": "« Dans tous » modifie le site principal. À sa publication, la modification passe au brouillon de chaque établissement qui utilise cette section et arrive sur son site quand cet établissement est publié.",
         "ahoraPrincipal": "Vous modifiez maintenant le site principal",
-        "ahoraPrincipalDescripcion": "Nous avons appliqué votre modification ici. À la publication, elle passe au brouillon de chaque établissement qui utilise cette section."
+        "ahoraPrincipalDescripcion": "Nous avons appliqué votre modification ici. À la publication, elle passe au brouillon de chaque établissement qui utilise cette section.",
+        "crearSitioDescripcionPlantilla": "L’établissement démarre avec le modèle {tipo} : pages, sections et menus de ce type d’activité, en brouillon. Il hérite du site principal le logo, les couleurs et tout ce que vous ne personnalisez pas. Rien n’est publié avant votre décision.",
+        "sinSitioTitulo": "{sede} n’a pas encore son site",
+        "crearConPlantilla": "Créer avec le modèle {tipo}"
       },
       "adopcion": {
         "activarTitulo": "Activer le brouillon sur le site web de {sitio}",
@@ -31719,6 +31722,31 @@
           "cancelar": "Continuer"
         }
       }
+    },
+    "plantillaSede": {
+      "tipos": {
+        "restaurant": "Restaurant",
+        "hotel": "Hôtel",
+        "retail": "Boutique",
+        "gym": "Salle de sport",
+        "transport": "Transport",
+        "parking": "Parking",
+        "services": "Services"
+      },
+      "accion": "Appliquer le modèle {tipo} à ce site",
+      "titulo": "Appliquer le modèle {tipo} à {sede}",
+      "descripcion": "Remplace le brouillon du site par la structure {tipo} : pages, sections et menus. Le brouillon actuel reste dans l’historique comme enregistrement automatique et vous pouvez le restaurer. Rien ne change en ligne avant la publication.",
+      "descripcionPendiente": "Le site de {sede} contient vos propres modifications ; il n’a donc pas été remplacé lors du changement de type d’activité. Si vous appliquez le modèle {tipo}, le brouillon actuel reste dans l’historique et vous pouvez le restaurer. Rien ne change en ligne avant la publication.",
+      "confirmar": "Appliquer le modèle",
+      "ahoraNo": "Pas maintenant",
+      "aplicada": "Modèle {tipo} appliqué à {sede}",
+      "creada": "Le site de {sede} a été créé avec le modèle {tipo}",
+      "enBorrador": "Il reste en brouillon. Publiez le site depuis l’éditeur lorsqu’il est prêt.",
+      "sinCambios": "{sede} a déjà le modèle {tipo}",
+      "error": "Impossible d’appliquer le modèle",
+      "noDisponible": "Appliquer un modèle à un site s’active une fois sa migration appliquée.",
+      "avisoFormulario": "Le site de cet établissement est créé avec le modèle {tipo}. Il reste en brouillon jusqu’à sa publication.",
+      "avisoCambioTipo": "À l’enregistrement, le site de l’établissement passe au modèle {tipo}. S’il contient déjà vos modifications, elles sont conservées : nous vous demanderons avant de l’appliquer."
     }
   },
   "roles": {

@@ -30187,7 +30187,10 @@
         "enTodas": "En todas",
         "enTodasAyuda": "«En todas» cambia el sitio principal. Al publicarlo, el cambio pasa al borrador de cada sede que usa esta sección y llega a su web cuando esa sede se publica.",
         "ahoraPrincipal": "Ahora editas el sitio principal",
-        "ahoraPrincipalDescripcion": "Aplicamos tu cambio aquí. Al publicar, pasa al borrador de cada sede que usa esta sección."
+        "ahoraPrincipalDescripcion": "Aplicamos tu cambio aquí. Al publicar, pasa al borrador de cada sede que usa esta sección.",
+        "crearSitioDescripcionPlantilla": "La sede nace con la plantilla de {tipo}: páginas, secciones y menús de ese tipo de negocio, en borrador. Hereda del sitio principal el logo, los colores y lo que no personalices. Nada se publica hasta que lo decidas.",
+        "sinSitioTitulo": "{sede} aún no tiene su sitio",
+        "crearConPlantilla": "Crear con la plantilla de {tipo}"
       },
       "adopcion": {
         "activarTitulo": "Activar el borrador en la web de {sitio}",
@@ -31822,6 +31825,31 @@
           "cancelar": "Seguir editando"
         }
       }
+    },
+    "plantillaSede": {
+      "tipos": {
+        "restaurant": "Restaurante",
+        "hotel": "Hotel",
+        "retail": "Tienda",
+        "gym": "Gimnasio",
+        "transport": "Transporte",
+        "parking": "Parqueadero",
+        "services": "Servicios"
+      },
+      "accion": "Aplicar plantilla de {tipo} a esta sede",
+      "titulo": "Aplicar la plantilla de {tipo} a {sede}",
+      "descripcion": "Reemplaza el borrador de la sede por la estructura de {tipo}: páginas, secciones y menús. El borrador actual queda en el historial como guardado automático y lo puedes restaurar. Nada cambia en línea hasta que publiques.",
+      "descripcionPendiente": "El sitio de {sede} tiene cambios propios, por eso no se reemplazó al cambiar el tipo de negocio. Si aplicas la plantilla de {tipo}, el borrador actual queda en el historial y lo puedes restaurar. Nada cambia en línea hasta que publiques.",
+      "confirmar": "Aplicar plantilla",
+      "ahoraNo": "Ahora no",
+      "aplicada": "Plantilla de {tipo} aplicada a {sede}",
+      "creada": "El sitio de {sede} se creó con la plantilla de {tipo}",
+      "enBorrador": "Quedó en borrador. Publica la sede desde el editor cuando esté lista.",
+      "sinCambios": "{sede} ya tiene la plantilla de {tipo}",
+      "error": "No se pudo aplicar la plantilla",
+      "noDisponible": "Aplicar una plantilla a la sede se activa cuando se aplique su migración.",
+      "avisoFormulario": "Tu sitio de sede se crea con la plantilla de {tipo}. Queda en borrador hasta que lo publiques.",
+      "avisoCambioTipo": "Al guardar, el sitio de la sede pasa a la plantilla de {tipo}. Si ya tiene cambios propios no se pisan: te preguntaremos antes de aplicarla."
     }
   },
   "roles": {

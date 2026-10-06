@@ -136,7 +136,7 @@ function ListadoInvitaciones({ organizationId, puedeComprar }: { organizationId:
 
   // «Invitar miembro» desde Miembros, la guía de Información o el estado vacío llega con ?invitar=1.
   useEffect(() => {
-    if (params?.get('invitar.titulo') !== '1') return;
+    if (params?.get('invitar') !== '1') return;
     setInvitar(true);
     router.replace('/app/organizacion/invitaciones', { scroll: false });
   }, [params, router]);

@@ -171,6 +171,15 @@ describe('guía «Configura tu organización»', () => {
     expect(pasos.find((p) => p.clave === 'equipo')?.href).toBe('/app/organizacion/invitaciones?invitar=1');
   });
 
+  // «Invitar miembro» no abría el diálogo: la pantalla leía `invitar.titulo` (un reemplazo de
+  // claves i18n se coló en el nombre del parámetro) y los enlaces mandan `invitar=1`.
+  test('la pantalla de Invitaciones lee el mismo parámetro que mandan sus enlaces', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('fs') as typeof import('fs');
+    const fuente = readFileSync(`${process.cwd()}/src/components/organization/equipo/InvitacionesPantalla.tsx`, 'utf8');
+    expect(fuente).toContain("params?.get('invitar') !== '1'");
+  });
+
   test('invitar cuenta como hecho aunque nadie haya aceptado todavía', () => {
     expect(pasosGuia({ ...base, invitacionesVigentes: 1 }).find((p) => p.clave === 'equipo')?.estado).toBe('hecho');
   });

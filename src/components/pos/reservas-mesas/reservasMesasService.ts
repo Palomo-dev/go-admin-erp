@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { resolverAjustesSede } from '@/lib/services/restaurantBookingSettingsService';
 import { numeroVenta, type DocumentoVenta } from '@/lib/pos/ventas/documentosVenta';
+import type { DepositoDeReserva } from '@/lib/services/restaurante/depositoReserva';
 import {
   mensajeErrorReserva,
   interpretarErrorReserva,
@@ -22,7 +23,8 @@ import {
 export type ReservationStatus = 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
 export type ReservationSource = 'admin' | 'website' | 'phone' | 'whatsapp';
 
-export interface RestaurantReservation {
+/** Columnas del depósito (migración D7) vienen con `*`; antes de aplicarla, ausentes. */
+export interface RestaurantReservation extends DepositoDeReserva {
   id: string;
   organization_id: number;
   branch_id: number;
@@ -430,6 +432,31 @@ class ReservasMesasService {
       throw new ReservaMesaError(mensajeErrorReserva(error, 'No se pudo posponer el aviso'), error);
     }
     return hasta;
+  }
+
+  /**
+   * Registra en finanzas el reembolso del depósito de una reserva web (D7):
+   * `fn_reserva_mesa_deposito_reembolsar` deja el pago `void` con su rastro en
+   * `finance_audit_log` y el depósito `refunded`. El permiso (`finance.void` o
+   * `pos.void`) y la sucursal los comprueba la base con la sesión. El dinero se
+   * devuelve en la pasarela: esto solo lo registra, una vez.
+   */
+  async reembolsarDeposito(id: string, motivo: string): Promise<void> {
+    const { error } = await supabase.rpc('fn_reserva_mesa_deposito_reembolsar', {
+      p_reservation_id: id,
+      p_motivo: motivo,
+    });
+    if (error) {
+      console.error('Error registrando el reembolso del depósito:', { code: error.code });
+      throw new ReservaMesaError(
+        error.message?.includes('sin_permiso')
+          ? 'No tienes permiso para registrar reembolsos'
+          : error.message?.includes('deposito_no_reembolsable')
+            ? 'Este depósito no está pagado o ya se reembolsó'
+            : 'No se pudo registrar el reembolso',
+        error,
+      );
+    }
   }
 
   /**

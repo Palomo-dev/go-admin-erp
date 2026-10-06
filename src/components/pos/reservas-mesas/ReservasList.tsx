@@ -23,7 +23,12 @@ import {
   CalendarRange,
   Receipt,
   BellRing,
+  Wallet,
+  Undo2,
 } from 'lucide-react';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { resumenDeposito, type TonoDeposito } from '@/lib/services/restaurante/depositoReserva';
 import {
   RESERVATION_STATUS_LABELS,
   RESERVATION_SOURCE_LABELS,
@@ -55,7 +60,16 @@ interface ReservasListProps {
   onRechazar?: (reservation: RestaurantReservation) => void;
   /** «Esperar 15 min»: persiste `arrival_wait_until` (D5); devuelve null si aún no hay columna. */
   onEsperar?: (reservation: RestaurantReservation, minutos: number) => Promise<string | null>;
+  /** Depósito pagado (D7): registrar en finanzas que se devolvió. */
+  onReembolsarDeposito?: (reservation: RestaurantReservation) => void;
 }
+
+const CLASES_TONO_DEPOSITO: Record<TonoDeposito, string> = {
+  exito: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  aviso: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  peligro: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  neutro: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+};
 
 function getStatusBadgeClasses(status: ReservationStatus): string {
   switch (status) {
@@ -104,8 +118,10 @@ export function ReservasList({
   onConfirmarPendiente,
   onRechazar,
   onEsperar,
+  onReembolsarDeposito,
 }: ReservasListProps) {
   const t = useTranslations('posReservasMesas');
+  const monedaOrg = useMonedaOrganizacion();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   // «Esperar 15 min»: se guarda en la reserva (`arrival_wait_until`, D5) y lo ven
   // todos los puestos; antes de D5 solo queda en esta pantalla.
@@ -190,6 +206,13 @@ export function ReservasList({
         onSelect: () => onChangeStatus(r.id, 'no_show'),
         oculta: !abierta,
       },
+      {
+        id: 'reembolsarDeposito',
+        etiqueta: 'Registrar reembolso del depósito',
+        icono: Undo2,
+        onSelect: () => onReembolsarDeposito?.(r),
+        oculta: !onReembolsarDeposito || !resumenDeposito(r)?.puedeReembolsar,
+      },
     ].filter((a) => !a.oculta);
     // Divisor entre «Editar» y los cambios de estado, como antes.
     if (cambiosDeEstado.length) cambiosDeEstado[0] = { ...cambiosDeEstado[0], separadorAntes: true };
@@ -215,6 +238,7 @@ export function ReservasList({
           const venta = ventas?.get(r.id);
           const faltas = r.customer_id ? inasistencias?.get(r.customer_id) ?? 0 : 0;
           const tel = enlaceTelefono(r.customer_phone);
+          const deposito = resumenDeposito(r, ahora);
           return (
           <Card
             key={r.id}
@@ -241,6 +265,15 @@ export function ReservasList({
                       <Badge variant="outline" className="text-xs">
                         <Receipt className="mr-1 h-3 w-3" aria-hidden="true" />
                         {venta.numero ? t('venta', { numero: venta.numero }) : t('ventaSinNumero')}
+                      </Badge>
+                    )}
+                    {deposito && (
+                      <Badge className={`${CLASES_TONO_DEPOSITO[deposito.tono]} text-xs`}>
+                        <Wallet className="mr-1 h-3 w-3" aria-hidden="true" />
+                        {deposito.etiqueta}
+                        {deposito.monto != null && ` · ${formatMoneda(deposito.monto, deposito.moneda ?? monedaOrg)}`}
+                        {deposito.estado === 'paid' && deposito.dentroDelPlazo != null &&
+                          (deposito.dentroDelPlazo ? ' · reembolsable' : ' · fuera del plazo de reembolso')}
                       </Badge>
                     )}
                     {faltas > 0 && (

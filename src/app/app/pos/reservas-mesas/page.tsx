@@ -28,6 +28,7 @@ import {
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/dateDisplay';
 import { TabBar, DialogoMotivo, idPanel, idPestana } from '@/components/kit';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { AjustesReservaDto } from '@/lib/services/restaurantBookingSettingsService';
 
 /** Figma 1801:169066: Agenda · Lista · Configuración. */
@@ -316,6 +317,21 @@ export default function ReservasMesasPage() {
     }
   };
 
+  // Depósito (D7): registrar en finanzas el reembolso de un depósito pagado.
+  const [porReembolsar, setPorReembolsar] = useState<RestaurantReservation | null>(null);
+  const handleReembolsarDeposito = async () => {
+    const reserva = porReembolsar;
+    setPorReembolsar(null);
+    if (!reserva) return;
+    try {
+      await reservasMesasService.reembolsarDeposito(reserva.id, 'Reembolso del depósito de la reserva registrado desde Reservas');
+      toast({ title: 'Reembolso registrado', description: 'Devuelve el dinero al cliente desde el panel de la pasarela.' });
+      loadData();
+    } catch (error) {
+      toast({ title: t('errores.titulo'), description: (error as Error | null)?.message || 'No se pudo registrar el reembolso', variant: 'destructive' });
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await reservasMesasService.deleteReservation(id);
@@ -428,9 +444,21 @@ export default function ReservasMesasPage() {
             onConfirmarPendiente={setPorConfirmar}
             onRechazar={setPorRechazar}
             onEsperar={handleEsperar}
+            onReembolsarDeposito={setPorReembolsar}
           />
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!porReembolsar}
+        onOpenChange={(o) => !o && setPorReembolsar(null)}
+        title="Registrar el reembolso del depósito"
+        description="El pago del depósito queda anulado en finanzas. El dinero no se mueve solo: devuélvelo al cliente desde el panel de la pasarela."
+        confirmLabel="Registrar reembolso"
+        cancelLabel="Cancelar"
+        variant="destructive"
+        onConfirm={() => void handleReembolsarDeposito()}
+      />
 
       <ConfirmarReservaDialog
         reserva={porConfirmar}

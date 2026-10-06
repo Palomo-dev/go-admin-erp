@@ -15,6 +15,7 @@
  * forma EXPLÍCITA.
  */
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { CalendarCog, Clock, Mail, MapPin, Plus, ShieldCheck, Trash2, Users, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import {
   type DiaServicio,
   type ErroresAjustes,
 } from '@/lib/services/restaurantBookingSettingsService';
+import { interruptorDeposito, RUTA_INTEGRACIONES, TEXTOS_DEPOSITO } from '@/lib/services/restaurante/depositoReserva';
 
 interface RespuestaConfiguracion {
   sede: AjustesSede;
@@ -42,6 +44,8 @@ interface RespuestaConfiguracion {
   porDefecto: AjustesReservaDto;
   zonas: string[];
   puedeEditar: boolean;
+  /** Pasarela integrada activa con la que el sitio cobra el depósito (D7), o null. */
+  pasarela?: string | null;
 }
 
 interface Props {
@@ -462,10 +466,13 @@ export function ReservasConfiguracion({ branchId, nombreSede }: Props) {
       <FormSection titulo={t('secciones.confirmacion')} icono={Wallet} columnas={1}>
         <FilaInterruptor etiqueta={t('confirmacionManual')} ayuda={t('confirmacionManualAyuda')} marcado={ajustes.require_confirmation}
           onCambio={(v) => cambiar('require_confirmation', v)} deshabilitado={soloLectura} />
-        {/* Depósito: el sitio aún no lo cobra ni lo muestra y ninguna RPC lo usa. Se deja visible y
-            deshabilitado («Próximamente») para no prometer algo que no ocurre. */}
-        <FilaInterruptor etiqueta={t('deposito')} ayuda={t('depositoProximamente')} marcado={false}
-          onCambio={() => undefined} deshabilitado />
+        <DepositoReserva
+          ajustes={ajustes}
+          pasarela={datos.pasarela ?? null}
+          soloLectura={soloLectura}
+          errores={errores}
+          cambiar={cambiar}
+        />
         <FormField etiqueta={t('politica')} ayuda={t('politicaAyuda')} error={err('policy_text')}>
           <Textarea rows={3} maxLength={2000} value={ajustes.policy_text ?? ''} disabled={soloLectura}
             onChange={(e) => cambiar('policy_text', e.target.value || null)} />
@@ -503,5 +510,112 @@ export function ReservasConfiguracion({ branchId, nombreSede }: Props) {
       )}
       {soloLectura && <p className="text-sm text-warning-text">{t('sinPermiso')}</p>}
     </form>
+  );
+}
+
+/**
+ * «Pedir depósito» (D7). Habilitado solo con una pasarela integrada activa
+ * (`pasarela`, de `fn_reserva_mesa_pasarela`); sin ella, el aviso con enlace a
+ * Integraciones. Monto fijo o por persona, y si es reembolsable y hasta cuándo.
+ * Se guarda con el resto de la configuración (`guardarAjustesReserva`).
+ */
+function DepositoReserva({
+  ajustes,
+  pasarela,
+  soloLectura,
+  errores,
+  cambiar,
+}: {
+  ajustes: AjustesReservaDto;
+  pasarela: string | null;
+  soloLectura: boolean;
+  errores: ErroresAjustes;
+  cambiar: <K extends keyof AjustesReservaDto>(clave: K, valor: AjustesReservaDto[K]) => void;
+}) {
+  const { deshabilitado, avisoSinPasarela } = interruptorDeposito(pasarela, ajustes.require_deposit, soloLectura);
+  const errorPedir = errores.require_deposit === 'DEPOSITO_SIN_PASARELA' ? TEXTOS_DEPOSITO.errorSinPasarela : null;
+  const errorMonto = errores.deposit_amount ? TEXTOS_DEPOSITO.errorMonto : null;
+  const errorHoras = errores.deposit_refund_hours ? TEXTOS_DEPOSITO.horasReembolsoAyuda(ajustes.cancellation_hours) : null;
+  return (
+    <div className="space-y-3">
+      <FilaInterruptor
+        etiqueta={TEXTOS_DEPOSITO.pedir}
+        ayuda={TEXTOS_DEPOSITO.pedirAyuda}
+        marcado={ajustes.require_deposit}
+        onCambio={(v) => cambiar('require_deposit', v)}
+        deshabilitado={deshabilitado}
+      />
+      {avisoSinPasarela ? (
+        <p className="text-sm text-fg-secondary">
+          {TEXTOS_DEPOSITO.sinPasarela}{' '}
+          <Link href={RUTA_INTEGRACIONES} className="font-medium text-brand underline-offset-2 hover:underline">
+            {TEXTOS_DEPOSITO.irAIntegraciones}
+          </Link>
+        </p>
+      ) : (
+        <p className="text-sm text-fg-secondary">{TEXTOS_DEPOSITO.conPasarela(pasarela as string)}</p>
+      )}
+      {errorPedir && <p className="text-sm text-danger-text">{errorPedir}</p>}
+      {ajustes.require_deposit && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField etiqueta={TEXTOS_DEPOSITO.modo}>
+            {(c) => (
+              <Select
+                value={ajustes.deposit_per_person ? 'persona' : 'fijo'}
+                onValueChange={(v) => cambiar('deposit_per_person', v === 'persona')}
+                disabled={soloLectura}
+              >
+                <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fijo">{TEXTOS_DEPOSITO.modoFijo}</SelectItem>
+                  <SelectItem value="persona">{TEXTOS_DEPOSITO.modoPorPersona}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+          <FormField
+            etiqueta={ajustes.deposit_per_person ? TEXTOS_DEPOSITO.montoPorPersona : TEXTOS_DEPOSITO.monto}
+            error={errorMonto}
+          >
+            <Input
+              type="number"
+              min={1}
+              step="any"
+              inputMode="decimal"
+              value={ajustes.deposit_amount ?? ''}
+              disabled={soloLectura}
+              onChange={(e) => cambiar('deposit_amount', numeroONulo(e.target.value))}
+            />
+          </FormField>
+          <div className="sm:col-span-2">
+            <FilaInterruptor
+              etiqueta={TEXTOS_DEPOSITO.reembolsable}
+              ayuda={TEXTOS_DEPOSITO.reembolsableAyuda}
+              marcado={ajustes.deposit_refundable}
+              onCambio={(v) => cambiar('deposit_refundable', v)}
+              deshabilitado={soloLectura}
+            />
+          </div>
+          {ajustes.deposit_refundable && (
+            <FormField
+              etiqueta={TEXTOS_DEPOSITO.horasReembolso}
+              ayuda={TEXTOS_DEPOSITO.horasReembolsoAyuda(ajustes.cancellation_hours)}
+              error={errorHoras}
+            >
+              <Input
+                type="number"
+                min={0}
+                max={720}
+                value={ajustes.deposit_refund_hours ?? ''}
+                disabled={soloLectura}
+                onChange={(e) => cambiar('deposit_refund_hours', numeroONulo(e.target.value))}
+              />
+            </FormField>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

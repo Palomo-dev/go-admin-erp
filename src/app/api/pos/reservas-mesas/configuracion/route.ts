@@ -3,9 +3,14 @@
  *
  * GET  ?branchId=<id>   (sin branchId = la fila de toda la organización)
  *   → { sede: { propia, organizacion, efectiva, origen }, recomendados,
- *       porDefecto, zonas, puedeEditar }
+ *       porDefecto, zonas, puedeEditar, pasarela }
  * PUT  { branchId: number | null, ajustes: AjustesReservaDto }
  *   → { ajustes } · 400 AJUSTES_INVALIDOS { errores } · 403 SIN_PERMISO / SEDE_AJENA
+ *
+ * Depósito (D7): `pasarela` es la pasarela integrada activa con la que el sitio
+ * cobra el depósito (`fn_reserva_mesa_pasarela`), o null. Guardar «Pedir
+ * depósito» sin pasarela → 400 AJUSTES_INVALIDOS { errores: { require_deposit:
+ * 'DEPOSITO_SIN_PASARELA' } }: el sitio no podría cobrarlo.
  *
  * Contrato de la pantalla de POS › Reservas de mesa › Configuración y de la de
  * Sitio web (la construye el frente del módulo Sitio web): ver
@@ -26,6 +31,7 @@ import {
   AjustesReservaError,
   getAjustesReserva,
   guardarAjustesReserva,
+  pasarelaParaDeposito,
   validarAjustesReserva,
 } from '@/lib/services/restaurantBookingSettingsService';
 
@@ -72,13 +78,14 @@ export const GET = withOrg(async (ctx, req) => {
   const branchId = sedeDeQuery(new URL(req.url).searchParams.get('branchId'));
   if (branchId === 'invalida') return error(400, 'SEDE_INVALIDA');
   try {
-    const [sede, zonas, puedeEditar] = await Promise.all([
+    const [sede, zonas, puedeEditar, pasarela] = await Promise.all([
       getAjustesReserva(ctx.supabase, ctx.organizationId, branchId),
       zonasDeSede(ctx, branchId),
       hasOrgAdminOrPermission(ctx, PERMISO_EDITAR),
+      pasarelaParaDeposito(ctx.supabase, ctx.organizationId),
     ]);
     return NextResponse.json(
-      { sede, recomendados: AJUSTES_RESERVA_RECOMENDADOS, porDefecto: AJUSTES_RESERVA_POR_DEFECTO, zonas, puedeEditar },
+      { sede, recomendados: AJUSTES_RESERVA_RECOMENDADOS, porDefecto: AJUSTES_RESERVA_POR_DEFECTO, zonas, puedeEditar, pasarela },
       { headers: SIN_CACHE },
     );
   } catch (err) {
@@ -109,6 +116,11 @@ export const PUT = withOrg(async (ctx, req) => {
 
   const validacion = validarAjustesReserva(body.data.ajustes);
   if (!validacion.ok) return error(400, 'AJUSTES_INVALIDOS', { errores: validacion.errores });
+  if (validacion.ajustes.require_deposit && !(await pasarelaParaDeposito(ctx.supabase, ctx.organizationId))) {
+    return error(400, 'AJUSTES_INVALIDOS', { errores: { require_deposit: 'DEPOSITO_SIN_PASARELA' } });
+  } else {
+    // Sin depósito, o con pasarela activa: se guarda como siempre.
+  }
 
   try {
     const ajustes = await guardarAjustesReserva(ctx.supabase, ctx.organizationId, body.data.branchId, validacion.ajustes);

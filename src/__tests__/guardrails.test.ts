@@ -1250,7 +1250,11 @@ describe('F0 Guardarraíles', () => {
     });
 
     test('R-2: el Alert de recarga fallida dice que se muestra la última lista conocida', () => {
-      expect(page).toContain('Se muestra la última lista conocida');
+      // El texto vive en messages (i18n): la página usa la clave cuando ya hubo
+      // una carga buena, y la clave en español conserva la frase exigida.
+      expect(page).toMatch(/loaded\s*\?\s*t\('automatizacionesPage\.muestraUltimaListaConocida'\)/);
+      const es = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'messages', 'es.json'), 'utf8'));
+      expect(es.crm.automatizaciones.automatizacionesPage.muestraUltimaListaConocida).toContain('Se muestra la última lista conocida');
     });
 
     test('R-1: la hoja del editor tiene fallback de foco («Nueva regla») para cuando el estado vacío se desmontó', () => {

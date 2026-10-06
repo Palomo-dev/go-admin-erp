@@ -158,7 +158,7 @@ export function PanelCuentaMesa({
         {menu}
       </header>
 
-      {cartaQr && <div className="shrink-0">{cartaQr}</div>}
+      {vacia && cartaQr && <div className="shrink-0">{cartaQr}</div>}
       <div className="shrink-0">{cliente}</div>
       {!vacia && <div className="shrink-0">{nota}</div>}
 
@@ -172,6 +172,7 @@ export function PanelCuentaMesa({
         </div>
       ) : (
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1">
+          {cartaQr}
           {cuenta.porEnviar.length > 0 && (
             <>
               <p className="text-[13px]">

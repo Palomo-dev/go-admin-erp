@@ -50,8 +50,7 @@ export function CartaQrEnLaCuenta(p: CartaQrEnLaCuentaProps) {
                 {t('solicitudes.voy')}
               </KbdButton>
             )}
-            <KbdButton variante="primario" tamano="sm" className="h-8" cargando={p.enCurso.has(s.id)} onClick={() => p.onAtender(s, 'done')}>
-              <Check aria-hidden="true" className="size-4" strokeWidth={1.75} />
+            <KbdButton variante="primario" icono={Check} tamano="sm" className="h-8" cargando={p.enCurso.has(s.id)} onClick={() => p.onAtender(s, 'done')}>
               {t('solicitudes.atendida')}
             </KbdButton>
           </div>

@@ -75,8 +75,7 @@ export function SolicitudesMesaBanda({ solicitudes, nombreMesa, ahora, enCurso, 
                     {t('solicitudes.voy')}
                   </KbdButton>
                 )}
-                <KbdButton variante="primario" tamano="sm" className="h-8 flex-1" cargando={ocupada} onClick={() => onAtender(s, 'done')}>
-                  <Check aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                <KbdButton variante="primario" icono={Check} tamano="sm" className="h-8 flex-1" cargando={ocupada} onClick={() => onAtender(s, 'done')}>
                   {t('solicitudes.atendida')}
                 </KbdButton>
               </div>

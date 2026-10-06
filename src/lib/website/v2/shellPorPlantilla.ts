@@ -181,6 +181,8 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       boton2: null,
       opciones: {
         header_menu_source: 'categorias_carta',
+        // En la carta de la mesa no va moneda (lámina Carta QR).
+        header_show_currency: false,
         header_show_branch_selector: true,
         header_show_language: true,
         search_style: 'icon',

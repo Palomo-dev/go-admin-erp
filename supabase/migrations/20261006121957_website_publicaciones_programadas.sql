@@ -156,7 +156,7 @@ revoke all on function public.fn_website_ejecutar_programadas() from public, ano
 select cron.schedule(
   'website-publicaciones-programadas',
   '* * * * *',
-  $cron$select public.fn_website_ejecutar_programadas();$cron$
+  $cron$select public.fn_website_ejecutar_programadas()$cron$
 );
 
 -- Ensayo 2026-10-07 (execute_sql, bloque do $$ … raise exception 'ENSAYO_OK …' $$, se deshace

@@ -288,10 +288,29 @@ function vigente(nombre: string) {
   return defs[defs.length - 1];
 }
 
+/**
+ * La definición que de verdad decide el día. Coincide con `vigente` salvo
+ * cuando la firma contratada solo delega en una sobrecarga de sí misma (una
+ * sola implementación): entonces se audita la última definición de esa otra
+ * firma. Caso real: `get_restaurant_availability` de 5 argumentos delega desde
+ * 20261006114054 en la de 6 (con `p_branch_id`), que es la que baja la zona a
+ * la sede. La firma y el modo de seguridad se siguen exigiendo sobre `vigente`.
+ * No es una lista blanca: la sobrecarga pasa por los mismos tres controles.
+ */
+function implementacion(nombre: string) {
+  const def = vigente(nombre);
+  const cuerpo = sinComentariosDeLinea(def.cuerpo);
+  const delega = new RegExp(`\\b${nombre}\\s*\\(`, 'i').test(cuerpo);
+  if (!delega || usaResolutoraDeFaseA(def.cuerpo)) return def;
+  const propia = normalizaFirma(def.parametros);
+  const otras = definiciones(SQL, nombre).filter((d) => normalizaFirma(d.parametros) !== propia);
+  return otras.length > 0 ? otras[otras.length - 1] : def;
+}
+
 describe('Fase D — el día calendario sale de la organización, no de UTC', () => {
   describe.each(Object.entries(CONTRATOS))('%s', (nombre, contrato) => {
     test('su definición vigente no conserva CURRENT_DATE', () => {
-      const def = vigente(nombre);
+      const def = implementacion(nombre);
       exige(
         CURRENT_DATE_RE.test(def.cuerpo),
         `${nombre} vuelve a decidir el día con CURRENT_DATE (día UTC). ` +
@@ -301,7 +320,7 @@ describe('Fase D — el día calendario sale de la organización, no de UTC', ()
     });
 
     test('resuelve el día con las funciones de la fase A', () => {
-      const def = vigente(nombre);
+      const def = implementacion(nombre);
       exige(
         usaResolutoraDeFaseA(def.cuerpo),
         `${nombre} no llama a fn_today_for / fn_today_for_org / fn_timezone_for. ` +
@@ -322,7 +341,7 @@ describe('Fase D — el día calendario sale de la organización, no de UTC', ()
 
     if (contrato.porSucursal) {
       test('baja la zona hasta la sucursal (forma de dos argumentos)', () => {
-        const def = vigente(nombre);
+        const def = implementacion(nombre);
         exige(
           resuelveHastaLaSucursal(def.cuerpo),
           `${nombre} tiene sucursal a mano (${contrato.origen}) pero resuelve ` +

@@ -21,7 +21,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2, Loader2, UserCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { iniciarSesionConCorreo } from '@/lib/auth/emailAuth';
 import { CLAVE_MOTIVO, type MotivoRechazo } from '@/lib/auth/politicaContrasena';
 import type { EstadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';

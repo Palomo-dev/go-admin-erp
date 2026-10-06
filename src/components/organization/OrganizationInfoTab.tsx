@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { FormField, FormSection, clasesBoton } from '@/components/kit';
-import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { DOMINIO_SITIOS } from '@/lib/organizacion/sucursales';
 import { calcularDv } from '@/lib/utils/nitDv';
@@ -306,6 +306,9 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
           {(campo) => (
             <PhoneInput
               id={campo.id}
+              tamano="md"
+              aria-describedby={campo['aria-describedby']}
+              aria-invalid={campo['aria-invalid']}
               name="phone"
               value={datos.phone}
               onChange={(v) => cambiar('phone', v)}

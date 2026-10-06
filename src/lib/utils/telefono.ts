@@ -2,7 +2,7 @@
  * Teléfonos de los formularios: parseo, validación y formato por país.
  *
  * Módulo PURO (sin React ni Supabase): lo usan `PhoneInput`
- * (`src/components/ui/phone-input.tsx`) y las validaciones de los formularios.
+ * (`src/components/kit/PhoneInput.tsx`) y las validaciones de los formularios.
  *
  * FORMATO DE ALMACENAMIENTO. Se conserva el que `PhoneInput` ya escribía:
  * `"+<indicativo> <número nacional sin separadores>"`, p. ej. `"+57 3001234567"`.

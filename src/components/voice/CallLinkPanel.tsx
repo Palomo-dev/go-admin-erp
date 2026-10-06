@@ -14,7 +14,7 @@ import { UserPlus, Search, Briefcase, X, Check, ChevronRight } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { telefonoOpcionalValido } from '@/lib/utils/telefono';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { fetchJson } from '@/lib/utils/fetchJson';

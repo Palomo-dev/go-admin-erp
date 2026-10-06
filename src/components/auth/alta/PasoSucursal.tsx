@@ -16,7 +16,7 @@ import { CampoUbicacion } from '@/components/kit/CampoUbicacion';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PhoneField } from '@/components/kit/acceso';
+import { PhoneField } from '@/components/kit/PhoneField';
 import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import { alfa2DeAlfa3 } from '@/lib/utils/paisNavegador';
 import type { OrganizacionAlta, SucursalAlta } from './tipos';

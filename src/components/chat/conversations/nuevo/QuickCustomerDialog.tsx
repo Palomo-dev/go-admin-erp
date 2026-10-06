@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Loader2, CreditCard, Building2 } from 'lucide-react';
+import { User, Loader2, CreditCard } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import {
   Dialog,
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { QuickCustomerData } from '@/lib/services/newConversationService';
 import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
 

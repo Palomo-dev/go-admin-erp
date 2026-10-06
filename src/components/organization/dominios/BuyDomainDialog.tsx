@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { PhoneInput, esTelefonoValido, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, esTelefonoValido, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { normalizePhoneToE164 } from '@/lib/domains/phone';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';

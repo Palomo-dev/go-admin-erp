@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
-import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { MergeModal } from './MergeModal';
 import { CompanyContactsManager, type PendingContact } from '@/components/clientes/CompanyContactsManager';
 import { useKitT } from '@/components/kit/useIdiomaKit';
@@ -1200,7 +1200,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       name="phone"
                       value={formData.phone}
                       onChange={(v) => setFormData(prev => ({ ...prev, phone: v }))}
-                      inputClassName="h-10"
+                      tamano="md"
                     />
                   </div>
                 </div>

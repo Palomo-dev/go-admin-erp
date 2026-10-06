@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { PhoneInput, mensajeErrorTelefono, telefonoOpcionalValido } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono, telefonoOpcionalValido } from '@/components/kit/PhoneInput';
 import { Loader2 } from 'lucide-react';
 import { TransportCarrier } from '@/lib/services/transportService';
 

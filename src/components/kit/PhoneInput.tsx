@@ -1,11 +1,22 @@
 'use client';
 
 /**
- * Campo de teléfono ÚNICO de la aplicación: selector de país con bandera SVG +
- * número con formato del país mientras se escribe + validación de longitud.
+ * Campo de teléfono ÚNICO de la aplicación (Figma `PhoneInput` 724:18240):
+ * selector de país con bandera SVG + indicativo, número con formato del país
+ * mientras se escribe y validación con libphonenumber.
  *
- * - Guarda `"+57 3001234567"` (el formato que ya había en la base; ver
- *   `@/lib/utils/telefono`). Lee también los valores viejos sin indicativo.
+ * Es la única implementación. `@/components/ui/phone-input` la reexporta y
+ * `PhoneField` (`./PhoneField`) la envuelve con etiqueta, ayuda y error. No
+ * escribas un `<Input type="tel">` suelto: usa este o `PhoneField`.
+ *
+ * - Mismo alto, borde, radio y foco que los campos del kit: `tamano="sm"`
+ *   (36 px, `rounded-md`, como `<Input>`) o `tamano="md"` (40 px,
+ *   `rounded-lg`, como los campos dentro de `FormField`).
+ * - Por defecto guarda `"+57 3001234567"` (el formato que ya había en la base;
+ *   ver `@/lib/utils/telefono`). Con `formato="e164"` entrega
+ *   `"+573001234567"` (E.164 cuando el número está completo), para APIs que lo
+ *   exigen (registrador de dominios, Twilio). Lee también valores viejos sin
+ *   indicativo.
  * - Banderas SVG de `country-flag-icons` (los emoji de bandera no se ven en
  *   Windows: salían las letras). Se cargan en un chunk aparte la primera vez.
  * - País por defecto: `defaultIso` → país de la organización activa → Colombia.
@@ -203,7 +214,33 @@ export interface PhoneInputProps {
   'aria-invalid'?: boolean;
   /** Nombre accesible del número cuando no hay `<Label htmlFor>`. */
   'aria-label'?: string;
+  /** `aria-required` (lo inyecta `FormField`). */
+  'aria-required'?: boolean;
+  /**
+   * Alto del campo. `sm` = 36 px, como `<Input>` de shadcn; `md` = 40 px y
+   * radio 8 px, como los campos de `FormField` (Figma `PhoneField`).
+   */
+  tamano?: TamanoTelefono;
+  /**
+   * Formato de salida de `onChange`. `almacenamiento` (por defecto):
+   * `"+57 3001234567"`, el de las columnas de la base. `e164`:
+   * `"+573001234567"`.
+   */
+  formato?: FormatoTelefono;
 }
+
+export type TamanoTelefono = 'sm' | 'md';
+export type FormatoTelefono = 'almacenamiento' | 'e164';
+
+/** Valor de salida en el formato pedido (vacío sigue vacío). */
+export function valorTelefonoEnFormato(valor: string, formato: FormatoTelefono = 'almacenamiento'): string {
+  return formato === 'e164' ? valor.replace(/\s+/g, '') : valor;
+}
+
+const CLASES_TAMANO: Record<TamanoTelefono, { caja: string; alto: string; izq: string; der: string; foco: string }> = {
+  sm: { caja: 'rounded-md', alto: 'h-9', izq: 'rounded-l-md', der: 'rounded-r-md', foco: 'focus-within:ring-1' },
+  md: { caja: 'rounded-lg', alto: 'h-10', izq: 'rounded-l-lg', der: 'rounded-r-lg', foco: 'focus-within:ring-2' },
+};
 
 export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(function PhoneInput(
   {
@@ -224,9 +261,14 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
     'aria-label': ariaLabel,
+    'aria-required': ariaRequired,
+    tamano = 'sm',
+    formato = 'almacenamiento',
   },
   ref,
 ) {
+  const clases = CLASES_TAMANO[tamano];
+  const emitir = (v: string) => onChange(valorTelefonoEnFormato(v, formato));
   const autoId = React.useId();
   const inputId = id ?? `telefono-${autoId}`;
   const listaId = `${inputId}-paises`;
@@ -292,7 +334,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
   const elegirPais = (c: CountryPhoneCode) => {
     setIsoManual(c.iso);
     // El número se conserva; si ya no cabe en el nuevo país, la validación lo avisa.
-    onChange(formatearParaGuardar(c.iso, numero));
+    emitir(formatearParaGuardar(c.iso, numero));
     setOpen(false);
     setTimeout(() => numeroRef.current?.focus(), 0);
   };
@@ -304,7 +346,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
       const p = parsearTelefono(texto, pais.iso);
       if (p) {
         setIsoManual(p.iso);
-        onChange(formatearParaGuardar(p.iso, p.number));
+        emitir(formatearParaGuardar(p.iso, p.number));
         return;
       }
     }
@@ -312,7 +354,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
     // Borrar un separador («)» o «-») no borra nada: se lleva el dígito anterior.
     if (texto.length < textoNumero.length && digitos === numero) digitos = digitos.slice(0, -1);
     if (digitos.length > numero.length && excedeLongitud(pais.iso, digitos)) return;
-    onChange(formatearParaGuardar(pais.iso, digitos));
+    emitir(formatearParaGuardar(pais.iso, digitos));
   };
 
   const alTeclearBusqueda = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -342,14 +384,15 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
   const invalido = !!error || !!ariaInvalid || !!errorInterno;
   const describedBy = [ariaDescribedBy, textoError ? mensajeId : null].filter(Boolean).join(' ') || undefined;
 
-  const bordeEstado = invalido ? 'border-line-danger' : 'border-line-strong';
+  const bordeEstado = invalido ? 'border-danger' : 'border-line-strong';
 
   return (
     <div className={cn('w-full', className)}>
       <div
         className={cn(
-          'flex w-full items-stretch rounded-md border bg-surface text-fg shadow-sm transition-colors',
-          'focus-within:ring-1',
+          'flex w-full items-stretch border bg-surface text-fg shadow-sm transition-colors',
+          clases.caja,
+          clases.foco,
           invalido ? 'focus-within:ring-danger' : 'focus-within:ring-brand',
           bordeEstado,
           disabled && 'cursor-not-allowed opacity-50',
@@ -364,7 +407,8 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
               aria-haspopup="listbox"
               aria-expanded={open}
               className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-l-md border-r px-2.5 text-sm outline-none transition-colors',
+                'flex shrink-0 items-center gap-1.5 border-r px-2.5 text-sm outline-none transition-colors',
+                clases.izq,
                 bordeEstado,
                 'hover:bg-hover focus-visible:bg-hover disabled:cursor-not-allowed',
               )}
@@ -457,8 +501,11 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
           aria-label={ariaLabel}
           aria-describedby={describedBy}
           aria-invalid={invalido || undefined}
+          aria-required={ariaRequired}
           className={cn(
-            'h-9 min-w-0 flex-1 rounded-r-md bg-transparent px-3 text-sm text-fg outline-none placeholder:text-fg-muted',
+            'min-w-0 flex-1 bg-transparent px-3 text-sm text-fg outline-none placeholder:text-fg-muted',
+            clases.alto,
+            clases.der,
             'disabled:cursor-not-allowed',
             inputClassName,
           )}

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { telefonoOpcionalValido } from '@/lib/utils/telefono';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -174,7 +174,15 @@ export default function CustomerProfilePanel({
     if (!telefonoOpcionalValido(editData.phone)) return;
     setSaving(true);
     try {
-      const upd: any = {
+      const upd: {
+        first_name: string;
+        last_name: string;
+        phone: string | null;
+        address: string | null;
+        city: string | null;
+        email?: string;
+        metadata?: Record<string, unknown>;
+      } = {
         first_name: editData.first_name || 'Visitante',
         last_name: editData.last_name || 'Web',
         phone: editData.phone || null,
@@ -187,7 +195,7 @@ export default function CustomerProfilePanel({
         upd.metadata = { ...(customer.metadata || {}), real_email: editData.email };
       }
       await supabase.from('customers').update(upd).eq('id', customer.id);
-      setCustomer({ ...customer, ...upd, metadata: upd.metadata || customer.metadata });
+      setCustomer({ ...customer, ...upd, phone: upd.phone ?? '', address: upd.address ?? '', city: upd.city ?? '', metadata: upd.metadata || customer.metadata });
       setEditing(false);
     } catch (e) {
       console.error('Error guardando cliente:', e);

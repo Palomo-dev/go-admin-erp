@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { PhoneInput, telefonoOpcionalValido } from '@/components/ui/phone-input';
+import { PhoneInput, telefonoOpcionalValido } from '@/components/kit/PhoneInput';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -170,7 +170,7 @@ export function ShipmentDialog({
           notes: '',
         });
       }
-      setItems(shipment?.metadata ? ((shipment.metadata as any).items || []) : []);
+      setItems(shipment?.metadata ? ((shipment.metadata as { items?: ShipmentItem[] }).items || []) : []);
     }
   }, [open, shipment]);
 

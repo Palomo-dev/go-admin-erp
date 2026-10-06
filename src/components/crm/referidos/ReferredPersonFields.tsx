@@ -4,7 +4,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ReferralProgram } from '@/lib/services/crm/referralsService';
 import { describeReward } from '@/lib/services/crm/referralReward';

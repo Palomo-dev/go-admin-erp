@@ -70,6 +70,10 @@ export { resolverEstado, etiquetaEstado, type TonoBadge, type AparienciaBadge } 
 // Formularios
 export { FormSection, type FormSectionProps } from './FormSection';
 export { FormField, type FormFieldProps, type PropsCampo } from './FormField';
+// Teléfono: `@/components/kit/PhoneField` (con etiqueta) y
+// `@/components/kit/PhoneInput` (solo el control). Se importan por ruta y no
+// desde este índice para no cargar los metadatos de libphonenumber en cada
+// pantalla que use el kit.
 export { SegmentedControl, type SegmentedControlProps, type OpcionSegmento } from './SegmentedControl';
 export { ChipsOpcion, type ChipsOpcionProps, type OpcionChip } from './ChipsOpcion';
 

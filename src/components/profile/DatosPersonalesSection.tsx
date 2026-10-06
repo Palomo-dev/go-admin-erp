@@ -21,7 +21,7 @@ import type { User } from '@supabase/supabase-js';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
-import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { FormSection } from '@/components/kit/FormSection';
 import { FormField } from '@/components/kit/FormField';
 import { clasesBoton } from '@/components/kit/botonClases';

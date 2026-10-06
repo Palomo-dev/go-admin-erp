@@ -20,7 +20,7 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { CampoUbicacion } from '@/components/kit/CampoUbicacion';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
-import { PhoneField } from '@/components/kit/acceso';
+import { PhoneField } from '@/components/kit/PhoneField';
 import LogoUploader from '@/components/organization/LogoUploader';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 import { OPCIONES_TARIFA_POR_DEFECTO } from '@/lib/services/defaultTaxService';

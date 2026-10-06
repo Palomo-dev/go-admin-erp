@@ -1,4 +1,4 @@
--- Rollback de 20261006180500_sitio_encabezado_pie_v2_panel.sql
+-- Rollback de 20261006180523_sitio_encabezado_pie_v2_panel.sql
 --
 -- Quita las 5 columnas (y sus CHECK en línea). ADVERTENCIA: no restaura datos; lo guardado en
 -- ellas se pierde y el sitio vuelve al default, que es el comportamiento de antes (goadmin-websites

@@ -1,3 +1,4 @@
+-- Aplicada el 2026-10-06 con apply_migration (versión 20261006180523).
 -- Encabezado y pie por plantilla, segunda tanda: opciones del panel del editor aprobado en Figma
 -- («16 Sitio web» 2058:40377 / 2064:102) que el contrato aún no traía.
 --
@@ -13,7 +14,7 @@
 --   footer_show_dividers  true  → las líneas separadoras del pie siguen.
 --
 -- Idempotente: ADD COLUMN IF NOT EXISTS con su CHECK en línea (se omite si la columna existe).
--- Rollback: supabase/rollbacks/20261006180500_sitio_encabezado_pie_v2_panel_rollback.sql
+-- Rollback: supabase/rollbacks/20261006180523_sitio_encabezado_pie_v2_panel_rollback.sql
 
 set lock_timeout = '10s';
 alter table public.website_settings

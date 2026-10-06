@@ -348,6 +348,7 @@ export default function ParkingOperacionPage() {
     const { data: newSession, error } = await supabase
       .from('parking_sessions')
       .insert({
+        organization_id: organization.id,
         branch_id: branchId,
         vehicle_plate: data.vehicle_plate,
         vehicle_type: data.vehicle_type,

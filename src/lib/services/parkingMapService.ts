@@ -55,6 +55,8 @@ export interface AssignSpaceData {
   vehicle_plate: string;
   vehicle_type: string;
   branch_id: number;
+  /** La organización de la sesión; si falta, la base la toma de la sede. */
+  organization_id?: number;
 }
 
 class ParkingMapService {
@@ -177,6 +179,7 @@ class ParkingMapService {
     try {
       // Crear sesión con el espacio asignado
       const { error: sessionError } = await supabase.from('parking_sessions').insert({
+        ...(data.organization_id ? { organization_id: data.organization_id } : {}),
         branch_id: data.branch_id,
         parking_space_id: data.space_id,
         vehicle_plate: data.vehicle_plate.toUpperCase(),

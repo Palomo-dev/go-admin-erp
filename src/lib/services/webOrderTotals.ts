@@ -175,6 +175,9 @@ export function lineasVentaPedidoWeb(
       from_web_order: order.order_number,
       ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
       ...(item.notes ? { customer_notes: item.notes } : {}),
+      // Carta QR: quién pidió el plato («Ana»), por línea. La cuenta de la mesa y las
+      // funciones públicas del pedido lo leen de aquí (luego web_orders.diner_label).
+      ...(item.diner_label ? { diner_label: item.diner_label } : {}),
     },
   }));
 }

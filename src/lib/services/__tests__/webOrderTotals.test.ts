@@ -14,6 +14,7 @@ import {
   lineasFacturaDesdePedidoWeb,
   lineasFacturaWebConImpuesto,
   lineasNotaCreditoWeb,
+  lineasVentaPedidoWeb,
   repartirTotalesPedidoWeb,
   type ResolverImpuestoLinea,
 } from '../webOrderTotals';
@@ -306,5 +307,18 @@ describe('lineasNotaCreditoWeb', () => {
     expect(lineas).toEqual([
       expect.objectContaining({ product_id: null, qty: 1, unit_price: 15000, tax_rate: 0, tax_code: null, total_line: 15000 }),
     ]);
+  });
+});
+
+describe('Carta QR: quién pidió cada plato', () => {
+  it('lineasVentaPedidoWeb copia diner_label de la línea a notes (y lo omite si no hay)', () => {
+    const order = pedido({
+      subtotal: 30000,
+      total: 30000,
+      items: [item({ quantity: 1, unit_price: 20000, diner_label: 'Ana' }), item({ quantity: 1, unit_price: 10000 })],
+    });
+    const [a, b] = lineasVentaPedidoWeb(order);
+    expect(a.notes).toMatchObject({ diner_label: 'Ana' });
+    expect(b.notes).not.toHaveProperty('diner_label');
   });
 });

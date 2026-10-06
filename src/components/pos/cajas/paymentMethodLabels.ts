@@ -31,6 +31,8 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   bold_card: 'Bold (Datáfono)',
   mixed: 'Mixto',
   other: 'Otros',
+  // Ronda de la Carta QR: se cobra con la cuenta de la mesa.
+  mesa: 'En la cuenta de la mesa',
 };
 
 export function getPaymentMethodLabel(method: string): string {

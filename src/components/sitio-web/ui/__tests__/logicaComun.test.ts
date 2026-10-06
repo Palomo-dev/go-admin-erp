@@ -4,7 +4,7 @@
  * textos canónicos y tonos de la tabla única.
  */
 import { resolverEstadoPublicacion, ESTADO_TONO_PUBLICACION } from '../estadoPublicacion';
-import { escalaVista, origenDe, VIEWPORT_DISPOSITIVO } from '../dispositivos';
+import { escalaVista, origenDe, urlVistaEnVivo, VIEWPORT_DISPOSITIVO } from '../dispositivos';
 import { interpolar, textoCanonico, TEXTOS_COMUN } from '../textos';
 import { resolverEstadoDominio } from '../DomainStatusBadge';
 import { formatearPrecio } from '../PriceTag';
@@ -95,6 +95,10 @@ describe('vista previa (A/07f, A/07g)', () => {
     expect(origenDe('https://tu-marca.goadmin.io/?preview=abc')).toBe('https://tu-marca.goadmin.io');
     expect(origenDe('javascript:alert(1)')).toBeNull();
     expect(origenDe('no es url')).toBeNull();
+    // Vista en vivo: `?preview=1`; la del borrador pide el marco interior (la barra no recibe mensajes).
+    expect(urlVistaEnVivo('https://tu-marca.goadmin.io/vista-previa/a.b')).toBe('https://tu-marca.goadmin.io/vista-previa/a.b?marco=1&preview=1');
+    expect(urlVistaEnVivo('https://tu-marca.goadmin.io')).toBe('https://tu-marca.goadmin.io/?preview=1');
+    expect(urlVistaEnVivo(null)).toBeNull();
     expect(origenDe(null)).toBeNull();
   });
 });

@@ -22,7 +22,7 @@ import {
   escalaVista,
   type DispositivoVista,
 } from '@/components/sitio-web/ui/dispositivos';
-import { usePuenteLienzo, type DetalleClic } from './usePuenteLienzo';
+import { usePuenteLienzo, type DetalleClic, type OpcionesPuente } from './usePuenteLienzo';
 import { useTextosEditor } from './textos';
 
 export interface LienzoEditorProps {
@@ -31,7 +31,7 @@ export interface LienzoEditorProps {
   dispositivo: DispositivoVista;
   recarga: number;
   secciones: readonly WebsitePageSection[];
-  ajustes: { ajustes: Record<string, unknown>; menuEncabezado: unknown } | null;
+  ajustes: OpcionesPuente['ajustes'];
   seleccion: string | null;
   /** Texto de la etiqueta azul sobre la selección; `null` sin selección. */
   etiquetaSeleccion: string | null;

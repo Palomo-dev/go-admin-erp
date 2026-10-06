@@ -1,4 +1,4 @@
--- ⚠️ SIN APLICAR (2026-10-06). La aplica el dueño o el integrador con `apply_migration`.
+-- Aplicada el 2026-10-06 con apply_migration (plantilla_sitio_sede).
 -- El sitio de una SEDE nace con la plantilla de su tipo de negocio (`branches.branch_type`) y se
 -- le puede volver a aplicar («Aplicar plantilla de <tipo>»), en una sola transacción.
 --

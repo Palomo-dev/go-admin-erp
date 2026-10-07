@@ -28,6 +28,7 @@ jest.mock('@/lib/services/integrations/twilio/twilioConfig', () => ({
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { runCampaignQueue } from '@/lib/services/crm/voiceAgentService';
+import { invalidateTimezoneCache } from '@/lib/services/organizationTimezoneService';
 
 type Op = { table: string; verb: string; payload?: unknown; filters: Array<[string, string, unknown]>; head?: boolean };
 type Res = { data?: unknown; count?: number; error?: { message: string } | null };
@@ -93,6 +94,12 @@ interface Escenario {
   sinCreditos?: boolean;
   /** Intentos ya anotados hoy en el libro (topes diarios/horarios). */
   intentosHoy?: number;
+  /** `organizations.timezone`. Sin valor: America/Bogota. */
+  zonaOrganizacion?: string;
+  /** Filas `in_progress` ya existentes (el conteo honra el filtro `gte updated_at`). */
+  enCurso?: Array<{ updated_at: string }>;
+  /** `fn_vac_recoger_colgadas` devuelve error. */
+  recolectorFalla?: boolean;
 }
 
 function escenario(e: Escenario = {}) {
@@ -109,6 +116,7 @@ function escenario(e: Escenario = {}) {
   return makeSupabase(
     (op) => {
       if (op.table === 'voice_agent_campaigns' && op.verb === 'select') return { data: [campana] };
+      if (op.table === 'organizations') return { data: { timezone: e.zonaOrganizacion ?? 'America/Bogota' } };
       if (op.table === 'comm_settings') {
         return {
           data: {
@@ -124,7 +132,14 @@ function escenario(e: Escenario = {}) {
       if (op.table === 'crm_excluded_numbers') return { data: e.excluido ? [{ id: 'x', phone_e164: '+573001112233' }] : [] };
       if (op.table === 'voice_agents') return { data: { is_active: true, max_calls_per_day: 50, max_calls_per_hour: 20, retry_policy: {} } };
       if (op.table === 'voice_agent_call_attempts' && op.head) return { count: e.intentosHoy ?? 0 };
-      if (op.table === 'voice_agent_calls' && op.head) return { count: 0 };
+      if (op.table === 'voice_agent_calls' && op.head) {
+        // Conteos de concurrencia: como la base, solo cuentan las filas que
+        // pasan el filtro `updated_at >= corte` si la consulta lo pide.
+        const esEnCurso = op.filters.some(([f, c, v]) => f === 'eq' && c === 'status' && v === 'in_progress');
+        if (!esEnCurso) return { count: 0 };
+        const corte = op.filters.find(([f, c]) => f === 'gte' && c === 'updated_at')?.[2] as string | undefined;
+        return { count: (e.enCurso ?? []).filter((r) => !corte || r.updated_at >= corte).length };
+      }
       if (op.table === 'voice_agent_calls' && op.verb === 'select') return { data: [] };
       if (op.table === 'opportunities') return { data: [] };
       if (op.table === 'customers') return { data: { id: 'cust-1', phone: '3001112233', timezone: 'America/Bogota' } };
@@ -133,6 +148,7 @@ function escenario(e: Escenario = {}) {
     },
     (name) => {
       if (name === 'fn_claim_voice_agent_calls') return { data: [fila] };
+      if (name === 'fn_vac_recoger_colgadas') return e.recolectorFalla ? { error: { message: 'boom' } } : { data: 0 };
       if (name === 'fn_can_contact') return { data: !e.sinConsentimiento };
       if (name === 'deduct_comm_credits') return { data: !e.sinCreditos };
       if (name === 'fn_voz_es_numero_prueba') return { data: e.numeroPrueba === true };
@@ -145,6 +161,7 @@ function escenario(e: Escenario = {}) {
 const MARTES_10_BOG = new Date('2026-09-29T15:00:00Z');
 
 beforeEach(() => {
+  invalidateTimezoneCache();
   jest.useFakeTimers({ now: MARTES_10_BOG, doNotFake: ['setTimeout', 'setImmediate', 'nextTick', 'queueMicrotask'] });
   twilioCreate.mockReset();
   twilioCreate.mockResolvedValue({ sid: 'CA0001' });
@@ -204,9 +221,38 @@ describe('Compuertas legales del despachador de voz', () => {
     expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
   });
 
-  test('fuera del horario de la Ley 2300 (sábado 15:30) se reprograma al martes 07:00: el lunes 12 de octubre es festivo', async () => {
+  test('fuera de la franja legal en la zona de la organización la campaña ni siquiera reclama (no gasta intentos)', async () => {
+    // Incidente 2026-10-06: con `schedule = {}` se reclamaba a las 00:00 y el
+    // intento quedaba anotado aunque `dialClaimedCall` reprogramara la fila.
+    for (const instante of [
+      '2026-10-06T05:00:03Z', // martes 00:00 en Bogotá
+      '2026-10-06T11:59:00Z', // martes 06:59
+      '2026-10-06T00:00:00Z', // lunes 19:00 (cierra a las 19:00, exclusivo)
+      '2026-10-10T20:30:00Z', // sábado 15:30
+      '2026-10-11T15:00:00Z', // domingo
+      '2026-10-12T15:00:00Z', // lunes festivo
+    ]) {
+      jest.setSystemTime(new Date(instante));
+      const { client, rpcs } = escenario();
+      const r = await runCampaignQueue(7, client);
+      expect(r.calls_initiated).toBe(0);
+      expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
+    }
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('a las 07:00 de un día hábil en Bogotá la campaña sin schedule sí reclama y marca', async () => {
+    jest.setSystemTime(new Date('2026-10-06T12:00:02Z')); // martes 07:00:02 en Bogotá
+    const { client } = escenario();
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
+  });
+
+  test('fuera del horario de la Ley 2300 DEL DESTINATARIO (sábado 15:30 en Bogotá) se reprograma al martes 07:00: el lunes 12 de octubre es festivo', async () => {
+    // La organización está en Ciudad de México (sábado 14:30: su franja está
+    // abierta y la campaña reclama), pero el número es +57: manda la hora del
+    // destinatario y la guarda por llamada de `dialClaimedCall` lo reprograma.
     jest.setSystemTime(new Date('2026-10-10T20:30:00Z')); // sábado 15:30 en Bogotá
-    const { client, ops } = escenario();
+    const { client, ops } = escenario({ zonaOrganizacion: 'America/Mexico_City' });
     const r = await runCampaignQueue(7, client);
     expect(r.calls_initiated).toBe(0);
     expect(twilioCreate).not.toHaveBeenCalled();
@@ -277,7 +323,9 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
 
   test('NO exime de la franja horaria: sábado 15:30 se reprograma al martes 07:00', async () => {
     jest.setSystemTime(new Date('2026-10-10T20:30:00Z'));
-    const { client, ops } = escenario({ numeroPrueba: true });
+    // Organización en otra zona para que la campaña reclame y la guarda por
+    // destinatario sea la que decide (ver el caso equivalente arriba).
+    const { client, ops } = escenario({ numeroPrueba: true, zonaOrganizacion: 'America/Mexico_City' });
     expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
     expect(twilioCreate).not.toHaveBeenCalled();
     expect(reprogramacion(ops)).toMatchObject({ last_error_code: 'LEY2300', scheduled_at: '2026-10-13T12:00:00.000Z' });
@@ -332,5 +380,55 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+/**
+ * Recolector de llamadas colgadas (incidente 2026-10-06, org 125): cinco filas
+ * `in_progress` cuya llamada ya había terminado ocuparon los cinco cupos de la
+ * organización y la cola respondía siempre «Se alcanzó el máximo de llamadas
+ * simultáneas de la organización».
+ */
+describe('Recolector de llamadas colgadas y conteo de concurrencia', () => {
+  const VIEJA = '2026-09-29T14:00:00.000Z'; // 1 h antes de MARTES_10_BOG
+  const RECIENTE = '2026-09-29T14:58:00.000Z'; // 2 min antes
+
+  test('antes de contar, la cola llama al recolector de ESTA organización con N = 15 min', async () => {
+    const { client, rpcs } = escenario();
+    await runCampaignQueue(7, client);
+    expect(rpcs.find((c) => c.name === 'fn_vac_recoger_colgadas')?.args).toEqual({ p_org: 7, p_minutos: 15 });
+  });
+
+  test('cinco filas in_progress sin actualizar hace 1 h NO bloquean la concurrencia (tope de la org = 3)', async () => {
+    const { client } = escenario({ enCurso: Array.from({ length: 5 }, () => ({ updated_at: VIEJA })) });
+    const r = await runCampaignQueue(7, client);
+    expect(r.errors.join(' ')).not.toMatch(/máximo de llamadas simultáneas/);
+    expect(r.calls_initiated).toBe(1);
+  });
+
+  test('tres filas in_progress recientes SÍ ocupan el cupo: el tope sigue funcionando', async () => {
+    const { client, rpcs } = escenario({ enCurso: Array.from({ length: 3 }, () => ({ updated_at: RECIENTE })) });
+    const r = await runCampaignQueue(7, client);
+    expect(r.errors.join(' ')).toMatch(/máximo de llamadas simultáneas de la organización \(3\)/);
+    expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('todos los conteos in_progress de voice_agent_calls llevan el corte de 15 min', async () => {
+    const { client, ops } = escenario();
+    await runCampaignQueue(7, client);
+    const conteos = ops.filter(
+      (o) => o.table === 'voice_agent_calls' && o.head && o.filters.some(([f, c, v]) => f === 'eq' && c === 'status' && v === 'in_progress')
+    );
+    expect(conteos.length).toBeGreaterThanOrEqual(2); // organización + campaña
+    for (const o of conteos) {
+      expect(o.filters).toContainEqual(['gte', 'updated_at', '2026-09-29T14:45:00.000Z']);
+    }
+  });
+
+  test('si el recolector falla, la cola no se cae y sigue marcando (el conteo ya ignora lo viejo)', async () => {
+    const { client } = escenario({ recolectorFalla: true, enCurso: [{ updated_at: VIEJA }] });
+    const r = await runCampaignQueue(7, client);
+    expect(r.calls_initiated).toBe(1);
   });
 });

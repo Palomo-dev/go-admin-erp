@@ -37,6 +37,19 @@ export function tiemposSilencioDeEntorno(): TiemposSilencio {
   };
 }
 
+/**
+ * Cuánto tarda en sonar un texto. El reloj de silencio no puede arrancar
+ * cuando el saludo EMPIEZA: con el aviso a los 10 s, una frase de ~20 s se
+ * cortaba a la mitad con «¿Sigue ahí?» y la persona oía que el agente colgaba.
+ * ~80 ms por carácter más 2 s de margen; tope 90 s para no aplazar el aviso
+ * indefinidamente.
+ */
+export function duracionHablaMs(texto: string): number {
+  const chars = texto.trim().length;
+  if (chars === 0) return 0;
+  return Math.min(Math.ceil(chars * 80) + 2_000, 90_000);
+}
+
 export interface AccionesSilencio {
   avisar: () => void;
   cerrar: () => void;
@@ -51,17 +64,21 @@ export class VigilanteSilencio {
     private readonly tiempos: TiemposSilencio = tiemposSilencioDeEntorno()
   ) {}
 
-  /** Reinicia el conteo: tras el saludo y tras cada respuesta del agente. */
-  reiniciar(): void {
+  /**
+   * Reinicia el conteo. `esperaHablaMs` es lo que el agente aún va a estar
+   * hablando: el aviso de silencio corre DESPUÉS de eso, no encima de la frase.
+   */
+  reiniciar(esperaHablaMs = 0): void {
     if (this.detenido) return;
     this.limpiar();
+    const extra = Number.isFinite(esperaHablaMs) && esperaHablaMs > 0 ? Math.min(esperaHablaMs, 90_000) : 0;
     this.temporizador = setTimeout(() => {
       this.acciones.avisar();
       this.temporizador = setTimeout(() => {
         this.detener();
         this.acciones.cerrar();
       }, this.tiempos.cierreMs);
-    }, this.tiempos.avisoMs);
+    }, this.tiempos.avisoMs + extra);
   }
 
   /** Mientras se procesa un turno no corre el conteo (el modelo o una herramienta pueden tardar). */

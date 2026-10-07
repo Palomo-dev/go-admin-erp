@@ -3759,3 +3759,10 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - No hecho: lo demás del documento de pendientes sigue igual (81 hechas, 41 pendientes, 8 sin fuente, 25 no aplican).
 - Sitio: typecheck, los verify sin credenciales (incluido el nuevo verify-servicios-seccion, que lee los select del fuente y falla en 6 sin el cambio) y next build en verde. ERP: jest de website, sitio-web y guardrails 935 en verde; `interruptoresOcultos.test.ts` sin el cambio falla en 6.
 - Orden de despliegue: primero el sitio, después este cambio.
+
+
+### Fase: Sitio web — botones de tarjeta en «Ofertas» — 2026-10-07
+- «Ofertas» ignoraba los botones e insignias de tarjeta guardados en el editor (4 organizaciones con «Agregar» y «Comprar»). El sitio ahora los pasa a la misma tarjeta que usa la cuadrícula de productos (goadmin-websites, commit `feat(GO-sitio-web): las ofertas pasan los botones e insignias…`); el inspector vuelve a mostrar `full_width_mobile` y `open_new_tab` en esos botones.
+- Probado en un arnés con el checkout real: «Agregar» y «Comprar» desde una oferta dejan en el carrito exactamente lo mismo que desde la cuadrícula de productos (precio de oferta y precio anterior), y «Comprar» llega al checkout con el producto. Sin stock y padre con variantes, iguales. Sin botones guardados, la tarjeta no cambia.
+- No hecho: siguen 39 pendientes, 8 sin fuente y 25 que no aplican (documento de pendientes).
+- Orden de despliegue: primero el sitio, después este cambio.

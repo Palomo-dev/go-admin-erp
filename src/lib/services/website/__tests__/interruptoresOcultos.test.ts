@@ -69,7 +69,6 @@ const OCULTOS: [string, string, string[]][] = [
 const ITEMS_QUITADOS: [string, string, string[]][] = [
   ['cta', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
   ['membership_plans', 'plans', ['highlighted']],
-  ['offers', 'card_buttons', ['full_width_mobile', 'open_new_tab']],
   ['product_actions', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
   ['specialties', 'card_buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
 ];
@@ -183,7 +182,7 @@ describe('Implementados en el sitio: el inspector los vuelve a mostrar', () => {
     const campos = (tipo: string, rep: string) =>
       (getSectionDefinition(tipo)!.contentFields.find((f) => f.key === rep)!.itemFields ?? []).map((f) => f.key);
     expect(campos('hero', 'buttons')).toEqual(expect.arrayContaining(['full_width', 'icon_only']));
-    for (const tipo of ['products_grid', 'featured_products']) {
+    for (const tipo of ['products_grid', 'featured_products', 'offers']) {
       expect(campos(tipo, 'card_buttons')).toEqual(expect.arrayContaining(['full_width_mobile', 'open_new_tab']));
     }
   });

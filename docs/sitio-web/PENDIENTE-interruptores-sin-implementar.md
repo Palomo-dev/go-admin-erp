@@ -154,8 +154,8 @@ Hallazgos que no se resolvieron aquí:
 | `membership_plans` | `pricing_table` | `plans[].highlighted` | Marcar el plan como destacado | `components/sections/gym/MembershipPlansPricing.tsx` | apagado | Baja | 1–2 h por opción (HeroButtons o la tarjeta de producto como modelo) | Pendiente |
 | `membership_plans` | `pricing_table` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/gym/MembershipPlansPricing.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | **Hecho 2026-10-07** |
 | `menu_preview` | `tabs` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/restaurant/MenuPreviewTabs.tsx` | encendido | Alta | 2 h (la tarjeta de producto ya lo hace: reutilizarla) | **Hecho 2026-10-07 (el avance; en /menu la sección se pinta como carta completa, MenuFull, que no tacha)** |
-| `offers` | `grid` | `card_buttons[].full_width_mobile` | Botón a todo el ancho en el celular | `components/sections/retail/OffersGrid.tsx` | encendido | Baja | 1–2 h por opción (HeroButtons o la tarjeta de producto como modelo) | Pendiente: OffersGrid no pasa `card_buttons` a la tarjeta (pasarlos cambia 8 botones guardados) |
-| `offers` | `grid` | `card_buttons[].open_new_tab` | Abrir el enlace del botón en una pestaña nueva | `components/sections/retail/OffersGrid.tsx` | apagado | Baja | 1–2 h por opción (HeroButtons o la tarjeta de producto como modelo) | Pendiente: OffersGrid no pasa `card_buttons` a la tarjeta (pasarlos cambia 8 botones guardados) |
+| `offers` | `grid` | `card_buttons[].full_width_mobile` | Botón a todo el ancho en el celular | `components/sections/retail/OffersGrid.tsx` | encendido | Baja | 1–2 h por opción (HeroButtons o la tarjeta de producto como modelo) | **Hecho 2026-10-07** (OffersGrid pasa `card_buttons` a la tarjeta) |
+| `offers` | `grid` | `card_buttons[].open_new_tab` | Abrir el enlace del botón en una pestaña nueva | `components/sections/retail/OffersGrid.tsx` | apagado | Baja | 1–2 h por opción (HeroButtons o la tarjeta de producto como modelo) | **Hecho 2026-10-07** (OffersGrid pasa `card_buttons` a la tarjeta) |
 | `offers` | `grid` | `show_filters` | Barra de filtros (categoría, precio) sobre la lista | `components/sections/retail/OffersGrid.tsx` | apagado | Alta | 4–6 h (reutilizar los filtros de ProductsGrid) | **Hecho 2026-10-07** |
 | `offers` | `grid` | `show_search` | Buscador sobre la lista | `components/sections/retail/OffersGrid.tsx` | apagado | Media | 3–4 h | **Hecho 2026-10-07** |
 | `parking_pass_plans` | `cards` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/parking/ParkingPassPlansCards.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | Sin fuente: `parking_pass_types` no tiene precio anterior |
@@ -256,3 +256,11 @@ Hallazgos que no se resolvieron aquí:
 - Las celdas «Estado» de las cuatro filas de `services_list` · `show_compare_price` se
   actualizaron: 3 hechas y 1 que no aplica (antes «Sin fuente»).
 - Recuento tras este avance: 81 hechas, 41 pendientes, 8 sin fuente y 25 que no aplican (de 155).
+
+## Avance del 2026-10-07 (3): botones de tarjeta en «Ofertas»
+
+- `OffersGrid` pasa `card_buttons` y `badges` (y los demás campos de botón de tarjeta) a la
+  tarjeta de producto, como la cuadrícula de productos. Resuelve el hallazgo de arriba sobre
+  «Ofertas». `card_buttons[].full_width_mobile` y `open_new_tab` vuelven a mostrarse.
+- Recuento tras este avance: 83 hechas, 39 pendientes, 8 sin fuente y 25 que no aplican (de 155).
+

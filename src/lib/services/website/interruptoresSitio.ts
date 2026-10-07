@@ -69,11 +69,6 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
   membership_plans: {
     'plans[].highlighted': [],
   },
-  // OffersGrid no pasa `card_buttons` a la tarjeta de producto.
-  offers: {
-    'card_buttons[].full_width_mobile': [],
-    'card_buttons[].open_new_tab': [],
-  },
   // Sin precio anterior en la fuente (`parking_pass_types`, `parking_rates`).
   parking_pass_plans: {
     'show_compare_price': [],

@@ -17,22 +17,31 @@
  *   los datos del negocio; lo anterior queda en el historial y se puede deshacer.
  * - «Solo estilo»: colores y fuentes; el contenido se conserva.
  * La opción por defecto la decide quien abre el diálogo (`modoPorDefecto`).
+ *
+ * Encabezado y pie (Figma «16 Sitio web» › «Plantillas · encabezado y pie en la galería, la
+ * vista previa y «Usar»», tarjeta 2): la vista previa pinta los de LA PLANTILLA en grande; a la
+ * derecha, lo que traen y que solo se aplican con «Plantilla completa»; y cada opción enseña cómo
+ * quedarían: los de la plantilla, o los tuyos de hoy con los colores nuevos («Solo estilo»).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CircleCheck, LayoutTemplate, Loader2, Palette } from 'lucide-react';
 import { AvisoTonal, PanelAdaptable, TarjetaSeleccionable, clasesBoton, useEsEscritorio } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import type { ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
+import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { PAGINAS_BASE_GIRO } from '../paginas/plantillasPagina';
+import { ESCALA_COMPARACION, EsquemaShell } from './EsquemaShell';
+import { useShellDePlantilla } from './MiniaturaPlantilla';
+import { shellDelDocumentoParaVer, textosRasgos, type ShellParaVer } from './textosShell';
 import { DevicePreviewFrame } from '../ui/DevicePreviewFrame';
 import { StylePresetCard } from '../ui/StylePresetCard';
 import type { DispositivoVista } from '../ui/dispositivos';
 import { SelectorAnchoVista } from '../ui/SelectorAnchoVista';
 import { CLASE_TAMANO_ICONO, ICONO_GIRO_PLANTILLA, TRAZO_ICONO } from '../ui/iconosSitio';
 import { muestraDeEstilo, nombreFuentes, nombreSeccion, nombreVariante } from './catalogo';
-import { VistaEsquematicaPlantilla } from './VistaEsquematicaPlantilla';
+import { VistaEsquematicaPlantilla, enlacesDelDocumento } from './VistaEsquematicaPlantilla';
 import { useFuentesSitio } from './useFuentesSitio';
 import { useTextosDiseno } from './textos';
 
@@ -54,6 +63,38 @@ export function nombreSeccionPlantilla(tipo: string, variante: string, respaldo:
   return v ? `${nombre} · ${v.toLowerCase()}` : nombre;
 }
 
+/** Lista de rasgos de una zona («Encabezado», «Pie de página», «En el celular»). */
+function ListaRasgos({ titulo, items }: { titulo: string; items: readonly string[] }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h4 className="text-xs font-medium leading-4 text-fg-secondary">{titulo}</h4>
+      <ul className="flex list-disc flex-col gap-0.5 pl-4 text-xs leading-4 text-fg">
+        {items.map((s) => (
+          <li key={s}>{s.charAt(0).toLocaleUpperCase() + s.slice(1)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Descripción de una opción de «Cómo aplicarla» con el encabezado y el pie que quedarían. */
+function DescripcionConResultado({ texto, rotulo, shell, marca }: { texto: string; rotulo: string; shell: ShellParaVer | null; marca: string }) {
+  return (
+    <span className="flex flex-col gap-2">
+      <span>{texto}</span>
+      {shell && (
+        <span className="flex flex-col gap-1.5" data-resultado-shell>
+          <span className="text-xs font-medium leading-4 text-fg-secondary">{rotulo}</span>
+          {/* El rótulo dice qué es; el dibujo no se lee dentro del radio (nombre accesible corto). */}
+          <span aria-hidden="true" className="block overflow-hidden rounded-md border border-line">
+            <EsquemaShell dibujo={shell.dibujo} enlaces={shell.enlaces} menusPie={shell.menusPie} escala={ESCALA_COMPARACION} altoContenido={22} marca={marca} />
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function DialogoVistaPreviaPlantilla({
   plantilla,
   onCerrar,
@@ -64,11 +105,51 @@ export function DialogoVistaPreviaPlantilla({
   onModoChange,
   onUsar,
 }: DialogoVistaPreviaPlantillaProps) {
-  const t = useTextosDiseno();
-  const esEscritorio = useEsEscritorio();
   const [dispositivo, setDispositivo] = useState<DispositivoVista>('escritorio');
   useFuentesSitio(plantilla ? [plantilla.estilo.fuenteTitulos, plantilla.estilo.fuenteCuerpo] : []);
   if (!plantilla) return null;
+  return (
+    <DialogoAbierto
+      plantilla={plantilla}
+      onCerrar={onCerrar}
+      documento={documento}
+      puedeUsar={puedeUsar}
+      usando={usando}
+      modo={modo}
+      onModoChange={onModoChange}
+      onUsar={onUsar}
+      dispositivo={dispositivo}
+      setDispositivo={setDispositivo}
+    />
+  );
+}
+
+/** El diálogo con una plantilla elegida (los hooks del encabezado y el pie necesitan una). */
+function DialogoAbierto({
+  plantilla,
+  onCerrar,
+  documento,
+  puedeUsar,
+  usando,
+  modo,
+  onModoChange,
+  onUsar,
+  dispositivo,
+  setDispositivo,
+}: DialogoVistaPreviaPlantillaProps & {
+  plantilla: PlantillaCatalogo;
+  dispositivo: DispositivoVista;
+  setDispositivo: (d: DispositivoVista) => void;
+}) {
+  const t = useTextosDiseno();
+  const esEscritorio = useEsEscritorio();
+  const shell = useShellDePlantilla(plantilla);
+  const rasgos = useMemo(() => textosRasgos(t, shell.dibujo), [t, shell]);
+  const tuyo = useMemo(
+    () => (documento ? shellDelDocumentoParaVer(t, documento, plantilla.estilo, plantilla.giro, enlacesDelDocumento(documento).map((e) => e.etiqueta)) : null),
+    [t, documento, plantilla],
+  );
+  const marca = valorCampo(documento?.identidad.nombre) || t('dialogo.tuMarca');
   const celular = dispositivo === 'celular';
   const IconoGiro = ICONO_GIRO_PLANTILLA[plantilla.giro];
   const completa = modo === 'completa';
@@ -127,7 +208,7 @@ export function DialogoVistaPreviaPlantilla({
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-6">
           <div className="flex min-w-0 flex-col gap-2">
             <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
-              <div className={celular ? 'max-h-[520px] overflow-y-auto' : 'max-h-[440px] overflow-y-auto'}>
+              <div className={celular ? 'max-h-[520px] overflow-y-auto' : 'max-h-[560px] overflow-y-auto'}>
                 <VistaEsquematicaPlantilla plantilla={plantilla} documento={documento} celular={celular} />
               </div>
             </DevicePreviewFrame>
@@ -147,6 +228,13 @@ export function DialogoVistaPreviaPlantilla({
               </ul>
               {completa && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.paginas', { lista: paginas })}</p>}
             </div>
+            <div className="flex flex-col gap-2" data-rasgos-shell>
+              <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.encabezadoPie')}</h3>
+              <ListaRasgos titulo={t('shell.titulos.encabezado')} items={rasgos.encabezado} />
+              <ListaRasgos titulo={t('shell.titulos.pie')} items={rasgos.pie} />
+              {rasgos.celular && <ListaRasgos titulo={t('shell.titulos.celular')} items={[rasgos.celular]} />}
+              <p className="rounded-md bg-info-subtle px-2.5 py-1.5 text-xs leading-4 text-info-text">{t('dialogo.soloCompleta')}</p>
+            </div>
             <div className="flex flex-col gap-2">
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.estilo')}</h3>
               <StylePresetCard
@@ -165,12 +253,13 @@ export function DialogoVistaPreviaPlantilla({
           <h3 id="plantilla-modo" className="text-[13px] font-semibold leading-[18px] text-fg">
             {t('dialogo.modo')}
           </h3>
+          <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.quedan')}</p>
           <div role="radiogroup" aria-labelledby="plantilla-modo" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <TarjetaSeleccionable
               orientacion="horizontal"
               icono={LayoutTemplate}
               titulo={t('dialogo.completaTitulo')}
-              descripcion={t('dialogo.completaDescripcion')}
+              descripcion={<DescripcionConResultado texto={t('dialogo.completaDescripcion')} rotulo={t('dialogo.quedanCompleta', { nombre: plantilla.nombre })} shell={shell} marca={marca} />}
               seleccionada={completa}
               onSeleccionar={() => onModoChange('completa')}
               deshabilitada={usando}
@@ -179,7 +268,7 @@ export function DialogoVistaPreviaPlantilla({
               orientacion="horizontal"
               icono={Palette}
               titulo={t('dialogo.estiloTitulo')}
-              descripcion={t('dialogo.estiloDescripcion')}
+              descripcion={<DescripcionConResultado texto={t('dialogo.estiloDescripcion')} rotulo={t('dialogo.quedanEstilo')} shell={tuyo} marca={marca} />}
               seleccionada={!completa}
               onSeleccionar={() => onModoChange('estilo')}
               deshabilitada={usando}

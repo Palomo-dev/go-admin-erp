@@ -40,6 +40,14 @@ export function rgbAHex({ r, g, b }: Rgb): string {
   return `#${canal(r)}${canal(g)}${canal(b)}`.toUpperCase();
 }
 
+/** Mezcla dos hex (`t` = 0 → `a`, 1 → `b`); si alguno no es válido, devuelve `a` tal cual. */
+export function mezclarHex(a: string, b: string, t: number): string {
+  const x = hexARgb(a);
+  const y = hexARgb(b);
+  if (!x || !y) return a;
+  return rgbAHex({ r: x.r + (y.r - x.r) * t, g: x.g + (y.g - x.g) * t, b: x.b + (y.b - x.b) * t });
+}
+
 /** Normaliza un hex válido a `#RRGGBB`; `null` si no lo es. */
 export function normalizarHex(valor: unknown): string | null {
   const rgb = hexARgb(valor);

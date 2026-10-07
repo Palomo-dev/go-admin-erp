@@ -9,7 +9,7 @@ import { TEMPLATE_PRESETS } from '@/lib/services/websiteSettingsService';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
 import { construirCatalogo, tieneSerifa, type EstiloCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import { radioBoton, textoSobreAcento, type TokensEstilo } from '@/lib/website/v2/tokensEstilo';
-import { hexARgb, rgbAHex } from '@/lib/utils/contrasteColor';
+import { mezclarHex } from '@/lib/utils/contrasteColor';
 import type { MuestraEstilo } from '../ui/StylePresetCard';
 import type { TemaVistaSitio } from '../ui/temaVistaSitio';
 
@@ -21,12 +21,7 @@ export function familiaCss(familia: string): string {
 }
 
 /** Mezcla dos hex (`t` = 0 → `a`, 1 → `b`); si alguno no es válido, `a`. */
-export function mezclar(a: string, b: string, t: number): string {
-  const x = hexARgb(a);
-  const y = hexARgb(b);
-  if (!x || !y) return a;
-  return rgbAHex({ r: x.r + (y.r - x.r) * t, g: x.g + (y.g - x.g) * t, b: x.b + (y.b - x.b) * t });
-}
+export const mezclar = mezclarHex;
 
 /** Muestra de StylePresetCard: «Aa», texto y botón con los tokens del estilo. */
 export function muestraDeEstilo(e: TokensEstilo): MuestraEstilo {

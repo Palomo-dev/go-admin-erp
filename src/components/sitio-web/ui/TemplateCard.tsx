@@ -5,7 +5,7 @@ import { Check, LayoutList, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Badge } from '@/components/ui/badge';
 import { useTextosComun } from './textos';
-import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from './iconosSitio';
+import { CLASE_TAMANO_ICONO, ICONO_TAREA_SITIO, TRAZO_ICONO } from './iconosSitio';
 
 /**
  * Plantilla del sitio o de una página (Figma A/07i; Plantillas A/06b, asistente
@@ -15,10 +15,15 @@ import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from './iconosSitio';
  *
  * Es un `radio` cuando se elige (asistente, Nueva página) y un botón normal
  * cuando abre la vista previa (galería): lo decide `rol`.
+ *
+ * `detalle` (galería de Plantillas): la línea corta con lo distintivo de su encabezado y su pie
+ * («Encabezado centrado · Pie en 3 columnas con mapa»), con el icono de «Encabezado y pie».
  */
 export interface TemplateCardProps {
   nombre: string;
   descripcion?: string;
+  /** Línea corta bajo la descripción (lo distintivo del encabezado y el pie). */
+  detalle?: string;
   /** Imagen (URL) o nodo (p. ej. `SitePreview` o `SectionThumbnail`) de la miniatura. */
   miniatura?: string | ReactNode;
   /** Etiqueta del giro («Restaurante»); en modo página se muestra «Página». */
@@ -34,9 +39,12 @@ export interface TemplateCardProps {
   className?: string;
 }
 
+const IconoDetalle = ICONO_TAREA_SITIO.encabezado;
+
 export function TemplateCard({
   nombre,
   descripcion,
+  detalle,
   miniatura,
   giro,
   iconoGiro: IconoGiro,
@@ -85,6 +93,12 @@ export function TemplateCard({
         <span className="truncate text-sm font-semibold leading-5 text-fg">{nombre}</span>
         {descripcion ? <span className="line-clamp-2 text-[13px] leading-[18px] text-fg-secondary">{descripcion}</span> : null}
       </span>
+      {detalle ? (
+        <span className="flex items-start gap-1.5 text-xs leading-4 text-fg-secondary">
+          <IconoDetalle aria-hidden="true" className={cn(CLASE_TAMANO_ICONO.meta, 'mt-px shrink-0')} strokeWidth={TRAZO_ICONO} />
+          {detalle}
+        </span>
+      ) : null}
       <span className="flex flex-wrap items-center gap-2">
         {chip ? (
           <Badge tono="neutro" apariencia="suave" tamano="sm">

@@ -2,8 +2,9 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { POSService } from '@/lib/services/posService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { cambiosDescuentoMesa, type LineaCuentaMesa } from '@/lib/promotions/motorPromociones';
 import { calcularLineaVenta, totalesDeLineasGuardadas } from '@/lib/pos/lineaVenta';
-import { esMedido, redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
+import { redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
 import {
   itemsParaImprimir,
   normalizarNota,
@@ -324,40 +325,13 @@ export class PedidosService {
 
       const saleItems = [];
 
-      // --- Evaluar promociones activas para POS (mesas) ---
-      // Mismos datos que el mostrador (POSService.checkout): categoría y
-      // producto padre, para que las promociones por categoría o sobre el
-      // padre de una variante alcancen también a la mesa.
-      let promoDiscounts: Record<number, number> = {};
-      // Por línea (mismo orden que `productos`): cada pesada es su propia línea del mismo producto.
-      let promoLineas: number[] = [];
-      try {
-        const promoResult = await promotionEngine.evaluate({
-          channel: 'pos',
-          items: productos.map(p => ({
-            product_id: p.product_id,
-            parent_product_id: p.parent_product_id ?? null,
-            category_id: p.category_id ?? undefined,
-            quantity: p.quantity,
-            unit_price: p.unit_price,
-            // «Lleve X pague Y» no aplica a productos por peso o medida.
-            sale_mode: p.sale_mode,
-          })),
-          organization_id: organizationId,
-          branch_id: branchId,
-        });
-        promoDiscounts = promoResult.itemDiscounts;
-        promoLineas = promoResult.lineDiscounts ?? [];
-      } catch (promoErr) {
-        console.warn('[pedidosService] No se pudieron evaluar promociones:', promoErr);
-      }
-
+      // Promociones: la línea nace sin descuento y, ya insertada, se evalúa
+      // la cuenta COMPLETA (recalcularPromocionesMesa). Antes se evaluaba solo
+      // el plato que llegaba: la compra mínima se comparaba con un plato, el
+      // monto fijo se descontaba en cada uno y el 2x1 casi nunca aplicaba.
       for (let idx = 0; idx < productos.length; idx += 1) {
         const p = productos[idx];
-        // El descuento de la promoción nunca pasa de la línea (el cobro lo valida).
-        // Una línea por peso o medida lleva SOLO el suyo, no el de todas las pesadas del producto.
-        const promoLinea = esMedido({ sale_mode: p.sale_mode ?? null }) ? promoLineas[idx] || 0 : promoDiscounts[p.product_id] || 0;
-        const itemDiscount = Math.min(promoLinea, p.quantity * p.unit_price);
+        const itemDiscount = 0;
         // Tasa y modo de impuesto de la línea: los de siempre (impuestos del
         // producto; si no tiene, los de la organización por defecto). Sin
         // impuestos resueltos, la línea va sin impuesto como antes.
@@ -452,7 +426,7 @@ export class PedidosService {
 
       // Rondas: sin comanda todavía; la ronda la envía la persona (D5).
       if (opciones.porEnviar) {
-        await this.recalcularTotalVenta(saleId!);
+        await this.recalcularPromocionesMesa(saleId!);
         return (insertedItems || []).map((item: { id: string }) => item.id);
       }
 
@@ -520,8 +494,8 @@ export class PedidosService {
         if (ticketItemsError) throw ticketItemsError;
       }
 
-      // 5. Actualizar total de la venta
-      await this.recalcularTotalVenta(saleId!);
+      // 5. Promociones de la cuenta completa y total de la venta
+      await this.recalcularPromocionesMesa(saleId!);
       return (insertedItems || []).map((item: { id: string }) => item.id);
     } catch (error) {
       console.error('Error agregando productos:', {
@@ -552,6 +526,95 @@ export class PedidosService {
   }
 
   /**
+   * Promociones de la cuenta de una mesa, evaluada COMPLETA: todas las líneas
+   * sin pagar de la venta, a la vez. Se llama en cada cambio de la cuenta
+   * (agregar, cambiar cantidad, anular, transferir, mover). La compra mínima
+   * se compara con la cuenta, el monto fijo y el tope son de la cuenta y el
+   * 2x1 junta los platos del mismo producto aunque se pidieran de uno en uno.
+   *
+   * El cálculo es el del motor único (`motorPromociones`); la escritura va en
+   * una transacción por `pos_mesa_aplicar_promociones`, que solo toca líneas
+   * sin pagar y sin descuento ajeno (un pedido web conserva el suyo) y
+   * recalcula la cabecera. Si la evaluación falla, la cuenta se recalcula sin
+   * tocar descuentos: agregar un plato no se bloquea por una promoción.
+   */
+  static async recalcularPromocionesMesa(saleId: string): Promise<void> {
+    const organizationId = getOrganizationId();
+    try {
+      const { data: venta, error: eVenta } = await supabase
+        .from('sales')
+        .select('id, organization_id, branch_id, status')
+        .eq('id', saleId)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      if (eVenta) throw eVenta;
+      // Venta cerrada, anulada o de otra organización: no hay cuenta que recalcular.
+      if (!venta || !['pending', 'draft', 'partial'].includes(String(venta.status))) return;
+      const { data: filas, error: eLineas } = await supabase
+        .from('sale_items')
+        .select('id, product_id, quantity, unit_price, discount_amount, paid_amount, paid_at, notes, created_at, product:products!sale_items_product_id_fkey(category_id, parent_product_id, sale_mode)')
+        .eq('sale_id', saleId)
+        .is('paid_at', null)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true });
+      if (eLineas) throw eLineas;
+      type FilaCuenta = LineaCuentaMesa & {
+        product_id: number | null;
+        product: { category_id: number | null; parent_product_id: number | null; sale_mode: string | null } | null;
+      };
+      const lineas = ((filas ?? []) as unknown as FilaCuenta[]).filter(
+        (l) => l.product_id != null && Number(l.quantity) > 0,
+      );
+      const resultado = await promotionEngine.evaluate({
+        channel: 'pos',
+        organization_id: organizationId,
+        branch_id: venta.branch_id ?? undefined,
+        items: lineas.map((l) => ({
+          product_id: Number(l.product_id),
+          parent_product_id: l.product?.parent_product_id ?? null,
+          category_id: l.product?.category_id ?? null,
+          quantity: Number(l.quantity),
+          unit_price: Number(l.unit_price),
+          sale_mode: l.product?.sale_mode ?? null,
+        })),
+      });
+      const cambios = cambiosDescuentoMesa(
+        lineas.map((l) => ({ ...l, quantity: Number(l.quantity), unit_price: Number(l.unit_price) })),
+        resultado,
+      );
+      if (cambios.length === 0) {
+        await this.recalcularTotalVenta(saleId);
+        return;
+      }
+      const { error } = await supabase.rpc('pos_mesa_aplicar_promociones', { p_sale_id: saleId, p_lineas: cambios });
+      if (error) throw error;
+    } catch (error) {
+      console.warn('[pedidosService] No se pudieron recalcular las promociones de la mesa:', detalleError(error));
+      await this.recalcularTotalVenta(saleId);
+    }
+  }
+
+  /**
+   * Promociones que quedaron en las líneas de la cuenta (`notes.promociones`),
+   * para enviarlas al cobro: `pos_checkout_v1` suma su uso una sola vez, en el
+   * cobro que salda la cuenta.
+   */
+  static async promocionesDeLaCuenta(saleId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('sale_items')
+      .select('quantity, notes')
+      .eq('sale_id', saleId);
+    if (error) throw error;
+    const ids = new Set<string>();
+    for (const fila of (data ?? []) as Array<{ quantity: number | string; notes: Record<string, unknown> | null }>) {
+      if (!(Number(fila.quantity) > 0)) continue;
+      const lista = fila.notes?.promociones;
+      if (Array.isArray(lista)) lista.forEach((id) => typeof id === 'string' && ids.add(id));
+    }
+    return Array.from(ids);
+  }
+
+  /**
    * Eliminar item de la orden
    */
   /**
@@ -565,8 +628,10 @@ export class PedidosService {
    */
   static async eliminarItem(saleItemId: string, motivo?: string): Promise<void> {
     try {
-      // La RPC recalcula la cabecera de la cuenta en la misma transacción.
-      await ajustarLineaMesa(saleItemId, 0, motivo ?? null);
+      // La RPC recalcula la cabecera de la cuenta en la misma transacción;
+      // después, las promociones de la cuenta que queda.
+      const r = await ajustarLineaMesa(saleItemId, 0, motivo ?? null);
+      if (r?.sale_id) await this.recalcularPromocionesMesa(r.sale_id);
     } catch (error) {
       console.error('Error eliminando item:', error);
       throw error;
@@ -588,7 +653,10 @@ export class PedidosService {
     motivo?: string
   ): Promise<void> {
     try {
-      await ajustarLineaMesa(saleItemId, nuevaCantidad, motivo ?? null);
+      const r = await ajustarLineaMesa(saleItemId, nuevaCantidad, motivo ?? null);
+      // La RPC escala el descuento con la cantidad; la promoción se recalcula
+      // sobre la cuenta completa (la compra mínima puede dejar de cumplirse).
+      if (r?.sale_id) await this.recalcularPromocionesMesa(r.sale_id);
     } catch (error) {
       console.error('Error actualizando cantidad:', error);
       throw error;
@@ -827,10 +895,10 @@ export class PedidosService {
         );
       }
 
-      // 5. Recalcular totales
-      await this.recalcularTotalVenta(originalItem.sale_id);
+      // 5. Promociones y totales de las dos cuentas
+      await this.recalcularPromocionesMesa(originalItem.sale_id);
       if (toSession.sale_id) {
-        await this.recalcularTotalVenta(toSession.sale_id);
+        await this.recalcularPromocionesMesa(toSession.sale_id);
       }
     } catch (error) {
       console.error('Error transfiriendo item:', error);

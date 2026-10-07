@@ -433,6 +433,38 @@ export async function moverMesa(
   modo: ModoMover,
   lineaIds: string[] = [],
 ): Promise<void> {
+  // Ventas de las dos mesas ANTES de mover: al unir, la de origen puede cerrarse.
+  const ventasAntes = modo === 'cuenta' ? [] : await ventasDeMesas([origenId, destinoId]);
+  await moverMesaSinPromociones(sesionId, origenId, destinoId, modo, lineaIds);
+  if (modo === 'cuenta') return; // la cuenta entera cambia de mesa: sus promociones no cambian
+  // Las dos cuentas cambiaron de platos: promociones de nuevo sobre cada una.
+  const ventas = new Set([...ventasAntes, ...(await ventasDeMesas([origenId, destinoId]))]);
+  for (const saleId of Array.from(ventas)) {
+    // El movimiento ya quedó hecho: un fallo aquí se avisa, no se propaga.
+    await PedidosService.recalcularPromocionesMesa(saleId).catch((e) =>
+      console.warn('[cuentaMesa] promociones tras mover no recalculadas:', e),
+    );
+  }
+}
+
+/** Ventas abiertas (sesión activa) de las mesas indicadas. */
+async function ventasDeMesas(tableIds: string[]): Promise<string[]> {
+  const { data } = await supabase
+    .from('table_sessions')
+    .select('sale_id')
+    .eq('organization_id', getOrganizationId())
+    .in('restaurant_table_id', tableIds)
+    .in('status', ['active', 'bill_requested']);
+  return ((data ?? []) as Array<{ sale_id: string | null }>).map((s) => s.sale_id).filter((id): id is string => !!id);
+}
+
+async function moverMesaSinPromociones(
+  sesionId: string,
+  origenId: string,
+  destinoId: string,
+  modo: ModoMover,
+  lineaIds: string[],
+): Promise<void> {
   const { error } = await supabase.rpc('pos_mesa_mover', {
     p_session_id: sesionId,
     p_table_destino: destinoId,

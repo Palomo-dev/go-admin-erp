@@ -19,7 +19,7 @@ import { TemplateCard } from '../ui/TemplateCard';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
 import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import { modoPorDefecto, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
-import { MiniaturaPlantilla } from './MiniaturaPlantilla';
+import { MiniaturaPlantilla, useShellDePlantilla } from './MiniaturaPlantilla';
 import { DialogoVistaPreviaPlantilla } from './DialogoVistaPreviaPlantilla';
 import { useContextoDiseno } from './useContextoDiseno';
 import { pestanasGiro, usePlantillas, type PestanaGiro } from './usePlantillas';
@@ -47,6 +47,30 @@ function EsqueletoPlantillas() {
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * Tarjeta de la galería: miniatura con SU encabezado y SU pie, y la línea con lo distintivo
+ * («Logo al centro · Pie centrado con WhatsApp»), de `shellPorPlantilla.ts`.
+ */
+function TarjetaPlantilla({ plantilla: p, enUso, onAbrir }: { plantilla: PlantillaCatalogo; enUso: boolean; onAbrir: () => void }) {
+  const t = useTextosDiseno();
+  const shell = useShellDePlantilla(p);
+  return (
+    <TemplateCard
+      nombre={p.nombre}
+      descripcion={p.descripcion}
+      detalle={shell.linea}
+      miniatura={<MiniaturaPlantilla shell={shell} />}
+      giro={t(`plantillas.giro.${p.giro}`)}
+      iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
+      secciones={p.inicio.length}
+      enUso={enUso}
+      onSeleccionar={onAbrir}
+      // A/06b: la plantilla en uso lleva el borde de marca además de la insignia.
+      className={enUso ? 'h-full border-brand ring-1 ring-brand' : 'h-full'}
+    />
   );
 }
 
@@ -154,18 +178,7 @@ export function GaleriaPlantillas() {
               <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
                 {lista.map((p) => (
                   <li key={p.id} className="flex">
-                    <TemplateCard
-                      nombre={p.nombre}
-                      descripcion={p.descripcion}
-                      miniatura={<MiniaturaPlantilla estilo={p.estilo} />}
-                      giro={t(`plantillas.giro.${p.giro}`)}
-                      iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
-                      secciones={p.inicio.length}
-                      enUso={plantillas.enUso?.id === p.id}
-                      onSeleccionar={() => abrir(p)}
-                      // A/06b: la plantilla en uso lleva el borde de marca además de la insignia.
-                      className={plantillas.enUso?.id === p.id ? 'h-full border-brand ring-1 ring-brand' : 'h-full'}
-                    />
+                    <TarjetaPlantilla plantilla={p} enUso={plantillas.enUso?.id === p.id} onAbrir={() => abrir(p)} />
                   </li>
                 ))}
               </ul>

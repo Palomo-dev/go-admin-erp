@@ -189,9 +189,9 @@ export const TEXTOS_DISENO = {
     inicio: 'Inicio',
     modo: 'Cómo aplicarla',
     completaTitulo: 'Plantilla completa',
-    completaDescripcion: 'Encabezado, pie, páginas, secciones y menús nuevos, con los datos de tu negocio.',
+    completaDescripcion: 'Cambian el encabezado y el pie por los de la plantilla, y llegan páginas, secciones y menús nuevos con los datos de tu negocio.',
     estiloTitulo: 'Solo estilo',
-    estiloDescripcion: 'Cambian los colores y las fuentes. Tu contenido se conserva.',
+    estiloDescripcion: 'Cambian los colores y las fuentes. Conservas tu encabezado, tu pie y tu contenido.',
     paginas: 'Páginas: {lista}',
     avisoCompletaTitulo: 'Tu sitio actual queda en el historial',
     avisoCompletaDescripcion:
@@ -207,6 +207,147 @@ export const TEXTOS_DISENO = {
     deshacer: 'Deshacer',
     deshecho: 'Volvimos a tu sitio anterior.',
     noDeshecho: 'No pudimos deshacer. Lo encuentras en el historial del editor.',
+    encabezadoPie: 'Encabezado y pie de esta plantilla',
+    soloCompleta: 'Se aplican solo con «Plantilla completa».',
+    quedan: 'Así quedan tu encabezado y tu pie',
+    quedanCompleta: 'Los de «{nombre}»',
+    quedanEstilo: 'Los tuyos de hoy, con los colores nuevos',
+  },
+  shell: {
+    alt: 'Encabezado: {encabezado}. {pie}.',
+    altCelular: 'En el celular, {barra}.',
+    linea: '{encabezado} · {pie}',
+    encabezado: {
+      default: 'Encabezado clásico',
+      centered: 'Encabezado centrado',
+      minimal: 'Encabezado mínimo',
+      mega: 'Megamenú de categorías',
+      logoCentro: 'Logo al centro',
+      reserva: 'Encabezado con barra de reserva',
+      carta: 'Menú con la carta',
+      dosBotones: 'Encabezado con dos botones',
+      transparent: 'Encabezado transparente',
+    },
+    pie: {
+      default: 'Pie clásico',
+      defaultCon1: 'Pie clásico con {a}',
+      defaultCon2: 'Pie clásico con {a} y {b}',
+      centered: 'Pie centrado',
+      centeredCon1: 'Pie centrado con {a}',
+      centeredCon2: 'Pie centrado con {a} y {b}',
+      three_columns: 'Pie en 3 columnas',
+      three_columnsCon1: 'Pie en 3 columnas con {a}',
+      three_columnsCon2: 'Pie en 3 columnas con {a} y {b}',
+      split: 'Pie dividido',
+      splitCon1: 'Pie dividido con {a}',
+      splitCon2: 'Pie dividido con {a} y {b}',
+      minimal: 'Pie mínimo',
+      minimalCon1: 'Pie mínimo con {a}',
+      minimalCon2: 'Pie mínimo con {a} y {b}',
+    },
+    bloqueCorto: {
+      horario: 'horario',
+      contacto: 'contacto',
+      redes: 'redes',
+      whatsapp: 'WhatsApp',
+      mapa: 'mapa',
+      boletin: 'boletín',
+      pagos: 'medios de pago',
+    },
+    bloque: {
+      horario: 'horario por sede',
+      contacto: 'contacto',
+      redes: 'redes sociales',
+      whatsapp: 'botón de WhatsApp',
+      mapa: 'mapa con «Cómo llegar»',
+      boletin: 'boletín',
+      pagos: 'medios de pago',
+    },
+    rasgo: {
+      megaColumnas: 'megamenú de categorías en {n} columnas',
+      menuCarta: 'el menú son las categorías de la carta',
+      barraSuperior: 'barra superior',
+      barraSuperiorCon: 'barra superior con {lista}',
+      boton: 'botón «{texto}»',
+      boton2: 'segundo botón «{texto}»',
+      barraReserva: 'barra de reserva con fechas',
+      menusUno: '1 menú de enlaces',
+      menus: '{n} menús de enlaces',
+      boletinTitulo: 'boletín «{titulo}»',
+      barraCelular: 'barra fija con {lista}',
+    },
+    barra: {
+      sede: 'sede y horario',
+      envio: 'envío gratis',
+      cupos: 'cupos libres',
+      telefono: 'teléfono',
+      correo: 'correo',
+    },
+    accion: {
+      sede: 'selector de sede',
+      idioma: 'selector de idioma',
+      buscar: 'búsqueda',
+      barraBusqueda: 'barra de búsqueda',
+      cuenta: 'mi cuenta',
+      carrito: 'carrito',
+    },
+    celular: {
+      pedir: 'Pedir',
+      reservar: 'Reservar',
+      agendar: 'Agendar',
+      prueba: 'Prueba gratis',
+      llamar: 'Llamar',
+      whatsapp: 'WhatsApp',
+      como_llegar: 'Cómo llegar',
+    },
+    menu: {
+      legal: 'Legal',
+      'la-casa': 'La casa',
+      eventos: 'Eventos',
+      ayuda: 'Ayuda',
+      'envios-devoluciones': 'Envíos y devoluciones',
+      envios: 'Envíos',
+      atencion: 'Atención al cliente',
+      politicas: 'Políticas',
+      alergenos: 'Alérgenos',
+      servicios: 'Servicios',
+      empresa: 'Empresa',
+      planes: 'Planes',
+      'el-club': 'El club',
+      tarifas: 'Tarifas',
+    },
+    muestra: {
+      marca: 'Tu marca',
+      contenido: 'Aquí van las secciones de tu página',
+      sede: 'Sede Centro · Abierto ahora',
+      envio: 'Envío gratis desde $…',
+      cupos: 'Cupos libres ahora',
+      telefono: 'Teléfono',
+      correo: 'Correo',
+      idioma: 'ES',
+      sedeSelector: 'Sede',
+      buscar: 'Buscar',
+      categorias: 'Categorías',
+      categoriasInventario: 'Categorías del inventario',
+      llegada: 'Llegada',
+      salida: 'Salida',
+      huespedes: 'Huéspedes',
+      verDisponibilidad: 'Ver disponibilidad',
+      escribenos: 'Escríbenos por WhatsApp',
+      comoLlegar: 'Cómo llegar',
+      tuCorreo: 'Tu correo',
+      suscribirme: 'Suscribirme',
+      boletin: 'Boletín',
+      horario: 'Horario',
+      contacto: 'Contacto',
+      derechos: '© Tu marca',
+      firma: 'Hecho con GO Admin',
+    },
+    titulos: {
+      encabezado: 'Encabezado',
+      pie: 'Pie de página',
+      celular: 'En el celular',
+    },
   },
 } as const;
 
@@ -221,6 +362,12 @@ function canonico(clave: string): string | undefined {
   return typeof nodo === 'string' ? nodo : undefined;
 }
 
+/** El español canónico de una clave (`TEXTOS_DISENO`), interpolado; la clave si no existe. */
+export function textoCanonicoDiseno(clave: string, valores?: Record<string, string | number>): string {
+  const canon = canonico(clave);
+  return canon === undefined ? clave : interpolar(canon, valores);
+}
+
 export type TraductorDiseno = (clave: string, valores?: Record<string, string | number>) => string;
 
 /** Textos de `sitioWeb.diseno.*` en el idioma activo, con el español canónico de respaldo. */
@@ -230,8 +377,7 @@ export function useTextosDiseno(): TraductorDiseno {
     (clave: string, valores?: Record<string, string | number>) => {
       const completa = `diseno.${clave}`;
       if (t.has(completa)) return t(completa, valores);
-      const canon = canonico(clave);
-      return canon === undefined ? clave : interpolar(canon, valores);
+      return textoCanonicoDiseno(clave, valores);
     },
     [t],
   );

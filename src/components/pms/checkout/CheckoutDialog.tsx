@@ -124,6 +124,7 @@ export function CheckoutDialog({
   const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
   const [pendingItems, setPendingItems] = useState<FolioItem[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** Descuento de promoción por posición en `reservation.folio.items` (por línea, no por producto). */
   const [promoDiscounts, setPromoDiscounts] = useState<Record<number, number>>({});
 
   // Estados para pago QR
@@ -177,7 +178,7 @@ export function CheckoutDialog({
       if (reservation.folio?.items) {
         reservation.folio.items.forEach((fi, idx) => {
           const promoDiscount = (fi.product_id && fi.product_id > 0)
-            ? (promoDiscounts[fi.product_id] || 0)
+            ? (promoDiscounts[idx] || 0)
             : 0;
           items.push({
             id: `folio-${idx}`,
@@ -481,14 +482,16 @@ export function CheckoutDialog({
       setPromoDiscounts({});
       return;
     }
-    const folioItems = reservation.folio.items.filter((fi) => fi.product_id && fi.product_id > 0);
+    const folioItems = reservation.folio.items
+      .map((fi, idx) => ({ fi, idx }))
+      .filter(({ fi }) => fi.product_id && fi.product_id > 0);
     if (folioItems.length === 0) {
       setPromoDiscounts({});
       return;
     }
     promotionEngine.evaluate({
       channel: 'pos',
-      items: folioItems.map(fi => ({
+      items: folioItems.map(({ fi }) => ({
         product_id: fi.product_id!,
         quantity: fi.quantity || 1,
         unit_price: fi.unit_price || fi.amount,
@@ -496,7 +499,12 @@ export function CheckoutDialog({
       organization_id: org.id,
       branch_id: branchId,
     }).then(result => {
-      setPromoDiscounts(result.itemDiscounts);
+      // Por línea del folio: el mismo producto dos veces no descuenta doble.
+      const porLinea: Record<number, number> = {};
+      folioItems.forEach(({ idx }, i) => {
+        if ((result.lineDiscounts[i] ?? 0) > 0) porLinea[idx] = result.lineDiscounts[i];
+      });
+      setPromoDiscounts(porLinea);
     }).catch(err => {
       console.warn('[PMS Checkout] No se pudieron evaluar promociones:', err);
       setPromoDiscounts({});

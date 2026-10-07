@@ -85,7 +85,7 @@ jest.mock('@/lib/finanzas/ventas/clienteFacturas', () => {
     emitirFacturaVenta: (...a: unknown[]) => emitirFacturaVenta(...a),
   };
 });
-const evaluarPromociones = jest.fn(async () => ({ discountTotal: 0, itemDiscounts: {} }));
+const evaluarPromociones = jest.fn(async () => ({ discountTotal: 0, itemDiscounts: {}, lineDiscounts: [] as number[] }));
 jest.mock('@/lib/services/promotionEngine', () => ({ promotionEngine: { evaluate: (...a: unknown[]) => evaluarPromociones(...(a as [])) } }));
 const sendToFactus = jest.fn(async () => ({ success: true }));
 jest.mock('@/lib/services/electronicInvoicingService', () => ({ electronicInvoicingService: { sendToFactus: (...a: unknown[]) => sendToFactus(...(a as [])) } }));
@@ -205,7 +205,7 @@ beforeEach(() => {
   preferenciaFE.global = false;
   jest.clearAllMocks();
   listarClientes.mockResolvedValue({ filas: [], total: 0 });
-  evaluarPromociones.mockResolvedValue({ discountTotal: 0, itemDiscounts: {} });
+  evaluarPromociones.mockResolvedValue({ discountTotal: 0, itemDiscounts: {}, lineDiscounts: [] });
   resolverTasa.mockResolvedValue(0 as never);
   guardarFacturaVenta.mockResolvedValue({ id: 'fv-1', numero: null, saleId: 's-1', total: 0, faltantes: [] });
   emitirFacturaVenta.mockResolvedValue({ id: 'fv-1', numero: 'FV-1043', stock_descontado: true });
@@ -276,7 +276,8 @@ describe('Nueva factura de venta v2 — paridad con el formulario anterior (L1�
   });
 
   test('L10: las promociones del canal finanzas se aplican al guardar a líneas sin descuento manual', async () => {
-    evaluarPromociones.mockResolvedValue({ discountTotal: 5000, itemDiscounts: { 101: 5000 } } as never);
+    // Descuento por LÍNEA (`lineDiscounts`), no la suma por producto (2026-10-07).
+    evaluarPromociones.mockResolvedValue({ discountTotal: 5000, itemDiscounts: { 101: 5000 }, lineDiscounts: [5000] } as never);
     await montar();
     fireEvent.click(screen.getByRole('button', { name: 'elegir-cliente' }));
     await agregar(producto());

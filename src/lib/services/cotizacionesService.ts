@@ -147,6 +147,9 @@ export class CotizacionesService {
   static async createQuotation(datos: QuotationInput, items: QuotationItem[], taxContext: QuotationTaxContext = {}): Promise<ResultadoGuardarCotizacion> {
     let evaluados = items;
     try {
+      // Categoría y producto padre los completa el motor desde `products`
+      // (la línea de la cotización no los guarda): así aplican las promociones
+      // por categoría y por variante.
       const promo = await promotionEngine.evaluate({
         channel: 'finances',
         items: items.map((it) => ({ product_id: it.product_id || 0, quantity: Number(it.qty) || 0, unit_price: Number(it.unit_price) || 0 })),
@@ -154,9 +157,11 @@ export class CotizacionesService {
         branch_id: datos.branch_id ?? undefined,
       });
       if (promo.discountTotal > 0) {
-        evaluados = items.map((it) => {
+        // El descuento de ESA línea (`lineDiscounts`): `itemDiscounts` suma por
+        // producto y con el mismo producto en dos líneas descontaba doble.
+        evaluados = items.map((it, idx) => {
           if (it.discount_amount) return it;
-          const descuento = promo.itemDiscounts[it.product_id || 0] || 0;
+          const descuento = promo.lineDiscounts[idx] || 0;
           return descuento > 0 ? { ...it, discount_amount: descuento } : it;
         });
       }

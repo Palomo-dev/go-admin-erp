@@ -230,7 +230,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   const [tasaComision, setTasaComision] = useState<number | null>(0);
   const [metodoComision, setMetodoComision] = useState<'percentage' | 'fixed_amount'>('percentage');
   const [tasaSugerida, setTasaSugerida] = useState(false);
-  const [promociones, setPromociones] = useState<Record<number, number>>({});
+  /** Descuento de promoción por línea (clave de la línea), para la insignia. */
+  const [promociones, setPromociones] = useState<Record<string, number>>({});
   const [duplicadoDe, setDuplicadoDe] = useState<string | null>(null);
 
   const [errores, setErrores] = useState<ErroresFacturaVenta>({});
@@ -441,13 +442,21 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     const tmr = window.setTimeout(async () => {
       try {
         const { promotionEngine } = await import('@/lib/services/promotionEngine');
+        // Categoría y producto padre: los completa el motor desde `products`
+        // (la línea de la factura no los guarda) para las promociones por
+        // categoría y por variante.
         const r = await promotionEngine.evaluate({
           channel: 'finances',
           items: lineas.map((l) => ({ product_id: l.product_id || 0, quantity: Number(l.cantidad) || 0, unit_price: Number(l.precio) || 0 })),
           organization_id: getOrganizationId(),
           branch_id: sucursal,
         });
-        if (!cancelado) setPromociones(r.discountTotal > 0 ? (r.itemDiscounts as Record<number, number>) : {});
+        // Por LÍNEA: con el mismo producto en dos líneas, la suma por producto contaba doble.
+        const porLinea: Record<string, number> = {};
+        lineas.forEach((l, idx) => {
+          if ((r.lineDiscounts[idx] ?? 0) > 0) porLinea[l.clave] = r.lineDiscounts[idx];
+        });
+        if (!cancelado) setPromociones(porLinea);
       } catch {
         if (!cancelado) setPromociones({});
       }
@@ -573,8 +582,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
         branch_id: sucursal as number,
       });
       if (!(r.discountTotal > 0)) return ls;
-      const mapa = r.itemDiscounts as Record<number, number>;
-      return ls.map((l) => (!l.descuento && l.product_id && (mapa[l.product_id] ?? 0) > 0 ? { ...l, descuento: mapa[l.product_id] } : l));
+      // El descuento de ESA línea (`lineDiscounts`), no la suma del producto.
+      return ls.map((l, idx) => (!l.descuento && l.product_id && (r.lineDiscounts[idx] ?? 0) > 0 ? { ...l, descuento: r.lineDiscounts[idx] } : l));
     } catch {
       return ls;
     }
@@ -701,7 +710,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       const n = seriales[l.product_id]?.length ?? 0;
       insignias.push({ texto: t('lineas.seriales', { n, total: l.cantidad }), tono: n === l.cantidad ? 'exito' : 'advertencia' });
     }
-    const promo = l.product_id && !l.descuento ? promociones[l.product_id] : 0;
+    const promo = l.product_id && !l.descuento ? promociones[l.clave] : 0;
     if (promo && promo > 0) insignias.push({ texto: t('lineas.promocion', { importe: formatear(promo) }), tono: 'informacion' });
     return {
       id: l.clave,

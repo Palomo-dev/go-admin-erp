@@ -71,6 +71,25 @@ async function generateOrderNumber(organizationId: number): Promise<string> {
   return data;
 }
 
+/**
+ * POST /api/web-orders — SIN USO CONOCIDO (revisado el 2026-10-07).
+ *
+ * Ni el ERP ni la tienda (repo goadmin-websites) llaman a este POST: la tienda
+ * crea sus pedidos con su propio `/api/orders` y solo llama a las subrutas
+ * `/api/web-orders/[id]/auto-confirm`, `/release-stock` y `/mesa-ronda`. Se
+ * deja en pie (no se borra sin decidirlo) pero NO debe reactivarse tal cual;
+ * defectos conocidos del cálculo de promociones:
+ *   1. Evaluaba con el cliente de NAVEGADOR (`promotionEngine` sin `db`) en el
+ *      servidor: sin sesión, la RLS devolvía 0 promociones. Hoy habría que
+ *      pasar `db` (service role, con la organización ya validada).
+ *   2. Multiplica el descuento por la cantidad (`discountAmount * quantity`)
+ *      aunque el motor ya devuelve el importe de la línea.
+ *   3. Usa `itemDiscounts` (suma por producto): con el mismo producto en dos
+ *      líneas descuenta doble. Debe usar `lineDiscounts[idx]`.
+ *   4. Confía en `discount_amount` y `organization_id` del body (solo lo
+ *      protege el secreto compartido `x-webhook-secret`).
+ * La categoría y el día (zona de la organización) ya los resuelve el motor.
+ */
 export async function POST(request: NextRequest) {
   // Solo servidor a servidor (tienda web / cron): secreto obligatorio.
   try {

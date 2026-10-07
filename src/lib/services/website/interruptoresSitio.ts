@@ -34,14 +34,6 @@ import type { ContentFieldDef, SectionTypeDefinition } from '@/lib/services/webs
  * `docs/sitio-web/PENDIENTE-interruptores-sin-implementar.md`.
  */
 export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
-  brands: {
-    'autoplay': [],
-    'enable_swipe': [],
-    'loop': [],
-    'pause_on_hover': [],
-    'show_arrows': [],
-    'show_dots': [],
-  },
   categories_grid: {
     'full_width': [],
   },
@@ -51,68 +43,55 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
     'buttons[].icon_only': [],
     'buttons[].open_new_tab': [],
   },
-  // `card_buttons[].icon_only` y `.full_width` los lee la tarjeta (grid, carrusel) y no «hero_product»;
-  // dentro de un repetidor no se puede ocultar por variante, así que siguen visibles en las tres.
+  // Los `card_buttons[]` los lee la tarjeta (grid, carrusel) y no «hero_product», que no pinta
+  // botones; dentro de un repetidor no se puede ocultar por variante, así que siguen visibles en las tres.
   featured_products: {
-    'autoplay': [],
     'card_buttons[].full_width': ['grid', 'carousel'],
-    'card_buttons[].full_width_mobile': [],
+    'card_buttons[].full_width_mobile': ['grid', 'carousel'],
     'card_buttons[].icon_only': ['grid', 'carousel'],
-    'card_buttons[].open_new_tab': [],
-    'enable_swipe': [],
+    'card_buttons[].open_new_tab': ['grid', 'carousel'],
     'hide_if_no_reviews': ['grid', 'carousel'],
-    'loop': [],
-    'show_compare_price': ['grid', 'carousel'],
-    'show_filters': [],
     'show_rating': ['grid', 'carousel'],
-    'show_search': [],
   },
+  // «Mosaico» y «Cuadrícula» no son carruseles: sus controles de carrusel no aplican.
   gallery: {
-    'autoplay': [],
-    'enable_swipe': [],
-    'lightbox': [],
-    'loop': [],
-    'pause_on_hover': [],
-    'show_arrows': [],
-    'show_dots': [],
+    'autoplay': ['carousel', 'fullscreen'],
+    'enable_swipe': ['carousel', 'fullscreen'],
+    'loop': ['carousel', 'fullscreen'],
+    'pause_on_hover': ['carousel', 'fullscreen'],
+    'show_arrows': ['carousel', 'fullscreen'],
+    'show_dots': ['carousel', 'fullscreen'],
   },
-  // HeroButtons no lee el `full_width` de cada botón (el slider lee el suyo, que es de la sección).
-  hero: {
-    'buttons[].full_width': [],
-    'buttons[].icon_only': [],
-  },
+  // El iframe de Google Maps no permite quitar el marcador.
   map: {
     'show_marker': [],
   },
   membership_plans: {
     'plans[].highlighted': [],
-    'show_compare_price': [],
   },
-  menu_preview: {
-    'show_compare_price': [],
-  },
+  // OffersGrid no pasa `card_buttons` a la tarjeta de producto.
   offers: {
     'card_buttons[].full_width_mobile': [],
     'card_buttons[].open_new_tab': [],
-    'show_filters': [],
-    'show_search': [],
   },
+  // Sin precio anterior en la fuente (`parking_pass_types`, `parking_rates`).
   parking_pass_plans: {
     'show_compare_price': [],
-    'show_description': [],
   },
   parking_pricing: {
     'show_compare_price': [],
     'show_description': [],
   },
+  // «Logos» y «Tarjetas» no son carruseles.
   partners: {
-    'autoplay': [],
-    'enable_swipe': [],
-    'loop': [],
-    'pause_on_hover': [],
-    'show_arrows': [],
-    'show_dots': [],
+    'autoplay': ['carousel'],
+    'enable_swipe': ['carousel'],
+    'loop': ['carousel'],
+    'pause_on_hover': ['carousel'],
+    'show_arrows': ['carousel'],
+    'show_dots': ['carousel'],
   },
+  // Los planes son contenido del editor, sin precio anterior.
   pricing_table: {
     'show_compare_price': [],
   },
@@ -122,26 +101,18 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
     'buttons[].icon_only': [],
     'buttons[].open_new_tab': [],
   },
-  products_grid: {
-    'autoplay': [],
-    'card_buttons[].full_width_mobile': [],
-    'card_buttons[].open_new_tab': [],
-    'enable_swipe': [],
-    'loop': [],
-    'show_filters': ['default', 'grid'],
-    'show_search': [],
-  },
+  // `space_types` solo tiene `base_rate`: no hay precio anterior.
   room_types: {
     'show_compare_price': [],
-    'show_description': ['detailed'],
   },
+  // `transport_routes` no tiene descripción ni precio anterior.
   routes: {
     'show_compare_price': [],
     'show_description': [],
   },
+  // `data.services` no se carga en el sitio público: no hay de dónde sacar el precio anterior.
   services_list: {
     'show_compare_price': [],
-    'show_description': ['cards', 'grid', 'list'],
   },
   specialties: {
     'card_buttons[].full_width': [],
@@ -149,8 +120,6 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
     'card_buttons[].icon_only': [],
     'card_buttons[].open_new_tab': [],
     'hide_if_no_reviews': [],
-    'show_compare_price': [],
-    'show_description': [],
     'show_rating': [],
   },
 };
@@ -166,7 +135,46 @@ export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<strin
     show_address: { with_map: false },
   },
   // FeaturedProductsHero pinta la descripción salvo `false`; la tarjeta de producto (grid, carrusel) solo con `true`.
-  featured_products: { show_description: { hero_product: true } },
+  // El carrusel se detiene en los bordes; «hero_product» solo tacha con `true` (la tarjeta, salvo `false`).
+  featured_products: {
+    show_description: { hero_product: true },
+    loop: { carousel: false },
+    show_compare_price: { hero_product: false },
+  },
+  // Galería: sin avance automático ni deslizar; «Pantalla completa» sin flechas.
+  gallery: {
+    autoplay: { carousel: false, fullscreen: false },
+    enable_swipe: { carousel: false, fullscreen: false },
+    show_arrows: { fullscreen: false },
+  },
+  // Aliados «Carrusel»: avanzaba solo cada 3 s, sin pausa, flechas, puntos ni deslizar.
+  partners: {
+    pause_on_hover: { carousel: false },
+    show_arrows: { carousel: false },
+    show_dots: { carousel: false },
+    enable_swipe: { carousel: false },
+  },
+  // Marcas con distribución «Carrusel»: fila con desplazamiento y flechas; quieta, sin bucle ni puntos.
+  brands: {
+    autoplay: { logos: false },
+    loop: { logos: false },
+    show_dots: { logos: false },
+  },
+  // ProductsGrid (default, grid) siempre pintó los filtros; carrusel y lista solo con `true`.
+  products_grid: {
+    loop: { carousel: false },
+    show_filters: { default: true, grid: true },
+  },
+  // OffersGrid siempre pintó sus filtros.
+  offers: { show_filters: { grid: true } },
+  // Secciones que tachan el precio por primera vez: solo con `true`.
+  menu_preview: { show_compare_price: { tabs: false } },
+  membership_plans: { show_compare_price: { pricing_table: false } },
+  specialties: { show_compare_price: { featured: false }, show_description: { featured: false } },
+  // Tarjetas de habitación e iconos de servicios no pintaban la descripción: solo con `true`.
+  room_types: { show_description: { cards: false } },
+  services_list: { show_description: { icons_row: false } },
+  parking_pass_plans: { show_description: { cards: false } },
 };
 
 function conVariantes(campo: ContentFieldDef, variantes: string[]): ContentFieldDef {

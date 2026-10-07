@@ -344,7 +344,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         itemLabelKey: 'label',
         maxItems: 4,
         helpText: 'Botones múltiples. Si está vacío, se usa el botón único de arriba.',
-        itemFields: BUTTON_ITEM_FIELDS,
+        // HeroButtons solo ocupa todo el ancho con `full_width: true` (ausente = como antes).
+        itemFields: BUTTON_ITEM_FIELDS.map((f) => (f.key === 'full_width' ? { ...f, defaultValue: false } : f)),
       },
       // F3.1 — Solape con el header (F1: ya lo lee el componente, ahora se declara)
       {
@@ -460,7 +461,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'link', label: 'Enlace (opcional)', type: 'url', placeholder: 'https://...' },
         ],
       },
-      { key: 'lightbox', label: 'Lightbox al hacer clic', type: 'boolean', group: 'behavior', defaultValue: true },
+      // Las galerías no abrían la foto: con la clave ausente el sitio sigue sin abrirla.
+      { key: 'lightbox', label: 'Lightbox al hacer clic', type: 'boolean', group: 'behavior', defaultValue: false },
       ...GRID_FIELDS,
       // CAROUSEL_FIELDS aplica sobre todo a la variante carousel
       ...CAROUSEL_FIELDS,
@@ -1561,8 +1563,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'url', label: 'URL (opcional)', type: 'url', placeholder: 'https://marca.com' },
         ],
       },
-      // CAROUSEL_FIELDS para la variante carrusel (F2.5)
-      ...CAROUSEL_FIELDS,
+      // CAROUSEL_FIELDS para la distribución «Carrusel» (F2.5): BrandsLogos solo los lee con
+      // `layout: 'carousel'`. Los que no dependen de otro campo se ofrecen solo con esa distribución.
+      ...CAROUSEL_FIELDS.map((f) => (f.showIf ? f : { ...f, showIf: { field: 'layout', equals: 'carousel' } })),
     ],
   },
   {

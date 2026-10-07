@@ -66,12 +66,21 @@ describe('Portada (hero): cada interruptor solo donde el sitio lo pinta', () => 
 });
 
 describe('«Mostrar descripción»: el switch dice lo que el sitio hace con la clave ausente', () => {
-  it.each(['services_list', 'pricing_table', 'membership_plans', 'room_types'])(
+  it.each(['services_list', 'pricing_table', 'membership_plans'])(
     '%s pinta la descripción salvo `false` → encendido por defecto',
     (tipo) => {
       expect(campo(tipo, 'show_description').defaultValue).toBe(true);
     },
   );
+
+  // Las tarjetas de habitación empezaron a leer el interruptor el 2026-10-07 y antes no pintaban
+  // la descripción: «Tarjetas» nace apagado; «Detallado» la pinta salvo `false`.
+  it('room_types: «Detallado» encendido, «Tarjetas» apagado por defecto', () => {
+    const def = getSectionDefinition('room_types')!;
+    const enVariante = (v: string) => def.contentFields.filter((f) => f.key === 'show_description' && campoVisible(f, {}, v));
+    expect(enVariante('detailed').map((f) => f.defaultValue)).toEqual([true]);
+    expect(enVariante('cards').map((f) => f.defaultValue)).toEqual([false]);
+  });
 
   it.each(['products_grid', 'featured_products', 'offers', 'specialties', 'menu_preview'])(
     '%s sigue apagado por defecto (la tarjeta de producto la pinta solo con `true`)',

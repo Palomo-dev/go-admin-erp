@@ -174,6 +174,27 @@ describe('POST /api/voice/twiml/ai-agent', () => {
     expect(xml.indexOf('<Language')).toBeLessThan(xml.indexOf('</ConversationRelay>'));
   });
 
+  test('fin de turno por defecto: nova-3 como antes, sin atributos de Flux', async () => {
+    delete process.env.VOICE_FIN_DE_TURNO;
+    const xml = await (await POST(req())).text();
+    expect(xml).toContain('speechModel="nova-3-general"');
+    expect(xml).toContain('transcriptionLanguage="es-MX"');
+    expect(xml).not.toContain('eotThreshold');
+    expect(xml).not.toContain('speechTimeout');
+  });
+
+  test('VOICE_FIN_DE_TURNO=flux: Flux multilingüe con umbral; la voz sigue en es-MX', async () => {
+    process.env.VOICE_FIN_DE_TURNO = 'flux';
+    process.env.VOICE_SPEECH_TIMEOUT_MS = '1500';
+    const xml = await (await POST(req())).text();
+    expect(xml).toContain('transcriptionProvider="Deepgram"');
+    expect(xml).toContain('speechModel="flux"');
+    expect(xml).toContain('transcriptionLanguage="multi"');
+    expect(xml).toContain('eotThreshold="0.7"');
+    expect(xml).toContain('speechTimeout="1500"');
+    expect(xml).toContain('ttsLanguage="es-MX"');
+  });
+
   test('con el respaldo desactivado no hay <Language> ni <Parameter> de respaldo', async () => {
     process.env.VOICE_AGENT_TTS_FALLBACK_PROVIDER = 'off';
     const xml = await (await POST(req())).text();

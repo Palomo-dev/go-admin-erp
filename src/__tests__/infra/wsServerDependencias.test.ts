@@ -178,4 +178,20 @@ describe('ws-server: dependencias propias, separadas de las de la web (F-78)', (
     // Si sobra en `declarados`: ya nadie lo importa; quítalo.
     expect({ declarados }).toEqual({ declarados: alcanzados });
   });
+
+  test('cada archivo local que alcanza ws-server.ts está en una ruta que el Dockerfile copia', () => {
+    // 2026-10-07: desinteresConfig.ts importaba `@/components/crm/kit/monedaCrm`; la imagen
+    // solo copia src/lib y src/types y el contenedor murió con `Cannot find module` en Railway.
+    const copiadas = pasos
+      .filter((p) => p.op === 'COPY' && !p.args.some((a) => a.startsWith('--from')))
+      .map((p) => p.args[0].replace(/^\.\//, ''))
+      .filter((origen) => origen && !origen.includes('package'));
+    const salida = execFileSync(process.execPath, [SCRIPT_CIERRE, '--json'], { cwd: REPO_ROOT, encoding: 'utf-8' });
+    const { archivosLocales } = JSON.parse(salida) as { archivosLocales: string[] };
+    const fuera = archivosLocales.filter(
+      (f) => !copiadas.some((c) => (c.endsWith('/') ? f.startsWith(c) : f === c)),
+    );
+    // Si falla: mueve el módulo a src/lib (y deja una reexportación donde estaba), no amplíes la imagen.
+    expect({ fuera, copiadas }).toEqual({ fuera: [], copiadas });
+  });
 });

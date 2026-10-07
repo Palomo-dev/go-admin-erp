@@ -18,6 +18,7 @@ import {
   VARIANTE_CARTA_QR_CATALOGO,
   VARIANTE_PORTADA_MESA_CATALOGO,
 } from '@/lib/services/website/seccionesMesaCatalogo';
+import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
 
 // ============================================================
 // INTERFACES
@@ -3405,10 +3406,15 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
 //
 // Los STYLE_FIELDS y SPACING_FIELDS se inyectan a cada sección para que un
 // cambio de estilo beneficie a todos los tipos a la vez (F0.2 + F0.4).
-export const SECTION_CATALOG: SectionTypeDefinition[] = RAW_CATALOG.map((s) => ({
-  ...s,
-  contentFields: [...s.contentFields, ...STYLE_FIELDS, ...SPACING_FIELDS],
-}));
+//
+// `aplicarInterruptoresSitio` oculta los interruptores que el componente de esa variante no lee y
+// ajusta su estado por defecto al del sitio (fuente única: `website/interruptoresSitio.ts`).
+export const SECTION_CATALOG: SectionTypeDefinition[] = RAW_CATALOG.map((s) =>
+  aplicarInterruptoresSitio({
+    ...s,
+    contentFields: [...s.contentFields, ...STYLE_FIELDS, ...SPACING_FIELDS],
+  }),
+);
 
 export function getSectionDefinition(sectionType: string): SectionTypeDefinition | undefined {
   return SECTION_CATALOG.find((s) => s.type === sectionType);

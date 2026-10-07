@@ -29,10 +29,15 @@ function campo(tipo: string, clave: string): ContentFieldDef {
   return c;
 }
 
-/** Variantes en las que el inspector muestra el campo, con el contenido dado. */
+/**
+ * Variantes en las que el inspector muestra el campo, con el contenido dado. Un campo puede estar
+ * desdoblado en varias definiciones con la misma clave (default distinto por variante, ver
+ * `interruptoresSitio.ts`): cuenta cualquiera de ellas.
+ */
 function variantesVisibles(tipo: string, clave: string, contenido: Record<string, unknown> = {}): string[] {
   const def = getSectionDefinition(tipo)!;
-  return def.variants.map((v) => v.id).filter((v) => campoVisible(campo(tipo, clave), contenido, v));
+  const defs = def.contentFields.filter((f) => f.key === clave);
+  return def.variants.map((v) => v.id).filter((v) => defs.some((f) => campoVisible(f, contenido, v)));
 }
 
 describe('Portada (hero): cada interruptor solo donde el sitio lo pinta', () => {

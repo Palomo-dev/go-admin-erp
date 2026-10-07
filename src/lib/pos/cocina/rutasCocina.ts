@@ -144,6 +144,7 @@ const CODIGOS = new Set([
   'comanda_no_encontrada',
   'alergia_sin_confirmar',
   'comanda_cancelada',
+  'comanda_sin_empezar',
 ]);
 
 /** Error de la RPC → { status, codigo }. Un mensaje desconocido nunca sale al cliente. */

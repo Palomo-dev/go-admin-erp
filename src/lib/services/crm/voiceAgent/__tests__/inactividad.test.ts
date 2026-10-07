@@ -2,7 +2,7 @@
  * Vigilante de silencio del agente de voz. Caso real (org 125, 2026-09-30):
  * el agente se despidió sin colgar y la línea quedó 5 minutos en silencio.
  */
-import { VigilanteSilencio, tiemposSilencioDeEntorno } from '../inactividad';
+import { duracionHablaMs, VigilanteSilencio, tiemposSilencioDeEntorno } from '../inactividad';
 
 describe('VigilanteSilencio', () => {
   beforeEach(() => jest.useFakeTimers());
@@ -54,6 +54,23 @@ describe('VigilanteSilencio', () => {
     jest.advanceTimersByTime(120_000);
     expect(avisar).not.toHaveBeenCalled();
     expect(cerrar).not.toHaveBeenCalled();
+  });
+
+  test('mientras el agente habla, el aviso espera a que termine la frase', () => {
+    const { v, avisar } = crear();
+    v.reiniciar(20_000);
+    jest.advanceTimersByTime(45_000 + 19_999);
+    expect(avisar).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(avisar).toHaveBeenCalledTimes(1);
+  });
+
+  test('duracionHablaMs deja margen para un saludo largo y no aplaza más de 90 s', () => {
+    expect(duracionHablaMs('')).toBe(0);
+    expect(duracionHablaMs('   ')).toBe(0);
+    // 250 caracteres: el saludo real de Pedro. 250*80 + 2_000 = 22_000.
+    expect(duracionHablaMs('a'.repeat(250))).toBe(22_000);
+    expect(duracionHablaMs('a'.repeat(5_000))).toBe(90_000);
   });
 
   test('tiempos de entorno: valores fuera de rango caen al defecto', () => {

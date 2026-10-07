@@ -35,6 +35,7 @@ import {
   TTS_FALLBACK_PARAM,
 } from '@/lib/services/crm/voiceAgent/ttsFallback';
 import {
+  duracionHablaMs,
   FRASE_AVISO_SILENCIO,
   FRASE_CIERRE_SILENCIO,
   VigilanteSilencio,
@@ -114,6 +115,8 @@ export interface ConversationRelaySession {
   turns: ConversationTurn[];
   /** Cuelga si la línea queda en silencio (ver `voiceAgent/inactividad.ts`). */
   silencio?: VigilanteSilencio;
+  /** Lo que el agente aún va a estar hablando cuando se rearme el reloj. */
+  hablaEnCursoMs?: number;
 }
 
 const activeSessions = new Map<string, ConversationRelaySession>();
@@ -220,15 +223,18 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
             try {
               await handlePrompt(ws, session, message);
             } finally {
-              session.silencio?.reiniciar();
+              const espera = session.hablaEnCursoMs ?? 0;
+              session.hablaEnCursoMs = 0;
+              session.silencio?.reiniciar(espera);
             }
           }
           break;
 
         case 'interrupt':
-          // El usuario interrumpió — detener generación actual. Está hablando:
-          // el conteo de silencio vuelve a empezar.
+          // El usuario interrumpió — detener generación actual. La frase del
+          // agente ya no está sonando, así que el silencio cuenta desde ya.
           console.log(`[CR] Interrupción en ${session?.callSid}`);
+          if (session) session.hablaEnCursoMs = 0;
           session?.silencio?.reiniciar();
           break;
 
@@ -411,7 +417,9 @@ async function handleSetup(
     if (pendiente) sendText(ws, pendiente, true);
   }
 
-  session.silencio.reiniciar();
+  // El saludo lo dice Twilio desde este instante. El reloj espera a que
+  // termine: si arrancara ahora, un aviso corto lo cortaría a la mitad.
+  session.silencio.reiniciar(duracionHablaMs(greeting));
 
   console.log(
     `[CR] Sesión iniciada: ${callSid} (org: ${orgId}, agente: ${runtime?.agent.name ?? 'genérico'}, ` +
@@ -516,13 +524,17 @@ async function runModelTurn(ws: WebSocket, session: ConversationRelaySession, de
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error(`[CR] [${session.callSid}] Error en el modelo (incluido el respaldo): ${errMsg}`);
-    sendText(
-      ws,
+    const disculpa =
       depth === 0
         ? 'Disculpe, tuve un problema procesando su solicitud. ¿Puede repetir?'
-        : 'Disculpe, ocurrió un error procesando la acción.'
-    );
+        : 'Disculpe, ocurrió un error procesando la acción.';
+    sendText(ws, disculpa);
+    session.hablaEnCursoMs = duracionHablaMs(disculpa);
     return;
+  }
+
+  if (fullResponse.trim()) {
+    session.hablaEnCursoMs = duracionHablaMs(fullResponse);
   }
 
   if (toolCalls.length > 0) {

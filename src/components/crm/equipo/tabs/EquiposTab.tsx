@@ -14,8 +14,10 @@ import { loadTeamsWithMembers, requireOrgId } from '../useEquipoData';
 import { memberName, memberInitials } from '../types';
 import type { SalesTeam, SalesRole, Territory, OrgMember } from '../types';
 import { TeamDialog, MemberDialog, DeleteConfirmDialog } from '../dialogs';
+import { useTranslations } from 'next-intl';
 
 export function EquiposTab() {
+  const t = useTranslations('crm.equipo');
   const { toast } = useToast();
   const [teams, setTeams] = useState<SalesTeam[]>([]);
   const [roles, setRoles] = useState<SalesRole[]>([]);
@@ -53,7 +55,7 @@ export function EquiposTab() {
       setOrgMembers(data.orgMembers);
     } catch (err) {
       console.error('Error cargando equipos:', err);
-      toast({ title: 'Error', description: 'No se pudieron cargar los equipos', variant: 'destructive' });
+      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudieronCargarEquipos'), variant: 'destructive' });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -64,7 +66,7 @@ export function EquiposTab() {
 
   const handleSaveTeam = async () => {
     if (!teamForm.name.trim()) {
-      toast({ title: 'Validación', description: 'El nombre es obligatorio', variant: 'destructive' });
+      toast({ title: t('equiposTab.validacion'), description: t('equiposTab.nombreObligatorio'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -79,16 +81,16 @@ export function EquiposTab() {
       if (editingTeam) {
         const { error } = await supabase.from('sales_teams').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingTeam.id);
         if (error) throw error;
-        toast({ title: 'Equipo actualizado' });
+        toast({ title: t('equiposTab.equipoActualizado') });
       } else {
         const { error } = await supabase.from('sales_teams').insert({ ...payload, organization_id: orgId });
         if (error) throw error;
-        toast({ title: 'Equipo creado' });
+        toast({ title: t('equiposTab.equipoCreado') });
       }
       setTeamDialogOpen(false);
       load();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
+      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoGuardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -96,7 +98,7 @@ export function EquiposTab() {
 
   const handleAddMember = async () => {
     if (!memberForm.user_id) {
-      toast({ title: 'Validación', description: 'Selecciona un miembro', variant: 'destructive' });
+      toast({ title: t('equiposTab.validacion'), description: t('equiposTab.seleccionaMiembro'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -114,11 +116,11 @@ export function EquiposTab() {
         organization_id: orgId,
       });
       if (error) throw error;
-      toast({ title: 'Miembro añadido' });
+      toast({ title: t('equiposTab.miembroAnadido') });
       setMemberDialogOpen(false);
       load();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo añadir', variant: 'destructive' });
+      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoAnadir'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -128,10 +130,10 @@ export function EquiposTab() {
     try {
       const { error } = await supabase.from('sales_team_members').update({ is_active: false }).eq('id', memberId);
       if (error) throw error;
-      toast({ title: 'Miembro removido' });
+      toast({ title: t('equiposTab.miembroRemovido') });
       load();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo remover', variant: 'destructive' });
+      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoRemover'), variant: 'destructive' });
     }
   };
 
@@ -140,12 +142,12 @@ export function EquiposTab() {
     try {
       const { error } = await supabase.from('sales_teams').update({ is_active: false }).eq('id', teamToDelete.id);
       if (error) throw error;
-      toast({ title: 'Equipo eliminado' });
+      toast({ title: t('equiposTab.equipoEliminado') });
       setDeleteTeamOpen(false);
       setTeamToDelete(null);
       load();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
+      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoEliminar'), variant: 'destructive' });
     }
   };
 
@@ -178,7 +180,7 @@ export function EquiposTab() {
             setTeamForm({ name: '', description: '', is_active: true, territory_id: '' });
             setTeamDialogOpen(true);
           }}>
-            <Plus className="h-4 w-4 mr-1" /> Nuevo Equipo
+            <Plus className="h-4 w-4 mr-1" /> {t('equiposTab.nuevoEquipo')}
           </Button>
         </div>
       </div>
@@ -188,8 +190,8 @@ export function EquiposTab() {
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-12 pb-12 text-center">
             <Users className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay equipos</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Crea tu primer equipo comercial</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('equiposTab.noHayEquipos')}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('equiposTab.creaPrimerEquipoComercial')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -223,7 +225,7 @@ export function EquiposTab() {
                         {team.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{team.description}</p>}
                         {teamQuota > 0 && (
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            Cuota total: {formatMoneda(teamQuota, paraDocumento(members[0]?.quota_currency))}
+                            {t('equiposTab.cuotaTotal', { moneda: formatMoneda(teamQuota, paraDocumento(members[0]?.quota_currency)) })}
                           </p>
                         )}
                       </div>
@@ -246,7 +248,7 @@ export function EquiposTab() {
                   {isExpanded && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
                       {members.length === 0 ? (
-                        <p className="text-xs text-gray-500 py-2">Sin miembros. Añade el primero.</p>
+                        <p className="text-xs text-gray-500 py-2">{t('equiposTab.sinMiembrosAnadePrimero')}</p>
                       ) : (
                         <div className="space-y-2">
                           {members.map((m) => (
@@ -273,7 +275,7 @@ export function EquiposTab() {
                                     )}
                                     {m.quota_amount != null && (
                                       <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                                        Cuota: {formatMoneda(Number(m.quota_amount), paraDocumento(m.quota_currency))}
+                                        {t('equiposTab.cuota', { moneda: formatMoneda(Number(m.quota_amount), paraDocumento(m.quota_currency)) })}
                                       </span>
                                     )}
                                   </div>
@@ -290,7 +292,7 @@ export function EquiposTab() {
                         setMemberForm({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: monedaResuelta ? monedaBase : '', territory_id: '' });
                         setMemberDialogOpen(true);
                       }}>
-                        <Plus className="h-3 w-3 mr-1" /> Añadir miembro
+                        <Plus className="h-3 w-3 mr-1" /> {t('equiposTab.anadirMiembro')}
                       </Button>
                     </div>
                   )}
@@ -326,8 +328,8 @@ export function EquiposTab() {
       <DeleteConfirmDialog
         open={deleteTeamOpen}
         onOpenChange={setDeleteTeamOpen}
-        title="¿Eliminar equipo?"
-        description={`Se eliminará "${teamToDelete?.name}" y todos sus miembros.`}
+        title={t('equiposTab.eliminarEquipo')}
+        description={t('equiposTab.eliminaraTodosSusMiembros', { name: teamToDelete?.name ?? '' })}
         onConfirm={handleDeleteTeam}
       />
     </div>

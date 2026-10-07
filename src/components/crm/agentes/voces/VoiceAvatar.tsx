@@ -9,6 +9,7 @@ import React from "react";
 import { Mic } from "lucide-react";
 import { voiceAvatar } from "@/lib/services/crm/voiceAvatar";
 import { PulseRing } from "@/components/shared/motion";
+import { useTranslations } from "next-intl";
 
 const SIZES = { sm: "h-9 w-9", md: "h-12 w-12", lg: "h-16 w-16" } as const;
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function VoiceAvatar({ voiceId, name, size = "md", playing = false, className = "" }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const { gradient, veil, ink } = voiceAvatar(voiceId);
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   // La tinta de la inicial se elige por el contraste mínimo en TODA la caja del
@@ -32,7 +34,7 @@ export function VoiceAvatar({ voiceId, name, size = "md", playing = false, class
     <span className={`relative inline-flex shrink-0 ${SIZES[size]} ${className}`}>
       <span
         role="img"
-        aria-label={`Avatar de la voz ${name}`}
+        aria-label={t("voiceAvatar.avatarVoz", { name })}
         className={`flex h-full w-full items-center justify-center rounded-full shadow-inner ring-1 ring-black/5 dark:ring-white/10 ${inkClass}`}
         style={{ background: `${veil}, ${gradient}` }}
       >

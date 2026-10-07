@@ -3,6 +3,7 @@
 import { cn } from '@/utils/Utils';
 import { Mail, Phone, Clock, Facebook, Instagram, Twitter, Youtube, Send } from 'lucide-react';
 import type { MenuGroupItem } from '@/lib/services/websiteMenuGroupService';
+import { useTranslations } from 'next-intl';
 
 // ============================================================
 // PROPS
@@ -35,6 +36,7 @@ interface FooterPreviewMockupProps {
 // ============================================================
 
 function MockFooterLogo() {
+  const t = useTranslations('branding.editor');
   return (
     <div className="flex items-center gap-1.5 mb-2">
       <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -100,16 +102,17 @@ function MockFooterNewsletter({
   placeholder?: string | null;
   buttonText?: string | null;
 }) {
+  const t = useTranslations('branding.editor');
   return (
     <div className="space-y-1.5">
-      <span className="text-[9px] font-medium">{title || 'Newsletter'}</span>
+      <span className="text-[9px] font-medium">{title || t('footerPreviewMockup.newsletter')}</span>
       <div className="flex gap-1">
         <div className="flex-1 h-5 rounded bg-white/10 flex items-center px-1.5 text-[8px] opacity-50">
           {placeholder || 'tu@email.com'}
         </div>
         <div className="h-5 px-2 rounded bg-blue-500 flex items-center text-[8px] font-medium text-white gap-0.5">
           <Send className="h-2 w-2" />
-          {buttonText || 'Suscribir'}
+          {buttonText || t('footerPreviewMockup.suscribir')}
         </div>
       </div>
     </div>
@@ -137,6 +140,7 @@ function DesktopMockup({
   newsletterButtonText,
   menus,
 }: FooterPreviewMockupProps) {
+  const t = useTranslations('branding.editor');
   const bgClass =
     background === 'dark' ? 'bg-gray-900 text-gray-200'
     : background === 'light' ? 'bg-gray-100 text-gray-800'
@@ -158,9 +162,9 @@ function DesktopMockup({
           ))
         ) : (
           <>
-            <MockFooterLink label="Link 1" />
-            <MockFooterLink label="Link 2" />
-            <MockFooterLink label="Link 3" />
+            <MockFooterLink label={t('footerPreviewMockup.link1')} />
+            <MockFooterLink label={t('footerPreviewMockup.link2')} />
+            <MockFooterLink label={t('footerPreviewMockup.link3')} />
           </>
         )}
       </div>
@@ -173,10 +177,10 @@ function DesktopMockup({
         <div className="flex flex-col items-center text-center gap-3">
           <MockFooterLogo />
           <div className="flex gap-3">
-            <MockFooterLink label="Inicio" />
-            <MockFooterLink label="Nosotros" />
-            <MockFooterLink label="Servicios" />
-            <MockFooterLink label="Contacto" />
+            <MockFooterLink label={t('footerPreviewMockup.inicio')} />
+            <MockFooterLink label={t('footerPreviewMockup.nosotros')} />
+            <MockFooterLink label={t('footerPreviewMockup.servicios')} />
+            <MockFooterLink label={t('footerPreviewMockup.contacto')} />
           </div>
           {showSocial && <MockFooterSocial />}
           {showContact && <MockFooterContact />}
@@ -192,7 +196,7 @@ function DesktopMockup({
           <div className="mt-3 pt-2 border-t border-white/10 text-center text-[8px] opacity-60">{footerText}</div>
         )}
         {showPoweredBy && (
-          <div className="mt-1 text-center text-[7px] opacity-40">Powered by GO Admin</div>
+          <div className="mt-1 text-center text-[7px] opacity-40">{t('footerPreviewMockup.poweredByGoAdmin')}</div>
         )}
       </div>
     );
@@ -204,9 +208,9 @@ function DesktopMockup({
         <div className="flex items-center justify-between gap-4">
           <MockFooterLogo />
           <div className="flex gap-3">
-            <MockFooterLink label="Inicio" />
-            <MockFooterLink label="Servicios" />
-            <MockFooterLink label="Contacto" />
+            <MockFooterLink label={t('footerPreviewMockup.inicio')} />
+            <MockFooterLink label={t('footerPreviewMockup.servicios')} />
+            <MockFooterLink label={t('footerPreviewMockup.contacto')} />
           </div>
           {showSocial && <MockFooterSocial />}
         </div>
@@ -214,7 +218,7 @@ function DesktopMockup({
           <div className="mt-2 pt-1.5 border-t border-white/10 text-[8px] opacity-60">{footerText}</div>
         )}
         {showPoweredBy && (
-          <div className="mt-1 text-[7px] opacity-40">Powered by GO Admin</div>
+          <div className="mt-1 text-[7px] opacity-40">{t('footerPreviewMockup.poweredByGoAdmin')}</div>
         )}
       </div>
     );
@@ -239,10 +243,10 @@ function DesktopMockup({
               ))
             ) : (
               <>
-                <MockFooterLink label="Link 1" />
-                <MockFooterLink label="Link 2" />
-                <MockFooterLink label="Link 3" />
-                <MockFooterLink label="Link 4" />
+                <MockFooterLink label={t('footerPreviewMockup.link1')} />
+                <MockFooterLink label={t('footerPreviewMockup.link2')} />
+                <MockFooterLink label={t('footerPreviewMockup.link3')} />
+                <MockFooterLink label={t('footerPreviewMockup.link4')} />
               </>
             )}
             {showNewsletter && (
@@ -260,7 +264,7 @@ function DesktopMockup({
           <div className="mt-3 pt-2 border-t border-white/10 text-[8px] opacity-60">{footerText}</div>
         )}
         {showPoweredBy && (
-          <div className="mt-1 text-[7px] opacity-40">Powered by GO Admin</div>
+          <div className="mt-1 text-[7px] opacity-40">{t('footerPreviewMockup.poweredByGoAdmin')}</div>
         )}
       </div>
     );
@@ -284,9 +288,9 @@ function DesktopMockup({
         {showCategories && (
           <div className="space-y-1.5">
             <div className="h-2 w-12 rounded-sm bg-white/30" />
-            <MockFooterLink label="Cat 1" />
-            <MockFooterLink label="Cat 2" />
-            <MockFooterLink label="Cat 3" />
+            <MockFooterLink label={t('footerPreviewMockup.cat1')} />
+            <MockFooterLink label={t('footerPreviewMockup.cat2')} />
+            <MockFooterLink label={t('footerPreviewMockup.cat3')} />
           </div>
         )}
         {/* Columna de newsletter */}
@@ -304,7 +308,7 @@ function DesktopMockup({
         <div className="mt-3 pt-2 border-t border-white/10 text-[8px] opacity-60">{footerText}</div>
       )}
       {showPoweredBy && (
-        <div className="mt-1 text-[7px] opacity-40">Powered by GO Admin</div>
+        <div className="mt-1 text-[7px] opacity-40">{t('footerPreviewMockup.poweredByGoAdmin')}</div>
       )}
     </div>
   );
@@ -328,6 +332,7 @@ function MobileMockup({
   background,
   customBgColor,
 }: FooterPreviewMockupProps) {
+  const t = useTranslations('branding.editor');
   const bgClass =
     background === 'dark' ? 'bg-gray-900 text-gray-200'
     : background === 'light' ? 'bg-gray-100 text-gray-800'
@@ -340,7 +345,7 @@ function MobileMockup({
     return (
       <div className="w-[200px] mx-auto bg-gray-100 dark:bg-gray-800 rounded-[20px] border-4 border-gray-300 dark:border-gray-600 p-2">
         <div className="h-20 flex items-center justify-center text-[8px] text-gray-400">
-          Footer oculto en móvil
+          {t('footerPreviewMockup.footerOcultoMovil')}
         </div>
       </div>
     );
@@ -370,8 +375,8 @@ function MobileMockup({
           </div>
           <div className={cn('rounded p-1.5 space-y-1', bgClass)} style={inlineBg}>
             <div className="h-1.5 w-10 rounded-sm bg-white/30" />
-            <MockFooterLink label="Link 1" />
-            <MockFooterLink label="Link 2" />
+            <MockFooterLink label={t('footerPreviewMockup.link1')} />
+            <MockFooterLink label={t('footerPreviewMockup.link2')} />
           </div>
           {showNewsletter && (
             <div className={cn('rounded p-1.5', bgClass)} style={inlineBg}>
@@ -398,9 +403,9 @@ function MobileMockup({
             ))}
           </div>
           <div className={cn('rounded-b p-1.5 space-y-1', bgClass)} style={inlineBg}>
-            <MockFooterLink label="Link 1" />
-            <MockFooterLink label="Link 2" />
-            <MockFooterLink label="Link 3" />
+            <MockFooterLink label={t('footerPreviewMockup.link1')} />
+            <MockFooterLink label={t('footerPreviewMockup.link2')} />
+            <MockFooterLink label={t('footerPreviewMockup.link3')} />
           </div>
         </div>
       )}
@@ -417,7 +422,7 @@ function MobileMockup({
         <div className="mt-1.5 text-center text-[7px] opacity-50">{footerText}</div>
       )}
       {showPoweredBy && (
-        <div className="text-center text-[6px] opacity-30">Powered by GO Admin</div>
+        <div className="text-center text-[6px] opacity-30">{t('footerPreviewMockup.poweredByGoAdmin')}</div>
       )}
     </div>
   );

@@ -614,25 +614,20 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     jest.setSystemTime(madrugada);
 
     const { resolver, rpcResolver } = scenario();
-    const { client, ops } = makeSupabase(resolver, rpcResolver);
+    const { client, ops, rpcs } = makeSupabase(resolver, rpcResolver);
     const r = await runCampaignQueue(7, client);
 
     // Ni una marcación, ni un crédito gastado: la barrera D9 es fail-closed.
     expect(r.calls_initiated).toBe(0);
     expect(twilioCreate).not.toHaveBeenCalled();
-    expect(r.errors).toContain('Llamada vac-1: fuera de la franja horaria del cliente');
 
-    // Y no es un descarte: la fila se devuelve a `pending`, se suelta el cerrojo
-    // y se reprograma. Un «ahora no» no puede convertirse en una llamada perdida.
-    const vuelta = ops.find(
-      (o) => o.table === 'voice_agent_calls' && o.verb === 'update'
-    );
-    expect(vuelta).toBeDefined();
-    const payload = vuelta!.payload as Record<string, unknown>;
-    expect(payload.status).toBe('pending');
-    expect(payload.claimed_at).toBeNull();
-    expect(payload.locked_by).toBeNull();
-    expect(new Date(String(payload.scheduled_at)).getTime()).toBeGreaterThan(madrugada.getTime());
+    // Desde 2026-10-07 la franja legal se aplica YA en la campaña, antes de
+    // reclamar (`evaluarVentanaCampana`): de madrugada no se reclama ninguna
+    // fila, así que no se gasta un intento en `voice_agent_call_attempts` ni
+    // hay nada que devolver a la cola. La fila sigue `pending` sin tocarse.
+    // (Incidente 2026-10-06: a las 00:00 se reclamaba y se reprogramaba.)
+    expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
+    expect(ops.some((o) => o.table === 'voice_agent_calls' && o.verb === 'update')).toBe(false);
 
     // El domingo tampoco se llama, ni siquiera a mediodía.
     jest.setSystemTime(new Date('2026-09-13T17:00:00.000Z')); // domingo 12:00 en Bogotá
@@ -1555,7 +1550,9 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     // `editor/AgentToolsTab.tsx` y la regla en `editor/useAgentForm.ts`.
     const editor = SRC('src/components/crm/agentes/editor/AgentToolsTab.tsx');
     expect(editor).toContain('disabled={obligatoria}');
-    expect(editor).toContain('Obligatoria por ley');
+    // El texto vive en messages (crm.agentesIa.agentToolsTab.obligatoriaLey).
+    expect(editor).toContain('t("agentToolsTab.obligatoriaLey")');
+    expect(JSON.parse(SRC('messages/es.json')).crm.agentesIa.agentToolsTab.obligatoriaLey).toBe('Obligatoria por ley');
     const formHook = SRC('src/components/crm/agentes/editor/useAgentForm.ts');
     expect(formHook).toContain('MANDATORY_TOOLS');
     expect(formHook).toMatch(/if \(isMandatoryTool\(tool\)\) return tools;/);

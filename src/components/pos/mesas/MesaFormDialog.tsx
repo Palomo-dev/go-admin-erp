@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import type { RestaurantTable, MesaFormData } from './types';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useTranslations } from 'next-intl';
 
 interface MesaFormDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function MesaFormDialog({
   mesa,
   zonas,
 }: MesaFormDialogProps) {
+  const t = useTranslations('posMesas');
   const [formData, setFormData] = useState<MesaFormData>({
     name: '',
     zone: '',
@@ -94,7 +96,7 @@ export function MesaFormDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {mesa ? 'Editar Mesa' : 'Nueva Mesa'}
+            {mesa ? t('mesaFormDialog.editarMesa') : t('mesaFormDialog.nuevaMesa')}
           </DialogTitle>
         </DialogHeader>
 
@@ -110,10 +112,10 @@ export function MesaFormDialog({
 
           {/* Nombre */}
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre de Mesa *</Label>
+            <Label htmlFor="name">{t('mesaFormDialog.nombreMesa')}</Label>
             <Input
               id="name"
-              placeholder="Ej: Mesa 1, Mesa VIP"
+              placeholder={t('mesaFormDialog.ejMesa1Mesa')}
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -124,7 +126,7 @@ export function MesaFormDialog({
 
           {/* Zona */}
           <div className="space-y-2">
-            <Label htmlFor="zone">Zona</Label>
+            <Label htmlFor="zone">{t('filtros.zona')}</Label>
             {!mostrarNuevaZona ? (
               <div className="flex gap-2">
                 <Select
@@ -138,23 +140,23 @@ export function MesaFormDialog({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar zona" />
+                    <SelectValue placeholder={t('mesaFormDialog.seleccionarZona')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sin-zona">Sin zona</SelectItem>
+                    <SelectItem value="sin-zona">{t('zona.sinZona')}</SelectItem>
                     {zonas.map((zona) => (
                       <SelectItem key={zona} value={zona}>
                         {zona}
                       </SelectItem>
                     ))}
-                    <SelectItem value="nueva">+ Nueva zona</SelectItem>
+                    <SelectItem value="nueva">{t('mesaFormDialog.nuevaZona')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             ) : (
               <div className="flex gap-2">
                 <Input
-                  placeholder="Nombre de nueva zona"
+                  placeholder={t('mesaFormDialog.nombreNuevaZona')}
                   value={nuevaZona}
                   onChange={(e) => setNuevaZona(e.target.value)}
                 />
@@ -166,7 +168,7 @@ export function MesaFormDialog({
                     setNuevaZona('');
                   }}
                 >
-                  Cancelar
+                  {t('comun.cancelar')}
                 </Button>
               </div>
             )}
@@ -174,7 +176,7 @@ export function MesaFormDialog({
 
           {/* Capacidad */}
           <div className="space-y-2">
-            <Label htmlFor="capacity">Capacidad *</Label>
+            <Label htmlFor="capacity">{t('mesaFormDialog.capacidad')}</Label>
             <Input
               id="capacity"
               type="number"
@@ -198,10 +200,10 @@ export function MesaFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancelar
+              {t('comun.cancelar')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : mesa ? 'Actualizar' : 'Crear'}
+              {isSubmitting ? t('mesaFormDialog.guardando') : mesa ? t('mesaFormDialog.actualizar') : t('mesaFormDialog.crear')}
             </Button>
           </DialogFooter>
         </form>

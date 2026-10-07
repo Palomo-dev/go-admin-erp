@@ -14,6 +14,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Plus, X, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
 
 /**
  * Grupo de ajustes que pinta el panel. Sin grupo pinta todo, como siempre; el
@@ -85,10 +86,11 @@ export default function HeaderOptionsPanel({
   grupo,
   onEditarMenu,
 }: HeaderOptionsPanelProps) {
+  const t = useTranslations('branding.editor');
   const ver = (g: GrupoHeaderOptions) => grupo === undefined || grupo === g;
   const botonEditarMenu = onEditarMenu ? (
     <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 text-xs" onClick={onEditarMenu}>
-      Editar menú
+      {t('headerOptionsPanel.editarMenu')}
     </Button>
   ) : null;
   return (
@@ -97,7 +99,7 @@ export default function HeaderOptionsPanel({
       {ver('diseno') && (
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Posición del Logo
+          {t('headerOptionsPanel.posicionLogo')}
         </Label>
         <Select
           value={settings.logo_position}
@@ -107,9 +109,9 @@ export default function HeaderOptionsPanel({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="left">Izquierda</SelectItem>
-            <SelectItem value="center">Centro</SelectItem>
-            <SelectItem value="right">Derecha</SelectItem>
+            <SelectItem value="left">{t('headerOptionsPanel.izquierda')}</SelectItem>
+            <SelectItem value="center">{t('headerOptionsPanel.centro')}</SelectItem>
+            <SelectItem value="right">{t('headerOptionsPanel.derecha')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -123,8 +125,8 @@ export default function HeaderOptionsPanel({
       {ver('contenido') && onEditarMenu && availableMenus.length === 0 && (
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <Label className="text-xs font-medium dark:text-gray-200">Menú del encabezado</Label>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">Páginas del sitio</p>
+            <Label className="text-xs font-medium dark:text-gray-200">{t('headerOptionsPanel.menuEncabezado')}</Label>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('headerOptionsPanel.paginasSitio')}</p>
           </div>
           {botonEditarMenu}
         </div>
@@ -134,7 +136,7 @@ export default function HeaderOptionsPanel({
       {/* Estilo del Buscador */}
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Estilo del Buscador
+          {t('headerOptionsPanel.estiloBuscador')}
         </Label>
         <Select
           value={settings.search_style}
@@ -144,9 +146,9 @@ export default function HeaderOptionsPanel({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="icon">Icono que abre dropdown</SelectItem>
-            <SelectItem value="bar">Barra visible</SelectItem>
-            <SelectItem value="hidden">Oculto</SelectItem>
+            <SelectItem value="icon">{t('headerOptionsPanel.iconoAbreDropdown')}</SelectItem>
+            <SelectItem value="bar">{t('headerOptionsPanel.barraVisible')}</SelectItem>
+            <SelectItem value="hidden">{t('headerOptionsPanel.oculto')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -154,7 +156,7 @@ export default function HeaderOptionsPanel({
       {/* Mostrar categorías en header */}
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Mostrar categorías en header
+          {t('headerOptionsPanel.mostrarCategoriasHeader')}
         </Label>
         <Switch
           checked={settings.show_categories_in_header}
@@ -170,7 +172,7 @@ export default function HeaderOptionsPanel({
           y en el menú móvil. */}
       {settings.show_categories_in_header && settings.header_style !== 'mega' && (
         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-          En escritorio, las categorías se ven como mega menú solo con el diseño «Mega». En móvil se ven con cualquier diseño.
+          {t('headerOptionsPanel.escritorioCategoriasVenComo')}
         </p>
       )}
 
@@ -179,7 +181,7 @@ export default function HeaderOptionsPanel({
         settings.show_categories_in_header && (
           <div className="space-y-2">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Columnas del mega menú
+              {t('headerOptionsPanel.columnasMegaMenu')}
             </Label>
             <Slider
               min={2}
@@ -197,17 +199,17 @@ export default function HeaderOptionsPanel({
       {/* Botón CTA del header */}
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Botón CTA del header
+          {t('headerOptionsPanel.botonCtaHeader')}
         </Label>
         <Input
           className="h-8 text-xs"
-          placeholder="Texto del botón"
+          placeholder={t('globalSettings.buttonText')}
           value={settings.header_cta_text ?? ''}
           onChange={(e) => onUpdate({ header_cta_text: e.target.value })}
         />
         <Input
           className="h-8 text-xs"
-          placeholder="URL del botón"
+          placeholder={t('globalSettings.buttonUrl')}
           value={settings.header_cta_url ?? ''}
           onChange={(e) => onUpdate({ header_cta_url: e.target.value })}
         />
@@ -216,7 +218,7 @@ export default function HeaderOptionsPanel({
       {/* Mostrar carrito */}
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Mostrar carrito
+          {t('headerOptionsPanel.mostrarCarrito')}
         </Label>
         <Switch
           checked={settings.show_header_cart}
@@ -227,7 +229,7 @@ export default function HeaderOptionsPanel({
       {/* Mostrar login/registro */}
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Mostrar login/registro
+          {t('headerOptionsPanel.mostrarLoginRegistro')}
         </Label>
         <Switch
           checked={settings.show_header_auth}
@@ -238,7 +240,7 @@ export default function HeaderOptionsPanel({
       {/* Mostrar topbar */}
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Mostrar topbar
+          {t('headerOptionsPanel.mostrarTopbar')}
         </Label>
         <Switch
           checked={settings.show_topbar}
@@ -252,13 +254,13 @@ export default function HeaderOptionsPanel({
       {settings.show_topbar && (
         <div className="space-y-3 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Contenido del Topbar
+            {t('headerOptionsPanel.contenidoTopbar')}
           </h4>
 
           {/* Mostrar email */}
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Mostrar correo
+              {t('headerOptionsPanel.mostrarCorreo')}
             </Label>
             <Switch
               checked={settings.topbar_show_email !== false}
@@ -269,7 +271,7 @@ export default function HeaderOptionsPanel({
           {/* Mostrar teléfono */}
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Mostrar celular/teléfono
+              {t('headerOptionsPanel.mostrarCelularTelefono')}
             </Label>
             <Switch
               checked={settings.topbar_show_phone !== false}
@@ -280,7 +282,7 @@ export default function HeaderOptionsPanel({
           {/* Posición del contacto (email/teléfono) */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Posición del correo/teléfono
+              {t('headerOptionsPanel.posicionCorreoTelefono')}
             </Label>
             <Select
               value={settings.topbar_contact_position ?? 'left'}
@@ -290,8 +292,8 @@ export default function HeaderOptionsPanel({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="left">Izquierda</SelectItem>
-                <SelectItem value="right">Derecha</SelectItem>
+                <SelectItem value="left">{t('headerOptionsPanel.izquierda')}</SelectItem>
+                <SelectItem value="right">{t('headerOptionsPanel.derecha')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -300,7 +302,7 @@ export default function HeaderOptionsPanel({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium dark:text-gray-200">
-                Mensajes promocionales ({parseAnnouncements(settings.topbar_announcement).length})
+                {t('headerOptionsPanel.mensajesPromocionales', { n: parseAnnouncements(settings.topbar_announcement).length })}
               </Label>
               <button
                 onClick={() => {
@@ -311,7 +313,7 @@ export default function HeaderOptionsPanel({
                 className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
               >
                 <Plus className="h-3 w-3" />
-                Agregar
+                {t('sidebar.add')}
               </button>
             </div>
 
@@ -324,7 +326,7 @@ export default function HeaderOptionsPanel({
                   <GripVertical className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0" />
                   <Input
                     className="h-7 text-xs flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent"
-                    placeholder={`Mensaje ${i + 1}`}
+                    placeholder={t('headerOptionsPanel.mensaje', { n: i + 1 })}
                     value={msg}
                     onChange={(e) => {
                       const list = parseAnnouncements(settings.topbar_announcement);
@@ -347,7 +349,7 @@ export default function HeaderOptionsPanel({
             </div>
 
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Los mensajes rotan automáticamente cada 6 segundos con flechas de navegación.
+              {t('headerOptionsPanel.mensajesRotanAutomaticamenteCada')}
             </p>
           </div>
         </div>
@@ -361,13 +363,13 @@ export default function HeaderOptionsPanel({
       {ver('contenido') && availableMenus.length > 0 && (
         <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Menús Nombrados
+            {t('headerOptionsPanel.menusNombrados')}
           </h4>
 
           {/* Menú del header */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Menú del Header
+              {t('headerOptionsPanel.menuHeader')}
             </Label>
             <div className="flex items-center gap-2">
             <Select
@@ -375,10 +377,10 @@ export default function HeaderOptionsPanel({
               onValueChange={(v) => onUpdate({ header_menu_id: v === '__none' ? null : v })}
             >
               <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Seleccionar menú..." />
+                <SelectValue placeholder={t('headerOptionsPanel.seleccionarMenu')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none">— Sin menú nombrado —</SelectItem>
+                <SelectItem value="__none">{t('headerOptionsPanel.sinMenuNombrado')}</SelectItem>
                 {availableMenus.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
@@ -392,17 +394,17 @@ export default function HeaderOptionsPanel({
           {settings.header_style === 'mega' && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Menú del Mega Menu
+              {t('headerOptionsPanel.menuMegaMenu')}
             </Label>
             <Select
               value={settings.header_mega_menu_id ?? '__none'}
               onValueChange={(v) => onUpdate({ header_mega_menu_id: v === '__none' ? null : v })}
             >
               <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Seleccionar menú..." />
+                <SelectValue placeholder={t('headerOptionsPanel.seleccionarMenu')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none">— Sin mega menú —</SelectItem>
+                <SelectItem value="__none">{t('headerOptionsPanel.sinMegaMenu')}</SelectItem>
                 {availableMenus.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
@@ -420,16 +422,16 @@ export default function HeaderOptionsPanel({
       {ver('estilo') && (
       <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-          Colores del Header
+          {t('headerOptionsPanel.coloresHeader')}
         </h4>
         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-          El texto se ajusta automáticamente (blanco/negro) según el fondo.
+          {t('headerOptionsPanel.textoAjustaAutomaticamenteBlanco')}
         </p>
 
         {/* Color de fondo del header */}
         <div className="space-y-1.5">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Fondo del Header
+            {t('headerOptionsPanel.fondoHeader')}
           </Label>
           <div className="flex items-center gap-2">
             <input
@@ -441,7 +443,7 @@ export default function HeaderOptionsPanel({
             <Input
               type="text"
               className="h-8 text-xs flex-1"
-              placeholder="Vacío = blanco con opacidad (auto)"
+              placeholder={t('headerOptionsPanel.vacioBlancoOpacidadAuto')}
               value={settings.header_bg_color ?? ''}
               onChange={(e) => onUpdate({ header_bg_color: e.target.value || null })}
             />
@@ -449,7 +451,7 @@ export default function HeaderOptionsPanel({
               <button
                 onClick={() => onUpdate({ header_bg_color: null })}
                 className="text-xs text-gray-500 hover:text-red-500 px-2"
-                title="Quitar color (auto)"
+                title={t('headerOptionsPanel.quitarColorAuto')}
               >
                 ✕
               </button>
@@ -460,7 +462,7 @@ export default function HeaderOptionsPanel({
         {/* Color de fondo del topbar */}
         <div className="space-y-1.5">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Fondo del Topbar
+            {t('headerOptionsPanel.fondoTopbar')}
           </Label>
           <div className="flex items-center gap-2">
             <input
@@ -472,7 +474,7 @@ export default function HeaderOptionsPanel({
             <Input
               type="text"
               className="h-8 text-xs flex-1"
-              placeholder="Vacío = oscuro por defecto (hereda header si hay)"
+              placeholder={t('headerOptionsPanel.vacioOscuroDefectoHereda')}
               value={settings.topbar_bg_color ?? ''}
               onChange={(e) => onUpdate({ topbar_bg_color: e.target.value || null })}
             />
@@ -480,7 +482,7 @@ export default function HeaderOptionsPanel({
               <button
                 onClick={() => onUpdate({ topbar_bg_color: null })}
                 className="text-xs text-gray-500 hover:text-red-500 px-2"
-                title="Quitar color (hereda)"
+                title={t('headerOptionsPanel.quitarColorHereda')}
               >
                 ✕
               </button>
@@ -491,7 +493,7 @@ export default function HeaderOptionsPanel({
         {/* Color de fondo de la barra de menú */}
         <div className="space-y-1.5">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Fondo de la barra de menú
+            {t('headerOptionsPanel.fondoBarraMenu')}
           </Label>
           <div className="flex items-center gap-2">
             <input
@@ -503,7 +505,7 @@ export default function HeaderOptionsPanel({
             <Input
               type="text"
               className="h-8 text-xs flex-1"
-              placeholder="Vacío = hereda del header"
+              placeholder={t('headerOptionsPanel.vacioHeredaHeader')}
               value={settings.nav_bg_color ?? ''}
               onChange={(e) => onUpdate({ nav_bg_color: e.target.value || null })}
             />
@@ -511,7 +513,7 @@ export default function HeaderOptionsPanel({
               <button
                 onClick={() => onUpdate({ nav_bg_color: null })}
                 className="text-xs text-gray-500 hover:text-red-500 px-2"
-                title="Quitar color (hereda)"
+                title={t('headerOptionsPanel.quitarColorHereda')}
               >
                 ✕
               </button>
@@ -522,7 +524,7 @@ export default function HeaderOptionsPanel({
         {/* Color de acento */}
         <div className="space-y-1.5">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Color de acento (links, hover, badges)
+            {t('headerOptionsPanel.colorAcentoLinksHover')}
           </Label>
           <div className="flex items-center gap-2">
             <input
@@ -534,7 +536,7 @@ export default function HeaderOptionsPanel({
             <Input
               type="text"
               className="h-8 text-xs flex-1"
-              placeholder="Vacío = usa color primario"
+              placeholder={t('headerOptionsPanel.vacioUsaColorPrimario')}
               value={settings.accent_color ?? ''}
               onChange={(e) => onUpdate({ accent_color: e.target.value || null })}
             />
@@ -542,7 +544,7 @@ export default function HeaderOptionsPanel({
               <button
                 onClick={() => onUpdate({ accent_color: null })}
                 className="text-xs text-gray-500 hover:text-red-500 px-2"
-                title="Quitar color (usa primario)"
+                title={t('headerOptionsPanel.quitarColorUsaPrimario')}
               >
                 ✕
               </button>
@@ -562,7 +564,7 @@ export default function HeaderOptionsPanel({
       {ver('estilo') && (
       <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-          Personalización Avanzada
+          {t('headerOptionsPanel.personalizacionAvanzada')}
         </h4>
 
         {/* Sub-Fase 12A: Minimal menu style */}
@@ -571,12 +573,12 @@ export default function HeaderOptionsPanel({
         {/* Sub-Fase 12B: Iconos y orden de acciones */}
         <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
           <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            {grupo === undefined ? 'Iconos y Orden de Acciones' : 'Iconos de las acciones'}
+            {grupo === undefined ? t('headerOptionsPanel.iconosOrdenAcciones') : t('headerOptionsPanel.iconosAcciones')}
           </h5>
 
           {/* Icono del carrito */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium dark:text-gray-200">Icono del carrito</Label>
+            <Label className="text-xs font-medium dark:text-gray-200">{t('headerOptionsPanel.iconoCarrito')}</Label>
             <Select
               value={settings.cart_icon ?? 'shopping-bag'}
               onValueChange={(v) => onUpdate({ cart_icon: v })}
@@ -593,7 +595,7 @@ export default function HeaderOptionsPanel({
 
           {/* Icono del buscador */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium dark:text-gray-200">Icono del buscador</Label>
+            <Label className="text-xs font-medium dark:text-gray-200">{t('headerOptionsPanel.iconoBuscador')}</Label>
             <Select
               value={settings.search_icon ?? 'search'}
               onValueChange={(v) => onUpdate({ search_icon: v })}
@@ -609,7 +611,7 @@ export default function HeaderOptionsPanel({
 
           {/* Icono del avatar/auth */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium dark:text-gray-200">Icono de usuario/auth</Label>
+            <Label className="text-xs font-medium dark:text-gray-200">{t('headerOptionsPanel.iconoUsuarioAuth')}</Label>
             <Select
               value={settings.auth_icon ?? 'user'}
               onValueChange={(v) => onUpdate({ auth_icon: v })}
@@ -626,7 +628,7 @@ export default function HeaderOptionsPanel({
 
           {/* Icono de monedas */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium dark:text-gray-200">Icono de moneda</Label>
+            <Label className="text-xs font-medium dark:text-gray-200">{t('headerOptionsPanel.iconoMoneda')}</Label>
             <Select
               value={settings.currency_icon ?? 'globe'}
               onValueChange={(v) => onUpdate({ currency_icon: v })}
@@ -649,13 +651,13 @@ export default function HeaderOptionsPanel({
         {/* Sub-Fase 12C: Personalización del botón CTA */}
         <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
           <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Personalización del Botón CTA
+            {t('headerOptionsPanel.personalizacionBotonCta')}
           </h5>
 
           {/* Full width */}
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Ancho completo del header
+              {t('headerOptionsPanel.anchoCompletoHeader')}
             </Label>
             <Switch
               checked={settings.cta_full_width ?? false}
@@ -666,7 +668,7 @@ export default function HeaderOptionsPanel({
           {/* Padding X */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Padding horizontal: {settings.cta_padding_x ?? 16}px
+              {t('headerOptionsPanel.paddingHorizontal')} {settings.cta_padding_x ?? 16}px
             </Label>
             <Slider
               min={0} max={48} step={1}
@@ -678,7 +680,7 @@ export default function HeaderOptionsPanel({
           {/* Padding Y */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Padding vertical: {settings.cta_padding_y ?? 8}px
+              {t('headerOptionsPanel.paddingVertical')} {settings.cta_padding_y ?? 8}px
             </Label>
             <Slider
               min={0} max={32} step={1}
@@ -690,7 +692,7 @@ export default function HeaderOptionsPanel({
           {/* Border radius */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Radio del borde: {settings.cta_border_radius ?? 8}px
+              {t('headerOptionsPanel.radioBorde')} {settings.cta_border_radius ?? 8}px
             </Label>
             <Slider
               min={0} max={32} step={1}
@@ -702,7 +704,7 @@ export default function HeaderOptionsPanel({
           {/* Border width */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Ancho del borde: {settings.cta_border_width ?? 0}px
+              {t('headerOptionsPanel.anchoBorde')} {settings.cta_border_width ?? 0}px
             </Label>
             <Slider
               min={0} max={8} step={1}
@@ -714,7 +716,7 @@ export default function HeaderOptionsPanel({
           {/* Margin top */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Margen superior: {settings.cta_margin_top ?? 0}px
+              {t('headerOptionsPanel.margenSuperior')} {settings.cta_margin_top ?? 0}px
             </Label>
             <Slider
               min={0} max={24} step={1}
@@ -726,7 +728,7 @@ export default function HeaderOptionsPanel({
           {/* Margin bottom */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Margen inferior: {settings.cta_margin_bottom ?? 0}px
+              {t('headerOptionsPanel.margenInferior')} {settings.cta_margin_bottom ?? 0}px
             </Label>
             <Slider
               min={0} max={24} step={1}
@@ -737,17 +739,17 @@ export default function HeaderOptionsPanel({
 
           {/* Sombra */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium dark:text-gray-200">Sombra</Label>
+            <Label className="text-xs font-medium dark:text-gray-200">{t('headerOptionsPanel.sombra')}</Label>
             <Select
               value={settings.cta_shadow ?? 'none'}
               onValueChange={(v) => onUpdate({ cta_shadow: v })}
             >
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin sombra</SelectItem>
-                <SelectItem value="sm">Sutil</SelectItem>
-                <SelectItem value="md">Media</SelectItem>
-                <SelectItem value="lg">Fuerte</SelectItem>
+                <SelectItem value="none">{t('headerOptionsPanel.sinSombra')}</SelectItem>
+                <SelectItem value="sm">{t('headerOptionsPanel.sutil')}</SelectItem>
+                <SelectItem value="md">{t('headerOptionsPanel.media')}</SelectItem>
+                <SelectItem value="lg">{t('headerOptionsPanel.fuerte')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -755,7 +757,7 @@ export default function HeaderOptionsPanel({
           {/* Color de fondo del CTA */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Color de fondo (vacío = color primario)
+              {t('headerOptionsPanel.colorFondoVacioColor')}
             </Label>
             <div className="flex items-center gap-2">
               <input
@@ -767,7 +769,7 @@ export default function HeaderOptionsPanel({
               <Input
                 type="text"
                 className="h-8 text-xs flex-1"
-                placeholder="Vacío = color primario"
+                placeholder={t('headerOptionsPanel.vacioColorPrimario')}
                 value={settings.cta_bg_color ?? ''}
                 onChange={(e) => onUpdate({ cta_bg_color: e.target.value || null })}
               />
@@ -775,7 +777,7 @@ export default function HeaderOptionsPanel({
                 <button
                   onClick={() => onUpdate({ cta_bg_color: null })}
                   className="text-xs text-gray-500 hover:text-red-500 px-2"
-                  title="Quitar color (usa primario)"
+                  title={t('headerOptionsPanel.quitarColorUsaPrimario')}
                 >✕</button>
               )}
             </div>
@@ -784,7 +786,7 @@ export default function HeaderOptionsPanel({
           {/* Color de texto del CTA */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Color de texto (vacío = auto)
+              {t('headerOptionsPanel.colorTextoVacioAuto')}
             </Label>
             <div className="flex items-center gap-2">
               <input
@@ -796,7 +798,7 @@ export default function HeaderOptionsPanel({
               <Input
                 type="text"
                 className="h-8 text-xs flex-1"
-                placeholder="Vacío = auto (blanco/negro)"
+                placeholder={t('headerOptionsPanel.vacioAutoBlancoNegro')}
                 value={settings.cta_text_color ?? ''}
                 onChange={(e) => onUpdate({ cta_text_color: e.target.value || null })}
               />
@@ -804,7 +806,7 @@ export default function HeaderOptionsPanel({
                 <button
                   onClick={() => onUpdate({ cta_text_color: null })}
                   className="text-xs text-gray-500 hover:text-red-500 px-2"
-                  title="Quitar color (auto)"
+                  title={t('headerOptionsPanel.quitarColorAuto')}
                 >✕</button>
               )}
             </div>
@@ -813,7 +815,7 @@ export default function HeaderOptionsPanel({
           {/* Color de borde del CTA */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Color del borde (vacío = sin color)
+              {t('headerOptionsPanel.colorBordeVacioSin')}
             </Label>
             <div className="flex items-center gap-2">
               <input
@@ -825,7 +827,7 @@ export default function HeaderOptionsPanel({
               <Input
                 type="text"
                 className="h-8 text-xs flex-1"
-                placeholder="Vacío = sin color de borde"
+                placeholder={t('headerOptionsPanel.vacioSinColorBorde')}
                 value={settings.cta_border_color ?? ''}
                 onChange={(e) => onUpdate({ cta_border_color: e.target.value || null })}
               />
@@ -833,7 +835,7 @@ export default function HeaderOptionsPanel({
                 <button
                   onClick={() => onUpdate({ cta_border_color: null })}
                   className="text-xs text-gray-500 hover:text-red-500 px-2"
-                  title="Quitar color"
+                  title={t('headerOptionsPanel.quitarColor')}
                 >✕</button>
               )}
             </div>
@@ -842,7 +844,7 @@ export default function HeaderOptionsPanel({
           {/* Preview en vivo del botón CTA */}
           {settings.header_cta_text && (
             <div className="pt-2">
-              <Label className="text-xs font-medium dark:text-gray-200 mb-1.5 block">Preview</Label>
+              <Label className="text-xs font-medium dark:text-gray-200 mb-1.5 block">{t('headerOptionsPanel.preview')}</Label>
               <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800/50">
                 <button
                   className="font-semibold text-sm transition-opacity hover:opacity-90"
@@ -877,7 +879,7 @@ export default function HeaderOptionsPanel({
     return (
         <div className="space-y-1.5">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Apertura del menú (Header Minimal)
+            {t('headerOptionsPanel.aperturaMenuHeaderMinimal')}
           </Label>
           <Select
             value={settings.minimal_menu_style ?? 'drawer'}
@@ -887,12 +889,12 @@ export default function HeaderOptionsPanel({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="drawer">Drawer lateral (default)</SelectItem>
-              <SelectItem value="dropdown">Dropdown compacto</SelectItem>
+              <SelectItem value="drawer">{t('headerOptionsPanel.drawerLateralDefault')}</SelectItem>
+              <SelectItem value="dropdown">{t('headerOptionsPanel.dropdownCompacto')}</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Solo aplica cuando el estilo del header es «Minimal».
+            {t('headerOptionsPanel.soloAplicaCuandoEstilo')}
           </p>
         </div>
     );
@@ -902,10 +904,10 @@ export default function HeaderOptionsPanel({
     return (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Orden de las acciones
+              {t('headerOptionsPanel.ordenAcciones')}
             </Label>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Arrastra para reordenar. El orden afecta todos los headers.
+              {t('headerOptionsPanel.arrastraReordenarOrdenAfecta')}
             </p>
             <ActionsOrderEditor
               order={settings.actions_order ?? ['search', 'currency', 'cart', 'auth']}
@@ -958,6 +960,7 @@ function ActionsOrderEditor({
   order: string[];
   onChange: (order: string[]) => void;
 }) {
+  const t = useTranslations('branding.editor');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
@@ -1028,13 +1031,13 @@ function ActionsOrderEditor({
             onClick={() => moveUp(i)}
             disabled={i === 0}
             className="text-[10px] text-gray-500 hover:text-blue-600 disabled:opacity-30 px-1"
-            title="Subir"
+            title={t('headerOptionsPanel.subir')}
           >▲</button>
           <button
             onClick={() => moveDown(i)}
             disabled={i === order.length - 1}
             className="text-[10px] text-gray-500 hover:text-blue-600 disabled:opacity-30 px-1"
-            title="Bajar"
+            title={t('headerOptionsPanel.bajar')}
           >▼</button>
         </div>
       ))}

@@ -11,22 +11,23 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/utils/Utils';
 import type { BaseFieldProps } from './types';
+import { useTranslations } from 'next-intl';
 
 const SPACING_OPTIONS = [
-  { value: 'none', label: 'Ninguno' },
-  { value: 'xs', label: 'Muy poco' },
-  { value: 'sm', label: 'Pequeño' },
-  { value: 'md', label: 'Mediano' },
-  { value: 'lg', label: 'Grande' },
-  { value: 'xl', label: 'Muy grande' },
+  { value: 'none' },
+  { value: 'xs' },
+  { value: 'sm' },
+  { value: 'md' },
+  { value: 'lg' },
+  { value: 'xl' },
 ];
 
 const FIELDS = [
-  { key: 'padding_top', label: 'Padding arriba' },
-  { key: 'padding_bottom', label: 'Padding abajo' },
-  { key: 'padding_x', label: 'Padding horizontal' },
-  { key: 'margin_top', label: 'Margen arriba' },
-  { key: 'margin_bottom', label: 'Margen abajo' },
+  { key: 'padding_top' },
+  { key: 'padding_bottom' },
+  { key: 'padding_x' },
+  { key: 'margin_top' },
+  { key: 'margin_bottom' },
 ];
 
 /**
@@ -35,6 +36,7 @@ const FIELDS = [
  * romper el JSON existente. Opción de enlazar padding vertical.
  */
 export default function SpacingField({ value, onChange }: BaseFieldProps) {
+  const t = useTranslations('branding.editor');
   const [isOpen, setIsOpen] = useState(false);
   // `value` es el objeto content completo de la sección, porque spacing
   // escribe en múltiples keys a la vez.
@@ -57,7 +59,7 @@ export default function SpacingField({ value, onChange }: BaseFieldProps) {
         className="flex items-center gap-2 w-full text-left"
       >
         <Layout className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-1">Espaciado</span>
+        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-1">{t('spacingField.espaciado')}</span>
         {isOpen ? (
           <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
         ) : (
@@ -73,14 +75,14 @@ export default function SpacingField({ value, onChange }: BaseFieldProps) {
             className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
           >
             {linked ? <Link2 className="h-3 w-3" /> : <Link2Off className="h-3 w-3" />}
-            {linked ? 'Padding vertical enlazado' : 'Enlazar padding vertical'}
+            {linked ? t('spacingField.paddingVerticalEnlazado') : t('spacingField.enlazarPaddingVertical')}
           </button>
 
           <div className="grid grid-cols-2 gap-2">
             {FIELDS.map((f) => (
               <div key={f.key} className={cn(f.key === 'padding_x' && 'col-span-2')}>
                 <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">
-                  {f.label}
+                  {t(`spacingField.campos.${f.key}`)}
                 </label>
                 <Select
                   value={content[f.key] || 'lg'}
@@ -92,7 +94,7 @@ export default function SpacingField({ value, onChange }: BaseFieldProps) {
                   <SelectContent>
                     {SPACING_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value} className="text-[11px]">
-                        {o.label}
+                        {t(`spacingField.opciones.${o.value}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>

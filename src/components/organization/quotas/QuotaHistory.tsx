@@ -15,10 +15,11 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QuotaProgressBar } from '@/components/shared/QuotaProgressBar';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
-import { QUOTA_TYPE_LABELS, quotaStatusLabel, type QuotaStatus, type QuotaType } from '@/lib/services/crm/quotaProgress';
+import type { QuotaStatus, QuotaType } from '@/lib/services/crm/quotaProgress';
 import { formatCurrency } from '@/utils/Utils';
-import { periodLabelFor } from './quotaForm';
+import { useTextosCuota } from './useTextosCuota';
 import type { QuotaRow } from './useMemberQuotas';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   rows: QuotaRow[];
@@ -40,6 +41,8 @@ export function formatQuotaValue(type: QuotaType | string, value: number, curren
 }
 
 export function QuotaHistory({ rows, loading, canManage, busy, onDelete }: Props) {
+  const t = useTranslations('org.acceso.miembros');
+  const tc = useTextosCuota();
   const [toDelete, setToDelete] = useState<QuotaRow | null>(null);
   const focusFallback = useCallback(
     () => document.querySelector<HTMLElement>('[data-quota-delete]') ?? document.querySelector<HTMLElement>('[data-quota-submit]'),
@@ -49,7 +52,7 @@ export function QuotaHistory({ rows, loading, canManage, busy, onDelete }: Props
 
   if (loading && rows.length === 0) {
     return (
-      <div className="space-y-3" aria-busy="true" aria-label="Cargando cuotas">
+      <div className="space-y-3" aria-busy="true" aria-label={t('quotaHistory.cargandoCuotas')}>
         {[0, 1].map((i) => (
           <div key={i} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
             <Skeleton className="mb-2 h-4 w-40" />
@@ -64,30 +67,30 @@ export function QuotaHistory({ rows, loading, canManage, busy, onDelete }: Props
   if (rows.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
-        Este miembro aún no tiene cuotas. Crea la primera arriba: el cumplimiento se calcula solo con sus ventas, actividades o llamadas.
+        {t('quotaHistory.esteMiembroAunNo')}
       </p>
     );
   }
 
   return (
-    <ul className="space-y-3" aria-label="Historial de cuotas">
+    <ul className="space-y-3" aria-label={t('quotaHistory.historialCuotas')}>
       {rows.map((r) => {
         const d = r.progress_detail;
         const icon = STATUS_ICON[d.status];
         const achieved = formatQuotaValue(r.target_type, r.achieved_amount, r.target_currency);
         const target = formatQuotaValue(r.target_type, Number(r.target_amount), r.target_currency);
-        const label = `${d.raw_pct} % de la cuota de ${QUOTA_TYPE_LABELS[r.target_type as QuotaType] ?? r.target_type}, ${quotaStatusLabel(d.status).toLowerCase()}`;
+        const label = t('cuotas.etiquetaBarra', { pct: d.raw_pct, tipo: tc.tipo(r.target_type), estado: tc.estado(d.status).toLowerCase() });
         return (
           <li key={r.id} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
             <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">{periodLabelFor(r.period, r.period_start, r.period_end)}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{QUOTA_TYPE_LABELS[r.target_type as QuotaType] ?? r.target_type}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{tc.etiquetaPeriodo(r.period, r.period_start, r.period_end)}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{tc.tipo(r.target_type)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`inline-flex items-center gap-1 text-xs font-medium ${icon.className}`}>
                   <icon.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                  {quotaStatusLabel(d.status)}
+                  {tc.estado(d.status)}
                 </span>
                 {canManage && (
                   <Button
@@ -95,7 +98,7 @@ export function QuotaHistory({ rows, loading, canManage, busy, onDelete }: Props
                     size="sm"
                     data-quota-delete=""
                     className="h-7 w-7 p-0 text-gray-600 hover:text-red-700 dark:text-gray-400 dark:hover:text-red-300"
-                    aria-label={`Eliminar cuota de ${periodLabelFor(r.period, r.period_start, r.period_end)}`}
+                    aria-label={t('quotaHistory.eliminarCuota', { period: tc.etiquetaPeriodo(r.period, r.period_start, r.period_end) })}
                     onClick={() => setToDelete(r)}
                     disabled={busy}
                   >
@@ -107,16 +110,18 @@ export function QuotaHistory({ rows, loading, canManage, busy, onDelete }: Props
             <QuotaProgressBar pct={d.pct} status={d.status} label={label} />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-gray-700 dark:text-gray-300">
               <span className="tabular-nums">
-                <span className="font-semibold text-gray-900 dark:text-white">{achieved}</span> de {target} · {d.raw_pct} %
+                {t.rich('cuotas.logrado', { logrado: achieved, meta: target, pct: d.raw_pct, b: (c) => <span className="font-semibold text-gray-900 dark:text-white">{c}</span> })}
               </span>
               <span>
                 {d.status === 'cumplida'
-                  ? `Superada en ${formatQuotaValue(r.target_type, Math.max(0, r.achieved_amount - Number(r.target_amount)), r.target_currency)}`
+                  ? t('quotaHistory.superada', { valor: formatQuotaValue(r.target_type, Math.max(0, r.achieved_amount - Number(r.target_amount)), r.target_currency) })
                   : d.days_remaining > 0
-                    ? `Faltan ${formatQuotaValue(r.target_type, d.remaining, r.target_currency)} · ${d.days_remaining} día${
-                        d.days_remaining === 1 ? '' : 's'
-                      } · ritmo ${formatQuotaValue(r.target_type, d.needed_per_day, r.target_currency)}/día`
-                    : `Faltaron ${formatQuotaValue(r.target_type, d.remaining, r.target_currency)}`}
+                    ? t('cuotas.faltan', {
+                        faltante: formatQuotaValue(r.target_type, d.remaining, r.target_currency),
+                        dias: d.days_remaining,
+                        ritmo: formatQuotaValue(r.target_type, d.needed_per_day, r.target_currency),
+                      })
+                    : t('cuotas.faltaron', { faltante: formatQuotaValue(r.target_type, d.remaining, r.target_currency) })}
               </span>
             </div>
           </li>
@@ -126,9 +131,9 @@ export function QuotaHistory({ rows, loading, canManage, busy, onDelete }: Props
         open={toDelete !== null}
         onOpenChange={(o) => !o && setToDelete(null)}
         onCloseAutoFocus={onCloseAutoFocus}
-        title={toDelete ? `¿Eliminar la cuota de ${periodLabelFor(toDelete.period, toDelete.period_start, toDelete.period_end)}?` : ''}
-        description="Se borra la meta; las ventas, actividades y llamadas del miembro no se tocan."
-        confirmLabel="Sí, eliminar"
+        title={toDelete ? t('quotaHistory.eliminarCuota2', { period: tc.etiquetaPeriodo(toDelete.period, toDelete.period_start, toDelete.period_end) }) : ''}
+        description={t('quotaHistory.borraMetaVentasActividades')}
+        confirmLabel={t('quotaHistory.siEliminar')}
         variant="destructive"
         loading={busy}
         onConfirm={async () => {

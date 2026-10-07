@@ -18,6 +18,7 @@ import { splitCardTags, type LibraryVoice } from "@/lib/services/crm/voiceLibrar
 import { VoiceAvatar } from "./VoiceAvatar";
 import { VoicePreviewButton } from "./VoicePreviewButton";
 import type { PreviewStatus } from "./useAudioPreview";
+import { useTranslations } from "next-intl";
 
 interface Props {
   voice: LibraryVoice;
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAdd, accountIsFree }: Props) {
+  const tx = useTranslations("crm.agentesIa");
   const playing = previewStatus === "playing";
   const { headline, tags } = splitCardTags(voice);
   const paid = !voice.free_users_allowed;
@@ -62,7 +64,7 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
           </h3>
           <p className="truncate text-xs text-gray-500 dark:text-gray-400">
             {headline ?? ""}
-            {voice.cloned_by_count > 0 ? `${headline ? " · " : ""}usada por ${voice.cloned_by_count.toLocaleString("es-CO")}` : ""}
+            {voice.cloned_by_count > 0 ? `${headline ? " · " : ""}${tx("voiceCard.usadaPor", { n: voice.cloned_by_count })}` : ""}
           </p>
         </div>
       </div>
@@ -72,12 +74,12 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
       )}
 
       {(tags.length > 0 || paid) && (
-        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Etiquetas">
+        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={tx("voiceCard.etiquetas")}>
           {paid && (
             <li>
               <Badge variant="warning" className="gap-1 font-normal">
                 <Lock className="h-3 w-3" aria-hidden="true" />
-                Plan de pago
+                {tx("voiceCard.planPago")}
               </Badge>
             </li>
           )}
@@ -92,8 +94,8 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
       {paid && (
         <p id={paidNoteId} className="mt-2 text-xs text-amber-800 dark:text-amber-200">
           {blocked
-            ? "No se puede añadir con el plan gratuito de ElevenLabs de esta cuenta."
-            : "Solo se puede añadir con un plan de pago de ElevenLabs."}
+            ? tx("voiceCard.noPuedeAnadirPlan")
+            : tx("voiceCard.soloPuedeAnadirPlan")}
         </p>
       )}
 
@@ -110,7 +112,7 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
         {added ? (
           <span className="inline-flex items-center justify-end gap-1 text-xs font-medium text-green-700 dark:text-green-300" role="status">
             <Check className="h-4 w-4" aria-hidden="true" />
-            En mis voces
+            {tx("voiceCard.misVoces")}
           </span>
         ) : (
           <Button
@@ -126,11 +128,11 @@ export function VoiceCard({ voice, previewStatus, onPreview, added, adding, onAd
             // Mientras añade no se deshabilita (perdería el foco si falla): se ignora el clic y se anuncia ocupado.
             aria-busy={adding || undefined}
             disabled={blocked}
-            aria-label={`Añadir ${voice.name} a mis voces`}
+            aria-label={tx("voiceCard.anadirMisVoces", { name: voice.name })}
             aria-describedby={paid ? paidNoteId : undefined}
           >
             {adding ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" /> : paid ? <Lock className="h-4 w-4 shrink-0" aria-hidden="true" /> : <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />}
-            <span className="truncate">Añadir</span>
+            <span className="truncate">{tx("voiceCard.anadir")}</span>
           </Button>
         )}
       </div>

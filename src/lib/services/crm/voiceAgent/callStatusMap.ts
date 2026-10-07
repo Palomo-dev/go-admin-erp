@@ -77,3 +77,37 @@ export function mapTwilioToCallsStatus(callStatus: string, answeredBy?: string |
 
 /** Estados de `calls` que implican que la llamada terminó. */
 export const ENDED_CALL_STATUSES = ['completed', 'failed', 'busy', 'no_answer', 'canceled', 'voicemail'];
+
+/**
+ * Estados «vivos» de `voice_agent_calls`: los ÚNICOS desde los que se puede
+ * escribir `in_progress`. Una fila que ya cerró no vuelve atrás.
+ *
+ * Incidente 2026-10-06 (org 125): la 2ª pasada del TwiML del agente (tras el
+ * aviso de grabación) tarda cientos de ms; si la persona colgaba en ese lapso,
+ * el `completed` del `statusCallback` cerraba la fila y DESPUÉS el TwiML la
+ * reabría con `in_progress` (escritura incondicional, última gana). Cinco filas
+ * así ocuparon para siempre los cinco cupos de concurrencia de la organización.
+ * Toda escritura de un estado vivo va con `.in('status', ESTADOS_VIVOS_VAC)`.
+ */
+export const ESTADOS_VIVOS_VAC: string[] = ['pending', 'queued', 'in_progress'];
+
+/** Estados «vivos» de `calls`. Uno vivo solo se escribe si `ended_at` sigue nulo. */
+export const ESTADOS_VIVOS_CALLS = ['dialing', 'ringing', 'in_progress'];
+
+/** ¿Es un estado de `voice_agent_calls` que todavía no cerró la llamada? */
+export function esEstadoVivoVac(status: string | null | undefined): boolean {
+  return !!status && ESTADOS_VIVOS_VAC.includes(status);
+}
+
+/**
+ * Minutos sin actualizarse tras los que una fila `in_progress` se considera
+ * colgada. Holgura de 3× sobre el tope de duración de los agentes (300 s; el
+ * mayor configurado en la base el 2026-10-07 es 300). Lo usan el recolector
+ * (`fn_vac_recoger_colgadas`) y los conteos de concurrencia.
+ */
+export const MINUTOS_LLAMADA_COLGADA = 15;
+
+/** Instante (ISO) antes del cual una fila `in_progress` sin tocar está colgada. */
+export function corteLlamadaColgada(ahora: Date = new Date(), minutos: number = MINUTOS_LLAMADA_COLGADA): string {
+  return new Date(ahora.getTime() - minutos * 60 * 1000).toISOString();
+}

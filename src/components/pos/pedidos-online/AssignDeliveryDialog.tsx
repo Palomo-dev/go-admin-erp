@@ -28,6 +28,7 @@ import {
   type DeliveryVehicle,
   type DeliveryDriver,
 } from '@/lib/services/deliveryIntegrationService';
+import { useTranslations } from 'next-intl';
 
 interface AssignDeliveryDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function AssignDeliveryDialog({
   organizationId,
   onAssigned,
 }: AssignDeliveryDialogProps) {
+  const t = useTranslations('pedidoWeb');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -92,14 +94,14 @@ export function AssignDeliveryDialog({
       setDrivers(driversData);
 
       if (vehiclesData.length === 0) {
-        setError('No hay vehículos disponibles para delivery');
+        setError(t('assignDeliveryDialog.noHayVehiculosDisponibles'));
       }
       if (driversData.length === 0) {
-        setError('No hay conductores disponibles');
+        setError(t('assignDeliveryDialog.noHayConductoresDisponibles'));
       }
     } catch (err) {
       console.error('Error loading data:', err);
-      setError('Error al cargar datos de vehículos y conductores');
+      setError(t('assignDeliveryDialog.errorCargarDatosVehiculos'));
     } finally {
       setLoadingData(false);
     }
@@ -108,8 +110,8 @@ export function AssignDeliveryDialog({
   const handleAssign = async () => {
     if (!selectedVehicle || !selectedDriver) {
       toast({
-        title: 'Campos requeridos',
-        description: 'Selecciona un vehículo y un conductor',
+        title: t('assignDeliveryDialog.camposRequeridos'),
+        description: t('assignDeliveryDialog.seleccionaVehiculoConductor'),
         variant: 'destructive',
       });
       return;
@@ -122,8 +124,8 @@ export function AssignDeliveryDialog({
       // Si no existe shipment, necesitamos el web order completo para crearlo
       if (!currentShipmentId) {
         toast({
-          title: 'Error',
-          description: 'No se encontró el envío asociado. Intenta marcar el pedido como listo primero.',
+          title: t('assignDeliveryDialog.error'),
+          description: t('assignDeliveryDialog.noEncontroEnvioAsociado'),
           variant: 'destructive',
         });
         setLoading(false);
@@ -144,8 +146,8 @@ export function AssignDeliveryDialog({
       );
 
       toast({
-        title: 'Asignación exitosa',
-        description: 'Se ha asignado el conductor y vehículo al pedido',
+        title: t('assignDeliveryDialog.asignacionExitosa'),
+        description: t('assignDeliveryDialog.haAsignadoConductorVehiculo'),
       });
 
       onOpenChange(false);
@@ -153,8 +155,8 @@ export function AssignDeliveryDialog({
     } catch (err) {
       console.error('Error assigning delivery:', err);
       toast({
-        title: 'Error',
-        description: 'No se pudo asignar el delivery',
+        title: t('assignDeliveryDialog.error'),
+        description: t('assignDeliveryDialog.noPudoAsignarDelivery'),
         variant: 'destructive',
       });
     } finally {
@@ -163,14 +165,7 @@ export function AssignDeliveryDialog({
   };
 
   const getVehicleTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      motorcycle: 'Moto',
-      car: 'Carro',
-      van: 'Van',
-      bicycle: 'Bicicleta',
-      truck: 'Camión',
-    };
-    return labels[type] || type;
+    return t.has(`assignDeliveryDialog.vehiculos.${type}`) ? t(`assignDeliveryDialog.vehiculos.${type}`) : type;
   };
 
   const getVehicleIcon = (type: string) => {
@@ -183,10 +178,10 @@ export function AssignDeliveryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
             <Truck className="h-5 w-5 dark:text-gray-300" />
-            Asignar Delivery
+            {t('assignDeliveryDialog.asignarDelivery')}
           </DialogTitle>
           <DialogDescription className="dark:text-gray-400">
-            Selecciona el vehículo y conductor para la entrega
+            {t('assignDeliveryDialog.seleccionaVehiculoConductorEntrega')}
           </DialogDescription>
         </DialogHeader>
 
@@ -201,17 +196,17 @@ export function AssignDeliveryDialog({
             <AlertCircle className="h-10 w-10 text-yellow-500 dark:text-yellow-400 mb-3" />
             <p className="text-sm text-muted-foreground dark:text-gray-300">{error}</p>
             <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
-              Configura vehículos y conductores en el módulo de Transporte
+              {t('assignDeliveryDialog.configuraVehiculosConductoresModulo')}
             </p>
           </div>
         ) : (
           <div className="space-y-4 py-4">
             {/* Selección de Vehículo */}
             <div className="space-y-2">
-              <Label htmlFor="vehicle" className="dark:text-gray-200">Vehículo</Label>
+              <Label htmlFor="vehicle" className="dark:text-gray-200">{t('assignDeliveryDialog.vehiculo')}</Label>
               <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
                 <SelectTrigger id="vehicle">
-                  <SelectValue placeholder="Seleccionar vehículo" />
+                  <SelectValue placeholder={t('assignDeliveryDialog.seleccionarVehiculo')} />
                 </SelectTrigger>
                 <SelectContent>
                   {vehicles.map((vehicle) => (
@@ -234,17 +229,17 @@ export function AssignDeliveryDialog({
               </Select>
               {vehicles.length === 0 && (
                 <p className="text-xs text-muted-foreground dark:text-gray-400">
-                  No hay vehículos disponibles
+                  {t('assignDeliveryDialog.noHayVehiculosDisponibles2')}
                 </p>
               )}
             </div>
 
             {/* Selección de Conductor */}
             <div className="space-y-2">
-              <Label htmlFor="driver" className="dark:text-gray-200">Conductor</Label>
+              <Label htmlFor="driver" className="dark:text-gray-200">{t('assignDeliveryDialog.conductor')}</Label>
               <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                 <SelectTrigger id="driver">
-                  <SelectValue placeholder="Seleccionar conductor" />
+                  <SelectValue placeholder={t('assignDeliveryDialog.seleccionarConductor')} />
                 </SelectTrigger>
                 <SelectContent>
                   {drivers.map((driver) => (
@@ -254,10 +249,10 @@ export function AssignDeliveryDialog({
                         <span className="dark:text-gray-100">
                           {driver.employee
                             ? `${driver.employee.first_name} ${driver.employee.last_name}`
-                            : `Conductor ${driver.license_number}`}
+                            : t('assignDeliveryDialog.conductor2', { license_number: driver.license_number })}
                         </span>
                         <span className="text-xs text-muted-foreground dark:text-gray-400">
-                          Lic: {driver.license_category}
+                          {t('assignDeliveryDialog.lic', { license_category: driver.license_category })}
                         </span>
                       </div>
                     </SelectItem>
@@ -266,7 +261,7 @@ export function AssignDeliveryDialog({
               </Select>
               {drivers.length === 0 && (
                 <p className="text-xs text-muted-foreground dark:text-gray-400">
-                  No hay conductores disponibles
+                  {t('assignDeliveryDialog.noHayConductoresDisponibles')}
                 </p>
               )}
             </div>
@@ -275,7 +270,7 @@ export function AssignDeliveryDialog({
             <div className="space-y-2">
               <Label htmlFor="estimated-time" className="flex items-center gap-2 dark:text-gray-200">
                 <Clock className="h-4 w-4 dark:text-gray-400" />
-                Tiempo estimado de entrega (minutos)
+                {t('assignDeliveryDialog.tiempoEstimadoEntregaMinutos')}
               </Label>
               <Input
                 id="estimated-time"
@@ -286,11 +281,10 @@ export function AssignDeliveryDialog({
                 max={180}
               />
               <p className="text-xs text-muted-foreground dark:text-gray-400">
-                Llegada estimada:{' '}
-                {new Date(Date.now() + estimatedMinutes * 60000).toLocaleTimeString(
+                {t('assignDeliveryDialog.llegadaEstimada', { localeTimeString: new Date(Date.now() + estimatedMinutes * 60000).toLocaleTimeString(
                   'es-CO',
                   { hour: '2-digit', minute: '2-digit' }
-                )}
+                ) })}
               </p>
             </div>
           </div>
@@ -298,14 +292,14 @@ export function AssignDeliveryDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="dark:border-gray-600">
-            Cancelar
+            {t('ficha.cancelar')}
           </Button>
           <Button
             onClick={handleAssign}
             disabled={loading || loadingData || !selectedVehicle || !selectedDriver}
           >
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Asignar Delivery
+            {t('assignDeliveryDialog.asignarDelivery')}
           </Button>
         </DialogFooter>
       </DialogContent>

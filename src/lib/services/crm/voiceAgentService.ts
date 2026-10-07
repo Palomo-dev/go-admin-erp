@@ -64,6 +64,9 @@ import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
 import { evaluarLey2300Cliente, numeroExcluido, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { corteLlamadaColgada, MINUTOS_LLAMADA_COLGADA } from '@/lib/services/crm/voiceAgent/callStatusMap';
+import { evaluarVentanaCampana, horarioPropioAbierto, type HorarioCampana } from '@/lib/services/crm/voiceAgent/ventanaCampana';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 
 // ─── Tipos: Voice Agents ─────────────────────────────────────────────────────
 
@@ -567,12 +570,8 @@ export async function getVoiceAgentCalls(
 
 // ─── Horarios ────────────────────────────────────────────────────────────────
 
-interface ScheduleConfig {
-  days?: number[]; // 0=domingo, 6=sabado
-  start_hour?: number;
-  end_hour?: number;
-  timezone?: string;
-}
+/** Franja propia de una campaña o agente (0 = domingo … 6 = sábado). */
+type ScheduleConfig = HorarioCampana;
 
 /** Hora y día locales de una zona horaria. Devuelve null si la zona es inválida. */
 export function localHourAndDay(timezone: string, now = new Date()): { hour: number; day: number } | null {
@@ -610,15 +609,10 @@ export const DEFAULT_AGENT_MAX_CALLS_PER_HOUR = 20;
  * Ventana de la campaña. A-F6-22: si la zona horaria es inválida NO se cae a la hora
  * del servidor, se rechaza (fail-closed): no llamamos a ciegas.
  */
-export function isWithinSchedule(schedule: ScheduleConfig | null, timezone?: string): boolean {
-  if (!schedule || schedule.start_hour === undefined || schedule.end_hour === undefined) {
-    return true; // Sin schedule configurado = sin restricción propia (queda la del cliente)
-  }
-  const tz = timezone || schedule.timezone || DEFAULT_TIMEZONE;
-  const local = localHourAndDay(tz);
-  if (!local) return false; // zona inválida → no marcar
-  if (schedule.days && schedule.days.length > 0 && !schedule.days.includes(local.day)) return false;
-  return local.hour >= schedule.start_hour && local.hour < schedule.end_hour;
+export function isWithinSchedule(schedule: ScheduleConfig | null, timezone?: string, now: Date = new Date()): boolean {
+  // Sin horas propias = sin restricción PROPIA. Ojo: eso no autoriza a marcar;
+  // la cola de campañas aplica además la franja legal (`evaluarVentanaCampana`).
+  return horarioPropioAbierto(schedule, timezone || schedule?.timezone || DEFAULT_TIMEZONE, now);
 }
 
 /**
@@ -928,9 +922,34 @@ async function countAgentInProgress(
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', orgId)
     .eq('voice_agent_id', agentId)
-    .eq('status', 'in_progress');
+    .eq('status', 'in_progress')
+    .gte('updated_at', corteLlamadaColgada());
   if (res.error) throw new VoiceAgentDbError('countAgentInProgress', res.error);
   return res.count ?? 0;
+}
+
+/**
+ * Recolector de llamadas colgadas (incidente 2026-10-06, org 125).
+ *
+ * Cierra las filas `in_progress` de la organización cuya llamada ya terminó
+ * (`calls.ended_at` puesto) o que llevan más de `MINUTOS_LLAMADA_COLGADA` sin
+ * actualizarse, para que una fila colgada no bloquee la concurrencia para
+ * siempre. Toca `voice_agent_calls` y `calls` en una sola transacción
+ * (`fn_vac_recoger_colgadas`, solo `service_role`); no borra nada ni mueve
+ * créditos. Devuelve cuántas filas cerró.
+ *
+ * Los conteos de concurrencia ya ignoran las filas viejas por su cuenta
+ * (`corteLlamadaColgada`): si el recolector fallara, el cupo no se queda
+ * bloqueado más de `MINUTOS_LLAMADA_COLGADA` minutos.
+ */
+export async function recogerLlamadasColgadas(
+  supabase: SupabaseClient,
+  orgId: number,
+  minutos: number = MINUTOS_LLAMADA_COLGADA
+): Promise<number> {
+  const res = await supabase.rpc('fn_vac_recoger_colgadas', { p_org: orgId, p_minutos: minutos });
+  if (res.error) throw new VoiceAgentDbError('fn_vac_recoger_colgadas', res.error);
+  return typeof res.data === 'number' ? res.data : Number(res.data) || 0;
 }
 
 /**
@@ -947,7 +966,8 @@ async function countOrgInProgress(supabase: SupabaseClient, orgId: number): Prom
     .from('voice_agent_calls')
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', orgId)
-    .eq('status', 'in_progress');
+    .eq('status', 'in_progress')
+    .gte('updated_at', corteLlamadaColgada());
   if (res.error) throw new VoiceAgentDbError('countOrgInProgress', res.error);
   return res.count ?? 0;
 }
@@ -957,7 +977,8 @@ async function countInProgress(supabase: SupabaseClient, campaignId: string): Pr
     .from('voice_agent_calls')
     .select('id', { count: 'exact', head: true })
     .eq('campaign_id', campaignId)
-    .eq('status', 'in_progress');
+    .eq('status', 'in_progress')
+    .gte('updated_at', corteLlamadaColgada());
   if (res.error) throw new VoiceAgentDbError('countInProgress', res.error);
   return res.count ?? 0;
 }
@@ -1018,6 +1039,18 @@ export async function runCampaignQueue(
   const webhookBase = getWebhookBaseUrl();
   const recordingSettings = orgSettings;
 
+  // Antes de contar: cerrar las filas colgadas (ver `recogerLlamadasColgadas`).
+  // Un fallo aquí no detiene la cola: los conteos ya ignoran las filas viejas.
+  try {
+    const recogidas = await recogerLlamadasColgadas(supabase, orgId);
+    if (recogidas > 0) console.warn('[voz] recolector cerró llamadas colgadas', { org: orgId, filas: recogidas });
+  } catch (err) {
+    console.error('[voz] recolector de llamadas colgadas falló:', err instanceof Error ? err.message : err, { org: orgId });
+  }
+
+  // Zona de la organización para la franja legal de las campañas sin zona propia.
+  const zonaOrganizacion = await getOrganizationTimezone(orgId, supabase);
+
   // Barrera de ORGANIZACIÓN (`comm_settings.voice_max_concurrent_calls`): el
   // cupo es compartido por todas las campañas y por el despacho puntual. Se lee
   // una vez y se descuenta con lo que cada campaña vaya marcando en esta pasada,
@@ -1045,9 +1078,14 @@ export async function runCampaignQueue(
       continue;
     }
 
-    // Barrera 1: ventana horaria de la campaña.
+    // Barrera 1: ventana horaria de la campaña, ANTES de reclamar. Franja legal
+    // de la Ley 2300 SIEMPRE (también con `schedule = {}`) y, si la hay, la
+    // franja propia. Antes un schedule vacío no restringía nada: a las 00:00 se
+    // reclamaban filas, `dialClaimedCall` las reprogramaba a las 07:00 y el
+    // intento quedaba gastado en `voice_agent_call_attempts` (2026-10-06).
     const schedule = (campaign.schedule as ScheduleConfig | null) ?? null;
-    if (!isWithinSchedule(schedule, schedule?.timezone)) continue;
+    const ventana = evaluarVentanaCampana(schedule, zonaOrganizacion);
+    if (!ventana.abierta) continue;
 
     // Barrera 2: concurrencia, tope diario (todo intento REAL) y tope horario.
     // El día es el de la organización (`schedule.timezone`), no el UTC.

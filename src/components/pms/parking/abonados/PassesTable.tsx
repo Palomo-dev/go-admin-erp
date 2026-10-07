@@ -33,6 +33,7 @@ import {
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ParkingPass } from '@/lib/services/parkingService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
 
 interface PassesTableProps {
   passes: ParkingPass[];
@@ -45,21 +46,17 @@ interface PassesTableProps {
   onRenew: (pass: ParkingPass) => void;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+const STATUS_CONFIG: Record<string, { className: string }> = {
   active: {
-    label: 'Activo',
     className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   },
   expired: {
-    label: 'Vencido',
     className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   },
   cancelled: {
-    label: 'Cancelado',
     className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
   },
   suspended: {
-    label: 'Suspendido',
     className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   },
 };
@@ -74,6 +71,7 @@ export function PassesTable({
   onReactivate,
   onRenew,
 }: PassesTableProps) {
+  const t = useTranslations('pmsParking');
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const formatDate = (dateStr: string) => {
     return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
@@ -90,11 +88,11 @@ export function PassesTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-            <TableHead className="font-semibold">Placa / Cliente</TableHead>
-            <TableHead className="font-semibold">Plan</TableHead>
-            <TableHead className="font-semibold">Vigencia</TableHead>
-            <TableHead className="font-semibold">Estado</TableHead>
-            <TableHead className="font-semibold text-right">Precio</TableHead>
+            <TableHead className="font-semibold">{t('passesTable.placaCliente')}</TableHead>
+            <TableHead className="font-semibold">{t('passesTable.plan')}</TableHead>
+            <TableHead className="font-semibold">{t('passesTable.vigencia')}</TableHead>
+            <TableHead className="font-semibold">{t('passesTable.estado')}</TableHead>
+            <TableHead className="font-semibold text-right">{t('passDialog.precio')}</TableHead>
             <TableHead className="w-[60px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -131,7 +129,7 @@ export function PassesTable({
                       </div>
                       <div className="flex flex-wrap items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                         <User className="h-3 w-3" />
-                        <span>{pass.customer?.full_name || 'Sin cliente'}</span>
+                        <span>{pass.customer?.full_name || t('passesTable.sinCliente')}</span>
                       </div>
                     </div>
                   </div>
@@ -157,7 +155,7 @@ export function PassesTable({
                   </div>
                   {isExpiringSoon && (
                     <span className="text-xs text-yellow-600 dark:text-yellow-400">
-                      Vence en {daysRemaining} días
+                      {t('passesTable.venceDias', { daysRemaining })}
                     </span>
                   )}
                 </TableCell>
@@ -165,7 +163,7 @@ export function PassesTable({
                 {/* Estado */}
                 <TableCell>
                   <Badge className={statusConfig.className}>
-                    {statusConfig.label}
+                    {t(`estadosPase.${pass.status in STATUS_CONFIG ? pass.status : 'active'}`)}
                   </Badge>
                 </TableCell>
 
@@ -187,15 +185,15 @@ export function PassesTable({
                     <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
                       <DropdownMenuItem onClick={() => onEdit(pass)}>
                         <Edit className="h-4 w-4 mr-2" />
-                        Editar
+                        {t('passesTable.editar')}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onDuplicate(pass)}>
                         <Copy className="h-4 w-4 mr-2" />
-                        Duplicar
+                        {t('passesTable.duplicar')}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onManageVehicles(pass)}>
                         <Settings2 className="h-4 w-4 mr-2" />
-                        Gestionar Placas
+                        {t('passesTable.gestionarPlacas')}
                       </DropdownMenuItem>
 
                       <DropdownMenuSeparator />
@@ -207,14 +205,14 @@ export function PassesTable({
                             className="text-orange-600 dark:text-orange-400"
                           >
                             <PauseCircle className="h-4 w-4 mr-2" />
-                            Suspender
+                            {t('passesTable.suspender')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onCancel(pass)}
                             className="text-red-600 dark:text-red-400"
                           >
                             <XCircle className="h-4 w-4 mr-2" />
-                            Cancelar
+                            {t('passVehiclesDialog.cancelar')}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -226,14 +224,14 @@ export function PassesTable({
                             className="text-green-600 dark:text-green-400"
                           >
                             <PlayCircle className="h-4 w-4 mr-2" />
-                            Reactivar
+                            {t('passesTable.reactivar')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onCancel(pass)}
                             className="text-red-600 dark:text-red-400"
                           >
                             <XCircle className="h-4 w-4 mr-2" />
-                            Cancelar
+                            {t('passVehiclesDialog.cancelar')}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -244,7 +242,7 @@ export function PassesTable({
                           className="text-blue-600 dark:text-blue-400"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          Renovar
+                          {t('passesTable.renovar')}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>

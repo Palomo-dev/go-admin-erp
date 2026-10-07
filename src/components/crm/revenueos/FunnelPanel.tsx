@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { computeFunnelConversion } from '@/lib/services/crm/revenueOs/funnelConversion';
 import type { PipelineFunnelRow } from '@/lib/services/crm/revenueOsService';
 import { fmtMoney, fmtNumber, fmtPct, plural } from './formatters';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   funnel: PipelineFunnelRow[];
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function FunnelPanel({ funnel, pipelineNames = {}, currency }: Props) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const reduced = useReducedMotion();
   const selectId = useId();
   const pipelineIds = useMemo(() => Array.from(new Set(funnel.map((f) => f.pipeline_id ?? 'sin-pipeline'))), [funnel]);
@@ -39,7 +41,7 @@ export function FunnelPanel({ funnel, pipelineNames = {}, currency }: Props) {
   if (funnel.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300">
-        Sin etapas configuradas. Crea un pipeline con etapas en Configuración para ver el embudo.
+        {t('funnelPanel.sinEtapasConfiguradasCrea')}
       </p>
     );
   }
@@ -71,18 +73,17 @@ export function FunnelPanel({ funnel, pipelineNames = {}, currency }: Props) {
 
       {ignoredAfterWon.length > 0 && (
         <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-          Fuera de la cadena: {ignoredAfterWon.map((s) => `«${s.stage_name}» (${plural(s.count, 'oportunidad', 'oportunidades')})`).join(', ')} va después de la
-          etapa ganada. La conversión termina en la ganada; revisa el orden de las etapas en Configuración.
+          {t('funnelPanel.fueraCadenaVaDespues', { map: ignoredAfterWon.map((s) => `«${s.stage_name}» (${plural(s.count, 'oportunidad', 'oportunidades')})`).join(', ') })}
         </p>
       )}
 
       {totalReached === 0 ? (
         <p className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300">
-          Sin oportunidades en este pipeline todavía. Crea la primera desde Oportunidades y el embudo se llenará solo.
+          {t('funnelPanel.sinOportunidadesEstePipeline')}
         </p>
       ) : (
         <>
-          <ol className="space-y-2" aria-label="Embudo por etapa">
+          <ol className="space-y-2" aria-label={t('funnelPanel.embudoEtapa')}>
             {stages.map((s, i) => (
               <li key={s.stage_id} className="grid grid-cols-[minmax(7rem,1fr)_3fr] items-center gap-3 text-sm">
                 <span className="truncate text-gray-800 dark:text-gray-200" title={s.stage_name}>
@@ -108,15 +109,15 @@ export function FunnelPanel({ funnel, pipelineNames = {}, currency }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="pb-2 text-left text-xs text-gray-600 dark:text-gray-300">
-                Conversión etapa a etapa (acumulado: en la etapa o más adelante; las perdidas se muestran aparte)
+                {t('funnelPanel.conversionEtapaEtapaAcumulado')}
               </caption>
               <thead>
                 <tr className="border-b border-gray-200 text-left text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                  <th scope="col" className="py-1.5 pr-3 font-medium">Etapa</th>
-                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">En la etapa</th>
-                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">Llegaron</th>
-                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">Monto en etapa</th>
-                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">Pasa a la siguiente</th>
+                  <th scope="col" className="py-1.5 pr-3 font-medium">{t('oportunidades.columnas.etapa')}</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t('funnelPanel.etapa')}</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t('funnelPanel.llegaron')}</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t('funnelPanel.montoEtapa')}</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t('funnelPanel.pasaSiguiente')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,7 +125,7 @@ export function FunnelPanel({ funnel, pipelineNames = {}, currency }: Props) {
                   <tr key={s.stage_id} className="border-b border-gray-100 dark:border-gray-700/60">
                     <th scope="row" className="py-1.5 pr-3 text-left font-normal text-gray-800 dark:text-gray-200">
                       {s.stage_name}
-                      {s.is_won && <span className="ml-1 text-xs text-emerald-700 dark:text-emerald-300">(ganada)</span>}
+                      {s.is_won && <span className="ml-1 text-xs text-emerald-700 dark:text-emerald-300">{t('funnelPanel.ganada')}</span>}
                     </th>
                     <td className="py-1.5 pr-3 text-right tabular-nums text-gray-800 dark:text-gray-200">{fmtNumber(s.count)}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums text-gray-800 dark:text-gray-200">{fmtNumber(s.reached)}</td>
@@ -138,14 +139,14 @@ export function FunnelPanel({ funnel, pipelineNames = {}, currency }: Props) {
               <tfoot>
                 <tr className="text-xs text-gray-700 dark:text-gray-200">
                   <th scope="row" className="pt-2 pr-3 text-left font-medium">
-                    Conversión global
-                    {overallBasis === 'last' && <span className="ml-1 font-normal text-gray-600 dark:text-gray-300">(hasta la última etapa: no hay etapa ganada)</span>}
+                    {t('funnelPanel.conversionGlobal')}
+                    {overallBasis === 'last' && <span className="ml-1 font-normal text-gray-600 dark:text-gray-300">{t('funnelPanel.hastaUltimaEtapaNo')}</span>}
                   </th>
                   <td colSpan={4} className="pt-2 pr-3 text-right tabular-nums">
-                    {overallPct === null ? 'Sin datos' : fmtPct(overallPct, 1)}
+                    {overallPct === null ? t('funnelPanel.sinDatos') : fmtPct(overallPct, 1)}
                     {lost.count > 0 && (
                       <span className="ml-3 text-gray-600 dark:text-gray-300">
-                        Perdidas: {fmtNumber(lost.count)} ({fmtMoney(lost.amount, currency)})
+                        {t('funnelPanel.perdidas', { number: fmtNumber(lost.count), money: fmtMoney(lost.amount, currency) })}
                       </span>
                     )}
                   </td>

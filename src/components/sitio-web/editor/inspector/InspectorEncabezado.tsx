@@ -156,7 +156,13 @@ function CampoBoton({
 }: Pick<Interno, 'ajustes' | 'cambiar' | 'paginas'> & { etiquetaTexto: string; claveTexto: string; claveUrl: string }) {
   const t = useTextosEditor();
   const opciones = useMemo(
-    () => opcionesDestino(paginas, { pagina: (titulo) => t('zonaGlobal.boton.pagina', { titulo }), whatsapp: t('zonaGlobal.boton.whatsapp'), maps: t('zonaGlobal.boton.maps') }),
+    () =>
+      opcionesDestino(paginas, {
+        pagina: (titulo) => t('zonaGlobal.boton.pagina', { titulo }),
+        whatsapp: t('zonaGlobal.boton.whatsapp'),
+        maps: t('zonaGlobal.boton.maps'),
+        ruta: (valor) => t(`zonaGlobal.boton.rutas.${valor.replace(/^\//, '')}`),
+      }),
     [paginas, t],
   );
   const url = typeof ajustes[claveUrl] === 'string' ? (ajustes[claveUrl] as string) : '';

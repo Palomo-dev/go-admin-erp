@@ -25,10 +25,13 @@ import { SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
 
-const STEPS = ['Canal y mensaje', 'Audiencia', 'Programación', 'Revisión'];
+/** Pasos del asistente: subclaves de `crm.campanasLista.campanaNuevaPage.pasosAsistente`. */
+const STEPS = ['canal', 'audiencia', 'programacion', 'revision'] as const;
 
 export function CampanaNuevaPage() {
+  const t = useTranslations('crm.campanasLista');
   const { timezone } = useOrgTimezone();
   const router = useRouter();
   const search = useSearchParams();
@@ -80,46 +83,46 @@ export function CampanaNuevaPage() {
       setBusy('mat');
       setMat(await CampanasService.materialize(id));
     } catch (e) {
-      toast({ title: 'No se pudo calcular la audiencia', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
+      toast({ title: t('campanaNuevaPage.noPudoCalcularAudiencia'), description: e instanceof Error ? e.message : t('campanaNuevaPage.error'), variant: 'destructive' });
     } finally { setBusy(null); }
   };
 
   const launch = async (draftOnly = false) => {
     try {
       const id = await save();
-      if (draftOnly) { toast({ title: 'Borrador guardado' }); router.push(`/app/crm/campanas/${id}`); return; }
+      if (draftOnly) { toast({ title: t('campanaNuevaPage.borradorGuardado') }); router.push(`/app/crm/campanas/${id}`); return; }
       setBusy('launch');
       if (!mat) setMat(await CampanasService.materialize(id));
       const r = await CampanasService.launch(id, { scheduled_at: scheduledAt });
-      toast({ title: r.data.effective_status === 'scheduled' ? 'Campaña programada' : 'Campaña lanzada', description: `${mat?.pending ?? ''} contactos en cola` });
+      toast({ title: r.data.effective_status === 'scheduled' ? t('campanaNuevaPage.campanaProgramada') : t('campanaNuevaPage.campanaLanzada'), description: t('campanaNuevaPage.contactosCola', { n: mat?.pending ?? '' }) });
       router.push(`/app/crm/campanas/${id}`);
     } catch (e) {
       const err = e instanceof ApiError ? e : null;
-      toast({ title: err?.code === 'TIER_EXCEEDED' ? 'Supera el límite del WABA' : 'No se pudo lanzar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
+      toast({ title: err?.code === 'TIER_EXCEEDED' ? t('campanaNuevaPage.superaLimiteWaba') : t('campanaNuevaPage.noPudoLanzar'), description: e instanceof Error ? e.message : t('campanaNuevaPage.error'), variant: 'destructive' });
     } finally { setBusy(null); }
   };
 
   return (
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex items-center gap-3">
-        <Link href="/app/crm/campanas"><Button variant="ghost" size="icon" aria-label="Volver"><ArrowLeft className="h-5 w-5" /></Button></Link>
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3"><div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><Megaphone className="h-6 w-6 text-emerald-600" /></div>Nueva campaña de WhatsApp</h1><p className="text-gray-500 dark:text-gray-400">CRM / Campañas / Nueva</p></div>
+        <Link href="/app/crm/campanas"><Button variant="ghost" size="icon" aria-label={t('campanaNuevaPage.volver')}><ArrowLeft className="h-5 w-5" /></Button></Link>
+        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3"><div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><Megaphone className="h-6 w-6 text-emerald-600" /></div>{t('campanaNuevaPage.nuevaCampanaWhatsapp')}</h1><p className="text-gray-500 dark:text-gray-400">{t('campanaNuevaPage.crmCampanasNueva')}</p></div>
       </div>
 
-      <ol className="flex flex-wrap gap-2" aria-label="Pasos">
-        {STEPS.map((s, i) => <li key={s} className={`text-xs px-3 py-1.5 rounded-full border ${i === step ? 'bg-emerald-600 text-white border-emerald-600' : i < step ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'text-gray-500 border-gray-200 dark:border-gray-700'}`} aria-current={i === step ? 'step' : undefined}>{i + 1}. {s}</li>)}
+      <ol className="flex flex-wrap gap-2" aria-label={t('campanaNuevaPage.pasos')}>
+        {STEPS.map((s, i) => <li key={s} className={`text-xs px-3 py-1.5 rounded-full border ${i === step ? 'bg-emerald-600 text-white border-emerald-600' : i < step ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'text-gray-500 border-gray-200 dark:border-gray-700'}`} aria-current={i === step ? 'step' : undefined}>{i + 1}. {t(`campanaNuevaPage.pasosAsistente.${s}`)}</li>)}
       </ol>
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader><CardTitle className="text-gray-900 dark:text-gray-100 text-base">{STEPS[step]}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-gray-900 dark:text-gray-100 text-base">{t(`campanaNuevaPage.pasosAsistente.${STEPS[step]}`)}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {step === 0 && (
             <div className="space-y-4">
-              <div><Label htmlFor="camp-name" className="text-xs">Nombre de la campaña</Label><Input id="camp-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Novedades septiembre" className="bg-gray-50 dark:bg-gray-900" /></div>
+              <div><Label htmlFor="camp-name" className="text-xs">{t('campanaNuevaPage.nombreCampana')}</Label><Input id="camp-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('campanaNuevaPage.ejNovedadesSeptiembre')} className="bg-gray-50 dark:bg-gray-900" /></div>
               <ChannelSelect channels={c.channels} value={c.channelId} onChange={c.setChannelId} loading={c.loadingChannels} />
               {/* Tipo de mensaje: alterna el contenido del mismo paso → control segmentado del kit (regla de pestañas 2026-10-06). */}
               <SegmentedControl
-                etiqueta="Tipo de mensaje"
+                etiqueta={t('campanaNuevaPage.tipoMensaje')}
                 tamano="sm"
                 valor={c.tab}
                 onValorChange={(v) => c.setTab(v)}
@@ -131,7 +134,7 @@ export function CampanaNuevaPage() {
               />
               {c.tab === 'template' ? <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} onCreateTemplate={() => router.push('/app/crm/plantillas?pestana=whatsapp')} />
                 : <MessageForm value={c.text} onChange={c.setText} media={null} onMedia={() => undefined} allowMedia={false} scheduledAt={null} onScheduledAt={() => undefined} />}
-              {c.preview && c.preview.missing.length > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">Variables sin valor por defecto ({c.preview.missing.join(', ')}): escríbelas arriba; se aplicarán a todos los contactos.</p>}
+              {c.preview && c.preview.missing.length > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">{t('campanaNuevaPage.variablesSinValorDefecto', { missing: c.preview.missing.join(', ') })}</p>}
             </div>
           )}
           {step === 1 && <AudienceStep value={audience} onChange={(v) => { setAudience(v); setMat(null); }} />}
@@ -139,34 +142,34 @@ export function CampanaNuevaPage() {
           {step === 3 && (
             <div className="space-y-3 text-sm">
               <dl className="grid grid-cols-[140px_1fr] gap-y-1 text-xs">
-                <dt className="text-gray-500">Nombre</dt><dd>{name || '—'}</dd>
-                <dt className="text-gray-500">Canal</dt><dd>{c.channel?.name} · {c.channel?.provider}</dd>
-                <dt className="text-gray-500">Mensaje</dt><dd>{c.tab === 'template' ? `Plantilla ${c.template?.name} (${c.preview?.category})` : `Texto libre (${c.text.length} chars)`}</dd>
-                <dt className="text-gray-500">Audiencia</dt><dd>{audience.source === 'segment' ? 'Segmento' : `${audience.stage_ids.length} etapas`}</dd>
-                <dt className="text-gray-500">Programación</dt><dd>{scheduledAt ? new Date(scheduledAt).toLocaleString('es-CO') : 'Inmediata'} · {throttle} msg/s · {respectHours ? 'respeta horario' : 'sin horario'}</dd>
+                <dt className="text-gray-500">{t('campanaNuevaPage.nombre')}</dt><dd>{name || '—'}</dd>
+                <dt className="text-gray-500">{t('canal')}</dt><dd>{c.channel?.name} · {c.channel?.provider}</dd>
+                <dt className="text-gray-500">{t('campanaNuevaPage.mensaje')}</dt><dd>{c.tab === 'template' ? t('campanaNuevaPage.plantilla', { name: c.template?.name ?? '', category: c.preview?.category ?? '' }) : t('campanaNuevaPage.textoLibreChars', { n: c.text.length })}</dd>
+                <dt className="text-gray-500">{t('campanaNuevaPage.audiencia')}</dt><dd>{audience.source === 'segment' ? t('columnas.segmento') : t('campanaNuevaPage.etapas', { n: audience.stage_ids.length })}</dd>
+                <dt className="text-gray-500">{t('campanaNuevaPage.programacion')}</dt><dd>{t('campanaNuevaPage.msgS', { valor: scheduledAt ? new Date(scheduledAt).toLocaleString('es-CO') : t('campanaNuevaPage.inmediata'), throttle, valor2: respectHours ? t('campanaNuevaPage.respetaHorario') : t('campanaNuevaPage.sinHorario') })}</dd>
               </dl>
               <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
-                <div className="flex items-center justify-between"><p className="font-medium">Audiencia calculada</p><Button type="button" size="sm" variant="outline" onClick={() => void materialize()} disabled={!!busy}>{busy === 'mat' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{mat ? 'Recalcular' : 'Calcular audiencia'}</Button></div>
+                <div className="flex items-center justify-between"><p className="font-medium">{t('campanaNuevaPage.audienciaCalculada')}</p><Button type="button" size="sm" variant="outline" onClick={() => void materialize()} disabled={!!busy}>{busy === 'mat' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{mat ? t('campanaNuevaPage.recalcular') : t('campanaNuevaPage.calcularAudiencia')}</Button></div>
                 {mat ? (
                   <div className="text-xs space-y-1">
-                    <p><strong className="text-emerald-700 dark:text-emerald-400">{mat.pending} pendientes</strong> · {mat.skipped} excluidos de {mat.total}{mat.estimated_cost !== null ? ` · costo estimado ≈ $${mat.estimated_cost.toFixed(4)} USD` : ''}</p>
+                    <p><strong className="text-emerald-700 dark:text-emerald-400">{mat.pending} pendientes</strong> · {mat.skipped} {t('campanaNuevaPage.excluidos')} {mat.total}{mat.estimated_cost !== null ? t('campanaNuevaPage.costoEstimadoUsd', { estimated_cost: mat.estimated_cost.toFixed(4) }) : ''}</p>
                     <ul className="flex flex-wrap gap-1">{Object.entries(mat.skipped_by_reason).map(([r, n]) => <li key={r} className="rounded-full border px-2 py-0.5">{SKIP_REASON_LABELS[r] ?? r}: {n}</li>)}</ul>
-                    {mat.pending === 0 && <p className="text-amber-700 dark:text-amber-400">Nadie cumple los criterios: revisa la audiencia o la plantilla.</p>}
+                    {mat.pending === 0 && <p className="text-amber-700 dark:text-amber-400">{t('campanaNuevaPage.nadieCumpleCriteriosRevisa')}</p>}
                   </div>
-                ) : <p className="text-xs text-gray-500">Calcula la audiencia para ver pendientes, exclusiones y costo antes de lanzar.</p>}
+                ) : <p className="text-xs text-gray-500">{t('campanaNuevaPage.calculaAudienciaVerPendientes')}</p>}
               </div>
-              {marketing && <label className="flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300"><Checkbox checked={optin} onCheckedChange={(v) => setOptin(v === true)} />He verificado que la audiencia dio su consentimiento (opt-in) para marketing (Habeas Data)</label>}
+              {marketing && <label className="flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300"><Checkbox checked={optin} onCheckedChange={(v) => setOptin(v === true)} />{t('campanaNuevaPage.heVerificadoAudienciaDio')}</label>}
             </div>
           )}
         </CardContent>
       </Card>
 
       <div className="flex flex-wrap justify-between gap-2">
-        <Button variant="outline" onClick={() => (step === 0 ? router.push('/app/crm/campanas') : setStep(step - 1))} disabled={!!busy}>{step === 0 ? 'Cancelar' : 'Atrás'}</Button>
+        <Button variant="outline" onClick={() => (step === 0 ? router.push('/app/crm/campanas') : setStep(step - 1))} disabled={!!busy}>{step === 0 ? t('campanaNuevaPage.cancelar') : t('campanaNuevaPage.atras')}</Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => void launch(true)} disabled={!!busy || !step0ok}>Guardar borrador</Button>
-          {step < 3 ? <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setStep(step + 1)} disabled={(step === 0 && !step0ok) || (step === 1 && !step1ok)}>Continuar<ArrowRight className="h-4 w-4 ml-2" /></Button>
-            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !mat || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? 'Programar' : 'Lanzar ahora'}</Button>}
+          <Button variant="outline" onClick={() => void launch(true)} disabled={!!busy || !step0ok}>{t('campanaNuevaPage.guardarBorrador')}</Button>
+          {step < 3 ? <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setStep(step + 1)} disabled={(step === 0 && !step0ok) || (step === 1 && !step1ok)}>{t('campanaNuevaPage.continuar')}<ArrowRight className="h-4 w-4 ml-2" /></Button>
+            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !mat || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? t('campanaNuevaPage.programar') : t('campanaNuevaPage.lanzarAhora')}</Button>}
         </div>
       </div>
     </div>

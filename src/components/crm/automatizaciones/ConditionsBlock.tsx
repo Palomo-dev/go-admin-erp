@@ -29,6 +29,7 @@ import { ConditionChipEditor } from './ConditionChipEditor';
 import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
 import { AnimatePresence, Chip, Expand } from '@/components/shared/motion';
 import type { RuleLookups } from './useRuleLookups';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   form: RuleFormState;
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export function ConditionsBlock({ form, lookups, onChange }: Props) {
+  const t = useTranslations('crm.automatizaciones');
   const [selected, setSelected] = useState<number | null>(null);
   const [jsonOpen, setJsonOpen] = useState(false);
   const [jsonText, setJsonText] = useState('');
@@ -83,8 +85,8 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
   return (
     <div className="space-y-3">
       {rules.length > 1 && (
-        <div role="group" aria-label="Cómo se combinan las condiciones" className="flex items-center gap-1 text-xs">
-          <span className="mr-1 text-gray-600 dark:text-gray-400">Se cumple si</span>
+        <div role="group" aria-label={t('conditionsBlock.comoCombinanCondiciones')} className="flex items-center gap-1 text-xs">
+          <span className="mr-1 text-gray-600 dark:text-gray-400">{t('conditionsBlock.cumpleSi')}</span>
           {([['and', 'todas'], ['or', 'alguna']] as const).map(([op, label]) => (
             <button
               key={op}
@@ -101,7 +103,7 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
 
       {rules.length === 0 ? (
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Sin condiciones: se dispara siempre que ocurra el disparador. Añade una solo si necesitas filtrar.
+          {t('conditionsBlock.sinCondicionesDisparaSiempre')}
         </p>
       ) : (
         <div className={CHIP_LIST_CLASS}>
@@ -129,7 +131,7 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
                         : `(${describeConditions(node, lookups.humanizer) ?? 'grupo vacío'})`}
                     </span>
                     {/* R-6: el grupo anidado no se edita en ficha; se dice en texto visible, no en `title` (que el teclado y el lector no ven). */}
-                    {!editable && <span className="min-w-0 basis-full text-xs text-gray-600 dark:text-gray-400 sm:shrink-0 sm:basis-auto">· grupo, se edita como JSON</span>}
+                    {!editable && <span className="min-w-0 basis-full text-xs text-gray-600 dark:text-gray-400 sm:shrink-0 sm:basis-auto">{t('conditionsBlock.grupoEditaComoJson')}</span>}
                     {editable && (open
                       ? <ChevronUp className={CHIP_ICON_CLASS} aria-hidden="true" />
                       : <ChevronDown className={CHIP_ICON_CLASS} aria-hidden="true" />)}
@@ -161,22 +163,22 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
 
       <div className="flex flex-wrap items-center gap-2">
         <Button id="cond-add" type="button" size="sm" variant="outline" className="h-8" onClick={add}>
-          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Añadir condición
+          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {t('conditionsBlock.anadirCondicion')}
         </Button>
         <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={openJson}>
-          <Code2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Editar como JSON
+          <Code2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {t('conditionsBlock.editarComoJson')}
         </Button>
       </div>
 
       <Dialog open={jsonOpen} onOpenChange={setJsonOpen}>
         <DialogContent onCloseAutoFocus={onJsonCloseAutoFocus} className="max-w-xl bg-white dark:bg-gray-950">
           <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-gray-100">Condiciones en JSON</DialogTitle>
+            <DialogTitle className="text-gray-900 dark:text-gray-100">{t('conditionsBlock.condicionesJson')}</DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Para grupos anidados y casos avanzados. Campos permitidos: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.
+              {t('conditionsBlock.gruposAnidadosCasosAvanzados')}
             </DialogDescription>
           </DialogHeader>
-          <Label htmlFor="cond-json" className="sr-only">JSON de las condiciones</Label>
+          <Label htmlFor="cond-json" className="sr-only">{t('conditionsBlock.jsonCondiciones')}</Label>
           <Textarea
             id="cond-json"
             rows={10}
@@ -190,8 +192,8 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
             <p id="cond-json-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{jsonError}</p>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setJsonOpen(false)}>Cancelar</Button>
-            <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={applyJson}>Aplicar</Button>
+            <Button type="button" variant="outline" onClick={() => setJsonOpen(false)}>{t('ruleEditorSheet.cancelar')}</Button>
+            <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={applyJson}>{t('conditionsBlock.aplicar')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

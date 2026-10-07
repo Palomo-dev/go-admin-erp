@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NAME_MAX } from "@/lib/services/crm/voiceCloneScript";
 import { VoiceAvatar } from "./VoiceAvatar";
 import { formatClock } from "./cloneSamples";
+import { useTranslations } from "next-intl";
 
 interface Props {
   name: string;
@@ -25,26 +26,27 @@ interface Props {
 }
 
 export function CloneStepName({ name, onNameChange, makeDefault, onMakeDefaultChange, summary, error, errorId = "clone-name-error", inputRef }: Props) {
+  const t = useTranslations("crm.agentesIa");
   return (
     <div className="mx-auto grid max-w-2xl gap-5 sm:grid-cols-[auto_1fr]">
       <div className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 p-4 text-center dark:border-gray-700">
         <VoiceAvatar voiceId={name || "nueva-voz"} name={name || "?"} size="lg" />
-        <p className="max-w-[10rem] truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{name.trim() || "Tu voz"}</p>
+        <p className="max-w-[10rem] truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{name.trim() || t("cloneStepName.voz")}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {summary.count === 1 ? "una muestra" : `${summary.count} muestras`} · {formatClock(summary.durationSeconds)} min
+          {summary.count === 1 ? t("cloneStepName.muestra") : t("cloneStepName.muestras", { n: summary.count })} · {formatClock(summary.durationSeconds)} min
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="clone-name">Nombre de la voz</Label>
+          <Label htmlFor="clone-name">{t("cloneStepName.nombreVoz")}</Label>
           <Input
             id="clone-name"
             ref={inputRef}
             value={name}
             maxLength={NAME_MAX}
             onChange={(e) => onNameChange(e.target.value)}
-            placeholder="Por ejemplo: Voz de Camila (ventas)"
+            placeholder={t("cloneStepName.ejemploVozCamilaVentas")}
             aria-describedby={error ? errorId : "clone-name-help"}
             aria-invalid={error ? true : undefined}
             autoComplete="off"
@@ -53,7 +55,7 @@ export function CloneStepName({ name, onNameChange, makeDefault, onMakeDefaultCh
             <p id={errorId} role="alert" className="text-xs font-medium text-red-700 dark:text-red-300">{error}</p>
           ) : (
             <p id="clone-name-help" className="text-xs text-gray-500 dark:text-gray-400">
-              Así la verás en Mis voces y en el editor de agentes.
+              {t("cloneStepName.asiVerasMisVoces")}
             </p>
           )}
         </div>
@@ -61,7 +63,7 @@ export function CloneStepName({ name, onNameChange, makeDefault, onMakeDefaultCh
         <div className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
           <Checkbox id="clone-default" checked={makeDefault} onCheckedChange={(v) => onMakeDefaultChange(v === true)} className="mt-0.5" />
           <Label htmlFor="clone-default" className="cursor-pointer text-sm font-normal leading-snug text-gray-700 dark:text-gray-200">
-            Usarla como voz por defecto de la organización (los agentes sin voz propia llamarán con ella).
+            {t("cloneStepName.usarlaComoVozDefecto")}
           </Label>
         </div>
       </div>

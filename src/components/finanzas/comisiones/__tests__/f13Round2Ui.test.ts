@@ -105,8 +105,14 @@ describe('contrato de fuente — foco, motivo visible, porcentaje real, contrast
   it('el historial de cuotas muestra el porcentaje real (raw_pct), no el acotado a 100', () => {
     const history = stripComments(read('src/components/organization/quotas/QuotaHistory.tsx'));
     const jsx = history.slice(history.indexOf('<ul'));
-    expect(jsx).toMatch(/\{d\.raw_pct\} %/);
+    // El texto vive en messages (cuotas.logrado / etiquetaBarra con «{pct} %»): lo que
+    // importa es que el `pct` que se le pasa sea el real (raw_pct) y nunca el acotado.
+    expect(jsx).toMatch(/t\.rich\('cuotas\.logrado',[^)]*pct: d\.raw_pct/);
+    expect(jsx).toMatch(/t\('cuotas\.etiquetaBarra', \{ pct: d\.raw_pct/);
+    expect(jsx).not.toMatch(/pct: d\.pct\b/);
     expect(jsx).not.toMatch(/\{d\.pct\} %/);
+    const es = JSON.parse(read('messages/es.json'));
+    expect(es.org.acceso.miembros.cuotas.logrado).toMatch(/\{pct\} %/);
   });
   it('MemberQuotasSheet: título y descripción con color explícito en ambos temas', () => {
     const sheet = stripComments(read('src/components/organization/quotas/MemberQuotasSheet.tsx'));

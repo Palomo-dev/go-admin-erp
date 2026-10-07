@@ -25,6 +25,7 @@ import {
   type TransportEvent,
   type ProofOfDelivery,
 } from '@/lib/services/deliveryIntegrationService';
+import { useTranslations } from 'next-intl';
 
 interface DeliveryTrackingCardProps {
   webOrderId: string;
@@ -35,6 +36,7 @@ export function DeliveryTrackingCard({
   webOrderId,
   onAssignClick,
 }: DeliveryTrackingCardProps) {
+  const t = useTranslations('pedidoWeb');
   const [shipment, setShipment] = useState<DeliveryShipment | null>(null);
   const [events, setEvents] = useState<TransportEvent[]>([]);
   const [proof, setProof] = useState<ProofOfDelivery | null>(null);
@@ -81,16 +83,7 @@ export function DeliveryTrackingCard({
   };
 
   const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      pending: 'Pendiente',
-      assigned: 'Asignado',
-      picked_up: 'Recogido',
-      out_for_delivery: 'En camino',
-      delivered: 'Entregado',
-      returned: 'Devuelto',
-      cancelled: 'Cancelado',
-    };
-    return labels[status] || status;
+    return t.has(`deliveryTrackingCard.estados.${status}`) ? t(`deliveryTrackingCard.estados.${status}`) : status;
   };
 
   const formatTime = (date: string) => {
@@ -113,7 +106,7 @@ export function DeliveryTrackingCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-gray-100">
             <Truck className="h-5 w-5 dark:text-gray-300" />
-            Delivery
+            {t('deliveryTrackingCard.delivery')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -134,19 +127,19 @@ export function DeliveryTrackingCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-gray-100">
             <Truck className="h-5 w-5 dark:text-gray-300" />
-            Delivery Propio
+            {t('deliveryTrackingCard.deliveryPropio')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
             <Package className="h-10 w-10 mx-auto text-muted-foreground dark:text-gray-400 mb-3" />
             <p className="text-sm text-muted-foreground dark:text-gray-300 mb-4">
-              No hay envío asignado para este pedido
+              {t('deliveryTrackingCard.noHayEnvioAsignado')}
             </p>
             {onAssignClick && (
               <Button onClick={onAssignClick} size="sm">
                 <Truck className="h-4 w-4 mr-2" />
-                Asignar Delivery
+                {t('deliveryTrackingCard.asignarDelivery')}
               </Button>
             )}
           </div>
@@ -161,7 +154,7 @@ export function DeliveryTrackingCard({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 dark:text-gray-100">
             <Truck className="h-5 w-5 dark:text-gray-300" />
-            Tracking
+            {t('deliveryTrackingCard.tracking')}
           </CardTitle>
           <Badge className={getStatusColor(shipment.status)}>
             {getStatusLabel(shipment.status)}
@@ -171,7 +164,7 @@ export function DeliveryTrackingCard({
       <CardContent className="space-y-4">
         {/* Número de tracking */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground dark:text-gray-400">Tracking:</span>
+          <span className="text-muted-foreground dark:text-gray-400">{t('deliveryTrackingCard.tracking2')}</span>
           <span className="font-mono font-medium dark:text-gray-100">{shipment.tracking_number as string}</span>
         </div>
 
@@ -182,7 +175,7 @@ export function DeliveryTrackingCard({
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Truck className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
-                <span className="dark:text-gray-100">Vehículo asignado</span>
+                <span className="dark:text-gray-100">{t('deliveryTrackingCard.vehiculoAsignado')}</span>
               </div>
               {shipment.vehicle && (
                 <p className="text-sm font-medium pl-6 dark:text-gray-200">
@@ -197,13 +190,13 @@ export function DeliveryTrackingCard({
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
-              <span className="dark:text-gray-100">Conductor</span>
+              <span className="dark:text-gray-100">{t('deliveryTrackingCard.conductor')}</span>
             </div>
             <div className="flex items-center justify-between pl-6">
               <p className="text-sm font-medium dark:text-gray-200">
                 {shipment.driver.employee
                   ? `${shipment.driver.employee.first_name} ${shipment.driver.employee.last_name}`
-                  : 'Conductor asignado'}
+                  : t('deliveryTrackingCard.conductorAsignado')}
               </p>
               {shipment.driver.employee?.phone && (
                 <a
@@ -223,7 +216,7 @@ export function DeliveryTrackingCard({
             <Separator />
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
-              <span className="text-muted-foreground dark:text-gray-400">Entrega estimada:</span>
+              <span className="text-muted-foreground dark:text-gray-400">{t('deliveryTrackingCard.entregaEstimada')}</span>
               <span className="font-medium dark:text-gray-100">
                 {formatDateTime(shipment.expected_delivery_date)}
               </span>
@@ -236,7 +229,7 @@ export function DeliveryTrackingCard({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium dark:text-gray-100">Historial</p>
+              <p className="text-sm font-medium dark:text-gray-100">{t('deliveryTrackingCard.historial')}</p>
               <div className="space-y-3">
                 {events.slice(-5).reverse().map((event, index) => (
                   <div key={event.id} className="flex gap-3">
@@ -270,27 +263,27 @@ export function DeliveryTrackingCard({
             <div className="space-y-2">
               <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
                 <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
-                Prueba de entrega
+                {t('deliveryTrackingCard.pruebaEntrega')}
               </p>
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground dark:text-gray-400">Recibido por:</span>
+                  <span className="text-muted-foreground dark:text-gray-400">{t('deliveryTrackingCard.recibido')}</span>
                   <span className="font-medium dark:text-gray-100">{proof.recipient_name}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground dark:text-gray-400">Fecha:</span>
+                  <span className="text-muted-foreground dark:text-gray-400">{t('deliveryTrackingCard.fecha')}</span>
                   <span className="dark:text-gray-200">{formatDateTime(proof.delivered_at)}</span>
                 </div>
                 {proof.customer_rating && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground dark:text-gray-400">Calificación:</span>
+                    <span className="text-muted-foreground dark:text-gray-400">{t('deliveryTrackingCard.calificacion')}</span>
                     <span className="dark:text-gray-100">{'⭐'.repeat(proof.customer_rating)}</span>
                   </div>
                 )}
                 {proof.signature_url && (
                   <Button variant="outline" size="sm" className="w-full mt-2 dark:border-gray-600" asChild>
                     <a href={proof.signature_url} target="_blank" rel="noopener noreferrer">
-                      Ver firma
+                      {t('deliveryTrackingCard.verFirma')}
                       <ExternalLink className="h-3 w-3 ml-2 dark:text-gray-300" />
                     </a>
                   </Button>
@@ -309,7 +302,7 @@ export function DeliveryTrackingCard({
               rel="noopener noreferrer"
             >
               <Navigation className="h-4 w-4 mr-2 dark:text-gray-300" />
-              Ver ruta en Google Maps
+              {t('deliveryTrackingCard.verRutaGoogleMaps')}
             </a>
           </Button>
         )}
@@ -322,7 +315,7 @@ export function DeliveryTrackingCard({
           onClick={loadShipmentData}
         >
           <RefreshCw className="h-4 w-4 mr-2 dark:text-gray-300" />
-          Actualizar estado
+          {t('deliveryTrackingCard.actualizarEstado')}
         </Button>
       </CardContent>
     </Card>

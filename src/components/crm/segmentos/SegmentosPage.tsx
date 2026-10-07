@@ -52,8 +52,10 @@ import { SegmentosService } from './SegmentosService';
 import { Segment, SegmentStats } from './types';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { CopyableId } from '@/components/common/CopyableId';
+import { useTranslations } from 'next-intl';
 
 export function SegmentosPage() {
+  const t = useTranslations('crm.segmentos');
   const router = useRouter();
   const { formatDate } = useFormatDate();
   const { toast } = useToast();
@@ -73,8 +75,8 @@ export function SegmentosPage() {
       setStats(statsData);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los segmentos',
+        title: t('segmentoDetallePage.error'),
+        description: t('segmentosPage.noPudieronCargarSegmentos'),
         variant: 'destructive',
       });
     } finally {
@@ -89,7 +91,7 @@ export function SegmentosPage() {
   const handleDuplicate = async (segment: Segment) => {
     const duplicated = await SegmentosService.duplicateSegment(segment.id);
     if (duplicated) {
-      toast({ title: 'Segmento duplicado' });
+      toast({ title: t('segmentosPage.segmentoDuplicado') });
       loadData();
     }
   };
@@ -98,16 +100,16 @@ export function SegmentosPage() {
     if (!deleteSegment) return;
     const success = await SegmentosService.deleteSegment(deleteSegment.id);
     if (success) {
-      toast({ title: 'Segmento eliminado' });
+      toast({ title: t('segmentosPage.segmentoEliminado') });
       loadData();
     }
     setDeleteSegment(null);
   };
 
   const handleRecalculate = async (segment: Segment) => {
-    toast({ title: 'Recalculando...', description: 'Esto puede tomar unos segundos' });
+    toast({ title: t('segmentosPage.recalculando'), description: t('segmentosPage.estoPuedeTomarUnos') });
     const count = await SegmentosService.recalculateSegment(segment.id);
-    toast({ title: 'Recálculo completado', description: `${count} clientes en el segmento` });
+    toast({ title: t('segmentoDetallePage.recalculoCompletado'), description: t('segmentoDetallePage.clientesSegmento', { count }) });
     loadData();
   };
 
@@ -126,10 +128,10 @@ export function SegmentosPage() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
                 <Filter className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              Segmentos
+              {t('constructor.migas.segmentos')}
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              CRM / Segmentos
+              {t('segmentosPage.crmSegmentos')}
             </p>
           </div>
         </div>
@@ -140,7 +142,7 @@ export function SegmentosPage() {
           <Link href="/app/crm/segmentos/nuevo">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4 mr-2" />
-              Nuevo Segmento
+              {t('segmentosPage.nuevoSegmento')}
             </Button>
           </Link>
         </div>
@@ -169,7 +171,7 @@ export function SegmentosPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.dynamic}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Dinámicos</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{t('segmentosPage.dinamicos')}</p>
               </div>
             </div>
           </CardContent>
@@ -182,7 +184,7 @@ export function SegmentosPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.static}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Estáticos</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{t('segmentosPage.estaticos')}</p>
               </div>
             </div>
           </CardContent>
@@ -195,7 +197,7 @@ export function SegmentosPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCustomers}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Clientes</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{t('segmentosPage.clientes')}</p>
               </div>
             </div>
           </CardContent>
@@ -208,10 +210,10 @@ export function SegmentosPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Nombre</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">Tipo</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold text-center">Clientes</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">Última ejecución</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">{t('constructor.datos.nombre')}</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">{t('constructor.datos.tipo')}</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold text-center">{t('segmentosPage.clientes')}</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">{t('segmentosPage.ultimaEjecucion')}</TableHead>
               <TableHead className="w-10 sm:w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -231,15 +233,15 @@ export function SegmentosPage() {
                 <TableCell colSpan={5} className="text-center py-12">
                   <Filter className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    No hay segmentos
+                    {t('segmentosPage.noHaySegmentos')}
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    Crea tu primer segmento para agrupar clientes
+                    {t('segmentosPage.creaPrimerSegmentoAgrupar')}
                   </p>
                   <Link href="/app/crm/segmentos/nuevo">
                     <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                       <Plus className="h-4 w-4 mr-2" />
-                      Crear Segmento
+                      {t('segmentosPage.crearSegmento')}
                     </Button>
                   </Link>
                 </TableCell>
@@ -274,7 +276,7 @@ export function SegmentosPage() {
                               : 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30'
                           }`}
                         >
-                          {segment.is_dynamic ? 'Dinámico' : 'Estático'}
+                          {segment.is_dynamic ? t('constructor.datos.dinamico') : t('constructor.datos.estatico')}
                         </Badge>
                       </div>
                     </div>
@@ -288,7 +290,7 @@ export function SegmentosPage() {
                           : 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30'
                       }`}
                     >
-                      {segment.is_dynamic ? 'Dinámico' : 'Estático'}
+                      {segment.is_dynamic ? t('constructor.datos.dinamico') : t('constructor.datos.estatico')}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-2 sm:py-3 text-center">
@@ -298,7 +300,7 @@ export function SegmentosPage() {
                   </TableCell>
                   <TableCell className="py-2 sm:py-3 hidden md:table-cell">
                     <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                      {segment.last_run_at ? formatDate(segment.last_run_at) : 'Nunca'}
+                      {segment.last_run_at ? formatDate(segment.last_run_at) : t('segmentoDetallePage.nunca')}
                     </span>
                   </TableCell>
                   <TableCell className="py-2 sm:py-3">
@@ -311,21 +313,21 @@ export function SegmentosPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/segmentos/${segment.id}`); }}>
                           <Eye className="h-4 w-4 mr-2" />
-                          Ver detalle
+                          {t('segmentosPage.verDetalle')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/segmentos/${segment.id}?edit=true`); }}>
                           <Edit className="h-4 w-4 mr-2" />
-                          Editar
+                          {t('segmentoDetallePage.editar')}
                         </DropdownMenuItem>
                         {segment.is_dynamic && (
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecalculate(segment); }}>
                             <Play className="h-4 w-4 mr-2" />
-                            Recalcular
+                            {t('segmentoDetallePage.recalcular')}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(segment); }}>
                           <Copy className="h-4 w-4 mr-2" />
-                          Duplicar
+                          {t('segmentosPage.duplicar')}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -333,7 +335,7 @@ export function SegmentosPage() {
                           className="text-red-600 dark:text-red-400"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Eliminar
+                          {t('segmentosPage.eliminar')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -351,21 +353,21 @@ export function SegmentosPage() {
         <AlertDialogContent className="bg-white dark:bg-gray-900">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
-              ¿Eliminar segmento?
+              {t('segmentosPage.eliminarSegmento')}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-500 dark:text-gray-400">
-              Esta acción no se puede deshacer. El segmento &quot;{deleteSegment?.name}&quot; será eliminado permanentemente.
+              {t('segmentosPage.estaAccionNoPuede', { name: deleteSegment?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-              Cancelar
+              {t('constructor.cancelar')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              Eliminar
+              {t('segmentosPage.eliminar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

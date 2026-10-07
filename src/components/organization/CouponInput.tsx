@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Ticket, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export interface ValidatedCoupon {
   id: string;
@@ -21,6 +22,7 @@ interface CouponInputProps {
 }
 
 export default function CouponInput({ onCouponValidated, initialCode = '' }: CouponInputProps) {
+  const t = useTranslations('org.changePlan');
   const [couponInput, setCouponInput] = useState(initialCode);
   const [validatedCoupon, setValidatedCoupon] = useState<ValidatedCoupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -44,11 +46,11 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
         setValidatedCoupon(data.coupon);
         onCouponValidated(data.coupon);
       } else {
-        setCouponError(data.error || 'Cupón no válido');
+        setCouponError(data.error || t('cuponNoValido'));
         onCouponValidated(null);
       }
     } catch {
-      setCouponError('Error al validar el cupón');
+      setCouponError(t('errorValidarCupon'));
       onCouponValidated(null);
     } finally {
       setCouponLoading(false);
@@ -66,7 +68,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
     <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50">
       <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3 flex items-center gap-1.5">
         <Ticket className="h-3.5 w-3.5" />
-        ¿Tienes un código de descuento?
+        {t('couponInput.tienesCodigoDescuento')}
       </p>
 
       {!validatedCoupon ? (
@@ -84,7 +86,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
                 handleValidateCoupon();
               }
             }}
-            placeholder="Ingresa tu código"
+            placeholder={t('couponInput.ingresaCodigo')}
             className="w-full sm:flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-gray-900 dark:text-gray-100 dark:focus:ring-blue-400"
             disabled={couponLoading}
           />

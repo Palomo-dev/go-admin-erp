@@ -39,20 +39,25 @@ const STATUS_LABELS: Record<string, { label: string; variant: CampaignBadgeVaria
   completed: { label: "Terminada", variant: "secondary" },
 };
 
+/** Traductor de `crm.agentesIa.campaignModel`; sin él, español (servidor y pruebas). */
+export type TraductorCampana = (clave: string, valores?: Record<string, string>) => string;
+
 export function campaignStatusView(
   c: Pick<CampaignRow, "status" | "emergency_stop" | "stopped_reason">,
+  tr?: TraductorCampana,
 ): CampaignStatusView {
   if (c.emergency_stop) {
     return {
-      label: "Detenida",
+      label: tr ? tr("estados.detenida") : "Detenida",
       variant: "destructive",
       detail: c.stopped_reason
-        ? `Parada de emergencia: ${c.stopped_reason}`
-        : "Parada de emergencia",
+        ? tr ? tr("paradaConMotivo", { motivo: c.stopped_reason }) : `Parada de emergencia: ${c.stopped_reason}`
+        : tr ? tr("parada") : "Parada de emergencia",
     };
   }
-  const base = STATUS_LABELS[c.status] ?? { label: c.status, variant: "secondary" as const };
-  return { ...base, detail: c.stopped_reason ? `Motivo: ${c.stopped_reason}` : null };
+  const conocido = STATUS_LABELS[c.status];
+  const base = conocido ? { ...conocido, label: tr ? tr(`estados.${c.status}`) : conocido.label } : { label: c.status, variant: "secondary" as const };
+  return { ...base, detail: c.stopped_reason ? (tr ? tr("motivo", { motivo: c.stopped_reason }) : `Motivo: ${c.stopped_reason}`) : null };
 }
 
 /** `true` si la acción disponible es «Activar» (si no, «Parada de emergencia»). */
@@ -73,12 +78,14 @@ export function describeCampaignTarget(
   c: Pick<CampaignRow, "target_source" | "target_config">,
   stages: StageOption[],
   pipelines: PipelineOption[],
+  tr?: TraductorCampana,
 ): string {
   const stageId = campaignStageId(c);
-  if (!stageId) return c.target_source === "manual_list" ? "Lista manual" : c.target_source;
+  if (!stageId) return c.target_source === "manual_list" ? (tr ? tr("listaManual") : "Lista manual") : c.target_source;
   const stage = stages.find((s) => s.id === stageId);
-  if (!stage) return "Etapa del embudo (ya no existe)";
+  if (!stage) return tr ? tr("etapaYaNoExiste") : "Etapa del embudo (ya no existe)";
   const pipeline = pipelines.find((p) => p.id === stage.pipeline_id);
+  if (tr) return pipeline ? tr("etapaEmbudo", { etapa: stage.name, embudo: pipeline.name }) : tr("etapa", { etapa: stage.name });
   return pipeline ? `Etapa ${stage.name} · ${pipeline.name}` : `Etapa ${stage.name}`;
 }
 

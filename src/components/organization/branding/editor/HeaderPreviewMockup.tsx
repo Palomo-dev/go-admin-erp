@@ -2,6 +2,7 @@
 
 import { Search, ShoppingBag, User, Menu, Phone, ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 // ============================================================
 // PROPS
@@ -76,15 +77,21 @@ function MockCTA({ text }: { text: string }) {
 }
 
 function MockTopbar() {
+  const t = useTranslations('branding.editor');
   return (
     <div className="flex items-center justify-between px-3 py-0.5 bg-gray-800 dark:bg-gray-900 text-white text-[7px]">
       <div className="flex items-center gap-1">
         <Phone className="h-2 w-2" />
         <span>+57 300 123 4567</span>
       </div>
-      <span>Envío gratis sobre $100k</span>
+      <span>{t('headerPreviewMockup.envioGratisSobre100k')}</span>
     </div>
   );
+}
+
+/** Menú de ejemplo del mockup cuando el sitio aún no tiene páginas en el menú. */
+function menuEjemplo(t: (clave: string) => string): string[] {
+  return ['inicio', 'productos', 'categorias', 'nosotros', 'contacto'].map((k) => t(`headerPreviewMockup.menuEjemplo.${k}`));
 }
 
 // ============================================================
@@ -92,7 +99,8 @@ function MockTopbar() {
 // ============================================================
 
 function LayoutClassic({ logoPosition, searchStyle, showCart, showAuth, ctaText, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems?.slice(0, 5) || ['Inicio', 'Productos', 'Categorías', 'Nosotros', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems?.slice(0, 5) || menuEjemplo(t);
   return (
     <div className="flex items-center justify-between px-3 py-2 gap-2">
       {logoPosition === 'left' && <MockLogo />}
@@ -114,7 +122,8 @@ function LayoutClassic({ logoPosition, searchStyle, showCart, showAuth, ctaText,
 }
 
 function LayoutCentered({ searchStyle, showCart, showAuth, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems?.slice(0, 5) || ['Inicio', 'Productos', 'Categorías', 'Nosotros', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems?.slice(0, 5) || menuEjemplo(t);
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between px-3 py-2">
@@ -134,7 +143,8 @@ function LayoutCentered({ searchStyle, showCart, showAuth, menuItems }: HeaderPr
 }
 
 function LayoutSplit({ searchStyle, showCart, showAuth, ctaText, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems || ['Inicio', 'Productos', 'Categorías', 'Nosotros', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems || menuEjemplo(t);
   const leftItems = items.slice(0, Math.ceil(items.length / 2)).slice(0, 3);
   const rightItems = items.slice(Math.ceil(items.length / 2)).slice(0, 3);
   return (
@@ -174,7 +184,8 @@ function LayoutMinimal({ searchStyle, showCart, showAuth, ctaText }: HeaderPrevi
 }
 
 function LayoutMega({ searchStyle, showCart, showAuth, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems?.slice(0, 6) || ['Inicio', 'Categorías', 'Productos', 'Ofertas', 'Nosotros', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems?.slice(0, 6) || ['inicio', 'categorias', 'productos', 'ofertas', 'nosotros', 'contacto'].map((k) => t(`headerPreviewMockup.menuEjemplo.${k}`));
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between px-3 py-2">
@@ -198,7 +209,8 @@ function LayoutMega({ searchStyle, showCart, showAuth, menuItems }: HeaderPrevie
 // ============================================================
 
 function LayoutMobileDrawer({ showCart, showAuth, searchStyle, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems?.slice(0, 4) || ['Inicio', 'Productos', 'Categorías', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems?.slice(0, 4) || ['inicio', 'productos', 'categorias', 'contacto'].map((k) => t(`headerPreviewMockup.menuEjemplo.${k}`));
   return (
     <div className="relative">
       <div className="flex items-center justify-between px-3 py-2">
@@ -217,7 +229,7 @@ function LayoutMobileDrawer({ showCart, showAuth, searchStyle, menuItems }: Head
       {/* Drawer simulado */}
       <div className="absolute right-0 top-0 bottom-0 w-32 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col gap-2 p-2 z-20">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[8px] font-bold text-gray-700 dark:text-gray-200">Menú</span>
+          <span className="text-[8px] font-bold text-gray-700 dark:text-gray-200">{t('headerPreviewMockup.menu')}</span>
           <div className="w-3 h-3 rounded-full bg-gray-200 dark:bg-gray-600" />
         </div>
         {items.map((item, i) => (
@@ -226,7 +238,7 @@ function LayoutMobileDrawer({ showCart, showAuth, searchStyle, menuItems }: Head
           </div>
         ))}
         {showAuth && (
-          <div className="text-[8px] text-blue-600 font-medium mt-1">Iniciar sesión</div>
+          <div className="text-[8px] text-blue-600 font-medium mt-1">{t('headerPreviewMockup.iniciarSesion')}</div>
         )}
       </div>
     </div>
@@ -234,7 +246,8 @@ function LayoutMobileDrawer({ showCart, showAuth, searchStyle, menuItems }: Head
 }
 
 function LayoutMobileBottomSheet({ showCart, searchStyle, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems?.slice(0, 4) || ['Inicio', 'Productos', 'Categorías', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems?.slice(0, 4) || ['inicio', 'productos', 'categorias', 'contacto'].map((k) => t(`headerPreviewMockup.menuEjemplo.${k}`));
   return (
     <div className="relative">
       <div className="flex items-center justify-between px-3 py-2">
@@ -261,7 +274,8 @@ function LayoutMobileBottomSheet({ showCart, searchStyle, menuItems }: HeaderPre
 }
 
 function LayoutMobileFullscreen({ showCart, searchStyle, menuItems }: HeaderPreviewMockupProps) {
-  const items = menuItems?.slice(0, 5) || ['Inicio', 'Productos', 'Categorías', 'Nosotros', 'Contacto'];
+  const t = useTranslations('branding.editor');
+  const items = menuItems?.slice(0, 5) || menuEjemplo(t);
   return (
     <div className="relative">
       <div className="flex items-center justify-between px-3 py-2">
@@ -290,12 +304,13 @@ function LayoutMobileFullscreen({ showCart, searchStyle, menuItems }: HeaderPrev
 }
 
 function LayoutMobileTabs({ showCart, searchStyle }: HeaderPreviewMockupProps) {
+  const t = useTranslations('branding.editor');
   const tabs = [
-    { icon: '🏠', label: 'Inicio' },
-    { icon: '📋', label: 'Categorías' },
-    { icon: '🔍', label: 'Buscar' },
-    { icon: '🛒', label: 'Carrito' },
-    { icon: '👤', label: 'Cuenta' },
+    { icon: '🏠', label: t('headerPreviewMockup.tabs.inicio') },
+    { icon: '📋', label: t('headerPreviewMockup.tabs.categorias') },
+    { icon: '🔍', label: t('headerPreviewMockup.tabs.buscar') },
+    { icon: '🛒', label: t('headerPreviewMockup.tabs.carrito') },
+    { icon: '👤', label: t('headerPreviewMockup.tabs.cuenta') },
   ];
   return (
     <div className="flex flex-col h-full">
@@ -339,6 +354,7 @@ export default function HeaderPreviewMockup({
 }: HeaderPreviewMockupProps) {
   // Opacidad del fondo del header (50-100). Se aplica como rgba inline
   // porque Tailwind no soporta clases de opacidad generadas dinámicamente.
+  const t = useTranslations('branding.editor');
   const headerBgStyle = {
     backgroundColor: `rgba(255, 255, 255, ${headerOpacity / 100})`,
   };
@@ -361,7 +377,7 @@ export default function HeaderPreviewMockup({
       {/* Label */}
       <div className="px-2 py-1 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-          {isMobile ? `Vista Móvil — ${mobileMenuStyle}` : `Vista Desktop — ${layout}`}
+          {isMobile ? t('headerPreviewMockup.vistaMovil', { mobileMenuStyle }) : t('headerPreviewMockup.vistaDesktop', { layout })}
         </span>
       </div>
 

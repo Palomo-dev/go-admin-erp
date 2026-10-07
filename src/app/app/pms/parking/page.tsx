@@ -7,8 +7,10 @@ import ParkingService, { type ParkingSession, type ParkingStats } from '@/lib/se
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useTranslations } from 'next-intl';
 
 export default function ParkingPage() {
+  const t = useTranslations('pmsParking');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const { branchFilter, selectedBranchId } = useBranch();
@@ -39,7 +41,7 @@ export default function ParkingPage() {
       const organizationId = organization?.id;
 
       if (!organizationId) {
-        throw new Error('No se encontró el ID de la organización');
+        throw new Error(t('page.noEncontroIdOrganizacion'));
       }
 
       // branchFilter: null = Todas (consolidado, no filtrar), número = sucursal específica
@@ -54,8 +56,8 @@ export default function ParkingPage() {
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las sesiones de parking.',
+        title: t('passVehiclesDialog.error'),
+        description: t('page.noPudieronCargarSesiones'),
         variant: 'destructive',
       });
     } finally {
@@ -74,7 +76,7 @@ export default function ParkingPage() {
       const mutationBranchId = data.branch_id;
       if (!mutationBranchId || !organization?.id) {
         throw new Error(
-          'Se requiere una sucursal concreta para registrar una entrada. Selecciona una sucursal específica en el selector.'
+          t('page.requiereSucursalConcretaRegistrar')
         );
       }
 
@@ -89,8 +91,8 @@ export default function ParkingPage() {
       );
 
       toast({
-        title: 'Entrada Registrada',
-        description: `Vehículo ${data.vehicle_plate} ingresado correctamente`,
+        title: t('page.entradaRegistrada'),
+        description: t('page.vehiculoIngresadoCorrectamente', { vehicle_plate: data.vehicle_plate }),
       });
 
       // Recargar datos
@@ -98,7 +100,7 @@ export default function ParkingPage() {
     } catch (error: any) {
       console.error('Error al registrar entrada:', error);
       toast({
-        title: 'Error',
+        title: t('passVehiclesDialog.error'),
         description: error.message || 'No se pudo registrar la entrada',
         variant: 'destructive',
       });
@@ -118,8 +120,8 @@ export default function ParkingPage() {
 
   const handleConfirmExit = () => {
     toast({
-      title: 'Salida Registrada',
-      description: `Vehículo ${selectedSession?.vehicle_plate} ha salido correctamente`,
+      title: t('page.salidaRegistrada'),
+      description: t('page.vehiculoHaSalidoCorrectamente', { vehicle_plate: selectedSession?.vehicle_plate ?? '' }),
     });
     
     // Recargar datos
@@ -147,7 +149,7 @@ export default function ParkingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
             <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
-              Total Sesiones
+              {t('page.totalSesiones')}
             </p>
             <p className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1 sm:mt-2">
               {stats.total_sessions}
@@ -156,7 +158,7 @@ export default function ParkingPage() {
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
             <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
-              Sesiones Activas
+              {t('page.sesionesActivas')}
             </p>
             <p className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mt-1 sm:mt-2">
               {stats.active_sessions}
@@ -165,7 +167,7 @@ export default function ParkingPage() {
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
             <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
-              Completadas Hoy
+              {t('page.completadasHoy')}
             </p>
             <p className="text-xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1 sm:mt-2">
               {stats.completed_today}
@@ -174,7 +176,7 @@ export default function ParkingPage() {
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
             <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
-              Ingresos Hoy
+              {t('page.ingresosHoy')}
             </p>
             <p className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mt-1 sm:mt-2">
               ${stats.revenue_today.toLocaleString()}

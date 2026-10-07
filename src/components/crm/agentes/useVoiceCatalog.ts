@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { libraryLabel, type LibraryTagKey } from "@/lib/services/crm/voiceLibrary";
+import { useTranslations } from "next-intl";
 
 export interface VoiceCatalogRow {
   id: string;
@@ -87,6 +88,7 @@ export interface VoiceCatalogState {
 }
 
 export function useVoiceCatalog(): VoiceCatalogState {
+  const tx = useTranslations("crm.agentesIa");
   const [voices, setVoices] = useState<VoiceCatalogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,14 +104,14 @@ export function useVoiceCatalog(): VoiceCatalogState {
     try {
       const res = await fetch("/api/crm/voices", { cache: "no-store" });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status} al leer el catálogo de voces`);
+      if (!res.ok || !json?.success) throw new Error(json?.error || tx("useVoiceCatalog.errorLeerCatalogoVoces", { status: res.status }));
       setVoices((json.data ?? []) as VoiceCatalogRow[]);
       setAccount((json.account as VoiceAccountInfo | null | undefined) ?? null);
       loadedOnce.current = true;
     } catch (err) {
       setVoices([]);
       loadedOnce.current = false;
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(err instanceof Error ? err.message : tx("voiceAddForms.errorDesconocido"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -120,7 +122,7 @@ export function useVoiceCatalog(): VoiceCatalogState {
     try {
       const res = await fetch("/api/crm/config/providers?category=tts", { cache: "no-store", credentials: "include" });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(json?.error || tx("agentCampaignsPanel.error", { status: res.status }));
       const items = (json.items ?? []) as ProviderItem[];
       const own = items.filter((i) => i.configured).map((i) => i.provider);
       const platform = items.filter((i) => !i.configured && i.platform_available).map((i) => i.provider);

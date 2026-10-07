@@ -4,6 +4,7 @@ import { getTaxIncludedSetting } from '@/lib/utils/taxCalculations';
 import { resolveLineTax } from '@/lib/services/taxResolver';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { combinarDescuentos, promocionesUsadas as promocionesEnLineas } from '@/lib/promotions/motorPromociones';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
 import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
@@ -1226,7 +1227,11 @@ export class POSService {
       if (itemIndex === -1) throw new Error('Item no encontrado');
 
       const maxDiscount = cart.items[itemIndex].quantity * cart.items[itemIndex].unit_price;
-      cart.items[itemIndex].discount_amount = Math.max(0, Math.min(discountAmount, maxDiscount));
+      const manual = Math.max(0, Math.min(discountAmount, maxDiscount));
+      // Descuento del cajero: se guarda aparte del de promoción y nunca se pisa.
+      // En 0 se quita el manual y la línea vuelve a recibir la promoción.
+      cart.items[itemIndex].manual_discount_amount = manual > 0 ? manual : null;
+      cart.items[itemIndex].discount_amount = manual;
 
       // Recalcular totales
       await this.calculateCartTotals(cart);
@@ -1677,60 +1682,18 @@ export class POSService {
     try {
       const { cart, payments } = checkoutData;
 
-      // --- Evaluar promociones activas para POS ---
-      // Aplica descuentos automáticos a items que no tengan discount_amount manual
-      // Promociones que quedaron aplicadas en el carrito: se registran como uso
-      // (promotions.usage_count) una vez creada la venta. Normalmente
-      // calculateCartTotals ya dejó el descuento en el ítem antes del checkout,
-      // así que el criterio es "la promoción coincide y el ítem tiene descuento".
+      // --- Promociones (POS) ---
+      // Se reevalúa el carrito COMPLETO con la regla única (motorPromociones):
+      // el descuento de promoción de cada línea se recalcula y el manual del
+      // cajero se respeta. Las promociones que quedaron en alguna línea se
+      // registran como uso (promotions.usage_count) en pos_checkout_v1.
       let promocionesUsadas: string[] = [];
       // En el cobro de una venta que ya existe (deuda, mesa) los descuentos ya
-      // quedaron en sus líneas cuando se crearon: no se reevalúan promociones.
+      // quedaron en sus líneas: no se reevalúan aquí. La mesa los recalcula en
+      // cada cambio de la cuenta (PedidosService.recalcularPromocionesMesa).
       const cobraVentaExistente = !!(checkoutData.settle?.sale_id || (cart.sale_id && cart.invoice_id));
       if (!cobraVentaExistente) {
-      try {
-        const promoResult = await promotionEngine.evaluate({
-          channel: 'pos',
-          items: cart.items.map(i => ({
-            product_id: i.product_id,
-            // Para que una promoción sobre el producto padre alcance a la variante.
-            parent_product_id: i.product?.parent_product_id ?? null,
-            category_id: i.product?.category_id,
-            quantity: i.quantity,
-            unit_price: i.unit_price,
-            // «Lleve X pague Y» no aplica a productos por peso o medida.
-            sale_mode: i.product?.sale_mode,
-          })),
-          organization_id: cart.organization_id,
-          branch_id: cart.branch_id,
-          customer_id: cart.customer_id,
-        });
-
-        if (promoResult.discountTotal > 0) {
-          for (let idx = 0; idx < cart.items.length; idx += 1) {
-            const item = cart.items[idx];
-            if (!item.discount_amount || item.discount_amount === 0) {
-              // Líneas por peso o medida: el descuento de ESA línea (cada pesada
-              // es una línea del mismo producto; el reparto por producto le
-              // daba a cada una el de todas). Las demás, como siempre.
-              const promoDiscount = (esMedido(item.product)
-                ? promoResult.lineDiscounts?.[idx]
-                : promoResult.itemDiscounts[item.product_id]) || 0;
-              if (promoDiscount > 0) {
-                item.discount_amount = promoDiscount;
-              }
-            }
-          }
-          const productosConDescuento = new Set(
-            cart.items.filter(i => (i.discount_amount || 0) > 0).map(i => i.product_id),
-          );
-          promocionesUsadas = promoResult.applied
-            .filter(p => p.items_affected.some(pid => productosConDescuento.has(pid)))
-            .map(p => p.promotion_id);
-        }
-      } catch (promoErr) {
-        console.warn('[posService] No se pudieron evaluar promociones:', promoErr);
-      }
+        promocionesUsadas = await this.aplicarPromociones(cart);
       }
 
       // Calcular totales por item resolviendo tax_rate desde los impuestos del producto
@@ -1879,7 +1842,10 @@ export class POSService {
         taxTotal: effectiveTaxTotal,
         discountTotal: effectiveDiscount,
         total: finalTotal,
-        promotionIds: ventaExistenteId ? [] : promocionesUsadas,
+        // Mesa: las de sus líneas; pos_checkout_v1 las suma solo al saldar la cuenta.
+        promotionIds: ventaExistenteId
+          ? (checkoutData.settle?.table_session_id ? (checkoutData.settle.promotion_ids ?? []) : [])
+          : promocionesUsadas,
         invoiceCommissionAmount,
         ...(ventaExistenteId
           ? {
@@ -2253,15 +2219,26 @@ export class POSService {
     return colorMap[code] || '#6B7280';
   }
 
-  private static async calculateCartTotals(cart: Cart): Promise<void> {
-    // --- Evaluar promociones activas para POS ---
+  /**
+   * Evalúa las promociones sobre el carrito COMPLETO y deja en cada línea su
+   * descuento: el manual del cajero si lo tiene (no se pisa) y, si no, el de
+   * promoción de ESA línea (`lineDiscounts[idx]`; `itemDiscounts` es la suma
+   * por producto y con el mismo producto en dos líneas descontaba doble).
+   * Se llama en cada cambio del carrito: subir o bajar cantidades, quitar o
+   * agregar líneas recalcula o quita el descuento. Devuelve las promociones
+   * que quedaron en alguna línea. Si la evaluación falla, el carrito queda
+   * como estaba (se avisa en consola).
+   */
+  private static async aplicarPromociones(cart: Cart): Promise<string[]> {
     try {
       const promoResult = await promotionEngine.evaluate({
         channel: 'pos',
         items: cart.items.map(i => ({
           product_id: i.product_id,
-          // Para que una promoción sobre el producto padre alcance a la variante.
-          parent_product_id: i.product?.parent_product_id ?? null,
+          // Para que una promoción sobre el producto padre o la categoría alcance
+          // a la línea. Si el producto del carrito no los trae (undefined), el
+          // motor los completa desde `products`.
+          parent_product_id: i.product?.parent_product_id,
           category_id: i.product?.category_id,
           quantity: i.quantity,
           unit_price: i.unit_price,
@@ -2272,24 +2249,21 @@ export class POSService {
         branch_id: cart.branch_id,
         customer_id: cart.customer_id,
       });
-
-      if (promoResult.discountTotal > 0) {
-        for (let idx = 0; idx < cart.items.length; idx += 1) {
-          const item = cart.items[idx];
-          if (!item.discount_amount || item.discount_amount === 0) {
-            // Líneas por peso o medida: el descuento de ESA línea (ver checkout).
-            const promoDiscount = (esMedido(item.product)
-              ? promoResult.lineDiscounts?.[idx]
-              : promoResult.itemDiscounts[item.product_id]) || 0;
-            if (promoDiscount > 0) {
-              item.discount_amount = promoDiscount;
-            }
-          }
-        }
-      }
+      const finales = combinarDescuentos(cart.items, promoResult.lineDiscounts);
+      cart.items.forEach((item, idx) => {
+        item.discount_amount = finales[idx].discount_amount;
+        item.manual_discount_amount = finales[idx].manual_discount_amount;
+        item.promo_discount_amount = finales[idx].promo_discount_amount;
+      });
+      return promocionesEnLineas(promoResult, finales.map((f) => f.promo_discount_amount));
     } catch (promoErr) {
-      console.warn('[posService] No se pudieron evaluar promociones en calculateCartTotals:', promoErr);
+      console.warn('[posService] No se pudieron evaluar promociones:', promoErr);
+      return [];
     }
+  }
+
+  private static async calculateCartTotals(cart: Cart): Promise<void> {
+    await this.aplicarPromociones(cart);
 
     // Recalcular impuestos para cada ítem
     for (const item of cart.items) {

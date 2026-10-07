@@ -3,6 +3,7 @@ import { Branch } from '@/types/branch';
 import { ManagerSelector } from './ManagerSelector';
 import { branchService } from '@/lib/services/branchService';
 import { XMarkIcon, UserIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
 
 interface AssignManagerModalProps {
   branch: Branch;
@@ -19,6 +20,7 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const t = useTranslations('org.acceso.sucursales');
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(
     branch.manager_id || null
   );
@@ -62,7 +64,7 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
             <div>
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                 <UserIcon className="h-5 w-5 mr-2 text-blue-600" />
-                Asignar Gerente
+                {t('assignManagerModal.asignarGerente')}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 {branch.name}
@@ -94,7 +96,7 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Seleccionar Gerente
+                {t('assignManagerModal.seleccionarGerente')}
               </label>
               <ManagerSelector
                 organizationId={organizationId}
@@ -103,24 +105,24 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
                 disabled={loading}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Solo empleados con roles de Admin, Manager o Empleado pueden ser asignados como gerentes.
+                {t('assignManagerModal.soloEmpleadosRolesAdmin')}
               </p>
             </div>
 
             {/* Current vs New Manager Info */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Resumen del cambio:</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">{t('assignManagerModal.resumenCambio')}</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Gerente actual:</span>
+                  <span className="text-gray-600">{t('assignManagerModal.gerenteActual')}</span>
                   <span className="font-medium">
-                    {branch.manager_id ? 'Asignado' : 'Sin asignar'}
+                    {branch.manager_id ? t('assignManagerModal.asignado') : t('assignManagerModal.sinAsignar')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Nuevo gerente:</span>
+                  <span className="text-gray-600">{t('assignManagerModal.nuevoGerente')}</span>
                   <span className="font-medium">
-                    {selectedManagerId ? 'Se asignará' : 'Sin asignar'}
+                    {selectedManagerId ? t('assignManagerModal.asignara') : t('assignManagerModal.sinAsignar')}
                   </span>
                 </div>
               </div>
@@ -136,7 +138,7 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             disabled={loading}
           >
-            Cancelar
+            {t('confirmar.cancelar')}
           </button>
           <button
             type="button"
@@ -147,7 +149,7 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
             {loading && (
               <span className="loading loading-spinner loading-sm mr-2"></span>
             )}
-            {loading ? 'Asignando...' : 'Asignar Gerente'}
+            {loading ? t('assignManagerModal.asignando') : t('assignManagerModal.asignarGerente')}
           </button>
         </div>
       </div>

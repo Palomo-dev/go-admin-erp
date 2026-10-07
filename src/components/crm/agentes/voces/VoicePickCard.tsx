@@ -16,6 +16,7 @@ import { VOICE_KIND_LABELS, catalogVoiceTags, type VoiceCatalogRow } from "../us
 import { VoiceAvatar } from "./VoiceAvatar";
 import { VoicePreviewButton } from "./VoicePreviewButton";
 import type { PreviewStatus } from "./useAudioPreview";
+import { useTranslations } from "next-intl";
 
 interface Props {
   groupName: string;
@@ -48,6 +49,7 @@ export function VoicePickCard({
   previewStatus,
   onPreview,
 }: Props) {
+  const tx = useTranslations("crm.agentesIa");
   const id = `${groupName}-${value}`;
   const name = voice?.name ?? title ?? "";
   const tags = voice ? catalogVoiceTags(voice) : [];
@@ -101,7 +103,7 @@ export function VoicePickCard({
               {voice.is_default && (
                 <Badge variant="success" className="gap-1 font-normal">
                   <Star className="h-3 w-3" aria-hidden="true" />
-                  Por defecto
+                  {tx("voicePickCard.defecto")}
                 </Badge>
               )}
               {tags.map((t) => (
@@ -114,7 +116,7 @@ export function VoicePickCard({
           {voice?.consent_recorded_at && (
             <span className="mt-1 inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-300">
               <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-              Consentimiento registrado
+              {tx("voicePickCard.consentimientoRegistrado")}
             </span>
           )}
         </span>

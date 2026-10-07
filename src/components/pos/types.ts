@@ -114,7 +114,15 @@ export interface CartItem {
   quantity: number;
   unit_price: number;
   total: number;
+  /** Descuento final de la línea (manual si lo hay; si no, el de promoción). Es el que se cobra. */
   discount_amount?: number;
+  /**
+   * Descuento puesto a mano por el cajero. Una promoción nunca lo pisa.
+   * `null` = la línea no tiene descuento manual.
+   */
+  manual_discount_amount?: number | null;
+  /** Descuento de promoción de la última evaluación del carrito (se recalcula en cada cambio). */
+  promo_discount_amount?: number;
   tax_amount?: number;
   tax_rate?: number;
   tax_excluded?: boolean;
@@ -395,6 +403,12 @@ export interface CobroVentaExistente {
    * validar la cuenta entera.
    */
   lineas_sin_cobrar?: CartItem[];
+  /**
+   * Promociones que quedaron en las líneas de la cuenta (`notes.promociones`).
+   * `pos_checkout_v1` suma su uso una sola vez, en el cobro que salda la cuenta,
+   * y solo de las que de verdad están en las líneas.
+   */
+  promotion_ids?: string[];
 }
 
 // Para impuestos

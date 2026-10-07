@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { addMonthsPlain, MAX_RANGE_MONTHS } from '@/lib/services/crm/revenueOs/dateRange';
+import { useTranslations } from 'next-intl';
 
 export interface RangeSelection {
   /** YYYY-MM-DD inclusivo. */
@@ -43,6 +44,7 @@ export function validateMonths(startMonth: string, endMonth: string): string | n
 }
 
 export function RevenueRangeControl({ current, onApply, disabled }: Props) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const startId = useId();
   const endId = useId();
   const errId = useId();
@@ -53,7 +55,7 @@ export function RevenueRangeControl({ current, onApply, disabled }: Props) {
 
   const apply = () => {
     const problem = validateMonths(startMonth, endMonth);
-    setError(problem);
+    setError(problem ? t(`revenueRangeControl.errores.${problem === 'Elige mes y año en ambos campos' ? 'ambos' : problem === 'El mes final debe ser igual o posterior al inicial' ? 'orden' : 'maximo'}`, { max: MAX_RANGE_MONTHS }) : null);
     if (problem) {
       document.getElementById(startId)?.focus();
       return;
@@ -68,11 +70,11 @@ export function RevenueRangeControl({ current, onApply, disabled }: Props) {
         e.preventDefault();
         apply();
       }}
-      aria-label="Periodo del panel"
+      aria-label={t('revenueRangeControl.periodoPanel')}
     >
       <div className="space-y-1">
         <Label htmlFor={startId} className="text-xs text-gray-600 dark:text-gray-300">
-          Desde (mes)
+          {t('revenueRangeControl.desdeMes')}
         </Label>
         <Input
           id={startId}
@@ -87,7 +89,7 @@ export function RevenueRangeControl({ current, onApply, disabled }: Props) {
       </div>
       <div className="space-y-1">
         <Label htmlFor={endId} className="text-xs text-gray-600 dark:text-gray-300">
-          Hasta (mes)
+          {t('revenueRangeControl.hastaMes')}
         </Label>
         <Input
           id={endId}
@@ -101,7 +103,7 @@ export function RevenueRangeControl({ current, onApply, disabled }: Props) {
         />
       </div>
       <Button type="submit" size="sm" className="h-9 bg-blue-600 text-white hover:bg-blue-700" disabled={disabled}>
-        Aplicar
+        {t('revenueRangeControl.aplicar')}
       </Button>
       {error && (
         <p id={errId} role="alert" className="basis-full text-xs text-red-700 dark:text-red-300">

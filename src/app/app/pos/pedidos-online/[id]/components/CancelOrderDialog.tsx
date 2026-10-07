@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import type { WebOrderStatus } from '@/lib/services/webOrdersService';
+import { useTranslations } from 'next-intl';
 
 interface CancelOrderDialogProps {
   open: boolean;
@@ -33,9 +34,10 @@ export function CancelOrderDialog({
   onConfirm,
   isLoading = false,
 }: CancelOrderDialogProps) {
+  const t = useTranslations('pedidoWeb');
   const isReject = orderStatus === 'pending';
-  const title = isReject ? 'Rechazar pedido' : 'Cancelar pedido';
-  const buttonText = isReject ? 'Rechazar' : 'Cancelar pedido';
+  const title = isReject ? t('cancelOrderDialog.rechazarPedido') : t('cancelOrderDialog.cancelarPedido');
+  const buttonText = isReject ? t('cancelOrderDialog.rechazar') : t('cancelOrderDialog.cancelarPedido');
 
   const handleClose = () => {
     onReasonChange('');
@@ -48,26 +50,26 @@ export function CancelOrderDialog({
         <DialogHeader>
           <DialogTitle className="dark:text-gray-100">{title}</DialogTitle>
           <DialogDescription className="dark:text-gray-400">
-            Indica el motivo. El cliente será notificado automáticamente.
+            {t('cancelOrderDialog.indicaMotivoClienteSera')}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <Label htmlFor="cancel-reason" className="dark:text-gray-200">Motivo</Label>
+          <Label htmlFor="cancel-reason" className="dark:text-gray-200">{t('cancelOrderDialog.motivo')}</Label>
           <Textarea
             id="cancel-reason"
             value={reason}
             onChange={(e) => onReasonChange(e.target.value)}
-            placeholder="Ej: Producto agotado, fuera de horario de entrega..."
+            placeholder={t('cancelOrderDialog.ejProductoAgotadoFuera')}
             className="mt-2"
             rows={3}
           />
           <p className="text-sm text-muted-foreground dark:text-gray-400 mt-2">
-            Este motivo se mostrará al cliente en su notificación.
+            {t('cancelOrderDialog.esteMotivoMostraraCliente')}
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} className="dark:border-gray-600">
-            Volver
+            {t('detalle.volver')}
           </Button>
           <Button
             variant="destructive"

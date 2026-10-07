@@ -34,10 +34,11 @@ describe('validateQuotaForm', () => {
     expect(validateQuotaForm(ok)).toEqual([]);
   });
   it('meta vacía o cero → error en target_amount; ancla vacía → error en anchor; conteo decimal → error', () => {
-    expect(validateQuotaForm({ ...ok, target_amount: '' })).toEqual([{ field: 'target_amount', message: expect.stringMatching(/meta/i) }]);
+    expect(validateQuotaForm({ ...ok, target_amount: '' })).toEqual([{ field: 'target_amount', message: expect.stringMatching(/meta/i), codigo: 'metaInvalida' }]);
     expect(validateQuotaForm({ ...ok, target_amount: '0' })[0].field).toBe('target_amount');
-    expect(validateQuotaForm({ ...ok, anchor: '' })[0].field).toBe('anchor');
-    expect(validateQuotaForm({ ...ok, target_type: 'deals', target_amount: '2,5' })[0].field).toBe('target_amount');
+    expect(validateQuotaForm({ ...ok, anchor: '' })[0]).toMatchObject({ field: 'anchor', codigo: 'fechaFueraPeriodo' });
+    // `codigo` lleva el mensaje al idioma activo en la pantalla (useTextosCuota).
+    expect(validateQuotaForm({ ...ok, target_type: 'deals', target_amount: '2,5' })[0]).toMatchObject({ field: 'target_amount', codigo: 'metaEntera' });
   });
 });
 

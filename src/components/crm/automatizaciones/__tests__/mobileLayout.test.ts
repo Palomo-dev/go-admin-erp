@@ -143,7 +143,9 @@ describe('editor de una acción, vista previa, tarjeta, prueba en seco e histori
 
   it('RunsSheet: la columna Fecha se oculta bajo sm y la fecha va bajo el estado', () => {
     const src = read('RunsSheet.tsx');
-    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">Fecha<\/TableHead>/);
+    // El texto «Fecha» vive en messages (crm.automatizaciones.runsSheet.fecha).
+    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">\{tx\('runsSheet\.fecha'\)\}<\/TableHead>/);
+    expect(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'messages/es.json'), 'utf8')).crm.automatizaciones.runsSheet.fecha).toBe('Fecha');
     expect(src).toMatch(/className="hidden whitespace-nowrap align-top [^"]*sm:table-cell"/);
     expect(src).toMatch(/className="mt-0\.5 block text-xs font-normal [^"]*sm:hidden"/);
   });

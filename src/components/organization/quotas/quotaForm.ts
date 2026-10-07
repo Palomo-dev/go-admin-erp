@@ -19,6 +19,8 @@ export interface QuotaFormState {
 export interface QuotaFormError {
   field: keyof QuotaFormState;
   message: string;
+  /** Subclave de `org.acceso.miembros.cuotas.errores` para mostrarlo en el idioma activo. */
+  codigo?: 'fechaFueraPeriodo' | 'metaInvalida' | 'metaEntera';
 }
 
 export function defaultQuotaForm(today: string, currency: string): QuotaFormState {
@@ -46,13 +48,16 @@ export function formToPayload(form: QuotaFormState): QuotaInput {
 }
 
 export function validateQuotaForm(form: QuotaFormState): QuotaFormError[] {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.anchor)) return [{ field: 'anchor', message: 'Elige una fecha dentro del periodo.' }];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.anchor)) return [{ field: 'anchor', message: 'Elige una fecha dentro del periodo.', codigo: 'fechaFueraPeriodo' }];
   const amount = parseAmount(form.target_amount);
   if (!form.target_amount.trim() || !Number.isFinite(amount) || amount <= 0) {
-    return [{ field: 'target_amount', message: 'Escribe la meta: un número mayor que cero.' }];
+    return [{ field: 'target_amount', message: 'Escribe la meta: un número mayor que cero.', codigo: 'metaInvalida' }];
   }
   const v = validateQuotaInput({ ...formToPayload(form) });
-  if (!v.ok) return [{ field: v.field === 'period_start' || v.field === 'period_end' ? 'anchor' : v.field, message: v.message }];
+  if (!v.ok) {
+    const codigo = v.field === 'target_amount' && form.target_type !== 'revenue' ? ('metaEntera' as const) : undefined;
+    return [{ field: v.field === 'period_start' || v.field === 'period_end' ? 'anchor' : v.field, message: v.message, ...(codigo ? { codigo } : {}) }];
+  }
   return [];
 }
 

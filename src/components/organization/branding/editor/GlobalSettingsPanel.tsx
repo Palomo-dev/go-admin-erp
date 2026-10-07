@@ -32,6 +32,7 @@ export default function GlobalSettingsPanel({
   pages,
   onTogglePageHeader,
 }: GlobalSettingsPanelProps) {
+  const tx = useTranslations('branding.editor');
   const t = useTranslations('branding.editor.globalSettings');
   const [newButtonText, setNewButtonText] = useState('');
   const cartTexts: string[] = (settings as any).cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento'];
@@ -177,7 +178,7 @@ export default function GlobalSettingsPanel({
       {/* Opacidad del header */}
       <div className="space-y-2">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">
-          Opacidad del header
+          {tx('globalSettingsPanel.opacidadHeader')}
         </Label>
         <Slider
           min={50}
@@ -190,7 +191,7 @@ export default function GlobalSettingsPanel({
           {settings.header_opacity ?? 95}%
         </span>
         <p className="text-[9px] text-gray-400 dark:text-gray-500">
-          Controla qué tan transparente es el header (100 = sólido, 50 = semi-transparente)
+          {tx('globalSettingsPanel.controlaTanTransparenteHeader')}
         </p>
       </div>
 
@@ -200,9 +201,9 @@ export default function GlobalSettingsPanel({
 
       {/* Botón Comprar Ahora */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">🛒 Botón &quot;Comprar ahora&quot;</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{tx('globalSettingsPanel.botonQuotComprarAhora')}</Label>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar en tarjetas de productos</span>
+          <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.mostrarTarjetasProductos')}</span>
           <Switch
             checked={(settings as any).show_buy_now_button ?? true}
             onCheckedChange={(checked) => onUpdate({ ...settings, show_buy_now_button: checked } as any)}
@@ -212,17 +213,17 @@ export default function GlobalSettingsPanel({
 
       {/* Moneda junto al precio */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">💱 Moneda junto al precio</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{tx('globalSettingsPanel.monedaJuntoPrecio')}</Label>
         <div className="space-y-2 rounded-md border dark:border-gray-700 p-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar código de moneda (ej: COP, USD)</span>
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.mostrarCodigoMonedaEj')}</span>
             <Switch
               checked={(settings as any).show_currency_code ?? false}
               onCheckedChange={(checked) => onUpdate({ ...settings, show_currency_code: checked } as any)}
             />
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Lado del precio</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.ladoPrecio')}</span>
             <Select
               value={(settings as any).currency_position ?? 'left'}
               onValueChange={(val) => onUpdate({ ...settings, currency_position: val } as any)}
@@ -231,8 +232,8 @@ export default function GlobalSettingsPanel({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="left">Izquierda (COP $14.248)</SelectItem>
-                <SelectItem value="right">Derecha ($14.248 COP)</SelectItem>
+                <SelectItem value="left">{tx('globalSettingsPanel.izquierdaCop14248')}</SelectItem>
+                <SelectItem value="right">{tx('globalSettingsPanel.derecha14248Cop')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -241,10 +242,10 @@ export default function GlobalSettingsPanel({
 
       {/* Texto del botón del carrito */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">🛒 Texto botón del carrito</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{tx('globalSettingsPanel.textoBotonCarrito')}</Label>
         <div className="space-y-3 rounded-md border dark:border-gray-700 p-2">
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Modo</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.modo')}</span>
             <Select
               value={cartMode}
               onValueChange={(val) => onUpdate({ ...settings, cart_button_mode: val } as any)}
@@ -253,15 +254,15 @@ export default function GlobalSettingsPanel({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="dynamic">Dinámico (rota textos)</SelectItem>
-                <SelectItem value="fixed">Texto fijo</SelectItem>
+                <SelectItem value="dynamic">{tx('globalSettingsPanel.dinamicoRotaTextos')}</SelectItem>
+                <SelectItem value="fixed">{tx('globalSettingsPanel.textoFijo')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
             <span className="text-[10px] text-gray-500 dark:text-gray-500">
-              {cartMode === 'fixed' ? 'Texto del botón' : 'Textos que rotan'}
+              {cartMode === 'fixed' ? tx('globalSettings.buttonText') : tx('globalSettingsPanel.textosRotan')}
             </span>
             {cartTexts.map((text: string, i: number) => (
               <div key={i} className="flex items-center gap-1">
@@ -292,7 +293,7 @@ export default function GlobalSettingsPanel({
                 <Input
                   value={newButtonText}
                   onChange={(e) => setNewButtonText(e.target.value)}
-                  placeholder="Nuevo texto..."
+                  placeholder={tx('globalSettingsPanel.nuevoTexto')}
                   className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white flex-1"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newButtonText.trim()) {
@@ -316,18 +317,18 @@ export default function GlobalSettingsPanel({
             )}
           </div>
           <p className="text-[9px] text-gray-400 dark:text-gray-500">
-            {cartMode === 'dynamic' ? 'Cada vez que se abre el carrito, se muestra un texto aleatorio' : 'Se mostrará siempre el primer texto'}
+            {cartMode === 'dynamic' ? tx('globalSettingsPanel.cadaVezAbreCarrito') : tx('globalSettingsPanel.mostraraSiemprePrimerTexto')}
           </p>
         </div>
       </div>
 
       {/* Countdown Timer */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">⏰ Countdown Timer</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{tx('globalSettingsPanel.countdownTimer')}</Label>
         <div className="space-y-3">
           {/* Activar/Desactivar */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-600 dark:text-gray-400">Activar countdown</span>
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.activarCountdown')}</span>
             <Switch
               checked={(settings as any).countdown_enabled || false}
               onCheckedChange={(checked) => onUpdate({ ...settings, countdown_enabled: checked } as any)}
@@ -338,18 +339,18 @@ export default function GlobalSettingsPanel({
             <>
               {/* Título */}
               <div className="space-y-1">
-                <span className="text-[10px] text-gray-500 dark:text-gray-500">Texto</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.texto')}</span>
                 <Input
                   value={(settings as any).countdown_title || ''}
                   onChange={(e) => onUpdate({ ...settings, countdown_title: e.target.value } as any)}
-                  placeholder="¡Oferta por tiempo limitado!"
+                  placeholder={tx('globalSettingsPanel.ofertaTiempoLimitado')}
                   className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
               </div>
 
               {/* Modo */}
               <div className="space-y-1">
-                <span className="text-[10px] text-gray-500 dark:text-gray-500">Modo</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.modo')}</span>
                 <Select
                   value={(settings as any).countdown_mode || 'daily_reset'}
                   onValueChange={(val) => onUpdate({ ...settings, countdown_mode: val } as any)}
@@ -358,8 +359,8 @@ export default function GlobalSettingsPanel({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily_reset">Se reinicia cada 24h</SelectItem>
-                    <SelectItem value="custom">Fecha personalizada</SelectItem>
+                    <SelectItem value="daily_reset">{tx('globalSettingsPanel.reiniciaCada24h')}</SelectItem>
+                    <SelectItem value="custom">{tx('globalSettingsPanel.fechaPersonalizada')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -367,7 +368,7 @@ export default function GlobalSettingsPanel({
               {/* Campos según modo */}
               {(settings as any).countdown_mode === 'custom' ? (
                 <div className="space-y-1">
-                  <span className="text-[10px] text-gray-500 dark:text-gray-500">Fecha fin</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.fechaFin')}</span>
                   <Input
                     type="datetime-local"
                     value={(settings as any).countdown_end_date || ''}
@@ -378,7 +379,7 @@ export default function GlobalSettingsPanel({
               ) : (
                 <>
                   <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-500">Zona horaria</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.zonaHoraria')}</span>
                     <Select
                       value={(settings as any).countdown_timezone || 'America/Bogota'}
                       onValueChange={(val) => onUpdate({ ...settings, countdown_timezone: val } as any)}
@@ -387,19 +388,19 @@ export default function GlobalSettingsPanel({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="America/Bogota">Colombia (GMT-5)</SelectItem>
-                        <SelectItem value="America/Mexico_City">México (GMT-6)</SelectItem>
-                        <SelectItem value="America/Argentina/Buenos_Aires">Argentina (GMT-3)</SelectItem>
-                        <SelectItem value="America/Santiago">Chile (GMT-4)</SelectItem>
-                        <SelectItem value="America/Lima">Perú (GMT-5)</SelectItem>
-                        <SelectItem value="Europe/Madrid">España (GMT+1)</SelectItem>
-                        <SelectItem value="America/New_York">EEUU Este (GMT-5)</SelectItem>
-                        <SelectItem value="America/Los_Angeles">EEUU Oeste (GMT-8)</SelectItem>
+                        <SelectItem value="America/Bogota">{tx('globalSettingsPanel.colombiaGmt5')}</SelectItem>
+                        <SelectItem value="America/Mexico_City">{tx('globalSettingsPanel.mexicoGmt6')}</SelectItem>
+                        <SelectItem value="America/Argentina/Buenos_Aires">{tx('globalSettingsPanel.argentinaGmt3')}</SelectItem>
+                        <SelectItem value="America/Santiago">{tx('globalSettingsPanel.chileGmt4')}</SelectItem>
+                        <SelectItem value="America/Lima">{tx('globalSettingsPanel.peruGmt5')}</SelectItem>
+                        <SelectItem value="Europe/Madrid">{tx('globalSettingsPanel.espanaGmt1')}</SelectItem>
+                        <SelectItem value="America/New_York">{tx('globalSettingsPanel.eeuuEsteGmt5')}</SelectItem>
+                        <SelectItem value="America/Los_Angeles">{tx('globalSettingsPanel.eeuuOesteGmt8')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-500">Hora de reinicio (0-23)</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.horaReinicio023')}</span>
                     <Input
                       type="number"
                       min={0}
@@ -414,38 +415,38 @@ export default function GlobalSettingsPanel({
 
               {/* Dónde mostrar */}
               <div className="space-y-2">
-                <span className="text-[10px] text-gray-500 dark:text-gray-500">Mostrar en</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-500">{tx('globalSettingsPanel.mostrar')}</span>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Header</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.header')}</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_header ?? true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_header: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Carrito</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.carrito')}</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_cart ?? true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_cart: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Detalle producto</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.detalleProducto')}</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_product ?? true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_product: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Hero / Inicio</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.heroInicio')}</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_hero ?? false}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_hero: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Checkout</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.checkout')}</span>
                     <Switch
                       checked={(settings as any).checkout_show_countdown ?? false}
                       onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_countdown: checked } as any)}
@@ -460,16 +461,16 @@ export default function GlobalSettingsPanel({
 
       {/* Urgencia de compra */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">� Urgencia de compra</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{tx('globalSettingsPanel.urgenciaCompra')}</Label>
         <div className="space-y-2 rounded-md border dark:border-gray-700 p-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar en checkout</span>
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.mostrarCheckout')}</span>
             <Switch
               checked={(settings as any).checkout_show_stock_warning ?? false}
               onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_stock_warning: checked } as any)}
             />
           </div>
-          <p className="text-[9px] text-gray-400 dark:text-gray-500">Muestra mensajes como &quot;¡Solo quedan 3!&quot; para incentivar la compra rápida</p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500">{tx('globalSettingsPanel.muestraMensajesComoQuot')}</p>
         </div>
       </div>
 

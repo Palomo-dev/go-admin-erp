@@ -18,6 +18,7 @@ import {
 import { Loader2 } from "lucide-react";
 import type { CrmLookupsState } from "@/components/crm/shared/useCrmLookups";
 import { targetStagesOf } from "./campaignModel";
+import { useTranslations } from "next-intl";
 
 const NONE = "__none__";
 
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function CampaignTargetPicker({ lookups, pipelineId, stageId, onChange }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const { pipelines, stages, loading, error, countOpenOpportunities } = lookups;
   const stageOptions = targetStagesOf(stages, pipelineId);
   const [count, setCount] = useState<number | null>(null);
@@ -60,21 +62,21 @@ export function CampaignTargetPicker({ lookups, pipelineId, stageId, onChange }:
     return (
       <p className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-        Cargando embudos…
+        {t("campaignTargetPicker.cargandoEmbudos")}
       </p>
     );
   }
   if (error) {
     return (
       <p role="status" className="text-xs text-amber-800 dark:text-amber-200">
-        No se pudieron leer los embudos ({error}). La campaña se creará como lista manual.
+        {t("campaignTargetPicker.noPudieronLeerEmbudos", { error })}
       </p>
     );
   }
   if (pipelines.length === 0) {
     return (
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        No hay embudos en esta organización: la campaña se creará como lista manual.
+        {t("campaignTargetPicker.noHayEmbudosEsta")}
       </p>
     );
   }
@@ -82,16 +84,16 @@ export function CampaignTargetPicker({ lookups, pipelineId, stageId, onChange }:
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="space-y-1.5">
-        <Label htmlFor="c-pipeline">Embudo</Label>
+        <Label htmlFor="c-pipeline">{t("editor.etapas.embudo")}</Label>
         <Select
           value={pipelineId ?? NONE}
           onValueChange={(v) => onChange({ pipelineId: v === NONE ? null : v, stageId: null })}
         >
           <SelectTrigger id="c-pipeline" className="[&>span]:line-clamp-1">
-            <SelectValue placeholder="Elige un embudo" />
+            <SelectValue placeholder={t("campaignTargetPicker.eligeEmbudo")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>Sin embudo (lista manual)</SelectItem>
+            <SelectItem value={NONE}>{t("campaignTargetPicker.sinEmbudoListaManual")}</SelectItem>
             {pipelines.map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.name}
@@ -101,7 +103,7 @@ export function CampaignTargetPicker({ lookups, pipelineId, stageId, onChange }:
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="c-stage">Etapa a la que llamar</Label>
+        <Label htmlFor="c-stage">{t("campaignTargetPicker.etapaLlamar")}</Label>
         <Select
           value={stageId ?? NONE}
           disabled={!pipelineId}
@@ -109,10 +111,10 @@ export function CampaignTargetPicker({ lookups, pipelineId, stageId, onChange }:
         >
           {/* Tester UXM-D: una etapa larga se pintaba en 3 líneas fuera de un trigger de 40 px. */}
           <SelectTrigger id="c-stage" aria-describedby="c-stage-help" className="[&>span]:line-clamp-1">
-            <SelectValue placeholder={pipelineId ? "Elige una etapa" : "Primero elige un embudo"} />
+            <SelectValue placeholder={pipelineId ? t("campaignTargetPicker.eligeEtapa") : t("campaignTargetPicker.primeroEligeEmbudo")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>Ninguna (lista manual)</SelectItem>
+            <SelectItem value={NONE}>{t("campaignTargetPicker.ningunaListaManual")}</SelectItem>
             {stageOptions.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.name}
@@ -126,14 +128,12 @@ export function CampaignTargetPicker({ lookups, pipelineId, stageId, onChange }:
           aria-live="polite"
         >
           {!stageId
-            ? "El agente llamará a las oportunidades abiertas de esa etapa."
+            ? t("campaignTargetPicker.agenteLlamaraOportunidadesAbiertas")
             : counting
-              ? "Contando oportunidades abiertas…"
+              ? t("campaignTargetPicker.contandoOportunidadesAbiertas")
               : count === null
-                ? "El agente llamará a las oportunidades abiertas de esa etapa."
-                : count === 1
-                  ? "1 oportunidad abierta en esta etapa ahora mismo."
-                  : `${count.toLocaleString("es-CO")} oportunidades abiertas en esta etapa ahora mismo.`}
+                ? t("campaignTargetPicker.agenteLlamaraOportunidadesAbiertas")
+                : t("campaignTargetPicker.oportunidadesAbiertasEtapa", { n: count })}
         </p>
       </div>
     </div>

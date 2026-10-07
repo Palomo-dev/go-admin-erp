@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/utils/Utils';
 import { KNOWN_EVENTS, isEngineRoutedEvent, knownEvent } from '@/lib/services/crm/automation/ruleCatalog';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   id: string;
@@ -25,14 +26,15 @@ interface Props {
 
 const FREE_TEXT = /^[a-z_]+\.[a-z_.]+$/;
 
-export function currentEventLabel(value: string): string {
+export function currentEventLabel(value: string, cualquiera = 'Cualquier evento'): string {
   const trimmed = value.trim();
-  if (!trimmed) return 'Cualquier evento';
+  if (!trimmed) return cualquiera;
   const known = knownEvent(trimmed);
   return known ? `${known.label} (${known.value})` : trimmed;
 }
 
 export function EventPicker({ id, value, describedBy, onChange }: Props) {
+  const t = useTranslations('crm.automatizaciones');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim();
@@ -58,30 +60,30 @@ export function EventPicker({ id, value, describedBy, onChange }: Props) {
           aria-describedby={describedBy}
           className="h-9 w-full justify-between font-normal"
         >
-          <span className="truncate">{currentEventLabel(value)}</span>
+          <span className="truncate">{currentEventLabel(value, t('eventPicker.cualquierEvento'))}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-80 p-0">
         <Command>
-          <CommandInput placeholder="Buscar o escribir entidad.accion…" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={t('eventPicker.buscarEscribirEntidadAccion')} value={query} onValueChange={setQuery} />
           {engineRouted && (
             <p role="alert" className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-              Ese evento va por su propio disparador («cambia de etapa» o «cambia un dato»): una regla de evento con ese nombre no se dispararía.
+              {t('eventPicker.eseEventoVaPropio')}
             </p>
           )}
           <CommandList>
             <CommandEmpty>
               {trimmedQuery && !canUseFreeText
-                ? 'Ningún evento coincide. Un nombre libre tiene la forma entidad.accion (minúsculas).'
-                : 'Ningún evento coincide.'}
+                ? t('eventPicker.ningunEventoCoincideNombre')
+                : t('eventPicker.ningunEventoCoincide')}
             </CommandEmpty>
-            <CommandGroup heading="Eventos conocidos">
+            <CommandGroup heading={t('eventPicker.eventosConocidos')}>
               <CommandItem value="cualquier evento *" onSelect={() => pick('')}>
                 <Check className={cn('mr-2 h-4 w-4', value.trim() ? 'opacity-0' : 'opacity-100')} aria-hidden="true" />
                 <div>
-                  <p className="text-sm">Cualquier evento</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">La regla se evalúa con cualquier evento de este tipo.</p>
+                  <p className="text-sm">{t('eventPicker.cualquierEvento')}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('eventPicker.reglaEvaluaCualquierEvento')}</p>
                 </div>
               </CommandItem>
               {KNOWN_EVENTS.map((ev) => (
@@ -95,10 +97,10 @@ export function EventPicker({ id, value, describedBy, onChange }: Props) {
               ))}
             </CommandGroup>
             {canUseFreeText && (
-              <CommandGroup heading="Nombre libre">
+              <CommandGroup heading={t('eventPicker.nombreLibre')}>
                 <CommandItem value={`usar ${trimmedQuery}`} onSelect={() => pick(trimmedQuery)}>
                   <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                  <span className="text-sm">Usar «{trimmedQuery}»</span>
+                  <span className="text-sm">{t('eventPicker.usar', { trimmedQuery })}</span>
                 </CommandItem>
               </CommandGroup>
             )}

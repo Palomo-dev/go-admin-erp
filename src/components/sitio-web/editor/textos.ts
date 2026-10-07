@@ -120,6 +120,8 @@ export const TEXTOS_EDITOR = {
     legacyDescripcion: 'En este sitio «Guardar y publicar» lleva los cambios a la web.',
     vacioTitulo: 'Elige una sección',
     vacioDescripcion: 'Haz clic en una sección de la lista o del lienzo para editar su diseño, contenido y estilo.',
+    quitarChip: 'Quitar {valor}',
+    anadirAChip: 'Añadir a {campo}',
   },
   campo: {
     elegir: 'Elige una opción',
@@ -583,6 +585,12 @@ export const TEXTOS_EDITOR = {
       whatsapp: 'WhatsApp del sitio',
       maps: 'Cómo llegar (mapa de la sede)',
       elegirEnlace: 'Elige a dónde lleva',
+      rutas: {
+        reservas: 'Reservas en línea',
+        agendar: 'Agendar cita',
+        'consultar-pedido': 'Consultar pedido',
+        'mi-cuenta': 'Mi cuenta',
+      },
     },
     barra: {
       titulo: 'Barra superior',

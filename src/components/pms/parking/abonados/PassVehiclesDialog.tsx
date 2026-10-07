@@ -22,6 +22,7 @@ import {
 import { Loader2, Car, Plus, Trash2, Star, StarOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import parkingService, { type ParkingPass, type ParkingVehicle } from '@/lib/services/parkingService';
+import { useTranslations } from 'next-intl';
 
 interface PassVehiclesDialogProps {
   open: boolean;
@@ -46,6 +47,7 @@ export function PassVehiclesDialog({
   organizationId,
   onSuccess,
 }: PassVehiclesDialogProps) {
+  const t = useTranslations('pmsParking');
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -83,16 +85,16 @@ export function PassVehiclesDialog({
     try {
       await parkingService.addVehicleToPass(pass.id, vehicleId, false);
       toast({
-        title: 'Vehículo agregado',
-        description: 'El vehículo se ha asociado al pase',
+        title: t('passVehiclesDialog.vehiculoAgregado'),
+        description: t('passVehiclesDialog.vehiculoHaAsociadoPase'),
       });
       onSuccess();
       loadAvailableVehicles();
     } catch (error) {
       console.error('Error adding vehicle:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo agregar el vehículo',
+        title: t('passVehiclesDialog.error'),
+        description: t('passVehiclesDialog.noPudoAgregarVehiculo'),
         variant: 'destructive',
       });
     } finally {
@@ -103,8 +105,8 @@ export function PassVehiclesDialog({
   const handleCreateAndAddVehicle = async () => {
     if (!newVehicle.plate.trim()) {
       toast({
-        title: 'Error',
-        description: 'La placa es requerida',
+        title: t('passVehiclesDialog.error'),
+        description: t('passVehiclesDialog.placaRequerida'),
         variant: 'destructive',
       });
       return;
@@ -127,8 +129,8 @@ export function PassVehiclesDialog({
       await parkingService.addVehicleToPass(pass.id, vehicle.id, false);
 
       toast({
-        title: 'Vehículo creado y agregado',
-        description: 'El vehículo se ha registrado y asociado al pase',
+        title: t('passVehiclesDialog.vehiculoCreadoAgregado'),
+        description: t('passVehiclesDialog.vehiculoHaRegistradoAsociado'),
       });
 
       setNewVehicle({ plate: '', brand: '', model: '', color: '', vehicle_type: 'car' });
@@ -138,8 +140,8 @@ export function PassVehiclesDialog({
     } catch (error) {
       console.error('Error creating vehicle:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo crear el vehículo',
+        title: t('passVehiclesDialog.error'),
+        description: t('passVehiclesDialog.noPudoCrearVehiculo'),
         variant: 'destructive',
       });
     } finally {
@@ -150,8 +152,8 @@ export function PassVehiclesDialog({
   const handleRemoveVehicle = async (vehicleId: string) => {
     if (pass.vehicles && pass.vehicles.length <= 1) {
       toast({
-        title: 'Error',
-        description: 'El pase debe tener al menos un vehículo',
+        title: t('passVehiclesDialog.error'),
+        description: t('passVehiclesDialog.paseDebeTenerMenos'),
         variant: 'destructive',
       });
       return;
@@ -161,16 +163,16 @@ export function PassVehiclesDialog({
     try {
       await parkingService.removeVehicleFromPass(pass.id, vehicleId);
       toast({
-        title: 'Vehículo removido',
-        description: 'El vehículo se ha desasociado del pase',
+        title: t('passVehiclesDialog.vehiculoRemovido'),
+        description: t('passVehiclesDialog.vehiculoHaDesasociadoPase'),
       });
       onSuccess();
       loadAvailableVehicles();
     } catch (error) {
       console.error('Error removing vehicle:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo remover el vehículo',
+        title: t('passVehiclesDialog.error'),
+        description: t('passVehiclesDialog.noPudoRemoverVehiculo'),
         variant: 'destructive',
       });
     } finally {
@@ -194,15 +196,15 @@ export function PassVehiclesDialog({
       await parkingService.updatePass(pass.id, { vehicles: updatedVehicles });
 
       toast({
-        title: 'Vehículo principal actualizado',
-        description: 'Se ha establecido el vehículo principal',
+        title: t('passVehiclesDialog.vehiculoPrincipalActualizado'),
+        description: t('passVehiclesDialog.haEstablecidoVehiculoPrincipal'),
       });
       onSuccess();
     } catch (error) {
       console.error('Error setting primary vehicle:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el vehículo principal',
+        title: t('passVehiclesDialog.error'),
+        description: t('passVehiclesDialog.noPudoActualizarVehiculo'),
         variant: 'destructive',
       });
     } finally {
@@ -216,14 +218,14 @@ export function PassVehiclesDialog({
         <DialogHeader>
           <DialogTitle className="dark:text-white flex flex-wrap items-center gap-2">
             <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Gestionar Vehículos del Pase
+            {t('passVehiclesDialog.gestionarVehiculosPase')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Vehículos actuales del pase */}
           <div>
-            <Label className="dark:text-gray-200 mb-2 block">Vehículos Asociados</Label>
+            <Label className="dark:text-gray-200 mb-2 block">{t('passVehiclesDialog.vehiculosAsociados')}</Label>
             <div className="space-y-2">
               {pass.vehicles?.map((pv) => (
                 <div
@@ -239,14 +241,14 @@ export function PassVehiclesDialog({
                         </span>
                         {pv.is_primary && (
                           <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs">
-                            Principal
+                            {t('passVehiclesDialog.principal')}
                           </Badge>
                         )}
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {[pv.vehicle?.brand, pv.vehicle?.model, pv.vehicle?.color]
                           .filter(Boolean)
-                          .join(' • ') || 'Sin detalles'}
+                          .join(' • ') || t('passVehiclesDialog.sinDetalles')}
                       </p>
                     </div>
                   </div>
@@ -257,7 +259,7 @@ export function PassVehiclesDialog({
                         size="sm"
                         onClick={() => handleSetPrimary(pv.vehicle_id)}
                         disabled={isLoading}
-                        title="Marcar como principal"
+                        title={t('passVehiclesDialog.marcarComoPrincipal')}
                       >
                         <StarOff className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       </Button>
@@ -284,11 +286,11 @@ export function PassVehiclesDialog({
           {availableVehicles.length > 0 && (
             <div>
               <Label className="dark:text-gray-200 mb-2 block">
-                Agregar Vehículo Existente
+                {t('passVehiclesDialog.agregarVehiculoExistente')}
               </Label>
               <Select onValueChange={handleAddExistingVehicle} disabled={isAdding}>
                 <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccionar vehículo..." />
+                  <SelectValue placeholder={t('passVehiclesDialog.seleccionarVehiculo')} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                   {availableVehicles.map((vehicle) => (
@@ -304,10 +306,10 @@ export function PassVehiclesDialog({
           {/* Formulario para nuevo vehículo */}
           {showAddForm ? (
             <div className="p-4 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-              <Label className="dark:text-gray-200 mb-3 block">Nuevo Vehículo</Label>
+              <Label className="dark:text-gray-200 mb-3 block">{t('passVehiclesDialog.nuevoVehiculo')}</Label>
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <Input
-                  placeholder="Placa *"
+                  placeholder={t('passVehiclesDialog.placa')}
                   value={newVehicle.plate}
                   onChange={(e) =>
                     setNewVehicle({ ...newVehicle, plate: e.target.value.toUpperCase() })
@@ -322,19 +324,19 @@ export function PassVehiclesDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-800">
-                    <SelectItem value="car">Carro</SelectItem>
-                    <SelectItem value="motorcycle">Moto</SelectItem>
-                    <SelectItem value="truck">Camión</SelectItem>
+                    <SelectItem value="car">{t('passVehiclesDialog.carro')}</SelectItem>
+                    <SelectItem value="motorcycle">{t('passVehiclesDialog.moto')}</SelectItem>
+                    <SelectItem value="truck">{t('passVehiclesDialog.camion')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Input
-                  placeholder="Marca"
+                  placeholder={t('passVehiclesDialog.marca')}
                   value={newVehicle.brand}
                   onChange={(e) => setNewVehicle({ ...newVehicle, brand: e.target.value })}
                   className="dark:bg-gray-700 dark:border-gray-600"
                 />
                 <Input
-                  placeholder="Modelo"
+                  placeholder={t('passVehiclesDialog.modelo')}
                   value={newVehicle.model}
                   onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
                   className="dark:bg-gray-700 dark:border-gray-600"
@@ -348,7 +350,7 @@ export function PassVehiclesDialog({
                   onClick={() => setShowAddForm(false)}
                   className="dark:border-gray-600"
                 >
-                  Cancelar
+                  {t('passVehiclesDialog.cancelar')}
                 </Button>
                 <Button
                   type="button"
@@ -360,7 +362,7 @@ export function PassVehiclesDialog({
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    'Agregar'
+                    t('passVehiclesDialog.agregar')
                   )}
                 </Button>
               </div>
@@ -373,7 +375,7 @@ export function PassVehiclesDialog({
               onClick={() => setShowAddForm(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Crear Nuevo Vehículo
+              {t('passVehiclesDialog.crearNuevoVehiculo')}
             </Button>
           )}
         </div>
@@ -384,7 +386,7 @@ export function PassVehiclesDialog({
             onClick={() => onOpenChange(false)}
             className="dark:border-gray-600"
           >
-            Cerrar
+            {t('passVehiclesDialog.cerrar')}
           </Button>
         </DialogFooter>
       </DialogContent>

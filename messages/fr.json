@@ -458,6 +458,7 @@
     "attentionRequired": "Attention requise aujourd'hui",
     "noAlerts": "Aucune alerte critique. Tout est en ordre.",
     "vsPreviousPeriod": "vs période précédente",
+    "noComparison": "sans comparaison",
     "compactMode": "Compact",
     "expandedMode": "Étendu",
     "errors": {
@@ -1237,7 +1238,8 @@
         "agotado": "Épuisé",
         "disponible": "Disponible",
         "hastaOpcional": "Jusqu’au (facultatif)"
-      }
+      },
+      "errorTitulo": "Erreur"
     },
     "domains": {
       "title": "Domaines",
@@ -1358,7 +1360,8 @@
         "errorVerifying": "Erreur lors de la vérification du domaine",
         "errorConnection": "Erreur de connexion",
         "errorPurchase": "Erreur lors de l'achat du domaine",
-        "errorProcessing": "Erreur lors du traitement de l'achat"
+        "errorProcessing": "Erreur lors du traitement de l'achat",
+        "errorVerificacionTarjeta": "La vérification de la carte a échoué"
       },
       "dns": {
         "title": "Instructions de vérification DNS",
@@ -1515,7 +1518,10 @@
         "errorNotAvailable": "Le sous-domaine n'est pas disponible",
         "errorMinChars": "Le sous-domaine doit avoir au moins 3 caractères",
         "errorSaving": "Erreur lors de l'enregistrement du sous-domaine"
-      }
+      },
+      "eligePaisSelectorEscribe": "Choisissez le pays dans le sélecteur et saisissez le numéro.",
+      "actividad": "Activité",
+      "telefonoCodigoPais": "Le numéro doit inclure un indicatif pays valide."
     },
     "createOrgDialog": {
       "title": "Créer une nouvelle organisation"
@@ -1911,7 +1917,13 @@
       "errorChanging": "Une erreur est survenue lors du changement de plan.",
       "cancel": "Annuler",
       "processing": "Traitement...",
-      "changePlan": "Changer de plan"
+      "changePlan": "Changer de plan",
+      "couponInput": {
+        "tienesCodigoDescuento": "Vous avez un code de réduction ?",
+        "ingresaCodigo": "Saisissez votre code"
+      },
+      "cuponNoValido": "Coupon non valide",
+      "errorValidarCupon": "Erreur lors de la validation du coupon"
     },
     "paymentMethod": {
       "title": "Moyen de paiement",
@@ -2188,6 +2200,82 @@
         "error": {
           "titulo": "Impossible de charger les membres",
           "descripcion": "Vérifiez votre connexion et réessayez."
+        },
+        "memberQuotasSheet": {
+          "cuotas": "Quotas de",
+          "metasPeriodoCumplimientoReal": "Objectifs par période et réalisation réelle calculée à partir de ses ventes, activités et appels.",
+          "noPudieronCargarCuotas": "Impossible de charger les quotas",
+          "reintentar": "Réessayer",
+          "cuotaGuardada": "Quota enregistré",
+          "cuotaEliminada": "Quota supprimé",
+          "noPudoEliminar": "Suppression impossible"
+        },
+        "quotaEditor": {
+          "nuevaCuota": "Nouveau quota",
+          "periodo": "Période",
+          "tipoMeta": "Type d'objectif",
+          "diaPeriodo": "Un jour de la période",
+          "periodoCalculaPartirEsta": "La période est calculée à partir de cette date.",
+          "meta": "Objectif",
+          "cantidad": "(quantité)",
+          "noGuardoCuota": "Le quota n'a pas été enregistré",
+          "guardando": "Enregistrement…",
+          "guardarCuota": "Enregistrer le quota"
+        },
+        "quotaHistory": {
+          "cargandoCuotas": "Chargement des quotas",
+          "esteMiembroAunNo": "Ce membre n'a pas encore de quota. Créez le premier ci-dessus : la réalisation est calculée automatiquement à partir de ses ventes, activités ou appels.",
+          "historialCuotas": "Historique des quotas",
+          "eliminarCuota": "Supprimer le quota de {period}",
+          "superada": "Dépassé de {valor}",
+          "eliminarCuota2": "Supprimer le quota de {period} ?",
+          "borraMetaVentasActividades": "L'objectif est supprimé ; les ventes, activités et appels du membre ne sont pas modifiés.",
+          "siEliminar": "Oui, supprimer"
+        },
+        "cuotas": {
+          "tipos": {
+            "revenue": "Chiffre d'affaires",
+            "deals": "Affaires gagnées",
+            "activities": "Activités",
+            "calls": "Appels"
+          },
+          "periodos": {
+            "monthly": "Mensuel",
+            "quarterly": "Trimestriel",
+            "yearly": "Annuel"
+          },
+          "estados": {
+            "cumplida": "Quota atteint",
+            "vencida": "Période close sans atteinte",
+            "atrasado": "En dessous du rythme",
+            "en_ritmo": "Dans le rythme"
+          },
+          "periodoMes": "{mes} {anio}",
+          "periodoTrimestre": "{q, select, 1 {1er} other {{q}e}} trimestre {anio}",
+          "periodoAnio": "Année {anio}",
+          "errores": {
+            "fechaFueraPeriodo": "Choisissez une date dans la période.",
+            "metaInvalida": "Saisissez l'objectif : un nombre supérieur à zéro.",
+            "metaEntera": "Pour les comptages, l'objectif doit être un nombre entier."
+          },
+          "etiquetaBarra": "{pct} % du quota de {tipo}, {estado}",
+          "logrado": "<b>{logrado}</b> sur {meta} · {pct} %",
+          "faltan": "Reste {faltante} · {dias, plural, one {# jour} other {# jours}} · rythme {ritmo}/jour",
+          "faltaron": "Il a manqué {faltante}",
+          "meses": {
+            "m1": "Janvier",
+            "m2": "Février",
+            "m3": "Mars",
+            "m4": "Avril",
+            "m5": "Mai",
+            "m6": "Juin",
+            "m7": "Juillet",
+            "m8": "Août",
+            "m9": "Septembre",
+            "m10": "Octobre",
+            "m11": "Novembre",
+            "m12": "Décembre"
+          }
         }
       },
       "invitaciones": {
@@ -2668,6 +2756,29 @@
             "creadas": "{n, plural, =0 {Aucune succursale créée} one {# succursale créée} other {# succursales créées}}",
             "fallos": "{n, plural, one {# ligne n'a pas pu être créée} other {# lignes n'ont pas pu être créées}}"
           }
+        },
+        "assignManagerModal": {
+          "asignarGerente": "Attribuer un responsable",
+          "seleccionarGerente": "Sélectionner un responsable",
+          "soloEmpleadosRolesAdmin": "Seuls les employés ayant les rôles Admin, Manager ou Employé peuvent être nommés responsables.",
+          "resumenCambio": "Résumé du changement :",
+          "gerenteActual": "Responsable actuel :",
+          "asignado": "Attribué",
+          "sinAsignar": "Non attribué",
+          "nuevoGerente": "Nouveau responsable :",
+          "asignara": "Sera attribué",
+          "asignando": "Attribution..."
+        },
+        "assignMembersModal": {
+          "asignarMiembros": "Attribuer des membres",
+          "noHayMiembrosDisponibles": "Aucun membre disponible dans l'organisation",
+          "seleccionaMiembrosTendranAcceso": "Sélectionnez les membres qui auront accès à cet établissement",
+          "guardando": "Enregistrement..."
+        },
+        "managerSelector": {
+          "cargandoEmpleados": "Chargement des employés...",
+          "seleccionarGerente": "Sélectionner un responsable...",
+          "noHayEmpleadosDisponibles": "Aucun employé disponible à nommer responsable"
         }
       },
       "plan": {
@@ -3104,6 +3215,14 @@
           "titulo": "Vous n'avez pas accès à ce paramètre",
           "descripcion": "Demandez à un administrateur de l'organisation de vous donner l'autorisation.",
           "inicio": "Retour à l'accueil"
+        },
+        "organizationTimezoneCard": {
+          "zonaHoraria": "Fuseau horaire",
+          "zonaCalculanEImprimen": "C'est le fuseau utilisé pour calculer et imprimer les dates de toute l'organisation. Chaque établissement peut avoir le sien depuis sa fiche ; ceux qui n'en ont pas héritent de celui-ci.",
+          "zonaOrganizacion": "Fuseau de l'organisation",
+          "guardando": "Enregistrement…",
+          "guardar": "Enregistrer",
+          "ahoraMismo": "Avec <b>{zona}</b>, il est actuellement {hora}."
         }
       }
     }
@@ -3488,7 +3607,661 @@
         "questionPlaceholder": "Question",
         "answerPlaceholder": "Réponse",
         "noQuestions": "Aucune question. Cliquez sur Ajouter.",
-        "imageAlt": "Image"
+        "imageAlt": "Image",
+        "layoutPagina": "Mise en page"
+      },
+      "headerOptionsPanel": {
+        "editarMenu": "Modifier le menu",
+        "posicionLogo": "Position du logo",
+        "izquierda": "Gauche",
+        "centro": "Centre",
+        "derecha": "Droite",
+        "menuEncabezado": "Menu de l'en-tête",
+        "paginasSitio": "Pages du site",
+        "estiloBuscador": "Style de la recherche",
+        "iconoAbreDropdown": "Icône qui ouvre un menu déroulant",
+        "barraVisible": "Barre visible",
+        "oculto": "Masqué",
+        "mostrarCategoriasHeader": "Afficher les catégories dans l'en-tête",
+        "escritorioCategoriasVenComo": "Sur ordinateur, les catégories s'affichent en méga-menu uniquement avec la mise en page « Mega ». Sur mobile, elles s'affichent avec n'importe quelle mise en page.",
+        "columnasMegaMenu": "Colonnes du méga-menu",
+        "botonCtaHeader": "Bouton CTA de l'en-tête",
+        "mostrarCarrito": "Afficher le panier",
+        "mostrarLoginRegistro": "Afficher connexion/inscription",
+        "mostrarTopbar": "Afficher la barre supérieure",
+        "contenidoTopbar": "Contenu de la barre supérieure",
+        "mostrarCorreo": "Afficher l'e-mail",
+        "mostrarCelularTelefono": "Afficher mobile/téléphone",
+        "posicionCorreoTelefono": "Position de l'e-mail/téléphone",
+        "mensajesPromocionales": "Messages promotionnels ({n})",
+        "mensaje": "Message {n}",
+        "mensajesRotanAutomaticamenteCada": "Les messages défilent automatiquement toutes les 6 secondes avec des flèches de navigation.",
+        "menusNombrados": "Menus nommés",
+        "menuHeader": "Menu de l'en-tête",
+        "seleccionarMenu": "Sélectionner un menu...",
+        "sinMenuNombrado": "— Aucun menu nommé —",
+        "menuMegaMenu": "Menu du méga-menu",
+        "sinMegaMenu": "— Aucun méga-menu —",
+        "coloresHeader": "Couleurs de l'en-tête",
+        "textoAjustaAutomaticamenteBlanco": "Le texte s'ajuste automatiquement (blanc/noir) selon le fond.",
+        "fondoHeader": "Fond de l'en-tête",
+        "vacioBlancoOpacidadAuto": "Vide = blanc avec opacité (auto)",
+        "quitarColorAuto": "Retirer la couleur (auto)",
+        "fondoTopbar": "Fond de la barre supérieure",
+        "vacioOscuroDefectoHereda": "Vide = sombre par défaut (hérite de l'en-tête s'il y en a)",
+        "quitarColorHereda": "Retirer la couleur (hérite)",
+        "fondoBarraMenu": "Fond de la barre de menu",
+        "vacioHeredaHeader": "Vide = hérite de l'en-tête",
+        "colorAcentoLinksHover": "Couleur d'accent (liens, survol, badges)",
+        "vacioUsaColorPrimario": "Vide = utilise la couleur principale",
+        "quitarColorUsaPrimario": "Retirer la couleur (utilise la principale)",
+        "personalizacionAvanzada": "Personnalisation avancée",
+        "iconosOrdenAcciones": "Icônes et ordre des actions",
+        "iconosAcciones": "Icônes des actions",
+        "iconoCarrito": "Icône du panier",
+        "iconoBuscador": "Icône de recherche",
+        "iconoUsuarioAuth": "Icône utilisateur/connexion",
+        "iconoMoneda": "Icône de devise",
+        "personalizacionBotonCta": "Personnalisation du bouton CTA",
+        "anchoCompletoHeader": "Pleine largeur de l'en-tête",
+        "paddingHorizontal": "Marge intérieure horizontale :",
+        "paddingVertical": "Marge intérieure verticale :",
+        "radioBorde": "Rayon de bordure :",
+        "anchoBorde": "Épaisseur de bordure :",
+        "margenSuperior": "Marge supérieure :",
+        "margenInferior": "Marge inférieure :",
+        "sombra": "Ombre",
+        "sinSombra": "Pas d'ombre",
+        "sutil": "Subtile",
+        "media": "Moyenne",
+        "fuerte": "Forte",
+        "colorFondoVacioColor": "Couleur de fond (vide = couleur principale)",
+        "vacioColorPrimario": "Vide = couleur principale",
+        "colorTextoVacioAuto": "Couleur du texte (vide = auto)",
+        "vacioAutoBlancoNegro": "Vide = auto (blanc/noir)",
+        "colorBordeVacioSin": "Couleur de bordure (vide = sans couleur)",
+        "vacioSinColorBorde": "Vide = pas de couleur de bordure",
+        "quitarColor": "Retirer la couleur",
+        "preview": "Aperçu",
+        "aperturaMenuHeaderMinimal": "Ouverture du menu (en-tête Minimal)",
+        "drawerLateralDefault": "Panneau latéral (par défaut)",
+        "dropdownCompacto": "Menu déroulant compact",
+        "soloAplicaCuandoEstilo": "S'applique uniquement lorsque le style de l'en-tête est « Minimal ».",
+        "ordenAcciones": "Ordre des actions",
+        "arrastraReordenarOrdenAfecta": "Faites glisser pour réordonner. L'ordre s'applique à tous les en-têtes.",
+        "subir": "Monter",
+        "bajar": "Descendre"
+      },
+      "editorSidebar": {
+        "deshacerCtrlZ": "Annuler (Ctrl+Z)",
+        "rehacerCtrlShiftZ": "Rétablir (Ctrl+Maj+Z)",
+        "candadoHeredadaPrincipalAnadir": "Cadenas = « Hérité du site principal ». « Ajouter une section » ici ajoute uniquement à cet établissement.",
+        "buscarSeccion": "Rechercher une section...",
+        "buscarSeccion2": "Rechercher une section",
+        "seccionesDefecto": "Sections par défaut",
+        "estaPaginaUsaLayout": "Cette page utilise la mise en page par défaut. Matérialisez les sections pour les modifier une par une.",
+        "materializarSecciones": "Matérialiser les sections",
+        "anadirSeccion": "Ajouter une section à {nombre}",
+        "apareceTodasPaginas": "{etiqueta} : apparaît sur toutes les pages{valor}",
+        "global": "Global",
+        "seccionVariante": "Section {label}, variante {variantLabel}{ambito}, {estado}",
+        "seccionDesincronizadaSitio": "Section désynchronisée avec le site",
+        "faltanDatos": "Données manquantes",
+        "estaSeccionVieneSitio": "Cette section vient du site principal : si elle change là-bas, elle change ici.",
+        "personalizarEstaSede": "Personnaliser pour cet établissement",
+        "estaSede": "cet établissement",
+        "restablecer": "Réinitialiser",
+        "editarCarta": "Modifier la carte",
+        "duplicarSeccionCtrlD": "Dupliquer la section (Ctrl+D)",
+        "duplicarSeccion": "Dupliquer la section",
+        "copiarEstilo": "Copier le style",
+        "pegarEstilo": "Coller le style",
+        "aplicarEstiloTodasSecciones": "Appliquer le style à toutes les sections",
+        "aplicarEstiloTodas": "Appliquer le style à toutes",
+        "guardarComoPlantilla": "Enregistrer comme modèle",
+        "aplicarEstiloEstaSeccion": "Appliquer le style de cette section à toutes les sections de la page ?",
+        "aplicarTodas": "Appliquer à toutes",
+        "ingresaNombreEstaPlantilla": "Saisissez un nom pour ce modèle de section.",
+        "nombrePlantilla": "Nom du modèle",
+        "cancelar": "Annuler",
+        "seleccionada": "sélectionnée",
+        "clickEditar": "cliquez pour modifier",
+        "ambito": {
+          "heredada": "Héritée du principal",
+          "personalizada": "Personnalisée",
+          "solo-esta-sede": "Cet établissement uniquement"
+        },
+        "grupos": {
+          "content": "Contenu",
+          "data": "Données",
+          "layout": "Mise en page",
+          "style": "Style",
+          "carousel": "Carrousel",
+          "behavior": "Comportement",
+          "advanced": "Avancé"
+        },
+        "seccionPasaSer": "La section devient propre à {sede}. Elle cesse alors d'hériter ; « Réinitialiser » la relie à nouveau.",
+        "personalizadaEn": "Personnalisée pour {sede} : le site principal ne la modifie pas.",
+        "seleccionadoSufijo": ", sélectionné"
+      },
+      "footerOptionsPanel": {
+        "numeroColumnas": "Nombre de colonnes",
+        "fondoFooter": "Fond du pied de page",
+        "colorPrimario": "Couleur principale",
+        "personalizado": "Personnalisé",
+        "colorPersonalizado": "Couleur personnalisée",
+        "quitarColor": "Retirer la couleur",
+        "seccionesFooter": "Sections du pied de page",
+        "mostrarContacto": "Afficher le contact",
+        "mostrarHorarios": "Afficher les horaires",
+        "mostrarRedesSociales": "Afficher les réseaux sociaux",
+        "mostrarCategorias": "Afficher les catégories",
+        "mostrarNewsletter": "Afficher la newsletter",
+        "newsletter": "Newsletter",
+        "tituloNewsletter": "Titre de la newsletter",
+        "suscribeteNuestroBoletin": "Abonnez-vous à notre newsletter",
+        "placeholderInput": "Texte indicatif du champ",
+        "suscribirme": "M'abonner",
+        "mostrarPoweredByGo": "Afficher « Powered by GO Admin »",
+        "textoFooter": "Texte du pied de page",
+        "n2024EmpresaTodosDerechos": "© 2024 Votre entreprise. Tous droits réservés."
+      },
+      "footerPreviewMockup": {
+        "newsletter": "Newsletter",
+        "suscribir": "S'abonner",
+        "link1": "Lien 1",
+        "link2": "Lien 2",
+        "link3": "Lien 3",
+        "inicio": "Accueil",
+        "nosotros": "À propos",
+        "servicios": "Services",
+        "contacto": "Contact",
+        "poweredByGoAdmin": "Powered by GO Admin",
+        "link4": "Lien 4",
+        "cat1": "Cat 1",
+        "cat2": "Cat 2",
+        "cat3": "Cat 3",
+        "footerOcultoMovil": "Pied de page masqué sur mobile"
+      },
+      "globalSettingsPanel": {
+        "opacidadHeader": "Opacité de l'en-tête",
+        "controlaTanTransparenteHeader": "Contrôle la transparence de l'en-tête (100 = opaque, 50 = semi-transparent)",
+        "botonQuotComprarAhora": "🛒 Bouton « Acheter maintenant »",
+        "mostrarTarjetasProductos": "Afficher sur les fiches produit",
+        "monedaJuntoPrecio": "💱 Devise à côté du prix",
+        "mostrarCodigoMonedaEj": "Afficher le code de devise (ex. : COP, USD)",
+        "ladoPrecio": "Côté du prix",
+        "izquierdaCop14248": "Gauche (COP $14.248)",
+        "derecha14248Cop": "Droite ($14.248 COP)",
+        "textoBotonCarrito": "🛒 Texte du bouton panier",
+        "modo": "Mode",
+        "dinamicoRotaTextos": "Dynamique (textes en rotation)",
+        "textoFijo": "Texte fixe",
+        "textosRotan": "Textes en rotation",
+        "nuevoTexto": "Nouveau texte...",
+        "cadaVezAbreCarrito": "À chaque ouverture du panier, un texte aléatoire s'affiche",
+        "mostraraSiemprePrimerTexto": "Le premier texte sera toujours affiché",
+        "countdownTimer": "⏰ Compte à rebours",
+        "activarCountdown": "Activer le compte à rebours",
+        "texto": "Texte",
+        "ofertaTiempoLimitado": "Offre à durée limitée !",
+        "reiniciaCada24h": "Redémarre toutes les 24 h",
+        "fechaPersonalizada": "Date personnalisée",
+        "fechaFin": "Date de fin",
+        "zonaHoraria": "Fuseau horaire",
+        "colombiaGmt5": "Colombie (GMT-5)",
+        "mexicoGmt6": "Mexique (GMT-6)",
+        "argentinaGmt3": "Argentine (GMT-3)",
+        "chileGmt4": "Chili (GMT-4)",
+        "peruGmt5": "Pérou (GMT-5)",
+        "espanaGmt1": "Espagne (GMT+1)",
+        "eeuuEsteGmt5": "États-Unis Est (GMT-5)",
+        "eeuuOesteGmt8": "États-Unis Ouest (GMT-8)",
+        "horaReinicio023": "Heure de redémarrage (0-23)",
+        "mostrar": "Afficher sur",
+        "header": "En-tête",
+        "carrito": "Panier",
+        "detalleProducto": "Fiche produit",
+        "heroInicio": "Hero / Accueil",
+        "checkout": "Paiement",
+        "urgenciaCompra": "� Urgence d'achat",
+        "mostrarCheckout": "Afficher au paiement",
+        "muestraMensajesComoQuot": "Affiche des messages comme « Plus que 3 ! » pour encourager un achat rapide"
+      },
+      "headerPreviewMockup": {
+        "envioGratisSobre100k": "Livraison gratuite dès 100k $",
+        "menu": "Menu",
+        "iniciarSesion": "Se connecter",
+        "vistaMovil": "Vue mobile — {mobileMenuStyle}",
+        "vistaDesktop": "Vue ordinateur — {layout}",
+        "tabs": {
+          "inicio": "Accueil",
+          "categorias": "Catégories",
+          "buscar": "Rechercher",
+          "carrito": "Panier",
+          "cuenta": "Compte"
+        },
+        "menuEjemplo": {
+          "inicio": "Accueil",
+          "productos": "Produits",
+          "categorias": "Catégories",
+          "nosotros": "À propos",
+          "contacto": "Contact",
+          "ofertas": "Offres"
+        }
+      },
+      "menuGroupEditor": {
+        "subir": "Monter",
+        "subir2": "Monter {label}",
+        "bajar": "Descendre",
+        "bajar2": "Descendre {label}",
+        "anidarBajoAnterior": "Imbriquer sous le précédent",
+        "anidarBajoItemAnterior": "Imbriquer {label} sous l'élément précédent",
+        "subirNivel": "Remonter d'un niveau",
+        "subirNivel2": "Remonter {label} d'un niveau",
+        "eliminar": "Supprimer",
+        "eliminar2": "Supprimer {label}",
+        "pagina": "Page",
+        "categoria": "Catégorie",
+        "enlace": "Lien",
+        "noHayItemsEste": "Ce menu n'a aucun élément. Ajoutez des pages, des catégories ou des liens pour commencer.",
+        "agregarPagina": "Ajouter une page",
+        "cargandoPaginas": "Chargement des pages...",
+        "cargandoCategorias": "Chargement des catégories...",
+        "noHayCategoriasActivas": "Aucune catégorie active dans l'inventaire.",
+        "llevaPaginaCategoriaSus": "Mène à la page de la catégorie ; ses sous-catégories apparaissent en dessous sur le site.",
+        "etiqueta": "Libellé",
+        "textoEnlace": "Texte du lien",
+        "agregarEnlace": "Ajouter un lien",
+        "tipos": {
+          "page": "Page",
+          "category": "Catégorie",
+          "policy": "Politique",
+          "custom_link": "Lien"
+        },
+        "sinTitulo": "Sans titre",
+        "agregarCategoria": "Ajouter une catégorie"
+      },
+      "menuGroupManager": {
+        "eliminarEsteMenuTodos": "Supprimer ce menu et tous ses éléments ?",
+        "menusNombrados": "Menus nommés",
+        "nuevo": "Nouveau",
+        "nombreMenu": "Nom du menu",
+        "ejMenuPrincipalMenu": "Ex. : Menu principal, Menu pied de page...",
+        "ubicacion": "Emplacement",
+        "header": "En-tête",
+        "footer": "Pied de page",
+        "ambos": "Les deux",
+        "sinAsignar": "Non attribué",
+        "crear": "Créer",
+        "noHayMenusCreados": "Aucun menu créé. Créez-en un pour commencer.",
+        "renombrar": "Renommer",
+        "cancelar": "Annuler",
+        "eliminar": "Supprimer"
+      },
+      "menuTreeEditor": {
+        "colapsar": "Réduire",
+        "expandir": "Développer",
+        "categoria": "Catégorie",
+        "moverArriba": "Monter",
+        "moverAbajo": "Descendre",
+        "cerrar": "Fermer",
+        "editar": "Modifier",
+        "quitarMenu": "Retirer du menu",
+        "iconoEmoji": "Icône (emoji)",
+        "badge": "Badge",
+        "nuevo": "Nouveau",
+        "vincularCategoria": "Lier à une catégorie",
+        "sinCategoria": "Sans catégorie",
+        "limpiarBadge": "Effacer le badge",
+        "cargandoMenu": "Chargement du menu...",
+        "arbolMenuHeader": "Arborescence du menu de l'en-tête",
+        "agregarPagina": "Ajouter une page",
+        "agregarCategoria": "Ajouter une catégorie",
+        "agregarEnlace": "Ajouter un lien",
+        "arrastraItemsReordenarUsa": "💡 Faites glisser les éléments pour les réordonner. Utilisez ↑ ↓ en alternative.",
+        "seleccionaPaginasQuieresAgregar": "Sélectionnez les pages à ajouter au menu de l'en-tête :",
+        "noHayPaginasDisponibles": "Aucune page disponible. Toutes les pages sont déjà dans le menu ou aucune page n'a été créée.",
+        "cancelar": "Annuler",
+        "agregar": "Ajouter {n}",
+        "seleccionaPaginaSistemaAgregar": "Sélectionnez une page système à ajouter au menu :",
+        "todasPaginasSistemaYa": "Toutes les pages système sont déjà dans le menu.",
+        "seleccionaCategoriasQuieresAgregar": "Sélectionnez les catégories à ajouter comme éléments du menu :",
+        "noHayCategoriasDisponibles": "Aucune catégorie disponible.",
+        "vinculada": "Liée",
+        "noHayItemsMenu": "Le menu ne contient aucun élément. Ajoutez des pages avec le bouton « Ajouter une page » ou des catégories avec « Ajouter une catégorie ».",
+        "arrastraRedimensionar": "Faites glisser pour redimensionner"
+      },
+      "mobileFooterPanel": {
+        "estiloFooterMovil": "Style du pied de page mobile",
+        "acordeonExpandible": "Accordéon (dépliable)",
+        "apiladoColumna": "Empilé (une colonne)",
+        "ocultoMovil": "Masqué sur mobile",
+        "mostrarRedesMovil": "Afficher les réseaux sur mobile",
+        "mostrarHorariosMovil": "Afficher les horaires sur mobile",
+        "vistaPreviaMovil": "Aperçu mobile",
+        "footerOculto": "Pied de page masqué",
+        "col1": "Col 1",
+        "col2": "Col 2",
+        "col3": "Col 3"
+      },
+      "mobileHeaderPanel": {
+        "estiloMenuMovil": "Style du menu mobile",
+        "hamburguesaLateral": "Menu hamburger latéral",
+        "hojaInferior": "Panneau inférieur",
+        "pantallaCompleta": "Plein écran",
+        "barraInferiorTipoApp": "Barre inférieure style appli",
+        "buscadorMovil": "Recherche mobile",
+        "iconoAbreModal": "Icône qui ouvre une fenêtre",
+        "barraVisibleBajoLogo": "Barre visible sous le logo",
+        "oculto": "Masqué",
+        "mostrarTopbarMovil": "Afficher la barre supérieure sur mobile",
+        "vistaPrevia": "Aperçu",
+        "buscar": "🔍 Rechercher...",
+        "sticky": "Fixe"
+      },
+      "pageLayoutPanel": {
+        "esteTipoPaginaNo": "Ce type de page n'a pas de réglages de mise en page.",
+        "columnas": "Colonnes",
+        "columnaAnchoCompleto": "Une colonne (pleine largeur)",
+        "dosColumnasGaleriaInfo": "Deux colonnes (galerie + infos)",
+        "dosColumnasSidebar": "Deux colonnes + barre latérale",
+        "controlaDisposicionPrincipalPagina": "Contrôle la disposition principale de la page.",
+        "anchoGaleria": "Largeur de la galerie : {galleryWidth} %",
+        "porcentajeAnchoOcupaGaleria": "Pourcentage de la largeur occupée par la galerie d'images.",
+        "columnaPegajosa": "Colonne fixe",
+        "columnaInformacionFijaHacer": "La colonne d'informations reste fixe au défilement.",
+        "galeriaImagenes": "Galerie d'images",
+        "modoGaleria": "Mode de la galerie",
+        "carruselFlechasDots": "Carrousel (flèches + points)",
+        "scrollVertical": "Défilement vertical",
+        "grillaImagenes": "Grille d'images",
+        "todasVisiblesColumna": "Toutes visibles (colonne)",
+        "posicionThumbnails": "Position des miniatures",
+        "abajoHorizontal": "En bas (horizontal)",
+        "izquierdaVertical": "À gauche (vertical)",
+        "derechaVertical": "À droite (vertical)",
+        "sinThumbnails": "Sans miniatures",
+        "mostrarFlechas": "Afficher les flèches",
+        "mostrarIndicadoresDots": "Afficher les indicateurs (points)",
+        "columnasGrilla": "Colonnes de la grille",
+        "n2Columnas": "2 colonnes",
+        "n3Columnas": "3 colonnes",
+        "n4Columnas": "4 colonnes",
+        "alturaMaximaScrollPx": "Hauteur de défilement maximale : {scrollHeight} px",
+        "descripcion": "Description",
+        "ubicacionDescripcion": "Emplacement de la description",
+        "debajoTitulo": "Sous le titre",
+        "debajoPrecio": "Sous le prix",
+        "debajoBotones": "Sous les boutons",
+        "arribaGaleria": "Au-dessus de la galerie",
+        "botonesAccion": "Boutons d'action",
+        "disposicionBotones": "Disposition des boutons",
+        "apiladosVertical": "Empilés (vertical)",
+        "lineaHorizontal": "En ligne (horizontal)",
+        "separadosUnoArribaUno": "Séparés (l'un en haut, l'autre en bas)",
+        "elementosOpcionales": "Éléments facultatifs",
+        "mostrarBeneficios": "Afficher les avantages",
+        "mostrarBreadcrumb": "Afficher le fil d'Ariane",
+        "productosRelacionados": "Produits associés",
+        "disposicionRelacionados": "Disposition des produits associés",
+        "carruselHorizontal": "Carrousel horizontal",
+        "grillaResponsiva": "Grille responsive"
+      },
+      "pageSEOPanel": {
+        "ogPreview": "Aperçu OG"
+      },
+      "colorField": {
+        "sinColor": "Sans couleur",
+        "tema": "Thème",
+        "paleta": "Palette",
+        "primario": "Principale",
+        "secundario": "Secondaire",
+        "acento": "Accent",
+        "fondo": "Fond",
+        "texto": "Texte"
+      },
+      "entityField": {
+        "entidadNoSoportada": "Entité « {entity} » non prise en charge",
+        "categoriasSeleccionadas": "Catégories sélectionnées ({n})",
+        "buscar": "Rechercher...",
+        "noHayCategoriasCreadas": "Aucune catégorie créée",
+        "sinSeleccionMuestranTodas": "Sans sélection : toutes les catégories sont affichées",
+        "arrastraReordenarSoloMostraran": "Faites glisser pour réordonner. Seules celles sélectionnées seront affichées.",
+        "buscarNombreSku": "Rechercher par nom ou SKU...",
+        "buscando": "Recherche...",
+        "sinResultados": "Aucun résultat",
+        "buscarPagina": "Rechercher une page...",
+        "noHayPaginasPublicadas": "Aucune page publiée",
+        "buscarSucursal": "Rechercher un établissement...",
+        "noHaySucursalesCreadas": "Aucun établissement créé",
+        "buscarZona": "Rechercher une zone...",
+        "noHayZonasConfiguradas": "Aucune zone configurée"
+      },
+      "iconField": {
+        "sinIcono": "Sans icône",
+        "seleccionar": "Sélectionner...",
+        "buscarIcono": "Rechercher une icône...",
+        "todos": "Tous",
+        "sinResultados": "Aucun résultat"
+      },
+      "repeaterField": {
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "sinElementosAgregaMenos": "Aucun élément. Ajoutez-en au moins un."
+      },
+      "responsiveField": {
+        "esc": "Ord.",
+        "tab": "Tab.",
+        "mov": "Mob."
+      },
+      "richTextField": {
+        "negrita": "Gras",
+        "cursiva": "Italique",
+        "enlace": "Lien",
+        "escribeContenido": "Écrivez le contenu...",
+        "insertarEnlace": "Insérer un lien",
+        "ingresaUrlEnlace": "Saisissez l'URL du lien.",
+        "cancelar": "Annuler",
+        "insertar": "Insérer"
+      },
+      "spacingField": {
+        "espaciado": "Espacement",
+        "paddingVerticalEnlazado": "Marge intérieure verticale liée",
+        "enlazarPaddingVertical": "Lier la marge intérieure verticale",
+        "opciones": {
+          "none": "Aucun",
+          "xs": "Très peu",
+          "sm": "Petit",
+          "md": "Moyen",
+          "lg": "Grand",
+          "xl": "Très grand"
+        },
+        "campos": {
+          "padding_top": "Marge intérieure haute",
+          "padding_bottom": "Marge intérieure basse",
+          "padding_x": "Marge intérieure horizontale",
+          "margin_top": "Marge haute",
+          "margin_bottom": "Marge basse"
+        }
+      },
+      "footerInspector": {
+        "menusPie": "Menus du pied de page",
+        "creaRenombraOrdenaMenus": "Créez, renommez et ordonnez les menus nommés affichés dans le pied de page.",
+        "editarMenusPie": "Modifier les menus du pied de page"
+      },
+      "hojaMenu": {
+        "listo": "Terminé",
+        "menusPie": "Menus du pied de page",
+        "menuEncabezado": "Menu de l'en-tête · {menu}",
+        "paginasSitio": "Pages du site",
+        "subtituloAlMomento": "Faites glisser pour ordonner ou imbriquer. Les modifications du menu sont enregistrées immédiatement.",
+        "subtituloConGuardar": "Faites glisser pour ordonner ou imbriquer. C'est enregistré avec « Enregistrer » de l'éditeur."
+      },
+      "inspectorZonaGlobal": {
+        "inspector": "Inspecteur : {titulo}",
+        "globalApareceTodasPaginas": "Global · apparaît sur toutes les pages",
+        "cerrar": "Fermer {titulo}",
+        "ajustes": "Réglages de {titulo}",
+        "cambiaTodasPaginas": "Change sur toutes les pages"
+      },
+      "barraSitioV2": {
+        "historial": "Historique",
+        "masAccionesSitio": "Plus d'actions du site",
+        "sitioV2": "Site V2",
+        "versionActualPorqueAun": "(sa version actuelle, car il n'a pas encore de version V2 publiée)",
+        "ultimaVersionPublicada": "(sa dernière version publiée)",
+        "editandoBorradorV2Sitio": "Modification du brouillon V2 du site principal.",
+        "v2EstaActivoLo": "La V2 est active : ce que vous publiez est ce que voient vos clients.",
+        "webSigueMostrandoSitio": "Le site web continue d'afficher le site actuel jusqu'à ce que vous activiez la V2. Enregistrer et publier ne le changent pas.",
+        "borradorTieneProblemaS": "· Le brouillon a {erroresContrato} problème(s) de format : corrigez-les avant de publier.",
+        "verLoPersonalizado": "Voir ce qui est personnalisé ({personalizados})",
+        "irSitioPrincipal": "Aller au site principal",
+        "estado": {
+          "guardado": "Enregistré dans le brouillon",
+          "cambios": "Modifications non enregistrées",
+          "guardando": "Enregistrement…",
+          "conflicto": "Conflit",
+          "error": "Non enregistré",
+          "publicado": "Publié"
+        },
+        "editandoSede": "<b>Modification de {nombreSitio}</b> — ce que vous ne personnalisez pas est hérité du site principal {base}."
+      },
+      "dialogoConflicto": {
+        "hayVersionMasNueva": "Il existe une version plus récente",
+        "versionPartias": " (version {versionServidor} ; vous êtes parti de la {versionLocal})",
+        "hacerConflicto": "Que faire du conflit",
+        "decidirDespues": "Décider plus tard",
+        "cargarVersionNueva": "Charger la nouvelle version",
+        "guardarMios": "Enregistrer les miens",
+        "descripcion": "Une autre personne (ou un autre onglet) a enregistré le brouillon après que vous avez commencé{version}. Vos modifications sont toujours dans l'éditeur."
+      },
+      "dialogoPublicar": {
+        "publicar": "Publier {nombreSitio}",
+        "publicarCambios": "Publier les modifications",
+        "soloPublicaSitioPrincipal": "Seul {nombreSitio} est publié. Le site principal et les autres établissements ne changent pas.",
+        "publicaSitioCompletoPaginas": "Le site complet est publié : pages, sections, style, en-tête, pied de page et menus du brouillon.",
+        "notaVersionOpcional": "Note de version (facultatif)",
+        "ejCartaTemporada": "Ex. : Carte de saison",
+        "apareceHistorialVersiones": "Apparaît dans l'historique des versions · {n}/{LIMITE_NOTA}",
+        "sitioPrincipalTieneCambios": "Le site principal a des modifications non publiées. Elles n'atteignent pas {nombreSitio} tant que vous ne publiez pas le site principal.",
+        "guardaVersion": "Une version est enregistrée",
+        "siAlgoNoQueda": "Si quelque chose ne va pas, restaurez-la depuis l'historique.",
+        "tusClientesVenEsta": "Vos clients voient cette version dès la fin de la publication.",
+        "webSigueMostrandoSitio": "Le site web continue d'afficher le site actuel jusqu'à ce que vous activiez la V2 sur ce site.",
+        "cancelar": "Annuler",
+        "publicarAhora": "Publier maintenant"
+      },
+      "panelHerencia": {
+        "herencia": "Héritage · {nombreSede}",
+        "loNoPersonalicesHereda": "Ce que vous ne personnalisez pas est hérité du site principal.",
+        "restablecer": "Réinitialiser",
+        "vaciarEstaSede": "Vider pour cet établissement",
+        "estaSeccionIgualSitio": "Cette section est identique à celle du site principal. Si vous la modifiez ici, elle devient propre à cet établissement ; le site principal ne change pas.",
+        "personalizadaEstaSede": "Personnalisée pour cet établissement."
+      },
+      "panelHistorial": {
+        "historialVersiones": "Historique des versions",
+        "versionesPublicadasEsteSitio": "Les versions publiées de ce site",
+        "borradorActual": "Brouillon actuel",
+        "guardado": "Enregistré {borradorActualizadoEn}",
+        "sinGuardarTodavia": "Pas encore enregistré",
+        "hayCambiosSinGuardar": "· il y a des modifications non enregistrées dans l'éditeur",
+        "reintentar": "Réessayer",
+        "todaviaNoHasPublicado": "Vous n'avez pas encore publié ce site.",
+        "version": "Version {numero}",
+        "version2": "· version {numero}",
+        "publicada": "Publiée",
+        "restaurarBorrador": "Restaurer dans le brouillon",
+        "restaurando": "Restauration",
+        "restaurarVersion": "Restaurer la version {numero} ?",
+        "restaurarVersion2": "Restaurer la version",
+        "restaurarDescripcion": "Elle est copiée dans votre brouillon et remplace les modifications non publiées. Ce qui est en ligne ne change pas tant que vous ne publiez pas.",
+        "restaurarDescripcionConLocales": "Elle est copiée dans votre brouillon et remplace les modifications non publiées (y compris celles que vous n'avez pas encore enregistrées). Ce qui est en ligne ne change pas tant que vous ne publiez pas."
+      },
+      "selectorSitio": {
+        "cambiosSinPublicar": "Modifications non publiées",
+        "sucursalInactiva": "Établissement inactif",
+        "sitioEdita": "Site en cours de modification : {nombreActivo}",
+        "editarSitio": "Modifier le site de",
+        "cadaSedePropioSitio": "Chaque établissement est son propre site, avec brouillon et publication séparés. « Hérite » utilise tout du site principal jusqu'à ce que vous personnalisiez quelque chose. Rien ne change sur le web avant de publier et d'activer la V2.",
+        "estado": {
+          "sitioActual": "Site actuel",
+          "hereda": "Hérite",
+          "v2EnLaWeb": "V2 en ligne",
+          "publicado": "Publié",
+          "borradorV2": "Brouillon V2",
+          "sitioPropio": "Site propre"
+        },
+        "sitioPrincipal": "Site principal"
+      },
+      "footerLayout": {
+        "default": {
+          "nombre": "Classique",
+          "descripcion": "4 colonnes avec logo, liens, contact et réseaux"
+        },
+        "three_columns": {
+          "nombre": "3 colonnes",
+          "descripcion": "3 colonnes équilibrées avec logo et liens"
+        },
+        "centered": {
+          "nombre": "Centré",
+          "descripcion": "Logo et liens centrés, style minimaliste"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Une seule ligne avec les liens essentiels"
+        },
+        "split": {
+          "nombre": "Divisé",
+          "descripcion": "2 grandes colonnes : marque et navigation"
+        }
+      },
+      "headerLayout": {
+        "default": {
+          "nombre": "Classique",
+          "descripcion": "Logo à gauche, menu au centre, actions à droite"
+        },
+        "centered": {
+          "nombre": "Logo centré",
+          "descripcion": "Logo centré en haut, menu en dessous dans une barre"
+        },
+        "split": {
+          "nombre": "Divisé",
+          "descripcion": "Logo à gauche, menu divisé gauche/droite, CTA à droite"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Logo + hamburger seulement, navigation dans un panneau"
+        },
+        "mega": {
+          "nombre": "Méga-menu",
+          "descripcion": "Logo à gauche, barre de menu en dessous avec méga-menu déroulant"
+        }
+      },
+      "chipHerencia": {
+        "heredado": "Hérité du site principal",
+        "personalizado": "Personnalisé",
+        "vacio": "Vide pour cet établissement",
+        "nuevo": "Cet établissement uniquement",
+        "compactoHereda": "Hérite",
+        "compactoPropia": "Propre"
+      },
+      "zonaGlobal": {
+        "titulo": {
+          "header": "En-tête",
+          "footer": "Pied de page"
+        },
+        "fila": {
+          "header": "En-tête (global)",
+          "footer": "Pied de page (global)"
+        },
+        "pestanas": {
+          "diseno": "Mise en page",
+          "contenido": "Contenu",
+          "estilo": "Style",
+          "celular": "Mobile"
+        }
       }
     }
   },
@@ -4572,7 +5345,7 @@
       "retry": "Réessayer",
       "actionError": "Impossible d'enregistrer la modification. Réessayez.",
       "priority": {
-        "critical": "Urgente",
+        "critical": "Urgent",
         "high": "Priorité haute",
         "med": "Priorité moyenne",
         "low": "Priorité basse"
@@ -5545,6 +6318,13 @@
     },
     "confirmar": {
       "escribe": "Écris « {texto} » pour confirmer"
+    },
+    "telefono": {
+      "cambiarPais": "Pays du téléphone : {pais} ({indicativo}). Changer de pays",
+      "buscarPlaceholder": "Pays, code ISO ou indicatif",
+      "buscar": "Rechercher un pays",
+      "paises": "Pays",
+      "sinResultados": "Aucun pays trouvé"
     }
   },
   "inventarioEtiquetas": {
@@ -19298,6 +20078,114 @@
       "escanea": "Scannez pour voir la carte et commander",
       "cerrar": "Fermer",
       "imprimir": "Imprimer"
+    },
+    "mesaFormDialog": {
+      "editarMesa": "Modifier la table",
+      "nuevaMesa": "Nouvelle table",
+      "nombreMesa": "Nom de la table *",
+      "ejMesa1Mesa": "Ex. : Table 1, Table VIP",
+      "seleccionarZona": "Sélectionner une zone",
+      "nuevaZona": "+ Nouvelle zone",
+      "nombreNuevaZona": "Nom de la nouvelle zone",
+      "capacidad": "Capacité *",
+      "guardando": "Enregistrement...",
+      "actualizar": "Mettre à jour",
+      "crear": "Créer"
+    },
+    "combinarMesasDialog": {
+      "combinarMesas": "Combiner des tables",
+      "paso1SeleccionaMesa": "Étape 1 : sélectionnez la <b>table principale</b> (où resteront toutes les commandes).<br></br>Étape 2 : sélectionnez les <b2>tables à combiner</b2> (elles seront libérées).",
+      "n1MesaPrincipal": "1. Table principale",
+      "recibiraTodosPedidos": "Recevra toutes les commandes",
+      "mesaPrincipal": "{n, plural, one {# table} other {# tables}} → Table principale",
+      "n2MesasCombinar": "2. Tables à combiner",
+      "quedaranLibres": "Seront libérées",
+      "seleccionaPrimeroMesaPrincipal": "Sélectionnez d'abord une table principale",
+      "combinando": "Combinaison..."
+    },
+    "moverPedidoDialog": {
+      "moverPedido": "Déplacer la commande",
+      "muevePedidoMesaOtra": "Déplace la commande d'une table à une autre. La table d'origine sera libérée.",
+      "mesaOrigen": "Table d'origine",
+      "seleccionarMesaPedido": "Sélectionner une table avec commande",
+      "mesaDestino": "Table de destination",
+      "seleccionarMesaLibre": "Sélectionner une table libre",
+      "cap": "(Cap. : {capacity})",
+      "pedidoSeraMovidoMesa": "La commande sera déplacée et la table d'origine sera disponible.",
+      "moviendo": "Déplacement..."
+    },
+    "historialMesasDialog": {
+      "desde": "Du",
+      "hasta": "Au",
+      "todosMeseros": "Tous les serveurs",
+      "sesiones": "Sessions",
+      "facturado": "Facturé",
+      "duracionProm": "Durée moy.",
+      "sesionEncontradaS": "{n, plural, one {# session trouvée} other {# sessions trouvées}}",
+      "mesa": "Table",
+      "apertura": "Ouverture",
+      "cierre": "Fermeture",
+      "duracion": "Durée",
+      "liberada": "Libérée par {userName} · {dateTime}",
+      "productosEliminadosCanceladosEsta": "Produits supprimés/annulés de cette session",
+      "eliminadoPor": "<b>{cantidad}x {producto}</b> — supprimé par <b>{usuario}</b>",
+      "rangos": {
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "7d": "7 jours",
+        "15d": "15 jours",
+        "30d": "30 jours"
+      },
+      "estados": {
+        "active": "Active",
+        "bill_requested": "Addition demandée",
+        "completed": "Terminée"
+      },
+      "noPudoCargarHistorial": "Impossible de charger l'historique des tables."
+    },
+    "sessionTimelineDialog": {
+      "historialMesa": "Historique de la table",
+      "sinEventosRegistradosEsta": "Aucun événement enregistré pour cette table.",
+      "noPudoCargarHistorial": "Impossible de charger l'historique de la table."
+    },
+    "addProductDialog": {
+      "noPudoCargarReceta": "Impossible de charger la recette du produit",
+      "agregadoFavoritos": "Ajouté aux favoris",
+      "quitadoFavoritos": "Retiré des favoris",
+      "productoApareceraPrimeroPos": "Le produit apparaîtra en premier dans le POS.",
+      "productoYaNoPriorizara": "Le produit ne sera plus prioritaire.",
+      "noPudoActualizarFavorito": "Impossible de mettre à jour le favori.",
+      "productoSinPrecio": "Produit sans prix",
+      "esteProductoNoTiene": "Ce produit n'a pas de prix configuré",
+      "noPudieronAgregarProductos": "Impossible d'ajouter les produits. Veuillez réessayer.",
+      "sinImagen": "Pas d'image",
+      "agotado": "Épuisé",
+      "personalizable": "Personnalisable",
+      "incluido": "Inclus",
+      "unidadesVendidasUltimos90": "{number} unités vendues ces 90 derniers jours",
+      "top": "Top",
+      "quitarFavoritos": "Retirer des favoris",
+      "agregarFavoritos": "Ajouter aux favoris",
+      "desde": "À partir de",
+      "verRecetaProduccion": "Voir la recette de production",
+      "carrito": "Panier",
+      "carritoVacio": "Panier vide",
+      "seleccionaProductosAgregar": "Sélectionnez des produits à ajouter",
+      "comensal": "Convive :",
+      "general": "Général",
+      "notas": "Notes...",
+      "habitacion": "Chambre : <b>{space_label}</b>",
+      "cargarHabitacion": "Imputer à la chambre",
+      "pagarAhora": "Payer maintenant",
+      "agregando": "Ajout...",
+      "recetaProduccion": "Recette de production",
+      "rendimiento": "Rendement",
+      "inactiva": "Inactive",
+      "version": "Version",
+      "notas2": "Notes",
+      "ingredientes": "Ingrédients ({n})",
+      "opcional": "Facultatif",
+      "estaRecetaNoTiene": "Cette recette n'a pas d'ingrédients définis."
     }
   },
   "posReservasMesas": {
@@ -25541,6 +26429,108 @@
     }
   },
   "crm": {
+    "title": "CRM",
+    "metricas": {
+      "title": "Indicateurs commerciaux",
+      "subtitle": "KPI avancés · Entonnoir · Vendeurs · Prévision",
+      "winRate": "Taux de réussite",
+      "cycleLength": "Cycle de vente",
+      "cycleLengthUnit": "j",
+      "cycleLengthDesc": "Délai moyen de clôture",
+      "arpa": "ARPA",
+      "arpaDesc": "Revenu moyen par compte",
+      "pipelineCoverage": "Couverture du pipeline",
+      "pipelineCoverageDesc": "Ratio ouvertes / gagnées",
+      "openOpportunities": "Opportunités ouvertes",
+      "openAmount": "Montant ouvert",
+      "wonAmount": "Montant gagné",
+      "projection": "Prévision (forecast)",
+      "funnelTitle": "Entonnoir de conversion",
+      "globalConversion": "Conversion globale",
+      "totalPipeline": "Pipeline total",
+      "weightedForecast": "Prévision pondérée",
+      "bottleneck": "Goulot d'étranglement",
+      "avgDays": "j en moyenne",
+      "conv": "Conv",
+      "prob": "prob.",
+      "vendorsTitle": "Tableau de bord par vendeur",
+      "open": "ouvertes",
+      "won": "gagnées",
+      "lost": "perdues",
+      "closeRate": "clôture",
+      "noFunnelData": "Aucune donnée d'entonnoir disponible.",
+      "noVendorData": "Aucune donnée de vendeur pour cette période.",
+      "period7d": "7 derniers jours",
+      "period30d": "30 derniers jours",
+      "period90d": "90 derniers jours",
+      "periodYtd": "Année en cours",
+      "periodAll": "Tout l'historique"
+    },
+    "referrals": {
+      "title": "Programme de parrainage",
+      "subtitle": "Configurez les incitations, l'éligibilité et les récompenses",
+      "configGeneral": "Configuration générale",
+      "programActive": "Programme actif",
+      "programActiveDesc": "Active ou désactive le programme de parrainage",
+      "incentiveType": "Type d'incitation",
+      "incentiveValue": "Valeur de l'incitation",
+      "incentiveDesc": "Description",
+      "eligibility": "Éligibilité",
+      "minPurchase": "Achat minimum",
+      "validForDays": "Valable (jours)",
+      "newCustomersOnly": "Nouveaux clients uniquement",
+      "rewardTo": "Récompense pour",
+      "rewardToReferrer": "Parrain uniquement",
+      "rewardToReferred": "Filleul uniquement",
+      "rewardToBoth": "Les deux",
+      "rewardDescription": "Description de la récompense",
+      "save": "Enregistrer la configuration",
+      "saving": "Enregistrement...",
+      "registeredReferrals": "Parrainages enregistrés",
+      "noReferrals": "Aucun parrainage enregistré pour l'instant.",
+      "referredBy": "Parrainé par",
+      "reward": "Récompense",
+      "statusPending": "En attente",
+      "statusCompleted": "Terminé",
+      "statusRewarded": "Récompensé",
+      "statusCancelled": "Annulé",
+      "discount": "Remise",
+      "cashback": "Cashback",
+      "credit": "Crédit",
+      "gift": "Cadeau",
+      "saved": "Programme enregistré",
+      "savedDesc": "La configuration du programme de parrainage a été enregistrée avec succès",
+      "statusUpdated": "Statut mis à jour",
+      "errorLoad": "Impossible de charger le programme de parrainage",
+      "errorSave": "Impossible d'enregistrer le programme de parrainage",
+      "errorStatus": "Impossible de mettre à jour le statut"
+    },
+    "followup": {
+      "title": "Séquences de suivi",
+      "running": "Exécution des séquences...",
+      "completed": "Terminé",
+      "actionsExecuted": "actions exécutées",
+      "error": "Erreur lors de l'exécution"
+    },
+    "ia": {
+      "nextAction": "Prochaine action recommandée",
+      "reasoning": "Raisonnement",
+      "priority": "Priorité",
+      "priorityHigh": "Haute",
+      "priorityMedium": "Moyenne",
+      "priorityLow": "Basse",
+      "discoverySummary": "Résumé de découverte",
+      "summary": "Résumé",
+      "keyPoints": "Points clés",
+      "nextSteps": "Prochaines étapes",
+      "sentiment": "Sentiment",
+      "sentimentPositive": "Positif",
+      "sentimentNeutral": "Neutre",
+      "sentimentNegative": "Négatif",
+      "errorNoOpportunity": "opportunityId est requis",
+      "errorNotFound": "Impossible d'obtenir les informations de l'opportunité",
+      "errorNoKey": "Configuration IA non disponible"
+    },
     "kit": {
       "acciones": {
         "barra": "Actions rapides",
@@ -27461,6 +28451,393 @@
           "enviar": "Envoyer le message",
           "reiniciar": "Recommencer"
         }
+      },
+      "myVoicesPanel": {
+        "noPudoReproducir": "Lecture impossible",
+        "ahoraVozDefecto": "« {name} » est désormais la voix par défaut",
+        "usaranAgentesNoTengan": "Les agents sans voix propre l'utiliseront.",
+        "noPudoMarcarDefecto": "Impossible de définir par défaut",
+        "noPudoAsignarVoz": "Impossible d'attribuer la voix",
+        "borrada": "« {name} » supprimée",
+        "tambienEliminoElevenlabs": "Elle a aussi été supprimée dans ElevenLabs.",
+        "noPudoBorrarVoz": "Impossible de supprimer la voix",
+        "ningunaVozEstandarGoogle": "aucune (voix standard de Google)",
+        "vozAsignadaEseAgente": "La voix attribuée à cet agent (ici avec « Attribuer à un agent » ou dans son éditeur).",
+        "siNoTieneMarcada": "S'il n'en a pas, celle marquée <b>Par défaut</b>.",
+        "siTampocoHayVoz": "S'il n'y en a pas non plus, la voix standard de Google de Twilio : elle fonctionne, mais sonne générique.",
+        "noPudoLeerLista": "Impossible de lire la liste des agents : {agentsError}. Vous pourrez attribuer des voix une fois rechargée. <b>Réessayer</b>",
+        "cargandoMisVoces": "Chargement de mes voix",
+        "noPudoCargarCatalogo": "Impossible de charger le catalogue de voix",
+        "todaviaNoTienesVoces": "Vous n'avez pas encore de voix enregistrées.",
+        "eligeBibliotecaClonaTuya": "Choisissez-en une dans la bibliothèque ou clonez la vôtre. En attendant, les agents appellent avec la voix standard.",
+        "explorarBiblioteca": "Explorer la bibliothèque",
+        "clonarMiVoz": "Cloner ma voix",
+        "masOpcionesImportarWorkspace": "Plus d'options : importer l'espace de travail ElevenLabs ou enregistrer une voix par identifiant",
+        "borrarVoz": "Supprimer la voix « {n} » ?",
+        "borrarVoz2": "Supprimer la voix",
+        "vozDefectoComo": "Voix par défaut : <b>{voz}</b>. Comment la voix d'un appel est-elle choisie ?",
+        "asignadaA": "« {voz} » attribuée à {agente}",
+        "elAgente": "l'agent"
+      },
+      "voiceAddForms": {
+        "faltanNombreIdentificadorVoz": "Il manque le nom et l'identifiant de la voix",
+        "faltaConsentimiento": "Le consentement manque",
+        "vozClonadaSoloPuede": "Une voix clonée ne peut être enregistrée qu'avec le consentement de son propriétaire.",
+        "vozRegistrada": "Voix enregistrée",
+        "yaPuedesAsignarselaAgente": "Vous pouvez maintenant l'attribuer à un agent.",
+        "noPudoRegistrarVoz": "Impossible d'enregistrer la voix",
+        "errorDesconocido": "Erreur inconnue",
+        "importadasVoces": "{n} voix importées",
+        "elevenlabsNoDevolvioNinguna": "ElevenLabs n'a renvoyé aucune voix",
+        "eligeMarcalaDefectoAsignasela": "Choisissez-en une et définissez-la par défaut ou attribuez-la à un agent.",
+        "elevenlabsRechazoPeticion": "ElevenLabs a refusé la requête",
+        "traerVocesYaExisten": "Récupérer les voix qui existent déjà dans ElevenLabs",
+        "copiaEsteCatalogoVoces": "Copie dans ce catalogue les voix déjà présentes dans votre espace ElevenLabs (celles ajoutées depuis le site du fournisseur ou clonées là-bas). Pour explorer la bibliothèque publique, utilisez l'onglet Bibliothèque.",
+        "importarElevenlabs": "Importer depuis ElevenLabs",
+        "desactivado": "Désactivé :",
+        "configurarla": "La configurer",
+        "registrarVozIdentificador": "Enregistrer une voix par son identifiant",
+        "siYaSabesIdentificador": "Si vous connaissez déjà l'identifiant de la voix dans ElevenLabs, collez-le ici : elle sera disponible pour les agents sans importer tout le catalogue.",
+        "nombre": "Nom",
+        "vozCamilo": "Voix de Camilo",
+        "identificadorVozElevenlabs": "Identifiant de voix (ElevenLabs)",
+        "vozClonadaPersonaEquipo": "C'est la voix clonée d'un membre de l'équipe",
+        "confirmoPersonaPropietariaVoz": "Je confirme que la personne propriétaire de la voix a donné son consentement par écrit et qu'il ne s'agit pas de la voix d'un tiers (loi colombienne 1581 de 2012 et politique d'ElevenLabs).",
+        "registrarVoz": "Enregistrer la voix",
+        "necesitaClaveElevenlabs": "Une clé ElevenLabs valide est nécessaire dans Fournisseurs et IA."
+      },
+      "agentVoiceTab": {
+        "noPudoReproducir": "Lecture impossible",
+        "vozEsteAgente": "Voix de cet agent",
+        "cargandoCatalogoVoces": "Chargement du catalogue de voix",
+        "noPudoCargarCatalogo": "Impossible de charger le catalogue de voix : {error}",
+        "vozDefectoOrganizacion": "Voix par défaut de l'organisation",
+        "ahora": "C'est maintenant « {name} »",
+        "ningunaMarcadaVozEstandar": "Aucune définie : voix standard de Google",
+        "inactivaAgenteNoUsara": "Inactive : l'agent ne l'utilisera pas",
+        "todaviaNoHayVoces": "Le catalogue n'a pas encore de voix.",
+        "anadeBibliotecaClonaTuya": "Ajoutez-en une depuis la bibliothèque ou clonez la vôtre. En attendant, cet agent appellera avec la voix standard de Google.",
+        "faltaClaveVozSintetica": "La clé de voix synthétique (TTS) manque : sans elle, aucune voix ne peut être ajoutée ni clonée.",
+        "anadeVozCatalogo": "Ajoutez une voix du catalogue",
+        "guardarClaveVoz": "Enregistrer la clé de voix",
+        "actualizando": "Mise à jour…",
+        "vozClonadaExigeConsentimiento": "Une voix clonée exige le consentement enregistré de son propriétaire (loi colombienne 1581 de 2012).",
+        "idioma": "Langue",
+        "codigoPEjCo": "Code, p. ex. es-CO",
+        "transcripcion": "Transcription",
+        "defectoTwilio": "Par défaut de Twilio",
+        "quienConvierteVozTexto": "Qui convertit la voix en texte",
+        "avanzadoIdentificadorVozSuelto": "Avancé : identifiant de voix libre",
+        "identificadorVozSueltoOpcional": "Identifiant de voix libre (facultatif)",
+        "salidaEmergenciaSoloEntra": "Solution de secours : n'intervient que lorsque la sélection ci-dessus ne correspond à aucune voix active.",
+        "resumen": {
+          "agente": "Cet agent parlera avec « {voz} ».",
+          "defecto": "Sans voix propre : il parlera avec la voix par défaut de l'organisation, « {voz} ».",
+          "suelto": "Il parlera avec l'identifiant libre {id} (absent du catalogue).",
+          "ninguna": "Aucune voix choisie ni par défaut : il parlera avec la voix standard de Google."
+        }
+      },
+      "agentCampaignsPanel": {
+        "campanaNecesitaNombre": "La campagne a besoin d'un nom",
+        "primeroCreaAgente": "Créez d'abord un agent",
+        "campanaNecesitaAgenteLlame": "La campagne a besoin d'un agent qui appelle.",
+        "campanaCreadaBorrador": "Campagne créée en brouillon",
+        "activalaCuandoQuierasEmpiece": "Activez-la quand vous voulez qu'elle commence à appeler.",
+        "noPudoCrearCampana": "Impossible de créer la campagne",
+        "noPudoActualizar": "Mise à jour impossible",
+        "nuevaCampana": "Nouvelle campagne",
+        "nombre": "Nom",
+        "ejSeguimientoPropuestas": "Ex. Suivi des propositions",
+        "agenteLlama": "Agent qui appelle",
+        "inactivo": "(inactif)",
+        "noHayAgentesCrea": "Aucun agent : créez-en un dans l'onglet « Agents » avant de lancer une campagne.",
+        "crearCampana": "Créer la campagne",
+        "cargandoCampanas": "Chargement des campagnes…",
+        "noPudieronCargarCampanas": "Impossible de charger les campagnes",
+        "todaviaNoHayCampanas": "Il n'y a pas encore de campagnes.",
+        "respuestaNoIndicoExito": "La réponse n'a pas indiqué de succès",
+        "error": "Erreur {status}",
+        "campanaActivada": "Campagne activée",
+        "campanaDetenida": "Campagne arrêtée"
+      },
+      "myVoiceCard": {
+        "defecto": "Par défaut",
+        "inactiva": "Inactive",
+        "borrarVoz": "Supprimer la voix {name}",
+        "etiquetas": "Étiquettes",
+        "usan": "Utilisée par : {agentes}",
+        "usanTodosAgentesSin": "Utilisée par tous les agents sans voix propre.",
+        "todaviaNoUsaNingun": "Aucun agent ne l'utilise encore.",
+        "consentimientoRegistrado": "consentement enregistré",
+        "detallesTecnicos": "Détails techniques",
+        "identificador": "Identifiant",
+        "copiarIdentificador": "Copier l'identifiant de {name}",
+        "modelo": "Modèle",
+        "proveedor": "Fournisseur",
+        "descripcion": "Description",
+        "usarDefecto": "Utiliser {name} par défaut",
+        "asignarVozAgente": "Attribuer la voix {name} à un agent",
+        "asignarAgente": "Attribuer à un agent…",
+        "yaUsa": "· l'utilise déjà",
+        "identificadorCopiado": "Identifiant copié",
+        "noPudoCopiarIdentificador": "Impossible de copier l'identifiant"
+      },
+      "voiceLibraryFilters": {
+        "buscarNombreAcentoEstilo": "Rechercher par nom, accent ou style…",
+        "buscarVozNombreDescripcion": "Rechercher une voix par nom ou description",
+        "filtros": "Filtres",
+        "n1Activo": "1 actif",
+        "activos": "{selectCount} actifs",
+        "idioma": "Langue",
+        "todosIdiomas": "Toutes les langues",
+        "generoVoz": "Genre de la voix",
+        "genero": "Genre",
+        "cualquierGenero": "N'importe quel genre",
+        "casoUso": "Cas d'usage",
+        "cualquierUso": "N'importe quel usage",
+        "filtrosActivos": "Filtres actifs",
+        "quitarFiltro": "Retirer le filtre {label}",
+        "limpiarFiltros": "Effacer les filtres",
+        "espanolPrimeroCambiaIdioma": "L'espagnol d'abord. Changez la langue, le genre ou l'usage pour affiner.",
+        "conteo": "{n} sur {total, number} voix"
+      },
+      "cloneVoiceWizard": {
+        "vozCreada": "Voix « {name} » créée",
+        "yaEstaTusVoces": "« {name} » est déjà dans vos voix",
+        "elevenlabsPideVerificarVoz": "ElevenLabs demande de vérifier la voix avant de l'utiliser en appel.",
+        "escuchalaMisVocesMarcala": "Écoutez-la dans Mes voix, définissez-la par défaut ou attribuez-la à un agent.",
+        "clonarOtraVoz": "Cloner une autre voix",
+        "planActualElevenlabsNo": "Le forfait ElevenLabs actuel ({tier}) ne permet pas de cloner des voix",
+        "puedesGrabarEscucharMuestra": "Vous pouvez enregistrer et écouter l'échantillon, mais « Créer ma voix » restera désactivé : il faut au moins le forfait Starter sur le compte dont la clé est configurée.",
+        "paso4": "Étape {step} sur 4 · {valor}",
+        "noPudoCrearVoz": "Impossible de créer la voix",
+        "puedesIntentarloNuevoMuestras": "{serverError} Vous pouvez réessayer ; les échantillons sont toujours là.",
+        "atras": "Retour",
+        "continuar": "Continuer",
+        "creandoVoz": "Création de la voix…",
+        "crearMiVoz": "Créer ma voix",
+        "planActualElevenlabsNo2": "Le forfait ElevenLabs actuel ({tier}) ne permet pas de cloner des voix.",
+        "maximoMuestras": "Au maximum {max} échantillons : les {n} premiers ont été pris.",
+        "faltaMuestraAudio": "L'échantillon audio manque."
+      },
+      "agentPurposeTab": {
+        "nombre": "Nom",
+        "ejAnaAsistenteComercial": "Ex. Ana, assistante commerciale",
+        "modeloLenguaje": "Modèle de langage",
+        "cargandoModelosDisponibles": "Chargement des modèles disponibles…",
+        "nombreModelo": "Nom du modèle",
+        "noPudoLeerCatalogo": "Impossible de lire le catalogue de modèles ({error}) ; saisissez le nom à la main.",
+        "ningunProveedorIaTiene": "Aucun fournisseur d'IA n'a d'identifiants : saisissez le nom à la main ou configurez-les dans Fournisseurs et IA.",
+        "eligeModelo": "Choisissez un modèle",
+        "recomendado": "Recommandé",
+        "soloAparecenModelosProveedores": "Seuls les modèles des fournisseurs ayant des identifiants dans cette organisation s'affichent.",
+        "topesLlamada": "Limites par appel",
+        "turnos": "Tours",
+        "intercambiosComoMaximo": "Échanges au maximum",
+        "segundos": "Secondes",
+        "duracionMaximaLlamada": "Durée maximale de l'appel",
+        "agenteActivo": "Agent actif",
+        "propositos": {
+          "sell_product": "Vendre un produit",
+          "book_meeting": "Planifier une réunion",
+          "qualify_lead": "Qualifier le contact",
+          "confirm_demo": "Confirmer la démo",
+          "follow_up_proposal": "Suivi de proposition",
+          "reactivate_cold": "Réactiver un contact froid",
+          "collect_payment": "Recouvrement",
+          "nps_survey": "Enquête NPS",
+          "renewal_reminder": "Rappel de renouvellement",
+          "custom": "Personnalisé"
+        }
+      },
+      "voiceLibraryGrid": {
+        "noPudoReproducir": "Lecture impossible",
+        "yaEstabaTusVoces": "« {name} » était déjà dans vos voix",
+        "anadidaTusVoces": "« {name} » ajoutée à vos voix",
+        "puedesMarcarlaDefectoAsignarsela": "Vous pouvez la définir par défaut ou l'attribuer à un agent dans l'onglet Mes voix.",
+        "noPudoAnadirVoz": "Impossible d'ajouter la voix",
+        "cargandoVoces": "Chargement des voix",
+        "noPudoCargarBiblioteca": "Impossible de charger la bibliothèque ElevenLabs",
+        "ningunaVozCoincideEsos": "Aucune voix ne correspond à ces filtres.",
+        "pruebaOtraPalabraQuita": "Essayez un autre mot ou retirez un filtre.",
+        "limpiarFiltros": "Effacer les filtres",
+        "vocesBiblioteca": "Voix de la bibliothèque",
+        "cargandoMasVoces": "Chargement de plus de voix…",
+        "cargarMasVoces": "Charger plus de voix"
+      },
+      "campaignTargetPicker": {
+        "cargandoEmbudos": "Chargement des pipelines…",
+        "noPudieronLeerEmbudos": "Impossible de lire les pipelines ({error}). La campagne sera créée comme liste manuelle.",
+        "noHayEmbudosEsta": "Il n'y a pas de pipeline dans cette organisation : la campagne sera créée comme liste manuelle.",
+        "eligeEmbudo": "Choisissez un pipeline",
+        "sinEmbudoListaManual": "Sans pipeline (liste manuelle)",
+        "etapaLlamar": "Étape à appeler",
+        "eligeEtapa": "Choisissez une étape",
+        "primeroEligeEmbudo": "Choisissez d'abord un pipeline",
+        "ningunaListaManual": "Aucune (liste manuelle)",
+        "agenteLlamaraOportunidadesAbiertas": "L'agent appellera les opportunités ouvertes de cette étape.",
+        "contandoOportunidadesAbiertas": "Comptage des opportunités ouvertes…",
+        "oportunidadesAbiertasEtapa": "{n, plural, one {# opportunité ouverte dans cette étape en ce moment.} other {# opportunités ouvertes dans cette étape en ce moment.}}"
+      },
+      "cloneStepRecord": {
+        "leeEsteGuionVoz": "Lisez ce texte à voix haute",
+        "minHablaNaturalSin": "≈ {clock} min · parlez naturellement, sans vous presser",
+        "grabadora": "Enregistreur",
+        "tiempoGrabado": "Temps enregistré {clock}",
+        "avanceRespectoDuracionRecomendada": "Progression par rapport à la durée recommandée",
+        "detener": "Arrêter",
+        "grabarOtraMuestra": "Enregistrer un autre échantillon",
+        "grabar": "Enregistrer",
+        "muestrasListasEnviar": "Échantillons prêts à envoyer",
+        "muestra": "Échantillon {i} · {describeSample}",
+        "quitarMuestra": "Retirer l'échantillon {n}",
+        "sinMicrofonoSubeHasta": "Pas de micro ? Importez jusqu'à {MAX_CLONE_SAMPLES} fichiers audio (mp3, wav, m4a, ogg ou webm ; 10 Mo max chacun)"
+      },
+      "useAgentForm": {
+        "noPudoCargarAgente": "Impossible de charger l'agent",
+        "errorDesconocido": "Erreur inconnue",
+        "agenteNecesitaNombre": "L'agent a besoin d'un nom",
+        "eligeModeloLenguaje": "Choisissez le modèle de langage",
+        "estaPasoPropositoSi": "C'est dans l'étape Objectif. Si le catalogue ne s'est pas chargé, saisissez le nom à la main.",
+        "agenteActualizado": "Agent mis à jour",
+        "agenteCreado": "Agent créé",
+        "noPudoGuardar": "Enregistrement impossible"
+      },
+      "cloneStepReview": {
+        "quitar": "Retirer le {label}",
+        "quitar2": "Retirer",
+        "muestraGrabadaVoz": "{label}, échantillon enregistré de votre voix",
+        "muestraLista": "Un échantillon prêt",
+        "muestrasListas": "{n} échantillons prêts",
+        "minTotal": "min au total",
+        "siOyeRuidoFondo": "Si vous entendez du bruit de fond, des coupures ou une lecture précipitée, retirez-le et réenregistrez : la voix clonée copiera exactement ce que vous entendez ici. Avec deux ou trois échantillons, le clone est meilleur.",
+        "muestrasGrabadas": "Échantillons enregistrés",
+        "grabarOtraMuestra": "Enregistrer un autre échantillon"
+      },
+      "voiceCard": {
+        "etiquetas": "Étiquettes",
+        "planPago": "Forfait payant",
+        "noPuedeAnadirPlan": "Impossible de l'ajouter avec le forfait gratuit ElevenLabs de ce compte.",
+        "soloPuedeAnadirPlan": "Elle ne peut être ajoutée qu'avec un forfait ElevenLabs payant.",
+        "misVoces": "Dans mes voix",
+        "anadirMisVoces": "Ajouter {name} à mes voix",
+        "anadir": "Ajouter",
+        "usadaPor": "utilisée par {n, number}"
+      },
+      "cloneStepName": {
+        "voz": "Votre voix",
+        "muestra": "un échantillon",
+        "muestras": "{n} échantillons",
+        "nombreVoz": "Nom de la voix",
+        "ejemploVozCamilaVentas": "Par exemple : Voix de Camila (ventes)",
+        "asiVerasMisVoces": "C'est ainsi que vous la verrez dans Mes voix et dans l'éditeur d'agents.",
+        "usarlaComoVozDefecto": "L'utiliser comme voix par défaut de l'organisation (les agents sans voix propre appelleront avec elle)."
+      },
+      "campaignCard": {
+        "destino": "Cible",
+        "topes": "Limites",
+        "diaHoraVez": "{max_calls_per_day}/jour · {max_calls_per_hour}/heure · {max_concurrent} à la fois",
+        "paradaEmergencia": "Arrêt d'urgence"
+      },
+      "agentScriptTab": {
+        "seaCualSeaEste": "Quel que soit ce script, l'agent se présente toujours comme assistant virtuel, annonce l'enregistrement, respecte le désabonnement et ne conclut pas de ventes seul.",
+        "primeraFrase": "Première phrase",
+        "comoIdentificaComoIa": "Comment il s'identifie comme IA",
+        "leAtiendeAsistenteVirtual": "Vous êtes en ligne avec un assistant virtuel doté d'intelligence artificielle.",
+        "instruccionesAgente": "Instructions de l'agent",
+        "primerMensajeEjemplo": "Je vous appelle de la part de '{{'org'}}' au sujet de votre demande. Avez-vous une minute ?"
+      },
+      "voicePreviewButton": {
+        "detenerMuestra": "Arrêter l'échantillon de {voiceName}",
+        "escucharMuestra": "Écouter un échantillon de {voiceName}",
+        "detener": "Arrêter",
+        "escuchar": "Écouter"
+      },
+      "voicesPanel": {
+        "faltaClaveElevenlabsPuedes": "La clé ElevenLabs manque : vous pouvez explorer la bibliothèque, mais pas ajouter, cloner ni utiliser des voix en appel tant qu'elle n'est pas enregistrée dans",
+        "configuracionCrmProveedoresE": "Paramètres › CRM › Fournisseurs et IA",
+        "noPudoComprobarSi": "Impossible de vérifier si une clé ElevenLabs est configurée (échec de lecture de Fournisseurs et IA). Ajouter, cloner ou écouter peut échouer avec l'erreur du fournisseur."
+      },
+      "agentToolsTab": {
+        "puedeHacerAgenteDurante": "Ce que l'agent peut faire pendant l'appel. Chaque étape du pipeline peut restreindre davantage cette liste.",
+        "obligatoriaLey": "Obligatoire par la loi",
+        "registrarNoMeVuelva": "Enregistrer un « ne plus m'appeler » et pouvoir raccrocher sont obligatoires (loi colombienne 1581 de 2012). Ils ne peuvent pas être désactivés ni restreints depuis l'étape du pipeline.",
+        "herramientas": {
+          "get_customer_context": "Consulter la fiche du client",
+          "move_opportunity_stage": "Changer d'étape (ne peut pas clôturer)",
+          "update_opportunity_field": "Mettre à jour les données de l'opportunité",
+          "create_task": "Créer une tâche de suivi",
+          "book_meeting": "Planifier une réunion",
+          "schedule_callback": "Programmer un rappel",
+          "log_objection": "Enregistrer une objection",
+          "send_payment_link": "Préparer un lien de paiement",
+          "log_consent_opt_out": "Enregistrer le désabonnement",
+          "transfer_to_human": "Transférer à une personne",
+          "end_call": "Terminer l'appel"
+        }
+      },
+      "cloneStepConsent": {
+        "consentimientoClonarVozHabeas": "Consentement pour cloner une voix (Habeas Data)",
+        "heLeidoTextoAnterior": "J'ai lu le texte ci-dessus et je confirme que la voix que je vais enregistrer est la mienne ou que j'ai le consentement écrit de son propriétaire.",
+        "pasos": {
+          "leer": "Vous lisez à voix haute un court texte affiché à l'écran ; il est enregistré ici même.",
+          "elevenlabs": "L'enregistrement est envoyé à ElevenLabs, qui crée une réplique de votre voix en quelques secondes.",
+          "duracion": "Cela prend moins de {minutos} minutes. L'audio n'est pas conservé sur cette plateforme."
+        }
+      },
+      "cloneStepIndicator": {
+        "pasosClonarVoz": "Étapes pour cloner la voix",
+        "completado": "(terminé)",
+        "pasoActual": "(étape actuelle)",
+        "titulos": {
+          "1": "Consentement",
+          "2": "Enregistrer le texte",
+          "3": "Écouter",
+          "4": "Nommer et créer"
+        }
+      },
+      "voicePickCard": {
+        "defecto": "Par défaut",
+        "consentimientoRegistrado": "Consentement enregistré"
+      },
+      "useVoiceRecorder": {
+        "esteNavegadorNoSoporta": "Ce navigateur ne prend pas en charge l'enregistrement audio. Importez plutôt un fichier.",
+        "permisoDenegado": "Autorisation du micro refusée. Activez-la dans le navigateur pour enregistrer.",
+        "sinMicrofono": "Aucun micro trouvé. Branchez-en un ou importez un fichier.",
+        "noAcceso": "Impossible d'accéder au micro."
+      },
+      "voiceAvatar": {
+        "avatarVoz": "Avatar de la voix {name}"
+      },
+      "useVoiceCatalog": {
+        "errorLeerCatalogoVoces": "Erreur {status} lors de la lecture du catalogue de voix"
+      },
+      "agentModels": {
+        "gamas": {
+          "economico": "Économique",
+          "equilibrado": "Équilibré",
+          "premium": "Premium",
+          "legacy": "Ancien"
+        },
+        "fueraDeCatalogo": "Enregistré sur l'agent, mais n'est plus dans le catalogue",
+        "noPudoCargarCatalogo": "Impossible de charger le catalogue de modèles"
+      },
+      "campaignModel": {
+        "estados": {
+          "draft": "Brouillon",
+          "scheduled": "Programmée",
+          "running": "En cours",
+          "paused": "En pause",
+          "completed": "Terminée",
+          "detenida": "Arrêtée"
+        },
+        "paradaConMotivo": "Arrêt d'urgence : {motivo}",
+        "parada": "Arrêt d'urgence",
+        "motivo": "Motif : {motivo}",
+        "listaManual": "Liste manuelle",
+        "etapaYaNoExiste": "Étape du pipeline (n'existe plus)",
+        "etapaEmbudo": "Étape {etapa} · {embudo}",
+        "etapa": "Étape {etapa}"
       }
     },
     "equipo": {
@@ -27470,6 +28847,126 @@
         "asignar": "Attribuer des opportunités",
         "performance": "Performance",
         "territorios": "Territoires"
+      },
+      "equiposTab": {
+        "error": "Erreur",
+        "noPudieronCargarEquipos": "Impossible de charger les équipes",
+        "validacion": "Validation",
+        "nombreObligatorio": "Le nom est obligatoire",
+        "equipoActualizado": "Équipe mise à jour",
+        "equipoCreado": "Équipe créée",
+        "noPudoGuardar": "Enregistrement impossible",
+        "seleccionaMiembro": "Sélectionnez un membre",
+        "miembroAnadido": "Membre ajouté",
+        "noPudoAnadir": "Ajout impossible",
+        "miembroRemovido": "Membre retiré",
+        "noPudoRemover": "Retrait impossible",
+        "equipoEliminado": "Équipe supprimée",
+        "noPudoEliminar": "Suppression impossible",
+        "nuevoEquipo": "Nouvelle équipe",
+        "noHayEquipos": "Il n'y a pas d'équipes",
+        "creaPrimerEquipoComercial": "Créez votre première équipe commerciale",
+        "cuotaTotal": "Quota total : {moneda}",
+        "sinMiembrosAnadePrimero": "Aucun membre. Ajoutez le premier.",
+        "cuota": "Quota : {moneda}",
+        "anadirMiembro": "Ajouter un membre",
+        "eliminarEquipo": "Supprimer l'équipe ?",
+        "eliminaraTodosSusMiembros": "« {name} » et tous ses membres seront supprimés."
+      },
+      "territoriosTab": {
+        "noPudieronCargarTerritorios": "Impossible de charger les territoires",
+        "territorioActualizado": "Territoire mis à jour",
+        "territorioCreado": "Territoire créé",
+        "territorioEliminado": "Territoire supprimé",
+        "nuevoTerritorio": "Nouveau territoire",
+        "noHayTerritoriosConfigurados": "Aucun territoire configuré",
+        "oport": "Opp.",
+        "valor": "Valeur",
+        "equipos": "Équipes :",
+        "eliminarTerritorio": "Supprimer le territoire ?",
+        "eliminara": "« {name} » sera supprimé.",
+        "jsonInvalido": "JSON invalide"
+      },
+      "asignarTab": {
+        "noPudieronCargarOportunidades": "Impossible de charger les opportunités : {describeError}",
+        "equipoAsignado": "Équipe attribuée",
+        "noPudoAsignar": "Attribution impossible",
+        "vendedorAsignado": "Vendeur attribué",
+        "todosEquipos": "Toutes les équipes",
+        "soloSinAsignar": "Non attribuées uniquement",
+        "noHayOportunidadesAsignar": "Il n'y a pas d'opportunités à attribuer",
+        "oportunidad": "Opportunité",
+        "cliente": "Client",
+        "monto": "Montant",
+        "etapa": "Étape",
+        "equipo": "Équipe",
+        "vendedor": "Vendeur",
+        "sinEquipo": "Sans équipe",
+        "sinAsignar": "Non attribué"
+      },
+      "performanceTab": {
+        "noPudoCargarPerformance": "Impossible de charger la performance",
+        "noHayMiembrosEquipos": "Aucun membre d'équipe pour afficher la performance",
+        "asignaMiembrosDesdeTab": "Attribuez des membres depuis l'onglet Équipes",
+        "activas": "Actives",
+        "ganadas": "Gagnées",
+        "ganado": "Montant gagné",
+        "rol": "Rôle",
+        "perdidas": "Perdues",
+        "cuota": "Quota"
+      },
+      "memberDialog": {
+        "seleccionaMiembroOrganizacion": "Sélectionnez un membre de l'organisation",
+        "miembro": "Membre *",
+        "selecciona": "Sélectionner...",
+        "sinRol": "Sans rôle",
+        "territorioOpcional": "Territoire (facultatif)",
+        "heredaEquipo": "Hérite de l'équipe",
+        "moneda": "Devise",
+        "cancelar": "Annuler",
+        "anadiendo": "Ajout...",
+        "anadir": "Ajouter"
+      },
+      "teamDialog": {
+        "editarEquipo": "Modifier l'équipe",
+        "nuevoEquipo": "Nouvelle équipe",
+        "modificaDatosEquipoComercial": "Modifiez les données de l'équipe commerciale",
+        "creaNuevoEquipoComercial": "Créez une nouvelle équipe commerciale",
+        "nombre": "Nom *",
+        "ejEquipoNorte": "Ex. : Équipe Nord",
+        "descripcion": "Description",
+        "sinTerritorio": "Sans territoire",
+        "activo": "Actif",
+        "guardando": "Enregistrement...",
+        "guardar": "Enregistrer"
+      },
+      "territoryDialog": {
+        "editarTerritorio": "Modifier le territoire",
+        "nuevoTerritorio": "Nouveau territoire",
+        "modificaDatosTerritorio": "Modifiez les données du territoire",
+        "creaNuevoTerritorioComercial": "Créez un nouveau territoire commercial",
+        "ejZonaNorte": "Ex. : Zone Nord",
+        "criteriosJson": "Critères (JSON)"
+      },
+      "equipoSidebar": {
+        "pipelineActivo": "Pipeline actif",
+        "oportunidadesAbiertas": "{openOpps} opportunités ouvertes",
+        "equiposActivos": "Équipes actives",
+        "miembros": "Membres",
+        "oportunidadesAbiertas2": "Opportunités ouvertes",
+        "accesoRapido": "Accès rapide",
+        "irPipeline": "Aller au pipeline",
+        "verOportunidades": "Voir les opportunités",
+        "configurarEstructura": "Configurer la structure"
+      },
+      "equipoPage": {
+        "equipoComercial": "Équipe commerciale",
+        "revops": "RevOps",
+        "gestionComercial": "Gestion commerciale",
+        "equiposOportunidadesTerritorios": "Équipes, opportunités et territoires"
+      },
+      "deleteConfirmDialog": {
+        "eliminar": "Supprimer"
       }
     },
     "automatizaciones": {
@@ -27500,6 +28997,242 @@
         "sinNombre": "Enregistrement sans nom",
         "noDisponible": "L'enregistrement n'existe plus ou n'est pas visible",
         "yMas": "Et {n} de plus…"
+      },
+      "dryRunDialog": {
+        "probarSeco": "Essai à blanc « {name} »",
+        "eligeOportunidadVerasHaria": "Choisissez une opportunité et vous verrez ce que la règle en ferait. Rien n'est envoyé, rien ne change et rien n'est consigné dans l'historique.",
+        "noPudoProbar": "Test impossible",
+        "oportunidad": "Opportunité",
+        "buscarNombre": "Rechercher par nom…",
+        "elegida": "Choisie : {selectedName}",
+        "sinElegirEvaluaSin": "Aucune choisie : l'évaluation se fait sans opportunité (seulement le déclencheur et les conditions qui n'en ont pas besoin).",
+        "resultadosBusqueda": "Résultats de la recherche",
+        "sinOportunidad": "Sans opportunité",
+        "ningunaOportunidadCoincide": "Aucune opportunité ne correspond.",
+        "reglaDispararia": "La règle se déclencherait",
+        "reglaNoDispararia": "La règle ne se déclencherait pas",
+        "condiciones": "Conditions",
+        "cumple": "Remplie",
+        "noCumple": "Non remplie",
+        "valorReal": "— valeur réelle : {actualText}",
+        "hariaEsteOrden": "Elle ferait, dans cet ordre",
+        "hariaSiDisparara": "Elle ferait si elle se déclenchait",
+        "nadaReglaNoTiene": "Rien : la règle n'a pas d'actions.",
+        "noDisponibleFallaria": "(non disponible : échouerait)",
+        "cerrar": "Fermer",
+        "probando": "Test en cours…",
+        "probarNuevo": "Tester à nouveau",
+        "probar": "Tester",
+        "vacio": "vide",
+        "si": "oui",
+        "no": "non"
+      },
+      "automatizacionesPage": {
+        "desactivada": "« {name} » désactivée",
+        "activada": "« {name} » activée",
+        "noPudoCambiarEstado": "Impossible de changer le statut",
+        "errorDesconocido": "Erreur inconnue",
+        "eliminada": "« {name} » supprimée",
+        "noPudoEliminar": "Suppression impossible",
+        "automatizaciones": "Automatisations",
+        "reglasActuanSolasCuando": "Des règles qui agissent seules quand il se passe quelque chose dans le pipeline. C'est le serveur qui les exécute, pas le navigateur.",
+        "actualizarLista": "Actualiser la liste",
+        "historial": "Historique",
+        "nuevaRegla": "Nouvelle règle",
+        "noPudoActualizarLista": "Impossible d'actualiser la liste",
+        "noPudieronCargarReglas": "Impossible de charger les règles",
+        "muestraUltimaListaConocida": "La dernière liste connue est affichée ; appuyez sur",
+        "pulsa": "Appuyez sur",
+        "actualizarReintentar": "{error}. {valor} « Actualiser » pour réessayer.",
+        "cargandoReglas": "Chargement des règles",
+        "reglasAutomatizacion": "Règles d'automatisation",
+        "eliminarRegla": "Supprimer la règle",
+        "eliminaraDejaraEjecutarseTambien": "« {n} » sera supprimée et cessera de s'exécuter. Son historique d'exécutions est aussi effacé. Cette action est irréversible.",
+        "eliminar": "Supprimer"
+      },
+      "actionChipEditor": {
+        "sinPlantillaContenidoLibre": "Sans modèle (contenu libre)",
+        "noHayPlantillasCreadas": "Aucun modèle créé.",
+        "eligeSecuencia": "Choisissez une séquence",
+        "noHaySecuenciasCreadas": "Aucune séquence créée.",
+        "eligeEtapa": "Choisissez une étape",
+        "noHayEtapasCreadas": "Aucune étape créée.",
+        "eligeCampo": "Choisissez un champ",
+        "cargando": "Chargement…",
+        "accion": "Action {index}",
+        "noDisponible": "{label} (non disponible)",
+        "subirAccion": "Monter l'action {n}",
+        "bajarAccion": "Descendre l'action {n}",
+        "quitar": "Retirer",
+        "estaAccionTodaviaNo": "Cette action n'est pas encore disponible : si vous la gardez, l'exécution sera marquée en échec.",
+        "entidades": {
+          "opportunities": "Opportunité",
+          "customers": "Client",
+          "tasks": "Tâche"
+        }
+      },
+      "runsSheet": {
+        "historial": "Historique de « {ruleName} »",
+        "historialTodasReglas": "Historique de toutes les règles",
+        "ultimas50EjecucionesReales": "Les 50 dernières exécutions réelles du serveur. Les essais à blanc n'y sont pas consignés.",
+        "actualizar": "Actualiser",
+        "noPudoCargarHistorial": "Impossible de charger l'historique",
+        "pulsaActualizarReintentar": "{error} — appuyez sur « Actualiser » pour réessayer.",
+        "cargandoHistorial": "Chargement de l'historique",
+        "todaviaNoHayEjecuciones": "Aucune exécution pour l'instant. Quand la règle se déclenchera, elles apparaîtront ici.",
+        "estado": "Statut",
+        "fecha": "Date",
+        "detalle": "Détail",
+        "ok": "— ok",
+        "sinDetalle": "sans détail",
+        "errorDetalle": " — erreur : {error}"
+      },
+      "triggerBlock": {
+        "disparador": "Déclencheur",
+        "evento": "Événement",
+        "eligeUnoConocidoEscribe": "Choisissez-en un connu ou saisissez-en un autre sous la forme entite.action. Vide = n'importe quel événement.",
+        "vaPropioDisparadorCambia": "« {muted} » a son propre déclencheur (« change d'étape » ou « change un champ ») : avec « {label} », cette règle ne se déclencherait jamais. Choisissez un autre événement ou changez le déclencheur.",
+        "pipeline": "Dans le pipeline",
+        "cargandoPipelines": "Chargement des pipelines…",
+        "cualquierPipeline": "N'importe quel pipeline",
+        "noHayPipelinesCreados": "Aucun pipeline créé.",
+        "entrarEtapa": "À l'entrée dans l'étape",
+        "cargandoEtapas": "Chargement des étapes…",
+        "cualquierEtapa": "N'importe quelle étape",
+        "pipelineElegidoNoTiene": "Le pipeline choisi n'a pas d'étapes.",
+        "pipelineRegla": "Pipeline de la règle",
+        "etapaRegla": "Étape de la règle",
+        "ignorado": {
+          "pipeline": "le pipeline « {nombre} »",
+          "etapa": "l'étape « {nombre} »",
+          "uno": "Ce déclencheur ne regarde pas {a} : il est conservé au cas où vous reviendriez à un déclencheur qui l'utilise.",
+          "ambos": "Ce déclencheur ne regarde ni {a} ni {b} : ils sont conservés au cas où vous reviendriez à un déclencheur qui les utilise."
+        }
+      },
+      "ruleCard": {
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "noHaraNadaSin": "ne fera rien (sans actions)",
+        "ultimaEjecucion": "Dernière exécution : {relativeTime}",
+        "n1Ejecucion": "1 exécution",
+        "ejecuciones": "{runs} exécutions",
+        "probarSeco": "Essai à blanc {name}",
+        "probarSeco2": "Essai à blanc",
+        "historial": "Historique de {name}",
+        "editar": "Modifier {name}",
+        "eliminar": "Supprimer {name}",
+        "desactivarRegla": "Désactiver la règle {name}",
+        "activarRegla": "Activer la règle {name}"
+      },
+      "ruleEditorSheet": {
+        "reglaActualizada": "Règle mise à jour",
+        "reglaCreada": "Règle créée",
+        "yaEstaActiva": "Elle est déjà active.",
+        "estaDesactivadaActivalaCuando": "Elle est désactivée : activez-la quand vous voulez.",
+        "editarRegla": "Modifier la règle",
+        "armaFraseCuandoDispara": "Construisez la phrase : quand elle se déclenche, avec quelles conditions et ce qu'elle fait. Vous verrez ci-dessous le résultat avant d'enregistrer.",
+        "nombreRegla": "Nom de la règle",
+        "seguimientoPropuesta": "Suivi de proposition",
+        "noPudoGuardar": "Enregistrement impossible",
+        "corrigeLoIndicadoVuelve": "{serverError}. Corrigez ce qui est indiqué et réessayez.",
+        "guardar": "Enregistrer",
+        "desactivada": "Désactivée",
+        "cancelar": "Annuler",
+        "guardando": "Enregistrement…",
+        "palabras": {
+          "cuando": "Quand",
+          "si": "si",
+          "opcional": "facultatif",
+          "entonces": "alors"
+        }
+      },
+      "conditionChipEditor": {
+        "esteOperadorNoNecesita": "Cet opérateur n'a pas besoin de valeur.",
+        "eligePipeline": "Choisissez un pipeline",
+        "valor": "Valeur",
+        "campo": "Champ",
+        "operador": "Opérateur",
+        "quitarCondicion": "Retirer la condition",
+        "valorCondicion": "Valeur de la condition {n}",
+        "ayudas": {
+          "lista": "Plusieurs valeurs séparées par des virgules.",
+          "dias": "Nombre de jours en arrière depuis aujourd'hui.",
+          "fecha": "Date au format AAAA-MM-JJ.",
+          "texto": "Texte, nombre, true ou false. Les ID d'étape se choisissent par nom."
+        }
+      },
+      "conditionsBlock": {
+        "comoCombinanCondiciones": "Comment les conditions se combinent",
+        "cumpleSi": "Remplie si",
+        "sinCondicionesDisparaSiempre": "Sans conditions : elle se déclenche chaque fois que le déclencheur se produit. N'en ajoutez une que si vous devez filtrer.",
+        "grupoEditaComoJson": "· groupe, il se modifie en JSON",
+        "anadirCondicion": "Ajouter une condition",
+        "editarComoJson": "Modifier en JSON",
+        "condicionesJson": "Conditions en JSON",
+        "gruposAnidadosCasosAvanzados": "Pour les groupes imbriqués et les cas avancés. Champs autorisés : opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.",
+        "jsonCondiciones": "JSON des conditions",
+        "aplicar": "Appliquer"
+      },
+      "rulesToolbar": {
+        "buscarNombreDescripcion": "Rechercher par nom ou description…",
+        "buscarReglasNombre": "Rechercher des règles par nom",
+        "filtrarEstado": "Filtrer par statut",
+        "disparador": "Déclencheur :",
+        "filtrarDisparador": "Filtrer par déclencheur",
+        "quitarFiltros": "Retirer les filtres ({active})",
+        "reglas": "{shown} sur {total} règles",
+        "estados": {
+          "all": "Toutes",
+          "active": "Actives",
+          "inactive": "Inactives"
+        }
+      },
+      "eventPicker": {
+        "buscarEscribirEntidadAccion": "Rechercher ou saisir entite.action…",
+        "eseEventoVaPropio": "Cet événement a son propre déclencheur (« change d'étape » ou « change un champ ») : une règle d'événement portant ce nom ne se déclencherait pas.",
+        "ningunEventoCoincideNombre": "Aucun événement ne correspond. Un nom libre a la forme entite.action (minuscules).",
+        "ningunEventoCoincide": "Aucun événement ne correspond.",
+        "eventosConocidos": "Événements connus",
+        "cualquierEvento": "N'importe quel événement",
+        "reglaEvaluaCualquierEvento": "La règle est évaluée avec n'importe quel événement de ce type.",
+        "nombreLibre": "Nom libre",
+        "usar": "Utiliser « {trimmedQuery} »"
+      },
+      "actionsBlock": {
+        "sinAccionesReglaNo": "Sans actions, la règle ne fera rien même si elle se déclenche. Ajoutez-en au moins une.",
+        "accion": "Action {n}",
+        "revisar": "Vérifier",
+        "anadirAccion": "Ajouter une action",
+        "buscarAccion": "Rechercher une action…",
+        "ningunaAccionCoincide": "Aucune action ne correspond.",
+        "disponibles": "Disponibles",
+        "todaviaNoDisponibles": "Pas encore disponibles"
+      },
+      "ruleSettings": {
+        "ajustes": "Réglages",
+        "descripcionOpcional": "Description (facultatif)",
+        "sirveEstaReglaFrase": "À quoi sert cette règle, en une phrase.",
+        "prioridad": "Priorité",
+        "menorNumeroEvaluaAntes": "Plus le nombre est petit, plus elle est évaluée tôt. 100 par défaut.",
+        "enfriamientoHoras": "Délai de récupération (heures)",
+        "tiempoMinimoEntreDos": "Temps minimum entre deux exécutions sur la même opportunité. 0 = sans limite.",
+        "soloVezOportunidad": "Une seule fois par opportunité"
+      },
+      "rulesEmptyState": {
+        "ningunaReglaCoincideFiltros": "Aucune règle ne correspond aux filtres",
+        "quitarFiltros": "Retirer les filtres",
+        "dejaCrmTrabajeSolo": "Laissez le CRM travailler seul",
+        "reglaVigilaPipelineActua": "Une règle surveille le pipeline et agit pour vous : elle écrit, crée des tâches, change d'étape. Voici l'une des plus utilisées :",
+        "ejemplo": "Exemple : {name}",
+        "editorEligesEtapaDispara": "Dans l'éditeur, vous choisissez l'étape qui la déclenche (par exemple, « Proposition envoyée »).",
+        "usarEsteEjemplo": "Utiliser cet exemple",
+        "empezarDesdeCero": "Partir de zéro"
+      },
+      "rulePreview": {
+        "asiFuncionara": "Voici comment elle fonctionnera"
+      },
+      "useOpportunitySearch": {
+        "noHayOrganizacionActiva": "Il n'y a pas d'organisation active."
       }
     },
     "campanaVoz": {
@@ -27720,6 +29453,155 @@
       "sustantivo": {
         "uno": "campagne",
         "otros": "campagnes"
+      },
+      "campanaNuevaPage": {
+        "noPudoCalcularAudiencia": "Impossible de calculer l'audience",
+        "error": "Erreur",
+        "borradorGuardado": "Brouillon enregistré",
+        "campanaProgramada": "Campagne programmée",
+        "campanaLanzada": "Campagne lancée",
+        "contactosCola": "{n} contacts en file d'attente",
+        "superaLimiteWaba": "Dépasse la limite du WABA",
+        "noPudoLanzar": "Lancement impossible",
+        "volver": "Retour",
+        "nuevaCampanaWhatsapp": "Nouvelle campagne WhatsApp",
+        "crmCampanasNueva": "CRM / Campagnes / Nouvelle",
+        "pasos": "Étapes",
+        "nombreCampana": "Nom de la campagne",
+        "ejNovedadesSeptiembre": "Ex. : Nouveautés de septembre",
+        "tipoMensaje": "Type de message",
+        "variablesSinValorDefecto": "Variables sans valeur par défaut ({missing}) : saisissez-les ci-dessus ; elles s'appliqueront à tous les contacts.",
+        "nombre": "Nom",
+        "mensaje": "Message",
+        "plantilla": "Modèle {name} ({category})",
+        "textoLibreChars": "Texte libre ({n} car.)",
+        "audiencia": "Audience",
+        "etapas": "{n} étapes",
+        "programacion": "Programmation",
+        "inmediata": "Immédiate",
+        "respetaHorario": "respecte les horaires",
+        "sinHorario": "sans horaires",
+        "msgS": "{valor} · {throttle} msg/s · {valor2}",
+        "audienciaCalculada": "Audience calculée",
+        "recalcular": "Recalculer",
+        "calcularAudiencia": "Calculer l'audience",
+        "excluidos": "exclus sur",
+        "costoEstimadoUsd": "· coût estimé ≈ {estimated_cost} $ US",
+        "nadieCumpleCriteriosRevisa": "Personne ne remplit les critères : vérifiez l'audience ou le modèle.",
+        "calculaAudienciaVerPendientes": "Calculez l'audience pour voir les contacts en attente, les exclusions et le coût avant de lancer.",
+        "heVerificadoAudienciaDio": "J'ai vérifié que l'audience a donné son consentement (opt-in) pour le marketing (Habeas Data)",
+        "cancelar": "Annuler",
+        "atras": "Retour",
+        "guardarBorrador": "Enregistrer le brouillon",
+        "continuar": "Continuer",
+        "programar": "Programmer",
+        "lanzarAhora": "Lancer maintenant",
+        "pasosAsistente": {
+          "canal": "Canal et message",
+          "audiencia": "Audience",
+          "programacion": "Programmation",
+          "revision": "Vérification"
+        }
+      },
+      "campanaDetallePage": {
+        "campanaNoEncontrada": "Campagne introuvable",
+        "noPudoCargar": "Chargement impossible",
+        "noPudoCompletar": "Impossible de terminer",
+        "plantillaHsm": "modèle HSM",
+        "textoLibre": "texte libre",
+        "lanzar": "Lancer",
+        "pendientesOmitenCreditosReservados": "Les envois en attente sont ignorés et les crédits réservés sont restitués. Annuler la campagne ?",
+        "exportarCsv": "Exporter en CSV",
+        "lanzarPausarCancelarRequiere": "Lancer, mettre en pause ou annuler nécessite le rôle d'administrateur de l'organisation.",
+        "pausadaAutomaticamente": "Mise en pause automatiquement :",
+        "sinCreditosWhatsapp": "pas de crédits WhatsApp",
+        "metaPausoRechazoPlantilla": "Meta a suspendu/refusé le modèle",
+        "progreso": "Progression {pct} %",
+        "terminaMin": "· fin ≈ {etaMin} min",
+        "costo": "Coût",
+        "estimado": "Estimé :",
+        "realUsd": "Réel : {cost} $ US",
+        "costoRealLlegaEventos": "Le coût réel arrive avec les événements de livraison (tarification Meta).",
+        "errores": "Erreurs",
+        "sinErroresProveedor": "Aucune erreur du fournisseur.",
+        "exclusiones": "Exclusions",
+        "sinExclusiones": "Aucune exclusion.",
+        "campana_lanzada": "Campagne lancée",
+        "campana_pausada": "Campagne en pause",
+        "campana_reanudada": "Campagne reprise",
+        "campana_cancelada": "Campagne annulée",
+        "stats": {
+          "enviados": "Envoyés",
+          "entregados": "Livrés",
+          "leidos": "Lus",
+          "respondieron": "Ont répondu",
+          "fallidos": "Échoués",
+          "omitidos": "Ignorés",
+          "pendientes": "En attente"
+        },
+        "progresoDetalle": "{hechos} / {total} traités · {enviados} envoyés"
+      },
+      "campaignContactsTable": {
+        "contactos": "Contacts ({total})",
+        "buscarNombreTelefono": "Rechercher nom, téléphone…",
+        "buscarContacto": "Rechercher un contact",
+        "filtrarEstado": "Filtrer par statut",
+        "todos": "Tous",
+        "cliente": "Client",
+        "enviado": "Envoyé",
+        "entregado": "Livré",
+        "leido": "Lu",
+        "respondio": "A répondu",
+        "detalle": "Détail",
+        "cargando": "Chargement…",
+        "sinContactosCalculaAudiencia": "Aucun contact. Calculez l'audience pour matérialiser la campagne.",
+        "sinNombre": "Sans nom",
+        "oportunidad": "→ opportunité",
+        "pagina": "Page {page} sur {n}",
+        "anterior": "Précédent",
+        "siguiente": "Suivant"
+      },
+      "audienceStep": {
+        "origenAudiencia": "Origine de l'audience",
+        "seleccionarSegmento": "Sélectionner un segment",
+        "clientesAntesExclusionesOpt": "≈ {customer_count} clients avant exclusions (désabonnés, sans téléphone, doublons).",
+        "noHaySegmentosCrealos": "Il n'y a pas de segments. Créez-les dans CRM › Segments.",
+        "incluyenOportunidadesAbiertasEtapas": "Les opportunités <b>ouvertes</b> des étapes cochées sont incluses (une par client).",
+        "sinEtapas": "Aucune étape.",
+        "origen": {
+          "stage": "Étapes du pipeline",
+          "segment": "Segment de clients"
+        }
+      },
+      "scheduleStep": {
+        "enviar": "Envoyer",
+        "ahora": "Maintenant",
+        "fechaHoraEnvio": "Date et heure d'envoi",
+        "velocidadMensajesSegundoMin": "Vitesse : {throttle} messages/seconde (≈ {throttle2}/min · 1 000 contacts en ≈ {minutes} min)",
+        "metaPermiteHasta80": "Meta autorise jusqu'à 80 msg/s par numéro ; la limite réelle est le palier d'utilisateurs uniques/24 h du WABA (vérifié au lancement).",
+        "respetarHorarioPermitidoContacto": "Respecter les horaires de contact autorisés (Paramètres › WhatsApp)"
+      },
+      "estadosCampana": {
+        "draft": "Brouillon",
+        "materializing": "Calcul en cours",
+        "scheduled": "Programmée",
+        "sending": "Envoi en cours",
+        "paused": "En pause",
+        "sent": "Envoyée",
+        "canceled": "Annulée"
+      },
+      "estadosContacto": {
+        "pending": "En attente",
+        "queued": "En file d'attente",
+        "sent": "Envoyé",
+        "delivered": "Livré",
+        "read": "Lu",
+        "opened": "Ouvert",
+        "clicked": "Cliqué",
+        "replied": "A répondu",
+        "bounced": "Rejeté",
+        "failed": "Échoué",
+        "skipped": "Ignoré"
       }
     },
     "duplicados": {
@@ -28003,6 +29885,95 @@
           "proveedor": "Meta a renvoyé une erreur pendant la synchronisation",
           "error": "Synchronisation impossible"
         }
+      },
+      "templateList": {
+        "noPudieronCargarPlantillas": "Impossible de charger les modèles",
+        "error": "Erreur",
+        "noPudoActualizar": "Mise à jour impossible",
+        "plantillaDuplicada": "Modèle dupliqué",
+        "noPudoDuplicar": "Duplication impossible",
+        "plantillaEliminada": "Modèle supprimé",
+        "plantillaDesactivada": "Modèle désactivé",
+        "tieneEnviosAsociadosDesactivo": "Il a des envois associés ; il a été désactivé au lieu d'être supprimé.",
+        "noPudoEliminar": "Suppression impossible",
+        "buscarNombreAsunto": "Rechercher par nom ou objet",
+        "buscarPlantillas": "Rechercher des modèles",
+        "filtrarTipo": "Filtrer par type",
+        "nuevaPlantilla": "Nouveau modèle",
+        "aunNoHayPlantillas": "Il n'y a pas encore de modèles d'e-mail.",
+        "ningunaPlantillaCoincideFiltro": "Aucun modèle ne correspond au filtre.",
+        "crearPrimera": "Créer le premier",
+        "nombre": "Nom",
+        "tipo": "Type",
+        "asunto": "Objet",
+        "motor": "Moteur",
+        "usos": "Utilisations",
+        "activa": "Actif",
+        "actualizada": "Mis à jour",
+        "acciones": "Actions",
+        "base": "Base",
+        "bloques": "Blocs",
+        "acciones2": "Actions de {name}",
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "eliminarPlantilla": "Supprimer le modèle",
+        "eliminarSiYaUso": "Supprimer « {n} » ? S'il a déjà servi dans des envois, il sera désactivé au lieu d'être supprimé.",
+        "todosTipos": "Tous les types"
+      },
+      "templateEditorHeader": {
+        "sinGuardar": "Non enregistré",
+        "enviadosAbiertosClicsRebotes": "Envoyés {sent} · Ouverts {opened} · Clics {clicked} · Rejets {bounced}",
+        "estadisticasPlantilla": "Statistiques du modèle",
+        "guardaPlantillaEnviarPrueba": "Enregistrez le modèle pour envoyer un test",
+        "enviarPrueba": "Envoyer un test",
+        "guardar": "Enregistrer",
+        "nombre": "Nom *",
+        "ejSeguimientoTrasLlamada": "Ex. Suivi après appel",
+        "tipoPlantilla": "Type de modèle",
+        "asunto": "Objet *",
+        "variable": "+ variable",
+        "preheaderTextoVistaPrevia": "Pré-en-tête (texte d'aperçu)",
+        "resumenBreveVeJunto": "Bref résumé affiché à côté de l'objet",
+        "descripcionInterna": "Description interne",
+        "cuandoUsarEstaPlantilla": "Quand utiliser ce modèle",
+        "plantilla": "Modèle",
+        "asuntoEjemplo": "Merci pour votre temps, '{{'contact.first_name|bonjour'}}'"
+      },
+      "testSendDialog": {
+        "pruebaEnviada": "Test envoyé",
+        "noPudoEnviarPrueba": "Impossible d'envoyer le test",
+        "enviaDatosEjemploDeja": "« {templateName} » est envoyé avec des données d'exemple. Laissez le champ vide pour utiliser votre propre e-mail.",
+        "correoDestino": "E-mail de destination",
+        "correoInvalido": "E-mail invalide",
+        "cancelar": "Annuler",
+        "enviar": "Envoyer",
+        "destino": "À {correo}",
+        "destinoConVacias": "À {correo} · variables vides : {variables}"
+      },
+      "useTemplateEditor": {
+        "revisaPlantilla": "Vérifiez le modèle",
+        "plantillaGuardada": "Modèle enregistré",
+        "plantillaCreada": "Modèle créé",
+        "noPudoGuardar": "Enregistrement impossible",
+        "noPudoGenerarVista": "Impossible de générer l'aperçu",
+        "validacion": {
+          "nombre": "Le nom est obligatoire",
+          "asunto": "L'objet est obligatoire",
+          "bloques": "Ajoutez au moins un bloc",
+          "html": "Le HTML est vide"
+        }
+      },
+      "plantillasPage": {
+        "noPudieronCargarPlantillas": "Impossible de charger les modèles WhatsApp",
+        "vuelveIntentarloRecargandoPagina": "Réessayez en rechargeant la page. Si le problème persiste, vérifiez la configuration du canal WhatsApp dans Paramètres → CRM → WhatsApp.",
+        "canalPlantillas": "Canal des modèles"
+      },
+      "templateEditorPage": {
+        "cargandoPlantilla": "Chargement du modèle",
+        "noPudoCargarPlantilla": "Impossible de charger le modèle",
+        "modoEdicion": "Mode d'édition",
+        "bloques": "Blocs"
       }
     },
     "pronosticoTrimestre": {
@@ -28143,6 +30114,188 @@
           "sin_tasa": "Des montants n'ont pas de taux de change : enregistrez-le avant d'ajuster.",
           "ajuste_no_vigente": "Seul le dernier ajustement peut être annulé.",
           "generico": "Impossible d'enregistrer l'ajustement."
+        }
+      },
+      "forecastChart": {
+        "noHayDatosPronostico": "Aucune donnée de prévision disponible",
+        "tendenciaPronostico": "Tendance de la prévision",
+        "proceso": "En cours",
+        "meta": "Objectif",
+        "meta2": "{goalCompletion} % de l'objectif",
+        "ganado": "Gagné : {money}",
+        "pond": "Pondéré : {money}",
+        "abierto": "Ouvert : {money}",
+        "totalGanado": "Total gagné",
+        "totalPonderado": "Total pondéré",
+        "totalAbierto": "Total ouvert"
+      },
+      "goalProgress": {
+        "meta": "Objectif {periodLabel}",
+        "sinPipeline": "Sans pipeline",
+        "completadoGanado": "{goalProgress} % atteint (gagné)",
+        "proyeccionGanadoPonderado": "Projection (gagné + pondéré)",
+        "noHayMetaConfigurada": "Aucun objectif n'est défini pour ce pipeline",
+        "configuraMetaOpcionesPipeline": "Définissez un objectif dans les options du pipeline",
+        "periodos": {
+          "weekly": "Hebdomadaire",
+          "monthly": "Mensuel",
+          "quarterly": "Trimestriel",
+          "yearly": "Annuel"
+        }
+      },
+      "forecastScenarios": {
+        "escenariosForecast": "Scénarios de prévision",
+        "sinOportunidadesAbiertasEste": "Aucune opportunité ouverte dans ce pipeline",
+        "creaOportunidadesAsignalesEtapa": "Créez des opportunités et attribuez-leur une étape pour projeter les trois scénarios.",
+        "escenarios": {
+          "best": "Meilleur cas",
+          "expected": "Attendu",
+          "worst": "Pire cas"
+        },
+        "reglas": {
+          "best": "Ouvertes dans des étapes avec probabilité ≥ {n} %",
+          "expected": "Somme des ouvertes × probabilité de leur étape",
+          "worst": "Seulement les ouvertes dans des étapes avec probabilité ≥ {n} %"
+        },
+        "abiertasPor": "{n, plural, one {# opportunité ouverte} other {# opportunités ouvertes}} pour {monto}"
+      },
+      "forecastFilters": {
+        "seleccionarPipeline": "Sélectionner un pipeline",
+        "semanal": "Hebdomadaire",
+        "mensual": "Mensuel",
+        "trimestral": "Trimestriel",
+        "exportar": "Exporter"
+      },
+      "forecastByStage": {
+        "pronosticoEtapa": "Prévision par étape",
+        "valorBrutoPipeline": "Valeur brute dans le pipeline"
+      },
+      "revenueMathPanel": {
+        "gasto0MargenEntre": "Dépense ≥ 0 et marge entre 0 et 100.",
+        "error": "Erreur {status}",
+        "insumosGuardados": "Données enregistrées",
+        "cacLtvPaybackRecalculan": "Le CAC, la LTV et le payback sont recalculés avec les nouvelles valeurs.",
+        "metricasMatematicaComercial": "Indicateurs de mathématiques commerciales",
+        "insumosPeriodo": "Données de la période",
+        "noExistenBaseGuardan": "Elles n'existent pas dans la base : elles sont enregistrées dans la configuration de l'organisation et alimentent le CAC, la LTV et le payback. Opportunités gagnées sur la période (dénominateur du CAC) : {number}.",
+        "gastoAdquisicionMarketingVentas": "Dépense d'acquisition (marketing + ventes)",
+        "margenBruto": "Marge brute (%)",
+        "guardando": "Enregistrement…",
+        "guardarInsumos": "Enregistrer les données",
+        "soloAdministradorOrganizacionPuede": "Seul un administrateur de l'organisation peut modifier ces données.",
+        "ultimaActualizacion": "Dernière mise à jour : {dateTime}",
+        "noPudoGuardar": "Enregistrement impossible",
+        "metricas": {
+          "arpa": {
+            "etiqueta": "ARPA",
+            "formula": "Ticket moyen par facture payée de la période (pondéré par factures)"
+          },
+          "cac": {
+            "etiqueta": "CAC",
+            "formula": "Dépense d'acquisition de la période ÷ opportunités gagnées sur la période"
+          },
+          "churnRatePct": {
+            "etiqueta": "Churn mensuel",
+            "formula": "100 − rétention M1 pondérée par cohorte"
+          },
+          "ltv": {
+            "etiqueta": "LTV",
+            "formula": "ARPA × marge brute × (1 ÷ churn)"
+          },
+          "ltvCacRatio": {
+            "etiqueta": "LTV / CAC",
+            "formula": "LTV ÷ CAC (sain ≥ 3)"
+          },
+          "paybackMonths": {
+            "etiqueta": "Payback",
+            "formula": "CAC ÷ (ARPA × marge brute), en mois"
+          },
+          "netRevenueRetentionPct": {
+            "etiqueta": "Rétention nette du revenu",
+            "formula": "(MRR initial + expansion − contraction − churn) ÷ MRR initial"
+          }
+        },
+        "saludable": "Sain",
+        "porDebajo3": "En dessous de 3"
+      },
+      "funnelPanel": {
+        "sinEtapasConfiguradasCrea": "Aucune étape configurée. Créez un pipeline avec des étapes dans Paramètres pour voir l'entonnoir.",
+        "fueraCadenaVaDespues": "Hors de la chaîne : {map} vient après l'étape gagnée. La conversion s'arrête à l'étape gagnée ; vérifiez l'ordre des étapes dans Paramètres.",
+        "sinOportunidadesEstePipeline": "Pas encore d'opportunités dans ce pipeline. Créez la première depuis Opportunités et l'entonnoir se remplira tout seul.",
+        "embudoEtapa": "Entonnoir par étape",
+        "conversionEtapaEtapaAcumulado": "Conversion d'étape en étape (cumulée : dans l'étape ou au-delà ; les perdues sont affichées à part)",
+        "etapa": "Dans l'étape",
+        "llegaron": "Arrivées",
+        "montoEtapa": "Montant dans l'étape",
+        "pasaSiguiente": "Passe à la suivante",
+        "ganada": "(gagnée)",
+        "conversionGlobal": "Conversion globale",
+        "hastaUltimaEtapaNo": "(jusqu'à la dernière étape : pas d'étape gagnée)",
+        "sinDatos": "Aucune donnée",
+        "perdidas": "Perdues : {number} ({money})"
+      },
+      "revenueOsPage": {
+        "cargandoPanel": "Chargement du tableau de bord",
+        "revenueOs": "Revenue OS",
+        "pronosticoEmbudoCohortesMatematica": "Prévision, entonnoir, cohortes et mathématiques commerciales de l'organisation.",
+        "periodo": "Période :",
+        "moneda": "· devise {currency}",
+        "actualizar": "Actualiser",
+        "noPudoCargarPanel": "Impossible de charger le tableau de bord Revenue OS",
+        "seccionesRevenueOs": "Sections de Revenue OS",
+        "pestanas": {
+          "resumen": "Résumé",
+          "embudo": "Entonnoir",
+          "forecast": "Prévision",
+          "trimestre": "Par catégorie",
+          "cohortes": "Cohortes",
+          "matematica": "Mathématiques commerciales"
+        }
+      },
+      "cohortTable": {
+        "sinCohortesNingunCliente": "Aucune cohorte : aucun client à l'étape « client » inscrit ces 24 derniers mois. Les cohortes apparaissent lorsque des contacts deviennent clients.",
+        "clientesVolvieronFacturar1": "Clients refacturés 1, 3, 6 et 12 mois après leur inscription, par mois d'inscription. « — » = le mois n'est pas encore clos. {number} clients au total.",
+        "cohorte": "Cohorte",
+        "clientes": "Clients",
+        "clientes2": "{n} sur {cohort_size} clients",
+        "mesAunNoCerrado": "Mois pas encore clos",
+        "sinObservar": "non observé",
+        "escalaColor": "Échelle de couleurs"
+      },
+      "kpiTiles": {
+        "indicadoresPeriodo": "Indicateurs de la période",
+        "etiquetas": {
+          "collected": "Revenu encaissé",
+          "won": "Gagné dans le pipeline",
+          "open": "Pipeline ouvert",
+          "winrate": "Taux de réussite",
+          "cycle": "Cycle de vente moyen",
+          "arpa": "ARPA",
+          "commissions": "Commissions versées"
+        }
+      },
+      "revenueTrendChart": {
+        "tendenciaMensualCobradoFrente": "Tendance mensuelle : encaissé vs gagné",
+        "verGrafico": "Voir le graphique",
+        "verTabla": "Voir le tableau",
+        "sinCobrosNiOportunidades": "Aucun encaissement ni opportunité gagnée sur la période. Changez la plage ou enregistrez des ventes pour voir la tendance.",
+        "revenueCobradoGanadoPipeline": "Revenu encaissé et gagné dans le pipeline par mois",
+        "mes": "Mois",
+        "graficoBarrasMensualCobrado": "Graphique en barres mensuel : encaissé vs gagné dans le pipeline. La vue tableau donne les valeurs exactes.",
+        "series": {
+          "revenue_collected": "Encaissé",
+          "revenue_won_pipeline": "Gagné dans le pipeline"
+        }
+      },
+      "revenueRangeControl": {
+        "periodoPanel": "Période du tableau de bord",
+        "desdeMes": "Du (mois)",
+        "hastaMes": "Au (mois)",
+        "aplicar": "Appliquer",
+        "errores": {
+          "ambos": "Choisissez le mois et l'année dans les deux champs",
+          "orden": "Le mois de fin doit être égal ou postérieur au mois de début",
+          "maximo": "Maximum {max} mois"
         }
       }
     },
@@ -28289,6 +30442,108 @@
           "sinMuestra": "Aucun client ne correspond encore.",
           "sinNombre": "Client sans nom"
         }
+      },
+      "segmentoDetallePage": {
+        "error": "Erreur",
+        "segmentoNoEncontrado": "Segment introuvable",
+        "noPudoCargarSegmento": "Impossible de charger le segment",
+        "nombreRequerido": "Le nom est obligatoire",
+        "segmentoActualizado": "Segment mis à jour",
+        "noPudoActualizar": "Mise à jour impossible",
+        "recalculoCompletado": "Recalcul terminé",
+        "clientesSegmento": "{count} clients dans le segment",
+        "noPudoRecalcular": "Recalcul impossible",
+        "crmSegmentosDetalle": "CRM / Segments / Détail",
+        "guardar": "Enregistrer",
+        "recalcular": "Recalculer",
+        "editar": "Modifier",
+        "crearCampana": "Créer une campagne",
+        "informacion": "Informations",
+        "segmentoDinamico": "Segment dynamique",
+        "recalculaAutomaticamente": "Recalculé automatiquement",
+        "nunca": "Jamais",
+        "ultimaEjecucion": "Dernière exécution : {date}",
+        "reglasFiltro": "Règles de filtre",
+        "agregar": "Ajouter",
+        "editaPrimerGrupo": "Le premier groupe est modifié.",
+        "hay1GrupoTodos": "Il y a 1 autre groupe « Ou tous ceux-ci »",
+        "hayGruposTodosEstos": "Il y a {n} autres groupes « Ou tous ceux-ci »",
+        "conservaGuardar": " : conservés lors de l'enregistrement.",
+        "sinReglasDefinidas": "Aucune règle définie",
+        "clientes": "Clients ({n})",
+        "noHayClientesEste": "Il n'y a pas de clients dans ce segment",
+        "sinNombre": "Sans nom",
+        "sinContacto": "Sans contact",
+        "campos": {
+          "full_name": "Nom complet",
+          "company_name": "Entreprise",
+          "email": "E-mail",
+          "phone": "Téléphone",
+          "city": "Ville",
+          "lifecycle_stage": "Étape du cycle de vie",
+          "lead_source": "Origine",
+          "tags": "Étiquettes",
+          "created_at": "Date d'inscription",
+          "last_contact_at": "Dernier contact",
+          "health_score": "Santé"
+        },
+        "operadores": {
+          "text": {
+            "equals": "Est égal à",
+            "not_equals": "N'est pas égal à",
+            "contains": "Contient",
+            "not_contains": "Ne contient pas",
+            "starts_with": "Commence par",
+            "ends_with": "Se termine par",
+            "is_empty": "Est vide",
+            "is_not_empty": "N'est pas vide"
+          },
+          "date": {
+            "equals": "Est égal à",
+            "greater_than": "Après",
+            "less_than": "Avant",
+            "between": "Entre",
+            "is_empty": "Est vide",
+            "is_not_empty": "N'est pas vide"
+          },
+          "array": {
+            "contains": "Contient",
+            "not_contains": "Ne contient pas",
+            "is_empty": "Est vide",
+            "is_not_empty": "N'est pas vide"
+          },
+          "boolean": {
+            "equals": "Est"
+          },
+          "number": {
+            "equals": "Est égal à",
+            "greater_than": "Supérieur à",
+            "less_than": "Inférieur à",
+            "is_empty": "Est vide",
+            "is_not_empty": "N'est pas vide"
+          }
+        }
+      },
+      "segmentosPage": {
+        "noPudieronCargarSegmentos": "Impossible de charger les segments",
+        "segmentoDuplicado": "Segment dupliqué",
+        "segmentoEliminado": "Segment supprimé",
+        "recalculando": "Recalcul...",
+        "estoPuedeTomarUnos": "Cela peut prendre quelques secondes",
+        "crmSegmentos": "CRM / Segments",
+        "nuevoSegmento": "Nouveau segment",
+        "dinamicos": "Dynamiques",
+        "estaticos": "Statiques",
+        "clientes": "Clients",
+        "ultimaEjecucion": "Dernière exécution",
+        "noHaySegmentos": "Il n'y a pas de segments",
+        "creaPrimerSegmentoAgrupar": "Créez votre premier segment pour regrouper des clients",
+        "crearSegmento": "Créer un segment",
+        "verDetalle": "Voir le détail",
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "eliminarSegmento": "Supprimer le segment ?",
+        "estaAccionNoPuede": "Cette action est irréversible. Le segment « {name} » sera supprimé définitivement."
       }
     }
   },
@@ -30241,7 +32496,13 @@
           "pagina": "Page · {titulo}",
           "whatsapp": "WhatsApp du site",
           "maps": "Itinéraire (carte du site)",
-          "elegirEnlace": "Choisissez la destination"
+          "elegirEnlace": "Choisissez la destination",
+          "rutas": {
+            "reservas": "Réservations en ligne",
+            "agendar": "Prendre rendez-vous",
+            "consultar-pedido": "Suivre la commande",
+            "mi-cuenta": "Mon compte"
+          }
         },
         "barra": {
           "titulo": "Barre supérieure",
@@ -30504,7 +32765,9 @@
         "legacyTitulo": "Enregistrer publie",
         "legacyDescripcion": "Sur ce site, « Enregistrer et publier » envoie les modifications sur le web.",
         "vacioTitulo": "Choisissez une section",
-        "vacioDescripcion": "Cliquez sur une section de la liste ou du canevas pour modifier sa mise en page, son contenu et son style."
+        "vacioDescripcion": "Cliquez sur une section de la liste ou du canevas pour modifier sa mise en page, son contenu et son style.",
+        "quitarChip": "Retirer {valor}",
+        "anadirAChip": "Ajouter à {campo}"
       },
       "campo": {
         "elegir": "Choisissez une option"
@@ -33035,6 +35298,231 @@
         "rejected": "Refusée",
         "expired": "Expirée"
       }
+    },
+    "webOrderCard": {
+      "urgente": "Urgent !",
+      "programado": "Programmé",
+      "propina": "Pourboire",
+      "texto": "Pour : {date}",
+      "productoS": "{n, plural, one {# produit} other {# produits}}",
+      "mas": "+{n} de plus...",
+      "nota": "Note :",
+      "confirmar": "Confirmer",
+      "iniciarPreparacion": "Lancer la préparation",
+      "preparar": "Préparer",
+      "marcarListo": "Marquer prête",
+      "enviarDomicilio": "Envoyer en livraison",
+      "enviar": "Envoyer",
+      "marcarEntregado": "Marquer livrée"
+    },
+    "webCommerceObservability": {
+      "observabilidadComercio": "Observabilité du commerce",
+      "actualizar": "Actualiser",
+      "contraer": "Réduire",
+      "expandir": "Développer",
+      "itemsReservados": "Articles réservés",
+      "reservasHuerfanas": "Réservations orphelines",
+      "pedidosPendientes": "Commandes en attente",
+      "proximosExpirar": "Sur le point d'expirer",
+      "stockReservadoVsDisponible": "Stock réservé vs disponible",
+      "noHayProductosStock": "Aucun produit n'a de stock réservé actuellement.",
+      "producto": "Produit",
+      "sucursal": "Établissement",
+      "disp": "Disp.",
+      "reserv": "Rés.",
+      "actualizado": "Mis à jour",
+      "pedidosProximosExpirarMin": "Commandes sur le point d'expirer ({withinMinutes} min)",
+      "noHayPedidosProximos": "Aucune commande n'expire dans les {withinMinutes} prochaines minutes.",
+      "expiradoHaceM": "Expirée depuis {minutesUntilExpiry} min",
+      "paginaAnterior": "Page précédente",
+      "paginaSiguiente": "Page suivante",
+      "errorCargar": "Erreur lors du chargement de l'observabilité",
+      "errorDesconocido": "Erreur inconnue"
+    },
+    "assignDeliveryDialog": {
+      "noHayVehiculosDisponibles": "Aucun véhicule disponible pour la livraison",
+      "noHayConductoresDisponibles": "Aucun chauffeur disponible",
+      "errorCargarDatosVehiculos": "Erreur lors du chargement des véhicules et chauffeurs",
+      "camposRequeridos": "Champs obligatoires",
+      "seleccionaVehiculoConductor": "Sélectionnez un véhicule et un chauffeur",
+      "error": "Erreur",
+      "noEncontroEnvioAsociado": "L'envoi associé est introuvable. Essayez d'abord de marquer la commande comme prête.",
+      "asignacionExitosa": "Attribution réussie",
+      "haAsignadoConductorVehiculo": "Le chauffeur et le véhicule ont été attribués à la commande",
+      "noPudoAsignarDelivery": "Impossible d'attribuer la livraison",
+      "asignarDelivery": "Attribuer la livraison",
+      "seleccionaVehiculoConductorEntrega": "Sélectionnez le véhicule et le chauffeur pour la livraison",
+      "configuraVehiculosConductoresModulo": "Configurez les véhicules et chauffeurs dans le module Transport",
+      "vehiculo": "Véhicule",
+      "seleccionarVehiculo": "Sélectionner un véhicule",
+      "noHayVehiculosDisponibles2": "Aucun véhicule disponible",
+      "conductor": "Chauffeur",
+      "seleccionarConductor": "Sélectionner un chauffeur",
+      "conductor2": "Chauffeur {license_number}",
+      "lic": "Permis : {license_category}",
+      "tiempoEstimadoEntregaMinutos": "Délai de livraison estimé (minutes)",
+      "llegadaEstimada": "Arrivée estimée : {localeTimeString}",
+      "vehiculos": {
+        "motorcycle": "Moto",
+        "car": "Voiture",
+        "van": "Fourgon",
+        "bicycle": "Vélo",
+        "truck": "Camion"
+      }
+    },
+    "deliveryTrackingCard": {
+      "delivery": "Livraison",
+      "deliveryPropio": "Livraison propre",
+      "noHayEnvioAsignado": "Aucun envoi n'est attribué à cette commande",
+      "asignarDelivery": "Attribuer la livraison",
+      "tracking": "Suivi",
+      "tracking2": "Suivi :",
+      "vehiculoAsignado": "Véhicule attribué",
+      "conductor": "Chauffeur",
+      "conductorAsignado": "Chauffeur attribué",
+      "entregaEstimada": "Livraison estimée :",
+      "historial": "Historique",
+      "pruebaEntrega": "Preuve de livraison",
+      "recibido": "Reçu par :",
+      "fecha": "Date :",
+      "calificacion": "Note :",
+      "verFirma": "Voir la signature",
+      "verRutaGoogleMaps": "Voir l'itinéraire dans Google Maps",
+      "actualizarEstado": "Mettre à jour le statut",
+      "estados": {
+        "pending": "En attente",
+        "assigned": "Attribué",
+        "picked_up": "Récupéré",
+        "out_for_delivery": "En route",
+        "delivered": "Livré",
+        "returned": "Retourné",
+        "cancelled": "Annulé"
+      }
+    },
+    "orderActions": {
+      "confirmarPedido": "Confirmer la commande",
+      "rechazar": "Refuser",
+      "iniciarPreparacion": "Lancer la préparation",
+      "marcarComoListo": "Marquer comme prête",
+      "enviarDomicilio": "Envoyer en livraison",
+      "marcarComoPagado": "Marquer comme payée",
+      "crearVenta": "Créer la vente"
+    },
+    "orderItemsList": {
+      "productoS": "{n, plural, one {# produit} other {# produits}}",
+      "mas": "+{remainingCount} de plus...",
+      "productoSMas": "{remainingCount, plural, one {+# produit de plus} other {+# produits de plus}}",
+      "estados": {
+        "pending": "En attente",
+        "preparing": "En préparation",
+        "ready": "Prêt",
+        "cancelled": "Annulé"
+      }
+    },
+    "orderTimeline": {
+      "motivo": "Motif : {cancellation_reason}",
+      "pasos": {
+        "created": "Commande reçue",
+        "scheduled": "Programmée pour",
+        "confirmed": "Confirmée",
+        "preparing": "En préparation",
+        "ready": "Prête",
+        "in_delivery": "En route",
+        "delivered": "Livrée",
+        "rejected": "Refusée",
+        "expired": "Expirée",
+        "cancelled": "Annulée"
+      }
+    },
+    "orderTotals": {
+      "impuestos": "Taxes",
+      "descuento": "Remise",
+      "envio": "Livraison",
+      "propina": "Pourboire"
+    },
+    "cancelOrderDialog": {
+      "indicaMotivoClienteSera": "Indiquez le motif. Le client sera notifié automatiquement.",
+      "motivo": "Motif",
+      "ejProductoAgotadoFuera": "Ex. : produit épuisé, hors des horaires de livraison...",
+      "esteMotivoMostraraCliente": "Ce motif sera affiché au client dans sa notification.",
+      "rechazarPedido": "Refuser la commande",
+      "cancelarPedido": "Annuler la commande",
+      "rechazar": "Refuser"
+    },
+    "confirmOrderDialog": {
+      "confirmarPedido": "Confirmer la commande",
+      "indicaTiemposEstimadosNotificar": "Indiquez les délais estimés pour prévenir le client.",
+      "tiempoPreparacionListoAprox": "Temps de préparation (prête env.)",
+      "minutos": "Minutes",
+      "horas": "Heures",
+      "dias": "Jours",
+      "tiempoTrasladoEntregaAprox": "Temps de trajet (livraison env.)",
+      "tiempoDesdeEstaListo": "Temps entre le moment où elle est prête et l'arrivée chez le client.",
+      "clienteRecibiraNotificacionEstos": "Le client recevra une notification avec ces délais estimés.",
+      "marcarComoPagado": "Marquer comme payée"
+    },
+    "orderActionsCard": {
+      "acciones": "Actions"
+    },
+    "orderDeliveryCard": {
+      "verMapa": "Voir sur la carte",
+      "programado": "Programmée : {dateTime}",
+      "listoAprox": "Prête env. : {time}",
+      "entregaAprox": "Livraison env. : {time}",
+      "asignarConductor": "Attribuer un chauffeur"
+    },
+    "orderHeader": {
+      "programado": "Programmée",
+      "cupon": "Coupon : {coupon_code}",
+      "propina": "Pourboire : {valor}"
+    },
+    "orderNotFoundState": {
+      "verTodosPedidos": "Voir toutes les commandes",
+      "pedidoNoEncontrado": "Commande introuvable"
+    },
+    "orderProductsCard": {
+      "productos": "Produits ({n})"
+    },
+    "useWebOrderDetail": {
+      "error": "Erreur",
+      "noPudoCargarPedido": "Impossible de charger la commande",
+      "pedidoRechazado": "Commande refusée",
+      "pedidoPreparacion": "Commande en préparation",
+      "pedidoListoEntrega": "Commande prête à livrer",
+      "pedidoCamino": "Commande en route",
+      "pedidoEntregado": "Commande livrée",
+      "pedidoCancelado": "Commande annulée",
+      "ventaCreadaExitosamente": "Vente créée avec succès",
+      "errorCrearVenta": "Erreur lors de la création de la vente",
+      "ahoraPuedesAsignarConductor": "Vous pouvez maintenant attribuer un chauffeur",
+      "errorCrearEnvio": "Erreur lors de la création de l'envoi"
+    },
+    "tipoEntrega": {
+      "pickup": "Retrait en magasin",
+      "delivery_own": "Livraison propre",
+      "delivery_third_party": "Livraison par un tiers"
+    },
+    "metodoPago": {
+      "cash": "Espèces",
+      "transfer": "Virement",
+      "card": "Carte"
+    },
+    "pagoBadge": {
+      "pending": "Paiement en attente",
+      "paid": "Payé",
+      "partial": "Paiement partiel",
+      "refunded": "Remboursé",
+      "failed": "Échoué"
+    },
+    "unidadCorta": {
+      "minutes": "{n} min",
+      "hours": "{n} h",
+      "days": "{n} jours"
+    },
+    "tipoEntregaFicha": {
+      "pickup": "Retrait en magasin",
+      "delivery_own": "Livraison propre",
+      "delivery_third_party": "Livraison par des tiers"
     }
   },
   "posMesasFlujo": {
@@ -34279,6 +36767,291 @@
       "precio": "Prix",
       "notas": "Notes",
       "fecha": "Date"
+    }
+  },
+  "pmsParking": {
+    "passVehiclesDialog": {
+      "vehiculoAgregado": "Véhicule ajouté",
+      "vehiculoHaAsociadoPase": "Le véhicule a été associé au pass",
+      "error": "Erreur",
+      "noPudoAgregarVehiculo": "Impossible d'ajouter le véhicule",
+      "placaRequerida": "La plaque d'immatriculation est obligatoire",
+      "vehiculoCreadoAgregado": "Véhicule créé et ajouté",
+      "vehiculoHaRegistradoAsociado": "Le véhicule a été enregistré et associé au pass",
+      "noPudoCrearVehiculo": "Impossible de créer le véhicule",
+      "paseDebeTenerMenos": "Le pass doit avoir au moins un véhicule",
+      "vehiculoRemovido": "Véhicule retiré",
+      "vehiculoHaDesasociadoPase": "Le véhicule a été dissocié du pass",
+      "noPudoRemoverVehiculo": "Impossible de retirer le véhicule",
+      "vehiculoPrincipalActualizado": "Véhicule principal mis à jour",
+      "haEstablecidoVehiculoPrincipal": "Le véhicule principal a été défini",
+      "noPudoActualizarVehiculo": "Impossible de mettre à jour le véhicule principal",
+      "gestionarVehiculosPase": "Gérer les véhicules du pass",
+      "vehiculosAsociados": "Véhicules associés",
+      "principal": "Principal",
+      "sinDetalles": "Sans détails",
+      "marcarComoPrincipal": "Marquer comme principal",
+      "agregarVehiculoExistente": "Ajouter un véhicule existant",
+      "seleccionarVehiculo": "Sélectionner un véhicule...",
+      "nuevoVehiculo": "Nouveau véhicule",
+      "placa": "Plaque *",
+      "carro": "Voiture",
+      "moto": "Moto",
+      "camion": "Camion",
+      "marca": "Marque",
+      "modelo": "Modèle",
+      "cancelar": "Annuler",
+      "crearNuevoVehiculo": "Créer un nouveau véhicule",
+      "cerrar": "Fermer",
+      "agregar": "Ajouter"
+    },
+    "passFormDialog": {
+      "seleccionaCliente": "Sélectionnez un client",
+      "seleccionaTipoPlan": "Sélectionnez un type de forfait",
+      "agregaMenosPlaca": "Ajoutez au moins une plaque",
+      "paseActualizado": "Pass mis à jour",
+      "paseHaActualizadoCorrectamente": "Le pass a été mis à jour",
+      "paseCreado": "Pass créé",
+      "paseHaCreadoCorrectamente": "Le pass a été créé",
+      "noPudoGuardarPase": "Impossible d'enregistrer le pass",
+      "editarPase": "Modifier le pass",
+      "nuevoPaseAbonado": "Nouveau pass d'abonné",
+      "cliente": "Client *",
+      "seleccionarCliente": "Sélectionner un client",
+      "buscarNombreEmailTelefono": "Rechercher par nom, e-mail ou téléphone",
+      "nombreEmailTelefono": "Nom, e-mail ou téléphone...",
+      "noEncontraronClientes": "Aucun client trouvé",
+      "escribeBuscarClientes": "Saisissez pour rechercher des clients",
+      "tipoPlan": "Type de forfait *",
+      "crearPlan": "Créer un forfait",
+      "noHayPlanesDisponibles": "Aucun forfait disponible",
+      "seleccionaPlan": "Sélectionnez un forfait",
+      "dias": "{currency} / {duration_days} jours",
+      "fechaInicio": "Date de début *",
+      "fechaFin": "Date de fin *",
+      "precio": "Prix ({monedaBase}) *",
+      "vehiculosPlacas": "Véhicules / Plaques *",
+      "agregar": "Ajouter",
+      "vehiculo": "Véhicule {index}",
+      "guardando": "Enregistrement..."
+    },
+    "page": {
+      "noPudieronCargarDatos": "Impossible de charger les données des abonnés.",
+      "sinTiposPlan": "Aucun type de forfait",
+      "primeroDebesCrearMenos": "Vous devez d'abord créer au moins un type de forfait d'abonné.",
+      "paseCancelado": "Pass annulé",
+      "paseHaSidoCancelado": "Le pass de {vehicle_plate} a été annulé.",
+      "noPudoCancelarPase": "Impossible d'annuler le pass.",
+      "cambiosHanGuardadoCorrectamente": "Les modifications ont été enregistrées.",
+      "tipoPlanActualizado": "Type de forfait mis à jour",
+      "totalAbonados": "Total des abonnés",
+      "activos": "Actifs",
+      "vencidos": "Expirés",
+      "ingresosActivos": "Revenus actifs",
+      "cancelarEstePase": "Annuler ce pass ?",
+      "estaAccionCancelaraPase": "Cette action annulera le pass de {vehicle_plate}. Le client ne pourra plus utiliser ce pass pour accéder au parking.",
+      "noMantener": "Non, le garder",
+      "siCancelarPase": "Oui, annuler le pass",
+      "noEncontroIdOrganizacion": "L'identifiant de l'organisation est introuvable",
+      "noPudieronCargarSesiones": "Impossible de charger les sessions de parking.",
+      "requiereSucursalConcretaRegistrar": "Un établissement précis est nécessaire pour enregistrer une entrée. Sélectionnez un établissement dans le sélecteur.",
+      "entradaRegistrada": "Entrée enregistrée",
+      "vehiculoIngresadoCorrectamente": "Le véhicule {vehicle_plate} est entré",
+      "salidaRegistrada": "Sortie enregistrée",
+      "vehiculoHaSalidoCorrectamente": "Le véhicule {vehicle_plate} est sorti",
+      "totalSesiones": "Total des sessions",
+      "sesionesActivas": "Sessions actives",
+      "completadasHoy": "Terminées aujourd'hui",
+      "ingresosHoy": "Revenus d'aujourd'hui"
+    },
+    "passDialog": {
+      "modificaDatosPaseEstacionamiento": "Modifiez les données du pass de parking",
+      "creaNuevoPaseEstacionamiento": "Créez un nouveau pass de parking pour un client",
+      "cambiarCliente": "Changer de client",
+      "vehiculos": "Véhicules *",
+      "tipo": "Type",
+      "camioneta": "Utilitaire",
+      "otro": "Autre",
+      "color": "Couleur",
+      "seleccionarPlan": "Sélectionner un forfait",
+      "dias": "{name} - {price} $ ({duration_days} jours)",
+      "fechaInicio": "Date de début",
+      "fechaFin": "Date de fin",
+      "precio": "Prix",
+      "guardarCambios": "Enregistrer les modifications",
+      "crearPase": "Créer le pass"
+    },
+    "newEntryDialog": {
+      "favorIngresaNombreEspacio": "Veuillez saisir un nom pour l'emplacement",
+      "errorNoEncontroSucursal": "Erreur : l'établissement est introuvable. Rechargez la page et réessayez.",
+      "nuevaEntradaVehiculo": "Nouvelle entrée de véhicule",
+      "registraEntradaVehiculoEstacionamiento": "Enregistrez l'entrée d'un véhicule dans le parking",
+      "placaVehiculo": "Plaque d'immatriculation *",
+      "tipoVehiculo": "Type de véhicule *",
+      "espacioParqueoOpcional": "Emplacement de parking (facultatif)",
+      "noEncontroSucursalConfigurada": "⚠️ Aucun établissement configuré n'a été trouvé. Impossible de créer des emplacements sans établissement.",
+      "sinEspacioAsignado": "Aucun emplacement attribué",
+      "crearNuevoEspacio": "Créer un nouvel emplacement",
+      "crearPrimerEspacio": "Créer le premier emplacement",
+      "nombreEspacio": "Nom de l'emplacement *",
+      "ejA1P01": "Ex. : A1, P-01, Emplacement 1",
+      "zonaOpcional": "Zone (facultatif)",
+      "seleccionarZona": "Sélectionner une zone",
+      "sinZona": "Sans zone",
+      "ejNivel1Zona": "Ex. : Niveau 1, Zone A, Extérieur",
+      "creando": "Création...",
+      "guardarEspacio": "Enregistrer l'emplacement",
+      "registrando": "Enregistrement...",
+      "vehiculos": {
+        "car": "Voiture",
+        "motorcycle": "Moto",
+        "truck": "Utilitaire"
+      },
+      "errorCrearEspacio": "Erreur lors de la création de l'emplacement : {error}",
+      "errorDesconocido": "Erreur inconnue"
+    },
+    "passTypesDialog": {
+      "estaSeguroEliminarEste": "Voulez-vous vraiment supprimer ce type de forfait ?",
+      "tiposPlanAbonado": "Types de forfait d'abonné",
+      "gestionaTiposPlanesDisponibles": "Gérez les types de forfaits disponibles pour les abonnés",
+      "nuevoTipoPlan": "Nouveau type de forfait",
+      "noHayTiposPlan": "Aucun type de forfait créé",
+      "dias": "{duration_days} jours",
+      "lavado": "Lavage",
+      "valet": "Voiturier",
+      "nombrePlan": "Nom du forfait *",
+      "ejMensualTrimestralAnual": "Ex. : Mensuel, Trimestriel, Annuel",
+      "descripcion": "Description",
+      "descripcionOpcionalPlan": "Description facultative du forfait",
+      "duracionDias": "Durée (jours) *",
+      "precio": "Prix *",
+      "maxEntradasDiaOpcional": "Entrées max. par jour (facultatif)",
+      "sinLimite": "Sans limite",
+      "beneficiosIncluidos": "Avantages inclus",
+      "incluyeLavadoVehiculo": "Inclut le lavage du véhicule",
+      "incluyeServicioValet": "Inclut le service voiturier"
+    },
+    "passesTable": {
+      "placaCliente": "Plaque / Client",
+      "plan": "Forfait",
+      "vigencia": "Validité",
+      "estado": "Statut",
+      "sinCliente": "Sans client",
+      "venceDias": "Expire dans {daysRemaining} jours",
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "gestionarPlacas": "Gérer les plaques",
+      "suspender": "Suspendre",
+      "reactivar": "Réactiver",
+      "renovar": "Renouveler"
+    },
+    "exitDialog": {
+      "registrarSalida": "Enregistrer la sortie",
+      "completaDatosRegistrarSalida": "Complétez les données pour enregistrer la sortie du véhicule",
+      "placa": "Plaque :",
+      "tipo": "Type :",
+      "entrada": "Entrée :",
+      "duracion": "Durée :",
+      "tarifa": "Tarif *",
+      "seleccionarTarifa": "Sélectionner un tarif",
+      "noHayTarifasConfiguradas": "Aucun tarif configuré",
+      "veConfiguracionTarifasParqueo": "Allez dans Paramètres → Tarifs de parking pour en créer un",
+      "totalPagar": "Total à payer :",
+      "metodoPago": "Mode de paiement *",
+      "referenciaPago": "Référence de paiement *",
+      "ejNumeroTransaccionVoucher": "Ex. : numéro de transaction, bon...",
+      "procesando": "Traitement...",
+      "errorSalida": "Erreur : {error}",
+      "noPudoRegistrarSalida": "la sortie n'a pas pu être enregistrée",
+      "minGratis": " ({n} min gratuites)",
+      "tiempoGracia": "Délai de grâce : {n} minutes"
+    },
+    "parkingSessionDrawer": {
+      "tiempoEstadia": "Durée du séjour",
+      "salida": "Sortie :",
+      "pendiente": "En attente",
+      "informacionCobro": "Informations de facturation",
+      "tarifa": "Tarif :",
+      "noAsignada": "Non attribué",
+      "precio": "Prix :",
+      "tiempoGracia": "Délai de grâce :",
+      "acciones": "Actions",
+      "imprimirTicket": "Imprimer le ticket",
+      "verRecibo": "Voir le reçu",
+      "sinTarifa": "Sans tarif"
+    },
+    "passCard": {
+      "sinClienteAsignado": "Aucun client attribué",
+      "dias": "{daysRemaining} jours",
+      "vencido": "Expiré"
+    },
+    "passesFilters": {
+      "buscarClientePlacaPlan": "Rechercher par client, plaque ou forfait...",
+      "todos": "Tous",
+      "activo": "Actif",
+      "suspendido": "Suspendu",
+      "cancelado": "Annulé",
+      "vencimiento": "Échéance",
+      "sinFiltro": "Sans filtre",
+      "vence7Dias": "Expire dans 7 jours",
+      "vence15Dias": "Expire dans 15 jours",
+      "vence30Dias": "Expire dans 30 jours"
+    },
+    "abonadosList": {
+      "noHayAbonadosRegistrados": "Aucun abonné enregistré",
+      "creaNuevoPaseEstacionamiento": "Créez un nouveau pass de parking pour commencer",
+      "cancelarPase": "Annuler le pass"
+    },
+    "sessionsList": {
+      "noHaySesiones": "Il n'y a pas de sessions",
+      "noEncontraronSesionesParqueo": "Aucune session de parking trouvée.",
+      "estados": {
+        "active": "Active",
+        "completed": "Terminée"
+      }
+    },
+    "abonadosHeader": {
+      "abonadosParking": "Abonnés du parking",
+      "gestionaPasesMembresiasEstacionamiento": "Gérez les pass et abonnements de parking",
+      "actualizar": "Actualiser",
+      "tiposPlan": "Types de forfait",
+      "nuevoAbonado": "Nouvel abonné"
+    },
+    "passesHeader": {
+      "abonados": "Abonnés",
+      "gestionPasesMembresiasEstacionamiento": "Gestion des pass et abonnements de parking"
+    },
+    "parkingHeader": {
+      "gestionEstacionamientos": "Gestion des parkings",
+      "controlSesionesParqueoCobros": "Contrôle des sessions de parking et des paiements",
+      "nuevaEntrada": "Nouvelle entrée"
+    },
+    "unidades": {
+      "minute": "min",
+      "hour": "heure",
+      "day": "jour",
+      "week": "semaine",
+      "month": "mois",
+      "year": "an"
+    },
+    "sesionEstados": {
+      "open": "Active",
+      "closed": "Terminée",
+      "cancelled": "Annulée"
+    },
+    "estadosPase": {
+      "active": "Actif",
+      "expired": "Expiré",
+      "cancelled": "Annulé",
+      "suspended": "Suspendu"
+    },
+    "sinVehiculo": "Sans véhicule",
+    "passesStats": {
+      "total": "Total des pass",
+      "activos": "Actifs",
+      "vencidos": "Expirés",
+      "suspendidos": "Suspendus",
+      "porVencer": "Expirent bientôt (7 j)"
     }
   }
 }

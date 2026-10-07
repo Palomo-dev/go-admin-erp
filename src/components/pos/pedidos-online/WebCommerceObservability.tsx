@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useTranslations } from 'next-intl';
 
 const PAGE_SIZE = 10;
 
@@ -101,6 +102,7 @@ export function WebCommerceObservability({
   organizationId,
   withinMinutes = 30,
 }: WebCommerceObservabilityProps) {
+  const t = useTranslations('pedidoWeb');
   const { formatear } = useMonedaOrganizacion();
   const [data, setData] = useState<ObservabilityData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,15 +124,15 @@ export function WebCommerceObservability({
       const res = await fetch(
         `/api/web-orders/observability?organization_id=${orgId}&within_minutes=${withinMinutes}`
       );
-      if (!res.ok) throw new Error('Error al cargar observabilidad');
+      if (!res.ok) throw new Error(t('webCommerceObservability.errorCargar'));
       const json = await res.json();
       setData(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : t('webCommerceObservability.errorDesconocido'));
     } finally {
       setIsLoading(false);
     }
-  }, [orgId, withinMinutes]);
+  }, [orgId, withinMinutes, t]);
 
   useEffect(() => {
     fetchData();
@@ -151,7 +153,7 @@ export function WebCommerceObservability({
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Boxes className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Observabilidad de comercio
+              {t('webCommerceObservability.observabilidadComercio')}
               {hasAlerts && (
                 <Badge variant="destructive" className="ml-1 gap-1">
                   <AlertTriangle className="h-3 w-3" />
@@ -166,7 +168,7 @@ export function WebCommerceObservability({
                 size="sm"
                 onClick={fetchData}
                 disabled={isLoading}
-                title="Actualizar"
+                title={t('webCommerceObservability.actualizar')}
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
@@ -175,7 +177,7 @@ export function WebCommerceObservability({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  title={isOpen ? 'Contraer' : 'Expandir'}
+                  title={isOpen ? t('webCommerceObservability.contraer') : t('webCommerceObservability.expandir')}
                 >
                   {isOpen ? (
                     <ChevronUp className="h-4 w-4" />
@@ -202,14 +204,14 @@ export function WebCommerceObservability({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <SummaryTile
                 icon={<Package className="h-4 w-4" />}
-                label="Items reservados"
+                label={t('webCommerceObservability.itemsReservados')}
                 value={data!.summary.totalReservedItems}
                 sub={`${data!.summary.totalReservedUnits} unidades`}
                 color="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
               />
               <SummaryTile
                 icon={<AlertTriangle className="h-4 w-4" />}
-                label="Reservas huérfanas"
+                label={t('webCommerceObservability.reservasHuerfanas')}
                 value={data!.summary.orphanReservations}
                 sub=">24h sin moverse"
                 color={
@@ -220,14 +222,14 @@ export function WebCommerceObservability({
               />
               <SummaryTile
                 icon={<Clock className="h-4 w-4" />}
-                label="Pedidos pendientes"
+                label={t('webCommerceObservability.pedidosPendientes')}
                 value={data!.summary.pendingOrdersCount}
                 sub="esperando pago"
                 color="text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
               />
               <SummaryTile
                 icon={<Timer className="h-4 w-4" />}
-                label="Próximos a expirar"
+                label={t('webCommerceObservability.proximosExpirar')}
                 value={data!.summary.ordersNearExpiryCount}
                 sub={`en ${withinMinutes} min`}
                 color={
@@ -247,11 +249,11 @@ export function WebCommerceObservability({
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                 <Package className="h-4 w-4" />
-                Stock reservado vs disponible
+                {t('webCommerceObservability.stockReservadoVsDisponible')}
               </h4>
               {data.reservedStock.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No hay productos con stock reservado actualmente.
+                  {t('webCommerceObservability.noHayProductosStock')}
                 </p>
               ) : (
                 <>
@@ -259,12 +261,12 @@ export function WebCommerceObservability({
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="text-left text-muted-foreground border-b border-gray-200 dark:border-gray-700">
-                          <th className="py-1.5 pr-3">Producto</th>
-                          <th className="py-1.5 pr-3">Sucursal</th>
-                          <th className="py-1.5 pr-3 text-right">Disp.</th>
-                          <th className="py-1.5 pr-3 text-right">Reserv.</th>
+                          <th className="py-1.5 pr-3">{t('webCommerceObservability.producto')}</th>
+                          <th className="py-1.5 pr-3">{t('webCommerceObservability.sucursal')}</th>
+                          <th className="py-1.5 pr-3 text-right">{t('webCommerceObservability.disp')}</th>
+                          <th className="py-1.5 pr-3 text-right">{t('webCommerceObservability.reserv')}</th>
                           <th className="py-1.5 pr-3 text-right">Total</th>
-                          <th className="py-1.5">Actualizado</th>
+                          <th className="py-1.5">{t('webCommerceObservability.actualizado')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -326,11 +328,11 @@ export function WebCommerceObservability({
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                 <Timer className="h-4 w-4" />
-                Pedidos próximos a expirar ({withinMinutes} min)
+                {t('webCommerceObservability.pedidosProximosExpirarMin', { withinMinutes })}
               </h4>
               {data.ordersNearExpiry.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No hay pedidos próximos a expirar en los próximos {withinMinutes} minutos.
+                  {t('webCommerceObservability.noHayPedidosProximos', { withinMinutes })}
                 </p>
               ) : (
                 <>
@@ -365,7 +367,7 @@ export function WebCommerceObservability({
                               }
                             >
                               {order.minutesUntilExpiry < 0
-                                ? `Expirado hace ${Math.abs(order.minutesUntilExpiry)}m`
+                                ? t('webCommerceObservability.expiradoHaceM', { minutesUntilExpiry: Math.abs(order.minutesUntilExpiry) })
                                 : `${order.minutesUntilExpiry}m`}
                             </Badge>
                           </div>
@@ -426,6 +428,7 @@ function Pagination({
   onPageChange: (page: number) => void;
   totalItems: number;
 }) {
+  const t = useTranslations('pedidoWeb');
   if (totalPages <= 1) return null;
   const start = page * PAGE_SIZE + 1;
   const end = Math.min((page + 1) * PAGE_SIZE, totalItems);
@@ -441,7 +444,7 @@ function Pagination({
           size="sm"
           disabled={page === 0}
           onClick={() => onPageChange(page - 1)}
-          title="Página anterior"
+          title={t('webCommerceObservability.paginaAnterior')}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
@@ -454,7 +457,7 @@ function Pagination({
           size="sm"
           disabled={page >= totalPages - 1}
           onClick={() => onPageChange(page + 1)}
-          title="Página siguiente"
+          title={t('webCommerceObservability.paginaSiguiente')}
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>

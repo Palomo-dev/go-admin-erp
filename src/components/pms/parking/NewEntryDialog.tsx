@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase/config';
 import ParkingService, { type ParkingZone } from '@/lib/services/parkingService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { useTranslations } from 'next-intl';
 
 interface NewEntryDialogProps {
   open: boolean;
@@ -49,9 +50,9 @@ interface ParkingSpace {
 }
 
 const VEHICLE_TYPES = [
-  { value: 'car', label: 'Automóvil', icon: Car },
-  { value: 'motorcycle', label: 'Motocicleta', icon: Bike },
-  { value: 'truck', label: 'Camioneta', icon: Truck },
+  { value: 'car', icon: Car },
+  { value: 'motorcycle', icon: Bike },
+  { value: 'truck', icon: Truck },
 ];
 
 export function NewEntryDialog({
@@ -60,6 +61,7 @@ export function NewEntryDialog({
   onConfirm,
   branchId,
 }: NewEntryDialogProps) {
+  const t = useTranslations('pmsParking');
   const [vehiclePlate, setVehiclePlate] = useState('');
   const [vehicleType, setVehicleType] = useState('car');
   const [parkingSpaceId, setParkingSpaceId] = useState<string>('');
@@ -131,12 +133,12 @@ export function NewEntryDialog({
 
   const handleCreateSpace = async () => {
     if (!newSpaceLabel.trim()) {
-      alert('Por favor ingresa un nombre para el espacio');
+      alert(t('newEntryDialog.favorIngresaNombreEspacio'));
       return;
     }
 
     if (!formBranchId) {
-      alert('Error: No se encontró la sucursal. Por favor recarga la página e intenta nuevamente.');
+      alert(t('newEntryDialog.errorNoEncontroSucursal'));
       return;
     }
 
@@ -183,7 +185,7 @@ export function NewEntryDialog({
       setShowNewSpaceForm(false);
     } catch (error: any) {
       console.error('Error completo creando espacio:', error);
-      alert(`Error al crear espacio: ${error.message || 'Error desconocido'}`);
+      alert(t('newEntryDialog.errorCrearEspacio', { error: error.message || t('newEntryDialog.errorDesconocido') }));
     } finally {
       setIsCreatingSpace(false);
     }
@@ -220,9 +222,9 @@ export function NewEntryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Nueva Entrada de Vehículo</DialogTitle>
+          <DialogTitle>{t('newEntryDialog.nuevaEntradaVehiculo')}</DialogTitle>
           <DialogDescription>
-            Registra la entrada de un vehículo al estacionamiento
+            {t('newEntryDialog.registraEntradaVehiculoEstacionamiento')}
           </DialogDescription>
         </DialogHeader>
 
@@ -235,7 +237,7 @@ export function NewEntryDialog({
           />
 
           <div className="space-y-2">
-            <Label htmlFor="vehicle_plate">Placa del Vehículo *</Label>
+            <Label htmlFor="vehicle_plate">{t('newEntryDialog.placaVehiculo')}</Label>
             <Input
               id="vehicle_plate"
               placeholder="ABC123"
@@ -248,7 +250,7 @@ export function NewEntryDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vehicle_type">Tipo de Vehículo *</Label>
+            <Label htmlFor="vehicle_type">{t('newEntryDialog.tipoVehiculo')}</Label>
             <Select value={vehicleType} onValueChange={setVehicleType}>
               <SelectTrigger>
                 <SelectValue />
@@ -260,7 +262,7 @@ export function NewEntryDialog({
                     <SelectItem key={type.value} value={type.value}>
                       <div className="flex flex-wrap items-center gap-2">
                         <Icon className="h-4 w-4" />
-                        {type.label}
+                        {t(`newEntryDialog.vehiculos.${type.value}`)}
                       </div>
                     </SelectItem>
                   );
@@ -272,11 +274,11 @@ export function NewEntryDialog({
           {/* Espacio de Parqueo (Opcional) */}
           <div className="space-y-2">
             <Label htmlFor="parking_space">
-              Espacio de Parqueo (Opcional)
+              {t('newEntryDialog.espacioParqueoOpcional')}
             </Label>
               {!formBranchId ? (
                 <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-                  ⚠️ No se encontró una sucursal configurada. No puedes crear espacios de parqueo sin una sucursal.
+                  {t('newEntryDialog.noEncontroSucursalConfigurada')}
                 </div>
               ) : isLoadingSpaces ? (
                 <div className="flex flex-wrap items-center gap-2">
@@ -290,10 +292,10 @@ export function NewEntryDialog({
                     onValueChange={(value) => setParkingSpaceId(value === 'none' ? '' : value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Sin espacio asignado" />
+                      <SelectValue placeholder={t('newEntryDialog.sinEspacioAsignado')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sin espacio asignado</SelectItem>
+                      <SelectItem value="none">{t('newEntryDialog.sinEspacioAsignado')}</SelectItem>
                       {parkingSpaces.map((space) => (
                         <SelectItem key={space.id} value={space.id}>
                           {space.label}
@@ -310,7 +312,7 @@ export function NewEntryDialog({
                     className="w-full mt-2"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    {showNewSpaceForm ? 'Cancelar' : 'Crear Nuevo Espacio'}
+                    {showNewSpaceForm ? t('passVehiclesDialog.cancelar') : t('newEntryDialog.crearNuevoEspacio')}
                   </Button>
                 </>
               ) : (
@@ -321,7 +323,7 @@ export function NewEntryDialog({
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Crear Primer Espacio
+                  {t('newEntryDialog.crearPrimerEspacio')}
                 </Button>
               )}
 
@@ -329,11 +331,11 @@ export function NewEntryDialog({
               <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mt-2">
                 <div className="space-y-2">
                   <Label htmlFor="new_space_label" className="text-sm font-medium">
-                    Nombre del Espacio *
+                    {t('newEntryDialog.nombreEspacio')}
                   </Label>
                   <Input
                     id="new_space_label"
-                    placeholder="Ej: A1, P-01, Espacio 1"
+                    placeholder={t('newEntryDialog.ejA1P01')}
                     value={newSpaceLabel}
                     onChange={(e) => setNewSpaceLabel(e.target.value)}
                   />
@@ -341,15 +343,15 @@ export function NewEntryDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="new_space_zone" className="text-sm font-medium">
-                    Zona (Opcional)
+                    {t('newEntryDialog.zonaOpcional')}
                   </Label>
                   {zones.length > 0 ? (
                     <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar zona" />
+                        <SelectValue placeholder={t('newEntryDialog.seleccionarZona')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin zona</SelectItem>
+                        <SelectItem value="">{t('newEntryDialog.sinZona')}</SelectItem>
                         {zones.map((zone) => (
                           <SelectItem key={zone.id} value={zone.id}>
                             {zone.name}
@@ -362,7 +364,7 @@ export function NewEntryDialog({
                   ) : (
                     <Input
                       id="new_space_zone"
-                      placeholder="Ej: Nivel 1, Zona A, Exterior"
+                      placeholder={t('newEntryDialog.ejNivel1Zona')}
                       value={newSpaceZone}
                       onChange={(e) => setNewSpaceZone(e.target.value)}
                     />
@@ -379,12 +381,12 @@ export function NewEntryDialog({
                   {isCreatingSpace ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creando...
+                      {t('newEntryDialog.creando')}
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Guardar Espacio
+                      {t('newEntryDialog.guardarEspacio')}
                     </>
                   )}
                 </Button>
@@ -399,13 +401,13 @@ export function NewEntryDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancelar
+              {t('passVehiclesDialog.cancelar')}
             </Button>
             <Button type="submit" disabled={isSubmitting || !vehiclePlate.trim()}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Registrando...
+                  {t('newEntryDialog.registrando')}
                 </>
               ) : (
                 'Registrar Entrada'

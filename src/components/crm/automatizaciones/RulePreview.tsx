@@ -8,6 +8,7 @@
 import { Eye } from 'lucide-react';
 import { describeRule, type HumanizerLookups } from '@/lib/services/crm/automation/ruleHumanizer';
 import { previewNotes, type RuleFormState } from '@/lib/services/crm/automation/ruleEditorModel';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   form: RuleFormState;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function RulePreview({ form, lookups }: Props) {
+  const t = useTranslations('crm.automatizaciones');
   const sentence = describeRule(
     { ...form, pipeline_id: form.pipeline_id || null, stage_id: form.stage_id || null, event: form.event || null },
     lookups,
@@ -27,7 +29,7 @@ export function RulePreview({ form, lookups }: Props) {
       className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/60"
     >
       <h3 id="rule-preview-title" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300">
-        <Eye className="h-3.5 w-3.5" aria-hidden="true" /> Así funcionará
+        <Eye className="h-3.5 w-3.5" aria-hidden="true" /> {t('rulePreview.asiFuncionara')}
       </h3>
       {/* `break-words`: los marcadores «{{opportunity_name}}» no tienen espacios y en móvil no cabían en una línea. */}
       <p aria-live="polite" className="mt-2 min-w-0 break-words text-sm leading-relaxed text-gray-900 dark:text-gray-100">{sentence}</p>

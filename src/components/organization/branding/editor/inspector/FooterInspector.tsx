@@ -9,6 +9,7 @@ import FooterOptionsPanel from '../FooterOptionsPanel';
 import MobileFooterPanel from '../MobileFooterPanel';
 import { InspectorZonaGlobal } from './InspectorZonaGlobal';
 import { pestanaInicialZona } from './zonaGlobal';
+import { useTranslations } from 'next-intl';
 
 /**
  * Inspector del pie: los paneles de siempre (antes en el acordeón «Footer» del
@@ -79,6 +80,7 @@ export function BocetoPie({ settings, isMobile }: { settings: WebsiteSettings; i
 }
 
 export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMenus, onCerrar }: FooterInspectorProps) {
+  const t = useTranslations('branding.editor');
   const { opciones, movil } = opcionesPie(settings);
   const mockup = (isMobile: boolean) => <BocetoPie settings={settings} isMobile={isMobile} />;
 
@@ -95,10 +97,10 @@ export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMen
             {mockup(devicePreview === 'mobile' || devicePreview === 'tablet')}
             <FooterOptionsPanel grupo="diseno" settings={opciones} onUpdate={onUpdate} />
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-fg">Menús del pie</p>
-              <p className="text-[11px] text-fg-muted">Crea, renombra y ordena los menús nombrados que se muestran en el pie.</p>
+              <p className="text-xs font-medium text-fg">{t('footerInspector.menusPie')}</p>
+              <p className="text-[11px] text-fg-muted">{t('footerInspector.creaRenombraOrdenaMenus')}</p>
               <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={onEditarMenus}>
-                Editar menús del pie
+                {t('footerInspector.editarMenusPie')}
               </Button>
             </div>
           </>

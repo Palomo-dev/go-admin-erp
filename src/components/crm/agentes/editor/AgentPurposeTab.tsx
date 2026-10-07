@@ -20,18 +20,20 @@ import {
 import { Loader2, Sparkles } from "lucide-react";
 import { useAgentModels } from "./agentModels";
 import type { AgentFormState } from "./useAgentForm";
+import { useTranslations } from "next-intl";
 
-const PURPOSES: Array<[string, string]> = [
-  ["sell_product", "Vender un producto"],
-  ["book_meeting", "Agendar una reunión"],
-  ["qualify_lead", "Calificar contacto"],
-  ["confirm_demo", "Confirmar demo"],
-  ["follow_up_proposal", "Seguimiento de propuesta"],
-  ["reactivate_cold", "Reactivar contacto frío"],
-  ["collect_payment", "Cobro"],
-  ["nps_survey", "Encuesta NPS"],
-  ["renewal_reminder", "Recordar renovación"],
-  ["custom", "Personalizado"],
+/** Propósitos del agente; la etiqueta sale de `crm.agentesIa.agentPurposeTab.propositos`. */
+const PURPOSES: string[] = [
+  "sell_product",
+  "book_meeting",
+  "qualify_lead",
+  "confirm_demo",
+  "follow_up_proposal",
+  "reactivate_cold",
+  "collect_payment",
+  "nps_survey",
+  "renewal_reminder",
+  "custom",
 ];
 
 interface Props {
@@ -42,6 +44,7 @@ interface Props {
 }
 
 export function AgentPurposeTab({ form, patch, isNew }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const models = useAgentModels(form.llm_model);
 
   useEffect(() => {
@@ -53,26 +56,26 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="ag-name">Nombre</Label>
+        <Label htmlFor="ag-name">{t("agentPurposeTab.nombre")}</Label>
         <Input
           id="ag-name"
           value={form.name}
           onChange={(e) => patch({ name: e.target.value })}
-          placeholder="Ej. Ana, asistente comercial"
+          placeholder={t("agentPurposeTab.ejAnaAsistenteComercial")}
           autoComplete="off"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="ag-purpose">Propósito</Label>
+        <Label htmlFor="ag-purpose">{t("editor.secciones.proposito")}</Label>
         <Select value={form.purpose_type} onValueChange={(v) => patch({ purpose_type: v })}>
           <SelectTrigger id="ag-purpose">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PURPOSES.map(([value, label]) => (
+            {PURPOSES.map((value) => (
               <SelectItem key={value} value={value}>
-                {label}
+                {t(`agentPurposeTab.propositos.${value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -80,11 +83,11 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="ag-model">Modelo de lenguaje</Label>
+        <Label htmlFor="ag-model">{t("agentPurposeTab.modeloLenguaje")}</Label>
         {models.loading ? (
           <p className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            Cargando los modelos disponibles…
+            {t("agentPurposeTab.cargandoModelosDisponibles")}
           </p>
         ) : models.error || models.options.length === 0 ? (
           <>
@@ -92,7 +95,7 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
               id="ag-model"
               value={form.llm_model}
               onChange={(e) => patch({ llm_model: e.target.value })}
-              placeholder="Nombre del modelo"
+              placeholder={t("agentPurposeTab.nombreModelo")}
               aria-describedby="ag-model-help"
             />
             <p
@@ -101,8 +104,8 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
               className="text-xs text-amber-800 dark:text-amber-200"
             >
               {models.error
-                ? `No se pudo leer el catálogo de modelos (${models.error}); escribe el nombre a mano.`
-                : "Ningún proveedor de IA tiene credenciales: escribe el nombre a mano o configúralas en Proveedores e IA."}
+                ? t("agentPurposeTab.noPudoLeerCatalogo", { error: models.error })
+                : t("agentPurposeTab.ningunProveedorIaTiene")}
             </p>
           </>
         ) : (
@@ -112,7 +115,7 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
               onValueChange={(v) => patch({ llm_model: v })}
             >
               <SelectTrigger id="ag-model" aria-describedby="ag-model-help" className="[&>span]:line-clamp-1">
-                <SelectValue placeholder="Elige un modelo" />
+                <SelectValue placeholder={t("agentPurposeTab.eligeModelo")} />
               </SelectTrigger>
               <SelectContent>
                 {models.options.map((o) => (
@@ -122,7 +125,7 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
                       {o.recomendado && (
                         <Sparkles
                           className="h-3 w-3 text-blue-600 dark:text-blue-400"
-                          aria-label="Recomendado"
+                          aria-label={t("agentPurposeTab.recomendado")}
                         />
                       )}
                     </span>
@@ -132,7 +135,7 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
             </Select>
             <p id="ag-model-help" className="text-xs text-gray-500 dark:text-gray-400">
               {selected?.hint ??
-                "Solo aparecen los modelos de proveedores con credenciales en esta organización."}
+                t("agentPurposeTab.soloAparecenModelosProveedores")}
             </p>
           </>
         )}
@@ -140,10 +143,10 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
 
       <fieldset className="grid grid-cols-2 gap-3">
         <legend className="mb-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
-          Topes por llamada
+          {t("agentPurposeTab.topesLlamada")}
         </legend>
         <div className="space-y-1.5">
-          <Label htmlFor="ag-turns">Turnos</Label>
+          <Label htmlFor="ag-turns">{t("agentPurposeTab.turnos")}</Label>
           <Input
             id="ag-turns"
             type="number"
@@ -154,11 +157,11 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
             aria-describedby="ag-turns-help"
           />
           <p id="ag-turns-help" className="text-xs text-gray-500 dark:text-gray-400">
-            Intercambios como máximo
+            {t("agentPurposeTab.intercambiosComoMaximo")}
           </p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ag-dur">Segundos</Label>
+          <Label htmlFor="ag-dur">{t("agentPurposeTab.segundos")}</Label>
           <Input
             id="ag-dur"
             type="number"
@@ -170,14 +173,14 @@ export function AgentPurposeTab({ form, patch, isNew }: Props) {
             aria-describedby="ag-dur-help"
           />
           <p id="ag-dur-help" className="text-xs text-gray-500 dark:text-gray-400">
-            Duración máxima de la llamada
+            {t("agentPurposeTab.duracionMaximaLlamada")}
           </p>
         </div>
       </fieldset>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
         <Label htmlFor="ag-active" className="cursor-pointer text-sm">
-          Agente activo
+          {t("agentPurposeTab.agenteActivo")}
         </Label>
         <Switch
           id="ag-active"

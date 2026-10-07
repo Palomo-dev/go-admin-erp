@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { History, PlusCircle, RefreshCcw, XCircle, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SessionAuditService, type SessionAuditEvent } from './sessionAuditService';
+import { useTranslations } from 'next-intl';
 
 interface SessionTimelineDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ function formatDateTime(iso: string): string {
 }
 
 export function SessionTimelineDialog({ open, onOpenChange, tableId }: SessionTimelineDialogProps) {
+  const t = useTranslations('posMesas');
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<SessionAuditEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export function SessionTimelineDialog({ open, onOpenChange, tableId }: SessionTi
         if (active) setEvents(data);
       })
       .catch(() => {
-        if (active) setError('No se pudo cargar el historial de la mesa.');
+        if (active) setError(t('sessionTimelineDialog.noPudoCargarHistorial'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -70,7 +72,7 @@ export function SessionTimelineDialog({ open, onOpenChange, tableId }: SessionTi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Historial de la Mesa
+            {t('sessionTimelineDialog.historialMesa')}
           </DialogTitle>
         </DialogHeader>
 
@@ -88,7 +90,7 @@ export function SessionTimelineDialog({ open, onOpenChange, tableId }: SessionTi
 
         {!loading && !error && events.length === 0 && (
           <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
-            Sin eventos registrados para esta mesa.
+            {t('sessionTimelineDialog.sinEventosRegistradosEsta')}
           </p>
         )}
 

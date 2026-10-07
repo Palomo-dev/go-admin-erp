@@ -16,6 +16,7 @@ import { describeError } from '@/lib/utils/errorMessage';
 import { QuotaEditor } from './QuotaEditor';
 import { QuotaHistory } from './QuotaHistory';
 import { useMemberQuotas } from './useMemberQuotas';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   open: boolean;
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function MemberQuotasSheet({ open, onOpenChange, member }: Props) {
+  const t = useTranslations('org.acceso.miembros');
   const currency = useOrgCurrency();
   const q = useMemberQuotas(open && member ? member.userId : null);
   const onCloseAutoFocus = useReturnFocus(open);
@@ -32,16 +34,16 @@ export function MemberQuotasSheet({ open, onOpenChange, member }: Props) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
         <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 text-left dark:border-gray-800 dark:bg-gray-900">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">Cuotas de {member?.name ?? 'miembro'}</SheetTitle>
-          <SheetDescription className="text-gray-600 dark:text-gray-400">Metas por periodo y cumplimiento real calculado con sus ventas, actividades y llamadas.</SheetDescription>
+          <SheetTitle className="text-gray-900 dark:text-gray-100">{t('memberQuotasSheet.cuotas')} {member?.name ?? 'miembro'}</SheetTitle>
+          <SheetDescription className="text-gray-600 dark:text-gray-400">{t('memberQuotasSheet.metasPeriodoCumplimientoReal')}</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 p-6">
           {q.error && (
             <Alert variant="destructive">
-              <AlertTitle>No se pudieron cargar las cuotas</AlertTitle>
+              <AlertTitle>{t('memberQuotasSheet.noPudieronCargarCuotas')}</AlertTitle>
               <AlertDescription>
                 {q.error}{' '}
-                <button type="button" onClick={() => q.reload()} className="underline">Reintentar</button>
+                <button type="button" onClick={() => q.reload()} className="underline">{t('memberQuotasSheet.reintentar')}</button>
               </AlertDescription>
             </Alert>
           )}
@@ -51,7 +53,7 @@ export function MemberQuotasSheet({ open, onOpenChange, member }: Props) {
               currency={currency}
               busy={q.busy}
               onCreate={q.create}
-              onCreated={() => toast({ title: 'Cuota guardada' })}
+              onCreated={() => toast({ title: t('memberQuotasSheet.cuotaGuardada') })}
             />
           )}
           <QuotaHistory
@@ -62,9 +64,9 @@ export function MemberQuotasSheet({ open, onOpenChange, member }: Props) {
             onDelete={async (id) => {
               try {
                 await q.remove(id);
-                toast({ title: 'Cuota eliminada' });
+                toast({ title: t('memberQuotasSheet.cuotaEliminada') });
               } catch (err) {
-                toast({ title: 'No se pudo eliminar', description: describeError(err), variant: 'destructive' });
+                toast({ title: t('memberQuotasSheet.noPudoEliminar'), description: describeError(err), variant: 'destructive' });
               }
             }}
           />

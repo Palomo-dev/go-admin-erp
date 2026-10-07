@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 
 /**
  * Grupo de ajustes que pinta el panel. Sin grupo pinta todo, como siempre; el
@@ -49,6 +50,7 @@ export default function FooterOptionsPanel({
   onUpdate,
   grupo,
 }: FooterOptionsPanelProps) {
+  const t = useTranslations('branding.editor');
   const showColumnsSlider = ['default', 'three_columns', 'split'].includes(settings.footer_style);
   const ver = (g: GrupoFooterOptions) => grupo === undefined || grupo === g;
 
@@ -59,7 +61,7 @@ export default function FooterOptionsPanel({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Número de columnas
+              {t('footerOptionsPanel.numeroColumnas')}
             </Label>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {settings.footer_columns} columnas
@@ -79,7 +81,7 @@ export default function FooterOptionsPanel({
       {/* Fondo del footer */}
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Fondo del footer
+          {t('footerOptionsPanel.fondoFooter')}
         </Label>
         <Select
           value={settings.footer_background}
@@ -89,10 +91,10 @@ export default function FooterOptionsPanel({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="dark">Oscuro</SelectItem>
-            <SelectItem value="light">Claro</SelectItem>
-            <SelectItem value="primary">Color primario</SelectItem>
-            <SelectItem value="custom">Personalizado</SelectItem>
+            <SelectItem value="dark">{t('globalSettings.dark')}</SelectItem>
+            <SelectItem value="light">{t('globalSettings.light')}</SelectItem>
+            <SelectItem value="primary">{t('footerOptionsPanel.colorPrimario')}</SelectItem>
+            <SelectItem value="custom">{t('footerOptionsPanel.personalizado')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -101,7 +103,7 @@ export default function FooterOptionsPanel({
       {settings.footer_background === 'custom' && (
         <div className="space-y-1.5">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Color personalizado
+            {t('footerOptionsPanel.colorPersonalizado')}
           </Label>
           <div className="flex items-center gap-2">
             <input
@@ -121,7 +123,7 @@ export default function FooterOptionsPanel({
               <button
                 onClick={() => onUpdate({ footer_custom_bg_color: null })}
                 className="text-xs text-gray-500 hover:text-red-500 px-2"
-                title="Quitar color"
+                title={t('footerOptionsPanel.quitarColor')}
               >
                 ✕
               </button>
@@ -136,12 +138,12 @@ export default function FooterOptionsPanel({
       {/* Switches de secciones */}
       <div className={grupo === undefined ? 'space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700' : 'space-y-2'}>
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-          Secciones del footer
+          {t('footerOptionsPanel.seccionesFooter')}
         </h4>
 
         <div className="flex items-center justify-between">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Mostrar contacto
+            {t('footerOptionsPanel.mostrarContacto')}
           </Label>
           <Switch
             checked={settings.footer_show_contact}
@@ -151,7 +153,7 @@ export default function FooterOptionsPanel({
 
         <div className="flex items-center justify-between">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Mostrar horarios
+            {t('footerOptionsPanel.mostrarHorarios')}
           </Label>
           <Switch
             checked={settings.footer_show_hours}
@@ -161,7 +163,7 @@ export default function FooterOptionsPanel({
 
         <div className="flex items-center justify-between">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Mostrar redes sociales
+            {t('footerOptionsPanel.mostrarRedesSociales')}
           </Label>
           <Switch
             checked={settings.footer_show_social}
@@ -171,7 +173,7 @@ export default function FooterOptionsPanel({
 
         <div className="flex items-center justify-between">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Mostrar categorías
+            {t('footerOptionsPanel.mostrarCategorias')}
           </Label>
           <Switch
             checked={settings.footer_show_categories}
@@ -181,7 +183,7 @@ export default function FooterOptionsPanel({
 
         <div className="flex items-center justify-between">
           <Label className="text-xs font-medium dark:text-gray-200">
-            Mostrar newsletter
+            {t('footerOptionsPanel.mostrarNewsletter')}
           </Label>
           <Switch
             checked={settings.footer_show_newsletter}
@@ -194,22 +196,22 @@ export default function FooterOptionsPanel({
       {settings.footer_show_newsletter && (
         <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Newsletter
+            {t('footerOptionsPanel.newsletter')}
           </h4>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Título del newsletter
+              {t('footerOptionsPanel.tituloNewsletter')}
             </Label>
             <Input
               className="h-8 text-xs"
-              placeholder="Suscríbete a nuestro boletín"
+              placeholder={t('footerOptionsPanel.suscribeteNuestroBoletin')}
               value={settings.footer_newsletter_title ?? ''}
               onChange={(e) => onUpdate({ footer_newsletter_title: e.target.value })}
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Placeholder del input
+              {t('footerOptionsPanel.placeholderInput')}
             </Label>
             <Input
               className="h-8 text-xs"
@@ -220,11 +222,11 @@ export default function FooterOptionsPanel({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Texto del botón
+              {t('globalSettings.buttonText')}
             </Label>
             <Input
               className="h-8 text-xs"
-              placeholder="Suscribirme"
+              placeholder={t('footerOptionsPanel.suscribirme')}
               value={settings.footer_newsletter_button_text ?? ''}
               onChange={(e) => onUpdate({ footer_newsletter_button_text: e.target.value })}
             />
@@ -235,7 +237,7 @@ export default function FooterOptionsPanel({
       {/* Mostrar "Powered by" */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Mostrar «Powered by GO Admin»
+          {t('footerOptionsPanel.mostrarPoweredByGo')}
         </Label>
         <Switch
           checked={settings.show_powered_by}
@@ -246,12 +248,12 @@ export default function FooterOptionsPanel({
       {/* Texto del footer */}
       <div className="space-y-1.5">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Texto del footer
+          {t('footerOptionsPanel.textoFooter')}
         </Label>
         <Textarea
           className="text-xs resize-none"
           rows={2}
-          placeholder="© 2024 Tu Empresa. Todos los derechos reservados."
+          placeholder={t('footerOptionsPanel.n2024EmpresaTodosDerechos')}
           value={settings.footer_text ?? ''}
           onChange={(e) => onUpdate({ footer_text: e.target.value })}
         />

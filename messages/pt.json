@@ -458,6 +458,7 @@
     "attentionRequired": "Requer atenção hoje",
     "noAlerts": "Sem alertas críticos. Tudo está em ordem.",
     "vsPreviousPeriod": "vs período anterior",
+    "noComparison": "sem comparação",
     "compactMode": "Compacto",
     "expandedMode": "Expandido",
     "errors": {
@@ -1237,7 +1238,8 @@
         "agotado": "Esgotado",
         "disponible": "Disponível",
         "hastaOpcional": "Até (opcional)"
-      }
+      },
+      "errorTitulo": "Erro"
     },
     "domains": {
       "title": "Domínios",
@@ -1358,7 +1360,8 @@
         "errorVerifying": "Erro ao verificar domínio",
         "errorConnection": "Erro de conexão",
         "errorPurchase": "Erro ao comprar o domínio",
-        "errorProcessing": "Erro ao processar a compra"
+        "errorProcessing": "Erro ao processar a compra",
+        "errorVerificacionTarjeta": "A verificação do cartão falhou"
       },
       "dns": {
         "title": "Instruções de Verificação DNS",
@@ -1515,7 +1518,10 @@
         "errorNotAvailable": "O subdomínio não está disponível",
         "errorMinChars": "O subdomínio deve ter pelo menos 3 caracteres",
         "errorSaving": "Erro ao salvar o subdomínio"
-      }
+      },
+      "eligePaisSelectorEscribe": "Escolha o país no seletor e digite o número.",
+      "actividad": "Atividade",
+      "telefonoCodigoPais": "O telefone deve incluir um código de país válido."
     },
     "createOrgDialog": {
       "title": "Criar Nova Organização"
@@ -1911,7 +1917,13 @@
       "errorChanging": "Ocorreu um erro ao alterar o plano.",
       "cancel": "Cancelar",
       "processing": "Processando...",
-      "changePlan": "Alterar Plano"
+      "changePlan": "Alterar Plano",
+      "couponInput": {
+        "tienesCodigoDescuento": "Tem um código de desconto?",
+        "ingresaCodigo": "Digite seu código"
+      },
+      "cuponNoValido": "Cupom inválido",
+      "errorValidarCupon": "Erro ao validar o cupom"
     },
     "paymentMethod": {
       "title": "Método de Pagamento",
@@ -2188,6 +2200,82 @@
         "error": {
           "titulo": "Não foi possível carregar os membros",
           "descripcion": "Verifique sua conexão e tente novamente."
+        },
+        "memberQuotasSheet": {
+          "cuotas": "Cotas de",
+          "metasPeriodoCumplimientoReal": "Metas por período e cumprimento real calculado com suas vendas, atividades e ligações.",
+          "noPudieronCargarCuotas": "Não foi possível carregar as cotas",
+          "reintentar": "Tentar novamente",
+          "cuotaGuardada": "Cota salva",
+          "cuotaEliminada": "Cota excluída",
+          "noPudoEliminar": "Não foi possível excluir"
+        },
+        "quotaEditor": {
+          "nuevaCuota": "Nova cota",
+          "periodo": "Período",
+          "tipoMeta": "Tipo de meta",
+          "diaPeriodo": "Um dia do período",
+          "periodoCalculaPartirEsta": "O período é calculado a partir desta data.",
+          "meta": "Meta",
+          "cantidad": "(quantidade)",
+          "noGuardoCuota": "A cota não foi salva",
+          "guardando": "Salvando…",
+          "guardarCuota": "Salvar cota"
+        },
+        "quotaHistory": {
+          "cargandoCuotas": "Carregando cotas",
+          "esteMiembroAunNo": "Este membro ainda não tem cotas. Crie a primeira acima: o cumprimento é calculado sozinho com suas vendas, atividades ou ligações.",
+          "historialCuotas": "Histórico de cotas",
+          "eliminarCuota": "Excluir cota de {period}",
+          "superada": "Superada em {valor}",
+          "eliminarCuota2": "Excluir a cota de {period}?",
+          "borraMetaVentasActividades": "A meta é apagada; as vendas, atividades e ligações do membro não são alteradas.",
+          "siEliminar": "Sim, excluir"
+        },
+        "cuotas": {
+          "tipos": {
+            "revenue": "Receita",
+            "deals": "Negócios ganhos",
+            "activities": "Atividades",
+            "calls": "Ligações"
+          },
+          "periodos": {
+            "monthly": "Mensal",
+            "quarterly": "Trimestral",
+            "yearly": "Anual"
+          },
+          "estados": {
+            "cumplida": "Cota cumprida",
+            "vencida": "Período encerrado sem cumprir",
+            "atrasado": "Abaixo do ritmo",
+            "en_ritmo": "No ritmo"
+          },
+          "periodoMes": "{mes} de {anio}",
+          "periodoTrimestre": "{q}º trimestre de {anio}",
+          "periodoAnio": "Ano {anio}",
+          "errores": {
+            "fechaFueraPeriodo": "Escolha uma data dentro do período.",
+            "metaInvalida": "Digite a meta: um número maior que zero.",
+            "metaEntera": "Para contagens a meta deve ser um número inteiro."
+          },
+          "etiquetaBarra": "{pct} % da cota de {tipo}, {estado}",
+          "logrado": "<b>{logrado}</b> de {meta} · {pct} %",
+          "faltan": "Faltam {faltante} · {dias, plural, one {# dia} other {# dias}} · ritmo {ritmo}/dia",
+          "faltaron": "Faltaram {faltante}",
+          "meses": {
+            "m1": "Janeiro",
+            "m2": "Fevereiro",
+            "m3": "Março",
+            "m4": "Abril",
+            "m5": "Maio",
+            "m6": "Junho",
+            "m7": "Julho",
+            "m8": "Agosto",
+            "m9": "Setembro",
+            "m10": "Outubro",
+            "m11": "Novembro",
+            "m12": "Dezembro"
+          }
         }
       },
       "invitaciones": {
@@ -2668,6 +2756,29 @@
             "creadas": "{n, plural, =0 {Nenhuma filial foi criada} one {# filial criada} other {# filiais criadas}}",
             "fallos": "{n, plural, one {# linha não pôde ser criada} other {# linhas não puderam ser criadas}}"
           }
+        },
+        "assignManagerModal": {
+          "asignarGerente": "Atribuir gerente",
+          "seleccionarGerente": "Selecionar gerente",
+          "soloEmpleadosRolesAdmin": "Só funcionários com as funções Admin, Gerente ou Funcionário podem ser atribuídos como gerentes.",
+          "resumenCambio": "Resumo da alteração:",
+          "gerenteActual": "Gerente atual:",
+          "asignado": "Atribuído",
+          "sinAsignar": "Sem atribuição",
+          "nuevoGerente": "Novo gerente:",
+          "asignara": "Será atribuído",
+          "asignando": "Atribuindo..."
+        },
+        "assignMembersModal": {
+          "asignarMiembros": "Atribuir membros",
+          "noHayMiembrosDisponibles": "Não há membros disponíveis na organização",
+          "seleccionaMiembrosTendranAcceso": "Selecione os membros que terão acesso a esta unidade",
+          "guardando": "Salvando..."
+        },
+        "managerSelector": {
+          "cargandoEmpleados": "Carregando funcionários...",
+          "seleccionarGerente": "Selecionar gerente...",
+          "noHayEmpleadosDisponibles": "Não há funcionários disponíveis para atribuir como gerentes"
         }
       },
       "plan": {
@@ -3104,6 +3215,14 @@
           "titulo": "Você não tem acesso a esta configuração",
           "descripcion": "Peça a um administrador da organização que lhe dê a permissão.",
           "inicio": "Voltar ao início"
+        },
+        "organizationTimezoneCard": {
+          "zonaHoraria": "Fuso horário",
+          "zonaCalculanEImprimen": "É o fuso usado para calcular e imprimir as datas de toda a organização. Cada unidade pode ter o seu na própria ficha; as que não têm herdam este.",
+          "zonaOrganizacion": "Fuso da organização",
+          "guardando": "Salvando…",
+          "guardar": "Salvar",
+          "ahoraMismo": "Em <b>{zona}</b> agora são {hora}."
         }
       }
     }
@@ -3488,7 +3607,661 @@
         "questionPlaceholder": "Pergunta",
         "answerPlaceholder": "Resposta",
         "noQuestions": "Sem perguntas. Clique em Adicionar.",
-        "imageAlt": "Imagem"
+        "imageAlt": "Imagem",
+        "layoutPagina": "Layout da página"
+      },
+      "headerOptionsPanel": {
+        "editarMenu": "Editar menu",
+        "posicionLogo": "Posição do logo",
+        "izquierda": "Esquerda",
+        "centro": "Centro",
+        "derecha": "Direita",
+        "menuEncabezado": "Menu do cabeçalho",
+        "paginasSitio": "Páginas do site",
+        "estiloBuscador": "Estilo da busca",
+        "iconoAbreDropdown": "Ícone que abre um menu suspenso",
+        "barraVisible": "Barra visível",
+        "oculto": "Oculto",
+        "mostrarCategoriasHeader": "Mostrar categorias no cabeçalho",
+        "escritorioCategoriasVenComo": "No computador, as categorias aparecem como mega menu só com o layout «Mega». No celular aparecem com qualquer layout.",
+        "columnasMegaMenu": "Colunas do mega menu",
+        "botonCtaHeader": "Botão CTA do cabeçalho",
+        "mostrarCarrito": "Mostrar carrinho",
+        "mostrarLoginRegistro": "Mostrar login/cadastro",
+        "mostrarTopbar": "Mostrar barra superior",
+        "contenidoTopbar": "Conteúdo da barra superior",
+        "mostrarCorreo": "Mostrar e-mail",
+        "mostrarCelularTelefono": "Mostrar celular/telefone",
+        "posicionCorreoTelefono": "Posição do e-mail/telefone",
+        "mensajesPromocionales": "Mensagens promocionais ({n})",
+        "mensaje": "Mensagem {n}",
+        "mensajesRotanAutomaticamenteCada": "As mensagens giram automaticamente a cada 6 segundos com setas de navegação.",
+        "menusNombrados": "Menus nomeados",
+        "menuHeader": "Menu do cabeçalho",
+        "seleccionarMenu": "Selecionar menu...",
+        "sinMenuNombrado": "— Sem menu nomeado —",
+        "menuMegaMenu": "Menu do mega menu",
+        "sinMegaMenu": "— Sem mega menu —",
+        "coloresHeader": "Cores do cabeçalho",
+        "textoAjustaAutomaticamenteBlanco": "O texto se ajusta automaticamente (branco/preto) conforme o fundo.",
+        "fondoHeader": "Fundo do cabeçalho",
+        "vacioBlancoOpacidadAuto": "Vazio = branco com opacidade (auto)",
+        "quitarColorAuto": "Remover cor (auto)",
+        "fondoTopbar": "Fundo da barra superior",
+        "vacioOscuroDefectoHereda": "Vazio = escuro por padrão (herda do cabeçalho se houver)",
+        "quitarColorHereda": "Remover cor (herda)",
+        "fondoBarraMenu": "Fundo da barra de menu",
+        "vacioHeredaHeader": "Vazio = herda do cabeçalho",
+        "colorAcentoLinksHover": "Cor de destaque (links, hover, selos)",
+        "vacioUsaColorPrimario": "Vazio = usa a cor primária",
+        "quitarColorUsaPrimario": "Remover cor (usa a primária)",
+        "personalizacionAvanzada": "Personalização avançada",
+        "iconosOrdenAcciones": "Ícones e ordem das ações",
+        "iconosAcciones": "Ícones das ações",
+        "iconoCarrito": "Ícone do carrinho",
+        "iconoBuscador": "Ícone da busca",
+        "iconoUsuarioAuth": "Ícone de usuário/login",
+        "iconoMoneda": "Ícone de moeda",
+        "personalizacionBotonCta": "Personalização do botão CTA",
+        "anchoCompletoHeader": "Largura total do cabeçalho",
+        "paddingHorizontal": "Padding horizontal:",
+        "paddingVertical": "Padding vertical:",
+        "radioBorde": "Raio da borda:",
+        "anchoBorde": "Largura da borda:",
+        "margenSuperior": "Margem superior:",
+        "margenInferior": "Margem inferior:",
+        "sombra": "Sombra",
+        "sinSombra": "Sem sombra",
+        "sutil": "Sutil",
+        "media": "Média",
+        "fuerte": "Forte",
+        "colorFondoVacioColor": "Cor de fundo (vazio = cor primária)",
+        "vacioColorPrimario": "Vazio = cor primária",
+        "colorTextoVacioAuto": "Cor do texto (vazio = auto)",
+        "vacioAutoBlancoNegro": "Vazio = auto (branco/preto)",
+        "colorBordeVacioSin": "Cor da borda (vazio = sem cor)",
+        "vacioSinColorBorde": "Vazio = sem cor de borda",
+        "quitarColor": "Remover cor",
+        "preview": "Pré-visualização",
+        "aperturaMenuHeaderMinimal": "Abertura do menu (cabeçalho Minimal)",
+        "drawerLateralDefault": "Painel lateral (padrão)",
+        "dropdownCompacto": "Menu suspenso compacto",
+        "soloAplicaCuandoEstilo": "Só se aplica quando o estilo do cabeçalho é «Minimal».",
+        "ordenAcciones": "Ordem das ações",
+        "arrastraReordenarOrdenAfecta": "Arraste para reordenar. A ordem afeta todos os cabeçalhos.",
+        "subir": "Subir",
+        "bajar": "Descer"
+      },
+      "editorSidebar": {
+        "deshacerCtrlZ": "Desfazer (Ctrl+Z)",
+        "rehacerCtrlShiftZ": "Refazer (Ctrl+Shift+Z)",
+        "candadoHeredadaPrincipalAnadir": "Cadeado = «Herdada do principal». «Adicionar seção» aqui adiciona só a esta unidade.",
+        "buscarSeccion": "Buscar seção...",
+        "buscarSeccion2": "Buscar seção",
+        "seccionesDefecto": "Seções padrão",
+        "estaPaginaUsaLayout": "Esta página usa o layout padrão. Materialize as seções para editá-las individualmente.",
+        "materializarSecciones": "Materializar seções",
+        "anadirSeccion": "Adicionar seção a {nombre}",
+        "apareceTodasPaginas": "{etiqueta}: aparece em todas as páginas{valor}",
+        "global": "Global",
+        "seccionVariante": "Seção {label}, variante {variantLabel}{ambito}, {estado}",
+        "seccionDesincronizadaSitio": "Seção dessincronizada com o site",
+        "faltanDatos": "Faltam dados",
+        "estaSeccionVieneSitio": "Esta seção vem do site principal: se mudar lá, muda aqui.",
+        "personalizarEstaSede": "Personalizar nesta unidade",
+        "estaSede": "esta unidade",
+        "restablecer": "Restaurar",
+        "editarCarta": "Editar o cardápio",
+        "duplicarSeccionCtrlD": "Duplicar seção (Ctrl+D)",
+        "duplicarSeccion": "Duplicar seção",
+        "copiarEstilo": "Copiar estilo",
+        "pegarEstilo": "Colar estilo",
+        "aplicarEstiloTodasSecciones": "Aplicar estilo a todas as seções",
+        "aplicarEstiloTodas": "Aplicar estilo a todas",
+        "guardarComoPlantilla": "Salvar como modelo",
+        "aplicarEstiloEstaSeccion": "Aplicar o estilo desta seção a todas as seções da página?",
+        "aplicarTodas": "Aplicar a todas",
+        "ingresaNombreEstaPlantilla": "Digite um nome para este modelo de seção.",
+        "nombrePlantilla": "Nome do modelo",
+        "cancelar": "Cancelar",
+        "seleccionada": "selecionada",
+        "clickEditar": "clique para editar",
+        "ambito": {
+          "heredada": "Herdada do principal",
+          "personalizada": "Personalizada",
+          "solo-esta-sede": "Só nesta unidade"
+        },
+        "grupos": {
+          "content": "Conteúdo",
+          "data": "Dados",
+          "layout": "Layout",
+          "style": "Estilo",
+          "carousel": "Carrossel",
+          "behavior": "Comportamento",
+          "advanced": "Avançado"
+        },
+        "seccionPasaSer": "A seção passa a ser de {sede}. A partir daí deixa de herdar; «Restaurar» a vincula de novo.",
+        "personalizadaEn": "Personalizada em {sede}: o principal não a altera.",
+        "seleccionadoSufijo": ", selecionado"
+      },
+      "footerOptionsPanel": {
+        "numeroColumnas": "Número de colunas",
+        "fondoFooter": "Fundo do rodapé",
+        "colorPrimario": "Cor primária",
+        "personalizado": "Personalizado",
+        "colorPersonalizado": "Cor personalizada",
+        "quitarColor": "Remover cor",
+        "seccionesFooter": "Seções do rodapé",
+        "mostrarContacto": "Mostrar contato",
+        "mostrarHorarios": "Mostrar horários",
+        "mostrarRedesSociales": "Mostrar redes sociais",
+        "mostrarCategorias": "Mostrar categorias",
+        "mostrarNewsletter": "Mostrar newsletter",
+        "newsletter": "Newsletter",
+        "tituloNewsletter": "Título da newsletter",
+        "suscribeteNuestroBoletin": "Assine nossa newsletter",
+        "placeholderInput": "Texto de exemplo do campo",
+        "suscribirme": "Assinar",
+        "mostrarPoweredByGo": "Mostrar «Powered by GO Admin»",
+        "textoFooter": "Texto do rodapé",
+        "n2024EmpresaTodosDerechos": "© 2024 Sua Empresa. Todos os direitos reservados."
+      },
+      "footerPreviewMockup": {
+        "newsletter": "Newsletter",
+        "suscribir": "Assinar",
+        "link1": "Link 1",
+        "link2": "Link 2",
+        "link3": "Link 3",
+        "inicio": "Início",
+        "nosotros": "Sobre nós",
+        "servicios": "Serviços",
+        "contacto": "Contato",
+        "poweredByGoAdmin": "Powered by GO Admin",
+        "link4": "Link 4",
+        "cat1": "Cat 1",
+        "cat2": "Cat 2",
+        "cat3": "Cat 3",
+        "footerOcultoMovil": "Rodapé oculto no celular"
+      },
+      "globalSettingsPanel": {
+        "opacidadHeader": "Opacidade do cabeçalho",
+        "controlaTanTransparenteHeader": "Controla quão transparente é o cabeçalho (100 = sólido, 50 = semitransparente)",
+        "botonQuotComprarAhora": "🛒 Botão \"Comprar agora\"",
+        "mostrarTarjetasProductos": "Mostrar nos cards de produtos",
+        "monedaJuntoPrecio": "💱 Moeda ao lado do preço",
+        "mostrarCodigoMonedaEj": "Mostrar código da moeda (ex.: COP, USD)",
+        "ladoPrecio": "Lado do preço",
+        "izquierdaCop14248": "Esquerda (COP $14.248)",
+        "derecha14248Cop": "Direita ($14.248 COP)",
+        "textoBotonCarrito": "🛒 Texto do botão do carrinho",
+        "modo": "Modo",
+        "dinamicoRotaTextos": "Dinâmico (alterna textos)",
+        "textoFijo": "Texto fixo",
+        "textosRotan": "Textos que alternam",
+        "nuevoTexto": "Novo texto...",
+        "cadaVezAbreCarrito": "Cada vez que o carrinho abre, um texto aleatório é exibido",
+        "mostraraSiemprePrimerTexto": "O primeiro texto será sempre exibido",
+        "countdownTimer": "⏰ Contagem regressiva",
+        "activarCountdown": "Ativar contagem regressiva",
+        "texto": "Texto",
+        "ofertaTiempoLimitado": "Oferta por tempo limitado!",
+        "reiniciaCada24h": "Reinicia a cada 24h",
+        "fechaPersonalizada": "Data personalizada",
+        "fechaFin": "Data final",
+        "zonaHoraria": "Fuso horário",
+        "colombiaGmt5": "Colômbia (GMT-5)",
+        "mexicoGmt6": "México (GMT-6)",
+        "argentinaGmt3": "Argentina (GMT-3)",
+        "chileGmt4": "Chile (GMT-4)",
+        "peruGmt5": "Peru (GMT-5)",
+        "espanaGmt1": "Espanha (GMT+1)",
+        "eeuuEsteGmt5": "EUA Leste (GMT-5)",
+        "eeuuOesteGmt8": "EUA Oeste (GMT-8)",
+        "horaReinicio023": "Hora de reinício (0-23)",
+        "mostrar": "Mostrar em",
+        "header": "Cabeçalho",
+        "carrito": "Carrinho",
+        "detalleProducto": "Detalhe do produto",
+        "heroInicio": "Hero / Início",
+        "checkout": "Checkout",
+        "urgenciaCompra": "� Urgência de compra",
+        "mostrarCheckout": "Mostrar no checkout",
+        "muestraMensajesComoQuot": "Mostra mensagens como \"Só restam 3!\" para incentivar a compra rápida"
+      },
+      "headerPreviewMockup": {
+        "envioGratisSobre100k": "Frete grátis acima de $100k",
+        "menu": "Menu",
+        "iniciarSesion": "Entrar",
+        "vistaMovil": "Visualização no celular — {mobileMenuStyle}",
+        "vistaDesktop": "Visualização no computador — {layout}",
+        "tabs": {
+          "inicio": "Início",
+          "categorias": "Categorias",
+          "buscar": "Buscar",
+          "carrito": "Carrinho",
+          "cuenta": "Conta"
+        },
+        "menuEjemplo": {
+          "inicio": "Início",
+          "productos": "Produtos",
+          "categorias": "Categorias",
+          "nosotros": "Sobre nós",
+          "contacto": "Contato",
+          "ofertas": "Ofertas"
+        }
+      },
+      "menuGroupEditor": {
+        "subir": "Subir",
+        "subir2": "Subir {label}",
+        "bajar": "Descer",
+        "bajar2": "Descer {label}",
+        "anidarBajoAnterior": "Aninhar sob o anterior",
+        "anidarBajoItemAnterior": "Aninhar {label} sob o item anterior",
+        "subirNivel": "Subir um nível",
+        "subirNivel2": "Subir {label} um nível",
+        "eliminar": "Excluir",
+        "eliminar2": "Excluir {label}",
+        "pagina": "Página",
+        "categoria": "Categoria",
+        "enlace": "Link",
+        "noHayItemsEste": "Não há itens neste menu. Adicione páginas, categorias ou links para começar.",
+        "agregarPagina": "Adicionar página",
+        "cargandoPaginas": "Carregando páginas...",
+        "cargandoCategorias": "Carregando categorias...",
+        "noHayCategoriasActivas": "Não há categorias ativas no estoque.",
+        "llevaPaginaCategoriaSus": "Leva à página da categoria; as subcategorias aparecem abaixo no site.",
+        "etiqueta": "Rótulo",
+        "textoEnlace": "Texto do link",
+        "agregarEnlace": "Adicionar link",
+        "tipos": {
+          "page": "Página",
+          "category": "Categoria",
+          "policy": "Política",
+          "custom_link": "Link"
+        },
+        "sinTitulo": "Sem título",
+        "agregarCategoria": "Adicionar categoria"
+      },
+      "menuGroupManager": {
+        "eliminarEsteMenuTodos": "Excluir este menu e todos os seus itens?",
+        "menusNombrados": "Menus nomeados",
+        "nuevo": "Novo",
+        "nombreMenu": "Nome do menu",
+        "ejMenuPrincipalMenu": "Ex.: Menu principal, Menu do rodapé...",
+        "ubicacion": "Localização",
+        "header": "Cabeçalho",
+        "footer": "Rodapé",
+        "ambos": "Ambos",
+        "sinAsignar": "Sem atribuição",
+        "crear": "Criar",
+        "noHayMenusCreados": "Nenhum menu criado. Crie um novo para começar.",
+        "renombrar": "Renomear",
+        "cancelar": "Cancelar",
+        "eliminar": "Excluir"
+      },
+      "menuTreeEditor": {
+        "colapsar": "Recolher",
+        "expandir": "Expandir",
+        "categoria": "Categoria",
+        "moverArriba": "Mover para cima",
+        "moverAbajo": "Mover para baixo",
+        "cerrar": "Fechar",
+        "editar": "Editar",
+        "quitarMenu": "Remover do menu",
+        "iconoEmoji": "Ícone (emoji)",
+        "badge": "Selo",
+        "nuevo": "Novo",
+        "vincularCategoria": "Vincular a categoria",
+        "sinCategoria": "Sem categoria",
+        "limpiarBadge": "Limpar selo",
+        "cargandoMenu": "Carregando menu...",
+        "arbolMenuHeader": "Árvore do menu do cabeçalho",
+        "agregarPagina": "Adicionar página",
+        "agregarCategoria": "Adicionar categoria",
+        "agregarEnlace": "Adicionar link",
+        "arrastraItemsReordenarUsa": "💡 Arraste os itens para reordenar. Use ↑ ↓ como alternativa.",
+        "seleccionaPaginasQuieresAgregar": "Selecione as páginas que deseja adicionar ao menu do cabeçalho:",
+        "noHayPaginasDisponibles": "Nenhuma página disponível. Todas as páginas já estão no menu ou nenhuma página foi criada.",
+        "cancelar": "Cancelar",
+        "agregar": "Adicionar {n}",
+        "seleccionaPaginaSistemaAgregar": "Selecione uma página do sistema para adicionar ao menu:",
+        "todasPaginasSistemaYa": "Todas as páginas do sistema já estão no menu.",
+        "seleccionaCategoriasQuieresAgregar": "Selecione as categorias que deseja adicionar como itens do menu:",
+        "noHayCategoriasDisponibles": "Nenhuma categoria disponível.",
+        "vinculada": "Vinculada",
+        "noHayItemsMenu": "Não há itens no menu. Adicione páginas com o botão \"Adicionar página\" ou categorias com \"Adicionar categoria\".",
+        "arrastraRedimensionar": "Arraste para redimensionar"
+      },
+      "mobileFooterPanel": {
+        "estiloFooterMovil": "Estilo do rodapé no celular",
+        "acordeonExpandible": "Acordeão (expansível)",
+        "apiladoColumna": "Empilhado (uma coluna)",
+        "ocultoMovil": "Oculto no celular",
+        "mostrarRedesMovil": "Mostrar redes no celular",
+        "mostrarHorariosMovil": "Mostrar horários no celular",
+        "vistaPreviaMovil": "Pré-visualização no celular",
+        "footerOculto": "Rodapé oculto",
+        "col1": "Col 1",
+        "col2": "Col 2",
+        "col3": "Col 3"
+      },
+      "mobileHeaderPanel": {
+        "estiloMenuMovil": "Estilo do menu no celular",
+        "hamburguesaLateral": "Hambúrguer lateral",
+        "hojaInferior": "Painel inferior",
+        "pantallaCompleta": "Tela cheia",
+        "barraInferiorTipoApp": "Barra inferior estilo app",
+        "buscadorMovil": "Busca no celular",
+        "iconoAbreModal": "Ícone que abre um modal",
+        "barraVisibleBajoLogo": "Barra visível abaixo do logo",
+        "oculto": "Oculto",
+        "mostrarTopbarMovil": "Mostrar barra superior no celular",
+        "vistaPrevia": "Pré-visualização",
+        "buscar": "🔍 Buscar...",
+        "sticky": "Fixo"
+      },
+      "pageLayoutPanel": {
+        "esteTipoPaginaNo": "Este tipo de página não tem configuração de layout.",
+        "columnas": "Colunas",
+        "columnaAnchoCompleto": "Uma coluna (largura total)",
+        "dosColumnasGaleriaInfo": "Duas colunas (galeria + informações)",
+        "dosColumnasSidebar": "Duas colunas + barra lateral",
+        "controlaDisposicionPrincipalPagina": "Controla a disposição principal da página.",
+        "anchoGaleria": "Largura da galeria: {galleryWidth}%",
+        "porcentajeAnchoOcupaGaleria": "Porcentagem da largura ocupada pela galeria de imagens.",
+        "columnaPegajosa": "Coluna fixa",
+        "columnaInformacionFijaHacer": "A coluna de informações fica fixa ao rolar.",
+        "galeriaImagenes": "Galeria de imagens",
+        "modoGaleria": "Modo da galeria",
+        "carruselFlechasDots": "Carrossel (setas + pontos)",
+        "scrollVertical": "Rolagem vertical",
+        "grillaImagenes": "Grade de imagens",
+        "todasVisiblesColumna": "Todas visíveis (coluna)",
+        "posicionThumbnails": "Posição das miniaturas",
+        "abajoHorizontal": "Abaixo (horizontal)",
+        "izquierdaVertical": "Esquerda (vertical)",
+        "derechaVertical": "Direita (vertical)",
+        "sinThumbnails": "Sem miniaturas",
+        "mostrarFlechas": "Mostrar setas",
+        "mostrarIndicadoresDots": "Mostrar indicadores (pontos)",
+        "columnasGrilla": "Colunas da grade",
+        "n2Columnas": "2 colunas",
+        "n3Columnas": "3 colunas",
+        "n4Columnas": "4 colunas",
+        "alturaMaximaScrollPx": "Altura máxima de rolagem: {scrollHeight}px",
+        "descripcion": "Descrição",
+        "ubicacionDescripcion": "Posição da descrição",
+        "debajoTitulo": "Abaixo do título",
+        "debajoPrecio": "Abaixo do preço",
+        "debajoBotones": "Abaixo dos botões",
+        "arribaGaleria": "Acima da galeria",
+        "botonesAccion": "Botões de ação",
+        "disposicionBotones": "Disposição dos botões",
+        "apiladosVertical": "Empilhados (vertical)",
+        "lineaHorizontal": "Em linha (horizontal)",
+        "separadosUnoArribaUno": "Separados (um acima, um abaixo)",
+        "elementosOpcionales": "Elementos opcionais",
+        "mostrarBeneficios": "Mostrar benefícios",
+        "mostrarBreadcrumb": "Mostrar breadcrumb",
+        "productosRelacionados": "Produtos relacionados",
+        "disposicionRelacionados": "Disposição dos relacionados",
+        "carruselHorizontal": "Carrossel horizontal",
+        "grillaResponsiva": "Grade responsiva"
+      },
+      "pageSEOPanel": {
+        "ogPreview": "Pré-visualização OG"
+      },
+      "colorField": {
+        "sinColor": "Sem cor",
+        "tema": "Tema",
+        "paleta": "Paleta",
+        "primario": "Primária",
+        "secundario": "Secundária",
+        "acento": "Destaque",
+        "fondo": "Fundo",
+        "texto": "Texto"
+      },
+      "entityField": {
+        "entidadNoSoportada": "Entidade \"{entity}\" não suportada",
+        "categoriasSeleccionadas": "Categorias selecionadas ({n})",
+        "buscar": "Buscar...",
+        "noHayCategoriasCreadas": "Nenhuma categoria criada",
+        "sinSeleccionMuestranTodas": "Sem seleção: todas as categorias são exibidas",
+        "arrastraReordenarSoloMostraran": "Arraste para reordenar. Só as selecionadas serão exibidas.",
+        "buscarNombreSku": "Buscar por nome ou SKU...",
+        "buscando": "Buscando...",
+        "sinResultados": "Sem resultados",
+        "buscarPagina": "Buscar página...",
+        "noHayPaginasPublicadas": "Nenhuma página publicada",
+        "buscarSucursal": "Buscar unidade...",
+        "noHaySucursalesCreadas": "Nenhuma unidade criada",
+        "buscarZona": "Buscar zona...",
+        "noHayZonasConfiguradas": "Nenhuma zona configurada"
+      },
+      "iconField": {
+        "sinIcono": "Sem ícone",
+        "seleccionar": "Selecionar...",
+        "buscarIcono": "Buscar ícone...",
+        "todos": "Todos",
+        "sinResultados": "Sem resultados"
+      },
+      "repeaterField": {
+        "duplicar": "Duplicar",
+        "eliminar": "Excluir",
+        "sinElementosAgregaMenos": "Sem itens. Adicione pelo menos um."
+      },
+      "responsiveField": {
+        "esc": "Comp.",
+        "tab": "Tab.",
+        "mov": "Cel."
+      },
+      "richTextField": {
+        "negrita": "Negrito",
+        "cursiva": "Itálico",
+        "enlace": "Link",
+        "escribeContenido": "Escreva o conteúdo...",
+        "insertarEnlace": "Inserir link",
+        "ingresaUrlEnlace": "Digite a URL do link.",
+        "cancelar": "Cancelar",
+        "insertar": "Inserir"
+      },
+      "spacingField": {
+        "espaciado": "Espaçamento",
+        "paddingVerticalEnlazado": "Padding vertical vinculado",
+        "enlazarPaddingVertical": "Vincular padding vertical",
+        "opciones": {
+          "none": "Nenhum",
+          "xs": "Muito pouco",
+          "sm": "Pequeno",
+          "md": "Médio",
+          "lg": "Grande",
+          "xl": "Muito grande"
+        },
+        "campos": {
+          "padding_top": "Padding superior",
+          "padding_bottom": "Padding inferior",
+          "padding_x": "Padding horizontal",
+          "margin_top": "Margem superior",
+          "margin_bottom": "Margem inferior"
+        }
+      },
+      "footerInspector": {
+        "menusPie": "Menus do rodapé",
+        "creaRenombraOrdenaMenus": "Crie, renomeie e ordene os menus nomeados exibidos no rodapé.",
+        "editarMenusPie": "Editar menus do rodapé"
+      },
+      "hojaMenu": {
+        "listo": "Pronto",
+        "menusPie": "Menus do rodapé",
+        "menuEncabezado": "Menu do cabeçalho · {menu}",
+        "paginasSitio": "Páginas do site",
+        "subtituloAlMomento": "Arraste para ordenar ou aninhar. As alterações do menu são salvas na hora.",
+        "subtituloConGuardar": "Arraste para ordenar ou aninhar. É salvo com «Salvar» do editor."
+      },
+      "inspectorZonaGlobal": {
+        "inspector": "Inspetor: {titulo}",
+        "globalApareceTodasPaginas": "Global · aparece em todas as páginas",
+        "cerrar": "Fechar {titulo}",
+        "ajustes": "Ajustes de {titulo}",
+        "cambiaTodasPaginas": "Muda em todas as páginas"
+      },
+      "barraSitioV2": {
+        "historial": "Histórico",
+        "masAccionesSitio": "Mais ações do site",
+        "sitioV2": "Site V2",
+        "versionActualPorqueAun": "(a versão atual, porque ainda não tem versão V2 publicada)",
+        "ultimaVersionPublicada": "(a última versão publicada)",
+        "editandoBorradorV2Sitio": "Editando o rascunho V2 do site principal.",
+        "v2EstaActivoLo": "O V2 está ativo: o que você publica é o que seus clientes veem.",
+        "webSigueMostrandoSitio": "O site continua mostrando o site atual até você ativar o V2. Salvar e publicar não o alteram.",
+        "borradorTieneProblemaS": "· O rascunho tem {erroresContrato} problema(s) de formato: corrija-os antes de publicar.",
+        "verLoPersonalizado": "Ver o que foi personalizado ({personalizados})",
+        "irSitioPrincipal": "Ir para o site principal",
+        "estado": {
+          "guardado": "Salvo no rascunho",
+          "cambios": "Alterações não salvas",
+          "guardando": "Salvando…",
+          "conflicto": "Conflito",
+          "error": "Não foi salvo",
+          "publicado": "Publicado"
+        },
+        "editandoSede": "<b>Editando {nombreSitio}</b> — o que você não personalizar é herdado do site principal {base}."
+      },
+      "dialogoConflicto": {
+        "hayVersionMasNueva": "Há uma versão mais recente",
+        "versionPartias": " (versão {versionServidor}; você partiu da {versionLocal})",
+        "hacerConflicto": "O que fazer com o conflito",
+        "decidirDespues": "Decidir depois",
+        "cargarVersionNueva": "Carregar a versão nova",
+        "guardarMios": "Salvar os meus",
+        "descripcion": "Outra pessoa (ou outra aba) salvou o rascunho depois que você começou{version}. Suas alterações continuam no editor."
+      },
+      "dialogoPublicar": {
+        "publicar": "Publicar {nombreSitio}",
+        "publicarCambios": "Publicar alterações",
+        "soloPublicaSitioPrincipal": "Só {nombreSitio} é publicado. O site principal e as demais unidades não mudam.",
+        "publicaSitioCompletoPaginas": "O site completo é publicado: páginas, seções, estilo, cabeçalho, rodapé e menus do rascunho.",
+        "notaVersionOpcional": "Nota da versão (opcional)",
+        "ejCartaTemporada": "Ex.: Cardápio da estação",
+        "apareceHistorialVersiones": "Aparece no histórico de versões · {n}/{LIMITE_NOTA}",
+        "sitioPrincipalTieneCambios": "O site principal tem alterações não publicadas. Elas não chegam a {nombreSitio} até você publicar o principal.",
+        "guardaVersion": "Uma versão é salva",
+        "siAlgoNoQueda": "Se algo não ficar bom, restaure pelo histórico.",
+        "tusClientesVenEsta": "Seus clientes veem esta versão assim que a publicação terminar.",
+        "webSigueMostrandoSitio": "O site continua mostrando o site atual até você ativar o V2 neste site.",
+        "cancelar": "Cancelar",
+        "publicarAhora": "Publicar agora"
+      },
+      "panelHerencia": {
+        "herencia": "Herança · {nombreSede}",
+        "loNoPersonalicesHereda": "O que você não personalizar é herdado do site principal.",
+        "restablecer": "Restaurar",
+        "vaciarEstaSede": "Esvaziar nesta unidade",
+        "estaSeccionIgualSitio": "Esta seção é igual à do site principal. Se você editá-la aqui, ela passa a ser própria desta unidade; o principal não muda.",
+        "personalizadaEstaSede": "Personalizada nesta unidade."
+      },
+      "panelHistorial": {
+        "historialVersiones": "Histórico de versões",
+        "versionesPublicadasEsteSitio": "As versões publicadas deste site",
+        "borradorActual": "Rascunho atual",
+        "guardado": "Salvo {borradorActualizadoEn}",
+        "sinGuardarTodavia": "Ainda não salvo",
+        "hayCambiosSinGuardar": "· há alterações não salvas no editor",
+        "reintentar": "Tentar novamente",
+        "todaviaNoHasPublicado": "Você ainda não publicou este site.",
+        "version": "Versão {numero}",
+        "version2": "· versão {numero}",
+        "publicada": "Publicada",
+        "restaurarBorrador": "Restaurar no rascunho",
+        "restaurando": "Restaurando",
+        "restaurarVersion": "Restaurar a versão {numero}?",
+        "restaurarVersion2": "Restaurar versão",
+        "restaurarDescripcion": "É copiada para o seu rascunho e substitui as alterações não publicadas. O que está no ar não muda até você publicar.",
+        "restaurarDescripcionConLocales": "É copiada para o seu rascunho e substitui as alterações não publicadas (incluindo as que você ainda não salvou). O que está no ar não muda até você publicar."
+      },
+      "selectorSitio": {
+        "cambiosSinPublicar": "Alterações não publicadas",
+        "sucursalInactiva": "Unidade inativa",
+        "sitioEdita": "Site em edição: {nombreActivo}",
+        "editarSitio": "Editar o site de",
+        "cadaSedePropioSitio": "Cada unidade é seu próprio site, com rascunho e publicação separados. «Herda» usa tudo do principal até você personalizar algo. Nada muda no site até publicar e ativar o V2.",
+        "estado": {
+          "sitioActual": "Site atual",
+          "hereda": "Herda",
+          "v2EnLaWeb": "V2 no ar",
+          "publicado": "Publicado",
+          "borradorV2": "Rascunho V2",
+          "sitioPropio": "Site próprio"
+        },
+        "sitioPrincipal": "Site principal"
+      },
+      "footerLayout": {
+        "default": {
+          "nombre": "Clássico",
+          "descripcion": "4 colunas com logo, links, contato e redes"
+        },
+        "three_columns": {
+          "nombre": "3 colunas",
+          "descripcion": "3 colunas equilibradas com logo e links"
+        },
+        "centered": {
+          "nombre": "Centralizado",
+          "descripcion": "Logo e links centralizados, estilo minimalista"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Uma única linha com links essenciais"
+        },
+        "split": {
+          "nombre": "Dividido",
+          "descripcion": "2 colunas grandes: marca e navegação"
+        }
+      },
+      "headerLayout": {
+        "default": {
+          "nombre": "Clássico",
+          "descripcion": "Logo à esquerda, menu no centro, ações à direita"
+        },
+        "centered": {
+          "nombre": "Logo centralizado",
+          "descripcion": "Logo centralizado em cima, menu abaixo em barra"
+        },
+        "split": {
+          "nombre": "Dividido",
+          "descripcion": "Logo à esquerda, menu dividido esq./dir., CTA à direita"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Só logo + hambúrguer, navegação em painel"
+        },
+        "mega": {
+          "nombre": "Mega menu",
+          "descripcion": "Logo à esquerda, barra de menu abaixo com mega dropdown"
+        }
+      },
+      "chipHerencia": {
+        "heredado": "Herdado do principal",
+        "personalizado": "Personalizado",
+        "vacio": "Vazio nesta unidade",
+        "nuevo": "Só nesta unidade",
+        "compactoHereda": "Herda",
+        "compactoPropia": "Própria"
+      },
+      "zonaGlobal": {
+        "titulo": {
+          "header": "Cabeçalho",
+          "footer": "Rodapé"
+        },
+        "fila": {
+          "header": "Cabeçalho (global)",
+          "footer": "Rodapé (global)"
+        },
+        "pestanas": {
+          "diseno": "Layout",
+          "contenido": "Conteúdo",
+          "estilo": "Estilo",
+          "celular": "Celular"
+        }
       }
     }
   },
@@ -5545,6 +6318,13 @@
     },
     "confirmar": {
       "escribe": "Digite “{texto}” para confirmar"
+    },
+    "telefono": {
+      "cambiarPais": "País do telefone: {pais} ({indicativo}). Alterar país",
+      "buscarPlaceholder": "País, código ISO ou DDI",
+      "buscar": "Buscar país",
+      "paises": "Países",
+      "sinResultados": "Nenhum país encontrado"
     }
   },
   "inventarioEtiquetas": {
@@ -14794,11 +15574,11 @@
       "cuotasDe": "{pendientes} de {total}",
       "acciones": {
         "ver": "Ver conta",
-        "registrarAbono": "Registrar abono",
+        "registrarAbono": "Registrar pagamento",
         "recordatorio": "Enviar lembrete",
         "carteraCliente": "Carteira do cliente"
       },
-      "cobrarA": "Registrar abono de {cliente}",
+      "cobrarA": "Registrar pagamento de {cliente}",
       "recordarA": "Enviar lembrete a {cliente}",
       "venceEl": "Vence {fecha}",
       "vacio": {
@@ -19298,6 +20078,114 @@
       "escanea": "Escaneie para ver o cardápio e pedir",
       "cerrar": "Fechar",
       "imprimir": "Imprimir"
+    },
+    "mesaFormDialog": {
+      "editarMesa": "Editar mesa",
+      "nuevaMesa": "Nova mesa",
+      "nombreMesa": "Nome da mesa *",
+      "ejMesa1Mesa": "Ex.: Mesa 1, Mesa VIP",
+      "seleccionarZona": "Selecionar zona",
+      "nuevaZona": "+ Nova zona",
+      "nombreNuevaZona": "Nome da nova zona",
+      "capacidad": "Capacidade *",
+      "guardando": "Salvando...",
+      "actualizar": "Atualizar",
+      "crear": "Criar"
+    },
+    "combinarMesasDialog": {
+      "combinarMesas": "Combinar mesas",
+      "paso1SeleccionaMesa": "Passo 1: selecione a <b>mesa principal</b> (onde ficarão todos os pedidos).<br></br>Passo 2: selecione as <b2>mesas a combinar</b2> (ficarão livres).",
+      "n1MesaPrincipal": "1. Mesa principal",
+      "recibiraTodosPedidos": "Receberá todos os pedidos",
+      "mesaPrincipal": "{n, plural, one {# mesa} other {# mesas}} → Mesa principal",
+      "n2MesasCombinar": "2. Mesas a combinar",
+      "quedaranLibres": "Ficarão livres",
+      "seleccionaPrimeroMesaPrincipal": "Selecione primeiro uma mesa principal",
+      "combinando": "Combinando..."
+    },
+    "moverPedidoDialog": {
+      "moverPedido": "Mover pedido",
+      "muevePedidoMesaOtra": "Move o pedido de uma mesa para outra. A mesa de origem ficará livre.",
+      "mesaOrigen": "Mesa de origem",
+      "seleccionarMesaPedido": "Selecionar mesa com pedido",
+      "mesaDestino": "Mesa de destino",
+      "seleccionarMesaLibre": "Selecionar mesa livre",
+      "cap": "(Cap.: {capacity})",
+      "pedidoSeraMovidoMesa": "O pedido será movido e a mesa de origem ficará disponível.",
+      "moviendo": "Movendo..."
+    },
+    "historialMesasDialog": {
+      "desde": "De",
+      "hasta": "Até",
+      "todosMeseros": "Todos os garçons",
+      "sesiones": "Sessões",
+      "facturado": "Faturado",
+      "duracionProm": "Duração média",
+      "sesionEncontradaS": "{n, plural, one {# sessão encontrada} other {# sessões encontradas}}",
+      "mesa": "Mesa",
+      "apertura": "Abertura",
+      "cierre": "Fechamento",
+      "duracion": "Duração",
+      "liberada": "Liberada por {userName} · {dateTime}",
+      "productosEliminadosCanceladosEsta": "Produtos excluídos/cancelados nesta sessão",
+      "eliminadoPor": "<b>{cantidad}x {producto}</b> — excluído por <b>{usuario}</b>",
+      "rangos": {
+        "today": "Hoje",
+        "yesterday": "Ontem",
+        "7d": "7 dias",
+        "15d": "15 dias",
+        "30d": "30 dias"
+      },
+      "estados": {
+        "active": "Ativa",
+        "bill_requested": "Conta solicitada",
+        "completed": "Concluída"
+      },
+      "noPudoCargarHistorial": "Não foi possível carregar o histórico das mesas."
+    },
+    "sessionTimelineDialog": {
+      "historialMesa": "Histórico da mesa",
+      "sinEventosRegistradosEsta": "Nenhum evento registrado para esta mesa.",
+      "noPudoCargarHistorial": "Não foi possível carregar o histórico da mesa."
+    },
+    "addProductDialog": {
+      "noPudoCargarReceta": "Não foi possível carregar a receita do produto",
+      "agregadoFavoritos": "Adicionado aos favoritos",
+      "quitadoFavoritos": "Removido dos favoritos",
+      "productoApareceraPrimeroPos": "O produto aparecerá primeiro no PDV.",
+      "productoYaNoPriorizara": "O produto não será mais priorizado.",
+      "noPudoActualizarFavorito": "Não foi possível atualizar o favorito.",
+      "productoSinPrecio": "Produto sem preço",
+      "esteProductoNoTiene": "Este produto não tem preço configurado",
+      "noPudieronAgregarProductos": "Não foi possível adicionar os produtos. Tente novamente.",
+      "sinImagen": "Sem imagem",
+      "agotado": "Esgotado",
+      "personalizable": "Personalizável",
+      "incluido": "Incluído",
+      "unidadesVendidasUltimos90": "{number} unidades vendidas nos últimos 90 dias",
+      "top": "Top",
+      "quitarFavoritos": "Remover dos favoritos",
+      "agregarFavoritos": "Adicionar aos favoritos",
+      "desde": "A partir de",
+      "verRecetaProduccion": "Ver receita de produção",
+      "carrito": "Carrinho",
+      "carritoVacio": "Carrinho vazio",
+      "seleccionaProductosAgregar": "Selecione produtos para adicionar",
+      "comensal": "Comensal:",
+      "general": "Geral",
+      "notas": "Notas...",
+      "habitacion": "Quarto: <b>{space_label}</b>",
+      "cargarHabitacion": "Lançar no quarto",
+      "pagarAhora": "Pagar agora",
+      "agregando": "Adicionando...",
+      "recetaProduccion": "Receita de produção",
+      "rendimiento": "Rendimento",
+      "inactiva": "Inativa",
+      "version": "Versão",
+      "notas2": "Notas",
+      "ingredientes": "Ingredientes ({n})",
+      "opcional": "Opcional",
+      "estaRecetaNoTiene": "Esta receita não tem ingredientes definidos."
     }
   },
   "posReservasMesas": {
@@ -25541,6 +26429,108 @@
     }
   },
   "crm": {
+    "title": "CRM",
+    "metricas": {
+      "title": "Métricas comerciais",
+      "subtitle": "KPIs avançados · Funil · Vendedores · Projeção",
+      "winRate": "Taxa de ganho",
+      "cycleLength": "Ciclo de venda",
+      "cycleLengthUnit": "d",
+      "cycleLengthDesc": "Tempo médio de fechamento",
+      "arpa": "ARPA",
+      "arpaDesc": "Receita média por conta",
+      "pipelineCoverage": "Cobertura do pipeline",
+      "pipelineCoverageDesc": "Razão abertas / ganhas",
+      "openOpportunities": "Oportunidades abertas",
+      "openAmount": "Valor em aberto",
+      "wonAmount": "Valor ganho",
+      "projection": "Projeção (forecast)",
+      "funnelTitle": "Funil de conversão",
+      "globalConversion": "Conversão global",
+      "totalPipeline": "Pipeline total",
+      "weightedForecast": "Previsão ponderada",
+      "bottleneck": "Gargalo",
+      "avgDays": "d em média",
+      "conv": "Conv",
+      "prob": "prob.",
+      "vendorsTitle": "Painel por vendedor",
+      "open": "abertas",
+      "won": "ganhas",
+      "lost": "perdidas",
+      "closeRate": "fechamento",
+      "noFunnelData": "Não há dados de funil disponíveis.",
+      "noVendorData": "Não há dados de vendedores para este período.",
+      "period7d": "Últimos 7 dias",
+      "period30d": "Últimos 30 dias",
+      "period90d": "Últimos 90 dias",
+      "periodYtd": "Ano atual",
+      "periodAll": "Todo o histórico"
+    },
+    "referrals": {
+      "title": "Programa de indicações",
+      "subtitle": "Configure incentivos, elegibilidade e recompensas",
+      "configGeneral": "Configuração geral",
+      "programActive": "Programa ativo",
+      "programActiveDesc": "Ativa ou desativa o programa de indicações",
+      "incentiveType": "Tipo de incentivo",
+      "incentiveValue": "Valor do incentivo",
+      "incentiveDesc": "Descrição",
+      "eligibility": "Elegibilidade",
+      "minPurchase": "Compra mínima",
+      "validForDays": "Válido por (dias)",
+      "newCustomersOnly": "Somente clientes novos",
+      "rewardTo": "Recompensa para",
+      "rewardToReferrer": "Somente quem indica",
+      "rewardToReferred": "Somente o indicado",
+      "rewardToBoth": "Ambos",
+      "rewardDescription": "Descrição da recompensa",
+      "save": "Salvar configuração",
+      "saving": "Salvando...",
+      "registeredReferrals": "Indicações registradas",
+      "noReferrals": "Ainda não há indicações registradas.",
+      "referredBy": "Indicado por",
+      "reward": "Recompensa",
+      "statusPending": "Pendente",
+      "statusCompleted": "Concluído",
+      "statusRewarded": "Recompensado",
+      "statusCancelled": "Cancelado",
+      "discount": "Desconto",
+      "cashback": "Cashback",
+      "credit": "Crédito",
+      "gift": "Presente",
+      "saved": "Programa salvo",
+      "savedDesc": "A configuração do programa de indicações foi salva com sucesso",
+      "statusUpdated": "Status atualizado",
+      "errorLoad": "Não foi possível carregar o programa de indicações",
+      "errorSave": "Não foi possível salvar o programa de indicações",
+      "errorStatus": "Não foi possível atualizar o status"
+    },
+    "followup": {
+      "title": "Sequências de acompanhamento",
+      "running": "Executando sequências...",
+      "completed": "Concluído",
+      "actionsExecuted": "ações executadas",
+      "error": "Erro na execução"
+    },
+    "ia": {
+      "nextAction": "Próxima ação recomendada",
+      "reasoning": "Raciocínio",
+      "priority": "Prioridade",
+      "priorityHigh": "Alta",
+      "priorityMedium": "Média",
+      "priorityLow": "Baixa",
+      "discoverySummary": "Resumo de descoberta",
+      "summary": "Resumo",
+      "keyPoints": "Pontos-chave",
+      "nextSteps": "Próximos passos",
+      "sentiment": "Sentimento",
+      "sentimentPositive": "Positivo",
+      "sentimentNeutral": "Neutro",
+      "sentimentNegative": "Negativo",
+      "errorNoOpportunity": "opportunityId é obrigatório",
+      "errorNotFound": "Não foi possível obter as informações da oportunidade",
+      "errorNoKey": "Configuração de IA indisponível"
+    },
     "kit": {
       "acciones": {
         "barra": "Ações rápidas",
@@ -27461,6 +28451,393 @@
           "enviar": "Enviar mensagem",
           "reiniciar": "Reiniciar"
         }
+      },
+      "myVoicesPanel": {
+        "noPudoReproducir": "Não foi possível reproduzir",
+        "ahoraVozDefecto": "«{name}» agora é a voz padrão",
+        "usaranAgentesNoTengan": "Os agentes sem voz própria vão usá-la.",
+        "noPudoMarcarDefecto": "Não foi possível definir como padrão",
+        "noPudoAsignarVoz": "Não foi possível atribuir a voz",
+        "borrada": "«{name}» excluída",
+        "tambienEliminoElevenlabs": "Também foi excluída no ElevenLabs.",
+        "noPudoBorrarVoz": "Não foi possível excluir a voz",
+        "ningunaVozEstandarGoogle": "nenhuma (voz padrão do Google)",
+        "vozAsignadaEseAgente": "A voz atribuída a esse agente (aqui com «Atribuir a um agente» ou no editor dele).",
+        "siNoTieneMarcada": "Se não tiver, a marcada como <b>Padrão</b>.",
+        "siTampocoHayVoz": "Se também não houver, a voz padrão do Google do Twilio: funciona, mas soa genérica.",
+        "noPudoLeerLista": "Não foi possível ler a lista de agentes: {agentsError}. Você poderá atribuir vozes quando ela recarregar. <b>Tentar novamente</b>",
+        "cargandoMisVoces": "Carregando minhas vozes",
+        "noPudoCargarCatalogo": "Não foi possível carregar o catálogo de vozes",
+        "todaviaNoTienesVoces": "Você ainda não tem vozes salvas.",
+        "eligeBibliotecaClonaTuya": "Escolha uma da biblioteca ou clone a sua. Enquanto isso, os agentes ligam com a voz padrão.",
+        "explorarBiblioteca": "Explorar a biblioteca",
+        "clonarMiVoz": "Clonar minha voz",
+        "masOpcionesImportarWorkspace": "Mais opções: importar o workspace do ElevenLabs ou registrar uma voz pelo identificador",
+        "borrarVoz": "Excluir a voz «{n}»?",
+        "borrarVoz2": "Excluir voz",
+        "vozDefectoComo": "Voz padrão: <b>{voz}</b>. Como a voz de uma ligação é escolhida?",
+        "asignadaA": "«{voz}» atribuída a {agente}",
+        "elAgente": "o agente"
+      },
+      "voiceAddForms": {
+        "faltanNombreIdentificadorVoz": "Faltam o nome e o identificador da voz",
+        "faltaConsentimiento": "Falta o consentimento",
+        "vozClonadaSoloPuede": "Uma voz clonada só pode ser registrada com o consentimento do proprietário.",
+        "vozRegistrada": "Voz registrada",
+        "yaPuedesAsignarselaAgente": "Agora você pode atribuí-la a um agente.",
+        "noPudoRegistrarVoz": "Não foi possível registrar a voz",
+        "errorDesconocido": "Erro desconhecido",
+        "importadasVoces": "{n} vozes importadas",
+        "elevenlabsNoDevolvioNinguna": "O ElevenLabs não retornou nenhuma voz",
+        "eligeMarcalaDefectoAsignasela": "Escolha uma e defina como padrão ou atribua a um agente.",
+        "elevenlabsRechazoPeticion": "O ElevenLabs recusou a solicitação",
+        "traerVocesYaExisten": "Trazer as vozes que já existem no ElevenLabs",
+        "copiaEsteCatalogoVoces": "Copia para este catálogo as vozes que já estão no seu workspace do ElevenLabs (as que você adicionou pelo site do provedor ou clonou lá). Para explorar a biblioteca pública use a aba Biblioteca.",
+        "importarElevenlabs": "Importar do ElevenLabs",
+        "desactivado": "Desativado:",
+        "configurarla": "Configurá-la",
+        "registrarVozIdentificador": "Registrar uma voz pelo identificador",
+        "siYaSabesIdentificador": "Se você já sabe o identificador da voz no ElevenLabs, cole aqui e ela ficará disponível para os agentes sem importar todo o catálogo.",
+        "nombre": "Nome",
+        "vozCamilo": "Voz do Camilo",
+        "identificadorVozElevenlabs": "Identificador de voz (ElevenLabs)",
+        "vozClonadaPersonaEquipo": "É uma voz clonada de uma pessoa da equipe",
+        "confirmoPersonaPropietariaVoz": "Confirmo que a pessoa dona da voz deu consentimento por escrito e que não é a voz de terceiros (Lei colombiana 1581 de 2012 e política do ElevenLabs).",
+        "registrarVoz": "Registrar voz",
+        "necesitaClaveElevenlabs": "É preciso uma chave válida do ElevenLabs em Provedores e IA."
+      },
+      "agentVoiceTab": {
+        "noPudoReproducir": "Não foi possível reproduzir",
+        "vozEsteAgente": "Voz deste agente",
+        "cargandoCatalogoVoces": "Carregando o catálogo de vozes",
+        "noPudoCargarCatalogo": "Não foi possível carregar o catálogo de vozes: {error}",
+        "vozDefectoOrganizacion": "Voz padrão da organização",
+        "ahora": "Agora é «{name}»",
+        "ningunaMarcadaVozEstandar": "Nenhuma marcada: voz padrão do Google",
+        "inactivaAgenteNoUsara": "Inativa: o agente não vai usá-la",
+        "todaviaNoHayVoces": "Ainda não há vozes no catálogo.",
+        "anadeBibliotecaClonaTuya": "Adicione uma da biblioteca ou clone a sua. Enquanto isso, este agente ligará com a voz padrão do Google.",
+        "faltaClaveVozSintetica": "Falta a chave de voz sintética (TTS): sem ela não é possível adicionar nem clonar nenhuma voz.",
+        "anadeVozCatalogo": "Adicione uma voz do catálogo",
+        "guardarClaveVoz": "Salvar a chave de voz",
+        "actualizando": "Atualizando…",
+        "vozClonadaExigeConsentimiento": "Uma voz clonada exige consentimento registrado do proprietário (Lei colombiana 1581 de 2012).",
+        "idioma": "Idioma",
+        "codigoPEjCo": "Código, p. ex. es-CO",
+        "transcripcion": "Transcrição",
+        "defectoTwilio": "Padrão do Twilio",
+        "quienConvierteVozTexto": "Quem converte a voz em texto",
+        "avanzadoIdentificadorVozSuelto": "Avançado: identificador de voz avulso",
+        "identificadorVozSueltoOpcional": "Identificador de voz avulso (opcional)",
+        "salidaEmergenciaSoloEntra": "Saída de emergência: só entra em jogo quando a seleção acima não resolve para nenhuma voz ativa.",
+        "resumen": {
+          "agente": "Este agente falará com «{voz}».",
+          "defecto": "Sem voz própria: falará com a voz padrão da organização, «{voz}».",
+          "suelto": "Falará com o identificador avulso {id} (não está no catálogo).",
+          "ninguna": "Nenhuma voz escolhida nem padrão: falará com a voz padrão do Google."
+        }
+      },
+      "agentCampaignsPanel": {
+        "campanaNecesitaNombre": "A campanha precisa de um nome",
+        "primeroCreaAgente": "Crie um agente primeiro",
+        "campanaNecesitaAgenteLlame": "A campanha precisa de um agente que ligue.",
+        "campanaCreadaBorrador": "Campanha criada como rascunho",
+        "activalaCuandoQuierasEmpiece": "Ative quando quiser que comece a ligar.",
+        "noPudoCrearCampana": "Não foi possível criar a campanha",
+        "noPudoActualizar": "Não foi possível atualizar",
+        "nuevaCampana": "Nova campanha",
+        "nombre": "Nome",
+        "ejSeguimientoPropuestas": "Ex. Acompanhamento de propostas",
+        "agenteLlama": "Agente que liga",
+        "inactivo": "(inativo)",
+        "noHayAgentesCrea": "Não há agentes: crie um na aba «Agentes» antes de lançar uma campanha.",
+        "crearCampana": "Criar campanha",
+        "cargandoCampanas": "Carregando campanhas…",
+        "noPudieronCargarCampanas": "Não foi possível carregar as campanhas",
+        "todaviaNoHayCampanas": "Ainda não há campanhas.",
+        "respuestaNoIndicoExito": "A resposta não indicou sucesso",
+        "error": "Erro {status}",
+        "campanaActivada": "Campanha ativada",
+        "campanaDetenida": "Campanha interrompida"
+      },
+      "myVoiceCard": {
+        "defecto": "Padrão",
+        "inactiva": "Inativa",
+        "borrarVoz": "Excluir a voz {name}",
+        "etiquetas": "Etiquetas",
+        "usan": "Usada por: {agentes}",
+        "usanTodosAgentesSin": "Usada por todos os agentes sem voz própria.",
+        "todaviaNoUsaNingun": "Nenhum agente a usa ainda.",
+        "consentimientoRegistrado": "consentimento registrado",
+        "detallesTecnicos": "Detalhes técnicos",
+        "identificador": "Identificador",
+        "copiarIdentificador": "Copiar o identificador de {name}",
+        "modelo": "Modelo",
+        "proveedor": "Provedor",
+        "descripcion": "Descrição",
+        "usarDefecto": "Usar {name} como padrão",
+        "asignarVozAgente": "Atribuir a voz {name} a um agente",
+        "asignarAgente": "Atribuir a um agente…",
+        "yaUsa": "· já a usa",
+        "identificadorCopiado": "Identificador copiado",
+        "noPudoCopiarIdentificador": "Não foi possível copiar o identificador"
+      },
+      "voiceLibraryFilters": {
+        "buscarNombreAcentoEstilo": "Buscar por nome, sotaque ou estilo…",
+        "buscarVozNombreDescripcion": "Buscar voz por nome ou descrição",
+        "filtros": "Filtros",
+        "n1Activo": "1 ativo",
+        "activos": "{selectCount} ativos",
+        "idioma": "Idioma",
+        "todosIdiomas": "Todos os idiomas",
+        "generoVoz": "Gênero da voz",
+        "genero": "Gênero",
+        "cualquierGenero": "Qualquer gênero",
+        "casoUso": "Caso de uso",
+        "cualquierUso": "Qualquer uso",
+        "filtrosActivos": "Filtros ativos",
+        "quitarFiltro": "Remover filtro {label}",
+        "limpiarFiltros": "Limpar filtros",
+        "espanolPrimeroCambiaIdioma": "Espanhol primeiro. Mude o idioma, o gênero ou o uso para refinar.",
+        "conteo": "{n} de {total, number} vozes"
+      },
+      "cloneVoiceWizard": {
+        "vozCreada": "Voz «{name}» criada",
+        "yaEstaTusVoces": "«{name}» já está nas suas vozes",
+        "elevenlabsPideVerificarVoz": "O ElevenLabs pede para verificar a voz antes de usá-la em ligações.",
+        "escuchalaMisVocesMarcala": "Ouça em Minhas vozes, defina como padrão ou atribua a um agente.",
+        "clonarOtraVoz": "Clonar outra voz",
+        "planActualElevenlabsNo": "O plano atual do ElevenLabs ({tier}) não permite clonar vozes",
+        "puedesGrabarEscucharMuestra": "Você pode gravar e ouvir a amostra, mas «Criar minha voz» ficará desativado: é preciso pelo menos o plano Starter na conta cuja chave está configurada.",
+        "paso4": "Passo {step} de 4 · {valor}",
+        "noPudoCrearVoz": "Não foi possível criar a voz",
+        "puedesIntentarloNuevoMuestras": "{serverError} Você pode tentar de novo; as amostras continuam aqui.",
+        "atras": "Voltar",
+        "continuar": "Continuar",
+        "creandoVoz": "Criando a voz…",
+        "crearMiVoz": "Criar minha voz",
+        "planActualElevenlabsNo2": "O plano atual do ElevenLabs ({tier}) não permite clonar vozes.",
+        "maximoMuestras": "No máximo {max} amostras: foram usadas as {n} primeiras.",
+        "faltaMuestraAudio": "Falta a amostra de áudio."
+      },
+      "agentPurposeTab": {
+        "nombre": "Nome",
+        "ejAnaAsistenteComercial": "Ex. Ana, assistente comercial",
+        "modeloLenguaje": "Modelo de linguagem",
+        "cargandoModelosDisponibles": "Carregando os modelos disponíveis…",
+        "nombreModelo": "Nome do modelo",
+        "noPudoLeerCatalogo": "Não foi possível ler o catálogo de modelos ({error}); digite o nome manualmente.",
+        "ningunProveedorIaTiene": "Nenhum provedor de IA tem credenciais: digite o nome manualmente ou configure em Provedores e IA.",
+        "eligeModelo": "Escolha um modelo",
+        "recomendado": "Recomendado",
+        "soloAparecenModelosProveedores": "Só aparecem os modelos de provedores com credenciais nesta organização.",
+        "topesLlamada": "Limites por ligação",
+        "turnos": "Turnos",
+        "intercambiosComoMaximo": "Trocas no máximo",
+        "segundos": "Segundos",
+        "duracionMaximaLlamada": "Duração máxima da ligação",
+        "agenteActivo": "Agente ativo",
+        "propositos": {
+          "sell_product": "Vender um produto",
+          "book_meeting": "Agendar uma reunião",
+          "qualify_lead": "Qualificar contato",
+          "confirm_demo": "Confirmar demo",
+          "follow_up_proposal": "Acompanhamento de proposta",
+          "reactivate_cold": "Reativar contato frio",
+          "collect_payment": "Cobrança",
+          "nps_survey": "Pesquisa NPS",
+          "renewal_reminder": "Lembrar renovação",
+          "custom": "Personalizado"
+        }
+      },
+      "voiceLibraryGrid": {
+        "noPudoReproducir": "Não foi possível reproduzir",
+        "yaEstabaTusVoces": "«{name}» já estava nas suas vozes",
+        "anadidaTusVoces": "«{name}» adicionada às suas vozes",
+        "puedesMarcarlaDefectoAsignarsela": "Você pode defini-la como padrão ou atribuí-la a um agente na aba Minhas vozes.",
+        "noPudoAnadirVoz": "Não foi possível adicionar a voz",
+        "cargandoVoces": "Carregando vozes",
+        "noPudoCargarBiblioteca": "Não foi possível carregar a biblioteca do ElevenLabs",
+        "ningunaVozCoincideEsos": "Nenhuma voz corresponde a esses filtros.",
+        "pruebaOtraPalabraQuita": "Tente outra palavra ou remova algum filtro.",
+        "limpiarFiltros": "Limpar filtros",
+        "vocesBiblioteca": "Vozes da biblioteca",
+        "cargandoMasVoces": "Carregando mais vozes…",
+        "cargarMasVoces": "Carregar mais vozes"
+      },
+      "campaignTargetPicker": {
+        "cargandoEmbudos": "Carregando funis…",
+        "noPudieronLeerEmbudos": "Não foi possível ler os funis ({error}). A campanha será criada como lista manual.",
+        "noHayEmbudosEsta": "Não há funis nesta organização: a campanha será criada como lista manual.",
+        "eligeEmbudo": "Escolha um funil",
+        "sinEmbudoListaManual": "Sem funil (lista manual)",
+        "etapaLlamar": "Etapa para ligar",
+        "eligeEtapa": "Escolha uma etapa",
+        "primeroEligeEmbudo": "Escolha primeiro um funil",
+        "ningunaListaManual": "Nenhuma (lista manual)",
+        "agenteLlamaraOportunidadesAbiertas": "O agente ligará para as oportunidades abertas dessa etapa.",
+        "contandoOportunidadesAbiertas": "Contando oportunidades abertas…",
+        "oportunidadesAbiertasEtapa": "{n, plural, one {# oportunidade aberta nesta etapa agora.} other {# oportunidades abertas nesta etapa agora.}}"
+      },
+      "cloneStepRecord": {
+        "leeEsteGuionVoz": "Leia este roteiro em voz alta",
+        "minHablaNaturalSin": "≈ {clock} min · fale naturalmente, sem pressa",
+        "grabadora": "Gravador",
+        "tiempoGrabado": "Tempo gravado {clock}",
+        "avanceRespectoDuracionRecomendada": "Progresso em relação à duração recomendada",
+        "detener": "Parar",
+        "grabarOtraMuestra": "Gravar outra amostra",
+        "grabar": "Gravar",
+        "muestrasListasEnviar": "Amostras prontas para enviar",
+        "muestra": "Amostra {i} · {describeSample}",
+        "quitarMuestra": "Remover a amostra {n}",
+        "sinMicrofonoSubeHasta": "Sem microfone? Envie até {MAX_CLONE_SAMPLES} arquivos de áudio (mp3, wav, m4a, ogg ou webm; máximo 10 MB cada)"
+      },
+      "useAgentForm": {
+        "noPudoCargarAgente": "Não foi possível carregar o agente",
+        "errorDesconocido": "Erro desconhecido",
+        "agenteNecesitaNombre": "O agente precisa de um nome",
+        "eligeModeloLenguaje": "Escolha o modelo de linguagem",
+        "estaPasoPropositoSi": "Fica no passo Propósito. Se o catálogo não carregou, digite o nome manualmente.",
+        "agenteActualizado": "Agente atualizado",
+        "agenteCreado": "Agente criado",
+        "noPudoGuardar": "Não foi possível salvar"
+      },
+      "cloneStepReview": {
+        "quitar": "Remover a {label}",
+        "quitar2": "Remover",
+        "muestraGrabadaVoz": "{label}, amostra gravada da sua voz",
+        "muestraLista": "Uma amostra pronta",
+        "muestrasListas": "{n} amostras prontas",
+        "minTotal": "min no total",
+        "siOyeRuidoFondo": "Se houver ruído de fundo, cortes ou a leitura saiu apressada, remova e grave de novo: a voz clonada vai copiar exatamente o que você ouvir aqui. Com duas ou três amostras o clone fica melhor.",
+        "muestrasGrabadas": "Amostras gravadas",
+        "grabarOtraMuestra": "Gravar outra amostra"
+      },
+      "voiceCard": {
+        "etiquetas": "Etiquetas",
+        "planPago": "Plano pago",
+        "noPuedeAnadirPlan": "Não pode ser adicionada com o plano gratuito do ElevenLabs desta conta.",
+        "soloPuedeAnadirPlan": "Só pode ser adicionada com um plano pago do ElevenLabs.",
+        "misVoces": "Nas minhas vozes",
+        "anadirMisVoces": "Adicionar {name} às minhas vozes",
+        "anadir": "Adicionar",
+        "usadaPor": "usada por {n, number}"
+      },
+      "cloneStepName": {
+        "voz": "Sua voz",
+        "muestra": "uma amostra",
+        "muestras": "{n} amostras",
+        "nombreVoz": "Nome da voz",
+        "ejemploVozCamilaVentas": "Por exemplo: Voz da Camila (vendas)",
+        "asiVerasMisVoces": "É assim que você a verá em Minhas vozes e no editor de agentes.",
+        "usarlaComoVozDefecto": "Usá-la como voz padrão da organização (os agentes sem voz própria ligarão com ela)."
+      },
+      "campaignCard": {
+        "destino": "Destino",
+        "topes": "Limites",
+        "diaHoraVez": "{max_calls_per_day}/dia · {max_calls_per_hour}/hora · {max_concurrent} por vez",
+        "paradaEmergencia": "Parada de emergência"
+      },
+      "agentScriptTab": {
+        "seaCualSeaEste": "Seja qual for este roteiro, o agente sempre se identifica como assistente virtual, avisa da gravação, respeita a recusa voluntária e não fecha vendas por conta própria.",
+        "primeraFrase": "Primeira frase",
+        "comoIdentificaComoIa": "Como se identifica como IA",
+        "leAtiendeAsistenteVirtual": "Você está falando com um assistente virtual com inteligência artificial.",
+        "instruccionesAgente": "Instruções do agente",
+        "primerMensajeEjemplo": "Estou ligando da '{{'org'}}' sobre a sua solicitação. Tem um minuto?"
+      },
+      "voicePreviewButton": {
+        "detenerMuestra": "Parar a amostra de {voiceName}",
+        "escucharMuestra": "Ouvir uma amostra de {voiceName}",
+        "detener": "Parar",
+        "escuchar": "Ouvir"
+      },
+      "voicesPanel": {
+        "faltaClaveElevenlabsPuedes": "Falta a chave do ElevenLabs: você pode explorar a biblioteca, mas não adicionar, clonar nem usar vozes em ligações até salvá-la em",
+        "configuracionCrmProveedoresE": "Configurações › CRM › Provedores e IA",
+        "noPudoComprobarSi": "Não foi possível verificar se há chave do ElevenLabs configurada (falhou a leitura de Provedores e IA). Adicionar, clonar ou ouvir podem falhar com o erro do provedor."
+      },
+      "agentToolsTab": {
+        "puedeHacerAgenteDurante": "O que o agente pode fazer durante a ligação. Cada etapa do funil pode restringir mais esta lista.",
+        "obligatoriaLey": "Obrigatória por lei",
+        "registrarNoMeVuelva": "Registrar um «não me ligue mais» e poder desligar são obrigatórios (Lei colombiana 1581 de 2012). Não podem ser desativados nem restringidos na etapa do funil.",
+        "herramientas": {
+          "get_customer_context": "Consultar a ficha do cliente",
+          "move_opportunity_stage": "Mudar de etapa (não pode fechar)",
+          "update_opportunity_field": "Atualizar dados da oportunidade",
+          "create_task": "Criar tarefa de acompanhamento",
+          "book_meeting": "Agendar reunião",
+          "schedule_callback": "Agendar retorno de ligação",
+          "log_objection": "Registrar objeção",
+          "send_payment_link": "Preparar link de pagamento",
+          "log_consent_opt_out": "Registrar recusa voluntária",
+          "transfer_to_human": "Transferir para uma pessoa",
+          "end_call": "Encerrar a ligação"
+        }
+      },
+      "cloneStepConsent": {
+        "consentimientoClonarVozHabeas": "Consentimento para clonar uma voz (Habeas Data)",
+        "heLeidoTextoAnterior": "Li o texto acima e confirmo que a voz que vou gravar é minha ou que tenho o consentimento por escrito do proprietário.",
+        "pasos": {
+          "leer": "Você lê em voz alta um roteiro curto que verá na tela; a gravação é feita aqui mesmo.",
+          "elevenlabs": "A gravação vai para o ElevenLabs, que cria uma réplica da sua voz em poucos segundos.",
+          "duracion": "Leva menos de {minutos} minutos. O áudio não é guardado nesta plataforma."
+        }
+      },
+      "cloneStepIndicator": {
+        "pasosClonarVoz": "Passos para clonar a voz",
+        "completado": "(concluído)",
+        "pasoActual": "(passo atual)",
+        "titulos": {
+          "1": "Consentimento",
+          "2": "Gravar o roteiro",
+          "3": "Ouvir",
+          "4": "Nomear e criar"
+        }
+      },
+      "voicePickCard": {
+        "defecto": "Padrão",
+        "consentimientoRegistrado": "Consentimento registrado"
+      },
+      "useVoiceRecorder": {
+        "esteNavegadorNoSoporta": "Este navegador não suporta gravação de áudio. Envie um arquivo no lugar.",
+        "permisoDenegado": "Permissão de microfone negada. Ative no navegador para gravar.",
+        "sinMicrofono": "Nenhum microfone encontrado. Conecte um ou envie um arquivo.",
+        "noAcceso": "Não foi possível acessar o microfone."
+      },
+      "voiceAvatar": {
+        "avatarVoz": "Avatar da voz {name}"
+      },
+      "useVoiceCatalog": {
+        "errorLeerCatalogoVoces": "Erro {status} ao ler o catálogo de vozes"
+      },
+      "agentModels": {
+        "gamas": {
+          "economico": "Econômico",
+          "equilibrado": "Equilibrado",
+          "premium": "Premium",
+          "legacy": "Antigo"
+        },
+        "fueraDeCatalogo": "Salvo no agente, mas não está mais no catálogo",
+        "noPudoCargarCatalogo": "Não foi possível carregar o catálogo de modelos"
+      },
+      "campaignModel": {
+        "estados": {
+          "draft": "Rascunho",
+          "scheduled": "Agendada",
+          "running": "Em andamento",
+          "paused": "Em pausa",
+          "completed": "Concluída",
+          "detenida": "Interrompida"
+        },
+        "paradaConMotivo": "Parada de emergência: {motivo}",
+        "parada": "Parada de emergência",
+        "motivo": "Motivo: {motivo}",
+        "listaManual": "Lista manual",
+        "etapaYaNoExiste": "Etapa do funil (não existe mais)",
+        "etapaEmbudo": "Etapa {etapa} · {embudo}",
+        "etapa": "Etapa {etapa}"
       }
     },
     "equipo": {
@@ -27470,6 +28847,126 @@
         "asignar": "Atribuir oportunidades",
         "performance": "Desempenho",
         "territorios": "Territórios"
+      },
+      "equiposTab": {
+        "error": "Erro",
+        "noPudieronCargarEquipos": "Não foi possível carregar as equipes",
+        "validacion": "Validação",
+        "nombreObligatorio": "O nome é obrigatório",
+        "equipoActualizado": "Equipe atualizada",
+        "equipoCreado": "Equipe criada",
+        "noPudoGuardar": "Não foi possível salvar",
+        "seleccionaMiembro": "Selecione um membro",
+        "miembroAnadido": "Membro adicionado",
+        "noPudoAnadir": "Não foi possível adicionar",
+        "miembroRemovido": "Membro removido",
+        "noPudoRemover": "Não foi possível remover",
+        "equipoEliminado": "Equipe excluída",
+        "noPudoEliminar": "Não foi possível excluir",
+        "nuevoEquipo": "Nova equipe",
+        "noHayEquipos": "Não há equipes",
+        "creaPrimerEquipoComercial": "Crie sua primeira equipe comercial",
+        "cuotaTotal": "Cota total: {moneda}",
+        "sinMiembrosAnadePrimero": "Sem membros. Adicione o primeiro.",
+        "cuota": "Cota: {moneda}",
+        "anadirMiembro": "Adicionar membro",
+        "eliminarEquipo": "Excluir equipe?",
+        "eliminaraTodosSusMiembros": "\"{name}\" e todos os seus membros serão excluídos."
+      },
+      "territoriosTab": {
+        "noPudieronCargarTerritorios": "Não foi possível carregar os territórios",
+        "territorioActualizado": "Território atualizado",
+        "territorioCreado": "Território criado",
+        "territorioEliminado": "Território excluído",
+        "nuevoTerritorio": "Novo território",
+        "noHayTerritoriosConfigurados": "Nenhum território configurado",
+        "oport": "Oport.",
+        "valor": "Valor",
+        "equipos": "Equipes:",
+        "eliminarTerritorio": "Excluir território?",
+        "eliminara": "\"{name}\" será excluído.",
+        "jsonInvalido": "JSON inválido"
+      },
+      "asignarTab": {
+        "noPudieronCargarOportunidades": "Não foi possível carregar as oportunidades: {describeError}",
+        "equipoAsignado": "Equipe atribuída",
+        "noPudoAsignar": "Não foi possível atribuir",
+        "vendedorAsignado": "Vendedor atribuído",
+        "todosEquipos": "Todas as equipes",
+        "soloSinAsignar": "Só sem atribuição",
+        "noHayOportunidadesAsignar": "Não há oportunidades para atribuir",
+        "oportunidad": "Oportunidade",
+        "cliente": "Cliente",
+        "monto": "Valor",
+        "etapa": "Etapa",
+        "equipo": "Equipe",
+        "vendedor": "Vendedor",
+        "sinEquipo": "Sem equipe",
+        "sinAsignar": "Sem atribuição"
+      },
+      "performanceTab": {
+        "noPudoCargarPerformance": "Não foi possível carregar o desempenho",
+        "noHayMiembrosEquipos": "Não há membros em equipes para mostrar o desempenho",
+        "asignaMiembrosDesdeTab": "Atribua membros pela aba Equipes",
+        "activas": "Ativas",
+        "ganadas": "Ganhas",
+        "ganado": "Ganho",
+        "rol": "Função",
+        "perdidas": "Perdidas",
+        "cuota": "Cota"
+      },
+      "memberDialog": {
+        "seleccionaMiembroOrganizacion": "Selecione um membro da organização",
+        "miembro": "Membro *",
+        "selecciona": "Selecione...",
+        "sinRol": "Sem função",
+        "territorioOpcional": "Território (opcional)",
+        "heredaEquipo": "Herda da equipe",
+        "moneda": "Moeda",
+        "cancelar": "Cancelar",
+        "anadiendo": "Adicionando...",
+        "anadir": "Adicionar"
+      },
+      "teamDialog": {
+        "editarEquipo": "Editar equipe",
+        "nuevoEquipo": "Nova equipe",
+        "modificaDatosEquipoComercial": "Altere os dados da equipe comercial",
+        "creaNuevoEquipoComercial": "Crie uma nova equipe comercial",
+        "nombre": "Nome *",
+        "ejEquipoNorte": "Ex.: Equipe Norte",
+        "descripcion": "Descrição",
+        "sinTerritorio": "Sem território",
+        "activo": "Ativo",
+        "guardando": "Salvando...",
+        "guardar": "Salvar"
+      },
+      "territoryDialog": {
+        "editarTerritorio": "Editar território",
+        "nuevoTerritorio": "Novo território",
+        "modificaDatosTerritorio": "Altere os dados do território",
+        "creaNuevoTerritorioComercial": "Crie um novo território comercial",
+        "ejZonaNorte": "Ex.: Zona Norte",
+        "criteriosJson": "Critérios (JSON)"
+      },
+      "equipoSidebar": {
+        "pipelineActivo": "Pipeline ativo",
+        "oportunidadesAbiertas": "{openOpps} oportunidades abertas",
+        "equiposActivos": "Equipes ativas",
+        "miembros": "Membros",
+        "oportunidadesAbiertas2": "Oportunidades abertas",
+        "accesoRapido": "Acesso rápido",
+        "irPipeline": "Ir para o Pipeline",
+        "verOportunidades": "Ver oportunidades",
+        "configurarEstructura": "Configurar estrutura"
+      },
+      "equipoPage": {
+        "equipoComercial": "Equipe comercial",
+        "revops": "RevOps",
+        "gestionComercial": "Gestão comercial",
+        "equiposOportunidadesTerritorios": "Equipes, oportunidades e territórios"
+      },
+      "deleteConfirmDialog": {
+        "eliminar": "Excluir"
       }
     },
     "automatizaciones": {
@@ -27500,6 +28997,242 @@
         "sinNombre": "Registro sem nome",
         "noDisponible": "O registro não existe mais ou não está visível",
         "yMas": "E mais {n}…"
+      },
+      "dryRunDialog": {
+        "probarSeco": "Testar sem executar «{name}»",
+        "eligeOportunidadVerasHaria": "Escolha uma oportunidade e você verá o que a regra faria com ela. Nada é enviado, nada muda e não fica no histórico.",
+        "noPudoProbar": "Não foi possível testar",
+        "oportunidad": "Oportunidade",
+        "buscarNombre": "Buscar por nome…",
+        "elegida": "Escolhida: {selectedName}",
+        "sinElegirEvaluaSin": "Sem escolher: é avaliada sem oportunidade (só o gatilho e as condições que não precisam dela).",
+        "resultadosBusqueda": "Resultados da busca",
+        "sinOportunidad": "Sem oportunidade",
+        "ningunaOportunidadCoincide": "Nenhuma oportunidade corresponde.",
+        "reglaDispararia": "A regra seria disparada",
+        "reglaNoDispararia": "A regra não seria disparada",
+        "condiciones": "Condições",
+        "cumple": "Cumprida",
+        "noCumple": "Não cumprida",
+        "valorReal": "— valor real: {actualText}",
+        "hariaEsteOrden": "Faria, nesta ordem",
+        "hariaSiDisparara": "Faria se fosse disparada",
+        "nadaReglaNoTiene": "Nada: a regra não tem ações.",
+        "noDisponibleFallaria": "(indisponível: falharia)",
+        "cerrar": "Fechar",
+        "probando": "Testando…",
+        "probarNuevo": "Testar de novo",
+        "probar": "Testar",
+        "vacio": "vazio",
+        "si": "sim",
+        "no": "não"
+      },
+      "automatizacionesPage": {
+        "desactivada": "«{name}» desativada",
+        "activada": "«{name}» ativada",
+        "noPudoCambiarEstado": "Não foi possível mudar o status",
+        "errorDesconocido": "Erro desconhecido",
+        "eliminada": "«{name}» excluída",
+        "noPudoEliminar": "Não foi possível excluir",
+        "automatizaciones": "Automações",
+        "reglasActuanSolasCuando": "Regras que agem sozinhas quando algo acontece no pipeline. Quem as executa é o servidor, não o navegador.",
+        "actualizarLista": "Atualizar lista",
+        "historial": "Histórico",
+        "nuevaRegla": "Nova regra",
+        "noPudoActualizarLista": "Não foi possível atualizar a lista",
+        "noPudieronCargarReglas": "Não foi possível carregar as regras",
+        "muestraUltimaListaConocida": "É exibida a última lista conhecida; toque em",
+        "pulsa": "Toque em",
+        "actualizarReintentar": "{error}. {valor} «Atualizar» para tentar novamente.",
+        "cargandoReglas": "Carregando regras",
+        "reglasAutomatizacion": "Regras de automação",
+        "eliminarRegla": "Excluir regra",
+        "eliminaraDejaraEjecutarseTambien": "«{n}» será excluída e deixará de ser executada. O histórico de execuções também é apagado. Esta ação não pode ser desfeita.",
+        "eliminar": "Excluir"
+      },
+      "actionChipEditor": {
+        "sinPlantillaContenidoLibre": "Sem modelo (conteúdo livre)",
+        "noHayPlantillasCreadas": "Nenhum modelo criado.",
+        "eligeSecuencia": "Escolha uma sequência",
+        "noHaySecuenciasCreadas": "Nenhuma sequência criada.",
+        "eligeEtapa": "Escolha uma etapa",
+        "noHayEtapasCreadas": "Nenhuma etapa criada.",
+        "eligeCampo": "Escolha um campo",
+        "cargando": "Carregando…",
+        "accion": "Ação {index}",
+        "noDisponible": "{label} (indisponível)",
+        "subirAccion": "Subir a ação {n}",
+        "bajarAccion": "Descer a ação {n}",
+        "quitar": "Remover",
+        "estaAccionTodaviaNo": "Esta ação ainda não está disponível: se você a mantiver, a execução ficará marcada como falha.",
+        "entidades": {
+          "opportunities": "Oportunidade",
+          "customers": "Cliente",
+          "tasks": "Tarefa"
+        }
+      },
+      "runsSheet": {
+        "historial": "Histórico de «{ruleName}»",
+        "historialTodasReglas": "Histórico de todas as regras",
+        "ultimas50EjecucionesReales": "As últimas 50 execuções reais do servidor. Os testes sem executar não são registrados aqui.",
+        "actualizar": "Atualizar",
+        "noPudoCargarHistorial": "Não foi possível carregar o histórico",
+        "pulsaActualizarReintentar": "{error} — toque em «Atualizar» para tentar novamente.",
+        "cargandoHistorial": "Carregando histórico",
+        "todaviaNoHayEjecuciones": "Ainda não há execuções. Quando a regra for disparada, aparecerão aqui.",
+        "estado": "Status",
+        "fecha": "Data",
+        "detalle": "Detalhe",
+        "ok": "— ok",
+        "sinDetalle": "sem detalhe",
+        "errorDetalle": " — erro: {error}"
+      },
+      "triggerBlock": {
+        "disparador": "Gatilho",
+        "evento": "Evento",
+        "eligeUnoConocidoEscribe": "Escolha um conhecido ou escreva outro no formato entidade.acao. Vazio = qualquer evento.",
+        "vaPropioDisparadorCambia": "«{muted}» tem seu próprio gatilho («muda de etapa» ou «muda um dado»): com «{label}» esta regra nunca seria disparada. Escolha outro evento ou mude o gatilho.",
+        "pipeline": "No pipeline",
+        "cargandoPipelines": "Carregando pipelines…",
+        "cualquierPipeline": "Qualquer pipeline",
+        "noHayPipelinesCreados": "Nenhum pipeline criado.",
+        "entrarEtapa": "Ao entrar na etapa",
+        "cargandoEtapas": "Carregando etapas…",
+        "cualquierEtapa": "Qualquer etapa",
+        "pipelineElegidoNoTiene": "O pipeline escolhido não tem etapas.",
+        "pipelineRegla": "Pipeline da regra",
+        "etapaRegla": "Etapa da regra",
+        "ignorado": {
+          "pipeline": "o pipeline «{nombre}»",
+          "etapa": "a etapa «{nombre}»",
+          "uno": "Este gatilho não olha {a}: fica guardado caso você volte a um gatilho que o use.",
+          "ambos": "Este gatilho não olha {a} nem {b}: ficam guardados caso você volte a um gatilho que os use."
+        }
+      },
+      "ruleCard": {
+        "activa": "Ativa",
+        "inactiva": "Inativa",
+        "noHaraNadaSin": "não fará nada (sem ações)",
+        "ultimaEjecucion": "Última execução: {relativeTime}",
+        "n1Ejecucion": "1 execução",
+        "ejecuciones": "{runs} execuções",
+        "probarSeco": "Testar sem executar {name}",
+        "probarSeco2": "Testar sem executar",
+        "historial": "Histórico de {name}",
+        "editar": "Editar {name}",
+        "eliminar": "Excluir {name}",
+        "desactivarRegla": "Desativar a regra {name}",
+        "activarRegla": "Ativar a regra {name}"
+      },
+      "ruleEditorSheet": {
+        "reglaActualizada": "Regra atualizada",
+        "reglaCreada": "Regra criada",
+        "yaEstaActiva": "Já está ativa.",
+        "estaDesactivadaActivalaCuando": "Está desativada: ative quando quiser.",
+        "editarRegla": "Editar regra",
+        "armaFraseCuandoDispara": "Monte a frase: quando é disparada, com quais condições e o que faz. Abaixo você verá como fica antes de salvar.",
+        "nombreRegla": "Nome da regra",
+        "seguimientoPropuesta": "Acompanhamento de proposta",
+        "noPudoGuardar": "Não foi possível salvar",
+        "corrigeLoIndicadoVuelve": "{serverError}. Corrija o indicado e tente novamente.",
+        "guardar": "Salvar",
+        "desactivada": "Desativada",
+        "cancelar": "Cancelar",
+        "guardando": "Salvando…",
+        "palabras": {
+          "cuando": "Quando",
+          "si": "se",
+          "opcional": "opcional",
+          "entonces": "então"
+        }
+      },
+      "conditionChipEditor": {
+        "esteOperadorNoNecesita": "Este operador não precisa de valor.",
+        "eligePipeline": "Escolha um pipeline",
+        "valor": "Valor",
+        "campo": "Campo",
+        "operador": "Operador",
+        "quitarCondicion": "Remover condição",
+        "valorCondicion": "Valor da condição {n}",
+        "ayudas": {
+          "lista": "Vários valores separados por vírgula.",
+          "dias": "Número de dias para trás a partir de hoje.",
+          "fecha": "Data no formato AAAA-MM-DD.",
+          "texto": "Texto, número, true ou false. Os IDs de etapa são escolhidos pelo nome."
+        }
+      },
+      "conditionsBlock": {
+        "comoCombinanCondiciones": "Como as condições se combinam",
+        "cumpleSi": "É cumprida se",
+        "sinCondicionesDisparaSiempre": "Sem condições: é disparada sempre que o gatilho ocorrer. Adicione uma só se precisar filtrar.",
+        "grupoEditaComoJson": "· grupo, é editado como JSON",
+        "anadirCondicion": "Adicionar condição",
+        "editarComoJson": "Editar como JSON",
+        "condicionesJson": "Condições em JSON",
+        "gruposAnidadosCasosAvanzados": "Para grupos aninhados e casos avançados. Campos permitidos: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.",
+        "jsonCondiciones": "JSON das condições",
+        "aplicar": "Aplicar"
+      },
+      "rulesToolbar": {
+        "buscarNombreDescripcion": "Buscar por nome ou descrição…",
+        "buscarReglasNombre": "Buscar regras pelo nome",
+        "filtrarEstado": "Filtrar por status",
+        "disparador": "Gatilho:",
+        "filtrarDisparador": "Filtrar por gatilho",
+        "quitarFiltros": "Remover filtros ({active})",
+        "reglas": "{shown} de {total} regras",
+        "estados": {
+          "all": "Todas",
+          "active": "Ativas",
+          "inactive": "Inativas"
+        }
+      },
+      "eventPicker": {
+        "buscarEscribirEntidadAccion": "Buscar ou escrever entidade.acao…",
+        "eseEventoVaPropio": "Esse evento tem seu próprio gatilho («muda de etapa» ou «muda um dado»): uma regra de evento com esse nome não seria disparada.",
+        "ningunEventoCoincideNombre": "Nenhum evento corresponde. Um nome livre tem o formato entidade.acao (minúsculas).",
+        "ningunEventoCoincide": "Nenhum evento corresponde.",
+        "eventosConocidos": "Eventos conhecidos",
+        "cualquierEvento": "Qualquer evento",
+        "reglaEvaluaCualquierEvento": "A regra é avaliada com qualquer evento deste tipo.",
+        "nombreLibre": "Nome livre",
+        "usar": "Usar «{trimmedQuery}»"
+      },
+      "actionsBlock": {
+        "sinAccionesReglaNo": "Sem ações a regra não fará nada mesmo que seja disparada. Adicione pelo menos uma.",
+        "accion": "Ação {n}",
+        "revisar": "Revisar",
+        "anadirAccion": "Adicionar ação",
+        "buscarAccion": "Buscar ação…",
+        "ningunaAccionCoincide": "Nenhuma ação corresponde.",
+        "disponibles": "Disponíveis",
+        "todaviaNoDisponibles": "Ainda indisponíveis"
+      },
+      "ruleSettings": {
+        "ajustes": "Ajustes",
+        "descripcionOpcional": "Descrição (opcional)",
+        "sirveEstaReglaFrase": "Para que serve esta regra, em uma frase.",
+        "prioridad": "Prioridade",
+        "menorNumeroEvaluaAntes": "Número menor, é avaliada antes. 100 por padrão.",
+        "enfriamientoHoras": "Intervalo de espera (horas)",
+        "tiempoMinimoEntreDos": "Tempo mínimo entre duas execuções na mesma oportunidade. 0 = sem limite.",
+        "soloVezOportunidad": "Só uma vez por oportunidade"
+      },
+      "rulesEmptyState": {
+        "ningunaReglaCoincideFiltros": "Nenhuma regra corresponde aos filtros",
+        "quitarFiltros": "Remover filtros",
+        "dejaCrmTrabajeSolo": "Deixe o CRM trabalhar sozinho",
+        "reglaVigilaPipelineActua": "Uma regra vigia o pipeline e age por você: escreve, cria tarefas, move etapas. Esta é uma das mais usadas:",
+        "ejemplo": "Exemplo: {name}",
+        "editorEligesEtapaDispara": "No editor você escolhe a etapa que a dispara (por exemplo, «Proposta enviada»).",
+        "usarEsteEjemplo": "Usar este exemplo",
+        "empezarDesdeCero": "Começar do zero"
+      },
+      "rulePreview": {
+        "asiFuncionara": "Assim vai funcionar"
+      },
+      "useOpportunitySearch": {
+        "noHayOrganizacionActiva": "Não há organização ativa."
       }
     },
     "campanaVoz": {
@@ -27720,6 +29453,155 @@
       "sustantivo": {
         "uno": "campanha",
         "otros": "campanhas"
+      },
+      "campanaNuevaPage": {
+        "noPudoCalcularAudiencia": "Não foi possível calcular o público",
+        "error": "Erro",
+        "borradorGuardado": "Rascunho salvo",
+        "campanaProgramada": "Campanha agendada",
+        "campanaLanzada": "Campanha lançada",
+        "contactosCola": "{n} contatos na fila",
+        "superaLimiteWaba": "Excede o limite do WABA",
+        "noPudoLanzar": "Não foi possível lançar",
+        "volver": "Voltar",
+        "nuevaCampanaWhatsapp": "Nova campanha de WhatsApp",
+        "crmCampanasNueva": "CRM / Campanhas / Nova",
+        "pasos": "Passos",
+        "nombreCampana": "Nome da campanha",
+        "ejNovedadesSeptiembre": "Ex.: Novidades de setembro",
+        "tipoMensaje": "Tipo de mensagem",
+        "variablesSinValorDefecto": "Variáveis sem valor padrão ({missing}): escreva-as acima; serão aplicadas a todos os contatos.",
+        "nombre": "Nome",
+        "mensaje": "Mensagem",
+        "plantilla": "Modelo {name} ({category})",
+        "textoLibreChars": "Texto livre ({n} caracteres)",
+        "audiencia": "Público",
+        "etapas": "{n} etapas",
+        "programacion": "Agendamento",
+        "inmediata": "Imediata",
+        "respetaHorario": "respeita o horário",
+        "sinHorario": "sem horário",
+        "msgS": "{valor} · {throttle} msg/s · {valor2}",
+        "audienciaCalculada": "Público calculado",
+        "recalcular": "Recalcular",
+        "calcularAudiencia": "Calcular público",
+        "excluidos": "excluídos de",
+        "costoEstimadoUsd": "· custo estimado ≈ US$ {estimated_cost}",
+        "nadieCumpleCriteriosRevisa": "Ninguém cumpre os critérios: revise o público ou o modelo.",
+        "calculaAudienciaVerPendientes": "Calcule o público para ver pendentes, exclusões e custo antes de lançar.",
+        "heVerificadoAudienciaDio": "Verifiquei que o público deu consentimento (opt-in) para marketing (Habeas Data)",
+        "cancelar": "Cancelar",
+        "atras": "Voltar",
+        "guardarBorrador": "Salvar rascunho",
+        "continuar": "Continuar",
+        "programar": "Agendar",
+        "lanzarAhora": "Lançar agora",
+        "pasosAsistente": {
+          "canal": "Canal e mensagem",
+          "audiencia": "Público",
+          "programacion": "Agendamento",
+          "revision": "Revisão"
+        }
+      },
+      "campanaDetallePage": {
+        "campanaNoEncontrada": "Campanha não encontrada",
+        "noPudoCargar": "Não foi possível carregar",
+        "noPudoCompletar": "Não foi possível concluir",
+        "plantillaHsm": "modelo HSM",
+        "textoLibre": "texto livre",
+        "lanzar": "Lançar",
+        "pendientesOmitenCreditosReservados": "Os pendentes são omitidos e os créditos reservados são devolvidos. Cancelar a campanha?",
+        "exportarCsv": "Exportar CSV",
+        "lanzarPausarCancelarRequiere": "Lançar, pausar ou cancelar requer a função de administrador da organização.",
+        "pausadaAutomaticamente": "Pausada automaticamente:",
+        "sinCreditosWhatsapp": "sem créditos de WhatsApp",
+        "metaPausoRechazoPlantilla": "A Meta pausou/recusou o modelo",
+        "progreso": "Progresso {pct}%",
+        "terminaMin": "· termina ≈ {etaMin} min",
+        "costo": "Custo",
+        "estimado": "Estimado:",
+        "realUsd": "Real: US$ {cost}",
+        "costoRealLlegaEventos": "O custo real chega com os eventos de entrega (preços da Meta).",
+        "errores": "Erros",
+        "sinErroresProveedor": "Sem erros do provedor.",
+        "exclusiones": "Exclusões",
+        "sinExclusiones": "Sem exclusões.",
+        "campana_lanzada": "Campanha lançada",
+        "campana_pausada": "Campanha pausada",
+        "campana_reanudada": "Campanha retomada",
+        "campana_cancelada": "Campanha cancelada",
+        "stats": {
+          "enviados": "Enviados",
+          "entregados": "Entregues",
+          "leidos": "Lidos",
+          "respondieron": "Responderam",
+          "fallidos": "Falharam",
+          "omitidos": "Omitidos",
+          "pendientes": "Pendentes"
+        },
+        "progresoDetalle": "{hechos} / {total} processados · {enviados} enviados"
+      },
+      "campaignContactsTable": {
+        "contactos": "Contatos ({total})",
+        "buscarNombreTelefono": "Buscar nome, telefone…",
+        "buscarContacto": "Buscar contato",
+        "filtrarEstado": "Filtrar por status",
+        "todos": "Todos",
+        "cliente": "Cliente",
+        "enviado": "Enviado",
+        "entregado": "Entregue",
+        "leido": "Lido",
+        "respondio": "Respondeu",
+        "detalle": "Detalhe",
+        "cargando": "Carregando…",
+        "sinContactosCalculaAudiencia": "Sem contatos. Calcule o público para materializar a campanha.",
+        "sinNombre": "Sem nome",
+        "oportunidad": "→ oportunidade",
+        "pagina": "Página {page} de {n}",
+        "anterior": "Anterior",
+        "siguiente": "Próximo"
+      },
+      "audienceStep": {
+        "origenAudiencia": "Origem do público",
+        "seleccionarSegmento": "Selecionar segmento",
+        "clientesAntesExclusionesOpt": "≈ {customer_count} clientes antes das exclusões (opt-out, sem telefone, duplicados).",
+        "noHaySegmentosCrealos": "Não há segmentos. Crie-os em CRM › Segmentos.",
+        "incluyenOportunidadesAbiertasEtapas": "São incluídas as oportunidades <b>abertas</b> das etapas marcadas (uma por cliente).",
+        "sinEtapas": "Sem etapas.",
+        "origen": {
+          "stage": "Etapas do pipeline",
+          "segment": "Segmento de clientes"
+        }
+      },
+      "scheduleStep": {
+        "enviar": "Enviar",
+        "ahora": "Agora",
+        "fechaHoraEnvio": "Data e hora de envio",
+        "velocidadMensajesSegundoMin": "Velocidade: {throttle} mensagens/segundo (≈ {throttle2}/min · 1.000 contatos em ≈ {minutes} min)",
+        "metaPermiteHasta80": "A Meta permite até 80 msg/s por número; o limite real é o nível de usuários únicos/24 h do WABA (verificado ao lançar).",
+        "respetarHorarioPermitidoContacto": "Respeitar o horário permitido de contato (Configurações › WhatsApp)"
+      },
+      "estadosCampana": {
+        "draft": "Rascunho",
+        "materializing": "Calculando",
+        "scheduled": "Agendada",
+        "sending": "Enviando",
+        "paused": "Pausada",
+        "sent": "Enviada",
+        "canceled": "Cancelada"
+      },
+      "estadosContacto": {
+        "pending": "Pendente",
+        "queued": "Na fila",
+        "sent": "Enviado",
+        "delivered": "Entregue",
+        "read": "Lido",
+        "opened": "Aberto",
+        "clicked": "Clicado",
+        "replied": "Respondeu",
+        "bounced": "Devolvido",
+        "failed": "Falhou",
+        "skipped": "Omitido"
       }
     },
     "duplicados": {
@@ -28003,6 +29885,95 @@
           "proveedor": "A Meta retornou um erro na sincronização",
           "error": "Não foi possível sincronizar"
         }
+      },
+      "templateList": {
+        "noPudieronCargarPlantillas": "Não foi possível carregar os modelos",
+        "error": "Erro",
+        "noPudoActualizar": "Não foi possível atualizar",
+        "plantillaDuplicada": "Modelo duplicado",
+        "noPudoDuplicar": "Não foi possível duplicar",
+        "plantillaEliminada": "Modelo excluído",
+        "plantillaDesactivada": "Modelo desativado",
+        "tieneEnviosAsociadosDesactivo": "Tem envios associados; foi desativado em vez de excluído.",
+        "noPudoEliminar": "Não foi possível excluir",
+        "buscarNombreAsunto": "Buscar por nome ou assunto",
+        "buscarPlantillas": "Buscar modelos",
+        "filtrarTipo": "Filtrar por tipo",
+        "nuevaPlantilla": "Novo modelo",
+        "aunNoHayPlantillas": "Ainda não há modelos de e-mail.",
+        "ningunaPlantillaCoincideFiltro": "Nenhum modelo corresponde ao filtro.",
+        "crearPrimera": "Criar o primeiro",
+        "nombre": "Nome",
+        "tipo": "Tipo",
+        "asunto": "Assunto",
+        "motor": "Motor",
+        "usos": "Usos",
+        "activa": "Ativo",
+        "actualizada": "Atualizado",
+        "acciones": "Ações",
+        "base": "Base",
+        "bloques": "Blocos",
+        "acciones2": "Ações de {name}",
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "eliminar": "Excluir",
+        "eliminarPlantilla": "Excluir modelo",
+        "eliminarSiYaUso": "Excluir “{n}”? Se já foi usado em envios, será desativado em vez de excluído.",
+        "todosTipos": "Todos os tipos"
+      },
+      "templateEditorHeader": {
+        "sinGuardar": "Não salvo",
+        "enviadosAbiertosClicsRebotes": "Enviados {sent} · Abertos {opened} · Cliques {clicked} · Devoluções {bounced}",
+        "estadisticasPlantilla": "Estatísticas do modelo",
+        "guardaPlantillaEnviarPrueba": "Salve o modelo para enviar um teste",
+        "enviarPrueba": "Enviar teste",
+        "guardar": "Salvar",
+        "nombre": "Nome *",
+        "ejSeguimientoTrasLlamada": "Ex. Acompanhamento após ligação",
+        "tipoPlantilla": "Tipo de modelo",
+        "asunto": "Assunto *",
+        "variable": "+ variável",
+        "preheaderTextoVistaPrevia": "Preheader (texto de pré-visualização)",
+        "resumenBreveVeJunto": "Resumo breve exibido junto ao assunto",
+        "descripcionInterna": "Descrição interna",
+        "cuandoUsarEstaPlantilla": "Quando usar este modelo",
+        "plantilla": "Modelo",
+        "asuntoEjemplo": "Obrigado pelo seu tempo, '{{'contact.first_name|olá'}}'"
+      },
+      "testSendDialog": {
+        "pruebaEnviada": "Teste enviado",
+        "noPudoEnviarPrueba": "Não foi possível enviar o teste",
+        "enviaDatosEjemploDeja": "“{templateName}” é enviado com dados de exemplo. Deixe o campo vazio para usar seu próprio e-mail.",
+        "correoDestino": "E-mail de destino",
+        "correoInvalido": "E-mail inválido",
+        "cancelar": "Cancelar",
+        "enviar": "Enviar",
+        "destino": "Para {correo}",
+        "destinoConVacias": "Para {correo} · variáveis vazias: {variables}"
+      },
+      "useTemplateEditor": {
+        "revisaPlantilla": "Revise o modelo",
+        "plantillaGuardada": "Modelo salvo",
+        "plantillaCreada": "Modelo criado",
+        "noPudoGuardar": "Não foi possível salvar",
+        "noPudoGenerarVista": "Não foi possível gerar a pré-visualização",
+        "validacion": {
+          "nombre": "O nome é obrigatório",
+          "asunto": "O assunto é obrigatório",
+          "bloques": "Adicione pelo menos um bloco",
+          "html": "O HTML está vazio"
+        }
+      },
+      "plantillasPage": {
+        "noPudieronCargarPlantillas": "Não foi possível carregar os modelos de WhatsApp",
+        "vuelveIntentarloRecargandoPagina": "Tente de novo recarregando a página. Se o problema continuar, revise a configuração do canal de WhatsApp em Configurações → CRM → WhatsApp.",
+        "canalPlantillas": "Canal de modelos"
+      },
+      "templateEditorPage": {
+        "cargandoPlantilla": "Carregando modelo",
+        "noPudoCargarPlantilla": "Não foi possível carregar o modelo",
+        "modoEdicion": "Modo de edição",
+        "bloques": "Blocos"
       }
     },
     "pronosticoTrimestre": {
@@ -28143,6 +30114,188 @@
           "sin_tasa": "Há valores sem taxa de câmbio: registre-a antes de ajustar.",
           "ajuste_no_vigente": "Só é possível reverter o último ajuste.",
           "generico": "Não foi possível salvar o ajuste."
+        }
+      },
+      "forecastChart": {
+        "noHayDatosPronostico": "Não há dados de previsão disponíveis",
+        "tendenciaPronostico": "Tendência da previsão",
+        "proceso": "Em andamento",
+        "meta": "Meta",
+        "meta2": "{goalCompletion}% da meta",
+        "ganado": "Ganho: {money}",
+        "pond": "Pond.: {money}",
+        "abierto": "Aberto: {money}",
+        "totalGanado": "Total ganho",
+        "totalPonderado": "Total ponderado",
+        "totalAbierto": "Total aberto"
+      },
+      "goalProgress": {
+        "meta": "Meta {periodLabel}",
+        "sinPipeline": "Sem pipeline",
+        "completadoGanado": "{goalProgress}% concluído (ganho)",
+        "proyeccionGanadoPonderado": "Projeção (ganho + ponderado)",
+        "noHayMetaConfigurada": "Não há meta configurada para este pipeline",
+        "configuraMetaOpcionesPipeline": "Configure uma meta nas opções do pipeline",
+        "periodos": {
+          "weekly": "Semanal",
+          "monthly": "Mensal",
+          "quarterly": "Trimestral",
+          "yearly": "Anual"
+        }
+      },
+      "forecastScenarios": {
+        "escenariosForecast": "Cenários de previsão",
+        "sinOportunidadesAbiertasEste": "Sem oportunidades abertas neste pipeline",
+        "creaOportunidadesAsignalesEtapa": "Crie oportunidades e atribua uma etapa para projetar os três cenários.",
+        "escenarios": {
+          "best": "Melhor caso",
+          "expected": "Esperado",
+          "worst": "Pior caso"
+        },
+        "reglas": {
+          "best": "Abertas em etapas com probabilidade ≥ {n} %",
+          "expected": "Soma das abertas × probabilidade da sua etapa",
+          "worst": "Só abertas em etapas com probabilidade ≥ {n} %"
+        },
+        "abiertasPor": "{n, plural, one {# oportunidade aberta} other {# oportunidades abertas}} por {monto}"
+      },
+      "forecastFilters": {
+        "seleccionarPipeline": "Selecionar pipeline",
+        "semanal": "Semanal",
+        "mensual": "Mensal",
+        "trimestral": "Trimestral",
+        "exportar": "Exportar"
+      },
+      "forecastByStage": {
+        "pronosticoEtapa": "Previsão por etapa",
+        "valorBrutoPipeline": "Valor bruto no pipeline"
+      },
+      "revenueMathPanel": {
+        "gasto0MargenEntre": "Gasto ≥ 0 e margem entre 0 e 100.",
+        "error": "Erro {status}",
+        "insumosGuardados": "Insumos salvos",
+        "cacLtvPaybackRecalculan": "CAC, LTV e payback são recalculados com os novos valores.",
+        "metricasMatematicaComercial": "Métricas de matemática comercial",
+        "insumosPeriodo": "Insumos do período",
+        "noExistenBaseGuardan": "Não existem na base: são salvos na configuração da organização e alimentam CAC, LTV e payback. Oportunidades ganhas no período (denominador do CAC): {number}.",
+        "gastoAdquisicionMarketingVentas": "Gasto de aquisição (marketing + vendas)",
+        "margenBruto": "Margem bruta (%)",
+        "guardando": "Salvando…",
+        "guardarInsumos": "Salvar insumos",
+        "soloAdministradorOrganizacionPuede": "Só um administrador da organização pode alterar estes insumos.",
+        "ultimaActualizacion": "Última atualização: {dateTime}",
+        "noPudoGuardar": "Não foi possível salvar",
+        "metricas": {
+          "arpa": {
+            "etiqueta": "ARPA",
+            "formula": "Ticket médio por fatura paga do período (ponderado por faturas)"
+          },
+          "cac": {
+            "etiqueta": "CAC",
+            "formula": "Gasto de aquisição do período ÷ oportunidades ganhas no período"
+          },
+          "churnRatePct": {
+            "etiqueta": "Churn mensal",
+            "formula": "100 − retenção M1 ponderada por coorte"
+          },
+          "ltv": {
+            "etiqueta": "LTV",
+            "formula": "ARPA × margem bruta × (1 ÷ churn)"
+          },
+          "ltvCacRatio": {
+            "etiqueta": "LTV / CAC",
+            "formula": "LTV ÷ CAC (saudável ≥ 3)"
+          },
+          "paybackMonths": {
+            "etiqueta": "Payback",
+            "formula": "CAC ÷ (ARPA × margem bruta), em meses"
+          },
+          "netRevenueRetentionPct": {
+            "etiqueta": "Retenção líquida de receita",
+            "formula": "(MRR inicial + expansão − contração − churn) ÷ MRR inicial"
+          }
+        },
+        "saludable": "Saudável",
+        "porDebajo3": "Abaixo de 3"
+      },
+      "funnelPanel": {
+        "sinEtapasConfiguradasCrea": "Sem etapas configuradas. Crie um pipeline com etapas em Configurações para ver o funil.",
+        "fueraCadenaVaDespues": "Fora da cadeia: {map} vem depois da etapa ganha. A conversão termina na ganha; revise a ordem das etapas em Configurações.",
+        "sinOportunidadesEstePipeline": "Ainda sem oportunidades neste pipeline. Crie a primeira em Oportunidades e o funil se preencherá sozinho.",
+        "embudoEtapa": "Funil por etapa",
+        "conversionEtapaEtapaAcumulado": "Conversão de etapa a etapa (acumulado: na etapa ou adiante; as perdidas aparecem à parte)",
+        "etapa": "Na etapa",
+        "llegaron": "Chegaram",
+        "montoEtapa": "Valor na etapa",
+        "pasaSiguiente": "Passa para a seguinte",
+        "ganada": "(ganha)",
+        "conversionGlobal": "Conversão global",
+        "hastaUltimaEtapaNo": "(até a última etapa: não há etapa ganha)",
+        "sinDatos": "Sem dados",
+        "perdidas": "Perdidas: {number} ({money})"
+      },
+      "revenueOsPage": {
+        "cargandoPanel": "Carregando painel",
+        "revenueOs": "Revenue OS",
+        "pronosticoEmbudoCohortesMatematica": "Previsão, funil, coortes e matemática comercial da organização.",
+        "periodo": "Período:",
+        "moneda": "· moeda {currency}",
+        "actualizar": "Atualizar",
+        "noPudoCargarPanel": "Não foi possível carregar o painel Revenue OS",
+        "seccionesRevenueOs": "Seções do Revenue OS",
+        "pestanas": {
+          "resumen": "Resumo",
+          "embudo": "Funil",
+          "forecast": "Previsão",
+          "trimestre": "Por categoria",
+          "cohortes": "Coortes",
+          "matematica": "Matemática comercial"
+        }
+      },
+      "cohortTable": {
+        "sinCohortesNingunCliente": "Sem coortes: nenhum cliente com etapa «cliente» cadastrado nos últimos 24 meses. As coortes aparecem ao converter contatos em clientes.",
+        "clientesVolvieronFacturar1": "Clientes que voltaram a faturar 1, 3, 6 e 12 meses após o cadastro, por mês de cadastro. «—» = o mês ainda não fechou. {number} clientes no total.",
+        "cohorte": "Coorte",
+        "clientes": "Clientes",
+        "clientes2": "{n} de {cohort_size} clientes",
+        "mesAunNoCerrado": "Mês ainda não fechado",
+        "sinObservar": "sem observar",
+        "escalaColor": "Escala de cores"
+      },
+      "kpiTiles": {
+        "indicadoresPeriodo": "Indicadores do período",
+        "etiquetas": {
+          "collected": "Receita recebida",
+          "won": "Ganho no pipeline",
+          "open": "Pipeline aberto",
+          "winrate": "Taxa de ganho",
+          "cycle": "Ciclo médio de venda",
+          "arpa": "ARPA",
+          "commissions": "Comissões pagas"
+        }
+      },
+      "revenueTrendChart": {
+        "tendenciaMensualCobradoFrente": "Tendência mensal: recebido versus ganho",
+        "verGrafico": "Ver gráfico",
+        "verTabla": "Ver tabela",
+        "sinCobrosNiOportunidades": "Sem recebimentos nem oportunidades ganhas no período. Mude o intervalo ou registre vendas para ver a tendência.",
+        "revenueCobradoGanadoPipeline": "Receita recebida e ganha no pipeline por mês",
+        "mes": "Mês",
+        "graficoBarrasMensualCobrado": "Gráfico de barras mensal: recebido versus ganho no pipeline. A visualização em tabela tem os valores exatos.",
+        "series": {
+          "revenue_collected": "Recebido",
+          "revenue_won_pipeline": "Ganho no pipeline"
+        }
+      },
+      "revenueRangeControl": {
+        "periodoPanel": "Período do painel",
+        "desdeMes": "De (mês)",
+        "hastaMes": "Até (mês)",
+        "aplicar": "Aplicar",
+        "errores": {
+          "ambos": "Escolha mês e ano nos dois campos",
+          "orden": "O mês final deve ser igual ou posterior ao inicial",
+          "maximo": "Máximo {max} meses"
         }
       }
     },
@@ -28289,6 +30442,108 @@
           "sinMuestra": "Nenhum cliente corresponde ainda.",
           "sinNombre": "Cliente sem nome"
         }
+      },
+      "segmentoDetallePage": {
+        "error": "Erro",
+        "segmentoNoEncontrado": "Segmento não encontrado",
+        "noPudoCargarSegmento": "Não foi possível carregar o segmento",
+        "nombreRequerido": "O nome é obrigatório",
+        "segmentoActualizado": "Segmento atualizado",
+        "noPudoActualizar": "Não foi possível atualizar",
+        "recalculoCompletado": "Recálculo concluído",
+        "clientesSegmento": "{count} clientes no segmento",
+        "noPudoRecalcular": "Não foi possível recalcular",
+        "crmSegmentosDetalle": "CRM / Segmentos / Detalhe",
+        "guardar": "Salvar",
+        "recalcular": "Recalcular",
+        "editar": "Editar",
+        "crearCampana": "Criar campanha",
+        "informacion": "Informações",
+        "segmentoDinamico": "Segmento dinâmico",
+        "recalculaAutomaticamente": "É recalculado automaticamente",
+        "nunca": "Nunca",
+        "ultimaEjecucion": "Última execução: {date}",
+        "reglasFiltro": "Regras de filtro",
+        "agregar": "Adicionar",
+        "editaPrimerGrupo": "O primeiro grupo é editado.",
+        "hay1GrupoTodos": "Há mais 1 grupo «Ou todos estes»",
+        "hayGruposTodosEstos": "Há mais {n} grupos «Ou todos estes»",
+        "conservaGuardar": ": mantido ao salvar.",
+        "sinReglasDefinidas": "Sem regras definidas",
+        "clientes": "Clientes ({n})",
+        "noHayClientesEste": "Não há clientes neste segmento",
+        "sinNombre": "Sem nome",
+        "sinContacto": "Sem contato",
+        "campos": {
+          "full_name": "Nome completo",
+          "company_name": "Empresa",
+          "email": "E-mail",
+          "phone": "Telefone",
+          "city": "Cidade",
+          "lifecycle_stage": "Etapa do ciclo",
+          "lead_source": "Origem",
+          "tags": "Etiquetas",
+          "created_at": "Data de cadastro",
+          "last_contact_at": "Último contato",
+          "health_score": "Saúde"
+        },
+        "operadores": {
+          "text": {
+            "equals": "É igual a",
+            "not_equals": "Não é igual a",
+            "contains": "Contém",
+            "not_contains": "Não contém",
+            "starts_with": "Começa com",
+            "ends_with": "Termina com",
+            "is_empty": "Está vazio",
+            "is_not_empty": "Não está vazio"
+          },
+          "date": {
+            "equals": "É igual a",
+            "greater_than": "Depois de",
+            "less_than": "Antes de",
+            "between": "Entre",
+            "is_empty": "Está vazio",
+            "is_not_empty": "Não está vazio"
+          },
+          "array": {
+            "contains": "Contém",
+            "not_contains": "Não contém",
+            "is_empty": "Está vazio",
+            "is_not_empty": "Não está vazio"
+          },
+          "boolean": {
+            "equals": "É"
+          },
+          "number": {
+            "equals": "É igual a",
+            "greater_than": "Maior que",
+            "less_than": "Menor que",
+            "is_empty": "Está vazio",
+            "is_not_empty": "Não está vazio"
+          }
+        }
+      },
+      "segmentosPage": {
+        "noPudieronCargarSegmentos": "Não foi possível carregar os segmentos",
+        "segmentoDuplicado": "Segmento duplicado",
+        "segmentoEliminado": "Segmento excluído",
+        "recalculando": "Recalculando...",
+        "estoPuedeTomarUnos": "Isso pode levar alguns segundos",
+        "crmSegmentos": "CRM / Segmentos",
+        "nuevoSegmento": "Novo segmento",
+        "dinamicos": "Dinâmicos",
+        "estaticos": "Estáticos",
+        "clientes": "Clientes",
+        "ultimaEjecucion": "Última execução",
+        "noHaySegmentos": "Não há segmentos",
+        "creaPrimerSegmentoAgrupar": "Crie seu primeiro segmento para agrupar clientes",
+        "crearSegmento": "Criar segmento",
+        "verDetalle": "Ver detalhe",
+        "duplicar": "Duplicar",
+        "eliminar": "Excluir",
+        "eliminarSegmento": "Excluir segmento?",
+        "estaAccionNoPuede": "Esta ação não pode ser desfeita. O segmento \"{name}\" será excluído permanentemente."
       }
     }
   },
@@ -30241,7 +32496,13 @@
           "pagina": "Página · {titulo}",
           "whatsapp": "WhatsApp do site",
           "maps": "Como chegar (mapa da unidade)",
-          "elegirEnlace": "Escolha para onde leva"
+          "elegirEnlace": "Escolha para onde leva",
+          "rutas": {
+            "reservas": "Reservas online",
+            "agendar": "Agendar horário",
+            "consultar-pedido": "Consultar pedido",
+            "mi-cuenta": "Minha conta"
+          }
         },
         "barra": {
           "titulo": "Barra superior",
@@ -30504,7 +32765,9 @@
         "legacyTitulo": "É publicado ao salvar",
         "legacyDescripcion": "Neste site, «Salvar e publicar» leva as alterações para o site.",
         "vacioTitulo": "Escolha uma seção",
-        "vacioDescripcion": "Clique em uma seção da lista ou da tela para editar layout, conteúdo e estilo."
+        "vacioDescripcion": "Clique em uma seção da lista ou da tela para editar layout, conteúdo e estilo.",
+        "quitarChip": "Remover {valor}",
+        "anadirAChip": "Adicionar a {campo}"
       },
       "campo": {
         "elegir": "Escolha uma opção"
@@ -33035,6 +35298,231 @@
         "rejected": "Recusado",
         "expired": "Expirado"
       }
+    },
+    "webOrderCard": {
+      "urgente": "Urgente!",
+      "programado": "Agendado",
+      "propina": "Gorjeta",
+      "texto": "Para: {date}",
+      "productoS": "{n, plural, one {# produto} other {# produtos}}",
+      "mas": "+{n} mais...",
+      "nota": "Nota:",
+      "confirmar": "Confirmar",
+      "iniciarPreparacion": "Iniciar preparo",
+      "preparar": "Preparar",
+      "marcarListo": "Marcar pronto",
+      "enviarDomicilio": "Enviar para entrega",
+      "enviar": "Enviar",
+      "marcarEntregado": "Marcar entregue"
+    },
+    "webCommerceObservability": {
+      "observabilidadComercio": "Observabilidade do comércio",
+      "actualizar": "Atualizar",
+      "contraer": "Recolher",
+      "expandir": "Expandir",
+      "itemsReservados": "Itens reservados",
+      "reservasHuerfanas": "Reservas órfãs",
+      "pedidosPendientes": "Pedidos pendentes",
+      "proximosExpirar": "Prestes a expirar",
+      "stockReservadoVsDisponible": "Estoque reservado vs disponível",
+      "noHayProductosStock": "Não há produtos com estoque reservado no momento.",
+      "producto": "Produto",
+      "sucursal": "Unidade",
+      "disp": "Disp.",
+      "reserv": "Reserv.",
+      "actualizado": "Atualizado",
+      "pedidosProximosExpirarMin": "Pedidos prestes a expirar ({withinMinutes} min)",
+      "noHayPedidosProximos": "Nenhum pedido expira nos próximos {withinMinutes} minutos.",
+      "expiradoHaceM": "Expirado há {minutesUntilExpiry}m",
+      "paginaAnterior": "Página anterior",
+      "paginaSiguiente": "Próxima página",
+      "errorCargar": "Erro ao carregar a observabilidade",
+      "errorDesconocido": "Erro desconhecido"
+    },
+    "assignDeliveryDialog": {
+      "noHayVehiculosDisponibles": "Não há veículos disponíveis para entrega",
+      "noHayConductoresDisponibles": "Não há motoristas disponíveis",
+      "errorCargarDatosVehiculos": "Erro ao carregar dados de veículos e motoristas",
+      "camposRequeridos": "Campos obrigatórios",
+      "seleccionaVehiculoConductor": "Selecione um veículo e um motorista",
+      "error": "Erro",
+      "noEncontroEnvioAsociado": "O envio associado não foi encontrado. Tente marcar o pedido como pronto primeiro.",
+      "asignacionExitosa": "Atribuição concluída",
+      "haAsignadoConductorVehiculo": "O motorista e o veículo foram atribuídos ao pedido",
+      "noPudoAsignarDelivery": "Não foi possível atribuir a entrega",
+      "asignarDelivery": "Atribuir entrega",
+      "seleccionaVehiculoConductorEntrega": "Selecione o veículo e o motorista para a entrega",
+      "configuraVehiculosConductoresModulo": "Configure veículos e motoristas no módulo Transporte",
+      "vehiculo": "Veículo",
+      "seleccionarVehiculo": "Selecionar veículo",
+      "noHayVehiculosDisponibles2": "Não há veículos disponíveis",
+      "conductor": "Motorista",
+      "seleccionarConductor": "Selecionar motorista",
+      "conductor2": "Motorista {license_number}",
+      "lic": "CNH: {license_category}",
+      "tiempoEstimadoEntregaMinutos": "Tempo estimado de entrega (minutos)",
+      "llegadaEstimada": "Chegada estimada: {localeTimeString}",
+      "vehiculos": {
+        "motorcycle": "Moto",
+        "car": "Carro",
+        "van": "Van",
+        "bicycle": "Bicicleta",
+        "truck": "Caminhão"
+      }
+    },
+    "deliveryTrackingCard": {
+      "delivery": "Entrega",
+      "deliveryPropio": "Entrega própria",
+      "noHayEnvioAsignado": "Não há envio atribuído a este pedido",
+      "asignarDelivery": "Atribuir entrega",
+      "tracking": "Rastreamento",
+      "tracking2": "Rastreamento:",
+      "vehiculoAsignado": "Veículo atribuído",
+      "conductor": "Motorista",
+      "conductorAsignado": "Motorista atribuído",
+      "entregaEstimada": "Entrega estimada:",
+      "historial": "Histórico",
+      "pruebaEntrega": "Comprovante de entrega",
+      "recibido": "Recebido por:",
+      "fecha": "Data:",
+      "calificacion": "Avaliação:",
+      "verFirma": "Ver assinatura",
+      "verRutaGoogleMaps": "Ver rota no Google Maps",
+      "actualizarEstado": "Atualizar status",
+      "estados": {
+        "pending": "Pendente",
+        "assigned": "Atribuído",
+        "picked_up": "Coletado",
+        "out_for_delivery": "A caminho",
+        "delivered": "Entregue",
+        "returned": "Devolvido",
+        "cancelled": "Cancelado"
+      }
+    },
+    "orderActions": {
+      "confirmarPedido": "Confirmar pedido",
+      "rechazar": "Recusar",
+      "iniciarPreparacion": "Iniciar preparo",
+      "marcarComoListo": "Marcar como pronto",
+      "enviarDomicilio": "Enviar para entrega",
+      "marcarComoPagado": "Marcar como pago",
+      "crearVenta": "Criar venda"
+    },
+    "orderItemsList": {
+      "productoS": "{n, plural, one {# produto} other {# produtos}}",
+      "mas": "+{remainingCount} mais...",
+      "productoSMas": "{remainingCount, plural, one {+# produto a mais} other {+# produtos a mais}}",
+      "estados": {
+        "pending": "Pendente",
+        "preparing": "Preparando",
+        "ready": "Pronto",
+        "cancelled": "Cancelado"
+      }
+    },
+    "orderTimeline": {
+      "motivo": "Motivo: {cancellation_reason}",
+      "pasos": {
+        "created": "Pedido recebido",
+        "scheduled": "Agendado para",
+        "confirmed": "Confirmado",
+        "preparing": "Em preparo",
+        "ready": "Pronto",
+        "in_delivery": "A caminho",
+        "delivered": "Entregue",
+        "rejected": "Recusado",
+        "expired": "Expirado",
+        "cancelled": "Cancelado"
+      }
+    },
+    "orderTotals": {
+      "impuestos": "Impostos",
+      "descuento": "Desconto",
+      "envio": "Frete",
+      "propina": "Gorjeta"
+    },
+    "cancelOrderDialog": {
+      "indicaMotivoClienteSera": "Informe o motivo. O cliente será notificado automaticamente.",
+      "motivo": "Motivo",
+      "ejProductoAgotadoFuera": "Ex.: Produto esgotado, fora do horário de entrega...",
+      "esteMotivoMostraraCliente": "Este motivo será exibido ao cliente na notificação.",
+      "rechazarPedido": "Recusar pedido",
+      "cancelarPedido": "Cancelar pedido",
+      "rechazar": "Recusar"
+    },
+    "confirmOrderDialog": {
+      "confirmarPedido": "Confirmar pedido",
+      "indicaTiemposEstimadosNotificar": "Informe os tempos estimados para notificar o cliente.",
+      "tiempoPreparacionListoAprox": "Tempo de preparo (pronto aprox.)",
+      "minutos": "Minutos",
+      "horas": "Horas",
+      "dias": "Dias",
+      "tiempoTrasladoEntregaAprox": "Tempo de deslocamento (entrega aprox.)",
+      "tiempoDesdeEstaListo": "Tempo desde que fica pronto até chegar ao cliente.",
+      "clienteRecibiraNotificacionEstos": "O cliente receberá uma notificação com esses tempos estimados.",
+      "marcarComoPagado": "Marcar como pago"
+    },
+    "orderActionsCard": {
+      "acciones": "Ações"
+    },
+    "orderDeliveryCard": {
+      "verMapa": "Ver no mapa",
+      "programado": "Agendado: {dateTime}",
+      "listoAprox": "Pronto aprox.: {time}",
+      "entregaAprox": "Entrega aprox.: {time}",
+      "asignarConductor": "Atribuir motorista"
+    },
+    "orderHeader": {
+      "programado": "Agendado",
+      "cupon": "Cupom: {coupon_code}",
+      "propina": "Gorjeta: {valor}"
+    },
+    "orderNotFoundState": {
+      "verTodosPedidos": "Ver todos os pedidos",
+      "pedidoNoEncontrado": "Pedido não encontrado"
+    },
+    "orderProductsCard": {
+      "productos": "Produtos ({n})"
+    },
+    "useWebOrderDetail": {
+      "error": "Erro",
+      "noPudoCargarPedido": "Não foi possível carregar o pedido",
+      "pedidoRechazado": "Pedido recusado",
+      "pedidoPreparacion": "Pedido em preparo",
+      "pedidoListoEntrega": "Pedido pronto para entrega",
+      "pedidoCamino": "Pedido a caminho",
+      "pedidoEntregado": "Pedido entregue",
+      "pedidoCancelado": "Pedido cancelado",
+      "ventaCreadaExitosamente": "Venda criada com sucesso",
+      "errorCrearVenta": "Erro ao criar a venda",
+      "ahoraPuedesAsignarConductor": "Agora você pode atribuir um motorista",
+      "errorCrearEnvio": "Erro ao criar o envio"
+    },
+    "tipoEntrega": {
+      "pickup": "Retirada na loja",
+      "delivery_own": "Entrega própria",
+      "delivery_third_party": "Entrega terceirizada"
+    },
+    "metodoPago": {
+      "cash": "Dinheiro",
+      "transfer": "Transferência",
+      "card": "Cartão"
+    },
+    "pagoBadge": {
+      "pending": "Pagamento pendente",
+      "paid": "Pago",
+      "partial": "Pagamento parcial",
+      "refunded": "Reembolsado",
+      "failed": "Falhou"
+    },
+    "unidadCorta": {
+      "minutes": "{n} min",
+      "hours": "{n} h",
+      "days": "{n} dias"
+    },
+    "tipoEntregaFicha": {
+      "pickup": "Retirada na loja",
+      "delivery_own": "Entrega própria",
+      "delivery_third_party": "Entrega terceirizada"
     }
   },
   "posMesasFlujo": {
@@ -34279,6 +36767,291 @@
       "precio": "Preço",
       "notas": "Observações",
       "fecha": "Data"
+    }
+  },
+  "pmsParking": {
+    "passVehiclesDialog": {
+      "vehiculoAgregado": "Veículo adicionado",
+      "vehiculoHaAsociadoPase": "O veículo foi associado ao passe",
+      "error": "Erro",
+      "noPudoAgregarVehiculo": "Não foi possível adicionar o veículo",
+      "placaRequerida": "A placa é obrigatória",
+      "vehiculoCreadoAgregado": "Veículo criado e adicionado",
+      "vehiculoHaRegistradoAsociado": "O veículo foi registrado e associado ao passe",
+      "noPudoCrearVehiculo": "Não foi possível criar o veículo",
+      "paseDebeTenerMenos": "O passe deve ter pelo menos um veículo",
+      "vehiculoRemovido": "Veículo removido",
+      "vehiculoHaDesasociadoPase": "O veículo foi desassociado do passe",
+      "noPudoRemoverVehiculo": "Não foi possível remover o veículo",
+      "vehiculoPrincipalActualizado": "Veículo principal atualizado",
+      "haEstablecidoVehiculoPrincipal": "O veículo principal foi definido",
+      "noPudoActualizarVehiculo": "Não foi possível atualizar o veículo principal",
+      "gestionarVehiculosPase": "Gerenciar veículos do passe",
+      "vehiculosAsociados": "Veículos associados",
+      "principal": "Principal",
+      "sinDetalles": "Sem detalhes",
+      "marcarComoPrincipal": "Marcar como principal",
+      "agregarVehiculoExistente": "Adicionar veículo existente",
+      "seleccionarVehiculo": "Selecionar veículo...",
+      "nuevoVehiculo": "Novo veículo",
+      "placa": "Placa *",
+      "carro": "Carro",
+      "moto": "Moto",
+      "camion": "Caminhão",
+      "marca": "Marca",
+      "modelo": "Modelo",
+      "cancelar": "Cancelar",
+      "crearNuevoVehiculo": "Criar novo veículo",
+      "cerrar": "Fechar",
+      "agregar": "Adicionar"
+    },
+    "passFormDialog": {
+      "seleccionaCliente": "Selecione um cliente",
+      "seleccionaTipoPlan": "Selecione um tipo de plano",
+      "agregaMenosPlaca": "Adicione pelo menos uma placa",
+      "paseActualizado": "Passe atualizado",
+      "paseHaActualizadoCorrectamente": "O passe foi atualizado com sucesso",
+      "paseCreado": "Passe criado",
+      "paseHaCreadoCorrectamente": "O passe foi criado com sucesso",
+      "noPudoGuardarPase": "Não foi possível salvar o passe",
+      "editarPase": "Editar passe",
+      "nuevoPaseAbonado": "Novo passe de mensalista",
+      "cliente": "Cliente *",
+      "seleccionarCliente": "Selecionar cliente",
+      "buscarNombreEmailTelefono": "Buscar por nome, e-mail ou telefone",
+      "nombreEmailTelefono": "Nome, e-mail ou telefone...",
+      "noEncontraronClientes": "Nenhum cliente encontrado",
+      "escribeBuscarClientes": "Digite para buscar clientes",
+      "tipoPlan": "Tipo de plano *",
+      "crearPlan": "Criar plano",
+      "noHayPlanesDisponibles": "Não há planos disponíveis",
+      "seleccionaPlan": "Selecione um plano",
+      "dias": "{currency} / {duration_days} dias",
+      "fechaInicio": "Data de início *",
+      "fechaFin": "Data de término *",
+      "precio": "Preço ({monedaBase}) *",
+      "vehiculosPlacas": "Veículos / Placas *",
+      "agregar": "Adicionar",
+      "vehiculo": "Veículo {index}",
+      "guardando": "Salvando..."
+    },
+    "page": {
+      "noPudieronCargarDatos": "Não foi possível carregar os dados dos mensalistas.",
+      "sinTiposPlan": "Sem tipos de plano",
+      "primeroDebesCrearMenos": "Primeiro você deve criar pelo menos um tipo de plano de mensalista.",
+      "paseCancelado": "Passe cancelado",
+      "paseHaSidoCancelado": "O passe de {vehicle_plate} foi cancelado.",
+      "noPudoCancelarPase": "Não foi possível cancelar o passe.",
+      "cambiosHanGuardadoCorrectamente": "As alterações foram salvas com sucesso.",
+      "tipoPlanActualizado": "Tipo de plano atualizado",
+      "totalAbonados": "Total de mensalistas",
+      "activos": "Ativos",
+      "vencidos": "Vencidos",
+      "ingresosActivos": "Receita ativa",
+      "cancelarEstePase": "Cancelar este passe?",
+      "estaAccionCancelaraPase": "Esta ação cancelará o passe de {vehicle_plate}. O cliente não poderá mais usar este passe para acessar o estacionamento.",
+      "noMantener": "Não, manter",
+      "siCancelarPase": "Sim, cancelar passe",
+      "noEncontroIdOrganizacion": "O ID da organização não foi encontrado",
+      "noPudieronCargarSesiones": "Não foi possível carregar as sessões de estacionamento.",
+      "requiereSucursalConcretaRegistrar": "É necessária uma unidade específica para registrar uma entrada. Selecione uma unidade no seletor.",
+      "entradaRegistrada": "Entrada registrada",
+      "vehiculoIngresadoCorrectamente": "Veículo {vehicle_plate} entrou com sucesso",
+      "salidaRegistrada": "Saída registrada",
+      "vehiculoHaSalidoCorrectamente": "Veículo {vehicle_plate} saiu com sucesso",
+      "totalSesiones": "Total de sessões",
+      "sesionesActivas": "Sessões ativas",
+      "completadasHoy": "Concluídas hoje",
+      "ingresosHoy": "Receita de hoje"
+    },
+    "passDialog": {
+      "modificaDatosPaseEstacionamiento": "Altere os dados do passe de estacionamento",
+      "creaNuevoPaseEstacionamiento": "Crie um novo passe de estacionamento para um cliente",
+      "cambiarCliente": "Mudar cliente",
+      "vehiculos": "Veículos *",
+      "tipo": "Tipo",
+      "camioneta": "Caminhonete",
+      "otro": "Outro",
+      "color": "Cor",
+      "seleccionarPlan": "Selecionar plano",
+      "dias": "{name} - ${price} ({duration_days} dias)",
+      "fechaInicio": "Data de início",
+      "fechaFin": "Data de término",
+      "precio": "Preço",
+      "guardarCambios": "Salvar alterações",
+      "crearPase": "Criar passe"
+    },
+    "newEntryDialog": {
+      "favorIngresaNombreEspacio": "Digite um nome para a vaga",
+      "errorNoEncontroSucursal": "Erro: a unidade não foi encontrada. Recarregue a página e tente novamente.",
+      "nuevaEntradaVehiculo": "Nova entrada de veículo",
+      "registraEntradaVehiculoEstacionamiento": "Registre a entrada de um veículo no estacionamento",
+      "placaVehiculo": "Placa do veículo *",
+      "tipoVehiculo": "Tipo de veículo *",
+      "espacioParqueoOpcional": "Vaga de estacionamento (opcional)",
+      "noEncontroSucursalConfigurada": "⚠️ Nenhuma unidade configurada foi encontrada. Não é possível criar vagas sem uma unidade.",
+      "sinEspacioAsignado": "Sem vaga atribuída",
+      "crearNuevoEspacio": "Criar nova vaga",
+      "crearPrimerEspacio": "Criar primeira vaga",
+      "nombreEspacio": "Nome da vaga *",
+      "ejA1P01": "Ex.: A1, P-01, Vaga 1",
+      "zonaOpcional": "Zona (opcional)",
+      "seleccionarZona": "Selecionar zona",
+      "sinZona": "Sem zona",
+      "ejNivel1Zona": "Ex.: Nível 1, Zona A, Externo",
+      "creando": "Criando...",
+      "guardarEspacio": "Salvar vaga",
+      "registrando": "Registrando...",
+      "vehiculos": {
+        "car": "Automóvel",
+        "motorcycle": "Motocicleta",
+        "truck": "Caminhonete"
+      },
+      "errorCrearEspacio": "Erro ao criar vaga: {error}",
+      "errorDesconocido": "Erro desconhecido"
+    },
+    "passTypesDialog": {
+      "estaSeguroEliminarEste": "Tem certeza de que deseja excluir este tipo de plano?",
+      "tiposPlanAbonado": "Tipos de plano de mensalista",
+      "gestionaTiposPlanesDisponibles": "Gerencie os tipos de planos disponíveis para os mensalistas",
+      "nuevoTipoPlan": "Novo tipo de plano",
+      "noHayTiposPlan": "Nenhum tipo de plano criado",
+      "dias": "{duration_days} dias",
+      "lavado": "Lavagem",
+      "valet": "Manobrista",
+      "nombrePlan": "Nome do plano *",
+      "ejMensualTrimestralAnual": "Ex.: Mensal, Trimestral, Anual",
+      "descripcion": "Descrição",
+      "descripcionOpcionalPlan": "Descrição opcional do plano",
+      "duracionDias": "Duração (dias) *",
+      "precio": "Preço *",
+      "maxEntradasDiaOpcional": "Máx. de entradas por dia (opcional)",
+      "sinLimite": "Sem limite",
+      "beneficiosIncluidos": "Benefícios incluídos",
+      "incluyeLavadoVehiculo": "Inclui lavagem do veículo",
+      "incluyeServicioValet": "Inclui serviço de manobrista"
+    },
+    "passesTable": {
+      "placaCliente": "Placa / Cliente",
+      "plan": "Plano",
+      "vigencia": "Vigência",
+      "estado": "Status",
+      "sinCliente": "Sem cliente",
+      "venceDias": "Vence em {daysRemaining} dias",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "gestionarPlacas": "Gerenciar placas",
+      "suspender": "Suspender",
+      "reactivar": "Reativar",
+      "renovar": "Renovar"
+    },
+    "exitDialog": {
+      "registrarSalida": "Registrar saída",
+      "completaDatosRegistrarSalida": "Preencha os dados para registrar a saída do veículo",
+      "placa": "Placa:",
+      "tipo": "Tipo:",
+      "entrada": "Entrada:",
+      "duracion": "Duração:",
+      "tarifa": "Tarifa *",
+      "seleccionarTarifa": "Selecionar tarifa",
+      "noHayTarifasConfiguradas": "Não há tarifas configuradas",
+      "veConfiguracionTarifasParqueo": "Vá em Configurações → Tarifas de estacionamento para criar uma",
+      "totalPagar": "Total a pagar:",
+      "metodoPago": "Forma de pagamento *",
+      "referenciaPago": "Referência de pagamento *",
+      "ejNumeroTransaccionVoucher": "Ex.: Número da transação, comprovante...",
+      "procesando": "Processando...",
+      "errorSalida": "Erro: {error}",
+      "noPudoRegistrarSalida": "não foi possível registrar a saída",
+      "minGratis": " ({n}min grátis)",
+      "tiempoGracia": "Tempo de tolerância: {n} minutos"
+    },
+    "parkingSessionDrawer": {
+      "tiempoEstadia": "Tempo de permanência",
+      "salida": "Saída:",
+      "pendiente": "Pendente",
+      "informacionCobro": "Informações de cobrança",
+      "tarifa": "Tarifa:",
+      "noAsignada": "Não atribuída",
+      "precio": "Preço:",
+      "tiempoGracia": "Tempo de tolerância:",
+      "acciones": "Ações",
+      "imprimirTicket": "Imprimir ticket",
+      "verRecibo": "Ver recibo",
+      "sinTarifa": "Sem tarifa"
+    },
+    "passCard": {
+      "sinClienteAsignado": "Sem cliente atribuído",
+      "dias": "{daysRemaining} dias",
+      "vencido": "Vencido"
+    },
+    "passesFilters": {
+      "buscarClientePlacaPlan": "Buscar por cliente, placa ou plano...",
+      "todos": "Todos",
+      "activo": "Ativo",
+      "suspendido": "Suspenso",
+      "cancelado": "Cancelado",
+      "vencimiento": "Vencimento",
+      "sinFiltro": "Sem filtro",
+      "vence7Dias": "Vence em 7 dias",
+      "vence15Dias": "Vence em 15 dias",
+      "vence30Dias": "Vence em 30 dias"
+    },
+    "abonadosList": {
+      "noHayAbonadosRegistrados": "Não há mensalistas registrados",
+      "creaNuevoPaseEstacionamiento": "Crie um novo passe de estacionamento para começar",
+      "cancelarPase": "Cancelar passe"
+    },
+    "sessionsList": {
+      "noHaySesiones": "Não há sessões",
+      "noEncontraronSesionesParqueo": "Nenhuma sessão de estacionamento encontrada.",
+      "estados": {
+        "active": "Ativa",
+        "completed": "Concluída"
+      }
+    },
+    "abonadosHeader": {
+      "abonadosParking": "Mensalistas do estacionamento",
+      "gestionaPasesMembresiasEstacionamiento": "Gerencie os passes e mensalidades do estacionamento",
+      "actualizar": "Atualizar",
+      "tiposPlan": "Tipos de plano",
+      "nuevoAbonado": "Novo mensalista"
+    },
+    "passesHeader": {
+      "abonados": "Mensalistas",
+      "gestionPasesMembresiasEstacionamiento": "Gestão de passes e mensalidades do estacionamento"
+    },
+    "parkingHeader": {
+      "gestionEstacionamientos": "Gestão de estacionamentos",
+      "controlSesionesParqueoCobros": "Controle de sessões de estacionamento e cobranças",
+      "nuevaEntrada": "Nova entrada"
+    },
+    "unidades": {
+      "minute": "min",
+      "hour": "hora",
+      "day": "dia",
+      "week": "semana",
+      "month": "mês",
+      "year": "ano"
+    },
+    "sesionEstados": {
+      "open": "Ativa",
+      "closed": "Concluída",
+      "cancelled": "Cancelada"
+    },
+    "estadosPase": {
+      "active": "Ativo",
+      "expired": "Vencido",
+      "cancelled": "Cancelado",
+      "suspended": "Suspenso"
+    },
+    "sinVehiculo": "Sem veículo",
+    "passesStats": {
+      "total": "Total de passes",
+      "activos": "Ativos",
+      "vencidos": "Vencidos",
+      "suspendidos": "Suspensos",
+      "porVencer": "A vencer (7d)"
     }
   }
 }

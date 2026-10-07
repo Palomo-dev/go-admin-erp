@@ -11,20 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Lock } from "lucide-react";
 import { ALL_TOOL_NAMES } from "@/lib/services/crm/voiceAgentTools";
 import { isMandatoryTool, toggleAllowedTool, type AgentFormState } from "./useAgentForm";
+import { useTranslations } from "next-intl";
 
-const TOOL_LABELS: Record<string, string> = {
-  get_customer_context: "Consultar la ficha del cliente",
-  move_opportunity_stage: "Mover de etapa (no puede cerrar)",
-  update_opportunity_field: "Actualizar datos de la oportunidad",
-  create_task: "Crear tarea de seguimiento",
-  book_meeting: "Agendar reunión",
-  schedule_callback: "Programar devolución de llamada",
-  log_objection: "Registrar objeción",
-  send_payment_link: "Preparar enlace de pago",
-  log_consent_opt_out: "Registrar baja voluntaria",
-  transfer_to_human: "Transferir a una persona",
-  end_call: "Terminar la llamada",
-};
 
 interface Props {
   form: AgentFormState;
@@ -32,11 +20,11 @@ interface Props {
 }
 
 export function AgentToolsTab({ form, patch }: Props) {
+  const t = useTranslations("crm.agentesIa");
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-600 dark:text-gray-300">
-        Qué puede hacer el agente durante la llamada. Cada etapa del embudo puede acotar más esta
-        lista.
+        {t("agentToolsTab.puedeHacerAgenteDurante")}
       </p>
       <ul className="space-y-1">
         {ALL_TOOL_NAMES.map((tool) => {
@@ -58,7 +46,7 @@ export function AgentToolsTab({ form, patch }: Props) {
                   obligatoria ? "text-gray-700 dark:text-gray-300" : "cursor-pointer"
                 }`}
               >
-                {TOOL_LABELS[tool] ?? tool}
+                {t.has(`agentToolsTab.herramientas.${tool}`) ? t(`agentToolsTab.herramientas.${tool}`) : tool}
               </Label>
               {obligatoria && (
                 <span
@@ -66,7 +54,7 @@ export function AgentToolsTab({ form, patch }: Props) {
                   className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200"
                 >
                   <Lock className="h-3 w-3" aria-hidden="true" />
-                  Obligatoria por ley
+                  {t("agentToolsTab.obligatoriaLey")}
                 </span>
               )}
             </li>
@@ -74,8 +62,7 @@ export function AgentToolsTab({ form, patch }: Props) {
         })}
       </ul>
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        Registrar un «no me vuelva a llamar» y poder colgar son obligatorias (Ley 1581 de 2012). No
-        se pueden desactivar ni acotar desde la etapa del embudo.
+        {t("agentToolsTab.registrarNoMeVuelva")}
       </p>
     </div>
   );

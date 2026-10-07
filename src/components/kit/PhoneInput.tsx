@@ -28,6 +28,7 @@ import * as React from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useKitT } from './useIdiomaKit';
 import { getCountryByIso, type CountryPhoneCode } from '@/lib/data/countryPhoneCodes';
 import {
   DEFAULT_COUNTRY_ISO,
@@ -267,6 +268,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
   },
   ref,
 ) {
+  const t = useKitT();
   const clases = CLASES_TAMANO[tamano];
   const emitir = (v: string) => onChange(valorTelefonoEnFormato(v, formato));
   const autoId = React.useId();
@@ -403,7 +405,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
             <button
               type="button"
               disabled={disabled}
-              aria-label={`País del teléfono: ${pais.name} (${pais.dialCode}). Cambiar país`}
+              aria-label={t('telefono.cambiarPais', { pais: pais.name, indicativo: pais.dialCode })}
               aria-haspopup="listbox"
               aria-expanded={open}
               className={cn(
@@ -430,9 +432,9 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 onKeyDown={alTeclearBusqueda}
-                placeholder="País, código ISO o indicativo"
+                placeholder={t('telefono.buscarPlaceholder')}
                 role="combobox"
-                aria-label="Buscar país"
+                aria-label={t('telefono.buscar')}
                 aria-expanded="true"
                 aria-controls={listaId}
                 aria-autocomplete="list"
@@ -444,11 +446,11 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(fu
               ref={listaRef}
               id={listaId}
               role="listbox"
-              aria-label="Países"
+              aria-label={t('telefono.paises')}
               className="max-h-[260px] overflow-y-auto overscroll-contain p-1"
             >
               {filtrados.length === 0 && (
-                <div className="py-6 text-center text-sm text-fg-muted">No se encontraron países</div>
+                <div className="py-6 text-center text-sm text-fg-muted">{t('telefono.sinResultados')}</div>
               )}
               {filtrados.map((c, i) => {
                 const seleccionado = c.iso === pais.iso;

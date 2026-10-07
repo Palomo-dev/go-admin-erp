@@ -17,14 +17,16 @@ import type { TemplateEngine } from '@/lib/services/crm/email/types';
 import { TemplateEditorHeader } from './TemplateEditorHeader';
 import { TestSendDialog } from './TestSendDialog';
 import { useTemplateEditor } from './useTemplateEditor';
+import { useTranslations } from 'next-intl';
 
 export function TemplateEditorPage({ templateId }: { templateId?: string }) {
+  const t = useTranslations('crm.plantillas');
   const ed = useTemplateEditor(templateId);
   const [testOpen, setTestOpen] = useState(false);
 
   if (ed.loading) {
     return (
-      <div className="space-y-4 p-4" aria-busy="true" aria-label="Cargando plantilla">
+      <div className="space-y-4 p-4" aria-busy="true" aria-label={t('templateEditorPage.cargandoPlantilla')}>
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-[60vh] w-full" />
       </div>
@@ -34,7 +36,7 @@ export function TemplateEditorPage({ templateId }: { templateId?: string }) {
     return (
       <div className="p-4">
         <Alert variant="destructive">
-          <AlertTitle>No se pudo cargar la plantilla</AlertTitle>
+          <AlertTitle>{t('templateEditorPage.noPudoCargarPlantilla')}</AlertTitle>
           <AlertDescription>{ed.loadError}</AlertDescription>
         </Alert>
       </div>
@@ -72,11 +74,11 @@ export function TemplateEditorPage({ templateId }: { templateId?: string }) {
         {/* Bloques / HTML: dos VISTAS del mismo cuerpo → control segmentado (regla de pestañas 2026-10-06). */}
         <div className="min-w-0">
           <SegmentedControl
-            etiqueta="Modo de edición"
+            etiqueta={t('templateEditorPage.modoEdicion')}
             valor={ed.form.engine}
             onValorChange={(v) => switchEngine(v)}
             opciones={[
-              { valor: 'blocks' as TemplateEngine, etiqueta: 'Bloques', icono: Blocks },
+              { valor: 'blocks' as TemplateEngine, etiqueta: t('templateEditorPage.bloques'), icono: Blocks },
               { valor: 'html' as TemplateEngine, etiqueta: 'HTML', icono: Code2 },
             ]}
           />

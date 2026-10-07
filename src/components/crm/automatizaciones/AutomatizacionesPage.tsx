@@ -31,10 +31,12 @@ import { DryRunDialog } from './DryRunDialog';
 import { RunsSheet } from './RunsSheet';
 import { useAutomationRules, type AutomationRuleView } from './useAutomationRules';
 import { useRuleLookups } from './useRuleLookups';
+import { useTranslations } from 'next-intl';
 
 type Target = { rule: AutomationRuleView } | null;
 
 export function AutomatizacionesPage() {
+  const t = useTranslations('crm.automatizaciones');
   const { rules, loading, loaded, error, reload, save, toggle, remove, dryRun } = useAutomationRules();
   const lookups = useRuleLookups();
   const { formatDateTime } = useFormatDate();
@@ -80,9 +82,9 @@ export function AutomatizacionesPage() {
     setTogglingId(rule.id);
     try {
       await toggle(rule);
-      toast({ title: rule.is_active ? `«${rule.name}» desactivada` : `«${rule.name}» activada` });
+      toast({ title: rule.is_active ? t('automatizacionesPage.desactivada', { name: rule.name }) : t('automatizacionesPage.activada', { name: rule.name }) });
     } catch (err) {
-      toast({ title: 'No se pudo cambiar el estado', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+      toast({ title: t('automatizacionesPage.noPudoCambiarEstado'), description: err instanceof Error ? err.message : t('automatizacionesPage.errorDesconocido'), variant: 'destructive' });
     } finally {
       setTogglingId(null);
       setRefocusSwitchId(rule.id);
@@ -103,9 +105,9 @@ export function AutomatizacionesPage() {
     try {
       await remove(deleteTarget.rule.id);
       deletedRef.current = true;
-      toast({ title: `«${deleteTarget.rule.name}» eliminada` });
+      toast({ title: t('automatizacionesPage.eliminada', { name: deleteTarget.rule.name }) });
     } catch (err) {
-      toast({ title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+      toast({ title: t('automatizacionesPage.noPudoEliminar'), description: err instanceof Error ? err.message : t('automatizacionesPage.errorDesconocido'), variant: 'destructive' });
     }
   };
 
@@ -123,35 +125,35 @@ export function AutomatizacionesPage() {
       <div className="space-y-5 p-4 sm:p-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Automatizaciones</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('automatizacionesPage.automatizaciones')}</h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Reglas que actúan solas cuando pasa algo en el pipeline. Las ejecuta el servidor, no el navegador.
+              {t('automatizacionesPage.reglasActuanSolasCuando')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" size="icon" aria-label="Actualizar lista" disabled={refreshing} onClick={() => void refresh()}>
+            <Button type="button" variant="ghost" size="icon" aria-label={t('automatizacionesPage.actualizarLista')} disabled={refreshing} onClick={() => void refresh()}>
               <RefreshCw className={cn('h-4 w-4', refreshing && 'motion-safe:animate-spin')} aria-hidden="true" />
             </Button>
             <Button type="button" variant="outline" onClick={() => setRunsTarget({ ruleId: null, ruleName: null })}>
-              <History className="mr-1.5 h-4 w-4" aria-hidden="true" /> Historial
+              <History className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t('automatizacionesPage.historial')}
             </Button>
             <Button ref={newButtonRef} type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => openEditor(null)}>
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Nueva regla
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t('automatizacionesPage.nuevaRegla')}
             </Button>
           </div>
         </header>
 
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>{loaded ? 'No se pudo actualizar la lista' : 'No se pudieron cargar las reglas'}</AlertTitle>
+            <AlertTitle>{loaded ? t('automatizacionesPage.noPudoActualizarLista') : t('automatizacionesPage.noPudieronCargarReglas')}</AlertTitle>
             <AlertDescription>
-              {error}. {loaded ? 'Se muestra la última lista conocida; pulsa' : 'Pulsa'} «Actualizar» para reintentar.
+              {t('automatizacionesPage.actualizarReintentar', { error, valor: loaded ? t('automatizacionesPage.muestraUltimaListaConocida') : t('automatizacionesPage.pulsa') })}
             </AlertDescription>
           </Alert>
         )}
 
         {loading ? (
-          <div className="space-y-4" aria-busy="true" aria-label="Cargando reglas">
+          <div className="space-y-4" aria-busy="true" aria-label={t('automatizacionesPage.cargandoReglas')}>
             <Skeleton className="h-9 w-full max-w-md" />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {[0, 1, 2].map((i) => <Skeleton key={i} className="h-44 w-full rounded-xl" />)}
@@ -175,7 +177,7 @@ export function AutomatizacionesPage() {
                 onClearFilters={() => setFilters(EMPTY_FILTERS)}
               />
             ) : (
-              <StaggerList as="ul" aria-label="Reglas de automatización" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <StaggerList as="ul" aria-label={t('automatizacionesPage.reglasAutomatizacion')} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <AnimatePresence initial={false}>
                   {shown.map((rule) => (
                     <RuleCard
@@ -225,9 +227,9 @@ export function AutomatizacionesPage() {
         <ConfirmDialog
           open={deleteTarget !== null}
           onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-          title="Eliminar regla"
-          description={`Se eliminará «${deleteTarget?.rule.name ?? ''}» y dejará de ejecutarse. También se borra su historial de ejecuciones. Esta acción no se puede deshacer.`}
-          confirmLabel="Eliminar"
+          title={t('automatizacionesPage.eliminarRegla')}
+          description={t('automatizacionesPage.eliminaraDejaraEjecutarseTambien', { n: deleteTarget?.rule.name ?? '' })}
+          confirmLabel={t('automatizacionesPage.eliminar')}
           variant="destructive"
           onConfirm={onDelete}
           onCloseAutoFocus={onDeleteCloseAutoFocus}

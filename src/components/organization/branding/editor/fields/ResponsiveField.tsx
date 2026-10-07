@@ -4,6 +4,7 @@ import { Monitor, Tablet, Smartphone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import type { Viewport } from './types';
+import { useTranslations } from 'next-intl';
 
 export type { Viewport };
 
@@ -29,6 +30,7 @@ export default function ResponsiveField({
   activeViewport = 'desktop',
   renderControl,
 }: ResponsiveFieldProps) {
+  const t = useTranslations('branding.editor');
   const obj = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
   const isResponsive = obj && 'desktop' in obj;
 
@@ -51,13 +53,13 @@ export default function ResponsiveField({
     <Tabs defaultValue={activeViewport} className="w-full">
       <TabsList className="grid w-full grid-cols-3 h-7">
         <TabsTrigger value="desktop" className="text-[10px] py-0">
-          <Monitor className="h-3 w-3 mr-1" /> Esc
+          <Monitor className="h-3 w-3 mr-1" /> {t('responsiveField.esc')}
         </TabsTrigger>
         <TabsTrigger value="tablet" className="text-[10px] py-0">
-          <Tablet className="h-3 w-3 mr-1" /> Tab
+          <Tablet className="h-3 w-3 mr-1" /> {t('responsiveField.tab')}
         </TabsTrigger>
         <TabsTrigger value="mobile" className="text-[10px] py-0">
-          <Smartphone className="h-3 w-3 mr-1" /> Móv
+          <Smartphone className="h-3 w-3 mr-1" /> {t('responsiveField.mov')}
         </TabsTrigger>
       </TabsList>
       {(['desktop', 'tablet', 'mobile'] as Viewport[]).map((vp) => (

@@ -34,6 +34,7 @@ import { RulePreview } from './RulePreview';
 import { RuleSettings } from './RuleSettings';
 import type { RuleLookups } from './useRuleLookups';
 import type { AutomationRuleView } from './useAutomationRules';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   open: boolean;
@@ -49,6 +50,7 @@ interface Props {
 }
 
 export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange, onSave, returnFocusFallback }: Props) {
+  const t = useTranslations('crm.automatizaciones');
   const [form, setForm] = useState<RuleFormState>(() => ruleToForm(null));
   const [errors, setErrors] = useState<FormError[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -108,10 +110,10 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
     setServerError(null);
     try {
       await onSave(formToPayload(form, rule?.id));
-      toast({ title: rule ? 'Regla actualizada' : 'Regla creada', description: form.is_active ? 'Ya está activa.' : 'Está desactivada: actívala cuando quieras.' });
+      toast({ title: rule ? t('ruleEditorSheet.reglaActualizada') : t('ruleEditorSheet.reglaCreada'), description: form.is_active ? t('ruleEditorSheet.yaEstaActiva') : t('ruleEditorSheet.estaDesactivadaActivalaCuando') });
       onOpenChange(false);
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
+      setServerError(err instanceof Error ? err.message : t('automatizacionesPage.errorDesconocido'));
       setFocusIds(['rule-server-error']);
     } finally {
       setSaving(false);
@@ -135,9 +137,9 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
         className="flex h-dvh w-full flex-col gap-0 overflow-hidden bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-3xl"
       >
         <SheetHeader className="border-b border-gray-200 bg-white px-4 py-4 pr-12 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">{rule ? 'Editar regla' : 'Nueva regla'}</SheetTitle>
+          <SheetTitle className="text-gray-900 dark:text-gray-100">{rule ? t('ruleEditorSheet.editarRegla') : t('automatizacionesPage.nuevaRegla')}</SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">
-            Arma la frase: cuándo se dispara, con qué condiciones y qué hace. Abajo verás cómo queda antes de guardar.
+            {t('ruleEditorSheet.armaFraseCuandoDispara')}
           </SheetDescription>
         </SheetHeader>
 
@@ -148,11 +150,11 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
           onSubmit={(e) => { e.preventDefault(); void submit(); }}
         >
           <div>
-            <Label htmlFor="rule-name" className="text-xs text-gray-700 dark:text-gray-300">Nombre de la regla</Label>
+            <Label htmlFor="rule-name" className="text-xs text-gray-700 dark:text-gray-300">{t('ruleEditorSheet.nombreRegla')}</Label>
             <Input
               id="rule-name"
               value={form.name}
-              placeholder="Seguimiento de propuesta"
+              placeholder={t('ruleEditorSheet.seguimientoPropuesta')}
               autoComplete="off"
               aria-invalid={!!nameError}
               aria-describedby={nameError ? 'rule-name-error' : undefined}
@@ -161,15 +163,15 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
             {nameError && <p id="rule-name-error" role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{nameError}</p>}
           </div>
 
-          <SentenceBlock id="blk-trigger" word="Cuando" tone="blue">
+          <SentenceBlock id="blk-trigger" word={t('ruleEditorSheet.palabras.cuando')} tone="blue">
             <TriggerBlock form={form} lookups={lookups} onChange={update} />
           </SentenceBlock>
           <SentenceConnector />
-          <SentenceBlock id="blk-conditions" word="si" tone="amber" hint="opcional">
+          <SentenceBlock id="blk-conditions" word={t('ruleEditorSheet.palabras.si')} tone="amber" hint={t('ruleEditorSheet.palabras.opcional')}>
             <ConditionsBlock form={form} lookups={lookups} onChange={update} />
           </SentenceBlock>
           <SentenceConnector />
-          <SentenceBlock id="blk-actions" word="entonces" tone="emerald">
+          <SentenceBlock id="blk-actions" word={t('ruleEditorSheet.palabras.entonces')} tone="emerald">
             <ActionsBlock
               form={form}
               lookups={lookups}
@@ -185,12 +187,12 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
 
           {serverError && (
             <Alert id="rule-server-error" variant="destructive" tabIndex={-1}>
-              <AlertTitle>No se pudo guardar</AlertTitle>
-              <AlertDescription>{serverError}. Corrige lo indicado y vuelve a intentarlo.</AlertDescription>
+              <AlertTitle>{t('ruleEditorSheet.noPudoGuardar')}</AlertTitle>
+              <AlertDescription>{t('ruleEditorSheet.corrigeLoIndicadoVuelve', { serverError })}</AlertDescription>
             </Alert>
           )}
           {/* Enter en un campo de texto envía el formulario. */}
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Guardar</button>
+          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{t('ruleEditorSheet.guardar')}</button>
         </form>
 
         {/*
@@ -213,13 +215,13 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
             <Switch id="rule-active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
             {/* El estado se dice aquí y en el botón; la tercera vez (frase larga) sobraba. */}
             <Label htmlFor="rule-active" className="text-sm text-gray-900 dark:text-gray-100">
-              {form.is_active ? 'Activa' : 'Desactivada'}
+              {form.is_active ? t('ruleCard.activa') : t('ruleEditorSheet.desactivada')}
             </Label>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{t('ruleEditorSheet.cancelar')}</Button>
             <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
-              {saving ? 'Guardando…' : primaryLabel(rule !== null, form.is_active)}
+              {saving ? t('ruleEditorSheet.guardando') : primaryLabel(rule !== null, form.is_active)}
             </Button>
           </div>
         </SheetFooter>

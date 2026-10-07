@@ -15,6 +15,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { Button } from '@/components/ui/button';
 import type { RevenueMetricRow } from '@/lib/services/crm/revenueOsService';
 import { fmtMoney, fmtMoneyCompact, fmtMonth } from './formatters';
+import { useTranslations } from 'next-intl';
 
 const SERIES = [
   { key: 'revenue_collected', label: 'Cobrado', color: 'var(--rv-s1)' },
@@ -38,6 +39,7 @@ interface TooltipPayload {
 }
 
 function TrendTooltip({ active, payload, label, currency }: { active?: boolean; payload?: TooltipPayload[]; label?: string; currency: string | null }) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div role="status" className="rounded-md border border-gray-200 bg-white p-2 text-xs shadow-md dark:border-gray-700 dark:bg-gray-800">
@@ -47,7 +49,7 @@ function TrendTooltip({ active, payload, label, currency }: { active?: boolean; 
         return (
           <p key={String(p.dataKey)} className="mt-0.5 flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s?.color }} aria-hidden="true" />
-            {s?.label ?? p.name}: {fmtMoney(Number(p.value), currency)}
+            {s ? t(`revenueTrendChart.series.${s.key}`) : p.name}: {fmtMoney(Number(p.value), currency)}
           </p>
         );
       })}
@@ -56,6 +58,7 @@ function TrendTooltip({ active, payload, label, currency }: { active?: boolean; 
 }
 
 export function RevenueTrendChart({ rows, currency }: Props) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const [showTable, setShowTable] = useState(false);
   const captionId = useId();
   const data = rows.map((r) => ({ month: r.month, revenue_collected: r.revenue_collected, revenue_won_pipeline: r.revenue_won_pipeline }));
@@ -68,26 +71,26 @@ export function RevenueTrendChart({ rows, currency }: Props) {
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 id={captionId} className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Tendencia mensual: cobrado frente a ganado
+          {t('revenueTrendChart.tendenciaMensualCobradoFrente')}
         </h3>
         <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowTable((v) => !v)} aria-pressed={showTable}>
-          {showTable ? 'Ver gráfico' : 'Ver tabla'}
+          {showTable ? t('revenueTrendChart.verGrafico') : t('revenueTrendChart.verTabla')}
         </Button>
       </div>
 
       {empty ? (
         <p className="py-8 text-center text-sm text-gray-600 dark:text-gray-300">
-          Sin cobros ni oportunidades ganadas en el periodo. Cambia el rango o registra ventas para ver la tendencia.
+          {t('revenueTrendChart.sinCobrosNiOportunidades')}
         </p>
       ) : showTable ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <caption className="sr-only">Revenue cobrado y ganado en pipeline por mes</caption>
+            <caption className="sr-only">{t('revenueTrendChart.revenueCobradoGanadoPipeline')}</caption>
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                <th scope="col" className="py-1.5 pr-3 font-medium">Mes</th>
+                <th scope="col" className="py-1.5 pr-3 font-medium">{t('revenueTrendChart.mes')}</th>
                 {SERIES.map((s) => (
-                  <th key={s.key} scope="col" className="py-1.5 pr-3 text-right font-medium">{s.label}</th>
+                  <th key={s.key} scope="col" className="py-1.5 pr-3 text-right font-medium">{t(`revenueTrendChart.series.${s.key}`)}</th>
                 ))}
               </tr>
             </thead>
@@ -103,7 +106,7 @@ export function RevenueTrendChart({ rows, currency }: Props) {
           </table>
         </div>
       ) : (
-        <div className="h-64 w-full" role="img" aria-label="Gráfico de barras mensual: cobrado frente a ganado en pipeline. La vista de tabla tiene los valores exactos.">
+        <div className="h-64 w-full" role="img" aria-label={t('revenueTrendChart.graficoBarrasMensualCobrado')}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} barGap={2} barCategoryGap="30%">
               <CartesianGrid vertical={false} stroke="var(--rv-grid)" strokeWidth={1} />
@@ -116,7 +119,7 @@ export function RevenueTrendChart({ rows, currency }: Props) {
                 formatter={(value: string) => <span className="text-xs text-gray-700 dark:text-gray-200">{value}</span>}
               />
               {SERIES.map((s) => (
-                <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar key={s.key} dataKey={s.key} name={t(`revenueTrendChart.series.${s.key}`)} fill={s.color} maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
               ))}
             </BarChart>
           </ResponsiveContainer>

@@ -28,6 +28,7 @@ import type { VoiceCatalogRow, VoiceCatalogState } from "../useVoiceCatalog";
 import { VoiceAddForms } from "../VoiceAddForms";
 import { MyVoiceCard, myVoiceCardId, type AgentLite } from "./MyVoiceCard";
 import { useAudioPreview } from "./useAudioPreview";
+import { useTranslations } from "next-intl";
 
 interface Props {
   catalog: VoiceCatalogState;
@@ -37,17 +38,18 @@ interface Props {
 
 const EMPTY_PRIMARY_ID = "my-voices-empty-explore";
 
-async function patchJson(url: string, body: unknown) {
+async function patchJson(url: string, body: unknown, sinExito: string) {
   const json = await fetchJson<{ success?: boolean; error?: string }>(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+  if (!json?.success) throw new Error(json?.error || sinExito);
   return json;
 }
 
 export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const { voices, defaultVoice, loading, refreshing, error, tts, reload } = catalog;
   const player = useAudioPreview();
   const [agents, setAgents] = useState<AgentLite[]>([]);
@@ -82,7 +84,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
   const loadAgents = useCallback(async () => {
     try {
       const json = await fetchJson<{ success?: boolean; error?: string; data?: AgentLite[] }>("/api/crm/voice-agents", { cache: "no-store" });
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
       setAgents(json.data ?? []);
       setAgentsError(null);
     } catch (err) {
@@ -95,28 +97,28 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
 
   useEffect(() => {
     if (player.status === "error" && player.error) {
-      toast({ title: "No se pudo reproducir", description: player.error, variant: "destructive" });
+      toast({ title: t("myVoicesPanel.noPudoReproducir"), description: player.error, variant: "destructive" });
     }
   }, [player.status, player.error]);
 
   const makeDefault = async (voice: VoiceCatalogRow) => {
     try {
-      await patchJson("/api/crm/voices", { id: voice.id, is_default: true });
-      toast({ title: `«${voice.name}» es ahora la voz por defecto`, description: "La usarán los agentes que no tengan una voz propia." });
+      await patchJson("/api/crm/voices", { id: voice.id, is_default: true }, t("agentCampaignsPanel.respuestaNoIndicoExito"));
+      toast({ title: t("myVoicesPanel.ahoraVozDefecto", { name: voice.name }), description: t("myVoicesPanel.usaranAgentesNoTengan") });
       void reload();
     } catch (err) {
-      toast({ title: "No se pudo marcar por defecto", description: describeError(err), variant: "destructive" });
+      toast({ title: t("myVoicesPanel.noPudoMarcarDefecto"), description: describeError(err), variant: "destructive" });
     }
   };
 
   const assign = async (voice: VoiceCatalogRow, agentId: string) => {
     setAssigning(voice.id);
     try {
-      await patchJson(`/api/crm/voice-agents/${agentId}`, { voice_ref_id: voice.id });
-      toast({ title: `«${voice.name}» asignada a ${agents.find((a) => a.id === agentId)?.name ?? "el agente"}` });
+      await patchJson(`/api/crm/voice-agents/${agentId}`, { voice_ref_id: voice.id }, t("agentCampaignsPanel.respuestaNoIndicoExito"));
+      toast({ title: t("myVoicesPanel.asignadaA", { voz: voice.name, agente: agents.find((a) => a.id === agentId)?.name ?? t("myVoicesPanel.elAgente") }) });
       await loadAgents();
     } catch (err) {
-      toast({ title: "No se pudo asignar la voz", description: describeError(err), variant: "destructive" });
+      toast({ title: t("myVoicesPanel.noPudoAsignarVoz"), description: describeError(err), variant: "destructive" });
     } finally {
       setAssigning(null);
     }
@@ -130,13 +132,13 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
         `/api/crm/voices?id=${encodeURIComponent(toDelete.id)}`,
         { method: "DELETE" }
       );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
       const idx = voices.findIndex((v) => v.id === toDelete.id);
       focusAfterDelete.current = (voices[idx + 1] ?? voices[idx - 1])?.id ?? null;
       toast({
-        title: `«${toDelete.name}» borrada`,
+        title: t("myVoicesPanel.borrada", { name: toDelete.name }),
         description: json.data?.removed_from_provider
-          ? "También se eliminó en ElevenLabs."
+          ? t("myVoicesPanel.tambienEliminoElevenlabs")
           : toDelete.provider === "elevenlabs"
             ? "Solo se quitó del catálogo; en ElevenLabs sigue disponible."
             : undefined,
@@ -144,7 +146,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
       // Se espera a la recarga (en sitio, sin esqueleto) para que la tarjeta vecina exista al devolver el foco.
       await reload();
     } catch (err) {
-      toast({ title: "No se pudo borrar la voz", description: describeError(err), variant: "destructive" });
+      toast({ title: t("myVoicesPanel.noPudoBorrarVoz"), description: describeError(err), variant: "destructive" });
     } finally {
       setDeleting(false);
     }
@@ -157,16 +159,19 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
           <button type="button" className="flex w-full items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-left text-sm text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 flex-1 break-words">
-              Voz por defecto: <strong>{defaultVoice ? defaultVoice.name : "ninguna (voz estándar de Google)"}</strong>. ¿Cómo se elige la voz de una llamada?
+              {t.rich("myVoicesPanel.vozDefectoComo", {
+                voz: defaultVoice ? defaultVoice.name : t("myVoicesPanel.ningunaVozEstandarGoogle"),
+                b: (chunks) => <strong>{chunks}</strong>,
+              })}
             </span>
             <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${howOpen ? "rotate-180" : ""}`} aria-hidden="true" />
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <ol className="list-decimal space-y-0.5 rounded-b-lg border border-t-0 border-blue-200 bg-blue-50/60 px-3 py-2 pl-8 text-xs text-blue-900 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-100">
-            <li>La voz asignada a ese agente (aquí con «Asignar a un agente» o en su editor).</li>
-            <li>Si no tiene, la marcada como <strong>Por defecto</strong>.</li>
-            <li>Si tampoco hay, la voz estándar de Google de Twilio: funciona, pero suena genérica.</li>
+            <li>{t("myVoicesPanel.vozAsignadaEseAgente")}</li>
+            <li>{t.rich("myVoicesPanel.siNoTieneMarcada", { b: (chunks) => <strong>{chunks}</strong> })}</li>
+            <li>{t("myVoicesPanel.siTampocoHayVoz")}</li>
           </ol>
         </CollapsibleContent>
       </Collapsible>
@@ -175,14 +180,13 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
         <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            No se pudo leer la lista de agentes: {agentsError}. Podrás asignar voces cuando vuelva a cargar.{" "}
-            <button type="button" className="font-medium underline" onClick={() => void loadAgents()}>Reintentar</button>
+            {t.rich("myVoicesPanel.noPudoLeerLista", { agentsError, b: (chunks) => <button type="button" className="font-medium underline" onClick={() => void loadAgents()}>{chunks}</button> })}
           </span>
         </p>
       )}
 
       {loading && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Cargando mis voces">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label={t("myVoicesPanel.cargandoMisVoces")}>
           {[0, 1, 2].map((i) => (
             <li key={i} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
               <div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-1/3" /></div></div>
@@ -193,29 +197,29 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
       )}
 
       {!loading && error && (
-        <LoadErrorState title="No se pudo cargar el catálogo de voces" message={error} onRetry={() => void reload()} />
+        <LoadErrorState title={t("myVoicesPanel.noPudoCargarCatalogo")} message={error} onRetry={() => void reload()} />
       )}
 
       {!loading && !error && voices.length === 0 && (
         <FadeIn className="rounded-xl border border-dashed border-gray-300 p-10 text-center dark:border-gray-700">
           <Mic className="mx-auto h-8 w-8 text-blue-500" aria-hidden="true" />
-          <p className="mt-3 text-sm font-medium text-gray-800 dark:text-gray-200">Todavía no tienes voces guardadas.</p>
+          <p className="mt-3 text-sm font-medium text-gray-800 dark:text-gray-200">{t("myVoicesPanel.todaviaNoTienesVoces")}</p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Elige una de la biblioteca o clona la tuya. Mientras tanto, los agentes llaman con la voz estándar.
+            {t("myVoicesPanel.eligeBibliotecaClonaTuya")}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Button id={EMPTY_PRIMARY_ID} className="bg-blue-600 text-white hover:bg-blue-700" onClick={onGoToLibrary}>
-              <Library className="mr-2 h-4 w-4" aria-hidden="true" />Explorar la biblioteca
+              <Library className="mr-2 h-4 w-4" aria-hidden="true" />{t("myVoicesPanel.explorarBiblioteca")}
             </Button>
             <Button variant="outline" onClick={onGoToClone}>
-              <Mic className="mr-2 h-4 w-4" aria-hidden="true" />Clonar mi voz
+              <Mic className="mr-2 h-4 w-4" aria-hidden="true" />{t("myVoicesPanel.clonarMiVoz")}
             </Button>
           </div>
         </FadeIn>
       )}
 
       {!loading && !error && voices.length > 0 && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Mis voces" aria-busy={refreshing || undefined}>
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={t("voces.mias")} aria-busy={refreshing || undefined}>
           {voices.map((v, i) => (
             <li key={v.id} className="h-full min-w-0">
               <FadeIn transition={{ duration: 0.2, delay: Math.min(i, 8) * 0.03 }} className="h-full">
@@ -250,7 +254,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
           >
             <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 flex-1">
-              Más opciones: importar el workspace de ElevenLabs o registrar una voz por identificador
+              {t("myVoicesPanel.masOpcionesImportarWorkspace")}
             </span>
             <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true" />
           </Button>
@@ -264,9 +268,9 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
         open={toDelete !== null}
         onOpenChange={(open) => { if (!open) setToDelete(null); }}
         onCloseAutoFocus={onCloseAutoFocus}
-        title={`¿Borrar la voz «${toDelete?.name ?? ""}»?`}
+        title={t("myVoicesPanel.borrarVoz", { n: toDelete?.name ?? "" })}
         description={toDelete ? describeVoiceRemoval(toDelete) : ""}
-        confirmLabel="Borrar voz"
+        confirmLabel={t("myVoicesPanel.borrarVoz2")}
         variant="destructive"
         loading={deleting}
         onConfirm={confirmDelete}

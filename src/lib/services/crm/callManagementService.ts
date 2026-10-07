@@ -362,7 +362,16 @@ export async function updateCall(
   id: string,
   organizationId: number,
   data: CallUpdateInput,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  opciones: {
+    /**
+     * Solo escribe si la llamada no ha terminado (`ended_at` nulo). Para
+     * estados vivos (`in_progress`…) que pueden llegar DESPUÉS del cierre: sin
+     * esto, una escritura tardía reabría una llamada ya colgada (2026-10-06).
+     * Si ya terminó, no escribe nada y devuelve `null`.
+     */
+    soloSiNoTerminada?: boolean;
+  } = {}
 ): Promise<CallRecord | null> {
   const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -385,13 +394,13 @@ export async function updateCall(
   if (data.customer_leg_sid !== undefined) updateData.customer_leg_sid = data.customer_leg_sid;
   if (data.duration_source !== undefined) updateData.duration_source = data.duration_source;
 
-  const { data: record, error } = await supabase
+  let query = supabase
     .from('calls')
     .update(updateData)
     .eq('id', id)
-    .eq('organization_id', organizationId)
-    .select()
-    .maybeSingle();
+    .eq('organization_id', organizationId);
+  if (opciones.soloSiNoTerminada) query = query.is('ended_at', null);
+  const { data: record, error } = await query.select().maybeSingle();
 
   if (error) {
     console.error('[callManagementService.updateCall] error:', error.message);

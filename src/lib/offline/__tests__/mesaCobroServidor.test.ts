@@ -8,8 +8,10 @@
  *   (paid_sale_item_ids) y manda la tasa del resto de líneas sin cobrarlas.
  * - Totales de la cuenta sin IVA doble: recalcularTotalVenta es la RPC
  *   pos_mesa_recalcular_venta y la pre-cuenta suma las líneas guardadas.
- * - Las líneas nuevas de la mesa siguen la regla única, restan el descuento y
- *   guardan su tasa y modo; las promociones reciben categoría y producto padre.
+ * - Las líneas nuevas de la mesa siguen la regla única y guardan su tasa y
+ *   modo; nacen sin descuento y las promociones se evalúan sobre la cuenta
+ *   COMPLETA (con categoría y producto padre) y se escriben con
+ *   pos_mesa_aplicar_promociones (2026-10-07).
  *
  * El comportamiento en la base (total sin IVA doble, descuento que escala con
  * la cantidad, precio manipulado rechazado, cuenta dividida, reintento,
@@ -22,8 +24,8 @@ import path from 'path';
 import { createFakeSupabase, type FakeOp } from './fakeSupabase';
 
 const fake = createFakeSupabase(() => ({ data: null }));
-type ResultadoPromos = { discountTotal: number; itemDiscounts: Record<number, number>; applied: unknown[] };
-const evaluarPromos = jest.fn<Promise<ResultadoPromos>, [unknown]>(async () => ({ discountTotal: 0, itemDiscounts: {}, applied: [] }));
+type ResultadoPromos = { discountTotal: number; itemDiscounts: Record<number, number>; lineDiscounts: number[]; applied: unknown[] };
+const evaluarPromos = jest.fn<Promise<ResultadoPromos>, [unknown]>(async () => ({ discountTotal: 0, itemDiscounts: {}, lineDiscounts: [], applied: [] }));
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: fake.client }));
 jest.mock('@/lib/hooks/useOrganization', () => ({
@@ -197,20 +199,32 @@ describe('totales de la cuenta sin IVA doble', () => {
 });
 
 describe('agregar productos a la mesa', () => {
-  it('regla única de la línea (con el descuento), tasa y modo guardados, promociones con categoría y padre', async () => {
+  it('regla única de la línea, tasa y modo guardados; promociones sobre la cuenta completa con categoría y padre', async () => {
     jest.spyOn(POSService, 'getOrganizationTaxes').mockResolvedValue([
       { id: 1, name: 'IVA', rate: 19, is_default: true, is_active: true },
     ] as never);
     jest.spyOn(POSService, 'getProductTaxes').mockResolvedValue([
       { organization_taxes: { id: 1, name: 'IVA', rate: 19, is_active: true, tax_included: true } },
     ] as never);
-    evaluarPromos.mockResolvedValueOnce({ discountTotal: 2380, itemDiscounts: { 2002: 2380 }, applied: [] });
+    evaluarPromos.mockResolvedValueOnce({
+      discountTotal: 2380, itemDiscounts: { 2002: 2380 }, lineDiscounts: [2380],
+      applied: [{ promotion_id: 'promo-1', lineas: [0], items_affected: [2002] }],
+    });
     fake.setHandler((op) => {
       if (op.table === 'table_sessions' && op.action === 'select') {
         return { data: { sale_id: 'venta-mesa', restaurant_table_id: 'mesa-1', server_id: 'user-mesero' } };
       }
       if (op.table === 'sale_items' && op.action === 'insert') {
         return { data: (op.payload as unknown[]).map((p, i) => ({ ...(p as object), id: `si-${i}` })) };
+      }
+      if (op.table === 'sales' && op.action === 'select') {
+        return { data: { id: 'venta-mesa', organization_id: 120, branch_id: 9, status: 'pending' } };
+      }
+      if (op.table === 'sale_items' && op.action === 'select') {
+        return { data: [{
+          id: 'si-0', product_id: 2002, quantity: '2', unit_price: '11900', discount_amount: '0', paid_amount: '0', paid_at: null,
+          notes: {}, product: { category_id: 33, parent_product_id: 2000, sale_mode: 'unit' },
+        }] };
       }
       return { data: null };
     });
@@ -220,17 +234,22 @@ describe('agregar productos a la mesa', () => {
       category_id: 33, parent_product_id: 2000,
     }]);
 
+    const insert = fake.ops.find((o) => o.table === 'sale_items' && o.action === 'insert');
+    // La línea nace sin descuento: neto 23.800; incluido: impuesto = 23.800 − 23.800/1,19 = 3.800.
+    expect((insert?.payload as unknown[])[0]).toMatchObject({
+      quantity: 2, unit_price: 11900, discount_amount: 0, tax_rate: 19, tax_included: true,
+      total: 23800, tax_amount: 3800,
+    });
+    // Promociones: la cuenta completa, leída de la base, con categoría y padre.
     expect(evaluarPromos.mock.calls[0][0]).toMatchObject({
+      organization_id: 120,
       items: [{ product_id: 2002, parent_product_id: 2000, category_id: 33, quantity: 2, unit_price: 11900 }],
     });
-    const insert = fake.ops.find((o) => o.table === 'sale_items' && o.action === 'insert');
-    // neto = 2 × 11.900 − 2.380 = 21.420; incluido: impuesto = 21.420 − 21.420/1,19 = 3.420.
-    expect((insert?.payload as unknown[])[0]).toMatchObject({
-      quantity: 2, unit_price: 11900, discount_amount: 2380, tax_rate: 19, tax_included: true,
-      total: 21420, tax_amount: 3420,
+    // Descuento y cabecera, en una transacción del servidor.
+    expect(rpcs('pos_mesa_aplicar_promociones')[0].payload).toEqual({
+      p_sale_id: 'venta-mesa',
+      p_lineas: [{ sale_item_id: 'si-0', discount_amount: 2380, promotion_ids: ['promo-1'] }],
     });
-    // La cabecera la recalcula el servidor.
-    expect(rpcs('pos_mesa_recalcular_venta')).toHaveLength(1);
     expect(fake.ops.some((o) => o.table === 'sales' && o.action === 'update')).toBe(false);
   });
 });

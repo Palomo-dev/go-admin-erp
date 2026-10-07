@@ -12,6 +12,7 @@ import { cn } from '@/utils/Utils';
 import { TRIGGER_OPTIONS } from '@/lib/services/crm/automation/ruleCatalog';
 import { countActiveFilters, EMPTY_FILTERS, type RuleFilters } from '@/lib/services/crm/automation/ruleEditorModel';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   filters: RuleFilters;
@@ -20,10 +21,10 @@ interface Props {
   shown: number;
 }
 
-const STATUS: { value: RuleFilters['status']; label: string }[] = [
-  { value: 'all', label: 'Todas' },
-  { value: 'active', label: 'Activas' },
-  { value: 'inactive', label: 'Inactivas' },
+const STATUS: { value: RuleFilters['status'] }[] = [
+  { value: 'all' },
+  { value: 'active' },
+  { value: 'inactive' },
 ];
 
 function chipClass(active: boolean): string {
@@ -38,6 +39,7 @@ function chipClass(active: boolean): string {
 }
 
 export function RulesToolbar({ filters, onChange, total, shown }: Props) {
+  const tx = useTranslations('crm.automatizaciones');
   const active = countActiveFilters(filters);
   const toggleTrigger = (value: string) => {
     const triggers = filters.triggers.includes(value)
@@ -54,11 +56,11 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
           value={filters.query}
           onChange={(v) => onChange({ ...filters, query: v })}
           onValueChange={(v) => onChange({ ...filters, query: v })}
-          placeholder="Buscar por nombre o descripción…"
-          etiqueta="Buscar reglas por nombre"
+          placeholder={tx('rulesToolbar.buscarNombreDescripcion')}
+          etiqueta={tx('rulesToolbar.buscarReglasNombre')}
           className="min-w-[220px] flex-1"
         />
-        <div role="group" aria-label="Filtrar por estado" className="flex gap-1">
+        <div role="group" aria-label={tx('rulesToolbar.filtrarEstado')} className="flex gap-1">
           {STATUS.map((s) => (
             <button
               key={s.value}
@@ -67,15 +69,15 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
               className={chipClass(filters.status === s.value)}
               onClick={() => onChange({ ...filters, status: s.value })}
             >
-              {s.label}
+              {tx(`rulesToolbar.estados.${s.value}`)}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs text-gray-600 dark:text-gray-400">Disparador:</span>
-        <div role="group" aria-label="Filtrar por disparador" className="flex flex-wrap gap-1.5">
+        <span className="mr-1 text-xs text-gray-600 dark:text-gray-400">{tx('rulesToolbar.disparador')}</span>
+        <div role="group" aria-label={tx('rulesToolbar.filtrarDisparador')} className="flex flex-wrap gap-1.5">
           {TRIGGER_OPTIONS.map((t) => (
             <button
               key={t.value}
@@ -91,11 +93,11 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
         {active > 0 && (
           <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => onChange(EMPTY_FILTERS)}>
             <X className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-            Quitar filtros ({active})
+            {tx('rulesToolbar.quitarFiltros', { active })}
           </Button>
         )}
         <span className="ml-auto text-xs text-gray-600 dark:text-gray-400" aria-live="polite">
-          {shown === total ? `${total} ${total === 1 ? 'regla' : 'reglas'}` : `${shown} de ${total} reglas`}
+          {shown === total ? `${total} ${total === 1 ? 'regla' : 'reglas'}` : tx('rulesToolbar.reglas', { shown, total })}
         </span>
       </div>
     </div>

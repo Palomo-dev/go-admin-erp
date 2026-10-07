@@ -22,6 +22,7 @@ export default function PageSEOPanel({
   ogImageUrl,
   onUpdate,
 }: PageSEOPanelProps) {
+  const tx = useTranslations('branding.editor');
   const t = useTranslations('branding.editor.pageSEO');
   const titleLength = metaTitle.length;
   const descLength = metaDescription.length;
@@ -71,7 +72,7 @@ export default function PageSEOPanel({
           <div className="relative group">
             <img
               src={ogImageUrl}
-              alt="OG Preview"
+              alt={tx('pageSEOPanel.ogPreview')}
               className="w-full h-20 object-cover rounded border dark:border-gray-600 cursor-pointer"
               onClick={() => setShowImagePicker(true)}
             />

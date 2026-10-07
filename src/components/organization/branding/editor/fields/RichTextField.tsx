@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { BaseFieldProps } from './types';
+import { useTranslations } from 'next-intl';
 
 /**
  * Editor de texto enriquecido mínimo (F0.3 — Ronda 2).
@@ -25,6 +26,7 @@ import type { BaseFieldProps } from './types';
  * enlaces sin añadir dependencias externas.
  */
 export default function RichTextField({ field, value, onChange }: BaseFieldProps) {
+  const t = useTranslations('branding.editor');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl] = useState('https://');
@@ -81,8 +83,8 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
           type="button"
           onClick={handleBold}
           className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-          title="Negrita"
-          aria-label="Negrita"
+          title={t('richTextField.negrita')}
+          aria-label={t('richTextField.negrita')}
         >
           <Bold className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
         </button>
@@ -90,8 +92,8 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
           type="button"
           onClick={handleItalic}
           className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-          title="Cursiva"
-          aria-label="Cursiva"
+          title={t('richTextField.cursiva')}
+          aria-label={t('richTextField.cursiva')}
         >
           <Italic className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
         </button>
@@ -99,8 +101,8 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
           type="button"
           onClick={handleLink}
           className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-          title="Enlace"
-          aria-label="Enlace"
+          title={t('richTextField.enlace')}
+          aria-label={t('richTextField.enlace')}
         >
           <LinkIcon className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
         </button>
@@ -109,7 +111,7 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
         ref={textareaRef}
         value={text}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={field.placeholder || 'Escribe el contenido...'}
+        placeholder={field.placeholder || t('richTextField.escribeContenido')}
         rows={6}
         className="w-full rounded-b-md border border-gray-200 px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
       />
@@ -121,8 +123,8 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
       <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Insertar enlace</DialogTitle>
-            <DialogDescription>Ingresa la URL del enlace.</DialogDescription>
+            <DialogTitle>{t('richTextField.insertarEnlace')}</DialogTitle>
+            <DialogDescription>{t('richTextField.ingresaUrlEnlace')}</DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <Input
@@ -137,10 +139,10 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
-              Cancelar
+              {t('richTextField.cancelar')}
             </Button>
             <Button onClick={confirmLink} disabled={!linkUrl.trim()}>
-              Insertar
+              {t('richTextField.insertar')}
             </Button>
           </DialogFooter>
         </DialogContent>

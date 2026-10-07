@@ -28,6 +28,7 @@ import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ParkingPass } from '@/lib/services/parkingService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
 
 interface PassCardProps {
   pass: ParkingPass;
@@ -40,24 +41,20 @@ interface PassCardProps {
   onRenew: (pass: ParkingPass) => void;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string; barColor: string }> = {
+const STATUS_CONFIG: Record<string, { className: string; barColor: string }> = {
   active: {
-    label: 'Activo',
     className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
     barColor: 'bg-green-500',
   },
   expired: {
-    label: 'Vencido',
     className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
     barColor: 'bg-red-500',
   },
   cancelled: {
-    label: 'Cancelado',
     className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600',
     barColor: 'bg-gray-500',
   },
   suspended: {
-    label: 'Suspendido',
     className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
     barColor: 'bg-orange-500',
   },
@@ -73,6 +70,7 @@ export function PassCard({
   onReactivate,
   onRenew,
 }: PassCardProps) {
+  const t = useTranslations('pmsParking');
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const statusConfig = STATUS_CONFIG[pass.status] || STATUS_CONFIG.active;
 
@@ -93,7 +91,7 @@ export function PassCard({
   // Obtener placas de vehículos
   const vehiclePlates = pass.vehicles?.map(v => v.vehicle?.plate).filter(Boolean) || [];
   const primaryPlate = pass.vehicles?.find(v => v.is_primary)?.vehicle?.plate;
-  const displayPlate = primaryPlate || vehiclePlates[0] || 'Sin vehículo';
+  const displayPlate = primaryPlate || vehiclePlates[0] || t('sinVehiculo');
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow dark:bg-gray-800 dark:border-gray-700">
@@ -133,15 +131,15 @@ export function PassCard({
             <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
               <DropdownMenuItem onClick={() => onEdit(pass)} className="dark:hover:bg-gray-700">
                 <Edit className="h-4 w-4 mr-2" />
-                Editar
+                {t('passesTable.editar')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDuplicate(pass)} className="dark:hover:bg-gray-700">
                 <Copy className="h-4 w-4 mr-2" />
-                Duplicar
+                {t('passesTable.duplicar')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onManageVehicles(pass)} className="dark:hover:bg-gray-700">
                 <Settings2 className="h-4 w-4 mr-2" />
-                Gestionar Placas
+                {t('passesTable.gestionarPlacas')}
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="dark:bg-gray-700" />
@@ -153,14 +151,14 @@ export function PassCard({
                     className="text-orange-600 dark:text-orange-400 dark:hover:bg-gray-700"
                   >
                     <PauseCircle className="h-4 w-4 mr-2" />
-                    Suspender
+                    {t('passesTable.suspender')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onCancel(pass)}
                     className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
-                    Cancelar
+                    {t('passVehiclesDialog.cancelar')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -172,14 +170,14 @@ export function PassCard({
                     className="text-green-600 dark:text-green-400 dark:hover:bg-gray-700"
                   >
                     <PlayCircle className="h-4 w-4 mr-2" />
-                    Reactivar
+                    {t('passesTable.reactivar')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onCancel(pass)}
                     className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
-                    Cancelar
+                    {t('passVehiclesDialog.cancelar')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -190,7 +188,7 @@ export function PassCard({
                   className="text-blue-600 dark:text-blue-400 dark:hover:bg-gray-700"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Renovar
+                  {t('passesTable.renovar')}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -202,7 +200,7 @@ export function PassCard({
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span className="text-gray-700 dark:text-gray-300 font-medium">
-              {pass.customer?.full_name || 'Sin cliente asignado'}
+              {pass.customer?.full_name || t('passCard.sinClienteAsignado')}
             </span>
           </div>
           {pass.customer?.phone && (
@@ -224,16 +222,16 @@ export function PassCard({
         <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={cn('text-xs border', statusConfig.className)}>
-              {statusConfig.label}
+              {t(`estadosPase.${pass.status in STATUS_CONFIG ? pass.status : 'active'}`)}
             </Badge>
             {isExpiringSoon && (
               <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs border border-yellow-200 dark:border-yellow-800">
-                {daysRemaining} días
+                {t('passCard.dias', { daysRemaining })}
               </Badge>
             )}
             {isExpired && pass.status === 'active' && (
               <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs border border-red-200 dark:border-red-800">
-                Vencido
+                {t('passCard.vencido')}
               </Badge>
             )}
           </div>

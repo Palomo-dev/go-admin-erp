@@ -22,6 +22,7 @@ import type { TemplateKind, TemplateSummary } from '@/lib/services/crm/email/typ
 import { deleteTemplate, duplicateTemplate, listTemplates, updateTemplate } from '@/components/crm/email/emailApi';
 import { TEMPLATE_KIND_LABELS } from '@/components/crm/email/TemplatePicker';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { useTranslations } from 'next-intl';
 
 const KIND_FILTERS: Array<{ value: 'all' | TemplateKind; label: string }> = [
   { value: 'all', label: 'Todos los tipos' },
@@ -36,6 +37,7 @@ function fmtDate(iso: string): string {
 }
 
 export function TemplateList() {
+  const tx = useTranslations('crm.plantillas');
   const router = useRouter();
   const [rows, setRows] = useState<TemplateSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export function TemplateList() {
       const r = await listTemplates({ channel: 'email', pageSize: 100 });
       setRows(r.data);
     } catch (err) {
-      toast({ title: 'No se pudieron cargar las plantillas', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: tx('templateList.noPudieronCargarPlantillas'), description: err instanceof Error ? err.message : tx('templateList.error'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -69,17 +71,17 @@ export function TemplateList() {
       await updateTemplate(t.id, { is_active: active });
     } catch (err) {
       setRows((rs) => rs.map((r) => (r.id === t.id ? { ...r, is_active: !active } : r)));
-      toast({ title: 'No se pudo actualizar', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: tx('templateList.noPudoActualizar'), description: err instanceof Error ? err.message : tx('templateList.error'), variant: 'destructive' });
     }
   };
 
   const duplicate = async (t: TemplateSummary) => {
     try {
       const r = await duplicateTemplate(t.id);
-      toast({ title: 'Plantilla duplicada', description: r.data.name });
+      toast({ title: tx('templateList.plantillaDuplicada'), description: r.data.name });
       router.push(`/app/crm/plantillas/${r.data.id}`);
     } catch (err) {
-      toast({ title: 'No se pudo duplicar', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: tx('templateList.noPudoDuplicar'), description: err instanceof Error ? err.message : tx('templateList.error'), variant: 'destructive' });
     }
   };
 
@@ -88,11 +90,11 @@ export function TemplateList() {
     setDeleting(true);
     try {
       const r = await deleteTemplate(pendingDelete.id);
-      toast({ title: r.data.deleted ? 'Plantilla eliminada' : 'Plantilla desactivada', description: r.data.deleted ? pendingDelete.name : 'Tiene envíos asociados; se desactivó en lugar de borrarla.' });
+      toast({ title: r.data.deleted ? tx('templateList.plantillaEliminada') : tx('templateList.plantillaDesactivada'), description: r.data.deleted ? pendingDelete.name : tx('templateList.tieneEnviosAsociadosDesactivo') });
       setPendingDelete(null);
       await load();
     } catch (err) {
-      toast({ title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: tx('templateList.noPudoEliminar'), description: err instanceof Error ? err.message : tx('templateList.error'), variant: 'destructive' });
     } finally {
       setDeleting(false);
     }
@@ -105,15 +107,15 @@ export function TemplateList() {
           value={q}
           onChange={setQ}
           onValueChange={setQ}
-          placeholder="Buscar por nombre o asunto"
-          etiqueta="Buscar plantillas"
+          placeholder={tx('templateList.buscarNombreAsunto')}
+          etiqueta={tx('templateList.buscarPlantillas')}
           className="min-w-[220px] flex-1"
         />
         <Select value={kind} onValueChange={(v) => setKind(v as 'all' | TemplateKind)}>
-          <SelectTrigger className="w-48 dark:bg-gray-900" aria-label="Filtrar por tipo"><SelectValue /></SelectTrigger>
-          <SelectContent>{KIND_FILTERS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="w-48 dark:bg-gray-900" aria-label={tx('templateList.filtrarTipo')}><SelectValue /></SelectTrigger>
+          <SelectContent>{KIND_FILTERS.map((k) => <SelectItem key={k.value} value={k.value}>{k.value === 'all' ? tx('templateList.todosTipos') : k.label}</SelectItem>)}</SelectContent>
         </Select>
-        <Button asChild size="sm" className="gap-1"><Link href="/app/crm/plantillas/nueva"><Plus className="h-4 w-4" aria-hidden="true" /> Nueva plantilla</Link></Button>
+        <Button asChild size="sm" className="gap-1"><Link href="/app/crm/plantillas/nueva"><Plus className="h-4 w-4" aria-hidden="true" /> {tx('templateList.nuevaPlantilla')}</Link></Button>
       </div>
 
       {loading ? (
@@ -121,22 +123,22 @@ export function TemplateList() {
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center dark:border-gray-600">
           <FileText className="mx-auto mb-2 h-8 w-8 text-gray-400" aria-hidden="true" />
-          <p className="text-sm text-gray-600 dark:text-gray-300">{rows.length === 0 ? 'Aún no hay plantillas de email.' : 'Ninguna plantilla coincide con el filtro.'}</p>
-          {rows.length === 0 && <Button asChild size="sm" className="mt-3"><Link href="/app/crm/plantillas/nueva">Crear la primera</Link></Button>}
+          <p className="text-sm text-gray-600 dark:text-gray-300">{rows.length === 0 ? tx('templateList.aunNoHayPlantillas') : tx('templateList.ningunaPlantillaCoincideFiltro')}</p>
+          {rows.length === 0 && <Button asChild size="sm" className="mt-3"><Link href="/app/crm/plantillas/nueva">{tx('templateList.crearPrimera')}</Link></Button>}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="hidden md:table-cell">Asunto</TableHead>
-                <TableHead className="hidden lg:table-cell">Motor</TableHead>
-                <TableHead className="hidden lg:table-cell">Usos</TableHead>
-                <TableHead>Activa</TableHead>
-                <TableHead className="hidden md:table-cell">Actualizada</TableHead>
-                <TableHead className="w-10"><span className="sr-only">Acciones</span></TableHead>
+                <TableHead>{tx('templateList.nombre')}</TableHead>
+                <TableHead>{tx('templateList.tipo')}</TableHead>
+                <TableHead className="hidden md:table-cell">{tx('templateList.asunto')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{tx('templateList.motor')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{tx('templateList.usos')}</TableHead>
+                <TableHead>{tx('templateList.activa')}</TableHead>
+                <TableHead className="hidden md:table-cell">{tx('templateList.actualizada')}</TableHead>
+                <TableHead className="w-10"><span className="sr-only">{tx('templateList.acciones')}</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -144,26 +146,26 @@ export function TemplateList() {
                 <TableRow key={t.id}>
                   <TableCell>
                     <Link href={`/app/crm/plantillas/${t.id}`} className="font-medium text-gray-900 hover:underline dark:text-gray-100">{t.name}</Link>
-                    {t.metadata?.is_system ? <Badge variant="outline" className="ml-2 text-[10px]">Base</Badge> : null}
+                    {t.metadata?.is_system ? <Badge variant="outline" className="ml-2 text-[10px]">{tx('templateList.base')}</Badge> : null}
                     <span className="ml-2 text-[11px] text-gray-400">v{t.version}</span>
                   </TableCell>
                   <TableCell><Badge variant="secondary">{TEMPLATE_KIND_LABELS[(t.kind ?? 'transactional') as TemplateKind] ?? t.kind}</Badge></TableCell>
                   <TableCell className="hidden max-w-[280px] truncate text-gray-600 md:table-cell dark:text-gray-300">{t.subject}</TableCell>
-                  <TableCell className="hidden text-xs text-gray-500 lg:table-cell dark:text-gray-400">{t.engine === 'html' ? 'HTML' : 'Bloques'}</TableCell>
+                  <TableCell className="hidden text-xs text-gray-500 lg:table-cell dark:text-gray-400">{t.engine === 'html' ? 'HTML' : tx('templateList.bloques')}</TableCell>
                   <TableCell className="hidden text-xs text-gray-500 lg:table-cell dark:text-gray-400">{t.metadata?.usage_count ?? 0}</TableCell>
                   <TableCell><Switch checked={t.is_active} onCheckedChange={(v) => toggleActive(t, v)} aria-label={`${t.is_active ? 'Desactivar' : 'Activar'} ${t.name}`} /></TableCell>
                   <TableCell className="hidden text-xs text-gray-500 md:table-cell dark:text-gray-400">{fmtDate(t.updated_at)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Acciones de ${t.name}`}><MoreHorizontal className="h-4 w-4" aria-hidden="true" /></Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={tx('templateList.acciones2', { name: t.name })}><MoreHorizontal className="h-4 w-4" aria-hidden="true" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="dark:bg-gray-800">
-                        <DropdownMenuItem onClick={() => router.push(`/app/crm/plantillas/${t.id}`)}><Pencil className="mr-2 h-4 w-4" aria-hidden="true" /> Editar</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => duplicate(t)}><Copy className="mr-2 h-4 w-4" aria-hidden="true" /> Duplicar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/app/crm/plantillas/${t.id}`)}><Pencil className="mr-2 h-4 w-4" aria-hidden="true" /> {tx('templateList.editar')}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicate(t)}><Copy className="mr-2 h-4 w-4" aria-hidden="true" /> {tx('templateList.duplicar')}</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem disabled={!!t.metadata?.is_system} onClick={() => setPendingDelete(t)} className="text-red-600 focus:text-red-600 dark:text-red-400">
-                          <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" /> Eliminar
+                          <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" /> {tx('templateList.eliminar')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -178,9 +180,9 @@ export function TemplateList() {
       <ConfirmDialog
         open={!!pendingDelete}
         onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
-        title="Eliminar plantilla"
-        description={`¿Eliminar “${pendingDelete?.name ?? ''}”? Si ya se usó en envíos se desactivará en lugar de borrarse.`}
-        confirmLabel="Eliminar"
+        title={tx('templateList.eliminarPlantilla')}
+        description={tx('templateList.eliminarSiYaUso', { n: pendingDelete?.name ?? '' })}
+        confirmLabel={tx('templateList.eliminar')}
         variant="destructive"
         loading={deleting}
         onConfirm={confirmDelete}

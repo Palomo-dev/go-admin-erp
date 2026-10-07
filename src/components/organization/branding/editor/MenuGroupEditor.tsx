@@ -26,20 +26,22 @@ import {
 } from '@/lib/services/websiteMenuGroupService';
 import { websitePageBuilderService, type WebsitePage } from '@/lib/services/websitePageBuilderService';
 import { websiteMenuService, type AvailableCategory } from '@/lib/services/websiteMenuService';
+import { useTranslations } from 'next-intl';
 
 interface MenuGroupEditorProps {
   menuId: string;
   organizationId: number;
 }
 
-const itemTypeConfig: Record<MenuItemType, { label: string; icon: typeof FileText; color: string }> = {
-  page: { label: 'Página', icon: FileText, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  category: { label: 'Categoría', icon: Tag, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
-  policy: { label: 'Política', icon: FileText, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  custom_link: { label: 'Enlace', icon: LinkIcon, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+const itemTypeConfig: Record<MenuItemType, { icon: typeof FileText; color: string }> = {
+  page: { icon: FileText, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  category: { icon: Tag, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+  policy: { icon: FileText, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  custom_link: { icon: LinkIcon, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
 };
 
 export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEditorProps) {
+  const t = useTranslations('branding.editor');
   const [items, setItems] = useState<MenuGroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -233,7 +235,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
     const Icon = config.icon;
     const isExpanded = expandedIds.has(item.id);
     const hasChildren = item.children && item.children.length > 0;
-    const label = item.custom_label || item.page_title || item.category_name || 'Sin título';
+    const label = item.custom_label || item.page_title || item.category_name || t('menuGroupEditor.sinTitulo');
 
     return (
       <div key={item.id}>
@@ -262,7 +264,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             {label}
           </span>
           <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0', config.color)}>
-            {config.label}
+            {t(`menuGroupEditor.tipos.${item.item_type in itemTypeConfig ? item.item_type : 'custom_link'}`)}
           </span>
           {item.badge && (
             <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500 text-white shrink-0">
@@ -276,8 +278,8 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
               onClick={() => handleMove(item.id, -1)}
               disabled={moviendo}
               className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
-              title="Subir"
-              aria-label={`Subir ${label}`}
+              title={t('menuGroupEditor.subir')}
+              aria-label={t('menuGroupEditor.subir2', { label })}
             >
               <ArrowUp className="h-3 w-3" />
             </button>
@@ -285,8 +287,8 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
               onClick={() => handleMove(item.id, 1)}
               disabled={moviendo}
               className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
-              title="Bajar"
-              aria-label={`Bajar ${label}`}
+              title={t('menuGroupEditor.bajar')}
+              aria-label={t('menuGroupEditor.bajar2', { label })}
             >
               <ArrowDown className="h-3 w-3" />
             </button>
@@ -295,8 +297,8 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
                 onClick={() => handleIndent(item.id)}
                 disabled={moviendo}
                 className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
-                title="Anidar bajo el anterior"
-                aria-label={`Anidar ${label} bajo el ítem anterior`}
+                title={t('menuGroupEditor.anidarBajoAnterior')}
+                aria-label={t('menuGroupEditor.anidarBajoItemAnterior', { label })}
               >
                 <IndentIncrease className="h-3 w-3" />
               </button>
@@ -306,8 +308,8 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
                 onClick={() => handleOutdent(item.id)}
                 disabled={moviendo}
                 className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
-                title="Subir un nivel"
-                aria-label={`Subir ${label} un nivel`}
+                title={t('menuGroupEditor.subirNivel')}
+                aria-label={t('menuGroupEditor.subirNivel2', { label })}
               >
                 <IndentDecrease className="h-3 w-3" />
               </button>
@@ -315,8 +317,8 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             <button
               onClick={() => handleDeleteItem(item.id)}
               className="p-0.5 text-gray-400 hover:text-red-500"
-              title="Eliminar"
-              aria-label={`Eliminar ${label}`}
+              title={t('menuGroupEditor.eliminar')}
+              aria-label={t('menuGroupEditor.eliminar2', { label })}
             >
               <Trash2 className="h-3 w-3" />
             </button>
@@ -360,7 +362,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             }}
           >
             <Plus className="h-3 w-3 mr-1" />
-            Página
+            {t('menuGroupEditor.pagina')}
           </Button>
           <Button
             size="sm"
@@ -373,7 +375,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             }}
           >
             <Plus className="h-3 w-3 mr-1" />
-            Categoría
+            {t('menuGroupEditor.categoria')}
           </Button>
           <Button
             size="sm"
@@ -385,7 +387,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             }}
           >
             <Plus className="h-3 w-3 mr-1" />
-            Enlace
+            {t('menuGroupEditor.enlace')}
           </Button>
         </div>
       </div>
@@ -397,7 +399,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
         </div>
       ) : (
         <div className="text-center py-6 text-xs text-gray-400 dark:text-gray-500">
-          No hay items en este menú. Agrega páginas, categorías o enlaces para comenzar.
+          {t('menuGroupEditor.noHayItemsEste')}
         </div>
       )}
 
@@ -409,13 +411,13 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-sm font-semibold mb-3 text-gray-800 dark:text-gray-200">
-              {addType === 'page' ? 'Agregar Página' : addType === 'category' ? 'Agregar Categoría' : 'Agregar Enlace'}
+              {addType === 'page' ? t('menuGroupEditor.agregarPagina') : addType === 'category' ? t('menuGroupEditor.agregarCategoria') : t('menuGroupEditor.agregarEnlace')}
             </h3>
 
             {addType === 'page' && (
               <div className="space-y-1.5">
                 {availablePages.length === 0 ? (
-                  <p className="text-xs text-gray-400">Cargando páginas...</p>
+                  <p className="text-xs text-gray-400">{t('menuGroupEditor.cargandoPaginas')}</p>
                 ) : (
                   availablePages.map((page) => (
                     <button
@@ -435,13 +437,13 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             {addType === 'category' && (
               <div className="space-y-1">
                 {availableCategories === null ? (
-                  <p className="text-xs text-gray-400">Cargando categorías...</p>
+                  <p className="text-xs text-gray-400">{t('menuGroupEditor.cargandoCategorias')}</p>
                 ) : availableCategories.length === 0 ? (
-                  <p className="text-xs text-gray-400">No hay categorías activas en el inventario.</p>
+                  <p className="text-xs text-gray-400">{t('menuGroupEditor.noHayCategoriasActivas')}</p>
                 ) : (
                   <>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 pb-1">
-                      Lleva a la página de la categoría; sus subcategorías se muestran debajo en el sitio.
+                      {t('menuGroupEditor.llevaPaginaCategoriaSus')}
                     </p>
                     {(function filas(lista: AvailableCategory[], nivel: number): React.ReactNode[] {
                       return lista.flatMap((cat) => [
@@ -466,10 +468,10 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             {addType === 'custom_link' && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Etiqueta</Label>
+                  <Label className="text-xs">{t('menuGroupEditor.etiqueta')}</Label>
                   <Input
                     className="h-8 text-xs"
-                    placeholder="Texto del enlace"
+                    placeholder={t('menuGroupEditor.textoEnlace')}
                     value={customLabel}
                     onChange={(e) => setCustomLabel(e.target.value)}
                   />
@@ -489,7 +491,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
                   onClick={handleAddCustomLink}
                   disabled={!customLabel.trim()}
                 >
-                  Agregar enlace
+                  {t('menuGroupEditor.agregarEnlace')}
                 </Button>
               </div>
             )}

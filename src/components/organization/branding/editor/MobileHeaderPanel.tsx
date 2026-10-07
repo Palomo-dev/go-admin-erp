@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 
 interface MobileHeaderPanelProps {
   settings: {
@@ -22,6 +23,7 @@ interface MobileHeaderPanelProps {
 }
 
 export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPanelProps) {
+  const t = useTranslations('branding.editor');
   const menuIcon =
     settings.mobile_menu_style === 'drawer'
       ? '☰'
@@ -35,7 +37,7 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
     <div className="space-y-4">
       {/* Estilo del menú móvil */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Estilo del menú móvil</Label>
+        <Label className="text-xs">{t('mobileHeaderPanel.estiloMenuMovil')}</Label>
         <Select
           value={settings.mobile_menu_style}
           onValueChange={(v) => onUpdate({ mobile_menu_style: v })}
@@ -44,17 +46,17 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="drawer">Hamburguesa lateral</SelectItem>
-            <SelectItem value="bottom_sheet">Hoja inferior</SelectItem>
-            <SelectItem value="fullscreen">Pantalla completa</SelectItem>
-            <SelectItem value="tabs">Barra inferior tipo app</SelectItem>
+            <SelectItem value="drawer">{t('mobileHeaderPanel.hamburguesaLateral')}</SelectItem>
+            <SelectItem value="bottom_sheet">{t('mobileHeaderPanel.hojaInferior')}</SelectItem>
+            <SelectItem value="fullscreen">{t('mobileHeaderPanel.pantallaCompleta')}</SelectItem>
+            <SelectItem value="tabs">{t('mobileHeaderPanel.barraInferiorTipoApp')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Buscador móvil */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Buscador móvil</Label>
+        <Label className="text-xs">{t('mobileHeaderPanel.buscadorMovil')}</Label>
         <Select
           value={settings.mobile_search_style}
           onValueChange={(v) => onUpdate({ mobile_search_style: v })}
@@ -63,16 +65,16 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="icon">Icono que abre modal</SelectItem>
-            <SelectItem value="bar">Barra visible bajo logo</SelectItem>
-            <SelectItem value="hidden">Oculto</SelectItem>
+            <SelectItem value="icon">{t('mobileHeaderPanel.iconoAbreModal')}</SelectItem>
+            <SelectItem value="bar">{t('mobileHeaderPanel.barraVisibleBajoLogo')}</SelectItem>
+            <SelectItem value="hidden">{t('mobileHeaderPanel.oculto')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Mostrar topbar en móvil */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Mostrar topbar en móvil</Label>
+        <Label className="text-xs">{t('mobileHeaderPanel.mostrarTopbarMovil')}</Label>
         <Switch
           checked={settings.mobile_show_topbar}
           onCheckedChange={(v) => onUpdate({ mobile_show_topbar: v })}
@@ -85,7 +87,7 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
 
       {/* Mockup móvil visual */}
       <div className="pt-2">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Vista previa</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">{t('mobileHeaderPanel.vistaPrevia')}</p>
         <div className="w-[200px] mx-auto bg-gray-100 dark:bg-gray-800 rounded-[20px] border-4 border-gray-300 dark:border-gray-600 p-2">
           {settings.mobile_show_topbar && (
             <div className="h-4 bg-gray-200 dark:bg-gray-700 text-[8px] flex items-center px-1 rounded text-gray-500">
@@ -98,7 +100,7 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
           </div>
           {settings.mobile_search_style === 'bar' && (
             <div className="h-8 bg-gray-50 dark:bg-gray-800 rounded mx-2 mt-1 flex items-center px-2 text-[8px] text-gray-400">
-              🔍 Buscar...
+              {t('mobileHeaderPanel.buscar')}
             </div>
           )}
           {settings.mobile_menu_style === 'tabs' && (
@@ -111,7 +113,7 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
             </div>
           )}
           {settings.mobile_sticky_header && (
-            <p className="mt-1 text-center text-[8px] text-muted-foreground">Sticky</p>
+            <p className="mt-1 text-center text-[8px] text-muted-foreground">{t('mobileHeaderPanel.sticky')}</p>
           )}
         </div>
       </div>

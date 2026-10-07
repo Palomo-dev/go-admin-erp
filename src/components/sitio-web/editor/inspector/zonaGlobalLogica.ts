@@ -117,7 +117,7 @@ export const DESTINO_PROPIO = '__propio';
  */
 export function opcionesDestino(
   paginas: readonly { slug: string; titulo: string }[],
-  textos: { pagina: (titulo: string) => string; whatsapp: string; maps: string },
+  textos: { pagina: (titulo: string) => string; whatsapp: string; maps: string; ruta?: (valor: string) => string },
 ): DestinoOpcion[] {
   const vistas = new Set<string>();
   const lista: DestinoOpcion[] = [];
@@ -130,7 +130,8 @@ export function opcionesDestino(
     if (p.slug.startsWith('plantillas/')) continue;
     agregar({ valor: p.slug === 'home' || p.slug === 'inicio' || p.slug === '' ? '/' : `/${p.slug}`, etiqueta: textos.pagina(p.titulo) });
   }
-  for (const r of RUTAS_SITIO) agregar(r);
+  // `etiqueta` de RUTAS_SITIO es el español de respaldo; `textos.ruta` la traduce.
+  for (const r of RUTAS_SITIO) agregar({ valor: r.valor, etiqueta: textos.ruta?.(r.valor) ?? r.etiqueta });
   agregar({ valor: 'whatsapp', etiqueta: textos.whatsapp });
   agregar({ valor: 'maps', etiqueta: textos.maps });
   return lista;

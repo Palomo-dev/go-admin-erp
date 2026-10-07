@@ -7,6 +7,7 @@ import MenuGroupEditor from '../MenuGroupEditor';
 import MenuGroupManager from '../MenuGroupManager';
 import MenuTreeEditor from '../MenuTreeEditor';
 import type { ZonaGlobal } from './zonaGlobal';
+import { useTranslations } from 'next-intl';
 
 /**
  * Constructor del menú en una hoja lateral dentro del editor (Figma
@@ -39,13 +40,12 @@ export function HojaMenu({
   pendingMenuUpdatesRef,
   onPendingChanges,
 }: HojaMenuProps) {
+  const t = useTranslations('branding.editor');
   const esPie = zona === 'footer';
   const titulo = esPie
-    ? 'Menús del pie'
-    : `Menú del encabezado · ${menuEncabezado ? menuEncabezado.name : 'Páginas del sitio'}`;
-  const subtitulo = esPie || menuEncabezado
-    ? 'Arrastra para ordenar o anidar. Los cambios del menú se guardan al momento.'
-    : 'Arrastra para ordenar o anidar. Se guarda con «Guardar» del editor.';
+    ? t('hojaMenu.menusPie')
+    : t('hojaMenu.menuEncabezado', { menu: menuEncabezado ? menuEncabezado.name : t('hojaMenu.paginasSitio') });
+  const subtitulo = esPie || menuEncabezado ? t('hojaMenu.subtituloAlMomento') : t('hojaMenu.subtituloConGuardar');
 
   return (
     <HojaDetalle
@@ -56,7 +56,7 @@ export function HojaMenu({
       ancho={640}
       pie={
         <Button type="button" onClick={() => onAbiertoChange(false)}>
-          Listo
+          {t('hojaMenu.listo')}
         </Button>
       }
     >

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { cn } from '@/utils/Utils';
 import type { BaseFieldProps } from './types';
+import { useTranslations } from 'next-intl';
 
 interface EntityFieldProps extends BaseFieldProps {
   organizationId?: number;
@@ -43,6 +44,7 @@ interface PageNode {
  * Para `multiple: false` guarda un único id.
  */
 export default function EntityField({ field, value, onChange, organizationId }: EntityFieldProps) {
+  const tx = useTranslations('branding.editor');
   const entity = field.entity;
   const multiple = field.multiple ?? false;
 
@@ -102,7 +104,7 @@ export default function EntityField({ field, value, onChange, organizationId }: 
     );
   }
   return (
-    <p className="text-[10px] text-gray-400">Entidad "{entity}" no soportada</p>
+    <p className="text-[10px] text-gray-400">{tx('entityField.entidadNoSoportada', { entity: entity ?? '' })}</p>
   );
 }
 
@@ -122,6 +124,7 @@ function CategoryEntity({
   organizationId?: number;
   multiple: boolean;
 }) {
+  const tx = useTranslations('branding.editor');
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -193,7 +196,7 @@ function CategoryEntity({
   return (
     <div className="space-y-2">
       <Label className="text-xs text-gray-500 dark:text-gray-400">
-        Categorías seleccionadas ({selectedIds.length})
+        {tx('entityField.categoriasSeleccionadas', { n: selectedIds.length })}
       </Label>
 
       {selectedCats.length > 0 && (
@@ -239,7 +242,7 @@ function CategoryEntity({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar..."
+              placeholder={tx('entityField.buscar')}
               className="h-7 text-[11px] pl-6"
             />
           </div>
@@ -268,13 +271,13 @@ function CategoryEntity({
       )}
 
       {categories.length === 0 && (
-        <p className="text-[10px] text-gray-400 text-center py-2 dark:text-gray-500">No hay categorías creadas</p>
+        <p className="text-[10px] text-gray-400 text-center py-2 dark:text-gray-500">{tx('entityField.noHayCategoriasCreadas')}</p>
       )}
 
       <p className="text-[9px] text-gray-400 dark:text-gray-500">
         {selectedIds.length === 0
-          ? 'Sin selección: se muestran todas las categorías'
-          : 'Arrastra para reordenar. Solo se mostrarán las seleccionadas.'}
+          ? tx('entityField.sinSeleccionMuestranTodas')
+          : tx('entityField.arrastraReordenarSoloMostraran')}
       </p>
     </div>
   );
@@ -296,6 +299,7 @@ function ProductEntity({
   organizationId?: number;
   multiple: boolean;
 }) {
+  const tx = useTranslations('branding.editor');
   const [results, setResults] = useState<ProductNode[]>([]);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -343,12 +347,12 @@ function ProductEntity({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre o SKU..."
+          placeholder={tx('entityField.buscarNombreSku')}
           className="h-7 text-[11px] pl-6"
         />
       </div>
 
-      {searching && <p className="text-[10px] text-gray-400">Buscando...</p>}
+      {searching && <p className="text-[10px] text-gray-400">{tx('entityField.buscando')}</p>}
 
       {results.length > 0 && (
         <div className="max-h-40 overflow-y-auto space-y-1 rounded border border-gray-200 dark:border-gray-700 p-1">
@@ -383,7 +387,7 @@ function ProductEntity({
       )}
 
       {query.length >= 2 && !searching && results.length === 0 && (
-        <p className="text-[10px] text-gray-400 text-center py-2">Sin resultados</p>
+        <p className="text-[10px] text-gray-400 text-center py-2">{tx('entityField.sinResultados')}</p>
       )}
     </div>
   );
@@ -405,6 +409,7 @@ function PageEntity({
   organizationId?: number;
   multiple: boolean;
 }) {
+  const tx = useTranslations('branding.editor');
   const [pages, setPages] = useState<PageNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -466,7 +471,7 @@ function PageEntity({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar página..."
+          placeholder={tx('entityField.buscarPagina')}
           className="h-7 text-[11px] pl-6"
         />
       </div>
@@ -493,7 +498,7 @@ function PageEntity({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 text-center py-2">
-          {pages.length === 0 ? 'No hay páginas publicadas' : 'Sin resultados'}
+          {pages.length === 0 ? tx('entityField.noHayPaginasPublicadas') : tx('entityField.sinResultados')}
         </p>
       )}
     </div>
@@ -521,6 +526,7 @@ function BranchEntity({
   organizationId?: number;
   multiple: boolean;
 }) {
+  const tx = useTranslations('branding.editor');
   const [branches, setBranches] = useState<BranchNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -579,7 +585,7 @@ function BranchEntity({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar sucursal..."
+          placeholder={tx('entityField.buscarSucursal')}
           className="h-7 text-[11px] pl-6"
         />
       </div>
@@ -605,7 +611,7 @@ function BranchEntity({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 text-center py-2">
-          {branches.length === 0 ? 'No hay sucursales creadas' : 'Sin resultados'}
+          {branches.length === 0 ? tx('entityField.noHaySucursalesCreadas') : tx('entityField.sinResultados')}
         </p>
       )}
     </div>
@@ -633,6 +639,7 @@ function TableZoneEntity({
   organizationId?: number;
   multiple: boolean;
 }) {
+  const tx = useTranslations('branding.editor');
   const [zones, setZones] = useState<ZoneNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -698,7 +705,7 @@ function TableZoneEntity({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar zona..."
+          placeholder={tx('entityField.buscarZona')}
           className="h-7 text-[11px] pl-6"
         />
       </div>
@@ -724,7 +731,7 @@ function TableZoneEntity({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 text-center py-2">
-          {zones.length === 0 ? 'No hay zonas configuradas' : 'Sin resultados'}
+          {zones.length === 0 ? tx('entityField.noHayZonasConfiguradas') : tx('entityField.sinResultados')}
         </p>
       )}
     </div>

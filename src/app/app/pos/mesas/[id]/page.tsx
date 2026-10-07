@@ -736,9 +736,12 @@ export default function MesaCuentaPage() {
     if (!sesion?.sale_id) throw new Error('sin_venta');
     const porMonto = !!cobro?.parte || totales.abonado > 0;
     const idsDelCobro = new Set(checkoutData.cart.items.map((i) => String(i.id)));
+    // Promociones de la cuenta: el servidor suma su uso solo si este cobro la salda.
+    const promotionIds = await PedidosService.promocionesDeLaCuenta(sesion.sale_id).catch(() => [] as string[]);
     const settle: CobroVentaExistente = {
       sale_id: sesion.sale_id,
       table_session_id: sesion.id,
+      ...(promotionIds.length > 0 ? { promotion_ids: promotionIds } : {}),
       ...(porMonto ? { lineas_sin_cobrar: lineasSinPagarComoCarrito().filter((i) => !idsDelCobro.has(String(i.id))) } : {}),
     };
     const venta = await POSService.checkout({ ...checkoutData, settle });

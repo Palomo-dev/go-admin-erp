@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { memberService } from '@/lib/services/memberService';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { XMarkIcon, UserIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
 
 interface AssignMembersModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function AssignMembersModal({
   organizationId,
   onSuccess,
 }: AssignMembersModalProps) {
+  const t = useTranslations('org.acceso.sucursales');
   const [members, setMembers] = useState<any[]>([]);
   const [assignedMemberIds, setAssignedMemberIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,7 @@ export default function AssignMembersModal({
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center">
                 <UserIcon className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-                Asignar Miembros
+                {t('assignMembersModal.asignarMiembros')}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{branchName}</p>
             </div>
@@ -154,12 +156,12 @@ export default function AssignMembersModal({
             </div>
           ) : members.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-              No hay miembros disponibles en la organización
+              {t('assignMembersModal.noHayMiembrosDisponibles')}
             </p>
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Selecciona los miembros que tendrán acceso a esta sucursal
+                {t('assignMembersModal.seleccionaMiembrosTendranAcceso')}
               </p>
               {members.map((member) => {
                 const profile = getProfile(member);
@@ -216,7 +218,7 @@ export default function AssignMembersModal({
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:text-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700"
           >
-            Cancelar
+            {t('confirmar.cancelar')}
           </button>
           <button
             onClick={handleSave}
@@ -226,7 +228,7 @@ export default function AssignMembersModal({
             {saving ? (
               <span className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Guardando...
+                {t('assignMembersModal.guardando')}
               </span>
             ) : (
               'Guardar'

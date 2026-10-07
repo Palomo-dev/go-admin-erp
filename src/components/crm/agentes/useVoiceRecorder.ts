@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RECORDER_MIME_CANDIDATES } from "@/lib/services/crm/voiceCloneScript";
+import { useTranslations } from "next-intl";
 
 export interface RecordedSample {
   file: File;
@@ -47,6 +48,7 @@ function pickMime(): string | null {
 }
 
 export function useVoiceRecorder(): VoiceRecorderState {
+  const tx = useTranslations("crm.agentesIa");
   const [recording, setRecording] = useState(false);
   const [samples, setSamples] = useState<RecordedSample[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export function useVoiceRecorder(): VoiceRecorderState {
   const start = useCallback(async () => {
     setError(null);
     if (!supported) {
-      setError("Este navegador no soporta grabación de audio. Sube un archivo en su lugar.");
+      setError(tx("useVoiceRecorder.esteNavegadorNoSoporta"));
       return;
     }
     try {
@@ -164,11 +166,11 @@ export function useVoiceRecorder(): VoiceRecorderState {
       setError(
         err instanceof Error
           ? err.name === "NotAllowedError"
-            ? "Permiso de micrófono denegado. Actívalo en el navegador para grabar."
+            ? tx("useVoiceRecorder.permisoDenegado")
             : err.name === "NotFoundError"
-              ? "No se encontró ningún micrófono. Conecta uno o sube un archivo."
+              ? tx("useVoiceRecorder.sinMicrofono")
               : err.message
-          : "No se pudo acceder al micrófono."
+          : tx("useVoiceRecorder.noAcceso")
       );
     }
   }, [supported, cleanupStream, stopTimer, stopMeter, startMeter]);

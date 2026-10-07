@@ -34,7 +34,8 @@ import { CloneStepRecord } from "./CloneStepRecord";
 import { CloneStepReview } from "./CloneStepReview";
 import { CloneStepName } from "./CloneStepName";
 import { ADD_MORE_ID, sampleRemoveId, type CloneSample } from "./cloneSamples";
-import { CLONE_STEP_TITLES as STEP_TITLES, CloneStepIndicator, type CloneStep as Step } from "./CloneStepIndicator";
+import { CloneStepIndicator, type CloneStep as Step } from "./CloneStepIndicator";
+import { useTranslations } from "next-intl";
 
 interface Props {
   onCreated: () => void;
@@ -58,6 +59,7 @@ function readAudioDuration(file: File): Promise<number | null> {
 let sampleSeq = 0;
 
 export function CloneVoiceWizard({ onCreated, account }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const recorder = useVoiceRecorder();
   const [step, setStep] = useState<Step>(1);
   const [consent, setConsent] = useState(false);
@@ -139,7 +141,7 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
   const onFilesPicked = async (files: File[]) => {
     if (files.length === 0) return;
     const room = MAX_CLONE_SAMPLES - samples.length;
-    if (files.length > room) setStepError(`Como máximo ${MAX_CLONE_SAMPLES} muestras: se tomaron las ${room} primeras.`);
+    if (files.length > room) setStepError(t("cloneVoiceWizard.maximoMuestras", { max: MAX_CLONE_SAMPLES, n: room }));
     else setStepError(null);
     const picked: CloneSample[] = [];
     for (const file of files.slice(0, Math.max(0, room))) {
@@ -174,7 +176,7 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
     if (cloneBlocked) return;
     const errors = validateCloneStep(4, flowState);
     if (errors.length > 0 || samples.length === 0) {
-      setStepError(errors[0] ?? "Falta la muestra de audio.");
+      setStepError(errors[0] ?? t("cloneVoiceWizard.faltaMuestraAudio"));
       nameRef.current?.focus();
       return;
     }
@@ -192,9 +194,9 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
         "/api/crm/voices/clone",
         { method: "POST", body, timeoutMs: 120_000 }
       );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
       setDone({ name: name.trim(), requiresVerification: json.data?.requires_verification === true });
-      toast({ title: `Voz «${name.trim()}» creada` });
+      toast({ title: t("cloneVoiceWizard.vozCreada", { name: name.trim() }) });
       onCreated();
     } catch (err) {
       setServerError(describeError(err));
@@ -208,14 +210,14 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
       <FadeIn className="mx-auto max-w-xl rounded-xl border border-green-200 bg-green-50 p-8 text-center dark:border-green-900 dark:bg-green-950">
         <CheckCircle2 className="mx-auto h-10 w-10 text-green-600 dark:text-green-300" aria-hidden="true" />
         <h2 ref={headingRef} tabIndex={-1} className="mt-3 text-lg font-semibold text-green-900 outline-none dark:text-green-100">
-          «{done.name}» ya está en tus voces
+          {t("cloneVoiceWizard.yaEstaTusVoces", { name: done.name })}
         </h2>
         <p className="mt-1 text-sm text-green-900/80 dark:text-green-100/80">
           {done.requiresVerification
-            ? "ElevenLabs pide verificar la voz antes de usarla en llamadas."
-            : "Escúchala en Mis voces, márcala por defecto o asígnala a un agente."}
+            ? t("cloneVoiceWizard.elevenlabsPideVerificarVoz")
+            : t("cloneVoiceWizard.escuchalaMisVocesMarcala")}
         </p>
-        <Button className="mt-5 bg-blue-600 text-white hover:bg-blue-700" onClick={reset}>Clonar otra voz</Button>
+        <Button className="mt-5 bg-blue-600 text-white hover:bg-blue-700" onClick={reset}>{t("cloneVoiceWizard.clonarOtraVoz")}</Button>
       </FadeIn>
     );
   }
@@ -225,10 +227,9 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
       {account && !account.can_clone && (
         <Alert role="status" className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-          <AlertTitle>El plan actual de ElevenLabs ({account.tier}) no permite clonar voces</AlertTitle>
+          <AlertTitle>{t("cloneVoiceWizard.planActualElevenlabsNo", { tier: account.tier })}</AlertTitle>
           <AlertDescription>
-            Puedes grabar y escuchar la muestra, pero «Crear mi voz» quedará deshabilitado: hace falta al menos el plan
-            Starter en la cuenta cuya clave está configurada.
+            {t("cloneVoiceWizard.puedesGrabarEscucharMuestra")}
           </AlertDescription>
         </Alert>
       )}
@@ -237,14 +238,14 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
 
       <h2 ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-base font-semibold text-gray-900 outline-none dark:text-gray-100">
         <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-        Paso {step} de 4 · {STEP_TITLES[step]}
+        {t("cloneVoiceWizard.paso4", { step, valor: t(`cloneStepIndicator.titulos.${step}`) })}
       </h2>
 
       {serverError && (
         <Alert variant="destructive" role="alert">
           <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-          <AlertTitle>No se pudo crear la voz</AlertTitle>
-          <AlertDescription>{serverError} Puedes intentarlo de nuevo; las muestras siguen aquí.</AlertDescription>
+          <AlertTitle>{t("cloneVoiceWizard.noPudoCrearVoz")}</AlertTitle>
+          <AlertDescription>{t("cloneVoiceWizard.puedesIntentarloNuevoMuestras", { serverError })}</AlertDescription>
         </Alert>
       )}
 
@@ -262,11 +263,11 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
 
       <div className="flex items-center justify-between gap-2 border-t border-gray-200 pt-4 dark:border-gray-700">
         <Button type="button" variant="ghost" onClick={back} disabled={step === 1 || submitting || recorder.recording} className="gap-1.5">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />Atrás
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />{t("cloneVoiceWizard.atras")}
         </Button>
         {step < 4 ? (
           <Button type="button" onClick={next} disabled={recorder.recording} className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700">
-            Continuar<ArrowRight className="h-4 w-4" aria-hidden="true" />
+            {t("cloneVoiceWizard.continuar")}<ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         ) : (
           <div className="flex flex-col items-end gap-1">
@@ -278,11 +279,11 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
               className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
-              {submitting ? "Creando la voz…" : "Crear mi voz"}
+              {submitting ? t("cloneVoiceWizard.creandoVoz") : t("cloneVoiceWizard.crearMiVoz")}
             </Button>
             {cloneBlocked && (
               <p id="clone-blocked-reason" className="text-xs text-amber-900 dark:text-amber-100">
-                El plan actual de ElevenLabs ({account?.tier}) no permite clonar voces.
+                {t("cloneVoiceWizard.planActualElevenlabsNo2", { tier: account?.tier })}
               </p>
             )}
           </div>

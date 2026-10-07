@@ -28,6 +28,7 @@ import {
   type MenuGroup,
 } from '@/lib/services/websiteMenuGroupService';
 import MenuGroupEditor from './MenuGroupEditor';
+import { useTranslations } from 'next-intl';
 
 interface MenuGroupManagerProps {
   organizationId: number;
@@ -40,6 +41,7 @@ export default function MenuGroupManager({
   selectedMenuId,
   onSelectMenu,
 }: MenuGroupManagerProps) {
+  const t = useTranslations('branding.editor');
   const [menus, setMenus] = useState<MenuGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export default function MenuGroupManager({
   };
 
   const handleDelete = async (menuId: string) => {
-    if (!confirm('¿Eliminar este menú y todos sus items?')) return;
+    if (!confirm(t('menuGroupManager.eliminarEsteMenuTodos'))) return;
     try {
       await websiteMenuGroupService.deleteMenu(menuId);
       if (expandedMenuId === menuId) setExpandedMenuId(null);
@@ -143,7 +145,7 @@ export default function MenuGroupManager({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-          Menús Nombrados
+          {t('menuGroupManager.menusNombrados')}
         </h4>
         <Button
           size="sm"
@@ -152,7 +154,7 @@ export default function MenuGroupManager({
           onClick={() => setShowCreateForm(!showCreateForm)}
         >
           <Plus className="h-3 w-3 mr-1" />
-          Nuevo
+          {t('menuGroupManager.nuevo')}
         </Button>
       </div>
 
@@ -160,10 +162,10 @@ export default function MenuGroupManager({
       {showCreateForm && (
         <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <div className="space-y-1.5">
-            <Label className="text-xs">Nombre del menú</Label>
+            <Label className="text-xs">{t('menuGroupManager.nombreMenu')}</Label>
             <Input
               className="h-8 text-xs"
-              placeholder="Ej: Menú Principal, Menú Footer..."
+              placeholder={t('menuGroupManager.ejMenuPrincipalMenu')}
               value={newMenuName}
               onChange={(e) => setNewMenuName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -171,23 +173,23 @@ export default function MenuGroupManager({
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Ubicación</Label>
+            <Label className="text-xs">{t('menuGroupManager.ubicacion')}</Label>
             <Select value={newMenuLocation} onValueChange={(v) => setNewMenuLocation(v as typeof newMenuLocation)}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="header">Header</SelectItem>
-                <SelectItem value="footer">Footer</SelectItem>
-                <SelectItem value="both">Ambos</SelectItem>
-                <SelectItem value="none">Sin asignar</SelectItem>
+                <SelectItem value="header">{t('menuGroupManager.header')}</SelectItem>
+                <SelectItem value="footer">{t('menuGroupManager.footer')}</SelectItem>
+                <SelectItem value="both">{t('menuGroupManager.ambos')}</SelectItem>
+                <SelectItem value="none">{t('menuGroupManager.sinAsignar')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex gap-2 pt-1">
             <Button size="sm" className="h-7 text-xs flex-1" onClick={handleCreate} disabled={!newMenuName.trim()}>
               <Check className="h-3 w-3 mr-1" />
-              Crear
+              {t('menuGroupManager.crear')}
             </Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowCreateForm(false)}>
               <X className="h-3 w-3" />
@@ -199,7 +201,7 @@ export default function MenuGroupManager({
       {/* Lista de menús */}
       {menus.length === 0 ? (
         <div className="text-center py-6 text-xs text-gray-400 dark:text-gray-500">
-          No hay menús creados. Crea uno nuevo para comenzar.
+          {t('menuGroupManager.noHayMenusCreados')}
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -261,7 +263,7 @@ export default function MenuGroupManager({
                           setEditName(menu.name);
                         }}
                         className="p-1 text-gray-400 hover:text-blue-500 rounded"
-                        title="Renombrar"
+                        title={t('menuGroupManager.renombrar')}
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -271,14 +273,14 @@ export default function MenuGroupManager({
                         <button
                           onClick={() => handleRename(menu.id)}
                           className="p-1 text-gray-400 hover:text-green-500 rounded"
-                          title="Guardar"
+                          title={t('header.save')}
                         >
                           <Check className="h-3 w-3" />
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
                           className="p-1 text-gray-400 hover:text-red-500 rounded"
-                          title="Cancelar"
+                          title={t('menuGroupManager.cancelar')}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -287,7 +289,7 @@ export default function MenuGroupManager({
                     <button
                       onClick={() => handleDelete(menu.id)}
                       className="p-1 text-gray-400 hover:text-red-500 rounded"
-                      title="Eliminar"
+                      title={t('menuGroupManager.eliminar')}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>

@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import type { SalesTeam, Territory } from '../types';
+import { useTranslations } from 'next-intl';
 
 interface TeamDialogProps {
   open: boolean;
@@ -27,26 +28,27 @@ interface TeamDialogProps {
 export function TeamDialog({
   open, onOpenChange, editing, territories, form, onFormChange, onSave, saving,
 }: TeamDialogProps) {
+  const tx = useTranslations('crm.equipo');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? 'Editar equipo' : 'Nuevo equipo'}</DialogTitle>
+          <DialogTitle>{editing ? tx('teamDialog.editarEquipo') : tx('teamDialog.nuevoEquipo')}</DialogTitle>
           <DialogDescription>
-            {editing ? 'Modifica los datos del equipo comercial' : 'Crea un nuevo equipo comercial'}
+            {editing ? tx('teamDialog.modificaDatosEquipoComercial') : tx('teamDialog.creaNuevoEquipoComercial')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Nombre *</Label>
+            <Label>{tx('teamDialog.nombre')}</Label>
             <Input
               value={form.name}
               onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-              placeholder="Ej: Equipo Norte"
+              placeholder={tx('teamDialog.ejEquipoNorte')}
             />
           </div>
           <div className="space-y-2">
-            <Label>Descripción</Label>
+            <Label>{tx('teamDialog.descripcion')}</Label>
             <Textarea
               value={form.description}
               onChange={(e) => onFormChange({ ...form, description: e.target.value })}
@@ -55,21 +57,21 @@ export function TeamDialog({
           </div>
           {territories.length > 0 && (
             <div className="space-y-2">
-              <Label>Territorio (opcional)</Label>
+              <Label>{tx('memberDialog.territorioOpcional')}</Label>
               <Select
                 value={form.territory_id || 'none'}
                 onValueChange={(v) => onFormChange({ ...form, territory_id: v === 'none' ? '' : v })}
               >
-                <SelectTrigger><SelectValue placeholder="Sin territorio" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx('teamDialog.sinTerritorio')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin territorio</SelectItem>
+                  <SelectItem value="none">{tx('teamDialog.sinTerritorio')}</SelectItem>
                   {territories.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <Label>Activo</Label>
+            <Label>{tx('teamDialog.activo')}</Label>
             <Switch
               checked={form.is_active}
               onCheckedChange={(c) => onFormChange({ ...form, is_active: c })}
@@ -77,8 +79,8 @@ export function TeamDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{tx('memberDialog.cancelar')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? tx('teamDialog.guardando') : tx('teamDialog.guardar')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

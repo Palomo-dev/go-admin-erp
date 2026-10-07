@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Mic, Download } from "lucide-react";
 import { PROVIDERS_SETTINGS_HREF, type TtsCredentialStatus } from "./useVoiceCatalog";
+import { useTranslations } from "next-intl";
 
 interface Props {
   tts: TtsCredentialStatus;
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function VoiceAddForms({ tts, onChanged }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [voiceId, setVoiceId] = useState("");
@@ -43,7 +45,7 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
 
   // Sin credencial de TTS el proveedor responde 401: se bloquea con motivo visible.
   const providerBlocked = !tts.ready && !tts.unknown;
-  const providerBlockedReason = "Necesita una clave de ElevenLabs válida en Proveedores e IA.";
+  const providerBlockedReason = t("voiceAddForms.necesitaClaveElevenlabs");
 
   const post = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -54,7 +56,7 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
         body: JSON.stringify(body),
       });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(json?.error || t("agentCampaignsPanel.error", { status: res.status }));
       return json;
     } finally {
       setBusy(false);
@@ -63,13 +65,13 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
 
   const add = async () => {
     if (!name.trim() || !voiceId.trim()) {
-      toast({ title: "Faltan el nombre y el identificador de la voz", variant: "destructive" });
+      toast({ title: t("voiceAddForms.faltanNombreIdentificadorVoz"), variant: "destructive" });
       return;
     }
     if (cloned && !consent) {
       toast({
-        title: "Falta el consentimiento",
-        description: "Una voz clonada solo puede registrarse con el consentimiento de su propietario.",
+        title: t("voiceAddForms.faltaConsentimiento"),
+        description: t("voiceAddForms.vozClonadaSoloPuede"),
         variant: "destructive",
       });
       return;
@@ -87,12 +89,12 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
       setVoiceId("");
       setCloned(false);
       setConsent(false);
-      toast({ title: "Voz registrada", description: "Ya puedes asignársela a un agente." });
+      toast({ title: t("voiceAddForms.vozRegistrada"), description: t("voiceAddForms.yaPuedesAsignarselaAgente") });
       onChanged();
     } catch (err) {
       toast({
-        title: "No se pudo registrar la voz",
-        description: err instanceof Error ? err.message : "Error desconocido",
+        title: t("voiceAddForms.noPudoRegistrarVoz"),
+        description: err instanceof Error ? err.message : t("voiceAddForms.errorDesconocido"),
         variant: "destructive",
       });
     }
@@ -103,14 +105,14 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
       const json = await post({ action: "import_elevenlabs" });
       const n = json.data?.imported ?? 0;
       toast({
-        title: n > 0 ? `Importadas ${n} voces` : "ElevenLabs no devolvió ninguna voz",
-        description: n > 0 ? "Elige una y márcala por defecto o asígnasela a un agente." : undefined,
+        title: n > 0 ? t("voiceAddForms.importadasVoces", { n }) : t("voiceAddForms.elevenlabsNoDevolvioNinguna"),
+        description: n > 0 ? t("voiceAddForms.eligeMarcalaDefectoAsignasela") : undefined,
       });
       onChanged();
     } catch (err) {
       toast({
-        title: "ElevenLabs rechazó la petición",
-        description: err instanceof Error ? err.message : "Error desconocido",
+        title: t("voiceAddForms.elevenlabsRechazoPeticion"),
+        description: err instanceof Error ? err.message : t("voiceAddForms.errorDesconocido"),
         variant: "destructive",
       });
     }
@@ -121,21 +123,20 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
       <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
         <h3 className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
           <Download className="h-4 w-4" aria-hidden="true" />
-          Traer las voces que ya existen en ElevenLabs
+          {t("voiceAddForms.traerVocesYaExisten")}
         </h3>
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-          Copia a este catálogo las voces que ya están en tu workspace de ElevenLabs (las que añadiste desde
-          la web del proveedor o clonaste allí). Para explorar la biblioteca pública usa la pestaña Biblioteca.
+          {t("voiceAddForms.copiaEsteCatalogoVoces")}
         </p>
         <Button variant="outline" onClick={importFromProvider} disabled={busy || providerBlocked} title={providerBlocked ? providerBlockedReason : undefined}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="mr-2 h-4 w-4" aria-hidden="true" />}
-          Importar de ElevenLabs
+          {t("voiceAddForms.importarElevenlabs")}
         </Button>
         {providerBlocked && (
           <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-            Desactivado: {providerBlockedReason}{" "}
+            {t("voiceAddForms.desactivado")} {providerBlockedReason}{" "}
             <Link href={PROVIDERS_SETTINGS_HREF} className="underline">
-              Configurarla
+              {t("voiceAddForms.configurarla")}
             </Link>
           </p>
         )}
@@ -144,19 +145,18 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
       <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
         <h3 className="mb-1 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
           <Mic className="h-4 w-4" aria-hidden="true" />
-          Registrar una voz por su identificador
+          {t("voiceAddForms.registrarVozIdentificador")}
         </h3>
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-          Si ya sabes el identificador de la voz en ElevenLabs, pégalo aquí y quedará disponible para los
-          agentes sin importar todo el catálogo.
+          {t("voiceAddForms.siYaSabesIdentificador")}
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="v-name">Nombre</Label>
-            <Input id="v-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Voz de Camilo" />
+            <Label htmlFor="v-name">{t("voiceAddForms.nombre")}</Label>
+            <Input id="v-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("voiceAddForms.vozCamilo")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="v-id">Identificador de voz (ElevenLabs)</Label>
+            <Label htmlFor="v-id">{t("voiceAddForms.identificadorVozElevenlabs")}</Label>
             <Input
               id="v-id"
               value={voiceId}
@@ -169,15 +169,14 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
           <div className="flex items-center gap-2">
             <Checkbox id="v-cloned" checked={cloned} onCheckedChange={(v) => setCloned(v === true)} />
             <Label htmlFor="v-cloned" className="cursor-pointer text-sm font-normal">
-              Es una voz clonada de una persona del equipo
+              {t("voiceAddForms.vozClonadaPersonaEquipo")}
             </Label>
           </div>
           {cloned && (
             <div className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-2 dark:border-amber-900 dark:bg-amber-950">
               <Checkbox id="v-consent" checked={consent} onCheckedChange={(v) => setConsent(v === true)} />
               <Label htmlFor="v-consent" className="cursor-pointer text-xs font-normal text-amber-900 dark:text-amber-100">
-                Confirmo que la persona propietaria de la voz dio su consentimiento por escrito y que no es
-                la voz de un tercero (Ley 1581 de 2012 y política de ElevenLabs).
+                {t("voiceAddForms.confirmoPersonaPropietariaVoz")}
               </Label>
             </div>
           )}
@@ -185,7 +184,7 @@ export function VoiceAddForms({ tts, onChanged }: Props) {
         <div className="mt-3">
           <Button onClick={add} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-            Registrar voz
+            {t("voiceAddForms.registrarVoz")}
           </Button>
         </div>
       </div>

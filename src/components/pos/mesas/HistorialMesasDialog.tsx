@@ -31,10 +31,10 @@ interface HistorialMesasDialogProps {
 
 type QuickRange = 'today' | 'yesterday' | '7d' | '15d' | '30d' | 'custom';
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  active: { label: 'Activa', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  bill_requested: { label: 'Cuenta solicitada', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  completed: { label: 'Completada', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+const STATUS_CONFIG: Record<string, { className: string }> = {
+  active: { className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  bill_requested: { className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  completed: { className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
 };
 
 function toDateInputValue(date: Date): string {
@@ -69,12 +69,12 @@ function formatDuration(minutes: number | null): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
-const QUICK_RANGES: { key: QuickRange; label: string }[] = [
-  { key: 'today', label: 'Hoy' },
-  { key: 'yesterday', label: 'Ayer' },
-  { key: '7d', label: '7 días' },
-  { key: '15d', label: '15 días' },
-  { key: '30d', label: '30 días' },
+const QUICK_RANGES: { key: QuickRange }[] = [
+  { key: 'today' },
+  { key: 'yesterday' },
+  { key: '7d' },
+  { key: '15d' },
+  { key: '30d' },
 ];
 
 function rangeFromQuick(key: QuickRange): { from: Date; to: Date } {
@@ -108,6 +108,7 @@ function rangeFromQuick(key: QuickRange): { from: Date; to: Date } {
 }
 
 export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialogProps) {
+  const t = useTranslations('posMesas');
   const { formatear } = useMonedaOrganizacion();
   const tHist = useTranslations('posMesas.historial');
   const [quickRange, setQuickRange] = useState<QuickRange>('today');
@@ -168,7 +169,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
       setLiberaciones(liberacionesMap);
     } catch (err) {
       console.error('Error cargando historial de mesas:', err);
-      setError('No se pudo cargar el historial de mesas.');
+      setError(t('historialMesasDialog.noPudoCargarHistorial'));
     } finally {
       setLoading(false);
     }
@@ -197,7 +198,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
                 className={cn('h-8 text-xs', quickRange === r.key && 'bg-blue-600 hover:bg-blue-700 text-white')}
                 onClick={() => handleQuickRange(r.key)}
               >
-                {r.label}
+                {t(`historialMesasDialog.rangos.${r.key}`)}
               </Button>
             ))}
           </div>
@@ -205,7 +206,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
           {/* Rango personalizado + mesa + mesero */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <CampoFecha
-              aria-label="Desde"
+              aria-label={t('historialMesasDialog.desde')}
               limpiable={false}
               valor={toDateInputValue(dateFrom)}
               onValorChange={(dia) => {
@@ -215,7 +216,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
               }}
             />
             <CampoFecha
-              aria-label="Hasta"
+              aria-label={t('historialMesasDialog.hasta')}
               limpiable={false}
               valor={toDateInputValue(dateTo)}
               onValorChange={(dia) => {
@@ -226,10 +227,10 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
             />
             <Select value={tableId} onValueChange={setTableId}>
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="Todas las mesas" />
+                <SelectValue placeholder={t('qr.tituloTodas')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas las mesas</SelectItem>
+                <SelectItem value="all">{t('qr.tituloTodas')}</SelectItem>
                 {mesas.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.name}{m.zone ? ` · ${m.zone}` : ''}
@@ -239,10 +240,10 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
             </Select>
             <Select value={serverId} onValueChange={setServerId}>
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="Todos los meseros" />
+                <SelectValue placeholder={t('historialMesasDialog.todosMeseros')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los meseros</SelectItem>
+                <SelectItem value="all">{t('historialMesasDialog.todosMeseros')}</SelectItem>
                 {meseros.map((m) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
@@ -256,28 +257,28 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Sesiones</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('historialMesasDialog.sesiones')}</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">{stats.totalSesiones}</p>
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
             <div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Facturado</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('historialMesasDialog.facturado')}</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatear(stats.totalFacturado)}</p>
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-2">
             <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400 shrink-0" />
             <div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Duración prom.</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('historialMesasDialog.duracionProm')}</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatDuration(stats.duracionPromedioMin)}</p>
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-2">
             <Users className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
             <div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Comensales</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('cifras.comensales')}</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">{stats.comensalesTotales}</p>
             </div>
           </div>
@@ -287,7 +288,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {sesiones.length} sesión(es) encontrada(s)
+              {t('historialMesasDialog.sesionEncontradaS', { n: sesiones.length })}
             </p>
             <Button variant="ghost" size="sm" className="h-7 px-2" onClick={cargarHistorial} disabled={loading}>
               <RefreshCcw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
@@ -316,19 +317,19 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
                 <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
                   <tr>
                     <th className="w-8 px-2 py-2"></th>
-                    <th className="text-left font-medium px-3 py-2">Mesa</th>
-                    <th className="text-left font-medium px-3 py-2">Mesero</th>
-                    <th className="text-center font-medium px-3 py-2 hidden sm:table-cell">Comensales</th>
-                    <th className="text-left font-medium px-3 py-2">Apertura</th>
-                    <th className="text-left font-medium px-3 py-2">Cierre</th>
-                    <th className="text-left font-medium px-3 py-2 hidden md:table-cell">Duración</th>
+                    <th className="text-left font-medium px-3 py-2">{t('historialMesasDialog.mesa')}</th>
+                    <th className="text-left font-medium px-3 py-2">{t('cifras.mesero')}</th>
+                    <th className="text-center font-medium px-3 py-2 hidden sm:table-cell">{t('cifras.comensales')}</th>
+                    <th className="text-left font-medium px-3 py-2">{t('historialMesasDialog.apertura')}</th>
+                    <th className="text-left font-medium px-3 py-2">{t('historialMesasDialog.cierre')}</th>
+                    <th className="text-left font-medium px-3 py-2 hidden md:table-cell">{t('historialMesasDialog.duracion')}</th>
                     <th className="text-right font-medium px-3 py-2">Total</th>
-                    <th className="text-center font-medium px-3 py-2">Estado</th>
+                    <th className="text-center font-medium px-3 py-2">{t('filtros.estado')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {sesiones.map((s) => {
-                    const statusCfg = STATUS_CONFIG[s.status] || { label: s.status, className: 'bg-gray-100 text-gray-700' };
+                    const statusCfg = STATUS_CONFIG[s.status] || { className: 'bg-gray-100 text-gray-700' };
                     const eventos = itemsEliminados[s.id] || [];
                     const liberacion = liberaciones[s.id];
                     const hasDetails = eventos.length > 0 || liberacion;
@@ -366,7 +367,7 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
                           <td className="px-3 py-2 text-center">
                             <div className="flex items-center justify-center gap-1 flex-wrap">
                               <Badge className={cn('text-[10px] font-medium', statusCfg.className)}>
-                                {statusCfg.label}
+                                {s.status in STATUS_CONFIG ? t(`historialMesasDialog.estados.${s.status}`) : s.status}
                               </Badge>
                               {liberaciones[s.id] && (
                                 <Badge variant="outline" className="text-[10px] gap-0.5 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800">
@@ -388,21 +389,24 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
                                 {liberacion && (
                                   <p className="text-[11px] font-medium text-blue-700 dark:text-blue-400 flex items-center gap-1">
                                     <Unlock className="h-3 w-3" />
-                                    Liberada por {liberacion.userName} · {formatDateTime(liberacion.releasedAt)}
+                                    {t('historialMesasDialog.liberada', { userName: liberacion.userName, dateTime: formatDateTime(liberacion.releasedAt) })}
                                   </p>
                                 )}
                                 {eventos.length > 0 && (
                                   <>
                                 <p className="text-[11px] font-medium text-red-700 dark:text-red-400 mb-1">
-                                  Productos eliminados/cancelados de esta sesión
+                                  {t('historialMesasDialog.productosEliminadosCanceladosEsta')}
                                 </p>
                               <ul className="space-y-1">
                                 {eventos.map((ev) => (
                                   <li key={ev.id} className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
                                     <span>
-                                      <span className="font-medium">{ev.quantity}x {ev.productName}</span>
-                                      {' — eliminado por '}
-                                      <span className="font-medium">{ev.userName}</span>
+                                      {t.rich('historialMesasDialog.eliminadoPor', {
+                                        cantidad: ev.quantity,
+                                        producto: ev.productName,
+                                        usuario: ev.userName,
+                                        b: (chunks) => <span className="font-medium">{chunks}</span>,
+                                      })}
                                       {ev.motivo && ` (${ev.motivo})`}
                                     </span>
                                     <span className="flex items-center gap-2 shrink-0">

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { 
   Clock, 
@@ -70,6 +71,7 @@ const STATUS_CONFIG: Record<WebOrderStatus, {
 };
 
 export function StatusBadge({ status, size = 'md', showIcon = true }: StatusBadgeProps) {
+  const tEstado = useTranslations('pedidosOnlineListado.estados');
   const config = STATUS_CONFIG[status];
   
   const sizeClasses = {
@@ -81,7 +83,7 @@ export function StatusBadge({ status, size = 'md', showIcon = true }: StatusBadg
   return (
     <Badge className={`${config.color} ${sizeClasses[size]} flex items-center gap-1`}>
       {showIcon && config.icon}
-      {config.label}
+      {tEstado(status)}
     </Badge>
   );
 }

@@ -19,6 +19,7 @@ import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { describeRunStatus, describeSkipReason, type RunTone } from '@/lib/services/crm/automation/ruleHumanizer';
 import { actionEntry } from '@/lib/services/crm/automation/ruleCatalog';
 import { fetchRuns, type AutomationRunView } from './useAutomationRules';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   open: boolean;
@@ -48,6 +49,7 @@ function StatusIcon({ tone }: { tone: RunTone }) {
 }
 
 export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
+  const tx = useTranslations('crm.automatizaciones');
   const [runs, setRuns] = useState<AutomationRunView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
     setError(null);
     fetchRuns(ruleId ?? undefined)
       .then((data) => { if (!cancelled) setRuns(data); })
-      .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Error desconocido'); })
+      .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : tx('automatizacionesPage.errorDesconocido')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [open, ruleId, tick]);
@@ -72,43 +74,43 @@ export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
       <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="w-full bg-white dark:bg-gray-950 sm:max-w-2xl">
         <SheetHeader className="pr-8">
           <SheetTitle className="break-words text-gray-900 dark:text-gray-100">
-            {ruleName ? `Historial de «${ruleName}»` : 'Historial de todas las reglas'}
+            {ruleName ? tx('runsSheet.historial', { ruleName }) : tx('runsSheet.historialTodasReglas')}
           </SheetTitle>
           <SheetDescription className="text-gray-600 dark:text-gray-400">
-            Últimas 50 ejecuciones reales del servidor. Las pruebas en seco no se registran aquí.
+            {tx('runsSheet.ultimas50EjecucionesReales')}
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-4 flex justify-end">
           <Button type="button" size="sm" variant="ghost" onClick={() => setTick((t) => t + 1)} disabled={loading}>
-            <RefreshCw className={cn('mr-1.5 h-4 w-4', loading && 'motion-safe:animate-spin')} aria-hidden="true" /> Actualizar
+            <RefreshCw className={cn('mr-1.5 h-4 w-4', loading && 'motion-safe:animate-spin')} aria-hidden="true" /> {tx('runsSheet.actualizar')}
           </Button>
         </div>
 
         {error && (
           <Alert variant="destructive" className="mt-2">
-            <AlertTitle>No se pudo cargar el historial</AlertTitle>
-            <AlertDescription>{error} — pulsa «Actualizar» para reintentar.</AlertDescription>
+            <AlertTitle>{tx('runsSheet.noPudoCargarHistorial')}</AlertTitle>
+            <AlertDescription>{tx('runsSheet.pulsaActualizarReintentar', { error })}</AlertDescription>
           </Alert>
         )}
 
         {loading ? (
-          <div className="mt-2 space-y-2" aria-busy="true" aria-label="Cargando historial">
+          <div className="mt-2 space-y-2" aria-busy="true" aria-label={tx('runsSheet.cargandoHistorial')}>
             {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
           </div>
         ) : runs.length === 0 && !error ? (
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-            Todavía no hay ejecuciones. Cuando la regla se dispare, aparecerán aquí.
+            {tx('runsSheet.todaviaNoHayEjecuciones')}
           </p>
         ) : (
           <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead scope="col">Estado</TableHead>
+                  <TableHead scope="col">{tx('runsSheet.estado')}</TableHead>
                   {/* UX móvil: bajo `sm` la fecha va debajo del estado (misma celda) y la tabla cabe en 375 px sin scroll lateral. */}
-                  <TableHead scope="col" className="hidden sm:table-cell">Fecha</TableHead>
-                  <TableHead scope="col">Detalle</TableHead>
+                  <TableHead scope="col" className="hidden sm:table-cell">{tx('runsSheet.fecha')}</TableHead>
+                  <TableHead scope="col">{tx('runsSheet.detalle')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -141,13 +143,13 @@ export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
                             {results.map((r) => (
                               <li key={r.index} className={r.status === 'failed' ? 'text-red-700 dark:text-red-300' : ''}>
                                 {r.index + 1}. {actionEntry(r.type)?.label ?? r.type}
-                                {r.status === 'failed' ? ` — error: ${r.error ?? 'sin detalle'}` : ' — ok'}
+                                {r.status === 'failed' ? tx('runsSheet.errorDetalle', { error: r.error ?? tx('runsSheet.sinDetalle') }) : tx('runsSheet.ok')}
                               </li>
                             ))}
                           </ul>
                         )}
                         {!run.skip_reason && !run.error_message && results.length === 0 && (
-                          <span className="text-gray-500 dark:text-gray-400">Sin detalle</span>
+                          <span className="text-gray-500 dark:text-gray-400">{tx('runsSheet.sinDetalle')}</span>
                         )}
                       </TableCell>
                     </TableRow>

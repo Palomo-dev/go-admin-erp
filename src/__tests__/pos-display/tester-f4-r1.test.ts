@@ -516,10 +516,20 @@ describe('TESTER F4 · cartelera del reposo', () => {
 
   it('la cartelera no lleva importes, reglas ni cupos', async () => {
     estado.promociones = [
-      { id: 'p1', name: 'Promo', discount_value: 30, promotion_type: 'percentage', usage_limit: 5, usage_count: 5, min_purchase_amount: 1000 },
+      // usage_count < usage_limit: con usos agotados la cartelera ya no la anuncia (caso siguiente).
+      { id: 'p1', name: 'Promo', discount_value: 30, promotion_type: 'percentage', usage_limit: 5, usage_count: 2, min_purchase_amount: 1000 },
     ];
     const [promo] = (await (await get(`?terminalId=${T1}`)).json()).data.promotions;
     expect(Object.keys(promo).sort()).toEqual(['description', 'endsAt', 'id', 'name']);
+  });
+
+  it('con los usos agotados no se anuncia: el POS ya no la aplica (2026-10-07)', async () => {
+    estado.promociones = [
+      { id: 'p-agotada', name: 'Agotada', usage_limit: 5, usage_count: 5 },
+      { id: 'p-sin-limite', name: 'Sin límite', usage_limit: null, usage_count: 99 },
+    ];
+    const res = await get(`?terminalId=${T1}`);
+    expect((await res.json()).data.promotions.map((p: { id: string }) => p.id)).toEqual(['p-sin-limite']);
   });
 
   it('una fila sin nombre no se pinta: un cartel sin nombre no es un cartel', () => {

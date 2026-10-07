@@ -80,6 +80,7 @@ import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from 
 import { recordConsent, recordingEnabledForCall, voidConsentWithoutRecording } from '@/lib/services/crm/consentService';
 import { updateCall } from '@/lib/services/crm/callManagementService';
 import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
+import { ESTADOS_VIVOS_VAC } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
 import { resolveTtsFallback, TTS_FALLBACK_PARAM } from '@/lib/services/crm/voiceAgent/ttsFallback';
 
@@ -326,17 +327,48 @@ export async function POST(request: Request) {
       // Solo con acta escrita (arriba): el aviso YA sonó y el token lo acredita.
       if (recordingEnabled) patch.consent_given = true;
 
-      const { error: updError } = await supabase
+      // Incidente 2026-10-06: esta pasada tarda (config, acta, token) y la
+      // persona puede colgar mientras tanto. Si el `completed` del
+      // statusCallback ya cerró la fila, escribir `in_progress` sin condición
+      // la reabría para siempre y ocupaba un cupo de concurrencia. La condición
+      // va en el WHERE (atómica), no en una lectura previa.
+      const { data: reabiertas, error: updError } = await supabase
         .from('voice_agent_calls')
         .update(patch)
         .eq('id', callId)
         .eq('organization_id', agentOrgId)
-        .eq('voice_agent_id', agentId);
+        .eq('voice_agent_id', agentId)
+        .in('status', ESTADOS_VIVOS_VAC)
+        .select('id');
       if (updError) throw updError;
 
-      // La llamada ya está contestada y con el agente en línea.
+      if (!reabiertas || reabiertas.length === 0) {
+        // La llamada ya terminó: no hay nadie a quien hablarle ni nada que grabar.
+        // `<Start><Recording>` no sale, así que el acta de esta pasada se retira (N-2).
+        console.warn('[AI Agent TwiML] la llamada ya estaba cerrada: no se reabre', { org: agentOrgId, callId });
+        if (consentWritten && consentCallId) {
+          try {
+            await voidConsentWithoutRecording(consentCallId, agentOrgId, supabase, 'ai_agent_call_closed_before_relay');
+          } catch (voidErr) {
+            console.error('[AI Agent TwiML] no se pudo retirar el acta (queda para la reconciliación diaria):', voidErr instanceof Error ? voidErr.message : voidErr, { org: agentOrgId, callId: consentCallId });
+          }
+        }
+        return new NextResponse('<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Hangup/>\n</Response>', {
+          status: 200,
+          headers: XML_HEADERS,
+        });
+      }
+
+      // La llamada ya está contestada y con el agente en línea. Mismo criterio en
+      // `calls`: si ya tiene `ended_at`, no se le pone `in_progress` encima.
       if (consentCallId) {
-        await updateCall(consentCallId, agentOrgId, { status: 'in_progress', answered_at: new Date().toISOString() }, supabase);
+        await updateCall(
+          consentCallId,
+          agentOrgId,
+          { status: 'in_progress', answered_at: new Date().toISOString() },
+          supabase,
+          { soloSiNoTerminada: true }
+        );
       }
     }
 

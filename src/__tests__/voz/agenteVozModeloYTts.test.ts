@@ -383,3 +383,100 @@ describe('respaldo de TTS ante el error 64111 de Twilio', () => {
     expect(ws.sent.some((m) => m.type === 'language')).toBe(false);
   });
 });
+
+// ─── 4. Latencia por turno e interrupciones (2026-10-07) ─────────────────────
+
+describe('turnos: streaming por token e interrupciones', () => {
+  /** Stream que entrega el primer token y se detiene hasta `soltar()`. */
+  function streamControlado(primero: string, resto: string[]) {
+    let soltar!: () => void;
+    const espera = new Promise<void>((r) => (soltar = r));
+    async function* gen(): AsyncGenerator<Record<string, unknown>> {
+      yield { type: 'response.output_text.delta', delta: primero };
+      await espera;
+      for (const t of resto) yield { type: 'response.output_text.delta', delta: t };
+      yield { type: 'response.completed', response: { usage: { input_tokens: 1, output_tokens: 1 } } };
+    }
+    return { stream: gen(), soltar };
+  }
+
+  async function conectar() {
+    const ws = new FakeWs();
+    handleConversationRelayConnection(ws as never, null);
+    await deliver(ws, setupMsg());
+    return ws;
+  }
+
+  /** Entrega un mensaje SIN esperar a que el handler termine. */
+  function enviar(ws: FakeWs, msg: Record<string, unknown>): Promise<void> {
+    const [l] = ws.listeners('message') as Array<(d: Buffer) => Promise<void>>;
+    return l(Buffer.from(JSON.stringify(msg)));
+  }
+  const tick = () => new Promise((r) => setImmediate(r));
+
+  test('cada token sale hacia Twilio en cuanto llega, aunque la frase no tenga comas', async () => {
+    const c = streamControlado('¿Tiene ', ['dos ', 'minutos?']);
+    responsesCreate.mockResolvedValueOnce(c.stream);
+    const ws = await conectar();
+    const turno = enviar(ws, { type: 'prompt', voicePrompt: 'Sí' });
+    await tick();
+    // Antes de que el modelo termine la frase, el primer token ya está en Twilio.
+    expect(ws.texts()).toEqual([{ type: 'text', token: '¿Tiene ', last: false }]);
+    c.soltar();
+    await turno;
+    expect(ws.texts()).toEqual([
+      { type: 'text', token: '¿Tiene ', last: false },
+      { type: 'text', token: 'dos ', last: false },
+      { type: 'text', token: 'minutos?', last: false },
+      { type: 'text', token: '', last: true },
+    ]);
+  });
+
+  test('interrupción a mitad de la respuesta: deja de hablar y el historial guarda solo lo que sonó', async () => {
+    const c = streamControlado('Claro, ', ['le cuento ', 'todo el plan.']);
+    responsesCreate.mockResolvedValueOnce(c.stream).mockResolvedValueOnce(responsesStream(['Dígame.']));
+    const ws = await conectar();
+    const turno = enviar(ws, { type: 'prompt', voicePrompt: 'Cuénteme' });
+    await tick();
+    await deliver(ws, { type: 'interrupt', utteranceUntilInterrupt: 'Claro,', durationUntilInterruptMs: 400 });
+    c.soltar();
+    await turno;
+
+    // Nada de lo generado tras la interrupción llega a Twilio, ni un `last:true` que reabra la frase.
+    expect(ws.texts()).toEqual([{ type: 'text', token: 'Claro, ', last: false }]);
+
+    await deliver(ws, { type: 'prompt', voicePrompt: 'Espere, ¿quién habla?' });
+    const input = JSON.stringify(responsesCreate.mock.calls[1][0].input);
+    expect(input).toContain('Claro,');
+    expect(input).not.toContain('le cuento');
+    // Orden del historial: lo dicho va antes de la nueva pregunta.
+    expect(input.indexOf('Claro,')).toBeLessThan(input.indexOf('quién habla'));
+  });
+
+  test('un prompt nuevo mientras el modelo aún habla corta el turno anterior', async () => {
+    const c = streamControlado('Le explico ', ['con calma ', 'todo.']);
+    responsesCreate.mockResolvedValueOnce(c.stream).mockResolvedValueOnce(responsesStream(['Perfecto.']));
+    const ws = await conectar();
+    const primero = enviar(ws, { type: 'prompt', voicePrompt: 'Hola' });
+    await tick();
+    await deliver(ws, { type: 'prompt', voicePrompt: 'No tengo tiempo' });
+    c.soltar();
+    await primero;
+    const tokens = ws.texts().map((t) => t.token);
+    expect(tokens).not.toContain('con calma ');
+    expect(tokens).toContain('Perfecto.');
+  });
+
+  test('interrupción de una respuesta ya terminada: el último mensaje del asistente se recorta', async () => {
+    responsesCreate
+      .mockResolvedValueOnce(responsesStream(['Le llamo ', 'para contarle ', 'del software.']))
+      .mockResolvedValueOnce(responsesStream(['Sí, dígame.']));
+    const ws = await conectar();
+    await deliver(ws, { type: 'prompt', voicePrompt: 'Aló' });
+    await deliver(ws, { type: 'interrupt', utteranceUntilInterrupt: 'Le llamo para' });
+    await deliver(ws, { type: 'prompt', voicePrompt: 'Perdón, ¿qué?' });
+    const input = JSON.stringify(responsesCreate.mock.calls[1][0].input);
+    expect(input).toContain('Le llamo para');
+    expect(input).not.toContain('del software');
+  });
+});

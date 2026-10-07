@@ -59,12 +59,16 @@
  * que NO se graba (ni acta ni `<Start><Recording>`) y el agente atiende igual.
  * Nunca grabar sin acta; no grabar sin consentimiento.
  *
- * Contestadora (2026-09-30): la llamada se crea con AMD síncrono
- * (`voiceAgent/amd.ts`), así que Twilio manda `AnsweredBy` en ESTA petición. Si
- * contestó una máquina (o un fax) se cuelga sin aviso, sin grabar y sin abrir el
- * ConversationRelay: el ws-server no arranca sesión, no hay conversación que
- * cobrar y la reserva de minutos se devuelve. La fila queda `voicemail` con
- * desenlace `buzon`, que no cuenta como contacto efectivo (Ley 2300).
+ * Contestadora (2026-10-07): la llamada se crea con AMD ASÍNCRONO
+ * (`voiceAgent/amd.ts`): Twilio pide este TwiML en cuanto contestan, sin
+ * `AnsweredBy`, y el aviso + el agente suenan de inmediato. El veredicto llega
+ * aparte a `/api/voice/ai-agent/amd`, que cuelga por la API si fue una máquina
+ * (`voiceAgent/cierreAmd.ts`). Si ese cierre llega ANTES de la 2ª pasada, la
+ * fila ya no está viva y esta ruta cuelga sin abrir el ConversationRelay (la
+ * misma guarda del incidente 2026-10-06). Las llamadas creadas con AMD
+ * síncrono (antes del despliegue) aún traen `AnsweredBy` aquí y se cierran con
+ * la misma función. La fila queda `voicemail`/`buzon` (o `no_answer`/`fax`),
+ * que no cuenta como contacto efectivo (Ley 2300).
  *
  * Query params: agentId, callId, ct (token de consentimiento, 2ª pasada)
  */
@@ -81,7 +85,7 @@ import { recordConsent, recordingEnabledForCall, voidConsentWithoutRecording } f
 import { updateCall } from '@/lib/services/crm/callManagementService';
 import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { ESTADOS_VIVOS_VAC } from '@/lib/services/crm/voiceAgent/callStatusMap';
-import { devolverReservaSinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
+import { cerrarLlamadaPorAmd } from '@/lib/services/crm/voiceAgent/cierreAmd';
 import { resolveTtsFallback, TTS_FALLBACK_PARAM } from '@/lib/services/crm/voiceAgent/ttsFallback';
 
 export const runtime = 'nodejs';
@@ -192,41 +196,25 @@ export async function POST(request: Request) {
   /** Fila `calls` donde colgar el acta. Sin ella no hay acta posible (V-2). */
   const consentCallId = row?.call_id ?? null;
 
-  // AMD: contestó una máquina → colgar sin conversación (ver cabecera).
-  const cierreAmd = cierrePorAmd(params.AnsweredBy);
-  if (cierreAmd) {
+  // AMD síncrono (llamadas creadas antes del AMD asíncrono): contestó una
+  // máquina → colgar sin conversación (ver cabecera). Con AMD asíncrono esta
+  // petición no trae `AnsweredBy` y el veredicto va a `/api/voice/ai-agent/amd`.
+  if (cierrePorAmd(params.AnsweredBy)) {
     try {
       if (callId && row && (!row.provider_call_sid || !callSid || row.provider_call_sid === callSid)) {
-        const ahora = new Date().toISOString();
-        const patch: Record<string, unknown> = {
-          status: cierreAmd.status,
-          outcome: cierreAmd.outcome,
-          completed_at: ahora,
-          locked_by: null,
-          updated_at: ahora,
-        };
-        if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
-        const devolucion = await devolverReservaSinConversacion(supabase, {
-          organization_id: agentOrgId,
-          credits_reserved: row.credits_reserved,
-          credits_settled_at: row.credits_settled_at,
-        });
-        if (devolucion) Object.assign(patch, devolucion);
-        const { error: amdError } = await supabase
-          .from('voice_agent_calls')
-          .update(patch)
-          .eq('id', callId)
-          .eq('organization_id', agentOrgId)
-          .eq('voice_agent_id', agentId);
-        if (amdError) throw amdError;
-        if (consentCallId) {
-          await updateCall(
-            consentCallId,
-            agentOrgId,
-            { status: 'voicemail', answered_by: cierreAmd.outcome === 'fax' ? 'fax' : 'machine', ended_at: ahora },
-            supabase
-          );
-        }
+        await cerrarLlamadaPorAmd(
+          supabase,
+          {
+            id: callId,
+            organization_id: agentOrgId,
+            call_id: row.call_id,
+            provider_call_sid: row.provider_call_sid,
+            credits_reserved: row.credits_reserved,
+            credits_settled_at: row.credits_settled_at,
+          },
+          params.AnsweredBy,
+          callSid
+        );
       }
     } catch (err) {
       // Se cuelga igual: registrar mal no puede dejar al agente hablándole a un buzón.
@@ -398,6 +386,14 @@ export async function POST(request: Request) {
   </Start>`
       : '';
 
+    // Turnos (2026-10-07, llamada de prueba de la org 125):
+    //  - `welcomeGreeting` lo dice Twilio al conectar, sin pasar por el modelo.
+    //  - `welcomeGreetingInterruptible="none"`: el «¿Aló?» con que la gente
+    //    contesta cortaba la presentación a los 2 s y el modelo, que creía
+    //    haberla dicho, se presentaba otra vez. Con `none` la presentación
+    //    (identificación de la Ley 2300) suena completa y, con
+    //    `reportInputDuringAgentSpeech="none"`, lo dicho encima no se convierte
+    //    en un turno. Las respuestas del modelo siguen siendo interrumpibles.
     const relayAttrs =
       attr('url', wsUrl) +
       attr('language', language) +
@@ -408,7 +404,7 @@ export async function POST(request: Request) {
       attr('transcriptionProvider', config.agent.stt_provider === 'deepgram' ? 'Deepgram' : undefined) +
       attr('speechModel', config.agent.stt_provider === 'deepgram' ? 'nova-3-general' : undefined) +
       attr('welcomeGreeting', config.greeting) +
-      attr('welcomeGreetingInterruptible', 'any') +
+      attr('welcomeGreetingInterruptible', 'none') +
       attr('interruptible', 'any') +
       attr('dtmfDetection', 'true') +
       attr('reportInputDuringAgentSpeech', 'none');

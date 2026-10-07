@@ -104,8 +104,11 @@ describe('AMD: clasificación de AnsweredBy', () => {
   });
 
   test('parámetros de calls.create: Enable sin mensaje de buzón, DetectMessageEnd con mensaje', () => {
-    expect(parametrosAmd()).toEqual({ machineDetection: 'Enable' });
-    expect(parametrosAmd('   ')).toEqual({ machineDetection: 'Enable' });
-    expect(parametrosAmd('Le llamamos de…')).toEqual({ machineDetection: 'DetectMessageEnd' });
+    const url = 'https://app.example.com/api/voice/ai-agent/amd?callId=v1';
+    const asincrono = { asyncAmd: 'true', asyncAmdStatusCallback: url, asyncAmdStatusCallbackMethod: 'POST' };
+    // AMD ASÍNCRONO (2026-10-07): el síncrono retenía a la persona en silencio hasta 30 s.
+    expect(parametrosAmd(url)).toEqual({ machineDetection: 'Enable', ...asincrono });
+    expect(parametrosAmd(url, '   ')).toEqual({ machineDetection: 'Enable', ...asincrono });
+    expect(parametrosAmd(url, 'Le llamamos de…')).toEqual({ machineDetection: 'DetectMessageEnd', ...asincrono });
   });
 });

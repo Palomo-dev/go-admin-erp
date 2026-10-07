@@ -179,6 +179,13 @@ describe('Compuertas legales del despachador de voz', () => {
     expect(r.calls_initiated).toBe(1);
     expect(twilioCreate).toHaveBeenCalledTimes(1);
     expect(twilioCreate.mock.calls[0][0]).toMatchObject({ to: '+573001112233', machineDetection: 'Enable' });
+    // AMD ASÍNCRONO: el TwiML del agente arranca al contestar y el veredicto va
+    // a su propia ruta con el id de la fila (la org se resuelve desde ella).
+    const opts = twilioCreate.mock.calls[0][0] as Record<string, string>;
+    expect(opts.asyncAmd).toBe('true');
+    expect(opts.asyncAmdStatusCallbackMethod).toBe('POST');
+    expect(opts.asyncAmdStatusCallback).toMatch(/\/api\/voice\/ai-agent\/amd\?callId=[^&]+$/);
+    expect(opts.url).toMatch(/\/api\/voice\/twiml\/ai-agent\?/);
   });
 
   test('sin política de tratamiento de datos no se reclama ni se marca nada', async () => {

@@ -60,7 +60,7 @@ import {
   type VoiceAgentEngine as EnumVoiceAgentEngine,
 } from '@/lib/crm/enums';
 import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/lib/services/crm/voiceAgent/ley2300';
-import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
+import { parametrosAmd, RUTA_AMD_ASINCRONO } from '@/lib/services/crm/voiceAgent/amd';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
 import { evaluarLey2300Cliente, numeroExcluido, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
@@ -1707,6 +1707,7 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     `${webhookBase}/api/voice/twiml/ai-agent` +
     `?agentId=${encodeURIComponent(vac.voice_agent_id)}&callId=${encodeURIComponent(vac.id)}`;
   const statusUrl = `${webhookBase}/api/voice/ai-agent/status?callId=${encodeURIComponent(vac.id)}`;
+  const amdUrl = `${webhookBase}${RUTA_AMD_ASINCRONO}?callId=${encodeURIComponent(vac.id)}`;
 
   try {
     const call = await twilioClient.calls.create({
@@ -1717,10 +1718,11 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallbackMethod: 'POST',
       timeout: 30,
-      // AMD síncrono (`voiceAgent/amd.ts`): Twilio espera el veredicto y lo
-      // manda como `AnsweredBy` al TwiML; si es una máquina, `twiml/ai-agent`
-      // cuelga sin abrir la conversación y registra `buzon`.
-      ...parametrosAmd(),
+      // AMD ASÍNCRONO (`voiceAgent/amd.ts`): el TwiML (aviso + agente) se pide
+      // en cuanto contestan; el veredicto llega aparte a `/api/voice/ai-agent/amd`,
+      // que cuelga y registra `buzon`/`fax` si fue una máquina. El modo
+      // síncrono retenía a la persona en silencio hasta 30 s.
+      ...parametrosAmd(amdUrl),
       // C-F6-09 / A-2: la grabación dual-channel NO se pide aquí. `record: true`
       // en el `calls.create` arranca a grabar en cuanto contestan, es decir
       // ANTES de que suene el aviso: el acta quedaba bien fechada pero la
@@ -2097,6 +2099,26 @@ export async function pickAgentCallerId(orgId: number, supabase: SupabaseClient,
   return picked.e164;
 }
 
+/**
+ * Cliente REST de Twilio de la cuenta con la que se MARCA para la org
+ * (subcuenta si la tiene; si no, master). Colgar o consultar una llamada del
+ * agente debe hacerse con la misma cuenta que la creó.
+ */
+async function twilioRestClientDelAgente(orgId: number, supabase: SupabaseClient) {
+  const provider = await getActiveProvider(orgId, 'voice', supabase);
+  if (provider.credentials.TWILIO_SUBACCOUNT_SID && provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN) {
+    const Twilio = (await import('twilio')).default;
+    return {
+      provider,
+      client: Twilio(
+        provider.credentials.TWILIO_SUBACCOUNT_SID as string,
+        provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN as string
+      ),
+    };
+  }
+  return { provider, client: getMasterClient() };
+}
+
 async function getTwilioClientForOrg(
   orgId: number,
   supabase: SupabaseClient
@@ -2104,28 +2126,28 @@ async function getTwilioClientForOrg(
   client: { calls: { create: (opts: Record<string, unknown>) => Promise<{ sid: string }> } };
   fromNumber: string;
 }> {
-  const provider = await getActiveProvider(orgId, 'voice', supabase);
+  const { provider, client } = await twilioRestClientDelAgente(orgId, supabase);
   const fromNumber = await pickAgentCallerId(
     orgId,
     supabase,
     (provider.credentials.TWILIO_PHONE_NUMBER as string) || getMasterPhoneNumber() || null
   );
-
-  if (
-    provider.credentials.TWILIO_SUBACCOUNT_SID &&
-    provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN
-  ) {
-    const Twilio = (await import('twilio')).default;
-    const client = Twilio(
-      provider.credentials.TWILIO_SUBACCOUNT_SID,
-      provider.credentials.TWILIO_SUBACCOUNT_AUTH_TOKEN
-    );
-    return {
-      client: client as unknown as DialParams['twilioClient'],
-      fromNumber,
-    };
-  }
-
-  const client = getMasterClient();
   return { client: client as unknown as DialParams['twilioClient'], fromNumber };
+}
+
+/**
+ * Cuelga una llamada del agente en curso (AMD asíncrono: contestó una máquina).
+ * Devuelve `false` si Twilio dice que la llamada ya no está en curso (21220),
+ * que no es un error: la persona o el buzón ya colgaron. Lanza en otro caso.
+ * La organización debe venir ya resuelta desde la fila persistida.
+ */
+export async function colgarLlamadaDelAgente(orgId: number, callSid: string, supabase: SupabaseClient): Promise<boolean> {
+  const { client } = await twilioRestClientDelAgente(orgId, supabase);
+  try {
+    await client.calls(callSid).update({ status: 'completed' });
+    return true;
+  } catch (err) {
+    if ((err as { code?: number })?.code === 21220) return false;
+    throw err;
+  }
 }

@@ -69,11 +69,6 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
   membership_plans: {
     'plans[].highlighted': [],
   },
-  // OffersGrid no pasa `card_buttons` a la tarjeta de producto.
-  offers: {
-    'card_buttons[].full_width_mobile': [],
-    'card_buttons[].open_new_tab': [],
-  },
   // Sin precio anterior en la fuente (`parking_pass_types`, `parking_rates`).
   parking_pass_plans: {
     'show_compare_price': [],
@@ -110,9 +105,10 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
     'show_compare_price': [],
     'show_description': [],
   },
-  // `data.services` no se carga en el sitio público: no hay de dónde sacar el precio anterior.
+  // Desde el 2026-10-07 la sección recibe sus servicios (productos `SV` con su precio vigente).
+  // La fila de iconos no pinta precio: el tachado no aplica ahí.
   services_list: {
-    'show_compare_price': [],
+    'show_compare_price': ['cards', 'grid', 'list'],
   },
   specialties: {
     'card_buttons[].full_width': [],
@@ -173,7 +169,11 @@ export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<strin
   specialties: { show_compare_price: { featured: false }, show_description: { featured: false } },
   // Tarjetas de habitación e iconos de servicios no pintaban la descripción: solo con `true`.
   room_types: { show_description: { cards: false } },
-  services_list: { show_description: { icons_row: false } },
+  services_list: {
+    show_description: { icons_row: false },
+    // Tachado nuevo: solo con `true`.
+    show_compare_price: { cards: false, grid: false, list: false },
+  },
   parking_pass_plans: { show_description: { cards: false } },
 };
 

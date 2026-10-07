@@ -3751,3 +3751,18 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Hallazgo: `services_list` no recibe datos en el sitio público (`data.services` nunca se carga).
 - Orden de despliegue: primero el sitio (dos commits en goadmin-websites), después este cambio.
 - Sitio: `npm run typecheck`, los 13 verify sin credenciales y `npx next build` en verde; verify-interruptores 165 casos (sin el cambio fallan 108). ERP: jest de `src/lib/services/website`, `src/components/sitio-web` y guardrails, 926 en verde; `interruptoresOcultos.test.ts` sin el cambio falla en 102 de 155.
+
+
+### Fase: Sitio web — servicios con datos y precio tachado — 2026-10-07
+- El sitio público no cargaba `data.services`: los 50 sitios con «Lista de servicios» decían «No hay servicios configurados aún». Ahora los carga solo en las páginas con la sección, con una consulta cacheada (`getServiciosDeSeccion`, caché del catálogo de 30 s) y la misma fuente que /servicios: `organization_services` activo en organizaciones de servicios (type_id 4) y productos activos `SV` con su precio vigente en las demás (goadmin-websites, commit `feat(GO-sitio-web): la sección de servicios recibe sus servicios…`).
+- Hecho: «Mostrar precio tachado» en tarjetas, grid y lista con el `compare_price` real; el inspector lo vuelve a mostrar en esas tres variantes, apagado por defecto. La fila de iconos no pinta precio: queda oculto. `organization_services` no tiene descripción ni precio anterior.
+- No hecho: lo demás del documento de pendientes sigue igual (81 hechas, 41 pendientes, 8 sin fuente, 25 no aplican).
+- Sitio: typecheck, los verify sin credenciales (incluido el nuevo verify-servicios-seccion, que lee los select del fuente y falla en 6 sin el cambio) y next build en verde. ERP: jest de website, sitio-web y guardrails 935 en verde; `interruptoresOcultos.test.ts` sin el cambio falla en 6.
+- Orden de despliegue: primero el sitio, después este cambio.
+
+
+### Fase: Sitio web — botones de tarjeta en «Ofertas» — 2026-10-07
+- «Ofertas» ignoraba los botones e insignias de tarjeta guardados en el editor (4 organizaciones con «Agregar» y «Comprar»). El sitio ahora los pasa a la misma tarjeta que usa la cuadrícula de productos (goadmin-websites, commit `feat(GO-sitio-web): las ofertas pasan los botones e insignias…`); el inspector vuelve a mostrar `full_width_mobile` y `open_new_tab` en esos botones.
+- Probado en un arnés con el checkout real: «Agregar» y «Comprar» desde una oferta dejan en el carrito exactamente lo mismo que desde la cuadrícula de productos (precio de oferta y precio anterior), y «Comprar» llega al checkout con el producto. Sin stock y padre con variantes, iguales. Sin botones guardados, la tarjeta no cambia.
+- No hecho: siguen 39 pendientes, 8 sin fuente y 25 que no aplican (documento de pendientes).
+- Orden de despliegue: primero el sitio, después este cambio.

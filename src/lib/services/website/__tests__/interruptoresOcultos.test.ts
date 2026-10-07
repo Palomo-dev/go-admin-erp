@@ -60,7 +60,7 @@ const OCULTOS: [string, string, string[]][] = [
   ['room_types', 'show_compare_price', ['cards', 'detailed']],
   ['routes', 'show_compare_price', ['cards']],
   ['routes', 'show_description', ['cards']],
-  ['services_list', 'show_compare_price', ['cards', 'grid', 'icons_row', 'list']],
+  ['services_list', 'show_compare_price', ['icons_row']],
   ['specialties', 'hide_if_no_reviews', ['featured']],
   ['specialties', 'show_rating', ['featured']],
 ];
@@ -69,7 +69,6 @@ const OCULTOS: [string, string, string[]][] = [
 const ITEMS_QUITADOS: [string, string, string[]][] = [
   ['cta', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
   ['membership_plans', 'plans', ['highlighted']],
-  ['offers', 'card_buttons', ['full_width_mobile', 'open_new_tab']],
   ['product_actions', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
   ['specialties', 'card_buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
 ];
@@ -169,6 +168,7 @@ const IMPLEMENTADOS: FilaImplementado[] = [
   ['specialties', 'show_description', 'featured'],
   ['room_types', 'show_description', 'cards'],
   ['services_list', 'show_description', 'icons_row'],
+  ...['cards', 'grid', 'list'].map((v): FilaImplementado => ['services_list', 'show_compare_price', v]),
   ['parking_pass_plans', 'show_description', 'cards'],
 ];
 
@@ -182,7 +182,7 @@ describe('Implementados en el sitio: el inspector los vuelve a mostrar', () => {
     const campos = (tipo: string, rep: string) =>
       (getSectionDefinition(tipo)!.contentFields.find((f) => f.key === rep)!.itemFields ?? []).map((f) => f.key);
     expect(campos('hero', 'buttons')).toEqual(expect.arrayContaining(['full_width', 'icon_only']));
-    for (const tipo of ['products_grid', 'featured_products']) {
+    for (const tipo of ['products_grid', 'featured_products', 'offers']) {
       expect(campos(tipo, 'card_buttons')).toEqual(expect.arrayContaining(['full_width_mobile', 'open_new_tab']));
     }
   });
@@ -244,6 +244,9 @@ const DEFAULTS_IMPLEMENTADOS: FilaDefault[] = [
   ['room_types', 'show_description', 'detailed', true],
   ['services_list', 'show_description', 'icons_row', false],
   ['services_list', 'show_description', 'cards', true],
+  ['services_list', 'show_compare_price', 'cards', false],
+  ['services_list', 'show_compare_price', 'grid', false],
+  ['services_list', 'show_compare_price', 'list', false],
   ['parking_pass_plans', 'show_description', 'cards', false],
 ];
 

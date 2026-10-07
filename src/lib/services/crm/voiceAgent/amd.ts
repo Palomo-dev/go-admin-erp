@@ -2,17 +2,40 @@
  * Detección de contestadora (AMD de Twilio) para el agente de voz.
  *
  * Módulo PURO. Lo usan `voiceAgentService.dialClaimedCall` (parámetros de
- * `calls.create`) y `/api/voice/twiml/ai-agent` (qué hacer cuando contestó una
- * máquina), y las pruebas.
+ * `calls.create`), `/api/voice/ai-agent/amd` (veredicto asíncrono),
+ * `/api/voice/twiml/ai-agent` (veredicto síncrono de llamadas antiguas) y las
+ * pruebas.
  *
- * Parámetros verificados en la documentación de Twilio (Answering Machine
- * Detection, 2026-09-29):
- *  - `MachineDetection`: `Enable` | `DetectMessageEnd`.
- *  - Con `AsyncAmd=false` (el valor por defecto) Twilio espera a tener el
- *    veredicto y lo manda como `AnsweredBy` en la petición a la `Url` del
- *    TwiML. Por eso aquí se usa el modo SÍNCRONO: la decisión se toma en el
- *    mismo webhook que abre el ConversationRelay, sin segundo callback y sin
- *    llegar a abrir la sesión con el modelo si contestó una máquina.
+ * AMD ASÍNCRONO (2026-10-07). Antes la llamada se creaba con AMD síncrono
+ * (`AsyncAmd=false`, el valor por defecto): Twilio RETIENE la llamada en
+ * silencio hasta tener veredicto y solo entonces pide el TwiML. Con
+ * `MachineDetectionTimeout` por defecto (30 s), una persona que contesta y no
+ * habla lo bastante oye hasta 30 s de silencio y el veredicto sale `unknown`.
+ * Llamada de prueba del 2026-10-07 (org 125): marcada a las 16:25:04Z, 68 s
+ * facturados hasta las 16:26:25Z (contestó ~16:25:17Z); `AnsweredBy=unknown`
+ * (agotó los 30 s → ~16:25:47Z, calculado) y, tras el aviso de grabación, el
+ * agente habló a las 16:25:54Z: ~37 s de silencio. En la campaña hay muchas
+ * llamadas atendidas de 7–13 s sin conversación: colgaron en ese silencio.
+ *
+ * Ahora el TwiML (aviso + ConversationRelay) se pide al contestar y el
+ * veredicto llega APARTE a `asyncAmdStatusCallback`. Si es máquina o fax, esa
+ * ruta cuelga por la API, cierra la fila y devuelve la reserva.
+ *
+ * Parámetros verificados (2026-10-07) en el SDK instalado (`twilio` 6.1.0,
+ * `rest/api/v2010/account/call.d.ts`, `CallListInstanceCreateOptions`) y en la
+ * documentación de Answering Machine Detection:
+ *  - `machineDetection`: `Enable` | `DetectMessageEnd`.
+ *  - `asyncAmd`: STRING `'true'` | `'false'` (default `'false'`, bloquea la
+ *    llamada hasta el veredicto).
+ *  - `asyncAmdStatusCallback`: URL a la que Twilio manda el veredicto con
+ *    `CallSid`, `AccountSid`, `AnsweredBy` y `MachineDetectionDuration` (ms).
+ *    Va firmada con `X-Twilio-Signature` como cualquier webhook.
+ *  - `asyncAmdStatusCallbackMethod`: `GET` | `POST` (default `POST`).
+ *  - `machineDetectionTimeout`: segundos antes de responder `unknown`
+ *    (default 30). Se deja en el default: en modo asíncrono ya no retiene a
+ *    nadie, y un tope menor solo daría más `unknown` (= persona).
+ *  - El AMD asíncrono ocupa uno de los cuatro «forks» de audio por llamada
+ *    (compartidos con Media Streams, SIPREC y transcripción en tiempo real).
  *  - `AnsweredBy` con `Enable`: `human`, `machine_start`, `fax`, `unknown`.
  *    Con `DetectMessageEnd`: `human`, `machine_end_beep`, `machine_end_silence`,
  *    `machine_end_other`, `fax`, `unknown`.
@@ -62,7 +85,26 @@ export function cierrePorAmd(answeredBy: string | null | undefined): { status: '
   return null;
 }
 
-/** Parámetros de AMD para `client.calls.create` (SDK de Node de Twilio). */
-export function parametrosAmd(mensajeBuzon?: string | null): { machineDetection: 'Enable' | 'DetectMessageEnd' } {
-  return { machineDetection: mensajeBuzon && mensajeBuzon.trim() ? 'DetectMessageEnd' : 'Enable' };
+/** Ruta que recibe el veredicto asíncrono (`asyncAmdStatusCallback`). */
+export const RUTA_AMD_ASINCRONO = '/api/voice/ai-agent/amd';
+
+export interface ParametrosAmd {
+  machineDetection: 'Enable' | 'DetectMessageEnd';
+  asyncAmd: 'true';
+  asyncAmdStatusCallback: string;
+  asyncAmdStatusCallbackMethod: 'POST';
+}
+
+/**
+ * Parámetros de AMD ASÍNCRONO para `client.calls.create` (SDK de Node de
+ * Twilio). `callbackUrl` es la URL absoluta de `RUTA_AMD_ASINCRONO` con el
+ * `callId` de la fila; la organización la resuelve la ruta desde esa fila.
+ */
+export function parametrosAmd(callbackUrl: string, mensajeBuzon?: string | null): ParametrosAmd {
+  return {
+    machineDetection: mensajeBuzon && mensajeBuzon.trim() ? 'DetectMessageEnd' : 'Enable',
+    asyncAmd: 'true',
+    asyncAmdStatusCallback: callbackUrl,
+    asyncAmdStatusCallbackMethod: 'POST',
+  };
 }

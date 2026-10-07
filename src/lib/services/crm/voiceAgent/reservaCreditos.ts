@@ -32,11 +32,20 @@ export async function devolverReservaSinConversacion(
 ): Promise<{ credits_reserved: number; credits_settled_at: string } | null> {
   const reservado = vac.credits_reserved ?? 0;
   if (reservado <= 0 || vac.credits_settled_at) return null;
+  await reembolsarMinutosReservados(supabase, vac.organization_id, reservado);
+  return { credits_reserved: 0, credits_settled_at: new Date().toISOString() };
+}
+
+/**
+ * Devuelve `reservado` minutos de voz a la organización (`deduct_comm_credits`
+ * con importe negativo). Lanza si falla. La usan esta función y el cierre por
+ * AMD asíncrono (`cierreAmd.ts`, que reclama la reserva de forma atómica).
+ */
+export async function reembolsarMinutosReservados(supabase: SupabaseClient, organizationId: number, reservado: number): Promise<void> {
   const { error } = await supabase.rpc('deduct_comm_credits', {
-    p_org_id: vac.organization_id,
+    p_org_id: organizationId,
     p_channel: 'voice',
     p_amount: -reservado,
   });
   if (error) throw error;
-  return { credits_reserved: 0, credits_settled_at: new Date().toISOString() };
 }

@@ -28,6 +28,7 @@ import {
   type VoiceAgentCallLiveStatus,
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
+import { OUTCOME_BUZON, OUTCOME_FAX } from '@/lib/services/crm/voiceAgent/amd';
 
 export const runtime = 'nodejs';
 
@@ -102,7 +103,12 @@ export async function POST(request: Request) {
     // tramo, y una que el TwiML ya cerró como buzón (AMD) tampoco: el
     // `completed` posterior puede llegar sin `AnsweredBy` y la convertiría en
     // un contacto efectivo que nunca existió.
-    const keepTerminal = vac.status === 'transferred' || vac.status === 'voicemail';
+    //
+    // AMD asíncrono (2026-10-07): el cierre por máquina/fax lo escribe
+    // `/api/voice/ai-agent/amd` y el `completed` posterior ya no trae
+    // `AnsweredBy`. El fax queda `no_answer`/`fax`: se reconoce por el desenlace.
+    const cerradaPorAmd = vac.outcome === OUTCOME_BUZON || vac.outcome === OUTCOME_FAX;
+    const keepTerminal = vac.status === 'transferred' || vac.status === 'voicemail' || cerradaPorAmd;
     // Twilio no garantiza el orden de los callbacks (`answered` puede llegar
     // después de `completed`), y la `action` del `<Connect>` llega con
     // `CallStatus=in-progress`. Un estado VIVO nunca pisa un cierre: se escribe
@@ -154,10 +160,12 @@ export async function POST(request: Request) {
     if (vac.call_id) {
       const callsStatus = mapTwilioToCallsStatus(callStatus, answeredBy);
       const callsPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (callsStatus) callsPatch.status = callsStatus;
-      if (answeredBy) callsPatch.answered_by = answeredBy;
+      // Cerrada por AMD: `calls` ya dice `voicemail` y quién contestó; el
+      // `completed` solo aporta la duración.
+      if (callsStatus && !cerradaPorAmd) callsPatch.status = callsStatus;
+      if (answeredBy && !cerradaPorAmd) callsPatch.answered_by = answeredBy;
       if (durationSeconds) callsPatch.duration_seconds = durationSeconds;
-      if (callsStatus && ENDED_CALL_STATUSES.includes(callsStatus)) {
+      if (callsStatus && ENDED_CALL_STATUSES.includes(callsStatus) && !cerradaPorAmd) {
         callsPatch.ended_at = new Date().toISOString();
       }
       let callsQuery = supabase

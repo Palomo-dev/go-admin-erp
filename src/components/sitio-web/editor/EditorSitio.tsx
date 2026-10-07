@@ -698,6 +698,7 @@ function Editor() {
           secciones={ed.seccionesLienzo}
           ajustes={ed.ajustesLienzo}
           seleccion={ed.activeSectionId ?? ed.zonaGlobal}
+          pagina={{ tipo: pagina?.page_type ?? null, slug: pagina?.slug ?? null }}
           etiquetaSeleccion={ed.vistaVersion ? null : etiquetaSeleccion}
           avisoSeccion={ed.avisoSeccion}
           onClic={ed.vistaVersion ? undefined : seleccionarDesdeLienzo}

@@ -39,6 +39,8 @@ export interface LienzoEditorProps {
   onClic?: (id: string, detalle: DetalleClic) => void;
   onQuitar?: (id: string) => void;
   cartaSede?: { branchId: number; cambios: unknown[] } | null;
+  /** Tipo y slug de la página (la Carta QR va por pasos). */
+  pagina?: OpcionesPuente['pagina'];
   /** Viendo una versión del historial: banda superior con «Volver al borrador» y «Restaurar». */
   version?: { titulo: string; onVolver: () => void; onRestaurar?: () => void } | null;
   className?: string;
@@ -86,6 +88,7 @@ export function LienzoEditor(p: LienzoEditorProps) {
     onClic: p.onClic,
     onQuitar: p.onQuitar,
     cartaSede: p.cartaSede,
+    pagina: p.pagina,
   });
 
   useEffect(() => {

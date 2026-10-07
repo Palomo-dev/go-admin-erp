@@ -222,6 +222,17 @@ export interface ContentFieldDef {
  * construir `SECTION_CATALOG`, por lo que NO deben duplicarse aquí.
  * Ver `sectionFieldGroups.ts` (F0.2).
  */
+/**
+ * CARD_FIELDS declara «Mostrar descripción» apagado porque así lo lee la tarjeta de producto del
+ * sitio (`show_description === true`). Servicios, planes y habitaciones, en cambio, pintan la
+ * descripción salvo `show_description: false`. En esas secciones el interruptor se pinta encendido
+ * cuando la clave no existe, para que diga lo que el sitio hace (solo cambia el estado inicial del
+ * switch: `defaultValue` no se escribe en el contenido).
+ */
+const CARD_FIELDS_DESCRIPCION_VISIBLE: ContentFieldDef[] = CARD_FIELDS.map((f) =>
+  f.key === 'show_description' ? { ...f, defaultValue: true } : f,
+);
+
 const RAW_CATALOG: SectionTypeDefinition[] = [
   {
     type: 'hero',
@@ -243,10 +254,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...', showIf: { variantIn: ['video'] } },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
-      { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true },
+      // El overlay solo existe en las variantes con fondo (pantalla completa, slider y video):
+      // Minimal y Dividido no tienen nada que oscurecer.
+      { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true, showIf: { variantIn: ['fullscreen', 'slider', 'video'] } },
       { key: 'show_title', label: 'Mostrar título', type: 'boolean', defaultValue: true },
       { key: 'show_cta', label: 'Mostrar botón', type: 'boolean', defaultValue: true },
-      { key: 'full_width', label: 'Ancho completo', type: 'boolean', defaultValue: true },
+      // Solo el slider lee `full_width` (y sus bordes y sombra); las demás variantes ya van a sangre.
+      { key: 'full_width', label: 'Ancho completo', type: 'boolean', defaultValue: true, showIf: { variantIn: ['slider'] } },
       { key: 'border_radius', label: 'Bordes redondeados (px)', type: 'range', min: 0, max: 50, step: 1, defaultValue: 0, suffix: 'px' },
       { key: 'shadow_intensity', label: 'Intensidad de sombra', type: 'range', min: 0, max: 50, step: 1, defaultValue: 0, suffix: '' },
       // F3.1 — Altura configurable (grupo Diseño)
@@ -288,7 +302,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         step: 5,
         defaultValue: 70,
         suffix: '%',
-        showIf: { field: 'show_overlay', equals: true },
+        showIf: { field: 'show_overlay', equals: true, variantIn: ['fullscreen', 'video'] },
         helpText: '0 = transparente, 100 = opaco. Por defecto 70%.',
       },
       {
@@ -296,7 +310,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         label: 'Color del overlay',
         type: 'color',
         group: 'style',
-        showIf: { field: 'show_overlay', equals: true },
+        showIf: { field: 'show_overlay', equals: true, variantIn: ['fullscreen', 'video'] },
         helpText: 'Color del overlay sobre la imagen. Vacío = color primario.',
       },
       // F3.1 — Posición y alineación del contenido
@@ -386,7 +400,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       },
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6', group: 'data' },
       ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...CARD_FIELDS_DESCRIPCION_VISIBLE,
     ],
   },
   {
@@ -755,10 +769,12 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'required', label: 'Obligatorio', type: 'boolean', defaultValue: false },
         ],
       },
-      { key: 'show_map', label: 'Mostrar mapa', type: 'boolean', group: 'behavior', defaultValue: false },
-      { key: 'show_phone', label: 'Mostrar teléfono', type: 'boolean', group: 'behavior', defaultValue: true },
-      { key: 'show_email', label: 'Mostrar email', type: 'boolean', group: 'behavior', defaultValue: true },
-      { key: 'show_address', label: 'Mostrar dirección', type: 'boolean', group: 'behavior', defaultValue: true },
+      // El mapa solo existe en «Con mapa» y ahí se ve salvo `show_map: false`. Los datos de contacto
+      // solo los pintan «Dividido» y «Con mapa»: en las demás variantes el interruptor no haría nada.
+      { key: 'show_map', label: 'Mostrar mapa', type: 'boolean', group: 'behavior', defaultValue: true, showIf: { variantIn: ['with_map'] } },
+      { key: 'show_phone', label: 'Mostrar teléfono', type: 'boolean', group: 'behavior', defaultValue: true, showIf: { variantIn: ['split', 'with_map'] } },
+      { key: 'show_email', label: 'Mostrar email', type: 'boolean', group: 'behavior', defaultValue: true, showIf: { variantIn: ['split', 'with_map'] } },
+      { key: 'show_address', label: 'Mostrar dirección', type: 'boolean', group: 'behavior', defaultValue: true, showIf: { variantIn: ['split', 'with_map'] } },
     ],
   },
   {
@@ -1585,7 +1601,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...CARD_FIELDS_DESCRIPCION_VISIBLE,
     ],
   },
   {
@@ -2463,7 +2479,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...CARD_FIELDS_DESCRIPCION_VISIBLE,
     ],
   },
   {
@@ -2495,7 +2511,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...CARD_FIELDS_DESCRIPCION_VISIBLE,
     ],
   },
   {

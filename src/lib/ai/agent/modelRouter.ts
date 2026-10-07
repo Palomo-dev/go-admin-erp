@@ -174,3 +174,25 @@ export function resolveModel(
     source,
   };
 }
+
+/**
+ * Modelo del agente de voz cuando el agente no fija `voice_agents.llm_model`.
+ *
+ * Organización → entorno → default, sin cambiar el modelo de nadie:
+ *  1. `ai_assistant_settings.model_overrides.voice` (solo voz);
+ *  2. lo que ya resolvía la tarea `conversation` desde la organización
+ *     (`model_overrides.conversation`, `ai_settings.model`);
+ *  3. `OPENAI_VOICE_MODEL` (solo voz);
+ *  4. el resto de la cadena de `conversation` (`OPENAI_CONVERSATION_MODEL` → default).
+ * Sin `voice` en la organización ni `OPENAI_VOICE_MODEL` en el entorno, el
+ * resultado es exactamente el de `resolveModel('conversation')`, el de antes.
+ */
+export function resolveVoiceModel(settings: OrgModelSettings = EMPTY_SETTINGS): ResolvedModel {
+  const base = resolveModel('conversation', settings);
+  const fromOverride = settings.overrides.voice;
+  if (fromOverride) return { ...base, model: fromOverride, source: 'organization' };
+  if (base.source === 'organization') return base;
+  const fromEnv = process.env.OPENAI_VOICE_MODEL?.trim();
+  if (fromEnv) return { ...base, model: fromEnv, source: 'environment' };
+  return base;
+}

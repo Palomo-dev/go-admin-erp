@@ -414,22 +414,30 @@ describe('turnos: streaming por token e interrupciones', () => {
   }
   const tick = () => new Promise((r) => setImmediate(r));
 
-  test('cada token sale hacia Twilio en cuanto llega, aunque la frase no tenga comas', async () => {
-    const c = streamControlado('¿Tiene ', ['dos ', 'minutos?']);
+  test('el texto sale en trozos de palabras completas antes de que el modelo termine, aunque la frase no tenga comas', async () => {
+    // 2026-10-07: token a token la voz sonaba entrecortada; ahora el primer
+    // trozo sale con 2 palabras completas y los siguientes con 3.
+    const c = streamControlado('¿Tiene dos ', ['minu', 'tos ', 'para ', 'hablar?']);
     responsesCreate.mockResolvedValueOnce(c.stream);
     const ws = await conectar();
     const turno = enviar(ws, { type: 'prompt', voicePrompt: 'Sí' });
     await tick();
-    // Antes de que el modelo termine la frase, el primer token ya está en Twilio.
-    expect(ws.texts()).toEqual([{ type: 'text', token: '¿Tiene ', last: false }]);
+    // Antes de que el modelo termine la frase, las dos primeras palabras ya están en Twilio.
+    expect(ws.texts()).toEqual([{ type: 'text', token: '¿Tiene dos ', last: false }]);
     c.soltar();
     await turno;
+    // Nunca media palabra («minu»): el resto se cierra con `last:true` en el mismo mensaje.
     expect(ws.texts()).toEqual([
-      { type: 'text', token: '¿Tiene ', last: false },
-      { type: 'text', token: 'dos ', last: false },
-      { type: 'text', token: 'minutos?', last: false },
-      { type: 'text', token: '', last: true },
+      { type: 'text', token: '¿Tiene dos ', last: false },
+      { type: 'text', token: 'minutos para hablar?', last: true },
     ]);
+  });
+
+  test('una sola palabra sin espacio al final sale con `last:true` al cerrar el turno', async () => {
+    responsesCreate.mockResolvedValueOnce(responsesStream(['Perfecto.']));
+    const ws = await conectar();
+    await deliver(ws, { type: 'prompt', voicePrompt: 'Listo' });
+    expect(ws.texts()).toEqual([{ type: 'text', token: 'Perfecto.', last: true }]);
   });
 
   test('interrupción a mitad de la respuesta: deja de hablar y el historial guarda solo lo que sonó', async () => {

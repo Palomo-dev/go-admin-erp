@@ -16,7 +16,7 @@
 import { z } from 'zod';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
-import { sumarEnMonedaBase } from '@/components/crm/kit/monedaCrm';
+import { sumarEnMonedaBase } from '@/lib/crm/monedaCrm';
 import { CRM_PERMISOS, CrmHttpError, exigirPermisoCrm, tienePermisoCrm, type CrmSesion } from './crmRouteSupport';
 import {
   FORECAST_CATEGORIES,

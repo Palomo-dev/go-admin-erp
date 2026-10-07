@@ -40,7 +40,7 @@ import { CLAVE_CIERRE_AGENTE_VOZ, changeStage } from '@/lib/services/crm/opportu
 import { buscarEtapaDeDesenlace } from '@/lib/services/crm/opportunityStageDesenlace';
 import { createTask, logActivity, recordToolRun, type ToolContext, type ToolResult } from '@/lib/services/crm/voiceAgentTools';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
-import type { TasaCambio } from '@/components/crm/kit/monedaCrm';
+import type { TasaCambio } from '@/lib/crm/monedaCrm';
 import type { ObjecionRegistrada } from './cierreLlamada';
 import {
   decidirAccionDesinteres,

@@ -31,7 +31,7 @@
 
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { tasaVigente, type TasaCambio } from '@/components/crm/kit/monedaCrm';
+import { tasaVigente, type TasaCambio } from '@/lib/crm/monedaCrm';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 export const TABLA_CONFIG_DESINTERES = 'crm_voice_disinterest_settings';

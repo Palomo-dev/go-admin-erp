@@ -15,7 +15,7 @@
  * caso ni ponderado. Los ajustes con motivo suman su diferencia al compromiso
  * y al mejor caso, sin tocar las oportunidades.
  */
-import { sumarEnMonedaBase, type MontoEnMoneda, type ResumenMonedaBase, type TasaCambio } from '@/components/crm/kit/monedaCrm';
+import { sumarEnMonedaBase, type MontoEnMoneda, type ResumenMonedaBase, type TasaCambio } from '@/lib/crm/monedaCrm';
 import { probabilityToFraction } from './revenueOs/forecastScenarios';
 
 export const FORECAST_CATEGORIES = ['commit', 'best_case', 'pipeline', 'omitted'] as const;

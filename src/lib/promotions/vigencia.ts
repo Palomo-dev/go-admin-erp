@@ -44,19 +44,14 @@ export function weekDayOfPlainDate(plainDate: string): WeekDay {
   return JS_DAY_TO_WEEKDAY[day];
 }
 
-/**
- * Día de la semana del reloj LOCAL de quien ejecuta. Solo para
- * `promotionEngine`, que corre en el navegador del cajero y siempre lo ha
- * hecho así; en servidor hay que usar `weekDayOfPlainDate` con la zona
- * horaria de la organización, porque el proceso va en UTC.
- */
-export function weekDayOfLocalDate(date: Date): WeekDay {
-  return JS_DAY_TO_WEEKDAY[date.getDay()];
-}
+// `weekDayOfLocalDate` (día con `getDay()` del reloj del navegador) se retiró
+// el 2026-10-07: el POS de un cajero con el equipo en otra zona, o la ruta de
+// servidor en UTC, veían otro día. El día sale siempre de la zona de la
+// organización: `diaSemanaEnZona` en `motorPromociones.ts`.
 
 /**
  * ¿Aplica hoy según `applicable_days`? Mismo criterio que
- * `promotionEngine.loadActivePromotions`: lista nula, ausente, que no es
+ * `motorPromociones.promocionVigente`: lista nula, ausente, que no es
  * lista o VACÍA significa «todos los días»; con elementos, tiene que estar
  * el de hoy.
  */

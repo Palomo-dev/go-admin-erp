@@ -1136,7 +1136,14 @@ export async function runCampaignQueue(
     if (pendingCount < slots) {
       // Se encola solo lo que cabe en el saldo MENOR (R3-5), no en el de la campaña.
       const room = Math.max(0, Math.min(dayRoom, 200) - pendingCount);
-      result.calls_enqueued += await enqueueCampaignTargets(supabase, orgId, campaign, room);
+      const cola = await enqueueCampaignTargets(supabase, orgId, campaign, room);
+      result.calls_enqueued += cola.encoladas;
+      // 2026-10-07: un objetivo que no entra a la cola se CUENTA como omitido y
+      // dice por qué. Antes se descartaba en silencio (`calls_skipped 0`).
+      result.calls_skipped += cola.omitidos.length;
+      for (const o of cola.omitidos) {
+        result.errors.push(`Campaña «${campaign.name}»: cliente ${o.customer_id} omitido: ${o.detalle}`);
+      }
     }
 
     // Barrera 3: reserva atómica (FOR UPDATE SKIP LOCKED) ANTES de marcar.
@@ -1206,16 +1213,49 @@ export async function runCampaignQueue(
   return result;
 }
 
+/**
+ * Objetivo de la campaña que NO entra a la cola, con su motivo legible.
+ * `runCampaignQueue` lo cuenta en `calls_skipped` y lo deja en `errors`, que es
+ * lo que el panel muestra al ejecutar la cola.
+ *
+ * No se cuentan aquí: el cliente que YA está en la cola de esta misma campaña
+ * (no es una omisión) ni el que esta campaña ya atendió o agotó sus reintentos
+ * (`clientesYaAtendidosPorCampana`): es el final normal de la campaña y, si se
+ * contara, cada vuelta del cron repetiría la lista entera.
+ */
+export interface ObjetivoOmitido {
+  customer_id: string;
+  motivo: 'llamada_viva_en_otra' | 'lista_excluidos' | 'no_llamar';
+  detalle: string;
+}
+
+/**
+ * Motivos de `crm_voice_call_claim_motivo` (la compuerta real de reclamo) en
+ * palabras. Un código sin entrada se muestra tal cual: nunca se oculta.
+ */
+const MOTIVOS_COMPUERTA: Record<string, string> = {
+  tope_cliente_dia: 'el cliente ya tiene 2 intentos hoy con este agente (tope por cliente y día; no lo exime la lista de números de prueba)',
+  tope_diario: 'tope diario de llamadas alcanzado',
+  tope_hora: 'tope de llamadas por hora alcanzado',
+  concurrencia: 'tope de llamadas simultáneas alcanzado',
+  programada: 'está programada para más tarde',
+  ley2300_reprogramada: 'reprogramada por la Ley 2300',
+  sin_consentimiento: 'sin consentimiento o con «no llamar»',
+  campana_no_activa: 'esa campaña ya no está en marcha',
+  sin_minutos: 'sin minutos de voz',
+};
+
 /** Encola objetivos nuevos respetando la baja voluntaria y sin duplicar. */
 async function enqueueCampaignTargets(
   supabase: SupabaseClient,
   orgId: number,
   campaign: VoiceAgentCampaign,
   room: number
-): Promise<number> {
-  if (room <= 0) return 0;
+): Promise<{ encoladas: number; omitidos: ObjetivoOmitido[] }> {
+  const omitidos: ObjetivoOmitido[] = [];
+  if (room <= 0) return { encoladas: 0, omitidos };
   const targets = await buildCampaignTargets(supabase, orgId, campaign, room);
-  if (targets.length === 0) return 0;
+  if (targets.length === 0) return { encoladas: 0, omitidos };
 
   const customerIds = targets.map((t) => t.customer_id);
   // R3-6: el filtro iba por `campaign_id`, así que un cliente que ya tenía una
@@ -1227,25 +1267,45 @@ async function enqueueCampaignTargets(
     'enqueueCampaignTargets.existing',
     await supabase
       .from('voice_agent_calls')
-      .select('customer_id')
+      .select('id, customer_id, campaign_id, status')
       .eq('organization_id', orgId)
       .eq('voice_agent_id', campaign.voice_agent_id)
       .in('customer_id', customerIds)
       .in('status', ['pending', 'queued', 'in_progress'])
-  ) || []) as Array<{ customer_id: string }>;
-  const alreadyQueued = new Set(existing.map((r) => r.customer_id));
+  ) || []) as Array<{ id?: string; customer_id: string; campaign_id?: string | null; status?: string }>;
+  const alreadyQueued = new Map(existing.map((r) => [r.customer_id, r]));
   const yaAtendidos = await clientesYaAtendidosPorCampana(supabase, orgId, campaign, customerIds);
   const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
 
   const rows: Record<string, unknown>[] = [];
   for (const target of targets) {
     if (rows.length >= room) break;
-    if (alreadyQueued.has(target.customer_id)) continue;
+    const viva = alreadyQueued.get(target.customer_id);
+    if (viva) {
+      // En la cola de ESTA campaña: ya cuenta en `pendingCount`, no es omisión.
+      // En OTRA campaña (o despacho puntual) del mismo agente, el índice único
+      // impide una segunda llamada viva: es una omisión y se dice cuál la
+      // retiene y, si está pendiente, qué la frena (caso org 125, 2026-10-07).
+      if (viva.campaign_id !== campaign.id) {
+        omitidos.push({
+          customer_id: target.customer_id,
+          motivo: 'llamada_viva_en_otra',
+          detalle: await describirLlamadaViva(supabase, orgId, viva),
+        });
+      }
+      continue;
+    }
     if (yaAtendidos.has(target.customer_id)) continue;
     // Lista interna de excluidos de la organización: no llega ni a la cola.
-    if (excluidos.has(target.customer_id)) continue;
+    if (excluidos.has(target.customer_id)) {
+      omitidos.push({ customer_id: target.customer_id, motivo: 'lista_excluidos', detalle: 'número en la lista de excluidos de la organización' });
+      continue;
+    }
     // C-F6-10: baja voluntaria antes incluso de encolar.
-    if (!(await canCallCustomer(orgId, target.customer_id, supabase))) continue;
+    if (!(await canCallCustomer(orgId, target.customer_id, supabase))) {
+      omitidos.push({ customer_id: target.customer_id, motivo: 'no_llamar', detalle: 'sin consentimiento para llamadas o con «no llamar»' });
+      continue;
+    }
 
     const stageAgentId = target.stage_id
       ? await findStageAgentId(supabase, orgId, target.stage_id)
@@ -1263,14 +1323,14 @@ async function enqueueCampaignTargets(
     });
   }
 
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) return { encoladas: 0, omitidos };
 
   // El índice único parcial hace atómica la deduplicación, pero convierte una
   // carrera entre dos workers en un 23505 que tumbaría TODO el lote. Si eso
   // pasa, se reintenta fila a fila y se saltan solo las que ya existen. El
   // error NO se traga: cualquier código distinto de 23505 se propaga.
   const insercion = await supabase.from('voice_agent_calls').insert(rows);
-  if (!insercion.error) return rows.length;
+  if (!insercion.error) return { encoladas: rows.length, omitidos };
   if (insercion.error.code !== '23505') {
     throw new VoiceAgentDbError('enqueueCampaignTargets.insert', insercion.error);
   }
@@ -1279,10 +1339,66 @@ async function enqueueCampaignTargets(
   for (const row of rows) {
     const una = await supabase.from('voice_agent_calls').insert(row);
     if (!una.error) { encoladas++; continue; }
-    if (una.error.code === '23505') continue; // ya había una viva: es lo correcto
+    if (una.error.code === '23505') {
+      // Ya había una viva (otro worker la creó entre la lectura y el insert).
+      omitidos.push({
+        customer_id: String(row.customer_id),
+        motivo: 'llamada_viva_en_otra',
+        detalle: 'ya tiene otra llamada viva del mismo agente',
+      });
+      continue;
+    }
     throw new VoiceAgentDbError('enqueueCampaignTargets.insert', una.error);
   }
-  return encoladas;
+  return { encoladas, omitidos };
+}
+
+/**
+ * Texto de la llamada viva que retiene a un cliente: en qué campaña está, en
+ * qué estado y, si está pendiente, qué la frena según la compuerta REAL
+ * (`crm_voice_call_claim_motivo`, solo lectura con `p_bloquear=false`). Un
+ * fallo al leer el detalle no impide contar la omisión: se dice sin él.
+ */
+async function describirLlamadaViva(
+  supabase: SupabaseClient,
+  orgId: number,
+  viva: { id?: string; campaign_id?: string | null; status?: string }
+): Promise<string> {
+  let donde = 'un despacho puntual';
+  if (viva.campaign_id) {
+    donde = `la campaña ${viva.campaign_id}`;
+    const camp = await supabase
+      .from('voice_agent_campaigns')
+      .select('name')
+      .eq('organization_id', orgId)
+      .eq('id', viva.campaign_id)
+      .maybeSingle();
+    const nombre = (camp.data as { name?: string } | null)?.name;
+    if (!camp.error && nombre) donde = `la campaña «${nombre}»`;
+  }
+  const estado = viva.status === 'in_progress' ? 'en curso' : 'pendiente';
+  let frena = '';
+  if (viva.id && viva.status !== 'in_progress') {
+    try {
+      const { data, error } = await supabase.rpc('crm_voice_call_claim_motivo', {
+        p_org: orgId,
+        p_vac: viva.id,
+        p_bloquear: false,
+      });
+      if (error) {
+        console.warn('[voz] no se pudo leer el motivo de la llamada viva', { org: orgId, vac: viva.id, error: error.message });
+      } else if (typeof data === 'string' && data) {
+        frena = `; esa llamada está detenida: ${MOTIVOS_COMPUERTA[data] ?? data}`;
+      }
+    } catch (err) {
+      console.warn('[voz] no se pudo leer el motivo de la llamada viva', {
+        org: orgId,
+        vac: viva.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return `ya tiene una llamada ${estado} del mismo agente en ${donde} (una sola llamada viva por cliente y agente)${frena}`;
 }
 
 /**

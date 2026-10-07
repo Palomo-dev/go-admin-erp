@@ -42,11 +42,18 @@ jest.mock('@/lib/services/stockMovementService', () => ({
 jest.mock('@/lib/services/serialTrackingService', () => ({ serialTrackingService: { sellSerials: jest.fn() } }));
 jest.mock('@/lib/services/promotionEngine', () => ({
   promotionEngine: {
-    evaluate: jest.fn(async () => ({
-      discountTotal: 1000,
-      itemDiscounts: { 1001: 1000 },
-      applied: [{ promotion_id: 'promo-1', items_affected: [1001] }],
-    })),
+    // Contrato del motor (2026-10-07): el descuento va por LÍNEA (`lineDiscounts`)
+    // y cada promoción aplicada dice qué líneas toca (`lineas`).
+    evaluate: jest.fn(async (ctx: { items: Array<{ product_id: number }> }) => {
+      const lineDiscounts = ctx.items.map((i) => (i.product_id === 1001 ? 1000 : 0));
+      const lineas = lineDiscounts.flatMap((d, idx) => (d > 0 ? [idx] : []));
+      return {
+        discountTotal: lineDiscounts.reduce((s, d) => s + d, 0),
+        itemDiscounts: lineas.length ? { 1001: 1000 * lineas.length } : {},
+        lineDiscounts,
+        applied: lineas.length ? [{ promotion_id: 'promo-1', items_affected: [1001], lineas }] : [],
+      };
+    }),
   },
 }));
 const emitter = { onCartsSaved: jest.fn(), setMode: jest.fn() };

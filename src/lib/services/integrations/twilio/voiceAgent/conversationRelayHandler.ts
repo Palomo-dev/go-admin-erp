@@ -71,9 +71,14 @@ interface CRPromptMessage {
   last?: boolean;
 }
 
-/** Mensaje cuando el usuario interrumpe al agente */
+/**
+ * Mensaje cuando el usuario interrumpe al agente. Twilio detiene el TTS y dice
+ * hasta dónde alcanzó a sonar; el historial lo lleva la aplicación.
+ */
 interface CRInterruptMessage {
   type: 'interrupt';
+  utteranceUntilInterrupt?: string;
+  durationUntilInterruptMs?: number;
 }
 
 /** Mensaje DTMF (tonos del teclado) */
@@ -114,6 +119,14 @@ export interface ConversationRelaySession {
   turns: ConversationTurn[];
   /** Cuelga si la línea queda en silencio (ver `voiceAgent/inactividad.ts`). */
   silencio?: VigilanteSilencio;
+  /**
+   * Turno del modelo vigente. Una interrupción o un prompt nuevo lo incrementan
+   * y el turno anterior deja de mandar texto (no se habla encima de la persona
+   * ni se dice una respuesta a una pregunta que ya cambió).
+   */
+  generacion: number;
+  /** Última interrupción: qué turno cortó y lo que alcanzó a sonar (`utteranceUntilInterrupt`). */
+  interrupcion?: { generacion: number; oido: string | null } | null;
 }
 
 const activeSessions = new Map<string, ConversationRelaySession>();
@@ -226,9 +239,11 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
           break;
 
         case 'interrupt':
-          // El usuario interrumpió — detener generación actual. Está hablando:
-          // el conteo de silencio vuelve a empezar.
-          console.log(`[CR] Interrupción en ${session?.callSid}`);
+          // El usuario interrumpió: se corta el turno en curso y el historial
+          // queda con lo que de verdad sonó. Está hablando: el conteo de
+          // silencio vuelve a empezar.
+          console.log(`[CR] Interrupción en ${session?.callSid} (${message.durationUntilInterruptMs ?? 'n/d'} ms)`);
+          if (session) registrarInterrupcion(session, message.utteranceUntilInterrupt);
           session?.silencio?.reiniciar();
           break;
 
@@ -358,6 +373,7 @@ async function handleSetup(
     isActive: true,
     runtime,
     turns: [],
+    generacion: 0,
   };
 
   activeSessions.set(callSid, session);
@@ -450,11 +466,34 @@ async function handlePrompt(
     return;
   }
 
+  // Un prompt nuevo deja sin efecto el turno anterior si aún estaba hablando.
+  const generacion = ++session.generacion;
+
   // Agregar mensaje del usuario al historial
   session.messages.push({ role: 'user', content: userText });
   session.turns.push({ role: 'user', content: userText, at: new Date().toISOString() });
 
-  await runModelTurn(ws, session, 0);
+  await runModelTurn(ws, session, 0, generacion);
+}
+
+/**
+ * Interrupción (`{type:'interrupt'}`): ConversationRelay corta el TTS pero no
+ * lleva el historial. Sin esto el modelo creía haber dicho la frase completa
+ * (p. ej. la presentación) y la conversación se desfasaba.
+ *  - Si el turno del modelo sigue en curso, se corta (`generacion`) y guardará
+ *    solo lo que sonó.
+ *  - Si ya había terminado, el último mensaje del asistente se recorta a lo
+ *    que sonó.
+ */
+export function registrarInterrupcion(session: ConversationRelaySession, utterance: string | null | undefined): void {
+  const oido = (utterance ?? '').trim();
+  session.interrupcion = { generacion: session.generacion, oido: oido || null };
+  session.generacion++;
+  if (!oido) return;
+  const ultimo = session.messages[session.messages.length - 1];
+  if (ultimo && ultimo.role === 'assistant' && !ultimo.tool_calls?.length && ultimo.content && ultimo.content !== oido) {
+    ultimo.content = oido;
+  }
 }
 
 /**
@@ -467,10 +506,20 @@ async function handlePrompt(
  * con `EMERGENCY_MODEL` y lo deja en el log con el prefijo `[CR]`. La frase de
  * error solo se dice si fallan los dos.
  */
-async function runModelTurn(ws: WebSocket, session: ConversationRelaySession, depth: number): Promise<void> {
+async function runModelTurn(
+  ws: WebSocket,
+  session: ConversationRelaySession,
+  depth: number,
+  generacion: number = session.generacion
+): Promise<void> {
   let fullResponse = '';
   const toolCalls: Array<{ id: string; name: string; arguments: string }> = [];
   let sentAny = false;
+  let interrumpido = false;
+  /** Dónde va la respuesta en el historial si un prompt nuevo llega antes de que termine. */
+  const indiceRespuesta = session.messages.length;
+  const inicio = Date.now();
+  let primerTokenMs: number | null = null;
 
   // Modelo del agente (ai_settings/agente → entorno → default, resuelto en agentRuntime).
   const model = session.runtime?.model || process.env.OPENAI_CHAT_MODEL || 'gpt-4o';
@@ -491,28 +540,35 @@ async function runModelTurn(ws: WebSocket, session: ConversationRelaySession, de
       console.warn(`[CR] [${session.callSid}] Turno respondido con el modelo de respaldo ${stream.model}`);
     }
 
-    let currentTokenBatch = '';
-
+    // Latencia (2026-10-07): cada token sale hacia ConversationRelay en cuanto
+    // llega (`last:false`), como recomienda Twilio; él agrupa para el TTS.
+    // Antes se esperaba a cerrar una cláusula (`[.!?,:;]` + espacio): en una
+    // pregunta sin comas («¿Tiene dos minutos para …?») la voz no arrancaba
+    // hasta tener la frase entera.
     for await (const chunk of stream.chunks) {
+      if (session.generacion !== generacion) {
+        // Interrumpido o reemplazado por un prompt nuevo: se deja de hablar.
+        interrumpido = true;
+        break;
+      }
       if (chunk.delta) {
+        if (primerTokenMs === null) primerTokenMs = Date.now() - inicio;
         fullResponse += chunk.delta;
-        currentTokenBatch += chunk.delta;
-
-        // Enviar texto en lotes por cláusula (al encontrar punto, coma o signo)
-        if (/[.!?,:;]\s/.test(currentTokenBatch)) {
-          sendText(ws, currentTokenBatch, false);
-          sentAny = true;
-          currentTokenBatch = '';
-        }
+        sendText(ws, chunk.delta, false);
+        sentAny = true;
       }
       if (chunk.toolCall) toolCalls.push(chunk.toolCall);
     }
 
     // Cierre de la frase: si ya se mandaron trozos, Twilio necesita `last: true`
-    // aunque el resto esté vacío; si no, la frase queda abierta.
-    if (currentTokenBatch.trim() || sentAny) {
-      sendText(ws, currentTokenBatch, true);
+    // aunque sea vacío; si no, la frase queda abierta.
+    if (sentAny && !interrumpido) {
+      sendText(ws, '', true);
     }
+    console.log(
+      `[CR] [${session.callSid}] Latencia del modelo: primer token ${primerTokenMs ?? 'n/d'} ms, ` +
+        `respuesta completa ${Date.now() - inicio} ms${interrumpido ? ' (interrumpido)' : ''}`
+    );
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error(`[CR] [${session.callSid}] Error en el modelo (incluido el respaldo): ${errMsg}`);
@@ -525,9 +581,21 @@ async function runModelTurn(ws: WebSocket, session: ConversationRelaySession, de
     return;
   }
 
+  if (interrumpido) {
+    // Al historial va lo que la persona alcanzó a oír, no lo que se generó, y
+    // en SU sitio (justo tras lo que lo motivó), aunque el prompt nuevo ya se
+    // haya añadido detrás.
+    const oido = (session.interrupcion?.generacion === generacion ? session.interrupcion.oido : null) || fullResponse;
+    if (oido) {
+      session.messages.splice(indiceRespuesta, 0, { role: 'assistant', content: oido });
+      session.turns.push({ role: 'assistant', content: oido, at: new Date().toISOString() });
+    }
+    return;
+  }
+
   if (toolCalls.length > 0) {
     // El texto que el modelo dijo antes de pedir la herramienta también es un turno.
-    await handleToolCalls(ws, session, toolCalls, fullResponse, depth);
+    await handleToolCalls(ws, session, toolCalls, fullResponse, depth, generacion);
     return;
   }
 
@@ -547,7 +615,8 @@ async function handleToolCalls(
   session: ConversationRelaySession,
   toolCalls: Array<{ id: string; name: string; arguments: string }>,
   precedingText: string,
-  depth: number
+  depth: number,
+  generacion: number
 ): Promise<void> {
   // C-13: el mensaje del asistente lleva SUS `tool_calls`; sin ellos el historial
   // que se envía al modelo es inválido y la API responde 400.
@@ -609,7 +678,10 @@ async function handleToolCalls(
 
   // Respuesta con los resultados, también en streaming (antes era una llamada
   // sin stream: el cliente esperaba la respuesta completa en silencio).
-  await runModelTurn(ws, session, depth + 1);
+  // Si la persona interrumpió mientras corrían las herramientas, sus
+  // resultados ya están en el historial pero no se habla encima de ella.
+  if (session.generacion !== generacion) return;
+  await runModelTurn(ws, session, depth + 1, generacion);
 }
 
 // ─── Errores de Twilio (TTS) ────────────────────────────

@@ -386,6 +386,14 @@ export async function POST(request: Request) {
   </Start>`
       : '';
 
+    // Turnos (2026-10-07, llamada de prueba de la org 125):
+    //  - `welcomeGreeting` lo dice Twilio al conectar, sin pasar por el modelo.
+    //  - `welcomeGreetingInterruptible="none"`: el «¿Aló?» con que la gente
+    //    contesta cortaba la presentación a los 2 s y el modelo, que creía
+    //    haberla dicho, se presentaba otra vez. Con `none` la presentación
+    //    (identificación de la Ley 2300) suena completa y, con
+    //    `reportInputDuringAgentSpeech="none"`, lo dicho encima no se convierte
+    //    en un turno. Las respuestas del modelo siguen siendo interrumpibles.
     const relayAttrs =
       attr('url', wsUrl) +
       attr('language', language) +
@@ -396,7 +404,7 @@ export async function POST(request: Request) {
       attr('transcriptionProvider', config.agent.stt_provider === 'deepgram' ? 'Deepgram' : undefined) +
       attr('speechModel', config.agent.stt_provider === 'deepgram' ? 'nova-3-general' : undefined) +
       attr('welcomeGreeting', config.greeting) +
-      attr('welcomeGreetingInterruptible', 'any') +
+      attr('welcomeGreetingInterruptible', 'none') +
       attr('interruptible', 'any') +
       attr('dtmfDetection', 'true') +
       attr('reportInputDuringAgentSpeech', 'none');

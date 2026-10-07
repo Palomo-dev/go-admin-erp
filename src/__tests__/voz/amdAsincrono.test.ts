@@ -122,6 +122,8 @@ describe('TwiML del agente con AMD asíncrono', () => {
     const xml = await (await twiml()).text();
     expect(xml).toContain('<ConversationRelay');
     expect(xml).toContain('welcomeGreeting="Hola. Le habla Pedro."');
+    // La presentación no se corta con el «¿Aló?» de quien contesta.
+    expect(xml).toContain('welcomeGreetingInterruptible="none"');
     expect(xml).toContain('interruptible="any"');
     expect(vacRow().status).toBe('in_progress');
   });

@@ -21,6 +21,7 @@ import { zonaHorariaOrganizacion } from '@/lib/services/crm/voiceAgent/cumplimie
 import { wallTimeToInstant } from '@/lib/utils/dateCore';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { notificarReunion } from '@/lib/services/crm/reunionCorreo.server';
+import { clasificarObjecion, TIPOS_OBJECION, type TipoObjecion } from '@/lib/services/crm/voiceAgent/cierreLlamada';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -87,8 +88,11 @@ export async function recordToolRun(
   if (error) console.error('[voiceAgentTools] no se pudo registrar la ejecución:', error.message);
 }
 
-/** Actividad en el timeline de la oportunidad/cliente (columnas y CHECK reales). */
-async function logActivity(
+/**
+ * Actividad en el timeline de la oportunidad/cliente (columnas y CHECK reales).
+ * La usa también el cierre por desinterés (`voiceAgent/perdidaPorDesinteres.ts`).
+ */
+export async function logActivity(
   ctx: ToolContext,
   params: {
     relatedType: 'opportunity' | 'customer';
@@ -510,20 +514,23 @@ export async function scheduleCallback(
 
 export async function logObjection(
   ctx: ToolContext,
-  args: { objection: string; detail?: string }
+  args: { objection: string; detail?: string; tipo?: string }
 ): Promise<ToolResult> {
   if (!args.objection?.trim()) return { success: false, error: 'La objeción no puede estar vacía' };
   const relatedId = ctx.opportunityId ?? ctx.customerId;
   if (!relatedId) return { success: false, error: 'Sin oportunidad ni cliente asociado' };
+  // El tipo decide el tope de reintentos y la pérdida por desinterés
+  // (`voiceAgent/cierreLlamada.ts`); sin tipo válido se clasifica por el texto.
+  const tipo: TipoObjecion = clasificarObjecion(args.tipo, args.objection);
 
   await logActivity(ctx, {
     relatedType: ctx.opportunityId ? 'opportunity' : 'customer',
     relatedId,
     notes: `Objeción detectada por el agente IA: ${args.objection}${args.detail ? ` — ${args.detail}` : ''}`,
     outcome: 'objection',
-    metadata: { objection: args.objection, detail: args.detail ?? null },
+    metadata: { objection: args.objection, detail: args.detail ?? null, tipo },
   });
-  return { success: true, data: { objection: args.objection } };
+  return { success: true, data: { objection: args.objection, tipo } };
 }
 
 // ─── Tool: send_payment_link ─────────────────────────────────────────────────
@@ -724,10 +731,21 @@ export const VOICE_AGENT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
     },
     required: ['when'],
   }),
-  fn('log_objection', 'Registra la objeción o el motivo por el que el cliente no avanza.', {
+  fn('log_objection', 'Registra la objeción o el motivo por el que el cliente no avanza. Úsala cada vez que el cliente objete, también la segunda.', {
     type: 'object',
-    properties: { objection: { type: 'string' }, detail: { type: 'string' } },
-    required: ['objection'],
+    properties: {
+      objection: { type: 'string', description: 'La objeción con las palabras del cliente, resumida.' },
+      detail: { type: 'string' },
+      tipo: {
+        type: 'string',
+        enum: [...TIPOS_OBJECION],
+        description:
+          'desinteres: «no me interesa», «no lo necesito». ya_tiene_solucion: ya tiene un software o proveedor ' +
+          'y no quiere cambiar. precio: le parece caro. momento: «llámeme después», «ahora no puedo». ' +
+          'competidor: compara con otra empresa. otro: cualquier otra cosa.',
+      },
+    },
+    required: ['objection', 'tipo'],
   }),
   fn('send_payment_link', 'Deja preparado el envío del enlace de pago al cliente.', {
     type: 'object',

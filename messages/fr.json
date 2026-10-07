@@ -36372,7 +36372,8 @@
       "sinMesero": "La table n'a pas de serveur assigné",
       "errorAvisar": "Impossible de prévenir le serveur.",
       "anterioresCerradas": "{n, plural, one {# bon clôturé} other {# bons clôturés}}",
-      "errorCerrar": "Impossible de clôturer les bons."
+      "errorCerrar": "Impossible de clôturer les bons.",
+      "sinEmpezar": "Il faut d’abord le commencer : une étape à la fois."
     },
     "kds": {
       "titulo": "Écran de cuisine",
@@ -36407,6 +36408,32 @@
       "entregada": "Servi",
       "sustantivo": "bon",
       "sustantivoPlural": "bons"
+    },
+    "arrastre": {
+      "asa": "Déplacer le bon {titulo}",
+      "avanzar": "Passer à « {columna} »",
+      "avanzarA": "Passer {titulo} à « {columna} »",
+      "unPaso": "Avance d’une seule étape",
+      "soltarPara": "Déposer pour passer à {columna}",
+      "espacioPara": "Espace pour passer à {columna}",
+      "unPasoALaVez": "Une étape à la fois",
+      "sinPermiso": "Nécessite la gestion de la cuisine",
+      "mantenPresionado": "Maintenez appuyé pour déplacer",
+      "mantenPresionadoDetalle": "Relâchez avant pour un simple toucher",
+      "movida": "Bon {titulo} → {columna}",
+      "movidaWeb": "La cuisine et le suivi de la commande web le voient maintenant dans « {columna} ».",
+      "movidaDesc": "La cuisine le voit maintenant dans « {columna} ».",
+      "noMovida": "Le bon {titulo} n’a pas été déplacé",
+      "motivoUnPaso": "Depuis « {desde} », il ne peut passer qu’à « {hacia} » : une étape à la fois.",
+      "motivoUltimo": "« {desde} » est la dernière étape.",
+      "motivoSinPermiso": "Renvoyer à « Nouveaux » nécessite l’autorisation de gérer la cuisine.",
+      "instrucciones": "Pour déplacer un bon, placez le focus sur sa poignée et appuyez sur Espace ou Entrée. Les flèches gauche et droite changent de colonne ; Espace ou Entrée le dépose et Échap annule.",
+      "anuncioInicio": "Bon {titulo} saisi. Il est dans {columna}. Flèches gauche et droite pour changer de colonne, Espace pour déposer, Échap pour annuler.",
+      "anuncioOrigen": "Sur {columna}, sa colonne actuelle.",
+      "anuncioSobre": "Sur {columna}. Espace le passe à {columna}.",
+      "anuncioSobreNoValida": "Sur {columna} : impossible, une étape à la fois.",
+      "anuncioSoltada": "Bon {titulo} déposé dans {columna}.",
+      "anuncioVuelve": "Le bon {titulo} revient dans {columna}."
     }
   },
   "posAvisosCliente": {

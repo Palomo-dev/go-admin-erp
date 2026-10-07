@@ -316,3 +316,59 @@ export function aplicarItemLocal<C extends ComandaTablero>(c: C, itemId: number,
   const derivado = estadoDerivado(items) ?? c.status;
   return { ...c, kitchen_ticket_items: items, status: derivado, ready_at: derivado === 'ready' ? c.ready_at ?? ahoraIso : null, updated_at: ahoraIso };
 }
+
+// ─── Transiciones: un paso a la vez (flecha, botón y arrastre) ───────────────
+
+/** Paso siguiente del flujo: Nuevas → En preparación → Listas → Entregadas. */
+export function siguienteColumna(columna: ColumnaComanda | null): ColumnaComanda | null {
+  const i = columna ? COLUMNAS.indexOf(columna) : -1;
+  return i >= 0 && i < COLUMNAS.length - 1 ? COLUMNAS[i + 1] : null;
+}
+
+/**
+ * Paso atrás que el flujo actual admite: solo «En preparación» → «Nuevas»
+ * (la misma «Devolver a Nuevas» del menú, que exige gestionar la cocina). La
+ * base no tiene un camino de «Listas» a «En preparación», ni se des-entrega.
+ */
+export function columnaAnterior(columna: ColumnaComanda | null): ColumnaComanda | null {
+  return columna === 'preparing' ? 'new' : null;
+}
+
+export type MotivoMovimiento = 'misma_columna' | 'un_paso' | 'sin_permiso' | 'no_arrastrable';
+
+export type Movimiento =
+  | { ok: true; sentido: 'avanzar' | 'retroceder'; estado: ColumnaComanda }
+  | { ok: false; motivo: MotivoMovimiento };
+
+/**
+ * ¿Se puede mover la comanda de `desde` a `hacia`? Lo usan la flecha, el
+ * botón principal y el soltar del arrastre, así que el tablero y la pantalla
+ * de cocina deciden igual. `estado` es lo que se manda a `pos_cocina_cambiar_estado`.
+ */
+export function validarMovimiento(
+  desde: ColumnaComanda | null,
+  hacia: ColumnaComanda | null,
+  permisos: { operar: boolean; gestionar: boolean },
+): Movimiento {
+  if (!desde || !hacia) return { ok: false, motivo: 'no_arrastrable' };
+  if (desde === hacia) return { ok: false, motivo: 'misma_columna' };
+  if (hacia === siguienteColumna(desde)) {
+    return permisos.operar ? { ok: true, sentido: 'avanzar', estado: hacia } : { ok: false, motivo: 'sin_permiso' };
+  }
+  if (hacia === columnaAnterior(desde)) {
+    return permisos.gestionar ? { ok: true, sentido: 'retroceder', estado: hacia } : { ok: false, motivo: 'sin_permiso' };
+  }
+  return { ok: false, motivo: 'un_paso' };
+}
+
+/**
+ * ¿Se puede marcar o desmarcar este ítem a mano? Solo cuando la estación ya
+ * empezó (`in_progress`) o para deshacer un «hecho» (`ready`). Un ítem
+ * `pending` marcado como hecho saltaba de «Nuevas» a «Listas para servir» sin
+ * pasar por «En preparación» (una comanda de una sola línea quedaba lista al
+ * primer toque).
+ */
+export function puedeMarcarItem(item: Pick<ItemTablero, 'status' | 'cancelled_at'>): boolean {
+  if (item.cancelled_at) return false;
+  return item.status === 'in_progress' || item.status === 'ready';
+}

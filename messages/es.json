@@ -36372,7 +36372,8 @@
       "sinMesero": "La mesa no tiene mesero asignado",
       "errorAvisar": "No se pudo avisar al mesero.",
       "anterioresCerradas": "{n, plural, one {# comanda cerrada} other {# comandas cerradas}}",
-      "errorCerrar": "No se pudieron cerrar las comandas."
+      "errorCerrar": "No se pudieron cerrar las comandas.",
+      "sinEmpezar": "Primero hay que empezarla: un paso a la vez."
     },
     "kds": {
       "titulo": "Pantalla de cocina",
@@ -36407,6 +36408,32 @@
       "entregada": "Entregada",
       "sustantivo": "comanda",
       "sustantivoPlural": "comandas"
+    },
+    "arrastre": {
+      "asa": "Mover la comanda {titulo}",
+      "avanzar": "Pasar a «{columna}»",
+      "avanzarA": "Pasar {titulo} a «{columna}»",
+      "unPaso": "Avanza un solo paso",
+      "soltarPara": "Soltar para pasar a {columna}",
+      "espacioPara": "Espacio para pasar a {columna}",
+      "unPasoALaVez": "Un paso a la vez",
+      "sinPermiso": "Requiere gestionar la cocina",
+      "mantenPresionado": "Mantén presionado para mover",
+      "mantenPresionadoDetalle": "Si sueltas antes, es un toque normal",
+      "movida": "Comanda {titulo} → {columna}",
+      "movidaWeb": "La cocina y el seguimiento del pedido web ya la ven en «{columna}».",
+      "movidaDesc": "La cocina ya la ve en «{columna}».",
+      "noMovida": "No se movió la comanda {titulo}",
+      "motivoUnPaso": "De «{desde}» solo puede pasar a «{hacia}»: un paso a la vez.",
+      "motivoUltimo": "«{desde}» es el último paso.",
+      "motivoSinPermiso": "Devolver a «Nuevas» requiere permiso para gestionar la cocina.",
+      "instrucciones": "Para mover una comanda, enfoca su asa y pulsa Espacio o Enter. Con las flechas izquierda y derecha cambias de columna; Espacio o Enter la suelta y Escape cancela.",
+      "anuncioInicio": "Comanda {titulo} levantada. Está en {columna}. Flechas izquierda y derecha para cambiar de columna, Espacio para soltar, Escape para cancelar.",
+      "anuncioOrigen": "Sobre {columna}, su columna actual.",
+      "anuncioSobre": "Sobre {columna}. Espacio la pasa a {columna}.",
+      "anuncioSobreNoValida": "Sobre {columna}: no se puede, un paso a la vez.",
+      "anuncioSoltada": "Comanda {titulo} soltada en {columna}.",
+      "anuncioVuelve": "La comanda {titulo} vuelve a {columna}."
     }
   },
   "posAvisosCliente": {

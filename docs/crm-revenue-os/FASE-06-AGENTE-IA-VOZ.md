@@ -1673,7 +1673,8 @@ volver a probar su agente con su propio celular: la segunda llamada de la semana
 | Compuerta | ¿Se exime? | Motivo |
 |---|---|---|
 | Tope semanal Ley 2300 (1 por canal, 2 en total) | **Sí** | El tope protege al consumidor de la insistencia comercial. Un número del propio equipo, con consentimiento, que prueba su herramienta no es un consumidor contactado con fines comerciales. |
-| Tope por cliente/semana equivalente | No existe otro | Verificado por MCP: la única función con ventana semanal es `fn_contactos_efectivos_semana`. `MAX_ATTEMPTS_PER_CUSTOMER_PER_DAY` (2 por agente y día) es **diario** y no se exime. |
+| Tope por cliente/semana equivalente | No existe otro | Verificado por MCP: la única función con ventana semanal es `fn_contactos_efectivos_semana`. |
+| Tope de 2 intentos por cliente, agente y día (`MAX_ATTEMPTS_PER_CUSTOMER_PER_DAY`, `tope_cliente_dia`) | **Sí** (desde 2026-10-07) | Pedido del dueño: los números de prueba sirven para ensayar sin esperar al día siguiente. Lo aplican la compuerta `crm_voice_call_claim_motivo` (migración `20261007175412_voz_numeros_prueba_sin_tope_cliente_dia`) y `dispatchAgentCall`. El resto de clientes conserva el tope. |
 | Franja horaria legal y festivos | **No** | Es la regla que el dueño pidió conservar y la que más daño reputacional haría si fallara (una prueba a las 22:00 le suena a un empleado igual que a un cliente). Probar fuera de horario no aporta nada que no se pruebe dentro. |
 | Excluidos / RNE (`crm_excluded_numbers`) | **No** | Si un número del equipo está inscrito en el RNE, la inscripción es de la persona, no del rol: la organización no puede decidir por ella. Además la tabla la alimenta la carga de la CRC; una exención aquí convertiría la lista de prueba en una puerta para saltarse el registro. |
 | Baja voluntaria (`fn_can_contact`) | **No** | Si la persona pidió no recibir llamadas, se respeta aunque sea del equipo; para volver a probar basta revertir su baja en la ficha. |

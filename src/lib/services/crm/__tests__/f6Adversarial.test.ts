@@ -1506,6 +1506,25 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     ).rejects.toMatchObject({ reason: 'customer_cap' });
   });
 
+  test('J3b (2026-10-07) un número de prueba de la organización no tiene tope por cliente y día en el despacho puntual', async () => {
+    const repetido = manualScenario({ attemptsCustomer: 2 });
+    const esPrueba: RpcResolver = (call) =>
+      call.name === 'fn_voz_es_numero_prueba' ? { data: true } : repetido.rpcResolver(call);
+    const { client, rpcs } = makeSupabase(repetido.resolver, esPrueba);
+    const r = await dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1' });
+    expect(r.voice_agent_call_id).toBe('vac-new');
+    // Se consulta con el teléfono normalizado del cliente, como la compuerta de la base.
+    expect(rpcs).toContainEqual({ name: 'fn_voz_es_numero_prueba', args: { p_org: 7, p_phone: '+573001112233' } });
+
+    // Si la consulta falla, se aplica el tope (falla cerrado).
+    const falla: RpcResolver = (call) =>
+      call.name === 'fn_voz_es_numero_prueba' ? { error: { message: 'caída' } } : repetido.rpcResolver(call);
+    const c2 = makeSupabase(repetido.resolver, falla);
+    await expect(
+      dispatchAgentCall(7, c2.client, { voiceAgentId: 'agent-1', customerId: 'cust-1' })
+    ).rejects.toMatchObject({ reason: 'customer_cap' });
+  });
+
   test('J4 [CORREGIDO r2] con el canal apagado o el agente inactivo no se marca (ni campana ni puntual)', async () => {
     const apagado = manualScenario({ agentEnabled: false });
     const c1 = makeSupabase(apagado.resolver, apagado.rpcResolver);

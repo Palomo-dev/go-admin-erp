@@ -63,7 +63,7 @@ import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/
 import { parametrosAmd, RUTA_AMD_ASINCRONO } from '@/lib/services/crm/voiceAgent/amd';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
-import { evaluarLey2300Cliente, numeroExcluido, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { evaluarLey2300Cliente, exentoTopeClienteDia, numeroExcluido, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
 import { corteLlamadaColgada, MINUTOS_LLAMADA_COLGADA } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { evaluarVentanaCampana, horarioPropioAbierto, type HorarioCampana } from '@/lib/services/crm/voiceAgent/ventanaCampana';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
@@ -1234,7 +1234,7 @@ export interface ObjetivoOmitido {
  * palabras. Un código sin entrada se muestra tal cual: nunca se oculta.
  */
 const MOTIVOS_COMPUERTA: Record<string, string> = {
-  tope_cliente_dia: 'el cliente ya tiene 2 intentos hoy con este agente (tope por cliente y día; no lo exime la lista de números de prueba)',
+  tope_cliente_dia: 'el cliente ya tiene 2 intentos hoy con este agente (tope por cliente y día)',
   tope_diario: 'tope diario de llamadas alcanzado',
   tope_hora: 'tope de llamadas por hora alcanzado',
   concurrencia: 'tope de llamadas simultáneas alcanzado',
@@ -2082,7 +2082,11 @@ export async function dispatchAgentCall(
   if (attemptsHour >= maxPerHour) {
     throw new VoiceDispatchBlocked('hourly_cap', `Tope por hora del agente alcanzado (${maxPerHour} llamadas).`);
   }
-  if (attemptsCustomer >= MAX_ATTEMPTS_PER_CUSTOMER_PER_DAY) {
+  // Tope por cliente y día. Los números de prueba de la organización no lo
+  // tienen (2026-10-07, migración 20261007175412: la compuerta de la base,
+  // `crm_voice_call_claim_motivo`, ya los exime). Aquí la misma regla, para
+  // que el despacho puntual no los bloquee antes de llegar a la base.
+  if (attemptsCustomer >= MAX_ATTEMPTS_PER_CUSTOMER_PER_DAY && !(await exentoTopeClienteDia(supabase, orgId, customerId))) {
     throw new VoiceDispatchBlocked(
       'customer_cap',
       `Ya se intentó llamar a este cliente ${attemptsCustomer} veces hoy con este agente.`

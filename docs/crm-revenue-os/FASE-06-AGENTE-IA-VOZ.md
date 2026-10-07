@@ -1766,3 +1766,39 @@ lo detecta.
 | `npx jest src/__tests__/guardrails.test.ts` | caso 42: la RPC solo en `numerosPrueba.ts`, `esNumeroPrueba` solo en `cumplimiento.ts`, `evaluarTopeSemanal` solo dentro de `decidirContactoLey2300` con la franja fuera de la condición, la ruta sin cliente de servicio y con admin en los tres métodos |
 | `npx jest src/__tests__/voz src/lib/services/crm src/__tests__/guardrails.test.ts src/__tests__/timezone` | verde salvo `f6Adversarial` H2 (middleware), previa y ajena (ver 16.3) |
 | `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json` | 0 errores |
+
+## 18. Cierre de la llamada: despedida, un reintento y oportunidad perdida (2026-10-07)
+
+Llamada real de prueba (org 125, `voice_agent_calls` 6f7d4e15): el cliente dijo «No, todo
+funciona perfecto» y el modelo llamó `log_objection` y `end_call` en el mismo turno. La llamada
+se cortó en 3 s, sin despedida, y el agente se rindió a la primera objeción. Decisión del dueño:
+
+1. **Despedida siempre, garantizada por el runtime** (`voiceAgent/cierreLlamada.ts`,
+   `colgarConDespedida` del handler). Si lo último que dijo el agente no es una despedida, el
+   runtime dice la del agente (`voice_agents.guardrails.despedida`; por defecto «Entiendo, muchas
+   gracias por su tiempo. Que tenga un buen día.») y no manda `end` hasta que suena: espera el
+   `agentSpeaking: off` de ConversationRelay (el TwiML pide `events="speaker-events"`) o un tope
+   por longitud del texto (2,5–15 s). Pasa por ahí también el cierre por silencio y por límite de
+   turnos. Excepciones: el cuelgue del cliente (`ws.close`, no hay a quién hablarle) y el buzón
+   de voz (AMD cierra por el callback de estado, sin pasar por el ws-server). La baja ya se
+   despide con el `say` de `log_consent_opt_out`, que se reconoce como despedida.
+2. **Un solo reintento ante el desinterés.** `log_objection` lleva `tipo` (`desinteres`,
+   `ya_tiene_solucion`, `precio`, `momento`, `competidor`, `otro`). `ControlCierre` cuenta las
+   objeciones de desinterés (una por turno del cliente). En la 1.ª, el primer `end_call` se
+   rechaza UNA vez con la instrucción de hacer una pregunta breve relacionada con lo que dijo; en
+   la 2.ª, el runtime cierra (despedida + `end_call` con `sin_interes_definitivo`) sin devolverle
+   la palabra al modelo. «Llámeme después» (`momento`) no cuenta. Si el cliente pide no ser
+   llamado no hay reintento: la ruta de la baja (regla obligatoria 2, `log_consent_opt_out`) no
+   cambió. El prompt lleva las mismas reglas (`reglasObjecionesYCierre`).
+3. **Sin pausa nueva** tras «no me interesa»: las re-llamadas quedan como estaban.
+4. **Oportunidad a perdida** (`voiceAgent/perdidaPorDesinteres.ts`) solo con desinterés
+   definitivo, sin baja, con oportunidad abierta, objetivo de venta (el de la etapa o, sin etapa,
+   `voice_agents.purpose_type` ∈ `OBJETIVOS_DE_VENTA`; `voice_agent_campaigns.objective` es texto
+   libre) y pipeline `pipeline_type = 'sales'`. Va por `opportunityStageService.changeStage` a la
+   etapa `is_lost` del pipeline (`buscarEtapaDeDesenlace`, el mismo criterio de `POST …/lose`),
+   con `loss_reason = 'Sin interés: <objeción>'`; los triggers dejan historial, evento y
+   `closed_at`. Con `action_policy = 'suggest'` en la etapa, o si el gate lo impide, queda una
+   tarea para el vendedor. Organización y oportunidad salen del contexto de la llamada.
+
+Sin esquema nuevo. Pruebas: `src/__tests__/voz/cierreLlamadaVoz.test.ts` (handler real) y
+`src/lib/services/crm/__tests__/perdidaPorDesinteres.test.ts`.

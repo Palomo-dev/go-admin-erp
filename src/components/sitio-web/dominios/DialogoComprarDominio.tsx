@@ -131,6 +131,7 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
   const [erroresTitular, setErroresTitular] = useState<ErroresTitular>({});
   const [setup, setSetup] = useState<{ clientSecret: string; setupIntentId: string } | null>(null);
   const [preparando, setPreparando] = useState(false);
+  const [confirmandoTarjeta, setConfirmandoTarjeta] = useState(false);
   const [errorPago, setErrorPago] = useState<string | null>(null);
   const [tarjetaCompleta, setTarjetaCompleta] = useState(false);
   const [terminos, setTerminos] = useState(false);
@@ -210,19 +211,34 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
   const pagar = async () => {
     if (!elegida || !setup || !stripe || !elements) return;
     const tarjeta = elements.getElement(CardElement);
-    if (!tarjeta) return;
-    setFase('comprando');
-    setIntentoEn(new Date());
-    setPasos(['en_curso', 'pendiente', 'pendiente', 'pendiente']);
-    const confirmacion = await stripe.confirmCardSetup(setup.clientSecret, {
-      payment_method: { card: tarjeta, billing_details: { name: titular.nombre.trim(), email: titular.correo.trim() } },
-    });
+    if (!tarjeta || confirmandoTarjeta) return;
+    // La tarjeta se confirma ANTES de pasar a «comprando»: esa fase desmonta el CardElement y
+    // Stripe ya no puede leerlo («Element … is mounted»); la promesa se rechazaba y el diálogo
+    // quedaba girando en «Pago aprobado» sin cobrar ni registrar nada (2026-10-07).
+    setConfirmandoTarjeta(true);
+    setErrorPago(null);
+    let confirmacion: Awaited<ReturnType<typeof stripe.confirmCardSetup>>;
+    try {
+      confirmacion = await stripe.confirmCardSetup(setup.clientSecret, {
+        payment_method: { card: tarjeta, billing_details: { name: titular.nombre.trim(), email: titular.correo.trim() } },
+      });
+    } catch (e) {
+      setConfirmandoTarjeta(false);
+      setFallo({ tipo: 'general', mensaje: e instanceof Error ? e.message : null });
+      setSetup(null);
+      setFase('fallo');
+      return;
+    }
+    setConfirmandoTarjeta(false);
     if (confirmacion.error) {
       setFallo({ tipo: 'rechazado', codigo: confirmacion.error.decline_code ?? confirmacion.error.code ?? null, mensaje: confirmacion.error.message ?? null });
       setSetup(null);
       setFase('fallo');
       return;
     }
+    setFase('comprando');
+    setIntentoEn(new Date());
+    setPasos(['en_curso', 'pendiente', 'pendiente', 'pendiente']);
     let compra;
     try {
       compra = await comprarDominio(elegida.dominio, setup.setupIntentId, contactoRegistrador(titular));
@@ -513,16 +529,17 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
           <IconoDominio icono={ICONO.pagar} tamano="meta" />
           {t('comprar.pagoSeguro')}
         </span>
-        <button type="button" onClick={() => setFase('titular')} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+        <button type="button" onClick={() => setFase('titular')} disabled={confirmandoTarjeta} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
           {t('comprar.atras')}
         </button>
         <button
           type="button"
           onClick={() => void pagar()}
-          disabled={!terminos || !tarjetaCompleta || !setup || !stripe || preparando}
+          disabled={!terminos || !tarjetaCompleta || !setup || !stripe || preparando || confirmandoTarjeta}
+          aria-busy={confirmandoTarjeta || undefined}
           className={clasesBoton({ variante: 'primario', tamano: 'md' })}
         >
-          <IconoDominio icono={ICONO.pagar} />
+          <IconoDominio icono={confirmandoTarjeta ? ICONO.enCurso : ICONO.pagar} girando={confirmandoTarjeta} />
           {t('comprar.pagar', { precio: precioTexto })}
         </button>
       </>

@@ -40,6 +40,20 @@ import {
   VigilanteSilencio,
 } from '@/lib/services/crm/voiceAgent/inactividad';
 import { AgrupadorTrozos } from '@/lib/services/crm/voiceAgent/trozosVoz';
+import {
+  ControlCierre,
+  DESPEDIDA_POR_DEFECTO,
+  EsperaReproduccion,
+  esDespedida,
+  esFinDeHablaAgente,
+  esInicioDeHablaAgente,
+  esperaMaximaReproduccionMs,
+  MENSAJE_EXIGIR_REINTENTO,
+  pendienteReproduccion,
+  type CRInfoMessage,
+  type TipoObjecion,
+} from '@/lib/services/crm/voiceAgent/cierreLlamada';
+import { marcarPerdidaPorDesinteres } from '@/lib/services/crm/voiceAgent/perdidaPorDesinteres';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase(): SupabaseClient {
@@ -94,7 +108,13 @@ interface CRErrorMessage {
   description?: string;
 }
 
-type CRInboundMessage = CRSetupMessage | CRPromptMessage | CRInterruptMessage | CRDtmfMessage | CRErrorMessage;
+type CRInboundMessage =
+  | CRSetupMessage
+  | CRPromptMessage
+  | CRInterruptMessage
+  | CRDtmfMessage
+  | CRErrorMessage
+  | CRInfoMessage;
 
 // ─── Sesión de ConversationRelay ────────────────────────
 
@@ -136,6 +156,20 @@ export interface ConversationRelaySession {
   promptRecibidoEn?: number;
   /** Ya se registró la espera del prompt vigente (se mide una vez por prompt). */
   esperaRegistrada?: boolean;
+  /** Objeciones de desinterés y bajas: tope de un reintento (`voiceAgent/cierreLlamada.ts`). */
+  cierre: ControlCierre;
+  /** Lo que el agente mandó al TTS desde el último turno del cliente (para saber si ya se despidió). */
+  habladoTurno: string[];
+  /** ConversationRelay manda eventos `agentSpeaking` (TwiML con `events="speaker-events"`). */
+  eventosHabla: boolean;
+  /** Según el último `agentSpeaking`: el agente está sonando ahora. */
+  agenteHablando: boolean;
+  /** Despedida sonando antes de colgar: los turnos que lleguen ya no se contestan. */
+  colgando: boolean;
+  /** Espera de fin de reproducción en curso (se cancela si el socket se cierra). */
+  espera?: EsperaReproduccion | null;
+  /** La pérdida por desinterés definitivo ya se intentó (una vez por llamada). */
+  perdidaProcesada?: boolean;
 }
 
 const activeSessions = new Map<string, ConversationRelaySession>();
@@ -260,6 +294,11 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
           console.log(`[CR] DTMF: ${message.digit} en ${session?.callSid}`);
           break;
 
+        case 'info':
+          // `events="speaker-events"`: cuándo empieza y termina de sonar el agente.
+          if (session) registrarInfoHabla(session, message);
+          break;
+
         default:
           console.log('[CR] Mensaje desconocido:', message);
       }
@@ -274,6 +313,8 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
 
   ws.on('close', () => {
     if (session) {
+      // La persona colgó (o Twilio cerró): no hay despedida que esperar.
+      session.espera?.cancelar();
       endSession(session);
     }
   });
@@ -383,6 +424,11 @@ async function handleSetup(
     runtime,
     turns: [],
     generacion: 0,
+    cierre: new ControlCierre(),
+    habladoTurno: [],
+    eventosHabla: false,
+    agenteHablando: false,
+    colgando: false,
   };
 
   activeSessions.set(callSid, session);
@@ -396,8 +442,8 @@ async function handleSetup(
     cerrar: () => {
       console.log(`[CR] [${callSid}] Silencio: se cierra la llamada`);
       session.turns.push({ role: 'assistant', content: FRASE_CIERRE_SILENCIO, at: new Date().toISOString() });
-      sendText(ws, FRASE_CIERRE_SILENCIO, true);
-      sendEnd(ws);
+      decir(ws, session, FRASE_CIERRE_SILENCIO);
+      void colgarConDespedida(ws, session, 'silencio');
     },
   });
 
@@ -459,6 +505,9 @@ async function handlePrompt(
   console.log(`[CR] [${session.callSid}] Raw prompt:`, JSON.stringify(message));
   const userText = message.voicePrompt || message.voiceInput || message.transcript || message.text || '';
   if (!userText.trim()) return;
+  // Despedida sonando: la llamada ya terminó, no se contesta nada más.
+  if (session.colgando) return;
+  session.habladoTurno = [];
 
   console.log(`[CR] [${session.callSid}] Usuario: ${userText}`);
 
@@ -471,8 +520,8 @@ async function handlePrompt(
     const cierre =
       'Le agradezco su tiempo. Dejo la conversación registrada y un asesor le contactará. Que tenga buen día.';
     session.turns.push({ role: 'assistant', content: cierre, at: new Date().toISOString() });
-    sendText(ws, cierre, true);
-    sendEnd(ws);
+    decir(ws, session, cierre);
+    await colgarConDespedida(ws, session, 'limite');
     return;
   }
 
@@ -635,6 +684,8 @@ async function runModelTurn(
     return;
   }
 
+  if (fullResponse) session.habladoTurno.push(fullResponse);
+
   if (toolCalls.length > 0) {
     // El texto que el modelo dijo antes de pedir la herramienta también es un turno.
     await handleToolCalls(ws, session, toolCalls, fullResponse, depth, generacion);
@@ -676,6 +727,9 @@ async function handleToolCalls(
   }
 
   const runtime = session.runtime;
+  /** Índice del turno vigente del cliente: una objeción de desinterés cuenta una vez por turno. */
+  const turnoCliente = session.turns.filter((t) => t.role === 'user').length;
+  const ultimoTextoCliente = [...session.turns].reverse().find((t) => t.role === 'user')?.content ?? null;
 
   for (const tc of toolCalls) {
     console.log(`[CR] Function call: ${tc.name}`, tc.arguments);
@@ -688,7 +742,12 @@ async function handleToolCalls(
     }
 
     let result: string;
-    if (runtime) {
+    if (runtime && tc.name === 'end_call' && session.cierre.decidirEndCall(ultimoTextoCliente).accion === 'exigir_reintento') {
+      // Primera objeción de desinterés: el agente no cuelga sin su ÚNICO
+      // reintento. Se rechaza este `end_call` (una sola vez por llamada).
+      console.log(`[CR] [${session.callSid}] end_call rechazado: falta el único reintento ante el desinterés`);
+      result = JSON.stringify({ success: false, error: MENSAJE_EXIGIR_REINTENTO });
+    } else if (runtime) {
       // F6: herramientas del CRM, acotadas por el agente y por la etapa del embudo.
       const toolResult = await executeCrmTool(
         tc.name,
@@ -704,10 +763,19 @@ async function handleToolCalls(
         runtime.allowedTools
       );
       result = JSON.stringify(toolResult);
-      if (toolResult.say) sendText(ws, toolResult.say, true);
+      if (toolResult.say) decir(ws, session, toolResult.say);
+      if (tc.name === 'log_objection' && toolResult.success) {
+        const data = (toolResult.data ?? {}) as { objection?: string; tipo?: TipoObjecion };
+        session.cierre.registrarObjecion(turnoCliente, {
+          texto: String(data.objection ?? args.objection ?? ''),
+          detalle: typeof args.detail === 'string' ? args.detail : null,
+          tipo: data.tipo ?? 'otro',
+        });
+      }
+      if (tc.name === 'log_consent_opt_out' && toolResult.success) session.cierre.registrarBaja();
       if (tc.name === 'end_call' && toolResult.success) {
         session.turns.push({ role: 'tool', content: result, at: new Date().toISOString(), tool: tc.name });
-        sendEnd(ws);
+        await colgarConDespedida(ws, session, 'end_call');
         return;
       }
     } else {
@@ -716,6 +784,29 @@ async function handleToolCalls(
 
     session.messages.push({ role: 'tool', content: result, tool_call_id: tc.id, name: tc.name });
     session.turns.push({ role: 'tool', content: result, at: new Date().toISOString(), tool: tc.name });
+  }
+
+  // Desinterés DEFINITIVO (dijo que no después del reintento): el runtime
+  // cierra aunque el modelo no haya pedido `end_call`. Nunca hay un segundo
+  // reintento: no se le devuelve la palabra al modelo.
+  if (runtime && session.cierre.desinteresDefinitivo && !session.colgando) {
+    console.log(`[CR] [${session.callSid}] Desinterés definitivo: el runtime cierra la llamada`);
+    const fin = await executeCrmTool(
+      'end_call',
+      { outcome: 'sin_interes_definitivo' },
+      {
+        orgId: session.orgId,
+        supabase: getServiceSupabase(),
+        voiceAgentCallId: runtime.voiceAgentCallId,
+        customerId: runtime.customerId,
+        opportunityId: runtime.opportunityId,
+        actionPolicy: runtime.actionPolicy,
+      },
+      runtime.allowedTools
+    );
+    session.turns.push({ role: 'tool', content: JSON.stringify(fin), at: new Date().toISOString(), tool: 'end_call' });
+    await colgarConDespedida(ws, session, 'desinteres_definitivo');
+    return;
   }
 
   // Respuesta con los resultados, también en streaming (antes era una llamada
@@ -776,6 +867,11 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
   if (!session.isActive) return;
   session.isActive = false;
   session.silencio?.detener();
+  session.espera?.cancelar();
+
+  // Si la persona colgó después de decir que no por segunda vez, el
+  // desinterés también es definitivo (no hace falta que el agente cuelgue).
+  await procesarPerdida(session);
 
   const duration = Math.ceil((Date.now() - session.startedAt.getTime()) / 60000);
 
@@ -881,6 +977,108 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
 
   activeSessions.delete(session.callSid);
   console.log(`[CR] Sesión finalizada: ${session.callSid} (${duration} min, ${session.messages.length} msgs)`);
+}
+
+// ─── Cierre: despedida garantizada y pérdida por desinterés ─────
+
+/** `info` de ConversationRelay (`agentSpeaking` on/off). */
+export function registrarInfoHabla(session: ConversationRelaySession, message: CRInfoMessage): void {
+  if (esInicioDeHablaAgente(message)) {
+    session.eventosHabla = true;
+    session.agenteHablando = true;
+  } else if (esFinDeHablaAgente(message)) {
+    session.eventosHabla = true;
+    session.agenteHablando = false;
+  }
+  session.espera?.info(message);
+}
+
+/** Manda una frase completa al TTS y la anota como hablada en este turno. */
+function decir(ws: WebSocket, session: ConversationRelaySession, texto: string): void {
+  sendText(ws, texto, true);
+  session.habladoTurno.push(texto);
+}
+
+/**
+ * Cuelga SIEMPRE con despedida (decisión del dueño, 2026-10-07): si lo último
+ * que dijo el agente no fue una despedida, el runtime dice la del agente
+ * (`runtime.despedida`); después espera a que termine de sonar —el
+ * `agentSpeaking: off` de ConversationRelay o un tope por longitud— y manda
+ * `end`. Antes `end` salía en el mismo instante y la llamada se cortaba en
+ * silencio (`voice_agent_calls` 6f7d4e15).
+ *
+ * No aplica cuando la persona cuelga (no hay a quién hablarle: `ws.close`) ni
+ * al buzón de voz (AMD cierra la llamada por el callback de estado, sin pasar
+ * por aquí). La baja (Ley 2300 / 1581) ya se despide con el `say` de
+ * `log_consent_opt_out`, que esta función reconoce como despedida.
+ */
+async function colgarConDespedida(
+  ws: WebSocket,
+  session: ConversationRelaySession,
+  motivo: 'end_call' | 'desinteres_definitivo' | 'silencio' | 'limite'
+): Promise<void> {
+  if (session.colgando) return;
+  session.colgando = true;
+  session.silencio?.detener();
+  // Nada que siga en curso puede hablar encima de la despedida.
+  session.generacion++;
+
+  const ultimo = session.habladoTurno[session.habladoTurno.length - 1] ?? '';
+  let textoNuevo = false;
+  let porSonar = ultimo;
+  if (!esDespedida(ultimo)) {
+    const despedida = session.runtime?.despedida || DESPEDIDA_POR_DEFECTO;
+    session.messages.push({ role: 'assistant', content: despedida });
+    session.turns.push({ role: 'assistant', content: despedida, at: new Date().toISOString() });
+    decir(ws, session, despedida);
+    textoNuevo = true;
+    porSonar = session.agenteHablando ? session.habladoTurno.join(' ') : despedida;
+  }
+
+  const pendiente = pendienteReproduccion({
+    textoNuevo,
+    eventosHabla: session.eventosHabla,
+    agenteHablando: session.agenteHablando,
+  });
+  const espera = new EsperaReproduccion(pendiente, esperaMaximaReproduccionMs(porSonar));
+  session.espera = espera;
+  // La pérdida se registra mientras suena la despedida, sin retrasar el cuelgue.
+  const perdida = procesarPerdida(session);
+  const fin = await espera.terminada;
+  console.log(`[CR] [${session.callSid}] Cierre (${motivo}): despedida ${textoNuevo ? 'del runtime' : 'del agente'}, espera ${fin}`);
+  sendEnd(ws);
+  await perdida;
+}
+
+/**
+ * Oportunidad a perdida si la llamada terminó con desinterés definitivo
+ * (después del reintento) y sin baja. Una vez por llamada. Las condiciones
+ * (venta, pipeline de ventas, oportunidad abierta) y el cierre por
+ * `opportunityStageService` viven en `voiceAgent/perdidaPorDesinteres.ts`.
+ */
+async function procesarPerdida(session: ConversationRelaySession): Promise<void> {
+  const runtime = session.runtime;
+  const objecion = session.cierre.ultimaObjecion;
+  if (!runtime || session.perdidaProcesada || !session.cierre.desinteresDefinitivo || !objecion) return;
+  session.perdidaProcesada = true;
+  try {
+    const r = await marcarPerdidaPorDesinteres(
+      {
+        orgId: session.orgId,
+        supabase: getServiceSupabase(),
+        voiceAgentCallId: runtime.voiceAgentCallId,
+        customerId: runtime.customerId,
+        opportunityId: runtime.opportunityId,
+        agentId: runtime.agent.id,
+        objetivo: runtime.objetivo,
+        politicaEtapa: runtime.stage?.actionPolicy ?? null,
+      },
+      objecion
+    );
+    console.log(`[CR] [${session.callSid}] Pérdida por desinterés: ${r.aplicada ? 'aplicada' : `no aplicada (${r.motivo})`}`);
+  } catch (err) {
+    console.error(`[CR] [${session.callSid}] Pérdida por desinterés falló:`, err instanceof Error ? err.message : err);
+  }
 }
 
 // ─── Helpers de envío ───────────────────────────────────

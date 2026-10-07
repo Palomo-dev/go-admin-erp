@@ -11,6 +11,7 @@ import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChangeStageResult } from './opportunityStageService';
 import { CrmHttpError } from './crmRouteSupport';
+import { buscarEtapaDeDesenlace } from './opportunityStageDesenlace';
 
 /** Datos de pérdida estructurados (`LossInput` de opportunityStageData). */
 export const lossDataSchema = z.object({
@@ -35,17 +36,13 @@ export async function etapaDeDesenlace(
   tipo: 'won' | 'lost',
   stageId?: string,
 ): Promise<string> {
-  const columna = tipo === 'won' ? 'is_won' : 'is_lost';
-  let q = supabase.from('stages').select('id').eq('pipeline_id', pipelineId).eq(columna, true);
-  if (stageId) q = q.eq('id', stageId);
-  const { data, error } = await q.order('position', { ascending: true }).limit(1).maybeSingle();
-  if (error) throw error;
-  if (!data) {
+  const id = await buscarEtapaDeDesenlace(supabase, pipelineId, tipo, stageId);
+  if (!id) {
     if (stageId) throw new CrmHttpError(400, 'etapa_no_valida', `La etapa indicada no es de ${tipo === 'won' ? 'ganada' : 'pérdida'} en este pipeline`);
     const code = tipo === 'won' ? 'sin_etapa_ganada' : 'sin_etapa_perdida';
     throw new CrmHttpError(409, code, `El pipeline no tiene etapa de ${tipo === 'won' ? 'ganada' : 'pérdida'}; configúrala antes de cerrar`);
   }
-  return (data as { id: string }).id;
+  return id;
 }
 
 export function respuestaCambioEtapa(result: ChangeStageResult): NextResponse {

@@ -704,9 +704,17 @@ export async function buildCampaignTargets(
   supabase: SupabaseClient,
   orgId: number,
   campaign: VoiceAgentCampaign,
-  limit: number
+  limit: number,
+  /**
+   * Desde qué objetivo empezar (paginación estable, por id). La cola recorre
+   * páginas: sin esto pedía siempre los MISMOS primeros N objetivos, que ya
+   * estaban atendidos, y una campaña con objetivos sin llamar encolaba 0
+   * (org 125, 2026-10-07: 347 de 645 nunca llamados, 0 encolados).
+   */
+  desde = 0
 ): Promise<CustomerTarget[]> {
   if (limit <= 0) return [];
+  const hasta = desde + limit - 1;
   const config = (campaign.target_config || {}) as Record<string, unknown>;
   const targets: CustomerTarget[] = [];
 
@@ -734,7 +742,8 @@ export async function buildCampaignTargets(
         .eq('stage_id', stageId)
         .eq('status', 'open')
         .not('customer_id', 'is', null)
-        .limit(limit)
+        .order('id', { ascending: true })
+        .range(desde, hasta)
     ) as Array<Record<string, unknown>> | null;
     pushOpportunityRows(rows || []);
   } else if (campaign.target_source === 'manual_list') {
@@ -746,7 +755,7 @@ export async function buildCampaignTargets(
         .from('customers')
         .select('id')
         .eq('organization_id', orgId)
-        .in('id', customerIds.slice(0, limit))
+        .in('id', customerIds.slice(desde, desde + limit))
         .not('phone', 'is', null)
     ) as Array<{ id: string }> | null;
     for (const c of rows || []) {
@@ -761,7 +770,8 @@ export async function buildCampaignTargets(
         .from('campaign_contacts')
         .select('customer_id')
         .eq('campaign_id', segmentId)
-        .limit(limit)
+        .order('customer_id', { ascending: true })
+        .range(desde, hasta)
     ) as Array<{ customer_id: string }> | null;
     // `segments.filter_json` es dinámico; sin materialización previa no hay objetivos.
     for (const r of rows || []) {
@@ -779,7 +789,8 @@ export async function buildCampaignTargets(
         .not('next_contact_at', 'is', null)
         .lte('next_contact_at', new Date().toISOString())
         .order('next_contact_at', { ascending: true })
-        .limit(limit)
+        .order('id', { ascending: true })
+        .range(desde, hasta)
     ) as Array<Record<string, unknown>> | null;
     pushOpportunityRows(rows || []);
   } else if (campaign.target_source === 'sequence_step') {
@@ -792,7 +803,8 @@ export async function buildCampaignTargets(
         .select('enrollment_id, sequence_enrollments:enrollment_id(customer_id, opportunity_id)')
         .eq('step_id', stepId)
         .eq('status', 'pending')
-        .limit(limit)
+        .order('id', { ascending: true })
+        .range(desde, hasta)
     ) as Array<Record<string, unknown>> | null;
     for (const r of rows || []) {
       const enr = r.sequence_enrollments as { customer_id?: string; opportunity_id?: string } | null;
@@ -1246,6 +1258,10 @@ const MOTIVOS_COMPUERTA: Record<string, string> = {
 };
 
 /** Encola objetivos nuevos respetando la baja voluntaria y sin duplicar. */
+/** Tamaño de página al recorrer los objetivos de una campaña, y tope de páginas por corrida (5.000 objetivos). */
+const PAGINA_OBJETIVOS = 200;
+const MAX_PAGINAS_OBJETIVOS = 25;
+
 async function enqueueCampaignTargets(
   supabase: SupabaseClient,
   orgId: number,
@@ -1254,73 +1270,85 @@ async function enqueueCampaignTargets(
 ): Promise<{ encoladas: number; omitidos: ObjetivoOmitido[] }> {
   const omitidos: ObjetivoOmitido[] = [];
   if (room <= 0) return { encoladas: 0, omitidos };
-  const targets = await buildCampaignTargets(supabase, orgId, campaign, room);
-  if (targets.length === 0) return { encoladas: 0, omitidos };
-
-  const customerIds = targets.map((t) => t.customer_id);
-  // R3-6: el filtro iba por `campaign_id`, así que un cliente que ya tenía una
-  // llamada viva de ESTE MISMO AGENTE por otra campaña o por despacho puntual no
-  // se excluía: se le encolaba una segunda llamada. Ahora se mira por agente,
-  // que es exactamente el alcance del índice único parcial
-  // `voice_agent_calls_una_viva_por_cliente`.
-  const existing = (unwrap(
-    'enqueueCampaignTargets.existing',
-    await supabase
-      .from('voice_agent_calls')
-      .select('id, customer_id, campaign_id, status')
-      .eq('organization_id', orgId)
-      .eq('voice_agent_id', campaign.voice_agent_id)
-      .in('customer_id', customerIds)
-      .in('status', ['pending', 'queued', 'in_progress'])
-  ) || []) as Array<{ id?: string; customer_id: string; campaign_id?: string | null; status?: string }>;
-  const alreadyQueued = new Map(existing.map((r) => [r.customer_id, r]));
-  const yaAtendidos = await clientesYaAtendidosPorCampana(supabase, orgId, campaign, customerIds);
-  const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
-
+  // Se recorren los objetivos por páginas estables hasta llenar `room`: los ya
+  // atendidos, en cola o excluidos no cuentan contra el cupo de la corrida. Antes
+  // se pedían solo los primeros `room` y, si estaban todos atendidos, la campaña
+  // encolaba 0 para siempre aunque quedaran cientos sin llamar.
   const rows: Record<string, unknown>[] = [];
-  for (const target of targets) {
-    if (rows.length >= room) break;
-    const viva = alreadyQueued.get(target.customer_id);
-    if (viva) {
-      // En la cola de ESTA campaña: ya cuenta en `pendingCount`, no es omisión.
-      // En OTRA campaña (o despacho puntual) del mismo agente, el índice único
-      // impide una segunda llamada viva: es una omisión y se dice cuál la
-      // retiene y, si está pendiente, qué la frena (caso org 125, 2026-10-07).
-      if (viva.campaign_id !== campaign.id) {
-        omitidos.push({
-          customer_id: target.customer_id,
-          motivo: 'llamada_viva_en_otra',
-          detalle: await describirLlamadaViva(supabase, orgId, viva),
-        });
+  const vistos = new Set<string>();
+  for (let pagina = 0; pagina < MAX_PAGINAS_OBJETIVOS && rows.length < room; pagina++) {
+    const targets = await buildCampaignTargets(supabase, orgId, campaign, PAGINA_OBJETIVOS, pagina * PAGINA_OBJETIVOS);
+    if (targets.length === 0) break;
+
+    const customerIds = targets.map((t) => t.customer_id);
+    // R3-6: el filtro iba por `campaign_id`, así que un cliente que ya tenía una
+    // llamada viva de ESTE MISMO AGENTE por otra campaña o por despacho puntual no
+    // se excluía: se le encolaba una segunda llamada. Ahora se mira por agente,
+    // que es exactamente el alcance del índice único parcial
+    // `voice_agent_calls_una_viva_por_cliente`.
+    const existing = (unwrap(
+      'enqueueCampaignTargets.existing',
+      await supabase
+        .from('voice_agent_calls')
+        .select('id, customer_id, campaign_id, status')
+        .eq('organization_id', orgId)
+        .eq('voice_agent_id', campaign.voice_agent_id)
+        .in('customer_id', customerIds)
+        .in('status', ['pending', 'queued', 'in_progress'])
+    ) || []) as Array<{ id?: string; customer_id: string; campaign_id?: string | null; status?: string }>;
+    const alreadyQueued = new Map(existing.map((r) => [r.customer_id, r]));
+    const yaAtendidos = await clientesYaAtendidosPorCampana(supabase, orgId, campaign, customerIds);
+    const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
+
+    for (const target of targets) {
+      if (rows.length >= room) break;
+      // El mismo cliente con dos oportunidades en el lote: una sola llamada.
+      if (vistos.has(target.customer_id)) continue;
+      vistos.add(target.customer_id);
+      const viva = alreadyQueued.get(target.customer_id);
+      if (viva) {
+        // En la cola de ESTA campaña: ya cuenta en `pendingCount`, no es omisión.
+        // En OTRA campaña (o despacho puntual) del mismo agente, el índice único
+        // impide una segunda llamada viva: es una omisión y se dice cuál la
+        // retiene y, si está pendiente, qué la frena (caso org 125, 2026-10-07).
+        if (viva.campaign_id !== campaign.id) {
+          omitidos.push({
+            customer_id: target.customer_id,
+            motivo: 'llamada_viva_en_otra',
+            detalle: await describirLlamadaViva(supabase, orgId, viva),
+          });
+        }
+        continue;
       }
-      continue;
-    }
-    if (yaAtendidos.has(target.customer_id)) continue;
-    // Lista interna de excluidos de la organización: no llega ni a la cola.
-    if (excluidos.has(target.customer_id)) {
-      omitidos.push({ customer_id: target.customer_id, motivo: 'lista_excluidos', detalle: 'número en la lista de excluidos de la organización' });
-      continue;
-    }
-    // C-F6-10: baja voluntaria antes incluso de encolar.
-    if (!(await canCallCustomer(orgId, target.customer_id, supabase))) {
-      omitidos.push({ customer_id: target.customer_id, motivo: 'no_llamar', detalle: 'sin consentimiento para llamadas o con «no llamar»' });
-      continue;
+      if (yaAtendidos.has(target.customer_id)) continue;
+      // Lista interna de excluidos de la organización: no llega ni a la cola.
+      if (excluidos.has(target.customer_id)) {
+        omitidos.push({ customer_id: target.customer_id, motivo: 'lista_excluidos', detalle: 'número en la lista de excluidos de la organización' });
+        continue;
+      }
+      // C-F6-10: baja voluntaria antes incluso de encolar.
+      if (!(await canCallCustomer(orgId, target.customer_id, supabase))) {
+        omitidos.push({ customer_id: target.customer_id, motivo: 'no_llamar', detalle: 'sin consentimiento para llamadas o con «no llamar»' });
+        continue;
+      }
+
+      const stageAgentId = target.stage_id
+        ? await findStageAgentId(supabase, orgId, target.stage_id)
+        : null;
+
+      rows.push({
+        organization_id: orgId,
+        voice_agent_id: campaign.voice_agent_id,
+        campaign_id: campaign.id,
+        customer_id: target.customer_id,
+        opportunity_id: target.opportunity_id,
+        stage_agent_id: stageAgentId,
+        status: 'pending',
+        scheduled_at: new Date().toISOString(),
+      });
     }
 
-    const stageAgentId = target.stage_id
-      ? await findStageAgentId(supabase, orgId, target.stage_id)
-      : null;
-
-    rows.push({
-      organization_id: orgId,
-      voice_agent_id: campaign.voice_agent_id,
-      campaign_id: campaign.id,
-      customer_id: target.customer_id,
-      opportunity_id: target.opportunity_id,
-      stage_agent_id: stageAgentId,
-      status: 'pending',
-      scheduled_at: new Date().toISOString(),
-    });
+    if (targets.length < PAGINA_OBJETIVOS) break;
   }
 
   if (rows.length === 0) return { encoladas: 0, omitidos };

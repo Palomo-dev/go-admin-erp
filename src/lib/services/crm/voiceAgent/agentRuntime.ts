@@ -25,6 +25,7 @@ import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
 import { loadOrgModelSettings, resolveVoiceModel } from '@/lib/ai/agent/modelRouter';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { politicaDatosValida, zonaHorariaOrganizacion } from './cumplimiento';
+import { despedidaDelAgente } from './cierreLlamada';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,17 @@ export interface AgentRuntimeConfig {
   voice: VoiceSelection;
   consentMessage: string;
   recordingEnabled: boolean;
+  /**
+   * Despedida que el runtime dice si el modelo cuelga sin despedirse
+   * (`voice_agents.guardrails.despedida` o `DESPEDIDA_POR_DEFECTO`).
+   */
+  despedida: string;
+  /**
+   * Objetivo de la llamada: el de la etapa (`stage_agents.objective`) si la
+   * hay; si no, el del agente (`voice_agents.purpose_type`). Decide si un
+   * desinterés definitivo da la oportunidad por perdida (solo en venta).
+   */
+  objetivo: string | null;
 }
 
 // ─── Guardarraíles obligatorios (D9 · Ley 1581 de 2012) ─────────────────────
@@ -389,6 +401,8 @@ export async function buildRuntimeConfig(
     voice,
     consentMessage,
     recordingEnabled,
+    despedida: despedidaDelAgente(agent.guardrails),
+    objetivo: stage?.objective ?? agent.purpose_type ?? null,
   };
 }
 
@@ -495,6 +509,8 @@ export function buildSystemPrompt(p: {
       'resume lo acordado, deja el siguiente paso registrado y despídete.'
   );
 
+  parts.push(reglasObjecionesYCierre(despedidaDelAgente(p.agent.guardrails)));
+
   // ── Desde aquí, lo que depende de la etapa o de ESTA llamada ──
 
   // Configuración POR ETAPA: esto es lo que cambia el comportamiento de la llamada.
@@ -548,6 +564,30 @@ export function buildSystemPrompt(p: {
   }
 
   return parts.join('\n\n');
+}
+
+/**
+ * Objeciones y cierre (decisión del dueño, 2026-10-07): un solo reintento ante
+ * el desinterés y despedida siempre antes de colgar. El runtime lo garantiza
+ * además en código (`voiceAgent/cierreLlamada.ts`); esto es para que el
+ * modelo lo haga bien a la primera.
+ */
+export function reglasObjecionesYCierre(despedida: string): string {
+  return [
+    'OBJECIONES Y CIERRE DE LA LLAMADA:',
+    '- La PRIMERA vez que el cliente muestre desinterés («no me interesa», «no lo necesito», «ya tengo un software y ' +
+      'funciona perfecto»), registra la objeción con log_objection (tipo desinteres o ya_tiene_solucion) y haz UN solo ' +
+      'intento más: una pregunta o argumento breve relacionado con lo que dijo. Por ejemplo, si ya tiene software: ' +
+      '«¿Ese software también le maneja la facturación electrónica y el inventario?». Una sola frase, sin presionar. ' +
+      'En ese turno NO uses end_call.',
+    '- Si después de ese intento vuelve a decir que no, registra de nuevo la objeción, despídete con cortesía y usa ' +
+      'end_call. Nunca insistas una segunda vez.',
+    '- Si pide que no lo llamen más («no me llamen más», «quíteme de la lista»), NO hay intento adicional: aplica la ' +
+      'regla obligatoria 2 (log_consent_opt_out y terminar).',
+    '- «Llámeme después» o «ahora no puedo» no es desinterés: registra la objeción con tipo momento y ofrece ' +
+      'schedule_callback.',
+    `- Antes de usar end_call SIEMPRE te despides en voz alta, por ejemplo: «${despedida}». Nunca cuelgues en silencio.`,
+  ].join('\n');
 }
 
 function describeOffer(offer: Record<string, unknown> | null | undefined): string | null {

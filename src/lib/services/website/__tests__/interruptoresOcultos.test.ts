@@ -37,70 +37,40 @@ function estadoInicial(tipo: string, clave: string, variante: string, contenido:
 
 /** [sección, interruptor, variantes donde el sitio NO lo lee y el inspector debe ocultarlo]. */
 const OCULTOS: [string, string, string[]][] = [
-  ['brands', 'autoplay', ['logos']],
-  ['brands', 'enable_swipe', ['logos']],
-  ['brands', 'loop', ['logos']],
-  ['brands', 'pause_on_hover', ['logos']],
-  ['brands', 'show_arrows', ['logos']],
-  ['brands', 'show_dots', ['logos']],
   ['categories_grid', 'full_width', ['default', 'grid', 'horizontal', 'icons']],
-  ['featured_products', 'autoplay', ['carousel']],
-  ['featured_products', 'enable_swipe', ['carousel']],
   ['featured_products', 'hide_if_no_reviews', ['hero_product']],
-  ['featured_products', 'loop', ['carousel']],
-  ['featured_products', 'show_compare_price', ['hero_product']],
-  ['featured_products', 'show_filters', ['grid', 'carousel', 'hero_product']],
   ['featured_products', 'show_rating', ['hero_product']],
-  ['featured_products', 'show_search', ['grid', 'carousel', 'hero_product']],
-  ['gallery', 'autoplay', ['masonry', 'grid', 'carousel', 'fullscreen']],
-  ['gallery', 'enable_swipe', ['masonry', 'grid', 'carousel', 'fullscreen']],
-  ['gallery', 'lightbox', ['masonry', 'grid', 'carousel', 'fullscreen']],
-  ['gallery', 'loop', ['masonry', 'grid', 'carousel', 'fullscreen']],
-  ['gallery', 'pause_on_hover', ['masonry', 'grid', 'carousel', 'fullscreen']],
-  ['gallery', 'show_arrows', ['masonry', 'grid', 'carousel', 'fullscreen']],
-  ['gallery', 'show_dots', ['masonry', 'grid', 'carousel', 'fullscreen']],
+  ['gallery', 'autoplay', ['masonry', 'grid']],
+  ['gallery', 'enable_swipe', ['masonry', 'grid']],
+  ['gallery', 'loop', ['masonry', 'grid']],
+  ['gallery', 'pause_on_hover', ['masonry', 'grid']],
+  ['gallery', 'show_arrows', ['masonry', 'grid']],
+  ['gallery', 'show_dots', ['masonry', 'grid']],
   ['map', 'show_marker', ['default', 'embedded', 'full_width', 'with_directions']],
-  ['membership_plans', 'show_compare_price', ['pricing_table']],
-  ['menu_preview', 'show_compare_price', ['tabs']],
-  ['offers', 'show_filters', ['grid']],
-  ['offers', 'show_search', ['grid']],
   ['parking_pass_plans', 'show_compare_price', ['cards']],
-  ['parking_pass_plans', 'show_description', ['cards']],
   ['parking_pricing', 'show_compare_price', ['cards']],
   ['parking_pricing', 'show_description', ['cards']],
-  ['partners', 'autoplay', ['logos', 'cards', 'carousel']],
-  ['partners', 'enable_swipe', ['logos', 'cards', 'carousel']],
-  ['partners', 'loop', ['logos', 'cards', 'carousel']],
-  ['partners', 'pause_on_hover', ['logos', 'cards', 'carousel']],
-  ['partners', 'show_arrows', ['logos', 'cards', 'carousel']],
-  ['partners', 'show_dots', ['logos', 'cards', 'carousel']],
+  ['partners', 'autoplay', ['logos', 'cards']],
+  ['partners', 'enable_swipe', ['logos', 'cards']],
+  ['partners', 'loop', ['logos', 'cards']],
+  ['partners', 'pause_on_hover', ['logos', 'cards']],
+  ['partners', 'show_arrows', ['logos', 'cards']],
+  ['partners', 'show_dots', ['logos', 'cards']],
   ['pricing_table', 'show_compare_price', ['three_columns']],
-  ['products_grid', 'autoplay', ['carousel']],
-  ['products_grid', 'enable_swipe', ['carousel']],
-  ['products_grid', 'loop', ['carousel']],
-  ['products_grid', 'show_filters', ['carousel', 'list']],
-  ['products_grid', 'show_search', ['default', 'grid', 'carousel', 'list']],
   ['room_types', 'show_compare_price', ['cards', 'detailed']],
-  ['room_types', 'show_description', ['cards']],
   ['routes', 'show_compare_price', ['cards']],
   ['routes', 'show_description', ['cards']],
   ['services_list', 'show_compare_price', ['cards', 'grid', 'icons_row', 'list']],
-  ['services_list', 'show_description', ['icons_row']],
   ['specialties', 'hide_if_no_reviews', ['featured']],
-  ['specialties', 'show_compare_price', ['featured']],
-  ['specialties', 'show_description', ['featured']],
   ['specialties', 'show_rating', ['featured']],
 ];
 
 /** [sección, repetidor, campos del ítem que ninguna variante lee: se quitan del repetidor]. */
 const ITEMS_QUITADOS: [string, string, string[]][] = [
   ['cta', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
-  ['featured_products', 'card_buttons', ['full_width_mobile', 'open_new_tab']],
-  ['hero', 'buttons', ['full_width', 'icon_only']],
   ['membership_plans', 'plans', ['highlighted']],
   ['offers', 'card_buttons', ['full_width_mobile', 'open_new_tab']],
   ['product_actions', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
-  ['products_grid', 'card_buttons', ['full_width_mobile', 'open_new_tab']],
   ['specialties', 'card_buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
 ];
 
@@ -172,5 +142,122 @@ describe('Con la clave ausente, el switch muestra lo que el sitio hace hoy', () 
   it('cada variante ve una sola definición de cada interruptor desdoblado', () => {
     for (const v of ['split', 'with_map']) expect(visibles('contact_form', 'show_phone', v)).toHaveLength(1);
     for (const v of ['grid', 'carousel', 'hero_product']) expect(visibles('featured_products', 'show_description', v)).toHaveLength(1);
+  });
+});
+
+/**
+ * Implementados en el sitio el 2026-10-07 (goadmin-websites, `scripts/verify-interruptores.mjs`):
+ * vuelven a mostrarse. [sección, interruptor, variante, contenido con la condición cumplida].
+ */
+const CARRUSEL = ['autoplay', 'enable_swipe', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots'];
+type FilaImplementado = [string, string, string, Record<string, unknown>?];
+const IMPLEMENTADOS: FilaImplementado[] = [
+  ...CARRUSEL.flatMap((c): [string, string, string][] => [['gallery', c, 'carousel'], ['gallery', c, 'fullscreen'], ['partners', c, 'carousel']]),
+  ...CARRUSEL.map((c): [string, string, string, Record<string, unknown>] => ['brands', c, 'logos', { layout: 'carousel', autoplay: true }]),
+  ...['masonry', 'grid', 'carousel', 'fullscreen'].map((v): [string, string, string] => ['gallery', 'lightbox', v]),
+  ...['autoplay', 'loop', 'enable_swipe'].flatMap((c): [string, string, string][] => [['products_grid', c, 'carousel'], ['featured_products', c, 'carousel']]),
+  ['products_grid', 'show_filters', 'carousel'],
+  ['products_grid', 'show_filters', 'list'],
+  ...['default', 'grid', 'carousel', 'list'].map((v): [string, string, string] => ['products_grid', 'show_search', v]),
+  ...['grid', 'carousel', 'hero_product'].flatMap((v): [string, string, string][] => [['featured_products', 'show_filters', v], ['featured_products', 'show_search', v]]),
+  ['featured_products', 'show_compare_price', 'hero_product'],
+  ['offers', 'show_filters', 'grid'],
+  ['offers', 'show_search', 'grid'],
+  ['menu_preview', 'show_compare_price', 'tabs'],
+  ['membership_plans', 'show_compare_price', 'pricing_table'],
+  ['specialties', 'show_compare_price', 'featured'],
+  ['specialties', 'show_description', 'featured'],
+  ['room_types', 'show_description', 'cards'],
+  ['services_list', 'show_description', 'icons_row'],
+  ['parking_pass_plans', 'show_description', 'cards'],
+];
+
+describe('Implementados en el sitio: el inspector los vuelve a mostrar', () => {
+  // Parámetros por resto: con más parámetros que columnas, jest toma el último por `done`.
+  it.each(IMPLEMENTADOS)('%s · %s se ve en %s', (...[tipo, clave, variante, contenido]: FilaImplementado) => {
+    expect(visibles(tipo, clave, variante, contenido ?? CONDICION[clave])).toHaveLength(1);
+  });
+
+  it('los repetidores recuperan los campos que el sitio ya lee', () => {
+    const campos = (tipo: string, rep: string) =>
+      (getSectionDefinition(tipo)!.contentFields.find((f) => f.key === rep)!.itemFields ?? []).map((f) => f.key);
+    expect(campos('hero', 'buttons')).toEqual(expect.arrayContaining(['full_width', 'icon_only']));
+    for (const tipo of ['products_grid', 'featured_products']) {
+      expect(campos(tipo, 'card_buttons')).toEqual(expect.arrayContaining(['full_width_mobile', 'open_new_tab']));
+    }
+  });
+
+  it('marcas: los controles del carrusel solo con la distribución «Carrusel» (BrandsLogos solo los lee ahí)', () => {
+    for (const c of ['autoplay', 'loop', 'show_arrows', 'show_dots', 'enable_swipe']) {
+      expect(visibles('brands', c, 'logos', { layout: 'grid' })).toHaveLength(0);
+      expect(visibles('brands', c, 'logos', {})).toHaveLength(0);
+      expect(visibles('brands', c, 'logos', { layout: 'carousel' })).toHaveLength(1);
+    }
+  });
+});
+
+/** [sección, interruptor, variante, estado con la clave ausente = lo que el sitio hace hoy]. */
+type FilaDefault = [string, string, string, boolean, Record<string, unknown>?];
+const DEFAULTS_IMPLEMENTADOS: FilaDefault[] = [
+  ['gallery', 'autoplay', 'carousel', false],
+  ['gallery', 'autoplay', 'fullscreen', false],
+  ['gallery', 'loop', 'carousel', true],
+  ['gallery', 'show_arrows', 'carousel', true],
+  ['gallery', 'show_arrows', 'fullscreen', false],
+  ['gallery', 'show_dots', 'fullscreen', true],
+  ['gallery', 'enable_swipe', 'carousel', false],
+  ['gallery', 'pause_on_hover', 'carousel', true, { autoplay: true }],
+  ['gallery', 'lightbox', 'masonry', false],
+  ['gallery', 'lightbox', 'carousel', false],
+  ['partners', 'autoplay', 'carousel', true],
+  ['partners', 'loop', 'carousel', true],
+  ['partners', 'pause_on_hover', 'carousel', false, { autoplay: true }],
+  ['partners', 'show_arrows', 'carousel', false],
+  ['partners', 'show_dots', 'carousel', false],
+  ['partners', 'enable_swipe', 'carousel', false],
+  ['brands', 'autoplay', 'logos', false, { layout: 'carousel' }],
+  ['brands', 'loop', 'logos', false, { layout: 'carousel' }],
+  ['brands', 'show_arrows', 'logos', true, { layout: 'carousel' }],
+  ['brands', 'show_dots', 'logos', false, { layout: 'carousel' }],
+  ['brands', 'enable_swipe', 'logos', true, { layout: 'carousel' }],
+  ['brands', 'pause_on_hover', 'logos', true, { layout: 'carousel', autoplay: true }],
+  ['products_grid', 'autoplay', 'carousel', false],
+  ['products_grid', 'loop', 'carousel', false],
+  ['products_grid', 'enable_swipe', 'carousel', true],
+  ['featured_products', 'loop', 'carousel', false],
+  ['products_grid', 'show_filters', 'default', true],
+  ['products_grid', 'show_filters', 'grid', true],
+  ['products_grid', 'show_filters', 'carousel', false],
+  ['products_grid', 'show_filters', 'list', false],
+  ['products_grid', 'show_search', 'grid', false],
+  ['featured_products', 'show_filters', 'grid', false],
+  ['featured_products', 'show_search', 'hero_product', false],
+  ['offers', 'show_filters', 'grid', true],
+  ['offers', 'show_search', 'grid', false],
+  ['featured_products', 'show_compare_price', 'hero_product', false],
+  ['featured_products', 'show_compare_price', 'grid', true],
+  ['menu_preview', 'show_compare_price', 'tabs', false],
+  ['membership_plans', 'show_compare_price', 'pricing_table', false],
+  ['specialties', 'show_compare_price', 'featured', false],
+  ['specialties', 'show_description', 'featured', false],
+  ['room_types', 'show_description', 'cards', false],
+  ['room_types', 'show_description', 'detailed', true],
+  ['services_list', 'show_description', 'icons_row', false],
+  ['services_list', 'show_description', 'cards', true],
+  ['parking_pass_plans', 'show_description', 'cards', false],
+];
+
+describe('Implementados: con la clave ausente el switch dice lo que el sitio hace hoy', () => {
+  it.each(DEFAULTS_IMPLEMENTADOS)('%s · %s · %s → %s', (...[tipo, clave, variante, esperado, contenido]: FilaDefault) => {
+    expect(estadoInicial(tipo, clave, variante, contenido ?? {})).toBe(esperado);
+  });
+
+  it('botones: «Ancho completo» de la portada y «Ancho completo en móvil» de la tarjeta nacen apagados', () => {
+    const item = (tipo: string, rep: string, campo: string) =>
+      getSectionDefinition(tipo)!.contentFields.find((f) => f.key === rep)!.itemFields!.find((f) => f.key === campo)!;
+    expect(item('hero', 'buttons', 'full_width').defaultValue).toBe(false);
+    expect(item('hero', 'buttons', 'full_width_mobile').defaultValue).toBe(true);
+    expect(item('products_grid', 'card_buttons', 'full_width_mobile').defaultValue).toBe(false);
+    expect(item('products_grid', 'card_buttons', 'full_width').defaultValue).toBe(true);
   });
 });

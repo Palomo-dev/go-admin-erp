@@ -414,7 +414,11 @@ export async function POST(request: Request) {
       attr('welcomeGreetingInterruptible', 'none') +
       attr('interruptible', 'any') +
       attr('dtmfDetection', 'true') +
-      attr('reportInputDuringAgentSpeech', 'none');
+      attr('reportInputDuringAgentSpeech', 'none') +
+      // Cierre (2026-10-07): `agentSpeaking` on/off para colgar cuando la
+      // despedida TERMINÓ de sonar, no a mitad (ver `voiceAgent/cierreLlamada.ts`).
+      // Sin estos eventos el ws-server espera un tope por longitud del texto.
+      attr('events', 'speaker-events');
 
     // Respaldo de TTS (2026-09-30, error 64111): una segunda configuración de
     // voz que el ws-server activa con un mensaje `language` si la voz principal

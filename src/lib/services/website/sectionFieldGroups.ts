@@ -938,7 +938,9 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
           { value: 'custom', label: 'Personalizado' },
         ],
       },
-      ...BUTTON_ITEM_FIELDS,
+      // La tarjeta de producto del sitio solo pone el botón a todo el ancho en el celular con
+      // `full_width_mobile: true` (ausente = como antes): el switch nace apagado.
+      ...BUTTON_ITEM_FIELDS.map((f) => (f.key === 'full_width_mobile' ? { ...f, defaultValue: false } : f)),
     ],
   },
   {

@@ -207,10 +207,10 @@ Hallazgos que no se resolvieron aquí:
 | `room_types` | `cards` | `show_description` | Mostrar u ocultar la descripción de cada elemento | `components/sections/hotel/SpacesCards.tsx` | encendido | Media | 1 h si el dato existe · 3 h si hay que traerlo | **Hecho 2026-10-07** |
 | `routes` | `cards` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/transport/RoutesCards.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | Sin fuente: `transport_routes` no tiene descripción ni precio anterior |
 | `routes` | `cards` | `show_description` | Mostrar u ocultar la descripción de cada elemento | `components/sections/transport/RoutesCards.tsx` | apagado | Media | 1 h si el dato existe · 3 h si hay que traerlo | Sin fuente: `transport_routes` no tiene descripción ni precio anterior |
-| `services_list` | `cards` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListCards.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | Sin fuente: el sitio público no carga `data.services` (la sección no recibe servicios ni precios) |
-| `services_list` | `grid` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListGrid.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | Sin fuente: el sitio público no carga `data.services` (la sección no recibe servicios ni precios) |
-| `services_list` | `icons_row` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListIconsRow.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | Sin fuente: el sitio público no carga `data.services` (la sección no recibe servicios ni precios) |
-| `services_list` | `list` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListList.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | Sin fuente: el sitio público no carga `data.services` (la sección no recibe servicios ni precios) |
+| `services_list` | `cards` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListCards.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | **Hecho 2026-10-07** (la sección ya recibe sus servicios) |
+| `services_list` | `grid` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListGrid.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | **Hecho 2026-10-07** (la sección ya recibe sus servicios) |
+| `services_list` | `icons_row` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListIconsRow.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | No aplica: la fila de iconos no pinta precio (se queda oculto) |
+| `services_list` | `list` | `show_compare_price` | Precio anterior tachado junto al precio actual | `components/sections/services/ServicesListList.tsx` | encendido | Alta | 4–6 h (falta el precio anterior en la fuente de datos) | **Hecho 2026-10-07** (la sección ya recibe sus servicios) |
 | `services_list` | `icons_row` | `show_description` | Mostrar u ocultar la descripción de cada elemento | `components/sections/services/ServicesListIconsRow.tsx` | encendido | Media | 1 h si el dato existe · 3 h si hay que traerlo | **Hecho 2026-10-07** |
 | `specialties` | `featured` | `card_buttons[].full_width` | Sección a todo el ancho de la pantalla (el componente no pinta el repetidor de botones: primero hay que pintarlo) | `components/sections/restaurant/SpecialtiesFeatured.tsx` | encendido | Baja | 1–2 h por opción + pintar los botones (3–4 h) | Pendiente |
 | `specialties` | `featured` | `card_buttons[].full_width_mobile` | Botón a todo el ancho en el celular (el componente no pinta el repetidor de botones: primero hay que pintarlo) | `components/sections/restaurant/SpecialtiesFeatured.tsx` | encendido | Baja | 1–2 h por opción + pintar los botones (3–4 h) | Pendiente |
@@ -243,3 +243,16 @@ Hallazgos que no se resolvieron aquí:
    `ITEMS_QUITADOS` y entra en «No se oculta de más») y esta tabla.
 5. **Orden de despliegue:** primero el PR del sitio, y solo con él desplegado el del ERP. El ERP
    nunca debe mostrar un interruptor que el sitio desplegado todavía no lee.
+
+## Avance del 2026-10-07 (2): servicios con datos
+
+- El sitio carga `data.services` solo en las páginas con `services_list` (una consulta cacheada,
+  `getServiciosDeSeccion` en `lib/website/datosSecciones.ts`), con la misma fuente que /servicios:
+  `organization_services` activo en organizaciones de servicios (type_id 4) y productos activos
+  con `unit_code = 'SV'` en las demás. Resuelve el hallazgo de arriba sobre `services_list`.
+- `show_compare_price` funciona en tarjetas, grid y lista con el `compare_price` real; la fila de
+  iconos no pinta precio y queda oculta. Con la clave ausente, sin tachar. `organization_services`
+  no tiene descripción ni precio anterior: con esa fuente no hay ni lo uno ni lo otro.
+- Las celdas «Estado» de las cuatro filas de `services_list` · `show_compare_price` se
+  actualizaron: 3 hechas y 1 que no aplica (antes «Sin fuente»).
+- Recuento tras este avance: 81 hechas, 41 pendientes, 8 sin fuente y 25 que no aplican (de 155).

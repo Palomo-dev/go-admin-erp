@@ -60,7 +60,7 @@ const OCULTOS: [string, string, string[]][] = [
   ['room_types', 'show_compare_price', ['cards', 'detailed']],
   ['routes', 'show_compare_price', ['cards']],
   ['routes', 'show_description', ['cards']],
-  ['services_list', 'show_compare_price', ['cards', 'grid', 'icons_row', 'list']],
+  ['services_list', 'show_compare_price', ['icons_row']],
   ['specialties', 'hide_if_no_reviews', ['featured']],
   ['specialties', 'show_rating', ['featured']],
 ];
@@ -169,6 +169,7 @@ const IMPLEMENTADOS: FilaImplementado[] = [
   ['specialties', 'show_description', 'featured'],
   ['room_types', 'show_description', 'cards'],
   ['services_list', 'show_description', 'icons_row'],
+  ...['cards', 'grid', 'list'].map((v): FilaImplementado => ['services_list', 'show_compare_price', v]),
   ['parking_pass_plans', 'show_description', 'cards'],
 ];
 
@@ -244,6 +245,9 @@ const DEFAULTS_IMPLEMENTADOS: FilaDefault[] = [
   ['room_types', 'show_description', 'detailed', true],
   ['services_list', 'show_description', 'icons_row', false],
   ['services_list', 'show_description', 'cards', true],
+  ['services_list', 'show_compare_price', 'cards', false],
+  ['services_list', 'show_compare_price', 'grid', false],
+  ['services_list', 'show_compare_price', 'list', false],
   ['parking_pass_plans', 'show_description', 'cards', false],
 ];
 

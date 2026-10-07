@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   ArrowLeftRight,
+  ArrowRight,
   Ban,
   Check,
   ChefHat,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { RowActionsMenu } from '@/components/kit';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AccionFila } from '@/components/kit/acciones';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KitchenTicket, KitchenTicketItem } from '@/lib/services/kitchenService';
@@ -28,6 +30,8 @@ import {
   minutosTranscurridos,
   nivelTiempo,
   objetivoDe,
+  puedeMarcarItem,
+  siguienteColumna,
   type ColumnaComanda,
   type FiltroEstacion,
 } from '@/lib/pos/cocina/tableroComandas';
@@ -72,6 +76,8 @@ export interface ComandaTarjetaProps {
   onCancelar?: (comanda: KitchenTicket) => void;
   /** La tarjeta acaba de llegar (aviso visual 3 s, sin parpadeo). */
   nueva?: boolean;
+  /** Asa de arrastre (activador de teclado), arriba al centro. */
+  asa?: React.ReactNode;
 }
 
 /** Título grande: «Mesa 4», «Mostrador #52», «Web W-1044 · Mesa 4». */
@@ -276,8 +282,11 @@ export function ComandaTarjeta({
   onDevolver,
   onCancelar,
   nueva,
+  asa,
 }: ComandaTarjetaProps) {
   const t = useTranslations('posComandasV2.tarjeta');
+  const ta = useTranslations('posComandasV2.arrastre');
+  const tc = useTranslations('posComandasV2.columnas.tablero');
   const titulo = useTituloComanda();
   const nombreEstacion = useNombreEstacion();
   const kds = densidad === 'kds';
@@ -343,6 +352,34 @@ export function ComandaTarjeta({
       : []),
   ];
 
+  /** Botón principal y flecha: la misma acción, un solo paso. */
+  const accionar = () => (alergia ? onConfirmarAlergia(c) : accion && onAccion(c, accion === 'recibido' ? (tieneAumentos ? 'preparing' : 'delivered') : accion));
+  const siguiente = accion && accion !== 'recibido' ? siguienteColumna(columna) : null;
+  const flecha = siguiente && permisos.operar ? (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled={ocupada}
+            onClick={accionar}
+            aria-label={ta('avanzarA', { titulo: titulo(c), columna: tc(siguiente) })}
+            className={cn(
+              'flex shrink-0 items-center justify-center rounded-lg text-fg-secondary transition-colors hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60',
+              kds ? 'size-11' : '-mt-0.5 size-8',
+            )}
+          >
+            <ArrowRight aria-hidden="true" className={kds ? 'size-5' : 'size-4'} strokeWidth={1.75} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="border-transparent bg-tooltip px-2.5 py-1.5 text-white dark:border-transparent dark:bg-tooltip">
+          <span className="block text-xs font-medium">{ta('avanzar', { columna: tc(siguiente) })}</span>
+          <span className="block text-[11px] opacity-70">{ta('unPaso')}</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : null;
+
   const etiquetaAccion = accion === 'preparing'
     ? t('empezar')
     : accion === 'ready'
@@ -364,10 +401,12 @@ export function ComandaTarjeta({
       aria-label={titulo(c)}
       className={cn(
         'relative overflow-hidden rounded-xl border-2 bg-surface',
+        asa && (kds ? 'pt-1' : 'pt-0.5'),
         borde,
         nueva && 'shadow-[0_0_0_3px_rgb(var(--brand-primary)/0.35)] transition-shadow duration-700',
       )}
     >
+      {asa}
       <header className={cn('flex items-start gap-2', kds ? 'px-4 pt-4' : 'px-4 pt-3.5')}>
         <div className="min-w-0 flex-1">
           <h3 className={cn('break-words font-semibold text-fg', kds ? 'text-2xl leading-7' : 'text-lg leading-6')}>
@@ -377,6 +416,7 @@ export function ComandaTarjeta({
           {!kds && pastillaTiempo && <div className="mt-1.5">{pastillaTiempo}</div>}
         </div>
         {kds && pastillaTiempo}
+        {flecha}
         {!kds && menu.length > 0 && (
           <RowActionsMenu orientacion="horizontal" tamano="sm" titulo={titulo(c)} acciones={menu} className="-mr-1 -mt-0.5" />
         )}
@@ -404,8 +444,10 @@ export function ComandaTarjeta({
         <div className={kds ? 'space-y-2' : 'space-y-1.5'}>
           {items.map((item) => {
             const anulado = item.status === 'cancelled' || !!item.cancelled_at;
+            // Solo lo ya empezado: tocar un ítem en «Nuevas» lo llevaba de
+            // `pending` a `ready` y la comanda saltaba «En preparación».
             const tocable = !!onItem && permisos.operar && !alergia && !anulado && !esAjuste
-              && columna !== 'delivered' && item.status !== 'delivered';
+              && columna !== 'delivered' && columna !== 'new' && puedeMarcarItem(item);
             return (
               <ItemComanda
                 key={item.id}
@@ -429,7 +471,7 @@ export function ComandaTarjeta({
           <button
             type="button"
             disabled={ocupada}
-            onClick={() => (alergia ? onConfirmarAlergia(c) : onAccion(c, accion === 'recibido' ? (tieneAumentos ? 'preparing' : 'delivered') : accion))}
+            onClick={accionar}
             className={cn(
               'mt-1 flex w-full items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-60',
               kds ? 'h-12 text-base' : 'h-10 text-sm',

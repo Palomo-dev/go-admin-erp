@@ -37,7 +37,7 @@ import {
  * se envían al volver (las RPC son idempotentes por comanda).
  */
 
-type Aviso = (a: { titulo: string; descripcion?: string; tono?: 'error' | 'ok'; accion?: { etiqueta: string; onClick: () => void } }) => void;
+type Aviso = (a: { titulo: string; descripcion?: string; tono?: 'error' | 'ok' | 'exito' | 'advertencia'; accion?: { etiqueta: string; onClick: () => void } }) => void;
 
 type Pendiente =
   | { tipo: 'estado'; ticketId: number; estado: ColumnaComanda; station: string | null }
@@ -163,7 +163,11 @@ export function useComandasTurno({
     setTickets((prev) => prev.map((c) => (c.id === id ? f(c) : c)));
 
   const errorDe = (err: unknown) =>
-    err instanceof CocinaError && err.codigo === 'alergia_sin_confirmar' ? t('alergiaPendiente') : t('errorEstado');
+    err instanceof CocinaError && err.codigo === 'alergia_sin_confirmar'
+      ? t('alergiaPendiente')
+      : err instanceof CocinaError && err.codigo === 'comanda_sin_empezar'
+        ? t('sinEmpezar')
+        : t('errorEstado');
 
   // ── Envío (con cola sin conexión) ────────────────────────────────────────
 
@@ -227,14 +231,15 @@ export function useComandasTurno({
 
   // ── Acciones ────────────────────────────────────────────────────────────
 
-  const cambiarEstado = async (c: KitchenTicket, estado: ColumnaComanda, station: string | null) => {
+  /** Optimista: pinta el estado nuevo y lo revierte si la base lo rechaza. Devuelve si quedó aplicado (o en cola). */
+  const cambiarEstado = async (c: KitchenTicket, estado: ColumnaComanda, station: string | null): Promise<boolean> => {
     const antes = tickets;
     const ahoraIso = new Date().toISOString();
     reemplazar(c.id, (x) => aplicarEstadoLocal(x, estado, station, ahoraIso) as KitchenTicket);
     const p: Pendiente = { tipo: 'estado', ticketId: c.id, estado, station };
     if (!enLinea) {
       encolar(p);
-      return;
+      return true;
     }
     marcarOcupada(c.id, true);
     try {
@@ -249,13 +254,15 @@ export function useComandasTurno({
         });
       }
       void cargar(true);
+      return true;
     } catch (err) {
       if (esFalloDeRed(err)) {
         encolar(p);
-        return;
+        return true;
       }
       setTickets(antes);
       aviso({ titulo: t('errorTitulo'), descripcion: errorDe(err), tono: 'error' });
+      return false;
     } finally {
       marcarOcupada(c.id, false);
     }
@@ -430,6 +437,7 @@ export function useComandasTurno({
     cola,
     pendientesPorComanda,
     recargar: () => cargar(),
+    aviso,
     cambiarEstado,
     marcarItem,
     confirmarAlergia: confirmarAlergiaDe,

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeftRight, Ban, Check, ChefHat, Info, Loader2, RotateCcw, TriangleAlert, Undo2, X } from 'lucide-react';
+import { ArrowLeftRight, Check, ChefHat, Info, Loader2, RotateCcw, TriangleAlert, Undo2, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +17,7 @@ import {
   itemsDeEstacion,
   minutosTranscurridos,
   objetivoDe,
+  puedeMarcarItem,
   type FiltroEstacion,
 } from '@/lib/pos/cocina/tableroComandas';
 import { cantidadComanda, textoCantidadComanda } from '@/components/pos/comandas/TicketCard';
@@ -226,7 +227,8 @@ export function DetalleComandaDialog({
                   {items.map((i) => {
                     const anulado = i.status === 'cancelled' || !!i.cancelled_at;
                     const hecho = !anulado && (i.status === 'ready' || i.status === 'delivered');
-                    const puedeTocar = permisos.operar && !anulado && i.status !== 'delivered' && !(c.has_allergy && !c.allergy_ack_at) && (c.status as string) !== 'cancelled';
+                    // Un paso a la vez: un ítem sin empezar no se marca hecho (saltaba «En preparación»).
+                    const puedeTocar = permisos.operar && !anulado && puedeMarcarItem(i) && !(c.has_allergy && !c.allergy_ack_at) && (c.status as string) !== 'cancelled';
                     const mods = (i.modifiers ?? []).map((m) => m.name);
                     return (
                       <div key={i.id} className="flex items-start gap-2.5">

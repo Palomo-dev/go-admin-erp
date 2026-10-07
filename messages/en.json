@@ -36372,7 +36372,8 @@
       "sinMesero": "The table has no server assigned",
       "errorAvisar": "The server couldn't be notified.",
       "anterioresCerradas": "{n, plural, one {# ticket closed} other {# tickets closed}}",
-      "errorCerrar": "The tickets couldn't be closed."
+      "errorCerrar": "The tickets couldn't be closed.",
+      "sinEmpezar": "Start it first: one step at a time."
     },
     "kds": {
       "titulo": "Kitchen display",
@@ -36407,6 +36408,32 @@
       "entregada": "Delivered",
       "sustantivo": "ticket",
       "sustantivoPlural": "tickets"
+    },
+    "arrastre": {
+      "asa": "Move ticket {titulo}",
+      "avanzar": "Move to “{columna}”",
+      "avanzarA": "Move {titulo} to “{columna}”",
+      "unPaso": "Moves one step only",
+      "soltarPara": "Drop to move to {columna}",
+      "espacioPara": "Space to move to {columna}",
+      "unPasoALaVez": "One step at a time",
+      "sinPermiso": "Requires kitchen management",
+      "mantenPresionado": "Press and hold to move",
+      "mantenPresionadoDetalle": "Release earlier for a normal tap",
+      "movida": "Ticket {titulo} → {columna}",
+      "movidaWeb": "The kitchen and the web order tracking now show it in “{columna}”.",
+      "movidaDesc": "The kitchen now sees it in “{columna}”.",
+      "noMovida": "Ticket {titulo} was not moved",
+      "motivoUnPaso": "From “{desde}” it can only move to “{hacia}”: one step at a time.",
+      "motivoUltimo": "“{desde}” is the last step.",
+      "motivoSinPermiso": "Sending back to “New” requires kitchen management permission.",
+      "instrucciones": "To move a ticket, focus its handle and press Space or Enter. Use the left and right arrows to change column; Space or Enter drops it and Escape cancels.",
+      "anuncioInicio": "Ticket {titulo} picked up. It is in {columna}. Left and right arrows to change column, Space to drop, Escape to cancel.",
+      "anuncioOrigen": "Over {columna}, its current column.",
+      "anuncioSobre": "Over {columna}. Space moves it to {columna}.",
+      "anuncioSobreNoValida": "Over {columna}: not allowed, one step at a time.",
+      "anuncioSoltada": "Ticket {titulo} dropped in {columna}.",
+      "anuncioVuelve": "Ticket {titulo} goes back to {columna}."
     }
   },
   "posAvisosCliente": {

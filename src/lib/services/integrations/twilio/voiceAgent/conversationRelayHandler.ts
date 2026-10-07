@@ -39,6 +39,7 @@ import {
   FRASE_CIERRE_SILENCIO,
   VigilanteSilencio,
 } from '@/lib/services/crm/voiceAgent/inactividad';
+import { AgrupadorTrozos } from '@/lib/services/crm/voiceAgent/trozosVoz';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase(): SupabaseClient {
@@ -127,6 +128,14 @@ export interface ConversationRelaySession {
   generacion: number;
   /** Última interrupción: qué turno cortó y lo que alcanzó a sonar (`utteranceUntilInterrupt`). */
   interrupcion?: { generacion: number; oido: string | null } | null;
+  /**
+   * Cuándo llegó el último prompt final de la persona (ms epoch). Mide lo que
+   * ella oye como espera: desde que Twilio cierra su turno hasta que sale el
+   * primer texto hacia el TTS, incluidas las vueltas de herramientas.
+   */
+  promptRecibidoEn?: number;
+  /** Ya se registró la espera del prompt vigente (se mide una vez por prompt). */
+  esperaRegistrada?: boolean;
 }
 
 const activeSessions = new Map<string, ConversationRelaySession>();
@@ -445,6 +454,7 @@ async function handlePrompt(
   session: ConversationRelaySession,
   message: CRPromptMessage
 ): Promise<void> {
+  const recibidoEn = Date.now();
   // Log raw message para diagnosticar campos de Twilio CR
   console.log(`[CR] [${session.callSid}] Raw prompt:`, JSON.stringify(message));
   const userText = message.voicePrompt || message.voiceInput || message.transcript || message.text || '';
@@ -468,6 +478,8 @@ async function handlePrompt(
 
   // Un prompt nuevo deja sin efecto el turno anterior si aún estaba hablando.
   const generacion = ++session.generacion;
+  session.promptRecibidoEn = recibidoEn;
+  session.esperaRegistrada = false;
 
   // Agregar mensaje del usuario al historial
   session.messages.push({ role: 'user', content: userText });
@@ -520,6 +532,23 @@ async function runModelTurn(
   const indiceRespuesta = session.messages.length;
   const inicio = Date.now();
   let primerTokenMs: number | null = null;
+  let primerTrozoMs: number | null = null;
+  let uso: { promptTokens: number; completionTokens: number; cachedTokens?: number } | null = null;
+  const trozos = new AgrupadorTrozos();
+  /** Manda un trozo a Twilio y anota cuándo salió el primero. */
+  const enviar = (texto: string, last: boolean) => {
+    if (primerTrozoMs === null && texto) {
+      primerTrozoMs = Date.now() - inicio;
+      if (!session.esperaRegistrada && session.promptRecibidoEn) {
+        session.esperaRegistrada = true;
+        console.log(
+          `[CR] [${session.callSid}] Espera percibida: ${Date.now() - session.promptRecibidoEn} ms ` +
+            'desde el prompt final hasta el primer texto enviado a Twilio'
+        );
+      }
+    }
+    sendText(ws, texto, last);
+  };
 
   // Modelo del agente (ai_settings/agente → entorno → default, resuelto en agentRuntime).
   const model = session.runtime?.model || process.env.OPENAI_CHAT_MODEL || 'gpt-4o';
@@ -535,16 +564,19 @@ async function runModelTurn(
       // El adaptador solo la envía si el modelo la admite.
       temperature: session.runtime?.temperature ?? 0.7,
       logTag: `[CR] [${session.callSid}]`,
+      // Mismo agente → mismo servidor de caché: el prefijo estable del prompt
+      // (guardarraíles, instrucciones, herramientas) se lee de caché.
+      promptCacheKey: `voz:${session.orgId}:${session.runtime?.agent.id ?? 'generico'}`,
     });
     if (stream.model !== model) {
       console.warn(`[CR] [${session.callSid}] Turno respondido con el modelo de respaldo ${stream.model}`);
     }
 
-    // Latencia (2026-10-07): cada token sale hacia ConversationRelay en cuanto
-    // llega (`last:false`), como recomienda Twilio; él agrupa para el TTS.
-    // Antes se esperaba a cerrar una cláusula (`[.!?,:;]` + espacio): en una
-    // pregunta sin comas («¿Tiene dos minutos para …?») la voz no arrancaba
-    // hasta tener la frase entera.
+    // Latencia (2026-10-07): el texto sale hacia ConversationRelay mientras el
+    // modelo genera (`last:false`), sin esperar a la frase, pero en trozos de
+    // 2–3 palabras COMPLETAS (`AgrupadorTrozos`): token a token la voz sonaba
+    // entrecortada. Antes de 435052e5 se esperaba a cerrar una cláusula y en
+    // una pregunta sin comas la voz no arrancaba hasta tener la frase entera.
     for await (const chunk of stream.chunks) {
       if (session.generacion !== generacion) {
         // Interrumpido o reemplazado por un prompt nuevo: se deja de hablar.
@@ -554,20 +586,30 @@ async function runModelTurn(
       if (chunk.delta) {
         if (primerTokenMs === null) primerTokenMs = Date.now() - inicio;
         fullResponse += chunk.delta;
-        sendText(ws, chunk.delta, false);
-        sentAny = true;
+        const trozo = trozos.agregar(chunk.delta);
+        if (trozo) {
+          enviar(trozo, false);
+          sentAny = true;
+        }
       }
       if (chunk.toolCall) toolCalls.push(chunk.toolCall);
+      if (chunk.usage) uso = chunk.usage;
     }
 
-    // Cierre de la frase: si ya se mandaron trozos, Twilio necesita `last: true`
-    // aunque sea vacío; si no, la frase queda abierta.
-    if (sentAny && !interrumpido) {
-      sendText(ws, '', true);
+    // Cierre de la frase con lo que quede en el agrupador. Si ya se mandaron
+    // trozos, Twilio necesita `last: true` aunque el resto sea vacío; si no, la
+    // frase queda abierta.
+    if (!interrumpido) {
+      const resto = trozos.vaciar();
+      if (sentAny || resto) enviar(resto, true);
     }
     console.log(
       `[CR] [${session.callSid}] Latencia del modelo: primer token ${primerTokenMs ?? 'n/d'} ms, ` +
-        `respuesta completa ${Date.now() - inicio} ms${interrumpido ? ' (interrumpido)' : ''}`
+        `primer trozo a Twilio ${primerTrozoMs ?? 'n/d'} ms, ` +
+        `respuesta completa ${Date.now() - inicio} ms${interrumpido ? ' (interrumpido)' : ''}` +
+        (uso
+          ? ` · tokens entrada ${uso.promptTokens} (en caché ${uso.cachedTokens ?? 0}), salida ${uso.completionTokens}`
+          : '')
     );
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);

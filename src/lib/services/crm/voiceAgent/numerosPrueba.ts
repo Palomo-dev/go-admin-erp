@@ -2,17 +2,23 @@
  * Números de prueba internos del agente de voz (2026-09-30).
  *
  * Un número de prueba es un número del PROPIO equipo de la organización, con su
- * consentimiento, que se usa para probar el agente. Lo ÚNICO que exime es el
- * tope semanal de la Ley 2300 de 2023 (`evaluarTopeSemanal`): sin la exención,
- * quien prueba el agente con su celular queda bloqueado hasta el lunes.
+ * consentimiento, que se usa para probar el agente. Exime de DOS topes:
+ *  - el tope semanal de la Ley 2300 de 2023 (`evaluarTopeSemanal`): sin la
+ *    exención, quien prueba el agente con su celular queda bloqueado hasta el
+ *    lunes. Se aplica en `evaluarLey2300Cliente` (`cumplimiento.ts`), por donde
+ *    pasan el despacho de campañas y el puntual;
+ *  - el tope de 2 intentos por cliente, agente y día (2026-10-07, pedido del
+ *    dueño de la org 125: ensayar sin esperar al día siguiente). Se aplica en
+ *    la compuerta de la base `crm_voice_call_claim_motivo` (migración
+ *    20261007175412_voz_numeros_prueba_sin_tope_cliente_dia) y, con el mismo
+ *    criterio, en la comprobación previa de `dispatchAgentCall`
+ *    (`exentoTopeClienteDia`, también en `cumplimiento.ts`).
  *
  * NO exime de: la franja horaria legal (L-V 7–19, sáb 8–15, nunca domingos ni
  * festivos), la lista de excluidos de la organización (`crm_excluded_numbers`),
  * la baja voluntaria (`fn_can_contact`), los topes diarios/horarios
- * del agente y de la campaña, el tope diario por cliente, la concurrencia ni
- * los créditos. La campaña no exige el RNE. La exención se aplica en UN punto:
- * `evaluarLey2300Cliente`
- * (`cumplimiento.ts`), por donde pasan el despacho de campañas y el puntual.
+ * del agente y de la campaña, la concurrencia ni los créditos. La campaña no
+ * exige el RNE.
  *
  * Datos en `crm_voice_test_numbers` (migración 20260930235500_voz_numeros_prueba):
  * RLS por organización; solo sus administradores agregan y dan de baja, siempre

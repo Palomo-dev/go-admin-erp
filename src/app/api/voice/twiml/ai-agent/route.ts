@@ -87,6 +87,7 @@ import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { ESTADOS_VIVOS_VAC } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { cerrarLlamadaPorAmd } from '@/lib/services/crm/voiceAgent/cierreAmd';
 import { resolveTtsFallback, TTS_FALLBACK_PARAM } from '@/lib/services/crm/voiceAgent/ttsFallback';
+import { resolverFinDeTurno } from '@/lib/services/crm/voiceAgent/finDeTurno';
 
 export const runtime = 'nodejs';
 
@@ -394,15 +395,21 @@ export async function POST(request: Request) {
     //    (identificación de la Ley 2300) suena completa y, con
     //    `reportInputDuringAgentSpeech="none"`, lo dicho encima no se convierte
     //    en un turno. Las respuestas del modelo siguen siendo interrumpibles.
+    // Fin de turno (2026-10-07): `nova-3-general` por defecto, como antes;
+    // Flux (fin de turno por contenido) si el agente o el entorno lo activan.
+    // Ver `voiceAgent/finDeTurno.ts`.
+    const finDeTurno = resolverFinDeTurno(config.agent, language);
     const relayAttrs =
       attr('url', wsUrl) +
       attr('language', language) +
       attr('ttsLanguage', language) +
-      attr('transcriptionLanguage', language) +
+      attr('transcriptionLanguage', finDeTurno?.transcriptionLanguage ?? language) +
       attr('ttsProvider', config.voice.ttsProvider) +
       attr('voice', config.voice.voice) +
-      attr('transcriptionProvider', config.agent.stt_provider === 'deepgram' ? 'Deepgram' : undefined) +
-      attr('speechModel', config.agent.stt_provider === 'deepgram' ? 'nova-3-general' : undefined) +
+      attr('transcriptionProvider', finDeTurno ? 'Deepgram' : undefined) +
+      attr('speechModel', finDeTurno?.speechModel) +
+      attr('eotThreshold', finDeTurno?.eotThreshold) +
+      attr('speechTimeout', finDeTurno?.speechTimeout) +
       attr('welcomeGreeting', config.greeting) +
       attr('welcomeGreetingInterruptible', 'none') +
       attr('interruptible', 'any') +

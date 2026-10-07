@@ -14,13 +14,16 @@ import {
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KitchenTicket } from '@/lib/services/kitchenService';
 import {
+  alergiaPendiente,
   armarTablero,
   aspectoEstacion,
   numerarRondas,
   type ColumnaComanda,
+  type Movimiento,
 } from '@/lib/pos/cocina/tableroComandas';
 import { ComandaTarjeta, useTituloComanda, type AccionTarjeta } from './ComandaTarjeta';
 import { ConfirmarAlergiaDialog } from './DialogosComanda';
+import { ArrastreComandas, AsaEstatica, ColumnaSoltable, ComandaArrastrable, useAvisoRechazo } from './ArrastreComandas';
 import { EstacionChip, useNombreEstacion } from './estacionUi';
 import { inicioTurno, type ComandasTurno } from './useComandasTurno';
 
@@ -118,6 +121,22 @@ export function PantallaCocina({
     }
     void turno.cambiarEstado(c, accion, estacion);
   };
+  // Arrastrar entre columnas: la misma acción que la flecha y el botón (un paso).
+  const ta = useTranslations('posComandasV2.arrastre');
+  const motivoRechazo = useAvisoRechazo();
+  const nombreColumna = (col: ColumnaComanda) => tc(`tablero.${col}`);
+  const moverPorArrastre = (c: KitchenTicket, mov: Extract<Movimiento, { ok: true }>) => {
+    if (mov.sentido === 'retroceder') {
+      void turno.devolver(c, estacion);
+      return;
+    }
+    if (alergiaPendiente(c)) {
+      setAlergia(c);
+      return;
+    }
+    onAccion(c, mov.estado as AccionTarjeta);
+  };
+
   const deshacerEntrega = (c: KitchenTicket) => {
     window.clearTimeout(temporizadores.current[c.id]);
     delete temporizadores.current[c.id];
@@ -231,13 +250,44 @@ export function PantallaCocina({
           />
         </div>
       ) : (
+        <ArrastreComandas
+          permisos={permisos}
+          titulo={tituloKds}
+          nombreColumna={nombreColumna}
+          onMover={moverPorArrastre}
+          onRechazo={(c, desde, _hacia, motivo) =>
+            turno.aviso({ titulo: ta('noMovida', { titulo: tituloKds(c) }), descripcion: motivoRechazo(desde, motivo, nombreColumna), tono: 'advertencia' })
+          }
+          renderLevantada={({ comanda, desde }) => (
+            <ComandaTarjeta
+              comanda={comanda}
+              columna={desde}
+              estacion={estacion}
+              densidad="kds"
+              ahora={turno.ahora}
+              timezone={timezone}
+              ronda={rondas.get(comanda.id) ?? null}
+              permisos={permisos}
+              asa={<AsaEstatica />}
+              onAccion={() => undefined}
+              onConfirmarAlergia={() => undefined}
+            />
+          )}
+        >
         <div className="grid min-h-0 flex-1 grid-cols-3 gap-4 p-4">
           {COLUMNAS_KDS.map((col) => (
-            <section key={col} aria-label={tc(`kds.${col}`)} className="flex min-h-0 flex-col rounded-xl bg-subtle">
-              <h2 className="flex items-baseline gap-2 px-3 pb-2 pt-3 text-[15px] font-semibold">
-                {tc(`kds.${col}`)}
-                <span className="font-medium text-fg-muted">{tablero.columnas[col].length}</span>
-              </h2>
+            <ColumnaSoltable
+              key={col}
+              columna={col}
+              nombre={tc(`kds.${col}`)}
+              className="flex min-h-0 flex-col rounded-xl bg-subtle"
+              cabecera={
+                <h2 className="flex items-baseline gap-2 px-3 pb-2 pt-3 text-[15px] font-semibold">
+                  {tc(`kds.${col}`)}
+                  <span className="font-medium text-fg-muted">{tablero.columnas[col].length}</span>
+                </h2>
+              }
+            >
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2 pb-3">
                 {tablero.columnas[col].map((c) => porEntregar[c.id] ? (
                   <div key={c.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
@@ -256,8 +306,16 @@ export function PantallaCocina({
                     </button>
                   </div>
                 ) : (
-                  <ComandaTarjeta
+                  <ComandaArrastrable
                     key={c.id}
+                    comanda={c}
+                    columna={col}
+                    titulo={tituloKds(c)}
+                    deshabilitada={!permisos.operar || c.ticket_type === 'adjustment' || turno.ocupadas.has(c.id)}
+                  >
+                  {(asa) => (
+                  <ComandaTarjeta
+                    asa={asa}
                     comanda={c}
                     columna={col}
                     estacion={estacion}
@@ -273,12 +331,15 @@ export function PantallaCocina({
                     onConfirmarAlergia={setAlergia}
                     onItem={(cc, item, hecho) => void turno.marcarItem(cc, item, hecho)}
                   />
+                  )}
+                  </ComandaArrastrable>
                 ))}
                 {col === 'ready' && <p className="px-1 text-xs text-fg-muted">{t('entregadasSeOcultan')}</p>}
               </div>
-            </section>
+            </ColumnaSoltable>
           ))}
         </div>
+        </ArrastreComandas>
       )}
 
       <ConfirmarAlergiaDialog

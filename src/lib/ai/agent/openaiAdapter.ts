@@ -97,7 +97,8 @@ export interface AdapterChunk {
   delta?: string;
   /** Llamada a herramienta completa (solo cuando ya tiene todos sus argumentos). */
   toolCall?: { id: string; name: string; arguments: string };
-  usage?: { promptTokens: number; completionTokens: number };
+  /** `cachedTokens`: parte de `promptTokens` servida desde la caché de prompts de OpenAI. */
+  usage?: { promptTokens: number; completionTokens: number; cachedTokens?: number };
 }
 
 export interface AdapterRequest {
@@ -112,6 +113,13 @@ export interface AdapterRequest {
    * junto al resto de su traza en Railway.
    */
   logTag?: string;
+  /**
+   * `prompt_cache_key` de OpenAI: agrupa en el mismo servidor de caché las
+   * peticiones que comparten prefijo (p. ej. todas las de un agente de voz),
+   * para que el prefijo estable se lea de caché. Opcional; sin él OpenAI
+   * enruta por el prefijo, como siempre.
+   */
+  promptCacheKey?: string;
 }
 
 export interface AdapterStream {
@@ -151,6 +159,7 @@ async function* chatCompletionsStream(req: AdapterRequest): AsyncGenerator<Adapt
     max_tokens: req.maxTokens,
     stream: true,
     stream_options: { include_usage: true },
+    ...(req.promptCacheKey ? { prompt_cache_key: req.promptCacheKey } : {}),
     ...(req.tools.length > 0
       ? {
           tools: req.tools.map((t) => ({
@@ -171,6 +180,7 @@ async function* chatCompletionsStream(req: AdapterRequest): AsyncGenerator<Adapt
         usage: {
           promptTokens: chunk.usage.prompt_tokens ?? 0,
           completionTokens: chunk.usage.completion_tokens ?? 0,
+          cachedTokens: chunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
         },
       };
     }
@@ -251,6 +261,7 @@ async function* responsesStream(req: AdapterRequest): AsyncGenerator<AdapterChun
     // Datos de clientes: no se guardan en OpenAI (ANEXO-B §4.2).
     store: false,
     stream: true,
+    ...(req.promptCacheKey ? { prompt_cache_key: req.promptCacheKey } : {}),
     ...(req.tools.length > 0
       ? {
           tools: req.tools.map((t) => ({
@@ -290,13 +301,14 @@ async function* responsesStream(req: AdapterRequest): AsyncGenerator<AdapterChun
 
     if (type === 'response.completed') {
       const usage = (event.response as Record<string, unknown> | undefined)?.usage as
-        | { input_tokens?: number; output_tokens?: number }
+        | { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number } }
         | undefined;
       if (usage) {
         yield {
           usage: {
             promptTokens: usage.input_tokens ?? 0,
             completionTokens: usage.output_tokens ?? 0,
+            cachedTokens: usage.input_tokens_details?.cached_tokens ?? 0,
           },
         };
       }

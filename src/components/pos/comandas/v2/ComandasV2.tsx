@@ -10,16 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { KitchenTicket } from '@/lib/services/kitchenService';
 import {
   agruparPorMesa,
+  alergiaPendiente,
   armarTablero,
   aspectoEstacion,
   COLUMNAS,
   numerarRondas,
   type ColumnaComanda,
   type FiltroEstacion,
+  type Movimiento,
 } from '@/lib/pos/cocina/tableroComandas';
 import { ESTACIONES_COCINA } from '@/lib/pos/estacionEfectiva';
 import { leerEventosComanda, type EventoComanda } from '@/components/pos/cocina/cocinaCliente';
-import { ComandaTarjeta, FilaEntregada, type AccionTarjeta } from './ComandaTarjeta';
+import { ComandaTarjeta, FilaEntregada, useTituloComanda, type AccionTarjeta } from './ComandaTarjeta';
+import { ArrastreComandas, AsaEstatica, ColumnaSoltable, ComandaArrastrable, useAvisoRechazo } from './ArrastreComandas';
 import { GrupoMesaTarjeta } from './GrupoMesaTarjeta';
 import {
   CancelarComandaDialog,
@@ -105,10 +108,39 @@ export function ComandasV2({
     };
   }, [detalle, detalleVivo?.status, detalleVivo?.updated_at]);
 
-  const onAccion = (c: KitchenTicket, accion: AccionTarjeta) => {
-    if (accion === 'recibido') return;
-    void turno.cambiarEstado(c, accion, accion === 'delivered' || estacion === 'todas' ? null : estacion);
+  /** La acción del botón principal y de la flecha: un solo paso. */
+  const onAccion = (c: KitchenTicket, accion: AccionTarjeta): Promise<boolean> => {
+    if (accion === 'recibido') return Promise.resolve(false);
+    return turno.cambiarEstado(c, accion, accion === 'delivered' || estacion === 'todas' ? null : estacion);
   };
+
+  // ── Arrastrar entre columnas (Figma 2117:209496) ──
+  const tituloDe = useTituloComanda();
+  const ta = useTranslations('posComandasV2.arrastre');
+  const motivoRechazo = useAvisoRechazo();
+  const nombreColumna = (col: ColumnaComanda) => t(`columnas.tablero.${col}`);
+  /** Soltar válido = la misma acción que la flecha (avanzar) o que «Devolver a Nuevas» (retroceder, con su confirmación). */
+  const moverPorArrastre = async (c: KitchenTicket, mov: Extract<Movimiento, { ok: true }>) => {
+    if (mov.sentido === 'retroceder') {
+      setADevolver(c);
+      return;
+    }
+    if (alergiaPendiente(c)) {
+      setAlergia(c);
+      return;
+    }
+    const ok = await onAccion(c, mov.estado as AccionTarjeta);
+    // «Lista» ya tiene su propio aviso (con «Avisar al mesero»).
+    if (ok && mov.estado !== 'ready') {
+      turno.aviso({
+        titulo: ta('movida', { titulo: tituloDe(c), columna: nombreColumna(mov.estado) }),
+        descripcion: c.pedido_web ? ta('movidaWeb', { columna: nombreColumna(mov.estado) }) : ta('movidaDesc', { columna: nombreColumna(mov.estado) }),
+        tono: 'exito',
+      });
+    }
+  };
+  const rechazarArrastre = (c: KitchenTicket, desde: ColumnaComanda, _hacia: ColumnaComanda, motivo: Parameters<typeof motivoRechazo>[1]) =>
+    turno.aviso({ titulo: ta('noMovida', { titulo: tituloDe(c) }), descripcion: motivoRechazo(desde, motivo, nombreColumna), tono: 'advertencia' });
 
   const subtitulo = [
     sedeNombre,
@@ -131,9 +163,10 @@ export function ComandasV2({
     { id: 'sonido', etiqueta: sonido ? t('cabecera.silenciar') : t('cabecera.activarSonido'), icono: sonido ? VolumeX : Volume2, onSelect: onSonido },
   ];
 
-  const tarjeta = (c: KitchenTicket, col: ColumnaComanda) => (
+  const tarjeta = (c: KitchenTicket, col: ColumnaComanda, asa?: React.ReactNode) => (
     <ComandaTarjeta
       key={c.id}
+      asa={asa}
       comanda={c}
       columna={col}
       estacion={estacion}
@@ -168,7 +201,7 @@ export function ComandasV2({
     </div>
   );
 
-  const contenidoColumna = (col: ColumnaComanda) =>
+  const contenidoColumna = (col: ColumnaComanda, arrastrable = false) =>
     col === 'delivered' ? (
       <div className="space-y-2">
         {tablero.columnas.delivered.map((c) => (
@@ -179,7 +212,23 @@ export function ComandasV2({
         </button>
       </div>
     ) : (
-      <div className="space-y-3">{tablero.columnas[col].map((c) => tarjeta(c, col))}</div>
+      <div className="space-y-3">
+        {tablero.columnas[col].map((c) =>
+          arrastrable ? (
+            <ComandaArrastrable
+              key={c.id}
+              comanda={c}
+              columna={col}
+              titulo={tituloDe(c)}
+              deshabilitada={!permisos.operar || c.ticket_type === 'adjustment' || turno.ocupadas.has(c.id)}
+            >
+              {(asa) => tarjeta(c, col, asa)}
+            </ComandaArrastrable>
+          ) : (
+            tarjeta(c, col)
+          ),
+        )}
+      </div>
     );
 
   return (
@@ -356,14 +405,30 @@ export function ComandasV2({
                 />
                 {contenidoColumna(columnaMovil)}
               </div>
-              <div className="hidden min-h-0 gap-3 lg:grid lg:grid-cols-4">
-                {COLUMNAS.map((col) => (
-                  <section key={col} aria-label={t(`columnas.tablero.${col}`)} className="flex max-h-[calc(100dvh-260px)] min-h-[560px] flex-col rounded-xl bg-subtle p-2 pt-3">
-                    {cabeceraColumna(col)}
-                    <div className="min-h-0 flex-1 overflow-y-auto">{contenidoColumna(col)}</div>
-                  </section>
-                ))}
-              </div>
+              <ArrastreComandas
+                permisos={permisos}
+                titulo={tituloDe}
+                nombreColumna={nombreColumna}
+                onMover={(c, mov) => void moverPorArrastre(c, mov)}
+                onRechazo={rechazarArrastre}
+                renderLevantada={({ comanda, desde }) => (
+                  tarjeta(comanda, desde, <AsaEstatica />)
+                )}
+              >
+                <div className="hidden min-h-0 gap-3 lg:grid lg:grid-cols-4">
+                  {COLUMNAS.map((col) => (
+                    <ColumnaSoltable
+                      key={col}
+                      columna={col}
+                      nombre={nombreColumna(col)}
+                      cabecera={cabeceraColumna(col)}
+                      className="flex max-h-[calc(100dvh-260px)] min-h-[560px] flex-col rounded-xl bg-subtle p-2 pt-3"
+                    >
+                      <div className="min-h-0 flex-1 overflow-y-auto">{contenidoColumna(col, true)}</div>
+                    </ColumnaSoltable>
+                  ))}
+                </div>
+              </ArrastreComandas>
             </>
           )}
         </>

@@ -9,7 +9,8 @@
  *   150 ms y sin reenviar lo mismo. En V2, `goadmin:settings` lleva además `tema`
  *   (`temaParaLienzo`): fuentes, redondeo, botón y movimiento del estilo general, que el sitio
  *   aplica con el mismo código que al publicar.
- * - `goadmin:select` / `goadmin:scroll` para resaltar la sección elegida.
+ * - `goadmin:select` / `goadmin:scroll` para resaltar la sección elegida. En la Carta QR por pasos
+ *   (`pasoLienzo.ts`), `goadmin:paso` en vez de `goadmin:scroll`: el sitio muestra el paso de esa sección.
  * - Escucha `goadmin:select` (clic en una sección o zona del lienzo), `goadmin:accion` y
  *   `goadmin:ready` (el puente del sitio acaba de montar: se le reenvía todo).
  *
@@ -21,6 +22,7 @@ import type { WebsitePageSection } from '@/lib/services/websitePageBuilderServic
 import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 import { origenDe } from '@/components/sitio-web/ui/dispositivos';
 import type { TemaLienzo } from '@/lib/website/v2/tokensEstilo';
+import { lienzoPorPasos, mensajesSeleccion } from './pasoLienzo';
 
 export interface DetalleClic {
   enlace: boolean;
@@ -43,14 +45,19 @@ export interface OpcionesPuente {
   onQuitar?: (id: string) => void;
   /** Cambios de la carta de una sede sin guardar (precio web, agotado, oculto): `goadmin:carta-sede`. */
   cartaSede?: { branchId: number; cambios: unknown[] } | null;
+  /** Tipo y slug de la página: la Carta QR va por pasos (`goadmin:paso`). Ausente = como siempre. */
+  pagina?: { tipo?: string | null; slug?: string | null } | null;
 }
 
-export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, avisoSeccion, onClic, onQuitar, cartaSede }: OpcionesPuente) {
+export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, avisoSeccion, onClic, onQuitar, cartaSede, pagina }: OpcionesPuente) {
   const destino = origenDe(url);
   const ultimoSecciones = useRef('');
   const ultimoAjustes = useRef('');
   const seleccionRef = useRef(seleccion);
   seleccionRef.current = seleccion;
+  const porPasos = lienzoPorPasos(secciones, pagina);
+  const porPasosRef = useRef(porPasos);
+  porPasosRef.current = porPasos;
 
   const enviar = useCallback(
     (mensaje: unknown) => {
@@ -127,8 +134,7 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
   }, [cartaSede, enviar]);
 
   useEffect(() => {
-    enviar({ type: 'goadmin:select', sectionId: seleccion ?? null });
-    if (seleccion) enviar({ type: 'goadmin:scroll', sectionId: seleccion });
+    for (const m of mensajesSeleccion(seleccion, porPasosRef.current)) enviar(m);
   }, [seleccion, enviar]);
 
   /** Reenvía todo al lienzo (secciones, ajustes y selección con su scroll). */
@@ -137,9 +143,7 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
     ultimoAjustes.current = '';
     enviarSecciones();
     enviarAjustes();
-    const actual = seleccionRef.current;
-    enviar({ type: 'goadmin:select', sectionId: actual ?? null });
-    if (actual) enviar({ type: 'goadmin:scroll', sectionId: actual });
+    for (const m of mensajesSeleccion(seleccionRef.current, porPasosRef.current)) enviar(m);
   }, [enviarSecciones, enviarAjustes, enviar]);
   const reenviarRef = useRef(reenviarTodo);
   reenviarRef.current = reenviarTodo;

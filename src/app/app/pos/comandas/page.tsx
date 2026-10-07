@@ -36,7 +36,8 @@ function leerSonido(): boolean {
 function PaginaComandas() {
   const router = useRouter();
   const pathname = usePathname() ?? '/app/pos/comandas';
-  const params = useSearchParams() ?? new URLSearchParams();
+  const busqueda = useSearchParams();
+  const params = React.useMemo(() => busqueda ?? new URLSearchParams(), [busqueda]);
   const { toast } = useToast();
   const t = useTranslations('posComandasV2');
   const { organization } = useOrganization();
@@ -75,11 +76,11 @@ function PaginaComandas() {
   );
 
   const aviso = React.useCallback(
-    (a: { titulo: string; descripcion?: string; tono?: 'error' | 'ok'; accion?: { etiqueta: string; onClick: () => void } }) => {
+    (a: { titulo: string; descripcion?: string; tono?: 'error' | 'ok' | 'exito' | 'advertencia'; accion?: { etiqueta: string; onClick: () => void } }) => {
       toast({
         title: a.titulo,
         description: a.descripcion,
-        variant: a.tono === 'error' ? 'destructive' : undefined,
+        variant: a.tono === 'error' ? 'destructive' : a.tono === 'exito' ? 'success' : a.tono === 'advertencia' ? 'warning' : undefined,
         action: a.accion ? (
           <ToastAction altText={a.accion.etiqueta} onClick={a.accion.onClick}>
             {a.accion.etiqueta}

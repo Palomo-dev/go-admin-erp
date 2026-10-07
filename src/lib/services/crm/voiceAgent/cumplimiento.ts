@@ -84,6 +84,30 @@ export async function evaluarLey2300Cliente(
   });
 }
 
+/**
+ * Exención del tope de 2 intentos por cliente, agente y día (2026-10-07,
+ * migración 20261007175412_voz_numeros_prueba_sin_tope_cliente_dia): los
+ * números de prueba de la organización no lo tienen. La compuerta de la base
+ * (`crm_voice_call_claim_motivo`) ya lo aplica; esto es el mismo criterio
+ * para la comprobación previa del despacho puntual. Vive aquí, junto a la
+ * exención semanal, para que la exención siga en un solo módulo. Un fallo de
+ * lectura cuenta como «no exento» (falla cerrado: se aplica el tope).
+ */
+export async function exentoTopeClienteDia(supabase: SupabaseClient, orgId: number, customerId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('phone')
+    .eq('id', customerId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (error) {
+    console.warn('[voz] no se pudo leer el teléfono del cliente; se aplica el tope por cliente', { org: orgId, error: error.message });
+    return false;
+  }
+  const phone = (data as { phone?: string | null } | null)?.phone ?? null;
+  return esNumeroPrueba(supabase, orgId, normalizarNumeroRne(phone));
+}
+
 /** ¿El número está en la lista de excluidos de la organización (RNE o manual)? */
 export async function numeroExcluido(supabase: SupabaseClient, orgId: number, telefonoE164: string): Promise<boolean> {
   const { data, error } = await supabase

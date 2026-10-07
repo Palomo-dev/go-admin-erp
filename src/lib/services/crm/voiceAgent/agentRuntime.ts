@@ -22,7 +22,7 @@ import {
   type ChatToolDefinition,
 } from '@/lib/services/crm/voiceAgentTools';
 import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
-import { loadOrgModelSettings, resolveModel } from '@/lib/ai/agent/modelRouter';
+import { loadOrgModelSettings, resolveVoiceModel } from '@/lib/ai/agent/modelRouter';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { politicaDatosValida, zonaHorariaOrganizacion } from './cumplimiento';
 
@@ -407,11 +407,12 @@ export function herramientasPermitidasVoz(
 }
 
 /**
- * Modelo de la llamada: el del agente; si no tiene, el de conversación de la
- * organización (ai_settings → entorno → default de modelRouter). Nunca cableado.
+ * Modelo de la llamada: el del agente (`voice_agents.llm_model`); si no tiene,
+ * el de voz de la organización (`resolveVoiceModel`: ai_assistant_settings /
+ * ai_settings → entorno → default de modelRouter). Nunca cableado.
  */
 export async function modeloVozDelAgente(supabase: SupabaseClient, orgId: number, llmModel: string | null | undefined): Promise<string> {
-  return llmModel?.trim() || resolveModel('conversation', await loadOrgModelSettings(supabase, orgId)).model;
+  return llmModel?.trim() || resolveVoiceModel(await loadOrgModelSettings(supabase, orgId)).model;
 }
 
 /** Valor por defecto de `max_tokens` de cada turno hablado (frases cortas). */
@@ -443,27 +444,17 @@ export function buildSystemPrompt(p: {
   /** Base de conocimiento de la organización (la misma del chat con IA). */
   conocimiento?: FragmentoConocimiento[];
 }): string {
+  // Orden (2026-10-07, latencia): lo ESTABLE primero y lo que cambia en cada
+  // llamada al final. OpenAI reutiliza en caché el prefijo idéntico más largo
+  // de la petición (≥ 1024 tokens); antes la fecha y la hora —que cambian cada
+  // minuto— iban en el segundo bloque y partían el prefijo en todas las
+  // llamadas. Los guardarraíles obligatorios siguen siendo lo primero.
   const parts: string[] = [];
 
   parts.push(mandatoryGuardrails(p.organizationName, p.identityDisclosure));
 
   if (p.contexto) {
-    const { ahora, zonaHoraria, politicaDatosUrl } = p.contexto;
-    const hoy = formatDateTimeInTz(ahora, zonaHoraria, {
-      locale: 'es-CO',
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    parts.push(
-      `FECHA Y HORA ACTUALES: ${hoy} (zona horaria ${zonaHoraria}). Úsalas para calcular cualquier fecha ` +
-        '(«mañana», «el jueves»). Al agendar con book_meeting envía start_at en ISO 8601 CON el desfase de esa ' +
-        'zona y confirma antes el día y la hora en voz alta. Nunca propongas domingos ni festivos.'
-    );
+    const { politicaDatosUrl } = p.contexto;
     parts.push(
       politicaDatosUrl
         ? `TRATAMIENTO DE DATOS: si el cliente pregunta cómo obtuvimos su número o cómo tratamos sus datos, dile ` +
@@ -475,39 +466,8 @@ export function buildSystemPrompt(p: {
     );
   }
 
-  if (p.recordingEnabled) {
-    parts.push(
-      `AVISO DE GRABACIÓN (obligatorio, ya se reprodujo al contestar): "${p.consentMessage}" ` +
-        'Si el cliente pregunta, confirmas que la llamada se está grabando y que puede pedir que se detenga.'
-    );
-  }
-
   parts.push(`Eres "${p.agent.name}", el asistente de voz de ${p.organizationName}.`);
-  if (p.customerName) parts.push(`Hablas con ${p.customerName}.`);
-
-  // Configuración POR ETAPA: esto es lo que cambia el comportamiento de la llamada.
-  if (p.stage) {
-    parts.push(
-      `OBJETIVO DE ESTA LLAMADA (configurado por el dueño para la etapa ` +
-        `${p.stage.stageName ? `«${p.stage.stageName}»` : 'actual'} del embudo): ${p.stage.objectiveLabel}.`
-    );
-    parts.push(p.stage.playbook);
-    if (p.stage.productName) {
-      const precio = p.stage.productPrice != null ? ` Precio de referencia: ${p.stage.productPrice}.` : '';
-      parts.push(`Producto a ofrecer: ${p.stage.productName}.${precio}`);
-    }
-    const offerText = describeOffer(p.stage.offer);
-    if (offerText) parts.push(`Condiciones de la oferta: ${offerText}`);
-    if (p.stage.objectivePrompt) parts.push(`Instrucciones específicas de la etapa: ${p.stage.objectivePrompt}`);
-    if (p.stage.actionPolicy === 'suggest') {
-      parts.push(
-        'Política de acciones: SUGERIR. Puedes registrar lo acordado, pero los cambios en el CRM quedan ' +
-          'como propuesta para que una persona los confirme. Nunca digas que ya se aplicó un cambio.'
-      );
-    }
-  } else {
-    parts.push(`Propósito del agente: ${p.agent.purpose_type}.`);
-  }
+  if (!p.stage) parts.push(`Propósito del agente: ${p.agent.purpose_type}.`);
 
   // Prompt de la organización: va DESPUÉS de los guardarraíles, nunca los sustituye.
   if (p.agent.system_prompt?.trim()) {
@@ -534,6 +494,58 @@ export function buildSystemPrompt(p: {
     `La llamada no debe pasar de ${p.agent.max_turns ?? 20} turnos. Si te acercas al límite, ` +
       'resume lo acordado, deja el siguiente paso registrado y despídete.'
   );
+
+  // ── Desde aquí, lo que depende de la etapa o de ESTA llamada ──
+
+  // Configuración POR ETAPA: esto es lo que cambia el comportamiento de la llamada.
+  if (p.stage) {
+    parts.push(
+      `OBJETIVO DE ESTA LLAMADA (configurado por el dueño para la etapa ` +
+        `${p.stage.stageName ? `«${p.stage.stageName}»` : 'actual'} del embudo): ${p.stage.objectiveLabel}.`
+    );
+    parts.push(p.stage.playbook);
+    if (p.stage.productName) {
+      const precio = p.stage.productPrice != null ? ` Precio de referencia: ${p.stage.productPrice}.` : '';
+      parts.push(`Producto a ofrecer: ${p.stage.productName}.${precio}`);
+    }
+    const offerText = describeOffer(p.stage.offer);
+    if (offerText) parts.push(`Condiciones de la oferta: ${offerText}`);
+    if (p.stage.objectivePrompt) parts.push(`Instrucciones específicas de la etapa: ${p.stage.objectivePrompt}`);
+    if (p.stage.actionPolicy === 'suggest') {
+      parts.push(
+        'Política de acciones: SUGERIR. Puedes registrar lo acordado, pero los cambios en el CRM quedan ' +
+          'como propuesta para que una persona los confirme. Nunca digas que ya se aplicó un cambio.'
+      );
+    }
+  }
+
+  if (p.recordingEnabled) {
+    parts.push(
+      `AVISO DE GRABACIÓN (obligatorio, ya se reprodujo al contestar): "${p.consentMessage}" ` +
+        'Si el cliente pregunta, confirmas que la llamada se está grabando y que puede pedir que se detenga.'
+    );
+  }
+
+  if (p.customerName) parts.push(`Hablas con ${p.customerName}.`);
+
+  if (p.contexto) {
+    const { ahora, zonaHoraria } = p.contexto;
+    const hoy = formatDateTimeInTz(ahora, zonaHoraria, {
+      locale: 'es-CO',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    parts.push(
+      `FECHA Y HORA ACTUALES: ${hoy} (zona horaria ${zonaHoraria}). Úsalas para calcular cualquier fecha ` +
+        '(«mañana», «el jueves»). Al agendar con book_meeting envía start_at en ISO 8601 CON el desfase de esa ' +
+        'zona y confirma antes el día y la hora en voz alta. Nunca propongas domingos ni festivos.'
+    );
+  }
 
   return parts.join('\n\n');
 }

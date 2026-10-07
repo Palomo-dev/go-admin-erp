@@ -45,7 +45,7 @@ jest.mock('@/lib/services/promotionEngine', () => ({
     // Contrato del motor (2026-10-07): el descuento va por LÍNEA (`lineDiscounts`)
     // y cada promoción aplicada dice qué líneas toca (`lineas`).
     evaluate: jest.fn(async (ctx: { items: Array<{ product_id: number }> }) => {
-      const lineDiscounts = ctx.items.map((i) => (i.product_id === 1001 ? 1000 : 0));
+      const lineDiscounts: number[] = ctx.items.map((i) => (i.product_id === 1001 ? 1000 : 0));
       const lineas = lineDiscounts.flatMap((d, idx) => (d > 0 ? [idx] : []));
       return {
         discountTotal: lineDiscounts.reduce((s, d) => s + d, 0),

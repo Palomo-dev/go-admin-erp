@@ -6294,6 +6294,16 @@
         "sinResponsable": "Unassigned",
         "comision": "commission {pct} %",
         "proximo": "Next contact"
+      },
+      "agenteVoz": {
+        "aria": "Voice agent closing",
+        "perdidaTitulo": "Marked as lost by the voice agent",
+        "perdidaTituloCuando": "Marked as lost by the voice agent · {cuando}",
+        "motivo": "Reason: {motivo}",
+        "decidirTitulo": "The voice agent left this decision to you",
+        "decidirDetalle": "The customer said they are not interested. It was not closed because of the organization’s settings: decide whether to mark it as lost.",
+        "escucharLlamada": "Listen to the call",
+        "reabrir": "Reopen"
       }
     },
     "datosImportados": {
@@ -6388,7 +6398,8 @@
         "aria": "AI agent sections",
         "agentes": "Agents",
         "voces": "Voices",
-        "campanas": "Campaigns"
+        "campanas": "Campaigns",
+        "ajustes": "Settings"
       },
       "cargando": "Loading agents…",
       "error": {
@@ -6998,6 +7009,78 @@
         "etapaYaNoExiste": "Pipeline stage (no longer exists)",
         "etapaEmbudo": "Stage {etapa} · {embudo}",
         "etapa": "Stage {etapa}"
+      },
+      "ajustes": {
+        "desinteres": {
+          "titulo": "When the customer is not interested",
+          "subtitulo": "Voice agent sales calls",
+          "descripcion": "What the agent does when the customer says no twice (after the single retry). If they ask not to be called again, it is an opt-out: the opportunity does not change.",
+          "porDefecto": "Default value",
+          "soloLectura": "Read only. To change it you need the CRM “Configure stages” permission.",
+          "cargando": "Loading settings",
+          "errorTitulo": "Settings could not be loaded",
+          "errorCarga": "The response did not include the settings",
+          "errorGuardar": "Could not save",
+          "sinPermiso": "You do not have permission to change this setting",
+          "guardado": "Settings saved",
+          "guardar": "Save",
+          "guardando": "Saving…",
+          "descartar": "Discard",
+          "precedencia": "If the agent’s stage is set to “Suggest”, the stage wins. The most cautious option always wins: do nothing, then task, then lost.",
+          "modos": {
+            "etiqueta": "What the agent does",
+            "mark_lost": {
+              "titulo": "Mark the opportunity as lost",
+              "descripcion": "Moves it to the lost stage with the reason and notifies the salesperson right away."
+            },
+            "task_only": {
+              "titulo": "Only leave a task for the salesperson",
+              "descripcion": "The opportunity stays open; the salesperson decides whether to close it."
+            },
+            "log_only": {
+              "titulo": "Do nothing",
+              "descripcion": "Only records the objection in the call activity."
+            }
+          },
+          "excepciones": {
+            "titulo": "Exceptions",
+            "descripcion": "They only apply when marking as lost. When one is met, the agent leaves a task for the salesperson instead of closing.",
+            "soloPerdida": "They only apply when the agent marks as lost.",
+            "valor": {
+              "titulo": "Do not close high-value opportunities",
+              "descripcion": "If the opportunity is worth this amount or more, the salesperson decides.",
+              "monto": "Minimum amount",
+              "moneda": "Currency",
+              "monedaAyuda": "The organization’s by default.",
+              "monedaPlaceholder": "Choose a currency",
+              "monedaBase": "{codigo} · organization currency",
+              "comoSeCompara": "The opportunity’s value is compared in this currency. If the opportunity is in another one, it is converted with the organization’s latest exchange rate; without a rate, the task is left."
+            },
+            "etapa": {
+              "titulo": "Do not close in advanced stages",
+              "descripcion": "From this sales pipeline stage on, the salesperson decides.",
+              "campo": "From stage",
+              "ayuda": "Applies to that pipeline: that stage and the following ones.",
+              "placeholder": "Choose a stage",
+              "opcion": "{etapa} ({orden} of {total})",
+              "opcionConPipeline": "{pipeline} · {etapa} ({orden} of {total})"
+            }
+          },
+          "errores": {
+            "monto_requerido": "Enter the amount.",
+            "monto_negativo": "Enter an amount of 0 or more.",
+            "moneda_requerida": "Choose a currency from the list.",
+            "moneda_invalida": "Choose a currency from the list.",
+            "etapa_requerida": "Choose the stage.",
+            "etapa_invalida": "That stage is not in a sales pipeline."
+          },
+          "pie": {
+            "sinGuardar": "Not saved yet: the agent marks as lost directly, with no exceptions.",
+            "guardado": "Saved on {cuando}",
+            "guardadoSinFecha": "Saved.",
+            "revisa": "{n, plural, one {Check the highlighted field.} other {Check the # highlighted fields.}}"
+          }
+        }
       }
     },
     "equipo": {

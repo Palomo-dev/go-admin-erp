@@ -3,7 +3,9 @@
 /**
  * /app/crm/agentes-ia — catálogo de agentes IA de voz de la organización (FASE 06).
  *
- * Cierra C-F6-16 (no había UI). Tres SECCIONES: Agentes, Voces y Campañas.
+ * Cierra C-F6-16 (no había UI). Cuatro SECCIONES: Agentes, Voces, Campañas y
+ * Ajustes (de la organización: qué hace el agente ante el desinterés
+ * definitivo, `ajustes/DesinteresVozCard.tsx`).
  * Todo pasa por rutas con `getServerOrgContext()`: cero organización en el cliente.
  *
  * Regla de pestañas (2026-10-06): las secciones son `TabBar` (subrayado) con
@@ -27,6 +29,7 @@ import { fetchJson } from "@/lib/utils/fetchJson";
 import { AgentEditorDialog, type AgentDraft } from "./AgentEditorDialog";
 import { VoicesPanel } from "./VoicesPanel";
 import { AgentCampaignsPanel } from "./AgentCampaignsPanel";
+import { DesinteresVozCard } from "./ajustes/DesinteresVozCard";
 
 export interface VoiceAgentListItem {
   id: string;
@@ -55,7 +58,7 @@ const PROPOSITOS: readonly string[] = [
   "custom",
 ];
 
-const SECCIONES = ["agentes", "voces", "campanas"] as const;
+const SECCIONES = ["agentes", "voces", "campanas", "ajustes"] as const;
 
 export function AgentesIaPage() {
   const t = useTranslations("crm.agentesIa");
@@ -84,7 +87,7 @@ export function AgentesIaPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -192,6 +195,7 @@ export function AgentesIaPage() {
           ))}
         {tab === "voces" && <VoicesPanel />}
         {tab === "campanas" && <AgentCampaignsPanel agents={agents} />}
+        {tab === "ajustes" && <DesinteresVozCard />}
       </div>
 
       {editing && (

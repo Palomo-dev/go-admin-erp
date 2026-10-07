@@ -96,7 +96,8 @@ describe('oportunidad perdida por desinterés definitivo', () => {
     const { supabase, escrituras, filtros } = fakeSupabase({ opp: OPP_ABIERTA, pipelineType: 'sales', etapaPerdida: 'st-lost' });
     const r = await marcarPerdidaPorDesinteres(ctx(supabase), OBJECION);
 
-    expect(r).toEqual({ aplicada: true, stageId: 'st-lost' });
+    // El aviso al vendedor tiene su propia prueba (perdidaDesinteresConfig.test.ts).
+    expect(r).toMatchObject({ aplicada: true, stageId: 'st-lost' });
     expect(changeStage).toHaveBeenCalledTimes(1);
     const [orgId, , params, cliente] = changeStage.mock.calls[0];
     expect(orgId).toBe(125);

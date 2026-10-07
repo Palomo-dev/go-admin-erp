@@ -54,6 +54,7 @@ import {
   type TipoObjecion,
 } from '@/lib/services/crm/voiceAgent/cierreLlamada';
 import { marcarPerdidaPorDesinteres } from '@/lib/services/crm/voiceAgent/perdidaPorDesinteres';
+import { resumenBreveLlamada } from '@/lib/services/crm/voiceAgent/avisoDesinteres';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase(): SupabaseClient {
@@ -1051,10 +1052,12 @@ async function colgarConDespedida(
 }
 
 /**
- * Oportunidad a perdida si la llamada terminó con desinterés definitivo
- * (después del reintento) y sin baja. Una vez por llamada. Las condiciones
- * (venta, pipeline de ventas, oportunidad abierta) y el cierre por
- * `opportunityStageService` viven en `voiceAgent/perdidaPorDesinteres.ts`.
+ * Desinterés definitivo (después del reintento) y sin baja: la oportunidad se
+ * marca perdida, queda tarea o no cambia, según la configuración de la
+ * organización (`voiceAgent/desinteresConfig.ts`), y el vendedor recibe el
+ * aviso en el momento. Una vez por llamada. Las condiciones (venta, pipeline
+ * de ventas, oportunidad abierta), el cierre por `opportunityStageService` y
+ * el aviso viven en `voiceAgent/perdidaPorDesinteres.ts`.
  */
 async function procesarPerdida(session: ConversationRelaySession): Promise<void> {
   const runtime = session.runtime;
@@ -1072,6 +1075,7 @@ async function procesarPerdida(session: ConversationRelaySession): Promise<void>
         agentId: runtime.agent.id,
         objetivo: runtime.objetivo,
         politicaEtapa: runtime.stage?.actionPolicy ?? null,
+        resumenLlamada: resumenBreveLlamada(session.turns, session.startedAt),
       },
       objecion
     );

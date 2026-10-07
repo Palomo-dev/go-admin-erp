@@ -69,3 +69,17 @@ describe('enqueueCampaignTargets — recorre páginas hasta llenar el cupo', () 
     expect(cola).toMatch(/for \(let pagina = 0; pagina < MAX_PAGINAS_OBJETIVOS && rows\.length < room; pagina\+\+\)/);
   });
 });
+
+describe('cola — corridas cortas (2026-10-07: 200 objetivos tardaron 46 s y otra ruta murió a los 60 s)', () => {
+  const fuente = fs.readFileSync(path.join(__dirname, '../../lib/services/crm/voiceAgentService.ts'), 'utf8');
+  it('encola como máximo TOPE_ENCOLAR_POR_CORRIDA (≤ 50) por corrida, no 200', () => {
+    const tope = Number(fuente.match(/const TOPE_ENCOLAR_POR_CORRIDA = (\d+);/)?.[1]);
+    expect(tope).toBeGreaterThan(0);
+    expect(tope).toBeLessThanOrEqual(50);
+    expect(fuente).toMatch(/Math\.min\(dayRoom, TOPE_ENCOLAR_POR_CORRIDA\) - pendingCount/);
+    expect(fuente).not.toMatch(/Math\.min\(dayRoom, 200\)/);
+  });
+  it('el agente de etapa se consulta una vez por etapa, no por objetivo', () => {
+    expect(fuente).toMatch(/agentePorEtapa\.set\(target\.stage_id, await findStageAgentId\(/);
+  });
+});

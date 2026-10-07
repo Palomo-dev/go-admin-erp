@@ -6294,6 +6294,16 @@
         "sinResponsable": "Sin asignar",
         "comision": "comisión {pct} %",
         "proximo": "Próximo contacto"
+      },
+      "agenteVoz": {
+        "aria": "Cierre del agente de voz",
+        "perdidaTitulo": "La marcó perdida el agente de voz",
+        "perdidaTituloCuando": "La marcó perdida el agente de voz · {cuando}",
+        "motivo": "Motivo: {motivo}",
+        "decidirTitulo": "El agente de voz te dejó esta decisión",
+        "decidirDetalle": "El cliente dijo que no le interesa. No se cerró por la configuración de la organización: decide si la marcas perdida.",
+        "escucharLlamada": "Escuchar la llamada",
+        "reabrir": "Reabrir"
       }
     },
     "datosImportados": {
@@ -6388,7 +6398,8 @@
         "aria": "Secciones de agentes IA",
         "agentes": "Agentes",
         "voces": "Voces",
-        "campanas": "Campañas"
+        "campanas": "Campañas",
+        "ajustes": "Ajustes"
       },
       "cargando": "Cargando agentes…",
       "error": {
@@ -6998,6 +7009,78 @@
         "etapaYaNoExiste": "Etapa del embudo (ya no existe)",
         "etapaEmbudo": "Etapa {etapa} · {embudo}",
         "etapa": "Etapa {etapa}"
+      },
+      "ajustes": {
+        "desinteres": {
+          "titulo": "Cuando el cliente no tiene interés",
+          "subtitulo": "Llamadas de venta del agente de voz",
+          "descripcion": "Qué hace el agente cuando el cliente dice que no dos veces (después del único reintento). Si pide que no lo vuelvan a llamar, es una baja: la oportunidad no cambia.",
+          "porDefecto": "Valor por defecto",
+          "soloLectura": "Solo lectura. Para cambiarla necesitas el permiso «Configurar etapas» del CRM.",
+          "cargando": "Cargando la configuración",
+          "errorTitulo": "No se pudo cargar la configuración",
+          "errorCarga": "La respuesta no trajo la configuración",
+          "errorGuardar": "No se pudo guardar",
+          "sinPermiso": "No tienes permiso para cambiar esta configuración",
+          "guardado": "Configuración guardada",
+          "guardar": "Guardar",
+          "guardando": "Guardando…",
+          "descartar": "Descartar",
+          "precedencia": "Si la etapa del agente está en «Sugerir», manda la etapa. Siempre gana la opción más prudente: no hacer nada, luego tarea, luego perdida.",
+          "modos": {
+            "etiqueta": "Qué hace el agente",
+            "mark_lost": {
+              "titulo": "Marcar la oportunidad como perdida",
+              "descripcion": "La pasa a la etapa de perdida con el motivo y avisa al vendedor al instante."
+            },
+            "task_only": {
+              "titulo": "Solo dejar una tarea al vendedor",
+              "descripcion": "La oportunidad sigue abierta; el vendedor decide si la cierra."
+            },
+            "log_only": {
+              "titulo": "No hacer nada",
+              "descripcion": "Solo registra la objeción en la actividad de la llamada."
+            }
+          },
+          "excepciones": {
+            "titulo": "Excepciones",
+            "descripcion": "Solo aplican al marcar perdida. Cuando una se cumple, el agente deja una tarea al vendedor en vez de cerrar.",
+            "soloPerdida": "Solo aplican cuando el agente marca perdida.",
+            "valor": {
+              "titulo": "No cerrar oportunidades de valor alto",
+              "descripcion": "Si la oportunidad vale igual o más que este monto, el vendedor decide.",
+              "monto": "Monto mínimo",
+              "moneda": "Moneda",
+              "monedaAyuda": "La de la organización por defecto.",
+              "monedaPlaceholder": "Elige una moneda",
+              "monedaBase": "{codigo} · moneda de la organización",
+              "comoSeCompara": "Se compara el valor de la oportunidad en esta moneda. Si la oportunidad está en otra, se convierte con la tasa de cambio más reciente de la organización; sin tasa, se deja la tarea."
+            },
+            "etapa": {
+              "titulo": "No cerrar en etapas avanzadas",
+              "descripcion": "Desde esta etapa del pipeline de ventas, el vendedor decide.",
+              "campo": "A partir de la etapa",
+              "ayuda": "Aplica a ese pipeline: esa etapa y las siguientes.",
+              "placeholder": "Elige una etapa",
+              "opcion": "{etapa} ({orden} de {total})",
+              "opcionConPipeline": "{pipeline} · {etapa} ({orden} de {total})"
+            }
+          },
+          "errores": {
+            "monto_requerido": "Escribe el monto.",
+            "monto_negativo": "Escribe un monto igual o mayor que 0.",
+            "moneda_requerida": "Elige una moneda de la lista.",
+            "moneda_invalida": "Elige una moneda de la lista.",
+            "etapa_requerida": "Elige la etapa.",
+            "etapa_invalida": "Esa etapa no es de un pipeline de ventas."
+          },
+          "pie": {
+            "sinGuardar": "Sin guardar aún: el agente marca perdida directo, sin excepciones.",
+            "guardado": "Guardado el {cuando}",
+            "guardadoSinFecha": "Guardado.",
+            "revisa": "{n, plural, one {Revisa el campo marcado.} other {Revisa los # campos marcados.}}"
+          }
+        }
       }
     },
     "equipo": {

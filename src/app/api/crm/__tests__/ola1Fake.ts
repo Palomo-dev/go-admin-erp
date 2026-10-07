@@ -160,6 +160,20 @@ export function fakeSupabase(db: Ola1Db) {
         return c;
       },
       insert: (p: unknown) => ((op = 'insert'), (payload = p), c),
+      // Upsert por una columna (`onConflict`): actualiza la fila que coincide o la inserta.
+      upsert: (p: unknown, opts?: { onConflict?: string }) => {
+        const col = opts?.onConflict ?? 'id';
+        const fila = p as Row;
+        const existe = (db.t[table] ??= []).some((r) => r[col] === fila[col]);
+        if (existe) {
+          op = 'update';
+          filtros.push({ k: 'eq', col, v: fila[col] });
+        } else {
+          op = 'insert';
+        }
+        payload = p;
+        return c;
+      },
       update: (p: unknown) => ((op = 'update'), (payload = p), c),
       delete: () => ((op = 'delete'), c),
       eq: (col: string, v: unknown) => (filtros.push({ k: 'eq', col, v }), c),

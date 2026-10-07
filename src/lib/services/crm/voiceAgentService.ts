@@ -1147,7 +1147,10 @@ export async function runCampaignQueue(
 
     if (pendingCount < slots) {
       // Se encola solo lo que cabe en el saldo MENOR (R3-5), no en el de la campaña.
-      const room = Math.max(0, Math.min(dayRoom, 200) - pendingCount);
+      // Tope por corrida: encolar revisa cada objetivo (baja voluntaria, agente de etapa) y 200 en
+      // una corrida tardaron 46 s; la otra ruta que corre la cola (/api/crm/jobs/run) murió a los
+      // 60 s con 3 llamadas ya reclamadas y sin marcar (2026-10-07). La cola se rellena cada corrida.
+      const room = Math.max(0, Math.min(dayRoom, TOPE_ENCOLAR_POR_CORRIDA) - pendingCount);
       const cola = await enqueueCampaignTargets(supabase, orgId, campaign, room);
       result.calls_enqueued += cola.encoladas;
       // 2026-10-07: un objetivo que no entra a la cola se CUENTA como omitido y
@@ -1259,6 +1262,8 @@ const MOTIVOS_COMPUERTA: Record<string, string> = {
 
 /** Encola objetivos nuevos respetando la baja voluntaria y sin duplicar. */
 /** Tamaño de página al recorrer los objetivos de una campaña, y tope de páginas por corrida (5.000 objetivos). */
+/** Cuántos objetivos se encolan como máximo en una corrida de la cola (cada 5 min). */
+const TOPE_ENCOLAR_POR_CORRIDA = 50;
 const PAGINA_OBJETIVOS = 200;
 const MAX_PAGINAS_OBJETIVOS = 25;
 
@@ -1276,6 +1281,7 @@ async function enqueueCampaignTargets(
   // encolaba 0 para siempre aunque quedaran cientos sin llamar.
   const rows: Record<string, unknown>[] = [];
   const vistos = new Set<string>();
+  const agentePorEtapa = new Map<string, string | null>();
   for (let pagina = 0; pagina < MAX_PAGINAS_OBJETIVOS && rows.length < room; pagina++) {
     const targets = await buildCampaignTargets(supabase, orgId, campaign, PAGINA_OBJETIVOS, pagina * PAGINA_OBJETIVOS);
     if (targets.length === 0) break;
@@ -1332,9 +1338,14 @@ async function enqueueCampaignTargets(
         continue;
       }
 
-      const stageAgentId = target.stage_id
-        ? await findStageAgentId(supabase, orgId, target.stage_id)
-        : null;
+      // Una campaña por etapa repite la misma etapa en todo el lote: se consulta una vez.
+      let stageAgentId: string | null = null;
+      if (target.stage_id) {
+        if (!agentePorEtapa.has(target.stage_id)) {
+          agentePorEtapa.set(target.stage_id, await findStageAgentId(supabase, orgId, target.stage_id));
+        }
+        stageAgentId = agentePorEtapa.get(target.stage_id) ?? null;
+      }
 
       rows.push({
         organization_id: orgId,

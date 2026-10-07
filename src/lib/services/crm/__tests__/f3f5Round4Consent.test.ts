@@ -330,7 +330,7 @@ function seedAgentCall() {
   fake = seed({
     extra: {
       voice_agent_calls: [
-        { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null },
+        { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'in_progress', started_at: null, consent_given: false, customer_id: null },
       ],
       calls: [
         { id: CALL_ID, organization_id: ORG, provider_call_sid: 'CAr4agent01', direction: 'outbound', mode: 'ai_agent', status: 'dialing', from_number: '+573001234567', to_number: '+573001112233', recording_enabled: true, consent_given: false, metadata: {} },

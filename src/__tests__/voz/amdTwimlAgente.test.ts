@@ -7,7 +7,12 @@
  * `unknown`) sigue el flujo normal.
  */
 
-const sb = { updates: [] as Array<{ table: string; patch: Record<string, unknown> }>, rpcs: [] as Array<{ name: string; args: unknown }> };
+const sb = {
+  updates: [] as Array<{ table: string; patch: Record<string, unknown> }>,
+  rpcs: [] as Array<{ name: string; args: unknown }>,
+  /** La fila ya se cerró (el `completed` llegó antes): el update condicional no coincide. */
+  filaCerrada: false,
+};
 
 function fakeClient() {
   return {
@@ -21,7 +26,16 @@ function fakeClient() {
         }),
         update: (patch: Record<string, unknown>) => {
           sb.updates.push({ table, patch });
-          const u: Record<string, unknown> = { eq: () => u, then: (ok: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(ok) };
+          // `in`/`select` tras el update: la escritura de `in_progress` es condicional
+          // y la ruta mira si alguna fila coincidió (`sb.filaCerrada` simula que no).
+          const resultado = () => ({ data: sb.filaCerrada ? [] : [{ id: 'vac-1' }], error: null });
+          const u: Record<string, unknown> = {
+            eq: () => u,
+            in: () => u,
+            is: () => u,
+            select: () => u,
+            then: (ok: (v: unknown) => unknown) => Promise.resolve(resultado()).then(ok),
+          };
           return u;
         },
       };
@@ -68,6 +82,7 @@ const req = () =>
 beforeEach(() => {
   sb.updates = [];
   sb.rpcs = [];
+  sb.filaCerrada = false;
   updateCall.mockClear();
 });
 
@@ -97,5 +112,17 @@ describe('AMD en el TwiML del agente', () => {
     expect(xml).toContain('<ConversationRelay');
     expect(sb.rpcs).toEqual([]);
     expect(sb.updates.find((u) => u.table === 'voice_agent_calls')?.patch.status).toBe('in_progress');
+    expect(updateCall).toHaveBeenCalledWith(
+      'call-1', 7, expect.objectContaining({ status: 'in_progress' }), expect.anything(), { soloSiNoTerminada: true }
+    );
+  });
+
+  test('persona, pero la llamada ya se cerró mientras se armaba el TwiML → cuelga sin reabrir nada (2026-10-06)', async () => {
+    answeredBy = 'human';
+    sb.filaCerrada = true;
+    const xml = await (await POST(req())).text();
+    expect(xml).toContain('<Hangup/>');
+    expect(xml).not.toContain('ConversationRelay');
+    expect(updateCall).not.toHaveBeenCalled();
   });
 });

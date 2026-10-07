@@ -23,6 +23,8 @@ import {
   mapTwilioToCallsStatus,
   TERMINAL_VAC_STATUSES,
   ENDED_CALL_STATUSES,
+  ESTADOS_VIVOS_VAC,
+  ESTADOS_VIVOS_CALLS,
   type VoiceAgentCallLiveStatus,
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
@@ -101,9 +103,15 @@ export async function POST(request: Request) {
     // `completed` posterior puede llegar sin `AnsweredBy` y la convertiría en
     // un contacto efectivo que nunca existió.
     const keepTerminal = vac.status === 'transferred' || vac.status === 'voicemail';
+    // Twilio no garantiza el orden de los callbacks (`answered` puede llegar
+    // después de `completed`), y la `action` del `<Connect>` llega con
+    // `CallStatus=in-progress`. Un estado VIVO nunca pisa un cierre: se escribe
+    // aparte y con la condición en el WHERE (atómica), no en `vac.status`, que
+    // pudo cambiar desde la lectura. Incidente 2026-10-06 (org 125).
+    const esVivo = nextStatus !== null && !TERMINAL_VAC_STATUSES.includes(nextStatus);
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (nextStatus && !keepTerminal) patch.status = nextStatus;
+    if (nextStatus && !keepTerminal && !esVivo) patch.status = nextStatus;
     if (nextStatus && TERMINAL_VAC_STATUSES.includes(nextStatus)) {
       patch.completed_at = new Date().toISOString();
       patch.locked_by = null;
@@ -131,6 +139,16 @@ export async function POST(request: Request) {
       .eq('organization_id', vac.organization_id);
     if (updError) throw updError;
 
+    if (esVivo && !keepTerminal) {
+      const { error: vivoError } = await supabase
+        .from('voice_agent_calls')
+        .update({ status: nextStatus, updated_at: new Date().toISOString() })
+        .eq('id', vac.id)
+        .eq('organization_id', vac.organization_id)
+        .in('status', ESTADOS_VIVOS_VAC);
+      if (vivoError) throw vivoError;
+    }
+
     // Espejo en `calls` para que la llamada del agente entre en el timeline,
     // en la grabación y en el pipeline de transcripción/análisis de F4.
     if (vac.call_id) {
@@ -142,11 +160,14 @@ export async function POST(request: Request) {
       if (callsStatus && ENDED_CALL_STATUSES.includes(callsStatus)) {
         callsPatch.ended_at = new Date().toISOString();
       }
-      const { error: callErr } = await supabase
+      let callsQuery = supabase
         .from('calls')
         .update(callsPatch)
         .eq('id', vac.call_id)
         .eq('organization_id', vac.organization_id);
+      // Mismo criterio: un estado vivo no reabre una llamada con `ended_at`.
+      if (callsStatus && ESTADOS_VIVOS_CALLS.includes(callsStatus)) callsQuery = callsQuery.is('ended_at', null);
+      const { error: callErr } = await callsQuery;
       if (callErr) throw callErr;
     }
 

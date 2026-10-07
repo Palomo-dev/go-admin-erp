@@ -350,7 +350,7 @@ describe('N-1 · bridge: `record=` sale de la fila `calls`, la misma que lee el 
 function seedAgent(patch: { vac?: Row; call?: Row | null } = {}) {
   fake = seed({
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'in_progress', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
     ],
     calls: patch.call === null ? [] : [callRow({ provider_call_sid: 'CAr6agent01', mode: 'ai_agent', ...(patch.call ?? {}) })],
   });

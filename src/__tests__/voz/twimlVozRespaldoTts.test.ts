@@ -112,7 +112,9 @@ function fakeClient() {
       error: null,
     }),
     update: () => q,
-    then: (ok: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(ok),
+    in: () => q,
+    is: () => q,
+    then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: [{ id: 'vac-1' }], error: null }).then(ok),
   });
   return { from: () => q, rpc: async () => ({ data: true, error: null }) };
 }

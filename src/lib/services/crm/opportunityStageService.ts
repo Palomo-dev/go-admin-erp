@@ -53,7 +53,18 @@ export interface ChangeStageParams {
   overrideReason?: string;
   wonData?: Record<string, unknown>;
   lossData?: LossInput;
+  /**
+   * Marca del cierre que hace el agente de voz por desinterés definitivo
+   * (`voiceAgent/perdidaPorDesinteres.ts`). Se guarda en
+   * `metadata.cierre_agente_voz` en la MISMA escritura del cambio de etapa.
+   * Cualquier otro cambio de etapa la borra: la marca describe solo el último
+   * cierre y deja de valer si alguien reabre o vuelve a cerrar a mano.
+   */
+  cierreAgenteVoz?: Record<string, unknown>;
 }
+
+/** Clave de `opportunities.metadata` con el cierre del agente de voz. */
+export const CLAVE_CIERRE_AGENTE_VOZ = 'cierre_agente_voz';
 
 export type ChangeStageResult =
   | { ok: true; opportunity: Record<string, unknown>; stage: { id: string; name: string; is_won: boolean; is_lost: boolean }; gate: GateResult | null; overridden: boolean }
@@ -143,6 +154,14 @@ export async function changeStage(
     const update: Record<string, unknown> = { stage_id: s.id, updated_at: now };
     const metadata: Record<string, unknown> = { ...(base.metadata ?? {}) };
     let touchedMetadata = false;
+    if (CLAVE_CIERRE_AGENTE_VOZ in metadata) {
+      delete metadata[CLAVE_CIERRE_AGENTE_VOZ];
+      touchedMetadata = true;
+    }
+    if (params.cierreAgenteVoz && stageInfo.is_lost) {
+      metadata[CLAVE_CIERRE_AGENTE_VOZ] = params.cierreAgenteVoz;
+      touchedMetadata = true;
+    }
 
     // F9-22 (r1: "override sin traza"): se registra SIEMPRE que se usa, incluso
     // si el gate no fue evaluable o vino `ok` — así queda auditable.

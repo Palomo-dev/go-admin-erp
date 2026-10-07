@@ -190,3 +190,31 @@ describe('changeStage', () => {
     warn.mockRestore();
   });
 });
+
+describe('changeStage · marca del cierre del agente de voz (metadata.cierre_agente_voz)', () => {
+  const MARCA = { at: '2026-10-07T15:00:00Z', call_id: 'c1', motivo: 'Sin interés: x', etapa_anterior_id: 's1' };
+
+  test('se guarda en la MISMA escritura del cierre como perdida', async () => {
+    gateMock.mockResolvedValue({ ok: true, missing: [] });
+    const { sb, updates } = makeSupabase(OPP, LOST);
+    const r = await changeStage(7, 'voice_agent:a1', { opportunityId: 'o1', stageId: 'sl', lossData: { lossReasonLabel: 'Sin interés: x' }, cierreAgenteVoz: MARCA }, sb);
+    expect(r.ok).toBe(true);
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({ status: 'lost', metadata: { cierre_agente_voz: MARCA } });
+  });
+
+  test('cualquier otro cambio de etapa la borra (reabrir, mover o perder a mano)', async () => {
+    gateMock.mockResolvedValue({ ok: true, missing: [] });
+    const cerrada = { ...OPP, stage_id: 'sl', status: 'lost', metadata: { cierre_agente_voz: MARCA, otra: 1 } };
+    const { sb, updates } = makeSupabase(cerrada, S2);
+    await changeStage(7, 'u1', { opportunityId: 'o1', stageId: 's2' }, sb);
+    expect(updates[0].metadata).toEqual({ otra: 1 });
+  });
+
+  test('no se pone en un cambio que no es a perdida', async () => {
+    gateMock.mockResolvedValue({ ok: true, missing: [] });
+    const { sb, updates } = makeSupabase(OPP, S2);
+    await changeStage(7, 'u1', { opportunityId: 'o1', stageId: 's2', cierreAgenteVoz: MARCA }, sb);
+    expect(updates[0].metadata).toBeUndefined();
+  });
+});

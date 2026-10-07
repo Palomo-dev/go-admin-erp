@@ -51,6 +51,8 @@ export interface CreateTaskInput {
   related_to_type?: string;
   assigned_to?: string;
   due_date?: string;
+  /** `tasks.tags`. `agente_voz_desinteres` hace que el trigger omita su aviso genérico (lleva uno propio). */
+  tags?: string[];
 }
 
 /** Campos de `opportunities` que el agente puede escribir (allow-list, D7). */
@@ -315,6 +317,7 @@ export async function createTask(ctx: ToolContext, data: CreateTaskInput): Promi
       priority: 'med',
       due_date: data.due_date ?? null,
       type: 'ai_call_followup',
+      ...(data.tags?.length ? { tags: data.tags } : {}),
     })
     .select('id, title, status')
     .single();

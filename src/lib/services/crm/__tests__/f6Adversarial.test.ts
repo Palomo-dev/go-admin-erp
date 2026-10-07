@@ -2014,7 +2014,8 @@ describe('K bis. Presupuesto UNICO del agente (R3-5)', () => {
     expect(src).toContain('agentCaps.max_calls_per_day - agentAttemptsToday');
     expect(src).toContain('agentCaps.max_calls_per_hour - agentAttemptsHour');
     // Y el hueco para encolar objetivos usa el saldo MENOR, no el de la campaña.
-    expect(src).toMatch(/Math\.min\(dayRoom, 200\)/);
+    // (El tope por corrida pasó de 200 a TOPE_ENCOLAR_POR_CORRIDA el 2026-10-07: ver colaPaginada.test.ts.)
+    expect(src).toMatch(/Math\.min\(dayRoom, TOPE_ENCOLAR_POR_CORRIDA\)/);
   });
 });
 

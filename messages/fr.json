@@ -28134,6 +28134,16 @@
         "sinResponsable": "Non attribué",
         "comision": "commission {pct} %",
         "proximo": "Prochain contact"
+      },
+      "agenteVoz": {
+        "aria": "Clôture par l’agent vocal",
+        "perdidaTitulo": "Marquée perdue par l’agent vocal",
+        "perdidaTituloCuando": "Marquée perdue par l’agent vocal · {cuando}",
+        "motivo": "Motif : {motivo}",
+        "decidirTitulo": "L’agent vocal vous laisse cette décision",
+        "decidirDetalle": "Le client a dit qu’il n’était pas intéressé. Elle n’a pas été clôturée à cause des réglages de l’organisation : décidez si vous la marquez perdue.",
+        "escucharLlamada": "Écouter l’appel",
+        "reabrir": "Rouvrir"
       }
     },
     "datosImportados": {
@@ -28228,7 +28238,8 @@
         "aria": "Sections des agents IA",
         "agentes": "Agents",
         "voces": "Voix",
-        "campanas": "Campagnes"
+        "campanas": "Campagnes",
+        "ajustes": "Réglages"
       },
       "cargando": "Chargement des agents…",
       "error": {
@@ -28838,6 +28849,78 @@
         "etapaYaNoExiste": "Étape du pipeline (n'existe plus)",
         "etapaEmbudo": "Étape {etapa} · {embudo}",
         "etapa": "Étape {etapa}"
+      },
+      "ajustes": {
+        "desinteres": {
+          "titulo": "Quand le client n’est pas intéressé",
+          "subtitulo": "Appels de vente de l’agent vocal",
+          "descripcion": "Ce que fait l’agent quand le client dit non deux fois (après l’unique relance). S’il demande à ne plus être appelé, c’est une désinscription : l’opportunité ne change pas.",
+          "porDefecto": "Valeur par défaut",
+          "soloLectura": "Lecture seule. Pour le modifier, il faut l’autorisation CRM « Configurer les étapes ».",
+          "cargando": "Chargement des réglages",
+          "errorTitulo": "Impossible de charger les réglages",
+          "errorCarga": "La réponse ne contenait pas les réglages",
+          "errorGuardar": "Impossible d’enregistrer",
+          "sinPermiso": "Vous n’avez pas l’autorisation de modifier ce réglage",
+          "guardado": "Réglages enregistrés",
+          "guardar": "Enregistrer",
+          "guardando": "Enregistrement…",
+          "descartar": "Annuler",
+          "precedencia": "Si l’étape de l’agent est sur « Suggérer », c’est l’étape qui décide. L’option la plus prudente l’emporte toujours : ne rien faire, puis tâche, puis perdue.",
+          "modos": {
+            "etiqueta": "Ce que fait l’agent",
+            "mark_lost": {
+              "titulo": "Marquer l’opportunité comme perdue",
+              "descripcion": "La passe à l’étape perdue avec le motif et prévient le vendeur immédiatement."
+            },
+            "task_only": {
+              "titulo": "Seulement laisser une tâche au vendeur",
+              "descripcion": "L’opportunité reste ouverte ; le vendeur décide s’il la clôture."
+            },
+            "log_only": {
+              "titulo": "Ne rien faire",
+              "descripcion": "Enregistre seulement l’objection dans l’activité de l’appel."
+            }
+          },
+          "excepciones": {
+            "titulo": "Exceptions",
+            "descripcion": "Elles ne s’appliquent qu’en marquant comme perdue. Quand l’une est remplie, l’agent laisse une tâche au vendeur au lieu de clôturer.",
+            "soloPerdida": "Elles ne s’appliquent que lorsque l’agent marque comme perdue.",
+            "valor": {
+              "titulo": "Ne pas clôturer les opportunités de grande valeur",
+              "descripcion": "Si l’opportunité vaut ce montant ou plus, le vendeur décide.",
+              "monto": "Montant minimum",
+              "moneda": "Devise",
+              "monedaAyuda": "Celle de l’organisation par défaut.",
+              "monedaPlaceholder": "Choisissez une devise",
+              "monedaBase": "{codigo} · devise de l’organisation",
+              "comoSeCompara": "La valeur de l’opportunité est comparée dans cette devise. Si elle est dans une autre, elle est convertie avec le taux de change le plus récent de l’organisation ; sans taux, la tâche est laissée."
+            },
+            "etapa": {
+              "titulo": "Ne pas clôturer aux étapes avancées",
+              "descripcion": "À partir de cette étape du pipeline de vente, le vendeur décide.",
+              "campo": "À partir de l’étape",
+              "ayuda": "S’applique à ce pipeline : cette étape et les suivantes.",
+              "placeholder": "Choisissez une étape",
+              "opcion": "{etapa} ({orden} sur {total})",
+              "opcionConPipeline": "{pipeline} · {etapa} ({orden} sur {total})"
+            }
+          },
+          "errores": {
+            "monto_requerido": "Saisissez le montant.",
+            "monto_negativo": "Saisissez un montant supérieur ou égal à 0.",
+            "moneda_requerida": "Choisissez une devise dans la liste.",
+            "moneda_invalida": "Choisissez une devise dans la liste.",
+            "etapa_requerida": "Choisissez l’étape.",
+            "etapa_invalida": "Cette étape n’appartient pas à un pipeline de vente."
+          },
+          "pie": {
+            "sinGuardar": "Pas encore enregistré : l’agent marque comme perdue directement, sans exceptions.",
+            "guardado": "Enregistré le {cuando}",
+            "guardadoSinFecha": "Enregistré.",
+            "revisa": "{n, plural, one {Vérifiez le champ signalé.} other {Vérifiez les # champs signalés.}}"
+          }
+        }
       }
     },
     "equipo": {

@@ -1802,3 +1802,111 @@ se cortó en 3 s, sin despedida, y el agente se rindió a la primera objeción. 
 
 Sin esquema nuevo. Pruebas: `src/__tests__/voz/cierreLlamadaVoz.test.ts` (handler real) y
 `src/lib/services/crm/__tests__/perdidaPorDesinteres.test.ts`.
+
+## 19. Desinterés definitivo: configuración por organización, aviso inmediato y «Reabrir» (2026-10-07)
+
+Decisión del dueño sobre el punto 4 de §18. Figma: archivo del ERP, página «11 CRM», sección
+«CRM · Voz — desinterés definitivo: qué hace el agente, aviso al vendedor y reabrir (propuesta
+2026-10-07)» (componentes `VozDesinteres/Configuración`, `VozDesinteres/OpcionModo` y
+`VozDesinteres/AvisoPerdidaAgente`).
+
+### 19.1 Qué decide la organización
+
+Tabla nueva `crm_voice_disinterest_settings` (una fila por organización, migración
+`20261007210403_crm_voz_desinteres_config`, rollback en `supabase/rollbacks/`):
+
+| Columna | Valores | Por defecto |
+|---|---|---|
+| `mode` | `mark_lost` (marcar perdida) · `task_only` (solo tarea al vendedor) · `log_only` (no hacer nada: solo la objeción en la actividad) | `mark_lost` |
+| `value_exception_enabled`, `value_threshold`, `value_currency` | excepción por valor: si la oportunidad vale **igual o más** que el monto, tarea en vez de perdida | apagada |
+| `stage_exception_enabled`, `advanced_stage_id` | excepción por etapa: desde esa etapa (por `position`) en adelante, en su pipeline, tarea en vez de perdida | apagada |
+
+**Sin fila = `mark_lost` sin excepciones**: el comportamiento de §18 queda intacto para las
+organizaciones que no tocan nada. Si la lectura de la configuración falla, el runtime usa
+`task_only` (nunca cierra a ciegas) y lo registra.
+
+UI: Agentes IA › pestaña **Ajustes** (`components/crm/agentes/ajustes/DesinteresVozCard.tsx`),
+porque es de la organización y no de un agente. API: `GET|PUT /api/crm/voice-agents/desinteres`.
+
+### 19.2 Moneda de la excepción por valor
+
+El monto se guarda **con su moneda** (`value_currency`; la UI propone la base de la
+organización, `resolveOrgCurrency`). La oportunidad se compara en esa moneda: si está en la
+misma, directo; si no, se convierte con la tasa más reciente de `exchange_rates` **de la
+organización** (directa o pasando por la moneda base; mismo criterio que `tasaVigente`, que usan
+los KPI del CRM). La tasa no se inventa: **sin tasa, tarea**. Oportunidad sin monto o con 0: la
+excepción no aplica. Validación en servidor: monto ≥ 0, moneda ISO de 3 letras que exista en
+`currencies`, etapa abierta de un pipeline de ventas de la organización.
+
+### 19.3 Precedencia con la etapa (`stage_agents.action_policy`)
+
+**Gana la opción más restrictiva**: no hacer nada > tarea > perdida. Cada fuente aporta la suya
+y se queda la más prudente (`masRestrictiva` en `voiceAgent/desinteresConfig.ts`):
+
+- el modo de la organización aporta `perdida`, `tarea` o `nada`;
+- la etapa con `action_policy = 'suggest'` aporta `tarea`;
+- cada excepción cumplida aporta `tarea`.
+
+Así, una etapa en «Sugerir» no puede quedar cerrada por la organización, y una organización en
+«No hacer nada» no recibe tareas por la etapa. Sin etapa de pérdida en el pipeline o si el gate
+de `changeStage` lo impide, queda tarea (como en §18).
+
+### 19.4 Aviso inmediato al vendedor
+
+Al marcar perdida o dejar la tarea (no con «No hacer nada»), el responsable de la oportunidad
+(`salesperson_id`; si no tiene, quien la creó) recibe un aviso del sistema de avisos del ERP,
+el mismo de `POST …/lose`: `member_notices` vía `fn_avisos_miembro_poner` (la función de los
+triggers: miembro activo, deduplicación por llave) y **despacho del correo en el momento** con
+`despacharAvisosPendientes`. Esa función vive ahora en `avisos/despachoAvisos.ts`, sin
+`next/server`, para que el ws-server de Railway la llame (`despacho.server.ts` la reexporta y
+conserva `after()` para las rutas). La campana lo recibe por Realtime.
+
+Contenido: título («El agente de voz marcó perdida «X»» o «Decide sobre «X»: el cliente no tiene
+interés»), motivo, por qué no se cerró (si es tarea), resumen breve de la llamada (duración y la
+última respuesta del cliente, `resumenBreveLlamada`, sin otra llamada al modelo) y enlace a la
+oportunidad con `?llamada=<calls.id>`. El sistema de avisos lleva **un enlace por aviso**
+(campana y correo); la oportunidad abre la franja del agente con «Escuchar la llamada»
+(Llamadas `?call=`) y «Reabrir».
+
+**Un solo aviso.** La migración cambia `fn_avisos_miembro_oportunidad` y
+`fn_avisos_miembro_tarea` (CREATE OR REPLACE) para omitir el genérico «Alguien de la
+organización cerró…/te asignó…» cuando lo produce el agente sin usuario: cierre con
+`metadata.cierre_agente_voz` nuevo, o tarea con la etiqueta `agente_voz_desinteres`. Con usuario
+(`auth.uid()` no nulo) nunca se omite, así que nadie puede silenciar avisos desde la sesión.
+
+### 19.5 La oportunidad perdida por el agente y «Reabrir»
+
+`changeStage` acepta `cierreAgenteVoz` y lo escribe en `metadata.cierre_agente_voz` (momento,
+agente, llamada, motivo, resumen y etapa anterior) **en la misma escritura** del cierre; cualquier
+otro cambio de etapa borra la marca. El detalle de la oportunidad pinta la franja
+(`PerdidaPorAgenteAviso.tsx`) solo si está perdida y la marca existe; «Reabrir» vuelve a la etapa
+en la que estaba (si sigue abierta) por el flujo de siempre (`flujo.solicitar`, permisos de
+cerrar). Desde el aviso de tarea (`?llamada=`) y con la oportunidad abierta, la franja dice
+«El agente de voz te dejó esta decisión» con el enlace a la llamada.
+
+### 19.6 Permisos
+
+Leer: cualquier miembro (RLS por pertenencia). Cambiar: `crm.stages.manage` («Configurar
+etapas»), el mismo permiso que configura la etapa y su `action_policy`; los administradores pasan
+por `hasOrgAdminOrPermission`. La RLS de escritura exige lo mismo con `fn_crm_tiene_permiso`
+(defensa en profundidad). La ruta usa el cliente de la sesión; otra organización en el body da
+403 `FOREIGN_ORGANIZATION` y se registra.
+
+### 19.7 Siguiente paso documentado
+
+La excepción por etapa guarda **una** etapa por organización y aplica solo al pipeline de esa
+etapa. Hoy 8 de 9 organizaciones con pipeline de ventas tienen uno solo (medido por MCP el
+2026-10-07); para la que tiene tres, los otros dos quedan sin excepción por etapa. Si hace falta,
+el paso siguiente es una etapa por pipeline (tabla hija o `jsonb` por pipeline).
+
+### 19.8 Verificación
+
+| Comando | Qué cubre |
+|---|---|
+| `npx jest src/lib/services/crm/__tests__/desinteresConfig.test.ts` | modos; valor por debajo/igual/encima; monedas (misma, directa, inversa, cruzada por la base, sin tasa); etapa avanzada; precedencia; sin fila = perdida directo; validación |
+| `npx jest src/lib/services/crm/__tests__/perdidaDesinteresConfig.test.ts` | el runtime real con el doble de Supabase del CRM: cada modo, excepciones, precedencia con la etapa, aviso emitido y despachado al instante, destinatario de respaldo, aviso fallido sin romper la pérdida |
+| `npx jest src/lib/services/crm/__tests__/avisoDesinteres.test.ts` | contenido del aviso, resumen de la llamada, envío por `fn_avisos_miembro_poner` y despacho |
+| `npx jest src/app/api/crm/voice-agents/desinteres` | GET/PUT: 403 con otra organización en el body, 403 sin permiso, 400 de validación (monto, moneda, etapa ajena/no de ventas/terminal), upsert por organización |
+| `npx jest src/components/crm/agentes/ajustes` | formulario en es/en/fr/pt, radiogroup, errores del cliente y del servidor, solo lectura; franja de la oportunidad |
+| `npx jest src/lib/services/crm/__tests__/opportunityStageService.test.ts` | la marca se escribe con el cierre y se borra en cualquier otro cambio de etapa |
+| `npx jest src/__tests__/infra/wsServerDependencias.test.ts` | el ws-server sigue sin `next` |

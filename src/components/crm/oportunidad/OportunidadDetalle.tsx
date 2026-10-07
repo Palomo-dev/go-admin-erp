@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link2, Pencil, Trophy, XCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -37,6 +37,8 @@ import { useAccionesOportunidad } from './useAccionesOportunidad';
 import { MetricasOportunidad } from './MetricasOportunidad';
 import { LineasResumen } from './LineasResumen';
 import { ConexionesOportunidad } from './ConexionesOportunidad';
+import { PerdidaPorAgenteAviso } from './PerdidaPorAgenteAviso';
+import { etapaParaReabrir, franjaAgenteVoz } from './perdidaPorAgenteLogica';
 
 /**
  * Detalle de oportunidad (CRM ola 3B, plan §4.6; Figma 775:473076 Actividad,
@@ -46,6 +48,8 @@ import { ConexionesOportunidad } from './ConexionesOportunidad';
  * etapa), acciones rápidas `Variant=detalle`, pestañas y, al lado, el
  * cliente (`CustomerIdentityCard`, «Vincular cliente» si no tiene) y
  * «Conexiones». Datos del servidor; escrituras por `/api/crm/**`.
+ * Si la cerró el agente de voz (o se llega desde su aviso con `?llamada=`),
+ * bajo la cabecera va la franja del agente con la llamada y «Reabrir».
  */
 type Pestana = 'actividad' | 'tareas' | 'notas' | 'documentos' | 'lineas' | 'analisis' | 'cierre' | 'ia';
 const PESTANAS: Pestana[] = ['actividad', 'tareas', 'notas', 'documentos', 'lineas', 'analisis', 'cierre', 'ia'];
@@ -56,6 +60,7 @@ export function OportunidadDetalle({ id }: { id: string }) {
   const tc = useTranslations('crm.kit.cabecera');
   const te = useTranslations('crm.accionesRapidas.errores');
   const router = useRouter();
+  const llamadaParam = useSearchParams()?.get('llamada') ?? null;
   const escritorio = useEsEscritorio();
   const cat = useCatalogosCrm();
   const permisosP = permisosPantalla(cat.permisos);
@@ -92,6 +97,12 @@ export function OportunidadDetalle({ id }: { id: string }) {
   const permisos = permisosFila(permisosP, cat.usuarioId, op);
   const est = estadoOportunidad(op.status);
   const temp = temperaturaValida(op.temperature);
+  // Franja del agente de voz: perdida por el agente (Reabrir) o decisión pendiente (desde su aviso).
+  const franja = franjaAgenteVoz(op, llamadaParam);
+  const reabrirAgente = () => {
+    const destino = franja?.tipo === 'perdida' ? etapaParaReabrir(etapas, franja.etapaAnteriorId) : null;
+    if (destino) acciones.flujo.solicitar(op, destino);
+  };
   const ir = (x: Pestana) => { setPestana(x); setVisitadas((v) => new Set(v).add(x)); };
   const tabProps = legado.opportunity && legado.opportunity.id === op.id ? { opportunity: legado.opportunity, customer: legado.customer, data: legado } : null;
   const panel = (x: Pestana, contenido: React.ReactNode) => (
@@ -133,6 +144,7 @@ export function OportunidadDetalle({ id }: { id: string }) {
           </>
         }
       />
+      {franja && <PerdidaPorAgenteAviso franja={franja} puedeReabrir={permisos.cerrar === true} onReabrir={reabrirAgente} />}
       <MetricasOportunidad op={op} usuarios={cat.usuarios} lineas={cantidadLineas(lineasDesdeApi(op))} />
       <StageBar etapas={etapas} actualId={op.stage_id} layout={escritorio ? 'escritorio' : 'movil'} soloLectura={!permisos.editar} onElegir={(e) => acciones.flujo.solicitar(op, e.id)} onGanar={(e) => acciones.flujo.solicitar(op, e.id)} onPerder={(e) => acciones.flujo.solicitar(op, e.id)} onAbrirHoja={() => acciones.flujo.mover(op)} />
       <AccionesRapidasCrm variante="detalle" oportunidadId={op.id} oportunidadNombre={op.name} clienteId={op.customer_id} cliente={op.cliente ?? null} onAccionCompletada={() => setToken((n) => n + 1)} />

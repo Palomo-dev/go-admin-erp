@@ -3736,3 +3736,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Rama cursor/correo-tarea-vencimiento-e475.
 - El correo de una tarea sigue saliendo cuando se asigna y cuando se completa. No sale si vence hoy, si ya venció o si la fecha todavía no llega. Esas filas siguen en la campana. En dos días había 475 pendientes de vencimiento; quedaron en omitido y el conteo de pendientes bajó a 0. El cron que corre hoy en producción puede volver a crearlas hasta que este cambio esté en el despliegue.
 - Jest de las reglas de aviso: 8 en verde.
+
+### Fase: Sitio web — interruptores sin implementar ocultos — 2026-10-07
+- Sitio web: 74 interruptores ocultos por no estar implementados (155 combinaciones de sección y variante); pendiente hacerlos funcionales. Detalle, prioridad y procedimiento para volver a mostrarlos: [docs/sitio-web/PENDIENTE-interruptores-sin-implementar.md](docs/sitio-web/PENDIENTE-interruptores-sin-implementar.md).
+- El inspector solo los oculta (mapa único en `src/lib/services/website/interruptoresSitio.ts`); no se borra ni se reescribe nada del contenido guardado. También muestra con la clave ausente lo que el sitio hace hoy en tres casos: flechas del slider de la portada, teléfono, email y dirección en el contacto «Con mapa», y descripción en «hero_product».
+- Jest de `interruptoresOcultos.test.ts`: 80 en verde; sin el cambio fallan 64.

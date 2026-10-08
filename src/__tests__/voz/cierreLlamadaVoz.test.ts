@@ -327,7 +327,7 @@ describe('2. un solo reintento ante «no me interesa»', () => {
 
     expect(responsesCreate).toHaveBeenCalledTimes(3); // no se le devolvió la palabra al modelo
     expect(herramientasLlamadas()).toEqual(['log_objection', 'log_objection', 'end_call']);
-    expect(executeCrmTool.mock.calls[2][1]).toEqual({ outcome: 'sin_interes_definitivo' });
+    expect(executeCrmTool.mock.calls[2][1]).toEqual({ outcome: 'sin_interes_definitivo', resultado: 'sin_interes' });
     expect(ws.frases().pop()).toBe(DESPEDIDA_POR_DEFECTO);
     expect(ws.colgo()).toBe(true);
 

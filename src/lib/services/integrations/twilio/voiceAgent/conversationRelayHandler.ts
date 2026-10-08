@@ -55,6 +55,7 @@ import {
 } from '@/lib/services/crm/voiceAgent/cierreLlamada';
 import { marcarPerdidaPorDesinteres } from '@/lib/services/crm/voiceAgent/perdidaPorDesinteres';
 import { resumenBreveLlamada } from '@/lib/services/crm/voiceAgent/avisoDesinteres';
+import { guardarResultadoConversacion } from '@/lib/services/crm/voiceAgent/guardarResultadoLlamada';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase(): SupabaseClient {
@@ -794,7 +795,7 @@ async function handleToolCalls(
     console.log(`[CR] [${session.callSid}] Desinterés definitivo: el runtime cierra la llamada`);
     const fin = await executeCrmTool(
       'end_call',
-      { outcome: 'sin_interes_definitivo' },
+      { outcome: 'sin_interes_definitivo', resultado: 'sin_interes' },
       {
         orgId: session.orgId,
         supabase: getServiceSupabase(),
@@ -973,6 +974,18 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
       {
         duration_seconds: Math.max(1, Math.round((Date.now() - session.startedAt.getTime()) / 1000)),
       }
+    );
+  }
+
+  // Resultado en categoría fija (`voiceAgent/resultadoLlamada.ts`): toda
+  // conversación queda clasificada, también cuando la persona colgó y el
+  // modelo nunca llamó a `end_call`.
+  if (session.runtime?.voiceAgentCallId) {
+    await guardarResultadoConversacion(
+      sb,
+      session.orgId,
+      session.runtime.voiceAgentCallId,
+      session.turns.filter((t) => t.role === 'user').length
     );
   }
 

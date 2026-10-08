@@ -136,6 +136,38 @@ export function urlPublicaSede(
   return null;
 }
 
+/** Lo que hace falta de `branches` para saber dónde sirve el sitio público a una sede. */
+export interface SedeWeb {
+  is_main?: boolean | null;
+  is_active?: boolean | null;
+  is_web_published?: boolean | null;
+  slug?: string | null;
+  custom_domain?: string | null;
+}
+
+const HOST_VALIDO = /^[a-z0-9.-]+(:\d+)?$/i;
+const SLUG_VALIDO = /^[a-z0-9][a-z0-9-]*$/i;
+
+/**
+ * Base pública (`https://…`, sin barra final) del sitio que el sitio público sirve para una
+ * sede, sobre el host del sitio de la organización (`marca.goadmin.io` o su dominio propio, con
+ * o sin `https://`). Misma regla que el sitio (`resolveOutletByPathPrefix` y
+ * `resolveOutletByCustomDomain` de goadmin-websites): solo una sede publicada en la web y activa,
+ * por su dominio propio o por `/<slug>` bajo el host de la organización.
+ *
+ * `null` si la sede no se sirve aparte (sin publicar, inactiva, sin slug ni dominio) o si los
+ * datos no son seguros para armar una URL: quien llama se queda con el sitio principal.
+ */
+export function baseWebDeSede(host: string | null | undefined, sede: SedeWeb | null | undefined): string | null {
+  if (!sede || sede.is_web_published !== true || sede.is_active === false) return null;
+  const h = (host ?? '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  const dominio = sede.custom_domain?.trim() || null;
+  const slug = sede.slug?.trim() || null;
+  if (dominio && !HOST_VALIDO.test(dominio)) return null;
+  if (!dominio && (!slug || !SLUG_VALIDO.test(slug) || !h || !HOST_VALIDO.test(h))) return null;
+  return urlPublicaSede({ custom_domain: dominio, slug }, { dominio: h || null });
+}
+
 export interface HorarioDia {
   open?: string | null;
   close?: string | null;

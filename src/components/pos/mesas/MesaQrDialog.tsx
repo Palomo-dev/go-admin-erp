@@ -7,7 +7,9 @@
  *
  * La URL es `https://<sitio>/menu?mesa=<id>` (`urlQrMesa`, contrato con el
  * sitio). El host es el del sitio publicado de la organización (`useUrlSitio`:
- * dominio propio verificado o subdominio), nunca un literal. Sin sitio
+ * dominio propio verificado o subdominio), nunca un literal. Si la mesa es de
+ * una sede que el sitio sirve aparte (`/<slug>` o dominio propio), el QR lleva
+ * a la carta de ESA sede: su Carta QR, su carta y su caja. Sin sitio
  * publicado no hay QR: se explica y se enlaza a Sitio web.
  */
 import { useRef } from 'react';
@@ -19,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranchOpcional } from '@/lib/context/BranchContext';
 import { useUrlSitio } from '@/components/sitio-web/useUrlSitio';
 import { escaparHtml, urlQrMesa } from '@/lib/pos/mesas/qrMesa';
 
@@ -26,6 +29,8 @@ export interface MesaParaQr {
   id: string;
   name: string;
   zone: string | null;
+  /** `restaurant_tables.branch_id`: decide a qué sitio (principal o de la sede) lleva el QR. */
+  branchId?: number | null;
 }
 
 interface Props {
@@ -40,6 +45,11 @@ export function MesaQrDialog({ abierto, onAbiertoChange, mesas, titulo }: Props)
   const t = useTranslations('posMesas.qr');
   const { organization } = useOrganization();
   const sitio = useUrlSitio(organization?.id ?? null);
+  // Sedes de BranchContext (`select('*')`: slug, dominio propio, publicada en la web, principal).
+  // Fuera de BranchProvider no hay sedes: el QR va al sitio principal, como antes.
+  const branches = useBranchOpcional()?.branches ?? [];
+  const sedeDe = (branchId: number | null | undefined) =>
+    typeof branchId === 'number' ? branches.find((b) => b.id === branchId) ?? null : null;
   const hojaRef = useRef<HTMLDivElement>(null);
 
   const imprimir = () => {
@@ -87,7 +97,7 @@ export function MesaQrDialog({ abierto, onAbiertoChange, mesas, titulo }: Props)
         ) : (
           <div ref={hojaRef} className="grid gap-4 sm:grid-cols-2">
             {mesas.map((mesa) => {
-              const url = urlQrMesa(sitio.host, mesa.id);
+              const url = urlQrMesa(sitio.host, mesa.id, sedeDe(mesa.branchId));
               if (!url) return null;
               return (
                 <div key={mesa.id} className="qr flex flex-col items-center rounded-xl border border-dashed border-line p-4 text-center">

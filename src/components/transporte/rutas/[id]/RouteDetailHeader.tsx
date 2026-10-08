@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Route, Edit, Copy, RefreshCw, Users, Package } from 'lucide-react';
 import { TransportRoute } from '@/lib/services/transportRoutesService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface RouteDetailHeaderProps {
   route: TransportRoute;
@@ -37,10 +38,14 @@ export function RouteDetailHeader({
   const typeConfig = getRouteTypeConfig(route.route_type);
   const TypeIcon = typeConfig.icon;
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: route.name, subtitulo: `Código: ${route.code}`, volverA: '/app/transporte/rutas' });
+
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/app/transporte/rutas">
+        {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+        <Link href="/app/transporte/rutas" className="hidden lg:block">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>

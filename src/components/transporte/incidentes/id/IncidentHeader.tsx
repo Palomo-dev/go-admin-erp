@@ -30,6 +30,7 @@ import {
 import { IncidentWithDetails, INCIDENT_TYPES, SEVERITY_LEVELS, INCIDENT_STATUSES } from '@/lib/services/incidentsService';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface IncidentHeaderProps {
   incident: IncidentWithDetails;
@@ -112,6 +113,9 @@ export function IncidentHeader({
   const severity = SEVERITY_LEVELS.find(s => s.value === incident.severity);
   const status = INCIDENT_STATUSES.find(s => s.value === incident.status);
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: incident.title, subtitulo: incidentType?.label || undefined, volverA: '/app/transporte/incidentes' });
+
   const canChangeToInProgress = incident.status === 'open';
   const canResolve = incident.status === 'in_progress';
   const canClose = incident.status === 'resolved';
@@ -121,11 +125,12 @@ export function IncidentHeader({
     <div className="space-y-3 sm:space-y-4">
       {/* Navegación */}
       <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.push('/app/transporte/incidentes')}
-          className="gap-2"
+          className="hidden lg:inline-flex gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Incidentes

@@ -14,7 +14,8 @@ import type {
   UpdateComponentDTO 
 } from '@/lib/services/compensationPackagesService';
 import { ComponentsTable, ComponentForm } from '@/components/hrm/compensacion/paquetes/[id]';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,8 +45,8 @@ import {
   Edit,
   Calendar,
   Layers,
-  Building,
 } from 'lucide-react';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 export default function PaqueteDetallePage() {
   const params = useParams();
@@ -100,7 +101,7 @@ export default function PaqueteDetallePage() {
       setComponentTypes(service.getComponentTypes());
       setAmountTypes(service.getAmountTypes());
       setFrequencies(service.getFrequencies());
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -128,7 +129,7 @@ export default function PaqueteDetallePage() {
       await service.toggleActive(pkg.id, !pkg.is_active);
       toast({ title: pkg.is_active ? 'Paquete desactivado' : 'Paquete activado' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cambiar el estado',
@@ -146,7 +147,7 @@ export default function PaqueteDetallePage() {
       toast({ title: 'Componente agregado correctamente' });
       setIsComponentFormOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };
@@ -161,7 +162,7 @@ export default function PaqueteDetallePage() {
       toast({ title: 'Componente actualizado correctamente' });
       setEditingComponent(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   };
@@ -176,7 +177,7 @@ export default function PaqueteDetallePage() {
       toast({ title: 'Componente eliminado' });
       setDeleteComponentId(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el componente',
@@ -193,7 +194,7 @@ export default function PaqueteDetallePage() {
       await service.toggleComponentActive(component.id, !component.is_active);
       toast({ title: component.is_active ? 'Componente desactivado' : 'Componente activado' });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cambiar el estado',
@@ -220,6 +221,9 @@ export default function PaqueteDetallePage() {
     return total;
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: pkg?.name, subtitulo: pkg?.code || undefined, volverA: '/app/hrm/compensacion/paquetes' });
+
   if (orgLoading || isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -242,7 +246,8 @@ export default function PaqueteDetallePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/hrm/compensacion/paquetes">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/hrm/compensacion/paquetes" className="hidden lg:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -326,9 +331,9 @@ export default function PaqueteDetallePage() {
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>
-                  Válido: {pkg.valid_from ? formatDate(pkg.valid_from) : 'Sin inicio'}
+                  Válido: {pkg.valid_from ? formatPlainDate(pkg.valid_from) : 'Sin inicio'}
                   {' - '}
-                  {pkg.valid_to ? formatDate(pkg.valid_to) : 'Sin fin'}
+                  {pkg.valid_to ? formatPlainDate(pkg.valid_to) : 'Sin fin'}
                 </span>
               </div>
             </div>

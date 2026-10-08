@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { ChatChannel, WidgetStats } from '@/lib/services/chatChannelsService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface WebsiteSettingsHeaderProps {
   channel: ChatChannel;
@@ -24,16 +25,20 @@ export default function WebsiteSettingsHeader({
 }: WebsiteSettingsHeaderProps) {
   const router = useRouter();
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: channel.name, subtitulo: 'Configuración del widget de chat para sitio web', volverA: '/app/chat/canales' });
+
   return (
     <div className="border-b dark:border-gray-800 bg-white dark:bg-gray-900">
       <div className="p-4">
         {/* Navigation */}
         <div className="flex items-center gap-3 mb-4">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push('/app/chat/channels')}
-            className="h-9 w-9 flex-shrink-0"
+            className="hidden lg:inline-flex h-9 w-9 flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

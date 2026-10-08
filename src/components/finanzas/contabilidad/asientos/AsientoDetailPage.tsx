@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { OrigenCompraAsiento } from './OrigenCompraAsiento';
 import { DatosAsiento } from './DatosAsiento';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface AsientoDetailPageProps {
   entryId: number;
@@ -38,12 +39,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const tl = useTranslations('asientoContable.lineas');
   const [centros, setCentros] = useState<Map<string, { code: string; name: string }>>(new Map());
 
-  useEffect(() => {
-    loadAsiento();
-    ContabilidadService.puedeRevertir().then(setPuedeRevertir).catch(() => setPuedeRevertir(false));
-  }, [entryId]);
-
-  const loadAsiento = async () => {
+  const loadAsiento = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await ContabilidadService.obtenerAsiento(entryId);
@@ -66,7 +62,12 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [entryId, router]);
+
+  useEffect(() => {
+    loadAsiento();
+    ContabilidadService.puedeRevertir().then(setPuedeRevertir).catch(() => setPuedeRevertir(false));
+  }, [loadAsiento]);
 
   const handlePublish = async () => {
     if (!asiento) return;
@@ -135,6 +136,9 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const getTotalDebits = () => asiento?.lines?.reduce((sum, l) => sum + (l.debit || 0), 0) || 0;
   const getTotalCredits = () => asiento?.lines?.reduce((sum, l) => sum + (l.credit || 0), 0) || 0;
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: asiento ? `Asiento #${asiento.id}` : undefined, subtitulo: asiento?.memo || undefined, volverA: '/app/finanzas/contabilidad/asientos' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -150,7 +154,8 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/finanzas/contabilidad/asientos">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/finanzas/contabilidad/asientos" className="hidden lg:block">
             <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowLeft className="h-5 w-5" />
             </Button>

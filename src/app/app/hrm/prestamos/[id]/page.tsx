@@ -10,7 +10,8 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import EmployeeLoansService from '@/lib/services/employeeLoansService';
 import type { EmployeeLoan, LoanInstallment } from '@/lib/services/employeeLoansService';
 import { InstallmentsTable } from '@/components/hrm/prestamos/[id]';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,7 @@ import {
   Hash,
   FileText,
 } from 'lucide-react';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
@@ -121,7 +123,7 @@ export default function PrestamoDetallePage() {
 
       setLoan(loanData);
       setInstallments(installmentsData);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -154,10 +156,10 @@ export default function PrestamoDetallePage() {
       toast({ title: 'Préstamo aprobado y activado' });
       setApproveOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo aprobar el préstamo',
+        description: (error instanceof Error && error.message) || 'No se pudo aprobar el préstamo',
         variant: 'destructive',
       });
     }
@@ -172,7 +174,7 @@ export default function PrestamoDetallePage() {
       toast({ title: 'Préstamo cancelado' });
       setCancelOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cancelar el préstamo',
@@ -195,10 +197,10 @@ export default function PrestamoDetallePage() {
       setPaymentInstallment(null);
       setPaymentAmount('');
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo registrar el pago',
+        description: (error instanceof Error && error.message) || 'No se pudo registrar el pago',
         variant: 'destructive',
       });
     }
@@ -225,6 +227,9 @@ export default function PrestamoDetallePage() {
     return installments.filter(i => i.status !== 'paid' && i.due_date < today).length;
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: loan ? loan.loan_number || 'Préstamo' : undefined, volverA: '/app/hrm/prestamos' });
+
   if (orgLoading || isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -247,7 +252,8 @@ export default function PrestamoDetallePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/hrm/prestamos">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/hrm/prestamos" className="hidden lg:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -364,7 +370,7 @@ export default function PrestamoDetallePage() {
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <span className="text-gray-500 dark:text-gray-400">Desembolso:</span>
                   <span className="text-gray-900 dark:text-white">
-                    {formatDate(loan.disbursement_date)}
+                    {formatPlainDate(loan.disbursement_date)}
                   </span>
                 </div>
               )}
@@ -373,7 +379,7 @@ export default function PrestamoDetallePage() {
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <span className="text-gray-500 dark:text-gray-400">Primera cuota:</span>
                   <span className="text-gray-900 dark:text-white">
-                    {formatDate(loan.first_payment_date)}
+                    {formatPlainDate(loan.first_payment_date)}
                   </span>
                 </div>
               )}
@@ -382,7 +388,7 @@ export default function PrestamoDetallePage() {
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <span className="text-gray-500 dark:text-gray-400">Último pago:</span>
                   <span className="text-gray-900 dark:text-white">
-                    {formatDate(loan.last_payment_date)}
+                    {formatPlainDate(loan.last_payment_date)}
                   </span>
                 </div>
               )}

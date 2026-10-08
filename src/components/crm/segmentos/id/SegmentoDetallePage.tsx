@@ -38,6 +38,7 @@ import { Segment, FilterRule, FILTER_FIELDS, FILTER_OPERATORS } from '../types';
 import { filtroParaGuardar, normalizarFiltroSegmento, type FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useTranslations } from 'next-intl';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface SegmentoDetallePageProps {
   segmentId: string;
@@ -94,7 +95,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [segmentId, router, toast]);
+  }, [segmentId, router, toast, t]);
 
   useEffect(() => {
     loadData();
@@ -159,6 +160,9 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
     return field?.type || 'text';
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: segment?.name, volverA: '/app/crm/segmentos' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -176,7 +180,8 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/crm/segmentos">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/crm/segmentos" className="hidden lg:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>

@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 import { useTranslations } from 'next-intl';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 /** Informacion del link de Open Finance vinculado a la cuenta */
 interface OpenFinanceLinkInfo {
@@ -153,6 +154,9 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
     });
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: account?.name, subtitulo: account?.bank_name || undefined, volverA: '/app/finanzas/bancos' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -181,7 +185,8 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/finanzas/bancos">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/finanzas/bancos" className="hidden lg:block">
             <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowLeft className="h-5 w-5" />
             </Button>

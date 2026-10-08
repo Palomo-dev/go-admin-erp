@@ -30,6 +30,7 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { esEntradaBancaria, estaConciliado } from '@/lib/finanzas/movimientoBancario';
 import { useTranslations } from 'next-intl';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface MovimientosPageProps {
   accountId: string;
@@ -136,6 +137,9 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
     return matchesSearch && matchesStatus;
   });
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Movimientos Bancarios', subtitulo: account ? `${account.name} • ${account.bank_name}` : undefined, volverA: `/app/finanzas/bancos/cuentas/${accountId}` });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -158,7 +162,8 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href={`/app/finanzas/bancos/cuentas/${accountId}`}>
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href={`/app/finanzas/bancos/cuentas/${accountId}`} className="hidden lg:block">
             <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowLeft className="h-5 w-5" />
             </Button>

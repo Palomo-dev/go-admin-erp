@@ -36,6 +36,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { SendSupportDocumentButton } from '@/components/finanzas/documentos-soporte/SendSupportDocumentButton';
 import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 /** Proveedor tal como se guarda en `support_documents.provider` (jsonb). */
 interface ProveedorSoporte {
@@ -256,6 +257,9 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: t('titulo'), subtitulo: doc ? t('referencia', { referencia: doc.reference_code }) : undefined, volverA: '/app/finanzas/documentos-soporte' });
+
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -280,9 +284,10 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
           <Link
             href="/app/finanzas/documentos-soporte"
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label={t('volver')}
           >
             <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />

@@ -26,6 +26,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { CotizacionesService, type Quotation } from '@/lib/services/cotizacionesService';
 import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -175,12 +176,16 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
   const canEdit = cotActual.stored_status === 'draft' || cotActual.stored_status === 'sent';
   const canConvert = cotActual.status === 'draft' || cotActual.status === 'sent' || cotActual.status === 'accepted';
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: `Cotización ${cotActual.number}`, volverA: '/app/finanzas/cotizaciones' });
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/app/finanzas/cotizaciones')}>
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Button variant="ghost" size="sm" className="hidden lg:inline-flex" onClick={() => router.push('/app/finanzas/cotizaciones')}>
             <ArrowLeft className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </Button>
           <div className="flex items-center gap-3">
@@ -253,6 +258,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               {cotActual.customers?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- imagen de una URL arbitraria (Storage o proveedor), sin dominio fijo para next/image
                 <img
                   src={cotActual.customers.avatar_url}
                   alt={cotActual.customers?.full_name || 'Cliente'}

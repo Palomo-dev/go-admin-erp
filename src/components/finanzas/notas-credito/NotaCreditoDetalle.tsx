@@ -39,6 +39,7 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 /** La nota es una fila de `invoice_sales` (select *): trae su propia `currency`. */
 type NotaConMoneda = NotaCredito & { currency?: string | null };
@@ -208,6 +209,9 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: nota ? t('detalle.titulo', { numero: nota.number }) : undefined, volverA: '/app/finanzas/notas-credito' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -234,7 +238,8 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/finanzas/notas-credito">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/finanzas/notas-credito" className="hidden lg:block">
             <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800" aria-label={t('detalle.volverListado')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>

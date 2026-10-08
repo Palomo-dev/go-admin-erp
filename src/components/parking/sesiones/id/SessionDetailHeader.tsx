@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface SessionDetailHeaderProps {
   session: {
@@ -69,11 +70,15 @@ export function SessionDetailHeader({
   onPrint,
   onMarkIncident,
 }: SessionDetailHeaderProps) {
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: session?.vehicle_plate, volverA: '/app/parking/sesiones' });
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/app/parking/sesiones">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/parking/sesiones" className="hidden lg:block">
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <ArrowLeft className="h-5 w-5" />
             </Button>

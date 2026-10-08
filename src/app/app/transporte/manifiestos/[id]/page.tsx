@@ -6,12 +6,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,9 +38,7 @@ import {
   FileText,
   User,
   Phone,
-  Navigation,
   DollarSign,
-  History,
   AlertTriangle,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -51,9 +47,11 @@ import {
   manifestsService,
   type ManifestWithDetails,
   type ManifestShipment,
+  type ManifestUpdateInput,
 } from '@/lib/services/manifestsService';
 import { AddShipmentsDialog, ManifestDialog } from '@/components/transporte/manifiestos';
 import { DeliveryDialog, FailureDialog } from '@/components/transporte/manifiestos/id';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: {
@@ -251,7 +249,7 @@ export default function ManifestDetailPage() {
     }
   };
 
-  const handleUpdateManifest = async (data: any) => {
+  const handleUpdateManifest = async (data: ManifestUpdateInput) => {
     if (!manifest) return;
 
     setIsSubmitting(true);
@@ -361,6 +359,9 @@ export default function ManifestDetailPage() {
 
   const canEditShipments = manifest?.status === 'in_progress' || manifest?.status === 'confirmed';
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: manifest?.manifest_number, volverA: '/app/transporte/manifiestos' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 space-y-4">
@@ -393,7 +394,8 @@ export default function ManifestDetailPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/app/transporte/manifiestos')}>
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={() => router.push('/app/transporte/manifiestos')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

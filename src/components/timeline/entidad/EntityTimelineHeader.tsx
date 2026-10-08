@@ -25,6 +25,7 @@ import {
   Calendar,
   Building2,
 } from 'lucide-react';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface EntityTimelineHeaderProps {
   entityType: string;
@@ -126,11 +127,14 @@ export function EntityTimelineHeader({
   const entityLabel = ENTITY_LABELS[entityType.toLowerCase()] || entityType;
   const entityColor = ENTITY_COLORS[entityType.toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: entityName || `${entityLabel} ${entityId.substring(0, 8)}...`, subtitulo: entityLabel, volverA: '/app/timeline' });
+
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
-        {/* Navegación */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
+        {/* Navegación. En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+        <div className="hidden lg:flex flex-wrap items-center gap-4 mb-4">
           <Button
             variant="ghost"
             size="sm"

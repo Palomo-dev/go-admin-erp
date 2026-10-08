@@ -18,6 +18,7 @@ import { CampanasService } from '../CampanasService';
 import { CAMPAIGN_STATUS_CONFIG, type Campaign } from '../types';
 import { CampaignContactsTable } from './CampaignContactsTable';
 import { useTranslations } from 'next-intl';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
   const tx = useTranslations('crm.campanasLista');
@@ -41,7 +42,7 @@ export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
     } catch (e) {
       toast({ title: tx('campanaDetallePage.noPudoCargar'), description: e instanceof Error ? e.message : tx('campanaNuevaPage.error'), variant: 'destructive' });
     } finally { setLoading(false); }
-  }, [campaignId, router, toast]);
+  }, [campaignId, router, toast, tx]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
@@ -63,6 +64,9 @@ export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
     try { await fn(); toast({ title: ok }); await load(); } catch (e) { toast({ title: tx('campanaDetallePage.noPudoCompletar'), description: e instanceof Error ? e.message : tx('campanaNuevaPage.error'), variant: 'destructive' }); } finally { setBusy(null); }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: campaign?.name, volverA: '/app/crm/campanas' });
+
   if (loading || !campaign) return <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen"><PageHeaderSkeleton /><StatsSkeleton count={6} /></div>;
 
   const es = campaign.effective_status;
@@ -78,7 +82,8 @@ export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/crm/campanas"><Button variant="ghost" size="icon" aria-label={tx('campanaNuevaPage.volver')}><ArrowLeft className="h-5 w-5" /></Button></Link>
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/crm/campanas" className="hidden lg:block"><Button variant="ghost" size="icon" aria-label={tx('campanaNuevaPage.volver')}><ArrowLeft className="h-5 w-5" /></Button></Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3"><div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><Megaphone className="h-6 w-6 text-emerald-600" /></div>{campaign.name}<Badge className={`${st.bgColor} ${st.color}`}>{tx(`estadosCampana.${es in CAMPAIGN_STATUS_CONFIG ? es : 'draft'}`)}</Badge></h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm">{campaign.channel === 'email' ? 'Email' : 'WhatsApp'} · {campaign.template_id ? tx('campanaDetallePage.plantillaHsm') : tx('campanaDetallePage.textoLibre')} · {throttle} msg/s{campaign.scheduled_at ? ` · programada ${new Date(campaign.scheduled_at).toLocaleString('es-CO')}` : ''}</p>

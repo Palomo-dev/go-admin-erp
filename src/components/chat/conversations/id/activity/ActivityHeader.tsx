@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ActivityStats } from '@/lib/services/conversationActivityService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface ActivityHeaderProps {
   conversationId: string;
@@ -24,16 +25,20 @@ export default function ActivityHeader({
 }: ActivityHeaderProps) {
   const router = useRouter();
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Bitácora de Actividad', subtitulo: 'Historial de la conversación', volverA: `/app/chat/conversaciones/${conversationId}` });
+
   return (
     <div className="border-b dark:border-gray-800 bg-white dark:bg-gray-900">
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
+            {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.push(`/app/chat/conversaciones/${conversationId}`)}
-              className="h-9 w-9"
+              className="hidden lg:inline-flex h-9 w-9"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

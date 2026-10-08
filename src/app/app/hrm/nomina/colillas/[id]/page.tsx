@@ -8,7 +8,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
 import type { PayrollSlip, PayrollItem, CreateItemDTO } from '@/lib/services/payrollService';
 import { ItemsTable } from '@/components/hrm/nomina/colillas/[id]';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,7 @@ import {
   Printer,
   Percent,
 } from 'lucide-react';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
@@ -71,6 +73,7 @@ export default function ColillaDetallePage() {
 
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
 
   const [slip, setSlip] = useState<PayrollSlip | null>(null);
   const [items, setItems] = useState<PayrollItem[]>([]);
@@ -116,7 +119,7 @@ export default function ColillaDetallePage() {
 
       setSlip(slipData);
       setItems(itemsData);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading data:', error);
       toast({
         title: 'Error',
@@ -144,7 +147,7 @@ export default function ColillaDetallePage() {
       toast({ title: 'Colilla aprobada' });
       setApproveOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo aprobar la colilla',
@@ -162,7 +165,7 @@ export default function ColillaDetallePage() {
       toast({ title: 'Colilla marcada como pagada' });
       setMarkPaidOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo marcar como pagada',
@@ -188,7 +191,7 @@ export default function ColillaDetallePage() {
       setAddItemOpen(false);
       setNewItem({ item_type: 'earning', code: '', name: '', amount: 0 });
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo agregar el concepto',
@@ -207,7 +210,7 @@ export default function ColillaDetallePage() {
       toast({ title: 'Concepto eliminado' });
       setDeleteItem(null);
       await loadData();
-    } catch (error: any) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el concepto',
@@ -218,6 +221,9 @@ export default function ColillaDetallePage() {
 
   const canEdit = slip?.status === 'draft';
   const itemTypes = getService()?.getItemTypes() || [];
+
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Colilla de Nómina', subtitulo: slip ? `${slip.period_name} - ${slip.employee_name}` : undefined, volverA: '/app/hrm/nomina/colillas' });
 
   if (orgLoading || isLoading) {
     return (
@@ -241,7 +247,8 @@ export default function ColillaDetallePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/hrm/nomina/colillas">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/hrm/nomina/colillas" className="hidden lg:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>

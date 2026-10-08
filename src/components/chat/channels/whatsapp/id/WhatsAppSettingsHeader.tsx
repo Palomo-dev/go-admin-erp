@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Settings, Power, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { WhatsAppChannel } from '@/lib/services/whatsappChannelService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface WhatsAppSettingsHeaderProps {
   channel: WhatsAppChannel;
@@ -20,6 +21,9 @@ export default function WhatsAppSettingsHeader({
   isLoading
 }: WhatsAppSettingsHeaderProps) {
   const router = useRouter();
+
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: channel.name, subtitulo: 'Configuración del canal WhatsApp Business', volverA: '/app/chat/canales' });
 
   const getStatusBadge = () => {
     switch (channel.status) {
@@ -37,11 +41,12 @@ export default function WhatsAppSettingsHeader({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center gap-3 sm:gap-4">
+        {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => router.push('/app/chat/channels')}
-          className="hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="hidden lg:inline-flex hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>

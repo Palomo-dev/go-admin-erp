@@ -43,6 +43,7 @@ import {
 } from '@/components/transporte/envios/id';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100', icon: <Package className="h-4 w-4" /> },
@@ -380,6 +381,9 @@ export default function ShipmentDetailPage() {
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: shipment?.tracking_number, volverA: '/app/transporte/envios' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 space-y-4">
@@ -411,7 +415,8 @@ export default function ShipmentDetailPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/app/transporte/envios')}>
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Button variant="ghost" size="sm" className="hidden lg:inline-flex" onClick={() => router.push('/app/transporte/envios')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>
@@ -533,6 +538,7 @@ export default function ShipmentDetailPage() {
               </h3>
               <div className="flex items-start gap-3">
                 {orgInfo?.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- imagen de una URL arbitraria (Storage o proveedor), sin dominio fijo para next/image
                   <img src={orgInfo.logo_url} alt={orgInfo.name} className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
                 ) : (
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0" style={{ backgroundColor: getAvatarColor(orgInfo?.name || shipment.sender_name || '') }}>
@@ -647,6 +653,7 @@ export default function ShipmentDetailPage() {
                       <p className="text-gray-500 dark:text-gray-400">Conductor asignado</p>
                       <div className="flex items-center gap-2">
                         {driverInfo.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- imagen de una URL arbitraria (Storage o proveedor), sin dominio fijo para next/image
                           <img src={driverInfo.avatar_url} alt={driverInfo.name} className="w-6 h-6 rounded-full object-cover" />
                         ) : null}
                         <p className="font-medium text-blue-600 dark:text-blue-400">{driverInfo.name}</p>

@@ -19,6 +19,7 @@ import type { TemplateKind } from '@/lib/services/crm/email/types';
 import type { RenderContext } from '@/lib/services/crm/email/variables';
 import type { TemplateForm, TemplateStats } from './useTemplateEditor';
 import { useTranslations } from 'next-intl';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const KINDS: TemplateKind[] = ['transactional', 'marketing', 'sequence', 'onboarding'];
 
@@ -39,13 +40,16 @@ interface Props {
 
 export function TemplateEditorHeader({ form, patch, context, version, isSystem, isNew, dirty, saving, stats, onSave, onDuplicate, onTestSend }: Props) {
   const t = useTranslations('crm.plantillas');
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: isNew ? t('templateList.nuevaPlantilla') : form.name || t('templateEditorHeader.plantilla'), subtitulo: t('titulo'), volverA: '/app/crm/plantillas' });
   return (
     <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href="/app/crm/plantillas" className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+        {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+        <Link href="/app/crm/plantillas" className="hidden lg:inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {t('titulo')}
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
+        <span className="hidden lg:inline text-gray-300 dark:text-gray-600">/</span>
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{isNew ? t('templateList.nuevaPlantilla') : form.name || t('templateEditorHeader.plantilla')}</h1>
         {version ? <Badge variant="secondary">v{version}</Badge> : null}
         {isSystem ? <Badge variant="outline">{t('templateList.base')}</Badge> : null}

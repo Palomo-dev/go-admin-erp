@@ -32,6 +32,7 @@ import { vistaMesaPlano, type VistaMesaPlano } from '@/components/pos/mesas/plan
 import { PantallaMesa, type EstadoPantallaMesa, type ModoPantallaMesa } from '@/components/pos/mesas/cuenta/PantallaMesa';
 import { PanelCuentaMesa, type EstadoCobroMesa } from '@/components/pos/mesas/cuenta/PanelCuentaMesa';
 import { CabeceraMesa } from '@/components/pos/mesas/cuenta/CabeceraMesa';
+import { CabeceraMovilMesa } from '@/components/pos/mesas/cuenta/CabeceraMovilMesa';
 import { MenuMesa } from '@/components/pos/mesas/cuenta/MenuMesa';
 import { FilaClienteMesa, FilaNotaMesa } from '@/components/pos/mesas/cuenta/FilasCuentaMesa';
 import { NotaMesaPanel } from '@/components/pos/mesas/cuenta/NotaMesaPanel';
@@ -114,6 +115,7 @@ export default function MesaCuentaPage() {
   const tableId = params?.id as string;
   const t = useTranslations('posMesasFlujo');
   const tCocina = useTranslations('posCocina');
+  const tHeader = useTranslations('header');
   const { organization, branch_id } = useOrganization();
   const { branchFilter, selectedBranchId } = useBranch();
   const { timezone } = useOrgTimezone();
@@ -1018,10 +1020,22 @@ export default function MesaCuentaPage() {
     </div>
   );
 
+  // Celular: la única barra es el MobileHeader Mode=pos (Figma M2), con el
+  // estado de la caja con el mismo texto que el POS.
+  const estadoCaja = caja ? tHeader('posCashOpen', { time: formatTimeInTz(caja.opened_at, timezone) }) : tHeader('posCashClosed');
+
   const catalogo = <ProductSearch onProductSelect={(p, m, c) => alElegirProducto(p, m, c)} bloqueado={!!cobro} />;
 
   return (
     <div className="h-full">
+      <CabeceraMovilMesa
+        cajaAbierta={!!caja}
+        estadoCaja={estadoCaja}
+        cierreBloqueado={false}
+        onCaja={() => setAperturaCaja(true)}
+        carritosActivos={carts.filter((c) => c.status === 'active').length}
+        carritosEnEspera={carts.filter((c) => c.status === 'hold').length}
+      />
       <PantallaMesa
         modo={modo}
         estado={estado}

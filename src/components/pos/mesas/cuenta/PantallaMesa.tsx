@@ -14,7 +14,9 @@ import { cn } from '@/utils/Utils';
  *   (D2–D9, D12).
  * - Tableta (1024): cabecera de la mesa, catálogo en lista y la cuenta (T2–T7,
  *   S1–S8), con el aviso de la mesa arriba (sin caja, sin conexión, abandonada).
- * - Celular: catálogo y la cuenta en una hoja (la abre la barra fija).
+ * - Celular: catálogo y la cuenta en una hoja (la abre la barra fija). Sin
+ *   cabecera propia: la única barra es el `MobileHeader Mode=pos` del shell
+ *   (M2), que publica `CabeceraMovilMesa`; con las dos había dos «←».
  * Estados de toda la pantalla: cargando (S2), error (S3) y sin permiso (S6).
  * Solo compone: los datos y las acciones llegan del contenedor.
  */
@@ -29,7 +31,7 @@ export interface PantallaMesaProps {
   cabeceraPos?: ReactNode;
   /** Escritorio: `CartTabs` con la pestaña de la mesa. */
   pestanas?: ReactNode;
-  /** Tableta y celular: `CabeceraMesa`. */
+  /** Tableta: `CabeceraMesa`. En celular (< lg) no se dibuja: manda el MobileHeader. */
   cabeceraMesa?: ReactNode;
   /** Aviso de la mesa bajo la cabecera (tableta) o sobre la cuenta (escritorio). */
   aviso?: ReactNode;
@@ -130,7 +132,9 @@ export function PantallaMesa({
       {escritorio ? (
         <div className="shrink-0 px-4 pt-4">{cabeceraPos}</div>
       ) : (
-        cabeceraMesa
+        // Por CSS y no por `modo`: en el primer render `modo` vale «movil» en
+        // cualquier ancho, y el corte del shell (MobileHeader) es `lg`.
+        cabeceraMesa && <div className="hidden shrink-0 lg:block">{cabeceraMesa}</div>
       )}
       {!escritorio && aviso && estado === 'lista' && <div className="shrink-0 px-4 pt-3">{aviso}</div>}
       {cuerpo}

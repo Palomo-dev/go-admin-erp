@@ -32,7 +32,6 @@ interface ReservationActionsProps {
 }
 
 export function ReservationActions({
-  reservationId,
   status,
   onBack,
   onPrint,
@@ -45,7 +44,8 @@ export function ReservationActions({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button variant="outline" onClick={onBack}>
+      {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+      <Button variant="outline" onClick={onBack} className="hidden lg:inline-flex">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Volver
       </Button>

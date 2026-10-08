@@ -1,8 +1,9 @@
 /**
  * Lógica del plano de mesas (Figma «POS — Mesas: cuadrícula y plano», 870:103527
- * plano, 870:104583 editor de mesa, 870:580140 editor de zona). Pura, para Jest:
- * posiciones por defecto, recuadro de cada zona, zoom «Ajustar», deshacer y
- * rehacer, y qué cambió para «Guardar cambios (n)».
+ * plano, 870:104583 editor de mesa, 870:580140 editor de zona y 2261:977952
+ * elementos fijos y «reservable en la web»). Pura, para Jest: posiciones por
+ * defecto, recuadro de cada zona, zoom «Ajustar», deshacer y rehacer, elementos
+ * fijos, rango de personas web y qué cambió para «Guardar cambios (n)».
  */
 import { tamanoEnPlanoBase, type FormaMesa, type VistaMesaPlano } from './estadoMesaPlano';
 
@@ -45,6 +46,11 @@ export interface MesaEnPlano {
   x: number;
   y: number;
   rotacion: number;
+  /** «Se puede reservar en la web» (restaurant_tables.is_web_bookable). */
+  reservableWeb: boolean;
+  /** Personas para reservarla en la web; null = de 1 a la capacidad. */
+  webMin: number | null;
+  webMax: number | null;
   /** Mesa nueva del editor (aún no está en la base). */
   nueva?: boolean;
 }
@@ -74,7 +80,18 @@ export function colocarMesas(vistas: readonly VistaMesaPlano[], ordenZonas: read
   for (const v of vistas) porZona.set(v.zona ?? null, [...(porZona.get(v.zona ?? null) ?? []), v]);
   const orden = [...ordenZonas.filter((z) => porZona.has(z)), ...[...porZona.keys()].filter((z) => !ordenZonas.includes(z))];
   const salida: MesaEnPlano[] = [];
-  const base = (v: VistaMesaPlano) => ({ id: v.id, nombre: v.nombre, zona: v.zona, capacidad: v.capacidad, forma: v.forma, tamano: v.tamano, rotacion: v.rotacion });
+  const base = (v: VistaMesaPlano) => ({
+    id: v.id,
+    nombre: v.nombre,
+    zona: v.zona,
+    capacidad: v.capacidad,
+    forma: v.forma,
+    tamano: v.tamano,
+    rotacion: v.rotacion,
+    reservableWeb: v.reservableWeb ?? true,
+    webMin: v.webMin ?? null,
+    webMax: v.webMax ?? null,
+  });
   // Fondo de lo ya colocado (mesas con posición guardada de todas las zonas).
   const colocadas = vistas.filter((v) => v.x != null && v.y != null);
   let fondo = colocadas.length > 0 ? Math.max(...colocadas.map((v) => (v.y ?? 0) + tamanoEnPlanoBase(v.forma, v.tamano).h)) + MARGEN_ZONA.abajo : 0;
@@ -111,19 +128,19 @@ export interface Caja {
   h: number;
 }
 
-/** Recuadro punteado de la zona: rodea sus mesas con margen. */
-export function cajaDeZona(mesas: readonly MesaEnPlano[]): Caja | null {
-  if (mesas.length === 0) return null;
+/** Recuadro punteado de la zona: rodea sus mesas (y sus elementos fijos) con margen. */
+export function cajaDeZona(mesas: readonly MesaEnPlano[], elementos: readonly ElementoEnPlano[] = []): Caja | null {
+  if (mesas.length === 0 && elementos.length === 0) return null;
   let x1 = Infinity;
   let y1 = Infinity;
   let x2 = -Infinity;
   let y2 = -Infinity;
-  for (const m of mesas) {
-    const c = cajaMesa(m);
-    x1 = Math.min(x1, m.x);
-    y1 = Math.min(y1, m.y);
-    x2 = Math.max(x2, m.x + c.w);
-    y2 = Math.max(y2, m.y + c.h);
+  const cajas = [...mesas.map((m) => ({ x: m.x, y: m.y, ...cajaMesa(m) })), ...elementos.map((e) => ({ x: e.x, y: e.y, ...cajaElemento(e) }))];
+  for (const c of cajas) {
+    x1 = Math.min(x1, c.x);
+    y1 = Math.min(y1, c.y);
+    x2 = Math.max(x2, c.x + c.w);
+    y2 = Math.max(y2, c.y + c.h);
   }
   return { x: x1 - MARGEN_ZONA.x, y: y1 - MARGEN_ZONA.arriba, w: x2 - x1 + MARGEN_ZONA.x * 2, h: y2 - y1 + MARGEN_ZONA.arriba + MARGEN_ZONA.abajo };
 }
@@ -153,6 +170,10 @@ export interface EstadoEditor {
   zonas: ZonaEnPlano[];
   /** Ids de mesas borradas en el editor (las nuevas no cuentan). */
   borradas: string[];
+  /** Elementos fijos del plano (columna, jardinera, barra…). */
+  elementos: ElementoEnPlano[];
+  /** Ids de elementos borrados en el editor (los nuevos no cuentan). */
+  elementosBorrados: string[];
 }
 
 export interface HistorialEditor {
@@ -206,12 +227,15 @@ export function duplicarMesa(e: EstadoEditor, id: string, idNuevo: string, prefi
   return { ...e, mesas: [...e.mesas, copia] };
 }
 
-/** Mesas nuevas, editadas y borradas respecto al estado guardado. */
+/** Mesas, zonas y elementos nuevos, editados y borrados respecto al estado guardado. */
 export interface CambiosPlano {
   nuevas: MesaEnPlano[];
   editadas: MesaEnPlano[];
   borradas: string[];
   zonas: ZonaEnPlano[];
+  elementosNuevos: ElementoEnPlano[];
+  elementosEditados: ElementoEnPlano[];
+  elementosBorrados: string[];
 }
 
 const igualMesa = (a: MesaEnPlano, b: MesaEnPlano) =>
@@ -222,7 +246,22 @@ const igualMesa = (a: MesaEnPlano, b: MesaEnPlano) =>
   a.tamano === b.tamano &&
   a.x === b.x &&
   a.y === b.y &&
-  a.rotacion === b.rotacion;
+  a.rotacion === b.rotacion &&
+  a.reservableWeb === b.reservableWeb &&
+  a.webMin === b.webMin &&
+  a.webMax === b.webMax;
+
+const igualElemento = (a: ElementoEnPlano, b: ElementoEnPlano) =>
+  a.tipo === b.tipo &&
+  a.etiqueta === b.etiqueta &&
+  a.zona === b.zona &&
+  a.x === b.x &&
+  a.y === b.y &&
+  a.ancho === b.ancho &&
+  a.alto === b.alto &&
+  a.rotacion === b.rotacion &&
+  a.enSitio === b.enSitio &&
+  a.orden === b.orden;
 
 const igualZona = (a: ZonaEnPlano, b: ZonaEnPlano) => a.nombre === b.nombre && a.color === b.color && a.orden === b.orden;
 
@@ -235,11 +274,22 @@ export function cambiosPlano(guardado: EstadoEditor, actual: EstadoEditor): Camb
     const b = zonasBase.get(z.original ?? `nueva:${z.nombre}`);
     return !b || !igualZona(b, z) || z.original === null;
   });
-  return { nuevas, editadas, borradas: actual.borradas, zonas };
+  const elementosBase = new Map(guardado.elementos.map((e) => [e.id, e]));
+  const elementosNuevos = actual.elementos.filter((e) => e.nuevo);
+  const elementosEditados = actual.elementos.filter((e) => !e.nuevo && elementosBase.has(e.id) && !igualElemento(elementosBase.get(e.id)!, e));
+  return { nuevas, editadas, borradas: actual.borradas, zonas, elementosNuevos, elementosEditados, elementosBorrados: actual.elementosBorrados };
 }
 
 export function totalCambios(c: CambiosPlano): number {
-  return c.nuevas.length + c.editadas.length + c.borradas.length + c.zonas.length;
+  return (
+    c.nuevas.length +
+    c.editadas.length +
+    c.borradas.length +
+    c.zonas.length +
+    c.elementosNuevos.length +
+    c.elementosEditados.length +
+    c.elementosBorrados.length
+  );
 }
 
 /** Mueve una zona en el orden de las pestañas (870:580140 «Pestaña 2 de 4» ↑↓). */
@@ -255,4 +305,151 @@ export function moverZona(zonas: readonly ZonaEnPlano[], nombre: string, delta: 
 /** Mesas de una zona, colocadas para que su recuadro empiece arriba a la izquierda. */
 export function mesasDeZona(mesas: readonly MesaEnPlano[], zona: string | null): MesaEnPlano[] {
   return mesas.filter((m) => (m.zona ?? null) === zona);
+}
+
+// ── Reserva en la web (2261:977952 «Se puede reservar en la web») ───────────
+
+/** Error del rango de personas web de una mesa, o null si es válido. */
+export type ErrorRangoWeb = 'minimo' | 'orden' | 'capacidad';
+
+export function errorRangoWeb(m: Pick<MesaEnPlano, 'capacidad' | 'webMin' | 'webMax'>): ErrorRangoWeb | null {
+  if ((m.webMin != null && m.webMin < 1) || (m.webMax != null && m.webMax < 1)) return 'minimo';
+  if (m.webMin != null && m.webMax != null && m.webMin > m.webMax) return 'orden';
+  if ((m.webMin != null && m.webMin > m.capacidad) || (m.webMax != null && m.webMax > m.capacidad)) return 'capacidad';
+  return null;
+}
+
+/** Rango efectivo para reservar en la web: el guardado o de 1 a la capacidad. */
+export function rangoWeb(m: Pick<MesaEnPlano, 'capacidad' | 'webMin' | 'webMax'>): { min: number; max: number } {
+  return { min: m.webMin ?? 1, max: m.webMax ?? m.capacidad };
+}
+
+/** Mesas con un rango web que no se puede guardar (bloquea «Guardar cambios»). */
+export function mesasConRangoInvalido(mesas: readonly MesaEnPlano[]): MesaEnPlano[] {
+  return mesas.filter((m) => m.reservableWeb && errorRangoWeb(m) !== null);
+}
+
+// ── Elementos fijos (2261:977952 «+ Elemento fijo») ─────────────────────────
+
+/** Mismos valores que el CHECK de restaurant_floor_elements.kind. */
+export const TIPOS_ELEMENTO = ['column', 'planter', 'bar', 'wall', 'door', 'window', 'label'] as const;
+export type TipoElemento = (typeof TIPOS_ELEMENTO)[number];
+
+/** Tamaño de partida de cada tipo (px a escala 1). */
+export const TAMANO_ELEMENTO: Record<TipoElemento, { w: number; h: number }> = {
+  column: { w: 60, h: 80 },
+  planter: { w: 140, h: 70 },
+  bar: { w: 200, h: 40 },
+  wall: { w: 240, h: 12 },
+  door: { w: 80, h: 12 },
+  window: { w: 120, h: 8 },
+  label: { w: 120, h: 32 },
+};
+
+/** Límites del CHECK de la base (width/height between 4 and 4000). */
+export const LADO_MIN = 4;
+export const LADO_MAX = 4000;
+
+export interface ElementoEnPlano {
+  id: string;
+  tipo: TipoElemento;
+  /** Texto que se ve dentro del elemento (vacío: ninguno). */
+  etiqueta: string;
+  zona: string | null;
+  /** Esquina superior izquierda de la caja ya girada (igual que las mesas). */
+  x: number;
+  y: number;
+  ancho: number;
+  alto: number;
+  rotacion: number;
+  /** «Se ve en el sitio» (show_on_web). */
+  enSitio: boolean;
+  orden: number;
+  /** Elemento nuevo del editor (aún no está en la base). */
+  nuevo?: boolean;
+}
+
+export function esTipoElemento(v: unknown): v is TipoElemento {
+  return typeof v === 'string' && (TIPOS_ELEMENTO as readonly string[]).includes(v);
+}
+
+export function limitarLado(v: number): number {
+  return Math.min(LADO_MAX, Math.max(LADO_MIN, Math.round(v)));
+}
+
+/** Rotación en 0–359 (CHECK de la base). */
+export function normalizarRotacion(r: number): number {
+  return ((Math.round(r) % 360) + 360) % 360;
+}
+
+/** Caja del elemento girado: la que ocupa en el plano. */
+export function cajaElemento(e: Pick<ElementoEnPlano, 'ancho' | 'alto' | 'rotacion'>): { w: number; h: number } {
+  const r = (normalizarRotacion(e.rotacion) * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(r));
+  const sin = Math.abs(Math.sin(r));
+  return { w: Math.round(e.ancho * cos + e.alto * sin), h: Math.round(e.ancho * sin + e.alto * cos) };
+}
+
+export function elementosDeZona(elementos: readonly ElementoEnPlano[], zona: string | null): ElementoEnPlano[] {
+  return elementos.filter((e) => (e.zona ?? null) === zona);
+}
+
+/** Elemento nuevo del tipo, con su tamaño de partida, en la posición dada (ajustada a la rejilla). */
+export function crearElemento(datos: { id: string; tipo: TipoElemento; etiqueta: string; zona: string | null; x: number; y: number; orden: number }): ElementoEnPlano {
+  const t = TAMANO_ELEMENTO[datos.tipo];
+  return {
+    id: datos.id,
+    tipo: datos.tipo,
+    etiqueta: datos.etiqueta,
+    zona: datos.zona,
+    x: Math.max(0, ajustarARejilla(datos.x)),
+    y: Math.max(0, ajustarARejilla(datos.y)),
+    ancho: t.w,
+    alto: t.h,
+    rotacion: 0,
+    enSitio: true,
+    orden: datos.orden,
+    nuevo: true,
+  };
+}
+
+export function actualizarElemento(e: EstadoEditor, id: string, cambio: Partial<ElementoEnPlano>): EstadoEditor {
+  return {
+    ...e,
+    elementos: e.elementos.map((x) => {
+      if (x.id !== id) return x;
+      const s = { ...x, ...cambio };
+      return { ...s, ancho: limitarLado(s.ancho), alto: limitarLado(s.alto), rotacion: normalizarRotacion(s.rotacion), x: Math.max(0, s.x), y: Math.max(0, s.y) };
+    }),
+  };
+}
+
+export function quitarElemento(e: EstadoEditor, id: string): EstadoEditor {
+  const el = e.elementos.find((x) => x.id === id);
+  return {
+    ...e,
+    elementos: e.elementos.filter((x) => x.id !== id),
+    elementosBorrados: el && !el.nuevo ? [...e.elementosBorrados, id] : e.elementosBorrados,
+  };
+}
+
+/** Copia del elemento a la derecha. */
+export function duplicarElemento(e: EstadoEditor, id: string, idNuevo: string): EstadoEditor {
+  const el = e.elementos.find((x) => x.id === id);
+  if (!el) return e;
+  const c = cajaElemento(el);
+  const orden = e.elementos.reduce((m, x) => Math.max(m, x.orden), 0) + 1;
+  return { ...e, elementos: [...e.elementos, { ...el, id: idNuevo, x: ajustarARejilla(el.x + c.w + REJILLA), orden, nuevo: true }] };
+}
+
+/**
+ * Cambia el tamaño arrastrando la esquina inferior derecha. El arrastre llega
+ * en ejes de la pantalla (dx, dy) y se pasa a los ejes del elemento girado
+ * (CSS `rotate` gira en el sentido del reloj con y hacia abajo).
+ */
+export function redimensionarElemento(el: Pick<ElementoEnPlano, 'ancho' | 'alto' | 'rotacion'>, dx: number, dy: number): { ancho: number; alto: number } {
+  const r = (normalizarRotacion(el.rotacion) * Math.PI) / 180;
+  const dw = dx * Math.cos(r) + dy * Math.sin(r);
+  const dh = -dx * Math.sin(r) + dy * Math.cos(r);
+  return { ancho: limitarLado(el.ancho + dw), alto: limitarLado(el.alto + dh) };
 }

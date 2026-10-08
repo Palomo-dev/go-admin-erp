@@ -20,6 +20,7 @@ import { AIMatchingPanel } from './AIMatchingPanel';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface ConciliacionDetailPageProps {
   reconciliationId: string;
@@ -150,6 +151,9 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Conciliación Bancaria', subtitulo: reconciliation?.bank_account?.name, volverA: '/app/finanzas/conciliacion-bancaria' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -177,7 +181,8 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/finanzas/conciliacion-bancaria">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/finanzas/conciliacion-bancaria" className="hidden lg:block">
             <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowLeft className="h-5 w-5" />
             </Button>

@@ -37,6 +37,7 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
@@ -206,6 +207,9 @@ export default function PeriodoDetallePage() {
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: period ? period.name || 'Periodo' : undefined, volverA: '/app/hrm/nomina' });
+
   if (orgLoading || isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -232,7 +236,8 @@ export default function PeriodoDetallePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/hrm/nomina">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/hrm/nomina" className="hidden lg:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>

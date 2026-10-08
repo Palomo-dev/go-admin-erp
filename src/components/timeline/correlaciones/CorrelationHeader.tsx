@@ -9,7 +9,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/utils/Utils';
 import {
   ArrowLeft,
   Copy,
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface CorrelationHeaderProps {
   correlationId: string;
@@ -36,7 +36,6 @@ export function CorrelationHeader({
   firstEventTime,
   lastEventTime,
   onBack,
-  onShare,
 }: CorrelationHeaderProps) {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -65,11 +64,14 @@ export function CorrelationHeader({
 
   const duration = getDuration();
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Operación Completa', subtitulo: 'Traza de Correlación', volverA: '/app/timeline' });
+
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
-        {/* Navegación */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
+        {/* Navegación. En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+        <div className="hidden lg:flex flex-wrap items-center gap-4 mb-4">
           <Button
             variant="ghost"
             size="sm"

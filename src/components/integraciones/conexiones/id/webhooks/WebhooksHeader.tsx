@@ -6,6 +6,7 @@ import { ArrowLeft, RefreshCw, Plus, Webhook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { IntegrationConnection } from '@/lib/services/integrationsService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface WebhooksHeaderProps {
   connection: IntegrationConnection | null;
@@ -25,14 +26,17 @@ export function WebhooksHeader({
   onNewWebhook,
 }: WebhooksHeaderProps) {
   const connectionId = connection?.id;
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Webhooks', subtitulo: connection?.name || undefined, volverA: connectionId ? `/app/integraciones/conexiones/${connectionId}` : '/app/integraciones/conexiones' });
 
   return (
     <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
       <div className="px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
           <Link
             href={connectionId ? `/app/integraciones/conexiones/${connectionId}` : '/app/integraciones/conexiones'}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </Link>

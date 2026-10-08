@@ -4,6 +4,7 @@ import { ArrowLeft, Database, RefreshCw, Settings, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface SourceStats {
   totalFragments: number;
@@ -38,6 +39,8 @@ export default function SourceDetailHeader({
   onSettings,
   reindexing
 }: SourceDetailHeaderProps) {
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: name, subtitulo: description ?? undefined, volverA: '/app/chat/conocimiento' });
   const indexPercentage = stats.totalFragments > 0 
     ? Math.round((stats.indexedFragments / stats.totalFragments) * 100) 
     : 0;
@@ -47,11 +50,12 @@ export default function SourceDetailHeader({
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
+            {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={onBack}
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+              className="hidden lg:inline-flex text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

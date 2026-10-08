@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Space } from '@/lib/services/spacesService';
 import { useRouter } from 'next/navigation';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface SpaceDetailHeaderProps {
   space: Space;
@@ -72,14 +73,16 @@ export function SpaceDetailHeader({
 }: SpaceDetailHeaderProps) {
   const router = useRouter();
   const statusInfo = getStatusInfo(space.status);
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: space.label, subtitulo: space.space_types?.name || undefined, volverA: '/app/pms/espacios' });
 
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 shadow-sm">
       <div className="container mx-auto px-6 py-4">
-        {/* Breadcrumb */}
+        {/* Breadcrumb. En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
         <button
           onClick={() => router.push('/app/pms/espacios')}
-          className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
+          className="hidden lg:flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Espacios

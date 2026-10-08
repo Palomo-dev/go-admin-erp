@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface FragmentDetailHeaderProps {
   title: string;
@@ -38,16 +39,20 @@ export default function FragmentDetailHeader({
   onToggle,
   onReindex
 }: FragmentDetailHeaderProps) {
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: title, subtitulo: 'Fragmento de conocimiento' });
+
   return (
     <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       <div className="p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
+            {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={onBack}
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+              className="hidden lg:inline-flex text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

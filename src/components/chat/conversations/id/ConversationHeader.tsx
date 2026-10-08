@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ConversationDetail } from '@/lib/services/conversationDetailService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface ConversationHeaderProps {
   conversation: ConversationDetail | null;
@@ -48,6 +49,14 @@ export default function ConversationHeader({
 }: ConversationHeaderProps) {
   const router = useRouter();
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  const nombreCliente = conversation
+    ? conversation.customer?.full_name ||
+      `${conversation.customer?.first_name || ''} ${conversation.customer?.last_name || ''}`.trim() ||
+      'Cliente sin nombre'
+    : undefined;
+  useCabeceraMovil({ modo: 'page', titulo: nombreCliente, subtitulo: conversation?.channel?.name || undefined, volverA: '/app/chat/bandeja' });
+
   if (!conversation) {
     return (
       <div className="h-16 border-b dark:border-gray-700 flex items-center px-4">
@@ -59,9 +68,7 @@ export default function ConversationHeader({
     );
   }
 
-  const customerName = conversation.customer?.full_name || 
-                       `${conversation.customer?.first_name || ''} ${conversation.customer?.last_name || ''}`.trim() ||
-                       'Cliente sin nombre';
+  const customerName = nombreCliente ?? 'Cliente sin nombre';
   const customerInitials = customerName
     .split(' ')
     .map(n => n[0])
@@ -120,12 +127,12 @@ export default function ConversationHeader({
 
   return (
     <div className="h-16 border-b dark:border-gray-700 flex items-center px-4 bg-white dark:bg-gray-900">
-      {/* Botón volver */}
+      {/* Botón volver. En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => router.push('/app/chat/inbox')}
-        className="mr-3"
+        onClick={() => router.push('/app/chat/bandeja')}
+        className="mr-3 hidden lg:inline-flex"
       >
         <ArrowLeft className="h-5 w-5" />
       </Button>

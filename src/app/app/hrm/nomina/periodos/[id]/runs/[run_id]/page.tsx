@@ -34,6 +34,7 @@ import {
   Users,
   DollarSign,
 } from 'lucide-react';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const statusColors: Record<string, string> = {
   calculating: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
@@ -162,6 +163,9 @@ export default function RunDetallePage() {
   const totalNet = slips.reduce((sum, s) => sum + s.net_pay, 0);
   const totalEmployerCost = slips.reduce((sum, s) => sum + (s.total_employer_cost || 0), 0);
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: run ? `Run #${run.run_number}` : undefined, subtitulo: run ? `${run.period_name || 'Periodo'} / Ejecución #${run.run_number}` : undefined, volverA: `/app/hrm/nomina/periodos/${periodId}` });
+
   if (orgLoading || isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -184,7 +188,8 @@ export default function RunDetallePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href={`/app/hrm/nomina/periodos/${periodId}`}>
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href={`/app/hrm/nomina/periodos/${periodId}`} className="hidden lg:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>

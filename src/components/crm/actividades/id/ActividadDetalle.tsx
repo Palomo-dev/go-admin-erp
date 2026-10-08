@@ -55,6 +55,7 @@ import {
   formatDuration,
   outcomeLabel,
 } from '../types';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface ActividadDetalleProps {
   activityId: string;
@@ -159,6 +160,9 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: activity ? (ACTIVITY_TYPE_CONFIG[activity.activity_type] || ACTIVITY_TYPE_CONFIG.note).label : undefined, subtitulo: 'Detalle de actividad', volverA: '/app/crm/actividades' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -189,11 +193,12 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push('/app/crm/actividades')}
-            className="shrink-0"
+            className="hidden lg:inline-flex shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

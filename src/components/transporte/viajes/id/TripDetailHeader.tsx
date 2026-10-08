@@ -16,6 +16,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { TripWithDetails } from '@/lib/services/tripsService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface TripDetailHeaderProps {
   trip: TripWithDetails;
@@ -55,13 +56,18 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
   const router = useRouter();
   const status = STATUS_CONFIG[trip.status] || STATUS_CONFIG.scheduled;
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: trip.trip_code, subtitulo: trip.transport_routes?.name || undefined, volverA: '/app/transporte/viajes' });
+
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4">
       <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.push('/app/transporte/viajes')}
+          className="hidden lg:inline-flex"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver

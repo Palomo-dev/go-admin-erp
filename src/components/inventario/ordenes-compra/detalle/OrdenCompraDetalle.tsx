@@ -63,6 +63,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { LotesRecepcion, lotesIncompletos, useMensajeErrorRecepcionOC } from '@/components/inventario/recepcion/LotesRecepcion';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface OrdenCompraDetalleProps {
   orderUuid: string;
@@ -292,6 +293,9 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
     }
   };
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: order ? `OC-${order.id}` : undefined, volverA: '/app/inventario/ordenes-compra' });
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -315,7 +319,8 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/app/inventario/ordenes-compra">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+          <Link href="/app/inventario/ordenes-compra" className="hidden lg:block">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver

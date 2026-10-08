@@ -36,6 +36,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as ts from 'typescript';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
 import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 import { ORIGENES_MOVIMIENTO_STOCK, esOrigenMovimientoValido } from '@/lib/inventario/origenesMovimientoStock';
@@ -3934,5 +3935,168 @@ describe('43. Teléfono: un solo componente (kit/PhoneInput) en toda la app', ()
       const codigo = stripAllComments(contenido).trim();
       expect(codigo.split('\n').every((l) => !l.trim() || /^export\s/.test(l.trim()))).toBe(true);
     }
+  });
+});
+
+describe('44. Detalles en celular: una sola «←», la del MobileHeader del shell', () => {
+  // En el celular (< lg) el shell pinta el MobileHeader en modo página: «←» +
+  // título (Figma `02 Componentes` › MobileHeader 48:2550). Una pantalla de
+  // detalle con su propio botón «←»/«Volver» visible bajo lg dibuja una
+  // segunda flecha que vuelve al mismo sitio, una encima de la otra.
+  //
+  // La regla: en una página de detalle (ruta con segmento dinámico, que no sea
+  // formulario) y en los componentes que importa (dos niveles), todo
+  // `<ArrowLeft>` va dentro de un elemento con `hidden lg:…` (la flecha propia
+  // solo existe desde lg), o la cabecera es `PageHeader` del kit, que en
+  // celular no se dibuja. El título se publica con `useCabeceraMovil`.
+  //
+  // Solo desaparece la flecha: badges, subtítulos, montos y acciones de la
+  // cabecera siguen visibles en celular.
+  //
+  // Excepciones (archivo → flechas visibles permitidas):
+  // - Estados «no encontrado» sin cabecera: el botón «Volver a …» es la única
+  //   acción de la pantalla vacía, no una segunda barra.
+  // - Asistentes y diálogos: «Atrás» entre pasos, no vuelve a la página padre.
+  const PERMITIDAS: Record<string, number> = {
+    'app/app/hrm/cargos/[id]/page.tsx': 1, // «Cargo no encontrado»
+    'app/app/hrm/departamentos/[id]/page.tsx': 1, // «Departamento no encontrado»
+    'app/app/hrm/empleados/[id]/page.tsx': 1, // «Empleado no encontrado»
+    'app/app/hrm/turnos/[id]/page.tsx': 1, // «Turno no encontrado»
+    'app/app/integraciones/eventos/[id]/page.tsx': 1, // «Evento no encontrado»
+    'app/app/pos/pedidos-online/[id]/components/OrderNotFoundState.tsx': 1, // pedido no encontrado
+    'components/pms/checkout/CheckoutDialog.tsx': 1, // «Atrás» entre pasos del diálogo
+    'components/pos/promociones/nuevo/PromotionWizard.tsx': 1, // «Anterior» entre pasos del asistente
+  };
+  const APP = path.join(SRC_ROOT, 'app', 'app');
+  const FORMULARIO = new Set(['nuevo', 'nueva', 'crear', 'editar', 'new', 'edit', 'create']);
+  const FUERA = /\/components\/(ui|kit|shell|common)\//;
+  const arboles = new Map<string, ts.SourceFile>();
+
+  function arbol(f: string, fuente?: string): ts.SourceFile {
+    if (fuente !== undefined) return ts.createSourceFile(f, fuente, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    if (!arboles.has(f)) arboles.set(f, ts.createSourceFile(f, readFile(f), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX));
+    return arboles.get(f)!;
+  }
+
+  function resolver(spec: string, desde: string): string | null {
+    let base: string;
+    if (spec.startsWith('@/')) base = path.join(SRC_ROOT, spec.slice(2));
+    else if (spec.startsWith('.')) base = path.resolve(path.dirname(desde), spec);
+    else return null;
+    for (const c of [base, `${base}.tsx`, `${base}.ts`, path.join(base, 'index.tsx'), path.join(base, 'index.ts')]) {
+      if (fs.existsSync(c) && fs.statSync(c).isFile()) return c;
+    }
+    return null;
+  }
+
+  const esBarril = (f: string) => /[\\/]index\.tsx?$/.test(f);
+
+  /** Componentes .tsx que importa el archivo; de un barril, solo los módulos de los nombres importados. */
+  function dependencias(f: string): string[] {
+    const out: string[] = [];
+    for (const st of arbol(f).statements) {
+      if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier) || st.importClause?.isTypeOnly) continue;
+      const r = resolver(st.moduleSpecifier.text, f);
+      if (!r) continue;
+      if (!esBarril(r)) {
+        if (r.endsWith('.tsx')) out.push(r);
+        continue;
+      }
+      const c = st.importClause;
+      const nombres: string[] = c?.name ? ['default'] : [];
+      if (c?.namedBindings && ts.isNamedImports(c.namedBindings)) {
+        c.namedBindings.elements.forEach((e) => nombres.push((e.propertyName ?? e.name).text));
+      }
+      for (const ex of arbol(r).statements) {
+        if (!ts.isExportDeclaration(ex) || !ex.moduleSpecifier || !ts.isStringLiteral(ex.moduleSpecifier)) continue;
+        const destino = resolver(ex.moduleSpecifier.text, r);
+        if (!destino?.endsWith('.tsx')) continue;
+        const exporta = !ex.exportClause || (ts.isNamedExports(ex.exportClause) && ex.exportClause.elements.some((e) => nombres.includes(e.name.text)));
+        if (exporta) out.push(destino);
+      }
+    }
+    return out.filter((x) => !FUERA.test(x.replace(/\\/g, '/')));
+  }
+
+  const ocultaEnCelular = (clases: string) =>
+    /(^|[\s'"`])hidden([\s'"`]|$)/.test(clases) && /\blg:(block|flex|inline-flex|inline|inline-block|grid)\b/.test(clases);
+
+  /** Líneas de los `<ArrowLeft>` sin un ancestro `hidden lg:…`: visibles en celular. */
+  function flechasVisibles(f: string, fuente?: string): number[] {
+    const sf = arbol(f, fuente);
+    const lineas: number[] = [];
+    const visitar = (n: ts.Node) => {
+      if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === 'ArrowLeft') {
+        let oculta = false;
+        for (let p: ts.Node | undefined = n.parent; p && !oculta; p = p.parent) {
+          const apertura = ts.isJsxElement(p) ? p.openingElement : null;
+          if (!apertura) continue;
+          const clases = apertura.attributes.properties
+            .filter((a): a is ts.JsxAttribute => ts.isJsxAttribute(a) && a.name.getText(sf) === 'className' && !!a.initializer)
+            .map((a) => a.initializer!.getText(sf))
+            .join(' ');
+          oculta = ocultaEnCelular(clases);
+        }
+        if (!oculta) lineas.push(sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1);
+      }
+      ts.forEachChild(n, visitar);
+    };
+    visitar(sf);
+    return lineas;
+  }
+
+  function paginasDeDetalle(dir: string, out: string[] = []): string[] {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) paginasDeDetalle(p, out);
+      else if (e.name === 'page.tsx') {
+        const segmentos = path.relative(APP, p).split(path.sep);
+        if (segmentos.some((s) => /^\[.+\]$/.test(s)) && !segmentos.some((s) => FORMULARIO.has(s))) out.push(p);
+      }
+    }
+    return out;
+  }
+
+  /** archivo → flechas visibles en celular, en todas las páginas de detalle y lo que importan. */
+  function flechasPorArchivo(): Map<string, number> {
+    const resultado = new Map<string, number>();
+    const vistos = new Set<string>();
+    for (const pagina of paginasDeDetalle(APP)) {
+      const cola: Array<[string, number]> = [[pagina, 0]];
+      while (cola.length) {
+        const [f, nivel] = cola.shift()!;
+        if (vistos.has(f)) continue;
+        vistos.add(f);
+        const n = flechasVisibles(f).length;
+        if (n) resultado.set(rel(f), n);
+        if (nivel < 2) dependencias(f).forEach((d) => cola.push([d, nivel + 1]));
+      }
+    }
+    return resultado;
+  }
+
+  test('el detector ve la flecha visible y respeta la oculta bajo lg', () => {
+    const visible = '<Link href="/x"><Button variant="ghost"><ArrowLeft className="h-5 w-5" /></Button></Link>';
+    const oculta = '<Link href="/x" className="hidden lg:block"><Button><ArrowLeft /></Button></Link>';
+    const ocultaFila = '<div className="hidden lg:flex mb-4"><Button onClick={volver}><ArrowLeft />Volver</Button></div>';
+    const soloEscritorio = '<Button className="hidden md:inline-flex"><ArrowLeft /></Button>';
+    expect(flechasVisibles('a.tsx', `const a = ${visible};`)).toEqual([1]);
+    expect(flechasVisibles('b.tsx', `const b = ${oculta};`)).toEqual([]);
+    expect(flechasVisibles('c.tsx', `const c = ${ocultaFila};`)).toEqual([]);
+    // `md:` no basta: entre 768 y 1023 px el shell sigue pintando el MobileHeader.
+    expect(flechasVisibles('d.tsx', `const d = ${soloEscritorio};`)).toEqual([1]);
+  });
+
+  test('ninguna pantalla de detalle dibuja su propia «←» en celular (salvo la allow-list documentada)', () => {
+    const infractores = [...flechasPorArchivo()]
+      .filter(([archivo, n]) => n > (PERMITIDAS[archivo] ?? 0))
+      .map(([archivo, n]) => `${archivo} (${n} visibles)`);
+    expect(infractores).toEqual([]);
+  });
+
+  test('la allow-list no tiene entradas viejas', () => {
+    const encontradas = flechasPorArchivo();
+    const viejas = Object.keys(PERMITIDAS).filter((archivo) => (encontradas.get(archivo) ?? 0) === 0);
+    expect(viejas).toEqual([]);
   });
 });

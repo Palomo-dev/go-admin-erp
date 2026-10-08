@@ -36285,7 +36285,21 @@
         "posicion": "Posición (se cambia arrastrando o con flechas)",
         "avisoCuenta": "Tiene una cuenta abierta: puedes moverla, pero no eliminarla ni bajar su capacidad por debajo de {n} comensales.",
         "duplicar": "Duplicar",
-        "eliminar": "Eliminar"
+        "eliminar": "Eliminar",
+        "web": {
+          "titulo": "Reserva en la web",
+          "reservable": "Se puede reservar en la web",
+          "reservableAyuda": "Si no, se ve en el plano del sitio, pero no se puede elegir",
+          "personas": "Personas para reservar en la web",
+          "desde": "De",
+          "hasta": "a",
+          "ayuda": "Vacío: de 1 a {n} (la capacidad de la mesa)",
+          "errores": {
+            "minimo": "El mínimo es 1 persona",
+            "orden": "El primer número no puede ser mayor que el segundo",
+            "capacidad": "No puede pasar de la capacidad de la mesa ({n})"
+          }
+        }
       },
       "zona": {
         "titulo": "Zona · {zona}",
@@ -36300,6 +36314,42 @@
         "bajar": "Bajar la pestaña",
         "avisoEliminar": "Para eliminar la zona, primero mueve sus {n} mesas a otra zona.",
         "eliminar": "Eliminar zona"
+      },
+      "botonElemento": "Elemento fijo",
+      "rangoInvalido": "Corrige las personas para reservar en la web de {mesa} para poder guardar",
+      "elemento": {
+        "titulo": "Elemento fijo · {tipo}",
+        "subtitulo": "Elemento fijo · {zona}",
+        "sinZona": "Sin zona",
+        "seVeEnSitio": "se ve en el plano del sitio",
+        "soloErp": "solo en el ERP",
+        "cerrar": "Cerrar",
+        "tipo": "Tipo",
+        "tipos": {
+          "column": "Columna",
+          "planter": "Jardinera",
+          "bar": "Barra fija",
+          "wall": "Pared",
+          "door": "Puerta",
+          "window": "Ventana",
+          "label": "Texto"
+        },
+        "etiqueta": "Etiqueta",
+        "etiquetaAyuda": "Se muestra dentro del elemento",
+        "tamano": "Tamaño",
+        "ancho": "Ancho en píxeles",
+        "alto": "Alto en píxeles",
+        "anchoCorto": "An",
+        "altoCorto": "Al",
+        "tamanoAyuda": "También se cambia arrastrando la esquina",
+        "rotacion": "Rotación",
+        "zona": "Zona",
+        "enSitio": "Se ve en el sitio",
+        "enSitioAyuda": "En el plano de «Reservas» del sitio web",
+        "duplicar": "Duplicar",
+        "eliminar": "Eliminar",
+        "aria": "{etiqueta} · {tipo} (elemento fijo)",
+        "redimensionar": "Arrastra para cambiar el tamaño"
       }
     },
     "lote": {

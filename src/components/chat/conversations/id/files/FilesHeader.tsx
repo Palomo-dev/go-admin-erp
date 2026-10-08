@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, HardDrive, FileText, Image, Video, Music, Archive } from 'lucide-react';
+import { ArrowLeft, HardDrive, FileText, Image as ImageIcon, Video, Music, Archive } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileStats } from '@/lib/services/conversationFilesService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface FilesHeaderProps {
   conversationId: string;
@@ -17,6 +18,9 @@ interface FilesHeaderProps {
 export default function FilesHeader({ conversationId, stats, loading }: FilesHeaderProps) {
   const router = useRouter();
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: 'Archivos de la conversación', volverA: `/app/chat/conversaciones/${conversationId}` });
+
   const formatSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -26,7 +30,7 @@ export default function FilesHeader({ conversationId, stats, loading }: FilesHea
   };
 
   const typeIcons: Record<string, React.ReactNode> = {
-    image: <Image className="h-4 w-4" />,
+    image: <ImageIcon className="h-4 w-4" />,
     video: <Video className="h-4 w-4" />,
     audio: <Music className="h-4 w-4" />,
     pdf: <FileText className="h-4 w-4" />,
@@ -50,11 +54,12 @@ export default function FilesHeader({ conversationId, stats, loading }: FilesHea
     <div className="border-b dark:border-gray-800 bg-white dark:bg-gray-900">
       <div className="p-4">
         <div className="flex items-center gap-4 mb-4">
+          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push(`/app/chat/conversaciones/${conversationId}`)}
-            className="h-9 w-9"
+            className="hidden lg:inline-flex h-9 w-9"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

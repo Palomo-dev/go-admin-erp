@@ -27,6 +27,7 @@ import {
   ACTION_LABELS,
   SOURCE_CATEGORY_LABELS,
 } from '@/lib/services/timelineService';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface EventDetailHeaderProps {
   event: TimelineEvent;
@@ -51,6 +52,9 @@ export function EventDetailHeader({
 
   const eventTime = new Date(event.event_time);
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: event.event_type, volverA: '/app/timeline' });
+
   const getActionColor = (action: string) => {
     const colors: Record<string, string> = {
       create: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
@@ -65,8 +69,8 @@ export function EventDetailHeader({
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
-        {/* Navegación */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
+        {/* Navegación. En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+        <div className="hidden lg:flex flex-wrap items-center gap-4 mb-4">
           <Button
             variant="ghost"
             size="sm"

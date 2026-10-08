@@ -36,7 +36,6 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
-  Loader2,
   RotateCcw,
   Link2,
 } from 'lucide-react';
@@ -50,7 +49,9 @@ import {
 } from '@/lib/services/integrationsService';
 import { PROVIDER_CONFIGS } from '@/components/integraciones/conexiones';
 import { SettingsDialog } from '@/components/integraciones/conexiones/id';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 export default function ConnectionDetailPage() {
   const params = useParams();
@@ -58,6 +59,7 @@ export default function ConnectionDetailPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
 
   const connectionId = params?.id as string;
 
@@ -269,23 +271,6 @@ export default function ConnectionDetailPage() {
     }
   };
 
-  // Reintentar último job fallido
-  const handleRetryLastFailedJob = async () => {
-    if (!connectionId) return;
-
-    const lastFailedJob = await integrationsService.getLastFailedJob(connectionId);
-
-    if (!lastFailedJob) {
-      toast({
-        title: 'Sin jobs fallidos',
-        description: 'No hay jobs fallidos para reintentar',
-      });
-      return;
-    }
-
-    await handleRetryJob(lastFailedJob.id);
-  };
-
   // Obtener configuración del proveedor para mostrar logo
   const getProviderConfig = () => {
     if (!connection?.connector) return null;
@@ -318,6 +303,9 @@ export default function ConnectionDetailPage() {
   };
 
   // Si está cargando, mostrar skeleton
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: connection?.name, subtitulo: connector?.provider?.name || connector?.name || undefined, volverA: '/app/integraciones/conexiones' });
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
@@ -352,9 +340,10 @@ export default function ConnectionDetailPage() {
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">
           <div className="flex items-center gap-3">
+            {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
             <Link
               href="/app/integraciones/conexiones"
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             </Link>
@@ -362,6 +351,7 @@ export default function ConnectionDetailPage() {
             {/* Logo del proveedor */}
             {providerConfig?.logoUrl || connector?.provider?.logo_url ? (
               <div className={cn('p-2 rounded-lg border', providerConfig?.bgColor || 'bg-gray-100', providerConfig?.borderColor || 'border-gray-200')}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- imagen de una URL arbitraria (Storage o proveedor), sin dominio fijo para next/image */}
                 <img
                   src={providerConfig?.logoUrl || connector?.provider?.logo_url}
                   alt={connector?.provider?.name || ''}

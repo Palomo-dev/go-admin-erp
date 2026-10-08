@@ -21,8 +21,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { IntegrationEvent } from '@/lib/services/integrationsService';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface EventDetailProps {
   event: IntegrationEvent;
@@ -58,8 +60,9 @@ const getStatusConfig = (status: string) => {
 
 export function EventDetail({ event, onReprocess, reprocessing = false }: EventDetailProps) {
   const { toast } = useToast();
+  const { formatDate } = useFormatDate();
   const [showFullPayload, setShowFullPayload] = useState(false);
-  const connection = event.connection as any;
+  const connection = event.connection;
   const statusConfig = getStatusConfig(event.status);
   const StatusIcon = statusConfig.icon;
 
@@ -92,6 +95,9 @@ export function EventDetail({ event, onReprocess, reprocessing = false }: EventD
   const payloadString = JSON.stringify(event.payload, null, 2);
   const isLargePayload = payloadString.length > 1000;
 
+  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
+  useCabeceraMovil({ modo: 'page', titulo: event.event_type, subtitulo: connection?.name || undefined, volverA: '/app/integraciones/eventos' });
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
       {/* Header */}
@@ -114,9 +120,10 @@ export function EventDetail({ event, onReprocess, reprocessing = false }: EventD
           {/* Header principal */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
+              {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
               <Link
                 href="/app/integraciones/eventos"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </Link>

@@ -18,7 +18,13 @@ import type {
   RevisionResumen,
   SitioResumen,
 } from './tipos';
-import type { EstadoPlantillaSede, ResultadoPlantillaSede } from './plantillaSede';
+import type {
+  AlcancePlantillaSede,
+  EstadoPlantillaSede,
+  ResultadoPlantillaSede,
+  ResultadoUsoPlantillaSede,
+  SedeParaPlantillas,
+} from './plantillaSede';
 import type {
   InstantaneaBorrador,
   MotivoInstantanea,
@@ -150,6 +156,23 @@ export const clienteSitiosV2 = {
     pedirUrl<ResultadoPlantillaSede>(`/api/sitio-web/sedes/${branchId}/plantilla`, {
       method: 'POST',
       body: modo === 'confirmado' ? { modo, version } : { modo },
+    }),
+  /** Sedes con sitio para el selector de Diseño › Plantillas. */
+  sedesParaPlantillas: async () => (await pedirUrl<{ sedes: SedeParaPlantillas[] }>('/api/sitio-web/plantillas/sedes')).sedes,
+  /**
+   * «Usar esta plantilla en <sede>»: una plantilla concreta del catálogo, completa o solo estilo.
+   * `version`: la del borrador que se ve (`null` si la sede aún no tiene sitio).
+   */
+  usarPlantillaEnSede: (branchId: number, plantillaId: string, alcance: AlcancePlantillaSede, version: number | null) =>
+    pedirUrl<ResultadoUsoPlantillaSede>(`/api/sitio-web/sedes/${branchId}/plantilla`, {
+      method: 'POST',
+      body: { modo: 'plantilla', plantillaId, alcance, version },
+    }),
+  /** «Volver a heredar el estilo del sitio principal». */
+  heredarEstiloSede: (branchId: number, version: number | null) =>
+    pedirUrl<ResultadoUsoPlantillaSede>(`/api/sitio-web/sedes/${branchId}/plantilla`, {
+      method: 'POST',
+      body: { modo: 'heredar_estilo', version },
     }),
   /** Despublicar o volver a mostrar el sitio en la web (Configuración › Zona de peligro). */
   visibilidad: (sitioId: string, publicado: boolean) =>

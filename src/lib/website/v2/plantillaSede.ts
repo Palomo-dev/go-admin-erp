@@ -16,14 +16,42 @@
  * (`documentoSedeDesdeBase`) y quedan HEREDADOS campo a campo: la plantilla se arma sin su estilo
  * (`conEstilo: false`). Los menús del principal no se copian: apuntarían a páginas que la sede no tiene.
  *
+ * PLANTILLA ELEGIDA (Diseño › Plantillas con una sede elegida, Figma «16 Sitio web» › «Plantillas
+ * por sede»): la persona escoge una plantilla concreta del catálogo (Velvet Lounge, Noir Omakase…)
+ * y cómo usarla en la sede:
+ * - «Plantilla completa» (`armarPlantillaSede`): la misma `armarPlantillaCompleta` sobre el borrador
+ *   de la sede, con las páginas extra de su giro, y el estilo de la plantilla como PROPIO de la sede.
+ *   La plantilla debe ser del giro de la sede (`validarPlantillaSede`).
+ * - «Solo estilo» (`aplicarEstiloPlantillaSede`): colores y letras propios, el contenido no cambia.
+ *   Sirve cualquier plantilla del catálogo.
+ * En las dos, el estilo deja de heredarse campo a campo (`valorPropio`); «Volver a heredar el estilo
+ * del sitio principal» (`heredarEstiloSede`) vuelve a poner `inherit` en los campos del tema.
+ * Sin plantilla elegida, todo sigue como antes: la plantilla por defecto del giro y el tema heredado.
+ *
  * Puro: sin React ni Supabase. Lo usan `siteDocumentService.crearSitio` (la sede nace con la
- * plantilla) y `plantillaSedeService` («Aplicar plantilla de <tipo>»).
+ * plantilla) y `plantillaSedeService` («Aplicar plantilla de <tipo>» y la plantilla elegida).
  */
-import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { heredar, valorPropio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import {
+  plantillaEnUso,
+  plantillaPorId as plantillaDelCatalogo,
+  type GiroCatalogo,
+  type PlantillaCatalogo,
+} from '@/lib/website/contrato/catalogoPlantillas';
 import { documentoSedeDesdeBase } from './importadorLegacy';
 import { crearPaginaDesdePlantilla } from '@/components/sitio-web/paginas/operacionesPagina';
 import { giroDeTipoSede, plantillaPorId, type GenerarId, type Giro } from '@/components/sitio-web/paginas/plantillasPagina';
-import { construirSitioDePlantilla } from './plantillaCompleta';
+import {
+  CATALOGO_PLANTILLAS,
+  DATOS_VACIOS,
+  armarPlantillaCompleta,
+  construirSitioDePlantilla,
+  type DatosNegocio,
+  type ResultadoPlantillaCompleta,
+  type ResumenPlantillaCompleta,
+} from './plantillaCompleta';
+import { valorCampo } from './valorCampo';
+import { aplicarEstiloPlantilla } from './usarPlantilla';
 
 /** Tipos de sede que tienen plantilla (`BranchType`, los mismos que admite la RPC). */
 export const TIPOS_SEDE_CON_PLANTILLA = ['restaurant', 'hotel', 'retail', 'gym', 'transport', 'parking', 'services'] as const;
@@ -52,6 +80,18 @@ function sedeSinPaginas(base: DocumentoSitio): DocumentoSitio {
   };
 }
 
+/** Suma las páginas extra del giro en una sede (Carta QR en restaurante), sin repetir dirección. */
+function conExtrasDelGiro(documento: DocumentoSitio, giro: Giro, generarId: GenerarId): DocumentoSitio {
+  let resultado = documento;
+  for (const extra of EXTRAS_POR_GIRO[giro] ?? []) {
+    const plantilla = plantillaPorId(extra.plantilla);
+    if (!plantilla || resultado.paginas.some((p) => p.slug === plantilla.slug)) continue;
+    const c = crearPaginaDesdePlantilla(resultado, plantilla, { titulo: extra.titulo, slug: plantilla.slug, enMenu: false }, generarId);
+    if (c.ok) resultado = c.documento;
+  }
+  return resultado;
+}
+
 /**
  * Documento inicial del sitio de una sede con la plantilla de su tipo. `null` si el tipo no tiene
  * plantilla (sin tipo, `main` u otro valor viejo): entonces la sede hereda del principal como hoy.
@@ -63,14 +103,122 @@ export function documentoPlantillaSede(
 ): DocumentoSitio | null {
   const giro = giroDeTipoSede(tipoSede);
   if (!giro) return null;
-  let documento = construirSitioDePlantilla(giro, sedeSinPaginas(base), generarId, { conEstilo: false });
-  for (const extra of EXTRAS_POR_GIRO[giro] ?? []) {
-    const plantilla = plantillaPorId(extra.plantilla);
-    if (!plantilla || documento.paginas.some((p) => p.slug === plantilla.slug)) continue;
-    const c = crearPaginaDesdePlantilla(documento, plantilla, { titulo: extra.titulo, slug: plantilla.slug, enMenu: false }, generarId);
-    if (c.ok) documento = c.documento;
+  const documento = construirSitioDePlantilla(giro, sedeSinPaginas(base), generarId, { conEstilo: false });
+  return conExtrasDelGiro(documento, giro, generarId);
+}
+
+// ─── Plantilla elegida del catálogo ────────────────────────────────────────────────────────────
+
+/** Cómo se usa una plantilla elegida en una sede (las dos opciones del diálogo). */
+export type AlcancePlantillaSede = 'completa' | 'estilo';
+
+export function esAlcancePlantillaSede(valor: unknown): valor is AlcancePlantillaSede {
+  return valor === 'completa' || valor === 'estilo';
+}
+
+export type MotivoPlantillaSedeInvalida =
+  /** El id no está en el catálogo. */
+  | 'plantilla_no_existe'
+  /** «Plantilla completa» con una plantilla de otro giro (p. ej. un hotel en una sede restaurante). */
+  | 'plantilla_otro_giro'
+  /** «Plantilla completa» en una sucursal sin tipo de negocio con plantilla. */
+  | 'sede_sin_tipo';
+
+export type ValidacionPlantillaSede =
+  | { ok: true; plantilla: PlantillaCatalogo; giro: Giro | null }
+  | { ok: false; motivo: MotivoPlantillaSedeInvalida };
+
+/**
+ * Valida la plantilla elegida contra el CATÁLOGO y contra el GIRO de la sede. «Plantilla completa»
+ * arma las páginas del giro de la plantilla, así que exige que sea el de la sede (su
+ * `branch_type`). «Solo estilo» son colores y letras: vale cualquier plantilla del catálogo.
+ */
+export function validarPlantillaSede(
+  plantillaId: unknown,
+  tipoSede: string | null | undefined,
+  alcance: AlcancePlantillaSede,
+): ValidacionPlantillaSede {
+  const plantilla = typeof plantillaId === 'string' ? plantillaDelCatalogo(CATALOGO_PLANTILLAS, plantillaId) : null;
+  if (!plantilla) return { ok: false, motivo: 'plantilla_no_existe' };
+  const giro = giroDeTipoSede(tipoSede);
+  if (alcance === 'completa') {
+    if (!giro) return { ok: false, motivo: 'sede_sin_tipo' };
+    if (plantilla.giro !== giro) return { ok: false, motivo: 'plantilla_otro_giro' };
   }
-  return documento;
+  return { ok: true, plantilla, giro };
+}
+
+/**
+ * Tokens nuevos del contrato (`preset`, `radio`, `estiloBoton`, `movimiento`). Al heredar se QUITAN
+ * (la ausencia equivale a `inherit`): así no se escribe un campo que el lector público aún no
+ * acepte cuando `NEXT_PUBLIC_WEBSITE_TOKENS_ESTILO` está apagado (ver `tokensEstilo.ts`).
+ */
+const TOKENS_EXTENDIDOS = ['preset', 'radio', 'estiloBoton', 'movimiento'] as const;
+
+/**
+ * Estilo de la plantilla como PROPIO de la sede: el mismo `aplicarEstiloPlantilla` de «Solo estilo»
+ * (colores, letras, `plantillaBase` y, con `extendidos`, los tokens nuevos) y además el acento
+ * (`colores.acento`), que en el principal no se toca pero en la sede seguiría heredado. Inmutable;
+ * no cambia páginas, secciones, menús, encabezado ni pie.
+ */
+export function aplicarEstiloPlantillaSede(documento: DocumentoSitio, plantilla: PlantillaCatalogo, extendidos: boolean): DocumentoSitio {
+  const conEstilo = aplicarEstiloPlantilla(documento, plantilla, extendidos);
+  return { ...conEstilo, tema: { ...conEstilo.tema, colores: { ...conEstilo.tema.colores, acento: valorPropio(plantilla.estilo.acento) } } };
+}
+
+/**
+ * «Volver a heredar el estilo del sitio principal»: cada campo del tema vuelve a `inherit`, el mismo
+ * mecanismo campo a campo con que nace una sede (`documentoSedeDesdeBase`). `acento` incluido: si
+ * quedara propio, la sede seguiría con el `accent_color` de la plantilla. No toca páginas, menús,
+ * encabezado, pie, identidad ni SEO. Inmutable.
+ */
+export function heredarEstiloSede(documento: DocumentoSitio): DocumentoSitio {
+  const tema = { ...documento.tema };
+  for (const clave of TOKENS_EXTENDIDOS) delete tema[clave];
+  return {
+    ...documento,
+    tema: {
+      ...tema,
+      plantillaBase: heredar(),
+      modo: heredar(),
+      colores: { ...tema.colores, primario: heredar(), secundario: heredar(), acento: heredar(), fondo: heredar(), texto: heredar() },
+      tipografia: { ...tema.tipografia, titulos: heredar(), cuerpo: heredar() },
+    },
+  };
+}
+
+/** `true` si algún campo del tema de la sede es propio o está vaciado (no hereda). */
+export function tieneEstiloPropio(documento: DocumentoSitio | null | undefined): boolean {
+  if (!documento) return false;
+  const t = documento.tema;
+  const campos = [
+    t.plantillaBase,
+    t.modo,
+    ...Object.values(t.colores ?? {}),
+    ...Object.values(t.tipografia ?? {}),
+    ...TOKENS_EXTENDIDOS.map((c) => t[c]),
+  ];
+  return campos.some((c) => c !== undefined && c.mode !== 'inherit');
+}
+
+/**
+ * «Plantilla completa» de una plantilla ELEGIDA en una sede. `actual` es el borrador de la sede
+ * (se conservan su identidad, SEO, contenido y sus páginas legales y de tienda, como en el
+ * principal); sin borrador, la sede vacía que hereda de `base` (el principal). Encima: las páginas
+ * extra del giro y el estilo de la plantilla como propio de la sede. La fuente del sitio es la
+ * única `armarPlantillaCompleta`: aquí no se arma ninguna página.
+ */
+export function armarPlantillaSede(
+  entrada: { base: DocumentoSitio; actual: DocumentoSitio | null },
+  plantilla: PlantillaCatalogo,
+  generarId: GenerarId,
+  opciones: { datos?: DatosNegocio; extendidos: boolean },
+): ResultadoPlantillaCompleta {
+  const giro = plantilla.giro as Giro;
+  const sobre = entrada.actual ?? sedeSinPaginas(entrada.base);
+  const r = armarPlantillaCompleta(sobre, plantilla, opciones.datos ?? DATOS_VACIOS, { generarId, extendidos: opciones.extendidos, conEstilo: false });
+  const documento = aplicarEstiloPlantillaSede(conExtrasDelGiro(r.documento, giro, generarId), plantilla, opciones.extendidos);
+  return { documento, resumen: r.resumen };
 }
 
 /** Resultado de crear o aplicar la plantilla en el sitio de una sede (contrato de la API). */
@@ -136,4 +284,49 @@ export function borradorIntacto(e: { versionBorrador: number | null; versionPlan
   if (e.versionBorrador === null) return false;
   if (e.versionPlantilla !== null) return e.versionPlantilla === e.versionBorrador;
   return e.versionBorrador === 1 && !e.publicado;
+}
+
+// ─── Contrato de la plantilla elegida (API) ───────────────────────────────────────────────────
+
+/** Respuesta de «Usar en <sede>» y de «Volver a heredar el estilo del sitio principal». */
+export interface ResultadoUsoPlantillaSede {
+  accion: AlcancePlantillaSede | 'heredar';
+  branchId: number;
+  sitioId: string;
+  /** Versión del borrador después de guardar (la que espera el próximo guardado). */
+  version: number;
+  actualizadoEn: string;
+  plantillaId: string | null;
+  /** «Plantilla completa»: copia del borrador anterior en el historial («Deshacer»). */
+  instantaneaId?: string;
+  resumen?: ResumenPlantillaCompleta;
+}
+
+/** Una sede con sitio en el selector de Diseño › Plantillas. */
+export interface SedeParaPlantillas {
+  branchId: number;
+  nombre: string;
+  /** `branches.branch_type` si tiene plantilla; si no, `null`. */
+  tipo: TipoSedePlantilla | null;
+  /** Pestaña con la que abre la galería (`null`: la del giro de la organización). */
+  giro: GiroCatalogo | null;
+  sitioId: string;
+  version: number | null;
+  /** `false`: hereda el estilo del sitio principal campo a campo. */
+  estiloPropio: boolean;
+  /** Plantilla del catálogo cuyo estilo tiene la sede (solo con estilo propio). */
+  plantillaEnUsoId: string | null;
+}
+
+/** Plantilla en uso en una sede: solo con estilo propio (si hereda, es la del principal). */
+export function plantillaEnUsoDeSede(documento: DocumentoSitio | null | undefined): string | null {
+  if (!documento || !tieneEstiloPropio(documento)) return null;
+  const tema = documento.tema;
+  return (
+    plantillaEnUso(CATALOGO_PLANTILLAS, {
+      preset: valorCampo(tema.preset),
+      plantillaBase: valorCampo(tema.plantillaBase),
+      fuenteTitulos: valorCampo(tema.tipografia?.titulos),
+    })?.id ?? null
+  );
 }

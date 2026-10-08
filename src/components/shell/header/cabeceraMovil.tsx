@@ -6,8 +6,8 @@
  *
  * MobileHeader tiene tres modos:
  * - root (inicio y la entrada de cada módulo): organización / sucursal + buscar.
- * - page (detalle, formulario): «← Volver» · título (+ subtítulo) · acción
- *   contextual. Sin selector de organización.
+ * - page (detalle, formulario): «← Volver» · título (+ chip de estado y
+ *   subtítulo) · acción contextual. Sin selector de organización.
  * - pos: «←» (salir del POS; el carrito se conserva) · chip de la sucursal
  *   activa · estado de la caja. Sin selector de organización: cambiarla con
  *   un carrito abierto es riesgoso, y sigue en Inicio y en el menú.
@@ -32,6 +32,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CATALOGO_NAV } from '@/lib/navigation/catalog';
+import type { TonoBadge } from '@/components/kit/estadoTono';
 
 export type ModoCabeceraMovil = 'root' | 'page' | 'pos';
 
@@ -40,10 +41,19 @@ export interface EstadoPos {
   tono: 'exito' | 'advertencia';
 }
 
+/** Modo página: chip de estado bajo el título (Figma MobileHeader «Mostrar estado (página)»). */
+export interface EstadoPagina {
+  texto: string;
+  tono: TonoBadge;
+}
+
 export interface CabeceraMovilPagina {
   modo?: ModoCabeceraMovil;
   titulo?: string;
+  /** Sin valor, el nombre de la organización; `''` para no pintar subtítulo. */
   subtitulo?: string;
+  /** Modo página: chip de estado antes del subtítulo (la mesa «Por cobrar»). */
+  estado?: EstadoPagina | null;
   /**
    * Modo página: el título se vuelve un botón «Título ▾» que abre un selector
    * de la página (Pipeline: elegir embudo). Sin él, el título es texto.

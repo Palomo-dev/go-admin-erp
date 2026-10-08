@@ -40,6 +40,7 @@ import { rutaActiva, type SeccionVisible } from '@/lib/navigation/filtrar';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { BranchBadgeActiva } from '@/components/kit/BranchBadge';
 import { Kbd } from '@/components/kit/Kbd';
+import { clasesBadgeTono } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEstadoAsistente } from '../useEstadoAsistente';
 import { OrgSwitcher } from './OrgSwitcher';
@@ -232,7 +233,8 @@ export function AppHeader({
   );
 }
 
-function MobileHeader({
+/** Exportado para las pruebas de render de pantallas con cabecera móvil (una sola «←»). */
+export function MobileHeader({
   pathname,
   pagina,
   organizacionId,
@@ -284,6 +286,21 @@ function MobileHeader({
     const activa = rutaActiva(pathname);
     const titulo = pagina?.titulo ?? (activa?.pagina ? nombres.pagina(activa.pagina) : activa ? tNav(activa.modulo.etiqueta) : '');
     const subtitulo = pagina?.subtitulo ?? organizacionNombre;
+    const estado = pagina?.estado;
+    // Fila bajo el título: chip de estado (si la página lo declara) y subtítulo.
+    const filaSubtitulo =
+      estado || subtitulo ? (
+        <span className="flex min-w-0 max-w-full items-center gap-1.5">
+          {estado && (
+            // <span> y no <Badge> (un <div>): la fila puede ir dentro del botón del título.
+            <span className={clasesBadgeTono(estado.tono, 'suave', 'sm')}>
+              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />
+              {estado.texto}
+            </span>
+          )}
+          {subtitulo && <span className="truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</span>}
+        </span>
+      ) : null;
     return (
       <div className="flex h-14 items-center gap-1 pl-1 pr-2 lg:hidden">
         {botonVolver}
@@ -300,13 +317,13 @@ function MobileHeader({
               <span className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</span>
               <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.75} />
             </span>
-            {subtitulo && <span className="max-w-full truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</span>}
+            {filaSubtitulo}
           </button>
         ) : (
           <div className="flex min-w-0 flex-1 flex-col">
             {/* <p> y no <h1>: el título principal sigue siendo el de la página. */}
             <p className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</p>
-            {subtitulo && <p className="truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</p>}
+            {filaSubtitulo}
           </div>
         )}
         {pagina?.accion ?? null}

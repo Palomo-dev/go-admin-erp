@@ -115,7 +115,6 @@ export default function MesaCuentaPage() {
   const tableId = params?.id as string;
   const t = useTranslations('posMesasFlujo');
   const tCocina = useTranslations('posCocina');
-  const tHeader = useTranslations('header');
   const { organization, branch_id } = useOrganization();
   const { branchFilter, selectedBranchId } = useBranch();
   const { timezone } = useOrgTimezone();
@@ -1020,22 +1019,21 @@ export default function MesaCuentaPage() {
     </div>
   );
 
-  // Celular: la única barra es el MobileHeader Mode=pos (Figma M2), con el
-  // estado de la caja con el mismo texto que el POS.
-  const estadoCaja = caja ? tHeader('posCashOpen', { time: formatTimeInTz(caja.opened_at, timezone) }) : tHeader('posCashClosed');
+  // Título y estado de la mesa: los mismos en la cabecera de tableta y en el
+  // MobileHeader del celular (Figma M2b).
+  const tituloMesa = cuenta?.mesa.zona ? t('cabecera.mesaZona', { mesa: mesaNombre, zona: cuenta.mesa.zona }) : mesaNombre;
+  const estadoMesa =
+    sesion?.status === 'bill_requested'
+      ? { texto: t('estados.porCobrar'), tono: 'advertencia' as const }
+      : sesion
+        ? { texto: t('estados.ocupada'), tono: 'marca' as const }
+        : { texto: t('estados.libre'), tono: 'neutro' as const };
 
   const catalogo = <ProductSearch onProductSelect={(p, m, c) => alElegirProducto(p, m, c)} bloqueado={!!cobro} />;
 
   return (
     <div className="h-full">
-      <CabeceraMovilMesa
-        cajaAbierta={!!caja}
-        estadoCaja={estadoCaja}
-        cierreBloqueado={false}
-        onCaja={() => setAperturaCaja(true)}
-        carritosActivos={carts.filter((c) => c.status === 'active').length}
-        carritosEnEspera={carts.filter((c) => c.status === 'hold').length}
-      />
+      <CabeceraMovilMesa titulo={tituloMesa} estado={estadoMesa} />
       <PantallaMesa
         modo={modo}
         estado={estado}
@@ -1068,8 +1066,8 @@ export default function MesaCuentaPage() {
           <CabeceraMesa
             mesa={mesaNombre}
             zona={cuenta?.mesa.zona ?? null}
-            estado={sesion?.status === 'bill_requested' ? t('estados.porCobrar') : sesion ? t('estados.ocupada') : t('estados.libre')}
-            tonoEstado={sesion?.status === 'bill_requested' ? 'advertencia' : 'marca'}
+            estado={estadoMesa.texto}
+            tonoEstado={estadoMesa.tono}
             minutos={minutosAbierta}
             critico={abandonada}
             mesero={cuenta?.meseroNombre ?? null}

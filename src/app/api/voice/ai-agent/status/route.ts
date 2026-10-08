@@ -29,6 +29,7 @@ import {
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
 import { OUTCOME_BUZON, OUTCOME_FAX } from '@/lib/services/crm/voiceAgent/amd';
+import { guardarResultadoPorEstado } from '@/lib/services/crm/voiceAgent/guardarResultadoLlamada';
 
 export const runtime = 'nodejs';
 
@@ -144,6 +145,20 @@ export async function POST(request: Request) {
       .eq('id', vac.id)
       .eq('organization_id', vac.organization_id);
     if (updError) throw updError;
+
+    // Resultado en categoría (`voiceAgent/resultadoLlamada.ts`): las llamadas
+    // sin conversación (buzón, no contestó, ocupado, falló) solo se clasifican
+    // aquí. Si hubo conversación, el ws-server la clasifica con los turnos y no
+    // se le pisa (`.is('resultado', null)`).
+    if (efectivo && TERMINAL_VAC_STATUSES.includes(efectivo)) {
+      await guardarResultadoPorEstado(
+        supabase,
+        vac.organization_id,
+        vac.id,
+        efectivo,
+        (patch.outcome as string | undefined) ?? vac.outcome
+      );
+    }
 
     if (esVivo && !keepTerminal) {
       const { error: vivoError } = await supabase

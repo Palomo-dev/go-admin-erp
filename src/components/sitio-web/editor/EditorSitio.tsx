@@ -688,6 +688,7 @@ function Editor() {
 
         <LienzoEditor
           url={ed.urlLienzo}
+          preparando={ed.preparandoLienzo}
           host={ed.host}
           dispositivo={ed.dispositivo}
           recarga={ed.previewRefreshKey}

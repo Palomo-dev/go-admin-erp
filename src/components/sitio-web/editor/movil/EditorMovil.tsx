@@ -149,6 +149,7 @@ export function EditorMovil({ editor, estado, onPublicar, onVistaPrevia, categor
         </div>
         <LienzoEditor
           url={editor.urlLienzo}
+          preparando={editor.preparandoLienzo}
           host={editor.host}
           dispositivo="celular"
           recarga={editor.previewRefreshKey}

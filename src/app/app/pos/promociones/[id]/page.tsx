@@ -245,7 +245,8 @@ export default function PromocionDetallePage() {
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
-                <Link href="/app/pos/promociones">
+                {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+                <Link href="/app/pos/promociones" className="hidden lg:block">
                   <Button variant="ghost" size="icon">
                     <ArrowLeft className="h-5 w-5" />
                   </Button>

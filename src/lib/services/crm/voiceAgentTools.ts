@@ -22,6 +22,7 @@ import { wallTimeToInstant } from '@/lib/utils/dateCore';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { notificarReunion } from '@/lib/services/crm/reunionCorreo.server';
 import { clasificarObjecion, TIPOS_OBJECION, type TipoObjecion } from '@/lib/services/crm/voiceAgent/cierreLlamada';
+import { DESCRIPCION_RESULTADO_AGENTE, esResultadoAgente, RESULTADOS_AGENTE } from '@/lib/services/crm/voiceAgent/resultadoLlamada';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -650,12 +651,16 @@ export async function transferToHuman(ctx: ToolContext, args: { reason?: string 
 
 // ─── Tool: end_call ──────────────────────────────────────────────────────────
 
-export async function endCall(ctx: ToolContext, args: { outcome?: string }): Promise<ToolResult> {
+export async function endCall(ctx: ToolContext, args: { outcome?: string; resultado?: string }): Promise<ToolResult> {
   if (!ctx.voiceAgentCallId) return { success: false, error: 'No hay llamada en curso' };
+  // La categoría solo se guarda si es una de la lista (CHECK de
+  // `voice_agent_calls.resultado`): un valor inventado por el modelo haría
+  // fallar toda la escritura. Si falta, la deduce el cierre (`resultadoLlamada.ts`).
   const { error } = await ctx.supabase
     .from('voice_agent_calls')
     .update({
       outcome: args.outcome ?? 'completed_by_agent',
+      ...(esResultadoAgente(args.resultado) ? { resultado: args.resultado } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', ctx.voiceAgentCallId)
@@ -768,10 +773,13 @@ export const VOICE_AGENT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
     properties: { reason: { type: 'string' } },
     required: [],
   }),
-  fn('end_call', 'Termina la llamada dejando registrado el desenlace.', {
+  fn('end_call', 'Termina la llamada dejando registrado el desenlace y su categoría.', {
     type: 'object',
-    properties: { outcome: { type: 'string' } },
-    required: [],
+    properties: {
+      resultado: { type: 'string', enum: [...RESULTADOS_AGENTE], description: DESCRIPCION_RESULTADO_AGENTE },
+      outcome: { type: 'string', description: 'Detalle del desenlace en una frase.' },
+    },
+    required: ['resultado'],
   }),
 ];
 

@@ -46,10 +46,13 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
 import { CouponsService, CouponForm } from '@/components/pos/cupones';
 import { Coupon, CouponRedemption, DISCOUNT_TYPE_LABELS } from '@/components/pos/cupones/types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 import { toast } from 'sonner';
 
 export default function CuponDetallePage() {
   const { formatear } = useMonedaOrganizacion();
+  const { timezone } = useOrgTimezone();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -146,7 +149,7 @@ export default function CuponDetallePage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', `redenciones-${coupon?.code}-${new Date().toISOString().split('T')[0]}.csv`);
+    a.setAttribute('download', `redenciones-${coupon?.code}-${todayInTz(timezone)}.csv`);
     a.click();
     window.URL.revokeObjectURL(url);
     toast.success('Exportación completada');
@@ -217,7 +220,8 @@ export default function CuponDetallePage() {
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
-                <Link href="/app/pos/cupones">
+                {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
+                <Link href="/app/pos/cupones" className="hidden lg:block">
                   <Button variant="ghost" size="icon">
                     <ArrowLeft className="h-5 w-5" />
                   </Button>

@@ -86,6 +86,7 @@ export const TEXTOS_EDITOR = {
   lienzo: {
     etiqueta: 'Vista del sitio',
     iframe: 'Vista previa de la página',
+    preparando: 'Cargando la página del sitio',
     sinDireccionTitulo: 'Tu sitio aún no tiene dirección',
     sinDireccionDescripcion: 'Configura el subdominio en Dominios para ver la página aquí.',
     errorTitulo: 'No se pudo mostrar la página',

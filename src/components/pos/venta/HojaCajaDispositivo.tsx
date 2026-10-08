@@ -23,7 +23,8 @@ export interface HojaCajaDispositivoProps {
   estadoCaja: string;
   cierreBloqueado: boolean;
   onCaja: () => void;
-  onAtajos: () => void;
+  /** «Ver atajos»: sin él no se pinta (la mesa no usa el mapa de atajos del POS). */
+  onAtajos?: () => void;
   carritosActivos: number;
   carritosEnEspera: number;
 }
@@ -69,18 +70,20 @@ export function HojaCajaDispositivo({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <PendientesSinConexionDialog />
-        <KbdButton
-          variante="fantasma"
-          tamano="md"
-          icono={Keyboard}
-          atajo={teclaAtajo('mapa')}
-          onClick={() => {
-            onAbiertaChange(false);
-            onAtajos();
-          }}
-        >
-          {t('verAtajos')}
-        </KbdButton>
+        {onAtajos && (
+          <KbdButton
+            variante="fantasma"
+            tamano="md"
+            icono={Keyboard}
+            atajo={teclaAtajo('mapa')}
+            onClick={() => {
+              onAbiertaChange(false);
+              onAtajos();
+            }}
+          >
+            {t('verAtajos')}
+          </KbdButton>
+        )}
       </div>
     </PanelAdaptable>
   );

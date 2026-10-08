@@ -29,36 +29,37 @@ function LoadingSkeleton() {
   );
 }
 
-const op = { loading: () => <LoadingSkeleton />, ssr: false } as const;
+// next/dynamic exige las opciones como literal de objeto en CADA llamada (el compilador las
+// analiza en estático): una constante compartida rompe `next build` («options must be an object literal»).
 
 const PANELES: Record<string, React.ComponentType> = {
-  'general.general': dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), op),
-  'sitioweb.general': dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), op),
-  'crm.general': dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), op),
-  'crm.agente-voz': dynamic(() => import('../panels/crm/AgenteVozSeccion').then((m) => m.AgenteVozSeccion), op),
-  'crm.telefonia': dynamic(() => import('../crm/TelefoniaTab').then((m) => m.TelefoniaTab), op),
-  'crm.proveedores': dynamic(() => import('../crm/ProveedoresTab').then((m) => m.ProveedoresTab), op),
-  'crm.email': dynamic(() => import('../crm/EmailTab').then((m) => m.EmailTab), op),
-  'crm.whatsapp': dynamic(() => import('../crm/WhatsAppTab').then((m) => m.WhatsAppTab), op),
-  'crm.creditos': dynamic(() => import('../crm/CreditosTab').then((m) => m.CreditosTab), op),
-  'hrm.general': dynamic(() => import('../panels/hrm/HRMConfigPanel').then((m) => m.HRMConfigPanel), op),
-  'pms.general': dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), op),
-  'pos.general': dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), op),
-  'chat.general': dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), op),
-  'chat.ia': dynamic(() => import('@/components/chat/ia/configuracion/ConfiguracionIAChat').then((m) => m.ConfiguracionIAChat), op),
-  'integraciones.general': dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), op),
-  'parking.general': dynamic(() => import('../panels/parking/ParkingConfigPanel').then((m) => m.ParkingConfigPanel), op),
-  'calendario.general': dynamic(() => import('../panels/calendario/CalendarioConfigPanel').then((m) => m.CalendarioConfigPanel), op),
-  'timeline.general': dynamic(() => import('../panels/timeline/TimelineConfigPanel').then((m) => m.TimelineConfigPanel), op),
-  'roles.general': dynamic(() => import('../panels/roles/RolesConfigPanel').then((m) => m.RolesConfigPanel), op),
-  'facturacion.resumen': dynamic(() => import('../panels/facturacion/FacturacionConfigPanel').then((m) => m.FacturacionConfigPanel), op),
+  'general.general': dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'sitioweb.general': dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.general': dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.agente-voz': dynamic(() => import('../panels/crm/AgenteVozSeccion').then((m) => m.AgenteVozSeccion), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.telefonia': dynamic(() => import('../crm/TelefoniaTab').then((m) => m.TelefoniaTab), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.proveedores': dynamic(() => import('../crm/ProveedoresTab').then((m) => m.ProveedoresTab), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.email': dynamic(() => import('../crm/EmailTab').then((m) => m.EmailTab), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.whatsapp': dynamic(() => import('../crm/WhatsAppTab').then((m) => m.WhatsAppTab), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.creditos': dynamic(() => import('../crm/CreditosTab').then((m) => m.CreditosTab), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'hrm.general': dynamic(() => import('../panels/hrm/HRMConfigPanel').then((m) => m.HRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'pms.general': dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'pos.general': dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'chat.general': dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'chat.ia': dynamic(() => import('@/components/chat/ia/configuracion/ConfiguracionIAChat').then((m) => m.ConfiguracionIAChat), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'integraciones.general': dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'parking.general': dynamic(() => import('../panels/parking/ParkingConfigPanel').then((m) => m.ParkingConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'calendario.general': dynamic(() => import('../panels/calendario/CalendarioConfigPanel').then((m) => m.CalendarioConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'timeline.general': dynamic(() => import('../panels/timeline/TimelineConfigPanel').then((m) => m.TimelineConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'roles.general': dynamic(() => import('../panels/roles/RolesConfigPanel').then((m) => m.RolesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'facturacion.resumen': dynamic(() => import('../panels/facturacion/FacturacionConfigPanel').then((m) => m.FacturacionConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'facturacion.servicio': dynamic(
     () => import('@/components/finanzas/facturacion-electronica/ConfiguracionServicioFE').then((m) => function ServicioFE() { return <m.default incrustado />; }),
-    op,
+    { loading: () => <LoadingSkeleton />, ssr: false },
   ),
-  'gym.general': dynamic(() => import('../panels/gym/GymConfigPanel').then((m) => m.GymConfigPanel), op),
-  'notificaciones.general': dynamic(() => import('../panels/notificaciones/NotificacionesConfigPanel').then((m) => m.NotificacionesConfigPanel), op),
-  'datos-offline.general': dynamic(() => import('../panels/datos-offline/DatosOfflinePanel').then((m) => m.DatosOfflinePanel), op),
+  'gym.general': dynamic(() => import('../panels/gym/GymConfigPanel').then((m) => m.GymConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'notificaciones.general': dynamic(() => import('../panels/notificaciones/NotificacionesConfigPanel').then((m) => m.NotificacionesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'datos-offline.general': dynamic(() => import('../panels/datos-offline/DatosOfflinePanel').then((m) => m.DatosOfflinePanel), { loading: () => <LoadingSkeleton />, ssr: false }),
 };
 
 /** Ids de sección que tienen componente propio (lo usa la prueba del registro). */

@@ -36285,7 +36285,21 @@
         "posicion": "Position (change it by dragging or with the arrow keys)",
         "avisoCuenta": "It has an open bill: you can move it, but not delete it or lower its capacity below {n} guests.",
         "duplicar": "Duplicate",
-        "eliminar": "Delete"
+        "eliminar": "Delete",
+        "web": {
+          "titulo": "Online booking",
+          "reservable": "Can be booked online",
+          "reservableAyuda": "If not, it shows on the website floor plan but cannot be picked",
+          "personas": "Party size for online booking",
+          "desde": "From",
+          "hasta": "to",
+          "ayuda": "Empty: 1 to {n} (the table capacity)",
+          "errores": {
+            "minimo": "The minimum is 1 person",
+            "orden": "The first number cannot be greater than the second",
+            "capacidad": "It cannot exceed the table capacity ({n})"
+          }
+        }
       },
       "zona": {
         "titulo": "Zone · {zona}",
@@ -36300,6 +36314,42 @@
         "bajar": "Move tab down",
         "avisoEliminar": "To delete the zone, first move its {n} tables to another zone.",
         "eliminar": "Delete zone"
+      },
+      "botonElemento": "Fixed element",
+      "rangoInvalido": "Fix the online party size of {mesa} to save",
+      "elemento": {
+        "titulo": "Fixed element · {tipo}",
+        "subtitulo": "Fixed element · {zona}",
+        "sinZona": "No area",
+        "seVeEnSitio": "shown on the website floor plan",
+        "soloErp": "ERP only",
+        "cerrar": "Close",
+        "tipo": "Type",
+        "tipos": {
+          "column": "Column",
+          "planter": "Planter",
+          "bar": "Fixed bar",
+          "wall": "Wall",
+          "door": "Door",
+          "window": "Window",
+          "label": "Text"
+        },
+        "etiqueta": "Label",
+        "etiquetaAyuda": "Shown inside the element",
+        "tamano": "Size",
+        "ancho": "Width in pixels",
+        "alto": "Height in pixels",
+        "anchoCorto": "W",
+        "altoCorto": "H",
+        "tamanoAyuda": "You can also drag the corner",
+        "rotacion": "Rotation",
+        "zona": "Area",
+        "enSitio": "Shown on the website",
+        "enSitioAyuda": "On the «Reservations» floor plan of the website",
+        "duplicar": "Duplicate",
+        "eliminar": "Delete",
+        "aria": "{etiqueta} · {tipo} (fixed element)",
+        "redimensionar": "Drag to resize"
       }
     },
     "lote": {

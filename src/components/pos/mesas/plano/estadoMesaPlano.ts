@@ -42,6 +42,11 @@ export interface VistaMesaPlano {
   x: number | null;
   y: number | null;
   rotacion: number;
+  /** «Se puede reservar en la web» (por defecto true, como la columna). */
+  reservableWeb?: boolean;
+  /** Personas para reservarla en la web; null = de 1 a la capacidad. */
+  webMin?: number | null;
+  webMax?: number | null;
 }
 
 const FORMAS: Record<string, FormaMesa> = { square: 'cuadrada', round: 'redonda', long: 'larga', bar: 'barra' };
@@ -60,7 +65,15 @@ export function formaPorCapacidad(capacidad: number): FormaMesa {
 }
 
 export function vistaMesaPlano(
-  mesa: TableWithSession & { shape?: string | null; size?: string | null; readyKitchenItems?: number; lastActivityAt?: string | null },
+  mesa: TableWithSession & {
+    shape?: string | null;
+    size?: string | null;
+    readyKitchenItems?: number;
+    lastActivityAt?: string | null;
+    is_web_bookable?: boolean | null;
+    web_min_party?: number | null;
+    web_max_party?: number | null;
+  },
   reserva: ReservaActivaMesa | undefined,
   ahora: Date = new Date(),
 ): VistaMesaPlano {
@@ -99,6 +112,9 @@ export function vistaMesaPlano(
     x: mesa.position_x ?? null,
     y: mesa.position_y ?? null,
     rotacion: Number(mesa.rotation) || 0,
+    reservableWeb: mesa.is_web_bookable !== false,
+    webMin: mesa.web_min_party ?? null,
+    webMax: mesa.web_max_party ?? null,
   };
 }
 

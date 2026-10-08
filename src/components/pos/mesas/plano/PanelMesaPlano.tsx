@@ -1,18 +1,22 @@
 'use client';
 
+import { useId } from 'react';
 import { useTranslations } from 'next-intl';
 import { Circle, Copy, Minus, Plus, RectangleHorizontal, Square, Trash2, X, type LucideIcon } from 'lucide-react';
 import { AvisoTonal, CampoNumero, KbdButton, SegmentedControl } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/utils/Utils';
 import type { FormaMesa } from './estadoMesaPlano';
-import { ROTACIONES, type MesaEnPlano } from './planoMesasLogica';
+import { ROTACIONES, errorRangoWeb, type MesaEnPlano } from './planoMesasLogica';
 
 /**
  * Panel de la mesa en el editor del plano (Figma 870:104583): nombre, zona,
  * forma, capacidad, tamaño, rotación y posición; Duplicar y Eliminar. Con la
  * cuenta abierta se puede mover, pero no eliminar ni bajar la capacidad por
- * debajo de sus comensales.
+ * debajo de sus comensales. Debajo, la reserva en la web (2261:977952): «Se
+ * puede reservar en la web» y el rango de personas (vacío = de 1 a la
+ * capacidad).
  */
 export interface PanelMesaPlanoProps {
   mesa: MesaEnPlano;
@@ -36,7 +40,10 @@ const FORMAS: Array<{ valor: FormaMesa; icono: LucideIcon }> = [
 
 export function PanelMesaPlano({ mesa, zonas, comensales, cuentaAbierta, onCambio, onDuplicar, onEliminar, onCerrar, className }: PanelMesaPlanoProps) {
   const t = useTranslations('posMesasPlano.editor.mesa');
+  const tw = useTranslations('posMesasPlano.editor.mesa.web');
+  const id = useId();
   const minimo = Math.max(1, cuentaAbierta ? comensales : 1);
+  const errorWeb = mesa.reservableWeb ? errorRangoWeb(mesa) : null;
 
   return (
     <aside aria-label={mesa.nombre} className={cn('flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 shadow-sm', className)}>
@@ -177,6 +184,64 @@ export function PanelMesaPlano({ mesa, zonas, comensales, cuentaAbierta, onCambi
           <CampoNumero valor={mesa.y} onValorChange={(v) => v != null && onCambio({ y: Math.max(0, v) })} prefijo="Y" decimales={0} minimo={0} alinear="izquierda" />
         </div>
       </div>
+
+      <section aria-labelledby={`${id}-web`} className="flex flex-col gap-3 border-t border-line pt-4">
+        <h4 id={`${id}-web`} className="text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+          {tw('titulo')}
+        </h4>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <span id={`${id}-reservable`} className="block text-[13px] font-medium text-fg">
+              {tw('reservable')}
+            </span>
+            <span id={`${id}-reservable-ayuda`} className="block text-xs text-fg-secondary">
+              {tw('reservableAyuda')}
+            </span>
+          </div>
+          <Switch
+            checked={mesa.reservableWeb}
+            onCheckedChange={(reservableWeb) => onCambio({ reservableWeb })}
+            aria-labelledby={`${id}-reservable`}
+            aria-describedby={`${id}-reservable-ayuda`}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span id={`${id}-personas`} className="text-[13px] font-medium text-fg">
+            {tw('personas')}
+          </span>
+          <div role="group" aria-labelledby={`${id}-personas`} className="grid grid-cols-2 gap-2">
+            <CampoNumero
+              aria-label={tw('desde')}
+              aria-invalid={errorWeb ? true : undefined}
+              aria-describedby={`${id}-personas-ayuda`}
+              disabled={!mesa.reservableWeb}
+              valor={mesa.webMin}
+              onValorChange={(v) => onCambio({ webMin: v })}
+              prefijo={tw('desde')}
+              placeholder="1"
+              decimales={0}
+              minimo={1}
+              alinear="izquierda"
+            />
+            <CampoNumero
+              aria-label={tw('hasta')}
+              aria-invalid={errorWeb ? true : undefined}
+              aria-describedby={`${id}-personas-ayuda`}
+              disabled={!mesa.reservableWeb}
+              valor={mesa.webMax}
+              onValorChange={(v) => onCambio({ webMax: v })}
+              prefijo={tw('hasta')}
+              placeholder={String(mesa.capacidad)}
+              decimales={0}
+              minimo={1}
+              alinear="izquierda"
+            />
+          </div>
+          <span id={`${id}-personas-ayuda`} role={errorWeb ? 'alert' : undefined} className={cn('text-xs', errorWeb ? 'text-danger-text' : 'text-fg-secondary')}>
+            {errorWeb ? tw(`errores.${errorWeb}`, { n: mesa.capacidad }) : tw('ayuda', { n: mesa.capacidad })}
+          </span>
+        </div>
+      </section>
 
       {cuentaAbierta && <AvisoTonal tono="informacion" titulo={t('avisoCuenta', { n: comensales })} compacto />}
 

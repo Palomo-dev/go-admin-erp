@@ -36285,7 +36285,21 @@
         "posicion": "Posição (muda arrastando ou com as setas)",
         "avisoCuenta": "Tem uma conta aberta: você pode movê-la, mas não excluí-la nem baixar sua capacidade abaixo de {n} clientes.",
         "duplicar": "Duplicar",
-        "eliminar": "Excluir"
+        "eliminar": "Excluir",
+        "web": {
+          "titulo": "Reserva online",
+          "reservable": "Pode ser reservada online",
+          "reservableAyuda": "Se não, aparece no mapa do site, mas não pode ser escolhida",
+          "personas": "Pessoas para reservar online",
+          "desde": "De",
+          "hasta": "a",
+          "ayuda": "Vazio: de 1 a {n} (a capacidade da mesa)",
+          "errores": {
+            "minimo": "O mínimo é 1 pessoa",
+            "orden": "O primeiro número não pode ser maior que o segundo",
+            "capacidad": "Não pode passar da capacidade da mesa ({n})"
+          }
+        }
       },
       "zona": {
         "titulo": "Zona · {zona}",
@@ -36300,6 +36314,42 @@
         "bajar": "Descer a aba",
         "avisoEliminar": "Para excluir a zona, primeiro mova suas {n} mesas para outra zona.",
         "eliminar": "Excluir zona"
+      },
+      "botonElemento": "Elemento fixo",
+      "rangoInvalido": "Corrija as pessoas para reservar online de {mesa} para salvar",
+      "elemento": {
+        "titulo": "Elemento fixo · {tipo}",
+        "subtitulo": "Elemento fixo · {zona}",
+        "sinZona": "Sem área",
+        "seVeEnSitio": "aparece no mapa do site",
+        "soloErp": "só no ERP",
+        "cerrar": "Fechar",
+        "tipo": "Tipo",
+        "tipos": {
+          "column": "Coluna",
+          "planter": "Floreira",
+          "bar": "Balcão fixo",
+          "wall": "Parede",
+          "door": "Porta",
+          "window": "Janela",
+          "label": "Texto"
+        },
+        "etiqueta": "Rótulo",
+        "etiquetaAyuda": "Aparece dentro do elemento",
+        "tamano": "Tamanho",
+        "ancho": "Largura em pixels",
+        "alto": "Altura em pixels",
+        "anchoCorto": "L",
+        "altoCorto": "A",
+        "tamanoAyuda": "Também dá para arrastar o canto",
+        "rotacion": "Rotação",
+        "zona": "Área",
+        "enSitio": "Aparece no site",
+        "enSitioAyuda": "No mapa de «Reservas» do site",
+        "duplicar": "Duplicar",
+        "eliminar": "Excluir",
+        "aria": "{etiqueta} · {tipo} (elemento fixo)",
+        "redimensionar": "Arraste para mudar o tamanho"
       }
     },
     "lote": {

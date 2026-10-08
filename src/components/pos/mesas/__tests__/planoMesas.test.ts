@@ -146,6 +146,8 @@ describe('editor', () => {
       { nombre: 'Terraza', color: COLORES_ZONA[1], orden: 1, original: 'Terraza' },
     ],
     borradas: [],
+    elementos: [],
+    elementosBorrados: [],
   };
   it('deshacer y rehacer', () => {
     let h = iniciarHistorial(base);

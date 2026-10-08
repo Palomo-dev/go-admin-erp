@@ -36285,7 +36285,21 @@
         "posicion": "Position (se modifie en glissant ou avec les flèches)",
         "avisoCuenta": "Elle a une addition ouverte : vous pouvez la déplacer, mais pas la supprimer ni réduire sa capacité en dessous de {n} couverts.",
         "duplicar": "Dupliquer",
-        "eliminar": "Supprimer"
+        "eliminar": "Supprimer",
+        "web": {
+          "titulo": "Réservation en ligne",
+          "reservable": "Réservable en ligne",
+          "reservableAyuda": "Sinon, elle apparaît sur le plan du site mais ne peut pas être choisie",
+          "personas": "Personnes pour réserver en ligne",
+          "desde": "De",
+          "hasta": "à",
+          "ayuda": "Vide : de 1 à {n} (la capacité de la table)",
+          "errores": {
+            "minimo": "Le minimum est 1 personne",
+            "orden": "Le premier nombre ne peut pas dépasser le second",
+            "capacidad": "Ne peut pas dépasser la capacité de la table ({n})"
+          }
+        }
       },
       "zona": {
         "titulo": "Zone · {zona}",
@@ -36300,6 +36314,42 @@
         "bajar": "Descendre l'onglet",
         "avisoEliminar": "Pour supprimer la zone, déplacez d'abord ses {n} tables vers une autre zone.",
         "eliminar": "Supprimer la zone"
+      },
+      "botonElemento": "Élément fixe",
+      "rangoInvalido": "Corrigez le nombre de personnes pour réserver en ligne de {mesa} pour enregistrer",
+      "elemento": {
+        "titulo": "Élément fixe · {tipo}",
+        "subtitulo": "Élément fixe · {zona}",
+        "sinZona": "Sans zone",
+        "seVeEnSitio": "visible sur le plan du site",
+        "soloErp": "seulement dans l’ERP",
+        "cerrar": "Fermer",
+        "tipo": "Type",
+        "tipos": {
+          "column": "Colonne",
+          "planter": "Jardinière",
+          "bar": "Bar fixe",
+          "wall": "Mur",
+          "door": "Porte",
+          "window": "Fenêtre",
+          "label": "Texte"
+        },
+        "etiqueta": "Libellé",
+        "etiquetaAyuda": "S’affiche dans l’élément",
+        "tamano": "Taille",
+        "ancho": "Largeur en pixels",
+        "alto": "Hauteur en pixels",
+        "anchoCorto": "L",
+        "altoCorto": "H",
+        "tamanoAyuda": "Vous pouvez aussi faire glisser le coin",
+        "rotacion": "Rotation",
+        "zona": "Zone",
+        "enSitio": "Visible sur le site",
+        "enSitioAyuda": "Sur le plan « Réservations » du site web",
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "aria": "{etiqueta} · {tipo} (élément fixe)",
+        "redimensionar": "Faites glisser pour redimensionner"
       }
     },
     "lote": {

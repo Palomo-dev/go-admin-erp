@@ -12,8 +12,19 @@ import type { ResumenSolicitudesMesa } from '../solicitudes/solicitudesMesaLogic
 import { MesaTile } from './MesaTile';
 import { PanelMesaPlano } from './PanelMesaPlano';
 import { PanelZonaPlano } from './PanelZonaPlano';
+import { ElementoPlano } from './ElementoPlano';
+import { PanelElementoPlano } from './PanelElementoPlano';
+import { useElementosPlano } from './useElementosPlano';
 import {
   aplicar,
+  actualizarElemento,
+  cajaElemento,
+  crearElemento,
+  duplicarElemento,
+  elementosDeZona,
+  mesasConRangoInvalido,
+  quitarElemento,
+  redimensionarElemento,
   ajustarARejilla,
   actualizarMesa,
   cajaDeZona,
@@ -36,6 +47,7 @@ import {
   REJILLA,
   COLORES_ZONA,
   type CambiosPlano,
+  type ElementoEnPlano,
   type EstadoEditor,
   type MesaEnPlano,
   type ZonaEnPlano,
@@ -47,8 +59,10 @@ import { tamanoEnPlanoBase } from './estadoMesaPlano';
  * 870:582126): pestañas por zona, recuadro punteado de la zona con su
  * etiqueta, cada mesa con su forma y estado, resumen al tocarla, zoom
  * (− 100 % + · Ajustar · pantalla completa) y «Editar plano» (escritorio y
- * tableta): arrastrar, flechas, deshacer, duplicar, eliminar, + Mesa, + Zona y
- * «Guardar cambios (n)». En el celular solo se mira.
+ * tableta): arrastrar, flechas, deshacer, duplicar, eliminar, + Mesa, + Zona,
+ * + Elemento fijo (columna, jardinera, barra…, 2261:977952) y «Guardar
+ * cambios (n)». En el celular solo se mira (y sin elementos fijos: las mesas
+ * se acomodan en filas y no conservan su sitio).
  */
 export const TODAS = '__todas__';
 
@@ -112,7 +126,9 @@ export function PlanoMesas({
   const [rejilla, setRejilla] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [zonaEditada, setZonaEditada] = useState<string | null>(null);
+  const [elementoSelId, setElementoSelId] = useState<string | null>(null);
   const panelAlLado = useMediaQuery('(min-width: 1280px)');
+  const { elementos: elementosGuardados, recargar: recargarElementos } = useElementosPlano();
 
   const ordenZonas = useMemo(() => [...zonas].sort((a, b) => a.orden - b.orden), [zonas]);
 
@@ -124,12 +140,20 @@ export function PlanoMesas({
         : colocarMesas(todas, ordenZonas.map((z) => z.nombre)),
       zonas: ordenZonas.map((z) => ({ ...z })),
       borradas: [],
+      elementos: reflujo ? [] : elementosGuardados.map((e) => ({ ...e })),
+      elementosBorrados: [],
     }),
-    [todas, ordenZonas, reflujo],
+    [todas, ordenZonas, reflujo, elementosGuardados],
   );
   const [historial, setHistorial] = useState(() => iniciarHistorial(guardado));
+  const guardadoPrevio = useRef(guardado);
   useEffect(() => {
-    if (!editando) setHistorial(iniciarHistorial(guardado));
+    // Fuera de edición sigue a lo guardado; en edición también mientras el
+    // estado siga intacto (los elementos fijos llegan después de las mesas).
+    // Un arrastre en curso ya cambió `presente`, así que no se pisa.
+    const previo = guardadoPrevio.current;
+    guardadoPrevio.current = guardado;
+    setHistorial((h) => (!editando || (h.presente === previo && h.pasado.length === 0) ? iniciarHistorial(guardado) : h));
   }, [guardado, editando]);
   const estado = editando ? historial.presente : guardado;
   const cambios = useMemo(() => cambiosPlano(guardado, historial.presente), [guardado, historial.presente]);
@@ -156,11 +180,12 @@ export function PlanoMesas({
     return nombres
       .map((nombre) => {
         const mesas = mesasDeZona(estado.mesas, nombre).filter((m) => editando || visibles.has(m.id));
+        const elementos = elementosDeZona(estado.elementos, nombre);
         const z = zonasEstado.find((x) => x.nombre === nombre);
-        return { nombre, color: nombre ? colorDeZona(nombre, z?.color) : '#64748B', mesas, caja: cajaDeZona(mesasDeZona(estado.mesas, nombre)) };
+        return { nombre, color: nombre ? colorDeZona(nombre, z?.color) : '#64748B', mesas, elementos, caja: cajaDeZona(mesasDeZona(estado.mesas, nombre), elementos) };
       })
-      .filter((z) => z.mesas.length > 0 || (editando && z.nombre !== null && zonaActiva !== TODAS));
-  }, [zonaActiva, zonasEstado, estado.mesas, editando, visibles]);
+      .filter((z) => z.mesas.length > 0 || z.elementos.length > 0 || (editando && z.nombre !== null && zonaActiva !== TODAS));
+  }, [zonaActiva, zonasEstado, estado.mesas, estado.elementos, editando, visibles]);
 
   const total = useMemo(() => cajaTotal(zonasDibujo.map((z) => z.caja)), [zonasDibujo]);
   const origen = { x: total.x, y: total.y };
@@ -185,6 +210,15 @@ export function PlanoMesas({
   const seleccion = editando && seleccionId ? estado.mesas.find((m) => m.id === seleccionId) ?? null : null;
   const vistaSel = seleccion ? vistasPorId.get(seleccion.id) : undefined;
   const cuentaAbierta = !!vistaSel && (vistaSel.estado === 'ocupada' || vistaSel.estado === 'por_cobrar');
+  const seleccionElemento = editando && elementoSelId ? estado.elementos.find((e) => e.id === elementoSelId) ?? null : null;
+  const rangosInvalidos = editando ? mesasConRangoInvalido(historial.presente.mesas) : [];
+  const elegirElemento = (id: string | null) => {
+    setElementoSelId(id);
+    if (id) {
+      onSeleccionar(null);
+      setZonaEditada(null);
+    }
+  };
 
   const arrastre = useRef<{ id: string; x0: number; y0: number; mx: number; my: number; movio: boolean } | null>(null);
   const alPresionar = (e: ReactPointerEvent<HTMLButtonElement>, m: MesaEnPlano) => {
@@ -193,6 +227,7 @@ export function PlanoMesas({
     arrastre.current = { id: m.id, x0: m.x, y0: m.y, mx: e.clientX, my: e.clientY, movio: false };
     onSeleccionar(m.id);
     setZonaEditada(null);
+    setElementoSelId(null);
   };
   const alMover = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const a = arrastre.current;
@@ -217,8 +252,53 @@ export function PlanoMesas({
     });
   };
 
+  // Elementos fijos: arrastrar para mover y la esquina para cambiar el tamaño.
+  const arrastreEl = useRef<{ id: string; modo: 'mover' | 'tamano'; el: ElementoEnPlano; mx: number; my: number; movio: boolean } | null>(null);
+  const alPresionarElemento = (e: ReactPointerEvent<HTMLElement>, el: ElementoEnPlano, modo: 'mover' | 'tamano') => {
+    if (!editando) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    arrastreEl.current = { id: el.id, modo, el, mx: e.clientX, my: e.clientY, movio: false };
+    elegirElemento(el.id);
+  };
+  const alMoverElemento = (e: ReactPointerEvent<HTMLElement>) => {
+    const a = arrastreEl.current;
+    if (!a) return;
+    const dx = (e.clientX - a.mx) / zoom;
+    const dy = (e.clientY - a.my) / zoom;
+    if (!a.movio && Math.abs(dx) + Math.abs(dy) < 3) return;
+    a.movio = true;
+    const cambio = a.modo === 'mover' ? { x: Math.max(0, a.el.x + dx), y: Math.max(0, a.el.y + dy) } : redimensionarElemento(a.el, dx, dy);
+    setHistorial((h) => ({ ...h, presente: actualizarElemento(h.presente, a.id, cambio) }));
+  };
+  const alSoltarElemento = () => {
+    const a = arrastreEl.current;
+    arrastreEl.current = null;
+    if (!a || !a.movio) return;
+    setHistorial((h) => {
+      const el = h.presente.elementos.find((x) => x.id === a.id);
+      if (!el) return h;
+      const final = a.modo === 'mover' ? actualizarElemento(h.presente, a.id, { x: ajustarARejilla(el.x), y: ajustarARejilla(el.y) }) : h.presente;
+      const previo = actualizarElemento(h.presente, a.id, { x: a.el.x, y: a.el.y, ancho: a.el.ancho, alto: a.el.alto });
+      return { pasado: [...h.pasado, previo].slice(-50), presente: final, futuro: [] };
+    });
+  };
+
   const alTecla = (e: React.KeyboardEvent) => {
-    if (!editando || !seleccion) return;
+    if (!editando) return;
+    if (!seleccion && seleccionElemento) {
+      const paso = e.shiftKey ? REJILLA * 5 : REJILLA;
+      const d = { ArrowLeft: [-paso, 0], ArrowRight: [paso, 0], ArrowUp: [0, -paso], ArrowDown: [0, paso] }[e.key];
+      if (d) {
+        e.preventDefault();
+        cambiar(actualizarElemento(estado, seleccionElemento.id, { x: seleccionElemento.x + d[0], y: seleccionElemento.y + d[1] }));
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && (e.target as HTMLElement).tagName === 'BUTTON') {
+        e.preventDefault();
+        cambiar(quitarElemento(estado, seleccionElemento.id));
+        setElementoSelId(null);
+      }
+      return;
+    }
+    if (!seleccion) return;
     const paso = e.shiftKey ? REJILLA * 5 : REJILLA;
     const d = { ArrowLeft: [-paso, 0], ArrowRight: [paso, 0], ArrowUp: [0, -paso], ArrowDown: [0, paso] }[e.key];
     if (d) {
@@ -256,6 +336,9 @@ export function PlanoMesas({
       forma: 'cuadrada',
       tamano: 'm',
       rotacion: 0,
+      reservableWeb: true,
+      webMin: null,
+      webMax: null,
       x: caja ? ajustarARejilla(caja.x + 24) : 40,
       y: caja ? ajustarARejilla(caja.y + caja.h + 40) : 60,
       nueva: true,
@@ -263,6 +346,34 @@ export function PlanoMesas({
     cambiar({ ...estado, mesas: [...estado.mesas, m] });
     onSeleccionar(id);
     setZonaEditada(null);
+    setElementoSelId(null);
+  };
+  const nuevoElemento = () => {
+    const caja = cajaDeZona(mesasDeZona(estado.mesas, zonaParaNueva), elementosDeZona(estado.elementos, zonaParaNueva));
+    const id = `nuevo-elemento-${Date.now()}`;
+    const el = crearElemento({
+      id,
+      tipo: 'column',
+      etiqueta: te('elemento.tipos.column'),
+      zona: zonaParaNueva,
+      x: caja ? caja.x + 24 : 40,
+      y: caja ? caja.y + caja.h + 40 : 60,
+      orden: estado.elementos.reduce((max, x) => Math.max(max, x.orden), 0) + 1,
+    });
+    cambiar({ ...estado, elementos: [...estado.elementos, el] });
+    elegirElemento(id);
+  };
+  const duplicarSeleccion = () => {
+    if (seleccionElemento) {
+      const idElemento = `nuevo-elemento-${Date.now()}`;
+      cambiar(duplicarElemento(estado, seleccionElemento.id, idElemento));
+      setElementoSelId(idElemento);
+      return;
+    }
+    const id = `nueva-${Date.now()}`;
+    if (!seleccion) return;
+    cambiar(duplicarMesa(estado, seleccion.id, id, prefijoMesa));
+    onSeleccionar(id);
   };
   const nuevaZona = () => {
     let n = zonasEstado.length + 1;
@@ -272,17 +383,22 @@ export function PlanoMesas({
     onZonaActivaChange(nombre);
     setZonaEditada(nombre);
     onSeleccionar(null);
+    setElementoSelId(null);
   };
   const alinear = () => cambiar({ ...estado, mesas: estado.mesas.map((m) => ({ ...m, x: ajustarARejilla(m.x), y: ajustarARejilla(m.y) })) });
 
   const guardar = async () => {
     setGuardando(true);
     const ok = await onGuardar(cambios, historial.presente);
+    // Los elementos se releen antes de salir de edición: así el plano no
+    // vuelve un instante a las posiciones anteriores.
+    if (ok) await recargarElementos();
     setGuardando(false);
     if (ok) {
       onEditandoChange(false);
       onSeleccionar(null);
       setZonaEditada(null);
+      setElementoSelId(null);
     }
   };
   const cancelar = () => {
@@ -290,6 +406,7 @@ export function PlanoMesas({
     onEditandoChange(false);
     onSeleccionar(null);
     setZonaEditada(null);
+    setElementoSelId(null);
   };
 
   const zonaPanel = editando && zonaEditada ? zonasEstado.find((z) => z.nombre === zonaEditada) ?? null : null;
@@ -314,8 +431,21 @@ export function PlanoMesas({
     'inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-fg hover:bg-hover disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
   const panelLateral =
-    editando && (seleccion || zonaPanel) ? (
-      seleccion ? (
+    editando && (seleccion || zonaPanel || seleccionElemento) ? (
+      seleccionElemento && !seleccion ? (
+        <PanelElementoPlano
+          elemento={seleccionElemento}
+          zonas={zonasEstado.map((z) => z.nombre)}
+          onCambio={(c) => cambiar(actualizarElemento(estado, seleccionElemento.id, c))}
+          onDuplicar={duplicarSeleccion}
+          onEliminar={() => {
+            cambiar(quitarElemento(estado, seleccionElemento.id));
+            setElementoSelId(null);
+          }}
+          onCerrar={() => setElementoSelId(null)}
+          className="w-full xl:w-[320px]"
+        />
+      ) : seleccion ? (
         <PanelMesaPlano
           mesa={seleccion}
           zonas={zonasEstado.map((z) => z.nombre)}
@@ -369,28 +499,22 @@ export function PlanoMesas({
             <Magnet aria-hidden="true" className="size-4" strokeWidth={1.5} />
             {te('alinear')}
           </button>
-          <button
-            type="button"
-            className={botonBarra}
-            disabled={!seleccion}
-            onClick={() => {
-              if (!seleccion) return;
-              const id = `nueva-${Date.now()}`;
-              cambiar(duplicarMesa(estado, seleccion.id, id, prefijoMesa));
-              onSeleccionar(id);
-            }}
-          >
+          <button type="button" className={botonBarra} disabled={!seleccion && !seleccionElemento} onClick={duplicarSeleccion}>
             <Copy aria-hidden="true" className="size-4" strokeWidth={1.5} />
             {te('duplicar')}
           </button>
           <button
             type="button"
             className={cn(botonBarra, 'hidden xl:inline-flex')}
-            disabled={!seleccion || cuentaAbierta}
+            disabled={seleccion ? cuentaAbierta : !seleccionElemento}
             onClick={() => {
-              if (!seleccion) return;
-              cambiar(quitarMesa(estado, seleccion.id));
-              onSeleccionar(null);
+              if (seleccion) {
+                cambiar(quitarMesa(estado, seleccion.id));
+                onSeleccionar(null);
+              } else if (seleccionElemento) {
+                cambiar(quitarElemento(estado, seleccionElemento.id));
+                setElementoSelId(null);
+              }
             }}
           >
             <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
@@ -403,11 +527,22 @@ export function PlanoMesas({
           <KbdButton variante="secundario" tamano="sm" icono={Plus} onClick={nuevaZona}>
             {te('botonZona')}
           </KbdButton>
+          <KbdButton variante="tinte" tamano="sm" icono={Plus} onClick={nuevoElemento}>
+            {te('botonElemento')}
+          </KbdButton>
           <span className="flex-1" />
           <KbdButton variante="fantasma" tamano="sm" onClick={cancelar} disabled={guardando}>
             {te('cancelar')}
           </KbdButton>
-          <KbdButton variante="primario" tamano="sm" icono={Save} onClick={() => void guardar()} cargando={guardando} disabled={nCambios === 0}>
+          <KbdButton
+            variante="primario"
+            tamano="sm"
+            icono={Save}
+            onClick={() => void guardar()}
+            cargando={guardando}
+            disabled={nCambios === 0 || rangosInvalidos.length > 0}
+            title={rangosInvalidos.length > 0 ? te('rangoInvalido', { mesa: rangosInvalidos[0].nombre }) : undefined}
+          >
             {nCambios > 0 ? te('guardarN', { n: nCambios }) : te('guardar')}
           </KbdButton>
         </div>
@@ -437,7 +572,7 @@ export function PlanoMesas({
                 backgroundImage: editando && rejilla ? 'linear-gradient(to right, rgb(var(--grid-line, 148 163 184) / 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgb(var(--grid-line, 148 163 184) / 0.18) 1px, transparent 1px)' : undefined,
                 backgroundSize: editando && rejilla ? `${REJILLA * zoom}px ${REJILLA * zoom}px` : undefined,
               }}
-              onClick={(e) => e.target === e.currentTarget && (onSeleccionar(null), setZonaEditada(null))}
+              onClick={(e) => e.target === e.currentTarget && (onSeleccionar(null), setZonaEditada(null), setElementoSelId(null))}
             >
               <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `scale(${zoom})`, width: lienzo.w, height: lienzo.h }}>
                 {zonasDibujo.map((z) => {
@@ -456,6 +591,7 @@ export function PlanoMesas({
                           onClick={() => {
                             setZonaEditada(z.nombre);
                             onSeleccionar(null);
+                            setElementoSelId(null);
                           }}
                           className="absolute -translate-y-1/2 rounded-md px-2 py-0.5 text-[13px] font-semibold text-white disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                           style={{ left: caja.x - origen.x + PADDING + 16, top: caja.y - origen.y + PADDING, backgroundColor: z.color }}
@@ -471,6 +607,31 @@ export function PlanoMesas({
                           {te('zonaVacia')}
                         </p>
                       )}
+                      {z.elementos.map((el) => {
+                        const c = cajaElemento(el);
+                        const nombreTipo = te(`elemento.tipos.${el.tipo}`);
+                        return (
+                          <ElementoPlano
+                            key={el.id}
+                            elemento={el}
+                            editando={editando}
+                            seleccionado={elementoSelId === el.id}
+                            ariaLabel={te('elemento.aria', { tipo: nombreTipo, etiqueta: el.etiqueta.trim() || nombreTipo })}
+                            etiquetaRedimensionar={te('elemento.redimensionar')}
+                            onPointerDown={(e) => alPresionarElemento(e, el, 'mover')}
+                            onPointerMove={alMoverElemento}
+                            onPointerUp={alSoltarElemento}
+                            onRedimensionarInicio={(e) => alPresionarElemento(e, el, 'tamano')}
+                            estilo={{
+                              left: el.x - origen.x + PADDING + (c.w - el.ancho) / 2,
+                              top: el.y - origen.y + PADDING + (c.h - el.alto) / 2,
+                              width: el.ancho,
+                              height: el.alto,
+                              transform: el.rotacion ? `rotate(${el.rotacion}deg)` : undefined,
+                            }}
+                          />
+                        );
+                      })}
                       {z.mesas.map((m) => {
                         const vista = vistasPorId.get(m.id) ?? vistaNueva(m);
                         const base = tamanoEnPlanoBase(m.forma, m.tamano);
@@ -585,5 +746,8 @@ function vistaNueva(m: MesaEnPlano): VistaMesaPlano {
     x: m.x,
     y: m.y,
     rotacion: m.rotacion,
+    reservableWeb: m.reservableWeb,
+    webMin: m.webMin,
+    webMax: m.webMax,
   };
 }

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
-import { DEFAULT_TIMEZONE, getToday, getDateRange } from '@/lib/utils/timezone';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
+import { DEFAULT_TIMEZONE, getToday } from '@/lib/utils/timezone';
 import { formatDateInTz, formatPlainDate, plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
 
 export interface KPIData {
@@ -701,7 +702,7 @@ class FinanzasDashboardService {
           titulo: `Resolución ${seq.prefix} casi agotada`,
           descripcion: `Usados ${seq.current_number} de ${seq.range_end} (${porcentajeUsado.toFixed(0)}%)`,
           prioridad: porcentajeUsado >= 95 ? 'alta' : 'media',
-          enlace: '/app/finanzas/configuracion/secuencias'
+          enlace: rutaSeccion('facturacion.resumen')
         });
       }
       
@@ -712,7 +713,7 @@ class FinanzasDashboardService {
           titulo: `Resolución ${seq.prefix} por vencer`,
           descripcion: `Vence en ${diasRestantes} días (${formatPlainDate(seq.valid_until)})`,
           prioridad: diasRestantes <= 15 ? 'alta' : 'media',
-          enlace: '/app/finanzas/configuracion/secuencias'
+          enlace: rutaSeccion('facturacion.resumen')
         });
       }
     });

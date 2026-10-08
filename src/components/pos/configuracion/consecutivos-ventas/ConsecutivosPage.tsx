@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -318,7 +319,7 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       {!embedded && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/app/pos/configuracion">
+            <Link href={rutaSeccion('pos.general')}>
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>

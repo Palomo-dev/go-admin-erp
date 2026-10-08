@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Activity, Wifi, WifiOff, Printer, RefreshCw, Power, Monitor, Cpu, MapPin, Loader2, Usb, Bluetooth, Network } from 'lucide-react';
 import { useDesktopAgent } from '@/hooks/useDesktopAgent';
-import { getDesktopBridge, isDesktop, DesktopUsbDevice, DesktopBluetoothDevice, DesktopNetworkPrinter } from '@/lib/utils/desktop';
+import { getDesktopBridge, DesktopUsbDevice, DesktopBluetoothDevice, DesktopNetworkPrinter } from '@/lib/utils/desktop';
 import { isMobile } from '@/lib/utils/mobile';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
@@ -59,8 +60,8 @@ function MobilePrinterSection() {
       } else {
         setMessage('Selección cancelada');
       }
-    } catch (err: any) {
-      setMessage(err?.message || 'Error descubriendo impresoras');
+    } catch (err: unknown) {
+      setMessage((err instanceof Error && err.message) || 'Error descubriendo impresoras');
     } finally {
       setDiscovering(false);
     }
@@ -79,8 +80,8 @@ function MobilePrinterSection() {
       } else {
         setMessage(result.error || 'Error imprimiendo prueba');
       }
-    } catch (err: any) {
-      setMessage(err?.message || 'Error');
+    } catch (err: unknown) {
+      setMessage((err instanceof Error && err.message) || 'Error');
     } finally {
       setPrinting(false);
     }
@@ -98,8 +99,8 @@ function MobilePrinterSection() {
       } else {
         setMessage(result.error || 'Error abriendo cajón');
       }
-    } catch (err: any) {
-      setMessage(err?.message || 'Error');
+    } catch (err: unknown) {
+      setMessage((err instanceof Error && err.message) || 'Error');
     } finally {
       setPrinting(false);
     }
@@ -288,7 +289,7 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
       <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
         {!embedded && (
           <div className="flex items-start sm:items-center gap-3 flex-wrap">
-            <Link href="/app/pos/configuracion">
+            <Link href={rutaSeccion('pos.general')}>
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -339,7 +340,7 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
     <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
       {!embedded && (
         <div className="flex items-start sm:items-center gap-3 flex-wrap">
-          <Link href="/app/pos/configuracion">
+          <Link href={rutaSeccion('pos.general')}>
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -557,7 +558,7 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                 </div>
               ) : printers.length === 0 ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  No se detectaron impresoras. Haz clic en "Detectar" para reintentar.
+                  No se detectaron impresoras. Haz clic en «Detectar» para reintentar.
                 </p>
               ) : (
                 <ul className="space-y-1">
@@ -604,7 +605,7 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                 </div>
               ) : usbDevices.length === 0 ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  No se detectaron dispositivos USB. Haz clic en "Detectar" para reintentar.
+                  No se detectaron dispositivos USB. Haz clic en «Detectar» para reintentar.
                 </p>
               ) : (
                 <ul className="space-y-1">
@@ -704,7 +705,7 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                 </div>
               ) : networkPrinters.length === 0 ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  No se detectaron impresoras de red. Haz clic en "Escanear" para buscar.
+                  No se detectaron impresoras de red. Haz clic en «Escanear» para buscar.
                 </p>
               ) : (
                 <ul className="space-y-1">

@@ -39,7 +39,7 @@ import { websiteSettingsService, type WebsiteSettings } from '@/lib/services/web
 import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 import { branchService } from '@/lib/services/branchService';
 import type { Branch } from '@/types/branch';
-import { baseWebDeSede } from '@/lib/organizacion/sucursales';
+import { baseLienzoSitio, pedirFirmaLienzo, urlLienzoBorrador, urlPublicaSitio, MARGEN_RENOVAR_FIRMA_MS } from './direccionSitio';
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import { avisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
@@ -162,7 +162,8 @@ export function useEditorSitio() {
   const organizationId = organization?.id;
   const resumen = useResumenSitio();
   const permisos = resumen.datos?.permisos ?? { editar: false, publicar: false };
-  const urlPublica = resumen.datos?.sitio.url ?? null;
+  /** URL pública del sitio principal (la de la organización). */
+  const urlPublicaPrincipal = resumen.datos?.sitio.url ?? null;
 
   // ── Carga y página ──────────────────────────────────────────────────────────
   const [estadoCarga, setEstadoCarga] = useState<EstadoCargaEditor>('cargando');
@@ -172,6 +173,11 @@ export function useEditorSitio() {
   /** Fila legacy tal como llegó de la base (qué columnas existen), para degradar al guardar. */
   const settingsRef = useRef<WebsiteSettings | null>(null);
   const [previewUrlBase, setPreviewUrlBase] = useState<string | null>(null);
+  /**
+   * Ya se sabe la dirección del sitio y de qué sede es la página abierta (la carga legacy terminó
+   * de leerlas). El borrador V2 puede llegar antes: hasta entonces el lienzo espera.
+   */
+  const [direccionLista, setDireccionLista] = useState(false);
   const [sectionManifest, setSectionManifest] = useState<SectionManifest | null>(null);
   const [availableMenus, setAvailableMenus] = useState<MenuGroup[]>([]);
   const [previewEntities, setPreviewEntities] = useState<{ id: string; label: string }[]>([]);
@@ -187,6 +193,8 @@ export function useEditorSitio() {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [publishedBranches, setPublishedBranches] = useState<Branch[]>([]);
   const [todasSucursales, setTodasSucursales] = useState<Branch[]>([]);
+  /** Ya llegaron las sedes (o falló su carga): hasta entonces no se sabe la dirección de una sede. */
+  const [sucursalesListas, setSucursalesListas] = useState(false);
   const [, setOutletSettingsExists] = useState(true);
 
   // ── Guardado legacy (por lotes, «Guardar y publicar») ──────────────────────
@@ -233,6 +241,15 @@ export function useEditorSitio() {
   // «Faltan datos»: conteos reales del ERP por fuente (A/05b, A/05e).
   const sedeConteo = enV2 ? sitioBranch : selectedBranchId;
   const { conteos: conteoFuentes, recargar: recargarConteoFuentes } = useConteoFuentes(Boolean(organizationId), sedeConteo);
+  const sucursalesWeb = sucursalesListas ? todasSucursales : null;
+  /**
+   * «Ver sitio publicado» del sitio elegido: con una sede, la URL pública de ESA sede
+   * (`baseWebDeSede`); `null` si el sitio no la sirve aparte o mientras llegan las sedes.
+   */
+  const urlPublica = useMemo(
+    () => urlPublicaSitio(urlPublicaPrincipal, sedeConteo, sucursalesWeb),
+    [urlPublicaPrincipal, sedeConteo, sucursalesWeb],
+  );
 
   // Undo / redo sobre las secciones (useHistory existente, 50 pasos).
   const {
@@ -286,6 +303,7 @@ export function useEditorSitio() {
       settingsRef.current = settingsData;
       setSettings(settingsData);
       setPreviewUrlBase(preview);
+      setDireccionLista(true);
 
       try {
         const sucursales = await branchService.getBranches(organizationId);
@@ -294,6 +312,7 @@ export function useEditorSitio() {
       } catch {
         setTodasSucursales([]);
       }
+      setSucursalesListas(true);
       try {
         setAvailableMenus(await websiteMenuGroupService.getMenus(organizationId));
       } catch {
@@ -1492,26 +1511,72 @@ export function useEditorSitio() {
   // ── Lienzo ─────────────────────────────────────────────────────────────────
   const esDetalle = currentPage ? !!RUTA_DETALLE[currentPage.page_type] : false;
   /**
-   * Base del sitio que pinta el lienzo. Editando una sede que el sitio sirve aparte (`/<slug>` o
-   * dominio propio, `baseWebDeSede`): la de ESA sede, porque `marca.goadmin.io/carta-qr` es la
-   * página del principal y una página que solo tiene la sede salía «404» con el encabezado del
-   * principal. Principal, o sede que el sitio no sirve aparte: la del principal, como antes.
+   * Base pública del sitio que pinta el lienzo sin borrador firmado (legacy, plantillas de
+   * detalle, o sin firma): la de la sede que el sitio sirve aparte (`/<slug>` o dominio propio)
+   * o la del principal. `undefined` mientras faltan los datos de la sede elegida: el lienzo espera
+   * en vez de cargar un instante el sitio del principal.
    */
-  const baseLienzo = useMemo(() => {
-    const sede = sedeConteo !== null ? todasSucursales.find((b) => b.id === sedeConteo) ?? null : null;
-    if (previewUrlBase && sede) {
-      return baseWebDeSede(previewUrlBase, sede) ?? previewUrlBase;
-    } else {
-      return previewUrlBase;
-    }
-  }, [previewUrlBase, sedeConteo, todasSucursales]);
+  const baseLienzo = useMemo(
+    () => baseLienzoSitio(previewUrlBase, sedeConteo, sucursalesWeb),
+    [previewUrlBase, sedeConteo, sucursalesWeb],
+  );
+
+  /**
+   * Lienzo sobre el BORRADOR (V2, principal y sedes): la misma vista previa firmada que el botón
+   * «Vista previa» (`POST …/vista-previa`, HMAC de 24 h, solo con `website.sites.edit`). Una
+   * página que solo existe en el borrador ya no sale «404». La firma es por sitio, se pide una vez
+   * y se renueva antes de caducar. Sin firma (503 o error): la dirección pública, como antes.
+   */
+  const sitioLienzoId =
+    enV2 && v2.borrador && sitioCargado === sitioBranch && v2.borrador.sitio.branchId === sitioBranch
+      ? v2.borrador.sitio.id
+      : null;
+  const [firmaLienzo, setFirmaLienzo] = useState<{ sitioId: string; token: string | null; caducaEn: number } | null>(null);
+  const [relojFirma, setRelojFirma] = useState(0);
+  useEffect(() => {
+    if (!sitioLienzoId || !pedirFirmaLienzo(sitioLienzoId, firmaLienzo, Date.now())) return;
+    const id = sitioLienzoId;
+    let vigente = true;
+    clienteSitiosV2
+      .vistaPrevia(id, null)
+      .then(({ token, caducaEn }) => {
+        if (!vigente) return;
+        const caduca = Date.parse(caducaEn);
+        setFirmaLienzo({ sitioId: id, token, caducaEn: Number.isFinite(caduca) ? caduca : Date.now() + 60 * 60 * 1000 });
+      })
+      .catch(() => {
+        if (vigente) setFirmaLienzo({ sitioId: id, token: null, caducaEn: 0 });
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [sitioLienzoId, firmaLienzo, relojFirma]);
+  useEffect(() => {
+    if (!firmaLienzo?.token) return;
+    const espera = Math.max(0, firmaLienzo.caducaEn - Date.now() - MARGEN_RENOVAR_FIRMA_MS);
+    const temporizador = setTimeout(() => setRelojFirma((n) => n + 1), Math.min(espera, 2_000_000_000));
+    return () => clearTimeout(temporizador);
+  }, [firmaLienzo]);
+  const firmaDelSitio = sitioLienzoId && firmaLienzo?.sitioId === sitioLienzoId ? firmaLienzo : null;
+  /** El lienzo pinta el borrador (no las plantillas de detalle: `/productos/<id>` no pasa por él). */
+  const lienzoEnBorrador = !!sitioLienzoId && !esDetalle;
+
   const urlLienzo = useMemo(() => {
+    if (!currentPage || !direccionLista) return null;
+    if (lienzoEnBorrador) {
+      if (!firmaDelSitio) return null; // firma en camino: `preparandoLienzo`
+      if (firmaDelSitio.token && previewUrlBase) return urlLienzoBorrador(previewUrlBase, firmaDelSitio.token, currentPage.slug);
+      // Sin firma: la dirección pública, como antes.
+    }
     const base = baseLienzo;
-    if (!base || !currentPage) return null;
+    if (!base) return null;
     if (currentPage.slug === 'home') return base;
     if (esDetalle) return `${base}/${RUTA_DETALLE[currentPage.page_type]}${previewEntityId ? `/${previewEntityId}` : ''}`;
     return `${base}/${currentPage.slug}`;
-  }, [baseLienzo, currentPage, esDetalle, previewEntityId]);
+  }, [direccionLista, lienzoEnBorrador, firmaDelSitio, previewUrlBase, baseLienzo, currentPage, esDetalle, previewEntityId]);
+  /** Sin `urlLienzo` porque aún se espera la dirección, la sede o la firma: el lienzo muestra el esqueleto. */
+  const preparandoLienzo =
+    !!currentPage && !urlLienzo && (!direccionLista || (lienzoEnBorrador ? !firmaDelSitio : baseLienzo === undefined));
 
   // V2: además el tema del borrador (fuentes, redondeo, botón, movimiento), que el sitio pinta en vivo.
   const temaLienzo = useMemo(
@@ -1705,6 +1770,7 @@ export function useEditorSitio() {
     fijarHerenciaCampo,
     // lienzo
     urlLienzo,
+    preparandoLienzo,
     previewRefreshKey,
     ajustesLienzo,
     seccionesLienzo,

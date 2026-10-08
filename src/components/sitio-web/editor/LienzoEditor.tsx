@@ -27,6 +27,8 @@ import { useTextosEditor } from './textos';
 
 export interface LienzoEditorProps {
   url: string | null;
+  /** Sin `url` todavía porque se espera qué sitio pintar: esqueleto en vez de «sin dirección». */
+  preparando?: boolean;
   host: string | null;
   dispositivo: DispositivoVista;
   recarga: number;
@@ -117,6 +119,28 @@ export function LienzoEditor(p: LienzoEditorProps) {
       return p.url;
     }
   })();
+
+  if (!src && p.preparando) {
+    // Aún no se sabe qué sitio pintar (datos de la sede o firma del borrador en camino): se espera
+    // con el esqueleto en vez de cargar un instante otro sitio (el del principal).
+    return (
+      <section
+        aria-label={t('lienzo.etiqueta')}
+        aria-busy="true"
+        className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-3 bg-canvas p-6', p.className)}
+      >
+        <span className="sr-only" role="status">
+          {t('lienzo.preparando')}
+        </span>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-32 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
+      </section>
+    );
+  }
 
   if (!src) {
     return (

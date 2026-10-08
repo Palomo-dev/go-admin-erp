@@ -32993,6 +32993,7 @@
       "lienzo": {
         "etiqueta": "Visualização do site",
         "iframe": "Pré-visualização da página",
+        "preparando": "Carregando a página do site",
         "sinDireccionTitulo": "Seu site ainda não tem endereço",
         "sinDireccionDescripcion": "Configure o subdomínio em Domínios para ver a página aqui.",
         "errorTitulo": "Não foi possível mostrar a página",

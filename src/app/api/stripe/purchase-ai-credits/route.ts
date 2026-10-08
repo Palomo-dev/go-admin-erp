@@ -168,8 +168,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Registrar la compra como pendiente en la BD
-    await supabase.from('ai_credit_purchases').insert({
+    // Registrar la compra como pendiente en la BD. Solo el servidor escribe esta
+    // tabla (migración 20261008013059). Si este insert falla, el webhook registra
+    // la compra al confirmarse el pago (aplicarCompraCreditosIa).
+    const { error: errorRegistro } = await supabase.from('ai_credit_purchases').insert({
       organization_id: organizationId,
       credits_amount: creditsAmount,
       unit_price_cents: unitPriceCents,
@@ -179,6 +181,9 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       purchased_by: effectiveUserId,
     });
+    if (errorRegistro) {
+      console.error('❌ No se registró la compra pendiente de créditos IA:', session.id, errorRegistro.message);
+    }
 
     return NextResponse.json({
       success: true,

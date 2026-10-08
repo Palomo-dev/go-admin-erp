@@ -14,6 +14,7 @@ import { processSuccessfulPayment } from '@/lib/stripe/paymentService'
 import { StripeEventType } from '@/lib/stripe/types'
 import { getServiceClient } from '@/lib/supabase/server-service'
 import { aplicarCheckoutDePlan } from '@/lib/stripe/aplicarCheckoutDePlan'
+import { aplicarCompraCreditosIa, esCheckoutDeCreditosIa } from '@/lib/stripe/aplicarCompraCreditosIa'
 import { periodoSuscripcionISO } from '@/lib/stripe/periodoSuscripcion'
 import type Stripe from 'stripe'
 
@@ -132,7 +133,16 @@ export async function POST(request: NextRequest) {
           } else {
             await handleCheckoutSessionCompleted(checkoutSession)
           }
-        } else if (checkoutSession.mode === 'payment' && checkoutSession.metadata?.type === 'ai_credit_purchase') {
+        } else if (esCheckoutDeCreditosIa(checkoutSession)) {
+          await handleAiCreditPurchaseCompleted(checkoutSession)
+        }
+        break
+      }
+
+      // Pago diferido de un Checkout que llegó `unpaid` en checkout.session.completed
+      case 'checkout.session.async_payment_succeeded': {
+        const checkoutSession = event.data.object as Stripe.Checkout.Session
+        if (esCheckoutDeCreditosIa(checkoutSession)) {
           await handleAiCreditPurchaseCompleted(checkoutSession)
         }
         break
@@ -558,82 +568,20 @@ async function processSellerCommission(invoice: FacturaStripe, eventId: string) 
 }
 
 /**
- * Manejar compra de créditos IA completada
- * Suma los créditos comprados al saldo de la organización
+ * Compra de créditos IA pagada. Delega en `aplicarCompraCreditosIa`: marca la
+ * compra como completed y la base suma los créditos UNA vez (trigger
+ * `trg_aplicar_creditos_compra_ia`). Aquí no se toca `ai_settings`.
+ * Si falla la escritura, lanza: el webhook responde 500 y Stripe reintenta, lo
+ * que es seguro porque la aplicación es idempotente por compra.
  */
 async function handleAiCreditPurchaseCompleted(checkoutSession: Stripe.Checkout.Session) {
-  try {
-    const supabase = getServiceClient()
-
-    const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0', 10);
-    const creditsAmount = parseInt(checkoutSession.metadata?.creditsAmount || '0', 10);
-    const sessionId = checkoutSession.id;
-    const paymentIntentId = typeof checkoutSession.payment_intent === 'string' ? checkoutSession.payment_intent : checkoutSession.payment_intent?.id ?? null;
-
-    if (!organizationId || !creditsAmount) {
-      console.error('❌ Metadata faltante en checkout session de créditos IA:', checkoutSession.id);
-      return;
-    }
-
-    console.log(`🤖 Procesando compra de ${creditsAmount} créditos IA para org ${organizationId}`);
-
-    // 1. Actualizar el registro de compra a completed
-    const { error: purchaseError } = await supabase
-      .from('ai_credit_purchases')
-      .update({
-        status: 'completed',
-        stripe_payment_intent_id: paymentIntentId,
-        purchased_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('stripe_checkout_session_id', sessionId)
-      .select()
-      .single();
-
-    if (purchaseError) {
-      console.error('❌ Error actualizando ai_credit_purchases:', purchaseError);
-    }
-
-    // 2. Sumar créditos comprados a ai_settings
-    const { data: aiSettings, error: settingsError } = await supabase
-      .from('ai_settings')
-      .select('credits_remaining, purchased_credits')
-      .eq('organization_id', organizationId)
-      .single();
-
-    if (settingsError && settingsError.code !== 'PGRST116') {
-      console.error('❌ Error obteniendo ai_settings:', settingsError);
-      return;
-    }
-
-    if (!aiSettings) {
-      // Crear registro de ai_settings si no existe
-      await supabase.from('ai_settings').insert({
-        organization_id: organizationId,
-        credits_remaining: creditsAmount,
-        purchased_credits: creditsAmount,
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        is_active: true,
-        credits_reset_at: new Date().toISOString(),
-      });
-    } else {
-      const newPurchasedCredits = (aiSettings.purchased_credits || 0) + creditsAmount;
-      const newRemaining = (aiSettings.credits_remaining || 0) + creditsAmount;
-
-      await supabase
-        .from('ai_settings')
-        .update({
-          credits_remaining: newRemaining,
-          purchased_credits: newPurchasedCredits,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('organization_id', organizationId);
-    }
-
-    console.log(`✅ ${creditsAmount} créditos IA sumados a org ${organizationId}`);
-  } catch (error: unknown) {
-    console.error('❌ Error en handleAiCreditPurchaseCompleted:', error);
+  const resultado = await aplicarCompraCreditosIa(getServiceClient(), checkoutSession)
+  if (resultado.estado === 'invalido') {
+    console.error('❌ Compra de créditos IA no aplicable:', checkoutSession.id, resultado.motivo)
+  } else if (resultado.estado === 'sin_pagar') {
+    console.log('⏳ Compra de créditos IA aún sin pagar:', checkoutSession.id)
+  } else {
+    console.log(`✅ Compra de créditos IA ${resultado.estado}: ${resultado.creditos} créditos, org ${resultado.organizationId}`)
   }
 }
 

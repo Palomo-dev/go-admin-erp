@@ -39,6 +39,7 @@ import { websiteSettingsService, type WebsiteSettings } from '@/lib/services/web
 import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 import { branchService } from '@/lib/services/branchService';
 import type { Branch } from '@/types/branch';
+import { baseWebDeSede } from '@/lib/organizacion/sucursales';
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import { avisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
@@ -1490,13 +1491,27 @@ export function useEditorSitio() {
 
   // ── Lienzo ─────────────────────────────────────────────────────────────────
   const esDetalle = currentPage ? !!RUTA_DETALLE[currentPage.page_type] : false;
+  /**
+   * Base del sitio que pinta el lienzo. Editando una sede que el sitio sirve aparte (`/<slug>` o
+   * dominio propio, `baseWebDeSede`): la de ESA sede, porque `marca.goadmin.io/carta-qr` es la
+   * página del principal y una página que solo tiene la sede salía «404» con el encabezado del
+   * principal. Principal, o sede que el sitio no sirve aparte: la del principal, como antes.
+   */
+  const baseLienzo = useMemo(() => {
+    const sede = sedeConteo !== null ? todasSucursales.find((b) => b.id === sedeConteo) ?? null : null;
+    if (previewUrlBase && sede) {
+      return baseWebDeSede(previewUrlBase, sede) ?? previewUrlBase;
+    } else {
+      return previewUrlBase;
+    }
+  }, [previewUrlBase, sedeConteo, todasSucursales]);
   const urlLienzo = useMemo(() => {
-    const base = previewUrlBase;
+    const base = baseLienzo;
     if (!base || !currentPage) return null;
     if (currentPage.slug === 'home') return base;
     if (esDetalle) return `${base}/${RUTA_DETALLE[currentPage.page_type]}${previewEntityId ? `/${previewEntityId}` : ''}`;
     return `${base}/${currentPage.slug}`;
-  }, [previewUrlBase, currentPage, esDetalle, previewEntityId]);
+  }, [baseLienzo, currentPage, esDetalle, previewEntityId]);
 
   // V2: además el tema del borrador (fuentes, redondeo, botón, movimiento), que el sitio pinta en vivo.
   const temaLienzo = useMemo(

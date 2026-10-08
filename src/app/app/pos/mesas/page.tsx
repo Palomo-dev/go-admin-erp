@@ -332,7 +332,7 @@ export default function MesasPage() {
 
   const accionesMesa = (m: TableWithSession): AccionFila[] => [
     { id: 'editar', etiqueta: t('acciones.editarMesa'), icono: Settings, onSelect: () => { setMesaEditar(m); setShowMesaForm(true); } },
-    { id: 'qr', etiqueta: t('qr.accion'), icono: QrCode, onSelect: () => setQr({ mesas: [{ id: m.id, name: m.name, zone: m.zone ?? null }], titulo: m.name }) },
+    { id: 'qr', etiqueta: t('qr.accion'), icono: QrCode, onSelect: () => setQr({ mesas: [{ id: m.id, name: m.name, zone: m.zone ?? null, branchId: m.branch_id }], titulo: m.name }) },
     ...(m.session
       ? [
           { id: 'comensales', etiqueta: t('acciones.editarComensales'), icono: Users, onSelect: () => { setMesaParaComensales(m); setComensales(m.session?.customers || 2); } },
@@ -352,7 +352,7 @@ export default function MesasPage() {
       id: 'qr',
       etiqueta: t('qr.todas'),
       icono: QrCode,
-      onSelect: () => setQr({ mesas: filtradas.map((v) => ({ id: v.id, name: v.nombre, zone: v.zona })), titulo: zonaFiltro !== 'todas' ? zonaFiltro : t('qr.tituloTodas') }),
+      onSelect: () => setQr({ mesas: filtradas.map((v) => ({ id: v.id, name: v.nombre, zone: v.zona, branchId: mesaPorId.get(v.id)?.branch_id ?? null })), titulo: zonaFiltro !== 'todas' ? zonaFiltro : t('qr.tituloTodas') }),
     },
   ];
 
@@ -363,7 +363,7 @@ export default function MesasPage() {
       id: 'qr',
       etiqueta: tp('zona.qr'),
       icono: QrCode,
-      onSelect: () => setQr({ mesas: vistas.filter((v) => v.zona === zona).map((v) => ({ id: v.id, name: v.nombre, zone: v.zona })), titulo: zona ?? t('zona.sinZona') }),
+      onSelect: () => setQr({ mesas: vistas.filter((v) => v.zona === zona).map((v) => ({ id: v.id, name: v.nombre, zone: v.zona, branchId: mesaPorId.get(v.id)?.branch_id ?? null })), titulo: zona ?? t('zona.sinZona') }),
     },
     { id: 'gestionar', etiqueta: t('acciones.gestionarZonas'), icono: Layers, onSelect: () => setShowZonasManager(true), separadorAntes: true },
   ];

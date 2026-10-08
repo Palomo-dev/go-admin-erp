@@ -14,7 +14,7 @@ import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { permisosSitio } from '@/lib/services/website/paginasSitioService';
 import { direccionDelSitio } from '@/components/sitio-web/seoanalitica/seo.server';
 import { importePrecioVigente } from '@/lib/pos/precioVigente';
-import { urlQrMesa } from '@/lib/pos/mesas/qrMesa';
+import { urlCartaGeneral, urlQrMesa, type SedeQr } from '@/lib/pos/mesas/qrMesa';
 import { wallTimeToInstant } from '@/lib/utils/dateCore';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
@@ -557,22 +557,48 @@ export async function guardarCartaYSedes(
   }
 }
 
-/** GET /api/sitio-web/carta/qr: mesas de la sede (POS › Mesas) con la URL de su QR. */
+/**
+ * Lo que decide dónde vive la carta de una sede en el sitio (`baseCartaDeSede`). Columnas
+ * verificadas por MCP el 2026-10-08: branches.is_main, is_active, is_web_published, slug,
+ * custom_domain. Si la lectura falla, `null`: el QR va al sitio principal, como antes.
+ */
+async function sedeWebDe(ctx: CtxCarta, sedeId: number): Promise<SedeQr | null> {
+  const { data, error } = await ctx.supabase
+    .from('branches')
+    .select('is_main, is_active, is_web_published, slug, custom_domain')
+    .eq('organization_id', ctx.organizationId)
+    .eq('id', sedeId)
+    .maybeSingle();
+  if (error) {
+    console.error('[carta-qr] No se pudo leer la sede para el QR; se usa el sitio principal', { organizationId: ctx.organizationId, sedeId, code: error.code });
+    return null;
+  }
+  return (data as SedeQr | null) ?? null;
+}
+
+/**
+ * GET /api/sitio-web/carta/qr: mesas de la sede (POS › Mesas) con la URL de su QR. Si el sitio
+ * sirve la sede aparte (`/<slug>` o dominio propio), las URL son las de ESA sede: su Carta QR,
+ * su carta y su caja. Sede principal o sin sitio aparte: las del principal, como antes.
+ */
 export async function mesasQr(ctx: CtxCarta, sedeId: number | null): Promise<RespuestaQr> {
   const [sedes, direccion] = await Promise.all([sedesActivas(ctx), direccionDelSitio(ctx)]);
   const sede = sedes.find((s) => s.id === sedeId) ?? sedes[0] ?? null;
   const host = direccion.host;
-  if (!sede) return { host, sedes, sedeId: null, mesas: [], urlGeneral: host ? `https://${host}/menu` : null };
-  const { data, error } = await ctx.supabase
-    .from('restaurant_tables')
-    .select('id, name, zone')
-    .eq('organization_id', ctx.organizationId)
-    .eq('branch_id', sede.id)
-    .order('zone', { ascending: true, nullsFirst: false })
-    .order('name');
+  if (!sede) return { host, sedes, sedeId: null, mesas: [], urlGeneral: urlCartaGeneral(host) };
+  const [{ data, error }, sedeWeb] = await Promise.all([
+    ctx.supabase
+      .from('restaurant_tables')
+      .select('id, name, zone')
+      .eq('organization_id', ctx.organizationId)
+      .eq('branch_id', sede.id)
+      .order('zone', { ascending: true, nullsFirst: false })
+      .order('name'),
+    sedeWebDe(ctx, sede.id),
+  ]);
   if (error) throw error;
-  const mesas = ((data ?? []) as { id: string; name: string; zone: string | null }[]).map((m) => ({ id: m.id, nombre: m.name, zona: m.zone, url: urlQrMesa(host, m.id) }));
-  return { host, sedes, sedeId: sede.id, mesas, urlGeneral: host ? `https://${host}/menu` : null };
+  const mesas = ((data ?? []) as { id: string; name: string; zone: string | null }[]).map((m) => ({ id: m.id, nombre: m.name, zona: m.zone, url: urlQrMesa(host, m.id, sedeWeb) }));
+  return { host, sedes, sedeId: sede.id, mesas, urlGeneral: urlCartaGeneral(host, sedeWeb) };
 }
 
 /** GET /api/sitio-web/carta/vista-previa: «Ver como» con la MISMA RPC del sitio. */

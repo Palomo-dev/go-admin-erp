@@ -561,7 +561,9 @@ describe('5. Traducciones', () => {
     expect(schema).toMatch(/voice_agent_enabled:\s*z\.boolean\(\)\.optional\(\)/);
     const seccion = CODIGO('src/components/configuracion/crm/telefonia/VoiceAgentSwitchSection.tsx');
     expect(seccion).toMatch(/voice_agent_enabled:\s*valor/);
-    expect(CODIGO('src/components/configuracion/crm/TelefoniaTab.tsx')).toMatch(/<VoiceAgentSwitchSection\b/);
+    // Desde la configuración unificada (2026-10-07) el interruptor vive en
+    // Configuración › CRM › Agente de voz, no en Telefonía; sigue montado.
+    expect(CODIGO('src/components/configuracion/panels/crm/AgenteVozSeccion.tsx')).toMatch(/<VoiceAgentSwitchSection\b/);
   });
 
   test('V28 · el interruptor esta traducido en los 4 idiomas', () => {

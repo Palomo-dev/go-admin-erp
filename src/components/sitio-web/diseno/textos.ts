@@ -166,6 +166,25 @@ export const TEXTOS_DISENO = {
     vacio: 'Aún no hay plantillas para este giro. Mira las de Todas.',
     verTodas: 'Ver todas',
     abrir: 'Ver la plantilla «{nombre}»',
+    /** Selector de sede (Figma «Plantillas por sede», lámina A). Marcadores: `{sede}`. */
+    sede: {
+      etiqueta: 'Plantillas para',
+      principal: 'Sitio principal',
+      principalDetalle: 'Estilo del sitio principal',
+      hereda: 'Hereda el estilo del principal',
+      propio: 'Estilo propio',
+      enUso: 'En uso en {sede}',
+      cargando: 'Cargando las sedes…',
+      heredaTitulo: '{sede} hereda hoy el estilo del sitio principal',
+      heredaDescripcion:
+        'Sus colores y letras salen del sitio principal. Cuando uses una plantilla en {sede}, la sede tendrá estilo propio y los cambios de estilo del principal ya no le llegarán.',
+      propioTitulo: '{sede} tiene estilo propio',
+      propioDescripcion: 'Sus colores y letras ya no salen del sitio principal.',
+      heredar: 'Volver a heredar el estilo del sitio principal',
+      heredado: '{sede} vuelve a heredar el estilo del sitio principal.',
+      noHeredado: 'No pudimos volver a heredar el estilo: {mensaje}',
+      yaHereda: '{sede} ya hereda el estilo del sitio principal',
+    },
   },
   dialogo: {
     vistaPrevia: 'Vista previa con tu contenido',
@@ -212,6 +231,31 @@ export const TEXTOS_DISENO = {
     quedan: 'Así quedan tu encabezado y tu pie',
     quedanCompleta: 'Los de «{nombre}»',
     quedanEstilo: 'Los tuyos de hoy, con los colores nuevos',
+    /** «Usar esta plantilla en <sede>» (Figma «Plantillas por sede», lámina B). Marcadores: `{sede}`, `{nombre}`, `{giro}`. */
+    sede: {
+      titulo: 'Usar {nombre} en {sede}',
+      heredaTitulo: 'Hoy {sede} hereda el estilo del sitio principal',
+      heredaDescripcion:
+        'Después de aplicar, {sede} tendrá colores y letras propios y los cambios de estilo del sitio principal ya no le llegarán. Puedes volver a heredarlo cuando quieras.',
+      propioTitulo: '{sede} tiene estilo propio',
+      propioDescripcion: 'La plantilla reemplaza sus colores y letras. Puedes volver a heredar los del sitio principal cuando quieras.',
+      completaDescripcion:
+        'Cambian la estructura, el encabezado y el pie de {sede} por los de la plantilla, y su estilo pasa a ser propio de la sede. Lo anterior queda en el historial.',
+      estiloDescripcion: 'Colores y letras propios de {sede}. Su contenido, su encabezado y su pie no cambian.',
+      quedan: 'Así quedan el encabezado y el pie de {sede}',
+      quedanEstilo: 'Los de {sede} hoy, con los colores nuevos',
+      avisoCompletaTitulo: 'El sitio actual de {sede} queda en el historial',
+      avisoCompletaDescripcion:
+        'Se reemplazan el encabezado, el pie, las páginas, las secciones y los menús de {sede}. Sus páginas legales y de tienda se conservan. Nada cambia en línea hasta que publiques la sede.',
+      avisoEstiloTitulo: 'Cambia el estilo de {sede}, conserva su contenido',
+      avisoEstiloDescripcion:
+        'Los colores y las letras pasan a ser propios de {sede}. Sus páginas, secciones y menús se conservan. Nada cambia en línea hasta que publiques la sede.',
+      usar: 'Usar en {sede}',
+      otroGiro: 'La plantilla completa debe ser de {giro}, el tipo de negocio de {sede}. Puedes usar solo su estilo.',
+      sinTipo: '{sede} no tiene un tipo de negocio con plantilla: puedes usar solo el estilo.',
+      listo: 'Usamos «{nombre}» en {sede}.',
+      enBorrador: 'Quedó en el borrador de la sede: publícala desde el editor cuando esté lista.',
+    },
   },
   shell: {
     alt: 'Encabezado: {encabezado}. {pie}.',

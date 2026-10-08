@@ -4349,7 +4349,7 @@
       "chat_canales": "Canaux",
       "chat_conocimiento": "Base de connaissances",
       "chat_ia": "IA",
-      "chat_ia_configuracion": "Paramètres de l'IA",
+      "chat_ia_laboratorio": "Laboratoire IA",
       "chat_widget_sesiones": "Widget",
       "chat_auditoria": "Journal d'audit",
       "pms_calendario": "Calendrier",
@@ -28238,8 +28238,7 @@
         "aria": "Sections des agents IA",
         "agentes": "Agents",
         "voces": "Voix",
-        "campanas": "Campagnes",
-        "ajustes": "Réglages"
+        "campanas": "Campagnes"
       },
       "cargando": "Chargement des agents…",
       "error": {
@@ -32104,7 +32103,24 @@
         "errorDescripcion": "Ton site n'a pas changé. Réessaie dans quelques secondes.",
         "vacio": "Il n'y a pas encore de modèles pour cette activité. Regarde ceux de Tous.",
         "verTodas": "Voir tous",
-        "abrir": "Voir le modèle « {nombre} »"
+        "abrir": "Voir le modèle « {nombre} »",
+        "sede": {
+          "etiqueta": "Modèles pour",
+          "principal": "Site principal",
+          "principalDetalle": "Style du site principal",
+          "hereda": "Hérite du style du site principal",
+          "propio": "Style propre",
+          "enUso": "Utilisé à {sede}",
+          "cargando": "Chargement des établissements…",
+          "heredaTitulo": "{sede} hérite actuellement du style du site principal",
+          "heredaDescripcion": "Ses couleurs et polices viennent du site principal. Quand vous utilisez un modèle pour {sede}, l’établissement aura son propre style et les changements de style du site principal ne lui parviendront plus.",
+          "propioTitulo": "{sede} a son propre style",
+          "propioDescripcion": "Ses couleurs et polices ne viennent plus du site principal.",
+          "heredar": "Hériter à nouveau du style du site principal",
+          "heredado": "{sede} hérite à nouveau du style du site principal.",
+          "noHeredado": "Impossible de rétablir le style hérité : {mensaje}",
+          "yaHereda": "{sede} hérite déjà du style du site principal"
+        }
       },
       "dialogo": {
         "vistaPrevia": "Aperçu avec ton contenu",
@@ -32147,7 +32163,27 @@
         "soloCompleta": "Ils s’appliquent seulement avec « Modèle complet ».",
         "quedan": "Voici votre en-tête et votre pied de page",
         "quedanCompleta": "Ceux de « {nombre} »",
-        "quedanEstilo": "Les vôtres actuels, avec les nouvelles couleurs"
+        "quedanEstilo": "Les vôtres actuels, avec les nouvelles couleurs",
+        "sede": {
+          "titulo": "Utiliser {nombre} pour {sede}",
+          "heredaTitulo": "{sede} hérite actuellement du style du site principal",
+          "heredaDescripcion": "Après application, {sede} aura ses propres couleurs et polices, et les changements de style du site principal ne lui parviendront plus. Vous pourrez en hériter à nouveau à tout moment.",
+          "propioTitulo": "{sede} a son propre style",
+          "propioDescripcion": "Le modèle remplace ses couleurs et polices. Vous pourrez hériter à nouveau de celles du site principal à tout moment.",
+          "completaDescripcion": "La structure, l’en-tête et le pied de page de {sede} sont remplacés par ceux du modèle, et son style devient propre à l’établissement. La version précédente reste dans l’historique.",
+          "estiloDescripcion": "Couleurs et polices propres à {sede}. Son contenu, son en-tête et son pied de page ne changent pas.",
+          "quedan": "Voici l’en-tête et le pied de page de {sede}",
+          "quedanEstilo": "Ceux de {sede} aujourd’hui, avec les nouvelles couleurs",
+          "avisoCompletaTitulo": "Le site actuel de {sede} reste dans l’historique",
+          "avisoCompletaDescripcion": "L’en-tête, le pied de page, les pages, les sections et les menus de {sede} sont remplacés. Ses pages légales et de boutique sont conservées. Rien ne change en ligne tant que vous ne publiez pas l’établissement.",
+          "avisoEstiloTitulo": "Change le style de {sede}, conserve son contenu",
+          "avisoEstiloDescripcion": "Les couleurs et polices deviennent propres à {sede}. Ses pages, sections et menus sont conservés. Rien ne change en ligne tant que vous ne publiez pas l’établissement.",
+          "usar": "Utiliser pour {sede}",
+          "otroGiro": "Le modèle complet doit être de type {giro}, l’activité de {sede}. Vous pouvez n’utiliser que son style.",
+          "sinTipo": "{sede} n’a pas de type d’activité avec modèle : vous pouvez n’utiliser que le style.",
+          "listo": "Nous avons utilisé « {nombre} » pour {sede}.",
+          "enBorrador": "C’est dans le brouillon de l’établissement : publiez-le depuis l’éditeur quand il sera prêt."
+        }
       },
       "shell": {
         "alt": "En-tête : {encabezado}. {pie}.",
@@ -34971,6 +35007,7 @@
         "services": "Services"
       },
       "accion": "Appliquer le modèle {tipo} à ce site",
+      "accionGaleria": "Appliquer un modèle à cet établissement",
       "titulo": "Appliquer le modèle {tipo} à {sede}",
       "descripcion": "Remplace le brouillon du site par la structure {tipo} : pages, sections et menus. Le brouillon actuel reste dans l’historique comme enregistrement automatique et vous pouvez le restaurer. Rien ne change en ligne avant la publication.",
       "descripcionPendiente": "Le site de {sede} contient vos propres modifications ; il n’a donc pas été remplacé lors du changement de type d’activité. Si vous appliquez le modèle {tipo}, le brouillon actuel reste dans l’historique et vous pouvez le restaurer. Rien ne change en ligne avant la publication.",
@@ -37303,6 +37340,235 @@
       "vencidos": "Expirés",
       "suspendidos": "Suspendus",
       "porVencer": "Expirent bientôt (7 j)"
+    }
+  },
+  "configuracionUnificada": {
+    "titulo": "Paramètres",
+    "subtitulo": "Tous les réglages de votre organisation au même endroit",
+    "queHace": "Ce que ça fait",
+    "menu": {
+      "aria": "Modules et sections des paramètres",
+      "modulosPlan": "Modules de votre forfait",
+      "soloActivos": "Vous ne voyez que les modules actifs de votre forfait.",
+      "volver": "Retour aux modules",
+      "secciones": "Sections de {modulo}",
+      "abreFuera": "ouvre son propre écran"
+    },
+    "buscar": {
+      "etiqueta": "Rechercher un réglage",
+      "placeholder": "Rechercher un réglage",
+      "resultados": "{n, plural, one {# réglage} other {# réglages}} pour « {q} »",
+      "listaAria": "Résultats de la recherche de réglages",
+      "vacioTitulo": "Aucun réglage ne correspond à « {q} »",
+      "vacioDescripcion": "Essayez un autre mot, par exemple « facture », « test » ou « étiquettes ». Seuls les modules actifs de votre forfait sont recherchés.",
+      "limpiar": "Effacer la recherche",
+      "pista": "Les accents ne comptent pas : « interes » trouve « interés »."
+    },
+    "soloLectura": {
+      "titulo": "Lecture seule",
+      "descripcion": "Vous pouvez voir ces réglages, mais les modifier exige une autorisation que vous n'avez pas. Demandez l'accès à un administrateur de l'organisation."
+    },
+    "movido": {
+      "titulo": "Ce réglage a été déplacé ici",
+      "descripcion": "Il se trouvait dans {desde}. Tous les réglages sont désormais dans Paramètres. Si vous aviez un favori, mettez-le à jour.",
+      "entendido": "Compris"
+    },
+    "origenes": {
+      "crmAgentesAjustes": "CRM › Agents IA › Réglages",
+      "chatIaConfiguracion": "Chat › IA › Paramètres",
+      "facturacionElectronicaConfiguracion": "Finances › Facturation électronique › Paramètres"
+    },
+    "enlace": {
+      "descripcion": "Ce réglage a son propre écran. Ouvrez-le depuis ici.",
+      "abrir": "Ouvrir"
+    },
+    "estados": {
+      "errorTitulo": "Impossible de charger les paramètres",
+      "vacioTitulo": "Aucun paramètre disponible",
+      "vacioDescripcion": "Activez des modules dans Organisation › Modules pour voir leurs paramètres ici.",
+      "cargando": "Chargement des paramètres…",
+      "reintentar": "Réessayer"
+    },
+    "configurar": {
+      "etiqueta": "Configurer",
+      "aria": "Ouvrir les paramètres de {seccion}"
+    },
+    "agenteVoz": {
+      "interruptorQueHace": "Active ou désactive les appels automatiques de l'agent pour toute l'organisation. L'activer ne contourne aucune autre règle : il faut toujours un numéro propre, des minutes de voix et le consentement du client.",
+      "numerosPruebaQueHace": "Numéros de votre équipe exemptés uniquement du plafond hebdomadaire de la loi 2300, pour tester l'agent plus d'une fois par semaine. La plage horaire légale et les désinscriptions s'appliquent toujours."
+    },
+    "modulos": {
+      "general": "Général",
+      "sitioweb": "Site web",
+      "crm": "CRM",
+      "hrm": "Ressources humaines",
+      "pms": "PMS Hôtel",
+      "pos": "Caisse",
+      "chat": "Chat",
+      "integraciones": "Intégrations",
+      "parking": "Parking",
+      "calendario": "Calendrier",
+      "timeline": "Chronologie",
+      "roles": "Rôles",
+      "facturacion": "Facturation électronique",
+      "gym": "Abonnements",
+      "notificaciones": "Notifications",
+      "datos-offline": "Données hors ligne"
+    },
+    "secciones": {
+      "generalGeneral": {
+        "titulo": "Organisation",
+        "descripcion": "Informations de l'organisation et données générales",
+        "palabras": "entreprise, nit, raison sociale, logo, données générales, organisation"
+      },
+      "generalAsistente": {
+        "titulo": "GO Assistant",
+        "descripcion": "Ce que peut faire l'assistant de l'en-tête",
+        "palabras": "assistant, ia, go assistant, autorisations, capacités"
+      },
+      "sitiowebGeneral": {
+        "titulo": "Site web",
+        "descripcion": "Le site web se configure dans son propre module",
+        "palabras": "site web, page web, domaine, seo, mentions légales, maintenance, langue du site"
+      },
+      "crmGeneral": {
+        "titulo": "Général",
+        "descripcion": "Canaux, étiquettes, clés API, verticales et entonnoir",
+        "palabras": "canaux, étiquettes, clés api, verticales, icp, score, motifs de perte, commissions, parrainage, structure commerciale"
+      },
+      "crmAgenteVoz": {
+        "titulo": "Agent vocal",
+        "descripcion": "Comment et quand l'agent IA appelle vos clients",
+        "palabras": "agent vocal, agent ia, appels automatiques, robot, voix, campagnes vocales"
+      },
+      "crmTelefonia": {
+        "titulo": "Téléphonie",
+        "descripcion": "Numéros, enregistrement, consentement et politique de données",
+        "palabras": "téléphonie, numéros, caller id, enregistrement, consentement, politique de données, mon mobile, appels"
+      },
+      "crmProveedores": {
+        "titulo": "Fournisseurs et IA",
+        "descripcion": "Identifiants de téléphonie, e-mail et IA",
+        "palabras": "fournisseurs, identifiants, twilio, openai, anthropic, elevenlabs, ia, modèles, clés"
+      },
+      "crmEmail": {
+        "titulo": "E-mail",
+        "descripcion": "Domaines, expéditeurs, politique et signature",
+        "palabras": "e-mail, courriel, domaine, dns, expéditeur, signature, spf, dkim"
+      },
+      "crmWhatsapp": {
+        "titulo": "WhatsApp",
+        "descripcion": "Numéro WhatsApp et pays par défaut",
+        "palabras": "whatsapp, messages, modèles, pays par défaut"
+      },
+      "crmCreditos": {
+        "titulo": "Crédits et système",
+        "descripcion": "Soldes, consommation, prix et file de tâches",
+        "palabras": "crédits, solde, consommation, prix, file, tâches, minutes"
+      },
+      "hrmGeneral": {
+        "titulo": "Ressources humaines",
+        "descripcion": "Paramètres généraux et devises",
+        "palabras": "ressources humaines, paie, devises, employés, rh"
+      },
+      "pmsGeneral": {
+        "titulo": "PMS Hôtel",
+        "descripcion": "Réservations, arrivées/départs et opérations",
+        "palabras": "hôtel, réservations, check-in, check-out, clients, pms"
+      },
+      "posGeneral": {
+        "titulo": "Point de vente",
+        "descripcion": "Impression, numérotation, balances et écran client",
+        "palabras": "caisse, imprimante, impression, numérotation, balances, écran client, notes rapides, étiquettes de poids"
+      },
+      "posReservasMesas": {
+        "titulo": "Réservations de tables",
+        "descripcion": "Horaires, acompte et règles des réservations de chaque site",
+        "palabras": "réservations, réservations de tables, réservations web, acompte, horaires, restaurant"
+      },
+      "posAvisosCliente": {
+        "titulo": "Avis au client",
+        "descripcion": "Messages au client pour les commandes en ligne",
+        "palabras": "avis, commandes en ligne, prévenir le client, whatsapp de la commande"
+      },
+      "chatGeneral": {
+        "titulo": "Chat",
+        "descripcion": "Étiquettes, réponses rapides et clés API",
+        "palabras": "chat, étiquettes, réponses rapides, clés api, boîte de réception"
+      },
+      "chatIa": {
+        "titulo": "IA du chat",
+        "descripcion": "Modèle, comportement et mode IA par canal",
+        "palabras": "ia, intelligence artificielle, modèle, température, ton, réponse automatique, message de repli, canaux, chatbot"
+      },
+      "integracionesGeneral": {
+        "titulo": "Intégrations",
+        "descripcion": "Paramètres généraux des intégrations",
+        "palabras": "intégrations, connexions, webhooks, api"
+      },
+      "parkingGeneral": {
+        "titulo": "Parking",
+        "descripcion": "Horaires, tolérances, politiques et messages",
+        "palabras": "parking, horaires, tolérance, ticket perdu, alertes"
+      },
+      "calendarioGeneral": {
+        "titulo": "Calendrier",
+        "descripcion": "Paramètres généraux du calendrier",
+        "palabras": "calendrier, agenda, événements, rappels"
+      },
+      "timelineGeneral": {
+        "titulo": "Chronologie",
+        "descripcion": "Confidentialité, sources, rétention et performance",
+        "palabras": "chronologie, timeline, confidentialité, rétention, sources"
+      },
+      "rolesGeneral": {
+        "titulo": "Rôles",
+        "descripcion": "Paramètres des rôles et autorisations",
+        "palabras": "rôles, autorisations, accès, postes"
+      },
+      "facturacionResumen": {
+        "titulo": "Résumé",
+        "descripcion": "Identifiants, plages DIAN et toujours facturer en électronique",
+        "palabras": "facture électronique, dian, plages, résolution, numérotation, identifiants, toujours électronique"
+      },
+      "facturacionServicio": {
+        "titulo": "Service",
+        "descripcion": "État du service, résolution, file et documents retenus",
+        "palabras": "facture électronique, service, environnement, test, production, file, retenus, activation, résolution"
+      },
+      "gymGeneral": {
+        "titulo": "Abonnements",
+        "descripcion": "Accès, tolérances, check-in, cours et notifications",
+        "palabras": "abonnements, salle de sport, accès, check-in, cours, tolérance"
+      },
+      "notificacionesGeneral": {
+        "titulo": "Notifications",
+        "descripcion": "Préférences des canaux de notification",
+        "palabras": "notifications, avis, canaux, sourdine, préférences"
+      },
+      "datosOfflineGeneral": {
+        "titulo": "Données hors ligne",
+        "descripcion": "Copie locale pour travailler sans internet dans Go Admin Desktop",
+        "palabras": "hors ligne, desktop, copie locale, sans connexion"
+      }
+    },
+    "ajustes": {
+      "agenteVozInterruptor": {
+        "titulo": "Autoriser l'agent IA à appeler",
+        "palabras": "interrupteur, activer, désactiver, agent, appels automatiques"
+      },
+      "agenteVozNumerosPrueba": {
+        "titulo": "Numéros de test",
+        "palabras": "numéros de test, tester, loi 2300, plafond hebdomadaire, essais"
+      },
+      "agenteVozDesinteres": {
+        "titulo": "Quand le client n'est pas intéressé",
+        "palabras": "intérêt, pas intéressé, opportunité perdue, clôturer, exception, valeur élevée, étape"
+      }
+    },
+    "telefonia": {
+      "movidoAgente": "L'interrupteur de l'agent IA et les numéros de test sont maintenant dans",
+      "irAgente": "Agent vocal"
     }
   }
 }

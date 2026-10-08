@@ -69,7 +69,16 @@ function uno<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? v[0] ?? null : v;
 }
 
-export default function ConfiguracionServicioFE() {
+interface Props {
+  /**
+   * Dentro de Configuración › Facturación electrónica › Servicio (donde vive
+   * desde 2026-10-07; la ruta vieja redirige allí): la cabecera la pone
+   * Configuración, así que no se pinta la propia.
+   */
+  incrustado?: boolean;
+}
+
+export default function ConfiguracionServicioFE({ incrustado = false }: Props = {}) {
   const t = useTranslations('facturacionElectronica.configuracion');
   const { toast } = useToast();
   const { formatDate, formatDateTime } = useFormatDate();
@@ -205,7 +214,7 @@ export default function ConfiguracionServicioFE() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      {!incrustado && <PageHeader
         titulo={t('titulo')}
         subtitulo={t('subtitulo')}
         icono={FileCheck2}
@@ -217,7 +226,7 @@ export default function ConfiguracionServicioFE() {
           { etiqueta: t('migas.configuracion') },
         ]}
         cargando={estado === 'cargando'}
-      />
+      />}
 
       {estado === 'error' && <EmptyState variante="error" titulo={t('errores.carga')} onReintentar={() => void cargar()} />}
 

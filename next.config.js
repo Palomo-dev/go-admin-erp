@@ -21,6 +21,36 @@ const REDIRECCIONES_SITIO_WEB = [
   { source: '/app/sitio-web/reservas', destination: '/app/pos/reservas-mesas?tab=configuracion', permanent: true },
 ];
 
+/**
+ * Configuración unificada (decisión del dueño, 2026-10-07; docs/configuracion/
+ * UNIFICACION-CONFIGURACION.md): las pantallas de ajustes de los módulos se
+ * mudaron a /app/configuracion. Redirecciones PERMANENTES (308) para no romper
+ * favoritos ni enlaces de correos; `movido` hace que la página muestre una sola
+ * vez «Esta configuración se movió aquí». Deben coincidir con `RUTAS_MOVIDAS`
+ * de src/components/configuracion/config/configSectionsRegistry.ts (lo exige
+ * `src/components/configuracion/__tests__/redirecciones.test.ts`).
+ */
+const REDIRECCIONES_CONFIGURACION = [
+  {
+    source: '/app/crm/agentes-ia',
+    has: [{ type: 'query', key: 'pestana', value: 'ajustes' }],
+    destination: '/app/configuracion?modulo=crm&seccion=agente-voz&ajuste=desinteres&movido=crmAgentesAjustes',
+    permanent: true,
+  },
+  { source: '/app/chat/ia/configuracion', destination: '/app/configuracion?modulo=chat&seccion=ia&movido=chatIaConfiguracion', permanent: true },
+  {
+    source: '/app/finanzas/facturacion-electronica/configuracion',
+    destination: '/app/configuracion?modulo=facturacion&seccion=servicio&movido=facturacionElectronicaConfiguracion',
+    permanent: true,
+  },
+  // Rutas que el código enlazaba y NUNCA existieron (404, auditoría 2026-10-07):
+  // ahora llevan a su sección. Sin `movido`: no hubo pantalla que se mudara.
+  { source: '/app/pos/configuracion', destination: '/app/configuracion?modulo=pos&seccion=general', permanent: true },
+  { source: '/app/hrm/configuracion', destination: '/app/configuracion?modulo=hrm&seccion=general', permanent: true },
+  { source: '/app/roles/configuracion', destination: '/app/configuracion?modulo=roles&seccion=general', permanent: true },
+  { source: '/app/finanzas/configuracion/secuencias', destination: '/app/configuracion?modulo=facturacion&seccion=resumen', permanent: true },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -108,6 +138,7 @@ const nextConfig = {
       { source: '/app/gym/:path*', destination: '/app/membresias', permanent: true },
       { source: '/gym-display/:deviceId', destination: '/membresias-kiosco/:deviceId', permanent: true },
       ...REDIRECCIONES_SITIO_WEB,
+      ...REDIRECCIONES_CONFIGURACION,
     ];
   },
   // Sitio web: el editor visual vive en /app/sitio-web/editor/:pageId (bajo la

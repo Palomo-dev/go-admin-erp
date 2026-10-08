@@ -28,13 +28,16 @@ import { apiPaginas, ErrorApiPaginas } from '../paginas/apiPaginas';
 import { CATALOGO_SITIO } from './catalogo';
 import type { ContextoDiseno } from './useContextoDiseno';
 
-/** Pestañas de A/06b; transporte y parqueadero aparecen solo si es el giro de la organización. */
+/**
+ * Pestañas de A/06b; transporte y parqueadero aparecen solo si es el giro de la organización o de
+ * la sede elegida (Figma «Plantillas por sede»).
+ */
 export const PESTANAS_GIRO_BASE: readonly GiroCatalogo[] = ['restaurante', 'tienda', 'hotel', 'servicios', 'gimnasio'];
 export type PestanaGiro = GiroCatalogo | 'todas';
 
-export function pestanasGiro(giroOrganizacion: GiroCatalogo | null): PestanaGiro[] {
+export function pestanasGiro(giroOrganizacion: GiroCatalogo | null, giroSede: GiroCatalogo | null = null): PestanaGiro[] {
   const giros: PestanaGiro[] = [...PESTANAS_GIRO_BASE];
-  if (giroOrganizacion && !giros.includes(giroOrganizacion)) giros.push(giroOrganizacion);
+  for (const g of [giroOrganizacion, giroSede]) if (g && !giros.includes(g)) giros.push(g);
   return [...giros, 'todas'];
 }
 

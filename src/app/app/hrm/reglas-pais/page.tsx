@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 import HRMConfigService from '@/lib/services/hrmConfigService';
 import type { CountryPayrollRules } from '@/lib/services/hrmConfigService';
 import { RulesTable, RuleDetailModal, RulesPagination } from '@/components/hrm/reglas-pais';
@@ -271,7 +272,7 @@ export default function ReglasPaisPage() {
                 ← Volver a HRM
               </Button>
             </Link>
-            <Link href="/app/hrm/configuracion">
+            <Link href={rutaSeccion('hrm.general')}>
               <Button variant="outline" size="sm">
                 Configuración HRM
               </Button>

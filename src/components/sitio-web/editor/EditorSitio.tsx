@@ -10,6 +10,7 @@
  * sus estados: cargando, sin permiso, página no encontrada, error y listo.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeftRight,
   CalendarX,
@@ -67,8 +68,8 @@ import { EditorMovil } from './movil/EditorMovil';
 import { nombreDeSeccion } from './iconosSeccion';
 import { LECTOR_PUBLICO_V2_LISTO, useEditorSitio, type ZonaGlobal } from './useEditorSitio';
 import { useTextosEditor } from './textos';
-import { DialogoAplicarPlantillaSede } from '@/components/sitio-web/plantillaSede/DialogoAplicarPlantillaSede';
 import { useTextosPlantillaSede } from '@/components/sitio-web/plantillaSede/textos';
+import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { esTipoSedePlantilla } from '@/lib/website/v2/plantillaSede';
 
 function EsqueletoEditor() {
@@ -156,7 +157,7 @@ function Editor() {
   /** Hoja «Carta» de la sección `menu_full`: solo elige la carta y lleva a Carta (B/13-07). */
   const [carta, setCarta] = useState<{ seccionId: string } | null>(null);
   const [vistaPrevia, setVistaPrevia] = useState(false);
-  const [plantillaSede, setPlantillaSede] = useState(false);
+  const router = useRouter();
   const tp = useTextosPlantillaSede();
   const categoriasSitio = useCategoriasMenu(ed.enV2 ? ed.sitioBranch : ed.selectedBranchId, ed.estadoCarga !== 'listo');
   const categorias = useMemo(() => ({ lista: categoriasSitio.categorias, cargando: categoriasSitio.cargando }), [categoriasSitio]);
@@ -365,14 +366,19 @@ function Editor() {
     }
     if (ed.esSedeV2) {
       acciones.push({ id: 'herencia', etiqueta: t('acciones.verHerencia'), icono: Store, onSelect: () => setHerencia(true) });
-      // «Aplicar plantilla de <tipo> a esta sede»: reemplaza el borrador (queda en el historial).
-      const tipoSede = ed.tipoDeSede(ed.sitioBranch);
-      if (esTipoSedePlantilla(tipoSede) && ed.permisos.editar) {
+      // «Aplicar plantilla a esta sede» (Figma «Plantillas por sede», lámina C): guarda lo pendiente
+      // y abre Diseño › Plantillas con la sede elegida, en la pestaña de su giro. Ya no aplica la
+      // plantilla por defecto del giro: ahí se elige cuál y cómo (completa o solo estilo).
+      if (ed.permisos.editar && ed.sitioBranch !== null) {
+        const sedePlantillas = ed.sitioBranch;
         acciones.push({
           id: 'plantilla-sede',
-          etiqueta: tp('accion', { tipo: tp(`tipos.${tipoSede}`) }),
+          etiqueta: tp('accionGaleria'),
           icono: LayoutTemplate,
-          onSelect: () => setPlantillaSede(true),
+          onSelect: () =>
+            void ed.guardarAhora().then((ok) => {
+              if (ok) router.push(`${RAIZ_SITIO_WEB}/plantillas?sede=${sedePlantillas}`);
+            }),
         });
       }
       const propios = new Set(ed.documento.menus.map((m) => m.id));
@@ -552,16 +558,6 @@ function Editor() {
           setCambioPagina(null);
         }}
       />
-      {ed.esSedeV2 && ed.sitioBranch !== null && (
-        <DialogoAplicarPlantillaSede
-          abierto={plantillaSede}
-          onAbiertoChange={setPlantillaSede}
-          branchId={ed.sitioBranch}
-          nombreSede={ed.nombreSitio}
-          antesDeAplicar={ed.guardarAhora}
-          onAplicada={ed.trasAplicarPlantilla}
-        />
-      )}
       <DialogoSeoPagina
         abierto={seoAbierto}
         onAbiertoChange={setSeoAbierto}

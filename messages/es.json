@@ -4352,7 +4352,7 @@
       "chat_canales": "Canales",
       "chat_conocimiento": "Conocimiento",
       "chat_ia": "IA",
-      "chat_ia_configuracion": "Configuración de IA",
+      "chat_ia_laboratorio": "Laboratorio de IA",
       "chat_widget_sesiones": "Widget",
       "chat_auditoria": "Auditoría",
       "pms_calendario": "Calendario",
@@ -6398,8 +6398,7 @@
         "aria": "Secciones de agentes IA",
         "agentes": "Agentes",
         "voces": "Voces",
-        "campanas": "Campañas",
-        "ajustes": "Ajustes"
+        "campanas": "Campañas"
       },
       "cargando": "Cargando agentes…",
       "error": {
@@ -32104,7 +32103,24 @@
         "errorDescripcion": "Tu sitio no cambió. Inténtalo de nuevo en unos segundos.",
         "vacio": "Aún no hay plantillas para este giro. Mira las de Todas.",
         "verTodas": "Ver todas",
-        "abrir": "Ver la plantilla «{nombre}»"
+        "abrir": "Ver la plantilla «{nombre}»",
+        "sede": {
+          "etiqueta": "Plantillas para",
+          "principal": "Sitio principal",
+          "principalDetalle": "Estilo del sitio principal",
+          "hereda": "Hereda el estilo del principal",
+          "propio": "Estilo propio",
+          "enUso": "En uso en {sede}",
+          "cargando": "Cargando las sedes…",
+          "heredaTitulo": "{sede} hereda hoy el estilo del sitio principal",
+          "heredaDescripcion": "Sus colores y letras salen del sitio principal. Cuando uses una plantilla en {sede}, la sede tendrá estilo propio y los cambios de estilo del principal ya no le llegarán.",
+          "propioTitulo": "{sede} tiene estilo propio",
+          "propioDescripcion": "Sus colores y letras ya no salen del sitio principal.",
+          "heredar": "Volver a heredar el estilo del sitio principal",
+          "heredado": "{sede} vuelve a heredar el estilo del sitio principal.",
+          "noHeredado": "No pudimos volver a heredar el estilo: {mensaje}",
+          "yaHereda": "{sede} ya hereda el estilo del sitio principal"
+        }
       },
       "dialogo": {
         "vistaPrevia": "Vista previa con tu contenido",
@@ -32147,7 +32163,27 @@
         "soloCompleta": "Se aplican solo con «Plantilla completa».",
         "quedan": "Así quedan tu encabezado y tu pie",
         "quedanCompleta": "Los de «{nombre}»",
-        "quedanEstilo": "Los tuyos de hoy, con los colores nuevos"
+        "quedanEstilo": "Los tuyos de hoy, con los colores nuevos",
+        "sede": {
+          "titulo": "Usar {nombre} en {sede}",
+          "heredaTitulo": "Hoy {sede} hereda el estilo del sitio principal",
+          "heredaDescripcion": "Después de aplicar, {sede} tendrá colores y letras propios y los cambios de estilo del sitio principal ya no le llegarán. Puedes volver a heredarlo cuando quieras.",
+          "propioTitulo": "{sede} tiene estilo propio",
+          "propioDescripcion": "La plantilla reemplaza sus colores y letras. Puedes volver a heredar los del sitio principal cuando quieras.",
+          "completaDescripcion": "Cambian la estructura, el encabezado y el pie de {sede} por los de la plantilla, y su estilo pasa a ser propio de la sede. Lo anterior queda en el historial.",
+          "estiloDescripcion": "Colores y letras propios de {sede}. Su contenido, su encabezado y su pie no cambian.",
+          "quedan": "Así quedan el encabezado y el pie de {sede}",
+          "quedanEstilo": "Los de {sede} hoy, con los colores nuevos",
+          "avisoCompletaTitulo": "El sitio actual de {sede} queda en el historial",
+          "avisoCompletaDescripcion": "Se reemplazan el encabezado, el pie, las páginas, las secciones y los menús de {sede}. Sus páginas legales y de tienda se conservan. Nada cambia en línea hasta que publiques la sede.",
+          "avisoEstiloTitulo": "Cambia el estilo de {sede}, conserva su contenido",
+          "avisoEstiloDescripcion": "Los colores y las letras pasan a ser propios de {sede}. Sus páginas, secciones y menús se conservan. Nada cambia en línea hasta que publiques la sede.",
+          "usar": "Usar en {sede}",
+          "otroGiro": "La plantilla completa debe ser de {giro}, el tipo de negocio de {sede}. Puedes usar solo su estilo.",
+          "sinTipo": "{sede} no tiene un tipo de negocio con plantilla: puedes usar solo el estilo.",
+          "listo": "Usamos «{nombre}» en {sede}.",
+          "enBorrador": "Quedó en el borrador de la sede: publícala desde el editor cuando esté lista."
+        }
       },
       "shell": {
         "alt": "Encabezado: {encabezado}. {pie}.",
@@ -34971,6 +35007,7 @@
         "services": "Servicios"
       },
       "accion": "Aplicar plantilla de {tipo} a esta sede",
+      "accionGaleria": "Aplicar plantilla a esta sede",
       "titulo": "Aplicar la plantilla de {tipo} a {sede}",
       "descripcion": "Reemplaza el borrador de la sede por la estructura de {tipo}: páginas, secciones y menús. El borrador actual queda en el historial como guardado automático y lo puedes restaurar. Nada cambia en línea hasta que publiques.",
       "descripcionPendiente": "El sitio de {sede} tiene cambios propios, por eso no se reemplazó al cambiar el tipo de negocio. Si aplicas la plantilla de {tipo}, el borrador actual queda en el historial y lo puedes restaurar. Nada cambia en línea hasta que publiques.",
@@ -37303,6 +37340,235 @@
       "vencidos": "Vencidos",
       "suspendidos": "Suspendidos",
       "porVencer": "Por Vencer (7d)"
+    }
+  },
+  "configuracionUnificada": {
+    "titulo": "Configuración",
+    "subtitulo": "Todos los ajustes de tu organización en un solo lugar",
+    "queHace": "Qué hace",
+    "menu": {
+      "aria": "Módulos y secciones de configuración",
+      "modulosPlan": "Módulos de tu plan",
+      "soloActivos": "Solo ves los módulos activos en tu plan.",
+      "volver": "Volver a los módulos",
+      "secciones": "Secciones de {modulo}",
+      "abreFuera": "abre su propia pantalla"
+    },
+    "buscar": {
+      "etiqueta": "Buscar un ajuste",
+      "placeholder": "Buscar un ajuste",
+      "resultados": "{n, plural, one {# ajuste} other {# ajustes}} para «{q}»",
+      "listaAria": "Resultados de la búsqueda de ajustes",
+      "vacioTitulo": "Ningún ajuste coincide con «{q}»",
+      "vacioDescripcion": "Prueba con otra palabra, por ejemplo «factura», «prueba» o «etiquetas». Solo se buscan los módulos activos de tu plan.",
+      "limpiar": "Limpiar búsqueda",
+      "pista": "No importan las tildes: «interes» encuentra «interés»."
+    },
+    "soloLectura": {
+      "titulo": "Solo lectura",
+      "descripcion": "Puedes ver estos ajustes, pero cambiarlos requiere un permiso que no tienes. Pídele a un administrador de la organización que te dé acceso."
+    },
+    "movido": {
+      "titulo": "Esta configuración se movió aquí",
+      "descripcion": "Antes estaba en {desde}. Ahora todos los ajustes viven en Configuración. Si tenías un favorito, actualízalo.",
+      "entendido": "Entendido"
+    },
+    "origenes": {
+      "crmAgentesAjustes": "CRM › Agentes IA › Ajustes",
+      "chatIaConfiguracion": "Chat › IA › Configuración",
+      "facturacionElectronicaConfiguracion": "Finanzas › Facturación electrónica › Configuración"
+    },
+    "enlace": {
+      "descripcion": "Esta configuración tiene su propia pantalla. Se abre desde aquí.",
+      "abrir": "Abrir"
+    },
+    "estados": {
+      "errorTitulo": "No se pudo cargar la configuración",
+      "vacioTitulo": "No hay configuraciones disponibles",
+      "vacioDescripcion": "Activa módulos en Organización › Módulos para ver sus configuraciones aquí.",
+      "cargando": "Cargando configuración…",
+      "reintentar": "Reintentar"
+    },
+    "configurar": {
+      "etiqueta": "Configurar",
+      "aria": "Abrir la configuración de {seccion}"
+    },
+    "agenteVoz": {
+      "interruptorQueHace": "Enciende o apaga las llamadas automáticas del agente para toda la organización. Encenderlo no salta ninguna otra regla: siguen haciendo falta un número propio, minutos de voz y el consentimiento del cliente.",
+      "numerosPruebaQueHace": "Números del propio equipo que quedan exentos solo del tope semanal de la Ley 2300, para probar el agente más de una vez por semana. La franja horaria legal y las bajas siguen aplicando."
+    },
+    "modulos": {
+      "general": "General",
+      "sitioweb": "Sitio web",
+      "crm": "CRM",
+      "hrm": "Recursos humanos",
+      "pms": "PMS Hotel",
+      "pos": "POS",
+      "chat": "Chat",
+      "integraciones": "Integraciones",
+      "parking": "Parking",
+      "calendario": "Calendario",
+      "timeline": "Timeline",
+      "roles": "Roles",
+      "facturacion": "Facturación electrónica",
+      "gym": "Membresías",
+      "notificaciones": "Notificaciones",
+      "datos-offline": "Datos sin conexión"
+    },
+    "secciones": {
+      "generalGeneral": {
+        "titulo": "Organización",
+        "descripcion": "Información de la organización y datos generales",
+        "palabras": "empresa, nit, razón social, logo, datos generales, organización"
+      },
+      "generalAsistente": {
+        "titulo": "GO Assistant",
+        "descripcion": "Qué puede hacer el asistente del encabezado",
+        "palabras": "asistente, ia, go assistant, permisos del asistente, capacidades"
+      },
+      "sitiowebGeneral": {
+        "titulo": "Sitio web",
+        "descripcion": "El sitio web se configura en su propio módulo",
+        "palabras": "sitio web, página web, dominio, seo, legales, mantenimiento, idioma del sitio"
+      },
+      "crmGeneral": {
+        "titulo": "General",
+        "descripcion": "Canales, etiquetas, llaves API, verticales y embudo",
+        "palabras": "canales, etiquetas, llaves api, verticales, icp, puntuación, motivos de pérdida, comisiones, referidos, estructura comercial"
+      },
+      "crmAgenteVoz": {
+        "titulo": "Agente de voz",
+        "descripcion": "Cómo y cuándo llama el agente de IA a tus clientes",
+        "palabras": "agente de voz, agente ia, llamadas automáticas, robot, voz, campañas de voz"
+      },
+      "crmTelefonia": {
+        "titulo": "Telefonía",
+        "descripcion": "Números, grabación, consentimiento y política de datos",
+        "palabras": "telefonía, números, caller id, grabación, consentimiento, política de datos, ley 1581, mi celular, llamadas"
+      },
+      "crmProveedores": {
+        "titulo": "Proveedores e IA",
+        "descripcion": "Credenciales de telefonía, correo e inteligencia artificial",
+        "palabras": "proveedores, credenciales, twilio, openai, anthropic, elevenlabs, ia, modelos, llaves"
+      },
+      "crmEmail": {
+        "titulo": "Email",
+        "descripcion": "Dominios, remitentes, política y firma",
+        "palabras": "email, correo, dominio, dns, remitente, firma, spf, dkim"
+      },
+      "crmWhatsapp": {
+        "titulo": "WhatsApp",
+        "descripcion": "Número de WhatsApp y país por defecto",
+        "palabras": "whatsapp, mensajes, plantillas, país por defecto"
+      },
+      "crmCreditos": {
+        "titulo": "Créditos y sistema",
+        "descripcion": "Saldos, consumo, precios y cola de trabajos",
+        "palabras": "créditos, saldo, consumo, precios, cola, trabajos, minutos"
+      },
+      "hrmGeneral": {
+        "titulo": "Recursos humanos",
+        "descripcion": "Configuración general y monedas",
+        "palabras": "recursos humanos, nómina, monedas, empleados, hrm"
+      },
+      "pmsGeneral": {
+        "titulo": "PMS Hotel",
+        "descripcion": "Reservas, check-in/out y operaciones",
+        "palabras": "hotel, reservas, check-in, check-out, huéspedes, pms"
+      },
+      "posGeneral": {
+        "titulo": "Punto de venta",
+        "descripcion": "Impresiones, consecutivos, básculas y pantalla del cliente",
+        "palabras": "pos, impresora, impresión, consecutivos, básculas, pantalla del cliente, notas rápidas, etiquetas de peso"
+      },
+      "posReservasMesas": {
+        "titulo": "Reservas de mesas",
+        "descripcion": "Horarios, anticipo y reglas de las reservas de cada sede",
+        "palabras": "reservas, reservas de mesas, reservas web, anticipo, depósito, horario de reservas, restaurante"
+      },
+      "posAvisosCliente": {
+        "titulo": "Avisos al cliente",
+        "descripcion": "Mensajes al cliente de los pedidos en línea",
+        "palabras": "avisos, pedidos en línea, notificar al cliente, whatsapp del pedido"
+      },
+      "chatGeneral": {
+        "titulo": "Chat",
+        "descripcion": "Etiquetas, respuestas rápidas y llaves API",
+        "palabras": "chat, etiquetas, respuestas rápidas, llaves api, bandeja"
+      },
+      "chatIa": {
+        "titulo": "IA del chat",
+        "descripcion": "Modelo, comportamiento y modo de IA por canal",
+        "palabras": "ia, inteligencia artificial, modelo, temperatura, tono, respuesta automática, mensaje si no sabe, canales, chatbot"
+      },
+      "integracionesGeneral": {
+        "titulo": "Integraciones",
+        "descripcion": "Configuración general de integraciones",
+        "palabras": "integraciones, conexiones, webhooks, api"
+      },
+      "parkingGeneral": {
+        "titulo": "Parking",
+        "descripcion": "Horarios, tolerancias, políticas y mensajes",
+        "palabras": "parking, parqueadero, horarios, tolerancia, ticket perdido, alertas"
+      },
+      "calendarioGeneral": {
+        "titulo": "Calendario",
+        "descripcion": "Configuración general del calendario",
+        "palabras": "calendario, agenda, eventos, recordatorios"
+      },
+      "timelineGeneral": {
+        "titulo": "Timeline",
+        "descripcion": "Privacidad, fuentes, retención y rendimiento",
+        "palabras": "timeline, línea de tiempo, privacidad, retención, fuentes"
+      },
+      "rolesGeneral": {
+        "titulo": "Roles",
+        "descripcion": "Configuración de roles y permisos",
+        "palabras": "roles, permisos, accesos, cargos"
+      },
+      "facturacionResumen": {
+        "titulo": "Resumen",
+        "descripcion": "Credenciales, rangos DIAN y facturar siempre electrónico",
+        "palabras": "factura electrónica, dian, rangos, resolución, consecutivo, credenciales, siempre electrónica"
+      },
+      "facturacionServicio": {
+        "titulo": "Servicio",
+        "descripcion": "Estado del servicio, resolución, cola y documentos retenidos",
+        "palabras": "factura electrónica, servicio, ambiente, pruebas, producción, cola, retenidos, activación, resolución"
+      },
+      "gymGeneral": {
+        "titulo": "Membresías",
+        "descripcion": "Acceso, tolerancias, check-in, clases y notificaciones",
+        "palabras": "membresías, gimnasio, acceso, check-in, clases, tolerancia"
+      },
+      "notificacionesGeneral": {
+        "titulo": "Notificaciones",
+        "descripcion": "Preferencias de canales de notificación",
+        "palabras": "notificaciones, avisos, canales, silenciar, preferencias"
+      },
+      "datosOfflineGeneral": {
+        "titulo": "Datos sin conexión",
+        "descripcion": "Copia local para trabajar sin internet en Go Admin Desktop",
+        "palabras": "sin conexión, offline, desktop, copia local"
+      }
+    },
+    "ajustes": {
+      "agenteVozInterruptor": {
+        "titulo": "Permitir que el agente IA llame",
+        "palabras": "interruptor, encender, apagar, activar agente, llamadas automáticas"
+      },
+      "agenteVozNumerosPrueba": {
+        "titulo": "Números de prueba",
+        "palabras": "números de prueba, probar, ley 2300, tope semanal, pruebas"
+      },
+      "agenteVozDesinteres": {
+        "titulo": "Cuando el cliente no tiene interés",
+        "palabras": "interés, desinterés, no le interesa, oportunidad perdida, cerrar oportunidad, excepción, valor alto, etapa"
+      }
+    },
+    "telefonia": {
+      "movidoAgente": "El interruptor del agente IA y los números de prueba ahora están en",
+      "irAgente": "Agente de voz"
     }
   }
 }

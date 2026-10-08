@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Settings, FlaskConical, ListChecks } from 'lucide-react';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 
 const iaTabs = [
   {
-    name: 'Configuración',
-    href: '/app/chat/ia/configuracion',
+    // Atajo a Configuración › Chat › IA del chat (allí vive desde 2026-10-07).
+    name: 'Configurar',
+    href: rutaSeccion('chat.ia'),
     icon: <Settings className="h-4 w-4" />,
   },
   {

@@ -122,6 +122,20 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
   };
 }
 
+/**
+ * Cómo se arma el sitio sobre el borrador. Por defecto `armarPlantillaCompleta` (sitio principal);
+ * una sede con plantilla elegida pasa `armarPlantillaSede` (`plantillaSede.ts`), que llama a la
+ * misma función y deja el estilo como propio de la sede.
+ */
+export type ArmarPlantilla = (
+  base: DocumentoSitio,
+  plantilla: PlantillaCatalogo,
+  datos: DatosNegocio,
+  opciones: { generarId: () => string; extendidos: boolean },
+) => { documento: DocumentoSitio; resumen: ResumenPlantillaCompleta };
+
+const ARMAR_POR_DEFECTO: ArmarPlantilla = (base, plantilla, datos, opciones) => armarPlantillaCompleta(base, plantilla, datos, opciones);
+
 /** Sitio completo de la plantilla sobre `base`, con los datos reales y ya validado. */
 export async function documentoPlantillaCompleta(
   cliente: SupabaseClient,
@@ -130,9 +144,10 @@ export async function documentoPlantillaCompleta(
   base: DocumentoSitio,
   plantilla: PlantillaCatalogo,
   generarId: () => string,
+  armar: ArmarPlantilla = ARMAR_POR_DEFECTO,
 ): Promise<{ documento: DocumentoSitio; resumen: ResumenPlantillaCompleta }> {
   const datos = await leerDatosNegocio(cliente, org, branchId);
-  const r = armarPlantillaCompleta(base, plantilla, datos, { generarId, extendidos: tokensExtendidosDisponibles() });
+  const r = armar(base, plantilla, datos, { generarId, extendidos: tokensExtendidosDisponibles() });
   const validacion = validarDocumentoSitio(r.documento);
   if (!validacion.ok) throw new ErrorSitio('documento_invalido', 'La plantilla completa no cumple el contrato.', validacion.errores);
   return { documento: validacion.documento, resumen: r.resumen };
@@ -145,6 +160,7 @@ export async function aplicarPlantillaCompleta(
   versionEsperada: number | null,
   plantillaId: string,
   generarId: () => string,
+  armar: ArmarPlantilla = ARMAR_POR_DEFECTO,
 ): Promise<RespuestaPlantillaCompleta> {
   const plantilla = plantillaPorId(CATALOGO_PLANTILLAS, plantillaId);
   if (!plantilla) throw errorPagina('plantilla_no_existe');
@@ -165,7 +181,7 @@ export async function aplicarPlantillaCompleta(
     });
   }
 
-  const { documento, resumen } = await documentoPlantillaCompleta(ctx.supabase, ctx.organizationId, branchId, borrador.documento, plantilla, generarId);
+  const { documento, resumen } = await documentoPlantillaCompleta(ctx.supabase, ctx.organizationId, branchId, borrador.documento, plantilla, generarId, armar);
   // Lo anterior queda en el historial antes de reemplazarlo (se puede deshacer).
   const instantaneaId = (await crearInstantanea(ctx.supabase, ctx.organizationId, sitio.id, { documento: borrador.documento, version, motivo: 'antes_de_restaurar' })).id;
   const escrito = await aplicarAlBorrador(ctx, branchId, version, () => ({ ok: true, documento }));

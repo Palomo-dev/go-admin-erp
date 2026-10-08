@@ -33,6 +33,8 @@ export interface TemplateCardProps {
   modo?: 'sitio' | 'pagina';
   secciones?: number;
   enUso?: boolean;
+  /** Texto de la insignia «En uso» (p. ej. «En uso en <sede>» con una sede elegida). */
+  etiquetaEnUso?: string;
   seleccionada?: boolean;
   onSeleccionar?: () => void;
   rol?: 'radio' | 'button';
@@ -51,6 +53,7 @@ export function TemplateCard({
   modo = 'sitio',
   secciones,
   enUso,
+  etiquetaEnUso,
   seleccionada,
   onSeleccionar,
   rol = 'button',
@@ -60,11 +63,10 @@ export function TemplateCard({
   const chip = modo === 'pagina' ? tx('plantilla.pagina') : giro;
   // A/06b: «En uso» va en la fila del chip y las secciones (la tarjeta no crece);
   // «Seleccionada» (A/07i, asistente y Nueva página) lleva su propia fila.
-  const insignia = seleccionada ? tx('plantilla.seleccionada') : enUso ? tx('plantilla.enUso') : null;
+  const insignia = seleccionada ? tx('plantilla.seleccionada') : enUso ? etiquetaEnUso ?? tx('plantilla.enUso') : null;
   const insigniaEnFila = !seleccionada && !!insignia;
   const nodoInsignia = insignia ? (
-    <Badge tono="marca" apariencia="solido" tamano="sm" className={insigniaEnFila ? undefined : 'self-start'}>
-      <Check aria-hidden="true" className="size-3 shrink-0" strokeWidth={2} />
+    <Badge tono="marca" apariencia="solido" tamano="sm" icono={Check} className={insigniaEnFila ? undefined : 'self-start'}>
       {insignia}
     </Badge>
   ) : null;
@@ -101,8 +103,9 @@ export function TemplateCard({
       ) : null}
       <span className="flex flex-wrap items-center gap-2">
         {chip ? (
-          <Badge tono="neutro" apariencia="suave" tamano="sm">
-            {IconoGiro && modo !== 'pagina' ? <IconoGiro aria-hidden="true" className="size-3 shrink-0" strokeWidth={2} /> : null}
+          // El icono va por `icono`: dentro de los hijos queda en el `span.truncate` del Badge y se
+          // apila encima del texto (el svg es `block`).
+          <Badge tono="neutro" apariencia="suave" tamano="sm" icono={IconoGiro && modo !== 'pagina' ? IconoGiro : undefined}>
             {chip}
           </Badge>
         ) : null}

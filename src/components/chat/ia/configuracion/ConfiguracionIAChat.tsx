@@ -1,10 +1,15 @@
-﻿'use client';
+'use client';
 
+/**
+ * Configuración › Chat › IA del chat (antes /app/chat/ia/configuracion, que
+ * ahora redirige aquí: decisión del dueño 2026-10-07, un solo lugar para todas
+ * las configuraciones). Mismo contenido y mismo servicio (`AISettingsService`):
+ * solo se mudó de la página del módulo a una sección de Configuración.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Save, Cpu, MessageSquare, MessagesSquare } from 'lucide-react';
@@ -18,9 +23,8 @@ import {
   BehaviorSettings,
   ChannelAIModeTable
 } from '@/components/chat/ia/configuracion';
-import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 
-export default function AIConfiguracionPage() {
+export function ConfiguracionIAChat() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -30,7 +34,6 @@ export default function AIConfiguracionPage() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [memberId, setMemberId] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   const [provider, setProvider] = useState('openai');
@@ -46,27 +49,6 @@ export default function AIConfiguracionPage() {
   const [autoResponseDelay, setAutoResponseDelay] = useState(5);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.7);
   const [isActive, setIsActive] = useState(true);
-
-  useEffect(() => {
-    const getMemberId = async () => {
-      if (!organizationId) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (data) {
-        setMemberId(data.id);
-      }
-    };
-
-    getMemberId();
-  }, [organizationId]);
 
   const loadData = useCallback(async () => {
     if (!organizationId) return;
@@ -115,17 +97,19 @@ export default function AIConfiguracionPage() {
     loadData();
   }, [loadData]);
 
-  const handleChange = (setter: (value: any) => void) => (value: any) => {
+  const handleChange = <T,>(setter: (value: T) => void) => (value: T) => {
     setter(value);
     setHasChanges(true);
   };
 
+  // Guardar la configuración va por PATCH /api/chat/ai/settings (organización
+  // de la sesión y permiso de administrador en el servidor).
   const handleToggleAI = async () => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     try {
       const service = new AISettingsService(organizationId);
-      const newState = await service.toggleAI(memberId);
+      const newState = await service.toggleAI();
       setIsActive(newState);
 
       toast({
@@ -137,14 +121,14 @@ export default function AIConfiguracionPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo cambiar el estado de la IA',
+        description: error instanceof Error ? error.message : 'No se pudo cambiar el estado de la IA',
         variant: 'destructive'
       });
     }
   };
 
   const handleSave = async () => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     setSaving(true);
     try {
@@ -163,7 +147,7 @@ export default function AIConfiguracionPage() {
         auto_response_delay_seconds: autoResponseDelay,
         confidence_threshold: confidenceThreshold,
         is_active: isActive
-      }, memberId);
+      });
 
       toast({
         title: 'Configuración guardada',
@@ -175,7 +159,7 @@ export default function AIConfiguracionPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo guardar la configuración',
+        description: error instanceof Error ? error.message : 'No se pudo guardar la configuración',
         variant: 'destructive'
       });
     } finally {
@@ -184,11 +168,11 @@ export default function AIConfiguracionPage() {
   };
 
   const handleChannelModeChange = async (channelId: string, mode: 'ai_only' | 'hybrid' | 'manual') => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     try {
       const service = new AISettingsService(organizationId);
-      await service.updateChannelAIMode(channelId, mode, memberId);
+      await service.updateChannelAIMode(channelId, mode);
 
       setChannels(prev => prev.map(ch => 
         ch.id === channelId ? { ...ch, ai_mode: mode } : ch
@@ -198,7 +182,7 @@ export default function AIConfiguracionPage() {
         title: 'Modo actualizado',
         description: 'El modo de IA del canal se actualizó correctamente'
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el modo del canal',
@@ -208,11 +192,11 @@ export default function AIConfiguracionPage() {
   };
 
   const handleApplyToAllChannels = async (mode: 'ai_only' | 'hybrid' | 'manual') => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     try {
       const service = new AISettingsService(organizationId);
-      await service.updateAllChannelsAIMode(mode, memberId);
+      await service.updateAllChannelsAIMode(mode);
 
       setChannels(prev => prev.map(ch => ({ ...ch, ai_mode: mode })));
 
@@ -220,7 +204,7 @@ export default function AIConfiguracionPage() {
         title: 'Modos actualizados',
         description: 'Todos los canales ahora usan el mismo modo de IA'
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar los canales',
@@ -231,7 +215,7 @@ export default function AIConfiguracionPage() {
 
   if (loading && !settings) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-64 items-center justify-center" role="status">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-gray-500 dark:text-gray-400">Cargando configuración...</p>
@@ -241,10 +225,7 @@ export default function AIConfiguracionPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="p-4 sm:p-6 pb-0">
-        <IANavTabs />
-      </div>
+    <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
       <AISettingsHeader
         isActive={isActive}
         loading={loading}
@@ -254,8 +235,8 @@ export default function AIConfiguracionPage() {
         onViewLab={() => router.push('/app/chat/ia/laboratorio')}
       />
 
-      <div className="flex-1 overflow-y-auto">
-        <Tabs defaultValue="model" className="h-full flex flex-col">
+      <div>
+        <Tabs defaultValue="model" className="flex flex-col">
           <div className="px-4 sm:px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <TabsList className="bg-gray-100 dark:bg-gray-800">
               <TabsTrigger value="model" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
@@ -273,7 +254,7 @@ export default function AIConfiguracionPage() {
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="p-4 sm:p-6">
             <div className="max-w-4xl mx-auto">
               <TabsContent value="model" className="mt-0">
                 <ModelSettings
@@ -323,7 +304,7 @@ export default function AIConfiguracionPage() {
       </div>
 
       {hasChanges && (
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+        <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Tienes cambios sin guardar

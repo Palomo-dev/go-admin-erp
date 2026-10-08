@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import Link from 'next/link';
  
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 import {
   JobsTable,
   StatsCards,
@@ -287,7 +288,7 @@ export default function FacturacionElectronicaPage() {
             <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
             {t('actualizar')}
           </Button>
-          <Link href="/app/finanzas/facturacion-electronica/configuracion">
+          <Link href={rutaSeccion('facturacion.servicio')}>
             <Button variant="outline" size="sm" className="h-9">
               <Settings className="h-4 w-4 mr-2" />
               {t('configuracion')}

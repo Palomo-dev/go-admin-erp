@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -107,7 +108,7 @@ export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
       {!embedded && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/app/pos/configuracion">
+            <Link href={rutaSeccion('pos.general')}>
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>

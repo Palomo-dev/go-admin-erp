@@ -14,6 +14,7 @@ import KnowledgeService, {
   CreateSourceData,
   CreateFragmentData
 } from '@/lib/services/knowledgeService';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 import {
   KnowledgeHeader,
   SourcesList,
@@ -162,7 +163,7 @@ export default function ConocimientoPage() {
       });
       
       await loadData();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cambiar el estado de la fuente',
@@ -220,7 +221,7 @@ export default function ConocimientoPage() {
       });
       
       await loadData();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar la fuente',
@@ -293,7 +294,7 @@ export default function ConocimientoPage() {
       
       await loadFragments(viewingSource?.id);
       await loadData();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el fragmento',
@@ -316,7 +317,7 @@ export default function ConocimientoPage() {
         loading={loading}
         onCreateSource={handleCreateSource}
         onImport={() => router.push('/app/chat/conocimiento/importar')}
-        onAISettings={() => router.push('/app/configuracion?modulo=chat')}
+        onAISettings={() => router.push(rutaSeccion('chat.ia'))}
       />
 
       <div className="flex-1 overflow-hidden">

@@ -19,6 +19,7 @@ import {
 } from '@/components/chat/ia/trabajos';
 import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 
 export default function TrabajosPage() {
   const router = useRouter();
@@ -210,7 +211,7 @@ export default function TrabajosPage() {
         stats={stats}
         loading={loading}
         onRefresh={loadData}
-        onSettings={() => router.push('/app/configuracion?modulo=chat')}
+        onSettings={() => router.push(rutaSeccion('chat.ia'))}
       />
 
       <JobsFilters

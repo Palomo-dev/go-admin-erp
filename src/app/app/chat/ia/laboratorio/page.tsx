@@ -20,6 +20,7 @@ import {
 } from '@/components/chat/ia/laboratorio';
 import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 
 export default function AILaboratorioPage() {
   const router = useRouter();
@@ -109,11 +110,7 @@ export default function AILaboratorioPage() {
       const searchResults = await service.searchFragmentsByText(query, settings.maxFragments);
       
       if (searchResults.length > 0) {
-        setFragments(prev => {
-          const existingIds = new Set(prev.map(f => f.id));
-          const newFragments = searchResults.filter(f => !existingIds.has(f.id));
-          return [...searchResults, ...prev.filter(f => !searchResults.find(s => s.id === f.id))];
-        });
+        setFragments(prev => [...searchResults, ...prev.filter(f => !searchResults.find(s => s.id === f.id))]);
         setSelectedFragmentIds(searchResults.map(f => f.id));
       }
 
@@ -147,7 +144,7 @@ export default function AILaboratorioPage() {
   };
 
   const handleGoToSettings = () => {
-    router.push('/app/configuracion?modulo=chat');
+    router.push(rutaSeccion('chat.ia'));
   };
 
   if (loading && fragments.length === 0) {

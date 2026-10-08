@@ -32103,7 +32103,24 @@
         "errorDescripcion": "Ton site n'a pas changé. Réessaie dans quelques secondes.",
         "vacio": "Il n'y a pas encore de modèles pour cette activité. Regarde ceux de Tous.",
         "verTodas": "Voir tous",
-        "abrir": "Voir le modèle « {nombre} »"
+        "abrir": "Voir le modèle « {nombre} »",
+        "sede": {
+          "etiqueta": "Modèles pour",
+          "principal": "Site principal",
+          "principalDetalle": "Style du site principal",
+          "hereda": "Hérite du style du site principal",
+          "propio": "Style propre",
+          "enUso": "Utilisé à {sede}",
+          "cargando": "Chargement des établissements…",
+          "heredaTitulo": "{sede} hérite actuellement du style du site principal",
+          "heredaDescripcion": "Ses couleurs et polices viennent du site principal. Quand vous utilisez un modèle pour {sede}, l’établissement aura son propre style et les changements de style du site principal ne lui parviendront plus.",
+          "propioTitulo": "{sede} a son propre style",
+          "propioDescripcion": "Ses couleurs et polices ne viennent plus du site principal.",
+          "heredar": "Hériter à nouveau du style du site principal",
+          "heredado": "{sede} hérite à nouveau du style du site principal.",
+          "noHeredado": "Impossible de rétablir le style hérité : {mensaje}",
+          "yaHereda": "{sede} hérite déjà du style du site principal"
+        }
       },
       "dialogo": {
         "vistaPrevia": "Aperçu avec ton contenu",
@@ -32146,7 +32163,27 @@
         "soloCompleta": "Ils s’appliquent seulement avec « Modèle complet ».",
         "quedan": "Voici votre en-tête et votre pied de page",
         "quedanCompleta": "Ceux de « {nombre} »",
-        "quedanEstilo": "Les vôtres actuels, avec les nouvelles couleurs"
+        "quedanEstilo": "Les vôtres actuels, avec les nouvelles couleurs",
+        "sede": {
+          "titulo": "Utiliser {nombre} pour {sede}",
+          "heredaTitulo": "{sede} hérite actuellement du style du site principal",
+          "heredaDescripcion": "Après application, {sede} aura ses propres couleurs et polices, et les changements de style du site principal ne lui parviendront plus. Vous pourrez en hériter à nouveau à tout moment.",
+          "propioTitulo": "{sede} a son propre style",
+          "propioDescripcion": "Le modèle remplace ses couleurs et polices. Vous pourrez hériter à nouveau de celles du site principal à tout moment.",
+          "completaDescripcion": "La structure, l’en-tête et le pied de page de {sede} sont remplacés par ceux du modèle, et son style devient propre à l’établissement. La version précédente reste dans l’historique.",
+          "estiloDescripcion": "Couleurs et polices propres à {sede}. Son contenu, son en-tête et son pied de page ne changent pas.",
+          "quedan": "Voici l’en-tête et le pied de page de {sede}",
+          "quedanEstilo": "Ceux de {sede} aujourd’hui, avec les nouvelles couleurs",
+          "avisoCompletaTitulo": "Le site actuel de {sede} reste dans l’historique",
+          "avisoCompletaDescripcion": "L’en-tête, le pied de page, les pages, les sections et les menus de {sede} sont remplacés. Ses pages légales et de boutique sont conservées. Rien ne change en ligne tant que vous ne publiez pas l’établissement.",
+          "avisoEstiloTitulo": "Change le style de {sede}, conserve son contenu",
+          "avisoEstiloDescripcion": "Les couleurs et polices deviennent propres à {sede}. Ses pages, sections et menus sont conservés. Rien ne change en ligne tant que vous ne publiez pas l’établissement.",
+          "usar": "Utiliser pour {sede}",
+          "otroGiro": "Le modèle complet doit être de type {giro}, l’activité de {sede}. Vous pouvez n’utiliser que son style.",
+          "sinTipo": "{sede} n’a pas de type d’activité avec modèle : vous pouvez n’utiliser que le style.",
+          "listo": "Nous avons utilisé « {nombre} » pour {sede}.",
+          "enBorrador": "C’est dans le brouillon de l’établissement : publiez-le depuis l’éditeur quand il sera prêt."
+        }
       },
       "shell": {
         "alt": "En-tête : {encabezado}. {pie}.",
@@ -34970,6 +35007,7 @@
         "services": "Services"
       },
       "accion": "Appliquer le modèle {tipo} à ce site",
+      "accionGaleria": "Appliquer un modèle à cet établissement",
       "titulo": "Appliquer le modèle {tipo} à {sede}",
       "descripcion": "Remplace le brouillon du site par la structure {tipo} : pages, sections et menus. Le brouillon actuel reste dans l’historique comme enregistrement automatique et vous pouvez le restaurer. Rien ne change en ligne avant la publication.",
       "descripcionPendiente": "Le site de {sede} contient vos propres modifications ; il n’a donc pas été remplacé lors du changement de type d’activité. Si vous appliquez le modèle {tipo}, le brouillon actuel reste dans l’historique et vous pouvez le restaurer. Rien ne change en ligne avant la publication.",

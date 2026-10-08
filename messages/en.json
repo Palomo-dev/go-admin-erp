@@ -32103,7 +32103,24 @@
         "errorDescripcion": "Your site did not change. Try again in a few seconds.",
         "vacio": "There are no templates for this business type yet. Check All.",
         "verTodas": "See all",
-        "abrir": "View the “{nombre}” template"
+        "abrir": "View the “{nombre}” template",
+        "sede": {
+          "etiqueta": "Templates for",
+          "principal": "Main site",
+          "principalDetalle": "Main site style",
+          "hereda": "Inherits the main site style",
+          "propio": "Own style",
+          "enUso": "In use at {sede}",
+          "cargando": "Loading locations…",
+          "heredaTitulo": "{sede} currently inherits the main site style",
+          "heredaDescripcion": "Its colors and fonts come from the main site. When you use a template at {sede}, the location will have its own style and style changes on the main site will no longer reach it.",
+          "propioTitulo": "{sede} has its own style",
+          "propioDescripcion": "Its colors and fonts no longer come from the main site.",
+          "heredar": "Inherit the main site style again",
+          "heredado": "{sede} inherits the main site style again.",
+          "noHeredado": "We couldn’t restore the inherited style: {mensaje}",
+          "yaHereda": "{sede} already inherits the main site style"
+        }
       },
       "dialogo": {
         "vistaPrevia": "Preview with your content",
@@ -32146,7 +32163,27 @@
         "soloCompleta": "They are applied only with “Full template”.",
         "quedan": "This is how your header and footer will look",
         "quedanCompleta": "The ones from “{nombre}”",
-        "quedanEstilo": "Your current ones, with the new colors"
+        "quedanEstilo": "Your current ones, with the new colors",
+        "sede": {
+          "titulo": "Use {nombre} at {sede}",
+          "heredaTitulo": "{sede} currently inherits the main site style",
+          "heredaDescripcion": "After applying, {sede} will have its own colors and fonts, and style changes on the main site will no longer reach it. You can inherit it again at any time.",
+          "propioTitulo": "{sede} has its own style",
+          "propioDescripcion": "The template replaces its colors and fonts. You can inherit the main site ones again at any time.",
+          "completaDescripcion": "The structure, header and footer of {sede} are replaced with the template’s, and its style becomes the location’s own. The previous version stays in the history.",
+          "estiloDescripcion": "Own colors and fonts for {sede}. Its content, header and footer don’t change.",
+          "quedan": "This is how the header and footer of {sede} will look",
+          "quedanEstilo": "{sede}’s current ones, with the new colors",
+          "avisoCompletaTitulo": "The current site of {sede} stays in the history",
+          "avisoCompletaDescripcion": "The header, footer, pages, sections and menus of {sede} are replaced. Its legal and store pages are kept. Nothing changes online until you publish the location.",
+          "avisoEstiloTitulo": "Changes the style of {sede}, keeps its content",
+          "avisoEstiloDescripcion": "Colors and fonts become {sede}’s own. Its pages, sections and menus are kept. Nothing changes online until you publish the location.",
+          "usar": "Use at {sede}",
+          "otroGiro": "The full template must be for {giro}, the business type of {sede}. You can use only its style.",
+          "sinTipo": "{sede} has no business type with a template: you can use only the style.",
+          "listo": "We used “{nombre}” at {sede}.",
+          "enBorrador": "It’s in the location’s draft: publish it from the editor when it’s ready."
+        }
       },
       "shell": {
         "alt": "Header: {encabezado}. {pie}.",
@@ -34970,6 +35007,7 @@
         "services": "Services"
       },
       "accion": "Apply the {tipo} template to this location",
+      "accionGaleria": "Apply a template to this location",
       "titulo": "Apply the {tipo} template to {sede}",
       "descripcion": "Replaces the location draft with the {tipo} structure: pages, sections and menus. The current draft stays in the history as an autosave and you can restore it. Nothing changes online until you publish.",
       "descripcionPendiente": "The {sede} site has its own changes, so it was not replaced when the business type changed. If you apply the {tipo} template, the current draft stays in the history and you can restore it. Nothing changes online until you publish.",

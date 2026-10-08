@@ -22,9 +22,16 @@
  * vista previa y «Usar»», tarjeta 2): la vista previa pinta los de LA PLANTILLA en grande; a la
  * derecha, lo que traen y que solo se aplican con «Plantilla completa»; y cada opción enseña cómo
  * quedarían: los de la plantilla, o los tuyos de hoy con los colores nuevos («Solo estilo»).
+ *
+ * Con una SEDE elegida (Figma «Plantillas por sede», láminas B y D) el diálogo es «Usar <plantilla>
+ * en <sede>»: explica si hoy hereda el estilo del principal (y que después tendrá uno propio),
+ * «Plantilla completa» trae estructura, encabezado, pie y estilo propio; «Solo estilo», colores y
+ * letras propios sin tocar el contenido; y el pie ofrece «Volver a heredar el estilo del sitio
+ * principal». Si la plantilla no es del giro de la sede, «Plantilla completa» queda deshabilitada
+ * con su motivo (`sede.motivoSinCompleta`).
  */
 import { useMemo, useState } from 'react';
-import { CircleCheck, LayoutTemplate, Loader2, Palette } from 'lucide-react';
+import { CircleCheck, LayoutTemplate, Link2, Loader2, Palette } from 'lucide-react';
 import { AvisoTonal, PanelAdaptable, TarjetaSeleccionable, clasesBoton, useEsEscritorio } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
@@ -54,6 +61,18 @@ export interface DialogoVistaPreviaPlantillaProps {
   modo: ModoPlantilla;
   onModoChange: (modo: ModoPlantilla) => void;
   onUsar: (plantilla: PlantillaCatalogo, modo: ModoPlantilla) => void;
+  /** Sede elegida en la galería; sin ella, el diálogo es el del sitio principal. */
+  sede?: SedeDialogoPlantilla | null;
+}
+
+export interface SedeDialogoPlantilla {
+  nombre: string;
+  /** `false`: la sede hereda el estilo del sitio principal. */
+  estiloPropio: boolean;
+  /** Por qué no se puede usar «Plantilla completa» (otro giro, sede sin tipo); `null` si se puede. */
+  motivoSinCompleta: string | null;
+  onHeredar?: () => void;
+  heredando?: boolean;
 }
 
 /** «Carta destacada · Pestañas» (o solo el nombre si la variante no tiene etiqueta). */
@@ -104,6 +123,7 @@ export function DialogoVistaPreviaPlantilla({
   modo,
   onModoChange,
   onUsar,
+  sede,
 }: DialogoVistaPreviaPlantillaProps) {
   const [dispositivo, setDispositivo] = useState<DispositivoVista>('escritorio');
   useFuentesSitio(plantilla ? [plantilla.estilo.fuenteTitulos, plantilla.estilo.fuenteCuerpo] : []);
@@ -118,6 +138,7 @@ export function DialogoVistaPreviaPlantilla({
       modo={modo}
       onModoChange={onModoChange}
       onUsar={onUsar}
+      sede={sede}
       dispositivo={dispositivo}
       setDispositivo={setDispositivo}
     />
@@ -134,6 +155,7 @@ function DialogoAbierto({
   modo,
   onModoChange,
   onUsar,
+  sede,
   dispositivo,
   setDispositivo,
 }: DialogoVistaPreviaPlantillaProps & {
@@ -154,14 +176,19 @@ function DialogoAbierto({
   const IconoGiro = ICONO_GIRO_PLANTILLA[plantilla.giro];
   const completa = modo === 'completa';
   const paginas = PAGINAS_BASE_GIRO[plantilla.giro].map((p) => p.titulo).join(' · ');
+  // Con sede: los textos de la sede (`dialogo.sede.*`); sin ella, los del sitio principal de siempre.
+  const v = sede ? { sede: sede.nombre, nombre: plantilla.nombre } : undefined;
+  const ts = (claveSede: string, clave: string) => (sede ? t(`dialogo.sede.${claveSede}`, v) : t(clave));
+  const sinCompleta = sede?.motivoSinCompleta ?? null;
+  const ocupado = usando || Boolean(sede?.heredando);
 
   return (
     <PanelAdaptable
       abierto
       onAbiertoChange={(v) => !v && onCerrar()}
-      titulo={plantilla.nombre}
+      titulo={sede ? t('dialogo.sede.titulo', v) : plantilla.nombre}
       ancho={1120}
-      ocupado={usando}
+      ocupado={ocupado}
       // A/06c: el selector de ancho va en la cabecera, a la derecha junto a la «×».
       // En móvil, solo iconos (con nombre accesible «1440 px»): el texto no cabe a 390 junto al título.
       accionesCabecera={
@@ -174,8 +201,7 @@ function DialogoAbierto({
       }
       descripcion={
         <span className="flex flex-wrap items-center gap-2">
-          <Badge tono="neutro" apariencia="suave" tamano="sm">
-            <IconoGiro aria-hidden="true" className="size-3 shrink-0" strokeWidth={2} />
+          <Badge tono="neutro" apariencia="suave" tamano="sm" icono={IconoGiro}>
             {t(`plantillas.giro.${plantilla.giro}`)}
           </Badge>
           {plantilla.subgiro && (
@@ -186,20 +212,35 @@ function DialogoAbierto({
         </span>
       }
       pie={
-        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onCerrar} disabled={usando} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+          {sede?.onHeredar && (
+            // Figma B: a la izquierda del pie. Solo tiene efecto si la sede ya tiene estilo propio.
+            <button
+              type="button"
+              onClick={sede.onHeredar}
+              disabled={!puedeUsar || ocupado || !sede.estiloPropio}
+              title={!sede.estiloPropio ? t('plantillas.sede.yaHereda', v) : puedeUsar ? undefined : t('dialogo.sinPermiso')}
+              aria-busy={sede.heredando || undefined}
+              className={clasesBoton({ variante: 'fantasma', tamano: 'md', className: 'sm:mr-auto' })}
+              data-volver-a-heredar
+            >
+              {sede.heredando && <Loader2 aria-hidden="true" className={`${CLASE_TAMANO_ICONO.base} animate-spin motion-reduce:animate-none`} strokeWidth={TRAZO_ICONO} />}
+              {t('plantillas.sede.heredar')}
+            </button>
+          )}
+          <button type="button" onClick={onCerrar} disabled={ocupado} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
             {t('acciones.cancelar')}
           </button>
           <button
             type="button"
             onClick={() => onUsar(plantilla, modo)}
-            disabled={!puedeUsar || usando}
+            disabled={!puedeUsar || ocupado || (completa && sinCompleta !== null)}
             title={puedeUsar ? undefined : t('dialogo.sinPermiso')}
             aria-busy={usando || undefined}
             className={clasesBoton({ variante: 'primario', tamano: 'md' })}
           >
             {usando && <Loader2 aria-hidden="true" className={`${CLASE_TAMANO_ICONO.base} animate-spin motion-reduce:animate-none`} strokeWidth={TRAZO_ICONO} />}
-            {completa ? t('dialogo.usarCompleta') : t('dialogo.usarEstilo')}
+            {sede ? t('dialogo.sede.usar', v) : completa ? t('dialogo.usarCompleta') : t('dialogo.usarEstilo')}
           </button>
         </div>
       }
@@ -249,36 +290,60 @@ function DialogoAbierto({
             </div>
           </div>
         </div>
+        {sede && (
+          <AvisoTonal
+            tono="informacion"
+            icono={Link2}
+            titulo={sede.estiloPropio ? t('dialogo.sede.propioTitulo', v) : t('dialogo.sede.heredaTitulo', v)}
+            descripcion={sede.estiloPropio ? t('dialogo.sede.propioDescripcion', v) : t('dialogo.sede.heredaDescripcion', v)}
+          />
+        )}
         <div className="flex flex-col gap-2">
           <h3 id="plantilla-modo" className="text-[13px] font-semibold leading-[18px] text-fg">
             {t('dialogo.modo')}
           </h3>
-          <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.quedan')}</p>
+          <p className="text-xs leading-4 text-fg-secondary">{ts('quedan', 'dialogo.quedan')}</p>
           <div role="radiogroup" aria-labelledby="plantilla-modo" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <TarjetaSeleccionable
               orientacion="horizontal"
               icono={LayoutTemplate}
               titulo={t('dialogo.completaTitulo')}
-              descripcion={<DescripcionConResultado texto={t('dialogo.completaDescripcion')} rotulo={t('dialogo.quedanCompleta', { nombre: plantilla.nombre })} shell={shell} marca={marca} />}
+              descripcion={
+                <DescripcionConResultado
+                  texto={sinCompleta ?? ts('completaDescripcion', 'dialogo.completaDescripcion')}
+                  rotulo={t('dialogo.quedanCompleta', { nombre: plantilla.nombre })}
+                  shell={sinCompleta ? null : shell}
+                  marca={marca}
+                />
+              }
               seleccionada={completa}
               onSeleccionar={() => onModoChange('completa')}
-              deshabilitada={usando}
+              deshabilitada={ocupado || sinCompleta !== null}
             />
             <TarjetaSeleccionable
               orientacion="horizontal"
               icono={Palette}
               titulo={t('dialogo.estiloTitulo')}
-              descripcion={<DescripcionConResultado texto={t('dialogo.estiloDescripcion')} rotulo={t('dialogo.quedanEstilo')} shell={tuyo} marca={marca} />}
+              descripcion={
+                <DescripcionConResultado
+                  texto={ts('estiloDescripcion', 'dialogo.estiloDescripcion')}
+                  rotulo={ts('quedanEstilo', 'dialogo.quedanEstilo')}
+                  shell={tuyo}
+                  marca={marca}
+                />
+              }
               seleccionada={!completa}
               onSeleccionar={() => onModoChange('estilo')}
-              deshabilitada={usando}
+              deshabilitada={ocupado}
             />
           </div>
         </div>
         <AvisoTonal
           tono={completa ? 'advertencia' : 'informacion'}
-          titulo={completa ? t('dialogo.avisoCompletaTitulo') : t('dialogo.avisoEstiloTitulo')}
-          descripcion={completa ? t('dialogo.avisoCompletaDescripcion') : t('dialogo.avisoEstiloDescripcion')}
+          titulo={completa ? ts('avisoCompletaTitulo', 'dialogo.avisoCompletaTitulo') : ts('avisoEstiloTitulo', 'dialogo.avisoEstiloTitulo')}
+          descripcion={
+            completa ? ts('avisoCompletaDescripcion', 'dialogo.avisoCompletaDescripcion') : ts('avisoEstiloDescripcion', 'dialogo.avisoEstiloDescripcion')
+          }
         />
       </div>
     </PanelAdaptable>

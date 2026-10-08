@@ -20,6 +20,8 @@ export const TEXTOS_PLANTILLA_SEDE = {
     services: 'Servicios',
   },
   accion: 'Aplicar plantilla de {tipo} a esta sede',
+  /** Menú «⋯» del editor: abre Diseño › Plantillas con la sede elegida. */
+  accionGaleria: 'Aplicar plantilla a esta sede',
   titulo: 'Aplicar la plantilla de {tipo} a {sede}',
   descripcion:
     'Reemplaza el borrador de la sede por la estructura de {tipo}: páginas, secciones y menús. El borrador actual queda en el historial como guardado automático y lo puedes restaurar. Nada cambia en línea hasta que publiques.',

@@ -3,9 +3,11 @@
 /**
  * /app/crm/agentes-ia — catálogo de agentes IA de voz de la organización (FASE 06).
  *
- * Cierra C-F6-16 (no había UI). Cuatro SECCIONES: Agentes, Voces, Campañas y
- * Ajustes (de la organización: qué hace el agente ante el desinterés
- * definitivo, `ajustes/DesinteresVozCard.tsx`).
+ * Cierra C-F6-16 (no había UI). Tres SECCIONES: Agentes, Voces y Campañas.
+ * Los ajustes de la organización (interruptor del agente, números de prueba y
+ * «Cuando el cliente no tiene interés») viven en Configuración › CRM › Agente
+ * de voz desde 2026-10-07; aquí solo queda el atajo «Configurar». La pestaña
+ * vieja `?pestana=ajustes` redirige allí (next.config.js).
  * Todo pasa por rutas con `getServerOrgContext()`: cero organización en el cliente.
  *
  * Regla de pestañas (2026-10-06): las secciones son `TabBar` (subrayado) con
@@ -29,7 +31,7 @@ import { fetchJson } from "@/lib/utils/fetchJson";
 import { AgentEditorDialog, type AgentDraft } from "./AgentEditorDialog";
 import { VoicesPanel } from "./VoicesPanel";
 import { AgentCampaignsPanel } from "./AgentCampaignsPanel";
-import { DesinteresVozCard } from "./ajustes/DesinteresVozCard";
+import { AtajoConfigurar } from "@/components/configuracion/AtajoConfigurar";
 
 export interface VoiceAgentListItem {
   id: string;
@@ -58,7 +60,7 @@ const PROPOSITOS: readonly string[] = [
   "custom",
 ];
 
-const SECCIONES = ["agentes", "voces", "campanas", "ajustes"] as const;
+const SECCIONES = ["agentes", "voces", "campanas"] as const;
 
 export function AgentesIaPage() {
   const t = useTranslations("crm.agentesIa");
@@ -117,10 +119,13 @@ export function AgentesIaPage() {
   };
 
   const nuevo = (
-    <button type="button" className={clasesBoton()} onClick={() => setEditing({ mode: "create" })}>
-      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-      {t("nuevo")}
-    </button>
+    <div className="flex flex-wrap items-center gap-2">
+      <AtajoConfigurar seccion="crm.agente-voz" />
+      <button type="button" className={clasesBoton()} onClick={() => setEditing({ mode: "create" })}>
+        <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {t("nuevo")}
+      </button>
+    </div>
   );
 
   return (
@@ -132,9 +137,12 @@ export function AgentesIaPage() {
         migas={[{ etiqueta: t("migas.crm"), href: "/app/crm" }, { etiqueta: t("titulo") }]}
         acciones={nuevo}
         movil={{ titulo: t("titulo"), accion: (
-          <button type="button" aria-label={t("nuevo")} onClick={() => setEditing({ mode: "create" })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover">
-            <Plus aria-hidden="true" className="size-5" />
-          </button>
+          <div className="flex items-center">
+            <AtajoConfigurar seccion="crm.agente-voz" soloIcono />
+            <button type="button" aria-label={t("nuevo")} onClick={() => setEditing({ mode: "create" })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover">
+              <Plus aria-hidden="true" className="size-5" />
+            </button>
+          </div>
         ) }}
         debajo={
           <TabBar
@@ -195,7 +203,6 @@ export function AgentesIaPage() {
           ))}
         {tab === "voces" && <VoicesPanel />}
         {tab === "campanas" && <AgentCampaignsPanel agents={agents} />}
-        {tab === "ajustes" && <DesinteresVozCard />}
       </div>
 
       {editing && (

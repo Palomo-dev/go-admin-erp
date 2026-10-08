@@ -144,8 +144,10 @@ describe('filtrarNavegacion', () => {
 
   test('las páginas fuera del menú no se listan, pero siguen en el catálogo', () => {
     const chat = filtrarNavegacion(acceso()).flatMap((s) => s.modulos).find((m) => m.modulo.id === 'chat')!;
-    expect(chat.paginas.map((p) => p.href)).not.toContain('/app/chat/ia/configuracion');
-    expect(moduloPorCodigo('chat')!.paginas.map((p) => p.href)).toContain('/app/chat/ia/configuracion');
+    expect(chat.paginas.map((p) => p.href)).not.toContain('/app/chat/ia/laboratorio');
+    expect(moduloPorCodigo('chat')!.paginas.map((p) => p.href)).toContain('/app/chat/ia/laboratorio');
+    // La configuración de la IA se mudó a Configuración (2026-10-07): ya no es página del módulo.
+    expect(moduloPorCodigo('chat')!.paginas.map((p) => p.href)).not.toContain('/app/chat/ia/configuracion');
   });
 
   test('un módulo sin ninguna página visible desaparece', () => {
@@ -202,7 +204,7 @@ describe('rutaActiva', () => {
   });
 
   test('una página fuera del menú resalta la página que la contiene', () => {
-    expect(rutaActiva('/app/chat/ia/configuracion')?.pagina?.href).toBe('/app/chat/ia');
+    expect(rutaActiva('/app/chat/ia/laboratorio')?.pagina?.href).toBe('/app/chat/ia');
   });
 
   test('/app/admin pertenece a Roles', () => {

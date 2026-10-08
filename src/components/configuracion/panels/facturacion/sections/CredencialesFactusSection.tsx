@@ -7,7 +7,8 @@
  * plano desde el navegador. GO Admin presta el servicio: las credenciales las
  * carga el equipo de la plataforma y el cliente solo ve el estado. El detalle
  * (resolución, rangos, cola, documentos retenidos) está en
- * /app/finanzas/facturacion-electronica/configuracion.
+ * Configuración › Facturación electrónica › Servicio (antes
+ * /app/finanzas/facturacion-electronica/configuracion, que redirige allí).
  */
 
 import Link from 'next/link';
@@ -20,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import type { EstadoFacturacionElectronica } from '@/lib/services/electronicInvoicingConfigService';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 
 interface CredencialesFactusSectionProps {
   servicio: EstadoFacturacionElectronica | null;
@@ -87,7 +89,7 @@ export function CredencialesFactusSection({
         </div>
 
         <Button asChild variant="outline" className="w-full sm:w-auto">
-          <Link href="/app/finanzas/facturacion-electronica/configuracion">
+          <Link href={rutaSeccion('facturacion.servicio')}>
             {t('panel.verDetalle')}
             <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
           </Link>

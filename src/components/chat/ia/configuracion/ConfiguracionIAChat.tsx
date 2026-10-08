@@ -1,5 +1,11 @@
-﻿'use client';
+'use client';
 
+/**
+ * Configuración › Chat › IA del chat (antes /app/chat/ia/configuracion, que
+ * ahora redirige aquí: decisión del dueño 2026-10-07, un solo lugar para todas
+ * las configuraciones). Mismo contenido y mismo servicio (`AISettingsService`):
+ * solo se mudó de la página del módulo a una sección de Configuración.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,9 +24,8 @@ import {
   BehaviorSettings,
   ChannelAIModeTable
 } from '@/components/chat/ia/configuracion';
-import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 
-export default function AIConfiguracionPage() {
+export function ConfiguracionIAChat() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -115,7 +120,7 @@ export default function AIConfiguracionPage() {
     loadData();
   }, [loadData]);
 
-  const handleChange = (setter: (value: any) => void) => (value: any) => {
+  const handleChange = <T,>(setter: (value: T) => void) => (value: T) => {
     setter(value);
     setHasChanges(true);
   };
@@ -134,7 +139,7 @@ export default function AIConfiguracionPage() {
           ? 'El asistente de IA está ahora activo'
           : 'El asistente de IA ha sido desactivado'
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo cambiar el estado de la IA',
@@ -172,7 +177,7 @@ export default function AIConfiguracionPage() {
 
       setHasChanges(false);
       await loadData();
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo guardar la configuración',
@@ -198,7 +203,7 @@ export default function AIConfiguracionPage() {
         title: 'Modo actualizado',
         description: 'El modo de IA del canal se actualizó correctamente'
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el modo del canal',
@@ -220,7 +225,7 @@ export default function AIConfiguracionPage() {
         title: 'Modos actualizados',
         description: 'Todos los canales ahora usan el mismo modo de IA'
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar los canales',
@@ -231,7 +236,7 @@ export default function AIConfiguracionPage() {
 
   if (loading && !settings) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-64 items-center justify-center" role="status">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-gray-500 dark:text-gray-400">Cargando configuración...</p>
@@ -241,10 +246,7 @@ export default function AIConfiguracionPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="p-4 sm:p-6 pb-0">
-        <IANavTabs />
-      </div>
+    <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
       <AISettingsHeader
         isActive={isActive}
         loading={loading}
@@ -254,8 +256,8 @@ export default function AIConfiguracionPage() {
         onViewLab={() => router.push('/app/chat/ia/laboratorio')}
       />
 
-      <div className="flex-1 overflow-y-auto">
-        <Tabs defaultValue="model" className="h-full flex flex-col">
+      <div>
+        <Tabs defaultValue="model" className="flex flex-col">
           <div className="px-4 sm:px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <TabsList className="bg-gray-100 dark:bg-gray-800">
               <TabsTrigger value="model" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
@@ -273,7 +275,7 @@ export default function AIConfiguracionPage() {
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="p-4 sm:p-6">
             <div className="max-w-4xl mx-auto">
               <TabsContent value="model" className="mt-0">
                 <ModelSettings
@@ -323,7 +325,7 @@ export default function AIConfiguracionPage() {
       </div>
 
       {hasChanges && (
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+        <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Tienes cambios sin guardar

@@ -321,8 +321,9 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/chat/canales', nombre: 'Canales', icono: MessageSquare },
       { href: '/app/chat/conocimiento', nombre: 'Conocimiento', icono: BookOpen },
       { href: '/app/chat/ia', nombre: 'IA', icono: Bot },
-      // Se entra desde la página de IA; no va en el menú.
-      { href: '/app/chat/ia/configuracion', nombre: 'Configuración de IA', icono: Settings, enMenu: false },
+      // Se entra desde la página de IA; no va en el menú. La configuración de la
+      // IA se mudó a Configuración › Chat › IA del chat (2026-10-07).
+      { href: '/app/chat/ia/laboratorio', nombre: 'Laboratorio de IA', icono: Bot, enMenu: false },
       { href: '/app/chat/widget/sesiones', nombre: 'Widget', icono: Headphones },
       { href: '/app/chat/auditoria', nombre: 'Auditoría', icono: Shield },
     ],

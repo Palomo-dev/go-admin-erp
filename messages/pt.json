@@ -4349,7 +4349,7 @@
       "chat_canales": "Canais",
       "chat_conocimiento": "Base de conhecimento",
       "chat_ia": "IA",
-      "chat_ia_configuracion": "Configurações de IA",
+      "chat_ia_laboratorio": "Laboratório de IA",
       "chat_widget_sesiones": "Widget",
       "chat_auditoria": "Auditoria",
       "pms_calendario": "Calendário",
@@ -28238,8 +28238,7 @@
         "aria": "Seções de agentes de IA",
         "agentes": "Agentes",
         "voces": "Vozes",
-        "campanas": "Campanhas",
-        "ajustes": "Ajustes"
+        "campanas": "Campanhas"
       },
       "cargando": "Carregando agentes…",
       "error": {
@@ -37303,6 +37302,235 @@
       "vencidos": "Vencidos",
       "suspendidos": "Suspensos",
       "porVencer": "A vencer (7d)"
+    }
+  },
+  "configuracionUnificada": {
+    "titulo": "Configurações",
+    "subtitulo": "Todos os ajustes da sua organização em um só lugar",
+    "queHace": "O que faz",
+    "menu": {
+      "aria": "Módulos e seções de configurações",
+      "modulosPlan": "Módulos do seu plano",
+      "soloActivos": "Você vê apenas os módulos ativos no seu plano.",
+      "volver": "Voltar aos módulos",
+      "secciones": "Seções de {modulo}",
+      "abreFuera": "abre sua própria tela"
+    },
+    "buscar": {
+      "etiqueta": "Buscar um ajuste",
+      "placeholder": "Buscar um ajuste",
+      "resultados": "{n, plural, one {# ajuste} other {# ajustes}} para “{q}”",
+      "listaAria": "Resultados da busca de ajustes",
+      "vacioTitulo": "Nenhum ajuste corresponde a “{q}”",
+      "vacioDescripcion": "Tente outra palavra, por exemplo “fatura”, “teste” ou “etiquetas”. Só são pesquisados os módulos ativos do seu plano.",
+      "limpiar": "Limpar busca",
+      "pista": "Acentos não importam: “interes” encontra “interés”."
+    },
+    "soloLectura": {
+      "titulo": "Somente leitura",
+      "descripcion": "Você pode ver estes ajustes, mas alterá-los exige uma permissão que você não tem. Peça acesso a um administrador da organização."
+    },
+    "movido": {
+      "titulo": "Esta configuração mudou para cá",
+      "descripcion": "Antes ficava em {desde}. Agora todos os ajustes ficam em Configurações. Se você tinha um favorito, atualize-o.",
+      "entendido": "Entendi"
+    },
+    "origenes": {
+      "crmAgentesAjustes": "CRM › Agentes de IA › Ajustes",
+      "chatIaConfiguracion": "Chat › IA › Configuração",
+      "facturacionElectronicaConfiguracion": "Finanças › Faturamento eletrônico › Configuração"
+    },
+    "enlace": {
+      "descripcion": "Esta configuração tem sua própria tela. Abra-a daqui.",
+      "abrir": "Abrir"
+    },
+    "estados": {
+      "errorTitulo": "Não foi possível carregar as configurações",
+      "vacioTitulo": "Nenhuma configuração disponível",
+      "vacioDescripcion": "Ative módulos em Organização › Módulos para ver suas configurações aqui.",
+      "cargando": "Carregando configurações…",
+      "reintentar": "Tentar novamente"
+    },
+    "configurar": {
+      "etiqueta": "Configurar",
+      "aria": "Abrir a configuração de {seccion}"
+    },
+    "agenteVoz": {
+      "interruptorQueHace": "Liga ou desliga as chamadas automáticas do agente para toda a organização. Ligá-lo não pula nenhuma outra regra: continuam sendo necessários um número próprio, minutos de voz e o consentimento do cliente.",
+      "numerosPruebaQueHace": "Números da própria equipe isentos apenas do limite semanal da Lei 2300, para testar o agente mais de uma vez por semana. A faixa horária legal e os descadastros continuam valendo."
+    },
+    "modulos": {
+      "general": "Geral",
+      "sitioweb": "Site",
+      "crm": "CRM",
+      "hrm": "Recursos humanos",
+      "pms": "PMS Hotel",
+      "pos": "PDV",
+      "chat": "Chat",
+      "integraciones": "Integrações",
+      "parking": "Estacionamento",
+      "calendario": "Calendário",
+      "timeline": "Linha do tempo",
+      "roles": "Papéis",
+      "facturacion": "Faturamento eletrônico",
+      "gym": "Assinaturas",
+      "notificaciones": "Notificações",
+      "datos-offline": "Dados offline"
+    },
+    "secciones": {
+      "generalGeneral": {
+        "titulo": "Organização",
+        "descripcion": "Informações da organização e dados gerais",
+        "palabras": "empresa, cnpj, nit, razão social, logo, dados gerais, organização"
+      },
+      "generalAsistente": {
+        "titulo": "GO Assistant",
+        "descripcion": "O que o assistente do cabeçalho pode fazer",
+        "palabras": "assistente, ia, go assistant, permissões do assistente, capacidades"
+      },
+      "sitiowebGeneral": {
+        "titulo": "Site",
+        "descripcion": "O site é configurado no seu próprio módulo",
+        "palabras": "site, página web, domínio, seo, termos legais, manutenção, idioma do site"
+      },
+      "crmGeneral": {
+        "titulo": "Geral",
+        "descripcion": "Canais, etiquetas, chaves de API, verticais e funil",
+        "palabras": "canais, etiquetas, chaves api, verticais, icp, pontuação, motivos de perda, comissões, indicações, estrutura comercial"
+      },
+      "crmAgenteVoz": {
+        "titulo": "Agente de voz",
+        "descripcion": "Como e quando o agente de IA liga para seus clientes",
+        "palabras": "agente de voz, agente ia, chamadas automáticas, robô, voz, campanhas de voz"
+      },
+      "crmTelefonia": {
+        "titulo": "Telefonia",
+        "descripcion": "Números, gravação, consentimento e política de dados",
+        "palabras": "telefonia, números, caller id, gravação, consentimento, política de dados, meu celular, chamadas"
+      },
+      "crmProveedores": {
+        "titulo": "Provedores e IA",
+        "descripcion": "Credenciais de telefonia, e-mail e inteligência artificial",
+        "palabras": "provedores, credenciais, twilio, openai, anthropic, elevenlabs, ia, modelos, chaves"
+      },
+      "crmEmail": {
+        "titulo": "E-mail",
+        "descripcion": "Domínios, remetentes, política e assinatura",
+        "palabras": "e-mail, correio, domínio, dns, remetente, assinatura, spf, dkim"
+      },
+      "crmWhatsapp": {
+        "titulo": "WhatsApp",
+        "descripcion": "Número de WhatsApp e país padrão",
+        "palabras": "whatsapp, mensagens, modelos, país padrão"
+      },
+      "crmCreditos": {
+        "titulo": "Créditos e sistema",
+        "descripcion": "Saldos, consumo, preços e fila de tarefas",
+        "palabras": "créditos, saldo, consumo, preços, fila, tarefas, minutos"
+      },
+      "hrmGeneral": {
+        "titulo": "Recursos humanos",
+        "descripcion": "Configuração geral e moedas",
+        "palabras": "recursos humanos, folha de pagamento, moedas, funcionários, rh"
+      },
+      "pmsGeneral": {
+        "titulo": "PMS Hotel",
+        "descripcion": "Reservas, check-in/out e operações",
+        "palabras": "hotel, reservas, check-in, check-out, hóspedes, pms"
+      },
+      "posGeneral": {
+        "titulo": "Ponto de venda",
+        "descripcion": "Impressão, numeração, balanças e tela do cliente",
+        "palabras": "pdv, impressora, impressão, numeração, balanças, tela do cliente, notas rápidas, etiquetas de peso"
+      },
+      "posReservasMesas": {
+        "titulo": "Reservas de mesas",
+        "descripcion": "Horários, sinal e regras das reservas de cada unidade",
+        "palabras": "reservas, reservas de mesas, reservas web, sinal, depósito, horário de reservas, restaurante"
+      },
+      "posAvisosCliente": {
+        "titulo": "Avisos ao cliente",
+        "descripcion": "Mensagens ao cliente dos pedidos online",
+        "palabras": "avisos, pedidos online, notificar o cliente, whatsapp do pedido"
+      },
+      "chatGeneral": {
+        "titulo": "Chat",
+        "descripcion": "Etiquetas, respostas rápidas e chaves de API",
+        "palabras": "chat, etiquetas, respostas rápidas, chaves api, caixa de entrada"
+      },
+      "chatIa": {
+        "titulo": "IA do chat",
+        "descripcion": "Modelo, comportamento e modo de IA por canal",
+        "palabras": "ia, inteligência artificial, modelo, temperatura, tom, resposta automática, mensagem de fallback, canais, chatbot"
+      },
+      "integracionesGeneral": {
+        "titulo": "Integrações",
+        "descripcion": "Configuração geral das integrações",
+        "palabras": "integrações, conexões, webhooks, api"
+      },
+      "parkingGeneral": {
+        "titulo": "Estacionamento",
+        "descripcion": "Horários, tolerâncias, políticas e mensagens",
+        "palabras": "estacionamento, parking, horários, tolerância, ticket perdido, alertas"
+      },
+      "calendarioGeneral": {
+        "titulo": "Calendário",
+        "descripcion": "Configuração geral do calendário",
+        "palabras": "calendário, agenda, eventos, lembretes"
+      },
+      "timelineGeneral": {
+        "titulo": "Linha do tempo",
+        "descripcion": "Privacidade, fontes, retenção e desempenho",
+        "palabras": "linha do tempo, timeline, privacidade, retenção, fontes"
+      },
+      "rolesGeneral": {
+        "titulo": "Papéis",
+        "descripcion": "Configuração de papéis e permissões",
+        "palabras": "papéis, funções, permissões, acessos, cargos"
+      },
+      "facturacionResumen": {
+        "titulo": "Resumo",
+        "descripcion": "Credenciais, faixas DIAN e sempre faturar eletronicamente",
+        "palabras": "fatura eletrônica, dian, faixas, resolução, numeração, credenciais, sempre eletrônica"
+      },
+      "facturacionServicio": {
+        "titulo": "Serviço",
+        "descripcion": "Status do serviço, resolução, fila e documentos retidos",
+        "palabras": "fatura eletrônica, serviço, ambiente, teste, produção, fila, retidos, ativação, resolução"
+      },
+      "gymGeneral": {
+        "titulo": "Assinaturas",
+        "descripcion": "Acesso, tolerâncias, check-in, aulas e notificações",
+        "palabras": "assinaturas, academia, acesso, check-in, aulas, tolerância"
+      },
+      "notificacionesGeneral": {
+        "titulo": "Notificações",
+        "descripcion": "Preferências dos canais de notificação",
+        "palabras": "notificações, avisos, canais, silenciar, preferências"
+      },
+      "datosOfflineGeneral": {
+        "titulo": "Dados offline",
+        "descripcion": "Cópia local para trabalhar sem internet no Go Admin Desktop",
+        "palabras": "offline, desktop, cópia local, sem conexão"
+      }
+    },
+    "ajustes": {
+      "agenteVozInterruptor": {
+        "titulo": "Permitir que o agente de IA ligue",
+        "palabras": "interruptor, ligar, desligar, ativar agente, chamadas automáticas"
+      },
+      "agenteVozNumerosPrueba": {
+        "titulo": "Números de teste",
+        "palabras": "números de teste, testar, lei 2300, limite semanal, testes"
+      },
+      "agenteVozDesinteres": {
+        "titulo": "Quando o cliente não tem interesse",
+        "palabras": "interesse, desinteresse, não tem interesse, oportunidade perdida, fechar oportunidade, exceção, valor alto, etapa"
+      }
+    },
+    "telefonia": {
+      "movidoAgente": "O interruptor do agente de IA e os números de teste agora estão em",
+      "irAgente": "Agente de voz"
     }
   }
 }

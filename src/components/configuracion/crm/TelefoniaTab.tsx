@@ -2,12 +2,15 @@
 
 /**
  * TelefoniaTab — Configuración › CRM › Telefonía (FASE-03 §5.2).
- * Secciones: Números (+ caller id), Grabación y consentimiento, Mi celular.
+ * Secciones: Números (+ caller id), Política de datos, Grabación y consentimiento, Mi celular.
+ * El interruptor del agente IA y los números de prueba se mudaron a
+ * Configuración › CRM › Agente de voz (`AgenteVozSeccion`, 2026-10-07).
  * Muestra el estado de credenciales (API Key / TwiML App) con enlace a
  * Proveedores e IA cuando falta algo (el dock queda "no configurado" hasta entonces).
  */
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,12 +19,12 @@ import { useTelephonySettings } from './telefonia/useTelephonySettings';
 import { PhoneNumbersSection } from './telefonia/PhoneNumbersSection';
 import { RecordingConsentSection } from './telefonia/RecordingConsentSection';
 import { MyMobileSection } from './telefonia/MyMobileSection';
-import { VoiceAgentSwitchSection } from './telefonia/VoiceAgentSwitchSection';
 import { DataPolicySection } from './telefonia/DataPolicySection';
-import { TestNumbersSection } from './telefonia/TestNumbersSection';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
 
 export function TelefoniaTab() {
   const t = useTelephonySettings();
+  const tc = useTranslations('configuracionUnificada.telefonia');
 
   if (t.loading && !t.settings) {
     return (
@@ -84,6 +87,14 @@ export function TelefoniaTab() {
         </div>
       )}
 
+      <p className="text-sm text-fg-secondary">
+        {tc('movidoAgente')}{' '}
+        <Link href={rutaSeccion('crm.agente-voz')} className="font-medium text-link underline-offset-4 hover:underline">
+          {tc('irAgente')}
+        </Link>
+        .
+      </p>
+
       <Card className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <CardContent className="space-y-8 p-4 sm:p-6">
           <PhoneNumbersSection
@@ -97,9 +108,6 @@ export function TelefoniaTab() {
             onPatchSettings={t.patchSettings}
           />
           <Separator />
-          {/* F6: sin este interruptor el agente IA no marca nunca (la columna es DEFAULT false). */}
-          <VoiceAgentSwitchSection settings={t.settings} canEdit={t.canEdit} onPatchSettings={t.patchSettings} />
-          <Separator />
           {/* Ley 1581: sin política de tratamiento de datos las campañas del agente no llaman. */}
           <DataPolicySection
             key={`politica-${t.settings.organization_id}`}
@@ -107,9 +115,6 @@ export function TelefoniaTab() {
             canEdit={t.canEdit}
             onPatchSettings={t.patchSettings}
           />
-          <Separator />
-          {/* Números del equipo exentos SOLO del tope semanal de la Ley 2300 (para probar el agente). */}
-          <TestNumbersSection />
           <Separator />
           <RecordingConsentSection key={t.settings.organization_id} settings={t.settings} canEdit={t.canEdit} onPatchSettings={t.patchSettings} />
           <Separator />

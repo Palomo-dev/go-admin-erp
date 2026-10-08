@@ -87,7 +87,7 @@ export function FacturacionConfigPanel() {
   const handleFetchRanges = async () => {
     const sucursalActiva = typeof window !== 'undefined' ? Number.parseInt(localStorage.getItem('currentBranchId') || '', 10) : NaN;
     if (!Number.isInteger(sucursalActiva) || sucursalActiva <= 0) {
-      toast({ title: 'Seleccione una sucursal', description: 'Elija la sucursal en Finanzas › Facturación electrónica › Configuración.', variant: 'destructive' });
+      toast({ title: 'Seleccione una sucursal', description: 'Elija la sucursal en Configuración › Facturación electrónica › Servicio.', variant: 'destructive' });
       return;
     }
     setFetchingRanges(true);

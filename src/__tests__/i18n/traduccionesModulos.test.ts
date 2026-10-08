@@ -111,6 +111,8 @@ const MODULOS: Record<string, string[]> = {
   // Analítica web (Figma 03 › 464:237482, 2026-09-30), con los mapas de «De dónde entran».
   // Desde el 2026-10-05 es la página «Analítica» del módulo Sitio web.
   analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/sitio-web/analitica'],
+  // Configuración unificada (2026-10-07): la página, sus secciones y los atajos «Configurar» de los módulos.
+  configuracionUnificada: ['src/components/configuracion', 'src/app/app/configuracion', 'src/components/crm/agentes', 'src/components/chat/ia'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

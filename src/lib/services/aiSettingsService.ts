@@ -27,7 +27,7 @@ export interface Channel {
   name: string;
   status: string;
   ai_mode: 'ai_only' | 'hybrid' | 'manual';
-  business_hours: Record<string, any>;
+  business_hours: Record<string, unknown>;
   auto_close_inactive_hours: number;
   created_at: string;
   updated_at: string;
@@ -174,81 +174,31 @@ export default class AISettingsService {
     return data;
   }
 
-  async createSettings(settings: UpdateAISettingsData): Promise<AISettings> {
-    await this.setOrgContext();
-
-    const { data, error } = await supabase
-      .from('ai_settings')
-      .insert({
-        organization_id: this.organizationId,
-        ...settings
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creando configuración IA:', error);
-      throw new Error('No se pudo crear la configuración');
+  /**
+   * Guarda la configuración por `PATCH /api/chat/ai/settings`: la organización
+   * sale de la sesión y el servidor exige `admin.full_access` (la base también,
+   * RLS restrictiva 20261008005828). El navegador ya no escribe `ai_settings`
+   * (guardarraíl en src/__tests__/seguridad/aiSettingsSoloServidor.test.ts).
+   */
+  async updateSettings(settings: UpdateAISettingsData): Promise<AISettings> {
+    const res = await fetch('/api/chat/ai/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string; data?: AISettings } | null;
+    if (!res.ok || !json?.success || !json.data) {
+      throw new Error(json?.error || (res.status === 403 ? 'No tienes permiso para cambiar la configuración de la IA' : 'No se pudo guardar la configuración'));
     }
-
-    return data;
+    return json.data;
   }
 
-  async updateSettings(settings: UpdateAISettingsData, memberId: number): Promise<AISettings> {
-    await this.setOrgContext();
-
-    const existingSettings = await this.getSettings();
-
-    if (!existingSettings) {
-      const newSettings = await this.createSettings(settings);
-      await this.logAudit('create_ai_settings', { settings }, memberId);
-      return newSettings;
-    }
-
-    const { data, error } = await supabase
-      .from('ai_settings')
-      .update({
-        ...settings,
-        updated_at: new Date().toISOString()
-      })
-      .eq('organization_id', this.organizationId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error actualizando configuración IA:', error);
-      throw new Error('No se pudo actualizar la configuración');
-    }
-
-    await this.logAudit('update_ai_settings', { 
-      previous: existingSettings,
-      updated: settings 
-    }, memberId);
-
-    return data;
-  }
-
-  async toggleAI(memberId: number): Promise<boolean> {
-    await this.setOrgContext();
-
+  /** Enciende o apaga la IA (misma ruta del servidor). Devuelve el estado nuevo. */
+  async toggleAI(): Promise<boolean> {
     const settings = await this.getSettings();
     const newState = !(settings?.is_active ?? true);
-
-    if (!settings) {
-      await this.createSettings({ is_active: newState });
-    } else {
-      await supabase
-        .from('ai_settings')
-        .update({ 
-          is_active: newState,
-          updated_at: new Date().toISOString()
-        })
-        .eq('organization_id', this.organizationId);
-    }
-
-    await this.logAudit('toggle_ai', { is_active: newState }, memberId);
-
-    return newState;
+    const guardada = await this.updateSettings({ is_active: newState });
+    return guardada.is_active;
   }
 
   async getChannels(): Promise<Channel[]> {
@@ -270,8 +220,7 @@ export default class AISettingsService {
 
   async updateChannelAIMode(
     channelId: string, 
-    aiMode: 'ai_only' | 'hybrid' | 'manual',
-    memberId: number
+    aiMode: 'ai_only' | 'hybrid' | 'manual'
   ): Promise<Channel> {
     await this.setOrgContext();
 
@@ -294,14 +243,13 @@ export default class AISettingsService {
     await this.logAudit('update_channel_ai_mode', { 
       channel_id: channelId, 
       ai_mode: aiMode 
-    }, memberId);
+    });
 
     return data;
   }
 
   async updateAllChannelsAIMode(
-    aiMode: 'ai_only' | 'hybrid' | 'manual',
-    memberId: number
+    aiMode: 'ai_only' | 'hybrid' | 'manual'
   ): Promise<void> {
     await this.setOrgContext();
 
@@ -318,7 +266,7 @@ export default class AISettingsService {
       throw new Error('No se pudo actualizar los canales');
     }
 
-    await this.logAudit('update_all_channels_ai_mode', { ai_mode: aiMode }, memberId);
+    await this.logAudit('update_all_channels_ai_mode', { ai_mode: aiMode });
   }
 
   async getConfigForOpenAI(): Promise<OrganizationAIConfig | null> {
@@ -343,7 +291,7 @@ export default class AISettingsService {
     };
   }
 
-  private async logAudit(action: string, details: Record<string, any>, memberId: number): Promise<void> {
+  private async logAudit(action: string, details: Record<string, unknown>): Promise<void> {
     try {
       await supabase.from('chat_audit_logs').insert({
         organization_id: this.organizationId,

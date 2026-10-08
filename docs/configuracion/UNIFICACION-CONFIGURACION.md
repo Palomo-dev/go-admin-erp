@@ -58,12 +58,11 @@ configuración queda como propuesta.
 
 ## Hallazgos para otra ronda
 
-1. **RLS de `ai_settings`.** `UPDATE` solo exige ser miembro activo: cualquier
-   miembro puede cambiar el modelo o el prompt de la IA del chat escribiendo
-   directo desde el navegador. En Configuración la sección ya se pinta en solo
-   lectura sin `admin.full_access`, pero la barrera real es la base. Propuesta:
-   mover la escritura a un route handler con `requireOrgAdminOrPermission` y
-   endurecer la política (migración aditiva + rollback).
+1. **RLS de `ai_settings`.** Cerrado el 2026-10-08: la configuración se guarda
+   por `PATCH /api/chat/ai/settings` (`admin.full_access` en el servidor) y la
+   migración `20261008005828_ai_settings_escritura_solo_admin` agrega políticas
+   RESTRICTIVE de escritura con el mismo permiso. Guardarraíl:
+   `src/__tests__/seguridad/aiSettingsSoloServidor.test.ts`.
 2. **Ajustes finos en el buscador.** Hoy tienen ancla los tres ajustes del agente
    de voz. Siguiente paso: anclas en Facturación (rangos DIAN, «siempre
    electrónica»), Chat › IA (modelo, mensaje de respaldo) y Telefonía.

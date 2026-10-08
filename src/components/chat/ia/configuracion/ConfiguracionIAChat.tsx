@@ -10,7 +10,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Save, Cpu, MessageSquare, MessagesSquare } from 'lucide-react';
@@ -35,7 +34,6 @@ export function ConfiguracionIAChat() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [memberId, setMemberId] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   const [provider, setProvider] = useState('openai');
@@ -51,27 +49,6 @@ export function ConfiguracionIAChat() {
   const [autoResponseDelay, setAutoResponseDelay] = useState(5);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.7);
   const [isActive, setIsActive] = useState(true);
-
-  useEffect(() => {
-    const getMemberId = async () => {
-      if (!organizationId) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (data) {
-        setMemberId(data.id);
-      }
-    };
-
-    getMemberId();
-  }, [organizationId]);
 
   const loadData = useCallback(async () => {
     if (!organizationId) return;
@@ -125,12 +102,14 @@ export function ConfiguracionIAChat() {
     setHasChanges(true);
   };
 
+  // Guardar la configuración va por PATCH /api/chat/ai/settings (organización
+  // de la sesión y permiso de administrador en el servidor).
   const handleToggleAI = async () => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     try {
       const service = new AISettingsService(organizationId);
-      const newState = await service.toggleAI(memberId);
+      const newState = await service.toggleAI();
       setIsActive(newState);
 
       toast({
@@ -139,17 +118,17 @@ export function ConfiguracionIAChat() {
           ? 'El asistente de IA está ahora activo'
           : 'El asistente de IA ha sido desactivado'
       });
-    } catch {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo cambiar el estado de la IA',
+        description: error instanceof Error ? error.message : 'No se pudo cambiar el estado de la IA',
         variant: 'destructive'
       });
     }
   };
 
   const handleSave = async () => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     setSaving(true);
     try {
@@ -168,7 +147,7 @@ export function ConfiguracionIAChat() {
         auto_response_delay_seconds: autoResponseDelay,
         confidence_threshold: confidenceThreshold,
         is_active: isActive
-      }, memberId);
+      });
 
       toast({
         title: 'Configuración guardada',
@@ -177,10 +156,10 @@ export function ConfiguracionIAChat() {
 
       setHasChanges(false);
       await loadData();
-    } catch {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo guardar la configuración',
+        description: error instanceof Error ? error.message : 'No se pudo guardar la configuración',
         variant: 'destructive'
       });
     } finally {
@@ -189,11 +168,11 @@ export function ConfiguracionIAChat() {
   };
 
   const handleChannelModeChange = async (channelId: string, mode: 'ai_only' | 'hybrid' | 'manual') => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     try {
       const service = new AISettingsService(organizationId);
-      await service.updateChannelAIMode(channelId, mode, memberId);
+      await service.updateChannelAIMode(channelId, mode);
 
       setChannels(prev => prev.map(ch => 
         ch.id === channelId ? { ...ch, ai_mode: mode } : ch
@@ -213,11 +192,11 @@ export function ConfiguracionIAChat() {
   };
 
   const handleApplyToAllChannels = async (mode: 'ai_only' | 'hybrid' | 'manual') => {
-    if (!organizationId || !memberId) return;
+    if (!organizationId) return;
 
     try {
       const service = new AISettingsService(organizationId);
-      await service.updateAllChannelsAIMode(mode, memberId);
+      await service.updateAllChannelsAIMode(mode);
 
       setChannels(prev => prev.map(ch => ({ ...ch, ai_mode: mode })));
 

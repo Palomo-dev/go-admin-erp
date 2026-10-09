@@ -105,23 +105,37 @@ export default function EliminarCuentaSection({ user, organizations = [], profil
       }
       
       // Paso 2: Marcar la cuenta para eliminación en nuestra base de datos
-      // En lugar de eliminar directamente, normalmente se marca para eliminación diferida
+      // Se procesa después del plazo legal (15 días hábiles / 10 días calendario)
+      const deletionTimestamp = new Date().toISOString();
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           status: 'pending_deletion',
-          updated_at: new Date().toISOString(),
-          deletion_requested_at: new Date().toISOString()
+          updated_at: deletionTimestamp,
+          deletion_requested_at: deletionTimestamp
         })
         .eq('id', user.id);
       
       if (updateError) throw updateError;
       
-      // Paso 3: Cerrar sesión del usuario
+      // Paso 3: Enviar correo de confirmación de solicitud
+      try {
+        const userName = profileName || user.email?.split('@')[0] || '';
+        await fetch('/api/account-deletion/request-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email, userName })
+        });
+      } catch (emailErr) {
+        console.error('Error enviando correo de confirmación:', emailErr);
+        // No fallar por el correo
+      }
+      
+      // Paso 4: Cerrar sesión del usuario
       await supabase.auth.signOut();
       
-      // Paso 4: Redirigir al usuario a la página de inicio con un mensaje
-      toast.success('Su solicitud de eliminación de cuenta ha sido registrada. Su cuenta será eliminada en los próximos días.');
+      // Paso 5: Redirigir al usuario a la página de inicio con un mensaje
+      toast.success('Tu solicitud de eliminación de cuenta ha sido registrada. Recibirás un correo con los detalles del proceso.');
       router.push('/');
     } catch (err) {
       console.error('Error al eliminar cuenta:', err);
@@ -138,7 +152,7 @@ export default function EliminarCuentaSection({ user, organizations = [], profil
           Eliminar cuenta
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Una vez eliminada su cuenta, todos sus datos personales serán eliminados permanentemente
+          Eliminaremos tus datos personales en un plazo máximo de 15 días hábiles. Conservaremos solo lo que la ley nos obliga a guardar, como la facturación y la contabilidad, por 10 años.
         </p>
       </div>
       
@@ -179,7 +193,7 @@ export default function EliminarCuentaSection({ user, organizations = [], profil
                       <AlertDialogTitle>Confirmar eliminación de cuenta</AlertDialogTitle>
                     </div>
                     <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
-                      Esta acción es irreversible. Para confirmar debe ingresar su contraseña, escribir el nombre de su perfil, el nombre de su organización y la palabra <strong>ELIMINAR</strong>.
+                      Eliminaremos tus datos personales en un plazo máximo de 15 días hábiles. Conservaremos solo lo que la ley nos obliga a guardar, como la facturación y la contabilidad, por 10 años. Para confirmar debe ingresar su contraseña, escribir el nombre de su perfil, el nombre de su organización y la palabra <strong>ELIMINAR</strong>.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
 

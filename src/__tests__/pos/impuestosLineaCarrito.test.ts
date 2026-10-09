@@ -19,6 +19,9 @@
  *      `calculateCartTaxes`. Como son componentes (Jest corre en `node`), el test
  *      reproduce el armado y un guardarraíl comprueba que el código fuente sigue
  *      diciendo exactamente eso.
+ *      El cobro ya no hereda `cart.tax_included` cuando la línea no lo trae:
+ *      ese flag suelto sacaba el impuesto del precio (17.496 → 16.200) y
+ *      apagar la casilla no lo devolvía.
  *
  * Datos inventados: organización 120, sucursal 7, IVA 19 %.
  */
@@ -88,6 +91,7 @@ if (typeof g.addEventListener !== 'function') {
 
 import { POSService } from '@/lib/services/posService';
 import { calculateCartTaxes, type OrganizationTax, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
+import { impuestoIncluidoDeLinea } from '@/lib/pos/venta/cobro/impuestosCobro';
 import type { Cart, CartItem } from '@/components/pos/types';
 
 const KEY = 'pos_carts_120';
@@ -259,21 +263,26 @@ function resumen(items: CartItem[], taxIncluded: boolean): Totales {
   return { subtotal: r2(subtotal), impuestos: r2(impuestos), total: r2(total) };
 }
 
-/** CheckoutDialog.tsx, `calculateCartTotals` (rama de impuestos del producto). */
-function cobro(cart: Cart, taxIncludedDialogo: boolean): Totales {
+/**
+ * CheckoutDialog.tsx, `calculateCartTotals` (rama de impuestos del producto).
+ * La casilla del cobro no hereda `cart.tax_included`: si la línea no lo dice,
+ * manda la casilla. `casillaMovida` es el cajero apagándola o encendiéndola.
+ */
+function cobro(cart: Cart, taxIncludedDialogo: boolean, casillaMovida = false): Totales {
   let subtotal = 0;
   let impuestos = 0;
   let total = 0;
   for (const item of cart.items) {
+    const incluido = impuestoIncluidoDeLinea(item, taxIncludedDialogo, casillaMovida);
     const taxItem: TaxCalculationItem = {
       quantity: item.quantity,
       unit_price: item.unit_price,
       product_id: item.product_id,
       discount_amount: item.discount_amount || 0,
       tax_rate: item.tax_rate || undefined,
-      tax_included: item.tax_excluded ? false : (item.tax_included ?? cart.tax_included ?? undefined),
+      tax_included: incluido,
     };
-    const r = calculateCartTaxes([taxItem], APLICADOS, ORG_TAXES, taxIncludedDialogo);
+    const r = calculateCartTaxes([taxItem], APLICADOS, ORG_TAXES, incluido);
     subtotal += r.subtotal;
     impuestos += r.totalTaxAmount;
     total += r.finalTotal;
@@ -309,6 +318,18 @@ describe('B. Resumen del carrito y diálogo de cobro', () => {
     expect(cobro(carrito([l], { tax_included: true }), true)).toEqual({ subtotal: 20000, impuestos: 3800, total: 23800 });
   });
 
+  it('el flag del carrito no saca el IVA si la línea no lo trae y la casilla está apagada', () => {
+    const l = { ...base(), tax_included: undefined };
+    // Antes el cobro usaba cart.tax_included y cobraba 20.000 (IVA por dentro).
+    // El carrito, con la línea sin marcar, suma el IVA: 23.800. El cobro igual.
+    expect(cobro(carrito([l], { tax_included: true }), false)).toEqual({ subtotal: 20000, impuestos: 3800, total: 23800 });
+  });
+
+  it('apagar la casilla vuelve a sumar el IVA aunque la línea diga incluido', () => {
+    const l = { ...base(), tax_included: true };
+    expect(cobro(carrito([l], { tax_included: true }), false, true)).toEqual({ subtotal: 20000, impuestos: 3800, total: 23800 });
+  });
+
   it('«Excluir impuesto»: el Resumen la cobra SIN impuesto, el cobro le suma el IVA encima (discrepancia actual)', () => {
     const l = { ...base(), tax_excluded: true };
     expect(resumen([l], false)).toEqual({ subtotal: 20000, impuestos: 0, total: 20000 });
@@ -340,9 +361,10 @@ describe('guardarraíl: armado de la línea en los componentes', () => {
     expect(s).toContain('tax_included: item.tax_excluded ? false : (item.tax_included ?? taxIncluded ?? undefined)');
   });
 
-  it('CheckoutDialog: la línea excluida se calcula con «no incluido» (no se salta)', () => {
+  it('CheckoutDialog: la casilla del cobro decide, no el flag suelto del carrito', () => {
     const s = src('components/pos/CheckoutDialog.tsx');
-    expect(s).toContain('tax_included: item.tax_excluded ? false : (item.tax_included ?? cart.tax_included ?? undefined)');
+    expect(s).toContain('const incluido = impuestoIncluidoDeLinea(item, taxIncluded, casillaMovida);');
+    expect(s).not.toContain('item.tax_included ?? cart.tax_included');
     expect(s).not.toMatch(/if \(item\.tax_excluded\)\s*\{\s*const lineTotal/);
     // Reparto del impuesto total entre las líneas por peso del subtotal (todas, también la excluida).
     expect(s).toContain('const itemTaxAmount = calculatedTotals.totalTaxAmount * taxProportion;');

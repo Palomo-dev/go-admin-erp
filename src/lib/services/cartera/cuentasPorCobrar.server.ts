@@ -83,18 +83,20 @@ interface FilaCuenta {
     sale_id: string | null;
   } | null;
   customers: { id: string; full_name: string | null; doc_type: string | null; doc_number: string | null; email: string | null; phone: string | null } | null;
-  branches: { name: string | null } | null;
 }
 
 export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuentaPorCobrar> {
   const db = ctx.supabase;
   const org = ctx.organizationId;
+  // `accounts_receivable.branch_id` no tiene llave foránea a `branches`.
+  // Embeber `branches:branch_id` hace que PostgREST rechace toda la consulta
+  // y el detalle responda 500 («No se pudo cargar la cuenta»). El nombre se lee aparte.
   const { data, error } = await db
     .from('accounts_receivable')
     .select(
       'id, invoice_id, sale_id, customer_id, branch_id, amount, balance, due_date, status, created_at, last_reminder_date, ' +
         'invoice_sales:invoice_id (id, number, total, balance, issue_date, due_date, currency, status, sale_id), ' +
-        'customers:customer_id (id, full_name, doc_type, doc_number, email, phone), branches:branch_id (name)',
+        'customers:customer_id (id, full_name, doc_type, doc_number, email, phone)',
     )
     .eq('id', id)
     .eq('organization_id', org)
@@ -112,7 +114,7 @@ export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuenta
   if (c.invoice_id) fuentes.push(`and(source.eq.invoice_sales,source_id.eq.${c.invoice_id})`);
   if (saleId) fuentes.push(`and(source.eq.sale,source_id.eq.${saleId})`);
 
-  const [cuotasRes, pagosRes, vivoRes, carteraClienteRes, monedaRes, recordatoriosRes] = await Promise.all([
+  const [cuotasRes, pagosRes, vivoRes, carteraClienteRes, monedaRes, recordatoriosRes, sucursalRes] = await Promise.all([
     db
       .from('ar_installments')
       .select('id, installment_number, due_date, amount, paid_amount, balance, status, days_overdue')
@@ -136,6 +138,9 @@ export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuenta
       .eq('account_receivable_id', c.id)
       .order('created_at', { ascending: false })
       .limit(20),
+    c.branch_id != null
+      ? db.from('branches').select('name').eq('id', c.branch_id).eq('organization_id', org).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   const vivo = ((vivoRes.data ?? []) as { account_id: string; dias_vencida: number; estado_efectivo: string }[]).find((v) => v.account_id === c.id);
@@ -172,7 +177,7 @@ export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuenta
       creada: c.created_at,
       ultimoRecordatorio: c.last_reminder_date,
       branchId: c.branch_id,
-      sucursal: c.branches?.name ?? null,
+      sucursal: (sucursalRes.data as { name: string | null } | null)?.name ?? null,
       moneda: (inv?.currency ?? monedaBase ?? '').trim().toUpperCase() || null,
     },
     factura: inv

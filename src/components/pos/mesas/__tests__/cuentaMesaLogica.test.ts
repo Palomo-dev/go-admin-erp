@@ -213,6 +213,7 @@ describe('cobro de la cuenta: el impuesto sumado aparte no se marca como incluid
     const src = fs.readFileSync(path.join(process.cwd(), 'src/app/app/pos/mesas/[id]/page.tsx'), 'utf8');
     expect(src).toContain('prepararLineasCobroMesa(lineasSinPagarComoCarrito())');
     expect(src).toContain('tax_included: carritoMesaConImpuestoIncluido(items)');
+    expect(src).toContain('tasaDecidida: true');
     expect(src).not.toContain('tax_included: undefined');
     expect(src).not.toContain('items.some((i) => (i.tax_amount ?? 0) > 0)');
   });

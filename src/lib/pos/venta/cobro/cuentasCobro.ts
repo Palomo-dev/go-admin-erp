@@ -8,9 +8,9 @@
  *   `useMesaTaxes`), el total del carrito.
  * - `cartTotal = baseTotal + propina + flete`. El flete suma aunque el envío
  *   quede «Pendiente» de pago: ese estado solo viaja al envío (L46, E-15).
- * - `remaining` (lo que falta), `change` (el cambio) y `canComplete`
- *   (pagado ≥ total). No hay abono parcial (E-34): sin cubrir el total no se
- *   completa la venta.
+ * - `remaining` (lo que falta), `change` (el cambio, solo del efectivo) y
+ *   `canComplete` (pagado ≥ total). No hay abono parcial (E-34): sin cubrir
+ *   el total no se completa la venta. Teclear de más en tarjeta no es cambio.
  *
  * `CheckoutDialog.tsx` conserva escritas las líneas de `totalPaid` y
  * `remaining` porque las pruebas de `__tests__/pos-display/` las leen del
@@ -32,12 +32,24 @@ export interface CarritoParaCuentas {
   tax_total: number;
 }
 
+/** Lo mínimo de un pago para saber si el excedente es cambio (solo efectivo). */
+export interface PagoParaCambio {
+  method: string;
+  amount: number;
+}
+
 export interface EntradaCuentasCobro {
   calculatedTotals: TotalesCalculadosCobro;
   cart: CarritoParaCuentas;
   tipAmount: number;
   shippingFee: number;
   totalPaid: number;
+  /**
+   * Pagos de esta venta. El cambio sale solo del efectivo: teclear de más
+   * en tarjeta no muestra cambio. Sin esta lista, el excedente de `totalPaid`
+   * se trata como cambio (los tests que no dicen el medio).
+   */
+  payments?: readonly PagoParaCambio[];
   /**
    * Carrito con líneas por peso o medida: el total a cobrar se redondea a los
    * decimales de la moneda (la línea guarda el importe exacto; decisión 3 del
@@ -63,12 +75,27 @@ export function baseDelCobro(calculatedTotals: TotalesCalculadosCobro, cart: Car
     : (calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total);
 }
 
-export function cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo }: EntradaCuentasCobro): CuentasCobro {
+/** Cambio a devolver. Solo el efectivo que pasa del total; la tarjeta no devuelve cambio. */
+export function cambioDelCobro(cartTotal: number, payments: readonly PagoParaCambio[]): number {
+  let efectivo = 0;
+  let otros = 0;
+  for (const pago of payments) {
+    const monto = Number(pago.amount) || 0;
+    if (pago.method === 'cash') efectivo += monto;
+    else otros += monto;
+  }
+  const cubiertoPorOtros = Math.min(Math.max(0, otros), cartTotal);
+  return Math.max(0, efectivo - (cartTotal - cubiertoPorOtros));
+}
+
+export function cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid, payments, decimalesRedondeo }: EntradaCuentasCobro): CuentasCobro {
   const baseTotal = baseDelCobro(calculatedTotals, cart);
   const exacto = baseTotal + tipAmount + shippingFee;
   const cartTotal = decimalesRedondeo === null || decimalesRedondeo === undefined ? exacto : totalACobrar(exacto, decimalesRedondeo);
   const remaining = Math.max(0, cartTotal - totalPaid);
-  const change = Math.max(0, totalPaid - cartTotal);
+  const change = payments
+    ? cambioDelCobro(cartTotal, payments)
+    : Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;
   return { baseTotal, cartTotal, remaining, change, canComplete };
 }

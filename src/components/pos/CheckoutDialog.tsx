@@ -17,7 +17,8 @@ import { toast } from 'sonner';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
 import { cn } from '@/utils/Utils';
 import { 
-  calculateCartTaxes, 
+  calculateCartTaxes,
+  impuestoIncluidoDeLinea,
   type OrganizationTax as TaxUtilOrganizationTax,
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
@@ -49,8 +50,8 @@ import {
   ajusteAlAbrirCobro,
   casillaInicialImpuestosIncluidos,
   casillaSiElCajeroNoLaMovio,
+  desgloseQueCuadraConElTotal,
   firmaAperturaCobro,
-  impuestoIncluidoDeLinea,
   TOTALES_COBRO_VACIOS,
   totalesVisiblesDelCobro,
 } from '@/lib/pos/venta/cobro/impuestosCobro';
@@ -315,10 +316,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // líneas del fuente; son la misma cuenta que devuelve cuentasDelCobro.
   // Con líneas por peso o medida el total a cobrar se redondea a la moneda (la línea guarda el importe exacto).
   const redondeoPeso = currency && cart.items.some((i) => esMedido(i.product)) ? currency.decimals : null;
-  // Cálculo de esta apertura, o el total del carrito si ese cálculo aún está
-  // en cero o —con la casilla apagada— quedó por debajo del carrito.
-  const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart, taxIncluded);
-  const cuentasCobro = cuentasDelCobro({ calculatedTotals: totalesCobro, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo: redondeoPeso });
+  // Cálculo de esta apertura, o el total del carrito si ese cálculo aún está en cero.
+  const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart);
+  const cuentasCobro = cuentasDelCobro({ calculatedTotals: totalesCobro, cart, tipAmount, shippingFee, totalPaid, payments, decimalesRedondeo: redondeoPeso });
   const baseTotal = cuentasCobro.baseTotal;
   const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);
@@ -514,15 +514,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       loadPaymentData();
       loadTaxData();
       loadServers();
-      // La casilla arranca como las líneas del carrito, no como un
-      // `cart.tax_included` que el total visible ya no está usando.
-      // El ajuste en el render (firmaApertura) ya lo hizo antes de pintar;
-      // aquí se repite por si el efecto corre con líneas más nuevas.
-      const ajuste = ajusteAlAbrirCobro(cart.items);
-      setTaxIncluded(ajuste.taxIncluded);
-      setCasillaMovida(ajuste.casillaMovida);
-      setCalculatedTotals(ajuste.calculatedTotals);
-      setTaxBreakdown([]);
+      // La casilla y los totales de la venta anterior se sueltan al pintar
+      // (firmaApertura). No se repite aquí: un segundo reinicio pisaba la
+      // casilla que el cajero acababa de mover en esta misma apertura.
       // Agregar primer método de pago por defecto
       if (payments.length === 0) {
         addPayment();
@@ -1045,7 +1039,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       try {
         const productTaxes = await POSService.getProductTaxes(item.product_id);
         
-        const incluido = impuestoIncluidoDeLinea(item, taxIncluded, casillaMovida);
         const tasaDecidida = item.tasaDecidida === true;
         const taxItem: TaxCalculationItem = {
           quantity: item.quantity,
@@ -1053,7 +1046,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           product_id: item.product_id,
           discount_amount: item.discount_amount || 0,
           tax_rate: tasaDecidida ? (Number(item.tax_rate) || 0) : (item.tax_rate || undefined),
-          tax_included: incluido,
+          tax_included: item.tax_included,
+          tax_excluded: item.tax_excluded,
           tasaDecidida,
         };
         
@@ -1081,7 +1075,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             [taxItem],
             productAppliedTaxes,
             productOrgTaxes,
-            incluido
+            taxIncluded
           );
         } else {
           // Usar impuestos de organización
@@ -1089,7 +1083,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             [taxItem],
             appliedTaxes,
             organizationTaxes,
-            incluido
+            taxIncluded
           );
         }
         
@@ -1238,7 +1232,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           : 0;
         const itemTaxAmount = totalesCobro.totalTaxAmount * taxProportion;
         const itemTaxRate = itemSubtotal > 0 ? (itemTaxAmount / itemSubtotal) * 100 : 0;
-        const incluido = impuestoIncluidoDeLinea(item, taxIncluded, casillaMovida);
+        const incluido = impuestoIncluidoDeLinea(item, taxIncluded);
 
         return {
           ...item,
@@ -2000,8 +1994,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   if (!open) return null;
   const conRecibo = showReceipt && !!completedSale;
-  const impuestosCobro = taxBreakdown.length > 0
-    ? taxBreakdown.map((b) => ({ nombre: b.name, tarifa: organizationTaxes.find((o) => o.name === b.name)?.rate ?? null, importe: b.amount }))
+  const desglose = desgloseQueCuadraConElTotal(taxBreakdown, totalesCobro.totalTaxAmount);
+  const impuestosCobro = desglose
+    ? desglose.map((b) => ({ nombre: b.name, tarifa: organizationTaxes.find((o) => o.name === b.name)?.rate ?? null, importe: b.amount }))
     : (totalesCobro.totalTaxAmount || cart.tax_total) > 0
       ? [{ nombre: tPos('resumen.impuestos'), importe: totalesCobro.totalTaxAmount || cart.tax_total }]
       : [];

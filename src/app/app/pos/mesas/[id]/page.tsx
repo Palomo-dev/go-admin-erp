@@ -691,7 +691,10 @@ export default function MesaCuentaPage() {
           total: importe,
           tax_rate: 0,
           tax_amount: 0,
+          // El importe ya trae el impuesto. La tasa queda decidida en 0 para
+          // que apagar la casilla no se lo sume otra vez.
           tax_included: true,
+          tasaDecidida: true,
           discount_amount: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),

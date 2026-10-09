@@ -14,12 +14,26 @@ import {
   claveErrorDevolucion,
   codigoErrorDevolucion,
   metodoReintegro,
+  montoReembolsoLinea,
   parametrosProcesarDevolucion,
 } from '@/lib/pos/devoluciones/procesarDevolucion';
 
 const SRC = path.resolve(__dirname, '..', '..');
 const REPO = path.resolve(SRC, '..');
 const leer = (rel: string) => fs.readFileSync(path.join(SRC, rel), 'utf8');
+
+describe('montoReembolsoLinea', () => {
+  test('devuelve lo cobrado, no el precio de lista', () => {
+    // Precio 340 con descuento de 34: se cobraron 306.
+    expect(montoReembolsoLinea(306, 1, 1)).toBe(306);
+    expect(montoReembolsoLinea(306, 1, 0)).toBe(0);
+  });
+
+  test('prorratea el total cobrado por la cantidad devuelta', () => {
+    expect(montoReembolsoLinea(612, 2, 1)).toBe(306);
+    expect(montoReembolsoLinea(100, 3, 2)).toBe(66.67);
+  });
+});
 
 describe('parametrosProcesarDevolucion', () => {
   const base = {
@@ -118,6 +132,12 @@ describe('Guardarraíles de devoluciones', () => {
   test('la pantalla manda una clave de idempotencia por intento', () => {
     const form = leer('components/pos/devoluciones/ReturnForm.tsx');
     expect(form).toMatch(/procesarDevolucion\(sale\.id, refundData, claveIntento\.current\)/);
+  });
+
+  test('el reembolso de la pantalla usa lo cobrado, no el precio de lista', () => {
+    const form = leer('components/pos/devoluciones/ReturnForm.tsx');
+    expect(form).toContain('montoReembolsoLinea(item.total_cobrado, item.original_quantity');
+    expect(form).not.toMatch(/refund_amount:.*unit_price \*/);
   });
 
   test('el resumen de caja no resta dos veces las devoluciones nuevas', () => {

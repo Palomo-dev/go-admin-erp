@@ -17,7 +17,7 @@ import { DevolucionesService } from './devolucionesService';
 import { ReturnReasonsService } from './motivos/returnReasonsService';
 import { SaleForReturn, RefundData, ReturnReason, SoldSerialInfo } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { claveErrorDevolucion, codigoErrorDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
+import { claveErrorDevolucion, codigoErrorDevolucion, montoReembolsoLinea } from '@/lib/pos/devoluciones/procesarDevolucion';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 import { decimalesCantidad, esMedido, esPorPeso, redondearCantidadProducto, unidadVisible } from '@/lib/pos/peso/modoVenta';
@@ -35,6 +35,8 @@ interface ReturnItemData {
   original_quantity: number;
   return_quantity: number;
   unit_price: number;
+  /** Total cobrado de la línea (con descuento e impuesto), no el precio de lista. */
+  total_cobrado: number;
   refund_amount: number;
   reason: string;
   selected: boolean;
@@ -100,6 +102,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       original_quantity: item.quantity,
       return_quantity: 0,
       unit_price: item.unit_price,
+      total_cobrado: item.total,
       refund_amount: 0,
       reason: '',
       selected: false,
@@ -133,7 +136,9 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           selected,
           // Por peso o medida se propone devolver todo lo disponible (0,735 kg), no «1».
           return_quantity: selected ? (item.medido ? item.max_returnable : Math.min(1, item.max_returnable)) : 0,
-          refund_amount: selected ? item.unit_price * (item.medido ? item.max_returnable : Math.min(1, item.max_returnable)) : 0
+          refund_amount: selected
+            ? montoReembolsoLinea(item.total_cobrado, item.original_quantity, item.medido ? item.max_returnable : Math.min(1, item.max_returnable))
+            : 0
         };
       }
       return item;
@@ -147,7 +152,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
         return {
           ...item,
           return_quantity: validQuantity,
-          refund_amount: item.unit_price * validQuantity,
+          refund_amount: montoReembolsoLinea(item.total_cobrado, item.original_quantity, validQuantity),
           selected: validQuantity > 0
         };
       }
@@ -181,7 +186,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           ...item,
           selected_serial_ids: newSerialIds,
           return_quantity: newQty,
-          refund_amount: item.unit_price * newQty,
+          refund_amount: montoReembolsoLinea(item.total_cobrado, item.original_quantity, newQty),
           selected: newQty > 0
         };
       }

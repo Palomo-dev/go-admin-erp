@@ -274,13 +274,15 @@ function cobro(cart: Cart, taxIncludedDialogo: boolean, casillaMovida = false): 
   let total = 0;
   for (const item of cart.items) {
     const incluido = impuestoIncluidoDeLinea(item, taxIncludedDialogo, casillaMovida);
+    const tasaDecidida = item.tasaDecidida === true;
     const taxItem: TaxCalculationItem = {
       quantity: item.quantity,
       unit_price: item.unit_price,
       product_id: item.product_id,
       discount_amount: item.discount_amount || 0,
-      tax_rate: item.tax_rate || undefined,
+      tax_rate: tasaDecidida ? (Number(item.tax_rate) || 0) : (item.tax_rate || undefined),
       tax_included: incluido,
+      tasaDecidida,
     };
     const r = calculateCartTaxes([taxItem], APLICADOS, ORG_TAXES, incluido);
     subtotal += r.subtotal;
@@ -364,6 +366,8 @@ describe('guardarraíl: armado de la línea en los componentes', () => {
   it('CheckoutDialog: la casilla del cobro decide, no el flag suelto del carrito', () => {
     const s = src('components/pos/CheckoutDialog.tsx');
     expect(s).toContain('const incluido = impuestoIncluidoDeLinea(item, taxIncluded, casillaMovida);');
+    expect(s).toContain('const tasaDecidida = item.tasaDecidida === true;');
+    expect(s).toContain('tax_rate: tasaDecidida ? (Number(item.tax_rate) || 0) : (item.tax_rate || undefined)');
     expect(s).not.toContain('item.tax_included ?? cart.tax_included');
     expect(s).not.toMatch(/if \(item\.tax_excluded\)\s*\{\s*const lineTotal/);
     // Reparto del impuesto total entre las líneas por peso del subtotal (todas, también la excluida).

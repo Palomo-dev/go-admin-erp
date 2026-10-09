@@ -157,6 +157,40 @@ describe('casilla de impuestos del cobro', () => {
     expect(totalesVisiblesDelCobro(comoIncluido, carrito, true).finalTotal).toBe(24000);
   });
 
+  it('la mesa cobra 46.120, no los 43.000 del precio, y desmarcar la casilla lo devuelve', () => {
+    const aplicados = { 'inc-8': true };
+    const lineas = [
+      { quantity: 1, unit_price: 39000, product_id: 1, discount_amount: 0, tax_rate: 8, tax_included: false, tasaDecidida: true },
+      { quantity: 1, unit_price: 4000, product_id: 2, discount_amount: 0, tax_rate: 0, tax_included: false, tasaDecidida: true },
+    ];
+    const total = (incluido: boolean) => Math.round(lineas.reduce((suma, item) => {
+      const r = calculateCartTaxes([{ ...item, tax_included: incluido }], aplicados, INC_8, incluido);
+      return suma + r.finalTotal;
+    }, 0) * 100) / 100;
+
+    expect(casillaInicialImpuestosIncluidos(lineas)).toBe(false);
+    expect(total(false)).toBe(46120);
+    // Tratar el precio como impuesto incluido deja afuera los 3.120.
+    expect(total(true)).toBe(43000);
+
+    const desmarcada = impuestoIncluidoDeLinea({ tax_included: true }, false, true);
+    expect(desmarcada).toBe(false);
+    expect(total(desmarcada)).toBe(46120);
+
+    const carrito = { subtotal: 43000, tax_total: 3120, total: 46120 };
+    const comoIncluido = { subtotal: 39814.81, totalTaxAmount: 3185.19, finalTotal: 43000 };
+    expect(totalesVisiblesDelCobro(comoIncluido, carrito, false).finalTotal).toBe(46120);
+
+    // Una línea de mostrador con tasa 0 sigue tomando el impuesto de la organización.
+    const sinDecision = calculateCartTaxes(
+      [{ quantity: 1, unit_price: 4000, product_id: 2, discount_amount: 0, tax_rate: 0, tax_included: false }],
+      aplicados,
+      INC_8,
+      false,
+    );
+    expect(sinDecision.finalTotal).toBe(4320);
+  });
+
   it('un cálculo todavía en cero no reemplaza el total del carrito', () => {
     const carrito = { subtotal: 18000, tax_total: 1333.33, total: 18000 };
     const visibles = totalesVisiblesDelCobro({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 }, carrito);

@@ -1046,13 +1046,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         const productTaxes = await POSService.getProductTaxes(item.product_id);
         
         const incluido = impuestoIncluidoDeLinea(item, taxIncluded, casillaMovida);
+        const tasaDecidida = item.tasaDecidida === true;
         const taxItem: TaxCalculationItem = {
           quantity: item.quantity,
           unit_price: item.unit_price,
           product_id: item.product_id,
           discount_amount: item.discount_amount || 0,
-          tax_rate: item.tax_rate || undefined,
-          tax_included: incluido
+          tax_rate: tasaDecidida ? (Number(item.tax_rate) || 0) : (item.tax_rate || undefined),
+          tax_included: incluido,
+          tasaDecidida,
         };
         
         let result;

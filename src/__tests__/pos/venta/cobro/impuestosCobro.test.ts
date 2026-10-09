@@ -194,7 +194,7 @@ describe('casilla de impuestos del cobro', () => {
 
     // Parte o saldo: el importe ya trae el impuesto. Apagar la casilla no se lo suma.
     const parte = calculateCartTaxes(
-      [{ quantity: 1, unit_price: 31000, product_id: 0, discount_amount: 0, tax_rate: 0, tax_amount: 0, tax_included: true, tasaDecidida: true }],
+      [{ quantity: 1, unit_price: 31000, product_id: 0, discount_amount: 0, tax_rate: 0, tax_included: true, tasaDecidida: true }],
       aplicados,
       INC_8,
       false,

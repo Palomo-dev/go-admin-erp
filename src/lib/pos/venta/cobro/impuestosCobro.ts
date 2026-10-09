@@ -9,9 +9,12 @@
  * porque el cálculo seguía leyendo el flag del carrito.
  *
  * La casilla del cobro arranca como las líneas (lo que ya muestra el carrito).
- * Si el cajero la mueve, esa decisión vale para toda la venta. Al abrir se
- * sueltan la casilla y el total de la venta anterior: mientras el cálculo de
- * esta apertura no llega, se muestra el total del carrito.
+ * Si el cajero la mueve, solo cambia las líneas que no dicen nada: la que ya
+ * trae el impuesto en el precio no lo suma otra vez, y la que lo tiene encima
+ * no se lo saca. Al abrir se sueltan la casilla y el total de la venta
+ * anterior: mientras el cálculo de esta apertura no llega, se muestra el
+ * total del carrito. Cuando el cálculo ya llegó, ese es el total y el
+ * desglose: no se reemplaza por el del carrito.
  */
 
 import type { TotalesCalculadosCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
@@ -30,23 +33,6 @@ export function casillaInicialImpuestosIncluidos(items: readonly LineaImpuestoCo
   const conImpuesto = items.filter((item) => !item.tax_excluded);
   if (conImpuesto.length === 0) return false;
   return conImpuesto.every((item) => item.tax_included === true);
-}
-
-/**
- * Si el impuesto de esta línea ya va dentro del precio en el cobro.
- * Una línea excluida nunca lo trae incluido (el cobro se lo suma, como antes).
- * Si el cajero movió la casilla, manda la casilla. Si no, manda la línea y,
- * cuando la línea no dice nada, la casilla — nunca el flag suelto del carrito.
- */
-export function impuestoIncluidoDeLinea(
-  item: LineaImpuestoCobro,
-  casilla: boolean,
-  casillaMovida: boolean,
-): boolean {
-  if (item.tax_excluded) return false;
-  if (casillaMovida) return casilla;
-  if (item.tax_included != null) return item.tax_included === true;
-  return casilla;
 }
 
 /** Totales en cero: el cobro todavía no calculó esta apertura. */
@@ -101,28 +87,37 @@ export interface CarritoVisibleEnCobro {
 
 /**
  * Total que se muestra y se cobra.
- * Si el cálculo de ESTA apertura ya respondió, manda él: puede sumar un
- * impuesto de la organización que el carrito todavía no trae.
- * Si sigue en cero (acabamos de abrir, o la casilla acaba de seguir al
- * carrito), se usa el total del carrito. Así no se pinta el `finalTotal`
- * de la venta anterior ni se cobra $0.
- *
- * Con la casilla apagada el cobro no puede quedar por debajo del carrito.
- * Una casilla heredada trata el precio como impuesto incluido y se deja de
- * cobrar el impuesto que el carrito ya sumó (25.600 cobrados como 24.000).
- * Si el cajero la prendió en este cobro, sí puede bajar: esa es su decisión.
+ * Si el cálculo de ESTA apertura ya respondió, manda él —el mismo del que
+ * sale el desglose—: puede sumar un impuesto de la organización que el
+ * carrito todavía no trae. Si sigue en cero (acabamos de abrir), se usa el
+ * total del carrito para no pintar el `finalTotal` de la venta anterior ni
+ * cobrar $0. No se cambia un cálculo ya hecho por el total del carrito:
+ * eso dejaba el desglose del recibo en una cifra y el total en otra.
  */
 export function totalesVisiblesDelCobro(
   calculated: TotalesCalculadosCobro,
   cart: CarritoVisibleEnCobro,
-  casillaIncluida = false,
 ): TotalesCalculadosCobro {
-  const delCarrito: TotalesCalculadosCobro = {
-    subtotal: cart.subtotal,
-    totalTaxAmount: cart.tax_total,
-    finalTotal: cart.total,
-  };
-  if (!(calculated.finalTotal > 0)) return delCarrito;
-  if (!casillaIncluida && cart.total - calculated.finalTotal > 0.5) return delCarrito;
+  if (!(calculated.finalTotal > 0)) {
+    return {
+      subtotal: cart.subtotal,
+      totalTaxAmount: cart.tax_total,
+      finalTotal: cart.total,
+    };
+  }
   return calculated;
+}
+
+/**
+ * Desglose del recibo. Solo se usa si suma lo mismo que el impuesto del
+ * total. Si no cuadra, el recibo muestra ese impuesto y no un desglose viejo.
+ */
+export function desgloseQueCuadraConElTotal<T extends { amount: number }>(
+  desglose: readonly T[],
+  impuestoDelTotal: number,
+): readonly T[] | null {
+  if (desglose.length === 0) return null;
+  const suma = desglose.reduce((s, fila) => s + fila.amount, 0);
+  if (Math.abs(suma - impuestoDelTotal) > 0.5) return null;
+  return desglose;
 }

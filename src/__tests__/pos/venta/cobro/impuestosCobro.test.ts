@@ -3,15 +3,15 @@
  * 16.200 + 8 % = 17.496. Tratar ese precio como «impuesto incluido» deja
  * el total en 16.200, y apagar la casilla tiene que devolver 17.496.
  */
-import { calculateCartTaxes } from '@/lib/utils/taxCalculations';
+import { calculateCartTaxes, impuestoIncluidoDeLinea } from '@/lib/utils/taxCalculations';
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
 import { applyTipToPrefilledPayment } from '@/components/pos/display/tipNotice';
 import {
   ajusteAlAbrirCobro,
   casillaInicialImpuestosIncluidos,
   casillaSiElCajeroNoLaMovio,
+  desgloseQueCuadraConElTotal,
   firmaAperturaCobro,
-  impuestoIncluidoDeLinea,
   totalesVisiblesDelCobro,
 } from '@/lib/pos/venta/cobro/impuestosCobro';
 
@@ -47,20 +47,34 @@ describe('casilla de impuestos del cobro', () => {
     expect(casillaInicialImpuestosIncluidos([{ tax_excluded: true, tax_included: true }])).toBe(false);
   });
 
-  it('17.496 no baja a 16.200: la casilla apagada suma el 8 %', () => {
-    const incluido = impuestoIncluidoDeLinea({ tax_included: undefined }, false, false);
+  it('17.496 no baja a 16.200: la casilla apagada suma el 8 % si la línea no dice nada', () => {
+    const incluido = impuestoIncluidoDeLinea({ tax_included: undefined }, false);
     expect(incluido).toBe(false);
     expect(totalAPagar(16200, incluido)).toBe(17496);
   });
 
-  it('encender la casilla cobra 16.200 y apagarla devuelve 17.496', () => {
-    const linea = { tax_included: true as const };
-    expect(totalAPagar(16200, impuestoIncluidoDeLinea(linea, true, true))).toBe(16200);
-    expect(totalAPagar(16200, impuestoIncluidoDeLinea(linea, false, true))).toBe(17496);
+  it('apagar la casilla no le suma el impuesto a un producto que ya lo trae en el precio', () => {
+    const incluido = { tax_included: true as const, tax_rate: 8 };
+    const encima = { tax_included: false as const, tax_rate: 8 };
+    expect(impuestoIncluidoDeLinea(incluido, false)).toBe(true);
+    expect(impuestoIncluidoDeLinea(encima, false)).toBe(false);
+    expect(totalAPagar(16200, true)).toBe(16200);
+    // Mixto: 16.200 ya con impuesto + 10.000 con el 8 % encima = 27.000, no 29.296.
+    const aplicados = { 'inc-8': true };
+    const mixto = calculateCartTaxes(
+      [
+        { quantity: 1, unit_price: 16200, product_id: 1, discount_amount: 0, ...incluido },
+        { quantity: 1, unit_price: 10000, product_id: 2, discount_amount: 0, ...encima },
+      ],
+      aplicados,
+      INC_8,
+      false,
+    );
+    expect(mixto.finalTotal).toBe(27000);
   });
 
-  it('sin mover la casilla, una línea marcada «incluido» sigue sacando el impuesto de dentro', () => {
-    expect(impuestoIncluidoDeLinea({ tax_included: true }, false, false)).toBe(true);
+  it('una línea marcada «incluido» sigue sacando el impuesto de dentro aunque la casilla esté apagada', () => {
+    expect(impuestoIncluidoDeLinea({ tax_included: true }, false)).toBe(true);
     expect(totalAPagar(16200, true)).toBe(16200);
   });
 
@@ -128,33 +142,37 @@ describe('casilla de impuestos del cobro', () => {
     expect(casillaSiElCajeroNoLaMovio(false, true, [{ tax_included: true }])).toBe(false);
   });
 
-  it('casilla apagada: 25.600 no se cobra como 24.000 (se perderían 1.600 de impuesto)', () => {
+  it('casilla apagada y línea sin marca: 24.000 + 8 % = 25.600, y el desglose cuadra con ese impuesto', () => {
     const carrito = { subtotal: 24000, tax_total: 1600, total: 25600 };
-    const comoIncluido = { subtotal: 22400, totalTaxAmount: 1600, finalTotal: 24000 };
     const lineasSinMarca = [{ tax_included: undefined }];
-
     expect(ajusteAlAbrirCobro(lineasSinMarca).taxIncluded).toBe(false);
     expect(casillaSiElCajeroNoLaMovio(true, false, lineasSinMarca)).toBe(false);
+    expect(impuestoIncluidoDeLinea(lineasSinMarca[0], false)).toBe(false);
+    // 20.000 con 8 % encima + 4.000 exento = 25.600. No 24.000.
+    const cuenta = calculateCartTaxes(
+      [
+        { quantity: 1, unit_price: 20000, product_id: 1, discount_amount: 0, tax_rate: 8 },
+        { quantity: 1, unit_price: 4000, product_id: 2, discount_amount: 0, tax_rate: 0, tax_included: false, tasaDecidida: true },
+      ],
+      { 'inc-8': true },
+      INC_8,
+      false,
+    );
+    expect(cuenta.finalTotal).toBe(25600);
 
-    const visibles = totalesVisiblesDelCobro(comoIncluido, carrito, false);
-    expect(visibles.finalTotal).toBe(25600);
-    expect(carrito.total - comoIncluido.finalTotal).toBe(1600);
-
-    const cuentas = cuentasDelCobro({
-      calculatedTotals: visibles,
-      cart: { total: carrito.total, tax_total: carrito.tax_total },
-      tipAmount: 0,
-      shippingFee: 0,
-      totalPaid: 25600,
-    });
-    expect(cuentas.cartTotal).toBe(25600);
-    expect(cuentas.canComplete).toBe(true);
+    const calculado = { subtotal: 24000, totalTaxAmount: 1600, finalTotal: 25600 };
+    expect(totalesVisiblesDelCobro(calculado, carrito).finalTotal).toBe(25600);
+    expect(desgloseQueCuadraConElTotal([{ name: 'INC', amount: 1600 }], calculado.totalTaxAmount)).toEqual([
+      { name: 'INC', amount: 1600 },
+    ]);
+    // Un desglose de otro cálculo (1.200) no se pinta junto a un total que trae 1.600.
+    expect(desgloseQueCuadraConElTotal([{ name: 'INC', amount: 1200 }], calculado.totalTaxAmount)).toBeNull();
   });
 
-  it('si el cajero prende la casilla en este cobro, sí puede cobrar el precio con el impuesto dentro', () => {
+  it('un cálculo ya hecho no se reemplaza por el total del carrito', () => {
     const carrito = { subtotal: 24000, tax_total: 1600, total: 25600 };
-    const comoIncluido = { subtotal: 22400, totalTaxAmount: 1600, finalTotal: 24000 };
-    expect(totalesVisiblesDelCobro(comoIncluido, carrito, true).finalTotal).toBe(24000);
+    const calculado = { subtotal: 22400, totalTaxAmount: 1600, finalTotal: 24000 };
+    expect(totalesVisiblesDelCobro(calculado, carrito)).toEqual(calculado);
   });
 
   it('la mesa cobra 46.120, no los 43.000 del precio, y desmarcar la casilla lo devuelve', () => {
@@ -163,23 +181,26 @@ describe('casilla de impuestos del cobro', () => {
       { quantity: 1, unit_price: 39000, product_id: 1, discount_amount: 0, tax_rate: 8, tax_included: false, tasaDecidida: true },
       { quantity: 1, unit_price: 4000, product_id: 2, discount_amount: 0, tax_rate: 0, tax_included: false, tasaDecidida: true },
     ];
-    const total = (incluido: boolean) => Math.round(lineas.reduce((suma, item) => {
-      const r = calculateCartTaxes([{ ...item, tax_included: incluido }], aplicados, INC_8, incluido);
+    const total = (casilla: boolean) => Math.round(lineas.reduce((suma, item) => {
+      const r = calculateCartTaxes([item], aplicados, INC_8, casilla);
       return suma + r.finalTotal;
     }, 0) * 100) / 100;
 
     expect(casillaInicialImpuestosIncluidos(lineas)).toBe(false);
     expect(total(false)).toBe(46120);
-    // Tratar el precio como impuesto incluido deja afuera los 3.120.
-    expect(total(true)).toBe(43000);
+    // Prender la casilla no le saca el impuesto a una línea que lo tiene encima.
+    expect(impuestoIncluidoDeLinea(lineas[0], true)).toBe(false);
+    expect(total(true)).toBe(46120);
 
-    const desmarcada = impuestoIncluidoDeLinea({ tax_included: true }, false, true);
-    expect(desmarcada).toBe(false);
-    expect(total(desmarcada)).toBe(46120);
-
-    const carrito = { subtotal: 43000, tax_total: 3120, total: 46120 };
-    const comoIncluido = { subtotal: 39814.81, totalTaxAmount: 3185.19, finalTotal: 43000 };
-    expect(totalesVisiblesDelCobro(comoIncluido, carrito, false).finalTotal).toBe(46120);
+    // Parte o saldo: el importe ya trae el impuesto. Apagar la casilla no se lo suma.
+    const parte = calculateCartTaxes(
+      [{ quantity: 1, unit_price: 31000, product_id: 0, discount_amount: 0, tax_rate: 0, tax_amount: 0, tax_included: true, tasaDecidida: true }],
+      aplicados,
+      INC_8,
+      false,
+    );
+    expect(parte.finalTotal).toBe(31000);
+    expect(parte.totalTaxAmount).toBe(0);
 
     // Una línea de mostrador con tasa 0 sigue tomando el impuesto de la organización.
     const sinDecision = calculateCartTaxes(

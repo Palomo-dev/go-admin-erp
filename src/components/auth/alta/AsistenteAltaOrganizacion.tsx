@@ -33,18 +33,26 @@ export interface AsistenteAltaOrganizacionProps {
   nombre: string;
   apellido: string;
   referido?: string | null;
+  /** Plan inicial preseleccionado (desde parámetro de URL). */
+  planInicial?: string;
+  /** Período de facturación inicial (desde parámetro de URL). */
+  periodoInicial?: 'monthly' | 'yearly';
   onPaso?: (paso: PasoAlta) => void;
   onCreada: (org: OrganizacionCreada) => void;
   /** Solo en la app: cerrar el asistente desde el primer paso. */
   onCancelar?: () => void;
 }
 
-export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, referido, onPaso, onCreada, onCancelar }: AsistenteAltaOrganizacionProps) {
+export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, referido, planInicial, periodoInicial, onPaso, onCreada, onCancelar }: AsistenteAltaOrganizacionProps) {
   const t = useTranslations('acceso.alta');
   const [paso, setPaso] = React.useState<PasoAlta>(1);
   const [org, setOrg] = React.useState(() => ORGANIZACION_INICIAL(correo));
   const [suc, setSuc] = React.useState(() => ({ ...SUCURSAL_INICIAL, nombre: t('sucursalNombrePorDefecto') }));
-  const [plan, setPlan] = React.useState<PlanAlta & { validatedCoupon?: CouponData | null }>(PLAN_INICIAL);
+  const [plan, setPlan] = React.useState<PlanAlta & { validatedCoupon?: CouponData | null }>(() => ({
+    ...PLAN_INICIAL,
+    subscriptionPlan: planInicial ?? PLAN_INICIAL.subscriptionPlan,
+    billingPeriod: periodoInicial ?? PLAN_INICIAL.billingPeriod,
+  }));
   const [creando, setCreando] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 

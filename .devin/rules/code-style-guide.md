@@ -52,6 +52,6 @@ _Commit_:
   1. Objetivo
   2. Cambios (solo módulos + rutas implicadas)
   3. Dependencias externas (solo si aplica)
-  4. Revisores: @santycano, @Palomo-dev
+  4. Revisores: @Palomo-dev
 
 “Respeta estas reglas para minimizar cambios bruscos y conflictos.”

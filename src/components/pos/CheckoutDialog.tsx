@@ -316,8 +316,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // Con líneas por peso o medida el total a cobrar se redondea a la moneda (la línea guarda el importe exacto).
   const redondeoPeso = currency && cart.items.some((i) => esMedido(i.product)) ? currency.decimals : null;
   // Cálculo de esta apertura, o el total del carrito si ese cálculo aún está
-  // en cero (no el de la venta anterior: al abrir se vacía).
-  const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart);
+  // en cero o —con la casilla apagada— quedó por debajo del carrito.
+  const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart, taxIncluded);
   const cuentasCobro = cuentasDelCobro({ calculatedTotals: totalesCobro, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo: redondeoPeso });
   const baseTotal = cuentasCobro.baseTotal;
   const cartTotal = cuentasCobro.cartTotal;

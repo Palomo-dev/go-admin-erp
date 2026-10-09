@@ -106,15 +106,23 @@ export interface CarritoVisibleEnCobro {
  * Si sigue en cero (acabamos de abrir, o la casilla acaba de seguir al
  * carrito), se usa el total del carrito. Así no se pinta el `finalTotal`
  * de la venta anterior ni se cobra $0.
+ *
+ * Con la casilla apagada el cobro no puede quedar por debajo del carrito.
+ * Una casilla heredada trata el precio como impuesto incluido y se deja de
+ * cobrar el impuesto que el carrito ya sumó (25.600 cobrados como 24.000).
+ * Si el cajero la prendió en este cobro, sí puede bajar: esa es su decisión.
  */
 export function totalesVisiblesDelCobro(
   calculated: TotalesCalculadosCobro,
   cart: CarritoVisibleEnCobro,
+  casillaIncluida = false,
 ): TotalesCalculadosCobro {
-  if (calculated.finalTotal > 0) return calculated;
-  return {
+  const delCarrito: TotalesCalculadosCobro = {
     subtotal: cart.subtotal,
     totalTaxAmount: cart.tax_total,
     finalTotal: cart.total,
   };
+  if (!(calculated.finalTotal > 0)) return delCarrito;
+  if (!casillaIncluida && cart.total - calculated.finalTotal > 0.5) return delCarrito;
+  return calculated;
 }

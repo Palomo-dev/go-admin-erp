@@ -128,6 +128,35 @@ describe('casilla de impuestos del cobro', () => {
     expect(casillaSiElCajeroNoLaMovio(false, true, [{ tax_included: true }])).toBe(false);
   });
 
+  it('casilla apagada: 25.600 no se cobra como 24.000 (se perderían 1.600 de impuesto)', () => {
+    const carrito = { subtotal: 24000, tax_total: 1600, total: 25600 };
+    const comoIncluido = { subtotal: 22400, totalTaxAmount: 1600, finalTotal: 24000 };
+    const lineasSinMarca = [{ tax_included: undefined }];
+
+    expect(ajusteAlAbrirCobro(lineasSinMarca).taxIncluded).toBe(false);
+    expect(casillaSiElCajeroNoLaMovio(true, false, lineasSinMarca)).toBe(false);
+
+    const visibles = totalesVisiblesDelCobro(comoIncluido, carrito, false);
+    expect(visibles.finalTotal).toBe(25600);
+    expect(carrito.total - comoIncluido.finalTotal).toBe(1600);
+
+    const cuentas = cuentasDelCobro({
+      calculatedTotals: visibles,
+      cart: { total: carrito.total, tax_total: carrito.tax_total },
+      tipAmount: 0,
+      shippingFee: 0,
+      totalPaid: 25600,
+    });
+    expect(cuentas.cartTotal).toBe(25600);
+    expect(cuentas.canComplete).toBe(true);
+  });
+
+  it('si el cajero prende la casilla en este cobro, sí puede cobrar el precio con el impuesto dentro', () => {
+    const carrito = { subtotal: 24000, tax_total: 1600, total: 25600 };
+    const comoIncluido = { subtotal: 22400, totalTaxAmount: 1600, finalTotal: 24000 };
+    expect(totalesVisiblesDelCobro(comoIncluido, carrito, true).finalTotal).toBe(24000);
+  });
+
   it('un cálculo todavía en cero no reemplaza el total del carrito', () => {
     const carrito = { subtotal: 18000, tax_total: 1333.33, total: 18000 };
     const visibles = totalesVisiblesDelCobro({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 }, carrito);

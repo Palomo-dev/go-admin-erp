@@ -369,7 +369,7 @@ describe('guardarraíl: armado de la línea en los componentes', () => {
     // Reparto del impuesto total entre las líneas por peso del subtotal (todas, también la excluida).
     // La base es la de esta apertura (`totalesCobro`), no un `calculatedTotals` de la venta anterior.
     expect(s).toContain('const itemTaxAmount = totalesCobro.totalTaxAmount * taxProportion;');
-    expect(s).toContain('const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart);');
+    expect(s).toContain('const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart, taxIncluded);');
     expect(s).toContain('const ajuste = ajusteAlAbrirCobro(cart.items);');
   });
 

@@ -9,8 +9,12 @@
  * porque el cálculo seguía leyendo el flag del carrito.
  *
  * La casilla del cobro arranca como las líneas (lo que ya muestra el carrito).
- * Si el cajero la mueve, esa decisión vale para toda la venta.
+ * Si el cajero la mueve, esa decisión vale para toda la venta. Al abrir se
+ * sueltan la casilla y el total de la venta anterior: mientras el cálculo de
+ * esta apertura no llega, se muestra el total del carrito.
  */
+
+import type { TotalesCalculadosCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
 
 export interface LineaImpuestoCobro {
   tax_included?: boolean | null;
@@ -43,4 +47,74 @@ export function impuestoIncluidoDeLinea(
   if (casillaMovida) return casilla;
   if (item.tax_included != null) return item.tax_included === true;
   return casilla;
+}
+
+/** Totales en cero: el cobro todavía no calculó esta apertura. */
+export const TOTALES_COBRO_VACIOS: TotalesCalculadosCobro = {
+  subtotal: 0,
+  totalTaxAmount: 0,
+  finalTotal: 0,
+};
+
+/**
+ * Cambia al cerrar el cobro y al pasar a otro carrito. El diálogo no se
+ * desmonta entre ventas del mismo carrito, así que esta firma es la que
+ * obliga a soltar la casilla de la venta anterior antes de pintar.
+ */
+export function firmaAperturaCobro(abierto: boolean, cartId: string): string {
+  return `${abierto ? '1' : '0'}:${cartId}`;
+}
+
+/** Estado con el que abre el cobro: casilla según las líneas y totales vacíos. */
+export function ajusteAlAbrirCobro(items: readonly LineaImpuestoCobro[]): {
+  taxIncluded: boolean;
+  casillaMovida: false;
+  calculatedTotals: TotalesCalculadosCobro;
+} {
+  return {
+    taxIncluded: casillaInicialImpuestosIncluidos(items),
+    casillaMovida: false,
+    calculatedTotals: TOTALES_COBRO_VACIOS,
+  };
+}
+
+/**
+ * Mientras el cajero no toque la casilla de este cobro, sigue a las líneas.
+ * Así, si prende «Impuestos incluidos» en el carrito, el cobro se prende
+ * también. Si ya la movió, se queda con lo que eligió.
+ */
+export function casillaSiElCajeroNoLaMovio(
+  casilla: boolean,
+  casillaMovida: boolean,
+  items: readonly LineaImpuestoCobro[],
+): boolean {
+  if (casillaMovida) return casilla;
+  return casillaInicialImpuestosIncluidos(items);
+}
+
+/** Totales del carrito, usados mientras el cálculo de esta apertura está en cero. */
+export interface CarritoVisibleEnCobro {
+  subtotal: number;
+  tax_total: number;
+  total: number;
+}
+
+/**
+ * Total que se muestra y se cobra.
+ * Si el cálculo de ESTA apertura ya respondió, manda él: puede sumar un
+ * impuesto de la organización que el carrito todavía no trae.
+ * Si sigue en cero (acabamos de abrir, o la casilla acaba de seguir al
+ * carrito), se usa el total del carrito. Así no se pinta el `finalTotal`
+ * de la venta anterior ni se cobra $0.
+ */
+export function totalesVisiblesDelCobro(
+  calculated: TotalesCalculadosCobro,
+  cart: CarritoVisibleEnCobro,
+): TotalesCalculadosCobro {
+  if (calculated.finalTotal > 0) return calculated;
+  return {
+    subtotal: cart.subtotal,
+    totalTaxAmount: cart.tax_total,
+    finalTotal: cart.total,
+  };
 }

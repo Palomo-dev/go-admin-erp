@@ -60,6 +60,21 @@ export interface ResultadoProcesarDevolucion {
  * saldo a favor del cliente; «medio original» aún no existe y, como antes, se
  * reintegra en efectivo.
  */
+/**
+ * Lo que se reembolsa de una línea: el total cobrado (ya con descuento e
+ * impuesto) prorrateado por la cantidad devuelta. Es la misma cuenta que
+ * `procesar_devolucion` (`round(total / cantidad * devuelta, 2)`). El precio
+ * de lista (`unit_price`) no sirve: ignora el descuento.
+ */
+export function montoReembolsoLinea(
+  totalCobrado: number,
+  cantidadVendida: number,
+  cantidadDevuelta: number,
+): number {
+  if (!(cantidadVendida > 0) || !(cantidadDevuelta > 0) || !Number.isFinite(totalCobrado)) return 0;
+  return Math.round((totalCobrado / cantidadVendida) * cantidadDevuelta * 100) / 100;
+}
+
 export function metodoReintegro(metodo: MetodoReintegroPantalla): 'cash' | 'store_credit' {
   return metodo === 'credit_note' ? 'store_credit' : 'cash';
 }

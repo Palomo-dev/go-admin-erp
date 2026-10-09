@@ -10,6 +10,7 @@ import { ReportesContablesService, IncomeStatementRow } from '../ReportesContabl
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { EmptyState } from '@/components/kit';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
@@ -79,6 +80,9 @@ export function EstadoResultadosPage() {
       setData(result);
     } catch (error) {
       console.error('Error cargando estado de resultados:', error);
+      // Sin esto la página hacía `return null`: el 500 quedaba en la consola
+      // y recargar repetía el mismo fallo en blanco.
+      setData(null);
     } finally {
       setIsLoading(false);
     }
@@ -93,8 +97,6 @@ export function EstadoResultadosPage() {
       </div>
     );
   }
-
-  if (!data) return null;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -129,72 +131,82 @@ export function EstadoResultadosPage() {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              Ingresos
-            </CardTitle>
-            <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalIncome)}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <tbody>
-                {data.income.map(row => renderRow(row, formatCifra))}
-                <tr className="border-t-2 dark:border-gray-600 font-bold">
-                  <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL INGRESOS</td>
-                  <td className="py-3 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(data.totalIncome)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-red-600" />
-              Gastos
-            </CardTitle>
-            <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalExpenses)}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <tbody>
-                {data.expenses.map(row => renderRow(row, formatCifra))}
-                <tr className="border-t-2 dark:border-gray-600 font-bold">
-                  <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL GASTOS</td>
-                  <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalExpenses)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className={`dark:bg-gray-800 dark:border-gray-700 ${data.netIncome >= 0 ? 'border-green-300 dark:border-green-700' : 'border-red-300 dark:border-red-700'}`}>
-        <CardContent className="py-6">
-          <div className="flex flex-wrap items-center justify-between">
-            <div className="flex items-center gap-3">
-              {data.netIncome >= 0 ? (
-                <TrendingUp className="h-8 w-8 text-green-600" />
-              ) : (
-                <TrendingDown className="h-8 w-8 text-red-600" />
-              )}
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Resultado del Periodo</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {data.netIncome >= 0 ? 'Utilidad' : 'Perdida'}
+      {!data ? (
+        <EmptyState
+          variante="error"
+          titulo="No se pudo cargar el estado de resultados"
+          onReintentar={() => void loadData()}
+        />
+      ) : (
+        <>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  Ingresos
+                </CardTitle>
+                <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalIncome)}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {data.income.map(row => renderRow(row, formatCifra))}
+                    <tr className="border-t-2 dark:border-gray-600 font-bold">
+                      <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL INGRESOS</td>
+                      <td className="py-3 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(data.totalIncome)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+    
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5 text-red-600" />
+                  Gastos
+                </CardTitle>
+                <CardDescription className="dark:text-gray-400">Total: {formatCifra(data.totalExpenses)}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {data.expenses.map(row => renderRow(row, formatCifra))}
+                    <tr className="border-t-2 dark:border-gray-600 font-bold">
+                      <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL GASTOS</td>
+                      <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalExpenses)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+    
+          <Card className={`dark:bg-gray-800 dark:border-gray-700 ${data.netIncome >= 0 ? 'border-green-300 dark:border-green-700' : 'border-red-300 dark:border-red-700'}`}>
+            <CardContent className="py-6">
+              <div className="flex flex-wrap items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {data.netIncome >= 0 ? (
+                    <TrendingUp className="h-8 w-8 text-green-600" />
+                  ) : (
+                    <TrendingDown className="h-8 w-8 text-red-600" />
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Resultado del Periodo</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                      {data.netIncome >= 0 ? 'Utilidad' : 'Perdida'}
+                    </p>
+                  </div>
+                </div>
+                <p className={`text-3xl font-bold font-mono ${data.netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {formatCifra(Math.abs(data.netIncome))}
                 </p>
               </div>
-            </div>
-            <p className={`text-3xl font-bold font-mono ${data.netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCifra(Math.abs(data.netIncome))}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

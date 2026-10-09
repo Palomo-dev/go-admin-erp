@@ -116,6 +116,9 @@ interface SaldoCuenta {
  * sumados en la base (`fn_saldos_cuentas`). Antes se traían las líneas sin
  * paginar y PostgREST las cortaba en 1.000 filas: en cualquier organización con
  * más movimiento los informes salían truncados sin avisar (ADR-CC-012).
+ * La función corre como su dueño y resuelve la sucursal una sola vez: leerla
+ * como invocador recorría la RLS en cada línea, pasaba el tope de 8 s y el
+ * estado de resultados se quedaba en blanco.
  */
 async function saldosPorCuenta(
   organizationId: number,

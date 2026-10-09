@@ -11,6 +11,12 @@ export interface TaxCalculationItem {
   tax_rate?: number;
   tax_included?: boolean;
   tax_code?: string | null;
+  /**
+   * La tasa de la línea ya está decidida, también si es 0 (cuenta de mesa).
+   * Sin esto, una tasa 0 vuelve a los impuestos de la organización y el
+   * cobro le suma impuesto a un plato que la cuenta dejó exento.
+   */
+  tasaDecidida?: boolean;
 }
 
 export interface OrganizationTax {
@@ -57,6 +63,8 @@ export function calculateItemTaxes(
   // Si el item tiene su propio tax_rate, usarlo directamente
   const itemTaxRate = Number(item.tax_rate) || 0;
   const itemTaxIncluded = item.tax_included ?? taxIncluded;
+
+  if (item.tasaDecidida && itemTaxRate <= 0) return [];
 
   if (itemTaxRate > 0) {
     if (itemTaxIncluded) {
@@ -140,7 +148,6 @@ export function calculateCartTaxes(
     const lineTotal = item.quantity * item.unit_price - (item.discount_amount || 0);
     // Usar tax_included del item si está definido, sino el global
     const itemTaxIncluded = item.tax_included ?? taxIncluded;
-    const itemTaxRate = Number(item.tax_rate) || 0;
     const itemTaxes = calculateItemTaxes(item, appliedTaxes, organizationTaxes, itemTaxIncluded);
     
     let itemTaxAmount = 0;

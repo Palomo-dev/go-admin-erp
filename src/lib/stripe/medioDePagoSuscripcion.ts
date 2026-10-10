@@ -76,14 +76,20 @@ export function parametrosSetupIntent(
 }
 
 type ClienteConMedio = {
-  deleted?: boolean;
+  /** El cliente vivo trae `void`; el borrado, `true`. */
+  deleted?: boolean | void;
   invoice_settings?: { default_payment_method?: string | { id: string } | null } | null;
 };
+
+type ActualizarMedioDelCliente = (
+  id: string,
+  params: { invoice_settings: { default_payment_method: string } },
+) => Promise<unknown>;
 
 type StripeMedios = {
   customers: {
     retrieve: (id: string) => Promise<ClienteConMedio>;
-    update: (id: string, params: { invoice_settings: { default_payment_method: string } }) => Promise<unknown>;
+    update: ActualizarMedioDelCliente;
   };
   paymentMethods: {
     retrieve: (id: string) => Promise<{ customer: string | { id: string } | null }>;
@@ -126,7 +132,10 @@ export async function resolverMedioDeLaPrueba(
  * No vuelve a adjuntar una que ya es de este cliente: Stripe rechaza el segundo attach.
  */
 export async function asegurarMedioEnCliente(
-  stripe: Pick<StripeMedios, 'paymentMethods' | 'customers'>,
+  stripe: {
+    paymentMethods: StripeMedios['paymentMethods'];
+    customers: { update: ActualizarMedioDelCliente };
+  },
   customerId: string,
   paymentMethodId: string,
 ): Promise<void> {
@@ -146,10 +155,11 @@ export async function cerrarConfirmacionPendiente(
   stripe: Pick<StripeMedios, 'setupIntents'>,
   pending: string | { id: string; status?: string } | null | undefined,
 ): Promise<void> {
-  const id = !pending ? undefined : typeof pending === 'string' ? pending : pending.id;
+  if (pending == null) return;
+  const id = typeof pending === 'string' ? pending : pending.id;
   if (!id) return;
   const estado =
-    typeof pending === 'object' && pending.status
+    typeof pending !== 'string' && pending.status
       ? pending.status
       : (await stripe.setupIntents.retrieve(id)).status;
   if (!ESTADOS_POR_CERRAR.has(estado)) return;
@@ -158,7 +168,12 @@ export async function cerrarConfirmacionPendiente(
 
 /** Cliente y suscripción quedan con el mismo medio, y se cierra la confirmación colgada. */
 export async function fijarMedioEnSuscripcion(
-  stripe: StripeMedios,
+  stripe: {
+    customers: { update: ActualizarMedioDelCliente };
+    paymentMethods: StripeMedios['paymentMethods'];
+    subscriptions: StripeMedios['subscriptions'];
+    setupIntents: StripeMedios['setupIntents'];
+  },
   subscriptionId: string,
   paymentMethodId: string,
 ): Promise<void> {

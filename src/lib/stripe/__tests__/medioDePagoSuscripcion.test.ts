@@ -38,13 +38,15 @@ describe('parametrosSuscripcionEnPrueba', () => {
   });
 
   it('pasa el cupón solo cuando hay uno', () => {
-    expect(parametrosSuscripcionEnPrueba({
+    // El tipo público de Stripe ya no declara `coupon`; el API sigue aceptándolo.
+    const conCupon = parametrosSuscripcionEnPrueba({
       customerId: 'cus_1',
       priceId: 'price_1',
       trialDays: 15,
       couponId: 'cup_1',
       metadata: meta,
-    }).coupon).toBe('cup_1');
+    }) as { coupon?: string };
+    expect(conCupon.coupon).toBe('cup_1');
   });
 });
 

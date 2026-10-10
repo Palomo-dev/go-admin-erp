@@ -27,6 +27,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/server'
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit'
 import { ESTADO_PENDIENTE, ORIGEN_ALTA, esClienteDeAltaPendiente, recuperarCliente } from '@/lib/stripe/clienteDeAlta'
+import { parametrosSetupIntent } from '@/lib/stripe/medioDePagoSuscripcion'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,12 +68,9 @@ export async function POST(request: NextRequest) {
       metadata: { source: ORIGEN_ALTA, status: ESTADO_PENDIENTE },
     })
 
-    const setupIntent = await stripe.setupIntents.create({
-      customer: customer.id,
-      payment_method_types: ['card'],
-      usage: 'off_session', // Para cobros futuros
-      metadata: { source: ORIGEN_ALTA },
-    })
+    const setupIntent = await stripe.setupIntents.create(
+      parametrosSetupIntent(customer.id, { source: ORIGEN_ALTA }),
+    )
 
     return NextResponse.json({
       success: true,

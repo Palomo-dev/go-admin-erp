@@ -11,6 +11,14 @@
 
 import { requireStripe } from './server'
 import { periodoSuscripcion } from './periodoSuscripcion'
+import {
+  asegurarMedioEnCliente,
+  cerrarConfirmacionPendiente,
+  fijarMedioEnSuscripcion,
+  parametrosSetupIntent,
+  parametrosSuscripcionEnPrueba,
+  resolverMedioDeLaPrueba,
+} from './medioDePagoSuscripcion'
 import { createClient } from '@supabase/supabase-js'
 import { getEnterprisePricing } from '@/lib/services/pricingService'
 
@@ -21,7 +29,7 @@ export interface CreateSubscriptionData {
   useTrial: boolean // true = 15 días gratis, false = pagar inmediatamente
   customerEmail: string
   customerName?: string
-  paymentMethodId?: string // Requerido si useTrial = false
+  paymentMethodId?: string // Requerido si useTrial = false. En prueba, queda como medio de la suscripción.
   existingCustomerId?: string // Customer ID creado en el paso de método de pago
   enterpriseConfig?: {
     modulesCount: number
@@ -230,16 +238,20 @@ export async function createSubscription(
     let subscription: any
 
     if (data.useTrial) {
-      // CON TRIAL: días gratis, no requiere payment method inmediato
-      subscription = await requireStripe().subscriptions.create({
-        customer: customerId,
-        items: [{ price: priceId }],
-        trial_period_days: plan.trial_days || 15,
-        payment_behavior: 'default_incomplete',
-        payment_settings: {
-          save_default_payment_method: 'on_subscription',
-        },
-        ...(stripeCouponId ? { coupon: stripeCouponId } : {}),
+      // CON TRIAL: si ya hay tarjeta (el alta la confirmó), la suscripción nace
+      // con ese medio. default_incomplete solo sin tarjeta: con tarjeta, Stripe
+      // abre otra confirmación y el cobro del fin de prueba no sale solo.
+      const stripe = requireStripe()
+      const medioId = await resolverMedioDeLaPrueba(stripe, customerId, data.paymentMethodId)
+      if (medioId) {
+        await asegurarMedioEnCliente(stripe, customerId, medioId)
+      }
+      subscription = await stripe.subscriptions.create(parametrosSuscripcionEnPrueba({
+        customerId,
+        priceId,
+        trialDays: plan.trial_days || 15,
+        paymentMethodId: medioId,
+        couponId: stripeCouponId,
         metadata: {
           organizationId: data.organizationId.toString(),
           planCode: data.planCode,
@@ -247,7 +259,10 @@ export async function createSubscription(
           usedTrial: 'true',
           ...(data.couponCode ? { couponCode: data.couponCode } : {}),
         },
-      })
+      }))
+      if (medioId) {
+        await cerrarConfirmacionPendiente(stripe, subscription.pending_setup_intent)
+      }
 
       console.log('✅ Suscripción con trial creada:', subscription.id)
 
@@ -301,17 +316,8 @@ export async function createSubscription(
         throw new Error('Payment method es requerido para suscripciones sin trial')
       }
 
-      // Adjuntar payment method al customer
-      await requireStripe().paymentMethods.attach(data.paymentMethodId, {
-        customer: customerId,
-      })
-
-      // Establecer como default payment method
-      await requireStripe().customers.update(customerId, {
-        invoice_settings: {
-          default_payment_method: data.paymentMethodId,
-        },
-      })
+      // La tarjeta del alta ya viene adjunta: no se vuelve a adjuntar.
+      await asegurarMedioEnCliente(requireStripe(), customerId, data.paymentMethodId)
 
       // Crear suscripción sin trial
       subscription = await requireStripe().subscriptions.create({
@@ -549,17 +555,7 @@ export async function updateSubscriptionPaymentMethod(
   paymentMethodId: string
 ) {
   try {
-    const subscription = await requireStripe().subscriptions.retrieve(subscriptionId)
-    
-    await requireStripe().paymentMethods.attach(paymentMethodId, {
-      customer: subscription.customer as string,
-    })
-
-    await requireStripe().customers.update(subscription.customer as string, {
-      invoice_settings: {
-        default_payment_method: paymentMethodId,
-      },
-    })
+    await fijarMedioEnSuscripcion(requireStripe(), subscriptionId, paymentMethodId)
 
     console.log('✅ Payment method actualizado para suscripción:', subscriptionId)
     
@@ -798,10 +794,7 @@ export async function deletePaymentMethod(paymentMethodId: string) {
  */
 export async function createSetupIntent(customerId: string) {
   try {
-    const setupIntent = await requireStripe().setupIntents.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-    })
+    const setupIntent = await requireStripe().setupIntents.create(parametrosSetupIntent(customerId))
 
     return {
       success: true,

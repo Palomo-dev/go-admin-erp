@@ -74,7 +74,8 @@ export const SUCURSAL_INICIAL: SucursalAlta = {
   telefono: '',
 };
 
-export const PLAN_INICIAL: PlanAlta = { subscriptionPlan: 'pro', billingPeriod: 'monthly', skipTrial: false };
+/** Plan Pro mensual con «Pagar ahora» elegido. «Usar días gratis» sigue disponible. */
+export const PLAN_INICIAL: PlanAlta = { subscriptionPlan: 'pro', billingPeriod: 'monthly', skipTrial: true };
 
 /** Dígito de verificación del NIT (DIAN, módulo 11). */
 export function calcularDV(nit: string): string {

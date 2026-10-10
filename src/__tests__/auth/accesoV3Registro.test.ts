@@ -108,6 +108,8 @@ describe('alta de organización: datos', () => {
     const cuerpo = cuerpoRpcAlta(d) as { plan_codigo: string; periodo: string; organizacion: Record<string, unknown>; sucursal: Record<string, unknown> };
     expect(cuerpo.plan_codigo).toBe('business');
     expect(cuerpo.periodo).toBe('yearly');
+    expect(d.sinPrueba).toBe(true);
+    expect(cuerpo).toMatchObject({ sin_prueba: true });
     expect(cuerpo.organizacion).toMatchObject({ nombre: 'Mi empresa S.A.S.', razon_social: 'Mi empresa S.A.S.', pais_codigo: 'COL', ciudad: 'Medellín' });
     expect(cuerpo.sucursal).toMatchObject({ pais_codigo: 'COL', ciudad: 'Medellín' });
     expect(d.referido).toBe('VEND-001');

@@ -52,7 +52,7 @@ export default function SubscriptionStep({
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
     formData.billingPeriod || 'monthly'
   );
-  const [skipTrial, setSkipTrial] = useState(formData.skipTrial || false);
+  const [skipTrial, setSkipTrial] = useState(formData.skipTrial ?? true);
   const [trialDays, setTrialDays] = useState<number>(15);
 
   // Estado de cupón

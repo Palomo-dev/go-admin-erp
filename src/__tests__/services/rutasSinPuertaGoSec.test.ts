@@ -389,7 +389,11 @@ describe('/api/stripe/setup-intent', () => {
     expect(res.status).toBe(200);
     expect(stripe.customers.list).not.toHaveBeenCalled();
     expect(stripe.customers.create).toHaveBeenCalledWith(expect.objectContaining({ metadata: { source: 'signup_flow', status: 'pending_verification' } }));
-    expect(stripe.setupIntents.create).toHaveBeenCalledWith(expect.objectContaining({ customer: 'cus_nuevo1234567' }));
+    expect(stripe.setupIntents.create).toHaveBeenCalledWith(expect.objectContaining({
+      customer: 'cus_nuevo1234567',
+      usage: 'off_session',
+      metadata: { source: 'signup_flow' },
+    }));
   });
 
   it('GET no toca un SetupIntent que no es del alta ni un cliente ya reclamado', async () => {

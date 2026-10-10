@@ -6,7 +6,7 @@
  * Datos inventados (pesos colombianos, sin centavos).
  */
 
-import { baseDelCobro, cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
+import { baseDelCobro, cambioDelCobro, cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
 
 const CON_IVA = { subtotal: 20000, totalTaxAmount: 3800, finalTotal: 23800 };
 const SIN_CALCULO = { subtotal: 0, totalTaxAmount: 0, finalTotal: 0 };
@@ -38,9 +38,33 @@ describe('L41 · total, falta, cambio y «se puede completar»', () => {
     expect(c).toMatchObject({ remaining: 0, change: 0, canComplete: true });
   });
 
-  it('pago de más: el excedente es cambio, nunca «falta» negativo', () => {
-    const c = cuentasDelCobro({ calculatedTotals: CON_IVA, cart: { total: 20000, tax_total: 0 }, tipAmount: 0, shippingFee: 0, totalPaid: 50000 });
+  it('pago de más en efectivo: el excedente es cambio, nunca «falta» negativo', () => {
+    const c = cuentasDelCobro({
+      calculatedTotals: CON_IVA,
+      cart: { total: 20000, tax_total: 0 },
+      tipAmount: 0,
+      shippingFee: 0,
+      totalPaid: 50000,
+      payments: [{ method: 'cash', amount: 50000 }],
+    });
     expect(c).toMatchObject({ remaining: 0, change: 26200, canComplete: true });
+  });
+
+  it('pago de más con tarjeta: no hay cambio', () => {
+    const c = cuentasDelCobro({
+      calculatedTotals: CON_IVA,
+      cart: { total: 20000, tax_total: 0 },
+      tipAmount: 0,
+      shippingFee: 0,
+      totalPaid: 50000,
+      payments: [{ method: 'card', amount: 50000 }],
+    });
+    expect(c).toMatchObject({ remaining: 0, change: 0, canComplete: true });
+    expect(cambioDelCobro(23800, [{ method: 'card', amount: 50000 }])).toBe(0);
+    expect(cambioDelCobro(23800, [
+      { method: 'card', amount: 20000 },
+      { method: 'cash', amount: 10000 },
+    ])).toBe(6200);
   });
 
   it('sin abono parcial (E-34): un peso menos que el total no deja completar la venta', () => {

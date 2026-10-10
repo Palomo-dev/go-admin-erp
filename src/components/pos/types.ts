@@ -127,6 +127,11 @@ export interface CartItem {
   tax_rate?: number;
   tax_excluded?: boolean;
   tax_included?: boolean;
+  /**
+   * La tasa de esta línea ya se cobró en la cuenta (mesa), aunque sea 0.
+   * El cobro no vuelve a buscar el impuesto de la organización.
+   */
+  tasaDecidida?: boolean;
   /** Nota para COCINA (comanda, KDS, ticket de cocina). Nunca sale al cliente. */
   notes?: string;
   /** Nota para el CLIENTE: ticket, recibo y factura electrónica. */

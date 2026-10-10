@@ -9,8 +9,15 @@ export interface TaxCalculationItem {
   product_id: number;
   discount_amount?: number;
   tax_rate?: number;
-  tax_included?: boolean;
+  tax_included?: boolean | null;
+  tax_excluded?: boolean | null;
   tax_code?: string | null;
+  /**
+   * La tasa de la línea ya está decidida, también si es 0 (cuenta de mesa).
+   * Sin esto, una tasa 0 vuelve a los impuestos de la organización y el
+   * cobro le suma impuesto a un plato que la cuenta dejó exento.
+   */
+  tasaDecidida?: boolean;
 }
 
 export interface OrganizationTax {
@@ -37,11 +44,27 @@ export interface TaxCalculationResult {
 }
 
 /**
+ * Si el impuesto de esta línea ya va dentro del precio.
+ * Lo que la línea dice manda: un producto que ya trae el impuesto no lo
+ * vuelve a sumar porque el cajero apagó la casilla, ni se lo saca si la
+ * línea lo tiene encima y el cajero la prendió. La casilla solo llena las
+ * líneas que no dicen nada. Una línea excluida nunca lo trae incluido.
+ */
+export function impuestoIncluidoDeLinea(
+  item: { tax_included?: boolean | null; tax_excluded?: boolean | null },
+  casilla = false,
+): boolean {
+  if (item.tax_excluded) return false;
+  if (item.tax_included != null) return item.tax_included === true;
+  return casilla;
+}
+
+/**
  * Calcula los impuestos para un ítem individual
  * @param item - El ítem a calcular
  * @param appliedTaxes - Los impuestos aplicados (por ID)
  * @param organizationTaxes - Lista de impuestos disponibles
- * @param taxIncluded - Si los impuestos están incluidos en el precio
+ * @param taxIncluded - Casilla del cobro, solo para líneas que no dicen nada
  * @returns Resultados de cálculo de impuestos
  */
 export function calculateItemTaxes(
@@ -56,7 +79,9 @@ export function calculateItemTaxes(
 
   // Si el item tiene su propio tax_rate, usarlo directamente
   const itemTaxRate = Number(item.tax_rate) || 0;
-  const itemTaxIncluded = item.tax_included ?? taxIncluded;
+  const itemTaxIncluded = impuestoIncluidoDeLinea(item, taxIncluded);
+
+  if (item.tasaDecidida && itemTaxRate <= 0) return [];
 
   if (itemTaxRate > 0) {
     if (itemTaxIncluded) {
@@ -138,9 +163,7 @@ export function calculateCartTaxes(
 
   items.forEach(item => {
     const lineTotal = item.quantity * item.unit_price - (item.discount_amount || 0);
-    // Usar tax_included del item si está definido, sino el global
-    const itemTaxIncluded = item.tax_included ?? taxIncluded;
-    const itemTaxRate = Number(item.tax_rate) || 0;
+    const itemTaxIncluded = impuestoIncluidoDeLinea(item, taxIncluded);
     const itemTaxes = calculateItemTaxes(item, appliedTaxes, organizationTaxes, itemTaxIncluded);
     
     let itemTaxAmount = 0;

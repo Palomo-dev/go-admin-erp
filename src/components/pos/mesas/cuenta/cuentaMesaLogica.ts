@@ -207,7 +207,10 @@ export function aLineaMesa(
     total: num(l.total),
     impuesto: num(l.tax_amount),
     tasaImpuesto: num(l.tax_rate),
-    impuestoIncluido: l.tax_included !== false,
+    // Null no es «incluido»: la base trata null como impuesto encima
+    // (`fn_pos_linea_totales`). `!== false` marcaba incluida una línea sin
+    // modo y el cobro sacaba un impuesto que la cuenta ya había sumado.
+    impuestoIncluido: l.tax_included === true,
     descuento: num(l.discount_amount),
     comensal: n.guest_number != null && num(n.guest_number) > 0 ? num(n.guest_number) : null,
     notaCocina: texto(n.extra),
@@ -315,6 +318,30 @@ export function totalesCuenta(lineas: readonly LineaMesa[]): TotalesCuenta {
     abonado: r(abonado),
     saldo: r(Math.max(0, total - abonado)),
   };
+}
+
+/**
+ * Líneas de la cuenta listas para el cobro del POS.
+ * Se conserva la tasa de cada plato. El precio solo trae el impuesto cuando
+ * la línea lo dice (`true`). Apagar la tasa o marcar el carrito como
+ * «incluido» porque `tax_amount > 0` cobraba los precios (43.000) de una
+ * cuenta que ya sumaba el impuesto (46.120), y desmarcar la casilla no
+ * devolvía la diferencia.
+ */
+export function prepararLineasCobroMesa<T extends { tax_included?: boolean | null }>(
+  items: readonly T[],
+): Array<T & { tax_included: boolean; tasaDecidida: true }> {
+  return items.map((item) => ({
+    ...item,
+    tax_included: item.tax_included === true,
+    tasaDecidida: true as const,
+  }));
+}
+
+/** El carrito del cobro dice «impuestos incluidos» solo si cada línea ya lo trae en el precio. */
+export function carritoMesaConImpuestoIncluido(items: readonly { tax_included?: boolean | null }[]): boolean {
+  if (items.length === 0) return false;
+  return items.every((item) => item.tax_included === true);
 }
 
 /** Minutos enteros entre un instante y ahora (nunca negativos). */

@@ -17,7 +17,8 @@ import { toast } from 'sonner';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
 import { cn } from '@/utils/Utils';
 import { 
-  calculateCartTaxes, 
+  calculateCartTaxes,
+  impuestoIncluidoDeLinea,
   type OrganizationTax as TaxUtilOrganizationTax,
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
@@ -45,6 +46,15 @@ import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 // Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
+import {
+  ajusteAlAbrirCobro,
+  casillaInicialImpuestosIncluidos,
+  casillaSiElCajeroNoLaMovio,
+  desgloseQueCuadraConElTotal,
+  firmaAperturaCobro,
+  TOTALES_COBRO_VACIOS,
+  totalesVisiblesDelCobro,
+} from '@/lib/pos/venta/cobro/impuestosCobro';
 import { camposCantidadImpresa, esMedido } from '@/lib/pos/peso/modoVenta';
 import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
 import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
@@ -160,7 +170,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // Estados para manejo de impuestos
   const [organizationTaxes, setOrganizationTaxes] = useState<TaxUtilOrganizationTax[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
-  const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
+  const [taxIncluded, setTaxIncluded] = useState(() => casillaInicialImpuestosIncluidos(cart.items));
+  // El cajero movió la casilla en este cobro: a partir de ahí manda ella,
+  // no el flag que haya quedado en la línea o en el carrito.
+  const [casillaMovida, setCasillaMovida] = useState(false);
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotal: 0,
     totalTaxAmount: 0,
@@ -168,6 +181,31 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   });
   // Desglose de impuestos por nombre (IVA, ICA, etc.) para el recibo
   const [taxBreakdown, setTaxBreakdown] = useState<{ name: string; amount: number }[]>([]);
+  // El diálogo sigue montado al cerrar (la página lo deja con el carrito).
+  // Ajustar el estado en el render, antes de pintar, suelta la casilla y el
+  // total de la venta anterior. Un efecto llegaría tarde: el primer cuadro
+  // seguiría marcado y el total no cuadraría con el carrito.
+  const firmaApertura = firmaAperturaCobro(open, cart.id);
+  const [firmaAperturaVista, setFirmaAperturaVista] = useState(firmaApertura);
+  if (firmaAperturaVista !== firmaApertura) {
+    setFirmaAperturaVista(firmaApertura);
+    if (open) {
+      const ajuste = ajusteAlAbrirCobro(cart.items);
+      setTaxIncluded(ajuste.taxIncluded);
+      setCasillaMovida(ajuste.casillaMovida);
+      setCalculatedTotals(ajuste.calculatedTotals);
+      setTaxBreakdown([]);
+    }
+  } else if (open) {
+    const casillaDeLineas = casillaSiElCajeroNoLaMovio(taxIncluded, casillaMovida, cart.items);
+    if (casillaDeLineas !== taxIncluded) {
+      setTaxIncluded(casillaDeLineas);
+      // El cálculo que había era del otro modo. Hasta que llegue el nuevo,
+      // el total visible es el del carrito (ya recalculado con el interruptor).
+      setCalculatedTotals(TOTALES_COBRO_VACIOS);
+      setTaxBreakdown([]);
+    }
+  }
   
   // Estados para propina
   const [tipAmount, setTipAmount] = useState(0);
@@ -278,7 +316,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // líneas del fuente; son la misma cuenta que devuelve cuentasDelCobro.
   // Con líneas por peso o medida el total a cobrar se redondea a la moneda (la línea guarda el importe exacto).
   const redondeoPeso = currency && cart.items.some((i) => esMedido(i.product)) ? currency.decimals : null;
-  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo: redondeoPeso });
+  // Cálculo de esta apertura, o el total del carrito si ese cálculo aún está en cero.
+  const totalesCobro = totalesVisiblesDelCobro(calculatedTotals, cart);
+  const cuentasCobro = cuentasDelCobro({ calculatedTotals: totalesCobro, cart, tipAmount, shippingFee, totalPaid, payments, decimalesRedondeo: redondeoPeso });
   const baseTotal = cuentasCobro.baseTotal;
   const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);
@@ -474,8 +514,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       loadPaymentData();
       loadTaxData();
       loadServers();
-      // Sincronizar impuestos incluidos con el carrito
-      setTaxIncluded(cart.tax_included ?? false);
+      // La casilla y los totales de la venta anterior se sueltan al pintar
+      // (firmaApertura). No se repite aquí: un segundo reinicio pisaba la
+      // casilla que el cajero acababa de mover en esta misma apertura.
       // Agregar primer método de pago por defecto
       if (payments.length === 0) {
         addPayment();
@@ -659,10 +700,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     if (flete !== null) setShippingFee(flete);
   }, [selectedRateId, shippingRates]);
 
-  // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos
+  // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos.
+  // El cálculo es async: si la casilla cambia a mitad, el resultado viejo no pisa al nuevo.
   useEffect(() => {
-    calculateCartTotals();
-  }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded]);
+    let vivo = true;
+    void calculateCartTotals(() => vivo);
+    return () => { vivo = false; };
+  }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded, casillaMovida]);
+
+  // La entrada que el modal pre-rellenó sigue al total. Si no, al mover
+  // «Impuestos incluidos» el total cambia y el monto a cobrar se queda en
+  // la cifra anterior (el cajero no la tecleó).
+  useEffect(() => {
+    if (!open || showReceipt) return;
+    setPayments((prev) => applyTipToPrefilledPayment(prev, touchedIds, cartTotal));
+  }, [open, showReceipt, cartTotal, touchedIds]);
 
   const loadPaymentData = async () => {
     try {
@@ -971,9 +1023,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
   
-  const calculateCartTotals = async () => {
+  const calculateCartTotals = async (vigente: () => boolean = () => true) => {
     if (!cart.items.length) {
-      setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 });
+      if (vigente()) setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 });
       return;
     }
 
@@ -987,13 +1039,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       try {
         const productTaxes = await POSService.getProductTaxes(item.product_id);
         
+        const tasaDecidida = item.tasaDecidida === true;
         const taxItem: TaxCalculationItem = {
           quantity: item.quantity,
           unit_price: item.unit_price,
           product_id: item.product_id,
           discount_amount: item.discount_amount || 0,
-          tax_rate: item.tax_rate || undefined,
-          tax_included: item.tax_excluded ? false : (item.tax_included ?? cart.tax_included ?? undefined)
+          tax_rate: tasaDecidida ? (Number(item.tax_rate) || 0) : (item.tax_rate || undefined),
+          tax_included: item.tax_included,
+          tax_excluded: item.tax_excluded,
+          tasaDecidida,
         };
         
         let result;
@@ -1055,6 +1110,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
     }
     
+    if (!vigente()) return;
     // Actualizar estado con totales calculados
     setCalculatedTotals({
       subtotal: Math.round(combinedSubtotal * 100) / 100,
@@ -1171,15 +1227,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       const updatedItems = cart.items.map(item => {
         // Calcular proporción de impuestos para este item
         const itemSubtotal = item.quantity * item.unit_price;
-        const taxProportion = calculatedTotals.subtotal > 0 
-          ? itemSubtotal / calculatedTotals.subtotal 
+        const taxProportion = totalesCobro.subtotal > 0 
+          ? itemSubtotal / totalesCobro.subtotal 
           : 0;
-        const itemTaxAmount = calculatedTotals.totalTaxAmount * taxProportion;
+        const itemTaxAmount = totalesCobro.totalTaxAmount * taxProportion;
         const itemTaxRate = itemSubtotal > 0 ? (itemTaxAmount / itemSubtotal) * 100 : 0;
+        const incluido = impuestoIncluidoDeLinea(item, taxIncluded);
 
         return {
           ...item,
-          total: taxIncluded ? itemSubtotal : itemSubtotal + itemTaxAmount,
+          tax_included: incluido,
+          total: incluido ? itemSubtotal : itemSubtotal + itemTaxAmount,
           tax_amount: itemTaxAmount,
           tax_rate: itemTaxRate
         };
@@ -1188,10 +1246,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       const updatedCart: Cart = {
         ...cart,
         items: updatedItems,
-        subtotal: calculatedTotals.subtotal,
-        tax_total: calculatedTotals.totalTaxAmount,
-        tax_amount: calculatedTotals.totalTaxAmount, // Alias for compatibility
-        total: calculatedTotals.finalTotal
+        subtotal: totalesCobro.subtotal,
+        tax_total: totalesCobro.totalTaxAmount,
+        tax_amount: totalesCobro.totalTaxAmount, // Alias for compatibility
+        total: totalesCobro.finalTotal
       };
 
       if (!intentoCobroRef.current) {
@@ -1936,10 +1994,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   if (!open) return null;
   const conRecibo = showReceipt && !!completedSale;
-  const impuestosCobro = taxBreakdown.length > 0
-    ? taxBreakdown.map((b) => ({ nombre: b.name, tarifa: organizationTaxes.find((o) => o.name === b.name)?.rate ?? null, importe: b.amount }))
-    : (calculatedTotals.totalTaxAmount || cart.tax_total) > 0
-      ? [{ nombre: tPos('resumen.impuestos'), importe: calculatedTotals.totalTaxAmount || cart.tax_total }]
+  const desglose = desgloseQueCuadraConElTotal(taxBreakdown, totalesCobro.totalTaxAmount);
+  const impuestosCobro = desglose
+    ? desglose.map((b) => ({ nombre: b.name, tarifa: organizationTaxes.find((o) => o.name === b.name)?.rate ?? null, importe: b.amount }))
+    : (totalesCobro.totalTaxAmount || cart.tax_total) > 0
+      ? [{ nombre: tPos('resumen.impuestos'), importe: totalesCobro.totalTaxAmount || cart.tax_total }]
       : [];
   return (
     <>
@@ -1956,7 +2015,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           totalAPagar={cartTotal}
           lineas={cart.items.map((item) => ({ id: item.id, nombre: item.product?.name ?? '', cantidad: item.quantity, total: item.total }))}
           descuentos={cart.discount_total}
-          subtotal={calculatedTotals.subtotal || cart.subtotal}
+          subtotal={totalesCobro.subtotal || cart.subtotal}
           impuestosIncluidos={taxIncluded}
           impuestos={impuestosCobro}
           propina={tipAmount}
@@ -2110,9 +2169,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 })}
               </ul>
 
-              {/* C4 «Impuestos incluidos en precios»: misma semántica de siempre (Figma `247:70185`). */}
+              {/* C4 «Impuestos incluidos en precios» (Figma `247:70185`).
+                  La casilla arranca como las líneas y, si el cajero la mueve, manda ella. */}
               <div className="flex w-fit items-center gap-2 px-1 py-1 text-sm text-fg-secondary">
-                <Checkbox id="cobro-impuestos-incluidos" checked={taxIncluded} onCheckedChange={(v) => setTaxIncluded(v === true)} />
+                <Checkbox
+                  id="cobro-impuestos-incluidos"
+                  checked={taxIncluded}
+                  onCheckedChange={(v) => {
+                    setCasillaMovida(true);
+                    setTaxIncluded(v === true);
+                  }}
+                />
                 <label htmlFor="cobro-impuestos-incluidos" className="flex cursor-pointer items-center gap-2 hover:text-fg">
                   <Percent aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
                   {tPos('pagos.impuestosIncluidos')}

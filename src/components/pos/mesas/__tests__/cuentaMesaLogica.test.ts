@@ -1,5 +1,9 @@
+import fs from 'fs';
+import path from 'path';
 import {
+  aLineaMesa,
   agruparCuenta,
+  carritoMesaConImpuestoIncluido,
   escribirNotaMesa,
   estadoCocinaDeItems,
   hayNotaMesa,
@@ -9,11 +13,13 @@ import {
   partesIguales,
   partesPorComensal,
   partesPorProductos,
+  prepararLineasCobroMesa,
   resumenPartes,
   textoDuracion,
   totalesCuenta,
   unidadesSinAsignar,
   unirPendientes,
+  type LineaGuardadaMesa,
   type LineaMesa,
   type ParteCobro,
 } from '../cuenta/cuentaMesaLogica';
@@ -168,6 +174,48 @@ describe('cuenta dividida', () => {
     const unidas = unirPendientes(partes, 'Resto');
     expect(unidas).toHaveLength(2);
     expect(unidas[1].importe).toBe(105500);
+  });
+});
+
+describe('cobro de la cuenta: el impuesto sumado aparte no se marca como incluido', () => {
+  function guardada(taxIncluded: boolean | null): LineaGuardadaMesa {
+    return {
+      id: 'l1',
+      sale_id: 'venta',
+      product_id: 1,
+      quantity: 1,
+      unit_price: 39000,
+      total: 42120,
+      tax_amount: 3120,
+      tax_rate: 8,
+      tax_included: taxIncluded,
+    };
+  }
+
+  it('null y false no traen el impuesto dentro del precio; true sí', () => {
+    expect(aLineaMesa(guardada(null), []).impuestoIncluido).toBe(false);
+    expect(aLineaMesa(guardada(false), []).impuestoIncluido).toBe(false);
+    expect(aLineaMesa(guardada(true), []).impuestoIncluido).toBe(true);
+  });
+
+  it('conserva la tasa, decide el 0 y no prende el carrito solo porque hay impuesto', () => {
+    const lineas = prepararLineasCobroMesa([
+      { tax_rate: 8, tax_amount: 3120, tax_included: false },
+      { tax_rate: 0, tax_amount: 0, tax_included: null },
+    ]);
+    expect(lineas[0]).toMatchObject({ tax_rate: 8, tax_included: false, tasaDecidida: true });
+    expect(lineas[1]).toMatchObject({ tax_rate: 0, tax_included: false, tasaDecidida: true });
+    expect(carritoMesaConImpuestoIncluido(lineas)).toBe(false);
+    expect(carritoMesaConImpuestoIncluido([{ tax_included: true }, { tax_included: true }])).toBe(true);
+  });
+
+  it('la pantalla de la mesa no apaga la tasa ni marca incluido por tener impuesto', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src/app/app/pos/mesas/[id]/page.tsx'), 'utf8');
+    expect(src).toContain('prepararLineasCobroMesa(lineasSinPagarComoCarrito())');
+    expect(src).toContain('tax_included: carritoMesaConImpuestoIncluido(items)');
+    expect(src).toContain('tasaDecidida: true');
+    expect(src).not.toContain('tax_included: undefined');
+    expect(src).not.toContain('items.some((i) => (i.tax_amount ?? 0) > 0)');
   });
 });
 

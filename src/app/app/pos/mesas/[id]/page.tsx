@@ -48,6 +48,8 @@ import {
   mesaAbandonada,
   minutosDesde,
   textoDuracion,
+  carritoMesaConImpuestoIncluido,
+  prepararLineasCobroMesa,
   totalesCuenta,
   unirPendientes,
   type LineaMesa,
@@ -689,7 +691,10 @@ export default function MesaCuentaPage() {
           total: importe,
           tax_rate: 0,
           tax_amount: 0,
+          // El importe ya trae el impuesto. La tasa queda decidida en 0 para
+          // que apagar la casilla no se lo sume otra vez.
           tax_included: true,
+          tasaDecidida: true,
           discount_amount: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -710,7 +715,9 @@ export default function MesaCuentaPage() {
     // Una parte (por monto) o el saldo tras un abono: línea virtual por el importe.
     if (cobro.parte) return virtual(cobro.parte.importe, t('partes.lineaCobro', { parte: cobro.parte.comensal ? t('partes.comensal', { n: cobro.parte.comensal }) : t('partes.parte', { n: cobro.parte.nombre }), mesa: mesaNombre }));
     if (totales.abonado > 0) return virtual(totales.saldo, t('partes.saldo', { mesa: mesaNombre }));
-    const items = lineasSinPagarComoCarrito().map((i) => ({ ...i, tax_rate: 0, tax_included: undefined }));
+    // La cuenta entera: cada plato conserva su tasa y si el impuesto va encima.
+    // No se apaga la tasa ni se marca «incluido» solo porque hay impuesto.
+    const items = prepararLineasCobroMesa(lineasSinPagarComoCarrito());
     return {
       id: sesion.sale_id,
       organization_id: sesion.organization_id,
@@ -723,7 +730,7 @@ export default function MesaCuentaPage() {
       subtotal: totales.subtotal,
       tax_amount: totales.impuestos.reduce((s, i) => s + i.importe, 0),
       tax_total: totales.impuestos.reduce((s, i) => s + i.importe, 0),
-      tax_included: items.some((i) => (i.tax_amount ?? 0) > 0),
+      tax_included: carritoMesaConImpuestoIncluido(items),
       discount_amount: totales.descuento,
       discount_total: totales.descuento,
       created_at: sesion.opened_at,

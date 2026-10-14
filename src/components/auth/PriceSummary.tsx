@@ -82,7 +82,7 @@ export default function PriceSummary({
 
       <div className="space-y-1.5">
         <div className="flex justify-between items-center text-xs sm:text-sm">
-          <span className="text-gray-600">Plan {planName} ({periodLabelShort})</span>
+          <span className="text-gray-600">{planName} ({periodLabelShort})</span>
           <span className="font-medium text-gray-900">${planPrice.toFixed(2)} {periodLabel}</span>
         </div>
 

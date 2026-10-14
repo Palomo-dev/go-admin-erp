@@ -15,7 +15,7 @@ import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import SubscriptionStep from '@/components/auth/SubscriptionStep';
-import PaymentMethodStep from '@/components/auth/PaymentMethodStep';
+import PaymentMethodStep, { type TarjetaConfirmada } from '@/components/auth/PaymentMethodStep';
 import type { CouponData } from '@/components/auth/PriceSummary';
 import { AvisoAcceso } from '@/components/kit/acceso';
 import { crearOrganizacionInicial, type OrganizacionCreada } from '@/lib/services/altaOrganizacionService';
@@ -47,6 +47,7 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
   const [plan, setPlan] = React.useState<PlanAlta & { validatedCoupon?: CouponData | null }>(PLAN_INICIAL);
   const [creando, setCreando] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const altaEnCurso = React.useRef(false);
 
   React.useEffect(() => {
     if (correo) setOrg((o) => (o.correo ? o : { ...o, correo }));
@@ -58,17 +59,25 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const finalizar = async () => {
-    if (creando) return;
+  const finalizar = async (tarjeta?: TarjetaConfirmada) => {
+    if (altaEnCurso.current) return;
+    altaEnCurso.current = true;
     setCreando(true);
     setError(null);
+    const planConTarjeta: PlanAlta = tarjeta
+      ? {
+          ...plan,
+          stripeCustomerId: tarjeta.customerId ?? plan.stripeCustomerId,
+          stripePaymentMethodId: tarjeta.paymentMethodId,
+        }
+      : plan;
     try {
       const senales = senalesDelNavegador();
       const pais = org.ubicacion.paisCodigo;
       const zonaHoraria = paisDesdeNavegador([pais], senales) === pais ? senales.zonaHoraria ?? null : null;
       const creada = await crearOrganizacionInicial(
         supabase,
-        datosParaAlta(org, suc, plan, { zonaHoraria, referido, nombreCliente: `${nombre} ${apellido}`.trim() }),
+        datosParaAlta(org, suc, planConTarjeta, { zonaHoraria, referido, nombreCliente: `${nombre} ${apellido}`.trim() }),
       );
       guardarOrganizacionActiva({ id: creada.id, name: creada.nombre, logo_url: org.logoUrl ?? undefined });
       onCreada(creada);
@@ -76,6 +85,7 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
       console.error('[alta] No se pudo crear la organización:', e);
       const m = e instanceof Error ? e.message : '';
       setError(/subdomain|subdominio|duplicate key/i.test(m) ? t('errorSubdominio') : t('errorCrear'));
+      altaEnCurso.current = false;
       setCreando(false);
     }
   };
@@ -122,8 +132,8 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
             validatedCoupon: plan.validatedCoupon,
           }}
           updateFormData={(d: Partial<PlanAlta>) => setPlan((p) => ({ ...p, ...d }))}
-          onNext={finalizar}
-          onSkip={finalizar}
+          onNext={(tarjeta) => { void finalizar(tarjeta); }}
+          onSkip={() => { void finalizar(); }}
           onBack={() => ir(3)}
           loading={creando}
         />

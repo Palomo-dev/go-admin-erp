@@ -16,6 +16,12 @@ import type { CouponData } from './PriceSummary';
 // Cargar Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
+/** Tarjeta ya confirmada en Stripe, para cerrar el alta sin depender del estado del padre. */
+export interface TarjetaConfirmada {
+  customerId: string | null;
+  paymentMethodId: string;
+}
+
 interface PaymentMethodStepProps {
   formData: {
     email: string;
@@ -27,7 +33,7 @@ interface PaymentMethodStepProps {
     validatedCoupon?: CouponData | null;
   };
   updateFormData: (data: any) => void;
-  onNext: () => void;
+  onNext: (tarjeta?: TarjetaConfirmada) => void;
   onBack: () => void;
   onSkip: () => void;
   loading: boolean;
@@ -151,14 +157,20 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
         const verifyResponse = await fetch(`/api/stripe/setup-intent?setupIntentId=${setupIntent.id}`);
         const verifyData = await verifyResponse.json();
 
-        if (verifyData.success && verifyData.paymentMethod) {
+        if (verifyData.success && verifyData.paymentMethod?.id) {
+          const paymentMethodId = String(verifyData.paymentMethod.id);
           setVerifiedCard(verifyData.paymentMethod);
           setPaymentVerified(true);
-          // Guardar el ID del método de pago en formData
-          updateFormData({ 
-            stripePaymentMethodId: verifyData.paymentMethod.id,
+          updateFormData({
+            stripePaymentMethodId: paymentMethodId,
             stripeCustomerId: customerId,
           });
+          // «Pagar ahora» cobra al terminar el alta. El botón de seguir no se
+          // puede quedar como único camino: en móvil el flex lo escondía y la
+          // organización no se creaba, así que la tarjeta no quedaba en ningún lado.
+          if (formData.skipTrial === true) {
+            onNext({ customerId, paymentMethodId });
+          }
         }
       }
     } catch (err: any) {
@@ -170,7 +182,8 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
   };
 
   const handleContinue = () => {
-    onNext();
+    const paymentMethodId = verifiedCard?.id ? String(verifiedCard.id) : undefined;
+    onNext(paymentMethodId ? { customerId, paymentMethodId } : undefined);
   };
 
   const isPaidPlan = formData.subscriptionPlan !== 'free';
@@ -296,35 +309,36 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
         </div>
       </div>
 
-      {/* Botones de navegación */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t border-gray-100">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={loading || isProcessing}
-          className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-        >
-          {t('previous')}
-        </button>
-        
-        <button
-          type="button"
-          onClick={onSkip}
-          disabled={loading || isProcessing || isPayNow}
-          className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {t('skipForNow')}
-        </button>
-
+      {/* Sin flex-1: en una columna, basis 0% dejaba en altura cero todo
+          botón salvo el primero y en el celular solo se veía «Anterior». */}
+      <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:gap-3">
         {paymentVerified && (
           <button
             type="button"
             onClick={handleContinue}
             disabled={loading}
-            className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center justify-center"
+            className="inline-flex w-full shrink-0 items-center justify-center rounded-md bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 sm:w-auto"
           >
             {tc('continue')}
-            <ArrowRightIcon className="w-4 h-4 ml-1" />
+            <ArrowRightIcon className="ml-1 h-4 w-4" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading || isProcessing}
+          className="w-full shrink-0 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 sm:w-auto"
+        >
+          {t('previous')}
+        </button>
+        {!isPayNow && (
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={loading || isProcessing}
+            className="w-full shrink-0 rounded-md border border-gray-200 bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+          >
+            {t('skipForNow')}
           </button>
         )}
       </div>

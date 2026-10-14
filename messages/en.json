@@ -237,6 +237,7 @@
         "verifyOnly": "We only verify that the card is valid. No charges will be made.",
         "verifying": "Verifying...",
         "verifyCard": "Verify Card",
+        "payNow": "Pay now",
         "securePayment": "Secure payment with Stripe",
         "securePaymentDescription": "Your data is protected with bank-level encryption.",
         "previous": "Previous",
@@ -29213,7 +29214,7 @@
       "planDescripcion": "Start with the free trial; change plans whenever you want.",
       "pasoPlan": "Plan",
       "pagoTitulo": "Payment method",
-      "pagoDescripcion": "Save a card for when the trial ends, or do it later.",
+      "pagoDescripcion": "Confirm the card. If you chose to pay now, the charge happens when you finish; if you chose the free days, the card is saved.",
       "pasoPago": "Payment method"
     },
     "ubicacion": {

@@ -237,6 +237,7 @@
         "verifyOnly": "Solo verificamos que la tarjeta sea válida. No se realizará ningún cargo.",
         "verifying": "Verificando...",
         "verifyCard": "Verificar Tarjeta",
+        "payNow": "Pagar ahora",
         "securePayment": "Pago seguro con Stripe",
         "securePaymentDescription": "Tus datos están protegidos con encriptación de nivel bancario.",
         "previous": "Anterior",
@@ -29213,7 +29214,7 @@
       "planDescripcion": "Empieza con la prueba gratis; cambias de plan cuando quieras.",
       "pasoPlan": "Plan",
       "pagoTitulo": "Método de pago",
-      "pagoDescripcion": "Guarda una tarjeta para cuando termine la prueba, o hazlo después.",
+      "pagoDescripcion": "Confirma la tarjeta. Si elegiste pagar ahora, el cobro se hace al terminar; si elegiste los días gratis, queda guardada.",
       "pasoPago": "Método de pago"
     },
     "ubicacion": {

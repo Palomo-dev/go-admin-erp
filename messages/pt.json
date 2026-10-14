@@ -237,6 +237,7 @@
         "verifyOnly": "Apenas verificamos que o cartão é válido. Nenhuma cobrança será feita.",
         "verifying": "Verificando...",
         "verifyCard": "Verificar Cartão",
+        "payNow": "Pagar agora",
         "securePayment": "Pagamento seguro com Stripe",
         "securePaymentDescription": "Seus dados estão protegidos com criptografia de nível bancário.",
         "previous": "Anterior",
@@ -25012,7 +25013,7 @@
       "planDescripcion": "Comece com o teste grátis; mude de plano quando quiser.",
       "pasoPlan": "Plano",
       "pagoTitulo": "Forma de pagamento",
-      "pagoDescripcion": "Salve um cartão para quando o teste terminar, ou faça isso depois.",
+      "pagoDescripcion": "Confirme o cartão. Se você escolheu pagar agora, a cobrança acontece ao terminar; se escolheu os dias grátis, o cartão fica salvo.",
       "pasoPago": "Forma de pagamento"
     },
     "ubicacion": {

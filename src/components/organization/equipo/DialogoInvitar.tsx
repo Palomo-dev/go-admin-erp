@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { FormField, PanelAdaptable, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEmailConfirmed } from '@/hooks/useEmailConfirmed';
 import type { Cupo } from '@/lib/organizacion/cupo';
@@ -208,19 +209,18 @@ export function DialogoInvitar({
         {cargos.length > 0 && (
           <FormField etiqueta={t('campos.cargo')} ayuda={t('campos.cargoAyuda')}>
             {(campo) => (
-              <Select value={cargo} onValueChange={setCargo}>
-                <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={SIN_CARGO}>{t('campos.sinCargo')}</SelectItem>
-                  {cargos.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchSelect
+                id={campo.id}
+                aria-describedby={campo['aria-describedby']}
+                options={cargos.map((c) => ({ value: c.id, label: c.nombre }))}
+                value={cargo}
+                onValueChange={setCargo}
+                noneLabel={t('campos.sinCargo')}
+                noneValue={SIN_CARGO}
+                placeholder={t('campos.sinCargo')}
+                searchPlaceholder={t('campos.buscarCargo')}
+                emptyText={t('campos.cargoVacio')}
+              />
             )}
           </FormField>
         )}

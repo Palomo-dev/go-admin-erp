@@ -2174,6 +2174,8 @@
             "campo": "Cargo",
             "elegir": "Elige un cargo",
             "ninguno": "Sin cargo",
+            "buscar": "Buscar cargo…",
+            "vacio": "No hay cargos con ese nombre",
             "confirmar": "Guardar cargo",
             "sinCambio": "Elige un cargo distinto del actual."
           },
@@ -2307,7 +2309,9 @@
             "sedeAyuda": "Al aceptar, queda asignado a esta sede.",
             "cargo": "Cargo",
             "cargoAyuda": "Opcional. Ajusta qué páginas ve dentro de su rol.",
-            "sinCargo": "Sin cargo"
+            "sinCargo": "Sin cargo",
+            "buscarCargo": "Buscar cargo…",
+            "cargoVacio": "No hay cargos con ese nombre"
           },
           "motivos": {
             "correo": "Confirma tu correo para poder invitar.",

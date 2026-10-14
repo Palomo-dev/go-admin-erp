@@ -2165,6 +2165,8 @@
             "campo": "Cargo",
             "elegir": "Escolha um cargo",
             "ninguno": "Sem cargo",
+            "buscar": "Buscar cargo…",
+            "vacio": "Nenhum cargo com esse nome",
             "confirmar": "Salvar cargo",
             "sinCambio": "Escolha um cargo diferente do atual."
           },
@@ -2369,7 +2371,9 @@
             "sedeAyuda": "Ao aceitar, a pessoa fica atribuída a esta unidade.",
             "cargo": "Cargo",
             "cargoAyuda": "Opcional. Ajusta quais páginas a pessoa vê dentro da sua função.",
-            "sinCargo": "Sem cargo"
+            "sinCargo": "Sem cargo",
+            "buscarCargo": "Buscar cargo…",
+            "cargoVacio": "Nenhum cargo com esse nome"
           },
           "motivos": {
             "correo": "Confirme seu e-mail para poder convidar.",

@@ -2165,6 +2165,8 @@
             "campo": "Position",
             "elegir": "Choose a position",
             "ninguno": "No position",
+            "buscar": "Search positions…",
+            "vacio": "No positions match",
             "confirmar": "Save position",
             "sinCambio": "Choose a position different from the current one."
           },
@@ -2369,7 +2371,9 @@
             "sedeAyuda": "Once they accept, they're assigned to this location.",
             "cargo": "Position",
             "cargoAyuda": "Optional. Fine-tunes which pages they see within their role.",
-            "sinCargo": "No position"
+            "sinCargo": "No position",
+            "buscarCargo": "Search positions…",
+            "cargoVacio": "No positions match"
           },
           "motivos": {
             "correo": "Confirm your email to be able to invite.",

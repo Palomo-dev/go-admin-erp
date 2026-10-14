@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { MapPinOff, Briefcase, ShieldCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Dialogo, FormField } from '@/components/kit';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Miembro } from '@/lib/organizacion/miembros';
 
@@ -135,13 +136,22 @@ export function DialogoCargo({
         },
       }}
     >
-      <Selector
-        etiqueta={t('cargo.campo')}
-        valor={cargo}
-        onValor={setCargo}
-        opciones={[{ id: SIN_CARGO, nombre: t('cargo.ninguno') }, ...cargos]}
-        placeholder={t('cargo.elegir')}
-      />
+      <FormField etiqueta={t('cargo.campo')}>
+        {(campo) => (
+          <SearchSelect
+            id={campo.id}
+            aria-describedby={campo['aria-describedby']}
+            options={cargos.map((c) => ({ value: c.id, label: c.nombre }))}
+            value={cargo}
+            onValueChange={setCargo}
+            noneLabel={t('cargo.ninguno')}
+            noneValue={SIN_CARGO}
+            placeholder={t('cargo.elegir')}
+            searchPlaceholder={t('cargo.buscar')}
+            emptyText={t('cargo.vacio')}
+          />
+        )}
+      </FormField>
     </Dialogo>
   );
 }

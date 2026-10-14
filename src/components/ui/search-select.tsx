@@ -1,12 +1,17 @@
 'use client';
 
+/**
+ * SearchSelect del sistema de diseño (Figma `02 Componentes`, nodo 104:3125):
+ * disparador a lo ancho del campo, menú con buscador, fila seleccionada en
+ * tinte y, si cabe, «Crear …». Sustituye el combobox de ancho fijo y sin
+ * teclado. La lista tiene su propio scroll (`max-h` + `overflow-y-auto`);
+ * dentro de un diálogo lo mueve `scrollEnCapa` del `Popover`.
+ */
 import * as React from 'react';
 import { Check, ChevronsUpDown, Plus, Search } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { filtrarPorTexto, moverResalte } from '@/components/kit/searchSelectLogica';
 
 export interface SearchSelectOption {
   value: string;
@@ -26,10 +31,8 @@ interface SearchSelectProps {
   disabled?: boolean;
   className?: string;
   /**
-   * Ranura «crear» (Figma `SearchSelect`, propiedad «Mostrar crear»): última
-   * fila del desplegable que crea un registro con lo escrito. Recibe el texto
-   * buscado (puede ir vacío) y cierra el desplegable; quien llama abre su alta
-   * rápida y, al guardar, selecciona el nuevo valor.
+   * Ranura «crear» (Figma, propiedad «Mostrar crear»): última fila del
+   * desplegable. Recibe el texto buscado (puede ir vacío) y cierra el menú.
    */
   onCreate?: (texto: string) => void;
   /** Texto de la fila con lo buscado: `(t) => «Crear “${t}”»`. */
@@ -62,161 +65,167 @@ export function SearchSelect({
 }: SearchSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
+  const [resalte, setResalte] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const listaRef = React.useRef<HTMLDivElement>(null);
+  const listaId = React.useId();
 
   const selectedOption = options.find((opt) => opt.value === value);
-  const isNone = value === noneValue || (!value && noneLabel);
+  const isNone = value === noneValue || (!value && !!noneLabel);
+  const displayLabel = isNone && noneLabel ? noneLabel : selectedOption ? selectedOption.label : placeholder;
 
-  const displayLabel = isNone && noneLabel
-    ? noneLabel
-    : selectedOption
-      ? selectedOption.label
-      : placeholder;
+  const filas = React.useMemo(() => {
+    const base: SearchSelectOption[] = [...(noneLabel ? [{ value: noneValue, label: noneLabel }] : []), ...options];
+    return filtrarPorTexto(base, search, (opt) => [opt.label, opt.sublabel]);
+  }, [noneLabel, noneValue, options, search]);
 
-  const filteredOptions = React.useMemo(() => {
-    if (!search) return options;
-    // Sin distinguir tildes: «medellin» encuentra «Medellín».
-    const plano = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const lower = plano(search);
-    return options.filter((opt) =>
-      plano(opt.label).includes(lower) ||
-      (opt.sublabel ? plano(opt.sublabel).includes(lower) : false)
-    );
-  }, [options, search]);
-
+  const indice = filas.length === 0 ? -1 : Math.min(Math.max(resalte, 0), filas.length - 1);
   const textoCrear = search.trim();
   const coincideExacto = !!textoCrear && options.some((opt) => opt.label.trim().toLowerCase() === textoCrear.toLowerCase());
   const mostrarCrear = !!onCreate && !coincideExacto && (!!textoCrear || !!createEmptyLabel);
-  const handleCreate = () => {
+
+  const elegir = (selectedValue: string) => {
+    onValueChange(selectedValue);
+    setOpen(false);
+    setSearch('');
+  };
+
+  const crear = () => {
     if (!onCreate) return;
     setOpen(false);
     setSearch('');
     onCreate(textoCrear);
   };
 
-  const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue);
-    setOpen(false);
-    setSearch('');
-  };
-
   React.useEffect(() => {
-    if (open && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
     if (!open) {
       setSearch('');
+      return;
     }
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
+    const i = filas.findIndex((fila) => fila.value === value);
+    setResalte(i >= 0 ? i : 0);
+    return () => window.clearTimeout(timer);
+    // Solo al abrir: si dependiera de `filas`, cada tecla repondría el resalte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  React.useEffect(() => {
+    const caja = listaRef.current;
+    const fila = caja?.querySelector<HTMLElement>('[data-resaltada="true"]');
+    if (!caja || !fila) return;
+    const delta = fila.getBoundingClientRect().top - caja.getBoundingClientRect().top;
+    if (delta < 0) caja.scrollTop += delta;
+    else if (delta + fila.offsetHeight > caja.clientHeight) caja.scrollTop += delta + fila.offsetHeight - caja.clientHeight;
+  }, [indice, filas]);
+
+  const onTecla = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const siguiente = moverResalte(indice, filas.length, e.key);
+      if (siguiente !== null) setResalte(siguiente);
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (indice >= 0 && filas[indice]) elegir(filas[indice].value);
+      else if (mostrarCrear && filas.length === 0) crear();
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <button
           type="button"
-          variant="outline"
           id={id}
           role="combobox"
           aria-expanded={open}
+          aria-controls={listaId}
           aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
+          aria-invalid={ariaInvalid || undefined}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-10 font-normal bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700',
-            !selectedOption && !isNone && 'text-gray-500 dark:text-gray-400',
+            'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-left text-sm font-normal text-fg',
+            'hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            open ? 'border-brand' : 'border-line',
+            ariaInvalid && 'border-danger',
+            !selectedOption && !isNone && 'text-fg-muted',
             className,
           )}
         >
-          <span className="truncate">{displayLabel}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+          <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
+          <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+        </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[320px] p-0 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
         align="start"
+        sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        className="pointer-events-auto z-[60] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-16px)] overflow-hidden rounded-xl border border-line bg-surface p-1 text-fg shadow-md"
       >
-        <div className="flex items-center border-b border-gray-200 dark:border-gray-700 px-3">
-          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input
+        <div className="flex h-9 items-center gap-2 px-2">
+          <Search aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+          <input
             ref={inputRef}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              // Enter sin resultados = crear con lo escrito.
-              if (e.key === 'Enter' && mostrarCrear && filteredOptions.length === 0) {
-                e.preventDefault();
-                handleCreate();
-              }
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setResalte(0);
             }}
+            onKeyDown={onTecla}
             placeholder={searchPlaceholder}
-            className="h-9 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+            aria-label={searchPlaceholder}
+            aria-autocomplete="list"
+            aria-controls={listaId}
+            aria-activedescendant={indice >= 0 ? `${listaId}-${indice}` : undefined}
+            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg-muted"
           />
         </div>
-        <ScrollArea className="h-[240px]">
-          <div className="p-1">
-            {filteredOptions.length === 0 && !noneLabel && (
-              <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                {emptyText}
-              </div>
-            )}
-            {noneLabel && (
+        <div className="mx-1 h-px bg-line" />
+        <div ref={listaRef} id={listaId} role="listbox" className="max-h-60 overflow-y-auto p-1">
+          {filas.length === 0 && <p className="px-2 py-6 text-center text-sm text-fg-secondary">{emptyText}</p>}
+          {filas.map((fila, i) => {
+            const activa = fila.value === value || (fila.value === noneValue && isNone);
+            const resaltada = i === indice;
+            return (
               <button
+                key={fila.value}
+                id={`${listaId}-${i}`}
                 type="button"
-                onClick={() => handleSelect(noneValue)}
+                role="option"
+                aria-selected={activa}
+                data-resaltada={resaltada ? 'true' : undefined}
+                onMouseEnter={() => setResalte(i)}
+                onClick={() => elegir(fila.value)}
                 className={cn(
-                  'flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800',
-                  isNone && 'bg-blue-50 dark:bg-blue-900/20',
+                  'flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm outline-none',
+                  activa ? 'bg-brand-tint text-brand-deep' : 'text-fg',
+                  resaltada && !activa && 'bg-hover',
                 )}
               >
-                <Check className={cn('mr-2 h-4 w-4', isNone ? 'opacity-100' : 'opacity-0')} />
-                <span className="text-gray-500 dark:text-gray-400">{noneLabel}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{fila.label}</span>
+                  {fila.sublabel && <span className="block truncate text-xs text-fg-secondary">{fila.sublabel}</span>}
+                </span>
+                {activa && <Check aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />}
               </button>
-            )}
-            {filteredOptions.length === 0 && noneLabel && (
-              <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                {emptyText}
-              </div>
-            )}
-            {filteredOptions.map((option) => {
-              const isSelected = option.value === value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleSelect(option.value)}
-                  className={cn(
-                    'flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800',
-                    isSelected && 'bg-blue-50 dark:bg-blue-900/20',
-                  )}
-                >
-                  <Check className={cn('mr-2 h-4 w-4 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')} />
-                  <div className="flex-1 min-w-0 text-left">
-                    <span className="block truncate">{option.label}</span>
-                    {option.sublabel && (
-                      <span className="block text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {option.sublabel}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </ScrollArea>
+            );
+          })}
+        </div>
         {mostrarCrear && (
-          <div className="border-t border-line p-1">
+          <>
+            <div className="mx-1 h-px bg-line" />
             <button
               type="button"
-              onClick={handleCreate}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm font-medium text-link outline-none hover:bg-hover focus-visible:bg-hover"
+              onClick={crear}
+              className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-link outline-none hover:bg-hover focus-visible:bg-hover"
             >
               <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
-              <span className="truncate">
-                {textoCrear && createLabel ? createLabel(textoCrear) : createEmptyLabel ?? textoCrear}
-              </span>
+              <span className="truncate">{textoCrear && createLabel ? createLabel(textoCrear) : createEmptyLabel ?? textoCrear}</span>
             </button>
-          </div>
+          </>
         )}
       </PopoverContent>
     </Popover>

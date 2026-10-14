@@ -1,15 +1,11 @@
-import { normalizarBusqueda } from './arbol';
+import { filtrarPorTexto } from './searchSelectLogica';
 
 /** Filtra las opciones de un `MultiSelect` sin tildes ni mayúsculas. */
 export function filtrarOpcionesMulti<T extends { etiqueta: string; descripcion?: string }>(
   opciones: readonly T[],
   busqueda: string,
 ): T[] {
-  const q = normalizarBusqueda(busqueda);
-  if (!q) return [...opciones];
-  return opciones.filter(
-    (o) => normalizarBusqueda(o.etiqueta).includes(q) || (o.descripcion ? normalizarBusqueda(o.descripcion).includes(q) : false),
-  );
+  return filtrarPorTexto(opciones, busqueda, (o) => [o.etiqueta, o.descripcion]);
 }
 
 /** Agrega o quita un valor conservando el orden de selección. */

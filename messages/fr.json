@@ -2165,6 +2165,8 @@
             "campo": "Poste",
             "elegir": "Choisissez un poste",
             "ninguno": "Sans poste",
+            "buscar": "Rechercher un poste…",
+            "vacio": "Aucun poste ne correspond",
             "confirmar": "Enregistrer le poste",
             "sinCambio": "Choisissez un poste différent de l'actuel."
           },
@@ -2369,7 +2371,9 @@
             "sedeAyuda": "En acceptant, la personne est affectée à ce site.",
             "cargo": "Poste",
             "cargoAyuda": "Facultatif. Ajuste les pages visibles au sein de son rôle.",
-            "sinCargo": "Sans poste"
+            "sinCargo": "Sans poste",
+            "buscarCargo": "Rechercher un poste…",
+            "cargoVacio": "Aucun poste ne correspond"
           },
           "motivos": {
             "correo": "Confirmez votre e-mail pour pouvoir inviter.",

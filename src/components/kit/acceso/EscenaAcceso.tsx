@@ -31,23 +31,22 @@ import { cn } from '@/utils/Utils';
 import { PreferenciasAcceso } from './PreferenciasAcceso';
 import { Enlace } from './piezas';
 import { Cohete, EstrellaTrazo, Luna, Nube, Planeta, ViajeroDePie, ViajeroSentado } from './ilustraciones';
-import { ESTRELLAS_DIA, ESTRELLAS_NOCHE, ESTRELLAS_TRAZO, NUBES, enPorcentaje } from './cieloDatos';
+import { ANCHO_CIELO, ESTRELLAS_DIA, ESTRELLAS_NOCHE, ESTRELLAS_TRAZO, NUBES, enPorcentaje, type PuntoCielo } from './cieloDatos';
 
 /**
  * Movimiento de la escena. Inline para no depender de CSS global ni de módulos
  * (los tests renderizan sin bundler).
  *
- * Ajustado el 2026-09-30: la primera versión movía las nubes 18 px en 26 s y
- * el planeta 8 px, y en pantalla no se percibía; el cohete ni se movía. Ahora
- * todo flota en el espacio con amplitud visible y cada pieza con su ritmo
- * (duración y desfase propios), para que no se muevan al unísono.
+ * Las nubes cruzan el cielo de lado, igual que en el sitio público: un
+ * recorrido lineal de −20vw a 120vw. El vaivén de unos pocos píxeles las
+ * dejaba quietas. Cada una arranca en un punto distinto del recorrido (desfase
+ * negativo) y lleva su propia duración. Sin animación quedan en ese punto
+ * (`--ga-x`), no amontonadas en el borde.
  */
 const ESTILOS = `
 @keyframes ga-escena-deriva {
-  0%,100% { transform: translate3d(0,0,0); }
-  25% { transform: translate3d(28px,-6px,0); }
-  50% { transform: translate3d(56px,0,0); }
-  75% { transform: translate3d(28px,6px,0); }
+  from { transform: translate3d(-20vw,0,0); }
+  to { transform: translate3d(120vw,0,0); }
 }
 @keyframes ga-escena-flota {
   0%,100% { transform: translate3d(0,0,0) rotate(0deg); }
@@ -63,7 +62,17 @@ const ESTILOS = `
 }
 @keyframes ga-escena-titila { 0%,100% { opacity: .75; } 50% { opacity: .2; } }
 @keyframes ga-escena-ondea { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-2.5deg); } }
-.ga-escena-nube { animation: ga-escena-deriva var(--ga-dur, 22s) ease-in-out infinite; will-change: transform; }
+.ga-escena-nube {
+  left: 0;
+  transform: translate3d(var(--ga-x, -20vw), 0, 0);
+  animation-name: ga-escena-deriva;
+  animation-duration: var(--ga-dur, 36s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+  animation-delay: var(--ga-delay, 0s);
+  will-change: transform;
+}
 .ga-escena-flota { animation: ga-escena-flota 7s ease-in-out infinite; will-change: transform; }
 .ga-escena-cohete { animation: ga-escena-cohete 5.5s ease-in-out infinite; will-change: transform; }
 .ga-escena-viajero { animation: ga-escena-viajero 6.5s ease-in-out infinite; will-change: transform; }
@@ -77,6 +86,19 @@ const ESTILOS = `
 /** Duración y desfase por pieza: determinista (sin azar, para no romper la hidratación). */
 function ritmo(i: number, base: number, paso: number): React.CSSProperties {
   return { ['--ga-dur' as string]: `${base + (i % 4) * paso}s`, animationDelay: `${-(i * 3.7) % 20}s` };
+}
+
+/** Las más anchas van más cerca y cruzan antes, como las tres capas del sitio. */
+const DURACION_NUBE = [46, 64, 30, 56, 68, 38];
+
+function ritmoNube(i: number, p: PuntoCielo): React.CSSProperties {
+  const dur = DURACION_NUBE[i % DURACION_NUBE.length];
+  const progreso = p[0] / ANCHO_CIELO;
+  return {
+    ['--ga-dur' as string]: `${dur}s`,
+    ['--ga-delay' as string]: `${(-progreso * dur).toFixed(2)}s`,
+    ['--ga-x' as string]: `${(-20 + progreso * 140).toFixed(2)}vw`,
+  };
 }
 
 function Cielo() {
@@ -95,7 +117,7 @@ function Cielo() {
           <span
             key={i}
             className={cn('ga-escena-nube absolute opacity-35', i > 3 && 'hidden md:block')}
-            style={{ ...enPorcentaje(p), width: p[2], ...ritmo(i, 18, 5) }}
+            style={{ top: enPorcentaje(p).top, width: p[2], ...ritmoNube(i, p) }}
           >
             <Nube className="w-full" />
           </span>

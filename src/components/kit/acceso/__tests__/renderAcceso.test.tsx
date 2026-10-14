@@ -36,6 +36,24 @@ describe('EscenaAcceso', () => {
     expect(container.querySelectorAll('svg[viewBox="0 0 320 360"]').length).toBe(0);
   });
 
+  test('las nubes cruzan el cielo de lado', () => {
+    const { container } = renderConIdioma(
+      <EscenaAcceso>
+        <div />
+      </EscenaAcceso>,
+    );
+    const css = container.querySelector('style')?.textContent ?? '';
+    expect(css).toContain('translate3d(-20vw,0,0)');
+    expect(css).toContain('translate3d(120vw,0,0)');
+    expect(css).toContain('animation-timing-function: linear');
+    expect(css).toContain('left: 0;');
+    const nube = container.querySelector('.ga-escena-nube') as HTMLElement;
+    expect(nube.style.left).toBe('');
+    expect(nube.style.top.endsWith('%')).toBe(true);
+    expect(nube.style.getPropertyValue('--ga-delay').startsWith('-')).toBe(true);
+    expect(nube.style.getPropertyValue('--ga-x').endsWith('vw')).toBe(true);
+  });
+
   test('en inglés', () => {
     renderConIdioma(
       <EscenaAcceso>

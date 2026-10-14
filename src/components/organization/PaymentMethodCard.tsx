@@ -7,14 +7,18 @@
  * ConfirmDialog (antes `confirm()` nativo, auditoría 2026-10 P2-1). Los métodos
  * los resuelve el servidor por la organización
  * (`/api/subscriptions/payment-methods`).
+ *
+ * Si no hay ninguna tarjeta —tampoco cuando el alta no dejó cliente de Stripe—
+ * el estado vacío del kit abre `DialogoVincularTarjeta`. Guardarla no cobra.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { CreditCard, ExternalLink, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
+import { EmptyState, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/utils/Utils';
 import { PaymentMethodSkeleton } from './OrganizationSkeletons';
+import { DialogoVincularTarjeta } from './plan/DialogoVincularTarjeta';
 
 interface PaymentMethod {
   id: string;
@@ -53,14 +57,20 @@ function mensaje(e: unknown, respaldo: string): string {
 export default function PaymentMethodCard({ stripeCustomerId, organizationId, onPaymentMethodUpdated, initialPaymentMethods }: PaymentMethodCardProps) {
   const t = useTranslations('org.paymentMethod');
   const [metodos, setMetodos] = useState<PaymentMethod[]>(initialPaymentMethods ?? []);
-  const [cargando, setCargando] = useState(!initialPaymentMethods || initialPaymentMethods.length === 0);
+  const [hayCliente, setHayCliente] = useState(Boolean(stripeCustomerId));
+  const [cargando, setCargando] = useState(Boolean(stripeCustomerId) && (!initialPaymentMethods || initialPaymentMethods.length === 0));
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vincularAbierto, setVincularAbierto] = useState(false);
   // Confirmación del kit en lugar de `confirm()` nativo (auditoría 2026-10, P2-1).
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (stripeCustomerId) setHayCliente(true);
+  }, [stripeCustomerId]);
+
   const cargar = useCallback(async () => {
-    if (!stripeCustomerId || !organizationId) return;
+    if (!organizationId) return;
     setCargando(true);
     setError(null);
     try {
@@ -73,7 +83,7 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
     } finally {
       setCargando(false);
     }
-  }, [stripeCustomerId, organizationId, t]);
+  }, [organizationId, t]);
 
   useEffect(() => {
     if (stripeCustomerId && (!initialPaymentMethods || initialPaymentMethods.length === 0)) void cargar();
@@ -120,18 +130,44 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
     }
   };
 
-  if (!stripeCustomerId) {
+  const alVincular = async () => {
+    setVincularAbierto(false);
+    setHayCliente(true);
+    await cargar();
+    onPaymentMethodUpdated?.();
+  };
+
+  const vacio = (
+    <EmptyState
+      compacto
+      icono={CreditCard}
+      titulo={t('noPaymentMethod')}
+      descripcion={t('noPaymentMethodDesc')}
+      accion={{ etiqueta: t('linkCard'), onClick: () => setVincularAbierto(true), icono: Plus }}
+    />
+  );
+
+  const dialogo = (
+    <DialogoVincularTarjeta
+      abierto={vincularAbierto}
+      organizationId={organizationId}
+      onAbiertoChange={setVincularAbierto}
+      onListo={alVincular}
+    />
+  );
+
+  if (!hayCliente) {
     return (
       <Tarjeta titulo={t('title')} descripcion={t('description')} icono={CreditCard}>
-        <div className="flex flex-col items-center gap-1 py-4 text-center">
-          <p className="text-sm font-medium text-fg">{t('noPaymentMethod')}</p>
-          <p className="text-[13px] text-fg-secondary">{t('noPaymentMethodDesc')}</p>
-        </div>
+        {vacio}
+        {dialogo}
       </Tarjeta>
     );
   }
 
   if (cargando) return <PaymentMethodSkeleton />;
+
+  const sinTarjetas = metodos.length === 0;
 
   return (
     <Tarjeta
@@ -139,10 +175,12 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
       descripcion={t('description')}
       icono={CreditCard}
       accion={
-        <button type="button" onClick={() => void abrirPortal()} disabled={ocupado === 'portal'} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-          {ocupado === 'portal' ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <ExternalLink aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-          {ocupado === 'portal' ? t('opening') : t('manageBilling')}
-        </button>
+        sinTarjetas ? undefined : (
+          <button type="button" onClick={() => void abrirPortal()} disabled={ocupado === 'portal'} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+            {ocupado === 'portal' ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <ExternalLink aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+            {ocupado === 'portal' ? t('opening') : t('manageBilling')}
+          </button>
+        )
       }
     >
       {error && (
@@ -150,19 +188,14 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
           {error}
         </p>
       )}
-      {metodos.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-4 text-center">
-          <p className="text-sm font-medium text-fg">{t('noPaymentMethods')}</p>
-          <p className="text-[13px] text-fg-secondary">{t('addPaymentMethodDesc')}</p>
-          <button type="button" onClick={() => void abrirPortal()} className={clasesBoton({ tamano: 'sm' })}>
-            <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {t('addPaymentMethod')}
-          </button>
-        </div>
+      {sinTarjetas ? (
+        vacio
       ) : (
         <ul className="flex flex-col gap-2">
           {metodos.map((pm) => {
             const unica = metodos.length === 1;
+            const marca = MARCAS[(pm.brand || '').toLowerCase()] ?? pm.brand;
+            const nombre = marca ? `${marca} •••• ${pm.last4}` : `•••• ${pm.last4}`;
             return (
               <li
                 key={pm.id}
@@ -170,12 +203,10 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span aria-hidden="true" className="flex h-8 w-12 shrink-0 items-center justify-center rounded-md bg-fg text-[11px] font-bold uppercase text-surface">
-                    {pm.brand.slice(0, 4)}
+                    {(pm.brand || 'card').slice(0, 4)}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-fg">
-                      {MARCAS[pm.brand.toLowerCase()] ?? pm.brand} •••• {pm.last4}
-                    </p>
+                    <p className="truncate text-sm font-medium text-fg">{nombre}</p>
                     <p className="text-xs text-fg-secondary">
                       {t('expires')} {String(pm.expMonth).padStart(2, '0')}/{pm.expYear}
                     </p>
@@ -186,7 +217,7 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
                   type="button"
                   onClick={() => setPorQuitar(pm.id)}
                   disabled={ocupado === pm.id || unica}
-                  aria-label={`${t('delete')} ${MARCAS[pm.brand.toLowerCase()] ?? pm.brand} •••• ${pm.last4}`}
+                  aria-label={`${t('delete')} ${nombre}`}
                   title={unica ? t('cantDeleteOnly') : t('delete')}
                   className="flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-danger-text disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
@@ -197,6 +228,7 @@ export default function PaymentMethodCard({ stripeCustomerId, organizationId, on
           })}
         </ul>
       )}
+      {dialogo}
       <ConfirmDialog
         open={porQuitar !== null}
         onOpenChange={(o) => !o && ocupado === null && setPorQuitar(null)}

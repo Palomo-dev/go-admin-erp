@@ -237,6 +237,7 @@
         "verifyOnly": "Nous vérifions uniquement que la carte est valide. Aucun frais ne sera prélevé.",
         "verifying": "Vérification...",
         "verifyCard": "Vérifier la Carte",
+        "payNow": "Payer maintenant",
         "securePayment": "Paiement sécurisé avec Stripe",
         "securePaymentDescription": "Vos données sont protégées par un chiffrement de niveau bancaire.",
         "previous": "Précédent",
@@ -25012,7 +25013,7 @@
       "planDescripcion": "Commencez par l’essai gratuit ; changez de formule quand vous voulez.",
       "pasoPlan": "Formule",
       "pagoTitulo": "Moyen de paiement",
-      "pagoDescripcion": "Enregistrez une carte pour la fin de l’essai, ou faites-le plus tard.",
+      "pagoDescripcion": "Confirmez la carte. Si vous payez maintenant, le prélèvement a lieu à la fin ; si vous utilisez les jours gratuits, la carte est enregistrée.",
       "pasoPago": "Moyen de paiement"
     },
     "ubicacion": {

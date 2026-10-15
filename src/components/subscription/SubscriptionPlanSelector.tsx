@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { supabase } from '@/lib/supabase/config';
+import { formatMoneda } from '@/lib/utils/moneda';
+import { MONEDA_PLAN_SAAS } from '@/lib/organizacion/plan';
 
 export interface SubscriptionPlan {
   id: string;
@@ -176,7 +178,7 @@ export default function SubscriptionPlanSelector({
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
                   <div className="flex flex-wrap items-baseline gap-1">
                     <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                      {plan.price ? `$${plan.price}` : 'Personalizado'}
+                      {plan.price ? formatMoneda(plan.price, MONEDA_PLAN_SAAS) : 'Personalizado'}
                     </span>
                     <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
                       {billingPeriod === 'monthly' ? '/mes' : '/año'}
@@ -330,7 +332,18 @@ function getDescriptionForPlan(planCode: string): string {
   return descriptions[planCode] || 'Plan personalizado para tu negocio';
 }
 
-function getFeaturesForPlan(plan: any): string[] {
+function getFeaturesForPlan(plan: {
+  max_modules?: number | null;
+  max_branches?: number | null;
+  trial_days?: number | null;
+  features?: {
+    storage_gb?: number | null;
+    analytics?: boolean | null;
+    custom_reports?: boolean | null;
+    support?: string | null;
+    dedicated_manager?: boolean | null;
+  } | null;
+}): string[] {
   const features: string[] = [];
   
   // Add module and branch limits

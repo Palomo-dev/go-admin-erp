@@ -36,8 +36,9 @@ import {
  * Arrastrar comandas entre columnas (Figma «POS — Comandas v2 · Arrastrar
  * entre columnas», sección 2117:209496: D1–D5 en 1440, T1–T6 en 1024).
  *
- * - Ratón: la tarjeta entera se arrastra (cursor «grab») tras moverla 6 px,
- *   así los botones de la tarjeta siguen funcionando con un clic.
+ * - Ratón: la tarjeta se arrastra (cursor «grab») tras moverla 6 px.
+ *   Cada producto, «Empezar» y la flecha frenan ese arrastre: el clic llega
+ *   y el cursor sobre el producto es el de pulsar, no la manito.
  * - Táctil: mantener presionado 250 ms (anillo azul) la levanta; si el dedo se
  *   mueve antes más de 8 px, es un desplazamiento normal del tablero.
  * - Teclado: el asa es el activador. Espacio/Enter levanta, ← → cambian de

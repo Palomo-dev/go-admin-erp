@@ -17,7 +17,7 @@ import {
   itemsDeEstacion,
   minutosTranscurridos,
   objetivoDe,
-  puedeMarcarItem,
+  circuloTocable,
   type FiltroEstacion,
 } from '@/lib/pos/cocina/tableroComandas';
 import { cantidadComanda, textoCantidadComanda } from '@/components/pos/comandas/TicketCard';
@@ -227,8 +227,10 @@ export function DetalleComandaDialog({
                   {items.map((i) => {
                     const anulado = i.status === 'cancelled' || !!i.cancelled_at;
                     const hecho = !anulado && (i.status === 'ready' || i.status === 'delivered');
-                    // Un paso a la vez: un ítem sin empezar no se marca hecho (saltaba «En preparación»).
-                    const puedeTocar = permisos.operar && !anulado && puedeMarcarItem(i) && !(c.has_allergy && !c.allergy_ack_at) && (c.status as string) !== 'cancelled';
+                    // Un pendiente se empieza y luego se marca (`planMarcarItem`). Un ajuste no se empieza así.
+                    const puedeTocar = permisos.operar && !anulado && circuloTocable(i)
+                      && !(c.ticket_type === 'adjustment' && i.status === 'pending')
+                      && !(c.has_allergy && !c.allergy_ack_at) && (c.status as string) !== 'cancelled';
                     const mods = (i.modifiers ?? []).map((m) => m.name);
                     return (
                       <div key={i.id} className="flex items-start gap-2.5">
@@ -238,7 +240,7 @@ export function DetalleComandaDialog({
                           onClick={() => onItem(c, i, !hecho)}
                           aria-pressed={hecho}
                           aria-label={hecho ? tt('deshacerItem', { producto: i.product_name ?? '' }) : tt('marcarItemHecho', { producto: i.product_name ?? '' })}
-                          className="mt-0.5 shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-default"
+                          className="mt-0.5 shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-default"
                         >
                           {anulado ? (
                             <X aria-hidden="true" className="size-5 text-danger" />

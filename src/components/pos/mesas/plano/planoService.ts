@@ -76,9 +76,8 @@ export async function guardarPlano(cambios: CambiosPlano, estado: EstadoEditor):
 }
 
 /** Elementos fijos de la sede actual (vacío si la tabla aún no existe o no hay sede). */
-export async function obtenerElementosPlano(): Promise<ElementoEnPlano[]> {
+export async function obtenerElementosPlano(branchId: number | null = getCurrentBranchId()): Promise<ElementoEnPlano[]> {
   const organizationId = getOrganizationId();
-  const branchId = getCurrentBranchId();
   if (!branchId) return [];
   const { data, error } = await supabase
     .from(TABLA_ELEMENTOS)
@@ -100,9 +99,8 @@ export interface ZonaGuardada {
 }
 
 /** Zonas con recuadro guardado (también las vacías), con su color y orden si existen. */
-export async function obtenerZonasPlano(): Promise<ZonaGuardada[]> {
+export async function obtenerZonasPlano(branchId: number | null = getCurrentBranchId()): Promise<ZonaGuardada[]> {
   const organizationId = getOrganizationId();
-  const branchId = getCurrentBranchId();
   const consulta = (cols: string) => {
     let q = supabase.from('restaurant_zone_layouts').select(cols).eq('organization_id', organizationId);
     if (branchId) q = q.eq('branch_id', branchId);

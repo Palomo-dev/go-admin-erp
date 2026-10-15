@@ -11,6 +11,7 @@ import { addPlainDays, nextPlainDay, plainDateToInstant } from '@/lib/utils/date
 import { inicioDeMes, type RangoFechas } from '@/components/kit/rangoFechas';
 import { origenValido, type LeadFila, type OrigenLead } from '@/components/crm/kit/leadRowLogica';
 import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import { contactoImportado, telefonosAdicionalesDe } from '@/lib/crm/importacionLeads/datosFicha';
 
 export const TAMANO_PAGINA_LEADS = 25;
 
@@ -20,6 +21,9 @@ export interface LeadApi {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  notes?: string | null;
   doc_type?: string | null;
   doc_number?: string | null;
   company_name?: string | null;
@@ -123,13 +127,19 @@ export function estadoPantallaLeads(o: { cargando: boolean; errorStatus: number 
 export function aLeadFila(r: LeadApi, usuarios: readonly OpcionUsuario[]): LeadFila & { documento: string | null } {
   const responsable = r.owner_id ? usuarios.find((u) => u.id === r.owner_id) : undefined;
   const documento = [r.doc_type, r.doc_number].filter(Boolean).join(' ') || null;
+  const contactoPropio = [r.first_name, r.last_name].map((s) => s?.trim()).filter(Boolean).join(' ');
+  const contacto = r.customer_type === 'company' ? contactoPropio || contactoImportado(r.metadata_importacion, r.metadata_lead) : null;
   return {
     id: r.id,
     full_name: r.full_name,
     customer_type: r.customer_type ?? null,
-    // Empresas: el Figma pinta «NIT … · correo»; el kit une correo y teléfono.
+    // Empresas: el Figma pinta «NIT … · correo» y, a continuación, los teléfonos.
+    // El teléfono no se esconde: sin él desaparecen Llamar y WhatsApp.
     email: r.customer_type === 'company' && documento ? [documento, r.email].filter(Boolean).join(' · ') : r.email,
-    phone: r.customer_type === 'company' && documento && r.email ? null : r.phone,
+    phone: r.phone,
+    telefonosExtra: telefonosAdicionalesDe(r.metadata_importacion, r.metadata_lead, r.notes, r.phone),
+    contacto,
+    ciudad: r.city?.trim() || null,
     lead_source: origenValido(r.lead_source),
     lead_score: r.lead_score,
     tags: r.tags ?? [],
@@ -175,7 +185,7 @@ const celda = (v: unknown) => {
 /** CSV de los leads seleccionados (lo ya cargado; nada se pide de nuevo). */
 export function csvLeads(filas: readonly LeadApi[], usuarios: readonly OpcionUsuario[], encabezados: readonly string[]): string {
   const lineas = filas.map((r) =>
-    [r.full_name, [r.doc_type, r.doc_number].filter(Boolean).join(' '), r.email, r.phone, r.lead_source, usuarios.find((u) => u.id === r.owner_id)?.nombre ?? '', r.lead_score, (r.tags ?? []).join(' | '), r.created_at, r.last_contact_at]
+    [r.full_name, [r.doc_type, r.doc_number].filter(Boolean).join(' '), r.email, [r.phone, ...telefonosAdicionalesDe(r.metadata_importacion, r.metadata_lead, r.notes, r.phone)].filter(Boolean).join(' | '), r.lead_source, usuarios.find((u) => u.id === r.owner_id)?.nombre ?? '', r.lead_score, (r.tags ?? []).join(' | '), r.created_at, r.last_contact_at]
       .map(celda)
       .join(','),
   );

@@ -215,7 +215,11 @@ export default function MesasPage() {
     if (primeraCarga.current) setEstado('cargando');
     setRefrescando(true);
     try {
-      const [mesasData, zonasData, zonasPlano] = await Promise.all([MesasService.obtenerMesasConSesiones(), MesasService.obtenerZonas(), obtenerZonasPlano()]);
+      const [mesasData, zonasData, zonasPlano] = await Promise.all([
+        MesasService.obtenerMesasConSesiones(branchFilter),
+        MesasService.obtenerZonas(branchFilter),
+        obtenerZonasPlano(branchFilter),
+      ]);
       setMesas(mesasData);
       setZonasMesas(zonasData);
       setZonasGuardadas(zonasPlano);
@@ -231,8 +235,9 @@ export default function MesasPage() {
       primeraCarga.current = false;
       setRefrescando(false);
     }
+    // recargarReservas cambia de identidad en cada render; la sucursal sí reconsulta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tp]);
+  }, [tp, branchFilter]);
 
   cargarDatosRef.current = cargarDatos;
 

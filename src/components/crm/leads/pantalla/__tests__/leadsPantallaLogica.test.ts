@@ -72,9 +72,21 @@ describe('Leads · estados, filas y selección', () => {
 
   it('aLeadFila: responsable por nombre; empresas con documento delante del correo', () => {
     expect(aLeadFila(LEAD, USUARIOS).responsable).toEqual({ id: 'u1', nombre: 'Carlos Ruiz' });
-    const empresa = aLeadFila({ ...LEAD, customer_type: 'company', doc_type: 'NIT', doc_number: '901.555.210-4', owner_id: null }, USUARIOS);
+    const empresa = aLeadFila({
+      ...LEAD,
+      customer_type: 'company',
+      doc_type: 'NIT',
+      doc_number: '901.555.210-4',
+      owner_id: null,
+      city: 'Pereira',
+      notes: 'Otros teléfonos: +57 310 765 4321. NIT 900111222.',
+      metadata_importacion: { adicionales: { nombre_dueno_encargado: 'Laura Inventada' }, telefonos_adicionales: ['+573204443322'] },
+    }, USUARIOS);
     expect(empresa.email).toBe('NIT 901.555.210-4 · ana@correo.co');
-    expect(empresa.phone).toBeNull();
+    expect(empresa.phone).toBe('3005550142');
+    expect(empresa.contacto).toBe('Laura Inventada');
+    expect(empresa.ciudad).toBe('Pereira');
+    expect(empresa.telefonosExtra).toEqual(['+573204443322', '+573107654321']);
     expect(empresa.responsable).toBeNull();
     expect(aLeadFila({ ...LEAD, lead_source: 'inventado' }, []).lead_source).toBeNull();
   });

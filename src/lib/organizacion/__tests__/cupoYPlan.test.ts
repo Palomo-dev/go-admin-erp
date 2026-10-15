@@ -9,7 +9,9 @@ import {
   cantidadValida,
   desgloseCompra,
   estadoPlan,
+  MONEDA_PLAN_SAAS,
   motivoNoPermite,
+  precioPlanSaas,
   resultadoCompraEnUrl,
   tonoEstadoPlan,
 } from '../plan';
@@ -65,6 +67,28 @@ describe('cupoSucursales', () => {
   test('cuenta solo las activas que le pasan', () => {
     expect(cupoSucursales(6, 15)).toMatchObject({ usados: 6, restantes: 9, lleno: false });
     expect(cupoSucursales(1, 1).lleno).toBe(true);
+  });
+});
+
+describe('precio del plan en dólares', () => {
+  const pro = { price_usd_month: '30.00', price_usd_year: '300.00' };
+  const business = { price_usd_month: 60, price_usd_year: 600 };
+  const ultimate = { price_usd_month: '300.00', price_usd_year: '3000.00' };
+
+  test('mensual y anual salen de price_usd, no de los pesos', () => {
+    expect(MONEDA_PLAN_SAAS).toBe('USD');
+    expect(precioPlanSaas(pro, 'mensual')).toBe(30);
+    expect(precioPlanSaas(pro, 'anual')).toBe(300);
+    expect(precioPlanSaas(business, 'mensual')).toBe(60);
+    expect(precioPlanSaas(business, 'anual')).toBe(600);
+    expect(precioPlanSaas(ultimate, 'mensual')).toBe(300);
+    expect(precioPlanSaas(ultimate, 'anual')).toBe(3000);
+  });
+
+  test('sin precio (a medida) o sin plan no inventa un monto', () => {
+    expect(precioPlanSaas({ price_usd_month: null, price_usd_year: null }, 'mensual')).toBeNull();
+    expect(precioPlanSaas(null, 'anual')).toBeNull();
+    expect(precioPlanSaas({ price_usd_month: 'no-es-numero' }, 'mensual')).toBeNull();
   });
 });
 

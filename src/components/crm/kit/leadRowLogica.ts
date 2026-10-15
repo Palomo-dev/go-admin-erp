@@ -25,6 +25,11 @@ export interface LeadFila {
   customer_type?: 'person' | 'company' | string | null;
   email?: string | null;
   phone?: string | null;
+  /** Otros teléfonos (columnas adicionales y números escritos en las notas). */
+  telefonosExtra?: readonly string[] | null;
+  /** Persona de contacto cuando el lead es una empresa. */
+  contacto?: string | null;
+  ciudad?: string | null;
   lead_source?: string | null;
   lead_score?: number | null;
   tags?: string[] | null;
@@ -52,9 +57,10 @@ export function etiquetasVisibles(tags: readonly string[] | null | undefined, ma
   return { visibles: limpias.slice(0, maximo), resto: Math.max(0, limpias.length - maximo) };
 }
 
-/** «ana@correo.co · 300 555 0142» (lo que haya). */
-export function detalleContacto(lead: Pick<LeadFila, 'email' | 'phone'>): string {
-  return [lead.email?.trim(), lead.phone?.trim()].filter(Boolean).join(' · ');
+/** «Laura · NIT … · ana@correo.co · +57… · Pereira» (lo que haya). */
+export function detalleContacto(lead: Pick<LeadFila, 'email' | 'phone' | 'telefonosExtra' | 'contacto' | 'ciudad'>): string {
+  const telefonos = [lead.phone, ...(lead.telefonosExtra ?? [])].map((t) => t?.trim()).filter(Boolean);
+  return [lead.contacto?.trim(), lead.email?.trim(), ...telefonos, lead.ciudad?.trim()].filter(Boolean).join(' · ');
 }
 
 /** Último contacto: `null` = sin contacto; si no, días desde el contacto en la zona. */

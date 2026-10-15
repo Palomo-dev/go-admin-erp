@@ -26,6 +26,8 @@ import {
   listaUnica,
   nitNormalizado,
   telefonoE164,
+  telefonosDistintos,
+  telefonosEnTexto,
   textoLimpio,
   urlNormalizada,
   valorNumerico,
@@ -96,8 +98,11 @@ export function validarFilaLead(entrada: FilaLeadEntrada, opciones: Pick<Opcione
   const nombre = nombreComercial ?? razonSocial ?? contacto;
   if (!nombre) errores.push(m('sin_nombre'));
 
+  const pais = opciones.pais || 'CO';
   const telefonoCrudo = t('telefono');
-  const telefono = telefonoE164(telefonoCrudo, opciones.pais || 'CO');
+  // Una celda puede traer varios «+57 …». El primero válido es el principal.
+  const embebidosPrincipal = telefonosEnTexto(telefonoCrudo, pais);
+  const telefono = telefonoE164(telefonoCrudo, pais) ?? embebidosPrincipal[0] ?? null;
   const correoCrudo = t('correo');
   const correo = correoNormalizado(correoCrudo);
 
@@ -147,7 +152,14 @@ export function validarFilaLead(entrada: FilaLeadEntrada, opciones: Pick<Opcione
     else if (textoLimpio(crudo)) fuentesTexto.push(textoLimpio(crudo) as string);
   }
   // Teléfonos/correos adicionales: normalizados si se puede; si no, tal cual.
-  const telefonosAdicionales = listaUnica((entrada.telefonosAdicionales ?? []).map((x) => telefonoE164(x, opciones.pais || 'CO') ?? x)).filter((x) => x !== telefono);
+  // Los que solo vienen escritos en las notas («otros teléfonos: +57 …») también
+  // entran: antes se quedaban en el texto y la ficha mostraba un solo número.
+  const desdeCeldas = (entrada.telefonosAdicionales ?? []).flatMap((x) => {
+    const varios = telefonosEnTexto(x, pais);
+    if (varios.length > 1) return varios;
+    return [telefonoE164(x, pais) ?? x];
+  });
+  const telefonosAdicionales = telefonosDistintos(telefono, [desdeCeldas, telefonosEnTexto(c.notas, pais), embebidosPrincipal], pais);
   const correosAdicionales = listaUnica((entrada.correosAdicionales ?? []).map((x) => correoNormalizado(x) ?? x)).filter((x) => x !== correo);
 
   const datos: FilaLeadNormalizada = {

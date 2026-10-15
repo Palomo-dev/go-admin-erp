@@ -7,6 +7,25 @@
  * Funciones puras sobre la respuesta de `GET /api/me/plan`.
  */
 
+/** El SaaS se cobra en dólares (`plans.price_usd_month` / `price_usd_year`), no en pesos. */
+export const MONEDA_PLAN_SAAS = 'USD';
+
+/**
+ * Precio que se muestra del plan: el de dólares del periodo contratado.
+ * `null` si el plan no tiene precio (a medida). Acepta el numérico de Postgres
+ * como número o como texto.
+ */
+export function precioPlanSaas(
+  plan: { price_usd_month?: number | string | null; price_usd_year?: number | string | null } | null | undefined,
+  periodo: 'mensual' | 'anual',
+): number | null {
+  if (!plan) return null;
+  const crudo = periodo === 'anual' ? plan.price_usd_year : plan.price_usd_month;
+  if (crudo == null || crudo === '') return null;
+  const n = typeof crudo === 'number' ? crudo : Number(crudo);
+  return Number.isFinite(n) ? n : null;
+}
+
 export type EstadoPlan =
   | 'activa'
   | 'prueba'

@@ -2570,7 +2570,6 @@ describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
     'lib/services/integrations/openFinance/openFinanceService.ts': 'moneda que reporta el agregador bancario',
     'lib/services/integrations/openFinance/balanceService.ts': 'moneda que reporta el agregador bancario',
     'lib/services/integrations/openFinance/treasuryService.ts': 'moneda de la cuenta del agregador bancario',
-    'app/api/me/plan/route.ts': 'precio del plan del SaaS, que se cobra en COP (price_cop_month/year)',
 
     // DEUDA conocida (2026-09-24). Cada una con el motivo por el que no se
     // corrigió en la ronda de moneda. Al corregirla, se borra de aquí (el

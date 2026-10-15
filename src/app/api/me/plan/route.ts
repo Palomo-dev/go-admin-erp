@@ -24,6 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { withOrg } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { leerCupoPlan, type UsoCupo } from '@/lib/services/cupoPlanService';
+import { MONEDA_PLAN_SAAS, precioPlanSaas } from '@/lib/organizacion/plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,9 +33,8 @@ type Estado = 'prueba' | 'activo' | 'vencido' | 'cancelado' | 'sin_plan';
 interface PlanFila {
   name: string | null;
   code: string | null;
-  price_cop_month: number | null;
-  price_cop_year: number | null;
-  price_usd_month: number | null;
+  price_usd_month: number | string | null;
+  price_usd_year: number | string | null;
   trial_days: number | null;
   max_users: number | null;
   max_branches: number | null;
@@ -106,7 +106,7 @@ export const GET = withOrg(async (ctx) => {
     servicio
       .from('subscriptions')
       .select(
-        'status, trial_start, trial_end, current_period_end, billing_period, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, plans(name, code, price_cop_month, price_cop_year, price_usd_month, trial_days, max_users, max_branches, ai_credits_monthly)'
+        'status, trial_start, trial_end, current_period_end, billing_period, cancel_at_period_end, stripe_subscription_id, stripe_customer_id, plans(name, code, price_usd_month, price_usd_year, trial_days, max_users, max_branches, ai_credits_monthly)'
       )
       .eq('organization_id', org)
       .order('created_at', { ascending: false })
@@ -148,7 +148,8 @@ export const GET = withOrg(async (ctx) => {
   const pruebaVencida = estado === 'prueba' && !!finPrueba && finPrueba.getTime() < Date.now();
 
   const anual = sub?.billing_period === 'yearly';
-  const precio = anual ? plan?.price_cop_year ?? null : plan?.price_cop_month ?? null;
+  const periodo = anual ? 'anual' : 'mensual';
+  const precio = precioPlanSaas(plan, periodo);
 
   // `fn_ai_plan_quota` devuelve una tabla (una fila con `monthly`), no un número:
   // antes se comparaba con 'number' y siempre caía al plan, ignorando los cupos a medida.
@@ -169,8 +170,8 @@ export const GET = withOrg(async (ctx) => {
             diasPruebaRestantes: diasRestantes,
             diasPruebaTotales: diasTotales,
             precio,
-            moneda: 'COP',
-            periodo: anual ? 'anual' : 'mensual',
+            moneda: MONEDA_PLAN_SAAS,
+            periodo,
             proximoCobro: estado === 'prueba' ? sub?.trial_end ?? null : sub?.current_period_end ?? null,
             cancelaAlFinal: sub?.cancel_at_period_end ?? false,
             pruebaVencida,

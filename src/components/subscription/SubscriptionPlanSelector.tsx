@@ -387,9 +387,9 @@ function getFeaturesForPlan(plan: {
     }
   }
   
-  // Add trial info
-  if (plan.trial_days > 0) {
-    features.push(`${plan.trial_days} días de prueba gratis`);
+  const diasPrueba = plan.trial_days ?? 0;
+  if (diasPrueba > 0) {
+    features.push(`${diasPrueba} días de prueba gratis`);
   }
   
   return features;

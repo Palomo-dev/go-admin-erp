@@ -30,7 +30,7 @@ import {
   minutosTranscurridos,
   nivelTiempo,
   objetivoDe,
-  puedeMarcarItem,
+  circuloTocable,
   siguienteColumna,
   type ColumnaComanda,
   type FiltroEstacion,
@@ -147,6 +147,16 @@ function notaDeLinea(item: KitchenTicketItem): string | null {
   return null;
 }
 
+/**
+ * El arrastre escucha el puntero en toda la tarjeta (cursor de agarrar).
+ * Estos controles lo frenan: si no, el círculo del producto hereda la manito
+ * y el clic no llega.
+ */
+function frenarArrastre(e: React.SyntheticEvent) {
+  e.stopPropagation();
+  e.nativeEvent.stopPropagation();
+}
+
 /** Ítem de la comanda (`ComandaItemKDS`). */
 function ItemComanda({
   item,
@@ -248,10 +258,12 @@ function ItemComanda({
       <button
         type="button"
         onClick={onTocar}
+        onMouseDown={frenarArrastre}
+        onTouchStart={frenarArrastre}
         aria-pressed={hecho}
         aria-label={hecho ? t('deshacerItem', { producto: nombre }) : t('marcarItemHecho', { producto: nombre })}
         className={cn(
-          'flex w-full items-start text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+          'flex w-full cursor-pointer items-start rounded-md text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
           kds ? 'gap-3 py-1' : 'gap-2.5 py-0.5',
         )}
       >
@@ -363,6 +375,8 @@ export function ComandaTarjeta({
             type="button"
             disabled={ocupada}
             onClick={accionar}
+            onMouseDown={frenarArrastre}
+            onTouchStart={frenarArrastre}
             aria-label={ta('avanzarA', { titulo: titulo(c), columna: tc(siguiente) })}
             className={cn(
               'flex shrink-0 items-center justify-center rounded-lg text-fg-secondary transition-colors hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60',
@@ -444,10 +458,10 @@ export function ComandaTarjeta({
         <div className={kds ? 'space-y-2' : 'space-y-1.5'}>
           {items.map((item) => {
             const anulado = item.status === 'cancelled' || !!item.cancelled_at;
-            // Solo lo ya empezado: tocar un ítem en «Nuevas» lo llevaba de
-            // `pending` a `ready` y la comanda saltaba «En preparación».
+            // También en «Nuevas»: el toque empieza la estación y marca esa
+            // línea (`planMarcarItem`). Un `pending` directo lo rechaza la base.
             const tocable = !!onItem && permisos.operar && !alergia && !anulado && !esAjuste
-              && columna !== 'delivered' && columna !== 'new' && puedeMarcarItem(item);
+              && columna !== 'delivered' && circuloTocable(item);
             return (
               <ItemComanda
                 key={item.id}
@@ -472,6 +486,8 @@ export function ComandaTarjeta({
             type="button"
             disabled={ocupada}
             onClick={accionar}
+            onMouseDown={frenarArrastre}
+            onTouchStart={frenarArrastre}
             className={cn(
               'mt-1 flex w-full items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-60',
               kds ? 'h-12 text-base' : 'h-10 text-sm',

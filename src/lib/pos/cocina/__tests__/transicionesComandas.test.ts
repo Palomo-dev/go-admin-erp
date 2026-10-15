@@ -3,15 +3,19 @@
  * arrastre usan las mismas reglas (`siguienteColumna`, `validarMovimiento`).
  *
  * Caso real (org 140): una comanda de la Carta QR con una sola línea pasó de
- * «Nuevas» a «Listas para servir» porque tocar el ítem en «Nuevas» lo marcaba
- * hecho (`pending` → `ready`). Estas pruebas fijan que eso ya no ocurre.
+ * «Nuevas» a «Listas para servir» porque tocar el ítem lo marcaba hecho
+ * (`pending` → `ready`) sin «En preparación». La base sigue rechazando ese
+ * salto. El círculo ahora empieza la estación y después marca esa línea.
  */
 import {
   accionPrincipal,
   aplicarEstadoLocal,
   aplicarItemLocal,
+  aplicarToqueItem,
+  circuloTocable,
   columnaAnterior,
   columnaDe,
+  planMarcarItem,
   puedeMarcarItem,
   siguienteColumna,
   validarMovimiento,
@@ -58,7 +62,7 @@ describe('Comandas — la flecha avanza un solo paso', () => {
     expect(recorrido).toEqual(['new', 'preparing', 'ready', 'delivered']);
   });
 
-  it('un ítem sin empezar no se puede marcar hecho (era la causa del salto)', () => {
+  it('un ítem sin empezar no se puede marcar hecho directo (era la causa del salto)', () => {
     const c = comandaWebUnaLinea();
     const item = c.kitchen_ticket_items![0];
     expect(puedeMarcarItem(item)).toBe(false);
@@ -69,6 +73,39 @@ describe('Comandas — la flecha avanza un solo paso', () => {
     expect(puedeMarcarItem({ status: 'ready' })).toBe(true);
     expect(puedeMarcarItem({ status: 'ready', cancelled_at: T0 })).toBe(false);
     expect(puedeMarcarItem({ status: 'delivered' })).toBe(false);
+  });
+
+  it('el círculo de un pendiente sí se toca: primero empieza y después marca esa línea', () => {
+    const c = comandaWebUnaLinea();
+    const item = c.kitchen_ticket_items![0];
+    expect(circuloTocable(item)).toBe(true);
+    expect(circuloTocable({ status: 'cancelled' })).toBe(false);
+    expect(circuloTocable({ status: 'delivered' })).toBe(false);
+
+    const plan = planMarcarItem(item, true);
+    expect(plan).toEqual({ empezar: true, station: 'all', hecho: true });
+    const empezada = aplicarEstadoLocal(c, 'preparing', plan.station, T0);
+    expect(columnaDe(empezada, 'todas')).toBe('preparing');
+    // Una sola línea queda lista, pero ya pasó por «En preparación».
+    expect(columnaDe(aplicarToqueItem(c, item, true, T0), 'todas')).toBe('ready');
+  });
+
+  it('tocar una línea de varias deja las demás en preparación', () => {
+    const c: ComandaTablero = {
+      ...comandaWebUnaLinea(),
+      kitchen_ticket_items: [
+        { id: 1, station: 'hot_kitchen', status: 'pending' },
+        { id: 2, station: 'hot_kitchen', status: 'pending' },
+        { id: 3, station: 'bar', status: 'pending' },
+      ],
+    };
+    const plan = planMarcarItem(c.kitchen_ticket_items![0], true);
+    expect(plan).toEqual({ empezar: true, station: 'hot_kitchen', hecho: true });
+    const tocada = aplicarToqueItem(c, c.kitchen_ticket_items![0], true, T0);
+    expect(columnaDe(tocada, 'todas')).toBe('preparing');
+    expect(tocada.kitchen_ticket_items?.map((i) => i.status)).toEqual(['ready', 'in_progress', 'pending']);
+    // Desmarcar no vuelve a empezar.
+    expect(planMarcarItem({ status: 'ready', station: 'hot_kitchen' }, false)).toEqual({ empezar: false, station: null, hecho: false });
   });
 
   it('la base responde `comanda_sin_empezar` como un 409 legible, no como error interno', () => {

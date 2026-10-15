@@ -58,6 +58,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/process-account-deletions",
+      "schedule": "0 4 * * *"
+    },
+    {
       "path": "/api/factus/process-pending",
       "schedule": "*/2 * * * *"
     },

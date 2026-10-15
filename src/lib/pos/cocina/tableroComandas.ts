@@ -362,13 +362,61 @@ export function validarMovimiento(
 }
 
 /**
- * ¿Se puede marcar o desmarcar este ítem a mano? Solo cuando la estación ya
- * empezó (`in_progress`) o para deshacer un «hecho» (`ready`). Un ítem
- * `pending` marcado como hecho saltaba de «Nuevas» a «Listas para servir» sin
- * pasar por «En preparación» (una comanda de una sola línea quedaba lista al
- * primer toque).
+ * ¿La base acepta `pos_cocina_marcar_item` sobre este ítem sin empezarlo
+ * antes? Solo `in_progress`, o para deshacer un `ready`. Un `pending` marcado
+ * hecho responde `comanda_sin_empezar`: saltaba de «Nuevas» a «Listas» sin
+ * pasar por «En preparación». El círculo igual se toca; el camino es
+ * `planMarcarItem`.
  */
 export function puedeMarcarItem(item: Pick<ItemTablero, 'status' | 'cancelled_at'>): boolean {
   if (item.cancelled_at) return false;
   return item.status === 'in_progress' || item.status === 'ready';
+}
+
+/**
+ * El círculo del producto se puede pulsar (marcar, desmarcar, o empezar y
+ * marcar). No incluye anulados ni ya entregados.
+ */
+export function circuloTocable(item: Pick<ItemTablero, 'status' | 'cancelled_at'>): boolean {
+  if (item.cancelled_at || item.status === 'cancelled' || item.status === 'delivered') return false;
+  return item.status === 'pending' || puedeMarcarItem(item);
+}
+
+export interface PlanMarcarItem {
+  /** Llamar `pos_cocina_cambiar_estado('preparing')` antes de marcar la línea. */
+  empezar: boolean;
+  /** null empieza todas las estaciones. Si el ítem tiene estación, solo esa. */
+  station: string | null;
+  hecho: boolean;
+}
+
+/** Estación que hay que empezar. Vacía o ausente = todas (`null` en la RPC). */
+export function estacionParaEmpezar(item: Pick<ItemTablero, 'station'>): string | null {
+  const s = (item.station ?? '').trim();
+  return s || null;
+}
+
+/**
+ * Tocar el círculo de un ítem `pending` no puede ir directo a «hecho».
+ * Primero se empieza la estación (los ítems pendientes pasan a `in_progress`)
+ * y después se marca esa línea. Así una comanda de una sola línea sí queda
+ * lista, pero la base vio «En preparación» antes de «Listas».
+ */
+export function planMarcarItem(item: Pick<ItemTablero, 'status' | 'station'>, hecho: boolean): PlanMarcarItem {
+  if (hecho && item.status === 'pending') {
+    return { empezar: true, station: estacionParaEmpezar(item), hecho: true };
+  }
+  return { empezar: false, station: null, hecho };
+}
+
+/** Pintado optimista del toque: empieza si hace falta y luego marca la línea. */
+export function aplicarToqueItem<C extends ComandaTablero>(
+  c: C,
+  item: Pick<ItemTablero, 'id' | 'status' | 'station'>,
+  hecho: boolean,
+  ahoraIso: string,
+): C {
+  const plan = planMarcarItem(item, hecho);
+  const base = plan.empezar ? aplicarEstadoLocal(c, 'preparing', plan.station, ahoraIso) : c;
+  return aplicarItemLocal(base, item.id, plan.hecho, ahoraIso);
 }

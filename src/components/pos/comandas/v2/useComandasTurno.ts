@@ -8,8 +8,9 @@ import { startOfDayInstant, todayInTz } from '@/lib/utils/dateCore';
 import { imprimirComanda, textosImpresionDe } from '@/lib/pos/cocina/imprimirComanda';
 import {
   aplicarEstadoLocal,
-  aplicarItemLocal,
+  aplicarToqueItem,
   estadoDerivado,
+  planMarcarItem,
   type ColumnaComanda,
 } from '@/lib/pos/cocina/tableroComandas';
 import {
@@ -270,30 +271,49 @@ export function useComandasTurno({
 
   const marcarItem = async (c: KitchenTicket, item: KitchenTicketItem, hecho: boolean) => {
     const antes = tickets;
-    reemplazar(c.id, (x) => aplicarItemLocal(x, item.id, hecho, new Date().toISOString()) as KitchenTicket);
-    const p: Pendiente = { tipo: 'item', ticketId: c.id, itemId: item.id, hecho };
+    const ahoraIso = new Date().toISOString();
+    const plan = planMarcarItem(item, hecho);
+    reemplazar(c.id, (x) => aplicarToqueItem(x, item, hecho, ahoraIso) as KitchenTicket);
+    // Un pendiente no se marca hecho de una: la base responde comanda_sin_empezar.
+    // Primero se empieza la estación y después se marca esa línea.
+    const pendientes: Pendiente[] = [];
+    if (plan.empezar) pendientes.push({ tipo: 'estado', ticketId: c.id, estado: 'preparing', station: plan.station });
+    pendientes.push({ tipo: 'item', ticketId: c.id, itemId: item.id, hecho: plan.hecho });
     if (!enLinea) {
-      encolar(p);
+      for (const p of pendientes) encolar(p);
       return;
     }
+    let enviados = 0;
     try {
-      try {
-        await marcarItemComanda(item.id, hecho);
-      } catch (err) {
-        if (!esRpcNoDisponible(err)) throw err;
-        // Camino anterior: el ítem y, si cambia, la comanda (como hacía la pantalla).
-        await KitchenService.updateItemStatus(item.id, hecho ? 'ready' : 'in_progress');
-        const items = (c.kitchen_ticket_items ?? []).map((i) => (i.id === item.id ? { ...i, status: hecho ? 'ready' : 'in_progress' } : i));
-        const derivado = estadoDerivado(items);
-        if (derivado && derivado !== c.status) await KitchenService.updateTicketStatus(c.id, derivado);
+      for (const p of pendientes) {
+        if (p.tipo === 'estado') {
+          await enviarPendiente(p);
+        } else {
+          try {
+            await marcarItemComanda(p.itemId, p.hecho);
+          } catch (err) {
+            if (!esRpcNoDisponible(err)) throw err;
+            // Camino anterior: el ítem y, si cambia, la comanda (como hacía la pantalla).
+            await KitchenService.updateItemStatus(p.itemId, p.hecho ? 'ready' : 'in_progress');
+            const base = plan.empezar ? aplicarEstadoLocal(c, 'preparing', plan.station, ahoraIso) : c;
+            const items = (base.kitchen_ticket_items ?? []).map((i) =>
+              i.id === p.itemId ? { ...i, status: p.hecho ? 'ready' : 'in_progress' } : i,
+            );
+            const derivado = estadoDerivado(items);
+            if (derivado && derivado !== c.status) await KitchenService.updateTicketStatus(c.id, derivado);
+          }
+        }
+        enviados += 1;
       }
       void cargar(true);
     } catch (err) {
       if (esFalloDeRed(err)) {
-        encolar(p);
+        for (const p of pendientes.slice(enviados)) encolar(p);
         return;
       }
-      setTickets(antes);
+      // Si ya se empezó en la base, recargar: revertir pintaría «Nuevas» con la cocina en marcha.
+      if (enviados > 0) void cargar(true);
+      else setTickets(antes);
       aviso({ titulo: t('errorTitulo'), descripcion: errorDe(err), tono: 'error' });
     }
   };

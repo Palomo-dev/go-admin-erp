@@ -82,11 +82,13 @@ function Tablero({
   onMover,
   onRechazo,
   onAccion,
+  onItem = jest.fn(),
   permisos = { operar: true, gestionar: false },
 }: {
   onMover: jest.Mock;
   onRechazo: jest.Mock;
   onAccion: jest.Mock;
+  onItem?: jest.Mock;
   permisos?: { operar: boolean; gestionar: boolean };
 }) {
   return (
@@ -114,7 +116,7 @@ function Tablero({
                   asa={asa}
                   onAccion={onAccion}
                   onConfirmarAlergia={jest.fn()}
-                  onItem={jest.fn()}
+                  onItem={onItem}
                 />
               )}
             </ComandaArrastrable>
@@ -146,15 +148,29 @@ describe('Comandas v2 — arrastrar entre columnas', () => {
     dnd = {};
   });
 
-  it('la tarjeta lleva el asa y la flecha de un paso; tocar el ítem en «Nuevas» no hace nada', () => {
+  it('la tarjeta lleva el asa y la flecha; el círculo del producto en «Nuevas» sí se pulsa', () => {
     const onAccion = jest.fn();
-    renderConIdioma(<Tablero onMover={jest.fn()} onRechazo={jest.fn()} onAccion={onAccion} />);
+    const onItem = jest.fn();
+    const enLaTarjeta = jest.fn();
+    renderConIdioma(
+      <div onMouseDown={enLaTarjeta} onTouchStart={enLaTarjeta}>
+        <Tablero onMover={jest.fn()} onRechazo={jest.fn()} onAccion={onAccion} onItem={onItem} />
+      </div>,
+    );
     expect(screen.getByRole('button', { name: 'Mover la comanda Web P-2150 · Mesa 3' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Pasar Web P-2150 · Mesa 3 a «En preparación»' }));
     expect(onAccion).toHaveBeenCalledTimes(1);
     expect(onAccion).toHaveBeenCalledWith(comanda, 'preparing');
-    // El ítem pendiente ya no es un botón «marcar hecho» (era la causa del salto a «Listas»).
-    expect(screen.queryByRole('button', { name: /Bandeja paisa/ })).toBeNull();
+
+    const producto = screen.getByRole('button', { name: 'Marcar Bandeja paisa como hecho' });
+    expect(producto.className).toContain('cursor-pointer');
+    expect(producto.className).not.toContain('cursor-grab');
+    fireEvent.mouseDown(producto);
+    fireEvent.click(producto);
+    expect(onItem).toHaveBeenCalledTimes(1);
+    expect(onItem).toHaveBeenCalledWith(comanda, comanda.kitchen_ticket_items![0], true);
+    // El arrastre de la tarjeta no ve el puntero: la manito no se come el clic.
+    expect(enLaTarjeta).not.toHaveBeenCalled();
   });
 
   it('mientras se arrastra, solo «En preparación» acepta la tarjeta', () => {

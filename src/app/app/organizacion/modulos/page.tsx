@@ -6,7 +6,8 @@
  * - Agrupados por vertical (la sección del módulo en el catálogo del menú).
  * - Básicos (`modules.is_core`): etiqueta «Básico» y candado «Incluido
  *   siempre», sin interruptor.
- * - No incluidos en el plan: «Disponible en el plan X · Ver planes».
+ * - Sin plan: «Disponible en el plan X · Ver planes». Con plan, cualquier
+ *   módulo se enciende hasta el cupo; el plan no elige cuáles.
  * - Páginas del módulo con interruptor «Visible / Oculta»; atenuadas y sin
  *   interruptor si el módulo está apagado.
  * - «Restablecer» va en el «⋯» de la cabecera con ConfirmDialog.

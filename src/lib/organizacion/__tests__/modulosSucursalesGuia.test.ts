@@ -46,18 +46,18 @@ describe('módulos', () => {
   test('alias del catálogo de planes', () => {
     expect(codigoCanonico('gym')).toBe('memberships');
     expect(codigoCanonico('pos')).toBe('pos');
+  });
+
+  test('cualquier plan incluye todos los módulos; sin plan, ninguno', () => {
     expect(planIncluye(PRO, 'gym')).toBe(true);
-  });
-
-  test('un plan sin lista o a medida no restringe; sin plan no incluye nada', () => {
     expect(planIncluye(MEDIDA, 'pms_hotel')).toBe(true);
+    expect(planIncluye(BASICO, 'pms_hotel')).toBe(true);
     expect(planIncluye(null, 'pos')).toBe(false);
-    expect(planIncluye(BASICO, 'pms_hotel')).toBe(false);
   });
 
-  test('«Disponible en el plan X»: el activo más barato que lo incluye, nunca el a medida', () => {
-    expect(planMinimoPara(PLANES, 'pms_hotel')?.code).toBe('pro');
-    expect(planMinimoPara(PLANES, 'desconocido')).toBeNull();
+  test('sin plan, el aviso apunta al plan activo más barato, nunca al a medida', () => {
+    expect(planMinimoPara(PLANES, 'pms_hotel')?.code).toBe('basic');
+    expect(planMinimoPara(PLANES, 'desconocido')?.code).toBe('basic');
     expect(planMinimoPara([{ ...PRO, is_active: false }, ULTIMATE], 'pms_hotel')?.code).toBe('ultimate');
   });
 
@@ -72,8 +72,10 @@ describe('módulos', () => {
     expect(estadoModulo(MODULOS[0], ctx)).toEqual({ tipo: 'basico' });
     expect(estadoModulo(MODULOS[1], ctx)).toEqual({ tipo: 'activo' });
     expect(estadoModulo(MODULOS[2], ctx)).toEqual({ tipo: 'disponible' });
-    expect(estadoModulo(MODULOS[3], ctx)).toEqual({ tipo: 'otroPlan', plan: 'Pro' });
-    expect(estadoModulo(MODULOS[5], ctx)).toEqual({ tipo: 'otroPlan', plan: null });
+    // Aunque el plan no lo liste, se puede encender: el plan no elige módulos.
+    expect(estadoModulo(MODULOS[3], ctx)).toEqual({ tipo: 'disponible' });
+    expect(estadoModulo(MODULOS[5], ctx)).toEqual({ tipo: 'disponible' });
+    expect(estadoModulo(MODULOS[3], { ...ctx, plan: null })).toEqual({ tipo: 'otroPlan', plan: 'Básico' });
     const lleno = { ...ctx, activos: new Set(['organizations', 'pos', 'inventory']) };
     const otro: ModuloBase = { code: 'crm', name: 'CRM', is_core: false };
     expect(estadoModulo(otro, { ...lleno, plan: { ...BASICO, module_config: { available_modules: ['pos', 'inventory', 'crm'] } } })).toEqual({ tipo: 'limite' });

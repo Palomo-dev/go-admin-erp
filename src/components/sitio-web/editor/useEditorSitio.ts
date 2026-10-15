@@ -417,17 +417,19 @@ export function useEditorSitio() {
   }, [sectionsState]);
 
   // Manifiesto del sitio (secciones desincronizadas). No es crítico.
+  // Mismo origen: el navegador no llama al dominio público (allí el catch-all
+  // respondía HTML y CORS lo bloqueaba).
   useEffect(() => {
-    if (!previewUrlBase) return;
+    if (!organizationId) return;
     let vigente = true;
-    fetch(`${previewUrlBase}/api/_sections/manifest`)
+    fetch('/api/sitio-web/manifiesto', { headers: { Accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: SectionManifest | null) => vigente && setSectionManifest(d))
+      .then((d: { manifest?: SectionManifest | null } | null) => vigente && setSectionManifest(d?.manifest ?? null))
       .catch(() => vigente && setSectionManifest(null));
     return () => {
       vigente = false;
     };
-  }, [previewUrlBase]);
+  }, [organizationId]);
 
   // Entidades de ejemplo para las plantillas de detalle (F9.4).
   const tipoPagina = currentPage?.page_type;

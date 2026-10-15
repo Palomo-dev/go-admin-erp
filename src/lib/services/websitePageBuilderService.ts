@@ -3456,16 +3456,18 @@ class WebsitePageBuilderService {
     organizationId?: number,
     selectedBranchId?: number | null,
   ): Promise<WebsitePageWithSections | null> {
-    const { data: page, error: pageError } = await supabase
+    // `.limit(1)` y no `.single()`: un id que solo existe en el borrador V2
+    // no está en `website_pages`. `.single()` pide `Accept: application/vnd.pgrst.object+json`
+    // y PostgREST responde 406 (PGRST116) aunque la página sí se abre desde el borrador.
+    const { data: filas, error: pageError } = await supabase
       .from('website_pages')
       .select('*')
       .eq('id', pageId)
-      .single();
+      .limit(1);
 
-    if (pageError) {
-      if (pageError.code === 'PGRST116') return null;
-      throw pageError;
-    }
+    if (pageError) throw pageError;
+    const page = filas?.[0];
+    if (!page) return null;
 
     // Validar que la página pertenece a la organización del usuario
     if (organizationId !== undefined && (page as WebsitePage).organization_id !== organizationId) {

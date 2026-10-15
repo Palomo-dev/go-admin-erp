@@ -4,12 +4,11 @@
  *
  * - Los módulos BÁSICOS (`modules.is_core`) van siempre: candado «Incluido
  *   siempre», sin interruptor.
- * - Un módulo opcional se puede encender si el plan lo trae
- *   (`plans.module_config.available_modules`) y queda cupo de módulos: la
- *   misma cuenta que el disparador `validate_module_activation` (tope del plan
- *   menos los básicos activos).
- * - Si el plan no lo trae: «Disponible en el plan X», con X el plan activo más
- *   barato que sí lo incluye; si ninguno, «A medida».
+ * - El plan no elige cuáles módulos se pueden encender. `available_modules`
+ *   no se usa como candado: cualquier opcional se enciende si queda cupo
+ *   (la misma cuenta que `validate_module_activation`: tope del plan menos
+ *   los básicos activos).
+ * - Sin plan: «Disponible en el plan X», con X el plan activo más barato.
  *
  * Los grupos («verticales») salen de la sección del módulo en el catálogo de
  * navegación (`src/lib/navigation/catalog.ts`): no hay otra lista de módulos.
@@ -45,13 +44,12 @@ export function codigoCanonico(codigo: string): string {
   return ALIAS[codigo] ?? codigo;
 }
 
-/** ¿El plan trae el módulo? Un plan sin lista (a medida, heredado) no restringe. */
+/**
+ * Cualquier plan incluye todos los módulos. El tope es la cantidad
+ * (`max_modules`), no `module_config.available_modules`. Sin plan, ninguno.
+ */
 export function planIncluye(plan: PlanModulos | null | undefined, codigo: string): boolean {
-  if (!plan) return false;
-  const lista = plan.module_config?.available_modules;
-  if (plan.is_custom_enterprise || !Array.isArray(lista)) return true;
-  const c = codigoCanonico(codigo);
-  return lista.some((x) => codigoCanonico(x) === c);
+  return Boolean(plan) && codigoCanonico(codigo) !== '';
 }
 
 /** El plan activo más barato que incluye el módulo (excluye los «a medida»). */

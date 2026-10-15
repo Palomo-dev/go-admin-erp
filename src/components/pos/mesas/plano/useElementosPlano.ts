@@ -17,7 +17,7 @@ export function useElementosPlano(): { elementos: ElementoEnPlano[]; recargar: (
 
   const recargar = useCallback(async () => {
     const turno = ++vigente.current;
-    const lista = branchFilter ? await obtenerElementosPlano() : [];
+    const lista = branchFilter ? await obtenerElementosPlano(branchFilter) : [];
     // Si cambió la sede mientras cargaba, gana la carga más reciente.
     if (turno === vigente.current) setElementos(lista);
   }, [branchFilter]);

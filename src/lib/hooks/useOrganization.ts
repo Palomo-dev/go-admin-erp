@@ -661,7 +661,15 @@ export function getCurrentBranchId(): number | null {
 export function invalidateBranchIdCache(): void {
   _branchIdCache = null;
   _lastBranchIdLogTime = 0;
-  console.log('🏦 Caché de branch_id invalidado');
+}
+
+/**
+ * El selector escribe `branchFilterAll` en localStorage, pero las lecturas
+ * (`getBranchFilter`) usan este caché en memoria. Si no se actualiza al elegir
+ * una sucursal, el listado sigue en «Todas» y dos sedes muestran los mismos datos.
+ */
+export function setBranchFilterAllCache(todas: boolean): void {
+  _branchFilterAllCache = todas;
 }
 
 // Nombre del evento global emitido al cambiar de sucursal o de modo
@@ -947,6 +955,7 @@ export default {
   getCurrentBranchId,
   getCurrentUserId,
   invalidateBranchIdCache,
+  setBranchFilterAllCache,
   getCurrentBranchIdWithFallback,
   getBranchFilter,
   getBranchFilterAll,

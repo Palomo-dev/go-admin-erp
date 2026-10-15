@@ -7,6 +7,7 @@ import {
   getOrganizationId,
   getCurrentBranchId,
   invalidateBranchIdCache,
+  setBranchFilterAllCache,
   BRANCH_CHANGED_EVENT,
   ORGANIZATION_CHANGED_EVENT,
 } from '@/lib/hooks/useOrganization';
@@ -101,6 +102,7 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
 
       setSelectedBranchId(concrete);
       setIsAllSelected(allActive);
+      setBranchFilterAllCache(allActive);
     } catch (error) {
       console.error('Error cargando sucursales en BranchContext:', error);
     } finally {
@@ -141,6 +143,7 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
       if (selection === ALL_BRANCHES) {
         localStorage.setItem(BRANCH_ALL_KEY, '1');
         void setMobileStorage(BRANCH_ALL_KEY, '1');
+        setBranchFilterAllCache(true);
         setIsAllSelected(true);
       } else {
         const selStr = selection.toString();
@@ -149,6 +152,7 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
         sessionStorage.setItem('currentBranchId', selStr);
         void setMobileStorage(BRANCH_ALL_KEY, '0');
         void setMobileStorage('currentBranchId', selStr);
+        setBranchFilterAllCache(false);
         invalidateBranchIdCache();
         setIsAllSelected(false);
         setSelectedBranchId(selection);

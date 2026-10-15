@@ -15,10 +15,11 @@ export class MesasService {
    * Obtener todas las mesas con sus sesiones activas
    * Incluye totales consolidados para mesas combinadas
    */
-  static async obtenerMesasConSesiones(): Promise<TableWithSession[]> {
+  static async obtenerMesasConSesiones(branchId?: number | null): Promise<TableWithSession[]> {
     const organizationId = getOrganizationId();
-    // En modo "Todas las sucursales" branchFilter es null y se listan las mesas de todas
-    const branchFilter = getBranchFilter();
+    // La pantalla pasa la sucursal que muestra el encabezado. Sin argumento se
+    // usa el filtro global. null = «Todas las sucursales».
+    const branchFilter = branchId === undefined ? getBranchFilter() : branchId;
 
     try {
       // 1. Obtener todas las mesas
@@ -517,9 +518,9 @@ export class MesasService {
   /**
    * Obtener zonas únicas
    */
-  static async obtenerZonas(): Promise<string[]> {
+  static async obtenerZonas(branchId?: number | null): Promise<string[]> {
     const organizationId = getOrganizationId();
-    const branchFilter = getBranchFilter();
+    const branchFilter = branchId === undefined ? getBranchFilter() : branchId;
 
     try {
       let query = supabase

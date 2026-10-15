@@ -9,7 +9,7 @@ import { Building2 } from 'lucide-react';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
-import { cargoImportado, departamentoImportado, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
+import { cargoImportado, contactoImportado, departamentoImportado, telefonosAdicionalesDe, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
 
 interface InfoTabProps {
   clienteId: string;
@@ -226,7 +226,10 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const leadMeta = clienteInfo.metadata?.lead;
   // Empresa sin persona vinculada: el contacto del alta (p. ej. importado) vive en first/last_name.
   const contactoPropio = isCompany && !primaryContact ? `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() : '';
-  const cargoPropio = contactoPropio ? cargoImportado(importacion, leadMeta) : null;
+  const contactoArchivo = isCompany && !primaryContact && !contactoPropio ? contactoImportado(importacion, leadMeta) : null;
+  const nombreContacto = contactoPropio || contactoArchivo || '';
+  const cargoPropio = nombreContacto ? cargoImportado(importacion, leadMeta) : null;
+  const otrosTelefonos = telefonosAdicionalesDe(importacion, leadMeta, clienteInfo.notes, clienteInfo.phone);
   const departamento = municipalityState || departamentoImportado(importacion, leadMeta);
 
   return (
@@ -264,10 +267,10 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                 </div>
               )}
 
-              {contactoPropio && (
+              {nombreContacto && (
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.personaContacto')}</p>
-                  <p>{cargoPropio ? t('info.contactoConCargo', { nombre: contactoPropio, cargo: cargoPropio }) : contactoPropio}</p>
+                  <p>{cargoPropio ? t('info.contactoConCargo', { nombre: nombreContacto, cargo: cargoPropio }) : nombreContacto}</p>
                 </div>
               )}
 
@@ -286,6 +289,11 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.telefono')}</p>
                 <p>{clienteInfo.phone || noEspecificado}</p>
+                {otrosTelefonos.length > 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {tImp('campos.telefonosAdicionales')}: {otrosTelefonos.join(' · ')}
+                  </p>
+                )}
               </div>
 
               <div>

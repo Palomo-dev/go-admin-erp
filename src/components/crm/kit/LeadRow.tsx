@@ -120,7 +120,7 @@ export function LeadRow({ lead, seleccionada, onSeleccionChange, onCalificar, on
           <AvatarIniciales nombre={nombre} src={lead.avatar_url} />
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-medium text-fg">{nombre}</span>
-            <span className="truncate text-xs font-medium text-fg-muted">{detalleContacto(lead) || t('sinContacto')}</span>
+            <span title={detalleContacto(lead) || undefined} className="truncate text-xs font-medium text-fg-muted">{detalleContacto(lead) || t('sinContacto')}</span>
           </span>
         </span>
       </td>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Building2, IdCard, Mail, Phone, SquareUser, User } from 'lucide-react';
+import { Building2, IdCard, Mail, MapPin, Phone, SquareUser, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   AvatarIniciales,
@@ -46,6 +46,20 @@ function etiquetaRol(rol: string, roles: readonly OpcionFiltro[]): string {
   return roles.find((r) => r.valor === rol)?.etiqueta ?? rol.charAt(0).toUpperCase() + rol.slice(1);
 }
 
+/** Persona de contacto de una empresa: el vínculo, o el nombre guardado en la ficha al importar. */
+function contactoDeEmpresa(c: FilaCliente): { nombre: string; cargo: string | null } | null {
+  if (c.customer_type !== 'company') return null;
+  const vinculado = c.contacto_nombre?.trim();
+  if (vinculado) return { nombre: vinculado, cargo: c.contacto_cargo?.trim() || null };
+  const propio = [c.first_name, c.last_name].map((s) => s?.trim()).filter(Boolean).join(' ');
+  return propio ? { nombre: propio, cargo: null } : null;
+}
+
+/** Municipio fiscal, o la ciudad en texto que trajo la importación. */
+function ciudadDeCliente(c: FilaCliente): string | null {
+  return c.municipio_nombre?.trim() || c.city?.trim() || null;
+}
+
 export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaCliente>[] {
   const { t } = ctx;
   return [
@@ -57,6 +71,7 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
       celda: (c) => {
         const nombre = nombreCliente(c);
         const rol = c.roles?.[0];
+        const contacto = contactoDeEmpresa(c);
         return (
           <div className="flex min-w-0 items-center gap-3">
             <AvatarIniciales nombre={nombre} src={c.avatar_url} />
@@ -71,11 +86,11 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
                 )}
                 {c.status === 'inactive' && <StatusBadge estado="Inactivo" />}
               </div>
-              {c.customer_type === 'company' && c.contacto_nombre && (
+              {contacto && (
                 <span className="truncate text-xs text-fg-muted">
-                  {c.contacto_cargo
-                    ? t('celdas.contactoCargo', { nombre: c.contacto_nombre, cargo: c.contacto_cargo })
-                    : t('celdas.contacto', { nombre: c.contacto_nombre })}
+                  {contacto.cargo
+                    ? t('celdas.contactoCargo', { nombre: contacto.nombre, cargo: contacto.cargo })
+                    : t('celdas.contacto', { nombre: contacto.nombre })}
                 </span>
               )}
             </div>
@@ -112,7 +127,7 @@ export function columnasClientes(ctx: ContextoColumnas): ColumnaTabla<FilaClient
       id: 'municipio',
       encabezado: t('columnas.municipio'),
       ocultarDebajo: 'xl',
-      celda: (c) => <span className="text-[13px] text-fg-secondary">{c.municipio_nombre || '—'}</span>,
+      celda: (c) => <span className="text-[13px] text-fg-secondary">{ciudadDeCliente(c) || '—'}</span>,
     },
     {
       id: 'etiquetas',
@@ -205,12 +220,13 @@ export function TarjetaCliente({
   const nombre = nombreCliente(c);
   const doc = documentoCliente(c);
   const empresa = c.customer_type === 'company';
-  const contacto =
-    empresa && c.contacto_nombre
-      ? c.contacto_cargo
-        ? t('celdas.contactoCargo', { nombre: c.contacto_nombre, cargo: c.contacto_cargo })
-        : t('celdas.contacto', { nombre: c.contacto_nombre })
-      : null;
+  const persona = contactoDeEmpresa(c);
+  const contacto = persona
+    ? persona.cargo
+      ? t('celdas.contactoCargo', { nombre: persona.nombre, cargo: persona.cargo })
+      : t('celdas.contacto', { nombre: persona.nombre })
+    : null;
+  const ciudad = ciudadDeCliente(c);
 
   return (
     <ListCard
@@ -222,6 +238,7 @@ export function TarjetaCliente({
         contacto ? { icono: SquareUser, texto: contacto, etiqueta: t('tarjeta.contacto') } : null,
         c.email ? { icono: Mail, texto: c.email, etiqueta: t('tarjeta.correo') } : null,
         c.phone ? { icono: Phone, texto: c.phone, etiqueta: t('tarjeta.telefono') } : null,
+        ciudad ? { icono: MapPin, texto: ciudad, etiqueta: t('columnas.municipio') } : null,
       ]}
       estado={c.status === 'inactive' ? <StatusBadge estado="Inactivo" /> : undefined}
       acciones={acciones}

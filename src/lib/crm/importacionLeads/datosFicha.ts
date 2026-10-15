@@ -14,7 +14,8 @@
  * `formatPlain` (son días calendario, no instantes).
  */
 
-import { urlNormalizada } from './normalizacion';
+import { cabeceraEsContacto } from './campos';
+import { telefonosDistintos, telefonosEnTexto, urlNormalizada } from './normalizacion';
 
 export type ClaveDatoImportado =
   | 'nombre'
@@ -223,4 +224,31 @@ export function departamentoImportado(importacion: unknown, lead?: unknown): str
 /** Cargo importado de la persona de contacto. */
 export function cargoImportado(importacion: unknown, lead?: unknown): string | null {
   return txt(fuentesDeDatos(importacion, lead)?.cargo);
+}
+
+/**
+ * Nombre de la persona de contacto. Primero el campo `contacto`; si el archivo
+ * lo trajo en una columna que el mapeo viejo guardó como adicional
+ * (`nombre_dueno_encargado`), también.
+ */
+export function contactoImportado(importacion: unknown, lead?: unknown): string | null {
+  const m = fuentesDeDatos(importacion, lead);
+  if (!m) return null;
+  const directo = txt(m.contacto);
+  if (directo) return directo;
+  for (const [columna, v] of Object.entries(obj(m.adicionales) ?? {})) {
+    if (!cabeceraEsContacto(columna)) continue;
+    const s = txt(v);
+    if (s) return s;
+  }
+  return null;
+}
+
+/**
+ * Teléfonos además del principal: los de `telefonos_adicionales` y los que
+ * siguen escritos dentro de las notas. El principal no se repite.
+ */
+export function telefonosAdicionalesDe(importacion: unknown, lead: unknown, notas: unknown, principal: unknown, pais = 'CO'): string[] {
+  const m = fuentesDeDatos(importacion, lead);
+  return telefonosDistintos(principal, [lista(m?.telefonos_adicionales), telefonosEnTexto(notas, pais), telefonosEnTexto(m?.notas, pais)], pais);
 }

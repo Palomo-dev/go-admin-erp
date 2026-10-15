@@ -43,6 +43,48 @@ export function digitosDe(e164: string): string {
   return e164.replace(/\D/g, '');
 }
 
+/**
+ * Teléfonos escritos dentro de un texto libre (las notas del archivo suelen
+ * decir «otros teléfonos: +57 310 555 0199»). Solo tramos que empiezan por
+ * «+» y que `telefonoE164` acepta: un NIT, un precio o un año no llevan «+».
+ * Orden de aparición, sin repetir.
+ */
+export function telefonosEnTexto(v: unknown, pais: string = 'CO'): string[] {
+  const s = v === null || v === undefined ? '' : String(v);
+  if (!s.includes('+')) return [];
+  const vistos = new Set<string>();
+  const salida: string[] = [];
+  for (const m of s.matchAll(/\+\d{1,3}(?:[\s.\-]*\d){7,14}/g)) {
+    const e164 = telefonoE164(m[0], pais);
+    if (!e164 || vistos.has(e164)) continue;
+    vistos.add(e164);
+    salida.push(e164);
+  }
+  return salida;
+}
+
+/**
+ * Une varios grupos de teléfonos, descarta el principal (aunque venga con
+ * otro formato) y los repetidos. Un valor que no es un teléfono se conserva
+ * tal cual: es lo que el archivo traía en una columna de teléfono.
+ */
+export function telefonosDistintos(principal: unknown, grupos: readonly (readonly string[])[], pais: string = 'CO'): string[] {
+  const presentar = (raw: string) => telefonoE164(raw, pais) ?? raw.trim().replace(/\s+/g, ' ').slice(0, LARGO_MAXIMO_TEXTO);
+  const vistos = new Set<string>();
+  const principalLimpio = presentar(String(principal ?? ''));
+  if (principalLimpio) vistos.add(principalLimpio);
+  const salida: string[] = [];
+  for (const grupo of grupos) {
+    for (const raw of grupo) {
+      const limpio = presentar(String(raw ?? ''));
+      if (!limpio || vistos.has(limpio)) continue;
+      vistos.add(limpio);
+      salida.push(limpio);
+    }
+  }
+  return salida;
+}
+
 const CORREO_RE = /^[^\s@<>()[\],;:"]+@[^\s@<>()[\],;:"]+\.[^\s@<>()[\],;:"]{2,}$/;
 
 /** Correo en minúsculas o `null` si no tiene forma de correo. */

@@ -24,7 +24,8 @@ import {
   reasignarColumnaLead,
   type CampoLead,
 } from '../campos';
-import { bandaDesdePrioridad, correoNormalizado, nitNormalizado, telefonoE164, textoLimpio, urlNormalizada, valorNumerico } from '../normalizacion';
+import { bandaDesdePrioridad, correoNormalizado, nitNormalizado, telefonoE164, telefonosEnTexto, textoLimpio, urlNormalizada, valorNumerico } from '../normalizacion';
+import { contactoImportado, telefonosAdicionalesDe } from '../datosFicha';
 import { duplicadosEnArchivo, leerFilasLeads, validarFilaLead } from '../validacion';
 import { altaConClienteExistente, altaConClienteNuevo, nombreDelLead, verticalParaSector, type ContextoAltaLead } from '../mapeo';
 import { clienteCoincidente, patronCorreos, patronNits, type ClienteCandidato } from '../dedupe';
@@ -55,6 +56,8 @@ describe('autodetección de columnas', () => {
     expect(de('telefono_e164')).toBe('telefono');
     expect(de('telefono')).toBe('telefonoAdicional');
     expect(de('correo_publicado')).toBe('correo');
+    expect(autoMapearLeads(['nombre_dueno_encargado', 'cargo'])).toEqual(['contacto', 'cargo']);
+    expect(autoMapearLeads(['Nombre del dueño o encargado'])[0]).toBe('contacto');
     expect(de('valor_anual_usd')).toBe('valor');
     expect(de('rne_crc')).toBe('rne');
     expect(de('ley_2300_horario')).toBe('horario');
@@ -134,6 +137,14 @@ describe('normalización', () => {
     expect(telefonoE164(v, 'CO')).toBeNull();
   });
 
+  it('saca los celulares escritos en un texto y deja fuera NIT, precios y años', () => {
+    const texto = 'Fijo de la sede. Otros teléfonos: +57 310 765 4321 y +57 300 111 2233. Precio $12.000. Año 2026. NIT 900111222.';
+    expect(telefonosEnTexto(texto, 'CO')).toEqual(['+573107654321', '+573001112233']);
+    expect(telefonosEnTexto('sin números', 'CO')).toEqual([]);
+    expect(contactoImportado({ adicionales: { nombre_dueno_encargado: 'Laura Inventada' } })).toBe('Laura Inventada');
+    expect(telefonosAdicionalesDe({ telefonos_adicionales: ['+576044441234'] }, null, texto, '+576044441234')).toEqual(['+573107654321', '+573001112233']);
+  });
+
   it('NIT: con guion toma el DV y lo valida con el módulo 11', () => {
     expect(nitNormalizado(`${NIT}-${DV}`)).toEqual({ numero: NIT, dv: DV, dvValido: true });
     expect(nitNormalizado(`${NIT}-${(DV + 1) % 10}`)).toEqual({ numero: NIT, dv: null, dvValido: false });
@@ -171,6 +182,29 @@ describe('validación y duplicados en el archivo', () => {
     expect(v.errores).toEqual([]);
     expect(v.datos?.telefono).toBeNull();
     expect(v.avisos.map((a) => a.codigo)).toContain('telefono_descartado');
+  });
+
+  it('el dueño pasa a contacto y los celulares de las notas se guardan además del fijo', () => {
+    const cabeceras = ['empresa', 'nombre_dueno_encargado', 'cargo', 'municipio', 'telefono', 'telefono_e164', 'nit', 'notas'];
+    const mapeo = autoMapearLeads(cabeceras);
+    expect(mapeo).toEqual(['nombre', 'contacto', 'cargo', 'ciudad', 'telefono', 'telefonoAdicional', 'nit', 'notas']);
+    const matriz = [
+      cabeceras,
+      ['Panadería Sintética', 'Laura Inventada', 'Gerente', 'Pereira', '604 444 1234', '+576044441234', `${NIT}-${DV}`, 'Fijo de la sede. Otros teléfonos: +57 310 765 4321 y +57 300 111 2233. NIT 900111222. Precio $12.000.'],
+    ];
+    const entrada = leerFilasLeads(matriz, 0, mapeo)[0];
+    const v = validarFilaLead(entrada, OPC);
+    expect(v.datos).toMatchObject({
+      contacto: 'Laura Inventada',
+      cargo: 'Gerente',
+      ciudad: 'Pereira',
+      telefono: '+576044441234',
+      telefonosAdicionales: ['+573107654321', '+573001112233'],
+    });
+    const alta = altaConClienteNuevo(v.datos!, CTX);
+    expect(alta.body.new_customer).toMatchObject({ full_name: 'Laura Inventada', phone: '+576044441234' });
+    expect(alta.extras.customer).toMatchObject({ city: 'Pereira' });
+    expect((alta.extras.customer?.metadata as { importacion: { telefonos_adicionales: string[] } }).importacion.telefonos_adicionales).toEqual(['+573107654321', '+573001112233']);
   });
 
   it('normaliza la fila completa', () => {

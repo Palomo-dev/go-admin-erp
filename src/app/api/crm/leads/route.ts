@@ -31,7 +31,7 @@ import { LEAD_SOURCES } from '@/lib/crm/enums';
  * entera: en otras fichas puede traer datos ajenos al lead.
  */
 const COLUMNAS_LEAD =
-  'id, full_name, email, phone, doc_type, doc_number, company_name, customer_type, lifecycle_stage, lead_source, owner_id, lead_score, icp_band, last_contact_at, lead_discarded_at, lead_discard_reason, tags, branch_id, created_at, updated_at, do_not_call, avatar_url, city, address, metadata_importacion:metadata->importacion, metadata_lead:metadata->lead';
+  'id, full_name, first_name, last_name, email, phone, notes, doc_type, doc_number, company_name, customer_type, lifecycle_stage, lead_source, owner_id, lead_score, icp_band, last_contact_at, lead_discarded_at, lead_discard_reason, tags, branch_id, created_at, updated_at, do_not_call, avatar_url, city, address, metadata_importacion:metadata->importacion, metadata_lead:metadata->lead';
 
 const escaparLike = (q: string) => q.replace(/[\\%_,()]/g, (c) => `\\${c}`);
 

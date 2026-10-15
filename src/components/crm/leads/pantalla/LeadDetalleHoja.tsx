@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { ExternalLink, Hash, Mail, MapPin, Phone, TrendingUp, UserPlus, XCircle } from 'lucide-react';
+import { ExternalLink, Hash, Mail, MapPin, Phone, TrendingUp, User, UserPlus, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
@@ -16,7 +16,7 @@ import { EntradaActividad } from '@/components/crm/actividades/pantalla/EntradaA
 import type { EntradaFeed } from '@/components/crm/actividades/pantalla/actividadesPantallaLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
-import { tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
+import { contactoImportado, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
 import type { LeadApi } from './leadsPantallaLogica';
 
 /**
@@ -63,6 +63,8 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
 
   if (!lead || !api) return null;
   const nombre = lead.full_name?.trim() || tl('sinNombre');
+  const contacto = lead.contacto?.trim() || contactoImportado(api.metadata_importacion, api.metadata_lead);
+  const otrosTelefonos = lead.telefonosExtra ?? [];
   const origen = origenValido(lead.lead_source);
   const banda = bandaScore(lead.lead_score);
   const dias = diasDesde(lead.last_contact_at, new Date(), timezone);
@@ -110,8 +112,12 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
       <section className="flex flex-col gap-2">
         <h3 className={seccion}>{t('contacto')}</h3>
         <ul className="flex flex-col gap-1.5 text-[13px] text-fg">
+          {contacto && <li className="flex items-center gap-2"><User aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{contacto}</li>}
           {api.email && <li className="flex items-center gap-2"><Mail aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{api.email}</li>}
           {api.phone && <li className="flex items-center gap-2"><Phone aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{api.phone}</li>}
+          {otrosTelefonos.map((tel) => (
+            <li key={tel} className="flex items-center gap-2"><Phone aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{tel}</li>
+          ))}
           {lead.documento && <li className="flex items-center gap-2"><Hash aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{lead.documento}</li>}
           {(api.address || api.city) && (
             <li className="flex items-start gap-2">

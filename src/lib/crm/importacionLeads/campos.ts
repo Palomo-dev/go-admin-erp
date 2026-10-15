@@ -83,7 +83,14 @@ export const CAMPOS_LEAD: readonly DefinicionCampoLead[] = [
     alias: ['nombrecomercial', 'nombre', 'nombredelnegocio', 'negocio', 'empresa', 'establecimiento', 'comercio', 'tradename', 'businessname', 'company', 'business', 'name', 'nomecomercial', 'nomcommercial', 'nome', 'nom', 'entreprise', 'lead'],
   },
   { campo: 'razonSocial', alias: ['razonsocial', 'razonsocialrues', 'legalname', 'companyname', 'razaosocial', 'raisonsociale', 'denominacionsocial'] },
-  { campo: 'contacto', alias: ['contacto', 'nombrecontacto', 'personacontacto', 'responsable', 'contactname', 'contact', 'contato', 'nomducontact'] },
+  {
+    campo: 'contacto',
+    alias: [
+      'contacto', 'nombrecontacto', 'personacontacto', 'responsable', 'contactname', 'contact', 'contato', 'nomducontact',
+      // El libro de prospección nombra al dueño en una columna aparte del cargo.
+      'nombreduenoencargado', 'nombredelduenooencargado', 'nombrepropietario', 'propietario', 'dueno',
+    ],
+  },
   { campo: 'nit', alias: ['nit', 'nitrues', 'rut', 'taxid', 'numerofiscal', 'numeroidentificacion', 'identificacion', 'documento', 'nif', 'cnpj', 'siret', 'vat'] },
   { campo: 'dv', alias: ['dv', 'digitoverificacion', 'digitodeverificacion', 'checkdigit'] },
   {
@@ -132,6 +139,12 @@ export type MapeoLead = MapeoDe<CampoLead>;
 export const CAMPOS_MULTIPLES: ReadonlySet<CampoLead> = new Set(CAMPOS_LEAD.filter((c) => c.multiple).map((c) => c.campo));
 
 const ALIAS_DE = (campo: CampoLead): readonly string[] => CAMPOS_LEAD.find((c) => c.campo === campo)?.alias ?? [];
+
+/** ¿El encabezado (tal como vino en el archivo) es el nombre de la persona de contacto? */
+export function cabeceraEsContacto(cabecera: unknown): boolean {
+  const norm = normalizarCabecera(cabecera);
+  return !!norm && ALIAS_DE('contacto').includes(norm);
+}
 
 /**
  * Reconocimiento por alias. Una segunda columna de teléfono o de correo (un

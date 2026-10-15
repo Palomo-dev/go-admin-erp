@@ -58,7 +58,10 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
   });
 
   const handleCreateRole = async (roleData: { name: string; description: string }) => {
-    const newRole = await createRole(roleData);
+    const newRole = await createRole({ 
+      ...roleData, 
+      organizationId 
+    });
     if (newRole) {
       setShowCreateForm(false);
     }

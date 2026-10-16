@@ -32,10 +32,12 @@ import {
   urlNormalizada,
   valorNumerico,
 } from './normalizacion';
-import type { FilaLeadEntrada, FilaLeadNormalizada, FilaLeadValidada, MensajeImportacion, OpcionesImportacionLeads } from './tipos';
+import type { FilaLeadEntrada, FilaLeadNormalizada, FilaLeadValidada, MensajeImportacion, OpcionesImportacionLeads, ResultadoFilaLead, ResumenImportacionLeads } from './tipos';
 
-/** Límite por archivo (configurable en el servidor con `LEADS_IMPORT_MAX_FILAS`). */
-export const MAX_FILAS_POR_ARCHIVO = 1000;
+/** Límite por archivo (configurable en el servidor con `LEADS_IMPORT_MAX_FILAS`, nunca por encima de este tope). */
+export const MAX_FILAS_POR_ARCHIVO = 10_000;
+/** Filas por petición de `validar`. El archivo cabe entero; cada petición se queda en el tamaño que ya aguantaba la vista previa. */
+export const TAMANO_BLOQUE_VALIDAR = 1000;
 /** Filas por petición de `importar` (cada alta son ~10 consultas; el asistente manda bloques). */
 export const TAMANO_BLOQUE_IMPORTAR = 25;
 /** Máximo que acepta el servidor por petición de `importar`. */
@@ -235,4 +237,39 @@ export function duplicadosEnArchivo(filas: readonly FilaLeadValidada[]): Map<num
     for (const k of claves) primera.set(k, f.fila);
   }
   return duplicadas;
+}
+
+/** Cuenta acciones de la vista previa. Un `rne_excluido` en avisos cuenta como excluido; el resto de las que se escribirían, pendiente. */
+export function resumirResultados(resultados: readonly ResultadoFilaLead[]): ResumenImportacionLeads {
+  const r: ResumenImportacionLeads = { total: resultados.length, crear: 0, ligar: 0, omitir: 0, error: 0, rnePendiente: 0, rneExcluido: 0 };
+  for (const x of resultados) {
+    r[x.accion] += 1;
+    if (x.accion === 'crear' || x.accion === 'ligar') {
+      if (x.avisos.some((a) => a.codigo === 'rne_excluido')) r.rneExcluido += 1;
+      else r.rnePendiente += 1;
+    }
+  }
+  return r;
+}
+
+/**
+ * Junta la vista previa pedida por bloques. La deduplicación del archivo es
+ * del archivo entero: una repetición que cayó en otro bloque se omite aquí,
+ * igual que si el servidor hubiera visto todas las filas juntas.
+ */
+export function unirValidacion(
+  filas: readonly FilaLeadEntrada[],
+  resultados: readonly ResultadoFilaLead[],
+  opciones: Pick<OpcionesImportacionLeads, 'pais' | 'tipoCliente'>,
+): { resultados: ResultadoFilaLead[]; resumen: ResumenImportacionLeads } {
+  const dups = duplicadosEnArchivo(filas.map((f) => validarFilaLead(f, opciones)));
+  const corregidos = resultados.map((r) => {
+    const previa = dups.get(r.fila);
+    if (previa === undefined || r.accion === 'error') return r;
+    if (r.motivo === 'duplicado_archivo' && r.duplicadaDe === previa) return r;
+    const copia: ResultadoFilaLead = { ...r, accion: 'omitir', motivo: 'duplicado_archivo', duplicadaDe: previa };
+    delete copia.cliente;
+    return copia;
+  });
+  return { resultados: corregidos, resumen: resumirResultados(corregidos) };
 }

@@ -14,7 +14,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { LibroLeido, Matriz } from '@/lib/importacion/libro';
 import { cabeceraEnDolares, encontrarFilaCabeceraLeads, faltantesMapeoLead, mapeoInicialLeads, type MapeoLead } from '@/lib/crm/importacionLeads/campos';
-import { leerFilasLeads, TAMANO_BLOQUE_IMPORTAR } from '@/lib/crm/importacionLeads/validacion';
+import { leerFilasLeads, TAMANO_BLOQUE_IMPORTAR, TAMANO_BLOQUE_VALIDAR, unirValidacion } from '@/lib/crm/importacionLeads/validacion';
 import type { OpcionesImportacionLeads, ResultadoFilaLead } from '@/lib/crm/importacionLeads/tipos';
 import { importarBloqueLeads, validarLeads, type RespuestaValidacion } from './apiImportarLeads';
 
@@ -130,7 +130,12 @@ export function useImportarLeads(orgId: number | undefined) {
     setValidando(true);
     setErrorValidacion(null);
     try {
-      setValidacion(await validarLeads(orgId, filas, opciones));
+      const partes: RespuestaValidacion[] = [];
+      for (let i = 0; i < filas.length; i += TAMANO_BLOQUE_VALIDAR) {
+        partes.push(await validarLeads(orgId, filas.slice(i, i + TAMANO_BLOQUE_VALIDAR), opciones));
+      }
+      const unida = unirValidacion(filas, partes.flatMap((p) => p.resultados), opciones);
+      setValidacion({ ...unida, moneda: partes[0]?.moneda ?? { moneda: null, tasa: 1, origen: null, fechaTasa: null, sinTasa: false } });
       setExcluidas(new Set());
     } catch (e) {
       setErrorValidacion(e instanceof Error ? e.message : String(e));

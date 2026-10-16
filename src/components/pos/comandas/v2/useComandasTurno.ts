@@ -42,7 +42,7 @@ type Aviso = (a: { titulo: string; descripcion?: string; tono?: 'error' | 'ok' |
 
 type Pendiente =
   | { tipo: 'estado'; ticketId: number; estado: ColumnaComanda; station: string | null }
-  | { tipo: 'item'; ticketId: number; itemId: number; hecho: boolean };
+  | { tipo: 'item'; ticketId: number; itemId: number; hecho: boolean; destino?: 'in_progress' | 'ready' };
 
 const CLAVE_COLA = 'goadmin.cocina.cola';
 
@@ -94,6 +94,8 @@ export function useComandasTurno({
   const [sinConexionDesde, setSinConexionDesde] = React.useState<Date | null>(null);
   const [cola, setCola] = React.useState<Pendiente[]>([]);
   const conocidas = React.useRef<Set<number> | null>(null);
+  /** Un toque en vuelo por línea: el segundo clic no se adelanta al estado que aún no pintó React. */
+  const lineaEnVuelo = React.useRef(new Set<number>());
   const sonidoRef = React.useRef(sonido);
   sonidoRef.current = sonido;
 
@@ -185,7 +187,7 @@ export function useComandasTurno({
         await marcarItemComanda(p.itemId, p.hecho);
       } catch (err) {
         if (!esRpcNoDisponible(err)) throw err;
-        await KitchenService.updateItemStatus(p.itemId, p.hecho ? 'ready' : 'in_progress');
+        await KitchenService.updateItemStatus(p.itemId, p.destino ?? (p.hecho ? 'ready' : 'in_progress'));
       }
     }
   }, []);
@@ -270,51 +272,38 @@ export function useComandasTurno({
   };
 
   const marcarItem = async (c: KitchenTicket, item: KitchenTicketItem, hecho: boolean) => {
+    if (lineaEnVuelo.current.has(item.id)) return;
+    lineaEnVuelo.current.add(item.id);
     const antes = tickets;
     const ahoraIso = new Date().toISOString();
     const plan = planMarcarItem(item, hecho);
     reemplazar(c.id, (x) => aplicarToqueItem(x, item, hecho, ahoraIso) as KitchenTicket);
-    // Un pendiente no se marca hecho de una: la base responde comanda_sin_empezar.
-    // Primero se empieza la estación y después se marca esa línea.
-    const pendientes: Pendiente[] = [];
-    if (plan.empezar) pendientes.push({ tipo: 'estado', ticketId: c.id, estado: 'preparing', station: plan.station });
-    pendientes.push({ tipo: 'item', ticketId: c.id, itemId: item.id, hecho: plan.hecho });
-    if (!enLinea) {
-      for (const p of pendientes) encolar(p);
-      return;
-    }
-    let enviados = 0;
+    // Un solo ítem. La base, si sigue pendiente, lo empieza; no marca lista al resto.
+    const p: Pendiente = { tipo: 'item', ticketId: c.id, itemId: item.id, hecho: plan.hecho, destino: plan.destino };
     try {
-      for (const p of pendientes) {
-        if (p.tipo === 'estado') {
-          await enviarPendiente(p);
-        } else {
-          try {
-            await marcarItemComanda(p.itemId, p.hecho);
-          } catch (err) {
-            if (!esRpcNoDisponible(err)) throw err;
-            // Camino anterior: el ítem y, si cambia, la comanda (como hacía la pantalla).
-            await KitchenService.updateItemStatus(p.itemId, p.hecho ? 'ready' : 'in_progress');
-            const base = plan.empezar ? aplicarEstadoLocal(c, 'preparing', plan.station, ahoraIso) : c;
-            const items = (base.kitchen_ticket_items ?? []).map((i) =>
-              i.id === p.itemId ? { ...i, status: p.hecho ? 'ready' : 'in_progress' } : i,
-            );
-            const derivado = estadoDerivado(items);
-            if (derivado && derivado !== c.status) await KitchenService.updateTicketStatus(c.id, derivado);
-          }
-        }
-        enviados += 1;
+      if (!enLinea) {
+        encolar(p);
+        return;
+      }
+      try {
+        await marcarItemComanda(p.itemId, p.hecho);
+      } catch (err) {
+        if (!esRpcNoDisponible(err)) throw err;
+        await KitchenService.updateItemStatus(p.itemId, plan.destino);
+        const items = (c.kitchen_ticket_items ?? []).map((i) => (i.id === p.itemId ? { ...i, status: plan.destino } : i));
+        const derivado = estadoDerivado(items);
+        if (derivado && derivado !== c.status) await KitchenService.fijarEstadoTicket(c.id, derivado);
       }
       void cargar(true);
     } catch (err) {
       if (esFalloDeRed(err)) {
-        for (const p of pendientes.slice(enviados)) encolar(p);
+        encolar(p);
         return;
       }
-      // Si ya se empezó en la base, recargar: revertir pintaría «Nuevas» con la cocina en marcha.
-      if (enviados > 0) void cargar(true);
-      else setTickets(antes);
+      setTickets(antes);
       aviso({ titulo: t('errorTitulo'), descripcion: errorDe(err), tono: 'error' });
+    } finally {
+      lineaEnVuelo.current.delete(item.id);
     }
   };
 

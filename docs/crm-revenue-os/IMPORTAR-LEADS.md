@@ -15,7 +15,7 @@ vendedor, reversión de la ficha si el lead no cuaja).
 1. **CRM › Leads › Importar** (botón junto a «Nuevo lead», ruta
    `/app/crm/leads/importar`). «Descargar plantilla» baja un CSV con las
    columnas reconocidas y dos filas de ejemplo.
-2. **Archivo**: CSV, XLS o XLSX (máx. 10 MB y 1.000 filas por archivo). Si el
+2. **Archivo**: CSV, XLS o XLSX (máx. 10 MB y 10.000 filas por archivo). Si el
    libro tiene varias hojas se elige cuál (se preselecciona la primera cuya
    cabecera reconoce un nombre; las hojas de resumen o fuentes se ignoran).
 3. **Columnas**: autodetección por nombre de cabecera, editable. Hace falta un
@@ -37,7 +37,7 @@ vendedor, reversión de la ficha si el lead no cuaja).
 |---|---|
 | Sesión | `getServerOrgContext()`; organización ajena en body o query → 403 (`readOrgBody`) |
 | Permiso | `crm.leads.create` con `hasOrgAdminOrPermission` (rol o cargo, en el servidor). Hoy lo tiene el rol 2; se concede a otros por cargo |
-| `accion: 'validar'` | vista previa, hasta `LEADS_IMPORT_MAX_FILAS` filas (1.000 por defecto, máx. 5.000) |
+| `accion: 'validar'` | vista previa, hasta `LEADS_IMPORT_MAX_FILAS` filas (10.000 por defecto; el asistente manda bloques de 1.000) |
 | `accion: 'importar'` | hasta 50 filas por petición (el asistente manda 25); `maxDuration = 60` |
 
 El servidor **nunca confía en la validación del navegador**: vuelve a

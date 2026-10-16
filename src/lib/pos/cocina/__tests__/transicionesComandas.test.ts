@@ -2,10 +2,10 @@
  * Comandas: un paso a la vez. La flecha, el botón principal y el soltar del
  * arrastre usan las mismas reglas (`siguienteColumna`, `validarMovimiento`).
  *
- * Caso real (org 140): una comanda de la Carta QR con una sola línea pasó de
- * «Nuevas» a «Listas para servir» porque tocar el ítem lo marcaba hecho
- * (`pending` → `ready`) sin «En preparación». La base sigue rechazando ese
- * salto. El círculo ahora empieza la estación y después marca esa línea.
+ * El círculo es de una sola línea: el primer toque la deja en preparación y
+ * la comanda no pasa a «Listas» hasta que todas las líneas vivas están listas.
+ * Antes, tocar un pendiente lo marcaba hecho y una comanda de una línea
+ * saltaba de «Nuevas» a «Listas».
  */
 import {
   accionPrincipal,
@@ -75,37 +75,49 @@ describe('Comandas — la flecha avanza un solo paso', () => {
     expect(puedeMarcarItem({ status: 'delivered' })).toBe(false);
   });
 
-  it('el círculo de un pendiente sí se toca: primero empieza y después marca esa línea', () => {
+  it('el primer toque de un pendiente deja la comanda en preparación, no en listas', () => {
     const c = comandaWebUnaLinea();
     const item = c.kitchen_ticket_items![0];
     expect(circuloTocable(item)).toBe(true);
     expect(circuloTocable({ status: 'cancelled' })).toBe(false);
     expect(circuloTocable({ status: 'delivered' })).toBe(false);
 
-    const plan = planMarcarItem(item, true);
-    expect(plan).toEqual({ empezar: true, station: 'all', hecho: true });
-    const empezada = aplicarEstadoLocal(c, 'preparing', plan.station, T0);
+    expect(planMarcarItem(item, true)).toEqual({ empezar: false, station: null, hecho: true, destino: 'in_progress' });
+    const empezada = aplicarToqueItem(c, item, true, T0);
     expect(columnaDe(empezada, 'todas')).toBe('preparing');
-    // Una sola línea queda lista, pero ya pasó por «En preparación».
-    expect(columnaDe(aplicarToqueItem(c, item, true, T0), 'todas')).toBe('ready');
+    expect(empezada.kitchen_ticket_items?.[0].status).toBe('in_progress');
+    // El segundo toque de esa única línea sí la deja lista.
+    const lista = aplicarToqueItem(empezada, empezada.kitchen_ticket_items![0], true, T0);
+    expect(planMarcarItem(empezada.kitchen_ticket_items![0], true).destino).toBe('ready');
+    expect(columnaDe(lista, 'todas')).toBe('ready');
   });
 
-  it('tocar una línea de varias deja las demás en preparación', () => {
+  it('tocar uno de cinco no manda la comanda a listas hasta que todos están listos', () => {
     const c: ComandaTablero = {
       ...comandaWebUnaLinea(),
-      kitchen_ticket_items: [
-        { id: 1, station: 'hot_kitchen', status: 'pending' },
-        { id: 2, station: 'hot_kitchen', status: 'pending' },
-        { id: 3, station: 'bar', status: 'pending' },
-      ],
+      kitchen_ticket_items: [1, 2, 3, 4, 5].map((id) => ({ id, station: 'hot_kitchen', status: 'pending' })),
     };
-    const plan = planMarcarItem(c.kitchen_ticket_items![0], true);
-    expect(plan).toEqual({ empezar: true, station: 'hot_kitchen', hecho: true });
-    const tocada = aplicarToqueItem(c, c.kitchen_ticket_items![0], true, T0);
-    expect(columnaDe(tocada, 'todas')).toBe('preparing');
-    expect(tocada.kitchen_ticket_items?.map((i) => i.status)).toEqual(['ready', 'in_progress', 'pending']);
-    // Desmarcar no vuelve a empezar.
-    expect(planMarcarItem({ status: 'ready', station: 'hot_kitchen' }, false)).toEqual({ empezar: false, station: null, hecho: false });
+    const primero = aplicarToqueItem(c, c.kitchen_ticket_items![0], true, T0);
+    expect(columnaDe(primero, 'todas')).toBe('preparing');
+    expect(primero.kitchen_ticket_items?.map((i) => i.status)).toEqual(['in_progress', 'pending', 'pending', 'pending', 'pending']);
+
+    let actual = aplicarToqueItem(primero, primero.kitchen_ticket_items![0], true, T0);
+    expect(actual.kitchen_ticket_items?.[0].status).toBe('ready');
+    expect(columnaDe(actual, 'todas')).toBe('preparing');
+
+    for (const linea of actual.kitchen_ticket_items!.slice(1)) {
+      const enCurso = aplicarToqueItem(actual, linea, true, T0);
+      expect(columnaDe(enCurso, 'todas')).toBe('preparing');
+      actual = aplicarToqueItem(enCurso, { ...linea, status: 'in_progress' }, true, T0);
+    }
+    expect(actual.kitchen_ticket_items?.every((i) => i.status === 'ready')).toBe(true);
+    expect(columnaDe(actual, 'todas')).toBe('ready');
+
+    const deshecha = aplicarToqueItem(actual, actual.kitchen_ticket_items![0], false, T0);
+    expect(deshecha.kitchen_ticket_items?.[0].status).toBe('in_progress');
+    expect(columnaDe(deshecha, 'todas')).toBe('preparing');
+    expect(planMarcarItem({ status: 'ready' }, false)).toEqual({ empezar: false, station: null, hecho: false, destino: 'in_progress' });
+    expect(planMarcarItem({ status: 'in_progress' }, true)).toEqual({ empezar: false, station: null, hecho: true, destino: 'ready' });
   });
 
   it('la base responde `comanda_sin_empezar` como un 409 legible, no como error interno', () => {

@@ -162,7 +162,7 @@ describe('Comandas v2 — arrastrar entre columnas', () => {
     expect(onAccion).toHaveBeenCalledTimes(1);
     expect(onAccion).toHaveBeenCalledWith(comanda, 'preparing');
 
-    const producto = screen.getByRole('button', { name: 'Marcar Bandeja paisa como hecho' });
+    const producto = screen.getByRole('button', { name: 'Empezar Bandeja paisa' });
     expect(producto.className).toContain('cursor-pointer');
     expect(producto.className).not.toContain('cursor-grab');
     fireEvent.mouseDown(producto);

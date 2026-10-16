@@ -31,6 +31,7 @@ import {
   nivelTiempo,
   objetivoDe,
   circuloTocable,
+  faseCirculo,
   siguienteColumna,
   type ColumnaComanda,
   type FiltroEstacion,
@@ -173,7 +174,9 @@ function ItemComanda({
   const locale = useLocale();
   const kds = densidad === 'kds';
   const anulado = item.status === 'cancelled' || !!item.cancelled_at || item.adjustment_kind === 'void';
-  const hecho = !anulado && (item.status === 'ready' || item.status === 'delivered');
+  const fase = anulado ? null : faseCirculo(item);
+  const hecho = fase === 'listo';
+  const preparando = fase === 'preparando';
   const esAumentoItem = item.adjustment_kind === 'increase' && Number(item.quantity_delta) > 0;
   const cantidad = textoCantidadComanda(
     esAumentoItem ? Math.abs(Number(item.quantity_delta)) : cantidadComanda(item),
@@ -193,6 +196,10 @@ function ItemComanda({
   ) : hecho ? (
     <span className={cn('flex shrink-0 items-center justify-center rounded-full bg-success text-white', kds ? 'mt-0.5 size-6' : 'mt-0.5 size-5')}>
       <Check aria-hidden="true" className={kds ? 'size-4' : 'size-3.5'} strokeWidth={2.5} />
+    </span>
+  ) : preparando ? (
+    <span className={cn('flex shrink-0 items-center justify-center rounded-full border-2 border-brand bg-brand-tint', kds ? 'mt-0.5 size-6' : 'mt-0.5 size-5')}>
+      <span aria-hidden="true" className={cn('rounded-full bg-brand', kds ? 'size-2.5' : 'size-2')} />
     </span>
   ) : (
     <span className={cn('shrink-0 rounded-full border-2 border-line-strong', kds ? 'mt-0.5 size-6' : 'mt-0.5 size-5')} />
@@ -261,7 +268,13 @@ function ItemComanda({
         onMouseDown={frenarArrastre}
         onTouchStart={frenarArrastre}
         aria-pressed={hecho}
-        aria-label={hecho ? t('deshacerItem', { producto: nombre }) : t('marcarItemHecho', { producto: nombre })}
+        aria-label={
+          hecho
+            ? t('deshacerItem', { producto: nombre })
+            : preparando
+              ? t('marcarItemHecho', { producto: nombre })
+              : t('empezarItem', { producto: nombre })
+        }
         className={cn(
           'flex w-full cursor-pointer items-start rounded-md text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
           kds ? 'gap-3 py-1' : 'gap-2.5 py-0.5',
@@ -458,8 +471,7 @@ export function ComandaTarjeta({
         <div className={kds ? 'space-y-2' : 'space-y-1.5'}>
           {items.map((item) => {
             const anulado = item.status === 'cancelled' || !!item.cancelled_at;
-            // También en «Nuevas»: el toque empieza la estación y marca esa
-            // línea (`planMarcarItem`). Un `pending` directo lo rechaza la base.
+            // El toque avanza solo esta línea: pendiente → preparación → lista.
             const tocable = !!onItem && permisos.operar && !alergia && !anulado && !esAjuste
               && columna !== 'delivered' && circuloTocable(item);
             return (

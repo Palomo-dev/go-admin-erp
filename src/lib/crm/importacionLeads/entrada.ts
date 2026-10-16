@@ -16,10 +16,10 @@ const CAMPOS_SIMPLES: ReadonlySet<string> = new Set(CAMPOS_LEAD.filter((c) => !C
 const LARGO_CELDA = 2000;
 const MAX_LISTA = 10;
 
-/** Límite de filas por archivo: `LEADS_IMPORT_MAX_FILAS` (1 a 5.000) o 1.000. */
+/** Límite de filas por archivo: `LEADS_IMPORT_MAX_FILAS` (1 a 10.000) o 10.000. */
 export function maxFilasPorArchivo(env: Record<string, string | undefined> = process.env): number {
   const n = Number(env.LEADS_IMPORT_MAX_FILAS);
-  return Number.isInteger(n) && n >= 1 && n <= 5000 ? n : MAX_FILAS_POR_ARCHIVO;
+  return Number.isInteger(n) && n >= 1 && n <= MAX_FILAS_POR_ARCHIVO ? n : MAX_FILAS_POR_ARCHIVO;
 }
 
 export type EntradaImportacion =

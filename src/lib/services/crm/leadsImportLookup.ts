@@ -20,6 +20,16 @@ export interface LookupContext {
 
 /** Valores por consulta: mantiene la URL de PostgREST corta (≈ 3 KB). */
 const BLOQUE = 80;
+/** Consultas a la vez. Un archivo de miles de filas no abre una conexión por bloque. */
+const CONCURRENCIA = 6;
+
+async function enLotes<T>(tareas: Array<() => PromiseLike<T>>): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < tareas.length; i += CONCURRENCIA) {
+    out.push(...(await Promise.all(tareas.slice(i, i + CONCURRENCIA).map((t) => t()))));
+  }
+  return out;
+}
 
 const COLUMNAS_CLIENTE = 'id, full_name, phone, email, identification_number, importacion:metadata->importacion';
 
@@ -49,20 +59,20 @@ export async function buscarCandidatos(ctx: LookupContext, claves: ClavesBusqued
     }
   };
 
-  const consultas: Array<PromiseLike<{ data: unknown; error: { message: string } | null }>> = [];
+  const consultas: Array<() => PromiseLike<{ data: unknown; error: { message: string } | null }>> = [];
   for (const t of trozos(Array.from(new Set(claves.telefonos)))) {
     // Últimos 4 dígitos con cualquier separador (`phoneSuffixPattern`), en una alternancia.
-    consultas.push(base().filter('phone', 'imatch', `(?:${t.map(phoneSuffixPattern).join('|')})`));
+    consultas.push(() => base().filter('phone', 'imatch', `(?:${t.map(phoneSuffixPattern).join('|')})`));
   }
-  for (const t of trozos(Array.from(new Set(claves.nits)))) consultas.push(base().filter('identification_number', 'imatch', patronNits(t)));
-  for (const t of trozos(Array.from(new Set(claves.correos)))) consultas.push(base().filter('email', 'imatch', patronCorreos(t)));
+  for (const t of trozos(Array.from(new Set(claves.nits)))) consultas.push(() => base().filter('identification_number', 'imatch', patronNits(t)));
+  for (const t of trozos(Array.from(new Set(claves.correos)))) consultas.push(() => base().filter('email', 'imatch', patronCorreos(t)));
   if (claves.lote) {
     for (const t of trozos(Array.from(new Set(claves.idsExternos)), 200)) {
-      consultas.push(base().eq('metadata->importacion->>lote', claves.lote).in('metadata->importacion->>id_externo', t));
+      consultas.push(() => base().eq('metadata->importacion->>lote', claves.lote).in('metadata->importacion->>id_externo', t));
     }
   }
 
-  for (const r of await Promise.all(consultas)) {
+  for (const r of await enLotes(consultas)) {
     if (r.error) throw new Error(`[leadsImport] customers: ${r.error.message}`);
     guardar(r.data);
   }

@@ -12,7 +12,8 @@ export const maxDuration = 60;
  * Body: { accion: 'validar' | 'importar', filas: FilaLeadEntrada[], opciones: {
  *   lote, tipoCliente?, monedaValor?, pais?, archivo? } }
  *
- *  - `validar`: vista previa sin escribir (hasta `LEADS_IMPORT_MAX_FILAS`, 1.000 por defecto).
+ *  - `validar`: vista previa sin escribir (hasta `LEADS_IMPORT_MAX_FILAS`, 10.000 por defecto).
+ *    El asistente la pide de a 1.000 filas.
  *  - `importar`: crea los leads de un bloque (hasta 50 filas por petición;
  *    el asistente manda bloques de 25). Idempotente por (organización, lote +
  *    id externo, teléfono, NIT, correo): reintentar un bloque no duplica.

@@ -26,11 +26,11 @@ import {
 } from '../campos';
 import { bandaDesdePrioridad, correoNormalizado, nitNormalizado, telefonoE164, telefonosEnTexto, textoLimpio, urlNormalizada, valorNumerico } from '../normalizacion';
 import { contactoImportado, telefonosAdicionalesDe } from '../datosFicha';
-import { duplicadosEnArchivo, leerFilasLeads, validarFilaLead } from '../validacion';
+import { duplicadosEnArchivo, leerFilasLeads, unirValidacion, validarFilaLead } from '../validacion';
 import { altaConClienteExistente, altaConClienteNuevo, nombreDelLead, verticalParaSector, type ContextoAltaLead } from '../mapeo';
 import { clienteCoincidente, patronCorreos, patronNits, type ClienteCandidato } from '../dedupe';
 import { leerEntradaImportacion, maxFilasPorArchivo } from '../entrada';
-import type { FilaLeadEntrada } from '../tipos';
+import type { FilaLeadEntrada, ResultadoFilaLead } from '../tipos';
 
 const NIT = '900111222';
 const DV = calcularDv(NIT) as number;
@@ -375,9 +375,30 @@ describe('cuerpo de la ruta', () => {
     expect(leerEntradaImportacion({ accion: 'importar', filas: muchas, opciones: { lote: 'L1' } })).toMatchObject({ ok: false, status: 413 });
     expect(leerEntradaImportacion({ accion: 'validar', filas: muchas, opciones: { lote: 'L1' } })).toMatchObject({ ok: true });
     expect(leerEntradaImportacion({ accion: 'validar', filas: muchas, opciones: { lote: 'L1' } }, 50)).toMatchObject({ ok: false, status: 413 });
-    expect(maxFilasPorArchivo({})).toBe(1000);
+    expect(maxFilasPorArchivo({})).toBe(10000);
     expect(maxFilasPorArchivo({ LEADS_IMPORT_MAX_FILAS: '200' })).toBe(200);
-    expect(maxFilasPorArchivo({ LEADS_IMPORT_MAX_FILAS: 'mucho' })).toBe(1000);
+    expect(maxFilasPorArchivo({ LEADS_IMPORT_MAX_FILAS: '10000' })).toBe(10000);
+    expect(maxFilasPorArchivo({ LEADS_IMPORT_MAX_FILAS: '10001' })).toBe(10000);
+    expect(maxFilasPorArchivo({ LEADS_IMPORT_MAX_FILAS: 'mucho' })).toBe(10000);
+    const diezMil = Array.from({ length: 10000 }, (_, i) => ({ fila: i + 2, campos: { nombre: 'T' } }));
+    expect(leerEntradaImportacion({ accion: 'validar', filas: diezMil, opciones: { lote: 'L1' } })).toMatchObject({ ok: true });
+    expect(leerEntradaImportacion({ accion: 'validar', filas: [...diezMil, { fila: 10002, campos: { nombre: 'T' } }], opciones: { lote: 'L1' } })).toMatchObject({ ok: false, status: 413 });
+  });
+
+  it('une bloques de vista previa y omite el duplicado que cayó en otro bloque', () => {
+    const fila = (n: number, telefono: string): ResultadoFilaLead => ({
+      fila: n, nombre: 'Tienda', telefono: `+57${telefono}`, accion: 'crear', errores: [], avisos: [],
+    });
+    const filas: FilaLeadEntrada[] = [
+      { fila: 2, campos: { nombre: 'Tienda', telefono: '3001111111' } },
+      { fila: 3, campos: { nombre: 'Otra', telefono: '3001111111' } },
+      { fila: 4, campos: { nombre: 'Sin contacto' } },
+    ];
+    const unida = unirValidacion(filas, [fila(2, '3001111111'), fila(3, '3001111111'), { ...fila(4, ''), accion: 'error', telefono: null, errores: [{ codigo: 'sin_contacto' }] }], { pais: 'CO', tipoCliente: 'company' });
+    expect(unida.resultados[1]).toMatchObject({ fila: 3, accion: 'omitir', motivo: 'duplicado_archivo', duplicadaDe: 2 });
+    expect(unida.resultados[1].cliente).toBeUndefined();
+    expect(unida.resultados[2].accion).toBe('error');
+    expect(unida.resumen).toMatchObject({ total: 3, crear: 1, omitir: 1, error: 1, rnePendiente: 1, rneExcluido: 0 });
   });
 });
 

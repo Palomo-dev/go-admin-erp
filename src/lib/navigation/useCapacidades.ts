@@ -4,8 +4,9 @@
  * Capacidades de la persona en la organización activa, calculadas en el
  * servidor (`GET /api/me/capacidades`). Nunca se deducen del nombre del rol.
  *
- * Mientras cargan, o si la petición falla, todo es `false`: el menú muestra lo
- * mínimo (fail-closed) y se completa cuando llega la respuesta.
+ * Mientras cargan por primera vez, o si esa petición falla, todo es `false`:
+ * el menú muestra lo mínimo (fail-closed) y se completa cuando llega la
+ * respuesta. Una revalidación con datos ya en pantalla no los vacía.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { CAPACIDADES_NAV, type CapacidadNav } from './catalog';
@@ -44,6 +45,12 @@ const VACIAS: Capacidades = {
 let enVuelo: Promise<Capacidades> | null = null;
 let ultima: Capacidades | null = null;
 
+/** Solo pruebas: la caché vive en el módulo y si no se olvida, el caso siguiente hereda el anterior. */
+export function olvidarCapacidades(): void {
+  ultima = null;
+  enVuelo = null;
+}
+
 async function pedir(): Promise<Capacidades> {
   if (!enVuelo) {
     enVuelo = fetch('/api/me/capacidades', { credentials: 'same-origin', cache: 'no-store' })
@@ -73,7 +80,11 @@ export function useCapacidades(): {
   const [error, setError] = useState(false);
 
   const recargar = useCallback(() => {
-    setCargando(true);
+    // Con datos en pantalla, revalidar no pone el esqueleto: activar un módulo
+    // (y el efecto de montaje de una pantalla que ya tiene la caché) no debe
+    // vaciar la organización. La primera lectura, sí.
+    const enFrio = ultima === null;
+    if (enFrio) setCargando(true);
     pedir()
       .then((d) => {
         setDatos(d);
@@ -81,23 +92,31 @@ export function useCapacidades(): {
       })
       .catch((e) => {
         console.warn('[useCapacidades] no se pudieron cargar; se muestra el menú mínimo', e);
-        setDatos(VACIAS);
-        setError(true);
+        if (enFrio) {
+          setDatos(VACIAS);
+          setError(true);
+        }
       })
-      .finally(() => setCargando(false));
+      .finally(() => {
+        if (enFrio) setCargando(false);
+      });
   }, []);
 
   useEffect(() => {
     recargar();
+    // Cambiar de organización invalida permisos y sucursales. Activar un
+    // módulo no: estas capacidades no salen de `organization_modules`.
+    // Escuchar `modules-updated` aquí ponía `cargando` y la pantalla de
+    // módulos desmontaba la lista (esqueleto), como si la página recargara.
     const alCambiarOrg = () => {
       ultima = null;
+      setDatos(VACIAS);
+      setError(false);
       recargar();
     };
     window.addEventListener('organization-changed', alCambiarOrg);
-    window.addEventListener('modules-updated', alCambiarOrg);
     return () => {
       window.removeEventListener('organization-changed', alCambiarOrg);
-      window.removeEventListener('modules-updated', alCambiarOrg);
     };
   }, [recargar]);
 

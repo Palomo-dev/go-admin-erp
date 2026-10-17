@@ -6,6 +6,7 @@
 import { LIMITES_DOCUMENTO, type DocumentoSitio, type PaginaSitio } from '@/lib/website/contrato/documentoSitio';
 import {
   alternarPaginaEnMenu,
+  contarItems,
   crearMenu,
   menusPie,
   nuevoItem,
@@ -59,6 +60,27 @@ function conMenu(resultado: ReturnType<typeof alternarPaginaEnMenu>, paginaId: s
   return { ok: false, error: resultado.error === 'limite_menus' ? 'limite_menus' : resultado.error === 'pagina_no_existe' ? 'pagina_no_existe' : 'limite_items' };
 }
 
+/**
+ * Las legales viven en el pie (A/04a), no en el encabezado. Si el grupo «Legales»
+ * no cabe (límite de ítems, menús o columnas), la página igual se crea: el enlace
+ * se puede añadir después desde Menú y navegación.
+ */
+function anexarLegalesAlPie(documento: DocumentoSitio, paginas: readonly PaginaSitio[], generarId: GenerarId): DocumentoSitio {
+  if (paginas.length === 0) return documento;
+  const items = paginas.map((p) => nuevoItem({ tipo: 'page', paginaId: p.id }, p.titulo, generarId));
+  const grupo = menusPie(documento).find((m) => m.nombre.trim().toLowerCase() === 'legales');
+  if (grupo) {
+    if (contarItems(grupo.items) + items.length > LIMITES_DOCUMENTO.itemsPorMenu) return documento;
+    return reemplazarItemsMenu(documento, grupo.id, [...grupo.items, ...items]);
+  }
+  const creado = crearMenu(
+    documento,
+    { nombre: 'Legales', ubicacion: { tipo: 'pie', columna: documento.shell.footer.menuIds.length + 1 }, items },
+    generarId,
+  );
+  return creado.ok ? creado.documento : documento;
+}
+
 export function crearPaginaDesdePlantilla(
   documento: DocumentoSitio,
   plantilla: PlantillaPagina,
@@ -70,9 +92,10 @@ export function crearPaginaDesdePlantilla(
   const slug = validarSlug(documento, datos.slug);
   if (!slug.ok) return slug;
   const pagina = construirPagina(plantilla, { titulo: datos.titulo, slug: slug.slug }, generarId);
-  const doc: DocumentoSitio = { ...documento, paginas: [...documento.paginas, pagina] };
-  if (!datos.enMenu) return { ok: true, documento: doc, paginaId: pagina.id };
-  return conMenu(alternarPaginaEnMenu(doc, pagina.id, true, generarId), pagina.id);
+  let doc: DocumentoSitio = { ...documento, paginas: [...documento.paginas, pagina] };
+  if (datos.enMenu) return conMenu(alternarPaginaEnMenu(doc, pagina.id, true, generarId), pagina.id);
+  if (esPaginaLegal(pagina)) doc = anexarLegalesAlPie(doc, [pagina], generarId);
+  return { ok: true, documento: doc, paginaId: pagina.id };
 }
 
 function buscar(documento: DocumentoSitio, id: string): PaginaSitio | undefined {
@@ -153,16 +176,6 @@ export function restaurarPaginasBase(documento: DocumentoSitio, giro: Giro, gene
       legales.push(pagina);
     }
   }
-  // Las legales viven en el pie (A/04a): van al grupo «Legales» del pie, que se crea si falta.
-  if (legales.length > 0) {
-    const items = legales.map((p) => nuevoItem({ tipo: 'page', paginaId: p.id }, p.titulo, generarId));
-    const grupo = menusPie(doc).find((m) => m.nombre.trim().toLowerCase() === 'legales');
-    if (grupo) {
-      doc = reemplazarItemsMenu(doc, grupo.id, [...grupo.items, ...items]);
-    } else {
-      const r = crearMenu(doc, { nombre: 'Legales', ubicacion: { tipo: 'pie', columna: doc.shell.footer.menuIds.length + 1 }, items }, generarId);
-      if (r.ok) doc = r.documento;
-    }
-  }
+  doc = anexarLegalesAlPie(doc, legales, generarId);
   return { ok: true, documento: doc, creadas: faltan.length };
 }

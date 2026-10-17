@@ -152,8 +152,10 @@ function Modulos({ organizationId, pedidoRestablecer }: { organizationId: number
       delete ocultas[m.code];
       setDatos((d) => (d ? { ...d, ocultas } : d));
       startTransition(() => moduleContext.refreshModules());
+      // Un solo aviso, con el menú ya calculado. Un segundo `modules-updated`
+      // sin detalle, 500 ms después, recargaba capacidades y módulos como si
+      // cambiara la organización y la lista entera se iba al esqueleto.
       avisarMenu({ paginasOcultas: ocultas, activeModuleCodes: [...activos] });
-      setTimeout(() => avisarMenu(), 500);
       toast.success(t(activo ? 'toasts.apagado' : 'toasts.encendido', { modulo: nombreModulo(m) }));
     } catch (e) {
       setDatos(antes);

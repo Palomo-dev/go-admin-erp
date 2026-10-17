@@ -12,6 +12,7 @@
  *   persona administra, con su rol propio en cada fila.
  * - Importar sucursales: revisa el archivo y crea con el servicio de siempre.
  */
+import { useState } from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import type { Capacidades } from '@/lib/navigation/useCapacidades';
@@ -83,7 +84,13 @@ import { Users } from 'lucide-react';
 /* eslint-enable import/first */
 
 beforeEach(() => {
-  capacidades.datos = { ...capacidades.datos, esAdmin: false, capacidades: { ...capacidades.datos.capacidades, gestionarMiembros: false } };
+  capacidades.datos = {
+    ...capacidades.datos,
+    organizationId: 7,
+    esAdmin: false,
+    capacidades: { ...capacidades.datos.capacidades, gestionarMiembros: false },
+  };
+  capacidades.cargando = false;
   capacidades.error = false;
   createBranch.mockClear();
   global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({}) })) as unknown as typeof fetch;
@@ -110,6 +117,46 @@ describe('PantallaOrganizacion', () => {
       </PantallaOrganizacion>,
     );
     expect(screen.getByText('org 7')).toBeTruthy();
+  });
+
+  test('revalidar con la organización ya conocida no sustituye el contenido por el esqueleto', () => {
+    capacidades.datos = { ...capacidades.datos, capacidades: { ...capacidades.datos.capacidades, gestionarMiembros: true } };
+    let montajes = 0;
+    function Recuerdo() {
+      useState(() => {
+        montajes += 1;
+        return 0;
+      });
+      return <p>contenido</p>;
+    }
+    const vista = () => (
+      <PantallaOrganizacion titulo="Miembros" icono={Users} permiso="miembros">
+        {() => <Recuerdo />}
+      </PantallaOrganizacion>
+    );
+    const { rerender } = renderConIdioma(vista());
+    expect(screen.getByText('contenido')).toBeTruthy();
+    expect(montajes).toBe(1);
+    capacidades.cargando = true;
+    rerender(vista());
+    // La cabecera puede girar el indicador; el cuerpo no vuelve al esqueleto.
+    expect(screen.getAllByText('Cargando…').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByText('contenido')).toBeTruthy();
+    expect(montajes).toBe(1);
+  });
+
+  test('primera carga, sin organización, sigue en el esqueleto', () => {
+    capacidades.datos = { ...capacidades.datos, organizationId: null };
+    capacidades.cargando = true;
+    const hijo = jest.fn(() => <p>contenido</p>);
+    renderConIdioma(
+      <PantallaOrganizacion titulo="Miembros" icono={Users} permiso="miembros">
+        {hijo}
+      </PantallaOrganizacion>,
+    );
+    expect(hijo).not.toHaveBeenCalled();
+    expect(screen.getByRole('status').textContent).toBe('Cargando…');
   });
 
   test('error del servidor: aviso sin jerga con «Reintentar»', () => {

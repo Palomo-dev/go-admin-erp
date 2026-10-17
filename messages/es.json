@@ -222,7 +222,8 @@
         "payNowDescription": "Paga hoy y comienza tu suscripción inmediatamente, sin período de prueba.",
         "couponTitle": "¿Tienes un cupón de descuento?",
         "couponPlaceholder": "Ingresa tu código",
-        "couponApply": "Aplicar"
+        "couponApply": "Aplicar",
+        "couponRemove": "Quitar cupón"
       },
       "payment": {
         "title": "Método de Pago",

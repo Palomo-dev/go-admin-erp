@@ -222,7 +222,8 @@
         "payNowDescription": "Payez aujourd'hui et commencez votre abonnement immédiatement, sans période d'essai.",
         "couponTitle": "Vous avez un coupon de réduction ?",
         "couponPlaceholder": "Entrez votre code",
-        "couponApply": "Appliquer"
+        "couponApply": "Appliquer",
+        "couponRemove": "Retirer le coupon"
       },
       "payment": {
         "title": "Mode de Paiement",

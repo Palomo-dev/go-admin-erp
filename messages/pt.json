@@ -222,7 +222,8 @@
         "payNowDescription": "Pague hoje e comece sua assinatura imediatamente, sem período de teste.",
         "couponTitle": "Tem um cupom de desconto?",
         "couponPlaceholder": "Digite seu código",
-        "couponApply": "Aplicar"
+        "couponApply": "Aplicar",
+        "couponRemove": "Remover cupom"
       },
       "payment": {
         "title": "Método de Pagamento",

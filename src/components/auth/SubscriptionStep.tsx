@@ -5,6 +5,8 @@ import SubscriptionPlanSelector from '../subscription/SubscriptionPlanSelector';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Ticket, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { cn } from '@/utils/Utils';
 import PriceSummary from './PriceSummary';
 
 export interface ValidatedCoupon {
@@ -33,10 +35,14 @@ interface SubscriptionStepProps {
     skipTrial?: boolean;
     couponCode?: string;
   };
-  updateFormData: (data: Partial<any>) => void;
+  updateFormData: (data: Partial<SubscriptionData> & { validatedCoupon?: ValidatedCoupon | null }) => void;
   onNext: () => void;
   onBack: () => void;
   loading?: boolean;
+  /** El registro ya titula el paso en la tarjeta. En la app el título vive aquí. */
+  encabezado?: boolean;
+  /** Tres columnas cuando el paso tiene el ancho del plan (1000 px). */
+  enColumnas?: boolean;
 }
 
 export default function SubscriptionStep({
@@ -45,6 +51,8 @@ export default function SubscriptionStep({
   onNext,
   onBack,
   loading = false,
+  encabezado = true,
+  enColumnas = false,
 }: SubscriptionStepProps) {
   const t = useTranslations('auth.signup.subscription');
   const tc = useTranslations('common');
@@ -152,169 +160,149 @@ export default function SubscriptionStep({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full">
-      <div className="text-center">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{t('selectPlan')}</h2>
-        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-500">
-          {t('selectPlanDescription')}
-          <span className="block mt-1 text-[11px] sm:text-xs">{t('trialPeriod', { days: trialDays })}</span>
-        </p>
-      </div>
+    <div className="w-full space-y-4 sm:space-y-5">
+      {encabezado && (
+        <div className="text-center">
+          <h2 className="text-lg font-semibold text-fg sm:text-xl">{t('selectPlan')}</h2>
+          <p className="mt-1 text-sm text-fg-secondary">
+            {t('selectPlanDescription')}
+            <span className="mt-1 block text-xs">{t('trialPeriod', { days: trialDays })}</span>
+          </p>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="w-full">
+      <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
         <SubscriptionPlanSelector
           selectedPlan={selectedPlan}
           onSelectPlan={handleSelectPlan}
           billingPeriod={billingPeriod}
           onChangeBillingPeriod={handleChangeBillingPeriod}
+          enColumnas={enColumnas}
         />
 
-        {/* Toggle: Trial vs Pago inmediato */}
-        <div className="mt-4 sm:mt-6 border border-gray-200 rounded-lg p-3 sm:p-4 bg-gray-50">
-          <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
-            {t('billingOption')}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <div className="rounded-xl border border-line p-3 sm:p-4">
+          <p className="mb-3 text-sm font-medium text-fg">{t('billingOption')}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
             <label
-              className={`flex-1 flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-md border cursor-pointer transition-colors ${
-                !skipTrial
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
+              className={cn(
+                'flex flex-1 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                !skipTrial ? 'border-brand bg-brand-tint' : 'border-line bg-surface hover:border-line-strong',
+              )}
             >
               <input
                 type="radio"
                 name="trialOption"
                 checked={!skipTrial}
                 onChange={() => handleToggleSkipTrial(false)}
-                className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                className="mt-0.5 accent-brand"
               />
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-900">
-                  {t('useTrial')}
-                </p>
-                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
-                  {t('useTrialDescription', { days: trialDays })}
-                </p>
-              </div>
+              <span>
+                <span className="block text-sm font-medium text-fg">{t('useTrial')}</span>
+                <span className="mt-0.5 block text-xs text-fg-secondary">{t('useTrialDescription', { days: trialDays })}</span>
+              </span>
             </label>
             <label
-              className={`flex-1 flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-md border cursor-pointer transition-colors ${
-                skipTrial
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
+              className={cn(
+                'flex flex-1 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                skipTrial ? 'border-line-success bg-success-subtle' : 'border-line bg-surface hover:border-line-strong',
+              )}
             >
               <input
                 type="radio"
                 name="trialOption"
                 checked={skipTrial}
                 onChange={() => handleToggleSkipTrial(true)}
-                className="mt-0.5 text-green-600 focus:ring-green-500"
+                className="mt-0.5 accent-success"
               />
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-900">
-                  {t('payNow')}
-                </p>
-                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
-                  {t('payNowDescription')}
-                </p>
-              </div>
+              <span>
+                <span className="block text-sm font-medium text-fg">{t('payNow')}</span>
+                <span className="mt-0.5 block text-xs text-fg-secondary">{t('payNowDescription')}</span>
+              </span>
             </label>
           </div>
         </div>
 
-        {/* Sección de cupón de descuento */}
-        <div className="mt-4 sm:mt-6 border border-gray-200 rounded-lg p-3 sm:p-4 bg-gray-50">
-          <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3 flex items-center gap-1.5">
-            <Ticket className="h-3.5 w-3.5" />
-            {t('couponTitle')}
-          </p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 [&>:only-child]:md:col-span-2">
+          <div className="rounded-xl border border-line bg-canvas p-3 sm:p-4">
+            <p className="mb-3 flex items-center gap-1.5 text-sm font-medium text-fg">
+              <Ticket className="size-4 text-brand" aria-hidden="true" />
+              {t('couponTitle')}
+            </p>
 
-          {!validatedCoupon ? (
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={couponInput}
-                onChange={(e) => {
-                  setCouponInput(e.target.value.toUpperCase());
-                  setCouponError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleValidateCoupon();
-                  }
-                }}
-                placeholder={t('couponPlaceholder')}
-                className="w-full sm:flex-1 rounded-md border border-gray-300 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
-                disabled={couponLoading}
-              />
-              <button
-                type="button"
-                onClick={handleValidateCoupon}
-                disabled={couponLoading || !couponInput.trim()}
-                className="w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-              >
-                {couponLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  t('couponApply')
-                )}
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-md border border-green-300 bg-green-50">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-green-900 truncate">
-                    {validatedCoupon.code} — {validatedCoupon.name}
-                  </p>
-                  <p className="text-[11px] sm:text-xs text-green-700">
-                    {validatedCoupon.discountDescription} {validatedCoupon.durationDescription}
-                  </p>
-                </div>
+            {!validatedCoupon ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => {
+                    setCouponInput(e.target.value.toUpperCase());
+                    setCouponError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleValidateCoupon();
+                    }
+                  }}
+                  placeholder={t('couponPlaceholder')}
+                  className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm uppercase text-fg placeholder:normal-case placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50 sm:flex-1"
+                  disabled={couponLoading}
+                />
+                <button
+                  type="button"
+                  onClick={handleValidateCoupon}
+                  disabled={couponLoading || !couponInput.trim()}
+                  className={cn(clasesBoton({ tamano: 'md' }), 'w-full sm:w-auto')}
+                >
+                  {couponLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : t('couponApply')}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleRemoveCoupon}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XCircle className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-line-success bg-success-subtle p-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <CheckCircle2 className="size-4 shrink-0 text-success-text" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-success-text">
+                      {validatedCoupon.code} — {validatedCoupon.name}
+                    </p>
+                    <p className="text-xs text-success-text">
+                      {validatedCoupon.discountDescription} {validatedCoupon.durationDescription}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="shrink-0 text-fg-muted hover:text-fg"
+                  aria-label={t('couponRemove')}
+                >
+                  <XCircle className="size-4" />
+                </button>
+              </div>
+            )}
 
-          {couponError && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
-              <XCircle className="h-3.5 w-3.5" />
-              {couponError}
-            </div>
-          )}
+            {couponError && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-danger-text">
+                <XCircle className="size-3.5" aria-hidden="true" />
+                {couponError}
+              </p>
+            )}
+          </div>
+
+          <PriceSummary
+            subscriptionPlan={selectedPlan}
+            billingPeriod={billingPeriod}
+            skipTrial={skipTrial}
+            coupon={validatedCoupon}
+            className="mt-0 h-full"
+          />
         </div>
 
-        {/* Resumen de pago */}
-        <PriceSummary
-          subscriptionPlan={selectedPlan}
-          billingPeriod={billingPeriod}
-          skipTrial={skipTrial}
-          coupon={validatedCoupon}
-        />
-
-        <div className="mt-6 sm:mt-8 flex justify-between gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-md border border-gray-300 bg-white py-1.5 px-4 sm:py-2 sm:px-6 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
+        <div className="flex justify-between gap-3">
+          <button type="button" onClick={onBack} className={clasesBoton({ variante: 'secundario', tamano: 'lg' })}>
             {tc('back')}
           </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-1.5 px-4 sm:py-2 sm:px-6 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className={clasesBoton({ tamano: 'lg' })}>
             {loading ? tc('loading') : tc('continue')}
           </button>
         </div>

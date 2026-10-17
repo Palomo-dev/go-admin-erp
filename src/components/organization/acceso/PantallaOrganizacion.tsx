@@ -61,7 +61,11 @@ export function PantallaOrganizacion({
   const t = useTranslations('org.acceso.comun');
   const acceso = useAccesoOrganizacion();
   const migas = [{ etiqueta: t('organizacion'), href: '/app/organizacion' }, { etiqueta: titulo }];
-  const listo = !acceso.cargando && !acceso.error && acceso.organizationId !== null;
+  // El esqueleto es solo la primera lectura (aún no hay organización). Si
+  // `cargando` volviera a true con el id ya conocido —revalidar permisos, o
+  // antes `modules-updated` al activar un módulo— el cuerpo se quedaba en el
+  // esqueleto y parecía que toda la página se recargaba.
+  const listo = !acceso.error && acceso.organizationId !== null;
   const permitido = listo && cumplePermiso(acceso, permiso);
 
   let cuerpo: ReactNode;

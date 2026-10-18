@@ -9,7 +9,7 @@
  * Organizaciones ficticias 120 y 999. No se toca la base.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { VERSION_ESQUEMA_DOCUMENTO, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { validarDocumentoSitio, VERSION_ESQUEMA_DOCUMENTO, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import {
   ErrorSitio,
   cambiarAdopcion,
@@ -51,9 +51,14 @@ function documento(titulo = 'Inicio'): DocumentoSitio {
 }
 
 /** Cliente fake: filtros eq/is/in, update con filtros (CAS) y RPC configurables. */
-function clienteFake(tablas: Tablas, rpc: (fn: string, args: Fila) => { data?: unknown; error?: Fila | null } = () => ({ data: null })) {
+function clienteFake(
+  tablas: Tablas,
+  rpc: (fn: string, args: Fila) => { data?: unknown; error?: Fila | null } = () => ({ data: null }),
+  opciones?: { errorAlActualizar?: Fila | null },
+) {
   const llamadas: { tabla: string; op: string; filtros: [string, string, unknown][]; valores?: Fila }[] = [];
   const rpcs: { fn: string; args: Fila }[] = [];
+  let errorAlActualizar = opciones?.errorAlActualizar ?? null;
 
   const consulta = (tabla: string) => {
     const filtros: [string, string, unknown][] = [];
@@ -84,7 +89,15 @@ function clienteFake(tablas: Tablas, rpc: (fn: string, args: Fila) => { data?: u
       in: (c: string, v: unknown[]) => (filtros.push(['in', c, v]), api),
       order: () => api,
       limit: (n: number) => ((limite = n), api),
-      maybeSingle: async () => ({ data: ejecutar()[0] ?? null, error: null }),
+      maybeSingle: async () => {
+        if (op === 'update' && errorAlActualizar) {
+          const error = errorAlActualizar;
+          errorAlActualizar = null;
+          llamadas.push({ tabla, op, filtros: [...filtros], valores });
+          return { data: null, error };
+        }
+        return { data: ejecutar()[0] ?? null, error: null };
+      },
       then: (ok: (r: { data: Fila[]; error: null }) => void) => ok({ data: ejecutar(), error: null }),
     };
     return api;
@@ -185,6 +198,27 @@ describe('guardarBorrador', () => {
       expect((e as ErrorSitio).details).toEqual({ esperada: 2, actual: 3 });
     }
     expect((t.website_site_drafts[0].document as DocumentoSitio).paginas[0].titulo).toBe('Inicio');
+  });
+
+  test('el mismo documento no sube la versión ni avisa conflicto', async () => {
+    const t = tablasBase();
+    const validado = validarDocumentoSitio(documento());
+    if (!validado.ok) throw new Error('el documento de prueba no cumple el contrato');
+    t.website_site_drafts[0].document = validado.documento;
+    const { cliente, llamadas } = clienteFake(t);
+    const r = await guardarBorrador(cliente, 120, SITIO, validado.documento, 3);
+    expect(r).toEqual({ version: 3, actualizadoEn: '2026-10-05T10:00:00Z' });
+    expect(llamadas.some((l) => l.op === 'update')).toBe(false);
+    expect(t.website_site_drafts[0].version).toBe(3);
+  });
+
+  test('version_sin_cambios del disparador es un guardado vacío, no un conflicto', async () => {
+    const t = tablasBase();
+    const { cliente } = clienteFake(t, () => ({ data: null }), { errorAlActualizar: { code: 'P0409', message: 'version_sin_cambios' } });
+    const r = await guardarBorrador(cliente, 120, SITIO, documento('Otro'), 3);
+    expect(r).toEqual({ version: 3, actualizadoEn: '2026-10-05T10:00:00Z' });
+    expect((t.website_site_drafts[0].document as DocumentoSitio).paginas[0].titulo).toBe('Inicio');
+    expect(t.website_site_drafts[0].version).toBe(3);
   });
 
   test('documento que no cumple el contrato → documento_invalido, sin consultar', async () => {

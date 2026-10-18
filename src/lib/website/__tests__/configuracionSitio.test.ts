@@ -16,6 +16,7 @@ import {
   parcheAjustes,
   resumenSecciones,
   validarFormulario,
+  versionMasNueva,
   type FormularioConfiguracion,
 } from '../configuracionSitio';
 import { codigoDeFila } from '../configuracionSitio.server';
@@ -59,6 +60,16 @@ describe('documentosLegales', () => {
   it('no avisa cuando la política de tratamiento de datos está publicada', () => {
     const docs = documentosLegales([{ id: 'x', slug: 'tratamiento-de-datos', titulo: 'T', publicada: true, estado: 'publicado', actualizadaEn: null }]);
     expect(faltaTratamientoDatos(docs)).toBe(false);
+  });
+});
+
+describe('versionMasNueva', () => {
+  it('usa la versión del borrador cuando la lista de páginas se quedó atrás', () => {
+    expect(versionMasNueva(4, 5)).toBe(5);
+    expect(versionMasNueva(null, 5)).toBe(5);
+    expect(versionMasNueva(6, 5)).toBe(6);
+    expect(versionMasNueva(null, null)).toBeNull();
+    expect(versionMasNueva(0, 1.5)).toBeNull();
   });
 });
 

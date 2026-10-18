@@ -106,6 +106,37 @@ describe('operaciones de página', () => {
     expect(valido(r.documento)).toBe(true);
   });
 
+  test('una página legal nueva entra al pie «Legales» y no al encabezado', () => {
+    const r = crearPaginaDesdePlantilla(
+      documento(),
+      plantillaPorId('legal')!,
+      { titulo: 'Política de tratamiento de datos (Ley 1581)', slug: 'tratamiento-de-datos', enMenu: false },
+      generarId,
+    );
+    if (!r.ok) throw new Error(r.error);
+    const nueva = r.documento.paginas.find((p) => p.slug === 'tratamiento-de-datos')!;
+    expect(paginasEnMenu(menuEncabezado(r.documento)).has(nueva.id)).toBe(false);
+    const grupo = menusPie(r.documento).find((m) => m.nombre === 'Legales');
+    expect(paginasEnMenu(grupo).has(nueva.id)).toBe(true);
+    expect(valido(r.documento)).toBe(true);
+  });
+
+  test('si no hay grupo «Legales», la página legal lo crea en el pie', () => {
+    const r = crearPaginaDesdePlantilla(
+      eliminarMenu(documento(), 'legales'),
+      plantillaPorId('legal')!,
+      { titulo: 'Política de cookies', slug: 'cookies', enMenu: false },
+      generarId,
+    );
+    if (!r.ok) throw new Error(r.error);
+    const nueva = r.documento.paginas.find((p) => p.slug === 'cookies')!;
+    const grupo = menusPie(r.documento).find((m) => m.nombre === 'Legales');
+    expect(grupo?.nombre).toBe('Legales');
+    expect(paginasEnMenu(grupo).has(nueva.id)).toBe(true);
+    expect(menuEncabezado(r.documento) && paginasEnMenu(menuEncabezado(r.documento)).has(nueva.id)).toBe(false);
+    expect(valido(r.documento)).toBe(true);
+  });
+
   test('crear: errores de nombre y dirección', () => {
     const d = documento();
     const p = plantillaPorId('en_blanco')!;

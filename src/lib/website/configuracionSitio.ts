@@ -96,6 +96,22 @@ export function faltaTratamientoDatos(docs: readonly DocumentoLegalVista[]): boo
   return docs.some((d) => d.clave === 'tratamiento' && d.estado !== 'publicado');
 }
 
+/**
+ * Versión con la que se escribe el borrador desde Configuración.
+ *
+ * El nombre, el logo y el favicon se guardan por `useSitioV2` y las páginas
+ * legales por `usePaginasSitio`. Los dos caminos tocan el mismo borrador y cada
+ * uno recuerda su propia versión. Mandar la vieja responde 409 `conflicto_version`
+ * y la página no se crea. Se usa la más nueva que esta pantalla ya conoce.
+ */
+export function versionMasNueva(versionPaginas: number | null | undefined, versionBorrador: number | null | undefined): number | null {
+  const pagina = typeof versionPaginas === 'number' && Number.isInteger(versionPaginas) && versionPaginas >= 1 ? versionPaginas : null;
+  const borrador = typeof versionBorrador === 'number' && Number.isInteger(versionBorrador) && versionBorrador >= 1 ? versionBorrador : null;
+  if (pagina === null) return borrador;
+  if (borrador === null) return pagina;
+  return Math.max(pagina, borrador);
+}
+
 /** Respuesta de `GET /api/sitio-web/configuracion`. */
 export interface RespuestaConfiguracion {
   permisos: { editar: boolean; publicar: boolean };

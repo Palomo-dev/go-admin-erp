@@ -32,8 +32,8 @@ import {
 } from '@/lib/website/configuracionSitio';
 import { useSitioV2 } from '../useSitioV2';
 import { usePaginasSitio } from '../paginas/usePaginasSitio';
-import { apiPaginas } from '../paginas/apiPaginas';
 import { ErrorApiConfiguracion, RUTA_API_CONFIGURACION, falloDe, pedirApi, type FalloApi } from './api';
+import { crearDocumentoLegal } from './crearDocumentoLegal';
 
 export type ResultadoGuardado = 'ok' | 'error' | 'pendiente' | 'conflicto' | 'invalido';
 
@@ -242,19 +242,25 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
   }, [paginas.datos]);
 
   const escribirPagina = paginas.escribir;
+  const revalidarPaginas = paginas.revalidar;
+  const recargarBorrador = sitio.recargar;
+  const versionBorrador = useRef<number | null>(null);
+  versionBorrador.current = sitio.borrador?.version ?? null;
   const crearLegal = useCallback(
     async (doc: DocumentoLegalVista): Promise<string | null> => {
       setCreandoLegal(doc.clave);
       try {
-        const r = await escribirPagina('*', (c) => apiPaginas.crear(c, { plantilla: 'legal', titulo: doc.titulo, slug: doc.slug, enMenu: false }));
-        return r?.paginaId ?? null;
-      } catch {
-        return null;
+        return await crearDocumentoLegal(doc, {
+          versionBorrador: () => versionBorrador.current,
+          escribir: escribirPagina,
+          revalidar: revalidarPaginas,
+          recargarBorrador,
+        });
       } finally {
         setCreandoLegal(null);
       }
     },
-    [escribirPagina],
+    [escribirPagina, revalidarPaginas, recargarBorrador],
   );
 
   // Despublicar y volver a publicar van por el hook único del sitio V2

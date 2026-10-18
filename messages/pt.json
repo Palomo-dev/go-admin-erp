@@ -36561,6 +36561,7 @@
       "motivo": "Motivo: {motivo}",
       "alergiaNota": "Alergia: {nota}",
       "deshacerItem": "Desfazer {producto}",
+      "empezarItem": "Começar {producto}",
       "marcarItemHecho": "Marcar {producto} como feito",
       "lista": "Pronta {hora}",
       "ahora": "agora",

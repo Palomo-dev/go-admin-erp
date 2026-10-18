@@ -5,8 +5,10 @@
  * mensajes que tenía `EditorPreview`, movida a un hook para el lienzo nuevo.
  *
  * - `goadmin:preview` (secciones en edición, con `settings` → estilo por sección y visibilidad
- *   por dispositivo) y `goadmin:settings` (encabezado, pie y tema en edición), con espera de
- *   150 ms y sin reenviar lo mismo. En V2, `goadmin:settings` lleva además `tema`
+ *   por dispositivo). En la portada carrusel el mensaje lleva el banner de la sección como
+ *   diapositiva; el borrador guardado no cambia.
+ * - `goadmin:settings` (encabezado, pie y tema en edición).
+ *   Los dos mensajes esperan 150 ms y no se reenvían si no cambiaron. En V2, `goadmin:settings` lleva además `tema`
  *   (`temaParaLienzo`): fuentes, redondeo, botón y movimiento del estilo general, que el sitio
  *   aplica con el mismo código que al publicar.
  * - `goadmin:select` / `goadmin:scroll` para resaltar la sección elegida. En la Carta QR por pasos
@@ -22,6 +24,7 @@ import type { WebsitePageSection } from '@/lib/services/websitePageBuilderServic
 import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 import { origenDe } from '@/components/sitio-web/ui/dispositivos';
 import type { TemaLienzo } from '@/lib/website/v2/tokensEstilo';
+import { contenidoPortadaVisible } from '@/lib/website/portadaSlider';
 import { lienzoPorPasos, mensajesSeleccion } from './pasoLienzo';
 
 export interface DetalleClic {
@@ -80,7 +83,7 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
         id: s.id,
         section_type: s.section_type,
         section_variant: s.section_variant,
-        content: s.content,
+        content: contenidoPortadaVisible(s.section_type, s.section_variant, s.content),
         settings: s.settings,
         is_visible: s.is_visible,
         ...(aviso

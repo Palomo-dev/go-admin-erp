@@ -22,6 +22,8 @@ export interface PaginasSitio {
   /** Id de la página con una escritura en curso (o `'*'` para acciones del sitio). */
   ocupado: string | null;
   recargar: () => Promise<void>;
+  /** Vuelve a leer la lista sin esqueleto y devuelve lo que hay ahora (versión incluida). */
+  revalidar: () => Promise<RespuestaPaginas | null>;
   /** Escribe en el borrador y recarga la lista. Lanza `ErrorApiPaginas` si falla (salvo 409). */
   escribir: (
     clave: string,
@@ -41,16 +43,18 @@ export function usePaginasSitio(branchId: number | null): PaginasSitio {
   ref.current = datos;
 
   const leer = useCallback(
-    async (silencioso: boolean) => {
+    async (silencioso: boolean): Promise<RespuestaPaginas | null> => {
       if (!silencioso) setCargando(true);
       setFallo(null);
       try {
         const r = await apiPaginas.listar(branchId);
         ref.current = r;
         setDatos(r);
+        return r;
       } catch (error) {
         if (!silencioso) setDatos(null);
         setFallo(error instanceof ErrorApiPaginas && error.esSinPermiso ? 'sin_permiso' : 'error');
+        return null;
       } finally {
         if (!silencioso) setCargando(false);
       }
@@ -69,6 +73,7 @@ export function usePaginasSitio(branchId: number | null): PaginasSitio {
       setOcupado(clave);
       try {
         const r = await operar(contexto());
+        setConflicto(false);
         await leer(true);
         return r;
       } catch (error) {
@@ -107,6 +112,11 @@ export function usePaginasSitio(branchId: number | null): PaginasSitio {
     await leer(false);
   }, [leer]);
 
+  const revalidar = useCallback(async () => {
+    setConflicto(false);
+    return leer(true);
+  }, [leer]);
+
   return {
     datos,
     cargando,
@@ -114,6 +124,7 @@ export function usePaginasSitio(branchId: number | null): PaginasSitio {
     conflicto,
     ocupado,
     recargar,
+    revalidar,
     escribir,
     alternarEnMenu,
     cerrarConflicto: () => setConflicto(false),

@@ -18,6 +18,7 @@ import {
   minutosTranscurridos,
   objetivoDe,
   circuloTocable,
+  faseCirculo,
   type FiltroEstacion,
 } from '@/lib/pos/cocina/tableroComandas';
 import { cantidadComanda, textoCantidadComanda } from '@/components/pos/comandas/TicketCard';
@@ -226,8 +227,10 @@ export function DetalleComandaDialog({
                 <div className="mt-2 space-y-2">
                   {items.map((i) => {
                     const anulado = i.status === 'cancelled' || !!i.cancelled_at;
-                    const hecho = !anulado && (i.status === 'ready' || i.status === 'delivered');
-                    // Un pendiente se empieza y luego se marca (`planMarcarItem`). Un ajuste no se empieza así.
+                    const fase = anulado ? null : faseCirculo(i);
+                    const hecho = fase === 'listo';
+                    const preparando = fase === 'preparando';
+                    // Un pendiente solo se empieza. Un ajuste no se empieza así.
                     const puedeTocar = permisos.operar && !anulado && circuloTocable(i)
                       && !(c.ticket_type === 'adjustment' && i.status === 'pending')
                       && !(c.has_allergy && !c.allergy_ack_at) && (c.status as string) !== 'cancelled';
@@ -239,13 +242,21 @@ export function DetalleComandaDialog({
                           disabled={!puedeTocar}
                           onClick={() => onItem(c, i, !hecho)}
                           aria-pressed={hecho}
-                          aria-label={hecho ? tt('deshacerItem', { producto: i.product_name ?? '' }) : tt('marcarItemHecho', { producto: i.product_name ?? '' })}
+                          aria-label={
+                            hecho
+                              ? tt('deshacerItem', { producto: i.product_name ?? '' })
+                              : preparando
+                                ? tt('marcarItemHecho', { producto: i.product_name ?? '' })
+                                : tt('empezarItem', { producto: i.product_name ?? '' })
+                          }
                           className="mt-0.5 shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-default"
                         >
                           {anulado ? (
                             <X aria-hidden="true" className="size-5 text-danger" />
                           ) : hecho ? (
                             <span className="flex size-5 items-center justify-center rounded-full bg-success text-white"><Check aria-hidden="true" className="size-3.5" strokeWidth={2.5} /></span>
+                          ) : preparando ? (
+                            <span className="flex size-5 items-center justify-center rounded-full border-2 border-brand bg-brand-tint"><span aria-hidden="true" className="size-2 rounded-full bg-brand" /></span>
                           ) : (
                             <span className="block size-5 rounded-full border-2 border-line-strong" />
                           )}

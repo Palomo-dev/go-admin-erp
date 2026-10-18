@@ -31,6 +31,7 @@ describe('qué archivo se acepta en la biblioteca', () => {
 describe('ruta en el storage', () => {
   it('sanea el nombre: sin tildes, espacios ni símbolos, con su extensión', () => {
     expect(nombreSeguro('Botín Cuero Café (1).JPG')).toBe('botin-cuero-cafe-1.jpg');
+    expect(nombreSeguro('Menú del día.png')).toBe('menu-del-dia.png');
     expect(nombreSeguro('###.png')).toBe('imagen.png');
     expect(nombreSeguro('../../etc/passwd')).toBe('etc-passwd');
   });

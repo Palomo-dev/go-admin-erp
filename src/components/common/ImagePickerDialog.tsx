@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { nombreSeguro } from '@/components/inventario/imagenes/imagenesLogica';
 
 const STORAGE_BUCKET = 'organization_images';
 const PAGE_SIZE = 12;
@@ -243,7 +244,9 @@ export default function ImagePickerDialog({
     setIsUploading(true);
     try {
       const orgId = organizationId || getOrganizationId();
-      const fileName = `${orgId}/${Date.now()}-${file.name}`;
+      // Storage rechaza la clave si el nombre trae tildes o espacios (InvalidKey).
+      // El nombre visible se guarda tal cual en shared_images.file_name.
+      const fileName = `${orgId}/${Date.now()}-${nombreSeguro(file.name)}`;
 
       // Upload to correct bucket
       const { error: uploadError } = await supabase.storage

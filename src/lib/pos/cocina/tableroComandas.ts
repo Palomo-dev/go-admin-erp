@@ -362,61 +362,76 @@ export function validarMovimiento(
 }
 
 /**
- * ¿La base acepta `pos_cocina_marcar_item` sobre este ítem sin empezarlo
- * antes? Solo `in_progress`, o para deshacer un `ready`. Un `pending` marcado
- * hecho responde `comanda_sin_empezar`: saltaba de «Nuevas» a «Listas» sin
- * pasar por «En preparación». El círculo igual se toca; el camino es
- * `planMarcarItem`.
+ * ¿La base acepta marcar esta línea como lista (`ready`) de un solo toque?
+ * Un `pending` no: el primer toque solo la empieza. Si no, una comanda de una
+ * sola línea saltaba de «Nuevas» a «Listas».
  */
 export function puedeMarcarItem(item: Pick<ItemTablero, 'status' | 'cancelled_at'>): boolean {
   if (item.cancelled_at) return false;
   return item.status === 'in_progress' || item.status === 'ready';
 }
 
+/** Cómo se pinta el círculo: sin empezar, en preparación o listo. */
+export type FaseCirculo = 'pendiente' | 'preparando' | 'listo';
+
+export function faseCirculo(item: Pick<ItemTablero, 'status' | 'cancelled_at'>): FaseCirculo | null {
+  if (item.cancelled_at || item.status === 'cancelled') return null;
+  if (item.status === 'ready' || item.status === 'delivered') return 'listo';
+  if (item.status === 'in_progress') return 'preparando';
+  if (item.status === 'pending') return 'pendiente';
+  return null;
+}
+
 /**
- * El círculo del producto se puede pulsar (marcar, desmarcar, o empezar y
- * marcar). No incluye anulados ni ya entregados.
+ * El círculo del producto se puede pulsar (empezar, marcar listo o deshacer).
+ * No incluye anulados ni ya entregados.
  */
 export function circuloTocable(item: Pick<ItemTablero, 'status' | 'cancelled_at'>): boolean {
-  if (item.cancelled_at || item.status === 'cancelled' || item.status === 'delivered') return false;
+  if (faseCirculo(item) == null || item.status === 'delivered') return false;
   return item.status === 'pending' || puedeMarcarItem(item);
 }
 
 export interface PlanMarcarItem {
-  /** Llamar `pos_cocina_cambiar_estado('preparing')` antes de marcar la línea. */
-  empezar: boolean;
-  /** null empieza todas las estaciones. Si el ítem tiene estación, solo esa. */
-  station: string | null;
+  /**
+   * El círculo no llama `pos_cocina_cambiar_estado`: eso empezaría o marcaría
+   * lista el resto de productos. Siempre es un solo ítem.
+   */
+  empezar: false;
+  station: null;
+  /** Argumento de `pos_cocina_marcar_item`. En un pendiente, la base lo empieza. */
   hecho: boolean;
-}
-
-/** Estación que hay que empezar. Vacía o ausente = todas (`null` en la RPC). */
-export function estacionParaEmpezar(item: Pick<ItemTablero, 'station'>): string | null {
-  const s = (item.station ?? '').trim();
-  return s || null;
+  /** Estado en el que queda esa línea. */
+  destino: 'in_progress' | 'ready';
 }
 
 /**
- * Tocar el círculo de un ítem `pending` no puede ir directo a «hecho».
- * Primero se empieza la estación (los ítems pendientes pasan a `in_progress`)
- * y después se marca esa línea. Así una comanda de una sola línea sí queda
- * lista, pero la base vio «En preparación» antes de «Listas».
+ * Un toque avanza solo esa línea, un paso:
+ * pendiente → en preparación, en preparación → lista, lista → en preparación.
+ * La comanda pasa a «Listas» cuando todas las líneas vivas están listas, no
+ * cuando se toca la primera.
  */
-export function planMarcarItem(item: Pick<ItemTablero, 'status' | 'station'>, hecho: boolean): PlanMarcarItem {
-  if (hecho && item.status === 'pending') {
-    return { empezar: true, station: estacionParaEmpezar(item), hecho: true };
+export function planMarcarItem(item: Pick<ItemTablero, 'status'>, hecho: boolean): PlanMarcarItem {
+  if (!hecho || item.status === 'pending') {
+    return { empezar: false, station: null, hecho, destino: 'in_progress' };
   }
-  return { empezar: false, station: null, hecho };
+  return { empezar: false, station: null, hecho: true, destino: 'ready' };
 }
 
-/** Pintado optimista del toque: empieza si hace falta y luego marca la línea. */
+/** Pintado optimista del toque: solo cambia la línea tocada y deriva la comanda. */
 export function aplicarToqueItem<C extends ComandaTablero>(
   c: C,
-  item: Pick<ItemTablero, 'id' | 'status' | 'station'>,
+  item: Pick<ItemTablero, 'id' | 'status'>,
   hecho: boolean,
   ahoraIso: string,
 ): C {
   const plan = planMarcarItem(item, hecho);
-  const base = plan.empezar ? aplicarEstadoLocal(c, 'preparing', plan.station, ahoraIso) : c;
-  return aplicarItemLocal(base, item.id, plan.hecho, ahoraIso);
+  const items = (c.kitchen_ticket_items ?? []).map((i) => (i.id === item.id ? { ...i, status: plan.destino } : i));
+  const derivado = estadoDerivado(items) ?? c.status;
+  return {
+    ...c,
+    kitchen_ticket_items: items,
+    status: derivado,
+    ready_at: derivado === 'ready' || derivado === 'delivered' ? (c.ready_at ?? ahoraIso) : null,
+    updated_at: ahoraIso,
+  };
 }

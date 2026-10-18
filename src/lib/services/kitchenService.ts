@@ -488,6 +488,28 @@ class KitchenService {
   }
 
   /**
+   * Deja el estado de la comanda sin tocar sus ítems. Lo usa el camino anterior
+   * del círculo, cuando la RPC aún no existe: `updateTicketStatus` copiaría el
+   * estado a todas las líneas y una sola pasaría la comanda entera a listas.
+   */
+  async fijarEstadoTicket(ticketId: number, status: KitchenTicket['status']) {
+    try {
+      const now = new Date().toISOString();
+      const updateData: Record<string, unknown> = { status, updated_at: now };
+      if (status === 'ready') updateData.ready_at = now;
+      else if (status === 'new' || status === 'preparing') updateData.ready_at = null;
+
+      const { data, error } = await supabase.from('kitchen_tickets').update(updateData).eq('id', ticketId).select().single();
+      if (error) throw error;
+      void this.avisarPedidoWeb(data as KitchenTicket, status);
+      return data;
+    } catch (error) {
+      console.error('Error fijando el estado de la comanda:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Actualizar el estado de un item específico
    */
   async updateItemStatus(itemId: number, status: KitchenTicketItem['status']) {

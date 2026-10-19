@@ -1,0 +1,689 @@
+From 45d3f1f4370866f6166e5c9c9eab1b7384d4fab2 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Mon, 19 Oct 2026 21:02:03 +0000
+Subject: [PATCH] feat(GO-sitio-web): el correo de pago sale con la marca de la
+ tienda
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Cuando el pago queda confirmado, el mensaje lleva el logo, el color y el
+nombre de la tienda. El From es el correo de la tienda si su dominio ya está
+autenticado; si no, Reply-To apunta a ese correo y el envío sigue por el
+dominio de la plataforma, que es el único que el proveedor acepta.
+---
+ lib/email/cargarMarcaPedido.ts       |  99 ++++++++++++
+ lib/email/marcaCorreoPedido.ts       | 223 +++++++++++++++++++++++++++
+ lib/email/send-order-confirmation.ts |  55 +++++--
+ lib/orders/correoPedidoPagado.ts     |   5 +-
+ package.json                         |   3 +-
+ scripts/verify-marca-correo.mjs      | 162 +++++++++++++++++++
+ 6 files changed, 536 insertions(+), 11 deletions(-)
+ create mode 100644 lib/email/cargarMarcaPedido.ts
+ create mode 100644 lib/email/marcaCorreoPedido.ts
+ create mode 100644 scripts/verify-marca-correo.mjs
+
+diff --git a/lib/email/cargarMarcaPedido.ts b/lib/email/cargarMarcaPedido.ts
+new file mode 100644
+index 0000000..15dca8a
+--- /dev/null
++++ b/lib/email/cargarMarcaPedido.ts
+@@ -0,0 +1,99 @@
++/**
++ * Lee la marca con la que sale el correo de un pedido pagado.
++ *
++ * Organización del pedido (nunca del body). El documento V2 es el publicado;
++ * el borrador no se lee. Si una consulta falla, se arma la marca con lo que
++ * sí llegó: un correo sin logo sigue siendo mejor que no avisar el pago.
++ */
++
++import { ensamblarMarca, type DominioRemitente, type MarcaCorreoPedido } from '@/lib/email/marcaCorreoPedido'
++
++type Cliente = { from: (tabla: string) => any }
++
++function campoDocumento(doc: unknown, cual: 'logo' | 'color'): unknown {
++  if (!doc || typeof doc !== 'object') return null
++  const d = doc as { identidad?: { logoUrl?: unknown }; tema?: { colores?: { primario?: unknown } } }
++  return cual === 'logo' ? d.identidad?.logoUrl ?? null : d.tema?.colores?.primario ?? null
++}
++
++export async function cargarMarcaPedido(
++  sb: Cliente,
++  organizationId: number,
++  branchId: number | null,
++): Promise<MarcaCorreoPedido> {
++  const vacia: MarcaCorreoPedido = { nombre: '', correo: null, logoUrl: null, color: null, dominios: [] }
++  try {
++    const [org, sede, ajustes, dominios, estados] = await Promise.all([
++      sb.from('organizations').select('name, email, logo_url, primary_color').eq('id', organizationId).maybeSingle(),
++      branchId
++        ? sb.from('branches').select('email, website_logo_url').eq('id', branchId).eq('organization_id', organizationId).maybeSingle()
++        : Promise.resolve({ data: null, error: null }),
++      sb.from('website_settings').select('branch_id, primary_color').eq('organization_id', organizationId),
++      sb.from('email_domains').select('domain, from_email, is_default, status').eq('organization_id', organizationId).eq('status', 'verified'),
++      sb.from('website_site_states').select('branch_id, v2_adopted, published_revision_id').eq('organization_id', organizationId),
++    ])
++    for (const [etiqueta, res] of [
++      ['organización', org],
++      ['sede', sede],
++      ['ajustes', ajustes],
++      ['dominios', dominios],
++      ['sitio', estados],
++    ] as const) {
++      if (res.error) console.error('[CorreoPedido] No se pudo leer la marca', { organizationId, etiqueta, error: res.error.message })
++    }
++
++    const filasEstado: { branch_id: number | null; v2_adopted: boolean; published_revision_id: string | null }[] =
++      Array.isArray(estados.data) ? estados.data : []
++    const principal = filasEstado.find((f) => f.branch_id == null) ?? null
++    const deSede = branchId != null ? filasEstado.find((f) => f.branch_id === branchId) ?? null : null
++    const v2Principal = !!(principal?.v2_adopted && principal.published_revision_id)
++    const v2Sede = !!(deSede?.v2_adopted && deSede.published_revision_id)
++    const ids = [v2Principal ? principal?.published_revision_id : null, v2Sede ? deSede?.published_revision_id : null].filter(
++      (id): id is string => typeof id === 'string' && id.length > 0,
++    )
++    const documentos = new Map<string, unknown>()
++    if (ids.length > 0) {
++      const revs = await sb
++        .from('website_site_revisions')
++        .select('id, document')
++        .eq('organization_id', organizationId)
++        .in('id', ids)
++      if (revs.error) console.error('[CorreoPedido] No se pudo leer la revisión publicada', { organizationId, error: revs.error.message })
++      for (const fila of revs.data || []) {
++        if (fila?.id) documentos.set(String(fila.id), fila.document)
++      }
++    }
++
++    const filasAjustes: { branch_id: number | null; primary_color: string | null }[] = Array.isArray(ajustes.data) ? ajustes.data : []
++    const global = filasAjustes.find((f) => f.branch_id == null) ?? null
++    const propia = branchId != null ? filasAjustes.find((f) => f.branch_id === branchId) ?? null : null
++    const lista: DominioRemitente[] = (Array.isArray(dominios.data) ? dominios.data : []).map((d: { domain?: string; from_email?: string; is_default?: boolean }) => ({
++      domain: String(d.domain || ''),
++      fromEmail: String(d.from_email || ''),
++      isDefault: d.is_default === true,
++    }))
++    const docPrincipal = v2Principal && principal?.published_revision_id ? documentos.get(principal.published_revision_id) : null
++    const docSede = v2Sede && deSede?.published_revision_id ? documentos.get(deSede.published_revision_id) : null
++
++    return ensamblarMarca({
++      nombre: org.data?.name,
++      correoOrganizacion: org.data?.email,
++      correoSede: sede.data?.email,
++      logoOrganizacion: org.data?.logo_url,
++      logoSede: sede.data?.website_logo_url,
++      colorOrganizacion: org.data?.primary_color,
++      colorAjustes: global?.primary_color,
++      colorAjustesSede: propia?.primary_color,
++      logoV2Principal: campoDocumento(docPrincipal, 'logo'),
++      colorV2Principal: campoDocumento(docPrincipal, 'color'),
++      logoV2Sede: campoDocumento(docSede, 'logo'),
++      colorV2Sede: campoDocumento(docSede, 'color'),
++      v2Principal,
++      v2Sede,
++      dominios: lista,
++    })
++  } catch (err) {
++    console.error('[CorreoPedido] No se pudo armar la marca', { organizationId, err: err instanceof Error ? err.message : err })
++    return vacia
++  }
++}
+diff --git a/lib/email/marcaCorreoPedido.ts b/lib/email/marcaCorreoPedido.ts
+new file mode 100644
+index 0000000..04ee85e
+--- /dev/null
++++ b/lib/email/marcaCorreoPedido.ts
+@@ -0,0 +1,223 @@
++/**
++ * Marca y remitente del correo de un pedido pagado en el sitio.
++ *
++ * El comprador tiene que ver la tienda: su nombre, su logo y su color.
++ * El sobre solo puede salir de un dominio que el proveedor ya autenticó
++ * (`email_domains` en estado `verified`). Si el correo de la tienda está en
++ * ese dominio, el From es ese correo. Si no, poner un Gmail (o cualquier
++ * dominio ajeno) como From hace que el proveedor rechace el mensaje y el
++ * cliente no recibe nada: el nombre visible sigue siendo el de la tienda,
++ * Reply-To es su correo y la dirección de envío queda en el dominio de la
++ * plataforma.
++ *
++ * Código puro: sin React, Next ni Supabase.
++ */
++
++export interface DominioRemitente {
++  domain: string
++  fromEmail: string
++  isDefault: boolean
++}
++
++export interface MarcaCorreoPedido {
++  nombre: string
++  correo: string | null
++  logoUrl: string | null
++  color: string | null
++  dominios: DominioRemitente[]
++}
++
++export interface SobreCorreoPedido {
++  from: string
++  replyTo: string | null
++  nombre: string
++  correo: string | null
++  logoUrl: string | null
++  color: string
++  texto: '#ffffff' | '#111827'
++  /** La dirección del sobre es de la tienda, no la de la plataforma. */
++  propio: boolean
++}
++
++const COLOR_POR_DEFECTO = '#111827'
++const RESPALDO_POR_DEFECTO = 'pedidos@goadmin.io'
++
++export function correoValido(valor: unknown): string | null {
++  if (typeof valor !== 'string') return null
++  const limpio = valor.trim().toLowerCase()
++  if (limpio.length > 254 || !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(limpio)) return null
++  return limpio
++}
++
++export function dominioDe(correo: string): string {
++  return correo.slice(correo.lastIndexOf('@') + 1)
++}
++
++/** `#RGB`, `#RRGGBB` o `#RRGGBBAA` → `#rrggbb`. Cualquier otra cosa, null. */
++export function colorMarca(valor: unknown): string | null {
++  if (typeof valor !== 'string') return null
++  const m = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(valor.trim())
++  if (!m) return null
++  const hex = m[1]
++  if (hex.length === 3) return `#${hex.split('').map((c) => c + c).join('')}`.toLowerCase()
++  return `#${hex.slice(0, 6)}`.toLowerCase()
++}
++
++/** Solo https absoluto. Una ruta del sitio no se resuelve dentro de un correo. */
++export function logoCorreo(valor: unknown): string | null {
++  if (typeof valor !== 'string') return null
++  const limpio = valor.trim()
++  if (limpio.length > 2000 || !/^https:\/\/[^\s<>"]+$/i.test(limpio)) return null
++  return limpio
++}
++
++/** Texto blanco sobre color oscuro; texto oscuro si el fondo es claro (amarillo, blanco). */
++export function textoSobreColor(color: string): '#ffffff' | '#111827' {
++  const hex = color.replace('#', '')
++  const r = parseInt(hex.slice(0, 2), 16)
++  const g = parseInt(hex.slice(2, 4), 16)
++  const b = parseInt(hex.slice(4, 6), 16)
++  const y = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
++  return y > 0.62 ? '#111827' : '#ffffff'
++}
++
++function valorPublicado(campo: unknown): string | null {
++  if (!campo || typeof campo !== 'object') return null
++  const c = campo as { mode?: unknown; value?: unknown }
++  if (c.mode !== 'value' || typeof c.value !== 'string') return null
++  const limpio = c.value.trim()
++  return limpio || null
++}
++
++function esClear(campo: unknown): boolean {
++  return !!campo && typeof campo === 'object' && (campo as { mode?: unknown }).mode === 'clear'
++}
++
++/**
++ * Herencia de sede, la misma regla del sitio: `clear` vacía, `value` gana,
++ * ausente o `inherit` usa el principal.
++ */
++export function valorHeredado(principal: unknown, sede: unknown): string | null {
++  if (sede && typeof sede === 'object') {
++    const c = sede as { mode?: unknown; value?: unknown }
++    if (c.mode === 'clear') return null
++    if (c.mode === 'value') return typeof c.value === 'string' && c.value.trim() ? c.value.trim() : null
++  }
++  return valorPublicado(principal)
++}
++
++function dominiosLimpios(dominios: DominioRemitente[]): DominioRemitente[] {
++  return (dominios || [])
++    .map((d) => ({
++      domain: typeof d.domain === 'string' ? d.domain.trim().toLowerCase().replace(/\.$/, '') : '',
++      fromEmail: correoValido(d.fromEmail) || '',
++      isDefault: d.isDefault === true,
++    }))
++    .filter((d) => d.domain && d.fromEmail && dominioDe(d.fromEmail) === d.domain)
++}
++
++function logoEfectivo(entrada: {
++  v2: boolean
++  v2Sede: boolean
++  logoV2Principal: unknown
++  logoV2Sede: unknown
++  logoSede: unknown
++  logoOrganizacion: unknown
++}): string | null {
++  const legacy = logoCorreo(entrada.logoSede) ?? logoCorreo(entrada.logoOrganizacion)
++  if (!entrada.v2) return legacy
++  if (entrada.v2Sede && esClear(entrada.logoV2Sede)) return null
++  const publicado = entrada.v2Sede
++    ? valorHeredado(entrada.logoV2Principal, entrada.logoV2Sede)
++    : valorPublicado(entrada.logoV2Principal)
++  return logoCorreo(publicado) ?? legacy
++}
++
++/** Arma la marca a partir de las filas ya leídas. La sede gana al principal; V2 gana a lo legacy. */
++export function ensamblarMarca(entrada: {
++  nombre: unknown
++  correoOrganizacion: unknown
++  correoSede: unknown
++  logoOrganizacion: unknown
++  logoSede: unknown
++  colorOrganizacion: unknown
++  colorAjustes: unknown
++  colorAjustesSede: unknown
++  logoV2Principal: unknown
++  colorV2Principal: unknown
++  logoV2Sede: unknown
++  colorV2Sede: unknown
++  v2Principal: boolean
++  v2Sede: boolean
++  dominios: DominioRemitente[]
++}): MarcaCorreoPedido {
++  const v2 = entrada.v2Principal || entrada.v2Sede
++  const colorV2 = entrada.v2Sede
++    ? valorHeredado(entrada.v2Principal ? entrada.colorV2Principal : null, entrada.colorV2Sede)
++    : entrada.v2Principal
++      ? valorPublicado(entrada.colorV2Principal)
++      : null
++  return {
++    nombre: typeof entrada.nombre === 'string' ? entrada.nombre.replace(/[\r\n]/g, ' ').trim() : '',
++    correo: correoValido(entrada.correoSede) ?? correoValido(entrada.correoOrganizacion),
++    logoUrl: logoEfectivo({
++      v2,
++      v2Sede: entrada.v2Sede,
++      logoV2Principal: entrada.v2Principal ? entrada.logoV2Principal : null,
++      logoV2Sede: entrada.logoV2Sede,
++      logoSede: entrada.logoSede,
++      logoOrganizacion: entrada.logoOrganizacion,
++    }),
++    color: colorMarca(colorV2)
++      ?? colorMarca(entrada.colorAjustesSede)
++      ?? colorMarca(entrada.colorAjustes)
++      ?? colorMarca(entrada.colorOrganizacion),
++    dominios: dominiosLimpios(entrada.dominios),
++  }
++}
++
++function formatoDesde(nombre: string, correo: string): string {
++  const limpio = nombre.replace(/[\r\n<>"]/g, '').replace(/\s+/g, ' ').trim() || 'Tienda'
++  return `"${limpio}" <${correo}>`
++}
++
++/**
++ * Sobre del correo. `propio` es true solo cuando la dirección de envío
++ * pertenece a un dominio autenticado de la tienda.
++ */
++export function sobreCorreoPedido(entrada: {
++  nombre: string
++  correoTienda: string | null
++  logoUrl: string | null
++  color: string | null
++  dominios: DominioRemitente[]
++  respaldo: string
++}): SobreCorreoPedido {
++  const nombre = (entrada.nombre || '').replace(/[\r\n]/g, ' ').trim()
++  const correo = correoValido(entrada.correoTienda)
++  const color = colorMarca(entrada.color) ?? COLOR_POR_DEFECTO
++  const logoUrl = logoCorreo(entrada.logoUrl)
++  const dominios = dominiosLimpios(entrada.dominios)
++  const base = { nombre, correo, logoUrl, color, texto: textoSobreColor(color) }
++  const delCorreo = correo ? dominios.find((d) => dominioDe(correo) === d.domain) : undefined
++  if (correo && delCorreo) {
++    return { ...base, from: formatoDesde(nombre, correo), replyTo: null, propio: true }
++  }
++  const propio = dominios.find((d) => d.isDefault) ?? dominios[0]
++  const desdePropio = propio ? correoValido(propio.fromEmail) : null
++  if (desdePropio) {
++    return {
++      ...base,
++      from: formatoDesde(nombre, desdePropio),
++      replyTo: correo && correo !== desdePropio ? correo : null,
++      propio: true,
++    }
++  }
++  const respaldo = correoValido(entrada.respaldo) ?? RESPALDO_POR_DEFECTO
++  return {
++    ...base,
++    from: formatoDesde(nombre, respaldo),
++    replyTo: correo && correo !== respaldo ? correo : null,
++    propio: false,
++  }
++}
+diff --git a/lib/email/send-order-confirmation.ts b/lib/email/send-order-confirmation.ts
+index dbf5c0c..fea40d7 100644
+--- a/lib/email/send-order-confirmation.ts
++++ b/lib/email/send-order-confirmation.ts
+@@ -2,8 +2,15 @@
+  * Envía email de confirmación de orden al cliente.
+  * Usa Resend (https://resend.com) vía fetch directo — no requiere npm package.
+  * Si RESEND_API_KEY no está configurada, no hace nada (silent no-op).
++ *
++ * Con `marca` (el correo de pago confirmado) el mensaje lleva el logo, el color
++ * y el nombre de la tienda. El From es el correo de la tienda solo si su dominio
++ * ya está autenticado; si no, Reply-To apunta a ese correo y el envío sale por
++ * el dominio de la plataforma, que es el único que el proveedor acepta.
+  */
+ 
++import { sobreCorreoPedido, type MarcaCorreoPedido, type SobreCorreoPedido } from '@/lib/email/marcaCorreoPedido'
++
+ interface OrderEmailData {
+   orderNumber: string
+   customerEmail: string
+@@ -31,6 +38,8 @@ interface OrderEmailData {
+   tipoEntrega?: string | null
+   /** Hora programada ya formateada en la zona de la sede («Hoy · 7:30 p. m.»). */
+   programadoPara?: string | null
++  /** Marca de la tienda. Sin ella el correo sale como antes: remitente de la plataforma y azul fijo. */
++  marca?: MarcaCorreoPedido | null
+ }
+ 
+ // Los nombres de promoción/cupón los escribe el comercio en el ERP; se escapan
+@@ -50,13 +59,42 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
+     return false
+   }
+ 
+-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io'
++  const sobre: SobreCorreoPedido | null = data.marca
++    ? sobreCorreoPedido({
++        nombre: data.marca.nombre || data.organizationName,
++        correoTienda: data.marca.correo,
++        logoUrl: data.marca.logoUrl,
++        color: data.marca.color,
++        dominios: data.marca.dominios,
++        respaldo: process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io',
++      })
++    : null
++  const fromEmail = sobre?.from ?? (process.env.RESEND_FROM_EMAIL || 'pedidos@goadmin.io')
++  const colorBoton = sobre?.color ?? '#3B82F6'
++  const textoBoton = sobre?.texto ?? '#ffffff'
+   const pagado = data.paymentStatus === 'paid'
+   const titulo = pagado ? '¡Pago confirmado!' : 'Recibimos tu pedido'
+   const mensaje = pagado
+     ? `Recibimos el pago de tu pedido <strong>${escapeHtml(data.orderNumber)}</strong>. Ya lo estamos preparando.`
+     : `Tu pedido <strong>${escapeHtml(data.orderNumber)}</strong> llegó al restaurante. Te avisaremos cuando lo confirmen.`
+-  const negocio = data.organizationName ? escapeHtml(data.organizationName) : ''
++  const negocio = escapeHtml(sobre?.nombre || data.organizationName || '')
++  const logo = sobre?.logoUrl
++    ? `<img src="${escapeHtml(sobre.logoUrl)}" alt="${negocio}" height="48" style="height:48px;max-width:220px;width:auto;margin:0 auto 12px;display:block;border:0;">`
++    : ''
++  const encabezado = sobre
++    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${sobre.color};border-radius:8px 8px 0 0;">
++        <tr><td style="padding:28px 24px;text-align:center;">
++          ${logo}
++          ${negocio ? `<p style="margin:0;color:${sobre.texto};font-size:15px;font-weight:700;">${negocio}</p>` : ''}
++        </td></tr>
++      </table>`
++    : `<div style="background:#f8f9fa;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
++        <h1 style="margin:0;color:#1a1a1a;font-size:24px;">${titulo}</h1>
++        ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:14px;">${negocio}</p>` : ''}
++      </div>`
++  const pie = sobre?.correo
++    ? `Si tienes alguna pregunta sobre tu pedido, escribe a <a href="mailto:${escapeHtml(sobre.correo)}" style="color:${sobre.color};">${escapeHtml(sobre.correo)}</a>.`
++    : `Si tienes alguna pregunta sobre tu pedido, contáctanos${negocio ? ` en ${negocio}` : ''}.`
+ 
+   const itemsHtml = data.items.map(item => `
+     <tr>
+@@ -69,12 +107,10 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
+ 
+   const html = `
+     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+-      <div style="background:#f8f9fa;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+-        <h1 style="margin:0;color:#1a1a1a;font-size:24px;">${titulo}</h1>
+-        ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:14px;">${negocio}</p>` : ''}
+-      </div>
++      ${encabezado}
+       
+       <div style="padding:24px;">
++        ${sobre ? `<h1 style="margin:0 0 16px;color:#1a1a1a;font-size:24px;">${titulo}</h1>` : ''}
+         <p style="color:#333;font-size:16px;">
+           Hola <strong>${escapeHtml(data.customerName)}</strong>,
+         </p>
+@@ -136,13 +172,13 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
+         </div>
+         
+         <div style="text-align:center;margin-top:24px;">
+-          <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:#3B82F6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
++          <a href="${escapeHtml(data.trackingUrl)}" style="display:inline-block;background:${colorBoton};color:${textoBoton};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+             Seguir mi pedido
+           </a>
+         </div>
+         
+         <p style="color:#999;font-size:12px;text-align:center;margin-top:24px;">
+-          Si tienes alguna pregunta sobre tu pedido, contáctanos${negocio ? ` en ${negocio}` : ''}.
++          ${pie}
+         </p>
+       </div>
+     </div>
+@@ -158,7 +194,8 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<
+       body: JSON.stringify({
+         from: fromEmail,
+         to: [data.customerEmail],
+-        subject: `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${data.organizationName ? ` — ${data.organizationName}` : ''}`,
++        ...(sobre?.replyTo ? { reply_to: sobre.replyTo } : {}),
++        subject: `${pagado ? 'Pago confirmado' : 'Recibimos tu pedido'} ${data.orderNumber}${negocio ? ` — ${sobre?.nombre || data.organizationName}` : ''}`,
+         html,
+       }),
+     })
+diff --git a/lib/orders/correoPedidoPagado.ts b/lib/orders/correoPedidoPagado.ts
+index 6c0cd5a..22b2ac8 100644
+--- a/lib/orders/correoPedidoPagado.ts
++++ b/lib/orders/correoPedidoPagado.ts
+@@ -10,6 +10,7 @@
+  */
+ 
+ import { createAdminClient } from '@/lib/supabase/server'
++import { cargarMarcaPedido } from '@/lib/email/cargarMarcaPedido'
+ import { sendOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+ import { rutaSeguimiento } from '@/lib/orders/tokenSeguimiento'
+ import { etiquetaTipoEntrega } from '@/lib/orders/estados-pedido'
+@@ -50,6 +51,7 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
+     const zona = sede?.timezone || org?.timezone || null
+     const esRestaurante = Number(org?.type_id) === 1
+     const origen = org ? origenSitio(org) : ''
++    const marca = await cargarMarcaPedido(sb, pedido.organization_id, pedido.branch_id ?? null)
+ 
+     await sendOrderConfirmationEmail({
+       orderNumber: pedido.order_number,
+@@ -67,7 +69,8 @@ export async function enviarCorreoPedidoPagado(webOrderId: string): Promise<void
+       discount: num(pedido.discount_total),
+       ...(pedido.coupon_code ? { couponCode: pedido.coupon_code } : {}),
+       total: num(pedido.total),
+-      organizationName: org?.name || '',
++      organizationName: marca.nombre || org?.name || '',
++      marca,
+       trackingUrl: `${origen}${rutaSeguimiento(pedido.organization_id, pedido)}`,
+       paymentStatus: 'paid',
+       tipoEntrega: etiquetaTipoEntrega(pedido.delivery_type, esRestaurante, pedido.internal_notes),
+diff --git a/package.json b/package.json
+index 4e525a8..78f943d 100644
+--- a/package.json
++++ b/package.json
+@@ -24,7 +24,8 @@
+     "verify:encabezado-pie": "node --disable-warning=ExperimentalWarning scripts/verify-encabezado-pie.mjs",
+     "verify:interruptores": "node scripts/verify-interruptores.mjs",
+     "verify:servicios": "node scripts/verify-servicios-seccion.mjs",
+-    "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs"
++    "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs",
++    "verify:marca": "node --disable-warning=ExperimentalWarning scripts/verify-marca-correo.mjs"
+   },
+   "dependencies": {
+     "@hookform/resolvers": "^3.9.1",
+diff --git a/scripts/verify-marca-correo.mjs b/scripts/verify-marca-correo.mjs
+new file mode 100644
+index 0000000..17b1a35
+--- /dev/null
++++ b/scripts/verify-marca-correo.mjs
+@@ -0,0 +1,162 @@
++/**
++ * verify-marca-correo.mjs — remitente y marca del correo de un pedido pagado.
++ *
++ *   node --disable-warning=ExperimentalWarning scripts/verify-marca-correo.mjs
++ *
++ * Sin base de datos. Carga lib/email/marcaCorreoPedido.ts (puro, sin imports)
++ * con module.stripTypeScriptTypes y comprueba:
++ * - un Gmail no puede ser el From (el proveedor lo rechazaría);
++ * - el correo de la tienda sí es el From cuando su dominio ya está autenticado;
++ * - si hay otro dominio autenticado, el From es ese y Reply-To el correo de la tienda;
++ * - el logo solo entra si es https; un logo vaciado en la sede no revive el legacy;
++ * - un color claro lleva texto oscuro.
++ */
++
++import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
++import { fileURLToPath, pathToFileURL } from 'node:url'
++import { dirname, join } from 'node:path'
++import { tmpdir } from 'node:os'
++import { stripTypeScriptTypes } from 'node:module'
++
++const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
++const dir = await mkdtemp(join(tmpdir(), 'verify-marca-correo-'))
++let marca
++try {
++  const js = stripTypeScriptTypes(await readFile(join(ROOT, 'lib/email/marcaCorreoPedido.ts'), 'utf8'), { mode: 'strip' })
++  const archivo = join(dir, 'marcaCorreoPedido.mjs')
++  await writeFile(archivo, js)
++  marca = await import(pathToFileURL(archivo).href)
++} finally {
++  await rm(dir, { recursive: true, force: true })
++}
++
++const problemas = []
++let casos = 0
++function check(cond, msg) {
++  casos++
++  if (!cond) problemas.push(msg)
++}
++function igual(a, b, msg) {
++  check(JSON.stringify(a) === JSON.stringify(b), `${msg}: esperado ${JSON.stringify(b)}, obtenido ${JSON.stringify(a)}`)
++}
++
++const base = {
++  nombre: 'Tienda Norte',
++  correoTienda: 'caja@gmail.com',
++  logoUrl: 'https://cdn.ejemplo.com/logo.png',
++  color: '#112233',
++  dominios: [],
++  respaldo: 'pedidos@goadmin.io',
++}
++
++const sinDominio = marca.sobreCorreoPedido(base)
++igual(sinDominio.from, '"Tienda Norte" <pedidos@goadmin.io>', 'sin dominio autenticado el From es la plataforma')
++igual(sinDominio.replyTo, 'caja@gmail.com', 'sin dominio autenticado Reply-To es el correo de la tienda')
++igual(sinDominio.propio, false, 'el sobre de la plataforma no se anuncia como propio')
++igual(sinDominio.logoUrl, 'https://cdn.ejemplo.com/logo.png', 'el logo https se conserva')
++igual(sinDominio.color, '#112233', 'el color de la tienda se conserva')
++check(!sinDominio.from.includes('gmail.com'), 'el From no usa el Gmail de la tienda')
++
++const propio = marca.sobreCorreoPedido({
++  ...base,
++  correoTienda: 'pedidos@tienda.ejemplo',
++  dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'hola@tienda.ejemplo', isDefault: true }],
++})
++igual(propio.from, '"Tienda Norte" <pedidos@tienda.ejemplo>', 'el From es el correo de la tienda si su dominio está autenticado')
++igual(propio.replyTo, null, 'no hace falta Reply-To cuando el From ya es el de la tienda')
++igual(propio.propio, true, 'el sobre propio se marca')
++
++const otro = marca.sobreCorreoPedido({
++  ...base,
++  dominios: [{ domain: 'tienda.ejemplo', fromEmail: 'hola@tienda.ejemplo', isDefault: false }],
++})
++igual(otro.from, '"Tienda Norte" <hola@tienda.ejemplo>', 'con dominio autenticado y correo en Gmail, el From es el dominio de la tienda')
++igual(otro.replyTo, 'caja@gmail.com', 'las respuestas van al correo de contacto')
++igual(otro.propio, true, 'ese sobre también es de la tienda')
++
++const inyeccion = marca.sobreCorreoPedido({
++  ...base,
++  nombre: 'Tienda\r\nBcc: otro@ejemplo.com <script>',
++  correoTienda: 'caja@gmail.com\n',
++})
++const nombreSobre = inyeccion.from.slice(0, inyeccion.from.lastIndexOf('<'))
++check(!inyeccion.from.includes('\n') && !inyeccion.from.includes('\r') && !nombreSobre.includes('<'), 'el nombre no puede inyectar cabeceras')
++igual(inyeccion.replyTo, 'caja@gmail.com', 'un salto de línea no invalida el correo')
++
++igual(marca.logoCorreo('/logo.png'), null, 'una ruta del sitio no sirve en el correo')
++igual(marca.logoCorreo('http://cdn.ejemplo.com/logo.png'), null, 'http no entra')
++igual(marca.logoCorreo('https://cdn.ejemplo.com/logo.png'), 'https://cdn.ejemplo.com/logo.png', 'https sí entra')
++igual(marca.colorMarca('#ABC'), '#aabbcc', 'el color corto se expande')
++igual(marca.colorMarca('rojo'), null, 'un color que no es hex se descarta')
++igual(marca.textoSobreColor('#ffffff'), '#111827', 'fondo claro, texto oscuro')
++igual(marca.textoSobreColor('#112233'), '#ffffff', 'fondo oscuro, texto blanco')
++
++const ensamble = marca.ensamblarMarca({
++  nombre: 'Tienda Norte',
++  correoOrganizacion: 'caja@gmail.com',
++  correoSede: 'sede@gmail.com',
++  logoOrganizacion: 'https://cdn.ejemplo.com/org.png',
++  logoSede: '/logo-sede.png',
++  colorOrganizacion: '#111111',
++  colorAjustes: '#222222',
++  colorAjustesSede: null,
++  logoV2Principal: { mode: 'value', value: 'https://cdn.ejemplo.com/v2.png' },
++  colorV2Principal: { mode: 'value', value: '#abc' },
++  logoV2Sede: { mode: 'inherit' },
++  colorV2Sede: { mode: 'value', value: '#ffcc00' },
++  v2Principal: true,
++  v2Sede: true,
++  dominios: [{ domain: 'Gmail.com', fromEmail: 'no-es-de-gmail@otro.ejemplo', isDefault: true }],
++})
++igual(ensamble.correo, 'sede@gmail.com', 'el correo de la sede gana al de la organización')
++igual(ensamble.logoUrl, 'https://cdn.ejemplo.com/v2.png', 'la sede hereda el logo publicado')
++igual(ensamble.color, '#ffcc00', 'el color de la sede gana')
++igual(ensamble.dominios, [], 'un from_email de otro dominio no cuenta como autenticado')
++
++const vaciado = marca.ensamblarMarca({
++  nombre: 'Tienda Norte',
++  correoOrganizacion: 'no-es-correo',
++  correoSede: null,
++  logoOrganizacion: 'https://cdn.ejemplo.com/org.png',
++  logoSede: null,
++  colorOrganizacion: null,
++  colorAjustes: null,
++  colorAjustesSede: null,
++  logoV2Principal: { mode: 'value', value: 'https://cdn.ejemplo.com/v2.png' },
++  colorV2Principal: null,
++  logoV2Sede: { mode: 'clear' },
++  colorV2Sede: null,
++  v2Principal: true,
++  v2Sede: true,
++  dominios: [],
++})
++igual(vaciado.logoUrl, null, 'un logo vaciado no revive el de la organización')
++igual(vaciado.correo, null, 'un texto que no es correo no se usa')
++igual(vaciado.color, null, 'sin color publicado la marca no inventa uno')
++
++const legacy = marca.ensamblarMarca({
++  nombre: 'Tienda Norte',
++  correoOrganizacion: 'Caja@Gmail.com',
++  correoSede: null,
++  logoOrganizacion: 'https://cdn.ejemplo.com/org.png',
++  logoSede: null,
++  colorOrganizacion: '#336699',
++  colorAjustes: null,
++  colorAjustesSede: null,
++  logoV2Principal: null,
++  colorV2Principal: null,
++  logoV2Sede: null,
++  colorV2Sede: null,
++  v2Principal: false,
++  v2Sede: false,
++  dominios: [],
++})
++igual(legacy.logoUrl, 'https://cdn.ejemplo.com/org.png', 'sin V2 se usa el logo de la organización')
++igual(legacy.correo, 'caja@gmail.com', 'el correo se normaliza')
++igual(legacy.color, '#336699', 'sin V2 se usa el color de la organización')
++
++if (problemas.length) {
++  console.error(problemas.join('\n'))
++  process.exit(1)
++}
++console.log(`verify:marca-correo ${casos} OK`)
+-- 
+2.43.0
+

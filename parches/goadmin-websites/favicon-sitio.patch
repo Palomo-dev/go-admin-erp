@@ -1,0 +1,644 @@
+From d7d271c04450bea9a59f0adeb52354e913d944cc Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 18 Oct 2026 01:55:24 +0000
+Subject: [PATCH] =?UTF-8?q?fix(GO-sitio-web):=20la=20pesta=C3=B1a=20usa=20?=
+ =?UTF-8?q?el=20favicon=20publicado=20del=20sitio?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+El icono salía del favicon legacy, vacío en los sitios V2, o del logo.
+Ahora /api/favicon y el metadata leen identidad.faviconUrl de la revisión publicada.
+---
+ app/[[...slug]]/page.tsx             |   7 +-
+ app/api/favicon/route.ts             |  46 ++------
+ app/layout.tsx                       |   8 +-
+ app/mi-cuenta/layout.tsx             |   8 +-
+ lib/website/faviconDeOrganizacion.ts |  68 +++++++++++
+ lib/website/v2/faviconPublico.ts     | 102 +++++++++++++++++
+ lib/website/v2/vistaPublica.ts       |   3 +-
+ middleware.ts                        |  25 +++-
+ package.json                         |   3 +-
+ scripts/verify-favicon.mjs           | 163 +++++++++++++++++++++++++++
+ scripts/verify-sitio-publico.mjs     |   3 +
+ 11 files changed, 386 insertions(+), 50 deletions(-)
+ create mode 100644 lib/website/faviconDeOrganizacion.ts
+ create mode 100644 lib/website/v2/faviconPublico.ts
+ create mode 100644 scripts/verify-favicon.mjs
+
+diff --git a/app/[[...slug]]/page.tsx b/app/[[...slug]]/page.tsx
+index 1298e1a..67ace16 100644
+--- a/app/[[...slug]]/page.tsx
++++ b/app/[[...slug]]/page.tsx
+@@ -29,6 +29,8 @@ import {
+ import { horaSimuladaDeVistaPrevia } from '@/lib/menu/menuFull'
+ import { getOrgContext, type MegaMenuItem, type FrozenReason } from '@/lib/get-org-context'
+ import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
++import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
++import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
+ import { getCartasPublicas } from '@/lib/menu/cartasPublicas.server'
+ import { getPaginaPublica } from '@/lib/website/v2/lectorPublico'
+ import { sitioVistaPreviaDe } from '@/lib/website/v2/vistaPreviaBorrador'
+@@ -98,6 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
+   })
+   // En una sede, «Página · Sede | Marca»; en el sitio principal, el título de siempre.
+   const tituloFinal: string = outlet && typeof seoSede.title === 'string' ? seoSede.title : title
++  const icono = hrefIconoFavicon(await urlFaviconDeLaPeticion())
+ 
+   return {
+     title: tituloFinal,
+@@ -129,8 +132,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
+       description,
+     },
+     icons: {
+-      icon: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/favicon.ico',
+-      apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
++      icon: icono ?? '/favicon.ico',
++      apple: icono ?? '/apple-touch-icon.png',
+     },
+     robots: {
+       index: settings?.is_published !== false && !noindex,
+diff --git a/app/api/favicon/route.ts b/app/api/favicon/route.ts
+index c281e3c..35cbcf5 100644
+--- a/app/api/favicon/route.ts
++++ b/app/api/favicon/route.ts
+@@ -1,46 +1,21 @@
+-import { NextRequest, NextResponse } from 'next/server'
++import { NextResponse } from 'next/server'
+ import { headers } from 'next/headers'
+-import { getOrganizationByHost } from '@/lib/supabase/queries'
++import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
++import { urlFaviconParaFetch } from '@/lib/website/v2/faviconPublico'
+ 
+-const SYSTEM_DOMAINS = ['goadmin.io']
+-
+-export async function GET(request: NextRequest) {
+-  const headersList = await headers()
+-  const subdomain = headersList.get('x-subdomain')
+-  const customDomain = headersList.get('x-custom-domain')
+-  let identifier = customDomain || subdomain
+-
+-  // Fallback: extraer del hostname directamente
+-  if (!identifier) {
+-    const hostname = request.headers.get('host') || ''
+-    const isSystemDomain = SYSTEM_DOMAINS.some(d => hostname.endsWith(d))
+-    if (isSystemDomain) {
+-      const parts = hostname.split('.')
+-      if (parts.length > 2) identifier = parts[0]
+-    } else if (!hostname.includes('localhost')) {
+-      identifier = hostname
+-    }
+-  }
+-
+-  if (!identifier) {
+-    return new NextResponse(null, { status: 404 })
+-  }
+-
+-  const organization = await getOrganizationByHost(identifier)
+-  
+-  if (!organization) {
++export async function GET() {
++  const faviconUrl = await urlFaviconDeLaPeticion()
++  if (!faviconUrl) {
+     return new NextResponse(null, { status: 404 })
+   }
+ 
+-  const settings = organization.website_settings as any
+-  const faviconUrl = settings?.favicon_url || organization.logo_url
+-
+-  if (!faviconUrl) {
++  const absoluta = urlFaviconParaFetch(faviconUrl, await headers())
++  if (!absoluta) {
+     return new NextResponse(null, { status: 404 })
+   }
+ 
+   try {
+-    const response = await fetch(faviconUrl)
++    const response = await fetch(absoluta)
+     if (!response.ok) {
+       return new NextResponse(null, { status: 404 })
+     }
+@@ -51,7 +26,8 @@ export async function GET(request: NextRequest) {
+     return new NextResponse(imageBuffer, {
+       headers: {
+         'Content-Type': contentType,
+-        'Cache-Control': 'public, max-age=86400',
++        // Corto a propósito: antes era un día y un logo cacheado tapaba el favicon nuevo.
++        'Cache-Control': 'public, max-age=300',
+         'Access-Control-Allow-Origin': '*',
+       },
+     })
+diff --git a/app/layout.tsx b/app/layout.tsx
+index 84162d2..54300f2 100644
+--- a/app/layout.tsx
++++ b/app/layout.tsx
+@@ -5,6 +5,8 @@ import { Analytics } from '@vercel/analytics/next'
+ import { headers } from 'next/headers'
+ import { getOrganizationByHost } from '@/lib/supabase/queries'
+ import { getPixelesSitio } from '@/lib/seo/pixelesSitio'
++import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
++import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
+ import './globals.css'
+ 
+ // Nota: custom_scripts se inyectan client-side vía CustomScripts en
+@@ -29,11 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
+     if (organization) {
+       noindex = (await getPixelesSitio(organization.id)).noindex
+       orgName = organization.name || undefined
+-      const settings = organization.website_settings as any
+-      const faviconUrl = settings?.favicon_url || organization.logo_url
+-      if (faviconUrl) {
+-        faviconIcon = faviconUrl
+-      }
++      faviconIcon = hrefIconoFavicon(await urlFaviconDeLaPeticion()) ?? undefined
+     }
+   }
+ 
+diff --git a/app/mi-cuenta/layout.tsx b/app/mi-cuenta/layout.tsx
+index d062166..582c7a0 100644
+--- a/app/mi-cuenta/layout.tsx
++++ b/app/mi-cuenta/layout.tsx
+@@ -6,6 +6,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
+ import { redirect } from 'next/navigation'
+ import Link from 'next/link'
+ import { Metadata } from 'next'
++import { urlFaviconDeLaPeticion } from '@/lib/website/faviconDeOrganizacion'
++import { hrefIconoFavicon } from '@/lib/website/v2/faviconPublico'
+ 
+ export async function generateMetadata(): Promise<Metadata> {
+   const ctx = await getOrgContext()
+@@ -16,13 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
+   }
+ 
+   const { organization } = ctx
+-  const settings = organization.website_settings
++  const icono = hrefIconoFavicon(await urlFaviconDeLaPeticion())
+ 
+   return {
+     title: `Mi Cuenta | ${organization.name}`,
+     icons: {
+-      icon: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/favicon.ico',
+-      apple: (settings as any)?.favicon_url || organization.logo_url ? '/api/favicon' : '/apple-touch-icon.png'
++      icon: icono ?? '/favicon.ico',
++      apple: icono ?? '/apple-touch-icon.png',
+     }
+   }
+ }
+diff --git a/lib/website/faviconDeOrganizacion.ts b/lib/website/faviconDeOrganizacion.ts
+new file mode 100644
+index 0000000..a025a88
+--- /dev/null
++++ b/lib/website/faviconDeOrganizacion.ts
+@@ -0,0 +1,68 @@
++/**
++ * Favicon que debe servir la pestaña de esta petición.
++ *
++ * La organización sale del host (cabeceras del middleware o el Host). Nunca del
++ * body. Si el sitio adoptó V2, manda el favicon de la revisión publicada.
++ */
++import { headers } from 'next/headers'
++import { getOrganizationByHost } from '@/lib/supabase/queries'
++import { getSitioPublicoV2 } from '@/lib/website/v2/lectorPublico'
++import { faviconLegacyDe, urlFaviconEfectiva } from '@/lib/website/v2/faviconPublico'
++import {
++  resolveOutletByCustomDomain,
++  resolveOutletBySubSubdomain,
++  resolveOutletFromPath,
++} from '@/lib/outlet/resolver'
++
++const SYSTEM_DOMAINS = ['goadmin.io']
++
++function identificadorDesdeHost(hostname: string): string | null {
++  const esSistema = SYSTEM_DOMAINS.some((dominio) => hostname.endsWith(dominio))
++  if (esSistema) {
++    const partes = hostname.split('.')
++    return partes.length > 2 ? partes[0] : null
++  }
++  if (!hostname || hostname.includes('localhost')) return null
++  return hostname
++}
++
++async function branchDeCabeceras(organizationId: number, cabeceras: Headers): Promise<number | null> {
++  const dominioSede = cabeceras.get('x-custom-outlet-domain')
++  if (dominioSede) {
++    const resuelta = await resolveOutletByCustomDomain(dominioSede)
++    if (resuelta && resuelta.organizationId === organizationId) return resuelta.outlet.branchId
++  }
++  const subSede = cabeceras.get('x-outlet-subdomain')
++  if (subSede) {
++    const sede = await resolveOutletBySubSubdomain(subSede, organizationId)
++    if (sede) return sede.branchId
++  }
++  const prefijo = cabeceras.get('x-outlet-path')
++  if (prefijo) {
++    const result = await resolveOutletFromPath(organizationId, [prefijo])
++    if (result.outlet) return result.outlet.branchId
++  }
++  return null
++}
++
++/** URL del favicon de la organización de esta petición, o `null` si no hay sitio. */
++export async function urlFaviconDeLaPeticion(): Promise<string | null> {
++  const cabeceras = await headers()
++  const identificador =
++    cabeceras.get('x-custom-domain') ||
++    cabeceras.get('x-subdomain') ||
++    identificadorDesdeHost(cabeceras.get('host') || '')
++  if (!identificador) return null
++
++  const organization = await getOrganizationByHost(identificador)
++  if (!organization) return null
++
++  const branchId = await branchDeCabeceras(organization.id, cabeceras)
++  const sitio = await getSitioPublicoV2(organization.id, branchId)
++  return urlFaviconEfectiva({
++    documento: sitio?.documento ?? null,
++    principal: sitio?.principal ? { documento: sitio.principal.documento } : null,
++    faviconLegacy: faviconLegacyDe(organization.website_settings),
++    logoUrl: organization.logo_url,
++  })
++}
+diff --git a/lib/website/v2/faviconPublico.ts b/lib/website/v2/faviconPublico.ts
+new file mode 100644
+index 0000000..3b8bdb9
+--- /dev/null
++++ b/lib/website/v2/faviconPublico.ts
+@@ -0,0 +1,102 @@
++/**
++ * Favicon que ve la pestaña del sitio público.
++ *
++ * Diseño › Logo y favicon lo guarda en `identidad.faviconUrl` del documento V2.
++ * `ajustesPublicosDesdeDocumento` ya lo copia a `favicon_url` para el HTML, pero
++ * `/api/favicon` y el metadata raíz leían la fila legacy (vacía) y caían al logo.
++ * Aquí se resuelve el valor publicado, con la misma herencia de sede que el logo.
++ *
++ * Código puro: sin React, Next ni Supabase.
++ */
++import { resolverCampo, type DocumentoSitio } from './contrato/documentoSitio'
++
++/** https o ruta del propio sitio. `//host` es otro dominio y no se sirve. */
++export function urlIdentidadPublica(valor: unknown): string | null {
++  if (typeof valor !== 'string') return null
++  const limpio = valor.trim()
++  return /^(https:\/\/|\/(?!\/))/i.test(limpio) ? limpio : null
++}
++
++/** Documento publicado del principal, cuando el que se sirve es de una sede. */
++export interface PrincipalFavicon {
++  documento: DocumentoSitio | null
++}
++
++/**
++ * URL efectiva del favicon en el documento. `null` si no hay, si la sede lo vació
++ * o si el valor no es una URL que se pueda publicar.
++ */
++export function faviconPublicoDesdeDocumento(
++  documento: DocumentoSitio,
++  principal: PrincipalFavicon | null,
++): string | null {
++  const propio = documento.identidad.faviconUrl
++  const valor = principal
++    ? resolverCampo<string>(
++        principal.documento?.identidad.faviconUrl?.mode === 'value'
++          ? principal.documento.identidad.faviconUrl.value
++          : null,
++        propio,
++      )
++    : propio?.mode === 'value'
++      ? propio.value
++      : null
++  return urlIdentidadPublica(valor)
++}
++
++/** La sede (o el principal) borró el favicon: no heredar el de otro sitio. */
++export function faviconVaciado(documento: DocumentoSitio): boolean {
++  return documento.identidad.faviconUrl?.mode === 'clear'
++}
++
++/**
++ * Orden: favicon publicado del documento, si no el de la fila legacy, si no el logo.
++ * Un favicon vaciado no revive el legacy (podría ser el del principal).
++ */
++export function urlFaviconEfectiva(opciones: {
++  documento: DocumentoSitio | null
++  principal: PrincipalFavicon | null
++  faviconLegacy: string | null
++  logoUrl: string | null
++}): string | null {
++  const { documento, principal, faviconLegacy, logoUrl } = opciones
++  if (documento) {
++    const publicado = faviconPublicoDesdeDocumento(documento, principal)
++    if (publicado) return publicado
++    if (faviconVaciado(documento)) return urlIdentidadPublica(logoUrl)
++  }
++  return urlIdentidadPublica(faviconLegacy) ?? urlIdentidadPublica(logoUrl)
++}
++
++/** Fila legacy: el embed de `organizations` llega como objeto o como lista por sede. */
++export function faviconLegacyDe(settings: unknown): string | null {
++  const filas = Array.isArray(settings) ? settings : settings ? [settings] : []
++  const principal =
++    filas.find((fila) => fila && typeof fila === 'object' && (fila as { branch_id?: unknown }).branch_id == null) ??
++    filas[0]
++  if (!principal || typeof principal !== 'object') return null
++  const url = (principal as { favicon_url?: unknown }).favicon_url
++  return typeof url === 'string' ? url : null
++}
++
++/**
++ * Href del `<link rel="icon">`. Lleva un sello de la URL real para que el navegador
++ * no reutilice una respuesta vieja de `/api/favicon` (antes se cacheaba un día y
++ * podía ser el logo).
++ */
++export function hrefIconoFavicon(url: string | null): string | null {
++  if (!url) return null
++  let sello = 0
++  for (let i = 0; i < url.length; i++) sello = (Math.imul(sello, 31) + url.charCodeAt(i)) | 0
++  return `/api/favicon?v=${(sello >>> 0).toString(36)}`
++}
++
++/** Convierte una ruta propia (`/icono.png`) en URL absoluta del host de la petición. */
++export function urlFaviconParaFetch(url: string, cabeceras: Headers): string | null {
++  if (/^https:\/\//i.test(url)) return url
++  if (!url.startsWith('/') || url.startsWith('//')) return null
++  const host = cabeceras.get('x-forwarded-host') || cabeceras.get('host')
++  if (!host) return null
++  const proto = cabeceras.get('x-forwarded-proto') || 'https'
++  return `${proto}://${host}${url}`
++}
+diff --git a/lib/website/v2/vistaPublica.ts b/lib/website/v2/vistaPublica.ts
+index 01807e2..a11a310 100644
+--- a/lib/website/v2/vistaPublica.ts
++++ b/lib/website/v2/vistaPublica.ts
+@@ -18,6 +18,7 @@ import { resolverCampo, LIMITES_DOCUMENTO, type DocumentoSitio, type ItemMenu, t
+ import { CAMPOS_HEREDABLES, COLUMNAS_SHELL_ESTRUCTURA, OPCIONES_SHELL, esVacio } from './mapeoAjustes'
+ import { leerCampo, structuredCloneSeguro, valorPropioDe } from './rutasDocumento'
+ import { visibilidadDesdeDocumento } from './estiloSeccion'
++import { urlIdentidadPublica } from './faviconPublico'
+ import type {
+   WebsiteMenuItemWithChildren,
+   WebsiteMenuWithItems,
+@@ -125,7 +126,7 @@ export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal:
+       )
+     : propio?.mode === 'value' ? propio.value : null
+   // https o ruta propia; nunca `//host` (protocolo relativo = recurso de otro dominio).
+-  return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
++  return urlIdentidadPublica(valor)
+ }
+ 
+ // ─── Páginas ──────────────────────────────────────────────────────────────────────────────────
+diff --git a/middleware.ts b/middleware.ts
+index bf9111a..d923262 100644
+--- a/middleware.ts
++++ b/middleware.ts
+@@ -204,10 +204,13 @@ export async function middleware(request: NextRequest) {
+   // tomaba por archivo salía de aquí sin `x-subdomain`, la página no resolvía la organización
+   // del host y respondía 404 a todo enlace de vista previa.
+   const esVistaPrevia = url.pathname.startsWith('/vista-previa/')
++  // El navegador pide /favicon.ico aunque el HTML apunte a /api/favicon. No hay archivo
++  // estático: si se ignorara por el punto, la pestaña se queda con el icono genérico.
++  const esFavicon = url.pathname === '/favicon.ico'
+   if (
+     url.pathname.startsWith('/_next') ||
+     url.pathname.startsWith('/static') ||
+-    (url.pathname.includes('.') && !esArchivoPorHost && !esVistaPrevia) // archivos con extensión
++    (url.pathname.includes('.') && !esArchivoPorHost && !esVistaPrevia && !esFavicon)
+   ) {
+     return NextResponse.next()
+   }
+@@ -330,6 +333,22 @@ export async function middleware(request: NextRequest) {
+     return supabaseResponse
+   }
+ 
++  // /favicon.ico → /api/favicon, con el tenant en la petición (no solo en la respuesta).
++  if (esFavicon) {
++    const destino = request.nextUrl.clone()
++    destino.pathname = '/api/favicon'
++    const cabeceras = cabecerasSinSede(request)
++    if (subdomain) cabeceras.set('x-subdomain', subdomain)
++    if (outletSubdomain) cabeceras.set('x-outlet-subdomain', outletSubdomain)
++    if (isCustomOutletDomain) {
++      cabeceras.set('x-custom-domain', subdomain!)
++      cabeceras.set('x-custom-outlet-domain', effectiveHost)
++    } else if (isCustomDomain) {
++      cabeceras.set('x-custom-domain', effectiveHost)
++    }
++    return NextResponse.rewrite(destino, { request: { headers: cabeceras } })
++  }
++
+   // Sede por prefijo de ruta: solo en el host del sitio principal (con la sede ya resuelta
+   // por host —sub-subdominio o dominio propio de sede— el primer segmento es una página).
+   let respuesta: NextResponse = supabaseResponse
+@@ -383,9 +402,9 @@ export const config = {
+      * Match all request paths except:
+      * - _next/static (static files)
+      * - _next/image (image optimization files)
+-     * - favicon.ico (favicon file)
+      * - public folder
++     * /favicon.ico sí entra: se reescribe a /api/favicon.
+      */
+-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
++    '/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+   ],
+ }
+diff --git a/package.json b/package.json
+index 4e525a8..91896d1 100644
+--- a/package.json
++++ b/package.json
+@@ -24,7 +24,8 @@
+     "verify:encabezado-pie": "node --disable-warning=ExperimentalWarning scripts/verify-encabezado-pie.mjs",
+     "verify:interruptores": "node scripts/verify-interruptores.mjs",
+     "verify:servicios": "node scripts/verify-servicios-seccion.mjs",
+-    "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs"
++    "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs",
++    "verify:favicon": "node --disable-warning=ExperimentalWarning scripts/verify-favicon.mjs"
+   },
+   "dependencies": {
+     "@hookform/resolvers": "^3.9.1",
+diff --git a/scripts/verify-favicon.mjs b/scripts/verify-favicon.mjs
+new file mode 100644
+index 0000000..0ecdae7
+--- /dev/null
++++ b/scripts/verify-favicon.mjs
+@@ -0,0 +1,163 @@
++/**
++ * verify-favicon.mjs — la pestaña usa el favicon publicado, no el logo.
++ *
++ *   npm run verify:favicon
++ *
++ * Sin base de datos. El documento V2 guarda el favicon en identidad.faviconUrl.
++ * La fila legacy puede venir vacía y el logo de la organización no debe taparlo.
++ * Una sede que lo vació no hereda el del principal.
++ */
++import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
++import { fileURLToPath, pathToFileURL } from 'node:url'
++import { dirname, join } from 'node:path'
++import { stripTypeScriptTypes } from 'node:module'
++
++const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
++const MODULOS = {
++  documentoSitio: 'lib/website/v2/contrato/documentoSitio.ts',
++  faviconPublico: 'lib/website/v2/faviconPublico.ts',
++}
++
++function aMjs(ts) {
++  return stripTypeScriptTypes(ts, { mode: 'strip' })
++    .replace(/^import\s+type[^\n]*\n/gm, '')
++    .replace(/from\s+'\.\/(?:contrato\/)?([A-Za-z]+)'/g, (_, nombre) => {
++      if (!MODULOS[nombre]) throw new Error(`import no puro: ${nombre}`)
++      return `from './${nombre}.mjs'`
++    })
++}
++
++const dir = join(ROOT, '.verify-favicon-tmp')
++await rm(dir, { recursive: true, force: true })
++await mkdir(dir)
++let mod
++try {
++  for (const [nombre, ruta] of Object.entries(MODULOS)) {
++    await writeFile(join(dir, `${nombre}.mjs`), aMjs(await readFile(join(ROOT, ruta), 'utf8')))
++  }
++  mod = await import(pathToFileURL(join(dir, 'faviconPublico.mjs')).href)
++} finally {
++  await rm(dir, { recursive: true, force: true })
++}
++
++const { urlFaviconEfectiva, faviconLegacyDe, urlFaviconParaFetch, urlIdentidadPublica, hrefIconoFavicon } = mod
++const problemas = []
++let casos = 0
++const check = (cond, msg) => {
++  casos++
++  if (!cond) problemas.push(msg)
++}
++const igual = (a, b, msg) => check(a === b, `${msg}: esperado ${JSON.stringify(b)}, obtenido ${JSON.stringify(a)}`)
++
++const FAVICON = 'https://cdn.example/favicon.png'
++const LOGO = 'https://cdn.example/logo.png'
++const LEGACY = 'https://cdn.example/legacy.png'
++const doc = (faviconUrl) => ({ identidad: faviconUrl === undefined ? {} : { faviconUrl } })
++
++igual(
++  urlFaviconEfectiva({ documento: doc({ mode: 'value', value: FAVICON }), principal: null, faviconLegacy: null, logoUrl: LOGO }),
++  FAVICON,
++  'el publicado gana al logo',
++)
++igual(
++  urlFaviconEfectiva({ documento: doc({ mode: 'value', value: `  ${FAVICON}  ` }), principal: null, faviconLegacy: LEGACY, logoUrl: LOGO }),
++  FAVICON,
++  'recorta la url publicada',
++)
++igual(
++  urlFaviconEfectiva({ documento: doc({ mode: 'value', value: '//otro.example/icono.png' }), principal: null, faviconLegacy: LEGACY, logoUrl: LOGO }),
++  LEGACY,
++  'rechaza protocolo relativo y usa el legacy',
++)
++igual(
++  urlFaviconEfectiva({ documento: doc({ mode: 'value', value: 'http://cdn.example/icono.png' }), principal: null, faviconLegacy: null, logoUrl: LOGO }),
++  LOGO,
++  'rechaza http',
++)
++igual(
++  urlFaviconEfectiva({ documento: doc({ mode: 'value', value: '/icono.png' }), principal: null, faviconLegacy: LEGACY, logoUrl: LOGO }),
++  '/icono.png',
++  'acepta ruta propia',
++)
++igual(
++  urlFaviconEfectiva({ documento: doc(undefined), principal: null, faviconLegacy: null, logoUrl: LOGO }),
++  LOGO,
++  'sin favicon publicado usa el logo',
++)
++igual(
++  urlFaviconEfectiva({ documento: null, principal: null, faviconLegacy: LEGACY, logoUrl: LOGO }),
++  LEGACY,
++  'sitio legacy usa la fila',
++)
++igual(
++  urlFaviconEfectiva({
++    documento: doc({ mode: 'inherit' }),
++    principal: { documento: doc({ mode: 'value', value: FAVICON }) },
++    faviconLegacy: LEGACY,
++    logoUrl: LOGO,
++  }),
++  FAVICON,
++  'la sede hereda el del principal',
++)
++igual(
++  urlFaviconEfectiva({
++    documento: doc({ mode: 'clear' }),
++    principal: { documento: doc({ mode: 'value', value: FAVICON }) },
++    faviconLegacy: LEGACY,
++    logoUrl: LOGO,
++  }),
++  LOGO,
++  'la sede que lo vació no hereda el del principal ni el legacy',
++)
++igual(
++  urlFaviconEfectiva({
++    documento: doc({ mode: 'value', value: 'https://cdn.example/sede.png' }),
++    principal: { documento: doc({ mode: 'value', value: FAVICON }) },
++    faviconLegacy: null,
++    logoUrl: LOGO,
++  }),
++  'https://cdn.example/sede.png',
++  'la sede con favicon propio no usa el del principal',
++)
++
++igual(
++  faviconLegacyDe([{ branch_id: 9, favicon_url: 'https://cdn.example/sede.png' }, { branch_id: null, favicon_url: LEGACY }]),
++  LEGACY,
++  'el embed en lista usa la fila del principal',
++)
++igual(faviconLegacyDe({ branch_id: null, favicon_url: LEGACY }), LEGACY, 'el embed objeto se lee igual')
++igual(faviconLegacyDe([{ branch_id: 4, favicon_url: 12 }]), null, 'un valor que no es texto no sale')
++igual(urlIdentidadPublica('javascript:alert(1)'), null, 'rechaza esquemas raros')
++
++const cabeceras = new Headers({ host: 'tienda.example', 'x-forwarded-proto': 'https' })
++igual(urlFaviconParaFetch(FAVICON, cabeceras), FAVICON, 'https se pide tal cual')
++igual(urlFaviconParaFetch('/icono.png', cabeceras), 'https://tienda.example/icono.png', 'la ruta propia se absolutiza')
++igual(urlFaviconParaFetch('//otro.example/icono.png', cabeceras), null, 'no se pide un protocolo relativo')
++
++const selloPublicado = hrefIconoFavicon(FAVICON)
++const selloLogo = hrefIconoFavicon(LOGO)
++check(selloPublicado?.startsWith('/api/favicon?v='), 'el enlace lleva sello para no reusar el cache')
++check(selloPublicado !== selloLogo, 'cambiar el favicon cambia el enlace')
++igual(hrefIconoFavicon(FAVICON), selloPublicado, 'el sello es estable')
++igual(hrefIconoFavicon(null), null, 'sin url no hay enlace')
++
++const ruta = await readFile(join(ROOT, 'app/api/favicon/route.ts'), 'utf8')
++const layout = await readFile(join(ROOT, 'app/layout.tsx'), 'utf8')
++const pagina = await readFile(join(ROOT, 'app/[[...slug]]/page.tsx'), 'utf8')
++const cuenta = await readFile(join(ROOT, 'app/mi-cuenta/layout.tsx'), 'utf8')
++const middleware = await readFile(join(ROOT, 'middleware.ts'), 'utf8')
++check(ruta.includes('urlFaviconDeLaPeticion'), 'la ruta del favicon lee el documento publicado')
++check(!ruta.includes('max-age=86400'), 'el favicon no se cachea un día')
++check(ruta.includes('max-age=300'), 'el favicon se cachea cinco minutos')
++for (const [nombre, fuente] of [['raíz', layout], ['página', pagina], ['cuenta', cuenta]]) {
++  check(fuente.includes('hrefIconoFavicon'), `${nombre} sella el enlace del favicon`)
++  check(fuente.includes('urlFaviconDeLaPeticion'), `${nombre} resuelve el favicon publicado`)
++}
++check(middleware.includes("destino.pathname = '/api/favicon'"), 'favicon.ico se reescribe a la ruta')
++check(!middleware.includes('favicon.ico|'), 'el matcher deja pasar favicon.ico')
++
++if (problemas.length) {
++  for (const p of problemas) console.error(`✗ ${p}`)
++  process.exit(1)
++}
++console.log(`✓ favicon publicado (${casos} casos)`)
+diff --git a/scripts/verify-sitio-publico.mjs b/scripts/verify-sitio-publico.mjs
+index 2ce37df..76f8c12 100644
+--- a/scripts/verify-sitio-publico.mjs
++++ b/scripts/verify-sitio-publico.mjs
+@@ -172,7 +172,10 @@ const crudo = {
+   check(/pageSlug === 'menu'[\s\S]{0,200}<MenuFull/.test(avance), 'menu_preview en /menu delega en MenuFull (las 8 cartas en vivo usan menu_preview)')
+   check(avance.includes('cartasParaSeccion('), 'el avance de la home usa la misma elección de carta que /menu')
+   const vista = await readFile(join(ROOT, 'lib/website/v2/vistaPublica.ts'), 'utf8')
++  const favicon = await readFile(join(ROOT, 'lib/website/v2/faviconPublico.ts'), 'utf8')
+   check(!vista.includes('/^(https:\\/\\/|\\/)/i'), 'vistaPublica.ts: el logo no acepta //host')
++  check(vista.includes('urlIdentidadPublica(valor)'), 'vistaPublica.ts: el logo usa la regla de URL de la identidad')
++  check(favicon.includes('/^(https:\\/\\/|\\/(?!\\/))/i'), 'faviconPublico.ts: la URL de identidad rechaza //host')
+ }
+ 
+ // ─── 2. Base de datos (opcional) ─────────────────────────────────────────────────────────────
+-- 
+2.43.0
+

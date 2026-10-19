@@ -1,0 +1,2332 @@
+From c7e5e5fd4e87e63d3167d936d109eda4a3a65177 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Mon, 19 Oct 2026 21:37:35 +0000
+Subject: [PATCH 1/2] =?UTF-8?q?feat(GO-sitio-web):=20el=20sitio=20p=C3=BAb?=
+ =?UTF-8?q?lico=20respeta=20colores,=20banners,=20logo=20claro=20y=20enlac?=
+ =?UTF-8?q?es?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Columnas y proporción de los banners, etiquetas, precio, filtros, fondo
+alterno, íconos de beneficios y el logo para fondo oscuro salen como los
+guarda el editor. Una barra al inicio del enlace ya no se duplica.
+---
+ app/[[...slug]]/page.tsx                      |   5 +-
+ app/globals.css                               |   4 +-
+ components/sections/SectionRenderer.tsx       |   1 +
+ .../products/BarraFiltrosProductos.tsx        |  29 +--
+ .../sections/products/FeaturedProducts.tsx    |   1 +
+ .../products/FeaturedProductsCarousel.tsx     |   1 +
+ .../products/FeaturedProductsHero.tsx         |   1 +
+ components/sections/products/ProductCard.tsx  |  40 ++--
+ .../sections/products/ProductsCarousel.tsx    |   1 +
+ components/sections/products/ProductsGrid.tsx |   1 +
+ components/sections/products/ProductsList.tsx |   1 +
+ components/sections/retail/OffersGrid.tsx     |  16 +-
+ .../sections/retail/PromoBannersGrid.tsx      |  25 ++-
+ .../sections/saas/FeaturesGridAlternating.tsx |  78 ++++---
+ components/site/EncabezadoPieContext.tsx      |   3 +
+ components/site/OrganizationLayoutCliente.tsx |   5 +-
+ components/site/SiteFooter.tsx                |  46 +++--
+ components/site/footer/PieTema.tsx            |  10 +-
+ components/site/header/HeaderClassic.tsx      |   2 +-
+ components/site/header/HeaderShared.tsx       |  15 +-
+ lib/get-org-context.ts                        |  15 +-
+ lib/outlet/rutaSitio.ts                       |   2 +-
+ lib/website/presentacionTienda.ts             | 194 ++++++++++++++++++
+ lib/website/v2/estiloSeccion.ts               |  14 +-
+ lib/website/v2/vistaPublica.ts                |  15 ++
+ package.json                                  |   3 +-
+ scripts/verify-estilo-tarjeta.mjs             | 115 +++++++++++
+ types/database.ts                             |   2 +
+ 28 files changed, 532 insertions(+), 113 deletions(-)
+ create mode 100644 lib/website/presentacionTienda.ts
+ create mode 100644 scripts/verify-estilo-tarjeta.mjs
+
+diff --git a/app/[[...slug]]/page.tsx b/app/[[...slug]]/page.tsx
+index 1298e1a..9bbb3b2 100644
+--- a/app/[[...slug]]/page.tsx
++++ b/app/[[...slug]]/page.tsx
+@@ -365,8 +365,9 @@ export default async function CatchAllPage({ params, searchParams }: { params: P
+       bannerSections.forEach((s) => {
+         const banners = ((s.content as any)?.banners || []) as any[]
+         banners.forEach((b) => {
+-          if (b.link_type === 'category' && b.show_category_products && b.link_category_id) {
+-            previewCategoryIds.add(b.link_category_id)
++          if (b.link_type === 'category' && b.show_category_products && b.link_category_id != null && b.link_category_id !== '') {
++            const idCategoria = Number(b.link_category_id)
++            if (Number.isInteger(idCategoria)) previewCategoryIds.add(idCategoria)
+           }
+           if (b.link_type === 'page' && b.link_page_id) {
+             pageIds.add(b.link_page_id)
+diff --git a/app/globals.css b/app/globals.css
+index dfe3226..026c6dd 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -156,10 +156,10 @@ body[data-barra-pedido-mesa] [data-pie-mesa] {
+ 
+ /* Fondo de la sección: «Alterno» (un tono sobre el fondo) y «Oscuro» (el oscuro de la marca). */
+ [data-seccion-fondo='alterno'] {
+-  background-color: color-mix(in srgb, var(--text-color, #111827) 4%, var(--background-color, #ffffff));
++  background-color: var(--seccion-fondo-alterno, color-mix(in srgb, var(--text-color, #111827) 4%, var(--background-color, #ffffff)));
+ }
+ .dark [data-seccion-fondo='alterno'] {
+-  background-color: color-mix(in srgb, var(--text-color, #ffffff) 6%, var(--background-color, #111827));
++  background-color: var(--seccion-fondo-alterno, color-mix(in srgb, var(--text-color, #ffffff) 6%, var(--background-color, #111827)));
+ }
+ [data-seccion-fondo='oscuro'] {
+   background-color: var(--secondary-color);
+diff --git a/components/sections/SectionRenderer.tsx b/components/sections/SectionRenderer.tsx
+index ed0e82a..1432f63 100644
+--- a/components/sections/SectionRenderer.tsx
++++ b/components/sections/SectionRenderer.tsx
+@@ -434,6 +434,7 @@ export const SECTION_MAP: Record<string, Record<string, React.ComponentType<any>
+   },
+   features_grid: {
+     alternating: FeaturesGridAlternating,
++    icons: FeaturesGridAlternating,
+   },
+   integrations: {
+     logos: IntegrationsLogos,
+diff --git a/components/sections/products/BarraFiltrosProductos.tsx b/components/sections/products/BarraFiltrosProductos.tsx
+index 162378d..60a7812 100644
+--- a/components/sections/products/BarraFiltrosProductos.tsx
++++ b/components/sections/products/BarraFiltrosProductos.tsx
+@@ -18,6 +18,7 @@ import {
+   type EstadoFiltros,
+   type OrdenFiltro,
+ } from '@/lib/products/filtrosProductos'
++import { estiloChipFiltro, type ColoresFiltro } from '@/lib/website/presentacionTienda'
+ 
+ const FOCO = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white'
+ 
+@@ -72,6 +73,7 @@ export function BarraFiltrosProductos({
+   mostrarBuscador,
+   mostrarCategorias = true,
+   etiquetaTotal = 'productos',
++  content,
+ }: {
+   categorias: any[]
+   estado: EstadoFiltros
+@@ -82,10 +84,12 @@ export function BarraFiltrosProductos({
+   mostrarBuscador: boolean
+   mostrarCategorias?: boolean
+   etiquetaTotal?: string
++  content?: ColoresFiltro | null
+ }) {
+   if (!mostrarFiltros && !mostrarBuscador) return null
+   const selectedCategory = estado.categoria
+   const onlyOffers = estado.soloOfertas
++  const chip = (activo: boolean, acento?: string) => estiloChipFiltro(activo, acento ?? primaryColor, content)
+   return (
+     <div className="mb-6 space-y-3">
+       {mostrarBuscador && (
+@@ -103,35 +107,32 @@ export function BarraFiltrosProductos({
+             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+               <button
+                 onClick={() => cambiar({ categoria: null })}
+-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+-                  !selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
+-                }`}
+-                style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
++                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${chip(!selectedCategory).className}`}
++                style={chip(!selectedCategory).style}
+               >
+                 Todos
+               </button>
+-              {categorias.map((cat: any) => (
++              {categorias.map((cat: any) => {
++                const activo = chip(selectedCategory === cat.id)
++                return (
+                 <button
+                   key={cat.id}
+                   onClick={() => cambiar({ categoria: selectedCategory === cat.id ? null : cat.id })}
+-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+-                    selectedCategory === cat.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400'
+-                  }`}
+-                  style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
++                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
++                  style={activo.style}
+                 >
+                   {cat.name}
+                 </button>
+-              ))}
++                )
++              })}
+             </div>
+           )}
+           {/* Ordenar + Ofertas */}
+           <div className="flex items-center gap-2 flex-wrap">
+             <button
+               onClick={() => cambiar({ soloOfertas: !onlyOffers })}
+-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${
+-                onlyOffers ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+-              }`}
+-              style={onlyOffers ? { backgroundColor: '#EF4444' } : {}}
++              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${chip(onlyOffers, '#EF4444').className}`}
++              style={chip(onlyOffers, '#EF4444').style}
+             >
+               <SlidersHorizontal className="h-3 w-3" /> Ofertas
+             </button>
+diff --git a/components/sections/products/FeaturedProducts.tsx b/components/sections/products/FeaturedProducts.tsx
+index 7f609a7..4db4c7d 100644
+--- a/components/sections/products/FeaturedProducts.tsx
++++ b/components/sections/products/FeaturedProducts.tsx
+@@ -150,6 +150,7 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
+           mostrarFiltros={content.show_filters === true}
+           mostrarBuscador={content.show_search === true}
+           mostrarCategorias={content.show_categories !== false}
++          content={content}
+         />
+       )}
+ 
+diff --git a/components/sections/products/FeaturedProductsCarousel.tsx b/components/sections/products/FeaturedProductsCarousel.tsx
+index b55fe1c..e7541b1 100644
+--- a/components/sections/products/FeaturedProductsCarousel.tsx
++++ b/components/sections/products/FeaturedProductsCarousel.tsx
+@@ -138,6 +138,7 @@ export function FeaturedProductsCarousel({ content, primaryColor = '#3B82F6', da
+           mostrarFiltros={content.show_filters === true}
+           mostrarBuscador={content.show_search === true}
+           mostrarCategorias={content.show_categories !== false}
++          content={content}
+         />
+       )}
+ 
+diff --git a/components/sections/products/FeaturedProductsHero.tsx b/components/sections/products/FeaturedProductsHero.tsx
+index 6acd169..91c54c0 100644
+--- a/components/sections/products/FeaturedProductsHero.tsx
++++ b/components/sections/products/FeaturedProductsHero.tsx
+@@ -63,6 +63,7 @@ export function FeaturedProductsHero({ content, primaryColor = '#3B82F6', data }
+       mostrarFiltros={content.show_filters === true}
+       mostrarBuscador={content.show_search === true}
+       mostrarCategorias={content.show_categories !== false}
++      content={content}
+     />
+   )
+ 
+diff --git a/components/sections/products/ProductCard.tsx b/components/sections/products/ProductCard.tsx
+index 2c851be..17af43e 100644
+--- a/components/sections/products/ProductCard.tsx
++++ b/components/sections/products/ProductCard.tsx
+@@ -57,6 +57,7 @@ import {
+   type BadgeConfig,
+ } from '@/lib/sectionStyle'
+ import { textoPlano } from '@/lib/texto/textoPlano'
++import { coloresEtiqueta, colorPrecioAnterior, estiloPrecio, textoGuardado } from '@/lib/website/presentacionTienda'
+ 
+ const SUPABASE_URL =
+   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+@@ -338,11 +339,13 @@ function BadgeRenderer({
+   product,
+   primaryColor,
+   discount,
++  cardStyle,
+ }: {
+   badge: BadgeConfig
+   product: any
+   primaryColor: string
+   discount: number | null
++  cardStyle?: Record<string, unknown>
+ }) {
+   const variantCount = product.variant_count || 0
+   const salesCount = product.sales_count || 0
+@@ -435,8 +438,12 @@ function BadgeRenderer({
+     badge.type === 'category' ? primaryColor : // color de marca
+     badge.type === 'custom' ? primaryColor :   // color de marca
+     primaryColor                                // fallback genérico
+-  const fallbackText = '#FFFFFF'
+-  const style = resolveBadgeStyle(badge, fallbackBg, fallbackText)
++  const colores = coloresEtiqueta(badge.type, badge, cardStyle, fallbackBg, '#FFFFFF')
++  const style = resolveBadgeStyle(
++    { ...badge, bg_color: colores.bg, text_color: colores.text },
++    colores.bg,
++    colores.text,
++  )
+ 
+   const Icon = badge.icon === 'Layers' ? Layers :
+     badge.icon === 'TrendingUp' ? TrendingUp :
+@@ -649,7 +656,7 @@ function CardButtonRenderer({
+   // label:"Agregar" icon:"Plus" sobreescribe el default "Elegir"/Layers y el
+   // padre se agrega al carrito sin elegir variante.
+   if ((button.action === 'add_to_cart' || button.action === 'buy_now') && isParent) {
+-    const chooseLabel = button.label_when_parent || 'Elegir'
++    const chooseLabel = textoGuardado(cardStyle?.choose_button_label) || button.label_when_parent || 'Elegir'
+     const chooseIconName = 'Layers'
+     const ChooseIcon = ICON_MAP[chooseIconName] || Layers
+     return (
+@@ -676,7 +683,8 @@ function CardButtonRenderer({
+   }
+   const effectiveStyle = isAddedState ? addedStyle : baseStyle
+   // Label efectivo: cuando isAdded, forzar "Listo" sin importar button.label
+-  const effectiveLabel = isAddedState ? 'Listo' : (button.label || defaultLabel(button.action))
++  const etiquetaSeccion = button.action === 'add_to_cart' ? textoGuardado(cardStyle?.add_button_label) : ''
++  const effectiveLabel = isAddedState ? 'Listo' : (etiquetaSeccion || button.label || defaultLabel(button.action))
+ 
+   return (
+     <Button
+@@ -850,6 +858,10 @@ export function ProductCard({
+     }
+   }
+ 
++  const precio = estiloPrecio(mergedCardStyle, primaryColor)
++  const colorAnterior = colorPrecioAnterior(mergedCardStyle)
++  const claseAnterior = colorAnterior ? 'line-through' : 'text-gray-400 line-through'
++  const estiloAnterior = colorAnterior ? { color: colorAnterior } : undefined
+   const { className: cardClassName, style: cardStyleObj } = buildCardStyle(mergedCardStyle)
+   const imageFitClass = resolveImageFitClass(mergedCardStyle.image_fit)
+   const imageRatioClass = resolveImageRatioClass(mergedCardStyle.image_ratio)
+@@ -883,7 +895,7 @@ export function ProductCard({
+               <p className="text-xs text-gray-500 line-clamp-1">{textoPlano(product.description)}</p>
+             )}
+             {price != null && (
+-              <p className="text-sm font-bold mt-1" style={{ color: primaryColor }}>
++              <p className="text-sm mt-1" style={precio}>
+                 <Price value={price} />
+               </p>
+             )}
+@@ -925,7 +937,7 @@ export function ProductCard({
+               return (
+                 <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-0.5`}>
+                   {cornerBadges.map((b, i) => (
+-                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
++                    <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
+                   ))}
+                 </div>
+               )
+@@ -964,11 +976,11 @@ export function ProductCard({
+             {price != null && (
+               <div className="flex items-center gap-2">
+                 {comparePrice && comparePrice > (price ?? 0) && mergedCardStyle.show_compare_price !== false && (
+-                  <span className="text-sm text-gray-400 line-through">
++                  <span className={`text-sm ${claseAnterior}`} style={estiloAnterior}>
+                     <Price value={comparePrice} />
+                   </span>
+                 )}
+-                <span className="text-lg font-bold" style={{ color: primaryColor }}>
++                <span className="text-lg" style={precio}>
+                   <Price value={price} />
+                 </span>
+               </div>
+@@ -1069,7 +1081,7 @@ export function ProductCard({
+             return (
+               <div key={corner} className={`absolute ${BADGE_CORNER_CLASS[corner]} z-10 flex flex-col gap-1`}>
+                 {cornerBadges.map((b, i) => (
+-                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} />
++                  <BadgeRenderer key={i} badge={b} product={product} primaryColor={primaryColor} discount={discount} cardStyle={mergedCardStyle} />
+                 ))}
+                 {hasCornerButtons && (
+                   renderButtons('rounded-lg p-1', overlayPos)
+@@ -1093,7 +1105,11 @@ export function ProductCard({
+           {isOverlay && (
+             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+               <h3 className={`font-semibold text-white ${titleLinesClass}`}>{product.name}</h3>
+-              {price != null && <span className="font-bold text-white"><Price value={price} /></span>}
++              {price != null && (
++                <span style={textoGuardado(mergedCardStyle.price_color) ? precio : { color: '#ffffff', fontWeight: precio.fontWeight }}>
++                  <Price value={price} />
++                </span>
++              )}
+             </div>
+           )}
+           {/* Botones overlay no-esquina (overlay_bottom, overlay_hover) — sin conflicto con badges */}
+@@ -1124,10 +1140,10 @@ export function ProductCard({
+           <div className="flex flex-col gap-2 mt-1">
+             <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${mergedCardStyle.price_style === 'stacked' ? 'flex-col' : ''}`}>
+               {comparePrice && price !== null && comparePrice > price && mergedCardStyle.show_compare_price !== false && (
+-                <Price value={comparePrice} className="text-xs sm:text-sm text-gray-400 line-through" />
++                <Price value={comparePrice} className={`text-xs sm:text-sm ${claseAnterior}`} style={estiloAnterior} />
+               )}
+               {price !== null && (
+-                <Price value={price} className="font-bold text-sm sm:text-lg" style={{ color: primaryColor }} />
++                <Price value={price} className="text-sm sm:text-lg" style={precio} />
+               )}
+             </div>
+             {outOfStock && !isParentProduct(product) ? (
+diff --git a/components/sections/products/ProductsCarousel.tsx b/components/sections/products/ProductsCarousel.tsx
+index 24050a0..1bcfb73 100644
+--- a/components/sections/products/ProductsCarousel.tsx
++++ b/components/sections/products/ProductsCarousel.tsx
+@@ -156,6 +156,7 @@ export function ProductsCarousel({ content, primaryColor = '#3B82F6', data, orga
+           mostrarFiltros={content.show_filters === true}
+           mostrarBuscador={content.show_search === true}
+           mostrarCategorias={content.show_categories !== false}
++          content={content}
+         />
+       )}
+ 
+diff --git a/components/sections/products/ProductsGrid.tsx b/components/sections/products/ProductsGrid.tsx
+index 236571f..fc2d02a 100644
+--- a/components/sections/products/ProductsGrid.tsx
++++ b/components/sections/products/ProductsGrid.tsx
+@@ -170,6 +170,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
+           mostrarFiltros={content.show_filters !== false}
+           mostrarBuscador={content.show_search === true}
+           mostrarCategorias={content.show_categories !== false}
++          content={content}
+         />
+       )}
+ 
+diff --git a/components/sections/products/ProductsList.tsx b/components/sections/products/ProductsList.tsx
+index 11867c7..c45c03c 100644
+--- a/components/sections/products/ProductsList.tsx
++++ b/components/sections/products/ProductsList.tsx
+@@ -92,6 +92,7 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
+           mostrarFiltros={content.show_filters === true}
+           mostrarBuscador={content.show_search === true}
+           mostrarCategorias={content.show_categories !== false}
++          content={content}
+         />
+       )}
+ 
+diff --git a/components/sections/retail/OffersGrid.tsx b/components/sections/retail/OffersGrid.tsx
+index 6b8eb98..7b4ff71 100644
+--- a/components/sections/retail/OffersGrid.tsx
++++ b/components/sections/retail/OffersGrid.tsx
+@@ -8,6 +8,7 @@ import { ProductCard } from '@/components/sections/products/ProductCard'
+ import { getCartKey } from '@/lib/utils'
+ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+ import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
++import { estiloChipFiltro } from '@/lib/website/presentacionTienda'
+ import { coincideBusqueda } from '@/lib/products/filtrosProductos'
+ 
+ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+@@ -174,17 +175,20 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
+               <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                 <button
+                   onClick={() => { setSelectedCategory(null); resetPage() }}
+-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${!selectedCategory ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
+-                  style={!selectedCategory ? { backgroundColor: primaryColor } : {}}
++                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${estiloChipFiltro(!selectedCategory, primaryColor, content).className}`}
++                  style={estiloChipFiltro(!selectedCategory, primaryColor, content).style}
+                 >Todos</button>
+-                {categories.map((cat) => (
++                {categories.map((cat) => {
++                  const activo = estiloChipFiltro(selectedCategory === cat.id, primaryColor, content)
++                  return (
+                   <button
+                     key={cat.id}
+                     onClick={() => { setSelectedCategory(selectedCategory === cat.id ? null : cat.id); resetPage() }}
+-                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${selectedCategory === cat.id ? 'text-white border-transparent' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
+-                    style={selectedCategory === cat.id ? { backgroundColor: primaryColor } : {}}
++                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border ${activo.className}`}
++                    style={activo.style}
+                   >{cat.name}</button>
+-                ))}
++                  )
++                })}
+               </div>
+             )}
+             {showFilters && (
+diff --git a/components/sections/retail/PromoBannersGrid.tsx b/components/sections/retail/PromoBannersGrid.tsx
+index f7fd1dd..9852bf5 100644
+--- a/components/sections/retail/PromoBannersGrid.tsx
++++ b/components/sections/retail/PromoBannersGrid.tsx
+@@ -1,6 +1,7 @@
+ import Link from 'next/link'
+ import Image from 'next/image'
+ import { Package } from 'lucide-react'
++import { claseAspectoBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
+ 
+ const SUPABASE_URL =
+   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+@@ -29,8 +30,8 @@ interface BannerItem {
+   cta_url?: string
+   // Destino tipado (F7.1).
+   link_type?: 'category' | 'product' | 'url' | 'page' | 'none'
+-  link_category_id?: number
+-  link_product_id?: number
++  link_category_id?: number | string
++  link_product_id?: number | string
+   link_url?: string
+   link_page_id?: string
+   show_category_products?: boolean
+@@ -44,6 +45,8 @@ interface PromoBannersGridProps {
+     title?: string
+     subtitle?: string
+     layout?: 'grid' | 'carousel' | 'stack'
++    columns?: unknown
++    aspect_ratio?: unknown
+     banners?: BannerItem[]
+   }
+   primaryColor?: string
+@@ -82,18 +85,18 @@ function resolveBannerHref(
+       return banner.link_url || banner.cta_url || null
+     case 'category': {
+       if (!banner.link_category_id) return null
+-      const cat = data?.categories?.find((c) => c.id === banner.link_category_id)
++      const cat = data?.categories?.find((c) => mismoId(c.id, banner.link_category_id))
+       return cat?.slug ? `/categorias/${cat.slug}` : null
+     }
+     case 'product': {
+       if (!banner.link_product_id) return null
+-      const prod = data?.products?.find((p) => p.id === banner.link_product_id)
++      const prod = data?.products?.find((p) => mismoId(p.id, banner.link_product_id))
+       return prod?.uuid ? `/productos/${prod.uuid}` : null
+     }
+     case 'page': {
+       if (!banner.link_page_id) return null
+       const page = data?.bannerPages?.[banner.link_page_id]
+-      return page?.slug ? `/${page.slug}` : null
++      return page?.slug ? hrefDeSlug(page.slug) : null
+     }
+     default:
+       return null
+@@ -104,12 +107,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
+   const banners = content.banners || []
+   const layout = content.layout || 'grid'
+ 
+-  const gridClass =
+-    layout === 'stack'
+-      ? 'grid grid-cols-1 gap-6'
+-      : layout === 'carousel'
+-        ? 'grid grid-cols-1 md:grid-cols-2 gap-6 overflow-x-auto'
+-        : 'grid grid-cols-1 md:grid-cols-2 gap-6'
++  const gridClass = `${clasesColumnasBanner(content.columns, layout)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
+ 
+   return (
+     <div>
+@@ -131,8 +129,9 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
+               banner.show_category_products === true &&
+               !!banner.link_category_id
+             const maxPreview = banner.max_preview_products || 4
++            const mapa = data?.bannerCategoryProducts as Record<string, any[]> | undefined
+             const previewProducts = showPreview
+-              ? (data?.bannerCategoryProducts?.[banner.link_category_id!] || []).slice(0, maxPreview)
++              ? (mapa?.[String(banner.link_category_id)] || mapa?.[banner.link_category_id as unknown as string] || []).slice(0, maxPreview)
+               : []
+             const buttonText = banner.button_text || banner.cta_text
+             const buttonStyle = banner.button_style || 'solid'
+@@ -145,7 +144,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
+ 
+             const card = (
+               <div
+-                className="relative rounded-2xl overflow-hidden min-h-[200px] flex flex-col justify-center p-8 w-full"
++                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio)} flex flex-col justify-center p-8 w-full`}
+                 style={{ backgroundColor: banner.bg_color || primaryColor }}
+               >
+                 {banner.image_url && (
+diff --git a/components/sections/saas/FeaturesGridAlternating.tsx b/components/sections/saas/FeaturesGridAlternating.tsx
+index f6fe2d6..573ef34 100644
+--- a/components/sections/saas/FeaturesGridAlternating.tsx
++++ b/components/sections/saas/FeaturesGridAlternating.tsx
+@@ -1,19 +1,44 @@
++import { DynamicLucideIcon } from '@/components/sections/products/DynamicLucideIcon'
++
++interface ItemBeneficio {
++  icon?: string
++  label?: string
++  title?: string
++  description?: string
++  image_url?: string
++}
++
+ interface FeaturesGridAlternatingProps {
+   content: {
+     title?: string
+     subtitle?: string
+-    items?: Array<{
+-      icon?: string
+-      label: string
+-      description?: string
+-      image_url?: string
+-    }>
++    /** `imagen` (por defecto), `icono` o `texto`. La variante `icons` equivale a ícono. */
++    presentacion?: string
++    items?: ItemBeneficio[]
+   }
+   primaryColor?: string
++  sectionVariant?: string
++}
++
++function IconoBeneficio({ name, color }: { name: string; color: string }) {
++  const esLucide = /^[A-Z][A-Za-z0-9]+$/.test(name)
++  return (
++    <span
++      className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl text-xl"
++      style={{ backgroundColor: `${color}15`, color }}
++    >
++      {esLucide ? <DynamicLucideIcon name={name} className="h-6 w-6" fallback="Sparkles" /> : name}
++    </span>
++  )
+ }
+ 
+-export function FeaturesGridAlternating({ content, primaryColor }: FeaturesGridAlternatingProps) {
++export function FeaturesGridAlternating({ content, primaryColor = '#3B82F6', sectionVariant }: FeaturesGridAlternatingProps) {
+   const items = content.items || []
++  const modo = content.presentacion === 'icono' || content.presentacion === 'texto' || content.presentacion === 'imagen'
++    ? content.presentacion
++    : sectionVariant === 'icons'
++      ? 'icono'
++      : 'imagen'
+ 
+   return (
+     <div>
+@@ -24,30 +49,27 @@ export function FeaturesGridAlternating({ content, primaryColor }: FeaturesGridA
+         <p className="text-gray-600 dark:text-gray-300 text-center mb-12">{content.subtitle}</p>
+       )}
+       <div className="space-y-16 max-w-5xl mx-auto">
+-        {items.map((item, i) => (
+-          <div key={i} className={`flex flex-col md:flex-row items-center gap-8 ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
+-            <div className="flex-1">
+-              {item.icon && (
+-                <span className="inline-block w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
+-                  {item.icon}
+-                </span>
+-              )}
+-              <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{item.label}</h3>
+-              {item.description && (
+-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.description}</p>
+-              )}
+-            </div>
+-            <div className="flex-1 w-full">
+-              {item.image_url ? (
+-                <img src={item.image_url} alt={item.label} className="w-full rounded-xl shadow-lg" loading="lazy" />
+-              ) : (
+-                <div className="w-full aspect-video rounded-xl flex items-center justify-center text-5xl" style={{ backgroundColor: `${primaryColor}08` }}>
+-                  💻
++        {items.map((item, i) => {
++          const titulo = item.title || item.label || ''
++          const mostrarImagen = modo === 'imagen' && !!item.image_url
++          const mostrarIcono = modo === 'icono' || (modo === 'imagen' && !item.image_url && !!item.icon)
++          return (
++            <div key={i} className={`flex flex-col items-center gap-8 ${mostrarImagen ? `md:flex-row ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}` : ''}`}>
++              <div className="flex-1">
++                {mostrarIcono && item.icon && <IconoBeneficio name={item.icon} color={primaryColor} />}
++                {titulo && <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{titulo}</h3>}
++                {item.description && (
++                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.description}</p>
++                )}
++              </div>
++              {mostrarImagen && (
++                <div className="flex-1 w-full">
++                  <img src={item.image_url} alt={titulo} className="w-full rounded-xl shadow-lg" loading="lazy" />
+                 </div>
+               )}
+             </div>
+-          </div>
+-        ))}
++          )
++        })}
+       </div>
+     </div>
+   )
+diff --git a/components/site/EncabezadoPieContext.tsx b/components/site/EncabezadoPieContext.tsx
+index 615aae0..2ea157f 100644
+--- a/components/site/EncabezadoPieContext.tsx
++++ b/components/site/EncabezadoPieContext.tsx
+@@ -32,6 +32,8 @@ export interface ValorEncabezadoPie {
+   selector: SelectorEnEncabezado | null
+   /** Giro de la organización (`organizations.type_id`). */
+   tipo: number | null
++  /** El fondo del tema V2 es oscuro: el pie con fondo «tema» usa el logo claro. */
++  fondoTemaOscuro: boolean
+ }
+ 
+ export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
+@@ -39,6 +41,7 @@ export const VALOR_POR_DEFECTO: ValorEncabezadoPie = {
+   extras: EXTRAS_VACIOS,
+   selector: null,
+   tipo: null,
++  fondoTemaOscuro: false,
+ }
+ 
+ const Contexto = createContext<ValorEncabezadoPie>(VALOR_POR_DEFECTO)
+diff --git a/components/site/OrganizationLayoutCliente.tsx b/components/site/OrganizationLayoutCliente.tsx
+index 8743271..2fcd809 100644
+--- a/components/site/OrganizationLayoutCliente.tsx
++++ b/components/site/OrganizationLayoutCliente.tsx
+@@ -33,7 +33,7 @@ import { BarraMovilGiro } from './BarraMovilGiro'
+ import { ModoMesaProvider } from './ModoMesaContext'
+ import { PasosMesaProvider, type PasosMesaServidor } from './PasosMesaContext'
+ import { variablesColorMesa } from '@/lib/restaurant/modoMesa'
+-import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
++import { fondoOscuro, textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
+ import { contraste } from '@/lib/website/v2/contrasteColor'
+ import { EncabezadoMesa } from './header/EncabezadoMesa'
+ import { PieMesa } from './footer/PieMesa'
+@@ -166,6 +166,7 @@ export function OrganizationLayoutCliente({
+   const sedesSelector = datosSede?.sedesSelector ?? []
+   const pathname = usePathname() ?? '/'
+   // Encabezado y pie por plantilla (lib/website/encabezadoPie.ts): todo en su default = lo de hoy.
++  const temaEfectivo = vivos?.tema ?? temaSitio ?? null
+   const opcionesShell = opcionesEncabezadoPie(settings)
+   const extras = extrasShell ?? EXTRAS_VACIOS
+   // Selector de sede: dentro del encabezado si el sitio lo pidió; si no, la franja de siempre.
+@@ -183,6 +184,7 @@ export function OrganizationLayoutCliente({
+         }
+       : null,
+     tipo: organization.type_id ?? null,
++    fondoTemaOscuro: !!(temaEfectivo?.fondo && fondoOscuro(temaEfectivo.fondo)),
+   }
+   // Barra fija del celular: no con la barra de pestañas del encabezado móvil (ocupa el mismo
+   // sitio) ni donde ya hay barra propia (checkout, carrito, detalle, pedido).
+@@ -245,7 +247,6 @@ export function OrganizationLayoutCliente({
+   
+   // En el lienzo del editor, el estilo general en edición (fuentes, redondeo, botón, movimiento)
+   // reemplaza al guardado; se pinta con las mismas funciones que el sitio publicado.
+-  const temaEfectivo = vivos?.tema ?? temaSitio ?? null
+   const temaVars = atributosTema(temaEfectivo)
+   const hojaFuentesTema = temaEfectivo ? urlGoogleFonts([temaEfectivo.fuenteTitulos, temaEfectivo.fuenteCuerpo]) : null
+   // Sitio V2 con tema y `auto`: las MISMAS acciones de la barra del restaurante, con el estilo de
+diff --git a/components/site/SiteFooter.tsx b/components/site/SiteFooter.tsx
+index 7c7dc75..9236d91 100644
+--- a/components/site/SiteFooter.tsx
++++ b/components/site/SiteFooter.tsx
+@@ -14,6 +14,7 @@ import { useEncabezadoPie } from './EncabezadoPieContext'
+ import { useTemaColores } from './TemaColoresContext'
+ import { BotonWhatsappPie, IconoTikTok, MapaPie, MediosPagoPie } from './footer/PieExtras'
+ import { PieTema } from './footer/PieTema'
++import { elegirLogo, hrefDeSlug, pieUsaLogoClaro } from '@/lib/website/presentacionTienda'
+ 
+ interface SiteFooterProps {
+   organization: OrganizationWithDetails
+@@ -53,7 +54,7 @@ interface FooterNavItem {
+ function buildFooterNavItems(tree: WebsitePageWithChildren[]): FooterNavItem[] {
+   return tree.map((page) => ({
+     name: page.title,
+-    href: page.slug === 'home' ? '/' : `/${page.slug}`,
++    href: hrefDeSlug(page.slug),
+     icon: page.menu_icon,
+     badge: page.menu_badge,
+     children: page.children.length > 0 ? buildFooterNavItems(page.children) : undefined,
+@@ -79,7 +80,7 @@ function buildMenuGroupItems(items: WebsiteMenuItemWithChildren[]): FooterNavIte
+     if (item.item_type === 'page' || item.item_type === 'policy') {
+       if (item.page) {
+         name = item.page.title
+-        href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
++        href = hrefDeSlug(item.page.slug)
+       }
+     } else if (item.item_type === 'category') {
+       if (item.category) {
+@@ -223,7 +224,7 @@ export function SiteFooter({
+   const { prefijo, ruta } = useRutaSitio()
+   // Encabezado y pie por plantilla: WhatsApp, mapa y medios de pago (cada uno null con su opción
+   // apagada). Sitio V2 con tema: el pie de las láminas (PieTema). Legacy: igual que antes.
+-  const { opciones: opcionesShell } = useEncabezadoPie()
++  const { opciones: opcionesShell, fondoTemaOscuro } = useEncabezadoPie()
+   const temaColores = useTemaColores()
+   const socialLinks = (settings?.social_links || {}) as SocialLinks
+   // Horario legible: el de la sede si lo hay; si no, business_hours (se guarda con los días en
+@@ -278,7 +279,7 @@ export function SiteFooter({
+     : footerNav && footerNav.length > 0
+       ? footerNav.map((p) => ({
+           name: p.title,
+-          href: p.slug === 'home' ? '/' : `/${p.slug}`,
++          href: hrefDeSlug(p.slug),
+           icon: p.menu_icon,
+           badge: p.menu_badge,
+         }))
+@@ -300,6 +301,12 @@ export function SiteFooter({
+ 
+   // TikTok: ningún sitio lo tenía (se omitía). WhatsApp en redes: solo con footer_show_whatsapp,
+   // para no cambiar los sitios que lo tienen en social_links y hoy no lo muestran.
++  const fondoPieOscuro = pieUsaLogoClaro(footerBackground, footerCustomBgColor, primaryColor, fondoTemaOscuro)
++  const logoPie = elegirLogo(organization.logo_url, organization.logo_oscuro_url, fondoPieOscuro)
++  const claseLogoPie = fondoPieOscuro && organization.logo_oscuro_url && logoPie === organization.logo_oscuro_url
++    ? 'w-auto object-contain'
++    : 'w-auto object-contain brightness-0 invert'
++
+   const socialIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+     facebook: Facebook,
+     twitter: Twitter,
+@@ -328,6 +335,7 @@ export function SiteFooter({
+         mostrarHorario={footerShowHours}
+         mostrarRedes={footerShowSocial}
+         logoHeight={logoHeight}
++        logoUrl={logoPie}
+       />
+     )
+   }
+@@ -340,13 +348,13 @@ export function SiteFooter({
+           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+             {/* Logo */}
+             <div className="flex items-center space-x-3">
+-              {organization.logo_url ? (
++              {logoPie ? (
+                 <Image
+-                  src={organization.logo_url}
++                  src={logoPie}
+                   alt={organization.name}
+                   width={logoHeight * 3}
+                   height={logoHeight}
+-                  className="w-auto object-contain brightness-0 invert"
++                  className={claseLogoPie}
+                   style={{ height: `${logoHeight}px` }}
+                 />
+               ) : (
+@@ -430,13 +438,13 @@ export function SiteFooter({
+           {/* Logo + descripción centrados */}
+           <div className="text-center mb-8">
+             <div className="flex items-center justify-center space-x-3 mb-4">
+-              {organization.logo_url ? (
++              {logoPie ? (
+                 <Image
+-                  src={organization.logo_url}
++                  src={logoPie}
+                   alt={organization.name}
+                   width={logoHeight * 3}
+                   height={logoHeight}
+-                  className="w-auto object-contain brightness-0 invert"
++                  className={claseLogoPie}
+                   style={{ height: `${logoHeight}px` }}
+                 />
+               ) : (
+@@ -539,13 +547,13 @@ export function SiteFooter({
+             <div>
+               <FooterSection title={organization.name}>
+                 <div className="flex items-center space-x-3 mb-4">
+-                  {organization.logo_url ? (
++                  {logoPie ? (
+                     <Image
+-                      src={organization.logo_url}
++                      src={logoPie}
+                       alt={organization.name}
+                       width={logoHeight * 3}
+                       height={logoHeight}
+-                      className="w-auto object-contain brightness-0 invert"
++                      className={claseLogoPie}
+                       style={{ height: `${logoHeight}px` }}
+                     />
+                   ) : (
+@@ -673,13 +681,13 @@ export function SiteFooter({
+             <div>
+               <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
+                 <div className="flex items-center space-x-3 mb-6">
+-                  {organization.logo_url ? (
++                  {logoPie ? (
+                     <Image
+-                      src={organization.logo_url}
++                      src={logoPie}
+                       alt={organization.name}
+                       width={logoHeight * 3}
+                       height={logoHeight}
+-                      className="w-auto object-contain brightness-0 invert"
++                      className={claseLogoPie}
+                       style={{ height: `${logoHeight}px` }}
+                     />
+                   ) : (
+@@ -858,13 +866,13 @@ export function SiteFooter({
+           <div className="lg:col-span-1">
+             <FooterSection title={organization.name} mobileStyle={mobileFooterStyle}>
+               <div className="flex items-center space-x-3 mb-6">
+-                {organization.logo_url ? (
++                {logoPie ? (
+                   <Image
+-                    src={organization.logo_url}
++                    src={logoPie}
+                     alt={organization.name}
+                     width={logoHeight * 3}
+                     height={logoHeight}
+-                    className="w-auto object-contain brightness-0 invert"
++                    className={claseLogoPie}
+                     style={{ height: `${logoHeight}px` }}
+                   />
+                 ) : (
+diff --git a/components/site/footer/PieTema.tsx b/components/site/footer/PieTema.tsx
+index 67d07e0..298c442 100644
+--- a/components/site/footer/PieTema.tsx
++++ b/components/site/footer/PieTema.tsx
+@@ -31,6 +31,7 @@ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+ import { prefijarItemsNav } from '@/lib/outlet/rutaSitio'
+ import { IconoTikTok, LogoPieTema, MapaPie, MediosPagoPie } from './PieExtras'
+ import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento'
++import { hrefDeSlug } from '@/lib/website/presentacionTienda'
+ 
+ /** Alta de suscriptores del boletín: no existe todavía (2026-10-06). */
+ export const BOLETIN_DISPONIBLE = false
+@@ -62,12 +63,14 @@ export interface PieTemaProps {
+   mostrarHorario: boolean
+   mostrarRedes: boolean
+   logoHeight: number
++  /** Logo ya elegido (claro si el fondo del pie es oscuro). */
++  logoUrl?: string | null
+ }
+ 
+ function enlacesDeMenu(items: WebsiteMenuItemWithChildren[]): Enlace[] {
+   return items.map((item) => {
+     if ((item.item_type === 'page' || item.item_type === 'policy') && item.page) {
+-      return { name: item.custom_label || item.page.title, href: item.page.slug === 'home' ? '/' : `/${item.page.slug}` }
++      return { name: item.custom_label || item.page.title, href: hrefDeSlug(item.page.slug) }
+     }
+     if (item.item_type === 'category' && item.category) return { name: item.category.name, href: `/categorias/${item.category.slug}` }
+     return { name: item.custom_label || '', href: item.custom_url || '#' }
+@@ -200,10 +203,11 @@ export function PieTema(p: PieTemaProps) {
+   const redes = p.mostrarRedes
+     ? Object.entries(p.redes).filter(([red, url]) => !!url && (ICONOS_REDES[red] || (red === 'whatsapp' && opciones.pie.whatsapp)))
+     : []
++  const logo = p.logoUrl ?? p.organization.logo_url
+   const marca = (
+     <div className={`flex flex-col gap-4 ${centrado ? 'items-start md:items-center md:text-center' : 'items-start'}`}>
+-      {p.organization.logo_url ? (
+-        <Image src={p.organization.logo_url} alt={p.organization.name} width={p.logoHeight * 3} height={p.logoHeight} className="w-auto object-contain" style={{ height: `${p.logoHeight}px` }} />
++      {logo ? (
++        <Image src={logo} alt={p.organization.name} width={p.logoHeight * 3} height={p.logoHeight} className="w-auto object-contain" style={{ height: `${p.logoHeight}px` }} />
+       ) : (
+         <LogoPieTema nombre={p.organization.name} color={p.primaryColor} textoSobreColor={iconoTxt} />
+       )}
+diff --git a/components/site/header/HeaderClassic.tsx b/components/site/header/HeaderClassic.tsx
+index acc2a34..d408c7d 100644
+--- a/components/site/header/HeaderClassic.tsx
++++ b/components/site/header/HeaderClassic.tsx
+@@ -75,7 +75,7 @@ export default function HeaderClassic({
+   );
+ 
+   const renderLogo = (
+-    <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} />
++    <HeaderLogo organization={organization} primaryColor={primaryColor} height={settings?.logo_height || 48} fondoOscuro={transparente === 'sobre'} />
+   );
+ 
+   let middle: React.ReactNode;
+diff --git a/components/site/header/HeaderShared.tsx b/components/site/header/HeaderShared.tsx
+index 74ba8fe..8a7d51f 100644
+--- a/components/site/header/HeaderShared.tsx
++++ b/components/site/header/HeaderShared.tsx
+@@ -18,6 +18,7 @@ import { textoSobreAcentoSiHex } from '@/lib/website/v2/textoSobreAcento';
+ import { useEncabezadoPie } from '../EncabezadoPieContext';
+ import { esEnlaceExterno, hrefBoton } from '@/lib/website/encabezadoPie';
+ import { useTopbarExtras } from './TopbarExtras';
++import { elegirLogo, encabezadoUsaLogoClaro, hrefDeSlug } from '@/lib/website/presentacionTienda';
+ 
+ // ============================================================
+ // SHARED TYPES
+@@ -85,7 +86,7 @@ export function getLucideIcon(name: string | null | undefined, fallback: any): a
+ export function pageToNavItem(page: WebsitePageWithChildren): NavItem {
+   return {
+     name: page.title,
+-    href: page.slug === 'home' ? '/' : `/${page.slug}`,
++    href: hrefDeSlug(page.slug),
+     children: page.children.length > 0 ? page.children.map(pageToNavItem) : undefined,
+     icon: page.menu_icon,
+     badge: page.menu_badge,
+@@ -205,10 +206,13 @@ export function HeaderLogo({
+   organization,
+   primaryColor,
+   height = 48,
++  fondoOscuro = false,
+ }: {
+   organization: OrganizationWithDetails;
+   primaryColor: string;
+   height?: number;
++  /** Encabezado transparente sobre la portada: usa el logo claro si existe. */
++  fondoOscuro?: boolean;
+ }) {
+   // Sitio de una sede por prefijo de ruta: el logo lleva a la portada de la sede.
+   const { ruta } = useRutaSitio();
+@@ -217,11 +221,16 @@ export function HeaderLogo({
+   // redondeo del tema, el nombre con la fuente de títulos y visible también en el celular.
+   // Legacy (sin tema): exactamente como siempre.
+   const temaColores = useTemaColores();
+-  if (organization.logo_url) {
++  const logoSrc = elegirLogo(
++    organization.logo_url,
++    organization.logo_oscuro_url,
++    fondoOscuro || encabezadoUsaLogoClaro(organization.website_settings?.header_bg_color, false),
++  );
++  if (logoSrc) {
+     return (
+       <Link href={inicio} className="flex-shrink-0 flex items-center space-x-3">
+         <Image
+-          src={organization.logo_url}
++          src={logoSrc}
+           alt={organization.name}
+           width={height * 3}
+           height={height}
+diff --git a/lib/get-org-context.ts b/lib/get-org-context.ts
+index 9dbef68..b644525 100644
+--- a/lib/get-org-context.ts
++++ b/lib/get-org-context.ts
+@@ -18,6 +18,7 @@ import { getSitioPublicoV2, getCategoriasMenuV2 } from '@/lib/website/v2/lectorP
+ import {
+   ajustesPublicosDesdeDocumento,
+   idsCategoriasDeMenus,
++  logoOscuroPublicoDesdeDocumento,
+   logoPublicoDesdeDocumento,
+   menusPublicosDesdeDocumento,
+   type MenusPublicos,
+@@ -26,6 +27,7 @@ import type { WebsiteMenuWithItems, WebsiteMenuItemWithChildren, WebsitePageWith
+ import { cacheStructural, CONTENT_TTL } from '@/lib/supabase/cache'
+ import { prefijoSede as calcularPrefijoSede } from '@/lib/outlet/rutaSitio'
+ import { urlsSitio } from '@/lib/seo/sede'
++import { hrefDeSlug } from '@/lib/website/presentacionTienda'
+ 
+ /**
+  * Cabecera que pone el middleware al reescribir `/<slug-de-sede>/resto` → `/resto`
+@@ -142,6 +144,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
+   let effectiveSettings = legacySettings
+   let menusV2: MenusPublicos | null = null
+   let logoV2: string | null = null
++  let logoOscuroV2: string | null = null
+   const sitioV2 = await getSitioPublicoV2(organization.id, branchId)
+   if (sitioV2) {
+     try {
+@@ -151,6 +154,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
+       const baseHerencia = sitioV2.principal ? { documento: sitioV2.principal.documento, ajustesLegacy: principalLegacy } : null
+       const ajustesV2 = ajustesPublicosDesdeDocumento(sitioV2.documento, legacySettings, baseHerencia)
+       logoV2 = logoPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
++      logoOscuroV2 = logoOscuroPublicoDesdeDocumento(sitioV2.documento, baseHerencia)
+       const categoriasV2 = await getCategoriasMenuV2(organization.id, idsCategoriasDeMenus(sitioV2.documento))
+       menusV2 = menusPublicosDesdeDocumento(sitioV2.documento, organization.id, categoriasV2)
+       effectiveSettings = ajustesV2
+@@ -162,6 +166,7 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
+       effectiveSettings = legacySettings
+       menusV2 = null
+       logoV2 = null
++      logoOscuroV2 = null
+     }
+   } else {
+     // Sitio legacy: sin cambios.
+@@ -236,7 +241,11 @@ export const getOrgContext = cache(async (pathFirstSegment?: string) => {
+   // theme del outlet). Preserva el shape: si settings es null, mantiene el
+   // select anidado original (backward compat).
+   // Sitio V2 con logo propio (Diseño › Logo): sustituye al de la organización. Legacy: igual.
+-  const organizacionBase = logoV2 ? { ...organization, logo_url: logoV2 } : organization
++  const organizacionBase = {
++    ...organization,
++    ...(logoV2 ? { logo_url: logoV2 } : {}),
++    ...(logoOscuroV2 ? { logo_oscuro_url: logoOscuroV2 } : {}),
++  }
+   const organizationWithSettings = effectiveSettings
+     ? { ...organizacionBase, website_settings: effectiveSettings }
+     : organizacionBase
+@@ -348,7 +357,7 @@ function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
+   if (item.item_type === 'page' || item.item_type === 'policy') {
+     if (item.page) {
+       name = item.page.title
+-      href = item.page.slug === 'home' ? '/' : `/${item.page.slug}`
++      href = hrefDeSlug(item.page.slug)
+     }
+   } else if (item.item_type === 'category') {
+     if (item.category) {
+@@ -357,7 +366,7 @@ function menuItemToNavItem(item: WebsiteMenuItemWithChildren): MegaMenuItem {
+     }
+   } else if (item.item_type === 'custom_link') {
+     name = item.custom_label || ''
+-    href = item.custom_url || '#'
++    href = item.custom_url ? hrefDeSlug(item.custom_url) : '#'
+   }
+ 
+   return {
+diff --git a/lib/outlet/rutaSitio.ts b/lib/outlet/rutaSitio.ts
+index 8263813..bafefad 100644
+--- a/lib/outlet/rutaSitio.ts
++++ b/lib/outlet/rutaSitio.ts
+@@ -107,7 +107,7 @@ export function quitarPrefijo(pathname: string, prefijo: string): string {
+ 
+ /**
+  * Árbol de navegación (páginas legacy o menús V2 convertidos) con el prefijo aplicado al
+- * `slug`, para que `pageToNavItem` (`/${slug}`, `home` → `/`) genere enlaces de la sede.
++ * `slug`, para que `pageToNavItem` (`hrefDeSlug`) genere enlaces de la sede.
+  * Los enlaces externos y las anclas se dejan como estaban.
+  */
+ export function prefijarArbolNav<T extends { slug: string; children?: T[] }>(arbol: T[] | undefined, prefijo: string): T[] | undefined {
+diff --git a/lib/website/presentacionTienda.ts b/lib/website/presentacionTienda.ts
+new file mode 100644
+index 0000000..daaa722
+--- /dev/null
++++ b/lib/website/presentacionTienda.ts
+@@ -0,0 +1,194 @@
++/**
++ * Presentación que el editor guarda y el sitio público tiene que respetar:
++ * enlaces del menú, columnas y proporción de banners, colores de etiquetas,
++ * precio, filtros y el logo claro sobre fondo oscuro.
++ *
++ * Puro: sin React, Next ni Supabase.
++ */
++
++export function hrefDeSlug(slug: string | null | undefined): string {
++  const s = (slug ?? '').trim()
++  if (!s || s === 'home' || s === '/') return '/'
++  if (s.startsWith('#') || s.startsWith('?')) return s
++  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return s
++  const path = s.replace(/^\/+/, '')
++  return path ? `/${path}` : '/'
++}
++
++const COLUMNAS = [1, 2, 3, 4, 5, 6, 7, 8] as const
++
++function nCol(v: unknown, fallback: number): number {
++  const x = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN
++  const n = Math.round(x)
++  return (COLUMNAS as readonly number[]).includes(n) ? n : fallback
++}
++
++const CLASE_MOVIL: Record<number, string> = {
++  1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-2', 4: 'grid-cols-2',
++  5: 'grid-cols-2', 6: 'grid-cols-2', 7: 'grid-cols-2', 8: 'grid-cols-2',
++}
++const CLASE_TABLET: Record<number, string> = {
++  1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4',
++  5: 'md:grid-cols-3', 6: 'md:grid-cols-3', 7: 'md:grid-cols-4', 8: 'md:grid-cols-4',
++}
++const CLASE_ESCRITORIO: Record<number, string> = {
++  1: 'lg:grid-cols-1', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4',
++  5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7', 8: 'lg:grid-cols-8',
++}
++
++/** Rejilla de banners. Sin columnas guardadas se queda en 2, como antes. */
++export function clasesColumnasBanner(columns: unknown, layout: string | undefined): string {
++  if (layout === 'stack') return 'grid grid-cols-1 gap-6'
++  let mobile = 1
++  let tablet = 2
++  let desktop = 2
++  if (typeof columns === 'number' || (typeof columns === 'string' && columns.trim())) {
++    desktop = nCol(columns, 2)
++    tablet = Math.min(desktop, 2)
++  } else if (columns && typeof columns === 'object') {
++    const o = columns as Record<string, unknown>
++    if ('desktop' in o || 'tablet' in o || 'mobile' in o) {
++      desktop = nCol(o.desktop, 2)
++      tablet = nCol(o.tablet ?? o.desktop, Math.min(desktop, 2))
++      mobile = nCol(o.mobile, 1)
++    }
++  }
++  return `grid ${CLASE_MOVIL[mobile]} ${CLASE_TABLET[tablet]} ${CLASE_ESCRITORIO[desktop]} gap-6`
++}
++
++/** `auto` y ausente conservan la tarjeta apaisada de siempre. */
++export function claseAspectoBanner(ratio: unknown): string {
++  if (ratio === '1/1') return 'aspect-square'
++  if (ratio === '4/3') return 'aspect-[4/3]'
++  if (ratio === '3/4') return 'aspect-[3/4]'
++  if (ratio === '16/9') return 'aspect-video'
++  return 'min-h-[200px]'
++}
++
++export function mismoId(a: unknown, b: unknown): boolean {
++  if (a === null || a === undefined || b === null || b === undefined || a === '' || b === '') return false
++  return String(a) === String(b)
++}
++
++function colorGuardado(v: unknown): string | undefined {
++  return typeof v === 'string' && v.trim() ? v.trim() : undefined
++}
++
++const ETIQUETAS: Record<string, { bg: string; text: string; fondo: string; texto: string }> = {
++  discount: { bg: '#EF4444', text: '#FFFFFF', fondo: 'badge_discount_bg', texto: 'badge_discount_text' },
++  new: { bg: '#10B981', text: '#FFFFFF', fondo: 'badge_new_bg', texto: 'badge_new_text' },
++  free_shipping: { bg: '#3B82F6', text: '#FFFFFF', fondo: 'badge_shipping_bg', texto: 'badge_shipping_text' },
++}
++
++export function coloresEtiqueta(
++  tipo: string | null | undefined,
++  badge: { bg_color?: string | null; text_color?: string | null } | null | undefined,
++  content: Record<string, unknown> | null | undefined,
++  fallbackBg: string,
++  fallbackText: string,
++): { bg: string; text: string } {
++  const propio = tipo ? ETIQUETAS[tipo] : undefined
++  const bg = colorGuardado(badge?.bg_color)
++    || (propio ? colorGuardado(content?.[propio.fondo]) : undefined)
++    || (propio ? propio.bg : fallbackBg)
++  const text = colorGuardado(badge?.text_color)
++    || (propio ? colorGuardado(content?.[propio.texto]) : undefined)
++    || (propio ? propio.text : fallbackText)
++  return { bg, text }
++}
++
++export function textoGuardado(v: unknown): string {
++  return typeof v === 'string' ? v.trim() : ''
++}
++
++export function estiloPrecio(
++  content: Record<string, unknown> | null | undefined,
++  acento: string,
++): { color: string; fontWeight: number } {
++  const color = colorGuardado(content?.price_color) || acento
++  const n = Number(content?.price_weight)
++  const fontWeight = [400, 500, 600, 700, 800].includes(n) ? n : 700
++  return { color, fontWeight }
++}
++
++export function colorPrecioAnterior(content: Record<string, unknown> | null | undefined): string | undefined {
++  return colorGuardado(content?.compare_price_color)
++}
++
++export interface ColoresFiltro {
++  filter_active_bg?: unknown
++  filter_active_text?: unknown
++  filter_inactive_bg?: unknown
++  filter_inactive_text?: unknown
++  [key: string]: unknown
++}
++
++export function estiloChipFiltro(
++  activo: boolean,
++  acento: string | undefined,
++  content: ColoresFiltro | null | undefined,
++): { className: string; style: Record<string, string> } {
++  if (activo) {
++    return {
++      className: 'border-transparent',
++      style: {
++        backgroundColor: colorGuardado(content?.filter_active_bg) || acento || '#111827',
++        color: colorGuardado(content?.filter_active_text) || '#ffffff',
++      },
++    }
++  }
++  const fondo = colorGuardado(content?.filter_inactive_bg)
++  const texto = colorGuardado(content?.filter_inactive_text)
++  if (!fondo && !texto) {
++    return {
++      className: 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400',
++      style: {},
++    }
++  }
++  return {
++    className: 'border-gray-200 dark:border-gray-700',
++    style: {
++      ...(fondo ? { backgroundColor: fondo } : {}),
++      ...(texto ? { color: texto } : {}),
++    },
++  }
++}
++
++export function elegirLogo(
++  normal: string | null | undefined,
++  claro: string | null | undefined,
++  fondoOscuro: boolean,
++): string | null {
++  if (fondoOscuro && claro) return claro
++  return normal || null
++}
++
++function esOscuro(hex: string): boolean {
++  const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim())
++  if (!m) return false
++  const n = parseInt(m[1], 16)
++  const r = (n >> 16) & 255
++  const g = (n >> 8) & 255
++  const b = n & 255
++  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.62
++}
++
++export function pieUsaLogoClaro(
++  fondo: string | null | undefined,
++  color: string | null | undefined,
++  primario: string | null | undefined,
++  fondoTemaOscuro: boolean,
++): boolean {
++  const modo = fondo || 'dark'
++  if (modo === 'light') return false
++  if (modo === 'dark') return true
++  if (modo === 'primary') return !primario || esOscuro(primario)
++  if (modo === 'custom') return !color || esOscuro(color)
++  if (modo === 'tema') return fondoTemaOscuro
++  return false
++}
++
++export function encabezadoUsaLogoClaro(color: string | null | undefined, transparenteSobre: boolean): boolean {
++  if (transparenteSobre) return true
++  return typeof color === 'string' && color.trim() !== '' && esOscuro(color)
++}
+diff --git a/lib/website/v2/estiloSeccion.ts b/lib/website/v2/estiloSeccion.ts
+index c124660..2f6ad09 100644
+--- a/lib/website/v2/estiloSeccion.ts
++++ b/lib/website/v2/estiloSeccion.ts
+@@ -59,6 +59,8 @@ export interface ColoresSeccion {
+ export interface EstiloSeccion {
+   v: typeof VERSION_ESTILO_SECCION;
+   fondo?: FondoSeccion;
++  /** Hex del fondo «Alterno». Ausente: el gris derivado del tema. */
++  colorAlterno?: string;
+   entrada?: EntradaSeccion;
+   espaciado?: EspaciadoSeccion;
+   ancho?: AnchoSeccion;
+@@ -134,6 +136,8 @@ export function leerEstiloSeccion(diseno: unknown): EstiloSeccion {
+   if (!esObjeto(crudo)) return r;
+   const fondo = de(FONDOS_SECCION, crudo.fondo);
+   if (fondo) r.fondo = fondo;
++  const colorAlterno = typeof crudo.colorAlterno === 'string' && HEX.test(crudo.colorAlterno) ? crudo.colorAlterno.toUpperCase() : undefined;
++  if (colorAlterno) r.colorAlterno = colorAlterno;
+   const entrada = de(ENTRADAS_SECCION, crudo.entrada);
+   if (entrada) r.entrada = entrada;
+   const espaciado = de(ESPACIADOS_SECCION, crudo.espaciado);
+@@ -160,13 +164,14 @@ export function leerEstiloSeccion(diseno: unknown): EstiloSeccion {
+ /** `true` si la sección no sobrescribe nada (hereda todo del estilo del sitio). */
+ export function estiloVacio(e: EstiloSeccion): boolean {
+   const tipografiaPropia = e.tipografia?.modo === 'propia';
+-  return !e.fondo && !e.entrada && !e.espaciado && !e.ancho && !tipografiaPropia && !e.colores;
++  return !e.fondo && !e.colorAlterno && !e.entrada && !e.espaciado && !e.ancho && !tipografiaPropia && !e.colores;
+ }
+ 
+ /** Quita lo que equivale a heredar (tipografía «como el sitio», colores vacíos). */
+ export function normalizarEstilo(e: EstiloSeccion): EstiloSeccion {
+   const r: EstiloSeccion = { v: VERSION_ESTILO_SECCION };
+   if (e.fondo) r.fondo = e.fondo;
++  if (e.colorAlterno) r.colorAlterno = e.colorAlterno;
+   if (e.entrada) r.entrada = e.entrada;
+   if (e.espaciado) r.espaciado = e.espaciado;
+   if (e.ancho) r.ancho = e.ancho;
+@@ -292,6 +297,9 @@ export function variablesCssSeccion(e: EstiloSeccion, dispositivo: DispositivoTe
+       }
+     }
+   }
++  if (e.fondo === 'alterno' && e.colorAlterno && HEX.test(e.colorAlterno)) {
++    vars['--seccion-fondo-alterno'] = e.colorAlterno;
++  }
+   const texto = colorCss(e.colores?.texto);
+   if (texto) vars['--seccion-color-texto'] = texto;
+   const borde = colorCss(e.colores?.borde);
+@@ -388,7 +396,7 @@ function valorGrupo(c: EstiloComparable, g: GrupoEstilo): unknown {
+     case 'colores':
+       return e.colores ?? null;
+     default:
+-      return { fondo: e.fondo ?? null, entrada: e.entrada ?? null, espaciado: e.espaciado ?? null, ancho: e.ancho ?? null };
++      return { fondo: e.fondo ?? null, colorAlterno: e.colorAlterno ?? null, entrada: e.entrada ?? null, espaciado: e.espaciado ?? null, ancho: e.ancho ?? null };
+   }
+ }
+ 
+@@ -441,7 +449,7 @@ export function restablecerGrupoEstilo(sede: EstiloComparable, principal: Estilo
+       else delete e.colores;
+       return { estilo: e, visibilidad: sede.visibilidad };
+     default:
+-      for (const k of ['fondo', 'entrada', 'espaciado', 'ancho'] as const) {
++      for (const k of ['fondo', 'colorAlterno', 'entrada', 'espaciado', 'ancho'] as const) {
+         if (p[k]) (e as unknown as Record<string, unknown>)[k] = p[k];
+         else delete e[k];
+       }
+diff --git a/lib/website/v2/vistaPublica.ts b/lib/website/v2/vistaPublica.ts
+index 01807e2..57bde8d 100644
+--- a/lib/website/v2/vistaPublica.ts
++++ b/lib/website/v2/vistaPublica.ts
+@@ -128,6 +128,21 @@ export function logoPublicoDesdeDocumento(documento: DocumentoSitio, principal:
+   return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
+ }
+ 
++/**
++ * Logo claro para encabezado o pie con fondo oscuro (`identidad.logoOscuroUrl`).
++ * Misma herencia y la misma regla de URL que el logo principal.
++ */
++export function logoOscuroPublicoDesdeDocumento(documento: DocumentoSitio, principal: BaseHerencia | null): string | null {
++  const propio = documento.identidad.logoOscuroUrl
++  const valor = principal
++    ? resolverCampo<string>(
++        principal.documento?.identidad.logoOscuroUrl?.mode === 'value' ? principal.documento.identidad.logoOscuroUrl.value : null,
++        propio,
++      )
++    : propio?.mode === 'value' ? propio.value : null
++  return typeof valor === 'string' && /^(https:\/\/|\/(?!\/))/i.test(valor.trim()) ? valor.trim() : null
++}
++
+ // ─── Páginas ──────────────────────────────────────────────────────────────────────────────────
+ 
+ export interface ContextoPublico {
+diff --git a/package.json b/package.json
+index 4e525a8..3e993fb 100644
+--- a/package.json
++++ b/package.json
+@@ -24,7 +24,8 @@
+     "verify:encabezado-pie": "node --disable-warning=ExperimentalWarning scripts/verify-encabezado-pie.mjs",
+     "verify:interruptores": "node scripts/verify-interruptores.mjs",
+     "verify:servicios": "node scripts/verify-servicios-seccion.mjs",
+-    "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs"
++    "verify:lienzo": "node --disable-warning=ExperimentalWarning scripts/verify-lienzo-borrador.mjs",
++    "verify:estilo-tarjeta": "node --disable-warning=ExperimentalWarning scripts/verify-estilo-tarjeta.mjs"
+   },
+   "dependencies": {
+     "@hookform/resolvers": "^3.9.1",
+diff --git a/scripts/verify-estilo-tarjeta.mjs b/scripts/verify-estilo-tarjeta.mjs
+new file mode 100644
+index 0000000..36844fa
+--- /dev/null
++++ b/scripts/verify-estilo-tarjeta.mjs
+@@ -0,0 +1,115 @@
++/**
++ * verify-estilo-tarjeta.mjs — el sitio público honra lo que el editor guarda
++ * en tarjeta, banners, etiquetas, precio, filtros, fondo alterno y enlaces.
++ *
++ *   npm run verify:estilo-tarjeta
++ */
++import { readFile, writeFile, mkdir, rm } from 'node:fs/promises'
++import { fileURLToPath, pathToFileURL } from 'node:url'
++import { dirname, join } from 'node:path'
++import { stripTypeScriptTypes } from 'node:module'
++
++const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
++
++function aMjs(ts) {
++  return stripTypeScriptTypes(ts, { mode: 'strip' })
++    .replace(/^import\s+type[^\n]*\n/gm, '')
++    .replace(/from\s+'\.\/([A-Za-z]+)'/g, (_, nombre) => `from './${nombre}.mjs'`)
++}
++
++const MODULOS = {
++  presentacionTienda: 'lib/website/presentacionTienda.ts',
++  colorMarca: 'lib/website/v2/colorMarca.ts',
++  fuenteTema: 'lib/website/v2/fuenteTema.ts',
++  estiloSeccion: 'lib/website/v2/estiloSeccion.ts',
++}
++
++const dir = join(ROOT, '.verify-estilo-tarjeta-tmp')
++await rm(dir, { recursive: true, force: true })
++await mkdir(dir)
++const m = {}
++try {
++  for (const [nombre, ruta] of Object.entries(MODULOS)) {
++    await writeFile(join(dir, `${nombre}.mjs`), aMjs(await readFile(join(ROOT, ruta), 'utf8')))
++  }
++  for (const nombre of Object.keys(MODULOS)) {
++    m[nombre] = await import(pathToFileURL(join(dir, `${nombre}.mjs`)).href)
++  }
++} finally {
++  await rm(dir, { recursive: true, force: true })
++}
++
++const problemas = []
++let casos = 0
++const check = (cond, msg) => {
++  casos++
++  if (!cond) problemas.push(msg)
++}
++
++const p = m.presentacionTienda
++const e = m.estiloSeccion
++
++check(p.hrefDeSlug('/rastreo') === '/rastreo', 'una barra al inicio no se duplica')
++check(p.hrefDeSlug('//rastreo') === '/rastreo', 'doble barra colapsa')
++check(p.hrefDeSlug('https://ejemplo.test/a') === 'https://ejemplo.test/a', 'https se conserva')
++check(p.hrefDeSlug('mailto:hola@ejemplo.test') === 'mailto:hola@ejemplo.test', 'mailto se conserva')
++check(p.hrefDeSlug('home') === '/', 'home es la portada')
++check(p.hrefDeSlug('#envio') === '#envio', 'ancla se conserva')
++check(p.hrefDeSlug('sede/menu') === '/sede/menu', 'slug con prefijo de sede')
++
++check(p.clasesColumnasBanner(undefined, 'grid').includes('lg:grid-cols-2'), 'sin columnas sigue en 2')
++check(p.clasesColumnasBanner(undefined, 'grid').includes('min-h') === false, 'las columnas no meten altura')
++check(p.clasesColumnasBanner({ desktop: 4, tablet: 2, mobile: 1 }, 'grid').includes('lg:grid-cols-4'), '4 columnas de escritorio')
++check(p.clasesColumnasBanner({ desktop: 4 }, 'grid').includes('grid-cols-1'), 'móvil sin valor queda en 1')
++check(p.clasesColumnasBanner(4, 'grid').includes('lg:grid-cols-4'), 'un número es el escritorio')
++check(p.clasesColumnasBanner(4, 'stack') === 'grid grid-cols-1 gap-6', 'apilado ignora las columnas')
++check(p.claseAspectoBanner('3/4') === 'aspect-[3/4]', 'proporción 3:4')
++check(p.claseAspectoBanner('16/9') === 'aspect-video', 'proporción 16:9')
++check(p.claseAspectoBanner('auto') === 'min-h-[200px]', 'automática conserva la altura')
++check(p.claseAspectoBanner(undefined) === 'min-h-[200px]', 'sin proporción conserva la altura')
++check(p.mismoId(12, '12') === true, 'id de categoría texto o número')
++check(p.mismoId(12, '') === false, 'id vacío no coincide')
++
++const descuento = p.coloresEtiqueta('discount', {}, { badge_discount_bg: '#111111', badge_discount_text: '#EEEEEE' }, '#000', '#fff')
++check(descuento.bg === '#111111' && descuento.text === '#EEEEEE', 'color de la sección para el descuento')
++const item = p.coloresEtiqueta('new', { bg_color: '#123456', text_color: '#ABCDEF' }, { badge_new_bg: '#000000' }, '#000', '#fff')
++check(item.bg === '#123456' && item.text === '#ABCDEF', 'el color del ítem gana')
++const fijo = p.coloresEtiqueta('free_shipping', {}, {}, '#000', '#fff')
++check(fijo.bg === '#3B82F6' && fijo.text === '#FFFFFF', 'envío gratis sigue azul si no hay color')
++
++const precio = p.estiloPrecio({ price_color: '#AA0000', price_weight: '500' }, '#00FF00')
++check(precio.color === '#AA0000' && precio.fontWeight === 500, 'color y grosor del precio')
++check(p.estiloPrecio({}, '#00FF00').fontWeight === 700, 'sin grosor sigue en 700')
++check(p.estiloPrecio({}, '#00FF00').color === '#00FF00', 'sin color usa el acento')
++check(p.colorPrecioAnterior({ compare_price_color: '#999999' }) === '#999999', 'precio tachado')
++check(p.colorPrecioAnterior({}) === undefined, 'sin color el tachado sigue gris')
++
++const activo = p.estiloChipFiltro(true, '#112233', { filter_active_bg: '#010101', filter_active_text: '#F0F0F0' })
++check(activo.style.backgroundColor === '#010101' && activo.style.color === '#F0F0F0', 'filtro activo')
++const inactivo = p.estiloChipFiltro(false, '#112233', {})
++check(inactivo.style.backgroundColor === undefined && inactivo.className.includes('text-gray-600'), 'filtro inactivo sin color')
++
++check(p.elegirLogo('/logo.svg', '/claro.svg', true) === '/claro.svg', 'fondo oscuro usa el logo claro')
++check(p.elegirLogo('/logo.svg', '/claro.svg', false) === '/logo.svg', 'fondo claro usa el logo normal')
++check(p.elegirLogo('/logo.svg', null, true) === '/logo.svg', 'sin logo claro se queda el normal')
++check(p.pieUsaLogoClaro('dark', null, '#fff', false) === true, 'pie oscuro')
++check(p.pieUsaLogoClaro('light', null, '#000', true) === false, 'pie claro')
++check(p.pieUsaLogoClaro('tema', null, '#fff', true) === true, 'pie del tema oscuro')
++check(p.encabezadoUsaLogoClaro('#111111', false) === true, 'encabezado con fondo oscuro')
++check(p.encabezadoUsaLogoClaro('#F5F3EF', false) === false, 'encabezado con fondo claro')
++check(p.encabezadoUsaLogoClaro(null, true) === true, 'encabezado transparente sobre la portada')
++
++const alterno = e.leerEstiloSeccion({ estilo: { fondo: 'alterno', colorAlterno: '#f5f3ef' } })
++check(alterno.colorAlterno === '#F5F3EF', 'fondo alterno en mayúsculas')
++check(e.variablesCssSeccion(alterno)['--seccion-fondo-alterno'] === '#F5F3EF', 'variable del fondo alterno')
++check(e.variablesCssSeccion({ v: 1, fondo: 'tema', colorAlterno: '#F5F3EF' })['--seccion-fondo-alterno'] === undefined, 'la variable solo con fondo alterno')
++
++const css = await readFile(join(ROOT, 'app/globals.css'), 'utf8')
++check(css.includes('var(--seccion-fondo-alterno,'), 'el CSS usa el color propio del fondo alterno')
++
++if (problemas.length) {
++  console.error(`verify:estilo-tarjeta ${problemas.length} fallos de ${casos}`)
++  for (const msg of problemas) console.error(' -', msg)
++  process.exit(1)
++}
++console.log(`verify:estilo-tarjeta ok (${casos})`)
+diff --git a/types/database.ts b/types/database.ts
+index 41b787f..23698ae 100644
+--- a/types/database.ts
++++ b/types/database.ts
+@@ -1286,6 +1286,8 @@ export type ShippingRate = Database['public']['Tables']['shipping_rates']['Row']
+ export interface OrganizationWithDetails extends Organization {
+   organization_types: OrganizationType | null
+   website_settings: WebsiteSettings | null
++  /** Logo claro para fondo oscuro. No es columna de `organizations`: sale del documento V2. */
++  logo_oscuro_url?: string | null
+ }
+ 
+ // Tipos de templates disponibles
+-- 
+2.43.0
+
+
+From 9dad03622ba6615c473a9ad8d59436c232a5f6d1 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Mon, 19 Oct 2026 21:54:06 +0000
+Subject: [PATCH 2/2] fix(GO-sitio-web): el sitio aplica banners de celular,
+ enlace de portada y topes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Los banners honran columnas, proporción y recorte en el celular. La portada
+enlaza la imagen cuando el botón está apagado. Ofertas y Productos respetan
+filas, cantidad, paginación y el orden por más nuevos.
+---
+ components/sections/hero/HeroSlider.tsx       | 133 +++++++++++-------
+ .../products/BarraFiltrosProductos.tsx        |   1 +
+ .../sections/products/FeaturedProducts.tsx    |   9 +-
+ components/sections/products/ProductsGrid.tsx |  21 +--
+ components/sections/products/ProductsList.tsx |   7 +
+ components/sections/retail/OffersGrid.tsx     |  33 +++--
+ .../sections/retail/PromoBannersGrid.tsx      |  12 +-
+ lib/products/filtrosProductos.ts              |   9 +-
+ lib/products/limiteListado.ts                 |  90 ++++++++++++
+ lib/website/presentacionTienda.ts             | 101 ++++++++++++-
+ scripts/verify-estilo-tarjeta.mjs             |  35 +++++
+ 11 files changed, 372 insertions(+), 79 deletions(-)
+ create mode 100644 lib/products/limiteListado.ts
+
+diff --git a/components/sections/hero/HeroSlider.tsx b/components/sections/hero/HeroSlider.tsx
+index f774a15..a08c6c7 100644
+--- a/components/sections/hero/HeroSlider.tsx
++++ b/components/sections/hero/HeroSlider.tsx
+@@ -1,10 +1,12 @@
+ 'use client'
+ 
+ import { useState, useEffect, useCallback, useRef } from 'react'
++import Link from 'next/link'
+ import useEmblaCarousel from 'embla-carousel-react'
+ import { ChevronLeft, ChevronRight } from 'lucide-react'
+ import { HeroBookingWidget } from './HeroBookingWidget'
+ import { HeroButtons, type HeroButtonItem } from './HeroButtons'
++import { enlaceDeImagen } from '@/lib/website/presentacionTienda'
+ 
+ interface Slide {
+   title?: string
+@@ -14,6 +16,7 @@ interface Slide {
+   video_url?: string
+   cta_text?: string
+   cta_url?: string
++  link_url?: string
+   buttons?: HeroButtonItem[]
+ }
+ 
+@@ -23,6 +26,7 @@ interface HeroSliderProps {
+     subtitle?: string
+     cta_text?: string
+     cta_url?: string
++    link_url?: string
+     slides?: Slide[]
+     buttons?: HeroButtonItem[]
+     // Altura configurable (full-screen) — F3
+@@ -277,6 +281,24 @@ function slideHasText(slide: Slide, showTitle: boolean, showCta: boolean, showBo
+   return Boolean((showTitle && (slide.title || slide.subtitle)) || showCta || showBooking)
+ }
+ 
++function esExterno(href: string): boolean {
++  return /^[a-z][a-z0-9+.-]*:/i.test(href)
++}
++
++/** Capa clicable sobre la imagen. El texto deja pasar el clic; el botón no. */
++function CapaEnlace({ href, etiqueta }: { href: string; etiqueta: string }) {
++  if (!href) return null
++  const clase = 'absolute inset-0 z-[1]'
++  if (esExterno(href)) return <a href={href} className={clase} aria-label={etiqueta} />
++  return <Link href={href} className={clase} aria-label={etiqueta} />
++}
++
++function EnvolturaEnlace({ href, children }: { href: string; children: React.ReactNode }) {
++  if (!href) return <>{children}</>
++  if (esExterno(href)) return <a href={href} className="block">{children}</a>
++  return <Link href={href} className="block">{children}</Link>
++}
++
+ /**
+  * Parsea un valor booleano que puede venir como boolean, string ("true"/"false")
+  * o undefined desde JSON de Supabase.
+@@ -405,26 +427,30 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+ 
+   // --- Render vacío (sin slides) ---
+   if (slides.length === 0) {
++    const enlace = enlaceDeImagen(null, content, showCta)
+     return (
+       <div
+-        className={`min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`}
++        className={`relative min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`}
+         style={{ backgroundColor: primaryColor, ...overlapStyle, ...heightStyle }}
+       >
+-        <div>
++        <CapaEnlace href={enlace} etiqueta={content.title || 'Ver más'} />
++        <div className="relative z-10 pointer-events-none">
+           {showTitle && content.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{content.title}</h1>}
+           {showTitle && content.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{content.subtitle}</p>}
+-          {showBooking ? (
+-            <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+-          ) : (
+-            <HeroButtons
+-              buttons={content.buttons}
+-              ctaText={content.cta_text}
+-              ctaUrl={content.cta_url}
+-              primaryColor={primaryColor || '#3B82F6'}
+-              showCta={showCta}
+-              className="justify-center"
+-            />
+-          )}
++          <div className="pointer-events-auto">
++            {showBooking ? (
++              <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
++            ) : (
++              <HeroButtons
++                buttons={content.buttons}
++                ctaText={content.cta_text}
++                ctaUrl={content.cta_url}
++                primaryColor={primaryColor || '#3B82F6'}
++                showCta={showCta}
++                className="justify-center"
++              />
++            )}
++          </div>
+         </div>
+       </div>
+     )
+@@ -443,7 +469,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+   const renderSlideText = (slide: Slide) => {
+     if (!slideHasText(slide, showTitle, showCta, showBooking)) return null
+     return (
+-      <div className="relative z-10 min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6">
++      <div className="relative z-10 pointer-events-none min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6">
+         <div className="max-w-4xl mx-auto">
+           {showTitle && slide.title && (
+             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 drop-shadow-lg">{slide.title}</h1>
+@@ -451,20 +477,22 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+           {showTitle && slide.subtitle && (
+             <p className="text-lg md:text-xl opacity-90 mb-8 drop-shadow-md">{slide.subtitle}</p>
+           )}
+-          {showBooking ? (
+-            <div className="mt-6">
+-              <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
+-            </div>
+-          ) : (
+-            <HeroButtons
+-              buttons={slide.buttons}
+-              ctaText={slide.cta_text}
+-              ctaUrl={slide.cta_url}
+-              primaryColor={primaryColor || '#3B82F6'}
+-              showCta={showCta}
+-              className="justify-center"
+-            />
+-          )}
++          <div className="pointer-events-auto">
++            {showBooking ? (
++              <div className="mt-6">
++                <HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} />
++              </div>
++            ) : (
++              <HeroButtons
++                buttons={slide.buttons}
++                ctaText={slide.cta_text}
++                ctaUrl={slide.cta_url}
++                primaryColor={primaryColor || '#3B82F6'}
++                showCta={showCta}
++                className="justify-center"
++              />
++            )}
++          </div>
+         </div>
+       </div>
+     )
+@@ -483,6 +511,8 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+    */
+   const renderSlide = (slide: Slide, fullScreen: boolean, isFirst: boolean = false) => {
+     const hasText = slideHasText(slide, showTitle, showCta, showBooking)
++    const enlace = enlaceDeImagen(slide, content, showCta)
++    const etiqueta = slide.title || content.title || 'Ver más'
+ 
+     if (slide.video_url) {
+       // Video siempre es full-screen con object-cover
+@@ -497,6 +527,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+             playsInline
+           />
+           {showOverlay && <div className="absolute inset-0 bg-black/40" />}
++          <CapaEnlace href={enlace} etiqueta={etiqueta} />
+           {renderSlideText(slide)}
+         </div>
+       )
+@@ -514,6 +545,7 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+               <img src={slide.image_url} alt={slide.title || ''} className="w-full h-full object-cover" loading={isFirst ? 'eager' : 'lazy'} fetchPriority={isFirst ? 'high' : 'low'} />
+             </picture>
+             {showOverlay && <div className="absolute inset-0 bg-black/40" />}
++            <CapaEnlace href={enlace} etiqueta={etiqueta} />
+             {renderSlideText(slide)}
+           </div>
+         )
+@@ -523,32 +555,37 @@ export function HeroSlider({ content, organization, primaryColor }: HeroSliderPr
+       // Comportamiento heredado de producción — se adapta a la imagen.
+       // image_max_height controla el límite superior (default 85vh).
+       return (
+-        <picture className="block w-full bg-gray-100 dark:bg-gray-800">
+-          {slide.image_url_mobile && (
+-            <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
+-          )}
+-          <img
+-            src={slide.image_url}
+-            alt={slide.title || ''}
+-            className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
+-            loading={isFirst ? 'eager' : 'lazy'}
+-            fetchPriority={isFirst ? 'high' : 'low'}
+-          />
+-        </picture>
++        <EnvolturaEnlace href={enlace}>
++          <picture className="block w-full bg-gray-100 dark:bg-gray-800">
++            {slide.image_url_mobile && (
++              <source media="(max-width: 767px)" srcSet={slide.image_url_mobile} />
++            )}
++            <img
++              src={slide.image_url}
++              alt={slide.title || etiqueta}
++              className={`w-full h-auto ${imageMaxHClass} object-contain mx-auto transition-opacity duration-700`}
++              loading={isFirst ? 'eager' : 'lazy'}
++              fetchPriority={isFirst ? 'high' : 'low'}
++            />
++          </picture>
++        </EnvolturaEnlace>
+       )
+     }
+ 
+     // Sin imagen ni video: fondo de color con texto
+     return (
+-      <div className={`min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`} style={{ backgroundColor: primaryColor, ...heightStyle }}>
+-        <div className="max-w-4xl mx-auto">
++      <div className={`relative min-h-[50vh] md:min-h-[70vh] flex items-center justify-center text-white text-center px-4 sm:px-6`} style={{ backgroundColor: primaryColor, ...heightStyle }}>
++        <CapaEnlace href={enlace} etiqueta={etiqueta} />
++        <div className="relative z-10 pointer-events-none max-w-4xl mx-auto">
+           {showTitle && slide.title && <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">{slide.title}</h1>}
+           {showTitle && slide.subtitle && <p className="text-lg md:text-xl opacity-90 mb-8">{slide.subtitle}</p>}
+-          {showBooking ? (
+-            <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
+-          ) : (
+-            <HeroButtons buttons={slide.buttons} ctaText={slide.cta_text} ctaUrl={slide.cta_url} primaryColor={primaryColor || '#3B82F6'} showCta={showCta} className="justify-center" />
+-          )}
++          <div className="pointer-events-auto">
++            {showBooking ? (
++              <div className="mt-6"><HeroBookingWidget primaryColor={primaryColor || '#3B82F6'} /></div>
++            ) : (
++              <HeroButtons buttons={slide.buttons} ctaText={slide.cta_text} ctaUrl={slide.cta_url} primaryColor={primaryColor || '#3B82F6'} showCta={showCta} className="justify-center" />
++            )}
++          </div>
+         </div>
+       </div>
+     )
+diff --git a/components/sections/products/BarraFiltrosProductos.tsx b/components/sections/products/BarraFiltrosProductos.tsx
+index 60a7812..17d0288 100644
+--- a/components/sections/products/BarraFiltrosProductos.tsx
++++ b/components/sections/products/BarraFiltrosProductos.tsx
+@@ -142,6 +142,7 @@ export function BarraFiltrosProductos({
+               className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
+             >
+               <option value="default">Ordenar</option>
++              <option value="newest">Más nuevos</option>
+               <option value="price_asc">Precio: menor a mayor</option>
+               <option value="price_desc">Precio: mayor a menor</option>
+               <option value="name">Nombre A-Z</option>
+diff --git a/components/sections/products/FeaturedProducts.tsx b/components/sections/products/FeaturedProducts.tsx
+index 4db4c7d..9000e4c 100644
+--- a/components/sections/products/FeaturedProducts.tsx
++++ b/components/sections/products/FeaturedProducts.tsx
+@@ -1,6 +1,6 @@
+ 'use client'
+ 
+-import { useState, useRef, useCallback, useEffect } from 'react'
++import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+ import { useRouter } from 'next/navigation'
+ import { ChevronLeft, ChevronRight } from 'lucide-react'
+ import { ProductCard } from './ProductCard'
+@@ -8,6 +8,7 @@ import { getCartKey } from '@/lib/utils'
+ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+ import { BarraFiltrosProductos, SinResultadosFiltros, useFiltrosProductos } from './BarraFiltrosProductos'
+ import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
++import { ordenarListado } from '@/lib/products/limiteListado'
+ 
+ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+ 
+@@ -37,6 +38,7 @@ interface FeaturedProductsProps {
+     title?: string
+     subtitle?: string
+     max_items?: number
++    sort_order?: string
+     filter?: string
+     // Card style
+     card_radius?: number
+@@ -76,7 +78,10 @@ export function FeaturedProducts({ content, primaryColor = '#3B82F6', data, orga
+   const router = useRouter()
+   const showBuyNow = organization?.website_settings?.show_buy_now_button !== false
+   const branchId = data?.branchId ?? null
+-  const allProducts = data?.products || []
++  const allProducts = useMemo(
++    () => ordenarListado(data?.products || [], content.sort_order),
++    [data?.products, content.sort_order],
++  )
+   const maxItems = content.max_items || 8
+   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
+   const filtros = useFiltrosProductos(allProducts)
+diff --git a/components/sections/products/ProductsGrid.tsx b/components/sections/products/ProductsGrid.tsx
+index fc2d02a..4d292d3 100644
+--- a/components/sections/products/ProductsGrid.tsx
++++ b/components/sections/products/ProductsGrid.tsx
+@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
+ import { ProductCard } from './ProductCard'
+ import { BarraFiltrosProductos, useFiltrosProductos } from './BarraFiltrosProductos'
+ import { categoriasDisponibles } from '@/lib/products/filtrosProductos'
++import { ordenarListado, recorteListado } from '@/lib/products/limiteListado'
++import { clasesColumnasProductos } from '@/lib/website/presentacionTienda'
+ import { getCartKey } from '@/lib/utils'
+ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+ 
+@@ -41,6 +43,9 @@ interface ProductsGridProps {
+     show_categories?: boolean
+     selected_category_ids?: number[]
+     max_items?: number
++    rows?: number
++    columns?: unknown
++    show_pagination?: boolean
+     sort_order?: string
+     filter?: string
+     // Layout
+@@ -75,8 +80,6 @@ interface ProductsGridProps {
+   organization?: { subdomain?: string; website_settings?: any }
+ }
+ 
+-const ITEMS_PER_PAGE = 12
+-
+ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organization }: ProductsGridProps) {
+   const { ruta } = useRutaSitio()
+   const router = useRouter()
+@@ -97,16 +100,18 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
+   // memoria, sobre lo ya cargado).
+   const baseProducts = useMemo(() => {
+     const selectedIds = content.selected_category_ids || []
+-    return selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
+-  }, [products, content.selected_category_ids])
++    const base = selectedIds.length > 0 ? products.filter((p: any) => selectedIds.includes(p.category_id)) : products
++    return ordenarListado(base, content.sort_order)
++  }, [products, content.selected_category_ids, content.sort_order])
+   const filtros = useFiltrosProductos(baseProducts, () => setCurrentPage(1))
+   const filteredProducts = filtros.filtrados
+   const selectedCategory = filtros.estado.categoria
+   const onlyOffers = filtros.estado.soloOfertas
+   const busqueda = filtros.estado.busqueda.trim()
+ 
+-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
++  const recorte = recorteListado(filteredProducts.length, currentPage, content)
++  const totalPages = recorte.paginas
++  const paginatedProducts = filteredProducts.slice(recorte.desde, recorte.hasta)
+ 
+   const addToCart = (product: any) => {
+     const price = getPrice(product)
+@@ -165,7 +170,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
+           categorias={availableCategories}
+           estado={filtros.estado}
+           cambiar={filtros.cambiar}
+-          total={filteredProducts.length}
++          total={recorte.universo}
+           primaryColor={primaryColor}
+           mostrarFiltros={content.show_filters !== false}
+           mostrarBuscador={content.show_search === true}
+@@ -175,7 +180,7 @@ export function ProductsGrid({ content, primaryColor = '#3B82F6', data, organiza
+       )}
+ 
+       {paginatedProducts.length > 0 ? (
+-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
++        <div className={clasesColumnasProductos(content.columns)}>
+           {paginatedProducts.map((product: any) => {
+             const isAdded = addedToCart.has(product.id)
+             return (
+diff --git a/components/sections/products/ProductsList.tsx b/components/sections/products/ProductsList.tsx
+index c45c03c..b682fa4 100644
+--- a/components/sections/products/ProductsList.tsx
++++ b/components/sections/products/ProductsList.tsx
+@@ -37,6 +37,13 @@ export function ProductsList({ content, primaryColor = '#3B82F6', data, organiza
+   else if (sortOrder === 'price_desc') sorted.sort((a, b) => (getProductPrice(b) ?? 0) - (getProductPrice(a) ?? 0))
+   else if (sortOrder === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+   else if (sortOrder === 'sales') sorted.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
++  else if (sortOrder === 'newest') {
++    const marca = (p: any) => {
++      const t = Date.parse(typeof p?.created_at === 'string' ? p.created_at : '')
++      return Number.isFinite(t) ? t : 0
++    }
++    sorted.sort((a, b) => marca(b) - marca(a))
++  }
+ 
+   // Filtros y buscador del visitante sobre los ya cargados; el límite va después.
+   const filtros = useFiltrosProductos(sorted)
+diff --git a/components/sections/retail/OffersGrid.tsx b/components/sections/retail/OffersGrid.tsx
+index 7b4ff71..9342ffa 100644
+--- a/components/sections/retail/OffersGrid.tsx
++++ b/components/sections/retail/OffersGrid.tsx
+@@ -8,11 +8,11 @@ import { ProductCard } from '@/components/sections/products/ProductCard'
+ import { getCartKey } from '@/lib/utils'
+ import { useRutaSitio } from '@/lib/outlet/RutaSitioContext'
+ import { BuscadorProductos } from '@/components/sections/products/BarraFiltrosProductos'
+-import { estiloChipFiltro } from '@/lib/website/presentacionTienda'
++import { clasesColumnasProductos, estiloChipFiltro } from '@/lib/website/presentacionTienda'
+ import { coincideBusqueda } from '@/lib/products/filtrosProductos'
++import { ordenInicialOfertas, ordenarListado, recorteListado, type OrdenOfertas } from '@/lib/products/limiteListado'
+ 
+ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+-const ITEMS_PER_PAGE = 12
+ 
+ function getImageUrl(product: any): string | null {
+   if (!product.product_images || product.product_images.length === 0) return null
+@@ -34,6 +34,11 @@ interface OffersGridProps {
+     title?: string
+     subtitle?: string
+     selected_category_ids?: number[]
++    max_items?: number
++    rows?: number
++    columns?: unknown
++    show_pagination?: boolean
++    sort_order?: string
+     show_filters?: boolean
+     show_search?: boolean
+     // PRODUCT_CARD_INTERACTION_FIELDS (los mismos que lee ProductsGrid)
+@@ -68,7 +73,8 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
+   const [addedToCart, setAddedToCart] = useState<Set<number>>(new Set())
+   const [currentPage, setCurrentPage] = useState(1)
+   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+-  const [sortBy, setSortBy] = useState<'sales' | 'discount' | 'price_asc' | 'price_desc'>('sales')
++  const [ordenVisitante, setOrdenVisitante] = useState<OrdenOfertas | null>(null)
++  const sortBy = ordenVisitante ?? ordenInicialOfertas(content.sort_order)
+   const [busqueda, setBusqueda] = useState('')
+   // «Mostrar filtros»: esta sección siempre los pintó (ausente = se muestran). «Mostrar buscador»:
+   // ausente = sin buscador, como antes de leerlo. Ambos trabajan sobre las ofertas ya cargadas.
+@@ -95,15 +101,14 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
+       : products
+     let result = selectedCategory ? baseProducts.filter((p: any) => p.category_id === selectedCategory) : [...baseProducts]
+     if (busqueda.trim()) result = result.filter((p: any) => coincideBusqueda(p, busqueda))
+-    if (sortBy === 'sales') result.sort((a: any, b: any) => (b.sales_count || 0) - (a.sales_count || 0))
+-    else if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
+-    else if (sortBy === 'price_asc') result.sort((a: any, b: any) => Number(a.product_prices?.[0]?.price || 0) - Number(b.product_prices?.[0]?.price || 0))
+-    else if (sortBy === 'price_desc') result.sort((a: any, b: any) => Number(b.product_prices?.[0]?.price || 0) - Number(a.product_prices?.[0]?.price || 0))
++    if (sortBy === 'discount') result.sort((a: any, b: any) => getDiscount(b) - getDiscount(a))
++    else result = ordenarListado(result, sortBy)
+     return result
+   }, [products, selectedCategory, sortBy, busqueda, content.selected_category_ids])
+ 
+-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
++  const recorte = recorteListado(filteredProducts.length, currentPage, content)
++  const totalPages = recorte.paginas
++  const paginatedProducts = filteredProducts.slice(recorte.desde, recorte.hasta)
+   const resetPage = () => setCurrentPage(1)
+ 
+   const addToCart = (product: any) => {
+@@ -168,7 +173,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
+             {showSearch && (
+               <div className="flex items-center gap-3">
+                 <BuscadorProductos valor={busqueda} onChange={(v) => { setBusqueda(v); resetPage() }} placeholder="Buscar ofertas…" />
+-                {!showFilters && <span className="text-xs text-gray-400 ml-auto" aria-live="polite">{filteredProducts.length} ofertas</span>}
++                {!showFilters && <span className="text-xs text-gray-400 ml-auto" aria-live="polite">{recorte.universo} ofertas</span>}
+               </div>
+             )}
+             {showFilters && categories.length > 0 && (
+@@ -195,15 +200,17 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
+             <div className="flex items-center gap-2 flex-wrap">
+               <select
+                 value={sortBy}
+-                onChange={(e) => { setSortBy(e.target.value as any); resetPage() }}
++                onChange={(e) => { setOrdenVisitante(e.target.value as OrdenOfertas); resetPage() }}
+                 className="px-3 py-1.5 rounded-full text-xs sm:text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 outline-none"
+               >
+                 <option value="sales">🔥 Más vendidos</option>
++                <option value="newest">Más nuevos</option>
+                 <option value="discount">% Mayor descuento</option>
+                 <option value="price_asc">Precio: menor a mayor</option>
+                 <option value="price_desc">Precio: mayor a menor</option>
++                <option value="name">Nombre A-Z</option>
+               </select>
+-              <span className="text-xs text-gray-400 ml-auto">{filteredProducts.length} ofertas</span>
++              <span className="text-xs text-gray-400 ml-auto">{recorte.universo} ofertas</span>
+             </div>
+             )}
+           </div>
+@@ -211,7 +218,7 @@ export function OffersGrid({ content, primaryColor = '#3B82F6', organization, da
+ 
+           {/* Grid */}
+           {paginatedProducts.length > 0 ? (
+-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
++            <div className={clasesColumnasProductos(content.columns)}>
+               {paginatedProducts.map((product: any) => {
+                 const isAdded = addedToCart.has(product.id)
+                 return (
+diff --git a/components/sections/retail/PromoBannersGrid.tsx b/components/sections/retail/PromoBannersGrid.tsx
+index 9852bf5..aaf4fbd 100644
+--- a/components/sections/retail/PromoBannersGrid.tsx
++++ b/components/sections/retail/PromoBannersGrid.tsx
+@@ -1,7 +1,7 @@
+ import Link from 'next/link'
+ import Image from 'next/image'
+ import { Package } from 'lucide-react'
+-import { claseAspectoBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
++import { claseAspectoBanner, claseImagenBanner, clasesColumnasBanner, hrefDeSlug, mismoId } from '@/lib/website/presentacionTienda'
+ 
+ const SUPABASE_URL =
+   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+@@ -46,7 +46,11 @@ interface PromoBannersGridProps {
+     subtitle?: string
+     layout?: 'grid' | 'carousel' | 'stack'
+     columns?: unknown
++    columns_mobile?: unknown
+     aspect_ratio?: unknown
++    aspect_ratio_mobile?: unknown
++    image_fit?: unknown
++    image_position?: unknown
+     banners?: BannerItem[]
+   }
+   primaryColor?: string
+@@ -107,7 +111,7 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
+   const banners = content.banners || []
+   const layout = content.layout || 'grid'
+ 
+-  const gridClass = `${clasesColumnasBanner(content.columns, layout)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
++  const gridClass = `${clasesColumnasBanner(content.columns, layout, content.columns_mobile)}${layout === 'carousel' ? ' overflow-x-auto' : ''}`
+ 
+   return (
+     <div>
+@@ -144,14 +148,14 @@ export function PromoBannersGrid({ content, primaryColor = '#3B82F6', data }: Pr
+ 
+             const card = (
+               <div
+-                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio)} flex flex-col justify-center p-8 w-full`}
++                className={`relative rounded-2xl overflow-hidden ${claseAspectoBanner(content.aspect_ratio, content.aspect_ratio_mobile)} flex flex-col justify-center p-8 w-full`}
+                 style={{ backgroundColor: banner.bg_color || primaryColor }}
+               >
+                 {banner.image_url && (
+                   <img
+                     src={banner.image_url}
+                     alt={banner.title || ''}
+-                    className="absolute inset-0 w-full h-full object-cover"
++                    className={claseImagenBanner(content.image_fit, content.image_position)}
+                     loading="lazy"
+                   />
+                 )}
+diff --git a/lib/products/filtrosProductos.ts b/lib/products/filtrosProductos.ts
+index cd27d0b..66c301d 100644
+--- a/lib/products/filtrosProductos.ts
++++ b/lib/products/filtrosProductos.ts
+@@ -9,7 +9,7 @@
+  * Pura y sin DOM: la prueba `scripts/verify-interruptores.mjs`.
+  */
+ 
+-export type OrdenFiltro = 'default' | 'price_asc' | 'price_desc' | 'name'
++export type OrdenFiltro = 'default' | 'price_asc' | 'price_desc' | 'name' | 'newest'
+ 
+ export interface EstadoFiltros {
+   categoria: number | null
+@@ -57,6 +57,13 @@ export function filtrarProductos<T>(productos: T[], estado: EstadoFiltros): T[]
+   if (estado.orden === 'price_asc') result.sort((a, b) => (precio(a) ?? 0) - (precio(b) ?? 0))
+   else if (estado.orden === 'price_desc') result.sort((a, b) => (precio(b) ?? 0) - (precio(a) ?? 0))
+   else if (estado.orden === 'name') result.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
++  else if (estado.orden === 'newest') {
++    const marca = (p: any) => {
++      const t = Date.parse(typeof p?.created_at === 'string' ? p.created_at : '')
++      return Number.isFinite(t) ? t : 0
++    }
++    result.sort((a, b) => marca(b) - marca(a))
++  }
+   return result
+ }
+ 
+diff --git a/lib/products/limiteListado.ts b/lib/products/limiteListado.ts
+new file mode 100644
+index 0000000..7a04cb2
+--- /dev/null
++++ b/lib/products/limiteListado.ts
+@@ -0,0 +1,90 @@
++/**
++ * Tope, paginación y orden de Productos y Ofertas.
++ * Lo que el editor guarda en `max_items`, `rows`, `columns`, `show_pagination`
++ * y `sort_order` tiene que recortar la lista que ya cargó la página.
++ *
++ * Puro: sin React, Next ni Supabase.
++ */
++
++export function enteroPositivo(v: unknown): number | null {
++  const x = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN
++  if (!Number.isFinite(x)) return null
++  const n = Math.round(x)
++  return n > 0 ? n : null
++}
++
++/** Columnas de escritorio (1–8). Un número o `columns.desktop`. Si no hay, el fallback. */
++export function columnasEscritorio(columns: unknown, fallback = 4): number {
++  const dentro = (n: number | null) => (n && n <= 8 ? n : fallback)
++  if (typeof columns === 'number' || (typeof columns === 'string' && columns.trim())) {
++    return dentro(enteroPositivo(columns))
++  }
++  if (columns && typeof columns === 'object' && 'desktop' in columns) {
++    return dentro(enteroPositivo((columns as Record<string, unknown>).desktop))
++  }
++  return fallback
++}
++
++export interface ContenidoListado {
++  max_items?: unknown
++  rows?: unknown
++  columns?: unknown
++  show_pagination?: unknown
++  sort_order?: unknown
++}
++
++/**
++ * Cantidad máxima. `max_items` y filas × columnas de escritorio se combinan
++ * con el menor. Sin ninguno, no hay tope (null) y la lista pagina como antes.
++ */
++export function topeProductos(content: ContenidoListado | null | undefined, columnasPorDefecto = 4): number | null {
++  const max = enteroPositivo(content?.max_items)
++  const filas = enteroPositivo(content?.rows)
++  const porFilas = filas ? filas * columnasEscritorio(content?.columns, columnasPorDefecto) : null
++  if (max && porFilas) return Math.min(max, porFilas)
++  return max ?? porFilas
++}
++
++export function recorteListado(total: number, pagina: number, content: ContenidoListado | null | undefined) {
++  const tope = topeProductos(content)
++  const universo = tope ? Math.min(Math.max(0, total), tope) : Math.max(0, total)
++  const paginar = content?.show_pagination !== false
++  const porPagina = paginar ? 12 : Math.max(universo, 1)
++  const paginas = Math.max(1, Math.ceil(universo / porPagina) || 1)
++  const p = Math.min(Math.max(1, Math.round(pagina) || 1), paginas)
++  const desde = (p - 1) * porPagina
++  const hasta = Math.min(desde + porPagina, universo)
++  return { desde, hasta, paginas, universo }
++}
++
++function marcaTiempo(p: { created_at?: unknown }): number {
++  const t = Date.parse(typeof p?.created_at === 'string' ? p.created_at : '')
++  return Number.isFinite(t) ? t : 0
++}
++
++function precioDe(p: { product_prices?: Array<{ price?: unknown }> }): number {
++  const n = Number(p?.product_prices?.[0]?.price)
++  return Number.isFinite(n) ? n : 0
++}
++
++/** Orden de la sección. `default` y cualquier otro valor dejan el orden de carga. */
++export function ordenarListado<T>(productos: T[], orden: unknown): T[] {
++  const lista = [...productos]
++  if (orden === 'price_asc') lista.sort((a, b) => precioDe(a as never) - precioDe(b as never))
++  else if (orden === 'price_desc') lista.sort((a, b) => precioDe(b as never) - precioDe(a as never))
++  else if (orden === 'name') lista.sort((a, b) => String((a as { name?: string }).name || '').localeCompare(String((b as { name?: string }).name || '')))
++  else if (orden === 'sales') lista.sort((a, b) => (Number((b as { sales_count?: unknown }).sales_count) || 0) - (Number((a as { sales_count?: unknown }).sales_count) || 0))
++  else if (orden === 'newest') lista.sort((a, b) => marcaTiempo(b as never) - marcaTiempo(a as never))
++  return lista
++}
++
++export type OrdenOfertas = 'sales' | 'discount' | 'price_asc' | 'price_desc' | 'newest' | 'name'
++
++/** Ofertas sin orden guardado siguen por más vendidos. */
++export function ordenInicialOfertas(orden: unknown): OrdenOfertas {
++  if (
++    orden === 'price_asc' || orden === 'price_desc' || orden === 'newest'
++    || orden === 'name' || orden === 'discount' || orden === 'sales'
++  ) return orden
++  return 'sales'
++}
+diff --git a/lib/website/presentacionTienda.ts b/lib/website/presentacionTienda.ts
+index daaa722..cb41420 100644
+--- a/lib/website/presentacionTienda.ts
++++ b/lib/website/presentacionTienda.ts
+@@ -37,7 +37,11 @@ const CLASE_ESCRITORIO: Record<number, string> = {
+ }
+ 
+ /** Rejilla de banners. Sin columnas guardadas se queda en 2, como antes. */
+-export function clasesColumnasBanner(columns: unknown, layout: string | undefined): string {
++export function clasesColumnasBanner(
++  columns: unknown,
++  layout: string | undefined,
++  columnsMobile?: unknown,
++): string {
+   if (layout === 'stack') return 'grid grid-cols-1 gap-6'
+   let mobile = 1
+   let tablet = 2
+@@ -53,18 +57,109 @@ export function clasesColumnasBanner(columns: unknown, layout: string | undefine
+       mobile = nCol(o.mobile, 1)
+     }
+   }
++  const forzado = nCol(columnsMobile, 0)
++  if (forzado === 1 || forzado === 2) mobile = forzado
+   return `grid ${CLASE_MOVIL[mobile]} ${CLASE_TABLET[tablet]} ${CLASE_ESCRITORIO[desktop]} gap-6`
+ }
+ 
+-/** `auto` y ausente conservan la tarjeta apaisada de siempre. */
+-export function claseAspectoBanner(ratio: unknown): string {
++function claseAspectoUna(ratio: unknown): string {
+   if (ratio === '1/1') return 'aspect-square'
+   if (ratio === '4/3') return 'aspect-[4/3]'
+   if (ratio === '3/4') return 'aspect-[3/4]'
+   if (ratio === '16/9') return 'aspect-video'
++  if (ratio === '3/1') return 'aspect-[3/1]'
+   return 'min-h-[200px]'
+ }
+ 
++function claseAspectoMd(ratio: unknown): string {
++  if (ratio === '1/1') return 'md:aspect-square'
++  if (ratio === '4/3') return 'md:aspect-[4/3]'
++  if (ratio === '3/4') return 'md:aspect-[3/4]'
++  if (ratio === '16/9') return 'md:aspect-video'
++  if (ratio === '3/1') return 'md:aspect-[3/1]'
++  return 'md:aspect-auto md:min-h-[200px]'
++}
++
++/**
++ * `auto` y ausente conservan la tarjeta de siempre.
++ * Con proporción de celular distinta, el prefijo sin breakpoint es el móvil
++ * y `md:` recupera la de escritorio.
++ */
++export function claseAspectoBanner(ratio: unknown, ratioMovil?: unknown): string {
++  const movil = typeof ratioMovil === 'string' ? ratioMovil : ''
++  if (!movil || movil === 'auto' || movil === ratio) return claseAspectoUna(ratio)
++  return `${claseAspectoUna(movil)} ${claseAspectoMd(ratio)}`
++}
++
++/** Recorte y anclaje de la foto del banner. Ausente = cubrir, centrada. */
++export function claseImagenBanner(fit: unknown, position: unknown): string {
++  const ajuste = fit === 'contain' ? 'object-contain' : 'object-cover'
++  const pos = position === 'left' ? 'object-left'
++    : position === 'right' ? 'object-right'
++    : position === 'top' ? 'object-top'
++    : position === 'bottom' ? 'object-bottom'
++    : 'object-center'
++  return `absolute inset-0 w-full h-full ${ajuste} ${pos}`
++}
++
++const REJILLA_PRODUCTOS = 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6'
++const P_BASE: Record<number, string> = {
++  1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-2', 4: 'grid-cols-2',
++  5: 'grid-cols-2', 6: 'grid-cols-2', 7: 'grid-cols-2', 8: 'grid-cols-2',
++}
++const P_SM: Record<number, string> = {
++  1: 'sm:grid-cols-1', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-2', 4: 'sm:grid-cols-2',
++  5: 'sm:grid-cols-2', 6: 'sm:grid-cols-2', 7: 'sm:grid-cols-2', 8: 'sm:grid-cols-2',
++}
++const P_LG: Record<number, string> = {
++  1: 'lg:grid-cols-1', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4',
++  5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7', 8: 'lg:grid-cols-8',
++}
++const P_XL: Record<number, string> = {
++  1: 'xl:grid-cols-1', 2: 'xl:grid-cols-2', 3: 'xl:grid-cols-3', 4: 'xl:grid-cols-4',
++  5: 'xl:grid-cols-5', 6: 'xl:grid-cols-6', 7: 'xl:grid-cols-7', 8: 'xl:grid-cols-8',
++}
++
++/** Sin columnas guardadas, la rejilla de productos no cambia. */
++export function clasesColumnasProductos(columns: unknown): string {
++  if (columns == null || columns === '') return REJILLA_PRODUCTOS
++  let mobile = 2
++  let tablet = 3
++  let desktop = 4
++  let explicito = false
++  if (typeof columns === 'number' || (typeof columns === 'string' && String(columns).trim())) {
++    desktop = nCol(columns, 4)
++    tablet = Math.min(desktop, 3)
++    mobile = Math.min(desktop, 2)
++    explicito = true
++  } else if (columns && typeof columns === 'object') {
++    const o = columns as Record<string, unknown>
++    if ('desktop' in o || 'tablet' in o || 'mobile' in o) {
++      desktop = nCol(o.desktop, 4)
++      tablet = nCol(o.tablet ?? Math.min(desktop, 3), Math.min(desktop, 3))
++      mobile = nCol(o.mobile, Math.min(desktop, 2))
++      explicito = true
++    }
++  }
++  if (!explicito) return REJILLA_PRODUCTOS
++  return `grid ${P_BASE[mobile]} ${P_SM[mobile]} ${P_LG[tablet]} ${P_XL[desktop]} gap-3 sm:gap-6`
++}
++
++/**
++ * Enlace de toda la imagen de la portada.
++ * Con el botón visible no se reutiliza su URL: el botón ya la usa.
++ * Apagado el botón, la URL del botón sirve de enlace de la imagen.
++ */
++export function enlaceDeImagen(
++  slide: { link_url?: unknown; cta_url?: unknown } | null | undefined,
++  content: { link_url?: unknown; cta_url?: unknown } | null | undefined,
++  mostrarBoton: boolean,
++): string {
++  const propio = textoGuardado(slide?.link_url) || textoGuardado(content?.link_url)
++  const bruto = propio || (mostrarBoton ? '' : textoGuardado(slide?.cta_url) || textoGuardado(content?.cta_url))
++  return bruto ? hrefDeSlug(bruto) : ''
++}
++
+ export function mismoId(a: unknown, b: unknown): boolean {
+   if (a === null || a === undefined || b === null || b === undefined || a === '' || b === '') return false
+   return String(a) === String(b)
+diff --git a/scripts/verify-estilo-tarjeta.mjs b/scripts/verify-estilo-tarjeta.mjs
+index 36844fa..2b265cc 100644
+--- a/scripts/verify-estilo-tarjeta.mjs
++++ b/scripts/verify-estilo-tarjeta.mjs
+@@ -19,6 +19,7 @@ function aMjs(ts) {
+ 
+ const MODULOS = {
+   presentacionTienda: 'lib/website/presentacionTienda.ts',
++  limiteListado: 'lib/products/limiteListado.ts',
+   colorMarca: 'lib/website/v2/colorMarca.ts',
+   fuenteTema: 'lib/website/v2/fuenteTema.ts',
+   estiloSeccion: 'lib/website/v2/estiloSeccion.ts',
+@@ -47,6 +48,7 @@ const check = (cond, msg) => {
+ }
+ 
+ const p = m.presentacionTienda
++const lista = m.limiteListado
+ const e = m.estiloSeccion
+ 
+ check(p.hrefDeSlug('/rastreo') === '/rastreo', 'una barra al inicio no se duplica')
+@@ -67,6 +69,39 @@ check(p.claseAspectoBanner('3/4') === 'aspect-[3/4]', 'proporción 3:4')
+ check(p.claseAspectoBanner('16/9') === 'aspect-video', 'proporción 16:9')
+ check(p.claseAspectoBanner('auto') === 'min-h-[200px]', 'automática conserva la altura')
+ check(p.claseAspectoBanner(undefined) === 'min-h-[200px]', 'sin proporción conserva la altura')
++check(p.claseAspectoBanner('3/1') === 'aspect-[3/1]', 'proporción 3:1')
++check(p.claseAspectoBanner('3/4', '3/1') === 'aspect-[3/1] md:aspect-[3/4]', 'el celular puede usar otra proporción')
++check(p.claseAspectoBanner(undefined, '3/1') === 'aspect-[3/1] md:aspect-auto md:min-h-[200px]', 'escritorio automático y celular 3:1')
++check(p.claseAspectoBanner('16/9', 'auto') === 'aspect-video', 'proporción de celular vacía no cambia el escritorio')
++check(p.clasesColumnasBanner(4, 'grid').includes('grid-cols-1'), 'sin columnas de celular sigue en una')
++check(p.clasesColumnasBanner(4, 'grid', 2).includes('grid-cols-2') && p.clasesColumnasBanner(4, 'grid', 2).includes('lg:grid-cols-4'), 'dos columnas en el celular')
++check(p.clasesColumnasBanner({ desktop: 4, mobile: 1 }, 'grid', 2).includes('grid-cols-2'), 'la columna del celular gana a la pestaña')
++check(p.claseImagenBanner(undefined, undefined) === 'absolute inset-0 w-full h-full object-cover object-center', 'la imagen se cubre centrada si no hay ajuste')
++check(p.claseImagenBanner('contain', 'left') === 'absolute inset-0 w-full h-full object-contain object-left', 'se puede mostrar completa y anclada a la izquierda')
++check(p.enlaceDeImagen({ cta_url: '/ofertas' }, {}, true) === '', 'con el botón visible la imagen no reutiliza su URL')
++check(p.enlaceDeImagen({ cta_url: '/ofertas' }, {}, false) === '/ofertas', 'sin botón, la imagen usa la URL del botón')
++check(p.enlaceDeImagen({ link_url: 'https://ejemplo.test/a' }, { cta_url: '/x' }, false) === 'https://ejemplo.test/a', 'el enlace de la imagen gana')
++check(p.enlaceDeImagen({}, { link_url: '//rastreo' }, true) === '/rastreo', 'el enlace de la sección colapsa la doble barra')
++check(p.clasesColumnasProductos(undefined) === 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6', 'la rejilla de productos no cambia si no hay columnas')
++check(p.clasesColumnasProductos(1) === 'grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-1 gap-3 sm:gap-6', 'una columna de productos se honra')
++check(lista.topeProductos({ max_items: 4, rows: 1 }) === 4, 'cantidad 4 y una fila dejan 4')
++check(lista.topeProductos({ rows: 1, columns: 4 }) === 4, 'una fila por cuatro columnas deja 4')
++check(lista.topeProductos({ max_items: 4, rows: 2, columns: 4 }) === 4, 'gana el tope más chico')
++check(lista.topeProductos({ rows: 1 }) === 4, 'una fila sin columnas usa las 4 de escritorio')
++check(lista.topeProductos({}) === null, 'sin tope no recorta')
++const cuatro = lista.recorteListado(40, 1, { max_items: 4, rows: 1 })
++check(cuatro.paginas === 1 && cuatro.hasta === 4, 'cuatro productos no paginan')
++const sinPagina = lista.recorteListado(40, 1, { show_pagination: false })
++check(sinPagina.paginas === 1 && sinPagina.hasta === 40, 'sin paginación se ve todo lo cargado')
++const pagina2 = lista.recorteListado(40, 2, {})
++check(pagina2.desde === 12 && pagina2.paginas === 4, 'sin tope se mantiene el corte de 12')
++const apagada = lista.recorteListado(40, 1, { show_pagination: false, max_items: 4 })
++check(apagada.paginas === 1 && apagada.hasta === 4, 'apagada y con cantidad, solo esa cantidad')
++const nuevos = lista.ordenarListado(
++  [{ id: 1, created_at: '2020-01-01' }, { id: 2 }, { id: 3, created_at: '2024-05-01' }],
++  'newest',
++).map((p) => p.id).join(',')
++check(nuevos === '3,1,2', 'más nuevos primero y sin fecha al final')
+ check(p.mismoId(12, '12') === true, 'id de categoría texto o número')
+ check(p.mismoId(12, '') === false, 'id vacío no coincide')
+ 
+-- 
+2.43.0
+

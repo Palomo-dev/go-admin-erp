@@ -113,6 +113,7 @@ export const TEXTOS_DISENO = {
   },
   publicar: {
     listo: 'Publicaste los cambios.',
+    activarFallo: 'La versión quedó publicada, pero la web sigue con el sitio anterior. Vuelve a publicar para activarla.',
     error: 'No pudimos publicar: {mensaje}',
     sinPermiso: 'Necesitas el permiso «Publicar sitio web» (website.sites.publish).',
     sinCambios: 'No hay cambios por publicar.',
@@ -120,7 +121,7 @@ export const TEXTOS_DISENO = {
   },
   adopcion: {
     titulo: 'Tu sitio en línea aún muestra la versión anterior',
-    descripcion: 'Lo que publiques aquí se guarda como versión del sitio nuevo. Tus clientes lo verán cuando actives el sitio nuevo desde el editor.',
+    descripcion: 'Publica para que tus clientes vean este diseño. Hasta entonces la web sigue con la versión anterior.',
   },
   restablecer: {
     titulo: 'Restablecer el preset',

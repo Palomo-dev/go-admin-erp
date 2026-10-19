@@ -6,7 +6,7 @@
  *  - si activar falla, la revisión queda publicada y el aviso ofrece el reintento;
  *  - si publicar falla, no se intenta activar.
  */
-import { avisoTrasPublicar, debeActivarAlPublicar, publicarConActivacion } from '../activarAlPublicar';
+import { activarAlPublicarSitio, avisoTrasPublicar, debeActivarAlPublicar, publicarConActivacion } from '../activarAlPublicar';
 
 const PUBLICADA = { revisionId: 'r1', numero: 4, publicadaEn: '2026-10-06T15:00:00Z', idempotente: false };
 
@@ -18,6 +18,26 @@ describe('debeActivarAlPublicar', () => {
     [true, false, false],
   ])('adoptado=%s, lector=%s → %s', (v2Adoptado, lectorListo, esperado) => {
     expect(debeActivarAlPublicar({ v2Adoptado, lectorListo })).toBe(esperado);
+  });
+});
+
+describe('activarAlPublicarSitio', () => {
+  const antes = process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+  afterEach(() => {
+    if (antes === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+    else process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = antes;
+  });
+
+  test('sin adoptar y con lector: sí', () => {
+    process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = '1';
+    expect(activarAlPublicarSitio(false)).toBe(true);
+  });
+
+  test('ya activo, o sin lector: no', () => {
+    process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = '1';
+    expect(activarAlPublicarSitio(true)).toBe(false);
+    delete process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+    expect(activarAlPublicarSitio(false)).toBe(false);
   });
 });
 

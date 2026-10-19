@@ -32264,7 +32264,7 @@
       },
       "adopcion": {
         "titulo": "Your live site still shows the previous version",
-        "descripcion": "What you publish here is saved as a version of the new site. Your customers will see it once you turn on the new site from the editor."
+        "descripcion": "Publish so your customers see this design. Until then the live site keeps the previous version."
       },
       "restablecer": {
         "titulo": "Reset the preset",

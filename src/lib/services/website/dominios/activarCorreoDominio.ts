@@ -87,6 +87,8 @@ export async function activarCorreoDominio(
     try {
       const creado = await createDomain(orgId, {
         domain: host,
+        // Misma región que el dominio de envío que la plataforma ya tiene autenticado.
+        region: 'sa-east-1',
         from_name: nombre,
         from_email_local: 'pedidos',
         reply_to: respuesta ?? undefined,

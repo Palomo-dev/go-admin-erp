@@ -222,7 +222,8 @@
         "payNowDescription": "Pay today and start your subscription immediately, no trial period.",
         "couponTitle": "Have a discount coupon?",
         "couponPlaceholder": "Enter your code",
-        "couponApply": "Apply"
+        "couponApply": "Apply",
+        "couponRemove": "Remove coupon"
       },
       "payment": {
         "title": "Payment Method",

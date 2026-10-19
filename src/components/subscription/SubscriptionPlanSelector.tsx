@@ -5,6 +5,7 @@ import { CheckIcon } from '@heroicons/react/24/solid';
 import { supabase } from '@/lib/supabase/config';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { MONEDA_PLAN_SAAS } from '@/lib/organizacion/plan';
+import { cn } from '@/utils/Utils';
 
 export interface SubscriptionPlan {
   id: string;
@@ -23,6 +24,11 @@ export interface SubscriptionPlanSelectorProps {
   plans?: SubscriptionPlan[];
   billingPeriod?: 'monthly' | 'yearly';
   onChangeBillingPeriod?: (period: 'monthly' | 'yearly') => void;
+  /**
+   * En el alta el paso mide 1000 px: los tres planes van en columnas.
+   * En un diálogo angosto se dejan en una sola columna.
+   */
+  enColumnas?: boolean;
 }
 
 export default function SubscriptionPlanSelector({
@@ -31,6 +37,7 @@ export default function SubscriptionPlanSelector({
   billingPeriod = 'monthly',
   onChangeBillingPeriod,
   plans,
+  enColumnas = false,
 }: SubscriptionPlanSelectorProps) {
   const [dbPlans, setDbPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +59,6 @@ export default function SubscriptionPlanSelector({
         const transformedPlans: SubscriptionPlan[] = [];
         
         data?.forEach(plan => {
-          console.log('Processing database plan:', plan);
-          
-          // Monthly plan
           const monthlyPlan = {
             id: plan.code,
             name: plan.name,
@@ -65,7 +69,6 @@ export default function SubscriptionPlanSelector({
             isPopular: plan.code === 'pro',
             trialDays: plan.trial_days,
           };
-          console.log('Created monthly plan:', monthlyPlan);
           transformedPlans.push(monthlyPlan);
 
           // Always create yearly plan
@@ -79,15 +82,12 @@ export default function SubscriptionPlanSelector({
             isPopular: plan.code === 'pro',
             trialDays: plan.trial_days,
           };
-          console.log('Created yearly plan:', yearlyPlan);
           transformedPlans.push(yearlyPlan);
         });
 
-        console.log('All transformed plans:', transformedPlans);
         setDbPlans(transformedPlans);
       } catch (error) {
         console.error('Error loading plans:', error);
-        console.log('Using default plans instead');
         setDbPlans(defaultPlans);
       } finally {
         setLoading(false);
@@ -104,18 +104,13 @@ export default function SubscriptionPlanSelector({
 
   // Use provided plans or loaded plans
   const availablePlans = plans || dbPlans;
-  console.log('Available plans:', availablePlans);
-  console.log('Billing period:', billingPeriod);
-  
-  // Filter plans by billing period
   const filteredPlans = availablePlans.filter(plan => plan.billingPeriod === billingPeriod);
-  console.log('Filtered plans:', filteredPlans);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando planes...</span>
+        <div className="size-8 animate-spin rounded-full border-b-2 border-brand" />
+        <span className="ml-2 text-sm text-fg-secondary">Cargando planes...</span>
       </div>
     );
   }
@@ -125,98 +120,85 @@ export default function SubscriptionPlanSelector({
       {/* Billing period toggle */}
       {onChangeBillingPeriod && (
         <div className="flex justify-center">
-          <div className="bg-gray-100 dark:bg-gray-800 p-0.5 sm:p-1 rounded-lg inline-flex">
+          <div className="inline-flex items-center gap-1 rounded-lg bg-subtle p-1" role="group" aria-label="Periodo de facturación">
             <button
               type="button"
               onClick={() => onChangeBillingPeriod('monthly')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md ${
-                billingPeriod === 'monthly'
-                  ? 'bg-white shadow-sm text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              aria-pressed={billingPeriod === 'monthly'}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-medium sm:px-4 sm:py-2 sm:text-sm',
+                billingPeriod === 'monthly' ? 'bg-surface text-fg shadow-sm' : 'text-fg-secondary hover:text-fg',
+              )}
             >
               Mensual
             </button>
             <button
               type="button"
               onClick={() => onChangeBillingPeriod('yearly')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md ${
-                billingPeriod === 'yearly'
-                  ? 'bg-white shadow-sm text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              aria-pressed={billingPeriod === 'yearly'}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-medium sm:px-4 sm:py-2 sm:text-sm',
+                billingPeriod === 'yearly' ? 'bg-surface text-fg shadow-sm' : 'text-fg-secondary hover:text-fg',
+              )}
             >
-              Anual <span className="text-green-500 text-[10px] sm:text-xs">-20%</span>
+              Anual <span className="text-[10px] text-success-text sm:text-xs">-20%</span>
             </button>
           </div>
         </div>
       )}
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 gap-3 sm:gap-4">
-        {filteredPlans.map((plan) => (
-          <div
-            key={plan.id}
-            onClick={() => onSelectPlan(plan.id)}
-            className={`relative rounded-lg border ${
-              selectedPlan === plan.id
-                ? 'border-blue-500 ring-2 ring-blue-500'
-                : 'border-gray-300'
-            } bg-white p-3 sm:p-4 shadow-sm cursor-pointer hover:border-blue-400 transition-all`}
-          >
-            {plan.isPopular && (
-              <div className="absolute top-0 right-0 -mt-2 -mr-2">
-                <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-blue-800">
-                  Popular
-                </span>
-              </div>
-            )}
-            
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
-                  <div className="flex flex-wrap items-baseline gap-1">
-                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                      {plan.price ? formatMoneda(plan.price, MONEDA_PLAN_SAAS) : 'Personalizado'}
-                    </span>
-                    <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {billingPeriod === 'monthly' ? '/mes' : '/año'}
-                    </span>
-                  </div>
+      <div className={cn('grid grid-cols-1 gap-3', enColumnas && 'lg:grid-cols-3')}>
+        {filteredPlans.map((plan) => {
+          const elegido = selectedPlan === plan.id;
+          return (
+            <button
+              key={plan.id}
+              type="button"
+              onClick={() => onSelectPlan(plan.id)}
+              aria-pressed={elegido}
+              className={cn(
+                'flex h-full w-full flex-col rounded-xl border p-4 text-left transition-colors',
+                !enColumnas && 'sm:flex-row sm:items-center sm:gap-4',
+                elegido ? 'border-brand bg-brand-tint ring-1 ring-brand' : 'border-line bg-canvas hover:border-line-strong',
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-semibold text-fg">{plan.name}</h3>
+                  {plan.isPopular && (
+                    <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-fg-on-brand">Popular</span>
+                  )}
                 </div>
-                <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">{plan.description}</p>
-                
-                {plan.trialDays && (
-                  <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                    ✓ Incluye {plan.trialDays} días de prueba
-                  </p>
-                )}
-                
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                <p className="mt-1 text-xl font-semibold tracking-tight text-fg">
+                  {plan.price ? formatMoneda(plan.price, MONEDA_PLAN_SAAS) : 'Personalizado'}
+                  <span className="ml-1 text-sm font-medium text-fg-muted">{billingPeriod === 'monthly' ? '/mes' : '/año'}</span>
+                </p>
+                <p className="mt-1 text-sm text-fg-secondary">{plan.description}</p>
+                {plan.trialDays ? (
+                  <p className="mt-2 text-xs font-medium text-brand-deep">Incluye {plan.trialDays} días de prueba</p>
+                ) : null}
+                <ul className={cn('mt-3 flex gap-1.5', enColumnas ? 'flex-col' : 'flex-wrap gap-x-3')}>
                   {plan.features.slice(0, 4).map((feature, index) => (
-                    <span key={index} className="inline-flex items-center text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
-                      <CheckIcon className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-1" aria-hidden="true" />
-                      {feature}
-                    </span>
+                    <li key={index} className="inline-flex items-start gap-1 text-xs text-fg-secondary">
+                      <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
+                      <span>{feature}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
-              
-              <div className="sm:ml-4">
-                <div
-                  className={`rounded-md py-1.5 px-4 sm:py-2 sm:px-6 text-center text-xs sm:text-sm font-semibold whitespace-nowrap ${
-                    selectedPlan === plan.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                  }`}
-                >
-                  {selectedPlan === plan.id ? '✓ Seleccionado' : 'Seleccionar'}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+              <span
+                className={cn(
+                  'mt-4 inline-flex shrink-0 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold',
+                  enColumnas ? 'w-full' : 'w-full sm:mt-0 sm:w-auto',
+                  elegido ? 'bg-brand-action text-fg-on-brand' : 'bg-surface text-brand-deep ring-1 ring-inset ring-line-brand',
+                )}
+              >
+                {elegido ? '✓ Seleccionado' : 'Seleccionar'}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

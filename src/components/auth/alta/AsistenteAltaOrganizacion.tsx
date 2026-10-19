@@ -115,9 +115,11 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
       {paso === 3 && (
         <SubscriptionStep
           formData={plan}
-          updateFormData={(d: Partial<PlanAlta>) => setPlan((p) => ({ ...p, ...d }))}
+          updateFormData={(d) => setPlan((p) => ({ ...p, ...d }))}
           onNext={() => ir(4)}
           onBack={() => ir(2)}
+          encabezado={modo === 'app'}
+          enColumnas={modo === 'registro'}
         />
       )}
       {paso === 4 && (
@@ -131,11 +133,12 @@ export function AsistenteAltaOrganizacion({ modo, correo, nombre, apellido, refe
             skipTrial: plan.skipTrial,
             validatedCoupon: plan.validatedCoupon,
           }}
-          updateFormData={(d: Partial<PlanAlta>) => setPlan((p) => ({ ...p, ...d }))}
+          updateFormData={(d) => setPlan((p) => ({ ...p, ...d }))}
           onNext={(tarjeta) => { void finalizar(tarjeta); }}
           onSkip={() => { void finalizar(); }}
           onBack={() => ir(3)}
           loading={creando}
+          encabezado={modo === 'app'}
         />
       )}
     </div>

@@ -44,7 +44,7 @@ import {
   type ResultadoPlantillaSede,
   type TipoSedePlantilla,
 } from '@/lib/website/v2/plantillaSede';
-import { COLUMNAS_IMPORTADAS } from '@/lib/website/v2/mapeoAjustes';
+import { COLUMNAS_IMPORTADAS, igualesEstructural } from '@/lib/website/v2/mapeoAjustes';
 import type {
   BasePrincipal,
   BorradorSitio,
@@ -71,6 +71,17 @@ interface ErrorPostgrest {
   code?: string;
   message?: string;
   details?: string | null;
+}
+
+/**
+ * El disparador `fn_website_site_drafts_version` usa P0409 para dos casos:
+ * una versión que ya no es la última (`conflicto_version`) y un intento de
+ * subir la versión sin cambiar el documento (`version_sin_cambios`). El
+ * segundo no es un conflicto: el asistente, al pasar de plantilla a estilo,
+ * reescribe el mismo tema.
+ */
+function esVersionSinCambios(error: ErrorPostgrest): boolean {
+  return error.code === 'P0409' && (error.message ?? '').includes('version_sin_cambios');
 }
 
 /** Traduce el SQLSTATE de las RPC y triggers V2 a un código de la API. */
@@ -423,6 +434,9 @@ export async function obtenerBorrador(cliente: SupabaseClient, org: number, siti
 /**
  * Guarda el borrador con compare-and-swap: solo si su versión sigue siendo `versionEsperada`.
  * Otra pestaña o persona que guardó antes → `conflicto_version` (409), nunca pisa su trabajo.
+ * Si el documento queda igual al guardado, no escribe: el disparador rechazaría la
+ * versión nueva y la API lo contaría como ese 409. El paso de estilo del asistente
+ * reescribe el tema que ya dejó la plantilla.
  */
 export async function guardarBorrador(
   cliente: SupabaseClient,
@@ -438,6 +452,11 @@ export async function guardarBorrador(
   if (!validacion.ok) throw new ErrorSitio('documento_invalido', 'El documento no cumple el contrato.', validacion.errores);
   await estadoDeOrg(cliente, org, sitioId);
 
+  const actual = await borradorDe(cliente, org, sitioId);
+  if (igualesEstructural(actual.document, validacion.documento)) {
+    return { version: actual.version, actualizadoEn: actual.updated_at };
+  }
+
   const { data, error } = await cliente
     .from('website_site_drafts')
     .update({ document: validacion.documento, schema_version: VERSION_ESQUEMA_DOCUMENTO, version: versionEsperada + 1 })
@@ -446,18 +465,24 @@ export async function guardarBorrador(
     .eq('version', versionEsperada)
     .select('version, updated_at')
     .maybeSingle();
-  if (error) throw errorDesdePostgrest(error, 'guardarBorrador');
+  if (error) {
+    if (esVersionSinCambios(error)) {
+      const vigente = await borradorDe(cliente, org, sitioId);
+      return { version: vigente.version, actualizadoEn: vigente.updated_at };
+    }
+    throw errorDesdePostgrest(error, 'guardarBorrador');
+  }
   if (data) {
     const fila = data as { version: number; updated_at: string };
     return { version: fila.version, actualizadoEn: fila.updated_at };
   }
 
   // 0 filas: o la versión cambió (conflicto) o la RLS no deja escribir (sin permiso).
-  const actual = await borradorDe(cliente, org, sitioId);
-  if (actual.version !== versionEsperada) {
+  const vigente = await borradorDe(cliente, org, sitioId);
+  if (vigente.version !== versionEsperada) {
     throw new ErrorSitio('conflicto_version', 'Alguien guardó o publicó una versión más nueva del borrador.', {
       esperada: versionEsperada,
-      actual: actual.version,
+      actual: vigente.version,
     });
   }
   throw new ErrorSitio('sin_permiso', 'No tienes permiso para editar este sitio web.');

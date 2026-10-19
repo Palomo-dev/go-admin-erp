@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { TagIcon, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/utils/Utils';
 
 export interface CouponData {
   code: string;
@@ -20,6 +21,7 @@ interface PriceSummaryProps {
   skipTrial?: boolean;
   coupon?: CouponData | null;
   compact?: boolean;
+  className?: string;
 }
 
 export default function PriceSummary({
@@ -28,6 +30,7 @@ export default function PriceSummary({
   skipTrial = false,
   coupon = null,
   compact = false,
+  className,
 }: PriceSummaryProps) {
   const [planPrice, setPlanPrice] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string>('');
@@ -52,6 +55,10 @@ export default function PriceSummary({
     fetchPlanPrice();
   }, [subscriptionPlan, billingPeriod]);
 
+  const padding = compact ? 'p-3' : 'p-4';
+  const textSize = compact ? 'text-xs' : 'text-sm';
+  const titleSize = compact ? 'text-sm' : 'text-base';
+
   if (planPrice === null) return null;
 
   const periodLabel = billingPeriod === 'monthly' ? '/mes' : '/año';
@@ -69,27 +76,23 @@ export default function PriceSummary({
     finalPrice = Math.max(planPrice - discountAmount, 0);
   }
 
-  const padding = compact ? 'p-3' : 'p-4';
-  const textSize = compact ? 'text-xs' : 'text-sm';
-  const titleSize = compact ? 'text-sm' : 'text-base';
-
   return (
-    <div className={`mt-3 sm:mt-4 ${padding} bg-white border border-gray-200 rounded-lg shadow-sm`}>
-      <h4 className={`${titleSize} font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center gap-1.5`}>
-        <TagIcon className="h-4 w-4 text-blue-600" />
+    <div className={cn('rounded-xl border border-line bg-canvas shadow-sm', padding, className)}>
+      <h4 className={cn('mb-3 flex items-center gap-1.5 font-semibold text-fg', titleSize)}>
+        <TagIcon className="size-4 text-brand" aria-hidden="true" />
         Resumen de pago
       </h4>
 
       <div className="space-y-1.5">
-        <div className="flex justify-between items-center text-xs sm:text-sm">
-          <span className="text-gray-600">{planName} ({periodLabelShort})</span>
-          <span className="font-medium text-gray-900">${planPrice.toFixed(2)} {periodLabel}</span>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-fg-secondary">{planName} ({periodLabelShort})</span>
+          <span className="font-medium text-fg">${planPrice.toFixed(2)} {periodLabel}</span>
         </div>
 
         {coupon && discountAmount > 0 && (
-          <div className="flex justify-between items-center text-xs sm:text-sm text-green-700">
+          <div className="flex items-center justify-between text-sm text-success-text">
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <CheckCircle2 className="size-3.5" aria-hidden="true" />
               Descuento ({coupon.code})
             </span>
             <span className="font-medium">-${discountAmount.toFixed(2)}</span>
@@ -97,15 +100,13 @@ export default function PriceSummary({
         )}
 
         {coupon && coupon.durationMonths && (
-          <p className="text-[11px] text-green-600 italic">
-            {coupon.durationDescription}
-          </p>
+          <p className="text-xs italic text-success-text">{coupon.durationDescription}</p>
         )}
 
-        <div className="border-t border-gray-200 pt-1.5 mt-1.5">
-          <div className="flex justify-between items-center">
-            <span className={`${textSize} font-semibold text-gray-900`}>Total a pagar</span>
-            <span className={`${textSize} font-bold text-gray-900`}>
+        <div className="mt-1.5 border-t border-line pt-1.5">
+          <div className="flex items-center justify-between">
+            <span className={cn('font-semibold text-fg', textSize)}>Total a pagar</span>
+            <span className={cn('font-bold text-fg', textSize)}>
               ${finalPrice.toFixed(2)} {periodLabel}
             </span>
           </div>
@@ -113,12 +114,12 @@ export default function PriceSummary({
       </div>
 
       {skipTrial ? (
-        <p className="mt-2 text-[11px] sm:text-xs text-amber-600 flex items-center gap-1">
+        <p className="mt-2 flex items-center gap-1 text-xs text-warning-text">
           Se cobrará ahora al verificar la tarjeta
         </p>
       ) : (
-        <p className="mt-2 text-[11px] sm:text-xs text-green-600 flex items-center gap-1">
-          <CheckCircle2 className="h-3 w-3" />
+        <p className="mt-2 flex items-center gap-1 text-xs text-success-text">
+          <CheckCircle2 className="size-3" aria-hidden="true" />
           No se cobrará hasta que termine el período de prueba
         </p>
       )}

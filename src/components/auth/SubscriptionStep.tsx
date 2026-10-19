@@ -126,11 +126,13 @@ export default function SubscriptionStep({
         updateFormData({
           couponCode: data.coupon.code,
           validatedCoupon: {
+            id: data.coupon.id,
             code: data.coupon.code,
             name: data.coupon.name,
             discountType: data.coupon.discountType,
             discountValue: data.coupon.discountValue,
             durationMonths: data.coupon.durationMonths,
+            stripeCouponId: data.coupon.stripeCouponId,
             discountDescription: data.coupon.discountDescription,
             durationDescription: data.coupon.durationDescription,
           },

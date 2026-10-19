@@ -9,6 +9,7 @@ import {
 } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { normalizePhoneToE164 } from '@/lib/domains/phone';
+import { activarCorreoDominio } from '@/lib/services/website/dominios/activarCorreoDominio';
 
 const VERCEL_API_TOKEN = process.env.VERCEL_API_TOKEN;
 const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID || 'team_frIu9xHSNGKf7olF1x4Fsvfh';
@@ -238,6 +239,11 @@ export async function POST(request: NextRequest) {
     });
     if (purchaseLogError) console.error('[domains/purchase] No se guardó el comprobante', purchaseLogError);
 
+    const correo = await activarCorreoDominio(supabaseAdmin, ctx.organizationId, normalizedDomain).catch((error: unknown) => {
+      console.error('[domains/purchase] No se pudo preparar el correo del dominio', error);
+      return null;
+    });
+
     return NextResponse.json({
       success: true,
       domain: normalizedDomain,
@@ -245,6 +251,7 @@ export async function POST(request: NextRequest) {
       paymentIntentId: paymentIntent.id,
       domainId: domainRecord?.id,
       expiresAt: vercelData.expiresAt,
+      correo: correo?.estado ?? null,
     });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {

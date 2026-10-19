@@ -161,6 +161,20 @@ export function crearClienteVercel(cfg: ConfigVercel, f: Fetch = fetch) {
 
 export type ClienteVercel = ReturnType<typeof crearClienteVercel>;
 
+export interface RegistroDnsLeido {
+  name: string;
+  type: string;
+  value: string;
+  mxPriority?: number | null;
+}
+
+export interface RegistroDnsNuevo {
+  name: string;
+  type: 'TXT' | 'MX' | 'CNAME';
+  value: string;
+  mxPriority?: number;
+}
+
 export function crearClienteRegistrador(cfg: Omit<ConfigVercel, 'proyecto'>, f: Fetch = fetch) {
   return {
     async autoRenovar(host: string, encender: boolean): Promise<void> {
@@ -170,6 +184,33 @@ export function crearClienteRegistrador(cfg: Omit<ConfigVercel, 'proyecto'>, f: 
       const r = await llamar<{ authCode?: string }>(cfg, 'GET', `/v1/registrar/domains/${ruta(host)}/auth-code`, undefined, f);
       if (!r?.authCode) throw new ErrorVercel(502, 'sin_codigo', 'El registrador no devolvió el código');
       return r.authCode;
+    },
+    /** `null` si la zona no es de esta cuenta: no hay dónde publicar el correo. */
+    async listarDns(host: string): Promise<RegistroDnsLeido[] | null> {
+      try {
+        const r = await llamar<{ records?: RegistroDnsLeido[] }>(cfg, 'GET', `/v5/domains/${ruta(host)}/records?limit=100`, undefined, f);
+        if (!r) return null;
+        return r.records ?? [];
+      } catch (e) {
+        if (e instanceof ErrorVercel && (e.estado === 400 || e.estado === 403 || e.estado === 404)) return null;
+        throw e;
+      }
+    },
+    async crearDns(host: string, registro: RegistroDnsNuevo): Promise<void> {
+      const cuerpo = {
+        name: registro.name,
+        type: registro.type,
+        value: registro.value,
+        ttl: 60,
+        comment: 'Correo de la tienda',
+        ...(registro.type === 'MX' ? { mxPriority: registro.mxPriority ?? 10 } : {}),
+      };
+      try {
+        await llamar(cfg, 'POST', `/v2/domains/${ruta(host)}/records`, cuerpo, f);
+      } catch (e) {
+        if (e instanceof ErrorVercel && e.estado === 409) return;
+        throw e;
+      }
     },
   };
 }

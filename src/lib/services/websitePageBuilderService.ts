@@ -10,6 +10,7 @@ import {
   CATEGORY_CARD_FIELDS,
   BUTTON_ITEM_FIELDS,
   PRODUCT_CARD_INTERACTION_FIELDS,
+  FILTER_COLOR_FIELDS,
 } from '@/lib/services/website/sectionFieldGroups';
 import {
   CAMPOS_CARTA_QR,
@@ -979,6 +980,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'sales', label: 'Más vendidos' },
       ]},
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      ...FILTER_COLOR_FIELDS,
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
         { value: 'none', label: 'Ninguno' },
@@ -1152,6 +1154,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'sales', label: 'Más vendidos' },
       ]},
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      ...FILTER_COLOR_FIELDS,
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
         { value: 'none', label: 'Ninguno' },
@@ -1390,6 +1393,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'sales', label: 'Más vendidos' },
       ]},
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      ...FILTER_COLOR_FIELDS,
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
         { value: 'none', label: 'Ninguno' },
@@ -2408,10 +2412,24 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     description: 'Características en rejilla, con icono y texto centrado',
     variants: [
       { id: 'alternating', label: 'Alternado' },
+      { id: 'icons', label: 'Íconos' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Características' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'presentacion',
+        label: 'Presentación',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'imagen',
+        helpText: '«Ícono y texto» y «Solo texto» no reservan el cuadro de la imagen.',
+        options: [
+          { value: 'imagen', label: 'Imagen y texto' },
+          { value: 'icono', label: 'Ícono y texto' },
+          { value: 'texto', label: 'Solo texto' },
+        ],
+      },
       {
         key: 'items',
         label: 'Características',
@@ -2419,10 +2437,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
         itemLabelKey: 'title',
         itemFields: [
-          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'icon', label: 'Ícono', type: 'icon' },
           { key: 'title', label: 'Título', type: 'text' },
           { key: 'description', label: 'Descripción', type: 'textarea' },
-          { key: 'image_url', label: 'Imagen', type: 'image' },
+          { key: 'image_url', label: 'Imagen', type: 'image', helpText: 'Si no hay imagen, no se muestra un cuadro vacío.' },
         ],
       },
       ...GRID_FIELDS,

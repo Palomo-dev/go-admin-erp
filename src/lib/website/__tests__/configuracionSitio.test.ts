@@ -29,6 +29,7 @@ const base: FormularioConfiguracion = {
   nombre: 'Tu marca',
   logoUrl: null,
   logoFondoClaroUrl: null,
+  logoOscuroUrl: null,
   faviconUrl: null,
   correo: 'hola@tumarca.com',
   telefono: '',

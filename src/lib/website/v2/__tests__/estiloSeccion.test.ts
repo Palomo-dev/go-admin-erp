@@ -50,6 +50,14 @@ describe('lectura y escritura', () => {
     expect(e.colores).toEqual({ borde: '#3A3A3A' });
   });
 
+  test('el fondo alterno acepta un color propio', () => {
+    const e = leerEstiloSeccion({ estilo: { fondo: 'alterno', colorAlterno: '#f5f3ef' } });
+    expect(e.colorAlterno).toBe('#F5F3EF');
+    expect(variablesCssSeccion(e)['--seccion-fondo-alterno']).toBe('#F5F3EF');
+    expect(variablesCssSeccion({ v: 1, fondo: 'tema', colorAlterno: '#F5F3EF' })['--seccion-fondo-alterno']).toBeUndefined();
+    expect(leerEstiloSeccion({ estilo: { fondo: 'alterno', colorAlterno: 'beige' } }).colorAlterno).toBeUndefined();
+  });
+
   test('sin estilo = hereda todo; escribir vacío borra la clave sin tocar el resto', () => {
     expect(estiloVacio(leerEstiloSeccion({}))).toBe(true);
     const conEstilo = escribirEstiloSeccion({ padding: 'lg' }, propia);

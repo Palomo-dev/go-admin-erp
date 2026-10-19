@@ -512,10 +512,11 @@ export const CARD_FIELDS: ContentFieldDef[] = [
   },
   {
     key: 'card_shadow',
-    label: 'Sombra de la tarjeta',
+    label: 'Sombra en reposo',
     type: 'select',
-    group: 'style',
+    group: 'behavior',
     defaultValue: 'sm',
+    helpText: 'Sombra de la tarjeta cuando el mouse no está encima.',
     options: [
       { value: 'none', label: 'Ninguna' },
       { value: 'sm', label: 'Suave' },
@@ -526,9 +527,9 @@ export const CARD_FIELDS: ContentFieldDef[] = [
   },
   {
     key: 'card_border_width',
-    label: 'Grosor del borde de la tarjeta',
+    label: 'Grosor del borde en reposo',
     type: 'range',
-    group: 'style',
+    group: 'behavior',
     min: 0,
     max: 8,
     step: 1,
@@ -537,16 +538,16 @@ export const CARD_FIELDS: ContentFieldDef[] = [
   },
   {
     key: 'card_border_color',
-    label: 'Color del borde de la tarjeta',
+    label: 'Color del borde en reposo',
     type: 'color',
-    group: 'style',
+    group: 'behavior',
     showIf: { field: 'card_border_width', in: [1, 2, 3, 4, 5, 6, 7, 8] },
   },
   {
     key: 'card_bg',
-    label: 'Fondo de la tarjeta',
+    label: 'Fondo de la tarjeta en reposo',
     type: 'color',
-    group: 'style',
+    group: 'behavior',
   },
   {
     key: 'card_padding',
@@ -651,6 +652,34 @@ export const CARD_FIELDS: ContentFieldDef[] = [
     defaultValue: false,
   },
   {
+    key: 'price_color',
+    label: 'Color del precio',
+    type: 'color',
+    group: 'behavior',
+    helpText: 'Vacío: usa el color de acento de la marca.',
+  },
+  {
+    key: 'price_weight',
+    label: 'Grosor del precio',
+    type: 'select',
+    group: 'behavior',
+    defaultValue: '700',
+    options: [
+      { value: '400', label: 'Normal' },
+      { value: '500', label: 'Medio' },
+      { value: '600', label: 'Seminegrita' },
+      { value: '700', label: 'Negrita' },
+      { value: '800', label: 'Extra negrita' },
+    ],
+  },
+  {
+    key: 'compare_price_color',
+    label: 'Color del precio anterior',
+    type: 'color',
+    group: 'behavior',
+    helpText: 'El precio tachado. Vacío: gris.',
+  },
+  {
     key: 'price_style',
     label: 'Estilo del precio',
     type: 'select',
@@ -700,10 +729,11 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
   },
   {
     key: 'card_shadow',
-    label: 'Sombra de la tarjeta',
+    label: 'Sombra en reposo',
     type: 'select',
-    group: 'style',
+    group: 'behavior',
     defaultValue: 'sm',
+    helpText: 'Sombra de la tarjeta cuando el mouse no está encima.',
     options: [
       { value: 'none', label: 'Ninguna' },
       { value: 'sm', label: 'Suave' },
@@ -714,9 +744,9 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
   },
   {
     key: 'card_border_width',
-    label: 'Grosor del borde de la tarjeta',
+    label: 'Grosor del borde en reposo',
     type: 'range',
-    group: 'style',
+    group: 'behavior',
     min: 0,
     max: 8,
     step: 1,
@@ -725,16 +755,16 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
   },
   {
     key: 'card_border_color',
-    label: 'Color del borde de la tarjeta',
+    label: 'Color del borde en reposo',
     type: 'color',
-    group: 'style',
+    group: 'behavior',
     showIf: { field: 'card_border_width', in: [1, 2, 3, 4, 5, 6, 7, 8] },
   },
   {
     key: 'card_bg',
-    label: 'Fondo de la tarjeta',
+    label: 'Fondo de la tarjeta en reposo',
     type: 'color',
-    group: 'style',
+    group: 'behavior',
   },
   {
     key: 'card_padding',
@@ -821,6 +851,14 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
 // ============================================================
 
 export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
+  { key: 'badge_discount_bg', label: 'Fondo de la etiqueta de descuento', type: 'color', group: 'behavior', helpText: 'Vacío: rojo. El color de una etiqueta concreta, si lo fijas dentro de ella, manda.' },
+  { key: 'badge_discount_text', label: 'Texto de la etiqueta de descuento', type: 'color', group: 'behavior', helpText: 'Vacío: blanco.' },
+  { key: 'badge_new_bg', label: 'Fondo de la etiqueta «Nuevo»', type: 'color', group: 'behavior', helpText: 'Vacío: verde.' },
+  { key: 'badge_new_text', label: 'Texto de la etiqueta «Nuevo»', type: 'color', group: 'behavior', helpText: 'Vacío: blanco.' },
+  { key: 'badge_shipping_bg', label: 'Fondo de «Envío gratis»', type: 'color', group: 'behavior', helpText: 'Vacío: azul.' },
+  { key: 'badge_shipping_text', label: 'Texto de «Envío gratis»', type: 'color', group: 'behavior', helpText: 'Vacío: blanco.' },
+  { key: 'add_button_label', label: 'Texto del botón «Agregar»', type: 'text', group: 'content', placeholder: 'Agregar al carrito', helpText: 'Sustituye «Agregar» en los productos sin variantes. Vacío: se mantiene el texto del botón.' },
+  { key: 'choose_button_label', label: 'Texto del botón «Elegir»', type: 'text', group: 'content', placeholder: 'Ver opciones', helpText: 'Sustituye «Elegir» cuando el producto tiene variantes. Vacío: se mantiene el texto del botón.' },
   {
     key: 'badges',
     label: 'Etiquetas (badges)',
@@ -1025,6 +1063,14 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
 // campo `type: 'spacing'` que escribe en las keys `padding_top`,
 // `padding_bottom`, `padding_x`, `margin_top`, `margin_bottom` (mismo
 // JSON que el editor original).
+
+/** Colores de los chips de categoría (activos e inactivos) en las listas de productos. */
+export const FILTER_COLOR_FIELDS: ContentFieldDef[] = [
+  { key: 'filter_active_bg', label: 'Fondo del filtro activo', type: 'color', group: 'behavior', helpText: 'Chip de categoría seleccionado. Vacío: el color de acento.' },
+  { key: 'filter_active_text', label: 'Texto del filtro activo', type: 'color', group: 'behavior', helpText: 'Vacío: blanco.' },
+  { key: 'filter_inactive_bg', label: 'Fondo del filtro inactivo', type: 'color', group: 'behavior' },
+  { key: 'filter_inactive_text', label: 'Texto del filtro inactivo', type: 'color', group: 'behavior', helpText: 'Vacío: el gris del sitio.' },
+];
 
 export const SPACING_FIELDS: ContentFieldDef[] = [
   {

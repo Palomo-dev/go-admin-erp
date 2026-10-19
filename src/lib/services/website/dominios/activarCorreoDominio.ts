@@ -98,6 +98,8 @@ export async function activarCorreoDominio(
       }, db);
       fila = { id: creado.id, status: creado.status, domain: creado.domain, dns_records: creado.dns_records };
     } catch (error) {
+      const detalle = isEmailError(error) ? `${error.message} ${JSON.stringify(error.details ?? '')}` : '';
+      if (/domain limit|upgrade to add more/i.test(detalle)) return { host, estado: 'sin_proveedor' };
       if (!isEmailError(error) || error.code !== 'DOMAIN_EXISTS') throw error;
       fila = await filaDe(db, orgId, host);
     }
@@ -133,7 +135,9 @@ export async function activarCorreosComprados(db: SupabaseClient, limite = 5): P
   const resultados: ResultadoCorreoDominio[] = [];
   for (const item of pendientes.slice(0, Math.max(0, limite))) {
     try {
-      resultados.push(await activarCorreoDominio(db, item.organizationId, item.host, dns));
+      const resultado = await activarCorreoDominio(db, item.organizationId, item.host, dns);
+      resultados.push(resultado);
+      if (resultado.estado === 'sin_proveedor') break;
     } catch (error) {
       console.error('[correo-dominio] no se pudo preparar el correo', item.organizationId, error);
       resultados.push({ host: item.host, estado: 'fallo' });

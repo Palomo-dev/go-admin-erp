@@ -26,6 +26,7 @@ import {
   type CartProduct,
   type EstadoTicketCocina,
 } from '@/lib/pos/venta/lineaCarrito';
+import { calcularLineaDelCarrito } from '@/lib/pos/venta/calculoLineaCarrito';
 import type { ContextoMoneda } from '@/lib/utils/moneda';
 import { EditorDescuentoLinea } from './EditorDescuentoLinea';
 import { EditorNotaLinea } from './EditorNotaLinea';
@@ -362,7 +363,9 @@ export function LineasCarrito({
                   cantidadTexto: esMedido(item.product) ? formatoCantidad(item.quantity, item.product, locale) : null,
                   precioVisible: precioPorUnidadVisible(item.product, item.unit_price),
                   precioUnitario: item.unit_price,
-                  total: item.total,
+                  // Siempre la regla única (precio, descuento e impuesto), no el
+                  // total que haya quedado a medias en la línea.
+                  total: calcularLineaDelCarrito(item, []).total,
                   impuesto: impuestoDeLinea(item, indicesSinImpuesto.has(itemIndex)),
                 }}
                 moneda={moneda}

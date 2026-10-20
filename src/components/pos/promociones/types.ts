@@ -54,6 +54,11 @@ export interface Promotion {
   applies_to_finances?: boolean;
   // --- Días recurrentes (null = todos los días) ---
   applicable_days?: WeekDay[] | null;
+  /** Franja `HH:mm` o `HH:mm:ss` en la zona de la organización. Nulo = todo el día. */
+  start_time?: string | null;
+  end_time?: string | null;
+  /** Precio del paquete. Si está puesto, manda sobre el porcentaje. */
+  bundle_price?: number | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -101,6 +106,9 @@ export interface CreatePromotionData {
   applies_to_finances?: boolean;
   // --- Días recurrentes (null/vacío = todos los días) ---
   applicable_days?: WeekDay[] | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  bundle_price?: number | null;
   rules?: CreatePromotionRuleData[];
 }
 

@@ -41,6 +41,17 @@ import { precioVigenteEnSede, importePrecioVigente, importePrecioVigenteEnSede, 
 import { filasDeSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
 import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
+import {
+  calcularLineaDelCarrito,
+  impuestosQueAplican,
+  incluidoPorImpuestos,
+  nombreDeImpuestos,
+  totalesDeLineasDelCarrito,
+  type ImpuestoDeLinea,
+} from '@/lib/pos/venta/calculoLineaCarrito';
+import { descuentoDeVentaPorLinea, repartirMonto, validarCupon, type CuponAplicable } from '@/lib/pos/venta/cuponCarrito';
+import { leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
+import { redimirCuponPedidoWeb } from '@/lib/services/cuponPedidoWeb';
 import { anularVentaEnServidor } from '@/lib/pos/anularVenta';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
@@ -978,6 +989,8 @@ export class POSService {
     try {
       const cartId = crypto.randomUUID();
       
+      const preferido = leerPreferenciaImpuestos(this.organizationId, branchId)?.incluidos;
+      const incluidos = preferido ?? await this.impuestosIncluidosPorDefecto();
       const newCart: Cart = {
         id: cartId,
         organization_id: this.organizationId,
@@ -990,6 +1003,7 @@ export class POSService {
         discount_amount: 0,
         discount_total: 0,
         total: 0,
+        tax_included: incluidos,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -1303,16 +1317,15 @@ export class POSService {
   }
 
   /**
-   * «Excluir impuesto» de la línea: se guarda con la línea (N1) con la MISMA
-   * semántica de siempre. No recalcula, igual que antes: `calculateCartTotals`
-   * no lee este flag; lo leen el Resumen y el cobro (análisis en
-   * docs/design/POS-CARRITO-LINEAS-NOTAS.md §7).
+   * «Excluir impuesto» de la línea. Se guarda y se vuelve a calcular: la tasa
+   * queda en 0 y el total del carrito coincide con el resumen y el cobro.
    */
   static async updateCartItemTaxExcluded(cartId: string, itemId: string, taxExcluded: boolean): Promise<Cart> {
-    return this.mutateStoredCart(cartId, (cart) => {
+    this.mutateStoredCart(cartId, (cart) => {
       if (!cart.items.some(item => item.id === itemId)) throw new Error('Item no encontrado');
       return { ...cart, items: cart.items.map(item => (item.id === itemId ? { ...item, tax_excluded: taxExcluded } : item)) };
     });
+    return this.recalculateCart(cartId);
   }
 
   /** Llave de la ronda «Enviar a cocina» en curso (se reutiliza al reintentar). */
@@ -2220,6 +2233,176 @@ export class POSService {
   }
 
   /**
+   * «Impuestos incluidos» con el que arranca un carrito sin preferencia del
+   * cajero: los impuestos predeterminados de la organización, si todos traen
+   * el precio con el impuesto dentro.
+   */
+  static async impuestosIncluidosPorDefecto(): Promise<boolean> {
+    const org = await this.impuestosDeOrganizacion();
+    return incluidoPorImpuestos(org.filter((t) => t.is_default));
+  }
+
+  private static async impuestosDeOrganizacion(): Promise<ImpuestoDeLinea[]> {
+    const filas = await this.getOrganizationTaxes();
+    return filas.map((tax) => this.filaImpuesto(tax)).filter((t): t is ImpuestoDeLinea => t !== null);
+  }
+
+  private static filaImpuesto(tax: {
+    id?: string;
+    name?: string;
+    rate?: number | string;
+    tax_included?: boolean | null;
+    is_active?: boolean | null;
+    is_default?: boolean | null;
+  } | null | undefined): ImpuestoDeLinea | null {
+    if (!tax?.id || tax.is_active === false) return null;
+    return {
+      id: String(tax.id),
+      name: String(tax.name || 'Impuesto'),
+      rate: Number(tax.rate) || 0,
+      tax_included: tax.tax_included === true,
+      is_active: true,
+      is_default: tax.is_default === true,
+    };
+  }
+
+  /**
+   * Descuento a toda la venta, repartido entre las líneas como descuento
+   * manual (el servidor lo valida con `descuento_excede_linea`).
+   */
+  static async aplicarDescuentoVenta(
+    cartId: string,
+    modo: 'monto' | 'porcentaje',
+    valor: number,
+  ): Promise<Cart> {
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const cart = carts[cartIndex];
+    const partes = descuentoDeVentaPorLinea(cart.items, modo, valor);
+    cart.items.forEach((item, i) => {
+      const manual = partes[i] > 0 ? partes[i] : null;
+      item.manual_discount_amount = manual;
+      item.discount_amount = manual ?? 0;
+    });
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    carts[cartIndex] = cart;
+    this.saveCartsToStorage(carts);
+    return cart;
+  }
+
+  /** Quita el cupón del carrito y vuelve a calcular. */
+  static async quitarCupon(cartId: string): Promise<Cart> {
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    carts[cartIndex].coupon = null;
+    await this.calculateCartTotals(carts[cartIndex]);
+    carts[cartIndex].updated_at = new Date().toISOString();
+    this.saveCartsToStorage(carts);
+    return carts[cartIndex];
+  }
+
+  /**
+   * Valida el código contra `coupons` de la organización y lo deja en el
+   * carrito. El descuento se reparte en el siguiente cálculo.
+   */
+  static async aplicarCupon(cartId: string, codigo: string): Promise<Cart> {
+    const code = codigo.trim();
+    if (!code) throw new Error('cupon_vacio');
+    // `ilike` trata % y _ como comodines. Se escapan para buscar el código tal cual.
+    const codigoExacto = code.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const cart = carts[cartIndex];
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('id, code, discount_type, discount_value, min_purchase_amount, max_discount_amount, usage_limit, usage_limit_per_customer, usage_count, start_date, end_date, is_active, applies_to_first_purchase, customer_id')
+      .eq('organization_id', cart.organization_id || this.organizationId)
+      .ilike('code', codigoExacto)
+      .maybeSingle();
+    if (error || !data) throw new Error('cupon_no_encontrado');
+    const cupon = data as CuponAplicable;
+    const subtotal = cart.items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+    let usosDelCliente = 0;
+    let yaCompro = false;
+    if (cart.customer_id && cupon.usage_limit_per_customer != null) {
+      const { count } = await supabase
+        .from('coupon_redemptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('coupon_id', cupon.id)
+        .eq('customer_id', cart.customer_id);
+      usosDelCliente = count ?? 0;
+    }
+    if (cart.customer_id && cupon.applies_to_first_purchase) {
+      const { count } = await supabase
+        .from('sales')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', cart.organization_id || this.organizationId)
+        .eq('customer_id', cart.customer_id)
+        .neq('status', 'void');
+      yaCompro = (count ?? 0) > 0;
+    }
+    const veredicto = validarCupon(cupon, {
+      ahora: new Date(),
+      subtotal,
+      customerId: cart.customer_id,
+      usosDelCliente,
+      yaCompro,
+    });
+    if (!veredicto.ok) throw new Error(`cupon_${veredicto.motivo}`);
+    cart.coupon = {
+      id: cupon.id,
+      code: cupon.code,
+      discount_type: cupon.discount_type,
+      discount_value: Number(cupon.discount_value) || 0,
+      max_discount_amount: cupon.max_discount_amount ?? null,
+      descuento: veredicto.descuento,
+    };
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    carts[cartIndex] = cart;
+    this.saveCartsToStorage(carts);
+    return cart;
+  }
+
+  /** Registra la redención cuando la venta ya existe. El trigger suma el uso. */
+  static async redimirCuponDelCarrito(cart: Cart, saleId: string): Promise<void> {
+    if (!cart.coupon?.code || !saleId) return;
+    await redimirCuponPedidoWeb(supabase, {
+      id: cart.id,
+      organization_id: cart.organization_id || this.organizationId,
+      coupon_code: cart.coupon.code,
+      customer_id: cart.customer_id,
+      discount_total: cart.coupon.descuento,
+    }, saleId);
+  }
+
+  /**
+   * Suma el cupón guardado encima del descuento de promoción o manual, sin
+   * pasar de cantidad × precio. Se llama después de `aplicarPromociones`,
+   * que reescribe `discount_amount`.
+   */
+  private static sumarCupon(cart: Cart): void {
+    const cupon = cart.coupon;
+    if (!cupon || !(cupon.descuento > 0)) {
+      cart.items.forEach((item) => { item.coupon_discount_amount = 0; });
+      return;
+    }
+    const hueco = cart.items.map((item) => {
+      const bruto = Math.max(0, item.quantity * item.unit_price);
+      return Math.max(0, Math.round((bruto - (item.discount_amount || 0)) * 100) / 100);
+    });
+    const partes = repartirMonto(cupon.descuento, hueco);
+    cart.items.forEach((item, i) => {
+      item.coupon_discount_amount = partes[i];
+      item.discount_amount = Math.round(((item.discount_amount || 0) + partes[i]) * 100) / 100;
+    });
+  }
+
+  /**
    * Evalúa las promociones sobre el carrito COMPLETO y deja en cada línea su
    * descuento: el manual del cajero si lo tiene (no se pisa) y, si no, el de
    * promoción de ESA línea (`lineDiscounts[idx]`; `itemDiscounts` es la suma
@@ -2263,85 +2446,71 @@ export class POSService {
   }
 
   private static async calculateCartTotals(cart: Cart): Promise<void> {
+    // El cupón se vuelve a sumar abajo. Si se deja, una promoción fallida
+    // lo contaría dos veces.
+    cart.items.forEach((item) => {
+      if (item.coupon_discount_amount) {
+        item.discount_amount = Math.max(0, Math.round(((item.discount_amount || 0) - item.coupon_discount_amount) * 100) / 100);
+        item.coupon_discount_amount = 0;
+      }
+    });
     await this.aplicarPromociones(cart);
+    this.sumarCupon(cart);
 
-    // Recalcular impuestos para cada ítem
+    const deLaOrganizacion = await this.impuestosDeOrganizacion();
+    const lineas = [];
     for (const item of cart.items) {
-      await this.calculateItemTaxes(item);
+      lineas.push(await this.calculateItemTaxes(item, cart, deLaOrganizacion));
     }
-    
-    // Calcular totales del carrito
-    cart.subtotal = cart.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-    cart.tax_total = cart.items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-    cart.discount_total = cart.items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
-    // Si el impuesto está incluido en el precio, el subtotal ya contiene el impuesto
-    // Por lo tanto, el total es subtotal - descuento (no se suma tax_total)
-    const hasAnyTaxIncluded = cart.items.some(item => item.tax_included);
-    if (hasAnyTaxIncluded) {
-      // Para items con tax_included, el tax_amount ya está dentro del precio
-      // Solo sumar tax_amount de items sin tax_included
-      const extraTax = cart.items
-        .filter(item => !item.tax_included)
-        .reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-      cart.total = cart.subtotal + extraTax - cart.discount_total;
-    } else {
-      cart.total = cart.subtotal + cart.tax_total - cart.discount_total;
-    }
+
+    const totales = totalesDeLineasDelCarrito(lineas);
+    // El subtotal que ve el cajero sigue siendo cantidad × precio (bruto).
+    // El total es la suma de la regla única de cada línea.
+    cart.subtotal = Math.round(cart.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0) * 100) / 100;
+    cart.tax_total = totales.taxTotal;
+    cart.tax_amount = totales.taxTotal;
+    cart.discount_total = totales.discountTotal;
+    cart.discount_amount = totales.discountTotal;
+    cart.total = totales.total;
   }
 
-  private static async calculateItemTaxes(item: CartItem): Promise<void> {
+  /**
+   * Impuestos de la línea con la regla única. Si el producto no tiene,
+   * usa los del carrito o los predeterminados. Si la línea no dice si el
+   * impuesto va dentro del precio, lo copia de esos impuestos.
+   */
+  private static async calculateItemTaxes(
+    item: CartItem,
+    cart: Cart,
+    deLaOrganizacion: ImpuestoDeLinea[],
+  ): Promise<ReturnType<typeof calcularLineaDelCarrito>> {
     try {
-      // Obtener los impuestos configurados para el producto
-      const productTaxes = await this.getProductTaxes(item.product_id);
-      
-      if (productTaxes.length === 0) {
-        // No hay impuestos configurados para el producto
-        item.tax_amount = 0;
-        item.tax_rate = 0;
-        return;
+      const relaciones = await this.getProductTaxes(item.product_id);
+      const delProducto = (Array.isArray(relaciones) ? relaciones : [])
+        .map((rel) => this.filaImpuesto(rel?.organization_taxes))
+        .filter((t): t is ImpuestoDeLinea => t !== null);
+      const impuestos = impuestosQueAplican(delProducto, deLaOrganizacion, cart.applied_tax_ids);
+      if (item.tax_included == null && !item.tax_excluded) {
+        item.tax_included = incluidoPorImpuestos(impuestos);
       }
-
-      const baseAmount = item.quantity * item.unit_price;
-      const taxableBase = baseAmount - (item.discount_amount || 0);
-      let totalTaxAmount = 0;
-      let totalTaxRate = 0;
-
-      // Calcular impuestos acumulativos sobre la base gravable (despues del descuento)
-      for (const taxRelation of productTaxes) {
-        const tax = taxRelation.organization_taxes;
-        if (tax && tax.is_active) {
-          const taxAmount = (taxableBase * tax.rate) / 100;
-          totalTaxAmount += taxAmount;
-          totalTaxRate += tax.rate;
-        }
-      }
-
-      item.tax_amount = Math.round(totalTaxAmount * 100) / 100;
-      item.tax_rate = totalTaxRate;
-
-      if (item.tax_included) {
-        // Impuesto incluido en el precio: el total NO suma el impuesto encima
-        const taxPortion = taxableBase - (taxableBase / (1 + totalTaxRate / 100));
-        item.tax_amount = Math.round(taxPortion * 100) / 100;
-        item.total = taxableBase;
-      } else {
-        // Impuesto NO incluido: se suma encima del precio
-        item.total = taxableBase + item.tax_amount;
-      }
-      
-      console.log(`Tax calculation for ${item.product?.name}:`, {
-        baseAmount,
-        taxRate: totalTaxRate + '%',
-        taxAmount: item.tax_amount,
-        total: item.total
-      });
-      
+      const cuenta = calcularLineaDelCarrito(
+        { ...item, tasaDecidida: item.tasaDecidida === true },
+        impuestos,
+        cart.tax_included === true,
+      );
+      item.tax_rate = cuenta.taxRate;
+      item.tax_amount = cuenta.taxAmount;
+      item.total = cuenta.total;
+      item.tax_name = cuenta.taxName || nombreDeImpuestos(impuestos);
+      if (item.tax_included == null) item.tax_included = cuenta.taxIncludedEfectivo;
+      return cuenta;
     } catch (error) {
       console.error('Error calculating item taxes:', error);
-      // En caso de error, no aplicar impuestos
-      item.tax_amount = 0;
+      const cuenta = calcularLineaDelCarrito({ ...item, tax_rate: 0, tasaDecidida: true }, [], false);
+      item.tax_amount = cuenta.taxAmount;
       item.tax_rate = 0;
-      item.total = item.quantity * item.unit_price - (item.discount_amount || 0);
+      item.total = cuenta.total;
+      return cuenta;
     }
   }
 

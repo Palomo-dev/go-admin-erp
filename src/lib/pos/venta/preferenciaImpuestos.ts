@@ -5,8 +5,8 @@
  * (el interruptor o el selector), nunca la carga inicial de un carrito.
  *
  * Vive en el navegador (por equipo): es una comodidad del puesto de caja, no
- * un dato del negocio. Si el almacenamiento no está disponible, el POS se
- * comporta como siempre (impuestos predeterminados y sin incluir).
+ * un dato del negocio. Si no hay preferencia, el carrito nuevo toma
+ * «impuestos incluidos» de los impuestos predeterminados de la organización.
  */
 export interface PreferenciaImpuestos {
   incluidos?: boolean;

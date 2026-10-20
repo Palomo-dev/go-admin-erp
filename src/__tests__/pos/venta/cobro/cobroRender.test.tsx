@@ -359,8 +359,12 @@ describe('Cobro · secciones plegables (paso 12)', () => {
 
   test('propina 5 % y 10 % ANTES de impuestos, «otro valor» topado al 10 % y la misma base a la pantalla (D7)', async () => {
     (POSService.getOrganizationTaxes as jest.Mock).mockResolvedValueOnce([{ id: 'iva', name: 'IVA', rate: 19, is_default: true, is_active: true }]);
-    // Sin abrirCobro(): con IVA el primer pago (precargado con el total del carrito) no cubre el total calculado.
-    renderConIdioma(<CheckoutDialog cart={CARRITO} open onOpenChange={jest.fn()} onCheckoutComplete={jest.fn()} />);
+    // La tasa ya viene en la línea (la misma que deja el carrito). 23.800 + 19 % = 28.322.
+    const conIva = {
+      ...CARRITO,
+      items: CARRITO.items.map((item) => ({ ...item, tax_rate: 19, tax_included: false })),
+    };
+    renderConIdioma(<CheckoutDialog cart={conIva} open onOpenChange={jest.fn()} onCheckoutComplete={jest.fn()} />);
     await screen.findByRole('radio', { name: /Tarjeta/ });
     // Subtotal 23.800 + IVA 19 % (4.522) = 28.322 a pagar.
     await waitFor(() => expect(screen.getByTestId('cobro-total-a-pagar').textContent).toContain('28.322'));

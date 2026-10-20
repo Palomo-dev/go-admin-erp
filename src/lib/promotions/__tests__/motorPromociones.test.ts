@@ -14,6 +14,7 @@ import {
   lineaMesaGestionada,
   promocionesUsadas,
   promocionVigente,
+  unidadesGratisCompraLleva,
   type ContextoPromocion,
   type FilaPromocion,
   type LineaPromocion,
@@ -240,5 +241,37 @@ describe('vigencia general', () => {
   it('«Lleve X pague Y» no regala kilos', () => {
     const dosPorUno = promo({ promotion_type: 'buy_x_get_y', buy_quantity: 1, get_quantity: 1 });
     expect(evaluarPromociones([dosPorUno], [linea(1, 2.5, 18900, { sale_mode: 'weight' })], ctx()).discountTotal).toBe(0);
+  });
+  it('3x2 regala una de cada tres; 2x1 regala una de cada dos; compra 1 lleva 2 gratis sigue el grupo de tres', () => {
+    expect(unidadesGratisCompraLleva(3, 3, 2)).toBe(1);
+    expect(unidadesGratisCompraLleva(5, 3, 2)).toBe(1);
+    expect(unidadesGratisCompraLleva(6, 3, 2)).toBe(2);
+    expect(unidadesGratisCompraLleva(2, 2, 1)).toBe(1);
+    expect(unidadesGratisCompraLleva(3, 1, 2)).toBe(2);
+    const tresPorDos = promo({ promotion_type: 'buy_x_get_y', buy_quantity: 3, get_quantity: 2 });
+    expect(evaluarPromociones([tresPorDos], [linea(1, 3, 10000)], ctx()).discountTotal).toBe(10000);
+    const dosPorUno = promo({ promotion_type: 'buy_x_get_y', buy_quantity: 2, get_quantity: 1 });
+    expect(evaluarPromociones([dosPorUno], [linea(1, 2, 10000)], ctx()).discountTotal).toBe(10000);
+  });
+  it('el paquete descuenta la diferencia contra el precio; sin precio, el porcentaje', () => {
+    const paquete = promo({
+      promotion_type: 'bundle',
+      bundle_price: 15000,
+      applies_to: 'products',
+      promotion_rules: [
+        { rule_type: 'include_product', product_id: 1, category_id: null },
+        { rule_type: 'include_product', product_id: 2, category_id: null },
+      ],
+    });
+    expect(evaluarPromociones([paquete], [linea(1, 1, 10000), linea(2, 1, 10000)], ctx()).discountTotal).toBe(5000);
+    expect(evaluarPromociones([paquete], [linea(1, 1, 10000)], ctx()).discountTotal).toBe(0);
+    const porcentaje = promo({ promotion_type: 'bundle', discount_value: 10, bundle_price: null });
+    expect(evaluarPromociones([porcentaje], [linea(1, 1, 20000)], ctx()).discountTotal).toBe(2000);
+  });
+  it('la franja horaria se mide en la zona de la organización y puede cruzar la medianoche', () => {
+    expect(promocionVigente(promo({ start_time: '18:00', end_time: '21:00' }), ctx())).toBe(true);
+    expect(promocionVigente(promo({ start_time: '21:00', end_time: '22:00' }), ctx())).toBe(false);
+    expect(promocionVigente(promo({ start_time: '22:00', end_time: '06:00' }), ctx())).toBe(false);
+    expect(promocionVigente(promo({ start_time: '19:00', end_time: '02:00' }), ctx())).toBe(true);
   });
 });

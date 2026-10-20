@@ -121,20 +121,21 @@ describe('la nota de la línea se guarda y sobrevive a las operaciones del servi
     expect(leer()[0].items[0]).toMatchObject({ notes: 'sin cebolla', is_allergy: true, customer_note: 'empacar aparte' });
   });
 
-  it('«Excluir impuesto» se guarda y sobrevive; no recalcula (misma semántica)', async () => {
+  it('«Excluir impuesto» se guarda, quita el IVA y sobrevive al cambiar la cantidad', async () => {
     guardar([{ id: 'cart-1', organization_id: 120, branch_id: 7, status: 'active', items: [linea('l1')] }]);
     const antes = await POSService.recalculateCart('cart-1');
+    expect(antes.total).toBe(23800);
     const conFlag = await POSService.updateCartItemTaxExcluded('cart-1', 'l1', true);
-    // Guardar el flag no cambia ningún importe del carrito.
-    expect(conFlag.total).toBe(antes.total);
-    expect(conFlag.items[0].tax_amount).toBe(antes.items[0].tax_amount);
+    expect(conFlag.items[0].tax_excluded).toBe(true);
+    expect(conFlag.items[0].tax_amount).toBe(0);
+    expect(conFlag.total).toBe(20000);
     const tras = await POSService.updateCartItemQuantity('cart-1', 'l1', 3);
     expect(tras.items[0].tax_excluded).toBe(true);
-    // calculateCartTotals sigue sin leerlo: 3 × 10.000 + 19 % = 35.700 (igual que sin el flag).
-    expect(tras.total).toBe(35700);
+    expect(tras.total).toBe(30000);
     expect(leer()[0].items[0].tax_excluded).toBe(true);
     const quitado = await POSService.updateCartItemTaxExcluded('cart-1', 'l1', false);
     expect(quitado.items[0].tax_excluded).toBe(false);
+    expect(quitado.total).toBe(35700);
   });
 
   it('guardar la nota no borra los carritos en deuda (lee la lista completa)', async () => {

@@ -271,8 +271,9 @@ class WebServer extends EventEmitter {
         GATE_COOKIE_SECRET: gateSecret,
         // Sin telemetría ni comprobación de versiones desde el escritorio.
         NEXT_TELEMETRY_DISABLED: '1',
-        // Marca para que el código de la web pueda distinguir el servidor
-        // embebido si algún día lo necesita.
+        // Marca del servidor embebido. El ingreso la usa para reenviar
+        // /api/auth/acceso a app.goadmin.io: aquí no hay clave de servicio
+        // (accesoEscritorio.ts). No quitarla: sin ella el escritorio no entra.
         GOADMIN_DESKTOP_EMBEDDED: '1',
         // Para webLauncher.ts: qué cargar y a quién vigilar.
         GOADMIN_WEB_SERVER_JS: serverJs,

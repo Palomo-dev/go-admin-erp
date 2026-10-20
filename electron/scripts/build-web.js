@@ -55,6 +55,8 @@ const DEST = path.join(ELECTRON_DIR, 'resources', 'web');
  * es público y cualquiera puede abrirlo. Las API routes que las necesitan
  * simplemente no funcionan en el servidor local (ver
  * docs/desktop/FASE-3-NEXT-EMBEBIDO.md, sección "Qué no funciona").
+ * El ingreso es la excepción: no se mete la clave; el escritorio reenvía
+ * el cuerpo a la web pública (src/lib/auth/accesoEscritorio.ts).
  */
 const PUBLIC_ENV_ALLOWLIST = [
   'NEXT_PUBLIC_SUPABASE_URL',

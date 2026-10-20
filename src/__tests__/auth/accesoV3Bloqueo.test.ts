@@ -62,6 +62,9 @@ function peticion(cuerpo: unknown, ip = '203.0.113.7') {
 }
 
 beforeEach(() => {
+  // Estas peticiones van a localhost. Si otra prueba dejó la marca del
+  // escritorio, el ingreso se reenviaría en vez de usar el doble de aquí.
+  delete process.env.GOADMIN_DESKTOP_EMBEDDED;
   _resetRateLimits();
   fallos.clear();
   bloqueos.clear();

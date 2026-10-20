@@ -5,6 +5,7 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import { clienteAnonimoServidor, demasiadasSolicitudes, normalizarCorreoAcceso } from '@/lib/auth/servidorAcceso';
 import { codigoDeErrorAuth } from '@/lib/auth/codigosAcceso';
 import { bloqueoVigente, clavesDeAcceso, limpiarFallos, registrarFallo } from '@/lib/auth/bloqueoAcceso';
+import { reenviarAccesoEscritorio } from '@/lib/auth/accesoEscritorio';
 
 /**
  * POST /api/auth/acceso — inicio de sesión con correo y contraseña. Pública.
@@ -18,6 +19,10 @@ import { bloqueoVigente, clavesDeAcceso, limpiarFallos, registrarFallo } from '@
  *  - 429 `bloqueado` con `bloqueadoHasta`, o `demasiadas` (límite general por IP).
  * Si el contador no responde, falla cerrado (`inesperado`, 503): no se abre la
  * puerta sin poder contar.
+ *
+ * Escritorio: el Next embebido no tiene clave de servicio. En ese caso el
+ * cuerpo se reenvía a la web pública (`reenviarAccesoEscritorio`), que es
+ * quien cuenta. En Vercel esa rama no corre.
  *
  * Límite honesto: quien llame a Auth de Supabase directamente con la clave
  * anónima no pasa por aquí (le quedan los límites propios de Supabase).
@@ -37,14 +42,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, codigo: 'credenciales' }, { status: 401 });
   }
 
+  const reenvio = await reenviarAccesoEscritorio(request, { email: correo, password: contrasena });
+  if (reenvio) return reenvio;
+
   const ip = getClientIp(request);
   const rl = await checkRateLimits([{ key: `auth:acceso:ip:${ip}`, opts: LIMITE_GENERAL_IP }], { store: getRateLimitStore() });
   if (!rl.allowed) return demasiadasSolicitudes(rl.resetAt);
 
   const claves = clavesDeAcceso(correo, ip);
-  const servicio = getServiceClient();
 
   try {
+    const servicio = getServiceClient();
     const bloqueo = await bloqueoVigente(servicio, claves);
     if (bloqueo) {
       return demasiadasSolicitudes(bloqueo, { codigo: 'bloqueado', bloqueadoHasta: bloqueo.toISOString() });

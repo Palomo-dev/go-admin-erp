@@ -7,13 +7,25 @@ import ImagePickerDialog from '@/components/common/ImagePickerDialog';
 import type { BaseFieldProps } from './types';
 
 /** Selector de imagen con `ImagePickerDialog` (extraído de `ImageFieldPicker`). */
-export default function ImageField({ value, onChange }: BaseFieldProps) {
+function insigniaImagen(field: BaseFieldProps['field']): 'Escritorio' | 'Celular' | null {
+  if (field.key === 'image_url_mobile') return 'Celular';
+  if (field.key === 'image_url' && /escritorio/i.test(field.label)) return 'Escritorio';
+  return null;
+}
+
+export default function ImageField({ field, value, onChange }: BaseFieldProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [showPicker, setShowPicker] = useState(false);
   const url = (value as string) || '';
+  const marca = insigniaImagen(field);
 
   return (
     <>
+      {marca && (
+        <span className="mb-1 inline-flex w-fit rounded bg-gray-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+          {marca}
+        </span>
+      )}
       {url ? (
         <div className="relative group rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
           <img

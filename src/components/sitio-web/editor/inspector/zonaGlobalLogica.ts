@@ -34,6 +34,16 @@ export function valorOpcion<T = unknown>(ajustes: Record<string, unknown> | null
   return normalizarOpcionShell(columna, ajustes?.[columna]) as T;
 }
 
+/**
+ * Bolsa o carrito que muestra el selector. Sin `header_cart_glyph` se mira `cart_icon`
+ * y, si tampoco es el carrito, se muestra la bolsa — sin escribir nada hasta que elijan.
+ */
+export function formaCarritoEncabezado(ajustes: Record<string, unknown> | null | undefined): 'bolsa' | 'carrito' {
+  const glyph = valorOpcion<string | null>(ajustes, 'header_cart_glyph');
+  if (glyph === 'carrito' || glyph === 'bolsa') return glyph;
+  return valorOpcion<string | null>(ajustes, 'cart_icon') === 'shopping-cart' ? 'carrito' : 'bolsa';
+}
+
 /** Booleano efectivo de una opción del shell (default del contrato). */
 export function opcionBooleana(ajustes: Record<string, unknown> | null | undefined, columna: string): boolean {
   const v = valorOpcion(ajustes, columna);

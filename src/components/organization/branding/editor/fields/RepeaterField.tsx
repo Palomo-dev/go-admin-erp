@@ -220,6 +220,9 @@ export default function RepeaterField({
                         <Label className="text-[10px] text-gray-400 dark:text-gray-500">
                           {f.label}
                         </Label>
+                        {f.type === 'image' && f.helpText ? (
+                          <p className="text-[10px] leading-snug text-gray-500 dark:text-gray-400">{f.helpText}</p>
+                        ) : null}
                         <FieldRenderer
                           field={f}
                           value={item[f.key]}

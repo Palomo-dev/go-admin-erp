@@ -32848,7 +32848,15 @@
           "reserva": "Barra de reserva con fechas",
           "reservaAyuda": "Hotel: llegada, salida y huéspedes bajo el encabezado",
           "moneda": "Moneda",
-          "monedaAyuda": "Solo si el sitio vende en más de una"
+          "monedaAyuda": "Solo si el sitio vende en más de una",
+          "iconos": "Iconos del encabezado",
+          "iconosTrazo": "Trazo de los iconos",
+          "contorno": "Contorno",
+          "relleno": "Relleno",
+          "iconosForma": "Forma del carrito",
+          "bolsa": "Bolsa",
+          "iconosCirculo": "Círculo de color",
+          "iconosCirculoAyuda": "Fondo del color de la marca detrás de moneda, carrito y cuenta"
         },
         "diseno": {
           "titulo": "Diseño del encabezado",

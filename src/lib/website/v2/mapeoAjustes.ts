@@ -19,7 +19,7 @@
  * revisada. `contenido.horarios` sigue en el contrato (documentos viejos lo traen) pero nadie lo
  * escribe ni lo lee.
  *
- * Encabezado y pie por plantilla (2026-10-06): 19 opciones nuevas (`nueva: true`) con su regla,
+ * Encabezado y pie por plantilla (2026-10-06): 22 opciones nuevas (`nueva: true`) con su regla,
  * `header_style` 'transparent' y `footer_background` 'tema'. En V2 viven en `shell.*.opciones`;
  * en legacy, columnas aditivas de las migraciones `sitio_encabezado_pie_v2` (14) y
  * `sitio_encabezado_pie_v2_panel` (moneda, colores de texto, fijo al bajar, separadores). Quien
@@ -191,6 +191,15 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Fijo al bajar (sticky). `true` = lo de hoy. */
   header_sticky: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
+  /**
+   * Línea entre el logo y el menú. `true` = visible (lo de hoy, con el lavado del fondo).
+   * `false` quita el borde.
+   */
+  header_divider: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
+  /** Color de esa línea. `null` = rgba blanco 0.1 sobre fondo oscuro y negro 0.08 sobre claro. */
+  header_divider_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Hover de los íconos del encabezado. `null` = el mismo lavado que el divisor. */
+  header_hover_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },

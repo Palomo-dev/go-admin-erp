@@ -32856,7 +32856,11 @@
           "opacidad": "Opacité du fond",
           "textoEnlaces": "Texte et liens",
           "fijo": "Fixe au défilement",
-          "fijoAyuda": "L'en-tête reste en haut pendant le défilement"
+          "fijoAyuda": "L'en-tête reste en haut pendant le défilement",
+          "divisor": "Ligne entre le logo et le menu",
+          "divisorAyuda": "Activée, la couleur suit le fond si vous ne la fixez pas. Désactivée, la bordure disparaît.",
+          "divisorColor": "Couleur de la ligne",
+          "hoverIconos": "Survol des icônes"
         },
         "pie": {
           "menus": "Menus du pied de page",

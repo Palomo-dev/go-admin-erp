@@ -32856,7 +32856,11 @@
           "opacidad": "Opacidade do fundo",
           "textoEnlaces": "Texto e links",
           "fijo": "Fixo ao rolar",
-          "fijoAyuda": "O cabeçalho fica no topo ao rolar a página"
+          "fijoAyuda": "O cabeçalho fica no topo ao rolar a página",
+          "divisor": "Linha entre o logo e o menu",
+          "divisorAyuda": "Ligada, a cor segue o fundo se você não a fixar. Desligada, a borda some.",
+          "divisorColor": "Cor da linha",
+          "hoverIconos": "Hover dos ícones"
         },
         "pie": {
           "menus": "Menus do rodapé",

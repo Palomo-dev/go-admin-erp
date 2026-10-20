@@ -32856,7 +32856,11 @@
           "opacidad": "Background opacity",
           "textoEnlaces": "Text and links",
           "fijo": "Sticky on scroll",
-          "fijoAyuda": "The header stays at the top while scrolling"
+          "fijoAyuda": "The header stays at the top while scrolling",
+          "divisor": "Line between the logo and the menu",
+          "divisorAyuda": "On, the color follows the background unless you set it. Off, the border is removed.",
+          "divisorColor": "Line color",
+          "hoverIconos": "Icon hover"
         },
         "pie": {
           "menus": "Footer menus",

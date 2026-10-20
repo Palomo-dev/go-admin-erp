@@ -156,6 +156,12 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_show_currency: false });
     fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden' });
+    fireEvent.click(screen.getByRole('radio', { name: 'Relleno' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_weight: 'relleno' });
+    fireEvent.click(screen.getByRole('radio', { name: 'Carrito' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_cart_glyph: 'carrito', cart_icon: 'shopping-cart' });
+    fireEvent.click(screen.getByRole('switch', { name: 'Círculo de color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
     fireEvent.click(screen.getByRole('radio', { name: 'Categorías de la carta' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_menu_source: 'categorias_carta' });
   });

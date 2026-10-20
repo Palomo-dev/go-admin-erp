@@ -36,6 +36,7 @@ import type { DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
 import { estadoBotonCobrar, puedeConfirmarDeuda, puedeRegistrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
 import { guardarPreferenciaImpuestos, leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
+import { CANAL_PROMOCIONES } from '@/lib/pos/venta/avisosPromociones';
 // `CartProduct` y `requiresPreparation` se movieron literales a lineaCarrito.ts (paso 6): las usa también la línea.
 import { requiresPreparation, type CartProduct } from '@/lib/pos/venta/lineaCarrito';
 import { LineasCarrito } from '@/components/pos/venta/carrito/LineasCarrito';
@@ -126,36 +127,95 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
+  const [codigoCupon, setCodigoCupon] = useState(cart.coupon?.code ?? '');
+  const [cuponOcupado, setCuponOcupado] = useState(false);
+  const tCupon = useTranslations('posVenta.cupon');
 
   // Cada carrito muestra su propio «Impuestos incluidos». Uno nuevo (sin valor)
-  // arranca con la última elección del cajero en esta sucursal y la guarda en
-  // el carrito, para que las líneas y el cobro usen lo mismo que se ve.
+  // arranca con la última elección del cajero y, si no hay, con
+  // organization_taxes.tax_included de los predeterminados. Vaciar el carrito
+  // no lo apaga: este efecto solo corre al cambiar de carrito.
   useEffect(() => {
     if (cart.tax_included != null) {
       setTaxIncluded(cart.tax_included);
       return;
     }
+    let vivo = true;
     const preferido = leerPreferenciaImpuestos(cart.organization_id, cart.branch_id)?.incluidos;
-    if (preferido === undefined) {
-      setTaxIncluded(false);
-      return;
+    const aplicar = (valor: boolean) => {
+      if (!vivo) return;
+      setTaxIncluded(valor);
+      POSService.updateCartTaxSettings(cart.id, { tax_included: valor })
+        .then((recalculado) => { if (vivo) onCartUpdate(recalculado); })
+        .catch((err) => console.error('Error aplicando la preferencia de impuestos:', err));
+    };
+    if (preferido !== undefined) {
+      aplicar(preferido);
+    } else {
+      POSService.impuestosIncluidosPorDefecto()
+        .then(aplicar)
+        .catch((err) => console.error('Error leyendo impuestos incluidos:', err));
     }
-    setTaxIncluded(preferido);
-    POSService.updateCartTaxSettings(cart.id, { tax_included: preferido })
-      .then((recalculado) => onCartUpdate(recalculado))
-      .catch((err) => console.error('Error aplicando la preferencia de impuestos:', err));
+    return () => { vivo = false; };
     // Solo al cambiar de carrito: el resto de cambios llega por el interruptor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart.id]);
 
-  // Sincronizar taxIncluded cuando cambian los items del carrito
+  // Si todas las líneas que llevan impuesto coinciden, el interruptor las
+  // sigue. Vaciar el carrito (o una línea sin marca) no lo apaga.
   useEffect(() => {
-    if (cart.items.length > 0 && cart.items.every(item => item.tax_included)) {
-      setTaxIncluded(true);
-    } else if (cart.items.length > 0 && !cart.items.some(item => item.tax_included)) {
-      setTaxIncluded(false);
-    }
+    if (cart.items.length === 0) return;
+    const gravadas = cart.items.filter((item) => !item.tax_excluded);
+    if (gravadas.length === 0) return;
+    if (gravadas.every((item) => item.tax_included === true)) setTaxIncluded(true);
+    else if (gravadas.every((item) => item.tax_included === false)) setTaxIncluded(false);
   }, [cart.items]);
+
+  useEffect(() => {
+    setCodigoCupon(cart.coupon?.code ?? '');
+  }, [cart.id, cart.coupon?.code]);
+
+  // Promociones: al volver al POS o cuando se crea, edita o activa una,
+  // el carrito abierto se vuelve a calcular sin tocar las líneas.
+  useEffect(() => {
+    if (cart.items.length === 0) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let vivo = true;
+    const correr = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        POSService.recalculateCart(cart.id)
+          .then((actualizado) => { if (vivo) onCartUpdate(actualizado); })
+          .catch((err) => console.error('Error recalculando promociones:', err));
+      }, 400);
+    };
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') correr();
+    };
+    window.addEventListener('focus', correr);
+    document.addEventListener('visibilitychange', alVolver);
+    let bc: BroadcastChannel | undefined;
+    try {
+      bc = new BroadcastChannel(CANAL_PROMOCIONES);
+      bc.onmessage = () => correr();
+    } catch {
+      bc = undefined;
+    }
+    const canal = supabase
+      .channel(`pos-promos-${cart.organization_id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions', filter: `organization_id=eq.${cart.organization_id}` }, correr)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotion_rules' }, correr)
+      .subscribe();
+    return () => {
+      vivo = false;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('focus', correr);
+      document.removeEventListener('visibilitychange', alVolver);
+      bc?.close();
+      supabase.removeChannel(canal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.id, cart.items.length === 0]);
 
   // Sincronizar el flag con el carrito (memoria + storage) para que persista y el diálogo de pago lo refleje
   const handleTaxIncludedChange = async (value: boolean) => {
@@ -166,6 +226,46 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       onCartUpdate(recalculatedCart);
     } catch (err) {
       console.error('Error persistiendo tax_included:', err);
+    }
+  };
+
+  const aplicarCupon = async () => {
+    const codigo = codigoCupon.trim();
+    if (!codigo) return;
+    setCuponOcupado(true);
+    try {
+      onCartUpdate(await POSService.aplicarCupon(cart.id, codigo));
+      toast.success(tCupon('aplicado'));
+    } catch (err) {
+      const clave = err instanceof Error ? err.message : '';
+      const motivos: Record<string, 'no_encontrado' | 'inactivo' | 'aun_no' | 'vencido' | 'agotado' | 'agotado_cliente' | 'otro_cliente' | 'minimo' | 'primera_compra' | 'sin_valor' | 'vacio'> = {
+        cupon_no_encontrado: 'no_encontrado',
+        cupon_inactivo: 'inactivo',
+        cupon_aun_no: 'aun_no',
+        cupon_vencido: 'vencido',
+        cupon_agotado: 'agotado',
+        cupon_agotado_cliente: 'agotado_cliente',
+        cupon_otro_cliente: 'otro_cliente',
+        cupon_minimo: 'minimo',
+        cupon_primera_compra: 'primera_compra',
+        cupon_sin_valor: 'sin_valor',
+        cupon_vacio: 'vacio',
+      };
+      toast.error(tCupon(motivos[clave] ?? 'no_encontrado'));
+    } finally {
+      setCuponOcupado(false);
+    }
+  };
+
+  const quitarCupon = async () => {
+    setCuponOcupado(true);
+    try {
+      onCartUpdate(await POSService.quitarCupon(cart.id));
+      setCodigoCupon('');
+    } catch (err) {
+      console.error('Error quitando el cupón:', err);
+    } finally {
+      setCuponOcupado(false);
     }
   };
 
@@ -827,6 +927,33 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
       {!isEmpty && (
         <div className="flex shrink-0 flex-col gap-3 border-t border-line pt-3">
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void aplicarCupon();
+            }}
+          >
+            <label htmlFor={`cupon-${cart.id}`} className="shrink-0 text-xs text-fg-secondary">{tCupon('etiqueta')}</label>
+            <input
+              id={`cupon-${cart.id}`}
+              value={codigoCupon}
+              onChange={(e) => setCodigoCupon(e.target.value)}
+              placeholder={tCupon('placeholder')}
+              autoCapitalize="characters"
+              disabled={cuponOcupado}
+              className="h-8 min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
+            />
+            {cart.coupon ? (
+              <button type="button" onClick={() => void quitarCupon()} disabled={cuponOcupado} className="shrink-0 text-xs text-fg-secondary underline">
+                {tCupon('quitar')}
+              </button>
+            ) : (
+              <button type="submit" disabled={cuponOcupado || !codigoCupon.trim()} className="shrink-0 text-xs font-medium text-brand disabled:opacity-50">
+                {tCupon('aplicar')}
+              </button>
+            )}
+          </form>
           {/* Resumen de impuestos y totales: el cálculo es de TaxSummary; el dibujo, ResumenTotales del kit. */}
           <TaxSummary
             key={cart.id}
@@ -873,6 +1000,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         frecuentes={frequentDiscountsMap}
         onCargarFrecuentes={(productId) => void handleLoadFrequentDiscounts(productId)}
         onAplicar={handleApplyDiscount}
+        onAplicarVenta={(modo, valor) => POSService.aplicarDescuentoVenta(cart.id, modo, valor).then(onCartUpdate)}
       />
 
       {/* Poner en espera */}

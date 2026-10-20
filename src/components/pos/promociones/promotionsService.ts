@@ -12,6 +12,7 @@ import {
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
 import { getDayRange } from '@/lib/utils/dateRanges';
+import { avisarCambioPromociones } from '@/lib/pos/venta/avisosPromociones';
 
 // ============================================================
 // Vigencias en zona de la organizacion (Fase B, tanda 4).
@@ -31,6 +32,28 @@ import { getDayRange } from '@/lib/utils/dateRanges';
 /** Dia calendario 'YYYY-MM-DD' de un valor que puede venir ya como instante. */
 function diaDe(valor: string, timezone: string): string {
   return valor.length <= 10 ? valor : toPlainDate(new Date(valor), timezone);
+}
+
+/**
+ * Vacía horas en blanco y un precio de paquete en 0, para no guardar `''`
+ * en una columna `time` ni un 0 que el motor tomaría como «sin precio».
+ */
+function limpiarFranjaYPaquete<T extends Partial<CreatePromotionData>>(datos: T): T {
+  const out = { ...datos };
+  const hora = (valor: string | null | undefined): string | null => {
+    if (valor == null || String(valor).trim() === '') return null;
+    return String(valor).trim();
+  };
+  if ('start_time' in out) out.start_time = hora(out.start_time);
+  if ('end_time' in out) out.end_time = hora(out.end_time);
+  if ('bundle_price' in out) {
+    const n = Number(out.bundle_price);
+    out.bundle_price = Number.isFinite(n) && n > 0 ? n : null;
+  }
+  if ('branches' in out && Array.isArray(out.branches) && out.branches.length === 0) {
+    out.branches = undefined;
+  }
+  return out;
 }
 
 /** Convierte los dias del formulario en los instantes que van a la columna. */
@@ -199,12 +222,13 @@ export class PromotionsService {
       const { data: userData } = await supabase.auth.getUser();
 
       const { rules, ...promotionData } = data;
-      const vigencia = await vigenciaEnInstantes(organizationId, promotionData);
+      const limpia = limpiarFranjaYPaquete(promotionData);
+      const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
       const { data: result, error } = await supabase
         .from('promotions')
         .insert([{
-          ...promotionData,
+          ...limpia,
           ...vigencia,
           organization_id: organizationId,
           created_by: userData?.user?.id,
@@ -226,6 +250,7 @@ export class PromotionsService {
         await this.createRules(result.id, rules);
       }
 
+      avisarCambioPromociones();
       return result;
     } catch (error) {
       console.error('Error in create:', error);
@@ -240,12 +265,13 @@ export class PromotionsService {
     try {
       const organizationId = this.getOrganizationId();
       const { rules, ...promotionData } = data;
-      const vigencia = await vigenciaEnInstantes(organizationId, promotionData);
+      const limpia = limpiarFranjaYPaquete(promotionData);
+      const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
       const { data: result, error } = await supabase
         .from('promotions')
         .update({
-          ...promotionData,
+          ...limpia,
           ...vigencia,
           updated_at: new Date().toISOString()
         })
@@ -273,6 +299,7 @@ export class PromotionsService {
         }
       }
 
+      avisarCambioPromociones();
       return result;
     } catch (error) {
       console.error('Error in update:', error);
@@ -324,6 +351,7 @@ export class PromotionsService {
         console.error('Error deleting promotion:', error);
         throw new Error(`Error al eliminar promoción: ${error.message}`);
       }
+      avisarCambioPromociones();
     } catch (error) {
       console.error('Error in delete:', error);
       throw error;
@@ -371,6 +399,21 @@ export class PromotionsService {
    * Replica el patrón de purchaseOrderService.getProducts: trae variant_data,
    * mapea el nombre del padre y excluye productos padre y servicios.
    */
+  static async getBranches(): Promise<{ id: number; name: string }[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('branches')
+      .select('id, name')
+      .eq('organization_id', organizationId)
+      .or('is_active.is.null,is_active.eq.true')
+      .order('name');
+    if (error) {
+      console.error('Error loading branches:', error);
+      return [];
+    }
+    return (data || []).map((fila) => ({ id: fila.id, name: fila.name }));
+  }
+
   static async getProducts(search?: string): Promise<any[]> {
     const organizationId = this.getOrganizationId();
 

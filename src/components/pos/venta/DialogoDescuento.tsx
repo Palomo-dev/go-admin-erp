@@ -14,8 +14,8 @@ import type { CartItem } from '@/components/pos/types';
  * que acota el descuento a cantidad × precio; L8) y el servidor lo valida al
  * cobrar (`descuento_excede_linea`).
  *
- * «A toda la venta» se ve deshabilitada con su motivo: necesita la columna
- * `discount_source` y la validación en el servidor (D5).
+ * «A toda la venta» reparte el monto o el porcentaje entre las líneas como
+ * descuento manual. El servidor lo valida al cobrar (`descuento_excede_linea`).
  */
 export interface DialogoDescuentoProps {
   abierto: boolean;
@@ -25,15 +25,20 @@ export interface DialogoDescuentoProps {
   frecuentes: Record<number, number[]>;
   onCargarFrecuentes: (productId: number) => void;
   onAplicar: (itemId: string, monto: number) => Promise<void> | void;
+  /** Descuento (monto o %) repartido entre todas las líneas. */
+  onAplicarVenta?: (modo: 'monto' | 'porcentaje', valor: number) => Promise<void> | void;
 }
 
 type Pestana = 'producto' | 'venta';
 
-export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, frecuentes, onCargarFrecuentes, onAplicar }: DialogoDescuentoProps) {
+export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, frecuentes, onCargarFrecuentes, onAplicar, onAplicarVenta }: DialogoDescuentoProps) {
   const t = useTranslations('posVenta.descuento');
   const [pestana, setPestana] = useState<Pestana>('producto');
   const [valores, setValores] = useState<Record<string, string>>({});
   const [aplicando, setAplicando] = useState<string | null>(null);
+  const [modoVenta, setModoVenta] = useState<'monto' | 'porcentaje'>('porcentaje');
+  const [valorVenta, setValorVenta] = useState<number | null>(null);
+  const [aplicandoVenta, setAplicandoVenta] = useState(false);
 
   useEffect(() => {
     if (!abierto) return;
@@ -69,10 +74,12 @@ export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, f
             onValorChange={setPestana}
             opciones={[
               { valor: 'producto', etiqueta: t('aUnProducto') },
-              { valor: 'venta', etiqueta: t('aTodaLaVenta'), deshabilitada: true },
+              { valor: 'venta', etiqueta: t('aTodaLaVenta'), deshabilitada: !onAplicarVenta },
             ]}
           />
-          <p className="mt-1 text-xs text-fg-muted">{t('ventaNoDisponible')}</p>
+          {pestana === 'venta' && (
+            <p className="mt-1 text-xs text-fg-muted">{t('ventaAyuda')}</p>
+          )}
         </div>
       }
       pie={
@@ -81,6 +88,43 @@ export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, f
         </KbdButton>
       }
     >
+      {pestana === 'venta' ? (
+        <div className="flex flex-col gap-3 py-2">
+          <SegmentedControl<'monto' | 'porcentaje'>
+            etiqueta={t('modoVenta')}
+            valor={modoVenta}
+            onValorChange={setModoVenta}
+            opciones={[
+              { valor: 'porcentaje', etiqueta: t('porcentaje') },
+              { valor: 'monto', etiqueta: t('monto') },
+            ]}
+          />
+          <CampoNumero
+            tamano="sm"
+            valor={valorVenta}
+            onValorChange={setValorVenta}
+            minimo={0}
+            maximo={modoVenta === 'porcentaje' ? 100 : undefined}
+            aria-label={t('valorVenta')}
+            placeholder={modoVenta === 'porcentaje' ? t('porcentaje') : t('monto')}
+            className="w-40"
+          />
+          <KbdButton
+            variante="primario"
+            tamano="sm"
+            cargando={aplicandoVenta}
+            disabled={!onAplicarVenta}
+            onClick={() => {
+              if (!onAplicarVenta) return;
+              setAplicandoVenta(true);
+              Promise.resolve(onAplicarVenta(modoVenta, valorVenta ?? 0))
+                .finally(() => setAplicandoVenta(false));
+            }}
+          >
+            {t('aplicar')}
+          </KbdButton>
+        </div>
+      ) : (
       <ul className="flex flex-col divide-y divide-line" aria-label={t('lineas')}>
         {items.map((item) => {
           const texto = valores[item.id] ?? '';
@@ -139,6 +183,7 @@ export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, f
           );
         })}
       </ul>
+      )}
     </PanelAdaptable>
   );
 }

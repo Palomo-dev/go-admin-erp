@@ -30,6 +30,12 @@
  *   - tope (`max_discount_amount`) por promoción y por cuenta, repartido en
  *     proporción; la última línea absorbe el redondeo;
  *   - «Lleve X pague Y» por producto, regalando las unidades más baratas.
+ *     Si Y < X, de cada X se regalan X−Y (3 y 2 = 3x2: lleva 3, paga 2).
+ *     Si Y ≥ X, Y son gratis además de las X que se pagan;
+ *   - franja `start_time` / `end_time` en la zona de la organización (si el
+ *     fin es menor que el inicio, cruza la medianoche);
+ *   - bundle: con `bundle_price` > 0 y los productos incluidos en la cuenta,
+ *     el descuento es la diferencia; si no hay precio, el porcentaje.
  *
  * Diferencias que QUEDAN con el sitio (2026-10-07), a cerrar en ese repo:
  *   1. Redondeo: aquí a centavos; el sitio, a pesos enteros (`Math.round`).
@@ -47,7 +53,7 @@
 
 import { JS_DAY_TO_WEEKDAY, type WeekDay } from '@/components/pos/promociones/types';
 import { toPlainDate, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
-import { appliesOnWeekDay, appliesToBranch, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
+import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -85,6 +91,11 @@ export interface FilaPromocion {
   created_at?: string | null;
   branches?: unknown;
   applicable_days?: unknown;
+  /** `time` de Postgres (`HH:mm:ss`). Nulo = sin franja. */
+  start_time?: string | null;
+  end_time?: string | null;
+  /** Precio del paquete. Si es > 0, el bundle descuenta hasta ese precio. */
+  bundle_price?: number | string | null;
   applies_to_pos?: boolean | null;
   applies_to_web?: boolean | null;
   applies_to_finances?: boolean | null;
@@ -190,7 +201,22 @@ export function promocionVigente(p: FilaPromocion, ctx: ContextoPromocion, dia?:
   if (!tieneUsosDisponibles(p)) return false;
   if (!appliesOnWeekDay(p, dia ?? diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria))) return false;
   if (!appliesToBranch(p, ctx.sucursalId)) return false;
+  if (!appliesInTimeWindow(p, horaEnZona(ctx.ahora, ctx.zonaHoraria))) return false;
   return true;
+}
+
+/**
+ * Unidades que salen gratis.
+ * Si Y < X, la etiqueta es «XxY» (llevas X, pagas Y): de cada X, X−Y de regalo.
+ * Si Y ≥ X, Y son unidades gratis además de las X que se pagan.
+ */
+export function unidadesGratisCompraLleva(unidades: number, compra: number, lleva: number): number {
+  const n = Math.floor(unidades);
+  const x = Math.trunc(compra);
+  const y = Math.trunc(lleva);
+  if (n <= 0 || x <= 0 || y <= 0) return 0;
+  if (y < x) return Math.floor(n / x) * (x - y);
+  return Math.floor(n / (x + y)) * y;
 }
 
 // ── Reglas de producto / categoría ───────────────────────────────────────────
@@ -262,9 +288,22 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
 
   switch (p.promotion_type) {
     case 'percentage':
-    case 'bundle': // simplificación compartida con el sitio: porcentaje sobre lo aplicable
       for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
       break;
+    case 'bundle': {
+      const precioPaquete = num(p.bundle_price);
+      const requeridos = reglasDe(p)
+        .filter((r) => r.rule_type === 'include_product' && r.product_id != null)
+        .map((r) => r.product_id as number);
+      const presentes = new Set(indices.map((i) => lineas[i].product_id));
+      const cubre = requeridos.length === 0 || requeridos.every((id) => presentes.has(id));
+      if (precioPaquete > 0 && cubre && subtotal > precioPaquete) {
+        porLinea = repartir(centavos(subtotal - precioPaquete), pesos);
+      } else if (!(precioPaquete > 0) && valor > 0) {
+        for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
+      }
+      break;
+    }
     case 'fixed_amount':
       // UN monto por cuenta, repartido; nunca más que lo aplicable.
       if (valor > 0 && subtotal > 0) porLinea = repartir(Math.min(valor, subtotal), pesos);
@@ -283,7 +322,7 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
         }
         for (const grupo of Array.from(porProducto.values())) {
           const unidades = grupo.reduce((s, i) => s + num(lineas[i].quantity), 0);
-          let gratis = Math.floor(unidades / (x + y)) * y;
+          let gratis = unidadesGratisCompraLleva(unidades, x, y);
           const baratas = [...grupo].sort((a, b) => num(lineas[a].unit_price) - num(lineas[b].unit_price) || a - b);
           for (const idx of baratas) {
             if (gratis <= 0) break;

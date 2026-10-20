@@ -22,6 +22,7 @@
  */
 
 import { JS_DAY_TO_WEEKDAY, type WeekDay } from '@/components/pos/promociones/types';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 
 /** Lo mínimo que hay que leer de una fila de `promotions` para decidir si aplica hoy. */
 export interface PromotionVigencia {
@@ -82,6 +83,61 @@ export function isWithinEndDate(promotion: PromotionVigencia, now: Date): boolea
  * y como cadena porque el JSON guardado por la interfaz puede traer
  * cualquiera de los dos.
  */
+export interface FranjaHoraria {
+  start_time?: unknown;
+  end_time?: unknown;
+}
+
+function horaConZona(ahora: Date, zona: string): string | null {
+  try {
+    const partes = new Intl.DateTimeFormat('en-GB', {
+      timeZone: zona,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(ahora);
+    const tomar = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)?.value ?? '00';
+    return `${tomar('hour')}:${tomar('minute')}:${tomar('second')}`;
+  } catch {
+    return null;
+  }
+}
+
+/** `HH:mm:ss` en la zona de la organización. Zona ilegible → America/Bogota y, si tampoco, UTC. */
+export function horaEnZona(ahora: Date, zonaHoraria: string): string {
+  return horaConZona(ahora, zonaHoraria || DEFAULT_TIMEZONE)
+    ?? horaConZona(ahora, DEFAULT_TIMEZONE)
+    ?? horaConZona(ahora, 'UTC')
+    ?? '00:00:00';
+}
+
+function horaNormalizada(valor: unknown): string | null {
+  if (valor == null || valor === '') return null;
+  const texto = String(valor).trim();
+  const m = texto.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return null;
+  const hh = m[1].padStart(2, '0');
+  const mm = m[2];
+  const ss = (m[3] ?? '00').padStart(2, '0');
+  if (Number(hh) > 23 || Number(mm) > 59 || Number(ss) > 59) return null;
+  return `${hh}:${mm}:${ss}`;
+}
+
+/**
+ * ¿La hora cae en la franja? Sin hora de inicio ni de fin, aplica todo el día.
+ * Si el fin es anterior al inicio, la franja cruza la medianoche.
+ */
+export function appliesInTimeWindow(promotion: FranjaHoraria, hora: string): boolean {
+  const inicio = horaNormalizada(promotion.start_time);
+  const fin = horaNormalizada(promotion.end_time);
+  if (!inicio && !fin) return true;
+  if (inicio && !fin) return hora >= inicio;
+  if (!inicio && fin) return hora <= fin;
+  if (inicio! <= fin!) return hora >= inicio! && hora <= fin!;
+  return hora >= inicio! || hora <= fin!;
+}
+
 export function appliesToBranch(promotion: PromotionVigencia, branchId: number | null): boolean {
   const branches = promotion.branches;
   if (!Array.isArray(branches) || branches.length === 0) return true;

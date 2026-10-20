@@ -13,11 +13,7 @@ import { Cart } from './types';
 import { etiquetaSelectorImpuestos, impuestosAplicadosIniciales, resumenImpuestos } from '@/lib/pos/venta/resumenImpuestos';
 import { guardarPreferenciaImpuestos, impuestosDePreferencia, leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { 
-  calculateCartTaxes, 
-  type OrganizationTax as TaxUtilOrganizationTax,
-  type TaxCalculationItem 
-} from '@/lib/utils/taxCalculations';
+import { calcularLineaDelCarrito, desgloseDeLineas, totalesDeLineasDelCarrito } from '@/lib/pos/venta/calculoLineaCarrito';
 
 interface OrganizationTax {
   id: string;
@@ -79,29 +75,39 @@ export function TaxSummary({
   const t = useTranslations('posVenta.resumen');
   const idSwitch = useId();
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
-  const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
-  const [loading, setLoading] = useState(true);
   const [hasProductSpecificTaxes, setHasProductSpecificTaxes] = useState(false);
   const [taxSelectorOpen, setTaxSelectorOpen] = useState(false);
-  const [calculatedTotals, setCalculatedTotals] = useState<TaxSummaryTotals>({
-    subtotal: 0,
-    totalTaxAmount: 0,
-    finalTotal: 0,
-    cartId: cart.id,
-    linesSignature: cartLinesSignature(cart),
-  });
-
   // Firma de las líneas del carrito (id, cantidad, precio, descuento, nota, modificadores):
-  // etiqueta cada resultado con las líneas exactas con las que se calculó. Es un string:
-  // un carrito nuevo con las mismas líneas produce la misma firma y no dispara recálculo.
+  // etiqueta cada resultado con las líneas exactas con las que se calculó.
   const linesSignature = useMemo(() => cartLinesSignature(cart), [cart]);
+  const cuentas = useMemo(() => {
+    const lineas = cart.items.map((item) => calcularLineaDelCarrito(item, [], taxIncluded));
+    const totales = totalesDeLineasDelCarrito(lineas);
+    return { totales, desglose: desgloseDeLineas(lineas) };
+  }, [cart.items, taxIncluded]);
+  const taxBreakdown: TaxBreakdown[] = useMemo(() => cuentas.desglose.map((fila) => ({
+    taxId: `${fila.name}|${fila.rate}`,
+    name: fila.name,
+    rate: fila.rate,
+    baseAmount: 0,
+    taxAmount: fila.amount,
+  })), [cuentas]);
+  const calculatedTotals: TaxSummaryTotals = useMemo(() => ({
+    subtotal: cuentas.totales.subtotal,
+    totalTaxAmount: cuentas.totales.taxTotal,
+    finalTotal: cuentas.totales.total,
+    cartId: cart.id,
+    linesSignature,
+  }), [cuentas, cart.id, linesSignature]);
+  // Mientras el carrito todavía no resolvió la tasa de una línea nueva, no
+  // se pinta «sin impuestos» ni un total en cero: se queda el esqueleto.
+  const calculandoLineas = cart.items.some((item) => item.tax_rate == null);
 
   // Cargar impuestos de la organización
   useEffect(() => {
     const loadOrganizationTaxes = async () => {
       try {
-        setLoading(true);
         const taxes = await POSService.getOrganizationTaxes();
         setOrganizationTaxes(taxes);
         
@@ -126,8 +132,6 @@ export function TaxSummary({
         
       } catch (error) {
         console.error('Error loading organization taxes:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -136,154 +140,31 @@ export function TaxSummary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Calcular desglose de impuestos usando la utilidad
+  // El selector de impuestos de la organización solo aparece si ningún
+  // producto trae los suyos (esos mandan sobre la selección del carrito).
   useEffect(() => {
-    // El cálculo es asíncrono: si el carrito cambia a mitad (cobro que
-    // elimina el carrito y activa otro), el resultado viejo no debe pisar al
-    // nuevo ni salir etiquetado con el id del carrito nuevo.
-    let cancelled = false;
-    const cartId = cart.id;
-    const calculateTaxBreakdown = async () => {
-      if (cart.items.length === 0 || organizationTaxes.length === 0) {
-        setTaxBreakdown([]);
-        setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0, cartId, linesSignature });
-        return;
-      }
-
-      let hasProductTaxes = false;
-      let combinedSubtotal = 0;
-      let combinedTaxAmount = 0;
-      let combinedFinalTotal = 0;
-      const combinedBreakdown: {[taxId: string]: TaxBreakdown} = {};
-      
-      // Procesar cada ítem del carrito
-      for (const item of cart.items) {
-        try {
-          // Si el ítem tiene impuesto excluido, sumar sin impuestos
-          if (item.tax_excluded) {
-            const lineTotal = item.quantity * item.unit_price;
-            combinedSubtotal += lineTotal;
-            combinedFinalTotal += lineTotal;
-            continue;
-          }
-
-          const productTaxes = await POSService.getProductTaxes(item.product_id);
-          
-          const taxItem: TaxCalculationItem = {
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            product_id: item.product_id,
-            discount_amount: item.discount_amount || 0,
-            tax_rate: item.tax_rate || undefined,
-            tax_included: item.tax_excluded ? false : (item.tax_included ?? taxIncluded ?? undefined)
-          };
-          
-          let result;
-          
-          if (productTaxes.length > 0) {
-            hasProductTaxes = true;
-            // Usar impuestos específicos del producto
-            const productAppliedTaxes: {[key: string]: boolean} = {};
-            const productOrgTaxes: TaxUtilOrganizationTax[] = [];
-            
-            // Determinar si el impuesto está incluido: usar config del impuesto o el toggle global
-            let itemTaxIncluded = taxIncluded;
-            
-            productTaxes.forEach(relation => {
-              if (relation.organization_taxes && relation.organization_taxes.is_active) {
-                productAppliedTaxes[relation.organization_taxes.id] = true;
-                // Si algún impuesto del producto tiene tax_included configurado, usarlo
-                if (relation.organization_taxes.tax_included === true) {
-                  itemTaxIncluded = true;
-                }
-                productOrgTaxes.push({
-                  id: relation.organization_taxes.id,
-                  name: relation.organization_taxes.name,
-                  rate: parseFloat(relation.organization_taxes.rate.toString()),
-                  is_default: relation.organization_taxes.is_default,
-                  is_active: relation.organization_taxes.is_active
-                });
-              }
-            });
-            
-            result = calculateCartTaxes(
-              [taxItem],
-              productAppliedTaxes,
-              productOrgTaxes,
-              itemTaxIncluded
-            );
-          } else {
-            // Usar impuestos de organización
-            // Determinar si alguno de los impuestos aplicados tiene tax_included
-            const anyTaxIncluded = organizationTaxes.some(tax => appliedTaxes[tax.id] && tax.tax_included);
-            const effectiveTaxIncluded = taxIncluded || anyTaxIncluded;
-            
-            const orgTaxesForCalculation: TaxUtilOrganizationTax[] = organizationTaxes.map(tax => ({
-              id: tax.id,
-              name: tax.name,
-              rate: parseFloat(tax.rate.toString()),
-              is_default: tax.is_default,
-              is_active: tax.is_active
-            }));
-            
-            result = calculateCartTaxes(
-              [taxItem],
-              appliedTaxes,
-              orgTaxesForCalculation,
-              effectiveTaxIncluded
-            );
-          }
-          
-          // Acumular totales
-          combinedSubtotal += result.subtotal;
-          combinedTaxAmount += result.totalTaxAmount;
-          combinedFinalTotal += result.finalTotal;
-          
-          // Combinar breakdown
-          result.taxBreakdown.forEach(tax => {
-            if (combinedBreakdown[tax.taxId]) {
-              combinedBreakdown[tax.taxId].baseAmount += tax.baseAmount;
-              combinedBreakdown[tax.taxId].taxAmount += tax.taxAmount;
-            } else {
-              combinedBreakdown[tax.taxId] = { ...tax };
-            }
-          });
-          
-        } catch (error) {
-          console.error('Error processing item taxes:', error);
-          // En caso de error, agregar el ítem sin impuestos
-          const lineTotal = item.quantity * item.unit_price;
-          combinedSubtotal += lineTotal;
-          combinedFinalTotal += lineTotal;
-        }
-      }
-      
-      if (cancelled) return;
-      // Actualizar estados
-      setHasProductSpecificTaxes(hasProductTaxes);
-      setTaxBreakdown(Object.values(combinedBreakdown));
-      setCalculatedTotals({
-        subtotal: Math.round(combinedSubtotal * 100) / 100,
-        totalTaxAmount: Math.round(combinedTaxAmount * 100) / 100,
-        finalTotal: Math.round(combinedFinalTotal * 100) / 100,
-        cartId,
-        linesSignature,
+    let cancelado = false;
+    const ids = cart.items.map((item) => item.product_id);
+    if (ids.length === 0) {
+      setHasProductSpecificTaxes(false);
+      return;
+    }
+    Promise.all(ids.map((id) => POSService.getProductTaxes(id).catch(() => [])))
+      .then((listas) => {
+        if (!cancelado) setHasProductSpecificTaxes(listas.some((lista) => lista.length > 0));
+      })
+      .catch(() => {
+        if (!cancelado) setHasProductSpecificTaxes(false);
       });
-    };
-
-    calculateTaxBreakdown();
-    return () => {
-      cancelled = true;
-    };
-  }, [cart.id, cart.items, linesSignature, organizationTaxes, appliedTaxes, taxIncluded]);
+    return () => { cancelado = true; };
+  }, [cart.items]);
 
   // Comunicar totales al padre cuando cambien
   useEffect(() => {
     onTotalsChange?.(calculatedTotals);
   }, [calculatedTotals, onTotalsChange]);
 
-  // Usar los totales calculados correctamente
-  // calculateCartTaxes ya resta el descuento en lineTotal, NO restarlo de nuevo
+  // El descuento ya está restado en la regla de la línea. No se vuelve a restar.
   const { subtotal, totalTaxAmount, finalTotal } = calculatedTotals;
   // Filas del Resumen (solo presentación de lo ya calculado): L27, src/lib/pos/venta/resumenImpuestos.ts.
   const resumen = resumenImpuestos({ subtotal, totalTaxAmount, finalTotal, discountTotal: cart.discount_total, taxBreakdown });
@@ -365,15 +246,15 @@ export function TaxSummary({
     <ResumenTotales
       className={className}
       moneda={moneda}
-      cargando={loading}
+      cargando={calculandoLineas}
       etiqueta={t('titulo')}
       cabecera={cart.items.length > 0 ? cabecera : undefined}
       subtotal={cart.items.length > 0 ? resumen.subtotalBruto : 0}
       descuentos={resumen.mostrarDescuento ? [{ id: 'descuento', etiqueta: t('descuento'), importe: resumen.descuento }] : []}
       impuestos={taxBreakdown.map((tax) => ({ nombre: tax.name, tarifa: tax.rate, importe: tax.taxAmount }))}
-      total={cart.items.length > 0 ? total : 0}
+      total={cart.items.length > 0 ? (calculandoLineas ? cart.total : total) : 0}
       impuestosIncluidos={taxIncluded}
-      sinImpuestosConfigurados={cart.items.length > 0 && resumen.sinImpuestosConfigurados}
+      sinImpuestosConfigurados={cart.items.length > 0 && !calculandoLineas && resumen.sinImpuestosConfigurados}
     />
   );
 }

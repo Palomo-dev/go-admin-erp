@@ -19,11 +19,19 @@ jest.mock('@/lib/services/posService', () => ({
     holdCart: (...a: unknown[]) => holdCart(...a),
     activateCart: jest.fn(),
     updateCartTaxSettings: jest.fn(async (id: string) => ({ id })),
+    impuestosIncluidosPorDefecto: jest.fn(async () => false),
+    recalculateCart: jest.fn(async (id: string) => ({ id })),
+    aplicarCupon: jest.fn(),
+    quitarCupon: jest.fn(),
+    aplicarDescuentoVenta: jest.fn(),
   },
 }));
 jest.mock('@/lib/services/printService', () => ({ PrintService: {} }));
 jest.mock('@/lib/services/kitchenService', () => ({ __esModule: true, default: { getKitchenTickets: jest.fn(async () => []) } }));
-jest.mock('@/lib/supabase/config', () => ({ supabase: { channel: () => ({ on: () => ({ subscribe: () => ({}) }) }), removeChannel: jest.fn() } }));
+jest.mock('@/lib/supabase/config', () => {
+  const canal = { on() { return canal; }, subscribe() { return canal; } };
+  return { supabase: { channel: () => canal, removeChannel: jest.fn() } };
+});
 jest.mock('@/components/pos/TaxSummary', () => ({ TaxSummary: () => <div>resumen</div> }));
 jest.mock('@/hooks/useLineasSinImpuesto', () => ({ useLineasSinImpuesto: () => ({ indices: new Set<number>() }) }));
 jest.mock('@/lib/pos/display/posDisplay', () => ({ getPosDisplayEmitter: () => ({ setTotals: jest.fn(), setMode: jest.fn() }) }));

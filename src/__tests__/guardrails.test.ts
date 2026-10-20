@@ -1304,19 +1304,21 @@ describe('F0 Guardarraíles', () => {
   // de CartView cambia de identidad (depende de cart.id) y el efecto de
   // TaxSummary reenvía sus totales VIEJOS con el id NUEVO; el emisor confía en
   // el id y la pantalla mostraba «TOTAL $ 12.750» sobre un carrito de $ 0.
-  // Corrección: TaxSummary etiqueta cada cálculo con el carrito que lo
-  // produjo y cancela los cálculos asíncronos superados; CartView ignora
-  // totales de otro carrito y retira el override con subtotal 0.
+  // Corrección vigente: el resumen calcula en el mismo render
+  // (`calcularLineaDelCarrito`), etiqueta el resultado con el carrito y la
+  // firma de líneas, y CartView ignora totales de otro carrito. El cálculo
+  // asíncrono que había que cancelar ya no existe: no puede llegar tarde
+  // con el id del carrito nuevo y las cifras del anterior.
   describe('Pantalla del cliente: TaxSummary etiqueta los totales con su carrito y CartView los filtra', () => {
     const taxSummary = readFile(path.join(SRC_ROOT, 'components', 'pos', 'TaxSummary.tsx'));
     const cartView = readFile(path.join(SRC_ROOT, 'components', 'pos', 'CartView.tsx'));
 
-    test('TaxSummary: onTotalsChange lleva cartId y el cálculo asíncrono se cancela al cambiar de carrito', () => {
+    test('TaxSummary: onTotalsChange lleva cartId y el cálculo es el del render actual', () => {
       expect(taxSummary).toMatch(/onTotalsChange\?\s*:\s*\(totals:\s*\{[^}]*cartId:\s*string[^}]*\}\)\s*=>\s*void/);
-      expect(taxSummary).toMatch(/let\s+cancelled\s*=\s*false/);
-      expect(taxSummary).toMatch(/if\s*\(\s*cancelled\s*\)\s*return/);
-      // El id se captura al empezar el efecto y viaja en cada setCalculatedTotals.
-      expect(taxSummary.match(/setCalculatedTotals\s*\(\s*\{[^}]*cartId[^}]*\}\s*\)/gs)?.length ?? 0).toBeGreaterThanOrEqual(2);
+      expect(taxSummary).toMatch(/calcularLineaDelCarrito\(item,\s*\[\],\s*taxIncluded\)/);
+      expect(taxSummary).toMatch(/cartId:\s*cart\.id/);
+      expect(taxSummary).toMatch(/linesSignature/);
+      expect(taxSummary).not.toMatch(/calculateCartTaxes/);
     });
 
     test('CartView: ignora totales de otro carrito y retira el override con subtotal 0', () => {

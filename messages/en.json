@@ -31428,7 +31428,9 @@
       },
       "logoFavicon": {
         "logo": "Logo",
-        "logoAyuda": "PNG or SVG, transparent background · taken from Organization",
+        "logoAyuda": "PNG or SVG, transparent background. A dark header uses this one.",
+        "logoFondoClaro": "Logo for light backgrounds",
+        "logoFondoClaroAyuda": "The color version. Used on light backgrounds and does not replace the logo above.",
         "favicon": "Favicon",
         "faviconAyuda": "Tab icon · 512 × 512",
         "cambiar": "Change",
@@ -32092,7 +32094,7 @@
       },
       "logo": {
         "titulo": "Logo and favicon",
-        "descripcion": "Used in the header, the footer and the browser tab. It is the same data as Settings › Business details.",
+        "descripcion": "Used in the header, the footer, checkout and the browser tab. The light-background logo does not change the one on a dark header. It is the same data as Settings › Business details.",
         "guardado": "We saved the change to the draft.",
         "error": "We could not save the change: {mensaje}"
       },

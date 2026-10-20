@@ -81,7 +81,9 @@ export const TEXTOS_COMUN = {
   },
   logoFavicon: {
     logo: 'Logo',
-    logoAyuda: 'PNG o SVG, fondo transparente · se toma de Organización',
+    logoAyuda: 'PNG o SVG, fondo transparente. El encabezado oscuro usa este.',
+    logoFondoClaro: 'Logo para fondo claro',
+    logoFondoClaroAyuda: 'La versión de color. Se usa cuando el fondo es claro y no reemplaza el logo de arriba.',
     favicon: 'Favicon',
     faviconAyuda: 'Ícono de la pestaña · 512 × 512',
     cambiar: 'Cambiar',

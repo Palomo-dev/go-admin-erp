@@ -3,8 +3,9 @@
 /**
  * Diseño › «Logo y favicon» (Figma A/06a, pestaña): el MISMO componente y el
  * MISMO dato que Configuración › Datos del negocio (B/12-01): `CampoLogoFavicon`
- * sobre `documento.identidad.logoUrl` y `faviconUrl` del borrador V2. Cada
- * cambio se guarda en el borrador con `useSitioV2().guardar` (compare-and-swap).
+ * sobre `documento.identidad.logoUrl`, `logoFondoClaroUrl` y `faviconUrl` del
+ * borrador V2. Cada cambio se guarda en el borrador con `useSitioV2().guardar`
+ * (compare-and-swap). El logo para fondo claro no reemplaza al principal.
  */
 import { toast } from 'sonner';
 import { CampoLogoFavicon, type CampoIdentidadImagen } from '../ui/CampoLogoFavicon';
@@ -16,9 +17,15 @@ import { ICONO_TAREA_SITIO } from '../ui/iconosSitio';
 import { useTextosDiseno } from './textos';
 import { useAvisoFalloSitio } from './useAvisoFalloSitio';
 
-/** Fija o vacía el logo o el favicon del sitio en el documento (inmutable). */
+const CLAVE_IMAGEN_IDENTIDAD = {
+  logo: 'logoUrl',
+  logoFondoClaro: 'logoFondoClaroUrl',
+  favicon: 'faviconUrl',
+} as const;
+
+/** Fija o vacía un logo o el favicon del sitio en el documento (inmutable). */
 export function fijarImagenIdentidad(documento: DocumentoSitio, campo: CampoIdentidadImagen, url: string | null): DocumentoSitio {
-  const clave = campo === 'logo' ? 'logoUrl' : 'faviconUrl';
+  const clave = CLAVE_IMAGEN_IDENTIDAD[campo];
   return { ...documento, identidad: { ...documento.identidad, [clave]: url ? valorPropio(url) : vaciar<string>() } };
 }
 
@@ -58,6 +65,7 @@ export function PestanaLogoFavicon({ sitio, organizationId, deshabilitado }: Pes
       </header>
       <CampoLogoFavicon
         logoUrl={valorCampo(identidad?.logoUrl)}
+        logoFondoClaroUrl={valorCampo(identidad?.logoFondoClaroUrl)}
         faviconUrl={valorCampo(identidad?.faviconUrl)}
         onCambiar={(campo, url) => void cambiar(campo, url)}
         organizationId={organizationId}

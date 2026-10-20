@@ -31428,7 +31428,9 @@
       },
       "logoFavicon": {
         "logo": "Logo",
-        "logoAyuda": "PNG ou SVG, fond transparent · repris de l’Organisation",
+        "logoAyuda": "PNG ou SVG, fond transparent. Un en-tête sombre utilise celui-ci.",
+        "logoFondoClaro": "Logo pour fond clair",
+        "logoFondoClaroAyuda": "La version en couleur. Elle s’affiche sur les fonds clairs et ne remplace pas le logo ci-dessus.",
         "favicon": "Favicon",
         "faviconAyuda": "Icône de l’onglet · 512 × 512",
         "cambiar": "Changer",
@@ -32092,7 +32094,7 @@
       },
       "logo": {
         "titulo": "Logo et favicon",
-        "descripcion": "Utilisés dans l'en-tête, le pied de page et l'onglet du navigateur. C'est la même donnée que Configuration › Données de l'entreprise.",
+        "descripcion": "Utilisés dans l'en-tête, le pied de page, le paiement et l'onglet du navigateur. Le logo pour fond clair ne change pas celui d'un en-tête sombre. C'est la même donnée que Configuration › Données de l'entreprise.",
         "guardado": "Nous avons enregistré la modification dans le brouillon.",
         "error": "Nous n'avons pas pu enregistrer la modification : {mensaje}"
       },

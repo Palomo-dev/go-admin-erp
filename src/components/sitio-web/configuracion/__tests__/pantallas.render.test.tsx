@@ -40,6 +40,7 @@ import { PantallaCartas } from '../carta/PantallaCartas';
 const formulario: FormularioConfiguracion = {
   nombre: 'Tu marca',
   logoUrl: null,
+  logoFondoClaroUrl: null,
   faviconUrl: null,
   correo: 'hola@tumarca.com',
   telefono: '+57 604 555 0100',

@@ -139,7 +139,7 @@ export const TEXTOS_DISENO = {
   },
   logo: {
     titulo: 'Logo y favicon',
-    descripcion: 'Se usan en el encabezado, el pie y la pestaña del navegador. Es el mismo dato que Configuración › Datos del negocio.',
+    descripcion: 'Se usan en el encabezado, el pie, el checkout y la pestaña del navegador. El logo para fondo claro no cambia el del encabezado oscuro. Es el mismo dato que Configuración › Datos del negocio.',
     guardado: 'Guardamos el cambio en el borrador.',
     error: 'No pudimos guardar el cambio: {mensaje}',
   },

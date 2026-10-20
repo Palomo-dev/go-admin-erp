@@ -6,7 +6,7 @@
  *
  * - Ajustes del sitio (`website_settings`) → `GET/PUT /api/sitio-web/configuracion`
  *   (servidor: `update_website_settings`, permiso `website.sites.edit`).
- * - Nombre, logo y favicon → identidad del borrador V2 con `useSitioV2` (el mismo
+ * - Nombre, logos y favicon → identidad del borrador V2 con `useSitioV2` (el mismo
  *   dato que Diseño › Logo y favicon). Si el sitio V2 aún no existe, se crea con
  *   `asegurar()` y la identidad se escribe en cuanto llega el borrador.
  * - Legales → la lista de Páginas (`usePaginasSitio`, fuente única: las páginas
@@ -67,18 +67,33 @@ export interface ConfiguracionSitio {
   eliminarSitio: (confirmacion: string) => Promise<FalloApi | null>;
 }
 
-function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoUrl: string | null; faviconUrl: string | null } {
+function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoUrl: string | null; logoFondoClaroUrl: string | null; faviconUrl: string | null } {
   return {
     nombre: valorCampo(doc?.identidad?.nombre),
     logoUrl: valorCampo(doc?.identidad?.logoUrl),
+    logoFondoClaroUrl: valorCampo(doc?.identidad?.logoFondoClaroUrl),
     faviconUrl: valorCampo(doc?.identidad?.faviconUrl),
   };
 }
 
 /** Aplica la identidad del formulario al documento (campo vacío = `clear`, hereda del sitio anterior). */
-export function conIdentidad(doc: DocumentoSitio, f: Pick<FormularioConfiguracion, 'nombre' | 'logoUrl' | 'faviconUrl'>): DocumentoSitio {
+export function conIdentidad(
+  doc: DocumentoSitio,
+  f: Pick<FormularioConfiguracion, 'nombre' | 'logoUrl' | 'logoFondoClaroUrl' | 'faviconUrl'>,
+): DocumentoSitio {
   const campo = (v: string | null) => (v && v.trim() ? { mode: 'value' as const, value: v.trim() } : { mode: 'clear' as const });
-  return { ...doc, identidad: { ...doc.identidad, nombre: campo(f.nombre), logoUrl: campo(f.logoUrl), faviconUrl: campo(f.faviconUrl) } };
+  const identidad: DocumentoSitio['identidad'] = {
+    ...doc.identidad,
+    nombre: campo(f.nombre),
+    logoUrl: campo(f.logoUrl),
+    faviconUrl: campo(f.faviconUrl),
+  };
+  // Sin valor y sin clave previa: no se escribe. El lector público estricto
+  // rechazaría el documento si aún no conoce el campo.
+  const claro = f.logoFondoClaroUrl?.trim() ?? '';
+  if (claro) identidad.logoFondoClaroUrl = { mode: 'value', value: claro };
+  else if (doc.identidad.logoFondoClaroUrl) identidad.logoFondoClaroUrl = { mode: 'clear' };
+  return { ...doc, identidad };
 }
 
 export function useConfiguracionSitio(): ConfiguracionSitio {
@@ -204,7 +219,13 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
           return sitio.conflicto ? 'conflicto' : 'error';
         }
       }
-      const siguiente = { ...formularioInicial(r, formulario), nombre: formulario.nombre, logoUrl: formulario.logoUrl, faviconUrl: formulario.faviconUrl };
+      const siguiente = {
+        ...formularioInicial(r, formulario),
+        nombre: formulario.nombre,
+        logoUrl: formulario.logoUrl,
+        logoFondoClaroUrl: formulario.logoFondoClaroUrl,
+        faviconUrl: formulario.faviconUrl,
+      };
       setDatos(r);
       setOriginal(siguiente);
       setFormulario(siguiente);

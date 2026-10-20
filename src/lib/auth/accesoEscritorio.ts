@@ -17,11 +17,8 @@ import { esServidorEmbebidoEscritorio } from '@/lib/auth/verificarTokenAcceso';
 const APP_POR_DEFECTO = 'https://app.goadmin.io';
 const TIMEOUT_MS = 15_000;
 
-/** Solo la URL pública. No exige el resto de `process.env` (NODE_ENV, etc.). */
-type EntornoAcceso = { NEXT_PUBLIC_APP_URL?: string };
-
 /** URL https del ingreso público, o null si no es un destino seguro. */
-export function urlAccesoPublico(env: EntornoAcceso = process.env): string | null {
+export function urlAccesoPublico(env: NodeJS.ProcessEnv = process.env): string | null {
   const base = (env.NEXT_PUBLIC_APP_URL || APP_POR_DEFECTO).trim();
   let url: URL;
   try {

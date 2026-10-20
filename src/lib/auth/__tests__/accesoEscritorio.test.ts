@@ -27,20 +27,26 @@ function peticionLocal(cuerpo: unknown = { email: 'ana@ejemplo.com', password: '
   });
 }
 
+function entorno(url?: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { NODE_ENV: 'test' };
+  if (url !== undefined) env.NEXT_PUBLIC_APP_URL = url;
+  return env;
+}
+
 describe('urlAccesoPublico', () => {
   test('por defecto apunta al ingreso de la web pública por https', () => {
-    expect(urlAccesoPublico({})).toBe(DESTINO);
+    expect(urlAccesoPublico(entorno())).toBe(DESTINO);
   });
 
   test('respeta NEXT_PUBLIC_APP_URL cuando es https y no es local', () => {
-    expect(urlAccesoPublico({ NEXT_PUBLIC_APP_URL: 'https://app.goadmin.io' })).toBe(DESTINO);
+    expect(urlAccesoPublico(entorno('https://app.goadmin.io'))).toBe(DESTINO);
   });
 
   test('rechaza http y un destino en localhost (no se manda la contraseña ahí)', () => {
-    expect(urlAccesoPublico({ NEXT_PUBLIC_APP_URL: 'http://app.goadmin.io' })).toBeNull();
-    expect(urlAccesoPublico({ NEXT_PUBLIC_APP_URL: 'https://localhost:3000' })).toBeNull();
-    expect(urlAccesoPublico({ NEXT_PUBLIC_APP_URL: 'https://127.0.0.1' })).toBeNull();
-    expect(urlAccesoPublico({ NEXT_PUBLIC_APP_URL: 'no-es-una-url' })).toBeNull();
+    expect(urlAccesoPublico(entorno('http://app.goadmin.io'))).toBeNull();
+    expect(urlAccesoPublico(entorno('https://localhost:3000'))).toBeNull();
+    expect(urlAccesoPublico(entorno('https://127.0.0.1'))).toBeNull();
+    expect(urlAccesoPublico(entorno('no-es-una-url'))).toBeNull();
   });
 });
 

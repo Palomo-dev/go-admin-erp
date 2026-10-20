@@ -10,11 +10,11 @@
  */
 import { RESERVED_SLUGS, validateSlug } from '@/lib/utils/webIdentityValidation';
 
-// Copia de SLUGS_RESERVADOS de goadmin-websites/lib/outlet/rutaSitio.ts (2026-10-20).
+// Copia de SLUGS_RESERVADOS de goadmin-websites/lib/outlet/rutaSitio.ts (2026-10-06).
 const SLUGS_RESERVADOS_SITIO = [
   'home', 'menu', 'productos', 'categorias', 'espacios', 'servicios',
   'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
-  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout', 'retomar',
+  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout',
   'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api',
   'contacto', 'nosotros', 'vista-previa',
 ];

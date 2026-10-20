@@ -30,7 +30,7 @@ export const SUBDOMAIN_REGEX = DNS_LABEL_REGEX;
 export const RESERVED_SLUGS = [
   'home', 'menu', 'productos', 'categorias', 'espacios', 'servicios',
   'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
-  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout', 'retomar',
+  'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout',
   'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api', 'admin',
   'app', 'www', 'contacto', 'nosotros', 'vista-previa',
 ];

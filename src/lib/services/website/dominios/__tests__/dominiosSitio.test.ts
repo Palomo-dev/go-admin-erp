@@ -185,6 +185,24 @@ describe('principal, quitar y subdominio', () => {
     for (const e of db.escrituras) expect(e.filtros).toContainEqual(['organization_id', 'eq', 120]);
   });
 
+  test('el dominio comprado que pasa a principal pide el alta de correo; un fallo no deshace el principal', async () => {
+    const { ctx, deps } = preparar();
+    const aprovisionarCorreo = jest.fn(async () => {
+      throw new Error('resend caído');
+    });
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const d = await hacerPrincipal(ctx, 'c1', { ...deps, aprovisionarCorreo });
+    expect(d.principal).toBe(true);
+    expect(aprovisionarCorreo).toHaveBeenCalledWith({ organizationId: 120, host: 'tumarca.co', nombreOrganizacion: 'Mi empresa S.A.S.' });
+  });
+
+  test('el subdominio del sistema no pide alta de correo', async () => {
+    const { ctx, deps } = preparar();
+    const aprovisionarCorreo = jest.fn(async () => undefined);
+    await hacerPrincipal(ctx, 's1', { ...deps, aprovisionarCorreo });
+    expect(aprovisionarCorreo).not.toHaveBeenCalled();
+  });
+
   test('el subdominio del sistema no se quita (nota-ux 1)', async () => {
     const { ctx, deps } = preparar();
     expect(await codigoDe(quitarDominio(ctx, 's1', deps))).toEqual([422, 'subdominio_sistema']);

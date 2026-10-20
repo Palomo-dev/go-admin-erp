@@ -175,3 +175,59 @@ export function crearClienteRegistrador(cfg: Omit<ConfigVercel, 'proyecto'>, f: 
 }
 
 export type ClienteRegistrador = ReturnType<typeof crearClienteRegistrador>;
+
+export interface RegistroDnsRemoto {
+  name: string;
+  type: string;
+  value: string;
+  mxPriority?: number | null;
+}
+
+/**
+ * DNS del dominio comprado (nameservers de Vercel). No usa el proyecto de
+ * sitios: el registro vive en la zona, no en el proyecto.
+ * `GET|POST /v2/domains/{domain}/records`.
+ */
+export function crearClienteDns(cfg: Omit<ConfigVercel, 'proyecto'>, f: Fetch = fetch) {
+  return {
+    async listar(dominio: string): Promise<RegistroDnsRemoto[]> {
+      const r = await llamar<{ records?: Array<Record<string, unknown>> }>(cfg, 'GET', `/v2/domains/${ruta(dominio)}/records?limit=100`, undefined, f);
+      if (!r) throw new ErrorVercel(404, 'sin_dominio', 'El dominio no está en el DNS de Vercel');
+      return (r.records ?? []).flatMap((row) => {
+        const type = typeof row.type === 'string' ? row.type : '';
+        if (!type) return [];
+        const mx = typeof row.mxPriority === 'number' ? row.mxPriority : typeof row.priority === 'number' ? row.priority : null;
+        return [
+          {
+            name: typeof row.name === 'string' ? row.name : '',
+            type,
+            value: typeof row.value === 'string' ? row.value : '',
+            mxPriority: mx,
+          },
+        ];
+      });
+    },
+    /** 409: el registro ya estaba. No se actualiza un valor distinto. */
+    async crear(dominio: string, registro: { name: string; type: string; value: string; mxPriority?: number }): Promise<void> {
+      try {
+        await llamar(
+          cfg,
+          'POST',
+          `/v2/domains/${ruta(dominio)}/records`,
+          {
+            name: registro.name,
+            type: registro.type,
+            value: registro.value,
+            ...(registro.mxPriority !== undefined ? { mxPriority: registro.mxPriority } : {}),
+          },
+          f,
+        );
+      } catch (e) {
+        if (e instanceof ErrorVercel && (e.estado === 409 || /already exists|duplicate/i.test(e.message))) return;
+        throw e;
+      }
+    },
+  };
+}
+
+export type ClienteDns = ReturnType<typeof crearClienteDns>;

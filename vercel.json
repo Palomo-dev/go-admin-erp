@@ -68,6 +68,10 @@
     {
       "path": "/api/cron/avisos-miembro",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/correo-dominio-sitio",
+      "schedule": "*/15 * * * *"
     }
   ],
   "headers": [

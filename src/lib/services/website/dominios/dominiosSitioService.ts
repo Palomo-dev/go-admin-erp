@@ -39,6 +39,7 @@ import type {
   RespuestaVerificacion,
   TitularDominio,
 } from '@/components/sitio-web/dominios/tiposDominios';
+import { correspondeCorreoSitio, dominioCompradoAqui } from './registrosCorreo';
 import { detectarProveedor, type ResolverNs } from './proveedores';
 import { raizYAlias, registrosEsperados, verificarDominioSitio, ErrorVerificacion, type ResolverPublico } from './verificacion';
 import {
@@ -83,6 +84,12 @@ export interface DependenciasDominios {
   /** Envía el código de transferencia; `false` si el correo no está configurado. */
   enviarCodigo: (c: CorreoCodigo) => Promise<boolean>;
   ahora: () => Date;
+  /**
+   * Da de alta en Resend el dominio comprado que acaba de quedar principal.
+   * Opcional: si falta, el principal se guarda igual. Un fallo aquí no deshace
+   * el principal; el cron lo retoma.
+   */
+  aprovisionarCorreo?: (entrada: { organizationId: number; host: string; nombreOrganizacion: string | null }) => Promise<void>;
 }
 
 /** Dependencias reales (entorno, Vercel, DNS de Node y Resend). */
@@ -97,6 +104,11 @@ export async function dependenciasDominios(): Promise<DependenciasDominios> {
     resolverNs: (zona) => dnsPromises.resolveNs(zona),
     enviarCodigo: enviarCodigoTransferencia,
     ahora: () => new Date(),
+    aprovisionarCorreo: async (entrada) => {
+      const { aprovisionarCorreoDominioSitio } = await import('./correoDominioSitio');
+      const { dependenciasCorreoSitio } = await import('./reintentoCorreoSitio');
+      await aprovisionarCorreoDominioSitio(entrada, await dependenciasCorreoSitio());
+    },
   };
 }
 
@@ -411,14 +423,34 @@ export async function verificar(ctx: CtxDominios, id: string, deps: Dependencias
  * obliga a desmarcar primero. No es una transacción (la RPC está propuesta en
  * la migración pendiente); si el segundo paso falla, el sitio abre en el
  * subdominio, que es el respaldo seguro.
+ *
+ * Si el dominio se compró aquí, al quedar principal se da de alta en Resend.
+ * Un fallo de ese alta no deshace el principal: el cron lo retoma.
  */
+async function intentarCorreo(deps: DependenciasDominios, org: number, fila: FilaDominioBd, todo: Todo): Promise<void> {
+  if (!deps.aprovisionarCorreo) return;
+  const compra = todo.compras.get(fila.host) ?? todo.compras.get(fila.host.toLowerCase()) ?? null;
+  if (!correspondeCorreoSitio(fila, dominioCompradoAqui(fila.metadata, compra))) return;
+  try {
+    await deps.aprovisionarCorreo({ organizationId: org, host: fila.host, nombreOrganizacion: todo.org?.name ?? null });
+  } catch (e) {
+    console.error('[sitio-web/dominios] el correo del dominio no quedó listo', {
+      organizationId: org,
+      message: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 export async function hacerPrincipal(ctx: CtxDominios, id: string, deps: DependenciasDominios): Promise<DominioSitio> {
   await exigirGestionar(ctx);
   const org = ctx.organizationId;
   const todo = await leerTodo(ctx);
   const fila = buscar(todo, id);
   const dto = dtoDe(todo, id, deps.ahora());
-  if (dto.principal) return dto;
+  if (dto.principal) {
+    await intentarCorreo(deps, org, fila, todo);
+    return dto;
+  }
   if (!puedeSerPrincipal(dto)) throw new ErrorDominios(422, 'no_verificado', 'Solo un dominio activo y verificado puede ser el principal.');
 
   const s = deps.servicio;
@@ -458,6 +490,7 @@ export async function hacerPrincipal(ctx: CtxDominios, id: string, deps: Depende
       }
     }
   }
+  await intentarCorreo(deps, org, fila, todo);
   return dtoDe(await leerTodo(ctx), id, deps.ahora());
 }
 

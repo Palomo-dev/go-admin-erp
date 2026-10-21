@@ -1,9 +1,12 @@
 -- Rollback de 20261021151641_correo_cola_where_y_cron_proyecto.sql
 --
--- Devuelve el reclamo sin WHERE y el post al alias anterior.
--- safeupdate vuelve a rechazar el UPDATE, y el cron de cada 15 minutos
--- vuelve al proyecto que responde 401. No desprograma el cron: lo
--- programó otra migración. No toca pedidos ni el log.
+-- No restaura el alias goadmin-websites-48f5.vercel.app ni el UPDATE sin
+-- WHERE. Ese alias responde 401 (no tiene la clave de servicio) y el
+-- UPDATE sin WHERE lo rechaza safeupdate con SQLSTATE 21000. Ejecutar
+-- este archivo vuelve a dejar las dos funciones como quedaron: el
+-- predicado `where c.id is not null` y el post a
+-- https://goadmin-websites-8fs1.vercel.app.
+-- No desprograma el cron. No toca pedidos ni el log.
 
 set lock_timeout = '10s';
 
@@ -105,7 +108,8 @@ begin
           limit 1
        ) then 'omitido'
        else 'enviar'
-     end;
+     end
+   where c.id is not null;
 
   with ranked as (
     select cola_compra_pendiente.id,
@@ -162,7 +166,7 @@ as $post$
 declare
   v_secret text;
   v_req bigint;
-  v_base constant text := 'https://goadmin-websites-48f5.vercel.app';
+  v_base constant text := 'https://goadmin-websites-8fs1.vercel.app';
 begin
   if session_user not in ('postgres', 'supabase_admin') then
     raise exception 'sin_permiso' using errcode = '42501';
@@ -194,5 +198,24 @@ end;
 $post$;
 
 revoke all on function public.fn_websites_cron_post(text) from public, anon, authenticated, service_role;
+
+do $prueba$
+declare
+  v_def text;
+begin
+  v_def := pg_get_functiondef('public.fn_reclamar_cola_compra_pendiente(timestamptz,timestamptz,integer)'::regprocedure);
+  if position('where c.id is not null' in v_def) = 0 then
+    raise exception 'el update de la cola sigue sin where';
+  end if;
+
+  v_def := pg_get_functiondef('public.fn_websites_cron_post(text)'::regprocedure);
+  if position('https://goadmin-websites-8fs1.vercel.app' in v_def) = 0 then
+    raise exception 'el cron no apunta al proyecto que puede enviar';
+  end if;
+  if position('goadmin-websites-48f5.vercel.app' in v_def) > 0 then
+    raise exception 'el cron sigue apuntando al proyecto sin clave de servicio';
+  end if;
+end
+$prueba$;
 
 reset lock_timeout;

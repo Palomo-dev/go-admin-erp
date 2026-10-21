@@ -15,6 +15,8 @@ export interface EstadoCorreoTienda {
   registros: { tipo: string; nombre: string; valor: string }[];
   dnsEnVercel: boolean;
   error: string | null;
+  /** `plan_domain_limit` solo cuando el cupo del plan dejó la fila en failed. */
+  codigoError: 'plan_domain_limit' | null;
 }
 
 export const REGION_CORREO_TIENDA = 'sa-east-1';
@@ -87,7 +89,20 @@ export function textoDeProveedor(json: unknown): string {
   return [name, message].map((parte) => parte.trim()).filter(Boolean).join(': ').slice(0, 400);
 }
 
-/** 403/422 por cupo del plan. Una clave inválida no entra aquí. */
+export const CODIGO_LIMITE_PLAN = 'plan_domain_limit' as const;
+
+/**
+ * El aviso del cupo sale del estado y del código, no del texto de last_error.
+ * Un pending o un verified con el código no se pinta como fallido.
+ */
+export function limitePlanVisible(
+  estado: string | null | undefined,
+  codigoError: string | null | undefined,
+): boolean {
+  return estado === 'failed' && codigoError === CODIGO_LIMITE_PLAN;
+}
+
+/** 403/422 por cupo del plan, al clasificar la respuesta del proveedor. Una clave inválida no entra aquí. */
 export function esAvisoLimitePlan(error: string | null | undefined): boolean {
   if (!error) return false;
   const texto = error.toLowerCase();

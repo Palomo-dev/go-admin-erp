@@ -6,6 +6,7 @@ import {
   esAvisoLimitePlan,
   esperaReintentoMs,
   falloAlCrearDominio,
+  limitePlanVisible,
   hostDeZona,
   nombreRelativo,
   registrosDeProveedor,
@@ -69,6 +70,14 @@ describe('correo de pedidos de la tienda', () => {
       mensaje: 'timeout del proveedor',
     });
     expect(falloAlCrearDominio(0, null).mensaje).toBe('El proveedor no creó el dominio.');
+  });
+
+  test('el panel usa el estado y el código, no el texto del error', () => {
+    expect(limitePlanVisible('failed', 'plan_domain_limit')).toBe(true);
+    expect(limitePlanVisible('failed', null)).toBe(false);
+    expect(limitePlanVisible('pending', 'plan_domain_limit')).toBe(false);
+    expect(limitePlanVisible('verified', 'plan_domain_limit')).toBe(false);
+    expect(limitePlanVisible('failed', 'El plan de correo no admite más dominios.')).toBe(false);
   });
 
   test('el reintento espera el doble y a las 72 horas se rinde', () => {

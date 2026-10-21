@@ -19,8 +19,8 @@ import {
   REGION_CORREO_TIENDA,
   RESPALDO_CORREO_PEDIDOS,
   debePublicar,
+  CODIGO_LIMITE_PLAN,
   dominioDeEnvio,
-  esAvisoLimitePlan,
   esperaReintentoMs,
   falloAlCrearDominio,
   hostDeZona,
@@ -63,6 +63,7 @@ interface FilaCorreo {
   dns_records: unknown;
   is_default: boolean;
   last_error: string | null;
+  error_code: string | null;
   dns_provider: string | null;
   organization_domain_id: string | null;
   check_attempts: number | null;
@@ -86,6 +87,7 @@ function vacio(parcial: Partial<EstadoCorreoTienda> & Pick<EstadoCorreoTienda, '
     registros: [],
     dnsEnVercel: false,
     error: null,
+    codigoError: null,
     ...parcial,
   };
 }
@@ -117,7 +119,7 @@ async function leerDominio(sb: SupabaseClient, organizationId: number, domainId:
 async function correosDe(sb: SupabaseClient, organizationId: number): Promise<FilaCorreo[]> {
   const { data, error } = await sb
     .from('email_domains')
-    .select('id, domain, status, from_email, from_name, provider_domain_id, dns_records, is_default, last_error, dns_provider, organization_domain_id, check_attempts, demoted_at')
+    .select('id, domain, status, from_email, from_name, provider_domain_id, dns_records, is_default, last_error, error_code, dns_provider, organization_domain_id, check_attempts, demoted_at')
     .eq('organization_id', organizationId);
   if (error) throw new ErrorCorreoTienda(500, 'No se pudo leer el correo de la tienda.');
   return (data || []) as FilaCorreo[];
@@ -141,16 +143,17 @@ function estadoDeFilas(fila: FilaDominio, correos: FilaCorreo[]): EstadoCorreoTi
       error: fila.status === 'verified' && fila.is_primary ? null : 'Primero verifica el dominio y márcalo como principal.',
     });
   }
-  const estadoBase = propio.status === 'verified' || propio.status === 'pending' || propio.status === 'verifying' || propio.status === 'failed'
+  const estado = propio.status === 'verified' || propio.status === 'pending' || propio.status === 'verifying' || propio.status === 'failed'
     ? propio.status
     : 'pending';
-  const estado = esAvisoLimitePlan(propio.last_error) ? 'failed' : estadoBase;
+  const codigoError = propio.error_code === CODIGO_LIMITE_PLAN ? CODIGO_LIMITE_PLAN : null;
   return vacio({
     estado,
     desde: propio.from_email || desde,
     registros: registrosVisibles(propio.dns_records, apex),
     dnsEnVercel: propio.dns_provider !== 'externo',
     error: propio.last_error,
+    codigoError,
   });
 }
 
@@ -258,6 +261,7 @@ async function guardar(
     fromEmail: string;
     replyTo: string | null;
     error: string | null;
+    codigoError: 'plan_domain_limit' | null;
     dnsProvider: 'vercel' | 'externo' | null;
     intentos: number;
     dmarc: boolean;
@@ -284,7 +288,8 @@ async function guardar(
     organization_domain_id: domainId,
     check_attempts: entrada.intentos,
     last_check_at: ahora,
-    last_error: entrada.error,
+    last_error: entrada.status === 'verified' ? null : entrada.error,
+    error_code: entrada.status === 'verified' ? null : entrada.codigoError,
     updated_at: ahora,
     demoted_at: null,
     ...(entrada.status === 'verified' ? { verified_at: ahora } : {}),
@@ -347,6 +352,7 @@ async function reprogramar(sb: SupabaseClient, job: JobReclamado, error: string 
         .update({
           status: 'failed',
           last_error: error || 'No se pudo verificar el correo en 72 horas.',
+          error_code: null,
           last_check_at: new Date().toISOString(),
           check_attempts: job.intentos,
           updated_at: new Date().toISOString(),
@@ -363,6 +369,7 @@ async function reprogramar(sb: SupabaseClient, job: JobReclamado, error: string 
       .from('email_domains')
       .update({
         last_error: error,
+        error_code: null,
         last_check_at: new Date().toISOString(),
         check_attempts: job.intentos,
         updated_at: new Date().toISOString(),
@@ -387,6 +394,7 @@ async function fallarSinReintento(
     .update({
       status: 'failed',
       last_error: mensaje,
+      error_code: CODIGO_LIMITE_PLAN,
       last_check_at: new Date().toISOString(),
       check_attempts: job.intentos,
       updated_at: new Date().toISOString(),
@@ -406,6 +414,13 @@ async function usarElQueYaEsta(sb: SupabaseClient, job: JobReclamado, apex: stri
       .eq('id', fila.id)
       .eq('organization_id', job.organization_id)
       .is('organization_domain_id', null);
+  }
+  if (fila) {
+    await sb
+      .from('email_domains')
+      .update({ last_error: null, error_code: null, updated_at: new Date().toISOString() })
+      .eq('id', fila.id)
+      .eq('organization_id', job.organization_id);
   }
   if (fila && !fila.is_default) {
     const ahora = new Date().toISOString();
@@ -435,6 +450,7 @@ async function asegurarFila(
     fromEmail: `pedidos@${apex}`,
     replyTo: tienda.replyTo,
     error,
+    codigoError: null,
     dnsProvider: null,
     intentos: job.intentos,
     dmarc: false,
@@ -504,7 +520,8 @@ async function provisionar(sb: SupabaseClient, job: JobReclamado): Promise<void>
     fromName: tienda.nombre,
     fromEmail: `pedidos@${apex}`,
     replyTo: tienda.replyTo,
-    error: publicado.error,
+    error: verificado ? null : publicado.error,
+    codigoError: null,
     dnsProvider: publicado.dnsProvider,
     intentos: job.intentos,
     dmarc: publicado.dmarc || recordsFinales.some((r) => nombreRelativo(r.nombre, apex) === '_dmarc'),
@@ -529,7 +546,7 @@ async function retirar(sb: SupabaseClient, job: JobReclamado): Promise<void> {
     if (fila && fila.is_primary && fila.is_active && fila.status === 'verified' && hostDeZona(fila.host, fila.domain_type)) {
       await sb
         .from('email_domains')
-        .update({ demoted_at: null, updated_at: new Date().toISOString() })
+        .update({ demoted_at: null, last_error: null, error_code: null, updated_at: new Date().toISOString() })
         .eq('organization_id', job.organization_id)
         .eq('organization_domain_id', job.organization_domain_id);
       await cerrarJob(sb, job, 'cancelled');
@@ -565,6 +582,7 @@ async function retirar(sb: SupabaseClient, job: JobReclamado): Promise<void> {
         is_default: false,
         status: 'failed',
         last_error: 'Dejó de ser el dominio principal hace 30 días.',
+        error_code: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', correo.id)

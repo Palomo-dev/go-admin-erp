@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Mail } from 'lucide-react';
 import { StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
 import { DnsRecordRow } from '../ui/DnsRecordRow';
-import { esAvisoLimitePlan } from '@/lib/services/website/dominios/correoTiendaReglas';
+import { limitePlanVisible } from '@/lib/services/website/dominios/correoTiendaReglas';
 import { apiDominios } from './apiDominios';
 import { useTextosDominios } from './textos';
 import type { EstadoCorreoTienda } from '@/lib/services/website/dominios/correoTiendaReglas';
@@ -58,13 +58,11 @@ export function CorreoPedidosDominio({ dominioId, gestionar }: { dominioId: stri
 
   if (estado?.estado === 'no_aplica') return null;
 
-  const limitePlan = esAvisoLimitePlan(estado?.error);
-  const etiqueta = limitePlan
-    ? t('detalle.correoFallido')
-    : estado
-      ? t(`detalle.${ETIQUETA[estado.estado]}`)
-      : t('detalle.correoPendiente');
-  const tono = estado?.estado === 'verified' ? 'verified' : limitePlan || estado?.estado === 'failed' ? 'failed' : 'pending';
+  const limitePlan = limitePlanVisible(estado?.estado, estado?.codigoError);
+  const etiqueta = estado
+    ? t(`detalle.${ETIQUETA[estado.estado]}`)
+    : t('detalle.correoPendiente');
+  const tono = estado?.estado === 'verified' ? 'verified' : estado?.estado === 'failed' ? 'failed' : 'pending';
 
   return (
     <Tarjeta titulo={t('detalle.correoTitulo')} icono={Mail} descripcion={t('detalle.correoTexto')}>

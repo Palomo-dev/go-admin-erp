@@ -339,6 +339,66 @@ describe('cantidad mínima y compra mínima de las líneas que entran', () => {
     expect(evaluarPromociones([porCategoria], [dentro, fuera], ctx()).discountTotal).toBe(0);
   });
 
+  it('un monto fijo con el mínimo en buy_quantity y min_quantity vacía no descuenta una unidad', () => {
+    const legado = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 7000,
+      buy_quantity: 2,
+      get_quantity: 1,
+      min_quantity: null,
+      min_purchase_amount: 14000,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([legado], [linea(1, 1, 14000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([legado], [linea(1, 2, 14000)], ctx()).discountTotal).toBe(7000);
+  });
+
+  it('min_quantity manda aunque buy_quantity traiga otro número', () => {
+    const tres = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 1000,
+      buy_quantity: 2,
+      min_quantity: 3,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([tres], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([tres], [linea(1, 3, 4000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('el porcentaje y el paquete leen el mismo mínimo legado', () => {
+    const diez = promo({
+      promotion_type: 'percentage',
+      discount_value: 10,
+      buy_quantity: '2',
+      min_quantity: null,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([diez], [linea(1, 1, 10000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([diez], [linea(1, 2, 10000)], ctx()).discountTotal).toBe(2000);
+
+    const paquete = promo({
+      promotion_type: 'bundle',
+      bundle_price: 3000,
+      buy_quantity: 2,
+      min_quantity: null,
+      applies_to: 'products',
+      promotion_rules: [{ rule_type: 'include_product', product_id: 1, category_id: null, quantity: 1 }],
+    });
+    expect(evaluarPromociones([paquete], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([paquete], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(2000);
+  });
+
+  it('buy_quantity 1 no inventa un mínimo', () => {
+    const fija = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 1000,
+      buy_quantity: 1,
+      min_quantity: null,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([fija], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(1000);
+  });
+
   it('compra X lleva Y ignora la cantidad mínima', () => {
     const dosPorUno = promo({
       promotion_type: 'buy_x_get_y',
@@ -347,6 +407,18 @@ describe('cantidad mínima y compra mínima de las líneas que entran', () => {
       min_quantity: 99,
       ...soloProducto(1),
     });
+    expect(evaluarPromociones([dosPorUno], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(4000);
+  });
+
+  it('compra X lleva Y sigue tratando buy_quantity como la X', () => {
+    const dosPorUno = promo({
+      promotion_type: 'buy_x_get_y',
+      buy_quantity: 2,
+      get_quantity: 1,
+      min_quantity: null,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([dosPorUno], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(0);
     expect(evaluarPromociones([dosPorUno], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(4000);
   });
 });

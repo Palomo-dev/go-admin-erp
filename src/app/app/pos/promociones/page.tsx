@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { 
-  PromotionsList, 
+import {
+  PromotionsList,
   PromotionsHeader,
-  PromotionsService 
+  PromotionsService,
 } from '@/components/pos/promociones';
 import { Promotion, PromotionFilters } from '@/components/pos/promociones/types';
 import { toast } from 'sonner';
 
 export default function PromocionesPage() {
+  const t = useTranslations('posPromociones');
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter } = useBranch();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -26,23 +28,21 @@ export default function PromocionesPage() {
     try {
       const data = await PromotionsService.getAll({ ...filters, branchId: branchFilter });
       setPromotions(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading promotions:', error);
-      toast.error('Error al cargar promociones');
+      toast.error(t('pantalla.errorCargar'));
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, filters, branchFilter]);
+  }, [organization?.id, filters, branchFilter, t]);
 
   useEffect(() => {
     loadPromotions();
   }, [loadPromotions]);
 
-  const handleFiltersChange = (newFilters: PromotionFilters) => {
-    setFilters(newFilters);
-  };
+  const hayFiltros = Boolean(filters.search || filters.is_active !== undefined || filters.promotion_type);
 
-  const activePromotions = promotions.filter(p => {
+  const activePromotions = promotions.filter((p) => {
     if (!p.is_active) return false;
     const now = new Date();
     const startDate = new Date(p.start_date);
@@ -52,30 +52,34 @@ export default function PromocionesPage() {
 
   if (orgLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
         <PageHeaderSkeleton />
-        <StatsSkeleton count={3} />
+        <StatsSkeleton count={2} />
         <CardListSkeleton cards={5} columns="1" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <PromotionsHeader
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onRefresh={loadPromotions}
-        totalPromotions={promotions.length}
-        activePromotions={activePromotions}
-        loading={loading}
-      />
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+        <PromotionsHeader
+          filters={filters}
+          onFiltersChange={setFilters}
+          onRefresh={loadPromotions}
+          totalPromotions={promotions.length}
+          activePromotions={activePromotions}
+          loading={loading}
+        />
 
-      <PromotionsList
-        promotions={promotions}
-        loading={loading}
-        onRefresh={loadPromotions}
-      />
+        <PromotionsList
+          promotions={promotions}
+          loading={loading}
+          filtrado={hayFiltros}
+          onLimpiarFiltros={() => setFilters({})}
+          onRefresh={loadPromotions}
+        />
+      </div>
     </div>
   );
 }

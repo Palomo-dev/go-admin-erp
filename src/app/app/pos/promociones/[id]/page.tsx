@@ -4,36 +4,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Copy, 
-  Trash2, 
-  Calendar, 
-  Tag,
-  Percent,
-  Gift,
-  DollarSign,
-  Package,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { Copy, Edit, Tag, Trash2 } from 'lucide-react';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { Tarjeta } from '@/components/kit/Tarjeta';
+import { FilaDato, ListaDatos } from '@/components/kit/FilaDato';
+import { SettingGroup, SettingRow } from '@/components/kit/SettingRow';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
+import { clasesBoton } from '@/components/kit/botonClases';
+import type { AccionFila } from '@/components/kit/acciones';
+import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
+import { localeIntl } from '@/components/kit/idioma';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
@@ -41,6 +26,20 @@ import { Promotion } from '@/components/pos/promociones/types';
 import { diasDelIdioma } from '@/components/pos/promociones/diasPromocion';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
+
+type EstadoPromo = 'inactiva' | 'programada' | 'expirada' | 'activa';
+
+function textoPlano(valor: string): string {
+  return valor.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function estadoPromo(promo: Promotion): EstadoPromo {
+  if (!promo.is_active) return 'inactiva';
+  const now = new Date();
+  if (new Date(promo.start_date) > now) return 'programada';
+  if (promo.end_date && new Date(promo.end_date) < now) return 'expirada';
+  return 'activa';
+}
 
 export default function PromocionDetallePage() {
   const params = useParams();
@@ -51,51 +50,54 @@ export default function PromocionDetallePage() {
   const t = useTranslations('posPromociones');
   const locale = useLocale();
   const diasSemana = diasDelIdioma(locale);
-  
+
   const promotionId = params?.id as string;
   const isEditMode = searchParams?.get('edit') === 'true';
-  
+
   const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [toggling, setToggling] = useState(false);
 
   const loadPromotion = useCallback(async () => {
     if (!promotionId) return;
-    
+
     setLoading(true);
     try {
       const data = await PromotionsService.getById(promotionId);
       setPromotion(data);
     } catch (error: unknown) {
       console.error('Error loading promotion:', error);
-      toast.error('Error al cargar la promoción');
+      toast.error(t('detalle.errorCargar'));
     } finally {
       setLoading(false);
     }
-  }, [promotionId]);
+  }, [promotionId, t]);
 
   useEffect(() => {
     loadPromotion();
   }, [loadPromotion]);
 
   const handleDelete = async () => {
+    setEliminando(true);
     try {
       await PromotionsService.delete(promotionId);
-      toast.success('Promoción eliminada correctamente');
+      toast.success(t('detalle.eliminada'));
       router.push('/app/pos/promociones');
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al eliminar la promoción');
+      toast.error((error as { message?: string } | null)?.message || t('detalle.errorEliminar'));
+      setEliminando(false);
     }
   };
 
   const handleDuplicate = async () => {
     try {
       await PromotionsService.duplicate(promotionId);
-      toast.success('Promoción duplicada correctamente');
+      toast.success(t('detalle.duplicada'));
       router.push('/app/pos/promociones');
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al duplicar la promoción');
+      toast.error((error as { message?: string } | null)?.message || t('detalle.errorDuplicar'));
     }
   };
 
@@ -104,62 +106,42 @@ export default function PromocionDetallePage() {
     setToggling(true);
     try {
       await PromotionsService.toggleActive(promotionId);
-      toast.success(promotion.is_active ? 'Promoción desactivada' : 'Promoción activada');
+      toast.success(promotion.is_active ? t('detalle.desactivada') : t('detalle.activada'));
       loadPromotion();
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al cambiar estado');
+      toast.error((error as { message?: string } | null)?.message || t('detalle.errorEstado'));
     } finally {
       setToggling(false);
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'percentage': return <Percent className="h-5 w-5" />;
-      case 'fixed_amount': return <DollarSign className="h-5 w-5" />;
-      case 'buy_x_get_y': return <Gift className="h-5 w-5" />;
-      case 'bundle': return <Package className="h-5 w-5" />;
-      default: return <Tag className="h-5 w-5" />;
     }
   };
 
   const getDiscountDisplay = (promo: Promotion) => {
     switch (promo.promotion_type) {
       case 'percentage':
-        return `${promo.discount_value}%`;
-      case 'fixed_amount':        return formatear(promo.discount_value || 0);
+        return promo.repeat_every_quantity
+          ? t('lista.cada', { valor: `${promo.discount_value}%`, n: promo.repeat_every_quantity })
+          : `${promo.discount_value}%`;
+      case 'fixed_amount':
+        return promo.repeat_every_quantity
+          ? t('lista.cada', { valor: formatear(promo.discount_value || 0), n: promo.repeat_every_quantity })
+          : formatear(promo.discount_value || 0);
       case 'buy_x_get_y':
         return t('detalle.compraLleva', { x: promo.buy_quantity ?? 0, y: promo.get_quantity ?? 0 });
       case 'bundle':
-        return formatear(promo.discount_value || 0);
+        if ((promo.bundle_price ?? 0) > 0) return formatear(promo.bundle_price || 0);
+        if ((promo.discount_value ?? 0) > 0) return `${promo.discount_value}%`;
+        return '-';
       default:
         return '-';
     }
   };
 
-  const getStatusBadge = (promo: Promotion) => {
-    const now = new Date();
-    const startDate = new Date(promo.start_date);
-    const endDate = promo.end_date ? new Date(promo.end_date) : null;
-
-    if (!promo.is_active) {
-      return <Badge variant="secondary">Inactiva</Badge>;
-    }
-    if (startDate > now) {
-      return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Programada</Badge>;
-    }
-    if (endDate && endDate < now) {
-      return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Expirada</Badge>;
-    }
-    return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Activa</Badge>;
-  };
-
   // Para timestamps reales (creada, actualizada): hora local del usuario.
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return new Date(dateString).toLocaleDateString(localeIntl(locale), {
       day: '2-digit',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -168,7 +150,7 @@ export default function PromocionDetallePage() {
   // a las 19:00 del día 9 y salía "09 de septiembre". Se pinta en UTC para
   // que se lea la fecha que el usuario eligió.
   const formatFechaVigencia = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return new Date(dateString).toLocaleDateString(localeIntl(locale), {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
@@ -178,7 +160,7 @@ export default function PromocionDetallePage() {
 
   if (orgLoading || loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
         <PageHeaderSkeleton />
         <DetailSkeleton />
       </div>
@@ -187,16 +169,14 @@ export default function PromocionDetallePage() {
 
   if (!promotion) {
     return (
-      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="max-w-4xl mx-auto text-center py-12">
-          <Tag className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <h2 className="text-xl font-semibold dark:text-white mb-2">Promoción no encontrada</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            La promoción que buscas no existe o fue eliminada.
-          </p>
-          <Link href="/app/pos/promociones">
-            <Button>Volver a Promociones</Button>
-          </Link>
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-4xl rounded-xl border border-line bg-surface">
+          <EmptyState
+            titulo={t('detalle.noEncontrada')}
+            descripcion={t('detalle.noEncontradaAyuda')}
+            icono={Tag}
+            accion={{ etiqueta: t('detalle.volver'), href: '/app/pos/promociones' }}
+          />
         </div>
       </div>
     );
@@ -204,328 +184,276 @@ export default function PromocionDetallePage() {
 
   if (isEditMode) {
     return (
-      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PromotionWizard
-          promotionId={promotionId}
-          initialData={{
-            name: promotion.name,
-            description: promotion.description,
-            promotion_type: promotion.promotion_type,
-            discount_value: promotion.discount_value,
-            buy_quantity: promotion.buy_quantity,
-            get_quantity: promotion.get_quantity,
-            min_purchase_amount: promotion.min_purchase_amount,
-            min_purchase_scope: promotion.min_purchase_scope ?? null,
-            min_quantity: promotion.min_quantity ?? null,
-            repeat_every_quantity: promotion.repeat_every_quantity ?? null,
-            max_discount_amount: promotion.max_discount_amount,
-            start_time: promotion.start_time ?? null,
-            end_time: promotion.end_time ?? null,
-            bundle_price: promotion.bundle_price ?? null,
-            applies_to: promotion.applies_to,
-            start_date: promotion.start_date,
-            end_date: promotion.end_date,
-            is_active: promotion.is_active,
-            usage_limit: promotion.usage_limit,
-            is_combinable: promotion.is_combinable,
-            priority: promotion.priority,
-            // Estos campos NO se pasaban. Al editar, el formulario arrancaba sin
-            // días, sin canales, sin sucursales y sin reglas; y al guardar,
-            // `update()` borraba las reglas existentes y no insertaba ninguna.
-            // Editar cualquier promoción la dejaba sin productos y sin días.
-            applicable_days: promotion.applicable_days,
-            branches: promotion.branches,
-            applies_to_pos: promotion.applies_to_pos,
-            applies_to_web: promotion.applies_to_web,
-            applies_to_finances: promotion.applies_to_finances,
-            rules: (promotion.rules || []).map((r) => ({
-              rule_type: r.rule_type,
-              product_id: r.product_id ?? undefined,
-              category_id: r.category_id ?? undefined,
-              quantity: r.quantity ?? null,
-            })),
-          }}
-        />
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+          <PageHeader
+            variante="form"
+            titulo={promotion.name}
+            subtitulo={t('detalle.editar')}
+            volverA={`/app/pos/promociones/${promotionId}`}
+            migas={[
+              { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+              { etiqueta: t('pantalla.titulo'), href: '/app/pos/promociones' },
+              { etiqueta: promotion.name, href: `/app/pos/promociones/${promotionId}` },
+              { etiqueta: t('detalle.editar') },
+            ]}
+          />
+          <PromotionWizard
+            promotionId={promotionId}
+            initialData={{
+              name: promotion.name,
+              description: promotion.description,
+              promotion_type: promotion.promotion_type,
+              discount_value: promotion.discount_value,
+              buy_quantity: promotion.buy_quantity,
+              get_quantity: promotion.get_quantity,
+              min_purchase_amount: promotion.min_purchase_amount,
+              min_purchase_scope: promotion.min_purchase_scope ?? null,
+              min_quantity: promotion.min_quantity ?? null,
+              repeat_every_quantity: promotion.repeat_every_quantity ?? null,
+              max_discount_amount: promotion.max_discount_amount,
+              start_time: promotion.start_time ?? null,
+              end_time: promotion.end_time ?? null,
+              bundle_price: promotion.bundle_price ?? null,
+              applies_to: promotion.applies_to,
+              start_date: promotion.start_date,
+              end_date: promotion.end_date,
+              is_active: promotion.is_active,
+              usage_limit: promotion.usage_limit,
+              is_combinable: promotion.is_combinable,
+              priority: promotion.priority,
+              // Estos campos NO se pasaban. Al editar, el formulario arrancaba sin
+              // días, sin canales, sin sucursales y sin reglas; y al guardar,
+              // `update()` borraba las reglas existentes y no insertaba ninguna.
+              // Editar cualquier promoción la dejaba sin productos y sin días.
+              applicable_days: promotion.applicable_days,
+              branches: promotion.branches,
+              applies_to_pos: promotion.applies_to_pos,
+              applies_to_web: promotion.applies_to_web,
+              applies_to_finances: promotion.applies_to_finances,
+              rules: (promotion.rules || []).map((r) => ({
+                rule_type: r.rule_type,
+                product_id: r.product_id ?? undefined,
+                category_id: r.category_id ?? undefined,
+                quantity: r.quantity ?? null,
+              })),
+            }}
+          />
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
-                <Link href="/app/pos/promociones" className="hidden lg:block">
-                  <Button variant="ghost" size="icon">
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  {getTypeIcon(promotion.promotion_type)}
-                </div>
-                <div>
-                  <CardTitle className="dark:text-white flex items-center gap-2">
-                    {promotion.name}
-                    {getStatusBadge(promotion)}
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {t(`tipos.${promotion.promotion_type}`)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link href={`/app/pos/promociones/${promotionId}?edit=true`}>
-                  <Button variant="outline" size="sm" className="dark:bg-gray-700 dark:border-gray-600">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                </Link>
-                <Button variant="outline" size="sm" onClick={handleDuplicate} className="dark:bg-gray-700 dark:border-gray-600">
-                  <Copy className="h-4 w-4 mr-2" />
-                  Duplicar
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 dark:text-red-400 dark:bg-gray-700 dark:border-gray-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+  const accionesMenu: AccionFila[] = [
+    {
+      id: 'editar',
+      etiqueta: t('detalle.editar'),
+      icono: Edit,
+      onSelect: () => router.push(`/app/pos/promociones/${promotionId}?edit=true`),
+    },
+    {
+      id: 'duplicar',
+      etiqueta: t('detalle.duplicar'),
+      icono: Copy,
+      onSelect: () => void handleDuplicate(),
+    },
+    {
+      id: 'eliminar',
+      etiqueta: t('detalle.eliminar'),
+      icono: Trash2,
+      destructiva: true,
+      onSelect: () => setShowDeleteDialog(true),
+    },
+  ];
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Información Principal */}
-          <Card className="md:col-span-2 dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-lg dark:text-white">Detalles de la Promoción</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {promotion.description && (
+  return (
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+        <PageHeader
+          variante="detail"
+          titulo={promotion.name}
+          subtitulo={t(`tipos.${promotion.promotion_type}`)}
+          icono={Tag}
+          badge={<StatusBadge estado={estadoPromo(promotion)} tamano="md" />}
+          volverA="/app/pos/promociones"
+          migas={[
+            { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+            { etiqueta: t('pantalla.titulo'), href: '/app/pos/promociones' },
+            { etiqueta: promotion.name },
+          ]}
+          acciones={
+            <>
+              <Link
+                href={`/app/pos/promociones/${promotionId}?edit=true`}
+                className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
+              >
+                <Edit className="size-4" aria-hidden="true" />
+                {t('detalle.editar')}
+              </Link>
+              <button type="button" onClick={handleDuplicate} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                <Copy className="size-4" aria-hidden="true" />
+                {t('detalle.duplicar')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteDialog(true)}
+                className={clasesBoton({ variante: 'destructivo', tamano: 'sm' })}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                {t('detalle.eliminar')}
+              </button>
+            </>
+          }
+          movil={{ accion: <RowActionsMenu acciones={accionesMenu} titulo={promotion.name} tamano="md" orientacion="horizontal" /> }}
+        />
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Tarjeta titulo={t('detalle.titulo')} icono={Tag} className="lg:col-span-2">
+            <div className="flex flex-col gap-4">
+              {textoPlano(promotion.description || '') && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descripción</h4>
-                  <p className="text-gray-900 dark:text-white">{promotion.description}</p>
+                  <h3 className="text-xs font-medium leading-4 text-fg-secondary">{t('detalle.descripcion')}</h3>
+                  <p className="mt-1 text-sm text-fg">{textoPlano(promotion.description || '')}</p>
                 </div>
               )}
 
-              <Separator className="dark:bg-gray-700" />
+              <ListaDatos divisores>
+                <FilaDato
+                  etiqueta={t('detalle.descuento')}
+                  valor={<span className="text-lg font-semibold text-brand">{getDiscountDisplay(promotion)}</span>}
+                  tamano="lg"
+                />
+                <FilaDato etiqueta={t('detalle.aplicaA')} valor={t(`aplicaA.${promotion.applies_to}`)} />
+                <FilaDato etiqueta={t('detalle.fechaInicio')} valor={formatFechaVigencia(promotion.start_date)} />
+                <FilaDato
+                  etiqueta={t('detalle.fechaFin')}
+                  valor={promotion.end_date ? formatFechaVigencia(promotion.end_date) : t('detalle.sinFechaFin')}
+                />
+              </ListaDatos>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descuento</h4>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {getDiscountDisplay(promotion)}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Aplica a</h4>
-                  <p className="dark:text-white">{t(`aplicaA.${promotion.applies_to}`)}</p>
-                </div>
-              </div>
-
-              <Separator className="dark:bg-gray-700" />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha Inicio</h4>
-                  <p className="dark:text-white flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {formatFechaVigencia(promotion.start_date)}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Fecha Fin</h4>
-                  <p className="dark:text-white flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {promotion.end_date ? formatFechaVigencia(promotion.end_date) : 'Sin fecha fin'}
-                  </p>
-                </div>
-                {/* Los días de la semana no se mostraban: el usuario configuraba
-                    "solo jueves" y la ficha no lo decía por ningún lado. */}
-                <div className="md:col-span-2">
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Días de la semana</h4>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {promotion.applicable_days && promotion.applicable_days.length > 0 ? (
-                      diasSemana.map((d) => {
-                        const activo = promotion.applicable_days!.includes(d.value);
-                        return (
-                          <Badge
-                            key={d.value}
-                            variant={activo ? 'default' : 'outline'}
-                            className={activo ? '' : 'opacity-40'}
-                          >
-                            {d.corto}
-                          </Badge>
-                        );
-                      })
-                    ) : (
-                      <span className="text-sm dark:text-white">Todos los días</span>
-                    )}
-                  </div>
+              <div>
+                <h3 className="text-xs font-medium leading-4 text-fg-secondary">{t('detalle.dias')}</h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {promotion.applicable_days && promotion.applicable_days.length > 0 ? (
+                    diasSemana.map((d) => {
+                      const activo = promotion.applicable_days!.includes(d.value);
+                      return (
+                        <Badge key={d.value} tono={activo ? 'marca' : 'neutro'} apariencia={activo ? 'suave' : 'contorno'} tamano="sm">
+                          {d.corto}
+                        </Badge>
+                      );
+                    })
+                  ) : (
+                    <span className="text-sm text-fg">{t('detalle.todosLosDias')}</span>
+                  )}
                 </div>
               </div>
 
               {(promotion.min_purchase_amount || promotion.min_quantity || promotion.repeat_every_quantity) && (
-                <>
-                  <Separator className="dark:bg-gray-700" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {promotion.min_quantity != null && promotion.min_quantity > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('detalle.cantidadMinima')}</h4>
-                        <p className="dark:text-white">{t('detalle.unidades', { n: promotion.min_quantity })}</p>
-                      </div>
-                    )}
-                    {promotion.repeat_every_quantity != null && promotion.repeat_every_quantity > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('detalle.seRepite')}</h4>
-                        <p className="dark:text-white">{t('detalle.unidades', { n: promotion.repeat_every_quantity })}</p>
-                      </div>
-                    )}
-                    {promotion.min_purchase_amount != null && promotion.min_purchase_amount > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('detalle.compraMinima')}</h4>
-                        <p className="dark:text-white">{formatear(promotion.min_purchase_amount)}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {promotion.applies_to === 'all' || promotion.min_purchase_scope === 'cart'
-                            ? t('detalle.sobreCuenta')
-                            : t('detalle.sobreProductos')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </>
+                <ListaDatos divisores>
+                  {promotion.min_quantity != null && promotion.min_quantity > 0 && (
+                    <FilaDato etiqueta={t('detalle.cantidadMinima')} valor={t('detalle.unidades', { n: promotion.min_quantity })} />
+                  )}
+                  {promotion.repeat_every_quantity != null && promotion.repeat_every_quantity > 0 && (
+                    <FilaDato etiqueta={t('detalle.seRepite')} valor={t('detalle.unidades', { n: promotion.repeat_every_quantity })} />
+                  )}
+                  {promotion.min_purchase_amount != null && promotion.min_purchase_amount > 0 && (
+                    <FilaDato
+                      etiqueta={t('detalle.compraMinima')}
+                      valor={formatear(promotion.min_purchase_amount)}
+                      descripcion={
+                        promotion.applies_to === 'all' || promotion.min_purchase_scope === 'cart'
+                          ? t('detalle.sobreCuenta')
+                          : t('detalle.sobreProductos')
+                      }
+                    />
+                  )}
+                </ListaDatos>
               )}
 
-              {promotion.max_discount_amount && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descuento Máximo</h4>
-                  <p className="dark:text-white">{formatear(promotion.max_discount_amount)}</p>
-                </div>
-              )}
+              {promotion.max_discount_amount ? (
+                <ListaDatos>
+                  <FilaDato etiqueta={t('detalle.descuentoMaximo')} valor={formatear(promotion.max_discount_amount)} />
+                </ListaDatos>
+              ) : null}
 
-              {/* Reglas */}
               {promotion.rules && promotion.rules.length > 0 && (
-                <>
-                  <Separator className="dark:bg-gray-700" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Reglas Aplicadas</h4>
-                    <div className="space-y-2">
-                      {promotion.rules.map((rule) => (
-                        <div key={rule.id} className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-700">
-                          <Badge variant={rule.rule_type.startsWith('include') ? 'default' : 'destructive'}>
-                            {rule.rule_type.startsWith('include') ? 'Incluye' : 'Excluye'}
-                          </Badge>
-                          {rule.product && <span className="dark:text-white">{rule.product.name}</span>}
-                          {rule.category && <span className="dark:text-white">{rule.category.name}</span>}
-                          {promotion.promotion_type === 'bundle' && rule.rule_type === 'include_product' && (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {t('detalle.porPaquete', {
-                                n: rule.quantity != null && rule.quantity > 0 ? rule.quantity : 1,
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
+                <div>
+                  <h3 className="mb-2 text-xs font-medium leading-4 text-fg-secondary">{t('detalle.reglas')}</h3>
+                  <ul className="flex flex-col gap-2">
+                    {promotion.rules.map((rule) => (
+                      <li key={rule.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-subtle px-3 py-2">
+                        <Badge
+                          tono={rule.rule_type.startsWith('include') ? 'marca' : 'peligro'}
+                          apariencia="suave"
+                          tamano="sm"
+                        >
+                          {rule.rule_type.startsWith('include') ? t('detalle.incluye') : t('detalle.excluye')}
+                        </Badge>
+                        {rule.product && <span className="text-sm text-fg">{rule.product.name}</span>}
+                        {rule.category && <span className="text-sm text-fg">{rule.category.name}</span>}
+                        {promotion.promotion_type === 'bundle' && rule.rule_type === 'include_product' && (
+                          <span className="text-[13px] text-fg-secondary">
+                            {t('detalle.porPaquete', {
+                              n: rule.quantity != null && rule.quantity > 0 ? rule.quantity : 1,
+                            })}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </Tarjeta>
 
-          {/* Panel Lateral */}
-          <div className="space-y-6">
-            {/* Estado */}
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg dark:text-white">Estado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {promotion.is_active ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-gray-400" />
-                    )}
-                    <span className="dark:text-white">
-                      {promotion.is_active ? 'Activa' : 'Inactiva'}
+          <div className="flex flex-col gap-4">
+            <Tarjeta titulo={t('detalle.estado')}>
+              <SettingGroup>
+                <SettingRow titulo={t('detalle.estado')} descripcion={<StatusBadge estado={estadoPromo(promotion)} />}>
+                  <Switch checked={promotion.is_active} onCheckedChange={handleToggleActive} disabled={toggling} />
+                </SettingRow>
+              </SettingGroup>
+            </Tarjeta>
+
+            <Tarjeta titulo={t('detalle.estadisticas')}>
+              <ListaDatos divisores>
+                <FilaDato
+                  etiqueta={t('detalle.usos')}
+                  valor={
+                    <span className="tabular-nums">
+                      {promotion.usage_count}
+                      {promotion.usage_limit != null && <span className="text-fg-muted">/{promotion.usage_limit}</span>}
                     </span>
-                  </div>
-                  <Switch
-                    checked={promotion.is_active}
-                    onCheckedChange={handleToggleActive}
-                    disabled={toggling}
-                    className="data-[state=checked]:bg-green-600"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                  }
+                />
+                <FilaDato etiqueta={t('detalle.prioridad')} valor={<span className="tabular-nums">{promotion.priority}</span>} />
+                <FilaDato etiqueta={t('detalle.combinable')} valor={promotion.is_combinable ? t('detalle.si') : t('detalle.no')} />
+              </ListaDatos>
+            </Tarjeta>
 
-            {/* Estadísticas */}
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg dark:text-white">Estadísticas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Usos</span>
-                  <span className="font-semibold dark:text-white">
-                    {promotion.usage_count}
-                    {promotion.usage_limit && (
-                      <span className="text-gray-400">/{promotion.usage_limit}</span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Prioridad</span>
-                  <Badge variant="outline">{promotion.priority}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Combinable</span>
-                  <Badge variant={promotion.is_combinable ? 'default' : 'secondary'}>
-                    {promotion.is_combinable ? 'Sí' : 'No'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Info adicional */}
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
-              <CardContent className="p-4">
-                <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                  <p>Creada: {formatDate(promotion.created_at)}</p>
-                  <p>Actualizada: {formatDate(promotion.updated_at)}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <p className="px-1 text-xs leading-4 text-fg-muted">
+              {t('detalle.creada', { fecha: formatDate(promotion.created_at) })}
+              <br />
+              {t('detalle.actualizada', { fecha: formatDate(promotion.updated_at) })}
+            </p>
           </div>
         </div>
+      </div>
 
-      {/* Delete Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">¿Eliminar promoción?</AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer. La promoción será eliminada permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="dark:bg-gray-700 dark:text-white">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        abierto={showDeleteDialog}
+        onAbiertoChange={(abierto) => {
+          if (!eliminando) setShowDeleteDialog(abierto);
+        }}
+        titulo={t('detalle.eliminarTitulo')}
+        descripcion={t('detalle.eliminarDescripcion')}
+        textoConfirmar={t('detalle.eliminar')}
+        textoCancelar={t('detalle.cancelar')}
+        onConfirmar={handleDelete}
+        tono="peligro"
+        cargando={eliminando}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { 
   Edit, 
   Trash2, 
@@ -42,7 +43,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Promotion, PROMOTION_TYPE_LABELS, WEEK_DAYS, type WeekDay } from './types';
+import { Promotion, type WeekDay } from './types';
+import { diasDelIdioma } from './diasPromocion';
 import { PromotionsService } from './promotionsService';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -56,6 +58,9 @@ interface PromotionsListProps {
 
 export function PromotionsList({ promotions, loading, onRefresh }: PromotionsListProps) {
   const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posPromociones');
+  const locale = useLocale();
+  const diasSemana = diasDelIdioma(locale);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -141,17 +146,17 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
     switch (promo.promotion_type) {
       case 'percentage':
         return promo.repeat_every_quantity
-          ? `${promo.discount_value}% cada ${promo.repeat_every_quantity}`
+          ? t('lista.cada', { valor: `${promo.discount_value}%`, n: promo.repeat_every_quantity })
           : `${promo.discount_value}%`;
       case 'fixed_amount':
         return promo.repeat_every_quantity
-          ? `${formatear(promo.discount_value || 0)} cada ${promo.repeat_every_quantity}`
+          ? t('lista.cada', { valor: formatear(promo.discount_value || 0), n: promo.repeat_every_quantity })
           : formatear(promo.discount_value || 0);
       case 'buy_x_get_y': {
         const x = promo.buy_quantity ?? 0;
         const y = promo.get_quantity ?? 0;
         if (x > 0 && y > 0 && y < x) return `${x}x${y}`;
-        if (x > 0 && y > 0) return `Compra ${x}, +${y} gratis`;
+        if (x > 0 && y > 0) return t('lista.compraGratis', { x, y });
         return '-';
       }
       case 'bundle':
@@ -165,7 +170,7 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
 
   const diasDeVigencia = (dias: WeekDay[] | null | undefined): string | null => {
     if (!dias || dias.length === 0) return null;
-    const cortos = WEEK_DAYS.filter((d) => dias.includes(d.value)).map((d) => d.short);
+    const cortos = diasSemana.filter((d) => dias.includes(d.value)).map((d) => d.corto);
     return cortos.length > 0 ? cortos.join(', ') : null;
   };
 
@@ -241,7 +246,7 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
                 <TableCell>
                   <Badge variant="outline" className="dark:border-gray-600">
                     <span className="mr-1">{getTypeIcon(promo.promotion_type)}</span>
-                    {PROMOTION_TYPE_LABELS[promo.promotion_type]}
+                    {t(`tipos.${promo.promotion_type}`)}
                   </Badge>
                 </TableCell>
                 <TableCell>

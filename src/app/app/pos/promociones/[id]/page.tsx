@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -36,7 +37,8 @@ import {
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
-import { Promotion, PROMOTION_TYPE_LABELS, APPLIES_TO_LABELS, WEEK_DAYS } from '@/components/pos/promociones/types';
+import { Promotion } from '@/components/pos/promociones/types';
+import { diasDelIdioma } from '@/components/pos/promociones/diasPromocion';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
@@ -46,6 +48,9 @@ export default function PromocionDetallePage() {
   const searchParams = useSearchParams();
   const { isLoading: orgLoading } = useOrganization();
   const { formatear } = useMonedaOrganizacion();
+  const t = useTranslations('posPromociones');
+  const locale = useLocale();
+  const diasSemana = diasDelIdioma(locale);
   
   const promotionId = params?.id as string;
   const isEditMode = searchParams?.get('edit') === 'true';
@@ -124,7 +129,7 @@ export default function PromocionDetallePage() {
         return `${promo.discount_value}%`;
       case 'fixed_amount':        return formatear(promo.discount_value || 0);
       case 'buy_x_get_y':
-        return `Compra ${promo.buy_quantity}, Lleva ${promo.get_quantity}`;
+        return t('detalle.compraLleva', { x: promo.buy_quantity ?? 0, y: promo.get_quantity ?? 0 });
       case 'bundle':
         return formatear(promo.discount_value || 0);
       default:
@@ -267,7 +272,7 @@ export default function PromocionDetallePage() {
                     {getStatusBadge(promotion)}
                   </CardTitle>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {PROMOTION_TYPE_LABELS[promotion.promotion_type]}
+                    {t(`tipos.${promotion.promotion_type}`)}
                   </p>
                 </div>
               </div>
@@ -321,7 +326,7 @@ export default function PromocionDetallePage() {
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Aplica a</h4>
-                  <p className="dark:text-white">{APPLIES_TO_LABELS[promotion.applies_to]}</p>
+                  <p className="dark:text-white">{t(`aplicaA.${promotion.applies_to}`)}</p>
                 </div>
               </div>
 
@@ -348,7 +353,7 @@ export default function PromocionDetallePage() {
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Días de la semana</h4>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {promotion.applicable_days && promotion.applicable_days.length > 0 ? (
-                      WEEK_DAYS.map((d) => {
+                      diasSemana.map((d) => {
                         const activo = promotion.applicable_days!.includes(d.value);
                         return (
                           <Badge
@@ -356,7 +361,7 @@ export default function PromocionDetallePage() {
                             variant={activo ? 'default' : 'outline'}
                             className={activo ? '' : 'opacity-40'}
                           >
-                            {d.short}
+                            {d.corto}
                           </Badge>
                         );
                       })
@@ -373,24 +378,24 @@ export default function PromocionDetallePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {promotion.min_quantity != null && promotion.min_quantity > 0 && (
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Cantidad mínima</h4>
-                        <p className="dark:text-white">{promotion.min_quantity} unidades</p>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('detalle.cantidadMinima')}</h4>
+                        <p className="dark:text-white">{t('detalle.unidades', { n: promotion.min_quantity })}</p>
                       </div>
                     )}
                     {promotion.repeat_every_quantity != null && promotion.repeat_every_quantity > 0 && (
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Se repite cada</h4>
-                        <p className="dark:text-white">{promotion.repeat_every_quantity} unidades</p>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('detalle.seRepite')}</h4>
+                        <p className="dark:text-white">{t('detalle.unidades', { n: promotion.repeat_every_quantity })}</p>
                       </div>
                     )}
                     {promotion.min_purchase_amount != null && promotion.min_purchase_amount > 0 && (
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Compra Mínima</h4>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('detalle.compraMinima')}</h4>
                         <p className="dark:text-white">{formatear(promotion.min_purchase_amount)}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {promotion.applies_to === 'all' || promotion.min_purchase_scope === 'cart'
-                            ? 'Sobre toda la cuenta'
-                            : 'Solo sobre los productos de la promo'}
+                            ? t('detalle.sobreCuenta')
+                            : t('detalle.sobreProductos')}
                         </p>
                       </div>
                     )}
@@ -421,7 +426,9 @@ export default function PromocionDetallePage() {
                           {rule.category && <span className="dark:text-white">{rule.category.name}</span>}
                           {promotion.promotion_type === 'bundle' && rule.rule_type === 'include_product' && (
                             <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {rule.quantity != null && rule.quantity > 0 ? `${rule.quantity} por paquete` : '1 por paquete'}
+                              {t('detalle.porPaquete', {
+                                n: rule.quantity != null && rule.quantity > 0 ? rule.quantity : 1,
+                              })}
                             </span>
                           )}
                         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -43,11 +44,12 @@ import {
   RuleTypeDB,
   PROMOTION_TYPE_LABELS,
   APPLIES_TO_LABELS,
-  WEEK_DAYS
 } from '../types';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { formatearEnteroEn } from '@/components/kit/idioma';
+import { diasDelIdioma } from '../diasPromocion';
 
 /** Fila de `PromotionsService.getProducts` que usa el paso «Productos». */
 interface ProductoPromocion {
@@ -71,11 +73,13 @@ interface PromotionWizardProps {
 }
 
 const WIZARD_STEPS = [
-  { id: 'basic', title: 'Datos Básicos', icon: Tag },
-  { id: 'discount', title: 'Descuento', icon: Percent },
-  { id: 'validity', title: 'Vigencia', icon: Calendar },
-  { id: 'rules', title: 'Reglas', icon: Filter },
-];
+  { id: 'basic', icon: Tag },
+  { id: 'discount', icon: Percent },
+  { id: 'validity', icon: Calendar },
+  { id: 'rules', icon: Filter },
+] as const;
+
+type Traductor = (clave: string, valores?: Record<string, string | number>) => string;
 
 /**
  * Dia calendario (YYYY-MM-DD) que debe mostrar el `CampoFecha` para un valor que
@@ -93,36 +97,18 @@ function horaDelFormulario(valor: string | null | undefined): string {
   return `${m[1].padStart(2, '0')}:${m[2]}`;
 }
 
-const MENSAJE_FECHA_FIN = 'La fecha de fin no puede ser anterior a la de inicio';
-
-function ayudaCompraLleva(compra: number | undefined, lleva: number | undefined): string {
-  const x = Math.trunc(compra || 0);
-  const y = Math.trunc(lleva || 0);
-  if (x > 0 && y > 0 && y < x) {
-    return `Lleva ${x} y paga ${y}: de cada ${x} unidades, ${x - y} salen gratis (${x}x${y}).`;
-  }
-  if (x > 0 && y > 0) {
-    return `Compra ${x} y lleva ${y} gratis: de cada ${x + y} unidades, ${y} salen gratis.`;
-  }
-  return 'Si Y es menor que X, el cliente lleva X y paga Y (3 y 2 se muestra como 3x2). Si Y es mayor o igual que X, Y son unidades gratis además de las X que se pagan.';
-}
-
 function enteroDelCampo(valor: string): number | null {
   if (valor.trim() === '') return null;
   const n = Math.trunc(Number(valor));
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Sobre qué subtotal se compara la compra mínima. */
-function textoCompraMinima(aplicaA: AppliesTo | undefined, alcance: MinPurchaseScope | null | undefined): string {
-  if (aplicaA === 'all' || alcance === 'cart') {
-    return 'Se mide sobre el subtotal de toda la cuenta, antes de esta promo.';
-  }
-  return 'Se mide solo sobre los productos o categorías de esta promo, no sobre el resto de la cuenta.';
-}
-
 export function PromotionWizard({ initialData, promotionId, onSuccess }: PromotionWizardProps) {
   const router = useRouter();
+  const t = useTranslations('posPromociones');
+  const locale = useLocale();
+  const diasSemana = diasDelIdioma(locale);
+  const ejemploRepetir = `$${formatearEnteroEn(5000, locale)}`;
   // `promotions.start_date` / `.end_date` son timestamptz. En el formulario se
   // manejan como dias de la organizacion; el servicio los convierte a instantes
   // al guardar (00:00 y 23:59:59.999 de esa zona).
@@ -235,7 +221,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const cambiarFecha = (campo: 'start_date' | 'end_date', dia: string) => {
     const inicio = campo === 'start_date' ? dia : (formData.start_date || '');
     const fin = campo === 'end_date' ? dia : (formData.end_date || '');
-    setErrorFechaFin(fin && inicio && fin < inicio ? MENSAJE_FECHA_FIN : null);
+    setErrorFechaFin(fin && inicio && fin < inicio ? t('formulario.fechaFinError') : null);
     handleChange(campo, dia || undefined);
   };
 
@@ -243,40 +229,40 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     switch (currentStep) {
       case 0: // Datos básicos
         if (!formData.name.trim()) {
-          toast.error('El nombre es requerido');
+          toast.error(t('formulario.nombreRequerido'));
           return false;
         }
         return true;
       case 1: // Descuento
         if (formData.promotion_type === 'percentage' && (!formData.discount_value || formData.discount_value <= 0 || formData.discount_value > 100)) {
-          toast.error('El porcentaje debe ser entre 1 y 100');
+          toast.error(t('formulario.porcentajeInvalido'));
           return false;
         }
         if (formData.promotion_type === 'fixed_amount' && (!formData.discount_value || formData.discount_value <= 0)) {
-          toast.error('El monto de descuento debe ser mayor a 0');
+          toast.error(t('formulario.montoInvalido'));
           return false;
         }
         if (formData.promotion_type === 'buy_x_get_y' && (!formData.buy_quantity || !formData.get_quantity)) {
-          toast.error('Debe especificar las cantidades de compra y de la segunda cifra');
+          toast.error(t('formulario.compraLlevaRequerida'));
           return false;
         }
         if (formData.promotion_type === 'bundle') {
           const precio = Number(formData.bundle_price) || 0;
           const porcentaje = Number(formData.discount_value) || 0;
           if (precio <= 0 && (porcentaje <= 0 || porcentaje > 100)) {
-            toast.error('Indica el precio del paquete o un porcentaje entre 1 y 100');
+            toast.error(t('formulario.paqueteValor'));
             return false;
           }
         }
         return true;
       case 2: // Vigencia
         if (!formData.start_date) {
-          toast.error('La fecha de inicio es requerida');
+          toast.error(t('formulario.fechaInicioRequerida'));
           return false;
         }
         if (formData.end_date && formData.end_date < formData.start_date) {
-          setErrorFechaFin(MENSAJE_FECHA_FIN);
-          toast.error(MENSAJE_FECHA_FIN);
+          setErrorFechaFin(t('formulario.fechaFinError'));
+          toast.error(t('formulario.fechaFinError'));
           return false;
         }
         setErrorFechaFin(null);
@@ -292,15 +278,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     const precio = Number(formData.bundle_price) || 0;
     if (formData.promotion_type !== 'bundle' || precio <= 0) return true;
     if (formData.applies_to !== 'products') {
-      toast.error('Un paquete con precio aplica a productos específicos');
+      toast.error(t('formulario.paqueteProductos'));
       return false;
     }
     if (ruleType !== 'include') {
-      toast.error('El paquete debe incluir productos, no excluirlos');
+      toast.error(t('formulario.paqueteIncluir'));
       return false;
     }
     if (selectedProducts.length === 0) {
-      toast.error('Indica al menos un producto del paquete');
+      toast.error(t('formulario.paqueteAlMenosUno'));
       return false;
     }
     return true;
@@ -360,10 +346,10 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
       if (promotionId) {
         await PromotionsService.update(promotionId, dataToSave);
-        toast.success('Promoción actualizada correctamente');
+        toast.success(t('formulario.actualizada'));
       } else {
         await PromotionsService.create(dataToSave);
-        toast.success('Promoción creada correctamente');
+        toast.success(t('formulario.creada'));
       }
 
       if (onSuccess) {
@@ -372,7 +358,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
         router.push('/app/pos/promociones');
       }
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al guardar la promoción');
+      toast.error((error as { message?: string } | null)?.message || t('formulario.errorGuardar'));
     } finally {
       setLoading(false);
     }
@@ -415,7 +401,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     ? "text-blue-600 dark:text-blue-400"
                     : "text-gray-500 dark:text-gray-400"
                 )}>
-                  {step.title}
+                  {t(`pasos.${step.id}`)}
                 </span>
                 {index < WIZARD_STEPS.length - 1 && (
                   <div className={cn(
@@ -439,7 +425,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               const StepIcon = WIZARD_STEPS[currentStep].icon;
               return <StepIcon className="h-5 w-5 text-blue-600" />;
             })()}
-            {WIZARD_STEPS[currentStep].title}
+            {t(`pasos.${WIZARD_STEPS[currentStep].id}`)}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -447,26 +433,26 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           {currentStep === 0 && (
             <div className="space-y-4">
               <div>
-                <Label className="dark:text-gray-200">Nombre de la Promoción *</Label>
+                <Label className="dark:text-gray-200">{t('formulario.nombre')}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
-                  placeholder="ej: Descuento de Verano"
+                  placeholder={t('formulario.nombrePlaceholder')}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Descripción</Label>
+                <Label className="dark:text-gray-200">{t('formulario.descripcion')}</Label>
                 <RichTextEditor
                   value={formData.description || ''}
                   onChange={(html) => handleChange('description', html)}
-                  placeholder="Descripción de la promoción..."
+                  placeholder={t('formulario.descripcionPlaceholder')}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Prioridad</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.prioridad')}</Label>
                   <Input
                     type="number"
                     value={formData.priority || 0}
@@ -474,13 +460,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     min={0}
                     className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Mayor número = Mayor prioridad</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('formulario.prioridadAyuda')}</p>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                   <div>
-                    <Label className="dark:text-white">Combinable</Label>
+                    <Label className="dark:text-white">{t('formulario.combinable')}</Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Permitir con otras promociones
+                      {t('formulario.combinableAyuda')}
                     </p>
                   </div>
                   <Switch
@@ -497,9 +483,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <Label className="dark:text-gray-200 mb-3 block">Tipo de Promoción</Label>
+                <Label className="dark:text-gray-200 mb-3 block">{t('formulario.tipo')}</Label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {(Object.entries(PROMOTION_TYPE_LABELS) as [PromotionType, string][]).map(([type, label]) => (
+                  {(Object.keys(PROMOTION_TYPE_LABELS) as PromotionType[]).map((type) => (
                     <button
                       key={type}
                       type="button"
@@ -538,7 +524,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                           ? "text-blue-600 dark:text-blue-400"
                           : "text-gray-600 dark:text-gray-300"
                       )}>
-                        {label}
+                        {t(`tipos.${type}`)}
                       </span>
                     </button>
                   ))}
@@ -550,7 +536,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="dark:text-gray-200">
-                      {formData.promotion_type === 'percentage' ? 'Porcentaje de Descuento' : 'Monto de Descuento'}
+                      {formData.promotion_type === 'percentage' ? t('formulario.porcentaje') : t('formulario.monto')}
                     </Label>
                     <div className="relative">
                       <Input
@@ -571,13 +557,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       usuario acababa escribiendo el descuento real aquí. */}
                   {formData.promotion_type === 'percentage' && (
                     <div>
-                      <Label className="dark:text-gray-200">Descuento Máximo (opcional)</Label>
+                      <Label className="dark:text-gray-200">{t('formulario.descuentoMaximo')}</Label>
                       <Input
                         type="number"
                         value={formData.max_discount_amount || ''}
                         onChange={(e) => handleChange('max_discount_amount', parseFloat(e.target.value) || undefined)}
                         min={0}
-                        placeholder="Sin límite"
+                        placeholder={t('formulario.sinLimite')}
                         className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       />
                     </div>
@@ -589,7 +575,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="dark:text-gray-200">Lleva (X)</Label>
+                      <Label className="dark:text-gray-200">{t('formulario.llevaX')}</Label>
                       <Input
                         type="number"
                         value={formData.buy_quantity || ''}
@@ -599,7 +585,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       />
                     </div>
                     <div>
-                      <Label className="dark:text-gray-200">Paga o gratis (Y)</Label>
+                      <Label className="dark:text-gray-200">{t('formulario.pagaY')}</Label>
                       <Input
                         type="number"
                         value={formData.get_quantity || ''}
@@ -610,7 +596,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {ayudaCompraLleva(formData.buy_quantity, formData.get_quantity)}
+                    {ayudaCompraLleva(t, formData.buy_quantity, formData.get_quantity)}
                   </p>
                 </div>
               )}
@@ -618,22 +604,22 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               {formData.promotion_type === 'bundle' && (
                 <div className="space-y-3">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    El precio se cobra por cada paquete completo. Las unidades de cada producto se indican en Reglas. Lo que sobre se cobra a precio normal. Sin precio, se aplica el porcentaje.
+                    {t('formulario.paqueteAyuda')}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="dark:text-gray-200">Precio del paquete</Label>
+                      <Label className="dark:text-gray-200">{t('formulario.precioPaquete')}</Label>
                       <Input
                         type="number"
                         value={formData.bundle_price || ''}
                         onChange={(e) => handleChange('bundle_price', parseFloat(e.target.value) || null)}
                         min={0}
-                        placeholder="Sin precio fijo"
+                        placeholder={t('formulario.sinPrecioFijo')}
                         className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       />
                     </div>
                     <div>
-                      <Label className="dark:text-gray-200">Porcentaje (si no hay precio)</Label>
+                      <Label className="dark:text-gray-200">{t('formulario.porcentajeSinPrecio')}</Label>
                       <div className="relative">
                         <Input
                           type="number"
@@ -652,60 +638,58 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount' || formData.promotion_type === 'bundle') && (
                 <div>
-                  <Label className="dark:text-gray-200">Cantidad mínima (unidades)</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.cantidadMinima')}</Label>
                   <Input
                     type="number"
                     value={formData.min_quantity ?? ''}
                     onChange={(e) => handleChange('min_quantity', enteroDelCampo(e.target.value))}
                     min={1}
-                    placeholder="Sin mínimo"
+                    placeholder={t('formulario.sinMinimo')}
                     className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Suma de las unidades de los productos de esta promo. Si no llegan, la promo no aplica. Para regalar una unidad al llevar 2, usa Compra X Lleva Y con X = 2 e Y = 1.
+                    {t('formulario.cantidadMinimaAyuda')}
                   </p>
                 </div>
               )}
 
               {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
                 <div>
-                  <Label className="dark:text-gray-200">Repetir cada N unidades (opcional)</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.repetir')}</Label>
                   <Input
                     type="number"
                     value={formData.repeat_every_quantity ?? ''}
                     onChange={(e) => handleChange('repeat_every_quantity', enteroDelCampo(e.target.value))}
                     min={1}
-                    placeholder="Una sola vez"
+                    placeholder={t('formulario.repetirPlaceholder')}
                     className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Vacío: el descuento se aplica una vez. Con un número, se multiplica por cada grupo completo. Ejemplo: −$5.000 cada 2 unidades. En porcentaje, las unidades que sobran se cobran a precio normal.
+                    {t('formulario.repetirAyuda', { ejemplo: ejemploRepetir })}
                   </p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label className="dark:text-gray-200">Compra Mínima (opcional)</Label>
+                <Label className="dark:text-gray-200">{t('formulario.compraMinima')}</Label>
                 <Input
                   type="number"
                   value={formData.min_purchase_amount || ''}
                   onChange={(e) => handleChange('min_purchase_amount', parseFloat(e.target.value) || undefined)}
                   min={0}
-                  placeholder="Sin mínimo"
+                  placeholder={t('formulario.sinMinimo')}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {textoCompraMinima(formData.applies_to, formData.min_purchase_scope)}
-                  {formData.applies_to === 'all'
-                    ? ' En Reglas, si eliges productos o categorías, puedes medirla solo sobre esos.'
-                    : ''}
+                  {textoCompraMinima(t, formData.applies_to, formData.min_purchase_scope)}
+                  {formData.applies_to === 'all' ? ` ${t('formulario.compraMinimaReglas')}` : ''}
                 </p>
                 {formData.applies_to !== 'all' && (
                   <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                     <div>
-                      <Label className="dark:text-white">Medir la compra mínima sobre toda la cuenta</Label>
+                      <Label className="dark:text-white">{t('formulario.medirTodaLaCuenta')}</Label>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Apagado: solo cuentan los productos o categorías de la promo.
+                        {t('formulario.medirTodaLaCuentaAyuda')}
                       </p>
                     </div>
                     <Switch
@@ -724,17 +708,17 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Fecha de Inicio *</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.fechaInicio')}</Label>
                   <CampoFecha
-                    aria-label="Fecha de Inicio"
+                    aria-label={t('formulario.fechaInicio')}
                     valor={formData.start_date || ''}
                     onValorChange={(dia) => cambiarFecha('start_date', dia)}
                   />
                 </div>
                 <div>
-                  <Label className="dark:text-gray-200">Fecha de Fin (opcional)</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.fechaFin')}</Label>
                   <CampoFecha
-                    aria-label="Fecha de Fin (opcional)"
+                    aria-label={t('formulario.fechaFin')}
                     valor={formData.end_date || ''}
                     min={formData.start_date || undefined}
                     aria-invalid={errorFechaFin ? true : undefined}
@@ -751,7 +735,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Hora de inicio (opcional)</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.horaInicio')}</Label>
                   <Input
                     type="time"
                     value={horaDelFormulario(formData.start_time)}
@@ -760,7 +744,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   />
                 </div>
                 <div>
-                  <Label className="dark:text-gray-200">Hora de fin (opcional)</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.horaFin')}</Label>
                   <Input
                     type="time"
                     value={horaDelFormulario(formData.end_time)}
@@ -770,15 +754,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-                Horas en la zona de la organización. Si las dejas vacías, aplica todo el día. Si la hora de fin es menor que la de inicio, la franja cruza la medianoche.
+                {t('formulario.franjaAyuda')}
               </p>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="dark:text-gray-200">Sucursales</Label>
+                    <Label className="dark:text-gray-200">{t('formulario.sucursales')}</Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Si no eliges ninguna, aplica en todas.
+                      {t('formulario.sucursalesAyuda')}
                     </p>
                   </div>
                   <Button
@@ -788,11 +772,11 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     className="text-xs h-7 dark:text-gray-300"
                     onClick={() => handleChange('branches', undefined)}
                   >
-                    Todas
+                    {t('formulario.todas')}
                   </Button>
                 </div>
                 {sucursales.length === 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">No hay sucursales activas para elegir.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('formulario.sinSucursales')}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {sucursales.map((sucursal) => {
@@ -825,21 +809,21 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Límite de Usos (opcional)</Label>
+                  <Label className="dark:text-gray-200">{t('formulario.limiteUsos')}</Label>
                   <Input
                     type="number"
                     value={formData.usage_limit || ''}
                     onChange={(e) => handleChange('usage_limit', parseInt(e.target.value) || undefined)}
                     min={1}
-                    placeholder="Sin límite"
+                    placeholder={t('formulario.sinLimite')}
                     className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                   <div>
-                    <Label className="dark:text-white">Activa</Label>
+                    <Label className="dark:text-white">{t('formulario.activa')}</Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      La promoción estará disponible inmediatamente
+                      {t('formulario.activaAyuda')}
                     </p>
                   </div>
                   <Switch
@@ -852,15 +836,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               {/* Canales de aplicación */}
               <div className="space-y-3">
-                <Label className="dark:text-gray-200">Canales de Aplicación</Label>
+                <Label className="dark:text-gray-200">{t('formulario.canales')}</Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-                  Dónde se puede usar esta promoción
+                  {t('formulario.canalesAyuda')}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
                     <div>
-                      <Label className="dark:text-white text-sm">Web / Pedidos Online</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Sitio público</p>
+                      <Label className="dark:text-white text-sm">{t('formulario.canalWeb')}</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('formulario.canalWebAyuda')}</p>
                     </div>
                     <Switch
                       checked={formData.applies_to_web ?? true}
@@ -870,8 +854,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
                     <div>
-                      <Label className="dark:text-white text-sm">POS</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Ventas en tienda</p>
+                      <Label className="dark:text-white text-sm">{t('formulario.canalPos')}</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('formulario.canalPosAyuda')}</p>
                     </div>
                     <Switch
                       checked={formData.applies_to_pos ?? true}
@@ -881,8 +865,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
                     <div>
-                      <Label className="dark:text-white text-sm">Finanzas</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Facturación / Documentos</p>
+                      <Label className="dark:text-white text-sm">{t('formulario.canalFinanzas')}</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('formulario.canalFinanzasAyuda')}</p>
                     </div>
                     <Switch
                       checked={formData.applies_to_finances ?? false}
@@ -897,9 +881,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="dark:text-gray-200">Días de Aplicación</Label>
+                    <Label className="dark:text-gray-200">{t('formulario.dias')}</Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Selecciona los días. Si no seleccionas ninguno, aplica todos los días.
+                      {t('formulario.diasAyuda')}
                     </p>
                   </div>
                   <Button
@@ -909,11 +893,11 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     className="text-xs h-7 dark:text-gray-300"
                     onClick={() => handleChange('applicable_days', null)}
                   >
-                    Todos los días
+                    {t('formulario.todosLosDias')}
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {WEEK_DAYS.map((day) => {
+                  {diasSemana.map((day) => {
                     const selected = (formData.applicable_days || []).includes(day.value);
                     return (
                       <button
@@ -933,21 +917,24 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                             : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'
                         )}
                       >
-                        {day.label}
+                        {day.largo}
                       </button>
                     );
                   })}
                 </div>
                 {formData.applicable_days && formData.applicable_days.length > 0 && (
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    Aplica los: {formData.applicable_days
-                      .map((d) => WEEK_DAYS.find((wd) => wd.value === d)?.label)
-                      .join(', ')}
+                    {t('formulario.aplicaLos', {
+                      dias: formData.applicable_days
+                        .map((d) => diasSemana.find((wd) => wd.value === d)?.largo)
+                        .filter((nombre): nombre is string => Boolean(nombre))
+                        .join(', '),
+                    })}
                   </p>
                 )}
                 {(!formData.applicable_days || formData.applicable_days.length === 0) && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Aplica todos los días de la semana
+                    {t('formulario.aplicaTodos')}
                   </p>
                 )}
               </div>
@@ -958,9 +945,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <Label className="dark:text-gray-200 mb-3 block">Aplica a</Label>
+                <Label className="dark:text-gray-200 mb-3 block">{t('formulario.aplicaA')}</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {(Object.entries(APPLIES_TO_LABELS) as [AppliesTo, string][]).map(([type, label]) => (
+                  {(Object.keys(APPLIES_TO_LABELS) as AppliesTo[]).map((type) => (
                     <button
                       key={type}
                       type="button"
@@ -978,7 +965,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                           ? "text-blue-600 dark:text-blue-400"
                           : "text-gray-600 dark:text-gray-300"
                       )}>
-                        {label}
+                        {t(`aplicaA.${type}`)}
                       </span>
                     </button>
                   ))}
@@ -988,9 +975,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               {formData.applies_to !== 'all' && (
                 <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                   <div>
-                    <Label className="dark:text-white">Medir la compra mínima sobre toda la cuenta</Label>
+                    <Label className="dark:text-white">{t('formulario.medirTodaLaCuenta')}</Label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {textoCompraMinima(formData.applies_to, formData.min_purchase_scope)}
+                      {textoCompraMinima(t, formData.applies_to, formData.min_purchase_scope)}
                     </p>
                   </div>
                   <Switch
@@ -1009,14 +996,14 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                        <SelectItem value="include">Incluir</SelectItem>
-                        <SelectItem value="exclude">Excluir</SelectItem>
+                        <SelectItem value="include">{t('formulario.incluir')}</SelectItem>
+                        <SelectItem value="exclude">{t('formulario.excluir')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      placeholder="Buscar productos por nombre, SKU o variante..."
+                      placeholder={t('formulario.buscarProductos')}
                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
@@ -1060,7 +1047,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                         return (
                           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                             <Package className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No se encontraron productos</p>
+                            <p className="text-sm">{t('formulario.sinProductos')}</p>
                           </div>
                         );
                       }
@@ -1121,7 +1108,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                                         <Input
                                           type="number"
                                           min={1}
-                                          aria-label={`Unidades de ${product.name} en el paquete`}
+                                          aria-label={t('formulario.unidadesPaquete', { nombre: product.name })}
                                           value={cantidadesPaquete[product.id] ?? 1}
                                           onChange={(e) => {
                                             const n = Math.trunc(Number(e.target.value));
@@ -1178,8 +1165,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                      <SelectItem value="include">Incluir</SelectItem>
-                      <SelectItem value="exclude">Excluir</SelectItem>
+                        <SelectItem value="include">{t('formulario.incluir')}</SelectItem>
+                        <SelectItem value="exclude">{t('formulario.excluir')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="max-h-60 overflow-y-auto space-y-2 p-2 border rounded-lg dark:border-gray-700">
@@ -1214,21 +1201,43 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          {currentStep === 0 ? 'Cancelar' : 'Anterior'}
+          {currentStep === 0 ? t('formulario.cancelar') : t('formulario.anterior')}
         </Button>
 
         {currentStep < WIZARD_STEPS.length - 1 ? (
           <Button onClick={nextStep} className="bg-blue-600 hover:bg-blue-700">
-            Siguiente
+            {t('formulario.siguiente')}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
           <Button onClick={handleSubmit} disabled={loading} className="bg-green-600 hover:bg-green-700">
             <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Guardando...' : promotionId ? 'Actualizar' : 'Crear Promoción'}
+            {loading ? t('formulario.guardando') : promotionId ? t('formulario.actualizar') : t('formulario.crear')}
           </Button>
         )}
       </div>
     </div>
   );
+}
+
+function ayudaCompraLleva(t: Traductor, compra: number | undefined, lleva: number | undefined): string {
+  const x = Math.trunc(compra || 0);
+  const y = Math.trunc(lleva || 0);
+  if (x > 0 && y > 0 && y < x) {
+    return t('formulario.llevaPaga', { x, y, gratis: x - y });
+  }
+  if (x > 0 && y > 0) {
+    return t('formulario.compraLlevaGratis', { x, y, grupo: x + y });
+  }
+  return t('formulario.compraLlevaAyuda');
+}
+
+/** Sobre qué subtotal se compara la compra mínima. */
+function textoCompraMinima(
+  t: Traductor,
+  aplicaA: AppliesTo | undefined,
+  alcance: MinPurchaseScope | null | undefined,
+): string {
+  if (aplicaA === 'all' || alcance === 'cart') return t('formulario.compraMinimaCuenta');
+  return t('formulario.compraMinimaElegible');
 }

@@ -388,15 +388,30 @@ describe('cantidad mínima y compra mínima de las líneas que entran', () => {
     expect(evaluarPromociones([paquete], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(2000);
   });
 
-  it('buy_quantity 1 no inventa un mínimo', () => {
-    const fija = promo({
+  it('buy_quantity 1, 0 o vacío no inventa un mínimo', () => {
+    for (const buy_quantity of [1, 0, null, '', '1', '1.9'] as const) {
+      const fija = promo({
+        promotion_type: 'fixed_amount',
+        discount_value: 1000,
+        buy_quantity,
+        min_quantity: null,
+        ...soloProducto(1),
+      });
+      expect(evaluarPromociones([fija], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(1000);
+    }
+  });
+
+  it('dos líneas del producto suman el mínimo legado y una ajena no', () => {
+    const legado = promo({
       promotion_type: 'fixed_amount',
       discount_value: 1000,
-      buy_quantity: 1,
+      buy_quantity: 2,
       min_quantity: null,
+      min_purchase_amount: 4000,
       ...soloProducto(1),
     });
-    expect(evaluarPromociones([fija], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(1000);
+    expect(evaluarPromociones([legado], [linea(1, 1, 4000), linea(1, 1, 4000)], ctx()).discountTotal).toBe(1000);
+    expect(evaluarPromociones([legado], [linea(1, 1, 4000), linea(2, 5, 4000)], ctx()).discountTotal).toBe(0);
   });
 
   it('compra X lleva Y ignora la cantidad mínima', () => {

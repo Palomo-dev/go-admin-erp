@@ -1,15 +1,18 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { PageHeader } from '@/components/kit/PageHeader';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
 
 export default function NuevaPromocionPage() {
+  const t = useTranslations('posPromociones');
   const { isLoading: orgLoading } = useOrganization();
 
   if (orgLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
         <PageHeaderSkeleton />
         <DetailSkeleton />
       </div>
@@ -17,8 +20,18 @@ export default function NuevaPromocionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <PageHeader
+          variante="form"
+          titulo={t('pantalla.nueva')}
+          volverA="/app/pos/promociones"
+          migas={[
+            { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+            { etiqueta: t('pantalla.titulo'), href: '/app/pos/promociones' },
+            { etiqueta: t('pantalla.nueva') },
+          ]}
+        />
         <PromotionWizard />
       </div>
     </div>

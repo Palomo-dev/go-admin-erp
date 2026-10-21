@@ -151,6 +151,7 @@ Ordenada por frecuencia. La columna «Hoy» resume lo que encontraron las audito
 | Pagada · Pagado · Completado · Cobrada | éxito · suave | Toda la vertical de finanzas | **Verde en pagar, azul en cobrar**: el conflicto que motivó esta escala |
 | Al día · Activo · Activa · Aceptada · Ganada · Conectado | éxito · suave | Cartera, clientes, oportunidades, integraciones, cuentas bancarias | Verde, coherente |
 | Vencida · Vencida (N d) · Rechazada · Fallido · Perdida · Error | peligro · suave | Cartera, DIAN, importaciones, oportunidades | Rojo; los días van en la misma etiqueta, no en un segundo badge |
+| Expirada | peligro · suave | Promociones POS, cuando la vigencia ya pasó | Mismo tono que Vencida: la promo dejó de aplicar |
 | Anulada | peligro · contorno | Facturas, transferencias, notas crédito | Rojo en el listado y **gris** en el detalle. El contorno la separa de «Vencida» sin cambiar de matiz |
 | Inactivo · Cerrado · Usado · Cancelado · Procesado · Desconocido | neutro · suave | Folios, saldos a favor, jobs, métodos de pago | Gris disperso (`secondary`, `outline`, `gris claro`) |
 | Reembolsado · Convertida · Clawback | información · contorno | Pagos, cotizaciones, comisiones | **Morado**. El morado no está en el manual v2.0 |

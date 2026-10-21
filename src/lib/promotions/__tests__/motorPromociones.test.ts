@@ -275,3 +275,182 @@ describe('vigencia general', () => {
     expect(promocionVigente(promo({ start_time: '19:00', end_time: '02:00' }), ctx())).toBe(true);
   });
 });
+
+describe('cantidad mínima y compra mínima de las líneas que entran', () => {
+  const fija = (extra: Partial<FilaPromocion> = {}) =>
+    promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 1000,
+      min_purchase_amount: 8000,
+      min_quantity: 2,
+      ...soloProducto(1),
+      ...extra,
+    });
+
+  it('un monto fijo de producto no se activa con otra línea de la cuenta', () => {
+    expect(evaluarPromociones([fija()], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([fija()], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(1000);
+    expect(evaluarPromociones([fija()], [linea(1, 1, 4000), linea(2, 1, 4000)], ctx()).discountTotal).toBe(0);
+  });
+
+  it('el porcentaje mide las mismas unidades y el mismo subtotal', () => {
+    const diez = promo({
+      promotion_type: 'percentage',
+      discount_value: 10,
+      min_purchase_amount: 8000,
+      min_quantity: 2,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([diez], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(800);
+    expect(evaluarPromociones([diez], [linea(1, 1, 4000), linea(2, 1, 4000)], ctx()).discountTotal).toBe(0);
+  });
+
+  it('dos líneas del mismo producto sí suman unidades y dinero', () => {
+    expect(evaluarPromociones([fija()], [linea(1, 1, 4000), linea(1, 1, 4000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('la compra mínima llega como texto y, en productos, no usa el resto de la cuenta', () => {
+    const texto = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 1000,
+      min_purchase_amount: '8000.00',
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([texto], [linea(1, 1, 4000), linea(2, 1, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([texto], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('min_purchase_scope cart vuelve a medir toda la cuenta', () => {
+    const toda = fija({ min_quantity: null, min_purchase_scope: 'cart' });
+    expect(evaluarPromociones([toda], [linea(1, 1, 4000), linea(2, 1, 4000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('una categoría compara solo sus líneas', () => {
+    const porCategoria = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 1000,
+      min_purchase_amount: 8000,
+      applies_to: 'categories',
+      promotion_rules: [{ rule_type: 'include_category', product_id: null, category_id: 55 }],
+    });
+    const dentro = linea(1, 1, 4000, { category_id: 55 });
+    const fuera = linea(2, 1, 4000, { category_id: 9 });
+    expect(evaluarPromociones([porCategoria], [dentro, linea(3, 1, 4000, { category_id: 55 })], ctx()).discountTotal).toBe(1000);
+    expect(evaluarPromociones([porCategoria], [dentro, fuera], ctx()).discountTotal).toBe(0);
+  });
+
+  it('compra X lleva Y ignora la cantidad mínima', () => {
+    const dosPorUno = promo({
+      promotion_type: 'buy_x_get_y',
+      buy_quantity: 2,
+      get_quantity: 1,
+      min_quantity: 99,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([dosPorUno], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(4000);
+  });
+});
+
+describe('repetir el descuento cada N unidades', () => {
+  it('el monto fijo es floor(unidades/N) por el valor y se topa al subtotal', () => {
+    const cadaDos = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 5000,
+      repeat_every_quantity: 2,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([cadaDos], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([cadaDos], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(5000);
+    expect(evaluarPromociones([cadaDos], [linea(1, 3, 4000)], ctx()).discountTotal).toBe(5000);
+    expect(evaluarPromociones([cadaDos], [linea(1, 4, 4000)], ctx()).discountTotal).toBe(10000);
+    const caro = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 5000,
+      repeat_every_quantity: 1,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([caro], [linea(1, 1, 1000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('el porcentaje solo cubre los grupos completos; el sobrante queda a precio normal', () => {
+    const diez = promo({
+      promotion_type: 'percentage',
+      discount_value: 10,
+      repeat_every_quantity: 2,
+      ...soloProducto(1),
+    });
+    const tres = evaluarPromociones([diez], [linea(1, 2, 4000), linea(1, 1, 4000)], ctx());
+    expect(tres.discountTotal).toBe(800);
+    expect(tres.lineDiscounts).toEqual([800, 0]);
+  });
+
+  it('si no llega a la cantidad mínima, no repite aunque haya un grupo', () => {
+    const cadaDos = promo({
+      promotion_type: 'fixed_amount',
+      discount_value: 5000,
+      min_quantity: 4,
+      repeat_every_quantity: 2,
+      ...soloProducto(1),
+    });
+    expect(evaluarPromociones([cadaDos], [linea(1, 3, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([cadaDos], [linea(1, 4, 4000)], ctx()).discountTotal).toBe(10000);
+  });
+});
+
+describe('precio de paquete por cada grupo completo', () => {
+  const par = promo({
+    promotion_type: 'bundle',
+    bundle_price: 7000,
+    applies_to: 'products',
+    promotion_rules: [{ rule_type: 'include_product', product_id: 1, category_id: null, quantity: 2 }],
+  });
+
+  it('cobra el precio por cada par y el sobrante a precio normal', () => {
+    expect(evaluarPromociones([par], [linea(1, 1, 4000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([par], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(1000);
+    expect(evaluarPromociones([par], [linea(1, 3, 4000)], ctx()).discountTotal).toBe(1000);
+    expect(evaluarPromociones([par], [linea(1, 4, 4000)], ctx()).discountTotal).toBe(2000);
+    const tres = evaluarPromociones([par], [linea(1, 2, 4000), linea(1, 1, 4000)], ctx());
+    expect(tres.lineDiscounts).toEqual([1000, 0]);
+  });
+
+  it('sin productos incluidos no aplica el precio a toda la cuenta', () => {
+    const suelto = promo({ promotion_type: 'bundle', bundle_price: 7000, applies_to: 'all' });
+    expect(evaluarPromociones([suelto], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(0);
+  });
+
+  it('dos reglas del mismo producto usan la cantidad mayor', () => {
+    const doble = promo({
+      promotion_type: 'bundle',
+      bundle_price: 7000,
+      applies_to: 'products',
+      promotion_rules: [
+        { rule_type: 'include_product', product_id: 1, category_id: null, quantity: 1 },
+        { rule_type: 'include_product', product_id: 1, category_id: null, quantity: 2 },
+      ],
+    });
+    expect(evaluarPromociones([doble], [linea(1, 2, 4000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('una variante cuenta para el padre y no se reparte entre el padre y ella misma', () => {
+    const soloPadre = promo({
+      promotion_type: 'bundle',
+      bundle_price: 7000,
+      applies_to: 'products',
+      promotion_rules: [{ rule_type: 'include_product', product_id: 500, category_id: null, quantity: 2 }],
+    });
+    const variantes = [linea(501, 1, 4000, { parent_product_id: 500 }), linea(502, 1, 4000, { parent_product_id: 500 })];
+    expect(evaluarPromociones([soloPadre], variantes, ctx()).discountTotal).toBe(1000);
+
+    const padreYVariante = promo({
+      promotion_type: 'bundle',
+      bundle_price: 7000,
+      applies_to: 'products',
+      promotion_rules: [
+        { rule_type: 'include_product', product_id: 500, category_id: null, quantity: 1 },
+        { rule_type: 'include_product', product_id: 501, category_id: null, quantity: 1 },
+      ],
+    });
+    expect(evaluarPromociones([padreYVariante], [linea(501, 1, 4000, { parent_product_id: 500 })], ctx()).discountTotal).toBe(0);
+  });
+});

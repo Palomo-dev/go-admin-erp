@@ -125,6 +125,7 @@ class PromotionEngineService {
           rule_type,
           product_id,
           category_id,
+          quantity,
           created_at
         )
       `,
@@ -151,8 +152,9 @@ class PromotionEngineService {
 
   /**
    * Evalúa todas las promociones aplicables al contexto dado, sobre TODAS las
-   * líneas a la vez (la compra mínima, el monto fijo, el 2x1 y el tope son
-   * de la cuenta, no de cada línea).
+   * líneas a la vez (el monto fijo, el 2x1 y el tope son de la cuenta).
+   * La compra mínima de una promo por productos o categorías mira solo esas
+   * líneas, salvo que `min_purchase_scope` sea `cart` o la promo aplique a todo.
    */
   async evaluate(ctx: PromotionContext): Promise<PromotionEvaluationResult> {
     const date = ctx.date || new Date();

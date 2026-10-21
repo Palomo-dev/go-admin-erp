@@ -2,34 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Save, 
-  Check,
+import { useLocale, useTranslations } from 'next-intl';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Save,
   Tag,
   Calendar,
   Filter,
   Percent,
   Gift,
   DollarSign,
-  Package
+  Package,
+  Truck,
+  type LucideIcon,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Stepper } from '@/components/kit/Stepper';
+import { FormSection } from '@/components/kit/FormSection';
+import { TarjetaSeleccionable } from '@/components/kit/TarjetaSeleccionable';
+import { ChipsOpcion } from '@/components/kit/ChipsOpcion';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { SettingGroup, SettingRow } from '@/components/kit/SettingRow';
+import { clasesBoton } from '@/components/kit/botonClases';
 import { PromotionsService } from '../promotionsService';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
@@ -38,15 +37,17 @@ import {
   PromotionType,
   AppliesTo,
   CreatePromotionRuleData,
+  MinPurchaseScope,
   RuleType,
   RuleTypeDB,
+  WeekDay,
   PROMOTION_TYPE_LABELS,
   APPLIES_TO_LABELS,
-  WEEK_DAYS
 } from '../types';
-import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { formatearEnteroEn } from '@/components/kit/idioma';
+import { diasDelIdioma } from '../diasPromocion';
 
 /** Fila de `PromotionsService.getProducts` que usa el paso «Productos». */
 interface ProductoPromocion {
@@ -70,11 +71,21 @@ interface PromotionWizardProps {
 }
 
 const WIZARD_STEPS = [
-  { id: 'basic', title: 'Datos Básicos', icon: Tag },
-  { id: 'discount', title: 'Descuento', icon: Percent },
-  { id: 'validity', title: 'Vigencia', icon: Calendar },
-  { id: 'rules', title: 'Reglas', icon: Filter },
-];
+  { id: 'basic', icon: Tag },
+  { id: 'discount', icon: Percent },
+  { id: 'validity', icon: Calendar },
+  { id: 'rules', icon: Filter },
+] as const;
+
+const ICONO_TIPO: Record<PromotionType, LucideIcon> = {
+  percentage: Percent,
+  fixed_amount: DollarSign,
+  buy_x_get_y: Gift,
+  bundle: Package,
+  free_shipping: Truck,
+};
+
+type Traductor = (clave: string, valores?: Record<string, string | number>) => string;
 
 /**
  * Dia calendario (YYYY-MM-DD) que debe mostrar el `CampoFecha` para un valor que
@@ -92,22 +103,18 @@ function horaDelFormulario(valor: string | null | undefined): string {
   return `${m[1].padStart(2, '0')}:${m[2]}`;
 }
 
-const MENSAJE_FECHA_FIN = 'La fecha de fin no puede ser anterior a la de inicio';
-
-function ayudaCompraLleva(compra: number | undefined, lleva: number | undefined): string {
-  const x = Math.trunc(compra || 0);
-  const y = Math.trunc(lleva || 0);
-  if (x > 0 && y > 0 && y < x) {
-    return `Lleva ${x} y paga ${y}: de cada ${x} unidades, ${x - y} salen gratis (${x}x${y}).`;
-  }
-  if (x > 0 && y > 0) {
-    return `Compra ${x} y lleva ${y} gratis: de cada ${x + y} unidades, ${y} salen gratis.`;
-  }
-  return 'Si Y es menor que X, el cliente lleva X y paga Y (3 y 2 se muestra como 3x2). Si Y es mayor o igual que X, Y son unidades gratis además de las X que se pagan.';
+function enteroDelCampo(valor: string): number | null {
+  if (valor.trim() === '') return null;
+  const n = Math.trunc(Number(valor));
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export function PromotionWizard({ initialData, promotionId, onSuccess }: PromotionWizardProps) {
   const router = useRouter();
+  const t = useTranslations('posPromociones');
+  const locale = useLocale();
+  const diasSemana = diasDelIdioma(locale);
+  const ejemploRepetir = `$${formatearEnteroEn(5000, locale)}`;
   // `promotions.start_date` / `.end_date` son timestamptz. En el formulario se
   // manejan como dias de la organizacion; el servicio los convierte a instantes
   // al guardar (00:00 y 23:59:59.999 de esa zona).
@@ -128,6 +135,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     buy_quantity: 2,
     get_quantity: 1,
     min_purchase_amount: undefined,
+    min_purchase_scope: null,
+    min_quantity: null,
+    repeat_every_quantity: null,
     max_discount_amount: undefined,
     applies_to: 'all',
     start_date: getToday(),
@@ -168,6 +178,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [ruleType, setRuleType] = useState<'include' | 'exclude'>(
     reglasIniciales.some((r) => r.rule_type.startsWith('exclude')) ? 'exclude' : 'include'
   );
+  const [cantidadesPaquete, setCantidadesPaquete] = useState<Record<number, number>>(() => {
+    const cantidades: Record<number, number> = {};
+    for (const regla of reglasIniciales) {
+      if (regla.product_id == null || regla.quantity == null) continue;
+      const n = Math.trunc(Number(regla.quantity));
+      if (Number.isFinite(n) && n > 0) cantidades[regla.product_id] = n;
+    }
+    return cantidades;
+  });
 
   useEffect(() => {
     loadProducts();
@@ -208,7 +227,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const cambiarFecha = (campo: 'start_date' | 'end_date', dia: string) => {
     const inicio = campo === 'start_date' ? dia : (formData.start_date || '');
     const fin = campo === 'end_date' ? dia : (formData.end_date || '');
-    setErrorFechaFin(fin && inicio && fin < inicio ? MENSAJE_FECHA_FIN : null);
+    setErrorFechaFin(fin && inicio && fin < inicio ? t('formulario.fechaFinError') : null);
     handleChange(campo, dia || undefined);
   };
 
@@ -216,47 +235,67 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     switch (currentStep) {
       case 0: // Datos básicos
         if (!formData.name.trim()) {
-          toast.error('El nombre es requerido');
+          toast.error(t('formulario.nombreRequerido'));
           return false;
         }
         return true;
       case 1: // Descuento
         if (formData.promotion_type === 'percentage' && (!formData.discount_value || formData.discount_value <= 0 || formData.discount_value > 100)) {
-          toast.error('El porcentaje debe ser entre 1 y 100');
+          toast.error(t('formulario.porcentajeInvalido'));
           return false;
         }
         if (formData.promotion_type === 'fixed_amount' && (!formData.discount_value || formData.discount_value <= 0)) {
-          toast.error('El monto de descuento debe ser mayor a 0');
+          toast.error(t('formulario.montoInvalido'));
           return false;
         }
         if (formData.promotion_type === 'buy_x_get_y' && (!formData.buy_quantity || !formData.get_quantity)) {
-          toast.error('Debe especificar las cantidades de compra y de la segunda cifra');
+          toast.error(t('formulario.compraLlevaRequerida'));
           return false;
         }
         if (formData.promotion_type === 'bundle') {
           const precio = Number(formData.bundle_price) || 0;
           const porcentaje = Number(formData.discount_value) || 0;
           if (precio <= 0 && (porcentaje <= 0 || porcentaje > 100)) {
-            toast.error('Indica el precio del paquete o un porcentaje entre 1 y 100');
+            toast.error(t('formulario.paqueteValor'));
             return false;
           }
         }
         return true;
       case 2: // Vigencia
         if (!formData.start_date) {
-          toast.error('La fecha de inicio es requerida');
+          toast.error(t('formulario.fechaInicioRequerida'));
           return false;
         }
         if (formData.end_date && formData.end_date < formData.start_date) {
-          setErrorFechaFin(MENSAJE_FECHA_FIN);
-          toast.error(MENSAJE_FECHA_FIN);
+          setErrorFechaFin(t('formulario.fechaFinError'));
+          toast.error(t('formulario.fechaFinError'));
           return false;
         }
         setErrorFechaFin(null);
         return true;
+      case 3:
+        return validarPaquete();
       default:
         return true;
     }
+  };
+
+  const validarPaquete = (): boolean => {
+    const precio = Number(formData.bundle_price) || 0;
+    if (formData.promotion_type !== 'bundle' || precio <= 0) return true;
+    if (formData.applies_to !== 'products') {
+      toast.error(t('formulario.paqueteProductos'));
+      return false;
+    }
+    if (ruleType !== 'include') {
+      toast.error(t('formulario.paqueteIncluir'));
+      return false;
+    }
+    if (selectedProducts.length === 0) {
+      toast.error(t('formulario.paqueteAlMenosUno'));
+      return false;
+    }
+    return true;
   };
 
   const nextStep = () => {
@@ -283,7 +322,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     if (formData.applies_to === 'products') {
       const dbRuleType = mapRuleType(formData.applies_to, ruleType);
       selectedProducts.forEach(productId => {
-        rules.push({ rule_type: dbRuleType, product_id: productId });
+        const esPaquete = formData.promotion_type === 'bundle' && ruleType === 'include';
+        const pedida = cantidadesPaquete[productId];
+        rules.push({
+          rule_type: dbRuleType,
+          product_id: productId,
+          quantity: esPaquete ? (pedida != null && pedida > 0 ? Math.trunc(pedida) : 1) : null,
+        });
       });
     } else if (formData.applies_to === 'categories') {
       const dbRuleType = mapRuleType(formData.applies_to, ruleType);
@@ -307,10 +352,10 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
       if (promotionId) {
         await PromotionsService.update(promotionId, dataToSave);
-        toast.success('Promoción actualizada correctamente');
+        toast.success(t('formulario.actualizada'));
       } else {
         await PromotionsService.create(dataToSave);
-        toast.success('Promoción creada correctamente');
+        toast.success(t('formulario.creada'));
       }
 
       if (onSuccess) {
@@ -319,123 +364,66 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
         router.push('/app/pos/promociones');
       }
     } catch (error: unknown) {
-      toast.error((error as { message?: string } | null)?.message || 'Error al guardar la promoción');
+      toast.error((error as { message?: string } | null)?.message || t('formulario.errorGuardar'));
     } finally {
       setLoading(false);
     }
   };
 
-  const getPromotionTypeIcon = (type: PromotionType) => {
-    switch (type) {
-      case 'percentage': return <Percent className="h-5 w-5" />;
-      case 'fixed_amount': return <DollarSign className="h-5 w-5" />;
-      case 'buy_x_get_y': return <Gift className="h-5 w-5" />;
-      case 'bundle': return <Package className="h-5 w-5" />;
-    }
-  };
+  const pasoActual = WIZARD_STEPS[currentStep];
 
   return (
-    <div className="space-y-6">
-      {/* Progress Steps */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            {WIZARD_STEPS.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={cn(
-                  "flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors",
-                  index < currentStep 
-                    ? "bg-green-500 border-green-500 text-white"
-                    : index === currentStep
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "border-gray-300 dark:border-gray-600 text-gray-400"
-                )}>
-                  {index < currentStep ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    <step.icon className="h-5 w-5" />
-                  )}
-                </div>
-                <span className={cn(
-                  "ml-2 text-sm font-medium hidden md:block",
-                  index === currentStep 
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-gray-500 dark:text-gray-400"
-                )}>
-                  {step.title}
-                </span>
-                {index < WIZARD_STEPS.length - 1 && (
-                  <div className={cn(
-                    "w-12 md:w-24 h-0.5 mx-2",
-                    index < currentStep
-                      ? "bg-green-500"
-                      : "bg-gray-300 dark:bg-gray-600"
-                  )} />
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-6">
+      <Stepper
+        pasos={WIZARD_STEPS.map((step) => ({ valor: step.id, etiqueta: t(`pasos.${step.id}`) }))}
+        actual={pasoActual.id}
+        onPasoClick={(valor) => {
+          const indice = WIZARD_STEPS.findIndex((step) => step.id === valor);
+          if (indice >= 0 && indice < currentStep) setCurrentStep(indice);
+        }}
+        resumenMovil={(n, total, etiqueta) => t('formulario.pasoDe', { n, total, etiqueta })}
+        etiqueta={t('formulario.pasosEtiqueta')}
+      />
 
-      {/* Step Content */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="dark:text-white flex items-center gap-2">
-            {(() => {
-              const StepIcon = WIZARD_STEPS[currentStep].icon;
-              return <StepIcon className="h-5 w-5 text-blue-600" />;
-            })()}
-            {WIZARD_STEPS[currentStep].title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <FormSection titulo={t(`pasos.${pasoActual.id}`)} icono={pasoActual.icon}>
           {/* Step 0: Datos Básicos */}
           {currentStep === 0 && (
             <div className="space-y-4">
               <div>
-                <Label className="dark:text-gray-200">Nombre de la Promoción *</Label>
+                <Label className="text-fg">{t('formulario.nombre')}</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
-                  placeholder="ej: Descuento de Verano"
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder={t('formulario.nombrePlaceholder')}
                 />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Descripción</Label>
+                <Label className="text-fg">{t('formulario.descripcion')}</Label>
                 <RichTextEditor
                   value={formData.description || ''}
                   onChange={(html) => handleChange('description', html)}
-                  placeholder="Descripción de la promoción..."
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder={t('formulario.descripcionPlaceholder')}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Prioridad</Label>
+                  <Label className="text-fg">{t('formulario.prioridad')}</Label>
                   <Input
                     type="number"
                     value={formData.priority || 0}
                     onChange={(e) => handleChange('priority', parseInt(e.target.value) || 0)}
                     min={0}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Mayor número = Mayor prioridad</p>
+                  <p className="mt-1 text-[13px] leading-[18px] text-fg-secondary">{t('formulario.prioridadAyuda')}</p>
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                  <div>
-                    <Label className="dark:text-white">Combinable</Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Permitir con otras promociones
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_combinable}
-                    onCheckedChange={(checked) => handleChange('is_combinable', checked)}
-                    className="data-[state=checked]:bg-blue-600"
-                  />
-                </div>
+                <SettingGroup>
+                  <SettingRow titulo={t('formulario.combinable')} descripcion={t('formulario.combinableAyuda')}>
+                    <Switch
+                      checked={formData.is_combinable}
+                      onCheckedChange={(checked) => handleChange('is_combinable', checked)}
+                    />
+                  </SettingRow>
+                </SettingGroup>
               </div>
             </div>
           )}
@@ -444,13 +432,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <Label className="dark:text-gray-200 mb-3 block">Tipo de Promoción</Label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {(Object.entries(PROMOTION_TYPE_LABELS) as [PromotionType, string][]).map(([type, label]) => (
-                    <button
+                <p className="mb-3 text-sm font-medium text-fg">{t('formulario.tipo')}</p>
+                <div role="radiogroup" aria-label={t('formulario.tipo')} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                  {(Object.keys(PROMOTION_TYPE_LABELS) as PromotionType[]).map((type) => (
+                    <TarjetaSeleccionable
                       key={type}
-                      type="button"
-                      onClick={() => {
+                      titulo={t(`tipos.${type}`)}
+                      icono={ICONO_TIPO[type]}
+                      seleccionada={formData.promotion_type === type}
+                      onSeleccionar={() => {
                         // Al cambiar de tipo se vacía el valor: el 10 por defecto
                         // (pensado como 10 %) se quedaba puesto al pasar a "Monto
                         // Fijo", el usuario lo tomaba por otra cosa y escribía el
@@ -464,30 +454,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                           max_discount_amount: undefined,
                         }));
                       }}
-                      className={cn(
-                        "p-4 rounded-lg border-2 text-center transition-all",
-                        formData.promotion_type === type
-                          ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30"
-                          : "border-gray-200 dark:border-gray-600 hover:border-blue-300"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex justify-center mb-2",
-                        formData.promotion_type === type
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-400"
-                      )}>
-                        {getPromotionTypeIcon(type)}
-                      </div>
-                      <span className={cn(
-                        "text-sm font-medium",
-                        formData.promotion_type === type
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-600 dark:text-gray-300"
-                      )}>
-                        {label}
-                      </span>
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -496,8 +463,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="dark:text-gray-200">
-                      {formData.promotion_type === 'percentage' ? 'Porcentaje de Descuento' : 'Monto de Descuento'}
+                    <Label className="text-fg">
+                      {formData.promotion_type === 'percentage' ? t('formulario.porcentaje') : t('formulario.monto')}
                     </Label>
                     <div className="relative">
                       <Input
@@ -506,9 +473,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                         onChange={(e) => handleChange('discount_value', parseFloat(e.target.value) || 0)}
                         min={0}
                         max={formData.promotion_type === 'percentage' ? 100 : undefined}
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-10"
+                        className="pr-10"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted">
                         {formData.promotion_type === 'percentage' ? '%' : '$'}
                       </span>
                     </div>
@@ -518,14 +485,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       usuario acababa escribiendo el descuento real aquí. */}
                   {formData.promotion_type === 'percentage' && (
                     <div>
-                      <Label className="dark:text-gray-200">Descuento Máximo (opcional)</Label>
+                      <Label className="text-fg">{t('formulario.descuentoMaximo')}</Label>
                       <Input
                         type="number"
                         value={formData.max_discount_amount || ''}
                         onChange={(e) => handleChange('max_discount_amount', parseFloat(e.target.value) || undefined)}
                         min={0}
-                        placeholder="Sin límite"
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        placeholder={t('formulario.sinLimite')}
                       />
                     </div>
                   )}
@@ -536,51 +502,48 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="dark:text-gray-200">Lleva (X)</Label>
+                      <Label className="text-fg">{t('formulario.llevaX')}</Label>
                       <Input
                         type="number"
                         value={formData.buy_quantity || ''}
                         onChange={(e) => handleChange('buy_quantity', parseInt(e.target.value) || 0)}
                         min={1}
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       />
                     </div>
                     <div>
-                      <Label className="dark:text-gray-200">Paga o gratis (Y)</Label>
+                      <Label className="text-fg">{t('formulario.pagaY')}</Label>
                       <Input
                         type="number"
                         value={formData.get_quantity || ''}
                         onChange={(e) => handleChange('get_quantity', parseInt(e.target.value) || 0)}
                         min={1}
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {ayudaCompraLleva(formData.buy_quantity, formData.get_quantity)}
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {ayudaCompraLleva(t, formData.buy_quantity, formData.get_quantity)}
                   </p>
                 </div>
               )}
 
               {formData.promotion_type === 'bundle' && (
                 <div className="space-y-3">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Precio del paquete o porcentaje. Si hay precio y en Reglas marcaste productos a incluir, el descuento es la diferencia cuando todos están en la cuenta. Sin precio, se aplica el porcentaje.
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {t('formulario.paqueteAyuda')}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="dark:text-gray-200">Precio del paquete</Label>
+                      <Label className="text-fg">{t('formulario.precioPaquete')}</Label>
                       <Input
                         type="number"
                         value={formData.bundle_price || ''}
                         onChange={(e) => handleChange('bundle_price', parseFloat(e.target.value) || null)}
                         min={0}
-                        placeholder="Sin precio fijo"
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        placeholder={t('formulario.sinPrecioFijo')}
                       />
                     </div>
                     <div>
-                      <Label className="dark:text-gray-200">Porcentaje (si no hay precio)</Label>
+                      <Label className="text-fg">{t('formulario.porcentajeSinPrecio')}</Label>
                       <div className="relative">
                         <Input
                           type="number"
@@ -588,25 +551,70 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                           onChange={(e) => handleChange('discount_value', parseFloat(e.target.value) || 0)}
                           min={0}
                           max={100}
-                          className="dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-10"
+                          className="pr-10"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted">%</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div>
-                <Label className="dark:text-gray-200">Compra Mínima (opcional)</Label>
+              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount' || formData.promotion_type === 'bundle') && (
+                <div>
+                  <Label className="text-fg">{t('formulario.cantidadMinima')}</Label>
+                  <Input
+                    type="number"
+                    value={formData.min_quantity ?? ''}
+                    onChange={(e) => handleChange('min_quantity', enteroDelCampo(e.target.value))}
+                    min={1}
+                    placeholder={t('formulario.sinMinimo')}
+                  />
+                  <p className="text-[13px] leading-[18px] text-fg-secondary mt-1">
+                    {t('formulario.cantidadMinimaAyuda')}
+                  </p>
+                </div>
+              )}
+
+              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
+                <div>
+                  <Label className="text-fg">{t('formulario.repetir')}</Label>
+                  <Input
+                    type="number"
+                    value={formData.repeat_every_quantity ?? ''}
+                    onChange={(e) => handleChange('repeat_every_quantity', enteroDelCampo(e.target.value))}
+                    min={1}
+                    placeholder={t('formulario.repetirPlaceholder')}
+                  />
+                  <p className="text-[13px] leading-[18px] text-fg-secondary mt-1">
+                    {t('formulario.repetirAyuda', { ejemplo: ejemploRepetir })}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-fg">{t('formulario.compraMinima')}</Label>
                 <Input
                   type="number"
                   value={formData.min_purchase_amount || ''}
                   onChange={(e) => handleChange('min_purchase_amount', parseFloat(e.target.value) || undefined)}
                   min={0}
-                  placeholder="Sin mínimo"
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder={t('formulario.sinMinimo')}
                 />
+                <p className="text-[13px] leading-[18px] text-fg-secondary">
+                  {textoCompraMinima(t, formData.applies_to, formData.min_purchase_scope)}
+                  {formData.applies_to === 'all' ? ` ${t('formulario.compraMinimaReglas')}` : ''}
+                </p>
+                {formData.applies_to !== 'all' && (
+                  <SettingGroup>
+                    <SettingRow titulo={t('formulario.medirTodaLaCuenta')} descripcion={t('formulario.medirTodaLaCuentaAyuda')}>
+                      <Switch
+                        checked={formData.min_purchase_scope === 'cart'}
+                        onCheckedChange={(checked) => handleChange('min_purchase_scope', checked ? 'cart' : 'eligible')}
+                      />
+                    </SettingRow>
+                  </SettingGroup>
+                )}
               </div>
             </div>
           )}
@@ -616,17 +624,17 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Fecha de Inicio *</Label>
+                  <Label className="text-fg">{t('formulario.fechaInicio')}</Label>
                   <CampoFecha
-                    aria-label="Fecha de Inicio"
+                    aria-label={t('formulario.fechaInicio')}
                     valor={formData.start_date || ''}
                     onValorChange={(dia) => cambiarFecha('start_date', dia)}
                   />
                 </div>
                 <div>
-                  <Label className="dark:text-gray-200">Fecha de Fin (opcional)</Label>
+                  <Label className="text-fg">{t('formulario.fechaFin')}</Label>
                   <CampoFecha
-                    aria-label="Fecha de Fin (opcional)"
+                    aria-label={t('formulario.fechaFin')}
                     valor={formData.end_date || ''}
                     min={formData.start_date || undefined}
                     aria-invalid={errorFechaFin ? true : undefined}
@@ -634,7 +642,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     onValorChange={(dia) => cambiarFecha('end_date', dia)}
                   />
                   {errorFechaFin && (
-                    <p id="promo-error-fecha-fin" role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    <p id="promo-error-fecha-fin" role="alert" className="mt-1 text-xs text-danger-text">
                       {errorFechaFin}
                     </p>
                   )}
@@ -643,203 +651,146 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Hora de inicio (opcional)</Label>
+                  <Label className="text-fg">{t('formulario.horaInicio')}</Label>
                   <Input
                     type="time"
                     value={horaDelFormulario(formData.start_time)}
                     onChange={(e) => handleChange('start_time', e.target.value || null)}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 </div>
                 <div>
-                  <Label className="dark:text-gray-200">Hora de fin (opcional)</Label>
+                  <Label className="text-fg">{t('formulario.horaFin')}</Label>
                   <Input
                     type="time"
                     value={horaDelFormulario(formData.end_time)}
                     onChange={(e) => handleChange('end_time', e.target.value || null)}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-                Horas en la zona de la organización. Si las dejas vacías, aplica todo el día. Si la hora de fin es menor que la de inicio, la franja cruza la medianoche.
+              <p className="text-[13px] leading-[18px] text-fg-secondary -mt-2">
+                {t('formulario.franjaAyuda')}
               </p>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <Label className="dark:text-gray-200">Sucursales</Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Si no eliges ninguna, aplica en todas.
+                    <p className="text-sm font-medium text-fg">{t('formulario.sucursales')}</p>
+                    <p className="text-[13px] leading-[18px] text-fg-secondary">
+                      {t('formulario.sucursalesAyuda')}
                     </p>
                   </div>
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7 dark:text-gray-300"
+                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
                     onClick={() => handleChange('branches', undefined)}
                   >
-                    Todas
-                  </Button>
+                    {t('formulario.todas')}
+                  </button>
                 </div>
                 {sucursales.length === 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">No hay sucursales activas para elegir.</p>
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">{t('formulario.sinSucursales')}</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {sucursales.map((sucursal) => {
-                      const elegida = (formData.branches || []).some((id) => id === sucursal.id);
-                      return (
-                        <button
-                          key={sucursal.id}
-                          type="button"
-                          onClick={() => {
-                            const actuales = formData.branches || [];
-                            const siguientes = elegida
-                              ? actuales.filter((id) => id !== sucursal.id)
-                              : [...actuales, sucursal.id];
-                            handleChange('branches', siguientes.length === 0 ? undefined : siguientes);
-                          }}
-                          className={cn(
-                            'px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all',
-                            elegida
-                              ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                              : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'
-                          )}
-                        >
-                          {sucursal.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <ChipsOpcion
+                    multiple
+                    etiqueta={t('formulario.sucursales')}
+                    opciones={sucursales.map((sucursal) => ({ valor: String(sucursal.id), etiqueta: sucursal.name }))}
+                    valor={(formData.branches || []).map(String)}
+                    onValorChange={(valor) => {
+                      const ids = valor.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+                      handleChange('branches', ids.length === 0 ? undefined : ids);
+                    }}
+                  />
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="dark:text-gray-200">Límite de Usos (opcional)</Label>
+                  <Label className="text-fg">{t('formulario.limiteUsos')}</Label>
                   <Input
                     type="number"
                     value={formData.usage_limit || ''}
                     onChange={(e) => handleChange('usage_limit', parseInt(e.target.value) || undefined)}
                     min={1}
-                    placeholder="Sin límite"
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder={t('formulario.sinLimite')}
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                  <div>
-                    <Label className="dark:text-white">Activa</Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      La promoción estará disponible inmediatamente
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => handleChange('is_active', checked)}
-                    className="data-[state=checked]:bg-green-600"
-                  />
-                </div>
+                <SettingGroup>
+                  <SettingRow titulo={t('formulario.activa')} descripcion={t('formulario.activaAyuda')}>
+                    <Switch
+                      checked={formData.is_active}
+                      onCheckedChange={(checked) => handleChange('is_active', checked)}
+                    />
+                  </SettingRow>
+                </SettingGroup>
               </div>
 
               {/* Canales de aplicación */}
-              <div className="space-y-3">
-                <Label className="dark:text-gray-200">Canales de Aplicación</Label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-                  Dónde se puede usar esta promoción
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
-                    <div>
-                      <Label className="dark:text-white text-sm">Web / Pedidos Online</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Sitio público</p>
-                    </div>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-medium text-fg">{t('formulario.canales')}</p>
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {t('formulario.canalesAyuda')}
+                  </p>
+                </div>
+                <SettingGroup etiqueta={t('formulario.canales')}>
+                  <SettingRow titulo={t('formulario.canalWeb')} descripcion={t('formulario.canalWebAyuda')}>
                     <Switch
                       checked={formData.applies_to_web ?? true}
                       onCheckedChange={(checked) => handleChange('applies_to_web', checked)}
-                      className="data-[state=checked]:bg-blue-600"
                     />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
-                    <div>
-                      <Label className="dark:text-white text-sm">POS</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Ventas en tienda</p>
-                    </div>
+                  </SettingRow>
+                  <SettingRow titulo={t('formulario.canalPos')} descripcion={t('formulario.canalPosAyuda')}>
                     <Switch
                       checked={formData.applies_to_pos ?? true}
                       onCheckedChange={(checked) => handleChange('applies_to_pos', checked)}
-                      className="data-[state=checked]:bg-blue-600"
                     />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
-                    <div>
-                      <Label className="dark:text-white text-sm">Finanzas</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Facturación / Documentos</p>
-                    </div>
+                  </SettingRow>
+                  <SettingRow titulo={t('formulario.canalFinanzas')} descripcion={t('formulario.canalFinanzasAyuda')}>
                     <Switch
                       checked={formData.applies_to_finances ?? false}
                       onCheckedChange={(checked) => handleChange('applies_to_finances', checked)}
-                      className="data-[state=checked]:bg-blue-600"
                     />
-                  </div>
-                </div>
+                  </SettingRow>
+                </SettingGroup>
               </div>
 
               {/* Días de la semana recurrentes */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <Label className="dark:text-gray-200">Días de Aplicación</Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Selecciona los días. Si no seleccionas ninguno, aplica todos los días.
+                    <p className="text-sm font-medium text-fg">{t('formulario.dias')}</p>
+                    <p className="text-[13px] leading-[18px] text-fg-secondary">
+                      {t('formulario.diasAyuda')}
                     </p>
                   </div>
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7 dark:text-gray-300"
+                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
                     onClick={() => handleChange('applicable_days', null)}
                   >
-                    Todos los días
-                  </Button>
+                    {t('formulario.todosLosDias')}
+                  </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {WEEK_DAYS.map((day) => {
-                    const selected = (formData.applicable_days || []).includes(day.value);
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => {
-                          const current = formData.applicable_days || [];
-                          const next = selected
-                            ? current.filter((d) => d !== day.value)
-                            : [...current, day.value];
-                          handleChange('applicable_days', next.length === 0 ? null : next);
-                        }}
-                        className={cn(
-                          'px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all',
-                          selected
-                            ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'
-                        )}
-                      >
-                        {day.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <ChipsOpcion<WeekDay>
+                  multiple
+                  etiqueta={t('formulario.dias')}
+                  opciones={diasSemana.map((day) => ({ valor: day.value, etiqueta: day.largo }))}
+                  valor={formData.applicable_days || []}
+                  onValorChange={(valor) => handleChange('applicable_days', valor.length === 0 ? null : valor)}
+                />
                 {formData.applicable_days && formData.applicable_days.length > 0 && (
-                  <p className="text-xs text-blue-600 dark:text-blue-400">
-                    Aplica los: {formData.applicable_days
-                      .map((d) => WEEK_DAYS.find((wd) => wd.value === d)?.label)
-                      .join(', ')}
+                  <p className="text-[13px] leading-[18px] text-brand-deep">
+                    {t('formulario.aplicaLos', {
+                      dias: formData.applicable_days
+                        .map((d) => diasSemana.find((wd) => wd.value === d)?.largo)
+                        .filter((nombre): nombre is string => Boolean(nombre))
+                        .join(', '),
+                    })}
                   </p>
                 )}
                 {(!formData.applicable_days || formData.applicable_days.length === 0) && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Aplica todos los días de la semana
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {t('formulario.aplicaTodos')}
                   </p>
                 )}
               </div>
@@ -850,53 +801,54 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <Label className="dark:text-gray-200 mb-3 block">Aplica a</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {(Object.entries(APPLIES_TO_LABELS) as [AppliesTo, string][]).map(([type, label]) => (
-                    <button
+                <p className="mb-3 text-sm font-medium text-fg">{t('formulario.aplicaA')}</p>
+                <div role="radiogroup" aria-label={t('formulario.aplicaA')} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {(Object.keys(APPLIES_TO_LABELS) as AppliesTo[]).map((type) => (
+                    <TarjetaSeleccionable
                       key={type}
-                      type="button"
-                      onClick={() => handleChange('applies_to', type)}
-                      className={cn(
-                        "p-4 rounded-lg border-2 text-center transition-all",
-                        formData.applies_to === type
-                          ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30"
-                          : "border-gray-200 dark:border-gray-600 hover:border-blue-300"
-                      )}
-                    >
-                      <span className={cn(
-                        "text-sm font-medium",
-                        formData.applies_to === type
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-600 dark:text-gray-300"
-                      )}>
-                        {label}
-                      </span>
-                    </button>
+                      orientacion="horizontal"
+                      titulo={t(`aplicaA.${type}`)}
+                      seleccionada={formData.applies_to === type}
+                      onSeleccionar={() => handleChange('applies_to', type)}
+                    />
                   ))}
                 </div>
               </div>
 
+              {formData.applies_to !== 'all' && (
+                <SettingGroup>
+                  <SettingRow
+                    titulo={t('formulario.medirTodaLaCuenta')}
+                    descripcion={textoCompraMinima(t, formData.applies_to, formData.min_purchase_scope)}
+                  >
+                    <Switch
+                      checked={formData.min_purchase_scope === 'cart'}
+                      onCheckedChange={(checked) => handleChange('min_purchase_scope', checked ? 'cart' : 'eligible')}
+                    />
+                  </SettingRow>
+                </SettingGroup>
+              )}
+
               {formData.applies_to === 'products' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <Select value={ruleType} onValueChange={(v) => setRuleType(v as 'include' | 'exclude')}>
-                      <SelectTrigger className="w-[150px] dark:bg-gray-700 dark:border-gray-600">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                        <SelectItem value="include">Incluir</SelectItem>
-                        <SelectItem value="exclude">Excluir</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <SegmentedControl
+                    etiqueta={t('formulario.aplicaA')}
+                    tonoActivo="marca"
+                    valor={ruleType}
+                    onValorChange={(v) => setRuleType(v)}
+                    opciones={[
+                      { valor: 'include', etiqueta: t('formulario.incluir') },
+                      { valor: 'exclude', etiqueta: t('formulario.excluir') },
+                    ]}
+                  />
                     <Input
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      placeholder="Buscar productos por nombre, SKU o variante..."
-                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      placeholder={t('formulario.buscarProductos')}
                     />
                   </div>
-                  <div className="max-h-60 overflow-y-auto p-2 border rounded-lg dark:border-gray-700">
+                  <div className="max-h-60 overflow-y-auto rounded-lg border border-line p-2">
                     {(() => {
                       // Etiqueta legible de variantes (ej: "Color: Rojo · Talla: M")
                       const getVariantLabel = (p: ProductoPromocion): string | null => {
@@ -934,9 +886,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       const groups = Object.entries(grouped);
                       if (groups.length === 0) {
                         return (
-                          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                          <div className="p-4 text-center text-fg-secondary">
                             <Package className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No se encontraron productos</p>
+                            <p className="text-sm">{t('formulario.sinProductos')}</p>
                           </div>
                         );
                       }
@@ -950,21 +902,23 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                             return (
                               <div key={groupName}>
                                 {hasVariants && (
-                                  <div className="sticky top-0 z-10 px-3 py-1.5 bg-gray-50 dark:bg-gray-750 border-b dark:border-gray-700">
-                                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                  <div className="sticky top-0 z-10 border-b border-line bg-subtle px-3 py-1.5">
+                                    <span className="text-xs font-semibold text-fg-secondary">
                                       {groupName}
                                     </span>
                                   </div>
                                 )}
                                 {groupProducts.map((product) => {
                                   const variantLabel = getVariantLabel(product);
+                                  const marcado = selectedProducts.includes(product.id);
+                                  const pideCantidad = formData.promotion_type === 'bundle' && ruleType === 'include' && marcado;
                                   return (
-                                    <label
+                                    <div
                                       key={product.id}
-                                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                      className="flex items-center gap-3 rounded-lg p-2 hover:bg-hover"
                                     >
                                       <Checkbox
-                                        checked={selectedProducts.includes(product.id)}
+                                        checked={marcado}
                                         onCheckedChange={(checked) => {
                                           if (checked) {
                                             setSelectedProducts([...selectedProducts, product.id]);
@@ -973,15 +927,41 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                                           }
                                         }}
                                       />
-                                      <div className="flex-1 min-w-0">
-                                        <span className="dark:text-white block break-words whitespace-normal">
+                                      <button
+                                        type="button"
+                                        className="flex-1 min-w-0 text-left"
+                                        onClick={() => {
+                                          if (marcado) {
+                                            setSelectedProducts(selectedProducts.filter(id => id !== product.id));
+                                          } else {
+                                            setSelectedProducts([...selectedProducts, product.id]);
+                                          }
+                                        }}
+                                      >
+                                        <span className="block whitespace-normal break-words text-fg">
                                           {hasVariants && variantLabel ? variantLabel : product.name}
                                         </span>
-                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                                        <span className="font-mono text-xs text-brand-deep">
                                           {product.sku}
                                         </span>
-                                      </div>
-                                    </label>
+                                      </button>
+                                      {pideCantidad && (
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          aria-label={t('formulario.unidadesPaquete', { nombre: product.name })}
+                                          value={cantidadesPaquete[product.id] ?? 1}
+                                          onChange={(e) => {
+                                            const n = Math.trunc(Number(e.target.value));
+                                            setCantidadesPaquete((prev) => ({
+                                              ...prev,
+                                              [product.id]: Number.isFinite(n) && n > 0 ? n : 1,
+                                            }));
+                                          }}
+                                          className="w-20"
+                                        />
+                                      )}
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -1005,10 +985,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                         const label = product.parent_name && variantLabel
                           ? `${product.parent_name} · ${variantLabel}`
                           : product.name;
+                        const unidades = formData.promotion_type === 'bundle' && ruleType === 'include'
+                          ? (cantidadesPaquete[id] ?? 1)
+                          : null;
                         return (
-                          <Badge key={id} variant="secondary" className="dark:bg-gray-700">
-                            {label}
-                          </Badge>
+                          <span key={id} className="inline-flex h-8 items-center rounded-full border border-line bg-subtle px-3 text-[13px] font-medium text-fg">
+                            {unidades != null ? `${label} × ${unidades}` : label}
+                          </span>
                         );
                       })}
                     </div>
@@ -1018,18 +1001,19 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               {formData.applies_to === 'categories' && (
                 <div className="space-y-4">
-                  <Select value={ruleType} onValueChange={(v) => setRuleType(v as 'include' | 'exclude')}>
-                    <SelectTrigger className="w-[150px] dark:bg-gray-700 dark:border-gray-600">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                      <SelectItem value="include">Incluir</SelectItem>
-                      <SelectItem value="exclude">Excluir</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="max-h-60 overflow-y-auto space-y-2 p-2 border rounded-lg dark:border-gray-700">
+                  <SegmentedControl
+                    etiqueta={t('formulario.aplicaA')}
+                    tonoActivo="marca"
+                    valor={ruleType}
+                    onValorChange={(v) => setRuleType(v)}
+                    opciones={[
+                      { valor: 'include', etiqueta: t('formulario.incluir') },
+                      { valor: 'exclude', etiqueta: t('formulario.excluir') },
+                    ]}
+                  />
+                  <div className="max-h-60 space-y-2 overflow-y-auto rounded-lg border border-line p-2">
                     {categories.map(category => (
-                      <label key={category.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
+                      <label key={category.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-hover">
                         <Checkbox
                           checked={selectedCategories.includes(category.id)}
                           onCheckedChange={(checked) => {
@@ -1040,7 +1024,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                             }
                           }}
                         />
-                        <span className="dark:text-white">{category.name}</span>
+                        <span className="text-fg">{category.name}</span>
                       </label>
                     ))}
                   </div>
@@ -1048,32 +1032,52 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </FormSection>
 
-      {/* Navigation Buttons */}
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
+      <div className="flex justify-between gap-3">
+        <button
+          type="button"
           onClick={currentStep === 0 ? () => router.push('/app/pos/promociones') : prevStep}
-          className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
+          className={clasesBoton({ variante: 'secundario' })}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {currentStep === 0 ? 'Cancelar' : 'Anterior'}
-        </Button>
+          {currentStep > 0 && <ArrowLeft className="size-4" />}
+          {currentStep === 0 ? t('formulario.cancelar') : t('formulario.anterior')}
+        </button>
 
         {currentStep < WIZARD_STEPS.length - 1 ? (
-          <Button onClick={nextStep} className="bg-blue-600 hover:bg-blue-700">
-            Siguiente
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
+          <button type="button" onClick={nextStep} className={clasesBoton({ variante: 'primario' })}>
+            {t('formulario.siguiente')}
+            <ArrowRight className="size-4" />
+          </button>
         ) : (
-          <Button onClick={handleSubmit} disabled={loading} className="bg-green-600 hover:bg-green-700">
-            <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Guardando...' : promotionId ? 'Actualizar' : 'Crear Promoción'}
-          </Button>
+          <button type="button" onClick={handleSubmit} disabled={loading} className={clasesBoton({ variante: 'primario' })}>
+            <Save className="size-4" />
+            {loading ? t('formulario.guardando') : promotionId ? t('formulario.actualizar') : t('formulario.crear')}
+          </button>
         )}
       </div>
     </div>
   );
+}
+
+function ayudaCompraLleva(t: Traductor, compra: number | undefined, lleva: number | undefined): string {
+  const x = Math.trunc(compra || 0);
+  const y = Math.trunc(lleva || 0);
+  if (x > 0 && y > 0 && y < x) {
+    return t('formulario.llevaPaga', { x, y, gratis: x - y });
+  }
+  if (x > 0 && y > 0) {
+    return t('formulario.compraLlevaGratis', { x, y, grupo: x + y });
+  }
+  return t('formulario.compraLlevaAyuda');
+}
+
+/** Sobre qué subtotal se compara la compra mínima. */
+function textoCompraMinima(
+  t: Traductor,
+  aplicaA: AppliesTo | undefined,
+  alcance: MinPurchaseScope | null | undefined,
+): string {
+  if (aplicaA === 'all' || alcance === 'cart') return t('formulario.compraMinimaCuenta');
+  return t('formulario.compraMinimaElegible');
 }

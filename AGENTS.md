@@ -31,6 +31,9 @@ comentarios, commits y UI.
 7. **Nada de lógica de negocio duplicada.** Si `posService` sabe crear una venta
    con impuestos y caja, se llama a `posService`. Una segunda implementación
    diverge en semanas.
+8. **Está prohibido hacer push a `master`, fusionar hacia `master` o publicar
+   un tag que despliegue desde `master`.** Producción sale de esa rama y la
+   promueve Juan. Toda entrega va a `main`. Orden del 2026-10-21.
 
 ## Convenciones
 
@@ -142,6 +145,12 @@ datos de otros tenants; `database-migrations` al tocar el esquema;
 `code-review-checklist` antes de cerrar una fase.
 
 ## Ciclo /loop
+
+Toda tarea sigue `.devin/workflows/loop.md` hasta que el qa-reviewer califique
+>= 9.5. Orden del 2026-10-21: descomponer en partes verificables, builder,
+tester con pruebas reales (no solo lectura), qa-reviewer. Máximo 3 rondas
+sobre la misma parte; si sigue por debajo, se anota el bloqueo y se escala.
+No se marca `aprobado` sin esas pruebas.
 
 `PROGRESS.md` en la raíz es la fuente de verdad de fases y calificaciones. Se
 actualiza al final de cada ronda **añadiendo**, nunca reescribiendo.

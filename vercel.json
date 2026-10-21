@@ -50,6 +50,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/correo-dominio-tienda",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/reconcile-web-orders",
       "schedule": "*/5 * * * *"
     },

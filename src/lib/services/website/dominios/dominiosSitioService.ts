@@ -388,6 +388,17 @@ export async function verificar(ctx: CtxDominios, id: string, deps: Dependencias
       ahora: deps.ahora,
     });
     const todo = await leerTodo(ctx);
+    if (s.resultado === 'activo') {
+      try {
+        const { encolarYProcesarCorreoTienda } = await import('./correoTienda');
+        await encolarYProcesarCorreoTienda(ctx.organizationId, s.dominioId);
+      } catch (e) {
+        console.error('[sitio-web/dominios] el correo de pedidos no quedó listo', {
+          organizationId: ctx.organizationId,
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
     return {
       dominio: dtoDe(todo, s.dominioId, deps.ahora()),
       resultado: s.resultado,

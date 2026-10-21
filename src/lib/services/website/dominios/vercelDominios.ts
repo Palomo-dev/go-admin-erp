@@ -9,7 +9,7 @@
  * - Registrador: PATCH /v1/registrar/domains/{d}/auto-renew · GET /v1/registrar/domains/{d}/auth-code
  *
  * Configuración por entorno, sin valores por defecto cableados:
- * - `VERCEL_API_TOKEN`
+ * - `VERCEL_API_TOKEN` (o `VERCEL_TOKEN`, el mismo valor)
  * - `VERCEL_TEAM_ID`
  * - `VERCEL_SITIOS_PROJECT_ID`: el proyecto que SIRVE los sitios públicos
  *   (goadmin-websites). No se usa `VERCEL_PROJECT_ID`, que Vercel inyecta con
@@ -26,8 +26,12 @@ export interface ConfigVercel {
   proyecto: string;
 }
 
+function tokenVercel(entorno: NodeJS.ProcessEnv): string {
+  return (entorno.VERCEL_API_TOKEN || entorno.VERCEL_TOKEN || '').trim();
+}
+
 export function configuracionVercel(entorno: NodeJS.ProcessEnv = process.env): ConfigVercel | null {
-  const token = entorno.VERCEL_API_TOKEN?.trim();
+  const token = tokenVercel(entorno);
   const teamId = entorno.VERCEL_TEAM_ID?.trim();
   const proyecto = entorno.VERCEL_SITIOS_PROJECT_ID?.trim();
   if (!token || !teamId || !proyecto) return null;
@@ -36,7 +40,7 @@ export function configuracionVercel(entorno: NodeJS.ProcessEnv = process.env): C
 
 /** Solo el registrador (compra, renovación, código): no necesita el proyecto. */
 export function configuracionRegistrador(entorno: NodeJS.ProcessEnv = process.env): Omit<ConfigVercel, 'proyecto'> | null {
-  const token = entorno.VERCEL_API_TOKEN?.trim();
+  const token = tokenVercel(entorno);
   const teamId = entorno.VERCEL_TEAM_ID?.trim();
   if (!token || !teamId) return null;
   return { token, teamId };

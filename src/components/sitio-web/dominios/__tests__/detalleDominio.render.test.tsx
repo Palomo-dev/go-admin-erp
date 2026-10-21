@@ -40,7 +40,22 @@ jest.mock('../useDominiosSitio', () => ({
 const detalle = jest.fn();
 jest.mock('../apiDominios', () => {
   const real = jest.requireActual('../apiDominios');
-  return { ...real, apiDominios: { detalle: (id: string) => detalle(id) } };
+  const correo = {
+    estado: 'sin_configurar',
+    desde: 'pedidos@tumarca.com',
+    respaldo: 'pedidos@goadmin.io',
+    registros: [],
+    dnsEnVercel: true,
+    error: null,
+  };
+  return {
+    ...real,
+    apiDominios: {
+      detalle: (id: string) => detalle(id),
+      correoLeer: async () => correo,
+      correoVerificar: async () => correo,
+    },
+  };
 });
 
 import { ErrorApiDominios } from '../apiDominios';

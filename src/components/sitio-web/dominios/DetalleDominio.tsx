@@ -27,6 +27,7 @@ import { DnsRecordRow } from '../ui/DnsRecordRow';
 import { DomainStatusBadge } from '../ui/DomainStatusBadge';
 import { PriceTag } from '../ui/PriceTag';
 import { AvisoDominio } from './AvisoDominio';
+import { CorreoPedidosDominio } from './CorreoPedidosDominio';
 import { DialogoCambiarSubdominio } from './DialogoCambiarSubdominio';
 import { DialogoCodigoTransferencia } from './DialogoCodigoTransferencia';
 import { DialogoConectarDominio } from './DialogoConectarDominio';
@@ -233,6 +234,7 @@ export function DetalleDominio({ dominioId }: { dominioId: string }) {
                 <p className="mt-3 text-xs text-fg-muted">{t('detalle.otrosRegistros')}</p>
               </Tarjeta>
             )}
+            {d.tipo !== 'subdominio' && <CorreoPedidosDominio dominioId={d.id} gestionar={gestionar} />}
             <Tarjeta titulo={t('detalle.sslTitulo')} icono={TARJETA.ssl}>
               <ListaDatos>
                 <FilaDato

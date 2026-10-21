@@ -26,10 +26,29 @@ export function cantidadMinimaEfectiva(p: {
 }
 
 /**
+ * La copia de una promo vieja guarda el mínimo en `min_quantity`.
+ * Quita `promotion_rules`: es la relación embebida, no una columna.
+ */
+export function copiaDePromocion<T extends {
+  promotion_type?: string | null;
+  min_quantity?: number | null;
+  buy_quantity?: number | null;
+  promotion_rules?: unknown;
+}>(original: T): Omit<T, 'promotion_rules'> {
+  const { promotion_rules, ...resto } = original;
+  void promotion_rules;
+  const tipo = resto.promotion_type;
+  const conMinimo = tipo === 'percentage' || tipo === 'fixed_amount' || tipo === 'bundle';
+  if (!conMinimo) return resto;
+  return { ...resto, min_quantity: cantidadMinimaEfectiva(resto) };
+}
+
+/**
  * Al editar, el campo «cantidad mínima» muestra el mínimo que de verdad
  * se aplica, aunque siga guardado en `buy_quantity`. Una promo nueva no
  * hereda el 2 por defecto de Compra X Lleva Y.
  */
+
 export function minimoDelFormulario<T extends {
   promotion_type?: string | null;
   min_quantity?: number | null;

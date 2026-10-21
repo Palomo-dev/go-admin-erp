@@ -3785,3 +3785,10 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Próxima acción: Juan confirma el prefijo de la clave. Si es `sk_live_`, se puede fusionar el 392 a `main` (no a `master`). Si no lo es, hay que cambiar la clave antes de llevar este código a producción. La org 110 y el resto de filas de `subscriptions` no se modificaron.
 
 - Aclaración: el auditor dejó 8/10 antes del commit `1d8aaccf` (incomplete se puede cancelar). Esa corrección no se volvió a calificar. Sigue sin aprobado.
+
+### Fase: Iconos del encabezado, rejilla y fotos de portada — Ronda 2 — 2026-10-21
+- Calificación QA: 9.5/10
+- Calificación Tester: 8/10 en la segunda pasada; la portada de video se ajustó después y el auditor la releyó
+- Qué se hizo: el PR 10 de tiendas quedó sin conflicto con main (el menú móvil conserva el icono y el contador). El editor equivalente al PR 378 quedó en una rama contra main, porque master no se toca. La rejilla no reserva un cuadrado si el ítem no tiene icono. Un servicio que solo trae botón se publica, y una foto insegura deja ver el icono. Paquete y regalo no quedan marcados como bolsa. La foto de celular se ve en la portada, y en video tapa el video solo en el celular.
+- Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
+- Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.

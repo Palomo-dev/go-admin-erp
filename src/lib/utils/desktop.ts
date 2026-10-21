@@ -376,6 +376,41 @@ export function onDesktopConnectivity(listener: ConnectivityListener): () => voi
   };
 }
 
+type UpdateListener = (state: DesktopUpdateState) => void;
+const updateListeners = new Set<UpdateListener>();
+let bridgeUpdateSubscribed = false;
+
+/**
+ * Suscripción al estado del actualizador (`update:state`).
+ *
+ * Igual que la conectividad: el preload solo guarda un listener
+ * (`onUpdateState` hace `removeAllListeners`). Este helper se suscribe una
+ * vez y reparte el evento. Así el aviso de «reiniciar e instalar» y el
+ * panel del agente no se pisan.
+ *
+ * Fuera del Desktop devuelve un no-op.
+ */
+export function onDesktopUpdate(listener: UpdateListener): () => void {
+  const bridge = getDesktopBridge();
+  if (!bridge?.onUpdateState) return () => {};
+  updateListeners.add(listener);
+  if (!bridgeUpdateSubscribed) {
+    bridgeUpdateSubscribed = true;
+    bridge.onUpdateState((state) => {
+      for (const l of updateListeners) {
+        try {
+          l(state);
+        } catch (err) {
+          console.error('[desktop] Error en listener de actualización:', err);
+        }
+      }
+    });
+  }
+  return () => {
+    updateListeners.delete(listener);
+  };
+}
+
 /**
  * true si el Desktop instalado emite conectividad real por el bridge. Cuando
  * es true, `navigator.onLine` NO debe usarse como fuente de verdad: con WiFi

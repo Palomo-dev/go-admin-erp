@@ -50,9 +50,10 @@ import { getWebRoot as resolveWebRoot, readPublicEnvFile } from './publicEnv';
  * El hijo recibe `HOSTNAME=127.0.0.1`, `PORT`, `NODE_ENV=production` y las
  * variables públicas (`NEXT_PUBLIC_*`) leídas de `resources/web/.env`, que
  * escribe scripts/build-web.js con una allow-list. Ninguna clave de servidor
- * (service role, Stripe, cron...) viaja en el instalador: las API routes que
- * las necesitan no funcionan contra el servidor local (ver
- * docs/desktop/FASE-3-NEXT-EMBEBIDO.md).
+ * (service role, Stripe, cron...) viaja en el instalador. Las peticiones
+ * `/api` no se resuelven en ese Next: `webLauncher.ts` las reenvía a
+ * app.goadmin.io con la cookie y el bearer (ver proxyApi.ts). Las páginas
+ * siguen saliendo del servidor local para poder navegar sin red.
  */
 
 /** Interfaz en la que escucha el servidor (y a la que se sondea). */
@@ -271,9 +272,9 @@ class WebServer extends EventEmitter {
         GATE_COOKIE_SECRET: gateSecret,
         // Sin telemetría ni comprobación de versiones desde el escritorio.
         NEXT_TELEMETRY_DISABLED: '1',
-        // Marca del servidor embebido. El ingreso la usa para reenviar
-        // /api/auth/acceso a app.goadmin.io: aquí no hay clave de servicio
-        // (accesoEscritorio.ts). No quitarla: sin ella el escritorio no entra.
+        // Marca del servidor embebido. proxyApi.ts la usa para reenviar
+        // todo /api a app.goadmin.io: aquí no hay clave de servicio.
+        // No quitarla: sin ella el plan, el ingreso y el resto responden 500.
         GOADMIN_DESKTOP_EMBEDDED: '1',
         // Para webLauncher.ts: qué cargar y a quién vigilar.
         GOADMIN_WEB_SERVER_JS: serverJs,

@@ -53,6 +53,10 @@ function initSentry(dsn: string): boolean {
   try {
     // require en vez de import estático: si el paquete faltara en una
     // instalación rota, la app debe seguir arrancando sin Sentry.
+    // `@sentry/electron/main` pide `@sentry/browser-utils` (vía
+    // `@sentry/replay`). Tiene que quedar en `node_modules/@sentry/browser-utils`
+    // del asar: electron-builder la anida solo bajo `@sentry/browser` y el
+    // require de replay no la encuentra. Ver `files` en electron-builder.yml.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Sentry = require('@sentry/electron/main') as typeof import('@sentry/electron/main');
     Sentry.init({

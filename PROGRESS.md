@@ -3783,3 +3783,5 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
   3. Reactivar, en esa misma ruta, no filtra `organization_id` en el update.
   4. El reintento con la organización ya `inactive` no vuelve a leer el status antes de cancelar en Stripe.
 - Próxima acción: Juan confirma el prefijo de la clave. Si es `sk_live_`, se puede fusionar el 392 a `main` (no a `master`). Si no lo es, hay que cambiar la clave antes de llevar este código a producción. La org 110 y el resto de filas de `subscriptions` no se modificaron.
+
+- Aclaración: el auditor dejó 8/10 antes del commit `1d8aaccf` (incomplete se puede cancelar). Esa corrección no se volvió a calificar. Sigue sin aprobado.

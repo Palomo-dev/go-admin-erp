@@ -48,6 +48,15 @@ import { FULL_REFRESH_INTERVAL_MS, REPLICATION_MANIFEST, pkColumns, type TableMa
 
 export const OFFLINE_BATCH_SIZE = 500;
 export const OFFLINE_REPLICATION_INTERVAL_MS = 10 * 60 * 1000;
+/** Ids del padre por página, al armar un ámbito `link`. */
+export const PARENT_ID_PAGE = 500;
+/**
+ * Ids del padre por consulta al hijo. En `product_suppliers` la RLS relee
+ * `organization_members` por fila: el embed de toda la organización (~5 mil
+ * filas) tarda ~12 s y el rol `authenticated` corta a los 8 s. Cien id
+ * quedan en ~0,3 s.
+ */
+export const LINK_CHUNK = 100;
 /** Evento de `window` al terminar una pasada (detail: OfflineDbStatus). */
 export const OFFLINE_REPLICATED_EVENT = 'goadmin:offline-replicated';
 
@@ -88,6 +97,22 @@ function windowStartIso(months: number, now: number): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyBuilder = any;
 
+/** Filtros extra, ventana, cursor incremental y orden estable. Sin `.range()`. */
+function applyCommon(q: AnyBuilder, m: TableManifest, cursor: string | null, now: number): AnyBuilder {
+  for (const [col, raw] of Object.entries(m.extraFilters ?? {})) {
+    const dot = raw.indexOf('.');
+    q = q.filter(col, raw.slice(0, dot), raw.slice(dot + 1));
+  }
+  if (m.window) q = q.gte(m.window.column, windowStartIso(m.window.months, now));
+  if (cursor && m.incremental) {
+    q = q.gt(m.incremental, cursor).order(m.incremental, { ascending: true });
+  } else if (m.window) {
+    q = q.order(m.window.column, { ascending: false });
+  }
+  for (const col of pkColumns(m)) q = q.order(col, { ascending: true });
+  return q;
+}
+
 /**
  * Construye la consulta PostgREST de una pasada: columnas, ámbito, filtros
  * extra, ventana, cursor incremental y orden estable. Sin `.range()`.
@@ -114,18 +139,38 @@ function buildQuery(client: OfflineClient, m: TableManifest, organizationId: num
       break;
     }
   }
-  for (const [col, raw] of Object.entries(m.extraFilters ?? {})) {
-    const dot = raw.indexOf('.');
-    q = q.filter(col, raw.slice(0, dot), raw.slice(dot + 1));
+  return applyCommon(q, m, cursor, now);
+}
+
+/** Hijo filtrado por una tanda de ids del padre (`product_id=in.(...)`). */
+function buildLinkedQuery(client: OfflineClient, m: TableManifest, link: string, ids: Array<string | number>, cursor: string | null, now: number): AnyBuilder {
+  const db = client as { from: (t: string) => AnyBuilder };
+  const q = db.from(m.table).select(m.columns.join(',')).in(link, ids);
+  return applyCommon(q, m, cursor, now);
+}
+
+/** Ids del padre de esta organización, por clave (`id > último`), no por offset. */
+async function collectParentIds(client: OfflineClient, embed: string, column: string, organizationId: number): Promise<Array<string | number>> {
+  const db = client as { from: (t: string) => AnyBuilder };
+  const ids: Array<string | number> = [];
+  let after: string | number | null = null;
+  for (;;) {
+    let q = db.from(embed).select('id').eq(column, organizationId).order('id', { ascending: true });
+    if (after !== null) q = q.gt('id', after);
+    const page = (await q.range(0, PARENT_ID_PAGE - 1)) as PageResult;
+    if (page.error) throw new Error(`[offline] ${embed}: ${page.error.message}`);
+    const rows = page.data ?? [];
+    for (const row of rows) {
+      const id = row.id;
+      if (typeof id === 'number' || (typeof id === 'string' && id !== '')) ids.push(id);
+    }
+    if (rows.length < PARENT_ID_PAGE) break;
+    const last = ids[ids.length - 1];
+    if (last === undefined || last === after) break;
+    after = last;
+    await yieldToUi();
   }
-  if (m.window) q = q.gte(m.window.column, windowStartIso(m.window.months, now));
-  if (cursor && m.incremental) {
-    q = q.gt(m.incremental, cursor).order(m.incremental, { ascending: true });
-  } else if (m.window) {
-    q = q.order(m.window.column, { ascending: false });
-  }
-  for (const col of pkColumns(m)) q = q.order(col, { ascending: true });
-  return q;
+  return ids;
 }
 
 /** Retira el embed del padre y añade `organization_id` a las filas que no lo tienen. */
@@ -144,8 +189,63 @@ interface PassResult {
   truncated: boolean;
 }
 
+async function anotarFilas(m: TableManifest, organizationId: number, rows: OfflineRow[], result: PassResult, onBatch?: () => void): Promise<void> {
+  if (rows.length === 0) return;
+  await putOfflineRows(m.table, rows);
+  for (const r of rows) {
+    result.keys.add(rowKeyOf(m.pk, r));
+    result.bytes += JSON.stringify(r).length;
+    if (m.incremental) {
+      const v = r[m.incremental];
+      if (typeof v === 'string' && (result.cursor === null || v > result.cursor)) result.cursor = v;
+    }
+  }
+  result.written += rows.length;
+  onBatch?.();
+}
+
+/** Páginas de una tanda `in.(...)`. Cada tanda vuelve a empezar en el offset 0. */
+async function drainLinked(client: OfflineClient, m: TableManifest, organizationId: number, link: string, ids: Array<string | number>, cursor: string | null, now: number, result: PassResult, onBatch?: () => void): Promise<void> {
+  let from = 0;
+  for (;;) {
+    if (result.written >= m.maxRows) {
+      result.truncated = true;
+      return;
+    }
+    const size = Math.min(OFFLINE_BATCH_SIZE, m.maxRows - result.written);
+    const to = from + size - 1;
+    const page = (await buildLinkedQuery(client, m, link, ids, cursor, now).range(from, to)) as PageResult;
+    if (page.error) throw new Error(`[offline] ${m.table}: ${page.error.message}`);
+    const rows = (page.data ?? []).map((r) => normalizeRow(r, m, organizationId));
+    await anotarFilas(m, organizationId, rows, result, onBatch);
+    if (rows.length < size) return;
+    from = to + 1;
+    await yieldToUi();
+  }
+}
+
+async function runLinkedPass(client: OfflineClient, m: TableManifest, organizationId: number, cursor: string | null, now: number, result: PassResult, onBatch?: () => void): Promise<void> {
+  if (m.scope.kind !== 'parent') return;
+  for (const parent of m.scope.parents) {
+    const link = parent.link;
+    if (!link) continue;
+    const ids = await collectParentIds(client, parent.embed, parent.column ?? 'organization_id', organizationId);
+    for (let i = 0; i < ids.length; i += LINK_CHUNK) {
+      if (result.written >= m.maxRows) {
+        result.truncated = true;
+        return;
+      }
+      await drainLinked(client, m, organizationId, link, ids.slice(i, i + LINK_CHUNK), cursor, now, result, onBatch);
+    }
+  }
+}
+
 async function runPass(client: OfflineClient, m: TableManifest, organizationId: number, cursor: string | null, now: number, onBatch?: () => void): Promise<PassResult> {
   const result: PassResult = { written: 0, bytes: 0, keys: new Set(), cursor, truncated: false };
+  if (m.scope.kind === 'parent' && m.scope.parents.length > 0 && m.scope.parents.every((p) => Boolean(p.link))) {
+    await runLinkedPass(client, m, organizationId, cursor, now, result, onBatch);
+    return result;
+  }
   const passes = m.scope.kind === 'parent' ? m.scope.parents.length : 1;
   for (let p = 0; p < passes; p++) {
     let from = 0;
@@ -158,19 +258,7 @@ async function runPass(client: OfflineClient, m: TableManifest, organizationId: 
       const page = (await buildQuery(client, m, organizationId, p, cursor, now).range(from, to)) as PageResult;
       if (page.error) throw new Error(`[offline] ${m.table}: ${page.error.message}`);
       const rows = (page.data ?? []).map((r) => normalizeRow(r, m, organizationId));
-      if (rows.length > 0) {
-        await putOfflineRows(m.table, rows);
-        for (const r of rows) {
-          result.keys.add(rowKeyOf(m.pk, r));
-          result.bytes += JSON.stringify(r).length;
-          if (m.incremental) {
-            const v = r[m.incremental];
-            if (typeof v === 'string' && (result.cursor === null || v > result.cursor)) result.cursor = v;
-          }
-        }
-        result.written += rows.length;
-        onBatch?.();
-      }
+      await anotarFilas(m, organizationId, rows, result, onBatch);
       if (rows.length < to - from + 1) break;
       from = to + 1;
       await yieldToUi();

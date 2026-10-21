@@ -13,6 +13,8 @@ export type PromotionType =
   | 'bundle'
   | 'free_shipping';
 export type AppliesTo = 'all' | 'products' | 'categories';
+/** `eligible`: subtotal de las líneas de la promo. `cart`: toda la cuenta. */
+export type MinPurchaseScope = 'eligible' | 'cart';
 export type RuleType = 'include' | 'exclude';
 
 // Valores de rule_type aceptados por el CHECK constraint de la BD
@@ -35,9 +37,12 @@ export interface Promotion {
   description?: string;
   promotion_type: PromotionType;
   discount_value?: number;
-  buy_quantity?: number;
-  get_quantity?: number;
-  min_purchase_amount?: number;
+  buy_quantity?: number | null;
+  get_quantity?: number | null;
+  min_purchase_amount?: number | null;
+  min_purchase_scope?: MinPurchaseScope | null;
+  min_quantity?: number | null;
+  repeat_every_quantity?: number | null;
   max_discount_amount?: number;
   applies_to: AppliesTo;
   start_date: string;
@@ -71,6 +76,8 @@ export interface PromotionRule {
   rule_type: RuleTypeDB;
   product_id?: number;
   category_id?: number;
+  /** Unidades de este producto en un paquete. Nulo = 1. */
+  quantity?: number | null;
   created_at: string;
   product?: {
     id: number;
@@ -88,9 +95,12 @@ export interface CreatePromotionData {
   description?: string;
   promotion_type: PromotionType;
   discount_value?: number;
-  buy_quantity?: number;
-  get_quantity?: number;
-  min_purchase_amount?: number;
+  buy_quantity?: number | null;
+  get_quantity?: number | null;
+  min_purchase_amount?: number | null;
+  min_purchase_scope?: MinPurchaseScope | null;
+  min_quantity?: number | null;
+  repeat_every_quantity?: number | null;
   max_discount_amount?: number;
   applies_to: AppliesTo;
   start_date: string;
@@ -116,6 +126,8 @@ export interface CreatePromotionRuleData {
   rule_type: RuleTypeDB;
   product_id?: number;
   category_id?: number;
+  /** Unidades en el paquete. Solo se guarda en un producto incluido. */
+  quantity?: number | null;
 }
 
 export interface UpdatePromotionData extends Partial<CreatePromotionData> {}

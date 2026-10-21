@@ -52,11 +52,10 @@ const DEST = path.join(ELECTRON_DIR, 'resources', 'web');
  *
  * PROHIBIDO añadir aquí SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY,
  * CRON_SECRET, OPENAI_API_KEY ni ninguna otra clave de servidor: el instalador
- * es público y cualquiera puede abrirlo. Las API routes que las necesitan
- * simplemente no funcionan en el servidor local (ver
- * docs/desktop/FASE-3-NEXT-EMBEBIDO.md, sección "Qué no funciona").
- * El ingreso es la excepción: no se mete la clave; el escritorio reenvía
- * el cuerpo a la web pública (src/lib/auth/accesoEscritorio.ts).
+ * es público y cualquiera puede abrirlo. Las rutas /api no se atienden con
+ * esa clave en el servidor local: el escritorio las reenvía a la web pública
+ * (electron/src/main/proxyApi.ts). El ingreso, si la petición llega al
+ * route handler, tiene el mismo reenvío (src/lib/auth/accesoEscritorio.ts).
  */
 const PUBLIC_ENV_ALLOWLIST = [
   'NEXT_PUBLIC_SUPABASE_URL',

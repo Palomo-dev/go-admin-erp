@@ -96,6 +96,8 @@ const TABLA: Record<string, Fila> = {
   aplicado: S('exito'),
   aplicada: S('exito'),
   // Vencida · Rechazada · Fallido · Perdida · Error
+  expirada: S('peligro'),
+  expired: S('peligro'),
   vencida: S('peligro'),
   vencido: S('peligro'),
   overdue: S('peligro'),
@@ -275,6 +277,7 @@ const ETIQUETA_DB: Record<string, string> = {
   confirmed: 'Confirmado',
   open: 'Abierta',
   overdue: 'Vencida',
+  expired: 'Expirada',
   rejected: 'Rechazada',
   failed: 'Fallido',
   lost: 'Perdida',

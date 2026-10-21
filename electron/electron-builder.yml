@@ -97,6 +97,16 @@ files:
   - dist/**/*
   - build/**/*
   - package.json
+  # @sentry/replay (lo carga @sentry/browser) hace require('@sentry/browser-utils')
+  # y Node lo busca en node_modules/@sentry/browser-utils. electron-builder, en
+  # cambio, solo lo anida bajo @sentry/browser/node_modules: en 0.2.9 Sentry no
+  # arrancaba («Cannot find module»). Un glob dentro de `files` no entra a
+  # node_modules; esta copia sí lo deja en la ruta que el require resuelve,
+  # dentro del asar. También es dependencia directa en package.json.
+  - from: node_modules/@sentry/browser-utils
+    to: node_modules/@sentry/browser-utils
+    filter:
+      - "**/*"
 
 # Desempaquetar el icono del asar para que Windows pueda usarlo como
 # icono de ventana (BrowserWindow.icon) y de la bandeja del sistema (Tray).

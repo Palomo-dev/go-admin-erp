@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cancelSubscription, reactivateSubscription } from '@/lib/stripe/subscriptionService';
+import { parcheSuscripcionAusente } from '@/lib/stripe/suscripcionAusente';
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { getServiceClient } from '@/lib/supabase/server-service';
@@ -80,7 +81,33 @@ export async function POST(request: NextRequest) {
           : subscription.current_period_end ?? null;
       if (subscription.stripe_subscription_id) {
         result = await cancelSubscription(subscription.stripe_subscription_id, immediate);
-        
+
+        if (result.success && 'missingInStripe' in result && result.missingInStripe) {
+          const ahora = new Date().toISOString();
+          const { error: errorCierre } = await getServiceClient()
+            .from('subscriptions')
+            .update(parcheSuscripcionAusente(subscription, ahora))
+            .eq('id', subscription.id)
+            .eq('organization_id', organizationId);
+          if (errorCierre) {
+            console.error('[subscriptions/cancel] no se pudo cerrar la fila ausente', errorCierre.message);
+            return NextResponse.json(
+              { error: 'No se pudo marcar la suscripción como cancelada', code: 'resource_missing' },
+              { status: 500 }
+            );
+          }
+          console.warn('[subscriptions/cancel] la suscripción no existe en la cuenta de Stripe', {
+            organizationId,
+            subscriptionRowId: subscription.id,
+          });
+          return NextResponse.json({
+            success: true,
+            message: 'La suscripción no estaba en Stripe; quedó cancelada.',
+            action,
+            missingInStripe: true,
+          });
+        }
+
         if (result.success) {
           await getServiceClient()
             .from('subscriptions')
@@ -117,10 +144,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!result?.success) {
-      return NextResponse.json(
-        { error: result?.error || 'Error procesando la solicitud' },
-        { status: 500 }
-      );
+      const error = result && 'error' in result && typeof result.error === 'string'
+        ? result.error
+        : 'Error procesando la solicitud';
+      const code = result && 'code' in result && typeof result.code === 'string' ? result.code : undefined;
+      return NextResponse.json({ error, code }, { status: 500 });
     }
 
     return NextResponse.json({

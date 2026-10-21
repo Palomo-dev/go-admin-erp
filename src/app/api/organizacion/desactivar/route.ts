@@ -12,8 +12,9 @@
  *   necesariamente la activa); no es un dato de confianza:
  *   `getServerOrgContextFor` exige sesión y membresía ACTIVA en ella;
  * - permiso: administrador (super admin o rol 1/2), igual que `requireOrgAdmin`;
- * - las reglas (solo `active`, 409 `SUSCRIPCION_VIVA` si Stripe sigue
- *   cobrando) viven en `organizacionEstadoService`, igual que las de reactivar.
+ * - las reglas (solo `active`, 409 `SUSCRIPCION_VIVA` si Stripe va a
+ *   cobrar) viven en `organizacionEstadoService`. Un id de otra cuenta o
+ *   una prueba sin tarjeta no bloquean.
  */
 import { NextResponse } from 'next/server';
 import { getServerOrgContextFor, requireOrgAdmin, OrgContextError } from '@/lib/utils/orgContext';

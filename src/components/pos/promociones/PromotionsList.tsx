@@ -140,9 +140,13 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
   const getDiscountDisplay = (promo: Promotion) => {
     switch (promo.promotion_type) {
       case 'percentage':
-        return `${promo.discount_value}%`;
+        return promo.repeat_every_quantity
+          ? `${promo.discount_value}% cada ${promo.repeat_every_quantity}`
+          : `${promo.discount_value}%`;
       case 'fixed_amount':
-        return formatear(promo.discount_value || 0);
+        return promo.repeat_every_quantity
+          ? `${formatear(promo.discount_value || 0)} cada ${promo.repeat_every_quantity}`
+          : formatear(promo.discount_value || 0);
       case 'buy_x_get_y': {
         const x = promo.buy_quantity ?? 0;
         const y = promo.get_quantity ?? 0;

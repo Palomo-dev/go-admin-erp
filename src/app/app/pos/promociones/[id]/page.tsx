@@ -210,7 +210,13 @@ export default function PromocionDetallePage() {
             buy_quantity: promotion.buy_quantity,
             get_quantity: promotion.get_quantity,
             min_purchase_amount: promotion.min_purchase_amount,
+            min_purchase_scope: promotion.min_purchase_scope ?? null,
+            min_quantity: promotion.min_quantity ?? null,
+            repeat_every_quantity: promotion.repeat_every_quantity ?? null,
             max_discount_amount: promotion.max_discount_amount,
+            start_time: promotion.start_time ?? null,
+            end_time: promotion.end_time ?? null,
+            bundle_price: promotion.bundle_price ?? null,
             applies_to: promotion.applies_to,
             start_date: promotion.start_date,
             end_date: promotion.end_date,
@@ -231,6 +237,7 @@ export default function PromocionDetallePage() {
               rule_type: r.rule_type,
               product_id: r.product_id ?? undefined,
               category_id: r.category_id ?? undefined,
+              quantity: r.quantity ?? null,
             })),
           }}
         />
@@ -360,12 +367,33 @@ export default function PromocionDetallePage() {
                 </div>
               </div>
 
-              {promotion.min_purchase_amount && (
+              {(promotion.min_purchase_amount || promotion.min_quantity || promotion.repeat_every_quantity) && (
                 <>
                   <Separator className="dark:bg-gray-700" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Compra Mínima</h4>
-                    <p className="dark:text-white">{formatear(promotion.min_purchase_amount)}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {promotion.min_quantity != null && promotion.min_quantity > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Cantidad mínima</h4>
+                        <p className="dark:text-white">{promotion.min_quantity} unidades</p>
+                      </div>
+                    )}
+                    {promotion.repeat_every_quantity != null && promotion.repeat_every_quantity > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Se repite cada</h4>
+                        <p className="dark:text-white">{promotion.repeat_every_quantity} unidades</p>
+                      </div>
+                    )}
+                    {promotion.min_purchase_amount != null && promotion.min_purchase_amount > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Compra Mínima</h4>
+                        <p className="dark:text-white">{formatear(promotion.min_purchase_amount)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {promotion.applies_to === 'all' || promotion.min_purchase_scope === 'cart'
+                            ? 'Sobre toda la cuenta'
+                            : 'Solo sobre los productos de la promo'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -391,6 +419,11 @@ export default function PromocionDetallePage() {
                           </Badge>
                           {rule.product && <span className="dark:text-white">{rule.product.name}</span>}
                           {rule.category && <span className="dark:text-white">{rule.category.name}</span>}
+                          {promotion.promotion_type === 'bundle' && rule.rule_type === 'include_product' && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {rule.quantity != null && rule.quantity > 0 ? `${rule.quantity} por paquete` : '1 por paquete'}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

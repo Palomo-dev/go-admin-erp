@@ -21,7 +21,15 @@
  *   - vigencia: activa, canal, `start_date ≤ ahora ≤ end_date`, usos
  *     disponibles, día de la semana EN LA ZONA DE LA ORGANIZACIÓN y sucursal
  *     (`branches` jsonb: nulo o vacío = todas; número o texto);
- *   - compra mínima contra el subtotal de TODA la cuenta;
+ *   - compra mínima: toda la cuenta si `applies_to` es `all` o
+ *     `min_purchase_scope` es `cart`; si la promo es por productos,
+ *     categorías o marcas, solo el subtotal de las líneas que entran;
+ *   - cantidad mínima (`min_quantity`): suma de unidades de esas líneas.
+ *     Solo porcentaje, monto fijo y paquete. Compra X Lleva Y no la mira;
+ *   - repetir cada N (`repeat_every_quantity`) en porcentaje y monto fijo:
+ *     floor(unidades / N) veces el valor. En porcentaje, el sobrante queda
+ *     a precio normal. En monto fijo, el total se reparte entre las líneas
+ *     que entran y se topa a su subtotal;
  *   - no combinables: gana la que MÁS descuenta en esta cuenta (empate:
  *     mayor prioridad y luego la más antigua por `created_at`), y compite
  *     contra la suma de las combinables. Una no combinable que no toca la
@@ -34,8 +42,10 @@
  *     Si Y ≥ X, Y son gratis además de las X que se pagan;
  *   - franja `start_time` / `end_time` en la zona de la organización (si el
  *     fin es menor que el inicio, cruza la medianoche);
- *   - bundle: con `bundle_price` > 0 y los productos incluidos en la cuenta,
- *     el descuento es la diferencia; si no hay precio, el porcentaje.
+ *   - bundle: con `bundle_price` > 0, cada producto incluido aporta
+ *     `quantity` unidades por paquete (nulo = 1) y el precio se cobra por
+ *     cada paquete completo. El sobrante va a precio normal. Sin productos
+ *     incluidos, el precio de paquete no se aplica. Sin precio, el porcentaje.
  *
  * Diferencias que QUEDAN con el sitio (2026-10-07), a cerrar en ese repo:
  *   1. Redondeo: aquí a centavos; el sitio, a pesos enteros (`Math.round`).
@@ -65,6 +75,8 @@ export interface ReglaPromocion {
   rule_type: string;
   product_id?: number | null;
   category_id?: number | null;
+  /** Unidades de este producto en un paquete. Nulo = 1. */
+  quantity?: number | string | null;
 }
 
 /**
@@ -79,6 +91,12 @@ export interface FilaPromocion {
   buy_quantity?: number | string | null;
   get_quantity?: number | string | null;
   min_purchase_amount?: number | string | null;
+  /** `eligible` = líneas de la promo. `cart` = toda la cuenta. Nulo = se deriva. */
+  min_purchase_scope?: string | null;
+  /** Unidades mínimas de las líneas que entran. Solo porcentaje, monto fijo y paquete. */
+  min_quantity?: number | string | null;
+  /** Repite el descuento cada N unidades. Nulo = una sola vez. */
+  repeat_every_quantity?: number | string | null;
   max_discount_amount?: number | string | null;
   applies_to: string;
   start_date?: string | null;
@@ -155,6 +173,25 @@ const num = (v: unknown): number => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 };
+
+/** Entero mayor que cero. Vacío, cero o negativo = no configurado. */
+export function enteroPositivo(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Math.trunc(Number(v));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export type AlcanceCompraMinima = 'eligible' | 'cart';
+
+/**
+ * Dónde se mide `min_purchase_amount`. `cart` explícito, o `applies_to = all`
+ * cuando el alcance viene nulo: toda la cuenta. En productos, categorías o
+ * marcas, el subtotal de las líneas que entran en la promo.
+ */
+export function alcanceCompraMinima(p: FilaPromocion): AlcanceCompraMinima {
+  if (p.min_purchase_scope === 'cart' || p.min_purchase_scope === 'eligible') return p.min_purchase_scope;
+  return p.applies_to === 'all' ? 'cart' : 'eligible';
+}
 const centavos = (n: number): number => Math.round(n * 100) / 100;
 const totalLinea = (l: LineaPromocion): number => num(l.unit_price) * num(l.quantity);
 
@@ -276,6 +313,85 @@ function repartir(monto: number, pesos: Array<[number, number]>): Map<number, nu
   return out;
 }
 
+function unidadesDe(lineas: LineaPromocion[], indices: number[]): number {
+  return indices.reduce((s, i) => s + num(lineas[i].quantity), 0);
+}
+
+/** Porcentaje, monto fijo y paquete. Compra X Lleva Y no mira `min_quantity`. */
+function cumpleCantidadMinima(p: FilaPromocion, lineas: LineaPromocion[], indices: number[]): boolean {
+  if (p.promotion_type !== 'percentage' && p.promotion_type !== 'fixed_amount' && p.promotion_type !== 'bundle') {
+    return true;
+  }
+  const minimo = enteroPositivo(p.min_quantity);
+  if (minimo == null) return true;
+  return unidadesDe(lineas, indices) >= minimo;
+}
+
+function requisitosPaquete(p: FilaPromocion): Array<{ productId: number; porPaquete: number }> {
+  const map = new Map<number, number>();
+  for (const r of reglasDe(p)) {
+    if (r.rule_type !== 'include_product' || r.product_id == null) continue;
+    const q = enteroPositivo(r.quantity) ?? 1;
+    map.set(r.product_id, Math.max(map.get(r.product_id) ?? 0, q));
+  }
+  return Array.from(map.entries()).map(([productId, porPaquete]) => ({ productId, porPaquete }));
+}
+
+/** La línea cuenta para un solo producto del paquete. El id exacto gana sobre el padre. */
+function destinoPaquete(linea: LineaPromocion, requisitos: Array<{ productId: number }>): number | null {
+  if (requisitos.some((r) => r.productId === linea.product_id)) return linea.product_id;
+  if (linea.parent_product_id != null && requisitos.some((r) => r.productId === linea.parent_product_id)) {
+    return linea.parent_product_id;
+  }
+  return null;
+}
+
+/**
+ * Precio del paquete por cada grupo completo. El sobrante se queda a precio
+ * normal. Sin productos incluidos no se aplica un solo precio a toda la cuenta.
+ */
+function descuentoPorPaquetes(
+  p: FilaPromocion,
+  lineas: LineaPromocion[],
+  indices: number[],
+  precioPaquete: number,
+): Map<number, number> {
+  const requisitos = requisitosPaquete(p);
+  if (requisitos.length === 0 || !(precioPaquete > 0)) return new Map();
+
+  const asignadas = new Map<number, number[]>();
+  for (const idx of indices) {
+    const dest = destinoPaquete(lineas[idx], requisitos);
+    if (dest == null) continue;
+    const arr = asignadas.get(dest) ?? [];
+    arr.push(idx);
+    asignadas.set(dest, arr);
+  }
+
+  let paquetes = Number.POSITIVE_INFINITY;
+  for (const req of requisitos) {
+    const qty = (asignadas.get(req.productId) ?? []).reduce((s, i) => s + num(lineas[i].quantity), 0);
+    paquetes = Math.min(paquetes, Math.floor(qty / req.porPaquete));
+  }
+  if (!Number.isFinite(paquetes) || paquetes <= 0) return new Map();
+
+  const consumido = new Map<number, number>();
+  for (const req of requisitos) {
+    let faltan = paquetes * req.porPaquete;
+    for (const idx of asignadas.get(req.productId) ?? []) {
+      if (faltan <= 0) break;
+      const toman = Math.min(num(lineas[idx].quantity), faltan);
+      const valor = centavos(toman * num(lineas[idx].unit_price));
+      if (valor > 0) consumido.set(idx, centavos((consumido.get(idx) ?? 0) + valor));
+      faltan -= toman;
+    }
+  }
+  const valorConsumido = centavos(Array.from(consumido.values()).reduce((s, v) => s + v, 0));
+  const descuento = centavos(valorConsumido - centavos(paquetes * precioPaquete));
+  if (!(descuento > 0)) return new Map();
+  return repartir(descuento, Array.from(consumido.entries()));
+}
+
 export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], indices: number[]): CalculoPromocion {
   let porLinea = new Map<number, number>();
   const valor = num(p.discount_value);
@@ -287,27 +403,42 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
   };
 
   switch (p.promotion_type) {
-    case 'percentage':
-      for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
+    case 'percentage': {
+      const cada = enteroPositivo(p.repeat_every_quantity);
+      if (cada == null) {
+        for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
+      } else {
+        let quedan = Math.floor(unidadesDe(lineas, indices) / cada) * cada;
+        for (const idx of indices) {
+          if (quedan <= 0) break;
+          const toman = Math.min(num(lineas[idx].quantity), quedan);
+          sumar(idx, (toman * num(lineas[idx].unit_price) * valor) / 100);
+          quedan -= toman;
+        }
+      }
       break;
+    }
     case 'bundle': {
       const precioPaquete = num(p.bundle_price);
-      const requeridos = reglasDe(p)
-        .filter((r) => r.rule_type === 'include_product' && r.product_id != null)
-        .map((r) => r.product_id as number);
-      const presentes = new Set(indices.map((i) => lineas[i].product_id));
-      const cubre = requeridos.length === 0 || requeridos.every((id) => presentes.has(id));
-      if (precioPaquete > 0 && cubre && subtotal > precioPaquete) {
-        porLinea = repartir(centavos(subtotal - precioPaquete), pesos);
-      } else if (!(precioPaquete > 0) && valor > 0) {
+      if (precioPaquete > 0) {
+        porLinea = descuentoPorPaquetes(p, lineas, indices, precioPaquete);
+      } else if (valor > 0) {
         for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
       }
       break;
     }
-    case 'fixed_amount':
-      // UN monto por cuenta, repartido; nunca más que lo aplicable.
-      if (valor > 0 && subtotal > 0) porLinea = repartir(Math.min(valor, subtotal), pesos);
+    case 'fixed_amount': {
+      // Un monto por cuenta, o floor(unidades/N) veces ese monto. Repartido
+      // entre las líneas que entran y nunca más que su subtotal.
+      const cada = enteroPositivo(p.repeat_every_quantity);
+      let monto = valor;
+      if (cada != null) {
+        const grupos = Math.floor(unidadesDe(lineas, indices) / cada);
+        monto = grupos > 0 ? centavos(grupos * valor) : 0;
+      }
+      if (monto > 0 && subtotal > 0) porLinea = repartir(Math.min(monto, subtotal), pesos);
       break;
+    }
     case 'buy_x_get_y': {
       const x = Math.trunc(num(p.buy_quantity));
       const y = Math.trunc(num(p.get_quantity));
@@ -385,15 +516,19 @@ export function evaluarPromociones(
   const dia = diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria);
   const subtotalCuenta = lineas.reduce((s, l, i) => s + (validas[i] ? totalLinea(l) : 0), 0);
 
-  const elegibles = promociones
-    .filter((p) => promocionVigente(p, ctx, dia))
-    .filter((p) => !(num(p.min_purchase_amount) > 0 && subtotalCuenta < num(p.min_purchase_amount)))
-    .sort(compararPrioridad);
+  const elegibles = promociones.filter((p) => promocionVigente(p, ctx, dia)).sort(compararPrioridad);
 
   const calculos = new Map<string, { promo: FilaPromocion; indices: number[]; calc: CalculoPromocion }>();
   for (const p of elegibles) {
     const indices = lineas.map((_, i) => i).filter((i) => validas[i] && lineaCumpleReglas(lineas[i], p));
     if (indices.length === 0) continue;
+    const minimo = num(p.min_purchase_amount);
+    if (minimo > 0) {
+      const base =
+        alcanceCompraMinima(p) === 'cart' ? subtotalCuenta : indices.reduce((s, i) => s + totalLinea(lineas[i]), 0);
+      if (base < minimo) continue;
+    }
+    if (!cumpleCantidadMinima(p, lineas, indices)) continue;
     const calc = calcularPromocion(p, lineas, indices);
     if (calc.total > 0) calculos.set(p.id, { promo: p, indices, calc });
   }

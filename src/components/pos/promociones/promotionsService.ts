@@ -13,6 +13,7 @@ import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
 import { getDayRange } from '@/lib/utils/dateRanges';
 import { avisarCambioPromociones } from '@/lib/pos/venta/avisosPromociones';
+import { cantidadDeRegla, prepararPromocion } from '@/lib/promotions/prepararPromocion';
 
 // ============================================================
 // Vigencias en zona de la organizacion (Fase B, tanda 4).
@@ -94,6 +95,7 @@ export class PromotionsService {
             rule_type,
             product_id,
             category_id,
+            quantity,
             created_at
           )
         `)
@@ -163,6 +165,7 @@ export class PromotionsService {
             rule_type,
             product_id,
             category_id,
+            quantity,
             created_at
           )
         `)
@@ -222,7 +225,7 @@ export class PromotionsService {
       const { data: userData } = await supabase.auth.getUser();
 
       const { rules, ...promotionData } = data;
-      const limpia = limpiarFranjaYPaquete(promotionData);
+      const limpia = prepararPromocion(limpiarFranjaYPaquete(promotionData));
       const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
       const { data: result, error } = await supabase
@@ -247,7 +250,7 @@ export class PromotionsService {
 
       // Crear reglas si existen
       if (rules && rules.length > 0) {
-        await this.createRules(result.id, rules);
+        await this.createRules(result.id, rules, data.promotion_type);
       }
 
       avisarCambioPromociones();
@@ -265,7 +268,7 @@ export class PromotionsService {
     try {
       const organizationId = this.getOrganizationId();
       const { rules, ...promotionData } = data;
-      const limpia = limpiarFranjaYPaquete(promotionData);
+      const limpia = prepararPromocion(limpiarFranjaYPaquete(promotionData));
       const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
       const { data: result, error } = await supabase
@@ -295,7 +298,7 @@ export class PromotionsService {
 
         // Crear nuevas reglas
         if (rules.length > 0) {
-          await this.createRules(id, rules);
+          await this.createRules(id, rules, data.promotion_type);
         }
       }
 
@@ -310,12 +313,17 @@ export class PromotionsService {
   /**
    * Crear reglas de promoción
    */
-  private static async createRules(promotionId: string, rules: CreatePromotionRuleData[]): Promise<void> {
+  private static async createRules(
+    promotionId: string,
+    rules: CreatePromotionRuleData[],
+    tipo?: string,
+  ): Promise<void> {
     const rulesData = rules.map(rule => ({
       promotion_id: promotionId,
       rule_type: rule.rule_type,
       product_id: rule.product_id || null,
-      category_id: rule.category_id || null
+      category_id: rule.category_id || null,
+      quantity: cantidadDeRegla(rule, tipo),
     }));
 
     const { error } = await supabase
@@ -375,7 +383,8 @@ export class PromotionsService {
         rules: rules?.map(r => ({
           rule_type: r.rule_type,
           product_id: r.product_id,
-          category_id: r.category_id
+          category_id: r.category_id,
+          quantity: r.quantity,
         }))
       });
     } catch (error) {

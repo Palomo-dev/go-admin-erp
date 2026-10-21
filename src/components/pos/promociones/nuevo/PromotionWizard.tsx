@@ -38,6 +38,7 @@ import {
   PromotionType,
   AppliesTo,
   CreatePromotionRuleData,
+  MinPurchaseScope,
   RuleType,
   RuleTypeDB,
   PROMOTION_TYPE_LABELS,
@@ -106,6 +107,20 @@ function ayudaCompraLleva(compra: number | undefined, lleva: number | undefined)
   return 'Si Y es menor que X, el cliente lleva X y paga Y (3 y 2 se muestra como 3x2). Si Y es mayor o igual que X, Y son unidades gratis además de las X que se pagan.';
 }
 
+function enteroDelCampo(valor: string): number | null {
+  if (valor.trim() === '') return null;
+  const n = Math.trunc(Number(valor));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Sobre qué subtotal se compara la compra mínima. */
+function textoCompraMinima(aplicaA: AppliesTo | undefined, alcance: MinPurchaseScope | null | undefined): string {
+  if (aplicaA === 'all' || alcance === 'cart') {
+    return 'Se mide sobre el subtotal de toda la cuenta, antes de esta promo.';
+  }
+  return 'Se mide solo sobre los productos o categorías de esta promo, no sobre el resto de la cuenta.';
+}
+
 export function PromotionWizard({ initialData, promotionId, onSuccess }: PromotionWizardProps) {
   const router = useRouter();
   // `promotions.start_date` / `.end_date` son timestamptz. En el formulario se
@@ -128,6 +143,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     buy_quantity: 2,
     get_quantity: 1,
     min_purchase_amount: undefined,
+    min_purchase_scope: null,
+    min_quantity: null,
+    repeat_every_quantity: null,
     max_discount_amount: undefined,
     applies_to: 'all',
     start_date: getToday(),
@@ -168,6 +186,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [ruleType, setRuleType] = useState<'include' | 'exclude'>(
     reglasIniciales.some((r) => r.rule_type.startsWith('exclude')) ? 'exclude' : 'include'
   );
+  const [cantidadesPaquete, setCantidadesPaquete] = useState<Record<number, number>>(() => {
+    const cantidades: Record<number, number> = {};
+    for (const regla of reglasIniciales) {
+      if (regla.product_id == null || regla.quantity == null) continue;
+      const n = Math.trunc(Number(regla.quantity));
+      if (Number.isFinite(n) && n > 0) cantidades[regla.product_id] = n;
+    }
+    return cantidades;
+  });
 
   useEffect(() => {
     loadProducts();
@@ -254,9 +281,29 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
         }
         setErrorFechaFin(null);
         return true;
+      case 3:
+        return validarPaquete();
       default:
         return true;
     }
+  };
+
+  const validarPaquete = (): boolean => {
+    const precio = Number(formData.bundle_price) || 0;
+    if (formData.promotion_type !== 'bundle' || precio <= 0) return true;
+    if (formData.applies_to !== 'products') {
+      toast.error('Un paquete con precio aplica a productos específicos');
+      return false;
+    }
+    if (ruleType !== 'include') {
+      toast.error('El paquete debe incluir productos, no excluirlos');
+      return false;
+    }
+    if (selectedProducts.length === 0) {
+      toast.error('Indica al menos un producto del paquete');
+      return false;
+    }
+    return true;
   };
 
   const nextStep = () => {
@@ -283,7 +330,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     if (formData.applies_to === 'products') {
       const dbRuleType = mapRuleType(formData.applies_to, ruleType);
       selectedProducts.forEach(productId => {
-        rules.push({ rule_type: dbRuleType, product_id: productId });
+        const esPaquete = formData.promotion_type === 'bundle' && ruleType === 'include';
+        const pedida = cantidadesPaquete[productId];
+        rules.push({
+          rule_type: dbRuleType,
+          product_id: productId,
+          quantity: esPaquete ? (pedida != null && pedida > 0 ? Math.trunc(pedida) : 1) : null,
+        });
       });
     } else if (formData.applies_to === 'categories') {
       const dbRuleType = mapRuleType(formData.applies_to, ruleType);
@@ -565,7 +618,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               {formData.promotion_type === 'bundle' && (
                 <div className="space-y-3">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Precio del paquete o porcentaje. Si hay precio y en Reglas marcaste productos a incluir, el descuento es la diferencia cuando todos están en la cuenta. Sin precio, se aplica el porcentaje.
+                    El precio se cobra por cada paquete completo. Las unidades de cada producto se indican en Reglas. Lo que sobre se cobra a precio normal. Sin precio, se aplica el porcentaje.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -597,7 +650,41 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 </div>
               )}
 
-              <div>
+              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount' || formData.promotion_type === 'bundle') && (
+                <div>
+                  <Label className="dark:text-gray-200">Cantidad mínima (unidades)</Label>
+                  <Input
+                    type="number"
+                    value={formData.min_quantity ?? ''}
+                    onChange={(e) => handleChange('min_quantity', enteroDelCampo(e.target.value))}
+                    min={1}
+                    placeholder="Sin mínimo"
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Suma de las unidades de los productos de esta promo. Si no llegan, la promo no aplica. Para regalar una unidad al llevar 2, usa Compra X Lleva Y con X = 2 e Y = 1.
+                  </p>
+                </div>
+              )}
+
+              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
+                <div>
+                  <Label className="dark:text-gray-200">Repetir cada N unidades (opcional)</Label>
+                  <Input
+                    type="number"
+                    value={formData.repeat_every_quantity ?? ''}
+                    onChange={(e) => handleChange('repeat_every_quantity', enteroDelCampo(e.target.value))}
+                    min={1}
+                    placeholder="Una sola vez"
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Vacío: el descuento se aplica una vez. Con un número, se multiplica por cada grupo completo. Ejemplo: −$5.000 cada 2 unidades. En porcentaje, las unidades que sobran se cobran a precio normal.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
                 <Label className="dark:text-gray-200">Compra Mínima (opcional)</Label>
                 <Input
                   type="number"
@@ -607,6 +694,27 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   placeholder="Sin mínimo"
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {textoCompraMinima(formData.applies_to, formData.min_purchase_scope)}
+                  {formData.applies_to === 'all'
+                    ? ' En Reglas, si eliges productos o categorías, puedes medirla solo sobre esos.'
+                    : ''}
+                </p>
+                {formData.applies_to !== 'all' && (
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                    <div>
+                      <Label className="dark:text-white">Medir la compra mínima sobre toda la cuenta</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Apagado: solo cuentan los productos o categorías de la promo.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.min_purchase_scope === 'cart'}
+                      onCheckedChange={(checked) => handleChange('min_purchase_scope', checked ? 'cart' : 'eligible')}
+                      className="data-[state=checked]:bg-blue-600"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -877,6 +985,22 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 </div>
               </div>
 
+              {formData.applies_to !== 'all' && (
+                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                  <div>
+                    <Label className="dark:text-white">Medir la compra mínima sobre toda la cuenta</Label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {textoCompraMinima(formData.applies_to, formData.min_purchase_scope)}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.min_purchase_scope === 'cart'}
+                    onCheckedChange={(checked) => handleChange('min_purchase_scope', checked ? 'cart' : 'eligible')}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+              )}
+
               {formData.applies_to === 'products' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
@@ -958,13 +1082,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                                 )}
                                 {groupProducts.map((product) => {
                                   const variantLabel = getVariantLabel(product);
+                                  const marcado = selectedProducts.includes(product.id);
+                                  const pideCantidad = formData.promotion_type === 'bundle' && ruleType === 'include' && marcado;
                                   return (
-                                    <label
+                                    <div
                                       key={product.id}
-                                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
                                     >
                                       <Checkbox
-                                        checked={selectedProducts.includes(product.id)}
+                                        checked={marcado}
                                         onCheckedChange={(checked) => {
                                           if (checked) {
                                             setSelectedProducts([...selectedProducts, product.id]);
@@ -973,15 +1099,41 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                                           }
                                         }}
                                       />
-                                      <div className="flex-1 min-w-0">
+                                      <button
+                                        type="button"
+                                        className="flex-1 min-w-0 text-left"
+                                        onClick={() => {
+                                          if (marcado) {
+                                            setSelectedProducts(selectedProducts.filter(id => id !== product.id));
+                                          } else {
+                                            setSelectedProducts([...selectedProducts, product.id]);
+                                          }
+                                        }}
+                                      >
                                         <span className="dark:text-white block break-words whitespace-normal">
                                           {hasVariants && variantLabel ? variantLabel : product.name}
                                         </span>
                                         <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">
                                           {product.sku}
                                         </span>
-                                      </div>
-                                    </label>
+                                      </button>
+                                      {pideCantidad && (
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          aria-label={`Unidades de ${product.name} en el paquete`}
+                                          value={cantidadesPaquete[product.id] ?? 1}
+                                          onChange={(e) => {
+                                            const n = Math.trunc(Number(e.target.value));
+                                            setCantidadesPaquete((prev) => ({
+                                              ...prev,
+                                              [product.id]: Number.isFinite(n) && n > 0 ? n : 1,
+                                            }));
+                                          }}
+                                          className="w-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        />
+                                      )}
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -1005,9 +1157,12 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                         const label = product.parent_name && variantLabel
                           ? `${product.parent_name} · ${variantLabel}`
                           : product.name;
+                        const unidades = formData.promotion_type === 'bundle' && ruleType === 'include'
+                          ? (cantidadesPaquete[id] ?? 1)
+                          : null;
                         return (
                           <Badge key={id} variant="secondary" className="dark:bg-gray-700">
-                            {label}
+                            {unidades != null ? `${label} × ${unidades}` : label}
                           </Badge>
                         );
                       })}

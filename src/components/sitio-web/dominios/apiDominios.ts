@@ -20,6 +20,7 @@ import type {
   RespuestaDominios,
   RespuestaVerificacion,
 } from './tiposDominios';
+import type { EstadoCorreoTienda } from '@/lib/services/website/dominios/correoTiendaReglas';
 
 export const RUTA_API_DOMINIOS = '/api/sitio-web/dominios';
 
@@ -74,6 +75,8 @@ export const apiDominios = {
   detalle: (id: string) => pedir<RespuestaDetalleDominio>(rutaId(id)),
   conectar: (host: string, sedeId?: number | null) => pedir<RespuestaConectar>(RUTA_API_DOMINIOS, { method: 'POST', body: { host, ...(sedeId ? { sedeId } : {}) } }),
   verificar: (id: string) => pedir<RespuestaVerificacion>(`${rutaId(id)}/verificar`, { method: 'POST' }),
+  correoLeer: (id: string) => pedir<EstadoCorreoTienda>(`${rutaId(id)}/correo`),
+  correoVerificar: (id: string) => pedir<EstadoCorreoTienda>(`${rutaId(id)}/correo`, { method: 'POST' }),
   hacerPrincipal: (id: string) => pedir<{ dominio: DominioSitio }>(rutaId(id), { method: 'PATCH', body: { principal: true } }),
   autoRenovar: (id: string, encender: boolean) => pedir<{ dominio: DominioSitio }>(rutaId(id), { method: 'PATCH', body: { autoRenovar: encender } }),
   quitar: (id: string) => pedir<{ ok: true }>(rutaId(id), { method: 'DELETE' }),

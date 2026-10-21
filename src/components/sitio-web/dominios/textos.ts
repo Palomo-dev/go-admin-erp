@@ -344,6 +344,7 @@ export const TEXTOS_DOMINIOS = {
     correoVerificado: 'Activo',
     correoPendiente: 'Verificando',
     correoFallido: 'Error',
+    correoLimitePlan: 'El plan de correo no admite más dominios. Cuando se amplíe, pulsa Reintentar.',
     correoSinConfigurar: 'Configurando',
     correoRespaldo: 'Mientras tanto los pedidos salen de pedidos@goadmin.io.',
     correoEnUnosMinutos: 'Tu correo de pedidos quedará como {desde} en unos minutos.',

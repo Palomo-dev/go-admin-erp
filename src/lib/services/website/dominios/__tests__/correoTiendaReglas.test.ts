@@ -1,8 +1,11 @@
 import {
+  MENSAJE_LIMITE_PLAN,
   VALOR_DMARC,
   debePublicar,
   dominioDeEnvio,
+  esAvisoLimitePlan,
   esperaReintentoMs,
+  falloAlCrearDominio,
   hostDeZona,
   nombreRelativo,
   registrosDeProveedor,
@@ -49,6 +52,23 @@ describe('correo de pedidos de la tienda', () => {
       registros[0],
       'tienda.example',
     )).toBe(false);
+  });
+
+  test('el límite del plan no se reintenta y cualquier otro fallo sí deja el mensaje', () => {
+    const limite = falloAlCrearDominio(403, {
+      name: 'validation_error',
+      message: 'You have reached the domain limit of your plan. Upgrade to add more.',
+    });
+    expect(limite.limitePlan).toBe(true);
+    expect(limite.mensaje.startsWith(MENSAJE_LIMITE_PLAN)).toBe(true);
+    expect(limite.mensaje).toContain('validation_error');
+    expect(esAvisoLimitePlan(limite.mensaje)).toBe(true);
+    expect(falloAlCrearDominio(403, { message: 'API key is invalid' }).limitePlan).toBe(false);
+    expect(falloAlCrearDominio(500, { message: 'timeout del proveedor' })).toEqual({
+      limitePlan: false,
+      mensaje: 'timeout del proveedor',
+    });
+    expect(falloAlCrearDominio(0, null).mensaje).toBe('El proveedor no creó el dominio.');
   });
 
   test('el reintento espera el doble y a las 72 horas se rinde', () => {

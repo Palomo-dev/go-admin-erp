@@ -73,6 +73,39 @@ export function vencioPlazo(desde: string | Date, ahora: Date): boolean {
   return ahora.getTime() - t >= PLAZO_CORREO_MS;
 }
 
+/** Lo que ve la tienda. El detalle del proveedor va después, en el mismo texto. */
+export const MENSAJE_LIMITE_PLAN = 'El plan de correo no admite más dominios.';
+
+export function textoDeProveedor(json: unknown): string {
+  if (!json || typeof json !== 'object') return '';
+  const cuerpo = json as { name?: unknown; message?: unknown; error?: unknown };
+  const anidado = cuerpo.error && typeof cuerpo.error === 'object'
+    ? cuerpo.error as { name?: unknown; message?: unknown }
+    : null;
+  const name = typeof cuerpo.name === 'string' ? cuerpo.name : typeof anidado?.name === 'string' ? anidado.name : '';
+  const message = typeof cuerpo.message === 'string' ? cuerpo.message : typeof anidado?.message === 'string' ? anidado.message : '';
+  return [name, message].map((parte) => parte.trim()).filter(Boolean).join(': ').slice(0, 400);
+}
+
+/** 403/422 por cupo del plan. Una clave inválida no entra aquí. */
+export function esAvisoLimitePlan(error: string | null | undefined): boolean {
+  if (!error) return false;
+  const texto = error.toLowerCase();
+  return texto.includes('domain limit') || texto.includes('no admite más dominios') || texto.includes('no admite mas dominios');
+}
+
+export function falloAlCrearDominio(status: number, json: unknown): { mensaje: string; limitePlan: boolean } {
+  const crudo = textoDeProveedor(json);
+  const limitePlan = (status === 403 || status === 422) && esAvisoLimitePlan(crudo);
+  if (limitePlan) {
+    const mensaje = crudo.startsWith(MENSAJE_LIMITE_PLAN) ? crudo : `${MENSAJE_LIMITE_PLAN} ${crudo}`.trim();
+    return { limitePlan: true, mensaje: mensaje.slice(0, 500) };
+  }
+  if (crudo) return { limitePlan: false, mensaje: crudo };
+  if (!status) return { limitePlan: false, mensaje: 'El proveedor no creó el dominio.' };
+  return { limitePlan: false, mensaje: `El proveedor no creó el dominio (${status}).` };
+}
+
 export function nombreRelativo(nombre: string, zona: string): string {
   const n = (nombre || '').trim().toLowerCase().replace(/\.$/, '');
   const z = (zona || '').trim().toLowerCase().replace(/\.$/, '');

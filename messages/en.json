@@ -32689,6 +32689,7 @@
         "correoVerificado": "Active",
         "correoPendiente": "Verifying",
         "correoFallido": "Error",
+        "correoLimitePlan": "The email plan cannot take more domains. When it is raised, press Retry.",
         "correoSinConfigurar": "Configuring",
         "correoRespaldo": "Until then, orders are sent from pedidos@goadmin.io.",
         "correoEnUnosMinutos": "Your order email will be {desde} in a few minutes.",

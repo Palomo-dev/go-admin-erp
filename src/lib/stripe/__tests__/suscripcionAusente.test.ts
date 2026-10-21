@@ -1,7 +1,8 @@
-import { respuestaDeErrorAlCancelar } from '@/lib/stripe/erroresStripe';
+import { esSuscripcionAusente, respuestaDeErrorAlCancelar } from '@/lib/stripe/erroresStripe';
 import { exigeClaveLive, modoDeClaveStripe, validarModoClaveStripe } from '@/lib/stripe/modoClave';
 import {
   accionAlDesactivar,
+  cierreTocoFila,
   parcheSuscripcionAusente,
   suscripcionCobrara,
   tieneMedioDeCobro,
@@ -25,17 +26,32 @@ describe('modo de la clave de Stripe', () => {
 });
 
 describe('cancelar cuando el id no está en la cuenta', () => {
-  it('resource_missing es éxito con missingInStripe; otro error conserva el code', () => {
-    expect(respuestaDeErrorAlCancelar({ code: 'resource_missing', message: 'No such subscription' })).toEqual({
+  it('resource_missing de la suscripción es éxito; un cupón ausente no olvida el id', () => {
+    expect(respuestaDeErrorAlCancelar({ code: 'resource_missing', statusCode: 404, param: 'id', message: 'No such subscription' })).toEqual({
       success: true,
       missingInStripe: true,
     });
-    expect(respuestaDeErrorAlCancelar({ raw: { code: 'resource_missing' }, message: 'No such subscription' }).success).toBe(true);
+    expect(esSuscripcionAusente({ code: 'resource_missing', statusCode: 404, param: 'subscription' })).toBe(true);
+    expect(respuestaDeErrorAlCancelar({ raw: { code: 'resource_missing', statusCode: 404 }, message: 'No such subscription' }).success).toBe(true);
+    expect(esSuscripcionAusente({ code: 'resource_missing' })).toBe(false);
+    expect(esSuscripcionAusente({ code: 'resource_missing', statusCode: 400, param: 'coupon' })).toBe(false);
+    expect(respuestaDeErrorAlCancelar(Object.assign(new Error('No such coupon'), { code: 'resource_missing', statusCode: 400, param: 'coupon' }))).toEqual({
+      success: false,
+      code: 'resource_missing',
+      error: 'No such coupon',
+    });
     expect(respuestaDeErrorAlCancelar(Object.assign(new Error('tarjeta'), { code: 'card_declined' }))).toEqual({
       success: false,
       code: 'card_declined',
       error: 'tarjeta',
     });
+  });
+
+  it('cero filas no cuentan como cierre', () => {
+    expect(cierreTocoFila(null, [])).toBe(false);
+    expect(cierreTocoFila(null, null)).toBe(false);
+    expect(cierreTocoFila({ message: 'falló' }, [{ id: 1 }])).toBe(false);
+    expect(cierreTocoFila(null, [{ id: 9 }])).toBe(true);
   });
 
   it('el parche olvida el id y conserva el metadata', () => {
@@ -70,6 +86,10 @@ describe('qué suscripción bloquea desactivar', () => {
     expect(accionAlDesactivar({ existe: true, status: 'trialing', tieneMedio: false })).toBe('cancelar_prueba');
     expect(accionAlDesactivar({ existe: true, status: 'active', tieneMedio: true })).toBe('bloquear');
     expect(accionAlDesactivar({ existe: true, status: 'paused', tieneMedio: true })).toBe('bloquear');
+    expect(accionAlDesactivar({ existe: true, status: 'incomplete', tieneMedio: false })).toBe('bloquear');
+    expect(accionAlDesactivar({ existe: true, status: 'unpaid', tieneMedio: false })).toBe('bloquear');
+    expect(suscripcionCobrara({ existe: true, status: 'active', tieneMedio: true, cancelaAlFinal: true })).toBe(false);
+    expect(accionAlDesactivar({ existe: true, status: 'active', tieneMedio: true, cancelaAlFinal: true })).toBe('ya_programada');
   });
 
   it('el medio puede estar en la suscripción o en el cliente', () => {

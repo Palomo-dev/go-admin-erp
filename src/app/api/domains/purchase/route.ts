@@ -1,6 +1,6 @@
 /** Compra de dominios con Vercel Registrar y cobro en Stripe. */
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/server';
+import { requireStripe, stripe } from '@/lib/stripe/server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import {
   getServerOrgContext,
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         error: 'La compra de dominios no está disponible temporalmente.',
       }, { status: 503 });
     }
+    requireStripe();
 
     // Un reenvío tras una compra exitosa reutiliza el mismo PaymentIntent (clave
     // de idempotencia), Vercel rechaza el registro y se reembolsaría el pago

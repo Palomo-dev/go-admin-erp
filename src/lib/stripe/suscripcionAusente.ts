@@ -15,6 +15,8 @@ export interface LecturaCobro {
   existe: boolean;
   status: string;
   tieneMedio: boolean;
+  /** Stripe ya no va a renovar. Si falta, se asume que sí puede cobrar. */
+  cancelaAlFinal?: boolean;
 }
 
 export interface LectorSuscripcionStripe {
@@ -25,18 +27,29 @@ export interface LectorSuscripcionStripe {
 
 /** Solo bloquea lo que de verdad va a cobrar. */
 export function suscripcionCobrara(lectura: LecturaCobro): boolean {
-  if (!lectura.existe) return false;
+  if (!lectura.existe || lectura.cancelaAlFinal) return false;
   if (lectura.status === 'trialing' && !lectura.tieneMedio) return false;
   return lectura.status === 'active' || lectura.status === 'trialing' || lectura.status === 'past_due';
 }
 
 /** Qué hacer con una fila que en la base parece viva. `bloquear` no escribe. */
-export function accionAlDesactivar(lectura: LecturaCobro): 'ausente' | 'cancelar_prueba' | 'sincronizar' | 'bloquear' {
-  if (suscripcionCobrara(lectura)) return 'bloquear';
+export function accionAlDesactivar(
+  lectura: LecturaCobro,
+): 'ausente' | 'cancelar_prueba' | 'sincronizar' | 'ya_programada' | 'bloquear' {
   if (!lectura.existe) return 'ausente';
+  if (lectura.cancelaAlFinal) return 'ya_programada';
   if (lectura.status === 'trialing' && !lectura.tieneMedio) return 'cancelar_prueba';
   if (lectura.status === 'canceled' || lectura.status === 'incomplete_expired') return 'sincronizar';
+  // Activa, vencida, pausada, incomplete o unpaid: puede pasar a cobro.
   return 'bloquear';
+}
+
+/** El update tocó la fila. Cero filas, con error null, no es éxito. */
+export function cierreTocoFila(
+  error: { message?: string } | null | undefined,
+  filas: readonly { id?: unknown }[] | null | undefined,
+): boolean {
+  return !error && Array.isArray(filas) && filas.some((fila) => fila.id != null);
 }
 
 type RefMedio = string | { id: string } | null | undefined;
@@ -117,7 +130,7 @@ export const lectorStripeReal: LectorSuscripcionStripe = {
     try {
       sub = await stripe.subscriptions.retrieve(stripeSubscriptionId, { expand: ['customer'] });
     } catch (error) {
-      if (esSuscripcionAusente(error)) return { existe: false, status: '', tieneMedio: false };
+      if (esSuscripcionAusente(error)) return { existe: false, status: '', tieneMedio: false, cancelaAlFinal: false };
       throw error;
     }
     let cliente = clienteDe(sub.customer);
@@ -129,7 +142,12 @@ export const lectorStripeReal: LectorSuscripcionStripe = {
         if (!esSuscripcionAusente(error)) throw error;
       }
     }
-    return { existe: true, status: sub.status, tieneMedio: tieneMedioDeCobro(sub, cliente) };
+    return {
+      existe: true,
+      status: sub.status,
+      tieneMedio: tieneMedioDeCobro(sub, cliente),
+      cancelaAlFinal: sub.cancel_at_period_end === true,
+    };
   },
 
   async cancelar(stripeSubscriptionId) {

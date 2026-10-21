@@ -40,7 +40,7 @@
 
 import { NextResponse } from 'next/server'
 import { createSubscription, type CreateSubscriptionData } from '@/lib/stripe/subscriptionService'
-import { stripe } from '@/lib/stripe/server'
+import { requireStripe, stripe } from '@/lib/stripe/server'
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion'
 import { getServiceClient } from '@/lib/supabase/server-service'
 import { clienteDeAltaReclamable } from '@/lib/stripe/clienteDeAlta'
@@ -94,6 +94,7 @@ export async function POST(request: Request) {
     const existingCustomerId = texto(body.existingCustomerId)
     if (existingCustomerId) {
       if (!stripe) return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 })
+      requireStripe()
       if (!(await clienteDeAltaReclamable(stripe, existingCustomerId, customerEmail))) {
         console.warn('[stripe/create-subscription] existingCustomerId no reclamable → 403', {
           organizationId: ctx.organizationId,

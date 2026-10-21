@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/server';
+import { requireStripe, stripe } from '@/lib/stripe/server';
 import {
   getServerOrgContext,
   OrgContextError,
@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
         error: 'La verificación de pagos no está disponible temporalmente.',
       }, { status: 503 });
     }
+    requireStripe();
 
     const existingCustomers = await stripe.customers.list({ email, limit: 100 });
     let customer = existingCustomers.data.find((item) =>

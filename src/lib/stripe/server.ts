@@ -12,6 +12,10 @@ import { validarModoClaveAlArrancar } from '@/lib/stripe/modoClave'
 // Verificar que la clave secreta esté configurada
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
+// Antes de construir el cliente: producción con sk_test_ no arranca.
+// Sin clave, o durante el build, no lanza.
+if (stripeSecretKey) validarModoClaveAlArrancar();
+
 /**
  * Cliente de Stripe singleton
  * Configurado con la versión de API más reciente

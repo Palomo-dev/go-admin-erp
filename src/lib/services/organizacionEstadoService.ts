@@ -30,7 +30,8 @@ import {
   type LectorSuscripcionStripe,
 } from '@/lib/stripe/suscripcionAusente';
 
-export const ESTADOS_SUSCRIPCION_VIVOS = ['active', 'trialing', 'past_due'] as const;
+/** Hay que leerlas en Stripe. `incomplete` también: puede pasar a cobro. */
+export const ESTADOS_SUSCRIPCION_VIVOS = ['active', 'trialing', 'past_due', 'incomplete'] as const;
 
 export interface SuscripcionParaEstado {
   id?: string;
@@ -55,8 +56,7 @@ export function tieneSuscripcionStripeViva(subs: readonly SuscripcionParaEstado[
   return subs.some(
     (s) =>
       !!s.stripe_subscription_id &&
-      (ESTADOS_SUSCRIPCION_VIVOS as readonly string[]).includes(String(s.status)) &&
-      !s.cancel_at_period_end
+      (ESTADOS_SUSCRIPCION_VIVOS as readonly string[]).includes(String(s.status)),
   );
 }
 
@@ -93,23 +93,42 @@ export type ResultadoEstado = { ok: true } | { ok: false; rechazo: Rechazo };
  * de su selector, como antes). La organización ya está validada por la ruta
  * (sesión + membresía activa + administrador).
  */
-async function cerrarFilasQueNoCobran(
-  servicio: SupabaseClient,
-  organizationId: number,
+type FilaClasificada = { fila: SuscripcionParaEstado; accion: ReturnType<typeof accionAlDesactivar> };
+
+/** Lee Stripe. No escribe. `bloquear` corta antes de tocar la organización. */
+async function clasificarFilas(
   subs: readonly SuscripcionParaEstado[],
   lector: LectorSuscripcionStripe,
-): Promise<Rechazo | null> {
+): Promise<{ bloqueo: Rechazo | null; leidas: FilaClasificada[] }> {
   const candidatas = subs.filter((s) => tieneSuscripcionStripeViva([s]));
-  if (candidatas.some((s) => !s.id || !s.stripe_subscription_id)) return RECHAZO_VIVA;
-  const leidas: Array<{ fila: SuscripcionParaEstado; accion: ReturnType<typeof accionAlDesactivar> }> = [];
+  if (candidatas.some((s) => !s.id || !s.stripe_subscription_id)) return { bloqueo: RECHAZO_VIVA, leidas: [] };
+  const leidas: FilaClasificada[] = [];
   for (const fila of candidatas) {
     const lectura = await lector.leer(fila.stripe_subscription_id as string);
     leidas.push({ fila, accion: accionAlDesactivar(lectura) });
   }
-  if (leidas.some((x) => x.accion === 'bloquear')) return RECHAZO_VIVA;
+  if (leidas.some((x) => x.accion === 'bloquear')) return { bloqueo: RECHAZO_VIVA, leidas: [] };
+  return { bloqueo: null, leidas };
+}
 
+/** Corre después de ganar el update de la organización. Si esa carrera se pierde, no se llama. */
+async function aplicarCierres(
+  servicio: SupabaseClient,
+  organizationId: number,
+  leidas: readonly FilaClasificada[],
+  lector: LectorSuscripcionStripe,
+): Promise<void> {
   const ahora = new Date().toISOString();
   for (const { fila, accion } of leidas) {
+    if (accion === 'ya_programada') {
+      const { error } = await servicio
+        .from('subscriptions')
+        .update({ cancel_at_period_end: true, updated_at: ahora })
+        .eq('id', fila.id)
+        .eq('organization_id', organizationId);
+      if (error) throw new Error(`cerrar suscripción ${fila.id}: ${error.message}`);
+      continue;
+    }
     let ausente = accion === 'ausente';
     if (accion === 'cancelar_prueba') {
       const cancelacion = await lector.cancelar(fila.stripe_subscription_id as string);
@@ -138,7 +157,6 @@ async function cerrarFilasQueNoCobran(
       });
     }
   }
-  return null;
 }
 
 export async function desactivarOrganizacion(
@@ -149,26 +167,35 @@ export async function desactivarOrganizacion(
 ): Promise<ResultadoEstado> {
   const { org, subs } = await leer(servicio, organizationId);
   if (!org) return { ok: false, rechazo: { status: 404, codigo: 'NO_EXISTE', mensaje: 'Organización no encontrada' } };
-  const rechazo = rechazoDesactivar(org.status as string | null);
-  if (rechazo) return { ok: false, rechazo };
-
-  const candidatas = subs.some((s) => tieneSuscripcionStripeViva([s]));
-  if (candidatas) {
-    const usado = lector ?? lectorStripeReal;
-    const bloqueo = await cerrarFilasQueNoCobran(servicio, organizationId, subs, usado);
-    if (bloqueo) return { ok: false, rechazo: bloqueo };
+  const estado = org.status as string | null;
+  // `inactive` solo reintenta un cierre que quedó a medias: la membresía
+  // sigue activa porque el fallo fue después de ganar el status.
+  if (estado !== 'active' && estado !== 'inactive') {
+    const rechazo = rechazoDesactivar(estado);
+    if (rechazo) return { ok: false, rechazo };
   }
 
-  const { data: cambiada, error } = await servicio
-    .from('organizations')
-    .update({ status: 'inactive', updated_at: new Date().toISOString() })
-    .eq('id', organizationId)
-    .eq('status', 'active')
-    .select('id')
-    .maybeSingle();
-  if (error) throw new Error(`desactivar ${organizationId}: ${error.message}`);
-  // Otro proceso la cambió entre la lectura y la escritura.
-  if (!cambiada) return { ok: false, rechazo: { status: 409, codigo: 'ESTADO_NO_PERMITIDO', mensaje: 'Solo se puede desactivar una organización activa' } };
+  const usado = lector ?? lectorStripeReal;
+  const clasificacion = await clasificarFilas(subs, usado);
+  if (clasificacion.bloqueo) return { ok: false, rechazo: clasificacion.bloqueo };
+
+  if (estado === 'active') {
+    const { data: cambiada, error } = await servicio
+      .from('organizations')
+      .update({ status: 'inactive', updated_at: new Date().toISOString() })
+      .eq('id', organizationId)
+      .eq('status', 'active')
+      .select('id')
+      .maybeSingle();
+    if (error) throw new Error(`desactivar ${organizationId}: ${error.message}`);
+    // Otro proceso la cambió. Stripe no se toca.
+    if (!cambiada) return { ok: false, rechazo: { status: 409, codigo: 'ESTADO_NO_PERMITIDO', mensaje: 'Solo se puede desactivar una organización activa' } };
+  } else if (clasificacion.leidas.length === 0) {
+    const rechazo = rechazoDesactivar(estado);
+    if (rechazo) return { ok: false, rechazo };
+  }
+
+  await aplicarCierres(servicio, organizationId, clasificacion.leidas, usado);
 
   const { error: errMiembro } = await servicio
     .from('organization_members')

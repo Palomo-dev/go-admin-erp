@@ -536,20 +536,28 @@ export async function cancelSubscription(
   immediate: boolean = false,
 ): Promise<ResultadoCancelarSuscripcion> {
   try {
-    const subscription = await requireStripe().subscriptions.update(subscriptionId, {
-      cancel_at_period_end: !immediate,
-    })
-
+    // Inmediata: un solo cancel. El update previo dejaba la fila tocada
+    // si el cancel de después respondía resource_missing por otro recurso.
     if (immediate) {
-      await requireStripe().subscriptions.cancel(subscriptionId)
+      const cancelada = await requireStripe().subscriptions.cancel(subscriptionId)
+      console.log('✅ Suscripción cancelada:', subscriptionId)
+      return {
+        success: true,
+        subscriptionId: cancelada.id,
+        canceledAt: new Date(),
+      }
     }
 
+    const subscription = await requireStripe().subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    })
+
     console.log('✅ Suscripción cancelada:', subscriptionId)
-    
+
     return {
       success: true,
       subscriptionId: subscription.id,
-      canceledAt: immediate ? new Date() : (periodoSuscripcion(subscription).fin ?? new Date()),
+      canceledAt: periodoSuscripcion(subscription).fin ?? new Date(),
     }
   } catch (error: unknown) {
     const respuesta = respuestaDeErrorAlCancelar(error)

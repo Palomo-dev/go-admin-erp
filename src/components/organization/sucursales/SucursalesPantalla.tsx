@@ -41,6 +41,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
+import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { branchService } from '@/lib/services/branchService';
 import type { Branch, BranchFormData } from '@/types/branch';
 import { BranchForm, type BranchFormRef } from '@/components/branches/BranchForm';
@@ -148,15 +149,23 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
     setCargando(true);
     setError(false);
     try {
-      const [lista, sitiosRes, orgRes] = await Promise.all([
+      const [lista, sitiosRes, orgRes, dominiosRes] = await Promise.all([
         branchService.getBranchesWithManagers(organizationId),
         supabase.from('website_site_states').select('branch_id, published_revision_id').eq('organization_id', organizationId),
-        supabase.from('organizations').select('subdomain, custom_domain').eq('id', organizationId).maybeSingle(),
+        supabase.from('organizations').select('subdomain').eq('id', organizationId).maybeSingle(),
+        supabase
+          .from('organization_domains')
+          .select('host, domain_type, status, is_primary, is_active, updated_at')
+          .eq('organization_id', organizationId)
+          .eq('is_active', true),
       ]);
       const filas = lista.filter((s): s is SucursalFila => typeof s.id === 'number');
       setSedes(filas);
       setSitios((sitiosRes.data ?? []) as EstadoSitioFila[]);
-      setOrg({ subdominio: orgRes.data?.subdomain ?? null, dominio: orgRes.data?.custom_domain ?? null });
+      setOrg({
+        subdominio: orgRes.data?.subdomain ?? null,
+        dominio: hostSitio((dominiosRes.data ?? []) as DominioDelSitio[], orgRes.data?.subdomain),
+      });
       const ids = filas.map((s) => s.id);
       if (ids.length > 0) {
         const { data: asignaciones } = await supabase.from('member_branches').select('branch_id').in('branch_id', ids);

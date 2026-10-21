@@ -18,6 +18,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID, timingSafeEqual } from 'crypto';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 import { resolveOrgCurrency } from '@/lib/ai/assistant/orgCurrency';
 import {
   COLUMNAS_META,
@@ -153,16 +154,7 @@ export async function cargarProductosMeta(organizationId: number, sb: SupabaseCl
 }
 
 async function dominioVerificado(organizationId: number, sb: SupabaseClient): Promise<string | null> {
-  const { data } = await sb
-    .from('organization_domains')
-    .select('host')
-    .eq('organization_id', organizationId)
-    .eq('is_primary', true)
-    .eq('status', 'verified')
-    .order('domain_type', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data as { host?: string } | null)?.host ?? null;
+  return hostPublicoOrg(sb, organizationId);
 }
 
 async function nombreOrganizacion(organizationId: number, sb: SupabaseClient): Promise<string | null> {

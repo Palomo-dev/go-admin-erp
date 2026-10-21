@@ -243,8 +243,8 @@ describe('direccionSitio y pasarela', () => {
       hostEsPropio: true,
     });
   });
-  test('primary_domain_id del sitio manda si sigue verificado', () => {
-    expect(direccionSitio(dominios, 'tu-marca', 'o').host).toBe('tumarca.com');
+  test('primary_domain_id no pisa al principal verificado', () => {
+    expect(direccionSitio(dominios, 'tu-marca', 'o').host).toBe('www.tumarca.co');
     expect(direccionSitio([{ ...dominios[1], status: 'failed' }], 'tu-marca', 'o').host).toBe('tu-marca.goadmin.io');
   });
   test('sin dominio propio: el subdominio, sin «también responde»', () => {

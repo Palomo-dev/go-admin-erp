@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { asuntoAviso, textoAviso, type MomentoAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
 import { datosDeAviso, leerAjustesAvisos, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
 import { urlSeguimiento } from '@/lib/services/orderStatusEmailService';
+import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 
 export interface VistaPreviaAviso {
   pedido: string;
@@ -23,8 +24,8 @@ export async function armarVistaPrevia(
   organizationId: number,
   momento: MomentoAviso,
 ): Promise<VistaPreviaAviso> {
-  const [{ data: org }, { data: pedido }, { ajustes }] = await Promise.all([
-    db.from('organizations').select('id, name, subdomain, custom_domain').eq('id', organizationId).maybeSingle(),
+  const [{ data: org }, { data: pedido }, { ajustes }, host] = await Promise.all([
+    db.from('organizations').select('id, name').eq('id', organizationId).maybeSingle(),
     db
       .from('web_orders')
       .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status')
@@ -33,6 +34,7 @@ export async function armarVistaPrevia(
       .limit(1)
       .maybeSingle(),
     leerAjustesAvisos(sesion, organizationId),
+    hostPublicoOrg(db, organizationId),
   ]);
   const negocio = ajustes.nombreVisible || org?.name || '';
   const ejemplo: PedidoParaAviso = {
@@ -52,7 +54,7 @@ export async function armarVistaPrevia(
     payment_status: 'paid',
   };
   const p = (pedido as PedidoParaAviso | null) ?? ejemplo;
-  const datos = await datosDeAviso(db, organizationId, p, negocio, org && pedido ? urlSeguimiento(org, p) : null);
+  const datos = await datosDeAviso(db, organizationId, p, negocio, pedido ? urlSeguimiento({ id: organizationId, host }, p) : null);
   if (momento === 'rechazado' && !datos.motivo) datos.motivo = 'Se agotó un producto del pedido';
   return {
     pedido: p.order_number,

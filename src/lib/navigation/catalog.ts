@@ -495,6 +495,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/metodos-pago', nombre: 'Métodos de pago', icono: CreditCard, grupo: 'Configuración' },
       { href: '/app/finanzas/monedas', nombre: 'Monedas', icono: Coins, grupo: 'Configuración' },
       { href: '/app/finanzas/comisiones', nombre: 'Comisiones', icono: HandCoins, grupo: 'Configuración' },
+      { href: '/app/finanzas/configuracion-contable', nombre: 'Configuración contable', icono: Settings, grupo: 'Configuración' },
     ],
   },
   {

@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   StatsSkeleton,
 } from '@/components/common/PageSkeletons';
-import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
+import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { AlertasFalloContable } from '@/components/finanzas/configuracion-contable';
 
 const MODULES = [
   {
@@ -68,6 +69,13 @@ const MODULES = [
     color: 'orange'
   },
   {
+    title: 'Configuración contable',
+    description: 'Cuentas por defecto de la organización',
+    icon: Settings,
+    href: '/app/finanzas/configuracion-contable',
+    color: 'purple'
+  },
+  {
     title: 'Períodos Fiscales',
     description: 'Apertura y cierre de períodos',
     icon: CalendarClock,
@@ -111,28 +119,7 @@ export function ContabilidadHomePage() {
     itemsPendientes: 0,
   });
 
-  useEffect(() => {
-    loadResumen();
-  }, [branchFilter]);
-
-  const loadResumen = async () => {
-    try {
-      setIsLoading(true);
-      const [data, foliosData] = await Promise.all([
-        ContabilidadService.obtenerResumen(branchFilter),
-        loadFoliosResumen(),
-      ]);
-      setResumen(data);
-      setFoliosResumen(foliosData);
-    } catch (error) {
-      console.error('Error cargando resumen:', error);
-      toast.error('Error al cargar el resumen');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadFoliosResumen = async () => {
+  const loadFoliosResumen = useCallback(async () => {
     const organizationId = getOrganizationId();
     if (!organizationId) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
 
@@ -179,7 +166,28 @@ export function ContabilidadHomePage() {
     } catch {
       return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
     }
-  };
+  }, []);
+
+  const loadResumen = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [data, foliosData] = await Promise.all([
+        ContabilidadService.obtenerResumen(branchFilter),
+        loadFoliosResumen(),
+      ]);
+      setResumen(data);
+      setFoliosResumen(foliosData);
+    } catch (error) {
+      console.error('Error cargando resumen:', error);
+      toast.error('Error al cargar el resumen');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [branchFilter, loadFoliosResumen]);
+
+  useEffect(() => {
+    void loadResumen();
+  }, [loadResumen]);
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, { bg: string; icon: string; hover: string }> = {
@@ -230,6 +238,8 @@ export function ContabilidadHomePage() {
       </div>
 
       <BranchBadge className="mb-3" />
+
+      <AlertasFalloContable compacto />
 
       {/* Resumen */}
       {isLoading ? (

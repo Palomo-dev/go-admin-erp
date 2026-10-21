@@ -161,7 +161,8 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Presupuestos', path: '/app/finanzas/presupuestos', icon: Target },
     { name: 'Impuestos', path: '/app/finanzas/impuestos', icon: BarChart3 },
     { name: 'Métodos de Pago', path: '/app/finanzas/metodos-pago', icon: CreditCard },
-    { name: 'Monedas', path: '/app/finanzas/monedas', icon: BarChart3 }
+    { name: 'Monedas', path: '/app/finanzas/monedas', icon: BarChart3 },
+    { name: 'Configuración contable', path: '/app/finanzas/configuracion-contable', icon: Settings }
   ],
   'pm': [
     { name: 'Dashboard', path: '/app/pm', icon: FolderKanban },

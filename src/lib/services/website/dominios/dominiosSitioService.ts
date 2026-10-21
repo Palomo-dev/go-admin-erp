@@ -390,8 +390,8 @@ export async function verificar(ctx: CtxDominios, id: string, deps: Dependencias
     const todo = await leerTodo(ctx);
     if (s.resultado === 'activo') {
       try {
-        const { asegurarCorreoTienda } = await import('./correoTienda');
-        await asegurarCorreoTienda(ctx.organizationId, s.dominioId);
+        const { encolarYProcesarCorreoTienda } = await import('./correoTienda');
+        await encolarYProcesarCorreoTienda(ctx.organizationId, s.dominioId);
       } catch (e) {
         console.error('[sitio-web/dominios] el correo de pedidos no quedó listo', {
           organizationId: ctx.organizationId,

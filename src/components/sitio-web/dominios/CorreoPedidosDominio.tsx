@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Correo de pedidos del dominio: estado, registros DNS y «Verificar».
+ * Correo de pedidos del dominio: estado, registros DNS y «Reintentar».
  * Los registros salen del servidor. Aquí no hay claves ni secretos.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -70,6 +70,9 @@ export function CorreoPedidosDominio({ dominioId, gestionar }: { dominioId: stri
             <StatusBadge estado={tono} etiqueta={etiqueta} />
             {estado?.desde ? <span className="text-[13px] text-fg-secondary">{estado.desde}</span> : null}
           </div>
+          {estado && estado.estado !== 'verified' && estado.estado !== 'failed' && estado.desde ? (
+            <p className="text-[13px] text-fg-secondary">{t('detalle.correoEnUnosMinutos', { desde: estado.desde })}</p>
+          ) : null}
           {estado?.estado !== 'verified' ? (
             <p className="text-[13px] text-fg-secondary">{t('detalle.correoRespaldo')}</p>
           ) : null}

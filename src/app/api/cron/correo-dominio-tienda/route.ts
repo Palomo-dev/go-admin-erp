@@ -1,8 +1,8 @@
 /**
  * GET /api/cron/correo-dominio-tienda
  *
- * Cada 15 minutos revisa dominios de correo pendientes y prepara `send.<dominio>`
- * para los sitios cuyo dominio ya está verificado y todavía no tienen remitente.
+ * Cada 15 minutos toma la cola del correo de la tienda. El dominio raíz se
+ * registra una sola vez; los reintentos esperan con backoff hasta 72 horas.
  * Lote pequeño, para no golpear al proveedor.
  */
 import { NextRequest, NextResponse } from 'next/server';

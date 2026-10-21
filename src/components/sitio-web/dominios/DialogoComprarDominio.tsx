@@ -583,6 +583,7 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
               )
             }
           />
+          {resultado.principal ? <FilaDato etiqueta={t('detalle.correoTitulo')} valor={t('comprar.correoListo', { host: elegida.dominio })} /> : null}
           {resultado.venceEn && <FilaDato etiqueta={t('comprar.vence')} valor={f.fecha(resultado.venceEn)} />}
           <FilaDato etiqueta={t('comprar.renovacion')} valor={<span className="text-success-text">{t('comprar.encendida')}</span>} />
           <FilaDato etiqueta={t('comprar.cobrado')} valor={<span className="tabular-nums">{precioTexto}</span>} />

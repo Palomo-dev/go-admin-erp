@@ -1,9 +1,9 @@
 /**
  * Reglas del correo de pedidos de una tienda. Sin red ni base.
  *
- * El dominio de envío es `send.<dominio>` en la región de la plataforma.
- * Si la organización ya tiene verificado el dominio raíz o ese `send.`,
- * no se crea otro. Un DMARC que ya exista no se pisa.
+ * El dominio que se registra en el proveedor es el de la tienda (pedidos@ese
+ * dominio). El proveedor publica SPF y DKIM en subdominios; el MX de la raíz
+ * no se crea ni se pisa. Un DMARC que ya exista tampoco.
  */
 
 export const RESPALDO_CORREO_PEDIDOS = 'pedidos@goadmin.io';
@@ -16,8 +16,11 @@ export interface EstadoCorreoTienda {
   dnsEnVercel: boolean;
   error: string | null;
 }
+
 export const REGION_CORREO_TIENDA = 'sa-east-1';
-export const MENSAJE_DNS_AJENO = 'El DNS de este dominio no está en Vercel. Copia los registros y pulsa Verificar.';
+export const MENSAJE_DNS_AJENO = 'El DNS de este dominio no está en Vercel. Copia los registros y pulsa Reintentar.';
+export const PLAZO_CORREO_MS = 72 * 60 * 60 * 1000;
+export const VALOR_DMARC = 'v=DMARC1; p=none; rua=mailto:dmarc@goadmin.io';
 
 const TIPOS_ENVIABLES = new Set(['custom_domain', 'custom_subdomain', 'www_alias']);
 
@@ -37,26 +40,37 @@ export function hostDeZona(host: string, domainType: string): string | null {
   return limpio;
 }
 
-/** `send.tienda.example`, o el mismo host si ya empieza por `send.`. */
+/** Dominio raíz que se registra. `send.` no es otro dominio: son sus registros. */
 export function dominioDeEnvio(apex: string): string | null {
-  const host = (apex || '').trim().toLowerCase().replace(/\.$/, '');
-  if (!host || host.endsWith('.goadmin.io')) return null;
-  if (host.startsWith('send.')) return host;
-  const envio = `send.${host}`;
-  return envio.length <= 253 ? envio : null;
+  let host = (apex || '').trim().toLowerCase().replace(/\.$/, '');
+  if (host.startsWith('send.')) host = host.slice('send.'.length);
+  if (!host || host.endsWith('.goadmin.io') || host.length > 253 || !host.includes('.')) return null;
+  return host;
 }
 
 export function yaTieneRemitenteVerificado(
   filas: readonly { domain: string; status: string }[],
   apex: string,
 ): boolean {
-  const raiz = apex.trim().toLowerCase();
-  const envio = dominioDeEnvio(raiz);
+  const raiz = dominioDeEnvio(apex);
+  if (!raiz) return false;
   return filas.some((fila) => {
     if (fila.status !== 'verified') return false;
     const dominio = fila.domain.trim().toLowerCase();
-    return dominio === raiz || dominio === envio;
+    return dominio === raiz || dominio === `send.${raiz}`;
   });
+}
+
+/** 15 min, 30, 60… hasta 16 h. El plazo de 72 h lo corta `vencioPlazo`. */
+export function esperaReintentoMs(intentos: number): number {
+  const pasos = Math.min(Math.max(Math.floor(intentos) || 1, 1), 7) - 1;
+  return 15 * 60 * 1000 * 2 ** pasos;
+}
+
+export function vencioPlazo(desde: string | Date, ahora: Date): boolean {
+  const t = desde instanceof Date ? desde.getTime() : Date.parse(desde);
+  if (!Number.isFinite(t)) return false;
+  return ahora.getTime() - t >= PLAZO_CORREO_MS;
 }
 
 export function nombreRelativo(nombre: string, zona: string): string {
@@ -72,7 +86,11 @@ export function conservarDmarc(valor: string | null | undefined): boolean {
 }
 
 export function registroDmarc(zona: string): RegistroDnsCorreo {
-  return { tipo: 'TXT', nombre: `_dmarc.${zona}`, valor: 'v=DMARC1; p=none;', prioridad: null };
+  return { tipo: 'TXT', nombre: `_dmarc.${zona}`, valor: VALOR_DMARC, prioridad: null };
+}
+
+export function esMxRaiz(registro: { tipo: string; nombre: string }, zona: string): boolean {
+  return registro.tipo.toUpperCase() === 'MX' && nombreRelativo(registro.nombre, zona) === '';
 }
 
 function esRegistro(valor: unknown): valor is { type?: unknown; name?: unknown; value?: unknown; priority?: unknown } {
@@ -108,6 +126,7 @@ export function debePublicar(
   nuevo: RegistroDnsCorreo,
   zona: string,
 ): boolean {
+  if (esMxRaiz(nuevo, zona)) return false;
   const nombre = nombreRelativo(nuevo.nombre, zona);
   if (nombre === '_dmarc') {
     const publicado = existentes.find((e) => e.tipo.toUpperCase() === 'TXT' && nombreRelativo(e.nombre, zona) === '_dmarc');

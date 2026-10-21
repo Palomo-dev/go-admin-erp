@@ -37,7 +37,11 @@ function clienteFalso(org: { status: string } | null, subs: unknown[] = [], camb
         return q;
       },
       maybeSingle: () => Promise.resolve({ data: actual ? (cambiada ? { id: 1 } : null) : org, error: null }),
-      then: (res: (v: unknown) => unknown) => Promise.resolve(tabla === 'subscriptions' && !actual ? { data: subs, error: null } : { error: null }).then(res),
+      then: (res: (v: unknown) => unknown) => {
+        if (tabla === 'subscriptions' && !actual) return Promise.resolve({ data: subs, error: null }).then(res);
+        const id = actual?.filtros.find(([col]) => col === 'id')?.[1] ?? 1;
+        return Promise.resolve({ data: [{ id }], error: null }).then(res);
+      },
     });
     return q;
   };

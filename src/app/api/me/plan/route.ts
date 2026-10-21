@@ -24,7 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { withOrg } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { leerCupoPlan, type UsoCupo } from '@/lib/services/cupoPlanService';
-import { MONEDA_PLAN_SAAS, precioPlanSaas } from '@/lib/organizacion/plan';
+import { estadoVisibleDeSuscripcion, MONEDA_PLAN_SAAS, precioPlanSaas } from '@/lib/organizacion/plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,20 +82,7 @@ async function usoSinMigracion(
 }
 
 function estadoDe(status: string | null): Estado {
-  switch (status) {
-    case 'trialing':
-      return 'prueba';
-    case 'active':
-      return 'activo';
-    case 'past_due':
-    case 'unpaid':
-    case 'incomplete_expired':
-      return 'vencido';
-    case 'canceled':
-      return 'cancelado';
-    default:
-      return 'sin_plan';
-  }
+  return estadoVisibleDeSuscripcion(status);
 }
 
 export const GET = withOrg(async (ctx) => {

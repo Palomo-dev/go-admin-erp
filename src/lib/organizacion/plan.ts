@@ -42,6 +42,28 @@ export interface PlanParaEstado {
   cancelaAlFinal?: boolean;
 }
 
+/**
+ * Lo que ve Plan. `incomplete` también es vencida: si no, el menú esconde
+ * cancelar y desactivar responde 409 sin salida.
+ */
+export function estadoVisibleDeSuscripcion(status: string | null): PlanParaEstado['estado'] {
+  switch (status) {
+    case 'trialing':
+      return 'prueba';
+    case 'active':
+      return 'activo';
+    case 'past_due':
+    case 'unpaid':
+    case 'incomplete':
+    case 'incomplete_expired':
+      return 'vencido';
+    case 'canceled':
+      return 'cancelado';
+    default:
+      return 'sin_plan';
+  }
+}
+
 export function estadoPlan(plan: PlanParaEstado | null | undefined): EstadoPlan {
   if (!plan) return 'sinPlan';
   switch (plan.estado) {

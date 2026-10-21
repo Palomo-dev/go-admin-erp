@@ -25,6 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   accionAlDesactivar,
   lectorStripeReal,
+  cierreTocoFila,
   parcheSuscripcionAusente,
   parcheSuscripcionCancelada,
   type LectorSuscripcionStripe,
@@ -121,12 +122,13 @@ async function aplicarCierres(
   const ahora = new Date().toISOString();
   for (const { fila, accion } of leidas) {
     if (accion === 'ya_programada') {
-      const { error } = await servicio
+      const { data, error } = await servicio
         .from('subscriptions')
         .update({ cancel_at_period_end: true, updated_at: ahora })
         .eq('id', fila.id)
-        .eq('organization_id', organizationId);
-      if (error) throw new Error(`cerrar suscripción ${fila.id}: ${error.message}`);
+        .eq('organization_id', organizationId)
+        .select('id');
+      if (!cierreTocoFila(error, data)) throw new Error(`cerrar suscripción ${fila.id}: ${error?.message ?? 'cero filas'}`);
       continue;
     }
     let ausente = accion === 'ausente';
@@ -144,12 +146,13 @@ async function aplicarCierres(
           ahora,
         )
       : parcheSuscripcionCancelada(ahora);
-    const { error } = await servicio
+    const { data, error } = await servicio
       .from('subscriptions')
       .update(valores)
       .eq('id', fila.id)
-      .eq('organization_id', organizationId);
-    if (error) throw new Error(`cerrar suscripción ${fila.id}: ${error.message}`);
+      .eq('organization_id', organizationId)
+      .select('id');
+    if (!cierreTocoFila(error, data)) throw new Error(`cerrar suscripción ${fila.id}: ${error?.message ?? 'cero filas'}`);
     if (ausente) {
       console.warn('[organizacionEstado] suscripción ausente en Stripe; se cancela en la base', {
         organizationId,

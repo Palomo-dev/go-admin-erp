@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       .from('subscriptions')
       .select('*')
       .eq('organization_id', organizationId)
-      .in('status', ['active', 'past_due', 'trialing'])
+      .in('status', ['active', 'past_due', 'trialing', 'incomplete'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

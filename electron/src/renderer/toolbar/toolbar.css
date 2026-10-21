@@ -218,6 +218,7 @@ button, .pill { -webkit-app-region: no-drag; app-region: no-drag; }
 
 .update { background: var(--hover); color: var(--muted); }
 .update.ready { background: var(--warn-bg); color: var(--warn-fg); }
+.update.error { background: var(--bad-bg); color: var(--bad); }
 
 .install {
   height: 20px;

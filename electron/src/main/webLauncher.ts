@@ -12,7 +12,10 @@
  * Variables (las pone webServer.ts):
  *   GOADMIN_WEB_SERVER_JS  ruta absoluta del server.js del standalone
  *   GOADMIN_PARENT_PID     pid del main de Electron
+ *   GOADMIN_DESKTOP_EMBEDDED=1  activa el reenvío de /api (proxyApi.ts)
  */
+import { instalarProxyApiEnHttp } from './proxyApi';
+
 const serverJs = process.env.GOADMIN_WEB_SERVER_JS;
 const parentPid = Number(process.env.GOADMIN_PARENT_PID);
 const PARENT_CHECK_MS = 1000;
@@ -34,6 +37,10 @@ if (Number.isInteger(parentPid) && parentPid > 0) {
   }, PARENT_CHECK_MS);
   timer.unref();
 }
+
+// Antes de cargar server.js: Next crea su http.Server al arrancar y, sin
+// este parche, /api se atendería en local sin clave de servicio.
+instalarProxyApiEnHttp();
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 require(serverJs);

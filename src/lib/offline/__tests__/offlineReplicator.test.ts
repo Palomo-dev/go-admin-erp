@@ -24,6 +24,7 @@ jest.mock('../catalogReplicator', () => ({
 
 import { clearOfflineDb, closeOfflineDB, getOfflineDbStatus, getOfflineRowsByOrg, getOfflineTableMeta } from '../offlineDb';
 import {
+  LINK_CHUNK,
   OFFLINE_BATCH_SIZE,
   OFFLINE_REPLICATION_INTERVAL_MS,
   replicateAllOffline,
@@ -172,6 +173,40 @@ describe('replicateOfflineDb', () => {
     } finally {
       products.maxRows = originalMax;
     }
+  });
+
+  it('product_suppliers pide los id de la organización en tandas y no usa el embed', async () => {
+    const n = LINK_CHUNK + 1;
+    const products = Array.from({ length: n }, (_, i) => ({
+      id: i + 1, organization_id: ORG, sku: `S${i + 1}`, name: `P${i + 1}`, updated_at: T0,
+    }));
+    products.push({ id: 90000, organization_id: 121, sku: 'X', name: 'Otra', updated_at: T0 });
+    const product_suppliers = [
+      { id: 10, product_id: 1, supplier_id: 3, cost: 1, updated_at: T0 },
+      { id: 11, product_id: 90000, supplier_id: 3, cost: 2, updated_at: T0 },
+      { id: 12, product_id: n, supplier_id: 4, cost: 3, updated_at: '2026-09-02T00:00:00+00:00' },
+    ];
+    const client = createFakeOfflineClient({ tables: { products, product_suppliers }, links: {} });
+    const status = await replicateOfflineDb({ organizationId: ORG, client, tables: ['product_suppliers'], now: () => NOW });
+
+    const rows = await getOfflineRowsByOrg('product_suppliers', ORG);
+    expect(rows.map((r) => r.id).sort((a, b) => Number(a) - Number(b))).toEqual([10, 12]);
+    expect(rows.every((r) => r.organization_id === ORG)).toBe(true);
+    const padres = client.requests.filter((r) => r.table === 'products');
+    expect(padres[0]?.filters).toContain(`organization_id=eq.${ORG}`);
+    const hijos = client.requests.filter((r) => r.table === 'product_suppliers');
+    expect(hijos).toHaveLength(2);
+    expect(hijos.every((r) => !r.select.includes('!inner'))).toBe(true);
+    expect(hijos.every((r) => r.filters.some((f) => f.startsWith('product_id=in.(')))).toBe(true);
+    expect(hijos.some((r) => r.filters.join(' ').includes('90000'))).toBe(false);
+    expect(status.tables.product_suppliers.error).toBeNull();
+    expect(status.tables.product_suppliers.cursor).toBe('2026-09-02T00:00:00+00:00');
+
+    client.requests.length = 0;
+    await replicateOfflineDb({ organizationId: ORG, client, tables: ['product_suppliers'], now: () => NOW + 10 * 60 * 1000 });
+    const inc = client.requests.filter((r) => r.table === 'product_suppliers');
+    expect(inc).toHaveLength(2);
+    expect(inc.every((r) => r.filters.some((f) => f === 'updated_at=gt.2026-09-02T00:00:00+00:00'))).toBe(true);
   });
 
   it('llamadas concurrentes comparten la misma pasada', async () => {

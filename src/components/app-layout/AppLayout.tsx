@@ -53,6 +53,7 @@ const IncomingCallToast = dynamic(() => retryImport(() => import('@/components/v
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { OfflineIndicator } from './OfflineIndicator';
+import { AvisoActualizacionEscritorio } from './AvisoActualizacionEscritorio';
 import { LocalDataNotice } from '@/components/offline/LocalDataNotice';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
@@ -935,6 +936,7 @@ export const AppLayout = ({
       <NavigationProgress />
       {/* Indicador offline para app de escritorio */}
       <OfflineIndicator />
+      <AvisoActualizacionEscritorio />
       
       <CabeceraMovilProvider>
       <div className="flex h-dynamic-screen overflow-hidden">

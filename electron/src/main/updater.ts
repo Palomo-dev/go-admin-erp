@@ -35,7 +35,11 @@ export function initUpdater(): void {
     return;
   }
 
-  autoUpdater.autoDownload = false;
+  // Descarga sola al detectar versión nueva. Antes estaba en false y la
+  // descarga se pedía a mano en `update-available`: quien leyera solo esta
+  // línea creía que el escritorio no se actualizaba, y pedirla dos veces
+  // (autoDownload y downloadUpdate) baja el instalador por duplicado.
+  autoUpdater.autoDownload = true;
   // Con una versión descargada, el instalador corre en silencio al SALIR de
   // la app y cierra cualquier «Go Admin ERP.exe» abierto mientras instala.
   // Por eso el log del propio electron-updater («Auto install update on
@@ -53,9 +57,6 @@ export function initUpdater(): void {
 
   autoUpdater.on('update-available', (info) => {
     setState({ status: 'available', version: info.version });
-    autoUpdater.downloadUpdate().catch((err) => {
-      setState({ status: 'error', message: String(err?.message || err) });
-    });
   });
 
   autoUpdater.on('update-not-available', () => setState({ status: 'none' }));

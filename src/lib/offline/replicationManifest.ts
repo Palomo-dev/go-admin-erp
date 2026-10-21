@@ -22,6 +22,12 @@
  *    `padre.organization_id=eq.<org>` en la misma consulta PostgREST. Si hay
  *    varios padres (p. ej. `invoice_items` cuelga de facturas de venta y de
  *    compra) se hace una pasada por cada uno y se unen.
+ *    `link` cambia ese camino: se piden los id del padre y el hijo se filtra
+ *    con `columna=in.(...)` en tandas. Hace falta cuando el embed, con la RLS,
+ *    relee `organization_members` por cada fila y el rol `authenticated`
+ *    (statement_timeout 8 s) cancela la consulta. Medido en
+ *    `product_suppliers`: el join de unas 5 mil filas tarda ~12 s; cien id
+ *    del producto de la organización, ~0,3 s.
  *
  * A toda fila local se le añade `organization_id` (si la tabla no lo tiene)
  * para indexar por organización; el resolutor lo retira de la salida cuando
@@ -44,7 +50,7 @@ export type ScopeSpec =
   | { kind: 'org' }
   | { kind: 'self' }
   | { kind: 'global' }
-  | { kind: 'parent'; parents: Array<{ embed: string; column?: string }> };
+  | { kind: 'parent'; parents: Array<{ embed: string; column?: string; link?: string }> };
 
 export interface ForeignKeySpec {
   /** Columna de ESTA tabla. */
@@ -312,7 +318,10 @@ export const REPLICATION_MANIFEST: TableManifest[] = [
   {
     table: 'product_suppliers', pk: 'id',
     columns: ['id', 'product_id', 'supplier_id', 'cost', 'lead_time_days', 'min_order_qty', 'is_preferred', 'supplier_sku', 'notes', 'created_at', 'updated_at'],
-    hasOrganizationId: false, scope: { kind: 'parent', parents: [{ embed: 'products' }] }, maxRows: 10000, incremental: 'updated_at',
+    hasOrganizationId: false,
+    // Sin embed: el join con products, bajo la RLS, supera el statement_timeout.
+    scope: { kind: 'parent', parents: [{ embed: 'products', link: 'product_id' }] },
+    maxRows: 10000, incremental: 'updated_at',
     indexes: ['product_id', 'supplier_id'],
     fks: [
       { column: 'product_id', table: 'products', name: 'product_suppliers_product_id_fkey' },

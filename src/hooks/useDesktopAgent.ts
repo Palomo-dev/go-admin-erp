@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   isDesktop,
   getDesktopBridge,
+  onDesktopUpdate,
   type DesktopAgentStatus,
   type DesktopUpdateState,
 } from '@/lib/utils/desktop';
@@ -156,9 +157,7 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
       });
     }
 
-    if (bridge?.onUpdateState) {
-      bridge.onUpdateState((state) => setUpdateState(state));
-    }
+    const dejarActualizacion = onDesktopUpdate((state) => setUpdateState(state));
 
     if (!autoStartAttempted.current) {
       autoStartAttempted.current = true;
@@ -171,7 +170,10 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
     }
 
     const interval = setInterval(refreshStatus, 15_000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      dejarActualizacion();
+    };
   }, [isDesktopApp, refreshStatus, startAgentForCurrentOrg]);
 
   return {

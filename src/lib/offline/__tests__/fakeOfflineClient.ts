@@ -92,6 +92,12 @@ export function createFakeOfflineClient({ tables, links = {}, failing = {} }: Fa
         rows = rows.filter((r) => r[col] !== null && r[col] !== undefined && cmp(r[col], value) > 0);
         return builder;
       },
+      in(col: string, values: unknown[]) {
+        req.filters.push(`${col}=in.(${values.map((v) => String(v)).join(',')})`);
+        const set = new Set(values.map((v) => String(v)));
+        rows = rows.filter((r) => set.has(String(r[col])));
+        return builder;
+      },
       order(col: string, opts?: { ascending?: boolean }) {
         orders.push({ col, asc: opts?.ascending !== false });
         return builder;

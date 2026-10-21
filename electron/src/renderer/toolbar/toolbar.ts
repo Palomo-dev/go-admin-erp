@@ -134,12 +134,12 @@
 
   // ── Actualizaciones ──
   function renderUpdate(state: UpdateState): void {
-    update.classList.remove('ready');
+    update.classList.remove('ready', 'error');
     updateInstall.hidden = true;
     switch (state.status) {
       case 'available':
         update.hidden = false;
-        updateText.textContent = `Descargando versión ${state.version ?? ''}…`;
+        updateText.textContent = `Hay una versión nueva (${state.version ?? ''}). Descargando…`;
         break;
       case 'downloading':
         update.hidden = false;
@@ -148,11 +148,17 @@
       case 'downloaded':
         update.hidden = false;
         update.classList.add('ready');
-        updateText.textContent = `Versión ${state.version ?? ''} lista`;
+        updateText.textContent = `Versión ${state.version ?? ''} lista. Reinicia para instalarla`;
         updateInstall.hidden = false;
         break;
+      case 'error':
+        // Antes un fallo de descarga caía en el default y la barra no decía nada.
+        update.hidden = false;
+        update.classList.add('error');
+        updateText.textContent = 'No se pudo descargar la actualización';
+        break;
       default:
-        // idle / checking / none / error: no molestar. El menú «Ayuda» informa.
+        // idle / checking / none: no molestar. El menú «Ayuda» informa.
         update.hidden = true;
         updateText.textContent = '';
     }

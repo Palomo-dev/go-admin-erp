@@ -25,7 +25,7 @@ interface Comunes<V extends string> {
 }
 
 export type ChipsOpcionProps<V extends string> = Comunes<V> &
-  ({ multiple?: false; valor: V; onValorChange: (valor: V) => void } | { multiple: true; valor: readonly V[]; onValorChange: (valor: V[]) => void });
+  ({ multiple?: false; valor: V | null; onValorChange: (valor: V) => void } | { multiple: true; valor: readonly V[]; onValorChange: (valor: V[]) => void });
 
 export function ChipsOpcion<V extends string>(props: ChipsOpcionProps<V>) {
   const { opciones, etiqueta, className } = props;

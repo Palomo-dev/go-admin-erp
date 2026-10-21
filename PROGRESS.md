@@ -8,6 +8,7 @@
 
 | Fase | Documento | Estado | Ronda | Ãšltima calificación | Responsable |
 |------|-----------|--------|-------|---------------------|-------------|
+| Stripe: id de otra cuenta no bloquea | PR 392 | en_revision | 3 | 8.9 | builder |
 | F1 â€” Responsive y full-bleed real (HOTFIX) | `FASE-0-FUNDACIONES.md` | aprobado | 3 | 9.6 | builder |
 | F1.1 â€” Unificar sistema de anchos (tailwind.config) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
 | F1.2 â€” Reemplazar `container` por ancho explícito (SectionWrapper) | `FASE-0-FUNDACIONES.md` | aprobado | 1 | 9.0 | builder |
@@ -3766,3 +3767,19 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Probado en un arnés con el checkout real: «Agregar» y «Comprar» desde una oferta dejan en el carrito exactamente lo mismo que desde la cuadrícula de productos (precio de oferta y precio anterior), y «Comprar» llega al checkout con el producto. Sin stock y padre con variantes, iguales. Sin botones guardados, la tarjeta no cambia.
 - No hecho: siguen 39 pendientes, 8 sin fuente y 25 que no aplican (documento de pendientes).
 - Orden de despliegue: primero el sitio, después este cambio.
+
+
+### Fase: Metodología /loop y entrega solo en main — 2026-10-21
+- Orden de Juan: toda tarea sigue `.devin/workflows/loop.md` (builder, tester con pruebas reales, qa-reviewer, aprobado solo desde 9.5, máximo 3 rondas). Quedó en `AGENTS.md`.
+- También quedó prohibido el push a `master`, fusionar hacia `master` y publicar un tag que despliegue desde esa rama. Producción la promueve Juan. Esta ronda no tocó `master`.
+
+### Fase: Stripe, id de otra cuenta — Ronda 3 — 2026-10-21
+- Calificación QA: 8.9/10 (no aprobado; tope de 3 rondas)
+- Calificación Tester: 8/10
+- Qué se hizo: la rama `cursor/stripe-suscripcion-ausente-bffb` quedó en `1d8aaccf`, sobre el PR 392, contra `main`. Jest: 47 pruebas en verde (suscripcionAusente, organizacionEstadoService, cupoYPlan). `resource_missing` solo cierra la fila si es la suscripción y el HTTP es 404. Desactivar lee Stripe, gana el status y recién entonces escribe. Una fila `incomplete` se puede cancelar desde Plan. No se fusionó a `main`.
+- Qué falta / feedback recibido:
+  1. No se pudo leer en Vercel si `STRIPE_SECRET_KEY` de Production empieza por `sk_live_`. El listado esconde ese valor y `decrypt` no lo abre. Sin esa confirmación no se fusiona el 392: `instrumentation.ts` tumba el arranque si la clave de producción no es live.
+  2. Falta una prueba HTTP de `POST /api/subscriptions/cancel` cuando el update toca cero filas.
+  3. Reactivar, en esa misma ruta, no filtra `organization_id` en el update.
+  4. El reintento con la organización ya `inactive` no vuelve a leer el status antes de cancelar en Stripe.
+- Próxima acción: Juan confirma el prefijo de la clave. Si es `sk_live_`, se puede fusionar el 392 a `main` (no a `master`). Si no lo es, hay que cambiar la clave antes de llevar este código a producción. La org 110 y el resto de filas de `subscriptions` no se modificaron.

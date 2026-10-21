@@ -79,16 +79,49 @@ export interface JournalLine {
   account?: ChartAccount;
 }
 
+export type TipoCuentaContable = 'asset' | 'liability' | 'equity' | 'income' | 'expense' | 'order';
+export type NaturalezaCuenta = 'debito' | 'credito' | 'orden';
+export type NivelCuenta = 'clase' | 'grupo' | 'cuenta' | 'subcuenta' | 'auxiliar' | 'subauxiliar' | 'legacy';
+
 export interface ChartAccount {
   account_code: string;
   organization_id: number;
   name: string;
-  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+  type: TipoCuentaContable;
   parent_code: string | null;
   is_active: boolean;
   description: string | null;
   created_at: string;
   updated_at: string;
+  /** Generada. clase, grupo, cuenta, subcuenta, auxiliar, subauxiliar o legacy. */
+  nivel?: NivelCuenta | null;
+  clase?: number | null;
+  naturaleza?: NaturalezaCuenta | null;
+  es_movimiento?: boolean | null;
+  requiere_tercero?: boolean | null;
+  requiere_centro_costo?: boolean | null;
+  /** Generada a partir de is_active. No se escribe. */
+  activa?: boolean | null;
+}
+
+const CAMPOS_CUENTA = [
+  'name',
+  'type',
+  'parent_code',
+  'description',
+  'is_active',
+  'naturaleza',
+  'es_movimiento',
+  'requiere_tercero',
+  'requiere_centro_costo',
+] as const;
+
+function camposDeCuenta(cuenta: Partial<ChartAccount>): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  for (const campo of CAMPOS_CUENTA) {
+    if (cuenta[campo] !== undefined) salida[campo] = cuenta[campo];
+  }
+  return salida;
 }
 
 export interface ContabilidadResumen {
@@ -175,7 +208,11 @@ export class ContabilidadService {
         parent_code: cuenta.parent_code || null,
         description: cuenta.description || null,
         organization_id: organizationId,
-        is_active: true
+        is_active: cuenta.is_active ?? true,
+        naturaleza: cuenta.naturaleza ?? null,
+        es_movimiento: cuenta.es_movimiento ?? null,
+        requiere_tercero: cuenta.requiere_tercero ?? false,
+        requiere_centro_costo: cuenta.requiere_centro_costo ?? false,
       })
       .select()
       .single();
@@ -194,7 +231,7 @@ export class ContabilidadService {
     const { data, error } = await supabase
       .from('chart_of_accounts')
       .update({
-        ...cuenta,
+        ...camposDeCuenta(cuenta),
         updated_at: new Date().toISOString()
       })
       .eq('account_code', accountCode)

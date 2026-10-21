@@ -17,9 +17,11 @@ describe('onDesktopUpdate', () => {
   });
 
   test('reparte el estado a quien esté escuchando, con una sola suscripción al bridge', () => {
-    let entregar: ((estado: DesktopUpdateState) => void) | null = null;
+    // En una propiedad: si fuera un `let`, el control de flujo lo deja en `null`
+    // porque la asignación ocurre dentro del mock de jest.
+    const puente: { entregar: ((estado: DesktopUpdateState) => void) | null } = { entregar: null };
     const onUpdateState = jest.fn((cb: (estado: DesktopUpdateState) => void) => {
-      entregar = cb;
+      puente.entregar = cb;
     });
     global.window = {
       goAdminDesktop: { onUpdateState },
@@ -30,11 +32,11 @@ describe('onDesktopUpdate', () => {
     const dejarB = onDesktopUpdate((estado) => vistos.push(`b:${estado.status}`));
     expect(onUpdateState).toHaveBeenCalledTimes(1);
 
-    entregar?.({ status: 'downloaded', version: '0.2.10' });
+    puente.entregar?.({ status: 'downloaded', version: '0.2.10' });
     expect(vistos).toEqual(['a:downloaded', 'b:downloaded']);
 
     dejarA();
-    entregar?.({ status: 'error', message: 'red' });
+    puente.entregar?.({ status: 'error', message: 'red' });
     expect(vistos).toEqual(['a:downloaded', 'b:downloaded', 'b:error']);
     dejarB();
   });

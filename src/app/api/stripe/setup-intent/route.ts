@@ -24,7 +24,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe/server'
+import { requireStripe, stripe } from '@/lib/stripe/server'
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit'
 import { ESTADO_PENDIENTE, ORIGEN_ALTA, esClienteDeAltaPendiente, recuperarCliente } from '@/lib/stripe/clienteDeAlta'
 import { parametrosSetupIntent } from '@/lib/stripe/medioDePagoSuscripcion'
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     if (!stripe) {
       return NextResponse.json({ success: false, error: 'Stripe no está configurado' }, { status: 503 })
     }
+    requireStripe()
 
     const ip = getClientIp(request)
     const rl = await checkRateLimits([{ key: `stripe:setup-intent:post:ip:${ip}`, opts: LIMITE_POST_IP }])
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
     if (!stripe) {
       return NextResponse.json({ success: false, error: 'Stripe no está configurado' }, { status: 503 })
     }
+    requireStripe()
 
     const ip = getClientIp(request)
     const rl = await checkRateLimits([{ key: `stripe:setup-intent:get:ip:${ip}`, opts: LIMITE_GET_IP }])

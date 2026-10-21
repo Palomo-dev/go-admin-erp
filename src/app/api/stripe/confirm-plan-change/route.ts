@@ -28,7 +28,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/server';
+import { requireStripe, stripe } from '@/lib/stripe/server';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getServerOrgContext, OrgContextError, readOrgBody } from '@/lib/utils/orgContext';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     if (!stripe) {
       return NextResponse.json({ error: 'Stripe no está configurado' }, { status: 503 });
     }
+    requireStripe();
 
     const checkout = await stripe.checkout.sessions.retrieve(sessionId);
 

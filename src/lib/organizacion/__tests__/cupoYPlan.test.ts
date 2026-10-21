@@ -9,6 +9,7 @@ import {
   cantidadValida,
   desgloseCompra,
   estadoPlan,
+  estadoVisibleDeSuscripcion,
   MONEDA_PLAN_SAAS,
   motivoNoPermite,
   precioPlanSaas,
@@ -128,6 +129,14 @@ describe('accionesPlan', () => {
 
   test('suscripción vencida: pagar, sin compras', () => {
     expect(accionesPlan('vencida', true)).toEqual({ primaria: 'pagar', cancelar: true, reactivar: false, comprar: false });
+  });
+
+  test('incomplete se ve como vencida y se puede cancelar', () => {
+    const estado = estadoVisibleDeSuscripcion('incomplete');
+    expect(estado).toBe('vencido');
+    expect(accionesPlan(estadoPlan({ estado }), true).cancelar).toBe(true);
+    expect(estadoVisibleDeSuscripcion('active')).toBe('activo');
+    expect(estadoVisibleDeSuscripcion(null)).toBe('sin_plan');
   });
 
   test('prueba vencida: elegir plan, sin cancelar ni comprar', () => {

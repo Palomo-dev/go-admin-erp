@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { stripe } from '@/lib/stripe/server';
+import { requireStripe, stripe } from '@/lib/stripe/server';
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { precioComplemento, type TipoComplemento } from '@/lib/stripe/preciosCompras';
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+    requireStripe();
 
     let body: { organizationId?: unknown; addonType?: unknown; quantity?: unknown };
     try {

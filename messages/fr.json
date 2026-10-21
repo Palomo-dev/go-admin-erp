@@ -32691,6 +32691,7 @@
         "correoVerificado": "Actif",
         "correoPendiente": "Vérification",
         "correoFallido": "Erreur",
+        "correoLimitePlan": "Le forfait e-mail n'accepte plus de domaines. Quand il sera augmenté, appuyez sur Réessayer.",
         "correoSinConfigurar": "Configuration",
         "correoRespaldo": "En attendant, les commandes partent de pedidos@goadmin.io.",
         "correoEnUnosMinutos": "L'e-mail des commandes sera {desde} dans quelques minutes.",

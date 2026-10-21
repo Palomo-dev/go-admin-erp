@@ -15,6 +15,8 @@ export interface EstadoCorreoTienda {
   registros: { tipo: string; nombre: string; valor: string }[];
   dnsEnVercel: boolean;
   error: string | null;
+  /** `plan_domain_limit` solo cuando el cupo del plan dejó la fila en failed. */
+  codigoError: 'plan_domain_limit' | null;
 }
 
 export const REGION_CORREO_TIENDA = 'sa-east-1';
@@ -71,6 +73,52 @@ export function vencioPlazo(desde: string | Date, ahora: Date): boolean {
   const t = desde instanceof Date ? desde.getTime() : Date.parse(desde);
   if (!Number.isFinite(t)) return false;
   return ahora.getTime() - t >= PLAZO_CORREO_MS;
+}
+
+/** Lo que ve la tienda. El detalle del proveedor va después, en el mismo texto. */
+export const MENSAJE_LIMITE_PLAN = 'El plan de correo no admite más dominios.';
+
+export function textoDeProveedor(json: unknown): string {
+  if (!json || typeof json !== 'object') return '';
+  const cuerpo = json as { name?: unknown; message?: unknown; error?: unknown };
+  const anidado = cuerpo.error && typeof cuerpo.error === 'object'
+    ? cuerpo.error as { name?: unknown; message?: unknown }
+    : null;
+  const name = typeof cuerpo.name === 'string' ? cuerpo.name : typeof anidado?.name === 'string' ? anidado.name : '';
+  const message = typeof cuerpo.message === 'string' ? cuerpo.message : typeof anidado?.message === 'string' ? anidado.message : '';
+  return [name, message].map((parte) => parte.trim()).filter(Boolean).join(': ').slice(0, 400);
+}
+
+export const CODIGO_LIMITE_PLAN = 'plan_domain_limit' as const;
+
+/**
+ * El aviso del cupo sale del estado y del código, no del texto de last_error.
+ * Un pending o un verified con el código no se pinta como fallido.
+ */
+export function limitePlanVisible(
+  estado: string | null | undefined,
+  codigoError: string | null | undefined,
+): boolean {
+  return estado === 'failed' && codigoError === CODIGO_LIMITE_PLAN;
+}
+
+/** 403/422 por cupo del plan, al clasificar la respuesta del proveedor. Una clave inválida no entra aquí. */
+export function esAvisoLimitePlan(error: string | null | undefined): boolean {
+  if (!error) return false;
+  const texto = error.toLowerCase();
+  return texto.includes('domain limit') || texto.includes('no admite más dominios') || texto.includes('no admite mas dominios');
+}
+
+export function falloAlCrearDominio(status: number, json: unknown): { mensaje: string; limitePlan: boolean } {
+  const crudo = textoDeProveedor(json);
+  const limitePlan = (status === 403 || status === 422) && esAvisoLimitePlan(crudo);
+  if (limitePlan) {
+    const mensaje = crudo.startsWith(MENSAJE_LIMITE_PLAN) ? crudo : `${MENSAJE_LIMITE_PLAN} ${crudo}`.trim();
+    return { limitePlan: true, mensaje: mensaje.slice(0, 500) };
+  }
+  if (crudo) return { limitePlan: false, mensaje: crudo };
+  if (!status) return { limitePlan: false, mensaje: 'El proveedor no creó el dominio.' };
+  return { limitePlan: false, mensaje: `El proveedor no creó el dominio (${status}).` };
 }
 
 export function nombreRelativo(nombre: string, zona: string): string {

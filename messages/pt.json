@@ -32691,6 +32691,7 @@
         "correoVerificado": "Ativo",
         "correoPendiente": "Verificando",
         "correoFallido": "Erro",
+        "correoLimitePlan": "O plano de e-mail não aceita mais domínios. Quando for ampliado, toque em Tentar de novo.",
         "correoSinConfigurar": "Configurando",
         "correoRespaldo": "Enquanto isso, os pedidos saem de pedidos@goadmin.io.",
         "correoEnUnosMinutos": "O e-mail de pedidos ficará como {desde} em alguns minutos.",

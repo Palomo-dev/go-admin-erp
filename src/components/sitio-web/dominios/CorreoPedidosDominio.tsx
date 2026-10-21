@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Mail } from 'lucide-react';
 import { StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
 import { DnsRecordRow } from '../ui/DnsRecordRow';
+import { limitePlanVisible } from '@/lib/services/website/dominios/correoTiendaReglas';
 import { apiDominios } from './apiDominios';
 import { useTextosDominios } from './textos';
 import type { EstadoCorreoTienda } from '@/lib/services/website/dominios/correoTiendaReglas';
@@ -57,7 +58,10 @@ export function CorreoPedidosDominio({ dominioId, gestionar }: { dominioId: stri
 
   if (estado?.estado === 'no_aplica') return null;
 
-  const etiqueta = estado ? t(`detalle.${ETIQUETA[estado.estado]}`) : t('detalle.correoPendiente');
+  const limitePlan = limitePlanVisible(estado?.estado, estado?.codigoError);
+  const etiqueta = estado
+    ? t(`detalle.${ETIQUETA[estado.estado]}`)
+    : t('detalle.correoPendiente');
   const tono = estado?.estado === 'verified' ? 'verified' : estado?.estado === 'failed' ? 'failed' : 'pending';
 
   return (
@@ -70,13 +74,17 @@ export function CorreoPedidosDominio({ dominioId, gestionar }: { dominioId: stri
             <StatusBadge estado={tono} etiqueta={etiqueta} />
             {estado?.desde ? <span className="text-[13px] text-fg-secondary">{estado.desde}</span> : null}
           </div>
-          {estado && estado.estado !== 'verified' && estado.estado !== 'failed' && estado.desde ? (
+          {estado && estado.estado !== 'verified' && estado.estado !== 'failed' && !limitePlan && estado.desde ? (
             <p className="text-[13px] text-fg-secondary">{t('detalle.correoEnUnosMinutos', { desde: estado.desde })}</p>
           ) : null}
           {estado?.estado !== 'verified' ? (
             <p className="text-[13px] text-fg-secondary">{t('detalle.correoRespaldo')}</p>
           ) : null}
-          {estado?.error ? <p className="text-[13px] text-fg-secondary">{estado.error}</p> : null}
+          {limitePlan ? (
+            <p className="text-[13px] text-fg-secondary">{t('detalle.correoLimitePlan')}</p>
+          ) : estado?.error ? (
+            <p className="text-[13px] text-fg-secondary">{estado.error}</p>
+          ) : null}
           {fallo ? <p className="text-[13px] text-danger-text">{fallo}</p> : null}
           {!estado?.dnsEnVercel && (estado?.registros.length ?? 0) > 0 ? (
             <p className="text-[13px] text-fg-secondary">{t('detalle.correoDnsAjeno')}</p>

@@ -19,8 +19,10 @@ import {
   REGION_CORREO_TIENDA,
   RESPALDO_CORREO_PEDIDOS,
   debePublicar,
+  CODIGO_LIMITE_PLAN,
   dominioDeEnvio,
   esperaReintentoMs,
+  falloAlCrearDominio,
   hostDeZona,
   nombreRelativo,
   registrosDeProveedor,
@@ -61,6 +63,7 @@ interface FilaCorreo {
   dns_records: unknown;
   is_default: boolean;
   last_error: string | null;
+  error_code: string | null;
   dns_provider: string | null;
   organization_domain_id: string | null;
   check_attempts: number | null;
@@ -84,6 +87,7 @@ function vacio(parcial: Partial<EstadoCorreoTienda> & Pick<EstadoCorreoTienda, '
     registros: [],
     dnsEnVercel: false,
     error: null,
+    codigoError: null,
     ...parcial,
   };
 }
@@ -115,7 +119,7 @@ async function leerDominio(sb: SupabaseClient, organizationId: number, domainId:
 async function correosDe(sb: SupabaseClient, organizationId: number): Promise<FilaCorreo[]> {
   const { data, error } = await sb
     .from('email_domains')
-    .select('id, domain, status, from_email, from_name, provider_domain_id, dns_records, is_default, last_error, dns_provider, organization_domain_id, check_attempts, demoted_at')
+    .select('id, domain, status, from_email, from_name, provider_domain_id, dns_records, is_default, last_error, error_code, dns_provider, organization_domain_id, check_attempts, demoted_at')
     .eq('organization_id', organizationId);
   if (error) throw new ErrorCorreoTienda(500, 'No se pudo leer el correo de la tienda.');
   return (data || []) as FilaCorreo[];
@@ -142,12 +146,14 @@ function estadoDeFilas(fila: FilaDominio, correos: FilaCorreo[]): EstadoCorreoTi
   const estado = propio.status === 'verified' || propio.status === 'pending' || propio.status === 'verifying' || propio.status === 'failed'
     ? propio.status
     : 'pending';
+  const codigoError = propio.error_code === CODIGO_LIMITE_PLAN ? CODIGO_LIMITE_PLAN : null;
   return vacio({
     estado,
     desde: propio.from_email || desde,
     registros: registrosVisibles(propio.dns_records, apex),
     dnsEnVercel: propio.dns_provider !== 'externo',
     error: propio.last_error,
+    codigoError,
   });
 }
 
@@ -172,17 +178,24 @@ async function idEnResend(nombre: string): Promise<{ id: string; records: unknow
   return { id: String(hallado.id), records: hallado.records ?? [], status: hallado.status ?? null };
 }
 
-async function asegurarEnProveedor(nombre: string, idConocido: string | null): Promise<{ id: string; records: unknown; status: string | null } | null> {
+type AltaProveedor =
+  | { ok: true; id: string; records: unknown; status: string | null }
+  | { ok: false; mensaje: string; limitePlan: boolean };
+
+async function asegurarEnProveedor(nombre: string, idConocido: string | null): Promise<AltaProveedor> {
   if (idConocido) {
     const fresco = await llamarResend(`/domains/${encodeURIComponent(idConocido)}`, 'GET');
     if (fresco.ok && fresco.json?.id) {
-      return { id: String(fresco.json.id), records: fresco.json.records ?? [], status: fresco.json.status ?? null };
+      return { ok: true, id: String(fresco.json.id), records: fresco.json.records ?? [], status: fresco.json.status ?? null };
     }
   }
   const creado = await llamarResend('/domains', 'POST', { name: nombre, region: REGION_CORREO_TIENDA });
   const id = creado.ok ? String(creado.json?.id || '') : '';
-  if (id) return { id, records: creado.json?.records ?? [], status: creado.json?.status ?? null };
-  return idEnResend(nombre);
+  if (id) return { ok: true, id, records: creado.json?.records ?? [], status: creado.json?.status ?? null };
+  const existente = await idEnResend(nombre);
+  if (existente) return { ok: true, ...existente };
+  const fallo = falloAlCrearDominio(creado.status, creado.json);
+  return { ok: false, mensaje: fallo.mensaje, limitePlan: fallo.limitePlan };
 }
 
 async function publicarDns(zona: string, registros: RegistroDnsCorreo[], yaExterno: boolean): Promise<{ dnsProvider: 'vercel' | 'externo'; error: string | null; dmarc: boolean }> {
@@ -248,6 +261,7 @@ async function guardar(
     fromEmail: string;
     replyTo: string | null;
     error: string | null;
+    codigoError: 'plan_domain_limit' | null;
     dnsProvider: 'vercel' | 'externo' | null;
     intentos: number;
     dmarc: boolean;
@@ -274,7 +288,8 @@ async function guardar(
     organization_domain_id: domainId,
     check_attempts: entrada.intentos,
     last_check_at: ahora,
-    last_error: entrada.error,
+    last_error: entrada.status === 'verified' ? null : entrada.error,
+    error_code: entrada.status === 'verified' ? null : entrada.codigoError,
     updated_at: ahora,
     demoted_at: null,
     ...(entrada.status === 'verified' ? { verified_at: ahora } : {}),
@@ -337,6 +352,7 @@ async function reprogramar(sb: SupabaseClient, job: JobReclamado, error: string 
         .update({
           status: 'failed',
           last_error: error || 'No se pudo verificar el correo en 72 horas.',
+          error_code: null,
           last_check_at: new Date().toISOString(),
           check_attempts: job.intentos,
           updated_at: new Date().toISOString(),
@@ -353,6 +369,7 @@ async function reprogramar(sb: SupabaseClient, job: JobReclamado, error: string 
       .from('email_domains')
       .update({
         last_error: error,
+        error_code: null,
         last_check_at: new Date().toISOString(),
         check_attempts: job.intentos,
         updated_at: new Date().toISOString(),
@@ -361,6 +378,31 @@ async function reprogramar(sb: SupabaseClient, job: JobReclamado, error: string 
       .eq('organization_domain_id', job.organization_domain_id);
   }
   await cerrarJob(sb, job, 'pending', { runAfter, error });
+}
+
+/** El cupo del plan no se arregla reintentando. Queda en error hasta Reintentar. */
+async function fallarSinReintento(
+  sb: SupabaseClient,
+  job: JobReclamado,
+  apex: string,
+  domainId: string,
+  mensaje: string,
+): Promise<void> {
+  await asegurarFila(sb, job, apex, domainId, mensaje);
+  const { error } = await sb
+    .from('email_domains')
+    .update({
+      status: 'failed',
+      last_error: mensaje,
+      error_code: CODIGO_LIMITE_PLAN,
+      last_check_at: new Date().toISOString(),
+      check_attempts: job.intentos,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('organization_id', job.organization_id)
+    .eq('organization_domain_id', domainId);
+  if (error) throw new ErrorCorreoTienda(500, 'No se pudo guardar el error del correo.');
+  await cerrarJob(sb, job, 'failed', { error: mensaje });
 }
 
 async function usarElQueYaEsta(sb: SupabaseClient, job: JobReclamado, apex: string, correos: FilaCorreo[]): Promise<void> {
@@ -372,6 +414,13 @@ async function usarElQueYaEsta(sb: SupabaseClient, job: JobReclamado, apex: stri
       .eq('id', fila.id)
       .eq('organization_id', job.organization_id)
       .is('organization_domain_id', null);
+  }
+  if (fila) {
+    await sb
+      .from('email_domains')
+      .update({ last_error: null, error_code: null, updated_at: new Date().toISOString() })
+      .eq('id', fila.id)
+      .eq('organization_id', job.organization_id);
   }
   if (fila && !fila.is_default) {
     const ahora = new Date().toISOString();
@@ -401,6 +450,7 @@ async function asegurarFila(
     fromEmail: `pedidos@${apex}`,
     replyTo: tienda.replyTo,
     error,
+    codigoError: null,
     dnsProvider: null,
     intentos: job.intentos,
     dmarc: false,
@@ -445,10 +495,13 @@ async function provisionar(sb: SupabaseClient, job: JobReclamado): Promise<void>
   }
   const previo = filaDe(correos, fila.id, apex);
   const remoto = await asegurarEnProveedor(apex, previo?.provider_domain_id || job.id_proveedor);
-  if (!remoto) {
-    const mensaje = 'El proveedor no creó el dominio.';
-    await asegurarFila(sb, job, apex, fila.id, mensaje);
-    await reprogramar(sb, job, mensaje);
+  if (!remoto.ok) {
+    if (remoto.limitePlan) {
+      await fallarSinReintento(sb, job, apex, fila.id, remoto.mensaje);
+      return;
+    }
+    await asegurarFila(sb, job, apex, fila.id, remoto.mensaje);
+    await reprogramar(sb, job, remoto.mensaje);
     return;
   }
   const dns = registrosDeProveedor(remoto.records, apex);
@@ -467,7 +520,8 @@ async function provisionar(sb: SupabaseClient, job: JobReclamado): Promise<void>
     fromName: tienda.nombre,
     fromEmail: `pedidos@${apex}`,
     replyTo: tienda.replyTo,
-    error: publicado.error,
+    error: verificado ? null : publicado.error,
+    codigoError: null,
     dnsProvider: publicado.dnsProvider,
     intentos: job.intentos,
     dmarc: publicado.dmarc || recordsFinales.some((r) => nombreRelativo(r.nombre, apex) === '_dmarc'),
@@ -492,7 +546,7 @@ async function retirar(sb: SupabaseClient, job: JobReclamado): Promise<void> {
     if (fila && fila.is_primary && fila.is_active && fila.status === 'verified' && hostDeZona(fila.host, fila.domain_type)) {
       await sb
         .from('email_domains')
-        .update({ demoted_at: null, updated_at: new Date().toISOString() })
+        .update({ demoted_at: null, last_error: null, error_code: null, updated_at: new Date().toISOString() })
         .eq('organization_id', job.organization_id)
         .eq('organization_domain_id', job.organization_domain_id);
       await cerrarJob(sb, job, 'cancelled');
@@ -528,6 +582,7 @@ async function retirar(sb: SupabaseClient, job: JobReclamado): Promise<void> {
         is_default: false,
         status: 'failed',
         last_error: 'Dejó de ser el dominio principal hace 30 días.',
+        error_code: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', correo.id)

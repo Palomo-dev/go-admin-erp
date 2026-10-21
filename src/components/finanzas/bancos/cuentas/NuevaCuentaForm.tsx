@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BancosService } from '../BancosService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { valorSelect } from '@/lib/finanzas/valorSelect';
+import { cuentasBancariasElegibles } from '@/lib/finanzas/mapeoImpuesto';
 
 const ACCOUNT_TYPES = [
   { value: 'checking', label: 'Cuenta Corriente' },
@@ -41,6 +43,7 @@ export function NuevaCuentaForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [currencies, setCurrencies] = useState<{ code: string; name: string; symbol: string }[]>([]);
+  const [plan, setPlan] = useState<{ account_code: string; name: string; type: string; parent_code: string | null; is_active?: boolean | null }[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     bank_name: '',
@@ -49,17 +52,21 @@ export function NuevaCuentaForm() {
     // Vacía hasta conocer la moneda base de la organización (nunca COP supuesto).
     currency: '',
     initial_balance: '',
+    account_code: '',
   });
   const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
+  const cuentasBanco = cuentasBancariasElegibles(plan);
 
   useEffect(() => {
-    if (monedaResuelta && !formData.currency) {
-      setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
-    }
-  }, [monedaResuelta, monedaBase, formData.currency]);
+    if (!monedaResuelta) return;
+    setFormData((prev) => (prev.currency ? prev : { ...prev, currency: monedaBase }));
+  }, [monedaResuelta, monedaBase]);
 
   useEffect(() => {
     loadCurrencies();
+    BancosService.obtenerPlanCuentas()
+      .then(setPlan)
+      .catch((error) => console.error('Error cargando el plan de cuentas:', error));
   }, []);
 
   const loadCurrencies = async () => {
@@ -84,6 +91,11 @@ export function NuevaCuentaForm() {
       return;
     }
 
+    if (!formData.account_code) {
+      toast.error('La cuenta contable es obligatoria (PUC 1110, 1120 u otra de bancos)');
+      return;
+    }
+
     try {
       setIsLoading(true);
       await BancosService.crearCuentaBancaria({
@@ -94,6 +106,7 @@ export function NuevaCuentaForm() {
         // Sin moneda elegida, la base la pone el servicio/trigger.
         currency: formData.currency || null,
         initial_balance: formData.initial_balance ? parseFloat(formData.initial_balance) : 0,
+        account_code: formData.account_code,
       });
 
       toast.success('Cuenta bancaria creada exitosamente');
@@ -159,8 +172,11 @@ export function NuevaCuentaForm() {
                 Banco *
               </Label>
               <Select
-                value={formData.bank_name}
-                onValueChange={(value) => setFormData({ ...formData, bank_name: value })}
+                value={valorSelect(formData.bank_name)}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  setFormData((prev) => (prev.bank_name === value ? prev : { ...prev, bank_name: value }));
+                }}
               >
                 <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
                   <SelectValue placeholder="Seleccionar banco" />
@@ -217,8 +233,11 @@ export function NuevaCuentaForm() {
                   Moneda
                 </Label>
                 <Select
-                  value={formData.currency}
-                  onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                  value={valorSelect(formData.currency)}
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    setFormData((prev) => (prev.currency === value ? prev : { ...prev, currency: value }));
+                  }}
                 >
                   <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
                     <SelectValue placeholder="Seleccionar moneda" />
@@ -232,6 +251,33 @@ export function NuevaCuentaForm() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="account_code" className="text-gray-700 dark:text-gray-300">
+                Cuenta contable (PUC) *
+              </Label>
+              <Select
+                value={valorSelect(formData.account_code)}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  setFormData((prev) => (prev.account_code === value ? prev : { ...prev, account_code: value }));
+                }}
+              >
+                <SelectTrigger id="account_code" className="dark:bg-gray-900 dark:border-gray-600">
+                  <SelectValue placeholder="1110 Bancos, 1120 Ahorros…" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 max-h-60">
+                  {cuentasBanco.map((cuenta) => (
+                    <SelectItem key={cuenta.account_code} value={cuenta.account_code}>
+                      {cuenta.account_code} - {cuenta.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Obligatoria. Una transferencia usa esta cuenta; sin ella el asiento no se registra contra un gasto.
+              </p>
             </div>
 
             {/* Saldo inicial */}

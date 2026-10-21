@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { AlertasContables } from './AlertasContables';
 
 const MODULES = [
   {
@@ -113,6 +114,8 @@ export function ContabilidadHomePage() {
 
   useEffect(() => {
     loadResumen();
+    // Solo al cambiar de sucursal: loadResumen cierra sobre el filtro vigente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchFilter]);
 
   const loadResumen = async () => {
@@ -230,6 +233,8 @@ export function ContabilidadHomePage() {
       </div>
 
       <BranchBadge className="mb-3" />
+
+      <AlertasContables />
 
       {/* Resumen */}
       {isLoading ? (

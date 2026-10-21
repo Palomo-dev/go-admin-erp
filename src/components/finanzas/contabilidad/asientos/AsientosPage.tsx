@@ -14,6 +14,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento } from '../ContabilidadService';
+import { AlertasContables } from '../AlertasContables';
+import { esCuentaDeTitulo } from '@/lib/finanzas/cuentasTitulo';
+import { valorSelect } from '@/lib/finanzas/valorSelect';
 import { Switch } from '@/components/ui/switch';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -130,6 +133,11 @@ export function AsientosPage() {
     setFormData({ ...formData, lines: newLines });
   };
 
+  const cuentasDetalle = useMemo(
+    () => cuentas.filter((cuenta) => !esCuentaDeTitulo(cuenta, cuentas)),
+    [cuentas],
+  );
+
   const getTotalDebits = () => formData.lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
   const getTotalCredits = () => formData.lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
   const isBalanced = () => Math.abs(getTotalDebits() - getTotalCredits()) < 0.01;
@@ -143,6 +151,11 @@ export function AsientosPage() {
     const validLines = formData.lines.filter(l => l.account_code && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0));
     if (validLines.length < 2) {
       toast.error('Se requieren al menos 2 líneas con valores');
+      return;
+    }
+
+    if (validLines.some((linea) => esCuentaDeTitulo({ account_code: linea.account_code }, cuentas))) {
+      toast.error('Una cuenta de título no recibe movimientos. Elige una cuenta de detalle.');
       return;
     }
 
@@ -267,6 +280,8 @@ export function AsientosPage() {
       </div>
 
       <BranchBadge className="mb-3" />
+
+      <AlertasContables />
 
       {/* Resumen */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -490,14 +505,16 @@ export function AsientosPage() {
                       <TableRow key={index} className="dark:border-gray-700">
                         <TableCell>
                           <Select
-                            value={line.account_code}
-                            onValueChange={(v) => updateLine(index, 'account_code', v)}
+                            value={valorSelect(line.account_code)}
+                            onValueChange={(v) => {
+                              if (v) updateLine(index, 'account_code', v);
+                            }}
                           >
                             <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
                               <SelectValue placeholder="Seleccionar" />
                             </SelectTrigger>
                             <SelectContent className="max-h-60">
-                              {cuentas.map(c => (
+                              {cuentasDetalle.map(c => (
                                 <SelectItem key={c.account_code} value={c.account_code}>
                                   {c.account_code} - {c.name}
                                 </SelectItem>

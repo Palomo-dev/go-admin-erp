@@ -3,6 +3,7 @@ import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { getDateRange, getDayRange, todayInTz } from '@/lib/utils/timezone';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { armarArbolContable } from '@/lib/finanzas/arbolBalance';
 
 // ============================================================
 // `journal_entries.entry_date` es **timestamptz**, no `date` (verificado en
@@ -287,42 +288,11 @@ export class ReportesContablesService {
       );
     });
 
-    const buildTree = (type: string): IncomeStatementRow[] => {
-      const typeAccounts = (accounts || []).filter((a: FilaCuenta) => a.type === type);
-      const nodeMap = new Map<string, IncomeStatementRow>();
-      const roots: IncomeStatementRow[] = [];
-
-      typeAccounts.forEach((acc: FilaCuenta) => {
-        nodeMap.set(acc.account_code, {
-          account_code: acc.account_code,
-          name: acc.name,
-          type: acc.type,
-          parent_code: acc.parent_code,
-          amount: totals.get(acc.account_code) || 0,
-          children: [],
-        });
-      });
-
-      typeAccounts.forEach((acc: FilaCuenta) => {
-        const node = nodeMap.get(acc.account_code)!;
-        if (acc.parent_code && nodeMap.has(acc.parent_code)) {
-          nodeMap.get(acc.parent_code)!.children.push(node);
-        } else {
-          roots.push(node);
-        }
-      });
-
-      // Una cuenta padre también puede tener movimientos propios: su saldo es
-      // el propio más el de sus hijas (antes se descartaba el propio).
-      const sumAmounts = (node: IncomeStatementRow): number => {
-        const childrenSum = node.children.reduce((sum, child) => sum + sumAmounts(child), 0);
-        node.amount = (totals.get(node.account_code) || 0) + childrenSum;
-        return node.amount;
-      };
-
-      roots.forEach(r => sumAmounts(r));
-      return roots;
-    };
+    const buildTree = (type: string): IncomeStatementRow[] =>
+      armarArbolContable(
+        (accounts || []).filter((a: FilaCuenta) => a.type === type),
+        (codigo) => totals.get(codigo) || 0,
+      );
 
     const income = buildTree('income');
     const expenses = buildTree('expense');
@@ -386,42 +356,11 @@ export class ReportesContablesService {
       0
     );
 
-    const buildTree = (type: string): BalanceSheetRow[] => {
-      const typeAccounts = (accounts || []).filter((a: FilaCuenta) => a.type === type);
-      const nodeMap = new Map<string, BalanceSheetRow>();
-      const roots: BalanceSheetRow[] = [];
-
-      typeAccounts.forEach((acc: FilaCuenta) => {
-        nodeMap.set(acc.account_code, {
-          account_code: acc.account_code,
-          name: acc.name,
-          type: acc.type,
-          parent_code: acc.parent_code,
-          amount: 0,
-          children: [],
-        });
-      });
-
-      typeAccounts.forEach((acc: FilaCuenta) => {
-        const node = nodeMap.get(acc.account_code)!;
-        if (acc.parent_code && nodeMap.has(acc.parent_code)) {
-          nodeMap.get(acc.parent_code)!.children.push(node);
-        } else {
-          roots.push(node);
-        }
-      });
-
-      // Saldo propio de la cuenta más el de sus hijas (antes el padre perdía el propio).
-      const sumAmounts = (node: BalanceSheetRow): number => {
-        const ownAmount = totals.get(node.account_code) || 0;
-        const childrenSum = node.children.reduce((sum, child) => sum + sumAmounts(child), 0);
-        node.amount = ownAmount + childrenSum;
-        return node.amount;
-      };
-
-      roots.forEach(r => sumAmounts(r));
-      return roots;
-    };
+    const buildTree = (type: string): BalanceSheetRow[] =>
+      armarArbolContable(
+        (accounts || []).filter((a: FilaCuenta) => a.type === type),
+        (codigo) => totals.get(codigo) || 0,
+      );
 
     const assets = buildTree('asset');
     const liabilities = buildTree('liability');

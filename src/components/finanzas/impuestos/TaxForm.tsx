@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,9 +20,12 @@ import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { esRetencion, type ClaseImpuesto } from '@/lib/services/taxResolverCore';
 import { baseMinimaEnMoneda } from '@/lib/services/compras/logica';
+import { esCuentaDeTitulo } from '@/lib/finanzas/cuentasTitulo';
+import { esImpuestoIva } from '@/lib/finanzas/mapeoImpuesto';
 import {
   configurarRetencion,
   cuentasDePasivo,
+  vincularCuentaImpuesto,
   type CuentaPasivo,
   type RetencionConfigurada,
   type UvtVigente,
@@ -32,6 +35,9 @@ const ERRORES_CONFIGURACION = [
   'cuenta_no_existe',
   'cuenta_no_es_pasivo',
   'cuenta_inactiva',
+  'cuenta_de_titulo',
+  'cuenta_requerida',
+  'impuesto_no_encontrado',
   'base_minima_invalida',
   'retencion_no_encontrada',
 ] as const;
@@ -105,10 +111,19 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const [cuenta, setCuenta] = useState('');
   const [baseMinima, setBaseMinima] = useState('');
   const [cuentas, setCuentas] = useState<CuentaPasivo[]>([]);
+  const [mapeoInexistente, setMapeoInexistente] = useState<string | null>(null);
+  const cuentaTocada = useRef(false);
   const { toast } = useToast();
 
+  const cuentasDetalle = useMemo(() => {
+    const todas = cuentas.map((c) => ({ account_code: c.codigo, parent_code: c.parent_code }));
+    return cuentas.filter(
+      (c) => !esCuentaDeTitulo({ account_code: c.codigo, parent_code: c.parent_code }, todas),
+    );
+  }, [cuentas]);
+
   useEffect(() => {
-    if (!esClaseRetencion || !organizationId) return;
+    if (!organizationId) return;
     let cancelado = false;
     cuentasDePasivo(organizationId)
       .then((lista) => {
@@ -118,7 +133,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
     return () => {
       cancelado = true;
     };
-  }, [esClaseRetencion, organizationId]);
+  }, [organizationId]);
 
   useEffect(() => {
     setCuenta(retencion?.cuentaPropia ? retencion.cuenta : '');
@@ -128,8 +143,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const baseMinimaUvt = baseMinima.trim() === '' ? null : Number(baseMinima);
   const baseMinimaValida = baseMinimaUvt === null || (Number.isFinite(baseMinimaUvt) && baseMinimaUvt >= 0);
   const baseMinimaMoneda = baseMinimaValida ? baseMinimaEnMoneda(baseMinimaUvt, uvt?.valor ?? null) : null;
-  // Una cuenta propia que ya no es pasivo activo se sigue mostrando para no perderla de vista.
-  const cuentaFueraDeLista = cuenta !== '' && !cuentas.some((c) => c.codigo === cuenta);
+  const cuentaEnDetalle = cuentasDetalle.some((c) => c.codigo === cuenta);
 
   // Cargar datos de plantillas de impuestos filtradas por país de la organización
   useEffect(() => {
@@ -203,6 +217,68 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const plantillas = templates.filter(
     (tpl) => esRetencion({ kind: tpl.kind, tax_templates: { code: tpl.code } }) === esClaseRetencion,
   );
+  const plantillaElegida = templates.find(
+    (tpl) => tpl.id === (useTemplate ? selectedTemplate : tax?.template_id ?? null),
+  );
+  const esIva = !esClaseRetencion && esImpuestoIva(plantillaElegida?.code ?? null, name);
+
+  useEffect(() => {
+    cuentaTocada.current = false;
+    setMapeoInexistente(null);
+  }, [open, tax?.id]);
+
+  useEffect(() => {
+    if (!open || !esIva || cuentas.length === 0 || cuentaTocada.current) return;
+    let cancelado = false;
+    const aplicar = (codigoGuardado: string | null) => {
+      if (cancelado || cuentaTocada.current) return;
+      const codigos = new Set(cuentasDetalle.map((c) => c.codigo));
+      if (codigoGuardado && codigos.has(codigoGuardado)) {
+        setMapeoInexistente(null);
+        setCuenta(codigoGuardado);
+        return;
+      }
+      setMapeoInexistente(codigoGuardado);
+      setCuenta(codigos.has('2408') ? '2408' : '');
+    };
+
+    if (!editMode || !tax) {
+      aplicar(null);
+      return;
+    }
+
+    const filtro = tax.template_id
+      ? `organization_tax_id.eq.${tax.id},tax_template_id.eq.${tax.template_id}`
+      : `organization_tax_id.eq.${tax.id}`;
+    supabase
+      .from('tax_account_mapping')
+      .select('account_code, organization_tax_id')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .or(filtro)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('No se pudo leer el mapeo del impuesto:', error);
+          aplicar(null);
+          return;
+        }
+        const filas = (data ?? []) as Array<{ account_code: string; organization_tax_id: string | null }>;
+        const propia = filas.find((fila) => fila.organization_tax_id === tax.id);
+        aplicar((propia ?? filas[0])?.account_code ?? null);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [open, esIva, cuentas, cuentasDetalle, editMode, tax, organizationId]);
+
+  useEffect(() => {
+    if (!esClaseRetencion || cuenta === '' || cuentas.length === 0) return;
+    if (!cuentasDetalle.some((c) => c.codigo === cuenta)) {
+      setMapeoInexistente(cuenta);
+      setCuenta('');
+    }
+  }, [esClaseRetencion, cuenta, cuentas, cuentasDetalle]);
 
   // Función para aplicar datos de la plantilla seleccionada
   const applyTemplate = () => {
@@ -228,7 +304,9 @@ const TaxForm: React.FC<TaxFormProps> = ({
 
   // Validación básica
   const isFormValid = () => {
-    return name.trim() !== '' && !isNaN(parseFloat(rate)) && (!esClaseRetencion || baseMinimaValida);
+    const ivaListo = !esIva || cuentaEnDetalle;
+    const retencionLista = !esClaseRetencion || (baseMinimaValida && (cuenta === '' || cuentaEnDetalle));
+    return name.trim() !== '' && !isNaN(parseFloat(rate)) && ivaListo && retencionLista;
   };
 
   // Guardar el impuesto
@@ -247,6 +325,15 @@ const TaxForm: React.FC<TaxFormProps> = ({
       toast({
         title: 'Error',
         description: 'La tasa debe estar entre 0 y 100%.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (esIva && !cuentaEnDetalle) {
+      toast({
+        title: 'Cuenta contable requerida',
+        description: 'El IVA por pagar necesita una cuenta de pasivo de detalle. La cuenta canónica es 2408.',
         variant: 'destructive',
       });
       return;
@@ -291,6 +378,30 @@ const TaxForm: React.FC<TaxFormProps> = ({
             description: t('formulario.errorConfiguracion', {
               detalle: codigo ? t(`formulario.errores.${codigo}`) : t('formulario.errores.otro'),
             }),
+            variant: 'destructive',
+          });
+          onClose(true);
+          return;
+        }
+      }
+
+      if (esIva && idGuardado) {
+        try {
+          await vincularCuentaImpuesto(organizationId, idGuardado, cuenta);
+        } catch (errConfig) {
+          console.error('Error al vincular la cuenta del IVA:', errConfig);
+          const mensaje = errConfig instanceof Error ? errConfig.message : String((errConfig as { message?: string })?.message ?? '');
+          const codigo = ERRORES_CONFIGURACION.find((c) => mensaje.includes(c));
+          const detalle = codigo === 'cuenta_no_existe'
+            ? 'la cuenta no existe en el plan de cuentas.'
+            : codigo === 'cuenta_de_titulo'
+              ? 'la cuenta es de título y no recibe el IVA. Elige una de detalle.'
+              : codigo === 'cuenta_no_es_pasivo'
+                ? 'la cuenta no es de pasivo.'
+                : 'revisa que la cuenta exista y que tengas permiso de impuestos.';
+          toast({
+            title: 'El impuesto se guardó, pero no la cuenta',
+            description: `El IVA por pagar es 2408. ${detalle}`,
             variant: 'destructive',
           });
           onClose(true);
@@ -448,6 +559,44 @@ const TaxForm: React.FC<TaxFormProps> = ({
             />
           </div>
 
+          {esIva && (
+            <div className="grid grid-cols-1 gap-2">
+              <Label htmlFor="cuentaIva" className="text-sm dark:text-gray-300">
+                Cuenta por pagar (PUC) <span className="text-red-500">*</span>
+              </Label>
+              <select
+                id="cuentaIva"
+                value={cuentaEnDetalle ? cuenta : ''}
+                onChange={(e) => {
+                  cuentaTocada.current = true;
+                  setMapeoInexistente(null);
+                  setCuenta(e.target.value);
+                }}
+                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
+              >
+                <option value="">Selecciona la cuenta</option>
+                {cuentasDetalle.map((c) => (
+                  <option key={c.codigo} value={c.codigo}>
+                    {c.codigo} · {c.nombre}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                El IVA por pagar es 2408. Solo se ofrecen cuentas de pasivo de detalle que existen en el plan.
+              </p>
+              {mapeoInexistente && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  El mapeo actual ({mapeoInexistente}) no existe en el plan. Elige una cuenta real; 2408 es la de IVA por pagar.
+                </p>
+              )}
+              {!cuentasDetalle.some((c) => c.codigo === '2408') && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  El plan no tiene la cuenta 2408 (IVA por pagar). Elige otra de pasivo de detalle, o créala en el plan de cuentas.
+                </p>
+              )}
+            </div>
+          )}
+
           {esClaseRetencion && (
             <>
               <div className="grid grid-cols-1 gap-2">
@@ -456,8 +605,11 @@ const TaxForm: React.FC<TaxFormProps> = ({
                 </Label>
                 <select
                   id="cuentaRetencion"
-                  value={cuenta}
-                  onChange={(e) => setCuenta(e.target.value)}
+                  value={cuentaEnDetalle ? cuenta : ''}
+                  onChange={(e) => {
+                    cuentaTocada.current = true;
+                    setCuenta(e.target.value);
+                  }}
                   aria-describedby="cuentaRetencionAyuda"
                   className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
                 >
@@ -466,13 +618,17 @@ const TaxForm: React.FC<TaxFormProps> = ({
                       ? t('formulario.cuentaAutomaticaActual', { cuenta: retencion.cuenta })
                       : t('formulario.cuentaAutomatica')}
                   </option>
-                  {cuentaFueraDeLista && <option value={cuenta}>{cuenta}</option>}
-                  {cuentas.map((c) => (
+                  {cuentasDetalle.map((c) => (
                     <option key={c.codigo} value={c.codigo}>
                       {c.codigo} · {c.nombre}
                     </option>
                   ))}
                 </select>
+                {mapeoInexistente && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    La cuenta {mapeoInexistente} no está en el plan o es de título. Elige una de detalle.
+                  </p>
+                )}
                 <p id="cuentaRetencionAyuda" className="text-xs text-gray-500 dark:text-gray-400">
                   {t('formulario.cuentaAyuda')}
                 </p>

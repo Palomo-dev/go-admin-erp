@@ -17869,6 +17869,9 @@
         "cuenta_no_existe": "le compte n’existe pas dans le plan comptable.",
         "cuenta_no_es_pasivo": "le compte n’est pas un compte de passif.",
         "cuenta_inactiva": "le compte est inactif.",
+        "cuenta_de_titulo": "le compte regroupe d’autres comptes et ne peut pas recevoir la taxe. Choisissez un compte de détail.",
+        "cuenta_requerida": "le compte comptable manque.",
+        "impuesto_no_encontrado": "la taxe n’existe pas dans cette organisation.",
         "base_minima_invalida": "La base minimale doit être un nombre supérieur ou égal à zéro.",
         "retencion_no_encontrada": "la retenue n’existe pas dans cette organisation.",
         "otro": "vérifiez vos autorisations sur les taxes et réessayez."

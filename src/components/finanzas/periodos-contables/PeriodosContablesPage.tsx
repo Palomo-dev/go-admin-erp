@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PeriodosContablesService, FiscalPeriod } from './PeriodosContablesService';
 import { rangoDelMes } from '@/lib/services/fiscalCalendar';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
@@ -22,6 +24,7 @@ const MONTHS = [
 ];
 
 export function PeriodosContablesPage() {
+  const { formatDate } = useFormatDate();
   const [periodos, setPeriodos] = useState<FiscalPeriod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -343,17 +346,14 @@ export function PeriodosContablesPage() {
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">{periodo.year}</TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
-                    {new Date(periodo.start_date).toLocaleDateString('es-CO')}
+                    {formatPlainDate(periodo.start_date)}
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
-                    {new Date(periodo.end_date).toLocaleDateString('es-CO')}
+                    {formatPlainDate(periodo.end_date)}
                   </TableCell>
                   <TableCell>{getStatusBadge(periodo.status)}</TableCell>
                   <TableCell className="text-gray-500 dark:text-gray-400">
-                    {periodo.closed_at 
-                      ? new Date(periodo.closed_at).toLocaleDateString('es-CO')
-                      : '-'
-                    }
+                    {periodo.closed_at ? formatDate(periodo.closed_at) : '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

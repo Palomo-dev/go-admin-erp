@@ -22070,6 +22070,9 @@
         "cuenta_no_existe": "the account does not exist in the chart of accounts.",
         "cuenta_no_es_pasivo": "the account is not a liability.",
         "cuenta_inactiva": "the account is inactive.",
+        "cuenta_de_titulo": "the account groups others and cannot receive the tax. Choose a detail account.",
+        "cuenta_requerida": "the ledger account is missing.",
+        "impuesto_no_encontrado": "the tax does not exist in this organization.",
         "base_minima_invalida": "The minimum base must be a number greater than or equal to zero.",
         "retencion_no_encontrada": "the withholding does not exist in this organization.",
         "otro": "check your tax permissions and try again."

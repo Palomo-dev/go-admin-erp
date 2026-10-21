@@ -22070,6 +22070,9 @@
         "cuenta_no_existe": "la cuenta no existe en el plan de cuentas.",
         "cuenta_no_es_pasivo": "la cuenta no es de pasivo.",
         "cuenta_inactiva": "la cuenta está inactiva.",
+        "cuenta_de_titulo": "la cuenta agrupa a otras y no recibe el impuesto. Elige una de detalle.",
+        "cuenta_requerida": "falta la cuenta contable.",
+        "impuesto_no_encontrado": "el impuesto no existe en esta organización.",
         "base_minima_invalida": "La base mínima debe ser un número mayor o igual a cero.",
         "retencion_no_encontrada": "la retención no existe en esta organización.",
         "otro": "revisa tus permisos de impuestos e inténtalo de nuevo."

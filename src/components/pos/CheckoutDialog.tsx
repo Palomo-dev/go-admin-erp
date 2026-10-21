@@ -16,12 +16,8 @@ import { CashDrawerService } from '@/lib/services/cashDrawerService';
 import { toast } from 'sonner';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
 import { cn } from '@/utils/Utils';
-import { 
-  calculateCartTaxes,
-  impuestoIncluidoDeLinea,
-  type OrganizationTax as TaxUtilOrganizationTax,
-  type TaxCalculationItem 
-} from '@/lib/utils/taxCalculations';
+import type { OrganizationTax as TaxUtilOrganizationTax } from '@/lib/utils/taxCalculations';
+import { calcularLineaDelCarrito, desgloseDeLineas, totalesDeLineasDelCarrito } from '@/lib/pos/venta/calculoLineaCarrito';
 import { validateCompositeStock } from '@/lib/services/compositeStockValidation';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
@@ -704,7 +700,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // El cálculo es async: si la casilla cambia a mitad, el resultado viejo no pisa al nuevo.
   useEffect(() => {
     let vivo = true;
-    void calculateCartTotals(() => vivo);
+    calculateCartTotals(() => vivo);
     return () => { vivo = false; };
   }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded, casillaMovida]);
 
@@ -1023,106 +1019,22 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
   
-  const calculateCartTotals = async (vigente: () => boolean = () => true) => {
+  const calculateCartTotals = (vigente: () => boolean = () => true) => {
     if (!cart.items.length) {
       if (vigente()) setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 });
       return;
     }
-
-    let combinedSubtotal = 0;
-    let combinedTaxAmount = 0;
-    let combinedFinalTotal = 0;
-    const combinedBreakdown: { [taxId: string]: { name: string; amount: number } } = {};
-
-    // Procesar cada ítem del carrito
-    for (const item of cart.items) {
-      try {
-        const productTaxes = await POSService.getProductTaxes(item.product_id);
-        
-        const tasaDecidida = item.tasaDecidida === true;
-        const taxItem: TaxCalculationItem = {
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          product_id: item.product_id,
-          discount_amount: item.discount_amount || 0,
-          tax_rate: tasaDecidida ? (Number(item.tax_rate) || 0) : (item.tax_rate || undefined),
-          tax_included: item.tax_included,
-          tax_excluded: item.tax_excluded,
-          tasaDecidida,
-        };
-        
-        let result;
-        
-        if (productTaxes.length > 0) {
-          // Usar impuestos específicos del producto
-          const productAppliedTaxes: {[key: string]: boolean} = {};
-          const productOrgTaxes: TaxUtilOrganizationTax[] = [];
-          
-          productTaxes.forEach(relation => {
-            if (relation.organization_taxes && relation.organization_taxes.is_active) {
-              productAppliedTaxes[relation.organization_taxes.id] = true;
-              productOrgTaxes.push({
-                id: relation.organization_taxes.id,
-                name: relation.organization_taxes.name,
-                rate: parseFloat(relation.organization_taxes.rate.toString()),
-                is_default: relation.organization_taxes.is_default,
-                is_active: relation.organization_taxes.is_active
-              });
-            }
-          });
-          
-          result = calculateCartTaxes(
-            [taxItem],
-            productAppliedTaxes,
-            productOrgTaxes,
-            taxIncluded
-          );
-        } else {
-          // Usar impuestos de organización
-          result = calculateCartTaxes(
-            [taxItem],
-            appliedTaxes,
-            organizationTaxes,
-            taxIncluded
-          );
-        }
-        
-        // Acumular totales
-        combinedSubtotal += result.subtotal;
-        combinedTaxAmount += result.totalTaxAmount;
-        combinedFinalTotal += result.finalTotal;
-
-        // Acumular desglose por nombre de impuesto (IVA, ICA, etc.)
-        result.taxBreakdown.forEach(tax => {
-          if (combinedBreakdown[tax.taxId]) {
-            combinedBreakdown[tax.taxId].amount += tax.taxAmount;
-          } else {
-            combinedBreakdown[tax.taxId] = { name: tax.name, amount: tax.taxAmount };
-          }
-        });
-        
-      } catch (error) {
-        console.error('Error calculating taxes for item:', item, error);
-        // En caso de error, agregar el ítem sin impuestos
-        const lineTotal = item.quantity * item.unit_price;
-        combinedSubtotal += lineTotal;
-        combinedFinalTotal += lineTotal;
-      }
-    }
-    
+    // La misma regla que el carrito y que valida el servidor. La tasa ya está
+    // en la línea; la casilla solo llena las que no dicen si va incluido.
+    const lineas = cart.items.map((item) => calcularLineaDelCarrito(item, [], taxIncluded));
+    const totales = totalesDeLineasDelCarrito(lineas);
     if (!vigente()) return;
-    // Actualizar estado con totales calculados
     setCalculatedTotals({
-      subtotal: Math.round(combinedSubtotal * 100) / 100,
-      totalTaxAmount: Math.round(combinedTaxAmount * 100) / 100,
-      finalTotal: Math.round(combinedFinalTotal * 100) / 100
+      subtotal: totales.subtotal,
+      totalTaxAmount: totales.taxTotal,
+      finalTotal: totales.total,
     });
-    setTaxBreakdown(
-      Object.values(combinedBreakdown).map(t => ({
-        name: t.name,
-        amount: Math.round(t.amount * 100) / 100
-      }))
-    );
+    setTaxBreakdown(desgloseDeLineas(lineas).map((fila) => ({ name: fila.name, amount: fila.amount })));
   };
 
   // Pagos (L42): reductores puros en src/lib/pos/venta/cobro/pagosCobro.ts.
@@ -1223,33 +1135,27 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         }
       }
 
-      // Crear cart actualizado con totales calculados con impuestos
-      const updatedItems = cart.items.map(item => {
-        // Calcular proporción de impuestos para este item
-        const itemSubtotal = item.quantity * item.unit_price;
-        const taxProportion = totalesCobro.subtotal > 0 
-          ? itemSubtotal / totalesCobro.subtotal 
-          : 0;
-        const itemTaxAmount = totalesCobro.totalTaxAmount * taxProportion;
-        const itemTaxRate = itemSubtotal > 0 ? (itemTaxAmount / itemSubtotal) * 100 : 0;
-        const incluido = impuestoIncluidoDeLinea(item, taxIncluded);
-
-        return {
-          ...item,
-          tax_included: incluido,
-          total: incluido ? itemSubtotal : itemSubtotal + itemTaxAmount,
-          tax_amount: itemTaxAmount,
-          tax_rate: itemTaxRate
-        };
-      });
+      // Cada línea con la misma regla que el carrito y el servidor.
+      // No se reparte el impuesto del total entre las líneas: eso cambiaba
+      // la tasa y el total dejaba de cuadrar cuando había productos mezclados.
+      const lineasCobro = cart.items.map((item) => calcularLineaDelCarrito(item, [], taxIncluded));
+      const updatedItems = cart.items.map((item, i) => ({
+        ...item,
+        tax_included: lineasCobro[i].taxIncludedEfectivo,
+        tax_rate: lineasCobro[i].taxRate,
+        tax_amount: lineasCobro[i].taxAmount,
+        total: lineasCobro[i].total,
+        discount_amount: lineasCobro[i].discount,
+      }));
+      const sumaLineas = totalesDeLineasDelCarrito(lineasCobro);
 
       const updatedCart: Cart = {
         ...cart,
         items: updatedItems,
-        subtotal: totalesCobro.subtotal,
-        tax_total: totalesCobro.totalTaxAmount,
-        tax_amount: totalesCobro.totalTaxAmount, // Alias for compatibility
-        total: totalesCobro.finalTotal
+        subtotal: sumaLineas.subtotal,
+        tax_total: sumaLineas.taxTotal,
+        tax_amount: sumaLineas.taxTotal,
+        total: sumaLineas.total,
       };
 
       if (!intentoCobroRef.current) {
@@ -1303,6 +1209,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         sendToFactus,
       });
       const isPendingSync = postVenta.pendienteSincronizar;
+      if (!isPendingSync && updatedCart.coupon?.code) {
+        void POSService.redimirCuponDelCarrito(updatedCart, sale.id).catch((err) => {
+          console.error('No se pudo registrar el uso del cupón:', err);
+        });
+      }
       if (isPendingSync) {
         toast.warning(tPos('postVenta.avisos.ventaSinRed', { numero: sale.receipt_number_local ?? '' }));
       }

@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Promotion, PROMOTION_TYPE_LABELS } from './types';
+import { Promotion, PROMOTION_TYPE_LABELS, WEEK_DAYS, type WeekDay } from './types';
 import { PromotionsService } from './promotionsService';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -143,13 +143,31 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
         return `${promo.discount_value}%`;
       case 'fixed_amount':
         return formatear(promo.discount_value || 0);
-      case 'buy_x_get_y':
-        return `${promo.buy_quantity}x${promo.get_quantity}`;
+      case 'buy_x_get_y': {
+        const x = promo.buy_quantity ?? 0;
+        const y = promo.get_quantity ?? 0;
+        if (x > 0 && y > 0 && y < x) return `${x}x${y}`;
+        if (x > 0 && y > 0) return `Compra ${x}, +${y} gratis`;
+        return '-';
+      }
       case 'bundle':
-        return formatear(promo.discount_value || 0);
+        if ((promo.bundle_price ?? 0) > 0) return formatear(promo.bundle_price || 0);
+        if ((promo.discount_value ?? 0) > 0) return `${promo.discount_value}%`;
+        return '-';
       default:
         return '-';
     }
+  };
+
+  const diasDeVigencia = (dias: WeekDay[] | null | undefined): string | null => {
+    if (!dias || dias.length === 0) return null;
+    const cortos = WEEK_DAYS.filter((d) => dias.includes(d.value)).map((d) => d.short);
+    return cortos.length > 0 ? cortos.join(', ') : null;
+  };
+
+  const horaCorta = (valor: string | null | undefined): string => {
+    if (!valor) return '';
+    return String(valor).slice(0, 5);
   };
 
   if (loading) {
@@ -235,6 +253,16 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
                       <> - {formatDate(promo.end_date)}</>
                     )}
                   </div>
+                  {diasDeVigencia(promo.applicable_days) && (
+                    <div className="text-gray-500 dark:text-gray-400">
+                      {diasDeVigencia(promo.applicable_days)}
+                    </div>
+                  )}
+                  {(promo.start_time || promo.end_time) && (
+                    <div className="text-gray-500 dark:text-gray-400">
+                      {horaCorta(promo.start_time) || '00:00'}–{horaCorta(promo.end_time) || '24:00'}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-center">
                   <span className="text-gray-600 dark:text-gray-300">

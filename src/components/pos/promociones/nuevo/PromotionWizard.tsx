@@ -84,6 +84,28 @@ function diaDelFormulario(valor: string, timezone: string): string {
   return valor.length <= 10 ? valor : plainDayOfInstant(valor, timezone);
 }
 
+/** `HH:mm` para un `<input type="time">`. La columna `time` llega como `HH:mm:ss`. */
+function horaDelFormulario(valor: string | null | undefined): string {
+  if (!valor) return '';
+  const m = String(valor).match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return '';
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+
+const MENSAJE_FECHA_FIN = 'La fecha de fin no puede ser anterior a la de inicio';
+
+function ayudaCompraLleva(compra: number | undefined, lleva: number | undefined): string {
+  const x = Math.trunc(compra || 0);
+  const y = Math.trunc(lleva || 0);
+  if (x > 0 && y > 0 && y < x) {
+    return `Lleva ${x} y paga ${y}: de cada ${x} unidades, ${x - y} salen gratis (${x}x${y}).`;
+  }
+  if (x > 0 && y > 0) {
+    return `Compra ${x} y lleva ${y} gratis: de cada ${x + y} unidades, ${y} salen gratis.`;
+  }
+  return 'Si Y es menor que X, el cliente lleva X y paga Y (3 y 2 se muestra como 3x2). Si Y es mayor o igual que X, Y son unidades gratis además de las X que se pagan.';
+}
+
 export function PromotionWizard({ initialData, promotionId, onSuccess }: PromotionWizardProps) {
   const router = useRouter();
   // `promotions.start_date` / `.end_date` son timestamptz. En el formulario se
@@ -96,6 +118,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [categories, setCategories] = useState<CategoriaPromocion[]>([]);
   const [productSearch, setProductSearch] = useState('');
   
+  const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
+  const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreatePromotionData>({
     name: '',
     description: '',
@@ -148,6 +172,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   useEffect(() => {
     loadProducts();
     loadCategories();
+    PromotionsService.getBranches()
+      .then(setSucursales)
+      .catch(() => setSucursales([]));
   }, []);
 
   useEffect(() => {
@@ -178,6 +205,13 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const cambiarFecha = (campo: 'start_date' | 'end_date', dia: string) => {
+    const inicio = campo === 'start_date' ? dia : (formData.start_date || '');
+    const fin = campo === 'end_date' ? dia : (formData.end_date || '');
+    setErrorFechaFin(fin && inicio && fin < inicio ? MENSAJE_FECHA_FIN : null);
+    handleChange(campo, dia || undefined);
+  };
+
   const validateStep = (): boolean => {
     switch (currentStep) {
       case 0: // Datos básicos
@@ -196,8 +230,16 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           return false;
         }
         if (formData.promotion_type === 'buy_x_get_y' && (!formData.buy_quantity || !formData.get_quantity)) {
-          toast.error('Debe especificar las cantidades de compra y regalo');
+          toast.error('Debe especificar las cantidades de compra y de la segunda cifra');
           return false;
+        }
+        if (formData.promotion_type === 'bundle') {
+          const precio = Number(formData.bundle_price) || 0;
+          const porcentaje = Number(formData.discount_value) || 0;
+          if (precio <= 0 && (porcentaje <= 0 || porcentaje > 100)) {
+            toast.error('Indica el precio del paquete o un porcentaje entre 1 y 100');
+            return false;
+          }
         }
         return true;
       case 2: // Vigencia
@@ -205,10 +247,12 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           toast.error('La fecha de inicio es requerida');
           return false;
         }
-        if (formData.end_date && new Date(formData.end_date) < new Date(formData.start_date)) {
-          toast.error('La fecha de fin debe ser posterior a la fecha de inicio');
+        if (formData.end_date && formData.end_date < formData.start_date) {
+          setErrorFechaFin(MENSAJE_FECHA_FIN);
+          toast.error(MENSAJE_FECHA_FIN);
           return false;
         }
+        setErrorFechaFin(null);
         return true;
       default:
         return true;
@@ -416,6 +460,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                           ...prev,
                           promotion_type: type,
                           discount_value: 0,
+                          bundle_price: null,
                           max_discount_amount: undefined,
                         }));
                       }}
@@ -488,26 +533,66 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               )}
 
               {formData.promotion_type === 'buy_x_get_y' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="dark:text-gray-200">Compra (X)</Label>
-                    <Input
-                      type="number"
-                      value={formData.buy_quantity || ''}
-                      onChange={(e) => handleChange('buy_quantity', parseInt(e.target.value) || 0)}
-                      min={1}
-                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="dark:text-gray-200">Lleva (X)</Label>
+                      <Input
+                        type="number"
+                        value={formData.buy_quantity || ''}
+                        onChange={(e) => handleChange('buy_quantity', parseInt(e.target.value) || 0)}
+                        min={1}
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="dark:text-gray-200">Paga o gratis (Y)</Label>
+                      <Input
+                        type="number"
+                        value={formData.get_quantity || ''}
+                        onChange={(e) => handleChange('get_quantity', parseInt(e.target.value) || 0)}
+                        min={1}
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="dark:text-gray-200">Lleva (Y)</Label>
-                    <Input
-                      type="number"
-                      value={formData.get_quantity || ''}
-                      onChange={(e) => handleChange('get_quantity', parseInt(e.target.value) || 0)}
-                      min={1}
-                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {ayudaCompraLleva(formData.buy_quantity, formData.get_quantity)}
+                  </p>
+                </div>
+              )}
+
+              {formData.promotion_type === 'bundle' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Precio del paquete o porcentaje. Si hay precio y en Reglas marcaste productos a incluir, el descuento es la diferencia cuando todos están en la cuenta. Sin precio, se aplica el porcentaje.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="dark:text-gray-200">Precio del paquete</Label>
+                      <Input
+                        type="number"
+                        value={formData.bundle_price || ''}
+                        onChange={(e) => handleChange('bundle_price', parseFloat(e.target.value) || null)}
+                        min={0}
+                        placeholder="Sin precio fijo"
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="dark:text-gray-200">Porcentaje (si no hay precio)</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={formData.discount_value || ''}
+                          onChange={(e) => handleChange('discount_value', parseFloat(e.target.value) || 0)}
+                          min={0}
+                          max={100}
+                          className="dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-10"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -535,7 +620,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   <CampoFecha
                     aria-label="Fecha de Inicio"
                     valor={formData.start_date || ''}
-                    onValorChange={(dia) => handleChange('start_date', dia)}
+                    onValorChange={(dia) => cambiarFecha('start_date', dia)}
                   />
                 </div>
                 <div>
@@ -543,9 +628,91 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   <CampoFecha
                     aria-label="Fecha de Fin (opcional)"
                     valor={formData.end_date || ''}
-                    onValorChange={(dia) => handleChange('end_date', dia || undefined)}
+                    min={formData.start_date || undefined}
+                    aria-invalid={errorFechaFin ? true : undefined}
+                    aria-describedby={errorFechaFin ? 'promo-error-fecha-fin' : undefined}
+                    onValorChange={(dia) => cambiarFecha('end_date', dia)}
+                  />
+                  {errorFechaFin && (
+                    <p id="promo-error-fecha-fin" role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {errorFechaFin}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="dark:text-gray-200">Hora de inicio (opcional)</Label>
+                  <Input
+                    type="time"
+                    value={horaDelFormulario(formData.start_time)}
+                    onChange={(e) => handleChange('start_time', e.target.value || null)}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 </div>
+                <div>
+                  <Label className="dark:text-gray-200">Hora de fin (opcional)</Label>
+                  <Input
+                    type="time"
+                    value={horaDelFormulario(formData.end_time)}
+                    onChange={(e) => handleChange('end_time', e.target.value || null)}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+                Horas en la zona de la organización. Si las dejas vacías, aplica todo el día. Si la hora de fin es menor que la de inicio, la franja cruza la medianoche.
+              </p>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="dark:text-gray-200">Sucursales</Label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Si no eliges ninguna, aplica en todas.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7 dark:text-gray-300"
+                    onClick={() => handleChange('branches', undefined)}
+                  >
+                    Todas
+                  </Button>
+                </div>
+                {sucursales.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">No hay sucursales activas para elegir.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {sucursales.map((sucursal) => {
+                      const elegida = (formData.branches || []).some((id) => id === sucursal.id);
+                      return (
+                        <button
+                          key={sucursal.id}
+                          type="button"
+                          onClick={() => {
+                            const actuales = formData.branches || [];
+                            const siguientes = elegida
+                              ? actuales.filter((id) => id !== sucursal.id)
+                              : [...actuales, sucursal.id];
+                            handleChange('branches', siguientes.length === 0 ? undefined : siguientes);
+                          }}
+                          className={cn(
+                            'px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all',
+                            elegida
+                              ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                              : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'
+                          )}
+                        >
+                          {sucursal.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

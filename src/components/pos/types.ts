@@ -123,8 +123,12 @@ export interface CartItem {
   manual_discount_amount?: number | null;
   /** Descuento de promoción de la última evaluación del carrito (se recalcula en cada cambio). */
   promo_discount_amount?: number;
+  /** Parte del cupón que le tocó a esta línea (ya va dentro de `discount_amount`). */
+  coupon_discount_amount?: number;
   tax_amount?: number;
   tax_rate?: number;
+  /** Nombre del impuesto que se cobró en esta línea (para el desglose). */
+  tax_name?: string | null;
   tax_excluded?: boolean;
   tax_included?: boolean;
   /**
@@ -174,6 +178,16 @@ export interface Cart {
   hold_reason?: string;
   tax_included?: boolean;
   applied_tax_ids?: string[];
+  /** Cupón aplicado en este carrito. El descuento ya está repartido en las líneas. */
+  coupon?: {
+    id: string;
+    code: string;
+    discount_type: string;
+    discount_value: number;
+    max_discount_amount?: number | null;
+    /** Monto que se reparte en este carrito. */
+    descuento: number;
+  } | null;
   kitchen_ticket_id?: number | null;
   /** Llave de la ronda «Enviar a cocina» en curso: reintentarla no duplica la comanda. */
   kitchen_round_key?: string | null;

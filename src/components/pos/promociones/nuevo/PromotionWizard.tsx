@@ -1060,7 +1060,11 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   );
 }
 
-function ayudaCompraLleva(t: Traductor, compra: number | undefined, lleva: number | undefined): string {
+function ayudaCompraLleva(
+  t: Traductor,
+  compra: number | null | undefined,
+  lleva: number | null | undefined,
+): string {
   const x = Math.trunc(compra || 0);
   const y = Math.trunc(lleva || 0);
   if (x > 0 && y > 0 && y < x) {

@@ -17,8 +17,8 @@ import {
 
 const ENV_EMBEDDED = 'GOADMIN_DESKTOP_EMBEDDED';
 
-function entorno(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
-  return { NODE_ENV: 'test', [ENV_EMBEDDED]: '1', ...extra };
+function entorno(extra: Partial<NodeJS.ProcessEnv> = {}): NodeJS.ProcessEnv {
+  return { ...extra, NODE_ENV: 'test', [ENV_EMBEDDED]: '1' };
 }
 
 function listen(server: http.Server): Promise<number> {

@@ -148,10 +148,10 @@ export class ReglasContablesService {
     const original = await this.obtenerRegla(reglaId);
     if (!original) throw new Error('Regla no encontrada');
 
-    const { id, created_at, updated_at, ...rest } = original;
-    void id;
-    void created_at;
-    void updated_at;
+    const { id: _idOriginal, created_at: _c, updated_at: _u, ...rest } = original;
+    void _idOriginal;
+    void _c;
+    void _u;
     return this.crearRegla({
       ...rest,
       name: `${rest.name} (copia)`

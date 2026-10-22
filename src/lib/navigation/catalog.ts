@@ -474,6 +474,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/facturacion-electronica', nombre: 'Facturación electrónica', icono: Zap, grupo: 'Documentos' },
       { href: '/app/finanzas/ingresos', nombre: 'Ingresos', icono: TrendingUp, grupo: 'Tesorería' },
       { href: '/app/finanzas/egresos', nombre: 'Egresos', icono: TrendingDown, grupo: 'Tesorería' },
+      { href: '/app/finanzas/categorias-tesoreria', nombre: 'Categorías de tesorería', icono: Tags, grupo: 'Tesorería' },
+      { href: '/app/finanzas/reporte-categorias', nombre: 'Reporte por categoría', icono: BarChart3, grupo: 'Tesorería' },
       { href: '/app/finanzas/transferencias', nombre: 'Transferencias', icono: ArrowLeftRight, grupo: 'Tesorería' },
       { href: '/app/finanzas/bancos', nombre: 'Bancos', icono: Building2, grupo: 'Tesorería' },
       { href: '/app/finanzas/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Tesorería' },

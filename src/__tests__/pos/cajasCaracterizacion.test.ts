@@ -368,6 +368,12 @@ describe('Seguridad de cajas, fase 1 (migración 20260928100000)', () => {
       p_notas: null,
       p_uuid: 'u-1',
       p_creado_en: '2026-09-28T10:00:00Z',
+      p_categoria_id: null,
+      p_cuenta_contable: null,
+      p_centro_costo_id: null,
+      p_tercero_nit: null,
+      p_tercero_nombre: null,
+      p_soporte_path: null,
     });
     expect(codigoErrorMovimiento({ code: '55000', message: 'caja_cerrada' })).toBe('caja_ya_cerrada');
     expect(codigoErrorMovimiento({ code: '42501', message: 'Acceso denegado' })).toBe('sin_permiso');

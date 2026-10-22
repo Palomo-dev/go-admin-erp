@@ -22,6 +22,7 @@ import { DialogoMotivo } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
+import { DatosContablesMovimiento } from '@/components/finanzas/movimientos/DatosContablesMovimiento';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
@@ -247,6 +248,8 @@ Notas: ${movement.notes || 'N/A'}
                   </p>
                 </div>
               </div>
+
+              <DatosContablesMovimiento movement={movement} />
 
               {movement.notes && (
                 <>

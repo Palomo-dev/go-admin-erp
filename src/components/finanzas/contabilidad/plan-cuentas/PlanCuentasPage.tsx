@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { BookOpen, Plus, Loader2, Edit, Trash2, ChevronRight, ChevronDown, ArrowLeft } from 'lucide-react';
@@ -38,6 +38,7 @@ export function PlanCuentasPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const yaAbrioNueva = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -51,6 +52,15 @@ export function PlanCuentasPage() {
   useEffect(() => {
     loadCuentas();
   }, []);
+
+  useEffect(() => {
+    if (isLoading || yaAbrioNueva.current) return;
+    if (new URLSearchParams(window.location.search).get('action') !== 'new') return;
+    yaAbrioNueva.current = true;
+    setEditingAccount(null);
+    setFormData({ account_code: '', name: '', type: 'asset', parent_code: '', description: '' });
+    setShowDialog(true);
+  }, [isLoading]);
 
   useEffect(() => {
     buildTree();
@@ -269,7 +279,7 @@ export function PlanCuentasPage() {
     );
   };
 
-  if (isLoading) {
+  if (isLoading && !showDialog) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />

@@ -3792,3 +3792,15 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué se hizo: el PR 10 de tiendas quedó sin conflicto con main (el menú móvil conserva el icono y el contador). El editor equivalente al PR 378 quedó en una rama contra main, porque master no se toca. La rejilla no reserva un cuadrado si el ítem no tiene icono. Un servicio que solo trae botón se publica, y una foto insegura deja ver el icono. Paquete y regalo no quedan marcados como bolsa. La foto de celular se ve en la portada, y en video tapa el video solo en el celular.
 - Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
 - Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.
+
+
+### Fase: Categorías de tesorería — 2026-10-21
+- Rama `cursor/categorias-tesoreria-bffb`, contra `main`. `master` no se tocó.
+- Esquema aplicado por MCP: versión `20261022004418`, nombre `categorias_tesoreria`. El `md5` de `statements[1]` es `cf148398ba29115db34166117897728f`, el mismo del archivo `supabase/migrations/20261022053000_categorias_tesoreria.sql`. No se volvió a aplicar.
+- No se sembraron las 109 organizaciones que ya existen. `categorias_tesoreria` quedó en 0 filas. El disparador `tr_zzz_categorias_tesoreria` solo siembra una organización nueva. La propuesta `supabase/propuestas/20261022053000_categorias_tesoreria_organizaciones.sql` no se ejecutó: la pantalla tiene «Completar predefinidas» y llama la función de la organización de la sesión.
+- En una transacción revertida, una organización recibió 38 predefinidas, el segundo llamado devolvió 0, el borrado de una predefinida respondió `categoria_invalida` y un alta posterior quedó sin clave y sin marca de predefinida. Después del rollback la tabla no existía.
+- `fn_create_journal_entry` sigue en `f45357156aeb29a0dbdce5fb0600dc31`. Con cuenta contable vacía, caja y banco conservan el asiento anterior. La RPC de caja quedó con seis argumentos nuevos al final, todos con default null; el sobrecarga de nueve argumentos ya no existe. `anon` no ejecuta sembrar, validar ni el asiento elegido. `authenticated` no puede truncar la tabla.
+- El cubo `soportes-tesoreria` quedó privado, con tope de 5 MB y tres políticas. No hay filas.
+- Conteos que no debían moverse: organizaciones 109, movimientos de caja 9, transacciones bancarias 2, fallos de asiento 109, plan de cuentas 5548, configuración contable 0. Los asientos pasaron de 44011 a 44017 por tráfico vivo, no por esta migración.
+- Jest: categorías, capa flotante, caracterización de cajas, saldos de tesorería y guardrails, 303 pruebas; traducciones de navegación y guardrails, 264. ESLint `--max-warnings 0` en los archivos tocados, en verde. No se abrió el ERP con sesión, así que los modales y el formulario no se recorrieron en el navegador.
+- Sin calificación de QA y sin marca de aprobado.

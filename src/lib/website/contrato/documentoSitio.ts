@@ -223,6 +223,62 @@ export const esquemaTokens = z
   .strict();
 
 /**
+ * Paginación de listas y rejillas. Todo es opcional: si el documento no lo trae,
+ * cada listado sigue con su paginación numerada de hoy (1 2 … 17 y flechas).
+ */
+export const esquemaAjustePaginacion = z
+  .object({
+    porPaginaEscritorio: z.number().int().min(4).max(60).optional(),
+    porPaginaMovil: z.number().int().min(4).max(60).optional(),
+    estilo: z.enum(['numerada', 'compacta', 'cargar_mas', 'infinito', 'anterior_siguiente']).optional(),
+    forma: z.enum(['cuadrado', 'semi', 'circulo', 'pildora']).optional(),
+    colorActivo: color.optional(),
+    colorInactivo: color.optional(),
+    colorHover: color.optional(),
+    tamano: z.enum(['sm', 'md', 'lg']).optional(),
+    alineacion: z.enum(['izq', 'centro', 'der']).optional(),
+    mostrarExtremos: z.boolean().optional(),
+    textoAnterior: z.string().max(40).optional(),
+    textoSiguiente: z.string().max(40).optional(),
+    textoCargarMas: z.string().max(40).optional(),
+    mostrarContador: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * Controles de carrusel. Opcional: sin el objeto, cada carrusel conserva sus
+ * flechas y sus puntos actuales.
+ */
+export const esquemaAjusteCarrusel = z
+  .object({
+    indicador: z.enum(['ninguno', 'puntos', 'barra', 'numeros', 'progreso', 'miniaturas']).optional(),
+    posicionIndicador: z.enum(['abajo_dentro', 'abajo_fuera']).optional(),
+    alineacionIndicador: z.enum(['izq', 'centro', 'der']).optional(),
+    colorActivo: color.optional(),
+    colorInactivo: color.optional(),
+    tamanoIndicador: z.enum(['sm', 'md', 'lg']).optional(),
+    flechasEscritorio: z.boolean().optional(),
+    flechasMovil: z.boolean().optional(),
+    estiloFlechas: z.enum(['chevron', 'circulo', 'cuadrado', 'larga', 'hover']).optional(),
+    posicionFlechas: z.enum(['lados_dentro', 'lados_fuera', 'titulo', 'indicador']).optional(),
+    fondoFlecha: color.optional(),
+    bordeFlecha: color.optional(),
+    sombraFlecha: z.boolean().optional(),
+    colorIcono: color.optional(),
+    tamanoFlecha: z.enum(['sm', 'md', 'lg']).optional(),
+    autoplay: z.boolean().optional(),
+    segundos: z.number().min(1).max(15).optional(),
+    loop: z.boolean().optional(),
+    pausaHover: z.boolean().optional(),
+    visiblesEscritorio: z.number().int().min(1).max(8).optional(),
+    visiblesTableta: z.number().int().min(1).max(6).optional(),
+    visiblesMovil: z.number().int().min(1).max(3).optional(),
+    arrastre: z.boolean().optional(),
+    avance: z.number().int().min(1).max(8).optional(),
+  })
+  .strict();
+
+/**
  * `product_card_style` del sitio. Objeto plano con botones y etiquetas anidados
  * un nivel. Ausente = la tarjeta de hoy. La sección lo reemplaza con la misma forma.
  */
@@ -289,6 +345,13 @@ export const esquemaTema = z
      * con su título de hoy. Lo lee el cascarón (`section_style` público).
      */
     seccion: z.record(z.string().max(40), z.unknown()).optional(),
+    /**
+     * Paginación y carrusel del sitio. Ausentes = lo de hoy. El editor solo los
+     * escribe con NEXT_PUBLIC_WEBSITE_PAGINACION=1: el sitio publicado rechaza
+     * estas claves hasta que su contrato las acepte.
+     */
+    paginacion: esquemaCampo(esquemaAjustePaginacion).optional(),
+    carrusel: esquemaCampo(esquemaAjusteCarrusel).optional(),
   })
   .strict();
 

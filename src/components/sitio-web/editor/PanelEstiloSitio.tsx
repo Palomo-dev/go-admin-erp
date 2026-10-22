@@ -14,8 +14,10 @@
 import { useMemo } from 'react';
 import { X } from 'lucide-react';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
-import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { valorPropio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import { EstiloDelSitioPanel } from '@/components/sitio-web/diseno/EstiloDelSitioPanel';
+import { PanelCarrusel, PanelPaginacion } from './inspector/PanelesListaCarrusel';
+import { paginacionTemaDisponible, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 import { useEstiloSitio } from '@/components/sitio-web/diseno/useEstiloSitio';
 import { useColoresLogo } from '@/components/sitio-web/diseno/useColoresLogo';
 import { CATALOGO_SITIO } from '@/components/sitio-web/diseno/catalogo';
@@ -176,6 +178,37 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
               ))}
             </div>
           </section>
+        )}
+        {paginacionTemaDisponible() && p.enV2 && p.documento && (
+          <>
+            <PanelPaginacion
+              valor={sanitizarPaginacion(valorCampo(p.documento.tema.paginacion))}
+              onCambiar={(v) => {
+                const limpio = sanitizarPaginacion(v);
+                p.onCambiarDocumento((d) => {
+                  const tema = { ...d.tema };
+                  if (limpio) tema.paginacion = valorPropio(limpio);
+                  else delete tema.paginacion;
+                  return { ...d, tema };
+                });
+              }}
+              color={estilo?.acento ?? '#111827'}
+              deshabilitado={p.deshabilitado}
+            />
+            <PanelCarrusel
+              valor={sanitizarCarrusel(valorCampo(p.documento.tema.carrusel))}
+              onCambiar={(v) => {
+                const limpio = sanitizarCarrusel(v);
+                p.onCambiarDocumento((d) => {
+                  const tema = { ...d.tema };
+                  if (limpio) tema.carrusel = valorPropio(limpio);
+                  else delete tema.carrusel;
+                  return { ...d, tema };
+                });
+              }}
+              deshabilitado={p.deshabilitado}
+            />
+          </>
         )}
         {!estilo ? (
           <p className="px-1 text-[13px] leading-[18px] text-fg-secondary">{t('estiloSitio.sinDatos')}</p>

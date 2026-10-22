@@ -24,6 +24,7 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
 import { EditorPestanas } from './EditorCascaron';
+import { EditorBoletin } from './EditorBoletin';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
@@ -118,6 +119,10 @@ export function CampoSeccion({
         .map((c) => ({ valor: String(c.id), etiqueta: c.nombre })),
     [categorias.lista],
   );
+
+  if (campo.type === 'newsletter') {
+    return <EditorBoletin contenido={contenido} onCambiar={onCambiarContenido} deshabilitado={deshabilitado} />;
+  }
 
   switch (campo.type) {
     case 'text':

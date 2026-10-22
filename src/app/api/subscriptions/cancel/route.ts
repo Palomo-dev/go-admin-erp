@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cancelSubscription, reactivateSubscription } from '@/lib/stripe/subscriptionService';
+import { cierreTocoFila, parcheSuscripcionAusente } from '@/lib/stripe/suscripcionAusente';
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { getServiceClient } from '@/lib/supabase/server-service';
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       .from('subscriptions')
       .select('*')
       .eq('organization_id', organizationId)
-      .in('status', ['active', 'past_due', 'trialing'])
+      .in('status', ['active', 'past_due', 'trialing', 'incomplete'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -80,9 +81,36 @@ export async function POST(request: NextRequest) {
           : subscription.current_period_end ?? null;
       if (subscription.stripe_subscription_id) {
         result = await cancelSubscription(subscription.stripe_subscription_id, immediate);
-        
+
+        if (result.success && 'missingInStripe' in result && result.missingInStripe) {
+          const ahora = new Date().toISOString();
+          const { data: cerrada, error: errorCierre } = await getServiceClient()
+            .from('subscriptions')
+            .update(parcheSuscripcionAusente(subscription, ahora))
+            .eq('id', subscription.id)
+            .eq('organization_id', organizationId)
+            .select('id');
+          if (!cierreTocoFila(errorCierre, cerrada)) {
+            console.error('[subscriptions/cancel] no se pudo cerrar la fila ausente', errorCierre?.message);
+            return NextResponse.json(
+              { error: 'No se pudo marcar la suscripción como cancelada', code: 'resource_missing' },
+              { status: 500 }
+            );
+          }
+          console.warn('[subscriptions/cancel] la suscripción no existe en la cuenta de Stripe', {
+            organizationId,
+            subscriptionRowId: subscription.id,
+          });
+          return NextResponse.json({
+            success: true,
+            message: 'La suscripción no estaba en Stripe; quedó cancelada.',
+            action,
+            missingInStripe: true,
+          });
+        }
+
         if (result.success) {
-          await getServiceClient()
+          const { data: cerrada, error: errorCierre } = await getServiceClient()
             .from('subscriptions')
             .update({
               status: immediate ? 'canceled' : estadoAlProgramar,
@@ -91,11 +119,20 @@ export async function POST(request: NextRequest) {
               canceled_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
-            .eq('id', subscription.id);
+            .eq('id', subscription.id)
+            .eq('organization_id', organizationId)
+            .select('id');
+          if (!cierreTocoFila(errorCierre, cerrada)) {
+            console.error('[subscriptions/cancel] la fila no quedó actualizada', errorCierre?.message);
+            return NextResponse.json(
+              { error: 'No se pudo marcar la suscripción como cancelada' },
+              { status: 500 }
+            );
+          }
         }
       } else {
         // Sin Stripe, solo actualizar Supabase
-        await getServiceClient()
+        const { data: cerrada, error: errorCierre } = await getServiceClient()
           .from('subscriptions')
           .update({
             status: immediate ? 'canceled' : estadoAlProgramar,
@@ -104,8 +141,17 @@ export async function POST(request: NextRequest) {
             canceled_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('id', subscription.id);
-        
+          .eq('id', subscription.id)
+          .eq('organization_id', organizationId)
+          .select('id');
+        if (!cierreTocoFila(errorCierre, cerrada)) {
+          console.error('[subscriptions/cancel] la fila local no quedó actualizada', errorCierre?.message);
+          return NextResponse.json(
+            { error: 'No se pudo marcar la suscripción como cancelada' },
+            { status: 500 }
+          );
+        }
+
         result = { success: true };
       }
 
@@ -117,10 +163,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!result?.success) {
-      return NextResponse.json(
-        { error: result?.error || 'Error procesando la solicitud' },
-        { status: 500 }
-      );
+      const error = result && 'error' in result && typeof result.error === 'string'
+        ? result.error
+        : 'Error procesando la solicitud';
+      const code = result && 'code' in result && typeof result.code === 'string' ? result.code : undefined;
+      return NextResponse.json({ error, code }, { status: 500 });
     }
 
     return NextResponse.json({

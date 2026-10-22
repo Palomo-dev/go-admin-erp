@@ -10,6 +10,7 @@
  */
 
 import { requireStripe } from './server'
+import { respuestaDeErrorAlCancelar, type RespuestaErrorCancelar } from './erroresStripe'
 import { periodoSuscripcion } from './periodoSuscripcion'
 import {
   asegurarMedioEnCliente,
@@ -291,6 +292,7 @@ export async function createSubscription(
         trialEnd: new Date(subscription.trial_end! * 1000),
         currentPeriodStart: periodoSuscripcion(subscription).inicio,
         currentPeriodEnd: periodoSuscripcion(subscription).fin,
+        livemode: subscription.livemode,
         metadata: data.enterpriseConfig ? {
           custom_config: {
             modules_count: data.enterpriseConfig.modulesCount,
@@ -362,6 +364,7 @@ export async function createSubscription(
         status: subscription.status,
         currentPeriodStart: periodoSuscripcion(subscription).inicio,
         currentPeriodEnd: periodoSuscripcion(subscription).fin,
+        livemode: subscription.livemode,
         metadata: data.enterpriseConfig ? {
           custom_config: {
             modules_count: data.enterpriseConfig.modulesCount,
@@ -407,6 +410,7 @@ async function saveSubscriptionToDatabase(
     trialEnd?: Date
     currentPeriodStart: Date | null
     currentPeriodEnd: Date | null
+    livemode: boolean
     metadata?: any // <-- Agregar metadata opcional
   }
 ) {
@@ -474,6 +478,7 @@ async function saveSubscriptionToDatabase(
         current_period_start: (data.currentPeriodStart ?? new Date()).toISOString(),
         current_period_end: data.currentPeriodEnd?.toISOString() ?? null,
         cancel_at_period_end: false,
+        livemode: data.livemode,
         metadata: data.metadata || {}, // <-- Guardar metadata
         updated_at: new Date().toISOString(),
       })
@@ -501,6 +506,7 @@ async function saveSubscriptionToDatabase(
         current_period_start: (data.currentPeriodStart ?? new Date()).toISOString(),
         current_period_end: data.currentPeriodEnd?.toISOString() ?? null,
         cancel_at_period_end: false,
+        livemode: data.livemode,
         metadata: data.metadata || {}, // <-- Guardar metadata
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -521,29 +527,46 @@ async function saveSubscriptionToDatabase(
 /**
  * Cancelar suscripción
  */
-export async function cancelSubscription(subscriptionId: string, immediate: boolean = false) {
-  try {
-    const subscription = await requireStripe().subscriptions.update(subscriptionId, {
-      cancel_at_period_end: !immediate,
-    })
+export type ResultadoCancelarSuscripcion =
+  | { success: true; subscriptionId: string; canceledAt: Date }
+  | RespuestaErrorCancelar
 
+export async function cancelSubscription(
+  subscriptionId: string,
+  immediate: boolean = false,
+): Promise<ResultadoCancelarSuscripcion> {
+  try {
+    // Inmediata: un solo cancel. El update previo dejaba la fila tocada
+    // si el cancel de después respondía resource_missing por otro recurso.
     if (immediate) {
-      await requireStripe().subscriptions.cancel(subscriptionId)
+      const cancelada = await requireStripe().subscriptions.cancel(subscriptionId)
+      console.log('✅ Suscripción cancelada:', subscriptionId)
+      return {
+        success: true,
+        subscriptionId: cancelada.id,
+        canceledAt: new Date(),
+      }
     }
 
+    const subscription = await requireStripe().subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    })
+
     console.log('✅ Suscripción cancelada:', subscriptionId)
-    
+
     return {
       success: true,
       subscriptionId: subscription.id,
-      canceledAt: immediate ? new Date() : (periodoSuscripcion(subscription).fin ?? new Date()),
+      canceledAt: periodoSuscripcion(subscription).fin ?? new Date(),
     }
-  } catch (error: any) {
-    console.error('❌ Error cancelando suscripción:', error)
-    return {
-      success: false,
-      error: error.message,
+  } catch (error: unknown) {
+    const respuesta = respuestaDeErrorAlCancelar(error)
+    if (respuesta.success) {
+      console.warn('[stripe] la suscripción no existe en esta cuenta')
+    } else {
+      console.error('❌ Error cancelando suscripción:', respuesta.code ?? '', respuesta.error)
     }
+    return respuesta
   }
 }
 

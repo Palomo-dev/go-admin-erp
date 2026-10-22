@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { stripe } from '@/lib/stripe/server'
+import { requireStripe, stripe } from '@/lib/stripe/server'
 import { getEnterprisePricing } from '@/lib/services/pricingService'
 import {
   getServerOrgContextFor,
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+    requireStripe()
 
     const { 
       organizationId, 

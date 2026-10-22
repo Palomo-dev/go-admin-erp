@@ -250,8 +250,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Título principal' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción breve' },
-      { key: 'image_url', label: 'Imagen escritorio', type: 'image' },
-      { key: 'image_url_mobile', label: 'Imagen móvil', type: 'image' },
+      { key: 'image_url', label: 'Imagen de escritorio', type: 'image', helpText: 'Se ve en computador y tableta. Si queda vacía y hay foto de celular, esa se usa también aquí. Si hay video, el computador muestra el video y esta foto es el cartel. Minimal no lleva foto.', showIf: { variantIn: ['fullscreen', 'slider', 'split', 'video'] } },
+      { key: 'image_url_mobile', label: 'Imagen de celular', type: 'image', helpText: 'En el celular. Si queda vacía, usa la de escritorio. Si solo subes esta, se ve en todos los anchos. Si hay video, esta foto tapa el video solo en el celular.', showIf: { variantIn: ['fullscreen', 'slider', 'split', 'video'] } },
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...', showIf: { variantIn: ['video'] } },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
@@ -369,8 +369,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         itemFields: [
           { key: 'title', label: 'Título', type: 'text', placeholder: 'Título del slide' },
           { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción del slide' },
-          { key: 'image_url', label: 'Imagen escritorio', type: 'image' },
-          { key: 'image_url_mobile', label: 'Imagen móvil', type: 'image' },
+          { key: 'image_url', label: 'Imagen de escritorio', type: 'image', helpText: 'Se ve en computador y tableta. Si queda vacía y hay foto de celular, esa se usa también aquí.' },
+          { key: 'image_url_mobile', label: 'Imagen de celular', type: 'image', helpText: 'En el celular. Si queda vacía, el celular usa la de escritorio. Si solo subes esta, se ve en todos los anchos.' },
           { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Ver más' },
           { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/productos' },
         ],
@@ -2404,7 +2404,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     type: 'features_grid',
     label: 'Grid de Características',
     icon: 'LayoutGrid',
-    description: 'Características con imagen y texto alternado',
+    description: 'Características en rejilla, con icono y texto centrado',
     variants: [
       { id: 'alternating', label: 'Alternado' },
     ],
@@ -2418,6 +2418,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
         itemLabelKey: 'title',
         itemFields: [
+          { key: 'icon', label: 'Icono', type: 'icon' },
           { key: 'title', label: 'Título', type: 'text' },
           { key: 'description', label: 'Descripción', type: 'textarea' },
           { key: 'image_url', label: 'Imagen', type: 'image' },

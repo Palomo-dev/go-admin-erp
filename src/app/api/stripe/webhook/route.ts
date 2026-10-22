@@ -318,6 +318,7 @@ async function updateSubscriptionInDatabase(
         current_period_end: periodoSuscripcionISO(subscription).fin,
         cancel_at_period_end: subscription.cancel_at_period_end,
         cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
+        livemode: subscription.livemode,
         updated_at: new Date().toISOString(),
       }
 

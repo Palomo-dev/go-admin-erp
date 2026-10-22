@@ -88,6 +88,7 @@ export async function aplicarCheckoutDePlan(
   type Periodo = { current_period_start?: number; current_period_end?: number };
   const suscripcion = (await stripe.subscriptions.retrieve(subscriptionId)) as unknown as Periodo & {
     status: string;
+    livemode?: boolean;
     trial_start?: number | null;
     trial_end?: number | null;
     items?: { data?: Periodo[] };
@@ -107,6 +108,7 @@ export async function aplicarCheckoutDePlan(
     trial_start: fecha(suscripcion.trial_start),
     trial_end: fecha(suscripcion.trial_end),
     cancel_at_period_end: false,
+    livemode: typeof suscripcion.livemode === 'boolean' ? suscripcion.livemode : null,
     updated_at: ahora,
   };
 

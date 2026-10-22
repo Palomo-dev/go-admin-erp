@@ -35,6 +35,7 @@ import {
   escribirAnuncios,
   esDestinoDeLista,
   leerAnuncios,
+  formaCarritoEncabezado,
   opcionBooleana,
   opcionesDestino,
   valorOpcion,
@@ -222,6 +223,8 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
   const cambiar = p.cambiar;
   const idBarra = useId();
   const idFuente = useId();
+  const idTrazo = useId();
+  const idForma = useId();
   const segundo = Boolean(p.texto('header_cta2_text') || p.texto('header_cta2_url'));
   const anuncios = leerAnuncios(a.topbar_announcement);
   const [conAnuncio, setConAnuncio] = useState(anuncios.length > 0);
@@ -339,6 +342,39 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           ayuda={t('zonaGlobal.acciones.monedaAyuda')}
           valor={opcionBooleana(a, 'header_show_currency')}
           onCambiar={(v) => cambiar({ header_show_currency: v })}
+        />
+        <div className="flex flex-col gap-2 pt-1">
+          <EtiquetaGrupo id={idTrazo}>{t('zonaGlobal.acciones.iconosTrazo')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={idTrazo}
+            opciones={[
+              { valor: 'contorno', etiqueta: t('zonaGlobal.acciones.contorno') },
+              { valor: 'relleno', etiqueta: t('zonaGlobal.acciones.relleno') },
+            ]}
+            valor={valorOpcion<string>(a, 'header_icons_weight') === 'relleno' ? 'relleno' : 'contorno'}
+            onValorChange={(v) => cambiar({ header_icons_weight: v })}
+          />
+          <EtiquetaGrupo id={idForma}>{t('zonaGlobal.acciones.iconosForma')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={idForma}
+            opciones={[
+              { valor: 'bolsa', etiqueta: t('zonaGlobal.acciones.bolsa') },
+              { valor: 'carrito', etiqueta: t('zonaGlobal.acciones.carrito') },
+            ]}
+            valor={formaCarritoEncabezado(a)}
+            onValorChange={(v) =>
+              cambiar({
+                header_cart_glyph: v,
+                cart_icon: v === 'carrito' ? 'shopping-cart' : 'shopping-bag',
+              })
+            }
+          />
+        </div>
+        <FilaInterruptor
+          titulo={t('zonaGlobal.acciones.iconosCirculo')}
+          ayuda={t('zonaGlobal.acciones.iconosCirculoAyuda')}
+          valor={opcionBooleana(a, 'header_icons_circle')}
+          onCambiar={(v) => cambiar({ header_icons_circle: v })}
         />
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}

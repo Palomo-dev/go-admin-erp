@@ -200,8 +200,15 @@ export function CampoSeccion({
       break;
   }
 
+  const muestraEtiqueta = campo.type === 'image' || campo.type === 'icon';
   return (
     <div className="flex flex-col gap-1.5">
+      {muestraEtiqueta && (
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[13px] font-medium leading-[18px] text-fg">{campo.label}</p>
+          {ayuda ? <p className="text-xs leading-4 text-fg-secondary">{ayuda}</p> : null}
+        </div>
+      )}
       <FieldRenderer
         field={campo}
         value={campo.type === 'spacing' ? contenido : valor}

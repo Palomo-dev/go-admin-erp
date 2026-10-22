@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe/server'
+import { requireStripe, stripe } from '@/lib/stripe/server'
 import { withPlatformAdmin } from '@/lib/security/platformAdmin'
 
 /**
@@ -30,6 +30,7 @@ export const POST = withPlatformAdmin(async (_ctx, request) => {
         { status: 500 }
       )
     }
+    requireStripe()
 
     const body = await request.json()
     const { planCode } = body

@@ -28,7 +28,8 @@
     "mobile:run:ios": "cd mobile && npx cap run ios",
     "mobile:build:android": "cd mobile && npx cap sync android && cd android && ./gradlew bundleRelease",
     "mobile:build:ios": "cd mobile && npx cap sync ios && cd ios/App && xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -archivePath build/App.xcarchive -destination generic/platform=iOS archive",
-    "mobile:typecheck": "cd mobile && npx tsc --noEmit"
+    "mobile:typecheck": "cd mobile && npx tsc --noEmit",
+    "stripe:conciliar": "node scripts/conciliar-suscripciones-stripe.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

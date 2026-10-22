@@ -25,9 +25,10 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
-import { CampoSeccion, campoVisible } from './CampoSeccion';
-import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { esSeccionTarjetaProducto, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
+import { CampoSeccion, campoVisible } from './CampoSeccion';
+import { InspectorBanners } from './InspectorBanners';
+import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
@@ -250,6 +251,9 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                 }}
                 onAplicarTodas={p.onAplicarTarjeta}
               />
+            )}
+            {s.section_type === 'promo_banners' && (
+              <InspectorBanners contenido={contenido} onCambiar={p.onCambiarContenido} />
             )}
             {pintarConBloques(campos('diseno'))}
             {avisoBorrador}

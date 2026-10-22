@@ -1,9 +1,9 @@
 /**
  * Unidades mínimas de una promo de porcentaje, monto fijo o paquete.
  *
- * `min_quantity` manda. Si viene vacía, un `buy_quantity` mayor que 1 es el
- * mínimo que ya tenían las promos creadas antes de esa columna: el formulario
- * lo guardaba ahí. En Compra X Lleva Y, `buy_quantity` es la X y no es un mínimo.
+ * Solo cuenta `min_quantity`. Vacía es sin mínimo: `buy_quantity` es el 2
+ * por defecto del formulario y, en Compra X Lleva Y, la X. No se deduce
+ * un mínimo de ahí. El mismo criterio está en la tienda.
  */
 
 function enteroPositivo(v: unknown): number | null {
@@ -19,10 +19,7 @@ export function cantidadMinimaEfectiva(p: {
 }): number | null {
   const tipo = p.promotion_type;
   if (tipo !== 'percentage' && tipo !== 'fixed_amount' && tipo !== 'bundle') return null;
-  const explicita = enteroPositivo(p.min_quantity);
-  if (explicita != null) return explicita;
-  const legado = enteroPositivo(p.buy_quantity);
-  return legado != null && legado > 1 ? legado : null;
+  return enteroPositivo(p.min_quantity);
 }
 
 /**
@@ -44,9 +41,8 @@ export function copiaDePromocion<T extends {
 }
 
 /**
- * Al editar, el campo «cantidad mínima» muestra el mínimo que de verdad
- * se aplica, aunque siga guardado en `buy_quantity`. Una promo nueva no
- * hereda el 2 por defecto de Compra X Lleva Y.
+ * Al editar, el campo muestra `min_quantity` y no rellena el 2 de
+ * `buy_quantity`. Una promo nueva tampoco hereda ese 2.
  */
 
 export function minimoDelFormulario<T extends {

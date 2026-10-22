@@ -11,9 +11,9 @@ export function enteroPositivoONull(v: unknown): number | null {
  * Deja en null lo que el tipo no usa. El formulario arranca con
  * `buy_quantity = 2` y `get_quantity = 1` para Compra X Lleva Y; en los
  * demás tipos eso no significa nada y no debe guardarse. El mínimo de
- * unidades queda en `min_quantity`. No se copia `buy_quantity` al guardar:
- * en una promo nueva ese 2 es el valor por defecto del otro tipo. Las filas
- * que ya lo tienen guardado las lee el motor.
+ * unidades queda solo en `min_quantity`. No se copia `buy_quantity` al
+ * guardar ni al calcular: en una promo nueva ese 2 es el valor por defecto
+ * del otro tipo.
  *
  * Si no viene `promotion_type` (activar o desactivar), no toca cantidades:
  * un update parcial no puede borrar la configuración.

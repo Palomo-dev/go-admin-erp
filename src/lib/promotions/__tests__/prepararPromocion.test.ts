@@ -25,13 +25,13 @@ describe('prepararPromocion', () => {
     });
   });
 
-  it('al editar, el mínimo legado pasa al campo que se guarda en min_quantity', () => {
+  it('al editar, buy_quantity 2 no rellena la cantidad mínima', () => {
     expect(
       minimoDelFormulario(
         { promotion_type: 'fixed_amount' as const, buy_quantity: 2, min_quantity: null },
         true,
       ),
-    ).toMatchObject({ min_quantity: 2 });
+    ).toMatchObject({ min_quantity: null });
     expect(
       minimoDelFormulario(
         { promotion_type: 'fixed_amount' as const, buy_quantity: 2, min_quantity: 3 },
@@ -52,7 +52,7 @@ describe('prepararPromocion', () => {
     ).toMatchObject({ buy_quantity: 2, min_quantity: null });
   });
 
-  it('duplicar un monto fijo legado deja el mínimo en min_quantity y no manda las reglas embebidas', () => {
+  it('duplicar un monto fijo no copia buy_quantity al mínimo y no manda las reglas embebidas', () => {
     const copia = prepararPromocion(
       copiaDePromocion({
         promotion_type: 'fixed_amount' as const,
@@ -62,7 +62,7 @@ describe('prepararPromocion', () => {
         promotion_rules: [{ rule_type: 'include_product', product_id: 1 }],
       }),
     );
-    expect(copia).toMatchObject({ min_quantity: 2, buy_quantity: null, get_quantity: null });
+    expect(copia).toMatchObject({ min_quantity: null, buy_quantity: null, get_quantity: null });
     expect(copia).not.toHaveProperty('promotion_rules');
     expect(
       prepararPromocion(

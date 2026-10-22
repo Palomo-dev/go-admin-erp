@@ -25,9 +25,8 @@
  *     `min_purchase_scope` es `cart`; si la promo es por productos,
  *     categorías o marcas, solo el subtotal de las líneas que entran;
  *   - cantidad mínima: suma de unidades de esas líneas. Solo porcentaje,
- *     monto fijo y paquete. Vale `min_quantity`; si viene vacía y
- *     `buy_quantity` es mayor que 1, vale ese `buy_quantity` (así quedaron
- *     guardadas las promos anteriores). Compra X Lleva Y no la mira;
+ *     monto fijo y paquete, y solo si `min_quantity` trae un entero.
+ *     `buy_quantity` no es un mínimo. Compra X Lleva Y no la mira;
  *   - repetir cada N (`repeat_every_quantity`) en porcentaje y monto fijo:
  *     floor(unidades / N) veces el valor. En porcentaje, el sobrante queda
  *     a precio normal. En monto fijo, el total se reparte entre las líneas

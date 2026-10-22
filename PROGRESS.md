@@ -3798,3 +3798,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué se hizo: porcentaje, monto fijo y paquete usan solo min_quantity. Si viene vacía, no hay mínimo y una unidad conserva el descuento, aunque buy_quantity sea 2. Ese 2 es el valor por defecto del formulario y, en Compra X Lleva Y, la cantidad que se compra. Al editar no se copia buy_quantity al campo. Duplicar tampoco. No hay backfill. La tienda usa el mismo cálculo. PR 409 del panel y PR 22 de tiendas, contra main. master no se tocó.
 - Qué falta: Juan puede indicar, con la organización 142, qué promociones deben quedar con mínimo 2. Hasta esa lista no se hace UPDATE.
 - Próxima acción: fusionar 409 y 22 a main. No a master. No fusionar 396 ni la web 20.
+
+### Fase: Mínimo 2 en ocho promociones de la org 142 — 2026-10-22
+- Juan confirmó los ocho ids. Antes, min_quantity era NULL en las ocho y updated_at no se reescribió. El update solo puso min_quantity = 2, con organization_id = 142 y min_quantity nulo. Quedaron 8 filas en 2 y las otras 11 promociones siguen en NULL. El disparador de updated_at quedó encendido.
+- Aplicado por MCP: versión 20261022145242, nombre min_quantity_org_142_ocho, md5 06b385e6fee9e2722fc9a0a819b31604. Rollback: supabase/rollbacks/20261022145242_min_quantity_org_142_ocho_rollback.sql. Devuelve esas ocho a NULL y aborta si no son exactamente 8.
+- Con el motor del PR 409 y el de la web 22, un lunes, el producto de cada promo a su precio vigente: 1 unidad descuenta 0 y 2 unidades descuentan 7000, 5000, 2000, 5000, 8000, 6000, 6000 y 3000. El POS y la tienda dan los mismos ocho pares. Los dos PR siguen abiertos contra main. master no se tocó.

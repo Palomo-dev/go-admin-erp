@@ -144,14 +144,14 @@ export class ReglasContablesService {
     }
   }
 
-  static async duplicarRegla(id: string): Promise<AccountingRule> {
-    const original = await this.obtenerRegla(id);
+  static async duplicarRegla(reglaId: string): Promise<AccountingRule> {
+    const original = await this.obtenerRegla(reglaId);
     if (!original) throw new Error('Regla no encontrada');
 
-    const rest = { ...original };
-    delete rest.id;
-    delete rest.created_at;
-    delete rest.updated_at;
+    const { id, created_at, updated_at, ...rest } = original;
+    void id;
+    void created_at;
+    void updated_at;
     return this.crearRegla({
       ...rest,
       name: `${rest.name} (copia)`

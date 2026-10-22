@@ -166,8 +166,8 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
         ? { end_date: diaDelFormulario(initialData.end_date, timezone) }
         : {}),
     };
-    // Al editar, el mínimo que estaba en buy_quantity pasa al campo que se
-    // guarda en min_quantity. Una promo nueva no hereda el 2 de Compra X Lleva Y.
+    // Al editar, el campo muestra min_quantity. No se rellena con el 2 de
+    // buy_quantity. Una promo nueva tampoco hereda ese 2 de Compra X Lleva Y.
     return minimoDelFormulario(base, promotionId != null);
   });
 

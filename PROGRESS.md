@@ -3793,9 +3793,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
 - Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.
 
-### Fase: Mínimo de unidades en buy_quantity — Ronda 1 — 2026-10-21
-- Calificación QA: 9.6/10
-- Calificación Tester: 8/10; después se ampliaron las pruebas que pedía (paquete, dos líneas, línea ajena, buy_quantity 0 o vacío)
-- Qué se hizo: porcentaje, monto fijo y paquete usan min_quantity y, si viene vacía, buy_quantity cuando es mayor que 1. Compra X Lleva Y no cambia. Al editar, ese mínimo pasa al campo que se guarda en min_quantity. Una promo nueva no hereda el 2 por defecto. Duplicar copia el mínimo a min_quantity y no manda la relación embebida en el insert. La tienda usa el mismo cálculo en lib/promotions.ts. PR 396 del panel y PR 20 de tiendas, ambos contra main. master no se tocó.
-- Qué falta / feedback recibido: el comentario de la columna min_quantity sigue diciendo que null es sin mínimo. No se cambió el esquema. La venta de prueba del producto 51557 en la org 142 queda para después de publicar: 1 unidad sin el descuento y 2 con él.
-- Próxima acción: fusionar los dos PR a main. No a master.
+### Fase: Mínimo de unidades en min_quantity — 2026-10-22
+- Calificación QA: 9.6/10 en la ronda que todavía leía buy_quantity. Esa lectura ya no está.
+- Qué se hizo: porcentaje, monto fijo y paquete usan solo min_quantity. Si viene vacía, no hay mínimo y una unidad conserva el descuento, aunque buy_quantity sea 2. Ese 2 es el valor por defecto del formulario y, en Compra X Lleva Y, la cantidad que se compra. Al editar no se copia buy_quantity al campo. Duplicar tampoco. No hay backfill. La tienda usa el mismo cálculo. PR 409 del panel y PR 22 de tiendas, contra main. master no se tocó.
+- Qué falta: Juan puede indicar, con la organización 142, qué promociones deben quedar con mínimo 2. Hasta esa lista no se hace UPDATE.
+- Próxima acción: fusionar 409 y 22 a main. No a master. No fusionar 396 ni la web 20.

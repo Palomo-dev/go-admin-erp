@@ -24,7 +24,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Barcode, Copy, FileMinus, FileText, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
+import { Barcode, Copy, FileMinus, FileText, Landmark, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
+import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { TablaVistaPrevia, vistaPreviaAsientoDocumento, type VistaPreviaAsiento } from '@/components/finanzas/contabilidad/VistaPreviaAsiento';
 import {
   EmptyState,
   FormField,
@@ -178,6 +180,7 @@ type ItemGuardado = {
   tax_code: string | null;
   tax_rate: number | string | null;
   note?: string | null;
+  cuenta_contable?: string | null;
   impuestos_linea?: unknown;
   serial_ids?: number[] | null;
 };
@@ -242,6 +245,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   const [dlgCliente, setDlgCliente] = useState(false);
   const [dlgSeriales, setDlgSeriales] = useState(false);
   const [notaLinea, setNotaLinea] = useState<LineaVenta | null>(null);
+  const [cuentaLinea, setCuentaLinea] = useState<LineaVenta | null>(null);
+  const [previa, setPrevia] = useState<VistaPreviaAsiento | null>(null);
   const [faltantes, setFaltantes] = useState<{ lista: FaltanteStock[]; cambios: AjusteFaltante[] } | null>(null);
   const [salir, setSalir] = useState<string | null>(null);
   const [sucio, setSucio] = useState(false);
@@ -341,6 +346,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
         descuento: Number(i.discount_amount) || 0,
         impuestos: imps,
         nota: i.note ?? null,
+        cuenta_contable: i.cuenta_contable?.trim() || null,
         manual: !i.product_id,
         serial: p?.serial ?? false,
         controlaStock: p?.controlaStock ?? false,
@@ -626,9 +632,35 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     router.push(luego ?? `${RUTA_FACTURAS_VENTA}/${r.id}`);
   };
 
+  const verAsiento = async (ls: LineaVenta[] = lineas) => {
+    const r = await guardar('borrador', ls);
+    if (!r) return;
+    setGuardando('borrador');
+    try {
+      setPrevia(await vistaPreviaAsientoDocumento('venta', r.id));
+    } catch (err) {
+      toastError(mensajeServidor(err));
+    } finally {
+      setGuardando(null);
+    }
+  };
+
   const emitir = async (ls: LineaVenta[] = lineas) => {
     const r = await guardar('emitir', ls);
     if (!r) return;
+    if (ls.some((l) => (l.cuenta_contable ?? '').trim())) {
+      try {
+        const armado = await vistaPreviaAsientoDocumento('venta', r.id);
+        if (!armado.ok) {
+          setPrevia(armado);
+          toastError(armado.fallo || t('lineas.asientoFallo'));
+          return;
+        }
+      } catch (err) {
+        toastError(mensajeServidor(err));
+        return;
+      }
+    }
     setGuardando('emitir');
     try {
       const emitida = await emitirFacturaVenta(r.id);
@@ -685,7 +717,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       { tecla: 'Ctrl+S', descripcion: t('atajos.guardar'), accion: () => void guardarBorrador(), permitirEnCampo: true, cuando: () => !guardando },
       { tecla: 'Ctrl+Enter', descripcion: t('atajos.emitir'), accion: () => void emitir(), permitirEnCampo: true, cuando: () => !guardando },
     ],
-    { activo: editable && !dlgProductos && !dlgManual && !notaLinea && !faltantes && !salir },
+    { activo: editable && !dlgProductos && !dlgManual && !notaLinea && !cuentaLinea && !previa && !faltantes && !salir },
   );
 
   // ── Vista: no editable (emitida o anulada) ──────────────────────────────
@@ -712,6 +744,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     }
     const promo = l.product_id && !l.descuento ? promociones[l.clave] : 0;
     if (promo && promo > 0) insignias.push({ texto: t('lineas.promocion', { importe: formatear(promo) }), tono: 'informacion' });
+    if (l.cuenta_contable) insignias.push({ texto: l.cuenta_contable, tono: 'informacion' });
     return {
       id: l.clave,
       descripcion: l.descripcion,
@@ -737,6 +770,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     if (!l) return [];
     return [
       { id: 'nota', etiqueta: t('lineas.nota'), icono: StickyNote, onSelect: () => setNotaLinea(l) },
+      { id: 'cuenta', etiqueta: t('lineas.cuenta'), icono: Landmark, onSelect: () => setCuentaLinea(l) },
       { id: 'seriales', etiqueta: t('lineas.elegirSeriales'), icono: Barcode, onSelect: () => setDlgSeriales(true), oculta: !l.serial },
       {
         id: 'duplicar',
@@ -797,6 +831,9 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               <button type="button" onClick={() => intentarSalir()} className={botonSecundario}>
                 {tk('salir.cancelar')}
               </button>
+              <KbdButton variante="secundario" icono={FileText} cargando={guardando === 'borrador'} disabled={!!guardando || cargando || lineas.length === 0} onClick={() => void verAsiento()}>
+                {t('lineas.verAsiento')}
+              </KbdButton>
               <KbdButton variante="secundario" atajo="Ctrl+S" icono={Save} cargando={guardando === 'borrador'} disabled={!!guardando || cargando} onClick={() => void guardarBorrador()}>
                 {id ? t('guardarCambios') : t('guardarBorrador')}
               </KbdButton>
@@ -1337,6 +1374,40 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               setNotaLinea(null);
             }}
           />
+          <Dialogo
+            abierto={!!cuentaLinea}
+            onAbiertoChange={(v) => !v && setCuentaLinea(null)}
+            titulo={t('lineas.cuenta')}
+            descripcion={t('lineas.cuentaAyuda')}
+            ancho={520}
+            icono={Landmark}
+            textoCancelar={tk('salir.cancelar')}
+            primario={{
+              etiqueta: t('lineas.cuentaListo'),
+              onClick: () => setCuentaLinea(null),
+            }}
+          >
+            {cuentaLinea && (
+              <CampoCuentaContable
+                value={cuentaLinea.cuenta_contable}
+                onChange={(cuenta) => {
+                  cambiarLinea(cuentaLinea.clave, { cuenta_contable: cuenta });
+                  setCuentaLinea((actual) => (actual ? { ...actual, cuenta_contable: cuenta } : actual));
+                }}
+              />
+            )}
+          </Dialogo>
+          <Dialogo
+            abierto={!!previa}
+            onAbiertoChange={(v) => !v && setPrevia(null)}
+            titulo={t('lineas.asientoTitulo')}
+            descripcion={t('lineas.asientoAyuda')}
+            ancho={880}
+            icono={FileText}
+            primario={{ etiqueta: t('lineas.asientoCerrar'), onClick: () => setPrevia(null) }}
+          >
+            {previa && <TablaVistaPrevia previa={previa} />}
+          </Dialogo>
           {serialItems.length > 0 && sucursal && (
             <SerialSelectorDialog
               open={dlgSeriales}

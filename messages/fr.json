@@ -4455,6 +4455,7 @@
       "finanzas_contabilidad": "Comptabilité",
       "finanzas_contabilidad_plan-cuentas": "Plan comptable",
       "finanzas_contabilidad_asientos": "Écritures",
+      "finanzas_contabilidad_plantillas": "Modèles d'écritures",
       "finanzas_contabilidad_mayor-contable": "Grand livre",
       "finanzas_contabilidad_balance-comprobacion": "Balance de vérification",
       "finanzas_contabilidad_estado-resultados": "Compte de résultat",
@@ -7676,6 +7677,15 @@
         "preparacion": "Préparation requise",
         "preparacionAyuda": "Génère un bon de cuisine lors de la vente au PDV.",
         "siGenera": "Oui · génère un bon de cuisine à la vente"
+      },
+      "cuentas": {
+        "titulo": "Comptes comptables",
+        "descripcion": "Utilisés lorsque le produit n’a pas le sien.",
+        "ayuda": "Vide : la facture utilise la configuration comptable.",
+        "ingreso": "Produit",
+        "costo": "Coût",
+        "inventario": "Stock",
+        "devolucion": "Retour"
       },
       "apariencia": {
         "descripcion": "Couleur, icône et image au PDV et dans la boutique.",
@@ -12002,6 +12012,14 @@
         "otrosDuplicar": "{n, plural, one {Ce fournisseur sera aussi copié} other {Ces # fournisseurs seront aussi copiés}} : {nombres}.",
         "gestionar": "Gérer les fournisseurs"
       },
+      "cuentas": {
+        "titulo": "Comptes comptables",
+        "ayuda": "Si vous les laissez vides, la facture utilise celui de la catégorie ou la configuration comptable.",
+        "ingreso": "Produit",
+        "costo": "Coût",
+        "inventario": "Stock",
+        "devolucion": "Retour"
+      },
       "etiquetas": {
         "etiqueta": "Étiquettes",
         "ayuda": "Elles classent le produit pour le rechercher et le filtrer. Saisissez un nouveau nom pour créer une étiquette.",
@@ -12200,6 +12218,7 @@
       "duplicado": "Produit dupliqué",
       "guardadoDescripcion": "« {nombre} » a été enregistré.",
       "avisoCodigos": "Le produit a été enregistré, mais les codes-barres des variantes n’ont pas pu être numérotés. Générez-les depuis Étiquettes.",
+      "avisoCuentas": "Le produit a été enregistré, mais ses comptes comptables n’ont pas pu être enregistrés.",
       "borradorRecuperado": "Nous avons récupéré des modifications non enregistrées de ce formulaire (brouillon de cet onglet).",
       "descartarBorrador": "Supprimer le brouillon"
     },
@@ -14225,7 +14244,10 @@
         "actual": "Taux actuel",
         "nota": "Note de ligne",
         "seriales": "Numéros de série",
-        "serialesAyuda": "Un par ligne."
+        "serialesAyuda": "Un par ligne.",
+        "cuenta": "Compte comptable",
+        "cuentaAyuda": "Si vous le laissez vide, le produit, la catégorie ou la configuration comptable est utilisé. L’aperçu apparaît à la confirmation.",
+        "cuentaListo": "Terminé"
       },
       "manual": {
         "titulo": "Poste sans produit",
@@ -16274,6 +16296,8 @@
         "aFavor": "Le client reçoit {monto} de crédit.",
         "dian": "L'avoir est envoyé à la DIAN."
       },
+      "verAsiento": "Aperçu de l’écriture",
+      "asientoAyuda": "La taxe de l’aperçu est proportionnelle à celle de la facture. Le compte vient de la ligne, du produit ou de la catégorie.",
       "bloqueos": {
         "sinMonto": "Choisissez ce qui est crédité.",
         "excede": "L'avoir dépasse ce qui peut encore être crédité ({tope}).",
@@ -16624,7 +16648,15 @@
         "nota": "Note de la ligne",
         "notaAyuda": "Figure sur le PDF de la facture.",
         "elegirSeriales": "Choisir les numéros de série",
-        "duplicar": "Dupliquer la ligne"
+        "duplicar": "Dupliquer la ligne",
+        "cuenta": "Compte comptable",
+        "cuentaAyuda": "Si vous le laissez vide, le produit, la catégorie ou la configuration comptable est utilisé.",
+        "cuentaListo": "Terminé",
+        "verAsiento": "Aperçu de l’écriture",
+        "asientoTitulo": "Aperçu de l’écriture",
+        "asientoAyuda": "Enregistre le brouillon et montre l’écriture. Si une ligne a son propre compte et que l’écriture ne balance pas, la facture n’est pas émise.",
+        "asientoFallo": "L’écriture ne peut pas être comptabilisée",
+        "asientoCerrar": "Fermer"
       },
       "comision": {
         "vendedor": "Vendeur",
@@ -17432,6 +17464,8 @@
     },
     "detalle": {
       "titulo": "Document justificatif",
+      "verAsiento": "Aperçu de l’écriture",
+      "asientoAviso": "Ceci est un aperçu. Le document justificatif ne génère pas d’écriture à l’enregistrement.",
       "volver": "Retour aux documents justificatifs",
       "referencia": "Réf. : {referencia}",
       "numero": " — N° {numero}",
@@ -30898,7 +30932,8 @@
       "automatico": "Automatique (système)"
     },
     "lineas": {
-      "centroCosto": "Centre de coûts"
+      "centroCosto": "Centre de coûts",
+      "tercero": "Tiers"
     }
   },
   "reportes": {

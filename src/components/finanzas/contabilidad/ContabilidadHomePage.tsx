@@ -35,6 +35,13 @@ const MODULES = [
     color: 'green'
   },
   {
+    title: 'Plantillas de asientos',
+    description: 'Asientos recurrentes, en borrador hasta publicarlos',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/plantillas',
+    color: 'blue'
+  },
+  {
     title: 'Balance de Comprobación',
     description: 'Reporte de saldos por cuenta',
     icon: BarChart3,
@@ -121,8 +128,9 @@ export function ContabilidadHomePage() {
   });
 
   const loadFoliosResumen = useCallback(async () => {
+    const vacio = { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
     const organizationId = getOrganizationId();
-    if (!organizationId) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+    if (!organizationId) return vacio;
 
     try {
       const { data: folios, error } = await supabase
@@ -133,7 +141,7 @@ export function ContabilidadHomePage() {
         `)
         .eq('reservations.organization_id', organizationId);
 
-      if (error || !folios) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+      if (error || !folios) return vacio;
 
       const foliosAbiertos = folios.filter((f) => f.status === 'open');
       const folioIds = foliosAbiertos.map((f) => f.id);
@@ -165,7 +173,7 @@ export function ContabilidadHomePage() {
         itemsPendientes,
       };
     } catch {
-      return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+      return vacio;
     }
   }, []);
 

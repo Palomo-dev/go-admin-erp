@@ -4458,6 +4458,7 @@
       "finanzas_contabilidad": "Accounting",
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
       "finanzas_contabilidad_asientos": "Journal entries",
+      "finanzas_contabilidad_plantillas": "Recurring journal templates",
       "finanzas_contabilidad_mayor-contable": "General ledger",
       "finanzas_contabilidad_balance-comprobacion": "Trial balance",
       "finanzas_contabilidad_estado-resultados": "Income statement",
@@ -11878,6 +11879,15 @@
         "preparacionAyuda": "Sends a kitchen ticket when sold from the POS.",
         "siGenera": "Yes · sends a kitchen ticket when sold"
       },
+      "cuentas": {
+        "titulo": "Ledger accounts",
+        "descripcion": "Used when the product does not bring its own.",
+        "ayuda": "Empty: the invoice uses the accounting setup.",
+        "ingreso": "Income",
+        "costo": "Cost",
+        "inventario": "Inventory",
+        "devolucion": "Returns"
+      },
       "apariencia": {
         "descripcion": "Color, icon and image in the POS and the store.",
         "imagenAyuda": "Used in the POS (image view), the online store and the catalog."
@@ -16203,6 +16213,14 @@
         "otrosDuplicar": "{n, plural, one {This supplier will also be copied} other {These # suppliers will also be copied}}: {nombres}.",
         "gestionar": "Manage suppliers"
       },
+      "cuentas": {
+        "titulo": "Ledger accounts",
+        "ayuda": "If you leave them empty, the invoice uses the category account or the accounting setup.",
+        "ingreso": "Income",
+        "costo": "Cost",
+        "inventario": "Inventory",
+        "devolucion": "Returns"
+      },
       "etiquetas": {
         "etiqueta": "Tags",
         "ayuda": "They classify the product so it can be searched and filtered. Type a new name to create a tag.",
@@ -16401,6 +16419,7 @@
       "duplicado": "Product duplicated",
       "guardadoDescripcion": "“{nombre}” was saved.",
       "avisoCodigos": "The product was saved, but the variants' barcodes couldn't be numbered. Generate them from Labels.",
+      "avisoCuentas": "The product was saved, but its ledger accounts could not be saved.",
       "borradorRecuperado": "We recovered unsaved changes to this form (draft from this tab).",
       "descartarBorrador": "Discard draft"
     },
@@ -18426,7 +18445,10 @@
         "actual": "Current rate",
         "nota": "Line note",
         "seriales": "Serial numbers",
-        "serialesAyuda": "One per line."
+        "serialesAyuda": "One per line.",
+        "cuenta": "Ledger account",
+        "cuentaAyuda": "If you leave it empty, the product, the category or the accounting setup is used. The preview appears when you confirm.",
+        "cuentaListo": "Done"
       },
       "manual": {
         "titulo": "Item without product",
@@ -20475,6 +20497,8 @@
         "aFavor": "The customer gets {monto} in credit.",
         "dian": "The note is sent to the DIAN."
       },
+      "verAsiento": "Preview entry",
+      "asientoAyuda": "The preview tax is proportional to the invoice. The account comes from the line, the product or the category.",
       "bloqueos": {
         "sinMonto": "Choose what to credit.",
         "excede": "The note exceeds what can still be credited ({tope}).",
@@ -20825,7 +20849,15 @@
         "nota": "Line note",
         "notaAyuda": "Printed on the invoice PDF.",
         "elegirSeriales": "Choose serials",
-        "duplicar": "Duplicate line"
+        "duplicar": "Duplicate line",
+        "cuenta": "Ledger account",
+        "cuentaAyuda": "If you leave it empty, the product, the category or the accounting setup is used.",
+        "cuentaListo": "Done",
+        "verAsiento": "Preview entry",
+        "asientoTitulo": "Journal entry preview",
+        "asientoAyuda": "Saves the draft and shows the entry. If a line has its own account and the entry does not balance, the invoice is not issued.",
+        "asientoFallo": "The journal entry cannot be posted",
+        "asientoCerrar": "Close"
       },
       "comision": {
         "vendedor": "Salesperson",
@@ -21633,6 +21665,8 @@
     },
     "detalle": {
       "titulo": "Support Document",
+      "verAsiento": "Preview entry",
+      "asientoAviso": "This is a preview. A support document does not post a journal entry when it is saved.",
       "volver": "Back to support documents",
       "referencia": "Ref: {referencia}",
       "numero": " — No. {numero}",
@@ -30898,7 +30932,8 @@
       "automatico": "Automatic (system)"
     },
     "lineas": {
-      "centroCosto": "Cost center"
+      "centroCosto": "Cost center",
+      "tercero": "Third party"
     }
   },
   "reportes": {

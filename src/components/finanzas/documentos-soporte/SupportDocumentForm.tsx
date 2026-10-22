@@ -388,6 +388,7 @@ export function SupportDocumentForm() {
         code_reference: item.product_id ? `PROD-${item.product_id}` : `ITEM-${index + 1}`,
         is_excluded: Number(item.tax_rate || 0) === 0 ? 1 : 0,
         note: '',
+        cuenta_contable: item.cuenta_contable || null,
       }));
 
       const { error: itemsError } = await supabase
@@ -597,6 +598,7 @@ export function SupportDocumentForm() {
         <ItemsFactura
           items={items}
           onItemsChange={handleItemsChange}
+          mostrarCuenta
           taxIncluded={taxIncluded}
           organizationId={organizationId ? Number(organizationId) : undefined}
           serialSelections={serialSelections}

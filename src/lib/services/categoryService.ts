@@ -24,6 +24,10 @@ export interface Category {
   metadata: Record<string, unknown> | null;
   station: string | null;
   requires_preparation: boolean;
+  cuenta_ingreso?: string | null;
+  cuenta_costo?: string | null;
+  cuenta_inventario?: string | null;
+  cuenta_devolucion?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +54,10 @@ export interface CategoryFormData {
   metadata: Record<string, unknown>;
   station: string | null;
   requires_preparation: boolean;
+  cuenta_ingreso?: string | null;
+  cuenta_costo?: string | null;
+  cuenta_inventario?: string | null;
+  cuenta_devolucion?: string | null;
 }
 
 export interface CategoryStats {
@@ -218,7 +226,23 @@ export const emptyFormData: CategoryFormData = {
   metadata: {},
   station: null,
   requires_preparation: false,
+  cuenta_ingreso: '',
+  cuenta_costo: '',
+  cuenta_inventario: '',
+  cuenta_devolucion: '',
 };
+
+const CLAVES_CUENTA = ['cuenta_ingreso', 'cuenta_costo', 'cuenta_inventario', 'cuenta_devolucion'] as const;
+
+function columnasCuentas(formData: Partial<CategoryFormData>): Record<string, string | null> {
+  const columnas: Record<string, string | null> = {};
+  for (const clave of CLAVES_CUENTA) {
+    if (formData[clave] === undefined) continue;
+    const texto = (formData[clave] ?? '').trim();
+    columnas[clave] = texto || null;
+  }
+  return columnas;
+}
 
 // ─── Servicio CRUD ───────────────────────────────────────────────────────────
 
@@ -298,6 +322,7 @@ const categoryService = {
         metadata: formData.metadata || {},
         station: formData.station || null,
         requires_preparation: formData.requires_preparation,
+        ...columnasCuentas(formData),
       })
       .select()
       .single();
@@ -325,6 +350,7 @@ const categoryService = {
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
     if (formData.station !== undefined) updateData.station = formData.station || null;
     if (formData.requires_preparation !== undefined) updateData.requires_preparation = formData.requires_preparation;
+    Object.assign(updateData, columnasCuentas(formData));
 
     const { data, error } = await supabase
       .from('categories')
@@ -361,6 +387,7 @@ const categoryService = {
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
     if (formData.station !== undefined) updateData.station = formData.station || null;
     if (formData.requires_preparation !== undefined) updateData.requires_preparation = formData.requires_preparation;
+    Object.assign(updateData, columnasCuentas(formData));
 
     const { data, error } = await supabase
       .from('categories')
@@ -426,6 +453,10 @@ const categoryService = {
       metadata: original.metadata || {},
       station: original.station || null,
       requires_preparation: original.requires_preparation ?? false,
+      cuenta_ingreso: original.cuenta_ingreso ?? '',
+      cuenta_costo: original.cuenta_costo ?? '',
+      cuenta_inventario: original.cuenta_inventario ?? '',
+      cuenta_devolucion: original.cuenta_devolucion ?? '',
     });
   },
 
@@ -450,6 +481,10 @@ const categoryService = {
       metadata: original.metadata || {},
       station: original.station || null,
       requires_preparation: original.requires_preparation ?? false,
+      cuenta_ingreso: original.cuenta_ingreso ?? '',
+      cuenta_costo: original.cuenta_costo ?? '',
+      cuenta_inventario: original.cuenta_inventario ?? '',
+      cuenta_devolucion: original.cuenta_devolucion ?? '',
     });
   },
 

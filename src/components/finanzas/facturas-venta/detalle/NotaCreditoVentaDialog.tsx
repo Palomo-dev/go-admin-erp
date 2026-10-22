@@ -28,10 +28,12 @@ import { nuevaClaveIdempotencia } from '@/lib/finanzas/pagos/contrato';
 import {
   CONCEPTOS_DIAN,
   totalNota,
+  valorLineaNota,
   type ConceptoDian,
   type ContextoNota,
   type ModoNota,
 } from '@/lib/finanzas/ventas/contratoNotaCredito';
+import { TablaVistaPrevia, vistaPreviaAsientoDocumento, type VistaPreviaAsiento } from '@/components/finanzas/contabilidad/VistaPreviaAsiento';
 import { ErrorPeticionFactura, emitirNotaCreditoVenta, pedirContextoNota } from '@/lib/finanzas/ventas/clienteFacturas';
 import { SeleccionLineasNota } from '@/components/finanzas/notas/SeleccionLineasNota';
 
@@ -65,6 +67,8 @@ export function NotaCreditoVentaDialog({ abierto, onAbiertoChange, facturaId, nu
   const [liquidacion, setLiquidacion] = useState<'saldo_a_favor' | 'devolucion'>('saldo_a_favor');
   const [metodo, setMetodo] = useState<'cash' | 'transfer'>('cash');
   const [emitiendo, setEmitiendo] = useState(false);
+  const [viendoAsiento, setViendoAsiento] = useState(false);
+  const [previa, setPrevia] = useState<VistaPreviaAsiento | null>(null);
   const [error, setError] = useState<string | null>(null);
   const clave = useRef(nuevaClaveIdempotencia('nota'));
 
@@ -81,6 +85,7 @@ export function NotaCreditoVentaDialog({ abierto, onAbiertoChange, facturaId, nu
     setMetodo('cash');
     setError(null);
     setErrorCarga(null);
+    setPrevia(null);
     setCtx(null);
     clave.current = nuevaClaveIdempotencia('nota');
     let vivo = true;
@@ -122,6 +127,26 @@ export function NotaCreditoVentaDialog({ abierto, onAbiertoChange, facturaId, nu
       : excedente > 0 && liquidacion === 'saldo_a_favor' && !ctx?.tieneCliente
         ? t('errores.saldo_a_favor_sin_cliente')
         : null;
+
+  const verAsiento = async () => {
+    if (!ctx || monto <= 0) return;
+    const lineas =
+      modo === 'valor'
+        ? [{ product_id: null, total_line: monto, descripcion: concepto.trim() || 'Nota crédito' }]
+        : ctx.lineas.flatMap((l) => {
+            const cantidad = modo === 'total' ? l.disponible : Math.min(seleccion[l.itemId] ?? 0, l.disponible);
+            if (!(cantidad > 0)) return [];
+            return [{ product_id: l.productId, total_line: valorLineaNota(l, cantidad), descripcion: l.descripcion, item_id: l.itemId }];
+          });
+    setViendoAsiento(true);
+    try {
+      setPrevia(await vistaPreviaAsientoDocumento('nota_credito', facturaId, lineas));
+    } catch (e) {
+      setPrevia({ ok: false, fallo: textoError(e instanceof ErrorPeticionFactura ? e.codigo : 'error_desconocido'), lineas: [] });
+    } finally {
+      setViendoAsiento(false);
+    }
+  };
 
   const emitir = async () => {
     if (!ctx) return;
@@ -174,7 +199,14 @@ export function NotaCreditoVentaDialog({ abierto, onAbiertoChange, facturaId, nu
       descripcion={paso === 'que' ? t('paso1') : t('paso2')}
       icono={FileMinus}
       ancho={672}
-      secundarios={paso === 'motivo' ? [{ etiqueta: t('atras'), onClick: () => setPaso('que'), deshabilitada: emitiendo }] : undefined}
+      secundarios={
+        paso === 'motivo'
+          ? [
+              { etiqueta: t('atras'), onClick: () => setPaso('que'), deshabilitada: emitiendo },
+              { etiqueta: t('verAsiento'), onClick: () => void verAsiento(), deshabilitada: emitiendo || viendoAsiento || monto <= 0, cargando: viendoAsiento },
+            ]
+          : undefined
+      }
       primario={
         paso === 'que'
           ? { etiqueta: t('siguiente'), onClick: () => setPaso('motivo'), deshabilitada: !!bloqueoPaso1, motivo: bloqueoPaso1 ?? undefined }
@@ -303,6 +335,12 @@ export function NotaCreditoVentaDialog({ abierto, onAbiertoChange, facturaId, nu
                 </FormField>
               )}
             </fieldset>
+          )}
+          {previa && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-fg-muted">{t('asientoAyuda')}</p>
+              <TablaVistaPrevia previa={previa} />
+            </div>
           )}
           <div className="rounded-lg border border-line bg-subtle px-3 py-2">
             <p className="mb-1 text-sm font-medium text-fg">{t('alEmitir.titulo')}</p>

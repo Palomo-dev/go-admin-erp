@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import {FileText, Check, Copy, Trash2, ArrowLeft, Undo2, Loader2} from 'lucide-react';
+import {FileText, Check, Copy, Trash2, ArrowLeft, Undo2, Loader2, Printer} from 'lucide-react';
+import { esTipoComprobante, NOMBRE_COMPROBANTE, textoComprobante } from '@/lib/finanzas/contabilidad/comprobante';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -165,7 +166,9 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Asiento #{asiento.id}
+              {textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)
+                ? `${esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : 'Comprobante'} ${textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)}`
+                : `Asiento #${asiento.id}`}
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
               {asiento.memo || 'Sin descripción'}
@@ -192,6 +195,12 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Link href={`/app/finanzas/contabilidad/asientos/${asiento.id}/comprobante`}>
+            <Button variant="outline" className="dark:border-gray-600">
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
+          </Link>
           {!asiento.posted && (
             <Button onClick={handlePublish} disabled={isProcessing} className="bg-green-600 hover:bg-green-700">
               <Check className="h-4 w-4 mr-2" />
@@ -274,6 +283,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
                 <TableHead className="dark:text-gray-300">Cuenta</TableHead>
                 <TableHead className="dark:text-gray-300">Descripción</TableHead>
                 {centros.size > 0 && <TableHead className="dark:text-gray-300">{tl('centroCosto')}</TableHead>}
+                {asiento.lines?.some((l) => l.tercero_nit) && <TableHead className="dark:text-gray-300">{tl('tercero')}</TableHead>}
                 <TableHead className="text-right dark:text-gray-300">Débito</TableHead>
                 <TableHead className="text-right dark:text-gray-300">Crédito</TableHead>
               </TableRow>
@@ -301,6 +311,11 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
                       {line.cost_center_id && centros.get(line.cost_center_id)
                         ? `${centros.get(line.cost_center_id)?.code} · ${centros.get(line.cost_center_id)?.name}`
                         : '-'}
+                    </TableCell>
+                  )}
+                  {asiento.lines?.some((l) => l.tercero_nit) && (
+                    <TableCell className="text-gray-700 dark:text-gray-300">
+                      {line.tercero_nit ? `${line.tercero_nombre ? `${line.tercero_nombre} · ` : ''}${line.tercero_nit}` : '-'}
                     </TableCell>
                   )}
                   <TableCell className="text-right font-mono text-gray-900 dark:text-white">

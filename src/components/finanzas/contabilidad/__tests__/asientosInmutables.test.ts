@@ -73,6 +73,10 @@ describe('Asiento manual por la base', () => {
       p_organization_id: 149,
       p_branch_id: 129,
       p_publicar: false,
+      p_lineas: [
+        expect.objectContaining({ account_code: '5905', tercero_nit: null, tercero_nombre: null, cost_center_id: null }),
+        expect.objectContaining({ account_code: '1105', tercero_nit: null, tercero_nombre: null }),
+      ],
     }));
     // Solo lee el asiento de vuelta; nunca escribe asientos ni líneas.
     for (const resultado of mockFrom.mock.results) {

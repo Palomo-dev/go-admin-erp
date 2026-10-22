@@ -248,17 +248,22 @@ export function TesoreriaPage() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="dark:border-gray-600 dark:hover:bg-gray-800"
-        >
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="dark:border-gray-600 dark:hover:bg-gray-800">
+            <Link href="/app/finanzas/reporte-categorias">Reporte por categoría</Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="dark:border-gray-600 dark:hover:bg-gray-800"
+          >
           <RefreshCw
             className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`}
           />
           Actualizar
         </Button>
+        </div>
       </div>
 
       {/* Tarjetas de resumen */}

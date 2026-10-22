@@ -155,7 +155,7 @@ export function EgresosPage() {
     (m.notes?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  if (isLoading) {
+  if (isLoading && !showNewDialog && !anulando) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />
@@ -319,6 +319,9 @@ export function EgresosPage() {
                     </TableCell>
                     <TableCell className="text-gray-900 dark:text-white">
                       {movement.concept}
+                      {movement.categoria_nombre ? (
+                        <span className="block text-xs text-gray-500">{movement.categoria_nombre}</span>
+                      ) : null}
                       {movement.bank_account_name && (
                         <span className="block text-xs text-gray-500">{movement.bank_account_name}</span>
                       )}

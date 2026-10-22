@@ -22,6 +22,7 @@ import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneServ
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { avisarClientePedido, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
 import type { CanalAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
+import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 
 /** Estados que avisan al cliente. `pending` no: ese correo lo manda el sitio al crear el pedido. */
 export const ESTADOS_CON_AVISO = ['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered', 'cancelled', 'rejected'] as const;
@@ -60,21 +61,14 @@ export function tokenSeguimiento(organizationId: number, orderId: string): strin
   return createHmac('sha256', s).update(`${organizationId}:${orderId}`).digest('base64url').slice(0, 32);
 }
 
-/** Origen público del sitio de la organización (dominio propio o subdominio de la plataforma). */
-export function origenSitio(org: { custom_domain?: string | null; subdomain?: string | null }): string {
-  if (org.custom_domain) return `https://${org.custom_domain}`;
-  if (org.subdomain) return `https://${org.subdomain}.goadmin.io`;
-  return '';
-}
-
+/** Enlace de seguimiento. `host` ya es el de `hostSitio` / `fn_url_publica_org`, sin esquema. */
 export function urlSeguimiento(
-  org: { id: number; custom_domain?: string | null; subdomain?: string | null },
+  org: { id: number; host: string | null },
   pedido: { id: string; order_number: string },
 ): string | null {
-  const origen = origenSitio(org);
-  if (!origen) return null;
+  if (!org.host) return null;
   const t = tokenSeguimiento(org.id, pedido.id);
-  return `${origen}/pedido/${encodeURIComponent(pedido.order_number)}${t ? `?t=${t}` : ''}`;
+  return `https://${org.host}/pedido/${encodeURIComponent(pedido.order_number)}${t ? `?t=${t}` : ''}`;
 }
 
 export interface CorreoEstadoPedido {
@@ -153,11 +147,11 @@ export async function enviarCorreoEstadoPedido(
 
     const { data: org } = await db
       .from('organizations')
-      .select('id, name, subdomain, custom_domain')
+      .select('id, name')
       .eq('id', organizationId)
       .maybeSingle();
     if (!org) return false;
-    const url = urlSeguimiento(org, pedido);
+    const url = urlSeguimiento({ id: organizationId, host: await hostPublicoOrg(db, organizationId) }, pedido);
 
     const r = await avisarClientePedido(db, organizationId, pedido as PedidoParaAviso, {
       negocio: org.name ?? '',

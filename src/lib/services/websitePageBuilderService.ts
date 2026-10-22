@@ -2587,10 +2587,39 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
         itemLabelKey: 'title',
         itemFields: [
-          { key: 'icon', label: 'Ícono', type: 'icon' },
+          {
+            key: 'icon_source',
+            label: 'Origen del ícono',
+            type: 'select',
+            helpText: 'Vacío: imagen, como hoy.',
+            options: [
+              { value: 'image', label: 'Imagen' },
+              { value: 'icon', label: 'Ícono' },
+            ],
+          },
+          {
+            key: 'icon_name',
+            label: 'Ícono',
+            type: 'icon',
+            helpText: 'Camión, candado, pesa, escudo, tarjeta, chat y el resto del buscador.',
+            showIf: { field: 'icon_source', equals: 'icon' },
+          },
+          {
+            key: 'icon',
+            label: 'Ícono',
+            type: 'icon',
+            helpText: 'Se usa cuando el origen es imagen o está vacío.',
+            showIf: { field: 'icon_source', in: ['image', undefined] },
+          },
+          {
+            key: 'image_url',
+            label: 'Imagen',
+            type: 'image',
+            helpText: 'Si no hay imagen, no se muestra un cuadro vacío.',
+            showIf: { field: 'icon_source', in: ['image', undefined] },
+          },
           { key: 'title', label: 'Título', type: 'text' },
           { key: 'description', label: 'Descripción', type: 'textarea' },
-          { key: 'image_url', label: 'Imagen', type: 'image', helpText: 'Si no hay imagen, no se muestra un cuadro vacío.' },
         ],
       },
       {
@@ -2604,9 +2633,33 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { value: 'tarjetas', label: 'Tarjetas' },
         ],
       },
-      ...GRID_FIELDS,
+      {
+        key: 'item_layout',
+        label: 'Disposición',
+        type: 'select',
+        group: 'layout',
+        helpText: 'Vacío: ícono arriba y texto centrado, como hoy.',
+        options: [
+          { value: 'stacked', label: 'Apilado' },
+          { value: 'icon_left', label: 'Ícono a la izquierda' },
+          { value: 'icon_top_small', label: 'Ícono pequeño arriba' },
+        ],
+      },
+      ...GRID_FIELDS.map((f) =>
+        f.key === 'columns'
+          ? {
+              ...f,
+              helpText:
+                'Vacío: 3 en escritorio y 2 en celular, como hoy. Con el ícono a la izquierda o el ícono pequeño, el sitio usa como máximo 4 columnas.',
+            }
+          : f,
+      ),
       ...CAMPOS_IMAGEN_BENEFICIO,
-      ...CARD_FIELDS,
+      ...CARD_FIELDS.map((f) =>
+        f.key === 'text_align'
+          ? { ...f, helpText: 'Vacío: centrado en apilado y a la izquierda cuando el ícono va al lado.' }
+          : f,
+      ),
       {
         key: 'icon_style',
         label: 'Estilo del ícono',
@@ -2620,18 +2673,11 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       {
-        key: 'icon_color',
-        label: 'Color del ícono',
-        type: 'color',
-        group: 'style',
-        helpText: 'Vacío: el color de la marca. Un color fijo lo reemplaza.',
-      },
-      {
         key: 'icon_size',
         label: 'Tamaño del ícono',
         type: 'select',
         group: 'style',
-        helpText: 'Vacío: mediano (48 px), como hoy.',
+        helpText: 'Vacío: la caja de 48 px de hoy. Con el ícono a la izquierda, vacío es mediano.',
         options: [
           { value: 'sm', label: 'Pequeño' },
           { value: 'md', label: 'Mediano' },
@@ -2639,16 +2685,31 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       {
+        key: 'icon_color',
+        label: 'Color del ícono',
+        type: 'color',
+        group: 'style',
+        helpText: 'Vacío: el color de la marca. Un color fijo lo reemplaza. El valor accent usa el color de acento.',
+      },
+      {
         key: 'icon_shape',
         label: 'Forma del ícono',
         type: 'select',
         group: 'style',
-        helpText: 'Vacío: esquinas redondeadas.',
+        helpText: 'Vacío: esquinas redondeadas, como hoy. En el ícono a la izquierda o el ícono pequeño, vacío no añade forma.',
         options: [
           { value: 'rounded', label: 'Redondeado' },
           { value: 'circle', label: 'Círculo' },
           { value: 'square', label: 'Cuadrado' },
+          { value: 'none', label: 'Ninguna' },
         ],
+      },
+      {
+        key: 'icon_bg',
+        label: 'Fondo suave del ícono',
+        type: 'boolean',
+        group: 'style',
+        helpText: 'Un fondo claro del color del ícono. Apagado o vacío: sin fondo.',
       },
     ],
   },

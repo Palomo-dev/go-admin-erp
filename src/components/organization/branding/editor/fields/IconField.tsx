@@ -21,7 +21,7 @@ const ICON_CATEGORIES: Record<string, string[]> = {
   General: ['Image', 'Images', 'Star', 'Heart', 'Award', 'Flag', 'Tag', 'Gift', 'Sparkles', 'Flame', 'Zap', 'Crown'],
   Comunicación: ['Mail', 'MessageSquareQuote', 'Phone', 'MessageCircle', 'Send', 'Megaphone', 'Bell', 'AtSign'],
   Usuarios: ['Users', 'User', 'UserCheck', 'UserPlus', 'Contact', 'Smile'],
-  Comercio: ['ShoppingBag', 'ShoppingCart', 'CreditCard', 'Tag', 'Percent', 'Receipt', 'Wallet', 'Coins', 'DollarSign'],
+  Comercio: ['ShoppingBag', 'ShoppingCart', 'CreditCard', 'Tag', 'Percent', 'Receipt', 'Wallet', 'Coins', 'DollarSign', 'Truck'],
   Layout: ['Layout', 'LayoutPanelLeft', 'LayoutGrid', 'Columns', 'Rows', 'AlignCenter', 'AlignLeft', 'AlignRight'],
   Media: ['Play', 'Video', 'Camera', 'Film', 'Mic', 'Headphones', 'Volume2'],
   Navegación: ['MapPin', 'Navigation', 'Compass', 'Route', 'Globe', 'Link', 'ExternalLink', 'ArrowRight', 'ChevronRight'],
@@ -29,7 +29,7 @@ const ICON_CATEGORIES: Record<string, string[]> = {
   Tiempo: ['CalendarCheck', 'Calendar', 'Clock', 'Timer', 'Hourglass', 'CalendarDays'],
   Comida: ['UtensilsCrossed', 'Coffee', 'Pizza', 'IceCream', 'Wine', 'Cake'],
   Negocios: ['BedDouble', 'Building2', 'Store', 'Briefcase', 'TrendingUp', 'BarChart3', 'PieChart', 'FileText', 'Newspaper', 'BookOpen'],
-  Soporte: ['HelpCircle', 'Info', 'LifeBuoy', 'ShieldCheck', 'Lock', 'KeyRound'],
+  Soporte: ['HelpCircle', 'Info', 'LifeBuoy', 'ShieldCheck', 'Shield', 'Lock', 'KeyRound', 'MessageCircle', 'Dumbbell'],
 };
 
 const ALL_ICON_NAMES = Object.values(ICON_CATEGORIES).flat();

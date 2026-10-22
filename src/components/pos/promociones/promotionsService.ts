@@ -13,6 +13,7 @@ import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
 import { getDayRange } from '@/lib/utils/dateRanges';
 import { avisarCambioPromociones } from '@/lib/pos/venta/avisosPromociones';
+import { copiaDePromocion } from '@/lib/promotions/cantidadMinima';
 import { cantidadDeRegla, prepararPromocion } from '@/lib/promotions/prepararPromocion';
 
 // ============================================================
@@ -375,9 +376,10 @@ export class PromotionsService {
       if (!original) throw new Error('Promoción no encontrada');
 
       const { id: _, created_at, updated_at, usage_count, rules, ...data } = original;
+      const copia = copiaDePromocion(data);
 
       return this.create({
-        ...data,
+        ...copia,
         name: `${data.name} (Copia)`,
         is_active: false,
         rules: rules?.map(r => ({

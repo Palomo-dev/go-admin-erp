@@ -24,8 +24,9 @@
  *   - compra mínima: toda la cuenta si `applies_to` es `all` o
  *     `min_purchase_scope` es `cart`; si la promo es por productos,
  *     categorías o marcas, solo el subtotal de las líneas que entran;
- *   - cantidad mínima (`min_quantity`): suma de unidades de esas líneas.
- *     Solo porcentaje, monto fijo y paquete. Compra X Lleva Y no la mira;
+ *   - cantidad mínima: suma de unidades de esas líneas. Solo porcentaje,
+ *     monto fijo y paquete, y solo si `min_quantity` trae un entero.
+ *     `buy_quantity` no es un mínimo. Compra X Lleva Y no la mira;
  *   - repetir cada N (`repeat_every_quantity`) en porcentaje y monto fijo:
  *     floor(unidades / N) veces el valor. En porcentaje, el sobrante queda
  *     a precio normal. En monto fijo, el total se reparte entre las líneas
@@ -65,6 +66,7 @@ import { JS_DAY_TO_WEEKDAY, type WeekDay } from '@/components/pos/promociones/ty
 import { toPlainDate, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
+import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -317,12 +319,9 @@ function unidadesDe(lineas: LineaPromocion[], indices: number[]): number {
   return indices.reduce((s, i) => s + num(lineas[i].quantity), 0);
 }
 
-/** Porcentaje, monto fijo y paquete. Compra X Lleva Y no mira `min_quantity`. */
+/** Porcentaje, monto fijo y paquete. Compra X Lleva Y no mira esta cantidad. */
 function cumpleCantidadMinima(p: FilaPromocion, lineas: LineaPromocion[], indices: number[]): boolean {
-  if (p.promotion_type !== 'percentage' && p.promotion_type !== 'fixed_amount' && p.promotion_type !== 'bundle') {
-    return true;
-  }
-  const minimo = enteroPositivo(p.min_quantity);
+  const minimo = cantidadMinimaEfectiva(p);
   if (minimo == null) return true;
   return unidadesDe(lineas, indices) >= minimo;
 }

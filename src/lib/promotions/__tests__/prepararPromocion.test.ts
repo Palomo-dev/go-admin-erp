@@ -1,3 +1,4 @@
+import { copiaDePromocion, minimoDelFormulario } from '@/lib/promotions/cantidadMinima';
 import { cantidadDeRegla, prepararPromocion } from '@/lib/promotions/prepararPromocion';
 
 describe('prepararPromocion', () => {
@@ -7,6 +8,72 @@ describe('prepararPromocion', () => {
       buy_quantity: 2,
       get_quantity: 1,
     });
+  });
+
+  it('una promo nueva no convierte el 2 por defecto de compra X lleva Y en cantidad mínima', () => {
+    expect(
+      prepararPromocion({
+        promotion_type: 'fixed_amount',
+        buy_quantity: 2,
+        get_quantity: 1,
+        min_quantity: null,
+      }),
+    ).toMatchObject({
+      buy_quantity: null,
+      get_quantity: null,
+      min_quantity: null,
+    });
+  });
+
+  it('al editar, buy_quantity 2 no rellena la cantidad mínima', () => {
+    expect(
+      minimoDelFormulario(
+        { promotion_type: 'fixed_amount' as const, buy_quantity: 2, min_quantity: null },
+        true,
+      ),
+    ).toMatchObject({ min_quantity: null });
+    expect(
+      minimoDelFormulario(
+        { promotion_type: 'fixed_amount' as const, buy_quantity: 2, min_quantity: 3 },
+        true,
+      ).min_quantity,
+    ).toBe(3);
+    expect(
+      minimoDelFormulario(
+        { promotion_type: 'percentage' as const, buy_quantity: 2, min_quantity: null },
+        false,
+      ).min_quantity,
+    ).toBeNull();
+    expect(
+      minimoDelFormulario(
+        { promotion_type: 'buy_x_get_y' as const, buy_quantity: 2, get_quantity: 1, min_quantity: null },
+        true,
+      ),
+    ).toMatchObject({ buy_quantity: 2, min_quantity: null });
+  });
+
+  it('duplicar un monto fijo no copia buy_quantity al mínimo y no manda las reglas embebidas', () => {
+    const copia = prepararPromocion(
+      copiaDePromocion({
+        promotion_type: 'fixed_amount' as const,
+        buy_quantity: 2,
+        get_quantity: 1,
+        min_quantity: null,
+        promotion_rules: [{ rule_type: 'include_product', product_id: 1 }],
+      }),
+    );
+    expect(copia).toMatchObject({ min_quantity: null, buy_quantity: null, get_quantity: null });
+    expect(copia).not.toHaveProperty('promotion_rules');
+    expect(
+      prepararPromocion(
+        copiaDePromocion({
+          promotion_type: 'buy_x_get_y' as const,
+          buy_quantity: 2,
+          get_quantity: 1,
+          min_quantity: null,
+        }),
+      ),
+    ).toMatchObject({ buy_quantity: 2, get_quantity: 1, min_quantity: null });
   });
 
   it('porcentaje y monto fijo guardan el mínimo y la repetición, y vacían compra X lleva Y', () => {

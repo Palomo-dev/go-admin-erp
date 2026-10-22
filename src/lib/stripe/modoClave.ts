@@ -12,17 +12,20 @@ export function exigeClaveLive(env: NodeJS.ProcessEnv = process.env): boolean {
 
 export function modoDeClaveStripe(clave: string | undefined): 'live' | 'test' | 'desconocido' | 'ausente' {
   if (!clave) return 'ausente';
-  if (clave.startsWith('sk_live_')) return 'live';
+  if (clave.startsWith('sk_live_') || clave.startsWith('rk_live_')) return 'live';
   if (clave.startsWith('sk_test_')) return 'test';
   return 'desconocido';
 }
+
+export const MENSAJE_CLAVE_NO_LIVE =
+  'STRIPE_SECRET_KEY no es de live y este proceso está en producción.';
 
 /** Lanza si producción no usa una clave live. No incluye la clave en el mensaje. */
 export function validarModoClaveStripe(clave: string | undefined, exigeLive: boolean): void {
   const modo = modoDeClaveStripe(clave);
   if (modo === 'ausente') return;
   if (exigeLive && modo !== 'live') {
-    throw new Error('STRIPE_SECRET_KEY no es de live y este proceso está en producción.');
+    throw new Error(MENSAJE_CLAVE_NO_LIVE);
   }
   if (!exigeLive && modo === 'live') {
     console.warn('[stripe] STRIPE_SECRET_KEY es de live y este proceso no está en producción.');
@@ -31,4 +34,17 @@ export function validarModoClaveStripe(clave: string | undefined, exigeLive: boo
 
 export function validarModoClaveAlArrancar(env: NodeJS.ProcessEnv = process.env): void {
   validarModoClaveStripe(env.STRIPE_SECRET_KEY, exigeClaveLive(env));
+}
+
+/**
+ * Arranque: deja constancia y sigue. El proceso no se cae aquí;
+ * requireStripe() es quien rechaza la clave.
+ */
+export function registrarModoClaveAlArrancar(env: NodeJS.ProcessEnv = process.env): void {
+  try {
+    validarModoClaveAlArrancar(env);
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : MENSAJE_CLAVE_NO_LIVE;
+    console.error('[stripe]', mensaje);
+  }
 }

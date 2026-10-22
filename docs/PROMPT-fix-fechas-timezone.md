@@ -378,7 +378,7 @@ El trabajo está terminado cuando **todo** lo siguiente es cierto:
 - **MCP de Supabase** conectado. Proyecto: `jgmgphmzusbluqhuqihj` ("Go Admin ERP", Postgres 15, us-west-1).
   Úsalo para verificar tipos de columna antes de decidir `timestamptz` vs `date`, y para validar los
   criterios de aceptación con datos reales. **Consulta primero, migra después.**
-- Repos conectados: `go-admin-erp`, `go-admin-super`, `go-admin-investors`, `go-admin-sellers`,
+- Repos conectados: `go-admin-erp`, `go-admin-super`, `go-admin-sellers`,
   `goadmin-websites`. Si `go-admin-sellers` o `goadmin-websites` consumen `sales`/`invoice_sales`,
   audítalos con los mismos criterios — el bug se propaga.
 - Skills relevantes ya disponibles: `debugging-systematic`, `nextjs-supabase-postgres`,

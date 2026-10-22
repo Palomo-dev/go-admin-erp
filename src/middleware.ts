@@ -15,6 +15,9 @@ import {
 import { cargoPuedeEntrarAModulo, resolverCargoMiembro } from '@/lib/navigation/accesoCargo';
 
 const ACTIVITY_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
+// La marca solo evita un UPDATE por petición. Si la cookie dura 10 minutos,
+// al vencer el navegador la tira y el siguiente request parece "sin actividad".
+const ACTIVITY_COOKIE_MAX_AGE = 24 * 60 * 60;
 
 /**
  * Cookie con el veredicto de acceso ya calculado, para no repetir las 6
@@ -434,7 +437,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     event.waitUntil(updateUserActivityOptimized(activityUserId));
     response.cookies.set('last_activity_update', String(Date.now()), {
       path: '/',
-      maxAge: ACTIVITY_UPDATE_INTERVAL / 1000,
+      maxAge: ACTIVITY_COOKIE_MAX_AGE,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     });

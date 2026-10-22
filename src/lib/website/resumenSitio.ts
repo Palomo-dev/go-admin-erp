@@ -445,17 +445,18 @@ export interface DireccionSitio {
 }
 
 /**
- * Dirección pública: el dominio que fijó la persona (`primary_domain_id`) si
- * sigue verificado y activo; si no, la regla única de `hostSitio` (dominio
- * propio principal verificado o el subdominio).
+ * Dirección pública: la regla única de `hostSitio` (dominio propio principal
+ * verificado, si no el subdominio del sistema, si no el de la organización).
+ * `primary_domain_id` no cambia la URL: puede apuntar a un dominio que ya no
+ * es el principal. El argumento se conserva para no romper a quien lo pasa.
  */
 export function direccionSitio(
   dominios: readonly (DominioDelSitio & { id: string })[],
   subdominio: string | null,
   primaryDomainId: string | null | undefined,
 ): DireccionSitio {
-  const fijado = primaryDomainId ? dominios.find((d) => d.id === primaryDomainId && d.status === 'verified' && d.is_active) : undefined;
-  const host = fijado?.host ?? hostSitio(dominios, subdominio);
+  void primaryDomainId;
+  const host = hostSitio(dominios, subdominio);
   const sub = subdominio ? `${subdominio}.${DOMINIO_SITIOS}` : null;
   const hostEsPropio = !!host && host !== sub;
   return { host, url: host ? `https://${host}` : null, subdominioHost: hostEsPropio ? sub : null, hostEsPropio };

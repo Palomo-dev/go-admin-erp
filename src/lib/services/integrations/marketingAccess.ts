@@ -10,9 +10,8 @@
  *   responde 404 `CONNECTION_NOT_FOUND`, sin revelar si existe en otra
  *   organización. Mismo contrato que `connectionBelongsToOrg` del channel
  *   manager, más el conector: un id de conexión de Meta no sirve en TikTok.
- * - `resolveOrgStoreDomain(db, organizationId)`: dominio público de la tienda
- *   (dominio primario activo o `<subdominio>.goadmin.io`). Lo calcula el
- *   servidor: el cliente ya no lo manda.
+ * - `resolveOrgStoreDomain(db, organizationId)`: host público de la tienda,
+ *   sin esquema. Lo calcula el servidor con `hostSitio`: el cliente ya no lo manda.
  * - `oauthInitiatorIsOrgAdmin(service, organizationId, userId)`: en el
  *   callback OAuth (sin sesión), el usuario que firmó el `state` sigue siendo
  *   miembro activo y admin de la organización (mismo criterio que
@@ -22,6 +21,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 
 export type MarketingConnectorCode = 'meta_marketing' | 'tiktok_marketing' | 'google_ads';
@@ -84,19 +84,13 @@ export function requestedCurrency(value: unknown): string | null | false {
   return typeof value === 'string' && /^[A-Z]{3}$/.test(value) ? value : false;
 }
 
-/** Dominio público de la tienda de la organización (primario activo o `<subdominio>.goadmin.io`). */
+/**
+ * Host público de la tienda, sin esquema. Dominio propio principal verificado,
+ * si no el subdominio del sistema. Cadena vacía si no hay ninguno: no se
+ * inventa un host.
+ */
 export async function resolveOrgStoreDomain(db: SupabaseClient, organizationId: number): Promise<string> {
-  const { data: domainData } = await db
-    .from('organization_domains')
-    .select('host')
-    .eq('organization_id', organizationId)
-    .eq('is_primary', true)
-    .eq('is_active', true)
-    .maybeSingle();
-  const host = (domainData as { host?: string | null } | null)?.host;
-  if (host) return host;
-  const { data: orgData } = await db.from('organizations').select('subdomain').eq('id', organizationId).maybeSingle();
-  return `${(orgData as { subdomain?: string | null } | null)?.subdomain || 'shop'}.goadmin.io`;
+  return (await hostPublicoOrg(db, organizationId)) ?? '';
 }
 
 /**

@@ -185,7 +185,6 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       primary_color: d.primary_color,
       secondary_color: d.secondary_color,
       subdomain: d.subdomain || null,
-      custom_domain: d.custom_domain || null,
       updated_at: new Date().toISOString(),
     };
     // `legal_name` es NOT NULL: si se deja vacío, se conserva el que había.
@@ -388,7 +387,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
           <input name="subdomain" value={datos.subdomain} onChange={alCambiar} className={CAMPO} placeholder={t('subdomainPlaceholder')} />
         </FormField>
         <FormField etiqueta={tf('marca.dominio')} ayuda={tf('marca.dominioAyuda')}>
-          <input name="custom_domain" value={datos.custom_domain} onChange={alCambiar} className={CAMPO} placeholder={t('customDomainPlaceholder')} />
+          <input name="custom_domain" value={datos.custom_domain} readOnly className={CAMPO} placeholder={t('customDomainPlaceholder')} />
         </FormField>
       </FormSection>
 

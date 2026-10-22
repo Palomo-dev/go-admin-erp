@@ -186,13 +186,11 @@ function LoginContent() {
       }
     }
     purgeLegacyStoredPassword();
+    // Claves viejas que ya no usa el cliente. No se borra sb-<proyecto>-auth-token:
+    // esta página también se abre con la sesión por vencer y esa clave es la sesión viva.
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('sb-access-token');
     localStorage.removeItem('sb-refresh-token');
-    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
-      : '';
-    if (projectRef) localStorage.removeItem(`sb-${projectRef}-auth-token`);
   }, []);
 
   // El aviso nuevo recibe el foco para que el lector de pantalla lo lea.

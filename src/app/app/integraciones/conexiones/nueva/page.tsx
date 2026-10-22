@@ -24,6 +24,7 @@ import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
 import { whatsappClientService, whatsappSyncService } from '@/lib/services/integrations/whatsapp';
 import { sendgridService } from '@/lib/services/integrations/sendgrid';
 import { supabase } from '@/lib/supabase/config';
+import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import {
   StepProviderConnector,
   StepCountryEnvironment,
@@ -124,43 +125,23 @@ export default function NuevaConexionPage() {
 
     setIsLoading(true);
     try {
-      const [providersData, connectorsData, branchesData, domainsResult] = await Promise.all([
+      const [providersData, connectorsData, branchesData, domainsResult, orgResult] = await Promise.all([
         integrationsService.getProviders(),
         integrationsService.getConnectors(),
         integrationsService.getBranches(organizationId),
         supabase
           .from('organization_domains')
-          .select('host, domain_type, is_primary, is_active, status')
+          .select('host, domain_type, is_primary, is_active, status, updated_at')
           .eq('organization_id', organizationId)
-          .eq('is_active', true)
-          .eq('status', 'verified')
-          .order('is_primary', { ascending: false }),
+          .eq('is_active', true),
+        supabase.from('organizations').select('subdomain').eq('id', organizationId).maybeSingle(),
       ]);
 
       setProviders(providersData);
       setConnectors(connectorsData);
       setBranches(branchesData);
 
-      // Dominio: priorizar custom_domain verificado, sino system_subdomain, sino organizations.subdomain
-      if (domainsResult.data && domainsResult.data.length > 0) {
-        const customDomain = domainsResult.data.find(
-          (d) => d.domain_type === 'custom_domain' && d.is_primary
-        );
-        const systemSubdomain = domainsResult.data.find(
-          (d) => d.domain_type === 'system_subdomain'
-        );
-        setOrganizationDomain(customDomain?.host || systemSubdomain?.host || '');
-      } else {
-        // Fallback: usar el subdomain de la organización
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('subdomain')
-          .eq('id', organizationId)
-          .single();
-        if (orgData?.subdomain) {
-          setOrganizationDomain(`${orgData.subdomain}.goadmin.io`);
-        }
-      }
+      setOrganizationDomain(hostSitio((domainsResult.data ?? []) as DominioDelSitio[], orgResult.data?.subdomain) ?? '');
 
       // Si viene un provider preseleccionado desde la URL, auto-seleccionarlo
       if (mode === 'create' && preselectedProviderId) {

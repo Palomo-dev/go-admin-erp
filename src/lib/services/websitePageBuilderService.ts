@@ -19,6 +19,7 @@ import {
   VARIANTE_PORTADA_MESA_CATALOGO,
 } from '@/lib/services/website/seccionesMesaCatalogo';
 import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
+import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 
 // ============================================================
 // INTERFACES
@@ -4482,31 +4483,17 @@ class WebsitePageBuilderService {
   // ---- PREVIEW URL ----
 
   async getPreviewUrl(organizationId: number, slug?: string): Promise<string | null> {
-    const { data, error } = await supabase
-      .from('organization_domains')
-      .select('host, domain_type, is_primary')
-      .eq('organization_id', organizationId)
-      .eq('is_active', true)
-      .order('is_primary', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error || !data) {
-      // Fallback: check subdomain on organizations table
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('subdomain')
-        .eq('id', organizationId)
-        .single();
-
-      if (org?.subdomain) {
-        const base = `https://${org.subdomain}.goadmin.io`;
-        return slug && slug !== 'home' ? `${base}/${slug}` : base;
-      }
-      return null;
-    }
-
-    const base = `https://${data.host}`;
+    const [{ data: dominios }, { data: org }] = await Promise.all([
+      supabase
+        .from('organization_domains')
+        .select('host, domain_type, status, is_primary, is_active, updated_at')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true),
+      supabase.from('organizations').select('subdomain').eq('id', organizationId).maybeSingle(),
+    ]);
+    const host = hostSitio((dominios ?? []) as DominioDelSitio[], org?.subdomain);
+    if (!host) return null;
+    const base = `https://${host}`;
     return slug && slug !== 'home' ? `${base}/${slug}` : base;
   }
 

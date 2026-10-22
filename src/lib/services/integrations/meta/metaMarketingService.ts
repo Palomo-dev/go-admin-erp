@@ -660,7 +660,7 @@ class MetaMarketingService {
         image_url: primaryImg ? String(primaryImg.storage_path) : null,
         additional_images: additionalImgs,
         organization_name: orgName,
-        product_url: `https://${domain}/productos/${p.id}`,
+        product_url: domain ? `https://${domain}/productos/${p.id}` : '',
       };
     });
   }

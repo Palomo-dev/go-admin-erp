@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
   StatsSkeleton,
 } from '@/components/common/PageSkeletons';
-import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
+import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -58,6 +58,20 @@ const MODULES = [
     description: 'Libro mayor por cuenta',
     icon: BookOpen,
     href: '/app/finanzas/contabilidad/mayor-contable',
+    color: 'blue'
+  },
+  {
+    title: 'Libro diario',
+    description: 'Asientos publicados del periodo',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/libro-diario',
+    color: 'blue'
+  },
+  {
+    title: 'Auxiliar por tercero',
+    description: 'Saldos por NIT y cuenta',
+    icon: Users,
+    href: '/app/finanzas/contabilidad/auxiliar-tercero',
     color: 'blue'
   },
   {
@@ -113,6 +127,8 @@ export function ContabilidadHomePage() {
 
   useEffect(() => {
     loadResumen();
+    // loadResumen se declara debajo y solo debe repetirse al cambiar de sucursal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchFilter]);
 
   const loadResumen = async () => {

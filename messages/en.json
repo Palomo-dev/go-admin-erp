@@ -4459,6 +4459,8 @@
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
       "finanzas_contabilidad_asientos": "Journal entries",
       "finanzas_contabilidad_mayor-contable": "General ledger",
+      "finanzas_contabilidad_libro-diario": "General journal",
+      "finanzas_contabilidad_auxiliar-tercero": "Subsidiary ledger by third party",
       "finanzas_contabilidad_balance-comprobacion": "Trial balance",
       "finanzas_contabilidad_estado-resultados": "Income statement",
       "finanzas_contabilidad_balance-general": "Balance sheet",

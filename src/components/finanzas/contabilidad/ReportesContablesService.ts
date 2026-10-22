@@ -66,6 +66,28 @@ export interface LedgerAccount {
   total_debit: number;
   total_credit: number;
   closing_balance: number;
+  /** El detalle muestra a lo sumo 400 líneas. Los totales siguen siendo del periodo. */
+  truncated: boolean;
+}
+
+export interface LineaLibroDiario {
+  entry_id: number;
+  entry_date: string;
+  memo: string | null;
+  account_code: string;
+  account_name: string | null;
+  debit: number;
+  credit: number;
+  tercero_nit: string | null;
+  tercero_nombre: string | null;
+}
+
+export interface FilaAuxiliarRpc {
+  tercero_nit: string;
+  tercero_nombre: string;
+  account_code: string;
+  debit: number;
+  credit: number;
 }
 
 export interface ExchangeRateInfo {
@@ -478,32 +500,33 @@ export class ReportesContablesService {
       ? saldoPrevio.debit - saldoPrevio.credit
       : saldoPrevio.credit - saldoPrevio.debit;
 
-    // Movimientos del periodo en páginas de 1.000 (el tope de PostgREST).
-    const TAMANO_PAGINA = 1000;
-    const lines: FilaLinea[] = [];
-    for (let desde = 0; ; desde += TAMANO_PAGINA) {
-      const { data: pagina, error: linesError } = await supabase
-        .from('journal_lines')
-        .select(`
-          id,
-          debit,
-          credit,
-          description,
-          journal_entry_id,
-          journal_entries!inner(id, entry_date, memo, source, posted)
-        `)
-        .eq('organization_id', organizationId)
-        .eq('account_code', accountCode)
-        .gte('journal_entries.entry_date', start)
-        .lte('journal_entries.entry_date', end)
-        .eq('journal_entries.posted', true)
-        .order('id')
-        .range(desde, desde + TAMANO_PAGINA - 1);
+    // El mayor no recorre el libro entero: 400 líneas alcanzan para la pantalla
+    // y los totales salen del agregado, no de esa página.
+    const TOPE_LINEAS = 400;
+    const periodo = (await saldosPorCuenta(organizationId, start, end)).get(accountCode)
+      ?? { debit: 0, credit: 0 };
+    const { data: pagina, error: linesError } = await supabase
+      .from('journal_lines')
+      .select(`
+        id,
+        debit,
+        credit,
+        description,
+        journal_entry_id,
+        journal_entries!inner(id, entry_date, memo, source, posted)
+      `)
+      .eq('organization_id', organizationId)
+      .eq('account_code', accountCode)
+      .gte('journal_entries.entry_date', start)
+      .lte('journal_entries.entry_date', end)
+      .eq('journal_entries.posted', true)
+      .order('id')
+      .limit(TOPE_LINEAS + 1);
 
-      if (linesError) throw linesError;
-      lines.push(...((pagina || []) as FilaLinea[]));
-      if (!pagina || pagina.length < TAMANO_PAGINA) break;
-    }
+    if (linesError) throw linesError;
+    const crudas = (pagina || []) as FilaLinea[];
+    const truncated = crudas.length > TOPE_LINEAS;
+    const lines = crudas.slice(0, TOPE_LINEAS);
 
     // El orden por la columna de la tabla relacionada no ordena las líneas:
     // el saldo corrido exige ordenarlas aquí por fecha del asiento y luego id.
@@ -542,8 +565,11 @@ export class ReportesContablesService {
       };
     });
 
-    const totalDebit = entries.reduce((sum, e) => sum + e.debit, 0);
-    const totalCredit = entries.reduce((sum, e) => sum + e.credit, 0);
+    const totalDebit = periodo.debit;
+    const totalCredit = periodo.credit;
+    const movimiento = account.type === 'asset' || account.type === 'expense'
+      ? periodo.debit - periodo.credit
+      : periodo.credit - periodo.debit;
 
     return {
       account_code: account.account_code,
@@ -553,7 +579,57 @@ export class ReportesContablesService {
       entries,
       total_debit: totalDebit,
       total_credit: totalCredit,
-      closing_balance: runningBalance,
+      closing_balance: openingBalance + movimiento,
+      truncated,
     };
+  }
+
+  static async getLibroDiario(
+    startDate: string,
+    endDate: string,
+    limite = 500,
+  ): Promise<{ filas: LineaLibroDiario[]; truncado: boolean }> {
+    const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    const { start, end } = getDateRange(startDate, endDate, timezone);
+    const { data, error } = await supabase.rpc('fn_libro_diario', {
+      p_organization_id: organizationId,
+      p_desde: start,
+      p_hasta: end,
+      p_limite: limite,
+    });
+    if (error) throw error;
+    const filas = ((data || []) as LineaLibroDiario[]).map((fila) => ({
+      ...fila,
+      debit: Number(fila.debit) || 0,
+      credit: Number(fila.credit) || 0,
+    }));
+    return { filas, truncado: filas.length >= limite };
+  }
+
+  static async getAuxiliarTercero(
+    startDate: string,
+    endDate: string,
+    cuenta?: string,
+    limite = 500,
+  ): Promise<{ filas: FilaAuxiliarRpc[]; truncado: boolean }> {
+    const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    const { start, end } = getDateRange(startDate, endDate, timezone);
+    const { data, error } = await supabase.rpc('fn_auxiliar_tercero', {
+      p_organization_id: organizationId,
+      p_desde: start,
+      p_hasta: end,
+      p_cuenta: cuenta?.trim() || null,
+      p_limite: limite,
+    });
+    if (error) throw error;
+    const filas = ((data || []) as FilaAuxiliarRpc[]).map((fila) => ({
+      ...fila,
+      tercero_nit: fila.tercero_nit || '—',
+      debit: Number(fila.debit) || 0,
+      credit: Number(fila.credit) || 0,
+    }));
+    return { filas, truncado: filas.length >= limite };
   }
 }

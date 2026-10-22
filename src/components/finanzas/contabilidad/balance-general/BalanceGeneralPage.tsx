@@ -12,6 +12,8 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
 
 // Cifra contable en la moneda base de la organizacion (los reportes contables
 // se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
@@ -50,6 +52,7 @@ export function BalanceGeneralPage() {
   const { getToday } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
   const [asOfDate, setAsOfDate] = useState('');
+  const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
   const [data, setData] = useState<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -89,6 +92,15 @@ export function BalanceGeneralPage() {
 
   if (!data) return null;
 
+  const activos = filasEnNivel(data.assets, nivel);
+  const pasivos = filasEnNivel(data.liabilities, nivel);
+  const patrimonio = filasEnNivel(data.equity, nivel);
+  const exportables: (string | number)[][] = [
+    ...(activos ?? importesPropios(data.assets)).map((fila) => ['Activo', fila.codigo, fila.nombre, fila.importe] as (string | number)[]),
+    ...(pasivos ?? importesPropios(data.liabilities)).map((fila) => ['Pasivo', fila.codigo, fila.nombre, fila.importe] as (string | number)[]),
+    ...(patrimonio ?? importesPropios(data.equity)).map((fila) => ['Patrimonio', fila.codigo, fila.nombre, fila.importe] as (string | number)[]),
+  ];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex items-center gap-3">
@@ -110,6 +122,13 @@ export function BalanceGeneralPage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha de Corte</Label>
               <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
+            <SelectorNivel valor={nivel} onChange={setNivel} />
+            <BotonesExportar
+              nombre={`situacion-financiera-${asOfDate}`}
+              titulo="Estado de situación financiera"
+              columnas={['Seccion', 'Codigo', 'Nombre', 'Importe']}
+              filas={exportables}
+            />
             <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
@@ -138,7 +157,9 @@ export function BalanceGeneralPage() {
           <CardContent>
             <table className="w-full text-sm">
               <tbody>
-                {data.assets.map(row => renderRow(row, formatCifra))}
+                {activos
+                  ? <FilasNivel filas={activos} formatCifra={formatCifra} />
+                  : data.assets.map(row => renderRow(row, formatCifra))}
                 <tr className="border-t-2 dark:border-gray-600 font-bold">
                   <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL ACTIVOS</td>
                   <td className="py-3 px-3 text-right font-mono text-blue-600 dark:text-blue-400">{formatCifra(data.totalAssets)}</td>
@@ -157,7 +178,9 @@ export function BalanceGeneralPage() {
             <CardContent>
               <table className="w-full text-sm">
                 <tbody>
-                  {data.liabilities.map(row => renderRow(row, formatCifra))}
+                  {pasivos
+                    ? <FilasNivel filas={pasivos} formatCifra={formatCifra} />
+                    : data.liabilities.map(row => renderRow(row, formatCifra))}
                   <tr className="border-t-2 dark:border-gray-600 font-bold">
                     <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL PASIVOS</td>
                     <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalLiabilities)}</td>
@@ -175,7 +198,9 @@ export function BalanceGeneralPage() {
             <CardContent>
               <table className="w-full text-sm">
                 <tbody>
-                  {data.equity.map(row => renderRow(row, formatCifra))}
+                  {patrimonio
+                    ? <FilasNivel filas={patrimonio} formatCifra={formatCifra} />
+                    : data.equity.map(row => renderRow(row, formatCifra))}
                   <tr className="border-t-2 dark:border-gray-600 font-bold">
                     <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL PATRIMONIO</td>
                     <td className="py-3 px-3 text-right font-mono text-purple-600 dark:text-purple-400">{formatCifra(data.totalEquity)}</td>

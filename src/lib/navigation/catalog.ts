@@ -483,6 +483,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/contabilidad/plan-cuentas', nombre: 'Plan de cuentas', icono: ListChecks, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/asientos', nombre: 'Asientos', icono: FileText, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/mayor-contable', nombre: 'Mayor contable', icono: BookOpen, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/libro-diario', nombre: 'Libro diario', icono: BookOpen, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/auxiliar-tercero', nombre: 'Auxiliar por tercero', icono: BookOpen, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/balance-comprobacion', nombre: 'Balance de comprobación', icono: BarChart3, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/estado-resultados', nombre: 'Estado de resultados', icono: TrendingUp, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/balance-general', nombre: 'Balance general', icono: Calculator, grupo: 'Contabilidad' },

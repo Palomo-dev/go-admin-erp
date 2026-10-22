@@ -14,6 +14,8 @@ import { EmptyState } from '@/components/kit';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
 
 // Cifra contable en la moneda base de la organizacion (los reportes contables
 // se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
@@ -56,6 +58,7 @@ export function EstadoResultadosPage() {
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
   const [data, setData] = useState<{ income: IncomeStatementRow[]; expenses: IncomeStatementRow[]; totalIncome: number; totalExpenses: number; netIncome: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -123,6 +126,7 @@ export function EstadoResultadosPage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
+            <SelectorNivel valor={nivel} onChange={setNivel} />
             <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
@@ -139,6 +143,17 @@ export function EstadoResultadosPage() {
         />
       ) : (
         <>
+          <div className="flex justify-end">
+            <BotonesExportar
+              nombre={`estado-resultados-${startDate}-${endDate}`}
+              titulo="Estado de resultados"
+              columnas={['Seccion', 'Codigo', 'Nombre', 'Importe']}
+              filas={[
+                ...(filasEnNivel(data.income, nivel) ?? importesPropios(data.income)).map((fila) => ['Ingreso', fila.codigo, fila.nombre, fila.importe] as (string | number)[]),
+                ...(filasEnNivel(data.expenses, nivel) ?? importesPropios(data.expenses)).map((fila) => ['Gasto', fila.codigo, fila.nombre, fila.importe] as (string | number)[]),
+              ]}
+            />
+          </div>
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
@@ -151,7 +166,9 @@ export function EstadoResultadosPage() {
               <CardContent>
                 <table className="w-full text-sm">
                   <tbody>
-                    {data.income.map(row => renderRow(row, formatCifra))}
+                    {filasEnNivel(data.income, nivel)
+                      ? <FilasNivel filas={filasEnNivel(data.income, nivel) || []} formatCifra={formatCifra} />
+                      : data.income.map(row => renderRow(row, formatCifra))}
                     <tr className="border-t-2 dark:border-gray-600 font-bold">
                       <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL INGRESOS</td>
                       <td className="py-3 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(data.totalIncome)}</td>
@@ -172,7 +189,9 @@ export function EstadoResultadosPage() {
               <CardContent>
                 <table className="w-full text-sm">
                   <tbody>
-                    {data.expenses.map(row => renderRow(row, formatCifra))}
+                    {filasEnNivel(data.expenses, nivel)
+                      ? <FilasNivel filas={filasEnNivel(data.expenses, nivel) || []} formatCifra={formatCifra} />
+                      : data.expenses.map(row => renderRow(row, formatCifra))}
                     <tr className="border-t-2 dark:border-gray-600 font-bold">
                       <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL GASTOS</td>
                       <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalExpenses)}</td>

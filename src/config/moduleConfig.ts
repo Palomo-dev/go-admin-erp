@@ -156,6 +156,8 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Estado de Resultados', path: '/app/finanzas/contabilidad/estado-resultados', icon: BarChart3 },
     { name: 'Balance General', path: '/app/finanzas/contabilidad/balance-general', icon: BarChart3 },
     { name: 'Mayor Contable', path: '/app/finanzas/contabilidad/mayor-contable', icon: Landmark },
+    { name: 'Libro diario', path: '/app/finanzas/contabilidad/libro-diario', icon: FileText },
+    { name: 'Auxiliar por tercero', path: '/app/finanzas/contabilidad/auxiliar-tercero', icon: Users },
     { name: 'Centro de Costos', path: '/app/finanzas/centro-costos', icon: Grid3X3 },
     { name: 'Activos Fijos', path: '/app/finanzas/activos-fijos', icon: Package },
     { name: 'Presupuestos', path: '/app/finanzas/presupuestos', icon: Target },

@@ -64,29 +64,44 @@ export class PeriodosFiscalesService {
   }
 
   static async cerrarPeriodo(id: string, notes?: string): Promise<void> {
-    const { error } = await supabase
-      .from('fiscal_periods')
-      .update({
-        status: 'closed',
-        closed_at: new Date().toISOString(),
-        notes: notes || null,
-      })
-      .eq('id', id);
-
+    const orgId = this.getOrganizationId();
+    if (!orgId) throw new Error('No hay organización activa');
+    const { error } = await supabase.rpc('fn_cierre_periodo', {
+      p_organization_id: orgId,
+      p_period_id: id,
+      p_notas: notes ?? null,
+    });
     if (error) throw error;
   }
 
   static async reabrirPeriodo(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('fiscal_periods')
-      .update({
-        status: 'open',
-        closed_at: null,
-        closed_by: null,
-      })
-      .eq('id', id);
-
+    const orgId = this.getOrganizationId();
+    if (!orgId) throw new Error('No hay organización activa');
+    const { error } = await supabase.rpc('fn_reabrir_periodo', {
+      p_organization_id: orgId,
+      p_period_id: id,
+    });
     if (error) throw error;
+  }
+
+  /**
+   * Cancela las cuentas de resultado del año contra 3605 y, si hay pérdida,
+   * pasa ese saldo a 3610. Después cierra los periodos de ese año.
+   */
+  static async cerrarEjercicio(anio: number): Promise<{ asientos: number; resultado: number; cuenta_resultado: string }> {
+    const orgId = this.getOrganizationId();
+    if (!orgId) throw new Error('No hay organización activa');
+    const { data, error } = await supabase.rpc('fn_cierre_ejercicio', {
+      p_organization_id: orgId,
+      p_anio: anio,
+    });
+    if (error) throw error;
+    const fila = (data ?? {}) as { asientos?: number; resultado?: number; cuenta_resultado?: string };
+    return {
+      asientos: Number(fila.asientos) || 0,
+      resultado: Number(fila.resultado) || 0,
+      cuenta_resultado: fila.cuenta_resultado || '3605',
+    };
   }
 
   static async generarPeriodosMensuales(year: number): Promise<void> {

@@ -4456,6 +4456,8 @@
       "finanzas_contabilidad_plan-cuentas": "Plan comptable",
       "finanzas_contabilidad_asientos": "Écritures",
       "finanzas_contabilidad_mayor-contable": "Grand livre",
+      "finanzas_contabilidad_libro-diario": "Journal général",
+      "finanzas_contabilidad_auxiliar-tercero": "Auxiliaire par tiers",
       "finanzas_contabilidad_balance-comprobacion": "Balance de vérification",
       "finanzas_contabilidad_estado-resultados": "Compte de résultat",
       "finanzas_contabilidad_balance-general": "Bilan",

@@ -3793,6 +3793,28 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
 - Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.
 
+### Fase: Stripe, clave restringida y arranque — 2026-10-22
+- `sk_live_` y `rk_live_` cuentan como live. `instrumentation.ts` registra el error y no tumba el proceso. El rechazo queda en `requireStripe()`.
+- No hubo migración. `master` no se tocó: ya era ancestro de `main`.
+
+### Fase: Mínimo de unidades en min_quantity — 2026-10-22
+- Calificación QA: 9.6/10 en la ronda que todavía leía buy_quantity. Esa lectura ya no está.
+- Qué se hizo: porcentaje, monto fijo y paquete usan solo min_quantity. Si viene vacía, no hay mínimo y una unidad conserva el descuento, aunque buy_quantity sea 2. Ese 2 es el valor por defecto del formulario y, en Compra X Lleva Y, la cantidad que se compra. Al editar no se copia buy_quantity al campo. Duplicar tampoco. No hay backfill. La tienda usa el mismo cálculo. PR 409 del panel y PR 22 de tiendas, contra main. master no se tocó.
+- Qué falta: Juan puede indicar, con la organización 142, qué promociones deben quedar con mínimo 2. Hasta esa lista no se hace UPDATE.
+- Próxima acción: fusionar 409 y 22 a main. No a master. No fusionar 396 ni la web 20.
+
+### Fase: Mínimo 2 en ocho promociones de la org 142 — 2026-10-22
+- Juan confirmó los ocho ids. Antes, min_quantity era NULL en las ocho y updated_at no se reescribió. El update solo puso min_quantity = 2, con organization_id = 142 y min_quantity nulo. Quedaron 8 filas en 2 y las otras 11 promociones siguen en NULL. El disparador de updated_at quedó encendido.
+- Aplicado por MCP: versión 20261022145242, nombre min_quantity_org_142_ocho, md5 06b385e6fee9e2722fc9a0a819b31604. Rollback: supabase/rollbacks/20261022145242_min_quantity_org_142_ocho_rollback.sql. Devuelve esas ocho a NULL y aborta si no son exactamente 8.
+- Con el motor del PR 409 y el de la web 22, un lunes, el producto de cada promo a su precio vigente: 1 unidad descuenta 0 y 2 unidades descuentan 7000, 5000, 2000, 5000, 8000, 6000, 6000 y 3000. El POS y la tienda dan los mismos ocho pares. Los dos PR siguen abiertos contra main. master no se tocó.
+
+### Incidencia Railway: dependencias de reuniones desde voz — 2026-10-02
+
+El despliegue `decbd6f6-3903-4e65-b0e9-e27e50a9e65b` de producción falló al arrancar el servidor WS del commit `edba4148` (merge #293, main → master): `Cannot find module 'resend'`. El grafo pasó de voiceAgentTools a reunionCorreo.server y al servicio de correo. La imagen se construyó, pero el proceso terminó y /health no pudo responder. El PR #280 seguía abierto, sin merge; no fue el commit desplegado. El dominio verificado en Resend no corrige una dependencia npm ausente.
+
+Se añaden al package.json/lockfile propios del WS `resend` 6.26.0, `zod` 3.25.67, `libphonenumber-js` 1.13.13 y `sanitize-html` 2.17.7, versiones del lockfile raíz. El cierre de imports distingue el runtime Node sin window y usa los imports externos que sobreviven, conservando la prohibición de React/Next y sus dependencias transitivas. La miga de Sentry solo de navegador no se instala en Railway. No se cambia el código que crea reuniones, envía correo o autentica sockets.
+
+Verificación: instalación aislada de 98 paquetes con npm ci --omit=dev y la disposición del Dockerfile, sin acceso al node_modules raíz; arranque real con Node 20.20.2, /health HTTP 200. Claves sintéticas y proveedor local inaccesible; no se enviaron correos ni llamadas. Guardarraíl de dependencias: ocho pruebas pasan; lint del script y diff limpios. La suite completa de master informa 920 suites aprobadas y dos suites con nueve fallos previos en contratos de oportunidades: el despacho after de Next no está mockeado en esos tests, que no fueron modificados por el hotfix. TypeScript y build completos no se acreditan: los intentos se interrumpieron por memoria/reinicio del entorno. El arranque aislado verifica el fallo específico de Railway. Sin cambios de variables, merge ni redeploy de producción.
 
 ### Fase: URL pública del dominio principal — Ronda 1 — 2026-10-21
 - Calificación QA: 9.6/10 (aprobado)

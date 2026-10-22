@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { getOptimizedSession, refreshSessionToken, clearSessionCache, performHealthCheck } from '../supabase/auth-manager';
+import { esperaRenovacionMs } from '@/lib/auth/renovacionSesion';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { Session } from '@supabase/supabase-js';
@@ -185,6 +186,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => {
       if (countdownTimer) clearInterval(countdownTimer);
     };
+    // handleLogout se lee al llegar a cero; meterlo en las deps reinicia el conteo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.showRenewalPopup, state.countdown]);
   
   // Refrescar sesión cuando el usuario vuelve a la pestaña (visibilitychange / focus)
@@ -229,6 +232,29 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
   }, [state.session]);
+
+  // El access token corto se renueva antes de vencer, aunque la pestaña
+  // siga abierta. El almacenamiento del cliente reescribe la cookie que lee
+  // el middleware. La inactividad sigue desactivada: cerrar a los 10 minutos
+  // peleaba con ese middleware.
+  useEffect(() => {
+    const expiraEnSegundos = state.session?.expires_at;
+    if (!expiraEnSegundos) return;
+    let cancelado = false;
+    const espera = esperaRenovacionMs(expiraEnSegundos * 1000, Date.now());
+    const timer = window.setTimeout(() => {
+      void refreshSessionToken().then((result) => {
+        if (cancelado || !result?.session) return;
+        setState((prev) => ({ ...prev, session: result.session }));
+      }).catch((err) => {
+        console.warn('Error al renovar la sesión antes de que venza:', err);
+      });
+    }, espera);
+    return () => {
+      cancelado = true;
+      window.clearTimeout(timer);
+    };
+  }, [state.session?.expires_at]);
   
   // Fetch initial session
   // `initAttempt` permite reintentar desde la interfaz sin recargar la página.

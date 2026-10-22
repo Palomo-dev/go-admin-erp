@@ -4094,7 +4094,8 @@
           "sm": "Pequeno",
           "md": "Médio",
           "lg": "Grande",
-          "xl": "Muito grande"
+          "xl": "Muito grande",
+          "px": "Pixels"
         },
         "campos": {
           "padding_top": "Padding superior",
@@ -33180,7 +33181,11 @@
           "presetCuadrado": "Quadrado suave",
           "presetBorde": "Borda fina",
           "presetSombra": "Sombra flutuante",
-          "presetSolo": "Só o ícone"
+          "presetSolo": "Só o ícone",
+          "headerSobreHero": "Cabeçalho transparente sobre o hero",
+          "headerSobreHeroAyuda": "O cabeçalho fica fixo e transparente sobre o hero. Desligado: cabeçalho opaco e o hero abaixo, sem vão.",
+          "espacioPrimera": "Espaço superior da primeira seção",
+          "espacioPrimeraAyuda": "Pixels entre o cabeçalho e a primeira seção. 0 as deixa coladas."
         },
         "diseno": {
           "titulo": "Layout do cabeçalho",

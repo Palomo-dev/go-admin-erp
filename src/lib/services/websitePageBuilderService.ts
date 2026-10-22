@@ -430,8 +430,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         label: 'Solapar con el header',
         type: 'boolean',
         group: 'layout',
-        defaultValue: true,
-        helpText: 'El hero sube debajo del header transparente',
+        defaultValue: false,
+        helpText: 'Alias de «Header transparente sobre el hero». Apagado (lo de hoy): el hero queda debajo del encabezado, sin margen negativo. Si el interruptor del encabezado está en falso, este no lo enciende.',
       },
       // Booking widget (reemplaza hero booking switch ad-hoc)
       { key: 'show_booking_widget', label: 'Widget de reserva', type: 'boolean', group: 'behavior', defaultValue: false, helpText: 'Muestra un formulario de reserva sobre el hero' },

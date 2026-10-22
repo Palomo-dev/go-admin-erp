@@ -22,6 +22,17 @@ const SPACING_OPTIONS = [
   { value: 'xl' },
 ];
 
+const CAMPOS_PX = {
+  padding_top: 'padding_top_px',
+  padding_bottom: 'padding_bottom_px',
+} as const;
+
+function pxGuardado(content: Record<string, unknown>, key: string): number | null {
+  if (!(key in CAMPOS_PX)) return null
+  const n = content[CAMPOS_PX[key as keyof typeof CAMPOS_PX]]
+  return typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : null
+}
+
 const FIELDS = [
   { key: 'padding_top' },
   { key: 'padding_bottom' },
@@ -44,11 +55,39 @@ export default function SpacingField({ value, onChange }: BaseFieldProps) {
 
   const [linked, setLinked] = useState(false);
 
+  const escribir = (siguiente: Record<string, unknown>) => onChange(siguiente);
+
   const handleChange = (key: string, val: string) => {
-    const updates: Record<string, string> = { [key]: val };
-    if (linked && key === 'padding_top') updates.padding_bottom = val;
-    if (linked && key === 'padding_bottom') updates.padding_top = val;
-    onChange({ ...content, ...updates });
+    const pxDe = (campo: string) => (campo in CAMPOS_PX ? CAMPOS_PX[campo as keyof typeof CAMPOS_PX] : null);
+    const aplicar = (base: Record<string, unknown>, campo: string, valor: string) => {
+      const px = pxDe(campo);
+      if (valor === 'px') {
+        base[campo] = typeof base[campo] === 'string' ? base[campo] : 'none';
+        if (px && base[px] == null) base[px] = 0;
+        return;
+      }
+      base[campo] = valor;
+      if (px) delete base[px];
+    };
+    const siguiente: Record<string, unknown> = { ...content };
+    aplicar(siguiente, key, val);
+    if (linked && (key === 'padding_top' || key === 'padding_bottom')) {
+      const otro = key === 'padding_top' ? 'padding_bottom' : 'padding_top';
+      aplicar(siguiente, otro, val);
+      if (val === 'px') siguiente[CAMPOS_PX[otro]] = siguiente[CAMPOS_PX[key]];
+    }
+    escribir(siguiente);
+  };
+
+  const handlePx = (key: keyof typeof CAMPOS_PX, raw: string) => {
+    const n = raw.trim() === '' ? 0 : Math.min(480, Math.max(0, Math.round(Number(raw))));
+    if (!Number.isFinite(n)) return;
+    const siguiente: Record<string, unknown> = { ...content, [CAMPOS_PX[key]]: n };
+    if (linked) {
+      const otro = key === 'padding_top' ? 'padding_bottom' : 'padding_top';
+      siguiente[CAMPOS_PX[otro]] = n;
+    }
+    escribir(siguiente);
   };
 
   return (
@@ -79,16 +118,19 @@ export default function SpacingField({ value, onChange }: BaseFieldProps) {
           </button>
 
           <div className="grid grid-cols-2 gap-2">
-            {FIELDS.map((f) => (
+            {FIELDS.map((f) => {
+              const esVertical = f.key === 'padding_top' || f.key === 'padding_bottom';
+              const enPx = esVertical && pxGuardado(content, f.key) != null;
+              return (
               <div key={f.key} className={cn(f.key === 'padding_x' && 'col-span-2')}>
                 <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">
                   {t(`spacingField.campos.${f.key}`)}
                 </label>
                 <Select
-                  value={content[f.key] || 'lg'}
+                  value={enPx ? 'px' : (content[f.key] || (f.key.startsWith('margin') ? 'none' : 'lg'))}
                   onValueChange={(v) => handleChange(f.key, v)}
                 >
-                  <SelectTrigger className="h-6 text-[10px]">
+                  <SelectTrigger className="h-6 text-[10px]" aria-label={t(`spacingField.campos.${f.key}`)}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -97,10 +139,24 @@ export default function SpacingField({ value, onChange }: BaseFieldProps) {
                         {t(`spacingField.opciones.${o.value}`)}
                       </SelectItem>
                     ))}
+                    {esVertical && (
+                      <SelectItem value="px" className="text-[11px]">{t('spacingField.opciones.px')}</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {enPx && (
+                  <input
+                    type="number"
+                    min={0}
+                    max={480}
+                    aria-label={`${t(`spacingField.campos.${f.key}`)} px`}
+                    className="mt-1 h-6 w-full rounded border border-gray-200 px-1 text-[10px] dark:border-gray-700 dark:bg-gray-900"
+                    value={String(pxGuardado(content, f.key) ?? 0)}
+                    onChange={(e) => handlePx(f.key as keyof typeof CAMPOS_PX, e.target.value)}
+                  />
+                )}
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}

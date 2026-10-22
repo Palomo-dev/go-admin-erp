@@ -3882,3 +3882,12 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Nómina y seguridad social siguen sugiriendo 5105, que es la causación. El pago (2505 y 2370) no se mezcló en esa cuenta. No se inventó la subcuenta de 5105.
 - Reversión: supabase/rollbacks/20261022033041_fuente_contador_backfill_rollback.sql. No está aplicada. Borra las categorías de esta siembra, las cuentas marcadas sin movimientos, el campo concepto_exogena, y devuelve nombres, naturaleza e interruptores. No toca asientos.
 - Jest de la fase 2, 9 pruebas, sigue en verde.
+
+
+### Fase: Finanzas integradas #397 a #403 — 2026-10-22
+- Una sola rama contra main. Los archivos de migración quedaron con la versión de `schema_migrations`: `20261021224002` puc, `20261021225000` fase 1, `20261021233732` configuración, `20261022004418` tesorería. Comprobantes, fase 6 y el backfill del contador ya coincidían.
+- Orden: jerarquía PUC, fase 1, configuración, categorías, comprobantes, conciliación y luego el backfill. #401 queda después de #399 y #402 después de #400.
+- Cerrar periodo, reabrirlo y cerrar el ejercicio exigen administrador o el permiso `accounting.reverse` (cargo CONTADOR). Migración aplicada `20261022061026` (`cierre_periodo_admin_o_contador`). Rollback en `supabase/rollbacks/20261022061026_cierre_periodo_admin_o_contador_rollback.sql`.
+- La siembra del contador ya estaba aplicada (`20261022033041`): 18.984 cuentas y 4.360 categorías. No se revirtió. El rollback sigue en `supabase/rollbacks/20261022033041_fuente_contador_backfill_rollback.sql`.
+- No se corrieron las propuestas que dicen NO APLICAR: reclasificación PUC, backfill de fase 1, configuración por organización y siembra de categorías de #400.
+- Sesión y middleware no entran en esta rama.

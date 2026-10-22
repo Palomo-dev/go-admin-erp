@@ -1,4 +1,4 @@
--- Rollback de 20261021210000_finanzas_fase1_asientos.sql
+-- Rollback de 20261021225000_finanzas_fase1_asientos.sql
 -- La migración no modificó filas. Esto devuelve las funciones a la versión
 -- anterior y quita los disparadores y funciones nuevos.
 -- Los cuerpos salen de:

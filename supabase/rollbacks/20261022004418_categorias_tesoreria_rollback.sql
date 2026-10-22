@@ -1,4 +1,4 @@
--- Revierte 20261022053000_categorias_tesoreria.
+-- Revierte 20261022004418_categorias_tesoreria.
 --
 -- Restaura pos_caja_registrar_movimiento (md5 c9678841dca7b2f0fc02a70cbbc06d82),
 -- fn_auto_journal_cash_movement (md5 4faa030643021db6bd3c17b16ef0c0a3) y

@@ -1,4 +1,4 @@
--- Rollback de 20261021233000_puc_jerarquia.sql
+-- Rollback de 20261021224002_puc_jerarquia.sql
 --
 -- Devuelve las funciones a la definición viva del 2026-10-21 (antes de
 -- esta migración), quita los disparadores nuevos, las columnas PUC y la

@@ -14,7 +14,7 @@ import {
 
 const RAIZ = join(__dirname, '..', '..', '..', '..');
 const migracion = readFileSync(
-  join(RAIZ, 'supabase/migrations/20261021233000_puc_jerarquia.sql'),
+  join(RAIZ, 'supabase/migrations/20261021224002_puc_jerarquia.sql'),
   'utf8',
 );
 const propuesta = readFileSync(

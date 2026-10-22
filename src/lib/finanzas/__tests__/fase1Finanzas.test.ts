@@ -161,7 +161,7 @@ describe('mapeo de impuestos', () => {
     const formulario = leer('src/components/finanzas/impuestos/TaxForm.tsx');
     expect(formulario).toContain('vincularCuentaImpuesto');
     expect(formulario).toContain('esImpuestoIva');
-    const sql = leer('supabase/migrations/20261021210000_finanzas_fase1_asientos.sql');
+    const sql = leer('supabase/migrations/20261021225000_finanzas_fase1_asientos.sql');
     expect(sql).toContain('cuenta_no_existe');
     expect(sql).toContain('fn_impuesto_vincular_cuenta');
   });
@@ -257,9 +257,9 @@ describe('asientos manuales y fallos abiertos', () => {
   it('la página de asientos no ofrece títulos y muestra los fallos', () => {
     const pagina = leer('src/components/finanzas/contabilidad/asientos/AsientosPage.tsx');
     expect(pagina).toContain('esCuentaDeTitulo');
-    expect(pagina).toContain('valorSelect(line.account_code)');
+    expect(pagina).toContain('cuentasMovimiento');
     expect(pagina).toContain('AlertasContables');
-    const sql = leer('supabase/migrations/20261021210000_finanzas_fase1_asientos.sql');
+    const sql = leer('supabase/migrations/20261021225000_finanzas_fase1_asientos.sql');
     expect(sql).toContain('CUENTA_DE_TITULO');
     expect(sql).toContain('fn_alertas_contables');
     expect(sql).toContain('asientos_sin_lineas');

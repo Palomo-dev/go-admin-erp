@@ -1,4 +1,4 @@
--- Rollback de 20261022043000_configuracion_contable.sql
+-- Rollback de 20261021233732_configuracion_contable.sql
 --
 -- Devuelve las tres funciones de asiento a la definición que estaba viva
 -- antes de esta migración. El md5 de pg_get_functiondef era:

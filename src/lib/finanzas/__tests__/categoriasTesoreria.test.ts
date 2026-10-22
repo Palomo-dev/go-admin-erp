@@ -19,7 +19,7 @@ import {
 
 const RAIZ = path.resolve(__dirname, '..', '..', '..', '..');
 const SQL = fs.readFileSync(
-  path.join(RAIZ, 'supabase/migrations/20261022053000_categorias_tesoreria.sql'),
+  path.join(RAIZ, 'supabase/migrations/20261022004418_categorias_tesoreria.sql'),
   'utf8',
 );
 

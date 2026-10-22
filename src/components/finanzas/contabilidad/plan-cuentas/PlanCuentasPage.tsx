@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { BookOpen, Plus, Loader2, Edit, Trash2, ChevronRight, ChevronDown, ArrowLeft } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import {
+  BookOpen, Plus, Loader2, Edit, Trash2, ChevronRight, ChevronDown,
+  ArrowLeft, Download, Upload, GitBranch,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,51 +16,83 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { ContabilidadService, ChartAccount } from '../ContabilidadService';
+import { ContabilidadService, ChartAccount, type NaturalezaCuenta, type NivelCuenta } from '../ContabilidadService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { COLUMNAS_PLAN, interpretarFilas } from '@/lib/finanzas/pucExcel';
+import { armarArbolPlan, esMovimientoVisible, type NodoPlan } from '@/lib/finanzas/planCuentasVista';
+import {
+  esCodigoPuc, naturalezaDe, nivelDe, nombreNivel, siguienteCodigo, validarHijo,
+} from '@/lib/finanzas/pucJerarquia';
 
 const ACCOUNT_TYPES = [
   { value: 'asset', label: 'Activo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
   { value: 'liability', label: 'Pasivo', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
   { value: 'equity', label: 'Patrimonio', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
   { value: 'income', label: 'Ingreso', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  { value: 'expense', label: 'Gasto', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' }
+  { value: 'expense', label: 'Gasto', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
+  { value: 'order', label: 'Orden', color: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300' },
 ];
 
-interface AccountNode extends ChartAccount {
-  children: AccountNode[];
-  expanded?: boolean;
+const NATURALEZAS: { value: NaturalezaCuenta; label: string }[] = [
+  { value: 'debito', label: 'Débito' },
+  { value: 'credito', label: 'Crédito' },
+  { value: 'orden', label: 'Orden' },
+];
+
+const NIVELES: NivelCuenta[] = ['clase', 'grupo', 'cuenta', 'subcuenta', 'auxiliar', 'subauxiliar', 'legacy'];
+
+interface Formulario {
+  account_code: string;
+  name: string;
+  type: ChartAccount['type'];
+  parent_code: string;
+  description: string;
+  naturaleza: NaturalezaCuenta;
+  requiere_tercero: boolean;
+  requiere_centro_costo: boolean;
+}
+
+const FORMULARIO_VACIO: Formulario = {
+  account_code: '',
+  name: '',
+  type: 'asset',
+  parent_code: '',
+  description: '',
+  naturaleza: 'debito',
+  requiere_tercero: false,
+  requiere_centro_costo: false,
+};
+
+function mensajeCuenta(error: unknown): string {
+  const texto = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+  if (texto.includes('cuenta_con_movimientos')) return 'La cuenta tiene movimientos. Solo se puede desactivar.';
+  if (texto.includes('padre_invalido')) return 'El código tiene que empezar por el padre y medir el nivel siguiente.';
+  if (texto.includes('codigo_puc_invalido')) return 'El código no tiene la forma del PUC.';
+  if (texto.includes('cuenta_no_es_de_movimiento')) return 'Esa cuenta es de título y no recibe asientos.';
+  return texto || 'No se pudo guardar la cuenta.';
 }
 
 export function PlanCuentasPage() {
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
-  const [tree, setTree] = useState<AccountNode[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null);
+  const [padreFijo, setPadreFijo] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    account_code: '',
-    name: '',
-    type: 'asset' as ChartAccount['type'],
-    parent_code: '',
-    description: ''
-  });
+  const [filterType, setFilterType] = useState('all');
+  const [filterNivel, setFilterNivel] = useState('all');
+  const [filterNaturaleza, setFilterNaturaleza] = useState('all');
+  const [filterMovimiento, setFilterMovimiento] = useState('all');
+  const [filterActivas, setFilterActivas] = useState('all');
+  const [formData, setFormData] = useState<Formulario>(FORMULARIO_VACIO);
 
   useEffect(() => {
     loadCuentas();
   }, []);
-
-  useEffect(() => {
-    buildTree();
-    // `buildTree` se recrea en cada render y solo lee estas tres entradas.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cuentas, searchTerm, filterType]);
 
   const loadCuentas = async () => {
     try {
@@ -71,81 +107,51 @@ export function PlanCuentasPage() {
     }
   };
 
-  const buildTree = () => {
-    let filtered = cuentas;
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = cuentas.filter(c => 
-        c.account_code.toLowerCase().includes(term) ||
-        c.name.toLowerCase().includes(term)
-      );
+  const hijos = useMemo(() => {
+    const set = new Set<string>();
+    for (const cuenta of cuentas) {
+      if (cuenta.parent_code) set.add(cuenta.parent_code);
     }
+    return set;
+  }, [cuentas]);
 
-    if (filterType) {
-      filtered = filtered.filter(c => c.type === filterType);
-    }
-
-    // Construir árbol jerárquico
-    const nodeMap = new Map<string, AccountNode>();
-    const roots: AccountNode[] = [];
-
-    // Crear nodos
-    filtered.forEach(cuenta => {
-      nodeMap.set(cuenta.account_code, { ...cuenta, children: [] });
-    });
-
-    // Establecer relaciones padre-hijo
-    filtered.forEach(cuenta => {
-      const node = nodeMap.get(cuenta.account_code)!;
-      if (cuenta.parent_code && nodeMap.has(cuenta.parent_code)) {
-        nodeMap.get(cuenta.parent_code)!.children.push(node);
-      } else {
-        roots.push(node);
+  const tree = useMemo(() => {
+    const termino = searchTerm.toLowerCase();
+    return armarArbolPlan(cuentas, (cuenta) => {
+      if (termino && !cuenta.account_code.toLowerCase().includes(termino) && !cuenta.name.toLowerCase().includes(termino)) {
+        return false;
       }
+      if (filterType !== 'all' && cuenta.type !== filterType) return false;
+      if (filterNivel !== 'all' && (cuenta.nivel ?? nivelDe(cuenta.account_code)) !== filterNivel) return false;
+      if (filterNaturaleza !== 'all' && naturalezaDe(cuenta.account_code, cuenta.naturaleza) !== filterNaturaleza) return false;
+      if (filterActivas === 'activas' && cuenta.is_active === false) return false;
+      if (filterMovimiento !== 'all') {
+        const movimiento = esMovimientoVisible(cuenta.es_movimiento, hijos.has(cuenta.account_code));
+        if (filterMovimiento === 'movimiento' && !movimiento) return false;
+        if (filterMovimiento === 'titulo' && movimiento) return false;
+      }
+      return true;
     });
-
-    // Ordenar por código
-    const sortNodes = (nodes: AccountNode[]) => {
-      nodes.sort((a, b) => a.account_code.localeCompare(b.account_code));
-      nodes.forEach(n => sortNodes(n.children));
-    };
-    sortNodes(roots);
-
-    setTree(roots);
-  };
+  }, [cuentas, searchTerm, filterType, filterNivel, filterNaturaleza, filterMovimiento, filterActivas, hijos]);
 
   const toggleExpand = (code: string) => {
-    const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(code)) {
-      newExpanded.delete(code);
-    } else {
-      newExpanded.add(code);
-    }
-    setExpandedNodes(newExpanded);
+    const nuevo = new Set(expandedNodes);
+    if (nuevo.has(code)) nuevo.delete(code);
+    else nuevo.add(code);
+    setExpandedNodes(nuevo);
   };
 
-  const expandAll = () => {
-    const allCodes = new Set(cuentas.filter(c => c.parent_code === null || cuentas.some(p => p.parent_code === c.account_code)).map(c => c.account_code));
-    setExpandedNodes(allCodes);
-  };
-
-  const collapseAll = () => {
-    setExpandedNodes(new Set());
-  };
+  const expandAll = () => setExpandedNodes(new Set(cuentas.map((c) => c.account_code)));
+  const collapseAll = () => setExpandedNodes(new Set());
 
   const resetForm = () => {
-    setFormData({
-      account_code: '',
-      name: '',
-      type: 'asset',
-      parent_code: '',
-      description: ''
-    });
+    setFormData(FORMULARIO_VACIO);
     setEditingAccount(null);
+    setPadreFijo(false);
   };
 
   const handleOpenDialog = (account?: ChartAccount) => {
+    setPadreFijo(false);
     if (account) {
       setEditingAccount(account);
       setFormData({
@@ -153,7 +159,10 @@ export function PlanCuentasPage() {
         name: account.name,
         type: account.type,
         parent_code: account.parent_code || '',
-        description: account.description || ''
+        description: account.description || '',
+        naturaleza: naturalezaDe(account.account_code, account.naturaleza) ?? 'debito',
+        requiere_tercero: account.requiere_tercero ?? false,
+        requiere_centro_costo: account.requiere_centro_costo ?? false,
       });
     } else {
       resetForm();
@@ -161,110 +170,233 @@ export function PlanCuentasPage() {
     setShowDialog(true);
   };
 
+  const abrirSiguienteNivel = (padre: ChartAccount) => {
+    const codigo = siguienteCodigo(padre.account_code, cuentas.map((c) => c.account_code));
+    if (!codigo) {
+      toast.error('No hay un código libre en el nivel siguiente');
+      return;
+    }
+    setEditingAccount(null);
+    setPadreFijo(true);
+    setFormData({
+      account_code: codigo,
+      name: '',
+      type: padre.type,
+      parent_code: padre.account_code,
+      description: '',
+      naturaleza: naturalezaDe(codigo, null) ?? 'debito',
+      requiere_tercero: padre.requiere_tercero ?? false,
+      requiere_centro_costo: ['5', '6', '7'].includes(codigo[0] ?? ''),
+    });
+    setShowDialog(true);
+  };
+
   const handleSave = async () => {
     if (!formData.account_code || !formData.name) {
-      toast.error('El código y nombre son requeridos');
+      toast.error('El código y el nombre son requeridos');
       return;
+    }
+    const codigo = formData.account_code.trim();
+    if (!editingAccount && !esCodigoPuc(codigo)) {
+      toast.error('El código nuevo usa solo dígitos y la longitud del PUC');
+      return;
+    }
+    if (!editingAccount && nivelDe(codigo) !== 'clase' && !formData.parent_code) {
+      toast.error('Indica la cuenta padre');
+      return;
+    }
+    const padreNuevo = formData.parent_code || null;
+    const padreCambio = !editingAccount || padreNuevo !== (editingAccount.parent_code || null);
+    if (padreCambio && formData.parent_code && esCodigoPuc(codigo)) {
+      const error = validarHijo(formData.parent_code, codigo);
+      if (error) {
+        toast.error('El código tiene que empezar por el padre y medir el nivel siguiente');
+        return;
+      }
     }
 
     try {
       setIsProcessing(true);
+      const payload = {
+        name: formData.name,
+        type: formData.type,
+        parent_code: formData.parent_code || null,
+        description: formData.description || null,
+        naturaleza: formData.naturaleza,
+        requiere_tercero: formData.requiere_tercero,
+        requiere_centro_costo: formData.requiere_centro_costo,
+      };
+      const esTitulo = nivelDe(codigo) === 'clase' || nivelDe(codigo) === 'grupo';
       if (editingAccount) {
         await ContabilidadService.actualizarCuenta(editingAccount.account_code, {
-          name: formData.name,
-          type: formData.type,
-          parent_code: formData.parent_code || null,
-          description: formData.description || null
+          ...payload,
+          ...(esTitulo ? { es_movimiento: false } : {}),
         });
-        toast.success('Cuenta actualizada exitosamente');
+        toast.success('Cuenta actualizada');
       } else {
         await ContabilidadService.crearCuenta({
-          ...formData,
-          parent_code: formData.parent_code || null,
-          description: formData.description || null
+          ...payload,
+          account_code: codigo,
+          es_movimiento: esTitulo ? false : true,
         });
-        toast.success('Cuenta creada exitosamente');
+        toast.success('Cuenta creada');
       }
       setShowDialog(false);
       resetForm();
       loadCuentas();
     } catch (error) {
       console.error('Error guardando cuenta:', error);
-      toast.error('Error al guardar la cuenta');
+      toast.error(mensajeCuenta(error));
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleDelete = async (code: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta cuenta?')) return;
+    if (!confirm('Si la cuenta no tiene movimientos se elimina. Si los tiene, queda inactiva.')) return;
     try {
       await ContabilidadService.eliminarCuenta(code);
-      toast.success('Cuenta eliminada exitosamente');
-      loadCuentas();
-    } catch {
-      toast.error('Error al eliminar. Puede tener cuentas hijas o movimientos.');
+      toast.success('Cuenta eliminada');
+    } catch (error) {
+      const texto = mensajeCuenta(error);
+      if (texto.includes('movimientos')) {
+        try {
+          await ContabilidadService.actualizarCuenta(code, { is_active: false });
+          toast.success('La cuenta tiene movimientos. Quedó inactiva.');
+        } catch (deactivateError) {
+          toast.error(mensajeCuenta(deactivateError));
+        }
+      } else {
+        toast.error('No se pudo eliminar. Puede tener cuentas hijas.');
+      }
     }
+    loadCuentas();
+  };
+
+  const exportar = () => {
+    const filas = cuentas.map((cuenta) => ({
+      codigo: cuenta.account_code,
+      nombre: cuenta.name,
+      tipo: cuenta.type,
+      padre: cuenta.parent_code ?? '',
+      naturaleza: naturalezaDe(cuenta.account_code, cuenta.naturaleza) ?? '',
+      es_movimiento: esMovimientoVisible(cuenta.es_movimiento, hijos.has(cuenta.account_code)),
+      requiere_tercero: cuenta.requiere_tercero ?? false,
+      requiere_centro_costo: cuenta.requiere_centro_costo ?? false,
+      activa: cuenta.is_active !== false,
+      descripcion: cuenta.description ?? '',
+    }));
+    const hoja = XLSX.utils.json_to_sheet(filas, { header: [...COLUMNAS_PLAN] });
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Plan de cuentas');
+    const bytes = XLSX.write(libro, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+    const url = URL.createObjectURL(new Blob([bytes]));
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = 'plan-de-cuentas.xlsx';
+    enlace.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importar = async (archivo: File) => {
+    const libro = XLSX.read(await archivo.arrayBuffer(), { type: 'array' });
+    const hoja = libro.Sheets[libro.SheetNames[0]];
+    const crudas = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: '' });
+    const padresActuales: Record<string, string | null> = {};
+    for (const cuenta of cuentas) padresActuales[cuenta.account_code] = cuenta.parent_code;
+    const { filas, errores } = interpretarFilas(
+      crudas,
+      cuentas.map((c) => c.account_code),
+      padresActuales,
+    );
+    if (errores.length > 0) {
+      toast.error(errores.slice(0, 3).join(' '));
+      return;
+    }
+    let hechas = 0;
+    for (const fila of filas) {
+      const payload: Partial<ChartAccount> = {
+        name: fila.nombre,
+        type: fila.tipo,
+        parent_code: fila.padre,
+        description: fila.descripcion,
+        naturaleza: fila.naturaleza,
+        es_movimiento: fila.esMovimiento,
+        requiere_tercero: fila.requiereTercero,
+        requiere_centro_costo: fila.requiereCentroCosto,
+        is_active: fila.activa,
+      };
+      const previa = cuentas.find((c) => c.account_code === fila.codigo);
+      if (previa) {
+        if (previa.es_movimiento == null) delete payload.es_movimiento;
+        await ContabilidadService.actualizarCuenta(fila.codigo, payload);
+      } else {
+        await ContabilidadService.crearCuenta({ ...payload, account_code: fila.codigo });
+      }
+      hechas += 1;
+    }
+    toast.success(`${hechas} cuentas importadas`);
+    loadCuentas();
   };
 
   const getTypeBadge = (type: string) => {
-    const t = ACCOUNT_TYPES.find(at => at.value === type);
+    const t = ACCOUNT_TYPES.find((at) => at.value === type);
     return <Badge className={t?.color || ''}>{t?.label || type}</Badge>;
   };
 
-  const renderNode = (node: AccountNode, level: number = 0) => {
+  const renderNode = (node: NodoPlan<ChartAccount>, level: number = 0) => {
     const hasChildren = node.children.length > 0;
-    const isExpanded = expandedNodes.has(node.account_code);
-    const indent = level * 24;
+    const isExpanded = expandedNodes.has(node.cuenta.account_code);
+    const nivel = node.cuenta.nivel ?? nivelDe(node.cuenta.account_code);
+    const naturaleza = naturalezaDe(node.cuenta.account_code, node.cuenta.naturaleza);
+    const movimiento = esMovimientoVisible(node.cuenta.es_movimiento, hijos.has(node.cuenta.account_code) || hasChildren);
+    const siguiente = esCodigoPuc(node.cuenta.account_code)
+      ? siguienteCodigo(node.cuenta.account_code, cuentas.map((c) => c.account_code))
+      : null;
 
     return (
-      <div key={node.account_code}>
-        <div 
-          className="flex items-center gap-2 py-2.5 px-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors group/node"
-          style={{ marginLeft: `${indent}px` }}
+      <div key={node.cuenta.account_code}>
+        <div
+          className="flex items-center gap-2 py-2.5 px-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
+          style={{ marginLeft: `${level * 24}px` }}
         >
           <button
-            onClick={() => hasChildren && toggleExpand(node.account_code)}
+            onClick={() => hasChildren && toggleExpand(node.cuenta.account_code)}
             className={`w-5 h-5 flex items-center justify-center shrink-0 ${hasChildren ? 'cursor-pointer' : 'invisible'}`}
           >
             {hasChildren && (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
           </button>
-          
-          <span className="font-mono text-sm text-gray-600 dark:text-gray-400 w-20 shrink-0">
-            {node.account_code}
+          <span className="font-mono text-sm text-gray-600 dark:text-gray-400 w-28 shrink-0">
+            {node.cuenta.account_code}
           </span>
-          
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-900 dark:text-white font-medium break-words whitespace-normal min-w-0">
-                {node.name}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-gray-900 dark:text-white font-medium break-words ${node.cuenta.is_active === false ? 'line-through opacity-60' : ''}`}>
+                {node.cuenta.name}
               </span>
-              {hasChildren && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                  ({node.children.length})
-                </span>
-              )}
+              <Badge variant="outline">{nombreNivel(nivel)}</Badge>
+              {naturaleza && <Badge variant="outline">{NATURALEZAS.find((n) => n.value === naturaleza)?.label}</Badge>}
+              {!movimiento && <Badge variant="outline">Título</Badge>}
+              {node.cuenta.requiere_tercero && <Badge variant="outline">Tercero</Badge>}
             </div>
-            {node.description && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0 mt-0.5">
-                {node.description}
-              </p>
-            )}
           </div>
-          
-          {getTypeBadge(node.type)}
-          
+          {getTypeBadge(node.cuenta.type)}
           <div className="flex gap-1 shrink-0">
-            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(node)} className="h-8 w-8 p-0">
+            {siguiente && (
+              <Button variant="ghost" size="sm" onClick={() => abrirSiguienteNivel(node.cuenta)} className="h-8 px-2" title={nombreNivel(nivelDe(siguiente))}>
+                <GitBranch className="h-4 w-4 mr-1" />
+                {nombreNivel(nivelDe(siguiente))}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(node.cuenta)} className="h-8 w-8 p-0">
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleDelete(node.account_code)} className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+            <Button variant="ghost" size="sm" onClick={() => handleDelete(node.cuenta.account_code)} className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
-        
-        {isExpanded && node.children.map(child => renderNode(child, level + 1))}
+        {isExpanded && node.children.map((child) => renderNode(child, level + 1))}
       </div>
     );
   };
@@ -279,9 +411,10 @@ export function PlanCuentasPage() {
     );
   }
 
+  const nivelSugerido = esCodigoPuc(formData.account_code) ? nombreNivel(nivelDe(formData.account_code)) : null;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href="/app/finanzas/contabilidad">
@@ -293,35 +426,45 @@ export function PlanCuentasPage() {
             <BookOpen className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Plan de Cuentas
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Gestión del catálogo contable
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Plan de Cuentas</h1>
+            <p className="text-gray-500 dark:text-gray-400">PUC comercial, Decreto 2650 de 1993</p>
           </div>
         </div>
-
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={expandAll} className="dark:border-gray-600">
-            Expandir Todo
+          <Button variant="outline" onClick={expandAll} className="dark:border-gray-600">Expandir todo</Button>
+          <Button variant="outline" onClick={collapseAll} className="dark:border-gray-600">Colapsar todo</Button>
+          <Button variant="outline" onClick={exportar} className="dark:border-gray-600">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
           </Button>
-          <Button variant="outline" onClick={collapseAll} className="dark:border-gray-600">
-            Colapsar Todo
+          <Button variant="outline" className="dark:border-gray-600" asChild>
+            <label className="cursor-pointer">
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(event) => {
+                  const archivo = event.target.files?.[0];
+                  event.target.value = '';
+                  if (archivo) importar(archivo).catch((error) => toast.error(mensajeCuenta(error)));
+                }}
+              />
+            </label>
           </Button>
           <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
-            Nueva Cuenta
+            Nueva cuenta
           </Button>
         </div>
       </div>
 
       <BranchBadge className="mb-3" />
 
-      {/* Filtros */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col xl:flex-row gap-3">
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
@@ -329,131 +472,153 @@ export function PlanCuentasPage() {
               placeholder="Buscar por código o nombre..."
               className="flex-1"
             />
-            <Select value={filterType || 'all'} onValueChange={(v) => setFilterType(v === 'all' ? null : v)}>
-              <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-600">
-                <SelectValue placeholder="Tipo de cuenta" />
-              </SelectTrigger>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[160px] dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los tipos</SelectItem>
-                {ACCOUNT_TYPES.map(t => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
+                {ACCOUNT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterNivel} onValueChange={setFilterNivel}>
+              <SelectTrigger className="w-[160px] dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Nivel" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los niveles</SelectItem>
+                {NIVELES.map((nivel) => <SelectItem key={nivel} value={nivel}>{nombreNivel(nivel)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterNaturaleza} onValueChange={setFilterNaturaleza}>
+              <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Naturaleza" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Naturalezas</SelectItem>
+                {NATURALEZAS.map((n) => <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterMovimiento} onValueChange={setFilterMovimiento}>
+              <SelectTrigger className="w-[170px] dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Movimiento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Títulos y movimiento</SelectItem>
+                <SelectItem value="movimiento">Solo movimiento</SelectItem>
+                <SelectItem value="titulo">Solo título</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterActivas} onValueChange={setFilterActivas}>
+              <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Activas e inactivas</SelectItem>
+                <SelectItem value="activas">Solo activas</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Resumen */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {ACCOUNT_TYPES.map(t => (
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        {ACCOUNT_TYPES.map((t) => (
           <Card key={t.value} className="dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="py-3">
               <div className="text-sm text-gray-600 dark:text-gray-400">{t.label}</div>
               <div className="text-xl font-bold text-gray-900 dark:text-white">
-                {cuentas.filter(c => c.type === t.value).length}
+                {cuentas.filter((c) => c.type === t.value).length}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Árbol de cuentas */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Estructura de Cuentas</CardTitle>
-          <CardDescription className="dark:text-gray-400">
-            {cuentas.length} cuentas en total
-          </CardDescription>
+          <CardTitle className="text-gray-900 dark:text-white">Estructura de cuentas</CardTitle>
+          <CardDescription className="dark:text-gray-400">{cuentas.length} cuentas en total</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            {tree.length > 0 ? (
-              tree.map(node => renderNode(node))
-            ) : (
-              <p className="text-center text-gray-500 py-8">
-                {searchTerm || filterType ? 'No se encontraron cuentas' : 'No hay cuentas registradas'}
-              </p>
+            {tree.length > 0 ? tree.map((node) => renderNode(node)) : (
+              <p className="text-center text-gray-500 py-8">No se encontraron cuentas</p>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white">
-              {editingAccount ? 'Editar Cuenta' : 'Nueva Cuenta Contable'}
+              {editingAccount ? 'Editar cuenta' : padreFijo ? `Nueva ${nivelSugerido?.toLowerCase() ?? 'cuenta'}` : 'Nueva cuenta contable'}
             </DialogTitle>
             <DialogDescription className="dark:text-gray-400">
-              {editingAccount ? 'Modifica los datos de la cuenta' : 'Agrega una nueva cuenta al plan'}
+              {nivelSugerido ? `Nivel: ${nivelSugerido}. ` : ''}
+              El código del hijo empieza por el del padre y tiene la longitud del nivel siguiente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Código *</Label>
+                <Label>Código</Label>
                 <Input
                   value={formData.account_code}
-                  onChange={(e) => setFormData({ ...formData, account_code: e.target.value })}
-                  placeholder="Ej: 1105"
+                  onChange={(e) => setFormData({ ...formData, account_code: e.target.value.trim() })}
+                  placeholder="14350501"
                   disabled={!!editingAccount}
                   className="dark:bg-gray-900 dark:border-gray-600 font-mono"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Tipo *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as ChartAccount['type'] })}
-                >
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label>Tipo</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as ChartAccount['type'] })}>
+                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ACCOUNT_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
+                    {ACCOUNT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Nombre *</Label>
+              <Label>Nombre</Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nombre de la cuenta"
                 className="dark:bg-gray-900 dark:border-gray-600"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Cuenta Padre (opcional)</Label>
-              <Select
-                value={formData.parent_code || 'none'}
-                onValueChange={(value) => setFormData({ ...formData, parent_code: value === 'none' ? '' : value })}
-              >
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Sin cuenta padre" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  <SelectItem value="none">Sin cuenta padre</SelectItem>
-                  {cuentas
-                    .filter(c => c.account_code !== formData.account_code)
-                    .map(c => (
-                      <SelectItem key={c.account_code} value={c.account_code}>
-                        {c.account_code} - {c.name}
-                      </SelectItem>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Cuenta padre</Label>
+                <Select
+                  value={formData.parent_code || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, parent_code: value === 'none' ? '' : value })}
+                  disabled={padreFijo}
+                >
+                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Sin cuenta padre" /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    <SelectItem value="none">Sin cuenta padre</SelectItem>
+                    {cuentas.filter((c) => c.account_code !== formData.account_code).map((c) => (
+                      <SelectItem key={c.account_code} value={c.account_code}>{c.account_code} - {c.name}</SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Naturaleza</Label>
+                <Select value={formData.naturaleza} onValueChange={(value) => setFormData({ ...formData, naturaleza: value as NaturalezaCuenta })}>
+                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {NATURALEZAS.map((n) => <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" checked={formData.requiere_tercero} onChange={(e) => setFormData({ ...formData, requiere_tercero: e.target.checked })} />
+                Requiere tercero
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" checked={formData.requiere_centro_costo} onChange={(e) => setFormData({ ...formData, requiere_centro_costo: e.target.checked })} />
+                Requiere centro de costo
+              </label>
+            </div>
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
+              <Label>Descripción</Label>
               <RichTextEditor
                 value={formData.description}
                 onChange={(html) => setFormData({ ...formData, description: html })}
@@ -464,12 +629,10 @@ export function PlanCuentasPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)} className="dark:border-gray-600">
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setShowDialog(false)} className="dark:border-gray-600">Cancelar</Button>
             <Button onClick={handleSave} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-700">
               {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingAccount ? 'Guardar Cambios' : 'Crear Cuenta'}
+              {editingAccount ? 'Guardar cambios' : 'Crear cuenta'}
             </Button>
           </DialogFooter>
         </DialogContent>

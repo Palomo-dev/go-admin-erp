@@ -131,7 +131,11 @@ describe('InspectorEncabezado', () => {
     expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú']);
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Megamenú' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega' });
-    fireEvent.click(screen.getByRole('radio', { name: 'Centro' }));
+    fireEvent.click(within(composiciones).getByRole('radio', { name: 'Logo centrado' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', logo_position: 'center' });
+    fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', logo_position: 'center' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
     expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador · celular' })).getByRole('radio', { name: 'Barra bajo el logo' }));
     expect(onCambiar).toHaveBeenCalledWith({ mobile_search_style: 'bar' });

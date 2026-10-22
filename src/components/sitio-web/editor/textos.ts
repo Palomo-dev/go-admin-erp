@@ -652,6 +652,8 @@ export const TEXTOS_EDITOR = {
         mega: 'Megamenú',
       },
       logo: 'Posición del logo',
+      logoCelular: 'Logo en el celular',
+      heredar: 'Igual que en computador',
       izquierda: 'Izquierda',
       centro: 'Centro',
       derecha: 'Derecha',

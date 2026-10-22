@@ -3859,3 +3859,26 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - La cookie de actividad dura 24 horas. El update a la base sigue espaciado 10 minutos. El login ya no borra el token vigente al abrir la página. La pestaña renueva el access token antes de que venza. El cierre por inactividad de 10 minutos sigue apagado, porque peleaba con el middleware.
 - Migraciones aplicadas por MCP. El archivo coincide con statements[1]: 20261022024538 fase6_extracto_bancario, md5 5ee51ca482ad15d394cf9c5d39f3ed25; 20261022024619 fase6_cierre_y_reportes, md5 4a2b699e0bbc3ece1c02e06907667bff; 20261022025605 fase6_cierre_saldo_restante, md5 2db1c84e3acbda78d8b438b4af1e96b3. fn_create_journal_entry, fn_auto_journal_cash_movement y fn_auto_journal_bank conservan su definición. Después de aplicar: 0 extractos, 0 asientos de cierre y 0 períodos cerrados.
 - Jest de extracto, cierre, niveles, renovación de sesión, contrato de la fase, guardrails y traducciones del catálogo: 286 pruebas en verde. ESLint con max-warnings 0 en los archivos tocados, en verde. No se abrió el ERP en el navegador: no hay sesión de una organización. El código llama funciones de las fases anteriores que ya están en la base y todavía no están en main.
+
+### Fase: Fuente del contador, PUC fases 2 a 4 — 2026-10-21
+- Rama cursor/fuente-contador-puc-bffb, contra main. No se fusionó y no se tocó master.
+- La hoja del contador queda como catálogo en src/lib/finanzas/contador. Donde un código no coincide con las fases anteriores, manda esta fuente.
+- Fase 2: naturaleza con la excepción 3610 en débito, tercero obligatorio, reclasificación y plantilla por sector. La contribución parafiscal del turismo y el costo de servicios (6155 o 6170) quedan por definir, sin código programado. 6105 conserva el nombre Agricultura, ganadería, caza y silvicultura.
+- Fase 3: 41 líneas de asientos, cada una configurable. Las pruebas arman cada evento y comprueban débitos, créditos y cuadre. El cierre cancela las clases 4, 5 y 6 contra 5905; la utilidad va a 3605 y la pérdida al débito de 3610. La clase 7 no entra. No se reemplazó ninguna función de cierre.
+- Fase 4: tesorería con las filas a corregir y la categoría nueva. Seguridad social: causación en el grupo 5105, sin inventar la subcuenta, y pago aparte al débito de 2370. Nómina: causación débito 5105 y crédito 2505; el pago, débito 2505, va aparte.
+- El SQL está en supabase/propuestas y la única sentencia ejecutable es el RAISE propuesta_no_aplicada. No se aplicó por MCP. No se insertaron cuentas ni categorías ni se reescribieron asientos.
+- Jest: fase 2, 9 pruebas; fase 3, 10; fase 4, 4. Las 23 en verde. eslint de los archivos tocados, sin avisos. Esos archivos no salen en tsc. El guardarraíl de bytes de control sigue en verde.
+- No hay pantalla nueva. No se abrió el ERP en el navegador.
+
+
+### Fase: Fuente del contador aplicada en la base — 2026-10-21
+- Rama cursor/fuente-contador-puc-bffb, contra main. No se fusionó y no se tocó master.
+- Migración aplicada por MCP: 20261022033041 fuente_contador_backfill. El md5 del archivo coincide con schema_migrations (7ad8bdebc4066159add534b0667dfcdb).
+- Se agregó chart_of_accounts.concepto_exogena, texto opcional, sin valores.
+- Se agregaron 27 códigos a puc_plantilla y 18984 cuentas a las 109 organizaciones, marcadas en la descripción. 4225, 513555, el grupo 36 y 3610 quedaron en las 109. 6155 no se copió. 6170 no se creó. La contribución parafiscal del turismo sigue sin código.
+- Los nombres oficiales se escribieron solo donde la cuenta no tenía líneas: 4105 en 85 organizaciones (24 con movimientos siguen como Ventas de Mercancias), 2105 en 97 (12 siguen como Proveedores Nacionales), 6105 en 106 (3 siguen como Costo de Mercancias Vendidas). 5905 quedó como Ganancias y pérdidas en las 109. No se movieron saldos ni se reescribieron asientos.
+- Las cuentas que ya usan una regla activa no cambiaron requiere_tercero ni requiere_centro_costo, para no saltarse el asiento de venta ni el de nómina. 4105, 2105, 5105 y 6105 siguen en falso. 4135, cuenta nueva, sí exige tercero y centro de costo.
+- Se sembraron 4360 categorías de tesorería (40 por organización). Comisiones recibidas apuntan a 4225, gas a 513555, GMF a 511595, internet a 513535, transporte a 513550, domicilios a 523550, software a 513595, papelería a 519530, aseo a 519525 y combustible a 519545. La categoría Impuestos quedó sin cuenta sugerida porque 5115 es título desde que se le colgó 511595, y no tenía movimientos.
+- Nómina y seguridad social siguen sugiriendo 5105, que es la causación. El pago (2505 y 2370) no se mezcló en esa cuenta. No se inventó la subcuenta de 5105.
+- Reversión: supabase/rollbacks/20261022033041_fuente_contador_backfill_rollback.sql. No está aplicada. Borra las categorías de esta siembra, las cuentas marcadas sin movimientos, el campo concepto_exogena, y devuelve nombres, naturaleza e interruptores. No toca asientos.
+- Jest de la fase 2, 9 pruebas, sigue en verde.

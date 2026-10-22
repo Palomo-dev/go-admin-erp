@@ -129,10 +129,12 @@ function Botones({ builder, guardar }: { builder: Record<string, unknown>; guard
         <button type="button" className="underline" onClick={() => guardar({ ...builder, buttons: [...buttons, { id: `b${buttons.length + 1}`, text: 'Acción', action: 'link', href: '/', style: 'solid', shape: 'pill', size: 'md' }] })}>Agregar</button>
       </div>
       {buttons.map((b, i) => (
-        <input key={i} className={control} value={String(b.text || '')} aria-label="Texto del botón" onChange={(e) => {
-          const sig = buttons.map((x, j) => j === i ? { ...x, text: e.target.value } : x);
-          guardar({ ...builder, buttons: sig });
-        }} />
+        <div key={i} className="grid grid-cols-2 gap-1">
+          <input className={control} value={String(b.text || '')} aria-label="Texto del botón" onChange={(e) => guardar({ ...builder, buttons: buttons.map((x, j) => j === i ? { ...x, text: e.target.value } : x) })} />
+          <select className={control} aria-label="Función" value={String(b.action || 'link')} onChange={(e) => guardar({ ...builder, buttons: buttons.map((x, j) => j === i ? { ...x, action: e.target.value } : x) })}>
+            {['link', 'whatsapp', 'call', 'cart', 'search', 'menu', 'modal', 'category', 'download'].map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
       ))}
     </div>
   );
@@ -176,7 +178,13 @@ function InspectorSel({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line p-2">
       <p className="text-xs font-semibold">{ETIQUETA[tipo]}</p>
-      <label className="text-[11px]">Ícono<input className={control} value={String(icono.icon || '')} onChange={(e) => setIcono('icon', e.target.value)} /></label>
+      <p className="text-[11px] font-semibold">Ícono</p>
+      <label className="text-[11px]">Ícono
+        <select className={control} value={String(icono.icon || '')} onChange={(e) => setIcono('icon', e.target.value)}>
+          <option value="">El de hoy</option>
+          {['search', 'shopping-bag', 'shopping-cart', 'user', 'heart', 'globe', 'phone'].map((ic) => <option key={ic} value={ic}>{ic}</option>)}
+        </select>
+      </label>
       <label className="text-[11px]">Trazo
         <select className={control} value={String(icono.weight || 'contorno')} onChange={(e) => setIcono('weight', e.target.value)}>
           <option value="contorno">Contorno</option>
@@ -192,8 +200,12 @@ function InspectorSel({
           <option value="square">Cuadrado</option>
         </select>
       </label>
+      <p className="text-[11px] font-semibold">Estilo</p>
       <label className="text-[11px]">Color<input type="color" value={typeof icono.color === 'string' ? icono.color : '#111111'} onChange={(e) => setIcono('color', e.target.value)} /></label>
       <label className="text-[11px]">Fondo<input type="color" value={typeof icono.background === 'string' ? icono.background : '#ffffff'} onChange={(e) => setIcono('background', e.target.value)} /></label>
+      <label className="text-[11px]">Borde<input type="color" value={typeof icono.border === 'string' ? icono.border : '#e5e7eb'} onChange={(e) => setIcono('border', e.target.value)} /></label>
+      <label className="text-[11px]">Hover<input type="color" value={typeof icono.hover === 'string' ? icono.hover : '#111111'} onChange={(e) => setIcono('hover', e.target.value)} /></label>
+      <p className="text-[11px] font-semibold">Visibilidad</p>
       <label className="flex justify-between text-[11px]"><span>Escritorio</span><input type="checkbox" checked={el.desktop !== false} onChange={(e) => setEl('desktop', e.target.checked)} /></label>
       <label className="flex justify-between text-[11px]"><span>Tablet</span><input type="checkbox" checked={el.tablet !== false} onChange={(e) => setEl('tablet', e.target.checked)} /></label>
       <label className="flex justify-between text-[11px]"><span>Celular</span><input type="checkbox" checked={el.mobile !== false} onChange={(e) => setEl('mobile', e.target.checked)} /></label>

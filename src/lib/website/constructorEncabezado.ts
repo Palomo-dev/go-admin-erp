@@ -60,6 +60,7 @@ export interface BotonHeader {
   size: 'sm' | 'md' | 'lg'
   color?: string
   textColor?: string
+  hover?: string
 }
 
 export interface ColumnaMega {
@@ -67,6 +68,10 @@ export interface ColumnaMega {
   links: { label: string; href: string }[]
   image?: string
   imageHref?: string
+  /** Categoría padre: sus hijas arman los enlaces si la lista manual viene vacía. */
+  categoryId?: number
+  text?: string
+  products?: boolean
 }
 
 export interface MegaItem {
@@ -199,6 +204,7 @@ function leerBoton(valor: unknown, i: number): BotonHeader | null {
     size: enLista(['sm', 'md', 'lg'] as const, o.size) ?? 'md',
     color: color(o.color),
     textColor: color(o.text_color),
+    hover: color(o.hover),
   }
 }
 
@@ -223,6 +229,9 @@ function leerMega(valor: unknown): MegaItem | null {
       links,
       image: texto(col.image, 500),
       imageHref: texto(col.image_href, 300),
+      categoryId: entero(col.category_id, 1, 1_000_000_000),
+      text: texto(col.text, 240),
+      products: col.products === true,
     })
   }
   return {

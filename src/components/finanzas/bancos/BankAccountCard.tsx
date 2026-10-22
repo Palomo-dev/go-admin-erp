@@ -40,23 +40,30 @@ export function BankAccountCard({ account, onToggleActive }: BankAccountCardProp
 
   // Verifica al cargar si la cuenta tiene vinculacion Open Finance
   useEffect(() => {
-    let cancelled = false;
+    const controlador = new AbortController();
+    const timer = window.setTimeout(() => controlador.abort(), 4000);
     async function checkLinkage() {
       try {
         const response = await fetch(
           `/api/integrations/open-finance/real-balance?bankAccountId=${account.id}`,
+          { signal: controlador.signal },
         );
         if (!response.ok) return;
         const body = await response.json() as { data?: { isLinked?: boolean } | null };
-        if (!cancelled && body.data?.isLinked) {
+        if (!controlador.signal.aborted && body.data?.isLinked) {
           setHasOpenFinanceLink(true);
         }
       } catch {
-        // Si falla la verificacion, no se muestra el widget
+        // Si falla o tarda más de 4 s, la tarjeta sigue sin el widget.
+      } finally {
+        window.clearTimeout(timer);
       }
     }
-    checkLinkage();
-    return () => { cancelled = true; };
+    void checkLinkage();
+    return () => {
+      controlador.abort();
+      window.clearTimeout(timer);
+    };
   }, [account.id]);
 
   const handleViewDetails = () => {

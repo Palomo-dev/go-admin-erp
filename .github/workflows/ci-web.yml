@@ -66,7 +66,10 @@ jobs:
       - run: npm ci --prefix electron
       - run: npx tsc --noEmit -p tsconfig.json
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          # 8 GB alcanza en main. Esta rama suma los catálogos de finanzas y
+          # tsc revienta al serializar el programa (JSON.stringify, exit 134),
+          # sin un error de tipo. El job sigue revisando todos los archivos.
+          NODE_OPTIONS: --max-old-space-size=12288
 
   timezone-tests:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false

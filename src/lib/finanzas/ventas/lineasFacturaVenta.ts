@@ -46,6 +46,8 @@ export interface LineaVenta {
   stock: number | null;
   /** El usuario dejó la línea sin impuesto a propósito («Sin impuesto»). */
   sinImpuestoElegido?: boolean;
+  /** Cuenta de la línea. Vacía: producto, categoría o configuración contable. */
+  cuenta_contable?: string | null;
   /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad (`cantidadLinea.ts`). */
   unidad?: string | null;
   decimalesCantidad?: number | null;
@@ -228,6 +230,7 @@ export function lineaAItem(
     discount_amount: Number(l.descuento) || 0,
     ...(l.serial && l.product_id ? { serial_ids: [...(serialIds ?? [])] } : {}),
     note: l.nota?.trim() || null,
+    ...(l.cuenta_contable?.trim() ? { cuenta_contable: l.cuenta_contable.trim() } : {}),
     ...(conTarifa.length > 1 ? { taxes: conTarifa.map((i) => ({ id: i.id, codigo: i.codigo, nombre: i.nombre, tarifa: Number(i.tarifa) })) } : {}),
   };
 }

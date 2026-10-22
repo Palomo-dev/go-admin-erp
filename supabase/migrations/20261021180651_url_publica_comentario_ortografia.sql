@@ -1,0 +1,1 @@
+comment on function public.fn_url_publica_org(integer) is U&'URL p\00F3blica https de la tienda. Espejo de hostSitio: dominio propio principal verificado, si no el subdominio del sistema, si no organizations.subdomain.';

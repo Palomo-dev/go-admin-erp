@@ -14,6 +14,7 @@ jest.mock('@/lib/services/organizationTimezoneService', () => ({
 }));
 
 import { createHash, createHmac } from 'crypto';
+import { hostSitio } from '@/lib/website/hostSitio';
 import { armarCorreoEstado, esEstadoConAviso, tokenSeguimiento, urlSeguimiento } from '../orderStatusEmailService';
 
 describe('orderStatusEmailService', () => {
@@ -36,13 +37,13 @@ describe('orderStatusEmailService', () => {
     expect(tokenSeguimiento(140, 'wo-1')).toBe(sitio);
   });
 
-  it('la URL usa el dominio propio o el subdominio, con el número del pedido', () => {
+  it('la URL usa el host público ya resuelto, con el número del pedido', () => {
     process.env.ORDER_TRACKING_SECRET = 'secreto-propio-de-16+';
-    expect(urlSeguimiento({ id: 140, custom_domain: 'pedidos.ejemplo.co' }, { id: 'wo-1', order_number: 'WO 1' }))
+    expect(urlSeguimiento({ id: 140, host: 'pedidos.ejemplo.co' }, { id: 'wo-1', order_number: 'WO 1' }))
       .toMatch(/^https:\/\/pedidos\.ejemplo\.co\/pedido\/WO%201\?t=/);
-    expect(urlSeguimiento({ id: 140, subdomain: 'demo' }, { id: 'wo-1', order_number: 'W-1' }))
+    expect(urlSeguimiento({ id: 140, host: hostSitio([], 'demo') }, { id: 'wo-1', order_number: 'W-1' }))
       .toMatch(/^https:\/\/demo\.goadmin\.io\/pedido\/W-1/);
-    expect(urlSeguimiento({ id: 140 }, { id: 'wo-1', order_number: 'W-1' })).toBeNull();
+    expect(urlSeguimiento({ id: 140, host: null }, { id: 'wo-1', order_number: 'W-1' })).toBeNull();
   });
 
   it('arma el correo con el negocio, escapa el HTML y no avisa de pending', () => {

@@ -23,6 +23,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
 import { Promotion } from '@/components/pos/promociones/types';
+import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
 import { diasDelIdioma } from '@/components/pos/promociones/diasPromocion';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
@@ -181,6 +182,8 @@ export default function PromocionDetallePage() {
       </div>
     );
   }
+
+  const minimoUnidades = cantidadMinimaEfectiva(promotion);
 
   if (isEditMode) {
     return (
@@ -349,10 +352,10 @@ export default function PromocionDetallePage() {
                 </div>
               </div>
 
-              {(promotion.min_purchase_amount || promotion.min_quantity || promotion.repeat_every_quantity) && (
+              {(promotion.min_purchase_amount || minimoUnidades || promotion.repeat_every_quantity) && (
                 <ListaDatos divisores>
-                  {promotion.min_quantity != null && promotion.min_quantity > 0 && (
-                    <FilaDato etiqueta={t('detalle.cantidadMinima')} valor={t('detalle.unidades', { n: promotion.min_quantity })} />
+                  {minimoUnidades != null && (
+                    <FilaDato etiqueta={t('detalle.cantidadMinima')} valor={t('detalle.unidades', { n: minimoUnidades })} />
                   )}
                   {promotion.repeat_every_quantity != null && promotion.repeat_every_quantity > 0 && (
                     <FilaDato etiqueta={t('detalle.seRepite')} valor={t('detalle.unidades', { n: promotion.repeat_every_quantity })} />

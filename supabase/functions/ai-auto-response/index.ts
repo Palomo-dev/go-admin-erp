@@ -682,16 +682,21 @@ async function getCheckoutConfig(organizationId: number): Promise<{deliveryTypes
 
 async function getOrganizationInfo(organizationId: number): Promise<{name: string, domain: string | null, subdomain: string | null}> {
   try {
-    const { data } = await supabase
-      .from('organizations')
-      .select('name, custom_domain, subdomain')
-      .eq('id', organizationId)
-      .single();
+    const [{ data }, { data: url, error }] = await Promise.all([
+      supabase.from('organizations').select('name, subdomain').eq('id', organizationId).single(),
+      supabase.rpc('fn_url_publica_org', { p_org: organizationId }),
+    ]);
     if (!data) return { name: '', domain: null, subdomain: null };
-    return { 
-      name: data.name, 
-      domain: data.custom_domain || (data.subdomain ? `${data.subdomain}.goadmin.io` : null),
-      subdomain: data.subdomain || null
+    let domain: string | null = null;
+    if (!error && typeof url === 'string' && url.startsWith('https://')) {
+      domain = url.slice('https://'.length).replace(/\/$/, '') || null;
+    } else if (error) {
+      console.error('No se pudo leer la URL pública de la tienda:', error.message);
+    }
+    return {
+      name: data.name,
+      domain,
+      subdomain: data.subdomain || null,
     };
   } catch {
     return { name: '', domain: null, subdomain: null };
@@ -1327,6 +1332,8 @@ Deno.serve(async (req: Request) => {
 `;
       if (orgInfo.domain) systemPrompt += `- Web: https://${orgInfo.domain}
 `;
+      systemPrompt += `Usa solo la URL de la sección TIENDA; nunca inventes otra.
+`;
       systemPrompt += `
 `;
     }
@@ -1337,6 +1344,7 @@ Deno.serve(async (req: Request) => {
     if (esRetail && orgInfo.domain) {
       systemPrompt += `- Web: https://${orgInfo.domain}\n- Productos: https://${orgInfo.domain}/productos\n- Ofertas: https://${orgInfo.domain}/ofertas\n- Checkout: https://${orgInfo.domain}/checkout\n`;
     }
+    if (esRetail) systemPrompt += `Usa solo la URL de la sección TIENDA; nunca inventes otra.\n`;
     if (esRetail) systemPrompt += `\nTU ROL: Eres un asistente de ventas. Toma el pedido del cliente de forma conversacional. Cuando el cliente quiera un producto, muéstralo. Cuando confirme qué quiere, recopila sus datos y confirma el pedido.\n\nPRECIOS: SIEMPRE usa el "PRECIO DE VENTA" indicado en el catálogo. NUNCA uses el "precio anterior tachado" como precio real. Si el cliente pregunta por el precio, responde SOLO con el precio de venta. No te contradigas ni corrijas el precio a menos que haya cambiado en el catálogo.\n\n`;
     // Add checkout config context
     const deliveryLabels: Record<string, string> = { pickup: 'Recoger en tienda', delivery_own: 'Domicilio (delivery propio)', delivery_third_party: 'Envío por transportadora' };

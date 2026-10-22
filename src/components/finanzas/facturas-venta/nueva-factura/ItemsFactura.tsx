@@ -21,6 +21,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import type { CartItem } from '@/components/pos/types';
 import { EtiquetaSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
+import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
 
 type ItemsFacturaProps = {
   items: InvoiceItem[];
@@ -34,9 +35,11 @@ type ItemsFacturaProps = {
   lineasSinImpuesto?: Set<number>;
   /** Moneda del documento; si no llega, la base de la organización. */
   currency?: string | null;
+  /** Documento soporte: cuenta opcional por línea. Las facturas de venta usan otro formulario. */
+  mostrarCuenta?: boolean;
 };
 
-export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange, lineasSinImpuesto, currency }: ItemsFacturaProps) {
+export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange, lineasSinImpuesto, currency, mostrarCuenta = false }: ItemsFacturaProps) {
   // Importes en la moneda del documento (la base si no la trae).
   const { paraDocumento } = useMonedaOrganizacion();
   const monedaDocumento = paraDocumento(currency);
@@ -281,6 +284,14 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                         text-gray-900 dark:text-gray-100
                       "
                     />
+                    {mostrarCuenta && (
+                      <div className="mt-2">
+                        <CampoCuentaContable
+                          value={item.cuenta_contable}
+                          onChange={(cuenta) => updateItem(index, 'cuenta_contable', cuenta)}
+                        />
+                      </div>
+                    )}
                     {item.track_serial && (
                       <div className="flex items-center gap-1.5 mt-1">
                         <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[10px]">

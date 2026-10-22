@@ -1,6 +1,20 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { BancosService, BankReconciliation, BankReconciliationItem, BankAccount, BankTransaction } from '../bancos/BancosService';
+import type { CategoriaExtracto, LineaExtracto } from '@/lib/finanzas/conciliacion/extracto';
+
+export interface LineaExtractoGuardada {
+  id: string;
+  numero: number;
+  fecha: string;
+  descripcion: string | null;
+  referencia: string | null;
+  valor: number;
+  categoria: string | null;
+  estado: 'pendiente' | 'emparejada' | 'creada';
+  empareje: string | null;
+  bank_transaction_id: number | null;
+}
 
 export interface ConciliacionStats {
   total: number;
@@ -275,5 +289,71 @@ export class ConciliacionService {
       console.error('Error en autoMatchFromWebhook:', error);
       return { success: false, message: 'Error al auto-conciliar' };
     }
+  }
+
+  static async obtenerLineasExtracto(reconciliationId: string): Promise<LineaExtractoGuardada[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('extracto_lineas')
+      .select('id, numero, fecha, descripcion, referencia, valor, categoria, estado, empareje, bank_transaction_id')
+      .eq('organization_id', organizationId)
+      .eq('reconciliation_id', reconciliationId)
+      .order('numero');
+    if (error) throw error;
+    return (data || []).map((fila) => ({
+      ...fila,
+      valor: Number(fila.valor) || 0,
+    })) as LineaExtractoGuardada[];
+  }
+
+  static async importarExtracto(input: {
+    bankAccountId: number;
+    reconciliationId: string;
+    nombre: string;
+    formato: string;
+    lineas: LineaExtracto[];
+  }): Promise<{ extracto_id: string; lineas: number; emparejadas: number }> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase.rpc('fn_extracto_importar', {
+      p_organization_id: organizationId,
+      p_bank_account_id: input.bankAccountId,
+      p_reconciliation_id: input.reconciliationId,
+      p_nombre: input.nombre,
+      p_formato: input.formato,
+      p_lineas: input.lineas.map((linea) => ({
+        fecha: linea.fecha,
+        descripcion: linea.descripcion,
+        referencia: linea.referencia,
+        valor: linea.valor,
+        categoria: linea.categoria,
+      })),
+    });
+    if (error) throw error;
+    const fila = (data ?? {}) as { extracto_id?: string; lineas?: number; emparejadas?: number };
+    return {
+      extracto_id: fila.extracto_id || '',
+      lineas: Number(fila.lineas) || 0,
+      emparejadas: Number(fila.emparejadas) || 0,
+    };
+  }
+
+  static async emparejarLinea(lineaId: string, transactionId: number): Promise<void> {
+    const organizationId = this.getOrganizationId();
+    const { error } = await supabase.rpc('fn_extracto_emparejar', {
+      p_organization_id: organizationId,
+      p_linea_id: lineaId,
+      p_transaction_id: transactionId,
+    });
+    if (error) throw error;
+  }
+
+  static async crearMovimientoDesdeLinea(lineaId: string, categoria: CategoriaExtracto): Promise<void> {
+    const organizationId = this.getOrganizationId();
+    const { error } = await supabase.rpc('fn_extracto_crear_movimiento', {
+      p_organization_id: organizationId,
+      p_linea_id: lineaId,
+      p_categoria: categoria,
+    });
+    if (error) throw error;
   }
 }

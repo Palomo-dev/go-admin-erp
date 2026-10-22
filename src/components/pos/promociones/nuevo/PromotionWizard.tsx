@@ -30,6 +30,7 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingGroup, SettingRow } from '@/components/kit/SettingRow';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { PromotionsService } from '../promotionsService';
+import { minimoDelFormulario } from '@/lib/promotions/cantidadMinima';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
 import {
@@ -127,42 +128,47 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   
   const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
   const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CreatePromotionData>({
-    name: '',
-    description: '',
-    promotion_type: 'percentage',
-    discount_value: 10,
-    buy_quantity: 2,
-    get_quantity: 1,
-    min_purchase_amount: undefined,
-    min_purchase_scope: null,
-    min_quantity: null,
-    repeat_every_quantity: null,
-    max_discount_amount: undefined,
-    applies_to: 'all',
-    start_date: getToday(),
-    end_date: undefined,
-    is_active: true,
-    usage_limit: undefined,
-    is_combinable: false,
-    priority: 0,
-    applies_to_web: true,
-    applies_to_pos: true,
-    applies_to_finances: false,
-    applicable_days: null,
-    rules: [],
-    ...initialData,
-    // `initialData` viene de la base, donde las dos columnas son timestamptz:
-    // se traen al dia de la organizacion UNA vez. A partir de aqui el estado
-    // del formulario es siempre un dia calendario, y el servicio lo vuelve a
-    // convertir a instante al guardar. Con `.split('T')[0]` se veia el dia UTC:
-    // una promocion que empieza el 1 en Bogota se abria como si fuera el 31.
-    ...(initialData?.start_date
-      ? { start_date: diaDelFormulario(initialData.start_date, timezone) }
-      : {}),
-    ...(initialData?.end_date
-      ? { end_date: diaDelFormulario(initialData.end_date, timezone) }
-      : {}),
+  const [formData, setFormData] = useState<CreatePromotionData>(() => {
+    const base: CreatePromotionData = {
+      name: '',
+      description: '',
+      promotion_type: 'percentage',
+      discount_value: 10,
+      buy_quantity: 2,
+      get_quantity: 1,
+      min_purchase_amount: undefined,
+      min_purchase_scope: null,
+      min_quantity: null,
+      repeat_every_quantity: null,
+      max_discount_amount: undefined,
+      applies_to: 'all',
+      start_date: getToday(),
+      end_date: undefined,
+      is_active: true,
+      usage_limit: undefined,
+      is_combinable: false,
+      priority: 0,
+      applies_to_web: true,
+      applies_to_pos: true,
+      applies_to_finances: false,
+      applicable_days: null,
+      rules: [],
+      ...initialData,
+      // `initialData` viene de la base, donde las dos columnas son timestamptz:
+      // se traen al dia de la organizacion UNA vez. A partir de aqui el estado
+      // del formulario es siempre un dia calendario, y el servicio lo vuelve a
+      // convertir a instante al guardar. Con `.split('T')[0]` se veia el dia UTC:
+      // una promocion que empieza el 1 en Bogota se abria como si fuera el 31.
+      ...(initialData?.start_date
+        ? { start_date: diaDelFormulario(initialData.start_date, timezone) }
+        : {}),
+      ...(initialData?.end_date
+        ? { end_date: diaDelFormulario(initialData.end_date, timezone) }
+        : {}),
+    };
+    // Al editar, el campo muestra min_quantity. No se rellena con el 2 de
+    // buy_quantity. Una promo nueva tampoco hereda ese 2 de Compra X Lleva Y.
+    return minimoDelFormulario(base, promotionId != null);
   });
 
   // Al editar, las reglas existentes deben cargarse en la selección. Antes estos

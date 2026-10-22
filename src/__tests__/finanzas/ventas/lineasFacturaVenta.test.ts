@@ -114,6 +114,11 @@ describe('payload de la línea (contrato de fn_factura_venta_guardar)', () => {
     expect('serial_ids' in lineaAItem(linea(), false, [7])).toBe(false);
   });
 
+  test('la cuenta de la línea viaja solo cuando está escrita', () => {
+    expect('cuenta_contable' in lineaAItem(linea(), false)).toBe(false);
+    expect(lineaAItem(linea({ cuenta_contable: ' 4135 ' }), false).cuenta_contable).toBe('4135');
+  });
+
   test('impuestos aplicados del documento: códigos usados, sin repetir ni tarifas 0', () => {
     expect(impuestosAplicados([linea(), linea({ clave: 'b', impuestos: [IVA, ULTRA, INC] }), linea({ clave: 'c', impuestos: [] })])).toEqual([
       { tax_code: 'IVA_19', tax_rate: 19 },

@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import {CalendarClock, Plus, Unlock, Ban, CheckCircle2} from 'lucide-react';
+import {CalendarClock, Plus, Unlock, CheckCircle2} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { PeriodosFiscalesService, FiscalPeriod } from './PeriodosFiscalesService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { usePermissionContext } from '@/hooks/usePermissionContext';
+import {
+  PERMISO_CERRAR_EJERCICIO,
+  PERMISO_CERRAR_PERIODO,
+  avisoPeriodo,
+  botonesDePeriodo,
+} from '@/lib/finanzas/permisosCierre';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -24,10 +34,17 @@ const MESES = [
 ];
 
 export function PeriodosFiscalesPage() {
+  const { formatDate } = useFormatDate();
+  const { organization } = useOrganization();
+  const { checker, loading: cargandoPermisos } = usePermissionContext(organization?.id);
+  const puede = (codigo: string) => checker.can(codigo);
+  const puedeCerrarEjercicio = !cargandoPermisos && puede(PERMISO_CERRAR_EJERCICIO);
   const [periodos, setPeriodos] = useState<FiscalPeriod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
+  const [showCierre, setShowCierre] = useState(false);
+  const [anioCierre, setAnioCierre] = useState(new Date().getFullYear());
+  const [cerrando, setCerrando] = useState(false);
   const [newYear, setNewYear] = useState(new Date().getFullYear());
   const [newPeriodType, setNewPeriodType] = useState<'monthly' | 'yearly'>('monthly');
   const [closePeriod, setClosePeriod] = useState<FiscalPeriod | null>(null);
@@ -77,19 +94,34 @@ export function PeriodosFiscalesPage() {
       loadPeriodos();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al cerrar período');
+      toast.error(avisoPeriodo(error, 'Error al cerrar período'));
     }
   };
 
   const handleReopen = async (periodo: FiscalPeriod) => {
-    if (!confirm(`¿Reabrir ${getPeriodLabel(periodo)}? Se podrán volver a registrar asientos con fecha en ese periodo.`)) return;
+    if (!confirm(`¿Reabrir ${getPeriodLabel(periodo)}? Se podrán volver a registrar asientos con fecha en ese periodo. Reabrir no reversa el asiento de cierre.`)) return;
     try {
       await PeriodosFiscalesService.reabrirPeriodo(periodo.id);
       toast.success('Período reabierto');
       loadPeriodos();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al reabrir período');
+      toast.error(avisoPeriodo(error, 'Error al reabrir período'));
+    }
+  };
+
+  const cerrarEjercicio = async () => {
+    try {
+      setCerrando(true);
+      const resultado = await PeriodosFiscalesService.cerrarEjercicio(anioCierre);
+      toast.success(`Ejercicio ${anioCierre} cerrado en ${resultado.cuenta_resultado} (${resultado.asientos} asientos)`);
+      setShowCierre(false);
+      loadPeriodos();
+    } catch (error) {
+      console.error(error);
+      toast.error(avisoPeriodo(error, 'No se pudo cerrar el ejercicio'));
+    } finally {
+      setCerrando(false);
     }
   };
 
@@ -135,6 +167,11 @@ export function PeriodosFiscalesPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {puedeCerrarEjercicio && (
+            <Button variant="outline" onClick={() => setShowCierre(true)}>
+              Cerrar ejercicio
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setShowGenerate(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Generar Períodos
@@ -157,7 +194,9 @@ export function PeriodosFiscalesPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {periodos.map((periodo) => (
+          {periodos.map((periodo) => {
+            const acciones = botonesDePeriodo(periodo, puede, cargandoPermisos);
+            return (
             <Card key={periodo.id} className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center justify-between">
@@ -169,18 +208,18 @@ export function PeriodosFiscalesPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      <p>Inicio: {new Date(periodo.start_date).toLocaleDateString('es')}</p>
-                      <p>Fin: {new Date(periodo.end_date).toLocaleDateString('es')}</p>
+                      <p>Inicio: {formatPlainDate(periodo.start_date)}</p>
+                      <p>Fin: {formatPlainDate(periodo.end_date)}</p>
                       <p>Tipo: {periodo.period_type === 'yearly' ? 'Anual' : periodo.period_type === 'quarterly' ? 'Trimestral' : 'Mensual'}</p>
                       {periodo.closed_at && (
-                        <p>Cerrado: {new Date(periodo.closed_at).toLocaleDateString('es')}</p>
+                        <p>Cerrado: {formatDate(periodo.closed_at)}</p>
                       )}
                     </div>
                     {periodo.notes && (
                       <p className="text-xs text-gray-400 italic border-t pt-2">{periodo.notes}</p>
                     )}
                     <div className="flex gap-2 pt-2">
-                      {periodo.status === 'open' && (
+                      {acciones.cerrar && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -190,7 +229,7 @@ export function PeriodosFiscalesPage() {
                           Cerrar
                         </Button>
                       )}
-                      {periodo.status === 'closed' && (
+                      {acciones.reabrir && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -203,10 +242,34 @@ export function PeriodosFiscalesPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+            );
+            })
             }
           </div>
       )}
+
+      <Dialog open={showCierre} onOpenChange={setShowCierre}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar ejercicio</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Cancela las cuentas de resultado contra 3605. Si el año queda en pérdida, ese saldo pasa a 3610. Los periodos del año quedan cerrados. Si se reabre y se vuelve a cerrar, solo se cancela el saldo que siga abierto.
+            </p>
+            <div className="space-y-2">
+              <Label>Año</Label>
+              <Input type="number" value={anioCierre} onChange={(e) => setAnioCierre(parseInt(e.target.value, 10) || anioCierre)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCierre(false)}>Cancelar</Button>
+            <Button onClick={() => { void cerrarEjercicio(); }} disabled={cerrando || !puedeCerrarEjercicio}>
+              {cerrando ? 'Cerrando...' : 'Cerrar ejercicio'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Generar Períodos */}
       <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
@@ -266,7 +329,7 @@ export function PeriodosFiscalesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setClosePeriod(null)}>Cancelar</Button>
-            <Button onClick={handleClose}>Cerrar Período</Button>
+            <Button onClick={handleClose} disabled={!puede(PERMISO_CERRAR_PERIODO)}>Cerrar Período</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

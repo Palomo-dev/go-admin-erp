@@ -4458,7 +4458,10 @@
       "finanzas_contabilidad": "Contabilidad",
       "finanzas_contabilidad_plan-cuentas": "Plan de cuentas",
       "finanzas_contabilidad_asientos": "Asientos",
+      "finanzas_contabilidad_plantillas": "Plantillas de asientos",
       "finanzas_contabilidad_mayor-contable": "Mayor contable",
+      "finanzas_contabilidad_libro-diario": "Libro diario",
+      "finanzas_contabilidad_auxiliar-tercero": "Auxiliar por tercero",
       "finanzas_contabilidad_balance-comprobacion": "Balance de comprobación",
       "finanzas_contabilidad_estado-resultados": "Estado de resultados",
       "finanzas_contabilidad_balance-general": "Balance general",
@@ -4471,6 +4474,9 @@
       "finanzas_metodos-pago": "Métodos de pago",
       "finanzas_monedas": "Monedas",
       "finanzas_comisiones": "Comisiones",
+      "finanzas_configuracion-contable": "Configuración contable",
+      "finanzas_categorias-tesoreria": "Categorías de tesorería",
+      "finanzas_reporte-categorias": "Reporte por categoría",
       "hrm_empleados": "Empleados",
       "hrm_departamentos": "Departamentos",
       "hrm_cargos": "Cargos",
@@ -11875,6 +11881,15 @@
         "preparacionAyuda": "Genera una comanda de cocina al vender desde el POS.",
         "siGenera": "Sí · genera comanda al vender"
       },
+      "cuentas": {
+        "titulo": "Cuentas contables",
+        "descripcion": "Se usan cuando el producto no trae la suya.",
+        "ayuda": "Vacía: la factura usa la configuración contable.",
+        "ingreso": "Ingreso",
+        "costo": "Costo",
+        "inventario": "Inventario",
+        "devolucion": "Devolución"
+      },
       "apariencia": {
         "descripcion": "Color, icono e imagen en el POS y la tienda.",
         "imagenAyuda": "Se usa en el POS (vista de imágenes), la tienda web y el catálogo."
@@ -16200,6 +16215,14 @@
         "otrosDuplicar": "{n, plural, one {También se copiará este proveedor} other {También se copiarán estos # proveedores}}: {nombres}.",
         "gestionar": "Gestionar proveedores"
       },
+      "cuentas": {
+        "titulo": "Cuentas contables",
+        "ayuda": "Si las dejas vacías, la factura usa la de la categoría o la configuración contable.",
+        "ingreso": "Ingreso",
+        "costo": "Costo",
+        "inventario": "Inventario",
+        "devolucion": "Devolución"
+      },
       "etiquetas": {
         "etiqueta": "Etiquetas",
         "ayuda": "Clasifican el producto para buscarlo y filtrarlo. Escribe un nombre nuevo para crear una etiqueta.",
@@ -16398,6 +16421,7 @@
       "duplicado": "Producto duplicado",
       "guardadoDescripcion": "«{nombre}» quedó guardado.",
       "avisoCodigos": "El producto se guardó, pero no se pudieron numerar los códigos de barras de las variantes. Genéralos desde Etiquetas.",
+      "avisoCuentas": "El producto se guardó, pero no se pudieron guardar sus cuentas contables.",
       "borradorRecuperado": "Recuperamos cambios sin guardar de este formulario (borrador de esta pestaña).",
       "descartarBorrador": "Descartar borrador"
     },
@@ -18423,7 +18447,10 @@
         "actual": "Tarifa actual",
         "nota": "Nota de la línea",
         "seriales": "Seriales",
-        "serialesAyuda": "Uno por línea."
+        "serialesAyuda": "Uno por línea.",
+        "cuenta": "Cuenta contable",
+        "cuentaAyuda": "Si la dejas vacía, se usa la del producto, la de la categoría o la configuración contable. La vista previa sale al confirmar.",
+        "cuentaListo": "Listo"
       },
       "manual": {
         "titulo": "Concepto sin producto",
@@ -20472,6 +20499,8 @@
         "aFavor": "El cliente queda con {monto} a favor.",
         "dian": "La nota se envía a la DIAN."
       },
+      "verAsiento": "Ver asiento",
+      "asientoAyuda": "El impuesto de la vista previa es proporcional al de la factura. La cuenta sale de la línea, del producto o de la categoría.",
       "bloqueos": {
         "sinMonto": "Elige qué acreditar.",
         "excede": "La nota supera lo que aún se puede acreditar ({tope}).",
@@ -20822,7 +20851,15 @@
         "nota": "Nota de la línea",
         "notaAyuda": "Sale en el PDF de la factura.",
         "elegirSeriales": "Elegir seriales",
-        "duplicar": "Duplicar línea"
+        "duplicar": "Duplicar línea",
+        "cuenta": "Cuenta contable",
+        "cuentaAyuda": "Si la dejas vacía, se usa la del producto, la de la categoría o la configuración contable.",
+        "cuentaListo": "Listo",
+        "verAsiento": "Ver asiento",
+        "asientoTitulo": "Vista previa del asiento",
+        "asientoAyuda": "Guarda el borrador y muestra el asiento. Si una línea tiene cuenta propia y el asiento no cuadra, la factura no se publica.",
+        "asientoFallo": "El asiento no se puede publicar",
+        "asientoCerrar": "Cerrar"
       },
       "comision": {
         "vendedor": "Vendedor",
@@ -21630,6 +21667,8 @@
     },
     "detalle": {
       "titulo": "Documento Soporte",
+      "verAsiento": "Ver asiento",
+      "asientoAviso": "Es una vista previa. El documento soporte no genera el asiento al guardarse.",
       "volver": "Volver a documentos soporte",
       "referencia": "Ref: {referencia}",
       "numero": " — No. {numero}",
@@ -21747,7 +21786,99 @@
       "sin_acceso_sucursal": "No tiene acceso a la sucursal de la cuenta.",
       "no_autenticado": "Su sesión expiró. Inicie sesión de nuevo.",
       "sin_organizacion": "No se encontró la organización activa.",
+      "cuenta_no_es_de_movimiento": "La cuenta no es de movimiento. Elija un auxiliar del plan.",
+      "centro_costo_invalido": "El centro de costo no es válido para esta organización.",
+      "categoria_invalida": "La categoría no corresponde a este movimiento.",
+      "tercero_requerido": "Esta cuenta exige el NIT del tercero.",
+      "soporte_invalido": "El soporte debe ser un PDF o una imagen de esta organización.",
       "desconocido": "No se pudo completar la operación."
+    },
+    "movimiento": {
+      "tituloIngreso": "Nuevo ingreso",
+      "tituloEgreso": "Nuevo egreso",
+      "descripcionIngreso": "La categoría precarga la cuenta. Revise el asiento antes de guardar.",
+      "descripcionEgreso": "La categoría precarga la cuenta. Revise el asiento antes de guardar.",
+      "categoria": "Categoría",
+      "buscarCategoria": "Buscar categoría",
+      "sinCategorias": "Esta organización todavía no tiene categorías.",
+      "completarPredefinidas": "Completar predefinidas",
+      "cuenta": "Cuenta",
+      "buscarCuenta": "Buscar cuenta",
+      "origen": "Origen",
+      "caja": "Caja",
+      "banco": "Banco",
+      "cuentaBancaria": "Cuenta bancaria",
+      "tercero": "Tercero",
+      "buscarTercero": "Buscar por NIT o nombre",
+      "usarNit": "Usar NIT {nit}",
+      "centroCosto": "Centro de costo",
+      "sinCentro": "Sin centro de costo",
+      "monto": "Monto",
+      "concepto": "Concepto",
+      "notas": "Notas",
+      "soporte": "Soporte",
+      "soporteAyuda": "PDF, JPG, PNG o WebP. Máximo 5 MB.",
+      "quitarSoporte": "Quitar soporte",
+      "verSoporte": "Ver soporte",
+      "vistaPrevia": "Vista previa del asiento",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "guardando": "Guardando",
+      "guardar": "Guardar",
+      "cancelar": "Cancelar",
+      "exitoIngreso": "Ingreso registrado.",
+      "exitoEgreso": "Egreso registrado.",
+      "faltaCategoria": "Elija una categoría.",
+      "faltaCuenta": "Elija una cuenta de movimiento.",
+      "faltaMonto": "El monto debe ser mayor a 0.",
+      "faltaConcepto": "El concepto es obligatorio.",
+      "faltaBanco": "Seleccione la cuenta bancaria.",
+      "faltaCentro": "Esta cuenta exige un centro de costo.",
+      "faltaTercero": "Esta cuenta exige el NIT del tercero.",
+      "soporteTipo": "El soporte debe ser PDF, JPG, PNG o WebP.",
+      "soportePeso": "El soporte no puede pasar de 5 MB."
+    },
+    "categorias": {
+      "titulo": "Categorías de tesorería",
+      "descripcion": "Predefinidas por organización. Se editan, se desactivan y se pueden crear otras.",
+      "ingresos": "Ingresos",
+      "egresos": "Egresos",
+      "nueva": "Nueva categoría",
+      "editar": "Editar",
+      "guardar": "Guardar",
+      "cancelar": "Cancelar",
+      "nombre": "Nombre",
+      "icono": "Icono",
+      "cuenta": "Cuenta sugerida",
+      "padre": "Categoría padre",
+      "sinPadre": "Sin padre",
+      "sinCuenta": "Sin cuenta sugerida",
+      "activa": "Activa",
+      "predefinida": "Predefinida",
+      "completar": "Completar predefinidas",
+      "completadas": "Categorías predefinidas listas.",
+      "desactivar": "Inactiva",
+      "eliminar": "Eliminar",
+      "vacio": "No hay categorías en este grupo.",
+      "errorCarga": "No se pudieron cargar las categorías.",
+      "errorGuardar": "No se pudo guardar la categoría.",
+      "buscarCuenta": "Buscar cuenta"
+    },
+    "reporte": {
+      "titulo": "Reporte por categoría",
+      "descripcion": "Ingresos y egresos del mes, por categoría y por sede.",
+      "mes": "Mes",
+      "sede": "Sede",
+      "todas": "Todas las sedes",
+      "categoria": "Categoría",
+      "tipo": "Tipo",
+      "movimientos": "Movimientos",
+      "total": "Total",
+      "ingresos": "Ingresos",
+      "egresos": "Egresos",
+      "neto": "Neto",
+      "vacio": "No hay movimientos con categoría en ese mes.",
+      "sinCategoria": "Sin categoría"
     },
     "anular": {
       "descripcion": "La anulación no se puede deshacer.",
@@ -22070,6 +22201,9 @@
         "cuenta_no_existe": "la cuenta no existe en el plan de cuentas.",
         "cuenta_no_es_pasivo": "la cuenta no es de pasivo.",
         "cuenta_inactiva": "la cuenta está inactiva.",
+        "cuenta_de_titulo": "la cuenta agrupa a otras y no recibe el impuesto. Elige una de detalle.",
+        "cuenta_requerida": "falta la cuenta contable.",
+        "impuesto_no_encontrado": "el impuesto no existe en esta organización.",
         "base_minima_invalida": "La base mínima debe ser un número mayor o igual a cero.",
         "retencion_no_encontrada": "la retención no existe en esta organización.",
         "otro": "revisa tus permisos de impuestos e inténtalo de nuevo."
@@ -30800,7 +30934,8 @@
       "automatico": "Automático (sistema)"
     },
     "lineas": {
-      "centroCosto": "Centro de costo"
+      "centroCosto": "Centro de costo",
+      "tercero": "Tercero"
     }
   },
   "reportes": {

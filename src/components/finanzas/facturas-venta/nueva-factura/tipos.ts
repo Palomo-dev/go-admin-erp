@@ -24,4 +24,6 @@ export type InvoiceItem = {
   track_stock?: boolean | null; // Si el producto controla stock
   track_serial?: boolean | null; // Si el producto requiere captura de seriales
   product_sku?: string | null; // SKU del producto (para SerialSelectorDialog)
+  /** Cuenta de la línea del documento soporte. Vacía: producto, categoría o la regla. */
+  cuenta_contable?: string | null;
 };

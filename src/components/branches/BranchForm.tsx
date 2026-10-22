@@ -49,6 +49,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatearTelefono, paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { supabase } from '@/lib/supabase/config';
+import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { memberService, type Member } from '@/lib/services/memberService';
 import { BuyDomainDialog, AddCustomDomainDialog } from '@/components/organization/dominios';
 import { useSession } from '@/lib/hooks/useSession';
@@ -278,15 +279,18 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
 
   useEffect(() => {
     if (initialData.organization_id) {
-      supabase
-        .from('organizations')
-        .select('subdomain, custom_domain')
-        .eq('id', initialData.organization_id)
-        .single()
-        .then(({ data }) => {
-          if (data?.subdomain) setOrgSubdomain(data.subdomain);
-          if (data?.custom_domain) setOrgCustomDomain(data.custom_domain);
-        });
+      Promise.all([
+        supabase.from('organizations').select('subdomain').eq('id', initialData.organization_id).maybeSingle(),
+        supabase
+          .from('organization_domains')
+          .select('host, domain_type, status, is_primary, is_active, updated_at')
+          .eq('organization_id', initialData.organization_id)
+          .eq('is_active', true),
+      ]).then(([org, dominios]) => {
+        const sub = org.data?.subdomain || '';
+        setOrgSubdomain(sub);
+        setOrgCustomDomain(hostSitio((dominios.data ?? []) as DominioDelSitio[], sub) ?? '');
+      });
     }
   }, [initialData.organization_id]);
 

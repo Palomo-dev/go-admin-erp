@@ -38,6 +38,12 @@ export interface UnifiedMovement {
   notes?: string;
   created_at: string;
   bank_account_name?: string;
+  categoria_nombre?: string | null;
+  cuenta_contable?: string | null;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
+  centro_costo_nombre?: string | null;
+  soporte_path?: string | null;
 }
 
 export interface CashMovement {
@@ -93,6 +99,12 @@ export interface MovementFormData {
   source: 'cash' | 'bank';
   bank_account_id?: number;
   branch_id?: number | null;
+  categoria_id?: number | null;
+  cuenta_contable?: string | null;
+  centro_costo_id?: string | null;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
+  soporte_path?: string | null;
 }
 
 export interface BankAccount {
@@ -118,6 +130,24 @@ function fallo(error: unknown): ResultadoMovimiento {
   const codigo = codigoErrorTesoreria(error);
   const mensaje = (error as { message?: string } | null)?.message;
   return { success: false, codigo, error: mensaje || codigo };
+}
+
+function nombreRelacion(valor: unknown, campo: string): string | null {
+  const fila = Array.isArray(valor) ? valor[0] : valor;
+  if (!fila || typeof fila !== 'object') return null;
+  const texto = (fila as Record<string, unknown>)[campo];
+  return typeof texto === 'string' && texto.trim() ? texto : null;
+}
+
+function datosContables(data: MovementFormData) {
+  return {
+    categoria_id: data.categoria_id ?? null,
+    cuenta_contable: data.cuenta_contable ?? null,
+    centro_costo_id: data.centro_costo_id ?? null,
+    tercero_nit: data.tercero_nit ?? null,
+    tercero_nombre: data.tercero_nombre ?? null,
+    soporte_path: data.soporte_path ?? null,
+  };
 }
 
 class MovimientosService {
@@ -191,7 +221,7 @@ class MovimientosService {
 
     const { data: cashData, error: cashError } = await supabase
       .from('cash_movements')
-      .select('id, uuid, type, concept, amount, notes, created_at')
+      .select('id, uuid, type, concept, amount, notes, created_at, cuenta_contable, tercero_nit, tercero_nombre, soporte_path, categorias_tesoreria(nombre), cost_centers(name)')
       .eq('uuid', uuid)
       .eq('organization_id', organizationId)
       .eq('type', tipoCaja(type))
@@ -207,6 +237,12 @@ class MovimientosService {
         amount: Math.abs(Number(cashData.amount)),
         notes: cashData.notes,
         created_at: cashData.created_at,
+        cuenta_contable: cashData.cuenta_contable,
+        tercero_nit: cashData.tercero_nit,
+        tercero_nombre: cashData.tercero_nombre,
+        soporte_path: cashData.soporte_path,
+        categoria_nombre: nombreRelacion(cashData.categorias_tesoreria, 'nombre'),
+        centro_costo_nombre: nombreRelacion(cashData.cost_centers, 'name'),
       };
     }
 
@@ -220,6 +256,12 @@ class MovimientosService {
         amount,
         reference,
         created_at,
+        cuenta_contable,
+        tercero_nit,
+        tercero_nombre,
+        soporte_path,
+        categorias_tesoreria(nombre),
+        cost_centers(name),
         bank_account:bank_accounts(name, bank_name)
       `)
       .eq('uuid', uuid)
@@ -239,6 +281,12 @@ class MovimientosService {
         notes: bankData.reference,
         created_at: bankData.created_at,
         bank_account_name: cuenta?.name || cuenta?.bank_name,
+        cuenta_contable: bankData.cuenta_contable,
+        tercero_nit: bankData.tercero_nit,
+        tercero_nombre: bankData.tercero_nombre,
+        soporte_path: bankData.soporte_path,
+        categoria_nombre: nombreRelacion(bankData.categorias_tesoreria, 'nombre'),
+        centro_costo_nombre: nombreRelacion(bankData.cost_centers, 'name'),
       };
     }
 
@@ -313,6 +361,7 @@ class MovimientosService {
           amount: data.amount,
           concept: data.concept,
           notes: data.notes ?? null,
+          ...datosContables(data),
         }),
       );
       if (error) return fallo(error);
@@ -351,6 +400,7 @@ class MovimientosService {
         ...movimientoBancario(data.type, data.amount),
         reference: data.notes,
         status: 'unmatched',
+        ...datosContables(data),
       })
       .select('id, uuid')
       .single();
@@ -588,7 +638,7 @@ class MovimientosService {
 
     let cashQuery = supabase
       .from('cash_movements')
-      .select('id, uuid, concept, amount, notes, created_at')
+      .select('id, uuid, concept, amount, notes, created_at, categorias_tesoreria(nombre)')
       .eq('organization_id', organizationId)
       .eq('type', tipoCaja(type));
     if (branchId != null) cashQuery = cashQuery.eq('branch_id', branchId);
@@ -605,6 +655,7 @@ class MovimientosService {
         amount,
         reference,
         created_at,
+        categorias_tesoreria(nombre),
         bank_account:bank_accounts(name, bank_name)
       `)
       .eq('organization_id', organizationId)
@@ -623,6 +674,7 @@ class MovimientosService {
         amount: Math.abs(Number(m.amount)),
         notes: m.notes,
         created_at: m.created_at,
+        categoria_nombre: nombreRelacion(m.categorias_tesoreria, 'nombre'),
       })),
       ...(bankData || []).map(m => ({
         id: m.id,
@@ -633,6 +685,7 @@ class MovimientosService {
         notes: m.reference,
         created_at: m.created_at,
         bank_account_name: (m.bank_account as { name?: string; bank_name?: string })?.name || (m.bank_account as { name?: string; bank_name?: string })?.bank_name,
+        categoria_nombre: nombreRelacion(m.categorias_tesoreria, 'nombre'),
       })),
     ];
 

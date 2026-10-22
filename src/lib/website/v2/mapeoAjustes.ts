@@ -251,7 +251,12 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   /** `fijo` es lo de hoy: el encabezado no se esconde ni se encoge. */
   header_scroll: { zona: 'header', porDefecto: 'fijo', regla: { tipo: 'opcion', valores: SCROLL_ENCABEZADO }, nueva: true },
   header_actions_style: { zona: 'header', porDefecto: 'icono', regla: { tipo: 'opcion', valores: ['icono', 'icono_texto', 'pildora', 'texto'] }, nueva: true },
-
+  /**
+   * Menú móvil nuevo, barra inferior tipo app y disposición del header en celular.
+   * `null` (hoy): sigue la variante de `mobile_menu_style` (drawer, fullscreen, bottom_sheet, tabs).
+   * Vive solo en el JSON del documento. No hay columna ni migración.
+   */
+  mobile_header: { zona: 'header', porDefecto: null, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },

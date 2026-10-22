@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {FileText, Download, Calendar} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { agruparPorNivel, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { BotonesExportar, SelectorNivel } from '../NivelReporte';
 
 const TYPE_LABELS: Record<string, string> = {
   asset: 'Activo',
@@ -42,7 +44,28 @@ export function BalanceComprobacionPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
+  const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
   const [isLoading, setIsLoading] = useState(true);
+
+  const visibles = useMemo(() => agruparPorNivel(
+    rows.map((fila) => ({
+      codigo: fila.account_code,
+      nombre: fila.name,
+      debitoInicial: fila.initial_debit,
+      creditoInicial: fila.initial_credit,
+      debitoPeriodo: fila.period_debit,
+      creditoPeriodo: fila.period_credit,
+      debitoFinal: fila.final_debit,
+      creditoFinal: fila.final_credit,
+    })),
+    nivel,
+    new Map(rows.map((fila) => [fila.account_code, fila.name])),
+  ), [rows, nivel]);
+
+  const tipos = useMemo(
+    () => new Map(rows.map((fila) => [fila.account_code, fila.type])),
+    [rows],
+  );
 
   const arrancado = useRef(false);
 
@@ -70,14 +93,14 @@ export function BalanceComprobacionPage() {
     }
   };
 
-  const totals = rows.reduce(
+  const totals = visibles.reduce(
     (acc, r) => ({
-      initial_debit: acc.initial_debit + r.initial_debit,
-      initial_credit: acc.initial_credit + r.initial_credit,
-      period_debit: acc.period_debit + r.period_debit,
-      period_credit: acc.period_credit + r.period_credit,
-      final_debit: acc.final_debit + r.final_debit,
-      final_credit: acc.final_credit + r.final_credit,
+      initial_debit: acc.initial_debit + r.debitoInicial,
+      initial_credit: acc.initial_credit + r.creditoInicial,
+      period_debit: acc.period_debit + r.debitoPeriodo,
+      period_credit: acc.period_credit + r.creditoPeriodo,
+      final_debit: acc.final_debit + r.debitoFinal,
+      final_credit: acc.final_credit + r.creditoFinal,
     }),
     { initial_debit: 0, initial_credit: 0, period_debit: 0, period_credit: 0, final_debit: 0, final_credit: 0 }
   );
@@ -86,7 +109,7 @@ export function BalanceComprobacionPage() {
     const headers = ['Codigo', 'Nombre', 'Tipo', 'Saldo Ini Debito', 'Saldo Ini Credito', 'Mov Debito', 'Mov Credito', 'Saldo Fin Debito', 'Saldo Fin Credito'];
     const csvRows = [
       headers.join(','),
-      ...rows.map(r => [r.account_code, `"${r.name}"`, TYPE_LABELS[r.type] || r.type, r.initial_debit, r.initial_credit, r.period_debit, r.period_credit, r.final_debit, r.final_credit].join(',')),
+      ...visibles.map(r => [r.codigo, `"${r.nombre}"`, TYPE_LABELS[tipos.get(r.codigo) || ''] || '', r.debitoInicial, r.creditoInicial, r.debitoPeriodo, r.creditoPeriodo, r.debitoFinal, r.creditoFinal].join(',')),
       ['', 'TOTALES', '', totals.initial_debit, totals.initial_credit, totals.period_debit, totals.period_credit, totals.final_debit, totals.final_credit].join(','),
     ];
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
@@ -119,10 +142,21 @@ export function BalanceComprobacionPage() {
             <p className="text-gray-500 dark:text-gray-400">Saldos y movimientos por cuenta</p>
           </div>
         </div>
-        <Button onClick={exportCSV} variant="outline" className="dark:border-gray-600">
-          <Download className="h-4 w-4 mr-2" />
-          Exportar CSV
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={exportCSV} variant="outline" className="dark:border-gray-600">
+            <Download className="h-4 w-4 mr-2" />
+            CSV
+          </Button>
+          <BotonesExportar
+            nombre={`balance-comprobacion-${startDate}-${endDate}`}
+            titulo="Balance de comprobación"
+            columnas={['Codigo', 'Cuenta', 'Ini debito', 'Ini credito', 'Mov debito', 'Mov credito', 'Fin debito', 'Fin credito']}
+            filas={visibles.map((fila) => [
+              fila.codigo, fila.nombre, fila.debitoInicial, fila.creditoInicial,
+              fila.debitoPeriodo, fila.creditoPeriodo, fila.debitoFinal, fila.creditoFinal,
+            ])}
+          />
+        </div>
       </div>
 
       <BranchBadge className="mb-3" />
@@ -138,6 +172,7 @@ export function BalanceComprobacionPage() {
               <Label className="text-gray-700 dark:text-gray-300"> Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
+            <SelectorNivel valor={nivel} onChange={setNivel} />
             <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
@@ -149,7 +184,7 @@ export function BalanceComprobacionPage() {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Detalle por Cuenta</CardTitle>
-          <CardDescription className="dark:text-gray-400">{rows.length} cuentas</CardDescription>
+          <CardDescription className="dark:text-gray-400">{visibles.length} filas en este nivel. El total no cambia al agrupar.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -168,17 +203,17 @@ export function BalanceComprobacionPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.account_code} className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                    <td className="py-2 px-3 font-mono text-gray-600 dark:text-gray-400">{row.account_code}</td>
-                    <td className="py-2 px-3 text-gray-900 dark:text-white">{row.name}</td>
-                    <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{TYPE_LABELS[row.type] || row.type}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.initial_debit)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.initial_credit)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.period_debit)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.period_credit)}</td>
-                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(row.final_debit)}</td>
-                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(row.final_credit)}</td>
+                {visibles.map((row) => (
+                  <tr key={row.codigo} className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                    <td className="py-2 px-3 font-mono text-gray-600 dark:text-gray-400">{row.codigo}</td>
+                    <td className="py-2 px-3 text-gray-900 dark:text-white">{row.nombre}</td>
+                    <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{TYPE_LABELS[tipos.get(row.codigo) || ''] || ''}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.debitoInicial)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.creditoInicial)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.debitoPeriodo)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-700 dark:text-gray-300">{formatCifra(row.creditoPeriodo)}</td>
+                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(row.debitoFinal)}</td>
+                    <td className="py-2 px-3 text-right font-mono font-medium text-gray-900 dark:text-white">{formatCifra(row.creditoFinal)}</td>
                   </tr>
                 ))}
               </tbody>

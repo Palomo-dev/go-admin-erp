@@ -80,6 +80,11 @@ export function estaConciliado(status: string | null | undefined): boolean {
  */
 export const CODIGOS_ERROR_TESORERIA = [
   // El más largo primero: `codigoErrorTesoreria` busca por inclusión.
+  'cuenta_no_es_de_movimiento',
+  'centro_costo_invalido',
+  'categoria_invalida',
+  'tercero_requerido',
+  'soporte_invalido',
   'saldo_insuficiente_para_revertir',
   'saldo_insuficiente',
   'moneda_distinta',

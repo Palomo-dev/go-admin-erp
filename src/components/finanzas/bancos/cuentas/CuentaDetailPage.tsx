@@ -24,6 +24,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
+import { cuentasBancariasElegibles } from '@/lib/finanzas/mapeoImpuesto';
 import { useTranslations } from 'next-intl';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
@@ -49,6 +50,9 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [ofLink, setOfLink] = useState<OpenFinanceLinkInfo | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [plan, setPlan] = useState<{ account_code: string; name: string; type: string; parent_code: string | null }[]>([]);
+  const [cuentaPuc, setCuentaPuc] = useState('');
+  const [guardandoPuc, setGuardandoPuc] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -64,6 +68,7 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
       }
 
       setAccount(accountData);
+      setCuentaPuc(accountData.account_code || '');
       setTransactions(transactionsData);
 
       // Link de Open Finance vinculado a la cuenta, de ESTA organización. Sin
@@ -91,7 +96,28 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
 
   useEffect(() => {
     loadData();
+    BancosService.obtenerPlanCuentas()
+      .then(setPlan)
+      .catch((error) => console.error('Error cargando el plan de cuentas:', error));
   }, [loadData]);
+
+  const guardarPuc = async () => {
+    if (!cuentaPuc) {
+      toast.error('Elige la cuenta contable (1110, 1120…)');
+      return;
+    }
+    try {
+      setGuardandoPuc(true);
+      await BancosService.actualizarCuentaBancaria(parseInt(accountId), { account_code: cuentaPuc });
+      toast.success('Cuenta contable guardada');
+      await loadData();
+    } catch (error) {
+      console.error('Error guardando el PUC:', error);
+      toast.error('No se pudo guardar la cuenta contable');
+    } finally {
+      setGuardandoPuc(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -200,7 +226,33 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
               {account.bank_name} • {getAccountTypeLabel(account.account_type)}
+              {account.account_code ? ` • PUC ${account.account_code}` : ''}
             </p>
+            {!account.account_code && (
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-end gap-2 max-w-xl">
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Sin cuenta contable. Asígnale el PUC de bancos antes de transferir.
+                  </p>
+                  <select
+                    aria-label="Cuenta contable"
+                    value={cuentaPuc}
+                    onChange={(e) => setCuentaPuc(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 text-sm"
+                  >
+                    <option value="">Seleccionar PUC</option>
+                    {cuentasBancariasElegibles(plan).map((cuenta) => (
+                      <option key={cuenta.account_code} value={cuenta.account_code}>
+                        {cuenta.account_code} - {cuenta.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button type="button" onClick={guardarPuc} disabled={guardandoPuc} className="bg-blue-600 hover:bg-blue-700">
+                  {guardandoPuc ? 'Guardando…' : 'Guardar PUC'}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">

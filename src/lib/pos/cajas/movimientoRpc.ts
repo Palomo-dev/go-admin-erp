@@ -18,6 +18,12 @@ export interface DatosMovimientoCaja {
   concept_code?: string | null;
   reference?: string | null;
   notes?: string | null;
+  categoria_id?: number | null;
+  cuenta_contable?: string | null;
+  centro_costo_id?: string | null;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
+  soporte_path?: string | null;
 }
 
 /** Parámetros de la RPC. `uuid`: el del cliente (reintentos y outbox); `creadoEn`: hora sin red. */
@@ -36,6 +42,12 @@ export function parametrosMovimiento(
     p_notas: datos.notes ?? null,
     p_uuid: opciones.uuid ?? null,
     p_creado_en: opciones.creadoEn ?? null,
+    p_categoria_id: datos.categoria_id ?? null,
+    p_cuenta_contable: datos.cuenta_contable ?? null,
+    p_centro_costo_id: datos.centro_costo_id ?? null,
+    p_tercero_nit: datos.tercero_nit ?? null,
+    p_tercero_nombre: datos.tercero_nombre ?? null,
+    p_soporte_path: datos.soporte_path ?? null,
   };
 }
 

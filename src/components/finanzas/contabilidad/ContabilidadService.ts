@@ -19,6 +19,9 @@ export interface JournalEntry {
   currency_code?: string | null;
   exchange_rate?: number | null;
   base_currency_code?: string | null;
+  comprobante_tipo?: string | null;
+  comprobante_prefijo?: string | null;
+  comprobante_numero?: number | null;
   lines?: JournalLine[];
 }
 
@@ -51,7 +54,15 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   PERIODO_CERRADO: 'El periodo contable está cerrado.',
   ASIENTO_DESCUADRADO: 'Los débitos y los créditos no cuadran.',
   CUENTA_INEXISTENTE: 'Una de las cuentas no existe en el plan de cuentas.',
+  CUENTA_DE_TITULO: 'Una de las cuentas agrupa otras y no recibe movimientos. Elige una cuenta de detalle.',
   CUENTA_NO_ES_DE_DETALLE: 'Una de las cuentas tiene subcuentas: usa una de ellas.',
+  TERCERO_REQUERIDO: 'Esa cuenta exige el NIT o la cédula del tercero.',
+  CENTRO_REQUERIDO: 'Esa cuenta exige un centro de costo.',
+  CENTRO_INVALIDO: 'El centro de costo no pertenece a la organización.',
+  NOMBRE_REQUERIDO: 'Escribe el nombre de la plantilla.',
+  NO_ENCONTRADO: 'No se encontró el registro.',
+  SESION_REQUERIDA: 'La sesión expiró. Vuelve a entrar.',
+  FECHA_REQUERIDA: 'La fecha es requerida.',
   LINEA_INVALIDA: 'Cada línea va al débito o al crédito, con un importe mayor que cero.',
   LINEAS_INSUFICIENTES: 'Un asiento necesita al menos dos líneas.',
   SUCURSAL_INVALIDA: 'Selecciona una sucursal de la organización.',
@@ -76,19 +87,93 @@ export interface JournalLine {
   updated_at: string;
   /** Sin llave foránea a `cost_centers`: el nombre se lee aparte (`centrosDeCosto`). */
   cost_center_id?: string | null;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
   account?: ChartAccount;
 }
+
+export type TipoCuentaContable = 'asset' | 'liability' | 'equity' | 'income' | 'expense' | 'order';
+export type NaturalezaCuenta = 'debito' | 'credito' | 'orden';
+export type NivelCuenta = 'clase' | 'grupo' | 'cuenta' | 'subcuenta' | 'auxiliar' | 'subauxiliar' | 'legacy';
 
 export interface ChartAccount {
   account_code: string;
   organization_id: number;
   name: string;
-  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+  type: TipoCuentaContable;
   parent_code: string | null;
   is_active: boolean;
+  es_movimiento?: boolean | null;
+  requiere_tercero?: boolean | null;
+  requiere_centro_costo?: boolean | null;
   description: string | null;
   created_at: string;
   updated_at: string;
+  /** Generada. clase, grupo, cuenta, subcuenta, auxiliar, subauxiliar o legacy. */
+  nivel?: NivelCuenta | null;
+  clase?: number | null;
+  naturaleza?: NaturalezaCuenta | null;
+  /** Generada a partir de is_active. No se escribe. */
+  activa?: boolean | null;
+}
+
+const CAMPOS_CUENTA = [
+  'name',
+  'type',
+  'parent_code',
+  'description',
+  'is_active',
+  'naturaleza',
+  'es_movimiento',
+  'requiere_tercero',
+  'requiere_centro_costo',
+] as const;
+
+function camposDeCuenta(cuenta: Partial<ChartAccount>): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  for (const campo of CAMPOS_CUENTA) {
+    if (cuenta[campo] !== undefined) salida[campo] = cuenta[campo];
+  }
+  return salida;
+}
+
+interface CrudoAlerta {
+  id?: number | string;
+  fecha?: string | null;
+  origen?: string | null;
+  origen_id?: string | number | null;
+  debito?: string | null;
+  credito?: string | null;
+  importe?: number | string | null;
+  motivo?: string | null;
+  detalle?: string | null;
+  memo?: string | null;
+  publicado?: boolean | null;
+}
+
+export interface FalloContable {
+  id: number;
+  fecha: string | null;
+  origen: string | null;
+  origenId: string | null;
+  debito: string | null;
+  credito: string | null;
+  importe: number | null;
+  motivo: string | null;
+  detalle: string | null;
+}
+
+export interface AsientoSinLineas {
+  id: number;
+  fecha: string | null;
+  memo: string | null;
+  origen: string | null;
+  publicado: boolean;
+}
+
+export interface AlertasContablesDatos {
+  fallos: FalloContable[];
+  sinLineas: AsientoSinLineas[];
 }
 
 export interface ContabilidadResumen {
@@ -163,6 +248,19 @@ export class ContabilidadService {
     return data || [];
   }
 
+  /** Solo código, nombre y tipo: el mayor no necesita el plan completo. */
+  static async obtenerCuentasLigero(): Promise<Pick<ChartAccount, 'account_code' | 'name' | 'type'>[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('chart_of_accounts')
+      .select('account_code, name, type')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .order('account_code');
+    if (error) throw error;
+    return data || [];
+  }
+
   static async crearCuenta(cuenta: Partial<ChartAccount>): Promise<ChartAccount> {
     const organizationId = this.getOrganizationId();
 
@@ -175,7 +273,11 @@ export class ContabilidadService {
         parent_code: cuenta.parent_code || null,
         description: cuenta.description || null,
         organization_id: organizationId,
-        is_active: true
+        is_active: cuenta.is_active ?? true,
+        naturaleza: cuenta.naturaleza ?? null,
+        es_movimiento: cuenta.es_movimiento ?? null,
+        requiere_tercero: cuenta.requiere_tercero ?? false,
+        requiere_centro_costo: cuenta.requiere_centro_costo ?? false,
       })
       .select()
       .single();
@@ -194,7 +296,7 @@ export class ContabilidadService {
     const { data, error } = await supabase
       .from('chart_of_accounts')
       .update({
-        ...cuenta,
+        ...camposDeCuenta(cuenta),
         updated_at: new Date().toISOString()
       })
       .eq('account_code', accountCode)
@@ -351,7 +453,15 @@ export class ContabilidadService {
     currency_code?: string;
     exchange_rate?: number;
     base_currency_code?: string;
-    lines: { account_code: string; description?: string; debit: number; credit: number; cost_center_id?: string }[];
+    lines: {
+      account_code: string;
+      description?: string;
+      debit: number;
+      credit: number;
+      cost_center_id?: string | null;
+      tercero_nit?: string | null;
+      tercero_nombre?: string | null;
+    }[];
   }, branchId?: number | null, publicar = false): Promise<JournalEntry> {
     const organizationId = this.getOrganizationId();
     const effectiveBranchId = branchId !== undefined ? branchId : this.getBranchId();
@@ -393,6 +503,8 @@ export class ContabilidadService {
         debit: line.debit || 0,
         credit: line.credit || 0,
         cost_center_id: line.cost_center_id || null,
+        tercero_nit: line.tercero_nit?.trim() || null,
+        tercero_nombre: line.tercero_nombre?.trim() || null,
       })),
       p_publicar: publicar,
       p_currency_code: currencyCode,
@@ -485,8 +597,146 @@ export class ContabilidadService {
         account_code: l.account_code,
         description: l.description || undefined,
         debit: l.debit,
-        credit: l.credit
+        credit: l.credit,
+        cost_center_id: l.cost_center_id ?? null,
+        tercero_nit: l.tercero_nit ?? null,
+        tercero_nombre: l.tercero_nombre ?? null,
       }))
     });
   }
+
+  /**
+   * Fallos de asiento aún abiertos y asientos publicados o en borrador
+   * que no tienen líneas. La pertenencia la vuelve a exigir la base.
+   */
+  static async obtenerAlertas(): Promise<AlertasContablesDatos> {
+    const { data, error } = await supabase.rpc('fn_alertas_contables', {
+      p_organization_id: this.getOrganizationId(),
+    });
+    if (error) throw error;
+    const crudo = (data ?? {}) as { fallos?: CrudoAlerta[]; asientos_sin_lineas?: CrudoAlerta[] };
+    const filas = (lista: CrudoAlerta[] | undefined) => (Array.isArray(lista) ? lista : []);
+    return {
+      fallos: filas(crudo.fallos).map((fila) => ({
+        id: Number(fila.id),
+        fecha: fila.fecha ?? null,
+        origen: fila.origen ?? null,
+        origenId: fila.origen_id != null ? String(fila.origen_id) : null,
+        debito: fila.debito ?? null,
+        credito: fila.credito ?? null,
+        importe: fila.importe == null ? null : Number(fila.importe),
+        motivo: fila.motivo ?? null,
+        detalle: fila.detalle ?? null,
+      })),
+      sinLineas: filas(crudo.asientos_sin_lineas).map((fila) => ({
+        id: Number(fila.id),
+        fecha: fila.fecha ?? null,
+        memo: fila.memo ?? null,
+        origen: fila.origen ?? null,
+        publicado: fila.publicado === true,
+      })),
+    };
+  }
+
+  static async listarCentrosCosto(): Promise<{ id: string; code: string; name: string }[]> {
+    const { data, error } = await supabase
+      .from('cost_centers')
+      .select('id, code, name')
+      .eq('organization_id', this.getOrganizationId())
+      .eq('is_active', true)
+      .order('code');
+    if (error) throw error;
+    return (data ?? []) as { id: string; code: string; name: string }[];
+  }
+
+  static async guardarCuentasCatalogo(
+    tipo: 'producto' | 'categoria',
+    id: number,
+    cuentas: { ingreso?: string | null; costo?: string | null; inventario?: string | null; devolucion?: string | null },
+  ): Promise<void> {
+    const { error } = await supabase.rpc('fn_cuentas_catalogo_guardar', {
+      p_organization_id: this.getOrganizationId(),
+      p_tipo: tipo,
+      p_id: id,
+      p_ingreso: cuentas.ingreso ?? null,
+      p_costo: cuentas.costo ?? null,
+      p_inventario: cuentas.inventario ?? null,
+      p_devolucion: cuentas.devolucion ?? null,
+    });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+  }
+
+  static async listarPlantillas(): Promise<PlantillaAsiento[]> {
+    const { data, error } = await supabase
+      .from('plantillas_asiento')
+      .select('id, nombre, memo, lineas:plantillas_asiento_lineas(orden, account_code, descripcion, debito, credito, tercero_nit, tercero_nombre, cost_center_id)')
+      .eq('organization_id', this.getOrganizationId())
+      .eq('activa', true)
+      .order('nombre');
+    if (error) throw error;
+    return ((data ?? []) as PlantillaAsiento[]).map((p) => ({
+      ...p,
+      lineas: [...(p.lineas ?? [])].sort((a, b) => a.orden - b.orden),
+    }));
+  }
+
+  static async guardarPlantilla(plantilla: {
+    id?: string | null;
+    nombre: string;
+    memo?: string | null;
+    lineas: LineaPlantilla[];
+  }): Promise<string> {
+    const { data, error } = await supabase.rpc('fn_plantilla_asiento_guardar', {
+      p_organization_id: this.getOrganizationId(),
+      p_id: plantilla.id ?? null,
+      p_nombre: plantilla.nombre,
+      p_memo: plantilla.memo ?? null,
+      p_lineas: plantilla.lineas.map((l) => ({
+        account_code: l.account_code,
+        description: l.descripcion,
+        debit: l.debito,
+        credit: l.credito,
+        tercero_nit: l.tercero_nit,
+        tercero_nombre: l.tercero_nombre,
+        cost_center_id: l.cost_center_id,
+      })),
+    });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+    return data as string;
+  }
+
+  /** Crea un borrador para revisarlo antes de publicarlo. */
+  static async aplicarPlantilla(id: string, branchId: number, fecha: string, memo?: string | null): Promise<number> {
+    const { data, error } = await supabase.rpc('fn_plantilla_asiento_aplicar', {
+      p_plantilla_id: id,
+      p_branch_id: branchId,
+      p_fecha: fecha,
+      p_memo: memo ?? null,
+    });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+    return data as number;
+  }
+
+  static async archivarPlantilla(id: string): Promise<void> {
+    const { error } = await supabase.rpc('fn_plantilla_asiento_archivar', { p_plantilla_id: id });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+  }
+}
+
+export interface LineaPlantilla {
+  orden: number;
+  account_code: string;
+  descripcion: string | null;
+  debito: number;
+  credito: number;
+  tercero_nit: string | null;
+  tercero_nombre: string | null;
+  cost_center_id: string | null;
+}
+
+export interface PlantillaAsiento {
+  id: string;
+  nombre: string;
+  memo: string | null;
+  lineas: LineaPlantilla[];
 }

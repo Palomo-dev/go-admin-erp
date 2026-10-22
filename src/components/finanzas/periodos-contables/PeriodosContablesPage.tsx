@@ -13,7 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PeriodosContablesService, FiscalPeriod } from './PeriodosContablesService';
 import { rangoDelMes } from '@/lib/services/fiscalCalendar';
-import { getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { usePermissionContext } from '@/hooks/usePermissionContext';
+import { avisoPeriodo, botonesDePeriodo } from '@/lib/finanzas/permisosCierre';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 const MONTHS = [
@@ -22,6 +26,10 @@ const MONTHS = [
 ];
 
 export function PeriodosContablesPage() {
+  const { formatDate } = useFormatDate();
+  const { organization } = useOrganization();
+  const { checker, loading: cargandoPermisos } = usePermissionContext(organization?.id);
+  const puede = (codigo: string) => checker.can(codigo);
   const [periodos, setPeriodos] = useState<FiscalPeriod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -100,15 +108,14 @@ export function PeriodosContablesPage() {
 
     try {
       setIsProcessing(true);
-      const userId = await getCurrentUserId();
-      await PeriodosContablesService.cerrarPeriodo(selectedPeriodo.id, userId || '');
+      await PeriodosContablesService.cerrarPeriodo(selectedPeriodo.id);
       toast.success('Periodo cerrado exitosamente');
       setShowCloseDialog(false);
       setSelectedPeriodo(null);
       loadPeriodos();
     } catch (error) {
       console.error('Error cerrando periodo:', error);
-      toast.error('Error al cerrar el periodo');
+      toast.error(avisoPeriodo(error, 'Error al cerrar el periodo'));
     } finally {
       setIsProcessing(false);
     }
@@ -121,7 +128,7 @@ export function PeriodosContablesPage() {
       loadPeriodos();
     } catch (error) {
       console.error('Error reabriendo periodo:', error);
-      toast.error('Error al reabrir el periodo');
+      toast.error(avisoPeriodo(error, 'Error al reabrir el periodo'));
     }
   };
 
@@ -336,28 +343,27 @@ export function PeriodosContablesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPeriodos.map((periodo) => (
+              {filteredPeriodos.map((periodo) => {
+                const acciones = botonesDePeriodo(periodo, puede, cargandoPermisos);
+                return (
                 <TableRow key={periodo.id} className="dark:border-gray-700">
                   <TableCell className="font-medium text-gray-900 dark:text-white">
                     {periodo.month ? MONTHS[periodo.month - 1] : 'Anual'}
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">{periodo.year}</TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
-                    {new Date(periodo.start_date).toLocaleDateString('es-CO')}
+                    {formatPlainDate(periodo.start_date)}
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
-                    {new Date(periodo.end_date).toLocaleDateString('es-CO')}
+                    {formatPlainDate(periodo.end_date)}
                   </TableCell>
                   <TableCell>{getStatusBadge(periodo.status)}</TableCell>
                   <TableCell className="text-gray-500 dark:text-gray-400">
-                    {periodo.closed_at 
-                      ? new Date(periodo.closed_at).toLocaleDateString('es-CO')
-                      : '-'
-                    }
+                    {periodo.closed_at ? formatDate(periodo.closed_at) : '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {periodo.status === 'open' && (
+                      {acciones.cerrar && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -366,16 +372,18 @@ export function PeriodosContablesPage() {
                             setShowCloseDialog(true);
                           }}
                           className="text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                          aria-label="Cerrar periodo"
                         >
                           <Lock className="h-4 w-4" />
                         </Button>
                       )}
-                      {periodo.status === 'closed' && (
+                      {acciones.reabrir && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleReopenPeriodo(periodo)}
                           className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          aria-label="Reabrir periodo"
                         >
                           <Unlock className="h-4 w-4" />
                         </Button>
@@ -383,7 +391,8 @@ export function PeriodosContablesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

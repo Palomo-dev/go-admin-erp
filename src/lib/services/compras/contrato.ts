@@ -29,6 +29,7 @@ export const lineaCompraSchema = z
     tax_code: z.string().max(20).nullable().optional(),
     serial_numbers: z.array(z.string().max(120)).max(1000).optional(),
     note: z.string().max(1000).nullable().optional(),
+    cuenta_contable: z.string().trim().max(32).nullable().optional(),
   })
   .strict();
 

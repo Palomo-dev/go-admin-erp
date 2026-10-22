@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   StatsSkeleton,
 } from '@/components/common/PageSkeletons';
-import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
+import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt, Settings, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -16,6 +16,8 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { AlertasContables } from './AlertasContables';
+import { AlertasFalloContable } from '@/components/finanzas/configuracion-contable';
 
 const MODULES = [
   {
@@ -31,6 +33,13 @@ const MODULES = [
     icon: FileText,
     href: '/app/finanzas/contabilidad/asientos',
     color: 'green'
+  },
+  {
+    title: 'Plantillas de asientos',
+    description: 'Asientos recurrentes, en borrador hasta publicarlos',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/plantillas',
+    color: 'blue'
   },
   {
     title: 'Balance de Comprobación',
@@ -61,11 +70,32 @@ const MODULES = [
     color: 'blue'
   },
   {
+    title: 'Libro diario',
+    description: 'Asientos publicados del periodo',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/libro-diario',
+    color: 'blue'
+  },
+  {
+    title: 'Auxiliar por tercero',
+    description: 'Saldos por NIT y cuenta',
+    icon: Users,
+    href: '/app/finanzas/contabilidad/auxiliar-tercero',
+    color: 'blue'
+  },
+  {
     title: 'Reglas Contables',
     description: 'Asientos automáticos por evento',
     icon: Shield,
     href: '/app/finanzas/reglas-contables',
     color: 'orange'
+  },
+  {
+    title: 'Configuración contable',
+    description: 'Cuentas por defecto de la organización',
+    icon: Settings,
+    href: '/app/finanzas/configuracion-contable',
+    color: 'purple'
   },
   {
     title: 'Períodos Fiscales',
@@ -111,30 +141,10 @@ export function ContabilidadHomePage() {
     itemsPendientes: 0,
   });
 
-  useEffect(() => {
-    loadResumen();
-  }, [branchFilter]);
-
-  const loadResumen = async () => {
-    try {
-      setIsLoading(true);
-      const [data, foliosData] = await Promise.all([
-        ContabilidadService.obtenerResumen(branchFilter),
-        loadFoliosResumen(),
-      ]);
-      setResumen(data);
-      setFoliosResumen(foliosData);
-    } catch (error) {
-      console.error('Error cargando resumen:', error);
-      toast.error('Error al cargar el resumen');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadFoliosResumen = async () => {
+  const loadFoliosResumen = useCallback(async () => {
+    const vacio = { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
     const organizationId = getOrganizationId();
-    if (!organizationId) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+    if (!organizationId) return vacio;
 
     try {
       const { data: folios, error } = await supabase
@@ -145,7 +155,7 @@ export function ContabilidadHomePage() {
         `)
         .eq('reservations.organization_id', organizationId);
 
-      if (error || !folios) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+      if (error || !folios) return vacio;
 
       const foliosAbiertos = folios.filter((f) => f.status === 'open');
       const folioIds = foliosAbiertos.map((f) => f.id);
@@ -177,9 +187,30 @@ export function ContabilidadHomePage() {
         itemsPendientes,
       };
     } catch {
-      return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+      return vacio;
     }
-  };
+  }, []);
+
+  const loadResumen = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [data, foliosData] = await Promise.all([
+        ContabilidadService.obtenerResumen(branchFilter),
+        loadFoliosResumen(),
+      ]);
+      setResumen(data);
+      setFoliosResumen(foliosData);
+    } catch (error) {
+      console.error('Error cargando resumen:', error);
+      toast.error('Error al cargar el resumen');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [branchFilter, loadFoliosResumen]);
+
+  useEffect(() => {
+    void loadResumen();
+  }, [loadResumen]);
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, { bg: string; icon: string; hover: string }> = {
@@ -230,6 +261,9 @@ export function ContabilidadHomePage() {
       </div>
 
       <BranchBadge className="mb-3" />
+
+      <AlertasContables />
+      <AlertasFalloContable compacto />
 
       {/* Resumen */}
       {isLoading ? (

@@ -4455,7 +4455,10 @@
       "finanzas_contabilidad": "Comptabilité",
       "finanzas_contabilidad_plan-cuentas": "Plan comptable",
       "finanzas_contabilidad_asientos": "Écritures",
+      "finanzas_contabilidad_plantillas": "Modèles d'écritures",
       "finanzas_contabilidad_mayor-contable": "Grand livre",
+      "finanzas_contabilidad_libro-diario": "Journal général",
+      "finanzas_contabilidad_auxiliar-tercero": "Auxiliaire par tiers",
       "finanzas_contabilidad_balance-comprobacion": "Balance de vérification",
       "finanzas_contabilidad_estado-resultados": "Compte de résultat",
       "finanzas_contabilidad_balance-general": "Bilan",
@@ -4468,6 +4471,9 @@
       "finanzas_metodos-pago": "Moyens de paiement",
       "finanzas_monedas": "Devises",
       "finanzas_comisiones": "Commissions",
+      "finanzas_configuracion-contable": "Paramétrage comptable",
+      "finanzas_categorias-tesoreria": "Catégories de trésorerie",
+      "finanzas_reporte-categorias": "Rapport par catégorie",
       "hrm_empleados": "Employés",
       "hrm_departamentos": "Services",
       "hrm_cargos": "Postes",
@@ -7673,6 +7679,15 @@
         "preparacion": "Préparation requise",
         "preparacionAyuda": "Génère un bon de cuisine lors de la vente au PDV.",
         "siGenera": "Oui · génère un bon de cuisine à la vente"
+      },
+      "cuentas": {
+        "titulo": "Comptes comptables",
+        "descripcion": "Utilisés lorsque le produit n’a pas le sien.",
+        "ayuda": "Vide : la facture utilise la configuration comptable.",
+        "ingreso": "Produit",
+        "costo": "Coût",
+        "inventario": "Stock",
+        "devolucion": "Retour"
       },
       "apariencia": {
         "descripcion": "Couleur, icône et image au PDV et dans la boutique.",
@@ -11999,6 +12014,14 @@
         "otrosDuplicar": "{n, plural, one {Ce fournisseur sera aussi copié} other {Ces # fournisseurs seront aussi copiés}} : {nombres}.",
         "gestionar": "Gérer les fournisseurs"
       },
+      "cuentas": {
+        "titulo": "Comptes comptables",
+        "ayuda": "Si vous les laissez vides, la facture utilise celui de la catégorie ou la configuration comptable.",
+        "ingreso": "Produit",
+        "costo": "Coût",
+        "inventario": "Stock",
+        "devolucion": "Retour"
+      },
       "etiquetas": {
         "etiqueta": "Étiquettes",
         "ayuda": "Elles classent le produit pour le rechercher et le filtrer. Saisissez un nouveau nom pour créer une étiquette.",
@@ -12197,6 +12220,7 @@
       "duplicado": "Produit dupliqué",
       "guardadoDescripcion": "« {nombre} » a été enregistré.",
       "avisoCodigos": "Le produit a été enregistré, mais les codes-barres des variantes n’ont pas pu être numérotés. Générez-les depuis Étiquettes.",
+      "avisoCuentas": "Le produit a été enregistré, mais ses comptes comptables n’ont pas pu être enregistrés.",
       "borradorRecuperado": "Nous avons récupéré des modifications non enregistrées de ce formulaire (brouillon de cet onglet).",
       "descartarBorrador": "Supprimer le brouillon"
     },
@@ -14222,7 +14246,10 @@
         "actual": "Taux actuel",
         "nota": "Note de ligne",
         "seriales": "Numéros de série",
-        "serialesAyuda": "Un par ligne."
+        "serialesAyuda": "Un par ligne.",
+        "cuenta": "Compte comptable",
+        "cuentaAyuda": "Si vous le laissez vide, le produit, la catégorie ou la configuration comptable est utilisé. L’aperçu apparaît à la confirmation.",
+        "cuentaListo": "Terminé"
       },
       "manual": {
         "titulo": "Poste sans produit",
@@ -16271,6 +16298,8 @@
         "aFavor": "Le client reçoit {monto} de crédit.",
         "dian": "L'avoir est envoyé à la DIAN."
       },
+      "verAsiento": "Aperçu de l’écriture",
+      "asientoAyuda": "La taxe de l’aperçu est proportionnelle à celle de la facture. Le compte vient de la ligne, du produit ou de la catégorie.",
       "bloqueos": {
         "sinMonto": "Choisissez ce qui est crédité.",
         "excede": "L'avoir dépasse ce qui peut encore être crédité ({tope}).",
@@ -16621,7 +16650,15 @@
         "nota": "Note de la ligne",
         "notaAyuda": "Figure sur le PDF de la facture.",
         "elegirSeriales": "Choisir les numéros de série",
-        "duplicar": "Dupliquer la ligne"
+        "duplicar": "Dupliquer la ligne",
+        "cuenta": "Compte comptable",
+        "cuentaAyuda": "Si vous le laissez vide, le produit, la catégorie ou la configuration comptable est utilisé.",
+        "cuentaListo": "Terminé",
+        "verAsiento": "Aperçu de l’écriture",
+        "asientoTitulo": "Aperçu de l’écriture",
+        "asientoAyuda": "Enregistre le brouillon et montre l’écriture. Si une ligne a son propre compte et que l’écriture ne balance pas, la facture n’est pas émise.",
+        "asientoFallo": "L’écriture ne peut pas être comptabilisée",
+        "asientoCerrar": "Fermer"
       },
       "comision": {
         "vendedor": "Vendeur",
@@ -17429,6 +17466,8 @@
     },
     "detalle": {
       "titulo": "Document justificatif",
+      "verAsiento": "Aperçu de l’écriture",
+      "asientoAviso": "Ceci est un aperçu. Le document justificatif ne génère pas d’écriture à l’enregistrement.",
       "volver": "Retour aux documents justificatifs",
       "referencia": "Réf. : {referencia}",
       "numero": " — N° {numero}",
@@ -17546,7 +17585,99 @@
       "sin_acceso_sucursal": "Vous n'avez pas accès à l'établissement du compte.",
       "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
       "sin_organizacion": "L'organisation active est introuvable.",
+      "cuenta_no_es_de_movimiento": "Ce compte n'est pas un compte de mouvement. Choisissez un auxiliaire.",
+      "centro_costo_invalido": "Le centre de coût n'est pas valable pour cette organisation.",
+      "categoria_invalida": "La catégorie ne correspond pas à ce mouvement.",
+      "tercero_requerido": "Ce compte exige le NIT du tiers.",
+      "soporte_invalido": "La pièce doit être un PDF ou une image de cette organisation.",
       "desconocido": "L'opération n'a pas pu aboutir."
+    },
+    "movimiento": {
+      "tituloIngreso": "Nouvel encaissement",
+      "tituloEgreso": "Nouveau décaissement",
+      "descripcionIngreso": "La catégorie préremplit le compte. Vérifiez l'écriture avant d'enregistrer.",
+      "descripcionEgreso": "La catégorie préremplit le compte. Vérifiez l'écriture avant d'enregistrer.",
+      "categoria": "Catégorie",
+      "buscarCategoria": "Rechercher une catégorie",
+      "sinCategorias": "Cette organisation n'a pas encore de catégories.",
+      "completarPredefinidas": "Ajouter les catégories prédéfinies",
+      "cuenta": "Compte",
+      "buscarCuenta": "Rechercher un compte",
+      "origen": "Origine",
+      "caja": "Caisse",
+      "banco": "Banque",
+      "cuentaBancaria": "Compte bancaire",
+      "tercero": "Tiers",
+      "buscarTercero": "Rechercher par NIT ou par nom",
+      "usarNit": "Utiliser le NIT {nit}",
+      "centroCosto": "Centre de coût",
+      "sinCentro": "Sans centre de coût",
+      "monto": "Montant",
+      "concepto": "Concept",
+      "notas": "Notes",
+      "soporte": "Pièce",
+      "soporteAyuda": "PDF, JPG, PNG ou WebP. 5 Mo maximum.",
+      "quitarSoporte": "Retirer la pièce",
+      "verSoporte": "Voir la pièce",
+      "vistaPrevia": "Aperçu de l'écriture",
+      "debito": "Débit",
+      "credito": "Crédit",
+      "guardando": "Enregistrement",
+      "guardar": "Enregistrer",
+      "cancelar": "Annuler",
+      "exitoIngreso": "Encaissement enregistré.",
+      "exitoEgreso": "Décaissement enregistré.",
+      "faltaCategoria": "Choisissez une catégorie.",
+      "faltaCuenta": "Choisissez un compte de mouvement.",
+      "faltaMonto": "Le montant doit être supérieur à 0.",
+      "faltaConcepto": "Le concept est obligatoire.",
+      "faltaBanco": "Sélectionnez le compte bancaire.",
+      "faltaCentro": "Ce compte exige un centre de coût.",
+      "faltaTercero": "Ce compte exige le NIT du tiers.",
+      "soporteTipo": "La pièce doit être un PDF, JPG, PNG ou WebP.",
+      "soportePeso": "La pièce ne peut pas dépasser 5 Mo."
+    },
+    "categorias": {
+      "titulo": "Catégories de trésorerie",
+      "descripcion": "Prédéfinies par organisation. On peut les modifier, les désactiver et en créer.",
+      "ingresos": "Encaissements",
+      "egresos": "Décaissements",
+      "nueva": "Nouvelle catégorie",
+      "editar": "Modifier",
+      "guardar": "Enregistrer",
+      "cancelar": "Annuler",
+      "nombre": "Nom",
+      "icono": "Icône",
+      "cuenta": "Compte suggéré",
+      "padre": "Catégorie parente",
+      "sinPadre": "Sans parent",
+      "sinCuenta": "Sans compte suggéré",
+      "activa": "Active",
+      "predefinida": "Prédéfinie",
+      "completar": "Ajouter les catégories prédéfinies",
+      "completadas": "Les catégories prédéfinies sont prêtes.",
+      "desactivar": "Inactive",
+      "eliminar": "Supprimer",
+      "vacio": "Il n'y a pas de catégories dans ce groupe.",
+      "errorCarga": "Les catégories n'ont pas pu être chargées.",
+      "errorGuardar": "La catégorie n'a pas pu être enregistrée.",
+      "buscarCuenta": "Rechercher un compte"
+    },
+    "reporte": {
+      "titulo": "Rapport par catégorie",
+      "descripcion": "Encaissements et décaissements du mois, par catégorie et par établissement.",
+      "mes": "Mois",
+      "sede": "Établissement",
+      "todas": "Tous les établissements",
+      "categoria": "Catégorie",
+      "tipo": "Type",
+      "movimientos": "Mouvements",
+      "total": "Total",
+      "ingresos": "Encaissements",
+      "egresos": "Décaissements",
+      "neto": "Net",
+      "vacio": "Aucun mouvement catégorisé ce mois-ci.",
+      "sinCategoria": "Sans catégorie"
     },
     "anular": {
       "descripcion": "L'annulation est irréversible.",
@@ -17869,6 +18000,9 @@
         "cuenta_no_existe": "le compte n’existe pas dans le plan comptable.",
         "cuenta_no_es_pasivo": "le compte n’est pas un compte de passif.",
         "cuenta_inactiva": "le compte est inactif.",
+        "cuenta_de_titulo": "le compte regroupe d’autres comptes et ne peut pas recevoir la taxe. Choisissez un compte de détail.",
+        "cuenta_requerida": "le compte comptable manque.",
+        "impuesto_no_encontrado": "la taxe n’existe pas dans cette organisation.",
         "base_minima_invalida": "La base minimale doit être un nombre supérieur ou égal à zéro.",
         "retencion_no_encontrada": "la retenue n’existe pas dans cette organisation.",
         "otro": "vérifiez vos autorisations sur les taxes et réessayez."
@@ -30800,7 +30934,8 @@
       "automatico": "Automatique (système)"
     },
     "lineas": {
-      "centroCosto": "Centre de coûts"
+      "centroCosto": "Centre de coûts",
+      "tercero": "Tiers"
     }
   },
   "reportes": {

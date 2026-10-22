@@ -55,6 +55,7 @@ export interface ConfiguracionRetenciones {
 export interface CuentaPasivo {
   codigo: string;
   nombre: string;
+  parent_code: string | null;
 }
 
 export interface LineaAsientoPrevio {
@@ -182,6 +183,16 @@ export async function configurarRetencion(
   if (error) throw error;
 }
 
+/** Vincula un impuesto (IVA) a una cuenta de pasivo que exista en el plan. El IVA por pagar es 2408. */
+export async function vincularCuentaImpuesto(org: number, impuestoId: string, cuenta: string): Promise<void> {
+  const { error } = await supabase.rpc('fn_impuesto_vincular_cuenta', {
+    p_organization_id: org,
+    p_id: impuestoId,
+    p_cuenta: cuenta,
+  });
+  if (error) throw error;
+}
+
 export async function cargarPlantillaRetenciones(org: number): Promise<number> {
   const { data, error } = await supabase.rpc('fn_retenciones_cargar_plantilla', { p_organization_id: org });
   if (error) throw error;
@@ -192,13 +203,17 @@ export async function cargarPlantillaRetenciones(org: number): Promise<number> {
 export async function cuentasDePasivo(org: number): Promise<CuentaPasivo[]> {
   const { data, error } = await supabase
     .from('chart_of_accounts')
-    .select('account_code, name')
+    .select('account_code, name, parent_code')
     .eq('organization_id', org)
     .eq('type', 'liability')
     .eq('is_active', true)
     .order('account_code');
   if (error) throw error;
-  return ((data ?? []) as Array<{ account_code: string; name: string }>).map((c) => ({ codigo: c.account_code, nombre: c.name }));
+  return ((data ?? []) as Array<{ account_code: string; name: string; parent_code: string | null }>).map((c) => ({
+    codigo: c.account_code,
+    nombre: c.name,
+    parent_code: c.parent_code,
+  }));
 }
 
 /** Moneda en la que se expresa la UVT de un país: la de `countries.default_currency_code`. */

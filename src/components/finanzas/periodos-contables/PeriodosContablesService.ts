@@ -79,10 +79,16 @@ export class PeriodosContablesService {
   }
 
   static async actualizarPeriodo(id: string, periodo: Partial<FiscalPeriod>): Promise<FiscalPeriod> {
+    // El estado solo cambia por las RPC de cierre y reapertura. Un update
+    // directo lo rechaza el disparador, y aquí ni siquiera se envía.
+    const resto = { ...periodo };
+    delete resto.status;
+    delete resto.closed_by;
+    delete resto.closed_at;
     const { data, error } = await supabase
       .from('fiscal_periods')
       .update({
-        ...periodo,
+        ...resto,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -97,46 +103,37 @@ export class PeriodosContablesService {
     return data;
   }
 
-  static async cerrarPeriodo(id: string, userId: string): Promise<FiscalPeriod> {
-    const { data, error } = await supabase
-      .from('fiscal_periods')
-      .update({
-        status: 'closed',
-        closed_by: userId,
-        closed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
+  static async cerrarPeriodo(id: string): Promise<FiscalPeriod> {
+    const organizationId = this.getOrganizationId();
+    if (!organizationId) throw new Error('No hay organización activa');
+    const { error } = await supabase.rpc('fn_cierre_periodo', {
+      p_organization_id: organizationId,
+      p_period_id: id,
+      p_notas: null,
+    });
     if (error) {
       console.error('Error cerrando periodo:', error);
       throw error;
     }
-
-    return data;
+    const periodo = await this.obtenerPeriodo(id);
+    if (!periodo) throw new Error('No se encontró el período');
+    return periodo;
   }
 
   static async reabrirPeriodo(id: string): Promise<FiscalPeriod> {
-    const { data, error } = await supabase
-      .from('fiscal_periods')
-      .update({
-        status: 'open',
-        closed_by: null,
-        closed_at: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
+    const organizationId = this.getOrganizationId();
+    if (!organizationId) throw new Error('No hay organización activa');
+    const { error } = await supabase.rpc('fn_reabrir_periodo', {
+      p_organization_id: organizationId,
+      p_period_id: id,
+    });
     if (error) {
       console.error('Error reabriendo periodo:', error);
       throw error;
     }
-
-    return data;
+    const periodo = await this.obtenerPeriodo(id);
+    if (!periodo) throw new Error('No se encontró el período');
+    return periodo;
   }
 
   static async generarPeriodosAnuales(year: number): Promise<FiscalPeriod[]> {

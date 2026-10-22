@@ -4458,7 +4458,10 @@
       "finanzas_contabilidad": "Accounting",
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
       "finanzas_contabilidad_asientos": "Journal entries",
+      "finanzas_contabilidad_plantillas": "Recurring journal templates",
       "finanzas_contabilidad_mayor-contable": "General ledger",
+      "finanzas_contabilidad_libro-diario": "General journal",
+      "finanzas_contabilidad_auxiliar-tercero": "Subsidiary ledger by third party",
       "finanzas_contabilidad_balance-comprobacion": "Trial balance",
       "finanzas_contabilidad_estado-resultados": "Income statement",
       "finanzas_contabilidad_balance-general": "Balance sheet",
@@ -4471,6 +4474,9 @@
       "finanzas_metodos-pago": "Payment methods",
       "finanzas_monedas": "Currencies",
       "finanzas_comisiones": "Commissions",
+      "finanzas_configuracion-contable": "Accounting setup",
+      "finanzas_categorias-tesoreria": "Treasury categories",
+      "finanzas_reporte-categorias": "Report by category",
       "hrm_empleados": "Employees",
       "hrm_departamentos": "Departments",
       "hrm_cargos": "Job positions",
@@ -11875,6 +11881,15 @@
         "preparacionAyuda": "Sends a kitchen ticket when sold from the POS.",
         "siGenera": "Yes · sends a kitchen ticket when sold"
       },
+      "cuentas": {
+        "titulo": "Ledger accounts",
+        "descripcion": "Used when the product does not bring its own.",
+        "ayuda": "Empty: the invoice uses the accounting setup.",
+        "ingreso": "Income",
+        "costo": "Cost",
+        "inventario": "Inventory",
+        "devolucion": "Returns"
+      },
       "apariencia": {
         "descripcion": "Color, icon and image in the POS and the store.",
         "imagenAyuda": "Used in the POS (image view), the online store and the catalog."
@@ -16200,6 +16215,14 @@
         "otrosDuplicar": "{n, plural, one {This supplier will also be copied} other {These # suppliers will also be copied}}: {nombres}.",
         "gestionar": "Manage suppliers"
       },
+      "cuentas": {
+        "titulo": "Ledger accounts",
+        "ayuda": "If you leave them empty, the invoice uses the category account or the accounting setup.",
+        "ingreso": "Income",
+        "costo": "Cost",
+        "inventario": "Inventory",
+        "devolucion": "Returns"
+      },
       "etiquetas": {
         "etiqueta": "Tags",
         "ayuda": "They classify the product so it can be searched and filtered. Type a new name to create a tag.",
@@ -16398,6 +16421,7 @@
       "duplicado": "Product duplicated",
       "guardadoDescripcion": "“{nombre}” was saved.",
       "avisoCodigos": "The product was saved, but the variants' barcodes couldn't be numbered. Generate them from Labels.",
+      "avisoCuentas": "The product was saved, but its ledger accounts could not be saved.",
       "borradorRecuperado": "We recovered unsaved changes to this form (draft from this tab).",
       "descartarBorrador": "Discard draft"
     },
@@ -18423,7 +18447,10 @@
         "actual": "Current rate",
         "nota": "Line note",
         "seriales": "Serial numbers",
-        "serialesAyuda": "One per line."
+        "serialesAyuda": "One per line.",
+        "cuenta": "Ledger account",
+        "cuentaAyuda": "If you leave it empty, the product, the category or the accounting setup is used. The preview appears when you confirm.",
+        "cuentaListo": "Done"
       },
       "manual": {
         "titulo": "Item without product",
@@ -20472,6 +20499,8 @@
         "aFavor": "The customer gets {monto} in credit.",
         "dian": "The note is sent to the DIAN."
       },
+      "verAsiento": "Preview entry",
+      "asientoAyuda": "The preview tax is proportional to the invoice. The account comes from the line, the product or the category.",
       "bloqueos": {
         "sinMonto": "Choose what to credit.",
         "excede": "The note exceeds what can still be credited ({tope}).",
@@ -20822,7 +20851,15 @@
         "nota": "Line note",
         "notaAyuda": "Printed on the invoice PDF.",
         "elegirSeriales": "Choose serials",
-        "duplicar": "Duplicate line"
+        "duplicar": "Duplicate line",
+        "cuenta": "Ledger account",
+        "cuentaAyuda": "If you leave it empty, the product, the category or the accounting setup is used.",
+        "cuentaListo": "Done",
+        "verAsiento": "Preview entry",
+        "asientoTitulo": "Journal entry preview",
+        "asientoAyuda": "Saves the draft and shows the entry. If a line has its own account and the entry does not balance, the invoice is not issued.",
+        "asientoFallo": "The journal entry cannot be posted",
+        "asientoCerrar": "Close"
       },
       "comision": {
         "vendedor": "Salesperson",
@@ -21630,6 +21667,8 @@
     },
     "detalle": {
       "titulo": "Support Document",
+      "verAsiento": "Preview entry",
+      "asientoAviso": "This is a preview. A support document does not post a journal entry when it is saved.",
       "volver": "Back to support documents",
       "referencia": "Ref: {referencia}",
       "numero": " — No. {numero}",
@@ -21747,7 +21786,99 @@
       "sin_acceso_sucursal": "You do not have access to the account's branch.",
       "no_autenticado": "Your session expired. Sign in again.",
       "sin_organizacion": "The active organization was not found.",
+      "cuenta_no_es_de_movimiento": "That account is not a movement account. Choose a detail account.",
+      "centro_costo_invalido": "The cost center is not valid for this organization.",
+      "categoria_invalida": "The category does not match this entry.",
+      "tercero_requerido": "This account requires the third party's tax ID.",
+      "soporte_invalido": "The attachment must be a PDF or an image for this organization.",
       "desconocido": "The operation could not be completed."
+    },
+    "movimiento": {
+      "tituloIngreso": "New income entry",
+      "tituloEgreso": "New expense entry",
+      "descripcionIngreso": "The category preloads the account. Review the journal entry before saving.",
+      "descripcionEgreso": "The category preloads the account. Review the journal entry before saving.",
+      "categoria": "Category",
+      "buscarCategoria": "Search category",
+      "sinCategorias": "This organization has no categories yet.",
+      "completarPredefinidas": "Add predefined categories",
+      "cuenta": "Account",
+      "buscarCuenta": "Search account",
+      "origen": "Source",
+      "caja": "Cash",
+      "banco": "Bank",
+      "cuentaBancaria": "Bank account",
+      "tercero": "Third party",
+      "buscarTercero": "Search by tax ID or name",
+      "usarNit": "Use tax ID {nit}",
+      "centroCosto": "Cost center",
+      "sinCentro": "No cost center",
+      "monto": "Amount",
+      "concepto": "Concept",
+      "notas": "Notes",
+      "soporte": "Attachment",
+      "soporteAyuda": "PDF, JPG, PNG or WebP. 5 MB maximum.",
+      "quitarSoporte": "Remove attachment",
+      "verSoporte": "View attachment",
+      "vistaPrevia": "Journal entry preview",
+      "debito": "Debit",
+      "credito": "Credit",
+      "guardando": "Saving",
+      "guardar": "Save",
+      "cancelar": "Cancel",
+      "exitoIngreso": "Income entry recorded.",
+      "exitoEgreso": "Expense entry recorded.",
+      "faltaCategoria": "Choose a category.",
+      "faltaCuenta": "Choose a movement account.",
+      "faltaMonto": "The amount must be greater than 0.",
+      "faltaConcepto": "The concept is required.",
+      "faltaBanco": "Select the bank account.",
+      "faltaCentro": "This account requires a cost center.",
+      "faltaTercero": "This account requires the third party's tax ID.",
+      "soporteTipo": "The attachment must be a PDF, JPG, PNG or WebP.",
+      "soportePeso": "The attachment cannot exceed 5 MB."
+    },
+    "categorias": {
+      "titulo": "Treasury categories",
+      "descripcion": "Predefined per organization. They can be edited, deactivated, and extended.",
+      "ingresos": "Income",
+      "egresos": "Expenses",
+      "nueva": "New category",
+      "editar": "Edit",
+      "guardar": "Save",
+      "cancelar": "Cancel",
+      "nombre": "Name",
+      "icono": "Icon",
+      "cuenta": "Suggested account",
+      "padre": "Parent category",
+      "sinPadre": "No parent",
+      "sinCuenta": "No suggested account",
+      "activa": "Active",
+      "predefinida": "Predefined",
+      "completar": "Add predefined categories",
+      "completadas": "Predefined categories are ready.",
+      "desactivar": "Inactive",
+      "eliminar": "Delete",
+      "vacio": "There are no categories in this group.",
+      "errorCarga": "Categories could not be loaded.",
+      "errorGuardar": "The category could not be saved.",
+      "buscarCuenta": "Search account"
+    },
+    "reporte": {
+      "titulo": "Report by category",
+      "descripcion": "Income and expenses for the month, by category and branch.",
+      "mes": "Month",
+      "sede": "Branch",
+      "todas": "All branches",
+      "categoria": "Category",
+      "tipo": "Type",
+      "movimientos": "Entries",
+      "total": "Total",
+      "ingresos": "Income",
+      "egresos": "Expenses",
+      "neto": "Net",
+      "vacio": "There are no categorized entries in that month.",
+      "sinCategoria": "No category"
     },
     "anular": {
       "descripcion": "Voiding can't be undone.",
@@ -22070,6 +22201,9 @@
         "cuenta_no_existe": "the account does not exist in the chart of accounts.",
         "cuenta_no_es_pasivo": "the account is not a liability.",
         "cuenta_inactiva": "the account is inactive.",
+        "cuenta_de_titulo": "the account groups others and cannot receive the tax. Choose a detail account.",
+        "cuenta_requerida": "the ledger account is missing.",
+        "impuesto_no_encontrado": "the tax does not exist in this organization.",
         "base_minima_invalida": "The minimum base must be a number greater than or equal to zero.",
         "retencion_no_encontrada": "the withholding does not exist in this organization.",
         "otro": "check your tax permissions and try again."
@@ -30800,7 +30934,8 @@
       "automatico": "Automatic (system)"
     },
     "lineas": {
-      "centroCosto": "Cost center"
+      "centroCosto": "Cost center",
+      "tercero": "Third party"
     }
   },
   "reportes": {

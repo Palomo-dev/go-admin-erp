@@ -19,24 +19,28 @@ export function BancosPage() {
   const { branchFilter } = useBranch();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [stats, setStats] = useState<BankAccountStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [cargandoCuentas, setCargandoCuentas] = useState(true);
+  const [cargandoStats, setCargandoStats] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('cuentas');
 
   const loadData = useCallback(async () => {
-    try {
-      const [accountsData, statsData] = await Promise.all([
-        BancosService.obtenerCuentasBancarias(branchFilter),
-        BancosService.obtenerEstadisticas(branchFilter)
-      ]);
-      setAccounts(accountsData);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error cargando datos bancarios:', error);
-      toast.error('Error al cargar los datos bancarios');
-    } finally {
-      setIsLoading(false);
-    }
+    setCargandoCuentas(true);
+    setCargandoStats(true);
+    const cuentas = BancosService.obtenerCuentasBancarias(branchFilter)
+      .then((accountsData) => setAccounts(accountsData))
+      .catch((error) => {
+        console.error('Error cargando cuentas bancarias:', error);
+        toast.error('Error al cargar las cuentas bancarias');
+      })
+      .finally(() => setCargandoCuentas(false));
+    const estadisticas = BancosService.obtenerEstadisticas(branchFilter)
+      .then((statsData) => setStats(statsData))
+      .catch((error) => {
+        console.error('Error cargando estadísticas bancarias:', error);
+      })
+      .finally(() => setCargandoStats(false));
+    await Promise.all([cuentas, estadisticas]);
   }, [branchFilter]);
 
   useEffect(() => {
@@ -68,7 +72,7 @@ export function BancosPage() {
       <BranchBadge className="mb-3" />
 
       {/* Estadísticas */}
-      <BankStatsCards stats={stats} isLoading={isLoading} />
+      <BankStatsCards stats={stats} isLoading={cargandoStats} />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -99,7 +103,7 @@ export function BancosPage() {
             <CardContent>
               <BankAccountsGrid 
                 accounts={accounts} 
-                isLoading={isLoading}
+                isLoading={cargandoCuentas}
                 onToggleActive={handleToggleActive}
               />
             </CardContent>

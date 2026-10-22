@@ -63,7 +63,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
     try {
       const [accountData, transactionsData] = await Promise.all([
         BancosService.obtenerCuentaBancaria(parseInt(accountId)),
-        BancosService.obtenerTransacciones(parseInt(accountId))
+        BancosService.obtenerTransacciones(parseInt(accountId), { limit: 200 })
       ]);
 
       if (!accountData) {
@@ -293,8 +293,8 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Movimientos</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{transactions.length}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Movimientos recientes</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{transactions.length}{transactions.length >= 200 ? ' (últimos 200)' : ''}</p>
             </div>
           </div>
         </CardContent>

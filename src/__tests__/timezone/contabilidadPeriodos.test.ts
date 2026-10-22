@@ -193,8 +193,20 @@ describe('los archivos de la tanda 1 no vuelven al día UTC', () => {
 
   it('los informes convierten los extremos del filtro a instantes', () => {
     const servicio = leer('src/components/finanzas/contabilidad/ReportesContablesService.ts');
-    // Cuatro métodos, cuatro resoluciones de zona.
-    expect(servicio.match(/await resolveTimezone\(organizationId\)/g)).toHaveLength(4);
+    // Balance de comprobación, estado de resultados, balance general,
+    // mayor, libro diario y auxiliar por tercero.
+    const metodos = [
+      'getTrialBalance',
+      'getIncomeStatement',
+      'getBalanceSheet',
+      'getLedger',
+      'getLibroDiario',
+      'getAuxiliarTercero',
+    ];
+    expect(servicio.match(/await resolveTimezone\(organizationId\)/g)).toHaveLength(metodos.length);
+    for (const metodo of metodos) {
+      expect(servicio).toContain(`static async ${metodo}`);
+    }
     expect(servicio).toContain('getDateRange(startDate, endDate, timezone)');
     expect(servicio).toContain('getDayRange(asOfDate, timezone)');
     // Y ningún filtro compara ya la columna contra el día suelto.

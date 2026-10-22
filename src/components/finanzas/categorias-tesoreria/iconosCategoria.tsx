@@ -1,0 +1,75 @@
+'use client';
+
+import {
+  BadgePercent,
+  Banknote,
+  Bike,
+  Briefcase,
+  Circle,
+  CircleMinus,
+  CirclePlus,
+  Coffee,
+  Droplet,
+  FileText,
+  Fuel,
+  Home,
+  Landmark,
+  LogOut,
+  Megaphone,
+  Monitor,
+  Percent,
+  Plane,
+  Receipt,
+  RotateCcw,
+  Shield,
+  ShieldCheck,
+  ShoppingBag,
+  Truck,
+  Undo2,
+  Users,
+  Wallet,
+  Wifi,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+
+const ICONOS: Record<string, LucideIcon> = {
+  'shopping-bag': ShoppingBag,
+  wrench: Wrench,
+  home: Home,
+  percent: Percent,
+  'badge-percent': BadgePercent,
+  'rotate-ccw': RotateCcw,
+  users: Users,
+  landmark: Landmark,
+  wallet: Wallet,
+  receipt: Receipt,
+  'undo-2': Undo2,
+  'circle-plus': CirclePlus,
+  truck: Truck,
+  shield: Shield,
+  zap: Zap,
+  droplet: Droplet,
+  wifi: Wifi,
+  megaphone: Megaphone,
+  'file-text': FileText,
+  coffee: Coffee,
+  briefcase: Briefcase,
+  'shield-check': ShieldCheck,
+  banknote: Banknote,
+  monitor: Monitor,
+  fuel: Fuel,
+  plane: Plane,
+  bike: Bike,
+  'log-out': LogOut,
+  'circle-minus': CircleMinus,
+  circle: Circle,
+};
+
+export const ICONOS_CATEGORIA = Object.keys(ICONOS);
+
+export function IconoCategoria({ nombre, className }: { nombre: string; className?: string }) {
+  const Icono = ICONOS[nombre] ?? Circle;
+  return <Icono className={className} aria-hidden />;
+}

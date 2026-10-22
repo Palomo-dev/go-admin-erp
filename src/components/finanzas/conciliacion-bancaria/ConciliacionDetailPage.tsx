@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ConciliacionService } from './ConciliacionService';
 import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 import { AIMatchingPanel } from './AIMatchingPanel';
+import { ImportarExtracto } from './ImportarExtracto';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
@@ -286,6 +287,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
       <Tabs defaultValue="manual" className="w-full">
         <TabsList>
           <TabsTrigger value="manual">Conciliacion manual</TabsTrigger>
+          <TabsTrigger value="extracto">Extracto</TabsTrigger>
           <TabsTrigger value="ai">Sugerencias IA</TabsTrigger>
         </TabsList>
 
@@ -409,6 +411,17 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        <TabsContent value="extracto">
+          <ImportarExtracto
+            reconciliationId={reconciliationId}
+            bankAccountId={reconciliation.bank_account_id}
+            pendientes={pendingTransactions}
+            cerrada={reconciliation.status === 'closed'}
+            onCambio={loadData}
+            formatear={formatearCuenta}
+          />
         </TabsContent>
 
         {/* Tab: Sugerencias IA */}

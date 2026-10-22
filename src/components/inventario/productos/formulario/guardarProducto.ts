@@ -9,6 +9,7 @@ import {
   type ModoFormularioProducto,
   type ResultadoGuardarProducto,
 } from '@/lib/services/productoService';
+import { ContabilidadService } from '@/components/finanzas/contabilidad/ContabilidadService';
 import {
   construirPayload,
   rutaImagenProducto,
@@ -54,7 +55,7 @@ export interface EntradaGuardado {
 }
 
 export type ResultadoGuardado =
-  | { ok: true; resultado: ResultadoGuardarProducto; avisoCodigos: boolean }
+  | { ok: true; resultado: ResultadoGuardarProducto; avisoCodigos: boolean; avisoCuentas: boolean }
   | { ok: false; tipo: 'codigos'; titulo: string; mensaje: string }
   | { ok: false; tipo: 'subida'; detalle: string }
   | { ok: false; tipo: 'rpc'; error: ErrorProducto };
@@ -182,6 +183,25 @@ export async function guardarProducto({
       avisoCodigos = true;
     }
   }
+  let avisoCuentas = false;
+  const hayCuenta = [estado.cuenta_ingreso, estado.cuenta_costo, estado.cuenta_inventario, estado.cuenta_devolucion].some(
+    (cuenta) => (cuenta ?? '').trim(),
+  );
+  // Crear sin cuentas no llama la RPC: el alta del producto sigue siendo una sola.
+  // Editar sí, para poder dejarlas en blanco.
+  if (modo !== 'crear' || hayCuenta) {
+    try {
+      await ContabilidadService.guardarCuentasCatalogo('producto', resultado.id, {
+        ingreso: estado.cuenta_ingreso,
+        costo: estado.cuenta_costo,
+        inventario: estado.cuenta_inventario,
+        devolucion: estado.cuenta_devolucion,
+      });
+    } catch (e) {
+      console.error('No se pudieron guardar las cuentas del producto:', e);
+      avisoCuentas = true;
+    }
+  }
   avisarCambioCatalogo();
-  return { ok: true, resultado, avisoCodigos };
+  return { ok: true, resultado, avisoCodigos, avisoCuentas };
 }

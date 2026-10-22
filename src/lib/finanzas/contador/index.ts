@@ -40,6 +40,7 @@ export {
   configurarRegla,
   exigirCuadre,
 } from './asientos';
+export type { AsientoArmado, ConfigAsientos, LineaGenerada } from './asientos';
 
 export {
   CATEGORIAS_TESORERIA,
@@ -55,3 +56,4 @@ export {
   lineasSoftware,
   repartirPorcentaje,
 } from './tesoreria';
+export type { LineaTesoreria } from './tesoreria';

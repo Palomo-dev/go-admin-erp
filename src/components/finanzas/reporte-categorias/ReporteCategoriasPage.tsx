@@ -41,7 +41,7 @@ function tipoBanco(tipo: string, monto: number): TipoCategoria {
 export function ReporteCategoriasPage() {
   const t = useTranslations('tesoreria');
   const { branches } = useBranch();
-  const { timezone, today } = useFormatDate();
+  const { timezone, getToday } = useFormatDate();
   const { formatear: formatCurrency } = useMonedaOrganizacion();
   const [mes, setMes] = useState('');
   const [sede, setSede] = useState<number | null>(null);
@@ -49,8 +49,8 @@ export function ReporteCategoriasPage() {
   const [filas, setFilas] = useState<ReturnType<typeof resumirCategorias>>([]);
 
   useEffect(() => {
-    setMes((actual) => actual || today().slice(0, 7));
-  }, [today]);
+    setMes((actual) => actual || getToday().slice(0, 7));
+  }, [getToday]);
 
   const cargar = useCallback(async () => {
     const orgId = getOrganizationId();

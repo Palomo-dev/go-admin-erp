@@ -176,14 +176,14 @@ export function FormularioMovimientoTesoreria({
     let vivo = true;
     const timer = setTimeout(() => {
       setVistaCargando(true);
-      void supabase
+      void Promise.resolve(supabase
         .rpc('fn_vista_previa_asiento_tesoreria', {
           p_organization_id: orgId,
           p_tipo: tipo === 'ingreso' ? 'in' : 'out',
           p_fuente: origen,
           p_bank_account_id: origen === 'bank' && bancoId ? Number(bancoId) : null,
           p_cuenta: cuenta,
-        })
+        }))
         .then(({ data, error }) => {
           if (!vivo) return;
           if (error) {

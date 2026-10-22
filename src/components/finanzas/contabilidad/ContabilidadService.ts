@@ -113,9 +113,6 @@ export interface ChartAccount {
   nivel?: NivelCuenta | null;
   clase?: number | null;
   naturaleza?: NaturalezaCuenta | null;
-  es_movimiento?: boolean | null;
-  requiere_tercero?: boolean | null;
-  requiere_centro_costo?: boolean | null;
   /** Generada a partir de is_active. No se escribe. */
   activa?: boolean | null;
 }

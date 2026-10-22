@@ -15,12 +15,17 @@ describe('modo de la clave de Stripe', () => {
     expect(exigeClaveLive({ NODE_ENV: 'production', NEXT_PHASE: 'phase-production-build' })).toBe(false);
     expect(exigeClaveLive({ NODE_ENV: 'test' })).toBe(false);
     expect(modoDeClaveStripe('sk_live_abc')).toBe('live');
+    expect(modoDeClaveStripe('rk_live_abc')).toBe('live');
     expect(modoDeClaveStripe('sk_test_abc')).toBe('test');
+    expect(modoDeClaveStripe('rk_test_abc')).toBe('desconocido');
+    expect(modoDeClaveStripe(undefined)).toBe('ausente');
   });
 
-  it('una clave de prueba en producción no arranca', () => {
+  it('una clave que no es live se rechaza en producción; rk_live_ vale', () => {
     expect(() => validarModoClaveStripe('sk_test_abc', true)).toThrow(/no es de live/);
+    expect(() => validarModoClaveStripe('rk_test_abc', true)).toThrow(/no es de live/);
     expect(() => validarModoClaveStripe('sk_live_abc', true)).not.toThrow();
+    expect(() => validarModoClaveStripe('rk_live_abc', true)).not.toThrow();
     expect(() => validarModoClaveStripe(undefined, true)).not.toThrow();
   });
 });

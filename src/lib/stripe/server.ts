@@ -9,12 +9,10 @@
 import Stripe from 'stripe'
 import { validarModoClaveAlArrancar } from '@/lib/stripe/modoClave'
 
-// Verificar que la clave secreta esté configurada
+// Verificar que la clave secreta esté configurada.
+// Importar este módulo no valida el modo: eso tumbaría el arranque.
+// requireStripe() es el único punto que rechaza una clave que no es live.
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-// Antes de construir el cliente: producción con sk_test_ no arranca.
-// Sin clave, o durante el build, no lanza.
-if (stripeSecretKey) validarModoClaveAlArrancar();
 
 /**
  * Cliente de Stripe singleton
@@ -33,7 +31,7 @@ export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
 
 /**
  * Obtener el cliente de Stripe garantizando que esté configurado.
- * Lanza si falta STRIPE_SECRET_KEY, en vez de fallar con un null opaco.
+ * Lanza si falta STRIPE_SECRET_KEY o si, en producción, no es sk_live_ ni rk_live_.
  */
 export function requireStripe(): Stripe {
   validarModoClaveAlArrancar()

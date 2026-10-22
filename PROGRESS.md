@@ -3792,3 +3792,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué se hizo: el PR 10 de tiendas quedó sin conflicto con main (el menú móvil conserva el icono y el contador). El editor equivalente al PR 378 quedó en una rama contra main, porque master no se toca. La rejilla no reserva un cuadrado si el ítem no tiene icono. Un servicio que solo trae botón se publica, y una foto insegura deja ver el icono. Paquete y regalo no quedan marcados como bolsa. La foto de celular se ve en la portada, y en video tapa el video solo en el celular.
 - Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
 - Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.
+
+
+### Fase: Stripe, clave restringida y arranque — 2026-10-22
+- `sk_live_` y `rk_live_` cuentan como live. `instrumentation.ts` registra el error y no tumba el proceso. El rechazo queda en `requireStripe()`.
+- No hubo migración. `master` no se tocó: ya era ancestro de `main`.

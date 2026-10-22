@@ -152,10 +152,18 @@ export const TEXTOS_CONFIGURACION = {
     posicion: 'Posición',
     contenido: 'Código',
     guardarDialogo: 'Listo',
+    conteo: '{n} / {max}',
+    pantallaCompleta: 'Pantalla completa',
+    salirPantalla: 'Salir de pantalla completa',
+    avisoDocumento: 'Este fragmento trae una página completa (html, head o body). Pega solo el código que va dentro.',
+    avisoHead: 'En la cabecera hay elementos que se ven en la página. Ahí solo suele ir código que no se muestra, como un script o un estilo.',
     errores: {
       nombre: 'Escribe un nombre para reconocerlo.',
       ruta: 'Escribe una dirección que empiece con /.',
       codigo: 'Pega el código.',
+      limite: 'El código pasa de {max} caracteres.',
+      etiqueta: 'La etiqueta «{etiqueta}» no está cerrada.',
+      javascript: 'Error de JavaScript: {detalle}',
     },
   },
   chat: {

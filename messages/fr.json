@@ -31926,10 +31926,18 @@
         "posicion": "Position",
         "contenido": "Code",
         "guardarDialogo": "Terminé",
+        "conteo": "{n} / {max}",
+        "pantallaCompleta": "Plein écran",
+        "salirPantalla": "Quitter le plein écran",
+        "avisoDocumento": "Ce fragment contient une page complète (html, head ou body). Collez seulement le code qui va à l'intérieur.",
+        "avisoHead": "L'en-tête contient des éléments visibles sur la page. Cet endroit est plutôt pour du code qui ne s'affiche pas, comme un script ou un style.",
         "errores": {
           "nombre": "Saisissez un nom pour le reconnaître.",
           "ruta": "Saisissez une adresse qui commence par /.",
-          "codigo": "Collez le code."
+          "codigo": "Collez le code.",
+          "limite": "Le code dépasse {max} caractères.",
+          "etiqueta": "La balise « {etiqueta} » n'est pas fermée.",
+          "javascript": "Erreur JavaScript : {detalle}"
         }
       },
       "chat": {

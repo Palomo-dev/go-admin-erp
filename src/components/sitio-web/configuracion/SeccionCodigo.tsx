@@ -12,11 +12,12 @@ import Link from 'next/link';
 import { Pencil, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 import { AvisoTonal, ConfirmDialog, Dialogo, FormField, FormSection, RowActionsMenu, SegmentedControl, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/utils/Utils';
-import type { CodigoMedida, PosicionCodigo } from '@/lib/website/configuracionSitio';
+import { LIMITE_CODIGO_MEDIDA, type CodigoMedida, type PosicionCodigo } from '@/lib/website/configuracionSitio';
+import { diagnosticarCodigo, textoMarcaCodigo, vistaPreviaCodigo, type MarcaCodigo } from '@/lib/website/validacionCodigo';
 import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '../ui/iconosSitio';
+import { EditorCodigoDiferido } from './EditorCodigoDiferido';
 import { enlacesConfiguracion } from './enlaces';
 import { ICONOS_SECCION_CONFIGURACION } from './iconosSecciones';
 import type { TraductorConfiguracion } from './textos';
@@ -40,6 +41,13 @@ interface Borrador {
 }
 
 const VACIO: Borrador = { indice: null, nombre: '', alcance: 'todas', ruta: '', posicion: 'body', codigo: '' };
+
+function ordenMarca(marca: MarcaCodigo): number {
+  if (marca.tipo === 'etiqueta') return 0;
+  if (marca.tipo === 'javascript') return 1;
+  if (marca.tipo === 'limite') return 2;
+  return 3;
+}
 
 /** Errores del diálogo (las mismas reglas que valida el servidor). */
 export function erroresCodigo(b: Borrador): { nombre?: true; ruta?: true; codigo?: true } {
@@ -77,10 +85,12 @@ export function SeccionCodigo({ t, codigo, onCambiar, pendiente, deshabilitado }
     });
   };
 
+  const informe = borrador ? diagnosticarCodigo(borrador.codigo, borrador.posicion) : null;
+
   const confirmar = () => {
-    if (!borrador) return;
+    if (!borrador || !informe) return;
     setIntentado(true);
-    if (Object.keys(erroresCodigo(borrador)).length > 0) return;
+    if (Object.keys(erroresCodigo(borrador)).length > 0 || informe.bloquea) return;
     const item = {
       nombre: borrador.nombre.trim(),
       alcance: borrador.alcance === 'todas' ? 'todas' : borrador.ruta.trim(),
@@ -96,6 +106,9 @@ export function SeccionCodigo({ t, codigo, onCambiar, pendiente, deshabilitado }
   };
 
   const errores = borrador && intentado ? erroresCodigo(borrador) : {};
+  const marcaError = informe?.marcas.filter((m) => m.gravedad === 'error').sort((a, b) => ordenMarca(a) - ordenMarca(b))[0];
+  const errorCodigo = errores.codigo ? t('codigo.errores.codigo') : marcaError ? textoMarcaCodigo(t, marcaError) : null;
+  const sobreLimite = (borrador?.codigo.length ?? 0) > LIMITE_CODIGO_MEDIDA;
 
   return (
     <FormSection
@@ -119,29 +132,45 @@ export function SeccionCodigo({ t, codigo, onCambiar, pendiente, deshabilitado }
       ) : (
         <ul className="divide-y divide-line rounded-lg border border-line">
           {codigo.map((c, i) => (
-            <li key={c.id ?? `nuevo-${i}`} className="flex items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-fg">{c.nombre}</p>
-                <p className={cn('text-xs leading-4', c.legado ? 'text-warning-text' : 'text-fg-secondary')}>
-                  {c.legado ? t('codigo.legado') : detalle(c)}
-                </p>
+            <li key={c.id ?? `nuevo-${i}`} className="flex min-w-0 flex-col gap-2 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">{c.nombre}</p>
+                  <p className={cn('text-xs leading-4', c.legado ? 'text-warning-text' : 'text-fg-secondary')}>
+                    {c.legado ? t('codigo.legado') : detalle(c)}
+                  </p>
+                </div>
+                {!c.legado && (
+                  <>
+                    <Switch
+                      checked={c.activo}
+                      disabled={bloqueado}
+                      aria-label={t('codigo.activar', { nombre: c.nombre })}
+                      onCheckedChange={(v) => onCambiar(codigo.map((x, j) => (j === i ? { ...x, activo: v } : x)))}
+                    />
+                    <RowActionsMenu
+                      titulo={c.nombre}
+                      acciones={[
+                        { id: 'editar', etiqueta: t('codigo.editar'), icono: Pencil, onSelect: () => abrir(i), deshabilitada: bloqueado },
+                        { id: 'quitar', etiqueta: t('codigo.quitar'), icono: Trash2, onSelect: () => setQuitar(i), destructiva: true, deshabilitada: bloqueado },
+                      ]}
+                    />
+                  </>
+                )}
               </div>
+              <EditorCodigoDiferido compacto soloLectura valor={vistaPreviaCodigo(c.codigo)} posicion={c.posicion} />
               {!c.legado && (
-                <>
-                  <Switch
-                    checked={c.activo}
+                <div>
+                  <button
+                    type="button"
+                    className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
                     disabled={bloqueado}
-                    aria-label={t('codigo.activar', { nombre: c.nombre })}
-                    onCheckedChange={(v) => onCambiar(codigo.map((x, j) => (j === i ? { ...x, activo: v } : x)))}
-                  />
-                  <RowActionsMenu
-                    titulo={c.nombre}
-                    acciones={[
-                      { id: 'editar', etiqueta: t('codigo.editar'), icono: Pencil, onSelect: () => abrir(i), deshabilitada: bloqueado },
-                      { id: 'quitar', etiqueta: t('codigo.quitar'), icono: Trash2, onSelect: () => setQuitar(i), destructiva: true, deshabilitada: bloqueado },
-                    ]}
-                  />
-                </>
+                    onClick={() => abrir(i)}
+                  >
+                    <Pencil aria-hidden="true" className={CLASE_TAMANO_ICONO.base} strokeWidth={TRAZO_ICONO} />
+                    {t('codigo.editar')}
+                  </button>
+                </div>
               )}
             </li>
           ))}
@@ -199,15 +228,37 @@ export function SeccionCodigo({ t, codigo, onCambiar, pendiente, deshabilitado }
                 />
               )}
             </FormField>
-            <FormField etiqueta={t('codigo.contenido')} obligatorio error={errores.codigo ? t('codigo.errores.codigo') : null}>
-              <Textarea
-                value={borrador.codigo}
-                rows={8}
-                spellCheck={false}
-                className="font-mono text-xs"
-                onChange={(e) => setBorrador({ ...borrador, codigo: e.target.value })}
-              />
+            <FormField
+              etiqueta={t('codigo.contenido')}
+              obligatorio
+              error={errorCodigo}
+              extra={
+                <span className={cn('text-xs tabular-nums', sobreLimite ? 'text-danger-text' : 'text-fg-muted')}>
+                  {t('codigo.conteo', { n: borrador.codigo.length, max: LIMITE_CODIGO_MEDIDA })}
+                </span>
+              }
+            >
+              {(campo) => (
+                <EditorCodigoDiferido
+                  id={campo.id}
+                  descritoPor={campo['aria-describedby']}
+                  invalido={campo['aria-invalid']}
+                  valor={borrador.codigo}
+                  posicion={borrador.posicion}
+                  onChange={(codigo) => setBorrador({ ...borrador, codigo })}
+                />
+              )}
             </FormField>
+            {informe?.avisos.includes('documento') && (
+              <p role="status" className="text-xs text-warning-text">
+                {t('codigo.avisoDocumento')}
+              </p>
+            )}
+            {informe?.avisos.includes('visible') && (
+              <p role="status" className="text-xs text-warning-text">
+                {t('codigo.avisoHead')}
+              </p>
+            )}
           </div>
         )}
       </Dialogo>

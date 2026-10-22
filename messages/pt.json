@@ -31927,10 +31927,18 @@
         "posicion": "Posição",
         "contenido": "Código",
         "guardarDialogo": "Pronto",
+        "conteo": "{n} / {max}",
+        "pantallaCompleta": "Tela cheia",
+        "salirPantalla": "Sair da tela cheia",
+        "avisoDocumento": "Este trecho traz uma página completa (html, head ou body). Cole só o código que vai dentro.",
+        "avisoHead": "O cabeçalho tem elementos que aparecem na página. Ali costuma ir código que não é exibido, como um script ou um estilo.",
         "errores": {
           "nombre": "Digite um nome para reconhecê-lo.",
           "ruta": "Digite um endereço que comece com /.",
-          "codigo": "Cole o código."
+          "codigo": "Cole o código.",
+          "limite": "O código passa de {max} caracteres.",
+          "etiqueta": "A etiqueta «{etiqueta}» não está fechada.",
+          "javascript": "Erro de JavaScript: {detalle}"
         }
       },
       "chat": {

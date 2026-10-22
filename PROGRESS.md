@@ -3793,6 +3793,10 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
 - Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.
 
+### Fase: Stripe, clave restringida y arranque — 2026-10-22
+- `sk_live_` y `rk_live_` cuentan como live. `instrumentation.ts` registra el error y no tumba el proceso. El rechazo queda en `requireStripe()`.
+- No hubo migración. `master` no se tocó: ya era ancestro de `main`.
+
 ### Fase: Mínimo de unidades en min_quantity — 2026-10-22
 - Calificación QA: 9.6/10 en la ronda que todavía leía buy_quantity. Esa lectura ya no está.
 - Qué se hizo: porcentaje, monto fijo y paquete usan solo min_quantity. Si viene vacía, no hay mínimo y una unidad conserva el descuento, aunque buy_quantity sea 2. Ese 2 es el valor por defecto del formulario y, en Compra X Lleva Y, la cantidad que se compra. Al editar no se copia buy_quantity al campo. Duplicar tampoco. No hay backfill. La tienda usa el mismo cálculo. PR 409 del panel y PR 22 de tiendas, contra main. master no se tocó.

@@ -10,6 +10,6 @@ import { ProductoForm } from '@/components/inventario/productos/formulario/Produ
  */
 export default function DuplicarProductoPage() {
   const params = useParams();
-  const uuid = (params?.id as string) ?? '';
-  return <ProductoForm key={uuid} modo="duplicar" productUuid={uuid} />;
+  const ident = (params?.id as string) ?? '';
+  return <ProductoForm key={ident} modo="duplicar" productUuid={ident} />;
 }

@@ -52,6 +52,7 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   ASIENTO_DESCUADRADO: 'Los débitos y los créditos no cuadran.',
   CUENTA_INEXISTENTE: 'Una de las cuentas no existe en el plan de cuentas.',
   CUENTA_NO_ES_DE_DETALLE: 'Una de las cuentas tiene subcuentas: usa una de ellas.',
+  CUENTA_DE_TITULO: 'Una cuenta de título agrupa a otras y no recibe movimientos. Elige una cuenta de detalle.',
   LINEA_INVALIDA: 'Cada línea va al débito o al crédito, con un importe mayor que cero.',
   LINEAS_INSUFICIENTES: 'Un asiento necesita al menos dos líneas.',
   SUCURSAL_INVALIDA: 'Selecciona una sucursal de la organización.',
@@ -122,6 +123,45 @@ function camposDeCuenta(cuenta: Partial<ChartAccount>): Record<string, unknown> 
     if (cuenta[campo] !== undefined) salida[campo] = cuenta[campo];
   }
   return salida;
+}
+
+interface CrudoAlerta {
+  id?: number | string;
+  fecha?: string | null;
+  origen?: string | null;
+  origen_id?: string | number | null;
+  debito?: string | null;
+  credito?: string | null;
+  importe?: number | string | null;
+  motivo?: string | null;
+  detalle?: string | null;
+  memo?: string | null;
+  publicado?: boolean | null;
+}
+
+export interface FalloContable {
+  id: number;
+  fecha: string | null;
+  origen: string | null;
+  origenId: string | null;
+  debito: string | null;
+  credito: string | null;
+  importe: number | null;
+  motivo: string | null;
+  detalle: string | null;
+}
+
+export interface AsientoSinLineas {
+  id: number;
+  fecha: string | null;
+  memo: string | null;
+  origen: string | null;
+  publicado: boolean;
+}
+
+export interface AlertasContablesDatos {
+  fallos: FalloContable[];
+  sinLineas: AsientoSinLineas[];
 }
 
 export interface ContabilidadResumen {
@@ -525,5 +565,38 @@ export class ContabilidadService {
         credit: l.credit
       }))
     });
+  }
+
+  /**
+   * Fallos de asiento aún abiertos y asientos publicados o en borrador
+   * que no tienen líneas. La pertenencia la vuelve a exigir la base.
+   */
+  static async obtenerAlertas(): Promise<AlertasContablesDatos> {
+    const { data, error } = await supabase.rpc('fn_alertas_contables', {
+      p_organization_id: this.getOrganizationId(),
+    });
+    if (error) throw error;
+    const crudo = (data ?? {}) as { fallos?: CrudoAlerta[]; asientos_sin_lineas?: CrudoAlerta[] };
+    const filas = (lista: CrudoAlerta[] | undefined) => (Array.isArray(lista) ? lista : []);
+    return {
+      fallos: filas(crudo.fallos).map((fila) => ({
+        id: Number(fila.id),
+        fecha: fila.fecha ?? null,
+        origen: fila.origen ?? null,
+        origenId: fila.origen_id != null ? String(fila.origen_id) : null,
+        debito: fila.debito ?? null,
+        credito: fila.credito ?? null,
+        importe: fila.importe == null ? null : Number(fila.importe),
+        motivo: fila.motivo ?? null,
+        detalle: fila.detalle ?? null,
+      })),
+      sinLineas: filas(crudo.asientos_sin_lineas).map((fila) => ({
+        id: Number(fila.id),
+        fecha: fila.fecha ?? null,
+        memo: fila.memo ?? null,
+        origen: fila.origen ?? null,
+        publicado: fila.publicado === true,
+      })),
+    };
   }
 }

@@ -18,6 +18,8 @@ export interface BankAccount {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** PUC de detalle clase 11 (1110, 1120…). Null solo en cuentas creadas antes de exigirlo. */
+  account_code?: string | null;
   // Calculados
   pending_reconciliation?: number;
   last_transaction_date?: string;
@@ -157,6 +159,17 @@ export class BancosService {
     }
   }
 
+  static async obtenerPlanCuentas(): Promise<{ account_code: string; name: string; type: string; parent_code: string | null; is_active: boolean | null }[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('chart_of_accounts')
+      .select('account_code, name, type, parent_code, is_active')
+      .eq('organization_id', organizationId)
+      .order('account_code');
+    if (error) throw error;
+    return data || [];
+  }
+
   static async crearCuentaBancaria(cuenta: Partial<BankAccount>): Promise<BankAccount> {
     const organizationId = this.getOrganizationId();
     const branchId = this.getBranchId();
@@ -177,6 +190,7 @@ export class BancosService {
           balance: cuenta.initial_balance || 0,
           initial_balance: cuenta.initial_balance || 0,
           is_active: true,
+          account_code: cuenta.account_code,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

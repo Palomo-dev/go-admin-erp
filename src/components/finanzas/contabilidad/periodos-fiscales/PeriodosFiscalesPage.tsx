@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import {CalendarClock, Plus, Unlock, Ban, CheckCircle2} from 'lucide-react';
+import {CalendarClock, Plus, Unlock, CheckCircle2} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { PeriodosFiscalesService, FiscalPeriod } from './PeriodosFiscalesService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 const MESES = [
@@ -24,9 +26,9 @@ const MESES = [
 ];
 
 export function PeriodosFiscalesPage() {
+  const { formatDate } = useFormatDate();
   const [periodos, setPeriodos] = useState<FiscalPeriod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
   const [newYear, setNewYear] = useState(new Date().getFullYear());
   const [newPeriodType, setNewPeriodType] = useState<'monthly' | 'yearly'>('monthly');
@@ -169,11 +171,11 @@ export function PeriodosFiscalesPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      <p>Inicio: {new Date(periodo.start_date).toLocaleDateString('es')}</p>
-                      <p>Fin: {new Date(periodo.end_date).toLocaleDateString('es')}</p>
+                      <p>Inicio: {formatPlainDate(periodo.start_date)}</p>
+                      <p>Fin: {formatPlainDate(periodo.end_date)}</p>
                       <p>Tipo: {periodo.period_type === 'yearly' ? 'Anual' : periodo.period_type === 'quarterly' ? 'Trimestral' : 'Mensual'}</p>
                       {periodo.closed_at && (
-                        <p>Cerrado: {new Date(periodo.closed_at).toLocaleDateString('es')}</p>
+                        <p>Cerrado: {formatDate(periodo.closed_at)}</p>
                       )}
                     </div>
                     {periodo.notes && (

@@ -26,6 +26,60 @@ import { CampoChecklist, CampoChips } from './CamposListas';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
+/** Miniatura del estilo de categorías. No es la tienda: solo para elegir. */
+function MiniaturaEstilo({ id }: { id: string }) {
+  if (id === 'circle') {
+    return (
+      <span className="flex h-10 items-end gap-1">
+        <span className="h-6 w-6 rounded-full bg-brand/30" />
+        <span className="h-6 w-6 rounded-full bg-brand/20" />
+      </span>
+    );
+  }
+  if (id === 'card_bottom') {
+    return (
+      <span className="flex h-10 w-full flex-col overflow-hidden rounded bg-white shadow-sm">
+        <span className="h-6 bg-brand/20" />
+        <span className="m-1 h-1 w-6 rounded bg-gray-300" />
+      </span>
+    );
+  }
+  if (id === 'pill') {
+    return (
+      <span className="flex h-10 items-center">
+        <span className="flex items-center gap-1 rounded-full border px-1 py-0.5">
+          <span className="h-4 w-4 rounded-full bg-brand/30" />
+          <span className="h-1 w-6 rounded bg-gray-300" />
+        </span>
+      </span>
+    );
+  }
+  if (id === 'bento') {
+    return (
+      <span className="grid h-10 w-full grid-cols-4 gap-0.5">
+        <span className="col-span-2 row-span-2 rounded-sm bg-brand/40" />
+        <span className="rounded-sm bg-brand/20" />
+        <span className="rounded-sm bg-brand/20" />
+        <span className="rounded-sm bg-brand/15" />
+        <span className="rounded-sm bg-brand/15" />
+      </span>
+    );
+  }
+  if (id === 'minimal_icon') {
+    return (
+      <span className="flex h-10 w-full flex-col items-center justify-center rounded bg-brand/10">
+        <span className="h-4 w-4 rounded-sm bg-brand/40" />
+        <span className="mt-1 h-1 w-6 rounded bg-gray-400" />
+      </span>
+    );
+  }
+  return (
+    <span className="relative h-10 w-full overflow-hidden rounded bg-gray-800">
+      <span className="absolute inset-x-1 bottom-1 h-1 rounded bg-white/80" />
+    </span>
+  );
+}
+
 export interface CampoSeccionProps {
   campo: ContentFieldDef;
   valor: unknown;
@@ -114,6 +168,34 @@ export function CampoSeccion({
         <SettingRow titulo={campo.label} descripcion={ayuda} htmlFor={id}>
           <Switch id={id} checked={activo} disabled={deshabilitado} onCheckedChange={(v) => onCambiar(v)} />
         </SettingRow>
+      );
+    }
+    case 'visual': {
+      const actual = typeof valor === 'string' && valor ? valor : 'overlay';
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-[13px] font-medium leading-[18px] text-fg">{campo.label}</p>
+          {ayuda ? <p className="text-xs leading-4 text-fg-secondary">{ayuda}</p> : null}
+          <div role="radiogroup" aria-label={campo.label} className="grid grid-cols-3 gap-2">
+            {(campo.options ?? []).map((o) => {
+              const activo = actual === o.value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={activo}
+                  disabled={deshabilitado}
+                  onClick={() => onCambiar(o.value === 'overlay' ? null : o.value)}
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-[11px] ${activo ? 'border-brand bg-brand/5' : 'border-border bg-surface'}`}
+                >
+                  <MiniaturaEstilo id={o.value} />
+                  <span>{o.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       );
     }
     case 'select': {

@@ -847,7 +847,7 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
     label: 'Fondo de la imagen',
     type: 'color',
     group: 'style',
-    helpText: 'Se ve en el espacio que deja «Contener». Vacío: sin fondo extra.',
+    helpText: 'Vacío: la tarjeta de hoy no lo usa. En los estilos nuevos, un fondo suave del color de la marca. Con «Contener», se ve en el espacio que deja la imagen.',
   },
   {
     key: 'text_align',

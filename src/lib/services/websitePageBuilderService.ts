@@ -177,7 +177,9 @@ export interface ContentFieldDef {
     /** Lista corta de valores en chips (número con `suffix` o texto, según `itemType`). */
     | 'chips'
     /** Aviso informativo del inspector: no guarda nada (la clave empieza por `_`). */
-    | 'notice';
+    | 'notice'
+    /** Opciones con miniatura (no escribe hasta que se elige una). */
+    | 'visual';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -1129,6 +1131,44 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Explora nuestros productos por categoría' },
+      {
+        key: 'category_style',
+        label: 'Estilo de las categorías',
+        type: 'visual',
+        group: 'style',
+        helpText: 'Vacío: foto con el nombre encima, como hoy.',
+        options: [
+          { value: 'overlay', label: 'Superpuesto' },
+          { value: 'circle', label: 'Círculo' },
+          { value: 'card_bottom', label: 'Tarjeta' },
+          { value: 'pill', label: 'Pastilla' },
+          { value: 'bento', label: 'Mosaico' },
+          { value: 'minimal_icon', label: 'Ícono suave' },
+        ],
+      },
+      {
+        key: 'show_view_all',
+        label: 'Mostrar botón «Ver todo»',
+        type: 'boolean',
+        group: 'content',
+        helpText: 'Vacío: no se muestra. Solo en los estilos nuevos.',
+      },
+      {
+        key: 'view_all_label',
+        label: 'Texto de «Ver todo»',
+        type: 'text',
+        group: 'content',
+        placeholder: 'Ver todo',
+        showIf: { field: 'show_view_all', equals: true },
+      },
+      {
+        key: 'view_all_url',
+        label: 'Enlace de «Ver todo»',
+        type: 'url',
+        group: 'content',
+        placeholder: '/categorias',
+        showIf: { field: 'show_view_all', equals: true },
+      },
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6' },
       { key: 'shape', label: 'Forma', type: 'select', group: 'style', defaultValue: 'square', options: [
         { value: 'square', label: 'Cuadrado' },

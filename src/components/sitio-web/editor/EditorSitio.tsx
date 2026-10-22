@@ -51,6 +51,8 @@ import { BarraEditor, RUTA_PAGINAS_EDITOR } from './BarraEditor';
 import { ListaSecciones } from './ListaSecciones';
 import { LienzoEditor } from './LienzoEditor';
 import { InspectorSeccion, type PestanaSeccion } from './inspector/InspectorSeccion';
+import { esSeccionTarjetaProducto, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
+import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { InspectorEncabezado } from './inspector/InspectorEncabezado';
 import { InspectorPie } from './inspector/InspectorPie';
 import type { TemaEstiloSeccion } from './inspector/InspectorEstilo';
@@ -780,6 +782,13 @@ function Editor() {
               onEliminar={() => setEliminar(seccion.id)}
               onEditarCarta={seccion.section_type === 'menu_full' ? () => setCarta({ seccionId: seccion.id }) : undefined}
               tema={tema}
+              estiloTarjetaSitio={valorCampo(ed.documento?.tema.tarjetaProducto)}
+              onAplicarTarjeta={(estilo: EstiloTarjetaProducto) => {
+                for (const s of ed.currentPage?.sections ?? []) {
+                  if (!esSeccionTarjetaProducto(s.section_type)) continue;
+                  ed.cambiarContenido(s.id, { ...((s.content ?? {}) as Record<string, unknown>), product_card_style: estilo });
+                }
+              }}
               paleta={paleta}
               catalogoFuentes={FONTS}
               categorias={categorias}

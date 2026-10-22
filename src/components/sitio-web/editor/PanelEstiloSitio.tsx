@@ -36,6 +36,9 @@ import {
 } from '@/lib/website/v2/tokensEstilo';
 import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
+import { vaciar, valorPropio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
+import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
+import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
 
@@ -174,6 +177,25 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
         {!estilo ? (
           <p className="px-1 text-[13px] leading-[18px] text-fg-secondary">{t('estiloSitio.sinDatos')}</p>
         ) : null}
+        {tarjetaProductoTemaDisponible() && p.enV2 && p.documento && (
+          <div className="mt-4">
+            <InspectorTarjetaProducto
+              guardado={valorCampo(p.documento.tema.tarjetaProducto)}
+              onCambiar={(estiloTarjeta) =>
+                p.onCambiarDocumento((d) => ({
+                  ...d,
+                  tema: { ...d.tema, tarjetaProducto: valorPropio(estiloTarjeta as TarjetaProductoDocumento) },
+                }))
+              }
+              onQuitar={() =>
+                p.onCambiarDocumento((d) => ({
+                  ...d,
+                  tema: { ...d.tema, tarjetaProducto: vaciar() },
+                }))
+              }
+            />
+          </div>
+        )}
       </div>
     </aside>
   );

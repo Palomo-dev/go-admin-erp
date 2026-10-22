@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Settings, Plus, Loader2, Copy, Trash2, Edit, Power, PowerOff, Play, ArrowLeftRight } from 'lucide-react';
+import Link from 'next/link';
+import { Settings, Plus, Loader2, Copy, Trash2, Edit, Power, PowerOff, ArrowLeftRight } from 'lucide-react';
 import {
   PageHeaderSkeleton,
   StatsSkeleton,
@@ -11,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,10 +20,19 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ReglasContablesService, AccountingRule, ChartAccount, SOURCE_TYPES, EVENT_TYPES } from './ReglasContablesService';
+import { ConfiguracionContableService } from '@/components/finanzas/configuracion-contable/ConfiguracionContableService';
+import {
+  etiquetaEvento,
+  etiquetaOrigen,
+  resolverLado,
+  validarCuentasDeRegla,
+  type FilaConfiguracion,
+} from '@/lib/finanzas/configuracionContable';
 
 export function ReglasContablesPage() {
   const [reglas, setReglas] = useState<AccountingRule[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
+  const [configuracion, setConfiguracion] = useState<FilaConfiguracion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingRule, setEditingRule] = useState<AccountingRule | null>(null);
@@ -47,12 +57,14 @@ export function ReglasContablesPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [reglasData, cuentasData] = await Promise.all([
+      const [reglasData, cuentasData, configData] = await Promise.all([
         ReglasContablesService.obtenerReglas(),
-        ReglasContablesService.obtenerCuentasContables()
+        ReglasContablesService.obtenerCuentasContables(),
+        ConfiguracionContableService.listar().catch(() => [] as FilaConfiguracion[]),
       ]);
       setReglas(reglasData);
       setCuentas(cuentasData);
+      setConfiguracion(configData);
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast.error('Error al cargar los datos');
@@ -103,6 +115,16 @@ export function ReglasContablesPage() {
       return;
     }
 
+    const errorCuentas = validarCuentasDeRegla({
+      debito: formData.debit_account_code,
+      credito: formData.credit_account_code,
+      impuesto: formData.tax_account_code,
+    }, cuentas);
+    if (errorCuentas) {
+      toast.error(errorCuentas);
+      return;
+    }
+
     try {
       setIsProcessing(true);
       if (editingRule) {
@@ -128,7 +150,7 @@ export function ReglasContablesPage() {
       await ReglasContablesService.duplicarRegla(rule.id);
       toast.success('Regla duplicada exitosamente');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Error al duplicar la regla');
     }
   };
@@ -138,7 +160,7 @@ export function ReglasContablesPage() {
       await ReglasContablesService.toggleActivo(rule.id, !rule.is_active);
       toast.success(rule.is_active ? 'Regla desactivada' : 'Regla activada');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Error al cambiar estado');
     }
   };
@@ -149,15 +171,26 @@ export function ReglasContablesPage() {
       await ReglasContablesService.eliminarRegla(id);
       toast.success('Regla eliminada exitosamente');
       loadData();
-    } catch (error) {
+    } catch {
       toast.error('Error al eliminar la regla');
     }
   };
 
-  const getSourceLabel = (value: string) => SOURCE_TYPES.find(s => s.value === value)?.label || value;
-  const getEventLabel = (value: string) => EVENT_TYPES.find(e => e.value === value)?.label || value;
-  const getAccountName = (code: string) => cuentas.find(c => c.account_code === code)?.name || code;
-
+  const getSourceLabel = (value: string) => etiquetaOrigen(value);
+  const getEventLabel = (value: string) => etiquetaEvento(value);
+  const notaCuenta = (codigo: string, lado: 'debito' | 'credito', source: string) => {
+    const resuelto = resolverLado({
+      source,
+      lado,
+      codigo,
+      branchId: null,
+      filas: configuracion,
+      plan: cuentas,
+    });
+    if (resuelto.fallo) return resuelto.fallo;
+    if (resuelto.cuenta && resuelto.cuenta !== codigo) return `Se contabiliza en ${resuelto.cuenta}`;
+    return null;
+  };
   const filteredReglas = filterSource 
     ? reglas.filter(r => r.source_type === filterSource)
     : reglas;
@@ -185,7 +218,10 @@ export function ReglasContablesPage() {
               Reglas Contables
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              Configuración de asientos automáticos
+              Configuración de asientos automáticos. Las cuentas por defecto se eligen en{' '}
+              <Link href="/app/finanzas/configuracion-contable" className="text-blue-600 dark:text-blue-400 underline">
+                Configuración contable
+              </Link>.
             </p>
           </div>
         </div>
@@ -283,9 +319,19 @@ export function ReglasContablesPage() {
                     </TableCell>
                     <TableCell className="text-gray-700 dark:text-gray-300">
                       <span className="text-xs">{regla.debit_account_code}</span>
+                      {notaCuenta(regla.debit_account_code, 'debito', regla.source_type) && (
+                        <span className="block text-xs text-blue-600 dark:text-blue-400">
+                          {notaCuenta(regla.debit_account_code, 'debito', regla.source_type)}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-gray-700 dark:text-gray-300">
                       <span className="text-xs">{regla.credit_account_code}</span>
+                      {notaCuenta(regla.credit_account_code, 'credito', regla.source_type) && (
+                        <span className="block text-xs text-blue-600 dark:text-blue-400">
+                          {notaCuenta(regla.credit_account_code, 'credito', regla.source_type)}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {regla.is_active 

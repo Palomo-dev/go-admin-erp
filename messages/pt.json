@@ -33173,7 +33173,14 @@
           "reserva": "Barra de reserva com datas",
           "reservaAyuda": "Hotel: entrada, saída e hóspedes abaixo do cabeçalho",
           "moneda": "Moeda",
-          "monedaAyuda": "Só se o site vende em mais de uma"
+          "monedaAyuda": "Só se o site vende em mais de uma",
+          "contenedorIconos": "Recipiente dos ícones",
+          "contenedorAyuda": "Forma, fundo e sombra do carrinho, da conta, da moeda, dos favoritos e da busca. Sem escolher, fica o ícone de hoje.",
+          "presetCirculo": "Círculo de destaque",
+          "presetCuadrado": "Quadrado suave",
+          "presetBorde": "Borda fina",
+          "presetSombra": "Sombra flutuante",
+          "presetSolo": "Só o ícone"
         },
         "diseno": {
           "titulo": "Layout do cabeçalho",

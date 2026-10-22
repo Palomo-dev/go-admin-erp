@@ -1,6 +1,8 @@
 /**
  * Constructor del encabezado. Sin `header_builder` y con `search_style` en
- * icon | bar | hidden (o ausente), devuelve null: el header y el buscador de hoy.
+ * icon | bar | hidden (o ausente), devuelve null: el header, el círculo de
+ * acento y el buscador de hoy. El contenedor de íconos y los menús extra
+ * solo aparecen cuando el documento los trae.
  * Puro. El ERP guarda una copia idéntica.
  */
 
@@ -27,10 +29,77 @@ export interface ElementoZona {
   type: TipoElemento
   label?: string
   buttonId?: string
+  menuId?: string
   desktop: boolean
   tablet: boolean
   mobile: boolean
 }
+
+export const FORMAS_CONTENEDOR = ['none', 'circle', 'square', 'rounded', 'semi', 'squircle'] as const
+export const OBJETIVOS_ICONO = ['cart', 'account', 'currency', 'favorites', 'search'] as const
+
+export interface ContenedorIconos {
+  shape: (typeof FORMAS_CONTENEDOR)[number]
+  radius?: number
+  box?: number
+  icon?: number
+  padding?: number
+  background?: string
+  gradient1?: string
+  gradient2?: string
+  angle?: number
+  opacity?: number
+  borderWidth?: number
+  borderColor?: string
+  borderStyle?: 'solid' | 'dotted'
+  shadow?: 'none' | 'sm' | 'md' | 'lg'
+  shadowColor?: string
+  hoverColor?: string
+  hoverBackground?: string
+  hoverScale?: number
+  hoverShadow?: 'none' | 'sm' | 'md' | 'lg'
+  activeColor?: string
+  iconColor?: string
+  weight?: 'contorno' | 'relleno' | 'duotono'
+  stroke?: number
+  /** `all` pinta igual cada ícono. `each` deja que `targets` lo pise. */
+  scope: 'all' | 'each'
+  targets?: Partial<Record<(typeof OBJETIVOS_ICONO)[number], ContenedorIconos>>
+  badgeShape?: 'circle' | 'pill'
+  badgeColor?: string
+  badgePosition?: 'top-right' | 'top-left'
+}
+
+export interface ItemMenuHeader {
+  label: string
+  href: string
+  kind: 'link' | 'dropdown' | 'mega'
+  icon?: string
+  badge?: string
+}
+
+export interface MenuConstruido {
+  id: string
+  name: string
+  zone: ZonaHeader
+  type: 'links' | 'mega' | 'mixed'
+  mobile: boolean
+  mobileOrder: number
+  size?: number
+  weight?: 'normal' | 'medium' | 'semibold' | 'bold'
+  color?: string
+  hover?: string
+  active?: string
+  indicator?: 'underline' | 'pill' | 'background' | 'none'
+  gap?: number
+  uppercase?: boolean
+  /** `sans` hereda la del sitio. `serif` y `mono` cambian solo este menú. */
+  font?: 'sans' | 'serif' | 'mono'
+  items: ItemMenuHeader[]
+}
+
+/** El botón del menú móvil cuando el encabezado se arma solo con menús. */
+export const MENU_MOVIL = '__movil__'
 
 export interface IconoElemento {
   icon?: string
@@ -110,6 +179,8 @@ export interface ConstructorEncabezado {
   botones: BotonHeader[] | null
   mega: MegaItem[] | null
   buscador: CromoBuscador | null
+  contenedor: ContenedorIconos | null
+  menus: MenuConstruido[] | null
 }
 
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -127,6 +198,14 @@ function texto(valor: unknown, max: number): string | undefined {
 }
 function color(valor: unknown): string | undefined {
   return typeof valor === 'string' && HEX.test(valor.trim()) ? valor.trim() : undefined
+}
+const TOKENS_COLOR = ['primary', 'accent', 'secondary', 'transparent'] as const
+/** Hex o un token del tema. Cualquier otro texto se descarta. */
+function colorOToken(valor: unknown): string | undefined {
+  const t = texto(valor, 20)
+  if (!t) return undefined
+  if ((TOKENS_COLOR as readonly string[]).includes(t)) return t
+  return color(t)
 }
 function entero(valor: unknown, min: number, max: number): number | undefined {
   const n = typeof valor === 'number' ? valor : typeof valor === 'string' && valor.trim() ? Number(valor) : NaN
@@ -148,6 +227,7 @@ function leerElemento(valor: unknown, i: number): ElementoZona | null {
     type,
     label: texto(o.label, 80),
     buttonId: texto(o.button_id, 40),
+    menuId: texto(o.menu_id, 40),
     desktop: bandera(o.desktop, true),
     tablet: bandera(o.tablet, true),
     mobile: bandera(o.mobile, true),
@@ -248,6 +328,187 @@ function leerMega(valor: unknown): MegaItem | null {
   }
 }
 
+function leerContenedor(valor: unknown, profundidad = 0): ContenedorIconos | null {
+  const o = objeto(valor)
+  if (!o) return null
+  const shape = enLista(FORMAS_CONTENEDOR, o.shape)
+  if (!shape) return null
+  const targets: ContenedorIconos['targets'] = {}
+  if (profundidad === 0 && o.scope === 'each') {
+    const crudos = objeto(o.targets)
+    if (crudos) {
+      for (const clave of OBJETIVOS_ICONO) {
+        const hijo = leerContenedor(crudos[clave], 1)
+        if (hijo) targets[clave] = hijo
+      }
+    }
+  }
+  return {
+    shape,
+    radius: entero(o.radius, 4, 16),
+    box: entero(o.box, 24, 64),
+    icon: entero(o.icon, 12, 40),
+    padding: entero(o.padding, 0, 16),
+    background: colorOToken(o.background),
+    gradient1: color(o.gradient_1),
+    gradient2: color(o.gradient_2),
+    angle: entero(o.angle, 0, 360),
+    opacity: entero(o.opacity, 0, 100),
+    borderWidth: entero(o.border_width, 0, 4),
+    borderColor: colorOToken(o.border_color),
+    borderStyle: o.border_style === 'dotted' ? 'dotted' : o.border_style === 'solid' ? 'solid' : undefined,
+    shadow: enLista(['none', 'sm', 'md', 'lg'] as const, o.shadow),
+    shadowColor: colorOToken(o.shadow_color),
+    hoverColor: colorOToken(o.hover_color),
+    hoverBackground: colorOToken(o.hover_background),
+    hoverScale: entero(o.hover_scale, 90, 120),
+    hoverShadow: enLista(['none', 'sm', 'md', 'lg'] as const, o.hover_shadow),
+    activeColor: colorOToken(o.active_color),
+    iconColor: colorOToken(o.icon_color),
+    weight: enLista(['contorno', 'relleno', 'duotono'] as const, o.weight),
+    stroke: entero(o.stroke, 1, 4),
+    scope: o.scope === 'each' ? 'each' : 'all',
+    targets: Object.keys(targets).length ? targets : undefined,
+    badgeShape: o.badge_shape === 'pill' ? 'pill' : o.badge_shape === 'circle' ? 'circle' : undefined,
+    badgeColor: color(o.badge_color),
+    badgePosition: o.badge_position === 'top-left' ? 'top-left' : o.badge_position === 'top-right' ? 'top-right' : undefined,
+  }
+}
+
+/** El contenedor de un ícono: el suyo si el alcance es «cada uno», si no el común. */
+export function contenedorDe(base: ContenedorIconos, clave: (typeof OBJETIVOS_ICONO)[number]): ContenedorIconos {
+  const hijo = base.scope === 'each' ? base.targets?.[clave] : undefined
+  if (!hijo) return base
+  const mezclado: ContenedorIconos = { ...base, scope: 'all', targets: undefined }
+  const destino = mezclado as unknown as Record<string, unknown>
+  for (const [k, v] of Object.entries(hijo)) {
+    if (v !== undefined && k !== 'targets' && k !== 'scope') destino[k] = v
+  }
+  return mezclado
+}
+
+/** Radio CSS de la forma. `none` no pinta caja. */
+export function radioForma(shape: ContenedorIconos['shape'], radius?: number): string {
+  if (shape === 'circle') return '9999px'
+  if (shape === 'square') return '0px'
+  if (shape === 'rounded') return `${radius ?? 8}px`
+  if (shape === 'semi') return '8px'
+  if (shape === 'squircle') return '30%'
+  return '0px'
+}
+
+/** Token del tema o el hex tal cual. */
+export function colorDeToken(
+  token: string | undefined,
+  colores: { primary: string; accent: string; secondary: string },
+): string | undefined {
+  if (!token) return undefined
+  if (token === 'transparent') return 'transparent'
+  if (token === 'primary') return colores.primary
+  if (token === 'accent') return colores.accent
+  if (token === 'secondary') return colores.secondary
+  return token
+}
+
+export function sombraCaja(nivel: ContenedorIconos['shadow'], color?: string): string {
+  if (!nivel || nivel === 'none') return 'none'
+  const base = nivel === 'sm' ? '0 1px 2px' : nivel === 'md' ? '0 4px 10px' : '0 12px 28px'
+  return `${base} ${color || 'rgba(15,23,42,.22)'}`
+}
+
+/**
+ * Zonas que pinta el header. Sin menús, las de hoy.
+ * Con menús y sin zonas, arma logo, carrito, cuenta y el botón del menú móvil
+ * para que el encabezado no quede solo en enlaces.
+ */
+export function zonasConMenus(c: Pick<ConstructorEncabezado, 'zonas' | 'menus'>): ConstructorEncabezado['zonas'] {
+  const menus = c.menus ?? []
+  if (!menus.length) return c.zonas
+  const zonas: Partial<Record<ZonaHeader, ElementoZona[]>> = {}
+  if (c.zonas) {
+    for (const zona of ZONAS) {
+      const items = c.zonas[zona]
+      if (items?.length) zonas[zona] = items.map((el) => ({ ...el }))
+    }
+  } else {
+    zonas.header_left = [{ id: 'logo', type: 'logo', desktop: true, tablet: true, mobile: true }]
+    zonas.header_right = [
+      { id: 'carrito', type: 'cart', desktop: true, tablet: true, mobile: true },
+      { id: 'cuenta', type: 'account', desktop: true, tablet: true, mobile: true },
+    ]
+    zonas.mobile_header = [
+      { id: 'logo-movil', type: 'logo', desktop: true, tablet: true, mobile: true },
+      { id: 'menu-movil', type: 'menu', menuId: MENU_MOVIL, desktop: false, tablet: true, mobile: true },
+      { id: 'carrito-movil', type: 'cart', desktop: true, tablet: true, mobile: true },
+    ]
+  }
+  for (const menu of menus) {
+    const lista = zonas[menu.zone] ? [...zonas[menu.zone]!] : []
+    if (lista.some((el) => el.type === 'menu' && el.menuId === menu.id)) continue
+    const enCelular = menu.zone === 'mobile_header' || menu.zone === 'mobile_bottom'
+    lista.push({
+      id: `menu-${menu.id}`,
+      type: 'menu',
+      menuId: menu.id,
+      desktop: !enCelular,
+      tablet: true,
+      mobile: enCelular,
+    })
+    zonas[menu.zone] = lista
+  }
+  return zonas
+}
+
+export const PRESETS_CONTENEDOR = {
+  circulo_acento: null,
+  cuadrado_suave: { shape: 'rounded', radius: 10, box: 40, icon: 18, padding: 8, background: 'accent', shadow: 'sm', weight: 'contorno', stroke: 2 },
+  borde_fino: { shape: 'circle', box: 40, icon: 18, padding: 8, background: 'transparent', border_width: 1, border_style: 'solid', weight: 'contorno', stroke: 2 },
+  sombra_flotante: { shape: 'circle', box: 44, icon: 18, padding: 10, background: 'primary', shadow: 'lg', weight: 'contorno', stroke: 2 },
+  solo_icono: { shape: 'none', icon: 22, weight: 'contorno', stroke: 2 },
+} as const
+
+function leerItemMenu(valor: unknown): ItemMenuHeader | null {
+  const o = objeto(valor)
+  if (!o) return null
+  const label = texto(o.label, 40)
+  const href = texto(o.href, 300)
+  if (!label || !href) return null
+  return {
+    label,
+    href,
+    kind: enLista(['link', 'dropdown', 'mega'] as const, o.kind) ?? 'link',
+    icon: texto(o.icon, 40),
+    badge: texto(o.badge, 16),
+  }
+}
+
+function leerMenu(valor: unknown, i: number): MenuConstruido | null {
+  const o = objeto(valor)
+  if (!o) return null
+  const name = texto(o.name, 40)
+  const zone = enLista(ZONAS, o.zone)
+  if (!name || !zone) return null
+  const items = (Array.isArray(o.items) ? o.items : []).map(leerItemMenu).filter((x): x is ItemMenuHeader => !!x).slice(0, 12)
+  return {
+    id: texto(o.id, 40) ?? `menu-${i}`,
+    name,
+    zone,
+    type: enLista(['links', 'mega', 'mixed'] as const, o.type) ?? 'links',
+    mobile: o.mobile !== false,
+    mobileOrder: entero(o.mobile_order, 0, 20) ?? i,
+    size: entero(o.size, 10, 24),
+    weight: enLista(['normal', 'medium', 'semibold', 'bold'] as const, o.weight),
+    color: color(o.color),
+    hover: color(o.hover),
+    active: color(o.active),
+    indicator: enLista(['underline', 'pill', 'background', 'none'] as const, o.indicator),
+    gap: entero(o.gap, 0, 40),
+    uppercase: o.uppercase === true,
+    font: enLista(['sans', 'serif', 'mono'] as const, o.font),
+    items,
+  }
+}
+
 function leerBuscador(crudo: unknown, estiloSitio: unknown): CromoBuscador | null {
   const o = objeto(crudo) ?? {}
   const tipoNuevo = enLista(BUSCADORES_NUEVOS, o.type) ?? enLista(BUSCADORES_NUEVOS, estiloSitio)
@@ -292,13 +553,19 @@ export function leerConstructor(settings: unknown): ConstructorEncabezado | null
   const mega = Array.isArray(builder?.mega)
     ? builder.mega.map(leerMega).filter((x): x is MegaItem => !!x).slice(0, 12)
     : []
-  if (!zonas && !buscador && !Object.keys(iconos).length && !botones.length && !mega.length) return null
+  const contenedor = builder ? leerContenedor(builder.icon_container) : null
+  const menus = Array.isArray(builder?.menus)
+    ? builder.menus.map(leerMenu).filter((x): x is MenuConstruido => !!x).slice(0, 6)
+    : []
+  if (!zonas && !buscador && !Object.keys(iconos).length && !botones.length && !mega.length && !contenedor && !menus.length) return null
   return {
     zonas,
     iconos: Object.keys(iconos).length ? iconos : null,
     botones: botones.length ? botones : null,
     mega: mega.length ? mega : null,
     buscador,
+    contenedor,
+    menus: menus.length ? menus : null,
   }
 }
 

@@ -8,6 +8,7 @@ import { serializarDeterminista, type DocumentoSitio, type PaginaSitio } from '@
 import { menuEncabezado, paginasEnMenu } from './operacionesMenu';
 import { saludSeo, type SaludSeo } from './saludSeo';
 import { claveTipoPagina, esInicio, esPaginaLegal, esPlantillaTienda, type ClaveTipoPagina } from './tipoPagina';
+import { caracteresLegales } from '@/lib/website/legales/plantillasLegales';
 
 /** Estado de publicación de UNA página (mismos tipos que `EstadoPublicacion`, sin fechas). */
 export type EstadoPaginaPublicacion = { tipo: 'publicado' } | { tipo: 'cambios'; cantidad: number } | { tipo: 'sin_publicar' };
@@ -28,6 +29,8 @@ export interface FilaPagina {
   seo: SaludSeo;
   /** Instante de la última modificación conocida (ISO) o `null`. */
   actualizadaEn: string | null;
+  /** Texto plano de los bloques de texto (`body`, o `content` si aún no hay body). */
+  caracteres: number;
 }
 
 export type PestanaPaginas = 'todas' | 'menu' | 'ocultas' | 'legales';
@@ -99,6 +102,7 @@ export function filasPaginas(e: EntradaVistaPaginas): FilaPagina[] {
       inicio,
       seo: saludSeo(p, e.documento),
       actualizadaEn: fechaLegacy ?? (!anterior || cantidad > 0 ? e.actualizadoBorrador : e.publicadoEn ?? e.actualizadoBorrador),
+      caracteres: p.secciones.reduce((n, s) => (s.tipo === 'text_block' ? n + caracteresLegales(s.contenido) : n), 0),
     };
   });
 }

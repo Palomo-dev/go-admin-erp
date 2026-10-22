@@ -16,6 +16,7 @@ import { Copy, Eye, EyeOff, ExternalLink, Info, Trash2, TriangleAlert, UtensilsC
 import { cn } from '@/utils/Utils';
 import { AvisoTonal, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { getSectionDefinition, type ContentFieldDef, type WebsitePageSection } from '@/lib/services/websitePageBuilderService';
+import { contenidoTrasEditarBody } from '@/lib/website/legales/documentoLegal';
 import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 import { AvisoConAccion } from '@/components/organization/branding/editor/AvisoConAccion';
 import type { ThemePalette } from '@/components/organization/branding/editor/fields/types';
@@ -131,10 +132,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       <CampoSeccion
         key={c.key}
         campo={c}
-        valor={contenido[c.key]}
+        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : contenido[c.key]}
         contenido={contenido}
         onCambiar={(v) => {
-          const siguiente: Record<string, unknown> = { ...contenido, [c.key]: v };
+          const siguiente: Record<string, unknown> =
+            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : { ...contenido, [c.key]: v };
           // Exclusión mutua de categories_grid (como en el editor anterior).
           if (c.key === 'show_icon' && v === true) siguiente.show_image = false;
           if (c.key === 'show_image' && v === true) siguiente.show_icon = false;

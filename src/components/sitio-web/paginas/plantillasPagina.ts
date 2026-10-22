@@ -13,6 +13,8 @@
 import type { PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documentoSitio';
 import type { TipoMiniaturaSeccion } from '@/components/sitio-web/ui/SectionThumbnail';
 import { SECCIONES_PAGINA_CARTA_QR } from '@/lib/website/contrato/seccionesMesa';
+import { DOCUMENTOS_LEGALES, type ClaveLegal } from '@/lib/website/configuracionSitio';
+import { datosVacios, metaLegal, plantillaLegal } from '@/lib/website/legales/plantillasLegales';
 
 /** Giro del negocio según `organization_types` (ids verificados por MCP el 2026-10-06). */
 export type Giro = 'restaurante' | 'hotel' | 'tienda' | 'servicios' | 'gimnasio' | 'transporte' | 'parqueadero';
@@ -98,6 +100,16 @@ const hero = (title: string, subtitle: string): SeccionPlantilla => ({
   variante: 'minimal',
   contenido: { title, subtitle },
 });
+
+/** Instante fijo: el texto de siembra no depende del reloj. */
+const GENERADO_EN_SIEMBRA = '2026-10-22T00:00:00.000Z';
+
+/** HTML canónico (`body`) de la plantilla, sin `content`. */
+export function contenidoLegal(clave: ClaveLegal): Record<string, unknown> {
+  const def = DOCUMENTOS_LEGALES.find((d) => d.clave === clave)!;
+  const resultado = plantillaLegal(clave, datosVacios());
+  return { title: def.titulo, body: resultado.body, legal: metaLegal(clave, resultado, GENERADO_EN_SIEMBRA) };
+}
 
 /** Orden del diálogo (A/04b): las del giro primero, «En blanco» siempre al final. */
 export const PLANTILLAS_PAGINA: readonly PlantillaPagina[] = [
@@ -242,7 +254,7 @@ export const PLANTILLAS_PAGINA: readonly PlantillaPagina[] = [
     slug: 'legal',
     miniatura: 'texto',
     giros: null,
-    secciones: [{ tipo: 'text_block', variante: 'left', contenido: { title: 'Términos y condiciones', content: '' } }],
+    secciones: [{ tipo: 'text_block', variante: 'left', contenido: contenidoLegal('terminos') }],
   },
   {
     id: 'en_blanco',
@@ -427,15 +439,30 @@ export const TIPO_ORGANIZACION_POR_GIRO: Record<Giro, number> = {
   parqueadero: 7,
 };
 
-/** Las dos políticas: van al pie (grupo «Legales»), nunca al encabezado. */
-const LEGALES_BASE: readonly PaginaBase[] = [
-  { titulo: 'Términos y condiciones', slug: 'terminos', tipo: 'legal', enMenu: false, secciones: [{ tipo: 'text_block', variante: 'left', contenido: { title: 'Términos y condiciones', content: '' } }] },
-  { titulo: 'Política de privacidad', slug: 'privacidad', tipo: 'legal', enMenu: false, secciones: [{ tipo: 'text_block', variante: 'left', contenido: { title: 'Política de privacidad', content: '' } }] },
-];
+const ORDEN_LEGALES: readonly ClaveLegal[] = ['terminos', 'privacidad', 'tratamiento', 'envios', 'devoluciones', 'cookies'];
 
-/** Juego del giro (con Inicio y Contacto, como la siembra real) + las dos políticas (A/04e). */
-export function paginasBasePorGiro(giro: Giro): PaginaBase[] {
-  return [...PAGINAS_BASE_GIRO[giro], ...LEGALES_BASE];
+/** Políticas: van al pie (grupo «Legales»), nunca al encabezado. Nacen con texto de plantilla. */
+const LEGALES_BASE: readonly PaginaBase[] = ORDEN_LEGALES.map((clave) => {
+  const def = DOCUMENTOS_LEGALES.find((d) => d.clave === clave)!;
+  return {
+    titulo: def.titulo,
+    slug: def.slug,
+    tipo: 'legal',
+    enMenu: false,
+    secciones: [{ tipo: 'text_block', variante: 'left', contenido: contenidoLegal(clave) }],
+  };
+});
+
+const GIROS_QUE_VENDEN = new Set<Giro>(['tienda', 'restaurante']);
+
+/**
+ * Juego del giro + los documentos legales.
+ * Envíos entra si el giro vende o si `envios` es true (el negocio tiene envíos activos).
+ */
+export function paginasBasePorGiro(giro: Giro, opts?: { envios?: boolean }): PaginaBase[] {
+  const conEnvios = opts?.envios ?? GIROS_QUE_VENDEN.has(giro);
+  const legales = conEnvios ? LEGALES_BASE : LEGALES_BASE.filter((p) => p.slug !== 'envios');
+  return [...PAGINAS_BASE_GIRO[giro], ...legales];
 }
 
 export function construirPaginaBase(base: PaginaBase, generarId: GenerarId): PaginaSitio {

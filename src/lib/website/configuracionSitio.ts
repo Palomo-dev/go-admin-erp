@@ -12,6 +12,7 @@
  *   sucursal (solo lectura). Aquí no se editan.
  */
 import { z } from 'zod';
+import { MIN_TEXTO_LEGAL } from '@/lib/website/legales/plantillasLegales';
 
 /** Secciones del formulario, en el orden del índice lateral (B/12-01). */
 export const SECCIONES_CONFIGURACION = ['datos', 'legales', 'codigo', 'chat', 'idioma', 'mantenimiento', 'peligro'] as const;
@@ -56,6 +57,7 @@ export const DOCUMENTOS_LEGALES = [
   },
   { clave: 'cookies', slug: 'cookies', titulo: 'Política de cookies', slugs: ['cookies', 'politica-de-cookies'], obligatorio: false },
   { clave: 'devoluciones', slug: 'cambios-y-devoluciones', titulo: 'Cambios y devoluciones', slugs: ['cambios-y-devoluciones', 'devoluciones'], obligatorio: false },
+  { clave: 'envios', slug: 'envios', titulo: 'Política de envíos', slugs: ['envios', 'politica-de-envios', 'politica-envios'], obligatorio: false },
 ] as const;
 export type ClaveLegal = (typeof DOCUMENTOS_LEGALES)[number]['clave'];
 
@@ -68,9 +70,14 @@ export interface PaginaLegalFila {
   /** `publicado` | `cambios` | `sin_publicar` (vistaPaginas). */
   estado: 'publicado' | 'cambios' | 'sin_publicar';
   actualizadaEn: string | null;
+  /**
+   * Caracteres de texto plano en `body` o, si no hay, en `content`.
+   * Si se omite, una página existente no se marca «vacío» (compatibilidad).
+   */
+  caracteres?: number;
 }
 
-export type EstadoLegal = 'publicado' | 'borrador' | 'falta';
+export type EstadoLegal = 'publicado' | 'borrador' | 'vacio' | 'falta';
 
 export interface DocumentoLegalVista {
   clave: ClaveLegal;
@@ -86,13 +93,23 @@ export function documentosLegales(paginas: readonly PaginaLegalFila[]): Document
   return DOCUMENTOS_LEGALES.map((d) => {
     const pagina = paginas.find((p) => (d.slugs as readonly string[]).includes(p.slug));
     if (!pagina) return { clave: d.clave, titulo: d.titulo, slug: d.slug, estado: 'falta', paginaId: null, fecha: null };
-    const estado: EstadoLegal = pagina.publicada && pagina.estado === 'publicado' ? 'publicado' : 'borrador';
+    const vacio = typeof pagina.caracteres === 'number' && pagina.caracteres < MIN_TEXTO_LEGAL;
+    const estado: EstadoLegal = vacio ? 'vacio' : pagina.publicada && pagina.estado === 'publicado' ? 'publicado' : 'borrador';
     return { clave: d.clave, titulo: d.titulo, slug: d.slug, estado, paginaId: pagina.id, fecha: pagina.actualizadaEn };
   });
 }
 
-/** La política de tratamiento de datos (Ley 1581) es requisito del agente de voz y de los formularios del CRM. */
-export function faltaTratamientoDatos(docs: readonly DocumentoLegalVista[]): boolean {
+/** URL https puesta a mano (`comm_settings.data_policy_url`). La de la org que ya la tiene se respeta. */
+export function politicaManualValida(url: string | null | undefined): url is string {
+  return typeof url === 'string' && /^https:\/\/\S+$/.test(url) && url.length <= 500;
+}
+
+/**
+ * La política de tratamiento (Ley 1581) falta si no está publicada con texto
+ * y tampoco hay una URL manual. Con URL manual, no falta.
+ */
+export function faltaTratamientoDatos(docs: readonly DocumentoLegalVista[], dataPolicyUrl?: string | null): boolean {
+  if (politicaManualValida(dataPolicyUrl)) return false;
   return docs.some((d) => d.clave === 'tratamiento' && d.estado !== 'publicado');
 }
 
@@ -140,6 +157,8 @@ export interface RespuestaConfiguracion {
   monedas: { base: string | null; todas: string[] };
   /** Lo que aún no se puede editar porque falta la migración 20261008150000. */
   pendientes: FuncionPendiente[];
+  /** URL manual de la política de tratamiento, si ya está puesta. No se reescribe desde el sitio. */
+  dataPolicyUrl?: string | null;
 }
 
 /** Lo editable del formulario (un solo estado sucio para toda la página). */
@@ -351,7 +370,7 @@ export function resumenSecciones(
   docs: readonly DocumentoLegalVista[] | null,
   extra: { publicado: boolean; moneda: string | null },
 ): ResumenSeccion[] {
-  const faltan = docs ? docs.filter((d) => d.estado === 'falta').length : 0;
+  const faltan = docs ? docs.filter((d) => d.estado === 'falta' || d.estado === 'vacio').length : 0;
   const activos = f.codigo.filter((c) => c.activo).length;
   const datos = [f.nombre.trim(), f.correo.trim()].filter(Boolean).join(' · ');
   return [

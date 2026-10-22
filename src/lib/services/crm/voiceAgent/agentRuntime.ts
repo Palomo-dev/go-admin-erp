@@ -24,7 +24,8 @@ import {
 import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
 import { loadOrgModelSettings, resolveVoiceModel } from '@/lib/ai/agent/modelRouter';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
-import { politicaDatosValida, zonaHorariaOrganizacion } from './cumplimiento';
+import { zonaHorariaOrganizacion } from './cumplimiento';
+import { urlPoliticaEfectiva } from '@/lib/website/legales/obtenerDocumentoLegal';
 import { despedidaDelAgente } from './cierreLlamada';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -324,7 +325,7 @@ export async function buildRuntimeConfig(
     voice_consent_message?: string;
     data_policy_url?: string | null;
   } | null;
-  const politicaDatosUrl = politicaDatosValida(commRow?.data_policy_url) ? commRow?.data_policy_url ?? null : null;
+  const politicaDatosUrl = await urlPoliticaEfectiva(supabase, orgId, commRow?.data_policy_url);
   // «Agendar falla» (2026-09-29): el modelo no sabía qué día era hoy y calculaba
   // las fechas de `book_meeting` con su conocimiento (años atrás → «en el
   // pasado»). Se le da la fecha y hora actuales en la zona de la organización.

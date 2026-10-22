@@ -195,7 +195,7 @@ describe('Configuración del sitio (B/12)', () => {
     estadoConfig();
     renderConIdioma(<ConfiguracionSitio />);
     expect(screen.getByText('Tu marca · hola@tumarca.com')).toBeTruthy();
-    expect(screen.getByText('4 documentos faltan')).toBeTruthy();
+    expect(screen.getByText('5 documentos faltan')).toBeTruthy();
     expect(screen.getByText('1 script activo')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Mantenimiento/ }));
     expect(screen.getByRole('heading', { level: 2, name: 'Mantenimiento' })).toBeTruthy();

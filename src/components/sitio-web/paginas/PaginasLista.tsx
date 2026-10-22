@@ -50,6 +50,10 @@ import { TONO_SALUD_SEO } from './saludSeo';
 import { useTextosPaginas, type TraductorPaginas } from './textos';
 import { usePaginasSitio } from './usePaginasSitio';
 import { enPestana, type FilaPagina, type PestanaPaginas } from './vistaPaginas';
+import { documentosLegales } from '@/lib/website/configuracionSitio';
+import { useTextosConfiguracion } from '@/components/sitio-web/configuracion/textos';
+import { SeccionLegales } from '@/components/sitio-web/configuracion/SeccionLegales';
+import { crearDocumentoLegal, regenerarDocumentoLegal } from '@/components/sitio-web/configuracion/crearDocumentoLegal';
 
 export const RUTA_PAGINAS = `${RAIZ_SITIO_WEB}/paginas`;
 export const RUTA_LEGALES = `${RAIZ_SITIO_WEB}/configuracion#legales`;
@@ -66,6 +70,7 @@ function listaBase(titulos: readonly string[], t: TraductorPaginas): string {
 
 export function PaginasLista() {
   const t = useTextosPaginas();
+  const tLegal = useTextosConfiguracion();
   const router = useRouter();
   const esEscritorio = useEsEscritorio();
   const locale = useLocaleIntl();
@@ -268,6 +273,47 @@ export function PaginasLista() {
           }))}
         />
         <div role="tabpanel" id={idPanel('paginas', pestana)} aria-labelledby={idPestana('paginas', pestana)}>
+          {pestana === 'legales' && datos ? (
+            <SeccionLegales
+              t={tLegal}
+              legales={documentosLegales(
+                datos.paginas.map((p) => ({
+                  id: p.id,
+                  slug: p.slug,
+                  titulo: p.titulo,
+                  publicada: p.publicada,
+                  estado: p.estado.tipo,
+                  actualizadaEn: p.actualizadaEn,
+                  caracteres: p.caracteres,
+                })),
+              )}
+              error={false}
+              creando={paginas.ocupado}
+              crear={(doc) =>
+                crearDocumentoLegal(doc, {
+                  versionBorrador: () => datos.sitio?.version ?? null,
+                  escribir: paginas.escribir,
+                  revalidar: paginas.revalidar,
+                  recargarBorrador: paginas.recargar,
+                })
+              }
+              regenerar={(doc, extra) =>
+                regenerarDocumentoLegal(
+                  doc,
+                  {
+                    versionBorrador: () => datos.sitio?.version ?? null,
+                    escribir: paginas.escribir,
+                    revalidar: paginas.revalidar,
+                    recargarBorrador: paginas.recargar,
+                  },
+                  extra,
+                )
+              }
+              organizacion={{ nombre: organization?.name ?? '', correo: null }}
+              deshabilitado={!puedeEditar}
+            />
+          ) : null}
+          {pestana !== 'legales' && (
           <DataTable
             etiqueta={t('lista.etiquetaTabla')}
             columnas={columnas}
@@ -306,6 +352,7 @@ export function PaginasLista() {
                   : { etiqueta: t('lista.nuevaPagina'), onClick: () => setNueva(true), icono: Plus },
             }}
           />
+          )}
         </div>
         {!cargando && (
           <AvisoTonal tono="informacion" titulo={t('lista.avisoMovilTitulo')} descripcion={t('lista.avisoMovilDescripcion')} className="lg:hidden" />

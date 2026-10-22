@@ -107,7 +107,8 @@ describe('documentoPlantillaSede', () => {
     expect(v.ok).toBe(true);
     const d = doc as DocumentoSitio;
     expect(d.paginas.map((p) => p.slug)).toEqual([
-      'home', 'menu', 'domicilios', 'reservas-mesa', 'nosotros', 'contacto', 'galeria', 'terminos', 'privacidad', 'carta-qr',
+      'home', 'menu', 'domicilios', 'reservas-mesa', 'nosotros', 'contacto', 'galeria',
+      'terminos', 'privacidad', 'tratamiento-de-datos', 'envios', 'cambios-y-devoluciones', 'cookies', 'carta-qr',
     ]);
     const inicio = d.paginas.find((p) => p.slug === 'home')!;
     expect(inicio.secciones.map((s) => s.tipo)).toEqual(expect.arrayContaining(['restaurant_hero', 'menu_preview', 'reservation']));

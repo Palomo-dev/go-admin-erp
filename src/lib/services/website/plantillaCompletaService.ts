@@ -68,7 +68,7 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
     .eq('is_active', true);
   const consultaSede = branchId === null ? sedes.order('is_main', { ascending: false }).order('id') : sedes.eq('id', branchId);
 
-  const [organizacion, sede, productos, categorias, testimonios] = await Promise.all([
+  const [organizacion, sede, productos, categorias, testimonios, envios] = await Promise.all([
     cliente.from('organizations').select('name, description, phone, address, city').eq('id', org).maybeSingle(),
     consultaSede.limit(1).maybeSingle(),
     cliente
@@ -87,6 +87,7 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
       .order('display_order', { ascending: true, nullsFirst: false })
       .limit(LIMITE_CATEGORIAS),
     cliente.from('testimonials').select('id', { count: 'exact', head: true }).eq('organization_id', org).eq('is_active', true),
+    cliente.from('website_settings').select('enable_shipping, branch_id').eq('organization_id', org),
   ]);
   for (const [r, contexto] of [
     [organizacion, 'organizacion'],
@@ -94,6 +95,7 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
     [productos, 'productos'],
     [categorias, 'categorias'],
     [testimonios, 'testimonios'],
+    [envios, 'envios'],
   ] as const) {
     if (r.error) throw errorDesdePostgrest(r.error, `plantillaCompleta.${contexto}`);
   }
@@ -119,6 +121,9 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
     productos: lista.slice(0, LIMITE_PRODUCTOS),
     categorias: ((categorias.data ?? []) as { id: number; name: string }[]).map((c) => ({ id: c.id, nombre: c.name })),
     testimonios: testimonios.count ?? 0,
+    envios: ((envios.data ?? []) as { enable_shipping?: boolean | null; branch_id?: number | null }[]).some(
+      (f) => f.enable_shipping === true && (branchId == null ? f.branch_id == null : f.branch_id === branchId || f.branch_id == null),
+    ),
   };
 }
 

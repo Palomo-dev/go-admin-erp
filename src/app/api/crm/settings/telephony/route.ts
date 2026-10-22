@@ -9,6 +9,7 @@ import {
   TelephonyValidationError,
 } from '@/lib/services/crm/telephonySettingsService';
 import { getVoiceCredentials } from '@/lib/services/crm/voiceContextService';
+import { obtenerDocumentoLegal } from '@/lib/website/legales/obtenerDocumentoLegal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     throw err;
   }
   try {
-    const [data, creds, membersRes] = await Promise.all([
+    const [data, creds, membersRes, politicaSitio] = await Promise.all([
       getTelephonySettingsView(ctx.organizationId),
       getVoiceCredentials(ctx.organizationId),
       ctx.supabase
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
         .eq('organization_id', ctx.organizationId)
         .eq('is_active', true)
         .limit(200),
+      obtenerDocumentoLegal(ctx.supabase, ctx.organizationId, 'tratamiento').catch(() => null),
     ]);
     const { twilio_subaccount_sid: _sub, ...safe } = data;
     void _sub;
@@ -54,7 +56,11 @@ export async function GET(request: NextRequest) {
       {
         success: true,
         members,
-        data: { ...safe, has_subaccount: Boolean(data.twilio_subaccount_sid) },
+        data: {
+          ...safe,
+          has_subaccount: Boolean(data.twilio_subaccount_sid),
+          url_politica_sitio: politicaSitio?.publicado && politicaSitio.conTexto ? politicaSitio.url : null,
+        },
         configured: {
           api_key: Boolean(creds.apiKey && creds.apiSecret),
           twiml_app: Boolean(creds.twimlAppSid),

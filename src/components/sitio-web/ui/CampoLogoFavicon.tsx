@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AppWindow, ImageIcon, type LucideIcon } from 'lucide-react';
+import { AppWindow, ImageIcon, SunMedium, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useTextosComun } from './textos';
@@ -13,14 +13,17 @@ const ImagePickerDialog = dynamic(() => import('@/components/common/ImagePickerD
 /**
  * Logo y favicon del sitio (Figma B/12-01 «Datos del negocio» y Diseño ›
  * «Logo y favicon»): UN componente sobre UN dato, la identidad del borrador V2
- * (`identidad.logoUrl` / `identidad.faviconUrl`). Dos tarjetas: miniatura,
- * título, ayuda y «Cambiar» (abre el selector de imágenes de la organización).
- * No guarda: avisa con `onCambiar` y quien lo monta guarda en su lote.
+ * (`identidad.logoUrl`, `identidad.logoFondoClaroUrl` y `identidad.faviconUrl`).
+ * Tres tarjetas: miniatura, título, ayuda y «Cambiar» (abre el selector de
+ * imágenes de la organización). No guarda: avisa con `onCambiar` y quien lo
+ * monta guarda en su lote. El logo para fondo claro no reemplaza al principal.
  */
-export type CampoIdentidadImagen = 'logo' | 'favicon';
+export type CampoIdentidadImagen = 'logo' | 'logoFondoClaro' | 'favicon';
 
 export interface CampoLogoFaviconProps {
   logoUrl: string | null | undefined;
+  /** Versión de color, para fondos claros. */
+  logoFondoClaroUrl: string | null | undefined;
   faviconUrl: string | null | undefined;
   onCambiar: (campo: CampoIdentidadImagen, url: string | null) => void;
   /** Organización del selector de imágenes (sale de la sesión, no del cliente del sitio). */
@@ -33,6 +36,7 @@ export interface CampoLogoFaviconProps {
 
 export function CampoLogoFavicon({
   logoUrl,
+  logoFondoClaroUrl,
   faviconUrl,
   onCambiar,
   organizationId,
@@ -49,7 +53,8 @@ export function CampoLogoFavicon({
       <div className="flex min-w-0 items-center gap-3 rounded-xl border border-line bg-surface p-3">
         <span
           className={cn(
-            'flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-subtle',
+            'flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line',
+            campo === 'logoFondoClaro' ? 'bg-white' : 'bg-subtle',
             campo === 'favicon' && url && 'p-2',
           )}
         >
@@ -93,6 +98,7 @@ export function CampoLogoFavicon({
   return (
     <div className={cn('grid gap-3 sm:grid-cols-2', className)}>
       {tarjeta('logo', logoUrl, ImageIcon)}
+      {tarjeta('logoFondoClaro', logoFondoClaroUrl, SunMedium)}
       {tarjeta('favicon', faviconUrl, AppWindow)}
       {abierto && (
         <ImagePickerDialog

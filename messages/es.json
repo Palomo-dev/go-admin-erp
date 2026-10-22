@@ -31451,7 +31451,9 @@
       },
       "logoFavicon": {
         "logo": "Logo",
-        "logoAyuda": "PNG o SVG, fondo transparente · se toma de Organización",
+        "logoAyuda": "PNG o SVG, fondo transparente. El encabezado oscuro usa este.",
+        "logoFondoClaro": "Logo para fondo claro",
+        "logoFondoClaroAyuda": "La versión de color. Se usa cuando el fondo es claro y no reemplaza el logo de arriba.",
         "favicon": "Favicon",
         "faviconAyuda": "Ícono de la pestaña · 512 × 512",
         "cambiar": "Cambiar",
@@ -32115,7 +32117,7 @@
       },
       "logo": {
         "titulo": "Logo y favicon",
-        "descripcion": "Se usan en el encabezado, el pie y la pestaña del navegador. Es el mismo dato que Configuración › Datos del negocio.",
+        "descripcion": "Se usan en el encabezado, el pie, el checkout y la pestaña del navegador. El logo para fondo claro no cambia el del encabezado oscuro. Es el mismo dato que Configuración › Datos del negocio.",
         "guardado": "Guardamos el cambio en el borrador.",
         "error": "No pudimos guardar el cambio: {mensaje}"
       },
@@ -32902,7 +32904,11 @@
           "opacidad": "Opacidad del fondo",
           "textoEnlaces": "Texto y enlaces",
           "fijo": "Fijo al bajar",
-          "fijoAyuda": "El encabezado se queda arriba al recorrer la página"
+          "fijoAyuda": "El encabezado se queda arriba al recorrer la página",
+          "divisor": "Línea entre el logo y el menú",
+          "divisorAyuda": "Encendida, el color sigue el fondo si no lo fijas. Apagada, se quita el borde.",
+          "divisorColor": "Color de la línea",
+          "hoverIconos": "Hover de los íconos"
         },
         "pie": {
           "menus": "Menús del pie",

@@ -172,6 +172,13 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_bg_color: '#0E0E0E' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces' })).getByRole('radio', { name: 'Fijar color' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_text_color: '#F5F1EA' });
+    expect(screen.getByRole('switch', { name: /Línea entre el logo y el menú/ }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('switch', { name: /Línea entre el logo y el menú/ }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_divider: false });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Color de la línea' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_divider_color: '#F5F1EA' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Hover de los íconos' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_hover_color: '#F5F1EA' });
     expect(screen.getByRole('switch', { name: /Fijo al bajar/ }).getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByRole('switch', { name: /Fijo al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false });

@@ -858,6 +858,7 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
         label: 'Texto',
         type: 'text',
         group: 'content',
+        defaultValue: '-{value}%',
         helpText: 'Usa {value} para el dato: "-{value}%"',
       },
       {

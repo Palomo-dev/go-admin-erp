@@ -560,6 +560,28 @@ function Estilo(p: Interno) {
         fondo={color('header_bg_color') ?? p.coloresTema.fondo}
         onCambiar={(v) => cambiar({ header_text_color: v })}
       />
+      <FilaInterruptor
+        titulo={t('zonaGlobal.estilo.divisor')}
+        ayuda={t('zonaGlobal.estilo.divisorAyuda')}
+        valor={opcionBooleana(a, 'header_divider')}
+        onCambiar={(v) => cambiar({ header_divider: v })}
+      />
+      {opcionBooleana(a, 'header_divider') && (
+        <ColorTema
+          etiqueta={t('zonaGlobal.estilo.divisorColor')}
+          valor={color('header_divider_color')}
+          colorTema={p.coloresTema.texto}
+          fondo={color('header_bg_color') ?? p.coloresTema.fondo}
+          onCambiar={(v) => cambiar({ header_divider_color: v })}
+        />
+      )}
+      <ColorTema
+        etiqueta={t('zonaGlobal.estilo.hoverIconos')}
+        valor={color('header_hover_color')}
+        colorTema={p.coloresTema.texto}
+        fondo={color('header_bg_color') ?? p.coloresTema.fondo}
+        onCambiar={(v) => cambiar({ header_hover_color: v })}
+      />
       <ColorTema etiqueta={t('zonaGlobal.estilo.barra')} valor={color('topbar_bg_color')} colorTema={p.coloresTema.texto} onCambiar={(v) => cambiar({ topbar_bg_color: v })} />
       <ColorTema
         etiqueta={t('zonaGlobal.estilo.boton')}

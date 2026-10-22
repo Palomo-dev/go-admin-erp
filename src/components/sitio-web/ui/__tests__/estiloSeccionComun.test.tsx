@@ -16,6 +16,9 @@ import { FontOption } from '../FontOption';
 import { FontField } from '../FontField';
 import { ColorMarcaField } from '../ColorMarcaField';
 import { CampoLogoFavicon } from '../CampoLogoFavicon';
+import { fijarImagenIdentidad } from '../../diseno/PestanaLogoFavicon';
+import { conIdentidad } from '../../configuracion/useConfiguracionSitio';
+import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import { EtiquetaDieta } from '../EtiquetaDieta';
 import { SortableRow } from '../SortableRow';
 
@@ -196,15 +199,59 @@ describe('ColorMarcaField (05)', () => {
 });
 
 describe('CampoLogoFavicon y EtiquetaDieta', () => {
-  test('dos tarjetas, «Cambiar»/«Subir» y «Quitar»', () => {
+  test('tres tarjetas, «Cambiar»/«Subir» y «Quitar»', () => {
     const onCambiar = jest.fn();
-    renderConIdioma(<CampoLogoFavicon logoUrl="https://x/logo.png" faviconUrl={null} permitirQuitar onCambiar={onCambiar} />);
+    renderConIdioma(
+      <CampoLogoFavicon
+        logoUrl="https://x/logo.png"
+        logoFondoClaroUrl="https://x/color.png"
+        faviconUrl={null}
+        permitirQuitar
+        onCambiar={onCambiar}
+      />,
+    );
     expect(screen.getByRole('img', { name: 'Logo actual' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Logo para fondo claro actual' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cambiar Logo' }).textContent).toBe('Cambiar');
+    expect(screen.getByRole('button', { name: 'Cambiar Logo para fondo claro' }).textContent).toBe('Cambiar');
     expect(screen.getByRole('button', { name: 'Cambiar Favicon' }).textContent).toBe('Subir');
-    fireEvent.click(screen.getByRole('button', { name: 'Quitar Logo' }));
-    expect(onCambiar).toHaveBeenCalledWith('logo', null);
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar Logo para fondo claro' }));
+    expect(onCambiar).toHaveBeenCalledWith('logoFondoClaro', null);
     expect(screen.queryByRole('button', { name: 'Quitar Favicon' })).toBeNull();
+  });
+
+  test('el logo para fondo claro no reemplaza el logo del sitio', () => {
+    const base = {
+      identidad: { logoUrl: { mode: 'value', value: 'https://x/blanco.png' } },
+    } as DocumentoSitio;
+    const conColor = fijarImagenIdentidad(base, 'logoFondoClaro', 'https://x/color.png');
+    expect(conColor.identidad.logoUrl).toEqual({ mode: 'value', value: 'https://x/blanco.png' });
+    expect(conColor.identidad.logoFondoClaroUrl).toEqual({ mode: 'value', value: 'https://x/color.png' });
+    const sinColor = fijarImagenIdentidad(conColor, 'logoFondoClaro', null);
+    expect(sinColor.identidad.logoUrl).toEqual({ mode: 'value', value: 'https://x/blanco.png' });
+    expect(sinColor.identidad.logoFondoClaroUrl).toEqual({ mode: 'clear' });
+  });
+
+  test('guardar la identidad no inventa el logo para fondo claro', () => {
+    const base = {
+      identidad: { logoUrl: { mode: 'value', value: 'https://x/blanco.png' } },
+    } as DocumentoSitio;
+    const guardado = conIdentidad(base, {
+      nombre: 'Tu marca',
+      logoUrl: 'https://x/blanco.png',
+      logoFondoClaroUrl: null,
+      faviconUrl: null,
+    });
+    expect(guardado.identidad.logoUrl).toEqual({ mode: 'value', value: 'https://x/blanco.png' });
+    expect(guardado.identidad.logoFondoClaroUrl).toBeUndefined();
+    const conColor = conIdentidad(guardado, {
+      nombre: 'Tu marca',
+      logoUrl: 'https://x/blanco.png',
+      logoFondoClaroUrl: 'https://x/color.png',
+      faviconUrl: null,
+    });
+    expect(conColor.identidad.logoUrl).toEqual({ mode: 'value', value: 'https://x/blanco.png' });
+    expect(conColor.identidad.logoFondoClaroUrl).toEqual({ mode: 'value', value: 'https://x/color.png' });
   });
 
   test('etiqueta de dieta con su texto', () => {

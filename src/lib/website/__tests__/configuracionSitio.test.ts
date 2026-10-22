@@ -28,6 +28,7 @@ jest.mock('@/components/sitio-web/seoanalitica/seo.server', () => ({ direccionDe
 const base: FormularioConfiguracion = {
   nombre: 'Tu marca',
   logoUrl: null,
+  logoFondoClaroUrl: null,
   faviconUrl: null,
   correo: 'hola@tumarca.com',
   telefono: '',

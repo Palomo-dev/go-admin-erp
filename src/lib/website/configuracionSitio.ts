@@ -146,6 +146,8 @@ export interface RespuestaConfiguracion {
 export interface FormularioConfiguracion {
   nombre: string;
   logoUrl: string | null;
+  /** Versión de color. No reemplaza a `logoUrl`. */
+  logoFondoClaroUrl: string | null;
   faviconUrl: string | null;
   correo: string;
   telefono: string;
@@ -157,7 +159,7 @@ export interface FormularioConfiguracion {
   codigo: CodigoMedida[];
 }
 
-const IDENTIDAD = ['nombre', 'logoUrl', 'faviconUrl'] as const;
+const IDENTIDAD = ['nombre', 'logoUrl', 'logoFondoClaroUrl', 'faviconUrl'] as const;
 const AJUSTES = ['correo', 'telefono', 'whatsapp', 'saludoWhatsapp', 'chatActivo', 'idioma', 'mantenimiento', 'codigo'] as const;
 
 function igual(a: unknown, b: unknown): boolean {
@@ -277,11 +279,12 @@ export function funcionDeColumna(columna: string): FuncionPendiente | null {
 /** Formulario inicial a partir del GET y de la identidad del borrador. */
 export function formularioInicial(
   r: RespuestaConfiguracion,
-  identidad: { nombre: string | null; logoUrl: string | null; faviconUrl: string | null },
+  identidad: { nombre: string | null; logoUrl: string | null; logoFondoClaroUrl: string | null; faviconUrl: string | null },
 ): FormularioConfiguracion {
   return {
     nombre: identidad.nombre ?? '',
     logoUrl: identidad.logoUrl,
+    logoFondoClaroUrl: identidad.logoFondoClaroUrl,
     faviconUrl: identidad.faviconUrl,
     correo: r.ajustes.correo ?? '',
     telefono: r.ajustes.telefono ?? '',

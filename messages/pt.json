@@ -31451,7 +31451,9 @@
       },
       "logoFavicon": {
         "logo": "Logo",
-        "logoAyuda": "PNG ou SVG, fundo transparente · vem da Organização",
+        "logoAyuda": "PNG ou SVG, fundo transparente. O cabeçalho escuro usa este.",
+        "logoFondoClaro": "Logo para fundo claro",
+        "logoFondoClaroAyuda": "A versão colorida. Aparece em fundos claros e não substitui o logo acima.",
         "favicon": "Favicon",
         "faviconAyuda": "Ícone da aba · 512 × 512",
         "cambiar": "Trocar",
@@ -32115,7 +32117,7 @@
       },
       "logo": {
         "titulo": "Logo e favicon",
-        "descripcion": "São usados no cabeçalho, no rodapé e na aba do navegador. É o mesmo dado de Configurações › Dados do negócio.",
+        "descripcion": "São usados no cabeçalho, no rodapé, no checkout e na aba do navegador. O logo para fundo claro não muda o do cabeçalho escuro. É o mesmo dado de Configurações › Dados do negócio.",
         "guardado": "Salvamos a alteração no rascunho.",
         "error": "Não conseguimos salvar a alteração: {mensaje}"
       },
@@ -32894,7 +32896,11 @@
           "opacidad": "Opacidade do fundo",
           "textoEnlaces": "Texto e links",
           "fijo": "Fixo ao rolar",
-          "fijoAyuda": "O cabeçalho fica no topo ao rolar a página"
+          "fijoAyuda": "O cabeçalho fica no topo ao rolar a página",
+          "divisor": "Linha entre o logo e o menu",
+          "divisorAyuda": "Ligada, a cor segue o fundo se você não a fixar. Desligada, a borda some.",
+          "divisorColor": "Cor da linha",
+          "hoverIconos": "Hover dos ícones"
         },
         "pie": {
           "menus": "Menus do rodapé",

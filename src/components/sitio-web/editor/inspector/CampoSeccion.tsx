@@ -23,7 +23,7 @@ import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tiposPaginas';
 import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
-import { EditorEncabezado, EditorFondo } from './EditorCascaron';
+import { EditorPestanas } from './EditorCascaron';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
@@ -270,9 +270,9 @@ export function CampoSeccion({
     case 'chips':
       return <CampoChips campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
     case 'section_header':
-      return <EditorEncabezado valor={valor} onCambiar={onCambiar} />;
+      return <EditorPestanas contenido={contenido} onCambiar={onCambiarContenido} />;
     case 'section_background':
-      return <EditorFondo valor={valor} onCambiar={onCambiar} />;
+      return null;
     case 'notice':
       // Aviso del catálogo (no guarda nada): «Pagar en línea necesita una pasarela activa».
       return (

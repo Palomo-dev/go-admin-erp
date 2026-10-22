@@ -70,6 +70,14 @@ export function tokensDisenoDisponibles(): boolean {
   return process.env.NEXT_PUBLIC_WEBSITE_TOKENS_DISENO === '1';
 }
 
+/**
+ * Estilo global de encabezados (`tema.seccion`). El sitio público lo rechaza
+ * hasta que su contrato lo acepte. Apagado: el editor no escribe esa clave.
+ */
+export function cascaronTemaDisponible(): boolean {
+  return process.env.NEXT_PUBLIC_WEBSITE_CASCARON === '1';
+}
+
 /** El oscuro del estilo, que el sitio pinta como `secondary_color`. */
 export function secundarioDe(t: Pick<TokensEstilo, 'modo' | 'fondo' | 'texto'>): string {
   return t.modo === 'dark' ? t.fondo : t.texto;

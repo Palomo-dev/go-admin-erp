@@ -284,6 +284,11 @@ export const esquemaTema = z
      * puede reemplazarla con `contenido.product_card_style`.
      */
     tarjetaProducto: esquemaCampo(esquemaTarjetaProducto).optional(),
+    /**
+     * Estilo global de los encabezados de sección. Ausente = cada sección sigue
+     * con su título de hoy. Lo lee el cascarón (`section_style` público).
+     */
+    seccion: z.record(z.string().max(40), z.unknown()).optional(),
   })
   .strict();
 

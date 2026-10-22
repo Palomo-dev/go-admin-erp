@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 /** Controles de `section_header` y `section_background`. No escriben nada hasta que se cambia un campo. */
 
@@ -48,7 +48,7 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
       </Campo>
       <Campo etiqueta="Alineación">
         <select className={control} value={String(e.align ?? '')} onChange={(ev) => set('align', ev.target.value)}>
-          <option value="">Como hoy</option>
+          <option value="">Heredar del estilo global</option>
           <option value="left">Izquierda</option>
           <option value="center">Centro</option>
           <option value="right">Derecha</option>
@@ -56,7 +56,7 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
       </Campo>
       <Campo etiqueta="Disposición">
         <select className={control} value={String(e.layout ?? '')} onChange={(ev) => set('layout', ev.target.value)}>
-          <option value="">Como hoy</option>
+          <option value="">Heredar del estilo global</option>
           <option value="stacked">Título arriba</option>
           <option value="inline">Título y botón en fila</option>
           <option value="side">Columna lateral</option>
@@ -83,6 +83,13 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
         </select>
       </Campo>
       <Campo etiqueta="Color de la descripción"><input type="color" value={typeof e.description_color === 'string' && e.description_color.startsWith('#') ? e.description_color : '#4b5563'} onChange={(ev) => set('description_color', ev.target.value)} /></Campo>
+      <Campo etiqueta="Peso de la descripción">
+        <select className={control} value={String(e.description_weight ?? '')} onChange={(ev) => set('description_weight', ev.target.value)}>
+          <option value="">Como hoy</option>
+          {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </Campo>
+      <Campo etiqueta="Fuente de la descripción"><input className={control} value={String(e.description_font ?? '')} onChange={(ev) => set('description_font', ev.target.value)} /></Campo>
       <Campo etiqueta="Ancho máximo de la descripción (caracteres)"><input className={control} type="number" min={20} max={80} value={String(e.description_max ?? '')} onChange={(ev) => set('description_max', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
       <label className="flex justify-between text-sm text-fg"><span>Botón «Ver todo»</span><input type="checkbox" checked={e.view_all === true} onChange={(ev) => set('view_all', ev.target.checked)} /></label>
       <Campo etiqueta="Texto del botón"><input className={control} value={String(e.view_all_label ?? '')} onChange={(ev) => set('view_all_label', ev.target.value)} /></Campo>
@@ -95,8 +102,202 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
           <option value="ghost">Texto</option>
         </select>
       </Campo>
+      <Accion valor={e.section_action} onCambiar={(v) => set('section_action', v)} />
+      <Medio valor={e.media} onCambiar={(v) => set('media', v)} />
     </div>
   );
+}
+
+function Accion({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void }) {
+  const a = objeto(valor);
+  const set = (k: string, v: unknown) => {
+    const siguiente = { ...a, [k]: v };
+    if (v == null || v === '') delete siguiente[k];
+    onCambiar(Object.keys(siguiente).length ? siguiente : undefined);
+  };
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-2">
+      <p className="text-xs font-semibold text-fg">Acción</p>
+      <Campo etiqueta="Texto"><input className={control} placeholder="Ver todas" value={String(a.text ?? '')} onChange={(ev) => set('text', ev.target.value)} /></Campo>
+      <Campo etiqueta="Tipo de destino">
+        <select className={control} value={String(a.dest ?? 'url')} onChange={(ev) => set('dest', ev.target.value)}>
+          <option value="url">URL</option>
+          <option value="page">Página</option>
+          <option value="category">Categoría</option>
+          <option value="collection">Colección</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Destino"><input className={control} placeholder={a.dest === 'category' ? 'perros o /categorias/perros' : a.dest === 'page' ? '/contacto' : a.dest === 'collection' ? 'verano' : 'https://'} value={String(a.href ?? '')} onChange={(ev) => set('href', ev.target.value)} /></Campo>
+      <Campo etiqueta="Tipo">
+        <select className={control} value={String(a.kind ?? 'link')} onChange={(ev) => set('kind', ev.target.value)}>
+          <option value="link">Enlace</option>
+          <option value="button">Botón</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Posición">
+        <select className={control} value={String(a.position ?? 'inline')} onChange={(ev) => set('position', ev.target.value)}>
+          <option value="inline">A la derecha del título</option>
+          <option value="below">Debajo del título</option>
+          <option value="end">Al final, centrado</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Estilo del botón">
+        <select className={control} value={String(a.style ?? 'solid')} onChange={(ev) => set('style', ev.target.value)}>
+          <option value="solid">Sólido</option>
+          <option value="outline">Contorno</option>
+          <option value="ghost">Texto</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Forma">
+        <select className={control} value={String(a.shape ?? 'pill')} onChange={(ev) => set('shape', ev.target.value)}>
+          <option value="pill">Píldora</option>
+          <option value="rounded">Redondeado</option>
+          <option value="square">Cuadrado</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Color"><input type="color" value={typeof a.color === 'string' && a.color.startsWith('#') ? a.color : '#111827'} onChange={(ev) => set('color', ev.target.value)} /></Campo>
+      <Campo etiqueta="Color del texto"><input type="color" value={typeof a.text_color === 'string' && a.text_color.startsWith('#') ? a.text_color : '#ffffff'} onChange={(ev) => set('text_color', ev.target.value)} /></Campo>
+      <label className="flex justify-between text-sm text-fg"><span>Flecha</span><input type="checkbox" checked={a.icon === true} onChange={(ev) => set('icon', ev.target.checked)} /></label>
+      <label className="flex justify-between text-sm text-fg"><span>Subrayar al pasar</span><input type="checkbox" checked={a.underline !== false} onChange={(ev) => set('underline', ev.target.checked)} /></label>
+    </div>
+  );
+}
+
+function Medio({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void }) {
+  const m = objeto(valor);
+  const set = (k: string, v: unknown) => {
+    const siguiente = { ...m, [k]: v };
+    if (v == null || v === '') delete siguiente[k];
+    onCambiar(Object.keys(siguiente).length ? siguiente : undefined);
+  };
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-2">
+      <p className="text-xs font-semibold text-fg">Junto al título</p>
+      <Campo etiqueta="Tipo">
+        <select className={control} value={String(m.kind ?? '')} onChange={(ev) => set('kind', ev.target.value)}>
+          <option value="">Ninguno</option>
+          <option value="image">Imagen</option>
+          <option value="icon">Ícono</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Imagen o ícono"><input className={control} value={String(m.src ?? m.icon ?? '')} onChange={(ev) => set(m.kind === 'icon' ? 'icon' : 'src', ev.target.value)} /></Campo>
+      <Campo etiqueta="Lugar">
+        <select className={control} value={String(m.place ?? 'left')} onChange={(ev) => set('place', ev.target.value)}>
+          <option value="left">A la izquierda</option>
+          <option value="above">Encima</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Tamaño"><input className={control} type="number" min={16} max={96} value={String(m.size ?? '')} onChange={(ev) => set('size', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Forma">
+        <select className={control} value={String(m.shape ?? 'rounded')} onChange={(ev) => set('shape', ev.target.value)}>
+          <option value="rounded">Redondeado</option>
+          <option value="circle">Círculo</option>
+          <option value="square">Cuadrado</option>
+        </select>
+      </Campo>
+    </div>
+  );
+}
+
+const CLAVES_HEREDABLES = ['align', 'layout', 'title_font', 'title_size', 'title_weight', 'title_color', 'title_uppercase', 'title_line', 'description_size', 'description_color', 'description_font', 'description_weight']
+
+export function EditorPestanas({ contenido, onCambiar }: { contenido: Record<string, unknown>; onCambiar: (v: Record<string, unknown>) => void }) {
+  const [pestana, setPestana] = useState<'encabezado' | 'visual' | 'fondo'>('encabezado')
+  const [local, setLocal] = useState(false)
+  const setClave = (clave: string, valor: unknown) => {
+    const siguiente = { ...contenido, [clave]: valor }
+    if (valor == null) delete siguiente[clave]
+    onCambiar(siguiente)
+  }
+  const restablecer = () => {
+    const header = objeto(contenido.section_header)
+    for (const k of CLAVES_HEREDABLES) delete header[k]
+    setClave('section_header', Object.keys(header).length ? header : undefined)
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-1">
+        {(['encabezado', 'visual', 'fondo'] as const).map((p) => (
+          <button key={p} type="button" className={control} onClick={() => setPestana(p)}>
+            {p === 'encabezado' ? 'Encabezado' : p === 'visual' ? 'Visualización' : 'Fondo y espaciado'}
+          </button>
+        ))}
+      </div>
+      {pestana === 'encabezado' && (
+        <>
+          <label className="flex justify-between text-sm text-fg">
+            <span>Heredar del estilo global</span>
+            <input
+              type="checkbox"
+              checked={!local && CLAVES_HEREDABLES.every((k) => objeto(contenido.section_header)[k] == null || objeto(contenido.section_header)[k] === '')}
+              onChange={(ev) => {
+                if (ev.target.checked) { setLocal(false); restablecer() }
+                else setLocal(true)
+              }}
+            />
+          </label>
+          <EditorEncabezado valor={contenido.section_header} onCambiar={(v) => setClave('section_header', v)} />
+          <button type="button" className="text-left text-xs underline" onClick={restablecer}>Restablecer sección al estilo global</button>
+        </>
+      )}
+      {pestana === 'visual' && <EditorVisual valor={contenido.section_display} onCambiar={(v) => setClave('section_display', v)} />}
+      {pestana === 'fondo' && <EditorFondo valor={contenido.section_background} onCambiar={(v) => setClave('section_background', v)} />}
+    </div>
+  )
+}
+
+function EditorVisual({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void }) {
+  const v = objeto(valor)
+  const set = (k: string, val: unknown) => {
+    const siguiente = { ...v, [k]: val }
+    if (val == null || val === '') delete siguiente[k]
+    onCambiar(Object.keys(siguiente).length ? siguiente : undefined)
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-line p-3">
+      <Campo etiqueta="Modo">
+        <select className={control} value={String(v.display_mode ?? '')} onChange={(ev) => set('display_mode', ev.target.value)}>
+          <option value="">Como hoy</option>
+          <option value="grid">Cuadrícula</option>
+          <option value="carousel">Carrusel</option>
+          <option value="list">Lista</option>
+          <option value="masonry">Mosaico</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Paginación">
+        <select className={control} value={String(v.pagination ?? '')} onChange={(ev) => set('pagination', ev.target.value)}>
+          <option value="">Como hoy</option>
+          <option value="none">Sin páginas</option>
+          <option value="pages">Páginas</option>
+          <option value="load_more">Cargar más</option>
+          <option value="infinite">Infinito</option>
+          <option value="full">Mostrar todo</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Por página"><input className={control} type="number" min={1} max={48} value={String(v.per_page ?? '')} onChange={(ev) => set('per_page', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Columnas escritorio"><input className={control} type="number" min={1} max={6} value={String(v.columns_desktop ?? '')} onChange={(ev) => set('columns_desktop', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Columnas tablet"><input className={control} type="number" min={1} max={4} value={String(v.columns_tablet ?? '')} onChange={(ev) => set('columns_tablet', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Columnas celular"><input className={control} type="number" min={1} max={2} value={String(v.columns_mobile ?? '')} onChange={(ev) => set('columns_mobile', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Separación"><input className={control} type="number" min={0} max={64} value={String(v.item_gap ?? '')} onChange={(ev) => set('item_gap', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Flechas">
+        <select className={control} value={String(v.arrow_position ?? '')} onChange={(ev) => set('arrow_position', ev.target.value)}>
+          <option value="">Como hoy</option>
+          <option value="sides">A los lados</option>
+          <option value="top">Arriba a la derecha</option>
+          <option value="bottom">Abajo</option>
+        </select>
+      </Campo>
+      <Campo etiqueta="Visibles en escritorio"><input className={control} type="number" min={1} max={6} value={String(v.visible_desktop ?? '')} onChange={(ev) => set('visible_desktop', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Visibles en tablet"><input className={control} type="number" min={1} max={4} value={String(v.visible_tablet ?? '')} onChange={(ev) => set('visible_tablet', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Visibles en celular"><input className={control} type="number" min={1} max={2} value={String(v.visible_mobile ?? '')} onChange={(ev) => set('visible_mobile', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <label className="flex justify-between text-sm text-fg"><span>Puntos</span><input type="checkbox" checked={v.dots === true} onChange={(ev) => set('dots', ev.target.checked)} /></label>
+      <label className="flex justify-between text-sm text-fg"><span>Barra de progreso</span><input type="checkbox" checked={v.progress === true} onChange={(ev) => set('progress', ev.target.checked)} /></label>
+      <label className="flex justify-between text-sm text-fg"><span>Autoplay</span><input type="checkbox" checked={v.autoplay === true} onChange={(ev) => set('autoplay', ev.target.checked)} /></label>
+      <Campo etiqueta="Intervalo (s)"><input className={control} type="number" min={2} max={20} value={String(v.autoplay_interval ?? '')} onChange={(ev) => set('autoplay_interval', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <label className="flex justify-between text-sm text-fg"><span>Loop</span><input type="checkbox" checked={v.loop !== false} onChange={(ev) => set('loop', ev.target.checked)} /></label>
+      <label className="flex justify-between text-sm text-fg"><span>Arrastre</span><input type="checkbox" checked={v.drag !== false} onChange={(ev) => set('drag', ev.target.checked)} /></label>
+    </div>
+  )
 }
 
 export function EditorFondo({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void }) {

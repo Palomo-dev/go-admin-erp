@@ -33094,7 +33094,8 @@
         "pestana": {
           "contenido": "Contenido",
           "diseno": "Diseño",
-          "estilo": "Estilo"
+          "estilo": "Estilo",
+          "constructor": "Constructor"
         },
         "cerrar": "Cerrar {zona}",
         "restablecer": "Restablecer a la plantilla",

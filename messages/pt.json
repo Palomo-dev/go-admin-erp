@@ -33094,7 +33094,8 @@
         "pestana": {
           "contenido": "Conteúdo",
           "diseno": "Layout",
-          "estilo": "Estilo"
+          "estilo": "Estilo",
+          "constructor": "Construtor"
         },
         "cerrar": "Fechar {zona}",
         "restablecer": "Restaurar o modelo",

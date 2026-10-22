@@ -124,7 +124,7 @@ describe('InspectorEncabezado', () => {
     const onCambiar = encabezado();
     expect(screen.getByRole('heading', { name: 'Encabezado' })).toBeTruthy();
     expect(screen.getByText('Global · aparece en todas las páginas')).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo', 'Celular']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo', 'Celular', 'Constructor']);
     expect(screen.getByText('Cambia en todas las páginas')).toBeTruthy();
     expect(screen.getByText('Valores por defecto de la plantilla «Noir Omakase»')).toBeTruthy();
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });

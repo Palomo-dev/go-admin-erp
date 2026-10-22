@@ -550,6 +550,7 @@ export const TEXTOS_EDITOR = {
       diseno: 'Diseño',
       estilo: 'Estilo',
       celular: 'Celular',
+      constructor: 'Constructor',
     },
     celular: {
       menu: 'Menú',

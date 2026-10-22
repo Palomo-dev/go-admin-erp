@@ -29,9 +29,12 @@ import {
 } from '@/lib/website/contrato/catalogoPlantillas';
 import {
   ajustesVivosDeEstilo,
+  aplicarPresetDiseno,
+  tokensDisenoDisponibles,
   tokensExtendidosDisponibles,
   type EstiloEditable,
 } from '@/lib/website/v2/tokensEstilo';
+import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
@@ -148,9 +151,29 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
             deshabilitado={p.deshabilitado}
             className="border-0 p-1"
           />
-        ) : (
-          <p className="px-1 text-[13px] leading-[18px] text-fg-secondary">{t('estiloSitio.sinDatos')}</p>
+        ) : null}
+        {p.enV2 && p.documento && (
+          <section className="mt-4 flex flex-col gap-2 px-1">
+            <h3 className="text-[13px] font-medium text-fg">{t('zonaGlobal.acciones.estilosCombinables')}</h3>
+            <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.estilosCombinablesAyuda')}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESETS_DISENO.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  disabled={p.deshabilitado || !tokensDisenoDisponibles()}
+                  onClick={() => p.onCambiarDocumento((d) => aplicarPresetDiseno(d, preset.id))}
+                  className="rounded-full border border-border px-2.5 py-1 text-[12px] text-fg hover:bg-hover disabled:opacity-50"
+                >
+                  {preset.id === 'actual' ? t('zonaGlobal.acciones.estiloActual') : preset.id.replaceAll('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </section>
         )}
+        {!estilo ? (
+          <p className="px-1 text-[13px] leading-[18px] text-fg-secondary">{t('estiloSitio.sinDatos')}</p>
+        ) : null}
       </div>
     </aside>
   );

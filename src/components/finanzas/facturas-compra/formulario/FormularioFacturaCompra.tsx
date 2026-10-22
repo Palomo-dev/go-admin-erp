@@ -35,7 +35,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, Barcode, CheckCircle2, FileText, Hash, ListPlus, Percent, Plus, ReceiptText, Save, Search, StickyNote, Trash2, Truck, Wallet } from 'lucide-react';
+import { AlertTriangle, Barcode, CheckCircle2, FileText, Hash, Landmark, ListPlus, Percent, Plus, ReceiptText, Save, Search, StickyNote, Trash2, Truck, Wallet } from 'lucide-react';
+import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { Dialogo } from '@/components/kit/Dialogo';
 import { FormField, FormSection, KbdButton, Tarjeta, useAtajos, type AccionFila } from '@/components/kit';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 import { CampoNumero } from '@/components/kit/CampoNumero';
@@ -101,6 +103,7 @@ interface LineaForm {
   tax_code: string | null;
   serial_numbers: string[];
   note: string | null;
+  cuenta_contable?: string | null;
   track_serial: boolean;
   /** Ítem manual: la descripción se escribe en la línea. */
   manual?: boolean;
@@ -182,6 +185,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
   const [dlgProveedor, setDlgProveedor] = useState(false);
   const [lineaSeriales, setLineaSeriales] = useState<LineaForm | null>(null);
   const [lineaNota, setLineaNota] = useState<LineaForm | null>(null);
+  const [lineaCuenta, setLineaCuenta] = useState<LineaForm | null>(null);
   const [salir, setSalir] = useState<string | null>(null);
   const [sucio, setSucio] = useState(false);
   const marcar = () => setSucio(true);
@@ -268,6 +272,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             tax_code: l.tax_code,
             serial_numbers: l.serial_numbers,
             note: l.note,
+            cuenta_contable: l.cuenta_contable ?? null,
             track_serial: l.serial_numbers.length > 0,
             manual: !l.product_id,
             unidad: l.unidad,
@@ -405,6 +410,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     if (l.serial_numbers.length > 0) insignias.push({ texto: tf('v2.seriales', { n: l.serial_numbers.length, total: l.qty }), tono: l.serial_numbers.length === l.qty ? 'exito' : 'advertencia' });
     const diferencia = l.pedido !== null && l.pedido !== undefined && l.pedido !== l.qty;
     if (diferencia) insignias.push({ texto: tf('v2.diferenciaOrden'), tono: 'advertencia' });
+    if (l.cuenta_contable) insignias.push({ texto: l.cuenta_contable, tono: 'informacion' });
     const k = calcularLineaCompra(l, ivaIncluido);
     return {
       id: l.key,
@@ -432,6 +438,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     if (!l) return [];
     return [
       { id: 'nota', etiqueta: tf('lineas.nota'), icono: StickyNote, onSelect: () => setLineaNota(l) },
+      { id: 'cuenta', etiqueta: tf('lineas.cuenta'), icono: Landmark, onSelect: () => setLineaCuenta(l) },
       { id: 'seriales', etiqueta: tf('lineas.seriales'), icono: Barcode, onSelect: () => setLineaSeriales(l), oculta: !l.product_id },
     ];
   };
@@ -482,6 +489,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
       tax_code: l.tax_code,
       serial_numbers: l.serial_numbers,
       note: l.note,
+      ...(l.cuenta_contable?.trim() ? { cuenta_contable: l.cuenta_contable.trim() } : {}),
     })),
     withholdings: retenciones.map((r) => ({ concept: r.concept.trim(), base: r.base, rate: r.rate, ...(r.tax_code ? { tax_code: r.tax_code } : {}) })),
   });
@@ -552,7 +560,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
       { tecla: 'Ctrl+S', descripcion: tf('v2.atajos.guardar'), accion: () => void guardar('borrador'), permitirEnCampo: true, cuando: () => !guardando },
       { tecla: 'Ctrl+Enter', descripcion: tf('v2.atajos.confirmar'), accion: () => void guardar('confirmar'), permitirEnCampo: true, cuando: () => !guardando },
     ],
-    { activo: !cargando && !noEditable && !soloLectura && !dlgProductos && !manual && !lineaNota && !lineaSeriales && !confirmarId && !salir },
+    { activo: !cargando && !noEditable && !soloLectura && !dlgProductos && !manual && !lineaNota && !lineaCuenta && !lineaSeriales && !confirmarId && !salir },
   );
 
   const siguienteNumero = useCallback(() => {
@@ -1116,6 +1124,25 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
               setLineaNota(null);
             }}
           />
+          <Dialogo
+            abierto={!!lineaCuenta}
+            onAbiertoChange={(v) => !v && setLineaCuenta(null)}
+            titulo={tf('lineas.cuenta')}
+            descripcion={tf('lineas.cuentaAyuda')}
+            ancho={520}
+            icono={Landmark}
+            primario={{ etiqueta: tf('lineas.cuentaListo'), onClick: () => setLineaCuenta(null) }}
+          >
+            {lineaCuenta && (
+              <CampoCuentaContable
+                value={lineaCuenta.cuenta_contable}
+                onChange={(cuenta) => {
+                  cambiarLinea(lineaCuenta.key, { cuenta_contable: cuenta });
+                  setLineaCuenta((actual) => (actual ? { ...actual, cuenta_contable: cuenta } : actual));
+                }}
+              />
+            )}
+          </Dialogo>
           {confirmarId && (
             <DialogoConfirmarCompra
               abierto

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { Fragment, useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -11,9 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento } from '../ContabilidadService';
+import { esCuentaDeMovimiento } from '@/lib/finanzas/contabilidad/cuentaLinea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { textoComprobante, esTipoComprobante, NOMBRE_COMPROBANTE } from '@/lib/finanzas/contabilidad/comprobante';
 import { Switch } from '@/components/ui/switch';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -28,7 +30,20 @@ interface JournalLineInput {
   description: string;
   debit: string;
   credit: string;
+  tercero_nit: string;
+  tercero_nombre: string;
+  cost_center_id: string;
 }
+
+const lineaVacia = (): JournalLineInput => ({
+  account_code: '',
+  description: '',
+  debit: '',
+  credit: '',
+  tercero_nit: '',
+  tercero_nombre: '',
+  cost_center_id: '',
+});
 
 export function AsientosPage() {
   const router = useRouter();
@@ -46,6 +61,7 @@ export function AsientosPage() {
   const { isLoading: tzLoading } = useOrgTimezone();
   const [asientos, setAsientos] = useState<JournalEntry[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
+  const [centros, setCentros] = useState<{ id: string; code: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -58,10 +74,7 @@ export function AsientosPage() {
   const [formData, setFormData] = useState({
     entry_date: '',
     memo: '',
-    lines: [
-      { account_code: '', description: '', debit: '', credit: '' },
-      { account_code: '', description: '', debit: '', credit: '' }
-    ] as JournalLineInput[]
+    lines: [lineaVacia(), lineaVacia()]
   });
 
   const fechaPuesta = useRef(false);
@@ -84,12 +97,14 @@ export function AsientosPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [asientosData, cuentasData] = await Promise.all([
+      const [asientosData, cuentasData, centrosData] = await Promise.all([
         ContabilidadService.obtenerAsientos({ branchId: branchFilter }),
-        ContabilidadService.obtenerPlanCuentas()
+        ContabilidadService.obtenerPlanCuentas(),
+        ContabilidadService.listarCentrosCosto().catch(() => [] as { id: string; code: string; name: string }[]),
       ]);
       setAsientos(asientosData);
       setCuentas(cuentasData.filter(c => c.is_active));
+      setCentros(centrosData);
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast.error('Error al cargar los datos');
@@ -102,17 +117,14 @@ export function AsientosPage() {
     setFormData({
       entry_date: getToday(),
       memo: '',
-      lines: [
-        { account_code: '', description: '', debit: '', credit: '' },
-        { account_code: '', description: '', debit: '', credit: '' }
-      ]
+      lines: [lineaVacia(), lineaVacia()]
     });
   };
 
   const addLine = () => {
     setFormData({
       ...formData,
-      lines: [...formData.lines, { account_code: '', description: '', debit: '', credit: '' }]
+      lines: [...formData.lines, lineaVacia()]
     });
   };
 
@@ -151,6 +163,18 @@ export function AsientosPage() {
       return;
     }
 
+    for (const linea of validLines) {
+      const cuenta = cuentas.find((c) => c.account_code === linea.account_code);
+      if (cuenta?.requiere_tercero && !linea.tercero_nit.trim()) {
+        toast.error(`La cuenta ${linea.account_code} exige el NIT o la cédula del tercero`);
+        return;
+      }
+      if (cuenta?.requiere_centro_costo && !linea.cost_center_id) {
+        toast.error(`La cuenta ${linea.account_code} exige un centro de costo`);
+        return;
+      }
+    }
+
     try {
       setIsProcessing(true);
       if (!selectedBranchId) {
@@ -165,7 +189,10 @@ export function AsientosPage() {
           account_code: l.account_code,
           description: l.description,
           debit: parseFloat(l.debit) || 0,
-          credit: parseFloat(l.credit) || 0
+          credit: parseFloat(l.credit) || 0,
+          tercero_nit: l.tercero_nit,
+          tercero_nombre: l.tercero_nombre,
+          cost_center_id: l.cost_center_id || null,
         }))
       }, selectedBranchId);
       toast.success('Asiento creado exitosamente');
@@ -226,6 +253,10 @@ export function AsientosPage() {
   });
 
   const uniqueSources = Array.from(new Set(asientos.map(a => a.source).filter(s => s && s !== 'manual')));
+  const cuentasMovimiento = useMemo(
+    () => cuentas.filter((c) => esCuentaDeMovimiento(c, cuentas)),
+    [cuentas],
+  );
 
   if (isLoading) {
     return (
@@ -377,6 +408,12 @@ export function AsientosPage() {
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                     {asiento.memo || '-'}
+                    {textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero) && (
+                      <span className="mt-1 block text-xs text-gray-500">
+                        {esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : 'Comprobante'}{' '}
+                        {textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="dark:border-gray-600">
@@ -487,23 +524,22 @@ export function AsientosPage() {
                   </TableHeader>
                   <TableBody>
                     {formData.lines.map((line, index) => (
-                      <TableRow key={index} className="dark:border-gray-700">
+                      <Fragment key={index}>
+                      <TableRow className="dark:border-gray-700">
                         <TableCell>
-                          <Select
+                          <select
+                            aria-label="Cuenta de movimiento"
                             value={line.account_code}
-                            onValueChange={(v) => updateLine(index, 'account_code', v)}
+                            onChange={(e) => updateLine(index, 'account_code', e.target.value)}
+                            className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                           >
-                            <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                              <SelectValue placeholder="Seleccionar" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-60">
-                              {cuentas.map(c => (
-                                <SelectItem key={c.account_code} value={c.account_code}>
-                                  {c.account_code} - {c.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            <option value="">Seleccionar</option>
+                            {cuentasMovimiento.map((c) => (
+                              <option key={c.account_code} value={c.account_code}>
+                                {c.account_code} - {c.name}
+                              </option>
+                            ))}
+                          </select>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -539,6 +575,42 @@ export function AsientosPage() {
                           )}
                         </TableCell>
                       </TableRow>
+                      {line.account_code && (
+                        <TableRow key={`${index}-tercero`} className="dark:border-gray-700">
+                          <TableCell colSpan={5}>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              <Input
+                                value={line.tercero_nit}
+                                onChange={(e) => updateLine(index, 'tercero_nit', e.target.value)}
+                                placeholder={cuentas.find((c) => c.account_code === line.account_code)?.requiere_tercero ? 'NIT o cédula *' : 'NIT o cédula'}
+                                aria-label="NIT o cédula del tercero"
+                                className="dark:bg-gray-900 dark:border-gray-600"
+                              />
+                              <Input
+                                value={line.tercero_nombre}
+                                onChange={(e) => updateLine(index, 'tercero_nombre', e.target.value)}
+                                placeholder="Nombre del tercero"
+                                aria-label="Nombre del tercero"
+                                className="dark:bg-gray-900 dark:border-gray-600"
+                              />
+                              <select
+                                aria-label="Centro de costo"
+                                value={line.cost_center_id}
+                                onChange={(e) => updateLine(index, 'cost_center_id', e.target.value)}
+                                className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                              >
+                                <option value="">
+                                  {cuentas.find((c) => c.account_code === line.account_code)?.requiere_centro_costo ? 'Centro de costo *' : 'Centro de costo'}
+                                </option>
+                                {centros.map((cc) => (
+                                  <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>

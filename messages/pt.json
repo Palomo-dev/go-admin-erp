@@ -4455,6 +4455,7 @@
       "finanzas_contabilidad": "Contabilidade",
       "finanzas_contabilidad_plan-cuentas": "Plano de contas",
       "finanzas_contabilidad_asientos": "Lançamentos",
+      "finanzas_contabilidad_plantillas": "Modelos de lançamentos",
       "finanzas_contabilidad_mayor-contable": "Razão",
       "finanzas_contabilidad_balance-comprobacion": "Balancete de verificação",
       "finanzas_contabilidad_estado-resultados": "Demonstração do resultado",
@@ -7673,6 +7674,15 @@
         "preparacion": "Requer preparo",
         "preparacionAyuda": "Gera uma comanda de cozinha ao vender pelo PDV.",
         "siGenera": "Sim · gera comanda ao vender"
+      },
+      "cuentas": {
+        "titulo": "Contas contábeis",
+        "descripcion": "Usadas quando o produto não traz a sua.",
+        "ajuda": "Vazia: a fatura usa a configuração contábil.",
+        "ingreso": "Receita",
+        "costo": "Custo",
+        "inventario": "Estoque",
+        "devolucion": "Devolução"
       },
       "apariencia": {
         "descripcion": "Cor, ícone e imagem no PDV e na loja.",
@@ -11999,6 +12009,14 @@
         "otrosDuplicar": "{n, plural, one {Este fornecedor também será copiado} other {Estes # fornecedores também serão copiados}}: {nombres}.",
         "gestionar": "Gerenciar fornecedores"
       },
+      "cuentas": {
+        "titulo": "Contas contábeis",
+        "ayuda": "Se ficarem vazias, a fatura usa a da categoria ou a configuração contábil.",
+        "ingreso": "Receita",
+        "costo": "Custo",
+        "inventario": "Estoque",
+        "devolucion": "Devolução"
+      },
       "etiquetas": {
         "etiqueta": "Etiquetas",
         "ayuda": "Classificam o produto para buscá-lo e filtrá-lo. Digite um novo nome para criar uma etiqueta.",
@@ -12197,6 +12215,7 @@
       "duplicado": "Produto duplicado",
       "guardadoDescripcion": "“{nombre}” foi salvo.",
       "avisoCodigos": "O produto foi salvo, mas não foi possível numerar os códigos de barras das variantes. Gere-os em Etiquetas.",
+      "avisoCuentas": "O produto foi salvo, mas não foi possível salvar suas contas contábeis.",
       "borradorRecuperado": "Recuperamos alterações não salvas deste formulário (rascunho desta aba).",
       "descartarBorrador": "Descartar rascunho"
     },
@@ -14222,7 +14241,10 @@
         "actual": "Alíquota atual",
         "nota": "Nota da linha",
         "seriales": "Números de série",
-        "serialesAyuda": "Um por linha."
+        "serialesAyuda": "Um por linha.",
+        "cuenta": "Conta contábil",
+        "cuentaAyuda": "Se ficar vazia, usa-se a do produto, a da categoria ou a configuração contábil. A prévia aparece ao confirmar.",
+        "cuentaListo": "Pronto"
       },
       "manual": {
         "titulo": "Item sem produto",
@@ -16271,6 +16293,8 @@
         "aFavor": "O cliente fica com {monto} a favor.",
         "dian": "A nota é enviada à DIAN."
       },
+      "verAsiento": "Ver lançamento",
+      "asientoAyuda": "O imposto da prévia é proporcional ao da fatura. A conta vem da linha, do produto ou da categoria.",
       "bloqueos": {
         "sinMonto": "Escolha o que creditar.",
         "excede": "A nota supera o que ainda pode ser creditado ({tope}).",
@@ -16621,7 +16645,15 @@
         "nota": "Nota da linha",
         "notaAyuda": "Sai no PDF da fatura.",
         "elegirSeriales": "Escolher números de série",
-        "duplicar": "Duplicar linha"
+        "duplicar": "Duplicar linha",
+        "cuenta": "Conta contábil",
+        "cuentaAyuda": "Se ficar vazia, usa-se a do produto, a da categoria ou a configuração contábil.",
+        "cuentaListo": "Pronto",
+        "verAsiento": "Ver lançamento",
+        "asientoTitulo": "Prévia do lançamento",
+        "asientoAyuda": "Salva o rascunho e mostra o lançamento. Se uma linha tem conta própria e o lançamento não fecha, a fatura não é emitida.",
+        "asientoFallo": "O lançamento não pode ser publicado",
+        "asientoCerrar": "Fechar"
       },
       "comision": {
         "vendedor": "Vendedor",
@@ -17429,6 +17461,8 @@
     },
     "detalle": {
       "titulo": "Documento de suporte",
+      "verAsiento": "Ver lançamento",
+      "asientoAviso": "É uma prévia. O documento de suporte não gera o lançamento ao ser salvo.",
       "volver": "Voltar para documentos de suporte",
       "referencia": "Ref.: {referencia}",
       "numero": " — Nº {numero}",
@@ -30800,7 +30834,8 @@
       "automatico": "Automático (sistema)"
     },
     "lineas": {
-      "centroCosto": "Centro de custo"
+      "centroCosto": "Centro de custo",
+      "tercero": "Terceiro"
     }
   },
   "reportes": {

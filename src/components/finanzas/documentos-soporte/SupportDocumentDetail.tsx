@@ -36,6 +36,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { SendSupportDocumentButton } from '@/components/finanzas/documentos-soporte/SendSupportDocumentButton';
 import { descargarDocumento, imprimirDocumento } from '@/lib/documents/cliente';
+import { TablaVistaPrevia, vistaPreviaAsientoDocumento, type VistaPreviaAsiento } from '@/components/finanzas/contabilidad/VistaPreviaAsiento';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 /** Proveedor tal como se guarda en `support_documents.provider` (jsonb). */
@@ -113,6 +114,8 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState<'pdf' | 'xml' | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [previa, setPrevia] = useState<VistaPreviaAsiento | null>(null);
+  const [viendoAsiento, setViendoAsiento] = useState(false);
   const { paraDocumento } = useMonedaOrganizacion();
 
   useEffect(() => {
@@ -432,7 +435,36 @@ export function SupportDocumentDetail({ documentId }: SupportDocumentDetailProps
       </Card>
 
       {/* Acciones */}
+      {previa && (
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-lg">{t('verAsiento')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('asientoAviso')}</p>
+            <TablaVistaPrevia previa={previa} />
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-wrap gap-3 justify-end">
+        <Button
+          variant="outline"
+          disabled={viendoAsiento || isLoading}
+          onClick={() => {
+            setViendoAsiento(true);
+            vistaPreviaAsientoDocumento('documento_soporte', documentId)
+              .then(setPrevia)
+              .catch((error: unknown) => {
+                const fallo = error instanceof Error ? error.message : t('toast.errorTitulo');
+                setPrevia({ ok: false, fallo, lineas: [] });
+              })
+              .finally(() => setViendoAsiento(false));
+          }}
+        >
+          {viendoAsiento ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+          {t('verAsiento')}
+        </Button>
         <Button variant="outline" onClick={() => loadDocument()} disabled={isLoading}>
           <RefreshCw className="h-4 w-4 mr-2" />
           {t('actualizar')}

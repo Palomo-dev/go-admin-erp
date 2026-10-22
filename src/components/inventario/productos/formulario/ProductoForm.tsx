@@ -256,6 +256,7 @@ export function ProductoForm({ modo, productUuid, layout = 'page', onSuccess, on
         description: t('guardadoDescripcion', { nombre: resultado.name }),
       });
       if (r.avisoCodigos) toast({ title: t('avisoCodigos') });
+      if (r.avisoCuentas) toast({ title: t('avisoCuentas') });
 
       if (otro) {
         if (modo === 'duplicar') {

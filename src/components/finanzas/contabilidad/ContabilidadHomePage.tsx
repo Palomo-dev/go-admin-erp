@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -31,6 +31,13 @@ const MODULES = [
     icon: FileText,
     href: '/app/finanzas/contabilidad/asientos',
     color: 'green'
+  },
+  {
+    title: 'Plantillas de asientos',
+    description: 'Asientos recurrentes, en borrador hasta publicarlos',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/plantillas',
+    color: 'blue'
   },
   {
     title: 'Balance de Comprobación',
@@ -111,30 +118,10 @@ export function ContabilidadHomePage() {
     itemsPendientes: 0,
   });
 
-  useEffect(() => {
-    loadResumen();
-  }, [branchFilter]);
-
-  const loadResumen = async () => {
-    try {
-      setIsLoading(true);
-      const [data, foliosData] = await Promise.all([
-        ContabilidadService.obtenerResumen(branchFilter),
-        loadFoliosResumen(),
-      ]);
-      setResumen(data);
-      setFoliosResumen(foliosData);
-    } catch (error) {
-      console.error('Error cargando resumen:', error);
-      toast.error('Error al cargar el resumen');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadFoliosResumen = async () => {
+  const loadFoliosResumen = useCallback(async () => {
+    const vacio = { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
     const organizationId = getOrganizationId();
-    if (!organizationId) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+    if (!organizationId) return vacio;
 
     try {
       const { data: folios, error } = await supabase
@@ -145,7 +132,7 @@ export function ContabilidadHomePage() {
         `)
         .eq('reservations.organization_id', organizationId);
 
-      if (error || !folios) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+      if (error || !folios) return vacio;
 
       const foliosAbiertos = folios.filter((f) => f.status === 'open');
       const folioIds = foliosAbiertos.map((f) => f.id);
@@ -177,9 +164,30 @@ export function ContabilidadHomePage() {
         itemsPendientes,
       };
     } catch {
-      return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+      return vacio;
     }
-  };
+  }, []);
+
+  const loadResumen = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [data, foliosData] = await Promise.all([
+        ContabilidadService.obtenerResumen(branchFilter),
+        loadFoliosResumen(),
+      ]);
+      setResumen(data);
+      setFoliosResumen(foliosData);
+    } catch (error) {
+      console.error('Error cargando resumen:', error);
+      toast.error('Error al cargar el resumen');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [branchFilter, loadFoliosResumen]);
+
+  useEffect(() => {
+    void loadResumen();
+  }, [loadResumen]);
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, { bg: string; icon: string; hover: string }> = {

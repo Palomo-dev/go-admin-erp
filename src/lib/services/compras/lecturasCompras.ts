@@ -181,6 +181,7 @@ export interface LineaCompra {
   total_line: number;
   serial_numbers: string[];
   note: string | null;
+  cuenta_contable?: string | null;
   sku: string | null;
   /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad; `null` por unidad. */
   unidad: string | null;
@@ -307,7 +308,7 @@ export async function leerDetalleFacturaCompra(org: number, id: string): Promise
       sucursal:branches(id, name),
       orden:purchase_orders(id, uuid),
       lineas:invoice_items!invoice_items_invoice_purchase_id_fkey(id, product_id, description, qty, unit_price, discount_amount, tax_rate,
-        tax_code, total_line, serial_numbers, note, created_at, producto:products(sku, ${COLUMNAS_CANTIDAD_PRODUCTO})),
+        tax_code, total_line, serial_numbers, note, cuenta_contable, created_at, producto:products(sku, ${COLUMNAS_CANTIDAD_PRODUCTO})),
       retenciones:invoice_purchase_withholdings(id, concept, base, rate, amount, tax_code),
       cuenta:accounts_payable!accounts_payable_invoice_id_fkey(id, amount, balance, status, due_date)`)
     .eq('id', id)
@@ -355,6 +356,7 @@ export async function leerDetalleFacturaCompra(org: number, id: string): Promise
       total_line: num(l.total_line),
       serial_numbers: Array.isArray(l.serial_numbers) ? (l.serial_numbers as string[]) : [],
       note: (l.note as string | null) ?? null,
+      cuenta_contable: (l.cuenta_contable as string | null) ?? null,
       sku: (uno(l.producto as { sku: string | null } | null) ?? { sku: null }).sku,
       ...cantidadLineaDeProducto(uno(l.producto as ProductoModoVenta | ProductoModoVenta[] | null)),
     }));

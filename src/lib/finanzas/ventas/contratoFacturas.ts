@@ -86,6 +86,8 @@ export const lineaFacturaSchema = z
     serial_ids: z.array(z.number().int().positive()).max(1000).optional(),
     /** Nota de la línea: sale en el PDF (formulario v2). */
     note: z.string().trim().max(500).nullable().optional(),
+    /** Cuenta de la línea. Vacía: producto, categoría o la regla contable. */
+    cuenta_contable: z.string().trim().max(32).nullable().optional(),
     /**
      * Impuestos de la línea cuando lleva más de uno (decisión 5): el detalle
      * queda en `invoice_items.impuestos_linea`; `tax_rate` es la suma y

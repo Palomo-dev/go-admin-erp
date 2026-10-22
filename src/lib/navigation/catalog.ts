@@ -482,6 +482,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/contabilidad', nombre: 'Contabilidad', icono: Calculator, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/plan-cuentas', nombre: 'Plan de cuentas', icono: ListChecks, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/asientos', nombre: 'Asientos', icono: FileText, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/plantillas', nombre: 'Plantillas de asientos', icono: FileText, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/mayor-contable', nombre: 'Mayor contable', icono: BookOpen, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/balance-comprobacion', nombre: 'Balance de comprobación', icono: BarChart3, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/estado-resultados', nombre: 'Estado de resultados', icono: TrendingUp, grupo: 'Contabilidad' },

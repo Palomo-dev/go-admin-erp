@@ -19,6 +19,9 @@ export interface JournalEntry {
   currency_code?: string | null;
   exchange_rate?: number | null;
   base_currency_code?: string | null;
+  comprobante_tipo?: string | null;
+  comprobante_prefijo?: string | null;
+  comprobante_numero?: number | null;
   lines?: JournalLine[];
 }
 
@@ -51,7 +54,15 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   PERIODO_CERRADO: 'El periodo contable está cerrado.',
   ASIENTO_DESCUADRADO: 'Los débitos y los créditos no cuadran.',
   CUENTA_INEXISTENTE: 'Una de las cuentas no existe en el plan de cuentas.',
+  CUENTA_DE_TITULO: 'Una de las cuentas agrupa otras y no recibe movimientos. Elige una cuenta de detalle.',
   CUENTA_NO_ES_DE_DETALLE: 'Una de las cuentas tiene subcuentas: usa una de ellas.',
+  TERCERO_REQUERIDO: 'Esa cuenta exige el NIT o la cédula del tercero.',
+  CENTRO_REQUERIDO: 'Esa cuenta exige un centro de costo.',
+  CENTRO_INVALIDO: 'El centro de costo no pertenece a la organización.',
+  NOMBRE_REQUERIDO: 'Escribe el nombre de la plantilla.',
+  NO_ENCONTRADO: 'No se encontró el registro.',
+  SESION_REQUERIDA: 'La sesión expiró. Vuelve a entrar.',
+  FECHA_REQUERIDA: 'La fecha es requerida.',
   LINEA_INVALIDA: 'Cada línea va al débito o al crédito, con un importe mayor que cero.',
   LINEAS_INSUFICIENTES: 'Un asiento necesita al menos dos líneas.',
   SUCURSAL_INVALIDA: 'Selecciona una sucursal de la organización.',
@@ -76,6 +87,8 @@ export interface JournalLine {
   updated_at: string;
   /** Sin llave foránea a `cost_centers`: el nombre se lee aparte (`centrosDeCosto`). */
   cost_center_id?: string | null;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
   account?: ChartAccount;
 }
 
@@ -86,6 +99,9 @@ export interface ChartAccount {
   type: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
   parent_code: string | null;
   is_active: boolean;
+  es_movimiento?: boolean | null;
+  requiere_tercero?: boolean | null;
+  requiere_centro_costo?: boolean | null;
   description: string | null;
   created_at: string;
   updated_at: string;
@@ -351,7 +367,15 @@ export class ContabilidadService {
     currency_code?: string;
     exchange_rate?: number;
     base_currency_code?: string;
-    lines: { account_code: string; description?: string; debit: number; credit: number; cost_center_id?: string }[];
+    lines: {
+      account_code: string;
+      description?: string;
+      debit: number;
+      credit: number;
+      cost_center_id?: string | null;
+      tercero_nit?: string | null;
+      tercero_nombre?: string | null;
+    }[];
   }, branchId?: number | null, publicar = false): Promise<JournalEntry> {
     const organizationId = this.getOrganizationId();
     const effectiveBranchId = branchId !== undefined ? branchId : this.getBranchId();
@@ -393,6 +417,8 @@ export class ContabilidadService {
         debit: line.debit || 0,
         credit: line.credit || 0,
         cost_center_id: line.cost_center_id || null,
+        tercero_nit: line.tercero_nit?.trim() || null,
+        tercero_nombre: line.tercero_nombre?.trim() || null,
       })),
       p_publicar: publicar,
       p_currency_code: currencyCode,
@@ -485,8 +511,113 @@ export class ContabilidadService {
         account_code: l.account_code,
         description: l.description || undefined,
         debit: l.debit,
-        credit: l.credit
+        credit: l.credit,
+        cost_center_id: l.cost_center_id ?? null,
+        tercero_nit: l.tercero_nit ?? null,
+        tercero_nombre: l.tercero_nombre ?? null,
       }))
     });
   }
+
+  static async listarCentrosCosto(): Promise<{ id: string; code: string; name: string }[]> {
+    const { data, error } = await supabase
+      .from('cost_centers')
+      .select('id, code, name')
+      .eq('organization_id', this.getOrganizationId())
+      .eq('is_active', true)
+      .order('code');
+    if (error) throw error;
+    return (data ?? []) as { id: string; code: string; name: string }[];
+  }
+
+  static async guardarCuentasCatalogo(
+    tipo: 'producto' | 'categoria',
+    id: number,
+    cuentas: { ingreso?: string | null; costo?: string | null; inventario?: string | null; devolucion?: string | null },
+  ): Promise<void> {
+    const { error } = await supabase.rpc('fn_cuentas_catalogo_guardar', {
+      p_organization_id: this.getOrganizationId(),
+      p_tipo: tipo,
+      p_id: id,
+      p_ingreso: cuentas.ingreso ?? null,
+      p_costo: cuentas.costo ?? null,
+      p_inventario: cuentas.inventario ?? null,
+      p_devolucion: cuentas.devolucion ?? null,
+    });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+  }
+
+  static async listarPlantillas(): Promise<PlantillaAsiento[]> {
+    const { data, error } = await supabase
+      .from('plantillas_asiento')
+      .select('id, nombre, memo, lineas:plantillas_asiento_lineas(orden, account_code, descripcion, debito, credito, tercero_nit, tercero_nombre, cost_center_id)')
+      .eq('organization_id', this.getOrganizationId())
+      .eq('activa', true)
+      .order('nombre');
+    if (error) throw error;
+    return ((data ?? []) as PlantillaAsiento[]).map((p) => ({
+      ...p,
+      lineas: [...(p.lineas ?? [])].sort((a, b) => a.orden - b.orden),
+    }));
+  }
+
+  static async guardarPlantilla(plantilla: {
+    id?: string | null;
+    nombre: string;
+    memo?: string | null;
+    lineas: LineaPlantilla[];
+  }): Promise<string> {
+    const { data, error } = await supabase.rpc('fn_plantilla_asiento_guardar', {
+      p_organization_id: this.getOrganizationId(),
+      p_id: plantilla.id ?? null,
+      p_nombre: plantilla.nombre,
+      p_memo: plantilla.memo ?? null,
+      p_lineas: plantilla.lineas.map((l) => ({
+        account_code: l.account_code,
+        description: l.descripcion,
+        debit: l.debito,
+        credit: l.credito,
+        tercero_nit: l.tercero_nit,
+        tercero_nombre: l.tercero_nombre,
+        cost_center_id: l.cost_center_id,
+      })),
+    });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+    return data as string;
+  }
+
+  /** Crea un borrador para revisarlo antes de publicarlo. */
+  static async aplicarPlantilla(id: string, branchId: number, fecha: string, memo?: string | null): Promise<number> {
+    const { data, error } = await supabase.rpc('fn_plantilla_asiento_aplicar', {
+      p_plantilla_id: id,
+      p_branch_id: branchId,
+      p_fecha: fecha,
+      p_memo: memo ?? null,
+    });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+    return data as number;
+  }
+
+  static async archivarPlantilla(id: string): Promise<void> {
+    const { error } = await supabase.rpc('fn_plantilla_asiento_archivar', { p_plantilla_id: id });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+  }
+}
+
+export interface LineaPlantilla {
+  orden: number;
+  account_code: string;
+  descripcion: string | null;
+  debito: number;
+  credito: number;
+  tercero_nit: string | null;
+  tercero_nombre: string | null;
+  cost_center_id: string | null;
+}
+
+export interface PlantillaAsiento {
+  id: string;
+  nombre: string;
+  memo: string | null;
+  lineas: LineaPlantilla[];
 }

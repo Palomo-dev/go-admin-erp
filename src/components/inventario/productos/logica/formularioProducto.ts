@@ -325,6 +325,11 @@ export interface EstadoFormularioProducto {
     notes: string | null;
   }[];
   etiquetas: number[];
+  /** Cuentas sugeridas. Null: la de la categoría o la configuración contable. */
+  cuenta_ingreso: string | null;
+  cuenta_costo: string | null;
+  cuenta_inventario: string | null;
+  cuenta_devolucion: string | null;
   // Avanzado
   weight_kg: number | null;
   length_cm: number | null;
@@ -446,6 +451,10 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     proveedor: { ...PROVEEDOR_VACIO },
     otros_proveedores: [],
     etiquetas: [],
+    cuenta_ingreso: null,
+    cuenta_costo: null,
+    cuenta_inventario: null,
+    cuenta_devolucion: null,
     weight_kg: null,
     length_cm: null,
     width_cm: null,
@@ -458,6 +467,10 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
 
 const n = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
 const s = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+const cuentaTexto = (v: unknown): string | null => {
+  const texto = s(v).trim();
+  return texto || null;
+};
 
 /**
  * Estado a partir de `fn_producto_para_formulario`. En `duplicar` se quitan
@@ -608,6 +621,10 @@ export function estadoDesdeDatos(
               notes: x.notes,
             })),
     etiquetas: dup && !copiar.etiquetas ? [] : [...datos.etiquetas],
+    cuenta_ingreso: cuentaTexto(p.cuenta_ingreso),
+    cuenta_costo: cuentaTexto(p.cuenta_costo),
+    cuenta_inventario: cuentaTexto(p.cuenta_inventario),
+    cuenta_devolucion: cuentaTexto(p.cuenta_devolucion),
     weight_kg: n(p.weight_kg),
     length_cm: n(p.length_cm),
     width_cm: n(p.width_cm),

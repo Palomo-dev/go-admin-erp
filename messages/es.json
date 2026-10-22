@@ -4458,6 +4458,7 @@
       "finanzas_contabilidad": "Contabilidad",
       "finanzas_contabilidad_plan-cuentas": "Plan de cuentas",
       "finanzas_contabilidad_asientos": "Asientos",
+      "finanzas_contabilidad_plantillas": "Plantillas de asientos",
       "finanzas_contabilidad_mayor-contable": "Mayor contable",
       "finanzas_contabilidad_balance-comprobacion": "Balance de comprobación",
       "finanzas_contabilidad_estado-resultados": "Estado de resultados",
@@ -11875,6 +11876,15 @@
         "preparacionAyuda": "Genera una comanda de cocina al vender desde el POS.",
         "siGenera": "Sí · genera comanda al vender"
       },
+      "cuentas": {
+        "titulo": "Cuentas contables",
+        "descripcion": "Se usan cuando el producto no trae la suya.",
+        "ayuda": "Vacía: la factura usa la configuración contable.",
+        "ingreso": "Ingreso",
+        "costo": "Costo",
+        "inventario": "Inventario",
+        "devolucion": "Devolución"
+      },
       "apariencia": {
         "descripcion": "Color, icono e imagen en el POS y la tienda.",
         "imagenAyuda": "Se usa en el POS (vista de imágenes), la tienda web y el catálogo."
@@ -16200,6 +16210,14 @@
         "otrosDuplicar": "{n, plural, one {También se copiará este proveedor} other {También se copiarán estos # proveedores}}: {nombres}.",
         "gestionar": "Gestionar proveedores"
       },
+      "cuentas": {
+        "titulo": "Cuentas contables",
+        "ayuda": "Si las dejas vacías, la factura usa la de la categoría o la configuración contable.",
+        "ingreso": "Ingreso",
+        "costo": "Costo",
+        "inventario": "Inventario",
+        "devolucion": "Devolución"
+      },
       "etiquetas": {
         "etiqueta": "Etiquetas",
         "ayuda": "Clasifican el producto para buscarlo y filtrarlo. Escribe un nombre nuevo para crear una etiqueta.",
@@ -16398,6 +16416,7 @@
       "duplicado": "Producto duplicado",
       "guardadoDescripcion": "«{nombre}» quedó guardado.",
       "avisoCodigos": "El producto se guardó, pero no se pudieron numerar los códigos de barras de las variantes. Genéralos desde Etiquetas.",
+      "avisoCuentas": "El producto se guardó, pero no se pudieron guardar sus cuentas contables.",
       "borradorRecuperado": "Recuperamos cambios sin guardar de este formulario (borrador de esta pestaña).",
       "descartarBorrador": "Descartar borrador"
     },
@@ -18423,7 +18442,10 @@
         "actual": "Tarifa actual",
         "nota": "Nota de la línea",
         "seriales": "Seriales",
-        "serialesAyuda": "Uno por línea."
+        "serialesAyuda": "Uno por línea.",
+        "cuenta": "Cuenta contable",
+        "cuentaAyuda": "Si la dejas vacía, se usa la del producto, la de la categoría o la configuración contable. La vista previa sale al confirmar.",
+        "cuentaListo": "Listo"
       },
       "manual": {
         "titulo": "Concepto sin producto",
@@ -20472,6 +20494,8 @@
         "aFavor": "El cliente queda con {monto} a favor.",
         "dian": "La nota se envía a la DIAN."
       },
+      "verAsiento": "Ver asiento",
+      "asientoAyuda": "El impuesto de la vista previa es proporcional al de la factura. La cuenta sale de la línea, del producto o de la categoría.",
       "bloqueos": {
         "sinMonto": "Elige qué acreditar.",
         "excede": "La nota supera lo que aún se puede acreditar ({tope}).",
@@ -20822,7 +20846,15 @@
         "nota": "Nota de la línea",
         "notaAyuda": "Sale en el PDF de la factura.",
         "elegirSeriales": "Elegir seriales",
-        "duplicar": "Duplicar línea"
+        "duplicar": "Duplicar línea",
+        "cuenta": "Cuenta contable",
+        "cuentaAyuda": "Si la dejas vacía, se usa la del producto, la de la categoría o la configuración contable.",
+        "cuentaListo": "Listo",
+        "verAsiento": "Ver asiento",
+        "asientoTitulo": "Vista previa del asiento",
+        "asientoAyuda": "Guarda el borrador y muestra el asiento. Si una línea tiene cuenta propia y el asiento no cuadra, la factura no se publica.",
+        "asientoFallo": "El asiento no se puede publicar",
+        "asientoCerrar": "Cerrar"
       },
       "comision": {
         "vendedor": "Vendedor",
@@ -21630,6 +21662,8 @@
     },
     "detalle": {
       "titulo": "Documento Soporte",
+      "verAsiento": "Ver asiento",
+      "asientoAviso": "Es una vista previa. El documento soporte no genera el asiento al guardarse.",
       "volver": "Volver a documentos soporte",
       "referencia": "Ref: {referencia}",
       "numero": " — No. {numero}",
@@ -30800,7 +30834,8 @@
       "automatico": "Automático (sistema)"
     },
     "lineas": {
-      "centroCosto": "Centro de costo"
+      "centroCosto": "Centro de costo",
+      "tercero": "Tercero"
     }
   },
   "reportes": {

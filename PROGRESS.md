@@ -3803,3 +3803,16 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - El SQL está en supabase/propuestas y la única sentencia ejecutable es el RAISE propuesta_no_aplicada. No se aplicó por MCP. No se insertaron cuentas ni categorías ni se reescribieron asientos.
 - Jest: fase 2, 9 pruebas; fase 3, 10; fase 4, 4. Las 23 en verde. eslint de los archivos tocados, sin avisos. Esos archivos no salen en tsc. El guardarraíl de bytes de control sigue en verde.
 - No hay pantalla nueva. No se abrió el ERP en el navegador.
+
+
+### Fase: Fuente del contador aplicada en la base — 2026-10-21
+- Rama cursor/fuente-contador-puc-bffb, contra main. No se fusionó y no se tocó master.
+- Migración aplicada por MCP: 20261022033041 fuente_contador_backfill. El md5 del archivo coincide con schema_migrations (7ad8bdebc4066159add534b0667dfcdb).
+- Se agregó chart_of_accounts.concepto_exogena, texto opcional, sin valores.
+- Se agregaron 27 códigos a puc_plantilla y 18984 cuentas a las 109 organizaciones, marcadas en la descripción. 4225, 513555, el grupo 36 y 3610 quedaron en las 109. 6155 no se copió. 6170 no se creó. La contribución parafiscal del turismo sigue sin código.
+- Los nombres oficiales se escribieron solo donde la cuenta no tenía líneas: 4105 en 85 organizaciones (24 con movimientos siguen como Ventas de Mercancias), 2105 en 97 (12 siguen como Proveedores Nacionales), 6105 en 106 (3 siguen como Costo de Mercancias Vendidas). 5905 quedó como Ganancias y pérdidas en las 109. No se movieron saldos ni se reescribieron asientos.
+- Las cuentas que ya usan una regla activa no cambiaron requiere_tercero ni requiere_centro_costo, para no saltarse el asiento de venta ni el de nómina. 4105, 2105, 5105 y 6105 siguen en falso. 4135, cuenta nueva, sí exige tercero y centro de costo.
+- Se sembraron 4360 categorías de tesorería (40 por organización). Comisiones recibidas apuntan a 4225, gas a 513555, GMF a 511595, internet a 513535, transporte a 513550, domicilios a 523550, software a 513595, papelería a 519530, aseo a 519525 y combustible a 519545. La categoría Impuestos quedó sin cuenta sugerida porque 5115 es título desde que se le colgó 511595, y no tenía movimientos.
+- Nómina y seguridad social siguen sugiriendo 5105, que es la causación. El pago (2505 y 2370) no se mezcló en esa cuenta. No se inventó la subcuenta de 5105.
+- Reversión: supabase/rollbacks/20261022033041_fuente_contador_backfill_rollback.sql. No está aplicada. Borra las categorías de esta siembra, las cuentas marcadas sin movimientos, el campo concepto_exogena, y devuelve nombres, naturaleza e interruptores. No toca asientos.
+- Jest de la fase 2, 9 pruebas, sigue en verde.

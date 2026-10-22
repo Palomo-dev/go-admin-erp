@@ -1,3 +1,5 @@
+-- Superada por la migración aplicada 20261022033041_fuente_contador_backfill.
+-- No correr este archivo: la única sentencia de abajo aborta a propósito.
 -- Propuesta del catálogo PUC del contador. No aplicada.
 -- La única sentencia ejecutable es el RAISE. El resto son comentarios,
 -- para que un runner que parta el archivo no altere producción.

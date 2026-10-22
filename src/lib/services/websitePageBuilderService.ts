@@ -236,6 +236,25 @@ const CARD_FIELDS_DESCRIPCION_VISIBLE: ContentFieldDef[] = CARD_FIELDS.map((f) =
   f.key === 'show_description' ? { ...f, defaultValue: true } : f,
 );
 
+/**
+ * `defaultValue` no se escribe en el contenido. En la tienda, ausente significa
+ * hijas incluidas solo en destacados; en grilla, carrusel, lista y ofertas, no.
+ */
+function campoIncluirSubcategorias(porDefecto: boolean): ContentFieldDef {
+  return {
+    key: 'include_subcategories',
+    label: 'Incluir subcategorías',
+    type: 'boolean',
+    group: 'data',
+    defaultValue: porDefecto,
+    helpText: porDefecto
+      ? 'También entran los productos de las categorías hijas. Apágalo para quedarte solo con la categoría elegida.'
+      : 'Apagado: solo la categoría elegida, como hasta ahora. Enciéndelo para incluir las hijas.',
+  };
+}
+
+const AYUDA_CATEGORIAS_PRODUCTO = 'Sin selección se muestran todos los productos. Con selección, solo los de esas categorías.';
+
 const RAW_CATALOG: SectionTypeDefinition[] = [
   {
     type: 'hero',
@@ -983,8 +1002,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         entity: 'category',
         multiple: true,
         group: 'data',
-        helpText: 'Sin selección: se muestran todas las categorías',
+        helpText: AYUDA_CATEGORIAS_PRODUCTO,
       },
+      campoIncluirSubcategorias(false),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '12', group: 'data' },
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },
@@ -1166,8 +1186,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         entity: 'category',
         multiple: true,
         group: 'data',
-        helpText: 'Sin selección: se muestran todas las categorías',
+        helpText: AYUDA_CATEGORIAS_PRODUCTO,
       },
+      campoIncluirSubcategorias(true),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '8', group: 'data' },
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },
@@ -1406,8 +1427,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         entity: 'category',
         multiple: true,
         group: 'data',
-        helpText: 'Sin selección: se muestran todas las categorías',
+        helpText: AYUDA_CATEGORIAS_PRODUCTO,
       },
+      campoIncluirSubcategorias(false),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '8', group: 'data' },
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {BookOpen, Search} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -44,10 +44,9 @@ export function MayorContablePage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
-  const [accounts, setAccounts] = useState<ChartAccount[]>([]);
+  const [accounts, setAccounts] = useState<Pick<ChartAccount, 'account_code' | 'name' | 'type'>[]>([]);
   const [ledger, setLedger] = useState<LedgerAccount | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [, setIsLoadingAccounts] = useState(true);
 
   useEffect(() => {
     if (tzLoading) return;
@@ -56,23 +55,18 @@ export function MayorContablePage() {
     setEndDate((prev) => prev || hoy);
   }, [tzLoading, getToday]);
 
-  useEffect(() => {
-    loadAccounts();
-  }, []);
-
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
-      const data = await ContabilidadService.obtenerPlanCuentas();
+      const data = await ContabilidadService.obtenerCuentasLigero();
       setAccounts(data);
-      if (data.length > 0 && !selectedAccount) {
-        setSelectedAccount(data[0].account_code);
-      }
     } catch (error) {
       console.error('Error cargando cuentas:', error);
-    } finally {
-      setIsLoadingAccounts(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadAccounts();
+  }, [loadAccounts]);
 
   const loadLedger = async () => {
     if (!selectedAccount || !startDate || !endDate) return;
@@ -86,17 +80,6 @@ export function MayorContablePage() {
       setIsLoading(false);
     }
   };
-
-  // `fechasListas` solo cambia UNA vez (al resolverse la zona), asi que esto
-  // sigue cargando en el arranque y al cambiar de cuenta, no en cada tecla del
-  // selector de fechas: para eso esta el boton «Generar».
-  const fechasListas = startDate !== '' && endDate !== '';
-  useEffect(() => {
-    if (selectedAccount && fechasListas) {
-      loadLedger();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccount, fechasListas]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -151,7 +134,9 @@ export function MayorContablePage() {
           <StatsSkeleton count={4} />
           <TableSkeleton columns={4} rows={6} />
         </div>
-      ) : ledger ? (
+      ) : !ledger ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">Elige una cuenta y consulta. El mayor no se carga solo.</p>
+      ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -187,6 +172,7 @@ export function MayorContablePage() {
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
                 {TYPE_LABELS[ledger.type] || ledger.type} | {ledger.entries.length} movimientos
+                {ledger.truncated ? '. Se muestran 400 líneas; los totales son del periodo completo.' : ''}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -229,12 +215,6 @@ export function MayorContablePage() {
             </CardContent>
           </Card>
         </>
-      ) : (
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="py-12">
-            <p className="text-center text-gray-500">Seleccione una cuenta para ver el mayor contable</p>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

@@ -251,6 +251,19 @@ export class ContabilidadService {
     return data || [];
   }
 
+  /** Solo código, nombre y tipo: el mayor no necesita el plan completo. */
+  static async obtenerCuentasLigero(): Promise<Pick<ChartAccount, 'account_code' | 'name' | 'type'>[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('chart_of_accounts')
+      .select('account_code, name, type')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .order('account_code');
+    if (error) throw error;
+    return data || [];
+  }
+
   static async crearCuenta(cuenta: Partial<ChartAccount>): Promise<ChartAccount> {
     const organizationId = this.getOrganizationId();
 

@@ -20,6 +20,19 @@ import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
+function avisoPeriodo(error: unknown, fallback: string): string {
+  const msg = typeof error === 'object' && error && 'message' in error
+    ? String((error as { message: unknown }).message)
+    : '';
+  if (msg.includes('faltan_cuentas_cierre')) {
+    return 'Falta la cuenta de movimiento 3605, o 3610 para registrar la pérdida.';
+  }
+  if (msg.includes('periodo_cerrado') || msg.includes('periodo_no_abierto')) return 'Ese periodo no está abierto.';
+  if (msg.includes('periodo_no_cerrado')) return 'Ese periodo no está cerrado.';
+  if (msg.includes('sin_sucursal')) return 'La organización no tiene sucursal.';
+  return fallback;
+}
+
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -30,6 +43,9 @@ export function PeriodosFiscalesPage() {
   const [periodos, setPeriodos] = useState<FiscalPeriod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showGenerate, setShowGenerate] = useState(false);
+  const [showCierre, setShowCierre] = useState(false);
+  const [anioCierre, setAnioCierre] = useState(new Date().getFullYear());
+  const [cerrando, setCerrando] = useState(false);
   const [newYear, setNewYear] = useState(new Date().getFullYear());
   const [newPeriodType, setNewPeriodType] = useState<'monthly' | 'yearly'>('monthly');
   const [closePeriod, setClosePeriod] = useState<FiscalPeriod | null>(null);
@@ -79,19 +95,34 @@ export function PeriodosFiscalesPage() {
       loadPeriodos();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al cerrar período');
+      toast.error(avisoPeriodo(error, 'Error al cerrar período'));
     }
   };
 
   const handleReopen = async (periodo: FiscalPeriod) => {
-    if (!confirm(`¿Reabrir ${getPeriodLabel(periodo)}? Se podrán volver a registrar asientos con fecha en ese periodo.`)) return;
+    if (!confirm(`¿Reabrir ${getPeriodLabel(periodo)}? Se podrán volver a registrar asientos con fecha en ese periodo. Reabrir no reversa el asiento de cierre.`)) return;
     try {
       await PeriodosFiscalesService.reabrirPeriodo(periodo.id);
       toast.success('Período reabierto');
       loadPeriodos();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al reabrir período');
+      toast.error(avisoPeriodo(error, 'Error al reabrir período'));
+    }
+  };
+
+  const cerrarEjercicio = async () => {
+    try {
+      setCerrando(true);
+      const resultado = await PeriodosFiscalesService.cerrarEjercicio(anioCierre);
+      toast.success(`Ejercicio ${anioCierre} cerrado en ${resultado.cuenta_resultado} (${resultado.asientos} asientos)`);
+      setShowCierre(false);
+      loadPeriodos();
+    } catch (error) {
+      console.error(error);
+      toast.error(avisoPeriodo(error, 'No se pudo cerrar el ejercicio'));
+    } finally {
+      setCerrando(false);
     }
   };
 
@@ -137,6 +168,9 @@ export function PeriodosFiscalesPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowCierre(true)}>
+            Cerrar ejercicio
+          </Button>
           <Button variant="outline" onClick={() => setShowGenerate(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Generar Períodos
@@ -209,6 +243,29 @@ export function PeriodosFiscalesPage() {
             }
           </div>
       )}
+
+      <Dialog open={showCierre} onOpenChange={setShowCierre}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar ejercicio</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Cancela las cuentas de resultado contra 3605. Si el año queda en pérdida, ese saldo pasa a 3610. Los periodos del año quedan cerrados. Si se reabre y se vuelve a cerrar, solo se cancela el saldo que siga abierto.
+            </p>
+            <div className="space-y-2">
+              <Label>Año</Label>
+              <Input type="number" value={anioCierre} onChange={(e) => setAnioCierre(parseInt(e.target.value, 10) || anioCierre)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCierre(false)}>Cancelar</Button>
+            <Button onClick={() => { void cerrarEjercicio(); }} disabled={cerrando}>
+              {cerrando ? 'Cerrando...' : 'Cerrar ejercicio'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Generar Períodos */}
       <Dialog open={showGenerate} onOpenChange={setShowGenerate}>

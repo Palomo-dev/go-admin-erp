@@ -430,6 +430,63 @@ export const esquemaPagina = z
   })
   .strict();
 
+const ubicacionContador = z.enum(['topbar', 'carrito', 'checkout', 'producto', 'hero', 'seccion']);
+
+/**
+ * Urgencia y contador. Ausente = la tienda sigue con las columnas
+ * `countdown_*` y `checkout_*` de `website_settings`.
+ */
+export const esquemaConversion = z
+  .object({
+    contadores: z.array(z.object({
+      id: z.string().min(1).max(40),
+      activo: z.boolean(),
+      ubicaciones: z.array(ubicacionContador).max(6),
+      modo: z.discriminatedUnion('tipo', [
+        z.object({ tipo: z.literal('fecha'), fin: z.string().max(40), zona: z.string().min(1).max(64) }).strict(),
+        z.object({ tipo: z.literal('promocion'), promotionId: z.string().uuid() }).strict(),
+        z.object({ tipo: z.literal('diario'), hora: z.number().int().min(0).max(23), zona: z.string().min(1).max(64) }).strict(),
+        z.object({ tipo: z.literal('evergreen'), minutos: z.number().int().min(1).max(1440) }).strict(),
+      ]),
+      formato: z.object({
+        dias: z.boolean(),
+        horas: z.boolean(),
+        minutos: z.boolean(),
+        segundos: z.boolean(),
+        etiquetas: z.boolean(),
+      }).strict(),
+      estilo: z.object({
+        forma: z.enum(['pastilla', 'cuadrado', 'redondo']),
+        fondo: z.string().max(120).optional(),
+        texto: z.string().max(16).optional(),
+        acento: z.string().max(16).optional(),
+        borde: z.string().max(16).optional(),
+        radio: z.number().int().min(0).max(48).optional(),
+        sombra: z.boolean(),
+        tamano: z.enum(['sm', 'md', 'lg']),
+        cajas: z.enum(['digito', 'linea']),
+      }).strict(),
+      textoAntes: z.string().max(200),
+      textoDespues: z.string().max(200),
+      alTerminar: z.discriminatedUnion('tipo', [
+        z.object({ tipo: z.literal('ocultar') }).strict(),
+        z.object({ tipo: z.literal('mensaje'), texto: z.string().max(200) }).strict(),
+      ]),
+    }).strict()).max(8),
+    urgencia: z.object({
+      stockBajo: z.object({
+        activo: z.boolean(),
+        umbral: z.number().int().min(1).max(999),
+        plantilla: z.string().max(200),
+        ubicaciones: z.array(z.enum(['checkout', 'producto', 'carrito'])).max(3),
+      }).strict(),
+      reservaCarrito: z.object({ activo: z.boolean() }).strict(),
+      /** Sin métrica real no se puede encender. */
+      personasViendo: z.object({ activo: z.literal(false) }).strict(),
+    }).strict(),
+  })
+  .strict();
+
 export const esquemaDocumentoSitio = z
   .object({
     schemaVersion: z.literal(VERSION_ESQUEMA_DOCUMENTO),
@@ -440,6 +497,7 @@ export const esquemaDocumentoSitio = z
     shell: esquemaShell,
     menus: z.array(esquemaMenu).max(LIMITES_DOCUMENTO.menusMaximos),
     paginas: z.array(esquemaPagina).max(LIMITES_DOCUMENTO.paginasMaximas),
+    conversion: esquemaConversion.optional(),
   })
   .strict()
   .superRefine((doc, ctx) => {

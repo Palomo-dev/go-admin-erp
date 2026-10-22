@@ -29,6 +29,7 @@ import {
   type PaginaSitio,
   type SeccionSitio,
 } from '@/lib/website/contrato/documentoSitio';
+import { conversionDesdeColumnas } from '@/lib/website/conversion';
 import {
   CAMPOS_HEREDABLES,
   COLUMNAS_SHELL_ESTRUCTURA,
@@ -374,6 +375,7 @@ export function importarSitioLegacy(entrada: EntradaImportacion): ResultadoImpor
     }
   }
 
+  const conversion = conversionDesdeColumnas(ajustes);
   let documento: DocumentoSitio = {
     schemaVersion: VERSION_ESQUEMA_DOCUMENTO,
     identidad: {},
@@ -395,6 +397,7 @@ export function importarSitioLegacy(entrada: EntradaImportacion): ResultadoImpor
     },
     menus,
     paginas,
+    ...(conversion ? { conversion } : {}),
   };
 
   // D6: el sitio principal conserva sus valores como explícitos.

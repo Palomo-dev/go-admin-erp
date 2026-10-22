@@ -112,7 +112,9 @@ describe('ajustes', () => {
     expect(doc.shell.header.opciones).toEqual({ header_cta_text: 'Pedir' });
     expect(doc.shell.header.composicion).toBe('mega');
     expect(doc.shell.header.menuPrincipalId).toBe('m1');
-    expect(noAplicadas.sort()).toEqual(['countdown_enabled', 'header_menu_id']);
+    expect(noAplicadas).toEqual(['header_menu_id']);
+    expect(doc.conversion?.contadores[0]?.activo).toBe(true);
+    expect(doc.conversion?.urgencia.personasViendo.activo).toBe(false);
     expect(validarDocumentoSitio(doc).ok).toBe(true);
   });
 });

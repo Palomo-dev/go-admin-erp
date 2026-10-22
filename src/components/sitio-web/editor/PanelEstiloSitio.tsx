@@ -42,6 +42,7 @@ import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
 import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
+import { PanelUrgencia } from './inspector/PanelUrgencia';
 
 export interface PanelEstiloSitioProps {
   enV2: boolean;
@@ -199,6 +200,9 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
         )}
         {cascaronTemaDisponible() && p.enV2 && p.documento && (
           <EstiloGlobalSecciones documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
+        )}
+        {p.enV2 && p.documento && (
+          <PanelUrgencia documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
       </div>
     </aside>

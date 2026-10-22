@@ -18,6 +18,40 @@ function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }
   )
 }
 
+function Tipografia({
+  nombre,
+  prefijo,
+  textos,
+  deshabilitado,
+  onCambiar,
+}: {
+  nombre: string
+  prefijo: string
+  textos: Record<string, unknown>
+  deshabilitado?: boolean
+  onCambiar: (clave: string, valor: unknown) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-2">
+      <p className="text-xs font-semibold text-fg">Tipografía de {nombre}</p>
+      <Campo etiqueta="Tamaño">
+        <select className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_size`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_size`, e.target.value)}>
+          <option value="">Como hoy</option>
+          {['sm', 'md', 'lg', 'xl', '2xl', '3xl'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </Campo>
+      <Campo etiqueta="Peso">
+        <select className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_weight`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_weight`, e.target.value)}>
+          <option value="">Como hoy</option>
+          {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </Campo>
+      <Campo etiqueta="Fuente"><input className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_font`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_font`, e.target.value)} /></Campo>
+      <Campo etiqueta="Color"><input type="color" disabled={deshabilitado} value={typeof textos[`${prefijo}_color`] === 'string' ? String(textos[`${prefijo}_color`]) : '#111827'} onChange={(e) => onCambiar(`${prefijo}_color`, e.target.value)} /></Campo>
+    </div>
+  )
+}
+
 function Miniatura({ layout }: { layout: LayoutBoletin }) {
   const foto = <span className="block h-full min-h-3 rounded-sm bg-fg/20" />
   const texto = <span className="block h-1.5 w-full rounded-sm bg-fg/40" />
@@ -150,21 +184,10 @@ export function EditorBoletin({
           <Campo etiqueta="Descripción"><textarea className={control} disabled={deshabilitado} rows={2} value={String(contenido.subtitle ?? '')} onChange={(e) => setRaiz('subtitle', e.target.value)} /></Campo>
           <Campo etiqueta="Texto legal"><textarea className={control} disabled={deshabilitado} rows={2} value={String(textos.legal ?? contenido.disclaimer ?? '')} onChange={(e) => onCambiar({ ...contenido, disclaimer: e.target.value || undefined, newsletter: { ...boletin, texts: { ...textos, legal: e.target.value || undefined } } })} /></Campo>
           <Campo etiqueta="Enlace de la política"><input className={control} disabled={deshabilitado} value={String(textos.legal_href ?? '')} onChange={(e) => setNivel('texts', textos, 'legal_href', e.target.value)} /></Campo>
-          <Campo etiqueta="Tamaño del título">
-            <select className={control} disabled={deshabilitado} value={String(textos.title_size ?? '')} onChange={(e) => setNivel('texts', textos, 'title_size', e.target.value)}>
-              <option value="">Como hoy</option>
-              {['sm', 'md', 'lg', 'xl', '2xl', '3xl'].map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </Campo>
-          <Campo etiqueta="Peso del título">
-            <select className={control} disabled={deshabilitado} value={String(textos.title_weight ?? '')} onChange={(e) => setNivel('texts', textos, 'title_weight', e.target.value)}>
-              <option value="">Como hoy</option>
-              {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </Campo>
-          <Campo etiqueta="Fuente del título"><input className={control} disabled={deshabilitado} value={String(textos.title_font ?? '')} onChange={(e) => setNivel('texts', textos, 'title_font', e.target.value)} /></Campo>
-          <Campo etiqueta="Color del título"><input type="color" disabled={deshabilitado} value={typeof textos.title_color === 'string' ? textos.title_color : '#111827'} onChange={(e) => setNivel('texts', textos, 'title_color', e.target.value)} /></Campo>
-          <Campo etiqueta="Color de la descripción"><input type="color" disabled={deshabilitado} value={typeof textos.description_color === 'string' ? textos.description_color : '#4b5563'} onChange={(e) => setNivel('texts', textos, 'description_color', e.target.value)} /></Campo>
+          <Tipografia nombre="la ceja" prefijo="eyebrow" textos={textos} deshabilitado={deshabilitado} onCambiar={(k, v) => setNivel('texts', textos, k, v)} />
+          <Tipografia nombre="el título" prefijo="title" textos={textos} deshabilitado={deshabilitado} onCambiar={(k, v) => setNivel('texts', textos, k, v)} />
+          <Tipografia nombre="la descripción" prefijo="description" textos={textos} deshabilitado={deshabilitado} onCambiar={(k, v) => setNivel('texts', textos, k, v)} />
+          <Tipografia nombre="el texto legal" prefijo="legal" textos={textos} deshabilitado={deshabilitado} onCambiar={(k, v) => setNivel('texts', textos, k, v)} />
           <Campo etiqueta="Mensaje de éxito"><input className={control} disabled={deshabilitado} value={String(boletin.success ?? '')} onChange={(e) => setBoletin({ success: e.target.value })} /></Campo>
           <Campo etiqueta="Mensaje de error"><input className={control} disabled={deshabilitado} value={String(boletin.error ?? '')} onChange={(e) => setBoletin({ error: e.target.value })} /></Campo>
           <Campo etiqueta="Incentivo"><input className={control} disabled={deshabilitado} placeholder="10 % en tu primera compra" value={String(boletin.incentive ?? '')} onChange={(e) => setBoletin({ incentive: e.target.value })} /></Campo>
@@ -210,6 +233,15 @@ export function EditorBoletin({
           <Campo etiqueta="Color al enfocar"><input type="color" disabled={deshabilitado} value={typeof input.focus_color === 'string' ? input.focus_color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, focus_color: e.target.value } } })} /></Campo>
           <Campo etiqueta="Fondo del campo"><input type="color" disabled={deshabilitado} value={typeof input.background === 'string' ? input.background : '#ffffff'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, background: e.target.value } } })} /></Campo>
           <Campo etiqueta="Color del texto"><input type="color" disabled={deshabilitado} value={typeof input.color === 'string' ? input.color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, color: e.target.value } } })} /></Campo>
+          <Campo etiqueta="Color del placeholder"><input type="color" disabled={deshabilitado} value={typeof input.placeholder_color === 'string' ? input.placeholder_color : '#9ca3af'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, placeholder_color: e.target.value } } })} /></Campo>
+          <Campo etiqueta="Tamaño del campo">
+            <select className={control} disabled={deshabilitado} value={String(input.size ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, size: e.target.value || undefined } } })}>
+              <option value="">Mediano</option>
+              <option value="sm">Pequeño</option>
+              <option value="md">Mediano</option>
+              <option value="lg">Grande</option>
+            </select>
+          </Campo>
           <label className="flex justify-between text-sm text-fg"><span>Ícono de sobre</span><input type="checkbox" disabled={deshabilitado} checked={input.icon === true} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, icon: e.target.checked || undefined } } })} /></label>
           <Campo etiqueta="Texto del botón"><input className={control} disabled={deshabilitado} value={String(boton.text ?? contenido.button_text ?? '')} onChange={(e) => onCambiar({ ...contenido, button_text: e.target.value || undefined, newsletter: { ...boletin, form: { ...form, button: { ...boton, text: e.target.value || undefined } } } })} /></Campo>
           <Campo etiqueta="Estilo del botón">
@@ -219,6 +251,14 @@ export function EditorBoletin({
               <option value="outline">Contorno</option>
               <option value="gradient">Degradado</option>
               <option value="icon_only">Solo ícono</option>
+            </select>
+          </Campo>
+          <Campo etiqueta="Tamaño del botón">
+            <select className={control} disabled={deshabilitado} value={String(boton.size ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, size: e.target.value || undefined } } })}>
+              <option value="">Mediano</option>
+              <option value="sm">Pequeño</option>
+              <option value="md">Mediano</option>
+              <option value="lg">Grande</option>
             </select>
           </Campo>
           <Campo etiqueta="Forma del botón">

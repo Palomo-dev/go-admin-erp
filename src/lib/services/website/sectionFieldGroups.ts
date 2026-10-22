@@ -18,6 +18,26 @@
 
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 
+/** Encabezado y fondo comunes. No tienen valor por defecto: si no se tocan, no se guardan. */
+export const SHELL_FIELDS: ContentFieldDef[] = [
+  {
+    key: 'section_header',
+    label: 'Encabezado de la sección',
+    type: 'section_header',
+    group: 'content',
+    section: 'Encabezado de la sección',
+    helpText: 'Sin estos datos, la sección sigue con su título de hoy.',
+  },
+  {
+    key: 'section_background',
+    label: 'Fondo de la sección',
+    type: 'section_background',
+    group: 'content',
+    section: 'Fondo de la sección',
+    helpText: 'Sin estos datos, el fondo de la sección no cambia.',
+  },
+];
+
 // ============================================================
 // STYLE_FIELDS — inyectado en todas las secciones
 // ============================================================

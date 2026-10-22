@@ -8,7 +8,8 @@
 #   @supabase/supabase-js · dotenv · libphonenumber-js · openai · resend ·
 #   sanitize-html · svix · twilio · ws · zod · tsx (runtime)
 # `@sentry/react` aparece como import dinámico de timezoneFallback.ts, solo
-# si hay `window`. No se instala: su peer es react, prohibido en esta imagen.
+# si hay `window`. El cierre define `window` como indefinido y se queda con
+# los paquetes que sobreviven; react no entra en la imagen.
 # Antes: ~1.600 paquetes (Next, puppeteer, antd, sharp, xlsx…) y 32 avisos de
 # `npm audit` (2 críticos, 18 altos); Railway bloqueaba la imagen en
 # BUILD_IMAGE. Ahora: el cierre propio, sin esos paquetes de la web.
@@ -20,7 +21,8 @@
 # libphonenumber-js. `npm ci` instala 98 paquetes. `npm audit --omit=dev` = 0.
 # En Node 20.20.2 (la imagen de Railway) esos cuatro módulos cargan.
 # sanitize-html declara engines >=22.12: npm avisa EBADENGINE y el require
-# funciona, igual que svix.
+# funciona, igual que svix. El lockfile propio no depende del node_modules
+# de la web.
 #
 # Si ws-server.ts o algo de `src/lib/**` que alcance importa un paquete nuevo,
 # hay que añadirlo a `ws-server/package.json` (y regenerar su lockfile): lo

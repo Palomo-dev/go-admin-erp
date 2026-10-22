@@ -10,7 +10,7 @@ const CLAVE = 'STRIPE_SECRET_KEY';
 const ENTORNO = 'VERCEL_ENV';
 
 function entornoProduccion(clave: string | undefined): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { [ENTORNO]: 'production' };
+  const env: NodeJS.ProcessEnv = { NODE_ENV: 'production', [ENTORNO]: 'production' };
   if (clave !== undefined) env[CLAVE] = clave;
   return env;
 }

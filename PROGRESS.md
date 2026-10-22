@@ -3792,3 +3792,14 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Qué se hizo: el PR 10 de tiendas quedó sin conflicto con main (el menú móvil conserva el icono y el contador). El editor equivalente al PR 378 quedó en una rama contra main, porque master no se toca. La rejilla no reserva un cuadrado si el ítem no tiene icono. Un servicio que solo trae botón se publica, y una foto insegura deja ver el icono. Paquete y regalo no quedan marcados como bolsa. La foto de celular se ve en la portada, y en video tapa el video solo en el celular.
 - Qué falta / feedback recibido: la ayuda de la variante video no decía que el computador sigue mostrando el video. Quedó corregida en la misma fase. Las columnas del celular de la rejilla se quedan en 2 porque el verificador de estilo lo exige. Tres copias (documento, estilo de sección y contraste) ya diferían entre los dos main antes de esta fase.
 - Próxima acción: publicar las dos ramas en main. El PR 378 sigue apuntando a master y no se fusiona ahí.
+
+
+### Fase: Fuente del contador, PUC fases 2 a 4 — 2026-10-21
+- Rama cursor/fuente-contador-puc-bffb, contra main. No se fusionó y no se tocó master.
+- La hoja del contador queda como catálogo en src/lib/finanzas/contador. Donde un código no coincide con las fases anteriores, manda esta fuente.
+- Fase 2: naturaleza con la excepción 3610 en débito, tercero obligatorio, reclasificación y plantilla por sector. La contribución parafiscal del turismo y el costo de servicios (6155 o 6170) quedan por definir, sin código programado. 6105 conserva el nombre Agricultura, ganadería, caza y silvicultura.
+- Fase 3: 41 líneas de asientos, cada una configurable. Las pruebas arman cada evento y comprueban débitos, créditos y cuadre. El cierre cancela las clases 4, 5 y 6 contra 5905; la utilidad va a 3605 y la pérdida al débito de 3610. La clase 7 no entra. No se reemplazó ninguna función de cierre.
+- Fase 4: tesorería con las filas a corregir y la categoría nueva. Seguridad social: causación en el grupo 5105, sin inventar la subcuenta, y pago aparte al débito de 2370. Nómina: causación débito 5105 y crédito 2505; el pago, débito 2505, va aparte.
+- El SQL está en supabase/propuestas y la única sentencia ejecutable es el RAISE propuesta_no_aplicada. No se aplicó por MCP. No se insertaron cuentas ni categorías ni se reescribieron asientos.
+- Jest: fase 2, 9 pruebas; fase 3, 10; fase 4, 4. Las 23 en verde. eslint de los archivos tocados, sin avisos. Esos archivos no salen en tsc. El guardarraíl de bytes de control sigue en verde.
+- No hay pantalla nueva. No se abrió el ERP en el navegador.

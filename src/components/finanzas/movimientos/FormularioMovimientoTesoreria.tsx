@@ -431,6 +431,7 @@ export function FormularioMovimientoTesoreria({
               }}
               placeholder={t('movimiento.buscarTercero')}
               usarNit={(documento) => t('movimiento.usarNit', { nit: documento })}
+              sinResultados={t('movimiento.sinResultados')}
             />
           </div>
 

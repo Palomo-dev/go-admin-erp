@@ -17597,6 +17597,7 @@
       "categoria_invalida": "A categoria não corresponde a este movimento.",
       "tercero_requerido": "Esta conta exige o NIT do terceiro.",
       "soporte_invalido": "O anexo deve ser um PDF ou uma imagem desta organização.",
+      "asiento_publicado_inmutable": "O lançamento já está publicado e não pode ser alterado. Estorne-o com um lançamento contrário.",
       "desconocido": "Não foi possível concluir a operação."
     },
     "movimiento": {
@@ -17617,6 +17618,7 @@
       "tercero": "Terceiro",
       "buscarTercero": "Buscar por NIT ou nome",
       "usarNit": "Usar NIT {nit}",
+      "sinResultados": "Sem resultados",
       "centroCosto": "Centro de custo",
       "sinCentro": "Sem centro de custo",
       "monto": "Valor",

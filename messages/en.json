@@ -21798,6 +21798,7 @@
       "categoria_invalida": "The category does not match this entry.",
       "tercero_requerido": "This account requires the third party's tax ID.",
       "soporte_invalido": "The attachment must be a PDF or an image for this organization.",
+      "asiento_publicado_inmutable": "The journal entry is already posted and cannot be changed. Reverse it with an offsetting entry.",
       "desconocido": "The operation could not be completed."
     },
     "movimiento": {
@@ -21818,6 +21819,7 @@
       "tercero": "Third party",
       "buscarTercero": "Search by tax ID or name",
       "usarNit": "Use tax ID {nit}",
+      "sinResultados": "No results",
       "centroCosto": "Cost center",
       "sinCentro": "No cost center",
       "monto": "Amount",

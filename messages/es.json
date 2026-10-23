@@ -21798,6 +21798,7 @@
       "categoria_invalida": "La categoría no corresponde a este movimiento.",
       "tercero_requerido": "Esta cuenta exige el NIT del tercero.",
       "soporte_invalido": "El soporte debe ser un PDF o una imagen de esta organización.",
+      "asiento_publicado_inmutable": "El asiento ya está publicado y no se puede modificar. Se revierte con un contra-asiento.",
       "desconocido": "No se pudo completar la operación."
     },
     "movimiento": {
@@ -21818,6 +21819,7 @@
       "tercero": "Tercero",
       "buscarTercero": "Buscar por NIT o nombre",
       "usarNit": "Usar NIT {nit}",
+      "sinResultados": "Sin resultados",
       "centroCosto": "Centro de costo",
       "sinCentro": "Sin centro de costo",
       "monto": "Monto",

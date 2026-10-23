@@ -17597,6 +17597,7 @@
       "categoria_invalida": "La catégorie ne correspond pas à ce mouvement.",
       "tercero_requerido": "Ce compte exige le NIT du tiers.",
       "soporte_invalido": "La pièce doit être un PDF ou une image de cette organisation.",
+      "asiento_publicado_inmutable": "L'écriture est déjà validée et ne peut pas être modifiée. Contrepassez-la.",
       "desconocido": "L'opération n'a pas pu aboutir."
     },
     "movimiento": {
@@ -17617,6 +17618,7 @@
       "tercero": "Tiers",
       "buscarTercero": "Rechercher par NIT ou par nom",
       "usarNit": "Utiliser le NIT {nit}",
+      "sinResultados": "Aucun résultat",
       "centroCosto": "Centre de coût",
       "sinCentro": "Sans centre de coût",
       "monto": "Montant",

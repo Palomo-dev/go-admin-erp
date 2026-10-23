@@ -58,8 +58,8 @@ export function guardarFacturaCompra(ctx: Ctx, datos: GuardarFacturaCompra): Pro
 }
 
 /**
- * Con `lotes` (inventario B8) usa la sobrecarga con `p_lotes`: lote y
- * vencimiento por línea; sin ellos, la firma de siempre.
+ * Confirma el borrador. `p_lotes` viaja solo al recepcionar con lotes; si no,
+ * la función (una sola firma, con ese argumento en null) recepciona sin ellos.
  */
 export function confirmarFacturaCompra(
   ctx: Ctx,

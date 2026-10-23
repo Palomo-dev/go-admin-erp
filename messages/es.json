@@ -18150,6 +18150,13 @@
       "cuotas_invalidas": "Revisa las cuotas: montos o fechas no válidos.",
       "rango_invalido": "El rango de fechas no es válido.",
       "datos_invalidos": "Revisa los datos del formulario.",
+      "asiento_sin_regla": "No hay una regla contable activa para este documento. Configúrala antes de continuar.",
+      "asiento_no_cuadra": "El asiento no cuadra con las líneas del documento.",
+      "asiento_exige_tercero": "Una cuenta del asiento exige el NIT o la cédula del tercero.",
+      "asiento_exige_centro": "Una cuenta del asiento exige un centro de costo.",
+      "asiento_cuenta_invalida": "Hay una cuenta del asiento que no está en el plan, no está activa o no es de movimiento.",
+      "asiento_periodo_cerrado": "El periodo contable de la fecha del documento está cerrado.",
+      "asiento_no_armado": "No se pudo armar el asiento contable del documento.",
       "error_desconocido": "No se pudo completar la operación. Inténtalo de nuevo."
     },
     "listado": {

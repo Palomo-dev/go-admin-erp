@@ -47,9 +47,10 @@ describe('catálogo: alcance coherente con el uso de branchId', () => {
   // 71 = las 69 de #261 + «Retenciones practicadas» y «Retenciones por
   // proveedor» de #265. 80 = + los nueve reportes nuevos de la v2 (cuatro
   // contables, dos de bancos, movimiento valorizado, compras por proveedor y
-  // órdenes de compra). Si agregas o quitas un reporte, actualízalo aquí.
-  test('el catálogo trae las 80 definiciones y todas declaran alcance', () => {
-    expect(definiciones.length).toBe(80);
+  // órdenes de compra). 82 = + «Estado de resultados por centro» y
+  // «Comparativo de centros». Si agregas o quitas un reporte, actualízalo aquí.
+  test('el catálogo trae las 82 definiciones y todas declaran alcance', () => {
+    expect(definiciones.length).toBe(82);
     const sinAlcance = definiciones.filter((d) => d.alcance !== 'sucursal' && d.alcance !== 'organizacion');
     expect(sinAlcance.map((d) => d.id)).toEqual([]);
   });

@@ -44,6 +44,7 @@ import {
 import { CLAVE_MOTIVO, type MotivoRechazo } from '@/lib/auth/politicaContrasena';
 import { paisDesdeNavegador, alfa2DeAlfa3 } from '@/lib/utils/paisNavegador';
 import { guardarReferido } from '@/lib/auth/referido';
+import { guardarParamsRegistro } from '@/lib/auth/registroParams';
 
 const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESPERA_REENVIO_S = 60;
@@ -81,6 +82,9 @@ function SignupContent() {
       return;
     }
     guardarReferido(params?.get('ref'));
+    // Guardar parámetros de plan, cycle y UTM en sessionStorage para que sobrevivan
+    // todo el flujo de registro (verificación de correo, OAuth, etc.).
+    if (params) guardarParamsRegistro(params);
     setIsoTelefono(alfa2DeAlfa3(paisDesdeNavegador(PAISES_TELEFONO)) ?? undefined);
     // Con sesión abierta (p. ej. Google sin organización) se sigue en el asistente.
     supabase.auth.getSession().then(({ data }) => {

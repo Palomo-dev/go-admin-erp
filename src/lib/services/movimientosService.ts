@@ -103,6 +103,7 @@ export interface MovementFormData {
   categoria_id?: number | null;
   cuenta_contable?: string | null;
   centro_costo_id?: string | null;
+  distribucion_id?: string | null;
   tercero_nit?: string | null;
   tercero_nombre?: string | null;
   tercero_tipo?: string | null;
@@ -148,6 +149,7 @@ function datosContables(data: MovementFormData) {
     categoria_id: data.categoria_id ?? null,
     cuenta_contable: data.cuenta_contable ?? null,
     centro_costo_id: data.centro_costo_id ?? null,
+    distribucion_id: data.distribucion_id ?? null,
     tercero_nit: data.tercero_nit ?? null,
     tercero_nombre: data.tercero_nombre ?? null,
     tercero_tipo: data.tercero_tipo ?? null,

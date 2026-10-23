@@ -21,6 +21,7 @@ export interface DatosMovimientoCaja {
   categoria_id?: number | null;
   cuenta_contable?: string | null;
   centro_costo_id?: string | null;
+  distribucion_id?: string | null;
   tercero_nit?: string | null;
   tercero_nombre?: string | null;
   tercero_tipo?: string | null;
@@ -48,6 +49,7 @@ export function parametrosMovimiento(
     p_categoria_id: datos.categoria_id ?? null,
     p_cuenta_contable: datos.cuenta_contable ?? null,
     p_centro_costo_id: datos.centro_costo_id ?? null,
+    p_distribucion_id: datos.distribucion_id ?? null,
     p_tercero_nit: datos.tercero_nit ?? null,
     p_tercero_nombre: datos.tercero_nombre ?? null,
     p_soporte_path: datos.soporte_path ?? null,

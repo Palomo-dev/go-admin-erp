@@ -106,6 +106,8 @@ export interface ChartAccount {
   es_movimiento?: boolean | null;
   requiere_tercero?: boolean | null;
   requiere_centro_costo?: boolean | null;
+  /** obligatorio, opcional o no_aplica. El booleano sigue en true solo si es obligatorio. */
+  centro_costo_modo?: 'obligatorio' | 'opcional' | 'no_aplica' | null;
   description: string | null;
   created_at: string;
   updated_at: string;
@@ -127,6 +129,7 @@ const CAMPOS_CUENTA = [
   'es_movimiento',
   'requiere_tercero',
   'requiere_centro_costo',
+  'centro_costo_modo',
 ] as const;
 
 function camposDeCuenta(cuenta: Partial<ChartAccount>): Record<string, unknown> {
@@ -278,6 +281,7 @@ export class ContabilidadService {
         es_movimiento: cuenta.es_movimiento ?? null,
         requiere_tercero: cuenta.requiere_tercero ?? false,
         requiere_centro_costo: cuenta.requiere_centro_costo ?? false,
+        centro_costo_modo: cuenta.centro_costo_modo ?? null,
       })
       .select()
       .single();
@@ -459,6 +463,7 @@ export class ContabilidadService {
       debit: number;
       credit: number;
       cost_center_id?: string | null;
+      distribucion_id?: string | null;
       tercero_nit?: string | null;
       tercero_nombre?: string | null;
     }[];
@@ -503,6 +508,7 @@ export class ContabilidadService {
         debit: line.debit || 0,
         credit: line.credit || 0,
         cost_center_id: line.cost_center_id || null,
+        distribucion_id: line.distribucion_id || null,
         tercero_nit: line.tercero_nit?.trim() || null,
         tercero_nombre: line.tercero_nombre?.trim() || null,
       })),
@@ -647,6 +653,39 @@ export class ContabilidadService {
       .order('code');
     if (error) throw error;
     return (data ?? []) as { id: string; code: string; name: string }[];
+  }
+
+  /** Centro de la sucursal, o el 100 si la sucursal todavía no tiene uno. */
+  static async defectoCentroSucursal(branchId: number | null): Promise<string | null> {
+    const orgId = this.getOrganizationId();
+    if (branchId) {
+      const { data } = await supabase
+        .from('branches')
+        .select('default_cost_center_id')
+        .eq('id', branchId)
+        .eq('organization_id', orgId)
+        .maybeSingle();
+      if (data?.default_cost_center_id) return String(data.default_cost_center_id);
+    }
+    const { data } = await supabase
+      .from('cost_centers')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('code', '100')
+      .eq('is_active', true)
+      .maybeSingle();
+    return data?.id ? String(data.id) : null;
+  }
+
+  static async listarDistribuciones(): Promise<{ id: string; nombre: string }[]> {
+    const { data, error } = await supabase
+      .from('cost_center_distributions')
+      .select('id, nombre')
+      .eq('organization_id', this.getOrganizationId())
+      .eq('activo', true)
+      .order('nombre');
+    if (error) return [];
+    return (data ?? []) as { id: string; nombre: string }[];
   }
 
   static async guardarCuentasCatalogo(

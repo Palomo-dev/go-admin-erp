@@ -131,7 +131,7 @@ export function NuevoMovimientoPage({ sessionUuid }: NuevoMovimientoPageProps) {
         }}
       >
         <div className="min-w-0 lg:col-span-2">
-          <MovimientoCajaForm datos={form.datos} onCambiar={form.cambiar} errorVisible={form.errorVisible} simbolo={simbolo} deshabilitado={guardando} />
+          <MovimientoCajaForm datos={form.datos} onCambiar={form.cambiar} errorVisible={form.errorVisible} simbolo={simbolo} deshabilitado={guardando} branchId={resumen.sesion.branch_id} />
         </div>
         <div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
           <EfectoEnCaja esperado={resumen.esperado.efectivo_esperado} tipo={form.datos.tipo} monto={form.datos.monto} formatear={formatear} />

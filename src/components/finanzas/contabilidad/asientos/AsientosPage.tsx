@@ -36,6 +36,7 @@ interface JournalLineInput {
   tercero_nit: string;
   tercero_nombre: string;
   cost_center_id: string;
+  distribucion_id: string;
 }
 
 const lineaVacia = (): JournalLineInput => ({
@@ -46,6 +47,7 @@ const lineaVacia = (): JournalLineInput => ({
   tercero_nit: '',
   tercero_nombre: '',
   cost_center_id: '',
+  distribucion_id: '',
 });
 
 export function AsientosPage() {
@@ -65,6 +67,8 @@ export function AsientosPage() {
   const [asientos, setAsientos] = useState<JournalEntry[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
   const [centros, setCentros] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [distribuciones, setDistribuciones] = useState<{ id: string; nombre: string }[]>([]);
+  const [centroDefecto, setCentroDefecto] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -100,14 +104,18 @@ export function AsientosPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [asientosData, cuentasData, centrosData] = await Promise.all([
+      const [asientosData, cuentasData, centrosData, distribucionesData, defecto] = await Promise.all([
         ContabilidadService.obtenerAsientos({ branchId: branchFilter }),
         ContabilidadService.obtenerPlanCuentas(),
         ContabilidadService.listarCentrosCosto().catch(() => [] as { id: string; code: string; name: string }[]),
+        ContabilidadService.listarDistribuciones(),
+        ContabilidadService.defectoCentroSucursal(selectedBranchId),
       ]);
       setAsientos(asientosData);
       setCuentas(cuentasData.filter(c => c.is_active));
       setCentros(centrosData);
+      setDistribuciones(distribucionesData);
+      setCentroDefecto(defecto ?? '');
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast.error('Error al cargar los datos');
@@ -141,7 +149,20 @@ export function AsientosPage() {
 
   const updateLine = (index: number, field: keyof JournalLineInput, value: string) => {
     const newLines = [...formData.lines];
-    newLines[index] = { ...newLines[index], [field]: value };
+    const linea = { ...newLines[index], [field]: value };
+    if (field === 'account_code') {
+      const cuenta = cuentas.find((c) => c.account_code === value);
+      const modo = cuenta?.centro_costo_modo ?? (cuenta?.requiere_centro_costo ? 'obligatorio' : 'no_aplica');
+      if (modo === 'no_aplica') {
+        linea.cost_center_id = '';
+        linea.distribucion_id = '';
+      } else if (!linea.cost_center_id && !linea.distribucion_id && centroDefecto) {
+        linea.cost_center_id = centroDefecto;
+      }
+    }
+    if (field === 'distribucion_id' && value) linea.cost_center_id = '';
+    if (field === 'cost_center_id' && value) linea.distribucion_id = '';
+    newLines[index] = linea;
     setFormData({ ...formData, lines: newLines });
   };
 
@@ -184,7 +205,8 @@ export function AsientosPage() {
         toast.error(`La cuenta ${linea.account_code} exige el NIT o la cédula del tercero`);
         return;
       }
-      if (cuenta?.requiere_centro_costo && !linea.cost_center_id) {
+      const modoCentro = cuenta?.centro_costo_modo ?? (cuenta?.requiere_centro_costo ? 'obligatorio' : null);
+      if (modoCentro === 'obligatorio' && centros.length > 0 && !linea.cost_center_id && !linea.distribucion_id) {
         toast.error(`La cuenta ${linea.account_code} exige un centro de costo`);
         return;
       }
@@ -207,7 +229,8 @@ export function AsientosPage() {
           credit: parseFloat(l.credit) || 0,
           tercero_nit: l.tercero_nit,
           tercero_nombre: l.tercero_nombre,
-          cost_center_id: l.cost_center_id || null,
+          cost_center_id: l.distribucion_id ? null : (l.cost_center_id || null),
+          distribucion_id: l.distribucion_id || null,
         }))
       }, selectedBranchId);
       toast.success('Asiento creado exitosamente');
@@ -595,7 +618,7 @@ export function AsientosPage() {
                       {line.account_code && (
                         <TableRow key={`${index}-tercero`} className="dark:border-gray-700">
                           <TableCell colSpan={5}>
-                            <div className="grid gap-2 sm:grid-cols-3">
+                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                               <div className="sm:col-span-2">
                                 <CampoTerceroAsiento
                                   nit={line.tercero_nit}
@@ -604,19 +627,37 @@ export function AsientosPage() {
                                   onCambiar={(nit, nombre) => fijarTercero(index, nit, nombre)}
                                 />
                               </div>
-                              <select
-                                aria-label="Centro de costo"
-                                value={line.cost_center_id}
-                                onChange={(e) => updateLine(index, 'cost_center_id', e.target.value)}
-                                className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                              >
-                                <option value="">
-                                  {cuentas.find((c) => c.account_code === line.account_code)?.requiere_centro_costo ? 'Centro de costo *' : 'Centro de costo'}
-                                </option>
-                                {centros.map((cc) => (
-                                  <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
-                                ))}
-                              </select>
+                              {cuentas.find((c) => c.account_code === line.account_code)?.centro_costo_modo === 'no_aplica' ? null : (
+                                <>
+                                  <select
+                                    aria-label="Centro de costo"
+                                    value={line.cost_center_id}
+                                    onChange={(e) => updateLine(index, 'cost_center_id', e.target.value)}
+                                    className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                  >
+                                    <option value="">
+                                      {(cuentas.find((c) => c.account_code === line.account_code)?.centro_costo_modo === 'obligatorio'
+                                        || cuentas.find((c) => c.account_code === line.account_code)?.requiere_centro_costo)
+                                        ? 'Centro de costo *'
+                                        : 'Centro de costo'}
+                                    </option>
+                                    {centros.map((cc) => (
+                                      <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    aria-label="Distribución"
+                                    value={line.distribucion_id}
+                                    onChange={(e) => updateLine(index, 'distribucion_id', e.target.value)}
+                                    className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                  >
+                                    <option value="">Sin distribución</option>
+                                    {distribuciones.map((fila) => (
+                                      <option key={fila.id} value={fila.id}>{fila.nombre}</option>
+                                    ))}
+                                  </select>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

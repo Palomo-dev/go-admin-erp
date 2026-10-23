@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { desgloseReembolso } from '@/lib/pos/devoluciones/desgloseReembolso';
 import { DevolucionesService } from './devolucionesService';
 import { Return, ReturnSearchFilters } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -84,7 +85,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
         returns.map((returnItem) => [
           formatDate(returnItem.return_date),
           returnItem.sale_id,
-          returnItem.refund_total_with_tax,
+          desgloseReembolso(returnItem.total_refund, returnItem.refund_tax_amount).total,
           returnItem.reason,
           nombreEstado(returnItem.status),
           returnItem.return_items.length,
@@ -98,7 +99,13 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
     }
   };
 
-  const totalReembolsado = returns.reduce((sum, ret) => sum + ret.refund_total_with_tax, 0);
+  const totalReembolsado = returns.reduce(
+    (sum, ret) => sum + desgloseReembolso(ret.total_refund, ret.refund_tax_amount).total,
+    0,
+  );
+  const desgloseDetalle = selectedReturn
+    ? desgloseReembolso(selectedReturn.total_refund, selectedReturn.refund_tax_amount)
+    : null;
   const devolucionesProcesadas = returns.filter(ret => ret.status === 'processed').length;
 
   return (
@@ -231,7 +238,9 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {returns.map((returnItem) => (
+                  {returns.map((returnItem) => {
+                    const desglose = desgloseReembolso(returnItem.total_refund, returnItem.refund_tax_amount);
+                    return (
                     <TableRow 
                       key={returnItem.id}
                       className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-700"
@@ -250,11 +259,11 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                       <TableCell className="dark:text-gray-300">
                         <div className="space-y-1">
                           <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                            {formatear(returnItem.refund_total_with_tax)}
+                            {formatear(desglose.total)}
                           </div>
-                          {returnItem.refund_tax_amount > 0 && (
+                          {desglose.impuesto > 0 && (
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {tComun('subtotalMasImpuestos', { subtotal: formatear(returnItem.total_refund), impuestos: formatear(returnItem.refund_tax_amount) })}
+                              {tComun('subtotalMasImpuestos', { subtotal: formatear(desglose.subtotal), impuestos: formatear(desglose.impuesto) })}
                             </div>
                           )}
                         </div>
@@ -284,7 +293,8 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {returns.length === 0 && !loading && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 dark:text-gray-400">
@@ -305,7 +315,7 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
           <DialogHeader>
             <DialogTitle className="dark:text-white">{t('detalleTitulo')}</DialogTitle>
           </DialogHeader>
-          {selectedReturn && (
+          {selectedReturn && desgloseDetalle && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
@@ -320,11 +330,11 @@ export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryP
                   <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{tComun('totalReembolso')}</div>
                   <div className="space-y-1">
                     <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                      {formatear(selectedReturn.refund_total_with_tax)}
+                      {formatear(desgloseDetalle.total)}
                     </div>
-                    {selectedReturn.refund_tax_amount > 0 && (
+                    {desgloseDetalle.impuesto > 0 && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {tComun('subtotalMasImpuestos', { subtotal: formatear(selectedReturn.total_refund), impuestos: formatear(selectedReturn.refund_tax_amount) })}
+                        {tComun('subtotalMasImpuestos', { subtotal: formatear(desgloseDetalle.subtotal), impuestos: formatear(desgloseDetalle.impuesto) })}
                       </div>
                     )}
                   </div>

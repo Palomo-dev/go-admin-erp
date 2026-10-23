@@ -16,11 +16,22 @@
  * Los datos salen de las RPC de los listados con la sesión (RLS).
  */
 import { useCallback, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { CustomerPicker, SupplierPicker, type ClientePicker, type ProveedorPicker } from '@/components/kit';
 import { FormularioRapidoTercero } from '@/components/kit/documento/FormularioRapidoTercero';
 import type { DatosTerceroRapido } from '@/components/kit/documento/edicionDocumentoLogica';
-import { ClienteFormDialog, ProveedorFormDialog } from '@/components/shared/form-dialogs';
+
+// El alta completa arrastra el formulario de clientes (y, con él, módulos que
+// Jest no transforma). Solo se pide cuando alguien elige «Más datos».
+const ClienteFormDialog = dynamic(
+  () => import('@/components/shared/form-dialogs/ClienteFormDialog').then((m) => m.ClienteFormDialog),
+  { ssr: false },
+);
+const ProveedorFormDialog = dynamic(
+  () => import('@/components/shared/form-dialogs/ProveedorFormDialog').then((m) => m.ProveedorFormDialog),
+  { ssr: false },
+);
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { FilaCliente } from '@/lib/services/clientesListadoService';

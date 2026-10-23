@@ -832,6 +832,24 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
     ],
   },
   {
+    key: 'image_padding',
+    label: 'Margen de la imagen',
+    type: 'range',
+    group: 'style',
+    min: 0,
+    max: 48,
+    step: 4,
+    suffix: 'px',
+    helpText: 'Vacío: la imagen llena el recuadro, como hoy. Se nota al contener.',
+  },
+  {
+    key: 'image_bg',
+    label: 'Fondo de la imagen',
+    type: 'color',
+    group: 'style',
+    helpText: 'Se ve en el espacio que deja «Contener». Vacío: sin fondo extra.',
+  },
+  {
     key: 'text_align',
     label: 'Alineación del texto',
     type: 'alignment',
@@ -844,6 +862,66 @@ export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
     type: 'boolean',
     group: 'content',
     defaultValue: false,
+  },
+];
+
+/**
+ * Foto de la rejilla de características. Sin estas claves la tienda sigue con
+ * cubrir y alto máximo de 12 rem.
+ */
+export const CAMPOS_IMAGEN_BENEFICIO: ContentFieldDef[] = [
+  {
+    key: 'image_fit',
+    label: 'Ajuste de la imagen',
+    type: 'select',
+    group: 'style',
+    options: [
+      { value: 'cover', label: 'Cubrir' },
+      { value: 'contain', label: 'Contener' },
+      { value: 'fill', label: 'Rellenar' },
+    ],
+    helpText: 'Vacío: cubrir, como hoy.',
+  },
+  {
+    key: 'image_ratio',
+    label: 'Proporción de la imagen',
+    type: 'select',
+    group: 'style',
+    options: [
+      { value: '1:1', label: 'Cuadrada (1:1)' },
+      { value: '4:3', label: '4:3' },
+      { value: '3:4', label: '3:4 (vertical)' },
+      { value: '16:9', label: '16:9' },
+    ],
+    helpText: 'Vacío: el alto lo marca la foto, con tope de 12 rem.',
+  },
+  {
+    key: 'image_max_size',
+    label: 'Tamaño máximo de la imagen',
+    type: 'number',
+    group: 'style',
+    min: 48,
+    max: 640,
+    suffix: 'px',
+    helpText: 'Vacío: alto máximo de 12 rem.',
+  },
+  {
+    key: 'image_padding',
+    label: 'Margen de la imagen',
+    type: 'range',
+    group: 'style',
+    min: 0,
+    max: 48,
+    step: 4,
+    suffix: 'px',
+    helpText: 'Vacío: sin margen.',
+  },
+  {
+    key: 'image_bg',
+    label: 'Fondo de la imagen',
+    type: 'color',
+    group: 'style',
+    helpText: 'Se ve cuando la imagen no cubre el recuadro.',
   },
 ];
 

@@ -8,6 +8,7 @@ import {
   CAROUSEL_FIELDS,
   CARD_FIELDS,
   CATEGORY_CARD_FIELDS,
+  CAMPOS_IMAGEN_BENEFICIO,
   BUTTON_ITEM_FIELDS,
   PRODUCT_CARD_INTERACTION_FIELDS,
   FILTER_COLOR_FIELDS,
@@ -2551,6 +2552,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       ...GRID_FIELDS,
+      ...CAMPOS_IMAGEN_BENEFICIO,
     ],
   },
   {

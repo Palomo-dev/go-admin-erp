@@ -488,7 +488,12 @@ function Diseno(p: Interno) {
         <EtiquetaGrupo id={idComp}>{t('zonaGlobal.diseno.titulo')}</EtiquetaGrupo>
         <div role="radiogroup" aria-labelledby={idComp} className="grid grid-cols-2 gap-1.5">
           {COMPOSICIONES.map((c) => (
-            <TarjetaComposicion key={c} etiqueta={t(`zonaGlobal.diseno.composicion.${c}`)} seleccionada={composicion === c} onElegir={() => cambiar({ header_style: c })}>
+            <TarjetaComposicion
+              key={c}
+              etiqueta={t(`zonaGlobal.diseno.composicion.${c}`)}
+              seleccionada={composicion === c}
+              onElegir={() => cambiar(c === 'centered' || c === 'split' ? { header_style: c, logo_position: 'center' } : { header_style: c })}
+            >
               <MiniaturaEncabezado composicion={c} />
             </TarjetaComposicion>
           ))}
@@ -504,8 +509,22 @@ function Diseno(p: Interno) {
             { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
             { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
           ]}
-          valor={valorOpcion<string>(a, 'logo_position') ?? 'left'}
+          valor={valorOpcion<string>(a, 'logo_position') ?? (composicion === 'centered' || composicion === 'split' ? 'center' : 'left')}
           onValorChange={(v) => cambiar({ logo_position: v })}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={`${idLogo}-movil`}>{t('zonaGlobal.diseno.logoCelular')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={`${idLogo}-movil`}
+          opciones={[
+            { valor: 'inherit', etiqueta: t('zonaGlobal.diseno.heredar') },
+            { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
+            { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
+            { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
+          ]}
+          valor={valorOpcion<string>(a, 'mobile_logo_position') ?? 'inherit'}
+          onValorChange={(v) => cambiar({ mobile_logo_position: v })}
         />
       </div>
 

@@ -138,6 +138,8 @@ const BOOL: ReglaOpcionShell = { tipo: 'booleano' };
 export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   // Encabezado
   logo_position: { zona: 'header', porDefecto: 'left' },
+  /** Lado del logo en el celular. `inherit` = el de `logo_position` (y, si esa falta, centro en centered/split). */
+  mobile_logo_position: { zona: 'header', porDefecto: 'inherit', regla: { tipo: 'opcion', valores: ['inherit', 'left', 'center', 'right'] }, nueva: true },
   header_cta_text: { zona: 'header', porDefecto: null },
   header_cta_url: { zona: 'header', porDefecto: null },
   show_header_cart: { zona: 'header', porDefecto: true },

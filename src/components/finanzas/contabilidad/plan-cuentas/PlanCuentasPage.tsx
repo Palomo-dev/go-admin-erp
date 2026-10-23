@@ -43,6 +43,14 @@ const NATURALEZAS: { value: NaturalezaCuenta; label: string }[] = [
 
 const NIVELES: NivelCuenta[] = ['clase', 'grupo', 'cuenta', 'subcuenta', 'auxiliar', 'subauxiliar', 'legacy'];
 
+type ModoCentroCosto = 'obligatorio' | 'opcional' | 'no_aplica';
+
+function modoCentroDe(codigo: string, modo?: string | null, requiere?: boolean | null): ModoCentroCosto {
+  if (modo === 'obligatorio' || modo === 'opcional' || modo === 'no_aplica') return modo;
+  if (requiere === true) return 'obligatorio';
+  return ['4', '5', '6', '7'].includes(codigo[0] ?? '') ? 'obligatorio' : 'no_aplica';
+}
+
 interface Formulario {
   account_code: string;
   name: string;
@@ -51,7 +59,7 @@ interface Formulario {
   description: string;
   naturaleza: NaturalezaCuenta;
   requiere_tercero: boolean;
-  requiere_centro_costo: boolean;
+  centro_costo_modo: ModoCentroCosto;
 }
 
 const FORMULARIO_VACIO: Formulario = {
@@ -62,7 +70,7 @@ const FORMULARIO_VACIO: Formulario = {
   description: '',
   naturaleza: 'debito',
   requiere_tercero: false,
-  requiere_centro_costo: false,
+  centro_costo_modo: 'no_aplica',
 };
 
 function mensajeCuenta(error: unknown): string {
@@ -162,7 +170,7 @@ export function PlanCuentasPage() {
         description: account.description || '',
         naturaleza: naturalezaDe(account.account_code, account.naturaleza) ?? 'debito',
         requiere_tercero: account.requiere_tercero ?? false,
-        requiere_centro_costo: account.requiere_centro_costo ?? false,
+        centro_costo_modo: modoCentroDe(account.account_code, account.centro_costo_modo, account.requiere_centro_costo),
       });
     } else {
       resetForm();
@@ -186,7 +194,7 @@ export function PlanCuentasPage() {
       description: '',
       naturaleza: naturalezaDe(codigo, null) ?? 'debito',
       requiere_tercero: padre.requiere_tercero ?? false,
-      requiere_centro_costo: ['5', '6', '7'].includes(codigo[0] ?? ''),
+      centro_costo_modo: modoCentroDe(codigo),
     });
     setShowDialog(true);
   };
@@ -224,7 +232,8 @@ export function PlanCuentasPage() {
         description: formData.description || null,
         naturaleza: formData.naturaleza,
         requiere_tercero: formData.requiere_tercero,
-        requiere_centro_costo: formData.requiere_centro_costo,
+        centro_costo_modo: formData.centro_costo_modo,
+        requiere_centro_costo: formData.centro_costo_modo === 'obligatorio',
       };
       const esTitulo = nivelDe(codigo) === 'clase' || nivelDe(codigo) === 'grupo';
       if (editingAccount) {
@@ -612,10 +621,20 @@ export function PlanCuentasPage() {
                 <input type="checkbox" checked={formData.requiere_tercero} onChange={(e) => setFormData({ ...formData, requiere_tercero: e.target.checked })} />
                 Requiere tercero
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" checked={formData.requiere_centro_costo} onChange={(e) => setFormData({ ...formData, requiere_centro_costo: e.target.checked })} />
-                Requiere centro de costo
-              </label>
+              <div className="space-y-2">
+                <Label>Centro de costo</Label>
+                <Select
+                  value={formData.centro_costo_modo}
+                  onValueChange={(value) => setFormData({ ...formData, centro_costo_modo: value as ModoCentroCosto })}
+                >
+                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="obligatorio">Obligatorio</SelectItem>
+                    <SelectItem value="opcional">Opcional</SelectItem>
+                    <SelectItem value="no_aplica">No aplica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Descripción</Label>

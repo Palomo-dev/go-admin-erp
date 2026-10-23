@@ -30,6 +30,7 @@ export const lineaCompraSchema = z
     serial_numbers: z.array(z.string().max(120)).max(1000).optional(),
     note: z.string().max(1000).nullable().optional(),
     cuenta_contable: z.string().trim().max(32).nullable().optional(),
+    cost_center_id: UUID.nullable().optional(),
   })
   .strict();
 
@@ -63,6 +64,8 @@ export const guardarFacturaSchema = z
     commission_type: z.enum(['salesperson', 'intermediation_purchase', 'none']).optional(),
     commission_method: z.string().max(40).optional(),
     commission_amount: IMPORTE.optional(),
+    cost_center_id: UUID.nullable().optional(),
+    distribucion_id: UUID.nullable().optional(),
     lines: z.array(lineaCompraSchema).min(1).max(500),
     applied_taxes: z.array(z.object({ tax_code: z.string().min(1).max(20), tax_rate: z.number().finite().min(0).max(100) }).strict()).max(20).optional(),
     withholdings: z.array(retencionSchema).max(20).optional(),

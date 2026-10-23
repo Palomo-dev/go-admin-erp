@@ -103,7 +103,7 @@ export function MovimientosDialog({ onMovementAdded, disabled, open: controlledO
             void guardar();
           }}
         >
-          <MovimientoCajaForm datos={form.datos} onCambiar={form.cambiar} errorVisible={form.errorVisible} simbolo={simbolo} deshabilitado={guardando} variante="dialogo" />
+          <MovimientoCajaForm datos={form.datos} onCambiar={form.cambiar} errorVisible={form.errorVisible} simbolo={simbolo} deshabilitado={guardando} variante="dialogo" branchId={sesion?.branch_id ?? null} />
           {sesion && (
             <EfectoEnCaja
               compacto

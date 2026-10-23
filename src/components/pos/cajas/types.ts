@@ -108,6 +108,8 @@ export interface CreateCashMovementData {
   reference?: string | null;
   amount: number;
   notes?: string;
+  centro_costo_id?: string | null;
+  distribucion_id?: string | null;
 }
 
 export interface CashSummary {
@@ -194,6 +196,8 @@ export interface CashMovementData {
   reference?: string | null;
   amount: number;
   notes?: string;
+  centro_costo_id?: string | null;
+  distribucion_id?: string | null;
 }
 
 /** Resultado del cierre según la diferencia entre lo contado y lo esperado. */

@@ -14,7 +14,7 @@
  * - `EfectoEnCaja`: esperado ahora → este movimiento → esperado después
  *   (solo si el servidor mandó el esperado: con cierre ciego no).
  */
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowDownCircle, ArrowUpCircle, Scale } from 'lucide-react';
 import { FilaDato, FormField, ListaDatos, Tarjeta } from '@/components/kit';
@@ -23,6 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import {
   conceptoParaGuardar,
   conceptosDe,
@@ -42,6 +44,8 @@ export interface DatosMovimientoForm {
   monto: number | null;
   referencia: string;
   notas: string;
+  centroId: string;
+  distribucionId: string;
 }
 
 export const DATOS_MOVIMIENTO_VACIOS: DatosMovimientoForm = {
@@ -51,6 +55,8 @@ export const DATOS_MOVIMIENTO_VACIOS: DatosMovimientoForm = {
   monto: null,
   referencia: '',
   notas: '',
+  centroId: '',
+  distribucionId: '',
 };
 
 /** Estado y validación del formulario (la envoltura pone los botones). */
@@ -86,6 +92,8 @@ export function datosParaGuardar(d: DatosMovimientoForm): CreateCashMovementData
     reference: d.referencia.trim() || null,
     amount: Math.round(d.monto * 100) / 100,
     notes: d.notas.trim() || undefined,
+    centro_costo_id: d.distribucionId ? null : (d.centroId || null),
+    distribucion_id: d.distribucionId || null,
   };
 }
 
@@ -95,6 +103,8 @@ export interface MovimientoCajaFormProps {
   errorVisible: ErrorMovimiento | null;
   simbolo: string;
   deshabilitado?: boolean;
+  /** Sucursal de la caja, para proponer su centro por defecto. */
+  branchId?: number | null;
   /** `dialogo` = sin tarjetas (va dentro de `Dialogo`). */
   variante?: 'pagina' | 'dialogo';
 }
@@ -146,10 +156,41 @@ function SelectorTipo({ valor, onCambiar, deshabilitado }: { valor: TipoMovimien
   );
 }
 
-export function MovimientoCajaForm({ datos, onCambiar, errorVisible, simbolo, deshabilitado, variante = 'pagina' }: MovimientoCajaFormProps) {
+export function MovimientoCajaForm({ datos, onCambiar, errorVisible, simbolo, deshabilitado, branchId = null, variante = 'pagina' }: MovimientoCajaFormProps) {
   const t = useTranslations('cajas.mov');
   const tConceptos = useTranslations('cajas.conceptos');
   const idLibre = useId();
+  const [centros, setCentros] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [distribuciones, setDistribuciones] = useState<{ id: string; nombre: string }[]>([]);
+  const centroActual = useRef(datos.centroId);
+  const distActual = useRef(datos.distribucionId);
+  const avisar = useRef(onCambiar);
+  centroActual.current = datos.centroId;
+  distActual.current = datos.distribucionId;
+  avisar.current = onCambiar;
+
+  useEffect(() => {
+    const orgId = getOrganizationId();
+    if (!orgId) return;
+    let vivo = true;
+    void (async () => {
+      const [centrosRes, distRes, defectoRes] = await Promise.all([
+        supabase.from('cost_centers').select('id, code, name').eq('organization_id', orgId).eq('is_active', true).order('code'),
+        supabase.from('cost_center_distributions').select('id, nombre').eq('organization_id', orgId).eq('activo', true).order('nombre'),
+        branchId
+          ? supabase.from('branches').select('default_cost_center_id').eq('id', branchId).eq('organization_id', orgId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      if (!vivo) return;
+      setCentros((centrosRes.data ?? []).map((fila) => ({ id: String(fila.id), code: String(fila.code), name: String(fila.name) })));
+      setDistribuciones((distRes.data ?? []).map((fila) => ({ id: String(fila.id), nombre: String(fila.nombre) })));
+      const defecto = defectoRes.data?.default_cost_center_id;
+      if (defecto && !centroActual.current && !distActual.current) {
+        avisar.current({ centroId: String(defecto) });
+      }
+    })();
+    return () => { vivo = false; };
+  }, [branchId]);
   const conceptos = conceptosDe(datos.tipo);
   const errorConcepto = errorVisible === 'concepto_requerido' || errorVisible === 'concepto_no_corresponde' ? t('errores.concepto') : null;
   const errorMonto = errorVisible === 'monto_invalido' ? t('errores.monto') : null;
@@ -187,6 +228,40 @@ export function MovimientoCajaForm({ datos, onCambiar, errorVisible, simbolo, de
       </FormField>
       <FormField etiqueta={t('notas')} className="sm:col-span-2">
         <Textarea value={datos.notas} maxLength={500} rows={2} onChange={(e) => onCambiar({ notas: e.target.value })} disabled={deshabilitado} placeholder={t('notasPlaceholder')} />
+      </FormField>
+      <FormField etiqueta={t('centroCosto')} ayuda={t('centroCostoAyuda')}>
+        <Select
+          value={datos.centroId || 'none'}
+          onValueChange={(valor) => onCambiar({ centroId: valor === 'none' ? '' : valor, distribucionId: '' })}
+          disabled={deshabilitado}
+        >
+          <SelectTrigger className="h-10">
+            <SelectValue placeholder={t('sinAsignar')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t('sinAsignar')}</SelectItem>
+            {centros.map((centro) => (
+              <SelectItem key={centro.id} value={centro.id}>{centro.code} — {centro.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FormField>
+      <FormField etiqueta={t('distribucion')}>
+        <Select
+          value={datos.distribucionId || 'none'}
+          onValueChange={(valor) => onCambiar({ distribucionId: valor === 'none' ? '' : valor, centroId: valor === 'none' ? datos.centroId : '' })}
+          disabled={deshabilitado}
+        >
+          <SelectTrigger className="h-10">
+            <SelectValue placeholder={t('sinDistribucion')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t('sinDistribucion')}</SelectItem>
+            {distribuciones.map((fila) => (
+              <SelectItem key={fila.id} value={fila.id}>{fila.nombre}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </FormField>
     </div>
   );

@@ -233,6 +233,8 @@ export interface DetalleFacturaCompra {
   id: string;
   organization_id: number;
   branch_id: number;
+  cost_center_id: string | null;
+  distribucion_id: string | null;
   supplier_id: number;
   po_id: number | null;
   number_ext: string;
@@ -303,7 +305,7 @@ export async function leerDetalleFacturaCompra(org: number, id: string): Promise
     .from('invoice_purchase')
     .select(`id, organization_id, branch_id, supplier_id, po_id, number_ext, issue_date, due_date, currency, subtotal, tax_total,
       total, balance, status, notes, payment_terms, payment_method, tax_included, stock_received_at, created_at, salesperson_id,
-      commission_rate, commission_type, commission_method, commission_amount,
+      commission_rate, commission_type, commission_method, commission_amount, cost_center_id, distribucion_id,
       proveedor:suppliers(id, uuid, name, nit, dv, email, phone, address),
       sucursal:branches(id, name),
       orden:purchase_orders(id, uuid),
@@ -367,6 +369,8 @@ export async function leerDetalleFacturaCompra(org: number, id: string): Promise
     id: String(f.id),
     organization_id: Number(f.organization_id),
     branch_id: Number(f.branch_id),
+    cost_center_id: (f.cost_center_id as string | null) ?? null,
+    distribucion_id: (f.distribucion_id as string | null) ?? null,
     supplier_id: Number(f.supplier_id),
     po_id: (f.po_id as number | null) ?? null,
     number_ext: String(f.number_ext),

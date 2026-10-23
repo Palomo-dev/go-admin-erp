@@ -331,6 +331,67 @@ export interface ResultadoRegistrarMovimiento {
   numero: string | null;
 }
 
+export interface ConteoDelMes {
+  ajusteId: number;
+  codigo: string | null;
+  diferencia: number;
+  varios: boolean;
+}
+
+/** Conteo o faltante del mes, con asiento todavía vigente. Null si no hay. */
+export async function consultarConteoDelMes(
+  org: number,
+  sucursal: number,
+  producto: number,
+  cliente: ClienteRpc = supabase,
+): Promise<ConteoDelMes | null> {
+  const { data, error } = await cliente.rpc('fn_conteo_del_mes', {
+    p_org: org,
+    p_branch: sucursal,
+    p_product: producto,
+  });
+  if (error) throw error;
+  const d = (data ?? {}) as Record<string, unknown>;
+  if (d.encontrado !== true) return null;
+  return {
+    ajusteId: num(d.ajuste_id),
+    codigo: (d.codigo as string | null) ?? null,
+    diferencia: Number(d.diferencia ?? 0),
+    varios: d.varios === true,
+  };
+}
+
+export interface CorreccionConteo {
+  corregido: boolean;
+  motivo: string | null;
+  ajusteId: number | null;
+  codigo: string | null;
+}
+
+/** Anula el efecto del conteo del mes y revierte su asiento, sin ingreso. */
+export async function corregirConteoDelMes(
+  org: number,
+  sucursal: number,
+  producto: number,
+  nota?: string | null,
+  cliente: ClienteRpc = supabase,
+): Promise<CorreccionConteo> {
+  const { data, error } = await cliente.rpc('fn_corregir_conteo', {
+    p_org: org,
+    p_branch: sucursal,
+    p_product: producto,
+    p_nota: nota ?? null,
+  });
+  if (error) throw error;
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    corregido: d.corregido === true,
+    motivo: (d.motivo as string | null) ?? null,
+    ajusteId: d.ajuste_id == null ? null : num(d.ajuste_id),
+    codigo: (d.codigo as string | null) ?? null,
+  };
+}
+
 export async function registrarMovimiento(
   params: ParamsRegistrarMovimientoB1,
   cliente: ClienteRpc = supabase,

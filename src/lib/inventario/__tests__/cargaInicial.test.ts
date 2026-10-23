@@ -1,23 +1,25 @@
 /**
- * Carga inicial: 1.000 × 3.800 = 3.800.000 en inventario contra saldos iniciales.
- * El sobrante acredita recuperaciones. La compra sin orden no arma asiento.
+ * Carga inicial: 1.000 × 3.800 = 3.800.000 en 1435 contra 3105.
+ * El sobrante acredita 4295. La compra sin orden no arma asiento.
  */
 import fs from 'fs';
 import path from 'path';
 import {
+  CUENTA_DIVERSOS,
   CUENTA_INVENTARIO_COMERCIO,
-  CUENTA_INVENTARIO_RESTAURANTE,
   CUENTA_RECUPERACIONES,
   CUENTA_SALDO_INICIAL,
   RUTA_FACTURA_COMPRA,
   asientoCargaInicial,
   asientoPorTotal,
+  asientoSobrante,
   costoParecePrecio,
   creditoDelAjuste,
   cuentaInventarioPorTipo,
   debeAvisarSaldoInicial,
   debeConfirmarAjuste,
   sugerirCompraPorNegativo,
+  sugerirCorregirConteo,
 } from '../cargaInicial';
 
 describe('asiento de la carga inicial', () => {
@@ -32,19 +34,22 @@ describe('asiento de la carga inicial', () => {
     expect(asiento.lineas.reduce((s, l) => s + l.debito, 0)).toBe(asiento.lineas.reduce((s, l) => s + l.credito, 0));
   });
 
-  test('restaurante usa 1405; una cuenta configurada gana, también en manufactura', () => {
-    expect(cuentaInventarioPorTipo(1)).toBe(CUENTA_INVENTARIO_RESTAURANTE);
+  test('el débito queda bajo 1435, también en restaurante; 1405 no se usa', () => {
+    expect(cuentaInventarioPorTipo(1)).toBe(CUENTA_INVENTARIO_COMERCIO);
     expect(cuentaInventarioPorTipo(3)).toBe(CUENTA_INVENTARIO_COMERCIO);
-    expect(cuentaInventarioPorTipo(null, '143505')).toBe('143505');
+    expect(cuentaInventarioPorTipo(1, '1405')).toBe('1435');
+    expect(cuentaInventarioPorTipo(1, '1405-01')).toBe('1435');
+    expect(cuentaInventarioPorTipo(null, '14350501')).toBe('14350501');
     const asiento = asientoCargaInicial({
       unidades: 2,
       costo: 1500.4,
-      cuentaInventario: cuentaInventarioPorTipo(1, '140501'),
+      cuentaInventario: cuentaInventarioPorTipo(1, '14350501'),
       cuentaSaldo: '310505',
     });
     expect(asiento.total).toBe(3001);
-    expect(asiento.lineas[0]).toMatchObject({ cuenta: '140501', debito: 3001 });
+    expect(asiento.lineas[0]).toMatchObject({ cuenta: '14350501', debito: 3001 });
     expect(asiento.lineas[1]).toMatchObject({ cuenta: '310505', credito: 3001 });
+    expect(asiento.lineas.map((l) => l.cuenta).some((c) => c.startsWith('1405'))).toBe(false);
   });
 
   test('un total ya sumado no toca 4250', () => {
@@ -55,12 +60,27 @@ describe('asiento de la carga inicial', () => {
 });
 
 describe('motivo del ajuste de ganancia', () => {
-  test('saldo inicial acredita 3105 y el sobrante de conteo, auditoría o producción acredita 4250', () => {
+  test('saldo inicial acredita 3105 y el sobrante real acredita 4295, nunca 4250', () => {
     expect(creditoDelAjuste('saldo_inicial')).toEqual({ tipo: 'saldo_inicial', cuenta: '3105' });
     expect(creditoDelAjuste('initial_setup')).toEqual({ tipo: 'saldo_inicial', cuenta: '3105' });
-    for (const motivo of ['physical_count', 'audit', 'production_input', 'produccion_propia', 'sobrante']) {
-      expect(creditoDelAjuste(motivo)).toEqual({ tipo: 'recuperacion', cuenta: '4250' });
+    for (const motivo of ['physical_count', 'audit', 'production_input', 'produccion_propia', 'sobrante', 'otro']) {
+      expect(creditoDelAjuste(motivo)).toEqual({ tipo: 'diversos', cuenta: CUENTA_DIVERSOS });
     }
+    expect(creditoDelAjuste('correccion_conteo')).toEqual({ tipo: 'correccion', cuenta: null });
+    const sobrante = asientoSobrante({ total: 3_800_000 });
+    expect(sobrante.lineas).toEqual([
+      { cuenta: '1435', debito: 3_800_000, credito: 0 },
+      { cuenta: '4295', debito: 0, credito: 3_800_000 },
+    ]);
+    expect(sobrante.lineas.map((l) => l.cuenta)).not.toContain(CUENTA_RECUPERACIONES);
+  });
+
+  test('un conteo o un faltante del mismo mes ofrece corregir el conteo', () => {
+    expect(sugerirCorregirConteo({ direccion: 'in', motivo: 'sobrante', tuvoConteoOFaltante: true })).toBe(true);
+    expect(sugerirCorregirConteo({ direccion: 'in', motivo: 'saldo_inicial', tuvoConteoOFaltante: true })).toBe(false);
+    expect(sugerirCorregirConteo({ direccion: 'in', motivo: 'compra_sin_orden', tuvoConteoOFaltante: true })).toBe(false);
+    expect(sugerirCorregirConteo({ direccion: 'in', motivo: 'sobrante', tuvoConteoOFaltante: false })).toBe(false);
+    expect(sugerirCorregirConteo({ direccion: 'out', motivo: 'sobrante', tuvoConteoOFaltante: true })).toBe(false);
   });
 
   test('compra sin orden no genera asiento: va a la factura de compra', () => {
@@ -144,5 +164,41 @@ describe('contrato de la migración', () => {
     expect(retro).toContain('fn_revertir_asiento');
     expect(retro).toContain("fact_key like 'carga_inicial_borrador:%'");
     expect(retro).toContain('carga_inicial_funcion_respaldo');
+  });
+});
+
+describe('contrato del sobrante en 4295', () => {
+  const sql = fs.readFileSync(
+    path.join(__dirname, '../../../../supabase/migrations/20261023190000_sobrante_diversos.sql'),
+    'utf8',
+  );
+  const retro = fs.readFileSync(
+    path.join(__dirname, '../../../../supabase/rollbacks/20261023190000_sobrante_diversos_rollback.sql'),
+    'utf8',
+  );
+  const datos = fs.readFileSync(
+    path.join(__dirname, '../../../../supabase/migrations/20261023190100_sobrante_borradores.sql'),
+    'utf8',
+  );
+
+  test('no redefine el disparador de stock y el sobrante acredita 4295 bajo 1435', () => {
+    expect(sql).not.toMatch(/create\s+or\s+replace\s+function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
+    expect(sql).toContain('fn_inventario_auxiliar_1435');
+    expect(sql).toContain("'143505'");
+    expect(sql).toContain("'ingresos_diversos'");
+    expect(sql).toContain("'4295'");
+    expect(sql).toContain('correccion_conteo');
+    expect(sql).toContain('left(coalesce(v_credit_account, \'\'), 4) = \'4250\'');
+    expect(datos).toContain('fn_sobrante_borradores');
+    expect(datos).toContain('organization_id <> 149');
+    expect(datos).toContain('48');
+    expect(datos).not.toContain('create or replace function public.fn_auto_journal_stock_movement');
+  });
+
+  test('el rollback conserva el respaldo y no publica', () => {
+    expect(retro).toContain('sobrante_funcion_respaldo');
+    expect(retro).toContain('sobrante_linea_respaldo');
+    expect(retro).toContain('posted is true');
+    expect(retro).not.toMatch(/drop table\s+public\.sobrante_funcion_respaldo/i);
   });
 });

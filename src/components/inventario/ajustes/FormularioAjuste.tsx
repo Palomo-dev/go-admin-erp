@@ -31,15 +31,19 @@ import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization'
 import {
   RUTA_FACTURA_COMPRA,
   asientoPorTotal,
+  asientoSobrante,
   costoParecePrecio,
   cuentaInventarioPorTipo,
   debeConfirmarAjuste,
+  rutaConteo,
   sugerirCompraPorNegativo,
+  sugerirCorregirConteo,
 } from '@/lib/inventario/cargaInicial';
 import { leerConfigInventario } from '@/lib/inventario/permisos';
 import { supabase } from '@/lib/supabase/config';
 import { usePermisosInventario } from '@/lib/inventario/usePermisosInventario';
 import { formatInstantWithOffset, plainDateToInstant } from '@/lib/utils/dateCore';
+import { consultarConteoDelMes, corregirConteoDelMes, type ConteoDelMes } from '@/lib/services/stockService';
 import {
   adjustmentService,
   ErrorAjuste,
@@ -128,12 +132,41 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
   const [movsListos, setMovsListos] = useState(false);
   const [costoConfirmado, setCostoConfirmado] = useState(false);
   const [saldoDescartado, setSaldoDescartado] = useState(false);
+  const [conteoMes, setConteoMes] = useState<(ConteoDelMes & { productoId: number }) | null>(null);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const clave = useRef<string | null>(null);
   const porId = useRef(new Map<number, ProductoParaAjuste>());
 
   const org = getOrganizationId();
   const { organization } = useOrganization();
   const idsLinea = useMemo(() => [...new Set(lineas.map((l) => l.producto.id))].sort((a, b) => a - b).join(','), [lineas]);
+
+  useEffect(() => {
+    const ids = idsLinea ? idsLinea.split(',').map(Number).filter((n) => n > 0) : [];
+    if (!org || !sucursal || ids.length === 0) {
+      setConteoMes(null);
+      return;
+    }
+    let vivo = true;
+    void (async () => {
+      for (const id of ids) {
+        try {
+          const c = await consultarConteoDelMes(org, sucursal, id);
+          if (!vivo) return;
+          if (c) {
+            setConteoMes({ ...c, productoId: id });
+            return;
+          }
+        } catch {
+          if (!vivo) return;
+        }
+      }
+      if (vivo) setConteoMes(null);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [org, sucursal, idsLinea]);
 
   useEffect(() => {
     let vivo = true;
@@ -355,15 +388,17 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
     monto: Math.round(totalPositivo),
     umbral,
   });
+  const cuentaInventario = cuentaInventarioPorTipo(
+    organization?.isPartial ? null : typeof organization?.type_id === 'number' ? organization.type_id : null,
+  );
   const asientoInicial =
-    razon === 'initial_setup' && totalPositivo > 0
-      ? asientoPorTotal({
-          total: totalPositivo,
-          cuentaInventario: cuentaInventarioPorTipo(
-            organization?.isPartial ? null : typeof organization?.type_id === 'number' ? organization.type_id : null,
-          ),
-        })
-      : null;
+    razon === 'initial_setup' && totalPositivo > 0 ? asientoPorTotal({ total: totalPositivo, cuentaInventario }) : null;
+  const asientoDelSobrante =
+    razon !== 'initial_setup' && totalPositivo > 0 ? asientoSobrante({ total: totalPositivo, cuentaInventario }) : null;
+  const ofreceCorregir =
+    modo !== 'salida' &&
+    conteoMes !== null &&
+    sugerirCorregirConteo({ direccion: 'in', motivo: razon, tuvoConteoOFaltante: true });
   const validacionGuardar = validarAjuste({ sucursal, razon, fechaLocal, modo, lineas }, false);
   const validacionAplicar = validarAjuste({ sucursal, razon, fechaLocal, modo, lineas }, true);
   const errores = intentoAplicar ? validacionAplicar : intentoGuardar ? validacionGuardar : null;
@@ -656,6 +691,40 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
         </FormField>
       </FormSection>
 
+      {ofreceCorregir && conteoMes && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('carga.corregirConteo')}
+          descripcion={
+            conteoMes.varios
+              ? t('carga.corregirConteoVarios')
+              : t('carga.corregirConteoDetalle', { codigo: conteoMes.codigo ?? String(conteoMes.ajusteId) })
+          }
+          accion={
+            conteoMes.varios
+              ? { etiqueta: t('carga.abrirConteo'), href: rutaConteo(conteoMes.ajusteId) }
+              : {
+                  etiqueta: t('carga.corregirConteo'),
+                  cargando: corrigiendo,
+                  onClick: () => {
+                    if (!sucursal) return;
+                    setCorrigiendo(true);
+                    void corregirConteoDelMes(org, sucursal, conteoMes.productoId, notas.trim() || null)
+                      .then((r) => {
+                        if (!r.corregido) {
+                          toast({ variant: 'destructive', title: t('carga.corregirConteoVarios') });
+                          return;
+                        }
+                        toast({ title: t('carga.corregirConteoListo', { codigo: r.codigo ?? conteoMes.codigo ?? '' }) });
+                        router.push(rutaConteo(r.ajusteId ?? conteoMes.ajusteId));
+                      })
+                      .catch((e) => toast({ variant: 'destructive', title: mensajeError(e) }))
+                      .finally(() => setCorrigiendo(false));
+                  },
+                }
+          }
+        />
+      )}
       {sinHistorial && (
         <AvisoTonal
           tono="advertencia"
@@ -700,6 +769,17 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
             inventario: asientoInicial.lineas[0]?.cuenta ?? '',
             saldo: asientoInicial.lineas[1]?.cuenta ?? '',
             total: moneda.formatear(asientoInicial.total),
+          })}
+        />
+      )}
+      {asientoDelSobrante && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('carga.asientoSobranteTitulo')}
+          descripcion={t('carga.asientoSobranteDetalle', {
+            inventario: asientoDelSobrante.lineas[0]?.cuenta ?? '',
+            diversos: asientoDelSobrante.lineas[1]?.cuenta ?? '',
+            total: moneda.formatear(asientoDelSobrante.total),
           })}
         />
       )}

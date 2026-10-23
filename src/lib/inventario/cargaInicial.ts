@@ -1,18 +1,17 @@
 /**
  * Carga inicial de inventario y el crédito del ajuste de ganancia.
  *
- * El asiento de una carga (a mano, por importación o al crear el producto con
- * stock) es débito al inventario de la sede y crédito a saldos iniciales.
- * 1435 en comercio y el resto de tipos; 1405 en restaurante (tipo 1). No hay
- * un tipo «manufactura»: esa organización deja la cuenta en la configuración
- * contable (`inventario`). El crédito por defecto es 3105 (`saldo_inicial`).
- * Una recuperación (conteo, auditoría, producción o sobrante) acredita 4250.
- * La compra sin orden no genera asiento aquí: va a la factura de compra.
+ * El débito es el auxiliar de la sede bajo 1435 (por ejemplo 14350501).
+ * Nunca 1405. El saldo inicial acredita 3105. Un sobrante real acredita
+ * 4295, ingresos diversos, cuenta configurable. 4250 es de reintegros de
+ * periodos anteriores: ningún flujo de inventario la usa. La compra sin
+ * orden no genera asiento aquí: va a la factura de compra.
  */
 
 export const CUENTA_INVENTARIO_COMERCIO = '1435';
-export const CUENTA_INVENTARIO_RESTAURANTE = '1405';
 export const CUENTA_SALDO_INICIAL = '3105';
+export const CUENTA_DIVERSOS = '4295';
+/** 4250 no entra en inventario. Se nombra para que las pruebas lo vigilen. */
 export const CUENTA_RECUPERACIONES = '4250';
 
 /** Por encima de este monto el ajuste pide confirmación, salvo que la org lo cambie. */
@@ -25,6 +24,10 @@ export const RUTA_FACTURA_COMPRA = '/app/inventario/facturas-compra/nuevo';
 export const RUTA_IMPORTAR_SALDO_INICIAL = '/app/inventario/productos/importar?motivo=saldo_inicial';
 export const RUTA_CARGA_MANUAL = '/app/inventario/stock?entrada=saldo_inicial';
 
+export function rutaConteo(ajusteId: number): string {
+  return `/app/inventario/ajustes/${ajusteId}`;
+}
+
 export interface LineaAsientoCarga {
   cuenta: string;
   debito: number;
@@ -36,14 +39,17 @@ export interface AsientoCargaInicial {
   lineas: LineaAsientoCarga[];
 }
 
-/**
- * Cuenta de inventario según el tipo de organización. Una cuenta ya configurada
- * gana: es el auxiliar de la sede o la que la organización eligió.
- */
-export function cuentaInventarioPorTipo(typeId: number | null | undefined, configurada?: string | null): string {
-  const propia = configurada?.trim();
-  if (propia) return propia;
-  return typeId === 1 ? CUENTA_INVENTARIO_RESTAURANTE : CUENTA_INVENTARIO_COMERCIO;
+/** Auxiliar bajo 1435. Una cuenta configurada que no empiece por 1435 no se usa. */
+export function cuentaInventarioPorTipo(_typeId: number | null | undefined, configurada?: string | null): string {
+  const propia = configurada?.trim() ?? '';
+  if (propia.startsWith('1435')) return propia;
+  return CUENTA_INVENTARIO_COMERCIO;
+}
+
+function cuentaBajo1435(cuenta: string | null | undefined): string {
+  const propia = cuenta?.trim() ?? '';
+  if (propia.startsWith('1435')) return propia;
+  return CUENTA_INVENTARIO_COMERCIO;
 }
 
 /** Importe en pesos enteros. 1.000 × 3.800 = 3.800.000. */
@@ -53,8 +59,8 @@ export function importeCarga(unidades: number, costo: number): number {
 }
 
 /**
- * Asiento de un total ya calculado: un débito de inventario y un crédito de
- * saldos iniciales. No usa 4250.
+ * Asiento de un total ya calculado: un débito de inventario y un crédito.
+ * El débito queda bajo 1435. Un crédito 4250 no se acepta: pasa a 3105.
  */
 export function asientoPorTotal(p: {
   total: number;
@@ -62,8 +68,9 @@ export function asientoPorTotal(p: {
   cuentaSaldo?: string | null;
 }): AsientoCargaInicial {
   const total = Number.isFinite(p.total) ? Math.round(p.total) : 0;
-  const inventario = p.cuentaInventario?.trim() || CUENTA_INVENTARIO_COMERCIO;
-  const saldo = p.cuentaSaldo?.trim() || CUENTA_SALDO_INICIAL;
+  const inventario = cuentaBajo1435(p.cuentaInventario);
+  const saldoBruto = p.cuentaSaldo?.trim() || CUENTA_SALDO_INICIAL;
+  const saldo = saldoBruto.startsWith('4250') ? CUENTA_SALDO_INICIAL : saldoBruto;
   return {
     total,
     lineas: [
@@ -73,10 +80,7 @@ export function asientoPorTotal(p: {
   };
 }
 
-/**
- * Asiento de la carga: un débito de inventario y un crédito de saldos iniciales.
- * 1.000 unidades a 3.800 quedan en 3.800.000. No usa 4250.
- */
+/** Asiento de la carga: débito 1435 (o su auxiliar) y crédito 3105. */
 export function asientoCargaInicial(p: {
   unidades: number;
   costo: number;
@@ -90,31 +94,53 @@ export function asientoCargaInicial(p: {
   });
 }
 
-export type CreditoAjuste = 'saldo_inicial' | 'recuperacion' | 'factura';
+/** Un sobrante real: débito al auxiliar de 1435 y crédito a 4295. */
+export function asientoSobrante(p: {
+  total: number;
+  cuentaInventario?: string | null;
+  cuentaDiversos?: string | null;
+}): AsientoCargaInicial {
+  const diversos = p.cuentaDiversos?.trim() || CUENTA_DIVERSOS;
+  return asientoPorTotal({
+    total: p.total,
+    cuentaInventario: p.cuentaInventario,
+    cuentaSaldo: diversos.startsWith('4250') ? CUENTA_DIVERSOS : diversos,
+  });
+}
+
+export type CreditoAjuste = 'saldo_inicial' | 'diversos' | 'factura' | 'correccion';
 
 const MOTIVOS_SALDO = new Set(['saldo_inicial', 'initial_setup']);
 const MOTIVOS_FACTURA = new Set(['compra_sin_orden', 'compra sin orden']);
-const MOTIVOS_RECUPERACION = new Set([
-  'physical_count',
-  'audit',
-  'production_input',
-  'produccion_propia',
-  'produccion',
-  'sobrante',
-]);
+const MOTIVOS_CORRECCION = new Set(['correccion_conteo']);
 
 /** A qué cuenta acredita un ajuste positivo, según el motivo que guarda el documento. */
 export function creditoDelAjuste(motivo: string): { tipo: CreditoAjuste; cuenta: string | null } {
   const m = motivo.trim().toLowerCase();
   if (MOTIVOS_SALDO.has(m)) return { tipo: 'saldo_inicial', cuenta: CUENTA_SALDO_INICIAL };
   if (MOTIVOS_FACTURA.has(m)) return { tipo: 'factura', cuenta: null };
-  if (MOTIVOS_RECUPERACION.has(m)) return { tipo: 'recuperacion', cuenta: CUENTA_RECUPERACIONES };
-  return { tipo: 'recuperacion', cuenta: CUENTA_RECUPERACIONES };
+  if (MOTIVOS_CORRECCION.has(m)) return { tipo: 'correccion', cuenta: null };
+  return { tipo: 'diversos', cuenta: CUENTA_DIVERSOS };
 }
 
 /** Entrada positiva de un producto que todavía no tiene movimientos. */
 export function debeAvisarSaldoInicial(p: { movimientosPrevios: number; direccion: 'in' | 'out'; cantidad: number }): boolean {
   return p.direccion === 'in' && p.cantidad > 0 && p.movimientosPrevios === 0;
+}
+
+/**
+ * El sobrante puede ser un error del conteo de este mes. No aplica al saldo
+ * inicial ni a la compra, que tiene su propio camino.
+ */
+export function sugerirCorregirConteo(p: {
+  direccion: 'in' | 'out';
+  motivo: string;
+  tuvoConteoOFaltante: boolean;
+}): boolean {
+  const m = p.motivo.trim().toLowerCase();
+  if (p.direccion !== 'in' || !p.tuvoConteoOFaltante) return false;
+  if (MOTIVOS_SALDO.has(m) || MOTIVOS_FACTURA.has(m)) return false;
+  return true;
 }
 
 /** El disponible ya está por debajo de cero: primero la compra o la producción que faltó. */

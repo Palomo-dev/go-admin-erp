@@ -46,6 +46,7 @@ export const CLAVES_CONTABLES = [
   'impuesto_consumo',
   'redondeo',
   'compra_servicio',
+  'ingresos_diversos',
 ] as const;
 
 export type ClaveContable = (typeof CLAVES_CONTABLES)[number];
@@ -90,6 +91,7 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'impuesto_consumo', nombre: 'Impuesto al consumo', grupo: 'Impuestos', ayuda: 'Impuesto al consumo. Por defecto 2495.' },
   { clave: 'redondeo', nombre: 'Redondeo', grupo: 'Ventas', ayuda: 'Diferencia al redondear un asiento a pesos. Por defecto 4295.' },
   { clave: 'compra_servicio', nombre: 'Compra de servicio', grupo: 'Cartera', ayuda: 'Crédito de una compra de servicio o de transporte. Por defecto 2335.' },
+  { clave: 'ingresos_diversos', nombre: 'Ingresos diversos', grupo: 'Inventario', ayuda: 'Crédito de un sobrante real de inventario. Por defecto 4295. No es 4250.' },
 ];
 
 const NOMBRE_POR_CLAVE = new Map(DEFINICIONES_CLAVE.map((d) => [d.clave, d.nombre]));
@@ -322,6 +324,7 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   impuesto_consumo: '2495',
   redondeo: '4295',
   compra_servicio: '2335',
+  ingresos_diversos: '4295',
 };
 
 /** Misma tabla que `fn_propuesta_configuracion_sector` en la migración. */

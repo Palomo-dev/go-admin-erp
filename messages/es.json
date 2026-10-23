@@ -26841,7 +26841,7 @@
       "venceLoteAyuda": "Opcional. Sin fecha, el lote nunca vence",
       "nota": "Nota",
       "notaPlaceholder": "Factura del proveedor, responsable, observación…",
-      "avisoEntrada": "Se guarda como un ajuste aplicado y el kardex lo enlaza. Si la mercancía viene de una orden de compra, recíbela desde la orden para no duplicar la entrada.",
+      "avisoEntrada": "Se guarda como un ajuste aplicado y el kardex lo enlaza. Si la mercancía viene de una orden de compra, recíbela desde la orden. Una compra sin orden se registra en la factura de compra.",
       "avisoSalida": "La salida se valora al costo promedio de la sucursal ({costo} × {n} = {total}), nunca al precio de venta.",
       "listoEntrada": "Entrada registrada",
       "listoSalida": "Salida registrada",
@@ -26853,7 +26853,8 @@
         "mayorQueCero": "Debe ser mayor que cero.",
         "noNegativo": "No puede ser negativo.",
         "superaDisponible": "Supera lo disponible ({n}).",
-        "conSeriales": "Los productos con seriales se registran desde Ajustes."
+        "conSeriales": "Los productos con seriales se registran desde Ajustes.",
+        "facturaCompra": "La compra sin orden se registra en la factura de compra: inventario contra proveedores."
       }
     },
     "motivos": {

@@ -112,6 +112,8 @@ describe('clave de la cuenta', () => {
   test('el IVA de la venta y el de la compra son claves distintas aunque el código sea el mismo', () => {
     expect(claveDeCuenta('invoice_sales', 'impuesto', '2408')).toBe('iva_generado');
     expect(claveDeCuenta('sale', 'impuesto', '2405')).toBe('iva_generado');
+    expect(claveDeCuenta('invoice_sales', 'impuesto', '240805')).toBe('iva_generado');
+    expect(claveDeCuenta('invoice_purchase', 'debito', '240810')).toBe('iva_descontable');
     expect(claveDeCuenta('invoice_purchase', 'impuesto', '2408')).toBe('iva_descontable');
     expect(claveDeCuenta('purchase_order', 'impuesto', '2408')).toBe('iva_descontable');
     expect(claveDeCuenta('reservation', 'credito', '2405')).toBeNull();
@@ -212,8 +214,8 @@ describe('plantilla por sector', () => {
       inventario: '1405',
     });
     expect(propuestaPorSector(2)).toMatchObject({
-      ventas_productos: '414015',
-      ventas_servicios: '414005',
+      ventas_productos: '4140',
+      ventas_servicios: '4140',
       costo_ventas: '6140',
       inventario: '1435',
     });
@@ -231,8 +233,8 @@ describe('plantilla por sector', () => {
       proveedores: '2205',
       devoluciones: '4175',
       descuentos: '4175',
-      iva_generado: '2408',
-      iva_descontable: '2408',
+      iva_generado: '240805',
+      iva_descontable: '240810',
       retefuente: '2365',
       reteiva: '2367',
       reteica: '2368',
@@ -247,6 +249,10 @@ describe('plantilla por sector', () => {
       consumo_interno: '519595',
       manifiesto_por_pagar: '2205',
       manifiesto_transporte: '2335',
+      saldo_inicial: '3105',
+      impuesto_consumo: '2495',
+      redondeo: '4295',
+      compra_servicio: '2335',
     });
     expect(nombreSector(1)).toBe('Restaurante');
     expect(nombreSector(99)).toBe('Comercio');

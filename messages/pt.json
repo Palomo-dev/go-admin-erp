@@ -22640,7 +22640,7 @@
       "venceLoteAyuda": "Opcional. Sem data, o lote nunca vence",
       "nota": "Observação",
       "notaPlaceholder": "Nota fiscal do fornecedor, responsável, observação…",
-      "avisoEntrada": "É salva como um ajuste aplicado e o kardex a vincula. Se a mercadoria vem de um pedido de compra, receba-a pelo pedido para não duplicar a entrada.",
+      "avisoEntrada": "É salva como um ajuste aplicado e o kardex a vincula. Se a mercadoria vem de um pedido de compra, receba-a pelo pedido. Uma compra sem pedido é lançada na fatura de compra.",
       "avisoSalida": "A saída é valorizada ao custo médio da filial ({costo} × {n} = {total}), nunca ao preço de venda.",
       "listoEntrada": "Entrada registrada",
       "listoSalida": "Saída registrada",
@@ -22652,7 +22652,8 @@
         "mayorQueCero": "Deve ser maior que zero.",
         "noNegativo": "Não pode ser negativo.",
         "superaDisponible": "Excede o disponível ({n}).",
-        "conSeriales": "Produtos com números de série são registrados em Ajustes."
+        "conSeriales": "Produtos com números de série são registrados em Ajustes.",
+        "facturaCompra": "A compra sem pedido é lançada na fatura de compra: estoque contra fornecedores."
       }
     },
     "motivos": {

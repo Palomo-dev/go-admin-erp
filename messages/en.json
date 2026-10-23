@@ -26841,7 +26841,7 @@
       "venceLoteAyuda": "Optional. Without a date, the lot never expires",
       "nota": "Note",
       "notaPlaceholder": "Supplier invoice, person in charge, remark…",
-      "avisoEntrada": "It is saved as an applied adjustment and the stock ledger links to it. If the goods come from a purchase order, receive them from the order to avoid a duplicate entry.",
+      "avisoEntrada": "It is saved as an applied adjustment and the stock ledger links to it. If the goods come from a purchase order, receive them from the order. A purchase without an order is recorded on the supplier invoice.",
       "avisoSalida": "The stock out is valued at the branch's average cost ({costo} × {n} = {total}), never at the sale price.",
       "listoEntrada": "Stock in recorded",
       "listoSalida": "Stock out recorded",
@@ -26853,7 +26853,8 @@
         "mayorQueCero": "Must be greater than zero.",
         "noNegativo": "Cannot be negative.",
         "superaDisponible": "Exceeds what is available ({n}).",
-        "conSeriales": "Products with serials are recorded from Adjustments."
+        "conSeriales": "Products with serials are recorded from Adjustments.",
+        "facturaCompra": "A purchase without an order is recorded on the supplier invoice: inventory against suppliers."
       }
     },
     "motivos": {

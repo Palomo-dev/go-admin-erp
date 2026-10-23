@@ -85,7 +85,7 @@ function Formulario({
   const [sucursalId, setSucursalId] = useState<number | null>(sucursalInicial ?? sucursalActiva);
   const [cantidad, setCantidad] = useState<number | null>(null);
   const [costo, setCosto] = useState<number | null>(entrada ? productoInicial?.costo_promedio ?? null : null);
-  const [motivo, setMotivo] = useState<string>(entrada ? 'compra_sin_orden' : 'merma_vencido');
+  const [motivo, setMotivo] = useState<string>(entrada ? 'sobrante' : 'merma_vencido');
   const [motivoOtro, setMotivoOtro] = useState('');
   const [nota, setNota] = useState('');
   const [lotes, setLotes] = useState<LoteDisponible[]>([]);

@@ -26,6 +26,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { CampoTerceroAsiento } from '../CampoTerceroAsiento';
 
 interface JournalLineInput {
   account_code: string;
@@ -142,6 +143,13 @@ export function AsientosPage() {
     const newLines = [...formData.lines];
     newLines[index] = { ...newLines[index], [field]: value };
     setFormData({ ...formData, lines: newLines });
+  };
+
+  const fijarTercero = (index: number, nit: string, nombre: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      lines: prev.lines.map((linea, i) => (i === index ? { ...linea, tercero_nit: nit, tercero_nombre: nombre } : linea)),
+    }));
   };
 
   const getTotalDebits = () => formData.lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
@@ -588,20 +596,14 @@ export function AsientosPage() {
                         <TableRow key={`${index}-tercero`} className="dark:border-gray-700">
                           <TableCell colSpan={5}>
                             <div className="grid gap-2 sm:grid-cols-3">
-                              <Input
-                                value={line.tercero_nit}
-                                onChange={(e) => updateLine(index, 'tercero_nit', e.target.value)}
-                                placeholder={cuentas.find((c) => c.account_code === line.account_code)?.requiere_tercero ? 'NIT o cédula *' : 'NIT o cédula'}
-                                aria-label="NIT o cédula del tercero"
-                                className="dark:bg-gray-900 dark:border-gray-600"
-                              />
-                              <Input
-                                value={line.tercero_nombre}
-                                onChange={(e) => updateLine(index, 'tercero_nombre', e.target.value)}
-                                placeholder="Nombre del tercero"
-                                aria-label="Nombre del tercero"
-                                className="dark:bg-gray-900 dark:border-gray-600"
-                              />
+                              <div className="sm:col-span-2">
+                                <CampoTerceroAsiento
+                                  nit={line.tercero_nit}
+                                  nombre={line.tercero_nombre}
+                                  obligatorio={!!cuentas.find((c) => c.account_code === line.account_code)?.requiere_tercero}
+                                  onCambiar={(nit, nombre) => fijarTercero(index, nit, nombre)}
+                                />
+                              </div>
                               <select
                                 aria-label="Centro de costo"
                                 value={line.cost_center_id}

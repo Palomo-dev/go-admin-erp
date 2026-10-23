@@ -23,6 +23,9 @@ export interface DatosMovimientoCaja {
   centro_costo_id?: string | null;
   tercero_nit?: string | null;
   tercero_nombre?: string | null;
+  tercero_tipo?: string | null;
+  tercero_id?: string | null;
+  tercero_dv?: string | null;
   soporte_path?: string | null;
 }
 
@@ -32,7 +35,7 @@ export function parametrosMovimiento(
   datos: DatosMovimientoCaja,
   opciones: { uuid?: string | null; creadoEn?: string | null } = {},
 ) {
-  return {
+  const base = {
     p_session_id: sessionId,
     p_tipo: datos.type,
     p_monto: datos.amount,
@@ -49,6 +52,12 @@ export function parametrosMovimiento(
     p_tercero_nombre: datos.tercero_nombre ?? null,
     p_soporte_path: datos.soporte_path ?? null,
   };
+  const tipo = datos.tercero_tipo ?? null;
+  const id = datos.tercero_id ?? null;
+  const dv = datos.tercero_dv ?? null;
+  // Sin tercero elegido la firma queda en los 15 argumentos de siempre.
+  if (tipo == null && id == null && dv == null) return base;
+  return { ...base, p_tercero_tipo: tipo, p_tercero_id: id, p_tercero_dv: dv };
 }
 
 /** Error de la RPC → código estable de `cajas.errores` (`caja_ya_cerrada`, `sin_permiso`…). */

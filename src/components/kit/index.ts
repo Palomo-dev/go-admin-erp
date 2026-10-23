@@ -167,9 +167,10 @@ export * from './documento';
 export { SeccionPlegable, type SeccionPlegableProps } from './SeccionPlegable';
 export { ViewToggle, otraVista, type ViewToggleProps, type OpcionVista } from './ViewToggle';
 export { ResultadoOperacion, type ResultadoOperacionProps, type AccionResultado, type TonoResultado } from './ResultadoOperacion';
-export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad, type FiltroEntidad, type ContextoCrearEntidad } from './SelectorEntidad';
+export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad, type FiltroEntidad, type ContextoCrearEntidad, type AccionTextoEntidad } from './SelectorEntidad';
 export { CustomerPicker, type CustomerPickerProps } from './CustomerPicker';
 export { SupplierPicker, type SupplierPickerProps } from './SupplierPicker';
+export { ThirdPartyPicker, type ThirdPartyPickerProps } from './ThirdPartyPicker';
 export {
   estadoListaEntidad,
   ofrecerCrear,
@@ -181,6 +182,7 @@ export {
   type ClientePicker,
   type ProveedorPicker,
 } from './selectorEntidadLogica';
+export { interpretarNit, opcionTercero, textoTerceroGuardado, valorAlEscribir, type TerceroElegido, type TerceroLista, type TipoTercero } from './terceroPickerLogica';
 // ── POS: piezas de venta (inicio)
 // CartTag, CartLine, ProductCard, CategoryBar (POS-PLAN §3.3; adenda en KIT-CODIGO.md).
 export { CartTag, type CartTagProps } from './CartTag';

@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Ticket, Search, MapPin, Bus } from 'lucide-react';
+import { Loader2, Ticket, MapPin, Bus } from 'lucide-react';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
 import { ticketsService, type TicketWithDetails, type TripSeat, type RouteStop, type TripDetails } from '@/lib/services/ticketsService';
 import { cn } from '@/lib/utils';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -43,14 +44,6 @@ interface Stop {
   city?: string;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  document_number?: string;
-}
-
 interface TicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -58,7 +51,6 @@ interface TicketDialogProps {
   trips: Trip[];
   stops: Stop[];
   onSave: (data: Partial<TicketWithDetails>) => Promise<void>;
-  onSearchCustomer?: (query: string) => Promise<Customer[]>;
 }
 
 const DOC_TYPES = [
@@ -82,14 +74,11 @@ export function TicketDialog({
   trips,
   stops,
   onSave,
-  onSearchCustomer,
 }: TicketDialogProps) {
   // Tarifa del viaje en la moneda del viaje; sin ella, la base.
   const { paraDocumento } = useMonedaOrganizacion();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchingCustomer, setSearchingCustomer] = useState(false);
-  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
-  const [customerSearch, setCustomerSearch] = useState('');
+  const [pasajero, setPasajero] = useState<ClienteDocumento | null>(null);
 
   const { selectedBranchId } = useBranch();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
@@ -157,8 +146,16 @@ export function TicketDialog({
           customer_id: '',
         });
       }
-      setCustomerResults([]);
-      setCustomerSearch('');
+      setPasajero(
+        ticket?.customer_id
+          ? {
+              id: ticket.customer_id,
+              nombre: ticket.passenger_name || 'Cliente',
+              correo: ticket.passenger_email ?? null,
+              telefono: ticket.passenger_phone ?? null,
+            }
+          : null,
+      );
     }
   }, [open, ticket]);
 
@@ -225,31 +222,15 @@ export function TicketDialog({
     }
   }, [formData.trip_id, loadTripInfo]);
 
-  const handleSearchCustomer = async () => {
-    if (!onSearchCustomer || !customerSearch.trim()) return;
-    
-    setSearchingCustomer(true);
-    try {
-      const results = await onSearchCustomer(customerSearch);
-      setCustomerResults(results);
-    } catch (error) {
-      console.error('Error searching customers:', error);
-    } finally {
-      setSearchingCustomer(false);
-    }
-  };
-
-  const selectCustomer = (customer: Customer) => {
+  const selectCustomer = (customer: ClienteDocumento) => {
+    setPasajero(customer);
     setFormData((prev) => ({
       ...prev,
       customer_id: customer.id,
-      passenger_name: customer.name,
-      passenger_email: customer.email || '',
-      passenger_phone: customer.phone || '',
-      passenger_doc_number: customer.document_number || '',
+      passenger_name: customer.nombre,
+      passenger_email: customer.correo || prev.passenger_email,
+      passenger_phone: customer.telefono || prev.passenger_phone,
     }));
-    setCustomerResults([]);
-    setCustomerSearch('');
   };
 
   const handleSubmit = async () => {
@@ -347,38 +328,16 @@ export function TicketDialog({
             )}
           </div>
 
-          {/* Búsqueda de cliente */}
-          {onSearchCustomer && (
-            <div className="space-y-2">
-              <Label>Buscar Cliente Existente</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nombre, email o documento..."
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearchCustomer()}
-                />
-                <Button type="button" variant="outline" onClick={handleSearchCustomer} disabled={searchingCustomer}>
-                  {searchingCustomer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                </Button>
-              </div>
-              {customerResults.length > 0 && (
-                <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
-                  {customerResults.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => selectCustomer(c)}
-                      className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                    >
-                      <p className="font-medium">{c.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{c.email} · {c.document_number}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <ElegirCliente
+            cliente={pasajero}
+            sucursal={branchId}
+            layout="campo"
+            onCambiar={selectCustomer}
+            onQuitar={() => {
+              setPasajero(null);
+              setFormData((prev) => ({ ...prev, customer_id: '' }));
+            }}
+          />
 
           {/* Datos del Pasajero */}
           <div className="border-t pt-4">

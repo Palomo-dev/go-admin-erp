@@ -13,6 +13,7 @@ import { ContabilidadService, mensajeErrorAsiento, type ChartAccount, type Plant
 import { esCuentaDeMovimiento } from '@/lib/finanzas/contabilidad/cuentaLinea';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { CampoTerceroAsiento } from '../CampoTerceroAsiento';
 
 interface LineaForm {
   account_code: string;
@@ -77,6 +78,10 @@ export function PlantillasAsientoPage() {
 
   const cambiar = (indice: number, campo: keyof LineaForm, valor: string) => {
     setLineas((prev) => prev.map((l, i) => (i === indice ? { ...l, [campo]: valor } : l)));
+  };
+
+  const fijarTercero = (indice: number, nit: string, nombre: string) => {
+    setLineas((prev) => prev.map((l, i) => (i === indice ? { ...l, tercero_nit: nit, tercero_nombre: nombre } : l)));
   };
 
   const guardar = async () => {
@@ -188,13 +193,12 @@ export function PlantillasAsientoPage() {
                 <Input type="number" value={linea.credit} onChange={(e) => cambiar(indice, 'credit', e.target.value)} placeholder="Crédito" />
                 {linea.account_code && (
                   <>
-                    <Input
-                      value={linea.tercero_nit}
-                      onChange={(e) => cambiar(indice, 'tercero_nit', e.target.value)}
-                      placeholder={cuenta?.requiere_tercero ? 'NIT o cédula *' : 'NIT o cédula'}
-                      aria-label="NIT o cédula"
+                    <CampoTerceroAsiento
+                      nit={linea.tercero_nit}
+                      nombre={linea.tercero_nombre}
+                      obligatorio={!!cuenta?.requiere_tercero}
+                      onCambiar={(nit, nombre) => fijarTercero(indice, nit, nombre)}
                     />
-                    <Input value={linea.tercero_nombre} onChange={(e) => cambiar(indice, 'tercero_nombre', e.target.value)} placeholder="Nombre del tercero" />
                     <select
                       aria-label="Centro de costo"
                       value={linea.cost_center_id}

@@ -16,11 +16,11 @@
  * Los datos salen de las RPC de los listados con la sesión (RLS).
  */
 import { useCallback, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { CustomerPicker, SupplierPicker, type ClientePicker, type ProveedorPicker } from '@/components/kit';
 import { FormularioRapidoTercero } from '@/components/kit/documento/FormularioRapidoTercero';
 import type { DatosTerceroRapido } from '@/components/kit/documento/edicionDocumentoLogica';
-import { ClienteFormDialog, ProveedorFormDialog } from '@/components/shared/form-dialogs';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { FilaCliente } from '@/lib/services/clientesListadoService';
@@ -33,18 +33,20 @@ import {
   crearProveedorRapido,
 } from '@/lib/services/documentos/edicionDocumento';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+import { documentoTexto } from './documentoTexto';
 
-const DOC_CORTO: Record<string, string> = { cc: 'CC', nit: 'NIT', ce: 'CE', passport: 'PP', ti: 'TI', pep: 'PEP' };
+// El alta completa arrastra el formulario de clientes (y, con él, módulos que
+// Jest no transforma). Solo se pide cuando alguien elige «Más datos».
+const ClienteFormDialog = dynamic(
+  () => import('@/components/shared/form-dialogs/ClienteFormDialog').then((m) => m.ClienteFormDialog),
+  { ssr: false },
+);
+const ProveedorFormDialog = dynamic(
+  () => import('@/components/shared/form-dialogs/ProveedorFormDialog').then((m) => m.ProveedorFormDialog),
+  { ssr: false },
+);
 
-/** «NIT 900.123.456-7», «CC 1.020.304.050». */
-export function documentoTexto(tipo: string | null | undefined, numero: string | null | undefined, dv?: string | number | null): string | null {
-  const n = (numero ?? '').trim();
-  if (!n) return null;
-  const miles = /^\d+$/.test(n) ? Number(n).toLocaleString('es-CO') : n;
-  const t = DOC_CORTO[(tipo ?? '').toLowerCase()] ?? (tipo ? tipo.toUpperCase() : '');
-  const d = dv !== null && dv !== undefined && String(dv).trim() !== '' ? `-${dv}` : '';
-  return `${t ? `${t} ` : ''}${miles}${d}`;
-}
+export { documentoTexto };
 
 export interface ClienteDocumento extends ClientePicker {
   plazoDias?: number | null;

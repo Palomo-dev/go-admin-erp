@@ -1,18 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Truck } from 'lucide-react';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { FormField } from '@/components/kit';
 import { CampoNumero } from '@/components/kit/CampoNumero';
 import { Input } from '@/components/ui/input';
-import { SearchSelect } from '@/components/ui/search-select';
+import { ElegirProveedor } from '@/components/finanzas/documento/terceros';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import type { MonedaProducto } from '../ContextoProducto';
-import { HojaNuevoProveedor } from './HojaNuevoProveedor';
-
 export interface ProveedorOrg {
   id: number;
   uuid: string | null;
@@ -65,7 +63,6 @@ export function DialogoProveedorProducto({
   const tc = useTranslations('productoDetalle.comun');
   const [datos, setDatos] = useState<DatosProveedorProducto>(inicial);
   const [intentado, setIntentado] = useState(false);
-  const [hojaNuevo, setHojaNuevo] = useState(false);
   const editando = inicial.id !== undefined;
 
   useEffect(() => {
@@ -76,11 +73,6 @@ export function DialogoProveedorProducto({
   }, [abierto, inicial]);
 
   const set = <K extends keyof DatosProveedorProducto>(k: K, v: DatosProveedorProducto[K]) => setDatos((d) => ({ ...d, [k]: v }));
-
-  const opciones = useMemo(
-    () => disponibles.map((p) => ({ value: String(p.id), label: p.name, sublabel: p.nit ? t('nit', { nit: p.nit }) : undefined })),
-    [disponibles, t],
-  );
 
   const errorProveedor = intentado && !datos.supplier_id ? t('dialogo.proveedorRequerido') : null;
   const negativo = (v: number | null) => v !== null && v < 0;
@@ -114,23 +106,29 @@ export function DialogoProveedorProducto({
             <span className="text-sm font-medium text-fg">{nombreEditando}</span>
           </div>
         ) : (
-          <FormField etiqueta={t('dialogo.proveedor')} obligatorio error={errorProveedor}>
-            {() => (
-              <div>
-                <SearchSelect
-                  options={opciones}
-                  value={datos.supplier_id ? String(datos.supplier_id) : ''}
-                  onValueChange={(v) => set('supplier_id', v ? Number(v) : null)}
-                  placeholder={t('dialogo.proveedorPlaceholder')}
-                  searchPlaceholder={t('dialogo.proveedorBuscar')}
-                  emptyText={t('dialogo.proveedorVacio')}
-                  onCreate={() => setHojaNuevo(true)}
-                  createLabel={(texto) => t('dialogo.crearCon', { nombre: texto })}
-                  createEmptyLabel={t('dialogo.crear')}
-                />
-              </div>
-            )}
-          </FormField>
+          <>
+            <ElegirProveedor
+              layout="campo"
+              proveedor={
+                datos.supplier_id
+                  ? {
+                      id: String(datos.supplier_id),
+                      nombre: disponibles.find((p) => p.id === datos.supplier_id)?.name ?? 'Proveedor',
+                    }
+                  : null
+              }
+              onCambiar={(p) => {
+                const id = Number(p.id);
+                if (!disponibles.some((d) => d.id === id)) {
+                  onProveedorCreado({ id, uuid: null, name: p.nombre, nit: null });
+                }
+                set('supplier_id', id);
+              }}
+              onQuitar={() => set('supplier_id', null)}
+              aria-invalid={!!errorProveedor}
+            />
+            {errorProveedor ? <p className="text-sm text-danger-text">{errorProveedor}</p> : null}
+          </>
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -161,15 +159,6 @@ export function DialogoProveedorProducto({
         </label>
       </Dialogo>
 
-      <HojaNuevoProveedor
-        abierto={hojaNuevo}
-        onAbiertoChange={setHojaNuevo}
-        onCreado={(p) => {
-          const nuevo: ProveedorOrg = { id: p.id, uuid: p.uuid ?? null, name: p.name, nit: p.nit ?? null };
-          onProveedorCreado(nuevo);
-          set('supplier_id', p.id);
-        }}
-      />
     </>
   );
 }

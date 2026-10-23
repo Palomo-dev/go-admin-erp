@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SearchSelect } from '@/components/ui/search-select';
+import { ElegirProveedor } from '@/components/finanzas/documento/terceros';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { PropsSeccionFormulario } from '../tipos';
@@ -63,10 +64,6 @@ export function SeccionOrganizacion({
   const opcionesUnidad = useMemo(
     () => catalogos.unidades.map((u) => ({ value: u.code, label: u.name, sublabel: u.code })),
     [catalogos.unidades],
-  );
-  const opcionesProveedor = useMemo(
-    () => catalogos.proveedores.map((p) => ({ value: String(p.id), label: p.name, sublabel: p.nit ?? undefined })),
-    [catalogos.proveedores],
   );
   const opcionesEtiqueta: OpcionMulti[] = useMemo(
     () => catalogos.etiquetas.map((e) => ({ valor: String(e.id), etiqueta: e.name, color: hexEtiqueta(e.color) })),
@@ -164,29 +161,24 @@ export function SeccionOrganizacion({
 
       <div className="flex flex-col gap-4 border-t border-line pt-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <FormField
-            etiqueta={t('proveedor.principal')}
-            ayuda={t('proveedor.ayuda')}
-            error={errores.proveedor ? te(errores.proveedor) : null}
-            className="min-w-0 flex-1"
-          >
-            {() => (
-              <div>
-                <SearchSelect
-                  options={opcionesProveedor}
-                  value={proveedor.supplier_id ? String(proveedor.supplier_id) : 'none'}
-                  onValueChange={elegirProveedor}
-                  placeholder={t('proveedor.placeholder')}
-                  searchPlaceholder={t('proveedor.buscar')}
-                  emptyText={t('proveedor.vacio')}
-                  noneLabel={t('proveedor.ninguno')}
-                  onCreate={() => setHojaProveedor(true)}
-                  createLabel={(texto) => t('proveedor.crearCon', { nombre: texto })}
-                  createEmptyLabel={t('proveedor.nuevo')}
-                />
-              </div>
-            )}
-          </FormField>
+          <div className="min-w-0 flex-1">
+            <ElegirProveedor
+              layout="campo"
+              proveedor={
+                proveedor.supplier_id != null
+                  ? { id: String(proveedor.supplier_id), nombre: nombreProveedor(proveedor.supplier_id) }
+                  : null
+              }
+              onCambiar={(p) => {
+                agregarACatalogo('proveedores', { id: Number(p.id), name: p.nombre, nit: null });
+                elegirProveedor(p.id);
+              }}
+              onQuitar={() => elegirProveedor('none')}
+              aria-invalid={!!errores.proveedor}
+            />
+            {errores.proveedor ? <p className="mt-1 text-sm text-danger-text">{te(errores.proveedor)}</p> : null}
+            <p className="mt-1 text-xs text-fg-muted">{t('proveedor.ayuda')}</p>
+          </div>
           <Button type="button" variant="outline" className="h-10 gap-1.5 sm:mb-[22px]" onClick={() => setHojaProveedor(true)}>
             <Plus className="size-4" aria-hidden /> {t('proveedor.nuevo')}
           </Button>

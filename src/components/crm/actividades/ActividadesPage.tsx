@@ -16,7 +16,7 @@ import { actividadesService, type OrgUserOption } from './ActividadesService';
 import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError } from '@/lib/utils/errorMessage';
-import { SearchSelect } from '@/components/ui/search-select';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
 import {
   Activity,
   ActivityFilters,
@@ -74,17 +74,13 @@ export function ActividadesPage() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteActivity, setDeleteActivity] = useState<Activity | null>(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [clienteAccion, setClienteAccion] = useState<ClienteDocumento | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [taskDialog, setTaskDialog] = useState<{ type: RelatedType; id: string } | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  const selectedCustomer = selectedCustomerId
-    ? customers.find((c) => c.id === selectedCustomerId) ?? null
-    : null;
 
   /**
    * Una sola carga: página de actividades + totales + catálogos.
@@ -281,25 +277,23 @@ export function ActividadesPage() {
               <Label className="text-xs text-gray-600 dark:text-gray-400">
                 Selecciona un cliente para activar las acciones
               </Label>
-              <SearchSelect
-                options={customers.map((c) => ({ value: c.id, label: c.full_name }))}
-                value={selectedCustomerId || 'none'}
-                onValueChange={(v) => setSelectedCustomerId(v === 'none' ? '' : v)}
-                placeholder="Sin cliente"
-                searchPlaceholder="Buscar cliente..."
-                noneLabel="Sin cliente"
-                className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              <ElegirCliente
+                cliente={clienteAccion}
+                sucursal={null}
+                layout="campo"
+                onCambiar={setClienteAccion}
+                onQuitar={() => setClienteAccion(null)}
               />
             </div>
-            {selectedCustomer ? (
+            {clienteAccion ? (
               <QuickActionsBar
                 variant="detail"
-                customerId={selectedCustomer.id}
+                customerId={clienteAccion.id}
                 customer={{
-                  id: selectedCustomer.id,
-                  full_name: selectedCustomer.full_name,
-                  email: selectedCustomer.email ?? null,
-                  phone: selectedCustomer.phone ?? null,
+                  id: clienteAccion.id,
+                  full_name: clienteAccion.nombre,
+                  email: clienteAccion.correo ?? null,
+                  phone: clienteAccion.telefono ?? null,
                 }}
                 onActionCompleted={() => loadData()}
               />

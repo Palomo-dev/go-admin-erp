@@ -47,6 +47,8 @@ export const CODIGOS_ERROR_COBRO = [
   'origen_peso_no_disponible',
   'peso_exige_bascula',
   'sin_permiso_peso_manual',
+  // Quitar la promoción de una línea (pos_checkout_v1, 20261023011739).
+  'sin_permiso_quitar_promocion',
   // Báscula y etiqueta de balanza (fn_pos_validar_pesaje, 20260929220200).
   'bascula_invalida',
   'peso_inestable',

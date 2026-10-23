@@ -53,7 +53,7 @@ export function TarjetaProductos({ venta, moneda, formatear }: { venta: DetalleV
     id: String(l.id),
     descripcion: l.nombre ?? t('productos.sinNombre'),
     sku: l.sku,
-    nota: l.nota,
+    nota: [l.nota, l.sin_promocion ? t('productos.sinPromocion') : null].filter(Boolean).join(' · ') || null,
     cantidad: l.cantidad,
     unidad: l.unidad,
     precioUnitario: l.precio,
@@ -141,6 +141,18 @@ export function TarjetaHistorial({ venta, formatear }: { venta: DetalleVenta; fo
     ...venta.pagos.map((p) => ({ id: `p${p.id}`, fecha: p.fecha, texto: t('historial.pago', { monto: formatear(p.monto) }) })),
     ...venta.devoluciones.map((d) => ({ id: `d${d.id}`, fecha: d.fecha, texto: t('historial.devolucion', { monto: formatear(d.total) }) })),
     ...venta.notas_credito.map((n) => ({ id: `n${n.id}`, fecha: n.emitida, texto: t('historial.notaCredito', { numero: n.numero ?? '' }) })),
+    ...(venta.auditoria_promos ?? []).map((a) => {
+      const linea = venta.lineas.find((l) => l.id === a.linea_id);
+      const producto = linea?.nombre || a.promocion_nombre || t('productos.sinNombre');
+      const base = a.accion === 'promo_restored'
+        ? t('historial.promoRestaurada', { producto, promocion: a.promocion_nombre || '—', nombre: a.usuario || '—' })
+        : t('historial.promoQuitada', { producto, promocion: a.promocion_nombre || '—', monto: formatear(a.monto), nombre: a.usuario || '—' });
+      return {
+        id: `promo${a.id}`,
+        fecha: a.fecha,
+        texto: a.motivo ? `${base} ${t('historial.motivo', { motivo: a.motivo })}` : base,
+      };
+    }),
   ]
     .filter((e) => e.fecha)
     .sort((a, b) => new Date(a.fecha as string).getTime() - new Date(b.fecha as string).getTime());

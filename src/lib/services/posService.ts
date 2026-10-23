@@ -1243,7 +1243,8 @@ export class POSService {
       const maxDiscount = cart.items[itemIndex].quantity * cart.items[itemIndex].unit_price;
       const manual = Math.max(0, Math.min(discountAmount, maxDiscount));
       // Descuento del cajero: se guarda aparte del de promoción y nunca se pisa.
-      // En 0 se quita el manual y la línea vuelve a recibir la promoción.
+      // En 0 se quita el manual. La promoción vuelve solo si la línea no está
+      // marcada con `promo_excluded`.
       cart.items[itemIndex].manual_discount_amount = manual > 0 ? manual : null;
       cart.items[itemIndex].discount_amount = manual;
 
@@ -1259,6 +1260,50 @@ export class POSService {
       console.error('Error updating cart item discount:', error);
       throw error;
     }
+  }
+
+  /**
+   * Quita o devuelve la promoción de una línea. El flag viaja en el carrito y,
+   * al cobrar, en el sobre de `pos_checkout_v1`. Poner el manual en 0 no lo
+   * borra: hay que restaurar. Al quitar se guarda qué promoción tenía la línea
+   * para la auditoría del cobro.
+   */
+  static async excluirPromocionDeLinea(
+    cartId: string,
+    itemId: string,
+    excluded: boolean,
+    reason?: string | null,
+  ): Promise<Cart> {
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const cart = carts[cartIndex];
+    const item = cart.items.find((i) => i.id === itemId);
+    if (!item) throw new Error('Item no encontrado');
+    if (excluded) {
+      const monto = item.promo_discount_amount || 0;
+      const tocadas = item.promos_en_linea ?? [];
+      item.promo_removed = tocadas.length > 0
+        ? tocadas.map((p, i, arr) => ({
+            promotion_id: p.promotion_id,
+            promotion_name: p.promotion_name,
+            discount_amount: arr.length === 1 ? monto || p.discount_amount : p.discount_amount,
+          }))
+        : monto > 0
+          ? [{ promotion_id: '', promotion_name: '', discount_amount: monto }]
+          : null;
+      item.promo_excluded = true;
+      item.promo_excluded_reason = reason?.trim() ? reason.trim().slice(0, 240) : null;
+    } else {
+      item.promo_excluded = false;
+      item.promo_excluded_reason = null;
+      item.promo_removed = null;
+    }
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    carts[cartIndex] = cart;
+    this.saveCartsToStorage(carts);
+    return cart;
   }
 
   static async updateItemTaxIncluded(cartId: string, itemId: string, taxIncluded: boolean): Promise<Cart> {
@@ -2427,6 +2472,7 @@ export class POSService {
           unit_price: i.unit_price,
           // «Lleve X pague Y» no aplica a productos por peso o medida.
           sale_mode: i.product?.sale_mode,
+          promo_excluded: i.promo_excluded === true,
         })),
         organization_id: cart.organization_id,
         branch_id: cart.branch_id,
@@ -2437,6 +2483,19 @@ export class POSService {
         item.discount_amount = finales[idx].discount_amount;
         item.manual_discount_amount = finales[idx].manual_discount_amount;
         item.promo_discount_amount = finales[idx].promo_discount_amount;
+        if (item.promo_excluded) {
+          item.promos_en_linea = [];
+        } else if (finales[idx].promo_discount_amount > 0) {
+          item.promos_en_linea = promoResult.applied
+            .filter((a) => a.lineas.includes(idx))
+            .map((a) => ({
+              promotion_id: a.promotion_id,
+              promotion_name: a.promotion_name,
+              discount_amount: a.discount_amount,
+            }));
+        } else {
+          item.promos_en_linea = [];
+        }
       });
       return promocionesEnLineas(promoResult, finales.map((f) => f.promo_discount_amount));
     } catch (promoErr) {

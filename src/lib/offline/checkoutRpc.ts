@@ -113,6 +113,10 @@ export interface CheckoutEnvelopeItem {
    * precio y descuento salen de la base.
    */
   sale_item_id?: string;
+  /** El cajero quitó la promoción. `pos_checkout_v1` lo rechaza sin `pos.promotions.remove`. */
+  promo_excluded?: boolean;
+  promo_excluded_reason?: string | null;
+  promo_removed?: Array<{ promotion_id: string; promotion_name: string; discount_amount: number }> | null;
 }
 
 /** Sobre que recibe `pos_checkout_v1` (ver contrato en la migración). */
@@ -235,6 +239,13 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       serial_ids: serialIds,
       priced_at: item.created_at ?? null,
       ...(mesa && UUID_RE.test(String(item.id ?? '')) ? { sale_item_id: String(item.id) } : {}),
+      ...(item.promo_excluded
+        ? {
+            promo_excluded: true,
+            promo_excluded_reason: item.promo_excluded_reason ?? null,
+            promo_removed: item.promo_removed ?? null,
+          }
+        : {}),
     };
   });
   if (mesa) {

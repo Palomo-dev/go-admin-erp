@@ -133,6 +133,12 @@ export interface LineaPromocion {
   unit_price: number;
   /** `products.sale_mode`. «Lleve X pague Y» no aplica a peso ni medida. */
   sale_mode?: string | null;
+  /**
+   * El cajero quitó la promoción de esta línea. No recibe descuento de
+   * promoción y no cuenta para mínimos, paquetes, «lleve X» ni «cada N».
+   * El descuento manual sigue aparte (`combinarDescuentos`).
+   */
+  promo_excluded?: boolean | null;
 }
 
 export interface ContextoPromocion {
@@ -478,6 +484,89 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
 
 // ── Evaluación de la cuenta completa ─────────────────────────────────────────
 
+/**
+ * Líneas que una promoción toca al armar la exclusividad.
+ *
+ * Una promoción de cuenta —sin reglas de producto (`applies_to = all`) o con
+ * la compra mínima sobre toda la cuenta— toca todas las líneas válidas. Por
+ * eso sigue compitiendo contra el resto como antes: dentro de ese grupo hay
+ * un solo ganador no combinable. Una promoción de productos, categorías o
+ * marcas toca solo sus líneas: dos no combinables sobre productos distintos
+ * no se pisan y se aplican las dos.
+ */
+function indicesDeGrupo(p: FilaPromocion, indices: number[], validos: number[]): number[] {
+  if (p.applies_to === 'all' || alcanceCompraMinima(p) === 'cart') return validos;
+  return indices;
+}
+
+interface CalculoListo {
+  promo: FilaPromocion;
+  indices: number[];
+  grupo: number[];
+  calc: CalculoPromocion;
+}
+
+function seCruzan(a: number[], b: number[]): boolean {
+  const menor = a.length <= b.length ? a : b;
+  const mayor = a.length <= b.length ? b : a;
+  const set = new Set(mayor);
+  return menor.some((i) => set.has(i));
+}
+
+/** Componentes conexos: promociones unidas si comparten alguna línea. */
+function componentesDe(calculos: CalculoListo[]): CalculoListo[][] {
+  const n = calculos.length;
+  const padre = Array.from({ length: n }, (_, i) => i);
+  const encontrar = (i: number): number => {
+    let x = i;
+    while (padre[x] !== x) {
+      padre[x] = padre[padre[x]];
+      x = padre[x];
+    }
+    return x;
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (!seCruzan(calculos[i].grupo, calculos[j].grupo)) continue;
+      const ra = encontrar(i);
+      const rb = encontrar(j);
+      if (ra !== rb) padre[rb] = ra;
+    }
+  }
+  const grupos = new Map<number, CalculoListo[]>();
+  calculos.forEach((c, i) => {
+    const r = encontrar(i);
+    const arr = grupos.get(r) ?? [];
+    arr.push(c);
+    grupos.set(r, arr);
+  });
+  return Array.from(grupos.values());
+}
+
+/**
+ * Entre no combinables que compiten (mismo grupo de líneas): gana la de
+ * mayor `priority`. Empate: la que más descuenta. Sigue el empate: la más
+ * antigua (`created_at`) y luego el id. Con todas en 0 —el valor por
+ * defecto— el primer criterio no mueve nada y queda la regla de siempre.
+ */
+function compararCompetidoras(a: CalculoListo, b: CalculoListo): number {
+  const pa = num(a.promo.priority);
+  const pb = num(b.promo.priority);
+  if (pa !== pb) return pb - pa;
+  if (a.calc.total !== b.calc.total) return b.calc.total - a.calc.total;
+  return compararPrioridad(a.promo, b.promo);
+}
+
+/** Dentro de un grupo: la no combinable ganadora contra la suma de las combinables. */
+function elegirEnComponente(grupo: CalculoListo[]): FilaPromocion[] {
+  const combinables = grupo.filter((c) => !!c.promo.is_combinable);
+  const exclusivas = grupo.filter((c) => !c.promo.is_combinable).sort(compararCompetidoras);
+  const suma = combinables.reduce((s, c) => s + c.calc.total, 0);
+  const mejor = exclusivas[0] ?? null;
+  if (mejor && mejor.calc.total >= suma) return [mejor.promo];
+  return combinables.map((c) => c.promo);
+}
+
 /** Orden estable: prioridad desc, `created_at` asc (la más antigua), id. */
 function compararPrioridad(a: FilaPromocion, b: FilaPromocion): number {
   const pa = num(a.priority);
@@ -509,15 +598,18 @@ export function evaluarPromociones(
   lineas: LineaPromocion[],
   ctx: ContextoPromocion,
 ): ResultadoPromociones {
-  const validas = lineas.map((l) => num(l.quantity) > 0 && num(l.unit_price) >= 0);
+  // Una línea excluida no entra: ni descuento, ni mínimos, ni paquetes, ni «lleve X», ni «cada N».
+  const validas = lineas.map((l) => l.promo_excluded !== true && num(l.quantity) > 0 && num(l.unit_price) >= 0);
   if (lineas.length === 0 || promociones.length === 0) return VACIO(lineas.length);
 
   const dia = diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria);
   const subtotalCuenta = lineas.reduce((s, l, i) => s + (validas[i] ? totalLinea(l) : 0), 0);
+  const validos = lineas.map((_, i) => i).filter((i) => validas[i]);
 
   const elegibles = promociones.filter((p) => promocionVigente(p, ctx, dia)).sort(compararPrioridad);
 
-  const calculos = new Map<string, { promo: FilaPromocion; indices: number[]; calc: CalculoPromocion }>();
+  const calculos = new Map<string, CalculoListo>();
+  const listos: CalculoListo[] = [];
   for (const p of elegibles) {
     const indices = lineas.map((_, i) => i).filter((i) => validas[i] && lineaCumpleReglas(lineas[i], p));
     if (indices.length === 0) continue;
@@ -529,25 +621,16 @@ export function evaluarPromociones(
     }
     if (!cumpleCantidadMinima(p, lineas, indices)) continue;
     const calc = calcularPromocion(p, lineas, indices);
-    if (calc.total > 0) calculos.set(p.id, { promo: p, indices, calc });
+    if (calc.total <= 0) continue;
+    const fila: CalculoListo = { promo: p, indices, grupo: indicesDeGrupo(p, indices, validos), calc };
+    calculos.set(p.id, fila);
+    listos.push(fila);
   }
 
-  const combinables = elegibles.filter((p) => !!p.is_combinable && calculos.has(p.id));
-  const sumaCombinables = combinables.reduce((s, p) => s + (calculos.get(p.id)?.calc.total ?? 0), 0);
-  // Gana la no combinable que más descuenta EN ESTA CUENTA. `elegibles` ya
-  // viene por prioridad y antigüedad: con `>` estricto el empate lo gana la
-  // primera, que es la de mayor prioridad y, a igual prioridad, la más antigua.
-  let mejor: FilaPromocion | null = null;
-  let mejorMonto = 0;
-  for (const p of elegibles) {
-    if (p.is_combinable) continue;
-    const d = calculos.get(p.id)?.calc.total ?? 0;
-    if (d > mejorMonto) {
-      mejor = p;
-      mejorMonto = d;
-    }
-  }
-  const aAplicar = mejor && mejorMonto >= sumaCombinables ? [mejor] : combinables;
+  // Cada componente aplica la regla de siempre (una no combinable contra la
+  // suma de las combinables). Componentes distintos se suman: dos
+  // no combinables sobre productos que no comparten línea se aplican las dos.
+  const aAplicar = componentesDe(listos).flatMap(elegirEnComponente);
 
   const lineDiscounts = lineas.map(() => 0);
   const applied: PromocionAplicada[] = [];
@@ -598,6 +681,8 @@ export interface DescuentosLinea {
   manual_discount_amount?: number | null;
   /** Descuento que puso el motor de promociones en la última evaluación. */
   promo_discount_amount?: number | null;
+  /** Quitaron la promoción de la línea. En 0 el manual no la vuelve a traer. */
+  promo_excluded?: boolean | null;
 }
 
 /**
@@ -624,6 +709,12 @@ export function combinarDescuentos(
   return lineas.map((l, i) => {
     const maximo = Math.max(0, centavos(num(l.quantity) * num(l.unit_price)));
     const manual = descuentoManualDe(l);
+    if (l.promo_excluded === true) {
+      if (manual !== null) {
+        return { discount_amount: Math.min(maximo, manual), manual_discount_amount: manual, promo_discount_amount: 0 };
+      }
+      return { discount_amount: 0, manual_discount_amount: null, promo_discount_amount: 0 };
+    }
     const promo = Math.min(maximo, Math.max(0, centavos(num(promoPorLinea[i]))));
     if (manual !== null) {
       return { discount_amount: Math.min(maximo, manual), manual_discount_amount: manual, promo_discount_amount: 0 };
@@ -650,6 +741,8 @@ export interface LineaCuentaMesa {
   paid_amount?: number | null;
   paid_at?: string | null;
   notes?: Record<string, unknown> | null;
+  /** El mesero quitó la promoción. El recálculo de la cuenta no se la devuelve. */
+  promo_excluded?: boolean | null;
 }
 
 /**
@@ -683,8 +776,11 @@ export function cambiosDescuentoMesa(lineas: LineaCuentaMesa[], resultado: Resul
   const cambios: CambioDescuentoMesa[] = [];
   lineas.forEach((l, i) => {
     if (!lineaMesaGestionada(l)) return;
-    const d = Math.min(centavos(num(l.quantity) * num(l.unit_price)), centavos(num(resultado.lineDiscounts[i])));
-    const ids = d > 0
+    const excluida = l.promo_excluded === true;
+    const d = excluida
+      ? 0
+      : Math.min(centavos(num(l.quantity) * num(l.unit_price)), centavos(num(resultado.lineDiscounts[i])));
+    const ids = !excluida && d > 0
       ? resultado.applied.filter((a) => a.lineas.includes(i)).map((a) => a.promotion_id).sort()
       : [];
     const antes = Array.isArray(l.notes?.promociones) ? (l.notes!.promociones as unknown[]).map(String).sort() : [];

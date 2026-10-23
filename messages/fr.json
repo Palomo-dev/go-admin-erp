@@ -13893,7 +13893,8 @@
       "bascula_invalida": "La balance de la pesée n’est pas une balance active de l’organisation. {detalle}",
       "peso_inestable": "La lecture de la balance n’était pas stable. {detalle}",
       "pesaje_no_coincide": "La quantité ne correspond pas au poids lu sur la balance. {detalle}",
-      "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}"
+      "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}",
+      "sin_permiso_quitar_promocion": "Retirer la promotion d’une ligne exige l’autorisation « Retirer la promotion ». {detalle}"
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",
@@ -15429,7 +15430,8 @@
         "total": "Total",
         "sinNombre": "Produit",
         "descuento": "Remise {monto}",
-        "tasa": "{tasa} %"
+        "tasa": "{tasa} %",
+        "sinPromocion": "Sans promotion"
       },
       "pagos": {
         "titulo": "Paiements imputés",
@@ -15453,7 +15455,10 @@
         "facturada": "Facture {numero} émise",
         "pago": "Paiement de {monto}",
         "devolucion": "Retour de {monto}",
-        "notaCredito": "Avoir {numero}"
+        "notaCredito": "Avoir {numero}",
+        "promoQuitada": "{nombre} a retiré la promotion « {promocion} » de {producto} ({monto})",
+        "promoRestaurada": "{nombre} a rétabli la promotion « {promocion} » sur {producto}",
+        "motivo": "Motif : {motivo}"
       },
       "notas": "Notes",
       "cliente": {
@@ -16841,6 +16846,12 @@
       "descuentoDe": "Remise sur {nombre}",
       "descuento": "Remise",
       "aplicarDescuento": "Appliquer la remise",
+      "quitarPromocion": "Retirer la promotion",
+      "quitarPromocionDe": "Retirer la promotion de {nombre}",
+      "restaurarPromocion": "Rétablir la promotion",
+      "sinPromocion": "Sans promotion",
+      "sinPromocionDe": "Sans promotion : {nombre}",
+      "errorQuitarPromocion": "Impossible de retirer la promotion",
       "cancelar": "Annuler",
       "frecuentes": "Fréquentes :",
       "aplicarFrecuente": "Appliquer la remise fréquente de {monto}",
@@ -35602,6 +35613,16 @@
     }
   },
   "pedidoWeb": {
+    "promocionLinea": {
+      "quitar": "Retirer la promotion",
+      "restaurar": "Rétablir la promotion",
+      "sinPromocion": "Sans promotion",
+      "motivo": "Motif (facultatif)",
+      "error": "Impossible de changer la promotion de la ligne",
+      "sinPermiso": "Vous n’avez pas l’autorisation de retirer la promotion d’une ligne.",
+      "lineasDistintas": "La vente n’a plus les mêmes lignes que la commande. L’encaissement n’a pas changé.",
+      "yaPagado": "La commande a déjà été payée en ligne : la promotion ne peut être ni retirée ni rétablie."
+    },
     "comerAqui": "Sur place",
     "comerAquiMesa": "Sur place · {mesa}",
     "verMesa": "Voir la table dans POS › Tables",
@@ -36106,6 +36127,10 @@
       "comensalN": "Couvert {n}",
       "alergia": "Allergie",
       "notaCocina": "Cuisine : {nota}",
+      "quitarPromocion": "Retirer la promotion",
+      "restaurarPromocion": "Rétablir la promotion",
+      "sinPromocion": "Sans promotion",
+      "errorPromocion": "Impossible de changer la promotion de la ligne",
       "moverA": "Déplacer vers une autre table",
       "restarUna": "Retirer une unité",
       "estado": {
@@ -37872,9 +37897,13 @@
       "descripcion": "Description",
       "descripcionPlaceholder": "Décrivez la promotion...",
       "prioridad": "Priorité",
-      "prioridadAyuda": "Un nombre plus élevé donne la priorité",
+      "prioridadAyuda": "Un nombre plus élevé l'emporte sur les autres promotions non cumulables du même produit",
       "combinable": "Cumulable",
       "combinableAyuda": "Autoriser avec d'autres promotions",
+      "solapamientoTitulo": "Une seule s'appliquera par produit",
+      "solapamientoDetalle": "Ces promotions se chevauchent et aucune n'est cumulable. Une seule s'appliquera sur chaque produit.",
+      "solapamientoAccion": "Activez « Autoriser avec d'autres promotions » ou augmentez la priorité de celle qui doit gagner.",
+      "solapamientoVer": "Voir {nombre}",
       "tipo": "Type de promotion",
       "porcentaje": "Pourcentage de remise",
       "monto": "Montant de la remise",

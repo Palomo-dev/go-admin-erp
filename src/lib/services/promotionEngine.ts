@@ -56,6 +56,8 @@ export interface PromotionItem {
    * promoción de ese tipo, el motor lo consulta (una lectura por evaluación).
    */
   sale_mode?: string | null;
+  /** Línea a la que le quitaron la promoción. El motor no la descuenta ni la cuenta. */
+  promo_excluded?: boolean | null;
 }
 
 export interface PromotionContext {

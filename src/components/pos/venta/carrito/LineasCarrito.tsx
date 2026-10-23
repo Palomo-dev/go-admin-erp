@@ -89,6 +89,10 @@ export interface LineasCarritoProps {
   onDescuentoTexto: (texto: string) => void;
   onDescuentoAplicar: (itemId: string, monto: number) => void;
   onDescuentoCancelar: () => void;
+  /** `pos.promotions.remove` (o administrador). Sin él, la acción no se pinta. */
+  puedeQuitarPromocion?: boolean;
+  onQuitarPromocion?: (itemId: string) => void;
+  onRestaurarPromocion?: (itemId: string) => void;
 }
 
 const ICONO_TICKET: Record<EstadoTicketCocina, LucideIcon> = {
@@ -129,6 +133,9 @@ export function LineasCarrito({
   onDescuentoTexto,
   onDescuentoAplicar,
   onDescuentoCancelar,
+  puedeQuitarPromocion = false,
+  onQuitarPromocion,
+  onRestaurarPromocion,
 }: LineasCarritoProps) {
   const t = useTranslations('posVenta.carrito');
   const locale = useLocaleIntl();
@@ -309,6 +316,38 @@ export function LineasCarrito({
         </CartTag>,
       );
     }
+    if (item.promo_excluded && descuento.itemId !== item.id) {
+      etiquetas.push(
+        <CartTag
+          key="sin-promocion"
+          origen="manual"
+          etiquetaAccesible={t('sinPromocionDe', { nombre })}
+          onClick={puedeQuitarPromocion && onRestaurarPromocion ? () => onRestaurarPromocion(item.id) : undefined}
+          deshabilitada={bloqueada || !puedeQuitarPromocion}
+          titulo={puedeQuitarPromocion ? t('restaurarPromocion') : t('sinPromocion')}
+        >
+          {t('sinPromocion')}
+        </CartTag>,
+      );
+    } else if (
+      puedeQuitarPromocion
+      && onQuitarPromocion
+      && !item.promo_excluded
+      && (item.promo_discount_amount ?? 0) > 0
+      && descuento.itemId !== item.id
+    ) {
+      etiquetas.push(
+        <CartTag
+          key="quitar-promocion"
+          origen="manual"
+          etiquetaAccesible={t('quitarPromocionDe', { nombre })}
+          onClick={() => onQuitarPromocion(item.id)}
+          deshabilitada={bloqueada}
+        >
+          {t('quitarPromocion')}
+        </CartTag>,
+      );
+    }
     return etiquetas;
   };
 
@@ -400,6 +439,10 @@ export function LineasCarrito({
                       frecuentes={descuentosFrecuentes[item.product_id]}
                       formatear={formatear}
                       deshabilitado={bloqueada}
+                      promoExcluida={item.promo_excluded === true}
+                      puedeQuitarPromocion={puedeQuitarPromocion}
+                      onQuitarPromocion={onQuitarPromocion ? () => onQuitarPromocion(item.id) : undefined}
+                      onRestaurarPromocion={onRestaurarPromocion ? () => onRestaurarPromocion(item.id) : undefined}
                     />
                   ) : undefined
                 }

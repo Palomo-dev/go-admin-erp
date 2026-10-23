@@ -18094,7 +18094,8 @@
       "bascula_invalida": "The weighing's scale is not an active scale of the organization. {detalle}",
       "peso_inestable": "The scale reading was not stable. {detalle}",
       "pesaje_no_coincide": "The quantity doesn't match the weight read from the scale. {detalle}",
-      "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}"
+      "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}",
+      "sin_permiso_quitar_promocion": "Removing a line's promotion requires the “Remove promotion” permission. {detalle}"
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",
@@ -19630,7 +19631,8 @@
         "total": "Total",
         "sinNombre": "Product",
         "descuento": "Discount {monto}",
-        "tasa": "{tasa}%"
+        "tasa": "{tasa}%",
+        "sinPromocion": "No promotion"
       },
       "pagos": {
         "titulo": "Applied payments",
@@ -19654,7 +19656,10 @@
         "facturada": "Invoice {numero} issued",
         "pago": "Payment of {monto}",
         "devolucion": "Return of {monto}",
-        "notaCredito": "Credit note {numero}"
+        "notaCredito": "Credit note {numero}",
+        "promoQuitada": "{nombre} removed the promotion “{promocion}” from {producto} ({monto})",
+        "promoRestaurada": "{nombre} restored the promotion “{promocion}” on {producto}",
+        "motivo": "Reason: {motivo}"
       },
       "notas": "Notes",
       "cliente": {
@@ -21042,6 +21047,12 @@
       "descuentoDe": "Discount on {nombre}",
       "descuento": "Discount",
       "aplicarDescuento": "Apply discount",
+      "quitarPromocion": "Remove promotion",
+      "quitarPromocionDe": "Remove the promotion from {nombre}",
+      "restaurarPromocion": "Restore promotion",
+      "sinPromocion": "No promotion",
+      "sinPromocionDe": "No promotion: {nombre}",
+      "errorQuitarPromocion": "The promotion could not be removed",
       "cancelar": "Cancel",
       "frecuentes": "Frequent:",
       "aplicarFrecuente": "Apply the frequent discount of {monto}",
@@ -35602,6 +35613,16 @@
     }
   },
   "pedidoWeb": {
+    "promocionLinea": {
+      "quitar": "Remove promotion",
+      "restaurar": "Restore promotion",
+      "sinPromocion": "No promotion",
+      "motivo": "Reason (optional)",
+      "error": "The line promotion could not be changed",
+      "sinPermiso": "You don't have permission to remove a line's promotion.",
+      "lineasDistintas": "The sale no longer has the same lines as the order. The charge was not changed.",
+      "yaPagado": "This order was already paid online: the promotion cannot be removed or restored."
+    },
     "comerAqui": "Dine in",
     "comerAquiMesa": "Dine in · {mesa}",
     "verMesa": "View the table in POS › Tables",
@@ -36106,6 +36127,10 @@
       "comensalN": "Guest {n}",
       "alergia": "Allergy",
       "notaCocina": "Kitchen: {nota}",
+      "quitarPromocion": "Remove promotion",
+      "restaurarPromocion": "Restore promotion",
+      "sinPromocion": "No promotion",
+      "errorPromocion": "The line promotion could not be changed",
       "moverA": "Move to another table",
       "restarUna": "Remove one unit",
       "estado": {
@@ -37872,9 +37897,13 @@
       "descripcion": "Description",
       "descripcionPlaceholder": "Describe the promotion...",
       "prioridad": "Priority",
-      "prioridadAyuda": "A higher number means higher priority",
+      "prioridadAyuda": "A higher number wins over other non-combinable promotions on the same product",
       "combinable": "Combinable",
       "combinableAyuda": "Allow it with other promotions",
+      "solapamientoTitulo": "Only one will apply per product",
+      "solapamientoDetalle": "These promotions overlap and neither can be combined. Only one will apply on each product.",
+      "solapamientoAccion": "Turn on “Allow with other promotions” or raise the priority of the one that should win.",
+      "solapamientoVer": "View {nombre}",
       "tipo": "Promotion type",
       "porcentaje": "Discount percentage",
       "monto": "Discount amount",

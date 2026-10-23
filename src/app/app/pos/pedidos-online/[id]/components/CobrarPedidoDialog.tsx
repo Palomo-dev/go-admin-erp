@@ -52,7 +52,10 @@ export function CobrarPedidoDialog({
     [t],
   );
 
-  const descripcion = !cobroEnCaja
+  const yaPagado = order.payment_status === 'paid';
+  const descripcion = yaPagado
+    ? t('promocionLinea.yaPagado')
+    : !cobroEnCaja
     ? t('cobro.dialogo.descripcionSinCaja')
     : t(entregar ? 'cobro.dialogo.descripcionEntregar' : 'cobro.dialogo.descripcion', { caja: cajaId ?? '', sede });
 

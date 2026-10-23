@@ -9,6 +9,10 @@ interface OrderItemsListProps {
   variant?: 'full' | 'compact' | 'summary';
   maxItems?: number;
   showStatus?: boolean;
+  /** Quitar o restaurar la promoción de la línea. Sin permiso, no se muestra. */
+  puedeQuitarPromocion?: boolean;
+  onQuitarPromocion?: (itemId: string) => void;
+  onRestaurarPromocion?: (itemId: string) => void;
 }
 
 const ITEM_STATUS_CONFIG = {
@@ -22,7 +26,10 @@ export function OrderItemsList({
   items, 
   variant = 'full',
   maxItems,
-  showStatus = false 
+  showStatus = false,
+  puedeQuitarPromocion = false,
+  onQuitarPromocion,
+  onRestaurarPromocion,
 }: OrderItemsListProps) {
   const t = useTranslations('pedidoWeb');
   const { formatear } = useMonedaOrganizacion();
@@ -94,6 +101,16 @@ export function OrderItemsList({
             )}
             {/* Nota de cocina bajo la línea, en texto normal (Figma 1981:175699) */}
             {item.notes && <p className="mt-0.5 text-[11px] text-fg">{t('notas.notaCocina', { nota: item.notes })}</p>}
+            {item.promo_excluded && <p className="mt-0.5 text-[11px] font-medium text-fg-secondary">{t('promocionLinea.sinPromocion')}</p>}
+            {puedeQuitarPromocion && (item.promo_excluded ? (
+              <button type="button" className="mt-1 text-[12px] font-medium text-brand hover:underline" onClick={() => onRestaurarPromocion?.(item.id)}>
+                {t('promocionLinea.restaurar')}
+              </button>
+            ) : (
+              <button type="button" className="mt-1 text-[12px] font-medium text-fg-secondary hover:underline" onClick={() => onQuitarPromocion?.(item.id)}>
+                {t('promocionLinea.quitar')}
+              </button>
+            ))}
           </div>
           <div className="shrink-0 text-right">
             <p className="text-[11px] text-fg-muted tabular-nums">{item.quantity} × {formatear(item.unit_price)}</p>

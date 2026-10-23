@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ShoppingCart, WifiOff, X } from 'lucide-react';
+import { ShoppingCart, Tag, WifiOff, X } from 'lucide-react';
+import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { Dialogo, DialogoMotivo, KbdButton, useAtajos, type AccionFila } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AvisoTonal } from '@/components/kit/AvisoTonal';
@@ -886,7 +887,28 @@ export default function MesaCuentaPage() {
     />
   );
 
+  const { checker, context: permisoCtx } = usePermissionContext();
+  const puedeQuitarPromocion = checker.can('pos.promotions.remove') || permisoCtx?.roleId === 1 || permisoCtx?.roleId === 2;
+
+  const alQuitarPromocion = async (l: LineaMesa) => {
+    try {
+      await PedidosService.excluirPromocionLinea(l.id, !l.promoExcluida);
+      await cargar(true);
+    } catch (error) {
+      console.error('Error al quitar la promoción de la línea:', error);
+      toast.error(t('linea.errorPromocion'));
+    }
+  };
+
   const masAcciones = (l: LineaMesa): AccionFila[] => [
+    ...(puedeQuitarPromocion && !l.pagada
+      ? [{
+          id: 'promocion',
+          etiqueta: l.promoExcluida ? t('linea.restaurarPromocion') : t('linea.quitarPromocion'),
+          icono: Tag,
+          onSelect: () => void alQuitarPromocion(l),
+        }]
+      : []),
     {
       id: 'mover',
       etiqueta: t('linea.moverA'),

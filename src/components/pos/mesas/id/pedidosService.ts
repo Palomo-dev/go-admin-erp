@@ -538,6 +538,22 @@ export class PedidosService {
    * recalcula la cabecera. Si la evaluación falla, la cuenta se recalcula sin
    * tocar descuentos: agregar un plato no se bloquea por una promoción.
    */
+  /**
+   * Quita o devuelve la promoción de una línea de la cuenta. La RPC comprueba
+   * `pos.promotions.remove` y deja el registro; después se recalcula la cuenta
+   * completa para que el flag se mantenga al agregar otros platos.
+   */
+  static async excluirPromocionLinea(saleItemId: string, excluded: boolean, reason?: string | null): Promise<void> {
+    const { data, error } = await supabase.rpc('pos_linea_excluir_promocion', {
+      p_sale_item_id: saleItemId,
+      p_excluded: excluded,
+      p_reason: reason?.trim() ? reason.trim().slice(0, 240) : null,
+    });
+    if (error) throw error;
+    const saleId = data && typeof data === 'object' && 'sale_id' in data ? String((data as { sale_id: unknown }).sale_id) : '';
+    if (saleId) await this.recalcularPromocionesMesa(saleId);
+  }
+
   static async recalcularPromocionesMesa(saleId: string): Promise<void> {
     const organizationId = getOrganizationId();
     try {
@@ -552,7 +568,7 @@ export class PedidosService {
       if (!venta || !['pending', 'draft', 'partial'].includes(String(venta.status))) return;
       const { data: filas, error: eLineas } = await supabase
         .from('sale_items')
-        .select('id, product_id, quantity, unit_price, discount_amount, paid_amount, paid_at, notes, created_at, product:products!sale_items_product_id_fkey(category_id, parent_product_id, sale_mode)')
+        .select('id, product_id, quantity, unit_price, discount_amount, paid_amount, paid_at, notes, created_at, promo_excluded, product:products!sale_items_product_id_fkey(category_id, parent_product_id, sale_mode)')
         .eq('sale_id', saleId)
         .is('paid_at', null)
         .order('created_at', { ascending: true })
@@ -576,6 +592,7 @@ export class PedidosService {
           quantity: Number(l.quantity),
           unit_price: Number(l.unit_price),
           sale_mode: l.product?.sale_mode ?? null,
+          promo_excluded: l.promo_excluded === true,
         })),
       });
       const cambios = cambiosDescuentoMesa(

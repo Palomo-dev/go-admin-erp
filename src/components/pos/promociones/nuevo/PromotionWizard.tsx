@@ -30,6 +30,7 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingGroup, SettingRow } from '@/components/kit/SettingRow';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { PromotionsService } from '../promotionsService';
+import { AvisoSolapamiento, type ConflictoSolape } from './AvisoSolapamiento';
 import { minimoDelFormulario } from '@/lib/promotions/cantidadMinima';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { plainDayOfInstant } from '@/lib/services/businessInstant';
@@ -127,6 +128,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [productSearch, setProductSearch] = useState('');
   
   const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
+  const [conflictos, setConflictos] = useState<ConflictoSolape[]>([]);
   const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreatePromotionData>(() => {
     const base: CreatePromotionData = {
@@ -207,6 +209,77 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
       loadProducts(productSearch);
     }
   }, [productSearch]);
+
+  const firmaSolape = [
+    formData.is_combinable,
+    formData.is_active,
+    formData.applies_to,
+    formData.start_date,
+    formData.end_date,
+    formData.start_time,
+    formData.end_time,
+    (formData.applicable_days ?? []).join(','),
+    (formData.branches ?? []).join(','),
+    formData.applies_to_web,
+    formData.applies_to_pos,
+    formData.applies_to_finances,
+    ruleType,
+    selectedProducts.join(','),
+    selectedCategories.join(','),
+    promotionId ?? '',
+  ].join('|');
+
+  useEffect(() => {
+    if (formData.is_combinable || formData.is_active === false) {
+      setConflictos([]);
+      return;
+    }
+    let vivo = true;
+    const reglas = formData.applies_to === 'products'
+      ? selectedProducts.map((id) => ({
+          rule_type: ruleType === 'exclude' ? 'exclude_product' : 'include_product',
+          product_id: id,
+          category_id: null,
+        }))
+      : formData.applies_to === 'categories'
+        ? selectedCategories.map((id) => ({
+            rule_type: ruleType === 'exclude' ? 'exclude_category' : 'include_category',
+            product_id: null,
+            category_id: id,
+          }))
+        : [];
+    const timer = setTimeout(() => {
+      void PromotionsService.conflictosSolapados({
+        id: promotionId ?? '',
+        name: formData.name || '',
+        is_combinable: formData.is_combinable === true,
+        is_active: formData.is_active !== false,
+        applies_to: formData.applies_to,
+        branches: formData.branches ?? null,
+        applies_to_web: formData.applies_to_web,
+        applies_to_pos: formData.applies_to_pos,
+        applies_to_finances: formData.applies_to_finances,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        applicable_days: formData.applicable_days,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        rules: reglas,
+      })
+        .then((lista) => {
+          if (vivo) setConflictos(lista);
+        })
+        .catch(() => {
+          if (vivo) setConflictos([]);
+        });
+    }, 250);
+    return () => {
+      vivo = false;
+      clearTimeout(timer);
+    };
+    // firmaSolape resume los campos que deciden el aviso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaSolape]);
 
   const loadProducts = async (search?: string) => {
     try {
@@ -422,7 +495,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   />
                   <p className="mt-1 text-[13px] leading-[18px] text-fg-secondary">{t('formulario.prioridadAyuda')}</p>
                 </div>
-                <SettingGroup>
+                  <SettingGroup>
                   <SettingRow titulo={t('formulario.combinable')} descripcion={t('formulario.combinableAyuda')}>
                     <Switch
                       checked={formData.is_combinable}
@@ -431,6 +504,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   </SettingRow>
                 </SettingGroup>
               </div>
+              <AvisoSolapamiento conflictos={conflictos} />
             </div>
           )}
 
@@ -1039,6 +1113,12 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
             </div>
           )}
         </FormSection>
+
+      {currentStep === WIZARD_STEPS.length - 1 && (
+        <div className="max-w-xl">
+          <AvisoSolapamiento conflictos={conflictos} />
+        </div>
+      )}
 
       <div className="flex justify-between gap-3">
         <button

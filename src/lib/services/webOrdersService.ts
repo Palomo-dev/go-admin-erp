@@ -26,6 +26,11 @@ export interface WebOrderItem {
   notes?: string;
   /** Carta QR: quién pidió el plato (web_order_items.diner_label, ≤40). */
   diner_label?: string | null;
+  /** Le quitaron la promoción. El recálculo del pedido no se la devuelve. */
+  promo_excluded?: boolean;
+  promo_excluded_by?: string | null;
+  promo_excluded_at?: string | null;
+  promo_excluded_reason?: string | null;
   status: 'pending' | 'preparing' | 'ready' | 'cancelled';
   created_at: string;
 }

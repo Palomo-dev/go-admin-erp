@@ -3932,3 +3932,11 @@ Verificación: instalación aislada de 98 paquetes con npm ci --omit=dev y la di
 - Reversión, del más nuevo al más viejo: supabase/rollbacks/20261022144519_permisos_cierre_informe_rollback.sql, luego 20261022144501_permisos_cierre_ejercicio_rollback.sql y al final 20261022144327_permisos_cierre_contable_rollback.sql. El último borra las filas de auditoría close/reopen de período y ejercicio para poder devolver el check, y quita los cuatro permisos de todos los roles y cargos. No deshace períodos ya cerrados ni asientos del cierre.
 - En una transacción revertida: un empleado sin el permiso recibe sin_permiso; con solo reabrir el período reabre el mes y no cierra ni reabre el anual; un administrador que no es super administrador ni CONTADOR ejecuta las cuatro comprobaciones y cierra; un update directo del estado lo rechaza el disparador. Después del rollback de esa prueba no quedaron períodos de prueba, ni el permiso en el rol empleado, ni filas de auditoría.
 - Jest de permisos de cierre, fase 1 y rutas de cierres: 51 pruebas en verde. ESLint con max-warnings 0 en los archivos tocados, en verde. No se abrió el ERP con sesión, así que el botón no se recorrió en el navegador.
+
+
+### Fase: Perillas de diseño y iconos del encabezado — 2026-10-21
+- Rama cursor/tokens-encabezado-bffb, contra main. No se fusionó y no se tocó master.
+- main no se pudo adelantar con fast-forward: sigue 7 commits por delante de master y 154 por detrás. El trabajo usa el main actual, donde ya está el PR 394.
+- El contrato acepta tema.tokens y roles de color opcionales. Si no vienen, el documento viejo sigue válido. El ERP solo escribe el preset combinable con NEXT_PUBLIC_WEBSITE_TOKENS_DISENO=1, después de que el sitio público acepte las claves.
+- El inspector vuelve a dejar elegir el icono de búsqueda, cuenta y moneda. La forma del carrito no pisa un icono distinto.
+- No hubo migración ni backfill. Jest del contrato, de las perillas y del encabezado: 45 en verde. eslint de los archivos tocados, sin avisos.

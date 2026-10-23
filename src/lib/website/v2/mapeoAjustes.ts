@@ -19,7 +19,7 @@
  * revisada. `contenido.horarios` sigue en el contrato (documentos viejos lo traen) pero nadie lo
  * escribe ni lo lee.
  *
- * Encabezado y pie por plantilla (2026-10-06): 40 opciones nuevas (`nueva: true`) con su regla,
+ * Encabezado y pie por plantilla (2026-10-06): 44 opciones nuevas (`nueva: true`) con su regla,
  * `header_style` 'transparent' y `footer_background` 'tema'. En V2 viven en `shell.*.opciones`;
  * en legacy, columnas aditivas de las migraciones `sitio_encabezado_pie_v2` (14) y
  * `sitio_encabezado_pie_v2_panel` (moneda, colores de texto, fijo al bajar, separadores). Quien
@@ -92,6 +92,20 @@ export interface OpcionShell {
    */
   nueva?: true;
 }
+
+/** Composición explícita. Ausente: se sigue usando `header_style`. */
+export const LAYOUTS_ENCABEZADO = [
+  'clasico',
+  'logo_centro',
+  'logo_centro_menu_abajo',
+  'menu_abajo',
+  'comercio',
+  'minimo',
+  'mega',
+  'solido_negro_menu_centro',
+  'transparente_centrado',
+] as const;
+export const SCROLL_ENCABEZADO = ['fijo', 'ocultar_al_bajar', 'encoger', 'ocultar_y_encoger'] as const;
 
 /** Composiciones del encabezado que pinta el sitio (`header_style` / `shell.header.composicion`). */
 export const COMPOSICIONES_HEADER = ['default', 'centered', 'split', 'minimal', 'mega', 'transparent'] as const;
@@ -230,6 +244,12 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   mobile_menu_logout_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Hamburguesa, búsqueda, carrito, cuenta y moneda de la barra del celular. `null` = texto del encabezado o contraste. */
   header_mobile_icon_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Si falta, el encabezado sigue el `header_style` de hoy. */
+  header_layout: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LAYOUTS_ENCABEZADO }, nueva: true },
+  /** `fijo` es lo de hoy: el encabezado no se esconde ni se encoge. */
+  header_scroll: { zona: 'header', porDefecto: 'fijo', regla: { tipo: 'opcion', valores: SCROLL_ENCABEZADO }, nueva: true },
+  header_actions_style: { zona: 'header', porDefecto: 'icono', regla: { tipo: 'opcion', valores: ['icono', 'icono_texto', 'pildora', 'texto'] }, nueva: true },
+
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },
@@ -330,6 +350,33 @@ export function normalizarOpcionShell(columna: string, valor: unknown): unknown 
 }
 
 /** Forma de `mobile_bottom_bar` para la columna legacy (texto): la lista va como «a,b». */
+/**
+ * Traduce `header_layout` al `header_style` que ya pinta el sitio.
+ * `null` = no hay layout nuevo y manda `header_style`.
+ */
+export function estiloDeHeaderLayout(layout: unknown): string | null {
+  switch (layout) {
+    case 'clasico':
+    case 'menu_abajo':
+    case 'solido_negro_menu_centro':
+      return 'default';
+    case 'logo_centro':
+      return 'split';
+    case 'logo_centro_menu_abajo':
+      return 'centered';
+    case 'comercio':
+      return 'comercio';
+    case 'minimo':
+      return 'minimal';
+    case 'mega':
+      return 'mega';
+    case 'transparente_centrado':
+      return 'transparent';
+    default:
+      return null;
+  }
+}
+
 export function barraMovilAColumna(valor: unknown): string {
   const v = normalizarOpcionShell('mobile_bottom_bar', valor);
   return Array.isArray(v) ? v.join(',') : String(v);

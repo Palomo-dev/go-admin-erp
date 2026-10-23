@@ -75,6 +75,27 @@ function documentoBase(): DocumentoSitioEntrada {
   };
 }
 
+describe('documento viejo y perillas nuevas', () => {
+  it('un documento sin las claves nuevas sigue siendo válido', () => {
+    const r = validarDocumentoSitio(documentoBase());
+    expect(r.ok).toBe(true);
+  });
+
+  it('acepta tema.tokens y lo ignora si no viene', () => {
+    const base = documentoBase();
+    const con = validarDocumentoSitio({
+      ...base,
+      tema: {
+        ...base.tema,
+        tokens: { radio: valorPropio('suave'), densidad: valorPropio('amplia') },
+        colores: { ...base.tema.colores, sobrePrimario: valorPropio('#13253F') },
+      },
+    });
+    expect(con.ok).toBe(true);
+    if (con.ok) expect(con.documento.tema.tokens?.radio).toEqual({ mode: 'value', value: 'suave' });
+  });
+});
+
 describe('resolverCampo (D6: inherit | value | clear)', () => {
   it('inherit devuelve el valor del principal', () => {
     expect(resolverCampo('#111111', heredar())).toBe('#111111');

@@ -370,6 +370,33 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
             }
           />
         </div>
+        <EtiquetaGrupo>{t('zonaGlobal.acciones.iconoBusqueda')}</EtiquetaGrupo>
+        <ChipsOpcion
+          opciones={[
+            { valor: 'search', etiqueta: 'Buscar' },
+            { valor: 'scan-search', etiqueta: 'Escanear' },
+          ]}
+          valor={typeof a.search_icon === 'string' && a.search_icon ? a.search_icon : 'search'}
+          onValorChange={(v) => cambiar({ search_icon: v })}
+        />
+        <EtiquetaGrupo>{t('zonaGlobal.acciones.iconoCuenta')}</EtiquetaGrupo>
+        <ChipsOpcion
+          opciones={[
+            { valor: 'user', etiqueta: 'Usuario' },
+            { valor: 'user-circle', etiqueta: 'Círculo' },
+          ]}
+          valor={typeof a.auth_icon === 'string' && a.auth_icon ? a.auth_icon : 'user'}
+          onValorChange={(v) => cambiar({ auth_icon: v })}
+        />
+        <EtiquetaGrupo>{t('zonaGlobal.acciones.iconoMoneda')}</EtiquetaGrupo>
+        <ChipsOpcion
+          opciones={[
+            { valor: 'globe', etiqueta: 'Globo' },
+            { valor: 'coins', etiqueta: 'Monedas' },
+          ]}
+          valor={typeof a.currency_icon === 'string' && a.currency_icon ? a.currency_icon : 'globe'}
+          onValorChange={(v) => cambiar({ currency_icon: v })}
+        />
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.iconosCirculo')}
           ayuda={t('zonaGlobal.acciones.iconosCirculoAyuda')}

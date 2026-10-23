@@ -20,6 +20,7 @@
  * preset» los devuelve a los del preset (A/06h).
  */
 import { valorPropio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { presetDisenoPorId } from '@/lib/website/v2/presetsDiseno';
 import { contraste, CONTRASTE_AA, normalizarHex } from '@/lib/utils/contrasteColor';
 import { valorCampo } from './valorCampo';
 
@@ -59,6 +60,14 @@ export interface EstiloEditable extends TokensEstilo {
  */
 export function tokensExtendidosDisponibles(): boolean {
   return process.env.NEXT_PUBLIC_WEBSITE_TOKENS_ESTILO === '1';
+}
+
+/**
+ * Perillas combinables (`tema.tokens`) y el layout nuevo del encabezado.
+ * Se escribe solo cuando el sitio público ya acepta esas claves.
+ */
+export function tokensDisenoDisponibles(): boolean {
+  return process.env.NEXT_PUBLIC_WEBSITE_TOKENS_DISENO === '1';
 }
 
 /** El oscuro del estilo, que el sitio pinta como `secondary_color`. */
@@ -181,6 +190,29 @@ export interface TemaLienzo {
   tema: DocumentoSitio['tema'];
   esSede: boolean;
   principal: DocumentoSitio['tema'] | null;
+}
+
+/**
+ * Aplica un estilo listo. Con el flag apagado no escribe nada.
+ * `actual` quita las perillas y el layout nuevo: la tienda vuelve a verse como hoy.
+ */
+export function aplicarPresetDiseno(documento: DocumentoSitio, id: string): DocumentoSitio {
+  if (!tokensDisenoDisponibles()) return documento;
+  const preset = presetDisenoPorId(id);
+  const tema: DocumentoSitio['tema'] = { ...documento.tema };
+  const opciones = { ...documento.shell.header.opciones };
+  if (preset.id === 'actual') {
+    delete tema.tokens;
+    delete opciones.header_layout;
+  } else {
+    tema.tokens = preset.tokens as DocumentoSitio['tema']['tokens'];
+    if (preset.headerLayout) opciones.header_layout = preset.headerLayout;
+  }
+  return {
+    ...documento,
+    tema,
+    shell: { ...documento.shell, header: { ...documento.shell.header, opciones } },
+  };
 }
 
 export function temaParaLienzo(

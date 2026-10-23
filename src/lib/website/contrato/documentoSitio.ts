@@ -174,6 +174,54 @@ export const esquemaIdentidad = z
   })
   .strict();
 
+const opcionToken = <T extends [string, ...string[]]>(valores: T) => esquemaCampo(z.enum(valores)).optional();
+
+/** Perillas de diseño. Cada campo ausente conserva el valor que la tienda pinta hoy. */
+export const esquemaTokens = z
+  .object({
+    radio: opcionToken(['ninguno', 'sutil', 'suave', 'redondeado', 'muy_redondeado', 'pildora']),
+    densidad: opcionToken(['compacta', 'normal', 'amplia']),
+    sombra: opcionToken(['ninguna', 'suave', 'media', 'marcada', 'dura']),
+    borde: opcionToken(['ninguno', 'fino', 'marcado']),
+    colorBorde: esquemaCampo(color).optional(),
+    boton: z
+      .object({
+        forma: opcionToken(['cuadrado', 'redondeado', 'pildora']),
+        relleno: opcionToken(['solido', 'contorno', 'fantasma', 'sombra_dura']),
+        tamano: opcionToken(['s', 'm', 'l']),
+        mayusculas: esquemaCampo(z.boolean()).optional(),
+      })
+      .strict()
+      .optional(),
+    iconos: z
+      .object({
+        set: opcionToken(['lucide', 'lucide_redondeado', 'phosphor_like', 'subidos']),
+        trazo: opcionToken(['fino', 'normal', 'grueso']),
+        relleno: esquemaCampo(z.boolean()).optional(),
+      })
+      .strict()
+      .optional(),
+    tipografia: z
+      .object({
+        par: opcionToken([
+          'inter_inter',
+          'fraunces_inter',
+          'playfair_lato',
+          'space_grotesk_inter',
+          'nunito_nunito',
+          'cormorant_montserrat',
+          'dm_serif_dm_sans',
+          'bricolage_inter',
+        ]),
+        escala: opcionToken(['normal', 'grande', 'editorial', 'display']),
+        estiloTitulos: opcionToken(['normal', 'mayusculas', 'cursiva_display']),
+      })
+      .strict()
+      .optional(),
+    hover: opcionToken(['ninguno', 'sutil', 'expresivo']),
+  })
+  .strict();
+
 /** Tokens de tema (D12 grupo «tema»). */
 export const esquemaTema = z
   .object({
@@ -186,6 +234,13 @@ export const esquemaTema = z
         acento: esquemaCampo(color).optional(),
         fondo: esquemaCampo(color).optional(),
         texto: esquemaCampo(color).optional(),
+        superficie: esquemaCampo(color).optional(),
+        superficieAlterna: esquemaCampo(color).optional(),
+        textoSuave: esquemaCampo(color).optional(),
+        borde: esquemaCampo(color).optional(),
+        sobrePrimario: esquemaCampo(color).optional(),
+        exito: esquemaCampo(color).optional(),
+        oferta: esquemaCampo(color).optional(),
       })
       .strict()
       .default({}),
@@ -207,6 +262,12 @@ export const esquemaTema = z
     radio: esquemaCampo(z.union([z.literal(0), z.literal(4), z.literal(12), z.literal(24)])).optional(),
     estiloBoton: esquemaCampo(z.enum(['solido', 'contorno', 'pastilla', 'sombra_dura'])).optional(),
     movimiento: esquemaCampo(z.enum(['ninguno', 'bajo', 'medio', 'alto'])).optional(),
+    /*
+     * Perillas combinables (2026-10-21). Todas opcionales: ausentes = el sitio de hoy.
+     * El ERP solo las escribe con NEXT_PUBLIC_WEBSITE_TOKENS_DISENO=1, después de que
+     * esta copia ya las acepte.
+     */
+    tokens: esquemaTokens.optional(),
   })
   .strict();
 

@@ -135,6 +135,17 @@ export interface PosCashSessionModeConfig {
 
 const POS_CASH_SESSION_MODE_KEY = 'pos_cash_session_mode';
 
+/** Pedir el serial al agregar el producto al carrito. Apagado: se pide al cobrar. */
+export interface PosPedirSerialConfig {
+  pedir: boolean;
+}
+
+const POS_PEDIR_SERIAL_KEY = 'pos_pedir_serial_al_agregar';
+
+export const defaultPedirSerialConfig: PosPedirSerialConfig = {
+  pedir: false,
+};
+
 export const defaultCashSessionModeConfig: PosCashSessionModeConfig = {
   mode: 'branch',
 };
@@ -486,6 +497,38 @@ export class ConfiguracionService {
         onConflict: 'organization_id,key',
       });
 
+    if (error) throw error;
+  }
+
+  static async getPedirSerialAlAgregar(): Promise<PosPedirSerialConfig> {
+    const orgId = getOrganizationId();
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', orgId)
+      .eq('key', POS_PEDIR_SERIAL_KEY)
+      .maybeSingle();
+    if (error) {
+      console.error('Error obteniendo si se pide el serial al agregar:', error);
+      return defaultPedirSerialConfig;
+    }
+    return { pedir: data?.settings?.pedir === true };
+  }
+
+  static async savePedirSerialAlAgregar(config: Partial<PosPedirSerialConfig>): Promise<void> {
+    const orgId = getOrganizationId();
+    const current = await this.getPedirSerialAlAgregar();
+    const merged = { ...current, ...config };
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert({
+        organization_id: orgId,
+        key: POS_PEDIR_SERIAL_KEY,
+        settings: merged,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,key',
+      });
     if (error) throw error;
   }
 

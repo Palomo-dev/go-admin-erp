@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera, Receipt } from 'lucide-react';
@@ -19,6 +19,7 @@ import { ReturnReasonsService } from './motivos/returnReasonsService';
 import { SaleForReturn, RefundData, ReturnReason, SoldSerialInfo } from './types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { claveErrorDevolucion, codigoErrorDevolucion, montoReembolsoLinea } from '@/lib/pos/devoluciones/procesarDevolucion';
+import { camposEnvioLinea, disposicionPorDefecto, erroresDevolucionPantalla, type DisposicionSerial } from '@/lib/pos/devoluciones/serialesLinea';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
 import { decimalesCantidad, esMedido, esPorPeso, redondearCantidadProducto, unidadVisible } from '@/lib/pos/peso/modoVenta';
@@ -45,6 +46,10 @@ interface ReturnItemData {
   track_serial: boolean;
   available_serials: SoldSerialInfo[];
   selected_serial_ids: number[];
+  /** Por serial elegido: vuelve a stock o queda dañado. La clave es el id. */
+  serial_dispositions: Record<string, DisposicionSerial>;
+  /** Ids cuya disposición el cajero eligió a mano. */
+  disposicionManual: number[];
   /** Decimales de la cantidad (0 por unidad; 3 en kg) y unidad visible («kg»). */
   decimales: number;
   /** Por peso o medida: se devuelve todo lo vendido de una vez (en gramos los decimales son 0). */
@@ -53,6 +58,8 @@ interface ReturnItemData {
   /** Producto por peso: «Reingresa» al inventario (por defecto no). */
   por_peso: boolean;
   restock: boolean;
+  /** El cajero movió «Reingresa». Si no, en lo que no es por peso sigue al motivo. */
+  restockManual: boolean;
 }
 
 export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
@@ -78,6 +85,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   const [totalRefund, setTotalRefund] = useState(0);
   const [returnReasons, setReturnReasons] = useState<ReturnReason[]>([]);
   const [loadingReasons, setLoadingReasons] = useState(true);
+  const [intento, setIntento] = useState(false);
 
   // Cargar motivos de devolución
   useEffect(() => {
@@ -111,11 +119,14 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       track_serial: item.product.track_serial || false,
       available_serials: item.serials || [],
       selected_serial_ids: [] as number[],
+      serial_dispositions: {},
+      disposicionManual: [] as number[],
       decimales: esMedido(item.product) ? decimalesCantidad(item.product) : 0,
       medido: esMedido(item.product),
       unidad: unidadVisible(item.product),
       por_peso: esPorPeso(item.product),
       restock: false,
+      restockManual: false,
     })).filter(item => item.max_returnable > 0); // Solo items que se pueden devolver
 
     setReturnItems(items);
@@ -129,20 +140,37 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
     setTotalRefund(total);
   }, [returnItems]);
 
+  const motivoRepone = (codigo: string) => returnReasons.find((r) => r.code === codigo)?.affects_inventory === true;
+
   const handleItemSelection = (itemId: string, selected: boolean) => {
     setReturnItems(prev => prev.map(item => {
-      if (item.sale_item_id === itemId) {
+      if (item.sale_item_id !== itemId) return item;
+      if (!selected) {
+        return { ...item, selected: false, return_quantity: 0, refund_amount: 0, selected_serial_ids: [], serial_dispositions: {} };
+      }
+      if (item.track_serial) {
+        // Al marcar la línea se preseleccionan los seriales vendidos, hasta lo que queda por devolver.
+        const tope = Math.max(0, Math.floor(item.max_returnable));
+        const elegidos = item.available_serials.slice(0, tope);
+        const defecto = disposicionPorDefecto(motivoRepone(item.reason));
         return {
           ...item,
-          selected,
-          // Por peso o medida se propone devolver todo lo disponible (0,735 kg), no «1».
-          return_quantity: selected ? (item.medido ? item.max_returnable : Math.min(1, item.max_returnable)) : 0,
-          refund_amount: selected
-            ? montoReembolsoLinea(item.total_cobrado, item.original_quantity, item.medido ? item.max_returnable : Math.min(1, item.max_returnable))
-            : 0
+          selected: true,
+          selected_serial_ids: elegidos.map((s) => s.id),
+          serial_dispositions: Object.fromEntries(elegidos.map((s) => [String(s.id), defecto])),
+          return_quantity: elegidos.length,
+          refund_amount: montoReembolsoLinea(item.total_cobrado, item.original_quantity, elegidos.length),
         };
       }
-      return item;
+      const cantidad = item.medido ? item.max_returnable : Math.min(1, item.max_returnable);
+      const restock = item.por_peso || item.restockManual ? item.restock : motivoRepone(item.reason);
+      return {
+        ...item,
+        selected: true,
+        restock,
+        return_quantity: cantidad,
+        refund_amount: montoReembolsoLinea(item.total_cobrado, item.original_quantity, cantidad),
+      };
     }));
   };
 
@@ -161,17 +189,26 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
     }));
   };
 
-  // Producto por peso: «Reingresa» (por defecto no vuelve al inventario).
+  // «Reingresa»: por peso el defecto es no; en el resto sigue al motivo hasta que el cajero lo mueva.
   const handleRestock = (itemId: string, restock: boolean) => {
-    setReturnItems(prev => prev.map(item => (item.sale_item_id === itemId ? { ...item, restock } : item)));
+    setReturnItems(prev => prev.map(item => (item.sale_item_id === itemId ? { ...item, restock, restockManual: true } : item)));
   };
 
   const handleReasonChange = (itemId: string, itemReason: string) => {
     setReturnItems(prev => prev.map(item => {
-      if (item.sale_item_id === itemId) {
-        return { ...item, reason: itemReason };
+      if (item.sale_item_id !== itemId) return item;
+      const repone = motivoRepone(itemReason);
+      const defecto = disposicionPorDefecto(repone);
+      const dispositions = { ...item.serial_dispositions };
+      for (const id of item.selected_serial_ids) {
+        if (!item.disposicionManual.includes(id)) dispositions[String(id)] = defecto;
       }
-      return item;
+      return {
+        ...item,
+        reason: itemReason,
+        serial_dispositions: dispositions,
+        restock: item.por_peso || item.restockManual ? item.restock : repone,
+      };
     }));
   };
 
@@ -183,9 +220,13 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           ? item.selected_serial_ids.filter(id => id !== serialId)
           : [...item.selected_serial_ids, serialId];
         const newQty = newSerialIds.length;
+        const defecto = disposicionPorDefecto(motivoRepone(item.reason));
+        const dispositions = { ...item.serial_dispositions };
+        if (!isSelected && dispositions[String(serialId)] === undefined) dispositions[String(serialId)] = defecto;
         return {
           ...item,
           selected_serial_ids: newSerialIds,
+          serial_dispositions: dispositions,
           return_quantity: newQty,
           refund_amount: montoReembolsoLinea(item.total_cobrado, item.original_quantity, newQty),
           selected: newQty > 0
@@ -195,45 +236,35 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
     }));
   };
 
+  const handleDisposicion = (itemId: string, serialId: number, disposicion: DisposicionSerial) => {
+    setReturnItems(prev => prev.map(item => {
+      if (item.sale_item_id !== itemId) return item;
+      return {
+        ...item,
+        disposicionManual: item.disposicionManual.includes(serialId) ? item.disposicionManual : [...item.disposicionManual, serialId],
+        serial_dispositions: { ...item.serial_dispositions, [String(serialId)]: disposicion },
+      };
+    }));
+  };
+
+  const validacion = useMemo(() => erroresDevolucionPantalla({
+    motivoGeneral: reason,
+    lineas: returnItems.map((item) => ({
+      id: item.sale_item_id,
+      selected: item.selected,
+      return_quantity: item.return_quantity,
+      reason: item.reason,
+      track_serial: item.track_serial,
+      serialesDisponibles: item.available_serials.length,
+      serialesElegidos: item.selected_serial_ids.length,
+    })),
+  }), [reason, returnItems]);
+
   const validateForm = (): boolean => {
-    const selectedItems = returnItems.filter(item => item.selected && item.return_quantity > 0);
-    
-    if (selectedItems.length === 0) {
-      toast.error(t('validacion.sinItems'));
-      return false;
-    }
-
-    if (!reason.trim()) {
-      toast.error(t('validacion.sinMotivoGeneral'));
-      return false;
-    }
-
-    // Validar que cada item seleccionado tenga motivo
-    const itemsWithoutReason = selectedItems.filter(item => !item.reason.trim());
-    if (itemsWithoutReason.length > 0) {
-      toast.error(t('validacion.itemsSinMotivo'));
-      return false;
-    }
-
-    // Validar que items serializados tengan seriales seleccionados
-    const serialItemsWithoutSerials = selectedItems.filter(
-      item => item.track_serial && item.selected_serial_ids.length === 0
-    );
-    if (serialItemsWithoutSerials.length > 0) {
-      toast.error(t('validacion.serializadosSinSerial'));
-      return false;
-    }
-
-    // Validar que la cantidad coincida con los seriales seleccionados
-    const serialQtyMismatch = selectedItems.filter(
-      item => item.track_serial && item.selected_serial_ids.length !== item.return_quantity
-    );
-    if (serialQtyMismatch.length > 0) {
-      toast.error(t('validacion.serialesNoCoinciden'));
-      return false;
-    }
-
-    return true;
+    setIntento(true);
+    if (validacion.generales.length === 0) return true;
+    toast.error(t(`validacion.${validacion.generales[0]}`));
+    return false;
   };
 
   const handleSubmit = async () => {
@@ -257,8 +288,13 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           return_quantity: item.return_quantity,
           refund_amount: item.refund_amount,
           reason: item.reason,
-          serial_number_ids: item.track_serial ? item.selected_serial_ids : undefined,
-          ...(item.por_peso ? { restock: item.restock } : {}),
+          ...camposEnvioLinea({
+            track_serial: item.track_serial,
+            selected_serial_ids: item.selected_serial_ids,
+            serial_dispositions: item.serial_dispositions,
+            afectaInventario: motivoRepone(item.reason),
+            restock: item.restock,
+          }),
         })),
         refund_method: refundMethod,
         total_refund: totalRefund,
@@ -359,6 +395,18 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {intento && validacion.generales.length > 0 && (
+                <Alert className="mb-3">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <ul className="list-disc pl-4">
+                      {validacion.generales.map((clave) => (
+                        <li key={clave} role="alert">{t(`validacion.${clave}`)}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow className="dark:border-gray-700">
@@ -377,6 +425,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       <TableCell>
                         <Checkbox
                           checked={item.selected}
+                          aria-label={t('seleccionarDe', { producto: item.product_name || tComun('productoNoEncontrado') })}
                           onCheckedChange={(checked) => 
                             handleItemSelection(item.sale_item_id, checked as boolean)
                           }
@@ -390,7 +439,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                               ? t('cantidadOriginalUnidad', { cantidad: formatoDecimal(item.original_quantity, item), unidad: item.unidad })
                               : t('cantidadOriginal', { n: item.original_quantity })}
                           </div>
-                          {item.por_peso && (
+                          {!item.track_serial && (
                             <label className="mt-1 inline-flex cursor-pointer items-center gap-2 text-xs text-fg-secondary">
                               <Checkbox
                                 checked={item.restock}
@@ -401,10 +450,15 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                               {t('reingresa')}
                             </label>
                           )}
-                          {item.track_serial && item.available_serials.length > 0 && (
+                          {item.track_serial && (
                             <Badge variant="secondary" className="mt-1 text-xs">
                               {t('serializado')}
                             </Badge>
+                          )}
+                          {intento && validacion.porLinea[item.sale_item_id] && (
+                            <p role="alert" className="mt-1 text-xs text-danger-text">
+                              {t(`validacion.${validacion.porLinea[item.sale_item_id]}`)}
+                            </p>
                           )}
                         </div>
                       </TableCell>
@@ -417,21 +471,50 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {item.track_serial && item.available_serials.length > 0 ? (
-                          <div className="space-y-1 max-h-32 overflow-y-auto">
-                            {item.available_serials.map(serial => (
-                              <label
-                                key={serial.id}
-                                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 rounded"
-                              >
-                                <Checkbox
-                                  checked={item.selected_serial_ids.includes(serial.id)}
-                                  onCheckedChange={() => handleSerialToggle(item.sale_item_id, serial.id)}
-                                />
-                                <span className="dark:text-gray-300 font-mono">{serial.serial}</span>
-                              </label>
-                            ))}
+                        {item.track_serial ? (
+                          item.available_serials.length === 0 ? (
+                            <p role="alert" className="text-xs text-danger-text">{t('sinSerialesVendidos')}</p>
+                          ) : (
+                          <div className="space-y-1 max-h-40 overflow-y-auto">
+                            {item.available_serials.map(serial => {
+                              const elegido = item.selected_serial_ids.includes(serial.id);
+                              const disposicion = item.serial_dispositions[String(serial.id)] ?? 'damaged';
+                              return (
+                              <div key={serial.id} className="rounded px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                  <Checkbox
+                                    checked={elegido}
+                                    onCheckedChange={() => handleSerialToggle(item.sale_item_id, serial.id)}
+                                  />
+                                  <span className="dark:text-gray-300 font-mono">{serial.serial}</span>
+                                </label>
+                                {elegido && (
+                                  <div role="radiogroup" aria-label={t('disposicionDe', { serial: serial.serial })} className="ml-6 mt-1 flex flex-col gap-1">
+                                    <label className="flex items-center gap-2 text-xs text-fg-secondary">
+                                      <input
+                                        type="radio"
+                                        name={`disp-${item.sale_item_id}-${serial.id}`}
+                                        checked={disposicion === 'in_stock'}
+                                        onChange={() => handleDisposicion(item.sale_item_id, serial.id, 'in_stock')}
+                                      />
+                                      {t('vuelveAStock')}
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs text-fg-secondary">
+                                      <input
+                                        type="radio"
+                                        name={`disp-${item.sale_item_id}-${serial.id}`}
+                                        checked={disposicion === 'damaged'}
+                                        onChange={() => handleDisposicion(item.sale_item_id, serial.id, 'damaged')}
+                                      />
+                                      {t('danado')}
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
+                              );
+                            })}
                           </div>
+                          )
                         ) : (
                           <CampoNumero
                             valor={item.return_quantity}

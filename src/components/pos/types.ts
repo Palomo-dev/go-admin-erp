@@ -165,6 +165,11 @@ export interface CartItem {
    * pesada es una línea propia: no se funde con otra del mismo producto.
    */
   pesaje?: Pesaje;
+  /**
+   * Seriales elegidos al agregar la línea, cuando la organización pide el
+   * serial en ese momento. El cobro los toma para no volver a preguntar.
+   */
+  serial_ids?: number[];
   created_at: string;
   updated_at: string;
 }

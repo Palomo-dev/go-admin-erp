@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
+import Link from 'next/link';
 import { CircleAlert, Package, Trash2, TriangleAlert } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
@@ -152,12 +153,26 @@ export function DocumentoLineas({
         </span>
       )}
       {l.nota && <span className="truncate text-xs italic text-fg-secondary">{l.nota}</span>}
-      {l.seriales && l.seriales.length > 0 && (
+      {l.serialesEnlace && l.serialesEnlace.length > 0 ? (
+        <span className="flex flex-wrap gap-x-2 font-mono text-[11px]">
+          {l.serialesEnlace.slice(0, 3).map((s) => (
+            <Link
+              key={s.id}
+              href={`/app/inventario/seriales/${s.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              {s.codigo}
+            </Link>
+          ))}
+          {l.serialesEnlace.length > 3 ? <span className="text-fg-muted">…</span> : null}
+        </span>
+      ) : l.seriales && l.seriales.length > 0 ? (
         <span className="truncate font-mono text-[11px] text-fg-muted" title={l.seriales.join(', ')}>
           {t('documento.lineas.seriales', { n: l.seriales.length })}: {l.seriales.slice(0, 3).join(', ')}
           {l.seriales.length > 3 ? '…' : ''}
         </span>
-      )}
+      ) : null}
       {l.error && (
         <span role="alert" className="flex items-center gap-1 text-xs text-danger-text">
           <CircleAlert aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />

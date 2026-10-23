@@ -15634,7 +15634,10 @@
       "stock": {
         "total": "{count, plural, one {Total stock: # unit} other {Total stock: # units}}",
         "generados": "Serial numbers created: {valor}",
-        "sinSerial": "{count} without serial"
+        "sinSerial": "{count} without serial",
+        "asignar": "Assign serials to existing stock",
+        "descuadre": "Those units stay in stock. Assigning a serial does not change the quantity.",
+        "asignarHecho": "Serials assigned. The stock did not change."
       },
       "inactivo": {
         "aviso": "{count, plural, one {This product no longer requires a serial number. The registered serial is kept and can be viewed, but no new ones are created.} other {This product no longer requires a serial number. The # registered serials are kept and can be viewed, but no new ones are created.}}"
@@ -16309,6 +16312,7 @@
       "requiereSerial": "Requires serial number",
       "requiereSerialAyuda": "Each unit of this product will have a unique serial number, with its own history and warranty.",
       "sinInventario": "Serial numbers are assigned to units in stock: turn on “Track inventory” to be able to create them.",
+      "stockSinSerial": "{count, plural, one {# unit already in stock will have no serial until you assign one. Assigning does not change the stock.} other {# units already in stock will have no serial until you assign them. Assigning does not change the stock.}}",
       "garantia": "Warranty months",
       "garantiaAyuda": "Each new serial gets this warranty from the day it is registered. Empty = no warranty.",
       "meses": "months",
@@ -17801,6 +17805,10 @@
       "motivoObligatorio": "Enter the general reason for the return.",
       "serialesNoCoinciden": "The quantity to return must match the selected serial numbers.",
       "serialInvalido": "One of the serial numbers does not belong to this sale or is no longer sold.",
+      "serialYaDevuelto": "That serial number was already returned on this sale.",
+      "serialYaReembolsadoGarantia": "That serial number was already refunded under warranty. It cannot be returned again.",
+      "serialEnGarantia": "That serial number is in a warranty claim. Resolve it there.",
+      "disposicionInvalida": "Choose whether the serial number returns to stock or is damaged.",
       "lineaNoPerteneceALaVenta": "One of the lines does not belong to this sale.",
       "sinAccesoSucursal": "You do not have access to the branch of this sale.",
       "generico": "Error processing the return",
@@ -17925,7 +17933,8 @@
         "sinMotivoGeneral": "Enter the general reason for the return",
         "itemsSinMotivo": "Every selected item needs a specific reason",
         "serializadosSinSerial": "Serialized products need at least one selected serial number",
-        "serialesNoCoinciden": "The quantity to return must match the selected serial numbers"
+        "serialesNoCoinciden": "The quantity to return must match the selected serial numbers",
+        "sinSerialesEnLinea": "This line has no sold serial numbers to return"
       },
       "metodosPago": {
         "cash": "Cash",
@@ -17939,7 +17948,13 @@
       },
       "cantidadOriginalUnidad": "Sold: {cantidad} {unidad}",
       "reingresa": "Return to inventory",
-      "reingresaDe": "{producto}: return to inventory"
+      "reingresaDe": "{producto}: return to inventory",
+      "seleccionarDe": "{producto}: select to return",
+      "sinSerialesEnLinea": "This line has no sold serial numbers to return",
+      "sinSerialesVendidos": "This line has no sold serial numbers",
+      "vuelveAStock": "Back to stock",
+      "danado": "Damaged",
+      "disposicionDe": "What happens to {serial}"
     },
     "historial": {
       "errorCarga": "Could not load the return history",
@@ -25945,6 +25960,7 @@
       "vencida": "Expired",
       "vencioEl": "expired on {fecha}",
       "empiezaAlVender": "Starts when sold",
+      "desdeLaVenta": "From the sale · {meses, plural, one {# month} other {# months}}",
       "meses": "{meses, plural, one {# month} other {# months}}",
       "enReclamo": "Under claim",
       "enRma": "In RMA",
@@ -25985,6 +26001,22 @@
       "subtituloLema": "every unit with its history, from purchase to warranty",
       "subtituloMovil": "{total} · {stock} in stock",
       "actualizar": "Refresh",
+      "generarSeriales": "Generate serial numbers",
+      "descuadreTitulo": "Stock without a serial number",
+      "descuadreFila": "{producto} · {sede}: {sin} without a serial ({stock} in stock, {seriales} serials)",
+      "generar": {
+        "titulo": "Generate serial numbers",
+        "producto": "Product",
+        "buscar": "Search by name or SKU",
+        "sinProductos": "No product with serial tracking matches that search.",
+        "sucursal": "Branch",
+        "cantidad": "How many",
+        "lista": "Or paste one serial per line",
+        "noMueveStock": "This only registers the serials. It does not change the stock.",
+        "confirmar": "Assign serials",
+        "hecho": "{count, plural, one {# serial number assigned} other {# serial numbers assigned}}",
+        "error": "Could not assign the serial numbers. Please try again."
+      },
       "por": "by {nombre}",
       "etiquetaFila": "Serial {serial} of {producto}",
       "errorSeleccionarTodo": "Could not select all serial numbers",
@@ -26173,6 +26205,7 @@
         "vencida": "expired",
         "restante": "{meses, plural, one {# month} other {# months}} and {dias, plural, one {# day} other {# days}} left",
         "empiezaAlVender": "Starts on the day of the sale",
+        "desdeLaVenta": "From the sale · {meses, plural, one {# month} other {# months}}",
         "sinVigencia": "Not started",
         "hastaCorto": "Warranty until {fecha}",
         "reclamos": "Claims",
@@ -26226,6 +26259,11 @@
       "reemplazo_requerido": "Choose the replacement unit.",
       "reemplazo_invalido": "The replacement unit is no longer available or belongs to another product.",
       "monto_invalido": "Enter an amount greater than zero.",
+      "unidad_ya_devuelta": "That unit was already returned at the POS. It cannot be refunded again.",
+      "monto_no_coincide": "The amount does not match what was charged for that unit.",
+      "linea_no_encontrada": "We could not find the sale line for that serial number.",
+      "venta_no_encontrada": "We could not find the sale for that serial number.",
+      "motivo_invalido": "The return reason is not active.",
       "estado_invalido": "Invalid status.",
       "datos_invalidos": "Check the form data.",
       "error_desconocido": "Could not complete it. Please try again."
@@ -26324,7 +26362,7 @@
       "serialPlaceholder": "Scan or type the serial number",
       "buscando": "Looking for the serial number…",
       "vendido": "sold on {fecha} in {venta} to {cliente}",
-      "sinCliente": "walk-in customer",
+      "sinCliente": "Walk-in customer",
       "garantiaVigente": "Active warranty: {meses, plural, one {# month} other {# months}} from the sale, {restanteMeses, plural, one {# month} other {# months}} and {restanteDias, plural, one {# day} other {# days}} left.",
       "garantiaVigenteCorta": "Active warranty.",
       "noReclamable": {
@@ -26339,6 +26377,12 @@
       "motivoPlaceholder": "Choose the reason",
       "descripcionCampo": "Description",
       "descripcionPlaceholder": "What happened, since when, what the customer brings",
+      "reclamante": "Who is claiming",
+      "reclamanteAyuda": "If the sale has no customer, these details stay on the claim.",
+      "reclamanteNombre": "Name",
+      "reclamanteDocumento": "Document",
+      "reclamanteTelefono": "Phone",
+      "reclamanteCorreo": "Email",
       "nota": "When the claim is created, the serial number moves to “Warranty claim” and the step is kept in its history.",
       "crear": "Create claim",
       "creado": "Claim {codigo} created",
@@ -26385,7 +26429,7 @@
       "notas": "Notes",
       "aviso": {
         "reemplazo": "{nuevo} is sold to {cliente} with a new warranty from today, and {serial} becomes “{estado}”.",
-        "reembolso": "{serial} returns to the company and becomes “{estado}”. The refund credit note is issued in Finance.",
+        "reembolso": "{serial} returns to the company and becomes “{estado}”. The sale’s credit note is issued, with its journal entry, the cash movement and the damaged unit’s inventory.",
         "reparacion": "{serial} returns to the customer as sold; its warranty stays as it was."
       },
       "avisoStock": "The stock of the replacement unit is deducted by the inventory core; the serial number is already sold to the customer.",
@@ -26446,7 +26490,11 @@
         "cliente": "Customer",
         "garantia": "Warranty",
         "sinVenta": "No linked sale",
-        "sinCliente": "No customer"
+        "sinCliente": "Walk-in customer",
+        "reclamante": "Claimant",
+        "documento": "Document",
+        "telefono": "Phone",
+        "correo": "Email"
       },
       "reclamo": {
         "titulo": "Claim",
@@ -26471,6 +26519,7 @@
         "tipo": "How it was resolved",
         "reemplazo": "Replacement unit",
         "monto": "Refunded amount",
+        "notaCredito": "Credit note",
         "notas": "Notes",
         "fecha": "Resolved"
       }

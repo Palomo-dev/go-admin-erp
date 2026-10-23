@@ -11,6 +11,7 @@ import type {
   CambiarEstadoReclamo,
   CambiarEstadoSeriales,
   CrearReclamo,
+  DescuadreSerial,
   EnviarRma,
   EvaluacionSerial,
   FiltrosGarantias,
@@ -98,6 +99,7 @@ export const clienteSeriales = {
   detalle: (id: number) => pedir<SerialDetalle>(`/api/inventario/seriales/${id}`),
   cambiarEstado: (datos: CambiarEstadoSeriales) =>
     resultado(pedir<{ resultado: ResultadoCambioEstado }>('/api/inventario/seriales/estado', { method: 'POST', body: datos })),
+  descuadre: () => pedir<{ filas: DescuadreSerial[] }>('/api/inventario/seriales/descuadre').then((x) => x.filas),
 };
 
 export const clienteGarantias = {

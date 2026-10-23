@@ -124,4 +124,20 @@ export class ConfiguracionContableService {
     if (error) throw error;
     return { total: count ?? data?.length ?? 0, filas: (data ?? []) as FalloContable[] };
   }
+
+  /**
+   * Asiento nuevo que pasa el IVA histórico de 2405 a 2408. No reescribe
+   * líneas ya publicadas. La organización sale de la sesión.
+   */
+  static async reclasificarIvaGenerado(): Promise<{ repetida: boolean; journal_entry_id: number | null; monto: number }> {
+    const organizationId = this.organizacionId();
+    const { data, error } = await supabase.rpc('fn_reclasificar_iva_generado', { p_org: organizationId });
+    if (error) throw error;
+    const r = (data ?? {}) as { repetida?: boolean; journal_entry_id?: number | null; monto?: number | string };
+    return {
+      repetida: r.repetida === true,
+      journal_entry_id: r.journal_entry_id ?? null,
+      monto: Number(r.monto ?? 0),
+    };
+  }
 }

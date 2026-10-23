@@ -56,6 +56,7 @@ jest.mock('@/lib/utils/orgContext', () => {
 });
 
 import { GET as listarSeriales } from '@/app/api/inventario/seriales/route';
+import { GET as descuadreSeriales } from '@/app/api/inventario/seriales/descuadre/route';
 import { GET as detalleSerial } from '@/app/api/inventario/seriales/[id]/route';
 import { POST as estadoSeriales } from '@/app/api/inventario/seriales/estado/route';
 import { GET as listarGarantias, POST as crearReclamo } from '@/app/api/inventario/garantias/route';
@@ -93,6 +94,7 @@ beforeEach(() => {
 describe('sin sesión → 401 en todas las rutas, sin RPC', () => {
   const casos: [string, () => Promise<Response>][] = [
     ['GET seriales', () => listarSeriales(get('http://x/api/inventario/seriales'), sinParams)],
+    ['GET descuadre', () => descuadreSeriales(get('http://x/api/inventario/seriales/descuadre'), sinParams)],
     ['GET serial', () => detalleSerial(get('http://x/api/inventario/seriales/5'), params('5'))],
     ['POST estado', () => estadoSeriales(post('http://x/api/inventario/seriales/estado', { ids: [1], estado: 'damaged' }), sinParams)],
     ['GET garantías', () => listarGarantias(get('http://x/api/inventario/garantias'), sinParams)],
@@ -192,9 +194,44 @@ describe('garantías', () => {
     expect(r.status).toBe(201);
     expect(rpcs[0]).toEqual({
       nombre: 'fn_garantia_crear',
-      args: { p_org: ORG, p_serial_id: 14, p_motivo: 'No enciende', p_descripcion: 'desde ayer' },
+      args: {
+        p_org: ORG,
+        p_serial_id: 14,
+        p_motivo: 'No enciende',
+        p_descripcion: 'desde ayer',
+        p_reclamante_nombre: null,
+        p_reclamante_doc: null,
+        p_reclamante_telefono: null,
+        p_reclamante_correo: null,
+      },
     });
     expect((await r.json()).resultado.codigo).toBe('GAR-0001');
+  });
+
+  it('guarda el contacto del reclamante', async () => {
+    const r = await crearReclamo(post('http://x/api/inventario/garantias', {
+      serial_id: 14,
+      motivo: 'No enciende',
+      reclamante_nombre: 'Ana Pérez',
+      reclamante_documento: '123',
+      reclamante_telefono: '300',
+      reclamante_correo: 'ana@ejemplo.com',
+    }), sinParams);
+    expect(r.status).toBe(201);
+    expect(rpcs[0].args).toMatchObject({
+      p_reclamante_nombre: 'Ana Pérez',
+      p_reclamante_doc: '123',
+      p_reclamante_telefono: '300',
+      p_reclamante_correo: 'ana@ejemplo.com',
+    });
+  });
+
+  it('el descuadre de seriales usa la organización de la sesión', async () => {
+    guion.datos.fn_seriales_descuadre = [{ product_id: 1, sin_serial: 34 }];
+    const r = await descuadreSeriales(get('http://x/api/inventario/seriales/descuadre'), sinParams);
+    expect(r.status).toBe(200);
+    expect(rpcs[0]).toEqual({ nombre: 'fn_seriales_descuadre', args: { p_org: ORG } });
+    expect((await r.json()).filas).toEqual([{ product_id: 1, sin_serial: 34 }]);
   });
 
   it('crear sin permiso de gestionar → 403 sin RPC', async () => {

@@ -57,7 +57,7 @@ import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/p
 import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
 import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, montoComision } from '@/lib/pos/venta/cobro/comisionCobro';
 import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
-import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
+import { lineasConSerial, seleccionSerialesCompleta, seleccionesDesdeLineas } from '@/lib/pos/venta/cobro/serialesCobro';
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
 import { AVISO_SIN_IMPRESORA_CAJA, AVISO_VENTA_SIN_SUCURSAL, PREFIJO_ERROR_TICKET, lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
 import { PostVenta, type EstadoRecibo } from '@/components/pos/venta/PostVenta';
@@ -133,6 +133,13 @@ interface PaymentEntry {
   amount: number;
 }
 
+/** El clic del botón no es un mapa de seriales: `preventDefault` lo delata. */
+function mapaDeSeriales(valor: unknown): Record<number, number[]> | undefined {
+  if (!valor || typeof valor !== 'object') return undefined;
+  if ('preventDefault' in valor || 'nativeEvent' in valor) return undefined;
+  return valor as Record<number, number[]>;
+}
+
 export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente, contextoMesa }: CheckoutDialogProps) {
   const tMembresias = useTranslations('membresias');
   const { timezone } = useOrgTimezone();
@@ -143,6 +150,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [showReceipt, setShowReceipt] = useState(false);
   const [showSerialSelector, setShowSerialSelector] = useState(false);
   const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
+  // Seriales elegidos al agregar la línea: el cobro no vuelve a preguntarlos.
+  useEffect(() => {
+    if (!open) return;
+    const desde = seleccionesDesdeLineas(cart.items);
+    if (Object.keys(desde).length === 0) return;
+    setSerialSelections((prev) => (Object.keys(prev).length > 0 ? prev : desde));
+  }, [open, cart.items]);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [sendToFactus, setSendToFactus] = useState(false);
   const [electronicInvoiceData, setElectronicInvoiceData] = useState<{
@@ -1061,7 +1075,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // Seriales obligatorios (L48): src/lib/pos/venta/cobro/serialesCobro.ts.
   const serializedItems = lineasConSerial(cart.items);
   const hasSerialItems = serializedItems.length > 0;
-  const serialSelectionsComplete = seleccionSerialesCompleta(serializedItems, serialSelections);
 
   // Handler que pre-llena la tasa de comisión desde vendor_commission_rates
   // al seleccionar un vendedor. El usuario puede override después.
@@ -1078,7 +1091,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (seleccionesExplicitas?: Record<number, number[]>) => {
     if (!canComplete) return;
 
     if (!cart.branch_id) {
@@ -1086,7 +1099,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       return;
     }
 
-    if (hasSerialItems && !serialSelectionsComplete) {
+    const explicitas = mapaDeSeriales(seleccionesExplicitas);
+    const enEstado = Object.keys(serialSelections).length > 0 ? serialSelections : seleccionesDesdeLineas(cart.items);
+    const selecciones = explicitas ?? enEstado;
+    const serialesCompletos = seleccionSerialesCompleta(serializedItems, selecciones);
+    if (hasSerialItems && !serialesCompletos) {
       setShowSerialSelector(true);
       return;
     }
@@ -1185,7 +1202,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           selectedDriverId,
           shippingFee,
         }),
-        serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
+        serial_selections: hasSerialItems && serialesCompletos ? selecciones : undefined,
         // Id y fecha del intento de cobro, generados una vez y reutilizados en
         // los reintentos (navegador y escritorio). Con red la venta se inserta
         // con ese id; sin red (escritorio) va al outbox con el mismo id. En un
@@ -1957,7 +1974,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             motivo={tPos('pie.falta', { monto: formatearCobro(remaining) })}
             etiquetaProcesando={tPos('pie.procesando')}
             icono={CheckCircle}
-            onClick={handleCheckout}
+            onClick={() => { void handleCheckout(); }}
             className="sm:flex-1"
           />
         </>
@@ -2406,6 +2423,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           onConfirm={(selections) => {
             setSerialSelections(selections);
             setShowSerialSelector(false);
+            if (canComplete) void handleCheckout(selections);
           }}
         />
       )}

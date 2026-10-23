@@ -26,7 +26,7 @@ import {
   tarifasVisiblesEnPos,
   type EntradaEntregaDelSobre,
 } from '@/lib/pos/venta/cobro/entregaCobro';
-import { lineasConSerial, seleccionSerialesCompleta } from '@/lib/pos/venta/cobro/serialesCobro';
+import { debePedirSerialAlAgregar, lineasConSerial, seleccionSerialesCompleta, seleccionesDesdeLineas } from '@/lib/pos/venta/cobro/serialesCobro';
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
 
 describe('L44 · propina', () => {
@@ -148,6 +148,20 @@ describe('L48 · seriales obligatorios', () => {
     expect(seleccionSerialesCompleta(conSerial, { 10: [501, 502] })).toBe(true);
     // Sin líneas con serial no hay nada que elegir.
     expect(seleccionSerialesCompleta(lineasConSerial(ITEMS.slice(1)), {})).toBe(true);
+  });
+
+  it('pedir el serial al agregar está apagado salvo que la organización lo encienda y el producto lleve serial', () => {
+    expect(debePedirSerialAlAgregar(false, { track_serial: true })).toBe(false);
+    expect(debePedirSerialAlAgregar(true, { track_serial: false })).toBe(false);
+    expect(debePedirSerialAlAgregar(true, { track_serial: true })).toBe(true);
+  });
+
+  it('los seriales ya elegidos en el carrito se agrupan por producto', () => {
+    expect(seleccionesDesdeLineas([
+      { product_id: 10, product: { track_serial: true }, serial_ids: [1, 2] },
+      { product_id: 10, product: { track_serial: true }, serial_ids: [2, 3] },
+      { product_id: 11, product: { track_serial: false }, serial_ids: [9] },
+    ])).toEqual({ 10: [1, 2, 3] });
   });
 });
 

@@ -161,6 +161,10 @@ export function CeldaGarantia({ situacion, compacta = false }: { situacion: Situ
       linea2 = t('meses', { meses: situacion.meses });
       tono = 'text-fg-muted';
       break;
+    case 'desde_la_venta':
+      linea1 = t('desdeLaVenta', { meses: situacion.meses });
+      tono = 'text-fg-muted';
+      break;
     case 'en_reclamo':
       linea1 = t('enReclamo');
       linea2 = situacion.codigo ? (

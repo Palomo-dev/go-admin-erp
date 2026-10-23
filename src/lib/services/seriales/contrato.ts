@@ -327,7 +327,11 @@ export interface GarantiaDetalle {
     monto: number | null;
     respuesta_proveedor: string | null;
     reemplazo: { id: number; serial: string } | null;
+    nota_credito: { id: string; numero: string | null } | null;
+    devolucion_id: number | null;
   } | null;
+  /** Contacto capturado al abrir el reclamo, si la venta no trae cliente. */
+  reclamante: { nombre: string | null; documento: string | null; telefono: string | null; correo: string | null } | null;
   cliente: TerceroRef | null;
   unidad: EvaluacionSerial;
   eventos: EventoSerial[];
@@ -359,8 +363,24 @@ export const crearReclamoSchema = z
     serial_id: z.number().int().positive(),
     motivo: z.string().trim().min(1).max(200),
     descripcion: z.string().trim().max(2000).nullable().optional(),
+    reclamante_nombre: z.string().trim().max(160).nullable().optional(),
+    reclamante_documento: z.string().trim().max(40).nullable().optional(),
+    reclamante_telefono: z.string().trim().max(40).nullable().optional(),
+    reclamante_correo: z.string().trim().max(160).nullable().optional(),
   })
   .strict();
+
+/** Stock en existencia frente a seriales en bodega (`fn_seriales_descuadre`). */
+export interface DescuadreSerial {
+  product_id: number;
+  producto: string;
+  sku: string | null;
+  branch_id: number;
+  sede: string | null;
+  stock: number;
+  seriales: number;
+  sin_serial: number;
+}
 export type CrearReclamo = z.infer<typeof crearReclamoSchema>;
 
 export const cambiarEstadoReclamoSchema = z
@@ -515,6 +535,11 @@ export const ERRORES_SERIALES = [
   'reemplazo_requerido',
   'reemplazo_invalido',
   'monto_invalido',
+  'unidad_ya_devuelta',
+  'monto_no_coincide',
+  'linea_no_encontrada',
+  'venta_no_encontrada',
+  'motivo_invalido',
   'estado_invalido',
   'datos_invalidos',
   'error_desconocido',
@@ -544,6 +569,8 @@ export function estadoHttpErrorSeriales(codigo: ErrorSeriales): number {
     case 'no_encontrado':
     case 'serial_no_encontrado':
     case 'reclamo_no_encontrado':
+    case 'linea_no_encontrada':
+    case 'venta_no_encontrada':
       return 404;
     case 'serial_no_vendido':
     case 'sin_garantia':
@@ -551,6 +578,7 @@ export function estadoHttpErrorSeriales(codigo: ErrorSeriales): number {
     case 'reclamo_abierto':
     case 'transicion_invalida':
     case 'reemplazo_invalido':
+    case 'unidad_ya_devuelta':
       return 409;
     case 'datos_invalidos':
       return 400;

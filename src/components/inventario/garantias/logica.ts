@@ -39,6 +39,15 @@ export function accionesReclamo(estado: string): AccionesReclamo {
 
 export const ESTADOS_ABIERTOS: readonly EstadoReclamo[] = ['pending', 'approved', 'in_process'];
 
+/** Nombre que se muestra: el cliente de la venta, o el reclamante capturado. Vacío = consumidor final. */
+export function nombreClienteReclamo(
+  cliente: { nombre?: string | null } | null | undefined,
+  reclamante: { nombre?: string | null } | null | undefined,
+): string | null {
+  const nombre = cliente?.nombre?.trim() || reclamante?.nombre?.trim() || '';
+  return nombre || null;
+}
+
 export function esReclamoAbierto(estado: string): boolean {
   return (ESTADOS_ABIERTOS as readonly string[]).includes(estado);
 }

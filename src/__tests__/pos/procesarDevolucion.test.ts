@@ -60,6 +60,20 @@ describe('parametrosProcesarDevolucion', () => {
     expect(JSON.stringify(p)).not.toMatch(/refund_amount|total_refund|unit_price/);
   });
 
+  test('manda la disposición de cada serial y si la línea no serializada reingresa', () => {
+    const p = parametrosProcesarDevolucion(113, 'venta-1', {
+      ...base,
+      items: [
+        { sale_item_id: 'a', return_quantity: 1, reason: 'GARANTIA', serial_number_ids: [7], serial_dispositions: { '7': 'damaged' } },
+        { sale_item_id: 'c', return_quantity: 1, reason: 'ARREPENTIMIENTO', restock: true },
+      ],
+    }, 'clave-1');
+    expect(p.p_items).toEqual([
+      { sale_item_id: 'a', quantity: 1, reason_code: 'GARANTIA', serial_ids: [7], serial_dispositions: { '7': 'damaged' } },
+      { sale_item_id: 'c', quantity: 1, reason_code: 'ARREPENTIMIENTO', serial_ids: [], restock: true },
+    ]);
+  });
+
   test('«nota de crédito» de la pantalla es saldo a favor; «medio original» sigue siendo efectivo', () => {
     expect(metodoReintegro('credit_note')).toBe('store_credit');
     expect(metodoReintegro('cash')).toBe('cash');

@@ -149,6 +149,23 @@ export function diasEntre(desde: string, hasta: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
+/**
+ * Unidades ya en existencia (el formulario las trae en `qty_actual`) cuando se
+ * activa el serial: el aviso dice cuántas quedan sin número. No suma entradas
+ * nuevas (`qty`), que aún no están en stock.
+ */
+export function unidadesEnExistencia(estado: {
+  stock?: readonly { qty_actual?: number | null }[];
+  variantes?: readonly { stock?: readonly { qty_actual?: number | null }[] }[];
+}): number {
+  const suma = (filas?: readonly { qty_actual?: number | null }[]) =>
+    (filas ?? []).reduce((total, fila) => {
+      const n = Number(fila.qty_actual);
+      return total + (Number.isFinite(n) && n > 0 ? n : 0);
+    }, 0);
+  return suma(estado.stock) + (estado.variantes ?? []).reduce((total, variante) => total + suma(variante.stock), 0);
+}
+
 /** `warrantyEnd` es una columna `date`; `hoy` el día de la organización. */
 export function estadoGarantia(warrantyEnd: string | null | undefined, hoy: string): { estado: EstadoGarantia; dias: number } {
   if (!warrantyEnd) return { estado: 'sin_garantia', dias: 0 };

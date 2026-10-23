@@ -11433,7 +11433,10 @@
       "stock": {
         "total": "{count, plural, one {Estoque total: # unidade} other {Estoque total: # unidades}}",
         "generados": "Números de série gerados: {valor}",
-        "sinSerial": "{count} sem número de série"
+        "sinSerial": "{count} sem número de série",
+        "asignar": "Atribuir números ao estoque existente",
+        "descuadre": "Essas unidades continuam em estoque. Atribuir um número não muda a quantidade.",
+        "asignarHecho": "Números atribuídos. O estoque não mudou."
       },
       "inactivo": {
         "aviso": "{count, plural, one {Este produto não exige mais número de série. O número registrado é mantido e pode ser consultado, mas não são gerados novos.} other {Este produto não exige mais número de série. Os # números registrados são mantidos e podem ser consultados, mas não são gerados novos.}}"
@@ -12108,6 +12111,7 @@
       "requiereSerial": "Exige número de série",
       "requiereSerialAyuda": "Cada unidade deste produto terá um número de série único, com histórico e garantia próprios.",
       "sinInventario": "Os números de série são atribuídos às unidades em estoque: ative “Controlar estoque” para poder gerá-los.",
+      "stockSinSerial": "{count, plural, one {# unidade já em estoque ficará sem número até você atribuir. Atribuir não muda o estoque.} other {# unidades já em estoque ficarão sem número até você atribuir. Atribuir não muda o estoque.}}",
       "garantia": "Meses de garantia",
       "garantiaAyuda": "Cada número novo recebe esta garantia a partir do dia em que é registrado. Vazio = sem garantia.",
       "meses": "meses",
@@ -13600,6 +13604,10 @@
       "motivoObligatorio": "Informe o motivo geral da devolução.",
       "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados.",
       "serialInvalido": "Um dos números de série não pertence a esta venda ou já não está vendido.",
+      "serialYaDevuelto": "Esse número de série já foi devolvido nesta venda.",
+      "serialYaReembolsadoGarantia": "Esse número de série já foi reembolsado pela garantia. Não pode ser devolvido de novo.",
+      "serialEnGarantia": "Esse número de série está numa reclamação de garantia. Resolva-a lá.",
+      "disposicionInvalida": "Escolha se o número de série volta ao estoque ou fica danificado.",
       "lineaNoPerteneceALaVenta": "Uma das linhas não pertence a esta venda.",
       "sinAccesoSucursal": "Você não tem acesso à filial desta venda.",
       "generico": "Erro ao processar a devolução",
@@ -13724,7 +13732,8 @@
         "sinMotivoGeneral": "Informe o motivo geral da devolução",
         "itemsSinMotivo": "Todos os itens selecionados precisam de um motivo específico",
         "serializadosSinSerial": "Os produtos serializados precisam de pelo menos um número de série selecionado",
-        "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados"
+        "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados",
+        "sinSerialesEnLinea": "Esta linha não tem números de série vendidos para devolver"
       },
       "metodosPago": {
         "cash": "Dinheiro",
@@ -13738,7 +13747,13 @@
       },
       "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
       "reingresa": "Volta ao estoque",
-      "reingresaDe": "{producto}: volta ao estoque"
+      "reingresaDe": "{producto}: volta ao estoque",
+      "seleccionarDe": "{producto}: selecionar para devolver",
+      "sinSerialesEnLinea": "Não há números de série vendidos nesta linha",
+      "sinSerialesVendidos": "Não há números de série vendidos nesta linha",
+      "vuelveAStock": "Volta ao estoque",
+      "danado": "Danificado",
+      "disposicionDe": "O que acontece com {serial}"
     },
     "historial": {
       "errorCarga": "Não foi possível carregar o histórico de devoluções",
@@ -21744,6 +21759,7 @@
       "vencida": "Vencida",
       "vencioEl": "venceu em {fecha}",
       "empiezaAlVender": "Começa na venda",
+      "desdeLaVenta": "Desde a venda · {meses, plural, one {# mês} other {# meses}}",
       "meses": "{meses, plural, one {# mês} other {# meses}}",
       "enReclamo": "Em reclamação",
       "enRma": "Em RMA",
@@ -21784,6 +21800,22 @@
       "subtituloLema": "cada unidade com a sua história, da compra à garantia",
       "subtituloMovil": "{total} · {stock} em estoque",
       "actualizar": "Atualizar",
+      "generarSeriales": "Gerar números de série",
+      "descuadreTitulo": "Estoque sem número de série",
+      "descuadreFila": "{producto} · {sede}: {sin} sem número ({stock} em estoque, {seriales} números)",
+      "generar": {
+        "titulo": "Gerar números de série",
+        "producto": "Produto",
+        "buscar": "Buscar por nome ou SKU",
+        "sinProductos": "Nenhum produto com número de série corresponde a essa busca.",
+        "sucursal": "Filial",
+        "cantidad": "Quantos",
+        "lista": "Ou cole um número por linha",
+        "noMueveStock": "Isto só registra os números. Não muda o estoque.",
+        "confirmar": "Atribuir números",
+        "hecho": "{count, plural, one {# número de série atribuído} other {# números de série atribuídos}}",
+        "error": "Não foi possível atribuir os números de série. Tente novamente."
+      },
       "por": "por {nombre}",
       "etiquetaFila": "Número de série {serial} de {producto}",
       "errorSeleccionarTodo": "Não foi possível selecionar todos os números de série",
@@ -21972,6 +22004,7 @@
         "vencida": "vencida",
         "restante": "faltam {meses, plural, one {# mês} other {# meses}} e {dias, plural, one {# dia} other {# dias}}",
         "empiezaAlVender": "Começa no dia da venda",
+        "desdeLaVenta": "Desde a venda · {meses, plural, one {# mês} other {# meses}}",
         "sinVigencia": "Não iniciada",
         "hastaCorto": "Garantia até {fecha}",
         "reclamos": "Reclamações",
@@ -22025,6 +22058,11 @@
       "reemplazo_requerido": "Escolha a unidade de substituição.",
       "reemplazo_invalido": "A unidade de substituição não está mais disponível ou é de outro produto.",
       "monto_invalido": "Digite um valor maior que zero.",
+      "unidad_ya_devuelta": "Essa unidade já foi devolvida no PDV. Não dá para reembolsá-la de novo.",
+      "monto_no_coincide": "O valor não coincide com o cobrado por essa unidade.",
+      "linea_no_encontrada": "Não encontramos a linha da venda desse número de série.",
+      "venta_no_encontrada": "Não encontramos a venda desse número de série.",
+      "motivo_invalido": "O motivo da devolução não está ativo.",
       "estado_invalido": "Status inválido.",
       "datos_invalidos": "Revise os dados do formulário.",
       "error_desconocido": "Não foi possível concluir. Tente novamente."
@@ -22123,7 +22161,7 @@
       "serialPlaceholder": "Escaneie ou digite o número de série",
       "buscando": "Buscando o número de série…",
       "vendido": "vendido em {fecha} na {venta} para {cliente}",
-      "sinCliente": "consumidor final",
+      "sinCliente": "Consumidor final",
       "garantiaVigente": "Garantia vigente: {meses, plural, one {# mês} other {# meses}} a partir da venda, faltam {restanteMeses, plural, one {# mês} other {# meses}} e {restanteDias, plural, one {# dia} other {# dias}}.",
       "garantiaVigenteCorta": "Garantia vigente.",
       "noReclamable": {
@@ -22138,6 +22176,12 @@
       "motivoPlaceholder": "Escolha o motivo",
       "descripcionCampo": "Descrição",
       "descripcionPlaceholder": "O que aconteceu, desde quando, o que o cliente traz",
+      "reclamante": "Quem reclama",
+      "reclamanteAyuda": "Se a venda não tem cliente, estes dados ficam na reclamação.",
+      "reclamanteNombre": "Nome",
+      "reclamanteDocumento": "Documento",
+      "reclamanteTelefono": "Telefone",
+      "reclamanteCorreo": "E-mail",
       "nota": "Ao criar a reclamação, o número de série passa para «Reclamação de garantia» e o passo fica no seu histórico.",
       "crear": "Criar reclamação",
       "creado": "Reclamação {codigo} criada",
@@ -22184,7 +22228,7 @@
       "notas": "Notas",
       "aviso": {
         "reemplazo": "{nuevo} fica vendido para {cliente} com garantia nova a partir de hoje, e {serial} fica «{estado}».",
-        "reembolso": "{serial} volta para a empresa e fica «{estado}». A nota de crédito do reembolso é feita em Finanças.",
+        "reembolso": "{serial} volta para a empresa e fica «{estado}». Emite-se a nota de crédito da venda, com o lançamento, o movimento de caixa e o estoque da unidade danificada.",
         "reparacion": "{serial} volta ao cliente como vendido; sua garantia continua como estava."
       },
       "avisoStock": "O estoque da unidade de substituição é baixado pelo núcleo de estoque; o número de série já fica vendido ao cliente.",
@@ -22245,7 +22289,11 @@
         "cliente": "Cliente",
         "garantia": "Garantia",
         "sinVenta": "Sem venda vinculada",
-        "sinCliente": "Sem cliente"
+        "sinCliente": "Consumidor final",
+        "reclamante": "Reclamante",
+        "documento": "Documento",
+        "telefono": "Telefone",
+        "correo": "E-mail"
       },
       "reclamo": {
         "titulo": "Reclamação",
@@ -22270,6 +22318,7 @@
         "tipo": "Como foi resolvida",
         "reemplazo": "Unidade de substituição",
         "monto": "Valor reembolsado",
+        "notaCredito": "Nota de crédito",
         "notas": "Notas",
         "fecha": "Resolvida"
       }

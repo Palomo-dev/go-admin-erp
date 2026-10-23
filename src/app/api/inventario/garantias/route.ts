@@ -5,7 +5,8 @@
  *   KPI y permisos (Figma «Existencias — Garantías»). Permiso de ver.
  * - POST: abre un reclamo sobre un serial vendido con garantía vigente
  *   (`fn_garantia_crear`: el serial pasa a «Reclamo garantía» y queda el
- *   evento). Body `{ serial_id, motivo, descripcion? }`. Permiso de gestionar.
+ *   evento). Body `{ serial_id, motivo, descripcion?, reclamante_*? }`.
+ *   Permiso de gestionar.
  */
 import { NextResponse } from 'next/server';
 import { withOrg } from '@/lib/utils/orgContext';
@@ -36,6 +37,10 @@ export const POST = withOrg(async (ctx, req) => {
       p_serial_id: cuerpo.serial_id,
       p_motivo: cuerpo.motivo,
       p_descripcion: cuerpo.descripcion ?? null,
+      p_reclamante_nombre: cuerpo.reclamante_nombre ?? null,
+      p_reclamante_doc: cuerpo.reclamante_documento ?? null,
+      p_reclamante_telefono: cuerpo.reclamante_telefono ?? null,
+      p_reclamante_correo: cuerpo.reclamante_correo ?? null,
     });
     return NextResponse.json({ resultado }, { status: 201, headers: SIN_CACHE });
   } catch (err) {

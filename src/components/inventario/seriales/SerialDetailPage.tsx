@@ -229,7 +229,7 @@ export function SerialDetailPage({ serialId }: { serialId: number }) {
               <FilaDato
                 etiqueta={t('garantia.vigencia')}
                 tono={vigencia?.tono ?? 'neutro'}
-                valor={vigencia ? vigencia.texto : <span className="text-fg-muted">{g.tipo === 'empieza_al_vender' ? t('garantia.empiezaAlVender') : t('garantia.sinVigencia')}</span>}
+                valor={vigencia ? vigencia.texto : <span className="text-fg-muted">{g.tipo === 'empieza_al_vender' ? t('garantia.empiezaAlVender') : g.tipo === 'desde_la_venta' ? t('garantia.desdeLaVenta', { meses: g.meses }) : t('garantia.sinVigencia')}</span>}
                 descripcion={restante ? t('garantia.restante', { meses: restante.meses, dias: restante.dias }) : undefined}
               />
               <FilaDato

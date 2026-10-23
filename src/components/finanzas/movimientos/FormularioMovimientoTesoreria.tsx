@@ -23,8 +23,8 @@ import { supabase } from '@/lib/supabase/config';
 import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { movimientosService, type BankAccount } from '@/lib/services/movimientosService';
+import { ThirdPartyPicker, useAtajos, type TerceroElegido } from '@/components/kit';
 import { SelectorCategoria, type OpcionCategoria } from './SelectorCategoria';
-import { SelectorTercero } from './SelectorTercero';
 
 type TipoFormulario = 'ingreso' | 'egreso';
 
@@ -79,8 +79,8 @@ export function FormularioMovimientoTesoreria({
   const [cuenta, setCuenta] = useState('');
   const [origen, setOrigen] = useState<'cash' | 'bank'>('cash');
   const [bancoId, setBancoId] = useState('');
-  const [nit, setNit] = useState('');
-  const [nombreTercero, setNombreTercero] = useState('');
+  const [tercero, setTercero] = useState<TerceroElegido | null>(null);
+  const [terceroAbierto, setTerceroAbierto] = useState(false);
   const [centroId, setCentroId] = useState('');
   const [monto, setMonto] = useState('');
   const [concepto, setConcepto] = useState('');
@@ -95,6 +95,11 @@ export function FormularioMovimientoTesoreria({
   const cuentaElegida = cuentas.find((fila) => fila.account_code === cuenta);
   const exigeCentro = cuentaElegida?.requiere_centro_costo === true;
   const exigeTercero = cuentaElegida?.requiere_tercero === true;
+
+  useAtajos(
+    [{ tecla: 'F2', descripcion: t('movimiento.tercero'), accion: () => setTerceroAbierto(true), permitirEnCampo: true }],
+    { activo: open },
+  );
 
   const cargar = useCallback(async () => {
     const orgId = getOrganizationId();
@@ -144,8 +149,8 @@ export function FormularioMovimientoTesoreria({
     setCuenta('');
     setOrigen('cash');
     setBancoId('');
-    setNit('');
-    setNombreTercero('');
+    setTercero(null);
+    setTerceroAbierto(false);
     setCentroId('');
     setMonto('');
     setConcepto('');
@@ -288,7 +293,7 @@ export function FormularioMovimientoTesoreria({
       toast({ title: t('errorTitulo'), description: t('movimiento.faltaCentro'), variant: 'destructive' });
       return;
     }
-    if (exigeTercero && !nit.trim()) {
+    if (exigeTercero && !tercero) {
       toast({ title: t('errorTitulo'), description: t('movimiento.faltaTercero'), variant: 'destructive' });
       return;
     }
@@ -309,8 +314,11 @@ export function FormularioMovimientoTesoreria({
         categoria_id: categoriaId,
         cuenta_contable: cuenta,
         centro_costo_id: centroId || null,
-        tercero_nit: nit.trim() || null,
-        tercero_nombre: nombreTercero.trim() || null,
+        tercero_tipo: tercero?.tipo ?? null,
+        tercero_id: tercero?.id ?? null,
+        tercero_nit: tercero?.nit ?? null,
+        tercero_dv: tercero?.dv ?? null,
+        tercero_nombre: tercero?.nombre.trim() || null,
         soporte_path: soporte,
       };
       const resultado = origen === 'cash'
@@ -422,16 +430,13 @@ export function FormularioMovimientoTesoreria({
 
           <div className="space-y-1.5">
             <Label>{t('movimiento.tercero')}</Label>
-            <SelectorTercero
-              nit={nit}
-              nombre={nombreTercero}
-              onChange={(tercero) => {
-                setNit(tercero.nit);
-                setNombreTercero(tercero.nombre);
-              }}
-              placeholder={t('movimiento.buscarTercero')}
-              usarNit={(documento) => t('movimiento.usarNit', { nit: documento })}
-              sinResultados={t('movimiento.sinResultados')}
+            <ThirdPartyPicker
+              valor={tercero}
+              onCambiar={setTercero}
+              onQuitar={() => setTercero(null)}
+              sucursal={branchId}
+              abierto={terceroAbierto}
+              onAbiertoChange={setTerceroAbierto}
             />
           </div>
 
@@ -478,7 +483,7 @@ export function FormularioMovimientoTesoreria({
               accept="application/pdf,image/jpeg,image/png,image/webp"
               onChange={(event) => setArchivo(event.target.files?.[0] ?? null)}
             />
-            <p className="text-xs text-gray-500">{t('movimiento.soporteAyuda')}</p>
+            <p className="text-xs text-fg-muted">{t('movimiento.soporteAyuda')}</p>
             {archivo ? (
               <Button type="button" variant="ghost" className="h-8 px-2" onClick={() => setArchivo(null)}>
                 {t('movimiento.quitarSoporte')}
@@ -486,12 +491,12 @@ export function FormularioMovimientoTesoreria({
             ) : null}
           </div>
 
-          <div className="rounded-md border border-gray-200 p-3 text-sm dark:border-gray-700">
+          <div className="rounded-md border border-line p-3 text-sm">
             <p className="mb-1 font-medium">{t('movimiento.vistaPrevia')}</p>
             {vistaCargando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {vista?.fallo ? <p className="text-red-600">{vista.fallo}</p> : null}
+            {vista?.fallo ? <p className="text-danger-text">{vista.fallo}</p> : null}
             {vista && !vista.fallo ? (
-              <ul className="space-y-1 text-gray-700 dark:text-gray-300">
+              <ul className="space-y-1 text-fg-secondary">
                 <li>{t('movimiento.debito')}: {nombreCuenta(vista.debito)}</li>
                 <li>{t('movimiento.credito')}: {nombreCuenta(vista.credito)}</li>
               </ul>

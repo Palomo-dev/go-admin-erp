@@ -24,8 +24,9 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { diaCalendarioADate, dateADiaCalendario } from './formDates';
 import { opportunitiesService } from './opportunitiesService';
-import { Pipeline, Stage, Customer, CreateOpportunityInput, Opportunity } from './types';
-import { CustomerSearchSelect } from './CustomerSearchSelect';
+import { Pipeline, Stage, CreateOpportunityInput, Opportunity } from './types';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
+import { documentoTexto } from '@/components/finanzas/documento/documentoTexto';
 import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from '@/components/shared/product-search';
 import { PipelineSearchSelect } from './PipelineSearchSelect';
 import { SpaceSearchSelect } from './SpaceSearchSelect';
@@ -87,9 +88,6 @@ const NOMBRE_MONEDA: Record<string, string> = {
   MXN: 'Peso Mexicano',
 };
 
-/** Milisegundos de espera antes de buscar clientes contra el servidor. */
-const DEBOUNCE_BUSQUEDA_MS = 300;
-
 export function OpportunityForm({ opportunity, initialPipelineId, initialStageId, initialCustomerId, onSuccess, onCancel, hideHeader }: OpportunityFormProps) {
   // Fechas: SIEMPRE por la capa canónica. `formatPlain` para la columna `date`
   // (no convierte), `formatDate`/`toInstant` para el `timestamptz`.
@@ -108,7 +106,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   // Data para selects
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [cliente, setCliente] = useState<ClienteDocumento | null>(null);
   const [products, setProducts] = useState<{ id: number; name: string; sku: string; price: number; image?: string }[]>([]);
   const [spaces, setSpaces] = useState<{ id: string; label: string; floor_zone?: string; status: string; type_name?: string; base_rate: number }[]>([]);
 
@@ -158,11 +156,6 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   );
   const [verticals, setVerticals] = useState<{ id: string; name: string }[]>([]);
 
-  // Selector de clientes contra el servidor (encargo: organizaciones grandes).
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-  const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
-
   useEffect(() => {
     loadInitialData();
     // Carga inicial única (comportamiento previo).
@@ -183,57 +176,6 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   );
   /** Importes del formulario en la moneda elegida (o la base de la organización). */
   const formatearDoc = (valor: number) => formatMoneda(valor, paraDocumento(currency));
-
-  /**
-   * Búsqueda de clientes CONTRA EL SERVIDOR con debounce. `getCustomers()`
-   * traía la organización entera y PostgREST corta en 1.000 filas: hay 4
-   * organizaciones por encima (la mayor, ~18.000 clientes), así que el filtrado
-   * en memoria no veía al resto. El entrecomillado del `.or()` lo hace
-   * `ilikeAnyOf` dentro del servicio.
-   */
-  useEffect(() => {
-    const termino = customerSearch.trim();
-    if (!termino) {
-      setIsSearchingCustomers(false);
-      setCustomerSearchError(null);
-      return;
-    }
-
-    let cancelado = false;
-    setIsSearchingCustomers(true);
-    setCustomerSearchError(null);
-
-    const temporizador = setTimeout(() => {
-      opportunitiesService
-        .searchCustomers(termino)
-        .then((encontrados) => {
-          if (cancelado) return;
-          // El cliente ya elegido se conserva en la lista: si no, el selector
-          // se quedaría sin poder pintar su nombre mientras se busca otro.
-          const seleccionado = customers.find((c) => c.id === customerId);
-          const mezcla =
-            seleccionado && !encontrados.some((c) => c.id === seleccionado.id)
-              ? [seleccionado, ...encontrados]
-              : encontrados;
-          setCustomers(mezcla);
-        })
-        .catch((e) => {
-          if (cancelado) return;
-          logError('[OpportunityForm] buscar clientes', e);
-          setCustomerSearchError(describeError(e));
-        })
-        .finally(() => {
-          if (!cancelado) setIsSearchingCustomers(false);
-        });
-    }, DEBOUNCE_BUSQUEDA_MS);
-
-    return () => {
-      cancelado = true;
-      clearTimeout(temporizador);
-    };
-    // `customers`/`customerId` se leen dentro, no deben reiniciar la búsqueda.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerSearch]);
 
   // Cargar verticales desde verticalsService (con fallback silencioso)
   useEffect(() => {
@@ -300,31 +242,30 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     // No bloquear la UI: mostrar el formulario inmediatamente
     setIsLoading(false);
 
-    // Cargar pipelines y customers primero (son los más urgentes para el form)
+    // Cargar pipelines primero (son lo más urgente para el form). El cliente
+    // elegido lo resuelve el kit al buscar; aquí solo se pinta el ya vinculado.
     try {
-      // Clientes: solo una primera página. El resto llega por búsqueda contra
-      // el servidor (`searchCustomers`), no trayendo la organización entera.
-      const [pipelinesResult, customersResult, seleccionadoResult] = await Promise.allSettled([
+      const [pipelinesResult, seleccionadoResult] = await Promise.allSettled([
         opportunitiesService.getPipelines(),
-        opportunitiesService.searchCustomers(''),
         customerId
           ? opportunitiesService.getCustomerDetails(customerId)
           : Promise.resolve(null),
       ]);
 
       const pipelinesData = pipelinesResult.status === 'fulfilled' ? pipelinesResult.value : [];
-      const customersData = customersResult.status === 'fulfilled' ? customersResult.value : [];
       const seleccionado =
         seleccionadoResult.status === 'fulfilled' ? seleccionadoResult.value : null;
 
       setPipelines(pipelinesData);
-      // El cliente ya vinculado tiene que estar en la lista aunque no entre en
-      // la primera página: si no, el selector enseñaría «Sin cliente».
-      setCustomers(
-        seleccionado && !customersData.some((c) => c.id === seleccionado.id)
-          ? [seleccionado as Customer, ...customersData]
-          : customersData,
-      );
+      if (seleccionado) {
+        setCliente({
+          id: seleccionado.id,
+          nombre: seleccionado.full_name,
+          correo: seleccionado.email ?? null,
+          telefono: seleccionado.phone ?? null,
+          documento: documentoTexto(seleccionado.identification_type, seleccionado.identification_number, null),
+        });
+      }
 
       // Solo establecer pipeline por defecto si no hay uno inicial
       if (pipelinesData.length > 0 && !pipelineId && !initialPipelineId) {
@@ -717,15 +658,18 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
 
               {/* Cliente */}
               <div>
-                <CustomerSearchSelect
-                  customers={customers}
-                  selectedCustomerId={customerId}
-                  onSelect={setCustomerId}
-                  label="Cliente"
-                  placeholder="Buscar cliente..."
-                  onSearchChange={setCustomerSearch}
-                  isSearching={isSearchingCustomers}
-                  searchError={customerSearchError}
+                <ElegirCliente
+                  cliente={cliente}
+                  sucursal={null}
+                  layout="campo"
+                  onCambiar={(elegido) => {
+                    setCliente(elegido);
+                    setCustomerId(elegido.id);
+                  }}
+                  onQuitar={() => {
+                    setCliente(null);
+                    setCustomerId('');
+                  }}
                 />
               </div>
 

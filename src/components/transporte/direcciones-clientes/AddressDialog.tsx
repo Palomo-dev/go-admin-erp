@@ -15,15 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Loader2, MapPin, Navigation, Search as SearchIcon, User, Mail, Phone, X } from 'lucide-react';
-import { CustomerAddress, CustomerAddressInput, customerAddressesService } from '@/lib/services/customerAddressesService';
+import { Loader2, MapPin, Navigation, Search as SearchIcon } from 'lucide-react';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
+import { CustomerAddress, CustomerAddressInput } from '@/lib/services/customerAddressesService';
 import { googleMapsService } from '@/lib/services/googleMapsService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
@@ -53,11 +47,7 @@ export function AddressDialog({
 }: AddressDialogProps) {
   const isEditing = !!address;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
 
   const { selectedBranchId } = useBranch();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
@@ -130,26 +120,14 @@ export function AddressDialog({
     }
   }, [address, open]);
 
-  useEffect(() => {
-    const searchCustomers = async () => {
-      if (customerSearch.length < 2) {
-        setCustomers([]);
-        return;
+  const clienteDireccion: ClienteDocumento | null = selectedCustomer
+    ? {
+        id: selectedCustomer.id,
+        nombre: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim() || 'Cliente',
+        correo: selectedCustomer.email ?? null,
+        telefono: selectedCustomer.phone ?? null,
       }
-      setIsSearching(true);
-      try {
-        const results = await customerAddressesService.searchCustomers(organizationId, customerSearch);
-        setCustomers(results);
-      } catch (error) {
-        console.error('Error searching customers:', error);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    const debounce = setTimeout(searchCustomers, 300);
-    return () => clearTimeout(debounce);
-  }, [customerSearch, organizationId]);
+    : null;
 
   // Buscar lugares con Google Places
   const searchPlaces = useCallback(async (query: string) => {
@@ -258,12 +236,6 @@ export function AddressDialog({
     }
   };
 
-  const handleSelectCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setFormData({ ...formData, customer_id: customer.id });
-    setCustomerPopoverOpen(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -285,160 +257,27 @@ export function AddressDialog({
             required
           />
 
-          {/* Cliente - Selector estilo POS */}
-          <div className="space-y-2">
-            <Label>Cliente *</Label>
-            {selectedCustomer && !isEditing ? (
-              <div className="p-3 rounded-lg border dark:bg-blue-900/20 dark:border-blue-500/30 bg-blue-50 border-blue-200">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
-                      <User className="h-5 w-5 dark:text-blue-400 text-blue-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold dark:text-white text-gray-900">
-                        {selectedCustomer.first_name} {selectedCustomer.last_name}
-                      </p>
-                      <div className="mt-1 space-y-0.5">
-                        {selectedCustomer.email && (
-                          <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 text-gray-600">
-                            <Mail className="h-3 w-3" />
-                            <span className="min-w-0 break-words">{selectedCustomer.email}</span>
-                          </div>
-                        )}
-                        {selectedCustomer.phone && (
-                          <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 text-gray-600">
-                            <Phone className="h-3 w-3" />
-                            <span>{selectedCustomer.phone}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCustomer(null);
-                      setFormData({ ...formData, customer_id: '' });
-                    }}
-                    className="h-8 w-8 p-0 dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : isEditing && selectedCustomer ? (
-              <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full dark:bg-gray-700 bg-gray-200">
-                    <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="font-medium dark:text-white text-gray-900">
-                      {selectedCustomer.first_name} {selectedCustomer.last_name}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Cliente no editable</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start text-left h-auto p-3 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 w-full">
-                      <div className="p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
-                        <User className="h-5 w-5 dark:text-blue-400 text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium dark:text-white text-gray-900">
-                          Seleccionar cliente
-                        </p>
-                        <p className="text-xs dark:text-gray-400 text-gray-600">
-                          Buscar por nombre, email o teléfono
-                        </p>
-                      </div>
-                      <SearchIcon className="h-4 w-4 dark:text-gray-400 text-gray-500 shrink-0" />
-                    </div>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800" align="start">
-                  <div className="p-4 space-y-3 sm:space-y-4">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
-                      <div className="relative">
-                        <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                        <Input
-                          placeholder="Nombre, email o teléfono..."
-                          value={customerSearch}
-                          onChange={(e) => setCustomerSearch(e.target.value)}
-                          className="pl-10 dark:bg-gray-800 dark:border-gray-700"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-
-                    <Separator className="dark:bg-gray-800" />
-
-                    <ScrollArea className="h-48">
-                      <div className="space-y-2 pr-4">
-                        {isSearching ? (
-                          <div className="flex items-center justify-center py-6">
-                            <Loader2 className="h-5 w-5 animate-spin text-blue-500 mr-2 dark:text-blue-400" />
-                            <span className="text-sm dark:text-gray-400">Buscando...</span>
-                          </div>
-                        ) : customers.length === 0 && customerSearch.length >= 2 ? (
-                          <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <User className="h-10 w-10 dark:text-gray-600 text-gray-400 mb-2" />
-                            <p className="text-sm dark:text-gray-400">No se encontraron clientes</p>
-                          </div>
-                        ) : customers.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <SearchIcon className="h-10 w-10 dark:text-gray-600 text-gray-400 mb-2" />
-                            <p className="text-sm dark:text-gray-400">Escribe para buscar clientes</p>
-                          </div>
-                        ) : (
-                          customers.map((customer) => (
-                            <div
-                              key={customer.id}
-                              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all dark:hover:bg-gray-800 hover:bg-gray-50 border border-transparent dark:hover:border-blue-500/30 hover:border-blue-200"
-                              onClick={() => handleSelectCustomer(customer)}
-                            >
-                              <div className="p-1.5 rounded-full dark:bg-blue-500/20 bg-blue-100">
-                                <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm dark:text-white text-gray-900 min-w-0 break-words">
-                                  {customer.first_name} {customer.last_name}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {customer.email && (
-                                    <span className="text-xs dark:text-gray-400 text-gray-600 min-w-0 break-words max-w-[150px]">
-                                      {customer.email}
-                                    </span>
-                                  )}
-                                  {customer.phone && (
-                                    <span className="text-xs dark:text-gray-400 text-gray-600">
-                                      {customer.phone}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
+          <ElegirCliente
+            cliente={clienteDireccion}
+            sucursal={branchId}
+            layout="campo"
+            deshabilitado={isEditing}
+            onCambiar={(elegido) => {
+              const [first, ...rest] = elegido.nombre.split(' ');
+              setSelectedCustomer({
+                id: elegido.id,
+                first_name: first || elegido.nombre,
+                last_name: rest.join(' '),
+                email: elegido.correo ?? undefined,
+                phone: elegido.telefono ?? undefined,
+              });
+              setFormData({ ...formData, customer_id: elegido.id });
+            }}
+            onQuitar={() => {
+              setSelectedCustomer(null);
+              setFormData({ ...formData, customer_id: '' });
+            }}
+          />
 
           {/* Etiqueta y Default */}
           <div className="grid grid-cols-2 gap-2 sm:gap-4">

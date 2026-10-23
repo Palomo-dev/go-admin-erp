@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Package, Plus, Trash2, Box, User, Truck } from 'lucide-react';
 import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
-import { CustomerSearchSelect, type CustomerSearchResult } from './CustomerSearchSelect';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
 import { shippingRatesService, type ShippingRateWithCarrier } from '@/lib/services/shippingRatesService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
@@ -31,15 +31,6 @@ import { BranchSelectorField } from '@/components/inventario/BranchSelectorField
 interface Stop {
   id: string;
   name: string;
-  city?: string;
-}
-
-interface Customer {
-  id: string;
-  full_name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
   city?: string;
 }
 
@@ -57,7 +48,6 @@ interface ShipmentDialogProps {
   shipment?: ShipmentWithDetails | null;
   stops: Stop[];
   onSave: (data: Partial<ShipmentWithDetails>) => Promise<void>;
-  onSearchCustomer?: (query: string) => Promise<Customer[]>;
   organizationId?: number;
 }
 
@@ -88,7 +78,6 @@ export function ShipmentDialog({
   shipment,
   stops,
   onSave,
-  onSearchCustomer,
   organizationId,
 }: ShipmentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,21 +178,28 @@ export function ShipmentDialog({
     setFormData((prev) => ({ ...prev, total_cost: total }));
   }, [formData.freight_cost, formData.insurance_cost]);
 
-  const selectSender = (customer: CustomerSearchResult) => {
+  const remitente: ClienteDocumento | null = formData.sender_customer_id
+    ? { id: formData.sender_customer_id, nombre: formData.sender_name || 'Cliente', telefono: formData.sender_phone || null }
+    : null;
+  const destinatario: ClienteDocumento | null = formData.receiver_customer_id
+    ? { id: formData.receiver_customer_id, nombre: formData.receiver_name || 'Cliente', telefono: formData.receiver_phone || null }
+    : null;
+
+  const selectSender = (customer: ClienteDocumento) => {
     setFormData((prev) => ({
       ...prev,
       sender_customer_id: customer.id,
-      sender_name: customer.full_name,
-      sender_phone: customer.phone || '',
+      sender_name: customer.nombre,
+      sender_phone: customer.telefono || prev.sender_phone,
     }));
   };
 
-  const selectReceiver = (customer: CustomerSearchResult) => {
+  const selectReceiver = (customer: ClienteDocumento) => {
     setFormData((prev) => ({
       ...prev,
       receiver_customer_id: customer.id,
-      receiver_name: customer.full_name,
-      receiver_phone: customer.phone || '',
+      receiver_name: customer.nombre,
+      receiver_phone: customer.telefono || prev.receiver_phone,
     }));
   };
 
@@ -285,17 +281,15 @@ export function ShipmentDialog({
               <User className="h-4 w-4" />
               Remitente
             </h4>
-            {onSearchCustomer && (
-              <div className="mb-3">
-                <CustomerSearchSelect
-                  onSearch={onSearchCustomer}
-                  onSelect={selectSender}
-                  selectedName={formData.sender_name || undefined}
-                  selectedPhone={formData.sender_phone || undefined}
-                  placeholder="Buscar remitente..."
-                />
-              </div>
-            )}
+            <div className="mb-3">
+              <ElegirCliente
+                cliente={remitente}
+                sucursal={branchId}
+                layout="campo"
+                onCambiar={selectSender}
+                onQuitar={() => setFormData((p) => ({ ...p, sender_customer_id: '' }))}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Nombre *</Label>
@@ -322,17 +316,15 @@ export function ShipmentDialog({
               <User className="h-4 w-4" />
               Destinatario
             </h4>
-            {onSearchCustomer && (
-              <div className="mb-3">
-                <CustomerSearchSelect
-                  onSearch={onSearchCustomer}
-                  onSelect={selectReceiver}
-                  selectedName={formData.receiver_name || undefined}
-                  selectedPhone={formData.receiver_phone || undefined}
-                  placeholder="Buscar destinatario..."
-                />
-              </div>
-            )}
+            <div className="mb-3">
+              <ElegirCliente
+                cliente={destinatario}
+                sucursal={branchId}
+                layout="campo"
+                onCambiar={selectReceiver}
+                onQuitar={() => setFormData((p) => ({ ...p, receiver_customer_id: '' }))}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Nombre *</Label>

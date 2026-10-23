@@ -11,7 +11,6 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { 
   NuevaFacturaCompraForm, 
   InvoiceItemForm, 
-  SupplierBase,
   OrganizationPaymentMethod,
   OrganizationCurrency,
   InvoicePurchase,
@@ -81,7 +80,6 @@ export function NuevaFacturaForm({
   const basePath = pathname?.includes('/inventario/')
     ? '/app/inventario/facturas-compra'
     : '/app/finanzas/facturas-compra';
-  const [proveedores, setProveedores] = useState<SupplierBase[]>([]);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [monedas, setMonedas] = useState<OrganizationCurrency[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -211,13 +209,11 @@ export function NuevaFacturaForm({
 
   const cargarDatosIniciales = async () => {
     try {
-      const [proveedoresData, metodosData, monedasData] = await Promise.all([
-        FacturasCompraService.obtenerProveedores(),
+      const [metodosData, monedasData] = await Promise.all([
         FacturasCompraService.obtenerMetodosPago(),
         FacturasCompraService.obtenerMonedas()
       ]);
-      
-      setProveedores(proveedoresData);
+
       setMetodosPago(metodosData);
       setMonedas(monedasData);
     } catch (error) {
@@ -607,15 +603,10 @@ export function NuevaFacturaForm({
         {/* Información básica */}
         <InformacionBasicaForm
           formData={formData}
-          proveedores={proveedores}
           metodosPago={metodosPago}
           monedas={monedas}
           errors={errors}
           onInputChange={handleInputChange}
-          onProveedorCreado={(nuevoProveedor: SupplierBase) => {
-            setProveedores(prev => [...prev, nuevoProveedor]);
-            handleInputChange('supplier_id', nuevoProveedor.id);
-          }}
         />
 
         {/* Items de la factura */}

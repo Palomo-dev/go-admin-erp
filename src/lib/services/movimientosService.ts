@@ -42,6 +42,7 @@ export interface UnifiedMovement {
   cuenta_contable?: string | null;
   tercero_nit?: string | null;
   tercero_nombre?: string | null;
+  tercero_dv?: string | null;
   centro_costo_nombre?: string | null;
   soporte_path?: string | null;
 }
@@ -104,6 +105,9 @@ export interface MovementFormData {
   centro_costo_id?: string | null;
   tercero_nit?: string | null;
   tercero_nombre?: string | null;
+  tercero_tipo?: string | null;
+  tercero_id?: string | null;
+  tercero_dv?: string | null;
   soporte_path?: string | null;
 }
 
@@ -146,6 +150,9 @@ function datosContables(data: MovementFormData) {
     centro_costo_id: data.centro_costo_id ?? null,
     tercero_nit: data.tercero_nit ?? null,
     tercero_nombre: data.tercero_nombre ?? null,
+    tercero_tipo: data.tercero_tipo ?? null,
+    tercero_id: data.tercero_id ?? null,
+    tercero_dv: data.tercero_dv ?? null,
     soporte_path: data.soporte_path ?? null,
   };
 }
@@ -221,7 +228,7 @@ class MovimientosService {
 
     const { data: cashData, error: cashError } = await supabase
       .from('cash_movements')
-      .select('id, uuid, type, concept, amount, notes, created_at, cuenta_contable, tercero_nit, tercero_nombre, soporte_path, categorias_tesoreria(nombre), cost_centers(name)')
+      .select('id, uuid, type, concept, amount, notes, created_at, cuenta_contable, tercero_nit, tercero_nombre, tercero_dv, soporte_path, categorias_tesoreria(nombre), cost_centers(name)')
       .eq('uuid', uuid)
       .eq('organization_id', organizationId)
       .eq('type', tipoCaja(type))
@@ -240,6 +247,7 @@ class MovimientosService {
         cuenta_contable: cashData.cuenta_contable,
         tercero_nit: cashData.tercero_nit,
         tercero_nombre: cashData.tercero_nombre,
+        tercero_dv: cashData.tercero_dv,
         soporte_path: cashData.soporte_path,
         categoria_nombre: nombreRelacion(cashData.categorias_tesoreria, 'nombre'),
         centro_costo_nombre: nombreRelacion(cashData.cost_centers, 'name'),
@@ -259,6 +267,7 @@ class MovimientosService {
         cuenta_contable,
         tercero_nit,
         tercero_nombre,
+        tercero_dv,
         soporte_path,
         categorias_tesoreria(nombre),
         cost_centers(name),
@@ -284,6 +293,7 @@ class MovimientosService {
         cuenta_contable: bankData.cuenta_contable,
         tercero_nit: bankData.tercero_nit,
         tercero_nombre: bankData.tercero_nombre,
+        tercero_dv: bankData.tercero_dv,
         soporte_path: bankData.soporte_path,
         categoria_nombre: nombreRelacion(bankData.categorias_tesoreria, 'nombre'),
         centro_costo_nombre: nombreRelacion(bankData.cost_centers, 'name'),

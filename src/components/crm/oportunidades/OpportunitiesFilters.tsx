@@ -24,6 +24,18 @@ import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { OpportunityFilters, Pipeline, Stage, Customer } from './types';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
+
+function clienteFiltro(customerId: string | undefined, customers: Customer[]): ClienteDocumento | null {
+  if (!customerId) return null;
+  const c = customers.find((x) => x.id === customerId);
+  return {
+    id: customerId,
+    nombre: c?.full_name || 'Cliente',
+    correo: c?.email ?? null,
+    telefono: c?.phone ?? null,
+  };
+}
 
 interface OpportunitiesFiltersProps {
   filters: OpportunityFilters;
@@ -217,27 +229,13 @@ export function OpportunitiesFilters({
 
             {/* Cliente */}
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">
-                Cliente
-              </label>
-              <Select
-                value={filters.customerId || 'all'}
-                onValueChange={(value) =>
-                  onFiltersChange({ ...filters, customerId: value === 'all' ? undefined : value })
-                }
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
-                  <SelectValue placeholder="Todos los clientes" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 max-h-60">
-                  <SelectItem value="all">Todos los clientes</SelectItem>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ElegirCliente
+                cliente={clienteFiltro(filters.customerId, customers)}
+                sucursal={null}
+                layout="campo"
+                onCambiar={(elegido) => onFiltersChange({ ...filters, customerId: elegido.id })}
+                onQuitar={() => onFiltersChange({ ...filters, customerId: undefined })}
+              />
             </div>
 
             {/* Fecha desde */}

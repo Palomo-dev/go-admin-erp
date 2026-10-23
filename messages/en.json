@@ -10151,6 +10151,26 @@
         "crear": "Create supplier “{texto}”",
         "saldo": "Payable {saldo}"
       },
+      "tercero": {
+        "etiqueta": "Party",
+        "placeholder": "Search by name, tax ID or email",
+        "buscar": "Search by name, tax ID or email",
+        "vacio": "Type the name, tax ID or email.",
+        "crear": "Create party",
+        "crearTexto": "Create party “{texto}”",
+        "usarNit": "Use tax ID {nit}",
+        "nombre": "Name",
+        "confirmar": "Use this tax ID",
+        "cancelar": "Back",
+        "dvInvalido": "The check digit does not match",
+        "tipoCrear": "Party type",
+        "tipos": {
+          "cliente": "Customer",
+          "proveedor": "Supplier",
+          "empleado": "Employee",
+          "nit": "Tax ID"
+        }
+      },
       "quitarDe": "Remove {etiqueta}"
     },
     "carrito": {

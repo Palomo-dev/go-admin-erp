@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SearchSelect } from '@/components/ui/search-select';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
 import {
   Dialog,
   DialogContent,
@@ -163,12 +164,22 @@ export function ActividadForm({
   const isTask = activityType === 'task';
 
   const relatedOptions = useMemo(
-    () =>
-      relatedType === 'customer'
-        ? customers.map((c) => ({ value: c.id, label: c.full_name }))
-        : opportunities.map((o) => ({ value: o.id, label: o.title })),
-    [relatedType, customers, opportunities]
+    () => opportunities.map((o) => ({ value: o.id, label: o.title })),
+    [opportunities],
   );
+
+  const [clienteElegido, setClienteElegido] = useState<ClienteDocumento | null>(null);
+  const conocido = customers.find((c) => c.id === relatedId);
+  const clienteRelacion: ClienteDocumento | null =
+    relatedType !== 'customer' || !relatedId
+      ? null
+      : clienteElegido?.id === relatedId
+        ? clienteElegido
+        : {
+            id: relatedId,
+            nombre: conocido?.full_name ?? 'Cliente',
+            correo: conocido?.email ?? null,
+          };
 
   // El resultado depende del tipo: al cambiar de tipo se descarta si ya no aplica.
   useEffect(() => {
@@ -294,15 +305,31 @@ export function ActividadForm({
               <Label className="text-gray-700 dark:text-gray-300">
                 {relatedType === 'customer' ? 'Cliente' : 'Oportunidad'} *
               </Label>
-              <SearchSelect
-                options={relatedOptions}
-                value={relatedId || 'none'}
-                onValueChange={(v) => setRelatedId(v === 'none' ? '' : v)}
-                placeholder={relatedType === 'customer' ? 'Selecciona cliente' : 'Selecciona oportunidad'}
-                searchPlaceholder="Buscar..."
-                noneLabel="Sin seleccionar"
-                className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-              />
+              {relatedType === 'customer' ? (
+                <ElegirCliente
+                  cliente={clienteRelacion}
+                  sucursal={null}
+                  layout="campo"
+                  onCambiar={(elegido) => {
+                    setClienteElegido(elegido);
+                    setRelatedId(elegido.id);
+                  }}
+                  onQuitar={() => {
+                    setClienteElegido(null);
+                    setRelatedId('');
+                  }}
+                />
+              ) : (
+                <SearchSelect
+                  options={relatedOptions}
+                  value={relatedId || 'none'}
+                  onValueChange={(v) => setRelatedId(v === 'none' ? '' : v)}
+                  placeholder="Selecciona oportunidad"
+                  searchPlaceholder="Buscar..."
+                  noneLabel="Sin seleccionar"
+                  className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                />
+              )}
             </div>
           </div>
 

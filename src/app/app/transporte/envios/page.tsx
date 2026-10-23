@@ -236,11 +236,6 @@ export default function EnviosPage() {
     }
   };
 
-  const handleSearchCustomer = async (query: string) => {
-    if (!organizationId) return [];
-    return shipmentsService.searchCustomers(organizationId, query);
-  };
-
   const handleStatusChange = async (shipment: ShipmentWithDetails, status: string) => {
     try {
       await shipmentsService.updateStatus(shipment.id, status as ShipmentWithDetails['status']);
@@ -500,7 +495,6 @@ export default function EnviosPage() {
         shipment={shipmentToEdit}
         stops={stops}
         onSave={handleSaveShipment}
-        onSearchCustomer={handleSearchCustomer}
         organizationId={organizationId}
       />
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, UserPlus } from 'lucide-react';
 import {
   Dialog,
@@ -25,10 +25,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { CustomerSearchSelect } from '@/components/crm/oportunidades/CustomerSearchSelect';
+import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
 import { PipelineSearchSelect } from '@/components/crm/oportunidades/PipelineSearchSelect';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
-import type { Customer, Pipeline } from '@/components/crm/oportunidades/types';
+import type { Pipeline } from '@/components/crm/oportunidades/types';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 
 /**
@@ -93,13 +93,9 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [pipelineId, setPipelineId] = useState('');
 
-  // Cliente existente
+  // Cliente existente. El kit busca en el servidor; escribir no elige.
   const [customerId, setCustomerId] = useState('');
-  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
-  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
-  const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
-  const searchSeq = useRef(0);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cliente, setCliente] = useState<ClienteDocumento | null>(null);
 
   // Cliente nuevo
   const [newFirstName, setNewFirstName] = useState('');
@@ -118,8 +114,7 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
     setExpectedCloseDate('');
     setPipelineId('');
     setCustomerId('');
-    setCustomerResults([]);
-    setCustomerSearchError(null);
+    setCliente(null);
     setNewFirstName('');
     setNewLastName('');
     setNewEmail('');
@@ -141,45 +136,6 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
       cancelled = true;
     };
   }, [open]);
-
-  // Primera tanda de clientes al abrir, para que el selector no salga vacío.
-  useEffect(() => {
-    if (!open) return;
-    void runCustomerSearch('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, branchId]);
-
-  useEffect(() => {
-    return () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
-    };
-  }, []);
-
-  async function runCustomerSearch(term: string) {
-    const seq = ++searchSeq.current;
-    setIsSearchingCustomers(true);
-    setCustomerSearchError(null);
-    try {
-      const data = await opportunitiesService.searchCustomers(term, branchId);
-      // Descartar respuestas de búsquedas viejas que llegan tarde.
-      if (seq !== searchSeq.current) return;
-      setCustomerResults(data);
-    } catch (err) {
-      if (seq !== searchSeq.current) return;
-      logError('[NewLeadDialog] buscar clientes', err);
-      setCustomerResults([]);
-      setCustomerSearchError(describeError(err));
-    } finally {
-      if (seq === searchSeq.current) setIsSearchingCustomers(false);
-    }
-  }
-
-  const handleCustomerSearchChange = (term: string) => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      void runCustomerSearch(term);
-    }, 300);
-  };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && isSaving) return;
@@ -309,15 +265,18 @@ export function NewLeadDialog({ open, onOpenChange, branchId, onCreated }: NewLe
 
             {customerMode === 'existing' ? (
             <div className="pt-3">
-              <CustomerSearchSelect
-                customers={customerResults}
-                selectedCustomerId={customerId}
-                onSelect={setCustomerId}
-                onSearchChange={handleCustomerSearchChange}
-                isSearching={isSearchingCustomers}
-                searchError={customerSearchError}
-                allowEmpty={false}
-                label="Cliente *"
+              <ElegirCliente
+                cliente={cliente}
+                sucursal={branchId}
+                layout="campo"
+                onCambiar={(elegido) => {
+                  setCliente(elegido);
+                  setCustomerId(elegido.id);
+                }}
+                onQuitar={() => {
+                  setCliente(null);
+                  setCustomerId('');
+                }}
               />
             </div>
             ) : (

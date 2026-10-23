@@ -10151,6 +10151,26 @@
         "crear": "Crear proveedor «{texto}»",
         "saldo": "Por pagar {saldo}"
       },
+      "tercero": {
+        "etiqueta": "Tercero",
+        "placeholder": "Buscar por nombre, NIT o email",
+        "buscar": "Buscar por nombre, NIT o email",
+        "vacio": "Escribe el nombre, el NIT o el correo.",
+        "crear": "Crear tercero",
+        "crearTexto": "Crear tercero «{texto}»",
+        "usarNit": "Usar NIT {nit}",
+        "nombre": "Nombre",
+        "confirmar": "Usar este NIT",
+        "cancelar": "Volver",
+        "dvInvalido": "El dígito de verificación no corresponde",
+        "tipoCrear": "Tipo de tercero",
+        "tipos": {
+          "cliente": "Cliente",
+          "proveedor": "Proveedor",
+          "empleado": "Empleado",
+          "nit": "NIT"
+        }
+      },
       "quitarDe": "Quitar {etiqueta}"
     },
     "carrito": {

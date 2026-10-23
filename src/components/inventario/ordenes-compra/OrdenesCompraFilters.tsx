@@ -9,6 +9,7 @@ import {
   SelectValue,
   } from '@/components/ui/select';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { ElegirProveedor } from '@/components/finanzas/documento/terceros';
 
 interface OrdenesCompraFiltersProps {
   search: string;
@@ -59,21 +60,21 @@ export function OrdenesCompraFilters({
         </SelectContent>
       </Select>
 
-      {suppliers.length > 0 && (
-        <Select value={supplierFilter} onValueChange={onSupplierChange}>
-          <SelectTrigger className="w-[180px] dark:bg-gray-800 dark:border-gray-700">
-            <SelectValue placeholder="Proveedor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los proveedores</SelectItem>
-            {suppliers.map((s) => (
-              <SelectItem key={s.id} value={s.id.toString()}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      <div className="min-w-[220px] flex-1">
+        <ElegirProveedor
+          layout="campo"
+          proveedor={
+            supplierFilter !== 'all'
+              ? {
+                  id: supplierFilter,
+                  nombre: suppliers.find((s) => String(s.id) === supplierFilter)?.name ?? 'Proveedor',
+                }
+              : null
+          }
+          onCambiar={(p) => onSupplierChange(p.id)}
+          onQuitar={() => onSupplierChange('all')}
+        />
+      </div>
 
       {branches.length > 0 && (
         <Select value={branchFilter} onValueChange={onBranchChange}>

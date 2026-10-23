@@ -5950,6 +5950,26 @@
         "crear": "Créer le fournisseur « {texto} »",
         "saldo": "À payer {saldo}"
       },
+      "tercero": {
+        "etiqueta": "Tiers",
+        "placeholder": "Rechercher par nom, NIT ou e-mail",
+        "buscar": "Rechercher par nom, NIT ou e-mail",
+        "vacio": "Saisissez le nom, le NIT ou l’e-mail.",
+        "crear": "Créer un tiers",
+        "crearTexto": "Créer le tiers « {texto} »",
+        "usarNit": "Utiliser le NIT {nit}",
+        "nombre": "Nom",
+        "confirmar": "Utiliser ce NIT",
+        "cancelar": "Retour",
+        "dvInvalido": "Le chiffre de contrôle ne correspond pas",
+        "tipoCrear": "Type de tiers",
+        "tipos": {
+          "cliente": "Client",
+          "proveedor": "Fournisseur",
+          "empleado": "Employé",
+          "nit": "NIT"
+        }
+      },
       "quitarDe": "Retirer {etiqueta}"
     },
     "carrito": {

@@ -30,7 +30,16 @@ jest.mock('@/lib/services/printService', () => ({ PrintService: {} }));
 jest.mock('@/lib/services/kitchenService', () => ({ __esModule: true, default: { getKitchenTickets: jest.fn(async () => []) } }));
 jest.mock('@/lib/supabase/config', () => {
   const canal = { on() { return canal; }, subscribe() { return canal; } };
-  return { supabase: { channel: () => canal, removeChannel: jest.fn() } };
+  return {
+    supabase: {
+      channel: () => canal,
+      removeChannel: jest.fn(),
+      auth: {
+        getSession: async () => ({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+      },
+    },
+  };
 });
 jest.mock('@/components/pos/TaxSummary', () => ({ TaxSummary: () => <div>resumen</div> }));
 jest.mock('@/hooks/useLineasSinImpuesto', () => ({ useLineasSinImpuesto: () => ({ indices: new Set<number>() }) }));

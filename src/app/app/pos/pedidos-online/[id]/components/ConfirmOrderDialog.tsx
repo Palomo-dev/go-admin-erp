@@ -44,6 +44,8 @@ interface ConfirmOrderDialogProps {
   markAsPaid?: boolean;
   onMarkAsPaidChange?: (value: boolean) => void;
   isLoading?: boolean;
+  /** Ya se pagó en línea: se explica por qué no se puede quitar la promoción. */
+  yaPagado?: boolean;
 }
 
 
@@ -77,6 +79,7 @@ export function ConfirmOrderDialog({
   markAsPaid = false,
   onMarkAsPaidChange,
   isLoading = false,
+  yaPagado = false,
 }: ConfirmOrderDialogProps) {
   const t = useTranslations('pedidoWeb');
   return (
@@ -89,6 +92,11 @@ export function ConfirmOrderDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
+          {yaPagado && (
+            <p className="rounded-lg border border-line bg-subtle px-3 py-2 text-[13px] text-fg-secondary">
+              {t('promocionLinea.yaPagado')}
+            </p>
+          )}
           {/* Tiempo de preparación */}
           <div>
             <Label htmlFor="prep-time" className="dark:text-gray-200">

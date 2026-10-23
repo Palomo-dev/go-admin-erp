@@ -13893,7 +13893,8 @@
       "bascula_invalida": "A balança da pesagem não é uma balança ativa da organização. {detalle}",
       "peso_inestable": "A leitura da balança não estava estável. {detalle}",
       "pesaje_no_coincide": "A quantidade não coincide com o peso lido da balança. {detalle}",
-      "etiqueta_invalida": "A etiqueta de peso não traz o código lido. {detalle}"
+      "etiqueta_invalida": "A etiqueta de peso não traz o código lido. {detalle}",
+      "sin_permiso_quitar_promocion": "Tirar a promoção de uma linha exige a permissão “Tirar promoção”. {detalle}"
     },
     "ventaAnulada": "Venda cancelada: pagamentos, estoque e fatura foram revertidos.",
     "anulacionFallida": "Não foi possível cancelar a venda",
@@ -15429,7 +15430,8 @@
         "total": "Total",
         "sinNombre": "Produto",
         "descuento": "Desconto {monto}",
-        "tasa": "{tasa}%"
+        "tasa": "{tasa}%",
+        "sinPromocion": "Sem promoção"
       },
       "pagos": {
         "titulo": "Pagamentos aplicados",
@@ -15453,7 +15455,10 @@
         "facturada": "Fatura {numero} emitida",
         "pago": "Pagamento de {monto}",
         "devolucion": "Devolução de {monto}",
-        "notaCredito": "Nota de crédito {numero}"
+        "notaCredito": "Nota de crédito {numero}",
+        "promoQuitada": "{nombre} tirou a promoção «{promocion}» de {producto} ({monto})",
+        "promoRestaurada": "{nombre} restaurou a promoção «{promocion}» em {producto}",
+        "motivo": "Motivo: {motivo}"
       },
       "notas": "Observações",
       "cliente": {
@@ -16841,6 +16846,12 @@
       "descuentoDe": "Desconto de {nombre}",
       "descuento": "Desconto",
       "aplicarDescuento": "Aplicar desconto",
+      "quitarPromocion": "Tirar promoção",
+      "quitarPromocionDe": "Tirar a promoção de {nombre}",
+      "restaurarPromocion": "Restaurar promoção",
+      "sinPromocion": "Sem promoção",
+      "sinPromocionDe": "Sem promoção: {nombre}",
+      "errorQuitarPromocion": "Não foi possível tirar a promoção",
       "cancelar": "Cancelar",
       "frecuentes": "Frequentes:",
       "aplicarFrecuente": "Aplicar o desconto frequente de {monto}",
@@ -35602,6 +35613,16 @@
     }
   },
   "pedidoWeb": {
+    "promocionLinea": {
+      "quitar": "Tirar promoção",
+      "restaurar": "Restaurar promoção",
+      "sinPromocion": "Sem promoção",
+      "motivo": "Motivo (opcional)",
+      "error": "Não foi possível alterar a promoção da linha",
+      "sinPermiso": "Você não tem permissão para tirar a promoção de uma linha.",
+      "lineasDistintas": "A venda já não tem as mesmas linhas do pedido. A cobrança não foi alterada.",
+      "yaPagado": "O pedido já foi pago online: a promoção não pode ser tirada nem restaurada."
+    },
     "comerAqui": "Comer aqui",
     "comerAquiMesa": "Comer aqui · {mesa}",
     "verMesa": "Ver a mesa em POS › Mesas",
@@ -36106,6 +36127,10 @@
       "comensalN": "Cliente {n}",
       "alergia": "Alergia",
       "notaCocina": "Cozinha: {nota}",
+      "quitarPromocion": "Tirar promoção",
+      "restaurarPromocion": "Restaurar promoção",
+      "sinPromocion": "Sem promoção",
+      "errorPromocion": "Não foi possível alterar a promoção da linha",
       "moverA": "Mover para outra mesa",
       "restarUna": "Tirar uma unidade",
       "estado": {
@@ -37872,9 +37897,13 @@
       "descripcion": "Descrição",
       "descripcionPlaceholder": "Descrição da promoção...",
       "prioridad": "Prioridade",
-      "prioridadAyuda": "Número maior = maior prioridade",
+      "prioridadAyuda": "Número maior ganha das outras promoções não combináveis do mesmo produto",
       "combinable": "Combinável",
       "combinableAyuda": "Permitir com outras promoções",
+      "solapamientoTitulo": "Só uma será aplicada por produto",
+      "solapamientoDetalle": "Estas promoções se sobrepõem e nenhuma permite combinar. Em cada produto só uma será aplicada.",
+      "solapamientoAccion": "Ative «Permitir com outras promoções» ou aumente a prioridade da que deve ganhar.",
+      "solapamientoVer": "Ver {nombre}",
       "tipo": "Tipo de promoção",
       "porcentaje": "Percentual de desconto",
       "monto": "Valor do desconto",

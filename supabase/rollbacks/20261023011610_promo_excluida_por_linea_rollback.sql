@@ -1,0 +1,2 @@
+-- 20261023011610_promo_excluida_por_linea no cambió el esquema.
+-- El texto aplicado fue solo un comentario. No hay nada que deshacer.

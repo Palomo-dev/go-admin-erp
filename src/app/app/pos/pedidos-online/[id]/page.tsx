@@ -30,6 +30,7 @@ import {
 } from './components';
 import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-online';
 import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/ValoracionVisitaCard';
+import { usePermissionContext } from '@/hooks/usePermissionContext';
 
 export default function WebOrderDetailPage() {
   const params = useParams();
@@ -73,6 +74,8 @@ export default function WebOrderDetailPage() {
     loadOrder,
   } = useWebOrderDetail(orderId);
   const t = useTranslations('pedidoWeb');
+  const { checker, context: permisoCtx } = usePermissionContext();
+  const puedeQuitarPromocion = checker.can('pos.promotions.remove') || permisoCtx?.roleId === 1 || permisoCtx?.roleId === 2;
   const tCocina = useTranslations('posCocina');
   const { toast } = useToast();
   const trazabilidad = useTrazabilidadPedido(order);
@@ -142,7 +145,7 @@ export default function WebOrderDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-6">
-          <OrderProductsCard order={order} />
+          <OrderProductsCard order={order} puedeQuitarPromocion={puedeQuitarPromocion} onCambio={() => void loadOrder()} />
           <OrderNotesCard
             order={order}
             comandaId={trazabilidad.comandaId}
@@ -231,6 +234,7 @@ export default function WebOrderDetailPage() {
         markAsPaid={markAsPaid}
         onMarkAsPaidChange={setMarkAsPaid}
         isLoading={actionLoading}
+        yaPagado={order.payment_status === 'paid'}
       />
 
       <CobrarPedidoDialog

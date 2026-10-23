@@ -200,6 +200,16 @@ export function LineaCuentaMesa({
             {t('alergia')}
           </CartTag>
         )}
+        {linea.promoExcluida && (
+          <CartTag icono={null} className="h-[22px] px-2 text-xs">
+            {t('sinPromocion')}
+          </CartTag>
+        )}
+        {linea.descuento > 0 && !linea.promoExcluida && (
+          <CartTag icono={null} className="h-[22px] px-2 text-xs">
+            {t('descuento', { monto: formatear(linea.descuento) })}
+          </CartTag>
+        )}
       </div>
 
       {linea.notaCocina && (

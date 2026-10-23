@@ -35,6 +35,8 @@ export interface LineaGuardadaMesa {
   tax_rate?: number | string | null;
   tax_included?: boolean | null;
   discount_amount?: number | string | null;
+  /** El mesero quitó la promoción de esta línea. */
+  promo_excluded?: boolean | null;
   paid_at?: string | null;
   paid_amount?: number | string | null;
   created_at?: string | null;
@@ -97,6 +99,8 @@ export interface LineaMesa {
   pedidoWeb?: string | null;
   /** Quién la pidió desde la Carta QR («Ana»). */
   quienPidio?: string | null;
+  /** No recibe promoción. Se mantiene al agregar otros platos. */
+  promoExcluida?: boolean;
 }
 
 export type EstadoRonda = 'en_cocina' | 'preparando' | 'lista' | 'servida';
@@ -212,6 +216,7 @@ export function aLineaMesa(
     // modo y el cobro sacaba un impuesto que la cuenta ya había sumado.
     impuestoIncluido: l.tax_included === true,
     descuento: num(l.discount_amount),
+    promoExcluida: l.promo_excluded === true,
     comensal: n.guest_number != null && num(n.guest_number) > 0 ? num(n.guest_number) : null,
     notaCocina: texto(n.extra),
     notaCliente: texto(n.customer_note),

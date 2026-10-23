@@ -9,7 +9,7 @@ import { OrgContextError, hasOrgAdminOrPermission, type ServerOrgContext } from 
 import { ORG_BODY_KEYS, readOrgBody } from '@/lib/security/organizationBody';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
 import { ErrorCompraServidor } from './facturasCompra.server';
-import { estadoHttpErrorCompra } from './contrato';
+import { estadoHttpErrorCompra, mensajeErrorCompra } from './contrato';
 
 export const SIN_CACHE = { 'Cache-Control': 'private, no-store' } as const;
 
@@ -80,7 +80,10 @@ export function respuestaError(etiqueta: string, err: unknown): Response {
     return NextResponse.json({ error: 'Datos inválidos', codigo: 'datos_invalidos', campos: err.campos }, { status: 400, headers: SIN_CACHE });
   }
   if (err instanceof ErrorCompraServidor) {
-    return NextResponse.json({ error: err.codigo, codigo: err.codigo }, { status: estadoHttpErrorCompra(err.codigo), headers: SIN_CACHE });
+    return NextResponse.json(
+      { error: mensajeErrorCompra(err.codigo), codigo: err.codigo },
+      { status: estadoHttpErrorCompra(err.codigo), headers: SIN_CACHE },
+    );
   }
   if (err instanceof OrgContextError) {
     return NextResponse.json({ error: err.message, codigo: err.code, code: err.code }, { status: err.statusCode, headers: SIN_CACHE });

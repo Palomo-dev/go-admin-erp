@@ -18150,6 +18150,13 @@
       "cuotas_invalidas": "Check the installments: invalid amounts or dates.",
       "rango_invalido": "The date range is not valid.",
       "datos_invalidos": "Check the form data.",
+      "asiento_sin_regla": "There is no active accounting rule for this document. Set one up before continuing.",
+      "asiento_no_cuadra": "The journal entry does not balance with the document lines.",
+      "asiento_exige_tercero": "An account on the entry requires the third party's tax ID.",
+      "asiento_exige_centro": "An account on the entry requires a cost center.",
+      "asiento_cuenta_invalida": "An account on the entry is missing from the chart, inactive, or not a posting account.",
+      "asiento_periodo_cerrado": "The accounting period for the document date is closed.",
+      "asiento_no_armado": "The journal entry for the document could not be built.",
       "error_desconocido": "The operation couldn't be completed. Please try again."
     },
     "listado": {

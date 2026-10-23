@@ -141,6 +141,16 @@ describe('POST /api/facturas-compra', () => {
 });
 
 describe('acciones de la factura', () => {
+  test('un fallo contable conocido de la confirmación es 422 con mensaje claro', async () => {
+    guion.errorRpc = { message: 'La cuenta 2408 exige el NIT o la cédula del tercero' };
+    const r = await confirmar(post('http://x', { recepcionar: false }), params(FACTURA));
+    expect(r.status).toBe(422);
+    const cuerpo = await r.json();
+    expect(cuerpo.codigo).toBe('asiento_exige_tercero');
+    expect(cuerpo.error).toMatch(/NIT/);
+    expect(cuerpo.error).not.toMatch(/2408|record /);
+  });
+
   test('confirmar recepcionando exige también inventory.create', async () => {
     guion.permisos.delete('inventory.create');
     const r1 = await confirmar(post('http://x', { recepcionar: true }), params(FACTURA));

@@ -13949,6 +13949,13 @@
       "cuotas_invalidas": "Revise as parcelas: valores ou datas inválidos.",
       "rango_invalido": "O intervalo de datas não é válido.",
       "datos_invalidos": "Revise os dados do formulário.",
+      "asiento_sin_regla": "Não há uma regra contábil ativa para este documento. Configure-a antes de continuar.",
+      "asiento_no_cuadra": "O lançamento não fecha com as linhas do documento.",
+      "asiento_exige_tercero": "Uma conta do lançamento exige o NIT ou o documento do terceiro.",
+      "asiento_exige_centro": "Uma conta do lançamento exige um centro de custo.",
+      "asiento_cuenta_invalida": "Há uma conta do lançamento que não está no plano, não está ativa ou não é de movimento.",
+      "asiento_periodo_cerrado": "O período contábil da data do documento está fechado.",
+      "asiento_no_armado": "Não foi possível montar o lançamento contábil do documento.",
       "error_desconocido": "Não foi possível concluir a operação. Tente novamente."
     },
     "listado": {

@@ -13949,6 +13949,13 @@
       "cuotas_invalidas": "Vérifiez les échéances : montants ou dates invalides.",
       "rango_invalido": "La période n'est pas valide.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
+      "asiento_sin_regla": "Il n'y a pas de règle comptable active pour ce document. Configurez-la avant de continuer.",
+      "asiento_no_cuadra": "L'écriture ne balance pas avec les lignes du document.",
+      "asiento_exige_tercero": "Un compte de l'écriture exige le NIT ou la pièce d'identité du tiers.",
+      "asiento_exige_centro": "Un compte de l'écriture exige un centre de coûts.",
+      "asiento_cuenta_invalida": "Un compte de l'écriture n'est pas au plan, n'est pas actif ou n'est pas un compte de mouvement.",
+      "asiento_periodo_cerrado": "La période comptable de la date du document est fermée.",
+      "asiento_no_armado": "L'écriture comptable du document n'a pas pu être préparée.",
       "error_desconocido": "L'opération n'a pas pu aboutir. Réessayez."
     },
     "listado": {

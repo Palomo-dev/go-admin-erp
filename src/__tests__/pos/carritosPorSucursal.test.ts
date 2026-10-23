@@ -13,7 +13,7 @@
 
 jest.mock('@/lib/supabase/config', () => {
   const chain: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gte', 'lte', 'or', 'not']) chain[m] = () => chain;
+  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gte', 'lte', 'or', 'not', 'range', 'abortSignal']) chain[m] = () => chain;
   chain.then = (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) =>
     Promise.resolve({ data: [{ price: '1000', effective_from: '2026-01-01T00:00:00Z', effective_to: null }], error: null }).then(ok, ko);
   return { supabase: { from: () => chain } };

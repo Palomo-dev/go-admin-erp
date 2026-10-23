@@ -11,7 +11,7 @@ const mockRespuestas: Record<string, { data: unknown; error: unknown }> = {};
 jest.mock('@/lib/supabase/config', () => {
   const tabla = (nombre: string) => {
     const chain: Record<string, unknown> = {};
-    for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gt', 'gte', 'lte', 'or', 'not']) chain[m] = () => chain;
+    for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gt', 'gte', 'lte', 'or', 'not', 'range', 'abortSignal']) chain[m] = () => chain;
     const respuesta = () => mockRespuestas[nombre] ?? { data: [], error: null };
     chain.maybeSingle = () => Promise.resolve(respuesta());
     chain.single = () => Promise.resolve(respuesta());

@@ -114,6 +114,24 @@ describe('construirFeedMeta', () => {
     expect(r.filas[0].link).toBe('');
     expect(r.resumen.sinEnlace).toBe(true);
   });
+  it('additional_image_link trae el resto de las imágenes, y repetir el armado da el mismo CSV', () => {
+    const imagenes = Array.from({ length: 6 }, (_, i) => `https://img/${i + 1}.jpg`);
+    const r = construirFeedMeta([p({ id: 1, imagenes })], ctx);
+    expect(r.filas[0].image_link).toBe('https://img/1.jpg');
+    expect(r.filas[0].additional_image_link).toBe(imagenes.slice(1).join(','));
+    expect(r.resumen.porMotivo.sinImagen).toBeUndefined();
+    expect(csvMeta(construirFeedMeta([p({ id: 1, imagenes })], ctx).filas)).toBe(csvMeta(r.filas));
+  });
+  it('un padre sin fotos usa las de sus variantes activas', () => {
+    const padre = p({ id: 10, is_parent: true, imagenes: [] });
+    const sinFoto = p({ id: 11, parent_product_id: 10, imagenes: [] });
+    const conFoto = p({ id: 12, parent_product_id: 10, imagenes: ['https://img/a.jpg', 'https://img/b.jpg'] });
+    const r = construirFeedMeta([padre, sinFoto, conFoto], ctx);
+    expect(r.filas.map((f) => f.id).sort()).toEqual(['S-11', 'S-12']);
+    expect(r.filas.find((f) => f.id === 'S-11')).toMatchObject({ image_link: 'https://img/a.jpg', additional_image_link: 'https://img/b.jpg' });
+    expect(r.filas.find((f) => f.id === 'S-12')).toMatchObject({ image_link: 'https://img/a.jpg', additional_image_link: 'https://img/b.jpg' });
+    expect(r.excluidos.map((e) => e.motivo)).toEqual(['padreConVariantes']);
+  });
   it('sin control de stock: disponible y sin cantidad', () => {
     const r = construirFeedMeta([p({ id: 1, track_stock: false, stock: 0 })], ctx);
     expect(r.filas[0]).toMatchObject({ availability: 'in stock', quantity_to_sell_on_facebook: '' });

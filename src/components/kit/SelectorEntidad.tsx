@@ -5,8 +5,10 @@ import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { ChevronDown, CircleAlert, CloudOff, Eye, Loader2, Pencil, Plus, X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { AvatarIniciales } from './AvatarIniciales';
 import { Kbd } from './Kbd';
 import { SearchInput } from './SearchInput';
+import { StatusBadge } from './StatusBadge';
 import { ChipAlternable } from './documento/ChipAlternable';
 import { indiceSiguiente } from './navegacionTeclado';
 import { esPaginaEntidad, estadoListaEntidad, hayMasResultados, ofrecerCrear, type OpcionEntidad, type PaginaEntidad } from './selectorEntidadLogica';
@@ -52,6 +54,13 @@ export interface ContextoCrearEntidad<T> {
   texto: string;
   onCreado: (item: T) => void;
   onCancelar: () => void;
+}
+
+/** Fila extra según el texto («Usar NIT …»). No cierra la capa. */
+export interface AccionTextoEntidad {
+  titulo: string;
+  deshabilitada?: boolean;
+  motivo?: string;
 }
 export interface TextosSelectorEntidad {
   placeholder?: string;
@@ -111,6 +120,18 @@ export interface SelectorEntidadProps<T> {
   filtros?: readonly FiltroEntidad[];
   /** Formulario rápido de alta dentro de la capa («+ Crear cliente»). */
   formularioCrear?: (ctx: ContextoCrearEntidad<T>) => ReactNode;
+  /**
+   * Fila extra que depende del texto («Usar NIT 900.123.456-8»). `null` la oculta.
+   * Opt-in: sin ella, el cliente del POS y el proveedor de compra no cambian.
+   */
+  accionTexto?: (texto: string) => AccionTextoEntidad | null;
+  /** No cierra la capa: el llamador puede pedir el nombre en `panelAlterno`. */
+  onAccionTexto?: (texto: string) => void;
+  /**
+   * Sustituye la lista mientras no sea null (pedir el nombre de un NIT).
+   * Recibe el cierre de la capa. Al volver a null, reaparece la búsqueda.
+   */
+  panelAlterno?: ((cerrar: () => void) => ReactNode) | null;
   /** Texto del botón fijo «+ Crear cliente» al pie de la lista (con `formularioCrear`). */
   textoCrearNuevo?: string;
   /**
@@ -141,6 +162,8 @@ function Lista<T>({
   idLista,
   filtros,
   textoCrearNuevo,
+  accionTexto,
+  onAccionTexto,
 }: {
   aOpcion: (item: T) => OpcionEntidad;
   buscar: SelectorEntidadProps<T>['buscar'];
@@ -154,6 +177,8 @@ function Lista<T>({
   debounceMs: number;
   onCerrar: () => void;
   idLista: string;
+  accionTexto?: (texto: string) => AccionTextoEntidad | null;
+  onAccionTexto?: (texto: string) => void;
 }) {
   const [texto, setTexto] = useState('');
   const [items, setItems] = useState<readonly T[]>([]);
@@ -226,8 +251,11 @@ function Lista<T>({
   const conMas = !error && hayMasResultados(items.length, totalCoincidencias);
 
   const opciones = items.map(aOpcion);
+  const accion = accionTexto?.(texto.trim()) ?? null;
   const conCrear = !!onCrear && ofrecerCrear(texto, opciones);
-  const total = opciones.length + (conCrear ? 1 : 0);
+  const indiceAccion = opciones.length;
+  const indiceCrear = opciones.length + (accion ? 1 : 0);
+  const total = opciones.length + (accion ? 1 : 0) + (conCrear ? 1 : 0);
   const estado = estadoListaEntidad({ cargando, error, total: opciones.length, texto });
   const idOpcion = (i: number) => `${idLista}-op-${i}`;
 
@@ -247,14 +275,22 @@ function Lista<T>({
     if (i < opciones.length) {
       if (opciones[i].deshabilitada) return;
       onElegir(items[i]);
-    } else if (conCrear) {
+    } else if (accion && i === indiceAccion) {
+      if (accion.deshabilitada) return;
+      onAccionTexto?.(texto.trim());
+    } else if (conCrear && i === indiceCrear) {
       onCrear?.(texto.trim());
     }
   };
 
   const alPulsar = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      const s = indiceSiguiente(activo, total, e.key, [...opciones.map((o) => !!o.deshabilitada), false]);
+      const deshabilitados = [
+        ...opciones.map((o) => !!o.deshabilitada),
+        ...(accion ? [!!accion.deshabilitada] : []),
+        ...(conCrear ? [false] : []),
+      ];
+      const s = indiceSiguiente(activo, total, e.key, deshabilitados);
       if (s !== null) {
         e.preventDefault();
         setActivo(s);
@@ -341,19 +377,23 @@ function Lista<T>({
               o.deshabilitada && 'cursor-not-allowed opacity-60',
             )}
           >
-            {filtros && (
+            {o.conAvatar ? (
+              <AvatarIniciales nombre={o.titulo} tamano="sm" />
+            ) : filtros ? (
               <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-xs font-semibold text-brand-deep">
                 {iniciales(o.titulo)}
               </span>
-            )}
+            ) : null}
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1.5 truncate text-sm font-medium text-fg">
                 <span className="truncate">{o.titulo}</span>
-                {o.etiqueta && (
+                {o.etiqueta && o.tonoEtiqueta ? (
+                  <StatusBadge estado={o.etiqueta} etiqueta={o.etiqueta} tono={o.tonoEtiqueta} tamano="sm" />
+                ) : o.etiqueta ? (
                   <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-line-brand bg-brand-tint px-2 text-[11px] font-medium text-brand-deep">
                     {o.etiqueta}
                   </span>
-                )}
+                ) : null}
                 {o.pendienteSync && <CloudOff aria-label={textos.pendienteSync} className="size-3.5 shrink-0 text-warning-text" strokeWidth={1.5} />}
               </span>
               {o.subtitulo && <span className="truncate text-xs text-fg-secondary">{o.subtitulo}</span>}
@@ -366,15 +406,35 @@ function Lista<T>({
             )}
           </li>
         ))}
+        {accion && (
+          <li
+            id={idOpcion(indiceAccion)}
+            role="option"
+            aria-selected={activo === indiceAccion}
+            aria-disabled={accion.deshabilitada || undefined}
+            title={accion.deshabilitada ? accion.motivo : undefined}
+            onMouseEnter={() => setActivo(indiceAccion)}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => elegir(indiceAccion)}
+            className={cn(
+              'flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-link',
+              activo === indiceAccion && 'bg-hover',
+              accion.deshabilitada && 'cursor-not-allowed text-fg-muted opacity-60',
+            )}
+          >
+            <span className="truncate">{accion.titulo}</span>
+            {accion.deshabilitada && accion.motivo ? <span className="truncate text-xs font-normal text-danger-text">{accion.motivo}</span> : null}
+          </li>
+        )}
         {conCrear && (
           <li
-            id={idOpcion(opciones.length)}
+            id={idOpcion(indiceCrear)}
             role="option"
-            aria-selected={activo === opciones.length}
-            onMouseEnter={() => setActivo(opciones.length)}
+            aria-selected={activo === indiceCrear}
+            onMouseEnter={() => setActivo(indiceCrear)}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => elegir(opciones.length)}
-            className={cn('flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-link', activo === opciones.length && 'bg-hover')}
+            onClick={() => elegir(indiceCrear)}
+            className={cn('flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-link', activo === indiceCrear && 'bg-hover')}
           >
             <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
             <span className="truncate">{textos.crear(texto.trim())}</span>
@@ -441,6 +501,9 @@ export function SelectorEntidad<T>({
   filtros,
   formularioCrear,
   textoCrearNuevo,
+  accionTexto,
+  onAccionTexto,
+  panelAlterno,
   disparador: disparadorPropio,
   className,
 }: SelectorEntidadProps<T>) {
@@ -477,7 +540,9 @@ export function SelectorEntidad<T>({
   const opcion = valor ? aOpcion(valor) : null;
   const aria = atajo ? ariaAtajo(atajo) : undefined;
 
-  const lista = creando !== null && formularioCrear ? (
+  const lista = panelAlterno ? (
+    <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">{panelAlterno(() => cambiarAbierto(false))}</div>
+  ) : creando !== null && formularioCrear ? (
     <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
       {formularioCrear({
         texto: creando,
@@ -514,6 +579,8 @@ export function SelectorEntidad<T>({
       debounceMs={debounceMs}
       onCerrar={() => cambiarAbierto(false)}
       idLista={idLista}
+      accionTexto={accionTexto}
+      onAccionTexto={onAccionTexto}
     />
   );
 

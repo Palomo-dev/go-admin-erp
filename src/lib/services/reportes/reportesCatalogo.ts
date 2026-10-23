@@ -123,6 +123,8 @@ const META: Record<string, MetaReporte> = {
   'libro-diario-origen': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
   'gastos-naturaleza': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
   'periodo-fiscal': { grupo: 'contabilidad', filtros: '', nuevo: true },
+  'estado-resultados-centro': { grupo: 'contabilidad', filtros: 'c f', nuevo: true },
+  'comparativo-centros': { grupo: 'contabilidad', filtros: 'c f', nuevo: true },
   // Finanzas y tesorería
   'cxc-vencidas': { grupo: 'finanzas', filtros: 's' },
   'cxc-aging': { grupo: 'finanzas', filtros: 'c s' },

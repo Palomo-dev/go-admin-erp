@@ -2,7 +2,8 @@
 // Reportes Contables
 // Llama a las RPCs: fn_reporte_estado_resultados, fn_reporte_resultados_desglose,
 // fn_reporte_balance_general, fn_reporte_presupuesto_vs_real, fn_reporte_balance_prueba,
-// fn_reporte_libro_diario_origen, fn_reporte_gastos_naturaleza, fn_reporte_periodo_fiscal
+// fn_reporte_libro_diario_origen, fn_reporte_gastos_naturaleza, fn_reporte_periodo_fiscal,
+// fn_estado_resultados_centro, fn_comparativo_centros
 // ============================================================
 
 import { supabase as browserSupabase } from '@/lib/supabase/config';
@@ -612,6 +613,151 @@ export const contabilidadReports: DefinicionModulo[] = [
           ? [{ tono: 'bien', texto: 'No hay pendientes: el periodo está listo para cerrarse.' }]
           : pendientes.map((v) => ({ tono: 'aviso' as const, texto: `${v.verificacion}: ${v.pendientes}.`, href: v.href, etiquetaAccion: 'Resolver' })),
       };
+    },
+  },
+  {
+    id: 'estado-resultados-centro',
+    modulo: 'finance',
+    titulo: 'Estado de resultados por centro',
+    descripcion: 'Ingresos, costos, gastos y utilidad de cada centro. La fila Sin centro completa el estado general.',
+    categoria: 'contable',
+    alcance: 'organizacion',
+    periodosSugeridos: ['mensual', 'trimestral', 'anual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const [porCentro, general] = await Promise.all([
+        db.rpc('fn_estado_resultados_centro', {
+          p_organization_id: orgId,
+          p_from: start,
+          p_to: end,
+          p_centro: null,
+          p_incluir_hijos: true,
+        }),
+        db.rpc('fn_reporte_estado_resultados', {
+          p_organization_id: orgId,
+          p_from: start,
+          p_to: end,
+        }),
+      ]);
+      if (porCentro.error) throw porCentro.error;
+      if (general.error) throw general.error;
+
+      const d = (porCentro.data ?? {}) as Record<string, unknown>;
+      const g = (general.data ?? {}) as Record<string, unknown>;
+      const centros = lista<Record<string, unknown>>(d.centros);
+      const sin = (d.sin_centro ?? {}) as Record<string, unknown>;
+      const fila = (origen: Record<string, unknown>, acumulado: boolean) => ({
+        codigo: origen.codigo ?? '',
+        centro: origen.nombre ?? '',
+        ingresos: num(acumulado ? origen.acumulado_ingresos : origen.ingresos),
+        costos: num(acumulado ? origen.acumulado_costos : origen.costos),
+        gastos: num(acumulado ? origen.acumulado_gastos : origen.gastos),
+        utilidad: num(acumulado ? origen.acumulado_utilidad : origen.utilidad),
+      });
+      const propios = [
+        ...centros.map((c) => fila(c, false)),
+        fila({ ...sin, nombre: sin.nombre ?? 'Sin centro' }, false),
+      ];
+      const suma = (clave: 'ingresos' | 'costos' | 'gastos' | 'utilidad') =>
+        Math.round(propios.reduce((total, f) => total + num(f[clave]), 0) * 100) / 100;
+      const cuadra = (['ingresos', 'costos', 'gastos'] as const).every((clave) => {
+        const esperado = clave === 'ingresos' ? num(g.ingresos) : clave === 'costos' ? num(g.costos) : num(g.gastos);
+        return Math.abs(suma(clave) - esperado) < 0.02;
+      });
+      const columnas = [
+        { key: 'codigo', titulo: 'Código', tipo: 'texto' as const },
+        { key: 'centro', titulo: 'Centro de costo', tipo: 'texto' as const },
+        ...COLUMNAS_DESGLOSE.filter((columna) => columna.key !== 'margen'),
+      ];
+
+      return {
+        ...buildReportData(
+          'estado-resultados-centro', 'Estado de resultados por centro', 'finance', periodo,
+          [
+            { titulo: 'Ingresos', valor: suma('ingresos'), formato: 'moneda' },
+            { titulo: 'Costos', valor: suma('costos'), formato: 'moneda' },
+            { titulo: 'Gastos', valor: suma('gastos'), formato: 'moneda' },
+            { titulo: 'Utilidad', valor: suma('utilidad'), formato: 'moneda' },
+          ],
+          columnas,
+          propios,
+          { codigo: '', centro: 'Total', ingresos: suma('ingresos'), costos: suma('costos'), gastos: suma('gastos'), utilidad: suma('utilidad') },
+        ),
+        vistaPrincipal: 'Propios',
+        vistas: [{
+          id: 'acumulado',
+          titulo: 'Acumulado con hijos',
+          columnas,
+          filas: [
+            ...centros.map((c) => fila(c, true)),
+            fila({ ...sin, nombre: sin.nombre ?? 'Sin centro' }, false),
+          ],
+        }],
+        lectura: cuadra
+          ? [{ tono: 'bien', texto: 'La suma de los centros más Sin centro cuadra con el estado de resultados general. El acumulado del padre incluye a sus hijos y no se suma otra vez.' }]
+          : [{ tono: 'alerta', texto: 'La suma por centro no cuadra con el estado de resultados general.' }],
+      };
+    },
+  },
+  {
+    id: 'comparativo-centros',
+    modulo: 'finance',
+    titulo: 'Comparativo de centros',
+    descripcion: 'Ingresos, costos, gastos y utilidad en columnas, un centro por columna, más Sin centro y el total.',
+    categoria: 'contable',
+    alcance: 'organizacion',
+    periodosSugeridos: ['mensual', 'trimestral', 'anual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_comparativo_centros', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_centros: null,
+      });
+      if (error) throw error;
+
+      const d = (data ?? {}) as Record<string, unknown>;
+      const columnasCentro = lista<Record<string, unknown>>(d.columnas);
+      const rubros = lista<Record<string, unknown>>(d.filas);
+      const nombreRubro: Record<string, string> = {
+        ingresos: 'Ingresos',
+        costos: 'Costos',
+        gastos: 'Gastos',
+        utilidad: 'Utilidad',
+      };
+      const columnas = [
+        { key: 'rubro', titulo: 'Rubro', tipo: 'texto' as const },
+        ...columnasCentro.map((columna) => ({
+          key: String(columna.clave),
+          titulo: columna.codigo ? `${columna.codigo} ${columna.nombre}` : String(columna.nombre ?? ''),
+          tipo: 'moneda' as const,
+          alinear: 'right' as const,
+        })),
+        { key: 'total', titulo: 'Total', tipo: 'moneda' as const, alinear: 'right' as const },
+      ];
+      const filas = rubros.map((filaRpc) => {
+        const montos = (filaRpc.montos ?? {}) as Record<string, unknown>;
+        const fila: Record<string, unknown> = {
+          rubro: nombreRubro[String(filaRpc.rubro)] ?? String(filaRpc.rubro),
+          total: num(filaRpc.total),
+        };
+        for (const columna of columnasCentro) fila[String(columna.clave)] = num(montos[String(columna.clave)]);
+        return fila;
+      });
+      const utilidad = filas.find((fila) => fila.rubro === 'Utilidad');
+
+      return buildReportData(
+        'comparativo-centros', 'Comparativo de centros', 'finance', periodo,
+        [
+          { titulo: 'Centros', valor: columnasCentro.length, formato: 'numero' },
+          { titulo: 'Utilidad', valor: num(utilidad?.total), formato: 'moneda' },
+        ],
+        columnas,
+        filas,
+      );
     },
   },
 ];

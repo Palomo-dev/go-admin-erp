@@ -34,7 +34,7 @@ export function existenciaEn(fila: Pick<StockFila, 'por_sucursal'>, branchId: nu
 // ─── Motivos de los diálogos (Figma 586:73716 / 586:73820) ───────────────────
 
 export const MOTIVOS_ENTRADA = ['compra_sin_orden', 'devolucion_cliente', 'donacion', 'sobrante', 'produccion_propia', 'otro'] as const;
-export const MOTIVOS_SALIDA = ['merma_vencido', 'merma_rotura', 'consumo_interno', 'danio', 'perdida', 'muestra', 'otro'] as const;
+export const MOTIVOS_SALIDA = ['merma_vencido', 'merma_rotura', 'consumo_interno', 'danio', 'perdida', 'robo', 'siniestro', 'muestra', 'otro'] as const;
 export type MotivoEntrada = (typeof MOTIVOS_ENTRADA)[number];
 export type MotivoSalida = (typeof MOTIVOS_SALIDA)[number];
 
@@ -60,7 +60,7 @@ export interface FormMovimiento {
 }
 
 export type CampoMovimiento = 'producto' | 'sucursal' | 'cantidad' | 'costo' | 'motivo' | 'lote';
-export type ErrorCampo = 'requerido' | 'mayorQueCero' | 'noNegativo' | 'superaDisponible' | 'conSeriales';
+export type ErrorCampo = 'requerido' | 'mayorQueCero' | 'noNegativo' | 'superaDisponible' | 'conSeriales' | 'facturaCompra';
 
 export function validarMovimiento(f: FormMovimiento): Partial<Record<CampoMovimiento, ErrorCampo>> {
   const e: Partial<Record<CampoMovimiento, ErrorCampo>> = {};
@@ -75,6 +75,7 @@ export function validarMovimiento(f: FormMovimiento): Partial<Record<CampoMovimi
     else if (f.costo < 0) e.costo = 'noNegativo';
   }
   if (!f.motivo || (f.motivo === 'otro' && !f.motivoOtro.trim())) e.motivo = 'requerido';
+  else if (f.direccion === 'in' && f.motivo === 'compra_sin_orden') e.motivo = 'facturaCompra';
   if (f.conLotes && !f.loteId) e.lote = 'requerido';
   return e;
 }

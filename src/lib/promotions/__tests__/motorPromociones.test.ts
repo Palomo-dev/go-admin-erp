@@ -541,3 +541,148 @@ describe('precio de paquete por cada grupo completo', () => {
     expect(evaluarPromociones([padreYVariante], [linea(501, 1, 4000, { parent_product_id: 500 })], ctx()).discountTotal).toBe(0);
   });
 });
+
+describe('exclusividad por líneas que se solapan', () => {
+  const cuenta = [linea(1, 1, 10000), linea(2, 1, 10000)];
+
+  it('dos no combinables sobre productos distintos se aplican las dos', () => {
+    const a = promo({ discount_value: 10, ...soloProducto(1) });
+    const b = promo({ discount_value: 10, ...soloProducto(2) });
+    const r = evaluarPromociones([a, b], cuenta, ctx());
+    expect(r.lineDiscounts).toEqual([1000, 1000]);
+    expect(r.discountTotal).toBe(2000);
+    expect(r.applied.map((x) => x.promotion_id).sort()).toEqual([a.id, b.id].sort());
+    expect(r.itemDiscounts).toEqual({ 1: 1000, 2: 1000 });
+  });
+
+  it('dos no combinables sobre el mismo producto: sigue una sola', () => {
+    const chica = promo({ discount_value: 10, priority: 0, ...soloProducto(1) });
+    const grande = promo({ discount_value: 20, priority: 0, ...soloProducto(1) });
+    const r = evaluarPromociones([chica, grande], [linea(1, 1, 10000), linea(2, 1, 10000)], ctx());
+    expect(r.applied.map((x) => x.promotion_id)).toEqual([grande.id]);
+    expect(r.lineDiscounts).toEqual([2000, 0]);
+  });
+
+  it('una promoción de cuenta sigue compitiendo con todas, como antes', () => {
+    const deCuenta = promo({ discount_value: 15, applies_to: 'all', promotion_rules: [] });
+    const a = promo({ discount_value: 10, ...soloProducto(1) });
+    const b = promo({ discount_value: 10, ...soloProducto(2) });
+    const r = evaluarPromociones([deCuenta, a, b], cuenta, ctx());
+    expect(r.discountTotal).toBe(3000);
+    expect(r.applied.map((x) => x.promotion_id)).toEqual([deCuenta.id]);
+  });
+
+  it('compra mínima de toda la cuenta también une a las de producto', () => {
+    const deCuenta = promo({ discount_value: 5, min_purchase_scope: 'cart', ...soloProducto(1) });
+    const otra = promo({ discount_value: 10, ...soloProducto(2) });
+    const r = evaluarPromociones([deCuenta, otra], cuenta, ctx());
+    // 5 % de A = 500, 10 % de B = 1000. Comparten grupo porque la mínima es de la cuenta.
+    expect(r.applied.map((x) => x.promotion_id)).toEqual([otra.id]);
+    expect(r.lineDiscounts).toEqual([0, 1000]);
+  });
+
+  it('con prioridad 0 gana la que más descuenta, igual que antes', () => {
+    const porcentaje = promo({ discount_value: 10, priority: 0, ...soloProducto(1) });
+    const fija = promo({ promotion_type: 'fixed_amount', discount_value: 500, priority: 0, ...soloProducto(1) });
+    const r = evaluarPromociones([porcentaje, fija], [linea(1, 1, 2000)], ctx());
+    expect(r.discountTotal).toBe(500);
+    expect(r.applied.map((x) => x.promotion_id)).toEqual([fija.id]);
+  });
+});
+
+describe('la prioridad gana entre no combinables que compiten', () => {
+  it('prioridad 10 gana aunque descuente menos', () => {
+    const porcentaje = promo({ discount_value: 10, priority: 10, ...soloProducto(1) });
+    const fija = promo({ promotion_type: 'fixed_amount', discount_value: 500, priority: 0, ...soloProducto(1) });
+    const r = evaluarPromociones([fija, porcentaje], [linea(1, 1, 2000)], ctx());
+    expect(r.discountTotal).toBe(200);
+    expect(r.applied.map((x) => x.promotion_id)).toEqual([porcentaje.id]);
+  });
+
+  it('prioridades iguales: gana la que más descuenta', () => {
+    const porcentaje = promo({ discount_value: 10, priority: 4, ...soloProducto(1) });
+    const fija = promo({ promotion_type: 'fixed_amount', discount_value: 500, priority: 4, ...soloProducto(1) });
+    const r = evaluarPromociones([porcentaje, fija], [linea(1, 1, 2000)], ctx());
+    expect(r.discountTotal).toBe(500);
+    expect(r.applied[0].promotion_id).toBe(fija.id);
+  });
+
+  it('mismo monto: gana la más antigua, en cualquier orden de llegada', () => {
+    const nueva = promo({ discount_value: 10, priority: 3, created_at: '2026-06-01T00:00:00Z', ...soloProducto(1) });
+    const vieja = promo({ discount_value: 10, priority: 3, created_at: '2026-01-01T00:00:00Z', ...soloProducto(1) });
+    expect(evaluarPromociones([nueva, vieja], [linea(1, 1, 2000)], ctx()).applied[0].promotion_id).toBe(vieja.id);
+    expect(evaluarPromociones([vieja, nueva], [linea(1, 1, 2000)], ctx()).applied[0].promotion_id).toBe(vieja.id);
+  });
+
+  it('la ganadora sigue compitiendo contra la suma de las combinables del mismo producto', () => {
+    const sola = promo({ discount_value: 15, priority: 9, ...soloProducto(1) });
+    const c1 = promo({ is_combinable: true, discount_value: 10, ...soloProducto(1) });
+    const c2 = promo({ is_combinable: true, discount_value: 10, ...soloProducto(1) });
+    const r = evaluarPromociones([sola, c1, c2], [linea(1, 1, 10000)], ctx());
+    expect(r.discountTotal).toBe(2000);
+    expect(r.applied.map((x) => x.promotion_id).sort()).toEqual([c1.id, c2.id].sort());
+  });
+});
+
+describe('quitar la promoción de una línea', () => {
+  it('la línea excluida queda a precio completo y no suma la promoción', () => {
+    const p = promo({ discount_value: 10, ...soloProducto(1) });
+    const r = evaluarPromociones([p], [linea(1, 1, 10000, { promo_excluded: true }), linea(2, 1, 10000)], ctx());
+    expect(r.lineDiscounts).toEqual([0, 0]);
+    expect(r.discountTotal).toBe(0);
+    expect(r.applied).toEqual([]);
+    expect(promocionesUsadas(r, [0, 0])).toEqual([]);
+  });
+
+  it('la línea sin flag calcula igual que hoy', () => {
+    const p = promo({ discount_value: 10 });
+    const r = evaluarPromociones([p], [linea(1, 1, 10000), linea(2, 1, 10000, { promo_excluded: true })], ctx());
+    expect(r.lineDiscounts).toEqual([1000, 0]);
+    expect(r.discountTotal).toBe(1000);
+  });
+
+  it('no cuenta para la compra mínima ni para el 2x1', () => {
+    const minima = promo({ min_purchase_amount: 15000 });
+    expect(evaluarPromociones([minima], [linea(1, 1, 10000), linea(2, 1, 10000, { promo_excluded: true })], ctx()).discountTotal).toBe(0);
+    const dosPorUno = promo({ promotion_type: 'buy_x_get_y', buy_quantity: 1, get_quantity: 1, ...soloProducto(1) });
+    const r = evaluarPromociones(
+      [dosPorUno],
+      [linea(1, 1, 12000), linea(1, 1, 12000, { promo_excluded: true })],
+      ctx(),
+    );
+    expect(r.discountTotal).toBe(0);
+  });
+
+  it('combinarDescuentos: en 0 no vuelve la promoción; el manual sí queda', () => {
+    const sinPromo = combinarDescuentos(
+      [{ quantity: 1, unit_price: 10000, promo_excluded: true, manual_discount_amount: null, promo_discount_amount: 0 }],
+      [1000],
+    );
+    expect(sinPromo[0]).toMatchObject({ discount_amount: 0, promo_discount_amount: 0 });
+    const conManual = combinarDescuentos(
+      [{ quantity: 1, unit_price: 10000, promo_excluded: true, manual_discount_amount: 400 }],
+      [1000],
+    );
+    expect(conManual[0]).toMatchObject({ discount_amount: 400, promo_discount_amount: 0, manual_discount_amount: 400 });
+  });
+
+  it('restaurar (sin el flag) vuelve a aplicar la promoción', () => {
+    const p = promo({ discount_value: 10 });
+    expect(evaluarPromociones([p], [linea(1, 1, 10000)], ctx()).discountTotal).toBe(1000);
+  });
+
+  it('en la mesa el flag se mantiene: la línea excluida no se redescuenta al agregar otro plato', () => {
+    const p = promo({ discount_value: 10, applies_to: 'all' });
+    const lineasEval = [linea(1, 1, 10000, { promo_excluded: true }), linea(2, 1, 8000)];
+    const r = evaluarPromociones([p], lineasEval, ctx());
+    expect(r.lineDiscounts).toEqual([0, 800]);
+    const cuenta = [
+      { id: 'excluida', quantity: 1, unit_price: 10000, discount_amount: 1000, promo_excluded: true, notes: { descuento_promocion: 1000, promociones: [p.id] } },
+      { id: 'nueva', quantity: 1, unit_price: 8000, discount_amount: 0, notes: {} },
+    ];
+    expect(cambiosDescuentoMesa(cuenta, r)).toEqual([
+      { sale_item_id: 'excluida', discount_amount: 0, promotion_ids: [] },
+      { sale_item_id: 'nueva', discount_amount: 800, promotion_ids: [p.id] },
+    ]);
+  });
+});

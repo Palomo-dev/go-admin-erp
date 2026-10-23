@@ -4454,6 +4454,7 @@
       "finanzas_cuentas-por-pagar": "Dettes fournisseurs",
       "finanzas_contabilidad": "Comptabilité",
       "finanzas_contabilidad_plan-cuentas": "Plan comptable",
+      "finanzas_contabilidad_actualizar-puc": "Mettre à jour le plan comptable",
       "finanzas_contabilidad_asientos": "Écritures",
       "finanzas_contabilidad_plantillas": "Modèles d'écritures",
       "finanzas_contabilidad_mayor-contable": "Grand livre",
@@ -5949,6 +5950,26 @@
         "vacio": "Saisissez le nom ou le n° fiscal du fournisseur.",
         "crear": "Créer le fournisseur « {texto} »",
         "saldo": "À payer {saldo}"
+      },
+      "tercero": {
+        "etiqueta": "Tiers",
+        "placeholder": "Rechercher par nom, NIT ou e-mail",
+        "buscar": "Rechercher par nom, NIT ou e-mail",
+        "vacio": "Saisissez le nom, le NIT ou l’e-mail.",
+        "crear": "Créer un tiers",
+        "crearTexto": "Créer le tiers « {texto} »",
+        "usarNit": "Utiliser le NIT {nit}",
+        "nombre": "Nom",
+        "confirmar": "Utiliser ce NIT",
+        "cancelar": "Retour",
+        "dvInvalido": "Le chiffre de contrôle ne correspond pas",
+        "tipoCrear": "Type de tiers",
+        "tipos": {
+          "cliente": "Client",
+          "proveedor": "Fournisseur",
+          "empleado": "Employé",
+          "nit": "NIT"
+        }
       },
       "quitarDe": "Retirer {etiqueta}"
     },
@@ -9090,6 +9111,11 @@
       "soporte": "Numéro de justificatif",
       "soporteAyuda": "Reçu, facture de la dépense ou bordereau de dépôt (facultatif)",
       "soportePlaceholder": "Ex. Reçu 4471",
+      "centroCosto": "Centre de coût",
+      "centroCostoAyuda": "Sans choix, le centre de la succursale est utilisé.",
+      "distribucion": "Répartition",
+      "sinAsignar": "Celui de la succursale",
+      "sinDistribucion": "Sans répartition",
       "notas": "Notes",
       "notasPlaceholder": "Détails supplémentaires (facultatif)",
       "errores": {
@@ -13666,14 +13692,8 @@
       "cantidadOriginal": "Quantité d'origine : {n}",
       "serializado": "Sérialisé",
       "seleccionarMotivo": "Sélectionner",
-      "motivosRespaldo": {
-        "defectuoso": "Produit défectueux",
-        "incorrecto": "Produit erroné",
-        "danado": "Produit endommagé",
-        "noConforme": "Non conforme",
-        "garantia": "Garantie",
-        "otro": "Autre motif"
-      },
+      "sinMotivos": "Il n'y a aucun motif de retour actif. Créez-en un avant de traiter un retour.",
+      "irAMotivos": "Aller aux motifs",
       "configuracionReembolso": "Paramètres du remboursement",
       "metodoReembolso": "Mode de remboursement",
       "reembolsoEfectivo": "Remboursement en espèces",
@@ -13874,7 +13894,8 @@
       "bascula_invalida": "La balance de la pesée n’est pas une balance active de l’organisation. {detalle}",
       "peso_inestable": "La lecture de la balance n’était pas stable. {detalle}",
       "pesaje_no_coincide": "La quantité ne correspond pas au poids lu sur la balance. {detalle}",
-      "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}"
+      "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}",
+      "sin_permiso_quitar_promocion": "Retirer la promotion d’une ligne exige l’autorisation « Retirer la promotion ». {detalle}"
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",
@@ -13949,6 +13970,13 @@
       "cuotas_invalidas": "Vérifiez les échéances : montants ou dates invalides.",
       "rango_invalido": "La période n'est pas valide.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
+      "asiento_sin_regla": "Il n'y a pas de règle comptable active pour ce document. Configurez-la avant de continuer.",
+      "asiento_no_cuadra": "L'écriture ne balance pas avec les lignes du document.",
+      "asiento_exige_tercero": "Un compte de l'écriture exige le NIT ou la pièce d'identité du tiers.",
+      "asiento_exige_centro": "Un compte de l'écriture exige un centre de coûts.",
+      "asiento_cuenta_invalida": "Un compte de l'écriture n'est pas au plan, n'est pas actif ou n'est pas un compte de mouvement.",
+      "asiento_periodo_cerrado": "La période comptable de la date du document est fermée.",
+      "asiento_no_armado": "L'écriture comptable du document n'a pas pu être préparée.",
       "error_desconocido": "L'opération n'a pas pu aboutir. Réessayez."
     },
     "listado": {
@@ -15403,7 +15431,8 @@
         "total": "Total",
         "sinNombre": "Produit",
         "descuento": "Remise {monto}",
-        "tasa": "{tasa} %"
+        "tasa": "{tasa} %",
+        "sinPromocion": "Sans promotion"
       },
       "pagos": {
         "titulo": "Paiements imputés",
@@ -15427,7 +15456,10 @@
         "facturada": "Facture {numero} émise",
         "pago": "Paiement de {monto}",
         "devolucion": "Retour de {monto}",
-        "notaCredito": "Avoir {numero}"
+        "notaCredito": "Avoir {numero}",
+        "promoQuitada": "{nombre} a retiré la promotion « {promocion} » de {producto} ({monto})",
+        "promoRestaurada": "{nombre} a rétabli la promotion « {promocion} » sur {producto}",
+        "motivo": "Motif : {motivo}"
       },
       "notas": "Notes",
       "cliente": {
@@ -16815,6 +16847,12 @@
       "descuentoDe": "Remise sur {nombre}",
       "descuento": "Remise",
       "aplicarDescuento": "Appliquer la remise",
+      "quitarPromocion": "Retirer la promotion",
+      "quitarPromocionDe": "Retirer la promotion de {nombre}",
+      "restaurarPromocion": "Rétablir la promotion",
+      "sinPromocion": "Sans promotion",
+      "sinPromocionDe": "Sans promotion : {nombre}",
+      "errorQuitarPromocion": "Impossible de retirer la promotion",
       "cancelar": "Annuler",
       "frecuentes": "Fréquentes :",
       "aplicarFrecuente": "Appliquer la remise fréquente de {monto}",
@@ -17590,6 +17628,7 @@
       "categoria_invalida": "La catégorie ne correspond pas à ce mouvement.",
       "tercero_requerido": "Ce compte exige le NIT du tiers.",
       "soporte_invalido": "La pièce doit être un PDF ou une image de cette organisation.",
+      "asiento_publicado_inmutable": "L'écriture est déjà validée et ne peut pas être modifiée. Contrepassez-la.",
       "desconocido": "L'opération n'a pas pu aboutir."
     },
     "movimiento": {
@@ -17610,8 +17649,11 @@
       "tercero": "Tiers",
       "buscarTercero": "Rechercher par NIT ou par nom",
       "usarNit": "Utiliser le NIT {nit}",
+      "sinResultados": "Aucun résultat",
       "centroCosto": "Centre de coût",
       "sinCentro": "Sans centre de coût",
+      "distribucion": "Répartition",
+      "sinDistribucion": "Sans répartition",
       "monto": "Montant",
       "concepto": "Concept",
       "notas": "Notes",
@@ -21528,6 +21570,11 @@
         "sucursalAyuda": "Celle du sélecteur en haut",
         "elegirSucursal": "Choisissez une succursale",
         "razon": "Motif",
+        "motivoAjuste": "Motif du manquant",
+        "motivoAjusteAyuda": "Le vol et le sinistre débitent les charges exceptionnelles. Vide, le manquant va aux divers.",
+        "motivoNinguno": "Manquant",
+        "motivoRobo": "Vol",
+        "motivoSiniestro": "Sinistre",
         "fechaConteo": "Date du comptage",
         "fecha": "Date",
         "fechaAyuda": "Heure de {zona}",
@@ -22593,7 +22640,7 @@
       "venceLoteAyuda": "Facultatif. Sans date, le lot n'expire jamais",
       "nota": "Note",
       "notaPlaceholder": "Facture du fournisseur, responsable, observation…",
-      "avisoEntrada": "Elle est enregistrée comme un ajustement appliqué et le kardex y renvoie. Si la marchandise provient d'un bon de commande, recevez-la depuis le bon pour ne pas dupliquer l'entrée.",
+      "avisoEntrada": "Elle est enregistrée comme un ajustement appliqué et le kardex y renvoie. Si la marchandise provient d'un bon de commande, recevez-la depuis le bon. Un achat sans commande s'enregistre sur la facture d'achat.",
       "avisoSalida": "La sortie est valorisée au coût moyen de la succursale ({costo} × {n} = {total}), jamais au prix de vente.",
       "listoEntrada": "Entrée enregistrée",
       "listoSalida": "Sortie enregistrée",
@@ -22605,7 +22652,8 @@
         "mayorQueCero": "Doit être supérieur à zéro.",
         "noNegativo": "Ne peut pas être négatif.",
         "superaDisponible": "Dépasse le disponible ({n}).",
-        "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements."
+        "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements.",
+        "facturaCompra": "Un achat sans commande s'enregistre sur la facture d'achat : stock contre fournisseurs."
       }
     },
     "motivos": {
@@ -22623,6 +22671,8 @@
         "consumo_interno": "Consommation interne",
         "danio": "Dommage",
         "perdida": "Perte ou vol",
+        "robo": "Vol",
+        "siniestro": "Sinistre",
         "muestra": "Échantillon ou dégustation",
         "otro": "Autre"
       }
@@ -32234,7 +32284,7 @@
       },
       "adopcion": {
         "titulo": "Ton site en ligne affiche encore la version précédente",
-        "descripcion": "Ce que tu publies ici est enregistré comme version du nouveau site. Tes clients le verront quand tu activeras le nouveau site depuis l'éditeur."
+        "descripcion": "Publie pour que tes clients voient ce design. Jusque-là, le site en ligne garde la version précédente."
       },
       "restablecer": {
         "titulo": "Rétablir le préréglage",
@@ -33035,7 +33085,25 @@
           "divisor": "Ligne entre le logo et le menu",
           "divisorAyuda": "Activée, la couleur suit le fond si vous ne la fixez pas. Désactivée, la bordure disparaît.",
           "divisorColor": "Couleur de la ligne",
-          "hoverIconos": "Survol des icônes"
+          "hoverIconos": "Survol des icônes",
+          "automatico": "Automatique",
+          "iconosMoviles": "Couleur des icônes mobiles",
+          "menuMovil": "Menu mobile",
+          "menuMovilAyuda": "Vide, il hérite de l'en-tête et calcule le contraste du fond.",
+          "menuFondo": "Fond du menu",
+          "menuTexto": "Texte et liens du menu",
+          "menuHover": "Survol des liens",
+          "menuActivo": "Lien actif",
+          "menuTitulo": "Titre et fermer",
+          "menuDivisor": "Lignes du menu",
+          "menuMoneda": "Texte de la devise",
+          "menuMonedaBorde": "Bordure de la devise",
+          "menuMonedaFondo": "Fond de la devise",
+          "menuEntrarFondo": "Fond de connexion",
+          "menuEntrarTexto": "Texte de connexion",
+          "menuRegistroBorde": "Bordure d'inscription",
+          "menuRegistroTexto": "Texte d'inscription",
+          "menuSalir": "Déconnexion"
         },
         "pie": {
           "menus": "Menus du pied de page",
@@ -35572,6 +35640,16 @@
     }
   },
   "pedidoWeb": {
+    "promocionLinea": {
+      "quitar": "Retirer la promotion",
+      "restaurar": "Rétablir la promotion",
+      "sinPromocion": "Sans promotion",
+      "motivo": "Motif (facultatif)",
+      "error": "Impossible de changer la promotion de la ligne",
+      "sinPermiso": "Vous n’avez pas l’autorisation de retirer la promotion d’une ligne.",
+      "lineasDistintas": "La vente n’a plus les mêmes lignes que la commande. L’encaissement n’a pas changé.",
+      "yaPagado": "La commande a déjà été payée en ligne : la promotion ne peut être ni retirée ni rétablie."
+    },
     "comerAqui": "Sur place",
     "comerAquiMesa": "Sur place · {mesa}",
     "verMesa": "Voir la table dans POS › Tables",
@@ -36076,6 +36154,10 @@
       "comensalN": "Couvert {n}",
       "alergia": "Allergie",
       "notaCocina": "Cuisine : {nota}",
+      "quitarPromocion": "Retirer la promotion",
+      "restaurarPromocion": "Rétablir la promotion",
+      "sinPromocion": "Sans promotion",
+      "errorPromocion": "Impossible de changer la promotion de la ligne",
       "moverA": "Déplacer vers une autre table",
       "restarUna": "Retirer une unité",
       "estado": {
@@ -37842,9 +37924,13 @@
       "descripcion": "Description",
       "descripcionPlaceholder": "Décrivez la promotion...",
       "prioridad": "Priorité",
-      "prioridadAyuda": "Un nombre plus élevé donne la priorité",
+      "prioridadAyuda": "Un nombre plus élevé l'emporte sur les autres promotions non cumulables du même produit",
       "combinable": "Cumulable",
       "combinableAyuda": "Autoriser avec d'autres promotions",
+      "solapamientoTitulo": "Une seule s'appliquera par produit",
+      "solapamientoDetalle": "Ces promotions se chevauchent et aucune n'est cumulable. Une seule s'appliquera sur chaque produit.",
+      "solapamientoAccion": "Activez « Autoriser avec d'autres promotions » ou augmentez la priorité de celle qui doit gagner.",
+      "solapamientoVer": "Voir {nombre}",
       "tipo": "Type de promotion",
       "porcentaje": "Pourcentage de remise",
       "monto": "Montant de la remise",

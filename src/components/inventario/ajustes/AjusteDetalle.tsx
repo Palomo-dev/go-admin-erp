@@ -49,6 +49,7 @@ export function AjusteDetalle({ ajusteId }: { ajusteId: number }) {
   const router = useRouter();
   const params = useSearchParams();
   const t = useTranslations('inventarioAjustes.detalle');
+  const tf = useTranslations('inventarioAjustes.formulario');
   const tc = useTranslations('inventarioAjustes');
   const entero = useFormatoEntero();
   const cantidad = useFormatoCantidad();
@@ -332,7 +333,15 @@ export function AjusteDetalle({ ajusteId }: { ajusteId: number }) {
 
       {conteo && renglones.length > 0 && (
         <KpiStrip etiqueta={t('kpis.etiqueta')} className="hidden sm:grid">
-          <StatCard etiqueta={t('kpis.productos')} valor={entero(resumen.productos)} detalle={etiquetaRazon(a.razon)} />
+          <StatCard
+            etiqueta={t('kpis.productos')}
+            valor={entero(resumen.productos)}
+            detalle={
+              a.motivo_ajuste
+                ? `${etiquetaRazon(a.razon)} · ${tf(a.motivo_ajuste === 'robo' ? 'datos.motivoRobo' : 'datos.motivoSiniestro')}`
+                : etiquetaRazon(a.razon)
+            }
+          />
           <StatCard
             etiqueta={t('kpis.faltantes')}
             valor={cantidad(resumen.faltantes, { signo: true, unidad: unidadDe(unidadComun) })}

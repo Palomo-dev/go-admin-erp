@@ -30,6 +30,7 @@ export const lineaCompraSchema = z
     serial_numbers: z.array(z.string().max(120)).max(1000).optional(),
     note: z.string().max(1000).nullable().optional(),
     cuenta_contable: z.string().trim().max(32).nullable().optional(),
+    cost_center_id: UUID.nullable().optional(),
   })
   .strict();
 
@@ -63,6 +64,8 @@ export const guardarFacturaSchema = z
     commission_type: z.enum(['salesperson', 'intermediation_purchase', 'none']).optional(),
     commission_method: z.string().max(40).optional(),
     commission_amount: IMPORTE.optional(),
+    cost_center_id: UUID.nullable().optional(),
+    distribucion_id: UUID.nullable().optional(),
     lines: z.array(lineaCompraSchema).min(1).max(500),
     applied_taxes: z.array(z.object({ tax_code: z.string().min(1).max(20), tax_rate: z.number().finite().min(0).max(100) }).strict()).max(20).optional(),
     withholdings: z.array(retencionSchema).max(20).optional(),
@@ -196,6 +199,13 @@ export const ERRORES_COMPRA = [
   'cuotas_invalidas',
   'rango_invalido',
   'datos_invalidos',
+  'asiento_sin_regla',
+  'asiento_no_cuadra',
+  'asiento_exige_tercero',
+  'asiento_exige_centro',
+  'asiento_cuenta_invalida',
+  'asiento_periodo_cerrado',
+  'asiento_no_armado',
   'error_desconocido',
 ] as const;
 
@@ -274,9 +284,35 @@ export function codigoErrorCompra(mensaje: string | null | undefined): ErrorComp
     [/^serial_repetido$/, 'serial_repetido'],
     [/^cantidad_serial_entera$/, 'cantidad_serial_entera'],
     [/^fecha_invalida$/, 'fecha_invalida'],
+    // El devengo arma el asiento dentro de la confirmación. Estos textos los
+    // devuelve fn_armar_asiento_documento (o Postgres, si la función revienta)
+    // y no deben salir como 500 genérico.
+    [/record\s+".*"\s+is not assigned/i, 'asiento_no_armado'],
+    [/No hay regla contable/i, 'asiento_sin_regla'],
+    [/El asiento no cuadra/i, 'asiento_no_cuadra'],
+    [/exige el NIT|exige la cédula|tercero_requerido/i, 'asiento_exige_tercero'],
+    [/exige un centro de costo/i, 'asiento_exige_centro'],
+    [/Periodo contable cerrado|period_closed/i, 'asiento_periodo_cerrado'],
+    [/La cuenta .+ no está en el plan|La cuenta .+ no es de movimiento|La cuenta .+ no está activa|Elige una cuenta|cuenta configurada|Las cuentas configuradas/i, 'asiento_cuenta_invalida'],
+    [/Documento no encontrado/i, 'no_encontrado'],
   ];
   for (const [re, codigo] of pares) if (re.test(m)) return codigo;
   return 'error_desconocido';
+}
+
+/** Texto claro de un error contable. El resto de códigos se dejan como código. */
+const MENSAJES_CONTABLES: Partial<Record<ErrorCompra, string>> = {
+  asiento_sin_regla: 'No hay una regla contable activa para este documento. Configúrala antes de continuar.',
+  asiento_no_cuadra: 'El asiento no cuadra con las líneas del documento.',
+  asiento_exige_tercero: 'Una cuenta del asiento exige el NIT o la cédula del tercero.',
+  asiento_exige_centro: 'Una cuenta del asiento exige un centro de costo.',
+  asiento_cuenta_invalida: 'Hay una cuenta del asiento que no está en el plan, no está activa o no es de movimiento.',
+  asiento_periodo_cerrado: 'El periodo contable de la fecha del documento está cerrado.',
+  asiento_no_armado: 'No se pudo armar el asiento contable del documento.',
+};
+
+export function mensajeErrorCompra(codigo: ErrorCompra): string {
+  return MENSAJES_CONTABLES[codigo] ?? codigo;
 }
 
 /** Estado HTTP de un error de compras o CxP. */
@@ -300,6 +336,8 @@ export function estadoHttpErrorCompra(codigo: ErrorCompra): number {
     case 'programacion_no_pendiente':
     case 'plan_con_abonos':
     case 'cuenta_sin_saldo':
+      return 409;
+    case 'asiento_periodo_cerrado':
       return 409;
     case 'error_desconocido':
       return 500;

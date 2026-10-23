@@ -46,6 +46,9 @@ export const RAZONES_AJUSTE = [
 ] as const;
 export type RazonAjuste = (typeof RAZONES_AJUSTE)[number];
 
+/** Robo o siniestro: el faltante debita gastos extraordinarios. Vacío: faltante. */
+export type MotivoAjuste = 'robo' | 'siniestro';
+
 /** Razón por defecto de cada modo (la primera que se ofrece). */
 export const RAZON_POR_MODO: Record<ModoAjuste, RazonAjuste> = {
   conteo: 'physical_count',
@@ -162,6 +165,7 @@ export interface CabeceraAjuste {
   modo: ModoAjuste;
   tipo: TipoAjuste;
   razon: string;
+  motivo_ajuste: MotivoAjuste | null;
   notas: string | null;
   sucursal: SucursalRef;
   fecha: string;
@@ -222,6 +226,7 @@ export interface BorradorAjuste {
   branch_id: number;
   mode: ModoAjuste;
   reason: string;
+  motivo_ajuste?: MotivoAjuste | null;
   notes?: string | null;
   /** Instante ISO con offset (fecha y hora del conteo). */
   counted_at?: string | null;
@@ -362,6 +367,7 @@ function aDetalle(d: Record<string, unknown>): DetalleAjuste {
       modo: fila.modo,
       tipo: fila.tipo,
       razon: fila.razon,
+      motivo_ajuste: a.motivo_ajuste === 'robo' || a.motivo_ajuste === 'siniestro' ? a.motivo_ajuste : null,
       notas: fila.notas,
       sucursal: fila.sucursal,
       fecha: fila.fecha,

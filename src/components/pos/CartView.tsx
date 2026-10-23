@@ -37,6 +37,7 @@ import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
 import { estadoBotonCobrar, puedeConfirmarDeuda, puedeRegistrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
 import { guardarPreferenciaImpuestos, leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
 import { CANAL_PROMOCIONES } from '@/lib/pos/venta/avisosPromociones';
+import { usePermissionContext } from '@/hooks/usePermissionContext';
 // `CartProduct` y `requiresPreparation` se movieron literales a lineaCarrito.ts (paso 6): las usa también la línea.
 import { requiresPreparation, type CartProduct } from '@/lib/pos/venta/lineaCarrito';
 import { LineasCarrito } from '@/components/pos/venta/carrito/LineasCarrito';
@@ -130,6 +131,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [codigoCupon, setCodigoCupon] = useState(cart.coupon?.code ?? '');
   const [cuponOcupado, setCuponOcupado] = useState(false);
   const tCupon = useTranslations('posVenta.cupon');
+  const { checker, context: permisoCtx } = usePermissionContext(cart.organization_id);
+  const puedeQuitarPromocion = checker.can('pos.promotions.remove') || permisoCtx?.roleId === 1 || permisoCtx?.roleId === 2;
 
   // Cada carrito muestra su propio «Impuestos incluidos». Uno nuevo (sin valor)
   // arranca con la última elección del cajero y, si no hay, con
@@ -518,6 +521,17 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     } catch (error) {
       console.error('Error applying discount:', error);
       toast.error(tCarrito('errorDescuento'), { description: mensajeErrorCobro(error, tCobro, tCarrito('errorDescuento')) });
+    }
+  };
+
+  const handleExcluirPromocion = async (itemId: string, excluded: boolean) => {
+    try {
+      const updatedCart = await POSService.excluirPromocionDeLinea(cart.id, itemId, excluded);
+      onCartUpdate(updatedCart);
+      setEditingDiscountItemId(null);
+    } catch (error) {
+      console.error('Error al quitar la promoción de la línea:', error);
+      toast.error(tCarrito('errorQuitarPromocion'));
     }
   };
 
@@ -921,6 +935,9 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             onDescuentoTexto={setDiscountInputValue}
             onDescuentoAplicar={handleApplyDiscount}
             onDescuentoCancelar={() => { setEditingDiscountItemId(null); setDiscountInputValue(''); }}
+            puedeQuitarPromocion={puedeQuitarPromocion}
+            onQuitarPromocion={(id) => void handleExcluirPromocion(id, true)}
+            onRestaurarPromocion={(id) => void handleExcluirPromocion(id, false)}
           />
         </div>
       )}

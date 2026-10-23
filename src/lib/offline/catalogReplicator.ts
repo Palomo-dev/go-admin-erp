@@ -18,6 +18,7 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
@@ -215,24 +216,21 @@ async function runReplication({ organizationId, client = supabase, onProgress, w
   const images = new StoreWriter('product_images', org);
   const taxRelations = new StoreWriter('product_tax_relations', org);
   for (const ids of chunk(productIds)) {
-    const priceRows = unwrap<Omit<CatalogProductPrice, 'organization_id'>>(
-      await db.from('product_prices').select('id, product_id, price, compare_price, effective_from, effective_to').in('product_id', ids).is('effective_to', null),
-      'product_prices',
-    );
+    const priceRows = await leerPorLotes<Omit<CatalogProductPrice, 'organization_id'>>(ids, (lote, desde, hasta) =>
+      db.from('product_prices').select('id, product_id, price, compare_price, effective_from, effective_to').in('product_id', lote).is('effective_to', null).order('id', { ascending: true }).range(desde, hasta),
+    { lote: ids.length, pagina: REPLICATION_BATCH_SIZE });
     await prices.write(priceRows.map((r) => ({ ...r, organization_id: org })));
 
-    const imageRows = unwrap<Omit<CatalogProductImage, 'organization_id'>>(
-      await db.from('product_images').select('id, product_id, storage_path, is_primary, display_order').in('product_id', ids).order('display_order'),
-      'product_images',
-    );
+    const imageRows = await leerPorLotes<Omit<CatalogProductImage, 'organization_id'>>(ids, (lote, desde, hasta) =>
+      db.from('product_images').select('id, product_id, storage_path, is_primary, display_order').in('product_id', lote).order('id', { ascending: true }).range(desde, hasta),
+    { lote: ids.length, pagina: REPLICATION_BATCH_SIZE });
     const primaryImages = pickPrimaryImages(imageRows);
     await images.write(primaryImages.map((r) => ({ ...r, organization_id: org })));
     collectedImages.push(...primaryImages.map((r) => ({ storage_path: r.storage_path })));
 
-    const taxRows = unwrap<Omit<CatalogProductTaxRelation, 'organization_id'>>(
-      await db.from('product_tax_relations').select('product_id, tax_id').in('product_id', ids),
-      'product_tax_relations',
-    );
+    const taxRows = await leerPorLotes<Omit<CatalogProductTaxRelation, 'organization_id'>>(ids, (lote, desde, hasta) =>
+      db.from('product_tax_relations').select('product_id, tax_id').in('product_id', lote).order('product_id', { ascending: true }).order('tax_id', { ascending: true }).range(desde, hasta),
+    { lote: ids.length, pagina: REPLICATION_BATCH_SIZE });
     await taxRelations.write(taxRows.map((r) => ({ ...r, organization_id: org })));
     await yieldToUi();
   }

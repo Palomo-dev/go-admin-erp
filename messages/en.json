@@ -4457,6 +4457,7 @@
       "finanzas_cuentas-por-pagar": "Accounts payable",
       "finanzas_contabilidad": "Accounting",
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
+      "finanzas_contabilidad_actualizar-puc": "Update chart of accounts",
       "finanzas_contabilidad_asientos": "Journal entries",
       "finanzas_contabilidad_plantillas": "Recurring journal templates",
       "finanzas_contabilidad_mayor-contable": "General ledger",
@@ -10151,6 +10152,26 @@
         "crear": "Create supplier “{texto}”",
         "saldo": "Payable {saldo}"
       },
+      "tercero": {
+        "etiqueta": "Party",
+        "placeholder": "Search by name, tax ID or email",
+        "buscar": "Search by name, tax ID or email",
+        "vacio": "Type the name, tax ID or email.",
+        "crear": "Create party",
+        "crearTexto": "Create party “{texto}”",
+        "usarNit": "Use tax ID {nit}",
+        "nombre": "Name",
+        "confirmar": "Use this tax ID",
+        "cancelar": "Back",
+        "dvInvalido": "The check digit does not match",
+        "tipoCrear": "Party type",
+        "tipos": {
+          "cliente": "Customer",
+          "proveedor": "Supplier",
+          "empleado": "Employee",
+          "nit": "Tax ID"
+        }
+      },
       "quitarDe": "Remove {etiqueta}"
     },
     "carrito": {
@@ -13291,6 +13312,11 @@
       "soporte": "Supporting document number",
       "soporteAyuda": "Receipt, expense invoice or deposit slip (optional)",
       "soportePlaceholder": "E.g. Receipt 4471",
+      "centroCosto": "Cost center",
+      "centroCostoAyuda": "If you leave it empty, the branch default is used.",
+      "distribucion": "Distribution",
+      "sinAsignar": "Branch default",
+      "sinDistribucion": "No distribution",
       "notas": "Notes",
       "notasPlaceholder": "Additional details (optional)",
       "errores": {
@@ -17867,14 +17893,8 @@
       "cantidadOriginal": "Original quantity: {n}",
       "serializado": "Serialized",
       "seleccionarMotivo": "Select",
-      "motivosRespaldo": {
-        "defectuoso": "Defective product",
-        "incorrecto": "Wrong product",
-        "danado": "Damaged product",
-        "noConforme": "Not as expected",
-        "garantia": "Warranty",
-        "otro": "Other reason"
-      },
+      "sinMotivos": "There are no active return reasons. Create one before processing a return.",
+      "irAMotivos": "Go to reasons",
       "configuracionReembolso": "Refund settings",
       "metodoReembolso": "Refund method",
       "reembolsoEfectivo": "Cash refund",
@@ -18075,7 +18095,8 @@
       "bascula_invalida": "The weighing's scale is not an active scale of the organization. {detalle}",
       "peso_inestable": "The scale reading was not stable. {detalle}",
       "pesaje_no_coincide": "The quantity doesn't match the weight read from the scale. {detalle}",
-      "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}"
+      "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}",
+      "sin_permiso_quitar_promocion": "Removing a line's promotion requires the “Remove promotion” permission. {detalle}"
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",
@@ -18150,6 +18171,13 @@
       "cuotas_invalidas": "Check the installments: invalid amounts or dates.",
       "rango_invalido": "The date range is not valid.",
       "datos_invalidos": "Check the form data.",
+      "asiento_sin_regla": "There is no active accounting rule for this document. Set one up before continuing.",
+      "asiento_no_cuadra": "The journal entry does not balance with the document lines.",
+      "asiento_exige_tercero": "An account on the entry requires the third party's tax ID.",
+      "asiento_exige_centro": "An account on the entry requires a cost center.",
+      "asiento_cuenta_invalida": "An account on the entry is missing from the chart, inactive, or not a posting account.",
+      "asiento_periodo_cerrado": "The accounting period for the document date is closed.",
+      "asiento_no_armado": "The journal entry for the document could not be built.",
       "error_desconocido": "The operation couldn't be completed. Please try again."
     },
     "listado": {
@@ -19604,7 +19632,8 @@
         "total": "Total",
         "sinNombre": "Product",
         "descuento": "Discount {monto}",
-        "tasa": "{tasa}%"
+        "tasa": "{tasa}%",
+        "sinPromocion": "No promotion"
       },
       "pagos": {
         "titulo": "Applied payments",
@@ -19628,7 +19657,10 @@
         "facturada": "Invoice {numero} issued",
         "pago": "Payment of {monto}",
         "devolucion": "Return of {monto}",
-        "notaCredito": "Credit note {numero}"
+        "notaCredito": "Credit note {numero}",
+        "promoQuitada": "{nombre} removed the promotion “{promocion}” from {producto} ({monto})",
+        "promoRestaurada": "{nombre} restored the promotion “{promocion}” on {producto}",
+        "motivo": "Reason: {motivo}"
       },
       "notas": "Notes",
       "cliente": {
@@ -21016,6 +21048,12 @@
       "descuentoDe": "Discount on {nombre}",
       "descuento": "Discount",
       "aplicarDescuento": "Apply discount",
+      "quitarPromocion": "Remove promotion",
+      "quitarPromocionDe": "Remove the promotion from {nombre}",
+      "restaurarPromocion": "Restore promotion",
+      "sinPromocion": "No promotion",
+      "sinPromocionDe": "No promotion: {nombre}",
+      "errorQuitarPromocion": "The promotion could not be removed",
       "cancelar": "Cancel",
       "frecuentes": "Frequent:",
       "aplicarFrecuente": "Apply the frequent discount of {monto}",
@@ -21791,6 +21829,7 @@
       "categoria_invalida": "The category does not match this entry.",
       "tercero_requerido": "This account requires the third party's tax ID.",
       "soporte_invalido": "The attachment must be a PDF or an image for this organization.",
+      "asiento_publicado_inmutable": "The journal entry is already posted and cannot be changed. Reverse it with an offsetting entry.",
       "desconocido": "The operation could not be completed."
     },
     "movimiento": {
@@ -21811,8 +21850,11 @@
       "tercero": "Third party",
       "buscarTercero": "Search by tax ID or name",
       "usarNit": "Use tax ID {nit}",
+      "sinResultados": "No results",
       "centroCosto": "Cost center",
       "sinCentro": "No cost center",
+      "distribucion": "Distribution",
+      "sinDistribucion": "No distribution",
       "monto": "Amount",
       "concepto": "Concept",
       "notas": "Notes",
@@ -25729,6 +25771,11 @@
         "sucursalAyuda": "The one in the selector above",
         "elegirSucursal": "Choose a branch",
         "razon": "Reason",
+        "motivoAjuste": "Shortage reason",
+        "motivoAjusteAyuda": "Theft and casualty debit extraordinary expenses. Blank posts the shortage to miscellaneous.",
+        "motivoNinguno": "Shortage",
+        "motivoRobo": "Theft",
+        "motivoSiniestro": "Casualty",
         "fechaConteo": "Count date",
         "fecha": "Date",
         "fechaAyuda": "Time in {zona}",
@@ -26794,7 +26841,7 @@
       "venceLoteAyuda": "Optional. Without a date, the lot never expires",
       "nota": "Note",
       "notaPlaceholder": "Supplier invoice, person in charge, remark…",
-      "avisoEntrada": "It is saved as an applied adjustment and the stock ledger links to it. If the goods come from a purchase order, receive them from the order to avoid a duplicate entry.",
+      "avisoEntrada": "It is saved as an applied adjustment and the stock ledger links to it. If the goods come from a purchase order, receive them from the order. A purchase without an order is recorded on the supplier invoice.",
       "avisoSalida": "The stock out is valued at the branch's average cost ({costo} × {n} = {total}), never at the sale price.",
       "listoEntrada": "Stock in recorded",
       "listoSalida": "Stock out recorded",
@@ -26806,7 +26853,8 @@
         "mayorQueCero": "Must be greater than zero.",
         "noNegativo": "Cannot be negative.",
         "superaDisponible": "Exceeds what is available ({n}).",
-        "conSeriales": "Products with serials are recorded from Adjustments."
+        "conSeriales": "Products with serials are recorded from Adjustments.",
+        "facturaCompra": "A purchase without an order is recorded on the supplier invoice: inventory against suppliers."
       }
     },
     "motivos": {
@@ -26824,6 +26872,8 @@
         "consumo_interno": "Internal use",
         "danio": "Damage",
         "perdida": "Loss or theft",
+        "robo": "Theft",
+        "siniestro": "Casualty",
         "muestra": "Sample or tasting",
         "otro": "Other"
       }
@@ -32234,7 +32284,7 @@
       },
       "adopcion": {
         "titulo": "Your live site still shows the previous version",
-        "descripcion": "What you publish here is saved as a version of the new site. Your customers will see it once you turn on the new site from the editor."
+        "descripcion": "Publish so your customers see this design. Until then the live site keeps the previous version."
       },
       "restablecer": {
         "titulo": "Reset the preset",
@@ -33035,7 +33085,25 @@
           "divisor": "Line between the logo and the menu",
           "divisorAyuda": "On, the color follows the background unless you set it. Off, the border is removed.",
           "divisorColor": "Line color",
-          "hoverIconos": "Icon hover"
+          "hoverIconos": "Icon hover",
+          "automatico": "Automatic",
+          "iconosMoviles": "Mobile icon color",
+          "menuMovil": "Mobile menu",
+          "menuMovilAyuda": "Empty inherits the header and computes contrast from the background.",
+          "menuFondo": "Menu background",
+          "menuTexto": "Menu text and links",
+          "menuHover": "Link hover",
+          "menuActivo": "Active link",
+          "menuTitulo": "Title and close",
+          "menuDivisor": "Menu lines",
+          "menuMoneda": "Currency text",
+          "menuMonedaBorde": "Currency border",
+          "menuMonedaFondo": "Currency background",
+          "menuEntrarFondo": "Sign-in background",
+          "menuEntrarTexto": "Sign-in text",
+          "menuRegistroBorde": "Register border",
+          "menuRegistroTexto": "Register text",
+          "menuSalir": "Sign out"
         },
         "pie": {
           "menus": "Footer menus",
@@ -35572,6 +35640,16 @@
     }
   },
   "pedidoWeb": {
+    "promocionLinea": {
+      "quitar": "Remove promotion",
+      "restaurar": "Restore promotion",
+      "sinPromocion": "No promotion",
+      "motivo": "Reason (optional)",
+      "error": "The line promotion could not be changed",
+      "sinPermiso": "You don't have permission to remove a line's promotion.",
+      "lineasDistintas": "The sale no longer has the same lines as the order. The charge was not changed.",
+      "yaPagado": "This order was already paid online: the promotion cannot be removed or restored."
+    },
     "comerAqui": "Dine in",
     "comerAquiMesa": "Dine in · {mesa}",
     "verMesa": "View the table in POS › Tables",
@@ -36076,6 +36154,10 @@
       "comensalN": "Guest {n}",
       "alergia": "Allergy",
       "notaCocina": "Kitchen: {nota}",
+      "quitarPromocion": "Remove promotion",
+      "restaurarPromocion": "Restore promotion",
+      "sinPromocion": "No promotion",
+      "errorPromocion": "The line promotion could not be changed",
       "moverA": "Move to another table",
       "restarUna": "Remove one unit",
       "estado": {
@@ -37842,9 +37924,13 @@
       "descripcion": "Description",
       "descripcionPlaceholder": "Describe the promotion...",
       "prioridad": "Priority",
-      "prioridadAyuda": "A higher number means higher priority",
+      "prioridadAyuda": "A higher number wins over other non-combinable promotions on the same product",
       "combinable": "Combinable",
       "combinableAyuda": "Allow it with other promotions",
+      "solapamientoTitulo": "Only one will apply per product",
+      "solapamientoDetalle": "These promotions overlap and neither can be combined. Only one will apply on each product.",
+      "solapamientoAccion": "Turn on “Allow with other promotions” or raise the priority of the one that should win.",
+      "solapamientoVer": "View {nombre}",
       "tipo": "Promotion type",
       "porcentaje": "Discount percentage",
       "monto": "Discount amount",

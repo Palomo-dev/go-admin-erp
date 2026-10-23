@@ -128,10 +128,9 @@ class OpportunitiesService {
   }
 
   /**
-   * Búsqueda de clientes contra el servidor, para alimentar `CustomerSearchSelect`
-   * cuando la organización tiene más clientes de los que caben en una carga
-   * completa (`getCustomers` se queda en el tope de filas de PostgREST y el
-   * filtrado en memoria no vería al resto).
+   * Búsqueda de clientes contra el servidor. El selector de la pantalla es
+   * `ElegirCliente` (kit). Este método sigue disponible para quien ya lo llama
+   * y para la prueba de la RPC: no trae la organización entera.
    */
   async searchCustomers(term: string, branchId?: number | null, limit = 20): Promise<Customer[]> {
     const orgId = this.getOrganizationId();

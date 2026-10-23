@@ -23,8 +23,8 @@ import { supabase } from '@/lib/supabase/config';
 import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { movimientosService, type BankAccount } from '@/lib/services/movimientosService';
+import { ThirdPartyPicker, useAtajos, type TerceroElegido } from '@/components/kit';
 import { SelectorCategoria, type OpcionCategoria } from './SelectorCategoria';
-import { SelectorTercero } from './SelectorTercero';
 
 type TipoFormulario = 'ingreso' | 'egreso';
 
@@ -33,6 +33,7 @@ interface CuentaPlan {
   name: string;
   es_movimiento: boolean | null;
   requiere_centro_costo: boolean | null;
+  centro_costo_modo: 'obligatorio' | 'opcional' | 'no_aplica' | null;
   requiere_tercero: boolean | null;
 }
 
@@ -40,6 +41,11 @@ interface CentroCosto {
   id: string;
   code: string;
   name: string;
+}
+
+interface Distribucion {
+  id: string;
+  nombre: string;
 }
 
 interface Vista {
@@ -74,14 +80,17 @@ export function FormularioMovimientoTesoreria({
   const [categorias, setCategorias] = useState<OpcionCategoria[]>([]);
   const [cuentas, setCuentas] = useState<CuentaPlan[]>([]);
   const [centros, setCentros] = useState<CentroCosto[]>([]);
+  const [defectoPorSede, setDefectoPorSede] = useState<Record<number, string>>({});
+  const [distribuciones, setDistribuciones] = useState<Distribucion[]>([]);
   const [bancos, setBancos] = useState<BankAccount[]>([]);
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [cuenta, setCuenta] = useState('');
   const [origen, setOrigen] = useState<'cash' | 'bank'>('cash');
   const [bancoId, setBancoId] = useState('');
-  const [nit, setNit] = useState('');
-  const [nombreTercero, setNombreTercero] = useState('');
+  const [tercero, setTercero] = useState<TerceroElegido | null>(null);
+  const [terceroAbierto, setTerceroAbierto] = useState(false);
   const [centroId, setCentroId] = useState('');
+  const [distribucionId, setDistribucionId] = useState('');
   const [monto, setMonto] = useState('');
   const [concepto, setConcepto] = useState('');
   const [conceptoTocado, setConceptoTocado] = useState(false);
@@ -93,13 +102,20 @@ export function FormularioMovimientoTesoreria({
   const [sembrando, setSembrando] = useState(false);
 
   const cuentaElegida = cuentas.find((fila) => fila.account_code === cuenta);
-  const exigeCentro = cuentaElegida?.requiere_centro_costo === true;
+  const modoCentro = cuentaElegida?.centro_costo_modo
+    ?? (cuentaElegida?.requiere_centro_costo ? 'obligatorio' : null);
+  const exigeCentro = modoCentro === 'obligatorio' && centros.length > 0 && !distribucionId;
   const exigeTercero = cuentaElegida?.requiere_tercero === true;
 
-  const cargar = useCallback(async () => {
+  useAtajos(
+    [{ tecla: 'F2', descripcion: t('movimiento.tercero'), accion: () => setTerceroAbierto(true), permitirEnCampo: true }],
+    { activo: open },
+  );
+
+  const cargar = useCallback(async (sede?: number | null) => {
     const orgId = getOrganizationId();
     if (!orgId) return;
-    const [cats, plan, costos, cuentasBanco] = await Promise.all([
+    const [cats, plan, costos, sedes, cuentasBanco, dists] = await Promise.all([
       supabase
         .from('categorias_tesoreria')
         .select('id, nombre, icono, cuenta_sugerida')
@@ -109,7 +125,7 @@ export function FormularioMovimientoTesoreria({
         .order('orden'),
       supabase
         .from('chart_of_accounts')
-        .select('account_code, name, es_movimiento, requiere_centro_costo, requiere_tercero')
+        .select('account_code, name, es_movimiento, requiere_centro_costo, centro_costo_modo, requiere_tercero')
         .eq('organization_id', orgId)
         .eq('is_active', true)
         .order('account_code'),
@@ -119,11 +135,22 @@ export function FormularioMovimientoTesoreria({
         .eq('organization_id', orgId)
         .eq('is_active', true)
         .order('code'),
+      supabase
+        .from('branches')
+        .select('id, default_cost_center_id')
+        .eq('organization_id', orgId),
       movimientosService.getBankAccounts(),
+      supabase
+        .from('cost_center_distributions')
+        .select('id, nombre')
+        .eq('organization_id', orgId)
+        .eq('activo', true)
+        .order('nombre'),
     ]);
     if (cats.error) throw cats.error;
     if (plan.error) throw plan.error;
     if (costos.error) throw costos.error;
+    if (sedes.error) throw sedes.error;
     setCategorias(
       (cats.data ?? []).map((fila) => ({
         id: Number(fila.id),
@@ -133,7 +160,16 @@ export function FormularioMovimientoTesoreria({
       })),
     );
     setCuentas((plan.data ?? []) as CuentaPlan[]);
-    setCentros((costos.data ?? []) as CentroCosto[]);
+    const listaCentros = (costos.data ?? []) as CentroCosto[];
+    setCentros(listaCentros);
+    const mapa: Record<number, string> = {};
+    for (const sedeFila of sedes.data ?? []) {
+      if (sedeFila.default_cost_center_id) mapa[Number(sedeFila.id)] = String(sedeFila.default_cost_center_id);
+    }
+    setDefectoPorSede(mapa);
+    const administracion = listaCentros.find((fila) => fila.code === '100')?.id ?? '';
+    setCentroId((sede != null ? mapa[sede] : null) || administracion);
+    setDistribuciones(dists.error ? [] : (dists.data ?? []) as Distribucion[]);
     setBancos(cuentasBanco);
   }, [tipo]);
 
@@ -144,16 +180,17 @@ export function FormularioMovimientoTesoreria({
     setCuenta('');
     setOrigen('cash');
     setBancoId('');
-    setNit('');
-    setNombreTercero('');
+    setTercero(null);
+    setTerceroAbierto(false);
     setCentroId('');
+    setDistribucionId('');
     setMonto('');
     setConcepto('');
     setConceptoTocado(false);
     setNotas('');
     setArchivo(null);
     setVista(null);
-    void cargar().catch(() => {
+    void cargar(selectedBranchId).catch(() => {
       toast({ title: t('errorTitulo'), description: t('errorCarga.cuentasBancarias'), variant: 'destructive' });
     });
   }, [open, selectedBranchId, cargar, t]);
@@ -233,7 +270,7 @@ export function FormularioMovimientoTesoreria({
       toast({ title: t('errorTitulo'), description: t('categorias.errorGuardar'), variant: 'destructive' });
       return;
     }
-    await cargar();
+    await cargar(branchId);
   };
 
   const subirSoporte = async (orgId: number): Promise<string | null> => {
@@ -288,7 +325,7 @@ export function FormularioMovimientoTesoreria({
       toast({ title: t('errorTitulo'), description: t('movimiento.faltaCentro'), variant: 'destructive' });
       return;
     }
-    if (exigeTercero && !nit.trim()) {
+    if (exigeTercero && !tercero) {
       toast({ title: t('errorTitulo'), description: t('movimiento.faltaTercero'), variant: 'destructive' });
       return;
     }
@@ -308,9 +345,13 @@ export function FormularioMovimientoTesoreria({
         bank_account_id: origen === 'bank' ? Number(bancoId) : undefined,
         categoria_id: categoriaId,
         cuenta_contable: cuenta,
-        centro_costo_id: centroId || null,
-        tercero_nit: nit.trim() || null,
-        tercero_nombre: nombreTercero.trim() || null,
+        centro_costo_id: modoCentro === 'no_aplica' || distribucionId ? null : (centroId || null),
+        distribucion_id: modoCentro === 'no_aplica' ? null : (distribucionId || null),
+        tercero_tipo: tercero?.tipo ?? null,
+        tercero_id: tercero?.id ?? null,
+        tercero_nit: tercero?.nit ?? null,
+        tercero_dv: tercero?.dv ?? null,
+        tercero_nombre: tercero?.nombre.trim() || null,
         soporte_path: soporte,
       };
       const resultado = origen === 'cash'
@@ -354,7 +395,15 @@ export function FormularioMovimientoTesoreria({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void guardar(event)} className="space-y-4">
-          <BranchSelectorField value={branchId} onChange={setBranchId} />
+          <BranchSelectorField
+            value={branchId}
+            onChange={(id) => {
+              setBranchId(id);
+              const administracion = centros.find((fila) => fila.code === '100')?.id ?? '';
+              setCentroId((id != null ? defectoPorSede[id] : null) || administracion);
+              setDistribucionId('');
+            }}
+          />
 
           {categorias.length === 0 ? (
             <div className="rounded-md border border-dashed p-3 text-sm">
@@ -422,29 +471,48 @@ export function FormularioMovimientoTesoreria({
 
           <div className="space-y-1.5">
             <Label>{t('movimiento.tercero')}</Label>
-            <SelectorTercero
-              nit={nit}
-              nombre={nombreTercero}
-              onChange={(tercero) => {
-                setNit(tercero.nit);
-                setNombreTercero(tercero.nombre);
-              }}
-              placeholder={t('movimiento.buscarTercero')}
-              usarNit={(documento) => t('movimiento.usarNit', { nit: documento })}
+            <ThirdPartyPicker
+              valor={tercero}
+              onCambiar={setTercero}
+              onQuitar={() => setTercero(null)}
+              sucursal={branchId}
+              abierto={terceroAbierto}
+              onAbiertoChange={setTerceroAbierto}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>{t('movimiento.centroCosto')}</Label>
-            <SearchSelect
-              options={opcionesCentro}
-              value={centroId || 'none'}
-              onValueChange={(valor) => setCentroId(valor === 'none' ? '' : valor)}
-              noneLabel={t('movimiento.sinCentro')}
-              placeholder={t('movimiento.centroCosto')}
-              searchPlaceholder={t('movimiento.buscarCuenta')}
-            />
-          </div>
+          {modoCentro === 'no_aplica' ? null : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>{t('movimiento.centroCosto')}</Label>
+                <SearchSelect
+                  options={opcionesCentro}
+                  value={centroId || 'none'}
+                  onValueChange={(valor) => {
+                    setCentroId(valor === 'none' ? '' : valor);
+                    if (valor !== 'none') setDistribucionId('');
+                  }}
+                  noneLabel={t('movimiento.sinCentro')}
+                  placeholder={t('movimiento.centroCosto')}
+                  searchPlaceholder={t('movimiento.buscarCuenta')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('movimiento.distribucion')}</Label>
+                <SearchSelect
+                  options={distribuciones.map((fila) => ({ value: fila.id, label: fila.nombre }))}
+                  value={distribucionId || 'none'}
+                  onValueChange={(valor) => {
+                    setDistribucionId(valor === 'none' ? '' : valor);
+                    if (valor !== 'none') setCentroId('');
+                  }}
+                  noneLabel={t('movimiento.sinDistribucion')}
+                  placeholder={t('movimiento.distribucion')}
+                  searchPlaceholder={t('movimiento.buscarCuenta')}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -477,7 +545,7 @@ export function FormularioMovimientoTesoreria({
               accept="application/pdf,image/jpeg,image/png,image/webp"
               onChange={(event) => setArchivo(event.target.files?.[0] ?? null)}
             />
-            <p className="text-xs text-gray-500">{t('movimiento.soporteAyuda')}</p>
+            <p className="text-xs text-fg-muted">{t('movimiento.soporteAyuda')}</p>
             {archivo ? (
               <Button type="button" variant="ghost" className="h-8 px-2" onClick={() => setArchivo(null)}>
                 {t('movimiento.quitarSoporte')}
@@ -485,12 +553,12 @@ export function FormularioMovimientoTesoreria({
             ) : null}
           </div>
 
-          <div className="rounded-md border border-gray-200 p-3 text-sm dark:border-gray-700">
+          <div className="rounded-md border border-line p-3 text-sm">
             <p className="mb-1 font-medium">{t('movimiento.vistaPrevia')}</p>
             {vistaCargando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {vista?.fallo ? <p className="text-red-600">{vista.fallo}</p> : null}
+            {vista?.fallo ? <p className="text-danger-text">{vista.fallo}</p> : null}
             {vista && !vista.fallo ? (
-              <ul className="space-y-1 text-gray-700 dark:text-gray-300">
+              <ul className="space-y-1 text-fg-secondary">
                 <li>{t('movimiento.debito')}: {nombreCuenta(vista.debito)}</li>
                 <li>{t('movimiento.credito')}: {nombreCuenta(vista.credito)}</li>
               </ul>

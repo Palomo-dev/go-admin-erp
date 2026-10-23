@@ -37,6 +37,15 @@ export const CLAVES_CONTABLES = [
   'nomina',
   'nomina_por_pagar',
   'nomina_aportes',
+  'faltante_inventario',
+  'gastos_extraordinarios',
+  'consumo_interno',
+  'manifiesto_por_pagar',
+  'manifiesto_transporte',
+  'saldo_inicial',
+  'impuesto_consumo',
+  'redondeo',
+  'compra_servicio',
 ] as const;
 
 export type ClaveContable = (typeof CLAVES_CONTABLES)[number];
@@ -56,22 +65,31 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'anticipos', nombre: 'Anticipos', grupo: 'Tesorería', ayuda: 'Reemplaza el 2805, anticipos y avances recibidos.' },
   { clave: 'clientes', nombre: 'Clientes', grupo: 'Cartera', ayuda: 'Reemplaza el 1305, salvo préstamos a trabajadores.' },
   { clave: 'proveedores', nombre: 'Proveedores', grupo: 'Cartera', ayuda: 'Reemplaza el 2205 y el 2105 que las reglas viejas usaban como proveedores.' },
-  { clave: 'ventas_productos', nombre: 'Ventas de productos', grupo: 'Ventas', ayuda: 'Ingreso al crédito en 4135, 4105 o 4110.' },
+  { clave: 'ventas_productos', nombre: 'Ventas de productos', grupo: 'Ventas', ayuda: 'Ingreso al crédito en 4135, 414015, 4145 o 4105.' },
   { clave: 'ventas_servicios', nombre: 'Ventas de servicios', grupo: 'Ventas', ayuda: 'Ingreso al crédito en 4235, 4115, 4140 o 4155.' },
   { clave: 'devoluciones', nombre: 'Devoluciones', grupo: 'Ventas', ayuda: 'Notas crédito, anulaciones y el débito de una cuenta de ingreso.' },
   { clave: 'descuentos', nombre: 'Descuentos', grupo: 'Ventas', ayuda: 'La línea de descuento del asiento. No reemplaza la devolución.' },
   { clave: 'inventario', nombre: 'Inventario', grupo: 'Inventario', ayuda: 'Reemplaza el 1435 y el 1405 de las reglas viejas.' },
   { clave: 'costo_ventas', nombre: 'Costo de ventas', grupo: 'Inventario', ayuda: 'Reemplaza el 6135, el 6140 y el 6105.' },
-  { clave: 'iva_generado', nombre: 'IVA generado', grupo: 'Impuestos', ayuda: 'IVA de la venta y de su anulación. En el plan de hoy es el 2408.' },
-  { clave: 'iva_descontable', nombre: 'IVA descontable', grupo: 'Impuestos', ayuda: 'IVA de la compra. En el plan de hoy también parte del 2408.' },
+  { clave: 'iva_generado', nombre: 'IVA generado', grupo: 'Impuestos', ayuda: 'IVA de la venta. Se acredita en 240805 y no se debita en el devengo.' },
+  { clave: 'iva_descontable', nombre: 'IVA descontable', grupo: 'Impuestos', ayuda: 'IVA de la compra. Se debita en 240810.' },
   { clave: 'retefuente', nombre: 'ReteFuente', grupo: 'Impuestos', ayuda: 'Reemplaza el 2365 cuando la compra no tiene una cuenta propia en el impuesto.' },
   { clave: 'reteiva', nombre: 'ReteIVA', grupo: 'Impuestos', ayuda: 'Reemplaza el 2367.' },
   { clave: 'reteica', nombre: 'ReteICA', grupo: 'Impuestos', ayuda: 'Reemplaza el 2368.' },
   { clave: 'propinas', nombre: 'Propinas', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es una propina.' },
-  { clave: 'comisiones', nombre: 'Comisiones', grupo: 'Personal', ayuda: 'Reemplaza el 5235.' },
+  { clave: 'comisiones', nombre: 'Comisiones', grupo: 'Personal', ayuda: '529505. 5235 sigue reconociéndose en reglas anteriores.' },
   { clave: 'nomina', nombre: 'Nómina', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es nómina.' },
   { clave: 'nomina_por_pagar', nombre: 'Nómina por pagar', grupo: 'Personal', ayuda: 'El 2505 solo en la nómina.' },
   { clave: 'nomina_aportes', nombre: 'Aportes de nómina', grupo: 'Personal', ayuda: 'El 2370 solo en la nómina. Una comisión que aún usa 2370 no se mueve.' },
+  { clave: 'faltante_inventario', nombre: 'Faltante de inventario', grupo: 'Inventario', ayuda: 'Débito del faltante. Por defecto 519595. El costo de ventas no se usa aquí.' },
+  { clave: 'gastos_extraordinarios', nombre: 'Robo y siniestro', grupo: 'Inventario', ayuda: 'Débito cuando el ajuste trae motivo robo o siniestro. Por defecto 5315.' },
+  { clave: 'consumo_interno', nombre: 'Consumo interno', grupo: 'Inventario', ayuda: 'Débito del consumo interno. Por defecto 519595. Nunca la clase 6.' },
+  { clave: 'manifiesto_por_pagar', nombre: 'Manifiesto por pagar', grupo: 'Cartera', ayuda: 'Crédito del manifiesto que no es de transporte. Por defecto 2205.' },
+  { clave: 'manifiesto_transporte', nombre: 'Manifiesto de transporte', grupo: 'Cartera', ayuda: 'Crédito cuando la organización es de transporte. Por defecto 2335.' },
+  { clave: 'saldo_inicial', nombre: 'Saldo inicial', grupo: 'Inventario', ayuda: 'Crédito del saldo inicial de inventario. Por defecto 3105.' },
+  { clave: 'impuesto_consumo', nombre: 'Impuesto al consumo', grupo: 'Impuestos', ayuda: 'Impuesto al consumo. Por defecto 2495.' },
+  { clave: 'redondeo', nombre: 'Redondeo', grupo: 'Ventas', ayuda: 'Diferencia al redondear un asiento a pesos. Por defecto 4295.' },
+  { clave: 'compra_servicio', nombre: 'Compra de servicio', grupo: 'Cartera', ayuda: 'Crédito de una compra de servicio o de transporte. Por defecto 2335.' },
 ];
 
 const NOMBRE_POR_CLAVE = new Map(DEFINICIONES_CLAVE.map((d) => [d.clave, d.nombre]));
@@ -103,8 +121,8 @@ const ORIGENES_COMPRA = new Set([
   'purchase_orders',
 ]);
 
-const CODIGOS_PRODUCTOS = new Set(['4105', '4135', '4110']);
-const CODIGOS_SERVICIOS = new Set(['4235', '4115', '4140', '4155']);
+const CODIGOS_PRODUCTOS = new Set(['4105', '4135', '4110', '414015', '4145']);
+const CODIGOS_SERVICIOS = new Set(['4235', '4115', '4140', '414005', '414095', '4155']);
 const CODIGOS_INGRESO = new Set([...CODIGOS_PRODUCTOS, ...CODIGOS_SERVICIOS]);
 
 export function claveDeCuenta(
@@ -116,6 +134,8 @@ export function claveDeCuenta(
   const origen = (source ?? '').trim();
   if (!code) return null;
 
+  if (code === '240810') return 'iva_descontable';
+  if (code === '240805') return 'iva_generado';
   if (lado === 'impuesto' && (code === '2408' || code === '2405')) {
     return ORIGENES_COMPRA.has(origen) ? 'iva_descontable' : 'iva_generado';
   }
@@ -130,7 +150,7 @@ export function claveDeCuenta(
   if (code === '2367') return 'reteiva';
   if (code === '2368') return 'reteica';
   if (code === '2805') return 'anticipos';
-  if (code === '5235') return 'comisiones';
+  if (code === '5235' || code === '529505') return 'comisiones';
   if (code === '5105' && ORIGENES_PROPINA.has(origen)) return 'propinas';
   if (code === '5105' && ORIGENES_NOMINA.has(origen)) return 'nomina';
   if (code === '2505' && ORIGENES_NOMINA.has(origen)) return 'nomina_por_pagar';
@@ -282,17 +302,26 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   descuentos: '4175',
   costo_ventas: '6135',
   inventario: '1435',
-  iva_generado: '2408',
-  iva_descontable: '2408',
+  iva_generado: '240805',
+  iva_descontable: '240810',
   retefuente: '2365',
   reteiva: '2367',
   reteica: '2368',
   propinas: '5105',
-  comisiones: '5235',
+  comisiones: '529505',
   anticipos: '2805',
   nomina: '5105',
   nomina_por_pagar: '2505',
   nomina_aportes: '2370',
+  faltante_inventario: '519595',
+  gastos_extraordinarios: '5315',
+  consumo_interno: '519595',
+  manifiesto_por_pagar: '2205',
+  manifiesto_transporte: '2335',
+  saldo_inicial: '3105',
+  impuesto_consumo: '2495',
+  redondeo: '4295',
+  compra_servicio: '2335',
 };
 
 /** Misma tabla que `fn_propuesta_configuracion_sector` en la migración. */
@@ -300,18 +329,21 @@ export function propuestaPorSector(typeId: number | null | undefined): Record<Cl
   const propuesta = { ...COMPARTIDAS };
   switch (typeId) {
     case 1:
-      propuesta.ventas_productos = '4110';
-      propuesta.ventas_servicios = '4140';
+      propuesta.ventas_productos = '414015';
+      propuesta.ventas_servicios = '414095';
       propuesta.costo_ventas = '6140';
       propuesta.inventario = '1405';
       break;
     case 2:
-      propuesta.ventas_productos = '4110';
-      propuesta.ventas_servicios = '4115';
+      propuesta.ventas_productos = '4140';
+      propuesta.ventas_servicios = '4140';
       propuesta.costo_ventas = '6140';
       break;
     case 4:
       propuesta.ventas_productos = '4155';
+      break;
+    case 6:
+      propuesta.ventas_productos = '4145';
       break;
     case 7:
       propuesta.ventas_productos = '4235';

@@ -115,6 +115,16 @@ describe('vocabulario (valores del CHECK, verificados por MCP)', () => {
     expect(codigoErrorTesoreria({ message: 'saldo_insuficiente_para_revertir' })).toBe('saldo_insuficiente_para_revertir');
     expect(codigoErrorTesoreria({ message: 'saldo_insuficiente' })).toBe('saldo_insuficiente');
     expect(codigoErrorTesoreria({ code: '42501', message: 'Acceso denegado a la organización' })).toBe('sin_permiso');
+    expect(codigoErrorTesoreria({ code: '42501', message: 'permission denied for table journal_lines' })).toBe('sin_permiso');
+    expect(codigoErrorTesoreria({ code: 'P0001', message: 'saldo_insuficiente' })).toBe('saldo_insuficiente');
+    expect(codigoErrorTesoreria({
+      code: 'P0001',
+      message: 'ASIENTO_PUBLICADO_INMUTABLE: las líneas del asiento 1 no se editan ni se borran',
+    })).toBe('asiento_publicado_inmutable');
+    expect(codigoErrorTesoreria({
+      code: '42501',
+      message: 'ASIENTO_PUBLICADO_INMUTABLE: el asiento 9 está publicado',
+    })).toBe('asiento_publicado_inmutable');
     expect(codigoErrorTesoreria({ message: 'SUCURSAL_NO_PERMITIDA' })).toBe('sin_acceso_sucursal');
     expect(codigoErrorTesoreria({ message: 'boom' })).toBe('desconocido');
   });

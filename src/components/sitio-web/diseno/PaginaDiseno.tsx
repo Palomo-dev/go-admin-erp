@@ -31,6 +31,7 @@ import {
   type AccionFila,
 } from '@/components/kit';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
 import { MarcoSitioWeb, type EstadoVistaSitio } from '../MarcoSitioWeb';
 import { RAIZ_SITIO_WEB } from '../rutasSitioWeb';
 import { useEtiquetaPublicacion } from '../ui/PublishStatusBadge';
@@ -131,10 +132,11 @@ export function PaginaDiseno() {
 
   const publicar = async () => {
     if (!(await estilo.guardarAhora())) return;
-    const r = await sitio.publicar(null);
+    const r = await sitio.publicar(null, { activar: activarAlPublicarSitio(!!sitio.sitio?.v2Adoptado) });
     if (r) {
       setRevisarAbierto(false);
-      toast.success(t('publicar.listo'));
+      if (r.activacion === 'fallo') toast.warning(t('publicar.activarFallo'));
+      else toast.success(t('publicar.listo'));
       ctx.recontar();
       return;
     }

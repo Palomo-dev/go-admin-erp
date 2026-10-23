@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, Filter, X } from 'lucide-react';
-import { FacturasCompraService } from './FacturasCompraService';
-import { FiltrosFacturasCompra, SupplierBase } from './types';
+import { ElegirProveedor, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
+import { FiltrosFacturasCompra } from './types';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface FacturasCompraFiltrosProps {
@@ -29,22 +29,10 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
     fechaHasta: ''
   });
 
-  const [proveedores, setProveedores] = useState<SupplierBase[]>([]);
+  const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
   const [mostrarFiltrosAvanzados, setMostrarFiltrosAvanzados] = useState(false);
 
-  // Cargar proveedores al montar el componente
-  useEffect(() => {
-    cargarProveedores();
-  }, []);
-
-  const cargarProveedores = async () => {
-    try {
-      const data = await FacturasCompraService.obtenerProveedores();
-      setProveedores(data);
-    } catch (error) {
-      console.error('Error cargando proveedores:', error);
-    }
-  };
+  const proveedorVisible = filtros.proveedor !== 'todos' && proveedor?.id === filtros.proveedor ? proveedor : null;
 
   const aplicarFiltros = () => {
     onFiltrosChange(filtros);
@@ -59,6 +47,7 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
       fechaHasta: ''
     };
     setFiltros(filtrosLimpios);
+    setProveedor(null);
     onFiltrosChange(filtrosLimpios);
   };
 
@@ -125,25 +114,18 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
           </div>
 
           <div>
-            <Label htmlFor="proveedor" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-              Proveedor
-            </Label>
-            <Select
-              value={filtros.proveedor}
-              onValueChange={(value) => actualizarFiltro('proveedor', value)}
-            >
-              <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-                <SelectValue placeholder="Todos los proveedores" />
-              </SelectTrigger>
-              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="todos" className="text-xs sm:text-sm dark:text-gray-100 dark:focus:bg-gray-700">Todos los proveedores</SelectItem>
-                {proveedores.map((proveedor) => (
-                  <SelectItem key={proveedor.id} value={proveedor.id.toString()} className="text-xs sm:text-sm dark:text-gray-100 dark:focus:bg-gray-700">
-                    {proveedor.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ElegirProveedor
+              layout="campo"
+              proveedor={proveedorVisible}
+              onCambiar={(elegido) => {
+                setProveedor(elegido);
+                actualizarFiltro('proveedor', elegido.id);
+              }}
+              onQuitar={() => {
+                setProveedor(null);
+                actualizarFiltro('proveedor', 'todos');
+              }}
+            />
           </div>
 
           <div className="flex gap-2 sm:col-span-2 lg:col-span-2 items-end">
@@ -230,7 +212,7 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
           )}
           {filtros.proveedor !== 'todos' && (
             <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 break-words whitespace-normal min-w-0">
-              Proveedor: {proveedores.find(p => p.id.toString() === filtros.proveedor)?.name || 'Desconocido'}
+              Proveedor: {proveedorVisible?.nombre || 'Proveedor'}
             </span>
           )}
           {filtros.fechaDesde && (

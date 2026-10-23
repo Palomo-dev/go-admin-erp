@@ -374,12 +374,12 @@ describe('6 · selector de clientes', () => {
     expect(registro.some((l) => l.tabla === 'customers')).toBe(false);
   });
 
-  it('OpportunityForm busca contra el servidor con debounce, no trae la organización entera', () => {
+  it('OpportunityForm elige el cliente con el kit, sin traer la organización entera', () => {
     const src = leer('src/components/crm/oportunidades/OpportunityForm.tsx');
-    expect(src).toContain('opportunitiesService.searchCustomers');
+    expect(src).toContain('ElegirCliente');
+    expect(src).not.toContain('CustomerSearchSelect');
     expect(src).not.toMatch(/opportunitiesService\.getCustomers\(\)/);
-    expect(src).toContain('DEBOUNCE_BUSQUEDA_MS');
-    expect(src).toContain('onSearchChange={setCustomerSearch}');
+    expect(src).not.toMatch(/opportunitiesService\.searchCustomers/);
   });
 });
 

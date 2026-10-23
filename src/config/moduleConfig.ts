@@ -150,6 +150,7 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Facturas de Venta', path: '/app/finanzas/facturas-venta', icon: BarChart3 },
     { name: 'Contabilidad', path: '/app/finanzas/contabilidad', icon: Landmark },
     { name: 'Plan de Cuentas', path: '/app/finanzas/contabilidad/plan-cuentas', icon: Landmark },
+    { name: 'Actualizar PUC', path: '/app/finanzas/contabilidad/actualizar-puc', icon: Settings },
     { name: 'Asientos', path: '/app/finanzas/contabilidad/asientos', icon: FileText },
     { name: 'Plantillas de asientos', path: '/app/finanzas/contabilidad/plantillas', icon: FileText },
     { name: 'Reglas Contables', path: '/app/finanzas/reglas-contables', icon: Shield },

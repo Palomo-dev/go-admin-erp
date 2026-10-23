@@ -538,6 +538,45 @@ function Diseno(p: Interno) {
   );
 }
 
+function MenuMovil({ p, fondoMenu }: { p: Interno; fondoMenu: string }) {
+  const t = useTextosEditor();
+  const a = p.ajustes;
+  const cambiar = p.cambiar;
+  const color = (k: string) => (typeof a[k] === 'string' && a[k] ? (a[k] as string) : null);
+  const automatico = t('zonaGlobal.estilo.automatico');
+  const campo = (clave: string, etiqueta: string, arranque: string, fondo = fondoMenu) => (
+    <ColorTema
+      key={clave}
+      etiqueta={etiqueta}
+      valor={color(clave)}
+      colorTema={arranque}
+      fondo={fondo}
+      etiquetaNulo={automatico}
+      onCambiar={(v) => cambiar({ [clave]: v })}
+    />
+  );
+  return (
+    <section className="flex flex-col gap-3">
+      <TituloBloque>{t('zonaGlobal.estilo.menuMovil')}</TituloBloque>
+      <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.estilo.menuMovilAyuda')}</p>
+      {campo('mobile_menu_bg_color', t('zonaGlobal.estilo.menuFondo'), color('header_bg_color') ?? p.coloresTema.fondo, color('header_bg_color') ?? p.coloresTema.fondo)}
+      {campo('mobile_menu_text_color', t('zonaGlobal.estilo.menuTexto'), color('header_text_color') ?? p.coloresTema.texto)}
+      {campo('mobile_menu_link_hover_color', t('zonaGlobal.estilo.menuHover'), p.coloresTema.acento)}
+      {campo('mobile_menu_link_active_color', t('zonaGlobal.estilo.menuActivo'), p.coloresTema.acento)}
+      {campo('mobile_menu_title_color', t('zonaGlobal.estilo.menuTitulo'), color('header_text_color') ?? p.coloresTema.texto)}
+      {campo('mobile_menu_divider_color', t('zonaGlobal.estilo.menuDivisor'), color('header_divider_color') ?? p.coloresTema.texto)}
+      {campo('mobile_menu_currency_text_color', t('zonaGlobal.estilo.menuMoneda'), p.coloresTema.texto)}
+      {campo('mobile_menu_currency_border_color', t('zonaGlobal.estilo.menuMonedaBorde'), p.coloresTema.texto)}
+      {campo('mobile_menu_currency_bg_color', t('zonaGlobal.estilo.menuMonedaFondo'), p.coloresTema.fondo)}
+      {campo('mobile_menu_login_bg_color', t('zonaGlobal.estilo.menuEntrarFondo'), p.coloresTema.acento, p.coloresTema.acento)}
+      {campo('mobile_menu_login_text_color', t('zonaGlobal.estilo.menuEntrarTexto'), '#ffffff', color('mobile_menu_login_bg_color') ?? p.coloresTema.acento)}
+      {campo('mobile_menu_register_border_color', t('zonaGlobal.estilo.menuRegistroBorde'), p.coloresTema.acento)}
+      {campo('mobile_menu_register_text_color', t('zonaGlobal.estilo.menuRegistroTexto'), p.coloresTema.acento)}
+      {campo('mobile_menu_logout_color', t('zonaGlobal.estilo.menuSalir'), '#DC2626')}
+    </section>
+  );
+}
+
 // ─── Estilo ────────────────────────────────────────────────────────────────────────────────────
 
 function Estilo(p: Interno) {
@@ -582,6 +621,15 @@ function Estilo(p: Interno) {
         fondo={color('header_bg_color') ?? p.coloresTema.fondo}
         onCambiar={(v) => cambiar({ header_hover_color: v })}
       />
+      <ColorTema
+        etiqueta={t('zonaGlobal.estilo.iconosMoviles')}
+        valor={color('header_mobile_icon_color')}
+        colorTema={color('header_text_color') ?? p.coloresTema.texto}
+        fondo={color('header_bg_color') ?? p.coloresTema.fondo}
+        etiquetaNulo={t('zonaGlobal.estilo.automatico')}
+        onCambiar={(v) => cambiar({ header_mobile_icon_color: v })}
+      />
+      <MenuMovil p={p} fondoMenu={color('mobile_menu_bg_color') ?? color('header_bg_color') ?? p.coloresTema.fondo} />
       <ColorTema etiqueta={t('zonaGlobal.estilo.barra')} valor={color('topbar_bg_color')} colorTema={p.coloresTema.texto} onCambiar={(v) => cambiar({ topbar_bg_color: v })} />
       <ColorTema
         etiqueta={t('zonaGlobal.estilo.boton')}

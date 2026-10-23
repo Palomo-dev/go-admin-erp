@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { desgloseReembolso } from '@/lib/pos/devoluciones/desgloseReembolso';
 import { parametrosProcesarDevolucion, type ResultadoProcesarDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
 import { 
   Return,
@@ -704,7 +705,26 @@ export class DevolucionesService {
         };
       }
 
-      // Obtener información de ventas relacionadas con impuestos
+      // El impuesto del reembolso sale de las líneas, no de un prorrateo sobre la venta.
+      const impuestoPorDevolucion = new Map<number, number>();
+      const { data: lineas, error: lineasError } = await supabase
+        .from('return_lines')
+        .select('return_id, tax_amount')
+        .eq('organization_id', organizationId)
+        .in('return_id', returnsData.map(ret => ret.id));
+
+      if (lineasError) {
+        console.error('Error obteniendo líneas de devolución:', lineasError);
+        throw new Error(`Error consultando líneas de devolución: ${lineasError.message}`);
+      }
+
+      for (const linea of lineas ?? []) {
+        const id = Number(linea.return_id);
+        const impuesto = Number(linea.tax_amount);
+        impuestoPorDevolucion.set(id, (impuestoPorDevolucion.get(id) ?? 0) + (Number.isFinite(impuesto) ? impuesto : 0));
+      }
+
+      // La venta solo adjunta cliente y sus propios totales.
       const saleIds = returnsData.map(ret => ret.sale_id).filter(Boolean);
       let salesData: VentaFila[] = [];
       let customersData: ClienteFila[] = [];
@@ -737,29 +757,13 @@ export class DevolucionesService {
         // Encontrar customer si existe
         const customer = sale?.customer_id ? customersData.find(c => c.id === sale.customer_id) : null;
         
-        // Calcular impuestos del reembolso proporcionalmente
-        const originalTotal = sale ? Number(sale.total) : 0;
-        const originalSubtotal = sale ? Number(sale.subtotal) : 0;
-        const originalTaxTotal = sale ? Number(sale.tax_total) : 0;
-        const refundAmount = Number(returnItem.total_refund);
-        
-        // Calcular impuestos proporcionales del reembolso
-        let refundTaxAmount = 0;
-        let refundTotalWithTax = refundAmount;
-        
-        if (originalTotal > 0 && originalTaxTotal > 0) {
-          // Si el reembolso es igual al subtotal original, es probablemente un reembolso completo
-          if (Math.abs(refundAmount - originalSubtotal) < 0.01) {
-            // Reembolso completo - incluir todos los impuestos
-            refundTaxAmount = originalTaxTotal;
-            refundTotalWithTax = originalTotal;
-          } else {
-            // Reembolso parcial - calcular impuestos proporcionales
-            const taxRate = originalTaxTotal / originalSubtotal;
-            refundTaxAmount = refundAmount * taxRate;
-            refundTotalWithTax = refundAmount + refundTaxAmount;
-          }
-        }
+        const totalVenta = sale ? Number(sale.total) : 0;
+        const subtotalVenta = sale ? Number(sale.subtotal) : 0;
+        const impuestoVenta = sale ? Number(sale.tax_total) : 0;
+        const desglose = desgloseReembolso(
+          Number(returnItem.total_refund),
+          impuestoPorDevolucion.get(Number(returnItem.id)) ?? 0,
+        );
         
         return {
           id: returnItem.id,
@@ -767,9 +771,9 @@ export class DevolucionesService {
           branch_id: returnItem.branch_id,
           sale_id: returnItem.sale_id,
           user_id: returnItem.user_id,
-          total_refund: refundAmount, // Subtotal del reembolso
-          refund_tax_amount: refundTaxAmount, // Impuestos del reembolso
-          refund_total_with_tax: refundTotalWithTax, // Total con impuestos
+          total_refund: desglose.total,
+          refund_tax_amount: desglose.impuesto,
+          refund_total_with_tax: desglose.total,
           reason: returnItem.reason,
           return_date: returnItem.return_date,
           status: returnItem.status,
@@ -779,9 +783,9 @@ export class DevolucionesService {
           // Datos de venta y cliente si existen
           sale: sale ? {
             id: sale.id,
-            total: originalTotal,
-            subtotal: originalSubtotal,
-            tax_total: originalTaxTotal,
+            total: totalVenta,
+            subtotal: subtotalVenta,
+            tax_total: impuestoVenta,
             customer: customer ? {
               full_name: customer.full_name,
               phone: customer.phone,

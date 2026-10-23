@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { textoTerceroGuardado } from '@/components/kit/terceroPickerLogica';
 import { UnifiedMovement } from '@/lib/services/movimientosService';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ export function DatosContablesMovimiento({ movement }: { movement: UnifiedMoveme
   const t = useTranslations('tesoreria');
   const [url, setUrl] = useState<string | null>(null);
   const hayDatos = Boolean(
-    movement.categoria_nombre || movement.cuenta_contable || movement.tercero_nit || movement.centro_costo_nombre || movement.soporte_path,
+    movement.categoria_nombre || movement.cuenta_contable || movement.tercero_nit || movement.tercero_nombre || movement.centro_costo_nombre || movement.soporte_path,
   );
 
   useEffect(() => {
@@ -30,39 +31,41 @@ export function DatosContablesMovimiento({ movement }: { movement: UnifiedMoveme
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {movement.categoria_nombre ? (
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('movimiento.categoria')}</p>
-          <p className="font-medium text-gray-900 dark:text-white">{movement.categoria_nombre}</p>
+          <p className="text-sm text-fg-muted">{t('movimiento.categoria')}</p>
+          <p className="font-medium text-fg">{movement.categoria_nombre}</p>
         </div>
       ) : null}
       {movement.cuenta_contable ? (
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('movimiento.cuenta')}</p>
-          <p className="font-medium text-gray-900 dark:text-white">{movement.cuenta_contable}</p>
+          <p className="text-sm text-fg-muted">{t('movimiento.cuenta')}</p>
+          <p className="font-medium text-fg">{movement.cuenta_contable}</p>
         </div>
       ) : null}
-      {movement.tercero_nit ? (
+      {movement.tercero_nit || movement.tercero_nombre ? (
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('movimiento.tercero')}</p>
-          <p className="font-medium text-gray-900 dark:text-white">
-            {movement.tercero_nit}{movement.tercero_nombre ? ` · ${movement.tercero_nombre}` : ''}
+          <p className="text-sm text-fg-muted">{t('movimiento.tercero')}</p>
+          <p className="font-medium text-fg">
+            {movement.tercero_nit
+              ? textoTerceroGuardado(movement.tercero_nit, movement.tercero_nombre, movement.tercero_dv)
+              : movement.tercero_nombre}
           </p>
         </div>
       ) : null}
       {movement.centro_costo_nombre ? (
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('movimiento.centroCosto')}</p>
-          <p className="font-medium text-gray-900 dark:text-white">{movement.centro_costo_nombre}</p>
+          <p className="text-sm text-fg-muted">{t('movimiento.centroCosto')}</p>
+          <p className="font-medium text-fg">{movement.centro_costo_nombre}</p>
         </div>
       ) : null}
       {movement.soporte_path ? (
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('movimiento.soporte')}</p>
+          <p className="text-sm text-fg-muted">{t('movimiento.soporte')}</p>
           {url ? (
             <Button asChild variant="link" className="h-auto p-0">
               <a href={url} target="_blank" rel="noreferrer">{t('movimiento.verSoporte')}</a>
             </Button>
           ) : (
-            <p className="text-sm text-gray-500">{t('movimiento.soporte')}</p>
+            <p className="text-sm text-fg-muted">{t('movimiento.soporte')}</p>
           )}
         </div>
       ) : null}

@@ -15,6 +15,7 @@ import { getDayRange } from '@/lib/utils/dateRanges';
 import { avisarCambioPromociones } from '@/lib/pos/venta/avisosPromociones';
 import { copiaDePromocion } from '@/lib/promotions/cantidadMinima';
 import { cantidadDeRegla, prepararPromocion } from '@/lib/promotions/prepararPromocion';
+import { conflictosSolapados, type ProductoCatalogo, type PromoSolape } from '@/lib/promotions/solapamiento';
 
 // ============================================================
 // Vigencias en zona de la organizacion (Fase B, tanda 4).
@@ -520,5 +521,49 @@ export class PromotionsService {
       .eq('is_active', true);
 
     return data || [];
+  }
+
+  /**
+   * Promociones activas de la organización que se pisan con este borrador.
+   * Excluye la propia al editar. Si esta es combinable, no hay aviso.
+   */
+  static async conflictosSolapados(
+    candidata: PromoSolape,
+  ): Promise<Array<{ id: string; name: string }>> {
+    if (candidata.is_combinable === true || candidata.is_active === false) return [];
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('id, name, is_combinable, is_active, applies_to, branches, applies_to_web, applies_to_pos, applies_to_finances, start_date, end_date, applicable_days, start_time, end_time, promotion_rules(rule_type, product_id, category_id)')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
+    if (error || !data) return [];
+    const otras = (data as PromoSolape[]).filter((p) => p.id !== candidata.id);
+    const ids = new Set<number>();
+    for (const promo of [candidata, ...otras]) {
+      for (const regla of promo.rules ?? promo.promotion_rules ?? []) {
+        if (regla.product_id != null) ids.add(Number(regla.product_id));
+      }
+    }
+    let catalogo: ProductoCatalogo[] = [];
+    if (ids.size > 0) {
+      const { data: productos } = await supabase
+        .from('products')
+        .select('id, parent_product_id, category_id')
+        .eq('organization_id', organizationId)
+        .in('id', [...ids]);
+      catalogo = (productos ?? []) as ProductoCatalogo[];
+      const padres = [...new Set(catalogo.map((p) => p.parent_product_id).filter((id): id is number => id != null))];
+      const faltan = padres.filter((id) => !catalogo.some((p) => p.id === id));
+      if (faltan.length > 0) {
+        const { data: filasPadre } = await supabase
+          .from('products')
+          .select('id, parent_product_id, category_id')
+          .eq('organization_id', organizationId)
+          .in('id', faltan);
+        catalogo = catalogo.concat((filasPadre ?? []) as ProductoCatalogo[]);
+      }
+    }
+    return conflictosSolapados(candidata, otras, catalogo).map((p) => ({ id: p.id, name: p.name }));
   }
 }

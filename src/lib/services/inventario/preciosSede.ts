@@ -18,12 +18,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { FilaPrecio } from '@/lib/pos/precioVigente';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 
 export const TABLA_PRECIOS_SEDE = 'product_branch_prices';
 export const TABLA_COSTOS_SEDE = 'product_branch_costs';
-
-/** Ids por petición en un filtro `in` (la URL de PostgREST tiene tope). */
-const TROZO_IN = 200;
 
 export interface FilaPrecioSede extends FilaPrecio {
   product_id: number;
@@ -51,12 +49,6 @@ export function esTablaDeSedeAusente(error: { code?: string | null; message?: st
   if (!error) return false;
   if (error.code === '42P01' || error.code === 'PGRST205') return true;
   return /product_branch_(prices|costs)/.test(error.message ?? '') && /does not exist|not find|no existe/i.test(error.message ?? '');
-}
-
-function trozos<T>(lista: readonly T[], tamano = TROZO_IN): T[][] {
-  const salida: T[][] = [];
-  for (let i = 0; i < lista.length; i += tamano) salida.push(lista.slice(i, i + tamano));
-  return salida;
 }
 
 let avisoTablaAusente = false;
@@ -102,31 +94,34 @@ export async function filasDeSede(
       : 'product_id, cost, supplier_id, effective_from, effective_to';
   const ahora = (opciones.ahora ?? new Date()).toISOString();
 
-  for (const trozo of trozos(ids)) {
-    let q = client
-      .from(tabla)
-      .select(columnas)
-      .eq('branch_id', branchId)
-      .in('product_id', trozo)
-      .or(`effective_to.is.null,effective_to.gt.${ahora}`);
-    if (opciones.senal) q = q.abortSignal(opciones.senal);
-    const { data, error } = await q;
-    if (error) {
-      if (esTablaDeSedeAusente(error)) {
-        if (!avisoTablaAusente) {
-          avisoTablaAusente = true;
-          console.warn(`[preciosSede] ${tabla} no existe todavía: se usa el ${tipo} general`);
-        }
-        return new Map();
+  let filas: Array<FilaPrecioSede | FilaCostoSede>;
+  try {
+    filas = await leerPorLotes<FilaPrecioSede | FilaCostoSede>(ids, (lote, desde, hasta) => {
+      let q = client
+        .from(tabla)
+        .select(columnas)
+        .eq('branch_id', branchId)
+        .in('product_id', [...lote])
+        .or(`effective_to.is.null,effective_to.gt.${ahora}`)
+        .order('id', { ascending: true });
+      if (opciones.senal) q = q.abortSignal(opciones.senal);
+      return q.range(desde, hasta);
+    });
+  } catch (error) {
+    if (esTablaDeSedeAusente(error as { code?: string; message?: string })) {
+      if (!avisoTablaAusente) {
+        avisoTablaAusente = true;
+        console.warn(`[preciosSede] ${tabla} no existe todavía: se usa el ${tipo} general`);
       }
-      throw error;
+      return new Map();
     }
-    for (const f of (data ?? []) as unknown as Array<FilaPrecioSede | FilaCostoSede>) {
-      const id = Number(f.product_id);
-      const lista = mapa.get(id) ?? [];
-      lista.push(f);
-      mapa.set(id, lista);
-    }
+    throw error;
+  }
+  for (const f of filas) {
+    const id = Number(f.product_id);
+    const lista = mapa.get(id) ?? [];
+    lista.push(f);
+    mapa.set(id, lista);
   }
   return mapa;
 }

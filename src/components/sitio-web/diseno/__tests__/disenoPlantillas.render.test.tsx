@@ -437,6 +437,25 @@ describe('revisión de Diseño y Plantillas', () => {
       expect(toast.error).toHaveBeenCalledWith('Otra persona guardó o publicó una versión más nueva. Recargamos el diseño para que veas lo último.'),
     );
     expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(publicar).toHaveBeenCalledWith(null, { activar: false });
+  });
+
+  test('Publicar un sitio que aún no está en la web pide activarlo', async () => {
+    const antes = process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+    process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = '1';
+    const base = contexto();
+    ctx = { ...base, sitio: { ...base.sitio, sitio: { ...base.sitio.sitio, v2Adoptado: false } } };
+    try {
+      renderConIdioma(<PaginaDiseno />);
+      fireEvent.click(screen.getAllByRole('button', { name: /^Publicar$/ })[0]);
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Publicar cambios' }));
+      });
+      await waitFor(() => expect(publicar).toHaveBeenCalledWith(null, { activar: true }));
+    } finally {
+      if (antes === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+      else process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = antes;
+    }
   });
 
   test('móvil (A/06g): cabecera «Diseño» con la sección activa y flecha de volver', () => {

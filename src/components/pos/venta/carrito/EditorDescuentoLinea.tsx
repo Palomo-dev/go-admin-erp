@@ -22,6 +22,12 @@ export interface EditorDescuentoLineaProps {
   frecuentes?: number[];
   formatear: (valor: number) => string;
   deshabilitado?: boolean;
+  /** La línea ya no recibe promoción. */
+  promoExcluida?: boolean;
+  /** Sin `pos.promotions.remove` los botones no se pintan. */
+  puedeQuitarPromocion?: boolean;
+  onQuitarPromocion?: () => void;
+  onRestaurarPromocion?: () => void;
 }
 
 const BOTON_ICONO =
@@ -36,6 +42,10 @@ export function EditorDescuentoLinea({
   frecuentes = [],
   formatear,
   deshabilitado,
+  promoExcluida = false,
+  puedeQuitarPromocion = false,
+  onQuitarPromocion,
+  onRestaurarPromocion,
 }: EditorDescuentoLineaProps) {
   const t = useTranslations('posVenta.carrito');
   const aplicar = () => onAplicar(parseFloat(valor) || 0);
@@ -84,6 +94,28 @@ export function EditorDescuentoLinea({
       >
         <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
       </button>
+      {puedeQuitarPromocion && (promoExcluida ? (
+        <button
+          type="button"
+          onClick={onRestaurarPromocion}
+          disabled={deshabilitado}
+          className="text-[13px] font-medium text-brand hover:underline disabled:opacity-50"
+        >
+          {t('restaurarPromocion')}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onQuitarPromocion}
+          disabled={deshabilitado}
+          className="text-[13px] font-medium text-fg-secondary hover:underline disabled:opacity-50"
+        >
+          {t('quitarPromocion')}
+        </button>
+      ))}
+      {promoExcluida && (
+        <span className="text-[12px] font-medium text-fg-muted">{t('sinPromocion')}</span>
+      )}
       {frecuentes.length > 0 && (
         <>
           <span className="text-[11px] font-medium text-fg-muted">{t('frecuentes')}</span>

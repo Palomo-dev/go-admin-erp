@@ -12,13 +12,14 @@
  * - `guardar(cambiar)` aplica `cambiar` al ÚLTIMO documento leído y guarda con
  *   la versión de ese documento. Si otra persona guardó antes, la API responde
  *   409: el hook marca `conflicto` y no pisa su trabajo.
- * - `publicar(nota)` publica la versión actual y revalida el sitio público.
- *
- * Publicar crea una revisión V2; NO cambia lo que sirve la web pública hasta la
- * adopción explícita (ADR-002 D4). Ver el informe del área resumen.
+ * - `publicar(nota, { activar })` publica la versión actual y revalida el sitio
+ *   público. Con `activar`, si el sitio aún no está en la web y el lector público
+ *   está listo, la misma llamada lo activa. Sin `activar`, la revisión queda
+ *   publicada y la web sigue con el sitio anterior.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clienteSitiosV2, ErrorApiSitio } from '@/lib/website/v2/clienteSitiosV2';
+import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { BorradorSitio, ResultadoPublicacion, RevisionResumen, SitioResumen } from '@/lib/website/v2/tipos';
 import { resolverEstadoPublicacion, type EstadoPublicacion } from './ui/estadoPublicacion';
@@ -191,7 +192,7 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
       const actual = ref.current?.sitio ?? sitio;
       if (!actual) return null;
       if (publicado && ref.current && ref.current.sitio.cambiosSinPublicar !== false) {
-        const r = await publicar(null);
+        const r = await publicar(null, { activar: activarAlPublicarSitio(!!ref.current.sitio.v2Adoptado) });
         if (!r) return null;
       }
       setPublicando(true);

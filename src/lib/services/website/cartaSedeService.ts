@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { precioVigenteEnSede, importePrecioVigente } from '@/lib/pos/precioVigente';
 import { filasDeSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import { todayInTz } from '@/lib/utils/dateCore';
 import {
@@ -295,18 +296,24 @@ export async function listarCartaSede(ctx: ContextoCartaSede, params: ListadoCar
   // Precio general vigente: la regla única de product_prices (no se reimplementa).
   const precios = new Map<number, { price: number | string | null; effective_from: string | null; effective_to: string | null }[]>();
   const ahora = new Date();
-  for (const trozo of trozos(productos.map((p) => p.id))) {
-    const { data, error } = await ctx.supabase
-      .from('product_prices')
-      .select('product_id, price, effective_from, effective_to')
-      .in('product_id', trozo)
-      .lte('effective_from', ahora.toISOString());
-    if (error) falla('precios', error);
-    for (const f of (data ?? []) as { product_id: number; price: number | string | null; effective_from: string | null; effective_to: string | null }[]) {
-      const lista = precios.get(Number(f.product_id)) ?? [];
-      lista.push(f);
-      precios.set(Number(f.product_id), lista);
-    }
+  let preciosFilas: { product_id: number; price: number | string | null; effective_from: string | null; effective_to: string | null }[];
+  try {
+    preciosFilas = await leerPorLotes(productos.map((p) => p.id), (lote, desde, hasta) =>
+      ctx.supabase
+        .from('product_prices')
+        .select('product_id, price, effective_from, effective_to')
+        .in('product_id', [...lote])
+        .lte('effective_from', ahora.toISOString())
+        .order('id', { ascending: true })
+        .range(desde, hasta),
+    );
+  } catch (error) {
+    falla('precios', error as { message?: string; code?: string });
+  }
+  for (const f of preciosFilas) {
+    const lista = precios.get(Number(f.product_id)) ?? [];
+    lista.push(f);
+    precios.set(Number(f.product_id), lista);
   }
 
   // Precio propio de la sede (sin fila → el general, exactamente como antes).

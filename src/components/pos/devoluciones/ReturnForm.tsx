@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -236,6 +237,12 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   };
 
   const handleSubmit = async () => {
+    // Sin catálogo activo la RPC rechaza el motivo. No se llama.
+    if (loadingReasons) return;
+    if (returnReasons.length === 0) {
+      toast.error(t('sinMotivos'));
+      return;
+    }
     if (!validateForm()) return;
 
     setLoading(true);
@@ -313,6 +320,18 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             {t('sinItems')}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!loadingReasons && returnReasons.length === 0 && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {t('sinMotivos')}{' '}
+            <Link href="/app/pos/devoluciones/motivos" className="font-medium underline">
+              {t('irAMotivos')}
+            </Link>
           </AlertDescription>
         </Alert>
       )}
@@ -437,33 +456,22 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         <Select
                           value={item.reason}
                           onValueChange={(value) => handleReasonChange(item.sale_item_id, value)}
-                          disabled={!item.selected || loadingReasons}
+                          disabled={!item.selected || loadingReasons || returnReasons.length === 0}
                         >
                           <SelectTrigger className="w-44 dark:bg-gray-700 dark:border-gray-600">
                             <SelectValue placeholder={t('seleccionarMotivo')} />
                           </SelectTrigger>
                           <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                            {returnReasons.length > 0 ? (
-                              returnReasons.map((reasonOption) => (
-                                <SelectItem key={reasonOption.id} value={reasonOption.code}>
-                                  <div className="flex items-center gap-2">
-                                    <span>{reasonOption.name}</span>
-                                    {reasonOption.requires_photo && (
-                                      <Camera className="h-3 w-3 text-blue-500" />
-                                    )}
-                                  </div>
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <>
-                                <SelectItem value="defectuoso">{t('motivosRespaldo.defectuoso')}</SelectItem>
-                                <SelectItem value="incorrecto">{t('motivosRespaldo.incorrecto')}</SelectItem>
-                                <SelectItem value="dañado">{t('motivosRespaldo.danado')}</SelectItem>
-                                <SelectItem value="no_conforme">{t('motivosRespaldo.noConforme')}</SelectItem>
-                                <SelectItem value="garantia">{t('motivosRespaldo.garantia')}</SelectItem>
-                                <SelectItem value="otro">{t('motivosRespaldo.otro')}</SelectItem>
-                              </>
-                            )}
+                            {returnReasons.map((reasonOption) => (
+                              <SelectItem key={reasonOption.id} value={reasonOption.code}>
+                                <div className="flex items-center gap-2">
+                                  <span>{reasonOption.name}</span>
+                                  {reasonOption.requires_photo && (
+                                    <Camera className="h-3 w-3 text-blue-500" />
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -558,7 +566,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                     </Button>
                     <Button
                       onClick={handleSubmit}
-                      disabled={loading || selectedItemsCount === 0}
+                      disabled={loading || loadingReasons || returnReasons.length === 0 || selectedItemsCount === 0}
                       className="flex-1 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
                     >
                       {loading ? t('procesando') : tComun('procesarDevolucion')}

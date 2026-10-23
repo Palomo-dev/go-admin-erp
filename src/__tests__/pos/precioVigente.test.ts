@@ -15,7 +15,7 @@ const consultasPrecio: Array<{ metodo: string; args: unknown[] }> = [];
 
 jest.mock('@/lib/supabase/config', () => {
   const chain: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gte', 'lte', 'or', 'not']) {
+  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gte', 'lte', 'or', 'not', 'range', 'abortSignal']) {
     chain[m] = () => chain;
   }
   chain.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>

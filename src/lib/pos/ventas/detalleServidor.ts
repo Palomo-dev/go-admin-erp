@@ -50,6 +50,22 @@ export interface LineaDetalle {
   tasa: number | null;
   total: number;
   nota: string | null;
+  /** Le quitaron la promoción. El cobro no se la volvió a aplicar. */
+  sin_promocion: boolean;
+}
+
+export interface AuditoriaPromo {
+  id: string;
+  accion: 'promo_excluded' | 'promo_restored';
+  fecha: string;
+  usuario_id: string | null;
+  usuario: string | null;
+  linea_id: string | null;
+  producto_id: number | null;
+  promocion_id: string | null;
+  promocion_nombre: string | null;
+  monto: number;
+  motivo: string | null;
 }
 
 export interface DocumentoDetalle {
@@ -120,6 +136,7 @@ export interface DetalleVenta {
   cajero: { id: string; nombre: string | null };
   vendedor: { id: string; nombre: string | null } | null;
   lineas: LineaDetalle[];
+  auditoria_promos: AuditoriaPromo[];
   factura: DocumentoDetalle | null;
   notas_credito: DocumentoDetalle[];
   pagos: PagoDetalle[];
@@ -168,7 +185,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const [itemsRes, docsRes, devRes, mesaRes, pedidoRes, comRes, clienteRes, ramaRes, permisos] = await Promise.all([
     ctx.supabase
       .from('sale_items')
-      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, products(name, sku, unit_code, sale_mode, qty_decimals)')
+      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, promo_excluded, products(name, sku, unit_code, sale_mode, qty_decimals)')
       .eq('sale_id', id),
     ctx.supabase
       .from('invoice_sales')
@@ -212,7 +229,8 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const cxcFilas = (cxcRes.data ?? []) as Array<{ id: string; amount: number | string | null; balance: number | string | null; due_date: string | null; status: string | null }>;
 
   const fuentes = [id, ...idsFacturas, ...cxcFilas.map((c) => c.id)];
-  const [pagosRes, asientosRes] = await Promise.all([
+  const webOrderId = (s.web_order_id as string | null) ?? null;
+  const [pagosRes, asientosRes, auditRes] = await Promise.all([
     ctx.supabase
       .from('payments')
       .select('id, source, source_id, method, amount, change_amount, status, payment_date, created_at, reference, currency')
@@ -226,12 +244,26 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       .in('source', ['sales', 'sale', 'invoice_sales'])
       .in('source_id', [id, ...idsFacturas])
       .order('entry_date', { ascending: true }),
+    ctx.supabase
+      .from('ops_audit_log')
+      .select('id, action, created_at, user_id, metadata')
+      .eq('organization_id', ctx.organizationId)
+      .in('action', ['promo_excluded', 'promo_restored'])
+      .or(
+        [
+          `and(entity_type.eq.sale,entity_id.eq.${id})`,
+          webOrderId ? `and(entity_type.eq.web_order,entity_id.eq.${webOrderId})` : null,
+        ]
+          .filter(Boolean)
+          .join(','),
+      ),
   ]);
   type Pago = { id: string; source: string; source_id: string; method: string | null; amount: number | string; change_amount: number | string | null; status: string | null; payment_date: string | null; created_at: string | null; reference: string | null; currency: string | null };
   const pagos = pagosDeVenta((pagosRes.data ?? []) as Pago[], { venta: id, facturas: idsFacturas, cuentasPorCobrar: cxcFilas.map((c) => c.id) });
 
   const mesa = mesaRes.data as { server_id: string | null; customers: number | null; opened_at: string | null; closed_at: string | null; restaurant_tables: { name?: string } | { name?: string }[] | null } | null;
-  const gente = await nombresPerfiles(ctx, [s.user_id, s.salesperson_id as string | null, mesa?.server_id]);
+  const auditoriaCruda = ((auditRes.data ?? []) as Array<{ id: string; action: string; created_at: string; user_id: string | null; metadata: Record<string, unknown> | null }>);
+  const gente = await nombresPerfiles(ctx, [s.user_id, s.salesperson_id as string | null, mesa?.server_id, ...auditoriaCruda.map((a) => a.user_id)]);
   const cliente = clienteRes.data as { id: string; full_name: string | null; identification_number: string | null; doc_number: string | null; email: string | null; phone: string | null } | null;
   const pedido = pedidoRes.data as { id: string; order_number: string | null; delivery_type: string | null; delivery_address: unknown; coupon_code: string | null } | null;
   const com = ((comRes.data ?? []) as Array<{ commission_amount: number | string | null; status: string | null; payee_name: string | null }>)[0];
@@ -298,7 +330,25 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
         tasa: l.tax_rate === null || l.tax_rate === undefined ? null : n(l.tax_rate),
         total: n(l.total),
         nota: typeof notas?.note === 'string' ? notas.note : typeof notas?.nota === 'string' ? notas.nota : null,
+        sin_promocion: l.promo_excluded === true,
       };
+    }),
+    auditoria_promos: auditoriaCruda.map((a) => {
+      const meta = a.metadata ?? {};
+      const accion = a.action === 'promo_restored' ? 'promo_restored' : 'promo_excluded';
+      return {
+        id: a.id,
+        accion,
+        fecha: a.created_at,
+        usuario_id: a.user_id,
+        usuario: a.user_id ? gente.get(a.user_id) ?? null : null,
+        linea_id: typeof meta.sale_item_id === 'string' ? meta.sale_item_id : null,
+        producto_id: meta.product_id == null ? null : n(meta.product_id) || null,
+        promocion_id: typeof meta.promotion_id === 'string' ? meta.promotion_id : null,
+        promocion_nombre: typeof meta.promotion_name === 'string' ? meta.promotion_name : null,
+        monto: n(meta.amount),
+        motivo: typeof meta.reason === 'string' ? meta.reason : null,
+      } satisfies AuditoriaPromo;
     }),
     factura: factura ? aDoc(factura, 'factura') : null,
     notas_credito: ncs.map((d) => aDoc(d, 'nota_credito')),

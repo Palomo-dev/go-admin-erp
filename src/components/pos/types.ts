@@ -123,6 +123,17 @@ export interface CartItem {
   manual_discount_amount?: number | null;
   /** Descuento de promoción de la última evaluación del carrito (se recalcula en cada cambio). */
   promo_discount_amount?: number;
+  /**
+   * El cajero quitó la promoción de esta línea. El motor no se la vuelve a
+   * poner aunque el descuento manual quede en 0. Por defecto no está.
+   */
+  promo_excluded?: boolean;
+  /** Motivo opcional de haberla quitado. */
+  promo_excluded_reason?: string | null;
+  /** Promociones que tenía la línea al quitarlas, para la auditoría del cobro. */
+  promo_removed?: Array<{ promotion_id: string; promotion_name: string; discount_amount: number }> | null;
+  /** Promociones que el motor dejó en esta línea en la última evaluación. */
+  promos_en_linea?: Array<{ promotion_id: string; promotion_name: string; discount_amount: number }>;
   /** Parte del cupón que le tocó a esta línea (ya va dentro de `discount_amount`). */
   coupon_discount_amount?: number;
   tax_amount?: number;

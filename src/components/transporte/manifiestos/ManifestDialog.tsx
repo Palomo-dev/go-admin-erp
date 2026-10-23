@@ -81,6 +81,7 @@ export function ManifestDialog({
     planned_start: undefined,
     planned_end: undefined,
     notes: undefined,
+    pagado_contado: false,
   });
 
   const { selectedBranchId } = useBranch();
@@ -98,6 +99,7 @@ export function ManifestDialog({
           planned_start: manifest.planned_start?.slice(0, 16) || undefined,
           planned_end: manifest.planned_end?.slice(0, 16) || undefined,
           notes: manifest.notes || undefined,
+          pagado_contado: manifest.pagado_contado === true,
         });
       } else {
         setFormData({
@@ -109,6 +111,7 @@ export function ManifestDialog({
           planned_start: undefined,
           planned_end: undefined,
           notes: undefined,
+          pagado_contado: false,
         });
       }
     }
@@ -256,6 +259,21 @@ export function ManifestDialog({
               />
             </div>
           </div>
+
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={formData.pagado_contado === true}
+              onChange={(e) => setFormData((p) => ({ ...p, pagado_contado: e.target.checked }))}
+            />
+            <span>
+              Pagado de contado
+              <span className="block text-muted-foreground">
+                Si está marcado al completar, el asiento acredita caja. Si no, acredita proveedores o costos por pagar y el pago va en un egreso aparte.
+              </span>
+            </span>
+          </label>
 
           {/* Notas */}
           <div className="space-y-2">

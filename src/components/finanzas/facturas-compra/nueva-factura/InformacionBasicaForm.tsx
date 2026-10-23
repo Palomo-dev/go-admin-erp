@@ -19,28 +19,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { NuevaFacturaCompraForm, SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../types';
-import { SupplierSelector } from './SupplierSelector';
+import { NuevaFacturaCompraForm, OrganizationPaymentMethod, OrganizationCurrency } from '../types';
+import { ElegirProveedor, documentoTexto, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface InformacionBasicaFormProps {
   formData: NuevaFacturaCompraForm;
-  proveedores: SupplierBase[];
   metodosPago: OrganizationPaymentMethod[];
   monedas: OrganizationCurrency[];
   errors: Record<string, string>;
   onInputChange: (field: keyof NuevaFacturaCompraForm, value: any) => void;
-  onProveedorCreado: (nuevoProveedor: SupplierBase) => void;
 }
 
 export function InformacionBasicaForm({
   formData,
-  proveedores,
   metodosPago,
   monedas,
   errors,
   onInputChange,
-  onProveedorCreado
 }: InformacionBasicaFormProps) {
   const { selectedBranchId } = useBranch();
   // Estado para manejo de términos de pago personalizado
@@ -50,10 +46,40 @@ export function InformacionBasicaForm({
   const [isGeneratingNumber, setIsGeneratingNumber] = useState<boolean>(false);
   const [invoiceNumberError, setInvoiceNumberError] = useState<string>('');
   
-  // Callback memoizado para evitar loops infinitos en SupplierSelector
-  const handleSupplierChange = useCallback((value: number | null) => {
-    onInputChange('supplier_id', value);
-  }, [onInputChange]);
+  const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
+
+  useEffect(() => {
+    const id = formData.supplier_id;
+    if (!id) {
+      setProveedor(null);
+      return;
+    }
+    let vivo = true;
+    void supabase
+      .from('suppliers')
+      .select('id, name, nit, dv, contact, phone, doc_type, credit_days')
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId() ?? -1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!vivo || !data) return;
+        setProveedor((actual) =>
+          actual && Number(actual.id) === data.id && actual.nombre === data.name
+            ? actual
+            : {
+                id: String(data.id),
+                nombre: data.name,
+                nit: documentoTexto(data.doc_type || 'nit', data.nit, data.dv),
+                contacto: data.contact,
+                telefono: data.phone,
+                creditDays: data.credit_days,
+              },
+        );
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [formData.supplier_id]);
   
   // Callbacks memoizados para todos los campos del formulario
   const handleInvoiceNumberInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,11 +233,17 @@ export function InformacionBasicaForm({
         {/* Selector de Proveedor */}
         <div className="space-y-1.5 sm:space-y-2">
           <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Proveedor *</Label>
-          <SupplierSelector
-            value={formData.supplier_id}
-            onValueChange={handleSupplierChange}
-            proveedores={proveedores}
-            onProveedorCreado={onProveedorCreado}
+          <ElegirProveedor
+            layout="campo"
+            proveedor={proveedor}
+            onCambiar={(elegido) => {
+              setProveedor(elegido);
+              onInputChange('supplier_id', Number(elegido.id));
+            }}
+            onQuitar={() => {
+              setProveedor(null);
+              onInputChange('supplier_id', null);
+            }}
           />
           {errors.supplier_id && (
             <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.supplier_id}</p>

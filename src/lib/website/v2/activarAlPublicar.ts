@@ -30,6 +30,17 @@ export function debeActivarAlPublicar(e: EstadoParaActivar): boolean {
 }
 
 /**
+ * Lo que «Publicar» debe pasar en `{ activar }` (editor, Diseño, Resumen y asistente).
+ * El lector se lee al llamar: sin `NEXT_PUBLIC_WEBSITE_V2_LECTOR=1` no se activa.
+ */
+export function activarAlPublicarSitio(v2Adoptado: boolean): boolean {
+  return debeActivarAlPublicar({
+    v2Adoptado,
+    lectorListo: process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR === '1',
+  });
+}
+
+/**
  * Publica y, si corresponde, activa. Si activar falla la revisión YA quedó publicada: no se
  * deshace ni se lanza el error, se devuelve `activacion: 'fallo'` para que el aviso ofrezca
  * «Activar en la web» como reintento. Si publicar falla, el error sube tal cual.

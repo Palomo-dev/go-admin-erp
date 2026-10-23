@@ -20,7 +20,7 @@ import { CotizacionesService, type QuotationInput, type QuotationItem } from '@/
 import { todayInTz } from '@/lib/utils/dateDisplay';
 import { sumarDiasCalendario } from '@/lib/utils/taskReminderDates';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { ClienteSelector } from '@/components/finanzas/facturas-venta/nueva-factura/ClienteSelector';
+import { ElegirCliente, documentoTexto, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
 import { FormaPagoSelector } from '@/components/finanzas/facturas-venta/nueva-factura/FormaPagoSelector';
@@ -59,6 +59,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [cliente, setCliente] = useState<ClienteDocumento | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
   const [taxIncluded, setTaxIncluded] = useState(false);
@@ -211,6 +212,20 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       const opp = opportunities.find((o) => o.id === opportunityId);
       if (opp?.customer_id) {
         setCustomerId(opp.customer_id);
+        const { data } = await supabase
+          .from('customers')
+          .select('id, full_name, email, phone, identification_type, identification_number, dv')
+          .eq('id', opp.customer_id)
+          .maybeSingle();
+        if (data) {
+          setCliente({
+            id: data.id,
+            nombre: data.full_name ?? '',
+            correo: data.email,
+            telefono: data.phone,
+            documento: documentoTexto(data.identification_type, data.identification_number, data.dv),
+          });
+        }
       }
     } catch (e) {
       console.error('Error loading opportunity products:', e);
@@ -239,6 +254,15 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       }
 
       setCustomerId(cot.customer_id);
+      if (cot.customers) {
+        setCliente({
+          id: cot.customers.id,
+          nombre: cot.customers.full_name,
+          correo: cot.customers.email,
+          telefono: cot.customers.phone,
+          documento: documentoTexto(cot.customers.identification_type, cot.customers.identification_number),
+        });
+      }
       // Antes no se cargaban: en modo «Todas» las sucursales la edición fallaba
       // y la oportunidad se perdía al guardar.
       setBranchId(cot.branch_id ?? null);
@@ -365,7 +389,19 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Cliente</Label>
-              <ClienteSelector selectedCustomerId={customerId} onCustomerChange={setCustomerId} />
+              <ElegirCliente
+                layout="campo"
+                sucursal={branchId}
+                cliente={cliente}
+                onCambiar={(elegido) => {
+                  setCliente(elegido);
+                  setCustomerId(elegido.id);
+                }}
+                onQuitar={() => {
+                  setCliente(null);
+                  setCustomerId(null);
+                }}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">

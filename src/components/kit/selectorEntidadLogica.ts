@@ -16,8 +16,15 @@ export interface OpcionEntidad {
   pendienteSync?: boolean;
   deshabilitada?: boolean;
   motivo?: string;
-  /** Insignia junto al nombre: «Persona», «Empresa». */
+  /** Insignia junto al nombre: «Persona», «Empresa», «Cliente». */
   etiqueta?: string | null;
+  /**
+   * Tono de la insignia (`StatusBadge`). Sin él, la insignia sigue el pill de
+   * marca del diálogo de documento: el POS y la factura de compra no cambian.
+   */
+  tonoEtiqueta?: 'marca' | 'exito' | 'advertencia' | 'peligro' | 'informacion' | 'neutro';
+  /** Avatar de iniciales. Sin él, el diálogo de documento conserva el recuadro de filtros. */
+  conAvatar?: boolean;
   /** Insignia a la derecha: «Por cobrar $ 1.200.000» (advertencia) · «Al día» (éxito). */
   insignia?: { texto: string; tono?: 'advertencia' | 'exito' | 'neutro' | 'informacion' } | null;
 }

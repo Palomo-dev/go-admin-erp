@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ContabilidadService, ChartAccount, type NaturalezaCuenta, type NivelCuenta } from '../ContabilidadService';
+import { presentacionDeCodigo, type PresentacionNiif } from '@/lib/finanzas/pucPrefijo';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { SearchInput } from '@/components/kit/SearchInput';
@@ -43,6 +44,21 @@ const NATURALEZAS: { value: NaturalezaCuenta; label: string }[] = [
 
 const NIVELES: NivelCuenta[] = ['clase', 'grupo', 'cuenta', 'subcuenta', 'auxiliar', 'subauxiliar', 'legacy'];
 
+type ModoCentroCosto = 'obligatorio' | 'opcional' | 'no_aplica';
+
+function modoCentroDe(codigo: string, modo?: string | null, requiere?: boolean | null): ModoCentroCosto {
+  if (modo === 'obligatorio' || modo === 'opcional' || modo === 'no_aplica') return modo;
+  if (requiere === true) return 'obligatorio';
+  return ['4', '5', '6', '7'].includes(codigo[0] ?? '') ? 'obligatorio' : 'no_aplica';
+}
+
+const PRESENTACIONES: { value: PresentacionNiif | 'heredar'; label: string }[] = [
+  { value: 'heredar', label: 'Según el grupo' },
+  { value: 'corriente', label: 'Corriente' },
+  { value: 'no_corriente', label: 'No corriente' },
+  { value: 'segun_plazo', label: 'Según plazo' },
+];
+
 interface Formulario {
   account_code: string;
   name: string;
@@ -50,8 +66,9 @@ interface Formulario {
   parent_code: string;
   description: string;
   naturaleza: NaturalezaCuenta;
+  presentacion_niif: PresentacionNiif | '';
   requiere_tercero: boolean;
-  requiere_centro_costo: boolean;
+  centro_costo_modo: ModoCentroCosto;
 }
 
 const FORMULARIO_VACIO: Formulario = {
@@ -61,8 +78,9 @@ const FORMULARIO_VACIO: Formulario = {
   parent_code: '',
   description: '',
   naturaleza: 'debito',
+  presentacion_niif: '',
   requiere_tercero: false,
-  requiere_centro_costo: false,
+  centro_costo_modo: 'no_aplica',
 };
 
 function mensajeCuenta(error: unknown): string {
@@ -161,8 +179,9 @@ export function PlanCuentasPage() {
         parent_code: account.parent_code || '',
         description: account.description || '',
         naturaleza: naturalezaDe(account.account_code, account.naturaleza) ?? 'debito',
+        presentacion_niif: account.presentacion_niif ?? '',
         requiere_tercero: account.requiere_tercero ?? false,
-        requiere_centro_costo: account.requiere_centro_costo ?? false,
+        centro_costo_modo: modoCentroDe(account.account_code, account.centro_costo_modo, account.requiere_centro_costo),
       });
     } else {
       resetForm();
@@ -185,8 +204,9 @@ export function PlanCuentasPage() {
       parent_code: padre.account_code,
       description: '',
       naturaleza: naturalezaDe(codigo, null) ?? 'debito',
+      presentacion_niif: presentacionDeCodigo(codigo) ?? '',
       requiere_tercero: padre.requiere_tercero ?? false,
-      requiere_centro_costo: ['5', '6', '7'].includes(codigo[0] ?? ''),
+      centro_costo_modo: modoCentroDe(codigo),
     });
     setShowDialog(true);
   };
@@ -223,8 +243,10 @@ export function PlanCuentasPage() {
         parent_code: formData.parent_code || null,
         description: formData.description || null,
         naturaleza: formData.naturaleza,
+        presentacion_niif: formData.presentacion_niif || null,
         requiere_tercero: formData.requiere_tercero,
-        requiere_centro_costo: formData.requiere_centro_costo,
+        centro_costo_modo: formData.centro_costo_modo,
+        requiere_centro_costo: formData.centro_costo_modo === 'obligatorio',
       };
       const esTitulo = nivelDe(codigo) === 'clase' || nivelDe(codigo) === 'grupo';
       if (editingAccount) {
@@ -607,15 +629,45 @@ export function PlanCuentasPage() {
                 </Select>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Presentación NIIF</Label>
+              <Select
+                value={formData.presentacion_niif || 'heredar'}
+                onValueChange={(value) => setFormData({
+                  ...formData,
+                  presentacion_niif: value === 'heredar' ? '' : value as PresentacionNiif,
+                })}
+              >
+                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRESENTACIONES.map((opcion) => (
+                    <SelectItem key={opcion.value} value={opcion.value}>{opcion.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                No cambia el nombre del grupo. 11 sigue siendo Disponible.
+              </p>
+            </div>
             <div className="flex gap-6">
               <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input type="checkbox" checked={formData.requiere_tercero} onChange={(e) => setFormData({ ...formData, requiere_tercero: e.target.checked })} />
                 Requiere tercero
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" checked={formData.requiere_centro_costo} onChange={(e) => setFormData({ ...formData, requiere_centro_costo: e.target.checked })} />
-                Requiere centro de costo
-              </label>
+              <div className="space-y-2">
+                <Label>Centro de costo</Label>
+                <Select
+                  value={formData.centro_costo_modo}
+                  onValueChange={(value) => setFormData({ ...formData, centro_costo_modo: value as ModoCentroCosto })}
+                >
+                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="obligatorio">Obligatorio</SelectItem>
+                    <SelectItem value="opcional">Opcional</SelectItem>
+                    <SelectItem value="no_aplica">No aplica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Descripción</Label>

@@ -80,6 +80,10 @@ export function estaConciliado(status: string | null | undefined): boolean {
  */
 export const CODIGOS_ERROR_TESORERIA = [
   // El más largo primero: `codigoErrorTesoreria` busca por inclusión.
+  // `asiento_publicado_inmutable` se compara sin distinguir mayúsculas, antes
+  // del 42501: el disparador lo lanzaba con ese código y la pantalla decía
+  // «sin permiso».
+  'asiento_publicado_inmutable',
   'cuenta_no_es_de_movimiento',
   'centro_costo_invalido',
   'categoria_invalida',
@@ -116,7 +120,10 @@ export type CodigoErrorTesoreria = (typeof CODIGOS_ERROR_TESORERIA)[number];
 export function codigoErrorTesoreria(error: unknown): CodigoErrorTesoreria {
   const e = (error ?? {}) as { code?: string; message?: string };
   const mensaje = e.message ?? '';
-  const directo = CODIGOS_ERROR_TESORERIA.find((c) => c !== 'desconocido' && mensaje.includes(c));
+  if (mensaje.toLowerCase().includes('asiento_publicado_inmutable')) return 'asiento_publicado_inmutable';
+  const directo = CODIGOS_ERROR_TESORERIA.find(
+    (c) => c !== 'desconocido' && c !== 'asiento_publicado_inmutable' && mensaje.includes(c),
+  );
   if (directo) return directo;
   if (mensaje.includes('SUCURSAL_NO_PERMITIDA')) return 'sin_acceso_sucursal';
   if (mensaje.includes('Acceso denegado') || e.code === '42501') return 'sin_permiso';

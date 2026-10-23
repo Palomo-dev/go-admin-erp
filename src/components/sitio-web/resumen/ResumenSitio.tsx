@@ -18,6 +18,7 @@ import { CLASE_TAMANO_ICONO, ICONO_TAREA_SITIO, TRAZO_ICONO } from '../ui/iconos
 import { ActionSheet, AvisoTonal, Skeleton, clasesBoton, type AccionFila } from '@/components/kit';
 import { MarcoSitioWeb, type EstadoVistaSitio } from '../MarcoSitioWeb';
 import { RAIZ_SITIO_WEB, rutaEditorSitio } from '../rutasSitioWeb';
+import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
 import { useSitioV2 } from '../useSitioV2';
 import { resolverEstadoPublicacion } from '../ui/estadoPublicacion';
 import { useResumenSitio } from './useResumenSitio';
@@ -138,10 +139,11 @@ export function ResumenSitio() {
   };
 
   const publicar = async () => {
-    const r = await sitioV2.publicar(null);
+    const r = await sitioV2.publicar(null, { activar: activarAlPublicarSitio(!!sitioV2.sitio?.v2Adoptado) });
     if (r) {
       setRevisarAbierto(false);
-      toast.success(t('resumen.tarjeta.publicado'));
+      if (r.activacion === 'fallo') toast.warning(t('resumen.tarjeta.activarFallo'));
+      else toast.success(t('resumen.tarjeta.publicado'));
       await recargar();
       return;
     }

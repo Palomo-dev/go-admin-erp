@@ -103,6 +103,7 @@ describe('clave de la cuenta', () => {
 
   test('la comisión no se lleva la cuenta de aportes de nómina', () => {
     expect(claveDeCuenta('commissions', 'debito', '5235')).toBe('comisiones');
+    expect(claveDeCuenta('commissions', 'debito', '529505')).toBe('comisiones');
     expect(claveDeCuenta('commission', 'credito', '2370')).toBeNull();
     expect(claveDeCuenta('ota_commission', 'debito', '5235')).toBe('comisiones');
     expect(claveDeCuenta('payroll_slips', 'credito', '2370')).toBe('nomina_aportes');
@@ -111,6 +112,8 @@ describe('clave de la cuenta', () => {
   test('el IVA de la venta y el de la compra son claves distintas aunque el código sea el mismo', () => {
     expect(claveDeCuenta('invoice_sales', 'impuesto', '2408')).toBe('iva_generado');
     expect(claveDeCuenta('sale', 'impuesto', '2405')).toBe('iva_generado');
+    expect(claveDeCuenta('invoice_sales', 'impuesto', '240805')).toBe('iva_generado');
+    expect(claveDeCuenta('invoice_purchase', 'debito', '240810')).toBe('iva_descontable');
     expect(claveDeCuenta('invoice_purchase', 'impuesto', '2408')).toBe('iva_descontable');
     expect(claveDeCuenta('purchase_order', 'impuesto', '2408')).toBe('iva_descontable');
     expect(claveDeCuenta('reservation', 'credito', '2405')).toBeNull();
@@ -192,26 +195,27 @@ describe('clave de la cuenta', () => {
 });
 
 describe('plantilla por sector', () => {
-  test('comercio, gimnasio y transporte comparten el PUC de ventas', () => {
-    for (const tipo of [null, 3, 5, 6]) {
+  test('comercio y gimnasio comparten el PUC de ventas; el transporte usa 4145', () => {
+    for (const tipo of [null, 3, 5]) {
       const p = propuestaPorSector(tipo);
       expect(p.ventas_productos).toBe('4135');
       expect(p.ventas_servicios).toBe('4235');
       expect(p.costo_ventas).toBe('6135');
       expect(p.inventario).toBe('1435');
     }
+    expect(propuestaPorSector(6).ventas_productos).toBe('4145');
   });
 
   test('restaurante, hotel, servicios y parqueadero mueven las ventas', () => {
     expect(propuestaPorSector(1)).toMatchObject({
-      ventas_productos: '4110',
-      ventas_servicios: '4140',
+      ventas_productos: '414015',
+      ventas_servicios: '414095',
       costo_ventas: '6140',
       inventario: '1405',
     });
     expect(propuestaPorSector(2)).toMatchObject({
-      ventas_productos: '4110',
-      ventas_servicios: '4115',
+      ventas_productos: '4140',
+      ventas_servicios: '4140',
       costo_ventas: '6140',
       inventario: '1435',
     });
@@ -229,17 +233,26 @@ describe('plantilla por sector', () => {
       proveedores: '2205',
       devoluciones: '4175',
       descuentos: '4175',
-      iva_generado: '2408',
-      iva_descontable: '2408',
+      iva_generado: '240805',
+      iva_descontable: '240810',
       retefuente: '2365',
       reteiva: '2367',
       reteica: '2368',
       propinas: '5105',
-      comisiones: '5235',
+      comisiones: '529505',
       anticipos: '2805',
       nomina: '5105',
       nomina_por_pagar: '2505',
       nomina_aportes: '2370',
+      faltante_inventario: '519595',
+      gastos_extraordinarios: '5315',
+      consumo_interno: '519595',
+      manifiesto_por_pagar: '2205',
+      manifiesto_transporte: '2335',
+      saldo_inicial: '3105',
+      impuesto_consumo: '2495',
+      redondeo: '4295',
+      compra_servicio: '2335',
     });
     expect(nombreSector(1)).toBe('Restaurante');
     expect(nombreSector(99)).toBe('Comercio');

@@ -371,6 +371,7 @@ describe('Seguridad de cajas, fase 1 (migración 20260928100000)', () => {
       p_categoria_id: null,
       p_cuenta_contable: null,
       p_centro_costo_id: null,
+      p_distribucion_id: null,
       p_tercero_nit: null,
       p_tercero_nombre: null,
       p_soporte_path: null,

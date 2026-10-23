@@ -15,7 +15,7 @@ jest.mock('@/lib/supabase/config', () => {
     const registro = { tabla: nombre, filtros: [] as unknown[][] };
     mockConsultas.push(registro);
     const chain: Record<string, unknown> = {};
-    for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gt', 'gte', 'lte', 'or', 'not']) {
+    for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'range', 'abortSignal', 'neq', 'gt', 'gte', 'lte', 'or', 'not']) {
       chain[m] = (...args: unknown[]) => {
         registro.filtros.push([m, ...args]);
         return chain;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,14 +20,10 @@ import {
   ChevronUp,
   Calendar,
   DollarSign,
-  Building2,
-  AlertCircle
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { useBranch } from '@/lib/context/BranchContext';
+import { ElegirProveedor, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
 
-import { CuentasPorPagarService } from './CuentasPorPagarService';
-import { FiltrosCuentasPorPagar, SupplierOption } from './types';
+import { FiltrosCuentasPorPagar } from './types';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 
 interface CuentasPorPagarFiltrosProps {
@@ -42,39 +38,11 @@ export function CuentasPorPagarFiltros({
   onLimpiarFiltros
 }: CuentasPorPagarFiltrosProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [proveedores, setProveedores] = useState<SupplierOption[]>([]);
+  const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
   const [mostrarFiltrosAvanzados, setMostrarFiltrosAvanzados] = useState(false);
 
-  const { toast } = useToast();
-  const { branchFilter } = useBranch();
-
-  useEffect(() => {
-    cargarProveedores();
-  }, [branchFilter]);
-
-  const cargarProveedores = async () => {
-    try {
-      const proveedoresData = await CuentasPorPagarService.obtenerProveedoresConSaldo(branchFilter);
-      
-      const proveedoresOptions: SupplierOption[] = proveedoresData.map(proveedor => ({
-        value: proveedor.id.toString(),
-        label: proveedor.name,
-        nit: proveedor.nit,
-        // En una implementación completa, estos valores vendrían del join con accounts_payable
-        balance: 0,
-        overdue_amount: 0
-      }));
-
-      setProveedores(proveedoresOptions);
-    } catch (error) {
-      console.error('Error cargando proveedores:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los proveedores",
-        variant: "destructive",
-      });
-    }
-  };
+  const proveedorVisible =
+    filtros.proveedor !== 'todos' && proveedor?.id === filtros.proveedor ? proveedor : null;
 
   // Handlers de cambio
   const handleInputChange = (field: keyof FiltrosCuentasPorPagar, value: any) => {
@@ -229,30 +197,18 @@ export function CuentasPorPagarFiltros({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Filtro por proveedor */}
                 <div className="space-y-1.5 sm:space-y-2">
-                  <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Proveedor</Label>
-                  <Select 
-                    value={filtros.proveedor} 
-                    onValueChange={handleProveedorChange}
-                  >
-                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                      <SelectItem value="todos" className="text-xs sm:text-sm dark:text-gray-300">Todos los proveedores</SelectItem>
-                      {proveedores.map((proveedor) => (
-                        <SelectItem key={proveedor.value} value={proveedor.value} className="dark:text-gray-300">
-                          <div className="flex flex-col">
-                            <span className="text-xs sm:text-sm">{proveedor.label}</span>
-                            {proveedor.nit && (
-                              <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                                NIT: {proveedor.nit}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ElegirProveedor
+                    layout="campo"
+                    proveedor={proveedorVisible}
+                    onCambiar={(elegido) => {
+                      setProveedor(elegido);
+                      handleProveedorChange(elegido.id);
+                    }}
+                    onQuitar={() => {
+                      setProveedor(null);
+                      handleProveedorChange('todos');
+                    }}
+                  />
                 </div>
 
                 {/* Monto mínimo */}

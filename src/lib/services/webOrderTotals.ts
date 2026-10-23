@@ -107,7 +107,12 @@ export function repartirTotalesPedidoWeb(order: WebOrder): RepartoPedidoWeb {
   // Descuento de pedido (cupón/promoción) que no está ya en los ítems.
   const descuentoEnItems = descuentosItem.reduce((s, d) => s + d, 0);
   const residuo = Math.max(redondear2(numero(order.discount_total) - descuentoEnItems), 0);
-  const partes = prorratearCentavos(centavos(residuo), netosPrevios.map(centavos));
+  // Una línea con la promoción quitada no recibe el descuento de pedido:
+  // si se prorratea ahí, el cobro le devuelve la promoción.
+  const partes = prorratearCentavos(
+    centavos(residuo),
+    netosPrevios.map((neto, i) => (items[i].promo_excluded ? 0 : centavos(neto))),
+  );
 
   const repartidos: ItemPedidoRepartido[] = items.map((item, i) => {
     const descuento = redondear2(descuentosItem[i] + partes[i] / 100);
@@ -150,6 +155,11 @@ export interface LineaVentaPedidoWeb {
   tax_amount: number;
   discount_amount: number;
   notes: Record<string, unknown>;
+  /** Columnas de `sale_items`. Solo viajan cuando la línea trae la promoción quitada. */
+  promo_excluded?: boolean;
+  promo_excluded_by?: string | null;
+  promo_excluded_at?: string | null;
+  promo_excluded_reason?: string | null;
 }
 
 /**
@@ -179,7 +189,95 @@ export function lineasVentaPedidoWeb(
       // funciones públicas del pedido lo leen de aquí (luego web_orders.diner_label).
       ...(item.diner_label ? { diner_label: item.diner_label } : {}),
     },
+    ...(item.promo_excluded
+      ? {
+          promo_excluded: true as const,
+          promo_excluded_by: item.promo_excluded_by ?? null,
+          promo_excluded_at: item.promo_excluded_at ?? null,
+          promo_excluded_reason: item.promo_excluded_reason ?? null,
+        }
+      : {}),
   }));
+}
+
+export interface PlanExclusionPedido {
+  descuentos: number[];
+  impuestos: number[];
+  discount_total: number;
+  tax_total: number;
+  total: number;
+}
+
+/**
+ * Reparte el descuento de un pedido web después de quitar o restaurar la
+ * promoción de una línea. El cupón (lo que el descuento guardado supera a la
+ * promoción anterior) se queda en las líneas que siguen con promoción. La
+ * línea excluida queda en 0. Con el impuesto sumado por encima del precio, la
+ * tasa de cada línea se aplica sobre el neto nuevo; si el impuesto ya va en
+ * el precio, `tax_total` no se mueve y el total baja o sube solo el descuento.
+ */
+export function planExclusionPromocionPedido(input: {
+  subtotal: number;
+  tax_total: number;
+  discount_total: number;
+  delivery_fee: number;
+  tip_amount: number;
+  total: number;
+  brutos: number[];
+  impuestosLinea: number[];
+  /** Descuento de promoción de la evaluación anterior, sin el cupón. */
+  promoAntes: number;
+  /** Descuento de promoción por línea de la evaluación nueva. La excluida llega en 0. */
+  promoAhoraPorLinea: number[];
+  excluidas: boolean[];
+  /**
+   * Descuento que cada línea tiene hoy. Si llega, el impuesto por encima del
+   * precio se escala contra ese neto (quitar el descuento lo devuelve).
+   * Sin él, se escala contra el bruto, que es lo que hacía el reparto.
+   */
+  descuentosPrevios?: number[];
+}): PlanExclusionPedido {
+  const pedido = {
+    subtotal: input.subtotal,
+    tax_total: input.tax_total,
+    discount_total: input.discount_total,
+    delivery_fee: input.delivery_fee,
+    tip_amount: input.tip_amount,
+    total: input.total,
+  };
+  const sobreBase = impuestoVaSobreBase(pedido);
+  const cupon = Math.max(0, redondear2(numero(input.discount_total) - numero(input.promoAntes)));
+  const promo = input.promoAhoraPorLinea.map((d, i) => (input.excluidas[i] ? 0 : Math.max(0, numero(d))));
+  const hueco = input.brutos.map((bruto, i) => (input.excluidas[i] ? 0 : Math.max(0, redondear2(numero(bruto) - promo[i]))));
+  const partes = prorratearCentavos(centavos(cupon), hueco.map(centavos));
+  const descuentos = promo.map((d, i) => {
+    const tope = Math.max(0, numero(input.brutos[i]));
+    const conCupon = input.excluidas[i] ? 0 : redondear2(d + partes[i] / 100);
+    return Math.min(tope, conCupon);
+  });
+  const impuestos = input.impuestosLinea.map((tax, i) => {
+    const bruto = numero(input.brutos[i]);
+    if (!sobreBase || !(numero(tax) > 0) || !(bruto > 0)) return numero(tax);
+    const previo = input.descuentosPrevios
+      ? Math.min(Math.max(numero(input.descuentosPrevios[i]), 0), bruto)
+      : 0;
+    const netoAntes = input.descuentosPrevios ? Math.max(bruto - previo, 0) : bruto;
+    const netoAhora = Math.max(0, bruto - descuentos[i]);
+    if (!(netoAntes > 0)) return numero(tax);
+    return redondear2(numero(tax) * netoAhora / netoAntes);
+  });
+  const taxEnLineas = input.impuestosLinea.reduce((s, t) => s + numero(t), 0);
+  const taxExtra = Math.max(0, redondear2(numero(input.tax_total) - taxEnLineas));
+  const discount_total = redondear2(descuentos.reduce((s, d) => s + d, 0));
+  const tax_total = sobreBase ? redondear2(impuestos.reduce((s, t) => s + t, 0) + taxExtra) : numero(input.tax_total);
+  const base = redondear2(numero(input.subtotal) - discount_total + numero(input.delivery_fee) + numero(input.tip_amount));
+  return {
+    descuentos,
+    impuestos,
+    discount_total,
+    tax_total,
+    total: sobreBase ? redondear2(base + tax_total) : base,
+  };
 }
 
 export interface InvoiceItemWebInsert {

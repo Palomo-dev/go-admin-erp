@@ -39,6 +39,7 @@ import {
   type ColumnaTabla,
   type EstadoTabla,
 } from '@/components/kit';
+import { ElegirProveedor } from '@/components/finanzas/documento/terceros';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -126,6 +127,7 @@ export function StockPage() {
   const [exportando, setExportando] = useState(false);
   const [categorias, setCategorias] = useState<Opcion[]>([]);
   const [proveedores, setProveedores] = useState<Opcion[]>([]);
+  const [nombreProveedorFiltro, setNombreProveedorFiltro] = useState<string | null>(null);
   const [dialogo, setDialogo] = useState<{ tipo: 'in' | 'out' | 'minimo'; fila: StockFila | null } | null>(null);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
@@ -333,7 +335,7 @@ export function StockPage() {
     ...(estados.length ? [{ clave: 'estado', etiqueta: t('chips.estado', { estados: estados.map((e) => t(`estados.${e}`)).join(', ') }) }] : []),
     ...(categoria ? [{ clave: 'categoria', etiqueta: t('chips.categoria', { nombre: categorias.find((c) => c.id === categoria)?.name ?? `#${categoria}` }) }] : []),
     ...(seguimiento ? [{ clave: 'seguimiento', etiqueta: t(`filtros.seguimiento.${seguimiento}`) }] : []),
-    ...(proveedor ? [{ clave: 'proveedor', etiqueta: t('chips.proveedor', { nombre: proveedores.find((p) => p.id === proveedor)?.name ?? `#${proveedor}` }) }] : []),
+    ...(proveedor ? [{ clave: 'proveedor', etiqueta: t('chips.proveedor', { nombre: nombreProveedorFiltro ?? proveedores.find((p) => p.id === proveedor)?.name ?? `#${proveedor}` }) }] : []),
     ...(producto ? [{ clave: 'producto', etiqueta: t('chips.producto', { nombre: filas[0]?.nombre ?? `#${producto}` }) }] : []),
     ...(!agrupar ? [{ clave: 'agrupar', etiqueta: t('chips.sinAgrupar') }] : []),
   ];
@@ -610,23 +612,25 @@ export function StockPage() {
                 </Select>
               )}
             </FormField>
-            <FormField etiqueta={t('filtros.proveedor')}>
-              {(c) => (
-                <Select value={proveedor ? String(proveedor) : 'todos'} onValueChange={(v) => l.setFiltro('proveedor', v === 'todos' ? null : v)}>
-                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">{t('filtros.todosProveedores')}</SelectItem>
-                    {proveedores.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </FormField>
+            <ElegirProveedor
+              layout="campo"
+              proveedor={
+                proveedor
+                  ? {
+                      id: String(proveedor),
+                      nombre: nombreProveedorFiltro ?? proveedores.find((p) => p.id === proveedor)?.name ?? 'Proveedor',
+                    }
+                  : null
+              }
+              onCambiar={(p) => {
+                setNombreProveedorFiltro(p.nombre);
+                l.setFiltro('proveedor', p.id);
+              }}
+              onQuitar={() => {
+                setNombreProveedorFiltro(null);
+                l.setFiltro('proveedor', null);
+              }}
+            />
             <div className="flex items-center justify-between gap-3">
               <label htmlFor="stock-agrupar" className="text-sm text-fg">
                 {t('filtros.agrupar')}

@@ -180,11 +180,6 @@ export default function BoletosPage() {
     }
   };
 
-  const handleSearchCustomer = async (query: string) => {
-    if (!organizationId) return [];
-    return ticketsService.searchCustomers(organizationId, query);
-  };
-
   const handleConfirm = async (ticket: TicketWithDetails) => {
     try {
       await ticketsService.confirmTicket(ticket.id);
@@ -291,7 +286,6 @@ export default function BoletosPage() {
         trips={trips}
         stops={stops}
         onSave={handleSaveTicket}
-        onSearchCustomer={handleSearchCustomer}
       />
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>

@@ -14,6 +14,7 @@ import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { permisosSitio } from '@/lib/services/website/paginasSitioService';
 import { direccionDelSitio } from '@/components/sitio-web/seoanalitica/seo.server';
 import { importePrecioVigente } from '@/lib/pos/precioVigente';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 import { urlCartaGeneral, urlQrMesa, type SedeQr } from '@/lib/pos/mesas/qrMesa';
 import { wallTimeToInstant } from '@/lib/utils/dateCore';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
@@ -280,14 +281,13 @@ async function etiquetasDe(ctx: CtxCarta, lista: readonly { id: number; tag_id: 
     const e = p.tag_id !== null ? porId.get(p.tag_id) : undefined;
     if (e) mapa.set(p.id, [e]);
   }
-  for (const trozo of trozos(productos)) {
-    const { data, error } = await ctx.supabase.from('product_tag_relations').select('product_id, tag_id').in('product_id', trozo).in('tag_id', [...porId.keys()]);
-    if (error) throw error;
-    for (const r of (data ?? []) as { product_id: number; tag_id: number }[]) {
-      const e = porId.get(r.tag_id);
-      const actuales = mapa.get(r.product_id) ?? [];
-      if (e && !actuales.includes(e)) mapa.set(r.product_id, [...actuales, e]);
-    }
+  const relaciones = await leerPorLotes<{ product_id: number; tag_id: number }>(productos, (lote, desde, hasta) =>
+    ctx.supabase.from('product_tag_relations').select('product_id, tag_id').in('product_id', [...lote]).in('tag_id', [...porId.keys()]).order('product_id', { ascending: true }).order('tag_id', { ascending: true }).range(desde, hasta),
+  );
+  for (const r of relaciones) {
+    const e = porId.get(r.tag_id);
+    const actuales = mapa.get(r.product_id) ?? [];
+    if (e && !actuales.includes(e)) mapa.set(r.product_id, [...actuales, e]);
   }
   return mapa;
 }
@@ -295,16 +295,17 @@ async function etiquetasDe(ctx: CtxCarta, lista: readonly { id: number; tag_id: 
 async function preciosGenerales(ctx: CtxCarta, productos: readonly number[]): Promise<Map<number, number | null>> {
   const filas = new Map<number, { price: number | string | null; effective_from: string | null; effective_to: string | null }[]>();
   const ahora = new Date();
-  for (const trozo of trozos(productos)) {
-    const { data, error } = await ctx.supabase
+  const precios = await leerPorLotes<{ product_id: number; price: number | string | null; effective_from: string | null; effective_to: string | null }>(productos, (lote, desde, hasta) =>
+    ctx.supabase
       .from('product_prices')
       .select('product_id, price, effective_from, effective_to')
-      .in('product_id', trozo)
-      .lte('effective_from', ahora.toISOString());
-    if (error) throw error;
-    for (const f of (data ?? []) as { product_id: number; price: number | string | null; effective_from: string | null; effective_to: string | null }[]) {
-      filas.set(f.product_id, [...(filas.get(f.product_id) ?? []), f]);
-    }
+      .in('product_id', [...lote])
+      .lte('effective_from', ahora.toISOString())
+      .order('id', { ascending: true })
+      .range(desde, hasta),
+  );
+  for (const f of precios) {
+    filas.set(f.product_id, [...(filas.get(f.product_id) ?? []), f]);
   }
   const salida = new Map<number, number | null>();
   for (const id of productos) salida.set(id, importePrecioVigente(filas.get(id), ahora));

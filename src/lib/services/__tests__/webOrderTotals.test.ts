@@ -15,6 +15,7 @@ import {
   lineasFacturaWebConImpuesto,
   lineasNotaCreditoWeb,
   lineasVentaPedidoWeb,
+  planExclusionPromocionPedido,
   repartirTotalesPedidoWeb,
   type ResolverImpuestoLinea,
 } from '../webOrderTotals';
@@ -307,6 +308,61 @@ describe('lineasNotaCreditoWeb', () => {
     expect(lineas).toEqual([
       expect.objectContaining({ product_id: null, qty: 1, unit_price: 15000, tax_rate: 0, tax_code: null, total_line: 15000 }),
     ]);
+  });
+});
+
+describe('quitar la promoción de una línea del pedido', () => {
+  it('la línea excluida queda a precio completo y el cupón se queda en la otra', () => {
+    const plan = planExclusionPromocionPedido({
+      subtotal: 20000,
+      tax_total: 0,
+      discount_total: 2500,
+      delivery_fee: 0,
+      tip_amount: 0,
+      total: 17500,
+      brutos: [10000, 10000],
+      impuestosLinea: [0, 0],
+      promoAntes: 2000,
+      promoAhoraPorLinea: [0, 1000],
+      excluidas: [true, false],
+    });
+    expect(plan.descuentos).toEqual([0, 1500]);
+    expect(plan.discount_total).toBe(1500);
+    expect(plan.total).toBe(18500);
+  });
+
+  it('con el impuesto por encima del precio, la tasa se recalcula sobre el neto', () => {
+    const plan = planExclusionPromocionPedido({
+      subtotal: 10000,
+      tax_total: 1710,
+      discount_total: 1000,
+      delivery_fee: 0,
+      tip_amount: 0,
+      total: 10710,
+      brutos: [10000],
+      impuestosLinea: [1710],
+      promoAntes: 1000,
+      promoAhoraPorLinea: [0],
+      excluidas: [true],
+      descuentosPrevios: [1000],
+    });
+    expect(plan.descuentos).toEqual([0]);
+    expect(plan.tax_total).toBe(1900);
+    expect(plan.total).toBe(11900);
+  });
+
+  it('lineasVentaPedidoWeb lleva el flag y quién lo quitó', () => {
+    const order = pedido({
+      subtotal: 10000,
+      total: 10000,
+      items: [item({ quantity: 1, unit_price: 10000, promo_excluded: true, promo_excluded_reason: 'domicilio', promo_excluded_by: 'usr' })],
+    });
+    expect(lineasVentaPedidoWeb(order)[0]).toMatchObject({
+      discount_amount: 0,
+      promo_excluded: true,
+      promo_excluded_reason: 'domicilio',
+      promo_excluded_by: 'usr',
+    });
   });
 });
 

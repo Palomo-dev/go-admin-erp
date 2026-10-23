@@ -153,6 +153,11 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
   const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
   const [numero, setNumero] = useState('');
   const [sucursal, setSucursal] = useState<number | null>(selectedBranchId ?? null);
+  const [centros, setCentros] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [distribuciones, setDistribuciones] = useState<{ id: string; nombre: string }[]>([]);
+  const [defectoPorSede, setDefectoPorSede] = useState<Record<number, string>>({});
+  const [centroId, setCentroId] = useState('');
+  const [distribucionId, setDistribucionId] = useState('');
   const { getToday, toDate, formatPlain } = useFormatDate(sucursal);
   const [emision, setEmision] = useState<string>(getToday());
   const [plazo, setPlazo] = useState<number | null>(30);
@@ -234,6 +239,35 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    const orgId = getOrganizationId();
+    if (!orgId) return;
+    let cancelado = false;
+    Promise.all([
+      supabase.from('cost_centers').select('id, code, name').eq('organization_id', orgId).eq('is_active', true).order('code'),
+      supabase.from('branches').select('id, default_cost_center_id').eq('organization_id', orgId),
+      supabase.from('cost_center_distributions').select('id, nombre').eq('organization_id', orgId).eq('activo', true).order('nombre'),
+    ]).then(([costos, sedes, dists]) => {
+      if (cancelado || costos.error || sedes.error) return;
+      const lista = (costos.data ?? []) as { id: string; code: string; name: string }[];
+      const mapa: Record<number, string> = {};
+      for (const fila of sedes.data ?? []) {
+        if (fila.default_cost_center_id) mapa[Number(fila.id)] = String(fila.default_cost_center_id);
+      }
+      setCentros(lista);
+      setDefectoPorSede(mapa);
+      setDistribuciones(dists.error ? [] : ((dists.data ?? []) as { id: string; nombre: string }[]));
+      setCentroId((actual) => {
+        if (actual) return actual;
+        const administracion = lista.find((fila) => fila.code === '100')?.id ?? '';
+        return (sucursal != null ? mapa[sucursal] : '') || administracion;
+      });
+    }).catch(() => undefined);
+    return () => {
+      cancelado = true;
+    };
+  }, [sucursal]);
+
   // ── Edición: cargar el borrador ──────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
@@ -252,6 +286,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
         setProveedor(f.proveedor ? { id: String(f.proveedor.id), nombre: f.proveedor.name, nit: documentoTexto('nit', f.proveedor.nit, f.proveedor.dv), telefono: f.proveedor.phone } : null);
         setNumero(f.number_ext);
         setSucursal(f.branch_id);
+        setCentroId(f.cost_center_id ?? '');
+        setDistribucionId(f.distribucion_id ?? '');
         if (f.issue_date) setEmision(toDate(new Date(f.issue_date)));
         if (f.due_date) setVence(toDate(new Date(f.due_date)));
         setPlazo(f.payment_terms);
@@ -478,6 +514,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     commission_type: comision.salesperson_id && comision.rate > 0 ? (comision.type === 'none' ? 'salesperson' : (comision.type as 'salesperson' | 'intermediation_purchase')) : 'none',
     commission_method: comision.method,
     commission_amount: comision.amount,
+    ...(centroId ? { cost_center_id: centroId } : {}),
+    ...(distribucionId ? { distribucion_id: distribucionId } : {}),
     lines: lineas.map((l) => ({
       product_id: l.product_id,
       description: l.description.trim(),
@@ -691,7 +729,12 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
                 disabled={!!poId}
                 onChange={(e) => {
                   marcar();
-                  setSucursal(e.target.value ? Number(e.target.value) : null);
+                  const idSede = e.target.value ? Number(e.target.value) : null;
+                  setSucursal(idSede);
+                  if (!distribucionId) {
+                    const administracion = centros.find((fila) => fila.code === '100')?.id ?? '';
+                    setCentroId((idSede != null ? defectoPorSede[idSede] : null) || administracion);
+                  }
                 }}
                 className={campoClases}
               >
@@ -700,6 +743,44 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
                   <option key={b.id} value={b.id}>
                     {b.name}
                   </option>
+                ))}
+              </select>
+            )}
+            </FormField>
+          <FormField id="fc-centro" etiqueta="Centro de costo">
+            {(c) => (
+              <select
+                {...aria(c)}
+                value={centroId}
+                onChange={(e) => {
+                  marcar();
+                  setCentroId(e.target.value);
+                  if (e.target.value) setDistribucionId('');
+                }}
+                className={campoClases}
+              >
+                <option value="">Sin centro de costo</option>
+                {centros.map((fila) => (
+                  <option key={fila.id} value={fila.id}>{fila.code} · {fila.name}</option>
+                ))}
+              </select>
+            )}
+          </FormField>
+          <FormField id="fc-distribucion" etiqueta="Distribución" ayuda="Reparte el gasto entre varios centros. La suma de los porcentajes es 100.">
+            {(c) => (
+              <select
+                {...aria(c)}
+                value={distribucionId}
+                onChange={(e) => {
+                  marcar();
+                  setDistribucionId(e.target.value);
+                  if (e.target.value) setCentroId('');
+                }}
+                className={campoClases}
+              >
+                <option value="">Sin distribución</option>
+                {distribuciones.map((fila) => (
+                  <option key={fila.id} value={fila.id}>{fila.nombre}</option>
                 ))}
               </select>
             )}

@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import {
   parsearNumeroColombiano,
   parsearFechaExtracto,
@@ -5,6 +6,7 @@ import {
   sugerirCategoria,
   emparejarExtracto,
   claveCategoria,
+  matrizDesdeArchivo,
   type LineaExtracto,
   type MovimientoCandidato,
 } from '../extracto';
@@ -45,6 +47,37 @@ describe('formatos de bancos', () => {
     expect(claveCategoria('interes', 10)).toBe('intereses_recibidos');
     expect(claveCategoria('interes', -10)).toBe('intereses_pagados');
     expect(claveCategoria('gmf', -4)).toBe('gmf');
+  });
+});
+
+describe('archivo de extracto', () => {
+  it('lee CSV y XLSX, y rechaza otro formato', async () => {
+    const csv = new File(
+      ['Fecha;Descripcion;Valor\n02/10/2026;Abono;1.500,00\n'],
+      'extracto.csv',
+      { type: 'text/csv' },
+    );
+    const desdeCsv = await matrizDesdeArchivo(csv);
+    expect(desdeCsv[0]).toEqual(['Fecha', 'Descripcion', 'Valor']);
+    expect(desdeCsv[1]).toEqual(['02/10/2026', 'Abono', '1.500,00']);
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      libro,
+      XLSX.utils.aoa_to_sheet([
+        ['Fecha', 'Descripcion', 'Valor'],
+        ['02/10/2026', 'Abono', '1.500,00'],
+      ]),
+      'Extracto',
+    );
+    const bytes = XLSX.write(libro, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+    const desdeXlsx = await matrizDesdeArchivo(new File([bytes], 'extracto.xlsx'));
+    expect(desdeXlsx[0]).toEqual(['Fecha', 'Descripcion', 'Valor']);
+    expect(desdeXlsx[1][2]).toBe('1.500,00');
+
+    await expect(matrizDesdeArchivo(new File(['x'], 'extracto.pdf'))).rejects.toThrow(
+      'formato_no_soportado',
+    );
   });
 });
 

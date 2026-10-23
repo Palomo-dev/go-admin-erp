@@ -25487,21 +25487,6 @@
       "entrada": "Entrada",
       "salida": "Salida"
     },
-    "carga": {
-      "sinHistorial": "Este producto no tiene inventario registrado. ¿Es tu inventario inicial?",
-      "siSaldoInicial": "Sí, cargar como saldo inicial",
-      "noSobrante": "No, es un sobrante",
-      "desdeNegativo": "Registrar compra o producción faltante",
-      "desdeNegativoDetalle": "La existencia ya está en negativo. Registra la compra o la producción que faltó antes de tomarlo como sobrante.",
-      "registrarCompra": "Registrar compra",
-      "costoParecePrecio": "El costo parece ser el precio de venta",
-      "costoEsCorrecto": "El costo es correcto",
-      "confirmar": "Confirma este ajuste",
-      "confirmarDetalle": "La organización tiene menos de 30 días o el monto supera el umbral. La nota es obligatoria.",
-      "notaObligatoria": "Escribe una nota para confirmar el ajuste.",
-      "asientoTitulo": "Asiento de la carga inicial",
-      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}."
-    },
     "razones": {
       "physical_count": "Conteo físico",
       "discrepancy": "Diferencia detectada",
@@ -25742,6 +25727,21 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "Este producto no tiene inventario registrado. ¿Es tu inventario inicial?",
+        "siSaldoInicial": "Sí, cargar como saldo inicial",
+        "noSobrante": "No, es un sobrante",
+        "desdeNegativo": "Registrar compra o producción faltante",
+        "desdeNegativoDetalle": "La existencia ya está en negativo. Registra la compra o la producción que faltó antes de tomarlo como sobrante.",
+        "registrarCompra": "Registrar compra",
+        "costoParecePrecio": "El costo parece ser el precio de venta",
+        "costoEsCorrecto": "El costo es correcto",
+        "confirmar": "Confirma este ajuste",
+        "confirmarDetalle": "La organización tiene menos de 30 días o el monto supera el umbral. La nota es obligatoria.",
+        "notaObligatoria": "Escribe una nota para confirmar el ajuste.",
+        "asientoTitulo": "Asiento de la carga inicial",
+        "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}."
+      },
       "titulo": "Nuevo ajuste de inventario",
       "tituloEditar": "Editar borrador de ajuste",
       "tituloMovil": "Nuevo ajuste",

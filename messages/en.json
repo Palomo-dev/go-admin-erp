@@ -25487,21 +25487,6 @@
       "entrada": "In",
       "salida": "Out"
     },
-    "carga": {
-      "sinHistorial": "This product has no inventory on record. Is this your opening stock?",
-      "siSaldoInicial": "Yes, load it as opening stock",
-      "noSobrante": "No, it is a surplus",
-      "desdeNegativo": "Record the missing purchase or production",
-      "desdeNegativoDetalle": "Stock is already negative. Record the purchase or production that was missing before treating this as a surplus.",
-      "registrarCompra": "Record purchase",
-      "costoParecePrecio": "The cost looks like the sale price",
-      "costoEsCorrecto": "The cost is correct",
-      "confirmar": "Confirm this adjustment",
-      "confirmarDetalle": "The organization is less than 30 days old, or the amount is over the threshold. A note is required.",
-      "notaObligatoria": "Write a note to confirm the adjustment.",
-      "asientoTitulo": "Opening inventory journal",
-      "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}."
-    },
     "razones": {
       "physical_count": "Physical count",
       "discrepancy": "Discrepancy found",
@@ -25742,6 +25727,21 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "This product has no inventory on record. Is this your opening stock?",
+        "siSaldoInicial": "Yes, load it as opening stock",
+        "noSobrante": "No, it is a surplus",
+        "desdeNegativo": "Record the missing purchase or production",
+        "desdeNegativoDetalle": "Stock is already negative. Record the purchase or production that was missing before treating this as a surplus.",
+        "registrarCompra": "Record purchase",
+        "costoParecePrecio": "The cost looks like the sale price",
+        "costoEsCorrecto": "The cost is correct",
+        "confirmar": "Confirm this adjustment",
+        "confirmarDetalle": "The organization is less than 30 days old, or the amount is over the threshold. A note is required.",
+        "notaObligatoria": "Write a note to confirm the adjustment.",
+        "asientoTitulo": "Opening inventory journal",
+        "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}."
+      },
       "titulo": "New inventory adjustment",
       "tituloEditar": "Edit adjustment draft",
       "tituloMovil": "New adjustment",

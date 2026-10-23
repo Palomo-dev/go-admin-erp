@@ -21286,21 +21286,6 @@
       "entrada": "Entrée",
       "salida": "Sortie"
     },
-    "carga": {
-      "sinHistorial": "Ce produit n'a pas de stock enregistré. S'agit-il de votre stock initial ?",
-      "siSaldoInicial": "Oui, charger comme stock initial",
-      "noSobrante": "Non, c'est un excédent",
-      "desdeNegativo": "Enregistrer l'achat ou la production manquante",
-      "desdeNegativoDetalle": "Le stock est déjà négatif. Enregistrez l'achat ou la production qui manquait avant de le traiter comme un excédent.",
-      "registrarCompra": "Enregistrer l'achat",
-      "costoParecePrecio": "Le coût ressemble au prix de vente",
-      "costoEsCorrecto": "Le coût est correct",
-      "confirmar": "Confirmez cet ajustement",
-      "confirmarDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
-      "notaObligatoria": "Écrivez une note pour confirmer l'ajustement.",
-      "asientoTitulo": "Écriture du stock initial",
-      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}."
-    },
     "razones": {
       "physical_count": "Inventaire physique",
       "discrepancy": "Écart constaté",
@@ -21541,6 +21526,21 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "Ce produit n'a pas de stock enregistré. S'agit-il de votre stock initial ?",
+        "siSaldoInicial": "Oui, charger comme stock initial",
+        "noSobrante": "Non, c'est un excédent",
+        "desdeNegativo": "Enregistrer l'achat ou la production manquante",
+        "desdeNegativoDetalle": "Le stock est déjà négatif. Enregistrez l'achat ou la production qui manquait avant de le traiter comme un excédent.",
+        "registrarCompra": "Enregistrer l'achat",
+        "costoParecePrecio": "Le coût ressemble au prix de vente",
+        "costoEsCorrecto": "Le coût est correct",
+        "confirmar": "Confirmez cet ajustement",
+        "confirmarDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
+        "notaObligatoria": "Écrivez une note pour confirmer l'ajustement.",
+        "asientoTitulo": "Écriture du stock initial",
+        "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}."
+      },
       "titulo": "Nouvel ajustement d'inventaire",
       "tituloEditar": "Modifier le brouillon d'ajustement",
       "tituloMovil": "Nouvel ajustement",

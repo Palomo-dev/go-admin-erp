@@ -13748,6 +13748,7 @@
       "cantidadOriginalUnidad": "Vendu : {cantidad} {unidad}",
       "reingresa": "Remettre en stock",
       "reingresaDe": "{producto} : remettre en stock",
+      "seleccionarDe": "{producto} : sélectionner pour le retour",
       "sinSerialesEnLinea": "Aucun numéro de série vendu sur cette ligne",
       "sinSerialesVendidos": "Aucun numéro de série vendu sur cette ligne",
       "vuelveAStock": "Revient en stock",

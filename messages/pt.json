@@ -13748,6 +13748,7 @@
       "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
       "reingresa": "Volta ao estoque",
       "reingresaDe": "{producto}: volta ao estoque",
+      "seleccionarDe": "{producto}: selecionar para devolver",
       "sinSerialesEnLinea": "Não há números de série vendidos nesta linha",
       "sinSerialesVendidos": "Não há números de série vendidos nesta linha",
       "vuelveAStock": "Volta ao estoque",

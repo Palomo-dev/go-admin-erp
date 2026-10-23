@@ -17949,6 +17949,7 @@
       "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
       "reingresa": "Reingresa al inventario",
       "reingresaDe": "{producto}: reingresa al inventario",
+      "seleccionarDe": "{producto}: seleccionar para devolver",
       "sinSerialesEnLinea": "No hay seriales vendidos en esta línea",
       "sinSerialesVendidos": "No hay seriales vendidos en esta línea",
       "vuelveAStock": "Vuelve a stock",

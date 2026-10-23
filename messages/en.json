@@ -17949,6 +17949,7 @@
       "cantidadOriginalUnidad": "Sold: {cantidad} {unidad}",
       "reingresa": "Return to inventory",
       "reingresaDe": "{producto}: return to inventory",
+      "seleccionarDe": "{producto}: select to return",
       "sinSerialesEnLinea": "This line has no sold serial numbers to return",
       "sinSerialesVendidos": "This line has no sold serial numbers",
       "vuelveAStock": "Back to stock",

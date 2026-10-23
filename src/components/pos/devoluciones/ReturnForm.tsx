@@ -425,6 +425,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       <TableCell>
                         <Checkbox
                           checked={item.selected}
+                          aria-label={t('seleccionarDe', { producto: item.product_name || tComun('productoNoEncontrado') })}
                           onCheckedChange={(checked) => 
                             handleItemSelection(item.sale_item_id, checked as boolean)
                           }

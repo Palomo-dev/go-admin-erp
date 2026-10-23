@@ -11,26 +11,10 @@ import {
   CategoriaExtracto,
   ETIQUETA_CATEGORIA,
   LineaExtracto,
+  matrizDesdeArchivo,
   parsearMatrizExtracto,
-  textoAFilas,
 } from '@/lib/finanzas/conciliacion/extracto';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-
-async function matrizDesdeArchivo(archivo: File): Promise<string[][]> {
-  const nombre = archivo.name.toLowerCase();
-  if (nombre.endsWith('.csv') || nombre.endsWith('.txt')) {
-    return textoAFilas(await archivo.text());
-  }
-  const XLSX = await import('xlsx');
-  const libro = XLSX.read(await archivo.arrayBuffer(), { type: 'array' });
-  const hoja = libro.Sheets[libro.SheetNames[0]];
-  const filas = XLSX.utils.sheet_to_json<(string | number | null)[]>(hoja, {
-    header: 1,
-    raw: false,
-    defval: '',
-  });
-  return filas.map((fila) => (fila ?? []).map((celda) => String(celda ?? '')));
-}
 
 export function ImportarExtracto({
   reconciliationId,

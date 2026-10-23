@@ -152,6 +152,26 @@ export function textoAFilas(texto: string): string[][] {
   return lineas.map((l) => partirLinea(l, delimitador));
 }
 
+/** CSV, TXT o la primera hoja de un Excel. El libro se carga solo al elegir un archivo. */
+export async function matrizDesdeArchivo(archivo: File): Promise<string[][]> {
+  const nombre = archivo.name.toLowerCase();
+  if (nombre.endsWith('.csv') || nombre.endsWith('.txt')) {
+    return textoAFilas(await archivo.text());
+  }
+  if (!nombre.endsWith('.xlsx') && !nombre.endsWith('.xls')) {
+    throw new Error('formato_no_soportado');
+  }
+  const XLSX = await import('xlsx');
+  const libro = XLSX.read(await archivo.arrayBuffer(), { type: 'array' });
+  const hoja = libro.Sheets[libro.SheetNames[0]];
+  const filas = XLSX.utils.sheet_to_json<(string | number | null)[]>(hoja, {
+    header: 1,
+    raw: false,
+    defval: '',
+  });
+  return filas.map((fila) => (fila ?? []).map((celda) => String(celda ?? '')));
+}
+
 function indiceDe(encabezados: string[], alias: string[]): number {
   return encabezados.findIndex((h) => alias.includes(h));
 }

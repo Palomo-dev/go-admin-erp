@@ -9510,6 +9510,12 @@
         "ejemploExacto": "Ex. : 100",
         "motivo": "Motif (facultatif)",
         "motivoPlaceholder": "Ex. : inventaire physique de fin de mois",
+        "tipoContable": "Type comptable",
+        "tiposContables": {
+          "ajuste": "Ajustement (gain ou perte)",
+          "apertura": "Ouverture (stock contre capitaux propres)"
+        },
+        "ayudaTipo": "L’ouverture débite le stock et crédite les capitaux propres. Un ajustement d’entrée crédite les autres produits et un de sortie débite les charges. Une entrée qui n’est pas un retour ne crédite pas les coûts.",
         "avisoKardex": "Chaque ajustement est enregistré dans le kardex et génère son écriture d’inventaire.",
         "sinCosto": "{count, plural, one {{n} ajustement sans coût : il figure au kardex mais n’a pas généré d’écriture.} other {{n} ajustements sans coût : ils figurent au kardex mais n’ont pas généré d’écriture.}}",
         "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire."

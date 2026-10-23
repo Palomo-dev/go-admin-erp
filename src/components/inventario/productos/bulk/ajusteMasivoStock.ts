@@ -15,6 +15,9 @@
 
 export type ModoStock = 'set' | 'add';
 
+/** Apertura va a inventario / patrimonio. Ajuste va a ingreso (entrada) o gasto (salida). */
+export type TipoContableStock = 'ajuste' | 'apertura';
+
 /** Productos por llamada a la RPC (la RPC acepta hasta 500; ~2 ms por ajuste). */
 export const LOTE_AJUSTE_STOCK = 400;
 /** Largo máximo del motivo que se guarda en la nota del movimiento. */

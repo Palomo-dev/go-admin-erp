@@ -20,7 +20,7 @@ export function codigoNormalizado(codigo: string): string {
 
 /** Longitudes de ancestro, de la más larga a la más corta. */
 export function cortesAncestro(largo: number): number[] {
-  const cortes = CORTES.filter((n) => n < largo);
+  const cortes: number[] = CORTES.filter((n) => n < largo);
   if (largo > 8 && largo % 2 === 0) {
     for (let n = largo - 2; n >= 10; n -= 2) cortes.push(n);
   }

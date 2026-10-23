@@ -3427,6 +3427,8 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
       'Excluye la variante de un padre eliminado con alias padre (status distinto de deleted) en 20261001211901. El detector solo reconoce pp_elim.',
     fn_avisos_miembro_stock_cero:
       'La misma exclusión, con alias padre, en 20261001211941. El detector solo reconoce pp_elim.',
+    decrement_stock_with_recipe:
+      'No consulta stock_levels. El detector extiende el cuerpo hasta el final de 20261023102907 y ahí entra el backfill, que nombra stock_levels y products. La función solo descuenta por la primitiva.',
   };
 
   function definicionesDeStock(sql: string): Array<{ nombre: string; conPredicado: boolean }> {

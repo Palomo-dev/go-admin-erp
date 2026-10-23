@@ -57,11 +57,24 @@ export async function leerPermisosInventario(
   return aPermisosInventario(data);
 }
 
-export const CONFIG_INVENTARIO_PREDETERMINADA: ConfigInventario = { bloquear_venta_sin_stock: false };
+export const UMBRAL_CONFIRMACION_AJUSTE = 5_000_000;
+
+export const CONFIG_INVENTARIO_PREDETERMINADA: ConfigInventario = {
+  bloquear_venta_sin_stock: false,
+  monto_confirmacion_ajuste: UMBRAL_CONFIRMACION_AJUSTE,
+};
 
 export function aConfigInventario(data: unknown): ConfigInventario {
   const c = (data ?? {}) as Record<string, unknown>;
-  return { bloquear_venta_sin_stock: c.bloquear_venta_sin_stock === true };
+  const monto = c.monto_confirmacion_ajuste;
+  let umbral: number | null = UMBRAL_CONFIRMACION_AJUSTE;
+  if (monto === null) umbral = null;
+  else if (typeof monto === 'number' && Number.isFinite(monto)) umbral = monto;
+  else if (typeof monto === 'string' && monto.trim() !== '' && Number.isFinite(Number(monto))) umbral = Number(monto);
+  return {
+    bloquear_venta_sin_stock: c.bloquear_venta_sin_stock === true,
+    monto_confirmacion_ajuste: umbral,
+  };
 }
 
 /** Configuración del inventario de la organización (`fn_inventario_config`). */

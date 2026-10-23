@@ -222,7 +222,7 @@ export async function primerosPasos(ctx: Ctx): Promise<PrimerosPasos> {
     if (r.error) throw errorRpc(tabla, r.error);
     return (r.data ?? []).length > 0;
   };
-  const [modulos, sucursales, miembros, productos, impuestos, clientes, movimientos, secciones] = await Promise.all([
+  const [modulos, sucursales, miembros, productos, impuestos, clientes, movimientos, inventarioInicial, secciones] = await Promise.all([
     contar(
       db.from('organization_modules').select('id', { count: 'exact', head: true }).eq('organization_id', org).eq('is_active', true)
         .not('module_code', 'in', `(${MODULOS_BASE.join(',')})`),
@@ -234,10 +234,18 @@ export async function primerosPasos(ctx: Ctx): Promise<PrimerosPasos> {
     contar(db.from('organization_taxes').select('id', { count: 'exact', head: true }).eq('organization_id', org), 'organization_taxes'),
     contar(db.from('customers').select('id', { count: 'exact', head: true }).eq('organization_id', org), 'customers'),
     Promise.all(['sales', 'invoice_sales', 'stock_movements', 'reservations'].map(alguno)).then((r) => r.some(Boolean)),
+    (async () => {
+      const r = await db.from('stock_movements').select('id').eq('organization_id', org).eq('source', 'initial').limit(1);
+      if (r.error) throw errorRpc('stock_movements', r.error);
+      if ((r.data ?? []).length > 0) return true;
+      const a = await db.from('inventory_adjustments').select('id').eq('organization_id', org).in('reason', ['initial_setup', 'saldo_inicial']).limit(1);
+      if (a.error) throw errorRpc('inventory_adjustments', a.error);
+      return (a.data ?? []).length > 0;
+    })(),
     seccionesVisiblesServidor(ctx).catch(() => []),
   ]);
   return armarPrimerosPasos(
-    { modulos, sucursales, miembros, productos, impuestos, clientes },
+    { modulos, sucursales, miembros, productos, impuestos, clientes, inventarioInicial },
     movimientos,
     (href) => paginaVisible(secciones, href),
   );

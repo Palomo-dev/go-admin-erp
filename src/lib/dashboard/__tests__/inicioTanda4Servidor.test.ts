@@ -69,7 +69,9 @@ test('primeros pasos: conteos con la organización del contexto; «Ir» solo a p
   expect(filtros.organization_modules).toContainEqual(['not', 'module_code', ['in', '(clientes,organizations,roles,configuracion)']]);
   expect(filtros.organization_members).toContainEqual(['eq', 'is_active', true]);
   expect(p.hayMovimientos).toBe(true);
-  expect(p.hechos).toBe(4);
+  expect(p.hechos).toBe(5);
+  expect(filtros.stock_movements).toContainEqual(['eq', 'source', 'initial']);
+  expect(p.pasos.find((x) => x.id === 'inventario')).toEqual({ id: 'inventario', hecho: true, href: '/app/inventario/productos' });
   expect(p.pasos.find((x) => x.id === 'productos')).toEqual({ id: 'productos', hecho: true, href: '/app/inventario/productos' });
   expect(p.pasos.find((x) => x.id === 'impuestos')).toEqual({ id: 'impuestos', hecho: false, href: null });
   expect(p.hrefPos).toBeNull();

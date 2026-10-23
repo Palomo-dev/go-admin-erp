@@ -5,7 +5,9 @@ import { useTranslations } from 'next-intl';
 import { Ban, Package, Pencil, RotateCcw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { DataTable, Dialogo, FormField, ListCard, Pagination, SearchInput, SegmentedControl, calcularRango, type AccionFila, type ColumnaTabla } from '@/components/kit';
+import { AvisoTonal, DataTable, Dialogo, FormField, ListCard, Pagination, SearchInput, SegmentedControl, calcularRango, type AccionFila, type ColumnaTabla } from '@/components/kit';
+import { asientoPorTotal, costoParecePrecio, cuentaInventarioPorTipo, importeCarga } from '@/lib/inventario/cargaInicial';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { normalizarNombre, parseNumero } from '@/lib/inventario/importacion/texto';
 import type { FilaImport, FilaValidada } from '@/lib/inventario/importacion/tipos';
 import type { AsistenteImportacion } from './useAsistenteImportacion';
@@ -16,14 +18,17 @@ type Filtro = 'todas' | 'errores' | 'avisos';
 interface Props {
   a: AsistenteImportacion;
   moneda: string;
+  /** Puesta en marcha: el stock de este lote se contabiliza como saldo inicial. */
+  saldoInicial?: boolean;
 }
 
 const TONO = { listo: 'exito', aviso: 'advertencia', error: 'peligro' } as const;
 
-export function PasoVistaPrevia({ a, moneda }: Props) {
+export function PasoVistaPrevia({ a, moneda, saldoInicial = false }: Props) {
   const t = useTranslations('productosImportar.vista');
   const texto = useTextoMensaje();
   const dinero = useFormatoMoneda(moneda);
+  const { organization } = useOrganization();
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [busqueda, setBusqueda] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -43,6 +48,25 @@ export function PasoVistaPrevia({ a, moneda }: Props) {
   const rango = calcularRango(pagina, tamano, filtradas.length);
   const visibles = filtradas.slice(rango.desde ? rango.desde - 1 : 0, rango.hasta);
   const cuenta = useMemo(() => ({ errores: a.validadas.filter((f) => f.estado === 'error').length, avisos: a.validadas.filter((f) => f.estado === 'aviso').length }), [a.validadas]);
+  const carga = useMemo(() => {
+    const entra = a.validadas.filter((f) => {
+      if (!saldoInicial || a.excluidas.has(f.id) || f.estado === 'error' || f.accion === 'omitir') return false;
+      if ((f.datos.stock ?? 0) <= 0 || (f.datos.cost ?? 0) <= 0) return false;
+      return f.accion === 'crear' || a.opciones.stockExistentes === 'sumar';
+    });
+    const total = entra.reduce((s, f) => s + importeCarga(f.datos.stock ?? 0, f.datos.cost ?? 0), 0);
+    const costoAlto = a.validadas.some(
+      (f) => !a.excluidas.has(f.id) && f.estado !== 'error' && costoParecePrecio(f.datos.cost, f.datos.price),
+    );
+    const typeId = organization?.isPartial ? null : organization?.type_id;
+    return {
+      asiento: asientoPorTotal({
+        total,
+        cuentaInventario: cuentaInventarioPorTipo(typeof typeId === 'number' ? typeId : null),
+      }),
+      costoAlto,
+    };
+  }, [a.validadas, a.excluidas, a.opciones.stockExistentes, organization, saldoInicial]);
 
   const estadoDe = (f: FilaValidada) => (a.excluidas.has(f.id) && f.estado !== 'error' ? 'excluida' : f.estado);
   const mensajes = (f: FilaValidada) => [...f.errores, ...f.avisos].map(texto).join(' · ');
@@ -106,6 +130,19 @@ export function PasoVistaPrevia({ a, moneda }: Props) {
           ]}
         />
       </div>
+
+      {saldoInicial && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('asientoTitulo')}
+          descripcion={t('asientoDetalle', {
+            inventario: carga.asiento.lineas[0]?.cuenta ?? '',
+            saldo: carga.asiento.lineas[1]?.cuenta ?? '',
+            total: dinero(carga.asiento.total),
+          })}
+        />
+      )}
+      {carga.costoAlto && <AvisoTonal tono="advertencia" titulo={t('costoParecePrecio')} />}
 
       <DataTable
         etiqueta={t('titulo', { n: a.validadas.length })}

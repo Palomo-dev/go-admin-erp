@@ -171,11 +171,11 @@ describe('actividad reciente', () => {
 });
 
 describe('primeros pasos', () => {
-  const conteos = { modulos: 3, sucursales: 1, miembros: 1, productos: 0, impuestos: 0, clientes: 0 };
+  const conteos = { modulos: 3, sucursales: 1, miembros: 1, productos: 0, inventarioInicial: false, impuestos: 0, clientes: 0 };
 
   test('hechos: la organización siempre; el equipo cuando hay alguien más', () => {
     expect(pasosHechos(conteos)).toEqual({
-      modulos: true, organizacion: true, sucursal: true, equipo: false, productos: false, impuestos: false, clientes: false,
+      modulos: true, organizacion: true, sucursal: true, equipo: false, productos: false, inventario: false, impuestos: false, clientes: false,
     });
     expect(pasosHechos({ ...conteos, miembros: 2 }).equipo).toBe(true);
   });
@@ -184,7 +184,7 @@ describe('primeros pasos', () => {
     const visibles = new Set([PAGINA_PASO.productos, '/app/pos']);
     const p = armarPrimerosPasos(conteos, false, (h) => visibles.has(h));
     expect(p.hechos).toBe(3);
-    expect(porcentajePasos(p)).toBe(43);
+    expect(porcentajePasos(p)).toBe(38);
     expect(p.pasos.find((x) => x.id === 'productos')?.href).toBe('/app/inventario/productos');
     expect(p.pasos.find((x) => x.id === 'impuestos')?.href).toBeNull();
     expect(p.hrefProductos).toBe('/app/inventario/productos');
@@ -196,7 +196,7 @@ describe('primeros pasos', () => {
     expect(mostrarPrimerosPasos(p, false)).toBe(true);
     expect(mostrarPrimerosPasos(p, true)).toBe(false);
     expect(mostrarPrimerosPasos({ ...p, hayMovimientos: true }, false)).toBe(false);
-    const todo = armarPrimerosPasos({ modulos: 1, sucursales: 1, miembros: 2, productos: 1, impuestos: 1, clientes: 1 }, false, () => true);
+    const todo = armarPrimerosPasos({ modulos: 1, sucursales: 1, miembros: 2, productos: 1, inventarioInicial: true, impuestos: 1, clientes: 1 }, false, () => true);
     expect(mostrarPrimerosPasos(todo, false)).toBe(false);
     expect(mostrarPrimerosPasos(null, false)).toBe(false);
   });

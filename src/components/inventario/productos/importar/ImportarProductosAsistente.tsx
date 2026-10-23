@@ -36,7 +36,8 @@ export function ImportarProductosAsistente() {
   const { branches, selectedBranchId } = useBranch();
   const moneda = useOrgCurrency();
   const orgId = organization?.id;
-  const a = useAsistenteImportacion(orgId);
+  const saldoInicial = params?.get('motivo') === 'saldo_inicial';
+  const a = useAsistenteImportacion(orgId, saldoInicial);
   const [exportando, setExportando] = useState(false);
 
   // `?origen=web` abre directamente la importación desde una web (menú «Importar ▾»).
@@ -167,7 +168,7 @@ export function ImportarProductosAsistente() {
         {a.paso === 'mapeo' && <PasoMapeo a={a} />}
         {a.paso === 'seleccion' && <PasoSeleccionWeb a={a} orgId={orgId} onError={error} onInfo={info} />}
         {a.paso === 'validacion' && <PasoValidacion a={a} sucursales={branches.flatMap((b) => (b.id ? [{ id: b.id, name: b.name }] : []))} />}
-        {a.paso === 'vista' && <PasoVistaPrevia a={a} moneda={moneda} />}
+        {a.paso === 'vista' && <PasoVistaPrevia a={a} moneda={moneda} saldoInicial={saldoInicial} />}
         {a.paso === 'resultado' && <PasoResultado a={a} />}
       </section>
 

@@ -998,6 +998,7 @@
         "sucursal": "Créer une succursale",
         "equipo": "Inviter l'équipe",
         "productos": "Ajouter des produits",
+        "inventario": "Charger le stock initial",
         "impuestos": "Configurer les taxes",
         "clientes": "Enregistrer des clients"
       },
@@ -1005,6 +1006,9 @@
       "pendiente": "À faire",
       "ir": "Aller",
       "irA": "Aller à {paso}",
+      "inventarioAsiento": "L'écriture débitera {inventario} et créditera {saldo} (soldes initiaux). Les récupérations ne sont pas utilisées.",
+      "importarExcel": "Importer Excel",
+      "cargarMano": "Saisir à la main",
       "sinMovimientosTitulo": "Aucun mouvement pour l'instant",
       "sinMovimientosDesc": "Dès que vous enregistrerez la première vente ou facture, la tendance de la période et l'activité récente apparaîtront ici.",
       "agregarProductos": "Ajouter des produits",
@@ -9937,7 +9941,7 @@
       "padreNoEncontrado": "SKU parent inexistant",
       "nombreMuyLargo": "nom trop long",
       "skuGenerado": "SKU généré",
-      "costoMayorPrecio": "coût supérieur au prix",
+      "costoMayorPrecio": "Le coût ressemble au prix de vente",
       "costoPrecioIntercambiados": "coût et prix inversés",
       "promoEnNotas": "promotion notée",
       "unidadDesconocida": "unité non reconnue (devient « UN »)",
@@ -9998,6 +10002,9 @@
       "incluir": "Réinclure",
       "excluir": "Exclure de l’importation",
       "excluidaPorError": "Les lignes en erreur sont déjà exclues jusqu’à correction",
+      "asientoTitulo": "Écriture du stock initial",
+      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}. Les récupérations ne sont pas utilisées.",
+      "costoParecePrecio": "Le coût ressemble au prix de vente",
       "vacio": "Aucune ligne à vérifier",
       "sinResultados": "Aucune ligne ne correspond",
       "sustantivo": {
@@ -10066,7 +10073,7 @@
       "padreNoEncontrado": "Le SKU parent « {sku} » n’est ni dans le fichier ni dans le catalogue",
       "nombreMuyLargo": "Le nom dépasse {max} caractères",
       "skuGenerado": "SKU généré automatiquement",
-      "costoMayorPrecio": "Le coût est supérieur au prix de vente",
+      "costoMayorPrecio": "Le coût ressemble au prix de vente",
       "costoPrecioIntercambiados": "Coût et prix étaient inversés : ils ont été échangés",
       "promoEnNotas": "Promo 2 pour 1 (l’unité {unitario}, normal {normal}) : notée pour la configurer dans Promotions",
       "unidadDesconocida": "Unité « {unidad} » non reconnue : devient « UN »",
@@ -12087,6 +12094,9 @@
       "notaKardex": "{count, plural, one {# succursale active} other {# succursales actives}}. L’entrée initiale est enregistrée dans la fiche de stock à l’enregistrement. Coût unitaire vide = coût du produit.",
       "notaEditar": "Le stock se modifie par un ajustement d’inventaire : « Ajuster » l’ouvre dans un nouvel onglet pour ne pas perdre les modifications non enregistrées. Le minimum se modifie ici.",
       "avisoSinCosto": "Certaines quantités n’ont pas de coût : saisissez le coût unitaire ou le coût du produit dans « Prix et coûts ».",
+      "costoParecePrecio": "Le coût ressemble au prix de vente",
+      "asientoTitulo": "Écriture du stock initial",
+      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}.",
       "loteEn": "Lot du stock initial à {sucursal}",
       "venceEn": "Date de péremption du lot à {sucursal}",
       "lotePlaceholder": "Automatique",
@@ -21516,6 +21526,21 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "Ce produit n'a pas de stock enregistré. S'agit-il de votre stock initial ?",
+        "siSaldoInicial": "Oui, charger comme stock initial",
+        "noSobrante": "Non, c'est un excédent",
+        "desdeNegativo": "Enregistrer l'achat ou la production manquante",
+        "desdeNegativoDetalle": "Le stock est déjà négatif. Enregistrez l'achat ou la production qui manquait avant de le traiter comme un excédent.",
+        "registrarCompra": "Enregistrer l'achat",
+        "costoParecePrecio": "Le coût ressemble au prix de vente",
+        "costoEsCorrecto": "Le coût est correct",
+        "confirmar": "Confirmez cet ajustement",
+        "confirmarDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
+        "notaObligatoria": "Écrivez une note pour confirmer l'ajustement.",
+        "asientoTitulo": "Écriture du stock initial",
+        "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}."
+      },
       "titulo": "Nouvel ajustement d'inventaire",
       "tituloEditar": "Modifier le brouillon d'ajustement",
       "tituloMovil": "Nouvel ajustement",
@@ -22550,7 +22575,14 @@
     "avisoNegativos": {
       "titulo": "{n} {count, plural, one {produit a des existences négatives} other {produits ont des existences négatives}}",
       "descripcion": "Plus d'unités ont été vendues que celles enregistrées. Il manque souvent une réception d'achat ou un transfert. Vérifiez-les avant le prochain comptage.",
-      "ver": "Voir seulement les négatifs"
+      "ver": "Voir seulement les négatifs",
+      "compra": "Enregistrer l'achat"
+    },
+    "config": {
+      "bloquear": "Bloquer la vente sans stock",
+      "bloquearAyuda": "S'il est éteint, on peut vendre même sans stock. C'est la valeur que l'organisation a déjà.",
+      "umbral": "Confirmer les ajustements dès",
+      "umbralAyuda": "Montant à partir duquel l'ajustement demande une note. Vide : seulement si l'organisation a moins de 30 jours."
     },
     "avisoSinAsignar": "{n} {count, plural, one {produit avec variantes a} other {produits avec variantes ont}} des existences sur le produit parent, non affectées à une variante. Elles ne s'ajoutent pas au disponible.",
     "verSinAgrupar": "Voir les variantes séparément",
@@ -22647,17 +22679,31 @@
       "listoDocumento": "Ajustement {numero} appliqué.",
       "errorEntrada": "Impossible d'enregistrer l'entrée",
       "errorSalida": "Impossible d'enregistrer la sortie",
+      "registrarCompra": "Enregistrer l'achat",
+      "desdeNegativo": "Enregistrer l'achat ou la production manquante",
+      "desdeNegativoDetalle": "Le stock est déjà négatif. Enregistrez l'achat ou la production qui manquait avant de le traiter comme un excédent.",
+      "sinHistorial": "Ce produit n'a pas de stock enregistré. S'agit-il de votre stock initial ?",
+      "siSaldoInicial": "Oui, charger comme stock initial",
+      "noSobrante": "Non, c'est un excédent",
+      "costoParecePrecio": "Le coût ressemble au prix de vente",
+      "costoEsCorrecto": "Le coût est correct",
+      "confirmarAjuste": "Confirmez cet ajustement",
+      "confirmarAjusteDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
+      "asientoTitulo": "Écriture du stock initial",
+      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}.",
       "errores": {
         "requerido": "Ce champ est obligatoire.",
         "mayorQueCero": "Doit être supérieur à zéro.",
         "noNegativo": "Ne peut pas être négatif.",
         "superaDisponible": "Dépasse le disponible ({n}).",
         "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements.",
-        "facturaCompra": "Un achat sans commande s'enregistre sur la facture d'achat : stock contre fournisseurs."
+        "facturaCompra": "Un achat sans commande s'enregistre sur la facture d'achat : stock contre fournisseurs.",
+        "notaObligatoria": "Écrivez une note pour confirmer l'ajustement."
       }
     },
     "motivos": {
       "entrada": {
+        "saldo_inicial": "Stock initial",
         "compra_sin_orden": "Achat sans commande",
         "devolucion_cliente": "Retour client",
         "donacion": "Don",

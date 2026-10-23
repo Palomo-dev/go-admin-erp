@@ -106,8 +106,12 @@ describe('permisos resueltos en el servidor', () => {
     expect(ACCIONES_INVENTARIO.every((a) => p[a] === false)).toBe(true);
   });
   test('configuración: vender sin stock se permite por defecto (P5)', () => {
-    expect(aConfigInventario(null)).toEqual({ bloquear_venta_sin_stock: false });
-    expect(aConfigInventario({ bloquear_venta_sin_stock: true })).toEqual({ bloquear_venta_sin_stock: true });
+    expect(aConfigInventario(null)).toEqual({ bloquear_venta_sin_stock: false, monto_confirmacion_ajuste: 5_000_000 });
+    expect(aConfigInventario({ bloquear_venta_sin_stock: true })).toEqual({ bloquear_venta_sin_stock: true, monto_confirmacion_ajuste: 5_000_000 });
+    expect(aConfigInventario({ bloquear_venta_sin_stock: false, monto_confirmacion_ajuste: null })).toEqual({
+      bloquear_venta_sin_stock: false,
+      monto_confirmacion_ajuste: null,
+    });
   });
 });
 

@@ -118,6 +118,7 @@ export function validarCuerpoLote(cuerpo: unknown): CuerpoLote {
       importar_imagenes: o.importar_imagenes !== false,
       origen: o.origen === 'web' ? 'web' : 'archivo',
       fuente_url: typeof o.fuente_url === 'string' ? o.fuente_url.slice(0, 300) : undefined,
+      motivo: o.motivo === 'saldo_inicial' ? 'saldo_inicial' : undefined,
     },
     filas: c.filas as FilaRpc[],
   };
@@ -158,7 +159,12 @@ export async function importarLote(
     p_branch_id: cuerpo.branch_id,
     p_modo: cuerpo.modo,
     p_filas: cuerpo.filas.map(filaParaRpc),
-    p_opciones: { stock_existentes: cuerpo.opciones.stock_existentes, origen: cuerpo.opciones.origen, fuente_url: cuerpo.opciones.fuente_url ?? null },
+    p_opciones: {
+      stock_existentes: cuerpo.opciones.stock_existentes,
+      origen: cuerpo.opciones.origen,
+      fuente_url: cuerpo.opciones.fuente_url ?? null,
+      ...(cuerpo.opciones.motivo === 'saldo_inicial' ? { motivo: 'saldo_inicial' } : {}),
+    },
   });
   if (error) {
     const msg = error.message ?? '';

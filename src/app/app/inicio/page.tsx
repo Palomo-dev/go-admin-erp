@@ -33,6 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { cuentaInventarioPorTipo } from '@/lib/inventario/cargaInicial';
 import { supabase } from '@/lib/supabase/config';
 import { PageHeader, BranchBadgeActiva, EmptyState, RowActionsMenu, clasesBoton, useEsEscritorio, type AccionFila } from '@/components/kit';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -465,7 +466,13 @@ function InicioContent() {
             {estadoPasos.fase === 'cargando' ? (
               <EsqueletoFilas />
             ) : verPasos && pasos ? (
-              <PrimerosPasos datos={pasos} onOcultar={() => alternarPasos(true)} />
+              <PrimerosPasos
+                datos={pasos}
+                onOcultar={() => alternarPasos(true)}
+                cuentaInventario={cuentaInventarioPorTipo(
+                  organization?.isPartial ? null : typeof organization?.type_id === 'number' ? organization.type_id : null,
+                )}
+              />
             ) : (
               <BloqueHoy organizationId={organization.id} sucursal={branchFilter} version={versionHoy} />
             )}

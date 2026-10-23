@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRightLeft, Save, Calendar, DollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Save, Calendar, DollarSign, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConciliacionService } from './ConciliacionService';
 import { BankAccount } from '../bancos/BancosService';
+import { LineaExtracto, matrizDesdeArchivo, parsearMatrizExtracto } from '@/lib/finanzas/conciliacion/extracto';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 
@@ -27,6 +28,8 @@ export function NuevaConciliacionForm() {
     period_end: '',
     statement_balance: ''
   });
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [lineasExtracto, setLineasExtracto] = useState<LineaExtracto[]>([]);
 
   useEffect(() => {
     loadAccounts();
@@ -48,6 +51,23 @@ export function NuevaConciliacionForm() {
     setFormData({ ...formData, bank_account_id: accountId });
   };
 
+  const elegirExtracto = async (file: File | null) => {
+    setArchivo(file);
+    setLineasExtracto([]);
+    if (!file) return;
+    try {
+      const parseadas = parsearMatrizExtracto(await matrizDesdeArchivo(file));
+      if (parseadas.length === 0) {
+        toast.error('El archivo no tiene líneas con fecha y valor');
+        return;
+      }
+      setLineasExtracto(parseadas);
+    } catch (error) {
+      console.error(error);
+      toast.error('No se pudo leer el archivo. Usa CSV o Excel.');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -63,6 +83,10 @@ export function NuevaConciliacionForm() {
       toast.error('La fecha de inicio debe ser anterior a la fecha de fin');
       return;
     }
+    if (archivo && lineasExtracto.length === 0) {
+      toast.error('El archivo no tiene líneas con fecha y valor');
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -74,7 +98,26 @@ export function NuevaConciliacionForm() {
         statement_balance: formData.statement_balance ? parseFloat(formData.statement_balance) : undefined
       });
 
-      toast.success('Conciliación creada exitosamente');
+      if (archivo && lineasExtracto.length > 0) {
+        try {
+          const formato = archivo.name.toLowerCase().endsWith('.csv') || archivo.name.toLowerCase().endsWith('.txt')
+            ? 'csv'
+            : 'excel';
+          const resultado = await ConciliacionService.importarExtracto({
+            bankAccountId: parseInt(formData.bank_account_id),
+            reconciliationId: reconciliation.id,
+            nombre: archivo.name,
+            formato,
+            lineas: lineasExtracto,
+          });
+          toast.success(`Conciliación creada. Extracto cargado: ${resultado.emparejadas} de ${resultado.lineas} emparejadas`);
+        } catch (error) {
+          console.error(error);
+          toast.error('La conciliación se creó, pero el extracto no se pudo cargar');
+        }
+      } else {
+        toast.success('Conciliación creada exitosamente');
+      }
       router.push(`/app/finanzas/conciliacion-bancaria/${reconciliation.id}`);
     } catch (error) {
       console.error('Error creando conciliación:', error);
@@ -198,6 +241,23 @@ export function NuevaConciliacionForm() {
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Este es el saldo que aparece en tu extracto bancario para el período seleccionado
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-gray-700 dark:text-gray-300">
+                  <Upload className="h-4 w-4 inline mr-2" />
+                  Extracto bancario
+                </Label>
+                <input
+                  type="file"
+                  accept=".csv,.txt,.xlsx,.xls"
+                  className="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-300"
+                  onChange={(e) => { void elegirExtracto(e.target.files?.[0] ?? null); }}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  CSV o Excel. Si lo eliges, se carga al crear la conciliación.
+                  {lineasExtracto.length > 0 ? ` ${lineasExtracto.length} líneas listas.` : ''}
                 </p>
               </div>
 

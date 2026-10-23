@@ -24,7 +24,7 @@ jest.mock('@/lib/supabase/config', () => {
     llamadas.push(reg);
     const res = (): Resultado => ({ data: respuestas[tabla] ?? [], error: null });
     const c: Record<string, unknown> = {};
-    for (const m of ['select', 'eq', 'neq', 'in', 'or', 'order', 'gt', 'not', 'is', 'limit', 'abortSignal', 'ilike']) {
+    for (const m of ['select', 'eq', 'neq', 'in', 'or', 'order', 'range', 'gt', 'not', 'is', 'limit', 'abortSignal', 'ilike']) {
       c[m] = (...a: unknown[]) => {
         reg.ops.push([m, a]);
         return c;

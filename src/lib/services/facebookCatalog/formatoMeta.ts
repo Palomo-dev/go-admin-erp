@@ -17,7 +17,7 @@
  *   - `gtin` solo si es un código numérico de 8 a 14 dígitos (si no, Meta rechaza la fila).
  *   - `description` vacía → el título (Meta la exige).
  *   - Precio sin separador de miles, con los decimales de la moneda: «100000 COP», «9.99 USD».
- *   - Nueva columna `additional_image_link` (hasta 9 imágenes más, separadas por coma).
+ *   - Nueva columna `additional_image_link` (el resto de las imágenes, hasta 20, separadas por coma).
  * Lo que Meta no puede publicar se EXCLUYE con su motivo (el diálogo lo muestra).
  */
 
@@ -193,6 +193,20 @@ function vacia(): FilaMeta {
   return Object.fromEntries(COLUMNAS_META.map((c) => [c, ''])) as FilaMeta;
 }
 
+/** Fotos de las variantes activas, sin repetir, en el orden en que llegan. */
+function imagenesDeVariantes(variantes: readonly ProductoMeta[]): string[] {
+  const vistas = new Set<string>();
+  const salida: string[] = [];
+  for (const variante of variantes) {
+    for (const url of variante.imagenes) {
+      if (!url || vistas.has(url)) continue;
+      vistas.add(url);
+      salida.push(url);
+    }
+  }
+  return salida;
+}
+
 function fila(p: ProductoMeta, padre: ProductoMeta | null, ctx: ContextoMeta): FilaMeta {
   const factor = ctx.factor ?? 1;
   const precioBase = (p.precio > 0 ? p.precio : padre?.precio ?? 0) * factor;
@@ -216,7 +230,7 @@ function fila(p: ProductoMeta, padre: ProductoMeta | null, ctx: ContextoMeta): F
   r.sale_price_effective_date = hayOferta ? rangoOferta(fuentePrecio.precioDesde, fuentePrecio.precioHasta, ctx.ahora ?? new Date()) : '';
   r.link = ctx.dominio && uuid ? `https://${ctx.dominio}/productos/${uuid}` : '';
   r.image_link = imagenes[0] ?? '';
-  r.additional_image_link = imagenes.slice(1, 10).join(',');
+  r.additional_image_link = imagenes.slice(1, 21).join(',');
   r.brand = p.brand || padre?.brand || ctx.nombreOrganizacion || '';
   r.google_product_category = p.categoria || padre?.categoria || '';
   r.fb_product_category = r.google_product_category;
@@ -270,7 +284,9 @@ export function construirFeedMeta(productos: ProductoMeta[], ctx: ContextoMeta):
     const hijosActivos = propios.filter(activo);
     if (hijosActivos.length > 0 && activo(p)) {
       excluir(p, 'padreConVariantes');
-      for (const h of propios) evaluar(h, p);
+      // Sin fotos propias, el padre presta las de sus variantes activas.
+      const padre = p.imagenes.length > 0 ? p : { ...p, imagenes: imagenesDeVariantes(hijosActivos) };
+      for (const h of propios) evaluar(h, padre);
     } else {
       evaluar(p, null);
       for (const h of propios) evaluar(h, p);

@@ -9,7 +9,9 @@
  * productos eliminados.
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 import { BOM, aCsv } from '@/lib/inventario/importacion/reporte';
 import { CAMPOS } from '@/lib/inventario/importacion/campos';
 
@@ -132,38 +134,107 @@ function filaCsv(p: FilaExport, textos: TextosExportacion): unknown[] {
   ];
 }
 
+type ConProducto = { product_id: number };
+type ElementoDe<T> = T extends readonly (infer U)[] ? U : never;
+type ConId<T> = ElementoDe<NonNullable<T>> & ConProducto;
+
+function porProducto<T extends ConProducto>(filas: readonly T[]): Map<number, T[]> {
+  const mapa = new Map<number, T[]>();
+  for (const fila of filas) {
+    const id = Number(fila.product_id);
+    const lista = mapa.get(id);
+    if (lista) lista.push(fila);
+    else mapa.set(id, [fila]);
+  }
+  return mapa;
+}
+
+/**
+ * Imágenes, precios, stock y etiquetas van aparte del producto. Un embed de
+ * 500 productos con varias filas hijas pasa el tope de 1.000 de PostgREST y
+ * el CSV sale incompleto. Cada tabla se pagina por `id` (o por su clave).
+ */
+async function relacionesDe(cliente: SupabaseClient, ids: number[]) {
+  const [precios, costos, stock, imagenes, proveedores, etiquetas, impuestos, grupos] = await Promise.all([
+    leerPorLotes<ConId<FilaExport['product_prices']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_prices').select('product_id, price, compare_price, effective_from, effective_to').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['product_costs']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_costs').select('product_id, cost, effective_from, effective_to').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['stock_levels']>>(ids, (lote, desde, hasta) =>
+      cliente.from('stock_levels').select('product_id, qty_on_hand, qty_reserved, min_level').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['product_images']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_images').select('product_id, storage_path, is_primary, display_order').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['product_suppliers']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_suppliers').select('product_id, is_preferred, suppliers(name)').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['product_tag_relations']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_tag_relations').select('product_id, product_tags(name)').in('product_id', [...lote]).order('product_id', { ascending: true }).order('tag_id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['product_tax_relations']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_tax_relations').select('product_id, organization_taxes(name)').in('product_id', [...lote]).order('product_id', { ascending: true }).order('tax_id', { ascending: true }).range(desde, hasta),
+    ),
+    leerPorLotes<ConId<FilaExport['product_modifier_groups']>>(ids, (lote, desde, hasta) =>
+      cliente.from('product_modifier_groups').select('product_id, name, selection_mode, min_selections, max_selections, required, display_order, product_modifiers(name, extra_price, is_active, display_order)').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+    ),
+  ]);
+  return {
+    precios: porProducto(precios),
+    costos: porProducto(costos),
+    stock: porProducto(stock),
+    imagenes: porProducto(imagenes),
+    proveedores: porProducto(proveedores),
+    etiquetas: porProducto(etiquetas),
+    impuestos: porProducto(impuestos),
+    grupos: porProducto(grupos),
+  };
+}
+
 /** Devuelve el CSV (con BOM) y cuántos productos lleva. */
 export async function exportarCatalogoCsv(
   organizationId: number,
   textos: TextosExportacion,
   alAvanzar?: (leidos: number) => void,
+  cliente: SupabaseClient = supabase,
 ): Promise<{ csv: string; total: number }> {
-  const filas: unknown[][] = [];
+  const productos: Omit<FilaExport, 'product_prices' | 'product_costs' | 'stock_levels' | 'product_images' | 'product_suppliers' | 'product_tag_relations' | 'product_tax_relations' | 'product_modifier_groups'>[] = [];
   for (let desde = 0; ; desde += PAGINA) {
-    const { data, error } = await supabase
+    const { data, error } = await cliente
       .from('products')
       .select(
         `id, sku, name, description, product_type, unit_code, barcode, brand, reference, track_stock, variant_data, is_parent, station, status,
-         categories(name), parent:products!parent_product_id(sku),
-         product_prices(price, compare_price, effective_from, effective_to),
-         product_costs(cost, effective_from, effective_to),
-         stock_levels(qty_on_hand, qty_reserved, min_level),
-         product_images(storage_path, is_primary, display_order),
-         product_suppliers(is_preferred, suppliers(name)),
-         product_tag_relations(product_tags(name)),
-         product_tax_relations(organization_taxes(name)),
-         product_modifier_groups(name, selection_mode, min_selections, max_selections, required, display_order, product_modifiers(name, extra_price, is_active, display_order))`,
+         categories(name), parent:products!parent_product_id(sku)`,
       )
       .eq('organization_id', organizationId)
       .neq('status', 'deleted')
       .order('id', { ascending: true })
       .range(desde, desde + PAGINA - 1);
     if (error) throw new Error(error.message);
-    const pagina = (data ?? []) as unknown as FilaExport[];
-    filas.push(...pagina.map((p) => filaCsv(p, textos)));
-    alAvanzar?.(filas.length);
+    const pagina = (data ?? []) as unknown as typeof productos;
+    productos.push(...pagina);
     if (pagina.length < PAGINA) break;
   }
+  const rel = await relacionesDe(cliente, productos.map((p) => p.id));
+  const filas = productos.map((p) =>
+    filaCsv(
+      {
+        ...p,
+        product_prices: rel.precios.get(p.id) ?? [],
+        product_costs: rel.costos.get(p.id) ?? [],
+        stock_levels: rel.stock.get(p.id) ?? [],
+        product_images: rel.imagenes.get(p.id) ?? [],
+        product_suppliers: rel.proveedores.get(p.id) ?? [],
+        product_tag_relations: rel.etiquetas.get(p.id) ?? [],
+        product_tax_relations: rel.impuestos.get(p.id) ?? [],
+        product_modifier_groups: rel.grupos.get(p.id) ?? [],
+      },
+      textos,
+    ),
+  );
+  alAvanzar?.(filas.length);
   return { csv: BOM + aCsv([[...textos.cabeceras], ...filas]), total: filas.length };
 }
 

@@ -1,16 +1,16 @@
 /**
- * Árbol del balance (y del estado de resultados).
+ * Árbol del balance y del estado de resultados.
  *
- * El plan tiene cuentas de 4 dígitos sin `parent_code` (1.053 al revisar el
- * esquema). Si el grupo «2» solo suma las hijas que lo apuntan, su importe
- * queda por debajo del total de pasivos: esas cuentas sueltas son raíces y
- * entran en el total, pero no en el grupo.
+ * El padre es el prefijo PUC más largo que existe en el mismo conjunto
+ * (clase 1, grupo 2, cuenta 4, subcuenta 6, auxiliar 8). `parent_code` no
+ * decide el árbol: hay cuentas cuyo padre guardado no es su prefijo y, si
+ * se respetara, el inventario no sumaría en el grupo 14.
  *
- * El padre efectivo es el `parent_code` si existe en el mismo conjunto; si
- * no, el prefijo más largo que sí exista (`2408` → `24` → `2`). Un ciclo
- * (`A` padre de `B` y `B` padre de `A`) no se enlaza: las dos quedan como
- * raíces y la suma no se llama a sí misma.
+ * Un código con guion se normaliza antes (`1405-01` → `140501`). Si el
+ * grupo intermedio no existe, la cuenta sube al prefijo que sí existe.
  */
+
+import { codigoNormalizado, cortesAncestro, presentacionDeCodigo, type PresentacionNiif } from '@/lib/finanzas/pucPrefijo';
 
 export interface CuentaArbol {
   account_code: string;
@@ -25,11 +25,9 @@ export interface NodoArbol extends CuentaArbol {
 }
 
 function padreExplicito(codigo: string, porCodigo: ReadonlyMap<string, CuentaArbol>): string | null {
-  const cuenta = porCodigo.get(codigo);
-  const explicito = cuenta?.parent_code;
-  if (explicito && explicito !== codigo && porCodigo.has(explicito)) return explicito;
-  for (let largo = codigo.length - 1; largo >= 1; largo -= 1) {
-    const prefijo = codigo.slice(0, largo);
+  const normal = codigoNormalizado(codigo);
+  for (const corte of cortesAncestro(normal.length)) {
+    const prefijo = normal.slice(0, corte);
     if (porCodigo.has(prefijo)) return prefijo;
   }
   return null;
@@ -100,6 +98,123 @@ export function armarArbolContable(
   const vistos = new Set<string>();
   raices.forEach((raiz) => sumar(raiz, vistos));
   return raices;
+}
+
+/**
+ * El resultado sin cerrar es hija de 36 y suma en el grupo y en la clase 3.
+ * Si 36 o 3 no están en el plan, se crean solo para presentar el importe.
+ */
+export function anidarResultado(raices: NodoArbol[], importe: number): void {
+  if (Math.abs(importe) < 0.005) return;
+  const resultado: NodoArbol = {
+    account_code: 'RESULTADO',
+    name: 'Resultado del ejercicio (sin cerrar)',
+    type: 'equity',
+    parent_code: '36',
+    amount: importe,
+    children: [],
+  };
+
+  const buscar = (nodos: NodoArbol[], codigo: string): NodoArbol | null => {
+    for (const nodo of nodos) {
+      if (nodo.account_code === codigo) return nodo;
+      const hijo = buscar(nodo.children, codigo);
+      if (hijo) return hijo;
+    }
+    return null;
+  };
+
+  let clase = buscar(raices, '3');
+  if (!clase) {
+    clase = {
+      account_code: '3',
+      name: 'Patrimonio',
+      type: 'equity',
+      parent_code: null,
+      amount: 0,
+      children: [],
+    };
+    raices.push(clase);
+  }
+  let grupo = buscar([clase], '36');
+  if (!grupo) {
+    grupo = {
+      account_code: '36',
+      name: 'Resultados del ejercicio',
+      type: 'equity',
+      parent_code: '3',
+      amount: 0,
+      children: [],
+    };
+    clase.children.push(grupo);
+    clase.children.sort((a, b) => a.account_code.localeCompare(b.account_code));
+  }
+  grupo.children.push(resultado);
+
+  const contiene = (nodo: NodoArbol): boolean =>
+    nodo.account_code === 'RESULTADO' || nodo.children.some(contiene);
+  const subir = (nodo: NodoArbol): void => {
+    nodo.children.forEach(subir);
+    if (nodo.account_code !== 'RESULTADO' && nodo.children.some(contiene)) {
+      nodo.amount += importe;
+    }
+  };
+  raices.forEach(subir);
+}
+
+const NOMBRE_PRESENTACION: Record<PresentacionNiif, string> = {
+  corriente: 'Corriente',
+  no_corriente: 'No corriente',
+  segun_plazo: 'Según plazo',
+};
+
+/**
+ * Reagrupa los hijos de las clases 1 y 2 por `presentacion_niif`.
+ * El nombre del grupo PUC no cambia: 11 sigue siendo Disponible.
+ */
+export function presentarNiif(
+  raices: NodoArbol[],
+  explicita: ReadonlyMap<string, string | null>,
+): NodoArbol[] {
+  return raices.map((raiz) => {
+    if (raiz.account_code !== '1' && raiz.account_code !== '2') return raiz;
+    const cubetas = new Map<PresentacionNiif, NodoArbol>();
+    const asegurar = (presentacion: PresentacionNiif): NodoArbol => {
+      let cubeta = cubetas.get(presentacion);
+      if (!cubeta) {
+        cubeta = {
+          account_code: `NIIF-${presentacion}`,
+          name: NOMBRE_PRESENTACION[presentacion],
+          type: raiz.type,
+          parent_code: raiz.account_code,
+          amount: 0,
+          children: [],
+        };
+        cubetas.set(presentacion, cubeta);
+      }
+      return cubeta;
+    };
+    const sueltos: NodoArbol[] = [];
+    for (const hijo of raiz.children) {
+      const presentacion = presentacionDeCodigo(hijo.account_code, explicita.get(hijo.account_code));
+      if (!presentacion) {
+        sueltos.push(hijo);
+        continue;
+      }
+      const cubeta = asegurar(presentacion);
+      cubeta.children.push(hijo);
+      cubeta.amount += hijo.amount;
+    }
+    const orden: PresentacionNiif[] = ['corriente', 'no_corriente', 'segun_plazo'];
+    raiz.children = [
+      ...orden.flatMap((clave) => {
+        const cubeta = cubetas.get(clave);
+        return cubeta ? [cubeta] : [];
+      }),
+      ...sueltos,
+    ];
+    return raiz;
+  });
 }
 
 /** Importe que muestra un grupo (por ejemplo «2»), o null si no está en el árbol. */

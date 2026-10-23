@@ -4457,6 +4457,7 @@
       "finanzas_cuentas-por-pagar": "Accounts payable",
       "finanzas_contabilidad": "Accounting",
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
+      "finanzas_contabilidad_actualizar-puc": "Update chart of accounts",
       "finanzas_contabilidad_asientos": "Journal entries",
       "finanzas_contabilidad_plantillas": "Recurring journal templates",
       "finanzas_contabilidad_mayor-contable": "General ledger",

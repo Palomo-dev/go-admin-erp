@@ -82,10 +82,13 @@ export function tipoDeClase(clase: number): TipoCuentaPuc {
   }
 }
 
-/** Naturaleza de la clase. 8 y 9 son de orden. Las contrapartidas se guardan aparte. */
+/**
+ * Naturaleza de la clase. La 8 es débito y la 9 crédito.
+ * Las contrapartidas 84/86/88 y 94/96/98 se guardan en la plantilla.
+ */
 export function naturalezaPorClase(clase: number): NaturalezaPuc {
-  if (clase === 1 || clase === 5 || clase === 6 || clase === 7) return 'debito';
-  if (clase === 2 || clase === 3 || clase === 4) return 'credito';
+  if (clase === 1 || clase === 5 || clase === 6 || clase === 7 || clase === 8) return 'debito';
+  if (clase === 2 || clase === 3 || clase === 4 || clase === 9) return 'credito';
   return 'orden';
 }
 

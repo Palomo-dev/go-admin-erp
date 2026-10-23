@@ -115,6 +115,8 @@ export interface ChartAccount {
   nivel?: NivelCuenta | null;
   clase?: number | null;
   naturaleza?: NaturalezaCuenta | null;
+  /** corriente, no_corriente o segun_plazo. Null: el grupo no clasifica. */
+  presentacion_niif?: 'corriente' | 'no_corriente' | 'segun_plazo' | null;
   /** Generada a partir de is_active. No se escribe. */
   activa?: boolean | null;
 }
@@ -126,6 +128,7 @@ const CAMPOS_CUENTA = [
   'description',
   'is_active',
   'naturaleza',
+  'presentacion_niif',
   'es_movimiento',
   'requiere_tercero',
   'requiere_centro_costo',

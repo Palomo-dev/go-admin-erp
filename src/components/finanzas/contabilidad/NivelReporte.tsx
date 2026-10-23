@@ -38,12 +38,7 @@ export function SelectorNivel({
 /** Árbol en auxiliar; en los demás niveles, suma que conserva el total. */
 export function filasEnNivel(nodos: NodoImporte[], nivel: NivelPuc): FilaImporte[] | null {
   if (nivel === 'auxiliar') return null;
-  const resultado = nodos.filter((nodo) => nodo.account_code === 'RESULTADO');
-  const reales = nodos.filter((nodo) => nodo.account_code !== 'RESULTADO');
-  return [
-    ...colapsarImportes(reales, nivel),
-    ...resultado.map((nodo) => ({ codigo: nodo.account_code, nombre: nodo.name, importe: nodo.amount })),
-  ];
+  return colapsarImportes(nodos, nivel);
 }
 
 export function FilasNivel({

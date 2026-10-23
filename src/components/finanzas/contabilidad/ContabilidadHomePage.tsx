@@ -21,6 +21,13 @@ import { AlertasFalloContable } from '@/components/finanzas/configuracion-contab
 
 const MODULES = [
   {
+    title: 'Actualizar PUC',
+    description: 'Vista previa y traslado de cuentas al plan corregido',
+    icon: Settings,
+    href: '/app/finanzas/contabilidad/actualizar-puc',
+    color: 'purple'
+  },
+  {
     title: 'Plan de Cuentas',
     description: 'Gestión del catálogo contable',
     icon: BookOpen,

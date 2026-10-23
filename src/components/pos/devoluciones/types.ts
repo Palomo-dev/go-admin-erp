@@ -113,7 +113,15 @@ export interface RefundData {
     refund_amount: number;
     reason: string;
     serial_number_ids?: number[];
-    /** Producto por peso: vuelve al inventario solo si se marca «Reingresa». */
+    /**
+     * Por serial: `in_stock` vuelve a stock, `damaged` queda dañado y no entra.
+     * La clave es el id del serial.
+     */
+    serial_dispositions?: Record<string, 'in_stock' | 'damaged' | 'returned'>;
+    /**
+     * «Reingresa». En producto por peso el defecto es no. En el resto de los
+     * no serializados, la casilla manda si la pantalla la envía.
+     */
     restock?: boolean;
   }[];
   refund_method: 'cash' | 'credit_note' | 'original_method';

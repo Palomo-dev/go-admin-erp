@@ -13,7 +13,7 @@ import { ErrorPeticionSeriales, clienteGarantias } from '@/lib/services/seriales
 import { PERMISOS_SERIALES_VACIOS, type GarantiaDetalle } from '@/lib/services/seriales/contrato';
 import { HistorialSerial } from '@/components/inventario/seriales/piezas';
 import { RUTA_GARANTIAS, mesesYDias, numeroDocumento, rutaCliente, rutaDocumento, rutaProveedor, rutaSerial } from '@/components/inventario/seriales/logica';
-import { accionesReclamo } from './logica';
+import { accionesReclamo, nombreClienteReclamo } from './logica';
 import { useAccionesReclamo, type ReclamoAccionable } from './DialogosReclamo';
 import { BadgeEstadoReclamo } from './piezas';
 
@@ -197,9 +197,12 @@ export function GarantiaDetailPage({ claimId }: { claimId: string }) {
               />
               <FilaDato
                 etiqueta={t('unidad.cliente')}
-                valor={reclamo.cliente?.nombre ?? <span className="text-fg-muted">{t('unidad.sinCliente')}</span>}
+                valor={nombreClienteReclamo(reclamo.cliente, reclamo.reclamante) ?? <span className="text-fg-muted">{t('unidad.sinCliente')}</span>}
                 href={reclamo.cliente ? rutaCliente(reclamo.cliente.id) ?? undefined : undefined}
               />
+              {reclamo.reclamante?.documento && <FilaDato etiqueta={t('unidad.documento')} valor={reclamo.reclamante.documento} />}
+              {reclamo.reclamante?.telefono && <FilaDato etiqueta={t('unidad.telefono')} valor={reclamo.reclamante.telefono} />}
+              {reclamo.reclamante?.correo && <FilaDato etiqueta={t('unidad.correo')} valor={reclamo.reclamante.correo} />}
               <FilaDato
                 etiqueta={t('unidad.garantia')}
                 tono={g?.estado === 'vigente' ? 'exito' : g?.estado === 'vencida' ? 'peligro' : 'neutro'}
@@ -247,6 +250,13 @@ export function GarantiaDetailPage({ claimId }: { claimId: string }) {
                   <FilaDato etiqueta={t('resolucion.reemplazo')} valor={reclamo.resolucion.reemplazo.serial} href={rutaSerial(reclamo.resolucion.reemplazo.id)} />
                 )}
                 {reclamo.resolucion.monto !== null && <FilaDato etiqueta={t('resolucion.monto')} valor={formatear(reclamo.resolucion.monto)} />}
+                {reclamo.resolucion.nota_credito && (
+                  <FilaDato
+                    etiqueta={t('resolucion.notaCredito')}
+                    valor={reclamo.resolucion.nota_credito.numero || reclamo.resolucion.nota_credito.id}
+                    href={`/app/finanzas/notas-credito/${reclamo.resolucion.nota_credito.id}`}
+                  />
+                )}
                 {reclamo.resolucion.notas && <FilaDato etiqueta={t('resolucion.notas')} valor={reclamo.resolucion.notas} />}
                 <FilaDato etiqueta={t('resolucion.fecha')} valor={[formatDateTime(reclamo.resolucion.fecha), reclamo.resolucion.por].filter(Boolean).join(' · ') || '—'} />
               </ListaDatos>

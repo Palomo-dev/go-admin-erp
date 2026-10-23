@@ -15634,7 +15634,10 @@
       "stock": {
         "total": "{count, plural, one {Stock total: # unidad} other {Stock total: # unidades}}",
         "generados": "Seriales generados: {valor}",
-        "sinSerial": "{count} sin serial"
+        "sinSerial": "{count} sin serial",
+        "asignar": "Asignar seriales al stock existente",
+        "descuadre": "Esas unidades siguen en stock. Asignar un serial no cambia la cantidad.",
+        "asignarHecho": "Seriales asignados. El stock no cambió."
       },
       "inactivo": {
         "aviso": "{count, plural, one {Este producto ya no exige serial. El serial registrado se conserva y se puede consultar, pero no se generan nuevos.} other {Este producto ya no exige serial. Los # seriales registrados se conservan y se pueden consultar, pero no se generan nuevos.}}"
@@ -16309,6 +16312,7 @@
       "requiereSerial": "Requiere número de serial",
       "requiereSerialAyuda": "Cada unidad de este producto tendrá un número de serie único, con su historial y garantía.",
       "sinInventario": "Los seriales se asignan a unidades en stock: activa «Rastrear inventario» para poder generarlos.",
+      "stockSinSerial": "{count, plural, one {# unidad ya en stock quedará sin serial hasta que la asignes. Asignar no cambia el stock.} other {# unidades ya en stock quedarán sin serial hasta que las asignes. Asignar no cambia el stock.}}",
       "garantia": "Meses de garantía",
       "garantiaAyuda": "Cada serial nuevo recibe esta garantía desde el día en que se registra. Vacío = sin garantía.",
       "meses": "meses",
@@ -17801,6 +17805,10 @@
       "motivoObligatorio": "Escribe el motivo general de la devolución.",
       "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados.",
       "serialInvalido": "Uno de los seriales no corresponde a esta venta o ya no está vendido.",
+      "serialYaDevuelto": "Ese serial ya se devolvió en esta venta.",
+      "serialYaReembolsadoGarantia": "Ese serial ya se reembolsó por garantía. No se puede devolver otra vez.",
+      "serialEnGarantia": "Ese serial está en un reclamo de garantía. Resuélvelo ahí, o devuélvelo desde el POS si el reclamo no es un reembolso.",
+      "disposicionInvalida": "Elige si el serial vuelve a stock o queda dañado.",
       "lineaNoPerteneceALaVenta": "Una de las líneas no pertenece a esta venta.",
       "sinAccesoSucursal": "No tienes acceso a la sucursal de esta venta.",
       "generico": "Error al procesar la devolución",
@@ -17925,7 +17933,8 @@
         "sinMotivoGeneral": "Debe especificar el motivo general de la devolución",
         "itemsSinMotivo": "Todos los items seleccionados deben tener un motivo específico",
         "serializadosSinSerial": "Los productos serializados deben tener al menos un serial seleccionado",
-        "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados"
+        "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados",
+        "sinSerialesEnLinea": "Esta línea no tiene seriales vendidos para devolver"
       },
       "metodosPago": {
         "cash": "Efectivo",
@@ -17939,7 +17948,12 @@
       },
       "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
       "reingresa": "Reingresa al inventario",
-      "reingresaDe": "{producto}: reingresa al inventario"
+      "reingresaDe": "{producto}: reingresa al inventario",
+      "sinSerialesEnLinea": "No hay seriales vendidos en esta línea",
+      "sinSerialesVendidos": "No hay seriales vendidos en esta línea",
+      "vuelveAStock": "Vuelve a stock",
+      "danado": "Dañado",
+      "disposicionDe": "Qué pasa con {serial}"
     },
     "historial": {
       "errorCarga": "Error al cargar el historial de devoluciones",
@@ -25945,6 +25959,7 @@
       "vencida": "Vencida",
       "vencioEl": "venció el {fecha}",
       "empiezaAlVender": "Empieza al vender",
+      "desdeLaVenta": "Desde la venta · {meses, plural, one {# mes} other {# meses}}",
       "meses": "{meses, plural, one {# mes} other {# meses}}",
       "enReclamo": "En reclamo",
       "enRma": "En RMA",
@@ -25985,6 +26000,22 @@
       "subtituloLema": "cada unidad con su historia, de la compra a la garantía",
       "subtituloMovil": "{total} · {stock} en stock",
       "actualizar": "Actualizar",
+      "generarSeriales": "Generar seriales",
+      "descuadreTitulo": "Stock sin serial",
+      "descuadreFila": "{producto} · {sede}: {sin} sin serial ({stock} en stock, {seriales} seriales)",
+      "generar": {
+        "titulo": "Generar seriales",
+        "producto": "Producto",
+        "buscar": "Buscar por nombre o SKU",
+        "sinProductos": "Ningún producto con serial coincide con esa búsqueda.",
+        "sucursal": "Sucursal",
+        "cantidad": "Cuántos",
+        "lista": "O pega un serial por línea",
+        "noMueveStock": "Esto solo registra los seriales. No cambia el stock.",
+        "confirmar": "Asignar seriales",
+        "hecho": "{count, plural, one {# serial asignado} other {# seriales asignados}}",
+        "error": "No se pudieron asignar los seriales. Inténtalo de nuevo."
+      },
       "por": "por {nombre}",
       "etiquetaFila": "Serial {serial} de {producto}",
       "errorSeleccionarTodo": "No se pudieron seleccionar todos los seriales",
@@ -26173,6 +26204,7 @@
         "vencida": "vencida",
         "restante": "quedan {meses, plural, one {# mes} other {# meses}} y {dias, plural, one {# día} other {# días}}",
         "empiezaAlVender": "Empieza el día de la venta",
+        "desdeLaVenta": "Desde la venta · {meses, plural, one {# mes} other {# meses}}",
         "sinVigencia": "Sin vigencia",
         "hastaCorto": "Garantía hasta {fecha}",
         "reclamos": "Reclamos",
@@ -26226,6 +26258,11 @@
       "reemplazo_requerido": "Elige la unidad de reemplazo.",
       "reemplazo_invalido": "La unidad de reemplazo ya no está disponible o es de otro producto.",
       "monto_invalido": "Escribe un monto mayor que cero.",
+      "unidad_ya_devuelta": "Esa unidad ya se devolvió en el POS. No se puede reembolsar otra vez.",
+      "monto_no_coincide": "El monto no coincide con lo cobrado por esa unidad.",
+      "linea_no_encontrada": "No encontramos la línea de la venta de ese serial.",
+      "venta_no_encontrada": "No encontramos la venta de ese serial.",
+      "motivo_invalido": "El motivo de la devolución no está activo.",
       "estado_invalido": "Estado no válido.",
       "datos_invalidos": "Revisa los datos del formulario.",
       "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
@@ -26324,7 +26361,7 @@
       "serialPlaceholder": "Escanea o escribe el serial",
       "buscando": "Buscando el serial…",
       "vendido": "vendido el {fecha} en {venta} a {cliente}",
-      "sinCliente": "consumidor final",
+      "sinCliente": "Consumidor final",
       "garantiaVigente": "Garantía vigente: {meses, plural, one {# mes} other {# meses}} desde la venta, quedan {restanteMeses, plural, one {# mes} other {# meses}} y {restanteDias, plural, one {# día} other {# días}}.",
       "garantiaVigenteCorta": "Garantía vigente.",
       "noReclamable": {
@@ -26339,6 +26376,12 @@
       "motivoPlaceholder": "Elige el motivo",
       "descripcionCampo": "Descripción",
       "descripcionPlaceholder": "Qué pasó, desde cuándo, qué trae el cliente",
+      "reclamante": "Quién reclama",
+      "reclamanteAyuda": "Si la venta no tiene cliente, estos datos quedan en el reclamo.",
+      "reclamanteNombre": "Nombre",
+      "reclamanteDocumento": "Documento",
+      "reclamanteTelefono": "Teléfono",
+      "reclamanteCorreo": "Correo",
       "nota": "Al crear el reclamo, el serial pasa a «Reclamo garantía» y el paso queda en su historial.",
       "crear": "Crear reclamo",
       "creado": "Reclamo {codigo} creado",
@@ -26385,7 +26428,7 @@
       "notas": "Notas",
       "aviso": {
         "reemplazo": "{nuevo} queda vendido a {cliente} con garantía nueva desde hoy, y {serial} queda «{estado}».",
-        "reembolso": "{serial} vuelve a la empresa y queda «{estado}». La nota crédito del reembolso se hace en Finanzas.",
+        "reembolso": "{serial} vuelve a la empresa y queda «{estado}». Se emite la nota crédito de la venta, con su asiento, el movimiento de caja y el inventario de la unidad dañada.",
         "reparacion": "{serial} vuelve al cliente como vendido; su garantía sigue como estaba."
       },
       "avisoStock": "Las existencias de la unidad de reemplazo se descuentan con el núcleo de inventario; el serial ya queda vendido al cliente.",
@@ -26446,7 +26489,11 @@
         "cliente": "Cliente",
         "garantia": "Garantía",
         "sinVenta": "Sin venta enlazada",
-        "sinCliente": "Sin cliente"
+        "sinCliente": "Consumidor final",
+        "reclamante": "Reclamante",
+        "documento": "Documento",
+        "telefono": "Teléfono",
+        "correo": "Correo"
       },
       "reclamo": {
         "titulo": "Reclamo",
@@ -26471,6 +26518,7 @@
         "tipo": "Cómo se resolvió",
         "reemplazo": "Unidad de reemplazo",
         "monto": "Monto reembolsado",
+        "notaCredito": "Nota crédito",
         "notas": "Notas",
         "fecha": "Resuelto"
       }

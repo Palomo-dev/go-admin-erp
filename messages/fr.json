@@ -11433,7 +11433,10 @@
       "stock": {
         "total": "{count, plural, one {Stock total : # unité} other {Stock total : # unités}}",
         "generados": "Numéros de série créés : {valor}",
-        "sinSerial": "{count} sans numéro de série"
+        "sinSerial": "{count} sans numéro de série",
+        "asignar": "Attribuer des numéros au stock existant",
+        "descuadre": "Ces unités restent en stock. Attribuer un numéro ne change pas la quantité.",
+        "asignarHecho": "Numéros attribués. Le stock n’a pas changé."
       },
       "inactivo": {
         "aviso": "{count, plural, one {Ce produit n’exige plus de numéro de série. Le numéro enregistré est conservé et consultable, mais aucun nouveau n’est créé.} other {Ce produit n’exige plus de numéro de série. Les # numéros enregistrés sont conservés et consultables, mais aucun nouveau n’est créé.}}"
@@ -12108,6 +12111,7 @@
       "requiereSerial": "Nécessite un numéro de série",
       "requiereSerialAyuda": "Chaque unité de ce produit aura un numéro de série unique, avec son historique et sa garantie.",
       "sinInventario": "Les numéros de série sont attribués aux unités en stock : activez « Suivre le stock » pour pouvoir les générer.",
+      "stockSinSerial": "{count, plural, one {# unité déjà en stock n’aura pas de numéro tant que vous ne l’attribuez pas. L’attribution ne change pas le stock.} other {# unités déjà en stock n’auront pas de numéro tant que vous ne les attribuez pas. L’attribution ne change pas le stock.}}",
       "garantia": "Mois de garantie",
       "garantiaAyuda": "Chaque nouveau numéro reçoit cette garantie à partir du jour de son enregistrement. Vide = sans garantie.",
       "meses": "mois",
@@ -13600,6 +13604,10 @@
       "motivoObligatorio": "Indiquez le motif général du retour.",
       "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés.",
       "serialInvalido": "L'un des numéros de série n'appartient pas à cette vente ou n'est plus vendu.",
+      "serialYaDevuelto": "Ce numéro de série a déjà été retourné sur cette vente.",
+      "serialYaReembolsadoGarantia": "Ce numéro de série a déjà été remboursé au titre de la garantie. Il ne peut pas être retourné de nouveau.",
+      "serialEnGarantia": "Ce numéro de série est dans une réclamation de garantie. Résolvez-la là.",
+      "disposicionInvalida": "Choisissez si le numéro de série revient en stock ou reste endommagé.",
       "lineaNoPerteneceALaVenta": "L'une des lignes n'appartient pas à cette vente.",
       "sinAccesoSucursal": "Vous n'avez pas accès à la succursale de cette vente.",
       "generico": "Erreur lors du traitement du retour",
@@ -13724,7 +13732,8 @@
         "sinMotivoGeneral": "Indiquez le motif général du retour",
         "itemsSinMotivo": "Chaque article sélectionné doit avoir un motif précis",
         "serializadosSinSerial": "Les produits sérialisés doivent avoir au moins un numéro de série sélectionné",
-        "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés"
+        "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés",
+        "sinSerialesEnLinea": "Cette ligne n'a pas de numéros de série vendus à retourner"
       },
       "metodosPago": {
         "cash": "Espèces",
@@ -13738,7 +13747,12 @@
       },
       "cantidadOriginalUnidad": "Vendu : {cantidad} {unidad}",
       "reingresa": "Remettre en stock",
-      "reingresaDe": "{producto} : remettre en stock"
+      "reingresaDe": "{producto} : remettre en stock",
+      "sinSerialesEnLinea": "Aucun numéro de série vendu sur cette ligne",
+      "sinSerialesVendidos": "Aucun numéro de série vendu sur cette ligne",
+      "vuelveAStock": "Revient en stock",
+      "danado": "Endommagé",
+      "disposicionDe": "Que devient {serial}"
     },
     "historial": {
       "errorCarga": "Impossible de charger l'historique des retours",
@@ -21744,6 +21758,7 @@
       "vencida": "Expirée",
       "vencioEl": "expirée le {fecha}",
       "empiezaAlVender": "Commence à la vente",
+      "desdeLaVenta": "Depuis la vente · {meses, plural, one {# mois} other {# mois}}",
       "meses": "{meses, plural, one {# mois} other {# mois}}",
       "enReclamo": "En réclamation",
       "enRma": "En RMA",
@@ -21784,6 +21799,22 @@
       "subtituloLema": "chaque unité avec son histoire, de l’achat à la garantie",
       "subtituloMovil": "{total} · {stock} en stock",
       "actualizar": "Actualiser",
+      "generarSeriales": "Générer des numéros de série",
+      "descuadreTitulo": "Stock sans numéro de série",
+      "descuadreFila": "{producto} · {sede} : {sin} sans numéro ({stock} en stock, {seriales} numéros)",
+      "generar": {
+        "titulo": "Générer des numéros de série",
+        "producto": "Produit",
+        "buscar": "Rechercher par nom ou SKU",
+        "sinProductos": "Aucun produit suivi par numéro de série ne correspond à cette recherche.",
+        "sucursal": "Site",
+        "cantidad": "Combien",
+        "lista": "Ou collez un numéro par ligne",
+        "noMueveStock": "Cela enregistre seulement les numéros. Le stock ne change pas.",
+        "confirmar": "Attribuer les numéros",
+        "hecho": "{count, plural, one {# numéro de série attribué} other {# numéros de série attribués}}",
+        "error": "Impossible d’attribuer les numéros de série. Réessayez."
+      },
       "por": "par {nombre}",
       "etiquetaFila": "Numéro de série {serial} de {producto}",
       "errorSeleccionarTodo": "Impossible de sélectionner tous les numéros de série",
@@ -21972,6 +22003,7 @@
         "vencida": "expirée",
         "restante": "il reste {meses, plural, one {# mois} other {# mois}} et {dias, plural, one {# jour} other {# jours}}",
         "empiezaAlVender": "Commence le jour de la vente",
+        "desdeLaVenta": "Depuis la vente · {meses, plural, one {# mois} other {# mois}}",
         "sinVigencia": "Pas commencée",
         "hastaCorto": "Garantie jusqu’au {fecha}",
         "reclamos": "Réclamations",
@@ -22025,6 +22057,11 @@
       "reemplazo_requerido": "Choisissez l’unité de remplacement.",
       "reemplazo_invalido": "L’unité de remplacement n’est plus disponible ou appartient à un autre produit.",
       "monto_invalido": "Saisissez un montant supérieur à zéro.",
+      "unidad_ya_devuelta": "Cette unité a déjà été retournée au point de vente. Elle ne peut pas être remboursée une seconde fois.",
+      "monto_no_coincide": "Le montant ne correspond pas à ce qui a été encaissé pour cette unité.",
+      "linea_no_encontrada": "Nous n’avons pas trouvé la ligne de vente de ce numéro de série.",
+      "venta_no_encontrada": "Nous n’avons pas trouvé la vente de ce numéro de série.",
+      "motivo_invalido": "Le motif de retour n’est pas actif.",
       "estado_invalido": "Statut non valide.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "error_desconocido": "Impossible de terminer. Réessayez."
@@ -22123,7 +22160,7 @@
       "serialPlaceholder": "Scannez ou saisissez le numéro de série",
       "buscando": "Recherche du numéro de série…",
       "vendido": "vendu le {fecha} dans {venta} à {cliente}",
-      "sinCliente": "client de passage",
+      "sinCliente": "Client de passage",
       "garantiaVigente": "Garantie en vigueur : {meses, plural, one {# mois} other {# mois}} à partir de la vente, il reste {restanteMeses, plural, one {# mois} other {# mois}} et {restanteDias, plural, one {# jour} other {# jours}}.",
       "garantiaVigenteCorta": "Garantie en vigueur.",
       "noReclamable": {
@@ -22138,6 +22175,12 @@
       "motivoPlaceholder": "Choisissez le motif",
       "descripcionCampo": "Description",
       "descripcionPlaceholder": "Ce qui s’est passé, depuis quand, ce que le client apporte",
+      "reclamante": "Qui réclame",
+      "reclamanteAyuda": "Si la vente n’a pas de client, ces données restent sur la réclamation.",
+      "reclamanteNombre": "Nom",
+      "reclamanteDocumento": "Document",
+      "reclamanteTelefono": "Téléphone",
+      "reclamanteCorreo": "E-mail",
       "nota": "À la création de la réclamation, le numéro de série passe à « Réclamation garantie » et l’étape reste dans son historique.",
       "crear": "Créer la réclamation",
       "creado": "Réclamation {codigo} créée",
@@ -22184,7 +22227,7 @@
       "notas": "Notes",
       "aviso": {
         "reemplazo": "{nuevo} est vendu à {cliente} avec une nouvelle garantie à partir d’aujourd’hui, et {serial} passe à « {estado} ».",
-        "reembolso": "{serial} revient à l’entreprise et passe à « {estado} ». L’avoir du remboursement se fait dans Finances.",
+        "reembolso": "{serial} revient à l’entreprise et passe à « {estado} ». L’avoir de la vente est émis, avec son écriture, le mouvement de caisse et le stock de l’unité endommagée.",
         "reparacion": "{serial} revient au client comme vendu ; sa garantie reste inchangée."
       },
       "avisoStock": "Le stock de l’unité de remplacement est déduit par le noyau d’inventaire ; le numéro de série est déjà vendu au client.",
@@ -22245,7 +22288,11 @@
         "cliente": "Client",
         "garantia": "Garantie",
         "sinVenta": "Sans vente liée",
-        "sinCliente": "Sans client"
+        "sinCliente": "Client de passage",
+        "reclamante": "Réclamant",
+        "documento": "Document",
+        "telefono": "Téléphone",
+        "correo": "E-mail"
       },
       "reclamo": {
         "titulo": "Réclamation",
@@ -22270,6 +22317,7 @@
         "tipo": "Comment elle a été résolue",
         "reemplazo": "Unité de remplacement",
         "monto": "Montant remboursé",
+        "notaCredito": "Avoir",
         "notas": "Notes",
         "fecha": "Résolue"
       }

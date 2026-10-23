@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { desgloseReembolso } from '@/lib/pos/devoluciones/desgloseReembolso';
 import { parametrosProcesarDevolucion, type ResultadoProcesarDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
+import { idsSerialesLinea, mismoId, serialesVendidosDeLinea, type SerialDeLinea } from '@/lib/pos/devoluciones/serialesLinea';
 import { 
   Return,
   SaleForReturn, 
@@ -48,6 +49,57 @@ const getStorageImageUrl = (storagePath: string): string => {
     .getPublicUrl(storagePath);
   return data?.publicUrl || '';
 };
+
+/**
+ * Seriales vendidos de esas ventas. `sale_id` es el respaldo cuando la línea
+ * no guardó `serial_ids`; los ids de la línea se piden aparte por si el
+ * vínculo de la venta no alcanzó. Un error de lectura se propaga: tragárselo
+ * dejaba el selector vacío y la validación fallaba sin explicación.
+ */
+async function serialesVendidos(
+  organizationId: number,
+  saleIds: string[],
+  serialIds: number[],
+): Promise<SerialDeLinea[]> {
+  if (saleIds.length === 0 && serialIds.length === 0) return [];
+  const porVenta = saleIds.length === 0
+    ? { data: [] as SerialDeLinea[], error: null }
+    : await supabase
+      .from('serial_numbers')
+      .select('id, serial, status, product_id, sale_id')
+      .eq('organization_id', organizationId)
+      .in('sale_id', saleIds)
+      .eq('status', 'sold');
+  if (porVenta.error) throw porVenta.error;
+  const lista = (porVenta.data ?? []) as SerialDeLinea[];
+  const ya = new Set(lista.map((s) => s.id));
+  const faltan = serialIds.filter((id) => !ya.has(id));
+  if (faltan.length === 0) return lista;
+  const extra = await supabase
+    .from('serial_numbers')
+    .select('id, serial, status, product_id, sale_id')
+    .eq('organization_id', organizationId)
+    .in('id', faltan)
+    .eq('status', 'sold');
+  if (extra.error) throw extra.error;
+  return [...lista, ...((extra.data ?? []) as SerialDeLinea[])];
+}
+
+function asignarSeriales(
+  items: { id: string; sale_id: string; product_id: number; product: { track_serial?: boolean }; serials?: SoldSerialInfo[] }[],
+  serialIdsPorLinea: ReadonlyMap<string, unknown>,
+  vendidos: readonly SerialDeLinea[],
+): void {
+  for (const item of items) {
+    if (!item.product.track_serial) continue;
+    item.serials = serialesVendidosDeLinea({
+      serialIds: serialIdsPorLinea.get(item.id),
+      productId: item.product_id,
+      saleId: item.sale_id,
+      vendidos,
+    }).map((s) => ({ id: s.id, serial: s.serial, status: s.status }));
+  }
+}
 
 export class DevolucionesService {
   private static getOrganizationId(): number {
@@ -203,7 +255,8 @@ export class DevolucionesService {
           unit_price,
           total,
           tax_amount,
-          discount_amount
+          discount_amount,
+          serial_ids
         `)
         .in('sale_id', availableSaleIds);
 
@@ -266,7 +319,7 @@ export class DevolucionesService {
         
         // Para cada item, encontrar su producto
         const itemsWithProducts = saleItems.map(item => {
-          const product = productsData.find(p => p.id === item.product_id);
+          const product = productsData.find((p) => mismoId(p.id, item.product_id));
           return {
             id: item.id,
             sale_id: item.sale_id,
@@ -335,28 +388,10 @@ export class DevolucionesService {
         };
       });
 
-      // Cargar seriales vendidos para productos serializados
-      const serialProductIds = productsData.filter(p => p.track_serial).map(p => p.id);
-      if (serialProductIds.length > 0) {
-        const { data: soldSerials } = await supabase
-          .from('serial_numbers')
-          .select('id, serial, status, product_id, sale_id')
-          .in('product_id', serialProductIds)
-          .in('sale_id', availableSaleIds)
-          .eq('status', 'sold');
-
-        if (soldSerials) {
-          for (const sale of transformedData) {
-            for (const item of sale.items) {
-              if (item.product.track_serial) {
-                item.serials = soldSerials
-                  .filter(s => s.product_id === item.product_id && s.sale_id === sale.id)
-                  .map(s => ({ id: s.id, serial: s.serial, status: s.status }));
-              }
-            }
-          }
-        }
-      }
+      const serialIdsLinea = (saleItemsData || []).flatMap((item) => idsSerialesLinea(item.serial_ids));
+      const vendidos = await serialesVendidos(organizationId, availableSaleIds, serialIdsLinea);
+      const serialIdsPorLinea = new Map((saleItemsData || []).map((item) => [item.id, item.serial_ids]));
+      for (const sale of transformedData) asignarSeriales(sale.items, serialIdsPorLinea, vendidos);
 
       // Aplicar filtro de búsqueda por texto después de obtener los datos
       let filteredData = transformedData;
@@ -437,7 +472,7 @@ export class DevolucionesService {
       // Obtener sale_items
       const { data: saleItems, error: itemsError } = await supabase
         .from('sale_items')
-        .select('id, sale_id, product_id, quantity, unit_price, total, tax_amount, discount_amount')
+        .select('id, sale_id, product_id, quantity, unit_price, total, tax_amount, discount_amount, serial_ids')
         .eq('sale_id', saleId);
 
       if (itemsError) {
@@ -508,7 +543,7 @@ export class DevolucionesService {
         invoice_number: invoice?.number || null,
         sale_date: saleData.sale_date,
         items: (saleItems || []).map((item) => {
-          const product = productsData.find(p => p.id === item.product_id);
+          const product = productsData.find((p) => mismoId(p.id, item.product_id));
           return {
             id: item.id,
             sale_id: item.sale_id,
@@ -547,26 +582,13 @@ export class DevolucionesService {
         }))
       };
 
-      // Cargar seriales vendidos para productos serializados
-      const serialProductIds = productsData.filter(p => p.track_serial).map(p => p.id);
-      if (serialProductIds.length > 0) {
-        const { data: soldSerials } = await supabase
-          .from('serial_numbers')
-          .select('id, serial, status, product_id, sale_id')
-          .in('product_id', serialProductIds)
-          .eq('sale_id', saleId)
-          .eq('status', 'sold');
-
-        if (soldSerials) {
-          for (const item of transformedData.items) {
-            if (item.product.track_serial) {
-              item.serials = soldSerials
-                .filter(s => s.product_id === item.product_id)
-                .map(s => ({ id: s.id, serial: s.serial, status: s.status }));
-            }
-          }
-        }
-      }
+      const serialIdsLinea = (saleItems || []).flatMap((item) => idsSerialesLinea(item.serial_ids));
+      const vendidos = await serialesVendidos(organizationId, [saleId], serialIdsLinea);
+      asignarSeriales(
+        transformedData.items,
+        new Map((saleItems || []).map((item) => [item.id, item.serial_ids])),
+        vendidos,
+      );
 
       return transformedData;
 

@@ -22,6 +22,8 @@ export interface LineaDocumento {
   variante?: string | null;
   nota?: string | null;
   seriales?: readonly string[];
+  /** Seriales con ficha: el detalle de la venta enlaza cada uno. */
+  serialesEnlace?: readonly { id: number; codigo: string }[];
   cantidad: number;
   /**
    * Símbolo de la unidad de venta («kg», «m», «L») de un producto por peso o

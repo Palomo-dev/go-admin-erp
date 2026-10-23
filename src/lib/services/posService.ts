@@ -38,6 +38,7 @@ import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { nombreVisibleMetodo, ordenarMetodosDeLaOrganizacion } from '@/lib/finanzas/metodosPagoOrganizacion';
 import { precioVigenteEnSede, importePrecioVigente, importePrecioVigenteEnSede, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { cuadrarDescuentoCabecera } from '@/lib/pos/venta/descuentoCabecera';
 import { filasDeSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
 import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
@@ -1054,9 +1055,25 @@ export class POSService {
    */
   private static readAllCarts(): Cart[] {
     try {
-      const data = localStorage.getItem(`pos_carts_${this.organizationId}`);
+      const key = `pos_carts_${this.organizationId}`;
+      const data = localStorage.getItem(key);
       const carts = data ? JSON.parse(data) : [];
-      return Array.isArray(carts) ? carts : [];
+      if (!Array.isArray(carts)) return [];
+      let changed = false;
+      const migrated = carts.map((cart: Cart) => {
+        if (!cart || !Array.isArray(cart.items)) return cart;
+        const squared = cuadrarDescuentoCabecera(cart);
+        if (squared !== cart) changed = true;
+        return squared;
+      });
+      if (changed) {
+        try {
+          localStorage.setItem(key, JSON.stringify(migrated));
+        } catch {
+          // El cobro usa el valor ya cuadrado en memoria.
+        }
+      }
+      return migrated;
     } catch (error) {
       console.error('Error leyendo los carritos guardados:', error);
       return [];
@@ -1079,7 +1096,7 @@ export class POSService {
     product: Product,
     quantity: number = 1,
     modifiers?: CartItemModifier[],
-    opciones?: { pesaje?: Pesaje }
+    opciones?: { pesaje?: Pesaje; serialIds?: number[] }
   ): Promise<Cart> {
     try {
       const carts = this.readAllCarts();
@@ -1099,10 +1116,16 @@ export class POSService {
           && !item.notes && !item.customer_note && !item.is_allergy
       );
 
+      const serialesNuevos = (opciones?.serialIds ?? []).filter((id) => Number.isInteger(id) && id > 0);
       if (existingItemIndex >= 0) {
         // Actualizar cantidad del item existente
         cart.items[existingItemIndex].quantity += quantity;
         cart.items[existingItemIndex].total = cart.items[existingItemIndex].quantity * cart.items[existingItemIndex].unit_price;
+        if (serialesNuevos.length > 0) {
+          const previos = cart.items[existingItemIndex].serial_ids ?? [];
+          const extra = serialesNuevos.filter((id) => !previos.includes(id));
+          if (extra.length > 0) cart.items[existingItemIndex].serial_ids = [...previos, ...extra];
+        }
       } else {
         // Agregar nuevo item
         const basePrice = await this.getProductPrice(product.id, product.name);
@@ -1120,6 +1143,7 @@ export class POSService {
           tax_rate: 0,
           modifiers: modifiers && modifiers.length > 0 ? modifiers : undefined,
           ...(opciones?.pesaje ? { pesaje: opciones.pesaje } : {}),
+          ...(serialesNuevos.length > 0 ? { serial_ids: serialesNuevos } : {}),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -1841,15 +1865,15 @@ export class POSService {
       const cartSubtotal = Number(cart.subtotal) || 0;
       const cartTaxTotal = Number(cart.tax_total) || 0;
       const cartTotal = Number(cart.total) || 0;
-      const cartDiscount = Number(cart.discount_total) || 0;
-
       // Cuando hay impuestos incluidos, cart.subtotal puede venir con impuesto dentro;
       // el subtotal correcto es la base gravable (sin impuesto)
       const effectiveSubtotal = calculatedSubtotal > 0
         ? calculatedSubtotal
         : cartSubtotal;
       const effectiveTaxTotal = calculatedTaxTotal > 0 ? calculatedTaxTotal : cartTaxTotal;
-      const effectiveDiscount = calculatedDiscount > 0 ? calculatedDiscount : cartDiscount;
+      // Siempre la suma de las líneas. Un descuento guardado solo en la cabecera
+      // (carritos viejos) hacía fallar «el descuento total no es la suma».
+      const effectiveDiscount = calculatedDiscount;
 
       // Calcular total final incluyendo flete y propina
       const shippingFee = checkoutData.shipping_fee || 0;

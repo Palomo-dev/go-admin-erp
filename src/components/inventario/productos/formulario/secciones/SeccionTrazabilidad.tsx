@@ -8,6 +8,7 @@ import { FormField } from '@/components/kit/FormField';
 import { Switch } from '@/components/ui/switch';
 import type { PropsSeccionFormulario } from '../tipos';
 import { ConstructorPatronSerial } from './ConstructorPatronSerial';
+import { unidadesEnExistencia } from '../../logica/seriales';
 
 /**
  * «Trazabilidad» del formulario único de producto (Figma 09 · Nuevo producto,
@@ -38,6 +39,7 @@ export function SeccionTrazabilidad({ estado, cambiar, errores, hoy, modo }: Pro
   const errorGarantia = errores.warranty_months ? tErr(errores.warranty_months) : null;
   const errorPatron = errores.serial_pattern ? tErr(errores.serial_pattern) : null;
   const sinInventario = !estado.track_stock || estado.product_type === 'service';
+  const sinSerial = estado.track_serial ? Math.floor(unidadesEnExistencia(estado)) : 0;
 
   return (
     <div className="space-y-4">
@@ -96,6 +98,12 @@ export function SeccionTrazabilidad({ estado, cambiar, errores, hoy, modo }: Pro
             <p className="flex items-start gap-2 rounded-lg border border-line-warning bg-warning-subtle px-3 py-2 text-xs text-warning-text">
               <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
               {t('sinInventario')}
+            </p>
+          )}
+          {sinSerial > 0 && (
+            <p role="status" className="flex items-start gap-2 rounded-lg border border-line-warning bg-warning-subtle px-3 py-2 text-xs text-warning-text">
+              <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+              {t('stockSinSerial', { count: sinSerial })}
             </p>
           )}
 

@@ -223,7 +223,8 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     // Pesada de la línea por peso: origen, neto, unidad (fn_pos_validar_pesaje la revisa).
     if (item.pesaje) notes.pesaje = item.pesaje;
     const fallbackNet = (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0);
-    const serialIds = checkout.serial_selections?.[item.product_id] ?? [];
+    const delCobro = checkout.serial_selections?.[item.product_id];
+    const serialIds = delCobro && delCobro.length > 0 ? delCobro : (item.serial_ids ?? []);
     return {
       product_id: item.product_id ?? null,
       product_name: item.product?.name ?? null,

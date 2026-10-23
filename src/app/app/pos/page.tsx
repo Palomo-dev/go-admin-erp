@@ -22,7 +22,9 @@ import { POSService } from '@/lib/services/posService';
 import { getPosDisplayEmitter, resolveDisplayCurrency, startPosDisplay, stopPosDisplay } from '@/lib/pos/display/posDisplay';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { Product, Customer, Cart, CartItemModifier } from '@/components/pos/types';
+import { Product, Customer, Cart, CartItem, CartItemModifier } from '@/components/pos/types';
+import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
+import { debePedirSerialAlAgregar } from '@/lib/pos/venta/cobro/serialesCobro';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { VentasService, DailySummary } from '@/components/pos/ventas';
@@ -73,6 +75,22 @@ import { claveEnlacePos, debePedirCliente, leerEnlacePos, lineaParaQuitar, type 
  */
 const POS_LAYOUT_ID = 'pos-layout-productos-carrito-v2';
 
+/** Línea ficticia para que el selector de seriales pida exactamente `cantidad` unidades. */
+function lineaParaElegirSerial(product: Product, cartId: string, cantidad: number): CartItem {
+  const ahora = new Date().toISOString();
+  return {
+    id: 'pendiente-serial',
+    cart_id: cartId,
+    product_id: product.id,
+    product,
+    quantity: cantidad,
+    unit_price: product.price ?? 0,
+    total: 0,
+    created_at: ahora,
+    updated_at: ahora,
+  };
+}
+
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter, isLoading: branchLoading, selectedBranchId } = useBranch();
@@ -96,6 +114,9 @@ export default function POSPage() {
   // D4: ¿la organización exige caja para cobrar? (`pos_require_cash_session`,
   // la misma configuración que revisa el cobro al abrirse). Mientras se lee, sí.
   const [requiereCaja, setRequiereCaja] = useState(true);
+  const [pedirSerialAlAgregar, setPedirSerialAlAgregar] = useState(false);
+  const [serialPendiente, setSerialPendiente] = useState<{ product: Product; modifiers?: CartItemModifier[]; cantidad: number } | null>(null);
+  const serialConfirmadoRef = useRef(false);
   // F2: lista de clientes del carrito activo (CustomerPicker del kit).
   const [clienteAbierto, setClienteAbierto] = useState(false);
   // Membresías (docs/design/MEMBRESIAS-FASE-1-2.md, frame D1): se agregó una
@@ -324,6 +345,11 @@ export default function POSPage() {
         if (vigente) setRequiereCaja(config.require_cash_session !== false);
       })
       .catch((err) => console.warn('Error leyendo si la caja es obligatoria:', err));
+    ConfiguracionService.getPedirSerialAlAgregar()
+      .then((config) => {
+        if (vigente) setPedirSerialAlAgregar(config.pedir === true);
+      })
+      .catch((err) => console.warn('Error leyendo si se pide el serial al agregar:', err));
     return () => {
       vigente = false;
     };
@@ -420,6 +446,30 @@ export default function POSPage() {
       crearCarrito: createNewCart,
     });
 
+  const agregarAlCarrito = async (product: Product, cantidad: number, modifiers?: CartItemModifier[], serialIds?: number[]) => {
+    if (!activeCartId) return;
+    try {
+      const updatedCart = await POSService.addItemToCart(
+        activeCartId,
+        product,
+        cantidad,
+        modifiers,
+        serialIds && serialIds.length > 0 ? { serialIds } : undefined,
+      );
+      updateCartInState(updatedCart);
+      // D1 (P1): una membresía necesita el cliente titular; la línea ya quedó en el carrito.
+      if (debePedirCliente(product, updatedCart)) {
+        setPideCliente({ cartId: updatedCart.id, producto: product.name ?? String(product.id), productId: product.id, cantidad });
+      }
+    } catch (error) {
+      console.error('Error adding product to cart:', error);
+      // Sin precio vigente el producto ya no entra gratis: se dice por qué.
+      toast.error(error instanceof ProductoSinPrecioError
+        ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
+        : tPagina('errorAgregar'));
+    }
+  };
+
   // `cantidad` llega con la cantidad rápida «3*» del buscador (una unidad si no).
   const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[], cantidad = 1) => {
     if (!activeCartId) {
@@ -433,20 +483,18 @@ export default function POSPage() {
       return;
     }
 
-    try {
-      const updatedCart = await POSService.addItemToCart(activeCartId, product, cantidad, modifiers);
-      updateCartInState(updatedCart);
-      // D1 (P1): una membresía necesita el cliente titular; la línea ya quedó en el carrito.
-      if (debePedirCliente(product, updatedCart)) {
-        setPideCliente({ cartId: updatedCart.id, producto: product.name ?? String(product.id), productId: product.id, cantidad });
-      }
-    } catch (error) {
-      console.error('Error adding product to cart:', error);
-      // Sin precio vigente el producto ya no entra gratis: se dice por qué.
-      toast.error(error instanceof ProductoSinPrecioError
-        ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
-        : tPagina('errorAgregar'));
+    if (
+      debePedirSerialAlAgregar(pedirSerialAlAgregar, product)
+      && Number.isInteger(cantidad)
+      && cantidad > 0
+      && typeof selectedBranchId === 'number'
+      && organization?.id
+    ) {
+      setSerialPendiente({ product, modifiers, cantidad });
+      return;
     }
+
+    await agregarAlCarrito(product, cantidad, modifiers);
   };
 
   // L34: la habitación que pueda mandar CustomerSelector se ignora.
@@ -801,6 +849,30 @@ export default function POSPage() {
             </div>
           );
         })()}
+
+        {serialPendiente && organization?.id && typeof selectedBranchId === 'number' && (
+          <SerialSelectorDialog
+            open
+            onOpenChange={(abierto) => {
+              if (abierto) return;
+              const pendiente = serialPendiente;
+              const confirmo = serialConfirmadoRef.current;
+              serialConfirmadoRef.current = false;
+              setSerialPendiente(null);
+              if (!confirmo && pendiente) void agregarAlCarrito(pendiente.product, pendiente.cantidad, pendiente.modifiers);
+            }}
+            items={[lineaParaElegirSerial(serialPendiente.product, activeCartId ?? '', serialPendiente.cantidad)]}
+            organizationId={organization.id}
+            branchId={selectedBranchId}
+            onConfirm={(selections) => {
+              serialConfirmadoRef.current = true;
+              const pendiente = serialPendiente;
+              setSerialPendiente(null);
+              if (!pendiente) return;
+              void agregarAlCarrito(pendiente.product, pendiente.cantidad, pendiente.modifiers, selections[pendiente.product.id] ?? []);
+            }}
+          />
+        )}
 
         {/* Dialog de checkout */}
         {checkoutCart && (

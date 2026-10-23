@@ -116,6 +116,15 @@ describe('situación de la garantía (P9: empieza al vender)', () => {
     expect(situacionGarantia(fila({ garantia: { meses: null, inicio: null, fin: null } }), HOY)).toEqual({ tipo: 'sin_garantia' });
   });
 
+  it('vendida sin fechas usa los meses del serial o, si no los tiene, los del producto', () => {
+    expect(situacionGarantia(fila({ estado: 'sold' }), HOY)).toEqual({ tipo: 'desde_la_venta', meses: 12 });
+    expect(situacionGarantia({
+      estado: 'sold',
+      garantia: { meses: null, inicio: null, fin: null },
+      mesesProducto: 6,
+    }, HOY)).toEqual({ tipo: 'desde_la_venta', meses: 6 });
+  });
+
   it('meses y días restantes en calendario, sin zona horaria', () => {
     expect(mesesYDias('2026-09-28', '2027-08-18')).toEqual({ meses: 10, dias: 21 });
     expect(mesesYDias('2026-01-31', '2026-03-01')).toEqual({ meses: 1, dias: 1 });

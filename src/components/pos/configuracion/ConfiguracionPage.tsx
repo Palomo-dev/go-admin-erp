@@ -48,6 +48,8 @@ import {
   defaultBlindCashCountConfig,
   PosCashSessionModeConfig,
   defaultCashSessionModeConfig,
+  PosPedirSerialConfig,
+  defaultPedirSerialConfig,
 } from './configuracionService';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { PrintersSection } from './printers/PrintersSection';
@@ -96,6 +98,8 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
   const [savingBlindCash, setSavingBlindCash] = useState(false);
   const [cashSessionMode, setCashSessionMode] = useState<PosCashSessionModeConfig>(defaultCashSessionModeConfig);
   const [savingCashMode, setSavingCashMode] = useState(false);
+  const [pedirSerial, setPedirSerial] = useState<PosPedirSerialConfig>(defaultPedirSerialConfig);
+  const [savingPedirSerial, setSavingPedirSerial] = useState(false);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
   // Horas de operación (día operativo para empresas con horarios no estándar)
@@ -121,7 +125,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     }
 
     try {
-      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData, cashModeData, ohData] = await Promise.all([
+      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData, cashModeData, pedirSerialData, ohData] = await Promise.all([
         ConfiguracionService.getConfigStats(),
         ConfiguracionService.getPaymentMethods(),
         ConfiguracionService.getTaxes(),
@@ -131,6 +135,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
         ConfiguracionService.getRequireCashSessionConfig(),
         ConfiguracionService.getBlindCashCountConfig(),
         ConfiguracionService.getCashSessionModeConfig(),
+        ConfiguracionService.getPedirSerialAlAgregar(),
         organization?.id ? getOperatingHours(organization.id) : Promise.resolve(null),
       ]);
 
@@ -143,6 +148,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       setRequireCashSession(requireCashData);
       setBlindCashCount(blindCashData);
       setCashSessionMode(cashModeData);
+      setPedirSerial(pedirSerialData);
       // Invalidar cache de modo de cajas en CajasService para que tome el valor fresco
       CajasService.invalidateCashSessionModeCache();
       setOperatingHours(ohData);
@@ -249,6 +255,26 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       });
     } finally {
       setSavingRequireCash(false);
+    }
+  };
+
+  const handleTogglePedirSerial = async (value: boolean) => {
+    const previous = pedirSerial;
+    setPedirSerial({ pedir: value });
+    setSavingPedirSerial(true);
+    try {
+      await ConfiguracionService.savePedirSerialAlAgregar({ pedir: value });
+      toast({
+        title: 'Actualizado',
+        description: value
+          ? 'Al agregar un producto con serial, se pide antes de entrar al carrito'
+          : 'El serial se pide al completar la venta',
+      });
+    } catch {
+      setPedirSerial(previous);
+      toast({ title: 'Error', description: 'No se pudo actualizar la configuración', variant: 'destructive' });
+    } finally {
+      setSavingPedirSerial(false);
     }
   };
 
@@ -585,6 +611,37 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
               checked={requireCashSession.require_cash_session}
               onCheckedChange={handleToggleRequireCashSession}
               disabled={savingRequireCash}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Hash className="h-5 w-5 text-violet-600" />
+            Serial al agregar
+          </CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400">
+            Apagado, el serial se elige al completar la venta. Encendido, se pide en cuanto el producto entra al carrito.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white break-words">
+                Pedir el serial al agregar el producto
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                {pedirSerial.pedir
+                  ? 'El cajero elige el serial antes de que la unidad quede en el carrito'
+                  : 'El serial se elige al cobrar, como hasta ahora'}
+              </p>
+            </div>
+            <Switch
+              checked={pedirSerial.pedir}
+              onCheckedChange={handleTogglePedirSerial}
+              disabled={savingPedirSerial}
             />
           </div>
         </CardContent>

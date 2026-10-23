@@ -52,6 +52,8 @@ export function ConfiguracionContablePage() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [asistenteAbierto, setAsistenteAbierto] = useState(false);
+  const [reclasificarAbierto, setReclasificarAbierto] = useState(false);
+  const [reclasificando, setReclasificando] = useState(false);
   const [tipo, setTipo] = useState<number | null>(null);
 
   const branchId = alcance === 'org' ? null : Number(alcance);
@@ -265,6 +267,51 @@ export function ConfiguracionContablePage() {
           </CardContent>
         </Card>
       ))}
+
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-gray-900 dark:text-white">IVA generado en 2405</CardTitle>
+          <CardDescription className="dark:text-gray-400">
+            Las ventas nuevas usan la cuenta de IVA de esta configuración (2408 cuando se sembró el plan). Los asientos ya publicados no se reescriben. Esta acción crea un asiento nuevo que pasa el neto histórico de 2405 a 2408.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={() => setReclasificarAbierto(true)} disabled={reclasificando}>
+            Reclasificar el IVA histórico
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={reclasificarAbierto} onOpenChange={setReclasificarAbierto}>
+        <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-white">Reclasificar IVA de 2405 a 2408</DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
+              Se crea un asiento nuevo (débito 2405, crédito 2408) por el neto de las líneas de IVA ya publicadas en 2405. Las líneas anteriores quedan igual. Si no hay saldo, no se crea asiento.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReclasificarAbierto(false)} className="dark:border-gray-600">Cancelar</Button>
+            <Button
+              disabled={reclasificando}
+              onClick={() => {
+                setReclasificando(true);
+                void ConfiguracionContableService.reclasificarIvaGenerado()
+                  .then((r) => {
+                    if (r.repetida) toast.message('Esa reclasificación ya estaba hecha');
+                    else if (!r.journal_entry_id || r.monto <= 0.01) toast.message('No hay IVA en 2405 por reclasificar');
+                    else toast.success('Asiento de reclasificación creado');
+                    setReclasificarAbierto(false);
+                  })
+                  .catch(() => toast.error('No se pudo reclasificar el IVA'))
+                  .finally(() => setReclasificando(false));
+              }}
+            >
+              Crear el asiento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={asistenteAbierto} onOpenChange={setAsistenteAbierto}>
         <DialogContent className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">

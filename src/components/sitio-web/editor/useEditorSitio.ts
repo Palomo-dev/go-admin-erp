@@ -66,7 +66,7 @@ import {
   type EstadoSeccion,
 } from '@/lib/website/v2/vistaEditor';
 import { combinarDocumentos, type Choque, type Eleccion } from '@/lib/website/v2/combinarDocumentos';
-import { avisoTrasPublicar, debeActivarAlPublicar } from '@/lib/website/v2/activarAlPublicar';
+import { activarAlPublicarSitio, avisoTrasPublicar } from '@/lib/website/v2/activarAlPublicar';
 import { listarCambios, type CambioPublicacion } from '@/lib/website/v2/cambiosPublicacion';
 import { reemplazarItemsMenu } from '@/components/sitio-web/paginas/operacionesMenu';
 import { armarLoteLegacy } from './loteLegacy';
@@ -1054,7 +1054,7 @@ export function useEditorSitio() {
         // Primera publicación con el lector listo: la misma llamada activa la web (principal o
         // sede). Si ya está activa o el lector no está desplegado, publicar es como siempre.
         const v2AdoptadoAntes = !!v2.sitio?.v2Adoptado;
-        const activar = debeActivarAlPublicar({ v2Adoptado: v2AdoptadoAntes, lectorListo: LECTOR_PUBLICO_V2_LISTO });
+        const activar = activarAlPublicarSitio(v2AdoptadoAntes);
         const r = await v2.publicar(opciones.nota, { activar });
         if (!r) {
           if (!v2.conflicto) toast.error(t('publicar.error'), { description: v2.error?.message });

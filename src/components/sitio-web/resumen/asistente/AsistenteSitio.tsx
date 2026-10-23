@@ -35,6 +35,7 @@ import {
   type ObjetivoSitio,
   type OnboardingSitio,
 } from '@/lib/website/onboardingSitio';
+import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
 import { useSitioV2 } from '../../useSitioV2';
 import { RAIZ_SITIO_WEB } from '../../rutasSitioWeb';
 import { useTextosResumen } from '../textos';
@@ -231,13 +232,14 @@ export function AsistenteSitio() {
   const publicar = async () => {
     setTrabajando(true);
     try {
-      const r = await sitio.publicar(null);
+      const r = await sitio.publicar(null, { activar: activarAlPublicarSitio(!!sitio.sitio?.v2Adoptado) });
       if (!r) {
         if (!sitio.conflicto) toast.error(t('asistente.publicar.noSePudo', { mensaje: sitio.error?.message ?? '' }).trim());
         return;
       }
       await ob.guardar({ completado: true, pasoActual: TOTAL_PASOS_ASISTENTE });
-      toast.success(t('asistente.publicar.enLinea'));
+      if (r.activacion === 'fallo') toast.warning(t('asistente.publicar.activarFallo'));
+      else toast.success(t('asistente.publicar.enLinea'));
       router.push(RAIZ_SITIO_WEB);
     } finally {
       setTrabajando(false);

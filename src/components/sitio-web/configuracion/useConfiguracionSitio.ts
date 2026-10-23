@@ -67,11 +67,12 @@ export interface ConfiguracionSitio {
   eliminarSitio: (confirmacion: string) => Promise<FalloApi | null>;
 }
 
-function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoUrl: string | null; logoFondoClaroUrl: string | null; faviconUrl: string | null } {
+function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoUrl: string | null; logoFondoClaroUrl: string | null; logoOscuroUrl: string | null; faviconUrl: string | null } {
   return {
     nombre: valorCampo(doc?.identidad?.nombre),
     logoUrl: valorCampo(doc?.identidad?.logoUrl),
     logoFondoClaroUrl: valorCampo(doc?.identidad?.logoFondoClaroUrl),
+    logoOscuroUrl: valorCampo(doc?.identidad?.logoOscuroUrl),
     faviconUrl: valorCampo(doc?.identidad?.faviconUrl),
   };
 }
@@ -79,7 +80,7 @@ function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoU
 /** Aplica la identidad del formulario al documento (campo vacío = `clear`, hereda del sitio anterior). */
 export function conIdentidad(
   doc: DocumentoSitio,
-  f: Pick<FormularioConfiguracion, 'nombre' | 'logoUrl' | 'logoFondoClaroUrl' | 'faviconUrl'>,
+  f: Pick<FormularioConfiguracion, 'nombre' | 'logoUrl' | 'logoFondoClaroUrl' | 'logoOscuroUrl' | 'faviconUrl'>,
 ): DocumentoSitio {
   const campo = (v: string | null) => (v && v.trim() ? { mode: 'value' as const, value: v.trim() } : { mode: 'clear' as const });
   const identidad: DocumentoSitio['identidad'] = {
@@ -90,9 +91,13 @@ export function conIdentidad(
   };
   // Sin valor y sin clave previa: no se escribe. El lector público estricto
   // rechazaría el documento si aún no conoce el campo.
-  const claro = f.logoFondoClaroUrl?.trim() ?? '';
-  if (claro) identidad.logoFondoClaroUrl = { mode: 'value', value: claro };
-  else if (doc.identidad.logoFondoClaroUrl) identidad.logoFondoClaroUrl = { mode: 'clear' };
+  const opcional = (valor: string | null, previo: DocumentoSitio['identidad']['logoFondoClaroUrl'], clave: 'logoFondoClaroUrl' | 'logoOscuroUrl') => {
+    const texto = valor?.trim() ?? '';
+    if (texto) identidad[clave] = { mode: 'value', value: texto };
+    else if (previo) identidad[clave] = { mode: 'clear' };
+  };
+  opcional(f.logoFondoClaroUrl, doc.identidad.logoFondoClaroUrl, 'logoFondoClaroUrl');
+  opcional(f.logoOscuroUrl, doc.identidad.logoOscuroUrl, 'logoOscuroUrl');
   return { ...doc, identidad };
 }
 
@@ -224,6 +229,7 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
         nombre: formulario.nombre,
         logoUrl: formulario.logoUrl,
         logoFondoClaroUrl: formulario.logoFondoClaroUrl,
+        logoOscuroUrl: formulario.logoOscuroUrl,
         faviconUrl: formulario.faviconUrl,
       };
       setDatos(r);

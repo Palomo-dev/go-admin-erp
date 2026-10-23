@@ -41,6 +41,7 @@ const formulario: FormularioConfiguracion = {
   nombre: 'Tu marca',
   logoUrl: null,
   logoFondoClaroUrl: null,
+  logoOscuroUrl: null,
   faviconUrl: null,
   correo: 'hola@tumarca.com',
   telefono: '+57 604 555 0100',

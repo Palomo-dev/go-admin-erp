@@ -59,6 +59,8 @@ export interface ColoresSeccion {
 export interface EstiloSeccion {
   v: typeof VERSION_ESTILO_SECCION;
   fondo?: FondoSeccion;
+  /** Hex del fondo «Alterno». Ausente: el gris derivado del tema. */
+  colorAlterno?: string;
   entrada?: EntradaSeccion;
   espaciado?: EspaciadoSeccion;
   ancho?: AnchoSeccion;
@@ -134,6 +136,8 @@ export function leerEstiloSeccion(diseno: unknown): EstiloSeccion {
   if (!esObjeto(crudo)) return r;
   const fondo = de(FONDOS_SECCION, crudo.fondo);
   if (fondo) r.fondo = fondo;
+  const colorAlterno = typeof crudo.colorAlterno === 'string' && HEX.test(crudo.colorAlterno) ? crudo.colorAlterno.toUpperCase() : undefined;
+  if (colorAlterno) r.colorAlterno = colorAlterno;
   const entrada = de(ENTRADAS_SECCION, crudo.entrada);
   if (entrada) r.entrada = entrada;
   const espaciado = de(ESPACIADOS_SECCION, crudo.espaciado);
@@ -160,13 +164,14 @@ export function leerEstiloSeccion(diseno: unknown): EstiloSeccion {
 /** `true` si la sección no sobrescribe nada (hereda todo del estilo del sitio). */
 export function estiloVacio(e: EstiloSeccion): boolean {
   const tipografiaPropia = e.tipografia?.modo === 'propia';
-  return !e.fondo && !e.entrada && !e.espaciado && !e.ancho && !tipografiaPropia && !e.colores;
+  return !e.fondo && !e.colorAlterno && !e.entrada && !e.espaciado && !e.ancho && !tipografiaPropia && !e.colores;
 }
 
 /** Quita lo que equivale a heredar (tipografía «como el sitio», colores vacíos). */
 export function normalizarEstilo(e: EstiloSeccion): EstiloSeccion {
   const r: EstiloSeccion = { v: VERSION_ESTILO_SECCION };
   if (e.fondo) r.fondo = e.fondo;
+  if (e.colorAlterno) r.colorAlterno = e.colorAlterno;
   if (e.entrada) r.entrada = e.entrada;
   if (e.espaciado) r.espaciado = e.espaciado;
   if (e.ancho) r.ancho = e.ancho;
@@ -292,6 +297,9 @@ export function variablesCssSeccion(e: EstiloSeccion, dispositivo: DispositivoTe
       }
     }
   }
+  if (e.fondo === 'alterno' && e.colorAlterno && HEX.test(e.colorAlterno)) {
+    vars['--seccion-fondo-alterno'] = e.colorAlterno;
+  }
   const texto = colorCss(e.colores?.texto);
   if (texto) vars['--seccion-color-texto'] = texto;
   const borde = colorCss(e.colores?.borde);
@@ -388,7 +396,7 @@ function valorGrupo(c: EstiloComparable, g: GrupoEstilo): unknown {
     case 'colores':
       return e.colores ?? null;
     default:
-      return { fondo: e.fondo ?? null, entrada: e.entrada ?? null, espaciado: e.espaciado ?? null, ancho: e.ancho ?? null };
+      return { fondo: e.fondo ?? null, colorAlterno: e.colorAlterno ?? null, entrada: e.entrada ?? null, espaciado: e.espaciado ?? null, ancho: e.ancho ?? null };
   }
 }
 
@@ -441,7 +449,7 @@ export function restablecerGrupoEstilo(sede: EstiloComparable, principal: Estilo
       else delete e.colores;
       return { estilo: e, visibilidad: sede.visibilidad };
     default:
-      for (const k of ['fondo', 'entrada', 'espaciado', 'ancho'] as const) {
+      for (const k of ['fondo', 'colorAlterno', 'entrada', 'espaciado', 'ancho'] as const) {
         if (p[k]) (e as unknown as Record<string, unknown>)[k] = p[k];
         else delete e[k];
       }

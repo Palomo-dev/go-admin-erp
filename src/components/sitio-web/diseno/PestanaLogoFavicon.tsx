@@ -20,6 +20,7 @@ import { useAvisoFalloSitio } from './useAvisoFalloSitio';
 const CLAVE_IMAGEN_IDENTIDAD = {
   logo: 'logoUrl',
   logoFondoClaro: 'logoFondoClaroUrl',
+  logoOscuro: 'logoOscuroUrl',
   favicon: 'faviconUrl',
 } as const;
 
@@ -66,6 +67,7 @@ export function PestanaLogoFavicon({ sitio, organizationId, deshabilitado }: Pes
       <CampoLogoFavicon
         logoUrl={valorCampo(identidad?.logoUrl)}
         logoFondoClaroUrl={valorCampo(identidad?.logoFondoClaroUrl)}
+        logoOscuroUrl={valorCampo(identidad?.logoOscuroUrl)}
         faviconUrl={valorCampo(identidad?.faviconUrl)}
         onCambiar={(campo, url) => void cambiar(campo, url)}
         organizationId={organizationId}

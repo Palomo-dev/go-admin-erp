@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AppWindow, ImageIcon, SunMedium, type LucideIcon } from 'lucide-react';
+import { AppWindow, ImageIcon, Moon, SunMedium, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useTextosComun } from './textos';
@@ -13,18 +13,21 @@ const ImagePickerDialog = dynamic(() => import('@/components/common/ImagePickerD
 /**
  * Logo y favicon del sitio (Figma B/12-01 «Datos del negocio» y Diseño ›
  * «Logo y favicon»): UN componente sobre UN dato, la identidad del borrador V2
- * (`identidad.logoUrl`, `identidad.logoFondoClaroUrl` y `identidad.faviconUrl`).
- * Tres tarjetas: miniatura, título, ayuda y «Cambiar» (abre el selector de
- * imágenes de la organización). No guarda: avisa con `onCambiar` y quien lo
- * monta guarda en su lote. El logo para fondo claro no reemplaza al principal.
+ * (`identidad.logoUrl`, `identidad.logoFondoClaroUrl`, `identidad.logoOscuroUrl`
+ * y `identidad.faviconUrl`). Cuatro tarjetas: miniatura, título, ayuda y
+ * «Cambiar» (abre el selector de imágenes de la organización). No guarda:
+ * avisa con `onCambiar` y quien lo monta guarda en su lote. Ningún logo
+ * alterno reemplaza al principal.
  */
-export type CampoIdentidadImagen = 'logo' | 'logoFondoClaro' | 'favicon';
+export type CampoIdentidadImagen = 'logo' | 'logoFondoClaro' | 'logoOscuro' | 'favicon';
 
 export interface CampoLogoFaviconProps {
   logoUrl: string | null | undefined;
   /** Versión de color, para fondos claros. */
   logoFondoClaroUrl: string | null | undefined;
   faviconUrl: string | null | undefined;
+  /** Logo claro para encabezado o pie con fondo oscuro. No reemplaza al principal. */
+  logoOscuroUrl: string | null | undefined;
   onCambiar: (campo: CampoIdentidadImagen, url: string | null) => void;
   /** Organización del selector de imágenes (sale de la sesión, no del cliente del sitio). */
   organizationId?: number;
@@ -38,6 +41,7 @@ export function CampoLogoFavicon({
   logoUrl,
   logoFondoClaroUrl,
   faviconUrl,
+  logoOscuroUrl,
   onCambiar,
   organizationId,
   permitirQuitar,
@@ -54,7 +58,9 @@ export function CampoLogoFavicon({
         <span
           className={cn(
             'flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line',
-            campo === 'logoFondoClaro' ? 'bg-white' : 'bg-subtle',
+            campo === 'logoFondoClaro' && 'bg-white',
+            campo === 'logoOscuro' && 'bg-neutral-900',
+            campo !== 'logoFondoClaro' && campo !== 'logoOscuro' && 'bg-subtle',
             campo === 'favicon' && url && 'p-2',
           )}
         >
@@ -62,7 +68,7 @@ export function CampoLogoFavicon({
             // eslint-disable-next-line @next/next/no-img-element -- URL arbitraria del almacenamiento del cliente
             <img src={url} alt={tx('logoFavicon.vistaAlt', { campo: nombre })} className="size-full object-contain" />
           ) : (
-            <Icono aria-hidden="true" className="size-5 text-fg-muted" strokeWidth={1.5} />
+            <Icono aria-hidden="true" className={cn('size-5', campo === 'logoOscuro' ? 'text-white' : 'text-fg-muted')} strokeWidth={1.5} />
           )}
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
@@ -99,6 +105,7 @@ export function CampoLogoFavicon({
     <div className={cn('grid gap-3 sm:grid-cols-2', className)}>
       {tarjeta('logo', logoUrl, ImageIcon)}
       {tarjeta('logoFondoClaro', logoFondoClaroUrl, SunMedium)}
+      {tarjeta('logoOscuro', logoOscuroUrl, Moon)}
       {tarjeta('favicon', faviconUrl, AppWindow)}
       {abierto && (
         <ImagePickerDialog

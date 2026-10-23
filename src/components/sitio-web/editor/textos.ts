@@ -141,7 +141,9 @@ export const TEXTOS_EDITOR = {
   },
   estilo: {
     fondoTitulo: 'Fondo',
-    fondoAyuda: '«Del tema», «Alterno» y «Oscuro» salen del estilo del sitio: si cambias de preset, la sección se adapta sola.',
+    fondoAyuda: '«Del tema», «Alterno» y «Oscuro» salen del estilo del sitio: si cambias de preset, la sección se adapta sola. En «Alterno» puedes fijar un color propio.',
+    colorAlterno: 'Color del fondo alterno',
+    colorAlternoAyuda: 'Por ejemplo #F5F3EF. Si no lo cambias, sigue el gris del tema.',
     entradaTitulo: 'Entrada al aparecer',
     entradaAyuda: 'Respeta «reducir movimiento» del sistema y el nivel de movimiento del sitio.',
     espaciadoTitulo: 'Espaciado',

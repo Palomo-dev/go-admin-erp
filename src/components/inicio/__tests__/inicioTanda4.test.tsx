@@ -209,19 +209,26 @@ describe('TarjetaTiendaWeb (miniaturas)', () => {
 
 describe('Primeros pasos (organización nueva)', () => {
   const visibles = new Set(['/app/organizacion/invitaciones', '/app/inventario/productos', '/app/pos']);
-  const datos = armarPrimerosPasos({ modulos: 3, sucursales: 1, miembros: 1, productos: 0, impuestos: 0, clientes: 0 }, false, (h) => visibles.has(h));
+  const datos = armarPrimerosPasos(
+    { modulos: 3, sucursales: 1, miembros: 1, productos: 0, inventarioInicial: false, impuestos: 0, clientes: 0 },
+    false,
+    (h) => visibles.has(h),
+  );
 
   test.each(IDIOMAS)('%s: progreso, «Ir» solo a páginas del menú y «Ocultar por ahora»', (idioma) => {
     const ocultar = jest.fn();
-    const { container } = renderConIdioma(<PrimerosPasos datos={datos} onOcultar={ocultar} />, { idioma });
-    expect(container.querySelectorAll('[data-paso]')).toHaveLength(7);
+    const { container } = renderConIdioma(<PrimerosPasos datos={datos} onOcultar={ocultar} cuentaInventario="1435" />, { idioma });
+    expect(container.querySelectorAll('[data-paso]')).toHaveLength(8);
     expect(Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual([
       '/app/organizacion/invitaciones',
       '/app/inventario/productos',
+      '/app/inventario/productos/importar?motivo=saldo_inicial',
+      '/app/inventario/stock?entrada=saldo_inicial',
     ]);
     sinClavesCrudas(container.textContent);
     if (idioma === 'es') {
-      expect(container.textContent).toContain('3 de 7 · 43 %');
+      expect(container.textContent).toContain('3 de 8 · 38 %');
+      expect(container.textContent).toContain('débito 1435 y crédito 3105');
       fireEvent.click(within(container).getByText('Ocultar por ahora'));
       expect(ocultar).toHaveBeenCalled();
     }

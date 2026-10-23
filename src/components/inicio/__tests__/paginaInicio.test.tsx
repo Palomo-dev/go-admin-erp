@@ -63,6 +63,7 @@ const PASOS_NUEVA = {
     { id: 'sucursal', hecho: true, href: null },
     { id: 'equipo', hecho: false, href: '/app/organizacion/invitaciones' },
     { id: 'productos', hecho: false, href: '/app/inventario/productos' },
+    { id: 'inventario', hecho: false, href: '/app/inventario/productos' },
     { id: 'impuestos', hecho: false, href: null },
     { id: 'clientes', hecho: false, href: null },
   ],
@@ -170,7 +171,7 @@ test('organización nueva: «Primeros pasos» en lugar de «Hoy» y «Todavía n
   const { container } = renderConIdioma(<InicioPage />);
   await waitFor(() => expect(container.textContent).toContain('Primeros pasos'));
   await waitFor(() => expect(container.textContent).toContain('Todavía no hay movimientos'));
-  expect(container.textContent).toContain('3 de 7 · 43 %');
+  expect(container.textContent).toContain('3 de 8 · 38 %');
   expect(titulos(container)).not.toContain('Hoy');
   expect(rutas()).not.toContain('/api/inicio/ventas');
   expect(rutas()).not.toContain('/api/inicio/actividad');

@@ -15,10 +15,20 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Check, Package, Plus, Upload } from 'lucide-react';
 import { EmptyState, StatusBadge, clasesBoton } from '@/components/kit';
+import { CUENTA_SALDO_INICIAL, RUTA_CARGA_MANUAL, RUTA_IMPORTAR_SALDO_INICIAL } from '@/lib/inventario/cargaInicial';
 import { porcentajePasos, type PrimerosPasos as DatosPasos } from '@/lib/dashboard/primerosPasos';
 import { cn } from '@/utils/Utils';
 
-export function PrimerosPasos({ datos, onOcultar }: { datos: DatosPasos; onOcultar: () => void }) {
+export function PrimerosPasos({
+  datos,
+  onOcultar,
+  cuentaInventario = '1435',
+}: {
+  datos: DatosPasos;
+  onOcultar: () => void;
+  /** Cuenta de inventario de la organización (1435 comercio, 1405 restaurante, o la configurada). */
+  cuentaInventario?: string;
+}) {
   const t = useTranslations('home.primerosPasos');
   const total = datos.pasos.length;
   return (
@@ -53,11 +63,25 @@ export function PrimerosPasos({ datos, onOcultar }: { datos: DatosPasos; onOcult
             </span>
             <span className="flex-1 text-sm leading-5 text-fg">
               {t(`pasos.${p.id}`)}
+              {p.id === 'inventario' && !p.hecho && (
+                <span className="mt-0.5 block text-[13px] leading-[18px] text-fg-secondary">
+                  {t('inventarioAsiento', { inventario: cuentaInventario, saldo: CUENTA_SALDO_INICIAL })}
+                </span>
+              )}
               <span className="sr-only"> · {t(p.hecho ? 'hecho' : 'pendiente')}</span>
             </span>
             {p.hecho ? (
               <span aria-hidden="true" className="text-[13px] leading-[18px] text-success-text">
                 {t('hecho')}
+              </span>
+            ) : p.id === 'inventario' && p.href ? (
+              <span className="flex flex-wrap justify-end gap-2">
+                <Link href={RUTA_IMPORTAR_SALDO_INICIAL} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                  {t('importarExcel')}
+                </Link>
+                <Link href={RUTA_CARGA_MANUAL} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                  {t('cargarMano')}
+                </Link>
               </span>
             ) : p.href ? (
               <Link href={p.href} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} aria-label={t('irA', { paso: t(`pasos.${p.id}`) })}>

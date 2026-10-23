@@ -998,6 +998,7 @@
         "sucursal": "Criar uma filial",
         "equipo": "Convidar a equipe",
         "productos": "Adicionar produtos",
+        "inventario": "Carregar o estoque inicial",
         "impuestos": "Configurar impostos",
         "clientes": "Cadastrar clientes"
       },
@@ -1005,6 +1006,9 @@
       "pendiente": "Pendente",
       "ir": "Ir",
       "irA": "Ir para {paso}",
+      "inventarioAsiento": "O lançamento será débito {inventario} e crédito {saldo} (saldos iniciais). Não usa recuperações.",
+      "importarExcel": "Importar Excel",
+      "cargarMano": "Lançar à mão",
       "sinMovimientosTitulo": "Ainda não há movimentos",
       "sinMovimientosDesc": "Assim que você registrar a primeira venda ou fatura, a tendência do período e a atividade recente aparecerão aqui.",
       "agregarProductos": "Adicionar produtos",
@@ -9937,7 +9941,7 @@
       "padreNoEncontrado": "SKU pai que não existe",
       "nombreMuyLargo": "nome longo demais",
       "skuGenerado": "SKU gerado",
-      "costoMayorPrecio": "custo maior que o preço",
+      "costoMayorPrecio": "O custo parece ser o preço de venda",
       "costoPrecioIntercambiados": "custo e preço trocados",
       "promoEnNotas": "promoção anotada nas notas",
       "unidadDesconocida": "unidade não reconhecida (fica «UN»)",
@@ -9998,6 +10002,9 @@
       "incluir": "Incluir de novo",
       "excluir": "Excluir da importação",
       "excluidaPorError": "As linhas com erro já ficam de fora até serem corrigidas",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}. Não usa recuperações.",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
       "vacio": "Não há linhas para revisar",
       "sinResultados": "Nenhuma linha corresponde",
       "sustantivo": {
@@ -10066,7 +10073,7 @@
       "padreNoEncontrado": "O SKU pai «{sku}» não está no arquivo nem no catálogo",
       "nombreMuyLargo": "O nome passa de {max} caracteres",
       "skuGenerado": "SKU gerado automaticamente",
-      "costoMayorPrecio": "O custo é maior que o preço de venda",
+      "costoMayorPrecio": "O custo parece ser o preço de venda",
       "costoPrecioIntercambiados": "Custo e preço vieram invertidos: foram trocados",
       "promoEnNotas": "Promoção 2 por 1 (cada {unitario}, normal {normal}): anotada nas notas para configurá-la em Promoções",
       "unidadDesconocida": "Unidade «{unidad}» não reconhecida: fica «UN»",
@@ -12087,6 +12094,9 @@
       "notaKardex": "{count, plural, one {# filial ativa} other {# filiais ativas}}. A entrada inicial fica registrada no kardex ao salvar. Custo unitário vazio = custo do produto.",
       "notaEditar": "A quantidade em estoque muda com um ajuste de estoque: “Ajustar” abre em outra aba para você não perder as alterações não salvas. O mínimo pode ser editado aqui.",
       "avisoSinCosto": "Há quantidades sem custo: informe o custo unitário ou o custo do produto em “Preços e custos”.",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
       "loteEn": "Lote do estoque inicial em {sucursal}",
       "venceEn": "Validade do lote em {sucursal}",
       "lotePlaceholder": "Automático",
@@ -21276,6 +21286,21 @@
       "entrada": "Entrada",
       "salida": "Saída"
     },
+    "carga": {
+      "sinHistorial": "Este produto não tem estoque registrado. É o seu estoque inicial?",
+      "siSaldoInicial": "Sim, carregar como saldo inicial",
+      "noSobrante": "Não, é uma sobra",
+      "desdeNegativo": "Registrar a compra ou a produção que faltou",
+      "desdeNegativoDetalle": "O estoque já está negativo. Registre a compra ou a produção que faltou antes de tratar isto como sobra.",
+      "registrarCompra": "Registrar compra",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
+      "costoEsCorrecto": "O custo está correto",
+      "confirmar": "Confirme este ajuste",
+      "confirmarDetalle": "A organização tem menos de 30 dias ou o valor passa do limite. A observação é obrigatória.",
+      "notaObligatoria": "Escreva uma observação para confirmar o ajuste.",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}."
+    },
     "razones": {
       "physical_count": "Contagem física",
       "discrepancy": "Diferença detectada",
@@ -22550,7 +22575,14 @@
     "avisoNegativos": {
       "titulo": "{n} {count, plural, one {produto tem estoque negativo} other {produtos têm estoque negativo}}",
       "descripcion": "Foram vendidas mais unidades do que as registradas. Geralmente falta um recebimento de compra ou uma transferência. Revise-os antes da próxima contagem.",
-      "ver": "Ver só negativos"
+      "ver": "Ver só negativos",
+      "compra": "Registrar compra"
+    },
+    "config": {
+      "bloquear": "Bloquear a venda sem estoque",
+      "bloquearAyuda": "Se estiver desligado, dá para vender mesmo sem estoque. Esse é o valor que a organização já tem.",
+      "umbral": "Confirmar ajustes a partir de",
+      "umbralAyuda": "Valor a partir do qual o ajuste pede uma observação. Vazio: só se a organização tem menos de 30 dias."
     },
     "avisoSinAsignar": "{n} {count, plural, one {produto com variantes tem} other {produtos com variantes têm}} existências no produto pai, sem atribuir a uma variante. Não são somadas ao disponível.",
     "verSinAgrupar": "Ver as variantes separadamente",
@@ -22647,17 +22679,31 @@
       "listoDocumento": "Ajuste {numero} aplicado.",
       "errorEntrada": "Não foi possível registrar a entrada",
       "errorSalida": "Não foi possível registrar a saída",
+      "registrarCompra": "Registrar compra",
+      "desdeNegativo": "Registrar a compra ou a produção que faltou",
+      "desdeNegativoDetalle": "O estoque já está negativo. Registre a compra ou a produção que faltou antes de tratar isto como sobra.",
+      "sinHistorial": "Este produto não tem estoque registrado. É o seu estoque inicial?",
+      "siSaldoInicial": "Sim, carregar como saldo inicial",
+      "noSobrante": "Não, é uma sobra",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
+      "costoEsCorrecto": "O custo está correto",
+      "confirmarAjuste": "Confirme este ajuste",
+      "confirmarAjusteDetalle": "A organização tem menos de 30 dias ou o valor passa do limite. A observação é obrigatória.",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
       "errores": {
         "requerido": "Este campo é obrigatório.",
         "mayorQueCero": "Deve ser maior que zero.",
         "noNegativo": "Não pode ser negativo.",
         "superaDisponible": "Excede o disponível ({n}).",
         "conSeriales": "Produtos com números de série são registrados em Ajustes.",
-        "facturaCompra": "A compra sem pedido é lançada na fatura de compra: estoque contra fornecedores."
+        "facturaCompra": "A compra sem pedido é lançada na fatura de compra: estoque contra fornecedores.",
+        "notaObligatoria": "Escreva uma observação para confirmar o ajuste."
       }
     },
     "motivos": {
       "entrada": {
+        "saldo_inicial": "Saldo inicial",
         "compra_sin_orden": "Compra sem pedido",
         "devolucion_cliente": "Devolução de cliente",
         "donacion": "Doação",

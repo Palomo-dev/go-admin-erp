@@ -67,7 +67,7 @@ export interface EstadoEjecucion {
   erroresLote: { lote: number; mensaje: string; filas: number[] }[];
 }
 
-export function useAsistenteImportacion(orgId: number | undefined) {
+export function useAsistenteImportacion(orgId: number | undefined, saldoInicial = false) {
   const [origen, setOrigen] = useState<Origen>('archivo');
   const [paso, setPaso] = useState<Paso>('origen');
   const [archivo, setArchivo] = useState<ArchivoLeido | null>(null);
@@ -278,7 +278,13 @@ export function useAsistenteImportacion(orgId: number | undefined) {
         const r = await enviarLote(orgId, {
           modo: opciones.modo,
           branch_id: branchId,
-          opciones: { stock_existentes: opciones.stockExistentes, importar_imagenes: opciones.importarImagenes, origen, fuente_url: origen === 'web' ? web?.url : undefined },
+          opciones: {
+            stock_existentes: saldoInicial ? 'sumar' : opciones.stockExistentes,
+            importar_imagenes: opciones.importarImagenes,
+            origen,
+            fuente_url: origen === 'web' ? web?.url : undefined,
+            ...(saldoInicial ? { motivo: 'saldo_inicial' as const } : {}),
+          },
           filas: lotes[i],
         });
         acumulado = {
@@ -302,7 +308,7 @@ export function useAsistenteImportacion(orgId: number | undefined) {
       setEjecucion(acumulado);
     }
     setEjecucion({ ...acumulado, estado: 'terminado' });
-  }, [branchId, validadas, excluidas, opciones, orgId, origen, web?.url]);
+  }, [branchId, validadas, excluidas, opciones, orgId, origen, web?.url, saldoInicial]);
 
   const detener = useCallback(() => {
     detenerRef.current = true;

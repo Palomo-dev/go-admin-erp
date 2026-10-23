@@ -38,6 +38,8 @@ export interface AvisoTonalProps {
   /** Icono propio; por defecto el del tono. */
   icono?: LucideIcon;
   accion?: AccionAviso;
+  /** Más acciones del mismo aviso (dos botones: saldo inicial y sobrante). */
+  acciones?: AccionAviso[];
   /** `alert` para lo urgente que aparece sin que la persona lo pida; por defecto `note`. */
   rol?: 'note' | 'alert' | 'status';
   compacto?: boolean;
@@ -58,6 +60,7 @@ export function AvisoTonal({
   descripcion,
   icono,
   accion,
+  acciones,
   rol = 'note',
   compacto,
   className,
@@ -65,6 +68,7 @@ export function AvisoTonal({
   const t = TONO[tono];
   const Icono = icono ?? t.icono;
   const claseAccion = clasesBoton({ variante: 'secundario', tamano: 'sm' });
+  const botones = [...(accion ? [accion] : []), ...(acciones ?? [])];
   return (
     <div
       role={rol}
@@ -80,29 +84,30 @@ export function AvisoTonal({
         <p className={cn('text-sm font-medium leading-5', t.texto)}>{titulo}</p>
         {descripcion ? <div className="text-[13px] leading-[18px] text-fg-secondary">{descripcion}</div> : null}
       </div>
-      {accion ? (
-        accion.href ? (
-          accion.externo ? (
-            <a href={accion.href} target="_blank" rel="noopener noreferrer" className={cn(claseAccion, 'ml-8 sm:ml-0')}>
-              {accion.etiqueta}
+      {botones.map((item) =>
+        item.href ? (
+          item.externo ? (
+            <a key={item.etiqueta} href={item.href} target="_blank" rel="noopener noreferrer" className={cn(claseAccion, 'ml-8 sm:ml-0')}>
+              {item.etiqueta}
             </a>
           ) : (
-            <Link href={accion.href} className={cn(claseAccion, 'ml-8 sm:ml-0')}>
-              {accion.etiqueta}
+            <Link key={item.etiqueta} href={item.href} className={cn(claseAccion, 'ml-8 sm:ml-0')}>
+              {item.etiqueta}
             </Link>
           )
         ) : (
           <button
+            key={item.etiqueta}
             type="button"
-            onClick={accion.onClick}
-            disabled={accion.cargando}
-            aria-busy={accion.cargando || undefined}
+            onClick={item.onClick}
+            disabled={item.cargando}
+            aria-busy={item.cargando || undefined}
             className={cn(claseAccion, 'ml-8 sm:ml-0')}
           >
-            {accion.etiqueta}
+            {item.etiqueta}
           </button>
-        )
-      ) : null}
+        ),
+      )}
     </div>
   );
 }

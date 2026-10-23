@@ -998,6 +998,7 @@
         "sucursal": "Create a branch",
         "equipo": "Invite the team",
         "productos": "Add products",
+        "inventario": "Load opening inventory",
         "impuestos": "Set up taxes",
         "clientes": "Register customers"
       },
@@ -1005,6 +1006,9 @@
       "pendiente": "Pending",
       "ir": "Go",
       "irA": "Go to {paso}",
+      "inventarioAsiento": "The journal will debit {inventario} and credit {saldo} (opening balances). Recoveries are not used.",
+      "importarExcel": "Import Excel",
+      "cargarMano": "Enter by hand",
       "sinMovimientosTitulo": "No activity yet",
       "sinMovimientosDesc": "As soon as you record the first sale or invoice, the period trend and recent activity will appear here.",
       "agregarProductos": "Add products",
@@ -14138,7 +14142,7 @@
       "padreNoEncontrado": "parent SKU that does not exist",
       "nombreMuyLargo": "name too long",
       "skuGenerado": "SKU generated",
-      "costoMayorPrecio": "cost higher than price",
+      "costoMayorPrecio": "The cost looks like the sale price",
       "costoPrecioIntercambiados": "cost and price swapped",
       "promoEnNotas": "promotion written in notes",
       "unidadDesconocida": "unit not recognized (becomes “UN”)",
@@ -14199,6 +14203,9 @@
       "incluir": "Include again",
       "excluir": "Exclude from the import",
       "excluidaPorError": "Rows with errors are already left out until fixed",
+      "asientoTitulo": "Opening inventory journal",
+      "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}. Recoveries are not used.",
+      "costoParecePrecio": "The cost looks like the sale price",
       "vacio": "There are no rows to review",
       "sinResultados": "No row matches",
       "sustantivo": {
@@ -14267,7 +14274,7 @@
       "padreNoEncontrado": "Parent SKU “{sku}” is neither in the file nor in the catalog",
       "nombreMuyLargo": "The name is longer than {max} characters",
       "skuGenerado": "SKU generated automatically",
-      "costoMayorPrecio": "Cost is higher than the sale price",
+      "costoMayorPrecio": "The cost looks like the sale price",
       "costoPrecioIntercambiados": "Cost and price came reversed: they were swapped",
       "promoEnNotas": "2-for-1 promo (each {unitario}, regular {normal}): written in notes to set it up in Promotions",
       "unidadDesconocida": "Unit “{unidad}” not recognized: becomes “UN”",
@@ -16288,6 +16295,9 @@
       "notaKardex": "{count, plural, one {# active branch} other {# active branches}}. The opening entry is recorded in the stock ledger when you save. Empty unit cost = product cost.",
       "notaEditar": "On-hand stock is changed with an inventory adjustment: “Adjust” opens it in a new tab so you don’t lose unsaved changes. The minimum can be edited here.",
       "avisoSinCosto": "Some quantities have no cost: enter the unit cost or the product cost in “Prices and costs”.",
+      "costoParecePrecio": "The cost looks like the sale price",
+      "asientoTitulo": "Opening inventory journal",
+      "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}.",
       "loteEn": "Lot of the opening stock at {sucursal}",
       "venceEn": "Lot expiry date at {sucursal}",
       "lotePlaceholder": "Automatic",
@@ -25477,6 +25487,21 @@
       "entrada": "In",
       "salida": "Out"
     },
+    "carga": {
+      "sinHistorial": "This product has no inventory on record. Is this your opening stock?",
+      "siSaldoInicial": "Yes, load it as opening stock",
+      "noSobrante": "No, it is a surplus",
+      "desdeNegativo": "Record the missing purchase or production",
+      "desdeNegativoDetalle": "Stock is already negative. Record the purchase or production that was missing before treating this as a surplus.",
+      "registrarCompra": "Record purchase",
+      "costoParecePrecio": "The cost looks like the sale price",
+      "costoEsCorrecto": "The cost is correct",
+      "confirmar": "Confirm this adjustment",
+      "confirmarDetalle": "The organization is less than 30 days old, or the amount is over the threshold. A note is required.",
+      "notaObligatoria": "Write a note to confirm the adjustment.",
+      "asientoTitulo": "Opening inventory journal",
+      "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}."
+    },
     "razones": {
       "physical_count": "Physical count",
       "discrepancy": "Discrepancy found",
@@ -26751,7 +26776,14 @@
     "avisoNegativos": {
       "titulo": "{n} {count, plural, one {product has negative stock} other {products have negative stock}}",
       "descripcion": "More units were sold than were recorded. Usually a purchase receipt or a transfer is missing. Review them before the next count.",
-      "ver": "Show negatives only"
+      "ver": "Show negatives only",
+      "compra": "Record purchase"
+    },
+    "config": {
+      "bloquear": "Block sales without stock",
+      "bloquearAyuda": "When off, a sale can go through even if there is no stock. That is the value the organization already has.",
+      "umbral": "Confirm adjustments from",
+      "umbralAyuda": "Amount from which the adjustment requires a note. Empty: only if the organization is less than 30 days old."
     },
     "avisoSinAsignar": "{n} {count, plural, one {product with variants has} other {products with variants have}} stock on the parent product, not assigned to a variant. It is not added to available stock.",
     "verSinAgrupar": "View variants separately",
@@ -26848,17 +26880,31 @@
       "listoDocumento": "Adjustment {numero} applied.",
       "errorEntrada": "Could not record the stock in",
       "errorSalida": "Could not record the stock out",
+      "registrarCompra": "Record purchase",
+      "desdeNegativo": "Record the missing purchase or production",
+      "desdeNegativoDetalle": "Stock is already negative. Record the purchase or production that was missing before treating this as a surplus.",
+      "sinHistorial": "This product has no inventory on record. Is this your opening stock?",
+      "siSaldoInicial": "Yes, load it as opening stock",
+      "noSobrante": "No, it is a surplus",
+      "costoParecePrecio": "The cost looks like the sale price",
+      "costoEsCorrecto": "The cost is correct",
+      "confirmarAjuste": "Confirm this adjustment",
+      "confirmarAjusteDetalle": "The organization is less than 30 days old, or the amount is over the threshold. A note is required.",
+      "asientoTitulo": "Opening inventory journal",
+      "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}.",
       "errores": {
         "requerido": "This field is required.",
         "mayorQueCero": "Must be greater than zero.",
         "noNegativo": "Cannot be negative.",
         "superaDisponible": "Exceeds what is available ({n}).",
         "conSeriales": "Products with serials are recorded from Adjustments.",
-        "facturaCompra": "A purchase without an order is recorded on the supplier invoice: inventory against suppliers."
+        "facturaCompra": "A purchase without an order is recorded on the supplier invoice: inventory against suppliers.",
+        "notaObligatoria": "Write a note to confirm the adjustment."
       }
     },
     "motivos": {
       "entrada": {
+        "saldo_inicial": "Opening balance",
         "compra_sin_orden": "Purchase without order",
         "devolucion_cliente": "Customer return",
         "donacion": "Donation",

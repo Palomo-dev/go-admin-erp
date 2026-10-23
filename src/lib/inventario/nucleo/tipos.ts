@@ -131,6 +131,12 @@ export type PermisosInventario = Record<AccionInventario, boolean> & {
 export interface ConfigInventario {
   /** P5: false (defecto) = se puede vender sin existencias, como hoy. */
   bloquear_venta_sin_stock: boolean;
+  /**
+   * A partir de este monto un ajuste pide confirmación y nota.
+   * null: solo aplica la regla de los 30 días de la organización.
+   * Si no hay valor guardado, el defecto es 5.000.000.
+   */
+  monto_confirmacion_ajuste: number | null;
 }
 
 // ─── Documento de un movimiento (fn_inv_documentos) ─────────────────────────

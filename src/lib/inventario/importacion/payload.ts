@@ -55,6 +55,8 @@ export interface CuerpoLote {
     importar_imagenes: boolean;
     origen: 'archivo' | 'web';
     fuente_url?: string;
+    /** La puesta en marcha: el stock del lote es saldo inicial, también si el producto ya existe. */
+    motivo?: 'saldo_inicial';
   };
   filas: FilaRpc[];
 }

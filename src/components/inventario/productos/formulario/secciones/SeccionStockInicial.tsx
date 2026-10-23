@@ -2,8 +2,11 @@
 
 import { useTranslations } from 'next-intl';
 import { Info, PackageCheck, SlidersHorizontal, Warehouse } from 'lucide-react';
+import { AvisoTonal } from '@/components/kit';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 import { CampoNumero } from '@/components/kit/CampoNumero';
+import { asientoPorTotal, costoParecePrecio, cuentaInventarioPorTipo, importeCarga } from '@/lib/inventario/cargaInicial';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
@@ -34,6 +37,7 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
   const t = useTranslations('productoForm.stock');
   const te = useTranslations('productoForm.errores');
   const cantidad = useCantidad();
+  const { organization } = useOrganization();
 
   const rastrea = estado.track_stock && estado.product_type !== 'service';
   const editar = modo === 'editar';
@@ -79,6 +83,20 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
   const existenciaActual = filas.reduce((n, f) => n + f.qty_actual, 0);
   const totalFila = (f: FilaStockForm) => (f.qty ?? 0) * (f.unit_cost ?? costoProducto ?? 0);
   const placeholderCosto = costoProducto !== null ? String(costoProducto) : undefined;
+  const typeId = organization?.isPartial ? null : organization?.type_id;
+  const totalCarga = filas.reduce(
+    (s, f) => s + ((f.qty ?? 0) > 0 ? importeCarga(f.qty ?? 0, f.unit_cost ?? costoProducto ?? 0) : 0),
+    0,
+  );
+  const asiento =
+    !editar && totalCarga > 0
+      ? asientoPorTotal({
+          total: totalCarga,
+          cuentaInventario: cuentaInventarioPorTipo(typeof typeId === 'number' ? typeId : null),
+        })
+      : null;
+  const costoAlto =
+    !editar && filas.some((f) => (f.qty ?? 0) > 0 && costoParecePrecio(f.unit_cost ?? costoProducto, estado.price));
   const mensajeError = errores.stock ? te(errores.stock, { detalle: '' }) : null;
   const idError = 'stock-inicial-error';
   const hayError = !!mensajeError;
@@ -326,6 +344,19 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
       {!editar && sucursalesConStock > 0 && costoProducto === null && filas.some((f) => (f.qty ?? 0) > 0 && f.unit_cost === null) && (
         <p className="text-xs text-warning-text">{t('avisoSinCosto')}</p>
       )}
+
+      {asiento && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('asientoTitulo')}
+          descripcion={t('asientoDetalle', {
+            inventario: asiento.lineas[0]?.cuenta ?? '',
+            saldo: asiento.lineas[1]?.cuenta ?? '',
+            total: moneda.formatear(asiento.total),
+          })}
+        />
+      )}
+      {costoAlto && <AvisoTonal tono="advertencia" titulo={t('costoParecePrecio')} />}
 
       {mensajeError && (
         <p id={idError} role="alert" className="text-sm font-medium text-danger-text">

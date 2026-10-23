@@ -4454,6 +4454,7 @@
       "finanzas_cuentas-por-pagar": "Contas a pagar",
       "finanzas_contabilidad": "Contabilidade",
       "finanzas_contabilidad_plan-cuentas": "Plano de contas",
+      "finanzas_contabilidad_actualizar-puc": "Atualizar plano de contas",
       "finanzas_contabilidad_asientos": "Lançamentos",
       "finanzas_contabilidad_plantillas": "Modelos de lançamentos",
       "finanzas_contabilidad_mayor-contable": "Razão",
@@ -21569,6 +21570,11 @@
         "sucursalAyuda": "A do seletor acima",
         "elegirSucursal": "Escolha uma filial",
         "razon": "Motivo",
+        "motivoAjuste": "Motivo da falta",
+        "motivoAjusteAyuda": "Roubo e sinistro debitam despesas extraordinárias. Em branco, a falta vai para diversos.",
+        "motivoNinguno": "Falta",
+        "motivoRobo": "Roubo",
+        "motivoSiniestro": "Sinistro",
         "fechaConteo": "Data da contagem",
         "fecha": "Data",
         "fechaAyuda": "Horário de {zona}",
@@ -22664,6 +22670,8 @@
         "consumo_interno": "Consumo interno",
         "danio": "Dano",
         "perdida": "Perda ou roubo",
+        "robo": "Roubo",
+        "siniestro": "Sinistro",
         "muestra": "Amostra ou degustação",
         "otro": "Outro"
       }

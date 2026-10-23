@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ContabilidadService, ChartAccount, type NaturalezaCuenta, type NivelCuenta } from '../ContabilidadService';
+import { presentacionDeCodigo, type PresentacionNiif } from '@/lib/finanzas/pucPrefijo';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { SearchInput } from '@/components/kit/SearchInput';
@@ -51,6 +52,13 @@ function modoCentroDe(codigo: string, modo?: string | null, requiere?: boolean |
   return ['4', '5', '6', '7'].includes(codigo[0] ?? '') ? 'obligatorio' : 'no_aplica';
 }
 
+const PRESENTACIONES: { value: PresentacionNiif | 'heredar'; label: string }[] = [
+  { value: 'heredar', label: 'Según el grupo' },
+  { value: 'corriente', label: 'Corriente' },
+  { value: 'no_corriente', label: 'No corriente' },
+  { value: 'segun_plazo', label: 'Según plazo' },
+];
+
 interface Formulario {
   account_code: string;
   name: string;
@@ -58,6 +66,7 @@ interface Formulario {
   parent_code: string;
   description: string;
   naturaleza: NaturalezaCuenta;
+  presentacion_niif: PresentacionNiif | '';
   requiere_tercero: boolean;
   centro_costo_modo: ModoCentroCosto;
 }
@@ -69,6 +78,7 @@ const FORMULARIO_VACIO: Formulario = {
   parent_code: '',
   description: '',
   naturaleza: 'debito',
+  presentacion_niif: '',
   requiere_tercero: false,
   centro_costo_modo: 'no_aplica',
 };
@@ -169,6 +179,7 @@ export function PlanCuentasPage() {
         parent_code: account.parent_code || '',
         description: account.description || '',
         naturaleza: naturalezaDe(account.account_code, account.naturaleza) ?? 'debito',
+        presentacion_niif: account.presentacion_niif ?? '',
         requiere_tercero: account.requiere_tercero ?? false,
         centro_costo_modo: modoCentroDe(account.account_code, account.centro_costo_modo, account.requiere_centro_costo),
       });
@@ -193,6 +204,7 @@ export function PlanCuentasPage() {
       parent_code: padre.account_code,
       description: '',
       naturaleza: naturalezaDe(codigo, null) ?? 'debito',
+      presentacion_niif: presentacionDeCodigo(codigo) ?? '',
       requiere_tercero: padre.requiere_tercero ?? false,
       centro_costo_modo: modoCentroDe(codigo),
     });
@@ -231,6 +243,7 @@ export function PlanCuentasPage() {
         parent_code: formData.parent_code || null,
         description: formData.description || null,
         naturaleza: formData.naturaleza,
+        presentacion_niif: formData.presentacion_niif || null,
         requiere_tercero: formData.requiere_tercero,
         centro_costo_modo: formData.centro_costo_modo,
         requiere_centro_costo: formData.centro_costo_modo === 'obligatorio',
@@ -615,6 +628,26 @@ export function PlanCuentasPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Presentación NIIF</Label>
+              <Select
+                value={formData.presentacion_niif || 'heredar'}
+                onValueChange={(value) => setFormData({
+                  ...formData,
+                  presentacion_niif: value === 'heredar' ? '' : value as PresentacionNiif,
+                })}
+              >
+                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRESENTACIONES.map((opcion) => (
+                    <SelectItem key={opcion.value} value={opcion.value}>{opcion.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                No cambia el nombre del grupo. 11 sigue siendo Disponible.
+              </p>
             </div>
             <div className="flex gap-6">
               <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">

@@ -2,11 +2,10 @@
  * Plan único que se copia al crear una organización.
  * PUC comercial, Decreto 2650 de 1993, clases 1 a 9.
  *
- * Dos códigos de producto no llevan el nombre del decreto porque los asientos
- * ya los usan con otro significado: 4110 alimentos (el decreto dice pesca) y
- * 4115 hospedaje (el decreto dice minas). 4235 se queda como Servicios, que
- * es el nombre del decreto, y el parqueadero acredita ahí.
- * 5235 se llama Comisiones: es la cuenta que ya usa la comisión de canales.
+ * 4110 es Pesca y 4115 es Explotación de minas y canteras. Hotelería es
+ * 414005 y restaurantes 414015. La comisión de canales es 529505; 5235
+ * queda como Servicios. La clase 8 es débito y la 9 crédito; 84/86/88 y
+ * 94/96/98 son la contrapartida.
  */
 import {
   claseDe,
@@ -36,11 +35,22 @@ export interface CuentaPlantilla {
 const NATURALEZA_EXPLICITA: Record<string, NaturalezaPuc> = {
   '1399': 'credito',
   '1592': 'credito',
+  '1599': 'credito',
   '1698': 'credito',
   '3610': 'debito',
   '3710': 'debito',
   '4175': 'debito',
   '6225': 'credito',
+};
+
+/** 84/86/88 acreditan la clase 8. 94/96/98 debitan la clase 9. El grupo arrastra a sus hijas. */
+const CONTRA_ORDEN: Record<string, NaturalezaPuc> = {
+  '84': 'credito',
+  '86': 'credito',
+  '88': 'credito',
+  '94': 'debito',
+  '96': 'debito',
+  '98': 'debito',
 };
 
 const TERCERO = new Set([
@@ -64,14 +74,19 @@ const DESCRIPCION: Record<string, string> = {
   '2805': 'Anticipos y avances recibidos, incluidos los saldos a favor de clientes.',
   '3115': 'Aportes sociales. Un aporte de capital adicional se acredita aquí cuando la cuenta existe.',
   '4105': 'Agricultura, ganadería, caza y silvicultura. El comercio es 4135.',
-  '4110': 'Ingreso por alimentos. El Decreto 2650 asigna 4110 a pesca; los cargos de folio ya acreditan este código.',
-  '4115': 'Ingreso por hospedaje. El Decreto 2650 asigna 4115 a minas; los cargos de folio ya acreditan este código.',
+  '4110': 'Pesca. El ingreso de restaurante es 414015.',
+  '4115': 'Explotación de minas y canteras. El hospedaje es 414005.',
   '4135': 'Comercio al por mayor y al por menor.',
+  '414005': 'Hotelería.',
+  '414015': 'Restaurantes.',
   '4175': 'Devoluciones, rebajas y descuentos en ventas. Naturaleza débito.',
   '4235': 'Servicios. Las sesiones y los pases de parqueadero se acreditan aquí.',
-  '5150': 'Adecuación e instalación. El faltante de inventario también se lleva a esta cuenta.',
-  '5235': 'Comisiones, incluidas las de canales. En el decreto, 5235 son servicios de venta.',
+  '5150': 'Adecuación e instalación. El faltante de inventario es 519595.',
+  '519595': 'Faltantes de inventario.',
+  '5235': 'Servicios de venta. La comisión de canales es 529505.',
+  '529505': 'Comisiones, incluidas las de canales de venta.',
   '5305': 'Gastos financieros.',
+  '5315': 'Gastos extraordinarios. El robo y el siniestro de inventario se debitan aquí.',
   '6105': 'Costo de ventas de agricultura, ganadería, caza y silvicultura. El comercio es 6135.',
   '6135': 'Costo de ventas del comercio al por mayor y al por menor.',
 };
@@ -95,7 +110,7 @@ const GRUPOS: readonly Fila[] = [
   ['12', 'Inversiones'],
   ['13', 'Deudores'],
   ['14', 'Inventarios'],
-  ['15', 'Propiedad, planta y equipo'],
+  ['15', 'Propiedades, planta y equipo'],
   ['16', 'Intangibles'],
   ['17', 'Diferidos'],
   ['18', 'Otros activos'],
@@ -130,9 +145,15 @@ const GRUPOS: readonly Fila[] = [
   ['81', 'Derechos contingentes'],
   ['82', 'Deudoras fiscales'],
   ['83', 'Deudoras de control'],
+  ['84', 'Derechos contingentes por contra (cr)'],
+  ['86', 'Deudoras fiscales por contra (cr)'],
+  ['88', 'Deudoras de control por contra (cr)'],
   ['91', 'Responsabilidades contingentes'],
   ['92', 'Acreedoras fiscales'],
   ['93', 'Acreedoras de control'],
+  ['94', 'Responsabilidades contingentes por contra (db)'],
+  ['96', 'Acreedoras fiscales por contra (db)'],
+  ['98', 'Acreedoras de control por contra (db)'],
 ];
 
 const CUENTAS: readonly Fila[] = [
@@ -149,6 +170,8 @@ const CUENTAS: readonly Fila[] = [
   ['1325', 'Cuentas por cobrar a socios y accionistas'],
   ['1330', 'Anticipos y avances'],
   ['1355', 'Anticipo de impuestos y contribuciones o saldos a favor'],
+  ['135517', 'Impuesto a las ventas retenido'],
+  ['135518', 'Impuesto de industria y comercio retenido'],
   ['1365', 'Cuentas por cobrar a trabajadores'],
   ['1380', 'Deudores varios'],
   ['1390', 'Deudas de difícil cobro'],
@@ -169,6 +192,7 @@ const CUENTAS: readonly Fila[] = [
   ['1528', 'Equipo de computación y comunicación'],
   ['1540', 'Flota y equipo de transporte'],
   ['1592', 'Depreciación acumulada'],
+  ['1599', 'Provisiones'],
   ['1605', 'Crédito mercantil'],
   ['1610', 'Marcas'],
   ['1625', 'Derechos'],
@@ -213,7 +237,7 @@ const CUENTAS: readonly Fila[] = [
   ['2905', 'Bonos en circulación'],
   ['3105', 'Capital suscrito y pagado'],
   ['3115', 'Aportes sociales'],
-  ['3205', 'Prima en colocación de acciones'],
+  ['3205', 'Prima en colocación de acciones, cuotas o partes de interés social'],
   ['3210', 'Donaciones'],
   ['3215', 'Crédito mercantil'],
   ['3305', 'Reservas obligatorias'],
@@ -224,13 +248,18 @@ const CUENTAS: readonly Fila[] = [
   ['3705', 'Utilidades o excedentes acumulados'],
   ['3710', 'Pérdidas acumuladas'],
   ['4105', 'Agricultura, ganadería, caza y silvicultura'],
-  ['4110', 'Ingresos por alimentos'],
-  ['4115', 'Ingresos por servicios de hospedaje'],
+  ['4110', 'Pesca'],
+  ['4115', 'Explotación de minas y canteras'],
   ['4135', 'Comercio al por mayor y al por menor'],
   ['4140', 'Hoteles y restaurantes'],
+  ['414005', 'Hotelería'],
+  ['414015', 'Restaurantes'],
+  ['414095', 'Otros'],
+  ['4145', 'Transporte, almacenamiento y comunicaciones'],
   ['4155', 'Actividades inmobiliarias y de alquiler'],
   ['4165', 'Servicios sociales y de salud'],
   ['4175', 'Devoluciones en ventas'],
+  ['4205', 'Otras ventas'],
   ['4210', 'Financieros'],
   ['4215', 'Dividendos y participaciones'],
   ['4220', 'Arrendamientos'],
@@ -241,18 +270,30 @@ const CUENTAS: readonly Fila[] = [
   ['5105', 'Gastos de personal'],
   ['5110', 'Honorarios'],
   ['5115', 'Impuestos'],
+  ['511595', 'Otros'],
   ['5120', 'Arrendamientos'],
   ['5135', 'Servicios'],
+  ['513525', 'Acueducto y alcantarillado'],
+  ['513530', 'Energía eléctrica'],
+  ['513535', 'Teléfono'],
   ['5145', 'Mantenimiento y reparaciones'],
   ['5150', 'Adecuación e instalación'],
   ['5155', 'Gastos de viaje'],
   ['5160', 'Depreciación'],
   ['5165', 'Amortización'],
   ['5195', 'Diversos'],
+  ['519525', 'Elementos de aseo y cafetería'],
+  ['519530', 'Útiles, papelería y fotocopias'],
+  ['519545', 'Taxis y buses'],
+  ['519595', 'Faltantes'],
   ['5205', 'Gastos de personal'],
-  ['5235', 'Comisiones'],
+  ['5235', 'Servicios'],
+  ['523550', 'Transportes, fletes y acarreos'],
   ['5295', 'Diversos'],
+  ['529505', 'Comisiones'],
   ['5305', 'Financieros'],
+  ['530595', 'Otros'],
+  ['5315', 'Gastos extraordinarios'],
   ['5395', 'Gastos diversos'],
   ['5405', 'Impuesto de renta y complementarios'],
   ['5905', 'Ganancias y pérdidas'],
@@ -272,11 +313,17 @@ const CUENTAS: readonly Fila[] = [
   ['8115', 'Bienes y valores en poder de terceros'],
   ['8205', 'Cuentas deudoras fiscales'],
   ['8305', 'Cuentas deudoras de control'],
+  ['8405', 'Derechos contingentes por contra'],
+  ['8605', 'Deudoras fiscales por contra'],
+  ['8805', 'Deudoras de control por contra'],
   ['9105', 'Bienes y valores recibidos en custodia'],
   ['9110', 'Bienes y valores recibidos en garantía'],
   ['9115', 'Bienes y valores recibidos de terceros'],
   ['9205', 'Cuentas acreedoras fiscales'],
   ['9305', 'Cuentas acreedoras de control'],
+  ['9405', 'Responsabilidades contingentes por contra'],
+  ['9605', 'Acreedoras fiscales por contra'],
+  ['9805', 'Acreedoras de control por contra'],
 ];
 
 function armar(filas: readonly Fila[]): CuentaPlantilla[] {
@@ -297,7 +344,7 @@ function armar(filas: readonly Fila[]): CuentaPlantilla[] {
       tipo: tipoDeClase(clase),
       padre: prefijoPadre(codigo),
       descripcion: DESCRIPCION[codigo] ?? null,
-      naturaleza: NATURALEZA_EXPLICITA[codigo] ?? naturalezaPorClase(clase),
+      naturaleza: NATURALEZA_EXPLICITA[codigo] ?? CONTRA_ORDEN[codigo.slice(0, 2)] ?? naturalezaPorClase(clase),
       esMovimiento,
       nivel: nivelDe(codigo),
       requiereTercero: TERCERO.has(codigo),

@@ -3,7 +3,8 @@ import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { getDateRange, getDayRange, todayInTz } from '@/lib/utils/timezone';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
-import { armarArbolContable } from '@/lib/finanzas/arbolBalance';
+import { armarArbolContable, anidarResultado, presentarNiif } from '@/lib/finanzas/arbolBalance';
+import { cuentasBajoPrefijo } from '@/lib/finanzas/pucPrefijo';
 
 // ============================================================
 // `journal_entries.entry_date` es **timestamptz**, no `date` (verificado en
@@ -50,6 +51,7 @@ export interface BalanceSheetRow {
 export interface LedgerEntry {
   journal_entry_id: number;
   entry_date: string;
+  account_code: string;
   memo: string | null;
   source: string | null;
   posted: boolean;
@@ -106,6 +108,7 @@ interface FilaCuenta {
   name: string;
   type: string;
   parent_code: string | null;
+  presentacion_niif?: string | null;
 }
 
 interface FilaAsiento {
@@ -169,6 +172,8 @@ async function saldosPorCuenta(
 function instanteAnterior(instante: string): string {
   return new Date(new Date(instante).getTime() - 1).toISOString();
 }
+
+export type ModoBalance = 'puc' | 'niif';
 
 export class ReportesContablesService {
   private static getOrganizationId(): number {
@@ -331,7 +336,7 @@ export class ReportesContablesService {
     };
   }
 
-  static async getBalanceSheet(asOfDate: string): Promise<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean }> {
+  static async getBalanceSheet(asOfDate: string, modo: ModoBalance = 'puc'): Promise<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean; modo: ModoBalance }> {
     const organizationId = this.getOrganizationId();
     const timezone = await resolveTimezone(organizationId);
     // Corte «a fecha de»: el ultimo instante de ese dia en la zona del negocio.
@@ -339,7 +344,7 @@ export class ReportesContablesService {
 
     const { data: accounts, error: accountsError } = await supabase
       .from('chart_of_accounts')
-      .select('account_code, name, type, parent_code')
+      .select('account_code, name, type, parent_code, presentacion_niif')
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .in('type', ['asset', 'liability', 'equity'])
@@ -384,18 +389,16 @@ export class ReportesContablesService {
         (codigo) => totals.get(codigo) || 0,
       );
 
-    const assets = buildTree('asset');
-    const liabilities = buildTree('liability');
+    let assets = buildTree('asset');
+    let liabilities = buildTree('liability');
     const equity = buildTree('equity');
-    if (Math.abs(resultadoEjercicio) >= 0.005) {
-      equity.push({
-        account_code: 'RESULTADO',
-        name: 'Resultado del ejercicio (sin cerrar)',
-        type: 'equity',
-        parent_code: null,
-        amount: resultadoEjercicio,
-        children: [],
-      });
+    anidarResultado(equity, resultadoEjercicio);
+    if (modo === 'niif') {
+      const explicita = new Map(
+        (accounts || []).map((cuenta: FilaCuenta) => [cuenta.account_code, cuenta.presentacion_niif ?? null]),
+      );
+      assets = presentarNiif(assets, explicita);
+      liabilities = presentarNiif(liabilities, explicita);
     }
 
     const totalAssets = assets.reduce((sum, r) => sum + r.amount, 0);
@@ -410,6 +413,7 @@ export class ReportesContablesService {
       totalLiabilities,
       totalEquity,
       balanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01,
+      modo,
     };
   }
 
@@ -431,10 +435,34 @@ export class ReportesContablesService {
 
     if (accountError || !account) return null;
 
+    const { data: plan, error: planError } = await supabase
+      .from('chart_of_accounts')
+      .select('account_code')
+      .eq('organization_id', organizationId);
+    if (planError) throw planError;
+    const codigos = cuentasBajoPrefijo(
+      accountCode,
+      (plan || []).map((fila: { account_code: string }) => fila.account_code),
+    );
+    if (!codigos.includes(accountCode)) codigos.push(accountCode);
+    const sumarCodigos = (
+      saldos: Map<string, { debit: number; credit: number }>,
+    ): { debit: number; credit: number } => {
+      let debit = 0;
+      let credit = 0;
+      for (const codigo of codigos) {
+        const saldo = saldos.get(codigo);
+        if (!saldo) continue;
+        debit += saldo.debit;
+        credit += saldo.credit;
+      }
+      return { debit, credit };
+    };
+
     // Saldo inicial sumado en la base: antes se traían las líneas sin paginar
-    // y PostgREST las cortaba en 1.000 filas.
-    const saldoPrevio = (await saldosPorCuenta(organizationId, null, instanteAnterior(start))).get(accountCode)
-      ?? { debit: 0, credit: 0 };
+    // y PostgREST las cortaba en 1.000 filas. Una cuenta que no es hoja
+    // arrastra el saldo de todo su prefijo.
+    const saldoPrevio = sumarCodigos(await saldosPorCuenta(organizationId, null, instanteAnterior(start)));
     const openingBalance = account.type === 'asset' || account.type === 'expense'
       ? saldoPrevio.debit - saldoPrevio.credit
       : saldoPrevio.credit - saldoPrevio.debit;
@@ -442,12 +470,12 @@ export class ReportesContablesService {
     // El mayor no recorre el libro entero: 400 líneas alcanzan para la pantalla
     // y los totales salen del agregado, no de esa página.
     const TOPE_LINEAS = 400;
-    const periodo = (await saldosPorCuenta(organizationId, start, end)).get(accountCode)
-      ?? { debit: 0, credit: 0 };
+    const periodo = sumarCodigos(await saldosPorCuenta(organizationId, start, end));
     const { data: pagina, error: linesError } = await supabase
       .from('journal_lines')
       .select(`
         id,
+        account_code,
         debit,
         credit,
         description,
@@ -455,7 +483,7 @@ export class ReportesContablesService {
         journal_entries!inner(id, entry_date, memo, source, posted)
       `)
       .eq('organization_id', organizationId)
-      .eq('account_code', accountCode)
+      .in('account_code', codigos)
       .gte('journal_entries.entry_date', start)
       .lte('journal_entries.entry_date', end)
       .eq('journal_entries.posted', true)
@@ -495,6 +523,7 @@ export class ReportesContablesService {
       return {
         journal_entry_id: line.journal_entry_id ?? 0,
         entry_date: je?.entry_date || '',
+        account_code: line.account_code || accountCode,
         memo: je?.memo || null,
         source: je?.source || null,
         posted: je?.posted || false,

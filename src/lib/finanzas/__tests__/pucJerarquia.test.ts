@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { interpretarFilas } from '../pucExcel';
@@ -13,10 +13,14 @@ import {
 } from '../pucJerarquia';
 
 const RAIZ = join(__dirname, '..', '..', '..', '..');
-const migracion = readFileSync(
+const sembradoOriginal = readFileSync(
   join(RAIZ, 'supabase/migrations/20261021224002_puc_jerarquia.sql'),
   'utf8',
 );
+const migracionesNuevas = readdirSync(join(RAIZ, 'supabase/migrations'))
+  .filter((nombre) => nombre.endsWith('.sql') && nombre !== '20261021224002_puc_jerarquia.sql')
+  .map((nombre) => readFileSync(join(RAIZ, 'supabase/migrations', nombre), 'utf8'));
+const migracion = [sembradoOriginal, ...migracionesNuevas].join('\n');
 const propuesta = readFileSync(
   join(RAIZ, 'supabase/propuestas/20261021233000_puc_reclasificacion.sql'),
   'utf8',
@@ -25,7 +29,7 @@ const propuesta = readFileSync(
 describe('plantilla PUC', () => {
   it('cubre las nueve clases y el tamaño de un plan base', () => {
     expect(PLANTILLA_PUC.length).toBeGreaterThanOrEqual(160);
-    expect(PLANTILLA_PUC.length).toBeLessThanOrEqual(210);
+    expect(PLANTILLA_PUC.length).toBeLessThanOrEqual(280);
     for (const clase of ['1', '2', '3', '4', '5', '6', '7', '8', '9']) {
       expect(cuentaPlantilla(clase)).toBeTruthy();
     }
@@ -75,8 +79,25 @@ describe('plantilla PUC', () => {
     expect(cuentaPlantilla('5105')?.requiereCentroCosto).toBe(true);
     expect(cuentaPlantilla('6135')?.requiereCentroCosto).toBe(true);
     expect(cuentaPlantilla('11')?.requiereCentroCosto).toBe(false);
+    expect(cuentaPlantilla('15')?.nombre).toBe('Propiedades, planta y equipo');
+    expect(cuentaPlantilla('4110')?.nombre).toBe('Pesca');
+    expect(cuentaPlantilla('4115')?.nombre).toBe('Explotación de minas y canteras');
+    expect(cuentaPlantilla('414005')?.nombre).toBe('Hotelería');
+    expect(cuentaPlantilla('414015')?.nombre).toBe('Restaurantes');
+    expect(cuentaPlantilla('4140')?.esMovimiento).toBe(false);
+    expect(cuentaPlantilla('5235')?.nombre).toBe('Servicios');
+    expect(cuentaPlantilla('5235')?.esMovimiento).toBe(false);
+    expect(cuentaPlantilla('529505')?.nombre).toBe('Comisiones');
+    expect(cuentaPlantilla('1599')?.nombre).toBe('Provisiones');
+    expect(cuentaPlantilla('1599')?.naturaleza).toBe('credito');
+    expect(cuentaPlantilla('3205')?.nombre).toMatch(/cuotas o partes de interés social/);
     expect(cuentaPlantilla('8')?.tipo).toBe('order');
-    expect(cuentaPlantilla('8')?.naturaleza).toBe('orden');
+    expect(cuentaPlantilla('8')?.naturaleza).toBe('debito');
+    expect(cuentaPlantilla('9')?.naturaleza).toBe('credito');
+    expect(cuentaPlantilla('84')?.naturaleza).toBe('credito');
+    expect(cuentaPlantilla('8405')?.naturaleza).toBe('credito');
+    expect(cuentaPlantilla('94')?.naturaleza).toBe('debito');
+    expect(cuentaPlantilla('9405')?.naturaleza).toBe('debito');
   });
 });
 
@@ -96,7 +117,8 @@ describe('jerarquía', () => {
     expect(naturalezaDe('4135', null)).toBe('credito');
     expect(naturalezaDe('4175', 'debito')).toBe('debito');
     expect(naturalezaDe('1105', null)).toBe('debito');
-    expect(naturalezaDe('8', null)).toBe('orden');
+    expect(naturalezaDe('8', null)).toBe('debito');
+    expect(naturalezaDe('9', null)).toBe('credito');
   });
 
   it('una cuenta sin padre se ve bajo el prefijo más largo', () => {
@@ -168,12 +190,15 @@ describe('archivos de la fase', () => {
     expect(migracion).toContain('es_movimiento');
     expect(migracion).toContain('requiere_tercero');
     expect(migracion).toContain('requiere_centro_costo');
-    expect(migracion).toContain('fn_create_default_chart_of_accounts');
-    expect(migracion).not.toContain("WHEN 'MEX'");
-    expect(migracion).not.toContain('from organizations');
-    expect(migracion).not.toContain('from public.organizations');
-    expect(migracion).not.toContain('update journal_lines');
-    expect(migracion).not.toContain('update public.journal_lines');
+    expect(sembradoOriginal).toContain('fn_create_default_chart_of_accounts');
+    expect(sembradoOriginal).not.toContain("WHEN 'MEX'");
+    expect(sembradoOriginal).not.toContain('from organizations');
+    expect(sembradoOriginal).not.toContain('from public.organizations');
+    expect(sembradoOriginal).not.toContain('update journal_lines');
+    expect(sembradoOriginal).not.toContain('update public.journal_lines');
+    const consolidacion = migracionesNuevas.find((sql) => sql.includes('fn_saldos_jerarquicos'));
+    expect(consolidacion).toBeTruthy();
+    expect(consolidacion).not.toMatch(/update\s+(public\.)?journal_lines/i);
   });
 
   it('la propuesta no se aplica y trae las equivalencias', () => {

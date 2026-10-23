@@ -1904,11 +1904,13 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
     const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
     const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
     expect(exclusion).not.toBeNull();
-    // `purchase_void` (compras F1, R7): la anulación de una compra ya revierte el
-    // devengo con el contra-asiento espejo; un asiento de ajuste lo duplicaba.
-    for (const origen of ['purchase_order', 'purchase_invoice', 'purchase_void', 'transfer_out', 'transfer_in', 'purchase', 'transfer', 'initial']) {
+    // La apertura (`initial`) sí se contabiliza: inventario contra patrimonio
+    // (3105), no contra la clase 6. Por eso no entra en esta lista.
+    for (const origen of ['purchase_order', 'purchase_invoice', 'purchase_void', 'transfer_out', 'transfer_in', 'purchase', 'transfer']) {
       expect(exclusion![1]).toContain(`'${origen}'`);
     }
+    expect(exclusion![1]).not.toContain(`'initial'`);
+    expect(cuerpo.toLowerCase()).toContain('entrada_clase_6');
   });
 
   test('ningún servicio de compras escribe asientos por su cuenta', () => {
@@ -3429,6 +3431,8 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
       'La misma exclusión, con alias padre, en 20261001211941. El detector solo reconoce pp_elim.',
     decrement_stock_with_recipe:
       'No consulta stock_levels. El detector extiende el cuerpo hasta el final de 20261023102907 y ahí entra el backfill, que nombra stock_levels y products. La función solo descuenta por la primitiva.',
+    fn_auto_journal_stock_movement:
+      'No lista existencias. Toma el costo promedio y el nombre del product_id del movimiento que ya ocurrió, para armar el asiento. Excluir la variante de un padre eliminado dejaría ese movimiento sin contabilizar.',
   };
 
   function definicionesDeStock(sql: string): Array<{ nombre: string; conPredicado: boolean }> {

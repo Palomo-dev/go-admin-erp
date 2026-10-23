@@ -86,8 +86,8 @@ export const DEBITO_REVISADO: Record<string, { debito: string; clase: 'gasto' | 
   'commission.paid': { debito: '2370', clase: 'pasivo' },
   'refund.refunded': { debito: '4105', clase: 'contra_ingreso' },
   'sale_credit_note.created': { debito: '4105', clase: 'contra_ingreso' },
-  'inventory_adjustment.loss': { debito: '5150', clase: 'gasto' },
-  'inventory.adjusted': { debito: '6105', clase: 'costo' },
+  'inventory_adjustment.loss': { debito: '519595', clase: 'gasto' },
+  'inventory.adjusted': { debito: '519595', clase: 'gasto' },
 };
 
 /** Ajuste de banco: la salida es gasto financiero, no 5105 ni 4105. La entrada acredita 4250, no un gasto. */

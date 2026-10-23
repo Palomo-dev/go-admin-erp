@@ -185,6 +185,7 @@ export function MayorContablePage() {
                       <tr className="border-b dark:border-gray-700 text-gray-600 dark:text-gray-400">
                         <th className="text-left py-2 px-3 font-medium">Fecha</th>
                         <th className="text-left py-2 px-3 font-medium">Asiento</th>
+                        <th className="text-left py-2 px-3 font-medium">Cuenta</th>
                         <th className="text-left py-2 px-3 font-medium">Descripcion</th>
                         <th className="text-left py-2 px-3 font-medium">Origen</th>
                         <th className="text-right py-2 px-3 font-medium">Debito</th>
@@ -194,13 +195,14 @@ export function MayorContablePage() {
                     </thead>
                     <tbody>
                       <tr className="border-b dark:border-gray-700/50 bg-gray-50 dark:bg-gray-700/20 font-medium">
-                        <td colSpan={6} className="py-2 px-3 text-gray-600 dark:text-gray-400">Saldo Inicial</td>
+                        <td colSpan={7} className="py-2 px-3 text-gray-600 dark:text-gray-400">Saldo Inicial</td>
                         <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(ledger.opening_balance)}</td>
                       </tr>
                       {ledger.entries.map((entry, idx) => (
                         <tr key={idx} className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                           <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{formatDate(entry.entry_date)}</td>
                           <td className="py-2 px-3 font-mono text-gray-500 dark:text-gray-500">#{entry.journal_entry_id}</td>
+                          <td className="py-2 px-3 font-mono text-gray-600 dark:text-gray-400">{entry.account_code}</td>
                           <td className="py-2 px-3 text-gray-900 dark:text-white">{entry.memo || '-'}</td>
                           <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{entry.source || '-'}</td>
                           <td className="py-2 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(entry.debit)}</td>

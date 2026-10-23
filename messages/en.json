@@ -4457,6 +4457,7 @@
       "finanzas_cuentas-por-pagar": "Accounts payable",
       "finanzas_contabilidad": "Accounting",
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
+      "finanzas_contabilidad_actualizar-puc": "Update chart of accounts",
       "finanzas_contabilidad_asientos": "Journal entries",
       "finanzas_contabilidad_plantillas": "Recurring journal templates",
       "finanzas_contabilidad_mayor-contable": "General ledger",
@@ -25770,6 +25771,11 @@
         "sucursalAyuda": "The one in the selector above",
         "elegirSucursal": "Choose a branch",
         "razon": "Reason",
+        "motivoAjuste": "Shortage reason",
+        "motivoAjusteAyuda": "Theft and casualty debit extraordinary expenses. Blank posts the shortage to miscellaneous.",
+        "motivoNinguno": "Shortage",
+        "motivoRobo": "Theft",
+        "motivoSiniestro": "Casualty",
         "fechaConteo": "Count date",
         "fecha": "Date",
         "fechaAyuda": "Time in {zona}",
@@ -26865,6 +26871,8 @@
         "consumo_interno": "Internal use",
         "danio": "Damage",
         "perdida": "Loss or theft",
+        "robo": "Theft",
+        "siniestro": "Casualty",
         "muestra": "Sample or tasting",
         "otro": "Other"
       }

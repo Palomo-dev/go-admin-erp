@@ -259,6 +259,7 @@ export function aBorrador(e: {
   sucursal: number;
   modo: ModoAjuste;
   razon: string;
+  motivoAjuste?: 'robo' | 'siniestro' | null;
   notas: string;
   contadoEn: string | null;
   lineas: readonly LineaAjuste[];
@@ -268,6 +269,7 @@ export function aBorrador(e: {
     branch_id: e.sucursal,
     mode: e.modo,
     reason: e.razon,
+    motivo_ajuste: e.motivoAjuste ?? null,
     notes: e.notas.trim() || null,
     counted_at: e.contadoEn,
     items: e.lineas.map((l) => ({

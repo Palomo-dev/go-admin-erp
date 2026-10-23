@@ -26,8 +26,14 @@ const LONGITUD: Record<Exclude<NivelPuc, 'auxiliar'>, number> = {
 };
 
 export function codigoEnNivel(codigo: string, nivel: NivelPuc): string {
-  const limpio = codigo.trim();
-  if (nivel === 'auxiliar') return limpio;
+  const original = codigo.trim();
+  if (original === 'RESULTADO') {
+    if (nivel === 'clase') return '3';
+    if (nivel === 'grupo') return '36';
+    return original;
+  }
+  const limpio = original.replace(/-/g, '');
+  if (nivel === 'auxiliar' || !/^\d+$/.test(limpio)) return original;
   const n = LONGITUD[nivel];
   return limpio.length <= n ? limpio : limpio.slice(0, n);
 }

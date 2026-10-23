@@ -117,8 +117,10 @@ describe('egreso que no es compra', () => {
     expect(DEBITO_REVISADO['commission.paid'].clase).toBe('pasivo');
     expect(DEBITO_REVISADO['refund.refunded']).toEqual({ debito: '4105', clase: 'contra_ingreso' });
     expect(DEBITO_REVISADO['sale_credit_note.created'].clase).toBe('contra_ingreso');
-    expect(DEBITO_REVISADO['inventory_adjustment.loss'].debito.startsWith('4')).toBe(false);
-    expect(DEBITO_REVISADO['inventory.adjusted'].debito.startsWith('4')).toBe(false);
+    expect(DEBITO_REVISADO['inventory_adjustment.loss']).toEqual({ debito: '519595', clase: 'gasto' });
+    expect(DEBITO_REVISADO['inventory.adjusted']).toEqual({ debito: '519595', clase: 'gasto' });
+    expect(DEBITO_REVISADO['inventory_adjustment.loss'].debito.startsWith('6')).toBe(false);
+    expect(DEBITO_REVISADO['inventory.adjusted'].debito.startsWith('6')).toBe(false);
   });
 
   it('un egreso bancario no acredita ni debita 5105 de personal', () => {

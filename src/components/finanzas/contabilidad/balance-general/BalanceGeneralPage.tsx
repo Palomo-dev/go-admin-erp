@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ReportesContablesService, BalanceSheetRow } from '../ReportesContablesService';
+import { ReportesContablesService, BalanceSheetRow, type ModoBalance } from '../ReportesContablesService';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
@@ -53,6 +53,7 @@ export function BalanceGeneralPage() {
   const { isLoading: tzLoading } = useOrgTimezone();
   const [asOfDate, setAsOfDate] = useState('');
   const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
+  const [modo, setModo] = useState<ModoBalance>('puc');
   const [data, setData] = useState<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,15 +64,15 @@ export function BalanceGeneralPage() {
     arrancado.current = true;
     const hoy = getToday();
     setAsOfDate(hoy);
-    loadData(hoy);
+    loadData(hoy, 'puc');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tzLoading, getToday]);
 
-  const loadData = async (corte: string = asOfDate) => {
+  const loadData = async (corte: string = asOfDate, presentacion: ModoBalance = modo) => {
     if (!corte) return;
     try {
       setIsLoading(true);
-      const result = await ReportesContablesService.getBalanceSheet(corte);
+      const result = await ReportesContablesService.getBalanceSheet(corte, presentacion);
       setData(result);
     } catch (error) {
       console.error('Error cargando balance general:', error);
@@ -123,6 +124,17 @@ export function BalanceGeneralPage() {
               <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
             <SelectorNivel valor={nivel} onChange={setNivel} />
+            <label className="space-y-2 block">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Presentación</span>
+              <select
+                value={modo}
+                onChange={(e) => setModo(e.target.value as ModoBalance)}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+              >
+                <option value="puc">PUC</option>
+                <option value="niif">NIIF</option>
+              </select>
+            </label>
             <BotonesExportar
               nombre={`situacion-financiera-${asOfDate}`}
               titulo="Estado de situación financiera"

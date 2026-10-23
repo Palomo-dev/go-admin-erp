@@ -93,14 +93,14 @@ export function BalanceComprobacionPage() {
     }
   };
 
-  const totals = visibles.reduce(
+  const totalesHojas = rows.reduce(
     (acc, r) => ({
-      initial_debit: acc.initial_debit + r.debitoInicial,
-      initial_credit: acc.initial_credit + r.creditoInicial,
-      period_debit: acc.period_debit + r.debitoPeriodo,
-      period_credit: acc.period_credit + r.creditoPeriodo,
-      final_debit: acc.final_debit + r.debitoFinal,
-      final_credit: acc.final_credit + r.creditoFinal,
+      initial_debit: acc.initial_debit + r.initial_debit,
+      initial_credit: acc.initial_credit + r.initial_credit,
+      period_debit: acc.period_debit + r.period_debit,
+      period_credit: acc.period_credit + r.period_credit,
+      final_debit: acc.final_debit + r.final_debit,
+      final_credit: acc.final_credit + r.final_credit,
     }),
     { initial_debit: 0, initial_credit: 0, period_debit: 0, period_credit: 0, final_debit: 0, final_credit: 0 }
   );
@@ -110,7 +110,7 @@ export function BalanceComprobacionPage() {
     const csvRows = [
       headers.join(','),
       ...visibles.map(r => [r.codigo, `"${r.nombre}"`, TYPE_LABELS[tipos.get(r.codigo) || ''] || '', r.debitoInicial, r.creditoInicial, r.debitoPeriodo, r.creditoPeriodo, r.debitoFinal, r.creditoFinal].join(',')),
-      ['', 'TOTALES', '', totals.initial_debit, totals.initial_credit, totals.period_debit, totals.period_credit, totals.final_debit, totals.final_credit].join(','),
+      ['', 'TOTALES', '', totalesHojas.initial_debit, totalesHojas.initial_credit, totalesHojas.period_debit, totalesHojas.period_credit, totalesHojas.final_debit, totalesHojas.final_credit].join(','),
     ];
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -184,7 +184,7 @@ export function BalanceComprobacionPage() {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Detalle por Cuenta</CardTitle>
-          <CardDescription className="dark:text-gray-400">{visibles.length} filas en este nivel. El total no cambia al agrupar.</CardDescription>
+          <CardDescription className="dark:text-gray-400">{visibles.length} filas en este nivel. El total general suma solo el movimiento de cada cuenta, una vez.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -220,12 +220,12 @@ export function BalanceComprobacionPage() {
               <tfoot>
                 <tr className="border-t-2 dark:border-gray-600 font-bold text-gray-900 dark:text-white">
                   <td colSpan={3} className="py-3 px-3">TOTALES</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.initial_debit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.initial_credit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.period_debit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.period_credit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.final_debit)}</td>
-                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totals.final_credit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totalesHojas.initial_debit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totalesHojas.initial_credit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totalesHojas.period_debit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totalesHojas.period_credit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totalesHojas.final_debit)}</td>
+                  <td className="py-3 px-3 text-right font-mono">{formatCifra(totalesHojas.final_credit)}</td>
                 </tr>
               </tfoot>
             </table>

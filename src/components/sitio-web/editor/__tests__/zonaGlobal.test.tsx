@@ -182,10 +182,24 @@ describe('InspectorEncabezado', () => {
     expect(screen.getByRole('switch', { name: /Fijo al bajar/ }).getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByRole('switch', { name: /Fijo al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Color de íconos móviles' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_mobile_icon_color: '#F5F1EA' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Fondo del menú' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ mobile_menu_bg_color: '#0E0E0E' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces del menú' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ mobile_menu_text_color: '#F5F1EA' });
     fireEvent.click(screen.getByRole('switch', { name: /Sobre la portada, sólido al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent' });
     fireEvent.click(screen.getAllByRole('button', { name: 'Restablecer a la plantilla' })[0]);
     expect(onCambiar).toHaveBeenLastCalledWith(expect.objectContaining({ header_style: 'default', logo_position: 'center', header_cta_text: 'Reservar mesa' }));
+  });
+
+  test('Menú móvil: Automático deja el color en null', () => {
+    const onCambiar = encabezado({ mobile_menu_text_color: '#FFFFFF', header_mobile_icon_color: '#FFFFFF' }, { pestanaInicial: 'estilo' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces del menú' })).getByRole('radio', { name: 'Automático' }));
+    expect(onCambiar).toHaveBeenCalledWith({ mobile_menu_text_color: null });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Color de íconos móviles' })).getByRole('radio', { name: 'Automático' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_mobile_icon_color: null });
   });
 });
 

@@ -14,17 +14,27 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import {
   RUTA_FACTURA_COMPRA,
   asientoCargaInicial,
+  asientoSobrante,
   costoParecePrecio,
   cuentaInventarioPorTipo,
   debeAvisarSaldoInicial,
   debeConfirmarAjuste,
   importeCarga,
+  rutaConteo,
   sugerirCompraPorNegativo,
+  sugerirCorregirConteo,
 } from '@/lib/inventario/cargaInicial';
 import { leerConfigInventario } from '@/lib/inventario/permisos';
 import type { LoteDisponible } from '@/lib/inventario/nucleo/tipos';
 import { supabase } from '@/lib/supabase/config';
-import { listarStock, registrarMovimiento, type StockFila } from '@/lib/services/stockService';
+import {
+  consultarConteoDelMes,
+  corregirConteoDelMes,
+  listarStock,
+  registrarMovimiento,
+  type ConteoDelMes,
+  type StockFila,
+} from '@/lib/services/stockService';
 import { guardarLote, lotesDeProducto } from '../lotes/LotesService';
 import {
   LARGO_MOTIVO,
@@ -116,6 +126,8 @@ function Formulario({
   const [umbral, setUmbral] = useState<number | null>(5_000_000);
   const [costoConfirmado, setCostoConfirmado] = useState(false);
   const [saldoDescartado, setSaldoDescartado] = useState(false);
+  const [conteoMes, setConteoMes] = useState<ConteoDelMes | null>(null);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const primerError = useRef<HTMLDivElement>(null);
 
   // Al cambiar de sucursal se vuelve a leer la fila del producto en esa sucursal
@@ -134,6 +146,24 @@ function Formulario({
       vivo = false;
     };
   }, [organizacionId, productoId, sucursalId]);
+
+  useEffect(() => {
+    if (!entrada || !productoId || !sucursalId) {
+      setConteoMes(null);
+      return;
+    }
+    let vivo = true;
+    consultarConteoDelMes(organizacionId, sucursalId, productoId)
+      .then((c) => {
+        if (vivo) setConteoMes(c);
+      })
+      .catch(() => {
+        if (vivo) setConteoMes(null);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [entrada, organizacionId, productoId, sucursalId]);
 
   useEffect(() => {
     let vivo = true;
@@ -235,7 +265,7 @@ function Formulario({
   };
 
   // El documento guarda el código (`saldo_inicial`, `sobrante`…), no la etiqueta.
-  // Así el asiento acredita 3105 o 4250. «Otro» sí lleva el texto.
+  // El saldo inicial acredita 3105. Un sobrante real acredita 4295. «Otro» sí lleva el texto.
   const motivoEnvio = (motivo === 'otro' ? motivoOtro.trim() : motivo).slice(0, LARGO_MOTIVO);
   const existenciaActual = enSucursal?.existencia ?? producto?.existencia ?? null;
   const desdeNegativo = entrada && sugerirCompraPorNegativo(existenciaActual);
@@ -253,14 +283,20 @@ function Formulario({
       monto: montoMovimiento,
       umbral,
     });
-  const asiento =
+  const cuentaInventario = cuentaInventarioPorTipo(typeof organization?.type_id === 'number' ? organization.type_id : null);
+  const asientoInicial =
     motivo === 'saldo_inicial' && (cantidad ?? 0) > 0 && costo !== null
-      ? asientoCargaInicial({
-          unidades: cantidad ?? 0,
-          costo,
-          cuentaInventario: cuentaInventarioPorTipo(typeof organization?.type_id === 'number' ? organization.type_id : null),
-        })
+      ? asientoCargaInicial({ unidades: cantidad ?? 0, costo, cuentaInventario })
       : null;
+  const asientoDelSobrante =
+    entrada && motivo !== 'saldo_inicial' && motivo !== 'compra_sin_orden' && montoMovimiento > 0
+      ? asientoSobrante({ total: montoMovimiento, cuentaInventario })
+      : null;
+  const ofreceCorregir = sugerirCorregirConteo({
+    direccion,
+    motivo: motivoEnvio,
+    tuvoConteoOFaltante: conteoMes !== null,
+  });
 
   const enviar = useCallback(async () => {
     setIntentado(true);
@@ -326,6 +362,25 @@ function Formulario({
     mensajeError,
   ]);
 
+  const alCorregirConteo = useCallback(async () => {
+    if (!producto || !sucursalId || !conteoMes || conteoMes.varios) return;
+    setCorrigiendo(true);
+    try {
+      const r = await corregirConteoDelMes(organizacionId, sucursalId, producto.product_id, nota.trim() || null);
+      if (!r.corregido) {
+        toast({ variant: 'destructive', title: t('corregirConteoVarios') });
+        return;
+      }
+      toast({ title: t('corregirConteoListo', { codigo: r.codigo ?? conteoMes.codigo ?? '' }) });
+      onRegistrado?.({ numero: r.codigo, productoId: producto.product_id });
+      onAbiertoChange(false);
+    } catch (e) {
+      toast({ variant: 'destructive', title: t('errorEntrada'), description: mensajeError(e) });
+    } finally {
+      setCorrigiendo(false);
+    }
+  }, [producto, sucursalId, conteoMes, organizacionId, nota, toast, t, onRegistrado, onAbiertoChange, mensajeError]);
+
   const valorSalida = !entrada && verCostos && producto?.costo_promedio && cantidad ? producto.costo_promedio * cantidad : null;
   const motivos = entrada ? MOTIVOS_ENTRADA : MOTIVOS_SALIDA;
 
@@ -340,7 +395,7 @@ function Formulario({
         primario={{
         etiqueta: entrada ? t('confirmarEntrada') : t('confirmarSalida'),
         onClick: () => void enviar(),
-        cargando: guardando,
+        cargando: guardando || corrigiendo,
         deshabilitada: motivo === 'compra_sin_orden' || (avisoCosto && !costoConfirmado),
         motivo: avisoCosto && !costoConfirmado ? t('costoParecePrecio') : undefined,
       }}
@@ -495,6 +550,22 @@ function Formulario({
             accion={{ etiqueta: t('registrarCompra'), href: RUTA_FACTURA_COMPRA }}
           />
         )}
+        {ofreceCorregir && conteoMes && (
+          <AvisoTonal
+            tono="advertencia"
+            titulo={t('corregirConteo')}
+            descripcion={
+              conteoMes.varios
+                ? t('corregirConteoVarios')
+                : t('corregirConteoDetalle', { codigo: conteoMes.codigo ?? String(conteoMes.ajusteId) })
+            }
+            accion={
+              conteoMes.varios
+                ? { etiqueta: t('abrirConteo'), href: rutaConteo(conteoMes.ajusteId) }
+                : { etiqueta: t('corregirConteo'), onClick: () => void alCorregirConteo(), cargando: corrigiendo }
+            }
+          />
+        )}
         {sinHistorial && motivo !== 'saldo_inicial' && (
           <AvisoTonal
             tono="advertencia"
@@ -521,14 +592,25 @@ function Formulario({
         {pideConfirmacion && (
           <AvisoTonal tono="advertencia" titulo={t('confirmarAjuste')} descripcion={t('confirmarAjusteDetalle')} />
         )}
-        {asiento && (
+        {asientoInicial && (
           <AvisoTonal
             tono="informacion"
             titulo={t('asientoTitulo')}
             descripcion={t('asientoDetalle', {
-              inventario: asiento.lineas[0]?.cuenta ?? '',
-              saldo: asiento.lineas[1]?.cuenta ?? '',
-              total: moneda.formatear(asiento.total),
+              inventario: asientoInicial.lineas[0]?.cuenta ?? '',
+              saldo: asientoInicial.lineas[1]?.cuenta ?? '',
+              total: moneda.formatear(asientoInicial.total),
+            })}
+          />
+        )}
+        {asientoDelSobrante && (
+          <AvisoTonal
+            tono="informacion"
+            titulo={t('asientoSobranteTitulo')}
+            descripcion={t('asientoSobranteDetalle', {
+              inventario: asientoDelSobrante.lineas[0]?.cuenta ?? '',
+              diversos: asientoDelSobrante.lineas[1]?.cuenta ?? '',
+              total: moneda.formatear(asientoDelSobrante.total),
             })}
           />
         )}

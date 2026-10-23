@@ -253,6 +253,7 @@ describe('plantilla por sector', () => {
       impuesto_consumo: '2495',
       redondeo: '4295',
       compra_servicio: '2335',
+      ingresos_diversos: '4295',
     });
     expect(nombreSector(1)).toBe('Restaurante');
     expect(nombreSector(99)).toBe('Comercio');

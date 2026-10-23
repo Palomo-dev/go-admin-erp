@@ -128,10 +128,12 @@ export interface ColorTemaProps {
   colorTema: string;
   onCambiar: (v: string | null) => void;
   fondo?: string;
+  /** Chip que deja el valor en null. Sin ella, «Sigue el tema». */
+  etiquetaNulo?: string;
 }
 
 /** «Sigue el tema | Fijar color» + campo de color (Figma 11, pestaña Estilo). */
-export function ColorTema({ etiqueta, valor, colorTema, onCambiar, fondo }: ColorTemaProps) {
+export function ColorTema({ etiqueta, valor, colorTema, onCambiar, fondo, etiquetaNulo }: ColorTemaProps) {
   const t = useTextosEditor();
   const id = useId();
   return (
@@ -140,7 +142,7 @@ export function ColorTema({ etiqueta, valor, colorTema, onCambiar, fondo }: Colo
       <ChipsOpcion
         aria-labelledby={id}
         opciones={[
-          { valor: 'tema', etiqueta: t('zonaGlobal.estilo.sigueTema') },
+          { valor: 'tema', etiqueta: etiquetaNulo ?? t('zonaGlobal.estilo.sigueTema') },
           { valor: 'fijo', etiqueta: t('zonaGlobal.estilo.fijarColor') },
         ]}
         valor={valor ? 'fijo' : 'tema'}

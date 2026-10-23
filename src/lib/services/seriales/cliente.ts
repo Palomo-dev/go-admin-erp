@@ -18,6 +18,7 @@ import type {
   FiltrosSeriales,
   GarantiaDetalle,
   ListadoGarantias,
+  FilaStockSinSerial,
   ListadoSeriales,
   ResolverReclamo,
   ResultadoCambioEstado,
@@ -97,6 +98,8 @@ export const clienteSeriales = {
   listar: (filtros: FiltrosSeriales, signal?: AbortSignal) =>
     pedir<ListadoSeriales>(`/api/inventario/seriales${aQuery(filtros)}`, { signal }),
   detalle: (id: number) => pedir<SerialDetalle>(`/api/inventario/seriales/${id}`),
+  stockSinSeriales: (signal?: AbortSignal) =>
+    pedir<{ filas: FilaStockSinSerial[] }>('/api/inventario/reportes/stock-sin-seriales', { signal }),
   cambiarEstado: (datos: CambiarEstadoSeriales) =>
     resultado(pedir<{ resultado: ResultadoCambioEstado }>('/api/inventario/seriales/estado', { method: 'POST', body: datos })),
   descuadre: () => pedir<{ filas: DescuadreSerial[] }>('/api/inventario/seriales/descuadre').then((x) => x.filas),

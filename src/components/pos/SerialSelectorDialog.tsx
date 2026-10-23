@@ -8,6 +8,7 @@ import { Dialogo } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { serialTrackingService, type SerialNumber } from '@/lib/services/serialTrackingService';
+import { diferenciaSeriales } from '@/components/pos/serialesDisponibles';
 import type { CartItem } from '@/components/pos/types';
 
 /**
@@ -28,6 +29,8 @@ interface SerialSelectorDialogProps {
 
 interface ProductSerialState {
   available: SerialNumber[];
+  /** Existencia de la sucursal. Null si no se pudo leer: no se inventa el hueco. */
+  stock: number | null;
   selected: number[];
   loading: boolean;
   error: string;
@@ -56,6 +59,7 @@ export function SerialSelectorDialog({
     for (const item of serializedItems) {
       newStates[item.product_id] = {
         available: [],
+        stock: null,
         selected: [],
         loading: true,
         error: '',
@@ -70,10 +74,12 @@ export function SerialSelectorDialog({
           organizationId,
           branchId
         );
+        const stock = await serialTrackingService.getStockOnHand(item.product_id, branchId);
         setSerialStates((prev) => ({
           ...prev,
           [item.product_id]: {
             available: serials,
+            stock,
             selected: [],
             loading: false,
             error: '',
@@ -85,6 +91,7 @@ export function SerialSelectorDialog({
           ...prev,
           [item.product_id]: {
             available: [],
+            stock: null,
             selected: [],
             loading: false,
             error: mensaje || t('errorCarga'),
@@ -164,6 +171,7 @@ export function SerialSelectorDialog({
           const selectedCount = state?.selected.length ?? 0;
           const isComplete = selectedCount === requiredQty;
           const producto = item.product?.name ?? '';
+          const hueco = state && !state.loading && !state.error ? diferenciaSeriales(state.stock, state.available.length) : null;
 
           return (
             <section
@@ -202,6 +210,12 @@ export function SerialSelectorDialog({
 
               {!state?.loading && !state?.error && state && (
                 <>
+                  {hueco && (
+                    <p className="mb-2 flex items-start gap-2 text-sm text-warning-text">
+                      <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+                      {t('stockSinSerial', hueco)}
+                    </p>
+                  )}
                   {state.available.length === 0 ? (
                     <p className="flex items-center gap-2 py-2 text-sm text-danger-text">
                       <AlertCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />

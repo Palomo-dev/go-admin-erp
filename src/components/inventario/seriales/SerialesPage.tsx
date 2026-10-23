@@ -57,6 +57,7 @@ import {
   situacionGarantia,
 } from './logica';
 import { BadgeEstadoSerial, CeldaGarantia, EnlaceDocumento, useEtiquetaDocumento, useEtiquetaEstadoSerialB4 } from './piezas';
+import { AlertaStockSinSeriales } from './AlertaStockSinSeriales';
 import { useAccionesSerial } from './useAccionesSerial';
 import { DialogoGenerarDesdeListado } from './DialogoGenerarDesdeListado';
 
@@ -488,6 +489,8 @@ export function SerialesPage() {
           </Button>
         </div>
       )}
+
+      <AlertaStockSinSeriales />
 
       <ListToolbar
         busqueda={

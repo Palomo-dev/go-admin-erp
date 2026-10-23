@@ -4446,6 +4446,7 @@
       "inventario_distribucion": "Distribución",
       "inventario_reportes_trazabilidad": "Trazabilidad",
       "inventario_reportes_costo-recetas": "Costo de recetas",
+      "inventario_reportes_stock-sin-seriales": "Stock sin seriales",
       "finanzas_facturas-venta": "Facturas de venta",
       "finanzas_cotizaciones": "Cotizaciones",
       "finanzas_facturas-compra": "Facturas de compra",
@@ -16121,6 +16122,7 @@
       "proveedor_invalido": "El proveedor no pertenece a tu organización.",
       "sucursal_invalida": "La sucursal no pertenece a tu organización.",
       "stock_sin_costo": "Para cargar stock inicial se necesita costo: sin él el kardex y la contabilidad quedan incompletos.",
+      "stock_serial_sin_captura": "Un producto con serial no admite existencia inicial sin los números. Déjala en 0 y cárgalos en un ajuste: no se inventan.",
       "cantidad_negativa": "Las cantidades no pueden ser negativas.",
       "cantidad_invalida": "Escribe una cantidad mayor que 0.",
       "variantes_activas": "El producto tiene variantes activas: elimínalas antes de quitar las variantes.",
@@ -16141,6 +16143,7 @@
       "variante_incompleta": "Cada variante necesita SKU y nombre.",
       "combinacion_repetida": "Dos variantes tienen la misma combinación de atributos.",
       "variante_stock_sin_costo": "Una variante con stock inicial necesita costo.",
+      "variante_stock_serial_sin_captura": "Una variante de un producto con serial no admite existencia inicial sin los números. Déjala en 0 y cárgalos en un ajuste.",
       "demasiadas_imagenes": "Puedes subir hasta 5 imágenes.",
       "dimension_negativa": "El peso y las medidas no pueden ser negativos.",
       "receta_sin_ingredientes": "La receta está encendida pero no tiene ingredientes: agrega al menos uno o apágala.",
@@ -21591,6 +21594,7 @@
       "buscarAria": "Buscar serial de {producto}",
       "garantia": "Garantía hasta: {fecha}",
       "insuficientes": "Solo {disponibles, plural, one {hay # serial disponible} other {hay # seriales disponibles}} y se {requeridos, plural, one {requiere #} other {requieren #}}.",
+      "stockSinSerial": "Existencia {stock} · {disponibles, plural, one {# serial disponible} other {# seriales disponibles}} · {sinSerial, plural, one {# unidad sin serial disponible} other {# unidades sin serial disponible}}. Esas unidades no se eligen aquí y no se les inventa un número.",
       "confirmar": "Confirmar seriales",
       "lista": "Seriales de {producto}"
     },
@@ -26127,6 +26131,24 @@
         "vendida": "Vendida",
         "reclamo": "Reclamo {codigo}"
       }
+    },
+    "stockSinSeriales": {
+      "titulo": "Stock sin seriales",
+      "descripcion": "Existencia de productos con serial mayor que los seriales que la ocupan (en stock o reservados). Este reporte no crea seriales.",
+      "vacio": "No hay stock sin seriales.",
+      "error": "No se pudo cargar el reporte.",
+      "cargando": "Cargando el reporte…",
+      "producto": "Producto",
+      "sku": "SKU",
+      "sucursal": "Sucursal",
+      "existencia": "Existencia",
+      "seriales": "Seriales",
+      "disponibles": "Disponibles",
+      "sinSerial": "Sin serial",
+      "verProducto": "Ver seriales de {producto}",
+      "avisoTitulo": "{count, plural, one {# existencia supera a los seriales que la ocupan} other {# existencias superan a los seriales que las ocupan}}",
+      "avisoDescripcion": "Esas unidades no tienen un serial en stock ni reservado. No se inventan números: captúralos en un ajuste para poder venderlas.",
+      "verReporte": "Ver el reporte"
     },
     "acciones": {
       "verHistorial": "Ver historial del serial",

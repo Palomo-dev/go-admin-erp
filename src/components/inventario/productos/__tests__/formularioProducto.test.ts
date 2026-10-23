@@ -51,6 +51,16 @@ describe('validación del formulario', () => {
     ed.stock[0].qty = 5;
     expect(validarFormulario(ed, 'editar').stock).toBeUndefined();
   });
+  it('un producto con serial no admite existencia inicial sin los números', () => {
+    const e = estadoValido({ track_serial: true, track_stock: true });
+    e.stock[0].qty = 5;
+    expect(validarFormulario(e, 'crear').stock).toBe('stock_serial_sin_captura');
+    e.stock[0].qty = 0;
+    expect(validarFormulario(e, 'crear').stock).toBeUndefined();
+    const ed = estadoValido({ track_serial: true, track_stock: true });
+    ed.stock[0].qty = 5;
+    expect(validarFormulario(ed, 'editar').stock).toBeUndefined();
+  });
   it('seriales auto-generados exigen patrón con consecutivo', () => {
     const e = estadoValido({ track_serial: true, auto_generate_serial: true, serial_pattern: 'ZAP-{YYYY}' });
     expect(validarFormulario(e, 'crear').serial_pattern).toBe('patron_sin_consecutivo');

@@ -32,6 +32,7 @@ export interface DispatchManifest {
   driver_notes?: string;
   created_by?: string;
   metadata?: Record<string, unknown>;
+  pagado_contado?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +108,7 @@ export interface ManifestCreateInput {
   planned_start?: string;
   planned_end?: string;
   notes?: string;
+  pagado_contado?: boolean;
 }
 
 export interface ManifestUpdateInput {
@@ -120,6 +122,7 @@ export interface ManifestUpdateInput {
   planned_end?: string;
   notes?: string;
   driver_notes?: string;
+  pagado_contado?: boolean;
   status?: 'draft' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 }
 
@@ -241,6 +244,7 @@ class ManifestsService {
         planned_start: input.planned_start,
         planned_end: input.planned_end,
         notes: input.notes,
+        pagado_contado: input.pagado_contado === true,
         status: 'draft',
         total_shipments: 0,
         total_weight_kg: 0,
@@ -308,6 +312,7 @@ class ManifestsService {
       driver_id: original.driver_id,
       route_id: original.route_id,
       notes: original.notes,
+      pagado_contado: false,
     });
 
     // Copiar los envíos si existen

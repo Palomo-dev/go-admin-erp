@@ -129,6 +129,7 @@ describe('renglones', () => {
       sucursal: 2,
       modo: 'conteo',
       razon: 'physical_count',
+      motivoAjuste: 'robo',
       notas: '  ',
       contadoEn: '2026-09-23T10:40:00.000-05:00',
       lineas: [linea(crema, 0), linea(audifonos, 5, { seriales: ['AX2-00931'] }), linea(sinCosto, 5, { costo: 900 })],
@@ -138,6 +139,7 @@ describe('renglones', () => {
       branch_id: 2,
       mode: 'conteo',
       reason: 'physical_count',
+      motivo_ajuste: 'robo',
       notes: null,
       counted_at: '2026-09-23T10:40:00.000-05:00',
       items: [

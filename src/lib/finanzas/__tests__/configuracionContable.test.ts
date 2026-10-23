@@ -242,6 +242,11 @@ describe('plantilla por sector', () => {
       nomina: '5105',
       nomina_por_pagar: '2505',
       nomina_aportes: '2370',
+      faltante_inventario: '519595',
+      gastos_extraordinarios: '5315',
+      consumo_interno: '519595',
+      manifiesto_por_pagar: '2205',
+      manifiesto_transporte: '2335',
     });
     expect(nombreSector(1)).toBe('Restaurante');
     expect(nombreSector(99)).toBe('Comercio');

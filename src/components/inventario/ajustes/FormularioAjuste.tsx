@@ -35,6 +35,7 @@ import {
   RAZON_POR_MODO,
   RAZONES_AJUSTE,
   type ModoAjuste,
+  type MotivoAjuste,
   type ProductoParaAjuste,
 } from '@/lib/services/adjustmentService';
 import { cn } from '@/utils/Utils';
@@ -97,6 +98,7 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
   const [sucursal, setSucursal] = useState<number | null>(null);
   const [modo, setModo] = useState<ModoAjuste>(() => modoDesdeUrl(params?.get('modo'), params?.get('type')));
   const [razon, setRazon] = useState<string>(() => RAZON_POR_MODO[modoDesdeUrl(params?.get('modo'), params?.get('type'))]);
+  const [motivoAjuste, setMotivoAjuste] = useState<MotivoAjuste | null>(null);
   const [fechaLocal, setFechaLocal] = useState('');
   const [notas, setNotas] = useState('');
   const [lineas, setLineas] = useState<LineaAjuste[]>([]);
@@ -135,6 +137,7 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
           setSucursal(suc);
           setModo(editando ? d.ajuste.modo : 'conteo');
           setRazon(editando ? d.ajuste.razon : RAZON_POR_MODO.conteo);
+          setMotivoAjuste(editando ? d.ajuste.motivo_ajuste : null);
           setNotas(editando ? (d.ajuste.notas ?? '') : '');
           setFechaLocal(horaLocal(editando ? new Date(d.ajuste.fecha) : new Date(), timezone));
           setLineas(lineasDesdeDetalle(d, productos, !editando));
@@ -269,7 +272,16 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
     if (!sucursal) return null;
     const r = await adjustmentService.guardar(
       org,
-      aBorrador({ id: idGuardado, sucursal, modo, razon, notas, contadoEn: contadoEn(), lineas }),
+      aBorrador({
+        id: idGuardado,
+        sucursal,
+        modo,
+        razon,
+        motivoAjuste: modo === 'entrada' ? null : motivoAjuste,
+        notas,
+        contadoEn: contadoEn(),
+        lineas,
+      }),
     );
     setIdGuardado(r.id);
     setSucio(false);
@@ -435,6 +447,7 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
               value={razon}
               onValueChange={(v) => {
                 setRazon(v);
+                if (v === 'theft') setMotivoAjuste('robo');
                 setSucio(true);
               }}
             >
@@ -452,6 +465,28 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
             </Select>
           )}
         </FormField>
+        {modo !== 'entrada' && (
+        <FormField etiqueta={t('datos.motivoAjuste')} ayuda={t('datos.motivoAjusteAyuda')}>
+          {(c) => (
+            <Select
+              value={motivoAjuste ?? 'ninguno'}
+              onValueChange={(v) => {
+                setMotivoAjuste(v === 'robo' || v === 'siniestro' ? v : null);
+                setSucio(true);
+              }}
+            >
+              <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className="h-10 border-line-strong bg-surface">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ninguno">{t('datos.motivoNinguno')}</SelectItem>
+                <SelectItem value="robo">{t('datos.motivoRobo')}</SelectItem>
+                <SelectItem value="siniestro">{t('datos.motivoSiniestro')}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+        )}
         <FormField
           etiqueta={modo === 'conteo' ? t('datos.fechaConteo') : t('datos.fecha')}
           obligatorio
@@ -480,6 +515,7 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
                 setModo(v);
                 // La razón por defecto sigue al modo mientras el usuario no haya elegido otra.
                 if (razon === RAZON_POR_MODO[modo]) setRazon(RAZON_POR_MODO[v]);
+                if (v === 'entrada') setMotivoAjuste(null);
                 setSucio(true);
               }}
               anchoCompleto

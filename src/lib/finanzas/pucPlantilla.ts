@@ -86,6 +86,7 @@ const DESCRIPCION: Record<string, string> = {
   '5235': 'Servicios de venta. La comisión de canales es 529505.',
   '529505': 'Comisiones, incluidas las de canales de venta.',
   '5305': 'Gastos financieros.',
+  '5315': 'Gastos extraordinarios. El robo y el siniestro de inventario se debitan aquí.',
   '6105': 'Costo de ventas de agricultura, ganadería, caza y silvicultura. El comercio es 6135.',
   '6135': 'Costo de ventas del comercio al por mayor y al por menor.',
 };
@@ -292,6 +293,7 @@ const CUENTAS: readonly Fila[] = [
   ['529505', 'Comisiones'],
   ['5305', 'Financieros'],
   ['530595', 'Otros'],
+  ['5315', 'Gastos extraordinarios'],
   ['5395', 'Gastos diversos'],
   ['5405', 'Impuesto de renta y complementarios'],
   ['5905', 'Ganancias y pérdidas'],

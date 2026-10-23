@@ -25771,6 +25771,11 @@
         "sucursalAyuda": "La del selector de arriba",
         "elegirSucursal": "Elige una sucursal",
         "razon": "Razón",
+        "motivoAjuste": "Motivo del faltante",
+        "motivoAjusteAyuda": "Robo y siniestro debitan gastos extraordinarios. En blanco, el faltante va a diversos.",
+        "motivoNinguno": "Faltante",
+        "motivoRobo": "Robo",
+        "motivoSiniestro": "Siniestro",
         "fechaConteo": "Fecha del conteo",
         "fecha": "Fecha",
         "fechaAyuda": "Hora de {zona}",
@@ -26866,6 +26871,8 @@
         "consumo_interno": "Consumo interno",
         "danio": "Daño",
         "perdida": "Pérdida o robo",
+        "robo": "Robo",
+        "siniestro": "Siniestro",
         "muestra": "Muestra o degustación",
         "otro": "Otro"
       }

@@ -34,7 +34,7 @@ export function existenciaEn(fila: Pick<StockFila, 'por_sucursal'>, branchId: nu
 // ─── Motivos de los diálogos (Figma 586:73716 / 586:73820) ───────────────────
 
 export const MOTIVOS_ENTRADA = ['compra_sin_orden', 'devolucion_cliente', 'donacion', 'sobrante', 'produccion_propia', 'otro'] as const;
-export const MOTIVOS_SALIDA = ['merma_vencido', 'merma_rotura', 'consumo_interno', 'danio', 'perdida', 'muestra', 'otro'] as const;
+export const MOTIVOS_SALIDA = ['merma_vencido', 'merma_rotura', 'consumo_interno', 'danio', 'perdida', 'robo', 'siniestro', 'muestra', 'otro'] as const;
 export type MotivoEntrada = (typeof MOTIVOS_ENTRADA)[number];
 export type MotivoSalida = (typeof MOTIVOS_SALIDA)[number];
 

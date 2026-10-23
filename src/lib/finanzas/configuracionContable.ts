@@ -37,6 +37,11 @@ export const CLAVES_CONTABLES = [
   'nomina',
   'nomina_por_pagar',
   'nomina_aportes',
+  'faltante_inventario',
+  'gastos_extraordinarios',
+  'consumo_interno',
+  'manifiesto_por_pagar',
+  'manifiesto_transporte',
 ] as const;
 
 export type ClaveContable = (typeof CLAVES_CONTABLES)[number];
@@ -72,6 +77,11 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'nomina', nombre: 'Nómina', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es nómina.' },
   { clave: 'nomina_por_pagar', nombre: 'Nómina por pagar', grupo: 'Personal', ayuda: 'El 2505 solo en la nómina.' },
   { clave: 'nomina_aportes', nombre: 'Aportes de nómina', grupo: 'Personal', ayuda: 'El 2370 solo en la nómina. Una comisión que aún usa 2370 no se mueve.' },
+  { clave: 'faltante_inventario', nombre: 'Faltante de inventario', grupo: 'Inventario', ayuda: 'Débito del faltante. Por defecto 519595. El costo de ventas no se usa aquí.' },
+  { clave: 'gastos_extraordinarios', nombre: 'Robo y siniestro', grupo: 'Inventario', ayuda: 'Débito cuando el ajuste trae motivo robo o siniestro. Por defecto 5315.' },
+  { clave: 'consumo_interno', nombre: 'Consumo interno', grupo: 'Inventario', ayuda: 'Débito del consumo interno. Por defecto 519595. Nunca la clase 6.' },
+  { clave: 'manifiesto_por_pagar', nombre: 'Manifiesto por pagar', grupo: 'Cartera', ayuda: 'Crédito del manifiesto que no es de transporte. Por defecto 2205.' },
+  { clave: 'manifiesto_transporte', nombre: 'Manifiesto de transporte', grupo: 'Cartera', ayuda: 'Crédito cuando la organización es de transporte. Por defecto 2335.' },
 ];
 
 const NOMBRE_POR_CLAVE = new Map(DEFINICIONES_CLAVE.map((d) => [d.clave, d.nombre]));
@@ -293,6 +303,11 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   nomina: '5105',
   nomina_por_pagar: '2505',
   nomina_aportes: '2370',
+  faltante_inventario: '519595',
+  gastos_extraordinarios: '5315',
+  consumo_interno: '519595',
+  manifiesto_por_pagar: '2205',
+  manifiesto_transporte: '2335',
 };
 
 /** Misma tabla que `fn_propuesta_configuracion_sector` en la migración. */

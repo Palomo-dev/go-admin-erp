@@ -21570,6 +21570,11 @@
         "sucursalAyuda": "Celle du sélecteur en haut",
         "elegirSucursal": "Choisissez une succursale",
         "razon": "Motif",
+        "motivoAjuste": "Motif du manquant",
+        "motivoAjusteAyuda": "Le vol et le sinistre débitent les charges exceptionnelles. Vide, le manquant va aux divers.",
+        "motivoNinguno": "Manquant",
+        "motivoRobo": "Vol",
+        "motivoSiniestro": "Sinistre",
         "fechaConteo": "Date du comptage",
         "fecha": "Date",
         "fechaAyuda": "Heure de {zona}",
@@ -22665,6 +22670,8 @@
         "consumo_interno": "Consommation interne",
         "danio": "Dommage",
         "perdida": "Perte ou vol",
+        "robo": "Vol",
+        "siniestro": "Sinistre",
         "muestra": "Échantillon ou dégustation",
         "otro": "Autre"
       }

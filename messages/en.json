@@ -25771,6 +25771,11 @@
         "sucursalAyuda": "The one in the selector above",
         "elegirSucursal": "Choose a branch",
         "razon": "Reason",
+        "motivoAjuste": "Shortage reason",
+        "motivoAjusteAyuda": "Theft and casualty debit extraordinary expenses. Blank posts the shortage to miscellaneous.",
+        "motivoNinguno": "Shortage",
+        "motivoRobo": "Theft",
+        "motivoSiniestro": "Casualty",
         "fechaConteo": "Count date",
         "fecha": "Date",
         "fechaAyuda": "Time in {zona}",
@@ -26866,6 +26871,8 @@
         "consumo_interno": "Internal use",
         "danio": "Damage",
         "perdida": "Loss or theft",
+        "robo": "Theft",
+        "siniestro": "Casualty",
         "muestra": "Sample or tasting",
         "otro": "Other"
       }

@@ -21570,6 +21570,11 @@
         "sucursalAyuda": "A do seletor acima",
         "elegirSucursal": "Escolha uma filial",
         "razon": "Motivo",
+        "motivoAjuste": "Motivo da falta",
+        "motivoAjusteAyuda": "Roubo e sinistro debitam despesas extraordinárias. Em branco, a falta vai para diversos.",
+        "motivoNinguno": "Falta",
+        "motivoRobo": "Roubo",
+        "motivoSiniestro": "Sinistro",
         "fechaConteo": "Data da contagem",
         "fecha": "Data",
         "fechaAyuda": "Horário de {zona}",
@@ -22665,6 +22670,8 @@
         "consumo_interno": "Consumo interno",
         "danio": "Dano",
         "perdida": "Perda ou roubo",
+        "robo": "Roubo",
+        "siniestro": "Sinistro",
         "muestra": "Amostra ou degustação",
         "otro": "Outro"
       }

@@ -6,9 +6,12 @@ export interface Return {
   branch_id: number;
   sale_id: string;
   user_id: string;
-  total_refund: number; // Subtotal del reembolso
-  refund_tax_amount: number; // Impuestos del reembolso
-  refund_total_with_tax: number; // Total con impuestos
+  /** Total reembolsado. Ya incluye el impuesto (`returns.total_refund`). */
+  total_refund: number;
+  /** Suma de `return_lines.tax_amount`. Cero si la devolución no tuvo impuesto. */
+  refund_tax_amount: number;
+  /** Igual que `total_refund`. El impuesto no se vuelve a sumar. */
+  refund_total_with_tax: number;
   reason: string;
   return_date: string;
   status: 'processed' | 'pending' | 'cancelled';

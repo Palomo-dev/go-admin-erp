@@ -13691,14 +13691,8 @@
       "cantidadOriginal": "Quantité d'origine : {n}",
       "serializado": "Sérialisé",
       "seleccionarMotivo": "Sélectionner",
-      "motivosRespaldo": {
-        "defectuoso": "Produit défectueux",
-        "incorrecto": "Produit erroné",
-        "danado": "Produit endommagé",
-        "noConforme": "Non conforme",
-        "garantia": "Garantie",
-        "otro": "Autre motif"
-      },
+      "sinMotivos": "Il n'y a aucun motif de retour actif. Créez-en un avant de traiter un retour.",
+      "irAMotivos": "Aller aux motifs",
       "configuracionReembolso": "Paramètres du remboursement",
       "metodoReembolso": "Mode de remboursement",
       "reembolsoEfectivo": "Remboursement en espèces",

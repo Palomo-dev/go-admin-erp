@@ -60,7 +60,7 @@ export interface FormMovimiento {
 }
 
 export type CampoMovimiento = 'producto' | 'sucursal' | 'cantidad' | 'costo' | 'motivo' | 'lote';
-export type ErrorCampo = 'requerido' | 'mayorQueCero' | 'noNegativo' | 'superaDisponible' | 'conSeriales';
+export type ErrorCampo = 'requerido' | 'mayorQueCero' | 'noNegativo' | 'superaDisponible' | 'conSeriales' | 'facturaCompra';
 
 export function validarMovimiento(f: FormMovimiento): Partial<Record<CampoMovimiento, ErrorCampo>> {
   const e: Partial<Record<CampoMovimiento, ErrorCampo>> = {};
@@ -75,6 +75,7 @@ export function validarMovimiento(f: FormMovimiento): Partial<Record<CampoMovimi
     else if (f.costo < 0) e.costo = 'noNegativo';
   }
   if (!f.motivo || (f.motivo === 'otro' && !f.motivoOtro.trim())) e.motivo = 'requerido';
+  else if (f.direccion === 'in' && f.motivo === 'compra_sin_orden') e.motivo = 'facturaCompra';
   if (f.conLotes && !f.loteId) e.lote = 'requerido';
   return e;
 }

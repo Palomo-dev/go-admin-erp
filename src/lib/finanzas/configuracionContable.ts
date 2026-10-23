@@ -42,6 +42,10 @@ export const CLAVES_CONTABLES = [
   'consumo_interno',
   'manifiesto_por_pagar',
   'manifiesto_transporte',
+  'saldo_inicial',
+  'impuesto_consumo',
+  'redondeo',
+  'compra_servicio',
 ] as const;
 
 export type ClaveContable = (typeof CLAVES_CONTABLES)[number];
@@ -67,8 +71,8 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'descuentos', nombre: 'Descuentos', grupo: 'Ventas', ayuda: 'La línea de descuento del asiento. No reemplaza la devolución.' },
   { clave: 'inventario', nombre: 'Inventario', grupo: 'Inventario', ayuda: 'Reemplaza el 1435 y el 1405 de las reglas viejas.' },
   { clave: 'costo_ventas', nombre: 'Costo de ventas', grupo: 'Inventario', ayuda: 'Reemplaza el 6135, el 6140 y el 6105.' },
-  { clave: 'iva_generado', nombre: 'IVA generado', grupo: 'Impuestos', ayuda: 'IVA de la venta y de su anulación. En el plan de hoy es el 2408.' },
-  { clave: 'iva_descontable', nombre: 'IVA descontable', grupo: 'Impuestos', ayuda: 'IVA de la compra. En el plan de hoy también parte del 2408.' },
+  { clave: 'iva_generado', nombre: 'IVA generado', grupo: 'Impuestos', ayuda: 'IVA de la venta. Se acredita en 240805 y no se debita en el devengo.' },
+  { clave: 'iva_descontable', nombre: 'IVA descontable', grupo: 'Impuestos', ayuda: 'IVA de la compra. Se debita en 240810.' },
   { clave: 'retefuente', nombre: 'ReteFuente', grupo: 'Impuestos', ayuda: 'Reemplaza el 2365 cuando la compra no tiene una cuenta propia en el impuesto.' },
   { clave: 'reteiva', nombre: 'ReteIVA', grupo: 'Impuestos', ayuda: 'Reemplaza el 2367.' },
   { clave: 'reteica', nombre: 'ReteICA', grupo: 'Impuestos', ayuda: 'Reemplaza el 2368.' },
@@ -82,6 +86,10 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'consumo_interno', nombre: 'Consumo interno', grupo: 'Inventario', ayuda: 'Débito del consumo interno. Por defecto 519595. Nunca la clase 6.' },
   { clave: 'manifiesto_por_pagar', nombre: 'Manifiesto por pagar', grupo: 'Cartera', ayuda: 'Crédito del manifiesto que no es de transporte. Por defecto 2205.' },
   { clave: 'manifiesto_transporte', nombre: 'Manifiesto de transporte', grupo: 'Cartera', ayuda: 'Crédito cuando la organización es de transporte. Por defecto 2335.' },
+  { clave: 'saldo_inicial', nombre: 'Saldo inicial', grupo: 'Inventario', ayuda: 'Crédito del saldo inicial de inventario. Por defecto 3105.' },
+  { clave: 'impuesto_consumo', nombre: 'Impuesto al consumo', grupo: 'Impuestos', ayuda: 'Impuesto al consumo. Por defecto 2495.' },
+  { clave: 'redondeo', nombre: 'Redondeo', grupo: 'Ventas', ayuda: 'Diferencia al redondear un asiento a pesos. Por defecto 4295.' },
+  { clave: 'compra_servicio', nombre: 'Compra de servicio', grupo: 'Cartera', ayuda: 'Crédito de una compra de servicio o de transporte. Por defecto 2335.' },
 ];
 
 const NOMBRE_POR_CLAVE = new Map(DEFINICIONES_CLAVE.map((d) => [d.clave, d.nombre]));
@@ -126,6 +134,8 @@ export function claveDeCuenta(
   const origen = (source ?? '').trim();
   if (!code) return null;
 
+  if (code === '240810') return 'iva_descontable';
+  if (code === '240805') return 'iva_generado';
   if (lado === 'impuesto' && (code === '2408' || code === '2405')) {
     return ORIGENES_COMPRA.has(origen) ? 'iva_descontable' : 'iva_generado';
   }
@@ -292,8 +302,8 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   descuentos: '4175',
   costo_ventas: '6135',
   inventario: '1435',
-  iva_generado: '2408',
-  iva_descontable: '2408',
+  iva_generado: '240805',
+  iva_descontable: '240810',
   retefuente: '2365',
   reteiva: '2367',
   reteica: '2368',
@@ -308,6 +318,10 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   consumo_interno: '519595',
   manifiesto_por_pagar: '2205',
   manifiesto_transporte: '2335',
+  saldo_inicial: '3105',
+  impuesto_consumo: '2495',
+  redondeo: '4295',
+  compra_servicio: '2335',
 };
 
 /** Misma tabla que `fn_propuesta_configuracion_sector` en la migración. */
@@ -321,8 +335,8 @@ export function propuestaPorSector(typeId: number | null | undefined): Record<Cl
       propuesta.inventario = '1405';
       break;
     case 2:
-      propuesta.ventas_productos = '414015';
-      propuesta.ventas_servicios = '414005';
+      propuesta.ventas_productos = '4140';
+      propuesta.ventas_servicios = '4140';
       propuesta.costo_ventas = '6140';
       break;
     case 4:

@@ -60,7 +60,7 @@ const form = (parcial: Partial<FormMovimiento> = {}): FormMovimiento => ({
   sucursalId: 1,
   cantidad: 5,
   costo: 1000,
-  motivo: 'compra_sin_orden',
+  motivo: 'sobrante',
   motivoOtro: '',
   loteId: null,
   conLotes: false,
@@ -86,6 +86,7 @@ describe('logica de stock', () => {
 
   it('valida la entrada: costo obligatorio y no negativo', () => {
     expect(validarMovimiento(form())).toEqual({});
+    expect(validarMovimiento(form({ motivo: 'compra_sin_orden' }))).toEqual({ motivo: 'facturaCompra' });
     expect(validarMovimiento(form({ costo: null }))).toEqual({ costo: 'requerido' });
     expect(validarMovimiento(form({ costo: -1 }))).toEqual({ costo: 'noNegativo' });
     expect(validarMovimiento(form({ cantidad: 0 }))).toEqual({ cantidad: 'mayorQueCero' });

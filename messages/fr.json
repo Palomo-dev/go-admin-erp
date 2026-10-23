@@ -22640,7 +22640,7 @@
       "venceLoteAyuda": "Facultatif. Sans date, le lot n'expire jamais",
       "nota": "Note",
       "notaPlaceholder": "Facture du fournisseur, responsable, observation…",
-      "avisoEntrada": "Elle est enregistrée comme un ajustement appliqué et le kardex y renvoie. Si la marchandise provient d'un bon de commande, recevez-la depuis le bon pour ne pas dupliquer l'entrée.",
+      "avisoEntrada": "Elle est enregistrée comme un ajustement appliqué et le kardex y renvoie. Si la marchandise provient d'un bon de commande, recevez-la depuis le bon. Un achat sans commande s'enregistre sur la facture d'achat.",
       "avisoSalida": "La sortie est valorisée au coût moyen de la succursale ({costo} × {n} = {total}), jamais au prix de vente.",
       "listoEntrada": "Entrée enregistrée",
       "listoSalida": "Sortie enregistrée",
@@ -22652,7 +22652,8 @@
         "mayorQueCero": "Doit être supérieur à zéro.",
         "noNegativo": "Ne peut pas être négatif.",
         "superaDisponible": "Dépasse le disponible ({n}).",
-        "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements."
+        "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements.",
+        "facturaCompra": "Un achat sans commande s'enregistre sur la facture d'achat : stock contre fournisseurs."
       }
     },
     "motivos": {

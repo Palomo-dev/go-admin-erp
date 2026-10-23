@@ -4443,6 +4443,7 @@
       "inventario_distribucion": "Distribution",
       "inventario_reportes_trazabilidad": "Traçabilité",
       "inventario_reportes_costo-recetas": "Coût des recettes",
+      "inventario_reportes_stock-sin-seriales": "Stock sans numéros de série",
       "finanzas_facturas-venta": "Factures de vente",
       "finanzas_cotizaciones": "Devis",
       "finanzas_facturas-compra": "Factures d'achat",
@@ -11920,6 +11921,7 @@
       "proveedor_invalido": "Le fournisseur n’appartient pas à votre organisation.",
       "sucursal_invalida": "La succursale n’appartient pas à votre organisation.",
       "stock_sin_costo": "Le stock initial nécessite un coût : sans lui, la fiche de stock et la comptabilité sont incomplètes.",
+      "stock_serial_sin_captura": "Un produit avec numéro de série n’admet pas de stock initial sans les numéros. Laissez-le à 0 et saisissez-les dans un ajustement : on ne les invente pas.",
       "cantidad_negativa": "Les quantités ne peuvent pas être négatives.",
       "cantidad_invalida": "Saisissez une quantité supérieure à 0.",
       "variantes_activas": "Le produit a des variantes actives : supprimez-les avant de désactiver les variantes.",
@@ -11940,6 +11942,7 @@
       "variante_incompleta": "Chaque variante nécessite un SKU et un nom.",
       "combinacion_repetida": "Deux variantes ont la même combinaison d’attributs.",
       "variante_stock_sin_costo": "Une variante avec un stock initial nécessite un coût.",
+      "variante_stock_serial_sin_captura": "Une variante d’un produit avec numéro de série n’admet pas de stock initial sans les numéros. Laissez-le à 0 et saisissez-les dans un ajustement.",
       "demasiadas_imagenes": "Vous pouvez ajouter jusqu’à 5 images.",
       "dimension_negativa": "Le poids et les dimensions ne peuvent pas être négatifs.",
       "receta_sin_ingredientes": "La recette est activée mais sans ingrédients : ajoutez-en au moins un ou désactivez-la.",
@@ -17390,6 +17393,7 @@
       "buscarAria": "Rechercher un numéro de série de {producto}",
       "garantia": "Garantie jusqu’au : {fecha}",
       "insuficientes": "Seulement {disponibles, plural, one {# numéro disponible} other {# numéros disponibles}} et {requeridos, plural, one {# requis} other {# requis}}.",
+      "stockSinSerial": "Stock {stock} · {disponibles, plural, one {# numéro disponible} other {# numéros disponibles}} · {sinSerial, plural, one {# unité sans numéro disponible} other {# unités sans numéro disponible}}. Ces unités ne se choisissent pas ici et on ne leur invente pas de numéro.",
       "confirmar": "Confirmer les numéros de série",
       "lista": "Numéros de série de {producto}"
     },
@@ -21926,6 +21930,24 @@
         "vendida": "Vendu",
         "reclamo": "Réclamation {codigo}"
       }
+    },
+    "stockSinSeriales": {
+      "titulo": "Stock sans numéros de série",
+      "descripcion": "Stock de produits sérialisés supérieur aux numéros qui l’occupent (en stock ou réservés). Ce rapport ne crée pas de numéros.",
+      "vacio": "Il n’y a pas de stock sans numéro de série.",
+      "error": "Impossible de charger le rapport.",
+      "cargando": "Chargement du rapport…",
+      "producto": "Produit",
+      "sku": "SKU",
+      "sucursal": "Succursale",
+      "existencia": "Stock",
+      "seriales": "Numéros",
+      "disponibles": "Disponibles",
+      "sinSerial": "Sans numéro",
+      "verProducto": "Voir les numéros de {producto}",
+      "avisoTitulo": "{count, plural, one {# stock dépasse les numéros qui l’occupent} other {# stocks dépassent les numéros qui les occupent}}",
+      "avisoDescripcion": "Ces unités n’ont ni numéro en stock ni numéro réservé. On n’invente pas de numéros : saisissez-les dans un ajustement pour pouvoir les vendre.",
+      "verReporte": "Voir le rapport"
     },
     "acciones": {
       "verHistorial": "Voir l’historique du numéro de série",

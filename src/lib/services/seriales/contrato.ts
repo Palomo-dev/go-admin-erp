@@ -43,6 +43,19 @@ export interface ProductoRef {
   sku: string | null;
 }
 
+/** Fila de `fn_reporte_stock_sin_seriales`: existencia sin un serial que la ocupe. */
+export interface FilaStockSinSerial {
+  product_id: number;
+  sku: string | null;
+  nombre: string;
+  branch_id: number;
+  sucursal: string;
+  qty_on_hand: number;
+  seriales: number;
+  seriales_disponibles: number;
+  sin_serial: number;
+}
+
 export interface TerceroRef {
   id: string | number | null;
   uuid?: string | null;

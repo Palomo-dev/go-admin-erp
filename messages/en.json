@@ -4446,6 +4446,7 @@
       "inventario_distribucion": "Distribution",
       "inventario_reportes_trazabilidad": "Traceability",
       "inventario_reportes_costo-recetas": "Recipe costing",
+      "inventario_reportes_stock-sin-seriales": "Stock without serials",
       "finanzas_facturas-venta": "Sales invoices",
       "finanzas_cotizaciones": "Quotes",
       "finanzas_facturas-compra": "Purchase invoices",
@@ -16121,6 +16122,7 @@
       "proveedor_invalido": "The supplier doesn't belong to your organization.",
       "sucursal_invalida": "The branch doesn't belong to your organization.",
       "stock_sin_costo": "Initial stock needs a cost: without it the stock ledger and accounting are incomplete.",
+      "stock_serial_sin_captura": "A serialized product cannot take opening stock without the serial numbers. Leave it at 0 and capture them in an adjustment. Serials are not invented.",
       "cantidad_negativa": "Quantities can't be negative.",
       "cantidad_invalida": "Enter a quantity greater than 0.",
       "variantes_activas": "The product has active variants: delete them before turning variants off.",
@@ -16141,6 +16143,7 @@
       "variante_incompleta": "Each variant needs a SKU and a name.",
       "combinacion_repetida": "Two variants have the same attribute combination.",
       "variante_stock_sin_costo": "A variant with initial stock needs a cost.",
+      "variante_stock_serial_sin_captura": "A variant of a serialized product cannot take opening stock without the serial numbers. Leave it at 0 and capture them in an adjustment.",
       "demasiadas_imagenes": "You can upload up to 5 images.",
       "dimension_negativa": "Weight and dimensions can't be negative.",
       "receta_sin_ingredientes": "The recipe is on but has no ingredients: add at least one or turn it off.",
@@ -21591,6 +21594,7 @@
       "buscarAria": "Search a serial of {producto}",
       "garantia": "Warranty until: {fecha}",
       "insuficientes": "Only {disponibles, plural, one {# serial number is} other {# serial numbers are}} available and {requeridos, plural, one {# is} other {# are}} required.",
+      "stockSinSerial": "On hand {stock} · {disponibles, plural, one {# serial available} other {# serials available}} · {sinSerial, plural, one {# unit without an available serial} other {# units without an available serial}}. Those units cannot be chosen here, and no serial number is invented for them.",
       "confirmar": "Confirm serial numbers",
       "lista": "Serial numbers of {producto}"
     },
@@ -26127,6 +26131,24 @@
         "vendida": "Sold",
         "reclamo": "Claim {codigo}"
       }
+    },
+    "stockSinSeriales": {
+      "titulo": "Stock without serials",
+      "descripcion": "On-hand stock of serialized products that exceeds the serials occupying it (in stock or reserved). This report does not create serial numbers.",
+      "vacio": "There is no stock without serials.",
+      "error": "The report could not be loaded.",
+      "cargando": "Loading the report…",
+      "producto": "Product",
+      "sku": "SKU",
+      "sucursal": "Branch",
+      "existencia": "On hand",
+      "seriales": "Serials",
+      "disponibles": "Available",
+      "sinSerial": "Without a serial",
+      "verProducto": "See serials of {producto}",
+      "avisoTitulo": "{count, plural, one {# stock row exceeds the serials that occupy it} other {# stock rows exceed the serials that occupy them}}",
+      "avisoDescripcion": "Those units have neither an in-stock nor a reserved serial. Numbers are not invented: capture them in an adjustment before selling them.",
+      "verReporte": "See the report"
     },
     "acciones": {
       "verHistorial": "See serial history",

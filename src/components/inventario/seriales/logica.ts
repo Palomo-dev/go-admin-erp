@@ -47,6 +47,7 @@ export function documentoReclamo(id: string, codigo: string | null): DocumentoSe
 export const RUTA_SERIALES = '/app/inventario/seriales';
 export const RUTA_GARANTIAS = '/app/inventario/garantias';
 export const RUTA_TRAZABILIDAD = '/app/inventario/reportes/trazabilidad';
+export const RUTA_STOCK_SIN_SERIALES = '/app/inventario/reportes/stock-sin-seriales';
 
 export const rutaSerial = (id: number) => `${RUTA_SERIALES}/${id}`;
 export const rutaReclamo = (id: string) => `${RUTA_GARANTIAS}/${id}`;

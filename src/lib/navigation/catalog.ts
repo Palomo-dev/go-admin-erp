@@ -23,6 +23,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
+  AlertTriangle,
   ArrowLeftRight,
   BadgePercent,
   Banknote,
@@ -457,6 +458,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/inventario/distribucion', nombre: 'Distribución', icono: Truck, grupo: 'Producción' },
       { href: '/app/inventario/reportes/trazabilidad', nombre: 'Trazabilidad', icono: Search, grupo: 'Reportes' },
       { href: '/app/inventario/reportes/costo-recetas', nombre: 'Costo de recetas', icono: DollarSign, grupo: 'Reportes' },
+      { href: '/app/inventario/reportes/stock-sin-seriales', nombre: 'Stock sin seriales', icono: AlertTriangle, grupo: 'Reportes' },
     ],
   },
   {

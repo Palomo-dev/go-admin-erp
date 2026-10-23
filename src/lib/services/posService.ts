@@ -5,6 +5,7 @@ import { resolveLineTax } from '@/lib/services/taxResolver';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { combinarDescuentos, promocionesUsadas as promocionesEnLineas } from '@/lib/promotions/motorPromociones';
+import { esCobroDeVentaExistente } from '@/lib/pos/venta/cobroVentaExistente';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
 import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
@@ -1773,7 +1774,7 @@ export class POSService {
       // En el cobro de una venta que ya existe (deuda, mesa) los descuentos ya
       // quedaron en sus líneas: no se reevalúan aquí. La mesa los recalcula en
       // cada cambio de la cuenta (PedidosService.recalcularPromocionesMesa).
-      const cobraVentaExistente = !!(checkoutData.settle?.sale_id || (cart.sale_id && cart.invoice_id));
+      const cobraVentaExistente = esCobroDeVentaExistente(checkoutData.settle, cart);
       if (!cobraVentaExistente) {
         promocionesUsadas = await this.aplicarPromociones(cart);
       }

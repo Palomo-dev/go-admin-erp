@@ -112,10 +112,16 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
         if (x > 0 && y > 0) return t('lista.compraGratis', { x, y });
         return '-';
       }
-      case 'bundle':
-        if ((promo.bundle_price ?? 0) > 0) return formatear(promo.bundle_price || 0);
-        if ((promo.discount_value ?? 0) > 0) return `${promo.discount_value}%`;
-        return '-';
+      case 'bundle': {
+        const base = (promo.bundle_price ?? 0) > 0
+          ? formatear(promo.bundle_price || 0)
+          : (promo.discount_value ?? 0) > 0
+            ? `${promo.discount_value}%`
+            : '-';
+        return promo.repeat_every_quantity && base !== '-'
+          ? t('lista.cada', { valor: base, n: promo.repeat_every_quantity })
+          : base;
+      }
       default:
         return '-';
     }

@@ -129,6 +129,27 @@ describe('prepararPromocion', () => {
     });
   });
 
+  it('el paquete guarda la repetición; vacío sigue en null', () => {
+    expect(
+      prepararPromocion({
+        promotion_type: 'bundle',
+        applies_to: 'products',
+        buy_quantity: 2,
+        get_quantity: 1,
+        min_quantity: 1,
+        repeat_every_quantity: 3,
+      }),
+    ).toMatchObject({
+      buy_quantity: null,
+      get_quantity: null,
+      min_quantity: 1,
+      repeat_every_quantity: 3,
+    });
+    expect(
+      prepararPromocion({ promotion_type: 'bundle', applies_to: 'all', repeat_every_quantity: null }).repeat_every_quantity,
+    ).toBeNull();
+  });
+
   it('la cantidad de una regla solo se guarda en un producto incluido del paquete', () => {
     expect(cantidadDeRegla({ rule_type: 'include_product', product_id: 1, quantity: null }, 'bundle')).toBe(1);
     expect(cantidadDeRegla({ rule_type: 'include_product', product_id: 1, quantity: 3 }, 'bundle')).toBe(3);

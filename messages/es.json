@@ -13711,6 +13711,12 @@
         "ejemploExacto": "Ej: 100",
         "motivo": "Motivo (opcional)",
         "motivoPlaceholder": "Ej.: conteo físico de fin de mes",
+        "tipoContable": "Tipo contable",
+        "tiposContables": {
+          "ajuste": "Ajuste (ganancia o pérdida)",
+          "apertura": "Apertura (inventario contra patrimonio)"
+        },
+        "ayudaTipo": "La apertura debita inventario y acredita patrimonio. Un ajuste de entrada acredita otros ingresos y uno de salida debita gastos. Una entrada que no es devolución no acredita costos.",
         "avisoKardex": "Cada ajuste queda en el kardex y genera su asiento de inventario.",
         "sinCosto": "{count, plural, one {{n} ajuste quedó sin costo: está en el kardex pero no generó asiento.} other {{n} ajustes quedaron sin costo: están en el kardex pero no generaron asiento.}}",
         "sinPermiso": "No tienes permiso para ajustar el inventario."

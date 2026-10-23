@@ -169,7 +169,7 @@ describe('bulkUpdateStock — servicio', () => {
     expect(rpc.mock.calls[0]).toEqual(['fn_productos_stock_masivo_alcance', { p_organization_id: 9, p_product_ids: [1, 2] }]);
     const lotes = rpc.mock.calls.slice(1).map(([nombre, args]) => {
       expect(nombre).toBe('fn_productos_ajuste_masivo_stock');
-      expect(args).toMatchObject({ p_organization_id: 9, p_branch_id: 4, p_modo: 'add', p_cantidad: -2, p_motivo: 'conteo', p_expandir: false });
+      expect(args).toMatchObject({ p_organization_id: 9, p_branch_id: 4, p_modo: 'add', p_cantidad: -2, p_motivo: 'conteo', p_expandir: false, p_tipo: 'ajuste' });
       return args.p_product_ids as number[];
     });
     expect(lotes.flat()).toEqual(alcance);
@@ -178,6 +178,16 @@ describe('bulkUpdateStock — servicio', () => {
     expect(r.fallidos).toBe(0);
     expect(r.exitosos).toBe(450);
     expect(r.resumen.ajustados).toBe(448);
+  });
+
+  it('la apertura se declara en la RPC y el ajuste es el valor por defecto', async () => {
+    rpc.mockImplementation((nombre: string) => {
+      if (nombre === 'fn_productos_stock_masivo_alcance') return Promise.resolve({ data: [8], error: null });
+      return Promise.resolve({ data: { productos: 1, ajustados: 1, entradas: 1 }, error: null });
+    });
+
+    await bulkUpdateStock(9, [8], 4, 3, 'set', null, 'apertura');
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_tipo: 'apertura', p_expandir: false });
   });
 
   it('un lote que falla cuenta sus productos como fallidos y sigue con el resto', async () => {

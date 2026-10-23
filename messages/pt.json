@@ -9510,6 +9510,12 @@
         "ejemploExacto": "Ex.: 100",
         "motivo": "Motivo (opcional)",
         "motivoPlaceholder": "Ex.: contagem física de fim de mês",
+        "tipoContable": "Tipo contábil",
+        "tiposContables": {
+          "ajuste": "Ajuste (ganho ou perda)",
+          "apertura": "Abertura (estoque contra patrimônio)"
+        },
+        "ayudaTipo": "A abertura debita o estoque e credita o patrimônio. Um ajuste de entrada credita outras receitas e um de saída debita despesas. Uma entrada que não é devolução não credita custos.",
         "avisoKardex": "Cada ajuste fica no kardex e gera o seu lançamento de estoque.",
         "sinCosto": "{count, plural, one {{n} ajuste ficou sem custo: está no kardex, mas não gerou lançamento.} other {{n} ajustes ficaram sem custo: estão no kardex, mas não geraram lançamento.}}",
         "sinPermiso": "Você não tem permissão para ajustar o estoque."

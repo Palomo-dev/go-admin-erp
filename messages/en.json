@@ -13711,6 +13711,12 @@
         "ejemploExacto": "E.g. 100",
         "motivo": "Reason (optional)",
         "motivoPlaceholder": "E.g. month-end stock count",
+        "tipoContable": "Accounting type",
+        "tiposContables": {
+          "ajuste": "Adjustment (gain or loss)",
+          "apertura": "Opening (inventory against equity)"
+        },
+        "ayudaTipo": "Opening debits inventory and credits equity. An inbound adjustment credits other income and an outbound one debits expenses. An inbound movement that is not a return does not credit costs.",
         "avisoKardex": "Every adjustment is recorded in the stock ledger and posts its inventory journal entry.",
         "sinCosto": "{count, plural, one {{n} adjustment had no cost: it is in the stock ledger but posted no journal entry.} other {{n} adjustments had no cost: they are in the stock ledger but posted no journal entry.}}",
         "sinPermiso": "You do not have permission to adjust inventory."

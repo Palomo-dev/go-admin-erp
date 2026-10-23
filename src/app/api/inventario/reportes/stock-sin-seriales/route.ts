@@ -16,7 +16,7 @@ export const GET = withOrg(async (ctx, req) => {
   try {
     await readOrgBody(ctx, req, { route: RUTA });
     await exigirVer(ctx, RUTA);
-    const filas = await rpc<FilaStockSinSerial[]>(ctx, 'fn_reporte_stock_sin_seriales', { p_org: ctx.organizationId });
+    const filas = await rpc<FilaStockSinSerial[]>(ctx, 'fn_reporte_stock_sin_seriales', { p_organization_id: ctx.organizationId });
     return NextResponse.json({ filas: Array.isArray(filas) ? filas : [] }, { headers: SIN_CACHE });
   } catch (err) {
     return respuestaError(RUTA, err);

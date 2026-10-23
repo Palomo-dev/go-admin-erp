@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 import { textoVariante } from '@/lib/utils/etiquetasImpresion';
 
 /**
@@ -88,8 +89,8 @@ export async function cargarProductosEtiquetables(
   const porId = new Map(seleccion.filter(vivo).map((p) => [p.id, p]));
 
   // Variantes de los seleccionados y padres de las variantes seleccionadas.
-  const hijas = await porLotes<FilaProducto>(Array.from(porId.keys()), (lote) =>
-    supabase.from('products').select(COLUMNAS).eq('organization_id', organizationId).in('parent_product_id', lote).order('id'),
+  const hijas = await leerPorLotes<FilaProducto>(Array.from(porId.keys()), (lote, desde, hasta) =>
+    supabase.from('products').select(COLUMNAS).eq('organization_id', organizationId).in('parent_product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
   );
   const variantesDe = new Map<number, FilaProducto[]>();
   for (const h of hijas.filter(vivo)) {
@@ -121,8 +122,8 @@ export async function cargarProductosEtiquetables(
   if (filas.length === 0) return [];
 
   const idsPrecio = Array.from(new Set([...filas.map((f) => f.id), ...filas.map((f) => f.parent_product_id).filter((x): x is number => !!x)]));
-  const precios = await porLotes<FilaPrecio>(idsPrecio, (lote) =>
-    supabase.from('product_prices').select('product_id, price, compare_price, effective_from, effective_to').in('product_id', lote),
+  const precios = await leerPorLotes<FilaPrecio>(idsPrecio, (lote, desde, hasta) =>
+    supabase.from('product_prices').select('product_id, price, compare_price, effective_from, effective_to').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
   );
   const preciosDe = new Map<number, FilaPrecio[]>();
   for (const pr of precios) {
@@ -131,12 +132,12 @@ export async function cargarProductosEtiquetables(
     preciosDe.set(Number(pr.product_id), lista);
   }
 
-  const niveles = await porLotes<{ product_id: number; qty_on_hand: number | string | null }>(
+  const niveles = await leerPorLotes<{ product_id: number; qty_on_hand: number | string | null }>(
     filas.map((f) => f.id),
-    (lote) => {
-      let q = supabase.from('stock_levels').select('product_id, qty_on_hand').in('product_id', lote);
+    (lote, desde, hasta) => {
+      let q = supabase.from('stock_levels').select('product_id, qty_on_hand').in('product_id', [...lote]).order('id', { ascending: true });
       if (branchId !== null) q = q.eq('branch_id', branchId);
-      return q;
+      return q.range(desde, hasta);
     },
   );
   const stockDe = new Map<number, number>();

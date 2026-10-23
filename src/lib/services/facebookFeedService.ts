@@ -18,6 +18,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID, timingSafeEqual } from 'crypto';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { leerPorLotes } from '@/lib/supabase/leerPorLotes';
 import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 import { resolveOrgCurrency } from '@/lib/ai/assistant/orgCurrency';
 import {
@@ -32,7 +33,6 @@ import {
 export const FACEBOOK_CATALOG_HEADERS: readonly string[] = COLUMNAS_META;
 
 const BUCKET_IMAGENES = 'product-images';
-const LOTE_IDS = 200;
 const PAGINA = 1000;
 
 function db(): SupabaseClient {
@@ -58,16 +58,6 @@ interface FilaProducto {
   categories: { name: string } | { name: string }[] | null;
 }
 
-async function porLotes<T>(ids: number[], consulta: (lote: number[]) => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; i < ids.length; i += LOTE_IDS) {
-    const { data, error } = await consulta(ids.slice(i, i + LOTE_IDS));
-    if (error) throw new Error(error.message);
-    if (Array.isArray(data)) out.push(...(data as T[]));
-  }
-  return out;
-}
-
 /** Todos los productos no eliminados de la organización, con precio vigente, stock, imágenes y etiquetas. */
 export async function cargarProductosMeta(organizationId: number, sb: SupabaseClient = db()): Promise<ProductoMeta[]> {
   const productos: FilaProducto[] = [];
@@ -89,17 +79,17 @@ export async function cargarProductosMeta(organizationId: number, sb: SupabaseCl
   const ahoraIso = new Date().toISOString();
 
   const [precios, imagenes, stock, etiquetas] = await Promise.all([
-    porLotes<{ product_id: number; price: number | string; compare_price: number | string | null; effective_from: string; effective_to: string | null }>(ids, (lote) =>
-      sb.from('product_prices').select('product_id, price, compare_price, effective_from, effective_to').in('product_id', lote).or(`effective_to.is.null,effective_to.gt.${ahoraIso}`),
+    leerPorLotes<{ product_id: number; price: number | string; compare_price: number | string | null; effective_from: string; effective_to: string | null }>(ids, (lote, desde, hasta) =>
+      sb.from('product_prices').select('product_id, price, compare_price, effective_from, effective_to').in('product_id', [...lote]).or(`effective_to.is.null,effective_to.gt.${ahoraIso}`).order('id', { ascending: true }).range(desde, hasta),
     ),
-    porLotes<{ product_id: number; storage_path: string; is_primary: boolean | null; display_order: number | null }>(ids, (lote) =>
-      sb.from('product_images').select('product_id, storage_path, is_primary, display_order').in('product_id', lote),
+    leerPorLotes<{ product_id: number; storage_path: string; is_primary: boolean | null; display_order: number | null }>(ids, (lote, desde, hasta) =>
+      sb.from('product_images').select('product_id, storage_path, is_primary, display_order').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
     ),
-    porLotes<{ product_id: number; qty_on_hand: number | null; qty_reserved: number | null }>(ids, (lote) =>
-      sb.from('stock_levels').select('product_id, qty_on_hand, qty_reserved').in('product_id', lote),
+    leerPorLotes<{ product_id: number; qty_on_hand: number | null; qty_reserved: number | null }>(ids, (lote, desde, hasta) =>
+      sb.from('stock_levels').select('product_id, qty_on_hand, qty_reserved').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
     ),
-    porLotes<{ product_id: number; product_tags: { name: string } | { name: string }[] | null }>(ids, (lote) =>
-      sb.from('product_tag_relations').select('product_id, product_tags(name)').in('product_id', lote),
+    leerPorLotes<{ product_id: number; product_tags: { name: string } | { name: string }[] | null }>(ids, (lote, desde, hasta) =>
+      sb.from('product_tag_relations').select('product_id, product_tags(name)').in('product_id', [...lote]).order('product_id', { ascending: true }).order('tag_id', { ascending: true }).range(desde, hasta),
     ),
   ]);
 

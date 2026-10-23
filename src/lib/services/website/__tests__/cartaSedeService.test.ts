@@ -307,7 +307,7 @@ describe('listarCartaSede', () => {
       consultada = true;
       const fallo = { data: null, error: { code: 'PGRST205', message: "Could not find the table 'public.product_branch_prices'" } };
       const cadena: Record<string, unknown> = {};
-      for (const m of ['select', 'eq', 'in', 'lte', 'or']) cadena[m] = () => cadena;
+      for (const m of ['select', 'eq', 'in', 'lte', 'or', 'order', 'range', 'abortSignal']) cadena[m] = () => cadena;
       cadena.then = (ok: (v: unknown) => unknown) => Promise.resolve(fallo).then(ok);
       return cadena as never;
     });

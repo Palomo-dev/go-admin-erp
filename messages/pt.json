@@ -13691,14 +13691,8 @@
       "cantidadOriginal": "Quantidade original: {n}",
       "serializado": "Serializado",
       "seleccionarMotivo": "Selecionar",
-      "motivosRespaldo": {
-        "defectuoso": "Produto com defeito",
-        "incorrecto": "Produto errado",
-        "danado": "Produto danificado",
-        "noConforme": "Não conforme",
-        "garantia": "Garantia",
-        "otro": "Outro motivo"
-      },
+      "sinMotivos": "Não há motivos de devolução ativos. Crie um antes de processar a devolução.",
+      "irAMotivos": "Ir para motivos",
       "configuracionReembolso": "Configuração do reembolso",
       "metodoReembolso": "Forma de reembolso",
       "reembolsoEfectivo": "Reembolso em dinheiro",

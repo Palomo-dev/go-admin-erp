@@ -17892,14 +17892,8 @@
       "cantidadOriginal": "Original quantity: {n}",
       "serializado": "Serialized",
       "seleccionarMotivo": "Select",
-      "motivosRespaldo": {
-        "defectuoso": "Defective product",
-        "incorrecto": "Wrong product",
-        "danado": "Damaged product",
-        "noConforme": "Not as expected",
-        "garantia": "Warranty",
-        "otro": "Other reason"
-      },
+      "sinMotivos": "There are no active return reasons. Create one before processing a return.",
+      "irAMotivos": "Go to reasons",
       "configuracionReembolso": "Refund settings",
       "metodoReembolso": "Refund method",
       "reembolsoEfectivo": "Cash refund",

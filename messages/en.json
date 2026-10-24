@@ -31926,10 +31926,18 @@
         "posicion": "Position",
         "contenido": "Code",
         "guardarDialogo": "Done",
+        "conteo": "{n} / {max}",
+        "pantallaCompleta": "Full screen",
+        "salirPantalla": "Exit full screen",
+        "avisoDocumento": "This snippet includes a full page (html, head or body). Paste only the code that goes inside.",
+        "avisoHead": "The header contains elements that show on the page. That spot is usually for code that stays hidden, such as a script or a style.",
         "errores": {
           "nombre": "Enter a name to recognize it.",
           "ruta": "Enter an address that starts with /.",
-          "codigo": "Paste the code."
+          "codigo": "Paste the code.",
+          "limite": "The code is over {max} characters.",
+          "etiqueta": "The \"{etiqueta}\" tag is not closed.",
+          "javascript": "JavaScript error: {detalle}"
         }
       },
       "chat": {

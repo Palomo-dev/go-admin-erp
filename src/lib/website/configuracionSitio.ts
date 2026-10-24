@@ -28,6 +28,9 @@ export type FuncionPendiente = (typeof FUNCIONES_PENDIENTES)[number];
 
 export type PosicionCodigo = 'head' | 'body';
 
+/** Máximo de caracteres de un bloque de código a medida. El esquema y el editor usan el mismo tope. */
+export const LIMITE_CODIGO_MEDIDA = 20000;
+
 /** Un bloque de código a medida (B/12-01 «Código y píxeles»). Autor y fecha los sella el servidor. */
 export interface CodigoMedida {
   /** `null` = nuevo (aún sin guardar). */
@@ -264,7 +267,7 @@ export const esquemaCambiosConfiguracion = z
               .regex(/^(todas|\/[\w\-/]*)$/, 'alcance_invalido'),
             posicion: z.enum(['head', 'body']),
             activo: z.boolean(),
-            codigo: z.string().min(1).max(20000),
+            codigo: z.string().min(1).max(LIMITE_CODIGO_MEDIDA),
           })
           .strict(),
       )

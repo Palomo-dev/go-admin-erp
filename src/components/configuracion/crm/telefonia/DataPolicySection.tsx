@@ -65,7 +65,15 @@ export function DataPolicySection({ settings, canEdit, onPatchSettings }: Props)
           onChange={(e) => setValor(e.target.value)}
         />
       </FormField>
-      {!settings.data_policy_url && (
+      {!settings.data_policy_url && settings.url_politica_sitio && (
+        <p role="status" className="text-xs text-fg-secondary">
+          {t('usandoSitio')}{' '}
+          <a href={settings.url_politica_sitio} className="underline" target="_blank" rel="noreferrer">
+            {settings.url_politica_sitio}
+          </a>
+        </p>
+      )}
+      {!settings.data_policy_url && !settings.url_politica_sitio && (
         <p role="status" className="text-xs text-amber-800 dark:text-amber-200">
           {t('faltante')}
         </p>

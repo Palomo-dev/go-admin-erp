@@ -323,7 +323,18 @@ describe('tipos, plantillas y páginas base', () => {
     expect(PAGINAS_BASE_GIRO.tienda.map((p) => p.slug)).toEqual(['home', 'productos', 'categorias', 'ofertas', 'nosotros', 'contacto']);
     expect(PAGINAS_BASE_GIRO.transporte.map((p) => p.slug)).toContain('rutas');
     expect(PAGINAS_BASE_GIRO.parqueadero.map((p) => p.slug)).toContain('tarifas');
-    expect(paginasBasePorGiro('hotel').slice(-2).map((p) => p.slug)).toEqual(['terminos', 'privacidad']);
+    expect(paginasBasePorGiro('hotel').filter((p) => p.tipo === 'legal').map((p) => p.slug)).toEqual([
+      'terminos',
+      'privacidad',
+      'tratamiento-de-datos',
+      'cambios-y-devoluciones',
+      'cookies',
+    ]);
+    expect(paginasBasePorGiro('tienda').some((p) => p.slug === 'envios')).toBe(true);
+    expect(paginasBasePorGiro('hotel', { envios: true }).some((p) => p.slug === 'envios')).toBe(true);
+    const terminos = paginasBasePorGiro('hotel').find((p) => p.slug === 'terminos')!;
+    expect(String(terminos.secciones[0].contenido.body).length).toBeGreaterThan(80);
+    expect(terminos.secciones[0].contenido.content).toBeUndefined();
     expect(giroDeTipoOrganizacion(6)).toBe('transporte');
     expect(giroDeTipoOrganizacion(null)).toBe('tienda');
   });

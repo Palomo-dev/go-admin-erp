@@ -33,7 +33,7 @@ import {
 import { useSitioV2 } from '../useSitioV2';
 import { usePaginasSitio } from '../paginas/usePaginasSitio';
 import { ErrorApiConfiguracion, RUTA_API_CONFIGURACION, falloDe, pedirApi, type FalloApi } from './api';
-import { crearDocumentoLegal } from './crearDocumentoLegal';
+import { crearDocumentoLegal, regenerarDocumentoLegal } from './crearDocumentoLegal';
 
 export type ResultadoGuardado = 'ok' | 'error' | 'pendiente' | 'conflicto' | 'invalido';
 
@@ -62,7 +62,11 @@ export interface ConfiguracionSitio {
   guardar: () => Promise<ResultadoGuardado>;
   cerrarErrorGuardado: () => void;
   recargar: () => Promise<void>;
-  crearLegal: (doc: DocumentoLegalVista) => Promise<string | null>;
+  crearLegal: (doc: DocumentoLegalVista) => Promise<{ id: string; origen: 'ia' | 'plantilla' } | null>;
+  regenerarLegal: (
+    doc: DocumentoLegalVista,
+    extra?: { confirmar?: boolean; texto?: string; origen?: 'ia' | 'plantilla' },
+  ) => Promise<import('./crearDocumentoLegal').ResultadoRegenerar | null>;
   cambiarPublicacion: (publicado: boolean) => Promise<boolean>;
   eliminarSitio: (confirmacion: string) => Promise<FalloApi | null>;
 }
@@ -264,6 +268,7 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
         publicada: p.publicada,
         estado: p.estado.tipo,
         actualizadaEn: p.actualizadaEn,
+        caracteres: p.caracteres,
       })),
     );
   }, [paginas.datos]);
@@ -273,21 +278,36 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
   const recargarBorrador = sitio.recargar;
   const versionBorrador = useRef<number | null>(null);
   versionBorrador.current = sitio.borrador?.version ?? null;
+  const depsLegal = useCallback(
+    () => ({
+      versionBorrador: () => versionBorrador.current,
+      escribir: escribirPagina,
+      revalidar: revalidarPaginas,
+      recargarBorrador,
+    }),
+    [escribirPagina, revalidarPaginas, recargarBorrador],
+  );
   const crearLegal = useCallback(
-    async (doc: DocumentoLegalVista): Promise<string | null> => {
+    async (doc: DocumentoLegalVista) => {
       setCreandoLegal(doc.clave);
       try {
-        return await crearDocumentoLegal(doc, {
-          versionBorrador: () => versionBorrador.current,
-          escribir: escribirPagina,
-          revalidar: revalidarPaginas,
-          recargarBorrador,
-        });
+        return await crearDocumentoLegal(doc, depsLegal());
       } finally {
         setCreandoLegal(null);
       }
     },
-    [escribirPagina, revalidarPaginas, recargarBorrador],
+    [depsLegal],
+  );
+  const regenerarLegal = useCallback(
+    async (doc: DocumentoLegalVista, extra?: { confirmar?: boolean; texto?: string; origen?: 'ia' | 'plantilla' }) => {
+      setCreandoLegal(doc.clave);
+      try {
+        return await regenerarDocumentoLegal(doc, depsLegal(), extra);
+      } finally {
+        setCreandoLegal(null);
+      }
+    },
+    [depsLegal],
   );
 
   // Despublicar y volver a publicar van por el hook único del sitio V2
@@ -349,6 +369,7 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
     cerrarErrorGuardado: () => setErrorGuardado(false),
     recargar,
     crearLegal,
+    regenerarLegal,
     cambiarPublicacion,
     eliminarSitio,
   };

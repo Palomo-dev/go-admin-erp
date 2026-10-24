@@ -190,15 +190,12 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
         else if (i.tipo === 'custom') expect(RUTAS_SITIO_PUBLICO).toContain(i.url);
       }
     }
-    // Ninguna página se repite entre dos menús del pie («Tratamiento de datos» es a propósito un
-    // segundo enlace a la política de privacidad: va en la barra inferior del pie).
-    const enPie = pie.flatMap((m) =>
-      m.items.filter((i) => i.tipo === 'page' && i.etiqueta !== 'Tratamiento de datos').map((i) => (i as { paginaId: string }).paginaId),
-    );
+    // Ninguna página se repite entre dos menús del pie. Tratamiento tiene su propia página.
+    const enPie = pie.flatMap((m) => m.items.filter((i) => i.tipo === 'page').map((i) => (i as { paginaId: string }).paginaId));
     expect(new Set(enPie).size).toBe(enPie.length);
   });
 
-  it('pie según la lámina: «Hecho con…» solo si la lámina lo trae; la tienda sin columna Contacto; «Tratamiento de datos» a la privacidad', () => {
+  it('pie según la lámina: «Hecho con…» solo si la lámina lo trae; la tienda sin columna Contacto; «Tratamiento de datos» a su página', () => {
     const shell = shellDePlantilla(plantilla.id, plantilla.giro as Giro);
     const opciones = documento.shell.footer.opciones;
     // El borrador de prueba ya lo había apagado: la decisión de la organización se conserva.
@@ -212,8 +209,8 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
     const legales = documento.menus.find((m) => m.nombre === 'Legales' && documento.shell.footer.menuIds.includes(m.id));
     if (legales) {
       const tratamiento = legales.items.find((i) => i.etiqueta === 'Tratamiento de datos');
-      const privacidad = documento.paginas.find((p) => p.slug === 'privacidad');
-      expect(tratamiento && tratamiento.tipo === 'page' ? tratamiento.paginaId : null).toBe(privacidad?.id ?? null);
+      const pagina = documento.paginas.find((p) => p.slug === 'tratamiento-de-datos');
+      expect(tratamiento && tratamiento.tipo === 'page' ? tratamiento.paginaId : null).toBe(pagina?.id ?? null);
     }
   });
 
@@ -261,7 +258,8 @@ describe('restaurante: «Noir Omakase» sobre el sitio importado (caso de la org
 
   it('páginas: Inicio, Menú, Pedir online, Reservar mesa, Nosotros, Contacto, Galería, legales y sistema', () => {
     expect(documento.paginas.map((p) => p.slug)).toEqual([
-      'home', 'menu', 'domicilios', 'reservas-mesa', 'nosotros', 'contacto', 'galeria', 'privacidad',
+      'home', 'menu', 'domicilios', 'reservas-mesa', 'nosotros', 'contacto', 'galeria',
+      'privacidad', 'tratamiento-de-datos', 'envios', 'cambios-y-devoluciones', 'cookies',
       // La Carta QR de la mesa (Figma 2032:75742): fuera del menú, con las secciones de la lámina 17.
       'carta-qr',
       'plantillas/cart', 'plantillas/checkout', 'terminos',
@@ -323,16 +321,29 @@ describe('restaurante: «Noir Omakase» sobre el sitio importado (caso de la org
     expect(documento.shell.footer.menuIds.map((id) => documento.menus.find((m) => m.id === id)!.nombre)).toEqual(['Legales']);
   });
 
-  it('la política nueva nace con su texto base vacío, nunca con textos de otra sección', () => {
+  it('la política nueva nace con texto de plantilla en body, nunca con textos de otra sección', () => {
     const privacidad = documento.paginas.find((p) => p.slug === 'privacidad')!;
-    expect(privacidad.secciones.map((x) => x.contenido)).toEqual([{ title: 'Política de privacidad', content: '' }]);
+    const contenido = privacidad.secciones[0].contenido;
+    expect(typeof contenido.body).toBe('string');
+    expect(String(contenido.body).length).toBeGreaterThan(80);
+    expect(contenido.content).toBeUndefined();
+    expect(String(contenido.body)).not.toContain('{{');
+    expect(String(contenido.body)).not.toContain('undefined');
+    expect((contenido.legal as { clave?: string }).clave).toBe('privacidad');
   });
 
   it('conserva el texto legal real y lo enlaza en «Legales»', () => {
     const terminos = documento.paginas.find((p) => p.slug === 'terminos')!;
     expect(terminos.secciones[0].contenido.body).toBe('Texto real de la organización');
     const legales = documento.menus.find((m) => m.nombre === 'Legales')!;
-    expect(legales.items.map((i) => i.etiqueta).sort()).toEqual(['Política de privacidad', 'Tratamiento de datos', 'Términos y condiciones']);
+    expect(legales.items.map((i) => i.etiqueta).sort()).toEqual([
+      'Cambios y devoluciones',
+      'Política de cookies',
+      'Política de envíos',
+      'Política de privacidad',
+      'Tratamiento de datos',
+      'Términos y condiciones',
+    ]);
   });
 
   it('aplica el estilo de la plantilla', () => {

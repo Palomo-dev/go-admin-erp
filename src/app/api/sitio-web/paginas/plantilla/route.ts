@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { aplicarPlantillaCompleta } from '@/lib/services/website/plantillaCompletaService';
+import { mejorarLegalesPendientes } from '@/lib/website/legales/mejorarLegalesPendientes';
 import { manejarError, respuestaError } from '@/lib/website/v2/respuestasApi';
 import { sitioDeCuerpo, versionDeCuerpo } from '@/components/sitio-web/paginas/parametrosPaginas';
 
@@ -21,7 +22,14 @@ export const POST = withOrg(async (ctx, request) => {
     if (sitio === 'invalido' || version === 'invalido' || !plantilla) {
       return respuestaError('peticion_invalida', 'Se esperaba { sitio, version, plantilla }.');
     }
-    return NextResponse.json(await aplicarPlantillaCompleta(ctx, sitio, version, plantilla, randomUUID));
+    const respuesta = await aplicarPlantillaCompleta(ctx, sitio, version, plantilla, randomUUID);
+    // La plantilla ya dejó el texto. Si la IA responde, reemplaza solo lo no editado.
+    after(() => {
+      void mejorarLegalesPendientes(ctx.supabase, ctx.organizationId, sitio).catch((error) => {
+        console.error('[legales] no se pudo mejorar con IA', error instanceof Error ? error.message : error);
+      });
+    });
+    return NextResponse.json(respuesta);
   } catch (error) {
     return manejarError(error, 'POST sitio-web/paginas/plantilla');
   }

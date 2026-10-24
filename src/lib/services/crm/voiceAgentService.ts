@@ -63,7 +63,8 @@ import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/
 import { parametrosAmd, RUTA_AMD_ASINCRONO } from '@/lib/services/crm/voiceAgent/amd';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
-import { evaluarLey2300Cliente, exentoTopeClienteDia, numeroExcluido, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { evaluarLey2300Cliente, exentoTopeClienteDia, numeroExcluido } from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { urlPoliticaEfectiva } from '@/lib/website/legales/obtenerDocumentoLegal';
 import { corteLlamadaColgada, MINUTOS_LLAMADA_COLGADA } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { evaluarVentanaCampana, horarioPropioAbierto, type HorarioCampana } from '@/lib/services/crm/voiceAgent/ventanaCampana';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
@@ -1652,7 +1653,7 @@ export async function getOrgVoiceSettings(
     // Sin fila de `comm_settings` no hay canal configurado: fail-closed.
     agentEnabled: data ? data.voice_agent_enabled !== false && data.is_active !== false : false,
     maxConcurrentCalls: Number(data?.voice_max_concurrent_calls) > 0 ? Number(data?.voice_max_concurrent_calls) : 3,
-    dataPolicyUrl: politicaDatosValida(data?.data_policy_url) ? (data?.data_policy_url as string) : null,
+    dataPolicyUrl: await urlPoliticaEfectiva(supabase, orgId, data?.data_policy_url),
   };
 }
 

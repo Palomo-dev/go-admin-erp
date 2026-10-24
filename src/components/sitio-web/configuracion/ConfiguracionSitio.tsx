@@ -107,6 +107,8 @@ export function ConfiguracionSitio() {
             error={c.legalesError}
             creando={c.creandoLegal}
             crear={c.crearLegal}
+            regenerar={c.regenerarLegal}
+            dataPolicyUrl={d.dataPolicyUrl}
             organizacion={{ nombre: d.organizacion.nombre, correo: f.correo || d.organizacion.correo }}
           />
         );

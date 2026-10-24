@@ -40,6 +40,8 @@ import { construirCatalogo, plantillasDelGiro, type CatalogoPlantillas, type Gir
 import { construirPaginaBase, paginasBasePorGiro, plantillaPorId, type GenerarId, type Giro, type PaginaBase } from '@/components/sitio-web/paginas/plantillasPagina';
 import { VARIANTE_CARTA_QR, VARIANTE_PORTADA_MESA } from '@/lib/website/contrato/seccionesMesa';
 import { esInicio, esPaginaLegal, esPlantillaTienda } from '@/components/sitio-web/paginas/tipoPagina';
+import { type ClaveLegal } from '@/lib/website/configuracionSitio';
+import { paginaPorClave } from '@/lib/website/legales/documentoLegal';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { aplicarEstiloPlantilla } from './usarPlantilla';
 import { COMPOSICIONES_FOOTER, COMPOSICIONES_HEADER } from './mapeoAjustes';
@@ -86,6 +88,8 @@ export interface DatosNegocio {
   categorias: readonly { id: number; nombre: string }[];
   /** Testimonios activos de verdad (`testimonials`). */
   testimonios: number;
+  /** true si el sitio tiene envíos activos y el giro no es tienda ni restaurante. */
+  envios?: boolean;
 }
 
 export const DATOS_VACIOS: DatosNegocio = {
@@ -802,16 +806,26 @@ function itemsMenuPie(clave: ClaveMenuPie, c: ContextoMenus): { nombre: string; 
   switch (clave) {
     case 'legal': {
       // Con «Políticas» en el mismo pie, la de la estadía va allá y no se repite.
-      // «Tratamiento de datos» (Ley 1581 de 2012, Colombia) apunta a la política de privacidad;
-      // el sitio lo pinta en la barra inferior del pie, como en las láminas.
-      const privacidad = c.paginas.find((p) => ['privacidad', 'politica-de-privacidad', 'politica-privacidad'].includes(p.slug));
-      return {
-        nombre: 'Legales',
-        items: [
-          ...legales(c.menusPedidos.includes('politicas') ? ['politica-estadia'] : []),
-          ...(privacidad ? [{ ...itemPagina(privacidad, c.generarId), etiqueta: 'Tratamiento de datos' }] : []),
-        ],
-      };
+      // «Tratamiento de datos» apunta a su propia página (Ley 1581 de 2012).
+      const orden: ClaveLegal[] = ['terminos', 'privacidad', 'envios', 'devoluciones', 'cookies'];
+      const usados = new Set<string>();
+      const items: Item[] = [];
+      for (const clave of orden) {
+        const pagina = paginaPorClave(c.paginas, clave);
+        if (!pagina || usados.has(pagina.id)) continue;
+        usados.add(pagina.id);
+        items.push(itemPagina(pagina, c.generarId));
+      }
+      for (const pagina of c.paginas) {
+        if (!esPaginaLegal(pagina) || esPlantillaTienda(pagina) || usados.has(pagina.id)) continue;
+        if (c.menusPedidos.includes('politicas') && pagina.slug === 'politica-estadia') continue;
+        if (paginaPorClave([pagina], 'tratamiento')) continue;
+        usados.add(pagina.id);
+        items.push(itemPagina(pagina, c.generarId));
+      }
+      const tratamiento = paginaPorClave(c.paginas, 'tratamiento');
+      if (tratamiento) items.push({ ...itemPagina(tratamiento, c.generarId), etiqueta: 'Tratamiento de datos' });
+      return { nombre: 'Legales', items };
     }
     case 'politicas':
       return {
@@ -888,7 +902,7 @@ export function armarPlantillaCompleta(
   // 1. Lo que se conserva: páginas de sistema (carrito, checkout…) y legales.
   const conservadas = base.paginas.filter((p) => esPlantillaTienda(p) || esPaginaLegal(p));
   const slugsConservados = new Set(conservadas.map((p) => p.slug));
-  const delGiro = paginasBasePorGiro(giro);
+  const delGiro = paginasBasePorGiro(giro, { envios: giro === 'tienda' || giro === 'restaurante' || datos.envios === true });
   const extras = paginasQuePideElShell(shell)
     .filter((slug) => !delGiro.some((b) => b.slug === slug))
     .map((slug) => PAGINAS_DEL_SHELL[slug]);
@@ -906,7 +920,7 @@ export function armarPlantillaCompleta(
   const ocultas: SeccionOculta[] = [];
   let secciones = 0;
   const nuevas = juego.map((b) => {
-    // Las legales nacen con su texto base vacío (el de «Restaurar páginas base»), sin contenido inventado.
+    // Las legales nuevas nacen con el texto de la plantilla (body). Las ya escritas se conservan.
     if (esPaginaLegal({ tipo: b.tipo, slug: b.slug })) return { pagina: construirPaginaBase(b, generarId), enMenu: b.enMenu };
     const pagina = { titulo: b.titulo, slug: b.slug };
     const inicio = esInicio({ tipo: b.tipo, slug: b.slug });

@@ -3,15 +3,15 @@
  * Puro: lo usan el route, la plantilla y el backfill. No cobra ni llama a la IA.
  */
 import type { DocumentoSitio, ItemMenu, PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documentoSitio';
-import { DOCUMENTOS_LEGALES, type ClaveLegal } from '@/lib/website/configuracionSitio';
+import type { ClaveLegal } from '@/lib/website/configuracionSitio';
 import {
-  caracteresLegales,
   fueEditado,
   hashTexto,
   metaLegal,
   textoPlano,
   type ResultadoPlantilla,
 } from '@/lib/website/legales/plantillasLegales';
+import { caracteresDePagina, definicionLegal, paginaPorClave } from '@/lib/website/legales/lecturaLegal';
 import {
   crearMenu,
   menusPie,
@@ -20,25 +20,12 @@ import {
   type GenerarId,
 } from '@/components/sitio-web/paginas/operacionesMenu';
 
+export { caracteresDePagina, definicionLegal, paginaPorClave };
+
 export const ETIQUETA_TRATAMIENTO = 'Tratamiento de datos';
 
 /** Orden del menú «Legales». Tratamiento va al final, con su propia página. */
 const ORDEN_MENU: readonly ClaveLegal[] = ['terminos', 'privacidad', 'envios', 'devoluciones', 'cookies', 'tratamiento'];
-
-export function definicionLegal(clave: ClaveLegal) {
-  const def = DOCUMENTOS_LEGALES.find((d) => d.clave === clave);
-  if (!def) throw new Error(`clave legal desconocida: ${clave}`);
-  return def;
-}
-
-export function paginaPorClave(paginas: readonly PaginaSitio[], clave: ClaveLegal): PaginaSitio | undefined {
-  const slugs = definicionLegal(clave).slugs as readonly string[];
-  return paginas.find((p) => slugs.includes(p.slug));
-}
-
-export function caracteresDePagina(pagina: PaginaSitio): number {
-  return pagina.secciones.reduce((n, s) => (s.tipo === 'text_block' ? n + caracteresLegales(s.contenido) : n), 0);
-}
 
 function bloqueTexto(pagina: PaginaSitio): SeccionSitio | undefined {
   return pagina.secciones.find((s) => s.tipo === 'text_block');

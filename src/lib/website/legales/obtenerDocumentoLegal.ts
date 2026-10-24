@@ -9,7 +9,7 @@ import { validarDocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { ClaveLegal } from '@/lib/website/configuracionSitio';
 import { politicaManualValida } from '@/lib/website/configuracionSitio';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
-import { definicionLegal, paginaPorClave, caracteresDePagina } from '@/lib/website/legales/documentoLegal';
+import { caracteresDePagina, definicionLegal, paginaPorClave } from '@/lib/website/legales/lecturaLegal';
 import { MIN_TEXTO_LEGAL } from '@/lib/website/legales/plantillasLegales';
 
 export interface DocumentoLegalResuelto {

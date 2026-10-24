@@ -50,7 +50,7 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
         op.head = o?.head;
         return proxy;
       },
-      eq: filtro('eq'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
+      eq: filtro('eq'), is: filtro('is'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
       order: filtro('order'), limit: filtro('limit'), range: filtro('range'),
       maybeSingle: async () => settle(),
       single: async () => settle(),

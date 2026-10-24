@@ -20,24 +20,23 @@ export function AlertasFalloContable({ compacto = false }: { compacto?: boolean 
 
   useEffect(() => {
     let vivo = true;
-    supabase
-      .rpc('fn_ve_fallos_contables')
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('fn_ve_fallos_contables');
+        if (error) throw error;
         if (!vivo || data !== true) return;
         setVeTecnicos(true);
-        return ConfiguracionContableService.fallosPendientes(compacto ? 3 : 30);
-      })
-      .then((resultado) => {
-        if (!vivo || !resultado) return;
+        const resultado = await ConfiguracionContableService.fallosPendientes(compacto ? 3 : 30);
+        if (!vivo) return;
         setTotal(resultado.total);
         setFilas(resultado.filas);
         reportarFallosContables(
           resultado.filas.map((fila) => ({ id: fila.id, motivo: fila.reason })),
         );
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('No se pudieron cargar los fallos contables:', error);
-      });
+      }
+    })();
     return () => {
       vivo = false;
     };

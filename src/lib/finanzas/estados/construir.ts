@@ -904,10 +904,6 @@ function etiquetaCubeta(clave: string): string {
   return `Tarifa ${cubo} % (${lado})`;
 }
 
-function movimientoCuenta(med: Medicion, entrada: EntradaInforme, prefijo: string, acreedor: boolean): number {
-  return movimientoEntre(med, entrada.desde, entrada.hasta, prefijo, acreedor);
-}
-
 function movimientoEntre(med: Medicion, desde: string, hasta: string, prefijo: string, acreedor: boolean): number {
   let debitos = 0;
   let creditos = 0;

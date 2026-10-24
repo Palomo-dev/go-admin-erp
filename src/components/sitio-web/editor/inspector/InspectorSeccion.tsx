@@ -30,6 +30,8 @@ import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
+import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
+import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
 
@@ -260,6 +262,39 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
               <InspectorBanners contenido={contenido} onCambiar={p.onCambiarContenido} />
             )}
             {pintarConBloques(campos('diseno'))}
+            {(TIPOS_PAGINACION as readonly string[]).includes(s.section_type) && (
+              <PanelPaginacion
+                valor={sanitizarPaginacion(contenido.paginacion)}
+                usarGlobal={sanitizarPaginacion(contenido.paginacion)?.usar_global !== false}
+                onUsarGlobal={(v) => {
+                  if (v) {
+                    const siguiente = { ...contenido };
+                    delete siguiente.paginacion;
+                    p.onCambiarContenido(siguiente);
+                  } else {
+                    p.onCambiarContenido({ ...contenido, paginacion: { usar_global: false } });
+                  }
+                }}
+                onCambiar={(val) => p.onCambiarContenido({ ...contenido, paginacion: { usar_global: false, ...val } })}
+                color="#111827"
+              />
+            )}
+            {(TIPOS_CARRUSEL as readonly string[]).includes(s.section_type) && (
+              <PanelCarrusel
+                valor={sanitizarCarrusel(contenido.carrusel)}
+                usarGlobal={sanitizarCarrusel(contenido.carrusel)?.usar_global !== false}
+                onUsarGlobal={(v) => {
+                  if (v) {
+                    const siguiente = { ...contenido };
+                    delete siguiente.carrusel;
+                    p.onCambiarContenido(siguiente);
+                  } else {
+                    p.onCambiarContenido({ ...contenido, carrusel: { usar_global: false } });
+                  }
+                }}
+                onCambiar={(val) => p.onCambiarContenido({ ...contenido, carrusel: { usar_global: false, ...val } })}
+              />
+            )}
             {avisoBorrador}
           </>
         )}

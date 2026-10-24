@@ -29,7 +29,7 @@ import {
   type PaginaSitio,
   type SeccionSitio,
 } from '@/lib/website/contrato/documentoSitio';
-import { conversionDesdeColumnas } from '@/lib/website/conversion';
+import { conversionDesdeColumnas, urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 import {
   CAMPOS_HEREDABLES,
   COLUMNAS_SHELL_ESTRUCTURA,
@@ -397,7 +397,7 @@ export function importarSitioLegacy(entrada: EntradaImportacion): ResultadoImpor
     },
     menus,
     paginas,
-    ...(conversion ? { conversion } : {}),
+    ...(urgenciaDocumentoDisponible() && conversion ? { conversion } : {}),
   };
 
   // D6: el sitio principal conserva sus valores como explícitos.

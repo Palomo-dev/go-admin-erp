@@ -34,7 +34,7 @@ import {
   visibilidadDeSeccion,
   visibilidadDesdeDocumento,
 } from './estiloSeccion';
-import { columnasDesdeConversion, esColumnaConversion, fusionarColumnasConversion } from '@/lib/website/conversion';
+import { columnasDesdeConversion, esColumnaConversion, fusionarColumnasConversion, urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 
 // ─── Páginas y secciones ──────────────────────────────────────────────────────────────────────
 
@@ -213,7 +213,7 @@ export function ajustesDesdeDocumento(
     ajustes[columna] = columna in (opciones ?? {}) ? structuredCloneSeguro(opciones[columna]) : def.porDefecto;
   }
 
-  if (documento.conversion) {
+  if (documento.conversion && urgenciaDocumentoDisponible()) {
     Object.assign(ajustes, columnasDesdeConversion(documento.conversion));
     ajustes.conversion = structuredCloneSeguro(documento.conversion);
   }
@@ -242,6 +242,10 @@ export function aplicarAjustesAlDocumento(
 
   for (const [columna, valor] of Object.entries(cambios)) {
     if (esColumnaConversion(columna)) {
+      if (!urgenciaDocumentoDisponible()) {
+        noAplicadas.push(columna);
+        continue;
+      }
       cambiosConversion[columna] = valor;
       continue;
     }

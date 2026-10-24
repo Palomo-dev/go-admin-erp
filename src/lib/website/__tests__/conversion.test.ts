@@ -86,16 +86,38 @@ describe('conversion', () => {
   })
 
   test('el inspector deja de descartar countdown_enabled y lo devuelve', () => {
-    const { documento, noAplicadas } = aplicarAjustesAlDocumento(documentoMinimo(), {
-      countdown_enabled: true,
-      countdown_show_in_header: true,
-      countdown_title: 'Hoy',
-    })
-    expect(noAplicadas).not.toContain('countdown_enabled')
-    const ajustes = ajustesDesdeDocumento(documento, { organization_id: 120 } as WebsiteSettings, null).ajustes as unknown as Record<string, unknown>
-    expect(ajustes.countdown_enabled).toBe(true)
-    expect(ajustes.countdown_title).toBe('Hoy')
-    expect(ajustes.countdown_show_in_header).toBe(true)
-    expect(columnasDesdeConversion(documento.conversion).countdown_mode).toBe('daily_reset')
+    const previo = process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+    process.env.NEXT_PUBLIC_WEBSITE_URGENCIA = '1'
+    try {
+      const { documento, noAplicadas } = aplicarAjustesAlDocumento(documentoMinimo(), {
+        countdown_enabled: true,
+        countdown_show_in_header: true,
+        countdown_title: 'Hoy',
+      })
+      expect(noAplicadas).not.toContain('countdown_enabled')
+      const ajustes = ajustesDesdeDocumento(documento, { organization_id: 120 } as WebsiteSettings, null).ajustes as unknown as Record<string, unknown>
+      expect(ajustes.countdown_enabled).toBe(true)
+      expect(ajustes.countdown_title).toBe('Hoy')
+      expect(ajustes.countdown_show_in_header).toBe(true)
+      expect(columnasDesdeConversion(documento.conversion).countdown_mode).toBe('daily_reset')
+    } finally {
+      if (previo === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+      else process.env.NEXT_PUBLIC_WEBSITE_URGENCIA = previo
+    }
+  })
+
+  test('sin el interruptor, el contador no se escribe en el documento', () => {
+    const previo = process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+    delete process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+    try {
+      const { documento, noAplicadas } = aplicarAjustesAlDocumento(documentoMinimo(), {
+        countdown_enabled: true,
+      })
+      expect(documento.conversion).toBeUndefined()
+      expect(noAplicadas).toContain('countdown_enabled')
+    } finally {
+      if (previo === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+      else process.env.NEXT_PUBLIC_WEBSITE_URGENCIA = previo
+    }
   })
 })

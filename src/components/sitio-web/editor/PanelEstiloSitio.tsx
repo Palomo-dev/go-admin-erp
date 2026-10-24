@@ -39,6 +39,7 @@ import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { vaciar, valorPropio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
 import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
+import { urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
@@ -201,7 +202,7 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
         {cascaronTemaDisponible() && p.enV2 && p.documento && (
           <EstiloGlobalSecciones documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
-        {p.enV2 && p.documento && (
+        {urgenciaDocumentoDisponible() && p.enV2 && p.documento && (
           <PanelUrgencia documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
       </div>

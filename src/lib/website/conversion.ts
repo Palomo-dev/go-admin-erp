@@ -1,7 +1,14 @@
 /**
  * Urgencia y contador del documento V2.
  * Sin `conversion`, estas funciones no sustituyen las columnas legacy.
+ *
+ * El sitio publicado rechaza la clave `conversion` hasta que su contrato la
+ * acepte. Con el interruptor apagado, el contador sigue en las columnas
+ * countdown_* / checkout_* y el documento no lleva esa clave.
  */
+export function urgenciaDocumentoDisponible(): boolean {
+  return process.env.NEXT_PUBLIC_WEBSITE_URGENCIA === '1'
+}
 
 export type UbicacionContador = 'topbar' | 'carrito' | 'checkout' | 'producto' | 'hero' | 'seccion'
 export type UbicacionStock = 'checkout' | 'producto' | 'carrito'

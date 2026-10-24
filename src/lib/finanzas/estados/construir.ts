@@ -807,10 +807,27 @@ function indicadores(med: Medicion, entrada: EntradaInforme): InformeResultado {
   ]);
 }
 
+/** Costo de las salidas del kárdex en el periodo, a promedio ponderado, por producto. */
+function costoSalidasPeriodo(kardex: EntradaInforme['kardex'], desde: string, hasta: string): Map<string, number> {
+  const previo = new Map<string, number>();
+  const costo = new Map<string, number>();
+  for (const fila of valorizarKardex(kardex, hasta)) {
+    const clave = `${fila.sucursalId}|${fila.productoId}`;
+    const antes = previo.get(clave) ?? 0;
+    if (fila.fecha >= desde && fila.tipo === 'salida') {
+      const bajada = pesos(antes - fila.saldoValorizado);
+      if (bajada > 0) costo.set(fila.productoId, pesos((costo.get(fila.productoId) ?? 0) + bajada));
+    }
+    previo.set(clave, fila.saldoValorizado);
+  }
+  return costo;
+}
+
 function equilibrio(med: Medicion, entrada: EntradaInforme): InformeResultado {
   const a = med.equilibrio(entrada.desde, entrada.hasta);
   const prev = med.rangoAnterior();
   const b = med.equilibrio(prev.desde, prev.hasta);
+  const costos = costoSalidasPeriodo(entrada.kardex, entrada.desde, entrada.hasta);
   const filas: FilaInforme[] = [
     comp('pe-ventas', 'Ventas netas', a.ventas, b.ventas, 1),
     comp('pe-var', 'Costos variables', a.costosVariables, b.costosVariables, 1),
@@ -821,24 +838,35 @@ function equilibrio(med: Medicion, entrada: EntradaInforme): InformeResultado {
   unidades.formato = 'numero';
   filas.push(unidades);
   for (const linea of entrada.contribucion) {
-    const margen = pesos(linea.ventas - linea.costoVariable);
+    const costo = linea.costoVariable > 0 ? linea.costoVariable : (costos.get(linea.producto) ?? 0);
+    const margen = pesos(linea.ventas - costo);
     filas.push({
       id: `pe-prod-${linea.producto}-${linea.linea}`,
       concepto: linea.linea ? `${linea.linea} — ${linea.producto}` : linea.producto,
       actual: margen,
       anterior: null,
       ventas: linea.ventas,
-      costo: linea.costoVariable,
+      costo,
       nivel: 1,
       esTotal: 0,
     });
   }
   const lectura = [
     'Por defecto la 51 es fija, las comisiones 529505 son variables y toda la clase 6 es costo variable. Una marca de la cuenta cambia el gasto.',
+    'El margen por producto resta, a las ventas, el costo de las salidas del kárdex en el periodo.',
   ];
   if (a.puntoPesos == null) lectura.push('No hay punto de equilibrio: las ventas no superan el costo variable.');
   if (a.puntoUnidades == null && a.puntoPesos != null) lectura.push('Faltan las unidades vendidas para expresar el punto en unidades.');
-  return informe('punto-equilibrio', COLS, filas, lectura, a.puntoPesos != null ? [{ titulo: 'Punto de equilibrio', valor: a.puntoPesos, formato: 'moneda' }] : []);
+  const columnas = entrada.contribucion.length > 0
+    ? [
+        COLS[0],
+        COLS[1],
+        { key: 'ventas', titulo: 'Ventas del producto', tipo: 'moneda' as const },
+        { key: 'costo', titulo: 'Costo de las salidas', tipo: 'moneda' as const },
+        ...COLS.slice(2),
+      ]
+    : COLS;
+  return informe('punto-equilibrio', columnas, filas, lectura, a.puntoPesos != null ? [{ titulo: 'Punto de equilibrio', valor: a.puntoPesos, formato: 'moneda' }] : []);
 }
 
 function formulario300(med: Medicion, entrada: EntradaInforme): InformeResultado {

@@ -256,6 +256,17 @@ describe('kárdex contra el auxiliar 1435', () => {
     expect(informe.diferencia).toBe(0);
   });
 
+  test('el margen del producto resta el costo de la salida del kárdex', () => {
+    const informe = construirInforme('punto-equilibrio', entrada(movimientos, {
+      kardex,
+      contribucion: [{ producto: 'p1', linea: '', ventas: 900, costoVariable: 0, unidades: 4 }],
+    }));
+    const producto = fila(informe, 'pe-prod-p1-');
+    expect(producto.costo).toBe(400);
+    expect(producto.ventas).toBe(900);
+    expect(producto.actual).toBe(500);
+  });
+
   test('el formulario 300 compara el IVA del año anterior', () => {
     const informe = construirInforme('formulario-300', entrada([
       mov({ asientoId: 1, fecha: '2025-05-01', cuenta: '240805', debito: 0, credito: 19 }),

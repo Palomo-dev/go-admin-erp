@@ -252,7 +252,6 @@ export class ConciliacionService {
       const { error } = await supabase
         .from('bank_reconciliations')
         .update({
-          difference,
           closing_balance: reconciliation.opening_balance + matchedAmount,
           updated_at: new Date().toISOString()
         })

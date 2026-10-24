@@ -28,6 +28,7 @@ import { TarjetaSeleccionable } from '@/components/kit/TarjetaSeleccionable';
 import { ChipsOpcion } from '@/components/kit/ChipsOpcion';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingGroup, SettingRow } from '@/components/kit/SettingRow';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { PromotionsService } from '../promotionsService';
 import { AvisoSolapamiento, type ConflictoSolape } from './AvisoSolapamiento';
@@ -167,6 +168,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [conflictos, setConflictos] = useState<ConflictoSolape[]>([]);
   const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
   const [erroresPaso, setErroresPaso] = useState<Partial<Record<CampoDescuento, string>>>({});
+  const [avisoTipo, setAvisoTipo] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreatePromotionData>(() => {
     const base: CreatePromotionData = {
       name: '',
@@ -576,27 +578,31 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       icono={ICONO_TIPO[type]}
                       seleccionada={formData.promotion_type === type}
                       onSeleccionar={() => {
-                        // Se conserva el valor solo si significa lo mismo en el
-                        // tipo nuevo (un 15 % de un paquete sigue siendo 15).
-                        // Porcentaje y monto fijo no se arrastran: el 10 por
-                        // defecto se quedaba como pesos y el monto real acababa
-                        // en "Descuento Máximo".
+                        // Se conserva el valor si significa lo mismo (un 15 % de
+                        // un paquete sigue siendo 15). Si el tipo nuevo no usa
+                        // ese número, se avisa y se deja: borrarlo sin decirlo
+                        // perdía el porcentaje.
                         setErroresPaso({});
-                        setFormData(prev => {
-                          if (prev.promotion_type === type) return prev;
-                          const siguePorcentaje = tipoUsaPorcentaje(prev.promotion_type) && tipoUsaPorcentaje(type);
-                          return {
-                            ...prev,
-                            promotion_type: type,
-                            discount_value: valorDescuentoCompatible(prev.promotion_type, type, prev.discount_value ?? 0),
-                            bundle_price: type === 'bundle' ? prev.bundle_price : null,
-                            max_discount_amount: siguePorcentaje ? prev.max_discount_amount : undefined,
-                          };
-                        });
+                        if (formData.promotion_type === type) return;
+                        const valor = formData.discount_value ?? 0;
+                        const compatible = valorDescuentoCompatible(formData.promotion_type, type, valor);
+                        const sePierde = compatible === 0 && valor > 0;
+                        const siguePorcentaje = tipoUsaPorcentaje(formData.promotion_type) && tipoUsaPorcentaje(type);
+                        setAvisoTipo(sePierde ? t('formulario.valorSeConserva') : null);
+                        setFormData((prev) => ({
+                          ...prev,
+                          promotion_type: type,
+                          discount_value: sePierde ? valor : compatible,
+                          bundle_price: type === 'bundle' ? prev.bundle_price : null,
+                          max_discount_amount: siguePorcentaje ? prev.max_discount_amount : undefined,
+                        }));
                       }}
                     />
                   ))}
                 </div>
+                {avisoTipo && (
+                  <AvisoTonal tono="advertencia" titulo={avisoTipo} className="mt-3" />
+                )}
               </div>
 
               {/* Campos según tipo */}

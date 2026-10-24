@@ -56,7 +56,7 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   CUENTA_INEXISTENTE: 'Una de las cuentas no existe en el plan de cuentas.',
   CUENTA_DE_TITULO: 'Una de las cuentas agrupa otras y no recibe movimientos. Elige una cuenta de detalle.',
   CUENTA_NO_ES_DE_DETALLE: 'Una de las cuentas tiene subcuentas: usa una de ellas.',
-  TERCERO_REQUERIDO: 'Esa cuenta exige el NIT o la cédula del tercero.',
+  TERCERO_REQUERIDO: 'Indica el nombre del tercero. El NIT se puede completar después.',
   CENTRO_REQUERIDO: 'Esa cuenta exige un centro de costo.',
   CENTRO_INVALIDO: 'El centro de costo no pertenece a la organización.',
   NOMBRE_REQUERIDO: 'Escribe el nombre de la plantilla.',
@@ -252,6 +252,16 @@ export class ContabilidadService {
     }
 
     return data || [];
+  }
+
+  /** Cuentas que ya tienen al menos una línea de asiento. Sirve para no ofrecer borrarlas. */
+  static async cuentasConLineas(): Promise<string[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase.rpc('fn_puc_cuentas_con_lineas', {
+      p_organization_id: organizationId,
+    });
+    if (error) throw error;
+    return ((data as { account_code: string }[] | null) || []).map((fila) => fila.account_code);
   }
 
   /** Solo código, nombre y tipo: el mayor no necesita el plan completo. */

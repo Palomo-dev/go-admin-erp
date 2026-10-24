@@ -26,6 +26,7 @@ export interface CostCenterInput {
   parent_id: string | null;
   branch_id?: number | null;
   is_active: boolean;
+  is_default?: boolean;
 }
 
 export interface LineaPlantilla {
@@ -70,8 +71,21 @@ export class CostCenterService {
     });
   }
 
+  /** Un solo centro por defecto por organización: el anterior deja de serlo. */
+  private static async soltarDefecto(orgId: number, excepto?: string): Promise<void> {
+    let consulta = supabase
+      .from('cost_centers')
+      .update({ is_default: false, updated_at: new Date().toISOString() })
+      .eq('organization_id', orgId)
+      .eq('is_default', true);
+    if (excepto) consulta = consulta.neq('id', excepto);
+    const { error } = await consulta;
+    if (error) throw error;
+  }
+
   static async create(input: CostCenterInput): Promise<CostCenter> {
     const orgId = this.getOrganizationId();
+    if (input.is_default) await this.soltarDefecto(orgId);
     const { data, error } = await supabase
       .from('cost_centers')
       .insert({ ...input, organization_id: orgId })
@@ -82,11 +96,13 @@ export class CostCenterService {
   }
 
   static async update(id: string, input: Partial<CostCenterInput>): Promise<CostCenter> {
+    const orgId = this.getOrganizationId();
+    if (input.is_default) await this.soltarDefecto(orgId, id);
     const { data, error } = await supabase
       .from('cost_centers')
       .update({ ...input, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('organization_id', this.getOrganizationId())
+      .eq('organization_id', orgId)
       .select()
       .single();
     if (error) throw error;

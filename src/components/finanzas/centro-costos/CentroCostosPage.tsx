@@ -18,7 +18,7 @@ import {
   type ResultadoPlantilla,
 } from './CostCenterService';
 
-const FORMULARIO_VACIO = { code: '', name: '', parent_id: '', is_active: true };
+const FORMULARIO_VACIO = { code: '', name: '', parent_id: '', is_active: true, is_default: false };
 
 const PLANTILLAS: { id: AlcancePlantilla; titulo: string; detalle: string }[] = [
   { id: 'base', titulo: 'Base', detalle: '100 Administración, 200 Ventas/Comercial y 300 Operación/Producción.' },
@@ -88,7 +88,7 @@ export function CentroCostosPage() {
   const abrir = (centro?: CostCenter, padreId = '') => {
     setEditing(centro ?? null);
     setFormData(centro
-      ? { code: centro.code, name: centro.name, parent_id: centro.parent_id || '', is_active: centro.is_active }
+      ? { code: centro.code, name: centro.name, parent_id: centro.parent_id || '', is_active: centro.is_active, is_default: centro.is_default }
       : { ...FORMULARIO_VACIO, parent_id: padreId });
     setShowDialog(true);
   };
@@ -104,6 +104,7 @@ export function CentroCostosPage() {
         name: formData.name.trim(),
         parent_id: formData.parent_id || null,
         is_active: formData.is_active,
+        is_default: formData.is_default,
       };
       if (editing) {
         await CostCenterService.update(editing.id, input);
@@ -324,6 +325,10 @@ export function CentroCostosPage() {
               <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
               <Label>Activo</Label>
             </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={formData.is_default} onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })} />
+              <Label>Centro por defecto</Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
@@ -468,7 +473,10 @@ function FilaCentro({
       >
         {profundidad > 0 ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : null}
         <span className="w-24 font-mono text-sm text-muted-foreground">{nodo.code}</span>
-        <span className="flex-1 font-medium text-foreground">{nodo.name}</span>
+        <span className="flex-1 font-medium text-foreground">
+          {nodo.name}
+          {nodo.is_default ? <span className="ml-2 text-xs font-normal text-fg-secondary">Por defecto</span> : null}
+        </span>
         <span className="hidden text-sm text-muted-foreground sm:inline">{nodo.sucursal || '—'}</span>
         <span className={nodo.is_active ? 'text-xs text-foreground' : 'text-xs text-destructive'}>
           {nodo.is_active ? 'Activo' : 'Inactivo'}

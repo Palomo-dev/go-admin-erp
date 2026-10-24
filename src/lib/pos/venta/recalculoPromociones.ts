@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { CANAL_PROMOCIONES } from '@/lib/pos/venta/avisosPromociones';
+import { CANAL_PROMOCIONES, EVENTO_PROMOCIONES } from '@/lib/pos/venta/avisosPromociones';
 
 /** Respaldo si se cae realtime o el aviso del mismo navegador. */
 export const INTERVALO_RESPALDO_PROMOCIONES_MS = 60_000;
@@ -14,10 +14,11 @@ const ESPERA_MS = 400;
  * las líneas a mano.
  *
  * Se dispara al montar (volver al POS después de editar en esta pestaña), al
- * enfocar, al hacerse visible, por `BroadcastChannel` (otra pestaña), por
- * `postgres_changes` de `promotions` y `promotion_rules` (otro equipo) y cada
- * 60 s si la pestaña está visible. La suscripción usa la cuenta actual: al
- * cambiar de carrito o de venta se suelta la anterior.
+ * enfocar, al hacerse visible, por el evento de la misma pestaña, por
+ * `BroadcastChannel` (otra pestaña), por `postgres_changes` de `promotions` y
+ * `promotion_rules` (otro equipo) y cada 60 s si la pestaña está visible. La
+ * suscripción usa la cuenta actual: al cambiar de carrito o de venta se suelta
+ * la anterior.
  */
 export function useRecalcularAlCambiarPromociones(opciones: {
   organizationId: number | null | undefined;
@@ -55,6 +56,7 @@ export function useRecalcularAlCambiarPromociones(opciones: {
       if (document.visibilityState === 'visible') correr();
     };
     window.addEventListener('focus', correr);
+    window.addEventListener(EVENTO_PROMOCIONES, correr);
     document.addEventListener('visibilitychange', alVolver);
     let bc: BroadcastChannel | undefined;
     try {
@@ -78,6 +80,7 @@ export function useRecalcularAlCambiarPromociones(opciones: {
       if (timer) clearTimeout(timer);
       window.clearInterval(respaldo);
       window.removeEventListener('focus', correr);
+      window.removeEventListener(EVENTO_PROMOCIONES, correr);
       document.removeEventListener('visibilitychange', alVolver);
       bc?.close();
       supabase.removeChannel(canal);

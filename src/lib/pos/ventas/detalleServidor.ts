@@ -164,6 +164,40 @@ async function nombresPerfiles(ctx: Ctx, ids: Array<string | null | undefined>):
   );
 }
 
+/** El motivo se guarda a veces como código del catálogo. La pantalla muestra el nombre. */
+async function nombresDeMotivos(
+  ctx: Ctx,
+  ids: Array<number | null | undefined>,
+  textos: Array<string | null | undefined>,
+): Promise<{ nombre: (id: number | null | undefined, texto: string | null | undefined) => string | null }> {
+  const idsUnicos = [...new Set(ids.filter((x): x is number => typeof x === 'number' && Number.isFinite(x)))];
+  const codigos = [...new Set(textos.map((t) => (t ?? '').trim()).filter(Boolean))];
+  if (!idsUnicos.length && !codigos.length) {
+    return { nombre: (_id, texto) => texto ?? null };
+  }
+  const { data, error } = await ctx.supabase
+    .from('return_reasons')
+    .select('id, code, name')
+    .eq('organization_id', ctx.organizationId);
+  if (error) throw new ErrorDetalleVenta('lectura_fallida', 500, error.message);
+  const porId = new Map<number, string>();
+  const porCodigo = new Map<string, string>();
+  for (const fila of (data ?? []) as Array<{ id: number; code: string | null; name: string | null }>) {
+    if (fila.name) {
+      porId.set(Number(fila.id), fila.name);
+      if (fila.code) porCodigo.set(fila.code.trim().toUpperCase(), fila.name);
+    }
+  }
+  return {
+    nombre: (id, texto) => {
+      if (id != null && porId.has(Number(id))) return porId.get(Number(id)) ?? null;
+      const clave = (texto ?? '').trim().toUpperCase();
+      if (clave && porCodigo.has(clave)) return porCodigo.get(clave) ?? null;
+      return texto ?? null;
+    },
+  };
+}
+
 function direccionTexto(v: unknown): string | null {
   if (!v) return null;
   if (typeof v === 'string') return v;
@@ -181,7 +215,7 @@ async function serialesDeLaVenta(
   const ids = [...new Set(filas.flatMap((l) => idsSerialesLinea(l.serial_ids)))];
   const { data: porVenta, error } = await ctx.supabase
     .from('serial_numbers')
-    .select('id, serial_number, product_id, sale_id')
+    .select('id, serial, product_id, sale_id')
     .eq('organization_id', ctx.organizationId)
     .eq('sale_id', saleId);
   if (error) throw new ErrorDetalleVenta('lectura_fallida', 500, error.message);
@@ -191,7 +225,7 @@ async function serialesDeLaVenta(
   if (faltan.length > 0) {
     const extra = await ctx.supabase
       .from('serial_numbers')
-      .select('id, serial_number, product_id, sale_id')
+      .select('id, serial, product_id, sale_id')
       .eq('organization_id', ctx.organizationId)
       .in('id', faltan);
     if (extra.error) throw new ErrorDetalleVenta('lectura_fallida', 500, extra.error.message);
@@ -199,7 +233,7 @@ async function serialesDeLaVenta(
   }
   return [...(porVenta ?? []), ...(extras ?? [])].map((s) => ({
     id: Number(s.id),
-    codigo: String(s.serial_number ?? ''),
+    codigo: String(s.serial ?? ''),
     product_id: Number(s.product_id),
     sale_id: (s.sale_id as string | null) ?? null,
   }));
@@ -229,7 +263,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       .eq('organization_id', ctx.organizationId),
     ctx.supabase
       .from('returns')
-      .select('id, total_refund, status, refund_method, reason, created_at, return_date, credit_note_invoice_id')
+      .select('id, total_refund, status, refund_method, reason, reason_id, created_at, return_date, credit_note_invoice_id')
       .eq('sale_id', id)
       .eq('organization_id', ctx.organizationId)
       .order('created_at', { ascending: true }),
@@ -304,7 +338,12 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const cliente = clienteRes.data as { id: string; full_name: string | null; identification_number: string | null; doc_number: string | null; email: string | null; phone: string | null } | null;
   const pedido = pedidoRes.data as { id: string; order_number: string | null; delivery_type: string | null; delivery_address: unknown; coupon_code: string | null } | null;
   const com = ((comRes.data ?? []) as Array<{ commission_amount: number | string | null; status: string | null; payee_name: string | null }>)[0];
-  const devoluciones = ((devRes.data ?? []) as Array<{ id: number; total_refund: number | string; status: string | null; refund_method: string | null; reason: string | null; created_at: string | null; return_date: string | null; credit_note_invoice_id: string | null }>);
+  const devoluciones = ((devRes.data ?? []) as Array<{ id: number; total_refund: number | string; status: string | null; refund_method: string | null; reason: string | null; reason_id: number | null; created_at: string | null; return_date: string | null; credit_note_invoice_id: string | null }>);
+  const motivosCatalogo = await nombresDeMotivos(
+    ctx,
+    devoluciones.map((r) => r.reason_id),
+    devoluciones.map((r) => r.reason),
+  );
   const devuelto = devoluciones.filter((r) => r.status === 'processed').reduce((a, r) => a + n(r.total_refund), 0);
   const aDoc = (d: Doc, tipo: DocumentoDetalle['tipo']): DocumentoDetalle => ({
     id: d.id,
@@ -412,7 +451,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       total: n(r.total_refund),
       estado: r.status,
       metodo: r.refund_method,
-      motivo: r.reason,
+      motivo: motivosCatalogo.nombre(r.reason_id, r.reason),
       fecha: r.return_date ?? r.created_at,
       nota_credito_id: r.credit_note_invoice_id,
     })),

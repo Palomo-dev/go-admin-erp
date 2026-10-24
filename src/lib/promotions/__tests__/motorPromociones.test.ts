@@ -479,6 +479,18 @@ describe('repetir el descuento cada N unidades', () => {
     expect(evaluarPromociones([sinRepetir], [linea(1, 7, 1000)], ctx()).discountTotal).toBe(1400);
   });
 
+  it('un paquete con 20 % cada 2 descuenta las unidades pares y nada con una sola', () => {
+    const cadaDos = promo({
+      promotion_type: 'bundle',
+      discount_value: 20,
+      bundle_price: null,
+      repeat_every_quantity: 2,
+    });
+    expect(evaluarPromociones([cadaDos], [linea(1, 1, 1000)], ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([cadaDos], [linea(1, 2, 1000)], ctx()).discountTotal).toBe(400);
+    expect(evaluarPromociones([cadaDos], [linea(1, 4, 1000)], ctx()).discountTotal).toBe(800);
+  });
+
   it('un paquete con precio y N limita los paquetes completos; sin N, todos', () => {
     const reglas = [{ rule_type: 'include_product', product_id: 1, category_id: null, quantity: 1 }];
     const conTope = promo({

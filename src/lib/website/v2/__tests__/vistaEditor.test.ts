@@ -61,7 +61,9 @@ const legacy = {
 describe('páginas', () => {
   test('navegar por todas las páginas no materializa opciones ni deja cambios sin publicar', () => {
     const doc = documento();
-    doc.paginas[0].secciones[1] = { id: 's2', tipo: 'featured_products', variante: null, version: 1, contenido: {} };
+    // Documento histórico anterior a los defaults del contrato: las claves faltantes
+    // son precisamente el caso de regresión, no deben materializarse al navegar.
+    doc.paginas[0].secciones[1] = { id: 's2', tipo: 'featured_products', variante: null, version: 1, contenido: {} } as typeof doc.paginas[number]['secciones'][number];
     doc.paginas[0].seo = { titulo: { mode: 'inherit' }, descripcion: { mode: 'clear' } };
     let vuelta = doc;
     for (let i = 0; i < 3; i++) {

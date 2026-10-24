@@ -110,7 +110,7 @@ export function ConstructorEncabezado({
           <Select className={control} aria-label="Esquinas" tamano="sm" valor={String(String(search.radius || 'rounded')) || '__predeterminado__'} onValorChange={(valor) => guardar({ ...builder, search: { ...search, radius: (valor === '__predeterminado__' ? '' : valor) } })} opciones={[...(['square', 'rounded', 'semi', 'pill'].map((f) =>({ valor: String(f) || '__predeterminado__', etiqueta: String(f) })))]} />
         </>
       ) : null}
-      {search.type && (
+      {!!search.type && (
         <section className="flex flex-col gap-3" aria-label="Apariencia del buscador">
           <FormField etiqueta="Borde del buscador">
             {(campo) => <Select id={campo.id} aria-describedby={campo['aria-describedby']} aria-invalid={campo['aria-invalid']} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(search.border || 'thin')} opciones={[{ valor: 'none', etiqueta: 'Sin borde' }, { valor: 'thin', etiqueta: 'Fino' }, { valor: 'thick', etiqueta: 'Grueso' }]} onValorChange={(v) => guardar({ ...builder, search: { ...search, border: v } })} />}

@@ -73,9 +73,9 @@ test('una edición guardada durante la publicación no se pierde al recibir el A
   const h = await cargar();
   let operacion: Promise<ResultadoPublicacion | null>;
   act(() => { operacion = h.result.current.publicar(); });
-  await act(async () => { await h.result.current.guardar((d) => ({ ...d, contenido: { nuevaEdicion: true } })); });
+  await act(async () => { await h.result.current.guardar((d) => ({ ...d, contenido: { textoPie: { mode: 'value', value: 'Nueva edición' } } })); });
   await act(async () => { terminar(publicada); await operacion; });
-  expect(h.result.current.documento?.contenido).toEqual({ nuevaEdicion: true });
+  expect(h.result.current.documento?.contenido).toEqual({ textoPie: { mode: 'value', value: 'Nueva edición' } });
   expect(h.result.current.sitio?.cambiosSinPublicar).toBe(true);
   expect(h.result.current.borrador?.version).toBe(3);
 });

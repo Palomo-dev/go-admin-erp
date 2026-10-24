@@ -1014,6 +1014,21 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'with_image', label: 'Con imagen' },
     ],
     contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Suscríbete' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'image_url', label: 'Imagen', type: 'image', showIf: { variantIn: ['with_image', 'banner'] } },
+      { key: 'button_text', label: 'Texto del botón', type: 'text', placeholder: 'Suscribirme' },
+      { key: 'placeholder', label: 'Placeholder del email', type: 'text', placeholder: 'tu@email.com' },
+      { key: 'disclaimer', label: 'Aviso legal', type: 'textarea', placeholder: 'Al suscribirte aceptas nuestra política de privacidad' },
+      { key: 'layout', label: 'Distribución', type: 'select', group: 'layout', options: [
+        { value: 'centered', label: 'Centrado' },
+        { value: 'left', label: 'Izquierda' },
+        { value: 'split', label: 'Dividido' },
+      ]},
+      { key: 'input_bg_color', label: 'Fondo del input', type: 'color', group: 'style' },
+      { key: 'input_text_color', label: 'Color del texto del input', type: 'color', group: 'style' },
+      { key: 'button_bg_color', label: 'Color del botón', type: 'color', group: 'style' },
+      { key: 'button_text_color', label: 'Color del texto del botón', type: 'color', group: 'style' },
       {
         key: 'newsletter_panel',
         label: 'Newsletter',

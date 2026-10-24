@@ -816,6 +816,8 @@ function SectionListItem({
                     if (!isFieldVisible(field, section.content, section.section_variant)) {
                       return null;
                     }
+                    // El panel del boletín vive en el inspector nuevo. Aquí quedan los campos que el sitio ya pinta.
+                    if (field.type === 'newsletter') return null;
                     // El contenido de la carta se edita en su constructor, no con un control suelto.
                     if (field.type === 'carta') {
                       return (

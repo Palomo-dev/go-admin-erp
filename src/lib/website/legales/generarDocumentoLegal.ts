@@ -13,7 +13,7 @@ import { z } from 'zod';
 import type { ClaveLegal } from '@/lib/website/configuracionSitio';
 import { giroDeTipoOrganizacion, type Giro } from '@/components/sitio-web/paginas/plantillasPagina';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
-import { toPlainDate } from '@/lib/utils/dateCore';
+import { DEFAULT_TIMEZONE, toPlainDate } from '@/lib/utils/dateCore';
 import { loadOrgModelSettings, resolveModel } from '@/lib/ai/agent/modelRouter';
 import { chargeAiCredits, InsufficientCreditsError } from '@/lib/services/crm/aiCostService';
 import { ensureAiSettings } from '@/lib/services/aiCreditsService';
@@ -125,7 +125,7 @@ export async function cargarDatosLegales(
   // `giroDeTipoOrganizacion(null)` cae en tienda. Envíos solo si el tipo es
   // restaurante (1) o tienda (3), o si el sitio tiene envíos activos.
   const vende = typeId === 1 || typeId === 3;
-  const tz = texto(org.timezone) || 'America/Bogota';
+  const tz = texto(org.timezone) || DEFAULT_TIMEZONE;
   const dominios = (domainsRes.data ?? []) as DominioDelSitio[];
   const host = hostSitio(dominios, texto(org.subdomain)) || texto(org.custom_domain);
   const datos: DatosLegales = {

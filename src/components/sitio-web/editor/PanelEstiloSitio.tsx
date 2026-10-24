@@ -14,7 +14,7 @@
 import { useMemo } from 'react';
 import { X } from 'lucide-react';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
-import { valorPropio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { vaciar, valorPropio, type DocumentoSitio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
 import { EstiloDelSitioPanel } from '@/components/sitio-web/diseno/EstiloDelSitioPanel';
 import { PanelCarrusel, PanelPaginacion } from './inspector/PanelesListaCarrusel';
 import { paginacionTemaDisponible, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
@@ -39,7 +39,6 @@ import {
 } from '@/lib/website/v2/tokensEstilo';
 import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
-import { vaciar, valorPropio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
 import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
 import { urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';

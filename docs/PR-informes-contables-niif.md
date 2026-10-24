@@ -2,7 +2,7 @@
 
 Los nuevos informes agregan comparativos, conciliaciones y borradores tributarios sobre una fuente de asientos contabilizados. El mayor carga todas las cuentas sin exigir una selección. Las diferencias de patrimonio, efectivo e inventario se muestran y se conservan al exportar; no se generan ajustes automáticos para ocultarlas.
 
-Base: `main` (`7c789de2653a00181e36c7ad8d70c7d2d8c2665b` al crear la rama). Rama: `codex/informes-contables-niif`. Destino: PR en borrador contra `main`, sin merge. `master` no se modificó.
+Base: `main` (`7c789de2653a00181e36c7ad8d70c7d2d8c2665b` al crear la rama). Rama: `codex/informes-contables-niif`. [PR #460](https://github.com/Palomo-dev/go-admin-erp/pull/460) en borrador contra `main`, sin merge. `master` no se modificó.
 
 ## Cambios
 
@@ -76,6 +76,8 @@ Antes de aplicar se probaron dentro de una transacción revertida: JSON anterior
 
 Se aplicó por `apply_migration` y se comprobaron versión, hash y permisos. `anon` no ejecuta la vista previa ni la guarda de acceso; `authenticated` ejecuta la vista previa y no el helper privado de filas. Después de las pruebas quedaron en cero las configuraciones, metadatos y auditorías nuevas, los certificados del modo nuevo y las facturas temporales de QA. No ejecuta backfill ni reescribe certificados archivados o asientos históricos. Revisión independiente de SQL, HTTP, expedición/reimpresión y RLS: 9.6/10, acotada a esas comprobaciones.
 
+El asesor de seguridad señala `authenticated_security_definer_function_executable` en las RPC públicas de este alcance. Esa ejecución es intencional: las funciones comprueban sesión, membresía activa, permisos y sucursales, con negativos reales de otra organización. Los helpers de cálculo siguen privados y `anon` no ejecuta las RPC. El aviso no se silenció ni se presenta el proyecto completo como libre de advertencias.
+
 ## Cómo revertir
 
 1. Restaurar primero el código previo de la aplicación, para que deje de consultar las tablas y RPC nuevas.
@@ -91,7 +93,7 @@ No ejecutar propuestas de backfills anteriores ni `supabase db push` como parte 
 - Última ejecución integrada registrada: **29 suites, 324/324 pruebas**, incluidos motores nuevos, fuentes, API, configuración, interfaz y motor/rutas/reportes de retenciones existentes. Incluye patrimonio contra balance, flujo contra efectivo/equivalentes, kárdex contra 1435, grupos NIIF, rechazos de permisos/filtros, errores de inventario, moneda y cambio de organización. Los tests HTTP usan fuentes simuladas; las pruebas de RLS/RPC se ejecutaron en la base real dentro de transacciones revertidas. Revisión independiente HTTP y de guardia cliente: 9.6/10, acotada a sus comprobaciones documentadas.
 - ESLint de **77 archivos nuevos/modificados**, con `--max-warnings 0`, y TypeScript focal con `npx tsc --noEmit -p tsconfig.informes-contables.json` en verde. Se generaron y leyeron archivos PDF/XLSX reales, incluido un paquete de seis documentos. La suite conserva advertencia de handles abiertos y usa `--forceExit`; no se afirma haber resuelto ese comportamiento del entorno de pruebas.
 - Guardrails y zona horaria: **28 suites, 853/853 pruebas en UTC y 853/853 en America/Bogota**, después de retirar el literal de moneda del rótulo de la interfaz sin ampliar allow-lists.
-- TypeScript global `npx tsc --noEmit -p tsconfig.json` pasó sobre el código final con heap de 12 GB, después de agregar la guarda de `pathname` nullable detectada por Next 15 en `useConfiguracionState`. El build normal del código final está en curso; no se declara todavía aprobado.
+- TypeScript global `npx tsc --noEmit -p tsconfig.json` pasó sobre el código final con heap de 12 GB, después de agregar la guarda de `pathname` nullable detectada por Next 15 en `useConfiguracionState`. El build de producción pasó con `NEXT_SKIP_TYPECHECK=1`, como el despliegue, y `NODE_OPTIONS=--max-old-space-size=12288`: compiló, generó las 369 páginas estáticas y terminó de optimizar/trazar las rutas, incluidas las cuatro API y las dos pantallas nuevas. Los tipos globales y ESLint se comprobaron por separado; no se silenciaron errores para declararlos aprobados.
 - La ejecución Jest global con `--bail` se detuvo en `integracion-f2.test.ts` de POS: el mock previo no implementa `q.range`. Alcanzó seis suites (cinco pasaron, una falló) y 445 pruebas (421 pasaron, 17 fallaron y siete se omitieron). Los archivos implicados no se modifican en esta rama; no se declara verde la suite global.
 - No se ha recorrido la interfaz con una sesión autenticada en navegador. Las 14 comprobaciones de Chromium con API/contextos simulados no sustituyen esa validación.
 - `stock_movements` no ofrece asignación fiable por centro de costo. Con ese filtro, los libros contables sí se filtran, pero se omiten kárdex físico y conciliación de inventario y se explica el motivo. La conciliación por sede está implementada; no se compara inventario global con un saldo parcial de 1435.

@@ -1,4 +1,4 @@
-import { aplicarPresetDiseno, tokensDisenoDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { aplicarPresetDiseno, cascaronTemaDisponible, tokensDisenoDisponibles } from '@/lib/website/v2/tokensEstilo';
 import { variablesDeTokens } from '@/lib/website/v2/tokensDiseno';
 import { PRESETS_DISENO, presetDisenoPorId } from '@/lib/website/v2/presetsDiseno';
 import { resolverIconoEncabezado } from '@/lib/website/v2/iconosEncabezado';
@@ -33,6 +33,16 @@ describe('perillas y encabezado', () => {
     expect(variablesDeTokens({ radio: { mode: 'value', value: 'suave' } })['--gw-radius-card']).toBe('8px');
     expect(presetDisenoPorId('actual').tokens).toEqual({});
     expect(PRESETS_DISENO.map((p) => p.id)).toContain('comercio_vibrante');
+  });
+
+  it('el estilo global de encabezados no se escribe hasta que el sitio lo acepte', () => {
+    const env = process.env.NEXT_PUBLIC_WEBSITE_CASCARON;
+    delete process.env.NEXT_PUBLIC_WEBSITE_CASCARON;
+    expect(cascaronTemaDisponible()).toBe(false);
+    process.env.NEXT_PUBLIC_WEBSITE_CASCARON = '1';
+    expect(cascaronTemaDisponible()).toBe(true);
+    if (env === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_CASCARON;
+    else process.env.NEXT_PUBLIC_WEBSITE_CASCARON = env;
   });
 
   it('con el flag apagado el preset no se escribe', () => {

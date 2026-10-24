@@ -18,6 +18,18 @@
 
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 
+/** Encabezado, visualización y fondo. No tienen valor por defecto: si no se tocan, no se guardan. */
+export const SHELL_FIELDS: ContentFieldDef[] = [
+  {
+    key: 'section_header',
+    label: 'Cascarón de la sección',
+    type: 'section_header',
+    group: 'content',
+    section: 'Cascarón de la sección',
+    helpText: 'Sin estos datos, la sección sigue con su título, su lista y su fondo de hoy. Heredar es el valor inicial.',
+  },
+];
+
 // ============================================================
 // STYLE_FIELDS — inyectado en todas las secciones
 // ============================================================

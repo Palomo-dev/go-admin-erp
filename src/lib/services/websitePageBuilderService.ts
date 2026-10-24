@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase/config';
 import {
   STYLE_FIELDS,
+  SHELL_FIELDS,
   SPACING_FIELDS,
   GRID_FIELDS,
   CAROUSEL_FIELDS,
@@ -179,7 +180,11 @@ export interface ContentFieldDef {
     /** Aviso informativo del inspector: no guarda nada (la clave empieza por `_`). */
     | 'notice'
     /** Opciones con miniatura (no escribe hasta que se elige una). */
-    | 'visual';
+    | 'visual'
+    /** Encabezado común. Guarda el objeto `section_header`. */
+    | 'section_header'
+    /** Fondo común. Guarda el objeto `section_background`. */
+    | 'section_background';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -1038,6 +1043,76 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Productos' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'product_source', label: 'Fuente de productos', type: 'select', group: 'data', helpText: 'Sin elegir, se usa el listado de hoy.', options: [
+        { value: 'all', label: 'Todos' },
+        { value: 'categories', label: 'Categorías' },
+        { value: 'manual', label: 'Selección manual' },
+        { value: 'new', label: 'Nuevos' },
+        { value: 'offers', label: 'Ofertas' },
+        { value: 'best_sellers', label: 'Más vendidos' },
+      ]},
+      { key: 'include_subcategories', label: 'Incluir subcategorías', type: 'boolean', group: 'data', showIf: { field: 'product_source', equals: 'categories' } },
+      { key: 'new_days', label: 'Días para considerarlos nuevos', type: 'number', group: 'data', min: 1, max: 365, showIf: { field: 'product_source', equals: 'new' } },
+      { key: 'selected_product_ids', label: 'Ids de productos (separados por coma)', type: 'text', group: 'data', showIf: { field: 'product_source', equals: 'manual' }, helpText: 'Números de producto, separados por coma.' },
+      { key: 'exclude_out_of_stock', label: 'Excluir agotados', type: 'boolean', group: 'data' },
+      { key: 'products_limit', label: 'Cantidad', type: 'number', group: 'data', min: 4, max: 100, helpText: 'Entre 4 y 100. Vacío: el tope de hoy.' },
+      { key: 'columns_desktop', label: 'Columnas en escritorio', type: 'number', group: 'layout', min: 1, max: 6 },
+      { key: 'columns_tablet', label: 'Columnas en tablet', type: 'number', group: 'layout', min: 1, max: 4 },
+      { key: 'columns_mobile', label: 'Columnas en celular', type: 'number', group: 'layout', min: 1, max: 2 },
+      { key: 'display_mode', label: 'Forma de mostrar', type: 'select', group: 'layout', options: [
+        { value: 'grid', label: 'Cuadrícula' },
+        { value: 'list', label: 'Lista' },
+        { value: 'carousel', label: 'Carrusel' },
+      ]},
+      { key: 'pagination', label: 'Paginación', type: 'select', group: 'layout', options: [
+        { value: 'none', label: 'Solo el límite' },
+        { value: 'pages', label: 'Páginas' },
+        { value: 'load_more', label: 'Ver más' },
+        { value: 'infinite', label: 'Scroll infinito' },
+      ]},
+      { key: 'per_page', label: 'Por página', type: 'number', group: 'layout', min: 4, max: 48 },
+      { key: 'chip_style', label: 'Estilo del chip', type: 'select', group: 'layout', options: [
+        { value: 'pill', label: 'Píldora' },
+        { value: 'semi', label: 'Semi' },
+        { value: 'square', label: 'Cuadrado' },
+        { value: 'underline', label: 'Subrayado' },
+      ]},
+      { key: 'chip_mobile', label: 'Chips en celular', type: 'select', group: 'layout', options: [
+        { value: 'scroll', label: 'Scroll horizontal' },
+        { value: 'select', label: 'Lista desplegable' },
+      ]},
+      { key: 'show_all_chip', label: 'Incluir «Todos»', type: 'boolean', group: 'behavior' },
+      { key: 'filter_position', label: 'Posición de los filtros', type: 'select', group: 'layout', options: [
+        { value: 'top', label: 'Barra superior' },
+        { value: 'side', label: 'Lateral' },
+        { value: 'drawer', label: 'Panel en celular' },
+      ]},
+      { key: 'filters', label: 'Filtros activos', type: 'checklist', group: 'behavior', options: [
+        { value: 'category', label: 'Categoría' },
+        { value: 'price', label: 'Precio' },
+        { value: 'offers', label: 'Ofertas' },
+        { value: 'stock', label: 'Disponibilidad' },
+        { value: 'brand', label: 'Marca' },
+        { value: 'attributes', label: 'Atributos' },
+        { value: 'rating', label: 'Calificación' },
+        { value: 'shipping', label: 'Envío gratis' },
+      ]},
+      { key: 'show_sort', label: 'Mostrar «Ordenar»', type: 'boolean', group: 'behavior' },
+      { key: 'sort_options', label: 'Opciones de «Ordenar»', type: 'checklist', group: 'behavior', options: [
+        { value: 'newest', label: 'Más nuevos' },
+        { value: 'price_asc', label: 'Precio ascendente' },
+        { value: 'price_desc', label: 'Precio descendente' },
+        { value: 'sales', label: 'Más vendidos' },
+        { value: 'name', label: 'Nombre' },
+      ]},
+      { key: 'show_count', label: 'Contador de productos', type: 'boolean', group: 'behavior' },
+      { key: 'show_categories', label: 'Mostrar barra de categorías', type: 'boolean', group: 'behavior', defaultValue: true },
+      { key: 'chip_source', label: 'Categorías de la barra', type: 'select', group: 'behavior', helpText: 'Sin elegir, se usan las de hoy.', options: [
+        { value: 'all', label: 'Todas' },
+        { value: 'selected', label: 'Las seleccionadas' },
+        { value: 'manual', label: 'Lista manual, en este orden' },
+      ]},
+      { key: 'chip_category_ids', label: 'Ids de la barra (en orden)', type: 'text', group: 'behavior', showIf: { field: 'chip_source', equals: 'manual' }, helpText: 'Números de categoría, separados por coma, en el orden de la barra.' },
       // Reemplaza CategorySelectorEditor ad-hoc
       {
         key: 'selected_category_ids',
@@ -1057,6 +1132,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'name', label: 'Nombre' },
         { value: 'sales', label: 'Más vendidos' },
         { value: 'newest', label: 'Más nuevos' },
+        { value: 'manual', label: 'Manual' },
       ]},
       {
         key: 'show_pagination',
@@ -3742,7 +3818,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
 export const SECTION_CATALOG: SectionTypeDefinition[] = RAW_CATALOG.map((s) =>
   aplicarInterruptoresSitio({
     ...s,
-    contentFields: [...s.contentFields, ...STYLE_FIELDS, ...SPACING_FIELDS],
+    contentFields: [...s.contentFields, ...SHELL_FIELDS, ...STYLE_FIELDS, ...SPACING_FIELDS],
   }),
 );
 

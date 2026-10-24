@@ -21,6 +21,7 @@ import { cn } from '@/utils/Utils';
 import { CampoNumero, ChipsOpcion, SegmentedControl, SettingRow } from '@/components/kit';
 import { Switch } from '@/components/ui/switch';
 import { FontField } from '@/components/sitio-web/ui/FontField';
+import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import { ColorMarcaField } from '@/components/sitio-web/ui/ColorMarcaField';
 import { DeviceToggleGroup } from '@/components/sitio-web/ui/DeviceToggle';
 import { TABLETA_EN_SITIO_PUBLICO, conTabletaSegunContrato } from '@/components/sitio-web/ui/visibilidadDispositivo';
@@ -259,6 +260,15 @@ export function InspectorEstilo({
                 onValorChange={(fondo) => cambiar({ fondo })}
               />
               <p className={AYUDA}>{t('estilo.fondoAyuda')}</p>
+              {(estilo.fondo ?? ESTILO_POR_DEFECTO.fondo) === 'alterno' && (
+                <ColorField
+                  etiqueta={t('estilo.colorAlterno')}
+                  descripcion={t('estilo.colorAlternoAyuda')}
+                  valor={estilo.colorAlterno ?? '#F5F3EF'}
+                  onCambiar={(colorAlterno) => cambiar({ colorAlterno })}
+                  deshabilitado={deshabilitado}
+                />
+              )}
             </Grupo>
             <Grupo titulo={t('estilo.entradaTitulo')} id={`${id}-entrada`}>
               <ChipsOpcion

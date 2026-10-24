@@ -199,12 +199,13 @@ describe('ColorMarcaField (05)', () => {
 });
 
 describe('CampoLogoFavicon y EtiquetaDieta', () => {
-  test('tres tarjetas, «Cambiar»/«Subir» y «Quitar»', () => {
+  test('cuatro tarjetas, «Cambiar»/«Subir» y «Quitar»', () => {
     const onCambiar = jest.fn();
     renderConIdioma(
       <CampoLogoFavicon
         logoUrl="https://x/logo.png"
         logoFondoClaroUrl="https://x/color.png"
+        logoOscuroUrl={null}
         faviconUrl={null}
         permitirQuitar
         onCambiar={onCambiar}
@@ -214,6 +215,7 @@ describe('CampoLogoFavicon y EtiquetaDieta', () => {
     expect(screen.getByRole('img', { name: 'Logo para fondo claro actual' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cambiar Logo' }).textContent).toBe('Cambiar');
     expect(screen.getByRole('button', { name: 'Cambiar Logo para fondo claro' }).textContent).toBe('Cambiar');
+    expect(screen.getByRole('button', { name: 'Cambiar Logo para fondo oscuro' }).textContent).toBe('Subir');
     expect(screen.getByRole('button', { name: 'Cambiar Favicon' }).textContent).toBe('Subir');
     fireEvent.click(screen.getByRole('button', { name: 'Quitar Logo para fondo claro' }));
     expect(onCambiar).toHaveBeenCalledWith('logoFondoClaro', null);
@@ -240,14 +242,17 @@ describe('CampoLogoFavicon y EtiquetaDieta', () => {
       nombre: 'Tu marca',
       logoUrl: 'https://x/blanco.png',
       logoFondoClaroUrl: null,
+      logoOscuroUrl: null,
       faviconUrl: null,
     });
     expect(guardado.identidad.logoUrl).toEqual({ mode: 'value', value: 'https://x/blanco.png' });
     expect(guardado.identidad.logoFondoClaroUrl).toBeUndefined();
+    expect(guardado.identidad.logoOscuroUrl).toBeUndefined();
     const conColor = conIdentidad(guardado, {
       nombre: 'Tu marca',
       logoUrl: 'https://x/blanco.png',
       logoFondoClaroUrl: 'https://x/color.png',
+      logoOscuroUrl: null,
       faviconUrl: null,
     });
     expect(conColor.identidad.logoUrl).toEqual({ mode: 'value', value: 'https://x/blanco.png' });

@@ -47,6 +47,7 @@ export function documentoReclamo(id: string, codigo: string | null): DocumentoSe
 export const RUTA_SERIALES = '/app/inventario/seriales';
 export const RUTA_GARANTIAS = '/app/inventario/garantias';
 export const RUTA_TRAZABILIDAD = '/app/inventario/reportes/trazabilidad';
+export const RUTA_STOCK_SIN_SERIALES = '/app/inventario/reportes/stock-sin-seriales';
 
 export const rutaSerial = (id: number) => `${RUTA_SERIALES}/${id}`;
 export const rutaReclamo = (id: string) => `${RUTA_GARANTIAS}/${id}`;
@@ -78,6 +79,7 @@ export type SituacionGarantia =
   | { tipo: 'por_vencer'; dias: number; fin: string; meses: number | null }
   | { tipo: 'vencida'; dias: number; fin: string }
   | { tipo: 'empieza_al_vender'; meses: number }
+  | { tipo: 'desde_la_venta'; meses: number }
   | { tipo: 'en_reclamo'; codigo: string | null; id: string }
   | { tipo: 'en_rma'; rma: string | null; id: string }
   | { tipo: 'no_aplica' }
@@ -96,6 +98,21 @@ export function situacionGarantia(
     estado: string;
     garantia: GarantiaSerial;
     reclamo?: { id: string; codigo: string | null; estado: string; rma: string | null } | null;
+    /** Meses del producto, cuando el serial no trae `warranty_months`. */
+    mesesProducto?: number | null;
+    /**
+     * El listado ya trae el plazo en `garantia.meses`. Esta forma admite
+     * además el plazo del producto cuando la fila lo trae suelto, sin dejar
+     * fuera a `ProductoRef` (id, nombre, sku).
+     */
+    producto?: {
+      id?: number;
+      uuid?: string | null;
+      nombre?: string | null;
+      sku?: string | null;
+      warranty_months?: number | null;
+      meses_garantia?: number | null;
+    } | null;
   },
   hoy: string,
 ): SituacionGarantia {
@@ -112,8 +129,13 @@ export function situacionGarantia(
       : { tipo: 'vigente', dias, fin, meses: fila.garantia.meses };
   }
   if ((ESTADOS_DADO_DE_BAJA as readonly string[]).includes(fila.estado)) return { tipo: 'no_aplica' };
-  const meses = fila.garantia.meses ?? 0;
+  const meses = [fila.garantia.meses, fila.mesesProducto, fila.producto?.warranty_months, fila.producto?.meses_garantia]
+    .map((valor) => Number(valor))
+    .find((n) => Number.isFinite(n) && n > 0) ?? 0;
   if (meses > 0 && (ESTADOS_EN_BODEGA as readonly string[]).includes(fila.estado)) return { tipo: 'empieza_al_vender', meses };
+  // Vendida (o en otro estado que no es bodega) sin fechas: el plazo del
+  // producto cuenta desde la venta, igual que `fn_garantia_int_evaluar`.
+  if (meses > 0) return { tipo: 'desde_la_venta', meses };
   return { tipo: 'sin_garantia' };
 }
 

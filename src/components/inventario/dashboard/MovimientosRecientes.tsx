@@ -150,7 +150,7 @@ const MovimientosRecientes: FC<MovimientosRecientesProps> = ({ movements, isLoad
                   </span>
                 </div>
                 <Link 
-                  href={`/app/inventario/productos/${movement.productId}`}
+                  href={`/app/inventario/productos/${movement.productUuid || movement.productId}`}
                   className="font-medium text-sm text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 break-words whitespace-normal block"
                 >
                   {movement.productName}

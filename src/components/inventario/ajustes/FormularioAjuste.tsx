@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, ClipboardCheck, Plus, Save, ScanBarcode, Search, Trash2, X } from 'lucide-react';
 import {
+  AvisoTonal,
   CampoNumero,
   Dialogo,
   EmptyState,
@@ -26,9 +27,23 @@ import { useToast } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
+import {
+  RUTA_FACTURA_COMPRA,
+  asientoPorTotal,
+  asientoSobrante,
+  costoParecePrecio,
+  cuentaInventarioPorTipo,
+  debeConfirmarAjuste,
+  rutaConteo,
+  sugerirCompraPorNegativo,
+  sugerirCorregirConteo,
+} from '@/lib/inventario/cargaInicial';
+import { leerConfigInventario } from '@/lib/inventario/permisos';
+import { supabase } from '@/lib/supabase/config';
 import { usePermisosInventario } from '@/lib/inventario/usePermisosInventario';
 import { formatInstantWithOffset, plainDateToInstant } from '@/lib/utils/dateCore';
+import { consultarConteoDelMes, corregirConteoDelMes, type ConteoDelMes } from '@/lib/services/stockService';
 import {
   adjustmentService,
   ErrorAjuste,
@@ -111,10 +126,102 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
   const [intentoAplicar, setIntentoAplicar] = useState(false);
   const [intentoGuardar, setIntentoGuardar] = useState(false);
   const [sucio, setSucio] = useState(false);
+  const [umbral, setUmbral] = useState<number | null>(5_000_000);
+  const [conMovimiento, setConMovimiento] = useState<Set<number>>(new Set());
+  const [precios, setPrecios] = useState<Map<number, number>>(new Map());
+  const [movsListos, setMovsListos] = useState(false);
+  const [costoConfirmado, setCostoConfirmado] = useState(false);
+  const [saldoDescartado, setSaldoDescartado] = useState(false);
+  const [conteoMes, setConteoMes] = useState<(ConteoDelMes & { productoId: number }) | null>(null);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const clave = useRef<string | null>(null);
   const porId = useRef(new Map<number, ProductoParaAjuste>());
 
   const org = getOrganizationId();
+  const { organization } = useOrganization();
+  const idsLinea = useMemo(() => [...new Set(lineas.map((l) => l.producto.id))].sort((a, b) => a - b).join(','), [lineas]);
+
+  useEffect(() => {
+    const ids = idsLinea ? idsLinea.split(',').map(Number).filter((n) => n > 0) : [];
+    if (!org || !sucursal || ids.length === 0) {
+      setConteoMes(null);
+      return;
+    }
+    let vivo = true;
+    void (async () => {
+      for (const id of ids) {
+        try {
+          const c = await consultarConteoDelMes(org, sucursal, id);
+          if (!vivo) return;
+          if (c) {
+            setConteoMes({ ...c, productoId: id });
+            return;
+          }
+        } catch {
+          if (!vivo) return;
+        }
+      }
+      if (vivo) setConteoMes(null);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [org, sucursal, idsLinea]);
+
+  useEffect(() => {
+    let vivo = true;
+    leerConfigInventario(org)
+      .then((c) => {
+        if (vivo) setUmbral(c.monto_confirmacion_ajuste);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [org]);
+
+  useEffect(() => {
+    const ids = idsLinea ? idsLinea.split(',').map(Number).filter((n) => n > 0) : [];
+    if (!org || ids.length === 0) {
+      setConMovimiento(new Set());
+      setPrecios(new Map());
+      setMovsListos(true);
+      return;
+    }
+    let vivo = true;
+    setMovsListos(false);
+    void Promise.all([
+      Promise.all(
+        ids.map(async (id) => {
+          const { count, error } = await supabase
+            .from('stock_movements')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', org)
+            .eq('product_id', id);
+          return error ? null : { id, n: count ?? 0 };
+        }),
+      ),
+      supabase.from('product_prices').select('product_id, price').in('product_id', ids).is('effective_to', null),
+    ]).then(([movs, preciosRes]) => {
+      if (!vivo) return;
+      if (movs.every((m) => m !== null)) {
+        const con = new Set<number>();
+        for (const m of movs) if (m && m.n > 0) con.add(m.id);
+        setConMovimiento(con);
+        setMovsListos(true);
+      }
+      const mapa = new Map<number, number>();
+      for (const p of preciosRes.data ?? []) if (p.price != null) mapa.set(p.product_id, Number(p.price));
+      setPrecios(mapa);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [org, idsLinea]);
+
+  useEffect(() => {
+    setSaldoDescartado(false);
+  }, [idsLinea]);
 
   // ── Carga inicial ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -258,6 +365,40 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
 
   // ── Cálculos y validación ───────────────────────────────────────────────
   const resumen = useMemo(() => resumirLineas(modo, lineas), [modo, lineas]);
+  const sinHistorial =
+    movsListos &&
+    !saldoDescartado &&
+    razon !== 'initial_setup' &&
+    lineas.some((l) => (calcularLinea(modo, l).diferencia ?? 0) > 0 && !conMovimiento.has(l.producto.id));
+  const desdeNegativo = lineas.some((l) => {
+    const c = calcularLinea(modo, l);
+    return sugerirCompraPorNegativo(c.sistema) && (c.diferencia ?? 0) > 0;
+  });
+  const avisoCosto = lineas.some((l) => {
+    const c = calcularLinea(modo, l);
+    return (c.diferencia ?? 0) > 0 && costoParecePrecio(c.costo, precios.get(l.producto.id) ?? null);
+  });
+  const totalPositivo = lineas.reduce((s, l) => {
+    const impacto = calcularLinea(modo, l).impacto ?? 0;
+    return s + (impacto > 0 ? impacto : 0);
+  }, 0);
+  const pideNota = debeConfirmarAjuste({
+    creadaEn: organization?.isPartial ? null : organization?.created_at,
+    ahora: new Date(),
+    monto: Math.round(totalPositivo),
+    umbral,
+  });
+  const cuentaInventario = cuentaInventarioPorTipo(
+    organization?.isPartial ? null : typeof organization?.type_id === 'number' ? organization.type_id : null,
+  );
+  const asientoInicial =
+    razon === 'initial_setup' && totalPositivo > 0 ? asientoPorTotal({ total: totalPositivo, cuentaInventario }) : null;
+  const asientoDelSobrante =
+    razon !== 'initial_setup' && totalPositivo > 0 ? asientoSobrante({ total: totalPositivo, cuentaInventario }) : null;
+  const ofreceCorregir =
+    modo !== 'salida' &&
+    conteoMes !== null &&
+    sugerirCorregirConteo({ direccion: 'in', motivo: razon, tuvoConteoOFaltante: true });
   const validacionGuardar = validarAjuste({ sucursal, razon, fechaLocal, modo, lineas }, false);
   const validacionAplicar = validarAjuste({ sucursal, razon, fechaLocal, modo, lineas }, true);
   const errores = intentoAplicar ? validacionAplicar : intentoGuardar ? validacionGuardar : null;
@@ -311,6 +452,14 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
     setIntentoAplicar(true);
     if (!validacionAplicar.valido) {
       toast({ variant: 'destructive', title: t('revisa') });
+      return;
+    }
+    if (pideNota && !notas.trim()) {
+      toast({ variant: 'destructive', title: t('carga.notaObligatoria') });
+      return;
+    }
+    if (avisoCosto && !costoConfirmado) {
+      toast({ variant: 'destructive', title: t('carga.costoParecePrecio') });
       return;
     }
     clave.current = null;
@@ -522,7 +671,12 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
             />
           )}
         </FormField>
-        <FormField etiqueta={t('datos.nota')} className="sm:col-span-2 lg:col-span-3">
+        <FormField
+          etiqueta={t('datos.nota')}
+          obligatorio={pideNota}
+          error={intentoAplicar && pideNota && !notas.trim() ? t('carga.notaObligatoria') : null}
+          className="sm:col-span-2 lg:col-span-3"
+        >
           <Textarea
             value={notas}
             maxLength={1000}
@@ -536,6 +690,99 @@ export function FormularioAjuste({ ajusteId }: { ajusteId?: number }) {
           />
         </FormField>
       </FormSection>
+
+      {ofreceCorregir && conteoMes && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('carga.corregirConteo')}
+          descripcion={
+            conteoMes.varios
+              ? t('carga.corregirConteoVarios')
+              : t('carga.corregirConteoDetalle', { codigo: conteoMes.codigo ?? String(conteoMes.ajusteId) })
+          }
+          accion={
+            conteoMes.varios
+              ? { etiqueta: t('carga.abrirConteo'), href: rutaConteo(conteoMes.ajusteId) }
+              : {
+                  etiqueta: t('carga.corregirConteo'),
+                  cargando: corrigiendo,
+                  onClick: () => {
+                    if (!sucursal) return;
+                    setCorrigiendo(true);
+                    void corregirConteoDelMes(org, sucursal, conteoMes.productoId, notas.trim() || null)
+                      .then((r) => {
+                        if (!r.corregido) {
+                          toast({ variant: 'destructive', title: t('carga.corregirConteoVarios') });
+                          return;
+                        }
+                        toast({ title: t('carga.corregirConteoListo', { codigo: r.codigo ?? conteoMes.codigo ?? '' }) });
+                        router.push(rutaConteo(r.ajusteId ?? conteoMes.ajusteId));
+                      })
+                      .catch((e) => toast({ variant: 'destructive', title: mensajeError(e) }))
+                      .finally(() => setCorrigiendo(false));
+                  },
+                }
+          }
+        />
+      )}
+      {sinHistorial && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('carga.sinHistorial')}
+          acciones={[
+            { etiqueta: t('carga.siSaldoInicial'), onClick: () => { setRazon('initial_setup'); setSucio(true); } },
+            {
+              etiqueta: t('carga.noSobrante'),
+              onClick: () => {
+                setSaldoDescartado(true);
+                if (razon !== 'physical_count' && razon !== 'audit' && razon !== 'production_input') {
+                  setRazon('physical_count');
+                }
+                setSucio(true);
+              },
+            },
+          ]}
+        />
+      )}
+      {desdeNegativo && (
+        <AvisoTonal
+          tono="advertencia"
+          rol="alert"
+          titulo={t('carga.desdeNegativo')}
+          descripcion={t('carga.desdeNegativoDetalle')}
+          accion={{ etiqueta: t('carga.registrarCompra'), href: RUTA_FACTURA_COMPRA }}
+        />
+      )}
+      {avisoCosto && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('carga.costoParecePrecio')}
+          accion={{ etiqueta: t('carga.costoEsCorrecto'), onClick: () => setCostoConfirmado(true) }}
+        />
+      )}
+      {pideNota && <AvisoTonal tono="advertencia" titulo={t('carga.confirmar')} descripcion={t('carga.confirmarDetalle')} />}
+      {asientoInicial && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('carga.asientoTitulo')}
+          descripcion={t('carga.asientoDetalle', {
+            inventario: asientoInicial.lineas[0]?.cuenta ?? '',
+            saldo: asientoInicial.lineas[1]?.cuenta ?? '',
+            total: moneda.formatear(asientoInicial.total),
+          })}
+        />
+      )}
+      {asientoDelSobrante && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('carga.asientoSobranteTitulo')}
+          descripcion={t('carga.asientoSobranteDetalle', {
+            inventario: asientoDelSobrante.lineas[0]?.cuenta ?? '',
+            diversos: asientoDelSobrante.lineas[1]?.cuenta ?? '',
+            total: moneda.formatear(asientoDelSobrante.total),
+          })}
+        />
+      )}
 
       {/* ── Productos ────────────────────────────────────────────────── */}
       <FormSection

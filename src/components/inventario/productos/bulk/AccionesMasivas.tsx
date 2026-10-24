@@ -52,6 +52,7 @@ import {
   ModoAjuste,
   ModoStock,
   ModoRedondeo,
+  type TipoContableStock,
   type ErrorMasivo,
 } from './bulkService';
 
@@ -116,6 +117,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
 
   // Estados para stock
   const [modoStock, setModoStock] = useState<ModoStock>('set');
+  const [tipoStock, setTipoStock] = useState<TipoContableStock>('ajuste');
   const [cantidadStock, setCantidadStock] = useState<string>('');
   const [motivoStock, setMotivoStock] = useState<string>('');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
@@ -212,7 +214,7 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
     setProcessing(true);
     try {
       // Por el kardex: cada producto genera su movimiento de ajuste y su asiento (en el servidor).
-      const r = await bulkUpdateStock(organization.id, selectedIds, parseInt(selectedBranch), cantidad, modoStock, motivoStock);
+      const r = await bulkUpdateStock(organization.id, selectedIds, parseInt(selectedBranch), cantidad, modoStock, motivoStock, tipoStock);
       const errores = r.errores.map((e) => (e.includes('sin_permiso') ? t('stock.sinPermiso') : e));
       mostrarResultado(t('resultado.stock'), r.exitosos, r.fallidos, errores);
       if (r.resumen.sin_costo > 0) {
@@ -474,6 +476,20 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 </Select>
               )}
             </FormField>
+            <FormField etiqueta={t('stock.tipoContable')}>
+              {(campo) => (
+                <Select value={tipoStock} onValueChange={(v) => setTipoStock(v as TipoContableStock)}>
+                  <SelectTrigger id={campo.id} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ajuste">{t('stock.tiposContables.ajuste')}</SelectItem>
+                    <SelectItem value="apertura">{t('stock.tiposContables.apertura')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <p className="text-xs text-brand-deep">{t('stock.ayudaTipo')}</p>
             <FormField etiqueta={t('stock.cantidad')} obligatorio>
               <Input
                 type="number"

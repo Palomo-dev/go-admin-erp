@@ -998,6 +998,7 @@
         "sucursal": "Créer une succursale",
         "equipo": "Inviter l'équipe",
         "productos": "Ajouter des produits",
+        "inventario": "Charger le stock initial",
         "impuestos": "Configurer les taxes",
         "clientes": "Enregistrer des clients"
       },
@@ -1005,6 +1006,9 @@
       "pendiente": "À faire",
       "ir": "Aller",
       "irA": "Aller à {paso}",
+      "inventarioAsiento": "L'écriture débitera {inventario} et créditera {saldo} (soldes initiaux). Les récupérations ne sont pas utilisées.",
+      "importarExcel": "Importer Excel",
+      "cargarMano": "Saisir à la main",
       "sinMovimientosTitulo": "Aucun mouvement pour l'instant",
       "sinMovimientosDesc": "Dès que vous enregistrerez la première vente ou facture, la tendance de la période et l'activité récente apparaîtront ici.",
       "agregarProductos": "Ajouter des produits",
@@ -4439,6 +4443,7 @@
       "inventario_distribucion": "Distribution",
       "inventario_reportes_trazabilidad": "Traçabilité",
       "inventario_reportes_costo-recetas": "Coût des recettes",
+      "inventario_reportes_stock-sin-seriales": "Stock sans numéros de série",
       "finanzas_facturas-venta": "Factures de vente",
       "finanzas_cotizaciones": "Devis",
       "finanzas_facturas-compra": "Factures d'achat",
@@ -9505,6 +9510,12 @@
         "ejemploExacto": "Ex. : 100",
         "motivo": "Motif (facultatif)",
         "motivoPlaceholder": "Ex. : inventaire physique de fin de mois",
+        "tipoContable": "Type comptable",
+        "tiposContables": {
+          "ajuste": "Ajustement (gain ou perte)",
+          "apertura": "Ouverture (stock contre capitaux propres)"
+        },
+        "ayudaTipo": "L’ouverture débite le stock et crédite les capitaux propres. Un ajustement d’entrée crédite les autres produits et un de sortie débite les charges. Une entrée qui n’est pas un retour ne crédite pas les coûts.",
         "avisoKardex": "Chaque ajustement est enregistré dans le kardex et génère son écriture d’inventaire.",
         "sinCosto": "{count, plural, one {{n} ajustement sans coût : il figure au kardex mais n’a pas généré d’écriture.} other {{n} ajustements sans coût : ils figurent au kardex mais n’ont pas généré d’écriture.}}",
         "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire."
@@ -9937,7 +9948,7 @@
       "padreNoEncontrado": "SKU parent inexistant",
       "nombreMuyLargo": "nom trop long",
       "skuGenerado": "SKU généré",
-      "costoMayorPrecio": "coût supérieur au prix",
+      "costoMayorPrecio": "Le coût ressemble au prix de vente",
       "costoPrecioIntercambiados": "coût et prix inversés",
       "promoEnNotas": "promotion notée",
       "unidadDesconocida": "unité non reconnue (devient « UN »)",
@@ -9998,6 +10009,9 @@
       "incluir": "Réinclure",
       "excluir": "Exclure de l’importation",
       "excluidaPorError": "Les lignes en erreur sont déjà exclues jusqu’à correction",
+      "asientoTitulo": "Écriture du stock initial",
+      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}. Les récupérations ne sont pas utilisées.",
+      "costoParecePrecio": "Le coût ressemble au prix de vente",
       "vacio": "Aucune ligne à vérifier",
       "sinResultados": "Aucune ligne ne correspond",
       "sustantivo": {
@@ -10066,7 +10080,7 @@
       "padreNoEncontrado": "Le SKU parent « {sku} » n’est ni dans le fichier ni dans le catalogue",
       "nombreMuyLargo": "Le nom dépasse {max} caractères",
       "skuGenerado": "SKU généré automatiquement",
-      "costoMayorPrecio": "Le coût est supérieur au prix de vente",
+      "costoMayorPrecio": "Le coût ressemble au prix de vente",
       "costoPrecioIntercambiados": "Coût et prix étaient inversés : ils ont été échangés",
       "promoEnNotas": "Promo 2 pour 1 (l’unité {unitario}, normal {normal}) : notée pour la configurer dans Promotions",
       "unidadDesconocida": "Unité « {unidad} » non reconnue : devient « UN »",
@@ -11426,7 +11440,10 @@
       "stock": {
         "total": "{count, plural, one {Stock total : # unité} other {Stock total : # unités}}",
         "generados": "Numéros de série créés : {valor}",
-        "sinSerial": "{count} sans numéro de série"
+        "sinSerial": "{count} sans numéro de série",
+        "asignar": "Attribuer des numéros au stock existant",
+        "descuadre": "Ces unités restent en stock. Attribuer un numéro ne change pas la quantité.",
+        "asignarHecho": "Numéros attribués. Le stock n’a pas changé."
       },
       "inactivo": {
         "aviso": "{count, plural, one {Ce produit n’exige plus de numéro de série. Le numéro enregistré est conservé et consultable, mais aucun nouveau n’est créé.} other {Ce produit n’exige plus de numéro de série. Les # numéros enregistrés sont conservés et consultables, mais aucun nouveau n’est créé.}}"
@@ -11910,6 +11927,7 @@
       "proveedor_invalido": "Le fournisseur n’appartient pas à votre organisation.",
       "sucursal_invalida": "La succursale n’appartient pas à votre organisation.",
       "stock_sin_costo": "Le stock initial nécessite un coût : sans lui, la fiche de stock et la comptabilité sont incomplètes.",
+      "stock_serial_sin_captura": "Un produit avec numéro de série n’admet pas de stock initial sans les numéros. Laissez-le à 0 et saisissez-les dans un ajustement : on ne les invente pas.",
       "cantidad_negativa": "Les quantités ne peuvent pas être négatives.",
       "cantidad_invalida": "Saisissez une quantité supérieure à 0.",
       "variantes_activas": "Le produit a des variantes actives : supprimez-les avant de désactiver les variantes.",
@@ -11930,6 +11948,7 @@
       "variante_incompleta": "Chaque variante nécessite un SKU et un nom.",
       "combinacion_repetida": "Deux variantes ont la même combinaison d’attributs.",
       "variante_stock_sin_costo": "Une variante avec un stock initial nécessite un coût.",
+      "variante_stock_serial_sin_captura": "Une variante d’un produit avec numéro de série n’admet pas de stock initial sans les numéros. Laissez-le à 0 et saisissez-les dans un ajustement.",
       "demasiadas_imagenes": "Vous pouvez ajouter jusqu’à 5 images.",
       "dimension_negativa": "Le poids et les dimensions ne peuvent pas être négatifs.",
       "receta_sin_ingredientes": "La recette est activée mais sans ingrédients : ajoutez-en au moins un ou désactivez-la.",
@@ -12087,6 +12106,9 @@
       "notaKardex": "{count, plural, one {# succursale active} other {# succursales actives}}. L’entrée initiale est enregistrée dans la fiche de stock à l’enregistrement. Coût unitaire vide = coût du produit.",
       "notaEditar": "Le stock se modifie par un ajustement d’inventaire : « Ajuster » l’ouvre dans un nouvel onglet pour ne pas perdre les modifications non enregistrées. Le minimum se modifie ici.",
       "avisoSinCosto": "Certaines quantités n’ont pas de coût : saisissez le coût unitaire ou le coût du produit dans « Prix et coûts ».",
+      "costoParecePrecio": "Le coût ressemble au prix de vente",
+      "asientoTitulo": "Écriture du stock initial",
+      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}.",
       "loteEn": "Lot du stock initial à {sucursal}",
       "venceEn": "Date de péremption du lot à {sucursal}",
       "lotePlaceholder": "Automatique",
@@ -12098,6 +12120,7 @@
       "requiereSerial": "Nécessite un numéro de série",
       "requiereSerialAyuda": "Chaque unité de ce produit aura un numéro de série unique, avec son historique et sa garantie.",
       "sinInventario": "Les numéros de série sont attribués aux unités en stock : activez « Suivre le stock » pour pouvoir les générer.",
+      "stockSinSerial": "{count, plural, one {# unité déjà en stock n’aura pas de numéro tant que vous ne l’attribuez pas. L’attribution ne change pas le stock.} other {# unités déjà en stock n’auront pas de numéro tant que vous ne les attribuez pas. L’attribution ne change pas le stock.}}",
       "garantia": "Mois de garantie",
       "garantiaAyuda": "Chaque nouveau numéro reçoit cette garantie à partir du jour de son enregistrement. Vide = sans garantie.",
       "meses": "mois",
@@ -12999,6 +13022,7 @@
       "etiqueta": "URL de la politique (https)",
       "ayuda": "Obligatoire pour que les campagnes de l'agent vocal appellent. L'agent la cite quand le client demande comment nous traitons ses données.",
       "faltante": "Sans cette URL, aucune campagne de l'agent vocal ne compose.",
+      "usandoSitio": "Nous utilisons celle de votre site :",
       "invalida": "L'URL doit commencer par https:// et ne pas contenir d'espaces.",
       "guardar": "Enregistrer l'URL",
       "guardando": "Enregistrement…",
@@ -13590,6 +13614,10 @@
       "motivoObligatorio": "Indiquez le motif général du retour.",
       "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés.",
       "serialInvalido": "L'un des numéros de série n'appartient pas à cette vente ou n'est plus vendu.",
+      "serialYaDevuelto": "Ce numéro de série a déjà été retourné sur cette vente.",
+      "serialYaReembolsadoGarantia": "Ce numéro de série a déjà été remboursé au titre de la garantie. Il ne peut pas être retourné de nouveau.",
+      "serialEnGarantia": "Ce numéro de série est dans une réclamation de garantie. Résolvez-la là.",
+      "disposicionInvalida": "Choisissez si le numéro de série revient en stock ou reste endommagé.",
       "lineaNoPerteneceALaVenta": "L'une des lignes n'appartient pas à cette vente.",
       "sinAccesoSucursal": "Vous n'avez pas accès à la succursale de cette vente.",
       "generico": "Erreur lors du traitement du retour",
@@ -13714,7 +13742,8 @@
         "sinMotivoGeneral": "Indiquez le motif général du retour",
         "itemsSinMotivo": "Chaque article sélectionné doit avoir un motif précis",
         "serializadosSinSerial": "Les produits sérialisés doivent avoir au moins un numéro de série sélectionné",
-        "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés"
+        "serialesNoCoinciden": "La quantité à retourner doit correspondre aux numéros de série sélectionnés",
+        "sinSerialesEnLinea": "Cette ligne n'a pas de numéros de série vendus à retourner"
       },
       "metodosPago": {
         "cash": "Espèces",
@@ -13728,7 +13757,13 @@
       },
       "cantidadOriginalUnidad": "Vendu : {cantidad} {unidad}",
       "reingresa": "Remettre en stock",
-      "reingresaDe": "{producto} : remettre en stock"
+      "reingresaDe": "{producto} : remettre en stock",
+      "seleccionarDe": "{producto} : sélectionner pour le retour",
+      "sinSerialesEnLinea": "Aucun numéro de série vendu sur cette ligne",
+      "sinSerialesVendidos": "Aucun numéro de série vendu sur cette ligne",
+      "vuelveAStock": "Revient en stock",
+      "danado": "Endommagé",
+      "disposicionDe": "Que devient {serial}"
     },
     "historial": {
       "errorCarga": "Impossible de charger l'historique des retours",
@@ -17365,6 +17400,7 @@
       "buscarAria": "Rechercher un numéro de série de {producto}",
       "garantia": "Garantie jusqu’au : {fecha}",
       "insuficientes": "Seulement {disponibles, plural, one {# numéro disponible} other {# numéros disponibles}} et {requeridos, plural, one {# requis} other {# requis}}.",
+      "stockSinSerial": "Stock {stock} · {disponibles, plural, one {# numéro disponible} other {# numéros disponibles}} · {sinSerial, plural, one {# unité sans numéro disponible} other {# unités sans numéro disponible}}. Ces unités ne se choisissent pas ici et on ne leur invente pas de numéro.",
       "confirmar": "Confirmer les numéros de série",
       "lista": "Numéros de série de {producto}"
     },
@@ -21516,6 +21552,28 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "Ce produit n'a pas de stock enregistré. S'agit-il de votre stock initial ?",
+        "siSaldoInicial": "Oui, charger comme stock initial",
+        "noSobrante": "Non, c'est un excédent",
+        "desdeNegativo": "Enregistrer l'achat ou la production manquante",
+        "desdeNegativoDetalle": "Le stock est déjà négatif. Enregistrez l'achat ou la production qui manquait avant de le traiter comme un excédent.",
+        "registrarCompra": "Enregistrer l'achat",
+        "costoParecePrecio": "Le coût ressemble au prix de vente",
+        "costoEsCorrecto": "Le coût est correct",
+        "confirmar": "Confirmez cet ajustement",
+        "confirmarDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
+        "notaObligatoria": "Écrivez une note pour confirmer l'ajustement.",
+        "asientoTitulo": "Écriture du stock initial",
+        "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}.",
+        "asientoSobranteTitulo": "Écriture de l'excédent",
+        "asientoSobranteDetalle": "Une seule écriture : débit {inventario} et crédit {diversos} pour {total}. Les récupérations ne sont pas utilisées.",
+        "corregirConteo": "Corriger le comptage",
+        "corregirConteoDetalle": "Ce produit a eu le comptage {codigo} ce mois-ci. Le corriger annule ce comptage et contrepasse son écriture, sans enregistrer de revenu.",
+        "corregirConteoVarios": "Ce comptage comprend d'autres produits. Ouvrez-le pour l'ajuster.",
+        "corregirConteoListo": "Le comptage {codigo} a été corrigé. Aucun revenu n'a été enregistré.",
+        "abrirConteo": "Ouvrir le comptage"
+      },
       "titulo": "Nouvel ajustement d'inventaire",
       "tituloEditar": "Modifier le brouillon d'ajustement",
       "tituloMovil": "Nouvel ajustement",
@@ -21712,6 +21770,7 @@
       "vencida": "Expirée",
       "vencioEl": "expirée le {fecha}",
       "empiezaAlVender": "Commence à la vente",
+      "desdeLaVenta": "Depuis la vente · {meses, plural, one {# mois} other {# mois}}",
       "meses": "{meses, plural, one {# mois} other {# mois}}",
       "enReclamo": "En réclamation",
       "enRma": "En RMA",
@@ -21752,6 +21811,22 @@
       "subtituloLema": "chaque unité avec son histoire, de l’achat à la garantie",
       "subtituloMovil": "{total} · {stock} en stock",
       "actualizar": "Actualiser",
+      "generarSeriales": "Générer des numéros de série",
+      "descuadreTitulo": "Stock sans numéro de série",
+      "descuadreFila": "{producto} · {sede} : {sin} sans numéro ({stock} en stock, {seriales} numéros)",
+      "generar": {
+        "titulo": "Générer des numéros de série",
+        "producto": "Produit",
+        "buscar": "Rechercher par nom ou SKU",
+        "sinProductos": "Aucun produit suivi par numéro de série ne correspond à cette recherche.",
+        "sucursal": "Site",
+        "cantidad": "Combien",
+        "lista": "Ou collez un numéro par ligne",
+        "noMueveStock": "Cela enregistre seulement les numéros. Le stock ne change pas.",
+        "confirmar": "Attribuer les numéros",
+        "hecho": "{count, plural, one {# numéro de série attribué} other {# numéros de série attribués}}",
+        "error": "Impossible d’attribuer les numéros de série. Réessayez."
+      },
       "por": "par {nombre}",
       "etiquetaFila": "Numéro de série {serial} de {producto}",
       "errorSeleccionarTodo": "Impossible de sélectionner tous les numéros de série",
@@ -21863,6 +21938,24 @@
         "reclamo": "Réclamation {codigo}"
       }
     },
+    "stockSinSeriales": {
+      "titulo": "Stock sans numéros de série",
+      "descripcion": "Stock de produits sérialisés supérieur aux numéros qui l’occupent (en stock ou réservés). Ce rapport ne crée pas de numéros.",
+      "vacio": "Il n’y a pas de stock sans numéro de série.",
+      "error": "Impossible de charger le rapport.",
+      "cargando": "Chargement du rapport…",
+      "producto": "Produit",
+      "sku": "SKU",
+      "sucursal": "Succursale",
+      "existencia": "Stock",
+      "seriales": "Numéros",
+      "disponibles": "Disponibles",
+      "sinSerial": "Sans numéro",
+      "verProducto": "Voir les numéros de {producto}",
+      "avisoTitulo": "{count, plural, one {# stock dépasse les numéros qui l’occupent} other {# stocks dépassent les numéros qui les occupent}}",
+      "avisoDescripcion": "Ces unités n’ont ni numéro en stock ni numéro réservé. On n’invente pas de numéros : saisissez-les dans un ajustement pour pouvoir les vendre.",
+      "verReporte": "Voir le rapport"
+    },
     "acciones": {
       "verHistorial": "Voir l’historique du numéro de série",
       "verVenta": "Voir la vente {numero}",
@@ -21940,6 +22033,7 @@
         "vencida": "expirée",
         "restante": "il reste {meses, plural, one {# mois} other {# mois}} et {dias, plural, one {# jour} other {# jours}}",
         "empiezaAlVender": "Commence le jour de la vente",
+        "desdeLaVenta": "Depuis la vente · {meses, plural, one {# mois} other {# mois}}",
         "sinVigencia": "Pas commencée",
         "hastaCorto": "Garantie jusqu’au {fecha}",
         "reclamos": "Réclamations",
@@ -21993,6 +22087,11 @@
       "reemplazo_requerido": "Choisissez l’unité de remplacement.",
       "reemplazo_invalido": "L’unité de remplacement n’est plus disponible ou appartient à un autre produit.",
       "monto_invalido": "Saisissez un montant supérieur à zéro.",
+      "unidad_ya_devuelta": "Cette unité a déjà été retournée au point de vente. Elle ne peut pas être remboursée une seconde fois.",
+      "monto_no_coincide": "Le montant ne correspond pas à ce qui a été encaissé pour cette unité.",
+      "linea_no_encontrada": "Nous n’avons pas trouvé la ligne de vente de ce numéro de série.",
+      "venta_no_encontrada": "Nous n’avons pas trouvé la vente de ce numéro de série.",
+      "motivo_invalido": "Le motif de retour n’est pas actif.",
       "estado_invalido": "Statut non valide.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "error_desconocido": "Impossible de terminer. Réessayez."
@@ -22091,7 +22190,7 @@
       "serialPlaceholder": "Scannez ou saisissez le numéro de série",
       "buscando": "Recherche du numéro de série…",
       "vendido": "vendu le {fecha} dans {venta} à {cliente}",
-      "sinCliente": "client de passage",
+      "sinCliente": "Client de passage",
       "garantiaVigente": "Garantie en vigueur : {meses, plural, one {# mois} other {# mois}} à partir de la vente, il reste {restanteMeses, plural, one {# mois} other {# mois}} et {restanteDias, plural, one {# jour} other {# jours}}.",
       "garantiaVigenteCorta": "Garantie en vigueur.",
       "noReclamable": {
@@ -22106,6 +22205,12 @@
       "motivoPlaceholder": "Choisissez le motif",
       "descripcionCampo": "Description",
       "descripcionPlaceholder": "Ce qui s’est passé, depuis quand, ce que le client apporte",
+      "reclamante": "Qui réclame",
+      "reclamanteAyuda": "Si la vente n’a pas de client, ces données restent sur la réclamation.",
+      "reclamanteNombre": "Nom",
+      "reclamanteDocumento": "Document",
+      "reclamanteTelefono": "Téléphone",
+      "reclamanteCorreo": "E-mail",
       "nota": "À la création de la réclamation, le numéro de série passe à « Réclamation garantie » et l’étape reste dans son historique.",
       "crear": "Créer la réclamation",
       "creado": "Réclamation {codigo} créée",
@@ -22152,7 +22257,7 @@
       "notas": "Notes",
       "aviso": {
         "reemplazo": "{nuevo} est vendu à {cliente} avec une nouvelle garantie à partir d’aujourd’hui, et {serial} passe à « {estado} ».",
-        "reembolso": "{serial} revient à l’entreprise et passe à « {estado} ». L’avoir du remboursement se fait dans Finances.",
+        "reembolso": "{serial} revient à l’entreprise et passe à « {estado} ». L’avoir de la vente est émis, avec son écriture, le mouvement de caisse et le stock de l’unité endommagée.",
         "reparacion": "{serial} revient au client comme vendu ; sa garantie reste inchangée."
       },
       "avisoStock": "Le stock de l’unité de remplacement est déduit par le noyau d’inventaire ; le numéro de série est déjà vendu au client.",
@@ -22213,7 +22318,11 @@
         "cliente": "Client",
         "garantia": "Garantie",
         "sinVenta": "Sans vente liée",
-        "sinCliente": "Sans client"
+        "sinCliente": "Client de passage",
+        "reclamante": "Réclamant",
+        "documento": "Document",
+        "telefono": "Téléphone",
+        "correo": "E-mail"
       },
       "reclamo": {
         "titulo": "Réclamation",
@@ -22238,6 +22347,7 @@
         "tipo": "Comment elle a été résolue",
         "reemplazo": "Unité de remplacement",
         "monto": "Montant remboursé",
+        "notaCredito": "Avoir",
         "notas": "Notes",
         "fecha": "Résolue"
       }
@@ -22550,7 +22660,14 @@
     "avisoNegativos": {
       "titulo": "{n} {count, plural, one {produit a des existences négatives} other {produits ont des existences négatives}}",
       "descripcion": "Plus d'unités ont été vendues que celles enregistrées. Il manque souvent une réception d'achat ou un transfert. Vérifiez-les avant le prochain comptage.",
-      "ver": "Voir seulement les négatifs"
+      "ver": "Voir seulement les négatifs",
+      "compra": "Enregistrer l'achat"
+    },
+    "config": {
+      "bloquear": "Bloquer la vente sans stock",
+      "bloquearAyuda": "S'il est éteint, on peut vendre même sans stock. C'est la valeur que l'organisation a déjà.",
+      "umbral": "Confirmer les ajustements dès",
+      "umbralAyuda": "Montant à partir duquel l'ajustement demande une note. Vide : seulement si l'organisation a moins de 30 jours."
     },
     "avisoSinAsignar": "{n} {count, plural, one {produit avec variantes a} other {produits avec variantes ont}} des existences sur le produit parent, non affectées à une variante. Elles ne s'ajoutent pas au disponible.",
     "verSinAgrupar": "Voir les variantes séparément",
@@ -22647,17 +22764,38 @@
       "listoDocumento": "Ajustement {numero} appliqué.",
       "errorEntrada": "Impossible d'enregistrer l'entrée",
       "errorSalida": "Impossible d'enregistrer la sortie",
+      "registrarCompra": "Enregistrer l'achat",
+      "desdeNegativo": "Enregistrer l'achat ou la production manquante",
+      "desdeNegativoDetalle": "Le stock est déjà négatif. Enregistrez l'achat ou la production qui manquait avant de le traiter comme un excédent.",
+      "sinHistorial": "Ce produit n'a pas de stock enregistré. S'agit-il de votre stock initial ?",
+      "siSaldoInicial": "Oui, charger comme stock initial",
+      "noSobrante": "Non, c'est un excédent",
+      "costoParecePrecio": "Le coût ressemble au prix de vente",
+      "costoEsCorrecto": "Le coût est correct",
+      "confirmarAjuste": "Confirmez cet ajustement",
+      "confirmarAjusteDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
+      "asientoTitulo": "Écriture du stock initial",
+      "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}.",
+      "asientoSobranteTitulo": "Écriture de l'excédent",
+      "asientoSobranteDetalle": "Une seule écriture : débit {inventario} et crédit {diversos} pour {total}. Les récupérations ne sont pas utilisées.",
+      "corregirConteo": "Corriger le comptage",
+      "corregirConteoDetalle": "Ce produit a eu le comptage {codigo} ce mois-ci. Le corriger annule ce comptage et contrepasse son écriture, sans enregistrer de revenu.",
+      "corregirConteoVarios": "Ce comptage comprend d'autres produits. Ouvrez-le pour l'ajuster.",
+      "corregirConteoListo": "Le comptage {codigo} a été corrigé. Aucun revenu n'a été enregistré.",
+      "abrirConteo": "Ouvrir le comptage",
       "errores": {
         "requerido": "Ce champ est obligatoire.",
         "mayorQueCero": "Doit être supérieur à zéro.",
         "noNegativo": "Ne peut pas être négatif.",
         "superaDisponible": "Dépasse le disponible ({n}).",
         "conSeriales": "Les produits avec numéros de série s'enregistrent depuis Ajustements.",
-        "facturaCompra": "Un achat sans commande s'enregistre sur la facture d'achat : stock contre fournisseurs."
+        "facturaCompra": "Un achat sans commande s'enregistre sur la facture d'achat : stock contre fournisseurs.",
+        "notaObligatoria": "Écrivez une note pour confirmer l'ajustement."
       }
     },
     "motivos": {
       "entrada": {
+        "saldo_inicial": "Stock initial",
         "compra_sin_orden": "Achat sans commande",
         "devolucion_cliente": "Retour client",
         "donacion": "Don",
@@ -31732,18 +31870,30 @@
         "generar": "Générer avec l'assistant",
         "revisar": "Vérifier et publier",
         "generando": "Création de la page…",
-        "creado": "Nous avons créé la page « {titulo} ». Complétez-la et publiez-la depuis l'éditeur.",
+        "creado": "Nous avons créé « {titulo} » avec un texte de {origen}. Relisez-la et publiez-la depuis l'éditeur.",
         "errorCrear": "Nous n'avons pas pu créer la page. Réessayez.",
         "avisoTitulo": "Sans politique de traitement des données, l'agent vocal et les formulaires du CRM ne s'activent pas",
         "avisoDescripcion": "Nous en avons besoin pour enregistrer l'autorisation du client (loi 1581). L'assistant la génère avec les données de votre organisation.",
         "avisoAccion": "Générer maintenant",
         "errorCargar": "Nous n'avons pas pu lire les pages légales.",
         "asistenteTitulo": "Générer « {titulo} »",
-        "asistenteDescripcion": "Nous créons la page sur votre site, hors du menu et dans le groupe « Mentions légales » du pied de page. Ensuite, vous la complétez dans l'éditeur avec les données de votre entreprise et vous la publiez.",
+        "asistenteDescripcion": "La page est créée avec le texte généré, hors du menu principal. Si l'IA n'est pas disponible, nous utilisons un modèle avec les données de votre entreprise. Relisez et publiez.",
         "asistenteDatos": "Données utilisées",
         "asistenteRazon": "Raison sociale",
         "asistenteCorreo": "E-mail pour les demandes",
-        "asistenteCrear": "Créer la page"
+        "asistenteCrear": "Créer la page",
+        "vacio": "Vide",
+        "regenerar": "Régénérer",
+        "asistenteFaltantes": "Ces données manquent. La phrase qui les utilise n'est pas écrite.",
+        "asistenteEnlaceDatos": "Compléter dans Données de l'entreprise",
+        "asistenteOrigenIa": "Origine : IA, si elle renvoie un texte valide. Sinon, un modèle.",
+        "asistenteOrigenPlantilla": "Origine : modèle. L'IA n'est pas disponible.",
+        "origenIa": "l'IA",
+        "origenPlantilla": "le modèle",
+        "diffTitulo": "Ce texte a été modifié",
+        "diffDescripcion": "Remplacer enregistre une copie dans l'historique du brouillon et écrit le nouveau texte.",
+        "reemplazar": "Remplacer",
+        "cancelar": "Annuler"
       },
       "codigo": {
         "descripcion": "Pour mesurer vos annonces, utilisez les champs d'Analytique › Pixels. Ici, uniquement du code personnalisé.",
@@ -31776,10 +31926,18 @@
         "posicion": "Position",
         "contenido": "Code",
         "guardarDialogo": "Terminé",
+        "conteo": "{n} / {max}",
+        "pantallaCompleta": "Plein écran",
+        "salirPantalla": "Quitter le plein écran",
+        "avisoDocumento": "Ce fragment contient une page complète (html, head ou body). Collez seulement le code qui va à l'intérieur.",
+        "avisoHead": "L'en-tête contient des éléments visibles sur la page. Cet endroit est plutôt pour du code qui ne s'affiche pas, comme un script ou un style.",
         "errores": {
           "nombre": "Saisissez un nom pour le reconnaître.",
           "ruta": "Saisissez une adresse qui commence par /.",
-          "codigo": "Collez le code."
+          "codigo": "Collez le code.",
+          "limite": "Le code dépasse {max} caractères.",
+          "etiqueta": "La balise « {etiqueta} » n'est pas fermée.",
+          "javascript": "Erreur JavaScript : {detalle}"
         }
       },
       "chat": {
@@ -37951,6 +38109,9 @@
       "repetir": "Répéter toutes les N unités (facultatif)",
       "repetirPlaceholder": "Une seule fois",
       "repetirAyuda": "Vide : la remise s'applique une seule fois. Avec un nombre, elle se répète pour chaque groupe complet. Exemple : −{ejemplo} toutes les 2 unités. En pourcentage, les unités restantes restent au prix normal.",
+      "repetirAyudaPaquete": "Dans un lot en pourcentage, le pourcentage ne couvre que les groupes complets de N unités ; le reste reste au prix normal. Avec un prix de lot, N limite le nombre de lots complets à ce prix : au plus un par N unités concernées. Vide : comme une promotion déjà enregistrée, sans ce nombre.",
+      "errorCompra": "Indiquez combien d'unités sont achetées",
+      "errorLleva": "Indiquez combien sont payées ou offertes",
       "compraMinima": "Achat minimum (facultatif)",
       "compraMinimaCuenta": "Mesuré sur le sous-total de tout le ticket, avant cette promotion.",
       "compraMinimaElegible": "Mesuré seulement sur les produits ou catégories de cette promotion, pas sur le reste du ticket.",

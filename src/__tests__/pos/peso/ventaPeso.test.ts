@@ -235,9 +235,11 @@ describe('devolución por peso', () => {
     expect(p.p_items[0]).toEqual({ sale_item_id: 'l1', quantity: 0.375, reason_code: 'defectuoso', serial_ids: [], restock: false });
   });
 
-  it('sin casilla (producto por unidad) no se manda restock', () => {
-    const p = parametrosProcesarDevolucion(120, 's', { items: [{ sale_item_id: 'l1', return_quantity: 1, reason: 'x' }], refund_method: 'cash', reason: 'r' }, 'k');
-    expect(p.p_items[0]).not.toHaveProperty('restock');
+  it('si la UI no manda restock se omite; un producto por unidad puede mandarlo', () => {
+    const sin = parametrosProcesarDevolucion(120, 's', { items: [{ sale_item_id: 'l1', return_quantity: 1, reason: 'x' }], refund_method: 'cash', reason: 'r' }, 'k');
+    expect(sin.p_items[0]).not.toHaveProperty('restock');
+    const con = parametrosProcesarDevolucion(120, 's', { items: [{ sale_item_id: 'l1', return_quantity: 1, reason: 'x', restock: true }], refund_method: 'cash', reason: 'r' }, 'k2');
+    expect(con.p_items[0].restock).toBe(true);
   });
 
   it('los errores nuevos del servidor tienen código estable', () => {

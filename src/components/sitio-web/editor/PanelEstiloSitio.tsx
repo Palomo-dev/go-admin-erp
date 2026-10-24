@@ -14,8 +14,10 @@
 import { useMemo } from 'react';
 import { X } from 'lucide-react';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
-import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { vaciar, valorPropio, type DocumentoSitio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
 import { EstiloDelSitioPanel } from '@/components/sitio-web/diseno/EstiloDelSitioPanel';
+import { PanelCarrusel, PanelPaginacion } from './inspector/PanelesListaCarrusel';
+import { paginacionTemaDisponible, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 import { useEstiloSitio } from '@/components/sitio-web/diseno/useEstiloSitio';
 import { useColoresLogo } from '@/components/sitio-web/diseno/useColoresLogo';
 import { CATALOGO_SITIO } from '@/components/sitio-web/diseno/catalogo';
@@ -29,12 +31,20 @@ import {
 } from '@/lib/website/contrato/catalogoPlantillas';
 import {
   ajustesVivosDeEstilo,
+  aplicarPresetDiseno,
+  cascaronTemaDisponible,
+  tokensDisenoDisponibles,
   tokensExtendidosDisponibles,
   type EstiloEditable,
 } from '@/lib/website/v2/tokensEstilo';
+import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
+import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
+import { urgenciaDocumentoDisponible } from '@/lib/website/conversion';
+import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
+import { PanelUrgencia } from './inspector/PanelUrgencia';
 
 export interface PanelEstiloSitioProps {
   enV2: boolean;
@@ -148,10 +158,194 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
             deshabilitado={p.deshabilitado}
             className="border-0 p-1"
           />
-        ) : (
+        ) : null}
+        {p.enV2 && p.documento && (
+          <section className="mt-4 flex flex-col gap-2 px-1">
+            <h3 className="text-[13px] font-medium text-fg">{t('zonaGlobal.acciones.estilosCombinables')}</h3>
+            <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.estilosCombinablesAyuda')}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESETS_DISENO.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  disabled={p.deshabilitado || !tokensDisenoDisponibles()}
+                  onClick={() => p.onCambiarDocumento((d) => aplicarPresetDiseno(d, preset.id))}
+                  className="rounded-full border border-border px-2.5 py-1 text-[12px] text-fg hover:bg-hover disabled:opacity-50"
+                >
+                  {preset.id === 'actual' ? t('zonaGlobal.acciones.estiloActual') : preset.id.replaceAll('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+        {paginacionTemaDisponible() && p.enV2 && p.documento && (
+          <>
+            <PanelPaginacion
+              valor={sanitizarPaginacion(valorCampo(p.documento.tema.paginacion))}
+              onCambiar={(v) => {
+                const limpio = sanitizarPaginacion(v);
+                p.onCambiarDocumento((d) => {
+                  const tema = { ...d.tema };
+                  if (limpio) tema.paginacion = valorPropio(limpio);
+                  else delete tema.paginacion;
+                  return { ...d, tema };
+                });
+              }}
+              color={estilo?.acento ?? '#111827'}
+              deshabilitado={p.deshabilitado}
+            />
+            <PanelCarrusel
+              valor={sanitizarCarrusel(valorCampo(p.documento.tema.carrusel))}
+              onCambiar={(v) => {
+                const limpio = sanitizarCarrusel(v);
+                p.onCambiarDocumento((d) => {
+                  const tema = { ...d.tema };
+                  if (limpio) tema.carrusel = valorPropio(limpio);
+                  else delete tema.carrusel;
+                  return { ...d, tema };
+                });
+              }}
+              deshabilitado={p.deshabilitado}
+            />
+          </>
+        )}
+        {!estilo ? (
           <p className="px-1 text-[13px] leading-[18px] text-fg-secondary">{t('estiloSitio.sinDatos')}</p>
+        ) : null}
+        {tarjetaProductoTemaDisponible() && p.enV2 && p.documento && (
+          <div className="mt-4">
+            <InspectorTarjetaProducto
+              guardado={valorCampo(p.documento.tema.tarjetaProducto)}
+              onCambiar={(estiloTarjeta) =>
+                p.onCambiarDocumento((d) => ({
+                  ...d,
+                  tema: { ...d.tema, tarjetaProducto: valorPropio(estiloTarjeta as TarjetaProductoDocumento) },
+                }))
+              }
+              onQuitar={() =>
+                p.onCambiarDocumento((d) => ({
+                  ...d,
+                  tema: { ...d.tema, tarjetaProducto: vaciar() },
+                }))
+              }
+            />
+          </div>
+        )}
+        {cascaronTemaDisponible() && p.enV2 && p.documento && (
+          <EstiloGlobalSecciones documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
+        )}
+        {urgenciaDocumentoDisponible() && p.enV2 && p.documento && (
+          <PanelUrgencia documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
       </div>
     </aside>
   );
+}
+
+const control = 'h-8 w-full rounded-md border border-line bg-surface px-2 text-sm';
+
+function EstiloGlobalSecciones({
+  documento,
+  onCambiarDocumento,
+  deshabilitado,
+}: {
+  documento: DocumentoSitio
+  onCambiarDocumento: (cambiar: (d: DocumentoSitio) => DocumentoSitio) => void
+  deshabilitado?: boolean
+}) {
+  const actual = ((documento.tema as { seccion?: Record<string, unknown> }).seccion ?? {}) as Record<string, unknown>
+  const set = (k: string, v: unknown) => {
+    onCambiarDocumento((d) => {
+      const seccion = { ...((d.tema as { seccion?: Record<string, unknown> }).seccion ?? {}) }
+      if (v == null || v === '') delete seccion[k]
+      else seccion[k] = v
+      return { ...d, tema: { ...d.tema, seccion: Object.keys(seccion).length ? seccion : undefined } }
+    })
+  }
+  const aplicar = () => {
+    onCambiarDocumento((d) => ({
+      ...d,
+      paginas: d.paginas.map((p) => ({
+        ...p,
+        secciones: p.secciones.map((s) => ({
+          ...s,
+          contenido: (() => {
+            const header = { ...(s.contenido.section_header as Record<string, unknown> | undefined), ...actual }
+            return Object.keys(header).length
+              ? { ...s.contenido, section_header: header }
+              : s.contenido
+          })(),
+        })),
+      })),
+    }))
+  }
+  return (
+    <div className="mt-4 flex flex-col gap-2 border-t border-line px-1 pt-3">
+      <p className="text-sm font-semibold text-fg">Encabezados de sección</p>
+      <p className="text-[12px] text-fg-secondary">Aplican a toda la tienda. Cada sección puede heredarlos o pisarlos.</p>
+      <label className="text-[12px] text-fg-secondary">Alineación
+        <select className={control} disabled={deshabilitado} value={String(actual.align ?? '')} onChange={(e) => set('align', e.target.value)}>
+          <option value="">Como hoy</option>
+          <option value="left">Izquierda</option>
+          <option value="center">Centro</option>
+          <option value="right">Derecha</option>
+        </select>
+      </label>
+      <label className="text-[12px] text-fg-secondary">Disposición
+        <select className={control} disabled={deshabilitado} value={String(actual.layout ?? '')} onChange={(e) => set('layout', e.target.value)}>
+          <option value="">Como hoy</option>
+          <option value="stacked">Título arriba</option>
+          <option value="inline">Título y enlace en fila</option>
+          <option value="side">Columna lateral</option>
+        </select>
+      </label>
+      <label className="text-[12px] text-fg-secondary">Tamaño del título
+        <select className={control} disabled={deshabilitado} value={String(actual.title_size ?? '')} onChange={(e) => set('title_size', e.target.value)}>
+          <option value="">Como hoy</option>
+          {['sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </label>
+      <label className="text-[12px] text-fg-secondary">Peso
+        <select className={control} disabled={deshabilitado} value={String(actual.title_weight ?? '')} onChange={(e) => set('title_weight', e.target.value)}>
+          <option value="">Como hoy</option>
+          {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </label>
+      <label className="flex justify-between text-sm text-fg"><span>Mayúsculas</span><input type="checkbox" disabled={deshabilitado} checked={actual.title_uppercase === true} onChange={(e) => set('title_uppercase', e.target.checked)} /></label>
+      <label className="text-[12px] text-fg-secondary">Línea decorativa
+        <select className={control} disabled={deshabilitado} value={String(actual.title_line ?? '')} onChange={(e) => set('title_line', e.target.value)}>
+          <option value="">Ninguna</option>
+          <option value="below">Debajo</option>
+          <option value="sides">A los lados</option>
+        </select>
+      </label>
+      <label className="text-[12px] text-fg-secondary">Color del título
+        <input type="color" disabled={deshabilitado} value={typeof actual.title_color === 'string' && actual.title_color.startsWith('#') ? actual.title_color : '#111827'} onChange={(e) => set('title_color', e.target.value)} />
+      </label>
+      <label className="text-[12px] text-fg-secondary">Fuente del título
+        <input className={control} disabled={deshabilitado} value={String(actual.title_font ?? '')} onChange={(e) => set('title_font', e.target.value)} />
+      </label>
+      <label className="text-[12px] text-fg-secondary">Tamaño de la descripción
+        <select className={control} disabled={deshabilitado} value={String(actual.description_size ?? '')} onChange={(e) => set('description_size', e.target.value)}>
+          <option value="">Como hoy</option>
+          <option value="sm">Pequeño</option>
+          <option value="md">Mediano</option>
+          <option value="lg">Grande</option>
+        </select>
+      </label>
+      <label className="text-[12px] text-fg-secondary">Peso de la descripción
+        <select className={control} disabled={deshabilitado} value={String(actual.description_weight ?? '')} onChange={(e) => set('description_weight', e.target.value)}>
+          <option value="">Como hoy</option>
+          {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </label>
+      <label className="text-[12px] text-fg-secondary">Color de la descripción
+        <input type="color" disabled={deshabilitado} value={typeof actual.description_color === 'string' && actual.description_color.startsWith('#') ? actual.description_color : '#4b5563'} onChange={(e) => set('description_color', e.target.value)} />
+      </label>
+      <label className="text-[12px] text-fg-secondary">Fuente de la descripción
+        <input className={control} disabled={deshabilitado} value={String(actual.description_font ?? '')} onChange={(e) => set('description_font', e.target.value)} />
+      </label>
+      <button type="button" className="text-left text-sm font-medium underline" disabled={deshabilitado} onClick={aplicar}>Aplicar a todas las secciones</button>
+    </div>
+  )
 }

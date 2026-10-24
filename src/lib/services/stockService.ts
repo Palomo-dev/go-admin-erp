@@ -62,6 +62,10 @@ export interface StockFila {
   sku: string | null;
   barcode: string | null;
   parent_id: number | null;
+  /** Uuid del producto de la fila (ficha). Null si el listado aún no lo trae. */
+  uuid: string | null;
+  /** Uuid del padre, cuando la fila es una variante. */
+  parent_uuid: string | null;
   /** «Negro / 42» (variant_data). */
   atributos: string | null;
   categoria: string | null;
@@ -108,6 +112,7 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 const numONull = (v: unknown): number | null => (v === null || v === undefined ? null : num(v));
+const textoONull = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
 
 /** Normaliza la respuesta de `fn_stock_listado` (numeric llega como número o texto). */
 export function aRespuestaStock(data: unknown): RespuestaStock {
@@ -133,6 +138,8 @@ export function aRespuestaStock(data: unknown): RespuestaStock {
       sku: (f.sku as string | null) ?? null,
       barcode: (f.barcode as string | null) || null,
       parent_id: f.parent_id == null ? null : num(f.parent_id),
+      uuid: textoONull(f.uuid),
+      parent_uuid: textoONull(f.parent_uuid),
       atributos: (f.atributos as string | null) || null,
       categoria: (f.categoria as string | null) ?? null,
       unidad: typeof f.unidad === 'string' ? f.unidad.trim() || null : null,
@@ -329,6 +336,67 @@ export interface ResultadoRegistrarMovimiento {
   ajuste_id: number;
   /** «AJ-0161»: el documento que el kardex enlaza. */
   numero: string | null;
+}
+
+export interface ConteoDelMes {
+  ajusteId: number;
+  codigo: string | null;
+  diferencia: number;
+  varios: boolean;
+}
+
+/** Conteo o faltante del mes, con asiento todavía vigente. Null si no hay. */
+export async function consultarConteoDelMes(
+  org: number,
+  sucursal: number,
+  producto: number,
+  cliente: ClienteRpc = supabase,
+): Promise<ConteoDelMes | null> {
+  const { data, error } = await cliente.rpc('fn_conteo_del_mes', {
+    p_org: org,
+    p_branch: sucursal,
+    p_product: producto,
+  });
+  if (error) throw error;
+  const d = (data ?? {}) as Record<string, unknown>;
+  if (d.encontrado !== true) return null;
+  return {
+    ajusteId: num(d.ajuste_id),
+    codigo: (d.codigo as string | null) ?? null,
+    diferencia: Number(d.diferencia ?? 0),
+    varios: d.varios === true,
+  };
+}
+
+export interface CorreccionConteo {
+  corregido: boolean;
+  motivo: string | null;
+  ajusteId: number | null;
+  codigo: string | null;
+}
+
+/** Anula el efecto del conteo del mes y revierte su asiento, sin ingreso. */
+export async function corregirConteoDelMes(
+  org: number,
+  sucursal: number,
+  producto: number,
+  nota?: string | null,
+  cliente: ClienteRpc = supabase,
+): Promise<CorreccionConteo> {
+  const { data, error } = await cliente.rpc('fn_corregir_conteo', {
+    p_org: org,
+    p_branch: sucursal,
+    p_product: producto,
+    p_nota: nota ?? null,
+  });
+  if (error) throw error;
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    corregido: d.corregido === true,
+    motivo: (d.motivo as string | null) ?? null,
+    ajusteId: d.ajuste_id == null ? null : num(d.ajuste_id),
+    codigo: (d.codigo as string | null) ?? null,
+  };
 }
 
 export async function registrarMovimiento(

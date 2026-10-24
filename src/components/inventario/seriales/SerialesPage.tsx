@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, ArrowLeftRight, Download, Printer, RefreshCw, ScanBarcode, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, Download, Plus, Printer, RefreshCw, ScanBarcode, ShieldCheck } from 'lucide-react';
 import {
   BranchBadgeActiva,
   BulkActionBar,
@@ -42,6 +42,7 @@ import {
   type FiltrosSeriales,
   type KpisSeriales,
   type PermisosSeriales,
+  type DescuadreSerial,
   type SerialFila,
 } from '@/lib/services/seriales/contrato';
 import {
@@ -56,7 +57,9 @@ import {
   situacionGarantia,
 } from './logica';
 import { BadgeEstadoSerial, CeldaGarantia, EnlaceDocumento, useEtiquetaDocumento, useEtiquetaEstadoSerialB4 } from './piezas';
+import { AlertaStockSinSeriales } from './AlertaStockSinSeriales';
 import { useAccionesSerial } from './useAccionesSerial';
+import { DialogoGenerarDesdeListado } from './DialogoGenerarDesdeListado';
 
 const CAMPOS_ORDEN = ['serial', 'recibido', 'venta'] as const;
 const LIMITE_TODO = 5000;
@@ -78,6 +81,10 @@ export function SerialesPage() {
   const entero = useFormatoEntero();
   const { formatDate, formatPlain, getToday } = useFormatDate();
   const { branchFilter, branches, isLoading: cargandoSucursales } = useBranch();
+  const [generarAbierto, setGenerarAbierto] = useState(false);
+  const [prefijoGenerar, setPrefijoGenerar] = useState<{ id: number; nombre: string; sku: string | null; branchId: number; cantidad: number } | null>(null);
+  const [descuadre, setDescuadre] = useState<DescuadreSerial[]>([]);
+  const [marcaDescuadre, setMarcaDescuadre] = useState(0);
 
   const l = useListadoServidor({
     filtros: ['estado', 'garantia', 'producto'],
@@ -149,6 +156,15 @@ export function SerialesPage() {
     return () => control.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clave, recarga, sinSucursal, cargandoSucursales]);
+
+  useEffect(() => {
+    if (sinSucursal || cargandoSucursales) return;
+    let vigente = true;
+    clienteSeriales.descuadre()
+      .then((filas) => { if (vigente) setDescuadre(filas); })
+      .catch(() => { if (vigente) setDescuadre([]); });
+    return () => { vigente = false; };
+  }, [sinSucursal, cargandoSucursales, marcaDescuadre, recarga]);
 
   // Criterios nuevos parten de una selección vacía.
   const claveCriterios = JSON.stringify({ b: l.busqueda, f: l.filtros, s: branchFilter });
@@ -329,6 +345,10 @@ export function SerialesPage() {
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('actualizar')} title={t('actualizar')}>
               <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
             </Button>
+            <Button variant="outline" className="h-10 gap-2" onClick={() => { setPrefijoGenerar(null); setGenerarAbierto(true); }}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('generarSeriales')}
+            </Button>
             <Button variant="outline" className="h-10 gap-2" onClick={() => exportar(false)} disabled={exportando || estadoError !== null}>
               <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('exportar.boton')}
@@ -344,6 +364,7 @@ export function SerialesPage() {
             titulo={tc('titulo')}
             acciones={[
               { id: 'actualizar', etiqueta: t('actualizar'), icono: RefreshCw, onSelect: recargar },
+              { id: 'generar', etiqueta: t('generarSeriales'), icono: Plus, onSelect: () => { setPrefijoGenerar(null); setGenerarAbierto(true); } },
               { id: 'exportar', etiqueta: t('exportar.boton'), icono: Download, onSelect: () => exportar(false) },
             ]}
           />
@@ -366,6 +387,40 @@ export function SerialesPage() {
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       {cabecera}
+
+      {descuadre.length > 0 && (
+        <section className="rounded-xl border border-line-warning bg-warning-subtle px-4 py-3 text-sm text-warning-text" aria-label={t('descuadreTitulo')}>
+          <p className="font-medium">{t('descuadreTitulo')}</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {descuadre.slice(0, 8).map((f) => (
+              <li key={`${f.product_id}-${f.branch_id}`}>
+                <button
+                  type="button"
+                  className="rounded text-left hover:underline"
+                  onClick={() => {
+                    setPrefijoGenerar({
+                      id: f.product_id,
+                      nombre: f.producto,
+                      sku: f.sku,
+                      branchId: f.branch_id,
+                      cantidad: Math.max(0, Math.floor(Number(f.sin_serial))),
+                    });
+                    setGenerarAbierto(true);
+                  }}
+                >
+                  {t('descuadreFila', {
+                    producto: f.producto,
+                    sede: f.sede ?? '',
+                    sin: entero(Math.abs(Math.floor(Number(f.sin_serial)))),
+                    stock: entero(Math.floor(Number(f.stock))),
+                    seriales: entero(f.seriales),
+                  })}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {estadoError !== 'sinPermiso' && (
         <KpiStrip etiqueta={t('kpis.etiqueta')} className="hidden sm:grid">
@@ -434,6 +489,8 @@ export function SerialesPage() {
           </Button>
         </div>
       )}
+
+      <AlertaStockSinSeriales />
 
       <ListToolbar
         busqueda={
@@ -578,6 +635,15 @@ export function SerialesPage() {
       />
 
       {acciones.dialogos}
+      <DialogoGenerarDesdeListado
+        abierto={generarAbierto}
+        onAbiertoChange={setGenerarAbierto}
+        sucursales={branches.flatMap((b) => (typeof b.id === 'number' ? [{ id: b.id, name: b.name }] : []))}
+        sucursalInicial={prefijoGenerar?.branchId ?? (typeof branchFilter === 'number' ? branchFilter : null)}
+        productoInicial={prefijoGenerar ? { id: prefijoGenerar.id, nombre: prefijoGenerar.nombre, sku: prefijoGenerar.sku } : null}
+        cantidadInicial={prefijoGenerar?.cantidad ?? null}
+        onHecho={() => { setMarcaDescuadre((n) => n + 1); recargar(); }}
+      />
     </div>
   );
 

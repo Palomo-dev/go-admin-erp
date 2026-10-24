@@ -27,10 +27,13 @@
  *   - cantidad mínima: suma de unidades de esas líneas. Solo porcentaje,
  *     monto fijo y paquete, y solo si `min_quantity` trae un entero.
  *     `buy_quantity` no es un mínimo. Compra X Lleva Y no la mira;
- *   - repetir cada N (`repeat_every_quantity`) en porcentaje y monto fijo:
- *     floor(unidades / N) veces el valor. En porcentaje, el sobrante queda
- *     a precio normal. En monto fijo, el total se reparte entre las líneas
- *     que entran y se topa a su subtotal;
+ *   - repetir cada N (`repeat_every_quantity`) en porcentaje, monto fijo y
+ *     paquete. En porcentaje (y en un paquete sin precio), el porcentaje
+ *     cubre solo floor(unidades / N) * N unidades y el sobrante queda a
+ *     precio normal. En monto fijo, floor(unidades / N) veces el valor, se
+ *     reparte entre las líneas que entran y se topa a su subtotal. En un
+ *     paquete con precio, N limita los paquetes completos a
+ *     floor(unidades que entran / N). NULL = sin repetición;
  *   - no combinables: gana la que MÁS descuenta en esta cuenta (empate:
  *     mayor prioridad y luego la más antigua por `created_at`), y compite
  *     contra la suma de las combinables. Una no combinable que no toca la
@@ -45,8 +48,10 @@
  *     fin es menor que el inicio, cruza la medianoche);
  *   - bundle: con `bundle_price` > 0, cada producto incluido aporta
  *     `quantity` unidades por paquete (nulo = 1) y el precio se cobra por
- *     cada paquete completo. El sobrante va a precio normal. Sin productos
- *     incluidos, el precio de paquete no se aplica. Sin precio, el porcentaje.
+ *     cada paquete completo. El sobrante va a precio normal. Si hay N, como
+ *     máximo floor(unidades que entran / N) paquetes llevan ese precio.
+ *     Sin productos incluidos, el precio de paquete no se aplica. Sin
+ *     precio, el porcentaje, con la misma repetición que un porcentaje.
  *
  * Diferencias que QUEDAN con el sitio (2026-10-07), a cerrar en ese repo:
  *   1. Redondeo: aquí a centavos; el sitio, a pesos enteros (`Math.round`).
@@ -97,7 +102,11 @@ export interface FilaPromocion {
   min_purchase_scope?: string | null;
   /** Unidades mínimas de las líneas que entran. Solo porcentaje, monto fijo y paquete. */
   min_quantity?: number | string | null;
-  /** Repite el descuento cada N unidades. Nulo = una sola vez. */
+  /**
+   * Repite cada N unidades. Nulo = sin repetición: el porcentaje cubre todas
+   * las unidades, el monto fijo se aplica una vez y el paquete con precio
+   * cobra todos los paquetes completos.
+   */
   repeat_every_quantity?: number | string | null;
   max_discount_amount?: number | string | null;
   applies_to: string;
@@ -354,6 +363,11 @@ function destinoPaquete(linea: LineaPromocion, requisitos: Array<{ productId: nu
 /**
  * Precio del paquete por cada grupo completo. El sobrante se queda a precio
  * normal. Sin productos incluidos no se aplica un solo precio a toda la cuenta.
+ *
+ * Con `repeat_every_quantity` = N, los paquetes que llevan el precio quedan
+ * en min(paquetes completos, floor(unidades que entran / N)). Las unidades
+ * que entran son las de las líneas elegibles, las mismas que usa el
+ * porcentaje. NULL no limita: todos los paquetes completos, como antes.
  */
 function descuentoPorPaquetes(
   p: FilaPromocion,
@@ -379,6 +393,12 @@ function descuentoPorPaquetes(
     paquetes = Math.min(paquetes, Math.floor(qty / req.porPaquete));
   }
   if (!Number.isFinite(paquetes) || paquetes <= 0) return new Map();
+
+  const cada = enteroPositivo(p.repeat_every_quantity);
+  if (cada != null) {
+    paquetes = Math.min(paquetes, Math.floor(unidadesDe(lineas, indices) / cada));
+  }
+  if (paquetes <= 0) return new Map();
 
   const consumido = new Map<number, number>();
   for (const req of requisitos) {
@@ -407,20 +427,25 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
     if (d > 0) porLinea.set(idx, centavos((porLinea.get(idx) ?? 0) + d));
   };
 
+  // Porcentaje sobre las líneas que entran. Con N, solo los grupos completos.
+  const aplicarPorcentaje = () => {
+    const cada = enteroPositivo(p.repeat_every_quantity);
+    if (cada == null) {
+      for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
+    } else {
+      let quedan = Math.floor(unidadesDe(lineas, indices) / cada) * cada;
+      for (const idx of indices) {
+        if (quedan <= 0) break;
+        const toman = Math.min(num(lineas[idx].quantity), quedan);
+        sumar(idx, (toman * num(lineas[idx].unit_price) * valor) / 100);
+        quedan -= toman;
+      }
+    }
+  };
+
   switch (p.promotion_type) {
     case 'percentage': {
-      const cada = enteroPositivo(p.repeat_every_quantity);
-      if (cada == null) {
-        for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
-      } else {
-        let quedan = Math.floor(unidadesDe(lineas, indices) / cada) * cada;
-        for (const idx of indices) {
-          if (quedan <= 0) break;
-          const toman = Math.min(num(lineas[idx].quantity), quedan);
-          sumar(idx, (toman * num(lineas[idx].unit_price) * valor) / 100);
-          quedan -= toman;
-        }
-      }
+      aplicarPorcentaje();
       break;
     }
     case 'bundle': {
@@ -428,7 +453,8 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
       if (precioPaquete > 0) {
         porLinea = descuentoPorPaquetes(p, lineas, indices, precioPaquete);
       } else if (valor > 0) {
-        for (const [idx, w] of pesos) sumar(idx, (w * valor) / 100);
+        // Sin precio de paquete es un porcentaje, con la misma repetición.
+        aplicarPorcentaje();
       }
       break;
     }

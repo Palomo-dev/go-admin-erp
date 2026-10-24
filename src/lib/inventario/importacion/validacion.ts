@@ -106,7 +106,7 @@ export function validarFilas(filas: FilaImport[], ctx: ContextoValidacion): Fila
     if (f.price !== undefined && f.price < 0) errores.push({ codigo: 'precioInvalido' });
     if (f.cost !== undefined && f.cost < 0) errores.push({ codigo: 'costoInvalido' });
     if (f.stock !== undefined && f.stock < 0) errores.push({ codigo: 'stockInvalido' });
-    if (f.price && f.cost && f.cost > f.price && !avisos.some((a) => a.codigo === 'costoPrecioIntercambiados')) {
+    if (f.price && f.cost && f.cost >= f.price && !avisos.some((a) => a.codigo === 'costoPrecioIntercambiados')) {
       avisos.push({ codigo: 'costoMayorPrecio' });
     }
     if (f.comparePrice && f.price && f.comparePrice <= f.price) avisos.push({ codigo: 'comparacionMenorPrecio' });

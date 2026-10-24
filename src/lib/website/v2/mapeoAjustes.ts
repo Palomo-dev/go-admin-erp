@@ -19,7 +19,7 @@
  * revisada. `contenido.horarios` sigue en el contrato (documentos viejos lo traen) pero nadie lo
  * escribe ni lo lee.
  *
- * Encabezado y pie por plantilla (2026-10-06): 40 opciones nuevas (`nueva: true`) con su regla,
+ * Encabezado y pie por plantilla (2026-10-06): opciones nuevas (`nueva: true`) con su regla,
  * `header_style` 'transparent' y `footer_background` 'tema'. En V2 viven en `shell.*.opciones`;
  * en legacy, columnas aditivas de las migraciones `sitio_encabezado_pie_v2` (14) y
  * `sitio_encabezado_pie_v2_panel` (moneda, colores de texto, fijo al bajar, separadores). Quien
@@ -78,7 +78,9 @@ export type ReglaOpcionShell =
   /** Color fijo «#RGB» o «#RRGGBB». */
   | { tipo: 'color' }
   /** Uno de `valores` o una lista de `acciones` (texto «a,b» en la columna legacy). */
-  | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number };
+  | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number }
+  /** Entero inclusive. */
+  | { tipo: 'entero'; min: number; max: number };
 
 export interface OpcionShell {
   zona: 'header' | 'footer';
@@ -92,6 +94,20 @@ export interface OpcionShell {
    */
   nueva?: true;
 }
+
+/** Composición explícita. Ausente: se sigue usando `header_style`. */
+export const LAYOUTS_ENCABEZADO = [
+  'clasico',
+  'logo_centro',
+  'logo_centro_menu_abajo',
+  'menu_abajo',
+  'comercio',
+  'minimo',
+  'mega',
+  'solido_negro_menu_centro',
+  'transparente_centrado',
+] as const;
+export const SCROLL_ENCABEZADO = ['fijo', 'ocultar_al_bajar', 'encoger', 'ocultar_y_encoger'] as const;
 
 /** Composiciones del encabezado que pinta el sitio (`header_style` / `shell.header.composicion`). */
 export const COMPOSICIONES_HEADER = ['default', 'centered', 'split', 'minimal', 'mega', 'transparent'] as const;
@@ -124,6 +140,8 @@ const BOOL: ReglaOpcionShell = { tipo: 'booleano' };
 export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   // Encabezado
   logo_position: { zona: 'header', porDefecto: 'left' },
+  /** Lado del logo en el celular. `inherit` = el de `logo_position` (y, si esa falta, centro en centered/split). */
+  mobile_logo_position: { zona: 'header', porDefecto: 'inherit', regla: { tipo: 'opcion', valores: ['inherit', 'left', 'center', 'right'] }, nueva: true },
   header_cta_text: { zona: 'header', porDefecto: null },
   header_cta_url: { zona: 'header', porDefecto: null },
   show_header_cart: { zona: 'header', porDefecto: true },
@@ -230,6 +248,31 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   mobile_menu_logout_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Hamburguesa, búsqueda, carrito, cuenta y moneda de la barra del celular. `null` = texto del encabezado o contraste. */
   header_mobile_icon_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Si falta, el encabezado sigue el `header_style` de hoy. */
+  header_layout: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LAYOUTS_ENCABEZADO }, nueva: true },
+  /** `fijo` es lo de hoy: el encabezado no se esconde ni se encoge. */
+  header_scroll: { zona: 'header', porDefecto: 'fijo', regla: { tipo: 'opcion', valores: SCROLL_ENCABEZADO }, nueva: true },
+  header_actions_style: { zona: 'header', porDefecto: 'icono', regla: { tipo: 'opcion', valores: ['icono', 'icono_texto', 'pildora', 'texto'] }, nueva: true },
+  /**
+   * Menú móvil nuevo, barra inferior tipo app y disposición del header en celular.
+   * `null` (hoy): sigue la variante de `mobile_menu_style` (drawer, fullscreen, bottom_sheet, tabs).
+   * Vive solo en el JSON del documento. No hay columna ni migración.
+   */
+  mobile_header: { zona: 'header', porDefecto: null, nueva: true },
+  /**
+   * Constructor del encabezado: zonas, íconos, botones, mega menú y cromo del buscador.
+   * `null` = el header de hoy. Vive en el JSON del documento. No hay columna ni migración.
+   */
+  header_builder: { zona: 'header', porDefecto: null, nueva: true },
+  /**
+   * Header transparente, fijo, encima del hero. `null` = no (el header sigue
+   * opaco y el hero debajo). `false` guardado apaga también el alias
+   * `overlap_header`. La variante `header_style: transparent` sigue solapando
+   * salvo este `false`.
+   */
+  header_transparent_over_hero: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /** Hueco en px entre el encabezado y la primera sección. 0 = pegadas. */
+  first_section_offset_px: { zona: 'header', porDefecto: 0, regla: { tipo: 'entero', min: 0, max: 240 }, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },
@@ -304,6 +347,8 @@ export function cumpleRegla(regla: ReglaOpcionShell, valor: unknown): boolean {
         new Set(valor).size === valor.length &&
         valor.every((v) => typeof v === 'string' && regla.acciones.includes(v))
       );
+    case 'entero':
+      return typeof valor === 'number' && Number.isInteger(valor) && valor >= regla.min && valor <= regla.max;
   }
 }
 
@@ -330,6 +375,33 @@ export function normalizarOpcionShell(columna: string, valor: unknown): unknown 
 }
 
 /** Forma de `mobile_bottom_bar` para la columna legacy (texto): la lista va como «a,b». */
+/**
+ * Traduce `header_layout` al `header_style` que ya pinta el sitio.
+ * `null` = no hay layout nuevo y manda `header_style`.
+ */
+export function estiloDeHeaderLayout(layout: unknown): string | null {
+  switch (layout) {
+    case 'clasico':
+    case 'menu_abajo':
+    case 'solido_negro_menu_centro':
+      return 'default';
+    case 'logo_centro':
+      return 'split';
+    case 'logo_centro_menu_abajo':
+      return 'centered';
+    case 'comercio':
+      return 'comercio';
+    case 'minimo':
+      return 'minimal';
+    case 'mega':
+      return 'mega';
+    case 'transparente_centrado':
+      return 'transparent';
+    default:
+      return null;
+  }
+}
+
 export function barraMovilAColumna(valor: unknown): string {
   const v = normalizarOpcionShell('mobile_bottom_bar', valor);
   return Array.isArray(v) ? v.join(',') : String(v);

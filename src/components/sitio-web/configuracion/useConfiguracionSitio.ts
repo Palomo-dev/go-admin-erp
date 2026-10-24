@@ -33,7 +33,7 @@ import {
 import { useSitioV2 } from '../useSitioV2';
 import { usePaginasSitio } from '../paginas/usePaginasSitio';
 import { ErrorApiConfiguracion, RUTA_API_CONFIGURACION, falloDe, pedirApi, type FalloApi } from './api';
-import { crearDocumentoLegal } from './crearDocumentoLegal';
+import { crearDocumentoLegal, regenerarDocumentoLegal } from './crearDocumentoLegal';
 
 export type ResultadoGuardado = 'ok' | 'error' | 'pendiente' | 'conflicto' | 'invalido';
 
@@ -62,16 +62,21 @@ export interface ConfiguracionSitio {
   guardar: () => Promise<ResultadoGuardado>;
   cerrarErrorGuardado: () => void;
   recargar: () => Promise<void>;
-  crearLegal: (doc: DocumentoLegalVista) => Promise<string | null>;
+  crearLegal: (doc: DocumentoLegalVista) => Promise<{ id: string; origen: 'ia' | 'plantilla' } | null>;
+  regenerarLegal: (
+    doc: DocumentoLegalVista,
+    extra?: { confirmar?: boolean; texto?: string; origen?: 'ia' | 'plantilla' },
+  ) => Promise<import('./crearDocumentoLegal').ResultadoRegenerar | null>;
   cambiarPublicacion: (publicado: boolean) => Promise<boolean>;
   eliminarSitio: (confirmacion: string) => Promise<FalloApi | null>;
 }
 
-function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoUrl: string | null; logoFondoClaroUrl: string | null; faviconUrl: string | null } {
+function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoUrl: string | null; logoFondoClaroUrl: string | null; logoOscuroUrl: string | null; faviconUrl: string | null } {
   return {
     nombre: valorCampo(doc?.identidad?.nombre),
     logoUrl: valorCampo(doc?.identidad?.logoUrl),
     logoFondoClaroUrl: valorCampo(doc?.identidad?.logoFondoClaroUrl),
+    logoOscuroUrl: valorCampo(doc?.identidad?.logoOscuroUrl),
     faviconUrl: valorCampo(doc?.identidad?.faviconUrl),
   };
 }
@@ -79,7 +84,7 @@ function identidadDe(doc: DocumentoSitio | null): { nombre: string | null; logoU
 /** Aplica la identidad del formulario al documento (campo vacío = `clear`, hereda del sitio anterior). */
 export function conIdentidad(
   doc: DocumentoSitio,
-  f: Pick<FormularioConfiguracion, 'nombre' | 'logoUrl' | 'logoFondoClaroUrl' | 'faviconUrl'>,
+  f: Pick<FormularioConfiguracion, 'nombre' | 'logoUrl' | 'logoFondoClaroUrl' | 'logoOscuroUrl' | 'faviconUrl'>,
 ): DocumentoSitio {
   const campo = (v: string | null) => (v && v.trim() ? { mode: 'value' as const, value: v.trim() } : { mode: 'clear' as const });
   const identidad: DocumentoSitio['identidad'] = {
@@ -90,9 +95,13 @@ export function conIdentidad(
   };
   // Sin valor y sin clave previa: no se escribe. El lector público estricto
   // rechazaría el documento si aún no conoce el campo.
-  const claro = f.logoFondoClaroUrl?.trim() ?? '';
-  if (claro) identidad.logoFondoClaroUrl = { mode: 'value', value: claro };
-  else if (doc.identidad.logoFondoClaroUrl) identidad.logoFondoClaroUrl = { mode: 'clear' };
+  const opcional = (valor: string | null, previo: DocumentoSitio['identidad']['logoFondoClaroUrl'], clave: 'logoFondoClaroUrl' | 'logoOscuroUrl') => {
+    const texto = valor?.trim() ?? '';
+    if (texto) identidad[clave] = { mode: 'value', value: texto };
+    else if (previo) identidad[clave] = { mode: 'clear' };
+  };
+  opcional(f.logoFondoClaroUrl, doc.identidad.logoFondoClaroUrl, 'logoFondoClaroUrl');
+  opcional(f.logoOscuroUrl, doc.identidad.logoOscuroUrl, 'logoOscuroUrl');
   return { ...doc, identidad };
 }
 
@@ -224,6 +233,7 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
         nombre: formulario.nombre,
         logoUrl: formulario.logoUrl,
         logoFondoClaroUrl: formulario.logoFondoClaroUrl,
+        logoOscuroUrl: formulario.logoOscuroUrl,
         faviconUrl: formulario.faviconUrl,
       };
       setDatos(r);
@@ -258,6 +268,7 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
         publicada: p.publicada,
         estado: p.estado.tipo,
         actualizadaEn: p.actualizadaEn,
+        caracteres: p.caracteres,
       })),
     );
   }, [paginas.datos]);
@@ -267,21 +278,36 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
   const recargarBorrador = sitio.recargar;
   const versionBorrador = useRef<number | null>(null);
   versionBorrador.current = sitio.borrador?.version ?? null;
+  const depsLegal = useCallback(
+    () => ({
+      versionBorrador: () => versionBorrador.current,
+      escribir: escribirPagina,
+      revalidar: revalidarPaginas,
+      recargarBorrador,
+    }),
+    [escribirPagina, revalidarPaginas, recargarBorrador],
+  );
   const crearLegal = useCallback(
-    async (doc: DocumentoLegalVista): Promise<string | null> => {
+    async (doc: DocumentoLegalVista) => {
       setCreandoLegal(doc.clave);
       try {
-        return await crearDocumentoLegal(doc, {
-          versionBorrador: () => versionBorrador.current,
-          escribir: escribirPagina,
-          revalidar: revalidarPaginas,
-          recargarBorrador,
-        });
+        return await crearDocumentoLegal(doc, depsLegal());
       } finally {
         setCreandoLegal(null);
       }
     },
-    [escribirPagina, revalidarPaginas, recargarBorrador],
+    [depsLegal],
+  );
+  const regenerarLegal = useCallback(
+    async (doc: DocumentoLegalVista, extra?: { confirmar?: boolean; texto?: string; origen?: 'ia' | 'plantilla' }) => {
+      setCreandoLegal(doc.clave);
+      try {
+        return await regenerarDocumentoLegal(doc, depsLegal(), extra);
+      } finally {
+        setCreandoLegal(null);
+      }
+    },
+    [depsLegal],
   );
 
   // Despublicar y volver a publicar van por el hook único del sitio V2
@@ -343,6 +369,7 @@ export function useConfiguracionSitio(): ConfiguracionSitio {
     cerrarErrorGuardado: () => setErrorGuardado(false),
     recargar,
     crearLegal,
+    regenerarLegal,
     cambiarPublicacion,
     eliminarSitio,
   };

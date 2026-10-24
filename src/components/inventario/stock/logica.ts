@@ -25,6 +25,16 @@ export function sucursalesDeFila(fila: Pick<StockFila, 'por_sucursal'>, maximo =
   return { visibles, resto: Math.max(0, fila.por_sucursal.length - visibles.length) };
 }
 
+/**
+ * Segmento de la ficha. Una variante abre el padre (como antes, con su id);
+ * si el listado trae uuid, la URL usa ese uuid. Sin uuid, el id numérico,
+ * que la ficha también resuelve.
+ */
+export function identFichaStock(fila: Pick<StockFila, 'uuid' | 'parent_uuid' | 'parent_id' | 'product_id'>): string {
+  if (fila.parent_id != null) return fila.parent_uuid || String(fila.parent_id);
+  return fila.uuid || String(fila.product_id);
+}
+
 /** Existencia de un producto en una sucursal (0 si no tiene fila). */
 export function existenciaEn(fila: Pick<StockFila, 'por_sucursal'>, branchId: number | null | undefined): StockPorSucursal | null {
   if (!branchId) return null;
@@ -33,7 +43,7 @@ export function existenciaEn(fila: Pick<StockFila, 'por_sucursal'>, branchId: nu
 
 // ─── Motivos de los diálogos (Figma 586:73716 / 586:73820) ───────────────────
 
-export const MOTIVOS_ENTRADA = ['compra_sin_orden', 'devolucion_cliente', 'donacion', 'sobrante', 'produccion_propia', 'otro'] as const;
+export const MOTIVOS_ENTRADA = ['saldo_inicial', 'sobrante', 'produccion_propia', 'devolucion_cliente', 'donacion', 'compra_sin_orden', 'otro'] as const;
 export const MOTIVOS_SALIDA = ['merma_vencido', 'merma_rotura', 'consumo_interno', 'danio', 'perdida', 'robo', 'siniestro', 'muestra', 'otro'] as const;
 export type MotivoEntrada = (typeof MOTIVOS_ENTRADA)[number];
 export type MotivoSalida = (typeof MOTIVOS_SALIDA)[number];

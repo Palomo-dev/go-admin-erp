@@ -29,6 +29,9 @@ import {
   TarjetaPlantilla,
   TituloBloque,
 } from './PartesZonaGlobal';
+import { CelularEncabezado } from './CelularEncabezado';
+import { ConstructorEncabezado } from './ConstructorEncabezado';
+import { PRESETS_CONTENEDOR } from '@/lib/website/constructorEncabezado';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -41,7 +44,7 @@ import {
   valorOpcion,
 } from './zonaGlobalLogica';
 
-export type PestanaZona = 'contenido' | 'diseno' | 'estilo';
+export type PestanaZona = 'contenido' | 'diseno' | 'estilo' | 'celular' | 'constructor';
 
 export interface MenuDisponible {
   id: string;
@@ -86,6 +89,8 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           { valor: 'contenido', etiqueta: t('zonaGlobal.pestana.contenido') },
           { valor: 'diseno', etiqueta: t('zonaGlobal.pestana.diseno') },
           { valor: 'estilo', etiqueta: t('zonaGlobal.pestana.estilo') },
+          { valor: 'celular', etiqueta: t('zonaGlobal.pestana.celular') },
+          { valor: 'constructor', etiqueta: t('zonaGlobal.pestana.constructor') },
         ]}
         valor={pestana}
         onValorChange={setPestana}
@@ -101,6 +106,8 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           </>
         )}
         {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} />}
+        {pestana === 'celular' && <CelularEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
+        {pestana === 'constructor' && <ConstructorEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
       </div>
     </aside>
   );
@@ -225,6 +232,8 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
   const idFuente = useId();
   const idTrazo = useId();
   const idForma = useId();
+  const idCaja = useId();
+  const idEspacio = useId();
   const segundo = Boolean(p.texto('header_cta2_text') || p.texto('header_cta2_url'));
   const anuncios = leerAnuncios(a.topbar_announcement);
   const [conAnuncio, setConAnuncio] = useState(anuncios.length > 0);
@@ -370,12 +379,80 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
             }
           />
         </div>
+        <EtiquetaGrupo>{t('zonaGlobal.acciones.iconoBusqueda')}</EtiquetaGrupo>
+        <ChipsOpcion
+          opciones={[
+            { valor: 'search', etiqueta: 'Buscar' },
+            { valor: 'scan-search', etiqueta: 'Escanear' },
+          ]}
+          valor={typeof a.search_icon === 'string' && a.search_icon ? a.search_icon : 'search'}
+          onValorChange={(v) => cambiar({ search_icon: v })}
+        />
+        <EtiquetaGrupo>{t('zonaGlobal.acciones.iconoCuenta')}</EtiquetaGrupo>
+        <ChipsOpcion
+          opciones={[
+            { valor: 'user', etiqueta: 'Usuario' },
+            { valor: 'user-circle', etiqueta: 'Círculo' },
+          ]}
+          valor={typeof a.auth_icon === 'string' && a.auth_icon ? a.auth_icon : 'user'}
+          onValorChange={(v) => cambiar({ auth_icon: v })}
+        />
+        <EtiquetaGrupo>{t('zonaGlobal.acciones.iconoMoneda')}</EtiquetaGrupo>
+        <ChipsOpcion
+          opciones={[
+            { valor: 'globe', etiqueta: 'Globo' },
+            { valor: 'coins', etiqueta: 'Monedas' },
+          ]}
+          valor={typeof a.currency_icon === 'string' && a.currency_icon ? a.currency_icon : 'globe'}
+          onValorChange={(v) => cambiar({ currency_icon: v })}
+        />
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.iconosCirculo')}
           ayuda={t('zonaGlobal.acciones.iconosCirculoAyuda')}
           valor={opcionBooleana(a, 'header_icons_circle')}
           onCambiar={(v) => cambiar({ header_icons_circle: v })}
         />
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idCaja}>{t('zonaGlobal.acciones.contenedorIconos')}</EtiquetaGrupo>
+          <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.contenedorAyuda')}</p>
+          <ChipsOpcion
+            aria-labelledby={idCaja}
+            opciones={[
+              { valor: 'circulo_acento', etiqueta: t('zonaGlobal.acciones.presetCirculo') },
+              { valor: 'cuadrado_suave', etiqueta: t('zonaGlobal.acciones.presetCuadrado') },
+              { valor: 'borde_fino', etiqueta: t('zonaGlobal.acciones.presetBorde') },
+              { valor: 'sombra_flotante', etiqueta: t('zonaGlobal.acciones.presetSombra') },
+              { valor: 'solo_icono', etiqueta: t('zonaGlobal.acciones.presetSolo') },
+            ]}
+            valor={presetContenedorActivo(a)}
+            onValorChange={(v) => aplicarPresetContenedor(a, v, cambiar)}
+          />
+        </div>
+        <FilaInterruptor
+          titulo={t('zonaGlobal.acciones.headerSobreHero')}
+          ayuda={t('zonaGlobal.acciones.headerSobreHeroAyuda')}
+          nuevo
+          valor={opcionBooleana(a, 'header_transparent_over_hero')}
+          onCambiar={(v) => cambiar({ header_transparent_over_hero: v })}
+        />
+        <div className="flex flex-col gap-1">
+          <label className="text-[13px] font-medium text-fg" htmlFor={idEspacio}>
+            {t('zonaGlobal.acciones.espacioPrimera')}
+          </label>
+          <input
+            id={idEspacio}
+            type="number"
+            min={0}
+            max={240}
+            className="h-9 w-24 rounded-md border border-line bg-surface px-2 text-sm"
+            value={String(valorOpcion<number>(a, 'first_section_offset_px') ?? 0)}
+            onChange={(e) => {
+              const n = Math.min(240, Math.max(0, Math.round(Number(e.target.value) || 0)))
+              cambiar({ first_section_offset_px: n })
+            }}
+          />
+          <span className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.espacioPrimeraAyuda')}</span>
+        </div>
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}
@@ -461,7 +538,12 @@ function Diseno(p: Interno) {
         <EtiquetaGrupo id={idComp}>{t('zonaGlobal.diseno.titulo')}</EtiquetaGrupo>
         <div role="radiogroup" aria-labelledby={idComp} className="grid grid-cols-2 gap-1.5">
           {COMPOSICIONES.map((c) => (
-            <TarjetaComposicion key={c} etiqueta={t(`zonaGlobal.diseno.composicion.${c}`)} seleccionada={composicion === c} onElegir={() => cambiar({ header_style: c })}>
+            <TarjetaComposicion
+              key={c}
+              etiqueta={t(`zonaGlobal.diseno.composicion.${c}`)}
+              seleccionada={composicion === c}
+              onElegir={() => cambiar(c === 'centered' || c === 'split' ? { header_style: c, logo_position: 'center' } : { header_style: c })}
+            >
               <MiniaturaEncabezado composicion={c} />
             </TarjetaComposicion>
           ))}
@@ -477,8 +559,22 @@ function Diseno(p: Interno) {
             { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
             { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
           ]}
-          valor={valorOpcion<string>(a, 'logo_position') ?? 'left'}
+          valor={valorOpcion<string>(a, 'logo_position') ?? (composicion === 'centered' || composicion === 'split' ? 'center' : 'left')}
           onValorChange={(v) => cambiar({ logo_position: v })}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={`${idLogo}-movil`}>{t('zonaGlobal.diseno.logoCelular')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={`${idLogo}-movil`}
+          opciones={[
+            { valor: 'inherit', etiqueta: t('zonaGlobal.diseno.heredar') },
+            { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
+            { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
+            { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
+          ]}
+          valor={valorOpcion<string>(a, 'mobile_logo_position') ?? 'inherit'}
+          onValorChange={(v) => cambiar({ mobile_logo_position: v })}
         />
       </div>
 
@@ -671,4 +767,43 @@ function Estilo(p: Interno) {
       </button>
     </>
   );
+}
+
+const PRESETS_VISIBLES = ['circulo_acento', 'cuadrado_suave', 'borde_fino', 'sombra_flotante', 'solo_icono'] as const
+type PresetVisible = (typeof PRESETS_VISIBLES)[number]
+
+function registro(valor: unknown): Record<string, unknown> {
+  return valor && typeof valor === 'object' && !Array.isArray(valor) ? (valor as Record<string, unknown>) : {}
+}
+
+/** Sin caja guardada, «Solo ícono» (el de hoy) o «Círculo acento» si el booleano sigue prendido. */
+function presetContenedorActivo(ajustes: Record<string, unknown>): PresetVisible | null {
+  const caja = registro(registro(ajustes.header_builder).icon_container)
+  if (typeof caja.shape !== 'string') return ajustes.header_icons_circle === true ? 'circulo_acento' : 'solo_icono'
+  if (caja.scope === 'each') return null
+  for (const clave of ['cuadrado_suave', 'borde_fino', 'sombra_flotante', 'solo_icono'] as const) {
+    const p = PRESETS_CONTENEDOR[clave] as { shape: string; background?: string; shadow?: string; border_width?: number; radius?: number }
+    if (p.shape !== caja.shape) continue
+    if ((p.background ?? undefined) !== (caja.background ?? undefined)) continue
+    if ((p.shadow ?? undefined) !== (caja.shadow ?? undefined)) continue
+    if ((p.border_width ?? undefined) !== (caja.border_width ?? undefined)) continue
+    if ((p.radius ?? undefined) !== (caja.radius ?? undefined)) continue
+    return clave
+  }
+  return null
+}
+
+function aplicarPresetContenedor(ajustes: Record<string, unknown>, clave: PresetVisible, cambiar: (c: Record<string, unknown>) => void) {
+  const builder = registro(ajustes.header_builder)
+  if (clave === 'circulo_acento') {
+    const { icon_container: _fuera, ...resto } = builder
+    const cambio: Record<string, unknown> = { header_icons_circle: true }
+    if ('icon_container' in builder) cambio.header_builder = Object.keys(resto).length ? resto : null
+    cambiar(cambio)
+    return
+  }
+  cambiar({
+    header_icons_circle: false,
+    header_builder: { ...builder, icon_container: { ...PRESETS_CONTENEDOR[clave], scope: 'all' } },
+  })
 }

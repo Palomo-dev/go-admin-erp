@@ -70,6 +70,7 @@ export function claseColorIconoSeccion(seccion: SeccionConfiguracion): string {
 export const ICONO_ESTADO_LEGAL: Record<EstadoLegal, LucideIcon> = {
   publicado: ICONO_ESTADO_PUBLICACION.publicado,
   borrador: ICONO_ESTADO_PUBLICACION.borrador,
+  vacio: FileText,
   falta: AlertTriangle,
 };
 
@@ -77,6 +78,7 @@ export const ICONO_ESTADO_LEGAL: Record<EstadoLegal, LucideIcon> = {
 export const ICONO_ACCION_LEGAL: Record<EstadoLegal, LucideIcon> = {
   publicado: Pencil, // «Editar»
   borrador: Eye, // «Revisar y publicar»
+  vacio: Sparkles, // «Generar con asistente»
   falta: Sparkles, // «Generar con asistente»
 };
 

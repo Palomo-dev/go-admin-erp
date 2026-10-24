@@ -72,12 +72,15 @@ async function generateOrderNumber(organizationId: number): Promise<string> {
 }
 
 /**
- * POST /api/web-orders — SIN USO CONOCIDO (revisado el 2026-10-07).
+ * POST /api/web-orders — SIN USO CONOCIDO (revisado el 2026-10-22).
  *
  * Ni el ERP ni la tienda (repo goadmin-websites) llaman a este POST: la tienda
  * crea sus pedidos con su propio `/api/orders` y solo llama a las subrutas
  * `/api/web-orders/[id]/auto-confirm`, `/release-stock` y `/mesa-ronda`. Se
- * deja en pie (no se borra sin decidirlo) pero NO debe reactivarse tal cual;
+ * deja en pie (no se borra sin decidirlo) pero NO debe reactivarse tal cual.
+ * Tampoco se conectó a la sede del pedido web (`sedeDePedidoWeb` de la tienda):
+ * este POST sigue sin llamadores. Si se reactivara, tendría que evaluar con
+ * esa sede y con `lineDiscounts`, no con `itemDiscounts`.
  * defectos conocidos del cálculo de promociones:
  *   1. Evaluaba con el cliente de NAVEGADOR (`promotionEngine` sin `db`) en el
  *      servidor: sin sesión, la RLS devolvía 0 promociones. Hoy habría que

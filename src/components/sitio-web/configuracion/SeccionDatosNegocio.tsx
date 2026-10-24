@@ -77,11 +77,17 @@ export function SeccionDatosNegocio({
         className="md:col-span-2"
         logoUrl={f.logoUrl}
         logoFondoClaroUrl={f.logoFondoClaroUrl}
+        logoOscuroUrl={f.logoOscuroUrl}
         faviconUrl={f.faviconUrl}
         organizationId={organizationId}
         permitirQuitar
         deshabilitado={deshabilitado}
-        onCambiar={(campo, url) => editar(campo === 'logo' ? 'logoUrl' : campo === 'logoFondoClaro' ? 'logoFondoClaroUrl' : 'faviconUrl', url)}
+        onCambiar={(campo, url) =>
+          editar(
+            campo === 'logo' ? 'logoUrl' : campo === 'logoFondoClaro' ? 'logoFondoClaroUrl' : campo === 'logoOscuro' ? 'logoOscuroUrl' : 'faviconUrl',
+            url,
+          )
+        }
       />
       <FormField etiqueta={t('datos.nombre')} obligatorio error={error('nombre')}>
         <Input value={f.nombre} maxLength={120} disabled={deshabilitado} onChange={(e) => editar('nombre', e.target.value)} autoComplete="organization" />

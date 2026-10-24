@@ -46,6 +46,7 @@ function fila(p: Partial<FilaPagina> & { id: string; titulo: string; slug: strin
     inicio: false,
     seo: 'completo',
     actualizadaEn: '2026-10-02T15:00:00Z',
+    caracteres: 120,
     ...p,
   };
 }

@@ -41,6 +41,10 @@ export function CreateClaimDialog({ open, onOpenChange, preselectedSerialId, onC
   const [buscando, setBuscando] = useState(false);
   const [motivo, setMotivo] = useState<MotivoReclamo | ''>('');
   const [descripcion, setDescripcion] = useState('');
+  const [reclamanteNombre, setReclamanteNombre] = useState('');
+  const [reclamanteDocumento, setReclamanteDocumento] = useState('');
+  const [reclamanteTelefono, setReclamanteTelefono] = useState('');
+  const [reclamanteCorreo, setReclamanteCorreo] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [intento, setIntento] = useState(false);
@@ -53,6 +57,10 @@ export function CreateClaimDialog({ open, onOpenChange, preselectedSerialId, onC
     setEvaluacion(null);
     setMotivo('');
     setDescripcion('');
+    setReclamanteNombre('');
+    setReclamanteDocumento('');
+    setReclamanteTelefono('');
+    setReclamanteCorreo('');
     setError(null);
     setIntento(false);
     if (preselectedSerialId) void evaluar({ id: preselectedSerialId });
@@ -97,6 +105,10 @@ export function CreateClaimDialog({ open, onOpenChange, preselectedSerialId, onC
         serial_id: evaluacion.id,
         motivo: tm(motivo),
         descripcion: descripcion.trim() || null,
+        reclamante_nombre: reclamanteNombre.trim() || null,
+        reclamante_documento: reclamanteDocumento.trim() || null,
+        reclamante_telefono: reclamanteTelefono.trim() || null,
+        reclamante_correo: reclamanteCorreo.trim() || null,
       });
       toast({ title: t('creado', { codigo: r.codigo }) });
       onCreated?.(r.id);
@@ -221,6 +233,23 @@ export function CreateClaimDialog({ open, onOpenChange, preselectedSerialId, onC
         >
           <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} maxLength={2000} placeholder={t('descripcionPlaceholder')} className="h-10" />
         </FormField>
+
+        <fieldset className="grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-2">
+          <legend className="px-1 text-sm font-medium text-fg">{t('reclamante')}</legend>
+          <p className="text-xs text-fg-secondary sm:col-span-2">{t('reclamanteAyuda')}</p>
+          <FormField etiqueta={t('reclamanteNombre')}>
+            <Input value={reclamanteNombre} onChange={(e) => setReclamanteNombre(e.target.value)} maxLength={160} autoComplete="name" className="h-10" />
+          </FormField>
+          <FormField etiqueta={t('reclamanteDocumento')}>
+            <Input value={reclamanteDocumento} onChange={(e) => setReclamanteDocumento(e.target.value)} maxLength={40} className="h-10" />
+          </FormField>
+          <FormField etiqueta={t('reclamanteTelefono')}>
+            <Input value={reclamanteTelefono} onChange={(e) => setReclamanteTelefono(e.target.value)} maxLength={40} autoComplete="tel" className="h-10" />
+          </FormField>
+          <FormField etiqueta={t('reclamanteCorreo')}>
+            <Input value={reclamanteCorreo} onChange={(e) => setReclamanteCorreo(e.target.value)} maxLength={160} autoComplete="email" inputMode="email" className="h-10" />
+          </FormField>
+        </fieldset>
 
         <p className="flex items-start gap-2 rounded-lg bg-subtle px-3 py-2.5 text-[13px] text-fg-secondary">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />

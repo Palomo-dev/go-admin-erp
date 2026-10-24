@@ -10,8 +10,12 @@ import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import type { CartItem } from '@/components/pos/types';
 
 const mockSeriales = jest.fn();
+const mockStock = jest.fn();
 jest.mock('@/lib/services/serialTrackingService', () => ({
-  serialTrackingService: { getAvailableSerials: (...args: unknown[]) => mockSeriales(...args) },
+  serialTrackingService: {
+    getAvailableSerials: (...args: unknown[]) => mockSeriales(...args),
+    getStockOnHand: (...args: unknown[]) => mockStock(...args),
+  },
 }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({
   useFormatDate: () => ({ formatPlain: (v: string | null | undefined) => (v ? `fecha:${v}` : '') }),
@@ -24,7 +28,11 @@ const ITEMS = [
   { id: 'l2', product_id: 4, quantity: 1, unit_price: 500, total: 500, product: { id: 4, name: 'Funda', sku: 'FUN', track_serial: false } },
 ] as unknown as CartItem[];
 
-beforeEach(() => mockSeriales.mockReset());
+beforeEach(() => {
+  mockSeriales.mockReset();
+  mockStock.mockReset();
+  mockStock.mockResolvedValue(null);
+});
 
 test('elige hasta la cantidad pedida y confirma solo con todo completo', async () => {
   mockSeriales.mockResolvedValue([
@@ -57,6 +65,19 @@ test('sin seriales suficientes lo dice (plural del idioma) y en inglés también
   renderConIdioma(<SerialSelectorDialog open onOpenChange={jest.fn()} items={ITEMS} organizationId={120} branchId={3} onConfirm={jest.fn()} />, { idioma: 'en' });
   await waitFor(() => expect(screen.getByText('Only 1 serial number is available and 2 are required.')).toBeTruthy());
   expect(screen.getByRole('button', { name: 'Confirm serial numbers' })).toBeTruthy();
+});
+
+test('si la existencia supera a los seriales disponibles, explica la diferencia', async () => {
+  mockSeriales.mockResolvedValue([{ id: 1, serial: 'SN-001', warranty_end: null }]);
+  mockStock.mockResolvedValue(36);
+  renderConIdioma(<SerialSelectorDialog open onOpenChange={jest.fn()} items={ITEMS} organizationId={120} branchId={3} onConfirm={jest.fn()} />, { idioma: 'en' });
+  await waitFor(() =>
+    expect(
+      screen.getByText(
+        'On hand 36 · 1 serial available · 35 units without an available serial. Those units cannot be chosen here, and no serial number is invented for them.',
+      ),
+    ).toBeTruthy(),
+  );
 });
 
 test('error del servicio: el mensaje llega como alerta', async () => {

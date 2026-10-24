@@ -7,6 +7,7 @@ import {
   diferenciaCantidad,
   existenciaEn,
   filasCsvStock,
+  identFichaStock,
   nombreArchivo,
   sucursalesDeFila,
   tonoFilaStock,
@@ -30,6 +31,8 @@ const fila = (parcial: Partial<StockFila> = {}): StockFila => ({
   sku: 'CRE-0200',
   barcode: null,
   parent_id: null,
+  uuid: null,
+  parent_uuid: null,
   atributos: null,
   categoria: 'Cuidado personal',
   unidad: 'UN',
@@ -70,6 +73,15 @@ const form = (parcial: Partial<FormMovimiento> = {}): FormMovimiento => ({
 });
 
 describe('logica de stock', () => {
+  it('la ficha usa el uuid del padre si la fila es una variante, y el propio si no', () => {
+    const uuid = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    const padre = 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff';
+    expect(identFichaStock(fila({ uuid, parent_uuid: null, parent_id: null }))).toBe(uuid);
+    expect(identFichaStock(fila({ uuid, parent_uuid: padre, parent_id: 9 }))).toBe(padre);
+    expect(identFichaStock(fila({ uuid: null, parent_uuid: null, parent_id: 9, product_id: 10 }))).toBe('9');
+    expect(identFichaStock(fila({ uuid: null, parent_id: null, product_id: 10 }))).toBe('10');
+  });
+
   it('tonos de estado (Figma 582:277572)', () => {
     expect(TONO_ESTADO_STOCK).toEqual({ disponible: 'exito', bajo_minimo: 'advertencia', agotado: 'peligro', negativo: 'peligro' });
     expect(tonoFilaStock({ estado: 'negativo' })).toBe('peligro');
@@ -141,7 +153,15 @@ describe('fachadas de RPC', () => {
     expect(c.rpc).toHaveBeenCalledWith('fn_stock_listado', { p_org: 12, p_filtros: { agrupar: true, sucursales: [1] }, p_desde: 25, p_limite: 25 });
     expect(r.total).toBe(1);
     expect(r.kpis.valor).toBeNull();
-    expect(r.filas[0]).toMatchObject({ existencia: 14, disponible: 14, estado: 'disponible', unidad: 'UN', costo_promedio: null });
+    expect(r.filas[0]).toMatchObject({ existencia: 14, disponible: 14, estado: 'disponible', unidad: 'UN', costo_promedio: null, uuid: null, parent_uuid: null });
+  });
+
+  it('normaliza uuid y parent_uuid de la fila', async () => {
+    const c = clienteQueDevuelve({
+      filas: [{ product_id: 2, nombre: 'Y', parent_id: 1, uuid: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', parent_uuid: '' }],
+    });
+    const r = await listarStock(12, {}, 0, 25, c);
+    expect(r.filas[0]).toMatchObject({ uuid: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', parent_uuid: null, parent_id: 1 });
   });
 
   it('un error de la RPC se lanza (no se traga)', async () => {

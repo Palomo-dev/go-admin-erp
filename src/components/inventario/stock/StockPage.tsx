@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
@@ -19,8 +19,10 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import {
+  AvisoTonal,
   BranchBadgeActiva,
   BulkActionBar,
+  CampoNumero,
   DataTable,
   EmptyState,
   FilterChips,
@@ -49,6 +51,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId, getOrganizationName } from '@/lib/hooks/useOrganization';
+import { RUTA_FACTURA_COMPRA } from '@/lib/inventario/cargaInicial';
+import { guardarConfigInventario, leerConfigInventario } from '@/lib/inventario/permisos';
 import { usePermisosInventario } from '@/lib/inventario/usePermisosInventario';
 import { supabase } from '@/lib/supabase/config';
 import { filasACsv } from '@/lib/utils/csv';
@@ -72,7 +76,7 @@ import {
 import { DialogoRegistrarMovimiento } from './DialogoRegistrarMovimiento';
 import { DialogoStockMinimo } from './DialogoStockMinimo';
 import { MenuNuevoMovimiento } from './MenuNuevoMovimiento';
-import { TONO_ESTADO_STOCK, filasCsvStock, nombreArchivo, sucursalesDeFila, tonoFilaStock } from './logica';
+import { TONO_ESTADO_STOCK, filasCsvStock, identFichaStock, nombreArchivo, sucursalesDeFila, tonoFilaStock } from './logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from './useInventarioB1';
 import { idsProductos } from './cantidadProducto';
 import { useModosVenta } from './useModosVenta';
@@ -128,9 +132,47 @@ export function StockPage() {
   const [categorias, setCategorias] = useState<Opcion[]>([]);
   const [proveedores, setProveedores] = useState<Opcion[]>([]);
   const [nombreProveedorFiltro, setNombreProveedorFiltro] = useState<string | null>(null);
-  const [dialogo, setDialogo] = useState<{ tipo: 'in' | 'out' | 'minimo'; fila: StockFila | null } | null>(null);
+  const [dialogo, setDialogo] = useState<{ tipo: 'in' | 'out' | 'minimo'; fila: StockFila | null; motivo?: string } | null>(null);
+  const [bloquearVenta, setBloquearVenta] = useState(false);
+  const [umbralAjuste, setUmbralAjuste] = useState<number | null>(5_000_000);
+  const umbralRef = useRef<number | null>(5_000_000);
+  const params = useSearchParams();
+  const abrioEntrada = useRef(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  useEffect(() => {
+    if (abrioEntrada.current || params?.get('entrada') !== 'saldo_inicial') return;
+    abrioEntrada.current = true;
+    setDialogo({ tipo: 'in', fila: null, motivo: 'saldo_inicial' });
+  }, [params]);
+
+  useEffect(() => {
+    if (!organizacionId || !permisos.resueltos) return;
+    let vivo = true;
+    leerConfigInventario(organizacionId)
+      .then((c) => {
+        if (!vivo) return;
+        setBloquearVenta(c.bloquear_venta_sin_stock);
+        setUmbralAjuste(c.monto_confirmacion_ajuste);
+        umbralRef.current = c.monto_confirmacion_ajuste;
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [organizacionId, permisos.resueltos]);
+
+  const guardarBloqueo = async (valor: boolean) => {
+    setBloquearVenta(valor);
+    try {
+      const c = await guardarConfigInventario(organizacionId, { bloquear_venta_sin_stock: valor });
+      setBloquearVenta(c.bloquear_venta_sin_stock);
+    } catch (e) {
+      setBloquearVenta(!valor);
+      toast({ variant: 'destructive', title: mensajeError(e) });
+    }
+  };
 
   const estados = (l.filtros.estado ?? '').split(',').filter((e): e is EstadoStock => (ESTADOS_STOCK as readonly string[]).includes(e));
   const seguimiento = (SEGUIMIENTOS_STOCK as readonly string[]).includes(l.filtros.seguimiento ?? '') ? (l.filtros.seguimiento as SeguimientoStock) : undefined;
@@ -290,7 +332,7 @@ export function StockPage() {
     ...(f.con_lotes
       ? [{ id: 'lotes', etiqueta: t('acciones.lotes', { count: f.lotes, n: f.lotes }), icono: Layers, onSelect: () => router.push(rutaLotesProducto(f.product_id)) }]
       : []),
-    { id: 'producto', etiqueta: t('acciones.producto'), icono: Package, onSelect: () => router.push(`/app/inventario/productos/${f.parent_id ?? f.product_id}`) },
+    { id: 'producto', etiqueta: t('acciones.producto'), icono: Package, onSelect: () => router.push(`/app/inventario/productos/${identFichaStock(f)}`) },
     {
       id: 'entrada',
       etiqueta: t('acciones.entrada'),
@@ -539,15 +581,41 @@ export function StockPage() {
       </KpiStrip>
 
       {kpis && kpis.negativos > 0 && !(estados.length === 1 && estados[0] === 'negativo') && (
-        <div role="status" className="flex flex-col gap-3 rounded-xl border border-line-danger bg-danger-subtle p-4 sm:flex-row sm:items-center">
-          <AlertTriangle aria-hidden="true" className="size-5 shrink-0 text-danger-text" strokeWidth={1.75} />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-danger-text">{t('avisoNegativos.titulo', { count: kpis.negativos, n: cantidad(kpis.negativos) })}</p>
-            <p className="hidden text-[13px] text-fg-secondary sm:block">{t('avisoNegativos.descripcion')}</p>
-          </div>
-          <Button variant="outline" className="h-9 bg-surface" onClick={() => l.setFiltro('estado', 'negativo')}>
-            {t('avisoNegativos.ver')}
-          </Button>
+        <AvisoTonal
+          tono="peligro"
+          rol="alert"
+          titulo={t('avisoNegativos.titulo', { count: kpis.negativos, n: cantidad(kpis.negativos) })}
+          descripcion={t('avisoNegativos.descripcion')}
+          accion={{ etiqueta: t('avisoNegativos.ver'), onClick: () => l.setFiltro('estado', 'negativo') }}
+          acciones={[{ etiqueta: t('avisoNegativos.compra'), href: RUTA_FACTURA_COMPRA }]}
+        />
+      )}
+
+      {permisos.configurar && (
+        <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+          <label className="flex items-center gap-3 text-sm text-fg">
+            <Switch checked={bloquearVenta} onCheckedChange={(v) => void guardarBloqueo(v === true)} />
+            <span>
+              <span className="font-medium">{t('config.bloquear')}</span>
+              <span className="mt-0.5 block text-[13px] text-fg-secondary">{t('config.bloquearAyuda')}</span>
+            </span>
+          </label>
+          <FormField etiqueta={t('config.umbral')} ayuda={t('config.umbralAyuda')} className="w-full sm:w-56">
+            <CampoNumero
+              valor={umbralAjuste}
+              onValorChange={(v) => {
+                umbralRef.current = v;
+                setUmbralAjuste(v);
+              }}
+              onBlur={() => {
+                void guardarConfigInventario(organizacionId, { monto_confirmacion_ajuste: umbralRef.current }).catch((e) => {
+                  toast({ variant: 'destructive', title: mensajeError(e) });
+                });
+              }}
+              decimales={0}
+              minimo={0}
+            />
+          </FormField>
         </div>
       )}
 
@@ -762,6 +830,7 @@ export function StockPage() {
         producto={dialogo?.fila && puedeMover(dialogo.fila) ? dialogo.fila : null}
         sucursalId={alcance.todas ? dialogo?.fila?.por_sucursal[0]?.branch_id ?? alcance.sucursalActiva : alcance.sucursalActiva}
         verCostos={verCostos}
+        motivoInicial={dialogo?.motivo}
         onRegistrado={recargar}
       />
       <DialogoStockMinimo

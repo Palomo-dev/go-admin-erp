@@ -459,6 +459,49 @@ describe('repetir el descuento cada N unidades', () => {
     expect(evaluarPromociones([caro], [linea(1, 1, 1000)], ctx()).discountTotal).toBe(1000);
   });
 
+  it('un paquete con 20 % cada 3 descuenta 6 de 7 unidades y nada con 2; sin N, las 7', () => {
+    const cadaTres = promo({
+      promotion_type: 'bundle',
+      discount_value: 20,
+      bundle_price: null,
+      repeat_every_quantity: 3,
+    });
+    const siete = evaluarPromociones([cadaTres], [linea(1, 7, 1000)], ctx());
+    expect(siete.discountTotal).toBe(1200);
+    expect(siete.lineDiscounts).toEqual([1200]);
+    expect(evaluarPromociones([cadaTres], [linea(1, 2, 1000)], ctx()).discountTotal).toBe(0);
+    const sinRepetir = promo({
+      promotion_type: 'bundle',
+      discount_value: 20,
+      bundle_price: null,
+      repeat_every_quantity: null,
+    });
+    expect(evaluarPromociones([sinRepetir], [linea(1, 7, 1000)], ctx()).discountTotal).toBe(1400);
+  });
+
+  it('un paquete con precio y N limita los paquetes completos; sin N, todos', () => {
+    const reglas = [{ rule_type: 'include_product', product_id: 1, category_id: null, quantity: 1 }];
+    const conTope = promo({
+      promotion_type: 'bundle',
+      bundle_price: 8000,
+      discount_value: 0,
+      repeat_every_quantity: 3,
+      applies_to: 'products',
+      promotion_rules: reglas,
+    });
+    expect(evaluarPromociones([conTope], [linea(1, 7, 10000)], ctx()).discountTotal).toBe(4000);
+    expect(evaluarPromociones([conTope], [linea(1, 2, 10000)], ctx()).discountTotal).toBe(0);
+    const sinTope = promo({
+      promotion_type: 'bundle',
+      bundle_price: 8000,
+      discount_value: 0,
+      repeat_every_quantity: null,
+      applies_to: 'products',
+      promotion_rules: reglas,
+    });
+    expect(evaluarPromociones([sinTope], [linea(1, 7, 10000)], ctx()).discountTotal).toBe(14000);
+  });
+
   it('el porcentaje solo cubre los grupos completos; el sobrante queda a precio normal', () => {
     const diez = promo({
       promotion_type: 'percentage',

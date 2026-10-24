@@ -25,9 +25,14 @@ export interface LineaDevolucionPantalla {
   reason: string;
   serial_number_ids?: number[];
   /**
-   * Producto por peso: la cantidad devuelta vuelve al inventario solo si se
-   * marca «Reingresa» (por defecto no: producto fresco). Por unidad o por
-   * medida lo decide el motivo, como siempre.
+   * Por serial: `in_stock` vuelve a stock, `damaged` queda dañado y no entra.
+   * Si no viene, la RPC usa el motivo (in_stock si repone, si no returned).
+   */
+  serial_dispositions?: Record<string, 'in_stock' | 'damaged' | 'returned'>;
+  /**
+   * «Reingresa». En producto por peso el defecto es no (fresco). En el resto
+   * de los no serializados, si la pantalla lo manda, manda la casilla; si no
+   * lo manda, sigue decidiendo el motivo.
    */
   restock?: boolean;
 }
@@ -35,7 +40,14 @@ export interface LineaDevolucionPantalla {
 export interface ParametrosProcesarDevolucion {
   p_organization_id: number;
   p_sale_id: string;
-  p_items: Array<{ sale_item_id: string; quantity: number; reason_code: string; serial_ids: number[]; restock?: boolean }>;
+  p_items: Array<{
+    sale_item_id: string;
+    quantity: number;
+    reason_code: string;
+    serial_ids: number[];
+    restock?: boolean;
+    serial_dispositions?: Record<string, 'in_stock' | 'damaged' | 'returned'>;
+  }>;
   p_refund_method: 'cash' | 'store_credit';
   p_reason: string;
   p_notes: string | null;
@@ -101,6 +113,9 @@ export function parametrosProcesarDevolucion(
       reason_code: item.reason.trim(),
       serial_ids: item.serial_number_ids ?? [],
       ...(item.restock !== undefined ? { restock: item.restock } : {}),
+      ...(item.serial_dispositions && Object.keys(item.serial_dispositions).length > 0
+        ? { serial_dispositions: item.serial_dispositions }
+        : {}),
     }));
   if (items.length === 0) throw new Error('Sin líneas para devolver');
   return {
@@ -124,6 +139,10 @@ export const CODIGOS_ERROR_DEVOLUCION = [
   'motivo_obligatorio',
   'seriales_no_coinciden',
   'serial_invalido',
+  'serial_ya_devuelto',
+  'serial_ya_reembolsado_garantia',
+  'serial_en_garantia',
+  'disposicion_invalida',
   'linea_no_pertenece_a_la_venta',
   'sin_acceso_sucursal',
   // Producto por peso o medida con más decimales de los suyos (20260929120300).

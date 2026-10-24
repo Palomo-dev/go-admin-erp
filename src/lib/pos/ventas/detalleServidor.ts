@@ -19,6 +19,7 @@ import { resolverPermisosVentas, type PermisosVentas } from './permisosVentas';
 import { estadoVenta, origenVenta, type EstadoVenta, type OrigenVenta } from './estadoVenta';
 import { facturaDeVenta, notasCreditoDeVenta, numeroVenta, pagosDeVenta, totalPagado, type NumeroVenta } from './documentosVenta';
 import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
+import { idsSerialesLinea, serialesVisiblesDeLinea } from '@/lib/pos/devoluciones/serialesLinea';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId' | 'roleId' | 'isSuperAdmin'>;
 
@@ -52,6 +53,7 @@ export interface LineaDetalle {
   nota: string | null;
   /** Le quitaron la promoción. El cobro no se la volvió a aplicar. */
   sin_promocion: boolean;
+  seriales: { id: number; codigo: string }[];
 }
 
 export interface AuditoriaPromo {
@@ -170,6 +172,39 @@ function direccionTexto(v: unknown): string | null {
   return partes.length ? partes.join(', ') : null;
 }
 
+/** Seriales de la venta (por `sale_id`) y los que la línea nombra aunque ya no estén vendidos. */
+async function serialesDeLaVenta(
+  ctx: Ctx,
+  saleId: string,
+  filas: readonly Record<string, unknown>[],
+): Promise<{ id: number; codigo: string; product_id: number; sale_id: string | null }[]> {
+  const ids = [...new Set(filas.flatMap((l) => idsSerialesLinea(l.serial_ids)))];
+  const { data: porVenta, error } = await ctx.supabase
+    .from('serial_numbers')
+    .select('id, serial_number, product_id, sale_id')
+    .eq('organization_id', ctx.organizationId)
+    .eq('sale_id', saleId);
+  if (error) throw new ErrorDetalleVenta('lectura_fallida', 500, error.message);
+  const vistos = new Set((porVenta ?? []).map((s) => Number(s.id)));
+  const faltan = ids.filter((i) => !vistos.has(i));
+  let extras: typeof porVenta = [];
+  if (faltan.length > 0) {
+    const extra = await ctx.supabase
+      .from('serial_numbers')
+      .select('id, serial_number, product_id, sale_id')
+      .eq('organization_id', ctx.organizationId)
+      .in('id', faltan);
+    if (extra.error) throw new ErrorDetalleVenta('lectura_fallida', 500, extra.error.message);
+    extras = extra.data ?? [];
+  }
+  return [...(porVenta ?? []), ...(extras ?? [])].map((s) => ({
+    id: Number(s.id),
+    codigo: String(s.serial_number ?? ''),
+    product_id: Number(s.product_id),
+    sale_id: (s.sale_id as string | null) ?? null,
+  }));
+}
+
 export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> {
   if (!UUID.test(id)) throw new ErrorDetalleVenta('venta_invalida', 400, 'Identificador de venta inválido');
   const { data: venta, error } = await ctx.supabase
@@ -185,7 +220,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const [itemsRes, docsRes, devRes, mesaRes, pedidoRes, comRes, clienteRes, ramaRes, permisos] = await Promise.all([
     ctx.supabase
       .from('sale_items')
-      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, promo_excluded, products(name, sku, unit_code, sale_mode, qty_decimals)')
+      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, promo_excluded, serial_ids, products(name, sku, unit_code, sale_mode, qty_decimals)')
       .eq('sale_id', id),
     ctx.supabase
       .from('invoice_sales')
@@ -213,6 +248,8 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   ]);
   if (itemsRes.error) throw new ErrorDetalleVenta('lectura_fallida', 500, itemsRes.error.message);
   if (docsRes.error) throw new ErrorDetalleVenta('lectura_fallida', 500, docsRes.error.message);
+  const filasItems = (itemsRes.data ?? []) as Array<Record<string, unknown>>;
+  const catalogoSeriales = await serialesDeLaVenta(ctx, id, filasItems);
 
   type Doc = { id: string; number: string | null; document_type: string | null; status: string | null; total: number | string | null; balance: number | string | null; issue_date: string | null; due_date: string | null; created_at: string | null; einvoice_status: string | null };
   const docs = (docsRes.data ?? []) as Doc[];
@@ -311,7 +348,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       : null,
     cajero: { id: s.user_id, nombre: gente.get(s.user_id) ?? null },
     vendedor: s.salesperson_id ? { id: s.salesperson_id as string, nombre: gente.get(s.salesperson_id as string) ?? null } : null,
-    lineas: ((itemsRes.data ?? []) as Array<Record<string, unknown>>).map((l) => {
+    lineas: filasItems.map((l) => {
       const prod = (Array.isArray(l.products) ? l.products[0] : l.products) as
         | { name?: string; sku?: string; unit_code?: string | null; sale_mode?: string | null; qty_decimals?: number | null }
         | null;
@@ -331,6 +368,12 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
         total: n(l.total),
         nota: typeof notas?.note === 'string' ? notas.note : typeof notas?.nota === 'string' ? notas.nota : null,
         sin_promocion: l.promo_excluded === true,
+        seriales: serialesVisiblesDeLinea({
+          serialIds: l.serial_ids,
+          productId: l.product_id,
+          saleId: id,
+          catalogo: catalogoSeriales,
+        }),
       };
     }),
     auditoria_promos: auditoriaCruda.map((a) => {

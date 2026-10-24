@@ -25,6 +25,7 @@ import { usePesarConBascula } from '@/components/pos/venta/peso/usePesarConBascu
 import { useNotasRapidas } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { SessionTimelineDialog } from '@/components/pos/mesas/id/SessionTimelineDialog';
 import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
+import { useRecalcularAlCambiarPromociones } from '@/lib/pos/venta/recalculoPromociones';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { LiberarMesaDialog } from '@/components/pos/mesas/LiberarMesaDialog';
 import { LiberacionMesaError } from '@/components/pos/mesas/liberacionMesaCliente';
@@ -191,6 +192,19 @@ export default function MesaCuentaPage() {
     });
   }, [sesionId]);
   const cargarRef = useRef<(silencioso?: boolean) => Promise<void>>(async () => undefined);
+  // La cuenta abierta sigue al carrito del mostrador: crear, editar o
+  // desactivar una promoción la vuelve a calcular sin agregar platos.
+  // Una venta ya cobrada no se toca (`recalcularPromocionesMesa` sale si
+  // el estado no es pendiente).
+  useRecalcularAlCambiarPromociones({
+    organizationId: sesion?.organization_id ?? organization?.id ?? null,
+    cuentaId: ventaId,
+    hayLineas: (cuenta?.lineas.length ?? 0) > 0,
+    recalcular: async (id) => {
+      await PedidosService.recalcularPromocionesMesa(id);
+      await cargarRef.current(true);
+    },
+  });
   const solicitudesQr = useSolicitudesMesa(cuenta?.mesa.branchId ?? null, (s) => {
     if (s.mesaId !== tableId) return;
     toast.warning(tq('solicitudes.nuevaTitulo', { mesa: mesaNombre, tipo: tq(`solicitudes.tipo.${s.tipo}`) }), {

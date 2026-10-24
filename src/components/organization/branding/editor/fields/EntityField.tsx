@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { cn } from '@/utils/Utils';
 import type { BaseFieldProps } from './types';
+import { idsDeValor } from './idsDeValor';
 import { useTranslations } from 'next-intl';
 
 interface EntityFieldProps extends BaseFieldProps {
@@ -151,7 +152,7 @@ function CategoryEntity({
     load();
   }, [organizationId]);
 
-  const selectedIds = (Array.isArray(value) ? value : []) as number[];
+  const selectedIds = idsDeValor(value, multiple);
   const selectedCats = selectedIds
     .map((id) => categories.find((c) => c.id === id))
     .filter(Boolean) as CategoryNode[];

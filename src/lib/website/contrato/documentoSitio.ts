@@ -174,6 +174,121 @@ export const esquemaIdentidad = z
   })
   .strict();
 
+const opcionToken = <T extends [string, ...string[]]>(valores: T) => esquemaCampo(z.enum(valores)).optional();
+
+/** Perillas de diseño. Cada campo ausente conserva el valor que la tienda pinta hoy. */
+export const esquemaTokens = z
+  .object({
+    radio: opcionToken(['ninguno', 'sutil', 'suave', 'redondeado', 'muy_redondeado', 'pildora']),
+    densidad: opcionToken(['compacta', 'normal', 'amplia']),
+    sombra: opcionToken(['ninguna', 'suave', 'media', 'marcada', 'dura']),
+    borde: opcionToken(['ninguno', 'fino', 'marcado']),
+    colorBorde: esquemaCampo(color).optional(),
+    boton: z
+      .object({
+        forma: opcionToken(['cuadrado', 'redondeado', 'pildora']),
+        relleno: opcionToken(['solido', 'contorno', 'fantasma', 'sombra_dura']),
+        tamano: opcionToken(['s', 'm', 'l']),
+        mayusculas: esquemaCampo(z.boolean()).optional(),
+      })
+      .strict()
+      .optional(),
+    iconos: z
+      .object({
+        set: opcionToken(['lucide', 'lucide_redondeado', 'phosphor_like', 'subidos']),
+        trazo: opcionToken(['fino', 'normal', 'grueso']),
+        relleno: esquemaCampo(z.boolean()).optional(),
+      })
+      .strict()
+      .optional(),
+    tipografia: z
+      .object({
+        par: opcionToken([
+          'inter_inter',
+          'fraunces_inter',
+          'playfair_lato',
+          'space_grotesk_inter',
+          'nunito_nunito',
+          'cormorant_montserrat',
+          'dm_serif_dm_sans',
+          'bricolage_inter',
+        ]),
+        escala: opcionToken(['normal', 'grande', 'editorial', 'display']),
+        estiloTitulos: opcionToken(['normal', 'mayusculas', 'cursiva_display']),
+      })
+      .strict()
+      .optional(),
+    hover: opcionToken(['ninguno', 'sutil', 'expresivo']),
+  })
+  .strict();
+
+/**
+ * Paginación de listas y rejillas. Todo es opcional: si el documento no lo trae,
+ * cada listado sigue con su paginación numerada de hoy (1 2 … 17 y flechas).
+ */
+export const esquemaAjustePaginacion = z
+  .object({
+    porPaginaEscritorio: z.number().int().min(4).max(60).optional(),
+    porPaginaMovil: z.number().int().min(4).max(60).optional(),
+    estilo: z.enum(['numerada', 'compacta', 'cargar_mas', 'infinito', 'anterior_siguiente']).optional(),
+    forma: z.enum(['cuadrado', 'semi', 'circulo', 'pildora']).optional(),
+    colorActivo: color.optional(),
+    colorInactivo: color.optional(),
+    colorHover: color.optional(),
+    tamano: z.enum(['sm', 'md', 'lg']).optional(),
+    alineacion: z.enum(['izq', 'centro', 'der']).optional(),
+    mostrarExtremos: z.boolean().optional(),
+    textoAnterior: z.string().max(40).optional(),
+    textoSiguiente: z.string().max(40).optional(),
+    textoCargarMas: z.string().max(40).optional(),
+    mostrarContador: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * Controles de carrusel. Opcional: sin el objeto, cada carrusel conserva sus
+ * flechas y sus puntos actuales.
+ */
+export const esquemaAjusteCarrusel = z
+  .object({
+    indicador: z.enum(['ninguno', 'puntos', 'barra', 'numeros', 'progreso', 'miniaturas']).optional(),
+    posicionIndicador: z.enum(['abajo_dentro', 'abajo_fuera']).optional(),
+    alineacionIndicador: z.enum(['izq', 'centro', 'der']).optional(),
+    colorActivo: color.optional(),
+    colorInactivo: color.optional(),
+    tamanoIndicador: z.enum(['sm', 'md', 'lg']).optional(),
+    flechasEscritorio: z.boolean().optional(),
+    flechasMovil: z.boolean().optional(),
+    estiloFlechas: z.enum(['chevron', 'circulo', 'cuadrado', 'larga', 'hover']).optional(),
+    posicionFlechas: z.enum(['lados_dentro', 'lados_fuera', 'titulo', 'indicador']).optional(),
+    fondoFlecha: color.optional(),
+    bordeFlecha: color.optional(),
+    sombraFlecha: z.boolean().optional(),
+    colorIcono: color.optional(),
+    tamanoFlecha: z.enum(['sm', 'md', 'lg']).optional(),
+    autoplay: z.boolean().optional(),
+    segundos: z.number().min(1).max(15).optional(),
+    loop: z.boolean().optional(),
+    pausaHover: z.boolean().optional(),
+    visiblesEscritorio: z.number().int().min(1).max(8).optional(),
+    visiblesTableta: z.number().int().min(1).max(6).optional(),
+    visiblesMovil: z.number().int().min(1).max(3).optional(),
+    arrastre: z.boolean().optional(),
+    avance: z.number().int().min(1).max(8).optional(),
+  })
+  .strict();
+
+/**
+ * `product_card_style` del sitio. Objeto plano con botones y etiquetas anidados
+ * un nivel. Ausente = la tarjeta de hoy. La sección lo reemplaza con la misma forma.
+ */
+const primitivoTarjeta = z.union([z.string().max(200), z.number().finite(), z.boolean(), z.null()]);
+export const esquemaTarjetaProducto = z.record(
+  z.string().max(64),
+  z.union([primitivoTarjeta, z.record(z.string().max(64), primitivoTarjeta)]),
+);
+export type TarjetaProductoDocumento = z.infer<typeof esquemaTarjetaProducto>;
+
 /** Tokens de tema (D12 grupo «tema»). */
 export const esquemaTema = z
   .object({
@@ -186,6 +301,13 @@ export const esquemaTema = z
         acento: esquemaCampo(color).optional(),
         fondo: esquemaCampo(color).optional(),
         texto: esquemaCampo(color).optional(),
+        superficie: esquemaCampo(color).optional(),
+        superficieAlterna: esquemaCampo(color).optional(),
+        textoSuave: esquemaCampo(color).optional(),
+        borde: esquemaCampo(color).optional(),
+        sobrePrimario: esquemaCampo(color).optional(),
+        exito: esquemaCampo(color).optional(),
+        oferta: esquemaCampo(color).optional(),
       })
       .strict()
       .default({}),
@@ -207,6 +329,29 @@ export const esquemaTema = z
     radio: esquemaCampo(z.union([z.literal(0), z.literal(4), z.literal(12), z.literal(24)])).optional(),
     estiloBoton: esquemaCampo(z.enum(['solido', 'contorno', 'pastilla', 'sombra_dura'])).optional(),
     movimiento: esquemaCampo(z.enum(['ninguno', 'bajo', 'medio', 'alto'])).optional(),
+    /*
+     * Perillas combinables (2026-10-21). Todas opcionales: ausentes = el sitio de hoy.
+     * El ERP solo las escribe con NEXT_PUBLIC_WEBSITE_TOKENS_DISENO=1, después de que
+     * esta copia ya las acepte.
+     */
+    tokens: esquemaTokens.optional(),
+    /**
+     * Tarjeta de producto del sitio. Ausente = la tarjeta de hoy. Una sección
+     * puede reemplazarla con `contenido.product_card_style`.
+     */
+    tarjetaProducto: esquemaCampo(esquemaTarjetaProducto).optional(),
+    /**
+     * Estilo global de los encabezados de sección. Ausente = cada sección sigue
+     * con su título de hoy. Lo lee el cascarón (`section_style` público).
+     */
+    seccion: z.record(z.string().max(40), z.unknown()).optional(),
+    /**
+     * Paginación y carrusel del sitio. Ausentes = lo de hoy. El editor solo los
+     * escribe con NEXT_PUBLIC_WEBSITE_PAGINACION=1: el sitio publicado rechaza
+     * estas claves hasta que su contrato las acepte.
+     */
+    paginacion: esquemaCampo(esquemaAjustePaginacion).optional(),
+    carrusel: esquemaCampo(esquemaAjusteCarrusel).optional(),
   })
   .strict();
 
@@ -348,6 +493,63 @@ export const esquemaPagina = z
   })
   .strict();
 
+const ubicacionContador = z.enum(['topbar', 'carrito', 'checkout', 'producto', 'hero', 'seccion']);
+
+/**
+ * Urgencia y contador. Ausente = la tienda sigue con las columnas
+ * `countdown_*` y `checkout_*` de `website_settings`.
+ */
+export const esquemaConversion = z
+  .object({
+    contadores: z.array(z.object({
+      id: z.string().min(1).max(40),
+      activo: z.boolean(),
+      ubicaciones: z.array(ubicacionContador).max(6),
+      modo: z.discriminatedUnion('tipo', [
+        z.object({ tipo: z.literal('fecha'), fin: z.string().max(40), zona: z.string().min(1).max(64) }).strict(),
+        z.object({ tipo: z.literal('promocion'), promotionId: z.string().uuid() }).strict(),
+        z.object({ tipo: z.literal('diario'), hora: z.number().int().min(0).max(23), zona: z.string().min(1).max(64) }).strict(),
+        z.object({ tipo: z.literal('evergreen'), minutos: z.number().int().min(1).max(1440) }).strict(),
+      ]),
+      formato: z.object({
+        dias: z.boolean(),
+        horas: z.boolean(),
+        minutos: z.boolean(),
+        segundos: z.boolean(),
+        etiquetas: z.boolean(),
+      }).strict(),
+      estilo: z.object({
+        forma: z.enum(['pastilla', 'cuadrado', 'redondo']),
+        fondo: z.string().max(120).optional(),
+        texto: z.string().max(16).optional(),
+        acento: z.string().max(16).optional(),
+        borde: z.string().max(16).optional(),
+        radio: z.number().int().min(0).max(48).optional(),
+        sombra: z.boolean(),
+        tamano: z.enum(['sm', 'md', 'lg']),
+        cajas: z.enum(['digito', 'linea']),
+      }).strict(),
+      textoAntes: z.string().max(200),
+      textoDespues: z.string().max(200),
+      alTerminar: z.discriminatedUnion('tipo', [
+        z.object({ tipo: z.literal('ocultar') }).strict(),
+        z.object({ tipo: z.literal('mensaje'), texto: z.string().max(200) }).strict(),
+      ]),
+    }).strict()).max(8),
+    urgencia: z.object({
+      stockBajo: z.object({
+        activo: z.boolean(),
+        umbral: z.number().int().min(1).max(999),
+        plantilla: z.string().max(200),
+        ubicaciones: z.array(z.enum(['checkout', 'producto', 'carrito'])).max(3),
+      }).strict(),
+      reservaCarrito: z.object({ activo: z.boolean() }).strict(),
+      /** Sin métrica real no se puede encender. */
+      personasViendo: z.object({ activo: z.literal(false) }).strict(),
+    }).strict(),
+  })
+  .strict();
+
 export const esquemaDocumentoSitio = z
   .object({
     schemaVersion: z.literal(VERSION_ESQUEMA_DOCUMENTO),
@@ -358,6 +560,7 @@ export const esquemaDocumentoSitio = z
     shell: esquemaShell,
     menus: z.array(esquemaMenu).max(LIMITES_DOCUMENTO.menusMaximos),
     paginas: z.array(esquemaPagina).max(LIMITES_DOCUMENTO.paginasMaximas),
+    conversion: esquemaConversion.optional(),
   })
   .strict()
   .superRefine((doc, ctx) => {

@@ -155,7 +155,7 @@ const AlertasInventario: FC<AlertasInventarioProps> = ({ alerts, isLoading, clas
                 </div>
                 {alert.productId && (
                   <Link
-                    href={`/app/inventario/productos/${alert.productId}`}
+                    href={`/app/inventario/productos/${alert.productUuid || alert.productId}`}
                     className={cn(
                       "p-1 rounded hover:bg-white/50 dark:hover:bg-gray-700/50 transition-colors",
                       styles.icon

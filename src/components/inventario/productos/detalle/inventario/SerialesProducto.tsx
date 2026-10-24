@@ -545,6 +545,15 @@ export function SerialesProducto() {
           )}
         </p>
 
+        {sinSerial > 0 && trackSerial && (
+          <div className="flex flex-col items-start gap-2 rounded-lg border border-line-warning bg-warning-subtle px-3 py-2 text-sm text-warning-text">
+            <p>{t('stock.descuadre')}</p>
+            <Button type="button" variant="outline" className="h-8" onClick={() => setGenerarAbierto(true)} disabled={!puedeGenerar}>
+              {t('stock.asignar')}
+            </Button>
+          </div>
+        )}
+
         {tieneVariantes && <p className="text-xs text-fg-muted">{t('resumen.variantes', { count: variantes.length })}</p>}
 
         {!trackSerial && (

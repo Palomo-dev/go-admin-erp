@@ -29,6 +29,7 @@ const base: FormularioConfiguracion = {
   nombre: 'Tu marca',
   logoUrl: null,
   logoFondoClaroUrl: null,
+  logoOscuroUrl: null,
   faviconUrl: null,
   correo: 'hola@tumarca.com',
   telefono: '',
@@ -53,6 +54,7 @@ describe('documentosLegales', () => {
       ['tratamiento', 'falta'],
       ['cookies', 'borrador'],
       ['devoluciones', 'falta'],
+      ['envios', 'falta'],
     ]);
     expect(docs[0].fecha).toBe('2026-09-12T15:00:00Z');
     expect(faltaTratamientoDatos(docs)).toBe(true);
@@ -61,6 +63,18 @@ describe('documentosLegales', () => {
   it('no avisa cuando la política de tratamiento de datos está publicada', () => {
     const docs = documentosLegales([{ id: 'x', slug: 'tratamiento-de-datos', titulo: 'T', publicada: true, estado: 'publicado', actualizadaEn: null }]);
     expect(faltaTratamientoDatos(docs)).toBe(false);
+  });
+
+  it('una página publicada sin texto es vacío y no cuenta como publicada', () => {
+    const docs = documentosLegales([{ id: 'x', slug: 'tratamiento-de-datos', titulo: 'T', publicada: true, estado: 'publicado', actualizadaEn: null, caracteres: 0 }]);
+    expect(docs.find((d) => d.clave === 'tratamiento')?.estado).toBe('vacio');
+    expect(faltaTratamientoDatos(docs)).toBe(true);
+  });
+
+  it('una URL manual de la política tapa el aviso aunque la página falte', () => {
+    const docs = documentosLegales([]);
+    expect(faltaTratamientoDatos(docs, 'https://ejemplo.test/tratamiento')).toBe(false);
+    expect(faltaTratamientoDatos(docs, '')).toBe(true);
   });
 });
 
@@ -154,7 +168,7 @@ describe('resúmenes del móvil (B/12-03)', () => {
       moneda: 'COP',
     });
     expect(r.map((x) => x.seccion)).toEqual(['datos', 'legales', 'codigo', 'chat', 'idioma', 'mantenimiento', 'peligro']);
-    expect(r[1]).toMatchObject({ clave: 'movil.resumen.legalesFaltan', valores: { n: 5 }, falta: true });
+    expect(r[1]).toMatchObject({ clave: 'movil.resumen.legalesFaltan', valores: { n: 6 }, falta: true });
     expect(r[2]).toMatchObject({ clave: 'movil.resumen.codigoUno' });
     expect(r[3].clave).toBe('movil.resumen.activo');
     expect(r[5].clave).toBe('movil.resumen.publicado');

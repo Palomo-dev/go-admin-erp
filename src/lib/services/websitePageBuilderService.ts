@@ -3,13 +3,16 @@
 import { supabase } from '@/lib/supabase/config';
 import {
   STYLE_FIELDS,
+  SHELL_FIELDS,
   SPACING_FIELDS,
   GRID_FIELDS,
   CAROUSEL_FIELDS,
   CARD_FIELDS,
   CATEGORY_CARD_FIELDS,
+  CAMPOS_IMAGEN_BENEFICIO,
   BUTTON_ITEM_FIELDS,
   PRODUCT_CARD_INTERACTION_FIELDS,
+  FILTER_COLOR_FIELDS,
 } from '@/lib/services/website/sectionFieldGroups';
 import {
   CAMPOS_CARTA_QR,
@@ -175,7 +178,15 @@ export interface ContentFieldDef {
     /** Lista corta de valores en chips (número con `suffix` o texto, según `itemType`). */
     | 'chips'
     /** Aviso informativo del inspector: no guarda nada (la clave empieza por `_`). */
-    | 'notice';
+    | 'notice'
+    /** Opciones con miniatura (no escribe hasta que se elige una). */
+    | 'visual'
+    /** Encabezado común. Guarda el objeto `section_header`. */
+    | 'section_header'
+    /** Fondo común. Guarda el objeto `section_background`. */
+    | 'section_background'
+    /** Inspector del boletín. No guarda esta clave: escribe `newsletter_layout` y `newsletter`. */
+    | 'newsletter';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -235,6 +246,25 @@ const CARD_FIELDS_DESCRIPCION_VISIBLE: ContentFieldDef[] = CARD_FIELDS.map((f) =
   f.key === 'show_description' ? { ...f, defaultValue: true } : f,
 );
 
+/**
+ * `defaultValue` no se escribe en el contenido. En la tienda, ausente significa
+ * hijas incluidas solo en destacados; en grilla, carrusel, lista y ofertas, no.
+ */
+function campoIncluirSubcategorias(porDefecto: boolean): ContentFieldDef {
+  return {
+    key: 'include_subcategories',
+    label: 'Incluir subcategorías',
+    type: 'boolean',
+    group: 'data',
+    defaultValue: porDefecto,
+    helpText: porDefecto
+      ? 'También entran los productos de las categorías hijas. Apágalo para quedarte solo con la categoría elegida.'
+      : 'Apagado: solo la categoría elegida, como hasta ahora. Enciéndelo para incluir las hijas.',
+  };
+}
+
+const AYUDA_CATEGORIAS_PRODUCTO = 'Sin selección se muestran todos los productos. Con selección, solo los de esas categorías.';
+
 const RAW_CATALOG: SectionTypeDefinition[] = [
   {
     type: 'hero',
@@ -256,6 +286,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...', showIf: { variantIn: ['video'] } },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
+      {
+        key: 'link_url',
+        label: 'Enlace de la imagen',
+        type: 'url',
+        placeholder: '/ofertas',
+        helpText: 'Clic en toda la imagen. Si lo dejas vacío y apagas «Mostrar botón», se usa la URL del botón.',
+      },
       // El overlay solo existe en las variantes con fondo (pantalla completa, slider y video):
       // Minimal y Dividido no tienen nada que oscurecer.
       { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true, showIf: { variantIn: ['fullscreen', 'slider', 'video'] } },
@@ -278,7 +315,48 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { value: '70vh', label: '70 vh (pantalla grande)' },
           { value: '100vh', label: '100 vh (pantalla completa)' },
           { value: 'auto', label: 'Automática (según contenido)' },
+          { value: 'image', label: 'Según la imagen' },
           { value: 'custom', label: 'Personalizada' },
+        ],
+      },
+      {
+        key: 'mobile_height',
+        label: 'Altura en celular',
+        type: 'select',
+        group: 'layout',
+        helpText: 'Vacío: el celular usa la altura de siempre (media pantalla, 70 vh desde tableta). «Automática» es esa misma.',
+        options: [
+          { value: 'auto', label: 'Automática (como hoy)' },
+          { value: 'image', label: 'Según la imagen' },
+          { value: '60vh', label: '60 vh' },
+          { value: '100vh', label: '100 vh (pantalla completa)' },
+        ],
+      },
+      {
+        key: 'image_fit_mobile',
+        label: 'Ajuste de la foto en celular',
+        type: 'select',
+        group: 'layout',
+        helpText: 'Vacío: cubrir, como hoy.',
+        options: [
+          { value: 'cover', label: 'Cubrir' },
+          { value: 'contain', label: 'Contener' },
+        ],
+      },
+      {
+        key: 'focal_point',
+        label: 'Punto focal',
+        type: 'select',
+        group: 'layout',
+        helpText: 'Qué parte de la foto se queda visible. Vacío: el centro.',
+        options: [
+          { value: 'center', label: 'Centro' },
+          { value: 'top', label: 'Arriba' },
+          { value: 'bottom', label: 'Abajo' },
+          { value: 'left', label: 'Izquierda' },
+          { value: 'right', label: 'Derecha' },
+          { value: 'top left', label: 'Arriba izquierda' },
+          { value: 'top right', label: 'Arriba derecha' },
         ],
       },
       {
@@ -354,8 +432,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         label: 'Solapar con el header',
         type: 'boolean',
         group: 'layout',
-        defaultValue: true,
-        helpText: 'El hero sube debajo del header transparente',
+        defaultValue: false,
+        helpText: 'Alias de «Header transparente sobre el hero». Apagado (lo de hoy): el hero queda debajo del encabezado, sin margen negativo. Si el interruptor del encabezado está en falso, este no lo enciende.',
       },
       // Booking widget (reemplaza hero booking switch ad-hoc)
       { key: 'show_booking_widget', label: 'Widget de reserva', type: 'boolean', group: 'behavior', defaultValue: false, helpText: 'Muestra un formulario de reserva sobre el hero' },
@@ -374,6 +452,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'image_url_mobile', label: 'Imagen de celular', type: 'image', helpText: 'En el celular. Si queda vacía, el celular usa la de escritorio. Si solo subes esta, se ve en todos los anchos.' },
           { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Ver más' },
           { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/productos' },
+          {
+            key: 'link_url',
+            label: 'Enlace de la imagen',
+            type: 'url',
+            placeholder: '/ofertas',
+            helpText: 'Clic en toda la diapositiva. Si lo dejas vacío y apagas «Mostrar botón», se usa la URL del botón.',
+          },
         ],
       },
       // F3.1 — CAROUSEL_FIELDS solo para la variante slider
@@ -944,6 +1029,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'input_text_color', label: 'Color del texto del input', type: 'color', group: 'style' },
       { key: 'button_bg_color', label: 'Color del botón', type: 'color', group: 'style' },
       { key: 'button_text_color', label: 'Color del texto del botón', type: 'color', group: 'style' },
+      {
+        key: 'newsletter_panel',
+        label: 'Newsletter',
+        type: 'newsletter',
+        group: 'content',
+        helpText: 'Sin un preset, la sección sigue como hoy. El correo no se guarda: no hay tabla de suscriptores.',
+      },
     ],
   },
   {
@@ -960,6 +1052,76 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Productos' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'product_source', label: 'Fuente de productos', type: 'select', group: 'data', helpText: 'Sin elegir, se usa el listado de hoy.', options: [
+        { value: 'all', label: 'Todos' },
+        { value: 'categories', label: 'Categorías' },
+        { value: 'manual', label: 'Selección manual' },
+        { value: 'new', label: 'Nuevos' },
+        { value: 'offers', label: 'Ofertas' },
+        { value: 'best_sellers', label: 'Más vendidos' },
+      ]},
+      { key: 'include_subcategories', label: 'Incluir subcategorías', type: 'boolean', group: 'data', showIf: { field: 'product_source', equals: 'categories' } },
+      { key: 'new_days', label: 'Días para considerarlos nuevos', type: 'number', group: 'data', min: 1, max: 365, showIf: { field: 'product_source', equals: 'new' } },
+      { key: 'selected_product_ids', label: 'Ids de productos (separados por coma)', type: 'text', group: 'data', showIf: { field: 'product_source', equals: 'manual' }, helpText: 'Números de producto, separados por coma.' },
+      { key: 'exclude_out_of_stock', label: 'Excluir agotados', type: 'boolean', group: 'data' },
+      { key: 'products_limit', label: 'Cantidad', type: 'number', group: 'data', min: 4, max: 100, helpText: 'Entre 4 y 100. Vacío: el tope de hoy.' },
+      { key: 'columns_desktop', label: 'Columnas en escritorio', type: 'number', group: 'layout', min: 1, max: 6 },
+      { key: 'columns_tablet', label: 'Columnas en tablet', type: 'number', group: 'layout', min: 1, max: 4 },
+      { key: 'columns_mobile', label: 'Columnas en celular', type: 'number', group: 'layout', min: 1, max: 2 },
+      { key: 'display_mode', label: 'Forma de mostrar', type: 'select', group: 'layout', options: [
+        { value: 'grid', label: 'Cuadrícula' },
+        { value: 'list', label: 'Lista' },
+        { value: 'carousel', label: 'Carrusel' },
+      ]},
+      { key: 'pagination', label: 'Paginación', type: 'select', group: 'layout', options: [
+        { value: 'none', label: 'Solo el límite' },
+        { value: 'pages', label: 'Páginas' },
+        { value: 'load_more', label: 'Ver más' },
+        { value: 'infinite', label: 'Scroll infinito' },
+      ]},
+      { key: 'per_page', label: 'Por página', type: 'number', group: 'layout', min: 4, max: 48 },
+      { key: 'chip_style', label: 'Estilo del chip', type: 'select', group: 'layout', options: [
+        { value: 'pill', label: 'Píldora' },
+        { value: 'semi', label: 'Semi' },
+        { value: 'square', label: 'Cuadrado' },
+        { value: 'underline', label: 'Subrayado' },
+      ]},
+      { key: 'chip_mobile', label: 'Chips en celular', type: 'select', group: 'layout', options: [
+        { value: 'scroll', label: 'Scroll horizontal' },
+        { value: 'select', label: 'Lista desplegable' },
+      ]},
+      { key: 'show_all_chip', label: 'Incluir «Todos»', type: 'boolean', group: 'behavior' },
+      { key: 'filter_position', label: 'Posición de los filtros', type: 'select', group: 'layout', options: [
+        { value: 'top', label: 'Barra superior' },
+        { value: 'side', label: 'Lateral' },
+        { value: 'drawer', label: 'Panel en celular' },
+      ]},
+      { key: 'filters', label: 'Filtros activos', type: 'checklist', group: 'behavior', options: [
+        { value: 'category', label: 'Categoría' },
+        { value: 'price', label: 'Precio' },
+        { value: 'offers', label: 'Ofertas' },
+        { value: 'stock', label: 'Disponibilidad' },
+        { value: 'brand', label: 'Marca' },
+        { value: 'attributes', label: 'Atributos' },
+        { value: 'rating', label: 'Calificación' },
+        { value: 'shipping', label: 'Envío gratis' },
+      ]},
+      { key: 'show_sort', label: 'Mostrar «Ordenar»', type: 'boolean', group: 'behavior' },
+      { key: 'sort_options', label: 'Opciones de «Ordenar»', type: 'checklist', group: 'behavior', options: [
+        { value: 'newest', label: 'Más nuevos' },
+        { value: 'price_asc', label: 'Precio ascendente' },
+        { value: 'price_desc', label: 'Precio descendente' },
+        { value: 'sales', label: 'Más vendidos' },
+        { value: 'name', label: 'Nombre' },
+      ]},
+      { key: 'show_count', label: 'Contador de productos', type: 'boolean', group: 'behavior' },
+      { key: 'show_categories', label: 'Mostrar barra de categorías', type: 'boolean', group: 'behavior', defaultValue: true },
+      { key: 'chip_source', label: 'Categorías de la barra', type: 'select', group: 'behavior', helpText: 'Sin elegir, se usan las de hoy.', options: [
+        { value: 'all', label: 'Todas' },
+        { value: 'selected', label: 'Las seleccionadas' },
+        { value: 'manual', label: 'Lista manual, en este orden' },
+      ]},
+      { key: 'chip_category_ids', label: 'Ids de la barra (en orden)', type: 'text', group: 'behavior', showIf: { field: 'chip_source', equals: 'manual' }, helpText: 'Números de categoría, separados por coma, en el orden de la barra.' },
       // Reemplaza CategorySelectorEditor ad-hoc
       {
         key: 'selected_category_ids',
@@ -968,8 +1130,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         entity: 'category',
         multiple: true,
         group: 'data',
-        helpText: 'Sin selección: se muestran todas las categorías',
+        helpText: AYUDA_CATEGORIAS_PRODUCTO,
       },
+      campoIncluirSubcategorias(false),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '12', group: 'data' },
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },
@@ -977,8 +1140,19 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'price_desc', label: 'Precio descendente' },
         { value: 'name', label: 'Nombre' },
         { value: 'sales', label: 'Más vendidos' },
+        { value: 'newest', label: 'Más nuevos' },
+        { value: 'manual', label: 'Manual' },
       ]},
+      {
+        key: 'show_pagination',
+        label: 'Mostrar paginación',
+        type: 'boolean',
+        group: 'behavior',
+        defaultValue: true,
+        helpText: 'Apagado: solo se ve la cantidad o las filas indicadas, sin números de página.',
+      },
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      ...FILTER_COLOR_FIELDS,
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
         { value: 'none', label: 'Ninguno' },
@@ -1042,6 +1216,44 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Explora nuestros productos por categoría' },
+      {
+        key: 'category_style',
+        label: 'Estilo de las categorías',
+        type: 'visual',
+        group: 'style',
+        helpText: 'Vacío: foto con el nombre encima, como hoy.',
+        options: [
+          { value: 'overlay', label: 'Superpuesto' },
+          { value: 'circle', label: 'Círculo' },
+          { value: 'card_bottom', label: 'Tarjeta' },
+          { value: 'pill', label: 'Pastilla' },
+          { value: 'bento', label: 'Mosaico' },
+          { value: 'minimal_icon', label: 'Ícono suave' },
+        ],
+      },
+      {
+        key: 'show_view_all',
+        label: 'Mostrar botón «Ver todo»',
+        type: 'boolean',
+        group: 'content',
+        helpText: 'Vacío: no se muestra. Solo en los estilos nuevos.',
+      },
+      {
+        key: 'view_all_label',
+        label: 'Texto de «Ver todo»',
+        type: 'text',
+        group: 'content',
+        placeholder: 'Ver todo',
+        showIf: { field: 'show_view_all', equals: true },
+      },
+      {
+        key: 'view_all_url',
+        label: 'Enlace de «Ver todo»',
+        type: 'url',
+        group: 'content',
+        placeholder: '/categorias',
+        showIf: { field: 'show_view_all', equals: true },
+      },
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6' },
       { key: 'shape', label: 'Forma', type: 'select', group: 'style', defaultValue: 'square', options: [
         { value: 'square', label: 'Cuadrado' },
@@ -1141,8 +1353,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         entity: 'category',
         multiple: true,
         group: 'data',
-        helpText: 'Sin selección: se muestran todas las categorías',
+        helpText: AYUDA_CATEGORIAS_PRODUCTO,
       },
+      campoIncluirSubcategorias(true),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '8', group: 'data' },
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },
@@ -1150,8 +1363,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'price_desc', label: 'Precio descendente' },
         { value: 'name', label: 'Nombre' },
         { value: 'sales', label: 'Más vendidos' },
+        { value: 'newest', label: 'Más nuevos' },
       ]},
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      ...FILTER_COLOR_FIELDS,
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
         { value: 'none', label: 'Ninguno' },
@@ -1229,6 +1444,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'title', label: 'Título', type: 'text' },
       { key: 'body', label: 'Contenido', type: 'textarea' },
       { key: 'image_url', label: 'Imagen', type: 'image' },
+      { key: 'image_url_mobile', label: 'Imagen de celular', type: 'image', helpText: 'Vacía: en el celular se usa la misma imagen.' },
       { key: 'cta_text', label: 'Texto del botón', type: 'text' },
       { key: 'cta_url', label: 'URL del botón', type: 'url' },
     ],
@@ -1379,8 +1595,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         entity: 'category',
         multiple: true,
         group: 'data',
-        helpText: 'Sin selección: se muestran todas las categorías',
+        helpText: AYUDA_CATEGORIAS_PRODUCTO,
       },
+      campoIncluirSubcategorias(false),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '8', group: 'data' },
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },
@@ -1388,8 +1605,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'price_desc', label: 'Precio descendente' },
         { value: 'name', label: 'Nombre' },
         { value: 'sales', label: 'Más vendidos' },
+        { value: 'newest', label: 'Más nuevos' },
       ]},
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      ...FILTER_COLOR_FIELDS,
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
         { value: 'none', label: 'Ninguno' },
@@ -1397,6 +1616,14 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'featured', label: 'Destacados' },
         { value: 'new', label: 'Novedades' },
       ]},
+      {
+        key: 'show_pagination',
+        label: 'Mostrar paginación',
+        type: 'boolean',
+        group: 'behavior',
+        defaultValue: true,
+        helpText: 'Apagado: solo se ve la cantidad o las filas indicadas, sin números de página.',
+      },
       ...GRID_FIELDS,
       ...CARD_FIELDS,
       ...PRODUCT_CARD_INTERACTION_FIELDS,
@@ -1524,6 +1751,58 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
               { value: 'ghost', label: 'Transparente' },
             ],
           },
+        ],
+      },
+      {
+        key: 'columns_mobile',
+        label: 'Columnas en el celular',
+        type: 'number',
+        group: 'layout',
+        min: 1,
+        max: 2,
+        helpText: 'Vacío: una columna. Dos columnas dejan el banner más alto y se recorta menos el texto.',
+      },
+      {
+        key: 'aspect_ratio_mobile',
+        label: 'Proporción en el celular',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'auto',
+        helpText: 'Una proporción vertical en el celular recorta el texto de un banner horizontal.',
+        options: [
+          { value: 'auto', label: 'Igual que escritorio' },
+          { value: '1/1', label: 'Cuadrada' },
+          { value: '4/3', label: '4:3' },
+          { value: '3/4', label: '3:4 (vertical)' },
+          { value: '16/9', label: '16:9' },
+          { value: '3/1', label: '3:1' },
+        ],
+      },
+      {
+        key: 'image_fit',
+        label: 'Ajuste de la imagen',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'cover',
+        helpText: '«Mostrar completa» no recorta el banner, aunque queden franjas.',
+        options: [
+          { value: 'cover', label: 'Recortar para llenar' },
+          { value: 'contain', label: 'Mostrar completa' },
+        ],
+      },
+      {
+        key: 'image_position',
+        label: 'Posición de la imagen',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'center',
+        helpText: 'En el celular, «Izquierda» conserva el texto que está a la izquierda del banner.',
+        options: [
+          { value: 'center', label: 'Centro' },
+          { value: 'left', label: 'Izquierda' },
+          { value: 'right', label: 'Derecha' },
+          { value: 'top', label: 'Arriba' },
+          { value: 'bottom', label: 'Abajo' },
         ],
       },
       ...GRID_FIELDS,
@@ -2408,10 +2687,24 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     description: 'Características en rejilla, con icono y texto centrado',
     variants: [
       { id: 'alternating', label: 'Alternado' },
+      { id: 'icons', label: 'Íconos' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Características' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'presentacion',
+        label: 'Presentación',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'imagen',
+        helpText: '«Ícono y texto» y «Solo texto» no reservan el cuadro de la imagen.',
+        options: [
+          { value: 'imagen', label: 'Imagen y texto' },
+          { value: 'icono', label: 'Ícono y texto' },
+          { value: 'texto', label: 'Solo texto' },
+        ],
+      },
       {
         key: 'items',
         label: 'Características',
@@ -2419,13 +2712,130 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
         itemLabelKey: 'title',
         itemFields: [
-          { key: 'icon', label: 'Icono', type: 'icon' },
+          {
+            key: 'icon_source',
+            label: 'Origen del ícono',
+            type: 'select',
+            helpText: 'Vacío: imagen, como hoy.',
+            options: [
+              { value: 'image', label: 'Imagen' },
+              { value: 'icon', label: 'Ícono' },
+            ],
+          },
+          {
+            key: 'icon_name',
+            label: 'Ícono',
+            type: 'icon',
+            helpText: 'Camión, candado, pesa, escudo, tarjeta, chat y el resto del buscador.',
+            showIf: { field: 'icon_source', equals: 'icon' },
+          },
+          {
+            key: 'icon',
+            label: 'Ícono',
+            type: 'icon',
+            helpText: 'Se usa cuando el origen es imagen o está vacío.',
+            showIf: { field: 'icon_source', in: ['image', undefined] },
+          },
+          {
+            key: 'image_url',
+            label: 'Imagen',
+            type: 'image',
+            helpText: 'Si no hay imagen, no se muestra un cuadro vacío.',
+            showIf: { field: 'icon_source', in: ['image', undefined] },
+          },
           { key: 'title', label: 'Título', type: 'text' },
           { key: 'description', label: 'Descripción', type: 'textarea' },
-          { key: 'image_url', label: 'Imagen', type: 'image' },
         ],
       },
-      ...GRID_FIELDS,
+      {
+        key: 'card_preset',
+        label: 'Presentación',
+        type: 'select',
+        group: 'style',
+        helpText: 'Tarjetas: radio 16, sombra suave, fondo blanco, padding 24 e ícono suave del color de la marca. Vacío: el bloque de hoy, sin tarjeta.',
+        options: [
+          { value: 'simple', label: 'Actual' },
+          { value: 'tarjetas', label: 'Tarjetas' },
+        ],
+      },
+      {
+        key: 'item_layout',
+        label: 'Disposición',
+        type: 'select',
+        group: 'layout',
+        helpText: 'Vacío: ícono arriba y texto centrado, como hoy.',
+        options: [
+          { value: 'stacked', label: 'Apilado' },
+          { value: 'icon_left', label: 'Ícono a la izquierda' },
+          { value: 'icon_top_small', label: 'Ícono pequeño arriba' },
+        ],
+      },
+      ...GRID_FIELDS.map((f) =>
+        f.key === 'columns'
+          ? {
+              ...f,
+              helpText:
+                'Vacío: 3 en escritorio y 2 en celular, como hoy. Con el ícono a la izquierda o el ícono pequeño, el sitio usa como máximo 4 columnas.',
+            }
+          : f,
+      ),
+      ...CAMPOS_IMAGEN_BENEFICIO,
+      ...CARD_FIELDS.map((f) =>
+        f.key === 'text_align'
+          ? { ...f, helpText: 'Vacío: centrado en apilado y a la izquierda cuando el ícono va al lado.' }
+          : f,
+      ),
+      {
+        key: 'icon_style',
+        label: 'Estilo del ícono',
+        type: 'select',
+        group: 'style',
+        helpText: 'Vacío: suave, con el color de la marca de fondo.',
+        options: [
+          { value: 'soft', label: 'Suave' },
+          { value: 'solid', label: 'Sólido' },
+          { value: 'plain', label: 'Solo el trazo' },
+        ],
+      },
+      {
+        key: 'icon_size',
+        label: 'Tamaño del ícono',
+        type: 'select',
+        group: 'style',
+        helpText: 'Vacío: la caja de 48 px de hoy. Con el ícono a la izquierda, vacío es mediano.',
+        options: [
+          { value: 'sm', label: 'Pequeño' },
+          { value: 'md', label: 'Mediano' },
+          { value: 'lg', label: 'Grande' },
+        ],
+      },
+      {
+        key: 'icon_color',
+        label: 'Color del ícono',
+        type: 'color',
+        group: 'style',
+        helpText: 'Vacío: el color de la marca. Un color fijo lo reemplaza. El valor accent usa el color de acento.',
+      },
+      {
+        key: 'icon_shape',
+        label: 'Forma del ícono',
+        type: 'select',
+        group: 'style',
+        helpText: 'Vacío: esquinas redondeadas, como hoy. En el ícono a la izquierda o el ícono pequeño, vacío no añade forma.',
+        options: [
+          { value: 'rounded', label: 'Redondeado' },
+          { value: 'circle', label: 'Círculo' },
+          { value: 'square', label: 'Cuadrado' },
+          { value: 'none', label: 'Ninguna' },
+        ],
+      },
+      {
+        key: 'icon_bg',
+        label: 'Fondo suave del ícono',
+        type: 'boolean',
+        group: 'style',
+        helpText: 'Un fondo claro del color del ícono. Apagado o vacío: sin fondo.',
+      },
     ],
   },
   {
@@ -3417,7 +3827,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
 export const SECTION_CATALOG: SectionTypeDefinition[] = RAW_CATALOG.map((s) =>
   aplicarInterruptoresSitio({
     ...s,
-    contentFields: [...s.contentFields, ...STYLE_FIELDS, ...SPACING_FIELDS],
+    contentFields: [...s.contentFields, ...SHELL_FIELDS, ...STYLE_FIELDS, ...SPACING_FIELDS],
   }),
 );
 

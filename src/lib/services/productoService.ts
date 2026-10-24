@@ -43,6 +43,7 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'proveedor_invalido',
   'sucursal_invalida',
   'stock_sin_costo',
+  'stock_serial_sin_captura',
   'cantidad_negativa',
   'cantidad_invalida',
   'variantes_activas',
@@ -126,6 +127,7 @@ export function aErrorProducto(err: ErrorRpc | null | undefined): ErrorProducto 
     return new ErrorProducto('sin_permiso', err?.details ?? null, mensaje);
   }
   if (/sin costo/i.test(mensaje)) return new ErrorProducto('stock_sin_costo', null, mensaje);
+  if (/seriales_no_cuadran/i.test(mensaje)) return new ErrorProducto('stock_serial_sin_captura', err?.details ?? null, mensaje);
   if (err?.code === '23505') return new ErrorProducto('sku_duplicado', err?.details ?? null, mensaje);
   return new ErrorProducto('desconocido', err?.details ?? null, mensaje || 'Error inesperado');
 }

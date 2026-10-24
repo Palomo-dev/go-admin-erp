@@ -318,11 +318,13 @@ export function PantallaMenus() {
       toast({ title: t('menu.limiteItems'), variant: 'destructive' });
       return;
     }
-    const enMenu = paginasEnMenu(menu);
-    const pagina = paginas.find((p) => !enMenu.has(p.id)) ?? paginas[0];
-    const dest: DestinoEnlace | undefined = destino ?? (pagina ? { tipo: 'page', paginaId: pagina.id } : undefined);
-    if (!dest) return;
-    const item = nuevoItem(dest, etiqueta ?? (dest.tipo === 'page' ? pagina?.titulo ?? '' : t('inspector.destino.externo')), generarId);
+    const dest: DestinoEnlace = destino ?? { tipo: 'custom', url: '' };
+    const pagina = dest.tipo === 'page' ? paginas.find((p) => p.id === dest.paginaId) : undefined;
+    const item = nuevoItem(
+      dest,
+      etiqueta ?? (dest.tipo === 'page' ? pagina?.titulo ?? 'Enlace' : 'Enlace'),
+      generarId,
+    );
     setLocal(reemplazarItemsMenu(doc, id, [...menu.items, item]));
     setSeleccion({ menuId: id, itemId: item.id });
     setPanel('inspector');

@@ -998,6 +998,7 @@
         "sucursal": "Crear una sucursal",
         "equipo": "Invitar al equipo",
         "productos": "Agregar productos",
+        "inventario": "Cargar el inventario inicial",
         "impuestos": "Configurar impuestos",
         "clientes": "Registrar clientes"
       },
@@ -1005,6 +1006,9 @@
       "pendiente": "Pendiente",
       "ir": "Ir",
       "irA": "Ir a {paso}",
+      "inventarioAsiento": "El asiento será débito {inventario} y crédito {saldo} (saldos iniciales). No usa recuperaciones.",
+      "importarExcel": "Importar Excel",
+      "cargarMano": "Cargar a mano",
       "sinMovimientosTitulo": "Todavía no hay movimientos",
       "sinMovimientosDesc": "En cuanto registres la primera venta o factura, aquí aparecerán la tendencia del periodo y la actividad reciente.",
       "agregarProductos": "Agregar productos",
@@ -4090,11 +4094,12 @@
           "sm": "Pequeño",
           "md": "Mediano",
           "lg": "Grande",
-          "xl": "Muy grande"
+          "xl": "Muy grande",
+          "px": "Píxeles"
         },
         "campos": {
-          "padding_top": "Padding arriba",
-          "padding_bottom": "Padding abajo",
+          "padding_top": "Padding superior",
+          "padding_bottom": "Padding inferior",
           "padding_x": "Padding horizontal",
           "margin_top": "Margen arriba",
           "margin_bottom": "Margen abajo"
@@ -4442,6 +4447,7 @@
       "inventario_distribucion": "Distribución",
       "inventario_reportes_trazabilidad": "Trazabilidad",
       "inventario_reportes_costo-recetas": "Costo de recetas",
+      "inventario_reportes_stock-sin-seriales": "Stock sin seriales",
       "finanzas_facturas-venta": "Facturas de venta",
       "finanzas_cotizaciones": "Cotizaciones",
       "finanzas_facturas-compra": "Facturas de compra",
@@ -13706,6 +13712,12 @@
         "ejemploExacto": "Ej: 100",
         "motivo": "Motivo (opcional)",
         "motivoPlaceholder": "Ej.: conteo físico de fin de mes",
+        "tipoContable": "Tipo contable",
+        "tiposContables": {
+          "ajuste": "Ajuste (ganancia o pérdida)",
+          "apertura": "Apertura (inventario contra patrimonio)"
+        },
+        "ayudaTipo": "La apertura debita inventario y acredita patrimonio. Un ajuste de entrada acredita otros ingresos y uno de salida debita gastos. Una entrada que no es devolución no acredita costos.",
         "avisoKardex": "Cada ajuste queda en el kardex y genera su asiento de inventario.",
         "sinCosto": "{count, plural, one {{n} ajuste quedó sin costo: está en el kardex pero no generó asiento.} other {{n} ajustes quedaron sin costo: están en el kardex pero no generaron asiento.}}",
         "sinPermiso": "No tienes permiso para ajustar el inventario."
@@ -14138,7 +14150,7 @@
       "padreNoEncontrado": "SKU padre que no existe",
       "nombreMuyLargo": "nombre demasiado largo",
       "skuGenerado": "SKU generado",
-      "costoMayorPrecio": "costo mayor que el precio",
+      "costoMayorPrecio": "El costo parece ser el precio de venta",
       "costoPrecioIntercambiados": "costo y precio intercambiados",
       "promoEnNotas": "promoción anotada en notas",
       "unidadDesconocida": "unidad no reconocida (queda «UN»)",
@@ -14199,6 +14211,9 @@
       "incluir": "Volver a incluir",
       "excluir": "Excluir de la importación",
       "excluidaPorError": "Las filas con error ya quedan fuera hasta corregirlas",
+      "asientoTitulo": "Asiento de la carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}. No usa recuperaciones.",
+      "costoParecePrecio": "El costo parece ser el precio de venta",
       "vacio": "No hay filas para revisar",
       "sinResultados": "Ninguna fila coincide",
       "sustantivo": {
@@ -14267,7 +14282,7 @@
       "padreNoEncontrado": "El SKU padre «{sku}» no está en el archivo ni en el catálogo",
       "nombreMuyLargo": "El nombre supera {max} caracteres",
       "skuGenerado": "SKU generado automáticamente",
-      "costoMayorPrecio": "El costo es mayor que el precio de venta",
+      "costoMayorPrecio": "El costo parece ser el precio de venta",
       "costoPrecioIntercambiados": "Costo y precio venían al revés: se intercambiaron",
       "promoEnNotas": "Promo 2x1 (c/u {unitario}, normal {normal}): quedó en notas para configurarla en Promociones",
       "unidadDesconocida": "Unidad «{unidad}» no reconocida: queda «UN»",
@@ -15627,7 +15642,10 @@
       "stock": {
         "total": "{count, plural, one {Stock total: # unidad} other {Stock total: # unidades}}",
         "generados": "Seriales generados: {valor}",
-        "sinSerial": "{count} sin serial"
+        "sinSerial": "{count} sin serial",
+        "asignar": "Asignar seriales al stock existente",
+        "descuadre": "Esas unidades siguen en stock. Asignar un serial no cambia la cantidad.",
+        "asignarHecho": "Seriales asignados. El stock no cambió."
       },
       "inactivo": {
         "aviso": "{count, plural, one {Este producto ya no exige serial. El serial registrado se conserva y se puede consultar, pero no se generan nuevos.} other {Este producto ya no exige serial. Los # seriales registrados se conservan y se pueden consultar, pero no se generan nuevos.}}"
@@ -16111,6 +16129,7 @@
       "proveedor_invalido": "El proveedor no pertenece a tu organización.",
       "sucursal_invalida": "La sucursal no pertenece a tu organización.",
       "stock_sin_costo": "Para cargar stock inicial se necesita costo: sin él el kardex y la contabilidad quedan incompletos.",
+      "stock_serial_sin_captura": "Un producto con serial no admite existencia inicial sin los números. Déjala en 0 y cárgalos en un ajuste: no se inventan.",
       "cantidad_negativa": "Las cantidades no pueden ser negativas.",
       "cantidad_invalida": "Escribe una cantidad mayor que 0.",
       "variantes_activas": "El producto tiene variantes activas: elimínalas antes de quitar las variantes.",
@@ -16131,6 +16150,7 @@
       "variante_incompleta": "Cada variante necesita SKU y nombre.",
       "combinacion_repetida": "Dos variantes tienen la misma combinación de atributos.",
       "variante_stock_sin_costo": "Una variante con stock inicial necesita costo.",
+      "variante_stock_serial_sin_captura": "Una variante de un producto con serial no admite existencia inicial sin los números. Déjala en 0 y cárgalos en un ajuste.",
       "demasiadas_imagenes": "Puedes subir hasta 5 imágenes.",
       "dimension_negativa": "El peso y las medidas no pueden ser negativos.",
       "receta_sin_ingredientes": "La receta está encendida pero no tiene ingredientes: agrega al menos uno o apágala.",
@@ -16288,6 +16308,9 @@
       "notaKardex": "{count, plural, one {# sucursal activa} other {# sucursales activas}}. La entrada inicial queda registrada en el kardex al guardar. Costo unitario vacío = costo del producto.",
       "notaEditar": "La existencia se cambia con un ajuste de inventario: «Ajustar» lo abre en otra pestaña para que no pierdas los cambios sin guardar. El mínimo sí se edita aquí.",
       "avisoSinCosto": "Hay cantidades sin costo: escribe el costo unitario o el costo del producto en «Precios y costos».",
+      "costoParecePrecio": "El costo parece ser el precio de venta",
+      "asientoTitulo": "Asiento de la carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
       "loteEn": "Lote de la entrada inicial en {sucursal}",
       "venceEn": "Vencimiento del lote en {sucursal}",
       "lotePlaceholder": "Automático",
@@ -16299,6 +16322,7 @@
       "requiereSerial": "Requiere número de serial",
       "requiereSerialAyuda": "Cada unidad de este producto tendrá un número de serie único, con su historial y garantía.",
       "sinInventario": "Los seriales se asignan a unidades en stock: activa «Rastrear inventario» para poder generarlos.",
+      "stockSinSerial": "{count, plural, one {# unidad ya en stock quedará sin serial hasta que la asignes. Asignar no cambia el stock.} other {# unidades ya en stock quedarán sin serial hasta que las asignes. Asignar no cambia el stock.}}",
       "garantia": "Meses de garantía",
       "garantiaAyuda": "Cada serial nuevo recibe esta garantía desde el día en que se registra. Vacío = sin garantía.",
       "meses": "meses",
@@ -17200,6 +17224,7 @@
       "etiqueta": "URL de la política (https)",
       "ayuda": "Obligatoria para que las campañas del agente de voz llamen. El agente la cita cuando el cliente pregunta cómo tratamos sus datos.",
       "faltante": "Sin esta URL ninguna campaña del agente de voz marca.",
+      "usandoSitio": "Usando la de tu sitio web:",
       "invalida": "La URL debe empezar por https:// y no llevar espacios.",
       "guardar": "Guardar URL",
       "guardando": "Guardando…",
@@ -17791,6 +17816,10 @@
       "motivoObligatorio": "Escribe el motivo general de la devolución.",
       "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados.",
       "serialInvalido": "Uno de los seriales no corresponde a esta venta o ya no está vendido.",
+      "serialYaDevuelto": "Ese serial ya se devolvió en esta venta.",
+      "serialYaReembolsadoGarantia": "Ese serial ya se reembolsó por garantía. No se puede devolver otra vez.",
+      "serialEnGarantia": "Ese serial está en un reclamo de garantía. Resuélvelo ahí, o devuélvelo desde el POS si el reclamo no es un reembolso.",
+      "disposicionInvalida": "Elige si el serial vuelve a stock o queda dañado.",
       "lineaNoPerteneceALaVenta": "Una de las líneas no pertenece a esta venta.",
       "sinAccesoSucursal": "No tienes acceso a la sucursal de esta venta.",
       "generico": "Error al procesar la devolución",
@@ -17915,7 +17944,8 @@
         "sinMotivoGeneral": "Debe especificar el motivo general de la devolución",
         "itemsSinMotivo": "Todos los items seleccionados deben tener un motivo específico",
         "serializadosSinSerial": "Los productos serializados deben tener al menos un serial seleccionado",
-        "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados"
+        "serialesNoCoinciden": "La cantidad a devolver debe coincidir con los seriales seleccionados",
+        "sinSerialesEnLinea": "Esta línea no tiene seriales vendidos para devolver"
       },
       "metodosPago": {
         "cash": "Efectivo",
@@ -17929,7 +17959,13 @@
       },
       "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
       "reingresa": "Reingresa al inventario",
-      "reingresaDe": "{producto}: reingresa al inventario"
+      "reingresaDe": "{producto}: reingresa al inventario",
+      "seleccionarDe": "{producto}: seleccionar para devolver",
+      "sinSerialesEnLinea": "No hay seriales vendidos en esta línea",
+      "sinSerialesVendidos": "No hay seriales vendidos en esta línea",
+      "vuelveAStock": "Vuelve a stock",
+      "danado": "Dañado",
+      "disposicionDe": "Qué pasa con {serial}"
     },
     "historial": {
       "errorCarga": "Error al cargar el historial de devoluciones",
@@ -21566,6 +21602,7 @@
       "buscarAria": "Buscar serial de {producto}",
       "garantia": "Garantía hasta: {fecha}",
       "insuficientes": "Solo {disponibles, plural, one {hay # serial disponible} other {hay # seriales disponibles}} y se {requeridos, plural, one {requiere #} other {requieren #}}.",
+      "stockSinSerial": "Existencia {stock} · {disponibles, plural, one {# serial disponible} other {# seriales disponibles}} · {sinSerial, plural, one {# unidad sin serial disponible} other {# unidades sin serial disponible}}. Esas unidades no se eligen aquí y no se les inventa un número.",
       "confirmar": "Confirmar seriales",
       "lista": "Seriales de {producto}"
     },
@@ -25717,6 +25754,28 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "Este producto no tiene inventario registrado. ¿Es tu inventario inicial?",
+        "siSaldoInicial": "Sí, cargar como saldo inicial",
+        "noSobrante": "No, es un sobrante",
+        "desdeNegativo": "Registrar compra o producción faltante",
+        "desdeNegativoDetalle": "La existencia ya está en negativo. Registra la compra o la producción que faltó antes de tomarlo como sobrante.",
+        "registrarCompra": "Registrar compra",
+        "costoParecePrecio": "El costo parece ser el precio de venta",
+        "costoEsCorrecto": "El costo es correcto",
+        "confirmar": "Confirma este ajuste",
+        "confirmarDetalle": "La organización tiene menos de 30 días o el monto supera el umbral. La nota es obligatoria.",
+        "notaObligatoria": "Escribe una nota para confirmar el ajuste.",
+        "asientoTitulo": "Asiento de la carga inicial",
+        "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
+        "asientoSobranteTitulo": "Asiento del sobrante",
+        "asientoSobranteDetalle": "Un solo asiento: débito {inventario} y crédito {diversos} por {total}. No usa recuperaciones.",
+        "corregirConteo": "Corregir el conteo",
+        "corregirConteoDetalle": "Este producto tuvo el conteo {codigo} este mes. Corregirlo anula ese conteo y revierte su asiento, sin registrar un ingreso.",
+        "corregirConteoVarios": "Ese conteo incluye otros productos. Ábrelo para ajustarlo.",
+        "corregirConteoListo": "Se corrigió el conteo {codigo}. No se registró ingreso.",
+        "abrirConteo": "Abrir el conteo"
+      },
       "titulo": "Nuevo ajuste de inventario",
       "tituloEditar": "Editar borrador de ajuste",
       "tituloMovil": "Nuevo ajuste",
@@ -25913,6 +25972,7 @@
       "vencida": "Vencida",
       "vencioEl": "venció el {fecha}",
       "empiezaAlVender": "Empieza al vender",
+      "desdeLaVenta": "Desde la venta · {meses, plural, one {# mes} other {# meses}}",
       "meses": "{meses, plural, one {# mes} other {# meses}}",
       "enReclamo": "En reclamo",
       "enRma": "En RMA",
@@ -25953,6 +26013,22 @@
       "subtituloLema": "cada unidad con su historia, de la compra a la garantía",
       "subtituloMovil": "{total} · {stock} en stock",
       "actualizar": "Actualizar",
+      "generarSeriales": "Generar seriales",
+      "descuadreTitulo": "Stock sin serial",
+      "descuadreFila": "{producto} · {sede}: {sin} sin serial ({stock} en stock, {seriales} seriales)",
+      "generar": {
+        "titulo": "Generar seriales",
+        "producto": "Producto",
+        "buscar": "Buscar por nombre o SKU",
+        "sinProductos": "Ningún producto con serial coincide con esa búsqueda.",
+        "sucursal": "Sucursal",
+        "cantidad": "Cuántos",
+        "lista": "O pega un serial por línea",
+        "noMueveStock": "Esto solo registra los seriales. No cambia el stock.",
+        "confirmar": "Asignar seriales",
+        "hecho": "{count, plural, one {# serial asignado} other {# seriales asignados}}",
+        "error": "No se pudieron asignar los seriales. Inténtalo de nuevo."
+      },
       "por": "por {nombre}",
       "etiquetaFila": "Serial {serial} de {producto}",
       "errorSeleccionarTodo": "No se pudieron seleccionar todos los seriales",
@@ -26064,6 +26140,24 @@
         "reclamo": "Reclamo {codigo}"
       }
     },
+    "stockSinSeriales": {
+      "titulo": "Stock sin seriales",
+      "descripcion": "Existencia de productos con serial mayor que los seriales que la ocupan (en stock o reservados). Este reporte no crea seriales.",
+      "vacio": "No hay stock sin seriales.",
+      "error": "No se pudo cargar el reporte.",
+      "cargando": "Cargando el reporte…",
+      "producto": "Producto",
+      "sku": "SKU",
+      "sucursal": "Sucursal",
+      "existencia": "Existencia",
+      "seriales": "Seriales",
+      "disponibles": "Disponibles",
+      "sinSerial": "Sin serial",
+      "verProducto": "Ver seriales de {producto}",
+      "avisoTitulo": "{count, plural, one {# existencia supera a los seriales que la ocupan} other {# existencias superan a los seriales que las ocupan}}",
+      "avisoDescripcion": "Esas unidades no tienen un serial en stock ni reservado. No se inventan números: captúralos en un ajuste para poder venderlas.",
+      "verReporte": "Ver el reporte"
+    },
     "acciones": {
       "verHistorial": "Ver historial del serial",
       "verVenta": "Ver la venta {numero}",
@@ -26141,6 +26235,7 @@
         "vencida": "vencida",
         "restante": "quedan {meses, plural, one {# mes} other {# meses}} y {dias, plural, one {# día} other {# días}}",
         "empiezaAlVender": "Empieza el día de la venta",
+        "desdeLaVenta": "Desde la venta · {meses, plural, one {# mes} other {# meses}}",
         "sinVigencia": "Sin vigencia",
         "hastaCorto": "Garantía hasta {fecha}",
         "reclamos": "Reclamos",
@@ -26194,6 +26289,11 @@
       "reemplazo_requerido": "Elige la unidad de reemplazo.",
       "reemplazo_invalido": "La unidad de reemplazo ya no está disponible o es de otro producto.",
       "monto_invalido": "Escribe un monto mayor que cero.",
+      "unidad_ya_devuelta": "Esa unidad ya se devolvió en el POS. No se puede reembolsar otra vez.",
+      "monto_no_coincide": "El monto no coincide con lo cobrado por esa unidad.",
+      "linea_no_encontrada": "No encontramos la línea de la venta de ese serial.",
+      "venta_no_encontrada": "No encontramos la venta de ese serial.",
+      "motivo_invalido": "El motivo de la devolución no está activo.",
       "estado_invalido": "Estado no válido.",
       "datos_invalidos": "Revisa los datos del formulario.",
       "error_desconocido": "No se pudo completar. Inténtalo de nuevo."
@@ -26292,7 +26392,7 @@
       "serialPlaceholder": "Escanea o escribe el serial",
       "buscando": "Buscando el serial…",
       "vendido": "vendido el {fecha} en {venta} a {cliente}",
-      "sinCliente": "consumidor final",
+      "sinCliente": "Consumidor final",
       "garantiaVigente": "Garantía vigente: {meses, plural, one {# mes} other {# meses}} desde la venta, quedan {restanteMeses, plural, one {# mes} other {# meses}} y {restanteDias, plural, one {# día} other {# días}}.",
       "garantiaVigenteCorta": "Garantía vigente.",
       "noReclamable": {
@@ -26307,6 +26407,12 @@
       "motivoPlaceholder": "Elige el motivo",
       "descripcionCampo": "Descripción",
       "descripcionPlaceholder": "Qué pasó, desde cuándo, qué trae el cliente",
+      "reclamante": "Quién reclama",
+      "reclamanteAyuda": "Si la venta no tiene cliente, estos datos quedan en el reclamo.",
+      "reclamanteNombre": "Nombre",
+      "reclamanteDocumento": "Documento",
+      "reclamanteTelefono": "Teléfono",
+      "reclamanteCorreo": "Correo",
       "nota": "Al crear el reclamo, el serial pasa a «Reclamo garantía» y el paso queda en su historial.",
       "crear": "Crear reclamo",
       "creado": "Reclamo {codigo} creado",
@@ -26353,7 +26459,7 @@
       "notas": "Notas",
       "aviso": {
         "reemplazo": "{nuevo} queda vendido a {cliente} con garantía nueva desde hoy, y {serial} queda «{estado}».",
-        "reembolso": "{serial} vuelve a la empresa y queda «{estado}». La nota crédito del reembolso se hace en Finanzas.",
+        "reembolso": "{serial} vuelve a la empresa y queda «{estado}». Se emite la nota crédito de la venta, con su asiento, el movimiento de caja y el inventario de la unidad dañada.",
         "reparacion": "{serial} vuelve al cliente como vendido; su garantía sigue como estaba."
       },
       "avisoStock": "Las existencias de la unidad de reemplazo se descuentan con el núcleo de inventario; el serial ya queda vendido al cliente.",
@@ -26414,7 +26520,11 @@
         "cliente": "Cliente",
         "garantia": "Garantía",
         "sinVenta": "Sin venta enlazada",
-        "sinCliente": "Sin cliente"
+        "sinCliente": "Consumidor final",
+        "reclamante": "Reclamante",
+        "documento": "Documento",
+        "telefono": "Teléfono",
+        "correo": "Correo"
       },
       "reclamo": {
         "titulo": "Reclamo",
@@ -26439,6 +26549,7 @@
         "tipo": "Cómo se resolvió",
         "reemplazo": "Unidad de reemplazo",
         "monto": "Monto reembolsado",
+        "notaCredito": "Nota crédito",
         "notas": "Notas",
         "fecha": "Resuelto"
       }
@@ -26751,7 +26862,14 @@
     "avisoNegativos": {
       "titulo": "{n} {count, plural, one {producto tiene existencias negativas} other {productos tienen existencias negativas}}",
       "descripcion": "Se vendieron más unidades de las registradas. Suele faltar una recepción de compra o un traslado. Revísalos antes del próximo conteo.",
-      "ver": "Ver solo negativos"
+      "ver": "Ver solo negativos",
+      "compra": "Registrar compra"
+    },
+    "config": {
+      "bloquear": "Bloquear la venta sin stock",
+      "bloquearAyuda": "Si está apagado, se puede vender aunque no haya existencias. Ese es el valor que ya tiene la organización.",
+      "umbral": "Confirmar ajustes desde",
+      "umbralAyuda": "Monto a partir del cual el ajuste pide una nota. Vacío: solo si la organización tiene menos de 30 días."
     },
     "avisoSinAsignar": "{n} {count, plural, one {producto con variantes tiene} other {productos con variantes tienen}} existencias en el producto padre, sin asignar a una variante. No se suman al disponible.",
     "verSinAgrupar": "Ver las variantes por separado",
@@ -26848,17 +26966,38 @@
       "listoDocumento": "Ajuste {numero} aplicado.",
       "errorEntrada": "No se pudo registrar la entrada",
       "errorSalida": "No se pudo registrar la salida",
+      "registrarCompra": "Registrar compra",
+      "desdeNegativo": "Registrar compra o producción faltante",
+      "desdeNegativoDetalle": "La existencia ya está en negativo. Registra la compra o la producción que faltó antes de tomarlo como sobrante.",
+      "sinHistorial": "Este producto no tiene inventario registrado. ¿Es tu inventario inicial?",
+      "siSaldoInicial": "Sí, cargar como saldo inicial",
+      "noSobrante": "No, es un sobrante",
+      "costoParecePrecio": "El costo parece ser el precio de venta",
+      "costoEsCorrecto": "El costo es correcto",
+      "confirmarAjuste": "Confirma este ajuste",
+      "confirmarAjusteDetalle": "La organización tiene menos de 30 días o el monto supera el umbral. La nota es obligatoria.",
+      "asientoTitulo": "Asiento de la carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
+      "asientoSobranteTitulo": "Asiento del sobrante",
+      "asientoSobranteDetalle": "Un solo asiento: débito {inventario} y crédito {diversos} por {total}. No usa recuperaciones.",
+      "corregirConteo": "Corregir el conteo",
+      "corregirConteoDetalle": "Este producto tuvo el conteo {codigo} este mes. Corregirlo anula ese conteo y revierte su asiento, sin registrar un ingreso.",
+      "corregirConteoVarios": "Ese conteo incluye otros productos. Ábrelo para ajustarlo.",
+      "corregirConteoListo": "Se corrigió el conteo {codigo}. No se registró ingreso.",
+      "abrirConteo": "Abrir el conteo",
       "errores": {
         "requerido": "Este campo es obligatorio.",
         "mayorQueCero": "Debe ser mayor que cero.",
         "noNegativo": "No puede ser negativo.",
         "superaDisponible": "Supera lo disponible ({n}).",
         "conSeriales": "Los productos con seriales se registran desde Ajustes.",
-        "facturaCompra": "La compra sin orden se registra en la factura de compra: inventario contra proveedores."
+        "facturaCompra": "La compra sin orden se registra en la factura de compra: inventario contra proveedores.",
+        "notaObligatoria": "Escribe una nota para confirmar el ajuste."
       }
     },
     "motivos": {
       "entrada": {
+        "saldo_inicial": "Saldo inicial",
         "compra_sin_orden": "Compra sin orden",
         "devolucion_cliente": "Devolución de cliente",
         "donacion": "Donación",
@@ -31732,18 +31871,30 @@
         "generar": "Generar con asistente",
         "revisar": "Revisar y publicar",
         "generando": "Creando la página…",
-        "creado": "Creamos la página «{titulo}». Complétala y publícala desde el editor.",
+        "creado": "Creamos «{titulo}» con texto de {origen}. Revísala y publícala desde el editor.",
         "errorCrear": "No pudimos crear la página. Inténtalo de nuevo.",
         "avisoTitulo": "Sin política de tratamiento de datos no se activan el agente de voz ni los formularios de CRM",
         "avisoDescripcion": "La pedimos para registrar la autorización del cliente (Ley 1581). El asistente la genera con los datos de tu organización.",
         "avisoAccion": "Generar ahora",
         "errorCargar": "No pudimos leer las páginas legales.",
         "asistenteTitulo": "Generar «{titulo}»",
-        "asistenteDescripcion": "Creamos la página en tu sitio, fuera del menú y con el pie «Legales». Luego la completas en el editor con los datos de tu negocio y la publicas.",
+        "asistenteDescripcion": "La página queda con el texto generado, fuera del menú principal. Si la IA no está disponible, usamos una plantilla con los datos de tu negocio. Revisa y publica.",
         "asistenteDatos": "Datos que usaremos",
         "asistenteRazon": "Razón social",
         "asistenteCorreo": "Correo para solicitudes",
-        "asistenteCrear": "Crear página"
+        "asistenteCrear": "Crear página",
+        "vacio": "Vacío",
+        "regenerar": "Regenerar",
+        "asistenteFaltantes": "Faltan estos datos. La frase que los usa no se escribe.",
+        "asistenteEnlaceDatos": "Completar en Datos del negocio",
+        "asistenteOrigenIa": "Origen: IA, si responde con un texto válido. Si no, plantilla.",
+        "asistenteOrigenPlantilla": "Origen: plantilla. La IA no está disponible.",
+        "origenIa": "la IA",
+        "origenPlantilla": "la plantilla",
+        "diffTitulo": "Este texto fue editado",
+        "diffDescripcion": "Reemplazar guarda una copia en el historial del borrador y pone el texto nuevo.",
+        "reemplazar": "Reemplazar",
+        "cancelar": "Cancelar"
       },
       "codigo": {
         "descripcion": "Para medir anuncios usa los campos de Analítica › Píxeles. Aquí solo código a medida.",
@@ -31776,10 +31927,18 @@
         "posicion": "Posición",
         "contenido": "Código",
         "guardarDialogo": "Listo",
+        "conteo": "{n} / {max}",
+        "pantallaCompleta": "Pantalla completa",
+        "salirPantalla": "Salir de pantalla completa",
+        "avisoDocumento": "Este fragmento trae una página completa (html, head o body). Pega solo el código que va dentro.",
+        "avisoHead": "En la cabecera hay elementos que se ven en la página. Ahí solo suele ir código que no se muestra, como un script o un estilo.",
         "errores": {
           "nombre": "Escribe un nombre para reconocerlo.",
           "ruta": "Escribe una dirección que empiece con /.",
-          "codigo": "Pega el código."
+          "codigo": "Pega el código.",
+          "limite": "El código pasa de {max} caracteres.",
+          "etiqueta": "La etiqueta «{etiqueta}» no está cerrada.",
+          "javascript": "Error de JavaScript: {detalle}"
         }
       },
       "chat": {
@@ -32957,7 +33116,8 @@
         "pestana": {
           "contenido": "Contenido",
           "diseno": "Diseño",
-          "estilo": "Estilo"
+          "estilo": "Estilo",
+          "constructor": "Constructor"
         },
         "cerrar": "Cerrar {zona}",
         "restablecer": "Restablecer a la plantilla",
@@ -33043,7 +33203,18 @@
           "iconosForma": "Forma del carrito",
           "bolsa": "Bolsa",
           "iconosCirculo": "Círculo de color",
-          "iconosCirculoAyuda": "Fondo del color de la marca detrás de moneda, carrito y cuenta"
+          "iconosCirculoAyuda": "Fondo del color de la marca detrás de moneda, carrito y cuenta",
+          "contenedorIconos": "Contenedor de íconos",
+          "contenedorAyuda": "Forma, fondo y sombra de carrito, cuenta, moneda, favoritos y búsqueda. Sin elegir, se ve el ícono de hoy.",
+          "presetCirculo": "Círculo acento",
+          "presetCuadrado": "Cuadrado suave",
+          "presetBorde": "Borde fino",
+          "presetSombra": "Sombra flotante",
+          "presetSolo": "Solo ícono",
+          "headerSobreHero": "Header transparente sobre el hero",
+          "headerSobreHeroAyuda": "El encabezado queda fijo y transparente encima del hero. Apagado: encabezado opaco y el hero debajo, sin hueco.",
+          "espacioPrimera": "Espacio superior de la primera sección",
+          "espacioPrimeraAyuda": "Píxeles entre el encabezado y la primera sección. 0 las deja pegadas."
         },
         "diseno": {
           "titulo": "Diseño del encabezado",
@@ -37959,6 +38130,9 @@
       "repetir": "Repetir cada N unidades (opcional)",
       "repetirPlaceholder": "Una sola vez",
       "repetirAyuda": "Vacío: el descuento se aplica una vez. Con un número, se multiplica por cada grupo completo. Ejemplo: −{ejemplo} cada 2 unidades. En porcentaje, las unidades que sobran se cobran a precio normal.",
+      "repetirAyudaPaquete": "En un paquete con porcentaje, el porcentaje cubre solo los grupos completos de N unidades; lo que sobra se cobra a precio normal. Con precio de paquete, N limita cuántos paquetes completos llevan ese precio: como máximo, uno por cada N unidades que entran. Vacío: igual que una promoción ya guardada, sin este número.",
+      "errorCompra": "Indica cuántas unidades se compran",
+      "errorLleva": "Indica cuántas se pagan o se llevan gratis",
       "compraMinima": "Compra Mínima (opcional)",
       "compraMinimaCuenta": "Se mide sobre el subtotal de toda la cuenta, antes de esta promo.",
       "compraMinimaElegible": "Se mide solo sobre los productos o categorías de esta promo, no sobre el resto de la cuenta.",

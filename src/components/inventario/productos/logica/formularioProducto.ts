@@ -136,6 +136,7 @@ export type CodigoValidacion =
   | 'costo_negativo'
   | 'vigencia_pasada'
   | 'stock_sin_costo'
+  | 'stock_serial_sin_captura'
   | 'cantidad_negativa'
   | 'patron_requerido'
   | 'patron_sin_consecutivo'
@@ -145,6 +146,7 @@ export type CodigoValidacion =
   | 'sku_variante_repetido'
   | 'combinacion_repetida'
   | 'variante_stock_sin_costo'
+  | 'variante_stock_serial_sin_captura'
   | 'grupo_sin_nombre'
   | 'min_max_invalido'
   | 'opcion_sin_nombre'
@@ -680,6 +682,9 @@ export function validarFormulario(
     }
   }
   if (e.track_serial) {
+    if (rastrea && modo !== 'editar' && !e.tiene_variantes && e.stock.some((f) => (f.qty ?? 0) > 0)) {
+      err.stock = 'stock_serial_sin_captura';
+    }
     if (e.warranty_months !== null && (e.warranty_months < 0 || !Number.isInteger(e.warranty_months))) {
       err.warranty_months = 'garantia_invalida';
     }
@@ -716,6 +721,14 @@ export function validarFormulario(
           err.variantes = 'variante_stock_sin_costo';
           break;
         }
+      }
+      if (
+        rastrea &&
+        e.track_serial &&
+        (!err.variantes || err.variantes === 'variante_stock_sin_costo') &&
+        e.variantes.some((v) => !v.id && v.stock.some((st) => (st.qty ?? 0) > 0))
+      ) {
+        err.variantes = 'variante_stock_serial_sin_captura';
       }
     }
   }
@@ -869,6 +882,7 @@ export function campoDeErrorRpc(codigo: CodigoErrorProducto): CampoFormulario | 
     case 'vigencia_pasada':
       return 'precio_desde';
     case 'stock_sin_costo':
+    case 'stock_serial_sin_captura':
     case 'cantidad_negativa':
     case 'sucursal_invalida':
       return 'stock';

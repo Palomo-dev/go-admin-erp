@@ -45,6 +45,9 @@ import { escribirEstilo, temaParaLienzo, tokensExtendidosDisponibles } from '@/l
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { CATALOGO_SITIO } from './catalogo';
 import { EstiloDelSitioPanel } from './EstiloDelSitioPanel';
+import { PanelCarrusel, PanelPaginacion } from '../editor/inspector/PanelesListaCarrusel';
+import { paginacionTemaDisponible, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
+import { valorPropio } from '@/lib/website/contrato/documentoSitio';
 import { VistaPreviaEnVivo } from './VistaPreviaEnVivo';
 import { PestanaEncabezadoPie } from './PestanaEncabezadoPie';
 import { PestanaLogoFavicon } from './PestanaLogoFavicon';
@@ -127,6 +130,16 @@ export function PaginaDiseno() {
     [documento, estiloActual, extendidos, sitio.sitio, sitio.borrador],
   );
   const coloresLogo = useColoresLogo(valorCampo(documento?.identidad.logoUrl));
+  const guardarAjuste = (clave: 'paginacion' | 'carrusel', valor: object | null) => {
+    if (!documento || !paginacionTemaDisponible()) return;
+    const limpio = clave === 'paginacion' ? sanitizarPaginacion(valor) : sanitizarCarrusel(valor);
+    void sitio.guardar((d) => {
+      const tema = { ...d.tema };
+      if (limpio) tema[clave] = valorPropio(limpio);
+      else delete tema[clave];
+      return { ...d, tema };
+    });
+  };
   const paginaInicioId = documento?.paginas.find(esInicio)?.id ?? ctx.paginaInicioId;
   const vista = useVistaPreviaBorrador(sitio.sitio?.id ?? null, ctx.host, paginaInicioId);
 
@@ -280,6 +293,7 @@ export function PaginaDiseno() {
           <div role="tabpanel" id={idPanel(ID_PESTANAS, pestana)} aria-labelledby={idPestana(ID_PESTANAS, pestana)}>
             {pestana === 'estilo' && (
               <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-6">
+                <div className="flex flex-col gap-4">
                 <EstiloDelSitioPanel
                   estilo={estilo.estilo}
                   presets={presets}
@@ -293,6 +307,20 @@ export function PaginaDiseno() {
                   cabeceraSoloEscritorio
                   className="max-lg:gap-4 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:p-0"
                 />
+                {paginacionTemaDisponible() && documento && (
+                  <>
+                    <PanelPaginacion
+                      valor={sanitizarPaginacion(valorCampo(documento.tema.paginacion))}
+                      onCambiar={(v) => guardarAjuste('paginacion', v)}
+                      color={estilo.estilo?.acento ?? '#111827'}
+                    />
+                    <PanelCarrusel
+                      valor={sanitizarCarrusel(valorCampo(documento.tema.carrusel))}
+                      onCambiar={(v) => guardarAjuste('carrusel', v)}
+                    />
+                  </>
+                )}
+                </div>
                 <VistaPreviaEnVivo
                   className="hidden lg:sticky lg:top-4 lg:flex"
                   url={vista.url}

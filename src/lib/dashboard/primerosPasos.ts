@@ -4,14 +4,14 @@
  * onboarding deja de ser una franja y pasa a ser el contenido de “Hoy”
  * mientras no haya datos».
  *
- * Regla pura: los siete pasos (los mismos del antiguo `OnboardingBanner`, en
- * el orden del diseño), cuándo cuenta cada uno como hecho y cuándo se muestra
+ * Regla pura: los ocho pasos (los del antiguo `OnboardingBanner`, más la carga
+ * inicial de inventario), cuándo cuenta cada uno como hecho y cuándo se muestra
  * el bloque. Los conteos los lee el servidor con el cliente de la sesión
  * (`primerosPasos` en `inicio.server.ts`); el enlace de cada paso solo se
  * ofrece si la persona ve esa página en su menú.
  */
 
-export const PASOS = ['modulos', 'organizacion', 'sucursal', 'equipo', 'productos', 'impuestos', 'clientes'] as const;
+export const PASOS = ['modulos', 'organizacion', 'sucursal', 'equipo', 'productos', 'inventario', 'impuestos', 'clientes'] as const;
 export type IdPaso = (typeof PASOS)[number];
 
 /** Página a la que lleva «Ir» (se ofrece solo si está en el menú visible). */
@@ -21,6 +21,8 @@ export const PAGINA_PASO: Record<IdPaso, string> = {
   sucursal: '/app/organizacion/sucursales',
   equipo: '/app/organizacion/invitaciones',
   productos: '/app/inventario/productos',
+  // La misma página del menú que productos: «Ir» se sustituye por importar o cargar a mano.
+  inventario: '/app/inventario/productos',
   impuestos: '/app/finanzas/impuestos',
   clientes: '/app/clientes',
 };
@@ -35,6 +37,8 @@ export interface ConteosPasos {
   sucursales: number;
   miembros: number;
   productos: number;
+  /** Hay al menos un movimiento de carga inicial. */
+  inventarioInicial: boolean;
   impuestos: number;
   clientes: number;
 }
@@ -64,6 +68,7 @@ export function pasosHechos(c: ConteosPasos): Record<IdPaso, boolean> {
     // Hay equipo cuando hay alguien más que quien la creó.
     equipo: c.miembros > 1,
     productos: c.productos > 0,
+    inventario: c.inventarioInicial,
     impuestos: c.impuestos > 0,
     clientes: c.clientes > 0,
   };
@@ -95,7 +100,7 @@ export function mostrarPrimerosPasos(p: Pick<PrimerosPasos, 'pasos' | 'hayMovimi
   return p.pasos.some((x) => !x.hecho);
 }
 
-/** Porcentaje entero de avance («3 de 7 · 43 %»). */
+/** Porcentaje entero de avance («3 de 8 · 38 %»). */
 export function porcentajePasos(p: Pick<PrimerosPasos, 'pasos' | 'hechos'>): number {
   return p.pasos.length === 0 ? 0 : Math.round((p.hechos / p.pasos.length) * 100);
 }

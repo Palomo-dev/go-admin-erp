@@ -1904,8 +1904,11 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
     const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
     const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
     expect(exclusion).not.toBeNull();
-    // La apertura (`initial`) sí se contabiliza: inventario contra patrimonio
-    // (3105), no contra la clase 6. Por eso no entra en esta lista.
+    // `purchase_void`: la anulación de una compra ya revierte el devengo con el
+    // contra-asiento espejo; un asiento de ajuste lo duplicaba. La apertura
+    // (`initial`) sí se contabiliza: inventario contra patrimonio (3105), no
+    // contra la clase 6. Por eso no entra en esta lista. Compras y traslados
+    // siguen fuera: los contabiliza su propio documento.
     for (const origen of ['purchase_order', 'purchase_invoice', 'purchase_void', 'transfer_out', 'transfer_in', 'purchase', 'transfer']) {
       expect(exclusion![1]).toContain(`'${origen}'`);
     }

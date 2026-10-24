@@ -21,6 +21,7 @@ import {
   validarAjusteMasivo,
   type ModoStock,
   type ResumenAjusteStock,
+  type TipoContableStock,
 } from './ajusteMasivoStock';
 import {
   errorDeRpc,
@@ -35,7 +36,7 @@ import {
   type ResumenPrecioMasivo,
 } from './resumenMasivo';
 
-export type { ModoStock } from './ajusteMasivoStock';
+export type { ModoStock, TipoContableStock } from './ajusteMasivoStock';
 export type { CodigoErrorMasivo, ErrorMasivo, ResultadoMasivo } from './resumenMasivo';
 export type TipoPrecio = 'venta' | 'compra' | 'comparacion';
 export type ModoAjuste = 'fijo' | 'valor' | 'porcentaje';
@@ -163,11 +164,12 @@ export interface ResultadoAjusteStock extends ConteoMasivo {
  * Todo ocurre en el servidor: `fn_productos_stock_masivo_alcance` expande la
  * selección (padre ↔ variantes) y devuelve solo los que rastrean inventario;
  * después, por lotes, `fn_productos_ajuste_masivo_stock` inserta por cada
- * producto un stock_movement de ajuste (entrada o salida por la diferencia,
- * al costo vigente, nota «Ajuste masivo · usuario · motivo») y el trigger
- * contable crea su asiento. Cada lote es una transacción. El resultado nunca
- * baja de 0. Permiso (inventory.adjust / inventory_management) resuelto en el
- * servidor.
+ * producto un stock_movement (entrada o salida por la diferencia, al costo
+ * vigente). `tipo` 'apertura' lo marca como saldo inicial (inventario contra
+ * patrimonio); 'ajuste' como ganancia o pérdida. Todos los movimientos del
+ * lote comparten un source_id. El trigger crea el asiento. Cada lote es una
+ * transacción. El resultado nunca baja de 0. Permiso (inventory.adjust /
+ * inventory_management) resuelto en el servidor.
  */
 export async function bulkUpdateStock(
   organizationId: number,
@@ -175,7 +177,8 @@ export async function bulkUpdateStock(
   branchId: number,
   cantidad: number,
   modo: ModoStock,
-  motivo?: string | null
+  motivo?: string | null,
+  tipo: TipoContableStock = 'ajuste',
 ): Promise<ResultadoAjusteStock> {
   const resultado: ResultadoAjusteStock = { exitosos: 0, fallidos: 0, errores: [], resumen: { ...RESUMEN_VACIO } };
   const entrada = validarAjusteMasivo({ productIds, branchId, cantidad, modo, motivo });
@@ -208,6 +211,7 @@ export async function bulkUpdateStock(
       p_cantidad: entrada.cantidad,
       p_motivo: entrada.motivo,
       p_expandir: false,
+      p_tipo: tipo,
     });
     if (error) {
       resultado.fallidos += lote.length;

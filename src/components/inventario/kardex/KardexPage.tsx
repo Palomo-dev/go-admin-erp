@@ -50,7 +50,7 @@ import { CeldaCantidad, CeldaDocumento, CeldaFecha, useAccionesMovimiento } from
 import { idsProductos } from '../stock/cantidadProducto';
 import { useModosVenta } from '../stock/useModosVenta';
 import { SelectorProductoStock } from '../stock/SelectorProductoStock';
-import { nombreArchivo } from '../stock/logica';
+import { identFichaStock, nombreArchivo } from '../stock/logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from '../stock/useInventarioB1';
 import { DialogoDescuadres } from './DialogoDescuadres';
 
@@ -339,7 +339,7 @@ export function KardexPage() {
     { id: 'descuadres', etiqueta: t('menu.descuadres'), icono: Scale, onSelect: () => setVerDescuadres(true) },
     { id: 'movimientos', etiqueta: t('menu.movimientos'), icono: History, onSelect: () => router.push('/app/inventario/movimientos') },
     ...(producto
-      ? [{ id: 'producto', etiqueta: t('menu.producto'), icono: BookOpen, onSelect: () => router.push(`/app/inventario/productos/${productoFila?.parent_id ?? producto}`) }]
+      ? [{ id: 'producto', etiqueta: t('menu.producto'), icono: BookOpen, onSelect: () => router.push(`/app/inventario/productos/${productoFila ? identFichaStock(productoFila) : producto}`) }]
       : []),
   ];
 

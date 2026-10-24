@@ -124,14 +124,18 @@ describe('InspectorEncabezado', () => {
     const onCambiar = encabezado();
     expect(screen.getByRole('heading', { name: 'Encabezado' })).toBeTruthy();
     expect(screen.getByText('Global · aparece en todas las páginas')).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo', 'Celular', 'Constructor']);
     expect(screen.getByText('Cambia en todas las páginas')).toBeTruthy();
     expect(screen.getByText('Valores por defecto de la plantilla «Noir Omakase»')).toBeTruthy();
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
     expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú']);
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Megamenú' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega' });
-    fireEvent.click(screen.getByRole('radio', { name: 'Centro' }));
+    fireEvent.click(within(composiciones).getByRole('radio', { name: 'Logo centrado' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', logo_position: 'center' });
+    fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', logo_position: 'center' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
     expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador · celular' })).getByRole('radio', { name: 'Barra bajo el logo' }));
     expect(onCambiar).toHaveBeenCalledWith({ mobile_search_style: 'bar' });
@@ -160,8 +164,19 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_weight: 'relleno' });
     fireEvent.click(screen.getByRole('radio', { name: 'Carrito' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_cart_glyph: 'carrito', cart_icon: 'shopping-cart' });
-    fireEvent.click(screen.getByRole('switch', { name: 'Círculo de color' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Círculo acento' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
+    fireEvent.click(screen.getByRole('radio', { name: 'Cuadrado suave' }));
+    expect(onCambiar).toHaveBeenCalledWith(expect.objectContaining({
+      header_icons_circle: false,
+      header_builder: expect.objectContaining({
+        icon_container: expect.objectContaining({ shape: 'rounded', background: 'accent', radius: 10, shadow: 'sm' }),
+      }),
+    }));
+    fireEvent.click(screen.getByRole('switch', { name: /Header transparente sobre el hero/ }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_transparent_over_hero: true });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Espacio superior de la primera sección' }), { target: { value: '12' } });
+    expect(onCambiar).toHaveBeenCalledWith({ first_section_offset_px: 12 });
     fireEvent.click(screen.getByRole('radio', { name: 'Categorías de la carta' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_menu_source: 'categorias_carta' });
   });

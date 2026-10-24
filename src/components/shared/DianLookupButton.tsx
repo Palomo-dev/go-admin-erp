@@ -16,11 +16,12 @@
  * - className: clases adicionales
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, Loader2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKitT } from '@/components/kit/useIdiomaKit';
+import { urlPoliticaPublica } from '@/components/sitio-web/configuracion/apiLegales';
 import type { DianNormalizedData } from '@/lib/services/dianLookupService';
 
 interface DianLookupButtonProps {
@@ -143,6 +144,16 @@ interface HabeasDataCheckboxProps {
 
 export function HabeasDataCheckbox({ checked, onChange, className = '' }: HabeasDataCheckboxProps) {
   const t = useKitT();
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void urlPoliticaPublica()
+      .then((valor) => vivo && setUrl(valor))
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, []);
   return (
     <label className={`flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer ${className}`}>
       <input
@@ -151,7 +162,17 @@ export function HabeasDataCheckbox({ checked, onChange, className = '' }: Habeas
         onChange={(e) => onChange(e.target.checked)}
         className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
       />
-      <span>{t('consultaDian.habeasData')}</span>
+      <span>
+        {t('consultaDian.habeasData')}
+        {url && (
+          <>
+            {' '}
+            <a href={url} className="underline" target="_blank" rel="noreferrer">
+              {url}
+            </a>
+          </>
+        )}
+      </span>
     </label>
   );
 }

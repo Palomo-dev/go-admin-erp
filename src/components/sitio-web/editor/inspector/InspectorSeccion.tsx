@@ -16,6 +16,7 @@ import { Copy, Eye, EyeOff, ExternalLink, Info, Trash2, TriangleAlert, UtensilsC
 import { cn } from '@/utils/Utils';
 import { AvisoTonal, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { getSectionDefinition, type ContentFieldDef, type WebsitePageSection } from '@/lib/services/websitePageBuilderService';
+import { contenidoTrasEditarBody } from '@/lib/website/legales/documentoLegal';
 import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 import { AvisoConAccion } from '@/components/organization/branding/editor/AvisoConAccion';
 import type { ThemePalette } from '@/components/organization/branding/editor/fields/types';
@@ -25,8 +26,13 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
+import { esSeccionTarjetaProducto, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
+import { InspectorBanners } from './InspectorBanners';
+import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
+import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
+import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
 
@@ -64,6 +70,10 @@ export interface InspectorSeccionProps {
   } | null;
   pestanaInicial?: PestanaSeccion;
   className?: string;
+  /** `product_card_style` del sitio, para mostrarlo cuando la sección no lo reemplaza. */
+  estiloTarjetaSitio?: unknown;
+  /** Copia el estilo de esta tarjeta a las demás secciones de productos de la página. */
+  onAplicarTarjeta?: (estilo: EstiloTarjetaProducto) => void;
 }
 
 export function InspectorSeccion(p: InspectorSeccionProps) {
@@ -78,8 +88,12 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   const visibilidad = useMemo(() => visibilidadDeSeccion(s), [s]);
   const idTabs = `inspector-seccion-${s.id}`;
 
+  const boletin = (definicion?.contentFields ?? []).some((c) => c.type === 'newsletter');
   const campos = (pest: PestanaSeccion): ContentFieldDef[] =>
     (definicion?.contentFields ?? []).filter((c) => {
+      // El inspector del boletín ya escribe título, botón e imagen. Esos campos siguen
+      // declarados porque el sitio público los pinta, pero no se muestran dos veces.
+      if (boletin && c.type !== 'newsletter') return false;
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
@@ -118,10 +132,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       <CampoSeccion
         key={c.key}
         campo={c}
-        valor={contenido[c.key]}
+        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : contenido[c.key]}
         contenido={contenido}
         onCambiar={(v) => {
-          const siguiente: Record<string, unknown> = { ...contenido, [c.key]: v };
+          const siguiente: Record<string, unknown> =
+            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : { ...contenido, [c.key]: v };
           // Exclusión mutua de categories_grid (como en el editor anterior).
           if (c.key === 'show_icon' && v === true) siguiente.show_image = false;
           if (c.key === 'show_image' && v === true) siguiente.show_icon = false;
@@ -232,7 +247,56 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                 </div>
               </div>
             )}
+            {esSeccionTarjetaProducto(s.section_type) && (
+              <InspectorTarjetaProducto
+                guardado={contenido.product_card_style}
+                heredado={p.estiloTarjetaSitio}
+                onCambiar={(estilo) => p.onCambiarContenido({ ...contenido, product_card_style: estilo })}
+                onQuitar={() => {
+                  const siguiente = { ...contenido };
+                  delete siguiente.product_card_style;
+                  p.onCambiarContenido(siguiente);
+                }}
+                onAplicarTodas={p.onAplicarTarjeta}
+              />
+            )}
+            {s.section_type === 'promo_banners' && (
+              <InspectorBanners contenido={contenido} onCambiar={p.onCambiarContenido} />
+            )}
             {pintarConBloques(campos('diseno'))}
+            {(TIPOS_PAGINACION as readonly string[]).includes(s.section_type) && (
+              <PanelPaginacion
+                valor={sanitizarPaginacion(contenido.paginacion)}
+                usarGlobal={sanitizarPaginacion(contenido.paginacion)?.usar_global !== false}
+                onUsarGlobal={(v) => {
+                  if (v) {
+                    const siguiente = { ...contenido };
+                    delete siguiente.paginacion;
+                    p.onCambiarContenido(siguiente);
+                  } else {
+                    p.onCambiarContenido({ ...contenido, paginacion: { usar_global: false } });
+                  }
+                }}
+                onCambiar={(val) => p.onCambiarContenido({ ...contenido, paginacion: { usar_global: false, ...val } })}
+                color="#111827"
+              />
+            )}
+            {(TIPOS_CARRUSEL as readonly string[]).includes(s.section_type) && (
+              <PanelCarrusel
+                valor={sanitizarCarrusel(contenido.carrusel)}
+                usarGlobal={sanitizarCarrusel(contenido.carrusel)?.usar_global !== false}
+                onUsarGlobal={(v) => {
+                  if (v) {
+                    const siguiente = { ...contenido };
+                    delete siguiente.carrusel;
+                    p.onCambiarContenido(siguiente);
+                  } else {
+                    p.onCambiarContenido({ ...contenido, carrusel: { usar_global: false } });
+                  }
+                }}
+                onCambiar={(val) => p.onCambiarContenido({ ...contenido, carrusel: { usar_global: false, ...val } })}
+              />
+            )}
             {avisoBorrador}
           </>
         )}

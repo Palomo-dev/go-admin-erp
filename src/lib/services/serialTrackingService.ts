@@ -1147,6 +1147,25 @@ class SerialTrackingService {
     }
   }
 
+  /**
+   * Existencia de la sucursal (todas las filas de stock, con o sin lote).
+   * Null si no se pudo leer: el selector no inventa la diferencia.
+   */
+  async getStockOnHand(productId: number, branchId: number): Promise<number | null> {
+    try {
+      const { data, error } = await supabase
+        .from('stock_levels')
+        .select('qty_on_hand')
+        .eq('product_id', productId)
+        .eq('branch_id', branchId);
+      if (error) return null;
+      return (data ?? []).reduce((suma, fila) => suma + Number(fila.qty_on_hand ?? 0), 0);
+    } catch (err: unknown) {
+      console.error('Error leyendo existencia para seriales:', (err as Error).message);
+      return null;
+    }
+  }
+
   private async createTrackingEvent(event: {
     serial_number_id: number;
     organization_id: number;

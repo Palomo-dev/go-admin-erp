@@ -1,8 +1,9 @@
 /**
  * POST /api/inventario/garantias/[id]/resolver — cierra el reclamo con
  * reparación, reemplazo por otra unidad del mismo producto en stock o
- * reembolso. Guarda quién resolvió (antes siempre nulo). No mueve stock: el
- * descuento de la unidad de reemplazo queda anotado para el núcleo (B0).
+ * reembolso. Guarda quién resolvió (antes siempre nulo). El reembolso sí
+ * mueve inventario: crea la nota crédito, el asiento y el movimiento de caja,
+ * y deja la unidad dañada. Reparación y reemplazo no cambian esa pantalla.
  * Body `{ tipo, serial_reemplazo?, monto?, notas?, respuesta_proveedor? }`.
  */
 import { NextResponse } from 'next/server';

@@ -101,7 +101,7 @@ test('con el catálogo vacío avisa, enlaza a motivos y no llama la RPC', async 
   expect(screen.getByRole('link', { name: 'Ir a motivos' }).getAttribute('href')).toBe('/app/pos/devoluciones/motivos');
   expect(screen.queryByRole('option', { name: 'Producto defectuoso' })).toBeNull();
 
-  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Producto de prueba: seleccionar para devolver' }));
   const procesar = screen.getByRole('button', { name: 'Procesar Devolución' }) as HTMLButtonElement;
   expect(procesar.disabled).toBe(true);
   fireEvent.click(procesar);
@@ -123,7 +123,7 @@ test('con motivos del catálogo se puede procesar y no sale el aviso', async () 
   expect(await screen.findByText('Producto de prueba')).toBeTruthy();
   expect(screen.queryByText(AVISO)).toBeNull();
 
-  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Producto de prueba: seleccionar para devolver' }));
   const procesar = screen.getByRole('button', { name: 'Procesar Devolución' }) as HTMLButtonElement;
   expect(procesar.disabled).toBe(false);
 });

@@ -21,7 +21,7 @@
  *   Ctrl+Enter emitir.
  */
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Barcode, Copy, FileMinus, FileText, Landmark, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
@@ -108,6 +108,7 @@ import {
   type LineaVenta,
 } from '@/lib/finanzas/ventas/lineasFacturaVenta';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+import { aplicarSucursalGlobal } from './sucursalDocumento';
 import { validarFacturaVenta, type ErroresFacturaVenta } from './validacionFacturaVenta';
 
 export const RUTA_FACTURAS_VENTA = '/app/finanzas/facturas-venta';
@@ -299,11 +300,18 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   useEffect(() => {
     if (feGlobal) setFe(true);
   }, [feGlobal]);
-  // L4: la sucursal del selector global (solo en un documento nuevo).
+  // L4: el selector global solo propone la sucursal al abrir un documento nuevo.
+  const sucursalGlobalAplicada = useRef(Boolean(idInicial));
   useEffect(() => {
-    if (!idInicial && selectedBranchId && !sucio) setSucursal(selectedBranchId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBranchId]);
+    const siguiente = aplicarSucursalGlobal({
+      documentoNuevo: !idInicial,
+      yaAplicada: sucursalGlobalAplicada.current,
+      sucursal,
+      selectorGlobal: selectedBranchId,
+    });
+    sucursalGlobalAplicada.current = siguiente.yaAplicada;
+    if (siguiente.sucursal !== sucursal) setSucursal(siguiente.sucursal);
+  }, [idInicial, selectedBranchId, sucursal]);
   // L3: la moneda base de la organización si el documento no trae otra.
   useEffect(() => {
     if (!codigoMoneda && moneda.resuelta) setCodigoMoneda(moneda.code);
@@ -975,6 +983,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
                 {...aria(c)}
                 value={sucursal ?? ''}
                 onChange={(e) => {
+                  sucursalGlobalAplicada.current = true;
                   marcar();
                   setSucursal(e.target.value ? Number(e.target.value) : null);
                 }}

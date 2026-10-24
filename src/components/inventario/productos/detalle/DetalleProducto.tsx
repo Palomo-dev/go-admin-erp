@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -70,10 +70,11 @@ const ID_TABS = 'producto';
 
 /**
  * Detalle de producto (Figma `04 Inventario › Producto — Cabecera` y
- * secciones). Carga el producto por uuid dentro de la organización de la
- * sesión y reparte el resto en pestañas que cargan lo suyo.
+ * secciones). Carga el producto por id numérico o uuid dentro de la
+ * organización de la sesión y reparte el resto en pestañas que cargan lo suyo.
+ * Si la URL traía el id, se reemplaza por el uuid sin perder la consulta.
  */
-export function DetalleProducto({ uuid }: { uuid: string }) {
+export function DetalleProducto({ ident }: { ident: string }) {
   const t = useTranslations('productoDetalle');
   const { organization, isLoading: cargandoOrg } = useOrganization();
   const orgId = organization?.id ?? null;
@@ -85,6 +86,9 @@ export function DetalleProducto({ uuid }: { uuid: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const paramsRef = useRef(searchParams);
+  paramsRef.current = searchParams;
+  const cargaRef = useRef<{ orgId: number; uuid: string } | null>(null);
   const tabParam = searchParams?.get('tab');
   const tab: PestanaDetalle = esPestana(tabParam) ? tabParam : 'resumen';
   const sub = subPestanaValida(tab, searchParams?.get('sub'));
@@ -106,25 +110,33 @@ export function DetalleProducto({ uuid }: { uuid: string }) {
   const recargarProducto = useCallback(async () => {
     if (!orgId) return;
     try {
-      const p = await cargarProductoDetalle(orgId, uuid);
+      const p = await cargarProductoDetalle(orgId, ident);
       if (!p) {
+        cargaRef.current = null;
         setError(t('carga.noEncontrado'));
         setProducto(null);
       } else {
+        cargaRef.current = { orgId, uuid: p.uuid };
         setProducto(p);
         setError(null);
+        if (/^\d+$/.test(ident) && p.uuid) {
+          const qs = paramsRef.current?.toString() ?? '';
+          router.replace(qs ? `${RUTA_CATALOGO}/${p.uuid}?${qs}` : `${RUTA_CATALOGO}/${p.uuid}`, { scroll: false });
+        }
       }
     } catch (e) {
+      cargaRef.current = null;
       setError(mensajeError(e));
     } finally {
       setCargando(false);
     }
-  }, [orgId, uuid, t, mensajeError]);
+  }, [orgId, ident, t, mensajeError, router]);
 
   useEffect(() => {
+    if (orgId && cargaRef.current?.orgId === orgId && cargaRef.current.uuid === ident) return;
     setCargando(true);
     void recargarProducto();
-  }, [recargarProducto]);
+  }, [recargarProducto, ident, orgId]);
 
   if (cargando || cargandoOrg) {
     return (

@@ -34,6 +34,7 @@ import {
   visibilidadDeSeccion,
   visibilidadDesdeDocumento,
 } from './estiloSeccion';
+import { columnasDesdeConversion, esColumnaConversion, fusionarColumnasConversion, urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 
 // ─── Páginas y secciones ──────────────────────────────────────────────────────────────────────
 
@@ -212,6 +213,11 @@ export function ajustesDesdeDocumento(
     ajustes[columna] = columna in (opciones ?? {}) ? structuredCloneSeguro(opciones[columna]) : def.porDefecto;
   }
 
+  if (documento.conversion && urgenciaDocumentoDisponible()) {
+    Object.assign(ajustes, columnasDesdeConversion(documento.conversion));
+    ajustes.conversion = structuredCloneSeguro(documento.conversion);
+  }
+
   return { ajustes: ajustes as unknown as WebsiteSettings, origenes };
 }
 
@@ -232,8 +238,17 @@ export function aplicarAjustesAlDocumento(
   let resultado = structuredCloneSeguro(documento);
   const noAplicadas: string[] = [];
   const menus = new Set(resultado.menus.map((m) => m.id));
+  const cambiosConversion: Record<string, unknown> = {};
 
   for (const [columna, valor] of Object.entries(cambios)) {
+    if (esColumnaConversion(columna)) {
+      if (!urgenciaDocumentoDisponible()) {
+        noAplicadas.push(columna);
+        continue;
+      }
+      cambiosConversion[columna] = valor;
+      continue;
+    }
     const heredable = campoHeredableDeColumna(columna);
     if (heredable) {
       resultado = fijarCampo(
@@ -269,6 +284,9 @@ export function aplicarAjustesAlDocumento(
       continue;
     }
     noAplicadas.push(columna);
+  }
+  if (Object.keys(cambiosConversion).length > 0) {
+    resultado = { ...resultado, conversion: fusionarColumnasConversion(resultado.conversion, cambiosConversion) };
   }
   return { documento: resultado, noAplicadas };
 }

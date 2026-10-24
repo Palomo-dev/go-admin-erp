@@ -998,6 +998,7 @@
         "sucursal": "Criar uma filial",
         "equipo": "Convidar a equipe",
         "productos": "Adicionar produtos",
+        "inventario": "Carregar o estoque inicial",
         "impuestos": "Configurar impostos",
         "clientes": "Cadastrar clientes"
       },
@@ -1005,6 +1006,9 @@
       "pendiente": "Pendente",
       "ir": "Ir",
       "irA": "Ir para {paso}",
+      "inventarioAsiento": "O lançamento será débito {inventario} e crédito {saldo} (saldos iniciais). Não usa recuperações.",
+      "importarExcel": "Importar Excel",
+      "cargarMano": "Lançar à mão",
       "sinMovimientosTitulo": "Ainda não há movimentos",
       "sinMovimientosDesc": "Assim que você registrar a primeira venda ou fatura, a tendência do período e a atividade recente aparecerão aqui.",
       "agregarProductos": "Adicionar produtos",
@@ -4090,7 +4094,8 @@
           "sm": "Pequeno",
           "md": "Médio",
           "lg": "Grande",
-          "xl": "Muito grande"
+          "xl": "Muito grande",
+          "px": "Pixels"
         },
         "campos": {
           "padding_top": "Padding superior",
@@ -4439,6 +4444,7 @@
       "inventario_distribucion": "Distribuição",
       "inventario_reportes_trazabilidad": "Rastreabilidade",
       "inventario_reportes_costo-recetas": "Custo de receitas",
+      "inventario_reportes_stock-sin-seriales": "Estoque sem números de série",
       "finanzas_facturas-venta": "Faturas de venda",
       "finanzas_cotizaciones": "Cotações",
       "finanzas_facturas-compra": "Faturas de compra",
@@ -9505,6 +9511,12 @@
         "ejemploExacto": "Ex.: 100",
         "motivo": "Motivo (opcional)",
         "motivoPlaceholder": "Ex.: contagem física de fim de mês",
+        "tipoContable": "Tipo contábil",
+        "tiposContables": {
+          "ajuste": "Ajuste (ganho ou perda)",
+          "apertura": "Abertura (estoque contra patrimônio)"
+        },
+        "ayudaTipo": "A abertura debita o estoque e credita o patrimônio. Um ajuste de entrada credita outras receitas e um de saída debita despesas. Uma entrada que não é devolução não credita custos.",
         "avisoKardex": "Cada ajuste fica no kardex e gera o seu lançamento de estoque.",
         "sinCosto": "{count, plural, one {{n} ajuste ficou sem custo: está no kardex, mas não gerou lançamento.} other {{n} ajustes ficaram sem custo: estão no kardex, mas não geraram lançamento.}}",
         "sinPermiso": "Você não tem permissão para ajustar o estoque."
@@ -9937,7 +9949,7 @@
       "padreNoEncontrado": "SKU pai que não existe",
       "nombreMuyLargo": "nome longo demais",
       "skuGenerado": "SKU gerado",
-      "costoMayorPrecio": "custo maior que o preço",
+      "costoMayorPrecio": "O custo parece ser o preço de venda",
       "costoPrecioIntercambiados": "custo e preço trocados",
       "promoEnNotas": "promoção anotada nas notas",
       "unidadDesconocida": "unidade não reconhecida (fica «UN»)",
@@ -9998,6 +10010,9 @@
       "incluir": "Incluir de novo",
       "excluir": "Excluir da importação",
       "excluidaPorError": "As linhas com erro já ficam de fora até serem corrigidas",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}. Não usa recuperações.",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
       "vacio": "Não há linhas para revisar",
       "sinResultados": "Nenhuma linha corresponde",
       "sustantivo": {
@@ -10066,7 +10081,7 @@
       "padreNoEncontrado": "O SKU pai «{sku}» não está no arquivo nem no catálogo",
       "nombreMuyLargo": "O nome passa de {max} caracteres",
       "skuGenerado": "SKU gerado automaticamente",
-      "costoMayorPrecio": "O custo é maior que o preço de venda",
+      "costoMayorPrecio": "O custo parece ser o preço de venda",
       "costoPrecioIntercambiados": "Custo e preço vieram invertidos: foram trocados",
       "promoEnNotas": "Promoção 2 por 1 (cada {unitario}, normal {normal}): anotada nas notas para configurá-la em Promoções",
       "unidadDesconocida": "Unidade «{unidad}» não reconhecida: fica «UN»",
@@ -11426,7 +11441,10 @@
       "stock": {
         "total": "{count, plural, one {Estoque total: # unidade} other {Estoque total: # unidades}}",
         "generados": "Números de série gerados: {valor}",
-        "sinSerial": "{count} sem número de série"
+        "sinSerial": "{count} sem número de série",
+        "asignar": "Atribuir números ao estoque existente",
+        "descuadre": "Essas unidades continuam em estoque. Atribuir um número não muda a quantidade.",
+        "asignarHecho": "Números atribuídos. O estoque não mudou."
       },
       "inactivo": {
         "aviso": "{count, plural, one {Este produto não exige mais número de série. O número registrado é mantido e pode ser consultado, mas não são gerados novos.} other {Este produto não exige mais número de série. Os # números registrados são mantidos e podem ser consultados, mas não são gerados novos.}}"
@@ -11910,6 +11928,7 @@
       "proveedor_invalido": "O fornecedor não pertence à sua organização.",
       "sucursal_invalida": "A filial não pertence à sua organização.",
       "stock_sin_costo": "O estoque inicial precisa de custo: sem ele o kardex e a contabilidade ficam incompletos.",
+      "stock_serial_sin_captura": "Um produto com número de série não admite estoque inicial sem os números. Deixe-o em 0 e capture-os num ajuste: eles não são inventados.",
       "cantidad_negativa": "As quantidades não podem ser negativas.",
       "cantidad_invalida": "Informe uma quantidade maior que 0.",
       "variantes_activas": "O produto tem variantes ativas: exclua-as antes de desativar as variantes.",
@@ -11930,6 +11949,7 @@
       "variante_incompleta": "Cada variante precisa de SKU e nome.",
       "combinacion_repetida": "Duas variantes têm a mesma combinação de atributos.",
       "variante_stock_sin_costo": "Uma variante com estoque inicial precisa de custo.",
+      "variante_stock_serial_sin_captura": "Uma variante de um produto com número de série não admite estoque inicial sem os números. Deixe-o em 0 e capture-os num ajuste.",
       "demasiadas_imagenes": "Você pode enviar até 5 imagens.",
       "dimension_negativa": "O peso e as medidas não podem ser negativos.",
       "receta_sin_ingredientes": "A receita está ligada mas não tem ingredientes: adicione pelo menos um ou desligue-a.",
@@ -12087,6 +12107,9 @@
       "notaKardex": "{count, plural, one {# filial ativa} other {# filiais ativas}}. A entrada inicial fica registrada no kardex ao salvar. Custo unitário vazio = custo do produto.",
       "notaEditar": "A quantidade em estoque muda com um ajuste de estoque: “Ajustar” abre em outra aba para você não perder as alterações não salvas. O mínimo pode ser editado aqui.",
       "avisoSinCosto": "Há quantidades sem custo: informe o custo unitário ou o custo do produto em “Preços e custos”.",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
       "loteEn": "Lote do estoque inicial em {sucursal}",
       "venceEn": "Validade do lote em {sucursal}",
       "lotePlaceholder": "Automático",
@@ -12098,6 +12121,7 @@
       "requiereSerial": "Exige número de série",
       "requiereSerialAyuda": "Cada unidade deste produto terá um número de série único, com histórico e garantia próprios.",
       "sinInventario": "Os números de série são atribuídos às unidades em estoque: ative “Controlar estoque” para poder gerá-los.",
+      "stockSinSerial": "{count, plural, one {# unidade já em estoque ficará sem número até você atribuir. Atribuir não muda o estoque.} other {# unidades já em estoque ficarão sem número até você atribuir. Atribuir não muda o estoque.}}",
       "garantia": "Meses de garantia",
       "garantiaAyuda": "Cada número novo recebe esta garantia a partir do dia em que é registrado. Vazio = sem garantia.",
       "meses": "meses",
@@ -12999,6 +13023,7 @@
       "etiqueta": "URL da política (https)",
       "ayuda": "Obrigatória para que as campanhas do agente de voz liguem. O agente a cita quando o cliente pergunta como tratamos seus dados.",
       "faltante": "Sem esta URL nenhuma campanha do agente de voz disca.",
+      "usandoSitio": "Usando a do seu site:",
       "invalida": "A URL deve começar com https:// e não ter espaços.",
       "guardar": "Salvar URL",
       "guardando": "Salvando…",
@@ -13590,6 +13615,10 @@
       "motivoObligatorio": "Informe o motivo geral da devolução.",
       "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados.",
       "serialInvalido": "Um dos números de série não pertence a esta venda ou já não está vendido.",
+      "serialYaDevuelto": "Esse número de série já foi devolvido nesta venda.",
+      "serialYaReembolsadoGarantia": "Esse número de série já foi reembolsado pela garantia. Não pode ser devolvido de novo.",
+      "serialEnGarantia": "Esse número de série está numa reclamação de garantia. Resolva-a lá.",
+      "disposicionInvalida": "Escolha se o número de série volta ao estoque ou fica danificado.",
       "lineaNoPerteneceALaVenta": "Uma das linhas não pertence a esta venda.",
       "sinAccesoSucursal": "Você não tem acesso à filial desta venda.",
       "generico": "Erro ao processar a devolução",
@@ -13714,7 +13743,8 @@
         "sinMotivoGeneral": "Informe o motivo geral da devolução",
         "itemsSinMotivo": "Todos os itens selecionados precisam de um motivo específico",
         "serializadosSinSerial": "Os produtos serializados precisam de pelo menos um número de série selecionado",
-        "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados"
+        "serialesNoCoinciden": "A quantidade a devolver deve coincidir com os números de série selecionados",
+        "sinSerialesEnLinea": "Esta linha não tem números de série vendidos para devolver"
       },
       "metodosPago": {
         "cash": "Dinheiro",
@@ -13728,7 +13758,13 @@
       },
       "cantidadOriginalUnidad": "Vendido: {cantidad} {unidad}",
       "reingresa": "Volta ao estoque",
-      "reingresaDe": "{producto}: volta ao estoque"
+      "reingresaDe": "{producto}: volta ao estoque",
+      "seleccionarDe": "{producto}: selecionar para devolver",
+      "sinSerialesEnLinea": "Não há números de série vendidos nesta linha",
+      "sinSerialesVendidos": "Não há números de série vendidos nesta linha",
+      "vuelveAStock": "Volta ao estoque",
+      "danado": "Danificado",
+      "disposicionDe": "O que acontece com {serial}"
     },
     "historial": {
       "errorCarga": "Não foi possível carregar o histórico de devoluções",
@@ -17365,6 +17401,7 @@
       "buscarAria": "Buscar número de série de {producto}",
       "garantia": "Garantia até: {fecha}",
       "insuficientes": "Só {disponibles, plural, one {há # número disponível} other {há # números disponíveis}} e {requeridos, plural, one {é necessário #} other {são necessários #}}.",
+      "stockSinSerial": "Estoque {stock} · {disponibles, plural, one {# número disponível} other {# números disponíveis}} · {sinSerial, plural, one {# unidade sem número disponível} other {# unidades sem número disponível}}. Essas unidades não se escolhem aqui e não se inventa um número para elas.",
       "confirmar": "Confirmar números de série",
       "lista": "Números de série de {producto}"
     },
@@ -21516,6 +21553,28 @@
       }
     },
     "formulario": {
+      "carga": {
+        "sinHistorial": "Este produto não tem estoque registrado. É o seu estoque inicial?",
+        "siSaldoInicial": "Sim, carregar como saldo inicial",
+        "noSobrante": "Não, é uma sobra",
+        "desdeNegativo": "Registrar a compra ou a produção que faltou",
+        "desdeNegativoDetalle": "O estoque já está negativo. Registre a compra ou a produção que faltou antes de tratar isto como sobra.",
+        "registrarCompra": "Registrar compra",
+        "costoParecePrecio": "O custo parece ser o preço de venda",
+        "costoEsCorrecto": "O custo está correto",
+        "confirmar": "Confirme este ajuste",
+        "confirmarDetalle": "A organização tem menos de 30 dias ou o valor passa do limite. A observação é obrigatória.",
+        "notaObligatoria": "Escreva uma observação para confirmar o ajuste.",
+        "asientoTitulo": "Lançamento da carga inicial",
+        "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
+        "asientoSobranteTitulo": "Lançamento da sobra",
+        "asientoSobranteDetalle": "Um só lançamento: débito {inventario} e crédito {diversos} por {total}. Não usa recuperações.",
+        "corregirConteo": "Corrigir a contagem",
+        "corregirConteoDetalle": "Este produto teve a contagem {codigo} neste mês. Corrigi-la anula essa contagem e reverte o lançamento, sem registrar receita.",
+        "corregirConteoVarios": "Essa contagem inclui outros produtos. Abra-a para ajustá-la.",
+        "corregirConteoListo": "A contagem {codigo} foi corrigida. Não se registrou receita.",
+        "abrirConteo": "Abrir a contagem"
+      },
       "titulo": "Novo ajuste de estoque",
       "tituloEditar": "Editar rascunho de ajuste",
       "tituloMovil": "Novo ajuste",
@@ -21712,6 +21771,7 @@
       "vencida": "Vencida",
       "vencioEl": "venceu em {fecha}",
       "empiezaAlVender": "Começa na venda",
+      "desdeLaVenta": "Desde a venda · {meses, plural, one {# mês} other {# meses}}",
       "meses": "{meses, plural, one {# mês} other {# meses}}",
       "enReclamo": "Em reclamação",
       "enRma": "Em RMA",
@@ -21752,6 +21812,22 @@
       "subtituloLema": "cada unidade com a sua história, da compra à garantia",
       "subtituloMovil": "{total} · {stock} em estoque",
       "actualizar": "Atualizar",
+      "generarSeriales": "Gerar números de série",
+      "descuadreTitulo": "Estoque sem número de série",
+      "descuadreFila": "{producto} · {sede}: {sin} sem número ({stock} em estoque, {seriales} números)",
+      "generar": {
+        "titulo": "Gerar números de série",
+        "producto": "Produto",
+        "buscar": "Buscar por nome ou SKU",
+        "sinProductos": "Nenhum produto com número de série corresponde a essa busca.",
+        "sucursal": "Filial",
+        "cantidad": "Quantos",
+        "lista": "Ou cole um número por linha",
+        "noMueveStock": "Isto só registra os números. Não muda o estoque.",
+        "confirmar": "Atribuir números",
+        "hecho": "{count, plural, one {# número de série atribuído} other {# números de série atribuídos}}",
+        "error": "Não foi possível atribuir os números de série. Tente novamente."
+      },
       "por": "por {nombre}",
       "etiquetaFila": "Número de série {serial} de {producto}",
       "errorSeleccionarTodo": "Não foi possível selecionar todos os números de série",
@@ -21863,6 +21939,24 @@
         "reclamo": "Reclamação {codigo}"
       }
     },
+    "stockSinSeriales": {
+      "titulo": "Estoque sem números de série",
+      "descripcion": "Estoque de produtos serializados maior que os números que o ocupam (em estoque ou reservados). Este relatório não cria números.",
+      "vacio": "Não há estoque sem números de série.",
+      "error": "Não foi possível carregar o relatório.",
+      "cargando": "Carregando o relatório…",
+      "producto": "Produto",
+      "sku": "SKU",
+      "sucursal": "Filial",
+      "existencia": "Estoque",
+      "seriales": "Números",
+      "disponibles": "Disponíveis",
+      "sinSerial": "Sem número",
+      "verProducto": "Ver números de {producto}",
+      "avisoTitulo": "{count, plural, one {# estoque supera os números que o ocupam} other {# estoques superam os números que os ocupam}}",
+      "avisoDescripcion": "Essas unidades não têm número em estoque nem reservado. Não se inventam números: capture-os num ajuste para poder vendê-las.",
+      "verReporte": "Ver o relatório"
+    },
     "acciones": {
       "verHistorial": "Ver histórico do número de série",
       "verVenta": "Ver a venda {numero}",
@@ -21940,6 +22034,7 @@
         "vencida": "vencida",
         "restante": "faltam {meses, plural, one {# mês} other {# meses}} e {dias, plural, one {# dia} other {# dias}}",
         "empiezaAlVender": "Começa no dia da venda",
+        "desdeLaVenta": "Desde a venda · {meses, plural, one {# mês} other {# meses}}",
         "sinVigencia": "Não iniciada",
         "hastaCorto": "Garantia até {fecha}",
         "reclamos": "Reclamações",
@@ -21993,6 +22088,11 @@
       "reemplazo_requerido": "Escolha a unidade de substituição.",
       "reemplazo_invalido": "A unidade de substituição não está mais disponível ou é de outro produto.",
       "monto_invalido": "Digite um valor maior que zero.",
+      "unidad_ya_devuelta": "Essa unidade já foi devolvida no PDV. Não dá para reembolsá-la de novo.",
+      "monto_no_coincide": "O valor não coincide com o cobrado por essa unidade.",
+      "linea_no_encontrada": "Não encontramos a linha da venda desse número de série.",
+      "venta_no_encontrada": "Não encontramos a venda desse número de série.",
+      "motivo_invalido": "O motivo da devolução não está ativo.",
       "estado_invalido": "Status inválido.",
       "datos_invalidos": "Revise os dados do formulário.",
       "error_desconocido": "Não foi possível concluir. Tente novamente."
@@ -22091,7 +22191,7 @@
       "serialPlaceholder": "Escaneie ou digite o número de série",
       "buscando": "Buscando o número de série…",
       "vendido": "vendido em {fecha} na {venta} para {cliente}",
-      "sinCliente": "consumidor final",
+      "sinCliente": "Consumidor final",
       "garantiaVigente": "Garantia vigente: {meses, plural, one {# mês} other {# meses}} a partir da venda, faltam {restanteMeses, plural, one {# mês} other {# meses}} e {restanteDias, plural, one {# dia} other {# dias}}.",
       "garantiaVigenteCorta": "Garantia vigente.",
       "noReclamable": {
@@ -22106,6 +22206,12 @@
       "motivoPlaceholder": "Escolha o motivo",
       "descripcionCampo": "Descrição",
       "descripcionPlaceholder": "O que aconteceu, desde quando, o que o cliente traz",
+      "reclamante": "Quem reclama",
+      "reclamanteAyuda": "Se a venda não tem cliente, estes dados ficam na reclamação.",
+      "reclamanteNombre": "Nome",
+      "reclamanteDocumento": "Documento",
+      "reclamanteTelefono": "Telefone",
+      "reclamanteCorreo": "E-mail",
       "nota": "Ao criar a reclamação, o número de série passa para «Reclamação de garantia» e o passo fica no seu histórico.",
       "crear": "Criar reclamação",
       "creado": "Reclamação {codigo} criada",
@@ -22152,7 +22258,7 @@
       "notas": "Notas",
       "aviso": {
         "reemplazo": "{nuevo} fica vendido para {cliente} com garantia nova a partir de hoje, e {serial} fica «{estado}».",
-        "reembolso": "{serial} volta para a empresa e fica «{estado}». A nota de crédito do reembolso é feita em Finanças.",
+        "reembolso": "{serial} volta para a empresa e fica «{estado}». Emite-se a nota de crédito da venda, com o lançamento, o movimento de caixa e o estoque da unidade danificada.",
         "reparacion": "{serial} volta ao cliente como vendido; sua garantia continua como estava."
       },
       "avisoStock": "O estoque da unidade de substituição é baixado pelo núcleo de estoque; o número de série já fica vendido ao cliente.",
@@ -22213,7 +22319,11 @@
         "cliente": "Cliente",
         "garantia": "Garantia",
         "sinVenta": "Sem venda vinculada",
-        "sinCliente": "Sem cliente"
+        "sinCliente": "Consumidor final",
+        "reclamante": "Reclamante",
+        "documento": "Documento",
+        "telefono": "Telefone",
+        "correo": "E-mail"
       },
       "reclamo": {
         "titulo": "Reclamação",
@@ -22238,6 +22348,7 @@
         "tipo": "Como foi resolvida",
         "reemplazo": "Unidade de substituição",
         "monto": "Valor reembolsado",
+        "notaCredito": "Nota de crédito",
         "notas": "Notas",
         "fecha": "Resolvida"
       }
@@ -22550,7 +22661,14 @@
     "avisoNegativos": {
       "titulo": "{n} {count, plural, one {produto tem estoque negativo} other {produtos têm estoque negativo}}",
       "descripcion": "Foram vendidas mais unidades do que as registradas. Geralmente falta um recebimento de compra ou uma transferência. Revise-os antes da próxima contagem.",
-      "ver": "Ver só negativos"
+      "ver": "Ver só negativos",
+      "compra": "Registrar compra"
+    },
+    "config": {
+      "bloquear": "Bloquear a venda sem estoque",
+      "bloquearAyuda": "Se estiver desligado, dá para vender mesmo sem estoque. Esse é o valor que a organização já tem.",
+      "umbral": "Confirmar ajustes a partir de",
+      "umbralAyuda": "Valor a partir do qual o ajuste pede uma observação. Vazio: só se a organização tem menos de 30 dias."
     },
     "avisoSinAsignar": "{n} {count, plural, one {produto com variantes tem} other {produtos com variantes têm}} existências no produto pai, sem atribuir a uma variante. Não são somadas ao disponível.",
     "verSinAgrupar": "Ver as variantes separadamente",
@@ -22647,17 +22765,38 @@
       "listoDocumento": "Ajuste {numero} aplicado.",
       "errorEntrada": "Não foi possível registrar a entrada",
       "errorSalida": "Não foi possível registrar a saída",
+      "registrarCompra": "Registrar compra",
+      "desdeNegativo": "Registrar a compra ou a produção que faltou",
+      "desdeNegativoDetalle": "O estoque já está negativo. Registre a compra ou a produção que faltou antes de tratar isto como sobra.",
+      "sinHistorial": "Este produto não tem estoque registrado. É o seu estoque inicial?",
+      "siSaldoInicial": "Sim, carregar como saldo inicial",
+      "noSobrante": "Não, é uma sobra",
+      "costoParecePrecio": "O custo parece ser o preço de venda",
+      "costoEsCorrecto": "O custo está correto",
+      "confirmarAjuste": "Confirme este ajuste",
+      "confirmarAjusteDetalle": "A organização tem menos de 30 dias ou o valor passa do limite. A observação é obrigatória.",
+      "asientoTitulo": "Lançamento da carga inicial",
+      "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
+      "asientoSobranteTitulo": "Lançamento da sobra",
+      "asientoSobranteDetalle": "Um só lançamento: débito {inventario} e crédito {diversos} por {total}. Não usa recuperações.",
+      "corregirConteo": "Corrigir a contagem",
+      "corregirConteoDetalle": "Este produto teve a contagem {codigo} neste mês. Corrigi-la anula essa contagem e reverte o lançamento, sem registrar receita.",
+      "corregirConteoVarios": "Essa contagem inclui outros produtos. Abra-a para ajustá-la.",
+      "corregirConteoListo": "A contagem {codigo} foi corrigida. Não se registrou receita.",
+      "abrirConteo": "Abrir a contagem",
       "errores": {
         "requerido": "Este campo é obrigatório.",
         "mayorQueCero": "Deve ser maior que zero.",
         "noNegativo": "Não pode ser negativo.",
         "superaDisponible": "Excede o disponível ({n}).",
         "conSeriales": "Produtos com números de série são registrados em Ajustes.",
-        "facturaCompra": "A compra sem pedido é lançada na fatura de compra: estoque contra fornecedores."
+        "facturaCompra": "A compra sem pedido é lançada na fatura de compra: estoque contra fornecedores.",
+        "notaObligatoria": "Escreva uma observação para confirmar o ajuste."
       }
     },
     "motivos": {
       "entrada": {
+        "saldo_inicial": "Saldo inicial",
         "compra_sin_orden": "Compra sem pedido",
         "devolucion_cliente": "Devolução de cliente",
         "donacion": "Doação",
@@ -31732,18 +31871,30 @@
         "generar": "Gerar com assistente",
         "revisar": "Revisar e publicar",
         "generando": "Criando a página…",
-        "creado": "Criamos a página \"{titulo}\". Complete-a e publique-a pelo editor.",
+        "creado": "Criamos \"{titulo}\" com texto de {origen}. Revise e publique no editor.",
         "errorCrear": "Não conseguimos criar a página. Tente novamente.",
         "avisoTitulo": "Sem política de tratamento de dados, o agente de voz e os formulários do CRM não são ativados",
         "avisoDescripcion": "Precisamos dela para registrar a autorização do cliente (Lei 1581). O assistente a gera com os dados da sua organização.",
         "avisoAccion": "Gerar agora",
         "errorCargar": "Não conseguimos ler as páginas legais.",
         "asistenteTitulo": "Gerar \"{titulo}\"",
-        "asistenteDescripcion": "Criamos a página no seu site, fora do menu e no grupo \"Documentos legais\" do rodapé. Depois você a completa no editor com os dados do seu negócio e a publica.",
+        "asistenteDescripcion": "A página fica com o texto gerado, fora do menu principal. Se a IA não estiver disponível, usamos um modelo com os dados do seu negócio. Revise e publique.",
         "asistenteDatos": "Dados que usaremos",
         "asistenteRazon": "Razão social",
         "asistenteCorreo": "E-mail para solicitações",
-        "asistenteCrear": "Criar página"
+        "asistenteCrear": "Criar página",
+        "vacio": "Vazio",
+        "regenerar": "Gerar de novo",
+        "asistenteFaltantes": "Faltam estes dados. A frase que os usa não é escrita.",
+        "asistenteEnlaceDatos": "Completar em Dados do negócio",
+        "asistenteOrigenIa": "Origem: IA, se responder com um texto válido. Se não, modelo.",
+        "asistenteOrigenPlantilla": "Origem: modelo. A IA não está disponível.",
+        "origenIa": "a IA",
+        "origenPlantilla": "o modelo",
+        "diffTitulo": "Este texto foi editado",
+        "diffDescripcion": "Substituir guarda uma cópia no histórico do rascunho e escreve o texto novo.",
+        "reemplazar": "Substituir",
+        "cancelar": "Cancelar"
       },
       "codigo": {
         "descripcion": "Para medir anúncios, use os campos de Análise › Pixels. Aqui, apenas código personalizado.",
@@ -31776,10 +31927,18 @@
         "posicion": "Posição",
         "contenido": "Código",
         "guardarDialogo": "Pronto",
+        "conteo": "{n} / {max}",
+        "pantallaCompleta": "Tela cheia",
+        "salirPantalla": "Sair da tela cheia",
+        "avisoDocumento": "Este trecho traz uma página completa (html, head ou body). Cole só o código que vai dentro.",
+        "avisoHead": "O cabeçalho tem elementos que aparecem na página. Ali costuma ir código que não é exibido, como um script ou um estilo.",
         "errores": {
           "nombre": "Digite um nome para reconhecê-lo.",
           "ruta": "Digite um endereço que comece com /.",
-          "codigo": "Cole o código."
+          "codigo": "Cole o código.",
+          "limite": "O código passa de {max} caracteres.",
+          "etiqueta": "A etiqueta «{etiqueta}» não está fechada.",
+          "javascript": "Erro de JavaScript: {detalle}"
         }
       },
       "chat": {
@@ -32957,7 +33116,8 @@
         "pestana": {
           "contenido": "Conteúdo",
           "diseno": "Layout",
-          "estilo": "Estilo"
+          "estilo": "Estilo",
+          "constructor": "Construtor"
         },
         "cerrar": "Fechar {zona}",
         "restablecer": "Restaurar o modelo",
@@ -33035,7 +33195,18 @@
           "reserva": "Barra de reserva com datas",
           "reservaAyuda": "Hotel: entrada, saída e hóspedes abaixo do cabeçalho",
           "moneda": "Moeda",
-          "monedaAyuda": "Só se o site vende em mais de uma"
+          "monedaAyuda": "Só se o site vende em mais de uma",
+          "contenedorIconos": "Recipiente dos ícones",
+          "contenedorAyuda": "Forma, fundo e sombra do carrinho, da conta, da moeda, dos favoritos e da busca. Sem escolher, fica o ícone de hoje.",
+          "presetCirculo": "Círculo de destaque",
+          "presetCuadrado": "Quadrado suave",
+          "presetBorde": "Borda fina",
+          "presetSombra": "Sombra flutuante",
+          "presetSolo": "Só o ícone",
+          "headerSobreHero": "Cabeçalho transparente sobre o hero",
+          "headerSobreHeroAyuda": "O cabeçalho fica fixo e transparente sobre o hero. Desligado: cabeçalho opaco e o hero abaixo, sem vão.",
+          "espacioPrimera": "Espaço superior da primeira seção",
+          "espacioPrimeraAyuda": "Pixels entre o cabeçalho e a primeira seção. 0 as deixa coladas."
         },
         "diseno": {
           "titulo": "Layout do cabeçalho",
@@ -37951,6 +38122,9 @@
       "repetir": "Repetir a cada N unidades (opcional)",
       "repetirPlaceholder": "Uma vez só",
       "repetirAyuda": "Vazio: o desconto vale uma vez. Com um número, ele se repete a cada grupo completo. Exemplo: −{ejemplo} a cada 2 unidades. No percentual, as unidades que sobram ficam no preço normal.",
+      "repetirAyudaPaquete": "Num pacote com percentual, o percentual cobre só os grupos completos de N unidades; o que sobra fica no preço normal. Com preço de pacote, N limita quantos pacotes completos levam esse preço: no máximo um a cada N unidades que entram. Vazio: igual a uma promoção já salva, sem esse número.",
+      "errorCompra": "Informe quantas unidades são compradas",
+      "errorLleva": "Informe quantas são pagas ou saem grátis",
       "compraMinima": "Compra mínima (opcional)",
       "compraMinimaCuenta": "Medida sobre o subtotal de toda a conta, antes desta promo.",
       "compraMinimaElegible": "Medida só sobre os produtos ou categorias desta promo, não sobre o resto da conta.",

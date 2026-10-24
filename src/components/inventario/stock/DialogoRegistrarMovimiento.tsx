@@ -3,15 +3,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Info } from 'lucide-react';
-import { CampoFecha, CampoNumero, Dialogo, FormField } from '@/components/kit';
+import { AvisoTonal, CampoFecha, CampoNumero, Dialogo, FormField } from '@/components/kit';
 import { simboloMoneda } from '@/components/kit/documento';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import {
+  RUTA_FACTURA_COMPRA,
+  asientoCargaInicial,
+  asientoSobrante,
+  costoParecePrecio,
+  cuentaInventarioPorTipo,
+  debeAvisarSaldoInicial,
+  debeConfirmarAjuste,
+  importeCarga,
+  rutaConteo,
+  sugerirCompraPorNegativo,
+  sugerirCorregirConteo,
+} from '@/lib/inventario/cargaInicial';
+import { leerConfigInventario } from '@/lib/inventario/permisos';
 import type { LoteDisponible } from '@/lib/inventario/nucleo/tipos';
-import { listarStock, registrarMovimiento, type StockFila } from '@/lib/services/stockService';
+import { supabase } from '@/lib/supabase/config';
+import {
+  consultarConteoDelMes,
+  corregirConteoDelMes,
+  listarStock,
+  registrarMovimiento,
+  type ConteoDelMes,
+  type StockFila,
+} from '@/lib/services/stockService';
 import { guardarLote, lotesDeProducto } from '../lotes/LotesService';
 import {
   LARGO_MOTIVO,
@@ -50,6 +73,8 @@ export interface DialogoRegistrarMovimientoProps {
   loteId?: number | null;
   /** Mostrar la valoración (permiso `costos`). */
   verCostos: boolean;
+  /** El paso de puesta en marcha abre la entrada como saldo inicial. */
+  motivoInicial?: string;
   onRegistrado?: (resultado: { numero: string | null; productoId: number }) => void;
 }
 
@@ -68,6 +93,7 @@ function Formulario({
   sucursalId: sucursalInicial,
   loteId: loteInicial,
   verCostos,
+  motivoInicial,
   onRegistrado,
 }: DialogoRegistrarMovimientoProps) {
   const entrada = direccion === 'in';
@@ -80,12 +106,13 @@ function Formulario({
   const moneda = useMonedaOrganizacion();
   const { formatPlain, getToday } = useFormatDate();
   const { branches, sucursalActiva } = useAlcanceSucursales();
+  const { organization } = useOrganization();
 
   const [producto, setProducto] = useState<StockFila | null>(productoInicial ?? null);
   const [sucursalId, setSucursalId] = useState<number | null>(sucursalInicial ?? sucursalActiva);
   const [cantidad, setCantidad] = useState<number | null>(null);
   const [costo, setCosto] = useState<number | null>(entrada ? productoInicial?.costo_promedio ?? null : null);
-  const [motivo, setMotivo] = useState<string>(entrada ? 'sobrante' : 'merma_vencido');
+  const [motivo, setMotivo] = useState<string>(entrada ? motivoInicial ?? 'sobrante' : 'merma_vencido');
   const [motivoOtro, setMotivoOtro] = useState('');
   const [nota, setNota] = useState('');
   const [lotes, setLotes] = useState<LoteDisponible[]>([]);
@@ -94,6 +121,13 @@ function Formulario({
   const [nuevoVence, setNuevoVence] = useState('');
   const [intentado, setIntentado] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [movimientosPrevios, setMovimientosPrevios] = useState<number | null>(null);
+  const [precioVenta, setPrecioVenta] = useState<number | null>(null);
+  const [umbral, setUmbral] = useState<number | null>(5_000_000);
+  const [costoConfirmado, setCostoConfirmado] = useState(false);
+  const [saldoDescartado, setSaldoDescartado] = useState(false);
+  const [conteoMes, setConteoMes] = useState<ConteoDelMes | null>(null);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const primerError = useRef<HTMLDivElement>(null);
 
   // Al cambiar de sucursal se vuelve a leer la fila del producto en esa sucursal
@@ -112,6 +146,77 @@ function Formulario({
       vivo = false;
     };
   }, [organizacionId, productoId, sucursalId]);
+
+  useEffect(() => {
+    if (!entrada || !productoId || !sucursalId) {
+      setConteoMes(null);
+      return;
+    }
+    let vivo = true;
+    consultarConteoDelMes(organizacionId, sucursalId, productoId)
+      .then((c) => {
+        if (vivo) setConteoMes(c);
+      })
+      .catch(() => {
+        if (vivo) setConteoMes(null);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [entrada, organizacionId, productoId, sucursalId]);
+
+  useEffect(() => {
+    let vivo = true;
+    leerConfigInventario(organizacionId)
+      .then((c) => {
+        if (vivo) setUmbral(c.monto_confirmacion_ajuste);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [organizacionId]);
+
+  useEffect(() => {
+    if (!productoId) {
+      setMovimientosPrevios(null);
+      setPrecioVenta(null);
+      return;
+    }
+    let vivo = true;
+    void supabase
+      .from('stock_movements')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizacionId)
+      .eq('product_id', productoId)
+      .then(({ count, error }) => {
+        if (!vivo || error) return;
+        setMovimientosPrevios(count ?? 0);
+      });
+    void supabase
+      .from('product_prices')
+      .select('price')
+      .eq('product_id', productoId)
+      .is('effective_to', null)
+      .order('effective_from', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (!vivo) return;
+        const precio = data?.[0]?.price;
+        setPrecioVenta(precio == null ? null : Number(precio));
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [organizacionId, productoId]);
+
+  useEffect(() => {
+    setCostoConfirmado(false);
+  }, [costo, precioVenta]);
+
+  useEffect(() => {
+    setSaldoDescartado(false);
+  }, [productoId]);
 
   const conLotes = producto?.con_lotes ?? false;
   useEffect(() => {
@@ -159,11 +264,43 @@ function Formulario({
     return t(`errores.${e}`);
   };
 
-  const motivoTexto = (motivo === 'otro' ? motivoOtro.trim() : tm(`${entrada ? 'entrada' : 'salida'}.${motivo}`)).slice(0, LARGO_MOTIVO);
+  // El documento guarda el código (`saldo_inicial`, `sobrante`…), no la etiqueta.
+  // El saldo inicial acredita 3105. Un sobrante real acredita 4295. «Otro» sí lleva el texto.
+  const motivoEnvio = (motivo === 'otro' ? motivoOtro.trim() : motivo).slice(0, LARGO_MOTIVO);
+  const existenciaActual = enSucursal?.existencia ?? producto?.existencia ?? null;
+  const desdeNegativo = entrada && sugerirCompraPorNegativo(existenciaActual);
+  const sinHistorial =
+    !saldoDescartado &&
+    movimientosPrevios !== null &&
+    debeAvisarSaldoInicial({ movimientosPrevios, direccion, cantidad: cantidad ?? 0 });
+  const avisoCosto = entrada && costoParecePrecio(costo, precioVenta);
+  const montoMovimiento = entrada ? importeCarga(cantidad ?? 0, costo ?? 0) : 0;
+  const pideConfirmacion =
+    entrada &&
+    debeConfirmarAjuste({
+      creadaEn: organization?.isPartial ? null : organization?.created_at,
+      ahora: new Date(),
+      monto: montoMovimiento,
+      umbral,
+    });
+  const cuentaInventario = cuentaInventarioPorTipo(typeof organization?.type_id === 'number' ? organization.type_id : null);
+  const asientoInicial =
+    motivo === 'saldo_inicial' && (cantidad ?? 0) > 0 && costo !== null
+      ? asientoCargaInicial({ unidades: cantidad ?? 0, costo, cuentaInventario })
+      : null;
+  const asientoDelSobrante =
+    entrada && motivo !== 'saldo_inicial' && motivo !== 'compra_sin_orden' && montoMovimiento > 0
+      ? asientoSobrante({ total: montoMovimiento, cuentaInventario })
+      : null;
+  const ofreceCorregir = sugerirCorregirConteo({
+    direccion,
+    motivo: motivoEnvio,
+    tuvoConteoOFaltante: conteoMes !== null,
+  });
 
   const enviar = useCallback(async () => {
     setIntentado(true);
-    if (hayErrores || !producto || !sucursalId) {
+    if (hayErrores || !producto || !sucursalId || (pideConfirmacion && !nota.trim()) || (avisoCosto && !costoConfirmado)) {
       requestAnimationFrame(() => primerError.current?.querySelector<HTMLElement>('[aria-invalid="true"], button, input')?.focus());
       return;
     }
@@ -187,7 +324,7 @@ function Formulario({
         p_direccion: direccion,
         p_qty: cantidad ?? 0,
         p_costo: entrada ? costo : null,
-        p_motivo: motivoTexto,
+        p_motivo: motivoEnvio,
         p_nota: nota.trim() || null,
       });
       toast({
@@ -213,7 +350,10 @@ function Formulario({
     cantidad,
     entrada,
     costo,
-    motivoTexto,
+    motivoEnvio,
+    pideConfirmacion,
+    avisoCosto,
+    costoConfirmado,
     nota,
     toast,
     t,
@@ -221,6 +361,25 @@ function Formulario({
     onAbiertoChange,
     mensajeError,
   ]);
+
+  const alCorregirConteo = useCallback(async () => {
+    if (!producto || !sucursalId || !conteoMes || conteoMes.varios) return;
+    setCorrigiendo(true);
+    try {
+      const r = await corregirConteoDelMes(organizacionId, sucursalId, producto.product_id, nota.trim() || null);
+      if (!r.corregido) {
+        toast({ variant: 'destructive', title: t('corregirConteoVarios') });
+        return;
+      }
+      toast({ title: t('corregirConteoListo', { codigo: r.codigo ?? conteoMes.codigo ?? '' }) });
+      onRegistrado?.({ numero: r.codigo, productoId: producto.product_id });
+      onAbiertoChange(false);
+    } catch (e) {
+      toast({ variant: 'destructive', title: t('errorEntrada'), description: mensajeError(e) });
+    } finally {
+      setCorrigiendo(false);
+    }
+  }, [producto, sucursalId, conteoMes, organizacionId, nota, toast, t, onRegistrado, onAbiertoChange, mensajeError]);
 
   const valorSalida = !entrada && verCostos && producto?.costo_promedio && cantidad ? producto.costo_promedio * cantidad : null;
   const motivos = entrada ? MOTIVOS_ENTRADA : MOTIVOS_SALIDA;
@@ -233,10 +392,12 @@ function Formulario({
       descripcion={entrada ? t('descripcionEntrada') : t('descripcionSalida')}
       ancho={560}
       icono={entrada ? ArrowDownCircle : ArrowUpCircle}
-      primario={{
+        primario={{
         etiqueta: entrada ? t('confirmarEntrada') : t('confirmarSalida'),
         onClick: () => void enviar(),
-        cargando: guardando,
+        cargando: guardando || corrigiendo,
+        deshabilitada: motivo === 'compra_sin_orden' || (avisoCosto && !costoConfirmado),
+        motivo: avisoCosto && !costoConfirmado ? t('costoParecePrecio') : undefined,
       }}
     >
       <div ref={primerError} className="flex flex-col gap-4">
@@ -372,7 +533,89 @@ function Formulario({
           </div>
         )}
 
-        <FormField etiqueta={t('nota')}>
+        {entrada && motivo === 'compra_sin_orden' && (
+          <AvisoTonal
+            tono="advertencia"
+            rol="alert"
+            titulo={t('errores.facturaCompra')}
+            accion={{ etiqueta: t('registrarCompra'), href: RUTA_FACTURA_COMPRA }}
+          />
+        )}
+        {desdeNegativo && (
+          <AvisoTonal
+            tono="advertencia"
+            rol="alert"
+            titulo={t('desdeNegativo')}
+            descripcion={t('desdeNegativoDetalle')}
+            accion={{ etiqueta: t('registrarCompra'), href: RUTA_FACTURA_COMPRA }}
+          />
+        )}
+        {ofreceCorregir && conteoMes && (
+          <AvisoTonal
+            tono="advertencia"
+            titulo={t('corregirConteo')}
+            descripcion={
+              conteoMes.varios
+                ? t('corregirConteoVarios')
+                : t('corregirConteoDetalle', { codigo: conteoMes.codigo ?? String(conteoMes.ajusteId) })
+            }
+            accion={
+              conteoMes.varios
+                ? { etiqueta: t('abrirConteo'), href: rutaConteo(conteoMes.ajusteId) }
+                : { etiqueta: t('corregirConteo'), onClick: () => void alCorregirConteo(), cargando: corrigiendo }
+            }
+          />
+        )}
+        {sinHistorial && motivo !== 'saldo_inicial' && (
+          <AvisoTonal
+            tono="advertencia"
+            titulo={t('sinHistorial')}
+            acciones={[
+              { etiqueta: t('siSaldoInicial'), onClick: () => setMotivo('saldo_inicial') },
+              {
+                etiqueta: t('noSobrante'),
+                onClick: () => {
+                  setMotivo('sobrante');
+                  setSaldoDescartado(true);
+                },
+              },
+            ]}
+          />
+        )}
+        {avisoCosto && (
+          <AvisoTonal
+            tono="advertencia"
+            titulo={t('costoParecePrecio')}
+            accion={{ etiqueta: t('costoEsCorrecto'), onClick: () => setCostoConfirmado(true) }}
+          />
+        )}
+        {pideConfirmacion && (
+          <AvisoTonal tono="advertencia" titulo={t('confirmarAjuste')} descripcion={t('confirmarAjusteDetalle')} />
+        )}
+        {asientoInicial && (
+          <AvisoTonal
+            tono="informacion"
+            titulo={t('asientoTitulo')}
+            descripcion={t('asientoDetalle', {
+              inventario: asientoInicial.lineas[0]?.cuenta ?? '',
+              saldo: asientoInicial.lineas[1]?.cuenta ?? '',
+              total: moneda.formatear(asientoInicial.total),
+            })}
+          />
+        )}
+        {asientoDelSobrante && (
+          <AvisoTonal
+            tono="informacion"
+            titulo={t('asientoSobranteTitulo')}
+            descripcion={t('asientoSobranteDetalle', {
+              inventario: asientoDelSobrante.lineas[0]?.cuenta ?? '',
+              diversos: asientoDelSobrante.lineas[1]?.cuenta ?? '',
+              total: moneda.formatear(asientoDelSobrante.total),
+            })}
+          />
+        )}
+
+        <FormField etiqueta={t('nota')} obligatorio={pideConfirmacion} error={intentado && pideConfirmacion && !nota.trim() ? t('errores.notaObligatoria') : null}>
           <Input value={nota} maxLength={500} onChange={(e) => setNota(e.target.value)} placeholder={t('notaPlaceholder')} />
         </FormField>
 

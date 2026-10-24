@@ -111,6 +111,42 @@ function enteroDelCampo(valor: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Porcentaje y paquete sin precio comparten un valor de 1 a 100. El monto fijo no. */
+function tipoUsaPorcentaje(tipo: PromotionType): boolean {
+  return tipo === 'percentage' || tipo === 'bundle';
+}
+
+/**
+ * Valor que se conserva al cambiar de tipo. Un 15 % de un paquete sigue
+ * siendo 15 al volver a Porcentaje. Un porcentaje no se convierte en monto
+ * fijo, ni al revés: ese 10 por defecto se quedaba como pesos.
+ */
+function valorDescuentoCompatible(desde: PromotionType, hacia: PromotionType, valor: number): number {
+  if (desde === hacia && valor > 0) return valor;
+  if (tipoUsaPorcentaje(desde) && tipoUsaPorcentaje(hacia) && valor > 0 && valor <= 100) return valor;
+  if (desde === 'fixed_amount' && hacia === 'fixed_amount' && valor > 0) return valor;
+  return 0;
+}
+
+type CampoDescuento = 'porcentaje' | 'monto' | 'compra' | 'lleva' | 'precioPaquete' | 'porcentajePaquete';
+
+const FOCO_DESCUENTO: Record<CampoDescuento, string> = {
+  porcentaje: 'promo-porcentaje',
+  monto: 'promo-monto',
+  compra: 'promo-compra',
+  lleva: 'promo-lleva',
+  precioPaquete: 'promo-precio-paquete',
+  porcentajePaquete: 'promo-porcentaje-paquete',
+};
+
+const ORDEN_FOCO: CampoDescuento[] = ['porcentaje', 'monto', 'compra', 'lleva', 'precioPaquete', 'porcentajePaquete'];
+
+function enfocarPrimerError(errores: Partial<Record<CampoDescuento, string>>): void {
+  const campo = ORDEN_FOCO.find((c) => errores[c]);
+  if (!campo) return;
+  document.getElementById(FOCO_DESCUENTO[campo])?.focus();
+}
+
 export function PromotionWizard({ initialData, promotionId, onSuccess }: PromotionWizardProps) {
   const router = useRouter();
   const t = useTranslations('posPromociones');
@@ -130,6 +166,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
   const [conflictos, setConflictos] = useState<ConflictoSolape[]>([]);
   const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
+  const [erroresPaso, setErroresPaso] = useState<Partial<Record<CampoDescuento, string>>>({});
   const [formData, setFormData] = useState<CreatePromotionData>(() => {
     const base: CreatePromotionData = {
       name: '',
@@ -299,6 +336,15 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     }
   };
 
+  const quitarErrores = (...campos: CampoDescuento[]) => {
+    setErroresPaso((prev) => {
+      if (campos.every((c) => !prev[c])) return prev;
+      const next = { ...prev };
+      campos.forEach((c) => { delete next[c]; });
+      return next;
+    });
+  };
+
   const handleChange = (field: keyof CreatePromotionData, value: CreatePromotionData[keyof CreatePromotionData]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -318,28 +364,37 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           return false;
         }
         return true;
-      case 1: // Descuento
+      case 1: { // Descuento
+        const errores: Partial<Record<CampoDescuento, string>> = {};
         if (formData.promotion_type === 'percentage' && (!formData.discount_value || formData.discount_value <= 0 || formData.discount_value > 100)) {
-          toast.error(t('formulario.porcentajeInvalido'));
-          return false;
+          errores.porcentaje = t('formulario.porcentajeInvalido');
         }
         if (formData.promotion_type === 'fixed_amount' && (!formData.discount_value || formData.discount_value <= 0)) {
-          toast.error(t('formulario.montoInvalido'));
-          return false;
+          errores.monto = t('formulario.montoInvalido');
         }
-        if (formData.promotion_type === 'buy_x_get_y' && (!formData.buy_quantity || !formData.get_quantity)) {
-          toast.error(t('formulario.compraLlevaRequerida'));
-          return false;
+        if (formData.promotion_type === 'buy_x_get_y') {
+          if (!formData.buy_quantity) errores.compra = t('formulario.errorCompra');
+          if (!formData.get_quantity) errores.lleva = t('formulario.errorLleva');
         }
         if (formData.promotion_type === 'bundle') {
           const precio = Number(formData.bundle_price) || 0;
           const porcentaje = Number(formData.discount_value) || 0;
           if (precio <= 0 && (porcentaje <= 0 || porcentaje > 100)) {
-            toast.error(t('formulario.paqueteValor'));
-            return false;
+            errores.precioPaquete = t('formulario.paqueteValor');
+            errores.porcentajePaquete = porcentaje > 100
+              ? t('formulario.porcentajeInvalido')
+              : t('formulario.paqueteValor');
           }
         }
+        setErroresPaso(errores);
+        const mensaje = ORDEN_FOCO.map((c) => errores[c]).find(Boolean);
+        if (mensaje) {
+          toast.error(mensaje);
+          enfocarPrimerError(errores);
+          return false;
+        }
         return true;
+      }
       case 2: // Vigencia
         if (!formData.start_date) {
           toast.error(t('formulario.fechaInicioRequerida'));
@@ -521,18 +576,23 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       icono={ICONO_TIPO[type]}
                       seleccionada={formData.promotion_type === type}
                       onSeleccionar={() => {
-                        // Al cambiar de tipo se vacía el valor: el 10 por defecto
-                        // (pensado como 10 %) se quedaba puesto al pasar a "Monto
-                        // Fijo", el usuario lo tomaba por otra cosa y escribía el
-                        // monto real en "Descuento Máximo". Resultado en producción:
-                        // discount_value = 10 y max_discount_amount = 8000.
-                        setFormData(prev => ({
-                          ...prev,
-                          promotion_type: type,
-                          discount_value: 0,
-                          bundle_price: null,
-                          max_discount_amount: undefined,
-                        }));
+                        // Se conserva el valor solo si significa lo mismo en el
+                        // tipo nuevo (un 15 % de un paquete sigue siendo 15).
+                        // Porcentaje y monto fijo no se arrastran: el 10 por
+                        // defecto se quedaba como pesos y el monto real acababa
+                        // en "Descuento Máximo".
+                        setErroresPaso({});
+                        setFormData(prev => {
+                          if (prev.promotion_type === type) return prev;
+                          const siguePorcentaje = tipoUsaPorcentaje(prev.promotion_type) && tipoUsaPorcentaje(type);
+                          return {
+                            ...prev,
+                            promotion_type: type,
+                            discount_value: valorDescuentoCompatible(prev.promotion_type, type, prev.discount_value ?? 0),
+                            bundle_price: type === 'bundle' ? prev.bundle_price : null,
+                            max_discount_amount: siguePorcentaje ? prev.max_discount_amount : undefined,
+                          };
+                        });
                       }}
                     />
                   ))}
@@ -543,22 +603,40 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-fg">
+                    <Label htmlFor={formData.promotion_type === 'percentage' ? 'promo-porcentaje' : 'promo-monto'} className="text-fg">
                       {formData.promotion_type === 'percentage' ? t('formulario.porcentaje') : t('formulario.monto')}
                     </Label>
                     <div className="relative">
                       <Input
+                        id={formData.promotion_type === 'percentage' ? 'promo-porcentaje' : 'promo-monto'}
                         type="number"
                         value={formData.discount_value || ''}
-                        onChange={(e) => handleChange('discount_value', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          quitarErrores(formData.promotion_type === 'percentage' ? 'porcentaje' : 'monto');
+                          handleChange('discount_value', parseFloat(e.target.value) || 0);
+                        }}
                         min={0}
                         max={formData.promotion_type === 'percentage' ? 100 : undefined}
-                        className="pr-10"
+                        aria-invalid={(formData.promotion_type === 'percentage' ? erroresPaso.porcentaje : erroresPaso.monto) ? true : undefined}
+                        aria-describedby={
+                          formData.promotion_type === 'percentage' && erroresPaso.porcentaje
+                            ? 'promo-error-porcentaje'
+                            : formData.promotion_type === 'fixed_amount' && erroresPaso.monto
+                              ? 'promo-error-monto'
+                              : undefined
+                        }
+                        className={`pr-10${(formData.promotion_type === 'percentage' ? erroresPaso.porcentaje : erroresPaso.monto) ? ' border-line-danger' : ''}`}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted">
                         {formData.promotion_type === 'percentage' ? '%' : '$'}
                       </span>
                     </div>
+                    {formData.promotion_type === 'percentage' && erroresPaso.porcentaje && (
+                      <p id="promo-error-porcentaje" role="alert" className="mt-1 text-xs text-danger-text">{erroresPaso.porcentaje}</p>
+                    )}
+                    {formData.promotion_type === 'fixed_amount' && erroresPaso.monto && (
+                      <p id="promo-error-monto" role="alert" className="mt-1 text-xs text-danger-text">{erroresPaso.monto}</p>
+                    )}
                   </div>
                   {/* El tope solo tiene sentido en porcentaje: un monto fijo ya ES
                       su propio máximo. Mostrarlo junto al monto confundía y el
@@ -582,22 +660,42 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-fg">{t('formulario.llevaX')}</Label>
+                      <Label htmlFor="promo-compra" className="text-fg">{t('formulario.llevaX')}</Label>
                       <Input
+                        id="promo-compra"
                         type="number"
                         value={formData.buy_quantity || ''}
-                        onChange={(e) => handleChange('buy_quantity', parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          quitarErrores('compra');
+                          handleChange('buy_quantity', parseInt(e.target.value) || 0);
+                        }}
                         min={1}
+                        aria-invalid={erroresPaso.compra ? true : undefined}
+                        aria-describedby={erroresPaso.compra ? 'promo-error-compra' : undefined}
+                        className={erroresPaso.compra ? 'border-line-danger' : undefined}
                       />
+                      {erroresPaso.compra && (
+                        <p id="promo-error-compra" role="alert" className="mt-1 text-xs text-danger-text">{erroresPaso.compra}</p>
+                      )}
                     </div>
                     <div>
-                      <Label className="text-fg">{t('formulario.pagaY')}</Label>
+                      <Label htmlFor="promo-lleva" className="text-fg">{t('formulario.pagaY')}</Label>
                       <Input
+                        id="promo-lleva"
                         type="number"
                         value={formData.get_quantity || ''}
-                        onChange={(e) => handleChange('get_quantity', parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          quitarErrores('lleva');
+                          handleChange('get_quantity', parseInt(e.target.value) || 0);
+                        }}
                         min={1}
+                        aria-invalid={erroresPaso.lleva ? true : undefined}
+                        aria-describedby={erroresPaso.lleva ? 'promo-error-lleva' : undefined}
+                        className={erroresPaso.lleva ? 'border-line-danger' : undefined}
                       />
+                      {erroresPaso.lleva && (
+                        <p id="promo-error-lleva" role="alert" className="mt-1 text-xs text-danger-text">{erroresPaso.lleva}</p>
+                      )}
                     </div>
                   </div>
                   <p className="text-[13px] leading-[18px] text-fg-secondary">
@@ -613,28 +711,47 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-fg">{t('formulario.precioPaquete')}</Label>
+                      <Label htmlFor="promo-precio-paquete" className="text-fg">{t('formulario.precioPaquete')}</Label>
                       <Input
+                        id="promo-precio-paquete"
                         type="number"
                         value={formData.bundle_price || ''}
-                        onChange={(e) => handleChange('bundle_price', parseFloat(e.target.value) || null)}
+                        onChange={(e) => {
+                          quitarErrores('precioPaquete', 'porcentajePaquete');
+                          handleChange('bundle_price', parseFloat(e.target.value) || null);
+                        }}
                         min={0}
                         placeholder={t('formulario.sinPrecioFijo')}
+                        aria-invalid={erroresPaso.precioPaquete ? true : undefined}
+                        aria-describedby={erroresPaso.precioPaquete ? 'promo-error-precio-paquete' : undefined}
+                        className={erroresPaso.precioPaquete ? 'border-line-danger' : undefined}
                       />
+                      {erroresPaso.precioPaquete && (
+                        <p id="promo-error-precio-paquete" role="alert" className="mt-1 text-xs text-danger-text">{erroresPaso.precioPaquete}</p>
+                      )}
                     </div>
                     <div>
-                      <Label className="text-fg">{t('formulario.porcentajeSinPrecio')}</Label>
+                      <Label htmlFor="promo-porcentaje-paquete" className="text-fg">{t('formulario.porcentajeSinPrecio')}</Label>
                       <div className="relative">
                         <Input
+                          id="promo-porcentaje-paquete"
                           type="number"
                           value={formData.discount_value || ''}
-                          onChange={(e) => handleChange('discount_value', parseFloat(e.target.value) || 0)}
+                          onChange={(e) => {
+                            quitarErrores('precioPaquete', 'porcentajePaquete');
+                            handleChange('discount_value', parseFloat(e.target.value) || 0);
+                          }}
                           min={0}
                           max={100}
-                          className="pr-10"
+                          aria-invalid={erroresPaso.porcentajePaquete ? true : undefined}
+                          aria-describedby={erroresPaso.porcentajePaquete ? 'promo-error-porcentaje-paquete' : undefined}
+                          className={`pr-10${erroresPaso.porcentajePaquete ? ' border-line-danger' : ''}`}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted">%</span>
                       </div>
+                      {erroresPaso.porcentajePaquete && (
+                        <p id="promo-error-porcentaje-paquete" role="alert" className="mt-1 text-xs text-danger-text">{erroresPaso.porcentajePaquete}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -656,18 +773,22 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                 </div>
               )}
 
-              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount') && (
+              {(formData.promotion_type === 'percentage' || formData.promotion_type === 'fixed_amount' || formData.promotion_type === 'bundle') && (
                 <div>
-                  <Label className="text-fg">{t('formulario.repetir')}</Label>
+                  <Label htmlFor="promo-repetir" className="text-fg">{t('formulario.repetir')}</Label>
                   <Input
+                    id="promo-repetir"
                     type="number"
                     value={formData.repeat_every_quantity ?? ''}
                     onChange={(e) => handleChange('repeat_every_quantity', enteroDelCampo(e.target.value))}
                     min={1}
                     placeholder={t('formulario.repetirPlaceholder')}
+                    aria-describedby="promo-ayuda-repetir"
                   />
-                  <p className="text-[13px] leading-[18px] text-fg-secondary mt-1">
-                    {t('formulario.repetirAyuda', { ejemplo: ejemploRepetir })}
+                  <p id="promo-ayuda-repetir" className="text-[13px] leading-[18px] text-fg-secondary mt-1">
+                    {formData.promotion_type === 'bundle'
+                      ? t('formulario.repetirAyudaPaquete')
+                      : t('formulario.repetirAyuda', { ejemplo: ejemploRepetir })}
                   </p>
                 </div>
               )}

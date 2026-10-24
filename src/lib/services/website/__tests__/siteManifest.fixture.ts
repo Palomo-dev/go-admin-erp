@@ -78,7 +78,7 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'demo_cta', variants: ['form'], contentKeys: [] },
     { type: 'faq', variants: ['accordion', 'simple', 'two_columns'], contentKeys: [] },
     { type: 'featured_products', variants: ['carousel', 'grid', 'hero_product'], contentKeys: [] },
-    { type: 'features_grid', variants: ['alternating'], contentKeys: [] },
+    { type: 'features_grid', variants: ['alternating', 'icons'], contentKeys: [] },
     { type: 'fleet_showcase', variants: ['grid'], contentKeys: [] },
     {
       type: 'gallery',

@@ -54,6 +54,8 @@ export function TarjetaProductos({ venta, moneda, formatear }: { venta: DetalleV
     descripcion: l.nombre ?? t('productos.sinNombre'),
     sku: l.sku,
     nota: [l.nota, l.sin_promocion ? t('productos.sinPromocion') : null].filter(Boolean).join(' · ') || null,
+    seriales: l.seriales.map((s) => s.codigo),
+    serialesEnlace: l.seriales,
     cantidad: l.cantidad,
     unidad: l.unidad,
     precioUnitario: l.precio,

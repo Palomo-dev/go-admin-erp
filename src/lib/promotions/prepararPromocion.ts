@@ -28,7 +28,9 @@ export function prepararPromocion<T extends Partial<CreatePromotionData>>(datos:
   }
   const conMinimo = tipo === 'percentage' || tipo === 'fixed_amount' || tipo === 'bundle';
   out.min_quantity = conMinimo ? enteroPositivoONull(out.min_quantity) : null;
-  const conRepeticion = tipo === 'percentage' || tipo === 'fixed_amount';
+  // El paquete también repite: sin precio es un porcentaje; con precio, N
+  // limita cuántos paquetes completos llevan ese precio. NULL = como hoy.
+  const conRepeticion = tipo === 'percentage' || tipo === 'fixed_amount' || tipo === 'bundle';
   out.repeat_every_quantity = conRepeticion ? enteroPositivoONull(out.repeat_every_quantity) : null;
   const alcance = out.min_purchase_scope;
   if (out.applies_to === 'all' || (alcance !== 'cart' && alcance !== 'eligible')) {

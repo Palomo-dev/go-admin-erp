@@ -127,7 +127,7 @@ async function leerAjustes(ctx: CtxConfiguracion): Promise<{ fila: FilaAjustes |
 
 export async function leerConfiguracion(ctx: CtxConfiguracion): Promise<RespuestaConfiguracion> {
   const org = ctx.organizationId;
-  const [permisos, direccion, ajustes, orgRes, chatRes, monedasRes, monedaBase, restaurante] = await Promise.all([
+  const [permisos, direccion, ajustes, orgRes, chatRes, monedasRes, monedaBase, restaurante, politica] = await Promise.all([
     permisosSitio(ctx),
     direccionDelSitio(ctx),
     leerAjustes(ctx),
@@ -138,6 +138,7 @@ export async function leerConfiguracion(ctx: CtxConfiguracion): Promise<Respuest
     // El mismo criterio de giro que la Carta: el enlace a Reservas web solo sale en restaurantes.
     // (import diferido: carta.server arrastra dependencias que esta ruta no necesita al cargar).
     import('@/lib/website/carta.server').then((m) => m.esRestaurante(ctx)).catch(() => false),
+    ctx.supabase.from('comm_settings').select('data_policy_url').eq('organization_id', org).maybeSingle(),
   ]);
   if (orgRes.error) throw orgRes.error;
   if (monedasRes.error) throw monedasRes.error;
@@ -176,6 +177,7 @@ export async function leerConfiguracion(ctx: CtxConfiguracion): Promise<Respuest
     esRestaurante: restaurante,
     monedas: { base: monedaBase.code, todas: monedas.map((m) => m.currency_code.trim()) },
     pendientes,
+    dataPolicyUrl: (politica.data as { data_policy_url?: string | null } | null)?.data_policy_url ?? null,
   };
 }
 

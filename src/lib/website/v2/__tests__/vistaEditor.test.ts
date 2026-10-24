@@ -98,22 +98,31 @@ describe('ajustes', () => {
   });
 
   test('cambios del inspector: heredables, shell y operación separados', () => {
-    const { documento: doc, noAplicadas } = aplicarAjustesAlDocumento(documento(), {
-      primary_color: '#222222',
-      meta_description: '',
-      show_topbar: false,
-      header_cta_text: 'Pedir',
-      header_style: 'mega',
-      header_menu_id: 'no-existe',
-      countdown_enabled: true,
-    });
-    expect(doc.tema.colores.primario).toEqual({ mode: 'value', value: '#222222' });
-    expect(doc.seo.descripcion).toEqual({ mode: 'clear' });
-    expect(doc.shell.header.opciones).toEqual({ header_cta_text: 'Pedir' });
-    expect(doc.shell.header.composicion).toBe('mega');
-    expect(doc.shell.header.menuPrincipalId).toBe('m1');
-    expect(noAplicadas.sort()).toEqual(['countdown_enabled', 'header_menu_id']);
-    expect(validarDocumentoSitio(doc).ok).toBe(true);
+    const previo = process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+    process.env.NEXT_PUBLIC_WEBSITE_URGENCIA = '1'
+    try {
+      const { documento: doc, noAplicadas } = aplicarAjustesAlDocumento(documento(), {
+        primary_color: '#222222',
+        meta_description: '',
+        show_topbar: false,
+        header_cta_text: 'Pedir',
+        header_style: 'mega',
+        header_menu_id: 'no-existe',
+        countdown_enabled: true,
+      });
+      expect(doc.tema.colores.primario).toEqual({ mode: 'value', value: '#222222' });
+      expect(doc.seo.descripcion).toEqual({ mode: 'clear' });
+      expect(doc.shell.header.opciones).toEqual({ header_cta_text: 'Pedir' });
+      expect(doc.shell.header.composicion).toBe('mega');
+      expect(doc.shell.header.menuPrincipalId).toBe('m1');
+      expect(noAplicadas).toEqual(['header_menu_id']);
+      expect(doc.conversion?.contadores[0]?.activo).toBe(true);
+      expect(doc.conversion?.urgencia.personasViendo.activo).toBe(false);
+      expect(validarDocumentoSitio(doc).ok).toBe(true);
+    } finally {
+      if (previo === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
+      else process.env.NEXT_PUBLIC_WEBSITE_URGENCIA = previo
+    }
   });
 });
 

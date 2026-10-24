@@ -26,6 +26,8 @@ import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visib
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
+import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
+import { esSeccionTarjetaProducto, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
@@ -64,6 +66,10 @@ export interface InspectorSeccionProps {
   } | null;
   pestanaInicial?: PestanaSeccion;
   className?: string;
+  /** `product_card_style` del sitio, para mostrarlo cuando la sección no lo reemplaza. */
+  estiloTarjetaSitio?: unknown;
+  /** Copia el estilo de esta tarjeta a las demás secciones de productos de la página. */
+  onAplicarTarjeta?: (estilo: EstiloTarjetaProducto) => void;
 }
 
 export function InspectorSeccion(p: InspectorSeccionProps) {
@@ -231,6 +237,19 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                   ))}
                 </div>
               </div>
+            )}
+            {esSeccionTarjetaProducto(s.section_type) && (
+              <InspectorTarjetaProducto
+                guardado={contenido.product_card_style}
+                heredado={p.estiloTarjetaSitio}
+                onCambiar={(estilo) => p.onCambiarContenido({ ...contenido, product_card_style: estilo })}
+                onQuitar={() => {
+                  const siguiente = { ...contenido };
+                  delete siguiente.product_card_style;
+                  p.onCambiarContenido(siguiente);
+                }}
+                onAplicarTodas={p.onAplicarTarjeta}
+              />
             )}
             {pintarConBloques(campos('diseno'))}
             {avisoBorrador}

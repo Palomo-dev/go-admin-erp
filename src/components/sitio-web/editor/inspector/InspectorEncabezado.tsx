@@ -29,6 +29,7 @@ import {
   TarjetaPlantilla,
   TituloBloque,
 } from './PartesZonaGlobal';
+import { CelularEncabezado } from './CelularEncabezado';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -41,7 +42,7 @@ import {
   valorOpcion,
 } from './zonaGlobalLogica';
 
-export type PestanaZona = 'contenido' | 'diseno' | 'estilo';
+export type PestanaZona = 'contenido' | 'diseno' | 'estilo' | 'celular';
 
 export interface MenuDisponible {
   id: string;
@@ -86,6 +87,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           { valor: 'contenido', etiqueta: t('zonaGlobal.pestana.contenido') },
           { valor: 'diseno', etiqueta: t('zonaGlobal.pestana.diseno') },
           { valor: 'estilo', etiqueta: t('zonaGlobal.pestana.estilo') },
+          { valor: 'celular', etiqueta: t('zonaGlobal.pestana.celular') },
         ]}
         valor={pestana}
         onValorChange={setPestana}
@@ -101,6 +103,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           </>
         )}
         {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} />}
+        {pestana === 'celular' && <CelularEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
       </div>
     </aside>
   );

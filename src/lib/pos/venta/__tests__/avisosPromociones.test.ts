@@ -21,7 +21,7 @@ test('reutiliza el canal y no lo cierra', () => {
       cierres += 1;
     }
   }
-  (globalThis as { BroadcastChannel: typeof CanalPersistente }).BroadcastChannel = CanalPersistente;
+  (globalThis as unknown as { BroadcastChannel: typeof CanalPersistente }).BroadcastChannel = CanalPersistente;
   avisarCambioPromociones();
   avisarCambioPromociones();
   jest.useFakeTimers();

@@ -588,7 +588,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                           return {
                             ...prev,
                             promotion_type: type,
-                            discount_value: valorDescuentoCompatible(prev.promotion_type, type, prev.discount_value),
+                            discount_value: valorDescuentoCompatible(prev.promotion_type, type, prev.discount_value ?? 0),
                             bundle_price: type === 'bundle' ? prev.bundle_price : null,
                             max_discount_amount: siguePorcentaje ? prev.max_discount_amount : undefined,
                           };

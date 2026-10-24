@@ -3967,3 +3967,12 @@ Verificación: instalación aislada de 98 paquetes con npm ci --omit=dev y la di
 - Evidencia de tienda en `docs/qa/editor-v2-org140`: 184 capturas antes/después y 4 de interacción; sin desbordamientos, imágenes cargadas. Son pruebas locales con snapshot público de org 140, no sesión autenticada ni despliegue live; las simulaciones están rotuladas.
 - Vercel devuelve 403 al consultar el equipo propietario mediante la conexión disponible. La verificación desplegada queda pendiente, por lo que no se marca la entrega global como aprobada.
 - Antes de subir se detectaron 49 commits nuevos en main de tienda; se integra esa base antes de publicar PRs.
+
+
+### Fase: Editor y tienda — cierre local y PRs — 2026-10-24
+- PRs en borrador contra main: ERP #461 y tienda #47. No se fusionó ni escribió master. La tienda se rebasó sobre main 7717631 y consolidó los renderers ya incorporados por los PRs anticipados.
+- ERP: 43 suites / 925 tests, TypeScript completo y build de producción pasan. El build requiere 12 GB de heap en este entorno; el intento previo con 8 GB agotó memoria. ESLint focal sin advertencias.
+- Tienda: TypeScript y build de producción pasan; tracking contra esquema real pasa; 19 copias y una función coinciden con ERP. Última ronda: 186 comprobaciones de tarjeta, 22 DOM de selector, 147 header y 111 banners/categorías/listado.
+- Evidencia actualizada sobre main 7717631: 188 PNG, 88/88 imágenes cargadas, cero overflow y ocho interacciones correctas. Manifiesto de 194 hashes verificado. Matriz de los 25 puntos distingue evidencia local de lo pendiente en editor autenticado y despliegue.
+- Vercel: consultar por proyecto funciona sin teamId; el 403 anterior era de la consulta con scope explícito. Las previews automáticas figuran canceladas por la regla de omitir builds. Se iniciaron previews explícitas de los heads revisados, sin tocar dominios ni producción. La aceptación global sigue pendiente del recorrido autenticado y desplegado.
+- Migración aplicada y rollback documentados en la fase anterior; sin más migraciones ni backfills en el cierre.

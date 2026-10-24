@@ -1,3 +1,5 @@
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore'
+
 /**
  * Urgencia y contador del documento V2.
  * Sin `conversion`, estas funciones no sustituyen las columnas legacy.
@@ -91,7 +93,7 @@ export function conversionDesdeColumnas(fila: Record<string, unknown> | null | u
   if (fila.checkout_show_countdown === true) ubicaciones.push('checkout')
   if (fila.countdown_show_in_product === true) ubicaciones.push('producto')
   if (fila.countdown_show_in_hero === true) ubicaciones.push('hero')
-  const zona = typeof fila.countdown_timezone === 'string' && fila.countdown_timezone ? fila.countdown_timezone.slice(0, 64) : 'America/Bogota'
+  const zona = typeof fila.countdown_timezone === 'string' && fila.countdown_timezone ? fila.countdown_timezone.slice(0, 64) : DEFAULT_TIMEZONE
   const hora = Number(fila.countdown_reset_hour ?? 0)
   const modo: ContadorConversion['modo'] = fila.countdown_mode === 'custom'
     ? { tipo: 'fecha', fin: String(fila.countdown_end_date ?? '').slice(0, 40), zona }
@@ -123,7 +125,7 @@ export function columnasDesdeConversion(conversion: ConversionSitio | null | und
     countdown_title: c?.textoAntes ?? '',
     countdown_mode: c?.modo.tipo === 'fecha' ? 'custom' : 'daily_reset',
     countdown_end_date: c?.modo.tipo === 'fecha' ? c.modo.fin : '',
-    countdown_timezone: c?.modo.tipo === 'fecha' || c?.modo.tipo === 'diario' ? c.modo.zona : 'America/Bogota',
+    countdown_timezone: c?.modo.tipo === 'fecha' || c?.modo.tipo === 'diario' ? c.modo.zona : DEFAULT_TIMEZONE,
     countdown_reset_hour: c?.modo.tipo === 'diario' ? c.modo.hora : 0,
     countdown_show_in_header: ubicaciones.has('topbar'),
     countdown_show_in_cart: ubicaciones.has('carrito'),

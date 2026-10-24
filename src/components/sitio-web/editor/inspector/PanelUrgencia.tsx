@@ -1,6 +1,7 @@
 'use client'
 
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio'
+import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext'
 import { conversionDesdeColumnas, type ConversionSitio, type ContadorConversion, type UbicacionContador } from '@/lib/website/conversion'
 
 const control = 'h-8 w-full rounded-md border border-line bg-surface px-2 text-sm text-fg'
@@ -19,6 +20,7 @@ export function PanelUrgencia({
   onCambiarDocumento: (cambiar: (d: DocumentoSitio) => DocumentoSitio) => void
   deshabilitado?: boolean
 }) {
+  const { timezone } = useTimezoneFor()
   const conversion = documento.conversion
   const contador = conversion?.contadores[0]
   const guardar = (siguiente: ConversionSitio) => {
@@ -54,7 +56,7 @@ export function PanelUrgencia({
       <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Modo
         <select className={control} disabled={deshabilitado} value={contador?.modo.tipo ?? 'diario'} onChange={(e) => {
           const tipo = e.target.value
-          const zona = contador?.modo.tipo === 'fecha' || contador?.modo.tipo === 'diario' ? contador.modo.zona : 'America/Bogota'
+          const zona = contador?.modo.tipo === 'fecha' || contador?.modo.tipo === 'diario' ? contador.modo.zona : timezone
           const modo: ContadorConversion['modo'] = tipo === 'fecha'
             ? { tipo: 'fecha', fin: '', zona }
             : tipo === 'promocion'
@@ -72,12 +74,12 @@ export function PanelUrgencia({
       </label>
       {contador?.modo.tipo === 'fecha' && (
         <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fin
-          <input className={control} disabled={deshabilitado} value={contador.modo.fin} onChange={(e) => setContador({ modo: { tipo: 'fecha', fin: e.target.value, zona: contador.modo.tipo === 'fecha' ? contador.modo.zona : 'America/Bogota' } })} />
+          <input className={control} disabled={deshabilitado} value={contador.modo.fin} onChange={(e) => setContador({ modo: { tipo: 'fecha', fin: e.target.value, zona: contador.modo.tipo === 'fecha' ? contador.modo.zona : timezone } })} />
         </label>
       )}
       {contador?.modo.tipo === 'diario' && (
         <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Hora de reinicio
-          <input className={control} type="number" min={0} max={23} disabled={deshabilitado} value={contador.modo.hora} onChange={(e) => setContador({ modo: { tipo: 'diario', hora: Number(e.target.value) || 0, zona: contador.modo.tipo === 'diario' ? contador.modo.zona : 'America/Bogota' } })} />
+          <input className={control} type="number" min={0} max={23} disabled={deshabilitado} value={contador.modo.hora} onChange={(e) => setContador({ modo: { tipo: 'diario', hora: Number(e.target.value) || 0, zona: contador.modo.tipo === 'diario' ? contador.modo.zona : timezone } })} />
         </label>
       )}
       {contador?.modo.tipo === 'promocion' && (

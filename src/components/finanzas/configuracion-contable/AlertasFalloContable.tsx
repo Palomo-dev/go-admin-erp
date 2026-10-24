@@ -1,61 +1,60 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { AlertTriangle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { reportarFallosContables } from '@/lib/finanzas/reportarFalloContable';
 import { etiquetaMotivoFallo, etiquetaOrigen } from '@/lib/finanzas/configuracionContable';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { supabase } from '@/lib/supabase/config';
 import { ConfiguracionContableService, type FalloContable } from './ConfiguracionContableService';
 
+/**
+ * Los fallos técnicos solo los ve soporte o superadmin de la plataforma.
+ * Un cliente de la organización no recibe esta caja.
+ */
 export function AlertasFalloContable({ compacto = false }: { compacto?: boolean }) {
   const { formatDateTime } = useFormatDate();
+  const [veTecnicos, setVeTecnicos] = useState(false);
   const [total, setTotal] = useState(0);
   const [filas, setFilas] = useState<FalloContable[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
-    ConfiguracionContableService.fallosPendientes(compacto ? 3 : 30)
+    supabase
+      .rpc('fn_ve_fallos_contables')
+      .then(({ data }) => {
+        if (!vivo || data !== true) return;
+        setVeTecnicos(true);
+        return ConfiguracionContableService.fallosPendientes(compacto ? 3 : 30);
+      })
       .then((resultado) => {
-        if (!vivo) return;
+        if (!vivo || !resultado) return;
         setTotal(resultado.total);
         setFilas(resultado.filas);
+        reportarFallosContables(
+          resultado.filas.map((fila) => ({ id: fila.id, motivo: fila.reason })),
+        );
       })
-      .catch(() => {
-        if (vivo) setError('No se pudieron cargar los documentos con fallo contable.');
+      .catch((error) => {
+        console.error('No se pudieron cargar los fallos contables:', error);
       });
     return () => {
       vivo = false;
     };
   }, [compacto]);
 
-  if (error) {
-    return (
-      <Alert variant="warning">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Fallo contable</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (total === 0) return null;
+  if (!veTecnicos || total === 0) return null;
 
   return (
-    <Alert variant="destructive">
-      <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>
-        {total === 1 ? 'Hay 1 documento con fallo contable' : `Hay ${total} documentos con fallo contable`}
-      </AlertTitle>
-      <AlertDescription>
-        <p>
-          No se publicó el asiento. Revisa la cuenta en Configuración contable o en la regla, y vuelve a registrar el documento.
-        </p>
-        <ul className="mt-3 space-y-2">
+    <AvisoTonal
+      tono="peligro"
+      rol="alert"
+      titulo={total === 1 ? 'Hay 1 fallo contable' : `Hay ${total} fallos contables`}
+      descripcion={
+        <ul className="mt-1 space-y-1">
           {filas.map((fila) => (
-            <li key={fila.id} className="text-sm">
-              <span className="font-medium">{etiquetaOrigen(fila.source)}</span>
+            <li key={fila.id}>
+              {etiquetaOrigen(fila.source)}
               {fila.source_id ? ` ${fila.source_id}` : ''}
               {' · '}
               {etiquetaMotivoFallo(fila.reason)}
@@ -65,12 +64,12 @@ export function AlertasFalloContable({ compacto = false }: { compacto?: boolean 
             </li>
           ))}
         </ul>
-        {compacto && (
-          <Link href="/app/finanzas/configuracion-contable" className="mt-3 inline-block font-medium underline">
-            Ver la configuración y el resto de fallos
-          </Link>
-        )}
-      </AlertDescription>
-    </Alert>
+      }
+      accion={
+        compacto
+          ? { etiqueta: 'Ver la configuración', href: '/app/finanzas/configuracion-contable' }
+          : undefined
+      }
+    />
   );
 }

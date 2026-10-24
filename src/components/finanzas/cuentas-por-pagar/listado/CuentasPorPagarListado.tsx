@@ -457,7 +457,14 @@ export default function CuentasPorPagarListado() {
         ]}
       />
 
-      <BandaAntiguedad tramos={resumen?.tramos ?? null} formatear={formatearBase} seleccionado={l.filtros.tramo ?? null} onSeleccionar={(k) => l.setFiltro('tramo', k)} />
+      {/* En escritorio la banda sigue arriba. En el celular se usa la de abajo, después de los chips. */}
+      <BandaAntiguedad
+        className="hidden md:flex"
+        tramos={resumen?.tramos ?? null}
+        formatear={formatearBase}
+        seleccionado={l.filtros.tramo ?? null}
+        onSeleccionar={(k) => l.setFiltro('tramo', k)}
+      />
 
       <AprobacionesPanel id="aprobaciones" programaciones={aprobaciones} moneda={moneda} puedeAprobar={permisos.aprobar} onCambio={recargar} />
 
@@ -518,6 +525,14 @@ export default function CuentasPorPagarListado() {
           </FilterPanel>
         }
         chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
+      />
+
+      <BandaAntiguedad
+        className="md:hidden"
+        tramos={resumen?.tramos ?? null}
+        formatear={formatearBase}
+        seleccionado={l.filtros.tramo ?? null}
+        onSeleccionar={(k) => l.setFiltro('tramo', k)}
       />
 
       <DataTable

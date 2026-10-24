@@ -18,6 +18,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { FormField, FormSection, PageHeader, SegmentedControl } from '@/components/kit';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import ImageUploader from '@/components/common/ImageUploader';
 import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
@@ -635,6 +636,9 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
                 <Input value={form.dv ?? ''} onChange={(e) => cambiar('dv', e.target.value.slice(0, 1))} maxLength={1} placeholder="0-9" />
               </FormField>
             </div>
+            {!form.nit && (
+              <AvisoTonal tono="advertencia" titulo={t('identificacion.numeroAyuda')} />
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <HabeasDataCheckbox checked={habeasData} onChange={setHabeasData} className="text-fg-secondary" />
               <button

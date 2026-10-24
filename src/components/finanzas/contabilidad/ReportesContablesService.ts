@@ -149,13 +149,23 @@ interface SaldoCuenta {
 async function saldosPorCuenta(
   organizationId: number,
   desde: string | null,
-  hasta: string | null
+  hasta: string | null,
+  centroId?: string | null,
 ): Promise<Map<string, { debit: number; credit: number }>> {
-  const { data, error } = await supabase.rpc('fn_saldos_cuentas', {
+  const parametros: {
+    p_organization_id: number;
+    p_desde: string | null;
+    p_hasta: string | null;
+    p_cost_center_id?: string;
+  } = {
     p_organization_id: organizationId,
     p_desde: desde,
     p_hasta: hasta,
-  });
+  };
+  // Sin centro se llama la función de tres argumentos: el informe sigue
+  // sumando todos los centros, que es el comportamiento de siempre.
+  if (centroId) parametros.p_cost_center_id = centroId;
+  const { data, error } = await supabase.rpc('fn_saldos_cuentas', parametros);
   if (error) throw error;
 
   const saldos = new Map<string, { debit: number; credit: number }>();
@@ -287,7 +297,8 @@ export class ReportesContablesService {
 
   static async getIncomeStatement(
     startDate: string,
-    endDate: string
+    endDate: string,
+    centroId?: string | null,
   ): Promise<{ income: IncomeStatementRow[]; expenses: IncomeStatementRow[]; totalIncome: number; totalExpenses: number; netIncome: number }> {
     const organizationId = this.getOrganizationId();
     const timezone = await resolveTimezone(organizationId);
@@ -303,7 +314,7 @@ export class ReportesContablesService {
 
     if (accountsError) throw accountsError;
 
-    const saldos = await saldosPorCuenta(organizationId, start, end);
+    const saldos = await saldosPorCuenta(organizationId, start, end, centroId);
 
     const totals = new Map<string, number>();
     (accounts || []).forEach((acc: FilaCuenta) => {

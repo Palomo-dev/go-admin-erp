@@ -273,19 +273,19 @@ export class ReturnReasonsService {
   }
 
   /**
-   * Cambiar estado activo/inactivo
+   * Deja el motivo en el estado que pide el interruptor.
+   * Leer y voltear perdía el clic: dos cambios seguidos lo dejaban activo.
    */
-  static async toggleActive(id: number): Promise<ReturnReason> {
+  static async setActive(id: number, isActive: boolean): Promise<ReturnReason> {
     try {
       const reason = await this.getById(id);
-      
       if (!reason) {
         throw new ErrorMotivoDevolucion('noEncontrado', 'Motivo no encontrado');
       }
-
-      return this.update(id, { is_active: !reason.is_active });
+      if (reason.is_active === isActive) return reason;
+      return this.update(id, { is_active: isActive });
     } catch (error) {
-      console.error('Error in toggleActive:', error);
+      console.error('Error in setActive:', error);
       throw error;
     }
   }

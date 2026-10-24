@@ -107,28 +107,22 @@ describe('PromotionWizard · valor al cambiar de tipo', () => {
     expect(screen.getByText('Tipo de Promoción')).toBeTruthy();
   });
 
-  test('monto fijo y porcentaje no se arrastran, y el campo vacío se marca al seguir', async () => {
+  test('al cambiar a un tipo que no usa el mismo número se conserva y se avisa', async () => {
     await montar();
     irAlDescuento();
     fireEvent.change(campo('Porcentaje de Descuento'), { target: { value: '15' } });
     elegirTipo('Monto Fijo');
 
     const monto = campo('Monto de Descuento');
-    expect(monto.value).toBe('');
+    expect(monto.value).toBe('15');
+    expect(screen.getByText('El valor se conserva. En este tipo puede significar otra cosa: revísalo antes de guardar.')).toBeTruthy();
+    expect(screen.queryByText('Fecha de Inicio *')).toBeNull();
+
+    fireEvent.change(monto, { target: { value: '' } });
     siguiente();
     expect(screen.getByRole('alert').textContent).toBe('El monto de descuento debe ser mayor a 0');
     expect(monto.getAttribute('aria-invalid')).toBe('true');
-    expect(monto.getAttribute('aria-describedby')).toBe('promo-error-monto');
     expect(document.activeElement).toBe(monto);
-    expect(screen.queryByText('Fecha de Inicio *')).toBeNull();
-
-    fireEvent.change(monto, { target: { value: '50' } });
-    elegirTipo('Porcentaje');
-    const porcentaje = campo('Porcentaje de Descuento');
-    expect(porcentaje.value).toBe('');
-    siguiente();
-    expect(screen.getByRole('alert').textContent).toBe('El porcentaje debe ser entre 1 y 100');
-    expect(document.activeElement).toBe(porcentaje);
   });
 
   test('compra/lleva y paquete vacíos marcan el campo y enfocan el primero', async () => {

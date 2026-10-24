@@ -16,6 +16,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
 import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
+import { CostCenterService, type CostCenter } from '../../centro-costos/CostCenterService';
 
 // Cifra contable en la moneda base de la organizacion (los reportes contables
 // se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
@@ -59,10 +60,16 @@ export function EstadoResultadosPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
+  const [centroId, setCentroId] = useState('');
+  const [centros, setCentros] = useState<CostCenter[]>([]);
   const [data, setData] = useState<{ income: IncomeStatementRow[]; expenses: IncomeStatementRow[]; totalIncome: number; totalExpenses: number; netIncome: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const arrancado = useRef(false);
+
+  useEffect(() => {
+    CostCenterService.getAll().then(setCentros).catch(() => setCentros([]));
+  }, []);
 
   useEffect(() => {
     if (tzLoading || arrancado.current) return;
@@ -75,11 +82,11 @@ export function EstadoResultadosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tzLoading, getToday]);
 
-  const loadData = async (desde: string = startDate, hasta: string = endDate) => {
+  const loadData = async (desde: string = startDate, hasta: string = endDate, centro: string = centroId) => {
     if (!desde || !hasta) return;
     try {
       setIsLoading(true);
-      const result = await ReportesContablesService.getIncomeStatement(desde, hasta);
+      const result = await ReportesContablesService.getIncomeStatement(desde, hasta, centro || null);
       setData(result);
     } catch (error) {
       console.error('Error cargando estado de resultados:', error);
@@ -125,6 +132,20 @@ export function EstadoResultadosPage() {
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-fg">Centro de costo</Label>
+              <select
+                aria-label="Centro de costo"
+                value={centroId}
+                onChange={(event) => setCentroId(event.target.value)}
+                className="h-10 w-full min-w-[12rem] rounded-md border border-line bg-surface px-2 text-sm text-fg"
+              >
+                <option value="">Todos los centros</option>
+                {centros.filter((centro) => centro.is_active).map((centro) => (
+                  <option key={centro.id} value={centro.id}>{centro.code} — {centro.name}</option>
+                ))}
+              </select>
             </div>
             <SelectorNivel valor={nivel} onChange={setNivel} />
             <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">

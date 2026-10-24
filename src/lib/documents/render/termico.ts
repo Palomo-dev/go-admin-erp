@@ -33,6 +33,13 @@ import {
 
 const PAPEL = getPaperSpec('80mm');
 
+/** Nota de la línea más los seriales vendidos. `@printing` la escapa. */
+function notaDeLinea(l: { nota: string | null; seriales: readonly string[] }, t: Traductor): string | null {
+  const seriales = l.seriales.length > 0 ? t('lineas.seriales', { lista: l.seriales.join(', ') }) : null;
+  const partes = [l.nota, seriales].filter((x): x is string => !!x && x.trim().length > 0);
+  return partes.length > 0 ? partes.join('\n') : null;
+}
+
 /** Ticket de venta de `@printing` a partir del payload del motor (textos escapados). */
 export function payloadTicketVenta(doc: DocumentoPayload, t: Traductor): SaleTicketPrintPayload {
   const em = doc.emisor;
@@ -70,7 +77,8 @@ export function payloadTicketVenta(doc: DocumentoPayload, t: Traductor): SaleTic
       total: l.total,
       discountAmount: l.descuento > 0 ? l.descuento : undefined,
       // `@printing` escapa la nota por su cuenta: va cruda para no escaparla dos veces.
-      note: l.nota,
+      // El serial va en la misma nota: el ticket térmico no tiene campo propio.
+      note: notaDeLinea(l, t),
     })),
     subtotal: subtotal ?? undefined,
     taxTotal: impuestos?.valor ?? undefined,

@@ -59,11 +59,11 @@ export function ReturnReasonsList({ reasons, loading, onEdit, onRefresh }: Retur
     }
   };
 
-  const handleToggleActive = async (reason: ReturnReason) => {
+  const handleToggleActive = async (reason: ReturnReason, activo: boolean) => {
     setTogglingId(reason.id);
     try {
-      await ReturnReasonsService.toggleActive(reason.id);
-      toast.success(reason.is_active ? t('desactivado') : t('activado'));
+      await ReturnReasonsService.setActive(reason.id, activo);
+      toast.success(activo ? t('activado') : t('desactivado'));
       onRefresh();
     } catch (error) {
       const { clave, valores } = claveErrorMotivo(error, 'cambiarEstado');
@@ -82,7 +82,7 @@ export function ReturnReasonsList({ reasons, loading, onEdit, onRefresh }: Retur
   const interruptor = (reason: ReturnReason) => (
     <Switch
       checked={reason.is_active}
-      onCheckedChange={() => handleToggleActive(reason)}
+      onCheckedChange={(activo) => handleToggleActive(reason, activo)}
       disabled={togglingId === reason.id}
       aria-label={`${t('estado')}: ${reason.name}`}
     />

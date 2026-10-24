@@ -172,7 +172,8 @@ describe('80 mm', () => {
     expect(ticket.businessName).not.toContain('<img');
     expect(ticket.items[0].productName).toContain('&lt;img');
     // La nota la escapa @printing: va cruda para no escaparla dos veces.
-    expect(ticket.items[0].note).toBe(`nota ${XSS}`);
+    // El serial se anexa en la misma nota: el ticket no tiene campo propio.
+    expect(ticket.items[0].note).toBe(`nota ${XSS}\nSeriales: S1`);
     expect(ticket.currency).toBe('MXN');
     const html = renderizarTermico(payload(), tEs);
     expect(html).not.toContain(XSS);

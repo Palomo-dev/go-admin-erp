@@ -345,11 +345,8 @@ export function PaginasLista() {
             )}
             vacio={{
               titulo: t('lista.vacioPestanaTitulo'),
-              descripcion: pestana === 'legales' ? t('lista.vacioLegalesDescripcion') : t('lista.vacioPestanaDescripcion'),
-              accion:
-                pestana === 'legales'
-                  ? { etiqueta: t('lista.irLegales'), href: RUTA_LEGALES }
-                  : { etiqueta: t('lista.nuevaPagina'), onClick: () => setNueva(true), icono: Plus },
+              descripcion: t('lista.vacioPestanaDescripcion'),
+              accion: { etiqueta: t('lista.nuevaPagina'), onClick: () => setNueva(true), icono: Plus },
             }}
           />
           )}

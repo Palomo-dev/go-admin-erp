@@ -99,7 +99,7 @@ export async function regenerarDocumentoLegal(
       escritura = await pedir();
     }
     if (!escritura?.paginaId) return null;
-    const cerrado = await cerrar(escritura.paginaId, escritura.origen, deps);
+    const cerrado = await cerrar(escritura.paginaId, escritura.origen ?? 'plantilla', deps);
     return cerrado ? { ok: true, id: cerrado.id, origen: cerrado.origen } : null;
   } catch (error) {
     if (error instanceof ErrorConfirmacionLegal) return { ok: false, confirmacion: error.confirmacion };

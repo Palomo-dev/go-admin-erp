@@ -173,6 +173,10 @@ describe('InspectorEncabezado', () => {
         icon_container: expect.objectContaining({ shape: 'rounded', background: 'accent', radius: 10, shadow: 'sm' }),
       }),
     }));
+    fireEvent.click(screen.getByRole('switch', { name: /Header transparente sobre el hero/ }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_transparent_over_hero: true });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Espacio superior de la primera sección' }), { target: { value: '12' } });
+    expect(onCambiar).toHaveBeenCalledWith({ first_section_offset_px: 12 });
     fireEvent.click(screen.getByRole('radio', { name: 'Categorías de la carta' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_menu_source: 'categorias_carta' });
   });

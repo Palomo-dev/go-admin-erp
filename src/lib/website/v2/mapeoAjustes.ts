@@ -19,7 +19,7 @@
  * revisada. `contenido.horarios` sigue en el contrato (documentos viejos lo traen) pero nadie lo
  * escribe ni lo lee.
  *
- * Encabezado y pie por plantilla (2026-10-06): 44 opciones nuevas (`nueva: true`) con su regla,
+ * Encabezado y pie por plantilla (2026-10-06): opciones nuevas (`nueva: true`) con su regla,
  * `header_style` 'transparent' y `footer_background` 'tema'. En V2 viven en `shell.*.opciones`;
  * en legacy, columnas aditivas de las migraciones `sitio_encabezado_pie_v2` (14) y
  * `sitio_encabezado_pie_v2_panel` (moneda, colores de texto, fijo al bajar, separadores). Quien
@@ -78,7 +78,9 @@ export type ReglaOpcionShell =
   /** Color fijo «#RGB» o «#RRGGBB». */
   | { tipo: 'color' }
   /** Uno de `valores` o una lista de `acciones` (texto «a,b» en la columna legacy). */
-  | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number };
+  | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number }
+  /** Entero inclusive. */
+  | { tipo: 'entero'; min: number; max: number };
 
 export interface OpcionShell {
   zona: 'header' | 'footer';
@@ -262,6 +264,15 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    * `null` = el header de hoy. Vive en el JSON del documento. No hay columna ni migración.
    */
   header_builder: { zona: 'header', porDefecto: null, nueva: true },
+  /**
+   * Header transparente, fijo, encima del hero. `null` = no (el header sigue
+   * opaco y el hero debajo). `false` guardado apaga también el alias
+   * `overlap_header`. La variante `header_style: transparent` sigue solapando
+   * salvo este `false`.
+   */
+  header_transparent_over_hero: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /** Hueco en px entre el encabezado y la primera sección. 0 = pegadas. */
+  first_section_offset_px: { zona: 'header', porDefecto: 0, regla: { tipo: 'entero', min: 0, max: 240 }, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },
@@ -336,6 +347,8 @@ export function cumpleRegla(regla: ReglaOpcionShell, valor: unknown): boolean {
         new Set(valor).size === valor.length &&
         valor.every((v) => typeof v === 'string' && regla.acciones.includes(v))
       );
+    case 'entero':
+      return typeof valor === 'number' && Number.isInteger(valor) && valor >= regla.min && valor <= regla.max;
   }
 }
 

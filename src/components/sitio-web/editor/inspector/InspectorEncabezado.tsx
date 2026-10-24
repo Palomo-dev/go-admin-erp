@@ -233,6 +233,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
   const idTrazo = useId();
   const idForma = useId();
   const idCaja = useId();
+  const idEspacio = useId();
   const segundo = Boolean(p.texto('header_cta2_text') || p.texto('header_cta2_url'));
   const anuncios = leerAnuncios(a.topbar_announcement);
   const [conAnuncio, setConAnuncio] = useState(anuncios.length > 0);
@@ -426,6 +427,31 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
             valor={presetContenedorActivo(a)}
             onValorChange={(v) => aplicarPresetContenedor(a, v, cambiar)}
           />
+        </div>
+        <FilaInterruptor
+          titulo={t('zonaGlobal.acciones.headerSobreHero')}
+          ayuda={t('zonaGlobal.acciones.headerSobreHeroAyuda')}
+          nuevo
+          valor={opcionBooleana(a, 'header_transparent_over_hero')}
+          onCambiar={(v) => cambiar({ header_transparent_over_hero: v })}
+        />
+        <div className="flex flex-col gap-1">
+          <label className="text-[13px] font-medium text-fg" htmlFor={idEspacio}>
+            {t('zonaGlobal.acciones.espacioPrimera')}
+          </label>
+          <input
+            id={idEspacio}
+            type="number"
+            min={0}
+            max={240}
+            className="h-9 w-24 rounded-md border border-line bg-surface px-2 text-sm"
+            value={String(valorOpcion<number>(a, 'first_section_offset_px') ?? 0)}
+            onChange={(e) => {
+              const n = Math.min(240, Math.max(0, Math.round(Number(e.target.value) || 0)))
+              cambiar({ first_section_offset_px: n })
+            }}
+          />
+          <span className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.espacioPrimeraAyuda')}</span>
         </div>
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}

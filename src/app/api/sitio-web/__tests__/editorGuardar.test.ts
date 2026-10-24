@@ -13,6 +13,8 @@ import { armarLoteLegacy } from '@/components/sitio-web/editor/loteLegacy';
 import { esquemaLoteLegacy } from '@/lib/website/editorLegacy';
 
 const permisos = { editar: true, publicar: true };
+const confirmarEstructura = jest.fn(async () => true);
+jest.mock('@/lib/services/website/revalidarPublicacionWeb', () => ({ revalidarEstructuraWeb: (...args: unknown[]) => confirmarEstructura(...args as []) }));
 jest.mock('@/lib/services/website/paginasSitioService', () => ({ permisosSitio: async () => permisos }));
 
 const rpc = jest.fn();
@@ -85,6 +87,7 @@ beforeEach(() => {
   permisos.editar = true;
   permisos.publicar = true;
   rpc.mockReset();
+  confirmarEstructura.mockReset().mockResolvedValue(true);
   filtros.length = 0;
 });
 
@@ -101,12 +104,14 @@ test('sin el permiso de publicar responde 403 y no escribe', async () => {
   const r = await pedir(lote());
   expect(r.status).toBe(403);
   expect(rpc).not.toHaveBeenCalled();
+  expect(confirmarEstructura).not.toHaveBeenCalled();
 });
 
 test('otra organización en el body → 403', async () => {
   const r = await pedir({ ...lote(), organization_id: 999 });
   expect(r.status).toBe(403);
   expect(rpc).not.toHaveBeenCalled();
+  expect(confirmarEstructura).not.toHaveBeenCalled();
 });
 
 test('una columna fuera de la lista blanca → 400', async () => {
@@ -137,4 +142,13 @@ test('error de la base sin la RPC traduce 42501 a 403', async () => {
   rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'sin_permiso' } });
   const r = await pedir(lote());
   expect(r.status).toBe(403);
+});
+
+test('no informa publicación exitosa si la estructura pública no se invalidó', async () => {
+  rpc.mockResolvedValue({ data: { ajustes: { id: 'a' } }, error: null });
+  confirmarEstructura.mockResolvedValueOnce(false);
+  const r = await pedir(lote());
+  expect(r.status).toBe(503);
+  expect(confirmarEstructura).toHaveBeenCalledWith(120);
+  expect((await r.json()).error.message).toMatch(/se guardaron/);
 });

@@ -29,7 +29,7 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'booking_cta', variants: ['banner', 'inline_form', 'simple'], contentKeys: [] },
     { type: 'booking_transport', variants: ['banner', 'form'], contentKeys: [] },
     { type: 'brands', variants: ['logos'], contentKeys: [] },
-    { type: 'categories_grid', variants: ['default', 'grid', 'horizontal', 'icons'], contentKeys: [] },
+    { type: 'categories_grid', variants: ['bento', 'card_bottom', 'circle', 'default', 'grid', 'horizontal', 'icons', 'minimal_icon', 'pill'], contentKeys: [] },
     { type: 'category_products', variants: ['default'], contentKeys: [] },
     { type: 'category_subcategories', variants: ['default'], contentKeys: [] },
     { type: 'category_seo_text', variants: ['default'], contentKeys: [] },
@@ -57,6 +57,7 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'contact_form', variants: ['default', 'simple', 'split', 'with_map'], contentKeys: [] },
     { type: 'coverage_map', variants: ['static'], contentKeys: [] },
     { type: 'countdown', variants: ['banner', 'compact', 'inline'], contentKeys: [] },
+    { type: 'urgency', variants: ['default'], contentKeys: [] },
     { type: 'cta', variants: ['banner', 'centered', 'split', 'with_image'], contentKeys: [] },
     { type: 'delivery_cta', variants: ['banner'], contentKeys: [] },
     {

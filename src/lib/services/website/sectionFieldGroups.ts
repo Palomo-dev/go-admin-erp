@@ -957,9 +957,10 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
     group: 'content',
     itemLabelKey: 'type',
     defaultItems: [
-      { type: 'discount', label: '-{value}%', position: 'top-left', shape: 'pill', size: 'sm' },
-      { type: 'new', label: 'Nuevo', position: 'top-right', shape: 'pill', size: 'sm' },
-      { type: 'free_shipping', label: 'Envío gratis', position: 'bottom-left', shape: 'pill', size: 'sm' },
+      { type: 'discount', label: '-{value}%', bg_color: '#EF4444', text_color: '#FFFFFF', position: 'top-left', shape: 'pill', size: 'sm' },
+      { type: 'out_of_stock', label: 'Agotado', bg_color: '#1F2937', text_color: '#FFFFFF', position: 'top-left', shape: 'pill', size: 'sm' },
+      { type: 'variants', label: '{value}', position: 'top-right', shape: 'pill', size: 'sm', icon: 'Layers' },
+      { type: 'sales_count', label: '{value} vendidos', bg_color: 'rgba(0,0,0,0.6)', text_color: '#FFFFFF', position: 'bottom-left', shape: 'pill', size: 'sm', icon: 'TrendingUp' },
     ],
     itemFields: [
       {
@@ -1021,6 +1022,8 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
         options: [
           { value: 'pill', label: 'Píldora' },
           { value: 'square', label: 'Cuadrado' },
+          { value: 'rounded', label: 'Redondeada' },
+          { value: 'semi', label: 'Semirredondeada' },
           { value: 'ribbon', label: 'Cinta' },
           { value: 'corner', label: 'Esquina' },
         ],
@@ -1059,6 +1062,7 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
         defaultValue: 'add_to_cart',
         options: [
           { value: 'add_to_cart', label: 'Agregar al carrito' },
+          { value: 'choose', label: 'Elegir variantes o modificadores' },
           { value: 'buy_now', label: 'Comprar ahora' },
           { value: 'wishlist', label: 'Favoritos' },
           { value: 'quick_view', label: 'Vista rápida' },

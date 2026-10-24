@@ -11,11 +11,10 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
-import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, SettingRow, Skeleton } from '@/components/kit';
+import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, Select, SettingRow, Skeleton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import FieldRenderer from '@/components/organization/branding/editor/fields/FieldRenderer';
 import type { ThemePalette } from '@/components/organization/branding/editor/fields/types';
@@ -25,6 +24,8 @@ import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
 import { EditorPestanas } from './EditorCascaron';
 import { EditorBoletin } from './EditorBoletin';
+import { CampoRepetidor } from './CampoRepetidor';
+import { CampoAlineacion } from './CampoAlineacion';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
@@ -125,6 +126,10 @@ export function CampoSeccion({
   }
 
   switch (campo.type) {
+    case 'alignment':
+      return <CampoAlineacion campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
+    case 'repeater':
+      return <CampoRepetidor campo={campo} valor={valor} contenido={contenido} onCambiar={onCambiar} onCambiarContenido={onCambiarContenido} organizationId={organizationId} paleta={paleta} fondo={fondo} categorias={categorias} deshabilitado={deshabilitado} />;
     case 'text':
     case 'url':
       return (
@@ -209,18 +214,16 @@ export function CampoSeccion({
       return (
         <FormField etiqueta={campo.label} ayuda={ayuda}>
           {(c) => (
-            <Select value={actual || undefined} onValueChange={(v) => onCambiar(v)} disabled={deshabilitado}>
-              <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className="h-10 rounded-lg">
-                <SelectValue placeholder={t('campo.elegir')} />
-              </SelectTrigger>
-              <SelectContent>
-                {(campo.options ?? []).map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Select
+              valor={actual}
+              onValorChange={onCambiar}
+              opciones={(campo.options ?? []).map((o) => ({ valor: o.value, etiqueta: o.label }))}
+              placeholder={t('campo.elegir')}
+              disabled={deshabilitado}
+              id={c.id}
+              aria-labelledby={c.idEtiqueta}
+              aria-describedby={c['aria-describedby']}
+            />
           )}
         </FormField>
       );
@@ -229,7 +232,7 @@ export function CampoSeccion({
       return (
         <ColorField
           etiqueta={campo.label}
-          valor={typeof valor === 'string' && valor ? valor : '#FFFFFF'}
+          valor={typeof valor === 'string' && valor ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '#FFFFFF'}
           fondo={fondo ?? undefined}
           onCambiar={(v) => onCambiar(v)}
           deshabilitado={deshabilitado}

@@ -59,6 +59,7 @@ export function useConfiguracionState(): UseConfiguracionStateReturn {
 
   const navegar = useCallback(
     (cambios: Record<string, string | null>) => {
+      if (!pathname) return;
       const params = new URLSearchParams(searchParams?.toString() ?? '');
       for (const [k, v] of Object.entries(cambios)) {
         if (v === null) params.delete(k);

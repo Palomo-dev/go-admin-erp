@@ -529,6 +529,8 @@ export async function publicar(
     publicadaEn: r.published_at,
     idempotente: r.idempotente,
     sedesActualizadas,
+    branchId: estado.branch_id,
+    v2Adoptado: estado.v2_adopted,
   };
 }
 

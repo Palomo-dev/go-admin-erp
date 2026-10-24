@@ -48,7 +48,7 @@ export const GRUPOS_SECCIONES: readonly DefinicionGrupo[] = [
     proposito: 'cuenta quién eres',
     tipos: [
       'hero', 'restaurant_hero', 'image_text', 'text_block', 'gallery', 'gallery_bento', 'marquee',
-      'stats', 'team', 'cta', 'countdown', 'newsletter', 'features_grid', 'how_it_works', 'services_list',
+      'stats', 'team', 'cta', 'countdown', 'urgency', 'newsletter', 'features_grid', 'how_it_works', 'services_list',
     ],
   },
   {

@@ -6,6 +6,7 @@
  * deja el sitio como está.
  */
 import { useState } from 'react';
+import { Select } from '@/components/kit';
 import { ESTILOS_MENU, ITEMS_BARRA_INICIALES } from '@/lib/website/menuMovil';
 import { useTextosEditor } from '../textos';
 import { EtiquetaGrupo, FilaInterruptor } from './PartesZonaGlobal';
@@ -65,9 +66,7 @@ export function CelularEncabezado({
         <h3 className="text-sm font-semibold text-fg">{t('zonaGlobal.celular.menu')}</h3>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.abrir')}
-          <select className={control} value={estilo} onChange={(e) => cambiar({ mobile_menu_style: e.target.value })}>
-            {ESTILOS_MENU.map((v) => <option key={v} value={v}>{ESTILO_ETIQUETA[v]}</option>)}
-          </select>
+          <Select className={control} tamano="sm" valor={String(estilo) || '__predeterminado__'} onValorChange={(valor) => cambiar({ mobile_menu_style: (valor === '__predeterminado__' ? '' : valor) })} opciones={[...(ESTILOS_MENU.map((v) =>({ valor: String(v) || '__predeterminado__', etiqueta: String(ESTILO_ETIQUETA[v]) })))]} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.ancho')} ({Number(panel.width) || 85}%)
@@ -75,12 +74,7 @@ export function CelularEncabezado({
         </label>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.fondo')}
-          <select className={control} value={String(panel.background || '')} onChange={(e) => setPanel('background', e.target.value || null)}>
-            <option value="">Como hoy</option>
-            <option value="color">Color</option>
-            <option value="gradient">Degradado</option>
-            <option value="blur">Desenfoque</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(panel.background || '')) || '__predeterminado__'} onValorChange={(valor) => setPanel('background', (valor === '__predeterminado__' ? '' : valor) || null)} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Como hoy") }, { valor: String("color") || '__predeterminado__', etiqueta: String("Color") }, { valor: String("gradient") || '__predeterminado__', etiqueta: String("Degradado") }, { valor: String("blur") || '__predeterminado__', etiqueta: String("Desenfoque") }]} />
         </label>
         {panel.background === 'color' && <input aria-label="Color del menú" type="color" value={typeof panel.color === 'string' ? panel.color : '#ffffff'} onChange={(e) => setPanel('color', e.target.value)} />}
         {panel.background === 'gradient' && (
@@ -95,11 +89,7 @@ export function CelularEncabezado({
         </label>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.animacion')}
-          <select className={control} value={String(panel.animation || 'slide')} onChange={(e) => setPanel('animation', e.target.value)}>
-            <option value="slide">Deslizar</option>
-            <option value="fade">Fundido</option>
-            <option value="scale">Escala</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(panel.animation || 'slide')) || '__predeterminado__'} onValorChange={(valor) => setPanel('animation', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("slide") || '__predeterminado__', etiqueta: String("Deslizar") }, { valor: String("fade") || '__predeterminado__', etiqueta: String("Fundido") }, { valor: String("scale") || '__predeterminado__', etiqueta: String("Escala") }]} />
         </label>
         <FilaInterruptor titulo="Logo dentro del menú" valor={panel.show_logo === true} onCambiar={(v) => setPanel('show_logo', v)} />
         <FilaInterruptor titulo="Buscador dentro del menú" valor={panel.show_search === true} onCambiar={(v) => setPanel('show_search', v)} />
@@ -107,10 +97,7 @@ export function CelularEncabezado({
         <FilaInterruptor titulo="Contacto dentro del menú" valor={panel.show_contact === true} onCambiar={(v) => setPanel('show_contact', v)} />
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           Categorías
-          <select className={control} value={String(panel.categories || 'accordion')} onChange={(e) => setPanel('categories', e.target.value)}>
-            <option value="accordion">Acordeón</option>
-            <option value="list">Lista</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(panel.categories || 'accordion')) || '__predeterminado__'} onValorChange={(valor) => setPanel('categories', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("accordion") || '__predeterminado__', etiqueta: String("Acordeón") }, { valor: String("list") || '__predeterminado__', etiqueta: String("Lista") }]} />
         </label>
       </section>
 
@@ -128,22 +115,11 @@ export function CelularEncabezado({
         <h3 className="text-sm font-semibold text-fg">{t('zonaGlobal.celular.disposicion')}</h3>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.logo')}
-          <select className={control} value={String(layout.logo || 'inherit')} onChange={(e) => setLayout('logo', e.target.value)}>
-            <option value="inherit">Como el sitio</option>
-            <option value="left">Izquierda</option>
-            <option value="center">Centro</option>
-            <option value="right">Derecha</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(layout.logo || 'inherit')) || '__predeterminado__'} onValorChange={(valor) => setLayout('logo', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("inherit") || '__predeterminado__', etiqueta: String("Como el sitio") }, { valor: String("left") || '__predeterminado__', etiqueta: String("Izquierda") }, { valor: String("center") || '__predeterminado__', etiqueta: String("Centro") }, { valor: String("right") || '__predeterminado__', etiqueta: String("Derecha") }]} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.filas')}
-          <select className={control} value={String(layout.arrangement || '')} onChange={(e) => setLayout('arrangement', e.target.value || null)}>
-            <option value="">Como hoy</option>
-            <option value="menu-logo-acciones">Menú · logo · acciones</option>
-            <option value="logo-acciones-menu">Logo · acciones · menú</option>
-            <option value="logo-sobre-acciones">Logo arriba</option>
-            <option value="acciones-sobre-logo">Acciones arriba</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(layout.arrangement || '')) || '__predeterminado__'} onValorChange={(valor) => setLayout('arrangement', (valor === '__predeterminado__' ? '' : valor) || null)} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Como hoy") }, { valor: String("menu-logo-acciones") || '__predeterminado__', etiqueta: String("Menú · logo · acciones") }, { valor: String("logo-acciones-menu") || '__predeterminado__', etiqueta: String("Logo · acciones · menú") }, { valor: String("logo-sobre-acciones") || '__predeterminado__', etiqueta: String("Logo arriba") }, { valor: String("acciones-sobre-logo") || '__predeterminado__', etiqueta: String("Acciones arriba") }]} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.logoTam')}
@@ -162,13 +138,7 @@ export function CelularEncabezado({
         <h3 className="text-sm font-semibold text-fg">{t('zonaGlobal.celular.iconos')}</h3>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.hamburguesa')}
-          <select className={control} value={String(iconos.menu || 'lines3')} onChange={(e) => setIconos('menu', e.target.value)}>
-            <option value="lines3">Tres líneas</option>
-            <option value="lines2">Dos líneas</option>
-            <option value="dots">Puntos</option>
-            <option value="grid">Cuadrícula</option>
-            <option value="text">Texto «Menú»</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(iconos.menu || 'lines3')) || '__predeterminado__'} onValorChange={(valor) => setIconos('menu', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("lines3") || '__predeterminado__', etiqueta: String("Tres líneas") }, { valor: String("lines2") || '__predeterminado__', etiqueta: String("Dos líneas") }, { valor: String("dots") || '__predeterminado__', etiqueta: String("Puntos") }, { valor: String("grid") || '__predeterminado__', etiqueta: String("Cuadrícula") }, { valor: String("text") || '__predeterminado__', etiqueta: String("Texto «Menú»") }]} />
         </label>
         <FilaInterruptor titulo="Mostrar menú" valor={iconos.show_menu !== false} onCambiar={(v) => setIconos('show_menu', v)} />
         <FilaInterruptor titulo="Mostrar búsqueda" valor={iconos.show_search !== false} onCambiar={(v) => setIconos('show_search', v)} />
@@ -176,20 +146,11 @@ export function CelularEncabezado({
         <FilaInterruptor titulo="Mostrar cuenta" valor={iconos.show_account !== false} onCambiar={(v) => setIconos('show_account', v)} />
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.estiloIcono')}
-          <select className={control} value={String(iconos.style || 'plain')} onChange={(e) => setIconos('style', e.target.value)}>
-            <option value="plain">Solo ícono</option>
-            <option value="circle">Fondo circular</option>
-            <option value="border">Con borde</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(iconos.style || 'plain')) || '__predeterminado__'} onValorChange={(valor) => setIconos('style', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("plain") || '__predeterminado__', etiqueta: String("Solo ícono") }, { valor: String("circle") || '__predeterminado__', etiqueta: String("Fondo circular") }, { valor: String("border") || '__predeterminado__', etiqueta: String("Con borde") }]} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-fg-secondary">
           {t('zonaGlobal.celular.buscador')}
-          <select className={control} value={String(header.search || '')} onChange={(e) => escribir('search', e.target.value || null)}>
-            <option value="">Como hoy</option>
-            <option value="icon">Ícono</option>
-            <option value="bar">Barra bajo el logo</option>
-            <option value="fullscreen">Pantalla completa</option>
-          </select>
+          <Select className={control} tamano="sm" valor={String(String(header.search || '')) || '__predeterminado__'} onValorChange={(valor) => escribir('search', (valor === '__predeterminado__' ? '' : valor) || null)} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Como hoy") }, { valor: String("icon") || '__predeterminado__', etiqueta: String("Ícono") }, { valor: String("bar") || '__predeterminado__', etiqueta: String("Barra bajo el logo") }, { valor: String("fullscreen") || '__predeterminado__', etiqueta: String("Pantalla completa") }]} />
         </label>
       </section>
     </div>
@@ -229,15 +190,8 @@ function EditorItems({ barra, setBarra, acento }: { barra: Record<string, unknow
               <button type="button" className="px-2 text-xs" onClick={() => mover(i, i + 1)} aria-label="Bajar">↓</button>
             </div>
             <div className="grid grid-cols-2 gap-1">
-              <select className={control} value={String(item.icon || 'home')} aria-label="Ícono" onChange={(e) => setBarra({ items: items.map((it, j) => j === i ? { ...it, icon: e.target.value } : it) })}>
-                {['home', 'grid', 'search', 'bag', 'cart', 'user', 'heart', 'tag', 'whatsapp', 'link'].map((ic) => <option key={ic} value={ic}>{ic}</option>)}
-              </select>
-              <select className={control} value={String(item.action || 'link')} aria-label="Acción" onChange={(e) => setBarra({ items: items.map((it, j) => j === i ? { ...it, action: e.target.value } : it) })}>
-                <option value="link">Enlace</option>
-                <option value="menu">Abrir el menú</option>
-                <option value="search">Abrir la búsqueda</option>
-                <option value="cart">Abrir el carrito</option>
-              </select>
+              <Select className={control} aria-label="Ícono" tamano="sm" valor={String(String(item.icon || 'home')) || '__predeterminado__'} onValorChange={(valor) => setBarra({ items: items.map((it, j) => j === i ? { ...it, icon: (valor === '__predeterminado__' ? '' : valor) } : it) })} opciones={[...(['home', 'grid', 'search', 'bag', 'cart', 'user', 'heart', 'tag', 'whatsapp', 'link'].map((ic) =>({ valor: String(ic) || '__predeterminado__', etiqueta: String(ic) })))]} />
+              <Select className={control} aria-label="Acción" tamano="sm" valor={String(String(item.action || 'link')) || '__predeterminado__'} onValorChange={(valor) => setBarra({ items: items.map((it, j) => j === i ? { ...it, action: (valor === '__predeterminado__' ? '' : valor) } : it) })} opciones={[{ valor: String("link") || '__predeterminado__', etiqueta: String("Enlace") }, { valor: String("menu") || '__predeterminado__', etiqueta: String("Abrir el menú") }, { valor: String("search") || '__predeterminado__', etiqueta: String("Abrir la búsqueda") }, { valor: String("cart") || '__predeterminado__', etiqueta: String("Abrir el carrito") }]} />
             </div>
             <label className="flex items-center justify-between text-xs">
               <span>Mostrar texto</span>
@@ -248,18 +202,11 @@ function EditorItems({ barra, setBarra, acento }: { barra: Record<string, unknow
       </ul>
       <label className="flex flex-col gap-1 text-xs text-fg-secondary">
         {t('zonaGlobal.celular.indicador')}
-        <select className={control} value={String(barra.indicator || 'pill')} onChange={(e) => setBarra({ indicator: e.target.value })}>
-          <option value="dot">Punto</option>
-          <option value="line">Línea</option>
-          <option value="pill">Píldora</option>
-        </select>
+        <Select className={control} tamano="sm" valor={String(String(barra.indicator || 'pill')) || '__predeterminado__'} onValorChange={(valor) => setBarra({ indicator: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("dot") || '__predeterminado__', etiqueta: String("Punto") }, { valor: String("line") || '__predeterminado__', etiqueta: String("Línea") }, { valor: String("pill") || '__predeterminado__', etiqueta: String("Píldora") }]} />
       </label>
       <label className="flex flex-col gap-1 text-xs text-fg-secondary">
         {t('zonaGlobal.celular.central')}
-        <select className={control} value={String(barra.center_id || '')} onChange={(e) => setBarra({ center_id: e.target.value || null })}>
-          <option value="">Ninguno</option>
-          {items.map((it) => <option key={String(it.id)} value={String(it.id)}>{String(it.label || it.id)}</option>)}
-        </select>
+        <Select className={control} tamano="sm" valor={String(String(barra.center_id || '')) || '__predeterminado__'} onValorChange={(valor) => setBarra({ center_id: (valor === '__predeterminado__' ? '' : valor) || null })} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Ninguno") }, ...(items.map((it) =>({ valor: String(String(it.id)) || '__predeterminado__', etiqueta: String(String(it.label || it.id)) })))]} />
       </label>
       <FilaInterruptor titulo="Sombra" valor={barra.shadow === true} onCambiar={(v) => setBarra({ shadow: v })} />
       <FilaInterruptor titulo="Borde superior" valor={barra.border !== false} onCambiar={(v) => setBarra({ border: v })} />

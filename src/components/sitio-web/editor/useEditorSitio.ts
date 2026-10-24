@@ -51,7 +51,7 @@ import type { DocumentoSitio, ItemMenu } from '@/lib/website/contrato/documentoS
 import { clienteSitiosV2, ErrorApiSitio } from '@/lib/website/v2/clienteSitiosV2';
 import type { RevisionResumen, SitioResumen } from '@/lib/website/v2/tipos';
 import type { ProgramacionPublicacion, RevisionConDocumento } from '@/lib/website/v2/tiposEditor';
-import { columnaVaAlDocumento } from '@/lib/website/v2/mapeoAjustes';
+import { columnaVaAlDocumento, igualesEstructural } from '@/lib/website/v2/mapeoAjustes';
 import {
   ajustesDesdeDocumento,
   aplicarAjustesAlDocumento,
@@ -147,11 +147,6 @@ function mensaje(error: unknown, respaldo: string): string {
     return (error as { message: string }).message;
   }
   return respaldo;
-}
-
-function revalidarSitioPublico(): void {
-  if (typeof fetch === 'undefined') return;
-  fetch('/api/website/revalidate', { method: 'POST', keepalive: true }).catch(() => undefined);
 }
 
 export function useEditorSitio() {
@@ -600,6 +595,7 @@ export function useEditorSitio() {
   // ── Edición de secciones (memoria; legacy por lotes, V2 autoguardado) ───────
   const actualizarSecciones = useCallback(
     (siguiente: WebsitePageSection[], pendientes?: { id: string; cambios: Partial<WebsitePageSection> }[]) => {
+      if (igualesEstructural(currentPageRef.current?.sections, siguiente)) return;
       // La referencia se adelanta al render: varios cambios seguidos (o un guardado inmediato) ven el último.
       if (currentPageRef.current) currentPageRef.current = { ...currentPageRef.current, sections: siguiente };
       setCurrentPage((prev) => (prev ? { ...prev, sections: siguiente } : prev));
@@ -1004,7 +1000,6 @@ export function useEditorSitio() {
       setHasChanges(false);
       setEstadoGuardado('guardado');
       setPreviewRefreshKey((k) => k + 1);
-      revalidarSitioPublico();
       toast.success(t('toast.guardadoLegacy'));
       return true;
     } catch (error) {
@@ -1055,11 +1050,17 @@ export function useEditorSitio() {
         // sede). Si ya está activa o el lector no está desplegado, publicar es como siempre.
         const v2AdoptadoAntes = !!v2.sitio?.v2Adoptado;
         const activar = activarAlPublicarSitio(v2AdoptadoAntes);
+        const documentoQueSePublica = documentoActual();
         const r = await v2.publicar(opciones.nota, { activar });
         if (!r) {
-          if (!v2.conflicto) toast.error(t('publicar.error'), { description: v2.error?.message });
+          const error = v2.errorDePublicacion?.() ?? v2.error;
+          if (!error?.esConflicto) toast.error(t('publicar.error'), { description: error?.message });
           return false;
         }
+        // El comparador usa la misma instantánea confirmada sin esperar otra petición.
+        // Si se editó durante la publicación, esas ediciones siguen frente a esta base.
+        setDocumentoPublicado(documentoQueSePublica);
+        setUltimaPublicacion({ en: r.publicadaEn, autor: null });
         setProgramacion(null);
         void clienteSitiosV2.listar().then(setSitios).catch(() => undefined);
         const aviso = avisoTrasPublicar({ v2AdoptadoAntes, activacion: r.activacion });
@@ -1079,7 +1080,7 @@ export function useEditorSitio() {
               : {}),
           });
         } else {
-          toast.success(r.idempotente ? t('publicar.yaPublicada') : t('publicar.listo', { n: r.numero }), {
+          toast(t('publicar.guardadaEnHistorial', { n: r.numero }), {
             description: t('publicar.listoSinAdoptar'),
           });
         }
@@ -1091,7 +1092,7 @@ export function useEditorSitio() {
         setPublicando(false);
       }
     },
-    [enV2, guardarLegacy, guardarAhora, esSedeV2, sitios, v2, t, permisos.publicar, urlPublica],
+    [enV2, guardarLegacy, guardarAhora, documentoActual, esSedeV2, sitios, v2, t, permisos.publicar, urlPublica],
   );
 
   /** Programar (A/05g). `ejecutarEn` en ISO ya convertido desde la zona de la organización. */
@@ -1202,7 +1203,6 @@ export function useEditorSitio() {
         const guardado = await clienteSitiosV2.guardar(sitio.id, documento, servidor.version);
         if (accion === 'sobrescribir') {
           const r = await clienteSitiosV2.publicar(sitio.id, guardado.version, null);
-          revalidarSitioPublico();
           toast.success(t('publicar.listo', { n: r.numero }));
         } else {
           toast.success(t('conflicto.combinado'));

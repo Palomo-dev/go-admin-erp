@@ -146,7 +146,7 @@ describe('InspectorEncabezado', () => {
     expect(screen.getByRole('switch', { name: 'Carrito' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByRole('switch', { name: 'Cuenta' }).getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByRole('switch', { name: /Mostrar segundo botón/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_cta2_text: 'WhatsApp', header_cta2_url: 'whatsapp' });
+    expect(onCambiar).toHaveBeenCalledWith({ header_cta2_text: 'WhatsApp', header_cta2_url: null });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Sede y horario' }));
     expect(onCambiar).toHaveBeenCalledWith({ topbar_show_branch_status: true });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Envío gratis' }));

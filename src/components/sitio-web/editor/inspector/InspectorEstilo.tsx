@@ -15,6 +15,7 @@
  * propio, con «Restablecer» por grupo y «Restablecer todo el estilo (volver a heredar)». Lo que no
  * se sobrescribe sigue al «Estilo del sitio». No guarda: avisa cada cambio.
  */
+import { CampoImagenSeccion } from './CampoImagenSeccion';
 import { useId, useState, type ReactNode } from 'react';
 import { Lock, Pencil } from 'lucide-react';
 import { cn } from '@/utils/Utils';
@@ -72,6 +73,7 @@ export interface SedeEstilo {
 
 export interface InspectorEstiloProps {
   estilo: EstiloSeccion;
+  organizationId?: number;
   visibilidad: Visibilidad;
   onCambiarEstilo: (estilo: EstiloSeccion | null) => void;
   onCambiarVisibilidad: (v: Visibilidad) => void;
@@ -142,6 +144,7 @@ export function resumenGrupo(
 
 export function InspectorEstilo({
   estilo,
+  organizationId,
   visibilidad,
   onCambiarEstilo,
   onCambiarVisibilidad,
@@ -260,6 +263,7 @@ export function InspectorEstilo({
                 onValorChange={(fondo) => cambiar({ fondo })}
               />
               <p className={AYUDA}>{t('estilo.fondoAyuda')}</p>
+              {(estilo.fondo ?? ESTILO_POR_DEFECTO.fondo) === 'imagen' && <CampoImagenSeccion valor={estilo.imagenFondo} onCambiar={(imagenFondo) => cambiar({ imagenFondo })} organizationId={organizationId} deshabilitado={deshabilitado} />}
               {(estilo.fondo ?? ESTILO_POR_DEFECTO.fondo) === 'alterno' && (
                 <ColorField
                   etiqueta={t('estilo.colorAlterno')}

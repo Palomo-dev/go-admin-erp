@@ -59,6 +59,8 @@ const servicio = {
   cambiarAdopcion: jest.fn(async () => ({ id: 's' })),
   llevarMenuAlBorrador: jest.fn(async () => ({ version: 2, actualizadoEn: 'x', menuId: 'm', copiado: true })),
 };
+const confirmarPublicacion = jest.fn(async () => true);
+jest.mock('@/lib/services/website/revalidarPublicacionWeb', () => ({ revalidarPublicacionWeb: (...args: unknown[]) => confirmarPublicacion(...args as []) }));
 jest.mock('@/lib/services/website/siteDocumentService', () => {
   const real = jest.requireActual('@/lib/services/website/siteDocumentService');
   return { ...real, ...servicio };
@@ -175,6 +177,22 @@ describe('caminos válidos', () => {
     expect(res.status).toBe(400);
     expect(servicio.publicar).not.toHaveBeenCalled();
     expect(servicio.publicarYActivar).not.toHaveBeenCalled();
+  });
+
+  test('no termina de publicar hasta que el lector confirma la revisión; fallo → 503 reintentable', async () => {
+    let terminar: ((valor: boolean) => void) | undefined;
+    confirmarPublicacion.mockImplementationOnce(() => new Promise<boolean>((resolve) => { terminar = resolve; }));
+    let respondida = false;
+    const pendiente = rutaPublicaciones.POST(peticion(`/api/website/v2/sites/${SITIO}/publications`, 'POST', { version: 3, activar: true }), params())
+      .then((r) => { respondida = true; return r; });
+    for (let n = 0; n < 30 && !terminar; n++) await new Promise((r) => setImmediate(r));
+    expect(terminar).toBeDefined();
+    expect(respondida).toBe(false);
+    terminar?.(false);
+    const res = await pendiente;
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.message).toMatch(/no se pudo confirmar/);
+    expect(confirmarPublicacion).toHaveBeenCalledWith(120, SITIO, 'r', null);
   });
 
   test('GET sites y GET revisions', async () => {

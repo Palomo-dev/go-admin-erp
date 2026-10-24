@@ -14,7 +14,7 @@ import { Plus, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, AvisoTonal } from '@/components/kit';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { useTextosEditor } from '../textos';
@@ -107,7 +107,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
         )}
         {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} />}
         {pestana === 'celular' && <CelularEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
-        {pestana === 'constructor' && <ConstructorEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
+        {pestana === 'constructor' && <ConstructorEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} colores={p.coloresTema} />}
       </div>
     </aside>
   );
@@ -131,19 +131,9 @@ function SelectorMenu({ ajustes, menus, cambiar, onEditarMenu, etiqueta, comoTit
         <EtiquetaGrupo id={id}>{etiqueta}</EtiquetaGrupo>
       )}
       <div className="flex items-center gap-2">
-        <Select value={actual ?? SIN_MENU} onValueChange={(v) => cambiar({ header_menu_id: v === SIN_MENU ? null : v })}>
-          <SelectTrigger aria-labelledby={id} className="h-10 min-w-0 flex-1">
-            <SelectValue placeholder={t('zonaGlobal.menu.elegir')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={SIN_MENU}>{t('zonaGlobal.menu.sinMenu')}</SelectItem>
-            {menus.map((m) => (
-              <SelectItem key={m.id} value={m.id}>
-                {m.enlaces !== undefined ? t('zonaGlobal.menu.enlaces', { menu: m.name, n: m.enlaces }) : m.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Select valor={actual ?? SIN_MENU} onValorChange={(v) => cambiar({ header_menu_id: v === SIN_MENU ? null : v })}
+          aria-labelledby={id} className="min-w-0 flex-1" placeholder={t('zonaGlobal.menu.elegir')}
+          opciones={[{ valor: SIN_MENU, etiqueta: t('zonaGlobal.menu.sinMenu') }, ...menus.map((m) => ({ valor: m.id, etiqueta: m.enlaces !== undefined ? t('zonaGlobal.menu.enlaces', { menu: m.name, n: m.enlaces }) : m.name }))]} />
         <button type="button" onClick={onEditarMenu} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
           {t('zonaGlobal.menu.editar')}
         </button>
@@ -191,28 +181,19 @@ function CampoBoton({
       <div className="flex flex-col gap-1.5">
         <EtiquetaGrupo id={idEnlace}>{t('zonaGlobal.boton.enlace')}</EtiquetaGrupo>
         <Select
-          value={propio ? DESTINO_PROPIO : url || undefined}
-          onValueChange={(v) => {
-            if (v === DESTINO_PROPIO) {
-              setPropio(true);
-              return;
-            }
+          valor={propio ? DESTINO_PROPIO : url || ''}
+          onValorChange={(v) => {
+            if (v === DESTINO_PROPIO) { setPropio(true); return; }
             setPropio(false);
             cambiar({ [claveUrl]: v });
           }}
-        >
-          <SelectTrigger aria-labelledby={idEnlace} className="h-10">
-            <SelectValue placeholder={t('zonaGlobal.boton.elegirEnlace')} />
-          </SelectTrigger>
-          <SelectContent>
-            {opciones.map((o) => (
-              <SelectItem key={o.valor} value={o.valor}>
-                {o.etiqueta}
-              </SelectItem>
-            ))}
-            <SelectItem value={DESTINO_PROPIO}>{t('zonaGlobal.boton.enlacePropio')}</SelectItem>
-          </SelectContent>
-        </Select>
+          aria-labelledby={idEnlace}
+          placeholder={t('zonaGlobal.boton.elegirEnlace')}
+          opciones={[...opciones, { valor: DESTINO_PROPIO, etiqueta: t('zonaGlobal.boton.enlacePropio') }]}
+        />
+        {claveUrl === 'header_cta2_url' && (!url || url === 'whatsapp') && (
+          <AvisoTonal tono="advertencia" titulo="Configura el destino del segundo botón" descripcion={url === 'whatsapp' ? 'WhatsApp del sitio requiere un número en la configuración de contacto. También puedes elegir Enlace propio y escribir una URL https://wa.me/ con el número.' : 'Elige una página o escribe un enlace para mostrar un botón que se pueda usar en la tienda.'} />
+        )}
         {propio && (
           <>
             <Input aria-label={t('zonaGlobal.boton.enlacePropio')} value={url} placeholder="/reservas" onChange={(e) => cambiar({ [claveUrl]: e.target.value === '' ? null : e.target.value })} />
@@ -282,7 +263,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           nuevo
           valor={segundo}
           onCambiar={(v) =>
-            cambiar(v ? { header_cta2_text: p.texto('header_cta2_text') || t('zonaGlobal.pie.accion.whatsapp'), header_cta2_url: p.texto('header_cta2_url') || 'whatsapp' } : { header_cta2_text: null, header_cta2_url: null })
+            cambiar(v ? { header_cta2_text: p.texto('header_cta2_text') || t('zonaGlobal.pie.accion.whatsapp'), header_cta2_url: p.texto('header_cta2_url') || null } : { header_cta2_text: null, header_cta2_url: null })
           }
         />
         {segundo && <CampoBoton etiquetaTexto={t('zonaGlobal.boton.texto')} claveTexto="header_cta2_text" claveUrl="header_cta2_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />}
@@ -769,8 +750,7 @@ function Estilo(p: Interno) {
   );
 }
 
-const PRESETS_VISIBLES = ['circulo_acento', 'cuadrado_suave', 'borde_fino', 'sombra_flotante', 'solo_icono'] as const
-type PresetVisible = (typeof PRESETS_VISIBLES)[number]
+type PresetVisible = 'circulo_acento' | 'cuadrado_suave' | 'borde_fino' | 'sombra_flotante' | 'solo_icono'
 
 function registro(valor: unknown): Record<string, unknown> {
   return valor && typeof valor === 'object' && !Array.isArray(valor) ? (valor as Record<string, unknown>) : {}
@@ -796,7 +776,7 @@ function presetContenedorActivo(ajustes: Record<string, unknown>): PresetVisible
 function aplicarPresetContenedor(ajustes: Record<string, unknown>, clave: PresetVisible, cambiar: (c: Record<string, unknown>) => void) {
   const builder = registro(ajustes.header_builder)
   if (clave === 'circulo_acento') {
-    const { icon_container: _fuera, ...resto } = builder
+    const resto = Object.fromEntries(Object.entries(builder).filter(([clave]) => clave !== 'icon_container'))
     const cambio: Record<string, unknown> = { header_icons_circle: true }
     if ('icon_container' in builder) cambio.header_builder = Object.keys(resto).length ? resto : null
     cambiar(cambio)

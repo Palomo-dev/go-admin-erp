@@ -12,8 +12,10 @@ import { withOrg, readOrgBody, ORG_BODY_KEYS } from '@/lib/utils/orgContext';
 import { esquemaLoteLegacy } from '@/lib/website/editorLegacy';
 import { guardarLegacyServidor } from '@/lib/website/editorLegacy.server';
 import { manejarError, respuestaError } from '@/lib/website/v2/respuestasApi';
+import { revalidarEstructuraWeb } from '@/lib/services/website/revalidarPublicacionWeb';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const RUTA = 'sitio-web/editor/guardar';
 
@@ -27,7 +29,11 @@ export const POST = withOrg(async (ctx, request) => {
     if (!r.success) {
       return respuestaError('peticion_invalida', 'Revisa los cambios del editor.', r.error.issues.map((i) => i.path.join('.')));
     }
-    return NextResponse.json(await guardarLegacyServidor(ctx, r.data), { headers: { 'Cache-Control': 'private, no-store' } });
+    const resultado = await guardarLegacyServidor(ctx, r.data);
+    if (!(await revalidarEstructuraWeb(ctx.organizationId))) {
+      return respuestaError('no_disponible', 'Los cambios se guardaron, pero no se pudo confirmar la actualización de la web. Reintenta guardar y publicar.');
+    }
+    return NextResponse.json(resultado, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     return manejarError(error, RUTA);
   }

@@ -235,7 +235,7 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
           <EstiloGlobalSecciones documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
         {urgenciaDocumentoDisponible() && p.enV2 && p.documento && (
-          <PanelUrgencia documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
+          <PanelUrgencia settings={p.settings} documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
       </div>
     </aside>

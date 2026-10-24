@@ -3940,3 +3940,30 @@ Verificación: instalación aislada de 98 paquetes con npm ci --omit=dev y la di
 - El contrato acepta tema.tokens y roles de color opcionales. Si no vienen, el documento viejo sigue válido. El ERP solo escribe el preset combinable con NEXT_PUBLIC_WEBSITE_TOKENS_DISENO=1, después de que el sitio público acepte las claves.
 - El inspector vuelve a dejar elegir el icono de búsqueda, cuenta y moneda. La forma del carrito no pisa un icono distinto.
 - No hubo migración ni backfill. Jest del contrato, de las perillas y del encabezado: 45 en verde. eslint de los archivos tocados, sin avisos.
+
+### Fase: Tarjetas de producto del editor v2, puntos 14–20 — Ronda 1 — 2026-10-24
+- Builder: el render compartido del sitio consume ahora `product_card_style` del inspector nuevo. Se aplican posiciones de botones, disposición superpuesta, alineación 3×3, reseñas por posición, formas redondeada y semirredondeada y la acción Elegir (detalle con variantes/modificadores). Los valores sin configurar mantienen los predeterminados actuales; el listado sin ajustes conserva su rama de render anterior.
+- Editor: repetidor y alineación compuestos con el kit v2. Los predeterminados se dibujan durante el render y no se escriben al abrir pestañas. Se quitaron los controles nativos del inspector de tarjeta en favor de Select, FormField, SettingRow, CampoNumero y ColorField. La lista de etiquetas sin configuración refleja los cuatro predeterminados efectivos de la tienda; listas guardadas se conservan.
+- Pruebas ejecutadas: Jest de campos de tarjeta (8) y disponibilidad del tema (1), verdes; ESLint de los tres componentes de tarjeta nuevos/modificados con `--max-warnings 0`, verde. Sitio: `scripts/verify-product-card-render.cjs`, 119 comprobaciones de render real, y `verify-estilo-tarjeta.mjs`, 77 comprobaciones, verdes.
+- Sin migraciones ni backfills en esta parte. La copia de `tarjetaProducto.ts` en el sitio se registra en `verify-copias-erp.mjs` para detectar divergencias entre editor y tienda.
+- Pendiente: tester y QA independientes, capturas de org 140 antes/después y verificación del despliegue publicado en escritorio/celular. No se marca aprobado con la evidencia local. No se hizo commit, push ni merge de esta parte.
+
+
+### Fase: Editor y tienda — integración general de opciones — 2026-10-24
+- Rama `fix/editor-tienda-opciones-v2` creada desde `main` en ERP y tienda. Entrega autorizada por PRs separados contra main; no fusionar ni escribir master.
+- Partes verificables: publicación/cambios/Escape (2,3,25); header/búsqueda/navegación (4–10); tarjeta (14–20); banners/fondos/categorías/listado (11–13,21,22); bloque base/beneficios/urgencia (1,23,24).
+- Diseño: consultados contexto y captura de Figma `EAvjINVRnlzFM70GVoWXgl`, 01 Sistema / 6:2 y 02 Componentes / FormField50:2685, Select103:3174 y ColorField1709:36960. Se agrega Select al kit y se usa en el inspector; sin UI legacy nueva.
+- QA independiente y capturas de org 140 en escritorio/celular en curso. Sin calificación ni marca de aprobado.
+- Se revisan PRs anticipados de tienda #21 y #26–38 para consolidar implementaciones y documentar dependencias; no se fusionan por esta tarea.
+- Hasta este registro no se ha mutado la base ni publicado cambios.
+
+
+### Fase: Editor y tienda — verificación local y migración — 2026-10-24
+- Código de los 25 puntos implementado en ramas `fix/editor-tienda-opciones-v2` contra main, con reaprovechamiento selectivo de PRs anticipados. No se escribe ni fusiona master.
+- QA independiente de publicación, presencia, middleware y bloque base/beneficios/urgencia: 9,5/10 para código local, sin declarar aceptación desplegada. Elegir abre los selectores reales de variantes y modificadores; 22 pruebas DOM móvil/escritorio y 130 SSR.
+- Pruebas integradas ERP: 43 suites, 925 tests pasan. Tienda: TypeScript y build de producción pasan antes del último selector; validación final de este y del código integrado en curso. Tracking real pasa. Suite global ejecutada durante integración: 20.291 pasaron y 64 fallaron, con fallos ajenos y carreras de edición; no se reporta como verde ni como verificación final.
+- Migración aplicada por MCP: `20261024193026_presencia_web_pagina`, MD5 `88d01756de96ed93504cb3d8dc935464`; tabla efímera, RPC solo servidor y limpieza horaria. No hubo backfills. Siete invariantes probadas por transacción revertida; cero filas al finalizar. Rollback versionado y no aplicado.
+- Se corrigió un bloqueo de compilación previo en useConfiguracionState: navegar espera a tener pathname, sin forzar un tipo no nulo.
+- Evidencia de tienda en `docs/qa/editor-v2-org140`: 184 capturas antes/después y 4 de interacción; sin desbordamientos, imágenes cargadas. Son pruebas locales con snapshot público de org 140, no sesión autenticada ni despliegue live; las simulaciones están rotuladas.
+- Vercel devuelve 403 al consultar el equipo propietario mediante la conexión disponible. La verificación desplegada queda pendiente, por lo que no se marca la entrega global como aprobada.
+- Antes de subir se detectaron 49 commits nuevos en main de tienda; se integra esa base antes de publicar PRs.

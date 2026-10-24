@@ -29,6 +29,13 @@ const baseDialogo = {
 };
 
 describe('DialogoPublicar', () => {
+  test('muestra Publicando hasta recibir la confirmación y evita repetir la acción', () => {
+    renderConIdioma(<DialogoPublicar {...baseDialogo} publicando programarDisponible cambios={[]} />);
+    const boton = screen.getByRole('button', { name: 'Publicando…' }) as HTMLButtonElement;
+    expect(boton.disabled).toBe(true);
+    fireEvent.click(boton);
+    expect(baseDialogo.onPublicar).not.toHaveBeenCalled();
+  });
   test('lista los cambios, publica ahora con la nota y «Ver» lleva a la sección', () => {
     const onPublicar = jest.fn();
     const onVer = jest.fn();

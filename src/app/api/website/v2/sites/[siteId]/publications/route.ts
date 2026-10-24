@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { publicar, publicarYActivar } from '@/lib/services/website/siteDocumentService';
 import { manejarError, respuestaError, sitioDeRuta, versionDe } from '@/lib/website/v2/respuestasApi';
+import { revalidarPublicacionWeb } from '@/lib/services/website/revalidarPublicacionWeb';
+
+export const maxDuration = 60;
 
 /**
  * POST { version, nota?, activar? } → publica el borrador como revisión inmutable
@@ -30,14 +33,18 @@ export const POST = withOrg(async (ctx, request, routeParams) => {
       return respuestaError('peticion_invalida', 'activar debe ser booleano.');
     }
     const nota = typeof body.nota === 'string' && body.nota.trim() ? body.nota.trim() : null;
-    if (body.activar === true) {
-      const lectorListo = process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR === '1';
-      return NextResponse.json(
-        await publicarYActivar(ctx.supabase, ctx.organizationId, sitioId, version, nota, lectorListo),
-        { status: 201 },
-      );
+    const resultado = body.activar === true
+      ? await publicarYActivar(ctx.supabase, ctx.organizationId, sitioId, version, nota, process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR === '1')
+      : await publicar(ctx.supabase, ctx.organizationId, sitioId, version, nota);
+    if (resultado.v2Adoptado || resultado.activacion === 'activada') {
+      const confirmada = await revalidarPublicacionWeb(ctx.organizationId, sitioId, resultado.revisionId, resultado.branchId ?? null);
+      if (!confirmada) {
+        // La revisión ya existe. Reintentar la misma versión es idempotente; nunca afirmar
+        // que está visible si algún despliegue no confirmó el id que sirve el lector público.
+        return NextResponse.json({ error: { code: 'no_disponible', message: 'La versión se guardó, pero no se pudo confirmar en la web. Reintenta publicar; tus cambios están a salvo.' } }, { status: 503 });
+      }
     }
-    return NextResponse.json(await publicar(ctx.supabase, ctx.organizationId, sitioId, version, nota), { status: 201 });
+    return NextResponse.json(resultado, { status: 201 });
   } catch (error) {
     return manejarError(error, 'POST publications');
   }

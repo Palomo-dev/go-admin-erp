@@ -17,7 +17,7 @@ export type ZonaHeader = (typeof ZONAS)[number]
 export const TIPOS = ['logo', 'menu', 'search', 'currency', 'cart', 'account', 'favorites', 'whatsapp', 'phone', 'social', 'text', 'button'] as const
 export type TipoElemento = (typeof TIPOS)[number]
 
-export const BUSCADORES_NUEVOS = ['mini', 'icon_overlay', 'mega', 'pill_floating'] as const
+export const BUSCADORES_NUEVOS = ['mini', 'icon_overlay', 'mega', 'pill_floating', 'outlined', 'underline'] as const
 export type BuscadorNuevo = (typeof BUSCADORES_NUEVOS)[number] | 'bar'
 
 export const ACCIONES_BOTON = ['link', 'whatsapp', 'call', 'cart', 'search', 'menu', 'modal', 'category', 'download'] as const
@@ -79,6 +79,7 @@ export interface ItemMenuHeader {
 }
 
 export interface MenuConstruido {
+  source?: 'manual' | 'pages' | 'categories'
   id: string
   name: string
   zone: ZonaHeader
@@ -199,7 +200,7 @@ function texto(valor: unknown, max: number): string | undefined {
 function color(valor: unknown): string | undefined {
   return typeof valor === 'string' && HEX.test(valor.trim()) ? valor.trim() : undefined
 }
-const TOKENS_COLOR = ['primary', 'accent', 'secondary', 'transparent'] as const
+const TOKENS_COLOR = ['primary', 'accent', 'secondary', 'transparent', 'marca:primario', 'marca:secundario', 'marca:acento', 'marca:texto', 'marca:fondo'] as const
 /** Hex o un token del tema. Cualquier otro texto se descarta. */
 function colorOToken(valor: unknown): string | undefined {
   const t = texto(valor, 20)
@@ -404,6 +405,11 @@ export function colorDeToken(
 ): string | undefined {
   if (!token) return undefined
   if (token === 'transparent') return 'transparent'
+  if (token === 'marca:primario') return colores.primary
+  if (token === 'marca:secundario') return colores.secondary
+  if (token === 'marca:acento') return colores.accent
+  if (token === 'marca:texto') return 'var(--text-color, #111827)'
+  if (token === 'marca:fondo') return 'var(--background-color, #ffffff)'
   if (token === 'primary') return colores.primary
   if (token === 'accent') return colores.accent
   if (token === 'secondary') return colores.secondary
@@ -491,6 +497,7 @@ function leerMenu(valor: unknown, i: number): MenuConstruido | null {
   const items = (Array.isArray(o.items) ? o.items : []).map(leerItemMenu).filter((x): x is ItemMenuHeader => !!x).slice(0, 12)
   return {
     id: texto(o.id, 40) ?? `menu-${i}`,
+    source: enLista(['manual', 'pages', 'categories'] as const, o.source) ?? 'manual',
     name,
     zone,
     type: enLista(['links', 'mega', 'mixed'] as const, o.type) ?? 'links',
@@ -512,23 +519,23 @@ function leerMenu(valor: unknown, i: number): MenuConstruido | null {
 function leerBuscador(crudo: unknown, estiloSitio: unknown): CromoBuscador | null {
   const o = objeto(crudo) ?? {}
   const tipoNuevo = enLista(BUSCADORES_NUEVOS, o.type) ?? enLista(BUSCADORES_NUEVOS, estiloSitio)
-  const tipoBarra = (o.type === 'bar' || estiloSitio === 'bar') && (o.placeholder || o.border || o.radius || o.shadow || o.background || o.icon || o.button)
+  const tipoBarra = o.type === 'bar' || (estiloSitio === 'bar' && (o.placeholder || o.border || o.radius || o.shadow || o.background || o.icon || o.button))
   if (!tipoNuevo && !tipoBarra) return null
   return {
     tipo: tipoNuevo ?? 'bar',
     placeholder: texto(o.placeholder, 60),
     width: entero(o.width, 120, 960),
-    border: enLista(['none', 'thin', 'thick'] as const, o.border) ?? 'thin',
-    borderColor: color(o.border_color),
+    border: enLista(['none', 'thin', 'thick'] as const, o.border) ?? (tipoNuevo === 'outlined' ? 'thick' : tipoNuevo === 'underline' ? 'none' : 'thin'),
+    borderColor: colorOToken(o.border_color),
     radius: enLista(FORMAS, o.radius) ?? (tipoNuevo === 'pill_floating' ? 'pill' : 'rounded'),
     shadow: o.shadow === true || tipoNuevo === 'pill_floating',
-    background: color(o.background),
+    background: colorOToken(o.background),
     icon: texto(o.icon, 40),
     iconSide: o.icon_side === 'right' ? 'right' : 'left',
-    iconColor: color(o.icon_color),
-    iconBackground: color(o.icon_background),
+    iconColor: colorOToken(o.icon_color),
+    iconBackground: colorOToken(o.icon_background),
     button: enLista(['none', 'text', 'icon'] as const, o.button) ?? (tipoNuevo === 'mega' ? 'icon' : 'none'),
-    mobile: enLista(['icon', 'bar', 'fullscreen'] as const, o.mobile) ?? 'icon',
+    mobile: enLista(['icon', 'bar', 'fullscreen'] as const, o.mobile) ?? (tipoNuevo === 'icon_overlay' ? 'fullscreen' : 'bar'),
   }
 }
 
@@ -572,4 +579,27 @@ export function leerConstructor(settings: unknown): ConstructorEncabezado | null
 /** El buscador nuevo va en la barra (mini, mega, píldora, barra con cromo). El overlay va en el ícono. */
 export function buscadorEnBarra(tipo: BuscadorNuevo | undefined): boolean {
   return !!tipo && tipo !== 'icon_overlay'
+}
+
+
+export interface EnlaceFuenteMenu { name: string; href: string; children?: readonly EnlaceFuenteMenu[] }
+
+/** Cada instancia elige datos del catálogo, del menú de páginas o sus enlaces manuales. */
+export function resolverFuentesMenus(constructor: ConstructorEncabezado, paginas: readonly EnlaceFuenteMenu[], categorias: readonly EnlaceFuenteMenu[]): ConstructorEncabezado {
+  const mega = [...(constructor.mega ?? [])]
+  const menus = constructor.menus?.map((menu) => {
+    if (!menu.source || menu.source === 'manual') return menu
+    const fuente = menu.source === 'categories' ? categorias : paginas
+    const items: ItemMenuHeader[] = fuente.slice(0, 12).map((item) => {
+      const hijos = item.children ?? []
+      if (hijos.length && !mega.some((m) => m.href === item.href)) {
+        mega.push({ href: item.href, columns: Math.min(4, Math.max(2, hijos.length)), width: 'content', open: 'hover', animation: 'fade', shadow: true, radius: 12, dividers: true,
+          columnas: hijos.slice(0, 6).map((hijo) => ({ title: hijo.name, links: hijo.children?.length ? hijo.children.map((nieto) => ({ label: nieto.name, href: nieto.href })) : [{ label: hijo.name, href: hijo.href }] })),
+        })
+      }
+      return { label: item.name, href: item.href, kind: hijos.length ? (menu.type === 'mega' ? 'mega' : 'dropdown') : 'link' }
+    })
+    return { ...menu, items }
+  }) ?? null
+  return { ...constructor, menus, mega: mega.length ? mega : null }
 }

@@ -70,6 +70,7 @@ import { EditorMovil } from './movil/EditorMovil';
 import { nombreDeSeccion } from './iconosSeccion';
 import { LECTOR_PUBLICO_V2_LISTO, useEditorSitio, type ZonaGlobal } from './useEditorSitio';
 import { useTextosEditor } from './textos';
+import { useAtajosEditor } from './useAtajosEditor';
 import { useTextosPlantillaSede } from '@/components/sitio-web/plantillaSede/textos';
 import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { esTipoSedePlantilla } from '@/lib/website/v2/plantillaSede';
@@ -184,39 +185,7 @@ function Editor() {
     if (hayConflicto) setConflictoAbierto(true);
   }, [hayConflicto]);
 
-  // Atajos del editor (Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y, Ctrl+S, Ctrl+D, Supr, Esc).
-  useEffect(() => {
-    const alPulsar = (e: KeyboardEvent) => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      const escribiendo = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement | null)?.isContentEditable;
-      const k = e.key.toLowerCase();
-      if (ctrl && k === 's') {
-        e.preventDefault();
-        void ed.guardarAhora();
-        return;
-      }
-      if (escribiendo) return;
-      if (ctrl && !e.shiftKey && k === 'z') {
-        e.preventDefault();
-        if (ed.canUndo) ed.deshacer();
-      } else if (ctrl && ((e.shiftKey && k === 'z') || k === 'y')) {
-        e.preventDefault();
-        if (ed.canRedo) ed.rehacer();
-      } else if (ctrl && k === 'd' && ed.activeSectionId) {
-        e.preventDefault();
-        void ed.duplicarSeccion(ed.activeSectionId);
-      } else if (e.key === 'Delete' && ed.activeSectionId) {
-        e.preventDefault();
-        setEliminar(ed.activeSectionId);
-      } else if (e.key === 'Escape' && !hojaMenu) {
-        ed.seleccionarSeccion(null);
-        ed.seleccionarZona(null);
-      }
-    };
-    window.addEventListener('keydown', alPulsar);
-    return () => window.removeEventListener('keydown', alPulsar);
-  }, [ed, hojaMenu]);
+  useAtajosEditor(ed, setEliminar);
 
   // Salir con cambios: el navegador avisa (legacy sin guardar o un guardado V2 en curso).
   const pendiente = ed.hasChanges;
@@ -771,6 +740,7 @@ function Editor() {
               key={seccion.id}
               className="h-full"
               seccion={seccion}
+              tipoPagina={ed.currentPage?.page_type}
               organizationId={ed.organizationId}
               enBorrador={ed.enV2}
               onCambiarContenido={(c) => ed.cambiarContenido(seccion.id, c)}

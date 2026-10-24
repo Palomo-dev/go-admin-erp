@@ -72,6 +72,8 @@ export interface InspectorSeccionProps {
   className?: string;
   /** `product_card_style` del sitio, para mostrarlo cuando la sección no lo reemplaza. */
   estiloTarjetaSitio?: unknown;
+  /** Las opciones relativas a un bloque base solo se ofrecen en una ficha. */
+  tipoPagina?: string;
   /** Copia el estilo de esta tarjeta a las demás secciones de productos de la página. */
   onAplicarTarjeta?: (estilo: EstiloTarjetaProducto) => void;
 }
@@ -95,6 +97,9 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       // declarados porque el sitio público los pinta, pero no se muestran dos veces.
       if (boletin && c.type !== 'newsletter') return false;
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
+      if (c.key === 'detail_position' && !['product_detail', 'category_detail'].includes(p.tipoPagina ?? '')) return false;
+      // La variante nueva ya define su composición; el selector heredado solo aplica a las variantes anteriores.
+      if (s.section_type === 'categories_grid' && c.key === 'category_style' && ['circle', 'card_bottom', 'pill', 'minimal_icon', 'bento'].includes(s.section_variant)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
       if (c.type === 'repeater' && c.key === 'items') {
@@ -310,6 +315,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
 
         {pestana === 'estilo' && (
           <InspectorEstilo
+            organizationId={p.organizationId}
             estilo={estilo}
             visibilidad={visibilidad}
             onCambiarEstilo={p.onCambiarEstilo}

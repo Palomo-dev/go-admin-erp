@@ -4,6 +4,7 @@
 import { validarDocumentoSitio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import { documentoSedeDesdeBase } from '../importadorLegacy';
+import { listarCambios } from '../cambiosPublicacion';
 import {
   ajustesDesdeDocumento,
   aplicarAjustesAlDocumento,
@@ -58,6 +59,20 @@ const legacy = {
 } as unknown as WebsiteSettings;
 
 describe('páginas', () => {
+  test('navegar por todas las páginas no materializa opciones ni deja cambios sin publicar', () => {
+    const doc = documento();
+    doc.paginas[0].secciones[1] = { id: 's2', tipo: 'featured_products', variante: null, version: 1, contenido: {} };
+    doc.paginas[0].seo = { titulo: { mode: 'inherit' }, descripcion: { mode: 'clear' } };
+    let vuelta = doc;
+    for (let i = 0; i < 3; i++) {
+      for (const p of vuelta.paginas) vuelta = aplicarPaginaAlDocumento(vuelta, paginaAVista(p, ctx));
+    }
+    expect(vuelta).toEqual(doc);
+    expect(listarCambios(vuelta, doc)).toEqual([]);
+    expect(vuelta.paginas[0].secciones[1]).not.toHaveProperty('diseno');
+    expect(vuelta.paginas[0].secciones[1]).not.toHaveProperty('visibilidad');
+  });
+
   test('ida y vuelta sin cambios conserva versión, fuente y visibilidad fina', () => {
     const doc = documento();
     const vista = paginaAVista(doc.paginas[0], ctx);

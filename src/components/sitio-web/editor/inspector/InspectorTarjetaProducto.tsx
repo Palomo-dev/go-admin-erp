@@ -4,8 +4,10 @@
  * Inspector «Tarjeta de producto»: preset, botones, etiquetas, texto y contenedor.
  * Lo guardado es `product_card_style`. Elegir «Actual» no cambia el render de hoy.
  */
-import { useState, type ReactNode } from 'react';
-import { TabBar, clasesBoton } from '@/components/kit';
+import { useState } from 'react';
+import { TabBar, Select, FormField, CampoNumero, SettingRow, clasesBoton } from '@/components/kit';
+import { Switch } from '@/components/ui/switch';
+import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import {
   ALINEACIONES,
   ANCHOS_BOTON,
@@ -70,17 +72,6 @@ export interface InspectorTarjetaProductoProps {
   onAplicarTodas?: (estilo: EstiloTarjetaProducto) => void;
 }
 
-function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
-      <span>{etiqueta}</span>
-      {children}
-    </label>
-  );
-}
-
-const claseControl = 'h-8 rounded-md border border-line bg-surface px-2 text-sm text-fg';
-
 function Lista<T extends string>({
   etiqueta,
   valor,
@@ -95,15 +86,9 @@ function Lista<T extends string>({
   onCambiar: (valor: T) => void;
 }) {
   return (
-    <Campo etiqueta={etiqueta}>
-      <select className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
-        {opciones.map((o) => (
-          <option key={o} value={o}>
-            {nombres?.[o] ?? o}
-          </option>
-        ))}
-      </select>
-    </Campo>
+    <FormField etiqueta={etiqueta}>
+      {(c) => <Select tamano="sm" id={c.id} aria-labelledby={c.idEtiqueta} valor={valor ?? ''} opciones={opciones.map((o) => ({ valor: o, etiqueta: nombres?.[o] ?? o }))} onValorChange={(v) => onCambiar(v as T)} />}
+    </FormField>
   );
 }
 
@@ -117,29 +102,18 @@ function Color({
   onCambiar: (valor: string | null) => void;
 }) {
   return (
-    <Campo etiqueta={etiqueta}>
-      <span className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={etiqueta}
-          className="h-8 w-10 cursor-pointer rounded border border-line bg-surface"
-          value={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : '#111827'}
-          onChange={(e) => onCambiar(e.target.value)}
-        />
-        <button type="button" className="text-[12px] text-fg-secondary underline" onClick={() => onCambiar(null)}>
-          Quitar
-        </button>
-      </span>
-    </Campo>
+    <div className="flex flex-col gap-1">
+      <ColorField etiqueta={etiqueta} valor={valor ?? '#111827'} onCambiar={onCambiar} />
+      <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => onCambiar(null)}>Quitar</button>
+    </div>
   );
 }
 
 function Interruptor({ etiqueta, valor, onCambiar }: { etiqueta: string; valor: boolean | undefined; onCambiar: (v: boolean) => void }) {
   return (
-    <label className="flex items-center justify-between gap-2 text-sm text-fg">
-      <span>{etiqueta}</span>
-      <input type="checkbox" checked={valor === true} onChange={(e) => onCambiar(e.target.checked)} />
-    </label>
+    <SettingRow titulo={etiqueta}>
+      <Switch aria-label={etiqueta} checked={valor === true} onCheckedChange={onCambiar} />
+    </SettingRow>
   );
 }
 
@@ -157,16 +131,9 @@ function Rango({
   onCambiar: (n: number) => void;
 }) {
   return (
-    <Campo etiqueta={`${etiqueta}${valor != null ? `: ${valor}` : ''}`}>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={valor ?? min}
-        onChange={(e) => onCambiar(Number(e.target.value))}
-        className="w-full"
-      />
-    </Campo>
+    <FormField etiqueta={etiqueta}>
+      <CampoNumero valor={valor ?? min} minimo={min} maximo={max} onValorChange={(v) => onCambiar(v ?? min)} />
+    </FormField>
   );
 }
 
@@ -279,7 +246,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <Color etiqueta="Color del precio" valor={vista.price_color} onCambiar={(v) => cambiar('price_color', v)} />
           <Interruptor etiqueta="Precio anterior tachado" valor={vista.show_compare_price !== false} onCambiar={(v) => cambiar('show_compare_price', v)} />
           <Interruptor etiqueta="Reseñas" valor={vista.show_reviews === true} onCambiar={(v) => cambiar('show_reviews', v)} />
-          <Lista etiqueta="Posición de reseñas" valor={vista.reviews_position} opciones={POSICIONES_RESENA} nombres={{ above_title: 'Arriba del título', below_title: 'Debajo del título', over_image: 'Sobre la imagen' }} onCambiar={(v) => cambiar('reviews_position', v)} />
+          <Lista etiqueta="Posición de reseñas" valor={vista.reviews_position} opciones={POSICIONES_RESENA} nombres={{ above_title: 'Arriba del título', below_title: 'Debajo del título', below_price: 'Debajo del precio', over_image: 'Sobre la imagen' }} onCambiar={(v) => cambiar('reviews_position', v)} />
           <Lista etiqueta="Estilo de reseñas" valor={vista.reviews_style} opciones={ESTILOS_RESENA} nombres={{ stars: 'Estrellas', number_star: 'Número con estrella' }} onCambiar={(v) => cambiar('reviews_style', v)} />
           <Lista etiqueta="Líneas del título" valor={vista.title_lines ? String(vista.title_lines) as '1' | '2' | '3' : undefined} opciones={['1', '2', '3']} nombres={{ '1': '1 línea', '2': '2 líneas', '3': '3 líneas' }} onCambiar={(v) => cambiar('title_lines', Number(v))} />
           <Lista etiqueta="Peso del título" valor={vista.title_weight} opciones={PESOS_TITULO} nombres={{ normal: 'Normal', medium: 'Medio', semibold: 'Seminegrita', bold: 'Negrita' }} onCambiar={(v) => cambiar('title_weight', v)} />

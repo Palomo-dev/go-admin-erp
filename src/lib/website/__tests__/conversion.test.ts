@@ -106,15 +106,15 @@ describe('conversion', () => {
     }
   })
 
-  test('sin el interruptor, el contador no se escribe en el documento', () => {
+  test('el contador está disponible sin interruptores una vez que el render soporta V2', () => {
     const previo = process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
     delete process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
     try {
       const { documento, noAplicadas } = aplicarAjustesAlDocumento(documentoMinimo(), {
         countdown_enabled: true,
       })
-      expect(documento.conversion).toBeUndefined()
-      expect(noAplicadas).toContain('countdown_enabled')
+      expect(documento.conversion?.contadores[0]?.activo).toBe(true)
+      expect(noAplicadas).not.toContain('countdown_enabled')
     } finally {
       if (previo === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_URGENCIA
       else process.env.NEXT_PUBLIC_WEBSITE_URGENCIA = previo

@@ -1,5 +1,9 @@
-import { EstadoResultadosPage } from '@/components/finanzas/contabilidad/estado-resultados/EstadoResultadosPage';
+import { InformeEstadosPage } from '@/components/finanzas/contabilidad/estados/InformeEstadosPage';
 
 export default function Page() {
-  return <EstadoResultadosPage />;
+  return (
+    <div className="min-h-full bg-canvas p-4 sm:p-6">
+      <InformeEstadosPage informe="resultados-integral" />
+    </div>
+  );
 }

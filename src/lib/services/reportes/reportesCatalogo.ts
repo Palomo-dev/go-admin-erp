@@ -34,6 +34,8 @@ import { pmReports } from './modulos/pmReports';
 import { operacionesReports } from './modulos/operacionesReports';
 import { serialTrackingReports } from './modulos/serialTrackingReports';
 import { comprasFinanzasReports, comprasInventarioReports } from './modulos/comprasReports';
+import { estadosFinancierosReports } from './modulos/estadosFinancierosReports';
+import { IDS_INFORME } from '@/lib/finanzas/estados/tipos';
 import { reportePermitido } from './alcanceSucursal';
 
 // ============================================================
@@ -211,6 +213,7 @@ const META: Record<string, MetaReporte> = {
   'transporte-envios': { grupo: 'transporte', filtros: 'c s f' },
   'transporte-performance': { grupo: 'transporte', filtros: 'c s f' },
   'transporte-rutas': { grupo: 'transporte', filtros: 'c s f' },
+  ...Object.fromEntries(IDS_INFORME.map((id) => [id, { grupo: 'contabilidad' as const, filtros: 's k', nuevo: true }])),
 };
 
 function enriquecer(def: DefinicionModulo): ReportDefinition {
@@ -236,7 +239,7 @@ function enriquecer(def: DefinicionModulo): ReportDefinition {
 const CATALOGO: Record<string, ReportDefinition[]> = Object.fromEntries(
   Object.entries({
     pos: ventasReports,
-    finance: [...finanzasReports, ...contabilidadReports, ...comprasFinanzasReports],
+    finance: [...finanzasReports, ...contabilidadReports, ...comprasFinanzasReports, ...estadosFinancierosReports],
     inventory: [...inventarioReports, ...serialTrackingReports, ...comprasInventarioReports],
     crm: crmReports,
     hrm: hrmReports,

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ReportesContablesService, LedgerAccount } from '../ReportesContablesService';
+import { ReportesContablesService, LedgerAccount, TrialBalanceRow } from '../ReportesContablesService';
 import { ContabilidadService, ChartAccount } from '../ContabilidadService';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
@@ -46,6 +46,9 @@ export function MayorContablePage() {
   const [selectedAccount, setSelectedAccount] = useState('');
   const [accounts, setAccounts] = useState<Pick<ChartAccount, 'account_code' | 'name' | 'type'>[]>([]);
   const [ledger, setLedger] = useState<LedgerAccount | null>(null);
+  const [trial, setTrial] = useState<TrialBalanceRow[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [consulta, setConsulta] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -68,18 +71,42 @@ export function MayorContablePage() {
     void loadAccounts();
   }, [loadAccounts]);
 
-  const loadLedger = async () => {
-    if (!selectedAccount || !startDate || !endDate) return;
-    try {
-      setIsLoading(true);
-      const data = await ReportesContablesService.getLedger(selectedAccount, startDate, endDate);
-      setLedger(data);
-    } catch (error) {
-      console.error('Error cargando mayor:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (tzLoading || !startDate || !endDate) return;
+    let vivo = true;
+    setIsLoading(true);
+    setLoadError(null);
+    const pedir = selectedAccount
+      ? ReportesContablesService.getLedger(selectedAccount, startDate, endDate).then((data) => {
+          if (!vivo) return;
+          setLedger(data);
+          setTrial(null);
+        })
+      : ReportesContablesService.getTrialBalance(startDate, endDate).then((rows) => {
+          if (!vivo) return;
+          setTrial(rows.filter((fila) => [fila.initial_debit, fila.initial_credit, fila.period_debit, fila.period_credit, fila.final_debit, fila.final_credit].some((n) => Math.abs(n) >= 0.01)));
+          setLedger(null);
+        });
+    void pedir
+      .catch((error: unknown) => {
+        console.error('Error cargando mayor:', error);
+        if (vivo) setLoadError(error instanceof Error ? error.message : 'No se pudo cargar el mayor.');
+      })
+      .finally(() => {
+        if (vivo) setIsLoading(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [tzLoading, startDate, endDate, selectedAccount, consulta]);
+
+  const sinCifras = !ledger || (
+    ledger.entries.length === 0 &&
+    Math.abs(ledger.opening_balance) < 0.01 &&
+    Math.abs(ledger.closing_balance) < 0.01 &&
+    Math.abs(ledger.total_debit) < 0.01 &&
+    Math.abs(ledger.total_credit) < 0.01
+  );
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -100,11 +127,12 @@ export function MayorContablePage() {
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="space-y-2 flex-1">
               <Label className="text-gray-700 dark:text-gray-300">Cuenta</Label>
-              <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+              <Select value={selectedAccount || 'todas'} onValueChange={(valor) => setSelectedAccount(valor === 'todas' ? '' : valor)}>
                 <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccionar cuenta" />
+                  <SelectValue placeholder="Todas las cuentas" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
+                  <SelectItem value="todas">Todas las cuentas</SelectItem>
                   {accounts.map(c => (
                     <SelectItem key={c.account_code} value={c.account_code}>
                       {c.account_code} - {c.name}
@@ -121,7 +149,7 @@ export function MayorContablePage() {
               <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
-            <Button onClick={() => loadLedger()} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => setConsulta((n) => n + 1)} className="bg-blue-600 hover:bg-blue-700">
               <Search className="h-4 w-4 mr-2" />
               Consultar
             </Button>
@@ -134,9 +162,9 @@ export function MayorContablePage() {
           <StatsSkeleton count={4} />
           <TableSkeleton columns={4} rows={6} />
         </div>
-      ) : !ledger ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Elige una cuenta y consulta. El mayor no se carga solo.</p>
-      ) : (
+      ) : loadError ? (
+        <p className="text-sm text-red-600">{loadError}</p>
+      ) : ledger ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -176,7 +204,7 @@ export function MayorContablePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {ledger.entries.length === 0 ? (
+              {sinCifras ? (
                 <p className="text-center text-gray-500 py-8">No hay movimientos en este periodo</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -217,6 +245,55 @@ export function MayorContablePage() {
             </CardContent>
           </Card>
         </>
+      ) : trial ? (
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-white">Todas las cuentas</CardTitle>
+            <CardDescription className="dark:text-gray-400">Saldo inicial, débitos, créditos y saldo final. Una fila abre el detalle.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {trial.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No hay saldos ni movimientos en este periodo</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b dark:border-gray-700 text-gray-600 dark:text-gray-400">
+                      <th className="text-left py-2 px-3 font-medium">Cuenta</th>
+                      <th className="text-left py-2 px-3 font-medium">Nombre</th>
+                      <th className="text-right py-2 px-3 font-medium">Débito inicial</th>
+                      <th className="text-right py-2 px-3 font-medium">Crédito inicial</th>
+                      <th className="text-right py-2 px-3 font-medium">Débitos</th>
+                      <th className="text-right py-2 px-3 font-medium">Créditos</th>
+                      <th className="text-right py-2 px-3 font-medium">Débito final</th>
+                      <th className="text-right py-2 px-3 font-medium">Crédito final</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trial.map((fila) => (
+                      <tr
+                        key={fila.account_code}
+                        className="border-b dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer"
+                        onClick={() => setSelectedAccount(fila.account_code)}
+                      >
+                        <td className="py-2 px-3 font-mono text-gray-600 dark:text-gray-400">{fila.account_code}</td>
+                        <td className="py-2 px-3 text-gray-900 dark:text-white">{fila.name}</td>
+                        <td className="py-2 px-3 text-right font-mono">{formatCifra(fila.initial_debit)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{formatCifra(fila.initial_credit)}</td>
+                        <td className="py-2 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(fila.period_debit)}</td>
+                        <td className="py-2 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(fila.period_credit)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{formatCifra(fila.final_debit)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{formatCifra(fila.final_credit)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <p className="text-sm text-gray-500 dark:text-gray-400">Preparando el mayor…</p>
       )}
     </div>
   );

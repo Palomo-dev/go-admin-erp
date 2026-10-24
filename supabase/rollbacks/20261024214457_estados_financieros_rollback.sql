@@ -1,0 +1,1 @@
+-- 20261024214457_estados_financieros no creó objetos. No hay nada que deshacer.

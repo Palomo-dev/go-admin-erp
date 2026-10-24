@@ -28,6 +28,8 @@ import { abrirDocumento, descargarDocumento, imprimirDocumento } from '@/lib/doc
 import { rangoDeMeses } from '@/lib/documents/certificadoRetenciones';
 import { resumenCertificadoRetenciones, type ResumenCertificadoRetenciones } from '@/lib/services/compras/retenciones';
 import { ErrorPeticionCompra, clienteCompras } from '@/lib/services/compras/clienteCompras';
+import type { FiltrosContablesCertificado } from '@/lib/services/compras/contrato';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 
 export interface CertificadoRetencionesDialogProps {
   abierto: boolean;
@@ -38,6 +40,10 @@ export interface CertificadoRetencionesDialogProps {
   rangoInicial?: RangoFechas;
   /** Sucursal del documento de origen: tarjeta «Sucursal» y ciudad de la retención del certificado. */
   sucursalId?: number | null;
+  /** Acceso desde informes: alcance explícito, sin cambiar los llamadores anteriores. */
+  filtrosContables?: FiltrosContablesCertificado;
+  rangoFijo?: RangoFechas;
+  organizacionEsperada?: number;
 }
 
 interface Expedido {
@@ -59,6 +65,9 @@ export function CertificadoRetencionesDialog({
   proveedorNombre,
   rangoInicial,
   sucursalId = null,
+  filtrosContables,
+  rangoFijo,
+  organizacionEsperada,
 }: CertificadoRetencionesDialogProps) {
   const t = useTranslations('cuentasPorPagar.certificado');
   const { formatear } = useMonedaOrganizacion();
@@ -80,7 +89,7 @@ export function CertificadoRetencionesDialog({
   const [descargando, setDescargando] = useState(false);
   const [expedido, setExpedido] = useState<Expedido | null>(null);
 
-  const rango = useMemo(() => rangoDeMeses(meses.desde, meses.hasta, hoy), [meses.desde, meses.hasta, hoy]);
+  const rango = useMemo(() => rangoFijo ?? rangoDeMeses(meses.desde, meses.hasta, hoy), [rangoFijo, meses.desde, meses.hasta, hoy]);
 
   useEffect(() => {
     if (abierto) {
@@ -99,7 +108,7 @@ export function CertificadoRetencionesDialog({
     setCargando(true);
     setError(false);
     try {
-      setResumen(await resumenCertificadoRetenciones(getOrganizationId(), proveedorId, rango.desde, rango.hasta));
+      setResumen(await resumenCertificadoRetenciones(organizacionEsperada ?? getOrganizationId(), proveedorId, rango.desde, rango.hasta, filtrosContables));
     } catch (e) {
       console.error('Error leyendo las retenciones del proveedor:', e);
       setResumen(null);
@@ -107,7 +116,7 @@ export function CertificadoRetencionesDialog({
     } finally {
       setCargando(false);
     }
-  }, [proveedorId, rango]);
+  }, [proveedorId, rango, filtrosContables, organizacionEsperada]);
 
   useEffect(() => {
     if (abierto) void cargar();
@@ -115,9 +124,10 @@ export function CertificadoRetencionesDialog({
 
   const expedir = async () => {
     if (!rango) return;
+    if (organizacionEsperada !== undefined && getOrganizationId() !== organizacionEsperada) return;
     setExpidiendo(true);
     try {
-      setExpedido(await clienteCompras.expedirCertificadoRetenciones(proveedorId, { desde: rango.desde, hasta: rango.hasta, sucursalId }));
+      setExpedido(await clienteCompras.expedirCertificadoRetenciones(proveedorId, { desde: rango.desde, hasta: rango.hasta, sucursalId, ...(filtrosContables ? { filtrosContables } : {}) }));
     } catch (e) {
       console.error('Error expidiendo el certificado de retenciones:', e);
       toastError(e instanceof ErrorPeticionCompra && e.estado === 403 ? t('errorPermiso') : t('errorExpedir'));
@@ -138,13 +148,13 @@ export function CertificadoRetencionesDialog({
     }
   };
 
-  const bloqueado = !rango || cargando || error;
+  const bloqueado = !rango || cargando || error || resumen?.incompleto === true;
   const vistaPrevia = () =>
     rango &&
     abrirDocumento('certificado-retenciones', proveedorId, {
       desde: rango.desde,
       hasta: rango.hasta,
-      parametros: sucursalId ? { sucursal: String(sucursalId) } : undefined,
+      parametros: filtrosContables ? { contabilizados: '1', ...(sucursalId ? { sucursal: String(sucursalId) } : {}), ...(filtrosContables.cost_center_id ? { centro_costo: filtrosContables.cost_center_id } : {}) } : sucursalId ? { sucursal: String(sucursalId) } : undefined,
     });
 
   return (
@@ -169,7 +179,8 @@ export function CertificadoRetencionesDialog({
       }
       textoCancelar={t('cerrar')}
     >
-      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {resumen?.avisos?.map((aviso, indice) => <AvisoTonal key={indice} titulo="Revisión del borrador" tono="advertencia" descripcion={aviso} />)}
+      {rangoFijo ? <p className="text-sm text-fg">{rangoFijo.desde} — {rangoFijo.hasta}</p> : <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <legend className="mb-2 text-sm font-medium text-fg">{t('periodo')}</legend>
         <FormField etiqueta={t('desdeMes')}>
           <Input
@@ -188,7 +199,7 @@ export function CertificadoRetencionesDialog({
             onChange={(e) => setMeses((m) => ({ ...m, hasta: e.target.value }))}
           />
         </FormField>
-      </fieldset>
+      </fieldset>}
       {!rango ? (
         <p role="alert" className="text-sm text-danger-text">{t('periodoInvalido')}</p>
       ) : cargando ? (

@@ -1,5 +1,5 @@
-import { MayorContablePage } from '@/components/finanzas/contabilidad/mayor-contable/MayorContablePage';
+import { InformeContablePage } from '@/components/finanzas/contabilidad/informes/InformeContablePage';
 
 export default function Page() {
-  return <MayorContablePage />;
+  return <InformeContablePage informe="mayor-consolidado" />;
 }

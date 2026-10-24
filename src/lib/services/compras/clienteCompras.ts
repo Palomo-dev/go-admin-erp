@@ -17,6 +17,7 @@ import type {
   ResultadoGuardar,
   ResultadoRecepcion,
   LotesRecepcionFactura,
+  FiltrosContablesCertificado,
 } from './contrato';
 
 export class ErrorPeticionCompra extends Error {
@@ -102,7 +103,7 @@ export const clienteCompras = {
     return resultado(pedir<{ resultado: EstadoCuentaProveedor }>(`/api/proveedores/${proveedorId}/estado-cuenta${s ? `?${s}` : ''}`));
   },
   /** Expide (o devuelve, si ya existe idéntico) el certificado de retenciones del periodo: serie CR de la organización. */
-  expedirCertificadoRetenciones: (proveedorId: number, datos: { desde: string; hasta: string; sucursalId: number | null }) =>
+  expedirCertificadoRetenciones: (proveedorId: number, datos: { desde: string; hasta: string; sucursalId: number | null; filtrosContables?: FiltrosContablesCertificado }) =>
     pedir<{ certificado: { id: string; numero: string; reexpedido: boolean } }>(`/api/proveedores/${proveedorId}/certificado-retenciones`, {
       method: 'POST',
       body: datos,

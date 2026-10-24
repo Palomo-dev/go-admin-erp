@@ -88,6 +88,8 @@ export interface ResumenCertificadoRetenciones {
   reteiva: number;
   reteica: number;
   retenido: number;
+  incompleto?: boolean;
+  avisos?: string[];
 }
 
 type Crudo = Record<string, unknown>;
@@ -159,6 +161,8 @@ export function aResumenCertificado(data: unknown): ResumenCertificadoRetencione
     reteiva: num(totales.reteiva),
     reteica: num(totales.reteica),
     retenido: num(totales.retenido),
+    ...(d.incompleto === true ? { incompleto: true } : {}),
+    ...(Array.isArray(d.avisos) && d.avisos.length ? { avisos: d.avisos.filter((aviso): aviso is string => typeof aviso === 'string') } : {}),
   };
 }
 
@@ -259,12 +263,14 @@ export async function resumenCertificadoRetenciones(
   proveedorId: number,
   desde: string,
   hasta: string,
+  filtrosContables?: import('./contrato').FiltrosContablesCertificado,
 ): Promise<ResumenCertificadoRetenciones> {
   const { data, error } = await supabase.rpc('fn_certificado_retenciones_proveedor', {
     p_organization_id: org,
     p_supplier_id: proveedorId,
     p_desde: desde,
     p_hasta: hasta,
+    ...(filtrosContables ? { p_filtros: filtrosContables } : {}),
   });
   if (error) throw error;
   return aResumenCertificado(data);

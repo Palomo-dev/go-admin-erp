@@ -50,7 +50,7 @@ export const maxDuration = 60;
 
 const RUTA = 'GET /api/documentos/[tipo]/[id]';
 /** Filtros del documento `reporte`; el cargador los valida. */
-const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar'] as const;
+const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar', 'contabilizados', 'centro_costo'] as const;
 
 function json(status: number, cuerpo: Record<string, unknown>): Response {
   return new Response(JSON.stringify(cuerpo), {

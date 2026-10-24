@@ -10,6 +10,7 @@
  *   configurable por organización.
  */
 import { contextoMoneda } from '@/lib/utils/moneda';
+import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { fakeSupabase } from './fakeSupabase';
 
@@ -54,9 +55,12 @@ const CERTIFICADO = {
   totales: { retenido: 16.64, retefuente: 12, reteiva: 0, reteica: 4.64 },
 };
 let respuestaCertificado: unknown = CERTIFICADO;
+let accesoCertificado = true;
+const llamadasAccesoCertificado: Array<Record<string, unknown>> = [];
 const CR1 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const CR_ANULADO = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const CR_AJENO = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const CR_CONTABLE = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 /** Foto de un certificado expedido (datos sintéticos del diseño): enero a septiembre, 9 facturas. */
 const CONCEPTOS_EXPEDIDOS = [
   { clase: 'reteica', concepto: 'ReteICA Medellín', cuenta: '2368', tarifa: 0.7, base: 18400000, valor: 128800 },
@@ -67,6 +71,7 @@ const CERTIFICADOS_EXPEDIDOS = [
   { id: CR1, organization_id: ORG, branch_id: 2, supplier_id: 5, number: 'CR-2026-0012', period_from: '2026-01-01', period_to: '2026-09-30', invoice_count: 9, concepts: CONCEPTOS_EXPEDIDOS, status: 'issued', issued_at: '2026-09-30T23:05:00Z' },
   { id: CR_ANULADO, organization_id: ORG, branch_id: null, supplier_id: 5, number: 'CR-2026-0013', period_from: '2026-09-01', period_to: '2026-09-15', invoice_count: 1, concepts: [], status: 'void', issued_at: '2026-09-16T15:00:00Z' },
   { id: CR_AJENO, organization_id: AJENA, branch_id: 3, supplier_id: 6, number: 'CR-2026-0001', period_from: '2026-01-01', period_to: '2026-09-30', invoice_count: 1, concepts: CONCEPTOS_EXPEDIDOS, status: 'issued', issued_at: '2026-09-30T23:05:00Z' },
+  { id: CR_CONTABLE, organization_id: ORG, branch_id: 2, supplier_id: 5, number: 'CR-2026-0014', period_from: '2026-01-01', period_to: '2026-09-30', invoice_count: 9, concepts: CONCEPTOS_EXPEDIDOS, status: 'issued', issued_at: '2026-09-30T23:05:00Z', totals: { _filtros_contables: { contabilizados: true, branch_id: 2, moneda_base: 'COP' } } },
 ];
 
 const cliente = { full_name: `Cliente ${XSS}`, doc_type: 'CC', doc_number: '1234', dv: null, fiscal_responsibilities: [] };
@@ -75,6 +80,7 @@ const item = { description: 'Servicio', qty: 1, unit_price: 100, discount_amount
 function datos() {
   return {
     organizations: [{ id: ORG, name: 'Mi empresa', legal_name: 'Mi empresa S.A.S.', nit: '900123456', dv: 7, timezone: 'America/Bogota', logo_url: null, primary_color: '#1d4ed8', fiscal_responsibilities: ['O-13'] }],
+    cost_centers: [{ id: '00000000-0000-4000-8000-000000000001', organization_id: ORG, code: 'C1', name: 'Centro de prueba', branch_id: 2 }],
     branches: [
       { id: 1, organization_id: ORG, name: 'Sucursal Norte', timezone: null },
       { id: 2, organization_id: ORG, name: 'Sucursal Centro', address: 'Calle 45 # 12-30', city: 'Medellín', phone: '(604) 444 55 67', timezone: null },
@@ -122,6 +128,7 @@ function sesion(tablas = datos(), userId = 'usuario-1') {
         { fecha: '2026-09-25T15:00:00Z', dia: '2026-09-25', tipo: 'pago', documento: null, vence: null, cargo: 0, abono: 500, saldo: -12 },
       ] };
     },
+    fn_certificado_retenciones_acceso: (args) => { llamadasAccesoCertificado.push(args); return accesoCertificado; },
     fn_certificado_retenciones_proveedor: (args) => {
       llamadasCertificado.push(args);
       return respuestaCertificado;
@@ -315,6 +322,8 @@ describe('certificado de retenciones', () => {
   beforeEach(() => {
     llamadasCertificado.length = 0;
     respuestaCertificado = CERTIFICADO;
+    accesoCertificado = true;
+    llamadasAccesoCertificado.length = 0;
   });
 
   it('expedido: número de la serie CR, «Expedido», sucursal, periodo en meses y la foto guardada (sin recalcular)', async () => {
@@ -394,6 +403,31 @@ describe('certificado de retenciones', () => {
     expect(html).toContain('1 factura de compra');
   });
 
+  it('el UUID expedido verifica alcance antes de entregar datos y conserva moneda de la foto', async () => {
+    permisos.add('reports.finance');
+    const { payload } = await pedir(sesion(), 'certificado-retenciones', CR_CONTABLE);
+    expect(llamadasAccesoCertificado).toEqual([{ p_organization_id: ORG, p_filtros: { contabilizados: true, branch_id: 2, moneda_base: 'COP' } }]);
+    expect(resolverContextoMoneda).toHaveBeenLastCalledWith(expect.anything(), ORG, 'COP');
+    expect(payload.moneda.code).toBe('COP');
+    accesoCertificado = false;
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', CR_CONTABLE))).toBe('403 PERMISSION_REQUIRED');
+  });
+
+  it('un certificado antiguo con sucursal decorativa requiere el alcance consolidado', async () => {
+    permisos.add('finance.view');
+    await pedir(sesion(), 'certificado-retenciones', CR1);
+    expect(llamadasAccesoCertificado).toEqual([{ p_organization_id: ORG, p_filtros: {} }]);
+  });
+
+  it('la vista previa conserva advertencias de manuales incompletos en HTML y payload', async () => {
+    permisos.add('finance.view');
+    const aviso = 'Borrador parcial: hay retenciones manuales sin base histórica.';
+    respuestaCertificado = { ...CERTIFICADO, avisos: [aviso], incompleto: true };
+    const { payload, html } = await pedir(sesion(), 'certificado-retenciones', '5', { parametros: { contabilizados: '1' } });
+    expect(payload.notas).toContain(aviso);
+    expect(html).toContain(aviso);
+  });
+
   it('vista previa: la sucursal de ?sucursal= solo si es de la organización', async () => {
     permisos.add('finance.view');
     const propia = await pedir(sesion(), 'certificado-retenciones', '5', { parametros: { sucursal: '2' } });
@@ -412,6 +446,25 @@ describe('certificado de retenciones', () => {
       ['2026-01-01', '2026-09-27'],
       ['2025-01-01', '2025-12-31'],
     ]);
+  });
+
+  it('el acceso contable transmite filtros a la misma RPC y permite el permiso de reportes', async () => {
+    permisos.add('reports.finance');
+    const { payload } = await pedir(sesion(), 'certificado-retenciones', '5', { desde: '2026-09-01', hasta: '2026-09-15', parametros: { contabilizados: '1', sucursal: '2', centro_costo: '00000000-0000-4000-8000-000000000001' } });
+    expect(payload.notas).toContain('Centro de costo: C1 · Centro de prueba');
+    expect(llamadasCertificado).toEqual([{ p_organization_id: ORG, p_supplier_id: 5, p_desde: '2026-09-01', p_hasta: '2026-09-15', p_filtros: { contabilizados: true, branch_id: 2, cost_center_id: '00000000-0000-4000-8000-000000000001' } }]);
+  });
+
+  it('no degrada una sucursal inválida del acceso contable a un certificado consolidado', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', '5', { parametros: { contabilizados: '1', sucursal: 'abc' } }))).toBe('400 FILTROS_INVALIDOS');
+    expect(llamadasCertificado).toEqual([]);
+  });
+
+  it('un centro inválido del acceso contable no llega a la RPC ni degrada a un certificado sin filtro', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', '5', { parametros: { contabilizados: '1', centro_costo: 'invalido' } }))).toBe('400 FILTROS_INVALIDOS');
+    expect(llamadasCertificado).toEqual([]);
   });
 
   it('sin retenciones en el periodo: la tabla dice que no hubo y no hay fila de total', async () => {

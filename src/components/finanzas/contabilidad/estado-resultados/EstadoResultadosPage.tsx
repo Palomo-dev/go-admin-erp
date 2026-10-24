@@ -12,6 +12,7 @@ import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { EmptyState } from '@/components/kit';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
@@ -108,12 +109,13 @@ export function EstadoResultadosPage() {
           <TrendingUp className="h-6 w-6 text-green-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Estado de Resultados</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Estado de resultados integral</h1>
           <p className="text-gray-500 dark:text-gray-400">Ingresos y gastos del periodo</p>
         </div>
       </div>
 
       <BranchBadge className="mb-3" />
+      <AvisoTonal titulo="Comparativo y otro resultado integral" descripcion="Consulta el mismo periodo del año anterior, con variación en pesos y porcentaje. La presentación se ajusta al grupo NIIF de la organización." accion={{ etiqueta: 'Ver comparativo', href: `/app/finanzas/contabilidad/informes/resultados-integral?desde=${startDate}&hasta=${endDate}` }} />
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">

@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": []
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.d.ts",
+    "src/lib/finanzas/informes/**/*.ts",
+    "src/lib/services/finanzas/configuracionInformes.server.ts",
+    "src/lib/services/finanzas/informesFuente.server.ts",
+    "src/lib/services/finanzas/informesStock.server.ts",
+    "src/lib/services/finanzas/tributariosFuente.server.ts",
+    "src/lib/services/finanzas/__tests__/informesFuente.test.ts",
+    "src/app/api/finanzas/informes/**/*.ts",
+    "src/components/finanzas/contabilidad/informes/**/*.ts",
+    "src/components/finanzas/contabilidad/informes/**/*.tsx"
+  ]
+}

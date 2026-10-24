@@ -14,6 +14,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
 import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 
 // Cifra contable en la moneda base de la organizacion (los reportes contables
 // se llevan en moneda base): sin simbolo, con los decimales y el formato de esa
@@ -109,12 +110,13 @@ export function BalanceGeneralPage() {
           <Scale className="h-6 w-6 text-purple-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Balance General</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Estado de situación financiera</h1>
           <p className="text-gray-500 dark:text-gray-400">Estado de situacion financiera</p>
         </div>
       </div>
 
       <BranchBadge className="mb-3" />
+      <AvisoTonal titulo="Comparativo con el año anterior" descripcion="Consulta el mismo corte del año anterior, con variación en pesos y porcentaje." accion={{ etiqueta: 'Ver comparativo', href: `/app/finanzas/contabilidad/informes/situacion-financiera?desde=${asOfDate.slice(0, 4)}-01-01&hasta=${asOfDate}` }} />
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">

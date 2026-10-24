@@ -23,6 +23,8 @@
 
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { toPlainDate } from '@/lib/utils/dateCore';
+import { filtrosContablesCertificadoSchema, type FiltrosContablesCertificado } from '@/lib/services/compras/contrato';
+import { OrgContextError } from '@/lib/utils/orgContextError';
 import {
   capitalizar,
   claveConstancia,
@@ -56,6 +58,8 @@ const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 interface RespuestaCertificado {
   conceptos?: ConceptoRetenido[] | null;
   facturas?: unknown[] | null;
+  avisos?: string[];
+  totales?: { _filtros_contables?: { moneda_base?: string } };
 }
 
 interface FilaCertificado {
@@ -70,6 +74,7 @@ interface FilaCertificado {
   concepts: ConceptoRetenido[] | null;
   status: string;
   issued_at: string;
+  totals?: { _filtros_contables?: { moneda_base?: string; contabilizados?: boolean; branch_id?: number; cost_center_id?: string } };
 }
 
 /** Periodo de la vista previa: `hasta` ≤ hoy; `desde` ≤ `hasta`, o el 1 de enero del año de `hasta`. */
@@ -111,18 +116,25 @@ interface DatosCertificado {
   conceptos: ConceptoRetenido[];
   /** Expedido: instante de expedición. Vista previa: null (se expide hoy). */
   expedidoEn: string | null;
+  avisos?: string[];
+  monedaCodigo?: string;
+  centroCostoId?: string;
+  soloContabilizados?: boolean;
 }
 
 async function datosExpedido(sesion: SesionDocumento, id: string): Promise<DatosCertificado> {
   const { data, error } = await sesion.supabase
     .from('withholding_certificates')
-    .select('id, organization_id, branch_id, supplier_id, number, period_from, period_to, invoice_count, concepts, status, issued_at')
+    .select('id, organization_id, branch_id, supplier_id, number, period_from, period_to, invoice_count, concepts, status, issued_at, totals')
     .eq('id', id)
     .eq('organization_id', sesion.organizationId)
     .maybeSingle();
   if (error) fallaLectura('withholding_certificates', error);
   const c = data as FilaCertificado | null;
   if (!c || c.organization_id !== sesion.organizationId) throw noEncontrado();
+  const alcance = c.totals?._filtros_contables ?? {};
+  const permiso = await sesion.supabase.rpc('fn_certificado_retenciones_acceso', { p_organization_id: sesion.organizationId, p_filtros: alcance });
+  if (permiso.error || permiso.data !== true) throw new OrgContextError('El certificado está fuera del alcance autorizado.', 403, 'PERMISSION_REQUIRED');
   const anulado = c.status === 'void';
   return {
     numero: c.number,
@@ -135,15 +147,19 @@ async function datosExpedido(sesion: SesionDocumento, id: string): Promise<Datos
     facturas: num(c.invoice_count),
     conceptos: Array.isArray(c.concepts) ? c.concepts : [],
     expedidoEn: c.issued_at,
+    ...(alcance.moneda_base ? { monedaCodigo: alcance.moneda_base } : {}),
+    ...(alcance.cost_center_id ? { centroCostoId: alcance.cost_center_id } : {}),
+    soloContabilizados: alcance.contabilizados === true,
   };
 }
 
-async function datosVistaPrevia(sesion: SesionDocumento, proveedorId: number, desde: string, hasta: string): Promise<DatosCertificado> {
+async function datosVistaPrevia(sesion: SesionDocumento, proveedorId: number, desde: string, hasta: string, filtrosContables?: FiltrosContablesCertificado): Promise<DatosCertificado> {
   const { data, error } = await sesion.supabase.rpc('fn_certificado_retenciones_proveedor', {
     p_organization_id: sesion.organizationId,
     p_supplier_id: proveedorId,
     p_desde: desde,
     p_hasta: hasta,
+    ...(filtrosContables ? { p_filtros: filtrosContables } : {}),
   });
   if (error) {
     if ((error as { code?: string }).code === 'P0002') throw noEncontrado();
@@ -160,6 +176,10 @@ async function datosVistaPrevia(sesion: SesionDocumento, proveedorId: number, de
     facturas: Array.isArray(r.facturas) ? r.facturas.length : 0,
     conceptos: r.conceptos ?? [],
     expedidoEn: null,
+    avisos: r.avisos ?? [],
+    ...(r.totales?._filtros_contables?.moneda_base ? { monedaCodigo: r.totales._filtros_contables.moneda_base } : {}),
+    ...(filtrosContables?.cost_center_id ? { centroCostoId: filtrosContables.cost_center_id } : {}),
+    soloContabilizados: filtrosContables?.contabilizados === true,
   };
 }
 
@@ -182,11 +202,18 @@ export async function cargarCertificadoRetenciones(
     proveedor = await leerProveedor(sesion, proveedorId);
     base = await cargarBase(sesion, sucursalDeParametros(opciones));
     const { desde, hasta } = periodoCertificado(opciones, toPlainDate(ahora, base.zonaHoraria));
-    datos = await datosVistaPrevia(sesion, proveedorId, desde, hasta);
+    let filtrosContables: FiltrosContablesCertificado | undefined;
+    if (opciones.parametros?.contabilizados === '1') {
+      const sucursal = opciones.parametros.sucursal;
+      const filtros = filtrosContablesCertificadoSchema.safeParse({ contabilizados: true, branch_id: sucursal ? (/^[1-9]\d*$/.test(sucursal) ? Number(sucursal) : NaN) : null, cost_center_id: opciones.parametros.centro_costo || null });
+      if (!filtros.success) throw new OrgContextError('Filtros contables inválidos', 400, 'FILTROS_INVALIDOS');
+      filtrosContables = filtros.data;
+    }
+    datos = await datosVistaPrevia(sesion, proveedorId, desde, hasta, filtrosContables);
   }
 
   // Las retenciones se practican y declaran en la moneda base de la organización.
-  const moneda = await resolverContextoMoneda(sesion.supabase, sesion.organizationId, null);
+  const moneda = await resolverContextoMoneda(sesion.supabase, sesion.organizationId, datos.monedaCodigo ?? null);
   const f = crearFormateador({ moneda, zonaHoraria: base.zonaHoraria, idioma: opciones.idioma });
   const diaExpedicion = toPlainDate(datos.expedidoEn ? new Date(datos.expedidoEn) : ahora, base.zonaHoraria);
   const desde = datos.desde ?? diaExpedicion;
@@ -216,6 +243,17 @@ export async function cargarCertificadoRetenciones(
   );
 
   const emisor = base.emisor.nombre || base.emisor.razonSocial || '';
+  let notaAlcance: string | undefined;
+  if (datos.soloContabilizados) {
+    let centro = 'Todos los centros de costo';
+    if (datos.centroCostoId) {
+      const lectura = await sesion.supabase.from('cost_centers').select('name,code').eq('organization_id', sesion.organizationId).eq('id', datos.centroCostoId).maybeSingle();
+      if (lectura.error) fallaLectura('cost_centers', lectura.error);
+      if (!lectura.data) throw noEncontrado();
+      centro = `Centro de costo: ${lectura.data.code} · ${lectura.data.name}`;
+    }
+    notaAlcance = `Alcance contable: ${base.sucursal?.nombre ?? 'Todas las sucursales autorizadas'}. ${centro}. Solo asientos contabilizados al corte, sin borradores ni anulados.`;
+  }
 
   return {
     tipo: 'certificado-retenciones',
@@ -251,10 +289,10 @@ export async function cargarCertificadoRetenciones(
     ],
     // El total va en la fila «Total retenido» de la tabla (diseño): sin bloque de totales aparte.
     totales: [],
-    notas: t(claveConstancia(resumen.clases), {
+    notas: [t(claveConstancia(resumen.clases), {
       emisor,
       municipio: ciudad ? t('certificado.municipioDe', { ciudad }) : t('certificado.municipioSinCiudad'),
-    }),
+    }), ...(notaAlcance ? [notaAlcance] : []), ...(datos.avisos ?? [])].join('\n\n'),
     terminos: null,
     firma: 'retenedorContador',
     pieLegal: { textos: textoLegal(base, 'certificado-retenciones', t), resolucion: null, codigoUnico: null, qr: null },

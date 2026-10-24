@@ -463,7 +463,7 @@ export const finanzasReports: DefinicionModulo[] = [
   {
     id: 'flujo-efectivo',
     modulo: 'finance',
-    titulo: 'Flujo de efectivo',
+    titulo: 'Flujo de efectivo directo',
     descripcion: 'Flujo operativo, de inversión y de financiación del periodo',
     categoria: 'financiero',
     alcance: 'sucursal',
@@ -482,7 +482,7 @@ export const finanzasReports: DefinicionModulo[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'flujo-efectivo', 'Flujo de efectivo', 'finance', periodo,
+        'flujo-efectivo', 'Flujo de efectivo directo', 'finance', periodo,
         [
           { titulo: 'Flujo Operativo', valor: d.operativo ?? 0, formato: 'moneda' },
           { titulo: 'Flujo Neto', valor: d.neto ?? 0, formato: 'moneda' },

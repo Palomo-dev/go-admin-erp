@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   reportesFinancierosService,
@@ -82,6 +82,7 @@ function getDateRange(option: RangeOption): DateRange {
 }
 
 export function ReportesPage() {
+  const { formatDate } = useFormatDate();
   const { branchFilter } = useBranch();
   // Informes agregados: en la moneda base de la organización.
   const { formatear } = useMonedaOrganizacion();
@@ -224,12 +225,12 @@ export function ReportesPage() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <Wallet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <Button variant="ghost" size="icon" onClick={() => handleExport('Flujo de Caja')}>
+              <Button variant="ghost" size="icon" onClick={() => handleExport('Flujo de efectivo directo')}>
                 <Download className="h-4 w-4" />
               </Button>
             </div>
             <CardTitle className="text-lg text-gray-900 dark:text-white">
-              Flujo de Caja
+              Flujo de efectivo directo
             </CardTitle>
             <CardDescription className="text-gray-500 dark:text-gray-400">
               Movimiento de efectivo

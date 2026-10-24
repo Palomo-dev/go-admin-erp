@@ -8,6 +8,7 @@ import { ListaGrupo } from './ListaGrupo';
 import { rutaCentro } from './rutasReportes';
 import { useContextoReportes } from './useContextoReportes';
 import { useFiltrosReportes } from './useFiltrosReportes';
+import { AccesosInformes } from '@/components/finanzas/contabilidad/informes/AccesosInformes';
 
 /** Lista de un grupo, o de los módulos que no están en el plan (`adicionales`). */
 export function PaginaGrupo() {
@@ -27,6 +28,7 @@ export function PaginaGrupo() {
       subtitulo={adicionales ? t('lista.subtituloAdicionales') : undefined}
       migas={[{ etiqueta: adicionales ? t('lista.adicionales') : nombre, href: adicionales ? undefined : rutaCentro(queryFiltros()) }]}
     >
+      {grupo === 'contabilidad' && ctx.grupos.some((g) => g.grupo.id === 'contabilidad' && g.reportes.length > 0) && <AccesosInformes desdeReportes />}
       {conocido ? <ListaGrupo grupoId={grupo} ctx={ctx} query={queryFiltros()} /> : null}
     </CentroReportes>
   );

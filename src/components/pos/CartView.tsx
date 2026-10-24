@@ -36,8 +36,8 @@ import type { DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
 import { estadoBotonCobrar, puedeConfirmarDeuda, puedeRegistrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
 import { guardarPreferenciaImpuestos, leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
-import { CANAL_PROMOCIONES } from '@/lib/pos/venta/avisosPromociones';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
+import { useRecalcularAlCambiarPromociones } from '@/lib/pos/venta/recalculoPromociones';
 // `CartProduct` y `requiresPreparation` se movieron literales a lineaCarrito.ts (paso 6): las usa también la línea.
 import { requiresPreparation, type CartProduct } from '@/lib/pos/venta/lineaCarrito';
 import { LineasCarrito } from '@/components/pos/venta/carrito/LineasCarrito';
@@ -178,47 +178,16 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     setCodigoCupon(cart.coupon?.code ?? '');
   }, [cart.id, cart.coupon?.code]);
 
-  // Promociones: al volver al POS o cuando se crea, edita o activa una,
-  // el carrito abierto se vuelve a calcular sin tocar las líneas.
-  useEffect(() => {
-    if (cart.items.length === 0) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let vivo = true;
-    const correr = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        POSService.recalculateCart(cart.id)
-          .then((actualizado) => { if (vivo) onCartUpdate(actualizado); })
-          .catch((err) => console.error('Error recalculando promociones:', err));
-      }, 400);
-    };
-    const alVolver = () => {
-      if (document.visibilityState === 'visible') correr();
-    };
-    window.addEventListener('focus', correr);
-    document.addEventListener('visibilitychange', alVolver);
-    let bc: BroadcastChannel | undefined;
-    try {
-      bc = new BroadcastChannel(CANAL_PROMOCIONES);
-      bc.onmessage = () => correr();
-    } catch {
-      bc = undefined;
-    }
-    const canal = supabase
-      .channel(`pos-promos-${cart.organization_id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions', filter: `organization_id=eq.${cart.organization_id}` }, correr)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotion_rules' }, correr)
-      .subscribe();
-    return () => {
-      vivo = false;
-      if (timer) clearTimeout(timer);
-      window.removeEventListener('focus', correr);
-      document.removeEventListener('visibilitychange', alVolver);
-      bc?.close();
-      supabase.removeChannel(canal);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart.id, cart.items.length === 0]);
+  // Promociones: al abrir el carrito, al volver, al editarlas en otra pestaña
+  // o en otro equipo, y cada minuto si realtime se cae. No agrega ítems.
+  useRecalcularAlCambiarPromociones({
+    organizationId: cart.organization_id,
+    cuentaId: cart.id,
+    hayLineas: cart.items.length > 0,
+    recalcular: async (id) => {
+      onCartUpdate(await POSService.recalculateCart(id));
+    },
+  });
 
   // Sincronizar el flag con el carrito (memoria + storage) para que persista y el diálogo de pago lo refleje
   const handleTaxIncludedChange = async (value: boolean) => {

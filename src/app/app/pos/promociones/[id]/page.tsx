@@ -128,10 +128,16 @@ export default function PromocionDetallePage() {
           : formatear(promo.discount_value || 0);
       case 'buy_x_get_y':
         return t('detalle.compraLleva', { x: promo.buy_quantity ?? 0, y: promo.get_quantity ?? 0 });
-      case 'bundle':
-        if ((promo.bundle_price ?? 0) > 0) return formatear(promo.bundle_price || 0);
-        if ((promo.discount_value ?? 0) > 0) return `${promo.discount_value}%`;
-        return '-';
+      case 'bundle': {
+        const base = (promo.bundle_price ?? 0) > 0
+          ? formatear(promo.bundle_price || 0)
+          : (promo.discount_value ?? 0) > 0
+            ? `${promo.discount_value}%`
+            : '-';
+        return promo.repeat_every_quantity && base !== '-'
+          ? t('lista.cada', { valor: base, n: promo.repeat_every_quantity })
+          : base;
+      }
       default:
         return '-';
     }

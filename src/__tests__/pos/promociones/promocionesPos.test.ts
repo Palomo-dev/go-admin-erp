@@ -286,6 +286,52 @@ describe('G · mesa: se evalúa la cuenta completa', () => {
     expect(aplicadas()).toEqual([[{ sale_item_id: 'a', discount_amount: 0, promotion_ids: [] }]]);
   });
 
+  it('paquete 20 % cada 3 descuenta 6 de 7; con 2 no hay descuento; sin N, las 7', async () => {
+    const cadaTres = promo({
+      promotion_type: 'bundle',
+      discount_value: '20',
+      bundle_price: null,
+      repeat_every_quantity: 3,
+    });
+    promociones = [cadaTres];
+    lineasMesa = [lineaMesa('a', 1001, 7, 1000)];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa');
+    expect(aplicadas()).toEqual([[
+      { sale_item_id: 'a', discount_amount: 1200, promotion_ids: [cadaTres.id] },
+    ]]);
+
+    fake.reset();
+    lineasMesa = [lineaMesa('a', 1001, 2, 1000)];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa');
+    expect(aplicadas()).toEqual([]);
+
+    fake.reset();
+    promociones = [promo({
+      promotion_type: 'bundle',
+      discount_value: '20',
+      bundle_price: null,
+      repeat_every_quantity: null,
+    })];
+    lineasMesa = [lineaMesa('a', 1001, 7, 1000)];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa');
+    expect(aplicadas()).toEqual([[
+      { sale_item_id: 'a', discount_amount: 1400, promotion_ids: [promociones[0].id] },
+    ]]);
+  });
+
+  it('una venta ya cobrada no se vuelve a calcular', async () => {
+    promociones = [promo({ promotion_type: 'bundle', discount_value: '20', repeat_every_quantity: 3 })];
+    lineasMesa = [lineaMesa('a', 1001, 7, 1000)];
+    fake.setHandler((op) => {
+      if (op.table === 'sales') {
+        return { data: { id: 'venta-mesa', organization_id: 120, branch_id: 7, status: 'paid' } };
+      }
+      return manejador(op);
+    });
+    await PedidosService.recalcularPromocionesMesa('venta-mesa');
+    expect(aplicadas()).toEqual([]);
+  });
+
   it('al cobrar se envían las promociones que quedaron en las líneas', async () => {
     lineasMesa = [
       lineaMesa('a', 1001, 1, 30000, { notes: { promociones: ['p-1'] } }),
@@ -293,5 +339,91 @@ describe('G · mesa: se evalúa la cuenta completa', () => {
       lineaMesa('x', 1003, 0, 30000, { notes: { promociones: ['p-3'] } }),
     ];
     expect((await PedidosService.promocionesDeLaCuenta('venta-mesa')).sort()).toEqual(['p-1', 'p-2']);
+  });
+});
+
+describe('mostrador: recalcular el carrito abierto aplica el paquete y respeta el manual', () => {
+  it('20 % cada 3 descuenta 1200; sin N, 1400; el descuento del cajero no se pisa', async () => {
+    promociones = [promo({
+      promotion_type: 'bundle',
+      discount_value: '20',
+      bundle_price: null,
+      repeat_every_quantity: 3,
+    })];
+    guardarCarritos([carrito('cart-1', { items: [linea('l1', { quantity: 7, unit_price: 1000, total: 7000 })] })]);
+    let cart = await POSService.recalculateCart('cart-1');
+    expect(cart.items[0].discount_amount).toBe(1200);
+    expect(cart.items[0].promo_discount_amount).toBe(1200);
+
+    promociones = [promo({
+      promotion_type: 'bundle',
+      discount_value: '20',
+      bundle_price: null,
+      repeat_every_quantity: null,
+    })];
+    cart = await POSService.recalculateCart('cart-1');
+    expect(cart.items[0].discount_amount).toBe(1400);
+
+    guardarCarritos([carrito('cart-1', { items: [linea('l1', {
+      quantity: 7,
+      unit_price: 1000,
+      total: 7000,
+      discount_amount: 500,
+      manual_discount_amount: 500,
+    })] })]);
+    cart = await POSService.recalculateCart('cart-1');
+    expect(cart.items[0].discount_amount).toBe(500);
+    expect(cart.items[0].manual_discount_amount).toBe(500);
+    expect(cart.items[0].promo_discount_amount).toBe(0);
+  });
+
+  it('una promo de la sucursal 7 no aplica en la 8; sin sucursal aplica en las dos', async () => {
+    promociones = [promo({ branches: [7] })];
+    const item = [{ product_id: 1001, quantity: 1, unit_price: 10000 }];
+    expect((await evaluar(item)).discountTotal).toBe(1000);
+    expect((await evaluar(item, { branch_id: 8 })).discountTotal).toBe(0);
+    promociones = [promo({ branches: null })];
+    expect((await evaluar(item, { branch_id: 8 })).discountTotal).toBe(1000);
+    promociones = [promo({ branches: [] })];
+    expect((await evaluar(item, { branch_id: 8 })).discountTotal).toBe(1000);
+  });
+});
+
+describe('cobro de una venta que ya existe', () => {
+  const pago = { payments: [{ method: 'cash', amount: 7000 }], change: 0, total_paid: 7000 };
+
+  it('una venta nueva evalúa promociones; una deuda o una mesa, no', async () => {
+    promociones = [promo({ promotion_type: 'bundle', discount_value: '20', repeat_every_quantity: 3 })];
+    const spy = jest.spyOn(promotionEngine, 'evaluate');
+    const lineaSiete = linea('l1', { quantity: 7, unit_price: 1000, total: 7000 });
+    try {
+      await POSService.checkout({ ...pago, cart: carrito('cart-nueva', { items: [lineaSiete] }) });
+    } catch {
+      /* la base simulada no completa el cobro; basta ver si evaluó */
+    }
+    expect(spy).toHaveBeenCalled();
+
+    spy.mockClear();
+    try {
+      await POSService.checkout({
+        ...pago,
+        cart: carrito('cart-deuda', { sale_id: 'venta-1', invoice_id: 'fac-1', items: [lineaSiete] }),
+      });
+    } catch {
+      /* igual */
+    }
+    expect(spy).not.toHaveBeenCalled();
+
+    spy.mockClear();
+    try {
+      await POSService.checkout({
+        ...pago,
+        settle: { sale_id: 'venta-mesa' },
+        cart: carrito('cart-mesa', { items: [lineaSiete] }),
+      });
+    } catch {
+      /* igual */
+    }
+    expect(spy).not.toHaveBeenCalled();
   });
 });

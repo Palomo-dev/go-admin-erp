@@ -400,7 +400,9 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
         />
       </KpiStrip>
 
+      {/* En escritorio la banda sigue arriba. En el celular se usa la de abajo, después de los chips. */}
       <BandaAntiguedad
+        className="hidden md:flex"
         tramos={resumen?.tramos ?? []}
         formatear={fmt}
         seleccionado={tramoActivo}
@@ -468,6 +470,15 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
           </FilterPanel>
         }
         chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
+      />
+
+      <BandaAntiguedad
+        className="md:hidden"
+        tramos={resumen?.tramos ?? []}
+        formatear={fmt}
+        seleccionado={tramoActivo}
+        onSeleccionar={(tramo) => l.setFiltro('tramo', tramo)}
+        cargando={!datos}
       />
 
       <DataTable

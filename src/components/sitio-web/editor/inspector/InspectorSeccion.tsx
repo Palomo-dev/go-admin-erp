@@ -85,8 +85,12 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   const visibilidad = useMemo(() => visibilidadDeSeccion(s), [s]);
   const idTabs = `inspector-seccion-${s.id}`;
 
+  const boletin = (definicion?.contentFields ?? []).some((c) => c.type === 'newsletter');
   const campos = (pest: PestanaSeccion): ContentFieldDef[] =>
     (definicion?.contentFields ?? []).filter((c) => {
+      // El inspector del boletín ya escribe título, botón e imagen. Esos campos siguen
+      // declarados porque el sitio público los pinta, pero no se muestran dos veces.
+      if (boletin && c.type !== 'newsletter') return false;
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).

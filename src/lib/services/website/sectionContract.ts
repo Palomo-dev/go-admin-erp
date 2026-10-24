@@ -46,9 +46,16 @@ export interface ManifestEntry {
  * pestaña Diseño. Los avisos (`notice`) no guardan nada y no cuentan. El cascarón
  * (`section_header`, `section_background`) es el editor común: escribe un objeto dentro del
  * contenido y el sitio lo ignora hasta que lo lea. No es una clave de cada componente.
+ * El inspector del boletín (`newsletter`) tampoco guarda su clave: escribe
+ * `newsletter_layout` y `newsletter`.
  */
 function esCampoDelComponente(f: CatalogEntry['contentFields'][number]): boolean {
-  if (f.type === 'notice' || f.type === 'section_header' || f.type === 'section_background') return false
+  if (
+    f.type === 'notice' ||
+    f.type === 'section_header' ||
+    f.type === 'section_background' ||
+    f.type === 'newsletter'
+  ) return false
   return !f.group || f.group === 'content' || f.group === 'data' || !!f.section
 }
 

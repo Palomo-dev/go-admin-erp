@@ -184,7 +184,9 @@ export interface ContentFieldDef {
     /** Encabezado común. Guarda el objeto `section_header`. */
     | 'section_header'
     /** Fondo común. Guarda el objeto `section_background`. */
-    | 'section_background';
+    | 'section_background'
+    /** Inspector del boletín. No guarda esta clave: escribe `newsletter_layout` y `newsletter`. */
+    | 'newsletter';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -1027,6 +1029,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'input_text_color', label: 'Color del texto del input', type: 'color', group: 'style' },
       { key: 'button_bg_color', label: 'Color del botón', type: 'color', group: 'style' },
       { key: 'button_text_color', label: 'Color del texto del botón', type: 'color', group: 'style' },
+      {
+        key: 'newsletter_panel',
+        label: 'Newsletter',
+        type: 'newsletter',
+        group: 'content',
+        helpText: 'Sin un preset, la sección sigue como hoy. El correo no se guarda: no hay tabla de suscriptores.',
+      },
     ],
   },
   {

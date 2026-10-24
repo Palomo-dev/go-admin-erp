@@ -177,9 +177,20 @@ export interface AsientoSinLineas {
   publicado: boolean;
 }
 
+/** Borrador con monto que la organización tiene que aprobar. */
+export interface BorradorPorAprobar {
+  id: number;
+  fecha: string | null;
+  memo: string | null;
+  importe: number;
+}
+
 export interface AlertasContablesDatos {
+  /** Solo soporte y superadmin de la plataforma. */
+  veTecnicos: boolean;
   fallos: FalloContable[];
   sinLineas: AsientoSinLineas[];
+  borradores: BorradorPorAprobar[];
 }
 
 export interface ContabilidadResumen {
@@ -615,34 +626,51 @@ export class ContabilidadService {
   }
 
   /**
-   * Fallos de asiento aún abiertos y asientos publicados o en borrador
-   * que no tienen líneas. La pertenencia la vuelve a exigir la base.
+   * Borradores que la organización debe aprobar. Los fallos técnicos solo
+   * vienen si quien consulta es soporte o superadmin de la plataforma.
    */
   static async obtenerAlertas(): Promise<AlertasContablesDatos> {
     const { data, error } = await supabase.rpc('fn_alertas_contables', {
       p_organization_id: this.getOrganizationId(),
     });
     if (error) throw error;
-    const crudo = (data ?? {}) as { fallos?: CrudoAlerta[]; asientos_sin_lineas?: CrudoAlerta[] };
+    const crudo = (data ?? {}) as {
+      ve_tecnicos?: boolean;
+      fallos?: CrudoAlerta[];
+      asientos_sin_lineas?: CrudoAlerta[];
+      borradores?: CrudoAlerta[];
+    };
     const filas = (lista: CrudoAlerta[] | undefined) => (Array.isArray(lista) ? lista : []);
+    const veTecnicos = crudo.ve_tecnicos === true;
     return {
-      fallos: filas(crudo.fallos).map((fila) => ({
-        id: Number(fila.id),
-        fecha: fila.fecha ?? null,
-        origen: fila.origen ?? null,
-        origenId: fila.origen_id != null ? String(fila.origen_id) : null,
-        debito: fila.debito ?? null,
-        credito: fila.credito ?? null,
-        importe: fila.importe == null ? null : Number(fila.importe),
-        motivo: fila.motivo ?? null,
-        detalle: fila.detalle ?? null,
-      })),
-      sinLineas: filas(crudo.asientos_sin_lineas).map((fila) => ({
+      veTecnicos,
+      fallos: veTecnicos
+        ? filas(crudo.fallos).map((fila) => ({
+            id: Number(fila.id),
+            fecha: fila.fecha ?? null,
+            origen: fila.origen ?? null,
+            origenId: fila.origen_id != null ? String(fila.origen_id) : null,
+            debito: fila.debito ?? null,
+            credito: fila.credito ?? null,
+            importe: fila.importe == null ? null : Number(fila.importe),
+            motivo: fila.motivo ?? null,
+            detalle: fila.detalle ?? null,
+          }))
+        : [],
+      sinLineas: veTecnicos
+        ? filas(crudo.asientos_sin_lineas).map((fila) => ({
+            id: Number(fila.id),
+            fecha: fila.fecha ?? null,
+            memo: fila.memo ?? null,
+            origen: fila.origen ?? null,
+            publicado: fila.publicado === true,
+          }))
+        : [],
+      borradores: filas(crudo.borradores).map((fila) => ({
         id: Number(fila.id),
         fecha: fila.fecha ?? null,
         memo: fila.memo ?? null,
-        origen: fila.origen ?? null,
-        publicado: fila.publicado === true,
+        importe: fila.importe == null ? 0 : Number(fila.importe),
       })),
     };
   }

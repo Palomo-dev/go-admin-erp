@@ -265,6 +265,16 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    */
   header_builder: { zona: 'header', porDefecto: null, nueva: true },
   /**
+   * Menús extra del encabezado: [{ menuId, zone: 'header' | 'topbar' | 'menu' }].
+   * `null` = un solo menú, el de hoy. Vive en el JSON del documento.
+   */
+  header_menus: { zona: 'header', porDefecto: null, nueva: true },
+  /**
+   * «Personas viendo»: número estable por producto, no una métrica en vivo.
+   * `null` = no se muestra. No vive en `conversion.urgencia.personasViendo`.
+   */
+  urgencia_viendo: { zona: 'header', porDefecto: null, nueva: true },
+  /**
    * Header transparente, fijo, encima del hero. `null` = no (el header sigue
    * opaco y el hero debajo). `false` guardado apaga también el alias
    * `overlap_header`. La variante `header_style: transparent` sigue solapando

@@ -133,7 +133,7 @@ export function miniaturaDeSeccion(tipo: string): TipoMiniaturaSeccion {
     return 'productos';
   }
   if (t.includes('event') || t.includes('schedule')) return 'eventos';
-  if (t.includes('cta') || t.includes('newsletter') || t.includes('banner') || t.includes('countdown')) return 'llamado_accion';
+  if (t.includes('cta') || t.includes('newsletter') || t.includes('banner') || t.includes('countdown') || t === 'urgencia') return 'llamado_accion';
   return 'texto';
 }
 

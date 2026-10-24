@@ -61,6 +61,8 @@ export interface EstiloSeccion {
   fondo?: FondoSeccion;
   /** Hex del fondo «Alterno». Ausente: el gris derivado del tema. */
   colorAlterno?: string;
+  /** URL https de la imagen cuando el fondo es «imagen». Ausente: no hay foto. */
+  imagenFondo?: string;
   entrada?: EntradaSeccion;
   espaciado?: EspaciadoSeccion;
   ancho?: AnchoSeccion;
@@ -97,6 +99,15 @@ function de<T extends string | number>(lista: readonly T[], valor: unknown): T |
 
 function esObjeto(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+function leerUrlImagen(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const t = v.trim();
+  if (t.length < 12 || t.length > 800) return undefined;
+  if (!/^https:\/\//i.test(t)) return undefined;
+  if (/[\s"'<>]/.test(t)) return undefined;
+  return t;
 }
 
 function leerColor(v: unknown): string | undefined {
@@ -138,6 +149,8 @@ export function leerEstiloSeccion(diseno: unknown): EstiloSeccion {
   if (fondo) r.fondo = fondo;
   const colorAlterno = typeof crudo.colorAlterno === 'string' && HEX.test(crudo.colorAlterno) ? crudo.colorAlterno.toUpperCase() : undefined;
   if (colorAlterno) r.colorAlterno = colorAlterno;
+  const imagenFondo = leerUrlImagen(crudo.imagenFondo);
+  if (imagenFondo) r.imagenFondo = imagenFondo;
   const entrada = de(ENTRADAS_SECCION, crudo.entrada);
   if (entrada) r.entrada = entrada;
   const espaciado = de(ESPACIADOS_SECCION, crudo.espaciado);
@@ -164,7 +177,7 @@ export function leerEstiloSeccion(diseno: unknown): EstiloSeccion {
 /** `true` si la sección no sobrescribe nada (hereda todo del estilo del sitio). */
 export function estiloVacio(e: EstiloSeccion): boolean {
   const tipografiaPropia = e.tipografia?.modo === 'propia';
-  return !e.fondo && !e.colorAlterno && !e.entrada && !e.espaciado && !e.ancho && !tipografiaPropia && !e.colores;
+  return !e.fondo && !e.colorAlterno && !e.imagenFondo && !e.entrada && !e.espaciado && !e.ancho && !tipografiaPropia && !e.colores;
 }
 
 /** Quita lo que equivale a heredar (tipografía «como el sitio», colores vacíos). */
@@ -172,6 +185,7 @@ export function normalizarEstilo(e: EstiloSeccion): EstiloSeccion {
   const r: EstiloSeccion = { v: VERSION_ESTILO_SECCION };
   if (e.fondo) r.fondo = e.fondo;
   if (e.colorAlterno) r.colorAlterno = e.colorAlterno;
+  if (e.imagenFondo) r.imagenFondo = e.imagenFondo;
   if (e.entrada) r.entrada = e.entrada;
   if (e.espaciado) r.espaciado = e.espaciado;
   if (e.ancho) r.ancho = e.ancho;

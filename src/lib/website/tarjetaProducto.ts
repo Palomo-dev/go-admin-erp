@@ -24,7 +24,19 @@ export const ESTILOS_BOTON = ['solid', 'outline', 'ghost', 'gradient', 'icon_onl
 export const FORMAS_BOTON = ['square', 'rounded', 'semi', 'pill', 'circle'] as const
 export const TAMANOS_BOTON = ['sm', 'md', 'lg'] as const
 export const ANCHOS_BOTON = ['full', 'auto'] as const
-export const POSICIONES_BOTON = ['bottom', 'over_image_bottom', 'over_image_corner', 'inline_price'] as const
+export const POSICIONES_BOTON = [
+  'bottom',
+  'below_left',
+  'below_right',
+  'inline_price',
+  'over_image_bottom',
+  'over_image_corner',
+  'overlay_top_left',
+  'overlay_top_right',
+  'overlay_bottom_left',
+  'overlay_hover',
+  'bottom_bar',
+] as const
 export const VISIBILIDAD_BOTON = ['always', 'hover'] as const
 export const LADOS_ICONO = ['left', 'right'] as const
 export const ICONOS_BOTON = ['Plus', 'ShoppingBag', 'ShoppingCart', 'Heart', 'Eye', 'ArrowRight', 'Zap', 'Star'] as const
@@ -33,10 +45,15 @@ export const FORMAS_ETIQUETA = ['square', 'rounded', 'semi', 'pill', 'circle'] a
 export const ESTILOS_ETIQUETA = ['solid', 'soft', 'outline', 'gradient'] as const
 export const POSICIONES_ETIQUETA = ['top_left', 'top_right', 'bottom_left', 'bottom_right', 'over_title'] as const
 
-export const ALINEACIONES = ['left', 'center', 'right'] as const
+export const ALINEACIONES = [
+  'left', 'center', 'right',
+  'top-left', 'top-center', 'top-right',
+  'middle-left', 'middle-center', 'middle-right',
+  'bottom-left', 'bottom-center', 'bottom-right',
+] as const
 export const POSICIONES_PRECIO = ['below_title', 'above_title', 'beside_button', 'over_image'] as const
 export const TAMANOS_TEXTO = ['sm', 'md', 'lg'] as const
-export const POSICIONES_RESENA = ['above_title', 'below_title', 'over_image'] as const
+export const POSICIONES_RESENA = ['above_title', 'below_title', 'below_price', 'over_image'] as const
 export const ESTILOS_RESENA = ['stars', 'number_star'] as const
 export const PESOS_TITULO = ['normal', 'medium', 'semibold', 'bold'] as const
 export const SOMBRAS_TARJETA = ['none', 'sm', 'md', 'lg', 'hover'] as const
@@ -125,7 +142,7 @@ export interface EstiloTarjetaProducto {
   title_size?: (typeof TAMANOS_TEXTO)[number]
   show_brand?: boolean
   show_category?: boolean
-  card_layout?: 'vertical' | 'horizontal'
+  card_layout?: 'vertical' | 'horizontal' | 'overlay'
   card_radius?: number
   card_border_width?: number
   card_border_color?: string
@@ -287,7 +304,7 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   if (marca != null) e.show_brand = marca
   const cat = bandera(o.show_category)
   if (cat != null) e.show_category = cat
-  if (o.card_layout === 'horizontal' || o.card_layout === 'vertical') e.card_layout = o.card_layout
+  if (o.card_layout === 'horizontal' || o.card_layout === 'vertical' || o.card_layout === 'overlay') e.card_layout = o.card_layout
   const radio = entero(o.card_radius, 0, 32)
   if (radio != null) e.card_radius = radio
   const borde = entero(o.card_border_width, 0, 8)
@@ -413,6 +430,7 @@ export function valoresDePreset(preset: PresetTarjeta): EstiloTarjetaProducto {
   if (preset === 'overlay') {
     return fusionarEstilos(base, {
       card_preset: 'overlay',
+      card_layout: 'overlay',
       add: {
         button_position: 'over_image_bottom',
         button_visibility: 'hover',
@@ -543,8 +561,15 @@ export function radioForma(forma: string | undefined, soloIcono: boolean): numbe
 /** Posición que ya entiende la tarjeta (`below`, `overlay_*`, `beside_price`). */
 export function posicionBotonInterna(pos: EstiloBotonTarjeta['button_position'] | undefined): string | undefined {
   if (pos === 'bottom') return 'below'
+  if (pos === 'below_left') return 'below_left'
+  if (pos === 'below_right') return 'below_right'
   if (pos === 'over_image_bottom') return 'overlay_bottom'
   if (pos === 'over_image_corner') return 'overlay_bottom_right'
+  if (pos === 'overlay_top_left') return 'overlay_top_left'
+  if (pos === 'overlay_top_right') return 'overlay_top_right'
+  if (pos === 'overlay_bottom_left') return 'overlay_bottom_left'
+  if (pos === 'overlay_hover') return 'overlay_hover'
+  if (pos === 'bottom_bar') return 'bottom_bar'
   if (pos === 'inline_price') return 'beside_price'
   return undefined
 }

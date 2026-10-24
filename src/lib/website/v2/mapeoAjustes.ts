@@ -257,6 +257,11 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    * Vive solo en el JSON del documento. No hay columna ni migración.
    */
   mobile_header: { zona: 'header', porDefecto: null, nueva: true },
+  /**
+   * Constructor del encabezado: zonas, íconos, botones, mega menú y cromo del buscador.
+   * `null` = el header de hoy. Vive en el JSON del documento. No hay columna ni migración.
+   */
+  header_builder: { zona: 'header', porDefecto: null, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },

@@ -30,6 +30,8 @@ import {
   TituloBloque,
 } from './PartesZonaGlobal';
 import { CelularEncabezado } from './CelularEncabezado';
+import { ConstructorEncabezado } from './ConstructorEncabezado';
+import { PRESETS_CONTENEDOR } from '@/lib/website/constructorEncabezado';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -42,7 +44,7 @@ import {
   valorOpcion,
 } from './zonaGlobalLogica';
 
-export type PestanaZona = 'contenido' | 'diseno' | 'estilo' | 'celular';
+export type PestanaZona = 'contenido' | 'diseno' | 'estilo' | 'celular' | 'constructor';
 
 export interface MenuDisponible {
   id: string;
@@ -88,6 +90,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           { valor: 'diseno', etiqueta: t('zonaGlobal.pestana.diseno') },
           { valor: 'estilo', etiqueta: t('zonaGlobal.pestana.estilo') },
           { valor: 'celular', etiqueta: t('zonaGlobal.pestana.celular') },
+          { valor: 'constructor', etiqueta: t('zonaGlobal.pestana.constructor') },
         ]}
         valor={pestana}
         onValorChange={setPestana}
@@ -104,6 +107,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
         )}
         {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} />}
         {pestana === 'celular' && <CelularEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
+        {pestana === 'constructor' && <ConstructorEncabezado ajustes={a} cambiar={cambiar} acento={p.coloresTema.acento} />}
       </div>
     </aside>
   );
@@ -228,6 +232,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
   const idFuente = useId();
   const idTrazo = useId();
   const idForma = useId();
+  const idCaja = useId();
   const segundo = Boolean(p.texto('header_cta2_text') || p.texto('header_cta2_url'));
   const anuncios = leerAnuncios(a.topbar_announcement);
   const [conAnuncio, setConAnuncio] = useState(anuncios.length > 0);
@@ -406,6 +411,22 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           valor={opcionBooleana(a, 'header_icons_circle')}
           onCambiar={(v) => cambiar({ header_icons_circle: v })}
         />
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idCaja}>{t('zonaGlobal.acciones.contenedorIconos')}</EtiquetaGrupo>
+          <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.contenedorAyuda')}</p>
+          <ChipsOpcion
+            aria-labelledby={idCaja}
+            opciones={[
+              { valor: 'circulo_acento', etiqueta: t('zonaGlobal.acciones.presetCirculo') },
+              { valor: 'cuadrado_suave', etiqueta: t('zonaGlobal.acciones.presetCuadrado') },
+              { valor: 'borde_fino', etiqueta: t('zonaGlobal.acciones.presetBorde') },
+              { valor: 'sombra_flotante', etiqueta: t('zonaGlobal.acciones.presetSombra') },
+              { valor: 'solo_icono', etiqueta: t('zonaGlobal.acciones.presetSolo') },
+            ]}
+            valor={presetContenedorActivo(a)}
+            onValorChange={(v) => aplicarPresetContenedor(a, v, cambiar)}
+          />
+        </div>
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}
@@ -720,4 +741,43 @@ function Estilo(p: Interno) {
       </button>
     </>
   );
+}
+
+const PRESETS_VISIBLES = ['circulo_acento', 'cuadrado_suave', 'borde_fino', 'sombra_flotante', 'solo_icono'] as const
+type PresetVisible = (typeof PRESETS_VISIBLES)[number]
+
+function registro(valor: unknown): Record<string, unknown> {
+  return valor && typeof valor === 'object' && !Array.isArray(valor) ? (valor as Record<string, unknown>) : {}
+}
+
+/** Sin caja guardada, «Solo ícono» (el de hoy) o «Círculo acento» si el booleano sigue prendido. */
+function presetContenedorActivo(ajustes: Record<string, unknown>): PresetVisible | null {
+  const caja = registro(registro(ajustes.header_builder).icon_container)
+  if (typeof caja.shape !== 'string') return ajustes.header_icons_circle === true ? 'circulo_acento' : 'solo_icono'
+  if (caja.scope === 'each') return null
+  for (const clave of ['cuadrado_suave', 'borde_fino', 'sombra_flotante', 'solo_icono'] as const) {
+    const p = PRESETS_CONTENEDOR[clave] as { shape: string; background?: string; shadow?: string; border_width?: number; radius?: number }
+    if (p.shape !== caja.shape) continue
+    if ((p.background ?? undefined) !== (caja.background ?? undefined)) continue
+    if ((p.shadow ?? undefined) !== (caja.shadow ?? undefined)) continue
+    if ((p.border_width ?? undefined) !== (caja.border_width ?? undefined)) continue
+    if ((p.radius ?? undefined) !== (caja.radius ?? undefined)) continue
+    return clave
+  }
+  return null
+}
+
+function aplicarPresetContenedor(ajustes: Record<string, unknown>, clave: PresetVisible, cambiar: (c: Record<string, unknown>) => void) {
+  const builder = registro(ajustes.header_builder)
+  if (clave === 'circulo_acento') {
+    const { icon_container: _fuera, ...resto } = builder
+    const cambio: Record<string, unknown> = { header_icons_circle: true }
+    if ('icon_container' in builder) cambio.header_builder = Object.keys(resto).length ? resto : null
+    cambiar(cambio)
+    return
+  }
+  cambiar({
+    header_icons_circle: false,
+    header_builder: { ...builder, icon_container: { ...PRESETS_CONTENEDOR[clave], scope: 'all' } },
+  })
 }

@@ -33094,7 +33094,8 @@
         "pestana": {
           "contenido": "Contenido",
           "diseno": "Diseño",
-          "estilo": "Estilo"
+          "estilo": "Estilo",
+          "constructor": "Constructor"
         },
         "cerrar": "Cerrar {zona}",
         "restablecer": "Restablecer a la plantilla",
@@ -33180,7 +33181,14 @@
           "iconosForma": "Forma del carrito",
           "bolsa": "Bolsa",
           "iconosCirculo": "Círculo de color",
-          "iconosCirculoAyuda": "Fondo del color de la marca detrás de moneda, carrito y cuenta"
+          "iconosCirculoAyuda": "Fondo del color de la marca detrás de moneda, carrito y cuenta",
+          "contenedorIconos": "Contenedor de íconos",
+          "contenedorAyuda": "Forma, fondo y sombra de carrito, cuenta, moneda, favoritos y búsqueda. Sin elegir, se ve el ícono de hoy.",
+          "presetCirculo": "Círculo acento",
+          "presetCuadrado": "Cuadrado suave",
+          "presetBorde": "Borde fino",
+          "presetSombra": "Sombra flotante",
+          "presetSolo": "Solo ícono"
         },
         "diseno": {
           "titulo": "Diseño del encabezado",

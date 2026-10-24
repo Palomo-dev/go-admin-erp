@@ -25,6 +25,16 @@ export function sucursalesDeFila(fila: Pick<StockFila, 'por_sucursal'>, maximo =
   return { visibles, resto: Math.max(0, fila.por_sucursal.length - visibles.length) };
 }
 
+/**
+ * Segmento de la ficha. Una variante abre el padre (como antes, con su id);
+ * si el listado trae uuid, la URL usa ese uuid. Sin uuid, el id numérico,
+ * que la ficha también resuelve.
+ */
+export function identFichaStock(fila: Pick<StockFila, 'uuid' | 'parent_uuid' | 'parent_id' | 'product_id'>): string {
+  if (fila.parent_id != null) return fila.parent_uuid || String(fila.parent_id);
+  return fila.uuid || String(fila.product_id);
+}
+
 /** Existencia de un producto en una sucursal (0 si no tiene fila). */
 export function existenciaEn(fila: Pick<StockFila, 'por_sucursal'>, branchId: number | null | undefined): StockPorSucursal | null {
   if (!branchId) return null;

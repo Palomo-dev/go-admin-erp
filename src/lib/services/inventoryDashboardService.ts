@@ -20,6 +20,7 @@ export interface StockAlert {
   title: string;
   description: string;
   productId?: number;
+  productUuid?: string;
   productName?: string;
   branchId?: number;
   branchName?: string;
@@ -33,6 +34,7 @@ export interface RecentMovement {
   id: number;
   type: string;
   productId: number;
+  productUuid?: string;
   productName: string;
   productSku: string;
   branchId: number;
@@ -55,6 +57,7 @@ export interface BranchSummary {
 
 interface ProductRef {
   id: number;
+  uuid?: string | null;
   name?: string | null;
   sku?: string | null;
   is_parent?: boolean | null;
@@ -256,7 +259,7 @@ class InventoryDashboardService {
           branch_id,
           qty_on_hand,
           min_level,
-          products!inner(id, name, sku, organization_id, status, is_parent, padre:products!parent_product_id(status)),
+          products!inner(id, uuid, name, sku, organization_id, status, is_parent, padre:products!parent_product_id(status)),
           branches!inner(id, name)
         `)
         .eq('products.organization_id', organizationId)
@@ -292,6 +295,7 @@ class InventoryDashboardService {
               title: 'Sin stock',
               description: `${product?.name} no tiene stock en ${branch?.name}`,
               productId: product?.id,
+              productUuid: product?.uuid ?? undefined,
               productName: product?.name ?? undefined,
               branchId: branch?.id,
               branchName: branch?.name ?? undefined,
@@ -306,6 +310,7 @@ class InventoryDashboardService {
               title: 'Stock bajo',
               description: `${product?.name} tiene ${qty} unidades (mínimo: ${minLevel}) en ${branch?.name}`,
               productId: product?.id,
+              productUuid: product?.uuid ?? undefined,
               productName: product?.name ?? undefined,
               branchId: branch?.id,
               branchName: branch?.name ?? undefined,
@@ -328,7 +333,7 @@ class InventoryDashboardService {
           lot_code,
           expiry_date,
           product_id,
-          products!inner(id, name, organization_id)
+          products!inner(id, uuid, name, organization_id)
         `)
         .eq('products.organization_id', organizationId)
         .not('expiry_date', 'is', null)
@@ -350,6 +355,7 @@ class InventoryDashboardService {
             title: 'Lote por vencer',
             description: `Lote ${lot.lot_code} de ${product?.name} vence en ${daysToExpire} días`,
             productId: product?.id,
+            productUuid: product?.uuid ?? undefined,
             productName: product?.name ?? undefined,
             expiryDate: lot.expiry_date as string,
             daysToExpire,
@@ -475,7 +481,7 @@ class InventoryDashboardService {
           qty,
           source,
           created_at,
-          products(id, name, sku),
+          products(id, uuid, name, sku),
           branches(id, name)
         `)
         .eq('organization_id', organizationId)
@@ -499,6 +505,7 @@ class InventoryDashboardService {
           id: mov.id,
           type: mov.direction || 'unknown',
           productId: p?.id,
+          productUuid: p?.uuid ?? undefined,
           productName: p?.name || 'Producto desconocido',
           productSku: p?.sku || '',
           branchId: b?.id,

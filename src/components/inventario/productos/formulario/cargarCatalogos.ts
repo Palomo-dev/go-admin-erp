@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
+import { claveProducto } from '../detalle/identProducto';
 import type { SucursalBasica } from '../logica/formularioProducto';
 import type {
   CatalogosFormulario,
@@ -111,14 +112,17 @@ export async function generarSkuSugerido(organizacionId: number): Promise<string
   return `PROD-${String((count ?? 0) + 1).padStart(3, '0')}-${sufijo}`;
 }
 
-/** Id numérico de un producto por su uuid, dentro de la organización de la sesión. */
-export async function idProductoPorUuid(organizacionId: number, uuid: string): Promise<number | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('id')
-    .eq('uuid', uuid)
-    .eq('organization_id', organizacionId)
-    .maybeSingle();
+/**
+ * Id numérico de un producto a partir del id o del uuid de la URL, dentro de
+ * la organización de la sesión. Si el segmento no es ni número ni uuid, null
+ * (el formulario muestra «no encontrado») sin consultar.
+ */
+export async function idProductoPorUuid(organizacionId: number, ident: string): Promise<number | null> {
+  const clave = claveProducto(ident);
+  if (!clave) return null;
+  const base = supabase.from('products').select('id').eq('organization_id', organizacionId);
+  const filtrada = clave.campo === 'id' ? base.eq('id', clave.valor) : base.eq('uuid', clave.valor);
+  const { data, error } = await filtrada.maybeSingle();
   if (error) throw error;
   return data ? Number((data as { id: number }).id) : null;
 }

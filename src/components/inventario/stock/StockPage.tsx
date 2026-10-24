@@ -76,7 +76,7 @@ import {
 import { DialogoRegistrarMovimiento } from './DialogoRegistrarMovimiento';
 import { DialogoStockMinimo } from './DialogoStockMinimo';
 import { MenuNuevoMovimiento } from './MenuNuevoMovimiento';
-import { TONO_ESTADO_STOCK, filasCsvStock, nombreArchivo, sucursalesDeFila, tonoFilaStock } from './logica';
+import { TONO_ESTADO_STOCK, filasCsvStock, identFichaStock, nombreArchivo, sucursalesDeFila, tonoFilaStock } from './logica';
 import { useAlcanceSucursales, useCantidadStock, useMensajeErrorInventario } from './useInventarioB1';
 import { idsProductos } from './cantidadProducto';
 import { useModosVenta } from './useModosVenta';
@@ -332,7 +332,7 @@ export function StockPage() {
     ...(f.con_lotes
       ? [{ id: 'lotes', etiqueta: t('acciones.lotes', { count: f.lotes, n: f.lotes }), icono: Layers, onSelect: () => router.push(rutaLotesProducto(f.product_id)) }]
       : []),
-    { id: 'producto', etiqueta: t('acciones.producto'), icono: Package, onSelect: () => router.push(`/app/inventario/productos/${f.parent_id ?? f.product_id}`) },
+    { id: 'producto', etiqueta: t('acciones.producto'), icono: Package, onSelect: () => router.push(`/app/inventario/productos/${identFichaStock(f)}`) },
     {
       id: 'entrada',
       etiqueta: t('acciones.entrada'),

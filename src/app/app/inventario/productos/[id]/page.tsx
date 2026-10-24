@@ -6,12 +6,12 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
 import { DetalleProducto } from '@/components/inventario/productos/detalle/DetalleProducto';
 
 /**
- * Detalle de producto. El id de la URL es el uuid; la organización sale de la
- * sesión y todas las lecturas filtran por ella.
+ * Detalle de producto. El parámetro de la URL es el id numérico o el uuid; la
+ * organización sale de la sesión y todas las lecturas filtran por ella.
  */
 export default function ProductoDetallePage() {
   const params = useParams();
-  const uuid = (params?.id as string) ?? '';
+  const ident = (params?.id as string) ?? '';
 
   return (
     <Suspense
@@ -22,7 +22,7 @@ export default function ProductoDetallePage() {
         </div>
       }
     >
-      <DetalleProducto uuid={uuid} />
+      <DetalleProducto ident={ident} />
     </Suspense>
   );
 }

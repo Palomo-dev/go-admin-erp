@@ -62,6 +62,10 @@ export interface StockFila {
   sku: string | null;
   barcode: string | null;
   parent_id: number | null;
+  /** Uuid del producto de la fila (ficha). Null si el listado aún no lo trae. */
+  uuid: string | null;
+  /** Uuid del padre, cuando la fila es una variante. */
+  parent_uuid: string | null;
   /** «Negro / 42» (variant_data). */
   atributos: string | null;
   categoria: string | null;
@@ -108,6 +112,7 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 const numONull = (v: unknown): number | null => (v === null || v === undefined ? null : num(v));
+const textoONull = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
 
 /** Normaliza la respuesta de `fn_stock_listado` (numeric llega como número o texto). */
 export function aRespuestaStock(data: unknown): RespuestaStock {
@@ -133,6 +138,8 @@ export function aRespuestaStock(data: unknown): RespuestaStock {
       sku: (f.sku as string | null) ?? null,
       barcode: (f.barcode as string | null) || null,
       parent_id: f.parent_id == null ? null : num(f.parent_id),
+      uuid: textoONull(f.uuid),
+      parent_uuid: textoONull(f.parent_uuid),
       atributos: (f.atributos as string | null) || null,
       categoria: (f.categoria as string | null) ?? null,
       unidad: typeof f.unidad === 'string' ? f.unidad.trim() || null : null,

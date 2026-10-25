@@ -72,6 +72,7 @@ begin
     when '6135'   then '61350501'
     when '530515' then '53051501'
     when '5395'   then '53959501'
+    when '6140'   then '61400501'
     when '240805' then case when v_cinco then '24080502' else '24080501' end
     when '240810' then case when v_cinco then '24081002' else '24081001' end
     when '2408'   then case
@@ -89,6 +90,7 @@ begin
       when v_cod in ('61350501', '61350502') then '6135'
       when v_cod = '53051501' then '530515'
       when v_cod = '53959501' then '5395'
+      when v_cod in ('61400501', '61400502') then '6140'
       when v_cod in ('24080501', '24080502') then '240805'
       when v_cod in ('24081001', '24081002') then '240810'
     end;
@@ -166,6 +168,95 @@ as $function$
     '4295'));
 $function$;
 revoke all on function public.fn_cuenta_ingresos_diversos(integer, integer) from anon;
+
+-- Clasificación de inventario/costo por producto en hoteles y restaurantes (regla del contador, 25-oct).
+-- Orden: 1) override del producto (cuenta_inventario/cuenta_costo); 2) ingrediente de receta = INSUMO
+-- (14050501 / 61400501; si además se vende solo, revisión); 3) compuesto/preparación = PLATO (costo
+-- 61400501, mermas 61400502; inventario solo si track_stock: 14350101 + revisión); 4) resto = REVENTA
+-- (14350101); 5) desconocido = 14350101. Comercio: siempre 14350101 (no se clasifica).
+-- Estabilidad: decide la cuenta del MOVIMIENTO NUEVO; nunca reclasifica el saldo histórico (eso es un
+-- asiento aparte con el OK de Juan).
+create or replace function public.fn_clasificar_producto_restaurante(p_org integer, p_product integer)
+returns table(clase text, cuenta_inventario text, cuenta_costo text, cuenta_merma text, revisar text)
+language plpgsql
+stable security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  p record;
+  v_ingrediente boolean;
+  v_se_vende boolean;
+begin
+  if p_product is null or not exists (select 1 from public.organizations o where o.id = p_org and o.type_id in (1, 2)) then
+    return query select 'comercio'::text, '14350101'::text, null::text, null::text, null::text;
+    return;
+  end if;
+  select pr.* into p from public.products pr where pr.id = p_product and pr.organization_id = p_org;
+  if not found then
+    return query select 'desconocido'::text, '14350101'::text, '61400501'::text, '61400502'::text, null::text;
+    return;
+  end if;
+  v_ingrediente := exists (select 1 from public.recipe_ingredients ri where ri.ingredient_product_id = p_product);
+  v_se_vende := exists (select 1 from public.product_prices pp where pp.product_id = p_product and coalesce(pp.price, 0) > 0
+                          and (pp.effective_to is null or pp.effective_to >= now()));
+  if v_ingrediente then
+    clase := 'insumo'; cuenta_inventario := '14050501'; cuenta_costo := '61400501'; cuenta_merma := '61400502';
+    revisar := case when v_se_vende then 'insumo que también se vende solo en POS' end;
+  elsif coalesce(p.is_composite, false) or p.production_type in ('composite', 'preparation') then
+    clase := 'plato'; cuenta_costo := '61400501'; cuenta_merma := '61400502';
+    cuenta_inventario := case when coalesce(p.track_stock, false) then '14350101' end;
+    revisar := case when coalesce(p.track_stock, false) then 'plato preparado con control de stock' end;
+  else
+    clase := 'reventa'; cuenta_inventario := '14350101'; cuenta_costo := '61400501'; cuenta_merma := '61400502';
+  end if;
+  -- 1) Override del producto (solo si es de movimiento en la org).
+  if nullif(btrim(p.cuenta_inventario), '') is not null and exists (select 1 from public.chart_of_accounts c
+       where c.organization_id = p_org and c.account_code = btrim(p.cuenta_inventario) and c.es_movimiento is true) then
+    cuenta_inventario := btrim(p.cuenta_inventario); clase := clase || '+override';
+  end if;
+  if nullif(btrim(p.cuenta_costo), '') is not null and exists (select 1 from public.chart_of_accounts c
+       where c.organization_id = p_org and c.account_code = btrim(p.cuenta_costo) and c.es_movimiento is true) then
+    cuenta_costo := btrim(p.cuenta_costo);
+  end if;
+  return next;
+end;
+$function$;
+revoke all on function public.fn_clasificar_producto_restaurante(integer, integer) from public, anon;
+
+-- Aplica la clasificación a las cuentas base de un movimiento de stock (solo hoteles/restaurantes):
+-- el lado de inventario (1405/1435 y auxiliares) y el de costo/merma (6135/6140 y auxiliares).
+create or replace function public.fn_cuentas_stock_producto(
+  p_org integer, p_product integer, p_movimiento integer, p_evento text, p_debito text, p_credito text,
+  out debito text, out credito text)
+language plpgsql
+volatile security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  k record;
+  v_es_inv constant text := '^(1405|1435)';
+begin
+  debito := p_debito; credito := p_credito;
+  if p_product is null or not exists (select 1 from public.organizations o where o.id = p_org and o.type_id in (1, 2)) then
+    return;
+  end if;
+  select * into k from public.fn_clasificar_producto_restaurante(p_org, p_product);
+  if k.cuenta_inventario is not null then
+    if debito ~ v_es_inv then debito := k.cuenta_inventario; end if;
+    if credito ~ v_es_inv then credito := k.cuenta_inventario; end if;
+  end if;
+  if debito ~ '^61(35|40)' then debito := case when p_evento = 'loss' then coalesce(k.cuenta_merma, debito) else coalesce(k.cuenta_costo, debito) end; end if;
+  if credito ~ '^61(35|40)' then credito := coalesce(k.cuenta_costo, credito); end if;
+  if k.revisar is not null and not exists (
+       select 1 from public.contabilidad_revision_iva r
+        where r.organization_id = p_org and r.origen = 'clasificacion_producto' and r.origen_id = p_product::text) then
+    insert into public.contabilidad_revision_iva (organization_id, origen, origen_id, cuenta_titulo, cuenta_asignada, motivo)
+    values (p_org, 'clasificacion_producto', p_product::text, k.clase, k.cuenta_inventario,
+            k.revisar || ' (movimiento ' || coalesce(p_movimiento::text, '?') || ')');
+  end if;
+end;
+$function$;
+revoke all on function public.fn_cuentas_stock_producto(integer, integer, integer, text, text, text) from public, anon;
 
 -- Siembra de la clave ingresos_diversos (ninguna org la tenía al 25-oct) -> 42959501 donde exista.
 with ins as (
@@ -782,6 +873,11 @@ begin
   select c.debito, c.credito, c.evento
     into v_debito_base, v_credito_base, v_evento
     from public.fn_cuentas_movimiento_stock(p_sm.organization_id, p_sm.source, p_sm.direction) c;
+  -- Hoteles/restaurantes: insumo 14050501 / reventa 14350101 / costo 61400501 / mermas 61400502 por producto.
+  if v_debito_base is not null and v_credito_base is not null then
+    select x.debito, x.credito into v_debito_base, v_credito_base
+      from public.fn_cuentas_stock_producto(p_sm.organization_id, p_sm.product_id, p_sm.id, v_evento, v_debito_base, v_credito_base) x;
+  end if;
 
   if v_debito_base is null or v_credito_base is null then
     perform public.fn_log_journal_failure(
@@ -965,6 +1061,11 @@ begin
   select c.debito, c.credito, c.evento
     into v_debito_base, v_credito_base, v_evento
     from public.fn_cuentas_movimiento_stock(new.organization_id, new.source, new.direction) c;
+  -- Hoteles/restaurantes: insumo 14050501 / reventa 14350101 / costo 61400501 / mermas 61400502 por producto.
+  if v_debito_base is not null and v_credito_base is not null then
+    select x.debito, x.credito into v_debito_base, v_credito_base
+      from public.fn_cuentas_stock_producto(new.organization_id, new.product_id, new.id, v_evento, v_debito_base, v_credito_base) x;
+  end if;
 
   if v_debito_base is null or v_credito_base is null then
     perform public.fn_log_journal_failure(
@@ -1369,7 +1470,7 @@ AS $function$
     when s.code = '1305' and s.origen <> all (array['loan', 'loans', 'employee_loans', 'installment', 'installments', 'loan_installments', 'ap_installments']) then 'clientes'
     when s.code in ('2105', '2205') then 'proveedores'
     when s.code in ('1405', '1435') then 'inventario'
-    when s.code in ('6105', '6135', '6140') or s.code ~ '^613505[0-9]{2}$' then 'costo_ventas'
+    when s.code in ('6105', '6135', '6140') or s.code ~ '^61(35|40)05[0-9]{2}$' then 'costo_ventas'
     when s.code = '2365' then 'retefuente'
     when s.code = '2367' then 'reteiva'
     when s.code = '2368' then 'reteica'
@@ -1530,7 +1631,8 @@ AS $function$
         when 2 then '4140'
         else '4235'
       end
-      when 'costo_ventas' then case when p_type_id in (1, 2) then '6140' else '61350501' end
+      when 'costo_ventas' then case when p_type_id in (1, 2) then '61400501' else '61350501' end
+      when 'faltante_inventario' then case when p_type_id in (1, 2) then '61400502' else v.defecto end
       -- Inventario: nunca 1405. fn_sembrar_configuracion_contable lo cambia por el auxiliar 143501xx.
       when 'inventario' then '1435'
       else v.defecto
@@ -1602,7 +1704,7 @@ begin
     return;
   end if;
   if p_codigo = '6105' then
-    destino := case when p_type in (1, 2) then '6140' else '61350501' end;
+    destino := case when p_type in (1, 2) then '61400501' else '61350501' end;
     motivo := 'Costo a la cuenta del sector';
     return next;
     return;
@@ -2988,12 +3090,12 @@ begin
                where c.organization_id = base.organization_id
                  and c.clave = 'costo_ventas'
                  and c.branch_id is null
-                 and (c.account_code in ('6135', '6140') or c.account_code ~ '^613505[0-9]{2}$')
+                 and (c.account_code in ('6135', '6140') or c.account_code ~ '^61(35|40)05[0-9]{2}$')
                  and coalesce(a.is_active, true)
                  and a.es_movimiento is distinct from false
                limit 1
              ),
-             case when o.type_id in (1, 2) then '6140' else public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6135') end
+             case when o.type_id in (1, 2) then public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6140') else public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6135') end
            ) as destino
     from (
       select p.organization_id, p.account_code,
@@ -3050,12 +3152,12 @@ begin
                where c.organization_id = base.organization_id
                  and c.clave = 'costo_ventas'
                  and c.branch_id is null
-                 and (c.account_code in ('6135', '6140') or c.account_code ~ '^613505[0-9]{2}$')
+                 and (c.account_code in ('6135', '6140') or c.account_code ~ '^61(35|40)05[0-9]{2}$')
                  and coalesce(a.is_active, true)
                  and a.es_movimiento is distinct from false
                limit 1
              ),
-             case when o.type_id in (1, 2) then '6140' else public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6135') end
+             case when o.type_id in (1, 2) then public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6140') else public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6135') end
            ) as destino
     from (
       select p.organization_id, p.account_code,

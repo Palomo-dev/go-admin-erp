@@ -19,6 +19,8 @@ import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import {
   CommissionTransitionError,
   buildTransitionPatch,
+  vinculoComision,
+  type VinculoComision,
   transitionFor,
   type CommissionAction,
   type CommissionPayment,
@@ -137,6 +139,24 @@ function rechazoDeLaBase(error: { message?: string }): unknown {
   return r ? new CommissionTransitionError(r[0], r[1], r[2]) : error;
 }
 
+/** Vínculo del beneficiario para el débito del pago (espejo de fn_comision_vinculo). Si falla la lectura: empleado, como el SQL. */
+async function resolverVinculo(
+  supabase: SupabaseClient,
+  orgId: number,
+  row: { payee_type?: string | null; payee_id?: string | null },
+): Promise<VinculoComision> {
+  if (row.payee_type === 'supplier' || row.payee_type === 'third_party' || !row.payee_id) return vinculoComision(row.payee_type);
+  const { data } = await supabase
+    .from('vendor_commission_rates')
+    .select('vinculo')
+    .eq('organization_id', orgId)
+    .eq('salesperson_id', row.payee_id)
+    .order('valid_from', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  return vinculoComision(row.payee_type, (data as { vinculo?: string | null } | null)?.vinculo ?? null);
+}
+
 /**
  * Aplica una transición a una comisión de la organización.
  * - `null` → no existe en esta organización (404).
@@ -151,7 +171,7 @@ export async function transitionCommission(
 ): Promise<CommissionRow | null> {
   const { data: row, error: readError } = await supabase
     .from('commissions')
-    .select('id, status, paid_at, metadata, notes, organization_id')
+    .select('id, status, paid_at, metadata, notes, organization_id, payee_type, payee_id')
     .eq('id', commissionId)
     .eq('organization_id', orgId)
     .maybeSingle();
@@ -159,11 +179,13 @@ export async function transitionCommission(
   if (!row) return null;
 
   const now = opts.now ?? new Date().toISOString();
+  const vinculo = action === 'pay' ? await resolverVinculo(supabase, orgId, row as { payee_type?: string | null; payee_id?: string | null }) : null;
   const patch = buildTransitionPatch(action, row as { status: string; paid_at: string | null; metadata: Record<string, unknown> | null; notes: string | null }, {
     now,
     reason: opts.reason,
     actorId: opts.actorId,
     payment: action === 'pay' ? opts.payment : undefined,
+    vinculo,
   });
 
   // La tabla ya no admite escritura desde la sesión: la transición va por

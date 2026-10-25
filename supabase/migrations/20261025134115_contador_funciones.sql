@@ -329,12 +329,19 @@ begin
     v_debito := v_aux;
   end if;
 
+  -- QA ROJO 8dc44d22 N1: en las 9 orgs donde 2205 queda de MOVIMIENTO por saldo sin NIT (134135 v_suaves),
+  -- el resolver devolvía 2205 y la compra acreditaba 2205 mientras pagos/OC/inventario/borradores iban a
+  -- 22050501 (proveedor partido). Si existe 22050501 de movimiento, la compra va ahí; 2205/220505 quedan
+  -- solo con el saldo histórico sin NIT.
   if v_credito is null
-     or v_credito in ('2105', '1405', '1435')
+     or v_credito in ('2105', '1405', '1435', '2205', '220505')
      or v_credito like '1405%'
      or v_credito like '1435%'
      or left(v_credito, 1) = '6' then
     v_credito := coalesce(
+      (select a.account_code from public.chart_of_accounts a
+        where a.organization_id = new.organization_id and a.account_code = '22050501'
+          and a.es_movimiento is not false and coalesce(a.is_active, true)),
       public.fn_puc_cuenta_para_asiento(new.organization_id, '2205', 'Proveedores nacionales'),
       v_credito
     );

@@ -194,9 +194,38 @@ export function lineasSoftware(
   return [linea(momento, 'debito', cuenta, null, false, true, aCentavos(pesos))];
 }
 
-/** 2408 y 2365 son título: el pago debita el auxiliar (24080501 IVA generado; 23654001 retefuente). */
-export function lineasImpuestoDeclarado(cuenta: '2408' | '2365', pesos: number): LineaTesoreria[] {
-  return [linea('pago', 'debito', cuenta === '2408' ? '24080501' : '23654001', null, false, false, aCentavos(pesos))];
+/** Auxiliares de retención en la fuente (2365) en el orden en que se cubren al pagar la declaración. */
+export const AUXILIARES_2365 = ['23651501', '23652001', '23652501', '23654001'] as const;
+
+/**
+ * 2408 y 2365 son título: el pago debita el auxiliar (24080501 IVA generado).
+ * 2365 (QA ROJO N7): el pago se reparte entre 23651501 (salarios), 23652001 (honorarios/comisiones),
+ * 23652501 (servicios) y 23654001 (compras) según el SALDO crédito de cada auxiliar, sin pasar de él;
+ * lo que exceda la suma de saldos (o sin saldos) va a 23654001.
+ * @param saldos saldo crédito por auxiliar en pesos (p. ej. { '23652001': 120000 })
+ */
+export function lineasImpuestoDeclarado(
+  cuenta: '2408' | '2365',
+  pesos: number,
+  saldos: Readonly<Record<string, number>> = {},
+): LineaTesoreria[] {
+  const total = aCentavos(pesos);
+  if (cuenta === '2408') return [linea('pago', 'debito', '24080501', null, false, false, total)];
+  const porCuenta = new Map<string, number>();
+  let restante = total;
+  for (const aux of AUXILIARES_2365) {
+    if (restante <= 0) break;
+    const saldo = Math.max(Math.round((saldos[aux] ?? 0) * 100), 0);
+    const toma = Math.min(saldo, restante);
+    if (toma > 0) {
+      porCuenta.set(aux, toma);
+      restante -= toma;
+    }
+  }
+  if (restante > 0) porCuenta.set('23654001', (porCuenta.get('23654001') ?? 0) + restante);
+  return AUXILIARES_2365.filter((aux) => porCuenta.has(aux)).map((aux) =>
+    linea('pago', 'debito', aux, null, false, false, porCuenta.get(aux)!),
+  );
 }
 
 export function lineasProveedor(pesos: number, compraContadoSinFactura = false): LineaTesoreria[] {

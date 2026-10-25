@@ -1,16 +1,270 @@
--- Commit B (comisiones/pasivos) 25-oct-2026, QA 801206c2 MEDIO-2. NO aplicada. Requiere 134110 (28050501) y 134120
--- (no-show D28050501). Sin esto el no-show debitaría 28050501 sin que el anticipo esté ahí.
---   a. Hoteles (type_id 2) con 28050501 de movimiento: reglas 'reservation' confirmed C2405/C4250/C2805 -> C28050501
---      (C4250 en 130/133/136/326) y cancelled D2405/D2805 -> D28050501. Bitácora p1_puc_bitacora migracion '134145'.
---   b. Saldo del anticipo contabilizado en 2405 por asientos source='reservation' -> 28050501, asiento
---      'hotel_anticipos_2805:<org>[:n]' fechado 2026-10-25 12:00 COT (octubre ABIERTO). En prod solo la org 2:
---      -3.200.075 (3 líneas desde 16-ene-2026). Hay que aplicarlo ANTES del primer no-show.
--- MEDIO-3 (documentado, sin cambio): 2805 sigue de MOVIMIENTO (NULL) con hijo 280505 (134110 l.92-98, trigger
---   apagado). Un UPDATE futuro de la fila 2805 con trg_puc_validar_cuenta activo la vuelve título y
---   trg_chart_cuenta_titulo_configurada mueve la clave anticipos (115 orgs) a 28050501; los flujos customer_credit
---   con 2805 fijo fallarían. No editar la fila 2805 sin apagar el trigger hasta que el contador decida.
+-- Commit B (comisiones/pasivos) 25-oct-2026. REHECHA por QA ROJO 8dc44d22 N3/N7 según el contador. NO aplicada.
+-- Requiere 134110 (28050501, 41409502) y 134120/134130.
+-- Contador (hoteles con 28050501 de movimiento):
+--   * Reserva confirmada SIN pago: NO lleva asiento (antes D1305/C2405 por total_estimated).
+--   * Anticipo (pago de folio antes del check-in):   D caja/banco  C 28050501   (regla reservation/received)
+--   * Cancelada con reembolso:                       D 28050501    C caja/banco (regla reservation/cancelled)
+--   * Penalidad retenida al cancelar:                D 28050501    C 41409502   (regla reservation/adjusted;
+--       monto = reservations.metadata->>'penalidad_retenida', tope el anticipo; el resto se reembolsa)
+--   * No-show (todo el anticipo):                    D 28050501    C 41409502   (regla reservation/no_show)
+--   * Checkout (el anticipo abona la cartera):       D 28050501    C 13050501   (regla reservation/completed)
+--   event_type: accounting_rules_event_type_check (igual en prod) no admite deposit/penalty/checkout; se usan
+--   received (anticipo), adjusted (penalidad) y completed (checkout), que sí admite. No se toca el CHECK.
+--   El anticipo de una reserva = saldo CONTABILIZADO de 28050501 en sus asientos (source 'reservation' con
+--   source_id = reserva, y 'folio_payment' de los pagos de sus folios). Sin anticipo no hay asiento.
+-- a. Funciones: fn_reserva_anticipo (nueva), fn_auto_journal_reservation y fn_auto_journal_folio_payment
+--    (las orgs SIN 28050501 de movimiento siguen exactamente con el código anterior).
+-- b. Cuentas: 130505 (título) y 13050501 «Clientes nacionales - hotelería» (movimiento) bajo 1305, con
+--    trg_puc_validar_cuenta apagado: 1305 sigue de MOVIMIENTO (mismo caso que 2805/MEDIO-3; folio_payment
+--    después del check-in sigue C1305).
+-- c. Reglas: confirmed → inactiva; cancelled → D28050501/C1105; no_show → D28050501/C41409502; se siembran las
+--    que falten (received, cancelled, adjusted, no_show, completed), también en las 4 orgs con C4250 (130/133/136/326)
+--    que no tenían cancelación ni no-show. Bitácora p1_puc_bitacora migracion '134145'.
+-- d. Saldo de 2405 de asientos source='reservation' CONTABILIZADOS (N7: org 2 tiene el borrador manual 49698
+--    D3.707.109 en 2405, que no entra) -> 28050501, asiento 'hotel_anticipos_2805:<org>[:n]' 2026-10-25 12:00 COT.
+--    En prod solo org 2: -3.200.075 (asientos 424/425/426). OJO: es un saldo global, no queda atado a cada reserva;
+--    el contador decide cómo aplicarlo (no lo libera ningún no-show/checkout automático).
+-- Pendiente (no se toca aquí): fn_create_default_accounting_rules sigue sembrando las reglas viejas de reserva a
+--    orgs NUEVAS; 134145 no corre para ellas.
 -- Rollback: supabase/rollbacks/20261025134145_hoteles_anticipos_2805_rollback.sql
 set constraints public.trg_chart_cuenta_titulo_configurada immediate;
+
+create or replace function public.fn_reserva_anticipo(p_org integer, p_reserva uuid)
+returns numeric language sql stable security definer set search_path to 'public', 'pg_temp' as $$
+  select round(coalesce(sum(l.credit - l.debit), 0), 2)
+    from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+   where e.organization_id = p_org and e.posted is true and l.account_code = '28050501'
+     and ((e.source = 'reservation' and e.source_id = p_reserva::text)
+          or (e.source = 'folio_payment' and e.source_id in (
+                select p.id::text from public.payments p join public.folios f on f.id::text = p.source_id::text
+                 where p.source = 'folio' and f.reservation_id = p_reserva)));
+$$;
+revoke all on function public.fn_reserva_anticipo(integer, uuid) from public, anon;
+grant execute on function public.fn_reserva_anticipo(integer, uuid) to authenticated;
+
+-- Cuenta de una regla de reserva: caja/banco genérica → caja de la sede.
+create or replace function public.fn_reserva_cuenta_regla(p_org integer, p_branch integer, p_cuenta text)
+returns text language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+begin
+  if p_cuenta in ('1105', '110505', '1110', '111005') then
+    return coalesce(public.fn_cuenta_caja(p_org, nullif(p_branch, 0), null), p_cuenta);
+  end if;
+  return p_cuenta;
+end $$;
+revoke all on function public.fn_reserva_cuenta_regla(integer, integer, text) from public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.fn_auto_journal_reservation()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+    v_rule RECORD;
+    v_amount numeric;
+    v_event_type text;
+    v_description text;
+    v_branch_id integer;
+    v_anticipo numeric;
+    v_penalidad numeric := 0;
+BEGIN
+    IF (NEW.status IS NOT DISTINCT FROM OLD.status) THEN
+        RETURN NEW;
+    END IF;
+    v_branch_id := COALESCE(NEW.branch_id, 0);
+
+    -- Hoteles con 28050501 de movimiento: reglas del contador (134145). Sin anticipo no hay asiento.
+    IF EXISTS (SELECT 1 FROM chart_of_accounts a WHERE a.organization_id = NEW.organization_id
+                 AND a.account_code = '28050501' AND a.es_movimiento IS NOT FALSE) THEN
+        IF NEW.status::text NOT IN ('cancelled', 'no_show', 'checked_out') THEN
+            RETURN NEW;   -- confirmada / tentativa / check-in: sin asiento
+        END IF;
+        v_anticipo := public.fn_reserva_anticipo(NEW.organization_id, NEW.id);
+        IF v_anticipo <= 0 THEN
+            RETURN NEW;
+        END IF;
+        IF NEW.status::text = 'cancelled' THEN
+            IF coalesce(NEW.metadata->>'penalidad_retenida', '') ~ '^[0-9]+(\.[0-9]+)?$' THEN
+                v_penalidad := least(v_anticipo, (NEW.metadata->>'penalidad_retenida')::numeric);
+            END IF;
+            IF v_penalidad > 0 THEN
+                SELECT * INTO v_rule FROM accounting_rules
+                 WHERE organization_id = NEW.organization_id AND source_type = 'reservation'
+                   AND event_type = 'adjusted' AND is_active ORDER BY priority, created_at LIMIT 1;
+                IF FOUND THEN
+                    PERFORM fn_create_journal_entry(
+                        p_organization_id := NEW.organization_id, p_branch_id := v_branch_id,
+                        p_entry_date := COALESCE(NEW.updated_at, now()),
+                        p_memo := 'Penalidad retenida Reserva ' || NEW.id::text,
+                        p_source := 'reservation', p_source_id := NEW.id::text,
+                        p_debit_account := fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.debit_account_code),
+                        p_credit_account := fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.credit_account_code),
+                        p_amount := v_penalidad);
+                ELSE
+                    v_penalidad := 0;
+                END IF;
+            END IF;
+            v_event_type := 'cancelled';
+            v_amount := v_anticipo - v_penalidad;
+            v_description := 'Reembolso anticipo Reserva ' || NEW.id::text;
+        ELSIF NEW.status::text = 'no_show' THEN
+            v_event_type := 'no_show';
+            v_amount := v_anticipo;
+            v_description := 'Penalidad No-Show Reserva ' || NEW.id::text;
+        ELSE
+            v_event_type := 'completed';
+            v_amount := v_anticipo;
+            v_description := 'Aplicación anticipo al checkout Reserva ' || NEW.id::text;
+        END IF;
+        IF v_amount <= 0 THEN
+            RETURN NEW;
+        END IF;
+        SELECT * INTO v_rule FROM accounting_rules
+         WHERE organization_id = NEW.organization_id AND source_type = 'reservation'
+           AND event_type = v_event_type AND is_active ORDER BY priority, created_at LIMIT 1;
+        IF NOT FOUND THEN
+            RETURN NEW;
+        END IF;
+        PERFORM fn_create_journal_entry(
+            p_organization_id := NEW.organization_id, p_branch_id := v_branch_id,
+            p_entry_date := COALESCE(NEW.updated_at, now()),
+            p_memo := v_description,
+            p_source := 'reservation', p_source_id := NEW.id::text,
+            p_debit_account := fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.debit_account_code),
+            p_credit_account := fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.credit_account_code),
+            p_amount := v_amount);
+        RETURN NEW;
+    END IF;
+
+    -- Resto de orgs: comportamiento anterior sin cambios.
+    v_event_type := CASE NEW.status
+        WHEN 'confirmed' THEN 'confirmed'
+        WHEN 'cancelled' THEN 'cancelled'
+        WHEN 'no_show' THEN 'no_show'
+        ELSE NULL
+    END;
+    IF v_event_type IS NULL THEN
+        RETURN NEW;
+    END IF;
+    v_amount := COALESCE(NEW.total_estimated, 0);
+    IF v_amount <= 0 THEN
+        RETURN NEW;
+    END IF;
+    SELECT * INTO v_rule
+    FROM accounting_rules
+    WHERE organization_id = NEW.organization_id
+      AND source_type = 'reservation'
+      AND event_type = v_event_type
+      AND is_active = true
+    LIMIT 1;
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+    v_description := CASE v_event_type
+        WHEN 'confirmed' THEN 'Anticipo Reserva ' || NEW.id::text
+        WHEN 'cancelled' THEN 'Reversa Cancelacion Reserva ' || NEW.id::text
+        WHEN 'no_show' THEN 'Penalidad No-Show Reserva ' || NEW.id::text
+    END;
+    PERFORM fn_create_journal_entry(
+        p_organization_id := NEW.organization_id,
+        p_branch_id := v_branch_id,
+        p_entry_date := COALESCE(NEW.updated_at, now()),
+        p_memo := v_description,
+        p_source := 'reservation',
+        p_source_id := NEW.id::text,
+        p_debit_account := v_rule.debit_account_code,
+        p_credit_account := v_rule.credit_account_code,
+        p_amount := v_amount
+    );
+    RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.fn_auto_journal_folio_payment()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+    v_rule RECORD;
+    v_folio RECORD;
+    v_reservation RECORD;
+    v_amount numeric;
+    v_description text;
+    v_source_id_uuid uuid;
+    v_branch integer;
+BEGIN
+    IF NEW.source IS DISTINCT FROM 'folio' THEN
+        RETURN NEW;
+    END IF;
+    v_amount := COALESCE(NEW.amount, 0);
+    IF v_amount <= 0 THEN
+        RETURN NEW;
+    END IF;
+    BEGIN
+        v_source_id_uuid := NEW.source_id::uuid;
+    EXCEPTION WHEN OTHERS THEN
+        RETURN NEW;
+    END;
+    SELECT f.id, f.reservation_id INTO v_folio FROM folios f WHERE f.id = v_source_id_uuid LIMIT 1;
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+    SELECT r.organization_id, r.branch_id, r.status::text AS status INTO v_reservation
+    FROM reservations r WHERE r.id = v_folio.reservation_id LIMIT 1;
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+    v_branch := COALESCE(v_reservation.branch_id, 0);
+
+    -- 134145: pago antes del check-in en hoteles con 28050501 = anticipo (D caja/banco C 28050501).
+    IF v_reservation.status IN ('tentative', 'confirmed')
+       AND EXISTS (SELECT 1 FROM chart_of_accounts a WHERE a.organization_id = v_reservation.organization_id
+                     AND a.account_code = '28050501' AND a.es_movimiento IS NOT FALSE) THEN
+        SELECT * INTO v_rule FROM accounting_rules
+         WHERE organization_id = v_reservation.organization_id AND source_type = 'reservation'
+           AND event_type = 'received' AND is_active ORDER BY priority, created_at LIMIT 1;
+        IF FOUND THEN
+            PERFORM fn_create_journal_entry(
+                p_organization_id := v_reservation.organization_id, p_branch_id := v_branch,
+                p_entry_date := NEW.created_at,
+                p_memo := 'Anticipo Reserva ' || v_folio.reservation_id::text || ' (folio ' || v_folio.id::text || ')',
+                p_source := 'folio_payment', p_source_id := NEW.id::text,
+                p_debit_account := fn_reserva_cuenta_regla(v_reservation.organization_id, v_branch, v_rule.debit_account_code),
+                p_credit_account := fn_reserva_cuenta_regla(v_reservation.organization_id, v_branch, v_rule.credit_account_code),
+                p_amount := v_amount,
+                p_created_by := NEW.created_by);
+            RETURN NEW;
+        END IF;
+    END IF;
+
+    SELECT * INTO v_rule
+    FROM accounting_rules
+    WHERE organization_id = v_reservation.organization_id
+      AND source_type = 'folio_payment'
+      AND event_type = 'received'
+      AND is_active = true
+    LIMIT 1;
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+    v_description := 'Pago Folio ' || v_folio.id::text;
+    PERFORM fn_create_journal_entry(
+        p_organization_id := v_reservation.organization_id,
+        p_branch_id := v_branch,
+        p_entry_date := NEW.created_at,
+        p_memo := v_description,
+        p_source := 'folio_payment',
+        p_source_id := NEW.id::text,
+        p_debit_account := v_rule.debit_account_code,
+        p_credit_account := v_rule.credit_account_code,
+        p_amount := v_amount,
+        p_created_by := NEW.created_by
+    );
+    RETURN NEW;
+END;
+$function$;
 
 create or replace function pg_temp.h_log(p_org integer, p_obj text, p_clave text, p_campo text, p_ant text, p_nuevo text)
 returns void language sql as $$
@@ -18,33 +272,88 @@ returns void language sql as $$
   values ('134145', p_org, p_obj, p_clave, p_campo, p_ant, p_nuevo);
 $$;
 
+create or replace function pg_temp.h_set(p_org integer, p_id uuid, p_campo text, p_ant text, p_nuevo text)
+returns void language plpgsql as $$
+begin
+  if p_ant is not distinct from p_nuevo then return; end if;
+  execute format('update public.accounting_rules set %I = $1, updated_at = now() where id = $2', p_campo) using p_nuevo, p_id;
+  perform pg_temp.h_log(p_org, 'accounting_rules', p_id::text, p_campo, p_ant, p_nuevo);
+end $$;
+
 do $$
 declare
   v_org integer;
   r record;
+  c record;
   v_s numeric;
   v_n integer;
   v_fact text;
   v_branch integer;
   v_entry integer;
+  v_id uuid;
 begin
+  alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for v_org in select o.id from public.organizations o where o.type_id = 2
                   and exists (select 1 from public.chart_of_accounts a where a.organization_id = o.id
                                 and a.account_code = '28050501' and a.es_movimiento is not false)
                 order by 1 loop
-    -- a. reglas
-    for r in select id, event_type et, debit_account_code d, credit_account_code c from public.accounting_rules
-              where organization_id = v_org and source_type = 'reservation' and event_type in ('confirmed', 'cancelled') loop
-      if r.et = 'confirmed' and r.c in ('2405', '4250', '2805') then
-        update public.accounting_rules set credit_account_code = '28050501', updated_at = now() where id = r.id;
-        perform pg_temp.h_log(v_org, 'accounting_rules', r.id::text, 'credit_account_code', r.c, '28050501');
-      elsif r.et = 'cancelled' and r.d in ('2405', '2805') then
-        update public.accounting_rules set debit_account_code = '28050501', updated_at = now() where id = r.id;
-        perform pg_temp.h_log(v_org, 'accounting_rules', r.id::text, 'debit_account_code', r.d, '28050501');
+    -- b. cuentas 130505 / 13050501
+    for c in select * from (values ('130505', '1305', 'Clientes nacionales', false, 1),
+                                   ('13050501', '130505', 'Clientes nacionales - hotelería', true, 2)) t(codigo, padre, nombre, mov, orden)
+              order by orden loop
+      continue when exists (select 1 from public.chart_of_accounts where organization_id = v_org and account_code = c.codigo);
+      insert into public.chart_of_accounts (
+        organization_id, account_code, name, type, parent_code, is_active,
+        naturaleza, es_movimiento, requiere_tercero, requiere_centro_costo, centro_costo_modo,
+        presentacion_niif, created_at, updated_at)
+      select v_org, c.codigo, c.nombre, p.type, c.padre, true,
+             p.naturaleza, c.mov, coalesce(p.requiere_tercero, false), p.requiere_centro_costo,
+             p.centro_costo_modo, p.presentacion_niif, now(), now()
+        from public.chart_of_accounts p
+       where p.organization_id = v_org and p.account_code = c.padre
+      on conflict (organization_id, account_code) do nothing;
+      if found then
+        perform pg_temp.h_log(v_org, 'cuenta_nueva', c.codigo, null, null, c.nombre);
       end if;
     end loop;
 
-    -- b. saldo de anticipos de reservas en 2405
+    -- c. reglas existentes
+    for r in select id, event_type et, debit_account_code d, credit_account_code cr, is_active from public.accounting_rules
+              where organization_id = v_org and source_type = 'reservation' loop
+      if r.et = 'confirmed' and r.is_active then
+        update public.accounting_rules set is_active = false, updated_at = now() where id = r.id;
+        perform pg_temp.h_log(v_org, 'accounting_rules', r.id::text, 'is_active', 'true', 'false');
+      elsif r.et = 'cancelled' then
+        perform pg_temp.h_set(v_org, r.id, 'debit_account_code', r.d, '28050501');
+        perform pg_temp.h_set(v_org, r.id, 'credit_account_code', r.cr, '1105');
+      elsif r.et = 'no_show' then
+        perform pg_temp.h_set(v_org, r.id, 'debit_account_code', r.d, '28050501');
+        perform pg_temp.h_set(v_org, r.id, 'credit_account_code', r.cr, '41409502');
+      end if;
+    end loop;
+
+    -- c. reglas que faltan
+    for c in select * from (values
+        ('Anticipo de reserva', 'Pago antes del check-in: D caja/banco C anticipos', 'received', '1105', '28050501'),
+        ('Reembolso de anticipo', 'Reserva cancelada con reembolso', 'cancelled', '28050501', '1105'),
+        ('Penalidad retenida', 'Cancelación: penalidad retenida del anticipo', 'adjusted', '28050501', '41409502'),
+        ('Reserva no presentada', 'El anticipo pasa al ingreso por no-show', 'no_show', '28050501', '41409502'),
+        ('Anticipo aplicado al checkout', 'El anticipo abona la cartera del huésped', 'completed', '28050501', '13050501')
+      ) t(nombre, descr, et, d, cr) loop
+      continue when exists (select 1 from public.accounting_rules where organization_id = v_org
+                              and source_type = 'reservation' and event_type = c.et and is_active);
+      continue when not exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
+                                  and a.account_code = case when c.d = '1105' then c.cr when c.cr = '1105' then c.d
+                                                            else c.cr end
+                                  and a.es_movimiento is not false);
+      insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+                                           debit_account_code, credit_account_code, is_active, priority)
+      values (v_org, c.nombre, c.descr, 'reservation', c.et, c.d, c.cr, true, 32)
+      returning id into v_id;
+      perform pg_temp.h_log(v_org, 'accounting_rules_nueva', v_id::text, 'event_type', null, c.et);
+    end loop;
+
+    -- d. saldo de anticipos de reservas en 2405 (solo asientos CONTABILIZADOS)
     if exists (select 1 from public.journal_entries x where x.organization_id = v_org
                  and (x.fact_key = 'hotel_anticipos_2805:' || v_org or x.fact_key like 'hotel_anticipos_2805:' || v_org || ':%')
                  and not exists (select 1 from public.journal_entries rv where rv.organization_id = v_org
@@ -53,7 +362,7 @@ begin
     end if;
     select round(coalesce(sum(l.debit - l.credit), 0), 2) into v_s
       from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
-     where e.organization_id = v_org and e.source = 'reservation' and l.account_code = '2405';
+     where e.organization_id = v_org and e.source = 'reservation' and e.posted is true and l.account_code = '2405';
     if v_s >= 0 then
       continue;
     end if;
@@ -76,6 +385,7 @@ begin
     perform pg_temp.h_log(v_org, 'journal_entries', v_entry::text, 'reclasificacion', null, v_fact);
     raise notice '134145: org % anticipos 2405 % -> 28050501 (asiento %)', v_org, v_s, v_entry;
   end loop;
+  alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
 end $$;
 
 insert into supabase_migrations.schema_migrations (version, name, statements, created_by)

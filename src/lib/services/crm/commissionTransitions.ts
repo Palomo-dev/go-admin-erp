@@ -14,6 +14,7 @@
  */
 
 import { STAGE_MANAGER_ROLE_IDS } from './stagePermissions';
+import { debitoPagoComision } from '@/lib/finanzas/movimientoCajaCuentas';
 
 export type CommissionStatus = 'accrued' | 'paid' | 'cancelled';
 export type CommissionAction = 'pay' | 'reject' | 'clawback';
@@ -68,6 +69,19 @@ export interface TransitionOptions {
    * la regla contable. La cuenta bancaria ya viene validada contra la organización.
    */
   payment?: CommissionPayment;
+  /**
+   * Solo `pay`: vínculo del beneficiario (espejo de `fn_comision_vinculo`). Deja en la metadata la
+   * cuenta débito del pago (`debitoPagoComision`): externo 23352001, empleado 25050502 (QA ROJO N5).
+   */
+  vinculo?: VinculoComision | null;
+}
+
+export type VinculoComision = 'empleado' | 'externo';
+
+/** Espejo de `fn_comision_vinculo`: proveedor/tercero → externo; si no, el vínculo de su tarifa (por defecto empleado). */
+export function vinculoComision(payeeType: string | null | undefined, vinculoTarifa?: string | null): VinculoComision {
+  if (payeeType === 'supplier' || payeeType === 'third_party') return 'externo';
+  return vinculoTarifa === 'externo' ? 'externo' : 'empleado';
 }
 
 export interface CommissionPayment {
@@ -116,6 +130,7 @@ export function buildTransitionPatch(action: CommissionAction, row: TransitionRo
       ...(p.method ? { payment_method: p.method } : {}),
       ...(p.bankAccountId ? { bank_account_id: p.bankAccountId } : {}),
       ...(p.reference ? { payment_reference: p.reference } : {}),
+      ...(opts.vinculo ? { vinculo: opts.vinculo, cuenta_debito_pago: debitoPagoComision(opts.vinculo) } : {}),
     };
     if (Object.keys(extra).length === 0) return { status: 'paid', paid_at: opts.now, updated_at: opts.now };
     return { status: 'paid', paid_at: opts.now, updated_at: opts.now, metadata: { ...previous, ...extra } };

@@ -62,13 +62,13 @@ create table if not exists public.comision_tercero_tributario (
 alter table public.comision_tercero_tributario enable row level security;
 revoke all on public.comision_tercero_tributario from anon;
 
--- B1: UVT por año desde fiscal_uvt (último año <= p_anio). Sin fila: error (no se inventa la UVT).
+-- B1: UVT del año EXACTO desde fiscal_uvt (QA ROJO N8: no se cae en silencio al último año). Sin fila: error.
 create or replace function public.fn_uvt(p_anio integer, p_pais text default 'COL')
 returns numeric language plpgsql stable security definer set search_path to 'public', 'pg_temp' as $$
 declare v numeric;
 begin
   select u.value into v from public.fiscal_uvt u
-   where u.country_code = coalesce(p_pais, 'COL') and u.year <= p_anio order by u.year desc limit 1;
+   where u.country_code = coalesce(p_pais, 'COL') and u.year = p_anio;
   if v is null then raise exception 'uvt_no_configurada %/%', p_pais, p_anio using errcode = 'P0002'; end if;
   return v;
 end $$;

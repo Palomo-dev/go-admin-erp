@@ -4,19 +4,27 @@
  * - Sin base mínima.
  * - Régimen Simple: 0.
  * - Persona jurídica: 11 %.
- * - Persona natural: 10 %; 11 % si lo causado con ese vendedor en el año supera 3.300 UVT.
- * - Persona natural que certifica (aplica art. 383): tabla del art. 383.
+ * - Sin datos tributarios del tercero: null (la comisión va a la cola, como el SQL; no se asume natural 10 %).
+ * - Persona natural: 10 %; 11 % si el contrato o lo causado con ese tercero en el año supera 3.300 UVT.
+ * - Persona natural que certifica (aplica art. 383): tabla del art. 383 sobre el ACUMULADO DEL MES, menos lo
+ *   ya retenido en el mes (QA ROJO 8dc44d22 N4).
  * - La tarifa del vendedor (editable), si está, manda sobre todo lo anterior salvo Régimen Simple.
  */
 export const UVT_2026 = 52374;
-/** UVT por año (espejo de public.fiscal_uvt / fn_uvt). Años sin dato usan el último conocido. */
+/** UVT por año (espejo de public.fiscal_uvt / fn_uvt). Un año sin dato es un error (QA ROJO N8: no se usa otro año). */
 export const UVT_POR_ANIO: Readonly<Record<number, number>> = { 2024: 47065, 2025: 49799, 2026: UVT_2026 };
 
+export class UvtNoConfiguradaError extends Error {
+  constructor(public readonly anio: number) {
+    super(`uvt_no_configurada COL/${anio}`);
+    this.name = 'UvtNoConfiguradaError';
+  }
+}
+
 export function uvtDelAnio(anio: number = new Date().getFullYear()): number {
-  if (UVT_POR_ANIO[anio] != null) return UVT_POR_ANIO[anio];
-  const anios = Object.keys(UVT_POR_ANIO).map(Number).sort((a, b) => a - b);
-  const previo = anios.filter((a) => a <= anio).pop() ?? anios[0];
-  return UVT_POR_ANIO[previo];
+  const uvt = UVT_POR_ANIO[anio];
+  if (uvt == null) throw new UvtNoConfiguradaError(anio);
+  return uvt;
 }
 export const TOPE_ANUAL_UVT = 3300;
 
@@ -26,6 +34,21 @@ export interface VendedorRetencion {
   tipoPersona?: TipoPersona | null;
   retencionTarifa?: number | null;
   aplicaArt383?: boolean | null;
+  /** Valor del contrato (pesos): si supera 3.300 UVT, persona natural al 11 %. */
+  valorContrato?: number | null;
+}
+
+/** Acumulado del mes con el tercero (sin esta comisión), para el art. 383. */
+export interface AcumuladoMes {
+  /** Base ya causada en el mes. */
+  base: number;
+  /** Retención ya practicada en el mes. */
+  retenido: number;
+}
+
+/** Sin tipo de persona ni tarifa ni certificación: el SQL lo manda a la cola (retencion_sin_datos_tributarios). */
+export function tieneDatosTributarios(v: VendedorRetencion | null | undefined): boolean {
+  return !!v && (v.tipoPersona != null || v.retencionTarifa != null || v.aplicaArt383 != null);
 }
 
 const redondear2 = (n: number) => Math.round(n * 100) / 100;
@@ -46,9 +69,12 @@ export function retencionArt383(base: number, uvt = UVT_2026): number {
 
 /**
  * @param monto comisión causada
- * @param acumuladoAnual lo ya causado (accrued/paid) con el mismo vendedor en el año, sin esta comisión
+ * @param vendedor datos tributarios del tercero; sin datos → null (cola)
+ * @param acumuladoAnual lo ya causado (accrued/paid) con el mismo tercero en el año, sin esta comisión
  * @param tarifaRegla tarifa de la regla contable (por defecto 10)
- * @param anio año de causación: define la UVT (art. 383 y tope de 3.300 UVT)
+ * @param anio año de causación: define la UVT (art. 383 y tope de 3.300 UVT); sin UVT del año lanza error
+ * @param mes acumulado del mes y lo ya retenido en el mes (art. 383)
+ * @returns retención en pesos, o null si faltan los datos tributarios del tercero
  */
 export function retencionComision(
   monto: number,
@@ -56,14 +82,19 @@ export function retencionComision(
   acumuladoAnual = 0,
   tarifaRegla: number | null = null,
   anio = 2026,
-): number {
-  const uvt = uvtDelAnio(anio);
+  mes: AcumuladoMes = { base: 0, retenido: 0 },
+): number | null {
   if (!(monto > 0)) return 0;
-  const tipo = vendedor?.tipoPersona ?? 'natural';
-  if (tipo === 'simple') return 0;
-  if (vendedor?.retencionTarifa != null) return redondear2((monto * vendedor.retencionTarifa) / 100);
-  if (tipo === 'juridica') return redondear2((monto * 11) / 100);
-  if (vendedor?.aplicaArt383) return retencionArt383(monto, uvt);
-  const tarifa = acumuladoAnual + monto > TOPE_ANUAL_UVT * uvt ? 11 : tarifaRegla ?? 10;
+  if (!tieneDatosTributarios(vendedor)) return null;
+  const v = vendedor as VendedorRetencion;
+  if (v.tipoPersona === 'simple') return 0;
+  if (v.retencionTarifa != null) return redondear2((monto * v.retencionTarifa) / 100);
+  if (v.tipoPersona === 'juridica') return redondear2((monto * 11) / 100);
+  const uvt = uvtDelAnio(anio);
+  if (v.aplicaArt383) {
+    return Math.max(retencionArt383(mes.base + monto, uvt) - mes.retenido, 0);
+  }
+  const tope = TOPE_ANUAL_UVT * uvt;
+  const tarifa = (v.valorContrato ?? 0) > tope || acumuladoAnual + monto > tope ? 11 : tarifaRegla ?? 10;
   return redondear2((monto * tarifa) / 100);
 }

@@ -152,7 +152,8 @@ begin
     and ar.is_active
   order by ar.priority
   limit 1;
-  v_inv := coalesce(nullif(btrim(v_inv), ''), '1405');
+  -- QA 25-oct: nunca 1405 (ni 1435 de grupo). Respaldo: auxiliar 1435 de la org, si no 14350101.
+  v_inv := coalesce(nullif(btrim(v_inv), ''), public.fn_inventario_auxiliar_1435(p_organization_id, null), '14350101');
   -- 6135 pasa a título en 134060: el respaldo es su auxiliar 61350501. Igual que con 1435, el auxiliar
   -- de la sede lo resuelve después fn_cuenta_configurada_de_sede (branch_account_mappings 6135->61350501).
   v_cmv := case when v_type in (1, 2) then '6140' else '61350501' end;

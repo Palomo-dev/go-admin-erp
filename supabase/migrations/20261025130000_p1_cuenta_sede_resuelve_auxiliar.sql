@@ -2,7 +2,7 @@
 -- fn_cuenta_configurada_de_sede salía con el fallo de fn_resolver_cuenta_configurada
 -- ANTES de aplicar el mapeo por sede (branch_account_mappings) y el auxiliar 1435.
 -- Ahora: 1) mapeo por sede, 2) auxiliar 1435 de la sede (fn_asegurar_auxiliar_1435),
--- 3) si la cuenta de título tiene un único auxiliar de movimiento, ese auxiliar.
+-- 3) si la cuenta de título tiene un único auxiliar de movimiento, ese auxiliar (no aplica a impuestos 24xx).
 -- Solo devuelve fallo si al final no hay ninguna cuenta de movimiento.
 -- Inventario nunca termina en 1405: 1405/1435/143501xx/143505 van al auxiliar 143501xx de la sede.
 -- Rollback: supabase/rollbacks/20261025130000_p1_cuenta_sede_resuelve_auxiliar_rollback.sql
@@ -79,6 +79,11 @@ begin
   end if;
 
   -- 5) Cuenta de título con un único auxiliar de movimiento: usarlo.
+  --    Excepto impuestos (24xx): p. ej. 2408 tiene 240805 generado y 240810 descontable; no se adivina.
+  if cuenta like '24%' then
+    fallo := v_fallo;
+    return;
+  end if;
   select array_agg(c.account_code order by c.account_code) into v_hijos
   from public.chart_of_accounts c
   where c.organization_id = p_organization_id

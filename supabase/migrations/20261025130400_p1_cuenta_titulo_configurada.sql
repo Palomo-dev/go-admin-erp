@@ -1,7 +1,7 @@
 -- P1 (25-oct-2026): cuando una cuenta pasa a es_movimiento = false (título) y está en configuracion_contable,
 -- la configuración se mueve a su auxiliar; si no hay un auxiliar claro, se rechaza el cambio con un mensaje.
 -- - Inventario (1405*, 1435*): auxiliar 143501xx de la sede (o de la sede principal si es de la organización).
--- - Otras cuentas: su ÚNICO auxiliar de movimiento. Si tiene 0 o varios, se avisa y no se deja cambiar.
+-- - Otras cuentas (salvo impuestos 24xx): su ÚNICO auxiliar de movimiento. Si tiene 0 o varios, se avisa y no se deja cambiar.
 -- No toca datos al aplicar: solo actúa en futuras actualizaciones del plan.
 -- Rollback: supabase/rollbacks/20261025130400_p1_cuenta_titulo_configurada_rollback.sql
 
@@ -28,10 +28,11 @@ begin
      for update
   loop
     v_destino := null;
+    v_hijos := null;
 
     if cfg.account_code in ('1405', '1435') or cfg.account_code like '1405%' or cfg.account_code like '1435%' then
       v_destino := public.fn_inventario_auxiliar_1435(new.organization_id, cfg.branch_id);
-    else
+    elsif cfg.account_code not like '24%' then  -- impuestos: no se adivina el auxiliar
       select array_agg(c.account_code order by c.account_code) into v_hijos
         from public.chart_of_accounts c
        where c.organization_id = new.organization_id

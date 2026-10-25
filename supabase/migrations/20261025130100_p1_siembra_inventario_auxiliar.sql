@@ -97,7 +97,7 @@ begin
     select case
       when p.clave = 'inventario' then v_inv
       -- Cuenta de título: su único auxiliar de movimiento, si lo hay.
-      when exists (
+      when p.account_code not like '24%' and exists (
         select 1 from public.chart_of_accounts t
         where t.organization_id = p_org and t.account_code = p.account_code and t.es_movimiento is false
       ) then (

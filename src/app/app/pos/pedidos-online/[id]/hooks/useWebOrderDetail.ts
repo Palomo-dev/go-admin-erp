@@ -12,6 +12,7 @@ import { metodoDeCobroEnCaja, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWe
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { marcarPedidoWebPagado, PagoManualError } from '@/lib/services/webOrderPagoManual';
 import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
 
 /** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
@@ -63,6 +64,15 @@ interface UseWebOrderDetailReturn {
   avisoStock: string[];
   /** Último cobro rechazado porque la sede no tiene caja abierta. */
   sinCajaAbierta: boolean;
+  /** Diálogo «Marcar como pagado (pago en línea)». */
+  pagoManualAbierto: boolean;
+  setPagoManualAbierto: (open: boolean) => void;
+  /**
+   * Pago aprobado en la pasarela sin webhook: reactiva el pedido (re-reserva el
+   * stock), lo marca pagado con la referencia y el motivo, y lo confirma por el
+   * camino de siempre. No usa la caja.
+   */
+  handleMarcarPagadoManual: (datos: { referencia: string; motivo: string }) => Promise<boolean>;
   loadOrder: () => Promise<void>;
 }
 
@@ -92,6 +102,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   );
   const [markAsPaid, setMarkAsPaid] = useState(false);
   const [sinCajaAbierta, setSinCajaAbierta] = useState(false);
+  const [pagoManualAbierto, setPagoManualAbierto] = useState(false);
   const [cobroDialogo, setCobroDialogo] = useState<{ abierto: boolean; entregar: boolean }>({ abierto: false, entregar: false });
   const [avisoStock, setAvisoStock] = useState<string[]>([]);
   const { formatear } = useMonedaOrganizacion();
@@ -418,6 +429,73 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     return false;
   };
 
+  const handleMarcarPagadoManual = async (datos: { referencia: string; motivo: string }): Promise<boolean> => {
+    if (!order) return false;
+    setActionLoading(true);
+    try {
+      const r = await marcarPedidoWebPagado(supabase, order.id, {
+        referencia: datos.referencia,
+        motivo: datos.motivo,
+        metodo: order.payment_method === 'wompi' || !order.payment_method ? 'wompi' : order.payment_method,
+      });
+      if (!r.ok) {
+        // Sin stock para volver a reservar: no se reactiva ni se confirma.
+        const nombres = r.faltantes.map((f) => {
+          const item = order.items?.find((i) => Number(i.product_id) === Number(f.product_id));
+          return t('pagoManual.faltante', {
+            producto: item?.product_name ?? String(f.product_id),
+            disponible: f.available,
+            pedido: f.requested,
+          });
+        });
+        toast({ title: t('pagoManual.sinStock'), description: nombres.join(' · '), variant: 'destructive' });
+        return false;
+      }
+      setPagoManualAbierto(false);
+      // Confirmar con el pedido ya pending/paid: venta, comanda, factura y pago.
+      const { data: fresco, error: errFresco } = await supabase
+        .from('web_orders')
+        .select('*, items:web_order_items(*), customer:customers(id, full_name, email, phone, address, city, doc_type, doc_number), branch:branches(id, name, address, phone)')
+        .eq('id', order.id)
+        .eq('organization_id', organizationId)
+        .single();
+      if (errFresco || !fresco) throw errFresco ?? new Error('pedido');
+      try {
+        const res = await webOrderConfirmationService.confirmOrder(fresco as WebOrder, {
+          prepMs: timeToMs(prepTime),
+          transitMs: esDomicilio(fresco.delivery_type) ? timeToMs(transitTime) : 0,
+          markAsPaid: false,
+        });
+        setAvisoStock(res.stockErrors ?? []);
+        void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
+        toast({
+          title: t('pagoManual.exito'),
+          description: t('pagoManual.exitoDetalle', { referencia: datos.referencia }),
+        });
+      } catch (errConfirmar: unknown) {
+        // El pago ya quedó: el pedido sigue pendiente y pagado; se confirma con «Confirmar pedido».
+        console.error('Pago manual registrado, confirmación pendiente:', errConfirmar);
+        toast({
+          title: t('pagoManual.pagadoSinConfirmar'),
+          description: mensajeDeError(errConfirmar),
+          variant: 'destructive',
+        });
+      }
+      loadOrder();
+      return true;
+    } catch (error: unknown) {
+      const codigo = error instanceof PagoManualError ? error.codigo : 'OTRO';
+      toast({
+        title: t('pagoManual.error'),
+        description: codigo !== 'OTRO' ? t(`pagoManual.errores.${codigo}`) : mensajeDeError(error),
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const abrirCobro = useCallback((entregar: boolean) => setCobroDialogo({ abierto: true, entregar }), []);
   const cerrarCobro = useCallback(() => setCobroDialogo((d) => ({ ...d, abierto: false })), []);
 
@@ -455,6 +533,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     cerrarCobro,
     avisoStock,
     sinCajaAbierta,
+    pagoManualAbierto,
+    setPagoManualAbierto,
+    handleMarcarPagadoManual,
     loadOrder,
   };
 }

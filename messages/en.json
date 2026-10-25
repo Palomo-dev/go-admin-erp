@@ -36215,6 +36215,34 @@
       "pickup": "Store pickup",
       "delivery_own": "Own delivery",
       "delivery_third_party": "Third-party delivery"
+    },
+    "pagoManual": {
+      "reactivarYMarcar": "Reactivate and mark paid (Wompi)",
+      "marcarPagadoEnLinea": "Mark paid (online payment)",
+      "ayudaVencido": "Use only if the payment shows as approved in Wompi. Stock is reserved again and no open register is needed.",
+      "titulo": "Mark order {numero} as paid",
+      "descripcion": "Records an approved online payment whose notification never arrived. It does not go through the register.",
+      "descripcionVencido": "The order expired without payment confirmation. It will be reactivated, stock reserved again and the order confirmed. It does not go through the register.",
+      "referencia": "Wompi transaction reference",
+      "referenciaEjemplo": "E.g. 1578504-1729876543-12345",
+      "motivo": "Reason",
+      "motivoEjemplo": "E.g. Approved in Wompi; webhook never arrived",
+      "auditoria": "The reference, reason and your user are saved in the order audit.",
+      "confirmar": "Mark paid and confirm",
+      "faltante": "{producto}: available {disponible}, ordered {pedido}",
+      "sinStock": "Not enough stock: the order was not reactivated",
+      "exito": "Order paid and confirmed",
+      "exitoDetalle": "Manual payment recorded with reference {referencia}.",
+      "pagadoSinConfirmar": "Payment recorded, order still needs confirming",
+      "error": "Could not mark the order as paid",
+      "errores": {
+        "REFERENCIA_REQUERIDA": "Enter the Wompi reference.",
+        "MOTIVO_REQUERIDO": "Enter the reason.",
+        "PEDIDO_NO_REACTIVABLE": "The order status does not allow reactivation.",
+        "PEDIDO_CON_VENTA": "The order already has a sale.",
+        "SIN_PERMISO": "You are not allowed to mark orders as paid.",
+        "FUNCION_AUSENTE": "The function is not installed in the database yet."
+      }
     }
   },
   "posMesasFlujo": {

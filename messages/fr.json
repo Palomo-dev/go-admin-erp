@@ -36215,6 +36215,34 @@
       "pickup": "Retrait en magasin",
       "delivery_own": "Livraison propre",
       "delivery_third_party": "Livraison par des tiers"
+    },
+    "pagoManual": {
+      "reactivarYMarcar": "Réactiver et marquer payé (Wompi)",
+      "marcarPagadoEnLinea": "Marquer payé (paiement en ligne)",
+      "ayudaVencido": "À utiliser seulement si le paiement apparaît approuvé dans Wompi. Le stock est de nouveau réservé, sans caisse ouverte.",
+      "titulo": "Marquer la commande {numero} comme payée",
+      "descripcion": "Enregistre un paiement en ligne approuvé dont la notification n'est pas arrivée. Ne passe pas par la caisse.",
+      "descripcionVencido": "La commande a expiré sans confirmation du paiement. Elle sera réactivée, le stock de nouveau réservé et la commande confirmée. Ne passe pas par la caisse.",
+      "referencia": "Référence de la transaction Wompi",
+      "referenciaEjemplo": "Ex. 1578504-1729876543-12345",
+      "motivo": "Motif",
+      "motivoEjemplo": "Ex. Approuvé dans Wompi ; le webhook n'est pas arrivé",
+      "auditoria": "La référence, le motif et votre utilisateur sont enregistrés dans l'audit de la commande.",
+      "confirmar": "Marquer payé et confirmer",
+      "faltante": "{producto} : disponible {disponible}, commandé {pedido}",
+      "sinStock": "Stock insuffisant : la commande n'a pas été réactivée",
+      "exito": "Commande payée et confirmée",
+      "exitoDetalle": "Paiement manuel enregistré avec la référence {referencia}.",
+      "pagadoSinConfirmar": "Paiement enregistré, commande à confirmer",
+      "error": "Impossible de marquer la commande comme payée",
+      "errores": {
+        "REFERENCIA_REQUERIDA": "Saisissez la référence Wompi.",
+        "MOTIVO_REQUERIDO": "Saisissez le motif.",
+        "PEDIDO_NO_REACTIVABLE": "Le statut de la commande ne permet pas de la réactiver.",
+        "PEDIDO_CON_VENTA": "La commande a déjà une vente.",
+        "SIN_PERMISO": "Vous n'êtes pas autorisé à marquer des commandes comme payées.",
+        "FUNCION_AUSENTE": "La fonction n'est pas encore installée dans la base de données."
+      }
     }
   },
   "posMesasFlujo": {

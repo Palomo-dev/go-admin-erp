@@ -27,6 +27,7 @@ import {
   ConfirmOrderDialog,
   CancelOrderDialog,
   CobrarPedidoDialog,
+  MarcarPagadoManualDialog,
 } from './components';
 import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-online';
 import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/ValoracionVisitaCard';
@@ -71,6 +72,9 @@ export default function WebOrderDetailPage() {
     cerrarCobro,
     avisoStock,
     sinCajaAbierta,
+    pagoManualAbierto,
+    setPagoManualAbierto,
+    handleMarcarPagadoManual,
     loadOrder,
   } = useWebOrderDetail(orderId);
   const t = useTranslations('pedidoWeb');
@@ -178,6 +182,7 @@ export default function WebOrderDetailPage() {
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
             onCobrar={abrirCobro}
+            onMarcarPagadoManual={() => setPagoManualAbierto(true)}
             onPrint={trazabilidad.comandaId ? () => void imprimir() : undefined}
             sinCajaAbierta={sinCaja}
             cajaEtiqueta={cajaEtiqueta}
@@ -246,6 +251,15 @@ export default function WebOrderDetailPage() {
         cobroEnCaja={trazabilidad.cobroEnCaja}
         cargando={actionLoading}
         onConfirmar={confirmarCobro}
+      />
+
+      <MarcarPagadoManualDialog
+        open={pagoManualAbierto}
+        onOpenChange={setPagoManualAbierto}
+        orderNumber={order.order_number}
+        vencido={order.status === 'expired'}
+        isLoading={actionLoading}
+        onConfirm={(datos) => void handleMarcarPagadoManual(datos)}
       />
 
       <CancelOrderDialog

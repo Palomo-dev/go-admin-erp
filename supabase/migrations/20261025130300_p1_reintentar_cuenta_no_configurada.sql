@@ -43,7 +43,7 @@ begin
        and reason in ('cuenta_linea', 'sin_cuenta', 'tercero_requerido', 'cuenta_no_configurada')
        and fact_key is not null
        -- Inventario (stock_movement:*) va por fn_reprocesar_fallos_stock, abajo.
-       and not (reason = 'cuenta_no_configurada' and fact_key like 'stock_movement:%')
+       and not (reason = 'cuenta_no_configurada' and coalesce(fact_key, '') like 'stock_movement:%')
      order by id
      for update
   loop

@@ -125,10 +125,11 @@ begin
     return v_aux;
   end if;
 
-  -- 3) Antes del plan: el código original mientras siga siendo de movimiento.
+  -- 3) Antes del plan: el código original mientras siga siendo de movimiento. es_movimiento NULL NO
+  --    cuenta como movimiento (QA 25-oct, igual que el TS).
   if exists (select 1 from public.chart_of_accounts c
               where c.organization_id = p_org and c.account_code = v_cod
-                and c.es_movimiento is distinct from false and coalesce(c.is_active, true))
+                and c.es_movimiento is true and coalesce(c.is_active, true))
      and not public.fn_es_cuenta_de_titulo(p_org, v_cod) then
     return v_cod;
   end if;
@@ -169,6 +170,36 @@ as $function$
 $function$;
 revoke all on function public.fn_cuenta_ingresos_diversos(integer, integer) from anon;
 
+-- Separación insumo (14050501) / reventa (14350101) — QA 25-oct (D). DESACTIVADA para las orgs H/R que ya
+-- existen al aplicar esta migración: su stock de insumos está hoy en 14350101 y consumir desde 14050501 la
+-- dejaría negativa. La reclasificación de saldos es un plan aparte que Juan debe aprobar; al aprobarlo, por
+-- org y en el mismo corte que el asiento: update public.p1_separacion_insumos set activa = true,
+-- aprobada_en = now(), nota = '...' where organization_id = <org>.
+-- Orgs nuevas (sin fila, creadas después de aplicar) SÍ separan: no tienen saldo histórico.
+-- Reversible: activa = false vuelve a mandar los insumos a 14350101 (el costo sigue en 61400501).
+create table if not exists public.p1_separacion_insumos (
+  organization_id integer primary key references public.organizations(id) on delete cascade,
+  activa boolean not null default false,
+  registrada_en timestamptz not null default now(),
+  aprobada_en timestamptz,
+  nota text
+);
+alter table public.p1_separacion_insumos enable row level security;  -- sin políticas: solo service_role
+insert into public.p1_separacion_insumos (organization_id, activa, nota)
+select o.id, false, 'org existente al aplicar 134030: separación pendiente de aprobación de Juan'
+  from public.organizations o where o.type_id in (1, 2)
+on conflict (organization_id) do nothing;
+
+create or replace function public.fn_separacion_insumos_activa(p_org integer)
+returns boolean
+language sql
+stable security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+  select coalesce((select s.activa from public.p1_separacion_insumos s where s.organization_id = p_org), true);
+$function$;
+revoke all on function public.fn_separacion_insumos_activa(integer) from public, anon;
+
 -- Clasificación de inventario/costo por producto en hoteles y restaurantes (regla del contador, 25-oct).
 -- Orden: 1) override del producto (cuenta_inventario/cuenta_costo); 2) ingrediente de receta = INSUMO
 -- (14050501 / 61400501; si además se vende solo, revisión); 3) compuesto/preparación = PLATO (costo
@@ -200,7 +231,9 @@ begin
   v_se_vende := exists (select 1 from public.product_prices pp where pp.product_id = p_product and coalesce(pp.price, 0) > 0
                           and (pp.effective_to is null or pp.effective_to >= now()));
   if v_ingrediente then
-    clase := 'insumo'; cuenta_inventario := '14050501'; cuenta_costo := '61400501'; cuenta_merma := '61400502';
+    clase := 'insumo'; cuenta_costo := '61400501'; cuenta_merma := '61400502';
+    -- Org existente sin aprobación: el insumo sigue en 14350101 (ver p1_separacion_insumos).
+    cuenta_inventario := case when public.fn_separacion_insumos_activa(p_org) then '14050501' else '14350101' end;
     revisar := case when v_se_vende then 'insumo que también se vende solo en POS' end;
   elsif coalesce(p.is_composite, false) or p.production_type in ('composite', 'preparation') then
     clase := 'plato'; cuenta_costo := '61400501'; cuenta_merma := '61400502';
@@ -1633,8 +1666,9 @@ AS $function$
       end
       when 'costo_ventas' then case when p_type_id in (1, 2) then '61400501' else '61350501' end
       when 'faltante_inventario' then case when p_type_id in (1, 2) then '61400502' else v.defecto end
-      -- Inventario: nunca 1405. fn_sembrar_configuracion_contable lo cambia por el auxiliar 143501xx.
-      when 'inventario' then '1435'
+      -- Inventario: nunca 1405 ni el título 1435 (título en 55 de 56 orgs H/R): auxiliar de movimiento
+      -- 14350101, igual que el TS (QA 25-oct). fn_sembrar_configuracion_contable puede afinarlo por sede.
+      when 'inventario' then '14350101'
       else v.defecto
     end
   from (values
@@ -1647,7 +1681,7 @@ AS $function$
     ('devoluciones', '4175'),
     ('descuentos', '4175'),
     ('costo_ventas', '61350501'),
-    ('inventario', '1435'),
+    ('inventario', '14350101'),
     ('iva_generado', '24080501'),
     ('iva_descontable', '24081001'),
     ('retefuente', '2365'),
@@ -3602,3 +3636,162 @@ begin
 end;
 $function$
 ;
+
+-- fn_asiento_compra_aplicar_retenciones (QA 25-oct): falla con aviso si no encuentra la línea del
+-- proveedor, en vez de omitir las retenciones en silencio. Base: 20261021233732_configuracion_contable.sql.
+create or replace function public.fn_asiento_compra_aplicar_retenciones(
+  p_entry_id integer,
+  p_invoice_id uuid,
+  p_credit_account text
+) returns void
+language plpgsql
+security definer
+set search_path to public, pg_temp
+as $fn$
+declare
+  v_inv record;
+  v_ret numeric;
+  v_linea integer;
+  v_memo text;
+  v_prev text;
+  v_w record;
+  v_descuadre numeric;
+  v_cuenta text;
+  v_fallo text;
+begin
+  if p_entry_id is null then
+    return;
+  end if;
+
+  select id, organization_id, branch_id, issue_date, total into v_inv
+  from invoice_purchase where id = p_invoice_id;
+
+  select coalesce(sum(w.amount), 0) into v_ret
+  from invoice_purchase_withholdings w
+  where w.invoice_id = p_invoice_id and w.amount > 0;
+
+  if v_inv.id is null or v_ret <= 0 then
+    return;
+  end if;
+
+  -- Sin configuración, v_cuenta es p_credit_account y el asiento se busca igual que antes.
+  select r.cuenta, r.fallo into v_cuenta, v_fallo
+  from public.fn_resolver_cuenta_configurada(
+    v_inv.organization_id, v_inv.branch_id, 'invoice_purchase', 'credito', p_credit_account
+  ) r;
+
+  if v_fallo is not null then
+    perform fn_log_journal_failure(
+      v_inv.organization_id, v_inv.branch_id, coalesce(v_inv.issue_date, now()),
+      'invoice_purchase', p_invoice_id::text, 'accrual:purchase:' || p_invoice_id,
+      null, p_credit_account, v_ret,
+      'cuenta_no_configurada', v_fallo);
+    return;
+  end if;
+
+  select jl.id, e.memo into v_linea, v_memo
+  from journal_entries e
+  join journal_lines jl on jl.journal_entry_id = e.id
+  where e.id = p_entry_id
+    and e.organization_id = v_inv.organization_id
+    and e.source = 'invoice_purchase'
+    and e.source_id = p_invoice_id::text
+    and e.created_at = now()
+    and jl.account_code = v_cuenta
+    and jl.debit = 0
+    and jl.credit = v_inv.total
+  order by jl.id
+  limit 1;
+
+  -- QA 25-oct: el llamador (fn_auto_journal_purchase) ya pasa el crédito RESUELTO; volver a resolverlo
+  -- puede dar otra cuenta. Se busca la línea con cualquiera de las dos y, si no aparece habiendo
+  -- retenciones, se FALLA con aviso (antes se saltaban las retenciones en silencio).
+  if v_linea is null then
+    select jl.id, e.memo into v_linea, v_memo
+    from journal_entries e
+    join journal_lines jl on jl.journal_entry_id = e.id
+    where e.id = p_entry_id
+      and e.organization_id = v_inv.organization_id
+      and e.source = 'invoice_purchase'
+      and e.source_id = p_invoice_id::text
+      and e.created_at = now()
+      and jl.account_code = p_credit_account
+      and jl.debit = 0
+      and jl.credit = v_inv.total
+    order by jl.id
+    limit 1;
+  end if;
+
+  if v_linea is null then
+    raise exception 'RETENCIONES_SIN_LINEA_PROVEEDOR: el asiento % de la compra % no tiene la línea del proveedor por el total (cuenta % / resuelta %); las retenciones (%) no se pueden aplicar',
+      p_entry_id, p_invoice_id, p_credit_account, v_cuenta, v_ret
+      using errcode = '22023',
+            hint = 'Revise la configuración contable de la clave del crédito de compras (invoice_purchase/credito).';
+  end if;
+
+  if v_ret >= v_inv.total then
+    perform fn_log_journal_failure(
+      v_inv.organization_id, v_inv.branch_id, coalesce(v_inv.issue_date, now()),
+      'invoice_purchase', p_invoice_id::text, 'accrual:purchase:' || p_invoice_id, null, p_credit_account, v_ret,
+      'withholding_exceeds_total', 'Las retenciones igualan o superan el total de la factura; el asiento queda por el total');
+    return;
+  end if;
+
+  for v_w in
+    select w.concept, w.amount,
+           fn_cuenta_retencion_compra(v_inv.organization_id, w.tax_code, w.concept) as cuenta
+    from invoice_purchase_withholdings w
+    where w.invoice_id = p_invoice_id and w.amount > 0
+    order by 3, w.concept, w.id
+  loop
+    select r.cuenta, r.fallo into v_cuenta, v_fallo
+    from public.fn_resolver_cuenta_configurada(
+      v_inv.organization_id, v_inv.branch_id, 'invoice_purchase', 'credito', v_w.cuenta
+    ) r;
+
+    if v_fallo is not null then
+      perform fn_log_journal_failure(
+        v_inv.organization_id, v_inv.branch_id, coalesce(v_inv.issue_date, now()),
+        'invoice_purchase', p_invoice_id::text, 'accrual:purchase:' || p_invoice_id,
+        null, p_credit_account, v_w.amount,
+        'cuenta_no_configurada', v_fallo);
+      return;
+    end if;
+  end loop;
+
+  perform fn_asegurar_cuentas_retencion(v_inv.organization_id);
+
+  v_prev := current_setting('app.contabilidad_mantenimiento', true);
+  perform set_config('app.contabilidad_mantenimiento', 'on', true);
+  update journal_lines
+     set credit = v_inv.total - v_ret, updated_at = now()
+   where id = v_linea;
+  perform set_config('app.contabilidad_mantenimiento', coalesce(v_prev, ''), true);
+
+  for v_w in
+    select w.concept, w.amount,
+           fn_cuenta_retencion_compra(v_inv.organization_id, w.tax_code, w.concept) as cuenta
+    from invoice_purchase_withholdings w
+    where w.invoice_id = p_invoice_id and w.amount > 0
+    order by 3, w.concept, w.id
+  loop
+    select r.cuenta into v_cuenta
+    from public.fn_resolver_cuenta_configurada(
+      v_inv.organization_id, v_inv.branch_id, 'invoice_purchase', 'credito', v_w.cuenta
+    ) r;
+
+    insert into journal_lines (journal_entry_id, account_code, description, debit, credit)
+    values (p_entry_id, v_cuenta, v_w.concept || ' - ' || v_memo, 0, v_w.amount);
+  end loop;
+
+  select round(coalesce(sum(debit), 0) - coalesce(sum(credit), 0), 2) into v_descuadre
+  from journal_lines where journal_entry_id = p_entry_id;
+  if v_descuadre <> 0 then
+    raise exception 'ASIENTO_DESCUADRADO: el asiento % de la compra % queda descuadrado en %', p_entry_id, p_invoice_id, v_descuadre
+      using errcode = '22023';
+  end if;
+end;
+$fn$;
+
+revoke all on function public.fn_asiento_compra_aplicar_retenciones(integer, uuid, text) from public, anon, authenticated;
+grant execute on function public.fn_asiento_compra_aplicar_retenciones(integer, uuid, text) to service_role;

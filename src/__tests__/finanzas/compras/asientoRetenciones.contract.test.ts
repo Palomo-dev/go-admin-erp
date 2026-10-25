@@ -54,6 +54,10 @@ describe('devengo de compra con retenciones', () => {
     expect(cuerpo).toMatch(/e\.created_at\s*=\s*now\(\)/);
     expect(cuerpo).toMatch(/jl\.credit\s*=\s*v_inv\.total/);
     expect(cuerpo).toMatch(/jl\.account_code\s*=\s*(?:p_credit_account|v_cuenta)\b/);
+    // QA 25-oct: si no encuentra la línea del proveedor con retenciones, FALLA con aviso (no return silencioso).
+    expect(cuerpo).toMatch(/jl\.account_code\s*=\s*p_credit_account\b/);
+    expect(cuerpo).toMatch(/if v_linea is null then\s+raise exception 'RETENCIONES_SIN_LINEA_PROVEEDOR/);
+    expect(cuerpo).not.toMatch(/if v_linea is null then\s+return;/);
     // La bandera se enciende solo para ese UPDATE y vuelve al valor que tenía.
     const encender = cuerpo.search(/set_config\('app\.contabilidad_mantenimiento',\s*'on',\s*true\)/);
     const update = cuerpo.search(/update\s+journal_lines/i);

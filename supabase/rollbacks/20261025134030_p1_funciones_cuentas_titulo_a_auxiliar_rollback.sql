@@ -3308,6 +3308,9 @@ delete from public.configuracion_contable cc using public.p1_puc_bitacora b
 delete from public.p1_puc_bitacora where migracion = '134030';
 
 drop function if exists public.fn_cuentas_stock_producto(integer, integer, integer, text, text, text);
+-- QA 25-oct (D): flag de separación insumo/reventa (se crea en 134030).
+drop function if exists public.fn_separacion_insumos_activa(integer);
+drop table if exists public.p1_separacion_insumos;
 drop function if exists public.fn_clasificar_producto_restaurante(integer, integer);
 drop function if exists public.fn_cuenta_ingresos_diversos(integer, integer);
 drop function if exists public.fn_marcar_revision_iva(integer, text, text, text, text);
@@ -3318,3 +3321,139 @@ do $$ begin
     drop table public.contabilidad_revision_iva;
   end if;
 end $$;
+
+-- Restaura fn_asiento_compra_aplicar_retenciones tal como la deja 20261021233732_configuracion_contable.sql.
+create or replace function public.fn_asiento_compra_aplicar_retenciones(
+  p_entry_id integer,
+  p_invoice_id uuid,
+  p_credit_account text
+) returns void
+language plpgsql
+security definer
+set search_path to public, pg_temp
+as $fn$
+declare
+  v_inv record;
+  v_ret numeric;
+  v_linea integer;
+  v_memo text;
+  v_prev text;
+  v_w record;
+  v_descuadre numeric;
+  v_cuenta text;
+  v_fallo text;
+begin
+  if p_entry_id is null then
+    return;
+  end if;
+
+  select id, organization_id, branch_id, issue_date, total into v_inv
+  from invoice_purchase where id = p_invoice_id;
+
+  select coalesce(sum(w.amount), 0) into v_ret
+  from invoice_purchase_withholdings w
+  where w.invoice_id = p_invoice_id and w.amount > 0;
+
+  if v_inv.id is null or v_ret <= 0 then
+    return;
+  end if;
+
+  -- Sin configuración, v_cuenta es p_credit_account y el asiento se busca igual que antes.
+  select r.cuenta, r.fallo into v_cuenta, v_fallo
+  from public.fn_resolver_cuenta_configurada(
+    v_inv.organization_id, v_inv.branch_id, 'invoice_purchase', 'credito', p_credit_account
+  ) r;
+
+  if v_fallo is not null then
+    perform fn_log_journal_failure(
+      v_inv.organization_id, v_inv.branch_id, coalesce(v_inv.issue_date, now()),
+      'invoice_purchase', p_invoice_id::text, 'accrual:purchase:' || p_invoice_id,
+      null, p_credit_account, v_ret,
+      'cuenta_no_configurada', v_fallo);
+    return;
+  end if;
+
+  select jl.id, e.memo into v_linea, v_memo
+  from journal_entries e
+  join journal_lines jl on jl.journal_entry_id = e.id
+  where e.id = p_entry_id
+    and e.organization_id = v_inv.organization_id
+    and e.source = 'invoice_purchase'
+    and e.source_id = p_invoice_id::text
+    and e.created_at = now()
+    and jl.account_code = v_cuenta
+    and jl.debit = 0
+    and jl.credit = v_inv.total
+  order by jl.id
+  limit 1;
+
+  if v_linea is null then
+    return;
+  end if;
+
+  if v_ret >= v_inv.total then
+    perform fn_log_journal_failure(
+      v_inv.organization_id, v_inv.branch_id, coalesce(v_inv.issue_date, now()),
+      'invoice_purchase', p_invoice_id::text, 'accrual:purchase:' || p_invoice_id, null, p_credit_account, v_ret,
+      'withholding_exceeds_total', 'Las retenciones igualan o superan el total de la factura; el asiento queda por el total');
+    return;
+  end if;
+
+  for v_w in
+    select w.concept, w.amount,
+           fn_cuenta_retencion_compra(v_inv.organization_id, w.tax_code, w.concept) as cuenta
+    from invoice_purchase_withholdings w
+    where w.invoice_id = p_invoice_id and w.amount > 0
+    order by 3, w.concept, w.id
+  loop
+    select r.cuenta, r.fallo into v_cuenta, v_fallo
+    from public.fn_resolver_cuenta_configurada(
+      v_inv.organization_id, v_inv.branch_id, 'invoice_purchase', 'credito', v_w.cuenta
+    ) r;
+
+    if v_fallo is not null then
+      perform fn_log_journal_failure(
+        v_inv.organization_id, v_inv.branch_id, coalesce(v_inv.issue_date, now()),
+        'invoice_purchase', p_invoice_id::text, 'accrual:purchase:' || p_invoice_id,
+        null, p_credit_account, v_w.amount,
+        'cuenta_no_configurada', v_fallo);
+      return;
+    end if;
+  end loop;
+
+  perform fn_asegurar_cuentas_retencion(v_inv.organization_id);
+
+  v_prev := current_setting('app.contabilidad_mantenimiento', true);
+  perform set_config('app.contabilidad_mantenimiento', 'on', true);
+  update journal_lines
+     set credit = v_inv.total - v_ret, updated_at = now()
+   where id = v_linea;
+  perform set_config('app.contabilidad_mantenimiento', coalesce(v_prev, ''), true);
+
+  for v_w in
+    select w.concept, w.amount,
+           fn_cuenta_retencion_compra(v_inv.organization_id, w.tax_code, w.concept) as cuenta
+    from invoice_purchase_withholdings w
+    where w.invoice_id = p_invoice_id and w.amount > 0
+    order by 3, w.concept, w.id
+  loop
+    select r.cuenta into v_cuenta
+    from public.fn_resolver_cuenta_configurada(
+      v_inv.organization_id, v_inv.branch_id, 'invoice_purchase', 'credito', v_w.cuenta
+    ) r;
+
+    insert into journal_lines (journal_entry_id, account_code, description, debit, credit)
+    values (p_entry_id, v_cuenta, v_w.concept || ' - ' || v_memo, 0, v_w.amount);
+  end loop;
+
+  select round(coalesce(sum(debit), 0) - coalesce(sum(credit), 0), 2) into v_descuadre
+  from journal_lines where journal_entry_id = p_entry_id;
+  if v_descuadre <> 0 then
+    raise exception 'ASIENTO_DESCUADRADO: el asiento % de la compra % queda descuadrado en %', p_entry_id, p_invoice_id, v_descuadre
+      using errcode = '22023';
+  end if;
+end;
+$fn$;
+
+revoke all on function public.fn_asiento_compra_aplicar_retenciones(integer, uuid, text) from public, anon, authenticated;
+grant execute on function public.fn_asiento_compra_aplicar_retenciones(integer, uuid, text) to service_role;

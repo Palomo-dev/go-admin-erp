@@ -248,7 +248,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
     const refrescarSiVisible = () => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') refrescar();
     };
-    const sondeoAvisos = setInterval(refrescarSiVisible, 60_000);
+    const sondeoAvisos = setInterval(refrescarSiVisible, 30_000);
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', refrescarSiVisible);
     return () => {
       activo = false;

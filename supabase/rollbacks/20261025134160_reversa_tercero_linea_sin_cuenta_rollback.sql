@@ -1,4 +1,4 @@
--- Rollback 134160: vuelve fn_revertir_asiento_en_fecha a la versión de 134115 (las cuentas 28959501 creadas se conservan si tienen movimiento).
+-- Rollback 134160: vuelve fn_revertir_asiento_en_fecha a la versión de 134115 y fn_auto_journal_void a la previa; elimina fn_reversar_linea_sin_cuenta.
 create or replace function public.fn_revertir_asiento_en_fecha(p_entry_id integer, p_fecha timestamptz,
   p_categoria text, p_lote text)
 returns integer language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
@@ -38,7 +38,7 @@ begin
 end $$;
 revoke all on function public.fn_revertir_asiento_en_fecha(integer, timestamptz, text, text) from public, anon, authenticated;
 delete from public.chart_of_accounts c where c.description = 'Pendiente de clasificar (QA 25-oct-2026)' and not exists (select 1 from public.journal_lines l where l.organization_id = c.organization_id and l.account_code like c.account_code || '%');
-drop function if exists public.fn_asegurar_cuenta_pendiente_clasificar(integer);
+drop function if exists public.fn_reversar_linea_sin_cuenta(bigint, text);
 
 -- fn_auto_journal_void de 134115 (con la excepción einvoice)
 CREATE OR REPLACE FUNCTION public.fn_auto_journal_void()

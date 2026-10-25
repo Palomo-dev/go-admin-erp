@@ -1,40 +1,116 @@
 /**
  * Equivalente TS de `public.fn_cuenta_auxiliar_de_titulo` (migración 20261025134030).
- * Orden: 1) mapeo por clave/sede, 2) auxiliar estándar del título. Una cuenta de
- * grupo que pasa a título (4295, 3705, 6135, 530515, 5395, 2408, 240805, 240810)
- * nunca se devuelve: se publica siempre al auxiliar de movimiento.
+ *
+ * Solo resuelve las cuentas P1 que pasan a título (4295, 3705, 6135, 6140, 530515, 5395, 2408,
+ * 240805, 240810), sus subcuentas de título (613505, 614005, 429595, 429581, 370505, 539595) y sus
+ * auxiliares. Mismo orden que el SQL:
+ *   1) mapeo de la sede por la cuenta BASE o por el auxiliar (al 5% solo el del auxiliar 5%);
+ *   2) el auxiliar estándar;
+ *   3) antes de 134060, el código original si el plan dice que sigue siendo de movimiento;
+ *   4) el auxiliar.
+ * Nunca devuelve una cuenta de grupo: sin plan, solo auxiliares de 8 dígitos; con plan
+ * (`cuentasMovimiento`), solo cuentas de movimiento del plan. Si no resuelve, el auxiliar por
+ * defecto (del sector en el caso del costo).
  */
 export type LadoIva = 'descontable' | 'generado';
 
 export interface OpcionesResolucion {
-  /** Mapeo de la sede (branch_account_mappings) o de la clave configurada: código de grupo → auxiliar. */
+  /** Mapeo de la sede (branch_account_mappings): cuenta base o auxiliar → auxiliar de la sede. */
   mapeoSede?: Readonly<Partial<Record<string, string | null | undefined>>>;
-  /** Tarifa de IVA; 5 elige el auxiliar 02 de 240805/240810. */
+  /** Tarifa de IVA; ≈5 (redondeada) elige el auxiliar 02 de 240805/240810. */
   tarifa?: number | null;
   lado?: LadoIva | 'compra' | 'purchase' | null;
+  /** organizations.type_id: 1 restaurante / 2 hotel → costo 61400501. */
+  tipoOrg?: number | null;
+  /** Plan de la org: códigos de movimiento. Si viene, valida contra él (y habilita el paso 3). */
+  cuentasMovimiento?: ReadonlySet<string>;
 }
 
+/** Cuentas P1 que pasan a título y sus subcuentas de título (134010/134040). */
+export const CUENTAS_TITULO_P1 = [
+  '3705', '6135', '6140', '4295', '530515', '5395', '2408', '240805', '240810',
+  '370505', '613505', '614005', '429595', '429581', '539595',
+] as const;
+const TITULOS: ReadonlySet<string> = new Set(CUENTAS_TITULO_P1);
+
 const AUXILIAR: Readonly<Record<string, string>> = {
-  '4295': '42959501',
-  '3705': '37050502',
-  '6135': '61350501',
+  '4295': '42959501', '429595': '42959501', '429581': '42958101',
+  '3705': '37050502', '370505': '37050501',
+  '6135': '61350501', '613505': '61350501',
+  // Hoteles y restaurantes (regla del contador): costo de A&B 61400501 bajo 614005.
+  '6140': '61400501', '614005': '61400501',
   '530515': '53051501',
-  '5395': '53959501',
+  '5395': '53959501', '539595': '53959501',
 };
 
-export const CUENTAS_TITULO_P1 = ['3705', '6135', '4295', '530515', '5395', '2408', '240805', '240810'] as const;
+/** Auxiliar conocido → su cuenta base (para buscar el mapeo de la sede por la base, como el SQL). */
+const BASE_DE: Readonly<Record<string, string>> = {
+  '42959501': '4295', '42959502': '4295', '42958101': '4295',
+  '37050501': '3705', '37050502': '3705',
+  '61350501': '6135', '61350502': '6135',
+  '61400501': '6140', '61400502': '6140',
+  '53051501': '530515', '53959501': '5395',
+  '24080501': '240805', '24080502': '240805', '24081001': '240810', '24081002': '240810',
+};
 
-export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = {}): string {
-  const code = codigo.trim();
-  const mapeado = op.mapeoSede?.[code]?.trim();
-  if (mapeado && !(CUENTAS_TITULO_P1 as readonly string[]).includes(mapeado)) return mapeado;
+export function esHotelORestaurante(tipoOrg: number | null | undefined): boolean {
+  return tipoOrg === 1 || tipoOrg === 2;
+}
+
+/** Cuenta base de costo de ventas según el sector: 6140 (hoteles y restaurantes) o 6135 (comercio). */
+export function cuentaCostoPorSector(tipoOrg: number | null | undefined): '6140' | '6135' {
+  return esHotelORestaurante(tipoOrg) ? '6140' : '6135';
+}
+
+function esCinco(tarifa: number | null | undefined): boolean {
+  return typeof tarifa === 'number' && Number.isFinite(tarifa) && Math.round(tarifa) === 5;
+}
+
+function auxiliarEstandar(code: string, op: OpcionesResolucion): string | null {
   if (AUXILIAR[code]) return AUXILIAR[code];
-  const t5 = op.tarifa === 5;
+  const t5 = esCinco(op.tarifa);
   if (code === '240805') return t5 ? '24080502' : '24080501';
   if (code === '240810') return t5 ? '24081002' : '24081001';
   if (code === '2408') {
     const descontable = op.lado === 'descontable' || op.lado === 'compra' || op.lado === 'purchase';
     return descontable ? (t5 ? '24081002' : '24081001') : (t5 ? '24080502' : '24080501');
   }
-  return code;
+  return null;
+}
+
+function valida(cuenta: string | null | undefined, op: OpcionesResolucion): cuenta is string {
+  if (!cuenta) return false;
+  const c = cuenta.trim();
+  if (TITULOS.has(c)) return false;
+  if (op.cuentasMovimiento) return op.cuentasMovimiento.has(c);
+  return /^\d{8}$/.test(c);
+}
+
+export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = {}, defecto?: string): string {
+  const code = codigo.trim();
+  let base: string;
+  let aux: string;
+  const estandar = auxiliarEstandar(code, op);
+  if (estandar) {
+    base = code;
+    aux = estandar;
+  } else if (BASE_DE[code]) {
+    base = BASE_DE[code];
+    // Un auxiliar 19% con tarifa 5% pasa al 5%.
+    aux = esCinco(op.tarifa) && (code === '24080501' || code === '24081001') ? code.slice(0, 7) + '2' : code;
+  } else {
+    // No es P1: el mapeo de sede no aplica (igual que el SQL). Nunca un grupo.
+    if (valida(code, op)) return code;
+    return defecto ?? AUXILIAR[cuentaCostoPorSector(op.tipoOrg)];
+  }
+  // 1) Mapeo de la sede por auxiliar o por la base; al 5% solo el del auxiliar 5%.
+  const cinco = aux === '24080502' || aux === '24081002';
+  const mapeos = cinco ? [op.mapeoSede?.[aux]] : [op.mapeoSede?.[aux], op.mapeoSede?.[base], op.mapeoSede?.[code]];
+  for (const m of mapeos) if (valida(m, op)) return m.trim();
+  // 2) Auxiliar estándar.
+  if (!op.cuentasMovimiento || op.cuentasMovimiento.has(aux)) return aux;
+  // 3) Antes de 134060: el original mientras siga siendo de movimiento.
+  if (op.cuentasMovimiento.has(code)) return code;
+  // 4) El auxiliar (si no existe en el plan, el asiento falla y queda en el log de fallos).
+  return aux;
 }

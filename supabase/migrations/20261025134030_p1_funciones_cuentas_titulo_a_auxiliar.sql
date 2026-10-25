@@ -1,4 +1,5 @@
 -- P1 (25-oct-2026): funciones vivas con códigos de cuenta fijos que 134060 pasa a TÍTULO. NO aplicada.
+-- Origen: commit 0c5aa0a7 (antigua 20261025130450); renumerada a 134030 en 3692536b y ampliada con el QA.
 -- Aprobado por Juan: va DESPUÉS de 134010/134020 (auxiliares y reglas) y ANTES de 134060 (titulación),
 -- para que el guard de 134005 no bloquee asientos cuando 4295, 3705, 6135, 530515, 5395, 240805, 240810
 -- y 2408 sean títulos. Reconciliado con el QA de Soporte (funciones_vivas_codigos.txt, 25-oct).
@@ -103,9 +104,11 @@ begin
       from public.branch_account_mappings m
       join public.chart_of_accounts c
         on c.organization_id = m.organization_id and c.account_code = m.sub_account_code
-       and c.es_movimiento is distinct from false and coalesce(c.is_active, true)
+       and c.es_movimiento is true and coalesce(c.is_active, true)
      where m.organization_id = p_org and m.branch_id = p_branch
        and m.base_account_code in (v_base, v_aux)
+       -- QA 25-oct (O1): al 5% no sirve el mapeo de la base (240805->24080501); solo el del auxiliar 5%.
+       and (v_aux not in ('24080502', '24081002') or m.base_account_code = v_aux or m.sub_account_code = v_aux)
      order by (m.base_account_code = v_aux) desc
      limit 1;
     if v_sub is not null then
@@ -116,7 +119,7 @@ begin
   -- 2) Auxiliar de respaldo.
   if exists (select 1 from public.chart_of_accounts c
               where c.organization_id = p_org and c.account_code = v_aux
-                and c.es_movimiento is distinct from false and coalesce(c.is_active, true)) then
+                and c.es_movimiento is true and coalesce(c.is_active, true)) then
     return v_aux;
   end if;
 
@@ -2174,7 +2177,10 @@ begin
     where journal_entry_id = v_entry and (account_code = '3105' or account_code like '3105-%');
     select coalesce(sum(credit), 0) into v_old_4295
     from public.journal_lines
-    where journal_entry_id = v_entry and (account_code = '4295' or account_code like '4295-%');
+    -- QA 25-oct (B1): los asientos nuevos acreditan el auxiliar (42959501/42959502); se leen ambos.
+    where journal_entry_id = v_entry
+      and (account_code in ('4295', '42959501', '42959502') or account_code like '4295-%'
+           or account_code = public.fn_cuenta_ingresos_diversos(v_org, null));
 
     v_residual := round(v_old_4250 - v_old_3105 - v_old_4295, 0);
     select coalesce(sum(monto), 0) into v_compra from pg_temp._sob_dest where organization_id = v_org and destino = '2205';

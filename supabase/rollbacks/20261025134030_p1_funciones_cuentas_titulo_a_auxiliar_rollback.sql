@@ -1,4 +1,6 @@
 -- Rollback de 20261025134030: restaura las 18 funciones a su versión viva al 25-oct-2026 y quita el resolver.
+-- Correr SOLO después de revertir 134060, 134050 y 134040 (en ese orden): plpgsql no registra
+-- dependencias, y esas migraciones llaman al resolver y a fn_cuenta_ingresos_diversos.
 
 -- fn_asiento_movimiento_caja
 CREATE OR REPLACE FUNCTION public.fn_asiento_movimiento_caja(p_organization_id integer, p_tipo text, p_concept_code text)

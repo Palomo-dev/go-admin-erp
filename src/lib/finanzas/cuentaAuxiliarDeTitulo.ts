@@ -96,7 +96,10 @@ function valida(cuenta: string | null | undefined, op: OpcionesResolucion): cuen
   const c = cuenta.trim();
   if (TITULOS.has(c)) return false;
   if (op.cuentasMovimiento) return op.cuentasMovimiento.has(c);
-  return /^\d{8}$/.test(c);
+  // Sin plan (QA 558bea34): como el SQL, se aceptan subcuentas de movimiento de 6 dígitos (710501,
+  // 529505) y auxiliares de 8+; se rechazan clase/grupo/cuenta (1, 2 y 4 dígitos, p. ej. 5105) y los
+  // títulos P1. Con plan, manda el plan.
+  return /^\d{6}(\d{2})*$/.test(c);
 }
 
 export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = {}): string {
@@ -120,7 +123,7 @@ export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = 
     if (valida(code, op)) return code;
     throw new CuentaNoMovimientoError(code, op.cuentasMovimiento
       ? 'no es una cuenta de movimiento del plan de la organización'
-      : 'es una cuenta de grupo o título (se exige un auxiliar de 8 dígitos)');
+      : 'es una cuenta de clase, grupo o título (se exige una subcuenta o auxiliar de movimiento)');
   }
   // 1) Mapeo de la sede por auxiliar o por la base; al 5% solo el del auxiliar 5%.
   const cinco = aux === '24080502' || aux === '24081002';

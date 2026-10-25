@@ -49,6 +49,10 @@ describe('cuentaAuxiliarDeTitulo (paridad con fn_cuenta_auxiliar_de_titulo)', ()
   test('override no P1 de grupo se RECHAZA, nunca se sustituye en silencio', () => {
     expect(() => cuentaAuxiliarDeTitulo('5105', { tipoOrg: 1 })).toThrow(CuentaNoMovimientoError);
     expect(() => cuentaAuxiliarDeTitulo('5105')).toThrow(/grupo o título/);
+    // Sin plan, subcuentas de movimiento de 6 dígitos pasan como en el SQL (710501 org 331, 529505 comisiones).
+    expect(cuentaAuxiliarDeTitulo('710501', { tipoOrg: 1 })).toBe('710501');
+    expect(cuentaAuxiliarDeTitulo('529505')).toBe('529505');
+    expect(() => cuentaAuxiliarDeTitulo('613505', { mapeoSede: {} })).not.toThrow();
     expect(() => cuentaAuxiliarDeTitulo('519595', { cuentasMovimiento: new Set(['51959501']) })).toThrow(/plan/);
     expect(cuentaAuxiliarDeTitulo('51050501', { mapeoSede: { '51050501': '99999999' } })).toBe('51050501');
   });

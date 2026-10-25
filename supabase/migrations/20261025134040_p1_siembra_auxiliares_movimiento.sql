@@ -9,7 +9,7 @@
 -- 4) Orden de triggers en organizations (alfabético): tr_zz_configuracion_contable corría ANTES de
 --    trg_create_default_branch_and_period (sin sede => sin auxiliar 14350101). Se renombra a
 --    trg_zzzz_configuracion_contable: corre después de tr_auto_create_chart_of_accounts* y de la sede.
--- Rollback: supabase/rollbacks/20261025130800_p1_siembra_auxiliares_movimiento_rollback.sql
+-- Rollback: supabase/rollbacks/20261025134040_p1_siembra_auxiliares_movimiento_rollback.sql
 
 insert into public.puc_plantilla (codigo, nombre, tipo, padre, descripcion, naturaleza, es_movimiento,
                                   requiere_tercero, requiere_centro_costo, centro_costo_modo, presentacion_niif)
@@ -210,7 +210,7 @@ begin
    and c.es_movimiento is distinct from false
   on conflict (organization_id, branch_id, clave) do nothing;
 
-  -- Redondeo en contra (Ajuste al peso): 53959501 (clave creada en 130600).
+  -- Redondeo en contra (Ajuste al peso): 53959501 (clave creada en 134020).
   insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
   select p_org, null, 'redondeo_en_contra', '53959501'
   where exists (select 1 from public.chart_of_accounts c

@@ -1,4 +1,4 @@
--- Rollback de 130900: versión viva al 25-oct-2026.
+-- Rollback de 134050: versión viva al 25-oct-2026.
 CREATE OR REPLACE FUNCTION public.fn_configuracion_contable_validar()
  RETURNS trigger
  LANGUAGE plpgsql

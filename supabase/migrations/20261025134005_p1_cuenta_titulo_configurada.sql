@@ -11,7 +11,7 @@
 -- transacción, cuando el auxiliar ya existe. Solo actúa en UPDATE de es_movimiento a false; relee la fila al
 -- disparar por si cambió dentro de la transacción.
 -- No toca datos al aplicar: solo actúa en futuras actualizaciones del plan.
--- Rollback: supabase/rollbacks/20261025130400_p1_cuenta_titulo_configurada_rollback.sql
+-- Rollback: supabase/rollbacks/20261025134005_p1_cuenta_titulo_configurada_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_chart_cuenta_titulo_configurada()
  RETURNS trigger

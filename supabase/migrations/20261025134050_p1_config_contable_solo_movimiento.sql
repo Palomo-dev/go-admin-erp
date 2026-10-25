@@ -4,7 +4,7 @@
 --   a) es_movimiento NULL pasaba como movimiento (4.564 cuentas con NULL al 25-oct), aunque tuviera hijos;
 --   b) cuentas inactivas (is_active/activa = false) se aceptaban.
 -- Ahora: NULL solo se acepta si la cuenta no tiene hijos; inactivas se rechazan. Mismo errcode 23514.
--- Rollback: supabase/rollbacks/20261025130900_p1_config_contable_solo_movimiento_rollback.sql
+-- Rollback: supabase/rollbacks/20261025134050_p1_config_contable_solo_movimiento_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_configuracion_contable_validar()
  RETURNS trigger

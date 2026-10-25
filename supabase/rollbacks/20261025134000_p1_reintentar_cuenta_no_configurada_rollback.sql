@@ -1,9 +1,4 @@
--- P1 (25-oct-2026): fn_reintentar_fallos_asiento (cron 56, cada 15 min) también atiende cuenta_no_configurada.
--- - Documentos (caja, banco, compra, venta): por la misma ruta de siempre.
--- - Inventario (stock_movement:*): por fn_reprocesar_fallos_stock_desde, SOLO fallos creados desde
---   el 26-oct-2026 00:00 Bogotá. El atraso de 345/346/199 queda para el reproceso manual con OK de Juan.
--- Requiere aplicadas antes 20261025133058 y 20261025133124.
--- Rollback: supabase/rollbacks/20261025130300_p1_reintentar_cuenta_no_configurada_rollback.sql
+-- Rollback de 20261025134000_p1_reintentar_cuenta_no_configurada: restaura la definición VIVA capturada el 25-oct-2026 con pg_get_functiondef.
 
 CREATE OR REPLACE FUNCTION public.fn_reintentar_fallos_asiento()
  RETURNS jsonb
@@ -33,17 +28,13 @@ declare
   v_doc uuid;
   v_total numeric;
   v_tipo text;
-  v_org integer;
-  v_stock jsonb;
 begin
   for f in
     select *
       from public.journal_entry_failures
      where resolved_at is null
-       and reason in ('cuenta_linea', 'sin_cuenta', 'tercero_requerido', 'cuenta_no_configurada')
+       and reason in ('cuenta_linea', 'sin_cuenta', 'tercero_requerido')
        and fact_key is not null
-       -- Inventario (stock_movement:*) va por fn_reprocesar_fallos_stock, abajo.
-       and not (reason = 'cuenta_no_configurada' and coalesce(fact_key, '') like 'stock_movement:%')
      order by id
      for update
   loop
@@ -307,7 +298,7 @@ begin
          where organization_id = f.organization_id
            and fact_key = f.fact_key
            and resolved_at is null
-           and reason in ('cuenta_linea', 'sin_cuenta', 'tercero_requerido', 'cuenta_no_configurada');
+           and reason in ('cuenta_linea', 'sin_cuenta', 'tercero_requerido');
         v_resueltos := v_resueltos + 1;
       else
         v_siguen := v_siguen + 1;
@@ -320,33 +311,8 @@ begin
     end;
   end loop;
 
-  -- Fallos de inventario cuenta_no_configurada NUEVOS (desde el 26-oct-2026 Bogotá).
-  -- El atraso anterior (345, 346, 199: 12.244 fallos) NO lo toca el cron: se reprocesa a mano
-  -- con fn_reprocesar_fallos_stock(org) y el OK de Juan.
-  for v_org in
-    select distinct jf.organization_id
-      from public.journal_entry_failures jf
-     where jf.resolved_at is null
-       and jf.reason = 'cuenta_no_configurada'
-       and jf.source = 'stock_movements'
-       and jf.fact_key like 'stock_movement:%'
-       and jf.created_at >= timestamptz '2026-10-26 00:00:00-05'
-  loop
-    begin
-      v_stock := public.fn_reprocesar_fallos_stock_desde(v_org, timestamptz '2026-10-26 00:00:00-05', 500);
-      v_resueltos := v_resueltos + coalesce((v_stock->>'resueltos')::integer, 0) + coalesce((v_stock->>'ya_existian')::integer, 0);
-      v_siguen := v_siguen + coalesce((v_stock->>'siguen')::integer, 0);
-      if v_aviso is null then
-        v_aviso := v_stock->>'aviso';
-      end if;
-    exception when others then
-      if v_aviso is null then
-        v_aviso := 'stock org ' || v_org || ': ' || sqlerrm;
-      end if;
-    end;
-  end loop;
-
   return jsonb_build_object('resueltos', v_resueltos, 'siguen', v_siguen, 'aviso', v_aviso);
 end;
 $function$
 ;
+

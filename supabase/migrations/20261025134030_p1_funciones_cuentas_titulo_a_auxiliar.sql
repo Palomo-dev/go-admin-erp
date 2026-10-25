@@ -1,4 +1,146 @@
--- Rollback de 20261025130450: restaura las 18 funciones a su versión viva al 25-oct-2026 y quita el resolver.
+-- P1 (25-oct-2026): funciones vivas con códigos de cuenta fijos que 134060 pasa a TÍTULO. NO aplicada.
+-- Aprobado por Juan: se aplica ANTES del plan (134010-134050) para que el guard de 134005 no bloquee
+-- asientos automáticos cuando 4295, 3705, 6135, 530515, 5395, 240805, 240810 y 2408 sean títulos.
+-- Es segura antes y después del plan: el resolver devuelve el auxiliar si ya existe y, si no (antes de
+-- 134010), la misma cuenta de siempre mientras siga siendo de movimiento.
+--
+-- Resolver único: public.fn_cuenta_auxiliar_de_titulo(org, sede, código, tarifa, lado)
+--   1) mapeo de la sede (branch_account_mappings) del título o del auxiliar, si es de movimiento;
+--   2) auxiliar de respaldo, si existe y es de movimiento;
+--   3) el código original, si todavía es de movimiento (antes del plan);
+--   4) si nada aplica, el auxiliar (el asiento falla con log claro, nunca se postea a un título).
+-- Respaldos: 4295 -> 42959501 (sobrantes; también ingreso genérico, decisión documentada: 42959502 solo
+--   lo usa la reclasificación de borradores manuales en 134060) | 3705 -> 37050502 | 6135 -> 61350501 |
+--   530515 -> 53051501 | 5395 -> 53959501 | 240805 -> 24080501 (19%) o 24080502 (tarifa 5) |
+--   240810 -> 24081001 (19%) o 24081002 (tarifa 5) | 2408 -> según lado (generado/descontable) y tarifa;
+--   sin tarifa 19% y, donde la función puede escribir, queda en public.contabilidad_revision_iva.
+-- Un código que ya es auxiliar conocido (p. ej. 61350501) pasa por el mismo resolver (mapeo de sede).
+--
+-- Fuera de esta migración (a propósito):
+--   fn_cuentas_movimiento_stock, fn_redondear_asiento_pesos -> las reemplaza 134020 (auxiliares);
+--   fn_create_default_accounting_rules -> la reemplaza 134040 (auxiliares).
+--   fn_create_branch_subaccounts: usa 6135 como base para crear 613505/613505NN por sede (estructura,
+--     no postea; el auxiliar de sede que crea es justo el que devuelve el resolver).
+--   fn_puc_nombres_oficiales: solo nombres oficiales del PUC (3705).
+--   Comparaciones de lectura/clasificación: fn_auto_journal_purchase ('6135' en listas de cuentas a
+--     reemplazar; ya cubierto por left(..,1)='6'), fn_cuenta_iva/fn_clave_cuenta_configurable/
+--     fn_regla_devengo_* ('2408'/'2405' como entrada del clasificador), fn_sobrante_borradores (lee las
+--     líneas viejas de 4295 de un asiento para recalcular).
+-- Rollback: supabase/rollbacks/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar_rollback.sql
+
+create table if not exists public.contabilidad_revision_iva (
+  id bigserial primary key,
+  organization_id integer not null,
+  origen text not null,
+  origen_id text,
+  cuenta_titulo text not null,
+  cuenta_asignada text,
+  motivo text not null default 'IVA sin tarifa: se asignó 19%, revisar',
+  created_at timestamptz not null default now()
+);
+alter table public.contabilidad_revision_iva enable row level security;
+comment on table public.contabilidad_revision_iva is
+  'P1: líneas de IVA genérico (2408) asignadas al auxiliar 19% sin tarifa; pendientes de revisión del contador.';
+
+create or replace function public.fn_cuenta_auxiliar_de_titulo(
+  p_org integer, p_branch integer, p_codigo text, p_tarifa numeric default null, p_lado text default null)
+returns text
+language plpgsql
+stable security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_cod text := nullif(btrim(p_codigo), '');
+  v_base text;
+  v_aux text;
+  v_sub text;
+  v_cinco boolean := coalesce(round(p_tarifa) = 5, false);
+begin
+  if v_cod is null or p_org is null then
+    return v_cod;
+  end if;
+
+  v_aux := case v_cod
+    when '4295'   then '42959501'
+    when '3705'   then '37050502'
+    when '6135'   then '61350501'
+    when '530515' then '53051501'
+    when '5395'   then '53959501'
+    when '240805' then case when v_cinco then '24080502' else '24080501' end
+    when '240810' then case when v_cinco then '24081002' else '24081001' end
+    when '2408'   then case
+                         when p_lado in ('descontable', 'compra', 'purchase')
+                           then case when v_cinco then '24081002' else '24081001' end
+                         else case when v_cinco then '24080502' else '24080501' end
+                       end
+  end;
+  if v_aux is not null then
+    v_base := v_cod;
+  else
+    v_base := case
+      when v_cod in ('42959501', '42959502', '42958101') then '4295'
+      when v_cod in ('37050501', '37050502') then '3705'
+      when v_cod in ('61350501', '61350502') then '6135'
+      when v_cod = '53051501' then '530515'
+      when v_cod = '53959501' then '5395'
+      when v_cod in ('24080501', '24080502') then '240805'
+      when v_cod in ('24081001', '24081002') then '240810'
+    end;
+    if v_base is null then
+      return v_cod;              -- no es una de las cuentas que pasan a título
+    end if;
+    v_aux := v_cod;
+  end if;
+
+  -- 1) Auxiliar único de la sede.
+  if p_branch is not null then
+    select m.sub_account_code into v_sub
+      from public.branch_account_mappings m
+      join public.chart_of_accounts c
+        on c.organization_id = m.organization_id and c.account_code = m.sub_account_code
+       and c.es_movimiento is distinct from false and coalesce(c.is_active, true)
+     where m.organization_id = p_org and m.branch_id = p_branch
+       and m.base_account_code in (v_base, v_aux)
+     order by (m.base_account_code = v_aux) desc
+     limit 1;
+    if v_sub is not null then
+      return v_sub;
+    end if;
+  end if;
+
+  -- 2) Auxiliar de respaldo.
+  if exists (select 1 from public.chart_of_accounts c
+              where c.organization_id = p_org and c.account_code = v_aux
+                and c.es_movimiento is distinct from false and coalesce(c.is_active, true)) then
+    return v_aux;
+  end if;
+
+  -- 3) Antes del plan: el código original mientras siga siendo de movimiento.
+  if exists (select 1 from public.chart_of_accounts c
+              where c.organization_id = p_org and c.account_code = v_cod
+                and c.es_movimiento is distinct from false and coalesce(c.is_active, true))
+     and not public.fn_es_cuenta_de_titulo(p_org, v_cod) then
+    return v_cod;
+  end if;
+
+  -- 4) Nunca el título: el auxiliar (si no existe, el asiento falla y queda en el log de fallos).
+  return v_aux;
+end;
+$function$;
+
+create or replace function public.fn_marcar_revision_iva(
+  p_org integer, p_origen text, p_origen_id text, p_titulo text, p_asignada text)
+returns void
+language sql
+volatile security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+  insert into public.contabilidad_revision_iva (organization_id, origen, origen_id, cuenta_titulo, cuenta_asignada)
+  values (p_org, p_origen, p_origen_id, p_titulo, p_asignada);
+$function$;
+
+revoke all on function public.fn_marcar_revision_iva(integer, text, text, text, text) from public, anon, authenticated;
+revoke all on function public.fn_cuenta_auxiliar_de_titulo(integer, integer, text, numeric, text) from anon;
 
 -- fn_asiento_movimiento_caja
 CREATE OR REPLACE FUNCTION public.fn_asiento_movimiento_caja(p_organization_id integer, p_tipo text, p_concept_code text)
@@ -64,7 +206,7 @@ begin
     when 'devolucionRecibida' then coalesce(
       public.fn_cuenta_por_clave(p_organization_id, null, 'proveedores'),
       public.fn_primera_cuenta_detalle(p_organization_id, array['2205', '2105']))
-    else public.fn_primera_cuenta_detalle(p_organization_id, array['4250', '4295', '4210'])
+    else public.fn_primera_cuenta_detalle(p_organization_id, array['4250', public.fn_cuenta_auxiliar_de_titulo(p_organization_id, null, '4295'), '4210'])
   end;
   if v_clave is distinct from 'ventaContadoEspecial' and v_contra is not null and left(v_contra, 4) = '4105' then
     v_contra := null;
@@ -171,7 +313,7 @@ begin
     v_credito := v_banco;
   else
     v_debito := v_banco;
-    v_credito := public.fn_primera_cuenta_detalle(new.organization_id, array['4250', '4295', '4210']);
+    v_credito := public.fn_primera_cuenta_detalle(new.organization_id, array['4250', public.fn_cuenta_auxiliar_de_titulo(new.organization_id, v_branch_id, '4295'), '4210']);
   end if;
 
   if v_debito is null or v_credito is null
@@ -376,7 +518,7 @@ begin
                 v_credito := v_tes;
               else
                 v_debito := v_tes;
-                v_credito := public.fn_primera_cuenta_detalle(v_bt.organization_id, array['4250', '4295', '4210']);
+                v_credito := public.fn_primera_cuenta_detalle(v_bt.organization_id, array['4250', public.fn_cuenta_auxiliar_de_titulo(v_bt.organization_id, v_branch, '4295'), '4210']);
               end if;
               if v_debito is null or v_credito is null
                  or left(coalesce(v_debito, ''), 1) = '4'
@@ -665,7 +807,7 @@ begin
      and v_evento is distinct from 'return'
      and left(coalesce(v_credit_account, ''), 1) = '6' then
     v_credit_account := coalesce(
-      public.fn_primera_cuenta_detalle(p_sm.organization_id, array['4295', '4210']),
+      public.fn_primera_cuenta_detalle(p_sm.organization_id, array[public.fn_cuenta_auxiliar_de_titulo(p_sm.organization_id, p_sm.branch_id, '4295'), '4210']),
       v_credit_account
     );
     if left(coalesce(v_credit_account, ''), 1) = '6' then
@@ -845,7 +987,7 @@ begin
      and v_evento is distinct from 'return'
      and left(coalesce(v_credit_account, ''), 1) = '6' then
     v_credit_account := coalesce(
-      public.fn_primera_cuenta_detalle(new.organization_id, array['4295', '4210']),
+      public.fn_primera_cuenta_detalle(new.organization_id, array[public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '4295'), '4210']),
       v_credit_account
     );
     if left(coalesce(v_credit_account, ''), 1) = '6' then
@@ -972,7 +1114,9 @@ begin
         '2205'
       );
     else
-      v_credit_account := public.fn_cuenta_configurada(new.organization_id, new.branch_id, 'ingresos_diversos', '4295');
+      v_credit_account := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id,
+        public.fn_cuenta_configurada(new.organization_id, new.branch_id, 'ingresos_diversos',
+          public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '4295')));
     end if;
     if left(coalesce(v_credit_account, ''), 4) = '4250'
        or v_debit_account is null
@@ -1121,7 +1265,7 @@ begin
       select 1 from public.chart_of_accounts c
       where c.organization_id = new.organization_id and c.account_code = '240810'
     ) then
-      v_impuesto := '240810';
+      v_impuesto := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '240810', null, 'descontable');
     elsif exists (
       select 1 from public.chart_of_accounts c
       where c.organization_id = new.organization_id and c.account_code = '2408'
@@ -1131,8 +1275,17 @@ begin
       ) values (
         new.organization_id, '240810', 'IVA descontable', 'liability', '2408', 'debito', true, 'no_aplica'
       ) on conflict (organization_id, account_code) do nothing;
-      v_impuesto := '240810';
+      v_impuesto := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '240810', null, 'descontable');
     end if;
+  end if;
+
+  -- 240810/2408 son títulos: el IVA descontable va al auxiliar de la sede/tarifa (sin tarifa: 19%).
+  if v_impuesto in ('2408', '240810', '240805') then
+    if v_impuesto = '2408' then
+      perform public.fn_marcar_revision_iva(new.organization_id, 'invoice_purchase', new.id::text, '2408',
+        public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '2408', null, 'descontable'));
+    end if;
+    v_impuesto := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, v_impuesto, null, 'descontable');
   end if;
 
   if public.fn_documento_tiene_cuenta_propia(new.organization_id, new.id, 'compra') then
@@ -1178,8 +1331,8 @@ CREATE OR REPLACE FUNCTION public.fn_clave_cuenta_configurable(p_source text, p_
 AS $function$
   select case
     when s.code is null then null
-    when s.code = '240810' then 'iva_descontable'
-    when s.code = '240805' then 'iva_generado'
+    when s.code = '240810' or s.code ~ '^240810[0-9]{2}$' then 'iva_descontable'
+    when s.code = '240805' or s.code ~ '^240805[0-9]{2}$' then 'iva_generado'
     when p_lado = 'impuesto' and s.code in ('2408', '2405') then
       case when s.origen = any (array['purchase', 'purchases', 'invoice_purchase', 'purchase_order', 'purchase_orders'])
         then 'iva_descontable' else 'iva_generado' end
@@ -1189,7 +1342,7 @@ AS $function$
     when s.code = '1305' and s.origen <> all (array['loan', 'loans', 'employee_loans', 'installment', 'installments', 'loan_installments', 'ap_installments']) then 'clientes'
     when s.code in ('2105', '2205') then 'proveedores'
     when s.code in ('1405', '1435') then 'inventario'
-    when s.code in ('6105', '6135', '6140') then 'costo_ventas'
+    when s.code in ('6105', '6135', '6140') or s.code ~ '^613505[0-9]{2}$' then 'costo_ventas'
     when s.code = '2365' then 'retefuente'
     when s.code = '2367' then 'reteiva'
     when s.code = '2368' then 'reteica'
@@ -1278,7 +1431,11 @@ begin
     end if;
   end if;
 
-  return nullif(btrim(p_cuenta_regla), '');
+  -- La cuenta de la regla puede ser un título (2408/240805/240810): auxiliar de sede/tarifa, sin tarifa 19%.
+  return public.fn_cuenta_auxiliar_de_titulo(p_organization_id, p_branch_id, nullif(btrim(p_cuenta_regla), ''), null,
+    case when coalesce(p_source, '') = any (array[
+      'purchase', 'purchases', 'invoice_purchase', 'purchase_order', 'purchase_orders'
+    ]) then 'descontable' else 'generado' end);
 end;
 $function$
 ;
@@ -1309,6 +1466,9 @@ begin
   if v_cuenta is null then
     return null;
   end if;
+  -- Títulos que pasan a auxiliar (4295, 6135, 240805, 240810, ...): auxiliar de la sede.
+  v_cuenta := public.fn_cuenta_auxiliar_de_titulo(p_organization_id, p_branch_id, v_cuenta, null,
+    case when p_clave = 'iva_descontable' then 'descontable' else 'generado' end);
   if exists (
     select 1 from public.chart_of_accounts c
     where c.organization_id = p_organization_id and c.account_code = v_cuenta
@@ -1343,7 +1503,7 @@ AS $function$
         when 2 then '4140'
         else '4235'
       end
-      when 'costo_ventas' then case when p_type_id in (1, 2) then '6140' else '6135' end
+      when 'costo_ventas' then case when p_type_id in (1, 2) then '6140' else '61350501' end
       -- Inventario: nunca 1405. fn_sembrar_configuracion_contable lo cambia por el auxiliar 143501xx.
       when 'inventario' then '1435'
       else v.defecto
@@ -1357,10 +1517,10 @@ AS $function$
     ('ventas_servicios', '4235'),
     ('devoluciones', '4175'),
     ('descuentos', '4175'),
-    ('costo_ventas', '6135'),
+    ('costo_ventas', '61350501'),
     ('inventario', '1435'),
-    ('iva_generado', '240805'),
-    ('iva_descontable', '240810'),
+    ('iva_generado', '24080501'),
+    ('iva_descontable', '24081001'),
     ('retefuente', '2365'),
     ('reteiva', '2367'),
     ('reteica', '2368'),
@@ -1377,7 +1537,7 @@ AS $function$
     ('manifiesto_transporte', '2335'),
     ('saldo_inicial', '3105'),
     ('impuesto_consumo', '2495'),
-    ('redondeo', '4295'),
+    ('redondeo', '42958101'),
     ('compra_servicio', '2335')
   ) as v(clave, defecto);
 $function$
@@ -1414,7 +1574,7 @@ begin
     return;
   end if;
   if p_codigo = '6105' then
-    destino := case when p_type in (1, 2) then '6140' else '6135' end;
+    destino := case when p_type in (1, 2) then '6140' else '61350501' end;
     motivo := 'Costo a la cuenta del sector';
     return next;
     return;
@@ -1430,8 +1590,8 @@ begin
       destino := '2805';
       motivo := 'Anticipo a 2805';
     else
-      destino := '2408';
-      motivo := 'Impuesto a 2408';
+      destino := '24080501';
+      motivo := 'Impuesto a 24080501 (IVA sin tarifa: 19%, revisar)';
     end if;
     return next;
     return;
@@ -1457,6 +1617,7 @@ declare
   v_branch integer;
   v_existente integer;
   v_id integer;
+  v_iva text;
 begin
   perform public.fn_finanzas_exigir_permiso(p_org, array['finance.create', 'accounting.reverse']);
   select je.id into v_existente
@@ -1489,15 +1650,19 @@ begin
     select min(b.id) into v_branch from public.branches b where b.organization_id = p_org;
   end if;
 
+  -- 2408 es título: IVA generado sin tarifa => auxiliar 19% de la sede, marcado para revisión.
+  v_iva := public.fn_cuenta_auxiliar_de_titulo(p_org, v_branch, '2408', null, 'generado');
+  perform public.fn_marcar_revision_iva(p_org, 'reclasificacion_iva_generado', p_org::text, '2408', v_iva);
+
   v_id := public.fn_create_journal_entry(
     p_organization_id := p_org,
     p_branch_id := v_branch,
     p_entry_date := now(),
-    p_memo := 'Reclasificación de IVA generado de 2405 a 2408',
+    p_memo := 'Reclasificación de IVA generado de 2405 a ' || v_iva || ' (sin tarifa: 19%, revisar)',
     p_source := 'manual',
     p_source_id := 'iva-generado',
     p_debit_account := '2405',
-    p_credit_account := '2408',
+    p_credit_account := v_iva,
     p_amount := round(v_neto, 2),
     p_tax_account := null,
     p_tax_amount := 0,
@@ -1507,7 +1672,7 @@ begin
   );
   if v_id is null then
     raise exception 'cuenta_no_configurada' using errcode = '22023',
-      detail = 'No se pudo publicar el traslado de 2405 a 2408. Revise que ambas cuentas existan y sean de movimiento.';
+      detail = 'No se pudo publicar el traslado de 2405 al IVA generado. Revise que ambas cuentas existan y sean de movimiento.';
   end if;
   return jsonb_build_object('repetida', false, 'journal_entry_id', v_id, 'monto', round(v_neto, 2));
 end;
@@ -1578,7 +1743,8 @@ begin
     end if;
 
     if v_tax in ('2405', '2408') then
-      v_destino := coalesce(public.fn_cuenta_por_clave(p_organization_id, null, 'iva_descontable'), '240810');
+      v_destino := coalesce(public.fn_cuenta_por_clave(p_organization_id, null, 'iva_descontable'),
+        public.fn_cuenta_auxiliar_de_titulo(p_organization_id, null, '240810', null, 'descontable'));
       if exists (
         select 1 from public.chart_of_accounts c
         where c.organization_id = p_organization_id and c.account_code = v_destino
@@ -1666,7 +1832,8 @@ begin
     end if;
 
     if v_tax in ('2405', '2408') then
-      v_destino := coalesce(public.fn_cuenta_por_clave(p_organization_id, null, 'iva_generado'), '240805');
+      v_destino := coalesce(public.fn_cuenta_por_clave(p_organization_id, null, 'iva_generado'),
+        public.fn_cuenta_auxiliar_de_titulo(p_organization_id, null, '240805', null, 'generado'));
       if exists (
         select 1 from public.chart_of_accounts c
         where c.organization_id = p_organization_id and c.account_code = v_destino
@@ -1708,7 +1875,7 @@ begin
       when c.account_code is not null
        and c.is_active is distinct from false
        and c.es_movimiento is distinct from false
-      then v.cuenta
+      then r.cuenta
       else null
     end,
     v.orden,
@@ -1757,9 +1924,11 @@ begin
       ('devoluciones_clientes', 'egreso', 'Devoluciones a clientes', 'undo-2', '4175', 250),
       ('otros_gastos', 'egreso', 'Otros gastos', 'circle-minus', '5195', 260)
   ) as v(clave, tipo, nombre, icono, cuenta, orden)
+  -- 4295 -> 42959501 (ingreso genérico), 2408 -> 24080501, 530515 -> 53051501.
+  cross join lateral (select public.fn_cuenta_auxiliar_de_titulo(p_org, null, v.cuenta) as cuenta) r
   left join public.chart_of_accounts c
     on c.organization_id = p_org
-   and c.account_code = v.cuenta
+   and c.account_code = r.cuenta
   where not exists (
     select 1 from public.categorias_tesoreria ya
      where ya.organization_id = p_org and ya.clave = v.clave
@@ -2049,7 +2218,7 @@ begin
         journal_entry_id, account_code, description, debit, credit,
         organization_id, debit_base, credit_base, cost_center_id
       ) values (
-        v_entry, '4295', coalesce(v_memo, 'Reclasificación de sobrantes'), 0, v_diversos, v_org, 0, v_diversos, v_centro
+        v_entry, public.fn_cuenta_auxiliar_de_titulo(v_org, null, '4295'), coalesce(v_memo, 'Reclasificación de sobrantes'), 0, v_diversos, v_org, 0, v_diversos, v_centro
       );
     end if;
 
@@ -2581,7 +2750,7 @@ begin
   end if;
 
   insert into pg_temp._corr_cruda (organization_id, grupo, clase, cuenta, debito, credito)
-  select s.organization_id, 'reclasificacion', 'reclas_2405_descontable', '240810', s.neto, 0
+  select s.organization_id, 'reclasificacion', 'reclas_2405_descontable', public.fn_cuenta_auxiliar_de_titulo(s.organization_id, null, '240810', null, 'descontable'), s.neto, 0
   from (
     select organization_id, round(sum(debit - credit), 0) as neto
     from pg_temp._corr_2405
@@ -2601,7 +2770,7 @@ begin
 
   insert into pg_temp._corr_cruda (organization_id, grupo, clase, cuenta, debito, credito)
   select s.organization_id, 'reclasificacion', 'reclas_2405_generado',
-         case when s.neto >= 0 then '2405' else '240805' end,
+         case when s.neto >= 0 then '2405' else public.fn_cuenta_auxiliar_de_titulo(s.organization_id, null, '240805', null, 'generado') end,
          abs(s.neto), 0
   from (
     select organization_id, round(sum(
@@ -2635,7 +2804,7 @@ begin
   ) s
   union all
   select s.organization_id, 'reclasificacion', 'reclas_2405_generado',
-         case when s.neto >= 0 then '240805' else '2405' end,
+         case when s.neto >= 0 then public.fn_cuenta_auxiliar_de_titulo(s.organization_id, null, '240805', null, 'generado') else '2405' end,
          0, abs(s.neto)
   from (
     select organization_id, round(sum(
@@ -2703,7 +2872,7 @@ begin
              when lower(btrim(coalesce(ia.reason, ''))) in ('initial_setup', 'saldo_inicial') then '3105'
              when lower(btrim(coalesce(ia.reason, ''))) in ('compra_sin_orden', 'compra sin orden') then '2205'
              when lower(btrim(coalesce(ia.reason, ''))) in ('physical_count', 'audit') then null
-             else '4295'
+             else public.fn_cuenta_auxiliar_de_titulo(ia.organization_id, null, '4295')
            end as destino,
            round(sum(jl.credit), 0) as monto
     from public.journal_lines jl
@@ -2729,7 +2898,7 @@ begin
              when lower(btrim(coalesce(ia.reason, ''))) in ('initial_setup', 'saldo_inicial') then '3105'
              when lower(btrim(coalesce(ia.reason, ''))) in ('compra_sin_orden', 'compra sin orden') then '2205'
              when lower(btrim(coalesce(ia.reason, ''))) in ('physical_count', 'audit') then null
-             else '4295'
+             else public.fn_cuenta_auxiliar_de_titulo(ia.organization_id, null, '4295')
            end as destino,
            round(sum(jl.credit), 0) as monto
     from public.journal_lines jl
@@ -2788,12 +2957,12 @@ begin
                where c.organization_id = base.organization_id
                  and c.clave = 'costo_ventas'
                  and c.branch_id is null
-                 and c.account_code in ('6135', '6140')
+                 and (c.account_code in ('6135', '6140') or c.account_code ~ '^613505[0-9]{2}$')
                  and coalesce(a.is_active, true)
                  and a.es_movimiento is distinct from false
                limit 1
              ),
-             case when o.type_id in (1, 2) then '6140' else '6135' end
+             case when o.type_id in (1, 2) then '6140' else public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6135') end
            ) as destino
     from (
       select p.organization_id, p.account_code,
@@ -2850,12 +3019,12 @@ begin
                where c.organization_id = base.organization_id
                  and c.clave = 'costo_ventas'
                  and c.branch_id is null
-                 and c.account_code in ('6135', '6140')
+                 and (c.account_code in ('6135', '6140') or c.account_code ~ '^613505[0-9]{2}$')
                  and coalesce(a.is_active, true)
                  and a.es_movimiento is distinct from false
                limit 1
              ),
-             case when o.type_id in (1, 2) then '6140' else '6135' end
+             case when o.type_id in (1, 2) then '6140' else public.fn_cuenta_auxiliar_de_titulo(base.organization_id, null, '6135') end
            ) as destino
     from (
       select p.organization_id, p.account_code,
@@ -3300,12 +3469,3 @@ begin
 end;
 $function$
 ;
-
-drop function if exists public.fn_marcar_revision_iva(integer, text, text, text, text);
-drop function if exists public.fn_cuenta_auxiliar_de_titulo(integer, integer, text, numeric, text);
--- La tabla de revisión se conserva si tiene filas (datos para el contador).
-do $$ begin
-  if not exists (select 1 from public.contabilidad_revision_iva) then
-    drop table public.contabilidad_revision_iva;
-  end if;
-end $$;

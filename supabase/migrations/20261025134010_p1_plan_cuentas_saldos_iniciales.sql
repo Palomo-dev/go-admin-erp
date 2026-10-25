@@ -2,8 +2,8 @@
 -- 116 orgs con regla inventory/opening. NO aplicada. Idempotente (solo inserta donde NO existe).
 -- Paso 1 de 3: SOLO crea cuentas. Las cuentas padre (3705, 6135, 4295, 240805, 240810, 530515) SIGUEN
 -- de movimiento aquí: trg_puc_validar_cuenta se desactiva durante los INSERT para que no las pase a
--- título solo. El paso a título va en 130700, después de reclasificar saldos (regla del contador) y
--- después de que 130600 cambie reglas/configuración (nunca una regla apuntando a una cuenta de título).
+-- título solo. El paso a título va en 134060, después de reclasificar saldos (regla del contador) y
+-- después de que 134020 cambie reglas/configuración (nunca una regla apuntando a una cuenta de título).
 -- Conteo esperado al 25-oct (solo lectura): 1.846 cuentas nuevas
 --   370505:116  37050501:116  37050502:0 (3705 sin movimientos en ninguna org)
 --   613505:108  61350501:109  61350502:116
@@ -13,9 +13,9 @@
 --   movimientos y el contador la deja de movimiento)
 --   530515:0 (ya existe)  53051501:116
 -- Validado por el contador (25-oct): IVA con auxiliares en todas las orgs; el saldo/borradores se
--- reclasifican en 130700. Única excepción: 240810 de la org 149.
--- Bitácora: public.p1_puc_bitacora (la usan 130600/130700 y sus rollbacks).
--- Rollback: supabase/rollbacks/20261025130500_p1_plan_cuentas_saldos_iniciales_rollback.sql
+-- reclasifican en 134060. Única excepción: 240810 de la org 149.
+-- Bitácora: public.p1_puc_bitacora (la usan 134020/134060 y sus rollbacks).
+-- Rollback: supabase/rollbacks/20261025134010_p1_plan_cuentas_saldos_iniciales_rollback.sql
 
 create table if not exists public.p1_puc_bitacora (
   id bigserial primary key,
@@ -102,13 +102,13 @@ begin
       if found then
         v_creadas := v_creadas + 1;
         insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, valor_nuevo)
-        values ('130500', v_org, 'cuenta', r.codigo, r.nombre);
+        values ('134010', v_org, 'cuenta', r.codigo, r.nombre);
       end if;
     end loop;
   end loop;
 
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
-  raise notice '130500: % cuentas creadas (esperado 1846 al 25-oct)', v_creadas;
+  raise notice '134010: % cuentas creadas (esperado 1846 al 25-oct)', v_creadas;
 exception when others then
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
   raise;

@@ -1,25 +1,25 @@
--- Rollback de 130600: restaura reglas y configuración desde la bitácora y la versión viva (25-oct)
--- de fn_cuentas_movimiento_stock. Correr ANTES del rollback de 130500 y DESPUÉS del de 130700.
+-- Rollback de 134020: restaura reglas y configuración desde la bitácora y la versión viva (25-oct)
+-- de fn_cuentas_movimiento_stock. Correr ANTES del rollback de 134010 y DESPUÉS del de 134060.
 update public.accounting_rules ar
    set debit_account_code  = case when b.campo = 'debit_account_code'  then b.valor_anterior else ar.debit_account_code end,
        credit_account_code = case when b.campo = 'credit_account_code' then b.valor_anterior else ar.credit_account_code end,
        tax_account_code    = case when b.campo = 'tax_account_code'    then b.valor_anterior else ar.tax_account_code end,
        updated_at = now()
   from public.p1_puc_bitacora b
- where b.migracion = '130600' and b.objeto = 'regla' and ar.id = b.clave::uuid;
+ where b.migracion = '134020' and b.objeto = 'regla' and ar.id = b.clave::uuid;
 
 -- El validador exige movimiento: restaurar config a cuentas que hoy sean de título fallaría; por eso
--- este rollback va después del de 130700 (los padres vuelven a ser de movimiento).
+-- este rollback va después del de 134060 (los padres vuelven a ser de movimiento).
 update public.configuracion_contable cc set account_code = b.valor_anterior
   from public.p1_puc_bitacora b
- where b.migracion = '130600' and b.objeto = 'config' and cc.id = b.clave::bigint;
+ where b.migracion = '134020' and b.objeto = 'config' and cc.id = b.clave::bigint;
 
 delete from public.configuracion_contable where organization_id = 149 and clave = 'iva_generado'
    and account_code in ('24080501', '240805')
-   and not exists (select 1 from public.p1_puc_bitacora b where b.migracion = '130600' and b.objeto = 'config' and b.organization_id = 149);
+   and not exists (select 1 from public.p1_puc_bitacora b where b.migracion = '134020' and b.objeto = 'config' and b.organization_id = 149);
 
 delete from public.configuracion_contable cc using public.p1_puc_bitacora b
- where b.migracion = '130600' and b.objeto = 'config_nueva' and cc.id = b.clave::bigint;
+ where b.migracion = '134020' and b.objeto = 'config_nueva' and cc.id = b.clave::bigint;
 alter table public.configuracion_contable drop constraint configuracion_contable_clave_chk;
 alter table public.configuracion_contable add constraint configuracion_contable_clave_chk check (clave = any (array[
   'caja', 'bancos', 'clientes', 'proveedores', 'ventas_productos', 'ventas_servicios', 'devoluciones', 'descuentos',
@@ -28,7 +28,7 @@ alter table public.configuracion_contable add constraint configuracion_contable_
   'gastos_extraordinarios', 'consumo_interno', 'manifiesto_por_pagar', 'manifiesto_transporte', 'saldo_inicial',
   'impuesto_consumo', 'redondeo', 'compra_servicio', 'ingresos_diversos']::text[]));
 
-delete from public.p1_puc_bitacora where migracion = '130600';
+delete from public.p1_puc_bitacora where migracion = '134020';
 
 CREATE OR REPLACE FUNCTION public.fn_cuentas_movimiento_stock(p_organization_id integer, p_source text, p_direction text, OUT debito text, OUT credito text, OUT evento text)
  RETURNS record

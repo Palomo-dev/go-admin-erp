@@ -1,5 +1,5 @@
 -- P1 (25-oct-2026): regla del contador «nunca dejar saldo colgado». NO aplicada.
--- Paso 3 de 3. Requiere 130500 y 130600 aplicadas. Validado por el contador el 25-oct con estos cambios:
+-- Paso final. Requiere 134010, 134020, 134030 (funciones sin cuentas fijas), 134040 y 134050 aplicadas. Validado por el contador el 25-oct con estos cambios:
 --   * NO se reescriben asientos publicados. Por cada org se genera UN asiento nuevo publicado
 --     «Reclasificación a auxiliar de movimiento», fecha de hoy; si el período de hoy está cerrado va al
 --     primer período ABIERTO posterior (nunca a uno cerrado; si no hay ninguno abierto la org se salta).
@@ -19,7 +19,7 @@
 --   Todos los 4295 publicados vienen de inventory_adjustment => 42959501. Los borradores 4295 son
 --   manuales => 42959502. Org 149: 240810 no se toca (queda de movimiento con 19.000).
 --   Títulos: 3705: 19 | 6135: 108 | 4295: 116 | 530515: 116 | 5395: 116 | 240805: 115 | 240810: 115
--- Rollback: supabase/rollbacks/20261025130700_p1_reclasificar_y_titular_rollback.sql
+-- Rollback: supabase/rollbacks/20261025134060_p1_reclasificar_y_titular_rollback.sql
 
 -- Destino de una línea de la cuenta padre.
 create or replace function pg_temp.p1_destino(p_padre text, p_source text) returns text
@@ -66,7 +66,7 @@ begin
       if exists (select 1 from public.chart_of_accounts c where c.organization_id = v_org and c.account_code = r.p
                    and c.es_movimiento is true
                    and exists (select 1 from public.chart_of_accounts h where h.organization_id = v_org and h.parent_code = r.p)) then
-        raise notice '130700: org % cuenta % sigue en una regla/clave; NO se titula', v_org, r.p;
+        raise notice '134060: org % cuenta % sigue en una regla/clave; NO se titula', v_org, r.p;
       end if;
     end loop;
     continue when cardinality(v_ok) = 0;
@@ -84,7 +84,7 @@ begin
     for r in select distinct s.padre, s.aux from p1_saldos s
               where not exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
                                   and a.account_code = s.aux and a.es_movimiento is true) loop
-      raise notice '130700: org % saldo de % sin auxiliar %; NO se titula', v_org, r.padre, r.aux;
+      raise notice '134060: org % saldo de % sin auxiliar %; NO se titula', v_org, r.padre, r.aux;
       v_ok := array_remove(v_ok, r.padre);
       delete from p1_saldos where padre = r.padre;
     end loop;
@@ -102,7 +102,7 @@ begin
                         and fp.period_type = 'monthly' and fp.status = 'open' and fp.start_date > current_date)
              end into v_fecha;
       if v_fecha is null then
-        raise notice '130700: org % sin período abierto para la reclasificación; se salta la org', v_org;
+        raise notice '134060: org % sin período abierto para la reclasificación; se salta la org', v_org;
         continue;
       end if;
 
@@ -127,9 +127,9 @@ begin
                 from p1_saldos s) x;
 
       insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-      select '130700', v_org, 'asiento_reclasif', v_entry::text, s.padre, s.saldo::text, s.aux from p1_saldos s;
+      select '134060', v_org, 'asiento_reclasif', v_entry::text, s.padre, s.saldo::text, s.aux from p1_saldos s;
       insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-      select '130700', v_org, 'revision_iva', v_entry::text, s.padre, s.saldo::text, s.aux
+      select '134060', v_org, 'revision_iva', v_entry::text, s.padre, s.saldo::text, s.aux
         from p1_saldos s where s.padre like '2408%';
       v_rec := v_rec + 1;
     end if;
@@ -143,7 +143,7 @@ begin
                        and a.account_code = pg_temp.p1_destino(l.account_code, e.source) and a.es_movimiento is true)
     ), log as (
       insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-      select '130700', v_org, case when padre like '2408%' then 'linea_borrador_revision_iva' else 'linea_borrador' end,
+      select '134060', v_org, case when padre like '2408%' then 'linea_borrador_revision_iva' else 'linea_borrador' end,
              id::text, 'account_code', padre, aux from obj
     )
     update public.journal_lines l set account_code = obj.aux, updated_at = now() from obj where l.id = obj.id;
@@ -152,7 +152,7 @@ begin
     for r in select distinct l.account_code p from public.journal_lines l
               join public.journal_entries e on e.id = l.journal_entry_id
              where l.organization_id = v_org and l.account_code = any (v_ok) and not e.posted loop
-      raise notice '130700: org % cuenta % conserva borradores sin auxiliar destino; NO se titula', v_org, r.p;
+      raise notice '134060: org % cuenta % conserva borradores sin auxiliar destino; NO se titula', v_org, r.p;
       v_ok := array_remove(v_ok, r.p);
     end loop;
 
@@ -162,9 +162,9 @@ begin
       returning account_code
     )
     insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-    select '130700', v_org, 'titulo', account_code, 'es_movimiento', 'true', 'false' from t;
+    select '134060', v_org, 'titulo', account_code, 'es_movimiento', 'true', 'false' from t;
     get diagnostics v_n = row_count;
     v_tit := v_tit + v_n;
   end loop;
-  raise notice '130700: % asientos de reclasificación (esperado 7), % cuentas pasadas a título', v_rec, v_tit;
+  raise notice '134060: % asientos de reclasificación (esperado 7), % cuentas pasadas a título', v_rec, v_tit;
 end $$;

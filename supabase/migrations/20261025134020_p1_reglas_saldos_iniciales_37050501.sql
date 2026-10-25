@@ -1,5 +1,5 @@
 -- P1 (25-oct-2026): reglas y configuración contable hacia los auxiliares del contador. NO aplicada.
--- Paso 2 de 3. Requiere 130500 aplicada. En cada org solo se cambia la regla/clave si la cuenta destino
+-- Paso 2 de 3. Requiere 134010 aplicada. En cada org solo se cambia la regla/clave si la cuenta destino
 -- YA existe y es de movimiento en esa org (primero la cuenta, después la regla; nunca al revés).
 -- Configuración HACIA ADELANTE: no reprocesa el histórico de faltantes/sobrantes.
 -- Conteo esperado al 25-oct:
@@ -17,7 +17,7 @@
 --   Redondeo: decisión CERRADA por el contador (25-oct): auxiliares propios de Ajuste al peso.
 -- NO se tocan: inventory/adjusted y expense/created (519595, salida no venta/consumo), bank/adjusted,
 --   membership y reservation (4250): no son sobrantes/faltantes de inventario.
--- Rollback: supabase/rollbacks/20261025130600_p1_reglas_saldos_iniciales_37050501_rollback.sql
+-- Rollback: supabase/rollbacks/20261025134020_p1_reglas_saldos_iniciales_37050501_rollback.sql
 
 create or replace function pg_temp.p1_mov(p_org integer, p_code text) returns boolean
 language sql stable as $$
@@ -35,7 +35,7 @@ begin
        where %2$s and ar.%1$I is distinct from %3$L and pg_temp.p1_mov(ar.organization_id, %3$L)
     ), log as (
       insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-      select '130600', organization_id, 'regla', id::text, %1$L, anterior, %3$L from obj
+      select '134020', organization_id, 'regla', id::text, %1$L, anterior, %3$L from obj
     )
     update public.accounting_rules ar set %1$I = %3$L, updated_at = now()
       from obj where ar.id = obj.id$q$, p_campo, p_where, p_nuevo);
@@ -53,7 +53,7 @@ begin
        where %1$s and cc.account_code is distinct from %2$L and pg_temp.p1_mov(cc.organization_id, %2$L)
     ), log as (
       insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-      select '130600', organization_id, 'config', id::text, 'account_code', anterior, %2$L from obj
+      select '134020', organization_id, 'config', id::text, 'account_code', anterior, %2$L from obj
     )
     update public.configuracion_contable cc set account_code = %2$L
       from obj where cc.id = obj.id$q$, p_where, p_nuevo);
@@ -115,7 +115,7 @@ with ins as (
   returning id, organization_id
 )
 insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-select '130600', organization_id, 'config_nueva', id::text, 'redondeo_en_contra', null, '53959501' from ins;
+select '134020', organization_id, 'config_nueva', id::text, 'redondeo_en_contra', null, '53959501' from ins;
 
 -- Org 149: no tiene clave iva_generado en 240805 (la cuenta no existía). Se siembra si falta.
 insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
@@ -153,7 +153,7 @@ begin
   order by ar.priority
   limit 1;
   v_inv := coalesce(nullif(btrim(v_inv), ''), '1405');
-  -- 6135 pasa a título en 130700: el respaldo es su auxiliar 61350501. Igual que con 1435, el auxiliar
+  -- 6135 pasa a título en 134060: el respaldo es su auxiliar 61350501. Igual que con 1435, el auxiliar
   -- de la sede lo resuelve después fn_cuenta_configurada_de_sede (branch_account_mappings 6135->61350501).
   v_cmv := case when v_type in (1, 2) then '6140' else '61350501' end;
   v_faltante := coalesce(
@@ -294,7 +294,7 @@ begin
     and a.es_movimiento is true
   limit 1;
   -- Ajuste al peso (contador, 25-oct): a favor 42958101, en contra 53959501. 4295/5395 solo si la org
-  -- no tiene esos auxiliares (orgs fuera del alcance de 130500).
+  -- no tiene esos auxiliares (orgs fuera del alcance de 134010).
   if v_cuenta is null then
     select a.account_code into v_cuenta
     from public.chart_of_accounts a

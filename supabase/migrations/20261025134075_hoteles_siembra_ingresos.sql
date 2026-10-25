@@ -1,8 +1,9 @@
 -- Hoteles (type_id 2), 25-oct-2026: SIEMBRA de orgs nuevas tipo hotel con auxiliares de ingresos. NO aplicada.
 -- Paso 2 de 4. Requiere 134070 (fn_hoteles_asegurar_cuentas_ingreso). Parte de las versiones vivas de 134040
 -- (verificado md5 de prosrc = repo al 25-oct) y solo cambia lo de type_id 2:
---   fn_create_default_accounting_rules: ventas, caja, viaje y no-show 41400501; folio alimentos 41401501;
---     folio servicios 41409501; devolución/anulación/reembolso 41750101. Resto de sectores igual que 134040.
+--   fn_create_default_accounting_rules: ventas, caja, viaje y no-show 41400501; folio hospedaje (prioridad 10,
+--     regla nueva) 41400501, folio alimentos (11) 41401501, folio otros servicios (12) 41409501 (la prioridad es lo que
+--     usa fn_auto_journal_folio_item para elegir la regla); devolución/anulación/reembolso 41750101. Resto de sectores igual que 134040.
 --   fn_sembrar_configuracion_contable: crea los auxiliares (134070) y siembra ventas_productos/ventas_servicios
 --     41400501, devoluciones 41750101, descuentos 41750102; categoría de tesorería 4175 -> 41750101.
 --   Costo restaurante de hotel 61400501: ya lo sembraba 134040.
@@ -124,6 +125,20 @@ begin
     (org_id, 'Inventario compra', 'Entrada de compra', 'inventory', 'purchase', v_inv, '2205', null, false, 43, true),
     (org_id, 'Inventario faltante', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory', 'loss', v_merma, v_inv, null, false, 44, true),
     (org_id, 'Inventario sobrante', 'Sobrante de inventario', 'inventory', 'gain', v_inv, '42959501', null, false, 45, true);
+
+  -- Hoteles (QA Soporte 25-oct): fn_auto_journal_folio_item elige la regla de folio por PRIORIDAD según el origen
+  -- del cargo (10 = room/hospedaje, 11 = pos/food/minibar, 12 = resto). Con 30/31 caía al fallback "cualquier regla".
+  -- Hospedaje 41400501 (prioridad 10, regla nueva), alimentos 41401501 (11), otros servicios 41409501 (12).
+  if v_type = 2 then
+    update public.accounting_rules set priority = 11, conditions = '{"source": "pos"}'::jsonb
+     where organization_id = org_id and source_type = 'folio_item' and name = 'Cargo Folio Alimentos';
+    update public.accounting_rules set priority = 12, conditions = '{"source": "service"}'::jsonb
+     where organization_id = org_id and source_type = 'folio_item' and name = 'Cargo Folio Servicios';
+    insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+      debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active, conditions)
+    values (org_id, 'Cargo Folio Hospedaje', 'Cargo a folio por alojamiento', 'folio_item', 'created',
+      '1305', '41400501', null, false, 10, true, '{"source": "room"}'::jsonb);
+  end if;
 end;
 $function$;
 

@@ -17,6 +17,10 @@ begin
       update public.accounting_rules set credit_account_code = r.valor_anterior where id::text = r.clave;
     elsif r.objeto = 'accounting_rules' and r.campo = 'discount_account_code' then
       update public.accounting_rules set discount_account_code = r.valor_anterior where id::text = r.clave;
+    elsif r.objeto = 'accounting_rules' and r.campo = 'priority' then
+      update public.accounting_rules set priority = r.valor_anterior::smallint where id::text = r.clave;
+    elsif r.objeto = 'accounting_rules_nueva' then
+      delete from public.accounting_rules where id::text = r.clave;
     elsif r.objeto = 'configuracion_contable' then
       update public.configuracion_contable set account_code = r.valor_anterior where id::text = r.clave;
     elsif r.objeto = 'categorias_tesoreria' then

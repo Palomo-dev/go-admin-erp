@@ -1,5 +1,9 @@
 -- Hoteles (type_id 2), 25-oct-2026: pasa los 43 hoteles existentes a los auxiliares de 134070. NO aplicada.
 -- Paso 3 de 4. Requiere 134070. Por cada org type_id = 2:
+--   1b. Reglas de venta (sale/created), cargo a folio y no-show con crédito 41xx -> auxiliar. Folio por prioridad
+--       (la que usa fn_auto_journal_folio_item): 10 hospedaje 41400501, 11 alimentos 41401501, 12 otros servicios
+--       41409501; venta y no-show 41400501. Folio 30/31 -> 11/12 y regla de hospedaje (10) si falta.
+--       Comisiones, devoluciones y orgs tipo 1 no se tocan.
 --   1. Reglas (accounting_rules): débito/crédito 4140 -> 41400501, 4175 -> 41750101; descuento 4175 -> 41750102.
 --   2. configuracion_contable: ventas_productos/ventas_servicios 4140 -> 41400501, devoluciones 4175 -> 41750101,
 --      descuentos 4175 -> 41750102 (cualquier otra clave en 4140/4175 -> 41400501/41750101).
@@ -28,6 +32,7 @@ declare
   v_branch integer;
   v_entry integer;
   v_ref boolean;
+  v_txt text;
 begin
   for v_org in select o.id from public.organizations o where o.type_id = 2 order by 1 loop
     if exists (select 1 from (values ('41400501'), ('41750101'), ('41750102')) v(c)
@@ -56,6 +61,50 @@ begin
         insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
         values ('134080', v_org, 'accounting_rules', r.id::text, 'discount_account_code', r.x, pg_temp.hot_aux(r.x, true));
       end if;
+    end loop;
+
+    -- 1b. (QA Soporte) reglas de ingreso de hotel: venta (sale/created), cargo a folio y no-show con crédito en una
+    --     cuenta de ingreso que no es el auxiliar del contador (4101, 4105, 4110, 4115, 413505...). Solo el crédito;
+    --     comisiones y devoluciones no se tocan. fn_auto_journal_folio_item elige la regla de folio por PRIORIDAD
+    --     (10 room/hospedaje, 11 pos/food/minibar, 12 resto), así que el auxiliar sale de la prioridad.
+    --     Las reglas de folio de la plantilla nueva (prioridad 30/31, sin regla de hospedaje) pasan a 11/12 y se
+    --     agrega 'Cargo Folio Hospedaje' (10) si la org no tiene regla de folio con prioridad 10.
+    for r in select x.id, x.priority p, x.name from public.accounting_rules x
+              where x.organization_id = v_org and x.source_type = 'folio_item' and x.event_type = 'created'
+                and x.priority not in (10, 11, 12) and (x.name ilike '%aliment%' or x.name ilike '%servic%') loop
+      update public.accounting_rules set priority = case when r.name ilike '%aliment%' then 11 else 12 end, updated_at = now()
+       where id = r.id;
+      insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
+      values ('134080', v_org, 'accounting_rules', r.id::text, 'priority', r.p::text,
+              case when r.name ilike '%aliment%' then '11' else '12' end);
+    end loop;
+    if exists (select 1 from public.accounting_rules x where x.organization_id = v_org and x.source_type = 'folio_item'
+                 and x.event_type = 'created' and x.is_active)
+       and not exists (select 1 from public.accounting_rules x where x.organization_id = v_org and x.source_type = 'folio_item'
+                         and x.event_type = 'created' and x.is_active and x.priority = 10) then
+      insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+        debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active, conditions)
+      values (v_org, 'Cargo Folio Hospedaje', 'Cargo a folio por alojamiento', 'folio_item', 'created',
+        '1305', '41400501', null, false, 10, true, '{"source": "room"}'::jsonb)
+      returning id::text into v_txt;
+      insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_nuevo)
+      values ('134080', v_org, 'accounting_rules_nueva', v_txt, 'insert', 'Cargo Folio Hospedaje 41400501');
+    end if;
+    for r in select x.id, x.credit_account_code c,
+                    case
+                      when x.source_type = 'folio_item' and x.priority = 10 then '41400501'
+                      when x.source_type = 'folio_item' and x.priority = 11 then '41401501'
+                      when x.source_type = 'folio_item' then '41409501'
+                      else '41400501'
+                    end nuevo
+               from public.accounting_rules x
+              where x.organization_id = v_org and x.credit_account_code like '41%'
+                and ((x.source_type in ('sale', 'folio_item') and x.event_type = 'created')
+                     or (x.source_type = 'reservation' and x.event_type = 'no_show')) loop
+      continue when r.c = r.nuevo;
+      update public.accounting_rules set credit_account_code = r.nuevo, updated_at = now() where id = r.id;
+      insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
+      values ('134080', v_org, 'accounting_rules', r.id::text, 'credit_account_code', r.c, r.nuevo);
     end loop;
 
     -- 2. claves

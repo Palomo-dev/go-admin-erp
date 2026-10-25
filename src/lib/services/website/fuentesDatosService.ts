@@ -64,13 +64,17 @@ function consultas(
       return q;
     },
     ofertas: () =>
+      // Se parte de `products` (índice por organización) y no de `product_prices`:
+      // filtrar por `products.organization_id` desde `product_prices` obligaba a
+      // recorrer toda la tabla de precios y el conteo se pasaba del statement_timeout.
+      // Cuenta productos con oferta vigente (aproximación aceptable del total).
       cliente
-        .from('product_prices')
-        .select('id, products!inner(organization_id, status)', conteo)
-        .eq('products.organization_id', org)
-        .eq('products.status', 'active')
-        .is('effective_to', null)
-        .gt('compare_price', 0),
+        .from('products')
+        .select('id, product_prices!inner(id)', conteo)
+        .eq('organization_id', org)
+        .eq('status', 'active')
+        .is('product_prices.effective_to', null)
+        .gt('product_prices.compare_price', 0),
     zonas_parqueo: () => {
       let q = cliente
         .from('parking_zones')

@@ -6,7 +6,7 @@
 --      las cuentas de 134090 en orgs nuevas.
 --   3. fn_auto_journal_commission: elige la regla por vínculo; cuenta = auxiliar si es de movimiento, si no su
 --      cuenta de 4 dígitos (25050501 -> 2505, 23359501 -> 2335, 23652001 -> 2365 hasta que el contador cree
---      esos auxiliares); si tampoco, la siguiente regla (las viejas 5235/2370 quedan de respaldo, p. ej. PUC no CO).
+--      esos auxiliares); si tampoco, la siguiente regla (AJUSTE M5/B4: las viejas 5235/2370 sin vínculo se desactivan en 134135 y ya no son respaldo silencioso).
 --      Externo: retención = tarifa% si monto >= umbral, asiento aparte D pasivo / C retención (source_id
 --      ':accrued:retencion'); el pago debita el MISMO pasivo que acreditó la causación, por el neto.
 --      NUNCA contabiliza comisiones con source_type 'invoice_purchase' (bug org 113); queda en la cola.
@@ -64,6 +64,9 @@ declare
   v_folio_alim text;
   v_folio_serv text;
   v_dev text;
+  v_iva_venta text;
+  v_anticipo text := '2805';
+  v_viaje text;
 begin
   perform public.fn_assert_acceso_org(org_id);
   if country_code is null then
@@ -108,6 +111,20 @@ begin
     v_dev := '41750101';
   end if;
   v_noshow := case when v_type = 2 then v_serv when v_type = 1 then v_prod else '4235' end;
+  -- Contador 25-oct-2026 (134115): hoteles no-show 41409502 (IVA configurable: la regla no lleva impuesto
+  -- automático), viaje/tour de contado 41409501; restaurantes: ventas 41401501 (propuesta).
+  -- FIX (A): el IVA de la venta va siempre a 24080501 (también en restaurantes); el INC se decide por línea al
+  -- contabilizar (fn_cuenta_inc). Hoteles: no-show debita 28050501 si la org ya lo tiene (si no 2805; nunca 2405).
+  v_viaje := v_prod;
+  v_iva_venta := '24080501';
+  if v_type = 2 then
+    v_noshow := '41409502';
+    v_viaje := '41409501';
+    if exists (select 1 from public.chart_of_accounts c where c.organization_id = org_id
+                and c.account_code = '28050501' and c.es_movimiento is true) then
+      v_anticipo := '28050501';
+    end if;
+  end if;
   v_manifiesto := case when v_type = 6 then '2335' else '2205' end;
 
   insert into public.accounting_rules (
@@ -115,8 +132,8 @@ begin
     debit_account_code, credit_account_code, tax_account_code,
     use_tax_from_document, priority, is_active
   ) values
-    (org_id, 'Venta a Credito', 'Facturacion de venta a credito', 'sale', 'created', '1305', v_prod, '24080501', true, 10, true),
-    (org_id, 'Venta de Contado', 'Facturacion de venta al contado', 'sale', 'created', '1105', v_prod, '24080501', true, 11, true),
+    (org_id, 'Venta a Credito', 'Facturacion de venta a credito', 'sale', 'created', '1305', v_prod, v_iva_venta, true, 10, true),
+    (org_id, 'Venta de Contado', 'Facturacion de venta al contado', 'sale', 'created', '1105', v_prod, v_iva_venta, true, 11, true),
     (org_id, 'Cobro de Factura', 'Cobro de factura de cliente', 'sale_payment', 'paid', '1110', '1305', null, false, 20, true),
     (org_id, 'Cobro Parcial', 'Cobro parcial de factura', 'sale_payment', 'partial_paid', '1110', '1305', null, false, 21, true),
     (org_id, 'Compra a Credito', 'Compra de mercancia a credito', 'purchase', 'created', v_inv, '2205', '24081001', true, 10, true),
@@ -127,8 +144,8 @@ begin
     (org_id, 'Nomina por Pagar', 'Provision de nomina', 'payroll', 'created', '5105', '2505', null, false, 11, true),
     (org_id, 'Seguridad Social Empleador', 'Aportes a seguridad social (patronal)', 'payroll', 'created', '5105', '2370', null, false, 12, true),
     (org_id, 'Gasto Administrativo', 'Registro de gasto administrativo', 'expense', 'created', '5105', '1110', null, false, 13, true),
-    (org_id, 'Devolucion de Venta', 'Nota credito por devolucion', 'sale_credit_note', 'created', v_dev, '1305', '24080501', true, 25, true),
-    (org_id, 'Anulacion de Venta', 'Anulacion de factura', 'sale', 'voided', v_dev, '1305', '24080501', true, 26, true),
+    (org_id, 'Devolucion de Venta', 'Nota credito por devolucion', 'sale_credit_note', 'created', v_dev, '1305', v_iva_venta, true, 25, true),
+    (org_id, 'Anulacion de Venta', 'Anulacion de factura', 'sale', 'voided', v_dev, '1305', v_iva_venta, true, 26, true),
     (org_id, 'Reembolso a Cliente', 'Reembolso de pago a cliente', 'refund', 'refunded', v_dev, '1110', null, false, 27, true),
     (org_id, 'Conciliacion Bancaria', 'Ajuste por conciliacion bancaria', 'bank', 'adjusted', '1110', '4250', null, false, 28, true),
     (org_id, 'Propina', 'Registro de propina', 'tip', 'created', '5105', '1105', null, false, 30, true),
@@ -143,7 +160,7 @@ begin
     (org_id, 'Cuota Prestamo', 'Abono de prestamo a trabajador', 'installment', 'paid', '1105', '1365', null, false, 30, true),
     (org_id, 'Manifiesto Despacho', 'Inventario contra proveedores, o contra costos por pagar si la organización es de transporte. La caja solo si es de contado.', 'manifest', 'created', v_inv, v_manifiesto, null, false, 30, true),
     (org_id, 'Envio', 'Costo de envio', 'shipment', 'created', '523550', '1110', null, false, 30, true),
-    (org_id, 'Viaje', 'Ingreso por viaje', 'trip', 'created', '1105', v_prod, null, false, 30, true),
+    (org_id, 'Viaje', 'Ingreso por viaje', 'trip', 'created', '1105', v_viaje, null, false, 30, true),
     (org_id, 'Incidente Transporte', 'Gasto por incidente de transporte', 'transport_incident', 'created', '5105', '1110', null, false, 30, true),
     (org_id, 'Cargo Folio Alimentos', 'Cargo a folio por alimentos', 'folio_item', 'created', '1305', v_folio_alim, null, false, 30, true),
     (org_id, 'Cargo Folio Servicios', 'Cargo a folio por servicios', 'folio_item', 'created', '1305', v_folio_serv, null, false, 31, true),
@@ -151,7 +168,7 @@ begin
     (org_id, 'Comision OTA', 'Comision del canal: gasto contra cuenta por pagar al canal', 'ota_commission', 'confirmed', '52950501', '2335', null, false, 30, true),
     (org_id, 'Mantenimiento', 'Gasto de mantenimiento', 'maintenance', 'created', '5145', '1110', null, false, 30, true),
     (org_id, 'Reserva Confirmada', 'Reserva confirmada', 'reservation', 'confirmed', '1305', '2805', null, false, 30, true),
-    (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', '2805', v_noshow, null, false, 32, true),
+    (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', v_anticipo, v_noshow, null, false, 32, true),
     (org_id, 'Costo Patronal', 'Provision de seguridad social patronal al aprobar el periodo', 'payroll_period', 'created', '5105', '2370', null, false, 5, true),
     (org_id, 'Pago Costo Patronal', 'Pago de obligaciones patronales al cerrar el periodo', 'payroll_period', 'paid', '2370', '1110', null, false, 5, true),
     (org_id, 'Inventario apertura', 'Apertura de inventario contra saldos iniciales (37050501)', 'inventory', 'opening', v_inv, '37050501', null, false, 40, true),
@@ -193,6 +210,10 @@ begin
       debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active, conditions)
     values (org_id, 'Cargo Folio Hospedaje', 'Cargo a folio por alojamiento', 'folio_item', 'created',
       '1305', '41400501', null, false, 10, true, '{"source": "room"}'::jsonb);
+    insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+      debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active, conditions)
+    values (org_id, 'Cargo Folio Bar', 'Cargo a folio por bar y minibar', 'folio_item', 'created',
+      '1305', '41402001', null, false, 13, true, '{"source": "minibar"}'::jsonb);
   end if;
 end;
 $function$;
@@ -249,10 +270,13 @@ begin
   if v_tipo = 2 then
     perform public.fn_hoteles_asegurar_cuentas_ingreso(p_org, null);
   end if;
-
   -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
   -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
   perform public.fn_comisiones_asegurar_cuentas(p_org, null);
+  -- Restaurantes (type_id 1, contador 25-oct-2026): 249505/24950501 INC y 414015/41401501 alimentos.
+  if v_tipo = 1 then
+    perform public.fn_restaurantes_asegurar_cuentas(p_org, null);
+  end if;
 
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
@@ -277,7 +301,8 @@ begin
             when 'ingresos_diversos' then '42959501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
-            when 'ventas_productos' then case when v_tipo = 2 then '41400501' end
+            when 'ventas_productos' then case when v_tipo = 2 then '41400501' when v_tipo = 1 then '41401501' end
+            when 'impuesto_consumo' then case when v_tipo = 1 then '24950501' end
             when 'ventas_servicios' then case when v_tipo = 2 then '41400501' end
             when 'devoluciones' then case when v_tipo = 2 then '41750101' end
             when 'descuentos' then case when v_tipo = 2 then '41750102' end
@@ -290,7 +315,8 @@ begin
             when 'ingresos_diversos' then '42959501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
-            when 'ventas_productos' then case when v_tipo = 2 then '41400501' end
+            when 'ventas_productos' then case when v_tipo = 2 then '41400501' when v_tipo = 1 then '41401501' end
+            when 'impuesto_consumo' then case when v_tipo = 1 then '24950501' end
             when 'ventas_servicios' then case when v_tipo = 2 then '41400501' end
             when 'devoluciones' then case when v_tipo = 2 then '41750101' end
             when 'descuentos' then case when v_tipo = 2 then '41750102' end
@@ -580,3 +606,8 @@ select o.id, v.n, v.d, 'commission', v.ev, v.deb, v.cre, v.tax, false, v.p, true
   ) v(n, d, ev, deb, cre, tax, p, cond)
  where not exists (select 1 from public.accounting_rules x where x.organization_id = o.id
                      and x.source_type = 'commission' and x.name = v.n);
+
+-- AJUSTE: fila propia en schema_migrations (los rollbacks cruzados de 134115/134140 la consultan).
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134095', 'comisiones_reglas', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

@@ -1,4 +1,5 @@
 -- Rollback de 20261025134100: restaura la función y el trigger vivos al 25-oct y quita el CHECK.
+set constraints public.trg_chart_cuenta_titulo_configurada immediate;  -- QA 801206c2 BAJO: sin eventos diferidos heredados
 alter table public.commissions drop constraint if exists commissions_no_factura_compra;
 
 CREATE OR REPLACE FUNCTION public.fn_create_commission_on_invoice_purchase()
@@ -82,3 +83,5 @@ $function$
 
 drop trigger if exists trg_create_commission_on_invoice_purchase on public.invoice_purchase;
 CREATE TRIGGER trg_create_commission_on_invoice_purchase AFTER UPDATE OF status ON public.invoice_purchase FOR EACH ROW EXECUTE FUNCTION fn_create_commission_on_invoice_purchase();
+
+delete from supabase_migrations.schema_migrations where version = '20261025134100';

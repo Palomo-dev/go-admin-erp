@@ -68,6 +68,7 @@ declare
   v_total integer := 0;
   v_ref boolean;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for v_org in select o.id from public.organizations o order by 1 loop
     v_total := v_total + public.fn_comisiones_asegurar_cuentas(v_org, '134090');
@@ -131,3 +132,8 @@ exception when others then
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
   raise;
 end $$;
+
+-- AJUSTE: fila propia en schema_migrations (los rollbacks cruzados de 134115/134140 la consultan).
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134090', 'comisiones_cuentas', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

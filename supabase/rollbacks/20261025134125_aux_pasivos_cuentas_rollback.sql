@@ -6,6 +6,7 @@
 do $$
 declare r record;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;  -- AJUSTE: antes del DISABLE TRIGGER
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for r in select * from public.p1_puc_bitacora where migracion = '134125' and objeto = 'cuenta_nueva'
             order by length(clave) desc, id desc loop
@@ -24,6 +25,22 @@ begin
   end loop;
   for r in select * from public.p1_puc_bitacora where migracion = '134125' and objeto = 'tax_account_mapping' order by id desc loop
     update public.tax_account_mapping set account_code = r.valor_anterior, updated_at = now() where id::text = r.clave;
+  end loop;
+  -- AJUSTE: mapeos nuevos RETE_11_COMISION, plantilla nueva (solo si nadie la usa) y nombre de RETE_11.
+  for r in select * from public.p1_puc_bitacora where migracion = '134125' and objeto = 'tax_account_mapping_nuevo' order by id desc loop
+    delete from public.tax_account_mapping where id::text = r.clave;
+  end loop;
+  if exists (select 1 from public.p1_puc_bitacora where migracion = '134125' and objeto = 'tax_template_nuevo') then
+    if exists (select 1 from public.organization_taxes ot join public.tax_templates tt on tt.id = ot.template_id
+                where tt.code = 'RETE_11_COMISION')
+       or exists (select 1 from public.tax_account_mapping m join public.tax_templates tt on tt.id = m.tax_template_id
+                   where tt.code = 'RETE_11_COMISION') then
+      raise exception 'rollback 134125: la plantilla RETE_11_COMISION ya está en uso; quitarla de las orgs antes';
+    end if;
+    delete from public.tax_templates where code = 'RETE_11_COMISION';
+  end if;
+  for r in select * from public.p1_puc_bitacora where migracion = '134125' and objeto = 'tax_templates' order by id desc loop
+    update public.tax_templates set name = r.valor_anterior, updated_at = now() where code = r.clave;
   end loop;
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
   delete from public.p1_puc_bitacora where migracion = '134125';

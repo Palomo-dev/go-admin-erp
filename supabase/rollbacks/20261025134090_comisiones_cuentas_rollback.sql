@@ -2,6 +2,7 @@
 do $$
 declare r record;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for r in select * from public.p1_puc_bitacora where migracion = '134090' and campo is not null order by id desc loop
     if r.objeto = 'cuenta' then
@@ -31,3 +32,5 @@ exception when others then
   raise;
 end $$;
 drop function if exists public.fn_comisiones_asegurar_cuentas(integer, text);
+
+delete from supabase_migrations.schema_migrations where version = '20261025134090';

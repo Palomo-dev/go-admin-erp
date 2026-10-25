@@ -16,11 +16,21 @@
 --   h. Categorías de tesorería 2205 → 22050501 («Proveedores y compras», «Devolución de proveedores»).
 --   i. Fallas abiertas (journal_entry_failures sin resolver) con 2205/2505/2335/2365 → su auxiliar.
 --   j. Borradores: 2205/220505 → 22050501; 2505 → 25050501; 2335 → 23352002 si source OTA, si no 23359501; 2365 → 23654001.
---   k. Saldo contabilizado de 2205 y 220505 (todo lo posteado; al 25-oct solo 2026, 13 orgs) → 22050501, asiento
---      'aux_reclasif_2205:<org>', una línea por tercero (NIT) para conservar el auxiliar por proveedor.
+--   k. Saldo contabilizado 2026 de 2205 y 220505 CON NIT (de la línea o del documento origen) → 22050501, asiento
+--      'aux_reclasif_2205:<org>', una línea por tercero (NIT) para conservar el auxiliar por proveedor (AJUSTE M1/M2).
 --      2505/2335/2365: 0 líneas posteadas → no se reclasifican; si alguna tuviera saldo, ABORTA (dato a revisar).
 --   l. Títulos: 2205, 220505, 2505, 250505, 2335, 233520, 233595, 2365 y sus subcuentas 2365xx que tengan hijos pasan a
 --      título si quedan sin referencias, sin borradores y en saldo 0; si no, ABORTA.
+-- AJUSTE 25-oct (comisiones_ajuste_retenciones_25oct.md):
+--   M5. Reglas viejas de comisión SIN conditions.vinculo (5235/2370; 97 orgs en prod) → is_active = false (bitácora).
+--   M1. El NIT de cada línea de 2205 sale del DOCUMENTO origen si la línea no lo trae (invoice_purchase → proveedor;
+--       payments → cuenta por pagar → proveedor; documento soporte → fn_tercero_de_documento). Las líneas SIN NIT
+--       resoluble (datos de prueba, sobre todo orgs 144/331) quedan FUERA de la reclasificación: no se crea un
+--       «Proveedor por identificar» ni se borra/anula nada; 2205 NO pasa a título en esas orgs (queda de movimiento).
+--   M2. Solo saldo 2026 (entry_date en 2026); lo anterior (org 2: 151.500 de 2025) se queda en 2205.
+--   M7. ReteIVA/ReteICA (2367/2368) y anticipos 135515/135517/135518: repunte de reglas/claves/categorías/fallas/
+--       borradores a 23670501/23680501/13551501/13551701/13551801; pasan a título SOLO si quedan libres y en saldo 0
+--       (si no, se quedan de movimiento con aviso; 0 saldo 2026 en prod).
 -- Bitácora p1_puc_bitacora migracion '134135' (valor_anterior real, NULL incluido). [DATO PROD → OK de Juan]
 -- Rollback: supabase/rollbacks/20261025134135_aux_pasivos_datos_rollback.sql
 
@@ -71,6 +81,27 @@ begin
   return v_entry;
 end $$;
 
+-- AJUSTE (M1): NIT del documento origen de una línea de 2205 (null si no se puede identificar). No usa el
+-- «consumidor final» como respaldo: un proveedor sin NIT queda sin identificar.
+create or replace function pg_temp.a_nit_doc(p_source text, p_source_id text, out nit text, out nombre text)
+returns record language plpgsql stable as $$
+begin
+  if p_source in ('invoice_purchase', 'purchase') then
+    select coalesce(nullif(btrim(s.nit), ''), nullif(btrim(s.tax_id), '')), nullif(btrim(s.name), '') into nit, nombre
+      from public.invoice_purchase i join public.suppliers s on s.id = i.supplier_id where i.id::text = p_source_id;
+  elsif p_source in ('payments', 'purchase_payment') then
+    select coalesce(nullif(btrim(s.nit), ''), nullif(btrim(s.tax_id), '')), nullif(btrim(s.name), '') into nit, nombre
+      from public.payments p
+      left join public.accounts_payable ap on ap.id::text = p.source_id::text
+      left join public.invoice_purchase i on i.id::text = coalesce(ap.invoice_id::text, p.source_id::text)
+      join public.suppliers s on s.id = coalesce(ap.supplier_id, i.supplier_id)
+     where p.id::text = p_source_id;
+  elsif p_source in ('support_document', 'support_documents', 'documento_soporte') and p_source_id ~ '^[0-9a-f-]{36}$' then
+    select t.nit, t.nombre into nit, nombre from public.fn_tercero_de_documento('documento_soporte', p_source_id::uuid) t;
+  end if;
+  if nit is null then nombre := null; end if;
+end $$;
+
 drop table if exists a_lin;
 create temp table a_lin (cta text, s numeric, nit text, nombre text);
 
@@ -80,13 +111,27 @@ declare
   r record;
   v_nuevo text;
   v_s numeric;
+  v_fact text;
+  v_n integer;
   v_madres constant text[] := array['2205', '220505', '2505', '250505', '2335', '233520', '233595', '2365',
-                                    '236505', '236515', '236520', '236525', '236530', '236540'];
+                                    '236505', '236515', '236520', '236525', '236530', '236540',
+                                    '2367', '236705', '2368', '236805', '135515', '135517', '135518'];
+  -- AJUSTE: estas madres NO abortan si quedan con saldo/referencias: se quedan de movimiento con aviso.
+  --   2205/220505: saldo previo a 2026 o líneas sin NIT (M1/M2). 2367/2368/1355xx: posibles referencias no previstas.
+  v_suaves constant text[] := array['2205', '220505', '2367', '236705', '2368', '236805', '135515', '135517', '135518'];
 begin
   for v_org in select o.id from public.organizations o order by 1 loop
     -- solo orgs con los auxiliares que van a recibir algo
     continue when not exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
                                 and a.account_code in ('22050501', '25050501', '23359501', '23654001'));
+
+    -- a0. AJUSTE (M5): reglas de comisión sin vínculo (5235/2370 viejas) → inactivas; ya no son respaldo silencioso.
+    for r in select id from public.accounting_rules
+              where organization_id = v_org and source_type = 'commission' and is_active
+                and coalesce(conditions->>'vinculo', '') = '' loop
+      update public.accounting_rules set is_active = false, updated_at = now() where id = r.id;
+      perform pg_temp.a_log(v_org, 'accounting_rules', r.id::text, 'is_active', 'true', 'false');
+    end loop;
 
     -- a. comisiones
     perform pg_temp.a_regla(v_org, 'credit_account_code', array['25050501'], '25050502',
@@ -118,14 +163,25 @@ begin
     perform pg_temp.a_regla(v_org, 'debit_account_code',  array['2335'], '23359501');
     perform pg_temp.a_regla(v_org, 'credit_account_code', array['2335'], '23359501');
     perform pg_temp.a_regla(v_org, 'tax_account_code',    array['2365'], '23654001');
+    -- AJUSTE (M7): reteIVA/reteICA y anticipos de impuestos a su auxiliar (solo si el auxiliar existe).
+    for r in select * from (values ('2367', '23670501'), ('2368', '23680501'), ('135515', '13551501'),
+                                   ('135517', '13551701'), ('135518', '13551801')) t(de, a) loop
+      continue when not exists (select 1 from public.chart_of_accounts c where c.organization_id = v_org and c.account_code = r.a);
+      perform pg_temp.a_regla(v_org, 'debit_account_code',  array[r.de], r.a);
+      perform pg_temp.a_regla(v_org, 'credit_account_code', array[r.de], r.a);
+      perform pg_temp.a_regla(v_org, 'tax_account_code',    array[r.de], r.a);
+    end loop;
 
     -- g. claves
     for r in select id, clave, account_code from public.configuracion_contable
               where organization_id = v_org
-                and (account_code in ('2205', '220505', '2505', '2365', '2335')
+                and (account_code in ('2205', '220505', '2505', '2365', '2335', '2367', '2368', '135515', '135517', '135518')
                      or (clave = 'comisiones' and account_code in ('529505', '52950501', '5235'))) loop
       v_nuevo := case
         when r.clave = 'comisiones' then '52051801'
+        when r.account_code = '2367' then '23670501'
+        when r.account_code = '2368' then '23680501'
+        when r.account_code like '1355%' then r.account_code || '01'
         when r.account_code in ('2205', '220505') then '22050501'
         when r.account_code = '2505' then '25050501'
         when r.account_code = '2365' then '23654001'
@@ -137,8 +193,10 @@ begin
 
     -- h. categorías de tesorería
     for r in select id, cuenta_sugerida c from public.categorias_tesoreria
-              where organization_id = v_org and cuenta_sugerida in ('2205', '220505', '2505', '2335', '2365') loop
-      v_nuevo := case r.c when '2505' then '25050501' when '2335' then '23359501' when '2365' then '23654001' else '22050501' end;
+              where organization_id = v_org and cuenta_sugerida in ('2205', '220505', '2505', '2335', '2365', '2367', '2368') loop
+      v_nuevo := case r.c when '2505' then '25050501' when '2335' then '23359501' when '2365' then '23654001'
+                          when '2367' then '23670501' when '2368' then '23680501' else '22050501' end;
+      continue when not exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org and a.account_code = v_nuevo);
       update public.categorias_tesoreria set cuenta_sugerida = v_nuevo where id = r.id;
       perform pg_temp.a_log(v_org, 'categorias_tesoreria', r.id::text, 'cuenta_sugerida', r.c, v_nuevo);
     end loop;
@@ -177,18 +235,38 @@ begin
                 group by l.account_code having round(sum(l.debit - l.credit), 2) <> 0) then
       raise exception '134135: org % tiene saldo contabilizado en 2505/2335/2365 (se esperaba 0); detener y revisar con el contador', v_org;
     end if;
-    if not exists (select 1 from public.journal_entries where organization_id = v_org and fact_key = 'aux_reclasif_2205:' || v_org) then
+    -- Idempotente: se salta si hay una reclasificación VIGENTE (no revertida). Tras un rollback (contraasiento) la
+    -- re-aplicación usa 'aux_reclasif_2205:<org>:<n>' (fact_key es único por org).
+    v_fact := 'aux_reclasif_2205:' || v_org;
+    select count(*) into v_n from public.journal_entries x
+     where x.organization_id = v_org and (x.fact_key = v_fact or x.fact_key like v_fact || ':%');
+    if v_n > 0 then v_fact := v_fact || ':' || (v_n + 1); end if;
+    if not exists (select 1 from public.journal_entries x where x.organization_id = v_org
+                     and (x.fact_key = 'aux_reclasif_2205:' || v_org or x.fact_key like 'aux_reclasif_2205:' || v_org || ':%')
+                     and not exists (select 1 from public.journal_entries rv where rv.organization_id = v_org
+                                       and rv.fact_key = 'reversal:' || x.id)) then
       delete from a_lin;
       insert into a_lin (cta, s, nit, nombre)
       select y.cta, y.s, z.nit, z.nombre from (
-        select l.account_code a, nullif(btrim(l.tercero_nit), '') nit, max(l.tercero_nombre) nombre, sum(l.debit - l.credit) s0
-          from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
-         where l.organization_id = v_org and l.account_code in ('2205', '220505') and e.posted is true
-         group by 1, 2) z
+        select w.a, w.nit, max(w.nombre) nombre, sum(w.s) s0
+          from (select l.account_code a, coalesce(nullif(btrim(l.tercero_nit), ''), d.nit) nit,
+                       case when nullif(btrim(l.tercero_nit), '') is not null then l.tercero_nombre else d.nombre end nombre,
+                       l.debit - l.credit s
+                  from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+                  left join lateral pg_temp.a_nit_doc(e.source, e.source_id) d on nullif(btrim(l.tercero_nit), '') is null
+                 where l.organization_id = v_org and l.account_code in ('2205', '220505') and e.posted is true
+                   and e.entry_date >= '2026-01-01 00:00 America/Bogota'::timestamptz
+                   and e.entry_date <  '2027-01-01 00:00 America/Bogota'::timestamptz
+                   -- reclasificaciones anteriores ya revertidas y sus contraasientos (netean 0; la reversa no trae NIT)
+                   and coalesce(e.fact_key, '') not like 'aux_reclasif_2205:%'
+                   and not exists (select 1 from public.journal_entries o where o.organization_id = v_org
+                                     and e.fact_key = 'reversal:' || o.id and o.fact_key like 'aux_reclasif_2205:%')) w
+         where w.nit is not null          -- M1: sin NIT resoluble → fuera (se reporta, no se inventa tercero)
+         group by w.a, w.nit) z
       cross join lateral (values ('22050501', z.s0), (z.a, -z.s0)) y(cta, s);
       if exists (select 1 from a_lin where cta in ('2205', '220505') and round(s, 2) <> 0) then
         -- las madres reciben la línea mientras siguen de movimiento (134125 no las cambió)
-        perform pg_temp.a_asiento(v_org, 'aux_reclasif_2205:' || v_org, '2205');
+        perform pg_temp.a_asiento(v_org, v_fact, '2205');
       end if;
     end if;
 
@@ -208,6 +286,11 @@ begin
                      where l.organization_id = v_org and l.account_code = r.account_code and e.posted is not true)
          or coalesce((select sum(l.debit - l.credit) from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
                        where l.organization_id = v_org and l.account_code = r.account_code and e.posted is true), 0) <> 0 then
+        if r.account_code = any (v_suaves) then
+          raise notice '134135: org % cuenta % queda de MOVIMIENTO (saldo sin NIT/anterior a 2026 o referencias); no pasa a título',
+            v_org, r.account_code;
+          continue;
+        end if;
         raise exception '134135: org % cuenta % sigue referenciada o con saldo; no puede pasar a título', v_org, r.account_code;
       end if;
       perform pg_temp.a_log(v_org, 'cuenta', r.account_code, 'es_movimiento', r.es_movimiento::text, 'false');

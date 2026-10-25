@@ -25,3 +25,8 @@ $function$;
 alter table public.commissions drop constraint if exists commissions_no_factura_compra;
 alter table public.commissions add constraint commissions_no_factura_compra
   check (source_type is distinct from 'invoice_purchase' or status = 'cancelled') not valid;
+
+-- AJUSTE: fila propia en schema_migrations (los rollbacks cruzados de 134115/134140 la consultan).
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134100', 'comisiones_bloqueo_factura_compra', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

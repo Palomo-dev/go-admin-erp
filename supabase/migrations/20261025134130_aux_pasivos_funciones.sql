@@ -16,23 +16,95 @@
 --     crean los auxiliares con fn_pasivos_asegurar_auxiliares.
 --   fn_auto_journal_commission: la anulación revierte también ':accrued:retencion' (ALTO#1); retención art. 392 por
 --     vendedor (fn_comision_retencion). fn_comision_cuenta: cuenta sin hijos o su auxiliar único (MEDIO#5).
---   vendor_commission_rates: tipo_persona (natural | juridica | simple), retencion_tarifa (editable, null = regla
---     legal) y aplica_art383.
+--   vendor_commission_rates: tipo_persona (natural | juridica | simple, SIN defecto), retencion_tarifa (editable, null =
+--     regla legal) y aplica_art383.
+--   AJUSTE 25-oct (comisiones_ajuste_retenciones_25oct.md): A1 'Pago de Nomina' D25050501; M3 retención con los datos
+--     tributarios del tercero (tabla comision_tercero_tributario → vendor_commission_rates → proveedor; sin datos → cola);
+--     acumulados art. 383 (mensual) y art. 392 (anual, 3.300 UVT o contrato) + vista v_comision_retencion_acumulado;
+--     B1 UVT por año (fn_uvt ← fiscal_uvt); M5 fn_auto_journal_commission sin respaldo a reglas sin vínculo; M7 reteIVA
+--     23670501 / reteICA 23680501 (propuesta, fn_cuenta_retencion_compra, clave); RETE_11 honorarios / RETE_11_COMISION;
+--     siembra rebasada sobre 134115 (hoteles FIX A: IVA venta 24080501 en todos los tipos, no-show 28050501 si existe,
+--     Folio Bar, 41409501/41409502, INC 249505/41401501 en tipo 1).
 -- Rollback: supabase/rollbacks/20261025134130_aux_pasivos_funciones_rollback.sql
 
-alter table public.vendor_commission_rates add column if not exists tipo_persona text not null default 'natural';
+-- AJUSTE (M3): sin defecto: si no hay datos tributarios del tercero NO se asume persona natural 10%.
+alter table public.vendor_commission_rates add column if not exists tipo_persona text;
 alter table public.vendor_commission_rates add column if not exists retencion_tarifa numeric(5,2);
 alter table public.vendor_commission_rates add column if not exists aplica_art383 boolean not null default false;
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'vendor_commission_rates_tipo_persona_check') then
     alter table public.vendor_commission_rates add constraint vendor_commission_rates_tipo_persona_check
-      check (tipo_persona in ('natural', 'juridica', 'simple'));
+      check (tipo_persona is null or tipo_persona in ('natural', 'juridica', 'simple'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'vendor_commission_rates_retencion_tarifa_check') then
     alter table public.vendor_commission_rates add constraint vendor_commission_rates_retencion_tarifa_check
       check (retencion_tarifa is null or retencion_tarifa between 0 and 100);
   end if;
 end $$;
+
+-- AJUSTE (M3/13): datos tributarios del tercero que cobra la comisión (persona natural/jurídica/Régimen Simple, tarifa
+-- editable, certificación art. 383 = declara NO tener 2+ trabajadores, valor del contrato). supplier_id enlaza al
+-- proveedor: su tax_regime 'simple' basta para Régimen Simple. Orden de lectura en fn_comision_datos_tributarios:
+-- esta tabla → vendor_commission_rates → proveedor. Sin datos: la retención no se calcula y la comisión va a la cola.
+create table if not exists public.comision_tercero_tributario (
+  id uuid primary key default gen_random_uuid(),
+  organization_id integer not null,
+  payee_id uuid not null,
+  supplier_id integer,
+  tipo_persona text check (tipo_persona is null or tipo_persona in ('natural', 'juridica', 'simple')),
+  retencion_tarifa numeric(5,2) check (retencion_tarifa is null or retencion_tarifa between 0 and 100),
+  aplica_art383 boolean not null default false,
+  valor_contrato numeric(18,2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (organization_id, payee_id)
+);
+alter table public.comision_tercero_tributario enable row level security;
+revoke all on public.comision_tercero_tributario from anon;
+
+-- B1: UVT por año desde fiscal_uvt (último año <= p_anio). Sin fila: error (no se inventa la UVT).
+create or replace function public.fn_uvt(p_anio integer, p_pais text default 'COL')
+returns numeric language plpgsql stable security definer set search_path to 'public', 'pg_temp' as $$
+declare v numeric;
+begin
+  select u.value into v from public.fiscal_uvt u
+   where u.country_code = coalesce(p_pais, 'COL') and u.year <= p_anio order by u.year desc limit 1;
+  if v is null then raise exception 'uvt_no_configurada %/%', p_pais, p_anio using errcode = 'P0002'; end if;
+  return v;
+end $$;
+
+create or replace function public.fn_comision_datos_tributarios(p_org integer, p_payee uuid, p_fecha timestamptz,
+  out tipo_persona text, out retencion_tarifa numeric, out aplica_art383 boolean, out valor_contrato numeric, out fuente text)
+language plpgsql stable security definer set search_path to 'public', 'pg_temp' as $$
+declare t record; v record;
+begin
+  select x.*, s.tax_regime into t
+    from public.comision_tercero_tributario x left join public.suppliers s on s.id = x.supplier_id
+   where x.organization_id = p_org and x.payee_id = p_payee;
+  if found then
+    tipo_persona := coalesce(t.tipo_persona, case when t.tax_regime = 'simple' then 'simple' end);
+    retencion_tarifa := t.retencion_tarifa;
+    aplica_art383 := t.aplica_art383;
+    valor_contrato := t.valor_contrato;
+    fuente := 'tercero';
+  end if;
+  if tipo_persona is null and retencion_tarifa is null then
+    select r.tipo_persona, r.retencion_tarifa, r.aplica_art383 into v
+      from public.vendor_commission_rates r
+     where r.organization_id = p_org and r.salesperson_id = p_payee
+       and (r.tipo_persona is not null or r.retencion_tarifa is not null)
+     order by (p_fecha::date between r.valid_from and coalesce(r.valid_to, 'infinity'::date)) desc, r.valid_from desc nulls last
+     limit 1;
+    if found then
+      tipo_persona := v.tipo_persona; retencion_tarifa := v.retencion_tarifa;
+      aplica_art383 := coalesce(aplica_art383, false) or coalesce(v.aplica_art383, false);
+      fuente := 'vendedor';
+    end if;
+  end if;
+  aplica_art383 := coalesce(aplica_art383, false);
+  if tipo_persona is null and retencion_tarifa is null then fuente := null; end if;
+end $$;
+revoke all on function public.fn_comision_datos_tributarios(integer, uuid, timestamptz) from public, anon, authenticated;
 
 -- MEDIO#5: la cuenta pedida si es de movimiento y SIN hijos; si tiene hijos, su único auxiliar de movimiento; si no
 -- existe, igual con su cuenta de 4 dígitos. Si no hay una sola opción, null (la regla se salta y queda en la cola).
@@ -59,9 +131,9 @@ returns text language sql stable security definer set search_path to 'public', '
 $$;
 revoke all on function public.fn_comision_cuenta(integer, text) from public, anon, authenticated;
 
--- Art. 383 ET (tabla mensual en UVT). UVT 2026 = $52.374 (3.300 UVT = $172.834.200).
-create or replace function public.fn_retencion_art383(p_base numeric, p_uvt numeric default 52374)
-returns numeric language sql immutable set search_path to 'public', 'pg_temp' as $$
+-- Art. 383 ET (tabla mensual en UVT). B1: UVT del año (fn_uvt) si no se pasa.
+create or replace function public.fn_retencion_art383(p_base numeric, p_uvt numeric default null)
+returns numeric language sql stable set search_path to 'public', 'pg_temp' as $$
   select round(greatest(0, case
     when u <= 95   then 0
     when u <= 150  then (u - 95) * 0.19
@@ -69,43 +141,72 @@ returns numeric language sql immutable set search_path to 'public', 'pg_temp' as
     when u <= 640  then (u - 360) * 0.33 + 69
     when u <= 945  then (u - 640) * 0.35 + 162
     when u <= 2300 then (u - 945) * 0.37 + 268
-    else (u - 2300) * 0.39 + 770 end) * p_uvt, 0)
-  from (select coalesce(p_base, 0) / p_uvt as u) b
+    else (u - 2300) * 0.39 + 770 end) * x.uvt, 0)
+  from (select coalesce(p_uvt, public.fn_uvt(extract(year from now())::integer)) as uvt) x
+  cross join lateral (select coalesce(p_base, 0) / x.uvt as u) b
 $$;
 
--- Art. 392 ET (contador 25-oct-2026): sin base mínima. Régimen Simple: 0. Persona jurídica 11%. Persona natural 10%,
--- 11% si lo causado con ese vendedor en el año supera 3.300 UVT; si certifica no tener 2+ trabajadores (aplica_art383)
--- se usa la tabla del art. 383. retencion_tarifa del vendedor, si está, manda (tarifa editable).
+-- Acumulado por tercero (art. 383 mensual, art. 392 anual): base causada y retención practicada por mes.
+create or replace view public.v_comision_retencion_acumulado with (security_invoker = true) as
+select c.organization_id, c.payee_id,
+       extract(year from coalesce(c.accrued_at, c.created_at))::integer as anio,
+       extract(month from coalesce(c.accrued_at, c.created_at))::integer as mes,
+       sum(c.commission_amount) as base,
+       coalesce(sum((select sum(l.credit) from public.journal_entries je join public.journal_lines l on l.journal_entry_id = je.id
+                      where je.organization_id = c.organization_id and je.source = 'commissions'
+                        and je.source_id = c.id::text || ':accrued:retencion' and coalesce(je.posted, false))), 0) as retencion
+  from public.commissions c
+ where c.status in ('accrued', 'paid')
+ group by 1, 2, 3, 4;
+
+-- Art. 392 ET (contador 25-oct-2026), con los datos tributarios del TERCERO (fn_comision_datos_tributarios):
+--   sin datos → NULL (la comisión va a la cola, no se asume persona natural 10%). Régimen Simple 0. Tarifa editable
+--   (retencion_tarifa) manda. Persona jurídica 11%. Persona natural: 11% si el contrato supera 3.300 UVT o si lo causado
+--   con ese tercero en el año cruza 3.300 UVT (11% desde la causación que lo cruza); si no, la tarifa de la regla (10%).
+--   Art. 383 (solo si certifica NO tener 2+ trabajadores): acumulado MENSUAL por tercero; en cada causación se recalcula
+--   la tabla sobre el acumulado del mes y se retiene la diferencia contra lo ya retenido en el mes.
 create or replace function public.fn_comision_retencion(p_org integer, p_payee uuid, p_commission uuid, p_monto numeric,
                                                         p_fecha timestamptz, p_tarifa_regla numeric default null)
 returns numeric language plpgsql stable security definer set search_path to 'public', 'pg_temp' as $$
 declare
-  v record;
+  d record;
+  v_uvt numeric;
   v_anual numeric;
+  v_mes numeric;
+  v_ret_mes numeric;
   v_tarifa numeric;
 begin
   if coalesce(p_monto, 0) <= 0 then return 0; end if;
-  select r.tipo_persona, r.retencion_tarifa, r.aplica_art383 into v
-    from public.vendor_commission_rates r
-   where r.organization_id = p_org and r.salesperson_id = p_payee
-   order by (p_fecha::date between r.valid_from and coalesce(r.valid_to, 'infinity'::date)) desc, r.valid_from desc nulls last
-   limit 1;
-  if coalesce(v.tipo_persona, 'natural') = 'simple' then return 0; end if;
-  if v.retencion_tarifa is not null then
-    return round(p_monto * v.retencion_tarifa / 100.0, 2);
+  select * into d from public.fn_comision_datos_tributarios(p_org, p_payee, p_fecha);
+  if d.fuente is null then return null; end if;
+  if d.tipo_persona = 'simple' then return 0; end if;
+  if d.retencion_tarifa is not null then
+    return round(p_monto * d.retencion_tarifa / 100.0, 2);
   end if;
-  if coalesce(v.tipo_persona, 'natural') = 'juridica' then
+  if d.tipo_persona = 'juridica' then
     return round(p_monto * 11 / 100.0, 2);
   end if;
-  if coalesce(v.aplica_art383, false) then
-    return public.fn_retencion_art383(p_monto);
+  v_uvt := public.fn_uvt(extract(year from p_fecha)::integer,
+                         (select coalesce(nullif(btrim(o.country_code), ''), 'COL') from public.organizations o where o.id = p_org));
+  if d.aplica_art383 then
+    select coalesce(sum(a.base), 0), coalesce(sum(a.retencion), 0) into v_mes, v_ret_mes
+      from (select c.commission_amount as base,
+                   (select sum(l.credit) from public.journal_entries je join public.journal_lines l on l.journal_entry_id = je.id
+                     where je.organization_id = c.organization_id and je.source = 'commissions'
+                       and je.source_id = c.id::text || ':accrued:retencion' and coalesce(je.posted, false)) as retencion
+              from public.commissions c
+             where c.organization_id = p_org and c.payee_id = p_payee and c.id is distinct from p_commission
+               and c.status in ('accrued', 'paid')
+               and date_trunc('month', coalesce(c.accrued_at, c.created_at)) = date_trunc('month', p_fecha)) a;
+    return greatest(public.fn_retencion_art383(v_mes + p_monto, v_uvt) - v_ret_mes, 0);
   end if;
   select coalesce(sum(c.commission_amount), 0) into v_anual
     from public.commissions c
    where c.organization_id = p_org and c.payee_id = p_payee and c.id is distinct from p_commission
      and c.status in ('accrued', 'paid')
      and extract(year from coalesce(c.accrued_at, c.created_at)) = extract(year from p_fecha);
-  v_tarifa := case when v_anual + p_monto > 3300 * 52374 then 11 else coalesce(p_tarifa_regla, 10) end;
+  v_tarifa := case when coalesce(d.valor_contrato, 0) > 3300 * v_uvt or v_anual + p_monto > 3300 * v_uvt then 11
+                   else coalesce(p_tarifa_regla, 10) end;
   return round(p_monto * v_tarifa / 100.0, 2);
 end $$;
 revoke all on function public.fn_comision_retencion(integer, uuid, uuid, numeric, timestamptz, numeric) from public, anon, authenticated;
@@ -561,10 +662,10 @@ AS $function$
     when s.code in ('1405', '1435') then 'inventario'
     when s.code in ('6105', '6135', '6140') or s.code ~ '^61(35|40)05[0-9]{2}$' then 'costo_ventas'
     when s.code = '2365' or s.code ~ '^2365[0-9]{2}([0-9]{2})?$' then 'retefuente'
-    when s.code = '2367' then 'reteiva'
-    when s.code = '2368' then 'reteica'
+    when s.code in ('2367', '236705', '23670501') then 'reteiva'
+    when s.code in ('2368', '236805', '23680501') then 'reteica'
     when s.code = '2805' then 'anticipos'
-    when s.code in ('5235', '529505', '520518', '52051801') then 'comisiones'
+    when s.code in ('529505', '52950501', '520518', '52051801') then 'comisiones'  -- AJUSTE B4: 5235 = Servicios
     when s.code = '5105' and s.origen = any (array['tip', 'tips']) then 'propinas'
     when s.code = '5105' and s.origen = any (array['payroll', 'payroll_slips', 'payroll_period', 'payroll_periods']) then 'nomina'
     when s.code in ('2505', '250505', '25050501') and s.origen = any (array['payroll', 'payroll_slips', 'payroll_period', 'payroll_periods']) then 'nomina_por_pagar'
@@ -1735,6 +1836,7 @@ declare
   v_folio_serv text;
   v_dev text;
   v_iva_venta text;
+  v_anticipo text := '2805';
   v_viaje text;
 begin
   perform public.fn_assert_acceso_org(org_id);
@@ -1781,14 +1883,18 @@ begin
   end if;
   v_noshow := case when v_type = 2 then v_serv when v_type = 1 then v_prod else '4235' end;
   -- Contador 25-oct-2026 (134115): hoteles no-show 41409502 (IVA configurable: la regla no lleva impuesto
-  -- automático), viaje/tour de contado 41409501; restaurantes: ventas 41401501 (propuesta) e INC 24950501.
+  -- automático), viaje/tour de contado 41409501; restaurantes: ventas 41401501 (propuesta).
+  -- FIX (A): el IVA de la venta va siempre a 24080501 (también en restaurantes); el INC se decide por línea al
+  -- contabilizar (fn_cuenta_inc). Hoteles: no-show debita 28050501 si la org ya lo tiene (si no 2805; nunca 2405).
   v_viaje := v_prod;
   v_iva_venta := '24080501';
   if v_type = 2 then
     v_noshow := '41409502';
     v_viaje := '41409501';
-  elsif v_type = 1 then
-    v_iva_venta := '24950501';
+    if exists (select 1 from public.chart_of_accounts c where c.organization_id = org_id
+                and c.account_code = '28050501' and c.es_movimiento is true) then
+      v_anticipo := '28050501';
+    end if;
   end if;
   v_manifiesto := case when v_type = 6 then '23359501' else '22050501' end;
 
@@ -1805,7 +1911,7 @@ begin
     (org_id, 'Compra de Contado', 'Compra de mercancia al contado', 'purchase', 'created', v_inv, '22050501', '24081001', true, 11, true),
     (org_id, 'Pago a Proveedor', 'Pago a proveedor', 'purchase_payment', 'paid', '22050501', '1110', null, false, 20, true),
     (org_id, 'Salida de inventario', 'Salida que no es venta: gasto contra inventario. El costo de ventas solo sale de una venta o factura.', 'inventory', 'adjusted', '519595', v_inv, null, false, 30, true),
-    (org_id, 'Pago de Nomina', 'Pago de nomina (cancela pasivo)', 'payroll', 'paid', '25050502', '1110', null, false, 10, true),
+    (org_id, 'Pago de Nomina', 'Pago de nomina (cancela pasivo)', 'payroll', 'paid', '25050501', '1110', null, false, 10, true),
     (org_id, 'Nomina por Pagar', 'Provision de nomina', 'payroll', 'created', '5105', '25050501', null, false, 11, true),
     (org_id, 'Seguridad Social Empleador', 'Aportes a seguridad social (patronal)', 'payroll', 'created', '5105', '2370', null, false, 12, true),
     (org_id, 'Gasto Administrativo', 'Registro de gasto administrativo', 'expense', 'created', '5105', '1110', null, false, 13, true),
@@ -1833,7 +1939,7 @@ begin
     (org_id, 'Comision OTA', 'Comision del canal: gasto contra cuenta por pagar al canal', 'ota_commission', 'confirmed', '52950501', '23352002', null, false, 30, true),
     (org_id, 'Mantenimiento', 'Gasto de mantenimiento', 'maintenance', 'created', '5145', '1110', null, false, 30, true),
     (org_id, 'Reserva Confirmada', 'Reserva confirmada', 'reservation', 'confirmed', '1305', '2805', null, false, 30, true),
-    (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', '2805', v_noshow, null, false, 32, true),
+    (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', v_anticipo, v_noshow, null, false, 32, true),
     (org_id, 'Costo Patronal', 'Provision de seguridad social patronal al aprobar el periodo', 'payroll_period', 'created', '5105', '2370', null, false, 5, true),
     (org_id, 'Pago Costo Patronal', 'Pago de obligaciones patronales al cerrar el periodo', 'payroll_period', 'paid', '2370', '1110', null, false, 5, true),
     (org_id, 'Inventario apertura', 'Apertura de inventario contra saldos iniciales (37050501)', 'inventory', 'opening', v_inv, '37050501', null, false, 40, true),
@@ -1881,8 +1987,7 @@ begin
       '1305', '41402001', null, false, 13, true, '{"source": "minibar"}'::jsonb);
   end if;
 end;
-$function$
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.fn_cuentas_manifiesto(p_organization_id integer, p_branch_id integer, p_pagado_contado boolean, OUT debito text, OUT credito text)
  RETURNS record
@@ -2125,7 +2230,8 @@ AS $function$
       when 'inventario' then '14350101'
       -- Hoteles (134070): 4175 es título; devoluciones y descuentos en sus auxiliares.
       -- Contador 25-oct-2026 (134115): INC de restaurantes en su auxiliar; comisiones en 52950501 (529505 es título).
-      -- Auxiliares 25-oct-2026 (134130): comisiones = empleado 52051801 (MEDIO#4); 22050501/25050501/23359501/23654001.
+      -- Auxiliares 25-oct-2026 (134130): comisiones = empleado 52051801 (MEDIO#4); 22050501/25050501/23359501/23654001;
+      -- AJUSTE (M7): reteiva 23670501, reteica 23680501 (2367/2368 pasan a título).
       when 'impuesto_consumo' then case when p_type_id = 1 then '24950501' else v.defecto end
       when 'comisiones' then '52051801'
       when 'devoluciones' then case when p_type_id = 2 then '41750101' else v.defecto end
@@ -2146,8 +2252,8 @@ AS $function$
     ('iva_generado', '24080501'),
     ('iva_descontable', '24081001'),
     ('retefuente', '23654001'),
-    ('reteiva', '2367'),
-    ('reteica', '2368'),
+    ('reteiva', '23670501'),
+    ('reteica', '23680501'),
     ('propinas', '5105'),
     ('comisiones', '52051801'),
     ('anticipos', '2805'),
@@ -2826,16 +2932,23 @@ begin
     end if;
   end if;
 
+  -- AJUSTE (M7): ReteIVA/ReteICA a sus auxiliares 23670501/23680501 (la madre solo si la org no los tiene).
   return case public.fn_clase_retencion(p_tax_code, p_concept)
-    when 'reteica' then '2368'
-    when 'reteiva' then '2367'
+    when 'reteica' then coalesce((select c.account_code from public.chart_of_accounts c
+                                   where c.organization_id = p_organization_id and c.account_code = '23680501'
+                                     and c.es_movimiento is not false), '2368')
+    when 'reteiva' then coalesce((select c.account_code from public.chart_of_accounts c
+                                   where c.organization_id = p_organization_id and c.account_code = '23670501'
+                                     and c.es_movimiento is not false), '2367')
     else coalesce(
       -- Contador 25-oct-2026: un auxiliar de 2365 por concepto; compras por defecto (23654001).
       (select c.account_code from public.chart_of_accounts c
         where c.organization_id = p_organization_id and c.es_movimiento is not false
           and c.account_code = case
-            when v_concepto ~ 'HONORARIO' or v_codigo ~ 'HONORARIO' then '23651501'
             when v_concepto ~ 'COMISI' or v_codigo ~ 'COMISI' then '23652001'
+            -- AJUSTE: RETE_11 = «Retención honorarios 11%»; RETE_4 = servicios.
+            when v_concepto ~ 'HONORARIO' or v_codigo ~ 'HONORARIO' or v_codigo = 'RETE_11' then '23651501'
+            when v_codigo = 'RETE_4' then '23652501'
             when v_concepto ~ 'ARREND|ARRIEND' or v_codigo ~ 'ARREND|ARRIEND' then '23653001'
             when v_concepto ~ 'SERVICIO' or v_codigo ~ 'SERVICIO' then '23652501'
             when v_concepto ~ 'SALARI|LABORAL|NOMINA|NÓMINA' then '23650501'
@@ -2900,17 +3013,16 @@ begin
   if v_tipo = 2 then
     perform public.fn_hoteles_asegurar_cuentas_ingreso(p_org, null);
   end if;
+  -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
+  -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
+  perform public.fn_comisiones_asegurar_cuentas(p_org, null);
   -- Restaurantes (type_id 1, contador 25-oct-2026): 249505/24950501 INC y 414015/41401501 alimentos.
   if v_tipo = 1 then
     perform public.fn_restaurantes_asegurar_cuentas(p_org, null);
   end if;
 
-  -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
-  -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
-  perform public.fn_comisiones_asegurar_cuentas(p_org, null);
   -- Auxiliares de pasivos del contador (134125): 22050501, 25050501/02, 23352001/02, 23359501, 2365xx01.
   perform public.fn_pasivos_asegurar_auxiliares(p_org, null);
-
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
   -- y la clave no se siembra: el resolver usa el auxiliar de la sede en tiempo de asiento.
@@ -3016,8 +3128,7 @@ begin
     and not exists (select 1 from public.branch_account_mappings m
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
-$function$
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.fn_asegurar_cuentas_comision_ota(p_organization_id integer)
  RETURNS void
@@ -3051,27 +3162,9 @@ begin
   -- 134130: auxiliares 233520/23352002 (OTA) y demás del contador.
   perform public.fn_pasivos_asegurar_auxiliares(p_organization_id, null);
 
-  if not exists (
-    select 1 from public.chart_of_accounts
-    where organization_id = p_organization_id and account_code = '5235'
-  ) then
-    v_parent := null;
-    if exists (
-      select 1 from public.chart_of_accounts
-      where organization_id = p_organization_id and account_code = '52'
-    ) then
-      v_parent := '52';
-    end if;
-    insert into public.chart_of_accounts (
-      organization_id, account_code, name, type, parent_code, is_active, description,
-      naturaleza, requiere_centro_costo
-    ) values (
-      p_organization_id, '5235', 'Comisiones', 'expense', v_parent, true,
-      'Gasto por comisiones, entre ellas las de los canales de venta',
-      'debito', true
-    )
-    on conflict (organization_id, account_code) do nothing;
-  end if;
+  -- AJUSTE B4: el gasto de comisiones es 529505/52950501 (fn_comisiones_asegurar_cuentas, 134090). Ya no se crea
+  -- 5235 «Comisiones»: en el PUC 5235 es «Servicios» de ventas.
+  perform public.fn_comisiones_asegurar_cuentas(p_organization_id, null);
 end;
 $function$
 ;
@@ -3086,8 +3179,8 @@ declare
   v_parent text;
 begin
   if exists (select 1 from public.chart_of_accounts where organization_id = p_organization_id and account_code = '23654001')
-     and exists (select 1 from public.chart_of_accounts where organization_id = p_organization_id and account_code = '2367')
-     and exists (select 1 from public.chart_of_accounts where organization_id = p_organization_id and account_code = '2368') then
+     and exists (select 1 from public.chart_of_accounts where organization_id = p_organization_id and account_code = '23670501')
+     and exists (select 1 from public.chart_of_accounts where organization_id = p_organization_id and account_code = '23680501') then
     return;
   end if;
 
@@ -3193,8 +3286,10 @@ BEGIN
            AND source_type = 'commission'
            AND event_type = v_event_type
            AND is_active = true
-           AND (conditions->>'vinculo' IS NULL OR conditions->>'vinculo' = v_vinculo)
-         ORDER BY (conditions->>'vinculo' = v_vinculo) DESC NULLS LAST, priority
+           -- AJUSTE (M5): solo reglas de SU vínculo; las viejas 5235/2370 sin vínculo ya no son respaldo silencioso
+           -- (134135 las desactiva). Sin regla del vínculo → cola (no_rule).
+           AND conditions->>'vinculo' = v_vinculo
+         ORDER BY priority
     LOOP
         v_debit := fn_comision_cuenta(NEW.organization_id, v_cand.debit_account_code);
         v_credit := fn_comision_cuenta(NEW.organization_id, v_cand.credit_account_code);
@@ -3256,6 +3351,13 @@ BEGIN
             v_ret := fn_comision_retencion(NEW.organization_id, NEW.payee_id, NEW.id, NEW.commission_amount,
                                            COALESCE(NEW.accrued_at, NEW.created_at, now()),
                                            (v_rule.conditions->>'retencion_tarifa')::numeric);
+            -- AJUSTE (M3): sin datos tributarios del tercero no se asume nada: a la cola, sin asiento.
+            IF v_ret IS NULL THEN
+                PERFORM fn_log_journal_failure(NEW.organization_id, NULL, now(), TG_TABLE_NAME, NEW.id::text, NULL, NULL, NULL,
+                    NEW.commission_amount, 'retencion_sin_datos_tributarios',
+                    'Faltan los datos tributarios del tercero (tipo de persona / tarifa) para calcular la retención de la comisión');
+                RETURN NEW;
+            END IF;
         END IF;
     END IF;
 

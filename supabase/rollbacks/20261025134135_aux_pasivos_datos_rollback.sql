@@ -6,6 +6,7 @@ declare
   r record;
   v_ctas text[];
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;  -- AJUSTE: antes del DISABLE TRIGGER
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   -- 1. Cuentas (madres a movimiento) antes de los contraasientos.
   for r in select * from public.p1_puc_bitacora where migracion = '134135' and objeto = 'cuenta' order by id desc loop
@@ -40,6 +41,8 @@ begin
       update public.accounting_rules set credit_account_code = r.valor_anterior where id::text = r.clave;
     elsif r.objeto = 'accounting_rules' and r.campo = 'tax_account_code' then
       update public.accounting_rules set tax_account_code = r.valor_anterior where id::text = r.clave;
+    elsif r.objeto = 'accounting_rules' and r.campo = 'is_active' then
+      update public.accounting_rules set is_active = r.valor_anterior::boolean where id::text = r.clave;
     elsif r.objeto = 'configuracion_contable' then
       update public.configuracion_contable set account_code = r.valor_anterior where id::text = r.clave;
     elsif r.objeto = 'categorias_tesoreria' then

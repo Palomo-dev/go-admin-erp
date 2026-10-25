@@ -2,6 +2,7 @@
 -- Restaura las 19 funciones a su versión viva tras 134070…134120 y la fn_comision_cuenta de 134095.
 -- Las columnas nuevas de vendor_commission_rates (tipo_persona, retencion_tarifa, aplica_art383) se eliminan: lo que se
 -- haya editado en ellas se pierde.
+set constraints public.trg_chart_cuenta_titulo_configurada immediate;  -- QA 801206c2 BAJO: sin eventos diferidos heredados
 CREATE OR REPLACE FUNCTION public.fn_asiento_movimiento_caja(p_organization_id integer, p_tipo text, p_concept_code text)
  RETURNS TABLE(accion text, debito text, credito text)
  LANGUAGE plpgsql
@@ -1625,6 +1626,7 @@ declare
   v_folio_serv text;
   v_dev text;
   v_iva_venta text;
+  v_anticipo text := '2805';
   v_viaje text;
 begin
   perform public.fn_assert_acceso_org(org_id);
@@ -1671,14 +1673,18 @@ begin
   end if;
   v_noshow := case when v_type = 2 then v_serv when v_type = 1 then v_prod else '4235' end;
   -- Contador 25-oct-2026 (134115): hoteles no-show 41409502 (IVA configurable: la regla no lleva impuesto
-  -- automático), viaje/tour de contado 41409501; restaurantes: ventas 41401501 (propuesta) e INC 24950501.
+  -- automático), viaje/tour de contado 41409501; restaurantes: ventas 41401501 (propuesta).
+  -- FIX (A): el IVA de la venta va siempre a 24080501 (también en restaurantes); el INC se decide por línea al
+  -- contabilizar (fn_cuenta_inc). Hoteles: no-show debita 28050501 si la org ya lo tiene (si no 2805; nunca 2405).
   v_viaje := v_prod;
   v_iva_venta := '24080501';
   if v_type = 2 then
     v_noshow := '41409502';
     v_viaje := '41409501';
-  elsif v_type = 1 then
-    v_iva_venta := '24950501';
+    if exists (select 1 from public.chart_of_accounts c where c.organization_id = org_id
+                and c.account_code = '28050501' and c.es_movimiento is true) then
+      v_anticipo := '28050501';
+    end if;
   end if;
   v_manifiesto := case when v_type = 6 then '2335' else '2205' end;
 
@@ -1723,7 +1729,7 @@ begin
     (org_id, 'Comision OTA', 'Comision del canal: gasto contra cuenta por pagar al canal', 'ota_commission', 'confirmed', '52950501', '2335', null, false, 30, true),
     (org_id, 'Mantenimiento', 'Gasto de mantenimiento', 'maintenance', 'created', '5145', '1110', null, false, 30, true),
     (org_id, 'Reserva Confirmada', 'Reserva confirmada', 'reservation', 'confirmed', '1305', '2805', null, false, 30, true),
-    (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', '2805', v_noshow, null, false, 32, true),
+    (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', v_anticipo, v_noshow, null, false, 32, true),
     (org_id, 'Costo Patronal', 'Provision de seguridad social patronal al aprobar el periodo', 'payroll_period', 'created', '5105', '2370', null, false, 5, true),
     (org_id, 'Pago Costo Patronal', 'Pago de obligaciones patronales al cerrar el periodo', 'payroll_period', 'paid', '2370', '1110', null, false, 5, true),
     (org_id, 'Inventario apertura', 'Apertura de inventario contra saldos iniciales (37050501)', 'inventory', 'opening', v_inv, '37050501', null, false, 40, true),
@@ -1771,8 +1777,7 @@ begin
       '1305', '41402001', null, false, 13, true, '{"source": "minibar"}'::jsonb);
   end if;
 end;
-$function$
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.fn_cuentas_manifiesto(p_organization_id integer, p_branch_id integer, p_pagado_contado boolean, OUT debito text, OUT credito text)
  RETURNS record
@@ -2014,9 +2019,8 @@ AS $function$
       -- 14350101, igual que el TS (QA 25-oct). fn_sembrar_configuracion_contable puede afinarlo por sede.
       when 'inventario' then '14350101'
       -- Hoteles (134070): 4175 es título; devoluciones y descuentos en sus auxiliares.
-      -- Contador 25-oct-2026 (134115): INC de restaurantes en su auxiliar; comisiones en 52950501 (529505 es título).
+      -- Contador 25-oct-2026 (134115): INC de restaurantes en su auxiliar (las comisiones van en su propio commit).
       when 'impuesto_consumo' then case when p_type_id = 1 then '24950501' else v.defecto end
-      when 'comisiones' then '52950501'
       when 'devoluciones' then case when p_type_id = 2 then '41750101' else v.defecto end
       when 'descuentos' then case when p_type_id = 2 then '41750102' else v.defecto end
       else v.defecto
@@ -2054,8 +2058,7 @@ AS $function$
     ('ingresos_diversos', '42959501'),
     ('compra_servicio', '2335')
   ) as v(clave, defecto);
-$function$
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.fn_puc_destino_reclass(p_type integer, p_codigo text, p_nombre text)
  RETURNS TABLE(destino text, motivo text)
@@ -2776,14 +2779,13 @@ begin
   if v_tipo = 2 then
     perform public.fn_hoteles_asegurar_cuentas_ingreso(p_org, null);
   end if;
+  -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
+  -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
+  perform public.fn_comisiones_asegurar_cuentas(p_org, null);
   -- Restaurantes (type_id 1, contador 25-oct-2026): 249505/24950501 INC y 414015/41401501 alimentos.
   if v_tipo = 1 then
     perform public.fn_restaurantes_asegurar_cuentas(p_org, null);
   end if;
-
-  -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
-  -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
-  perform public.fn_comisiones_asegurar_cuentas(p_org, null);
 
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
@@ -2890,8 +2892,7 @@ begin
     and not exists (select 1 from public.branch_account_mappings m
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
-$function$
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.fn_asegurar_cuentas_comision_ota(p_organization_id integer)
  RETURNS void
@@ -3204,6 +3205,10 @@ $function$
 
 drop function if exists public.fn_comision_retencion(integer, uuid, uuid, numeric, timestamptz, numeric);
 drop function if exists public.fn_retencion_art383(numeric, numeric);
+drop view if exists public.v_comision_retencion_acumulado;
+drop function if exists public.fn_comision_datos_tributarios(integer, uuid, timestamptz);
+drop function if exists public.fn_uvt(integer, text);
+drop table if exists public.comision_tercero_tributario;
 alter table public.vendor_commission_rates drop constraint if exists vendor_commission_rates_tipo_persona_check;
 alter table public.vendor_commission_rates drop constraint if exists vendor_commission_rates_retencion_tarifa_check;
 alter table public.vendor_commission_rates drop column if exists tipo_persona;

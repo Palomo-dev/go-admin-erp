@@ -10,6 +10,8 @@ const m134010 = leer('migrations/20261025134010_p1_plan_cuentas_saldos_iniciales
 const m134030 = leer('migrations/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar.sql');
 const m134060 = leer('migrations/20261025134060_p1_reclasificar_y_titular.sql');
 const r134030 = leer('rollbacks/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar_rollback.sql');
+const m134040 = leer('migrations/20261025134040_p1_siembra_auxiliares_movimiento.sql');
+const r134040 = leer('rollbacks/20261025134040_p1_siembra_auxiliares_movimiento_rollback.sql');
 const r134060 = leer('rollbacks/20261025134060_p1_reclasificar_y_titular_rollback.sql');
 
 function cuerpoFuncion(sql: string, fn: string): string {
@@ -67,7 +69,8 @@ describe('134030: resolver, propuesta y separación de insumos', () => {
     expect(m134030).toMatch(/create table if not exists public\.p1_separacion_insumos/);
     expect(m134030).toMatch(/from public\.organizations o where o\.type_id in \(1, 2\)/);
     const flag = cuerpoFuncion(m134030, 'fn_separacion_insumos_activa');
-    expect(flag).toMatch(/coalesce\(\(select s\.activa[\s\S]*\), true\)/);
+    // Sin fila = APAGADA (QA 558bea34 B1).
+    expect(flag).toMatch(/coalesce\(\(select s\.activa[\s\S]*\), false\)/);
     const clasif = cuerpoFuncion(m134030, 'fn_clasificar_producto_restaurante');
     expect(clasif).toMatch(/case when public\.fn_separacion_insumos_activa\(p_org\) then '14050501' else '14350101' end/);
     expect(r134030).toMatch(/drop table if exists public\.p1_separacion_insumos/);
@@ -77,5 +80,23 @@ describe('134030: resolver, propuesta y separación de insumos', () => {
     const cuerpo = cuerpoFuncion(m134030, 'fn_asiento_compra_aplicar_retenciones');
     expect(cuerpo).toMatch(/raise exception 'RETENCIONES_SIN_LINEA_PROVEEDOR/);
     expect(r134030).toMatch(/create or replace function public\.fn_asiento_compra_aplicar_retenciones/);
+  });
+});
+
+describe('QA 558bea34', () => {
+  test('alta de org H/R crea su fila con la separación activa; el rollback la quita', () => {
+    const fn = cuerpoFuncion(m134040, 'fn_p1_separacion_insumos_alta');
+    expect(fn).toMatch(/if new\.type_id in \(1, 2\) then/);
+    expect(fn).toMatch(/values \(new\.id, true,/);
+    expect(m134040).toMatch(/create trigger trg_p1_separacion_insumos_alta\s+after insert on public\.organizations/);
+    expect(r134040).toMatch(/drop trigger if exists trg_p1_separacion_insumos_alta on public\.organizations/);
+    expect(r134040).toMatch(/drop function if exists public\.fn_p1_separacion_insumos_alta\(\)/);
+  });
+  test('134060: control previo incluye 6140, verificación final real y esperado 7', () => {
+    expect(m134060).toMatch(/'''\(6135\|6140\|4295/);
+    expect(m134060).toMatch(/Verificación final[\s\S]*raise exception '134060 verificación final/);
+    expect(m134060).toMatch(/c\.account_code in \('6135', '6140'\) and c\.es_movimiento is false/);
+    expect(m134060).toMatch(/\(esperado 7\)/);
+    expect(m134060).not.toMatch(/conteo de asientos sube/);
   });
 });

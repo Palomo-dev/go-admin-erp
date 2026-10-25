@@ -16,6 +16,7 @@ import {
   errorDesdePostgrest,
   guardarBorrador,
 } from '@/lib/services/website/siteDocumentService';
+import { mensajeDocumentoInvalido } from '@/lib/website/v2/mensajeDocumentoInvalido';
 import type { ResultadoGuardado } from '@/lib/website/v2/tipos';
 import {
   LIMITES_PROGRAMACION,
@@ -157,7 +158,7 @@ export async function programarPublicacion(
   await exigirSitio(cliente, org, sitioId);
   const { data: borrador, error: errB } = await cliente
     .from('website_site_drafts')
-    .select('version')
+    .select('version, document')
     .eq('site_state_id', sitioId)
     .eq('organization_id', org)
     .maybeSingle();
@@ -165,6 +166,11 @@ export async function programarPublicacion(
   const actual = (borrador as { version: number } | null)?.version;
   if (actual !== entrada.version) {
     throw new ErrorSitio('conflicto_version', 'Alguien guardó una versión más nueva del borrador.', { esperada: entrada.version, actual: actual ?? null });
+  }
+  // El cron publica sin pasar por publicar(): se valida aquí para no programar un documento inválido.
+  const validacionProg = validarDocumentoSitio((borrador as { document?: unknown } | null)?.document);
+  if (!validacionProg.ok) {
+    throw new ErrorSitio('documento_invalido', mensajeDocumentoInvalido(validacionProg.errores, 'programar'), validacionProg.errores);
   }
   // Una sola pendiente por sitio (índice único parcial): la anterior se cancela primero.
   const { error: errC } = await cliente

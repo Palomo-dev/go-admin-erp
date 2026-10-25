@@ -35,6 +35,7 @@ import {
   type FilaPaginaLegacy,
   type FilaSeccionLegacy,
 } from '@/lib/website/v2/importadorLegacy';
+import { mensajeDocumentoInvalido } from '@/lib/website/v2/mensajeDocumentoInvalido';
 import { propagarSeccionesHeredadas } from '@/lib/website/v2/vistaEditor';
 import { publicarConActivacion, type ActivacionAlPublicar } from '@/lib/website/v2/activarAlPublicar';
 import {
@@ -507,8 +508,9 @@ export async function publicar(
       actual: borrador.version,
     });
   }
+  // Nunca se llama a publish_site_revision con un documento que no cumple el contrato.
   const validacion = validarDocumentoSitio(borrador.document);
-  if (!validacion.ok) throw new ErrorSitio('documento_invalido', 'El borrador no cumple el contrato.', validacion.errores);
+  if (!validacion.ok) throw new ErrorSitio('documento_invalido', mensajeDocumentoInvalido(validacion.errores, 'publicar'), validacion.errores);
 
   // Principal: la base que heredaban las sedes ANTES de publicar (para propagar después).
   const estado = await estadoDeOrg(cliente, org, sitioId);

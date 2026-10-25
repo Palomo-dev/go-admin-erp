@@ -49,8 +49,23 @@ describe('cuentas por movimiento de stock', () => {
     expect(sql).toContain("'5150'");
     // 6135 pasa a título: las reglas por defecto publican al auxiliar 61350501 (134040).
     const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134040_p1_siembra_auxiliares_movimiento.sql'), 'utf8');
-    expect(p1).toContain("'61350501'");
+    const siembra = p1;
+    // La regla de costo de la venta usa v_cmv y v_cmv cae a 61350501 (comercio) o 61400501 (H/R).
+    expect(siembra).toMatch(/'inventory',\s*'sale',\s*v_cmv,\s*v_inv/);
+    expect(siembra).toMatch(/when\s+v_cmv\s*=\s*'6135'\s+or\s+v_cmv\s+is\s+null\s+then\s+'61350501'/);
+    expect(siembra).toMatch(/when\s+v_type\s+in\s*\(1,\s*2\)\s+then\s+'61400501'/);
+    expect(siembra).toMatch(/'inventory',\s*'loss',\s*v_merma,\s*v_inv/);
     expect(sql).toContain('on conflict on constraint accounting_rules_unique do nothing');
+  });
+
+  it('fn_cuentas_movimiento_stock (134020) no cae a 1405: respaldo auxiliar 1435 / 14350101', () => {
+    const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134020_p1_reglas_saldos_iniciales_37050501.sql'), 'utf8');
+    const ini = p1.search(/function\s+public\.fn_cuentas_movimiento_stock\s*\(/i);
+    expect(ini).toBeGreaterThan(-1);
+    const resto = p1.slice(ini);
+    const fn = resto.slice(0, resto.search(/\n\$(function)?\$\s*;/));
+    expect(fn).toMatch(/v_inv\s*:=\s*coalesce\(nullif\(btrim\(v_inv\),\s*''\),\s*public\.fn_inventario_auxiliar_1435\(p_organization_id,\s*null\),\s*'14350101'\)/);
+    expect(fn).not.toMatch(/'1405'/);
   });
 
   it('revierte el lote de la org 338 sin borrar asientos', () => {

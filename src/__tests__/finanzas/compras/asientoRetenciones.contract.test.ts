@@ -26,8 +26,9 @@ function ultimaDefinicion(fn: string): { nombre: string; cuerpo: string } {
   if (!m) throw new Error(`Ninguna migración define ${fn}`);
   const desde = m.sql.search(inicio);
   const resto = m.sql.slice(desde);
-  const cierre = resto.search(/\n\$(function)?\$;/);
-  return { nombre: m.nombre, cuerpo: resto.slice(0, cierre) };
+  // 134030 cierra con '$function$\n;': se acepta espacio/salto antes del ';' y, sin cierre, hasta el final.
+  const cierre = resto.search(/\n\$(function)?\$\s*;/);
+  return { nombre: m.nombre, cuerpo: cierre === -1 ? resto : resto.slice(0, cierre) };
 }
 
 describe('devengo de compra con retenciones', () => {
@@ -52,7 +53,7 @@ describe('devengo de compra con retenciones', () => {
     // Creado en esta transacción y con el crédito al proveedor todavía por el total.
     expect(cuerpo).toMatch(/e\.created_at\s*=\s*now\(\)/);
     expect(cuerpo).toMatch(/jl\.credit\s*=\s*v_inv\.total/);
-    expect(cuerpo).toMatch(/jl\.account_code\s*=\s*p_credit_account/);
+    expect(cuerpo).toMatch(/jl\.account_code\s*=\s*(?:p_credit_account|v_cuenta)\b/);
     // La bandera se enciende solo para ese UPDATE y vuelve al valor que tenía.
     const encender = cuerpo.search(/set_config\('app\.contabilidad_mantenimiento',\s*'on',\s*true\)/);
     const update = cuerpo.search(/update\s+journal_lines/i);

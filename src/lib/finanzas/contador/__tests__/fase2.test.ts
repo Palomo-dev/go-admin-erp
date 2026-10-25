@@ -84,8 +84,8 @@ describe('Fase 2 — estructura, naturaleza y plantilla del contador', () => {
 
   test('la reclasificación usa el código correcto y 6105 conserva el nombre de agricultura', () => {
     expect(equivalenciaDe('4105').codigoCorrecto).toBe('4135');
-    expect(equivalenciaDe('6105').codigoCorrecto).toBe('6135');
-    expect(equivalenciaDe('2405').codigoCorrecto).toBe('2408');
+    expect(equivalenciaDe('6105').codigoCorrecto).toBe('61350501');
+    expect(equivalenciaDe('2405').codigoCorrecto).toBe('24080501');
     expect(equivalenciaDe('2105').codigoCorrecto).toBe('2205');
     expect(equivalenciaDe('1405').codigoCorrecto).toBe('1435');
     expect(equivalenciaDe('1405-01').codigoCorrecto).toBe('14350501');

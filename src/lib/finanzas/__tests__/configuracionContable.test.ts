@@ -210,14 +210,16 @@ describe('plantilla por sector', () => {
     expect(propuestaPorSector(1)).toMatchObject({
       ventas_productos: '414015',
       ventas_servicios: '414095',
-      costo_ventas: '6140',
-      inventario: '1405',
+      costo_ventas: '61400501',
+      faltante_inventario: '61400502',
+      inventario: '14350101',
     });
     expect(propuestaPorSector(2)).toMatchObject({
       ventas_productos: '4140',
       ventas_servicios: '4140',
-      costo_ventas: '6140',
-      inventario: '1435',
+      costo_ventas: '61400501',
+      faltante_inventario: '61400502',
+      inventario: '14350101',
     });
     expect(propuestaPorSector(4).ventas_productos).toBe('4155');
     expect(propuestaPorSector(7).ventas_productos).toBe('4235');

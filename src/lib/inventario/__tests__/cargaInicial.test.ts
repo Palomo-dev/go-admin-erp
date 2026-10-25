@@ -188,8 +188,17 @@ describe('contrato del sobrante en 4295', () => {
     expect(sql).toContain("'ingresos_diversos'");
     // 4295 pasa a título: el sobrante acredita el auxiliar 42959501 vía la clave (134030).
     const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar.sql'), 'utf8');
-    expect(p1).toContain("'42959501'");
-    expect(p1).toContain('fn_cuenta_ingresos_diversos');
+    const cuerpo = (fn: string) => {
+      const resto = p1.slice(p1.search(new RegExp(String.raw`function\s+public\.${fn}\s*\(`, 'i')));
+      return resto.slice(0, resto.search(/\n\$(function)?\$\s*;/));
+    };
+    // El resolver lleva 4295 a 42959501 y fn_cuenta_ingresos_diversos pasa por él con respaldo 4295.
+    expect(cuerpo('fn_cuenta_auxiliar_de_titulo')).toMatch(/when\s+'4295'\s+then\s+'42959501'/);
+    expect(cuerpo('fn_cuenta_ingresos_diversos')).toMatch(/fn_cuenta_auxiliar_de_titulo\([\s\S]*clave\s*=\s*'ingresos_diversos'[\s\S]*'4295'\)\)/);
+    // B1: fn_sobrante_borradores lee y reemplaza también los auxiliares 42959501/42959502.
+    const sob = cuerpo('fn_sobrante_borradores');
+    expect(sob).toContain("account_code in ('4295', '42959501', '42959502')");
+    expect(sob).toContain("account_code in ('4250', '3105', '4295', '42959501', '42959502')");
     expect(sql).toContain('correccion_conteo');
     expect(sql).toContain('left(coalesce(v_credit_account, \'\'), 4) = \'4250\'');
     expect(datos).toContain('fn_sobrante_borradores');

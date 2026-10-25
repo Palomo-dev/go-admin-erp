@@ -236,3 +236,5 @@ begin
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
 $function$;
+
+delete from supabase_migrations.schema_migrations where version = '20261025134075';

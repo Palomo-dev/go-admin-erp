@@ -22,7 +22,7 @@ const RAIZ = join(__dirname, '..', '..', '..', '..');
 const leer = (ruta: string) => readFileSync(join(RAIZ, ruta), 'utf8');
 
 const PLAN = new Set([
-  '1105', '1110', '1120', '1365', '2105', '2205', '2365', '2367', '2368',
+  '1105', '1110', '1120', '1365', '2105', '2205', '2365', '2367', '2368', '23654001', '23670501', '23680501',
   '2408', '2505', '3105', '4105', '4250', '42959501', '5105', '5135', '5195', '5235', '5305', '6105',
 ]);
 
@@ -112,9 +112,10 @@ describe('egreso que no es compra', () => {
   it('propina y nómina van a gasto; la devolución reversa la venta', () => {
     expect(DEBITO_REVISADO['tip.created']).toEqual({ debito: '5105', clase: 'gasto' });
     expect(DEBITO_REVISADO['payroll.created'].debito.startsWith('5')).toBe(true);
-    expect(DEBITO_REVISADO['payroll.paid']).toEqual({ debito: '2505', clase: 'pasivo' });
+    expect(DEBITO_REVISADO['payroll.paid']).toEqual({ debito: '25050501', clase: 'pasivo' });
     expect(DEBITO_REVISADO['commission.accrued'].debito.startsWith('5')).toBe(true);
     expect(DEBITO_REVISADO['commission.paid'].clase).toBe('pasivo');
+    expect(DEBITO_REVISADO['commission.paid.externo']).toEqual({ debito: '23352001', clase: 'pasivo' });
     expect(DEBITO_REVISADO['refund.refunded']).toEqual({ debito: '4105', clase: 'contra_ingreso' });
     expect(DEBITO_REVISADO['sale_credit_note.created'].clase).toBe('contra_ingreso');
     expect(DEBITO_REVISADO['inventory_adjustment.loss']).toEqual({ debito: '519595', clase: 'gasto' });
@@ -148,9 +149,11 @@ describe('mapeo de impuestos', () => {
     expect(cuentaAplicableDeMapeo('24080501', 'IVA_19', 'IVA 19%', new Set(['2365']))).toBeNull();
   });
 
-  it('retefuente e ICA usan la cuenta de 4 dígitos que sí está en el plan', () => {
-    expect(cuentaAplicableDeMapeo('23650501', 'RETE_4', 'Retención en la Fuente 4%', PLAN)).toBe('2365');
-    expect(cuentaAplicableDeMapeo('23170501', 'ICA_0.966', 'ICA Bogotá 9.66x1000', PLAN)).toBe('2368');
+  it('retefuente e ICA caen en el auxiliar de movimiento (2365/2367/2368 son título)', () => {
+    expect(cuentaAplicableDeMapeo('23650501', 'RETE_4', 'Retención en la Fuente 4%', PLAN)).toBe('23654001');
+    expect(cuentaAplicableDeMapeo('23170501', 'ICA_0.966', 'ICA Bogotá 9.66x1000', PLAN)).toBe('23680501');
+    expect(cuentaCanonicaImpuesto('RETEIVA_15', 'ReteIVA 15%')).toBe('23670501');
+    expect(cuentaAplicableDeMapeo('23170501', 'ICA_0.966', 'ICA', new Set(['2368']))).toBeNull();
   });
 
   it('si la cuenta mapeada existe, se respeta', () => {

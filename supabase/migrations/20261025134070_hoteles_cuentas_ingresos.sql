@@ -1,5 +1,7 @@
 -- Hoteles (type_id 2), 25-oct-2026: auxiliares de ingresos y devoluciones del contador. NO aplicada.
 -- Paso 1 de 4 (134070 cuentas → 134075 siembra → 134080 reclasificación hoteles → 134085 org 140).
+-- ROLLBACK (#7, FIX A): el rollback ABORTA si una cuenta creada aquí tiene saldo contabilizado o borradores
+-- (revertir antes 134080/134120 y posteriores); con saldo 0 la cuenta queda en el plan con aviso.
 -- Crea, en cada org type_id = 2 donde falten (idempotente, solo inserta lo que NO existe):
 --   414005 Hotelería            → 41400501 Ingresos por alojamiento (default de ventas)
 --   414015 Restaurantes         → 41401501 Ingresos por alimentos
@@ -73,6 +75,7 @@ declare
   v_org integer;
   v_total integer := 0;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;  -- FIX (A) ALTO#1
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for v_org in select o.id from public.organizations o where o.type_id = 2 order by 1 loop
     v_total := v_total + public.fn_hoteles_asegurar_cuentas_ingreso(v_org, '134070');
@@ -83,3 +86,7 @@ exception when others then
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
   raise;
 end $$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134070', 'hoteles_cuentas_ingresos', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

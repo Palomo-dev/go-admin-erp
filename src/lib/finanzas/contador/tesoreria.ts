@@ -40,7 +40,7 @@ export const CATEGORIAS_TESORERIA: readonly CategoriaTesoreria[] = [
   cat('prestamos_recibidos', 'ingreso', 'Préstamos recibidos', 'no', 'corregir', '2105 (banco) / 2355 (socio)', '2105/2195', 'Movimiento de caja, no ingreso.', null, ['2105', '2355'], ['2195']),
   cat('anticipos_clientes', 'ingreso', 'Anticipos de clientes', 'no', 'ok', '2805', null, 'Movimiento de caja, no ingreso.', '2805'),
   cat('cobro_cartera', 'ingreso', 'Cobro de cartera', 'no', 'ok', 'C 1305', null, 'Movimiento de caja, no ingreso.', '1305'),
-  cat('proveedores_pago', 'egreso', 'Proveedores (pago)', 'no', 'corregir', 'D 2205', null, 'Usar 1435 solo en compra de contado sin factura previa.', '2205', ['1435']),
+  cat('proveedores_pago', 'egreso', 'Proveedores (pago)', 'no', 'corregir', 'D 22050501', null, 'Usar 1435 solo en compra de contado sin factura previa.', '22050501', ['1435']),
   cat('nomina', 'egreso', 'Nómina', 'si', 'corregir', 'Causación 5105 / pago D 2505', null, 'Separar causación y pago.', null),
   cat('seguridad_social', 'egreso', 'Seguridad social y parafiscales', 'si', 'corregir', 'Causación en subcuentas de 5105 / pago D 2370', null, 'Separar causación y pago.', null),
   cat('arriendo', 'egreso', 'Arriendo', 'si', 'ok', '5120', null, '', '5120', [], [], true),
@@ -56,7 +56,7 @@ export const CATEGORIAS_TESORERIA: readonly CategoriaTesoreria[] = [
   cat('honorarios', 'egreso', 'Honorarios', 'si', 'ok', '5110', null, '', '5110', [], [], true),
   cat('seguros', 'egreso', 'Seguros', 'si', 'ok', '5130', null, '', '5130', [], [], true),
   cat('impuestos_gasto', 'egreso', 'Impuestos (gasto)', 'si', 'ok', '5115', null, '', '5115', [], [], true),
-  cat('impuestos_declarados', 'egreso', 'Pago de impuestos declarados', 'no', 'corregir', 'D 2408 / 2365', null, 'Separar como categoría propia (no es gasto).', null, ['2408', '2365']),
+  cat('impuestos_declarados', 'egreso', 'Pago de impuestos declarados', 'no', 'corregir', 'D 24080501 / 236540', null, 'Separar como categoría propia (no es gasto).', null, ['24080501', '23654001']),
   cat('gmf', 'egreso', 'GMF (4x1000)', 'si', 'corregir', 'Subcuenta propia en 511595 o 530595', null, '50% deducible en renta; llevarlo en subcuenta propia.', '511595', ['530595'], [], true),
   cat('comisiones_bancarias', 'egreso', 'Comisiones bancarias', 'si', 'ok', '53051501 (aux. de 530515)', null, '530515 es título.', '53051501'),
   cat('intereses_pagados', 'egreso', 'Intereses', 'si', 'ok', '530520', null, '', '530520'),
@@ -127,15 +127,15 @@ export function cuentaSegunCentro(clave: string, centro: CentroCostoTipo, opcion
   return { cuenta: base, estado: 'definida' };
 }
 
-/** Causación Dr 5105 / Cr 2505. El pago es otro movimiento y no afecta resultados. */
+/** Causación Dr 5105 / Cr 25050501 (auxiliar nómina por pagar; 2505 es título). El pago es otro movimiento y no afecta resultados. */
 export function lineasNomina(momento: 'causacion' | 'pago', pesos: number): LineaTesoreria[] {
   const centavos = aCentavos(pesos);
   if (momento === 'pago') {
-    return [linea('pago', 'debito', '2505', null, false, false, centavos)];
+    return [linea('pago', 'debito', '25050501', null, false, false, centavos)];
   }
   return [
     linea('causacion', 'debito', GRUPO_NOMINA, GRUPO_NOMINA, false, true, centavos),
-    linea('causacion', 'credito', '2505', null, false, false, centavos),
+    linea('causacion', 'credito', '25050501', null, false, false, centavos),
   ];
 }
 
@@ -194,13 +194,13 @@ export function lineasSoftware(
   return [linea(momento, 'debito', cuenta, null, false, true, aCentavos(pesos))];
 }
 
-/** 2408 es título: el pago del IVA declarado debita el auxiliar del generado (24080501). */
+/** 2408 y 2365 son título: el pago debita el auxiliar (24080501 IVA generado; 23654001 retefuente). */
 export function lineasImpuestoDeclarado(cuenta: '2408' | '2365', pesos: number): LineaTesoreria[] {
-  return [linea('pago', 'debito', cuenta === '2408' ? '24080501' : cuenta, null, false, false, aCentavos(pesos))];
+  return [linea('pago', 'debito', cuenta === '2408' ? '24080501' : '23654001', null, false, false, aCentavos(pesos))];
 }
 
 export function lineasProveedor(pesos: number, compraContadoSinFactura = false): LineaTesoreria[] {
-  return [linea('pago', 'debito', compraContadoSinFactura ? '1435' : '2205', null, false, false, aCentavos(pesos))];
+  return [linea('pago', 'debito', compraContadoSinFactura ? '1435' : '22050501', null, false, false, aCentavos(pesos))];
 }
 
 export interface RepartoCentro {

@@ -13,8 +13,8 @@
 --      'reclasificacion_titulo', fact_key 'hoteles_reclasif_ingresos'). Al 25-oct no hay ninguno.
 --   6. 4140 y 4175 pasan a TÍTULO solo si ya nada las referencia (regla activa, clave, categoría, mapeo o borrador)
 --      y su saldo contabilizado es 0. Si no, aviso y quedan de movimiento.
--- Todo cambio queda en p1_puc_bitacora (migracion '134080'). Fecha del asiento: hoy (fecha UTC del servidor:
--- aplicar antes de las 19:00 COT) si el período mensual está abierto; si no, el primer período abierto posterior.
+-- Todo cambio queda en p1_puc_bitacora (migracion '134080'). Fecha del asiento: '2026-10-25' 12:00 COT EXPLÍCITA
+-- (no la fecha del servidor); exige octubre 2026 abierto.
 -- No toca organizations, ni org 331 (no es hotel; borrador 49729 intacto).
 -- Rollback: supabase/rollbacks/20261025134080_hoteles_reclasificar_ingresos_rollback.sql
 
@@ -136,13 +136,13 @@ begin
     if exists (select 1 from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
                 where l.organization_id = v_org and l.account_code in ('4140','4175') and e.posted is true
                 group by l.account_code having sum(l.debit - l.credit) <> 0) then
-      select case
-               when exists (select 1 from public.fiscal_periods fp where fp.organization_id = v_org
-                              and fp.period_type = 'monthly' and fp.status = 'open'
-                              and current_date between fp.start_date and fp.end_date) then current_date
-               else (select min(fp.start_date) from public.fiscal_periods fp where fp.organization_id = v_org
-                        and fp.period_type = 'monthly' and fp.status = 'open' and fp.start_date > current_date)
-             end into v_fecha;
+      -- Fecha FIJA 2026-10-25 (no current_date: no depende de aplicar antes de las 19:00 COT). Octubre debe estar abierto.
+    v_fecha := date '2026-10-25';
+    if not exists (select 1 from public.fiscal_periods fp where fp.organization_id = v_org
+                     and fp.period_type = 'monthly' and fp.status = 'open'
+                     and v_fecha between fp.start_date and fp.end_date) then
+      v_fecha := null;
+    end if;
       if v_fecha is null then
         raise exception '134080: org % tiene saldo en 4140/4175 y no tiene período abierto', v_org;
       end if;
@@ -169,7 +169,7 @@ begin
     end if;
 
     -- 6. títulos
-    for r in select a.account_code from public.chart_of_accounts a
+    for r in select a.account_code, a.es_movimiento from public.chart_of_accounts a
               where a.organization_id = v_org and a.account_code in ('4140','4175') and a.es_movimiento is not false loop
       v_ref := exists (select 1 from public.accounting_rules x where x.organization_id = v_org and x.is_active
                          and r.account_code in (x.debit_account_code, x.credit_account_code, x.discount_account_code, x.tax_account_code))
@@ -187,8 +187,12 @@ begin
         update public.chart_of_accounts set es_movimiento = false, updated_at = now()
          where organization_id = v_org and account_code = r.account_code;
         insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-        values ('134080', v_org, 'cuenta', r.account_code, 'es_movimiento', 'true', 'false');
+        values ('134080', v_org, 'cuenta', r.account_code, 'es_movimiento', r.es_movimiento::text, 'false');  -- QA BAJO #4: valor real (true/NULL)
       end if;
     end loop;
   end loop;
 end $$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134080', 'hoteles_reclasificar_ingresos', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

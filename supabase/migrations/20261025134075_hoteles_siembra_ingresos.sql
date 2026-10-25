@@ -7,7 +7,7 @@
 --   fn_sembrar_configuracion_contable: crea los auxiliares (134070) y siembra ventas_productos/ventas_servicios
 --     41400501, devoluciones 41750101, descuentos 41750102; categoría de tesorería 4175 -> 41750101.
 --   Costo restaurante de hotel 61400501: ya lo sembraba 134040.
--- fn_propuesta_configuracion_sector NO se cambia (fallback de fn_cuenta_por_clave para orgs viejas).
+-- fn_propuesta_configuracion_sector: se corrige en 20261025134105 (tipo 2 -> 41400501 / 41750101 / 41750102).
 -- No toca datos al aplicar.
 -- Rollback: supabase/rollbacks/20261025134075_hoteles_siembra_ingresos_rollback.sql
 
@@ -299,3 +299,7 @@ begin
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
 $function$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134075', 'hoteles_siembra_ingresos', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

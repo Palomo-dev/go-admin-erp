@@ -102,10 +102,11 @@ describe('clave de la cuenta', () => {
   });
 
   test('la comisión no se lleva la cuenta de aportes de nómina', () => {
-    expect(claveDeCuenta('commissions', 'debito', '5235')).toBe('comisiones');
+    expect(claveDeCuenta('commissions', 'debito', '5235')).toBeNull(); // 5235 = Servicios (AJUSTE B4)
+    expect(claveDeCuenta('commissions', 'debito', '52950501')).toBe('comisiones');
     expect(claveDeCuenta('commissions', 'debito', '529505')).toBe('comisiones');
     expect(claveDeCuenta('commission', 'credito', '2370')).toBeNull();
-    expect(claveDeCuenta('ota_commission', 'debito', '5235')).toBe('comisiones');
+    expect(claveDeCuenta('ota_commission', 'debito', '52950501')).toBe('comisiones');
     expect(claveDeCuenta('payroll_slips', 'credito', '2370')).toBe('nomina_aportes');
   });
 
@@ -232,29 +233,29 @@ describe('plantilla por sector', () => {
       caja: '1105',
       bancos: '1110',
       clientes: '1305',
-      proveedores: '2205',
+      proveedores: '22050501',
       devoluciones: '4175',
       descuentos: '4175',
       iva_generado: '24080501',
       iva_descontable: '24081001',
-      retefuente: '2365',
-      reteiva: '2367',
-      reteica: '2368',
+      retefuente: '23654001',
+      reteiva: '23670501',
+      reteica: '23680501',
       propinas: '5105',
-      comisiones: '529505',
+      comisiones: '52051801',
       anticipos: '2805',
       nomina: '5105',
-      nomina_por_pagar: '2505',
+      nomina_por_pagar: '25050501',
       nomina_aportes: '2370',
       faltante_inventario: '519595',
       gastos_extraordinarios: '5315',
       consumo_interno: '519595',
-      manifiesto_por_pagar: '2205',
-      manifiesto_transporte: '2335',
+      manifiesto_por_pagar: '22050501',
+      manifiesto_transporte: '23359501',
       saldo_inicial: '3105',
       impuesto_consumo: '2495',
       redondeo: '42958101',
-      compra_servicio: '2335',
+      compra_servicio: '23359501',
       ingresos_diversos: '42959501',
     });
     expect(nombreSector(1)).toBe('Restaurante');

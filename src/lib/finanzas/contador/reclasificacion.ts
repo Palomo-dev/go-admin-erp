@@ -36,8 +36,8 @@ export const EQUIVALENCIAS_PLANTILLA: readonly EquivalenciaPlantilla[] = [
   {
     codigoActual: '2105',
     significadoActual: 'Bancos nacionales (obligaciones financieras)',
-    codigoCorrecto: '2205',
-    nombreCorrecto: 'Proveedores nacionales',
+    codigoCorrecto: '22050501',
+    nombreCorrecto: 'Proveedores nacionales (auxiliar de 2205)',
     nota: 'Se mezcló deuda financiera con proveedores.',
   },
   {

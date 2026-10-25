@@ -69,15 +69,15 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
     ver(armarAsiento('compra_credito', { base: 1000, iva: 190, retefuente: 25, reteiva: 19, reteica: 10 }, agente), [
       [6, '1435', 'debito', 100000],
       [7, '24081001', 'debito', 19000],
-      [8, '2365', 'credito', 2500],
-      [9, '2367', 'credito', 1900],
-      [10, '2368', 'credito', 1000],
-      [11, '2205', 'credito', 113600],
+      [8, '23654001', 'credito', 2500],
+      [9, '23670501', 'credito', 1900],
+      [10, '23680501', 'credito', 1000],
+      [11, '22050501', 'credito', 113600],
     ]);
     espera(armarAsiento('compra_credito', { base: 1000, iva: 190, retefuente: 25, reteiva: 19, reteica: 10 }), [
       [6, '1435', 'debito', 100000],
       [7, '24081001', 'debito', 19000],
-      [11, '2205', 'credito', 119000],
+      [11, '22050501', 'credito', 119000],
     ]);
   });
 
@@ -87,9 +87,9 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       neto: 900, retefuente: 40, reteiva: 30, reteica: 20,
     }, base), [
       [12, '1110', 'debito', 90000],
-      [13, '135515', 'debito', 4000],
-      [14, '135517', 'debito', 3000],
-      [15, '135518', 'debito', 2000],
+      [13, '13551501', 'debito', 4000],
+      [14, '13551701', 'debito', 3000],
+      [15, '13551801', 'debito', 2000],
       [16, '1305', 'credito', 99000],
     ]);
     expect(lineas.every((linea) => linea.autorretencion)).toBe(true);
@@ -98,9 +98,9 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
     const enCartera = configurarRegla(base, 12, '1305');
     espera(armarAsiento('venta_retenciones', { neto: 900, retefuente: 40, reteiva: 30, reteica: 20 }, enCartera), [
       [12, '1305', 'debito', 90000],
-      [13, '135515', 'debito', 4000],
-      [14, '135517', 'debito', 3000],
-      [15, '135518', 'debito', 2000],
+      [13, '13551501', 'debito', 4000],
+      [14, '13551701', 'debito', 3000],
+      [15, '13551801', 'debito', 2000],
       [16, '1305', 'credito', 99000],
     ]);
   });
@@ -169,7 +169,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       [33, '61350501', 'credito', 40000],
     ]);
     const compras = espera(armarAsiento('devolucion_compras', { base: 1000, iva: 190 }), [
-      [34, '2205', 'debito', 119000],
+      [34, '22050501', 'debito', 119000],
       [35, '1435', 'credito', 100000],
       [36, '24081001', 'credito', 19000],
     ]);

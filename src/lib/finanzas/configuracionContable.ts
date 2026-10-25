@@ -89,9 +89,9 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'manifiesto_transporte', nombre: 'Manifiesto de transporte', grupo: 'Cartera', ayuda: 'Crédito cuando la organización es de transporte. Por defecto 2335.' },
   { clave: 'saldo_inicial', nombre: 'Saldo inicial', grupo: 'Inventario', ayuda: 'Crédito del saldo inicial de inventario. Por defecto 3105.' },
   { clave: 'impuesto_consumo', nombre: 'Impuesto al consumo', grupo: 'Impuestos', ayuda: 'Impuesto al consumo. Por defecto 2495.' },
-  { clave: 'redondeo', nombre: 'Redondeo', grupo: 'Ventas', ayuda: 'Diferencia al redondear un asiento a pesos. Por defecto 4295.' },
+  { clave: 'redondeo', nombre: 'Redondeo', grupo: 'Ventas', ayuda: 'Diferencia al redondear un asiento a pesos. Por defecto 42958101 (a favor); en contra 53959501.' },
   { clave: 'compra_servicio', nombre: 'Compra de servicio', grupo: 'Cartera', ayuda: 'Crédito de una compra de servicio o de transporte. Por defecto 2335.' },
-  { clave: 'ingresos_diversos', nombre: 'Ingresos diversos', grupo: 'Inventario', ayuda: 'Crédito de un sobrante real de inventario. Por defecto 4295. No es 4250.' },
+  { clave: 'ingresos_diversos', nombre: 'Ingresos diversos', grupo: 'Inventario', ayuda: 'Crédito de un sobrante real de inventario. Por defecto 42959501 (auxiliar de 4295). No es 4250.' },
 ];
 
 const NOMBRE_POR_CLAVE = new Map(DEFINICIONES_CLAVE.map((d) => [d.clave, d.nombre]));
@@ -147,7 +147,7 @@ export function claveDeCuenta(
   if (code === '1305' && !ORIGENES_PRESTAMO.has(origen)) return 'clientes';
   if (code === '2105' || code === '2205') return 'proveedores';
   if (code === '1405' || code === '1435') return 'inventario';
-  if (code === '6105' || code === '6135' || code.startsWith('613505') || code === '6140') return 'costo_ventas';
+  if (code === '6105' || code === '6135' || code.startsWith('613505') || code === '6140' || code.startsWith('614005')) return 'costo_ventas';
   if (code === '2365') return 'retefuente';
   if (code === '2367') return 'reteiva';
   if (code === '2368') return 'reteica';
@@ -334,12 +334,22 @@ export function propuestaPorSector(typeId: number | null | undefined): Record<Cl
     case 1:
       propuesta.ventas_productos = '414015';
       propuesta.ventas_servicios = '414095';
-      propuesta.costo_ventas = '6140';
+      // Regla del contador: costo de A&B 61400501 (614005 Restaurantes); mermas de cocina 61400502.
+      propuesta.costo_ventas = '61400501';
+      propuesta.faltante_inventario = '61400502';
+      // Inventario por defecto = reventa 14350101; los insumos de cocina van a 14050501 por producto
+      // (clasificarProductoRestaurante).
+      propuesta.inventario = '14350101';
       break;
     case 2:
       propuesta.ventas_productos = '4140';
       propuesta.ventas_servicios = '4140';
-      propuesta.costo_ventas = '6140';
+      // Regla del contador: costo de A&B 61400501 (614005 Restaurantes); mermas de cocina 61400502.
+      propuesta.costo_ventas = '61400501';
+      propuesta.faltante_inventario = '61400502';
+      // Inventario por defecto = reventa 14350101; los insumos de cocina van a 14050501 por producto
+      // (clasificarProductoRestaurante).
+      propuesta.inventario = '14350101';
       break;
     case 4:
       propuesta.ventas_productos = '4155';

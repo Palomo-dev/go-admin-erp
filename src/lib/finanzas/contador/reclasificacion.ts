@@ -22,15 +22,15 @@ export const EQUIVALENCIAS_PLANTILLA: readonly EquivalenciaPlantilla[] = [
   {
     codigoActual: '6105',
     significadoActual: 'Costo de ventas agropecuario',
-    codigoCorrecto: '6135',
-    nombreCorrecto: 'Costo de ventas comercio al por mayor y al por menor',
+    codigoCorrecto: '61350501',
+    nombreCorrecto: 'Costo de ventas de mercancías (auxiliar de 6135; hoteles y restaurantes: 61400501)',
     nota: '6105 se llama Agricultura, ganadería, caza y silvicultura. No es el costo del comercio.',
   },
   {
     codigoActual: '2405',
     significadoActual: 'No existe en el PUC',
-    codigoCorrecto: '2408',
-    nombreCorrecto: 'IVA por pagar',
+    codigoCorrecto: '24080501',
+    nombreCorrecto: 'IVA generado 19% (auxiliar de 2408; descontable 24081001, al 5% 24080502/24081002)',
     nota: 'La 2404 es impuesto de renta.',
   },
   {

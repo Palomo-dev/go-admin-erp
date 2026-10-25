@@ -27,8 +27,8 @@
 --   fn_create_branch_subaccounts: usa 6135 como base para crear 613505/613505NN por sede (estructura,
 --     no postea; el auxiliar de sede que crea es justo el que devuelve el resolver).
 --   fn_puc_nombres_oficiales: solo nombres oficiales del PUC (3705).
---   Comparaciones de lectura/clasificación: fn_auto_journal_purchase ('6135' en listas de cuentas a
---     reemplazar; ya cubierto por left(..,1)='6'), fn_cuenta_iva/fn_clave_cuenta_configurable/
+--   Comparaciones de lectura/clasificación (no asignan ni postean): fn_auto_journal_purchase ('2408' solo
+--     para marcar revisión), fn_cuenta_iva/fn_clave_cuenta_configurable/
 --     fn_regla_devengo_* ('2408'/'2405' como entrada del clasificador), fn_sobrante_borradores (lee las
 --     líneas viejas de 4295 de un asiento para recalcular).
 -- Rollback: supabase/rollbacks/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar_rollback.sql
@@ -1274,7 +1274,7 @@ begin
   v_aux := public.fn_asegurar_auxiliar_1435(new.organization_id, new.branch_id);
   if v_aux is not null and (
        v_debito is null
-       or v_debito in ('1405', '1435', '6135')
+       or v_debito in ('1405', '1435')
        or v_debito like '1405%'
        or v_debito like '1435%'
        or left(v_debito, 1) = '6'
@@ -1283,7 +1283,7 @@ begin
   end if;
 
   if v_credito is null
-     or v_credito in ('2105', '1405', '1435', '6135')
+     or v_credito in ('2105', '1405', '1435')
      or v_credito like '1405%'
      or v_credito like '1435%'
      or left(v_credito, 1) = '6' then
@@ -1293,33 +1293,23 @@ begin
     );
   end if;
 
+  -- IVA descontable (QA 25-oct: antes '240810' fijo sin mirar es_movimiento, 64 reglas). Ahora:
+  -- mapeo de impuesto / clave iva_descontable (fn_cuenta_iva) y, si no, el auxiliar de 240810 de la
+  -- sede (tarifa 19% si la línea no la trae). La cuenta de la regla, si es título, pasa por el resolver.
   v_impuesto := nullif(btrim(v_rule.tax_account_code), '');
-  if v_impuesto is null or v_impuesto in ('2405', '2408') or v_impuesto like '2405%' then
-    if exists (
-      select 1 from public.chart_of_accounts c
-      where c.organization_id = new.organization_id and c.account_code = '240810'
-    ) then
-      v_impuesto := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '240810', null, 'descontable');
-    elsif exists (
-      select 1 from public.chart_of_accounts c
-      where c.organization_id = new.organization_id and c.account_code = '2408'
-    ) then
-      insert into public.chart_of_accounts (
-        organization_id, account_code, name, type, parent_code, naturaleza, es_movimiento, centro_costo_modo
-      ) values (
-        new.organization_id, '240810', 'IVA descontable', 'liability', '2408', 'debito', true, 'no_aplica'
-      ) on conflict (organization_id, account_code) do nothing;
-      v_impuesto := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '240810', null, 'descontable');
-    end if;
+  if v_impuesto like '2405%' then
+    v_impuesto := null;
   end if;
-
-  -- 240810/2408 son títulos: el IVA descontable va al auxiliar de la sede/tarifa (sin tarifa: 19%).
-  if v_impuesto in ('2408', '240810', '240805') then
-    if v_impuesto = '2408' then
-      perform public.fn_marcar_revision_iva(new.organization_id, 'invoice_purchase', new.id::text, '2408',
-        public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '2408', null, 'descontable'));
-    end if;
+  if v_impuesto is not null and v_impuesto <> '2408' then
     v_impuesto := public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, v_impuesto, null, 'descontable');
+  else
+    v_impuesto := coalesce(
+      public.fn_cuenta_iva(new.organization_id, new.branch_id, 'invoice_purchase', null),
+      public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '240810', null, 'descontable')
+    );
+  end if;
+  if btrim(coalesce(v_rule.tax_account_code, '')) = '2408' then
+    perform public.fn_marcar_revision_iva(new.organization_id, 'invoice_purchase', new.id::text, '2408', v_impuesto);
   end if;
 
   if public.fn_documento_tiene_cuenta_propia(new.organization_id, new.id, 'compra') then

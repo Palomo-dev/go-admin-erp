@@ -69,11 +69,15 @@ begin
         ('530515',   '5305',   'Comisiones',                               false, 'siempre',  19),
         ('53051501', '530515', 'Comisiones bancarias y financieras',       true,  'siempre',  20),
         ('140505',   '1405',   'Insumos de cocina',                        false, 'sector_hr', 21),
-        ('14050501', '140505', 'Insumos de cocina',                        true,  'sector_hr', 21),
-        ('614005',   '6140',   'Restaurantes',                             false, 'sector_hr', 21),
-        ('61400501', '614005', 'Costo de alimentos y bebidas',             true,  'sector_hr', 22),
-        ('61400502', '614005', 'Mermas de cocina',                         true,  'sector_hr', 23)
+        ('14050501', '140505', 'Insumos de cocina',                        true,  'sector_hr', 22),
+        ('614005',   '6140',   'Restaurantes',                             false, 'sector_hr', 23),
+        ('61400501', '614005', 'Costo de alimentos y bebidas',             true,  'sector_hr', 24),
+        ('61400502', '614005', 'Mermas de cocina',                         true,  'sector_hr', 25)
       ) as t(codigo, padre, nombre, mov, cond, orden)
+      -- QA 25-oct (C1): orden ÚNICO y estricto; todo padre nuevo tiene orden menor que sus hijos
+      -- (370505<37050501/02, 613505<6135050x, 429595<4295950x, 429581<42958101, 539595<53959501,
+      -- 240805<2408050x, 530515<53051501, 140505<14050501, 614005<6140050x). El loop salta una cuenta
+      -- cuyo padre aún no existe, así que un empate podría dejar el hijo sin crear.
       order by orden
     loop
       continue when exists (select 1 from public.chart_of_accounts

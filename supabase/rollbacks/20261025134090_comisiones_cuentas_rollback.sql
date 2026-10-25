@@ -5,7 +5,7 @@ begin
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for r in select * from public.p1_puc_bitacora where migracion = '134090' and campo is not null order by id desc loop
     if r.objeto = 'cuenta' then
-      update public.chart_of_accounts set es_movimiento = true, updated_at = now()
+      update public.chart_of_accounts set es_movimiento = r.valor_anterior::boolean, updated_at = now()  -- QA BAJO #4
        where organization_id = r.organization_id and account_code = r.clave;
     elsif r.objeto = 'accounting_rules' and r.campo = 'debit_account_code' then
       update public.accounting_rules set debit_account_code = r.valor_anterior where id::text = r.clave;

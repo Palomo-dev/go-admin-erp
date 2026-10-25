@@ -105,7 +105,7 @@ begin
     end if;
 
     -- Títulos: 5205, 5295, 529505 (si tienen hijo de movimiento y nada las referencia)
-    for r in select a.account_code from public.chart_of_accounts a
+    for r in select a.account_code, a.es_movimiento from public.chart_of_accounts a
               where a.organization_id = v_org and a.account_code in ('5205', '5295', '529505')
                 and a.es_movimiento is not false
                 and exists (select 1 from public.chart_of_accounts h where h.organization_id = v_org
@@ -124,7 +124,7 @@ begin
       update public.chart_of_accounts set es_movimiento = false, updated_at = now()
        where organization_id = v_org and account_code = r.account_code;
       insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
-      values ('134090', v_org, 'cuenta', r.account_code, 'es_movimiento', 'true', 'false');
+      values ('134090', v_org, 'cuenta', r.account_code, 'es_movimiento', r.es_movimiento::text, 'false');  -- QA BAJO #4
     end loop;
   end loop;
 exception when others then

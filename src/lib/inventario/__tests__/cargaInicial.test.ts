@@ -16,6 +16,7 @@ import {
   costoParecePrecio,
   creditoDelAjuste,
   cuentaInventarioPorTipo,
+  cuentaInventarioCargaInicial,
   debeAvisarSaldoInicial,
   debeConfirmarAjuste,
   sugerirCompraPorNegativo,
@@ -50,6 +51,21 @@ describe('asiento de la carga inicial', () => {
     expect(asiento.lineas[0]).toMatchObject({ cuenta: '14350501', debito: 3001 });
     expect(asiento.lineas[1]).toMatchObject({ cuenta: '310505', credito: 3001 });
     expect(asiento.lineas.map((l) => l.cuenta).some((c) => c.startsWith('1405'))).toBe(false);
+  });
+
+  test('insumo de restaurante: 14050501 solo con la separación activa (orgs nuevas o aprobadas)', () => {
+    const insumo = { esIngrediente: true };
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: insumo, separarInsumos: true })).toBe('14050501');
+    expect(cuentaInventarioCargaInicial({ typeId: 2, producto: insumo, separarInsumos: true })).toBe('14050501');
+    // Org existente (separación desactivada hasta el OK de Juan): sigue bajo 1435.
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: insumo })).toBe('1435');
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: insumo, configurada: '14350101' })).toBe('14350101');
+    // Comercio y reventa: bajo 1435.
+    expect(cuentaInventarioCargaInicial({ typeId: 3, producto: insumo, separarInsumos: true })).toBe('1435');
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: {}, separarInsumos: true, configurada: '14350101' })).toBe('14350101');
+    const asiento = asientoPorTotal({ total: 1000, cuentaInventario: '14050501' });
+    expect(asiento.lineas[0].cuenta).toBe('14050501');
+    expect(asientoPorTotal({ total: 1000, cuentaInventario: '140505' }).lineas[0].cuenta).toBe('1435');
   });
 
   test('un total ya sumado no toca 4250', () => {

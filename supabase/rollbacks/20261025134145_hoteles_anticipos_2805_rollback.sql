@@ -186,6 +186,9 @@ begin
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
 end $$;
 
+drop function if exists public.fn_reserva_cuenta_cartera(integer);
+drop function if exists public.fn_reserva_cuenta_pago(integer, integer, text, integer, text);
+drop function if exists public.fn_reserva_cuenta_anticipo(integer, uuid);
 drop function if exists public.fn_reserva_cuenta_regla(integer, integer, text);
 drop function if exists public.fn_reserva_anticipo(integer, uuid);
 

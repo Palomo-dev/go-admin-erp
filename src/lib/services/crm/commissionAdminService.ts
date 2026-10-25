@@ -139,14 +139,18 @@ function rechazoDeLaBase(error: { message?: string }): unknown {
   return r ? new CommissionTransitionError(r[0], r[1], r[2]) : error;
 }
 
-/** Vínculo del beneficiario para el débito del pago (espejo de fn_comision_vinculo). Si falla la lectura: empleado, como el SQL. */
+/**
+ * Vínculo del beneficiario para el débito del pago (espejo de fn_comision_vinculo). Sin tarifa registrada:
+ * empleado, como el SQL. Si la lectura FALLA (p. ej. falta la columna `vinculo` de 20261025134095) no se asume
+ * empleado: se rechaza el pago para no debitar el pasivo equivocado.
+ */
 async function resolverVinculo(
   supabase: SupabaseClient,
   orgId: number,
   row: { payee_type?: string | null; payee_id?: string | null },
 ): Promise<VinculoComision> {
   if (row.payee_type === 'supplier' || row.payee_type === 'third_party' || !row.payee_id) return vinculoComision(row.payee_type);
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('vendor_commission_rates')
     .select('vinculo')
     .eq('organization_id', orgId)
@@ -154,6 +158,13 @@ async function resolverVinculo(
     .order('valid_from', { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
+  if (error) {
+    throw new CommissionTransitionError(
+      `No se pudo leer el vínculo del vendedor (${error.message}). Verifica que la migración 20261025134095 esté aplicada.`,
+      500,
+      'VINCULO_NO_DISPONIBLE',
+    );
+  }
   return vinculoComision(row.payee_type, (data as { vinculo?: string | null } | null)?.vinculo ?? null);
 }
 

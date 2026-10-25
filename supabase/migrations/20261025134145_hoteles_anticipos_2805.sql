@@ -7,17 +7,21 @@
 --   * Penalidad retenida al cancelar:                D 28050501    C 41409502   (regla reservation/adjusted;
 --       monto = reservations.metadata->>'penalidad_retenida', tope el anticipo; el resto se reembolsa)
 --   * No-show (todo el anticipo):                    D 28050501    C 41409502   (regla reservation/no_show)
---   * Checkout (el anticipo abona la cartera):       D 28050501    C 13050501   (regla reservation/completed)
+--   * Checkout (el anticipo abona la cartera):       D 28050501    C cartera    (regla reservation/completed)
+--       QA ROJO 56f889e2 ALTO: «cartera» = la MISMA cuenta que DEBITAN los cargos de folio (folio_item/created; hoy
+--       1305, de movimiento en las 43 orgs). No se crea 13050501 ni 1305 pasa a título (pendiente aparte).
+--   QA ROJO 56f889e2 MEDIO 1: anticipo y reembolso usan la cuenta del MEDIO DE PAGO (fn_money_account_code_pago:
+--       cuenta bancaria del pago o la del método: caja 1105 / bancos 1110), no siempre la caja de la sede. El
+--       reembolso acredita la cuenta de dinero por la que entró el anticipo.
+--   QA ROJO 56f889e2 BAJO 2: el anticipo solo se asienta con la reserva CONFIRMADA (no tentative).
 --   event_type: accounting_rules_event_type_check (igual en prod) no admite deposit/penalty/checkout; se usan
 --   received (anticipo), adjusted (penalidad) y completed (checkout), que sí admite. No se toca el CHECK.
 --   El anticipo de una reserva = saldo CONTABILIZADO de 28050501 en sus asientos (source 'reservation' con
 --   source_id = reserva, y 'folio_payment' de los pagos de sus folios). Sin anticipo no hay asiento.
 -- a. Funciones: fn_reserva_anticipo (nueva), fn_auto_journal_reservation y fn_auto_journal_folio_payment
 --    (las orgs SIN 28050501 de movimiento siguen exactamente con el código anterior).
--- b. Cuentas: 130505 (título) y 13050501 «Clientes nacionales - hotelería» (movimiento) bajo 1305, con
---    trg_puc_validar_cuenta apagado: 1305 sigue de MOVIMIENTO (mismo caso que 2805/MEDIO-3; folio_payment
---    después del check-in sigue C1305).
--- c. Reglas: confirmed → inactiva; cancelled → D28050501/C1105; no_show → D28050501/C41409502; se siembran las
+-- b. (QA ROJO 56f889e2) Ya no se crean 130505/13050501: el checkout acredita la cartera de los cargos de folio.
+-- c. Reglas: confirmed → inactiva; cancelled → D28050501/C1105; no_show → D28050501/C41409502; completed → C 1305; se siembran las
 --    que falten (received, cancelled, adjusted, no_show, completed), también en las 4 orgs con C4250 (130/133/136/326)
 --    que no tenían cancelación ni no-show. Bitácora p1_puc_bitacora migracion '134145'.
 -- d. Saldo de 2405 de asientos source='reservation' CONTABILIZADOS (N7: org 2 tiene el borrador manual 49698
@@ -41,6 +45,46 @@ returns numeric language sql stable security definer set search_path to 'public'
 $$;
 revoke all on function public.fn_reserva_anticipo(integer, uuid) from public, anon;
 grant execute on function public.fn_reserva_anticipo(integer, uuid) to authenticated;
+
+-- Cartera de hoteles: la cuenta que DEBITAN los cargos de folio (folio_item/created); por defecto 1305.
+create or replace function public.fn_reserva_cuenta_cartera(p_org integer)
+returns text language sql stable security definer set search_path to 'public', 'pg_temp' as $$
+  select coalesce((select r.debit_account_code from public.accounting_rules r
+                    where r.organization_id = p_org and r.source_type = 'folio_item' and r.event_type = 'created'
+                      and r.is_active and nullif(btrim(r.debit_account_code), '') is not null
+                    order by r.priority, r.created_at limit 1), '1305')
+$$;
+revoke all on function public.fn_reserva_cuenta_cartera(integer) from public, anon, authenticated;
+
+-- Cuenta de dinero de un pago (medio de pago): cuenta bancaria del pago o la del método; si no se puede
+-- resolver, la cuenta genérica de la regla (que fn_reserva_cuenta_regla lleva a la caja de la sede).
+create or replace function public.fn_reserva_cuenta_pago(p_org integer, p_branch integer, p_method text,
+  p_bank_account_id integer, p_defecto text)
+returns text language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+declare v text;
+begin
+  begin
+    v := public.fn_money_account_code_pago(p_org, nullif(p_branch, 0), p_method, p_bank_account_id);
+  exception when others then
+    v := null;
+  end;
+  return coalesce(nullif(btrim(v), ''), public.fn_reserva_cuenta_regla(p_org, p_branch, p_defecto));
+end $$;
+revoke all on function public.fn_reserva_cuenta_pago(integer, integer, text, integer, text) from public, anon, authenticated;
+
+-- Cuenta de dinero por la que ENTRÓ el anticipo de una reserva (débito de su último asiento de anticipo).
+create or replace function public.fn_reserva_cuenta_anticipo(p_org integer, p_reserva uuid)
+returns text language sql stable security definer set search_path to 'public', 'pg_temp' as $$
+  select l.account_code
+    from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+   where e.organization_id = p_org and e.posted is true and e.source = 'folio_payment'
+     and l.debit > 0 and l.account_code <> '28050501'
+     and e.source_id in (select p.id::text from public.payments p join public.folios f on f.id::text = p.source_id::text
+                          where p.source = 'folio' and f.reservation_id = p_reserva)
+     and exists (select 1 from public.journal_lines c where c.journal_entry_id = e.id and c.account_code = '28050501' and c.credit > 0)
+   order by e.id desc limit 1
+$$;
+revoke all on function public.fn_reserva_cuenta_anticipo(integer, uuid) from public, anon, authenticated;
 
 -- Cuenta de una regla de reserva: caja/banco genérica → caja de la sede.
 create or replace function public.fn_reserva_cuenta_regla(p_org integer, p_branch integer, p_cuenta text)
@@ -131,7 +175,13 @@ BEGIN
             p_memo := v_description,
             p_source := 'reservation', p_source_id := NEW.id::text,
             p_debit_account := fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.debit_account_code),
-            p_credit_account := fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.credit_account_code),
+            p_credit_account := CASE v_event_type
+                -- ALTO: el checkout abona la MISMA cartera que debitan los cargos de folio.
+                WHEN 'completed' THEN fn_reserva_cuenta_cartera(NEW.organization_id)
+                -- MEDIO 1: el reembolso sale por la cuenta de dinero por la que entró el anticipo.
+                WHEN 'cancelled' THEN COALESCE(fn_reserva_cuenta_anticipo(NEW.organization_id, NEW.id),
+                                               fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.credit_account_code))
+                ELSE fn_reserva_cuenta_regla(NEW.organization_id, v_branch_id, v_rule.credit_account_code) END,
             p_amount := v_amount);
         RETURN NEW;
     END IF;
@@ -218,8 +268,9 @@ BEGIN
     END IF;
     v_branch := COALESCE(v_reservation.branch_id, 0);
 
-    -- 134145: pago antes del check-in en hoteles con 28050501 = anticipo (D caja/banco C 28050501).
-    IF v_reservation.status IN ('tentative', 'confirmed')
+    -- 134145: pago antes del check-in de una reserva CONFIRMADA en hoteles con 28050501 = anticipo
+-- (D cuenta del medio de pago C 28050501).
+    IF v_reservation.status = 'confirmed'
        AND EXISTS (SELECT 1 FROM chart_of_accounts a WHERE a.organization_id = v_reservation.organization_id
                      AND a.account_code = '28050501' AND a.es_movimiento IS NOT FALSE) THEN
         SELECT * INTO v_rule FROM accounting_rules
@@ -231,7 +282,8 @@ BEGIN
                 p_entry_date := NEW.created_at,
                 p_memo := 'Anticipo Reserva ' || v_folio.reservation_id::text || ' (folio ' || v_folio.id::text || ')',
                 p_source := 'folio_payment', p_source_id := NEW.id::text,
-                p_debit_account := fn_reserva_cuenta_regla(v_reservation.organization_id, v_branch, v_rule.debit_account_code),
+                p_debit_account := fn_reserva_cuenta_pago(v_reservation.organization_id, v_branch, NEW.method,
+                                                          NEW.bank_account_id, v_rule.debit_account_code),
                 p_credit_account := fn_reserva_cuenta_regla(v_reservation.organization_id, v_branch, v_rule.credit_account_code),
                 p_amount := v_amount,
                 p_created_by := NEW.created_by);
@@ -297,26 +349,6 @@ begin
                   and exists (select 1 from public.chart_of_accounts a where a.organization_id = o.id
                                 and a.account_code = '28050501' and a.es_movimiento is not false)
                 order by 1 loop
-    -- b. cuentas 130505 / 13050501
-    for c in select * from (values ('130505', '1305', 'Clientes nacionales', false, 1),
-                                   ('13050501', '130505', 'Clientes nacionales - hotelería', true, 2)) t(codigo, padre, nombre, mov, orden)
-              order by orden loop
-      continue when exists (select 1 from public.chart_of_accounts where organization_id = v_org and account_code = c.codigo);
-      insert into public.chart_of_accounts (
-        organization_id, account_code, name, type, parent_code, is_active,
-        naturaleza, es_movimiento, requiere_tercero, requiere_centro_costo, centro_costo_modo,
-        presentacion_niif, created_at, updated_at)
-      select v_org, c.codigo, c.nombre, p.type, c.padre, true,
-             p.naturaleza, c.mov, coalesce(p.requiere_tercero, false), p.requiere_centro_costo,
-             p.centro_costo_modo, p.presentacion_niif, now(), now()
-        from public.chart_of_accounts p
-       where p.organization_id = v_org and p.account_code = c.padre
-      on conflict (organization_id, account_code) do nothing;
-      if found then
-        perform pg_temp.h_log(v_org, 'cuenta_nueva', c.codigo, null, null, c.nombre);
-      end if;
-    end loop;
-
     -- c. reglas existentes
     for r in select id, event_type et, debit_account_code d, credit_account_code cr, is_active from public.accounting_rules
               where organization_id = v_org and source_type = 'reservation' loop
@@ -329,6 +361,8 @@ begin
       elsif r.et = 'no_show' then
         perform pg_temp.h_set(v_org, r.id, 'debit_account_code', r.d, '28050501');
         perform pg_temp.h_set(v_org, r.id, 'credit_account_code', r.cr, '41409502');
+      elsif r.et = 'completed' and r.cr = '13050501' then
+        perform pg_temp.h_set(v_org, r.id, 'credit_account_code', r.cr, public.fn_reserva_cuenta_cartera(v_org));
       end if;
     end loop;
 
@@ -338,7 +372,7 @@ begin
         ('Reembolso de anticipo', 'Reserva cancelada con reembolso', 'cancelled', '28050501', '1105'),
         ('Penalidad retenida', 'Cancelación: penalidad retenida del anticipo', 'adjusted', '28050501', '41409502'),
         ('Reserva no presentada', 'El anticipo pasa al ingreso por no-show', 'no_show', '28050501', '41409502'),
-        ('Anticipo aplicado al checkout', 'El anticipo abona la cartera del huésped', 'completed', '28050501', '13050501')
+        ('Anticipo aplicado al checkout', 'El anticipo abona la cartera del huésped', 'completed', '28050501', public.fn_reserva_cuenta_cartera(v_org))
       ) t(nombre, descr, et, d, cr) loop
       continue when exists (select 1 from public.accounting_rules where organization_id = v_org
                               and source_type = 'reservation' and event_type = c.et and is_active);

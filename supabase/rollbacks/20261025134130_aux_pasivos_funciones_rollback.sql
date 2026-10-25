@@ -3214,4 +3214,16 @@ alter table public.vendor_commission_rates drop constraint if exists vendor_comm
 alter table public.vendor_commission_rates drop column if exists tipo_persona;
 alter table public.vendor_commission_rates drop column if exists retencion_tarifa;
 alter table public.vendor_commission_rates drop column if exists aplica_art383;
+-- QA ROJO MEDIO 3: auxiliares de ventas del sector sin uso.
+delete from public.chart_of_accounts a
+ where a.description = 'Auxiliar de ventas del sector (QA 25-oct-2026)' and length(a.account_code) = 8
+   and not exists (select 1 from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+                    where e.organization_id = a.organization_id and l.account_code = a.account_code)
+   and not exists (select 1 from public.accounting_rules r where r.organization_id = a.organization_id
+                    and a.account_code in (r.debit_account_code, r.credit_account_code));
+delete from public.chart_of_accounts a
+ where a.description = 'Auxiliar de ventas del sector (QA 25-oct-2026)' and length(a.account_code) = 6
+   and not exists (select 1 from public.chart_of_accounts h where h.organization_id = a.organization_id
+                    and h.parent_code = a.account_code);
+drop function if exists public.fn_asegurar_cuenta_venta_sector(integer, integer);
 delete from supabase_migrations.schema_migrations where version = '20261025134130';

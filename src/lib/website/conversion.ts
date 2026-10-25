@@ -4,12 +4,11 @@ import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore'
  * Urgencia y contador del documento V2.
  * Sin `conversion`, estas funciones no sustituyen las columnas legacy.
  *
- * El sitio publicado rechaza la clave `conversion` hasta que su contrato la
- * acepte. Con el interruptor apagado, el contador sigue en las columnas
- * countdown_* / checkout_* y el documento no lleva esa clave.
+ * El lector publicado admite el contrato V2; la ausencia de la clave conserva
+ * las columnas countdown_* / checkout_* del sitio existente.
  */
 export function urgenciaDocumentoDisponible(): boolean {
-  return process.env.NEXT_PUBLIC_WEBSITE_URGENCIA === '1'
+  return true
 }
 
 export type UbicacionContador = 'topbar' | 'carrito' | 'checkout' | 'producto' | 'hero' | 'seccion'
@@ -46,7 +45,7 @@ export interface ConversionSitio {
   urgencia: {
     stockBajo: { activo: boolean; umbral: number; plantilla: string; ubicaciones: UbicacionStock[] }
     reservaCarrito: { activo: boolean }
-    personasViendo: { activo: false }
+    personasViendo: { activo: boolean; plantilla?: string; ubicaciones?: UbicacionStock[] }
   }
 }
 
@@ -193,28 +192,29 @@ export function estadoContador(
 }
 
 function finDiario(ahora: Date, zona: string, hora: number): Date | null {
+  if (!Number.isInteger(hora) || hora < 0 || hora > 23) return null
   try {
-    const partes = new Intl.DateTimeFormat('en-US', {
-      timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
-    }).formatToParts(ahora)
-    const leer = (t: string) => partes.find((p) => p.type === t)?.value || '0'
-    const y = leer('year')
-    const m = leer('month')
-    const d = leer('day')
-    const h = Number(leer('hour'))
-    const dia = h >= hora
-      ? new Date(ahora.getTime() + 24 * 60 * 60 * 1000)
-      : ahora
-    const p2 = new Intl.DateTimeFormat('en-US', {
-      timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23',
-    }).formatToParts(dia)
-    const leer2 = (t: string) => p2.find((p) => p.type === t)?.value || '0'
-    const marca = `${h >= hora ? leer2('year') : y}-${h >= hora ? leer2('month') : m}-${h >= hora ? leer2('day') : d}T${String(hora).padStart(2, '0')}:00:00`
-    const candidato = new Date(new Date(marca).toLocaleString('en-US', { timeZone: 'UTC' }))
-    return Number.isNaN(candidato.getTime()) ? new Date(ahora.getTime() + 60 * 60 * 1000) : candidato
-  } catch {
-    return new Date(ahora.getTime() + 60 * 60 * 1000)
-  }
+    const formato = new Intl.DateTimeFormat('en-US', { timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+    const partesDe = (fecha: Date) => {
+      const partes = formato.formatToParts(fecha)
+      const valor = (tipo: string) => Number(partes.find((p) => p.type === tipo)?.value ?? 0)
+      return { ano: valor('year'), mes: valor('month'), dia: valor('day'), hora: valor('hour'), minuto: valor('minute'), segundo: valor('second') }
+    }
+    const p = partesDe(ahora)
+    const dia = new Date(Date.UTC(p.ano, p.mes - 1, p.dia + (p.hora >= hora ? 1 : 0)))
+    const pared = Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), hora)
+    const milisegundos = (d: ReturnType<typeof partesDe>) => Date.UTC(d.ano, d.mes - 1, d.dia, d.hora, d.minuto, d.segundo)
+    let candidato = pared - (milisegundos(p) - Math.floor(ahora.getTime() / 1000) * 1000)
+    const vistos: number[] = []
+    for (let i = 0; i < 4; i++) {
+      vistos.push(candidato)
+      const diferencia = pared - milisegundos(partesDe(new Date(candidato)))
+      if (!diferencia) return new Date(candidato)
+      candidato += diferencia
+    }
+    // Una hora local inexistente en el salto de horario avanza a la primera hora válida.
+    return new Date(Math.max(...vistos, candidato))
+  } catch { return null }
 }
 
 export function contadoresEn(conversion: ConversionSitio | null | undefined, ubicacion: UbicacionContador): ContadorConversion[] | null {

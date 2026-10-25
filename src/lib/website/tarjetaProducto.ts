@@ -11,7 +11,7 @@
 /**
  * El sitio público rechaza `tema.tarjetaProducto` hasta que su contrato lo acepte
  * (cae a legacy). Apagado: el editor no escribe esa clave. El estilo de una sección
- * vive en `contenido.product_card_style` y el sitio actual lo ignora.
+ * vive en `contenido.product_card_style` y lo consume el render compartido de tarjetas.
  */
 export function tarjetaProductoTemaDisponible(): boolean {
   return process.env.NEXT_PUBLIC_WEBSITE_TARJETA_PRODUCTO === '1'
@@ -36,7 +36,7 @@ export const POSICIONES_ETIQUETA = ['top_left', 'top_right', 'bottom_left', 'bot
 export const ALINEACIONES = ['left', 'center', 'right'] as const
 export const POSICIONES_PRECIO = ['below_title', 'above_title', 'beside_button', 'over_image'] as const
 export const TAMANOS_TEXTO = ['sm', 'md', 'lg'] as const
-export const POSICIONES_RESENA = ['above_title', 'below_title', 'over_image'] as const
+export const POSICIONES_RESENA = ['above_title', 'below_title', 'below_price', 'over_image'] as const
 export const ESTILOS_RESENA = ['stars', 'number_star'] as const
 export const PESOS_TITULO = ['normal', 'medium', 'semibold', 'bold'] as const
 export const SOMBRAS_TARJETA = ['none', 'sm', 'md', 'lg', 'hover'] as const
@@ -125,7 +125,7 @@ export interface EstiloTarjetaProducto {
   title_size?: (typeof TAMANOS_TEXTO)[number]
   show_brand?: boolean
   show_category?: boolean
-  card_layout?: 'vertical' | 'horizontal'
+  card_layout?: 'vertical' | 'horizontal' | 'overlay'
   card_radius?: number
   card_border_width?: number
   card_border_color?: string
@@ -287,7 +287,7 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   if (marca != null) e.show_brand = marca
   const cat = bandera(o.show_category)
   if (cat != null) e.show_category = cat
-  if (o.card_layout === 'horizontal' || o.card_layout === 'vertical') e.card_layout = o.card_layout
+  if (o.card_layout === 'horizontal' || o.card_layout === 'vertical' || o.card_layout === 'overlay') e.card_layout = o.card_layout
   const radio = entero(o.card_radius, 0, 32)
   if (radio != null) e.card_radius = radio
   const borde = entero(o.card_border_width, 0, 8)

@@ -3,19 +3,18 @@
 /**
  * Un campo de una sección en el inspector, con los controles del kit (Figma A/05b-05d): texto,
  * área de texto, enlace, número, interruptor, lista, color y categorías del Inventario como
- * chips. Los tipos compuestos que aún no tienen versión del kit (imagen, texto enriquecido,
- * repetidor, icono, espaciado, alineación, valores por dispositivo y entidades distintas de
+ * chips. Los tipos compuestos que aún no tienen versión del kit (texto enriquecido,
+ * espaciado, valores por dispositivo y entidades distintas de
  * categorías) se delegan a `FieldRenderer`, el renderizador único de campos del editor, para no
  * tener una segunda implementación.
  */
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
-import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, SettingRow, Skeleton } from '@/components/kit';
+import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, Select, SettingRow, Skeleton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import FieldRenderer from '@/components/organization/branding/editor/fields/FieldRenderer';
 import type { ThemePalette } from '@/components/organization/branding/editor/fields/types';
@@ -25,6 +24,9 @@ import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
 import { EditorPestanas } from './EditorCascaron';
 import { EditorBoletin } from './EditorBoletin';
+import { CampoImagenSeccion } from './CampoImagenSeccion';
+import { CampoRepetidor } from './CampoRepetidor';
+import { CampoAlineacion } from './CampoAlineacion';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
@@ -125,6 +127,17 @@ export function CampoSeccion({
   }
 
   switch (campo.type) {
+    case 'image':
+      return <div className="flex flex-col gap-1.5"><p className="text-xs font-medium text-fg">{campo.label}</p><CampoImagenSeccion etiqueta={campo.label} valor={typeof valor === 'string' ? valor : undefined} onCambiar={onCambiar} organizationId={organizationId} deshabilitado={deshabilitado} />{ayuda && <p className="text-xs text-fg-secondary">{ayuda}</p>}</div>;
+    case 'icon': {
+      const actual = typeof valor === 'string' ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '';
+      const iconos = [...new Set([actual, 'Truck', 'Shield', 'ShieldCheck', 'Package', 'Star', 'Heart', 'Check', 'CheckCircle', 'Clock', 'Zap', 'Flame', 'Leaf', 'Award', 'Gift', 'ShoppingCart', 'ShoppingBag', 'Utensils', 'Coffee', 'Pizza', 'Phone', 'MessageCircle', 'MapPin', 'Search', 'User', 'Globe', 'CreditCard', 'Sparkles', 'Layers'].filter(Boolean))];
+      return <FormField etiqueta={campo.label} ayuda={ayuda}>{(c) => <Select id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} valor={actual || '__sin_icono__'} onValorChange={(v) => onCambiar(v === '__sin_icono__' ? '' : v)} opciones={[{ valor: '__sin_icono__', etiqueta: 'Sin ícono' }, ...iconos.map((icono) => ({ valor: icono, etiqueta: icono }))]} placeholder={t('campo.elegir')} disabled={deshabilitado} />}</FormField>;
+    }
+    case 'alignment':
+      return <CampoAlineacion campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
+    case 'repeater':
+      return <CampoRepetidor campo={campo} valor={valor} contenido={contenido} onCambiar={onCambiar} onCambiarContenido={onCambiarContenido} organizationId={organizationId} paleta={paleta} fondo={fondo} categorias={categorias} deshabilitado={deshabilitado} />;
     case 'text':
     case 'url':
       return (
@@ -209,18 +222,16 @@ export function CampoSeccion({
       return (
         <FormField etiqueta={campo.label} ayuda={ayuda}>
           {(c) => (
-            <Select value={actual || undefined} onValueChange={(v) => onCambiar(v)} disabled={deshabilitado}>
-              <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className="h-10 rounded-lg">
-                <SelectValue placeholder={t('campo.elegir')} />
-              </SelectTrigger>
-              <SelectContent>
-                {(campo.options ?? []).map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Select
+              valor={actual}
+              onValorChange={onCambiar}
+              opciones={(campo.options ?? []).map((o) => ({ valor: o.value, etiqueta: o.label }))}
+              placeholder={t('campo.elegir')}
+              disabled={deshabilitado}
+              id={c.id}
+              aria-labelledby={c.idEtiqueta}
+              aria-describedby={c['aria-describedby']}
+            />
           )}
         </FormField>
       );
@@ -229,7 +240,7 @@ export function CampoSeccion({
       return (
         <ColorField
           etiqueta={campo.label}
-          valor={typeof valor === 'string' && valor ? valor : '#FFFFFF'}
+          valor={typeof valor === 'string' && valor ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '#FFFFFF'}
           fondo={fondo ?? undefined}
           onCambiar={(v) => onCambiar(v)}
           deshabilitado={deshabilitado}
@@ -292,15 +303,8 @@ export function CampoSeccion({
       break;
   }
 
-  const muestraEtiqueta = campo.type === 'image' || campo.type === 'icon';
   return (
     <div className="flex flex-col gap-1.5">
-      {muestraEtiqueta && (
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[13px] font-medium leading-[18px] text-fg">{campo.label}</p>
-          {ayuda ? <p className="text-xs leading-4 text-fg-secondary">{ayuda}</p> : null}
-        </div>
-      )}
       <FieldRenderer
         field={campo}
         value={campo.type === 'spacing' ? contenido : valor}

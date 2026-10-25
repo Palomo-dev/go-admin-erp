@@ -113,6 +113,16 @@ export function paginasDesdeDocumento(documento: DocumentoSitio, ctx: ContextoVi
 
 /** Vuelve a convertir una sección del editor; conserva `version`, `fuente` y visibilidad fina. */
 function seccionDesdeVista(vista: WebsitePageSection, original: SeccionSitio | undefined): SeccionSitio {
+  if (original) {
+    const visible = original.visibilidad?.escritorio !== false || original.visibilidad?.movil !== false || original.visibilidad?.tableta === true;
+    // La vista materializa valores opcionales para pintar controles. Navegar por pestañas
+    // no debe convertir esos valores por defecto en una edición del documento.
+    if (vista.section_type === original.tipo && (vista.section_variant ?? 'default') === (original.variante ?? 'default')
+      && vista.is_visible === visible && igualesEstructural(vista.content ?? {}, original.contenido)
+      && igualesEstructural(vista.settings ?? {}, settingsDeSeccion(original))) {
+      return structuredCloneSeguro(original);
+    }
+  }
   const diseno = structuredCloneSeguro(vista.settings ?? original?.diseno ?? {}) as Record<string, unknown>;
   delete diseno.visibilidad;
   const seccion: SeccionSitio = {
@@ -146,6 +156,7 @@ export function aplicarPaginaAlDocumento(documento: DocumentoSitio, vista: Websi
 
   const seo: NonNullable<PaginaSitio['seo']> = { ...(pagina.seo ?? {}) };
   const fijar = (clave: 'titulo' | 'descripcion' | 'imagenOgUrl', valor: string | null | undefined) => {
+    if ((valor ?? null) === textoSeo(pagina.seo?.[clave])) return;
     if (esVacio(valor)) delete seo[clave];
     else seo[clave] = { mode: 'value', value: String(valor) };
   };

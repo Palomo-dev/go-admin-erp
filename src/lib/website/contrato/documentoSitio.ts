@@ -544,8 +544,8 @@ export const esquemaConversion = z
         ubicaciones: z.array(z.enum(['checkout', 'producto', 'carrito'])).max(3),
       }).strict(),
       reservaCarrito: z.object({ activo: z.boolean() }).strict(),
-      /** Sin métrica real no se puede encender. */
-      personasViendo: z.object({ activo: z.literal(false) }).strict(),
+      /** Solo muestra la presencia efímera real de la página actual. */
+      personasViendo: z.object({ activo: z.boolean(), plantilla: z.string().max(200).optional(), ubicaciones: z.array(z.enum(['producto', 'carrito', 'checkout'])).max(3).optional() }).strict(),
     }).strict(),
   })
   .strict();

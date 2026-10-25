@@ -97,6 +97,9 @@ export interface ResultadoPublicacion {
   /** Solo si se pidió `activar` al publicar (ver activarAlPublicar.ts). */
   activacion?: 'activada' | 'fallo' | 'no_aplica';
   errorActivacion?: string;
+  /** Contexto validado por el servidor para confirmar la revisión en el lector público. */
+  branchId?: number | null;
+  v2Adoptado?: boolean;
 }
 
 export interface ResultadoCreacion {

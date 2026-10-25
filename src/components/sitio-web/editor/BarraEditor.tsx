@@ -218,7 +218,7 @@ export function BarraEditor(p: BarraEditorProps) {
           ) : (
             <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />
           )}
-          <span className="max-w-[9rem] truncate xl:max-w-none">{p.textoPublicar}</span>
+          <span aria-live="polite" className="max-w-[9rem] truncate xl:max-w-none">{p.publicando ? t('publicar.enCurso') : p.textoPublicar}</span>
         </button>
         <RowActionsMenu acciones={p.acciones} orientacion="horizontal" tamano="md" titulo={t('barra.masAcciones')} />
       </div>

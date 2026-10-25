@@ -5,8 +5,9 @@
  * Escribe `banner_layout` y `banner_style`. Sin esas claves la tienda no cambia.
  */
 import { useState, type ReactNode } from 'react';
+import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import { GripVertical } from 'lucide-react';
-import { TabBar, clasesBoton } from '@/components/kit';
+import { TabBar, Select, CampoNumero, clasesBoton } from '@/components/kit';
 import {
   ALINEACIONES,
   DISTRIBUCIONES,
@@ -137,35 +138,16 @@ function Lista<T extends string>({
 }) {
   return (
     <Campo etiqueta={etiqueta}>
-      <select className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
-        <option value="">Sin cambio</option>
-        {opciones.map((o) => (
-          <option key={o} value={o}>
-            {nombres?.[o] ?? o}
-          </option>
-        ))}
-      </select>
+      <Select tamano="sm" valor={valor ?? ''} placeholder="Sin cambio" onValorChange={(v) => onCambiar(v as T)} opciones={opciones.map(o => ({ valor: o, etiqueta: nombres?.[o] ?? o }))} />
     </Campo>
   );
 }
 
 function Color({ etiqueta, valor, onCambiar }: { etiqueta: string; valor?: string; onCambiar: (v: string | null) => void }) {
-  return (
-    <Campo etiqueta={etiqueta}>
-      <span className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={etiqueta}
-          className="h-8 w-10 cursor-pointer rounded border border-line bg-surface"
-          value={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : '#111827'}
-          onChange={(e) => onCambiar(e.target.value)}
-        />
-        <button type="button" className="text-[12px] underline" onClick={() => onCambiar(null)}>
-          Quitar
-        </button>
-      </span>
-    </Campo>
-  );
+  return <div className="flex flex-col gap-1">
+    <ColorField etiqueta={etiqueta} valor={valor ?? '#111827'} onCambiar={onCambiar} />
+    {valor && <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => onCambiar(null)}>Quitar color</button>}
+  </div>;
 }
 
 export function InspectorBanners({
@@ -327,6 +309,7 @@ export function InspectorBanners({
                     <span>Texto sobre la imagen</span>
                     <input type="checkbox" checked={b.show_overlay_text !== false && estilo.show_overlay_text !== false} onChange={(e) => ponerBanner(i, { show_overlay_text: e.target.checked })} />
                   </label>
+                  <EstiloIndividual valor={b.banner_style} onCambiar={(banner_style) => ponerBanner(i, { banner_style })} />
                 </div>
               )}
             </li>
@@ -441,4 +424,29 @@ export function InspectorBanners({
       )}
     </section>
   );
+}
+
+/** Ajustes de un banner: solo las claves elegidas reemplazan el estilo de su sección. */
+function EstiloIndividual({ valor, onCambiar }: { valor: unknown; onCambiar: (estilo: EstiloBanners | undefined) => void }) {
+  const e = normalizarEstiloBanners(valor) ?? {};
+  const cambiar = (p: Partial<EstiloBanners>) => onCambiar(normalizarEstiloBanners({ ...e, ...p }) ?? undefined);
+  return <div className="flex flex-col gap-3 border-t border-line pt-3">
+    <h4 className="text-sm font-semibold text-fg">Estilo de este banner</h4>
+    <Lista etiqueta="Forma del banner" valor={e.banner_shape} opciones={FORMAS_BANNER} nombres={{ rect: 'Rectangular', rounded: 'Redondeado', semi: 'Semirredondeado', circle: 'Círculo', arch: 'Arco' }} onCambiar={v => cambiar({ banner_shape: v })} />
+    <Campo etiqueta="Radio del banner"><CampoNumero valor={e.banner_radius ?? null} onValorChange={v => cambiar({ banner_radius: v ?? undefined })} minimo={0} maximo={48} sufijo="px" /></Campo>
+    <Campo etiqueta="Grosor del borde"><CampoNumero valor={e.border_width ?? null} onValorChange={v => cambiar({ border_width: v ?? undefined })} minimo={0} maximo={8} sufijo="px" /></Campo>
+    <Color etiqueta="Color del borde" valor={e.border_color} onCambiar={v => cambiar({ border_color: v ?? undefined })} />
+    <Lista etiqueta="Sombra del banner" valor={e.shadow} opciones={SOMBRAS_BANNER} nombres={{ none: 'Ninguna', sm: 'Suave', md: 'Media', lg: 'Fuerte' }} onCambiar={v => cambiar({ shadow: v })} />
+    <Lista etiqueta="Hover del banner" valor={e.hover} opciones={HOVER_BANNER} nombres={{ none: 'Ninguno', zoom: 'Zoom', lift: 'Elevar', darken: 'Oscurecer', reveal: 'Mostrar texto o botón', second: 'Segunda imagen' }} onCambiar={v => cambiar({ hover: v })} />
+    <Lista etiqueta="Alineación del texto" valor={e.text_align} opciones={ALINEACIONES} nombres={{ left: 'Izquierda', center: 'Centro', right: 'Derecha' }} onCambiar={v => cambiar({ text_align: v })} />
+    <Lista etiqueta="Capa sobre la imagen" valor={e.overlay} opciones={['none', 'solid', 'gradient'] as const} nombres={{ none: 'Ninguna', solid: 'Sólida', gradient: 'Degradado' }} onCambiar={v => cambiar({ overlay: v })} />
+    <Color etiqueta="Color del degradado" valor={e.overlay_color} onCambiar={v => cambiar({ overlay_color: v ?? undefined })} />
+    <Color etiqueta="Segundo color del degradado" valor={e.overlay_color_2} onCambiar={v => cambiar({ overlay_color_2: v ?? undefined })} />
+    <Campo etiqueta="Opacidad de la capa"><CampoNumero valor={e.overlay_opacity ?? null} onValorChange={v => cambiar({ overlay_opacity: v ?? undefined })} minimo={0} maximo={100} sufijo="%" /></Campo>
+    <Lista etiqueta="Estilo del botón" valor={e.button_style} opciones={ESTILOS_BOTON} nombres={{ solid: 'Sólido', outline: 'Contorno', ghost: 'Fantasma', gradient: 'Degradado', icon_only: 'Solo ícono' }} onCambiar={v => cambiar({ button_style: v })} />
+    <Lista etiqueta="Forma del botón" valor={e.button_shape} opciones={FORMAS_BOTON} nombres={{ square: 'Cuadrado', rounded: 'Redondeado', semi: 'Semirredondeado', pill: 'Píldora', circle: 'Círculo' }} onCambiar={v => cambiar({ button_shape: v })} />
+    <Color etiqueta="Fondo del botón" valor={e.button_bg} onCambiar={v => cambiar({ button_bg: v ?? undefined })} />
+    <Color etiqueta="Texto del botón" valor={e.button_color} onCambiar={v => cambiar({ button_color: v ?? undefined })} />
+    <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => onCambiar(undefined)}>Usar estilo de la sección</button>
+  </div>;
 }

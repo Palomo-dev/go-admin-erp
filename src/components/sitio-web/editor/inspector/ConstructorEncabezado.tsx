@@ -5,6 +5,11 @@
  * o se cambia un control. Sin `header_builder`, el sitio sigue con el header de hoy.
  */
 import { useState } from 'react';
+import { Select, FormField } from '@/components/kit';
+import { Input } from '@/components/ui/input';
+import { ColorMarcaField } from '@/components/sitio-web/ui/ColorMarcaField';
+import type { ColoresMarca } from '@/lib/website/v2/colorMarca';
+import { FilaInterruptor } from './PartesZonaGlobal';
 import { BUSCADORES_NUEVOS, FORMAS_CONTENEDOR, OBJETIVOS_ICONO, TIPOS, ZONAS, type ZonaHeader } from '@/lib/website/constructorEncabezado';
 
 const control = 'h-8 w-full rounded-md border border-line bg-surface px-2 text-xs text-fg';
@@ -22,11 +27,12 @@ function objeto(valor: unknown): Record<string, unknown> {
 }
 
 export function ConstructorEncabezado({
-  ajustes, cambiar, acento,
+  ajustes, cambiar, acento, colores = { acento },
 }: {
   ajustes: Record<string, unknown>;
   cambiar: (c: Record<string, unknown>) => void;
   acento: string;
+  colores?: ColoresMarca;
 }) {
   const builder = objeto(ajustes.header_builder);
   const zones = objeto(builder.zones);
@@ -92,27 +98,44 @@ export function ConstructorEncabezado({
       </div>
       <label className="text-xs text-fg-secondary">
         Agregar a la zona central
-        <select className={control} value="" onChange={(e) => { if (e.target.value) poner(vista === 'celular' ? 'mobile_header' : 'header_center', e.target.value); }}>
-          <option value="">Elegir elemento</option>
-          {TIPOS.map((t) => <option key={t} value={t}>{ETIQUETA[t]}</option>)}
-        </select>
+        <Select className={control} tamano="sm" valor={String("") || '__predeterminado__'} onValorChange={(valor) => { if ((valor === '__predeterminado__' ? '' : valor)) poner(vista === 'celular' ? 'mobile_header' : 'header_center', (valor === '__predeterminado__' ? '' : valor)); }} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Elegir elemento") }, ...(TIPOS.map((t) =>({ valor: String(t) || '__predeterminado__', etiqueta: String(ETIQUETA[t]) })))]} />
       </label>
       <label className="text-xs text-fg-secondary">
         Buscador
-        <select className={control} value={String(search.type || '')} onChange={(e) => guardar({ ...builder, search: e.target.value ? { ...search, type: e.target.value } : null })}>
-          <option value="">El de hoy</option>
-          <option value="bar">Barra</option>
-          {BUSCADORES_NUEVOS.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <Select className={control} tamano="sm" valor={String(String(search.type || '')) || '__predeterminado__'} onValorChange={(valor) => guardar({ ...builder, search: (valor === '__predeterminado__' ? '' : valor) ? { ...search, type: (valor === '__predeterminado__' ? '' : valor) } : null })} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("El de hoy") }, { valor: String("bar") || '__predeterminado__', etiqueta: String("Barra") }, ...(BUSCADORES_NUEVOS.map((t) =>({ valor: String(t) || '__predeterminado__', etiqueta: String(t) })))]} />
       </label>
       {search.type ? (
         <>
           <input className={control} placeholder="Placeholder" value={String(search.placeholder || '')} onChange={(e) => guardar({ ...builder, search: { ...search, placeholder: e.target.value } })} />
-          <select className={control} value={String(search.radius || 'rounded')} aria-label="Esquinas" onChange={(e) => guardar({ ...builder, search: { ...search, radius: e.target.value } })}>
-            {['square', 'rounded', 'semi', 'pill'].map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
+          <Select className={control} aria-label="Esquinas" tamano="sm" valor={String(String(search.radius || 'rounded')) || '__predeterminado__'} onValorChange={(valor) => guardar({ ...builder, search: { ...search, radius: (valor === '__predeterminado__' ? '' : valor) } })} opciones={[...(['square', 'rounded', 'semi', 'pill'].map((f) =>({ valor: String(f) || '__predeterminado__', etiqueta: String(f) })))]} />
         </>
       ) : null}
+      {!!search.type && (
+        <section className="flex flex-col gap-3" aria-label="Apariencia del buscador">
+          <FormField etiqueta="Borde del buscador">
+            {(campo) => <Select id={campo.id} aria-describedby={campo['aria-describedby']} aria-invalid={campo['aria-invalid']} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(search.border || 'thin')} opciones={[{ valor: 'none', etiqueta: 'Sin borde' }, { valor: 'thin', etiqueta: 'Fino' }, { valor: 'thick', etiqueta: 'Grueso' }]} onValorChange={(v) => guardar({ ...builder, search: { ...search, border: v } })} />}
+          </FormField>
+          <ColorMarcaField etiqueta="Color del borde" valor={String(search.border_color || 'marca:acento')} colores={colores} onCambiar={(v) => guardar({ ...builder, search: { ...search, border_color: v } })} />
+          <ColorMarcaField etiqueta="Fondo del buscador" valor={String(search.background || 'marca:fondo')} colores={colores} onCambiar={(v) => guardar({ ...builder, search: { ...search, background: v } })} />
+          <FilaInterruptor titulo="Sombra del buscador" valor={search.shadow === true} onCambiar={(v) => guardar({ ...builder, search: { ...search, shadow: v } })} />
+          <FormField etiqueta="Ícono del buscador">
+            {(campo) => <Select id={campo.id} aria-describedby={campo['aria-describedby']} aria-invalid={campo['aria-invalid']} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(search.icon || 'search')} opciones={[{ valor: 'search', etiqueta: 'Lupa' }, { valor: 'scan-search', etiqueta: 'Escanear' }]} onValorChange={(v) => guardar({ ...builder, search: { ...search, icon: v } })} />}
+          </FormField>
+          <FormField etiqueta="Posición del ícono">
+            {(campo) => <Select id={campo.id} aria-describedby={campo['aria-describedby']} aria-invalid={campo['aria-invalid']} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(search.icon_side || 'left')} opciones={[{ valor: 'left', etiqueta: 'Izquierda' }, { valor: 'right', etiqueta: 'Derecha' }]} onValorChange={(v) => guardar({ ...builder, search: { ...search, icon_side: v } })} />}
+          </FormField>
+          <ColorMarcaField etiqueta="Color del ícono de búsqueda" valor={String(search.icon_color || 'marca:texto')} colores={colores} onCambiar={(v) => guardar({ ...builder, search: { ...search, icon_color: v } })} />
+          <FormField etiqueta="Botón de búsqueda">
+            {(campo) => <Select id={campo.id} aria-describedby={campo['aria-describedby']} aria-invalid={campo['aria-invalid']} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(search.button || 'none')} opciones={[{ valor: 'none', etiqueta: 'Sin botón' }, { valor: 'text', etiqueta: 'Texto Buscar' }, { valor: 'icon', etiqueta: 'Ícono' }]} onValorChange={(v) => guardar({ ...builder, search: { ...search, button: v } })} />}
+          </FormField>
+          <FormField etiqueta="Buscador en celular">
+            {(campo) => <Select id={campo.id} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(search.mobile || 'bar')} opciones={[{ valor: 'bar', etiqueta: 'Barra visible' }, { valor: 'icon', etiqueta: 'Ícono' }, { valor: 'fullscreen', etiqueta: 'Panel de pantalla completa' }]} onValorChange={(v) => guardar({ ...builder, search: { ...search, mobile: v } })} />}
+          </FormField>
+          <FormField etiqueta="Ancho máximo del buscador">
+            <Input type="number" min={120} max={960} value={search.width == null ? '' : String(search.width)} placeholder="Automático" onChange={(e) => guardar({ ...builder, search: { ...search, width: e.target.value ? Math.min(960, Math.max(120, Number(e.target.value))) : undefined } })} />
+          </FormField>
+        </section>
+      )}
       <Botones builder={builder} guardar={guardar} />
       <Mega builder={builder} guardar={guardar} />
       <ContenedorDetallado builder={builder} cambiar={cambiar} />
@@ -133,9 +156,7 @@ function Botones({ builder, guardar }: { builder: Record<string, unknown>; guard
       {buttons.map((b, i) => (
         <div key={i} className="grid grid-cols-2 gap-1">
           <input className={control} value={String(b.text || '')} aria-label="Texto del botón" onChange={(e) => guardar({ ...builder, buttons: buttons.map((x, j) => j === i ? { ...x, text: e.target.value } : x) })} />
-          <select className={control} aria-label="Función" value={String(b.action || 'link')} onChange={(e) => guardar({ ...builder, buttons: buttons.map((x, j) => j === i ? { ...x, action: e.target.value } : x) })}>
-            {['link', 'whatsapp', 'call', 'cart', 'search', 'menu', 'modal', 'category', 'download'].map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <Select className={control} aria-label="Función" tamano="sm" valor={String(String(b.action || 'link')) || '__predeterminado__'} onValorChange={(valor) => guardar({ ...builder, buttons: buttons.map((x, j) => j === i ? { ...x, action: (valor === '__predeterminado__' ? '' : valor) } : x) })} opciones={[...(['link', 'whatsapp', 'call', 'cart', 'search', 'menu', 'modal', 'category', 'download'].map((a) =>({ valor: String(a) || '__predeterminado__', etiqueta: String(a) })))]} />
         </div>
       ))}
     </div>
@@ -182,25 +203,13 @@ function InspectorSel({
       <p className="text-xs font-semibold">{ETIQUETA[tipo]}</p>
       <p className="text-[11px] font-semibold">Ícono</p>
       <label className="text-[11px]">Ícono
-        <select className={control} value={String(icono.icon || '')} onChange={(e) => setIcono('icon', e.target.value)}>
-          <option value="">El de hoy</option>
-          {['search', 'shopping-bag', 'shopping-cart', 'user', 'heart', 'globe', 'phone'].map((ic) => <option key={ic} value={ic}>{ic}</option>)}
-        </select>
+        <Select className={control} tamano="sm" valor={String(String(icono.icon || '')) || '__predeterminado__'} onValorChange={(valor) => setIcono('icon', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("El de hoy") }, ...(['search', 'shopping-bag', 'shopping-cart', 'user', 'heart', 'globe', 'phone'].map((ic) =>({ valor: String(ic) || '__predeterminado__', etiqueta: String(ic) })))]} />
       </label>
       <label className="text-[11px]">Trazo
-        <select className={control} value={String(icono.weight || 'contorno')} onChange={(e) => setIcono('weight', e.target.value)}>
-          <option value="contorno">Contorno</option>
-          <option value="relleno">Relleno</option>
-          <option value="duotono">Duotono</option>
-        </select>
+        <Select className={control} tamano="sm" valor={String(String(icono.weight || 'contorno')) || '__predeterminado__'} onValorChange={(valor) => setIcono('weight', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("contorno") || '__predeterminado__', etiqueta: String("Contorno") }, { valor: String("relleno") || '__predeterminado__', etiqueta: String("Relleno") }, { valor: String("duotono") || '__predeterminado__', etiqueta: String("Duotono") }]} />
       </label>
       <label className="text-[11px]">Contenedor
-        <select className={control} value={String(icono.container || 'none')} onChange={(e) => setIcono('container', e.target.value)}>
-          <option value="none">Ninguno</option>
-          <option value="circle">Círculo</option>
-          <option value="rounded">Cuadrado redondeado</option>
-          <option value="square">Cuadrado</option>
-        </select>
+        <Select className={control} tamano="sm" valor={String(String(icono.container || 'none')) || '__predeterminado__'} onValorChange={(valor) => setIcono('container', (valor === '__predeterminado__' ? '' : valor))} opciones={[{ valor: String("none") || '__predeterminado__', etiqueta: String("Ninguno") }, { valor: String("circle") || '__predeterminado__', etiqueta: String("Círculo") }, { valor: String("rounded") || '__predeterminado__', etiqueta: String("Cuadrado redondeado") }, { valor: String("square") || '__predeterminado__', etiqueta: String("Cuadrado") }]} />
       </label>
       <p className="text-[11px] font-semibold">Estilo</p>
       <label className="text-[11px]">Color<input type="color" value={typeof icono.color === 'string' ? icono.color : '#111111'} onChange={(e) => setIcono('color', e.target.value)} /></label>
@@ -236,7 +245,7 @@ function ContenedorDetallado({ builder, cambiar }: { builder: Record<string, unk
       targets[objetivo] = { ...actual, ...patch, shape: forma }
       icon_container = { ...base, scope: 'each', targets }
     }
-    const { icon_container: _fuera, ...resto } = builder
+    const resto = Object.fromEntries(Object.entries(builder).filter(([clave]) => clave !== 'icon_container'))
     cambiar({ header_icons_circle: false, header_builder: { ...resto, icon_container } })
   }
   const num = (clave: string, min: number, max: number, etiqueta: string) => (
@@ -253,16 +262,10 @@ function ContenedorDetallado({ builder, cambiar }: { builder: Record<string, unk
     <div className="flex flex-col gap-2 rounded-lg border border-line p-2">
       <p className="text-xs font-semibold">Contenedor de íconos</p>
       <label className="text-[11px]">Aplicar a
-        <select className={control} aria-label="Aplicar contenedor a" value={objetivo} onChange={(e) => setObjetivo(e.target.value as typeof objetivo)}>
-          <option value="all">{OBJETIVO_ETIQUETA.all}</option>
-          {OBJETIVOS_ICONO.map((c) => <option key={c} value={c}>{OBJETIVO_ETIQUETA[c]}</option>)}
-        </select>
+        <Select className={control} aria-label="Aplicar contenedor a" tamano="sm" valor={String(objetivo) || '__predeterminado__'} onValorChange={(valor) => setObjetivo((valor === '__predeterminado__' ? '' : valor) as typeof objetivo)} opciones={[{ valor: String("all") || '__predeterminado__', etiqueta: String(OBJETIVO_ETIQUETA.all) }, ...(OBJETIVOS_ICONO.map((c) =>({ valor: String(c) || '__predeterminado__', etiqueta: String(OBJETIVO_ETIQUETA[c]) })))]} />
       </label>
       <label className="text-[11px]">Forma
-        <select className={control} aria-label="Forma del contenedor" value={String(actual.shape || caja.shape || '')} onChange={(e) => escribir({ shape: e.target.value })}>
-          <option value="">Elegir</option>
-          {FORMAS_CONTENEDOR.map((f) => <option key={f} value={f}>{FORMA_ETIQUETA[f]}</option>)}
-        </select>
+        <Select className={control} aria-label="Forma del contenedor" tamano="sm" valor={String(String(actual.shape || caja.shape || '')) || '__predeterminado__'} onValorChange={(valor) => escribir({ shape: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Elegir") }, ...(FORMAS_CONTENEDOR.map((f) =>({ valor: String(f) || '__predeterminado__', etiqueta: String(FORMA_ETIQUETA[f]) })))]} />
       </label>
       {(actual.shape || caja.shape) === 'rounded' && num('radius', 4, 16, 'Radio')}
       <div className="grid grid-cols-3 gap-1">
@@ -271,18 +274,11 @@ function ContenedorDetallado({ builder, cambiar }: { builder: Record<string, unk
         {num('padding', 0, 16, 'Padding')}
       </div>
       <label className="text-[11px]">Fondo
-        <select className={control} aria-label="Fondo del contenedor" value={['primary', 'accent', 'secondary', 'transparent'].includes(String(actual.background)) ? String(actual.background) : actual.background ? 'hex' : ''} onChange={(e) => {
-          const v = e.target.value
+        <Select className={control} aria-label="Fondo del contenedor" tamano="sm" valor={String(['primary', 'accent', 'secondary', 'transparent'].includes(String(actual.background)) ? String(actual.background) : actual.background ? 'hex' : '') || '__predeterminado__'} onValorChange={(valor) => {
+          const v = (valor === '__predeterminado__' ? '' : valor)
           if (v === 'hex') escribir({ background: '#111111', gradient_1: undefined, gradient_2: undefined })
           else escribir({ background: v || undefined, gradient_1: undefined, gradient_2: undefined })
-        }}>
-          <option value="">Sin fondo</option>
-          <option value="primary">Primario</option>
-          <option value="accent">Acento</option>
-          <option value="secondary">Secundario</option>
-          <option value="transparent">Transparente</option>
-          <option value="hex">Color propio</option>
-        </select>
+        }} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("Sin fondo") }, { valor: String("primary") || '__predeterminado__', etiqueta: String("Primario") }, { valor: String("accent") || '__predeterminado__', etiqueta: String("Acento") }, { valor: String("secondary") || '__predeterminado__', etiqueta: String("Secundario") }, { valor: String("transparent") || '__predeterminado__', etiqueta: String("Transparente") }, { valor: String("hex") || '__predeterminado__', etiqueta: String("Color propio") }]} />
       </label>
       {typeof actual.background === 'string' && !['primary', 'accent', 'secondary', 'transparent'].includes(actual.background) && (
         <label className="text-[11px]">Color de fondo<input type="color" aria-label="Color de fondo" value={String(actual.background)} onChange={(e) => escribir({ background: e.target.value })} /></label>
@@ -296,20 +292,12 @@ function ContenedorDetallado({ builder, cambiar }: { builder: Record<string, unk
       <div className="grid grid-cols-3 gap-1">
         {num('border_width', 0, 4, 'Borde')}
         <label className="text-[11px]">Estilo
-          <select className={control} aria-label="Estilo del borde" value={String(actual.border_style || 'solid')} onChange={(e) => escribir({ border_style: e.target.value })}>
-            <option value="solid">Sólido</option>
-            <option value="dotted">Punteado</option>
-          </select>
+          <Select className={control} aria-label="Estilo del borde" tamano="sm" valor={String(String(actual.border_style || 'solid')) || '__predeterminado__'} onValorChange={(valor) => escribir({ border_style: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("solid") || '__predeterminado__', etiqueta: String("Sólido") }, { valor: String("dotted") || '__predeterminado__', etiqueta: String("Punteado") }]} />
         </label>
         <label className="text-[11px]">Color<input type="color" aria-label="Color del borde" value={typeof actual.border_color === 'string' && actual.border_color.startsWith('#') ? actual.border_color : '#94a3b8'} onChange={(e) => escribir({ border_color: e.target.value })} /></label>
       </div>
       <label className="text-[11px]">Sombra
-        <select className={control} aria-label="Sombra" value={String(actual.shadow || 'none')} onChange={(e) => escribir({ shadow: e.target.value })}>
-          <option value="none">Ninguna</option>
-          <option value="sm">Suave</option>
-          <option value="md">Media</option>
-          <option value="lg">Flotante</option>
-        </select>
+        <Select className={control} aria-label="Sombra" tamano="sm" valor={String(String(actual.shadow || 'none')) || '__predeterminado__'} onValorChange={(valor) => escribir({ shadow: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("none") || '__predeterminado__', etiqueta: String("Ninguna") }, { valor: String("sm") || '__predeterminado__', etiqueta: String("Suave") }, { valor: String("md") || '__predeterminado__', etiqueta: String("Media") }, { valor: String("lg") || '__predeterminado__', etiqueta: String("Flotante") }]} />
       </label>
       <label className="text-[11px]">Color de sombra<input type="color" aria-label="Color de sombra" value={typeof actual.shadow_color === 'string' && actual.shadow_color.startsWith('#') ? actual.shadow_color : '#0f172a'} onChange={(e) => escribir({ shadow_color: e.target.value })} /></label>
       <p className="text-[11px] font-semibold">Hover y activo</p>
@@ -317,39 +305,23 @@ function ContenedorDetallado({ builder, cambiar }: { builder: Record<string, unk
       <label className="text-[11px]">Fondo al pasar<input type="color" aria-label="Fondo al pasar" value={typeof actual.hover_background === 'string' && actual.hover_background.startsWith('#') ? actual.hover_background : '#ffffff'} onChange={(e) => escribir({ hover_background: e.target.value })} /></label>
       {num('hover_scale', 90, 120, 'Escala')}
       <label className="text-[11px]">Sombra al pasar
-        <select className={control} aria-label="Sombra al pasar" value={String(actual.hover_shadow || '')} onChange={(e) => escribir({ hover_shadow: e.target.value || undefined })}>
-          <option value="">La misma</option>
-          <option value="none">Ninguna</option>
-          <option value="sm">Suave</option>
-          <option value="md">Media</option>
-          <option value="lg">Flotante</option>
-        </select>
+        <Select className={control} aria-label="Sombra al pasar" tamano="sm" valor={String(String(actual.hover_shadow || '')) || '__predeterminado__'} onValorChange={(valor) => escribir({ hover_shadow: (valor === '__predeterminado__' ? '' : valor) || undefined })} opciones={[{ valor: String("") || '__predeterminado__', etiqueta: String("La misma") }, { valor: String("none") || '__predeterminado__', etiqueta: String("Ninguna") }, { valor: String("sm") || '__predeterminado__', etiqueta: String("Suave") }, { valor: String("md") || '__predeterminado__', etiqueta: String("Media") }, { valor: String("lg") || '__predeterminado__', etiqueta: String("Flotante") }]} />
       </label>
       <label className="text-[11px]">Color activo<input type="color" aria-label="Color activo" value={typeof actual.active_color === 'string' && actual.active_color.startsWith('#') ? actual.active_color : '#111111'} onChange={(e) => escribir({ active_color: e.target.value })} /></label>
       <p className="text-[11px] font-semibold">Ícono</p>
       <label className="text-[11px]">Color del ícono<input type="color" aria-label="Color del ícono" value={typeof actual.icon_color === 'string' && actual.icon_color.startsWith('#') ? actual.icon_color : '#111111'} onChange={(e) => escribir({ icon_color: e.target.value })} /></label>
       <label className="text-[11px]">Trazo
-        <select className={control} aria-label="Trazo del ícono" value={String(actual.weight || 'contorno')} onChange={(e) => escribir({ weight: e.target.value })}>
-          <option value="contorno">Contorno</option>
-          <option value="relleno">Relleno</option>
-          <option value="duotono">Duotono</option>
-        </select>
+        <Select className={control} aria-label="Trazo del ícono" tamano="sm" valor={String(String(actual.weight || 'contorno')) || '__predeterminado__'} onValorChange={(valor) => escribir({ weight: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("contorno") || '__predeterminado__', etiqueta: String("Contorno") }, { valor: String("relleno") || '__predeterminado__', etiqueta: String("Relleno") }, { valor: String("duotono") || '__predeterminado__', etiqueta: String("Duotono") }]} />
       </label>
       {num('stroke', 1, 4, 'Grosor')}
       {objetivo === 'all' || objetivo === 'cart' ? (
         <>
           <p className="text-[11px] font-semibold">Contador del carrito</p>
           <label className="text-[11px]">Forma
-            <select className={control} aria-label="Forma del contador" value={String((objetivo === 'all' ? caja : actual).badge_shape || 'circle')} onChange={(e) => escribir({ badge_shape: e.target.value })}>
-              <option value="circle">Círculo</option>
-              <option value="pill">Píldora</option>
-            </select>
+            <Select className={control} aria-label="Forma del contador" tamano="sm" valor={String(String((objetivo === 'all' ? caja : actual).badge_shape || 'circle')) || '__predeterminado__'} onValorChange={(valor) => escribir({ badge_shape: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("circle") || '__predeterminado__', etiqueta: String("Círculo") }, { valor: String("pill") || '__predeterminado__', etiqueta: String("Píldora") }]} />
           </label>
           <label className="text-[11px]">Posición
-            <select className={control} aria-label="Posición del contador" value={String((objetivo === 'all' ? caja : actual).badge_position || 'top-right')} onChange={(e) => escribir({ badge_position: e.target.value })}>
-              <option value="top-right">Arriba a la derecha</option>
-              <option value="top-left">Arriba a la izquierda</option>
-            </select>
+            <Select className={control} aria-label="Posición del contador" tamano="sm" valor={String(String((objetivo === 'all' ? caja : actual).badge_position || 'top-right')) || '__predeterminado__'} onValorChange={(valor) => escribir({ badge_position: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("top-right") || '__predeterminado__', etiqueta: String("Arriba a la derecha") }, { valor: String("top-left") || '__predeterminado__', etiqueta: String("Arriba a la izquierda") }]} />
           </label>
           <label className="text-[11px]">Color del contador<input type="color" aria-label="Color del contador" value={typeof (objetivo === 'all' ? caja : actual).badge_color === 'string' ? String((objetivo === 'all' ? caja : actual).badge_color) : '#111111'} onChange={(e) => escribir({ badge_color: e.target.value })} /></label>
         </>
@@ -374,28 +346,16 @@ function MenusDetallados({ builder, guardar }: { builder: Record<string, unknown
         return (
           <div key={String(menu.id || i)} className="flex flex-col gap-1 rounded-lg border border-line p-2">
             <input className={control} aria-label="Nombre del menú" value={String(menu.name || '')} onChange={(e) => setMenu(i, { name: e.target.value })} />
+            <FormField etiqueta="Contenido del menú">
+              {(campo) => <Select id={campo.id} aria-labelledby={campo.idEtiqueta} tamano="sm" valor={String(menu.source || 'manual')} opciones={[{ valor: 'manual', etiqueta: 'Enlaces propios' }, { valor: 'pages', etiqueta: 'Menú de páginas' }, { valor: 'categories', etiqueta: 'Categorías de la tienda' }]} onValorChange={(v) => setMenu(i, { source: v })} />}
+            </FormField>
             <div className="grid grid-cols-2 gap-1">
-              <select className={control} aria-label="Zona del menú" value={String(menu.zone || 'menu_center')} onChange={(e) => setMenu(i, { zone: e.target.value })}>
-                {ZONAS.map((z) => <option key={z} value={z}>{ETIQUETA[z]}</option>)}
-              </select>
-              <select className={control} aria-label="Tipo de menú" value={String(menu.type || 'links')} onChange={(e) => setMenu(i, { type: e.target.value })}>
-                <option value="links">Enlaces</option>
-                <option value="mega">Mega menú</option>
-                <option value="mixed">Mixto</option>
-              </select>
+              <Select className={control} aria-label="Zona del menú" tamano="sm" valor={String(String(menu.zone || 'menu_center')) || '__predeterminado__'} onValorChange={(valor) => setMenu(i, { zone: (valor === '__predeterminado__' ? '' : valor) })} opciones={[...(ZONAS.map((z) =>({ valor: String(z) || '__predeterminado__', etiqueta: String(ETIQUETA[z]) })))]} />
+              <Select className={control} aria-label="Tipo de menú" tamano="sm" valor={String(String(menu.type || 'links')) || '__predeterminado__'} onValorChange={(valor) => setMenu(i, { type: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("links") || '__predeterminado__', etiqueta: String("Enlaces") }, { valor: String("mega") || '__predeterminado__', etiqueta: String("Mega menú") }, { valor: String("mixed") || '__predeterminado__', etiqueta: String("Mixto") }]} />
             </div>
             <div className="grid grid-cols-2 gap-1">
-              <select className={control} aria-label="Indicador" value={String(menu.indicator || 'none')} onChange={(e) => setMenu(i, { indicator: e.target.value })}>
-                <option value="none">Sin indicador</option>
-                <option value="underline">Subrayado</option>
-                <option value="pill">Píldora</option>
-                <option value="background">Fondo</option>
-              </select>
-              <select className={control} aria-label="Fuente del menú" value={String(menu.font || 'sans')} onChange={(e) => setMenu(i, { font: e.target.value })}>
-                <option value="sans">Sans</option>
-                <option value="serif">Serif</option>
-                <option value="mono">Mono</option>
-              </select>
+              <Select className={control} aria-label="Indicador" tamano="sm" valor={String(String(menu.indicator || 'none')) || '__predeterminado__'} onValorChange={(valor) => setMenu(i, { indicator: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("none") || '__predeterminado__', etiqueta: String("Sin indicador") }, { valor: String("underline") || '__predeterminado__', etiqueta: String("Subrayado") }, { valor: String("pill") || '__predeterminado__', etiqueta: String("Píldora") }, { valor: String("background") || '__predeterminado__', etiqueta: String("Fondo") }]} />
+              <Select className={control} aria-label="Fuente del menú" tamano="sm" valor={String(String(menu.font || 'sans')) || '__predeterminado__'} onValorChange={(valor) => setMenu(i, { font: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("sans") || '__predeterminado__', etiqueta: String("Sans") }, { valor: String("serif") || '__predeterminado__', etiqueta: String("Serif") }, { valor: String("mono") || '__predeterminado__', etiqueta: String("Mono") }]} />
             </div>
             <div className="grid grid-cols-3 gap-1">
               <label className="text-[11px]">Tamaño<input className={control} type="number" min={10} max={24} aria-label="Tamaño" value={menu.size == null ? '' : String(menu.size)} onChange={(e) => setMenu(i, { size: e.target.value ? Number(e.target.value) : undefined })} /></label>
@@ -403,12 +363,7 @@ function MenusDetallados({ builder, guardar }: { builder: Record<string, unknown
               <label className="text-[11px]">Orden celular<input className={control} type="number" min={0} max={20} aria-label="Orden en el celular" value={menu.mobile_order == null ? String(i) : String(menu.mobile_order)} onChange={(e) => setMenu(i, { mobile_order: Number(e.target.value) })} /></label>
             </div>
             <label className="text-[11px]">Peso
-              <select className={control} aria-label="Peso" value={String(menu.weight || 'medium')} onChange={(e) => setMenu(i, { weight: e.target.value })}>
-                <option value="normal">Normal</option>
-                <option value="medium">Medio</option>
-                <option value="semibold">Seminegrita</option>
-                <option value="bold">Negrita</option>
-              </select>
+              <Select className={control} aria-label="Peso" tamano="sm" valor={String(String(menu.weight || 'medium')) || '__predeterminado__'} onValorChange={(valor) => setMenu(i, { weight: (valor === '__predeterminado__' ? '' : valor) })} opciones={[{ valor: String("normal") || '__predeterminado__', etiqueta: String("Normal") }, { valor: String("medium") || '__predeterminado__', etiqueta: String("Medio") }, { valor: String("semibold") || '__predeterminado__', etiqueta: String("Seminegrita") }, { valor: String("bold") || '__predeterminado__', etiqueta: String("Negrita") }]} />
             </label>
             <div className="grid grid-cols-3 gap-1">
               <label className="text-[11px]">Color<input type="color" aria-label="Color del menú" value={typeof menu.color === 'string' ? menu.color : '#111111'} onChange={(e) => setMenu(i, { color: e.target.value })} /></label>
@@ -417,19 +372,17 @@ function MenusDetallados({ builder, guardar }: { builder: Record<string, unknown
             </div>
             <label className="flex justify-between text-[11px]"><span>Mayúsculas</span><input type="checkbox" aria-label="Mayúsculas" checked={menu.uppercase === true} onChange={(e) => setMenu(i, { uppercase: e.target.checked })} /></label>
             <label className="flex justify-between text-[11px]"><span>En el menú móvil</span><input type="checkbox" aria-label="En el menú móvil" checked={menu.mobile !== false} onChange={(e) => setMenu(i, { mobile: e.target.checked })} /></label>
+            {(!menu.source || menu.source === 'manual') ? <>
             {items.map((item, k) => (
               <div key={k} className="grid grid-cols-2 gap-1">
                 <input className={control} aria-label="Texto del ítem" value={String(item.label || '')} onChange={(e) => setItems(items.map((x, j) => j === k ? { ...x, label: e.target.value } : x))} />
                 <input className={control} aria-label="Enlace del ítem" value={String(item.href || '')} onChange={(e) => setItems(items.map((x, j) => j === k ? { ...x, href: e.target.value } : x))} />
-                <select className={control} aria-label="Tipo de ítem" value={String(item.kind || 'link')} onChange={(e) => setItems(items.map((x, j) => j === k ? { ...x, kind: e.target.value } : x))}>
-                  <option value="link">Enlace</option>
-                  <option value="dropdown">Desplegable</option>
-                  <option value="mega">Mega</option>
-                </select>
+                <Select className={control} aria-label="Tipo de ítem" tamano="sm" valor={String(String(item.kind || 'link')) || '__predeterminado__'} onValorChange={(valor) => setItems(items.map((x, j) => j === k ? { ...x, kind: (valor === '__predeterminado__' ? '' : valor) } : x))} opciones={[{ valor: String("link") || '__predeterminado__', etiqueta: String("Enlace") }, { valor: String("dropdown") || '__predeterminado__', etiqueta: String("Desplegable") }, { valor: String("mega") || '__predeterminado__', etiqueta: String("Mega") }]} />
                 <input className={control} aria-label="Etiqueta" placeholder="Nuevo" value={String(item.badge || '')} onChange={(e) => setItems(items.map((x, j) => j === k ? { ...x, badge: e.target.value } : x))} />
               </div>
             ))}
             <button type="button" className="text-left text-[11px] underline" onClick={() => setItems([...items, { label: 'Enlace', href: '/', kind: 'link' }])}>Agregar ítem</button>
+            </> : <p className="text-xs text-fg-secondary">Los enlaces se actualizan automáticamente con las páginas o categorías de la tienda.</p>}
           </div>
         )
       })}

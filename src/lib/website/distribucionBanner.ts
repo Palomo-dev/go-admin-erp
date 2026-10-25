@@ -118,6 +118,7 @@ const CLAVES_BANNER_NUEVAS = [
   'image_url_hover',
   'text_align',
   'text_valign',
+  'banner_style',
 ] as const
 
 function enLista<T extends string>(lista: readonly T[], valor: unknown): T | undefined {

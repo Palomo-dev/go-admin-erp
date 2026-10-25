@@ -1074,8 +1074,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'carousel', label: 'Carrusel' },
       ]},
       { key: 'pagination', label: 'Paginación', type: 'select', group: 'layout', options: [
-        { value: 'none', label: 'Solo el límite' },
-        { value: 'pages', label: 'Páginas' },
+        { value: 'none', label: 'Lista larga (sin paginación)' },
+        { value: 'pages', label: 'Paginación por páginas' },
         { value: 'load_more', label: 'Ver más' },
         { value: 'infinite', label: 'Scroll infinito' },
       ]},
@@ -1212,6 +1212,11 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grid' },
       { id: 'horizontal', label: 'Horizontal' },
       { id: 'icons', label: 'Iconos' },
+      { id: 'circle', label: 'Círculos con imagen' },
+      { id: 'card_bottom', label: 'Tarjetas con imagen' },
+      { id: 'pill', label: 'Chips o píldoras' },
+      { id: 'minimal_icon', label: 'Íconos con nombre' },
+      { id: 'bento', label: 'Mosaico mixto' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
@@ -1220,7 +1225,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         key: 'category_style',
         label: 'Estilo de las categorías',
         type: 'visual',
-        group: 'style',
+        group: 'layout',
         helpText: 'Vacío: foto con el nombre encima, como hoy.',
         options: [
           { value: 'overlay', label: 'Superpuesto' },
@@ -1886,6 +1891,29 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       },
       ...GRID_FIELDS,
       ...CARD_FIELDS_DESCRIPCION_VISIBLE,
+    ],
+  },
+  {
+    type: 'urgency', label: 'Urgencia de compra', icon: 'Flame', description: 'Contador, existencias reales o personas viendo',
+    variants: [{ id: 'default', label: 'Mensaje y contador' }],
+    contentFields: [
+      { key: 'kind', label: 'Mensaje', type: 'select', defaultValue: 'countdown', group: 'content', options: [{ value: 'countdown', label: 'La oferta termina en…' }, { value: 'stock', label: 'Quedan X unidades' }, { value: 'viewers', label: 'X personas viendo' }] },
+      { key: 'locations', label: 'Ubicaciones', type: 'checklist', defaultValue: ['producto'], group: 'layout', options: [{ value: 'producto', label: 'Producto' }, { value: 'carrito', label: 'Carrito' }, { value: 'checkout', label: 'Checkout' }] },
+      { key: 'detail_position', label: 'Posición en la ficha', type: 'select', group: 'layout', options: [{ value: 'before', label: 'Arriba del producto' }, { value: 'after', label: 'Debajo del producto' }] },
+      { key: 'message', label: 'Mensaje ({n})', type: 'text', group: 'content', showIf: { field: 'kind', in: ['stock', 'viewers'] } },
+      { key: 'threshold', label: 'Umbral de stock', type: 'number', min: 1, max: 999, defaultValue: 5, group: 'content', showIf: { field: 'kind', equals: 'stock' } },
+      { key: 'title', label: 'Texto antes', type: 'text', group: 'content', showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'text_after', label: 'Texto después', type: 'text', group: 'content', showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'mode', label: 'Modo del contador', type: 'select', defaultValue: 'daily_reset', group: 'content', options: [{ value: 'daily_reset', label: 'Diario' }, { value: 'custom', label: 'Fecha fin' }], showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'end_date', label: 'Fecha fin (ISO con zona)', type: 'text', group: 'content', showIf: { field: 'mode', equals: 'custom' } },
+      { key: 'reset_hour', label: 'Hora de reinicio', type: 'number', defaultValue: 0, min: 0, max: 23, group: 'content', showIf: { field: 'mode', in: ['daily_reset', undefined] } },
+      { key: 'counter_shape', defaultValue: 'pastilla', label: 'Forma del contador', type: 'select', group: 'style', options: [{ value: 'pastilla', label: 'Pastilla' }, { value: 'cuadrado', label: 'Cuadrado' }, { value: 'redondo', label: 'Redondo' }], showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'counter_size', defaultValue: 'sm', label: 'Tamaño del contador', type: 'select', group: 'style', options: [{ value: 'sm', label: 'Pequeño' }, { value: 'md', label: 'Mediano' }, { value: 'lg', label: 'Grande' }], showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'counter_boxes', defaultValue: 'linea', label: 'Dígitos', type: 'select', group: 'style', options: [{ value: 'linea', label: 'En línea' }, { value: 'digito', label: 'En cajas' }], showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'counter_background', label: 'Fondo del contador', type: 'color', group: 'style', showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'counter_color', label: 'Texto del contador', type: 'color', group: 'style', showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'counter_border', label: 'Borde del contador', type: 'color', group: 'style', showIf: { field: 'kind', in: ['countdown', undefined] } },
+      { key: 'counter_shadow', label: 'Sombra del contador', type: 'boolean', group: 'style', showIf: { field: 'kind', in: ['countdown', undefined] } },
     ],
   },
   {
@@ -2690,6 +2718,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'icons', label: 'Íconos' },
     ],
     contentFields: [
+      { key: 'detail_position', label: 'Posición en la ficha', type: 'select', group: 'layout', options: [{ value: 'before', label: 'Arriba del producto' }, { value: 'after', label: 'Debajo del producto' }] },
+      { key: 'icon_background', label: 'Fondo del ícono', type: 'color', group: 'style' },
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Características' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       {
@@ -3547,6 +3577,15 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     description: 'Grid de beneficios con icono, título y descripción',
     variants: [{ id: 'default', label: 'Por defecto' }],
     contentFields: [
+      { key: 'item_layout', label: 'Disposición', type: 'select', group: 'layout', options: [{ value: 'icon_left', label: 'Ícono a la izquierda' }, { value: 'stacked', label: 'Apilado' }] },
+      { key: 'detail_position', label: 'Posición en la ficha', type: 'select', group: 'layout', options: [{ value: 'before', label: 'Arriba del producto' }, { value: 'after', label: 'Debajo del producto' }] },
+      { key: 'icon_size', label: 'Tamaño del ícono', type: 'range', min: 12, max: 64, defaultValue: 24, group: 'layout' },
+      { key: 'icon_color', label: 'Color del ícono', type: 'color', group: 'style' },
+      { key: 'icon_background', label: 'Fondo del ícono', type: 'color', group: 'style' },
+      { key: 'icon_shape', label: 'Contenedor del ícono', type: 'select', group: 'layout', options: [
+        { value: 'circle', label: 'Círculo' }, { value: 'square', label: 'Cuadrado' },
+        { value: 'rounded', label: 'Semirredondeado' }, { value: 'none', label: 'Sin contenedor' },
+      ] },
       {
         key: 'items',
         label: 'Beneficios',

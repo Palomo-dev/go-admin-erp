@@ -3,7 +3,7 @@
 /**
  * «Publicar cambios» (Figma A/05g) y «Publicar Sede Norte» (D/05-24):
  * - lista de cambios desde la última publicación (con «Ver», que selecciona la sección);
- * - ¿Cuándo? «Publicar ahora · Tus clientes lo ven en menos de un minuto» o «Programar» con
+ * - ¿Cuándo? «Publicar ahora» con confirmación del lector público o «Programar» con
  *   fecha y hora en la zona horaria de la organización;
  * - nota de la versión (aparece en el historial);
  * - «Se guarda una versión · Si algo no queda bien, la restauras desde el historial en un clic.»;
@@ -109,7 +109,7 @@ export function DialogoPublicar(p: DialogoPublicarProps) {
       descripcion={descripcion}
       ancho={560}
       primario={{
-        etiqueta: textoPrimario,
+        etiqueta: p.publicando ? t('publicar.enCurso') : textoPrimario,
         onClick: confirmar,
         cargando: p.publicando,
         deshabilitada: p.publicando || (cuando === 'programar' && validez !== 'ok'),

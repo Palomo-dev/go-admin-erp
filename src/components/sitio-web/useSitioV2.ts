@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clienteSitiosV2, ErrorApiSitio } from '@/lib/website/v2/clienteSitiosV2';
 import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
+import { igualesEstructural } from '@/lib/website/v2/mapeoAjustes';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { BorradorSitio, ResultadoPublicacion, RevisionResumen, SitioResumen } from '@/lib/website/v2/tipos';
 import { resolverEstadoPublicacion, type EstadoPublicacion } from './ui/estadoPublicacion';
@@ -41,6 +42,8 @@ export interface SitioV2 {
   guardando: boolean;
   publicando: boolean;
   error: ErrorApiSitio | null;
+  /** Error síncrono de la última publicación, también antes del siguiente render. */
+  errorDePublicacion?: () => ErrorApiSitio | null;
   /** Otra persona guardó o publicó una versión más nueva (409). */
   conflicto: boolean;
   estadoPublicacion: EstadoPublicacion;
@@ -63,12 +66,6 @@ function comoError(error: unknown): ErrorApiSitio {
   return error instanceof ErrorApiSitio ? error : new ErrorApiSitio('error_interno', 500, 'No se pudo completar la operación.');
 }
 
-/** Pide al sitio público que vuelva a generar sus páginas (como el editor). */
-function revalidarSitioPublico(): void {
-  if (typeof fetch === 'undefined') return;
-  fetch('/api/website/revalidate', { method: 'POST', keepalive: true }).catch(() => undefined);
-}
-
 export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitado = false }: OpcionesSitioV2 = {}): SitioV2 {
   const [sitio, setSitio] = useState<SitioResumen | null>(null);
   const [borrador, setBorrador] = useState<BorradorSitio | null>(null);
@@ -78,6 +75,7 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
   const [error, setError] = useState<ErrorApiSitio | null>(null);
   const [conflicto, setConflicto] = useState(false);
   const [falloPublicacion, setFalloPublicacion] = useState(false);
+  const errorPublicacionRef = useRef<ErrorApiSitio | null>(null);
   // La última versión conocida: `guardar` y `publicar` nunca usan una vieja de un cierre.
   const ref = useRef<BorradorSitio | null>(null);
   ref.current = borrador;
@@ -135,6 +133,7 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
     setGuardando(true);
     try {
       const documento = cambiar(actual.documento);
+      if (igualesEstructural(documento, actual.documento)) return true;
       const r = await clienteSitiosV2.guardar(actual.sitio.id, documento, actual.version);
       const siguiente: BorradorSitio = {
         ...actual,
@@ -162,22 +161,26 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
     if (!actual) return null;
     setPublicando(true);
     setFalloPublicacion(false);
+    errorPublicacionRef.current = null;
+    setError(null);
     try {
       const r = await clienteSitiosV2.publicar(actual.sitio.id, actual.version, nota, !!opciones?.activar);
+      const vigente = ref.current ?? actual;
       const sitioPublicado: SitioResumen = {
-        ...actual.sitio,
+        ...vigente.sitio,
         revisionPublicadaId: r.revisionId,
-        cambiosSinPublicar: false,
+        cambiosSinPublicar: !igualesEstructural(vigente.documento, actual.documento),
         ...(r.activacion === 'activada' ? { v2Adoptado: true, v2AdoptadoEn: r.publicadaEn } : {}),
       };
-      const siguiente = { ...actual, sitio: sitioPublicado };
+      const siguiente = { ...vigente, sitio: sitioPublicado };
       ref.current = siguiente;
       setBorrador(siguiente);
       setSitio(sitioPublicado);
-      revalidarSitioPublico();
+      // La API de publicación espera la confirmación del lector público antes de responder.
       return r;
     } catch (e) {
       const err = comoError(e);
+      errorPublicacionRef.current = err;
       if (err.esConflicto) setConflicto(true);
       else setFalloPublicacion(true);
       setError(err);
@@ -237,6 +240,7 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
     guardando,
     publicando,
     error,
+    errorDePublicacion: () => errorPublicacionRef.current,
     conflicto,
     estadoPublicacion,
     asegurar,

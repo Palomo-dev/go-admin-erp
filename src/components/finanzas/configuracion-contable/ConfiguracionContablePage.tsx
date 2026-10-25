@@ -217,29 +217,6 @@ export function ConfiguracionContablePage() {
 
       <AlertasFalloContable />
 
-      {invalidas.length > 0 && (
-        <Alert variant="warning">
-          <AlertTitle>
-            {invalidas.length === 1 ? 'Hay 1 cuenta configurada que no sirve' : `Hay ${invalidas.length} cuentas configuradas que no sirven`}
-          </AlertTitle>
-          <AlertDescription>
-            <p>Los asientos de estas claves quedan con fallo. Elige un auxiliar de movimiento y guarda.</p>
-            <ul className="mt-2 space-y-1">
-              {invalidas.map((item) => (
-                <li key={`${item.clave}-${item.branch_id ?? 'org'}`} className="text-sm">
-                  <span className="font-medium">{DEFINICIONES_CLAVE.find((d) => d.clave === item.clave)?.nombre ?? item.clave}</span>
-                  {' · '}
-                  {item.branch_id == null ? 'Organización' : sedes.find((s) => s.id === item.branch_id)?.name ?? `Sede ${item.branch_id}`}
-                  {' · '}
-                  {item.motivo}
-                  {item.sugerida ? ` · Sugerida: ${item.sugerida}` : ''}
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
-
       <Alert variant="info">
         <AlertTitle>Si no eliges cuenta, se usa la de la regla</AlertTitle>
         <AlertDescription>

@@ -3301,6 +3301,11 @@ end;
 $function$
 ;
 
+delete from public.configuracion_contable cc using public.p1_puc_bitacora b
+ where b.migracion = '134030' and b.objeto = 'config_nueva' and cc.id = b.clave::bigint;
+delete from public.p1_puc_bitacora where migracion = '134030';
+
+drop function if exists public.fn_cuenta_ingresos_diversos(integer, integer);
 drop function if exists public.fn_marcar_revision_iva(integer, text, text, text, text);
 drop function if exists public.fn_cuenta_auxiliar_de_titulo(integer, integer, text, numeric, text);
 -- La tabla de revisión se conserva si tiene filas (datos para el contador).

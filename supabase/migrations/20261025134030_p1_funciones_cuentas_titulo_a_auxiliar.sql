@@ -1,6 +1,7 @@
 -- P1 (25-oct-2026): funciones vivas con códigos de cuenta fijos que 134060 pasa a TÍTULO. NO aplicada.
--- Aprobado por Juan: se aplica ANTES del plan (134010-134050) para que el guard de 134005 no bloquee
--- asientos automáticos cuando 4295, 3705, 6135, 530515, 5395, 240805, 240810 y 2408 sean títulos.
+-- Aprobado por Juan: va DESPUÉS de 134010/134020 (auxiliares y reglas) y ANTES de 134060 (titulación),
+-- para que el guard de 134005 no bloquee asientos cuando 4295, 3705, 6135, 530515, 5395, 240805, 240810
+-- y 2408 sean títulos. Reconciliado con el QA de Soporte (funciones_vivas_codigos.txt, 25-oct).
 -- Es segura antes y después del plan: el resolver devuelve el auxiliar si ya existe y, si no (antes de
 -- 134010), la misma cuenta de siempre mientras siga siendo de movimiento.
 --
@@ -17,8 +18,12 @@
 -- Un código que ya es auxiliar conocido (p. ej. 61350501) pasa por el mismo resolver (mapeo de sede).
 --
 -- Fuera de esta migración (a propósito):
---   fn_cuentas_movimiento_stock, fn_redondear_asiento_pesos -> las reemplaza 134020 (auxiliares);
---   fn_create_default_accounting_rules -> la reemplaza 134040 (auxiliares).
+--   fn_cuentas_movimiento_stock, fn_redondear_asiento_pesos -> las reemplaza 134020 (auxiliares, sin
+--     respaldo a títulos); fn_create_default_accounting_rules -> la reemplaza 134040, que corre antes de 134060.
+-- "Otro ingreso" (banco, caja, reintentos, sobrantes de stock): antes fn_primera_cuenta_detalle(['4250',
+--   '4295','4210']) desviaba en silencio a 4250/4210 al titularse 4295. Ahora va SOLO a la clave
+--   ingresos_diversos (sembrada aquí -> 42959501) o al auxiliar de 4295; si no hay cuenta, el asiento
+--   falla con log (sin desvío).
 --   fn_create_branch_subaccounts: usa 6135 como base para crear 613505/613505NN por sede (estructura,
 --     no postea; el auxiliar de sede que crea es justo el que devuelve el resolver).
 --   fn_puc_nombres_oficiales: solo nombres oficiales del PUC (3705).
@@ -142,6 +147,35 @@ $function$;
 revoke all on function public.fn_marcar_revision_iva(integer, text, text, text, text) from public, anon, authenticated;
 revoke all on function public.fn_cuenta_auxiliar_de_titulo(integer, integer, text, numeric, text) from anon;
 
+-- Cuenta de "otro ingreso": clave ingresos_diversos de la sede/org o el auxiliar de 4295. Sin desvíos.
+create or replace function public.fn_cuenta_ingresos_diversos(p_org integer, p_branch integer)
+returns text
+language sql
+stable security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+  select public.fn_cuenta_auxiliar_de_titulo(p_org, p_branch, coalesce(
+    (select cc.account_code from public.configuracion_contable cc
+      where cc.organization_id = p_org and cc.clave = 'ingresos_diversos'
+        and (cc.branch_id = p_branch or cc.branch_id is null)
+        and nullif(btrim(cc.account_code), '') is not null
+      order by cc.branch_id nulls last limit 1),
+    '4295'));
+$function$;
+revoke all on function public.fn_cuenta_ingresos_diversos(integer, integer) from anon;
+
+-- Siembra de la clave ingresos_diversos (ninguna org la tenía al 25-oct) -> 42959501 donde exista.
+with ins as (
+  insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
+  select c.organization_id, null, 'ingresos_diversos', '42959501'
+    from public.chart_of_accounts c
+   where c.account_code = '42959501' and c.es_movimiento is true and coalesce(c.is_active, true)
+  on conflict (organization_id, branch_id, clave) do nothing
+  returning id, organization_id
+)
+insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
+select '134030', organization_id, 'config_nueva', id::text, 'ingresos_diversos', null, '42959501' from ins;
+
 -- fn_asiento_movimiento_caja
 CREATE OR REPLACE FUNCTION public.fn_asiento_movimiento_caja(p_organization_id integer, p_tipo text, p_concept_code text)
  RETURNS TABLE(accion text, debito text, credito text)
@@ -206,7 +240,7 @@ begin
     when 'devolucionRecibida' then coalesce(
       public.fn_cuenta_por_clave(p_organization_id, null, 'proveedores'),
       public.fn_primera_cuenta_detalle(p_organization_id, array['2205', '2105']))
-    else public.fn_primera_cuenta_detalle(p_organization_id, array['4250', public.fn_cuenta_auxiliar_de_titulo(p_organization_id, null, '4295'), '4210'])
+    else public.fn_primera_cuenta_detalle(p_organization_id, array[public.fn_cuenta_ingresos_diversos(p_organization_id, null)])
   end;
   if v_clave is distinct from 'ventaContadoEspecial' and v_contra is not null and left(v_contra, 4) = '4105' then
     v_contra := null;
@@ -313,7 +347,7 @@ begin
     v_credito := v_banco;
   else
     v_debito := v_banco;
-    v_credito := public.fn_primera_cuenta_detalle(new.organization_id, array['4250', public.fn_cuenta_auxiliar_de_titulo(new.organization_id, v_branch_id, '4295'), '4210']);
+    v_credito := public.fn_primera_cuenta_detalle(new.organization_id, array[public.fn_cuenta_ingresos_diversos(new.organization_id, v_branch_id)]);
   end if;
 
   if v_debito is null or v_credito is null
@@ -518,7 +552,7 @@ begin
                 v_credito := v_tes;
               else
                 v_debito := v_tes;
-                v_credito := public.fn_primera_cuenta_detalle(v_bt.organization_id, array['4250', public.fn_cuenta_auxiliar_de_titulo(v_bt.organization_id, v_branch, '4295'), '4210']);
+                v_credito := public.fn_primera_cuenta_detalle(v_bt.organization_id, array[public.fn_cuenta_ingresos_diversos(v_bt.organization_id, v_branch)]);
               end if;
               if v_debito is null or v_credito is null
                  or left(coalesce(v_debito, ''), 1) = '4'
@@ -807,7 +841,7 @@ begin
      and v_evento is distinct from 'return'
      and left(coalesce(v_credit_account, ''), 1) = '6' then
     v_credit_account := coalesce(
-      public.fn_primera_cuenta_detalle(p_sm.organization_id, array[public.fn_cuenta_auxiliar_de_titulo(p_sm.organization_id, p_sm.branch_id, '4295'), '4210']),
+      public.fn_primera_cuenta_detalle(p_sm.organization_id, array[public.fn_cuenta_ingresos_diversos(p_sm.organization_id, p_sm.branch_id)]),
       v_credit_account
     );
     if left(coalesce(v_credit_account, ''), 1) = '6' then
@@ -987,7 +1021,7 @@ begin
      and v_evento is distinct from 'return'
      and left(coalesce(v_credit_account, ''), 1) = '6' then
     v_credit_account := coalesce(
-      public.fn_primera_cuenta_detalle(new.organization_id, array[public.fn_cuenta_auxiliar_de_titulo(new.organization_id, new.branch_id, '4295'), '4210']),
+      public.fn_primera_cuenta_detalle(new.organization_id, array[public.fn_cuenta_ingresos_diversos(new.organization_id, new.branch_id)]),
       v_credit_account
     );
     if left(coalesce(v_credit_account, ''), 1) = '6' then
@@ -1538,6 +1572,7 @@ AS $function$
     ('saldo_inicial', '3105'),
     ('impuesto_consumo', '2495'),
     ('redondeo', '42958101'),
+    ('ingresos_diversos', '42959501'),
     ('compra_servicio', '2335')
   ) as v(clave, defecto);
 $function$

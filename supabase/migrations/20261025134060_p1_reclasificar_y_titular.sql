@@ -5,7 +5,7 @@
 --     primer período ABIERTO posterior (nunca a uno cerrado; si no hay ninguno abierto la org se salta).
 --     El saldo sale de la cuenta de título y entra al auxiliar.
 --   * Los borradores sí se repuntan directamente al auxiliar.
---   * Destinos: 3705 -> 37050502 | 6135 -> 61350501 | 530515 -> 53051501 | 5395 -> 53959501
+--   * Destinos: 3705 -> 37050502 | 6135 -> 61350501 (hotel/restaurante con líneas en 6135: revisión, no se titula) | 530515 -> 53051501 | 5395 -> 53959501
 --     4295 -> 42959501 si la línea es de sobrantes (asiento de ajuste/movimiento de inventario);
 --             si no se puede determinar -> 42959502
 --     240805 -> 24080501/24080502 y 240810 -> 24081001/24081002 según la tarifa de la línea; las líneas
@@ -104,6 +104,20 @@ begin
       end if;
     end loop;
     v_ok := array(select unnest(v_ok) except select unnest(v_bloq));
+    -- Hoteles y restaurantes (type_id 1/2, regla del contador): su costo va a 6140/61400501 y nunca debió
+    -- estar en 6135. Un saldo o borrador en 6135 es ambiguo (¿costo de A&B o reventa?): NO se reclasifica a
+    -- 61350501 ni se fuerza a 61400501; 6135 no se titula y queda para revisión del contador.
+    if '6135' = any (v_ok)
+       and exists (select 1 from public.organizations o where o.id = v_org and o.type_id in (1, 2))
+       and exists (select 1 from public.journal_lines l where l.organization_id = v_org and l.account_code = '6135') then
+      raise notice '134060: org % (hotel/restaurante) con líneas en 6135; revisión del contador, NO se titula ni reclasifica', v_org;
+      insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
+      select '134060', v_org, 'revision_costo_sector', '6135', 'saldo_publicado',
+             coalesce(sum(l.debit - l.credit) filter (where e.posted), 0)::text, '61400501?'
+        from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+       where l.organization_id = v_org and l.account_code = '6135';
+      v_ok := array_remove(v_ok, '6135');
+    end if;
     continue when cardinality(v_ok) = 0;
     v_creado := false;
 

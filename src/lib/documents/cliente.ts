@@ -31,7 +31,7 @@ export interface OpcionesDocumentoCliente {
   parametros?: Readonly<Record<string, string>>;
 }
 
-const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar'] as const;
+const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar', 'contabilizados', 'centro_costo'] as const;
 
 export class ErrorDocumento extends Error {
   constructor(message: string, readonly status: number, readonly codigo: string | null) {

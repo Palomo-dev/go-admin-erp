@@ -8,9 +8,18 @@ import { rutaGrupo } from './rutasReportes';
 import { useContextoReportes } from './useContextoReportes';
 import { useFiltrosReportes } from './useFiltrosReportes';
 import { VisorReporte } from './VisorReporte';
+import { InformeContablePage } from '@/components/finanzas/contabilidad/informes/InformeContablePage';
+import { esInformeContable } from '@/components/finanzas/contabilidad/informes/catalogo';
 
 /** Visor de un reporte del catálogo. */
 export function PaginaVisor() {
+  const params = useParams() ?? {};
+  const id = String(params.reporte ?? '');
+  if (String(params.grupo ?? '') === 'contabilidad' && esInformeContable(id)) return <InformeContablePage informe={id} />;
+  return <VisorCatalogo />;
+}
+
+function VisorCatalogo() {
   const params = useParams() ?? {};
   const id = String(params.reporte ?? '');
   const t = useTranslations('reportes');

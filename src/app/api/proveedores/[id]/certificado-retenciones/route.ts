@@ -17,6 +17,7 @@ import { withOrg, OrgContextError } from '@/lib/utils/orgContext';
 import { expedirCertificadoSchema } from '@/lib/services/compras/contrato';
 import { expedirCertificadoRetenciones } from '@/lib/services/compras/certificadoRetenciones.server';
 import { SIN_CACHE, exigirDeLaOrg, exigirPermisos, leerCuerpo, respuestaError } from '@/lib/services/compras/rutas.server';
+import { exigirLecturaInformes } from '@/lib/finanzas/informes/acceso.server';
 
 export const dynamic = 'force-dynamic';
 const RUTA = 'POST /api/proveedores/[id]/certificado-retenciones';
@@ -30,13 +31,15 @@ export const POST = withOrg(async (ctx, req, routeParams) => {
     if (!Number.isInteger(proveedorId) || proveedorId <= 0 || String(proveedorId) !== String(crudo)) {
       throw new OrgContextError('No encontrado', 404, 'no_encontrado');
     }
-    await exigirPermisos(ctx, ['finance.view'], RUTA);
+    if (cuerpo.filtrosContables) await exigirLecturaInformes(ctx);
+    else await exigirPermisos(ctx, ['finance.view'], RUTA);
     await exigirDeLaOrg(ctx, 'suppliers', proveedorId);
     const certificado = await expedirCertificadoRetenciones(ctx, {
       proveedorId,
       desde: cuerpo.desde,
       hasta: cuerpo.hasta,
       sucursalId: cuerpo.sucursalId ?? null,
+      ...(cuerpo.filtrosContables ? { filtrosContables: cuerpo.filtrosContables } : {}),
     });
     return NextResponse.json({ certificado }, { status: certificado.reexpedido ? 200 : 201, headers: SIN_CACHE });
   } catch (err) {

@@ -146,11 +146,19 @@ export const planCuotasSchema = z
 export const estadoCuentaQuerySchema = z.object({ desde: DIA.nullable().optional(), hasta: DIA.nullable().optional() });
 
 /** POST /api/proveedores/[id]/certificado-retenciones: periodo (días de la organización) y sucursal del documento de origen. */
+export const filtrosContablesCertificadoSchema = z.object({
+  contabilizados: z.literal(true),
+  branch_id: z.number().int().positive().nullable(),
+  cost_center_id: z.string().uuid().nullable(),
+}).strict();
+export type FiltrosContablesCertificado = z.infer<typeof filtrosContablesCertificadoSchema>;
+
 export const expedirCertificadoSchema = z
   .object({
     desde: DIA,
     hasta: DIA,
     sucursalId: z.number().int().positive().nullable().optional(),
+    filtrosContables: filtrosContablesCertificadoSchema.optional(),
   })
   .strict()
   .refine((v) => v.desde <= v.hasta, { path: ['hasta'] });

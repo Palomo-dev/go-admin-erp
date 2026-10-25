@@ -12,6 +12,7 @@
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { OrgContextError } from '@/lib/utils/orgContextError';
+import type { FiltrosContablesCertificado } from './contrato';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 
@@ -20,6 +21,7 @@ export interface SolicitudCertificado {
   desde: string;
   hasta: string;
   sucursalId: number | null;
+  filtrosContables?: FiltrosContablesCertificado;
 }
 
 export interface CertificadoExpedido {
@@ -37,6 +39,9 @@ export function errorDeExpedicion(error: { code?: string; message?: string }): O
     case 'P0002':
       return new OrgContextError('No encontrado', 404, 'no_encontrado');
     case '22023':
+      if (error.message?.includes('RETENCIONES_MANUALES_SIN_BASE')) return new OrgContextError('El borrador es parcial: hay retenciones por tercero sin una base y tarifa históricas verificables. Revisa esos movimientos antes de expedir.', 422, 'retenciones_manuales_sin_base');
+      if (error.message?.includes('RETENCION_SIN_VINCULO_CONTABLE')) return new OrgContextError('Hay retenciones sin un vínculo contable único. Revisa el asiento de la compra antes de certificar; no se estimaron cuentas ni importes.', 422, 'retencion_sin_vinculo_contable');
+      if (error.message?.includes('RETENCION_SIN_CONVERSION_HISTORICA') || error.message?.includes('CERTIFICADO_REQUIERE_MONEDA_BASE_COLOMBIANA')) return new OrgContextError('La retención no tiene una conversión histórica verificable a pesos colombianos. No se usó una tasa actual.', 422, 'retencion_sin_conversion_historica');
       return new OrgContextError('Periodo inválido', 400, 'periodo_invalido');
     default:
       return new OrgContextError('No se pudo expedir el certificado', 500, 'error_desconocido');
@@ -50,6 +55,7 @@ export async function expedirCertificadoRetenciones(ctx: Ctx, solicitud: Solicit
     p_desde: solicitud.desde,
     p_hasta: solicitud.hasta,
     p_branch_id: solicitud.sucursalId,
+    ...(solicitud.filtrosContables ? { p_filtros: solicitud.filtrosContables } : {}),
   });
   if (error) {
     const e = errorDeExpedicion(error as { code?: string; message?: string });

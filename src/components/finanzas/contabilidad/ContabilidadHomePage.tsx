@@ -18,6 +18,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { AlertasContables } from './AlertasContables';
 import { AlertasFalloContable } from '@/components/finanzas/configuracion-contable';
+import { AccesosInformes } from './informes/AccesosInformes';
 
 const MODULES = [
   {
@@ -56,14 +57,14 @@ const MODULES = [
     color: 'blue'
   },
   {
-    title: 'Estado de Resultados',
+    title: 'Estado de resultados integral',
     description: 'P&G: ingresos, costos y gastos',
     icon: TrendingUp,
     href: '/app/finanzas/contabilidad/estado-resultados',
     color: 'green'
   },
   {
-    title: 'Balance General',
+    title: 'Estado de situación financiera',
     description: 'Estado de situación financiera',
     icon: Calculator,
     href: '/app/finanzas/contabilidad/balance-general',
@@ -271,6 +272,7 @@ export function ContabilidadHomePage() {
 
       <AlertasContables />
       <AlertasFalloContable compacto />
+      <AccesosInformes />
 
       {/* Resumen */}
       {isLoading ? (

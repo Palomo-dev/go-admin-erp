@@ -36228,38 +36228,6 @@
       "pickup": "Retirada na loja",
       "delivery_own": "Entrega própria",
       "delivery_third_party": "Entrega terceirizada"
-    },
-    "pagoManual": {
-      "reactivarYMarcar": "Reativar e marcar pago (Wompi)",
-      "marcarPagadoEnLinea": "Marcar pago (pagamento online)",
-      "ayudaVencido": "Use apenas se o pagamento aparecer aprovado no Wompi. O estoque é reservado novamente e não exige caixa aberto.",
-      "titulo": "Marcar o pedido {numero} como pago",
-      "descripcion": "Registra um pagamento online aprovado cuja notificação não chegou. Não passa pelo caixa.",
-      "descripcionVencido": "O pedido expirou sem a confirmação do pagamento. Será reativado, o estoque reservado novamente e o pedido confirmado. Não passa pelo caixa.",
-      "referencia": "Referência da transação no Wompi",
-      "referenciaEjemplo": "Ex. 1578504-1729876543-12345",
-      "motivo": "Motivo",
-      "motivoEjemplo": "Ex. Aprovado no Wompi; o webhook não chegou",
-      "auditoria": "A referência, o motivo e seu usuário ficam na auditoria do pedido.",
-      "confirmar": "Marcar pago e confirmar",
-      "faltante": "{producto}: disponível {disponible}, pedido {pedido}",
-      "sinStock": "Estoque insuficiente: o pedido não foi reativado",
-      "exito": "Pedido pago e confirmado",
-      "exitoDetalle": "Pagamento manual registrado com a referência {referencia}.",
-      "pagadoSinConfirmar": "Pagamento registrado, falta confirmar o pedido",
-      "error": "Não foi possível marcar o pedido como pago",
-      "errores": {
-        "REFERENCIA_REQUERIDA": "Informe a referência do Wompi.",
-        "MOTIVO_REQUERIDO": "Informe o motivo.",
-        "PEDIDO_NO_REACTIVABLE": "O status do pedido não permite reativá-lo.",
-        "PEDIDO_CON_VENTA": "O pedido já tem uma venda.",
-        "SIN_PERMISO": "Você não tem permissão para marcar pedidos como pagos.",
-        "FUNCION_AUSENTE": "A função ainda não está instalada no banco de dados.",
-        "REFERENCIA_INVALIDA": "Formato de referência Wompi inválido (ex. 1578504-1792942441-37635).",
-        "REFERENCIA_DUPLICADA": "Essa referência já está registrada em outro pagamento. Verifique no Wompi."
-      },
-      "reintentoConfirmacion": "Se a confirmação falhou após registrar o pagamento, use «Confirmar pedido» para tentar de novo.",
-      "pagoExistente": "A referência {referencia} já estava neste pedido: esse pagamento foi usado, sem duplicar."
     }
   },
   "posMesasFlujo": {
@@ -37522,7 +37490,7 @@
     },
     "masivo": {
       "confirmar": "Confirmar",
-      "soloPendientes": "Só pedidos pendentes são confirmados",
+      "soloPendientes": "Somente pedidos pendentes ou expirados são confirmados",
       "cobrar": "Cobrar no caixa",
       "imprimir": "Imprimir",
       "preparar": "Passar para preparo",

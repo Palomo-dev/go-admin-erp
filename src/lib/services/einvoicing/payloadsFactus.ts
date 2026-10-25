@@ -74,6 +74,12 @@ export function unidadFactus(linea: Pick<LineaDocumento, 'unit_measure_code' | '
 }
 
 /** Error por datos del documento que hay que corregir antes de enviarlo (no se reintenta solo). */
+/** Identificación vacía para la DIAN: sin dato o NIT genérico de consumidor final (222222222222 / 2222222222). */
+export function identificacionVaciaDian(id: string | null | undefined): boolean {
+  const base = (id ?? '').split('-')[0].replace(/[^0-9A-Za-z]/g, '');
+  return base === '' || base === '222222222222' || base === '2222222222';
+}
+
 export class DatosIncompletosError extends Error {
   readonly faltantes: string[];
 
@@ -414,7 +420,13 @@ export function construirDocumentoSoporte(params: {
   if (params.lineas.length === 0) throw new DatosIncompletosError(['el documento soporte no tiene líneas']);
   const p = (sd.provider || {}) as Record<string, unknown>;
   const s = (k: string) => (p[k] === null || p[k] === undefined || p[k] === '' ? undefined : String(p[k]));
-  if (!s('identification')) throw new DatosIncompletosError(['el proveedor no tiene identificación']);
+  // Identificación obligatoria SOLO al transmitir a la DIAN (no al guardar): misma regla que
+  // fn_validar_identificacion_para_dian (20261025134155). 222222222222 / 2222222222 = vacío.
+  if (identificacionVaciaDian(s('identification'))) {
+    throw new DatosIncompletosError([
+      'tercero_obligatorio_dian: el proveedor necesita NIT o cédula, cédula de extranjería o pasaporte (no genérico)',
+    ]);
+  }
   const { items } = mapearLineas(params.lineas);
 
   return {

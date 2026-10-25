@@ -587,14 +587,16 @@ export default function PedidosOnlinePage() {
   };
 
   const seleccion = getSelectedOrders();
+  const esConfirmable = (o: WebOrder) => o.status === 'pending' || o.status === 'expired';
   const accionesMasivas: AccionMasiva[] = [
     {
       id: 'confirmar',
       etiqueta: t('masivo.confirmar'),
       icono: CheckCircle,
-      deshabilitada: !seleccion.some((o) => o.status === 'pending'),
+      // Pendientes y vencidos: un vencido se reactiva al confirmarlo (la base re-reserva el stock, todo o nada).
+      deshabilitada: !seleccion.some(esConfirmable),
       motivo: t('masivo.soloPendientes'),
-      onClick: () => setConfirmDialog({ open: true, orderIds: seleccion.filter((o) => o.status === 'pending').map((o) => o.id) }),
+      onClick: () => setConfirmDialog({ open: true, orderIds: seleccion.filter(esConfirmable).map((o) => o.id) }),
     },
     { id: 'cobrar', etiqueta: t('masivo.cobrar'), icono: Coins, cargando: bulkActionLoading, onClick: () => void handleBulkMarkPaid() },
     { id: 'imprimir', etiqueta: t('masivo.imprimir'), icono: Printer, onClick: () => imprimirPedidos(seleccion) },

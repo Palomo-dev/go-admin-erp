@@ -1,18 +1,17 @@
--- Tanda 4 (25-oct-2026, spec producto/tercero_obligatorio_spec.md): tercero obligatorio. NO aplicada.
--- Objetivo: que no vuelva a quedar saldo sin tercero (caso 2205). NO mueve datos: solo valida lo NUEVO.
--- Interpretación CONSERVADORA (no bloquear flujos legítimos que hoy funcionan):
---   1. Documento: factura de compra y documento soporte NUEVOS (o al cambiar el proveedor) exigen un tercero
---      real: proveedor con NIT/tax_id (o, en el documento soporte, provider->>'identification') que NO sea genérico
---      (222222222222 / 2222222222 cuentan como vacío). Error 'tercero_obligatorio'.
---   2. Asiento: una línea en cuenta que exige tercero (chart_of_accounts.requiere_tercero, o grupos 13/22/23,
---      que cubre 1355, 2365, 2367, 2368) se RECHAZA sin tercero (o con NIT genérico) solo si el asiento es
---      manual/importación (source null, 'manual', 'import*', 'reclasificacion*') o de compras ('invoice_purchase',
---      'support_documents'), que el trigger trg_tercero_linea_asiento ya completa desde el documento.
---   3. Resto de orígenes automáticos (ventas POS a consumidor final con 222222222222, pagos a proveedor, nómina,
---      reservas, comisiones…): NO se bloquean; quedan en la cola public.v_lineas_sin_tercero para revisión.
---   Fuera de alcance (pendiente UI): selector/creación rápida de proveedor y datos tributarios del proveedor.
---   Las notas débito/crédito de proveedor y los egresos no tienen tabla propia hoy (pagos: cola, punto 3).
--- Rollback: supabase/rollbacks/20261025134155_tercero_obligatorio_rollback.sql
+-- Tanda 4 (25-oct-2026, spec producto/tercero_obligatorio_spec.md), REESCRITA por decisión de Juan (25-oct):
+-- la identificación del proveedor es OPCIONAL al guardar. NO se bloquea guardar facturas de compra, documentos
+-- soporte ni asientos por falta de NIT. Solo es obligatoria al EMITIR/TRANSMITIR electrónicamente a la DIAN (Factus).
+--   * SIN triggers de guardado: se quitan (si existían) trg_00_tercero_obligatorio en invoice_purchase y
+--     support_documents, y zy_trg_tercero_obligatorio_linea en journal_lines, y sus funciones de trigger.
+--   * fn_validar_identificacion_para_dian(p_supplier_id, p_identificacion): valida al transmitir. Devuelve la
+--     identificación real (NIT; si no hay, cédula / cédula de extranjería / pasaporte del proveedor o la recibida)
+--     o lanza 'tercero_obligatorio_dian'. 222222222222 / 2222222222 cuentan como vacío. No la llama ningún trigger.
+--     Emisión hoy: el documento soporte se transmite desde la cola Factus (src/lib/services/einvoicing/
+--     colaFacturacion.server.ts → payloadsFactus.construirDocumentoSoporte), que aplica la misma regla y el mismo
+--     código de error. Las facturas de compra se RECIBEN (no se transmiten): no se validan. Ventas POS a consumidor
+--     final (222222222222) no se tocan.
+--   * Se conservan (inofensivos): fn_tercero_vacio, fn_cuenta_exige_tercero y la cola public.v_lineas_sin_tercero.
+-- No mueve datos. Rollback: supabase/rollbacks/20261025134155_tercero_obligatorio_rollback.sql
 
 create or replace function public.fn_tercero_vacio(p_nit text)
 returns boolean language sql immutable set search_path to 'public', 'pg_temp' as $$
@@ -28,63 +27,44 @@ returns boolean language sql stable security definer set search_path to 'public'
 $$;
 revoke all on function public.fn_cuenta_exige_tercero(integer, text) from public, anon;
 
--- Origen que se bloquea (manual, importación o compras).
-create or replace function public.fn_origen_exige_tercero(p_source text)
-returns boolean language sql immutable set search_path to 'public', 'pg_temp' as $$
-  select p_source is null or p_source in ('manual', 'invoice_purchase', 'support_documents')
-      or p_source like 'import%' or p_source like 'reclasificacion%'
-$$;
-
-create or replace function public.fn_trg_tercero_obligatorio_linea()
-returns trigger language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
-declare
-  v_source text; v_org integer;
-begin
-  if not public.fn_tercero_vacio(new.tercero_nit) then
-    return new;
-  end if;
-  select e.source, e.organization_id into v_source, v_org from public.journal_entries e where e.id = new.journal_entry_id;
-  if public.fn_origen_exige_tercero(v_source)
-     and public.fn_cuenta_exige_tercero(coalesce(v_org, new.organization_id), new.account_code) then
-    raise exception 'tercero_obligatorio: la cuenta % exige tercero (NIT real, no genérico) en el asiento %',
-      new.account_code, new.journal_entry_id using errcode = 'check_violation';
-  end if;
-  return new;
-end $$;
-
--- Después de trg_tercero_linea_asiento (que completa el tercero del documento) por orden alfabético.
+-- Sin bloqueo al guardar (decisión de Juan): fuera los triggers y funciones de la versión anterior.
 drop trigger if exists zy_trg_tercero_obligatorio_linea on public.journal_lines;
-create trigger zy_trg_tercero_obligatorio_linea
-  before insert or update of account_code, tercero_nit on public.journal_lines
-  for each row execute function public.fn_trg_tercero_obligatorio_linea();
-
-create or replace function public.fn_trg_tercero_obligatorio_documento()
-returns trigger language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
-declare
-  v_nit text;
-begin
-  if tg_op = 'UPDATE' and new.supplier_id is not distinct from old.supplier_id
-     and (to_jsonb(new)->'provider') is not distinct from (to_jsonb(old)->'provider') then
-    return new;
-  end if;
-  select coalesce(nullif(btrim(s.nit), ''), nullif(btrim(s.tax_id), '')) into v_nit
-    from public.suppliers s where s.id = new.supplier_id;
-  if public.fn_tercero_vacio(v_nit) and tg_table_name = 'support_documents' then
-    v_nit := nullif(btrim(to_jsonb(new)->'provider'->>'identification'), '');
-  end if;
-  if public.fn_tercero_vacio(v_nit) then
-    raise exception 'tercero_obligatorio: el documento exige un proveedor con NIT o documento real (no genérico)'
-      using errcode = 'check_violation';
-  end if;
-  return new;
-end $$;
-
 drop trigger if exists trg_00_tercero_obligatorio on public.invoice_purchase;
-create trigger trg_00_tercero_obligatorio before insert or update of supplier_id on public.invoice_purchase
-  for each row execute function public.fn_trg_tercero_obligatorio_documento();
 drop trigger if exists trg_00_tercero_obligatorio on public.support_documents;
-create trigger trg_00_tercero_obligatorio before insert or update of supplier_id, provider on public.support_documents
-  for each row execute function public.fn_trg_tercero_obligatorio_documento();
+drop function if exists public.fn_trg_tercero_obligatorio_linea();
+drop function if exists public.fn_trg_tercero_obligatorio_documento();
+drop function if exists public.fn_origen_exige_tercero(text);
+
+-- Validación SOLO para la emisión electrónica a la DIAN (Factus). Uso:
+--   select public.fn_validar_identificacion_para_dian(p_supplier_id => 12);            -- proveedor
+--   select public.fn_validar_identificacion_para_dian(p_identificacion => '900123456'); -- dato del documento
+-- Con ambos, vale la del proveedor y, si está vacía, la recibida. Error: 'tercero_obligatorio_dian' (22023).
+create or replace function public.fn_validar_identificacion_para_dian(
+  p_supplier_id integer default null,
+  p_identificacion text default null
+) returns text
+language plpgsql stable security definer set search_path to 'public', 'pg_temp' as $$
+declare
+  v_id text;
+begin
+  if p_supplier_id is not null then
+    -- NIT primero; si no hay, la identificación tributaria/personal guardada (cédula, CE, pasaporte).
+    select case when not public.fn_tercero_vacio(s.nit) then btrim(s.nit)
+                when not public.fn_tercero_vacio(s.tax_id) then btrim(s.tax_id) end
+      into v_id
+      from public.suppliers s where s.id = p_supplier_id;
+  end if;
+  if public.fn_tercero_vacio(v_id) and not public.fn_tercero_vacio(p_identificacion) then
+    v_id := btrim(p_identificacion);
+  end if;
+  if public.fn_tercero_vacio(v_id) then
+    raise exception 'tercero_obligatorio_dian: para transmitir a la DIAN el proveedor necesita NIT o cédula, cédula de extranjería o pasaporte (no genérico 222222222222)'
+      using errcode = '22023';
+  end if;
+  return v_id;
+end $$;
+revoke all on function public.fn_validar_identificacion_para_dian(integer, text) from public, anon;
+grant execute on function public.fn_validar_identificacion_para_dian(integer, text) to authenticated, service_role;
 
 -- Cola de revisión: líneas en cuentas que exigen tercero sin tercero real (no bloqueadas o históricas).
 create or replace view public.v_lineas_sin_tercero with (security_invoker = true) as

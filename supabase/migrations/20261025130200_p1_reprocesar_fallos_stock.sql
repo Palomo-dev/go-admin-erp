@@ -1,6 +1,9 @@
 -- P1 (25-oct-2026): reproceso de los asientos de inventario que fallaron con cuenta_no_configurada.
 -- NO SE EJECUTA AL APLICAR: solo crea funciones. Correr con OK de Juan, primero en una org de prueba,
--- luego solo 345, 346 y 199:  select public.fn_reprocesar_fallos_stock(345);  (repetir hasta pendientes = 0)
+-- luego solo 345, 346 y 199:  select public.fn_reprocesar_fallos_stock(345);
+-- y repetir pasando el cursor devuelto: select public.fn_reprocesar_fallos_stock(345, 1000, <siguiente_desde_id>);
+-- hasta que 'terminado' = true (los que no se pueden resolver —período cerrado, monto 0, no_aplica— quedan
+-- pendientes, pero el cursor avanza y no se reintentan en bucle).
 -- Requiere aplicada antes 20261025130000_p1_cuenta_sede_resuelve_auxiliar.
 -- fn_asiento_stock_movement es la MISMA lógica de fn_auto_journal_stock_movement (viva al 25-oct)
 -- sobre una fila ya insertada; el trigger no se modifica.
@@ -197,8 +200,8 @@ $function$;
 
 -- Reproceso de fallos pendientes de stock_movements (cuenta_no_configurada).
 -- Idempotente: si el asiento del fact_key ya existe se reutiliza (uq_journal_entries_fact_key).
--- p_limite acota el lote para no bloquear (correr varias veces hasta 'pendientes' = 0).
-CREATE OR REPLACE FUNCTION public.fn_reprocesar_fallos_stock_desde(p_org integer, p_desde timestamp with time zone, p_limite integer DEFAULT 1000)
+-- p_limite acota el lote para no bloquear; p_desde_id es un cursor por id (exclusivo) que avanza entre llamadas.
+CREATE OR REPLACE FUNCTION public.fn_reprocesar_fallos_stock_desde(p_org integer, p_desde timestamp with time zone, p_limite integer DEFAULT 1000, p_desde_id bigint DEFAULT NULL)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -213,6 +216,8 @@ declare
   v_siguen integer := 0;
   v_sin_movimiento integer := 0;
   v_aviso text;
+  v_ultimo_id bigint := p_desde_id;
+  v_vistos integer := 0;
 begin
   if p_org is null then
     raise exception 'fn_reprocesar_fallos_stock: falta la organización';
@@ -226,12 +231,15 @@ begin
        and jf.resolved_at is null
        and jf.reason = 'cuenta_no_configurada'
        and jf.source = 'stock_movements'
-       and jf.fact_key like 'stock_movement:%'
+       and coalesce(jf.fact_key, '') like 'stock_movement:%'
+       and (p_desde_id is null or jf.id > p_desde_id)
        and (p_desde is null or jf.created_at >= p_desde)
      order by jf.id
      limit greatest(coalesce(p_limite, 1000), 1)
      for update skip locked
   loop
+    v_ultimo_id := f.id;
+    v_vistos := v_vistos + 1;
     begin
       select * into v_sm
         from public.stock_movements sm
@@ -285,22 +293,25 @@ begin
        where jf.organization_id = p_org and jf.resolved_at is null
          and jf.reason = 'cuenta_no_configurada' and jf.source = 'stock_movements'
     ),
-    'aviso', v_aviso
+    'aviso', v_aviso,
+    'siguiente_desde_id', v_ultimo_id,
+    'terminado', v_vistos < greatest(coalesce(p_limite, 1000), 1)
   );
 end;
 $function$;
 
--- Entrada pedida en P1: todos los fallos pendientes de la org (lote de p_limite; repetir hasta pendientes = 0).
-CREATE OR REPLACE FUNCTION public.fn_reprocesar_fallos_stock(p_org integer, p_limite integer DEFAULT 1000)
+-- Entrada pedida en P1: fallos pendientes de la org (lote de p_limite desde el cursor p_desde_id;
+-- repetir con 'siguiente_desde_id' hasta 'terminado' = true).
+CREATE OR REPLACE FUNCTION public.fn_reprocesar_fallos_stock(p_org integer, p_limite integer DEFAULT 1000, p_desde_id bigint DEFAULT NULL)
  RETURNS jsonb
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO 'public', 'pg_temp'
 AS $function$
-  select public.fn_reprocesar_fallos_stock_desde(p_org, null, p_limite);
+  select public.fn_reprocesar_fallos_stock_desde(p_org, null, p_limite, p_desde_id);
 $function$;
 
 revoke all on function public.fn_asiento_stock_movement(public.stock_movements) from public, anon, authenticated;
-revoke all on function public.fn_reprocesar_fallos_stock_desde(integer, timestamp with time zone, integer) from public, anon, authenticated;
-revoke all on function public.fn_reprocesar_fallos_stock(integer, integer) from public, anon, authenticated;
-grant execute on function public.fn_reprocesar_fallos_stock(integer, integer) to service_role;
+revoke all on function public.fn_reprocesar_fallos_stock_desde(integer, timestamp with time zone, integer, bigint) from public, anon, authenticated;
+revoke all on function public.fn_reprocesar_fallos_stock(integer, integer, bigint) from public, anon, authenticated;
+grant execute on function public.fn_reprocesar_fallos_stock(integer, integer, bigint) to service_role;

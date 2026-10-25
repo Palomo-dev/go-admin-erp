@@ -13,13 +13,25 @@
 --   * No exige caja abierta: es un pago en línea. La confirmación (venta, líneas, descuento de
 --     stock, comanda, factura) la hace después, en la misma acción del POS, el camino de siempre
 --     (fn_confirmar_pedido_web_completo), que ya acepta el pedido porque está pending/paid.
---   * Permiso pos.pedidos_web.marcar_pagado. Mientras nadie lo asigne, también pos.void
---     (admin y gerente lo tienen por rol).
+--   * Permiso pos.pedidos_web.marcar_pagado (o pos.void). Se asigna a los roles «Admin de organización»
+--     (id 2, el único con pos.void en prod) y «Manager» (id 5, gerente). En prod no hay roles por org.
+-- QA AMARILLO (Soporte, 25-oct): referencia con formato Wompi (<comercio>-<epoch>-<aleatorio>);
+--   referencia ya usada en OTRO pago → REFERENCIA_DUPLICADA (no se duplica); en un pago de este pedido →
+--   se reusa (pago_existente). Pendientes/cancelados solo de pasarela; vencidos de cualquier método.
+--   Sin auto-registro en schema_migrations: la fila se inserta aparte al aplicar (atómico). Re-ejecutable.
 
 insert into public.permissions (code, module, name, description, category)
 values ('pos.pedidos_web.marcar_pagado', 'pos', 'Marcar pedido online como pagado',
         'Reactivar un pedido web vencido o sin confirmar y marcarlo pagado con la referencia del pago en línea (webhook no recibido)', 'pos')
 on conflict (code) do nothing;
+
+-- MEDIO 1: asignar a admin de organización y gerente (los que existan; idempotente).
+insert into public.role_permissions (role_id, permission_id, allowed)
+select r.id, p.id, true
+  from public.roles r cross join public.permissions p
+ where p.code = 'pos.pedidos_web.marcar_pagado'
+   and r.organization_id is null and r.name in ('Admin de organización', 'Manager')
+   and not exists (select 1 from public.role_permissions x where x.role_id = r.id and x.permission_id = p.id);
 
 create or replace function public.fn_marcar_pedido_web_pagado(
   p_order_id uuid,
@@ -41,6 +53,8 @@ declare
   v_reserva jsonb := null;
   v_pago uuid;
   v_moneda text;
+  v_otro text;
+  v_existente boolean := false;
 begin
   if v_uid is null then
     raise exception 'SESION_REQUERIDA' using errcode = '42501';
@@ -48,6 +62,10 @@ begin
   if v_ref is null or length(v_ref) < 3 then
     raise exception 'REFERENCIA_REQUERIDA' using errcode = '22023',
       hint = 'Escriba la referencia de la transacción en Wompi.';
+  end if;
+  if v_ref !~ '^[0-9]{3,}-[0-9]{6,}-[0-9]{3,}$' then
+    raise exception 'REFERENCIA_INVALIDA' using errcode = '22023',
+      hint = 'Formato Wompi: <comercio>-<epoch>-<aleatorio>, p. ej. 1578504-1792942441-37635.';
   end if;
   if v_motivo is null or length(v_motivo) < 3 then
     raise exception 'MOTIVO_REQUERIDO' using errcode = '22023';
@@ -78,6 +96,22 @@ begin
   end if;
   if v_wo.sale_id is not null or v_wo.table_session_id is not null then
     raise exception 'PEDIDO_CON_VENTA' using errcode = '22023';
+  end if;
+  -- MEDIO 3: efectivo / transferencia / mesa se cobran en caja; solo los vencidos admiten cualquier método.
+  if v_wo.status <> 'expired' and lower(coalesce(v_wo.payment_method, '')) not in
+       ('wompi', 'wompi_co', 'card', 'nequi', 'daviplata', 'pse', 'bancolombia_transfer',
+        'bancolombia_collect', 'bancolombia_bnpl', 'su_plus') then
+    raise exception 'PEDIDO_NO_REACTIVABLE' using errcode = '22023',
+      detail = 'Método ' || coalesce(v_wo.payment_method, '-') || ': se cobra en caja.';
+  end if;
+  -- MEDIO 2: la referencia ya está en otro pago → avisar, no duplicar.
+  select p.source || ':' || p.source_id into v_otro from public.payments p
+   where p.reference = v_ref and p.organization_id = v_wo.organization_id
+     and not (p.source = 'web_order' and p.source_id = p_order_id::text)
+   limit 1;
+  if v_otro is not null then
+    raise exception 'REFERENCIA_DUPLICADA' using errcode = '23505',
+      detail = 'La referencia ' || v_ref || ' ya está registrada en el pago ' || v_otro || '.';
   end if;
 
   -- Stock: la expiración lo liberó → reservar otra vez, todo o nada.
@@ -115,6 +149,7 @@ begin
   select p.id into v_pago from public.payments p
    where p.source = 'web_order' and p.source_id = p_order_id::text and p.status in ('paid', 'completed')
    limit 1;
+  v_existente := v_pago is not null;
   if v_pago is null then
     v_moneda := coalesce(
       (select oc.currency_code from public.organization_currencies oc
@@ -140,7 +175,7 @@ begin
                        'order_number', v_wo.order_number, 'payment_id', v_pago, 'reserva', v_reserva)
   );
 
-  return jsonb_build_object('ok', true, 'ya_pagado', false, 'order_id', v_wo.id,
+  return jsonb_build_object('ok', true, 'ya_pagado', false, 'order_id', v_wo.id, 'pago_existente', v_existente,
                             'estado_anterior', v_wo.status, 'payment_id', v_pago,
                             'stock_reservado', v_reserva is not null, 'reserva', v_reserva);
 end;
@@ -148,7 +183,3 @@ $function$;
 
 revoke all on function public.fn_marcar_pedido_web_pagado(uuid, text, text, text) from public, anon;
 grant execute on function public.fn_marcar_pedido_web_pagado(uuid, text, text, text) to authenticated;
-
-insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
-values ('20261025134150', 'pedido_web_marcar_pagado', array[]::text[], 'p1_apply_executor')
-on conflict (version) do nothing;

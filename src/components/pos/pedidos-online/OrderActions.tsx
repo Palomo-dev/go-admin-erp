@@ -20,7 +20,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import type { WebOrder } from '@/lib/services/webOrdersService';
-import { puedeMarcarPagadoManual } from '@/lib/services/webOrderPagoManual';
+import { pendienteDeConfirmar, puedeMarcarPagadoManual } from '@/lib/services/webOrderPagoManual';
 
 interface OrderActionsProps {
   order: WebOrder;
@@ -78,7 +78,10 @@ export function OrderActions({
   // Vencido por la expiración (sin webhook de pago): solo admite el pago manual.
   const isExpired = order.status === 'expired';
   // Pago en línea aprobado sin webhook: reactivar y marcar pagado, sin caja.
+  // Solo pasarela (Wompi: tarjeta, Nequi, PSE…) o vencidos; efectivo/transferencia se cobran en caja.
   const canMarcarPagadoManual = !!onMarcarPagadoManual && puedeMarcarPagadoManual(order);
+  // Pagado (p. ej. pago manual) y sin venta: «Confirmar pedido» es el reintento de la confirmación.
+  const faltaConfirmar = pendienteDeConfirmar(order);
   // Recoger y «Comer aquí» no salen a domicilio: de «Listo» pasan a «Entregado».
   const isPickup = !esDomicilio(order.delivery_type);
   // Cancelar también a partir de «Preparando» (Figma 449:208178 y 1981:175699).
@@ -133,6 +136,9 @@ export function OrderActions({
 
   return (
     <div className="space-y-3">
+      {faltaConfirmar && (
+        <p className="text-sm text-fg-secondary">{t('pagoManual.reintentoConfirmacion')}</p>
+      )}
       {/* Acciones principales según estado */}
       {isPending && (
         <div className="flex gap-2">

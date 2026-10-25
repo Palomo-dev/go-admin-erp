@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { referenciaValida } from '@/lib/services/webOrderPagoManual';
 
 interface MarcarPagadoManualDialogProps {
   open: boolean;
@@ -51,7 +52,8 @@ export function MarcarPagadoManualDialog({
     }
   }, [open]);
 
-  const valido = referencia.trim().length >= 3 && motivo.trim().length >= 3;
+  const refOk = referenciaValida(referencia);
+  const valido = refOk && motivo.trim().length >= 3;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,7 +74,11 @@ export function MarcarPagadoManualDialog({
               placeholder={t('pagoManual.referenciaEjemplo')}
               autoComplete="off"
               maxLength={200}
+              aria-invalid={referencia.trim() !== '' && !refOk}
             />
+            {referencia.trim() !== '' && !refOk && (
+              <p className="text-sm text-destructive">{t('pagoManual.errores.REFERENCIA_INVALIDA')}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="pago-manual-motivo">{t('pagoManual.motivo')}</Label>

@@ -36262,8 +36262,12 @@
         "PEDIDO_NO_REACTIVABLE": "El estado del pedido no permite reactivarlo.",
         "PEDIDO_CON_VENTA": "El pedido ya tiene una venta asociada.",
         "SIN_PERMISO": "No tienes permiso para marcar pedidos como pagados.",
-        "FUNCION_AUSENTE": "La función aún no está instalada en la base de datos."
-      }
+        "FUNCION_AUSENTE": "La función aún no está instalada en la base de datos.",
+        "REFERENCIA_INVALIDA": "Formato de referencia Wompi inválido (ej. 1578504-1792942441-37635).",
+        "REFERENCIA_DUPLICADA": "Esa referencia ya está registrada en otro pago. Revísala en Wompi."
+      },
+      "reintentoConfirmacion": "Si la confirmación falló tras registrar el pago, usa «Confirmar pedido» para reintentarla.",
+      "pagoExistente": "La referencia {referencia} ya estaba registrada en este pedido: se usó ese pago, no se duplicó."
     }
   },
   "posMesasFlujo": {

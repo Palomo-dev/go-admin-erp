@@ -3,14 +3,14 @@
  *
  * El débito es el auxiliar de la sede bajo 1435 (por ejemplo 14350501).
  * Nunca 1405. El saldo inicial acredita 3105. Un sobrante real acredita
- * 4295, ingresos diversos, cuenta configurable. 4250 es de reintegros de
+ * 42959501 (auxiliar de 4295, que es título), clave `ingresos_diversos`, configurable. 4250 es de reintegros de
  * periodos anteriores: ningún flujo de inventario la usa. La compra sin
  * orden no genera asiento aquí: va a la factura de compra.
  */
 
 export const CUENTA_INVENTARIO_COMERCIO = '1435';
 export const CUENTA_SALDO_INICIAL = '3105';
-export const CUENTA_DIVERSOS = '4295';
+export const CUENTA_DIVERSOS = '42959501';
 /** 4250 no entra en inventario. Se nombra para que las pruebas lo vigilen. */
 export const CUENTA_RECUPERACIONES = '4250';
 
@@ -94,7 +94,7 @@ export function asientoCargaInicial(p: {
   });
 }
 
-/** Un sobrante real: débito al auxiliar de 1435 y crédito a 4295. */
+/** Un sobrante real: débito al auxiliar de 1435 y crédito a 42959501 (ingresos diversos). */
 export function asientoSobrante(p: {
   total: number;
   cuentaInventario?: string | null;

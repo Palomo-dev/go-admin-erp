@@ -70,7 +70,7 @@ describe('motivo del ajuste de ganancia', () => {
     const sobrante = asientoSobrante({ total: 3_800_000 });
     expect(sobrante.lineas).toEqual([
       { cuenta: '1435', debito: 3_800_000, credito: 0 },
-      { cuenta: '4295', debito: 0, credito: 3_800_000 },
+      { cuenta: '42959501', debito: 0, credito: 3_800_000 },
     ]);
     expect(sobrante.lineas.map((l) => l.cuenta)).not.toContain(CUENTA_RECUPERACIONES);
   });

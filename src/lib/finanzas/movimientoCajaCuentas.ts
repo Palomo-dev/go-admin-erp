@@ -32,8 +32,13 @@ const INGRESO_POR_CONCEPTO: Record<string, readonly string[]> = {
   devolucionRecibida: ['2105'],
 };
 
-/** Otro ingreso: 4250 existe en el plan estándar. No es 4105. */
-const OTRO_INGRESO = ['4250', '4295', '4210'] as const;
+/**
+ * Otro ingreso: el auxiliar de ingresos diversos (clave `ingresos_diversos`, 42959501).
+ * 4295 es título. Sin desvío silencioso a 4250 (reintegros) ni 4210 (financieros):
+ * si la org no tiene el auxiliar, no hay asiento y se pide configurar la cuenta.
+ */
+export const CUENTA_INGRESOS_DIVERSOS = '42959501';
+const OTRO_INGRESO = [CUENTA_INGRESOS_DIVERSOS] as const;
 
 export function primeraDisponible(
   preferidas: readonly string[],
@@ -105,7 +110,7 @@ export function asientoAjusteBanco(
     return { tipo: 'asiento', debito, credito: banco };
   }
   if (importe > 0) {
-    const credito = primeraDisponible(['4250', '4295', '4210'], existentes);
+    const credito = primeraDisponible(OTRO_INGRESO, existentes);
     if (!banco || !credito || credito.startsWith('4105') || credito.startsWith('5')) return { tipo: 'sin_cuenta' };
     return { tipo: 'asiento', debito: banco, credito };
   }

@@ -136,8 +136,8 @@ export function claveDeCuenta(
   const origen = (source ?? '').trim();
   if (!code) return null;
 
-  if (code === '240810') return 'iva_descontable';
-  if (code === '240805') return 'iva_generado';
+  if (code === '240810' || code.startsWith('240810')) return 'iva_descontable';
+  if (code === '240805' || code.startsWith('240805')) return 'iva_generado';
   if (lado === 'impuesto' && (code === '2408' || code === '2405')) {
     return ORIGENES_COMPRA.has(origen) ? 'iva_descontable' : 'iva_generado';
   }
@@ -147,7 +147,7 @@ export function claveDeCuenta(
   if (code === '1305' && !ORIGENES_PRESTAMO.has(origen)) return 'clientes';
   if (code === '2105' || code === '2205') return 'proveedores';
   if (code === '1405' || code === '1435') return 'inventario';
-  if (code === '6105' || code === '6135' || code === '6140') return 'costo_ventas';
+  if (code === '6105' || code === '6135' || code.startsWith('613505') || code === '6140') return 'costo_ventas';
   if (code === '2365') return 'retefuente';
   if (code === '2367') return 'reteiva';
   if (code === '2368') return 'reteica';
@@ -302,10 +302,10 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   ventas_servicios: '4235',
   devoluciones: '4175',
   descuentos: '4175',
-  costo_ventas: '6135',
+  costo_ventas: '61350501',
   inventario: '1435',
-  iva_generado: '240805',
-  iva_descontable: '240810',
+  iva_generado: '24080501',
+  iva_descontable: '24081001',
   retefuente: '2365',
   reteiva: '2367',
   reteica: '2368',
@@ -322,9 +322,9 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   manifiesto_transporte: '2335',
   saldo_inicial: '3105',
   impuesto_consumo: '2495',
-  redondeo: '4295',
+  redondeo: '42958101',
   compra_servicio: '2335',
-  ingresos_diversos: '4295',
+  ingresos_diversos: '42959501',
 };
 
 /** Misma tabla que `fn_propuesta_configuracion_sector` en la migración. */

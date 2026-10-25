@@ -16,7 +16,7 @@ import {
   asientoCargaInicial,
   asientoSobrante,
   costoParecePrecio,
-  cuentaInventarioPorTipo,
+  cuentaInventarioCargaInicial,
   debeAvisarSaldoInicial,
   debeConfirmarAjuste,
   importeCarga,
@@ -133,6 +133,25 @@ function Formulario({
   // Al cambiar de sucursal se vuelve a leer la fila del producto en esa sucursal
   // (disponible y costo promedio), y sus lotes.
   const productoId = producto?.product_id ?? null;
+  // Vista previa = lo que postea el SQL (fn_clasificar_producto_restaurante): en hoteles/restaurantes un
+  // ingrediente de receta va a 14050501 solo si la org tiene la separación insumo/reventa activa.
+  const tipoOrg = typeof organization?.type_id === 'number' ? organization.type_id : null;
+  const [insumo, setInsumo] = useState<{ esIngrediente: boolean; separar: boolean }>({ esIngrediente: false, separar: false });
+  useEffect(() => {
+    setInsumo({ esIngrediente: false, separar: false });
+    if (!productoId || (tipoOrg !== 1 && tipoOrg !== 2)) return;
+    let vivo = true;
+    void Promise.all([
+      supabase.from('recipe_ingredients').select('id', { count: 'exact', head: true }).eq('ingredient_product_id', productoId),
+      supabase.rpc('fn_separacion_insumos_activa', { p_org: organizacionId }),
+    ]).then(([ing, sep]) => {
+      if (!vivo) return;
+      setInsumo({ esIngrediente: !ing.error && (ing.count ?? 0) > 0, separar: !sep.error && sep.data === true });
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [organizacionId, productoId, tipoOrg]);
   useEffect(() => {
     if (!productoId || !sucursalId) return;
     let vivo = true;
@@ -283,7 +302,11 @@ function Formulario({
       monto: montoMovimiento,
       umbral,
     });
-  const cuentaInventario = cuentaInventarioPorTipo(typeof organization?.type_id === 'number' ? organization.type_id : null);
+  const cuentaInventario = cuentaInventarioCargaInicial({
+    typeId: tipoOrg,
+    producto: { esIngrediente: insumo.esIngrediente },
+    separarInsumos: insumo.separar,
+  });
   const asientoInicial =
     motivo === 'saldo_inicial' && (cantidad ?? 0) > 0 && costo !== null
       ? asientoCargaInicial({ unidades: cantidad ?? 0, costo, cuentaInventario })

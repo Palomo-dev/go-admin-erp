@@ -6,7 +6,7 @@ import { Ban, Package, Pencil, RotateCcw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { AvisoTonal, DataTable, Dialogo, FormField, ListCard, Pagination, SearchInput, SegmentedControl, calcularRango, type AccionFila, type ColumnaTabla } from '@/components/kit';
-import { asientoPorTotal, costoParecePrecio, cuentaInventarioPorTipo, importeCarga } from '@/lib/inventario/cargaInicial';
+import { asientoPorTotal, costoParecePrecio, cuentaInventarioCargaInicial, importeCarga } from '@/lib/inventario/cargaInicial';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { normalizarNombre, parseNumero } from '@/lib/inventario/importacion/texto';
 import type { FilaImport, FilaValidada } from '@/lib/inventario/importacion/tipos';
@@ -62,7 +62,9 @@ export function PasoVistaPrevia({ a, moneda, saldoInicial = false }: Props) {
     return {
       asiento: asientoPorTotal({
         total,
-        cuentaInventario: cuentaInventarioPorTipo(typeof typeId === 'number' ? typeId : null),
+        // Producto nuevo: aún no es ingrediente de ninguna receta, así que el SQL lo clasifica como reventa
+        // (bajo 1435), nunca 14050501. Misma función que la vista previa de movimientos.
+        cuentaInventario: cuentaInventarioCargaInicial({ typeId: typeof typeId === 'number' ? typeId : null, producto: { esIngrediente: false } }),
       }),
       costoAlto,
     };

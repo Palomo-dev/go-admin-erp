@@ -2,7 +2,7 @@
 -- - Documentos (caja, banco, compra, venta): por la misma ruta de siempre.
 -- - Inventario (stock_movement:*): por fn_reprocesar_fallos_stock_desde, SOLO fallos creados desde
 --   el 26-oct-2026 00:00 Bogotá. El atraso de 345/346/199 queda para el reproceso manual con OK de Juan.
--- Requiere aplicadas antes 20261025130000 y 20261025130200.
+-- Requiere aplicadas antes 20261025133058 y 20261025133124.
 -- Rollback: supabase/rollbacks/20261025130300_p1_reintentar_cuenta_no_configurada_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_reintentar_fallos_asiento()

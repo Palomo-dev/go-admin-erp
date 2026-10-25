@@ -5,7 +5,7 @@
 -- 3) si la cuenta de título tiene un único auxiliar de movimiento, ese auxiliar (no aplica a impuestos 24xx).
 -- Solo devuelve fallo si al final no hay ninguna cuenta de movimiento.
 -- Inventario nunca termina en 1405: 1405/1435/143501xx/143505 van al auxiliar 143501xx de la sede.
--- Rollback: supabase/rollbacks/20261025130000_p1_cuenta_sede_resuelve_auxiliar_rollback.sql
+-- Rollback: supabase/rollbacks/20261025133058_p1_cuenta_sede_resuelve_auxiliar_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_cuenta_configurada_de_sede(p_organization_id integer, p_branch_id integer, p_source text, p_lado text, p_codigo text, OUT cuenta text, OUT fallo text)
  RETURNS record

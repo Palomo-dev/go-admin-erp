@@ -1,4 +1,4 @@
--- Rollback de 20261025130100_p1_siembra_inventario_auxiliar: restaura la definición VIVA capturada el 25-oct-2026 con pg_get_functiondef.
+-- Rollback de 20261025133104_p1_siembra_inventario_auxiliar: restaura la definición VIVA capturada el 25-oct-2026 con pg_get_functiondef.
 
 CREATE OR REPLACE FUNCTION public.fn_propuesta_configuracion_sector(p_type_id integer)
  RETURNS TABLE(clave text, account_code text)

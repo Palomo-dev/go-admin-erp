@@ -4,10 +4,10 @@
 -- y repetir pasando el cursor devuelto: select public.fn_reprocesar_fallos_stock(345, 1000, <siguiente_desde_id>);
 -- hasta que 'terminado' = true (los que no se pueden resolver —período cerrado, monto 0, no_aplica— quedan
 -- pendientes, pero el cursor avanza y no se reintentan en bucle).
--- Requiere aplicada antes 20261025130000_p1_cuenta_sede_resuelve_auxiliar.
+-- Requiere aplicada antes 20261025133058_p1_cuenta_sede_resuelve_auxiliar.
 -- fn_asiento_stock_movement es la MISMA lógica de fn_auto_journal_stock_movement (viva al 25-oct)
 -- sobre una fila ya insertada; el trigger no se modifica.
--- Rollback: supabase/rollbacks/20261025130200_p1_reprocesar_fallos_stock_rollback.sql
+-- Rollback: supabase/rollbacks/20261025133124_p1_reprocesar_fallos_stock_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_asiento_stock_movement(p_sm public.stock_movements, OUT entry_id integer, OUT fallo text, OUT ya_existia boolean)
  RETURNS record

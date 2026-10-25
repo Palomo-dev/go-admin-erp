@@ -3,7 +3,7 @@
 -- fn_sembrar_configuracion_contable: inventario -> auxiliar 143501xx (fn_inventario_auxiliar_1435);
 -- otras claves que caen en cuenta de título -> su único auxiliar de movimiento (si hay varios, no se siembra).
 -- comisiones ya se propone en 529505 (no 5235) en la versión viva; no cambia.
--- Rollback: supabase/rollbacks/20261025130100_p1_siembra_inventario_auxiliar_rollback.sql
+-- Rollback: supabase/rollbacks/20261025133104_p1_siembra_inventario_auxiliar_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_propuesta_configuracion_sector(p_type_id integer)
  RETURNS TABLE(clave text, account_code text)

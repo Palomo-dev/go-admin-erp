@@ -1,4 +1,4 @@
--- Rollback de 20261025130000_p1_cuenta_sede_resuelve_auxiliar: restaura la definición VIVA capturada el 25-oct-2026 con pg_get_functiondef.
+-- Rollback de 20261025133058_p1_cuenta_sede_resuelve_auxiliar: restaura la definición VIVA capturada el 25-oct-2026 con pg_get_functiondef.
 
 CREATE OR REPLACE FUNCTION public.fn_cuenta_configurada_de_sede(p_organization_id integer, p_branch_id integer, p_source text, p_lado text, p_codigo text, OUT cuenta text, OUT fallo text)
  RETURNS record

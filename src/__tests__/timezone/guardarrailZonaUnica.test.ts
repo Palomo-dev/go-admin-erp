@@ -56,6 +56,9 @@ export const LITERAL_BOGOTA = /['"`]America\/Bogota['"`]/;
  */
 const PERMITIDOS_BOGOTA = new Set<string>([
   'src/lib/utils/dateCore.ts',
+  // Los correos legales de eliminación deben formatear fechas en español de Colombia
+  // según los textos proporcionados por Legal (2026-09-30):
+  'src/lib/services/accountDeletionEmails.ts',
   'src/app/api/crm/whatsapp/settings/route.ts',
   'src/components/calendario/configuracion/types.ts',
   'src/components/configuracion/crm/WhatsAppTab.tsx',

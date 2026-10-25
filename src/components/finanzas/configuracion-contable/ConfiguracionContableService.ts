@@ -25,11 +25,116 @@ export interface FalloContable {
   branch_id: number | null;
 }
 
+export interface ConfiguracionInvalida {
+  clave: ClaveContable;
+  branch_id: number | null;
+  account_code: string;
+  motivo: string;
+  /** Auxiliar de movimiento que se sugiere; null si hay que elegirlo a mano. */
+  sugerida: string | null;
+}
+
+/** Mapeo de una sede a su auxiliar de inventario (branch_account_mappings). */
+export interface MapeoSede {
+  branch_id: number;
+  base_account_code: string;
+  sub_account_code: string;
+}
+
+const AUXILIAR_1435 = /^143501\d{2}$/;
+
+/**
+ * Auxiliares de movimiento que cuelgan de una cuenta de título.
+ * Nunca para impuestos 24xx: ese auxiliar no se adivina, se elige a mano.
+ */
+function auxiliaresDe(codigo: string, plan: CuentaContable[]): CuentaContable[] {
+  if (codigo.startsWith('24')) return [];
+  return plan.filter(
+    (c) => c.account_code !== codigo
+      && c.account_code.startsWith(codigo)
+      && c.es_movimiento !== false
+      && c.is_active !== false,
+  );
+}
+
+/** Auxiliar 143501xx mapeado a la sede, si existe en el plan y es de movimiento. */
+function auxiliarInventarioDeSede(
+  branchId: number | null,
+  mapeos: MapeoSede[],
+  plan: CuentaContable[],
+): string | null {
+  if (branchId == null) return null;
+  const candidatos = mapeos
+    .filter((m) => m.branch_id === branchId && (m.base_account_code === '1435' || m.base_account_code === '1405'))
+    .sort((a, b) => (a.base_account_code === '1435' ? 0 : 1) - (b.base_account_code === '1435' ? 0 : 1));
+  for (const mapeo of candidatos) {
+    const cuenta = plan.find((c) => c.account_code === mapeo.sub_account_code);
+    if (AUXILIAR_1435.test(mapeo.sub_account_code) && cuenta && cuenta.es_movimiento !== false && cuenta.is_active !== false) {
+      return mapeo.sub_account_code;
+    }
+  }
+  return null;
+}
+
+/**
+ * Configuraciones que hoy no sirven para un asiento (cuenta de título,
+ * inactiva o fuera del plan). Inventario se sugiere al auxiliar 143501xx
+ * mapeado a la sede (o a la sede principal si la fila es de la organización),
+ * nunca 1435 sola ni 1405. Impuestos 24xx no se sugieren.
+ */
+export function configuracionesInvalidas(
+  filas: FilaConfiguracion[],
+  plan: CuentaContable[],
+  mapeos: MapeoSede[] = [],
+  sedePrincipalId: number | null = null,
+): ConfiguracionInvalida[] {
+  const salida: ConfiguracionInvalida[] = [];
+  for (const fila of filas) {
+    const codigo = fila.account_code;
+    const cuenta = plan.find((c) => c.account_code === codigo);
+    const esInventarioViejo = fila.clave === 'inventario' && (codigo === '1405' || codigo.startsWith('1405'));
+    let motivo: string | null = null;
+    if (!cuenta) motivo = `La cuenta ${codigo} no existe en el plan`;
+    else if (cuenta.is_active === false) motivo = `La cuenta ${codigo} está inactiva`;
+    else if (cuenta.es_movimiento === false) motivo = `La cuenta ${codigo} es de título y no recibe movimientos`;
+    else if (esInventarioViejo) motivo = `El inventario no va en ${codigo}; usa un auxiliar de la 1435`;
+    if (!motivo) continue;
+
+    let sugerida: string | null = null;
+    if (fila.clave === 'inventario') {
+      sugerida = auxiliarInventarioDeSede(fila.branch_id ?? sedePrincipalId, mapeos, plan);
+    } else {
+      const hijos = auxiliaresDe(codigo, plan);
+      sugerida = hijos.length === 1 ? hijos[0].account_code : null;
+    }
+    salida.push({ clave: fila.clave, branch_id: fila.branch_id, account_code: codigo, motivo, sugerida });
+  }
+  return salida;
+}
+
 export class ConfiguracionContableService {
   private static organizacionId(): number {
     const org = obtenerOrganizacionActiva();
     if (!org?.id) throw new Error('No hay una organización activa');
     return org.id;
+  }
+
+  /** Auxiliares de inventario por sede (branch_account_mappings de 1435/1405). */
+  static async mapeosInventario(): Promise<MapeoSede[]> {
+    const organizationId = this.organizacionId();
+    const { data, error } = await supabase
+      .from('branch_account_mappings')
+      .select('branch_id, base_account_code, sub_account_code')
+      .eq('organization_id', organizationId)
+      .in('base_account_code', ['1435', '1405']);
+
+    if (error) throw error;
+
+    return (data ?? []).map((fila) => ({
+      branch_id: fila.branch_id as number,
+      base_account_code: fila.base_account_code as string,
+      sub_account_code: fila.sub_account_code as string,
+    }));
   }
 
   static async listar(): Promise<FilaGuardada[]> {

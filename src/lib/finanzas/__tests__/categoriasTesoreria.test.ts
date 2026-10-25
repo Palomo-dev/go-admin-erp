@@ -127,7 +127,11 @@ describe('vista previa del asiento', () => {
     expect(cajaSola.slice(cajaSola.indexOf('cuenta_contable'), cajaSola.indexOf('fn_asiento_movimiento_caja')))
       .not.toMatch(/fn_asiento_movimiento_caja/);
     expect(banco).toMatch(/array\['5305', '5195', '5135'\]/);
-    expect(banco).toMatch(/array\['4250', '4295', '4210'\]/);
+    // 134030 redefine el banco: otro ingreso = clave ingresos_diversos (42959501), sin desvío a 4250/4210.
+    const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar.sql'), 'utf8');
+    const bancoP1 = p1.slice(p1.search(/function public\.fn_auto_journal_bank\(/i));
+    expect(bancoP1).toMatch(/array\[public\.fn_cuenta_ingresos_diversos\(/);
+    expect(p1).not.toMatch(/array\['4250', '4295', '4210'\]/);
     expect(SQL).toMatch(/drop function if exists public\.pos_caja_registrar_movimiento\(integer, text, numeric, text, text, text, text, uuid, timestamptz\)/);
   });
 });

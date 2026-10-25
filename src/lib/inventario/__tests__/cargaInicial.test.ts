@@ -16,6 +16,7 @@ import {
   costoParecePrecio,
   creditoDelAjuste,
   cuentaInventarioPorTipo,
+  cuentaInventarioCargaInicial,
   debeAvisarSaldoInicial,
   debeConfirmarAjuste,
   sugerirCompraPorNegativo,
@@ -52,6 +53,21 @@ describe('asiento de la carga inicial', () => {
     expect(asiento.lineas.map((l) => l.cuenta).some((c) => c.startsWith('1405'))).toBe(false);
   });
 
+  test('insumo de restaurante: 14050501 solo con la separación activa (orgs nuevas o aprobadas)', () => {
+    const insumo = { esIngrediente: true };
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: insumo, separarInsumos: true })).toBe('14050501');
+    expect(cuentaInventarioCargaInicial({ typeId: 2, producto: insumo, separarInsumos: true })).toBe('14050501');
+    // Org existente (separación desactivada hasta el OK de Juan): sigue bajo 1435.
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: insumo })).toBe('1435');
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: insumo, configurada: '14350101' })).toBe('14350101');
+    // Comercio y reventa: bajo 1435.
+    expect(cuentaInventarioCargaInicial({ typeId: 3, producto: insumo, separarInsumos: true })).toBe('1435');
+    expect(cuentaInventarioCargaInicial({ typeId: 1, producto: {}, separarInsumos: true, configurada: '14350101' })).toBe('14350101');
+    const asiento = asientoPorTotal({ total: 1000, cuentaInventario: '14050501' });
+    expect(asiento.lineas[0].cuenta).toBe('14050501');
+    expect(asientoPorTotal({ total: 1000, cuentaInventario: '140505' }).lineas[0].cuenta).toBe('1435');
+  });
+
   test('un total ya sumado no toca 4250', () => {
     const asiento = asientoPorTotal({ total: 3_800_000.4 });
     expect(asiento.total).toBe(3_800_000);
@@ -70,7 +86,7 @@ describe('motivo del ajuste de ganancia', () => {
     const sobrante = asientoSobrante({ total: 3_800_000 });
     expect(sobrante.lineas).toEqual([
       { cuenta: '1435', debito: 3_800_000, credito: 0 },
-      { cuenta: '4295', debito: 0, credito: 3_800_000 },
+      { cuenta: '42959501', debito: 0, credito: 3_800_000 },
     ]);
     expect(sobrante.lineas.map((l) => l.cuenta)).not.toContain(CUENTA_RECUPERACIONES);
   });
@@ -186,7 +202,19 @@ describe('contrato del sobrante en 4295', () => {
     expect(sql).toContain('fn_inventario_auxiliar_1435');
     expect(sql).toContain("'143505'");
     expect(sql).toContain("'ingresos_diversos'");
-    expect(sql).toContain("'4295'");
+    // 4295 pasa a título: el sobrante acredita el auxiliar 42959501 vía la clave (134030).
+    const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar.sql'), 'utf8');
+    const cuerpo = (fn: string) => {
+      const resto = p1.slice(p1.search(new RegExp(String.raw`function\s+public\.${fn}\s*\(`, 'i')));
+      return resto.slice(0, resto.search(/\n\$(function)?\$\s*;/));
+    };
+    // El resolver lleva 4295 a 42959501 y fn_cuenta_ingresos_diversos pasa por él con respaldo 4295.
+    expect(cuerpo('fn_cuenta_auxiliar_de_titulo')).toMatch(/when\s+'4295'\s+then\s+'42959501'/);
+    expect(cuerpo('fn_cuenta_ingresos_diversos')).toMatch(/fn_cuenta_auxiliar_de_titulo\([\s\S]*clave\s*=\s*'ingresos_diversos'[\s\S]*'4295'\)\)/);
+    // B1: fn_sobrante_borradores lee y reemplaza también los auxiliares 42959501/42959502.
+    const sob = cuerpo('fn_sobrante_borradores');
+    expect(sob).toContain("account_code in ('4295', '42959501', '42959502')");
+    expect(sob).toContain("account_code in ('4250', '3105', '4295', '42959501', '42959502')");
     expect(sql).toContain('correccion_conteo');
     expect(sql).toContain('left(coalesce(v_credit_account, \'\'), 4) = \'4250\'');
     expect(datos).toContain('fn_sobrante_borradores');

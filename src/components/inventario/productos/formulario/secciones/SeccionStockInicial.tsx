@@ -5,7 +5,7 @@ import { Info, PackageCheck, SlidersHorizontal, Warehouse } from 'lucide-react';
 import { AvisoTonal } from '@/components/kit';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 import { CampoNumero } from '@/components/kit/CampoNumero';
-import { asientoPorTotal, costoParecePrecio, cuentaInventarioPorTipo, importeCarga } from '@/lib/inventario/cargaInicial';
+import { asientoPorTotal, costoParecePrecio, cuentaInventarioCargaInicial, importeCarga } from '@/lib/inventario/cargaInicial';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -92,7 +92,9 @@ export function SeccionStockInicial({ estado, cambiar, errores, modo, moneda, pr
     !editar && totalCarga > 0
       ? asientoPorTotal({
           total: totalCarga,
-          cuentaInventario: cuentaInventarioPorTipo(typeof typeId === 'number' ? typeId : null),
+          // Producto nuevo: aún no es ingrediente de ninguna receta, así que el SQL lo clasifica como reventa
+          // (bajo 1435), nunca 14050501. Misma función que la vista previa de movimientos.
+          cuentaInventario: cuentaInventarioCargaInicial({ typeId: typeof typeId === 'number' ? typeId : null, producto: { esIngrediente: false } }),
         })
       : null;
   const costoAlto =

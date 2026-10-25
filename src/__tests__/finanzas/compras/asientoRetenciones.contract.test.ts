@@ -26,8 +26,9 @@ function ultimaDefinicion(fn: string): { nombre: string; cuerpo: string } {
   if (!m) throw new Error(`Ninguna migración define ${fn}`);
   const desde = m.sql.search(inicio);
   const resto = m.sql.slice(desde);
-  const cierre = resto.search(/\n\$(function)?\$;/);
-  return { nombre: m.nombre, cuerpo: resto.slice(0, cierre) };
+  // 134030 cierra con '$function$\n;': se acepta espacio/salto antes del ';' y, sin cierre, hasta el final.
+  const cierre = resto.search(/\n\$(function)?\$\s*;/);
+  return { nombre: m.nombre, cuerpo: cierre === -1 ? resto : resto.slice(0, cierre) };
 }
 
 describe('devengo de compra con retenciones', () => {
@@ -37,7 +38,8 @@ describe('devengo de compra con retenciones', () => {
       const { cuerpo } = ultimaDefinicion(fn);
       const crear = cuerpo.search(/fn_create_journal_entry\s*\(/);
       const retener = cuerpo.search(
-        /PERFORM\s+fn_asiento_compra_aplicar_retenciones\s*\(\s*v_entry_id\s*,\s*\w+\.id\s*,\s*v_rule\.credit_account_code\s*\)/i,
+        // 134030: el crédito ya resuelto llega en v_credito (antes v_rule.credit_account_code).
+        /PERFORM\s+(?:public\.)?fn_asiento_compra_aplicar_retenciones\s*\(\s*v_entry_id\s*,\s*\w+\.id\s*,\s*(?:v_rule\.credit_account_code|v_credito)\s*\)/i,
       );
       expect(crear).toBeGreaterThan(-1);
       expect(retener).toBeGreaterThan(crear);
@@ -51,7 +53,11 @@ describe('devengo de compra con retenciones', () => {
     // Creado en esta transacción y con el crédito al proveedor todavía por el total.
     expect(cuerpo).toMatch(/e\.created_at\s*=\s*now\(\)/);
     expect(cuerpo).toMatch(/jl\.credit\s*=\s*v_inv\.total/);
-    expect(cuerpo).toMatch(/jl\.account_code\s*=\s*p_credit_account/);
+    expect(cuerpo).toMatch(/jl\.account_code\s*=\s*(?:p_credit_account|v_cuenta)\b/);
+    // QA 25-oct: si no encuentra la línea del proveedor con retenciones, FALLA con aviso (no return silencioso).
+    expect(cuerpo).toMatch(/jl\.account_code\s*=\s*p_credit_account\b/);
+    expect(cuerpo).toMatch(/if v_linea is null then\s+raise exception 'RETENCIONES_SIN_LINEA_PROVEEDOR/);
+    expect(cuerpo).not.toMatch(/if v_linea is null then\s+return;/);
     // La bandera se enciende solo para ese UPDATE y vuelve al valor que tenía.
     const encender = cuerpo.search(/set_config\('app\.contabilidad_mantenimiento',\s*'on',\s*true\)/);
     const update = cuerpo.search(/update\s+journal_lines/i);

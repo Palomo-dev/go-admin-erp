@@ -5,6 +5,8 @@
  * de las 41 (la devolución en compras no inventa el reverso de retenciones).
  */
 
+import { cuentaAuxiliarDeTitulo, cuentaCostoPorSector } from '../cuentaAuxiliarDeTitulo';
+
 export type EventoAsiento =
   | 'venta_contado'
   | 'compra_credito'
@@ -68,12 +70,12 @@ export interface ReglaAsiento {
 export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
   regla(1, 'venta_contado', 1, '1105', 'debito', 'total', 'cliente'),
   regla(2, 'venta_contado', 2, '4135', 'credito', 'base', 'cliente'),
-  regla(3, 'venta_contado', 3, '2408', 'credito', 'iva', 'cliente'),
-  regla(4, 'venta_contado', 4, '6135', 'debito', 'costo', 'ninguno'),
+  regla(3, 'venta_contado', 3, '24080501', 'credito', 'iva', 'cliente'),
+  regla(4, 'venta_contado', 4, '61350501', 'debito', 'costo', 'ninguno'),
   regla(5, 'venta_contado', 5, '1435', 'credito', 'costo', 'ninguno'),
 
   regla(6, 'compra_credito', 1, '1435', 'debito', 'base', 'proveedor'),
-  regla(7, 'compra_credito', 2, '2408', 'debito', 'iva', 'proveedor'),
+  regla(7, 'compra_credito', 2, '24081001', 'debito', 'iva', 'proveedor'),
   regla(8, 'compra_credito', 3, '2365', 'credito', 'retefuente', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
   regla(9, 'compra_credito', 4, '2367', 'credito', 'reteiva', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
   regla(10, 'compra_credito', 5, '2368', 'credito', 'reteica', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
@@ -93,23 +95,23 @@ export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
 
   regla(21, 'venta_pasarela', 1, '1305', 'debito', 'total', 'pasarela'),
   regla(22, 'venta_pasarela', 2, '4135', 'credito', 'base', 'ninguno'),
-  regla(23, 'venta_pasarela', 3, '2408', 'credito', 'iva', 'ninguno'),
+  regla(23, 'venta_pasarela', 3, '24080501', 'credito', 'iva', 'ninguno'),
 
   regla(24, 'liquidacion_pasarela', 1, '1110', 'debito', 'neto', 'banco', null, 'Conciliar con el extracto de cada pasarela.'),
-  regla(25, 'liquidacion_pasarela', 2, '530515', 'debito', 'comision', 'pasarela'),
-  regla(26, 'liquidacion_pasarela', 3, '2408', 'debito', 'iva_comision', 'pasarela', 'factura_comision', 'Solo si la facturan.'),
+  regla(25, 'liquidacion_pasarela', 2, '53051501', 'debito', 'comision', 'pasarela'),
+  regla(26, 'liquidacion_pasarela', 3, '24081001', 'debito', 'iva_comision', 'pasarela', 'factura_comision', 'Solo si la facturan.'),
   regla(27, 'liquidacion_pasarela', 4, '1355', 'debito', 'retenciones_red', 'pasarela'),
   regla(28, 'liquidacion_pasarela', 5, '1305', 'credito', 'total', 'pasarela'),
 
   regla(29, 'devolucion_ventas', 1, '4175', 'debito', 'base', 'cliente'),
-  regla(30, 'devolucion_ventas', 2, '2408', 'debito', 'iva', 'cliente'),
+  regla(30, 'devolucion_ventas', 2, '24080501', 'debito', 'iva', 'cliente'),
   regla(31, 'devolucion_ventas', 3, '1305', 'credito', 'total', 'cliente', null, '', ['1105']),
   regla(32, 'devolucion_ventas', 4, '1435', 'debito', 'costo', 'ninguno'),
-  regla(33, 'devolucion_ventas', 5, '6135', 'credito', 'costo', 'ninguno'),
+  regla(33, 'devolucion_ventas', 5, '61350501', 'credito', 'costo', 'ninguno'),
 
   regla(34, 'devolucion_compras', 1, '2205', 'debito', 'total', 'proveedor'),
   regla(35, 'devolucion_compras', 2, '1435', 'credito', 'base', 'proveedor'),
-  regla(36, 'devolucion_compras', 3, '2408', 'credito', 'iva', 'proveedor', null, 'Reversar también las retenciones practicadas. Esa nota no agrega líneas: el catálogo se queda en 41.'),
+  regla(36, 'devolucion_compras', 3, '24081001', 'credito', 'iva', 'proveedor', null, 'Reversar también las retenciones practicadas. Esa nota no agrega líneas: el catálogo se queda en 41.'),
 
   regla(37, 'transferencia_bancos', 1, '1110', 'debito', 'valor', 'banco_destino', null, 'Cada banco es un auxiliar de 1110 o 1120.', ['1120']),
   regla(38, 'transferencia_bancos', 2, '1110', 'credito', 'valor', 'banco_origen', null, 'Cada banco es un auxiliar de 1110 o 1120.', ['1120']),
@@ -130,6 +132,13 @@ export interface ConfigAsientos {
   cuentaUtilidad: string;
   cuentaPerdida: string;
   cuentaPuente: string;
+  /**
+   * Mapeo por clave o sede (código de grupo → auxiliar), mismo criterio que
+   * fn_cuenta_auxiliar_de_titulo. Sin mapeo: 61350501 (costo) y 53051501 (comisión).
+   */
+  mapeoSede?: Readonly<Partial<Record<string, string>>>;
+  /** organizations.type_id: 1 restaurante / 2 hotel → costo 61400501 (6140); el resto 61350501 (6135). */
+  tipoOrg?: number | null;
 }
 
 export const CONFIG_ASIENTOS_INICIAL: ConfigAsientos = {
@@ -158,6 +167,8 @@ export interface MontosAsiento {
   retencionesRed?: number;
   propina?: number;
   valor?: number;
+  /** Tarifa de IVA (19 o 5). 5 publica a 24080502 / 24081002. */
+  tarifa?: number;
 }
 
 export interface LineaGenerada {
@@ -209,7 +220,7 @@ export function armarAsiento(
     lineas.push({
       id: item.id,
       evento,
-      cuenta: cuentaDeRegla(item, config),
+      cuenta: cuentaDeRegla(item, config, montos.tarifa),
       lado: item.lado === 'segun_saldo' ? 'debito' : item.lado,
       centavos,
       tercero: item.tercero,
@@ -334,12 +345,30 @@ function centavosDeRol(rol: RolValor, montos: MontosAsiento): number {
   return Math.round(pesos * 100);
 }
 
-function cuentaDeRegla(item: ReglaAsiento, config: ConfigAsientos): string {
+/** IVA: generado (ventas y su devolución) o descontable (compras, su devolución y el IVA de la comisión). */
+const LADO_IVA: Readonly<Partial<Record<number, 'generado' | 'descontable'>>> = {
+  3: 'generado', 23: 'generado', 30: 'generado', 7: 'descontable', 26: 'descontable', 36: 'descontable',
+};
+
+function cuentaDeRegla(item: ReglaAsiento, config: ConfigAsientos, tarifa?: number): string {
   const reemplazo = config.cuentas[item.id];
   if (item.id === 37 || item.id === 38) {
     const auxiliar = reemplazo || (item.id === 37 ? config.auxiliarDestino : config.auxiliarOrigen);
     if (!auxiliar) throw new Error('La transferencia exige el auxiliar de cada banco');
     return auxiliarBanco(auxiliar);
+  }
+  const ladoIva = LADO_IVA[item.id];
+  if (ladoIva) {
+    // 2408 es título: auxiliar por lado y tarifa (24080501/02 generado, 24081001/02 descontable).
+    const base = reemplazo || (ladoIva === 'generado' ? '240805' : '240810');
+    return cuentaPuc(cuentaAuxiliarDeTitulo(base, { mapeoSede: config.mapeoSede, tarifa, lado: ladoIva, tipoOrg: config.tipoOrg }));
+  }
+  if (item.id === 4 || item.id === 33) {
+    const base = reemplazo || cuentaCostoPorSector(config.tipoOrg);
+    return cuentaPuc(cuentaAuxiliarDeTitulo(base, { mapeoSede: config.mapeoSede, tipoOrg: config.tipoOrg }));
+  }
+  if (item.id === 25) {
+    return cuentaPuc(cuentaAuxiliarDeTitulo(reemplazo || '530515', { mapeoSede: config.mapeoSede, tipoOrg: config.tipoOrg }));
   }
   if (reemplazo) return cuentaPuc(reemplazo);
   return cuentaPuc(item.cuenta);

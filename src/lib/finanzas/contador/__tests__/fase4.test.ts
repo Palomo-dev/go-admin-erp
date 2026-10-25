@@ -32,7 +32,7 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
     expect(categoriaPorClave('anticipos_clientes').cuenta).toBe('2805');
     expect(categoriaPorClave('intereses_recibidos').cuenta).toBe('421005');
     expect(categoriaPorClave('recuperaciones').cuenta).toBe('4250');
-    expect(categoriaPorClave('otros_ingresos').cuenta).toBe('4295');
+    expect(categoriaPorClave('otros_ingresos').cuenta).toBe('42959501');
   });
 
   test('préstamos, proveedores, nómina y seguridad social van separados', () => {
@@ -84,7 +84,7 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
     expect(cuentaSegunCentro('transporte', 'administracion').cuenta).toBe('513550');
     expect(cuentaSegunCentro('transporte', 'ventas').cuenta).toBe('523550');
 
-    expect(lineasImpuestoDeclarado('2408', 50)[0]).toMatchObject({ cuenta: '2408', afectaResultados: false });
+    expect(lineasImpuestoDeclarado('2408', 50)[0]).toMatchObject({ cuenta: '24080501', afectaResultados: false });
     expect(lineasImpuestoDeclarado('2365', 50)[0].cuenta).toBe('2365');
     expect(categoriaPorClave('impuestos_declarados').afectaResultados).toBe('no');
     expect(categoriaPorClave('impuestos_gasto').cuenta).toBe('5115');
@@ -129,7 +129,7 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
     }
     expect(cuentaSegunCentro('publicidad', 'administracion').cuenta).toBe('523560');
     expect(cuentaSegunCentro('publicidad', 'ventas').cuenta).toBe('523560');
-    expect(cuentaSegunCentro('comisiones_bancarias', 'ventas').cuenta).toBe('530515');
+    expect(cuentaSegunCentro('comisiones_bancarias', 'ventas').cuenta).toBe('53051501');
     expect(cuentaSegunCentro('intereses_pagados', 'administracion').cuenta).toBe('530520');
 
     expect(cuentaSegunCentro('arriendo', 'produccion')).toEqual({ cuenta: null, estado: 'por_definir' });

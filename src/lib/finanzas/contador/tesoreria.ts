@@ -35,7 +35,7 @@ export const CATEGORIAS_TESORERIA: readonly CategoriaTesoreria[] = [
   cat('intereses_recibidos', 'ingreso', 'Intereses', 'si', 'ok', '421005', null, '', '421005'),
   cat('comisiones_recibidas', 'ingreso', 'Comisiones recibidas', 'si', 'corregir', '4225', '4235', '4235 es servicios.', '4225', [], ['4235']),
   cat('recuperaciones', 'ingreso', 'Recuperaciones', 'si', 'ok', '4250', null, '', '4250'),
-  cat('otros_ingresos', 'ingreso', 'Otros ingresos', 'si', 'ok', '4295', null, '', '4295'),
+  cat('otros_ingresos', 'ingreso', 'Otros ingresos', 'si', 'ok', '42959501 (aux. de 4295)', null, '4295 es título.', '42959501'),
   cat('aportes_socios', 'ingreso', 'Aportes de socios', 'no', 'ok', '3105', null, 'Movimiento de caja, no ingreso.', '3105'),
   cat('prestamos_recibidos', 'ingreso', 'Préstamos recibidos', 'no', 'corregir', '2105 (banco) / 2355 (socio)', '2105/2195', 'Movimiento de caja, no ingreso.', null, ['2105', '2355'], ['2195']),
   cat('anticipos_clientes', 'ingreso', 'Anticipos de clientes', 'no', 'ok', '2805', null, 'Movimiento de caja, no ingreso.', '2805'),
@@ -58,7 +58,7 @@ export const CATEGORIAS_TESORERIA: readonly CategoriaTesoreria[] = [
   cat('impuestos_gasto', 'egreso', 'Impuestos (gasto)', 'si', 'ok', '5115', null, '', '5115', [], [], true),
   cat('impuestos_declarados', 'egreso', 'Pago de impuestos declarados', 'no', 'corregir', 'D 2408 / 2365', null, 'Separar como categoría propia (no es gasto).', null, ['2408', '2365']),
   cat('gmf', 'egreso', 'GMF (4x1000)', 'si', 'corregir', 'Subcuenta propia en 511595 o 530595', null, '50% deducible en renta; llevarlo en subcuenta propia.', '511595', ['530595'], [], true),
-  cat('comisiones_bancarias', 'egreso', 'Comisiones bancarias', 'si', 'ok', '530515', null, '', '530515'),
+  cat('comisiones_bancarias', 'egreso', 'Comisiones bancarias', 'si', 'ok', '53051501 (aux. de 530515)', null, '530515 es título.', '53051501'),
   cat('intereses_pagados', 'egreso', 'Intereses', 'si', 'ok', '530520', null, '', '530520'),
   cat('software', 'egreso', 'Software', 'si', 'corregir', 'SaaS mensual 513595 / licencia > 1 año a 16 con amortización 5165', null, 'Diferenciar suscripción mensual de licencia de largo plazo.', null, ['513595', '16', '5165']),
   cat('combustible', 'egreso', 'Combustible', 'si', 'ok', '519545', null, '', '519545', [], [], true),
@@ -194,8 +194,9 @@ export function lineasSoftware(
   return [linea(momento, 'debito', cuenta, null, false, true, aCentavos(pesos))];
 }
 
+/** 2408 es título: el pago del IVA declarado debita el auxiliar del generado (24080501). */
 export function lineasImpuestoDeclarado(cuenta: '2408' | '2365', pesos: number): LineaTesoreria[] {
-  return [linea('pago', 'debito', cuenta, null, false, false, aCentavos(pesos))];
+  return [linea('pago', 'debito', cuenta === '2408' ? '24080501' : cuenta, null, false, false, aCentavos(pesos))];
 }
 
 export function lineasProveedor(pesos: number, compraContadoSinFactura = false): LineaTesoreria[] {

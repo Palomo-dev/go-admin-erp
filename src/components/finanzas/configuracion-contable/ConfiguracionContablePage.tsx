@@ -23,7 +23,7 @@ import {
   type FilaConfiguracion,
 } from '@/lib/finanzas/configuracionContable';
 import { AlertasFalloContable } from './AlertasFalloContable';
-import { ConfiguracionContableService } from './ConfiguracionContableService';
+import { ConfiguracionContableService, configuracionesInvalidas, type MapeoSede } from './ConfiguracionContableService';
 
 const USAR_REGLA = 'regla';
 
@@ -47,6 +47,7 @@ export function ConfiguracionContablePage() {
   const { branches } = useBranch();
   const [filas, setFilas] = useState<FilaConfiguracion[]>([]);
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
+  const [mapeos, setMapeos] = useState<MapeoSede[]>([]);
   const [alcance, setAlcance] = useState('org');
   const [elecciones, setElecciones] = useState<Elecciones>(vacias);
   const [cargando, setCargando] = useState(true);
@@ -65,10 +66,15 @@ export function ConfiguracionContablePage() {
     Promise.all([
       ConfiguracionContableService.listar(),
       ConfiguracionContableService.cuentas(),
-    ]).then(([guardadas, plan]) => {
+      ConfiguracionContableService.mapeosInventario().catch((error) => {
+        console.error(error);
+        return [] as MapeoSede[];
+      }),
+    ]).then(([guardadas, plan, mapeosSede]) => {
       if (!vivo) return;
       setFilas(guardadas);
       setCuentas(plan);
+      setMapeos(mapeosSede);
     }).catch((error) => {
       console.error(error);
       if (vivo) toast.error('No se pudo cargar la configuración contable');
@@ -88,6 +94,16 @@ export function ConfiguracionContablePage() {
     () => cuentas.filter((cuenta) => cuenta.is_active !== false && cuenta.es_movimiento !== false),
     [cuentas],
   );
+
+  // No se ocultan: una configuración que apunta a una cuenta de título (p. ej. 1435)
+  // detiene los asientos, así que se muestra con aviso para corregirla.
+  const sedePrincipalId = (sedes.find((sede) => sede.is_main === true) ?? sedes[0])?.id ?? null;
+  const invalidas = useMemo(
+    () => configuracionesInvalidas(filas, cuentas, mapeos, sedePrincipalId),
+    [filas, cuentas, mapeos, sedePrincipalId],
+  );
+  const invalidaDe = (clave: ClaveContable) =>
+    invalidas.find((item) => item.clave === clave && (branchId == null ? item.branch_id == null : item.branch_id === branchId));
 
   const grupos = useMemo(() => {
     const mapa = new Map<string, typeof DEFINICIONES_CLAVE>();
@@ -146,7 +162,9 @@ export function ConfiguracionContablePage() {
 
   const propuesta = propuestaPorSector(tipo);
   const filasPropuesta = CLAVES_CONTABLES.map((clave) => {
-    const codigo = propuesta[clave];
+    const codigo = clave === 'inventario'
+      ? cuentas.find((c) => /^143501\d{2}$/.test(c.account_code) && c.es_movimiento !== false && c.is_active !== false)?.account_code ?? propuesta[clave]
+      : propuesta[clave];
     const cuenta = cuentas.find((item) => item.account_code === codigo);
     const sirve = !!cuenta && cuenta.es_movimiento !== false && cuenta.is_active !== false;
     return { clave, codigo, nombre: DEFINICIONES_CLAVE.find((item) => item.clave === clave)?.nombre ?? clave, sirve, nombreCuenta: cuenta?.name };
@@ -233,6 +251,7 @@ export function ConfiguracionContablePage() {
             {definiciones.map((definicion) => {
               const valor = elecciones[definicion.clave] || USAR_REGLA;
               const deLaOrganizacion = heredada(definicion.clave);
+              const invalida = invalidaDe(definicion.clave);
               const opciones = cuentasDeMovimiento.some((cuenta) => cuenta.account_code === valor) || valor === USAR_REGLA
                 ? cuentasDeMovimiento
                 : [...cuentasDeMovimiento, ...cuentas.filter((cuenta) => cuenta.account_code === valor)];
@@ -243,6 +262,11 @@ export function ConfiguracionContablePage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">{definicion.ayuda}</p>
                     {deLaOrganizacion && valor === USAR_REGLA && (
                       <p className="text-xs text-blue-600 dark:text-blue-400">Hereda {deLaOrganizacion} de la organización</p>
+                    )}
+                    {invalida && valor === invalida.account_code && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {invalida.motivo}{invalida.sugerida ? `. Elige ${invalida.sugerida}` : ''}
+                      </p>
                     )}
                   </div>
                   <Select

@@ -41,19 +41,24 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
     ver(armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }), [
       [1, '1105', 'debito', 119000],
       [2, '4135', 'credito', 100000],
-      [3, '2408', 'credito', 19000],
-      [4, '6135', 'debito', 40000],
+      [3, '24080501', 'credito', 19000],
+      [4, '61350501', 'debito', 40000],
       [5, '1435', 'credito', 40000],
     ]);
-    const cambiada = configurarRegla(CONFIG_ASIENTOS_INICIAL, 4, '6140');
+    // 6140 solo existe en hoteles y restaurantes: el override se prueba con configuración de RESTAURANTE.
+    const restaurante: ConfigAsientos = { ...CONFIG_ASIENTOS_INICIAL, tipoOrg: 1 };
+    const cambiada = configurarRegla(restaurante, 4, '6140');
+    // En comercio, 6140 (61400501 no existe) y un grupo no P1 se rechazan, no se sustituyen.
+    expect(() => armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }, configurarRegla(CONFIG_ASIENTOS_INICIAL, 4, '6140'))).toThrow(/hoteles y restaurantes/);
+    expect(() => armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }, configurarRegla(restaurante, 4, '5105'))).toThrow(/grupo o título/);
     const lineas = espera(armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }, cambiada), [
       [1, '1105', 'debito', 119000],
       [2, '4135', 'credito', 100000],
-      [3, '2408', 'credito', 19000],
-      [4, '6140', 'debito', 40000],
+      [3, '24080501', 'credito', 19000],
+      [4, '61400501', 'debito', 40000],
       [5, '1435', 'credito', 40000],
     ]);
-    expect(lineas.find((linea) => linea.id === 4)?.cuenta).toBe('6140');
+    expect(lineas.find((linea) => linea.id === 4)?.cuenta).toBe('61400501');
     const descuadrada = armarAsiento('venta_contado', { total: 1, base: 1000, iva: 190, costo: 0 });
     expect(descuadrada.cuadra).toBe(false);
     expect(() => exigirCuadre(descuadrada)).toThrow(/cuadra/);
@@ -63,7 +68,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
     const agente: ConfigAsientos = { ...CONFIG_ASIENTOS_INICIAL, agenteRetenedor: true };
     ver(armarAsiento('compra_credito', { base: 1000, iva: 190, retefuente: 25, reteiva: 19, reteica: 10 }, agente), [
       [6, '1435', 'debito', 100000],
-      [7, '2408', 'debito', 19000],
+      [7, '24081001', 'debito', 19000],
       [8, '2365', 'credito', 2500],
       [9, '2367', 'credito', 1900],
       [10, '2368', 'credito', 1000],
@@ -71,7 +76,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
     ]);
     espera(armarAsiento('compra_credito', { base: 1000, iva: 190, retefuente: 25, reteiva: 19, reteica: 10 }), [
       [6, '1435', 'debito', 100000],
-      [7, '2408', 'debito', 19000],
+      [7, '24081001', 'debito', 19000],
       [11, '2205', 'credito', 119000],
     ]);
   });
@@ -121,7 +126,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
     const venta = espera(armarAsiento('venta_pasarela', { total: 1190, base: 1000, iva: 190 }), [
       [21, '1305', 'debito', 119000],
       [22, '4135', 'credito', 100000],
-      [23, '2408', 'credito', 19000],
+      [23, '24080501', 'credito', 19000],
     ]);
     expect(venta.find((linea) => linea.id === 21)?.tercero).toBe('pasarela');
     expect(venta.some((linea) => linea.cuenta === '6135' || linea.cuenta === '1435')).toBe(false);
@@ -132,8 +137,8 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       neto: 1000, comision: 50, ivaComision: 9.5, retencionesRed: 10,
     }, conFactura), [
       [24, '1110', 'debito', 100000],
-      [25, '530515', 'debito', 5000],
-      [26, '2408', 'debito', 950],
+      [25, '53051501', 'debito', 5000],
+      [26, '24081001', 'debito', 950],
       [27, '1355', 'debito', 1000],
       [28, '1305', 'credito', 106950],
     ]);
@@ -141,7 +146,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       neto: 1000, comision: 50, ivaComision: 9.5, retencionesRed: 10,
     }), [
       [24, '1110', 'debito', 100000],
-      [25, '530515', 'debito', 5000],
+      [25, '53051501', 'debito', 5000],
       [27, '1355', 'debito', 1000],
       [28, '1305', 'credito', 106000],
     ]);
@@ -150,23 +155,23 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
   test('devolución en ventas y devolución en compras, sin líneas de más', () => {
     ver(armarAsiento('devolucion_ventas', { base: 1000, iva: 190, costo: 400 }), [
       [29, '4175', 'debito', 100000],
-      [30, '2408', 'debito', 19000],
+      [30, '24080501', 'debito', 19000],
       [31, '1305', 'credito', 119000],
       [32, '1435', 'debito', 40000],
-      [33, '6135', 'credito', 40000],
+      [33, '61350501', 'credito', 40000],
     ]);
     const efectivo = configurarRegla(CONFIG_ASIENTOS_INICIAL, 31, '1105');
     espera(armarAsiento('devolucion_ventas', { base: 1000, iva: 190, costo: 400 }, efectivo), [
       [29, '4175', 'debito', 100000],
-      [30, '2408', 'debito', 19000],
+      [30, '24080501', 'debito', 19000],
       [31, '1105', 'credito', 119000],
       [32, '1435', 'debito', 40000],
-      [33, '6135', 'credito', 40000],
+      [33, '61350501', 'credito', 40000],
     ]);
     const compras = espera(armarAsiento('devolucion_compras', { base: 1000, iva: 190 }), [
       [34, '2205', 'debito', 119000],
       [35, '1435', 'credito', 100000],
-      [36, '2408', 'credito', 19000],
+      [36, '24081001', 'credito', 19000],
     ]);
     expect(compras).toHaveLength(3);
     expect(compras.some((linea) => linea.cuenta.startsWith('236'))).toBe(false);

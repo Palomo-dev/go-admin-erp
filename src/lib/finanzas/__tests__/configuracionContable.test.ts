@@ -200,7 +200,7 @@ describe('plantilla por sector', () => {
       const p = propuestaPorSector(tipo);
       expect(p.ventas_productos).toBe('4135');
       expect(p.ventas_servicios).toBe('4235');
-      expect(p.costo_ventas).toBe('6135');
+      expect(p.costo_ventas).toBe('61350501');
       expect(p.inventario).toBe('1435');
     }
     expect(propuestaPorSector(6).ventas_productos).toBe('4145');
@@ -210,14 +210,16 @@ describe('plantilla por sector', () => {
     expect(propuestaPorSector(1)).toMatchObject({
       ventas_productos: '414015',
       ventas_servicios: '414095',
-      costo_ventas: '6140',
-      inventario: '1405',
+      costo_ventas: '61400501',
+      faltante_inventario: '61400502',
+      inventario: '14350101',
     });
     expect(propuestaPorSector(2)).toMatchObject({
       ventas_productos: '4140',
       ventas_servicios: '4140',
-      costo_ventas: '6140',
-      inventario: '1435',
+      costo_ventas: '61400501',
+      faltante_inventario: '61400502',
+      inventario: '14350101',
     });
     expect(propuestaPorSector(4).ventas_productos).toBe('4155');
     expect(propuestaPorSector(7).ventas_productos).toBe('4235');
@@ -233,8 +235,8 @@ describe('plantilla por sector', () => {
       proveedores: '2205',
       devoluciones: '4175',
       descuentos: '4175',
-      iva_generado: '240805',
-      iva_descontable: '240810',
+      iva_generado: '24080501',
+      iva_descontable: '24081001',
       retefuente: '2365',
       reteiva: '2367',
       reteica: '2368',
@@ -251,9 +253,9 @@ describe('plantilla por sector', () => {
       manifiesto_transporte: '2335',
       saldo_inicial: '3105',
       impuesto_consumo: '2495',
-      redondeo: '4295',
+      redondeo: '42958101',
       compra_servicio: '2335',
-      ingresos_diversos: '4295',
+      ingresos_diversos: '42959501',
     });
     expect(nombreSector(1)).toBe('Restaurante');
     expect(nombreSector(99)).toBe('Comercio');

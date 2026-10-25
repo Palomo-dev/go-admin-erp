@@ -3,14 +3,16 @@
  *
  * El débito es el auxiliar de la sede bajo 1435 (por ejemplo 14350501).
  * Nunca 1405. El saldo inicial acredita 3105. Un sobrante real acredita
- * 4295, ingresos diversos, cuenta configurable. 4250 es de reintegros de
+ * 42959501 (auxiliar de 4295, que es título), clave `ingresos_diversos`, configurable. 4250 es de reintegros de
  * periodos anteriores: ningún flujo de inventario la usa. La compra sin
  * orden no genera asiento aquí: va a la factura de compra.
  */
 
+import { clasificarProductoRestaurante, type ProductoClasificable } from '@/lib/finanzas/clasificacionInventarioRestaurante';
+
 export const CUENTA_INVENTARIO_COMERCIO = '1435';
 export const CUENTA_SALDO_INICIAL = '3105';
-export const CUENTA_DIVERSOS = '4295';
+export const CUENTA_DIVERSOS = '42959501';
 /** 4250 no entra en inventario. Se nombra para que las pruebas lo vigilen. */
 export const CUENTA_RECUPERACIONES = '4250';
 
@@ -46,10 +48,33 @@ export function cuentaInventarioPorTipo(_typeId: number | null | undefined, conf
   return CUENTA_INVENTARIO_COMERCIO;
 }
 
+/** Auxiliar de insumos de cocina (140505xx, 8 dígitos). 1405 y 140505 (títulos) nunca. */
+function esAuxiliarInsumos(cuenta: string): boolean {
+  return /^140505\d{2}$/.test(cuenta);
+}
+
 function cuentaBajo1435(cuenta: string | null | undefined): string {
   const propia = cuenta?.trim() ?? '';
-  if (propia.startsWith('1435')) return propia;
+  if (propia.startsWith('1435') || esAuxiliarInsumos(propia)) return propia;
   return CUENTA_INVENTARIO_COMERCIO;
+}
+
+/**
+ * Cuenta de inventario de la carga inicial de UN producto (QA 25-oct). En hoteles y restaurantes
+ * (type_id 1/2) usa la misma clasificación que `fn_clasificar_producto_restaurante`: un insumo de cocina
+ * va a 14050501 SOLO si la org tiene la separación activa (`separarInsumos`, de
+ * `fn_separacion_insumos_activa`; las orgs existentes quedan desactivadas hasta el OK de Juan). En los
+ * demás casos, el auxiliar bajo 1435 de siempre (la configurada si empieza por 1435).
+ */
+export function cuentaInventarioCargaInicial(p: {
+  typeId: number | null | undefined;
+  producto?: ProductoClasificable | null;
+  configurada?: string | null;
+  separarInsumos?: boolean;
+}): string {
+  const k = clasificarProductoRestaurante(p.typeId, p.producto ?? null, undefined, p.separarInsumos ?? false);
+  if (k.clase === 'insumo' && k.cuentaInventario && esAuxiliarInsumos(k.cuentaInventario)) return k.cuentaInventario;
+  return cuentaInventarioPorTipo(p.typeId, p.configurada);
 }
 
 /** Importe en pesos enteros. 1.000 × 3.800 = 3.800.000. */
@@ -94,7 +119,7 @@ export function asientoCargaInicial(p: {
   });
 }
 
-/** Un sobrante real: débito al auxiliar de 1435 y crédito a 4295. */
+/** Un sobrante real: débito al auxiliar de 1435 y crédito a 42959501 (ingresos diversos). */
 export function asientoSobrante(p: {
   total: number;
   cuentaInventario?: string | null;

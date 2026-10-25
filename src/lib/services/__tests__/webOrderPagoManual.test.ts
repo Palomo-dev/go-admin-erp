@@ -14,7 +14,7 @@ import {
 } from '../webOrderPagoManual';
 
 const R = '1578504-1792942441-37635';
-const base = { sale_id: null, table_session_id: null, payment_method: 'wompi' } as const;
+const base = { table_session_id: null, payment_method: 'wompi' } as const;
 
 describe('puedeMarcarPagadoManual', () => {
   it('acepta vencido, pendiente y cancelado con pago fallido', () => {

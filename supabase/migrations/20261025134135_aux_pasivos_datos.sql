@@ -22,7 +22,8 @@
 --   l. Títulos: 2205, 220505, 2505, 250505, 2335, 233520, 233595, 2365 y sus subcuentas 2365xx que tengan hijos pasan a
 --      título si quedan sin referencias, sin borradores y en saldo 0; si no, ABORTA.
 -- AJUSTE 25-oct (comisiones_ajuste_retenciones_25oct.md):
---   M5. Reglas viejas de comisión SIN conditions.vinculo (5235/2370; 97 orgs en prod) → is_active = false (bitácora).
+--   M5. Reglas viejas de comisión SIN conditions.vinculo → is_active = false (bitácora). En prod: 218 reglas en 109 orgs
+--       (97 orgs × 5235/2370 + 2370/1110, y 12 orgs × 5235/2104 + 2104/1101) (QA ROJO N6; no son 97).
 --   M1. El NIT de cada línea de 2205 sale del DOCUMENTO origen si la línea no lo trae (invoice_purchase → proveedor;
 --       payments → cuenta por pagar → proveedor; documento soporte → fn_tercero_de_documento). Las líneas SIN NIT
 --       resoluble (datos de prueba, sobre todo orgs 144/331) quedan FUERA de la reclasificación: no se crea un
@@ -83,21 +84,27 @@ end $$;
 
 -- AJUSTE (M1): NIT del documento origen de una línea de 2205 (null si no se puede identificar). No usa el
 -- «consumidor final» como respaldo: un proveedor sin NIT queda sin identificar.
+-- QA ROJO 8dc44d22 N2: el NIT genérico de consumidor final (222222222222 / 2222222222, lo pone
+-- trg_tercero_linea_asiento) NO identifica al proveedor: se trata como NIT vacío y su saldo queda en 2205.
+create or replace function pg_temp.a_nit(p text) returns text language sql immutable as $$
+  select case when nullif(btrim(p), '') is null or btrim(p) in ('222222222222', '2222222222') then null else btrim(p) end
+$$;
+
 create or replace function pg_temp.a_nit_doc(p_source text, p_source_id text, out nit text, out nombre text)
 returns record language plpgsql stable as $$
 begin
   if p_source in ('invoice_purchase', 'purchase') then
-    select coalesce(nullif(btrim(s.nit), ''), nullif(btrim(s.tax_id), '')), nullif(btrim(s.name), '') into nit, nombre
+    select coalesce(pg_temp.a_nit(s.nit), pg_temp.a_nit(s.tax_id)), nullif(btrim(s.name), '') into nit, nombre
       from public.invoice_purchase i join public.suppliers s on s.id = i.supplier_id where i.id::text = p_source_id;
   elsif p_source in ('payments', 'purchase_payment') then
-    select coalesce(nullif(btrim(s.nit), ''), nullif(btrim(s.tax_id), '')), nullif(btrim(s.name), '') into nit, nombre
+    select coalesce(pg_temp.a_nit(s.nit), pg_temp.a_nit(s.tax_id)), nullif(btrim(s.name), '') into nit, nombre
       from public.payments p
       left join public.accounts_payable ap on ap.id::text = p.source_id::text
       left join public.invoice_purchase i on i.id::text = coalesce(ap.invoice_id::text, p.source_id::text)
       join public.suppliers s on s.id = coalesce(ap.supplier_id, i.supplier_id)
      where p.id::text = p_source_id;
   elsif p_source in ('support_document', 'support_documents', 'documento_soporte') and p_source_id ~ '^[0-9a-f-]{36}$' then
-    select t.nit, t.nombre into nit, nombre from public.fn_tercero_de_documento('documento_soporte', p_source_id::uuid) t;
+    select pg_temp.a_nit(t.nit), t.nombre into nit, nombre from public.fn_tercero_de_documento('documento_soporte', p_source_id::uuid) t;
   end if;
   if nit is null then nombre := null; end if;
 end $$;
@@ -249,11 +256,11 @@ begin
       insert into a_lin (cta, s, nit, nombre)
       select y.cta, y.s, z.nit, z.nombre from (
         select w.a, w.nit, max(w.nombre) nombre, sum(w.s) s0
-          from (select l.account_code a, coalesce(nullif(btrim(l.tercero_nit), ''), d.nit) nit,
-                       case when nullif(btrim(l.tercero_nit), '') is not null then l.tercero_nombre else d.nombre end nombre,
+          from (select l.account_code a, coalesce(pg_temp.a_nit(l.tercero_nit), d.nit) nit,
+                       case when pg_temp.a_nit(l.tercero_nit) is not null then l.tercero_nombre else d.nombre end nombre,
                        l.debit - l.credit s
                   from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
-                  left join lateral pg_temp.a_nit_doc(e.source, e.source_id) d on nullif(btrim(l.tercero_nit), '') is null
+                  left join lateral pg_temp.a_nit_doc(e.source, e.source_id) d on pg_temp.a_nit(l.tercero_nit) is null
                  where l.organization_id = v_org and l.account_code in ('2205', '220505') and e.posted is true
                    and e.entry_date >= '2026-01-01 00:00 America/Bogota'::timestamptz
                    and e.entry_date <  '2027-01-01 00:00 America/Bogota'::timestamptz

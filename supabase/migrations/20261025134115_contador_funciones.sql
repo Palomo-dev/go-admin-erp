@@ -329,12 +329,19 @@ begin
     v_debito := v_aux;
   end if;
 
+  -- QA ROJO 8dc44d22 N1: en las 9 orgs donde 2205 queda de MOVIMIENTO por saldo sin NIT (134135 v_suaves),
+  -- el resolver devolvía 2205 y la compra acreditaba 2205 mientras pagos/OC/inventario/borradores iban a
+  -- 22050501 (proveedor partido). Si existe 22050501 de movimiento, la compra va ahí; 2205/220505 quedan
+  -- solo con el saldo histórico sin NIT.
   if v_credito is null
-     or v_credito in ('2105', '1405', '1435')
+     or v_credito in ('2105', '1405', '1435', '2205', '220505')
      or v_credito like '1405%'
      or v_credito like '1435%'
      or left(v_credito, 1) = '6' then
     v_credito := coalesce(
+      (select a.account_code from public.chart_of_accounts a
+        where a.organization_id = new.organization_id and a.account_code = '22050501'
+          and a.es_movimiento is not false and coalesce(a.is_active, true)),
       public.fn_puc_cuenta_para_asiento(new.organization_id, '2205', 'Proveedores nacionales'),
       v_credito
     );
@@ -2884,6 +2891,428 @@ begin
 end;
 $function$
 ;
+
+-- ALTO-1 (QA 8c405138): anulación POS con factura → la NC se asienta por líneas
+-- (opción a: GUC app.asiento_por_lineas + fn_nc_asiento_devolucion tras las líneas).
+CREATE OR REPLACE FUNCTION public.pos_anular_venta_v1(p_sale_id uuid, p_motivo text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_uid        uuid := auth.uid();
+  v_motivo     text := left(nullif(btrim(coalesce(p_motivo, '')), ''), 500);
+  v_sale       public.sales%rowtype;
+  v_inv        public.invoice_sales%rowtype;
+  v_modo       text;
+  v_pago       record;
+  v_je         record;
+  v_mov        record;
+  v_serial     record;
+  v_tip        record;
+  v_nc_id      uuid;
+  v_nc_numero  text;
+  v_n_pagos    integer := 0;
+  v_n_asientos integer := 0;
+  v_n_propinas integer := 0;
+  v_n_stock    integer := 0;
+  v_n_seriales integer := 0;
+  v_n_comision integer := 0;
+  v_avisos     text[] := '{}';
+  v_periodo_ok boolean;
+  v_mem_si     record;                   -- Membresías (20260929001100)
+  v_n_membresias integer := 0;
+  v_guc_lineas text;                     -- ALTO-1 (134115): asiento de la NC por líneas
+begin
+  if v_uid is null then
+    raise exception 'SESION_REQUERIDA' using errcode = '42501';
+  end if;
+  if v_motivo is null or length(v_motivo) < 3 then
+    raise exception 'motivo_requerido' using errcode = '22023';
+  end if;
+
+  select * into v_sale from public.sales s where s.id = p_sale_id for update;
+  if not found then
+    raise exception 'venta_no_encontrada' using errcode = 'P0002';
+  end if;
+  perform public.fn_assert_acceso_org(v_sale.organization_id);
+  if not public.app_branch_access(v_sale.branch_id) then
+    raise exception 'sin_acceso_sucursal' using errcode = '42501';
+  end if;
+  -- El permiso se resuelve en el servidor (nunca por nombre de rol).
+  if not public.fn_tiene_permiso(v_sale.organization_id, 'pos.void') then
+    raise exception 'sin_permiso' using errcode = '42501';
+  end if;
+
+  -- Idempotente: anular dos veces no revierte dos veces.
+  if v_sale.status = 'void' then
+    return jsonb_build_object('sale_id', v_sale.id, 'ya_anulada', true);
+  end if;
+
+  if exists (select 1 from public.returns r where r.sale_id = v_sale.id and r.status = 'processed') then
+    raise exception 'venta_con_devoluciones' using errcode = '22023',
+      hint = 'La venta tiene devoluciones: siga con devoluciones.';
+  end if;
+  if exists (select 1 from public.table_sessions ts
+              where ts.sale_id = v_sale.id and ts.status in ('active', 'bill_requested')) then
+    raise exception 'mesa_abierta' using errcode = '22023',
+      hint = 'La mesa sigue abierta: anúlela desde «Liberar mesa».';
+  end if;
+
+  select * into v_inv from public.invoice_sales i
+   where i.sale_id = v_sale.id and i.organization_id = v_sale.organization_id
+     and coalesce(i.document_type, 'invoice') = 'invoice' and i.status <> 'void'
+   order by i.created_at limit 1;
+
+  -- ── Pagos: se anulan solo si la caja en que entraron sigue abierta ──────
+  v_modo := coalesce(
+    (select os.settings->>'mode' from public.organization_settings os
+      where os.organization_id = v_sale.organization_id and os.key = 'pos_cash_session_mode'),
+    'branch');
+  for v_pago in
+    select p.* from public.payments p
+     where p.organization_id = v_sale.organization_id and p.status = 'completed'
+       and ((p.source = 'sale' and p.source_id = v_sale.id::text)
+         or (p.source = 'invoice_sales' and p.source_id in (
+               select i.id::text from public.invoice_sales i
+                where i.sale_id = v_sale.id and coalesce(i.document_type, 'invoice') = 'invoice')))
+     for update
+  loop
+    if not exists (
+      select 1 from public.cash_sessions cs
+       where cs.organization_id = v_sale.organization_id and cs.status = 'open'
+         and cs.opened_at <= v_pago.created_at
+         and case when v_modo = 'user'
+                  then cs.opened_by = v_pago.created_by and cs.branch_id is not distinct from v_pago.branch_id
+                  else (cs.branch_id = v_pago.branch_id or cs.branch_id is null) end
+    ) then
+      raise exception 'caja_cerrada' using errcode = '22023',
+        hint = 'El pago entró en una caja ya cerrada: registre una devolución.';
+    end if;
+
+    if v_periodo_ok is null and exists (
+      select 1 from public.journal_entries je
+       where je.organization_id = v_sale.organization_id
+         and je.fact_key = 'settlement:payment:' || v_pago.id::text
+         and coalesce(je.posted, false)
+    ) then
+      v_periodo_ok := public.fn_is_period_open(v_sale.organization_id, public.fn_today_for(v_sale.organization_id, v_sale.branch_id));
+      if not v_periodo_ok then
+        raise exception 'periodo_cerrado' using errcode = '22023';
+      end if;
+    end if;
+
+    -- La anulación del pago es la única del sistema (fn_anular_pago): estado
+    -- 'void', contra-asiento del cobro, cuotas, recibo y auditoría financiera.
+    select public.fn_anular_pago(v_pago.id, v_motivo) as r into v_je;
+    if (v_je.r->>'contra_asiento') is not null then
+      v_n_asientos := v_n_asientos + 1;
+    end if;
+    v_n_pagos := v_n_pagos + 1;
+  end loop;
+
+  -- ── Propinas: la anulación existente (revierte su asiento; pos.void) ────
+  for v_tip in select t.id from public.tips t where t.sale_id = v_sale.id and t.voided_at is null loop
+    perform public.fn_propina_anular(v_tip.id, v_motivo);
+    v_n_propinas := v_n_propinas + 1;
+  end loop;
+
+  -- ── Comisiones devengadas ───────────────────────────────────────────────
+  with c as (
+    update public.commissions set status = 'cancelled', updated_at = now()
+     where organization_id = v_sale.organization_id and status = 'accrued'
+       and ((source_type = 'sale' and source_id = v_sale.id::text)
+         or (v_inv.id is not null and source_type = 'invoice_sale' and source_id = v_inv.id::text))
+    returning 1
+  ) select count(*) into v_n_comision from c;
+  if exists (select 1 from public.commissions
+              where organization_id = v_sale.organization_id and status = 'paid'
+                and source_type = 'sale' and source_id = v_sale.id::text) then
+    v_avisos := array_append(v_avisos, 'comision_ya_pagada');
+  end if;
+
+  -- ── Stock: vuelve exactamente lo que salió por la venta (kardex) ────────
+  for v_mov in
+    select sm.branch_id, sm.product_id, sum(sm.qty) as qty,
+           max(sm.unit_cost) as unit_cost
+      from public.stock_movements sm
+     where sm.organization_id = v_sale.organization_id
+       and sm.source in ('sale', 'mesa_sale')
+       and sm.source_id = v_sale.id::text
+       and sm.direction = 'out'
+     group by sm.branch_id, sm.product_id
+  loop
+    perform public.fn_stock_entrada_devolucion(
+      v_sale.organization_id, v_mov.branch_id, v_mov.product_id, v_mov.qty, v_mov.unit_cost,
+      'anulacion:' || v_sale.id::text, 'Anulación de la venta ' || v_sale.id::text || ' - ' || v_motivo, v_uid);
+    v_n_stock := v_n_stock + 1;
+  end loop;
+
+  -- ── Seriales vendidos vuelven a stock ───────────────────────────────────
+  for v_serial in
+    select sn.* from public.serial_numbers sn
+     where sn.organization_id = v_sale.organization_id and sn.sale_id = v_sale.id::text and sn.status = 'sold'
+  loop
+    update public.serial_numbers set
+      status = 'in_stock', sold_to_customer_id = null, sold_by_user_id = null, sale_id = null,
+      web_order_id = null, invoice_sale_id = null, sale_channel = 'in_stock', sale_date = null,
+      updated_at = now(), updated_by = v_uid
+    where id = v_serial.id;
+    insert into public.serial_tracking_events (
+      serial_number_id, organization_id, event_type, from_status, to_status,
+      from_branch_id, to_branch_id, source_table, source_id, sale_id, customer_id, performed_by, notes
+    ) values (
+      v_serial.id, v_sale.organization_id, 'returned', 'sold', 'in_stock',
+      v_serial.current_branch_id, v_serial.current_branch_id, 'sales', v_sale.id::text, v_sale.id,
+      v_sale.customer_id, v_uid, 'Anulación: ' || v_motivo
+    );
+    v_n_seriales := v_n_seriales + 1;
+  end loop;
+
+  -- ── Factura: nota crédito por lo facturado y factura anulada ────────────
+  -- La cartera la ajustan los disparadores (nunca a mano). La nota crédito
+  -- ELECTRÓNICA no se envía a Factus todavía: si la factura salió a la DIAN,
+  -- queda el aviso para enviarla a mano (docs/design/POS-COBRO-SERVIDOR.md §6).
+  if v_inv.id is not null then
+    if v_inv.einvoice_status in ('pending', 'processing', 'sent', 'accepted') then
+      v_avisos := array_append(v_avisos, 'factura_electronica_sin_nota_credito_dian');
+    end if;
+    v_nc_numero := public.fn_pos_numero_nota_credito(v_sale.organization_id, v_inv.branch_id);
+    -- ALTO-1 (134115): el disparador de la NC corre antes de que existan sus
+    -- líneas; con el GUC se calla y el asiento lo arma fn_nc_asiento_devolucion
+    -- por líneas (INC a su cuenta, IVA a la suya), igual que en devoluciones.
+    v_guc_lineas := coalesce(current_setting('app.asiento_por_lineas', true), '');
+    perform set_config('app.asiento_por_lineas', 'on', true);
+    insert into public.invoice_sales (
+      organization_id, branch_id, customer_id, sale_id, number, issue_date, due_date,
+      currency, subtotal, tax_total, total, balance, status, document_type,
+      related_invoice_id, tax_included, payment_method, description, created_by
+    ) values (
+      v_sale.organization_id, v_inv.branch_id, v_inv.customer_id, v_sale.id, v_nc_numero, now(), now(),
+      v_inv.currency, -coalesce(v_inv.subtotal, 0), -coalesce(v_inv.tax_total, 0), -coalesce(v_inv.total, 0), 0,
+      'issued', 'credit_note', v_inv.id, v_inv.tax_included, coalesce(v_inv.payment_method, 'credit'),
+      'Nota crédito por anulación de la factura ' || v_inv.number || ' - ' || v_motivo, v_uid
+    ) returning id into v_nc_id;
+
+    insert into public.invoice_items (
+      invoice_id, invoice_sales_id, invoice_type, product_id, description, qty, unit_price,
+      total_line, tax_rate, tax_code, discount_amount, tax_included, serial_ids
+    )
+    select v_nc_id, v_nc_id, 'sale', ii.product_id, coalesce(ii.description, 'Anulación'),
+           -ii.qty, ii.unit_price, -ii.total_line, coalesce(ii.tax_rate, 0), ii.tax_code,
+           -coalesce(ii.discount_amount, 0), coalesce(ii.tax_included, v_inv.tax_included),
+           coalesce(ii.serial_ids, '{}')
+      from public.invoice_items ii
+     where coalesce(ii.invoice_sales_id, ii.invoice_id) = v_inv.id
+     order by ii.created_at, ii.id;
+
+    perform public.fn_nc_asiento_devolucion(v_sale.organization_id, v_nc_id);
+    perform set_config('app.asiento_por_lineas', v_guc_lineas, true);
+
+    update public.invoice_sales set status = 'void', balance = 0, updated_at = now() where id = v_inv.id;
+  end if;
+
+  -- Membresías (20260929001100): la anulación cancela las membresías de sus líneas.
+  for v_mem_si in
+    select si.id, si.quantity from public.sale_items si where si.sale_id = v_sale.id and si.quantity > 0
+  loop
+    if (public.fn_membresias_revertir_linea(v_mem_si.id, v_mem_si.quantity, v_motivo,
+          jsonb_build_object('tipo', 'anulacion', 'id', v_sale.id))->>'accion') is not null then
+      v_n_membresias := v_n_membresias + 1;
+    end if;
+  end loop;
+
+  update public.sales set
+    status         = 'void',
+    balance        = 0,
+    payment_status = case when v_n_pagos > 0 then 'refunded' else payment_status end,
+    notes          = coalesce(notes || E'\n', '') || '[ANULADA] ' || v_motivo,
+    updated_at     = now()
+  where id = v_sale.id;
+
+  insert into public.ops_audit_log (
+    organization_id, branch_id, user_id, entity_type, entity_id, action, previous_data, new_data, metadata
+  ) values (
+    v_sale.organization_id, v_sale.branch_id, v_uid, 'sales', v_sale.id::text, 'VOID',
+    jsonb_build_object('status', v_sale.status, 'payment_status', v_sale.payment_status, 'total', v_sale.total, 'balance', v_sale.balance),
+    jsonb_build_object('status', 'void'),
+    jsonb_build_object('motivo', v_motivo, 'factura', v_inv.number, 'nota_credito', v_nc_numero,
+                       'pagos_anulados', v_n_pagos, 'asientos_revertidos', v_n_asientos,
+                       'propinas_anuladas', v_n_propinas, 'comisiones_canceladas', v_n_comision,
+                       'productos_devueltos', v_n_stock, 'seriales_devueltos', v_n_seriales,
+                       'avisos', to_jsonb(v_avisos))
+  );
+
+  return jsonb_build_object(
+    'sale_id', v_sale.id,
+    'ya_anulada', false,
+    'nota_credito_id', v_nc_id,
+    'nota_credito_numero', v_nc_numero,
+    'pagos_anulados', v_n_pagos,
+    'asientos_revertidos', v_n_asientos,
+    'propinas_anuladas', v_n_propinas,
+    'comisiones_canceladas', v_n_comision,
+    'productos_devueltos', v_n_stock,
+    'seriales_devueltos', v_n_seriales,
+    'avisos', to_jsonb(v_avisos),
+    'membresias_canceladas', v_n_membresias
+  );
+end;
+$function$;
+
+-- MEDIO-1 (QA 8c405138) + AJUSTES DEL CONTADOR 25-oct (anulacion_ajustes_contador_25oct.md):
+--   1) El contra-asiento de una anulación SIEMPRE va con la fecha de la anulación (hoy), nunca con la
+--      de la factura, esté su período abierto o cerrado. (Si hay NC electrónica, el asiento es el de la
+--      NC con su fecha y esta función no hace nada.) Excepción: factura que nunca llegó a la DIAN o fue
+--      rechazada (einvoice_status pending/processing/rejected/failed) → se anula SIN NC y SIN
+--      contra-asiento. einvoice_status NULL = factura no electrónica: contra-asiento normal.
+--      [SUPERADO por 134160: con asiento de venta publicado SIEMPRE hay contra-asiento, sin importar el estado DIAN.]
+--   2) Factura mixta INC+IVA ya NO es falla: el contra-asiento espeja LÍNEA POR LÍNEA el devengo, así
+--      cada impuesto vuelve a su cuenta (INC 24950501, IVA 24080501/24081001) igual que en la venta. Una
+--      línea sin cuenta (account_code vacío) no se reversa: va a pendientes (journal_entry_failures,
+--      'linea_sin_cuenta') y la anulación sigue.
+--   3) Asiento en BORRADOR (posted = false) no se revierte: se DESCARTA (se borran sus líneas y el
+--      asiento) y queda registro en journal_entry_failures con reason 'borrador_descartado' (resuelto).
+--   Si el período de HOY está cerrado, no se bloquea la anulación: va a pendientes ('periodo_cerrado').
+create or replace function public.fn_revertir_asiento_en_fecha(p_entry_id integer, p_fecha timestamptz,
+  p_categoria text, p_lote text)
+returns integer language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+declare
+  v_orig journal_entries%rowtype;
+  v_rev_id integer;
+  v_d numeric;
+  v_c numeric;
+begin
+  select * into v_orig from journal_entries where id = p_entry_id for update;
+  if not found then raise exception 'Asiento % no existe', p_entry_id; end if;
+  if not v_orig.posted then
+    raise exception 'Asiento % no está publicado: no se revierte con contra-asiento', p_entry_id;
+  end if;
+  if exists (select 1 from journal_entries
+              where organization_id = v_orig.organization_id and fact_key = 'reversal:' || p_entry_id) then
+    raise exception 'Asiento % ya tiene contra-asiento', p_entry_id;
+  end if;
+  insert into journal_entries (organization_id, branch_id, entry_date, memo, source, source_id, posted,
+                               created_by, currency_code, exchange_rate, base_currency_code, fact_key)
+  values (v_orig.organization_id, v_orig.branch_id, coalesce(p_fecha, now()),
+          'REVERSION ' || p_categoria || ' | ' || p_lote || ' | asiento ' || p_entry_id || ' | ' || coalesce(v_orig.memo, ''),
+          'reversal', p_entry_id::text, true, null,
+          v_orig.currency_code, v_orig.exchange_rate, v_orig.base_currency_code, 'reversal:' || p_entry_id)
+  returning id into v_rev_id;
+  insert into journal_lines (journal_entry_id, account_code, description, debit, credit,
+                             organization_id, currency_code, exchange_rate, debit_base, credit_base, cost_center_id)
+  select v_rev_id, jl.account_code, 'REVERSION ' || coalesce(jl.description, ''), jl.credit, jl.debit,
+         jl.organization_id, jl.currency_code, jl.exchange_rate, jl.credit_base, jl.debit_base, jl.cost_center_id
+    from journal_lines jl
+   where jl.journal_entry_id = p_entry_id and nullif(btrim(jl.account_code), '') is not null;
+  select sum(debit), sum(credit) into v_d, v_c from journal_lines where journal_entry_id = v_rev_id;
+  if v_d is distinct from v_c then
+    raise exception 'El contra-asiento de % no cuadra (D % / C %)', p_entry_id, v_d, v_c;
+  end if;
+  return v_rev_id;
+end $$;
+revoke all on function public.fn_revertir_asiento_en_fecha(integer, timestamptz, text, text) from public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.fn_auto_journal_void()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+    v_je RECORD;
+    v_vivos integer;
+    v_fecha timestamptz := now();
+    v_lote text;
+BEGIN
+    IF (NEW.status IN ('void','voided','cancelled'))
+       AND (OLD.status IS DISTINCT FROM NEW.status)
+       AND (OLD.status NOT IN ('void','voided','cancelled')) THEN
+
+        IF NEW.document_type = 'credit_note' THEN
+            RETURN NEW;
+        END IF;
+
+        -- Con NC: el asiento es el de la NC (con su fecha); aquí no se hace nada.
+        IF EXISTS (
+            SELECT 1 FROM invoice_sales cn
+            WHERE cn.related_invoice_id = NEW.id
+              AND cn.document_type = 'credit_note'
+        ) THEN
+            RETURN NEW;
+        END IF;
+
+        -- (1) Excepción del contador: nunca llegó a la DIAN o fue rechazada → sin NC y sin contra-asiento.
+        IF NEW.einvoice_status IN ('pending', 'processing', 'rejected', 'failed') THEN
+            RETURN NEW;
+        END IF;
+
+        v_lote := COALESCE(NEW.number, NEW.id::text);
+
+        SELECT count(*) INTO v_vivos
+        FROM journal_entries je
+        WHERE je.organization_id = NEW.organization_id
+          AND (je.fact_key LIKE 'accrual:invoice:' || NEW.id::text || '%'
+               OR (NEW.sale_id IS NOT NULL AND je.fact_key LIKE 'accrual:sale:' || NEW.sale_id::text || '%')
+               OR (je.fact_key IS NULL AND je.source = 'invoice_sales' AND je.source_id = NEW.id::text))
+          AND NOT EXISTS (
+              SELECT 1 FROM journal_entries r
+              WHERE r.organization_id = je.organization_id AND r.fact_key = 'reversal:' || je.id);
+        IF v_vivos = 0 THEN
+            RETURN NEW;
+        END IF;
+
+        FOR v_je IN
+            SELECT je.id, coalesce(je.posted, false) AS posted, je.branch_id
+            FROM journal_entries je
+            WHERE je.organization_id = NEW.organization_id
+              AND (je.fact_key LIKE 'accrual:invoice:' || NEW.id::text || '%'
+                   OR (NEW.sale_id IS NOT NULL AND je.fact_key LIKE 'accrual:sale:' || NEW.sale_id::text || '%')
+                   OR (je.fact_key IS NULL AND je.source = 'invoice_sales' AND je.source_id = NEW.id::text))
+              AND NOT EXISTS (
+                  SELECT 1 FROM journal_entries r
+                  WHERE r.organization_id = je.organization_id AND r.fact_key = 'reversal:' || je.id)
+            ORDER BY je.id
+        LOOP
+            IF NOT v_je.posted THEN
+                -- (3) Borrador: se descarta (no hay nada contabilizado que revertir).
+                DELETE FROM journal_lines WHERE journal_entry_id = v_je.id;
+                DELETE FROM journal_entries WHERE id = v_je.id AND posted IS NOT TRUE;
+                PERFORM fn_log_journal_failure(
+                    NEW.organization_id, NEW.branch_id, v_fecha,
+                    'invoice_sales', NEW.id::text || ':void', 'void:draft:' || v_je.id,
+                    NULL, NULL, ABS(COALESCE(NEW.total, 0)),
+                    'borrador_descartado', 'Anulación ' || v_lote || ': borrador ' || v_je.id || ' descartado (no se revierte)');
+                UPDATE journal_entry_failures SET resolved_at = now(), resolution = 'borrador_descartado'
+                 WHERE organization_id = NEW.organization_id AND fact_key = 'void:draft:' || v_je.id AND resolved_at IS NULL;
+                CONTINUE;
+            END IF;
+            -- (2) Líneas sin cuenta → pendientes, sin bloquear.
+            IF EXISTS (SELECT 1 FROM journal_lines jl WHERE jl.journal_entry_id = v_je.id
+                         AND nullif(btrim(jl.account_code), '') IS NULL) THEN
+                PERFORM fn_log_journal_failure(
+                    NEW.organization_id, NEW.branch_id, v_fecha,
+                    'invoice_sales', NEW.id::text || ':void', 'void:sin_cuenta:' || v_je.id,
+                    NULL, NULL, ABS(COALESCE(NEW.total, 0)),
+                    'linea_sin_cuenta', 'Anulación ' || v_lote || ': línea sin cuenta en asiento ' || v_je.id);
+            END IF;
+            IF NOT fn_is_period_open(NEW.organization_id, v_fecha::date) THEN
+                PERFORM fn_log_journal_failure(
+                    NEW.organization_id, NEW.branch_id, v_fecha,
+                    'invoice_sales', NEW.id::text || ':void', 'void:invoice:' || NEW.id::text || ':' || v_je.id,
+                    NULL, NULL, ABS(COALESCE(NEW.total, 0)),
+                    'periodo_cerrado', 'Anulación ' || v_lote || ': período de la fecha de anulación cerrado');
+                CONTINUE;
+            END IF;
+            -- (1) Espejo línea por línea con la FECHA DE ANULACIÓN.
+            PERFORM fn_revertir_asiento_en_fecha(v_je.id, v_fecha, 'anulacion-factura', v_lote);
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$function$;
 
 insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
 values ('20261025134115', 'contador_funciones', array[]::text[], 'p1_apply_executor')

@@ -86,6 +86,15 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
 
     expect(lineasImpuestoDeclarado('2408', 50)[0]).toMatchObject({ cuenta: '24080501', afectaResultados: false });
     expect(lineasImpuestoDeclarado('2365', 50)[0].cuenta).toBe('23654001');
+    // QA ROJO N7: se reparte según el saldo de cada auxiliar de 2365
+    const l = lineasImpuestoDeclarado('2365', 1000, { '23651501': 300, '23652001': 200, '23652501': 100, '23654001': 400 });
+    expect(l.map((x) => [x.cuenta, x.centavos])).toEqual([
+      ['23651501', 30000], ['23652001', 20000], ['23652501', 10000], ['23654001', 40000],
+    ]);
+    // sin saldo en salarios: no aparece; el exceso va a 23654001
+    const m = lineasImpuestoDeclarado('2365', 500, { '23652001': 120.5 });
+    expect(m.map((x) => [x.cuenta, x.centavos])).toEqual([['23652001', 12050], ['23654001', 37950]]);
+    expect(m.reduce((s, x) => s + x.centavos, 0)).toBe(50000);
     expect(categoriaPorClave('impuestos_declarados').afectaResultados).toBe('no');
     expect(categoriaPorClave('impuestos_gasto').cuenta).toBe('5115');
 

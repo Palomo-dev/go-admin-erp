@@ -8,6 +8,7 @@ import {
   COMMISSION_ACTIONS,
   CommissionTransitionError,
   buildTransitionPatch,
+  vinculoComision,
   canManageCommissions,
   canTransition,
   cancellationKind,
@@ -128,5 +129,20 @@ describe('canManageCommissions (servidor, por id de rol, nunca por nombre)', () 
     expect(canManageCommissions({ roleId: 4, isSuperAdmin: false })).toBe(false);
     expect(canManageCommissions({ roleId: 3, isSuperAdmin: false })).toBe(false);
     expect(canManageCommissions({ roleId: 4, isSuperAdmin: true })).toBe(true);
+  });
+});
+
+describe('pago de comisión: débito por vínculo (QA ROJO N5)', () => {
+  const NOW2 = '2026-10-25T12:00:00.000Z';
+  const row = { status: 'accrued', paid_at: null, metadata: null, notes: null };
+  test('externo → 23352001; empleado → 25050502', () => {
+    expect(buildTransitionPatch('pay', row, { now: NOW2, vinculo: 'externo' }).metadata).toEqual({ vinculo: 'externo', cuenta_debito_pago: '23352001' });
+    expect(buildTransitionPatch('pay', row, { now: NOW2, vinculo: 'empleado' }).metadata).toEqual({ vinculo: 'empleado', cuenta_debito_pago: '25050502' });
+  });
+  test('vinculoComision espeja fn_comision_vinculo', () => {
+    expect(vinculoComision('supplier')).toBe('externo');
+    expect(vinculoComision('third_party', 'empleado')).toBe('externo');
+    expect(vinculoComision('employee', 'externo')).toBe('externo');
+    expect(vinculoComision('employee', null)).toBe('empleado');
   });
 });

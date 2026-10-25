@@ -62,13 +62,13 @@ create table if not exists public.comision_tercero_tributario (
 alter table public.comision_tercero_tributario enable row level security;
 revoke all on public.comision_tercero_tributario from anon;
 
--- B1: UVT por año desde fiscal_uvt (último año <= p_anio). Sin fila: error (no se inventa la UVT).
+-- B1: UVT del año EXACTO desde fiscal_uvt (QA ROJO N8: no se cae en silencio al último año). Sin fila: error.
 create or replace function public.fn_uvt(p_anio integer, p_pais text default 'COL')
 returns numeric language plpgsql stable security definer set search_path to 'public', 'pg_temp' as $$
 declare v numeric;
 begin
   select u.value into v from public.fiscal_uvt u
-   where u.country_code = coalesce(p_pais, 'COL') and u.year <= p_anio order by u.year desc limit 1;
+   where u.country_code = coalesce(p_pais, 'COL') and u.year = p_anio;
   if v is null then raise exception 'uvt_no_configurada %/%', p_pais, p_anio using errcode = 'P0002'; end if;
   return v;
 end $$;
@@ -1817,6 +1817,64 @@ end;
 $function$
 ;
 
+-- Auxiliar de ventas: crea (si faltan) el grupo de 4 bajo 41 (y 41 bajo 4), el padre de 6 y el auxiliar de 8.
+-- Nombres oficiales del contador (PUC Decreto 2650/1993) para los padres; auxiliares descriptivos.
+-- Devuelve el auxiliar, o null solo si la org no tiene ni la clase 4 (nunca una cuenta inexistente).
+create or replace function public.fn_asegurar_auxiliar_venta(p_org integer, p_aux text)
+returns text language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+declare
+  v_tit text := left(p_aux, 6); v_grupo text := left(p_aux, 4);
+  v_marca constant text := 'Auxiliar de ventas del sector (QA 25-oct-2026)';
+begin
+  if exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = p_aux) then
+    return p_aux;
+  end if;
+  if not exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = '4') then
+    return null;
+  end if;
+  insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+    es_movimiento, naturaleza, description)
+  select p_org, x.c, x.n, 'income', x.p, true, x.m, 'credito', v_marca
+    from (values
+      (1, '41', 'Operacionales', '4', false),
+      (2, v_grupo, case v_grupo when '4135' then 'Comercio al por mayor y al por menor'
+                                when '4145' then 'Transporte, almacenamiento y comunicaciones'
+                                when '4155' then 'Actividades inmobiliarias, empresariales y de alquiler'
+                                when '4170' then 'Otras actividades de servicios comunitarios, sociales y personales'
+                                else 'Ingresos operacionales' end, '41', false),
+      (3, v_tit, case v_tit when '413595' then 'Venta de otros productos'
+                            when '414505' then 'Servicio de transporte por carretera'
+                            else 'Actividades conexas' end, v_grupo, false),
+      (4, p_aux, case p_aux when '41459501' then 'Servicio de parqueadero'
+                            when '41709501' then 'Servicios de gimnasio'
+                            when '41559501' then 'Servicios'
+                            when '41450501' then 'Servicio de transporte'
+                            when '41359501' then 'Venta de mercancías'
+                            else 'Ingresos del sector' end, v_tit, true)
+    ) as x(o, c, n, p, m)
+   order by x.o
+  on conflict (organization_id, account_code) do nothing;
+  return p_aux;
+end $$;
+revoke all on function public.fn_asegurar_auxiliar_venta(integer, text) from public, anon, authenticated;
+
+-- QA ROJO 56f889e2 MEDIO 3 + contador 25-oct-2026: auxiliar de ventas del sector. Servicios 41559501, gym 41709501,
+-- transporte 41450501, parqueadero 41459501 (bajo 4145, ingreso operacional; NO 4235), retail y sin tipo
+-- 41359501. Retail además 41559501 para los servicios propios de su negocio (instalación, domicilio,
+-- mantenimiento); 4235 queda solo para servicios ocasionales fuera de la actividad. BAJO Soporte: crea el grupo
+-- de 4 si falta (orgs 4, 57, 325, 59, 102 en prod). Null para hoteles/restaurantes (plan propio).
+create or replace function public.fn_asegurar_cuenta_venta_sector(p_org integer, p_type integer)
+returns text language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+begin
+  if p_type in (1, 2) then return null; end if;
+  if p_type is null or p_type not in (4, 5, 6, 7) then
+    perform public.fn_asegurar_auxiliar_venta(p_org, '41559501');
+  end if;
+  return public.fn_asegurar_auxiliar_venta(p_org, case p_type when 4 then '41559501' when 5 then '41709501'
+                                                  when 6 then '41450501' when 7 then '41459501' else '41359501' end);
+end $$;
+revoke all on function public.fn_asegurar_cuenta_venta_sector(integer, integer) from public, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.fn_create_default_accounting_rules(org_id integer, country_code text)
  RETURNS void
  LANGUAGE plpgsql
@@ -1866,6 +1924,15 @@ begin
              when v_cmv = '6135' or v_cmv is null then '61350501'
              else v_cmv end;
   v_merma := case when v_type in (1, 2) then '61400502' else '61350502' end;
+  -- MEDIO 3: auxiliar de ventas del sector; si la org no tiene el grupo de 4 se queda en el grupo.
+  if v_type is distinct from 1 and v_type is distinct from 2 then
+    v_prod := coalesce(public.fn_asegurar_cuenta_venta_sector(org_id, v_type),
+                       -- Respaldo = grupo del que cuelga el auxiliar (contador: parqueadero 41459501 bajo 4145, no 4235).
+                       case v_type when 4 then '4155' when 6 then '4145' when 7 then '4145' when 5 then '4170' else '4135' end);
+    -- Retail y sin tipo: servicios propios del negocio 41559501 (contador); 4235 solo ocasionales.
+    v_serv := case when v_type in (4, 5, 6, 7) then v_prod
+                   else coalesce(public.fn_asegurar_auxiliar_venta(org_id, '41559501'), '4155') end;
+  end if;
   v_prod := coalesce(v_prod, '4135');
   v_serv := coalesce(v_serv, '4235');
   v_folio_alim := v_prod;
@@ -1891,6 +1958,20 @@ begin
   if v_type = 2 then
     v_noshow := '41409502';
     v_viaje := '41409501';
+    -- QA ROJO 56f889e2 MEDIO 2: el hotel nuevo nace con el auxiliar del anticipo (280505 / 28050501) para que
+    -- las reglas de reserva de 134145 apliquen desde el primer pago (org nueva: 2805 aún sin movimientos).
+    if exists (select 1 from public.chart_of_accounts c where c.organization_id = org_id and c.account_code = '2805') then
+      insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+        es_movimiento, naturaleza, description)
+      values (org_id, '280505', 'Anticipos y avances recibidos de clientes', 'liability', '2805', true, false, 'credito',
+              'Anticipos de reservas (134145)')
+      on conflict (organization_id, account_code) do nothing;
+      insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+        es_movimiento, naturaleza, description)
+      values (org_id, '28050501', 'Anticipos de clientes - reservas', 'liability', '280505', true, true, 'credito',
+              'Anticipos de reservas (134145)')
+      on conflict (organization_id, account_code) do nothing;
+    end if;
     if exists (select 1 from public.chart_of_accounts c where c.organization_id = org_id
                 and c.account_code = '28050501' and c.es_movimiento is true) then
       v_anticipo := '28050501';
@@ -1924,9 +2005,9 @@ begin
     (org_id, 'Ajuste Inventario Ganancia', 'Ajuste positivo de inventario', 'inventory_adjustment', 'gain', v_inv, '42959501', null, false, 30, true),
     (org_id, 'Ajuste Inventario Perdida', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory_adjustment', 'loss', v_merma, v_inv, null, false, 31, true),
     (org_id, 'Orden de Compra Recibida', 'Recepcion de orden de compra', 'purchase_order', 'received', v_inv, '22050501', '24081001', true, 30, true),
-    (org_id, 'Membresia', 'Ingreso por membresia', 'membership', 'created', '1105', '4250', null, false, 30, true),
-    (org_id, 'Sesion Parqueadero', 'Ingreso por sesion de parqueadero', 'parking', 'closed', '1105', '4235', null, false, 30, true),
-    (org_id, 'Pase Parqueadero', 'Ingreso por pase de parqueadero', 'parking_pass', 'paid', '1105', '4235', null, false, 30, true),
+    (org_id, 'Membresia', 'Ingreso por membresia', 'membership', 'created', '1105', case when v_type = 5 then v_prod else '4250' end, null, false, 30, true),
+    (org_id, 'Sesion Parqueadero', 'Ingreso por sesion de parqueadero', 'parking', 'closed', '1105', case when v_type = 7 then v_prod else '4235' end, null, false, 30, true),
+    (org_id, 'Pase Parqueadero', 'Ingreso por pase de parqueadero', 'parking_pass', 'paid', '1105', case when v_type = 7 then v_prod else '4235' end, null, false, 30, true),
     (org_id, 'Prestamo Empleado', 'Desembolso de prestamo a trabajador', 'loan', 'paid', '1365', '1105', null, false, 30, true),
     (org_id, 'Cuota Prestamo', 'Abono de prestamo a trabajador', 'installment', 'paid', '1105', '1365', null, false, 30, true),
     (org_id, 'Manifiesto Despacho', 'Inventario contra proveedores, o contra costos por pagar si la organización es de transporte. La caja solo si es de contado.', 'manifest', 'created', v_inv, v_manifiesto, null, false, 30, true),
@@ -1938,7 +2019,7 @@ begin
     (org_id, 'Pago Folio', 'Pago de folio', 'folio_payment', 'paid', '1105', '1305', null, false, 30, true),
     (org_id, 'Comision OTA', 'Comision del canal: gasto contra cuenta por pagar al canal', 'ota_commission', 'confirmed', '52950501', '23352002', null, false, 30, true),
     (org_id, 'Mantenimiento', 'Gasto de mantenimiento', 'maintenance', 'created', '5145', '1110', null, false, 30, true),
-    (org_id, 'Reserva Confirmada', 'Reserva confirmada', 'reservation', 'confirmed', '1305', '2805', null, false, 30, true),
+    (org_id, 'Reserva Confirmada', 'Reserva confirmada', 'reservation', 'confirmed', '1305', '2805', null, false, 30, v_anticipo <> '28050501'),
     (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', v_anticipo, v_noshow, null, false, 32, true),
     (org_id, 'Costo Patronal', 'Provision de seguridad social patronal al aprobar el periodo', 'payroll_period', 'created', '5105', '2370', null, false, 5, true),
     (org_id, 'Pago Costo Patronal', 'Pago de obligaciones patronales al cerrar el periodo', 'payroll_period', 'paid', '2370', '1110', null, false, 5, true),
@@ -1985,6 +2066,16 @@ begin
       debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active, conditions)
     values (org_id, 'Cargo Folio Bar', 'Cargo a folio por bar y minibar', 'folio_item', 'created',
       '1305', '41402001', null, false, 13, true, '{"source": "minibar"}'::jsonb);
+    -- QA ROJO 56f889e2 MEDIO 2: reglas de reserva de 134145 (anticipo 28050501). no_show ya va arriba.
+    if v_anticipo = '28050501' then
+      insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+        debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active)
+      values
+        (org_id, 'Anticipo de reserva', 'Pago antes del check-in de una reserva confirmada', 'reservation', 'received', '1105', '28050501', null, false, 30, true),
+        (org_id, 'Reembolso de anticipo', 'Cancelación: se devuelve el anticipo', 'reservation', 'cancelled', '28050501', '1105', null, false, 31, true),
+        (org_id, 'Penalidad retenida', 'Cancelación: penalidad retenida del anticipo', 'reservation', 'adjusted', '28050501', '41409502', null, false, 33, true),
+        (org_id, 'Anticipo aplicado al checkout', 'El anticipo abona la cartera del huésped', 'reservation', 'completed', '28050501', '1305', null, false, 34, true);
+    end if;
   end if;
 end;
 $function$;
@@ -2210,18 +2301,26 @@ CREATE OR REPLACE FUNCTION public.fn_propuesta_configuracion_sector(p_type_id in
 AS $function$
   select v.clave,
     case v.clave
+      -- QA ROJO 56f889e2 MEDIO 3: ventas por sector en auxiliares de movimiento (fn_asegurar_cuenta_venta_sector
+      -- las crea donde faltan): servicios 41559501, transporte 41450501, parqueadero 41459501, gym 41709501,
+      -- retail y sin tipo 41359501.
       when 'ventas_productos' then case p_type_id
         when 1 then '41401501'
         when 2 then '41400501'
-        when 4 then '4155'
-        when 6 then '4145'
-        when 7 then '4235'
-        else '4135'
+        when 4 then '41559501'
+        when 5 then '41709501'
+        when 6 then '41450501'
+        when 7 then '41459501'
+        else '41359501'
       end
       when 'ventas_servicios' then case p_type_id
         when 1 then '414095'
         when 2 then '41400501'
-        else '4235'
+        when 4 then '41559501'
+        when 5 then '41709501'
+        when 6 then '41450501'
+        when 7 then '41459501'
+        else '41559501'
       end
       when 'costo_ventas' then case when p_type_id in (1, 2) then '61400501' else '61350501' end
       when 'faltante_inventario' then case when p_type_id in (1, 2) then '61400502' else v.defecto end
@@ -2971,6 +3070,7 @@ declare
   v_tipo integer;
   v_inv text;
   v_nivel integer;
+  v_aux_venta text;
 begin
   perform public.fn_assert_acceso_org(p_org);
   if exists (
@@ -3012,6 +3112,39 @@ begin
   -- 414015, 414095 y 4175 pasan a título solos al nacer su auxiliar (org nueva: sin saldos).
   if v_tipo = 2 then
     perform public.fn_hoteles_asegurar_cuentas_ingreso(p_org, null);
+    -- Tanda 3 (hoteles nuevos): las reglas por defecto nacen antes que el plan, así que aquí se completa la siembra
+    -- del anticipo de reservas (134145): 280505/28050501 y las reglas received/cancelled/adjusted/completed; el
+    -- no-show pasa a debitar 28050501 y la regla vieja «confirmed» (1305/2805) queda inactiva. Solo org nueva
+    -- (sin configuración ni asientos).
+    if exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = '2805')
+       and not exists (select 1 from public.journal_entries where organization_id = p_org) then
+      insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+        es_movimiento, naturaleza, description)
+      values (p_org, '280505', 'Anticipos y avances recibidos de clientes', 'liability', '2805', true, false, 'credito',
+              'Anticipos de reservas (134145)')
+      on conflict (organization_id, account_code) do nothing;
+      insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+        es_movimiento, naturaleza, description)
+      values (p_org, '28050501', 'Anticipos de clientes - reservas', 'liability', '280505', true, true, 'credito',
+              'Anticipos de reservas (134145)')
+      on conflict (organization_id, account_code) do nothing;
+      update public.accounting_rules set debit_account_code = '28050501', updated_at = now()
+       where organization_id = p_org and source_type = 'reservation' and event_type = 'no_show'
+         and debit_account_code = '2805';
+      update public.accounting_rules set is_active = false, updated_at = now()
+       where organization_id = p_org and source_type = 'reservation' and event_type = 'confirmed';
+      insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+        debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active)
+      select p_org, v.n, v.d, 'reservation', v.ev, v.deb, v.cre, null, false, v.pr, true
+        from (values
+          ('Anticipo de reserva', 'Pago antes del check-in de una reserva confirmada', 'received', '1105', '28050501', 30),
+          ('Reembolso de anticipo', 'Cancelación: se devuelve el anticipo', 'cancelled', '28050501', '1105', 31),
+          ('Penalidad retenida', 'Cancelación: penalidad retenida del anticipo', 'adjusted', '28050501', '41409502', 33),
+          ('Anticipo aplicado al checkout', 'El anticipo abona la cartera del huésped', 'completed', '28050501', '1305', 34)
+        ) v(n, d, ev, deb, cre, pr)
+       where not exists (select 1 from public.accounting_rules r where r.organization_id = p_org
+                           and r.source_type = 'reservation' and r.event_type = v.ev and r.is_active);
+    end if;
   end if;
   -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
   -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
@@ -3023,6 +3156,16 @@ begin
 
   -- Auxiliares de pasivos del contador (134125): 22050501, 25050501/02, 23352001/02, 23359501, 2365xx01.
   perform public.fn_pasivos_asegurar_auxiliares(p_org, null);
+  -- BAJO Soporte: la cuenta de ventas propuesta para el sector debe existir antes de sembrarla.
+  v_aux_venta := public.fn_asegurar_cuenta_venta_sector(p_org, v_tipo);
+  -- Org nueva (sin configuración aún): si las reglas por defecto nacieron antes que el plan, quedaron en el grupo
+  -- de 4; se pasan al auxiliar del sector (solo reglas de ingreso de esta org, sin asientos todavía).
+  if v_aux_venta is not null then
+    update public.accounting_rules r set credit_account_code = v_aux_venta, updated_at = now()
+     where r.organization_id = p_org and r.credit_account_code = left(v_aux_venta, 4)
+       and r.source_type in ('sale', 'cash_movement', 'trip', 'membership', 'parking', 'parking_pass')
+       and not exists (select 1 from public.journal_entries e where e.organization_id = p_org);
+  end if;
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
   -- y la clave no se siembra: el resolver usa el auxiliar de la sede en tiempo de asiento.
@@ -3066,6 +3209,10 @@ begin
             when 'devoluciones' then case when v_tipo = 2 then '41750101' end
             when 'descuentos' then case when v_tipo = 2 then '41750102' end
           end
+      -- BAJO Soporte: si la cuenta propuesta no existe en la org, el grupo de 4 del que cuelga (nunca una inexistente).
+      when p.account_code ~ '^4[0-9]{7}$' and not exists (
+        select 1 from public.chart_of_accounts a where a.organization_id = p_org and a.account_code = p.account_code
+      ) then left(p.account_code, 4)
       -- Cuenta de título: su único auxiliar de movimiento, si lo hay.
       when p.account_code not like '24%' and exists (
         select 1 from public.chart_of_accounts t
@@ -3424,6 +3571,19 @@ BEGIN
 END;
 $function$
 ;
+
+-- QA ROJO 56f889e2 MEDIO 3: auxiliares de ventas del sector en las orgs que no los tienen (no hoteles/restaurantes).
+-- Con trg_puc_validar_cuenta apagado: el grupo de 4 (4135/4145/4155/4170) sigue de MOVIMIENTO; no se mueve
+-- ningún saldo ni regla existente (solo los defaults de orgs nuevas usan el auxiliar).
+do $$
+declare o record;
+begin
+  alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
+  for o in select id, type_id from public.organizations where type_id is null or type_id not in (1, 2) loop
+    perform public.fn_asegurar_cuenta_venta_sector(o.id, o.type_id);
+  end loop;
+  alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
+end $$;
 
 insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
 values ('20261025134130', 'aux_pasivos_funciones', array[]::text[], 'p1_apply_executor')

@@ -23,7 +23,7 @@ import {
   type FilaConfiguracion,
 } from '@/lib/finanzas/configuracionContable';
 import { AlertasFalloContable } from './AlertasFalloContable';
-import { ConfiguracionContableService, configuracionesInvalidas } from './ConfiguracionContableService';
+import { ConfiguracionContableService, configuracionesInvalidas, type MapeoSede } from './ConfiguracionContableService';
 
 const USAR_REGLA = 'regla';
 
@@ -47,6 +47,7 @@ export function ConfiguracionContablePage() {
   const { branches } = useBranch();
   const [filas, setFilas] = useState<FilaConfiguracion[]>([]);
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
+  const [mapeos, setMapeos] = useState<MapeoSede[]>([]);
   const [alcance, setAlcance] = useState('org');
   const [elecciones, setElecciones] = useState<Elecciones>(vacias);
   const [cargando, setCargando] = useState(true);
@@ -65,10 +66,15 @@ export function ConfiguracionContablePage() {
     Promise.all([
       ConfiguracionContableService.listar(),
       ConfiguracionContableService.cuentas(),
-    ]).then(([guardadas, plan]) => {
+      ConfiguracionContableService.mapeosInventario().catch((error) => {
+        console.error(error);
+        return [] as MapeoSede[];
+      }),
+    ]).then(([guardadas, plan, mapeosSede]) => {
       if (!vivo) return;
       setFilas(guardadas);
       setCuentas(plan);
+      setMapeos(mapeosSede);
     }).catch((error) => {
       console.error(error);
       if (vivo) toast.error('No se pudo cargar la configuración contable');
@@ -91,7 +97,11 @@ export function ConfiguracionContablePage() {
 
   // No se ocultan: una configuración que apunta a una cuenta de título (p. ej. 1435)
   // detiene los asientos, así que se muestra con aviso para corregirla.
-  const invalidas = useMemo(() => configuracionesInvalidas(filas, cuentas), [filas, cuentas]);
+  const sedePrincipalId = (sedes.find((sede) => sede.is_main === true) ?? sedes[0])?.id ?? null;
+  const invalidas = useMemo(
+    () => configuracionesInvalidas(filas, cuentas, mapeos, sedePrincipalId),
+    [filas, cuentas, mapeos, sedePrincipalId],
+  );
   const invalidaDe = (clave: ClaveContable) =>
     invalidas.find((item) => item.clave === clave && (branchId == null ? item.branch_id == null : item.branch_id === branchId));
 

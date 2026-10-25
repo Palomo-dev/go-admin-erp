@@ -15,6 +15,7 @@ import {
   construirFactura,
   construirNotaCredito,
   construirDocumentoSoporte,
+  identificacionVaciaDian,
   conceptoNotaCredito,
   DatosIncompletosError,
   CONSUMIDOR_FINAL,
@@ -190,6 +191,25 @@ describe('construirDocumentoSoporte', () => {
         numberingRangeId: 2058,
       }),
     ).toThrow(DatosIncompletosError);
+  });
+
+  test('NIT genérico 222222222222 / 2222222222 → tercero_obligatorio_dian', () => {
+    for (const identification of ['222222222222', '2222222222-7', '  ']) {
+      expect(() =>
+        construirDocumentoSoporte({
+          documento: { reference_code: 'DS-1', provider: { identification, names: 'Genérico' } },
+          lineas: [{ qty: 1, unit_price: 1000, tax_rate: 0 }],
+          numberingRangeId: 2058,
+        }),
+      ).toThrow(/tercero_obligatorio_dian/);
+    }
+  });
+
+  test('identificacionVaciaDian: cédula/pasaporte reales sí valen', () => {
+    expect(identificacionVaciaDian('1020304050')).toBe(false);
+    expect(identificacionVaciaDian('AB123456')).toBe(false);
+    expect(identificacionVaciaDian('900123456-1')).toBe(false);
+    expect(identificacionVaciaDian(null)).toBe(true);
   });
 
   test('con proveedor completo arma el payload con su rango', () => {

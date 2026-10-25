@@ -470,7 +470,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
         toast({
           title: t('pagoManual.exito'),
-          description: t('pagoManual.exitoDetalle', { referencia: datos.referencia }),
+          description: r.pagoExistente
+            ? t('pagoManual.pagoExistente', { referencia: datos.referencia })
+            : t('pagoManual.exitoDetalle', { referencia: datos.referencia }),
         });
       } catch (errConfirmar: unknown) {
         // El pago ya quedó: el pedido sigue pendiente y pagado; se confirma con «Confirmar pedido».

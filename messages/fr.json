@@ -36241,8 +36241,12 @@
         "PEDIDO_NO_REACTIVABLE": "Le statut de la commande ne permet pas de la réactiver.",
         "PEDIDO_CON_VENTA": "La commande a déjà une vente.",
         "SIN_PERMISO": "Vous n'êtes pas autorisé à marquer des commandes comme payées.",
-        "FUNCION_AUSENTE": "La fonction n'est pas encore installée dans la base de données."
-      }
+        "FUNCION_AUSENTE": "La fonction n'est pas encore installée dans la base de données.",
+        "REFERENCIA_INVALIDA": "Format de référence Wompi invalide (ex. 1578504-1792942441-37635).",
+        "REFERENCIA_DUPLICADA": "Cette référence est déjà enregistrée sur un autre paiement. Vérifiez-la dans Wompi."
+      },
+      "reintentoConfirmacion": "Si la confirmation a échoué après l'enregistrement du paiement, utilisez « Confirmer la commande » pour réessayer.",
+      "pagoExistente": "La référence {referencia} figurait déjà sur cette commande : ce paiement a été utilisé, sans doublon."
     }
   },
   "posMesasFlujo": {

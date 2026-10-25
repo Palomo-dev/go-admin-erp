@@ -36241,8 +36241,12 @@
         "PEDIDO_NO_REACTIVABLE": "The order status does not allow reactivation.",
         "PEDIDO_CON_VENTA": "The order already has a sale.",
         "SIN_PERMISO": "You are not allowed to mark orders as paid.",
-        "FUNCION_AUSENTE": "The function is not installed in the database yet."
-      }
+        "FUNCION_AUSENTE": "The function is not installed in the database yet.",
+        "REFERENCIA_INVALIDA": "Invalid Wompi reference format (e.g. 1578504-1792942441-37635).",
+        "REFERENCIA_DUPLICADA": "That reference is already recorded on another payment. Check it in Wompi."
+      },
+      "reintentoConfirmacion": "If confirmation failed after recording the payment, use «Confirm order» to retry.",
+      "pagoExistente": "Reference {referencia} was already on this order: that payment was used, not duplicated."
     }
   },
   "posMesasFlujo": {

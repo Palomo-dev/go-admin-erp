@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { retencionArt383, retencionComision, TOPE_ANUAL_UVT, UVT_2026 } from '../retencionComision';
+import { retencionArt383, retencionComision, TOPE_ANUAL_UVT, UVT_2026, uvtDelAnio } from '../retencionComision';
 
 describe('retención sobre comisiones (art. 392 / 383 ET)', () => {
   test('sin base mínima: persona natural 10 %', () => {
@@ -31,12 +31,22 @@ describe('retención sobre comisiones (art. 392 / 383 ET)', () => {
     const dir = join(process.cwd(), 'supabase/migrations');
     const f = readdirSync(dir).find((n) => n.startsWith('20261025134130_'))!;
     const sql = readFileSync(join(dir, f), 'utf8');
-    expect(sql).toMatch(/p_uvt numeric default 52374/);
-    expect(sql).toMatch(/3300 \* 52374/);
+    // AJUSTE B1: UVT por año (fiscal_uvt / fn_uvt), no fija.
+    expect(sql).toMatch(/p_uvt numeric default null/);
+    expect(sql).toMatch(/fn_uvt\(extract\(year from/);
+    expect(sql).toMatch(/3300 \* v_uvt/);
     for (const t of ['(u - 95) * 0.19', '(u - 150) * 0.28 + 10', '(u - 360) * 0.33 + 69', '(u - 640) * 0.35 + 162', '(u - 945) * 0.37 + 268', '(u - 2300) * 0.39 + 770']) {
       expect(sql).toContain(t);
     }
     expect(sql).toMatch(/'simple' then return 0/);
     expect(sql).toMatch(/p_monto \* 11 \/ 100\.0/);
+  });
+  test('UVT por año (AJUSTE B1)', () => {
+    expect(uvtDelAnio(2025)).toBe(49799);
+    expect(uvtDelAnio(2026)).toBe(52374);
+    expect(uvtDelAnio(2027)).toBe(52374);
+    // tope 3.300 UVT de 2025 = 164.336.700
+    expect(retencionComision(1_000_000, null, 163_336_700, null, 2025)).toBe(100000);
+    expect(retencionComision(1_000_000, null, 163_336_701, null, 2025)).toBe(110000);
   });
 });

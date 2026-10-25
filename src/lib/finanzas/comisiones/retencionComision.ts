@@ -9,6 +9,15 @@
  * - La tarifa del vendedor (editable), si está, manda sobre todo lo anterior salvo Régimen Simple.
  */
 export const UVT_2026 = 52374;
+/** UVT por año (espejo de public.fiscal_uvt / fn_uvt). Años sin dato usan el último conocido. */
+export const UVT_POR_ANIO: Readonly<Record<number, number>> = { 2024: 47065, 2025: 49799, 2026: UVT_2026 };
+
+export function uvtDelAnio(anio: number = new Date().getFullYear()): number {
+  if (UVT_POR_ANIO[anio] != null) return UVT_POR_ANIO[anio];
+  const anios = Object.keys(UVT_POR_ANIO).map(Number).sort((a, b) => a - b);
+  const previo = anios.filter((a) => a <= anio).pop() ?? anios[0];
+  return UVT_POR_ANIO[previo];
+}
 export const TOPE_ANUAL_UVT = 3300;
 
 export type TipoPersona = 'natural' | 'juridica' | 'simple';
@@ -39,19 +48,22 @@ export function retencionArt383(base: number, uvt = UVT_2026): number {
  * @param monto comisión causada
  * @param acumuladoAnual lo ya causado (accrued/paid) con el mismo vendedor en el año, sin esta comisión
  * @param tarifaRegla tarifa de la regla contable (por defecto 10)
+ * @param anio año de causación: define la UVT (art. 383 y tope de 3.300 UVT)
  */
 export function retencionComision(
   monto: number,
   vendedor: VendedorRetencion | null | undefined,
   acumuladoAnual = 0,
   tarifaRegla: number | null = null,
+  anio = 2026,
 ): number {
+  const uvt = uvtDelAnio(anio);
   if (!(monto > 0)) return 0;
   const tipo = vendedor?.tipoPersona ?? 'natural';
   if (tipo === 'simple') return 0;
   if (vendedor?.retencionTarifa != null) return redondear2((monto * vendedor.retencionTarifa) / 100);
   if (tipo === 'juridica') return redondear2((monto * 11) / 100);
-  if (vendedor?.aplicaArt383) return retencionArt383(monto);
-  const tarifa = acumuladoAnual + monto > TOPE_ANUAL_UVT * UVT_2026 ? 11 : tarifaRegla ?? 10;
+  if (vendedor?.aplicaArt383) return retencionArt383(monto, uvt);
+  const tarifa = acumuladoAnual + monto > TOPE_ANUAL_UVT * uvt ? 11 : tarifaRegla ?? 10;
   return redondear2((monto * tarifa) / 100);
 }

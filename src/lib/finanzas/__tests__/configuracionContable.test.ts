@@ -102,10 +102,11 @@ describe('clave de la cuenta', () => {
   });
 
   test('la comisión no se lleva la cuenta de aportes de nómina', () => {
-    expect(claveDeCuenta('commissions', 'debito', '5235')).toBe('comisiones');
+    expect(claveDeCuenta('commissions', 'debito', '5235')).toBeNull(); // 5235 = Servicios (AJUSTE B4)
+    expect(claveDeCuenta('commissions', 'debito', '52950501')).toBe('comisiones');
     expect(claveDeCuenta('commissions', 'debito', '529505')).toBe('comisiones');
     expect(claveDeCuenta('commission', 'credito', '2370')).toBeNull();
-    expect(claveDeCuenta('ota_commission', 'debito', '5235')).toBe('comisiones');
+    expect(claveDeCuenta('ota_commission', 'debito', '52950501')).toBe('comisiones');
     expect(claveDeCuenta('payroll_slips', 'credito', '2370')).toBe('nomina_aportes');
   });
 
@@ -238,8 +239,8 @@ describe('plantilla por sector', () => {
       iva_generado: '24080501',
       iva_descontable: '24081001',
       retefuente: '23654001',
-      reteiva: '2367',
-      reteica: '2368',
+      reteiva: '23670501',
+      reteica: '23680501',
       propinas: '5105',
       comisiones: '52051801',
       anticipos: '2805',

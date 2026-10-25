@@ -75,10 +75,10 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'iva_generado', nombre: 'IVA generado', grupo: 'Impuestos', ayuda: 'IVA de la venta. Se acredita en 240805 y no se debita en el devengo.' },
   { clave: 'iva_descontable', nombre: 'IVA descontable', grupo: 'Impuestos', ayuda: 'IVA de la compra. Se debita en 240810.' },
   { clave: 'retefuente', nombre: 'ReteFuente', grupo: 'Impuestos', ayuda: 'Reemplaza el 2365 cuando la compra no tiene una cuenta propia en el impuesto.' },
-  { clave: 'reteiva', nombre: 'ReteIVA', grupo: 'Impuestos', ayuda: 'Reemplaza el 2367.' },
-  { clave: 'reteica', nombre: 'ReteICA', grupo: 'Impuestos', ayuda: 'Reemplaza el 2368.' },
+  { clave: 'reteiva', nombre: 'ReteIVA', grupo: 'Impuestos', ayuda: '23670501 (auxiliar de 2367, título).' },
+  { clave: 'reteica', nombre: 'ReteICA', grupo: 'Impuestos', ayuda: '23680501 (auxiliar de 2368, título).' },
   { clave: 'propinas', nombre: 'Propinas', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es una propina.' },
-  { clave: 'comisiones', nombre: 'Comisiones', grupo: 'Personal', ayuda: '529505. 5235 sigue reconociéndose en reglas anteriores.' },
+  { clave: 'comisiones', nombre: 'Comisiones', grupo: 'Personal', ayuda: '52950501 (canales/OTA, auxiliar de 529505) o 52051801 (empleados). 5235 es «Servicios» de ventas, no comisiones.' },
   { clave: 'nomina', nombre: 'Nómina', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es nómina.' },
   { clave: 'nomina_por_pagar', nombre: 'Nómina por pagar', grupo: 'Personal', ayuda: 'El 2505 solo en la nómina.' },
   { clave: 'nomina_aportes', nombre: 'Aportes de nómina', grupo: 'Personal', ayuda: 'El 2370 solo en la nómina. Una comisión que aún usa 2370 no se mueve.' },
@@ -149,10 +149,10 @@ export function claveDeCuenta(
   if (code === '1405' || code === '1435') return 'inventario';
   if (code === '6105' || code === '6135' || code.startsWith('613505') || code === '6140' || code.startsWith('614005')) return 'costo_ventas';
   if (code === '2365' || (code.startsWith('2365') && code.length === 8)) return 'retefuente';
-  if (code === '2367') return 'reteiva';
-  if (code === '2368') return 'reteica';
+  if (code === '2367' || code === '236705' || code === '23670501') return 'reteiva';
+  if (code === '2368' || code === '236805' || code === '23680501') return 'reteica';
   if (code === '2805') return 'anticipos';
-  if (code === '5235' || code === '529505' || code === '52051801') return 'comisiones';
+  if (code === '529505' || code === '52950501' || code === '52051801') return 'comisiones';
   if (code === '5105' && ORIGENES_PROPINA.has(origen)) return 'propinas';
   if (code === '5105' && ORIGENES_NOMINA.has(origen)) return 'nomina';
   if ((code === '2505' || code === '25050501') && ORIGENES_NOMINA.has(origen)) return 'nomina_por_pagar';
@@ -307,8 +307,8 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   iva_generado: '24080501',
   iva_descontable: '24081001',
   retefuente: '23654001',
-  reteiva: '2367',
-  reteica: '2368',
+  reteiva: '23670501',
+  reteica: '23680501',
   propinas: '5105',
   comisiones: '52051801',
   anticipos: '2805',

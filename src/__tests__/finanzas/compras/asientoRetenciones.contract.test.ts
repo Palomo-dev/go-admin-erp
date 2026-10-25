@@ -133,14 +133,25 @@ describe('cuenta de cada retención (fn_clase_retencion + fn_cuenta_retencion_co
     re: new RegExp(patron),
     clase,
   }));
-  const cuentaPorClase: Record<string, string> = Object.fromEntries(
-    [...cuerpo.matchAll(/when '(\w+)' then '(\d+)'/g)].map(([, clase, cuenta]) => [clase, cuenta]),
+  /** AJUSTE M7: ReteIVA/ReteICA van a su auxiliar (23670501/23680501); la madre solo si la org no lo tiene. */
+  const clasesConAuxiliar = [...cuerpo.matchAll(/when '(\w+)' then coalesce\(\(select[\s\S]*?account_code = '(\d{8})'[\s\S]*?'(\d{4})'\)/g)].map(
+    ([, clase, auxiliar, madre]) => ({ clase, auxiliar, madre }),
   );
-  /** Contador 25-oct-2026: retefuente por concepto en un auxiliar de 2365; sin auxiliares, 2365. */
-  const auxiliaresPorConcepto = [...cuerpo.matchAll(/when v_concepto ~ '([^']+)'[^\n]*then '(\d{8})'/g)].map(([, patron, cta]) => ({
-    re: new RegExp(patron),
-    cta,
-  }));
+  const cuentaPorClase: Record<string, string> = Object.fromEntries(clasesConAuxiliar.map((c) => [c.clase, c.auxiliar]));
+  const madrePorClase: Record<string, string> = Object.fromEntries(clasesConAuxiliar.map((c) => [c.clase, c.madre]));
+  /** Contador 25-oct-2026: retefuente por concepto (o código) en un auxiliar de 2365, en el orden del CASE. */
+  const auxiliaresPorConcepto = [...cuerpo.matchAll(/^\s*when (v_c[^\n]*?) then '(\d{8})'/gm)].map(([, cond, cta]) => {
+    const concepto = /v_concepto ~ '([^']+)'/.exec(cond)?.[1];
+    const codigoRe = /v_codigo ~ '([^']+)'/.exec(cond)?.[1];
+    const codigoEq = /v_codigo = '([^']+)'/.exec(cond)?.[1];
+    return {
+      cta,
+      prueba: (texto: string, cod: string) =>
+        (concepto != null && new RegExp(concepto).test(texto)) ||
+        (codigoRe != null && new RegExp(codigoRe).test(cod)) ||
+        (codigoEq != null && cod === codigoEq),
+    };
+  });
   const auxiliarPorDefecto = /else '(\d{8})' end\)/.exec(cuerpo)?.[1];
   const cuentaPorDefecto = /'(\d{4})'\)\s*end;/.exec(cuerpo)?.[1];
 
@@ -156,36 +167,38 @@ describe('cuenta de cada retención (fn_clase_retencion + fn_cuenta_retencion_co
 
   function cuenta(codigo: string | null, concepto: string | null, conAuxiliares = true): string {
     const k = clase(codigo, concepto);
-    if (cuentaPorClase[k]) return cuentaPorClase[k];
+    if (cuentaPorClase[k]) return conAuxiliares ? cuentaPorClase[k] : madrePorClase[k];
     if (!conAuxiliares) return cuentaPorDefecto ?? '';
     const texto = (concepto ?? '').trim().toUpperCase();
     const cod = (codigo ?? '').trim().toUpperCase();
-    return auxiliaresPorConcepto.find((a) => a.re.test(texto) || (a.cta !== '23650501' && a.re.test(cod)))?.cta ?? auxiliarPorDefecto ?? '';
+    return auxiliaresPorConcepto.find((a) => a.prueba(texto, cod))?.cta ?? auxiliarPorDefecto ?? '';
   }
 
   test('las reglas salen del SQL, en orden: marcadores inequívocos antes que palabras sueltas', () => {
     expect(reglas.map((r) => r.clase)).toEqual(['reteica', 'reteiva', 'retefuente', 'reteica', 'reteiva']);
     expect(cuerpoClase).toMatch(/return 'retefuente';\s*end;?\s*$/);
-    expect(cuentaPorClase).toEqual({ reteica: '2368', reteiva: '2367' });
+    expect(cuentaPorClase).toEqual({ reteica: '23680501', reteiva: '23670501' });
+    expect(madrePorClase).toEqual({ reteica: '2368', reteiva: '2367' });
     expect(cuentaPorDefecto).toBe('2365');
     expect(auxiliarPorDefecto).toBe('23654001');
-    expect(auxiliaresPorConcepto.map((a) => a.cta)).toEqual(['23651501', '23652001', '23653001', '23652501', '23650501']);
+    expect(auxiliaresPorConcepto.map((a) => a.cta)).toEqual(['23652001', '23651501', '23652501', '23653001', '23652501', '23650501']);
     expect(cuenta('RETE_4', null, false)).toBe('2365');
   });
 
   test.each([
-    ['RETE_4', 'Retención en la Fuente 4%', '23654001'],
-    ['RETE_11', null, '23654001'],
-    ['ICA_0.966', 'ICA Bogotá', '2368'],
-    ['RETEIVA_15', null, '2367'],
-    [null, 'ReteICA sobre base sin IVA', '2368'],
-    [null, 'ReteIVA 15%', '2367'],
+    ['RETE_4', 'Retención en la Fuente 4%', '23652501'],
+    ['RETE_11', null, '23651501'],
+    ['RETE_11_COMISION', 'Retención comisiones 11%', '23652001'],
+    ['ICA_0.966', 'ICA Bogotá', '23680501'],
+    ['RETEIVA_15', null, '23670501'],
+    [null, 'ReteICA sobre base sin IVA', '23680501'],
+    [null, 'ReteIVA 15%', '23670501'],
     [null, 'Retención en la fuente sobre base con IVA', '23654001'],
     [null, 'Servicios de música', '23652501'],
-    [null, 'Impuesto de industria y comercio', '2368'],
-    [null, 'IVA retenido', '2367'],
+    [null, 'Impuesto de industria y comercio', '23680501'],
+    [null, 'IVA retenido', '23670501'],
     [null, 'Honorarios', '23651501'],
-    ['X1', 'ReteICA Medellín', '2368'],
+    ['X1', 'ReteICA Medellín', '23680501'],
   ])('código %p · concepto %p → %s', (codigo, concepto, esperada) => {
     expect(cuenta(codigo, concepto)).toBe(esperada);
   });

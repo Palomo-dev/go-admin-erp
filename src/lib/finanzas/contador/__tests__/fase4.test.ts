@@ -85,7 +85,7 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
     expect(cuentaSegunCentro('transporte', 'ventas').cuenta).toBe('523550');
 
     expect(lineasImpuestoDeclarado('2408', 50)[0]).toMatchObject({ cuenta: '24080501', afectaResultados: false });
-    expect(lineasImpuestoDeclarado('2365', 50)[0].cuenta).toBe('2365');
+    expect(lineasImpuestoDeclarado('2365', 50)[0].cuenta).toBe('23654001');
     expect(categoriaPorClave('impuestos_declarados').afectaResultados).toBe('no');
     expect(categoriaPorClave('impuestos_gasto').cuenta).toBe('5115');
 

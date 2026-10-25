@@ -15,15 +15,18 @@ export function esImpuestoIva(codigo: string | null | undefined, nombre: string 
   return name.includes('IVA');
 }
 
-/** Cuenta PUC de 4 dígitos a la que debe caer el mapeo si el auxiliar no existe. */
+/**
+ * Cuenta PUC a la que debe caer el mapeo si el auxiliar no existe. Las madres 2365/2367/2368 son título
+ * (134125/134135): se devuelve el auxiliar de movimiento (retefuente 23654001, ReteIVA 23670501, ReteICA 23680501).
+ */
 export function cuentaCanonicaImpuesto(codigo: string | null | undefined, nombre: string | null | undefined): string | null {
   const code = (codigo ?? '').trim().toUpperCase();
   const name = (nombre ?? '').trim().toUpperCase();
   if (esImpuestoIva(code, name)) return '2408';
-  if (code.includes('ICA') || name.includes('ICA')) return '2368';
+  if (code.includes('ICA') || name.includes('ICA')) return '23680501';
   if (code.startsWith('RETE') || name.includes('RETE') || name.includes('FUENTE')) {
-    if (code.includes('IVA') || name.includes('VENTAS')) return '2367';
-    return '2365';
+    if (code.includes('IVA') || name.includes('VENTAS')) return '23670501';
+    return '23654001';
   }
   return null;
 }

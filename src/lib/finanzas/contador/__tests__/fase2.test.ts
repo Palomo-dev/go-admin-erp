@@ -86,7 +86,7 @@ describe('Fase 2 — estructura, naturaleza y plantilla del contador', () => {
     expect(equivalenciaDe('4105').codigoCorrecto).toBe('4135');
     expect(equivalenciaDe('6105').codigoCorrecto).toBe('61350501');
     expect(equivalenciaDe('2405').codigoCorrecto).toBe('24080501');
-    expect(equivalenciaDe('2105').codigoCorrecto).toBe('2205');
+    expect(equivalenciaDe('2105').codigoCorrecto).toBe('22050501');
     expect(equivalenciaDe('1405').codigoCorrecto).toBe('1435');
     expect(equivalenciaDe('1405-01').codigoCorrecto).toBe('14350501');
     expect(EQUIVALENCIAS_PLANTILLA).toHaveLength(6);
@@ -120,7 +120,7 @@ describe('Fase 2 — estructura, naturaleza y plantilla del contador', () => {
     expect(plan.asientoOriginalId).toBe('asiento-1');
     expect(plan.lineas).toEqual([
       { cuenta: '2105', lado: 'debito', centavos: 8000 },
-      { cuenta: '2205', lado: 'credito', centavos: 8000 },
+      { cuenta: '22050501', lado: 'credito', centavos: 8000 },
     ]);
     expect(JSON.stringify(libro)).toBe(congelado);
     expect(() => planearReclasificacion({

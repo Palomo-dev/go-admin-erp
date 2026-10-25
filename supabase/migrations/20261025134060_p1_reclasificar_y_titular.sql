@@ -24,7 +24,7 @@
 --   4295: -42.900; 240805: -2.954), 331 (240810: 3.800.000)  (* saldo neto de 240805 publicado en 140)
 --   Todos los 4295 publicados vienen de inventory_adjustment => 42959501. Los borradores 4295 son
 --   manuales => 42959502. Org 149: 240810 no se toca (queda de movimiento con 19.000).
---   (El conteo de asientos sube por las orgs H/R con saldo en 6140 que no estaban en la lista; se recalcula antes de aplicar.)
+--   6140 NO agrega asientos: sigue esperado 7; solo suma una línea al asiento de la org 142 (6140: 120.860).
 --   Títulos: 3705: 19 | 6135: 108 | 6140: 56 (H/R con 614005) | 4295: 116 | 530515: 116 | 5395: 116 | 240805: 115 | 240810: 115
 -- Rollback: supabase/rollbacks/20261025134060_p1_reclasificar_y_titular_rollback.sql
 
@@ -74,7 +74,7 @@ begin
              regexp_replace(
                regexp_replace(p.prosrc, 'fn_cuenta_auxiliar_de_titulo\((?:[^()]|\([^()]*\))*\)', '', 'g'),
                '--[^\n]*', '', 'g'),
-             '''(6135|4295|530515|5395|240805|240810)''', 'g') m
+             '''(6135|6140|4295|530515|5395|240805|240810)''', 'g') m
      where p.proname <> all (array[
              'fn_cuenta_auxiliar_de_titulo', 'fn_cuenta_ingresos_diversos', 'fn_clave_cuenta_configurable',
              'fn_puc_nombres_oficiales', 'fn_puc_proponer_config', 'fn_puc_proponer_lado',
@@ -239,4 +239,29 @@ begin
     v_tit := v_tit + v_n;
   end loop;
   raise notice '134060: % asientos de reclasificación (esperado 7), % cuentas pasadas a título', v_rec, v_tit;
+
+  -- Verificación final (QA 558bea34): 6135/6140 de título nunca pueden quedar con saldo publicado ni con
+  -- borradores (eso sería saldo colgado sin asiento de reclasificación). Si pasa, FALLA y se deshace todo.
+  -- Además avisa si alguna quedó de título sin que 134060 lo registrara (titulada por el trigger u otra vía).
+  for r in
+    select c.organization_id, c.account_code,
+           coalesce((select sum(l.debit - l.credit) from public.journal_lines l
+                       join public.journal_entries e on e.id = l.journal_entry_id and e.posted
+                      where l.organization_id = c.organization_id and l.account_code = c.account_code), 0) as saldo,
+           exists (select 1 from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+                    where l.organization_id = c.organization_id and l.account_code = c.account_code and not e.posted) as borradores,
+           exists (select 1 from public.p1_puc_bitacora b where b.migracion = '134060' and b.objeto = 'titulo'
+                     and b.organization_id = c.organization_id and b.clave = c.account_code) as por_134060
+      from public.chart_of_accounts c
+     where c.account_code in ('6135', '6140') and c.es_movimiento is false
+  loop
+    if r.saldo <> 0 or r.borradores then
+      raise exception '134060 verificación final: org % cuenta % quedó de título con saldo % / borradores %; se aborta',
+        r.organization_id, r.account_code, r.saldo, r.borradores;
+    end if;
+    if not r.por_134060 then
+      raise warning '134060 verificación final: org % cuenta % es título sin registro de 134060 (revisar)',
+        r.organization_id, r.account_code;
+    end if;
+  end loop;
 end $$;

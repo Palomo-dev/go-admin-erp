@@ -44,7 +44,7 @@ begin
       from public.configuracion_contable cc
      where cc.organization_id = new.organization_id
        and cc.account_code = new.account_code
-     for update skip locked
+     for update
   loop
     v_destino := null;
     v_hijos := null;

@@ -41,7 +41,7 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
     expect(categoriaPorClave('prestamos_recibidos').prohibidas).toContain('2195');
     expect(categoriaPorClave('prestamos_recibidos').afectaResultados).toBe('no');
 
-    expect(lineasProveedor(40)[0]).toMatchObject({ cuenta: '2205', lado: 'debito', afectaResultados: false });
+    expect(lineasProveedor(40)[0]).toMatchObject({ cuenta: '22050501', lado: 'debito', afectaResultados: false });
     expect(lineasProveedor(40, true)[0].cuenta).toBe('1435');
 
     const causacion = lineasNomina('causacion', 1000);
@@ -49,11 +49,11 @@ describe('Fase 4 — tesorería con las correcciones de la hoja', () => {
     expect(cuadra(causacion)).toBe(true);
     expect(causacion).toEqual([
       expect.objectContaining({ momento: 'causacion', lado: 'debito', cuenta: '5105', afectaResultados: true }),
-      expect.objectContaining({ momento: 'causacion', lado: 'credito', cuenta: '2505', afectaResultados: false }),
+      expect.objectContaining({ momento: 'causacion', lado: 'credito', cuenta: '25050501', afectaResultados: false }),
     ]);
     expect(causacion[0].cuenta).toHaveLength(4);
     expect(pago).toEqual([
-      expect.objectContaining({ momento: 'pago', lado: 'debito', cuenta: '2505', afectaResultados: false }),
+      expect.objectContaining({ momento: 'pago', lado: 'debito', cuenta: '25050501', afectaResultados: false }),
     ]);
     expect(pago.some((linea) => linea.cuenta === '5105')).toBe(false);
 

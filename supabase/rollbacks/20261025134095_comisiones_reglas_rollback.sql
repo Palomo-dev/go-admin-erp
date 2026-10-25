@@ -1,9 +1,12 @@
--- Rollback de 20261025134095. Revertir antes 134100.
+-- Rollback de 20261025134095. Revertir antes 134140, 134135, 134130, 134125 (auxiliares) y 134100.
+-- ORDEN CRUZADO (QA MEDIO#6): se APLICA hoteles (134070…134120) ANTES que comisiones (134090…134100) y auxiliares
+-- (134125…134140), porque el alta tipo 2 depende de fn_hoteles_asegurar_cuentas_ingreso (134070). Este rollback deja
+-- fn_create_default_accounting_rules y fn_sembrar_configuracion_contable en su versión de 134075 (no la de 134115):
+-- revertir SIEMPRE en orden inverso estricto: 134140 → 134125, 134100 → 134090, y solo después 134120 → 134070.
+-- QA BAJO#7: la regla OTA (529505 → 52950501) NO se toca aquí: la devuelve el rollback de 134090 desde su bitácora
+-- (valor_anterior). El update que había aquí no hacía nada (529505 sigue siendo título en ese punto).
 delete from public.accounting_rules where source_type = 'commission'
    and name in ('Comisión Causada Empleado', 'Comisión Causada Externo', 'Pago Comisión Empleado', 'Pago Comisión Externo');
-update public.accounting_rules set debit_account_code = '529505'
- where source_type = 'ota_commission' and debit_account_code = '52950501'
-   and organization_id in (select organization_id from public.chart_of_accounts where account_code = '529505' and es_movimiento is not false);
 
 -- versiones de 134075 (plantilla y siembra) y versión viva al 25-oct de fn_auto_journal_commission
 CREATE OR REPLACE FUNCTION public.fn_create_default_accounting_rules(org_id integer, country_code text)

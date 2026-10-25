@@ -76,10 +76,10 @@ export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
 
   regla(6, 'compra_credito', 1, '1435', 'debito', 'base', 'proveedor'),
   regla(7, 'compra_credito', 2, '24081001', 'debito', 'iva', 'proveedor'),
-  regla(8, 'compra_credito', 3, '2365', 'credito', 'retefuente', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
+  regla(8, 'compra_credito', 3, '23654001', 'credito', 'retefuente', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
   regla(9, 'compra_credito', 4, '2367', 'credito', 'reteiva', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
   regla(10, 'compra_credito', 5, '2368', 'credito', 'reteica', 'proveedor', 'agente_retencion', 'Solo si la empresa es agente de retención.'),
-  regla(11, 'compra_credito', 6, '2205', 'credito', 'neto', 'proveedor'),
+  regla(11, 'compra_credito', 6, '22050501', 'credito', 'neto', 'proveedor'),
 
   regla(12, 'venta_retenciones', 1, '1110', 'debito', 'neto', 'cliente', null, 'Soporta autorretención. Alternativa 1305.', ['1305']),
   regla(13, 'venta_retenciones', 2, '135515', 'debito', 'retefuente', 'cliente_retenedor'),
@@ -109,7 +109,7 @@ export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
   regla(32, 'devolucion_ventas', 4, '1435', 'debito', 'costo', 'ninguno'),
   regla(33, 'devolucion_ventas', 5, '61350501', 'credito', 'costo', 'ninguno'),
 
-  regla(34, 'devolucion_compras', 1, '2205', 'debito', 'total', 'proveedor'),
+  regla(34, 'devolucion_compras', 1, '22050501', 'debito', 'total', 'proveedor'),
   regla(35, 'devolucion_compras', 2, '1435', 'credito', 'base', 'proveedor'),
   regla(36, 'devolucion_compras', 3, '24081001', 'credito', 'iva', 'proveedor', null, 'Reversar también las retenciones practicadas. Esa nota no agrega líneas: el catálogo se queda en 41.'),
 

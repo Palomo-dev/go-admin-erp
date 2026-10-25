@@ -145,17 +145,17 @@ export function claveDeCuenta(
   if (code === '1105') return 'caja';
   if (code === '1110') return 'bancos';
   if (code === '1305' && !ORIGENES_PRESTAMO.has(origen)) return 'clientes';
-  if (code === '2105' || code === '2205') return 'proveedores';
+  if (code === '2105' || code === '2205' || code === '220505' || code === '22050501') return 'proveedores';
   if (code === '1405' || code === '1435') return 'inventario';
   if (code === '6105' || code === '6135' || code.startsWith('613505') || code === '6140' || code.startsWith('614005')) return 'costo_ventas';
-  if (code === '2365') return 'retefuente';
+  if (code === '2365' || (code.startsWith('2365') && code.length === 8)) return 'retefuente';
   if (code === '2367') return 'reteiva';
   if (code === '2368') return 'reteica';
   if (code === '2805') return 'anticipos';
-  if (code === '5235' || code === '529505') return 'comisiones';
+  if (code === '5235' || code === '529505' || code === '52051801') return 'comisiones';
   if (code === '5105' && ORIGENES_PROPINA.has(origen)) return 'propinas';
   if (code === '5105' && ORIGENES_NOMINA.has(origen)) return 'nomina';
-  if (code === '2505' && ORIGENES_NOMINA.has(origen)) return 'nomina_por_pagar';
+  if ((code === '2505' || code === '25050501') && ORIGENES_NOMINA.has(origen)) return 'nomina_por_pagar';
   if (code === '2370' && ORIGENES_NOMINA.has(origen)) return 'nomina_aportes';
   if (code === '4175') return 'devoluciones';
   if (lado === 'debito' && CODIGOS_INGRESO.has(code)) return 'devoluciones';
@@ -297,7 +297,7 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   caja: '1105',
   bancos: '1110',
   clientes: '1305',
-  proveedores: '2205',
+  proveedores: '22050501',
   ventas_productos: '4135',
   ventas_servicios: '4235',
   devoluciones: '4175',
@@ -306,24 +306,24 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   inventario: '1435',
   iva_generado: '24080501',
   iva_descontable: '24081001',
-  retefuente: '2365',
+  retefuente: '23654001',
   reteiva: '2367',
   reteica: '2368',
   propinas: '5105',
-  comisiones: '529505',
+  comisiones: '52051801',
   anticipos: '2805',
   nomina: '5105',
-  nomina_por_pagar: '2505',
+  nomina_por_pagar: '25050501',
   nomina_aportes: '2370',
   faltante_inventario: '519595',
   gastos_extraordinarios: '5315',
   consumo_interno: '519595',
-  manifiesto_por_pagar: '2205',
-  manifiesto_transporte: '2335',
+  manifiesto_por_pagar: '22050501',
+  manifiesto_transporte: '23359501',
   saldo_inicial: '3105',
   impuesto_consumo: '2495',
   redondeo: '42958101',
-  compra_servicio: '2335',
+  compra_servicio: '23359501',
   ingresos_diversos: '42959501',
 };
 

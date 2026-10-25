@@ -136,7 +136,13 @@ describe('cuenta de cada retención (fn_clase_retencion + fn_cuenta_retencion_co
   const cuentaPorClase: Record<string, string> = Object.fromEntries(
     [...cuerpo.matchAll(/when '(\w+)' then '(\d+)'/g)].map(([, clase, cuenta]) => [clase, cuenta]),
   );
-  const cuentaPorDefecto = /else '(\d+)'\s*end;/.exec(cuerpo)?.[1];
+  /** Contador 25-oct-2026: retefuente por concepto en un auxiliar de 2365; sin auxiliares, 2365. */
+  const auxiliaresPorConcepto = [...cuerpo.matchAll(/when v_concepto ~ '([^']+)'[^\n]*then '(\d{8})'/g)].map(([, patron, cta]) => ({
+    re: new RegExp(patron),
+    cta,
+  }));
+  const auxiliarPorDefecto = /else '(\d{8})' end\)/.exec(cuerpo)?.[1];
+  const cuentaPorDefecto = /'(\d{4})'\)\s*end;/.exec(cuerpo)?.[1];
 
   /** Misma lógica que las funciones: primero el código, luego el concepto; si nada coincide, retefuente. */
   function clase(codigo: string | null, concepto: string | null): string {
@@ -148,8 +154,13 @@ describe('cuenta de cada retención (fn_clase_retencion + fn_cuenta_retencion_co
     return 'retefuente';
   }
 
-  function cuenta(codigo: string | null, concepto: string | null): string {
-    return cuentaPorClase[clase(codigo, concepto)] ?? cuentaPorDefecto ?? '';
+  function cuenta(codigo: string | null, concepto: string | null, conAuxiliares = true): string {
+    const k = clase(codigo, concepto);
+    if (cuentaPorClase[k]) return cuentaPorClase[k];
+    if (!conAuxiliares) return cuentaPorDefecto ?? '';
+    const texto = (concepto ?? '').trim().toUpperCase();
+    const cod = (codigo ?? '').trim().toUpperCase();
+    return auxiliaresPorConcepto.find((a) => a.re.test(texto) || (a.cta !== '23650501' && a.re.test(cod)))?.cta ?? auxiliarPorDefecto ?? '';
   }
 
   test('las reglas salen del SQL, en orden: marcadores inequívocos antes que palabras sueltas', () => {
@@ -157,20 +168,23 @@ describe('cuenta de cada retención (fn_clase_retencion + fn_cuenta_retencion_co
     expect(cuerpoClase).toMatch(/return 'retefuente';\s*end;?\s*$/);
     expect(cuentaPorClase).toEqual({ reteica: '2368', reteiva: '2367' });
     expect(cuentaPorDefecto).toBe('2365');
+    expect(auxiliarPorDefecto).toBe('23654001');
+    expect(auxiliaresPorConcepto.map((a) => a.cta)).toEqual(['23651501', '23652001', '23653001', '23652501', '23650501']);
+    expect(cuenta('RETE_4', null, false)).toBe('2365');
   });
 
   test.each([
-    ['RETE_4', 'Retención en la Fuente 4%', '2365'],
-    ['RETE_11', null, '2365'],
+    ['RETE_4', 'Retención en la Fuente 4%', '23654001'],
+    ['RETE_11', null, '23654001'],
     ['ICA_0.966', 'ICA Bogotá', '2368'],
     ['RETEIVA_15', null, '2367'],
     [null, 'ReteICA sobre base sin IVA', '2368'],
     [null, 'ReteIVA 15%', '2367'],
-    [null, 'Retención en la fuente sobre base con IVA', '2365'],
-    [null, 'Servicios de música', '2365'],
+    [null, 'Retención en la fuente sobre base con IVA', '23654001'],
+    [null, 'Servicios de música', '23652501'],
     [null, 'Impuesto de industria y comercio', '2368'],
     [null, 'IVA retenido', '2367'],
-    [null, 'Honorarios', '2365'],
+    [null, 'Honorarios', '23651501'],
     ['X1', 'ReteICA Medellín', '2368'],
   ])('código %p · concepto %p → %s', (codigo, concepto, esperada) => {
     expect(cuenta(codigo, concepto)).toBe(esperada);

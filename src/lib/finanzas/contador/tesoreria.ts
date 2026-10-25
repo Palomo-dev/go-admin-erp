@@ -127,15 +127,15 @@ export function cuentaSegunCentro(clave: string, centro: CentroCostoTipo, opcion
   return { cuenta: base, estado: 'definida' };
 }
 
-/** Causación Dr 5105 / Cr 2505. El pago es otro movimiento y no afecta resultados. */
+/** Causación Dr 5105 / Cr 25050501 (auxiliar nómina por pagar; 2505 es título). El pago es otro movimiento y no afecta resultados. */
 export function lineasNomina(momento: 'causacion' | 'pago', pesos: number): LineaTesoreria[] {
   const centavos = aCentavos(pesos);
   if (momento === 'pago') {
-    return [linea('pago', 'debito', '2505', null, false, false, centavos)];
+    return [linea('pago', 'debito', '25050501', null, false, false, centavos)];
   }
   return [
     linea('causacion', 'debito', GRUPO_NOMINA, GRUPO_NOMINA, false, true, centavos),
-    linea('causacion', 'credito', '2505', null, false, false, centavos),
+    linea('causacion', 'credito', '25050501', null, false, false, centavos),
   ];
 }
 
@@ -200,7 +200,7 @@ export function lineasImpuestoDeclarado(cuenta: '2408' | '2365', pesos: number):
 }
 
 export function lineasProveedor(pesos: number, compraContadoSinFactura = false): LineaTesoreria[] {
-  return [linea('pago', 'debito', compraContadoSinFactura ? '1435' : '2205', null, false, false, aCentavos(pesos))];
+  return [linea('pago', 'debito', compraContadoSinFactura ? '1435' : '22050501', null, false, false, aCentavos(pesos))];
 }
 
 export interface RepartoCentro {

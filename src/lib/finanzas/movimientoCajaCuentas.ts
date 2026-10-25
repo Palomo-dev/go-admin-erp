@@ -16,7 +16,7 @@ export type AccionAsiento =
 const CAJA = ['1105'] as const;
 
 const EGRESO_POR_CONCEPTO: Record<string, readonly string[]> = {
-  pagoProveedor: ['2105', '2205'],
+  pagoProveedor: ['22050501', '2105', '2205'],
   prestamoEmpleado: ['1365'],
   retiroConsignacion: ['1110'],
   retiroEfectivo: ['1110'],
@@ -86,9 +86,9 @@ export function asientoDeMovimientoCaja(
 export const DEBITO_REVISADO: Record<string, { debito: string; clase: 'gasto' | 'pasivo' | 'contra_ingreso' | 'costo' }> = {
   'tip.created': { debito: '5105', clase: 'gasto' },
   'payroll.created': { debito: '5105', clase: 'gasto' },
-  'payroll.paid': { debito: '2505', clase: 'pasivo' },
-  'commission.accrued': { debito: '5235', clase: 'gasto' },
-  'commission.paid': { debito: '2370', clase: 'pasivo' },
+  'payroll.paid': { debito: '25050501', clase: 'pasivo' },
+  'commission.accrued': { debito: '52051801', clase: 'gasto' },
+  'commission.paid': { debito: '25050502', clase: 'pasivo' },
   'refund.refunded': { debito: '4105', clase: 'contra_ingreso' },
   'sale_credit_note.created': { debito: '4105', clase: 'contra_ingreso' },
   'inventory_adjustment.loss': { debito: '519595', clase: 'gasto' },

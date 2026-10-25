@@ -394,7 +394,7 @@ BEGIN
               FROM journal_entries je
              WHERE je.organization_id = NEW.organization_id
                AND je.source = 'commissions'
-               AND je.source_id IN (NEW.id::text || ':accrued', NEW.id::text || ':paid')
+               AND je.source_id IN (NEW.id::text || ':accrued', NEW.id::text || ':accrued:retencion', NEW.id::text || ':paid')
                AND COALESCE(je.posted, false)
                AND NOT EXISTS (SELECT 1 FROM journal_entries r
                                 WHERE r.organization_id = je.organization_id

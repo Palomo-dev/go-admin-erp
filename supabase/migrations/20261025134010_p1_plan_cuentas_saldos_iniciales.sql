@@ -12,6 +12,7 @@
 --   240805:1 (org 149)  24080501/24080502:116 c/u  24081001/24081002:115 c/u (no en 149: 240810 tiene
 --   movimientos y el contador la deja de movimiento)
 --   530515:0 (ya existe)  53051501:116
+--   140505/14050501 (insumos de cocina) y 614005/61400501/61400502: solo orgs de sector restaurante/hotel (type_id 1/2) con 6140 (regla del contador).
 -- Validado por el contador (25-oct): IVA con auxiliares en todas las orgs; el saldo/borradores se
 -- reclasifican en 134060. Única excepción: 240810 de la org 149.
 -- Bitácora: public.p1_puc_bitacora (la usan 134020/134060 y sus rollbacks).
@@ -36,7 +37,7 @@ declare
   v_org integer;
   v_creadas integer := 0;
   -- (código, padre, nombre, es_movimiento, condición)
-  --   condición: 'siempre' | 'saldo_3705' | 'otros_4295' | 'iva_810'
+  --   condición: 'siempre' | 'saldo_3705' | 'otros_4295' | 'iva_810' | 'sector_hr'
 begin
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
 
@@ -66,7 +67,12 @@ begin
         ('24081001', '240810', 'IVA descontable 19%',                      true,  'iva_810',  17),
         ('24081002', '240810', 'IVA descontable 5%',                       true,  'iva_810',  18),
         ('530515',   '5305',   'Comisiones',                               false, 'siempre',  19),
-        ('53051501', '530515', 'Comisiones bancarias y financieras',       true,  'siempre',  20)
+        ('53051501', '530515', 'Comisiones bancarias y financieras',       true,  'siempre',  20),
+        ('140505',   '1405',   'Insumos de cocina',                        false, 'sector_hr', 21),
+        ('14050501', '140505', 'Insumos de cocina',                        true,  'sector_hr', 21),
+        ('614005',   '6140',   'Restaurantes',                             false, 'sector_hr', 21),
+        ('61400501', '614005', 'Costo de alimentos y bebidas',             true,  'sector_hr', 22),
+        ('61400502', '614005', 'Mermas de cocina',                         true,  'sector_hr', 23)
       ) as t(codigo, padre, nombre, mov, cond, orden)
       order by orden
     loop
@@ -84,6 +90,10 @@ begin
         select 1 from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
          where l.organization_id = v_org and l.account_code = '4295'
            and coalesce(e.source, '') not in ('inventory_adjustment', 'inventory_adjustments', 'stock_movements'));
+      -- Hoteles y restaurantes (organizations.type_id 1/2, regla del contador): costo A&B 61400501 y
+      -- mermas de cocina 61400502 bajo 614005 «Restaurantes». No se crea en otros sectores.
+      continue when r.cond = 'sector_hr' and not exists (
+        select 1 from public.organizations o where o.id = v_org and o.type_id in (1, 2));
       -- IVA descontable: excepción del contador para la org 149 (240810 con movimientos queda de movimiento).
       continue when r.cond = 'iva_810' and v_org = 149 and exists (
         select 1 from public.journal_lines l where l.organization_id = 149 and l.account_code = '240810');

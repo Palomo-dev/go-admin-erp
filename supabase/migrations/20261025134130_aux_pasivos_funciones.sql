@@ -3112,6 +3112,39 @@ begin
   -- 414015, 414095 y 4175 pasan a título solos al nacer su auxiliar (org nueva: sin saldos).
   if v_tipo = 2 then
     perform public.fn_hoteles_asegurar_cuentas_ingreso(p_org, null);
+    -- Tanda 3 (hoteles nuevos): las reglas por defecto nacen antes que el plan, así que aquí se completa la siembra
+    -- del anticipo de reservas (134145): 280505/28050501 y las reglas received/cancelled/adjusted/completed; el
+    -- no-show pasa a debitar 28050501 y la regla vieja «confirmed» (1305/2805) queda inactiva. Solo org nueva
+    -- (sin configuración ni asientos).
+    if exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = '2805')
+       and not exists (select 1 from public.journal_entries where organization_id = p_org) then
+      insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+        es_movimiento, naturaleza, description)
+      values (p_org, '280505', 'Anticipos y avances recibidos de clientes', 'liability', '2805', true, false, 'credito',
+              'Anticipos de reservas (134145)')
+      on conflict (organization_id, account_code) do nothing;
+      insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
+        es_movimiento, naturaleza, description)
+      values (p_org, '28050501', 'Anticipos de clientes - reservas', 'liability', '280505', true, true, 'credito',
+              'Anticipos de reservas (134145)')
+      on conflict (organization_id, account_code) do nothing;
+      update public.accounting_rules set debit_account_code = '28050501', updated_at = now()
+       where organization_id = p_org and source_type = 'reservation' and event_type = 'no_show'
+         and debit_account_code = '2805';
+      update public.accounting_rules set is_active = false, updated_at = now()
+       where organization_id = p_org and source_type = 'reservation' and event_type = 'confirmed';
+      insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
+        debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active)
+      select p_org, v.n, v.d, 'reservation', v.ev, v.deb, v.cre, null, false, v.pr, true
+        from (values
+          ('Anticipo de reserva', 'Pago antes del check-in de una reserva confirmada', 'received', '1105', '28050501', 30),
+          ('Reembolso de anticipo', 'Cancelación: se devuelve el anticipo', 'cancelled', '28050501', '1105', 31),
+          ('Penalidad retenida', 'Cancelación: penalidad retenida del anticipo', 'adjusted', '28050501', '41409502', 33),
+          ('Anticipo aplicado al checkout', 'El anticipo abona la cartera del huésped', 'completed', '28050501', '1305', 34)
+        ) v(n, d, ev, deb, cre, pr)
+       where not exists (select 1 from public.accounting_rules r where r.organization_id = p_org
+                           and r.source_type = 'reservation' and r.event_type = v.ev and r.is_active);
+    end if;
   end if;
   -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
   -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.

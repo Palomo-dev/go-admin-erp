@@ -100,3 +100,13 @@ describe('QA 558bea34', () => {
     expect(m134060).not.toMatch(/conteo de asientos sube/);
   });
 });
+
+describe('P1: «comisiones» (vendedores, D5235/C2370) no va a 53051501 (solo cobros bancarios)', () => {
+  const m134020 = leer('migrations/20261025134020_p1_reglas_saldos_iniciales_37050501.sql');
+  test('134020 no reasigna la clave comisiones', () => {
+    expect(m134020).not.toMatch(/clave\s*=\s*'comisiones'[^\n]*53051501/);
+  });
+  test('134040 no siembra comisiones -> 53051501', () => {
+    expect(m134040).not.toMatch(/'comisiones'\s*then\s*'53051501'/);
+  });
+});

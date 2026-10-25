@@ -10,7 +10,8 @@
 --   tax_account_code 240805/240810 -> 24080501/24081001 donde existan los auxiliares
 --   configuracion_contable: saldo_inicial 3105 (5), costo_ventas 6135 (53), faltante_inventario 519595 (5),
 --     redondeo 4295 (5) -> 42958101 (Ajuste al peso a favor) + nueva clave redondeo_en_contra -> 53959501 (5),
---     comisiones 5235/529505 (113) -> 53051501,
+--     comisiones (5235/529505): NO se toca en P1 (son comisiones de vendedores, regla «comisión causada» D5235/C2370;
+--     53051501 queda solo para cobros bancarios),
 --     iva_generado/iva_descontable -> auxiliar 19% donde exista (si no, el padre de movimiento)
 --   fn_cuentas_movimiento_stock: respaldos 3105 -> 37050501, 4295 -> 42959501, 519595 -> 61350502, 6135 -> 61350501.
 --   fn_redondear_asiento_pesos: respaldo 4295 -> 42958101 (a favor) / 53959501 (en contra), clave redondeo_en_contra.
@@ -98,8 +99,6 @@ begin
   raise notice 'cfg faltante_inventario: % (esperado 5)', n;
   n := pg_temp.p1_config($w$cc.clave = 'redondeo' and cc.account_code = '4295'$w$, '42958101');
   raise notice 'cfg redondeo -> 42958101: % (esperado 5)', n;
-  n := pg_temp.p1_config($w$cc.clave = 'comisiones' and cc.account_code in ('5235','529505')$w$, '53051501');
-  raise notice 'cfg comisiones: % (esperado 113)', n;
   n := pg_temp.p1_config($w$cc.clave = 'iva_generado' and cc.account_code in ('2408','240805')$w$, '24080501');
   raise notice 'cfg iva_generado -> 24080501: %', n;
   n := pg_temp.p1_config($w$cc.clave = 'iva_generado' and cc.account_code = '2408'$w$, '240805');

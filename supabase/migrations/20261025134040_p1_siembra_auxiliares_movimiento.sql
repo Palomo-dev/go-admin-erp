@@ -214,7 +214,6 @@ begin
             when 'faltante_inventario' then case when v_tipo in (1, 2) then '61400502' else '61350502' end
             when 'redondeo' then '42958101'
             when 'ingresos_diversos' then '42959501'
-            when 'comisiones' then '53051501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
           end
@@ -224,7 +223,6 @@ begin
             when 'faltante_inventario' then case when v_tipo in (1, 2) then '61400502' else '61350502' end
             when 'redondeo' then '42958101'
             when 'ingresos_diversos' then '42959501'
-            when 'comisiones' then '53051501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
           end

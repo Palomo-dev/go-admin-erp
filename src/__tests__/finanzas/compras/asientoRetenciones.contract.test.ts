@@ -37,7 +37,8 @@ describe('devengo de compra con retenciones', () => {
       const { cuerpo } = ultimaDefinicion(fn);
       const crear = cuerpo.search(/fn_create_journal_entry\s*\(/);
       const retener = cuerpo.search(
-        /PERFORM\s+fn_asiento_compra_aplicar_retenciones\s*\(\s*v_entry_id\s*,\s*\w+\.id\s*,\s*v_rule\.credit_account_code\s*\)/i,
+        // 134030: el crédito ya resuelto llega en v_credito (antes v_rule.credit_account_code).
+        /PERFORM\s+(?:public\.)?fn_asiento_compra_aplicar_retenciones\s*\(\s*v_entry_id\s*,\s*\w+\.id\s*,\s*(?:v_rule\.credit_account_code|v_credito)\s*\)/i,
       );
       expect(crear).toBeGreaterThan(-1);
       expect(retener).toBeGreaterThan(crear);

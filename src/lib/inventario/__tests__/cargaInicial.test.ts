@@ -186,7 +186,10 @@ describe('contrato del sobrante en 4295', () => {
     expect(sql).toContain('fn_inventario_auxiliar_1435');
     expect(sql).toContain("'143505'");
     expect(sql).toContain("'ingresos_diversos'");
-    expect(sql).toContain("'4295'");
+    // 4295 pasa a título: el sobrante acredita el auxiliar 42959501 vía la clave (134030).
+    const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134030_p1_funciones_cuentas_titulo_a_auxiliar.sql'), 'utf8');
+    expect(p1).toContain("'42959501'");
+    expect(p1).toContain('fn_cuenta_ingresos_diversos');
     expect(sql).toContain('correccion_conteo');
     expect(sql).toContain('left(coalesce(v_credit_account, \'\'), 4) = \'4250\'');
     expect(datos).toContain('fn_sobrante_borradores');

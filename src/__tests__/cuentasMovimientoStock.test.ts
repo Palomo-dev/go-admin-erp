@@ -47,7 +47,9 @@ describe('cuentas por movimiento de stock', () => {
     expect(sql).toContain("'3105'");
     expect(sql).toContain("'4250'");
     expect(sql).toContain("'5150'");
-    expect(sql).toContain("'6135'");
+    // 6135 pasa a título: las reglas por defecto publican al auxiliar 61350501 (134040).
+    const p1 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261025134040_p1_siembra_auxiliares_movimiento.sql'), 'utf8');
+    expect(p1).toContain("'61350501'");
     expect(sql).toContain('on conflict on constraint accounting_rules_unique do nothing');
   });
 

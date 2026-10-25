@@ -23,7 +23,7 @@ const leer = (ruta: string) => readFileSync(join(RAIZ, ruta), 'utf8');
 
 const PLAN = new Set([
   '1105', '1110', '1120', '1365', '2105', '2205', '2365', '2367', '2368',
-  '2408', '2505', '3105', '4105', '4250', '5105', '5135', '5195', '5235', '5305', '6105',
+  '2408', '2505', '3105', '4105', '4250', '42959501', '5105', '5135', '5195', '5235', '5305', '6105',
 ]);
 
 describe('cuenta bancaria nueva: el select no entra en bucle', () => {
@@ -101,7 +101,7 @@ describe('egreso que no es compra', () => {
     expect(asientoDeMovimientoCaja('in', 'otroIngreso', PLAN)).toEqual({
       tipo: 'asiento',
       debito: '1105',
-      credito: '4250',
+      credito: '42959501',
     });
   });
 
@@ -132,7 +132,7 @@ describe('egreso que no es compra', () => {
     expect(asientoAjusteBanco(1500, '1110', PLAN)).toEqual({
       tipo: 'asiento',
       debito: '1110',
-      credito: '4250',
+      credito: '42959501',
     });
     const soloPersonal = asientoAjusteBanco(-1500, '1110', new Set(['1110', '5105', '4105']));
     expect(soloPersonal).toEqual({ tipo: 'sin_cuenta' });

@@ -1,4 +1,7 @@
 -- Rollback de 134060. Correr ANTES de los rollbacks de 134020 y 134010.
+-- Cubre 6140 (QA 25-oct C2) igual que 6135: 6140 vuelve a movimiento (bitácora 'titulo'), su saldo
+-- reclasificado a 61400501 se revierte con el contra-asiento del paso 3 y sus borradores vuelven a 6140.
+-- Verificación posterior: no debe quedar 'titulo' de 6140 sin revertir.
 -- 1) Padres vuelven a movimiento (se desactiva trg_puc_validar_cuenta: si no, al tener hijos los fuerza a título).
 alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
 update public.chart_of_accounts c set es_movimiento = true, updated_at = now()
@@ -20,3 +23,15 @@ select x.asiento, public.fn_revertir_asiento(x.asiento, 'p1_rollback_134060', 'r
                     where r.organization_id = x.organization_id and r.fact_key = 'reversal:' || x.asiento);
 
 delete from public.p1_puc_bitacora where migracion = '134060' and objeto not in ('asiento_reclasif', 'revision_iva');
+
+-- 4) Control: 6140/6135 de vuelta a movimiento en todas las orgs que 134060 tituló.
+do $$
+begin
+  if exists (select 1 from public.chart_of_accounts c
+              where c.account_code in ('6135', '6140') and c.es_movimiento is false
+                and exists (select 1 from public.journal_entries e
+                             where e.organization_id = c.organization_id and e.fact_key like 'p1_reclasif_auxiliar%'
+                               and e.source_id ~ ('(^|,)' || c.account_code || '(,|$)'))) then
+    raise warning 'rollback 134060: queda 6135/6140 como título en una org reclasificada; revisar';
+  end if;
+end $$;

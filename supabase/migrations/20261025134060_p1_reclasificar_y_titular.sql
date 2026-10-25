@@ -5,7 +5,10 @@
 --     primer período ABIERTO posterior (nunca a uno cerrado; si no hay ninguno abierto la org se salta).
 --     El saldo sale de la cuenta de título y entra al auxiliar.
 --   * Los borradores sí se repuntan directamente al auxiliar.
---   * Destinos: 3705 -> 37050502 | 6135 -> 61350501 (hotel/restaurante con líneas en 6135: revisión, no se titula) | 530515 -> 53051501 | 5395 -> 53959501
+--   * Destinos: 3705 -> 37050502 | 6135 -> 61350501 (hotel/restaurante con líneas en 6135: revisión, no se titula) |
+--     6140 -> 61400501 (QA 25-oct C2: igual que 6135; solo orgs type_id 1/2, únicas con 614005. Saldo publicado
+--     al 25-oct: 120.860 en 7 orgs; va en el mismo asiento de reclasificación de la org y luego 6140 pasa a
+--     título. Sin esto, trg_puc_validar_cuenta la titularía sola en cualquier UPDATE, con saldo y sin asiento) | 530515 -> 53051501 | 5395 -> 53959501
 --     4295 -> 42959501 si la línea es de sobrantes (asiento de ajuste/movimiento de inventario);
 --             si no se puede determinar -> 42959502
 --     240805 -> 24080501/24080502 y 240810 -> 24081001/24081002 según la tarifa de la línea; las líneas
@@ -21,7 +24,8 @@
 --   4295: -42.900; 240805: -2.954), 331 (240810: 3.800.000)  (* saldo neto de 240805 publicado en 140)
 --   Todos los 4295 publicados vienen de inventory_adjustment => 42959501. Los borradores 4295 son
 --   manuales => 42959502. Org 149: 240810 no se toca (queda de movimiento con 19.000).
---   Títulos: 3705: 19 | 6135: 108 | 4295: 116 | 530515: 116 | 5395: 116 | 240805: 115 | 240810: 115
+--   (El conteo de asientos sube por las orgs H/R con saldo en 6140 que no estaban en la lista; se recalcula antes de aplicar.)
+--   Títulos: 3705: 19 | 6135: 108 | 6140: 56 (H/R con 614005) | 4295: 116 | 530515: 116 | 5395: 116 | 240805: 115 | 240810: 115
 -- Rollback: supabase/rollbacks/20261025134060_p1_reclasificar_y_titular_rollback.sql
 
 -- Destino de una línea de la cuenta padre.
@@ -30,6 +34,7 @@ language sql immutable as $$
   select case p_padre
     when '3705'   then '37050502'
     when '6135'   then '61350501'
+    when '6140'   then '61400501'   -- hoteles/restaurantes (solo tiene hijos donde 134010 creó 614005)
     when '530515' then '53051501'
     when '5395'   then '53959501'
     when '4295'   then case when coalesce(p_source, '') in ('inventory_adjustment', 'inventory_adjustments', 'stock_movements')
@@ -49,7 +54,7 @@ declare
   v_n integer;
   v_tit integer := 0;
   v_rec integer := 0;
-  v_padres text[] := array['3705','6135','4295','530515','5395','240805','240810'];
+  v_padres text[] := array['3705','6135','6140','4295','530515','5395','240805','240810'];
   v_ok text[];
   v_bloq text[];
   v_previos integer;

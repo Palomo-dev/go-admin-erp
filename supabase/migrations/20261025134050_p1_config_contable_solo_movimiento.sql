@@ -4,6 +4,10 @@
 --   a) es_movimiento NULL pasaba como movimiento (4.564 cuentas con NULL al 25-oct), aunque tuviera hijos;
 --   b) cuentas inactivas (is_active/activa = false) se aceptaban.
 -- Ahora: NULL solo se acepta si la cuenta no tiene hijos; inactivas se rechazan. Mismo errcode 23514.
+-- La comprobación de cuenta corre solo en INSERT o si cambia account_code: un UPDATE que mantiene la cuenta
+-- (upsert de todas las claves desde Finanzas > Configuración contable) no se rechaza por filas heredadas
+-- (118 filas en 109 orgs al 25-oct); tampoco el BEFORE INSERT del upsert si la fila existente ya tiene esa
+-- misma cuenta. La sede y updated_at se validan/actualizan siempre.
 -- Rollback: supabase/rollbacks/20261025134050_p1_config_contable_solo_movimiento_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_configuracion_contable_validar()
@@ -20,7 +24,19 @@ begin
       using errcode = '23514';
   end if;
 
-  if not exists (
+  -- Solo en alta o cambio de cuenta (QA Soporte 25-oct): reguardar una fila heredada sin cambiarle la cuenta
+  -- (p.ej. comisiones -> 5235, NULL con hijos) no debe tumbar el upsert de toda la pantalla.
+  -- El upsert de PostgREST (INSERT ... ON CONFLICT DO UPDATE) dispara primero el BEFORE INSERT con la fila
+  -- propuesta: si ya existe la misma (org, sede, clave) con la MISMA cuenta, no es un alta real.
+  if (
+       (tg_op = 'INSERT' and not exists (
+          select 1 from public.configuracion_contable x
+          where x.organization_id = new.organization_id
+            and x.branch_id is not distinct from new.branch_id
+            and x.clave = new.clave
+            and x.account_code = new.account_code))
+       or (tg_op = 'UPDATE' and new.account_code is distinct from old.account_code)
+     ) and not exists (
     select 1 from public.chart_of_accounts c
     where c.organization_id = new.organization_id
       and c.account_code = new.account_code

@@ -241,15 +241,21 @@ export function useNotificacionesHeader(organizationId: string | null) {
       .channel(`notification-reads-${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${userId}` }, refrescar)
       .subscribe();
-    const canalAvisos = supabase
-      .channel(`member-notices-${userId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'member_notices', filter: `recipient_user_id=eq.${userId}` }, refrescar)
-      .subscribe();
+    // Avisos del miembro (`member_notices`): sondeo liviano en lugar de Realtime.
+    // La suscripción filtrada por `recipient_user_id` fallaba en bucle en producción
+    // ("invalid column for filter recipient_user_id") y reintentaba sin parar,
+    // presionando el pool de conexiones. Solo se sondea con la pestaña visible.
+    const refrescarSiVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') refrescar();
+    };
+    const sondeoAvisos = setInterval(refrescarSiVisible, 30_000);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', refrescarSiVisible);
     return () => {
       activo = false;
+      clearInterval(sondeoAvisos);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', refrescarSiVisible);
       void supabase.removeChannel(canalNotif);
       void supabase.removeChannel(canalLecturas);
-      void supabase.removeChannel(canalAvisos);
     };
   }, [organizationId, userId]);
 

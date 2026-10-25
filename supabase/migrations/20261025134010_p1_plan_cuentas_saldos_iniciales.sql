@@ -103,10 +103,10 @@ begin
         select 1 from public.journal_lines l where l.organization_id = 149 and l.account_code = '240810');
 
       insert into public.chart_of_accounts (
-        organization_id, account_code, name, type, parent_code, is_active, activa,
+        organization_id, account_code, name, type, parent_code, is_active,
         naturaleza, es_movimiento, requiere_tercero, requiere_centro_costo, centro_costo_modo,
         presentacion_niif, created_at, updated_at)
-      select v_org, r.codigo, r.nombre, p.type, r.padre, true, true,
+      select v_org, r.codigo, r.nombre, p.type, r.padre, true,
              p.naturaleza, r.mov, coalesce(p.requiere_tercero, false), p.requiere_centro_costo,
              p.centro_costo_modo, p.presentacion_niif, now(), now()
         from public.chart_of_accounts p

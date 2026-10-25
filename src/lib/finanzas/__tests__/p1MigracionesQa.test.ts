@@ -110,3 +110,11 @@ describe('P1: «comisiones» (vendedores, D5235/C2370) no va a 53051501 (solo co
     expect(m134040).not.toMatch(/'comisiones'\s*then\s*'53051501'/);
   });
 });
+
+describe('P1: chart_of_accounts.activa es columna generada (COALESCE(is_active, true))', () => {
+  test('134010 y 134040 no insertan activa', () => {
+    for (const sql of [m134010, m134040]) {
+      expect(sql).not.toMatch(/insert\s+into\s+public\.chart_of_accounts\s*\([^)]*\bactiva\b/i);
+    }
+  });
+});

@@ -172,10 +172,10 @@ begin
   if v_tipo in (1, 2) then
    for v_nivel in 1..3 loop  -- por nivel: el hijo necesita al padre ya insertado
     insert into public.chart_of_accounts (
-      organization_id, account_code, name, type, parent_code, is_active, activa,
+      organization_id, account_code, name, type, parent_code, is_active,
       naturaleza, es_movimiento, requiere_tercero, requiere_centro_costo, centro_costo_modo,
       presentacion_niif, created_at, updated_at)
-    select p_org, t.codigo, t.nombre, p.type, t.padre, true, true, p.naturaleza, t.mov,
+    select p_org, t.codigo, t.nombre, p.type, t.padre, true, p.naturaleza, t.mov,
            coalesce(p.requiere_tercero, false), p.requiere_centro_costo, p.centro_costo_modo,
            p.presentacion_niif, now(), now()
       from (values

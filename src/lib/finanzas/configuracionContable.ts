@@ -351,16 +351,27 @@ export function propuestaPorSector(typeId: number | null | undefined): Record<Cl
       // (clasificarProductoRestaurante).
       propuesta.inventario = '14350101';
       break;
+    // Contador 25-oct-2026: ventas por sector en su grupo de 4 (el SQL siembra el auxiliar de 8). Parqueadero
+    // 41459501 bajo 4145 (operacional, no 4235); servicios propios de retail 41559501 (4155). 4235 queda solo
+    // para servicios ocasionales fuera de la actividad.
     case 4:
       propuesta.ventas_productos = '4155';
+      propuesta.ventas_servicios = '4155';
+      break;
+    case 5:
+      propuesta.ventas_productos = '4170';
+      propuesta.ventas_servicios = '4170';
       break;
     case 6:
       propuesta.ventas_productos = '4145';
+      propuesta.ventas_servicios = '4145';
       break;
     case 7:
-      propuesta.ventas_productos = '4235';
+      propuesta.ventas_productos = '4145';
+      propuesta.ventas_servicios = '4145';
       break;
     default:
+      propuesta.ventas_servicios = '4155';
       break;
   }
   return propuesta;

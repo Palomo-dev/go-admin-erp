@@ -196,11 +196,12 @@ describe('clave de la cuenta', () => {
 });
 
 describe('plantilla por sector', () => {
-  test('comercio y gimnasio comparten el PUC de ventas; el transporte usa 4145', () => {
+  test('comercio vende en 4135 y sus servicios en 4155; gimnasio 4170; el transporte usa 4145', () => {
+    expect(propuestaPorSector(5).ventas_productos).toBe('4170');
     for (const tipo of [null, 3, 5]) {
       const p = propuestaPorSector(tipo);
-      expect(p.ventas_productos).toBe('4135');
-      expect(p.ventas_servicios).toBe('4235');
+      if (tipo !== 5) expect(p.ventas_productos).toBe('4135');
+      expect(p.ventas_servicios).toBe(tipo === 5 ? '4170' : '4155');
       expect(p.costo_ventas).toBe('61350501');
       expect(p.inventario).toBe('1435');
     }
@@ -223,8 +224,8 @@ describe('plantilla por sector', () => {
       inventario: '14350101',
     });
     expect(propuestaPorSector(4).ventas_productos).toBe('4155');
-    expect(propuestaPorSector(7).ventas_productos).toBe('4235');
-    expect(propuestaPorSector(7).ventas_servicios).toBe('4235');
+    expect(propuestaPorSector(7).ventas_productos).toBe('4145');
+    expect(propuestaPorSector(7).ventas_servicios).toBe('4145');
   });
 
   test('las cuentas compartidas salen de la plantilla', () => {

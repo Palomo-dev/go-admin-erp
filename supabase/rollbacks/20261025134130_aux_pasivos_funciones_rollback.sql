@@ -3225,5 +3225,17 @@ delete from public.chart_of_accounts a
  where a.description = 'Auxiliar de ventas del sector (QA 25-oct-2026)' and length(a.account_code) = 6
    and not exists (select 1 from public.chart_of_accounts h where h.organization_id = a.organization_id
                     and h.parent_code = a.account_code);
+delete from public.chart_of_accounts a
+ where a.description = 'Auxiliar de ventas del sector (QA 25-oct-2026)' and length(a.account_code) = 4
+   and not exists (select 1 from public.chart_of_accounts h where h.organization_id = a.organization_id
+                    and h.parent_code = a.account_code)
+   and not exists (select 1 from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+                    where e.organization_id = a.organization_id and l.account_code = a.account_code);
+delete from public.chart_of_accounts a
+ where a.description = 'Auxiliar de ventas del sector (QA 25-oct-2026)' and length(a.account_code) = 2
+   and not exists (select 1 from public.chart_of_accounts h where h.organization_id = a.organization_id
+                    and h.parent_code = a.account_code)
+   and not exists (select 1 from public.journal_lines l join public.journal_entries e on e.id = l.journal_entry_id
+                    where e.organization_id = a.organization_id and l.account_code = a.account_code);
 drop function if exists public.fn_asegurar_cuenta_venta_sector(integer, integer);
 delete from supabase_migrations.schema_migrations where version = '20261025134130';

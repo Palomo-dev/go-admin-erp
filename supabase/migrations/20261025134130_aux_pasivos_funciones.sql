@@ -1817,39 +1817,61 @@ end;
 $function$
 ;
 
--- QA ROJO 56f889e2 MEDIO 3: auxiliar de ventas del sector (título de 6 + movimiento de 8 bajo el grupo de 4).
--- Devuelve el código de 8 dígitos si existe o se pudo crear; si la org no tiene el grupo de 4, devuelve null.
-create or replace function public.fn_asegurar_cuenta_venta_sector(p_org integer, p_type integer)
+-- Auxiliar de ventas: crea (si faltan) el grupo de 4 bajo 41 (y 41 bajo 4), el padre de 6 y el auxiliar de 8.
+-- Nombres oficiales del contador (PUC Decreto 2650/1993) para los padres; auxiliares descriptivos.
+-- Devuelve el auxiliar, o null solo si la org no tiene ni la clase 4 (nunca una cuenta inexistente).
+create or replace function public.fn_asegurar_auxiliar_venta(p_org integer, p_aux text)
 returns text language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
 declare
-  v_aux text; v_tit text; v_grupo text; v_nom_tit text; v_nom text;
+  v_tit text := left(p_aux, 6); v_grupo text := left(p_aux, 4);
+  v_marca constant text := 'Auxiliar de ventas del sector (QA 25-oct-2026)';
 begin
-  select x.aux, x.nt, x.n into v_aux, v_nom_tit, v_nom from (values
-    (4, '41559501', 'Otras actividades empresariales', 'Ingresos por servicios'),
-    (5, '41709501', 'Otras actividades de servicios', 'Ingresos gimnasio y membresías'),
-    (6, '41450501', 'Servicio de transporte por carretera', 'Ingresos por transporte'),
-    (7, '41459501', 'Actividades conexas al transporte', 'Ingresos por parqueadero')
-  ) as x(t, aux, nt, n) where x.t = p_type;
-  if v_aux is null then
-    if p_type in (1, 2) then return null; end if;
-    v_aux := '41359501'; v_nom_tit := 'Otras ventas al por menor'; v_nom := 'Ventas de mercancía';
+  if exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = p_aux) then
+    return p_aux;
   end if;
-  v_tit := left(v_aux, 6); v_grupo := left(v_aux, 4);
-  if exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = v_aux) then
-    return v_aux;
-  end if;
-  if not exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = v_grupo) then
+  if not exists (select 1 from public.chart_of_accounts where organization_id = p_org and account_code = '4') then
     return null;
   end if;
   insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
     es_movimiento, naturaleza, description)
-  values (p_org, v_tit, v_nom_tit, 'income', v_grupo, true, false, 'credito', 'Auxiliar de ventas del sector (QA 25-oct-2026)')
+  select p_org, x.c, x.n, 'income', x.p, true, x.m, 'credito', v_marca
+    from (values
+      (1, '41', 'Operacionales', '4', false),
+      (2, v_grupo, case v_grupo when '4135' then 'Comercio al por mayor y al por menor'
+                                when '4145' then 'Transporte, almacenamiento y comunicaciones'
+                                when '4155' then 'Actividades inmobiliarias, empresariales y de alquiler'
+                                when '4170' then 'Otras actividades de servicios comunitarios, sociales y personales'
+                                else 'Ingresos operacionales' end, '41', false),
+      (3, v_tit, case v_tit when '413595' then 'Venta de otros productos'
+                            when '414505' then 'Servicio de transporte por carretera'
+                            else 'Actividades conexas' end, v_grupo, false),
+      (4, p_aux, case p_aux when '41459501' then 'Servicio de parqueadero'
+                            when '41709501' then 'Servicios de gimnasio'
+                            when '41559501' then 'Servicios'
+                            when '41450501' then 'Servicio de transporte'
+                            when '41359501' then 'Venta de mercancías'
+                            else 'Ingresos del sector' end, v_tit, true)
+    ) as x(o, c, n, p, m)
+   order by x.o
   on conflict (organization_id, account_code) do nothing;
-  insert into public.chart_of_accounts (organization_id, account_code, name, type, parent_code, is_active,
-    es_movimiento, naturaleza, description)
-  values (p_org, v_aux, v_nom, 'income', v_tit, true, true, 'credito', 'Auxiliar de ventas del sector (QA 25-oct-2026)')
-  on conflict (organization_id, account_code) do nothing;
-  return v_aux;
+  return p_aux;
+end $$;
+revoke all on function public.fn_asegurar_auxiliar_venta(integer, text) from public, anon, authenticated;
+
+-- QA ROJO 56f889e2 MEDIO 3 + contador 25-oct-2026: auxiliar de ventas del sector. Servicios 41559501, gym 41709501,
+-- transporte 41450501, parqueadero 41459501 (bajo 4145, ingreso operacional; NO 4235), retail y sin tipo
+-- 41359501. Retail además 41559501 para los servicios propios de su negocio (instalación, domicilio,
+-- mantenimiento); 4235 queda solo para servicios ocasionales fuera de la actividad. BAJO Soporte: crea el grupo
+-- de 4 si falta (orgs 4, 57, 325, 59, 102 en prod). Null para hoteles/restaurantes (plan propio).
+create or replace function public.fn_asegurar_cuenta_venta_sector(p_org integer, p_type integer)
+returns text language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
+begin
+  if p_type in (1, 2) then return null; end if;
+  if p_type is null or p_type not in (4, 5, 6, 7) then
+    perform public.fn_asegurar_auxiliar_venta(p_org, '41559501');
+  end if;
+  return public.fn_asegurar_auxiliar_venta(p_org, case p_type when 4 then '41559501' when 5 then '41709501'
+                                                  when 6 then '41450501' when 7 then '41459501' else '41359501' end);
 end $$;
 revoke all on function public.fn_asegurar_cuenta_venta_sector(integer, integer) from public, anon, authenticated;
 
@@ -1905,8 +1927,11 @@ begin
   -- MEDIO 3: auxiliar de ventas del sector; si la org no tiene el grupo de 4 se queda en el grupo.
   if v_type is distinct from 1 and v_type is distinct from 2 then
     v_prod := coalesce(public.fn_asegurar_cuenta_venta_sector(org_id, v_type),
-                       case v_type when 4 then '4155' when 6 then '4145' when 7 then '4235' when 5 then '4170' else '4135' end);
-    if v_type in (4, 5, 6, 7) then v_serv := v_prod; end if;
+                       -- Respaldo = grupo del que cuelga el auxiliar (contador: parqueadero 41459501 bajo 4145, no 4235).
+                       case v_type when 4 then '4155' when 6 then '4145' when 7 then '4145' when 5 then '4170' else '4135' end);
+    -- Retail y sin tipo: servicios propios del negocio 41559501 (contador); 4235 solo ocasionales.
+    v_serv := case when v_type in (4, 5, 6, 7) then v_prod
+                   else coalesce(public.fn_asegurar_auxiliar_venta(org_id, '41559501'), '4155') end;
   end if;
   v_prod := coalesce(v_prod, '4135');
   v_serv := coalesce(v_serv, '4235');
@@ -2295,7 +2320,7 @@ AS $function$
         when 5 then '41709501'
         when 6 then '41450501'
         when 7 then '41459501'
-        else '4235'
+        else '41559501'
       end
       when 'costo_ventas' then case when p_type_id in (1, 2) then '61400501' else '61350501' end
       when 'faltante_inventario' then case when p_type_id in (1, 2) then '61400502' else v.defecto end
@@ -3045,6 +3070,7 @@ declare
   v_tipo integer;
   v_inv text;
   v_nivel integer;
+  v_aux_venta text;
 begin
   perform public.fn_assert_acceso_org(p_org);
   if exists (
@@ -3097,6 +3123,16 @@ begin
 
   -- Auxiliares de pasivos del contador (134125): 22050501, 25050501/02, 23352001/02, 23359501, 2365xx01.
   perform public.fn_pasivos_asegurar_auxiliares(p_org, null);
+  -- BAJO Soporte: la cuenta de ventas propuesta para el sector debe existir antes de sembrarla.
+  v_aux_venta := public.fn_asegurar_cuenta_venta_sector(p_org, v_tipo);
+  -- Org nueva (sin configuración aún): si las reglas por defecto nacieron antes que el plan, quedaron en el grupo
+  -- de 4; se pasan al auxiliar del sector (solo reglas de ingreso de esta org, sin asientos todavía).
+  if v_aux_venta is not null then
+    update public.accounting_rules r set credit_account_code = v_aux_venta, updated_at = now()
+     where r.organization_id = p_org and r.credit_account_code = left(v_aux_venta, 4)
+       and r.source_type in ('sale', 'cash_movement', 'trip', 'membership', 'parking', 'parking_pass')
+       and not exists (select 1 from public.journal_entries e where e.organization_id = p_org);
+  end if;
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
   -- y la clave no se siembra: el resolver usa el auxiliar de la sede en tiempo de asiento.
@@ -3140,6 +3176,10 @@ begin
             when 'devoluciones' then case when v_tipo = 2 then '41750101' end
             when 'descuentos' then case when v_tipo = 2 then '41750102' end
           end
+      -- BAJO Soporte: si la cuenta propuesta no existe en la org, el grupo de 4 del que cuelga (nunca una inexistente).
+      when p.account_code ~ '^4[0-9]{7}$' and not exists (
+        select 1 from public.chart_of_accounts a where a.organization_id = p_org and a.account_code = p.account_code
+      ) then left(p.account_code, 4)
       -- Cuenta de título: su único auxiliar de movimiento, si lo hay.
       when p.account_code not like '24%' and exists (
         select 1 from public.chart_of_accounts t

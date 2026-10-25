@@ -10,14 +10,13 @@ alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
 -- 2) Borradores vuelven al padre.
 update public.journal_lines l set account_code = b.valor_anterior, updated_at = now()
   from public.p1_puc_bitacora b
- where b.migracion = '130700' and b.objeto = 'linea_borrador' and l.id = b.clave::integer;
+ where b.migracion = '130700' and b.objeto in ('linea_borrador', 'linea_borrador_revision_iva') and l.id = b.clave::integer;
 
 -- 3) Asientos de reclasificación: contra-asiento (no se borra contabilidad publicada).
-select b.clave::integer as asiento,
-       public.fn_revertir_asiento(b.clave::integer, 'p1_rollback_130700', 'rollback reclasificación ' || b.campo)
-  from public.p1_puc_bitacora b
- where b.migracion = '130700' and b.objeto = 'asiento_reclasif'
-   and not exists (select 1 from public.journal_entries r
-                    where r.organization_id = b.organization_id and r.fact_key = 'reversal:' || b.clave);
+select x.asiento, public.fn_revertir_asiento(x.asiento, 'p1_rollback_130700', 'rollback reclasificación a auxiliar')
+  from (select distinct b.organization_id, b.clave::integer as asiento from public.p1_puc_bitacora b
+         where b.migracion = '130700' and b.objeto = 'asiento_reclasif') x
+ where not exists (select 1 from public.journal_entries r
+                    where r.organization_id = x.organization_id and r.fact_key = 'reversal:' || x.asiento);
 
-delete from public.p1_puc_bitacora where migracion = '130700' and objeto <> 'asiento_reclasif';
+delete from public.p1_puc_bitacora where migracion = '130700' and objeto not in ('asiento_reclasif', 'revision_iva');

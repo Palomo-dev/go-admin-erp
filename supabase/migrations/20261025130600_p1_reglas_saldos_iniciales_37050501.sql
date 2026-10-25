@@ -9,9 +9,12 @@
 --   inventory/sale D6135 y inventory/return C6135 -> 61350501 ................ 232 reglas
 --   tax_account_code 240805/240810 -> 24080501/24081001 donde existan los auxiliares
 --   configuracion_contable: saldo_inicial 3105 (5), costo_ventas 6135 (53), faltante_inventario 519595 (5),
---     redondeo 4295 (5) -> 42959501 [DECISIÓN ABIERTA], comisiones 5235/529505 (113) -> 53051501,
+--     redondeo 4295 (5) -> 42958101 (Ajuste al peso a favor) + nueva clave redondeo_en_contra -> 53959501 (5),
+--     comisiones 5235/529505 (113) -> 53051501,
 --     iva_generado/iva_descontable -> auxiliar 19% donde exista (si no, el padre de movimiento)
---   fn_cuentas_movimiento_stock: fallback 3105 -> 37050501, 4295 -> 42959501, 519595 -> 61350502.
+--   fn_cuentas_movimiento_stock: respaldos 3105 -> 37050501, 4295 -> 42959501, 519595 -> 61350502, 6135 -> 61350501.
+--   fn_redondear_asiento_pesos: respaldo 4295 -> 42958101 (a favor) / 53959501 (en contra), clave redondeo_en_contra.
+--   Redondeo: decisión CERRADA por el contador (25-oct): auxiliares propios de Ajuste al peso.
 -- NO se tocan: inventory/adjusted y expense/created (519595, salida no venta/consumo), bank/adjusted,
 --   membership y reservation (4250): no son sobrantes/faltantes de inventario.
 -- Rollback: supabase/rollbacks/20261025130600_p1_reglas_saldos_iniciales_37050501_rollback.sql
@@ -82,9 +85,8 @@ begin
   raise notice 'cfg costo_ventas: % (esperado 53)', n;
   n := pg_temp.p1_config($w$cc.clave = 'faltante_inventario' and cc.account_code = '519595'$w$, '61350502');
   raise notice 'cfg faltante_inventario: % (esperado 5)', n;
-  -- DECISIÓN ABIERTA: redondeo→42959501 pendiente de confirmación del contador
-  n := pg_temp.p1_config($w$cc.clave = 'redondeo' and cc.account_code = '4295'$w$, '42959501');
-  raise notice 'cfg redondeo: % (esperado 5) [decisión abierta]', n;
+  n := pg_temp.p1_config($w$cc.clave = 'redondeo' and cc.account_code = '4295'$w$, '42958101');
+  raise notice 'cfg redondeo -> 42958101: % (esperado 5)', n;
   n := pg_temp.p1_config($w$cc.clave = 'comisiones' and cc.account_code in ('5235','529505')$w$, '53051501');
   raise notice 'cfg comisiones: % (esperado 113)', n;
   n := pg_temp.p1_config($w$cc.clave = 'iva_generado' and cc.account_code in ('2408','240805')$w$, '24080501');
@@ -94,6 +96,26 @@ begin
   raise notice 'cfg iva_descontable -> 24081001: %', n;
   n := pg_temp.p1_config($w$cc.clave = 'iva_descontable' and cc.account_code = '2408'$w$, '240810');
 end $$;
+
+-- Redondeo en contra: clave nueva (el CHECK de claves se amplía) para las orgs que ya configuran redondeo.
+alter table public.configuracion_contable drop constraint configuracion_contable_clave_chk;
+alter table public.configuracion_contable add constraint configuracion_contable_clave_chk check (clave = any (array[
+  'caja', 'bancos', 'clientes', 'proveedores', 'ventas_productos', 'ventas_servicios', 'devoluciones', 'descuentos',
+  'costo_ventas', 'inventario', 'iva_generado', 'iva_descontable', 'retefuente', 'reteiva', 'reteica', 'propinas',
+  'comisiones', 'anticipos', 'nomina', 'nomina_por_pagar', 'nomina_aportes', 'faltante_inventario',
+  'gastos_extraordinarios', 'consumo_interno', 'manifiesto_por_pagar', 'manifiesto_transporte', 'saldo_inicial',
+  'impuesto_consumo', 'redondeo', 'compra_servicio', 'ingresos_diversos', 'redondeo_en_contra']::text[]));
+
+with ins as (
+  insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
+  select cc.organization_id, cc.branch_id, 'redondeo_en_contra', '53959501'
+    from public.configuracion_contable cc
+   where cc.clave = 'redondeo' and pg_temp.p1_mov(cc.organization_id, '53959501')
+  on conflict (organization_id, branch_id, clave) do nothing
+  returning id, organization_id
+)
+insert into public.p1_puc_bitacora (migracion, organization_id, objeto, clave, campo, valor_anterior, valor_nuevo)
+select '130600', organization_id, 'config_nueva', id::text, 'redondeo_en_contra', null, '53959501' from ins;
 
 -- Org 149: no tiene clave iva_generado en 240805 (la cuenta no existía). Se siembra si falta.
 insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
@@ -196,6 +218,103 @@ begin
   if evento = 'loss' and debito is distinct from '61350502'
      and (left(coalesce(debito, ''), 1) = '6' or debito in ('5150', '6105')) then
     debito := v_faltante;
+  end if;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.fn_redondear_asiento_pesos(p_entry_id integer)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org integer;
+  v_diff numeric;
+  v_line integer;
+  v_cuenta text;
+begin
+  select organization_id into v_org from public.journal_entries where id = p_entry_id;
+  if v_org is null then
+    return;
+  end if;
+
+  update public.journal_lines
+     set debit = round(coalesce(debit, 0), 0),
+         credit = round(coalesce(credit, 0), 0),
+         debit_base = case when debit_base is null then debit_base else round(debit_base, 0) end,
+         credit_base = case when credit_base is null then credit_base else round(credit_base, 0) end
+   where journal_entry_id = p_entry_id;
+
+  select coalesce(sum(debit), 0) - coalesce(sum(credit), 0)
+    into v_diff
+  from public.journal_lines
+  where journal_entry_id = p_entry_id;
+
+  if v_diff = 0 then
+    return;
+  end if;
+
+  if v_diff > 0 then
+    select id into v_line
+    from public.journal_lines
+    where journal_entry_id = p_entry_id and credit > 0
+    order by credit desc, id
+    limit 1;
+    if v_line is not null then
+      update public.journal_lines
+         set credit = credit + v_diff,
+             credit_base = case when credit_base is null then credit_base else credit_base + v_diff end
+       where id = v_line;
+      return;
+    end if;
+  else
+    select id into v_line
+    from public.journal_lines
+    where journal_entry_id = p_entry_id and debit > 0
+    order by debit desc, id
+    limit 1;
+    if v_line is not null then
+      update public.journal_lines
+         set debit = debit + abs(v_diff),
+             debit_base = case when debit_base is null then debit_base else debit_base + abs(v_diff) end
+       where id = v_line;
+      return;
+    end if;
+  end if;
+
+  select c.account_code into v_cuenta
+  from public.configuracion_contable c
+  join public.chart_of_accounts a
+    on a.organization_id = c.organization_id and a.account_code = c.account_code
+  where c.organization_id = v_org
+    and c.clave = case when v_diff > 0 then 'redondeo' else 'redondeo_en_contra' end
+    and c.branch_id is null
+    and coalesce(a.is_active, true)
+    and a.es_movimiento is true
+  limit 1;
+  -- Ajuste al peso (contador, 25-oct): a favor 42958101, en contra 53959501. 4295/5395 solo si la org
+  -- no tiene esos auxiliares (orgs fuera del alcance de 130500).
+  if v_cuenta is null then
+    select a.account_code into v_cuenta
+    from public.chart_of_accounts a
+    where a.organization_id = v_org and a.es_movimiento is true and coalesce(a.is_active, true)
+      and a.account_code = case when v_diff > 0 then '42958101' else '53959501' end;
+  end if;
+  v_cuenta := coalesce(v_cuenta, case when v_diff > 0 then '4295' else '5395' end);
+
+  if v_diff > 0 then
+    insert into public.journal_lines (
+      journal_entry_id, account_code, description, debit, credit,
+      organization_id, debit_base, credit_base
+    )
+    values (p_entry_id, v_cuenta, 'Redondeo a pesos', 0, v_diff, v_org, 0, v_diff);
+  else
+    insert into public.journal_lines (
+      journal_entry_id, account_code, description, debit, credit,
+      organization_id, debit_base, credit_base
+    )
+    values (p_entry_id, v_cuenta, 'Redondeo a pesos', abs(v_diff), 0, v_org, abs(v_diff), 0);
   end if;
 end;
 $function$;

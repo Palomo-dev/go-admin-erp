@@ -11,7 +11,10 @@
 --     240805 -> 24080501/24080502 y 240810 -> 24081001/24081002 según la tarifa de la línea; las líneas
 --             no traen tarifa (verificado al 25-oct) => auxiliar 19% y queda marcada para revisión
 --             (p1_puc_bitacora.objeto = 'revision_iva').
---   * Recién después el padre pasa a título. Si al padre aún lo usa una regla o clave, NO se titula (aviso).
+--   * Recién después el padre pasa a título. Si al padre aún lo usa una regla, una clave o el código fijo de
+--     una función viva (control previo sobre pg_proc), NO se titula (aviso).
+--   * Fecha del asiento: mediodía hora Colombia del día elegido (no medianoche UTC = día anterior en COT).
+--   * Idempotente: ignora asientos previos revertidos (rollback) y crea uno nuevo con fact_key ':rN'.
 -- Esperado al 25-oct (solo lectura): 7 asientos de reclasificación (uno por org: 2, 113, 140, 142, 144, 199, 331):
 --   2 (240810: 382.394,96), 113 (240810: 15,97), 140 (6135: 2.300; 4295: -500; 240805: -1.718*; 240810: 684),
 --   142 (4295: -2.739), 144 (6135: 717.171,37; 4295: -21.000; 240810: 0,10), 199 (6135: 3.782;
@@ -48,7 +51,38 @@ declare
   v_rec integer := 0;
   v_padres text[] := array['3705','6135','4295','530515','5395','240805','240810'];
   v_ok text[];
+  v_bloq text[];
+  v_previos integer;
+  v_creado boolean;
+  f record;
 begin
+  -- Control previo (QA 25-oct): ninguna función viva puede seguir con el código fijo de un padre que se
+  -- titula. Se ignoran los argumentos del resolver fn_cuenta_auxiliar_de_titulo(...) y los comentarios.
+  -- Lista blanca: funciones revisadas en 134030 donde el literal solo compara, clasifica, nombra o es la
+  -- entrada del resolver (no asigna ni postea).
+  v_bloq := '{}';
+  for f in
+    select p.proname, array_agg(distinct m[1]) as codigos
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+     cross join lateral regexp_matches(
+             regexp_replace(
+               regexp_replace(p.prosrc, 'fn_cuenta_auxiliar_de_titulo\((?:[^()]|\([^()]*\))*\)', '', 'g'),
+               '--[^\n]*', '', 'g'),
+             '''(6135|4295|530515|5395|240805|240810)''', 'g') m
+     where p.proname <> all (array[
+             'fn_cuenta_auxiliar_de_titulo', 'fn_cuenta_ingresos_diversos', 'fn_clave_cuenta_configurable',
+             'fn_puc_nombres_oficiales', 'fn_puc_proponer_config', 'fn_puc_proponer_lado',
+             'fn_create_branch_subaccounts', 'fn_create_default_accounting_rules',
+             'fn_sembrar_configuracion_contable', 'fn_sembrar_categorias_tesoreria',
+             'fn_correccion_flujo_borradores', 'fn_sobrante_borradores'])
+     group by p.proname
+  loop
+    raise notice '134060: la función % sigue con código fijo %; esos padres NO se titulan', f.proname, f.codigos;
+    v_bloq := v_bloq || f.codigos;
+  end loop;
+  -- 3705 se titula aunque aparezca (solo lo nombra fn_puc_nombres_oficiales y no tiene movimientos).
+
   for v_org in
     select distinct organization_id from public.accounting_rules
      where source_type = 'inventory' and event_type = 'opening' order by 1
@@ -69,7 +103,9 @@ begin
         raise notice '134060: org % cuenta % sigue en una regla/clave; NO se titula', v_org, r.p;
       end if;
     end loop;
+    v_ok := array(select unnest(v_ok) except select unnest(v_bloq));
     continue when cardinality(v_ok) = 0;
+    v_creado := false;
 
     -- Saldos publicados por destino (agrupado por la cuenta auxiliar que corresponde a cada línea).
     create temp table if not exists p1_saldos (padre text, aux text, saldo numeric) on commit drop;
@@ -89,9 +125,16 @@ begin
       delete from p1_saldos where padre = r.padre;
     end loop;
 
+    -- Idempotencia: solo cuenta un asiento previo de reclasificación que NO esté revertido
+    -- (el rollback crea 'reversal:<id>'). Si se reaplica tras un rollback, se crea uno nuevo.
+    select count(*) into v_previos from public.journal_entries e
+     where e.organization_id = v_org and e.fact_key like 'p1_reclasif_auxiliar%';
     if exists (select 1 from p1_saldos)
-       and not exists (select 1 from public.journal_entries
-                        where organization_id = v_org and fact_key = 'p1_reclasif_auxiliar') then
+       and not exists (select 1 from public.journal_entries e
+                        where e.organization_id = v_org and e.fact_key like 'p1_reclasif_auxiliar%'
+                          and not exists (select 1 from public.journal_entries rv
+                                           where rv.organization_id = v_org
+                                             and rv.fact_key = 'reversal:' || e.id::text)) then
       -- Fecha: hoy si su período mensual está abierto; si no, inicio del primer período abierto posterior.
       select case
                when exists (select 1 from public.fiscal_periods fp where fp.organization_id = v_org
@@ -110,8 +153,9 @@ begin
        where b.organization_id = v_org order by b.is_main desc nulls last, b.id limit 1;
       insert into public.journal_entries (organization_id, branch_id, entry_date, memo, posted, source,
                                           source_id, fact_key, created_at, updated_at)
-      values (v_org, v_branch, v_fecha::timestamptz, 'Reclasificación a auxiliar de movimiento',
-              true, 'reclasificacion_titulo', array_to_string(v_ok, ','), 'p1_reclasif_auxiliar', now(), now())
+      values (v_org, v_branch, (v_fecha::text || ' 12:00 America/Bogota')::timestamptz, 'Reclasificación a auxiliar de movimiento',
+              true, 'reclasificacion_titulo', array_to_string(v_ok, ','),
+              'p1_reclasif_auxiliar' || case when v_previos > 0 then ':r' || v_previos::text else '' end, now(), now())
       returning id into v_entry;
 
       -- Entra al auxiliar (mismo signo del saldo) y sale de la cuenta de título (signo contrario).
@@ -132,6 +176,15 @@ begin
       select '134060', v_org, 'revision_iva', v_entry::text, s.padre, s.saldo::text, s.aux
         from p1_saldos s where s.padre like '2408%';
       v_rec := v_rec + 1;
+      v_creado := true;
+    end if;
+
+    -- Saldo sin asiento de reclasificación (no debería pasar): ese padre NO se titula.
+    if not v_creado then
+      for r in select distinct s.padre from p1_saldos s loop
+        raise notice '134060: org % cuenta % con saldo y sin asiento de reclasificación; NO se titula', v_org, r.padre;
+        v_ok := array_remove(v_ok, r.padre);
+      end loop;
     end if;
 
     -- Borradores: se repuntan directamente al auxiliar destino.

@@ -27,6 +27,7 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { SearchInput } from '@/components/kit/SearchInput';
 import { CampoTerceroAsiento } from '../CampoTerceroAsiento';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 
 interface JournalLineInput {
   account_code: string;
@@ -69,6 +70,7 @@ export function AsientosPage() {
   const [centros, setCentros] = useState<{ id: string; code: string; name: string }[]>([]);
   const [distribuciones, setDistribuciones] = useState<{ id: string; nombre: string }[]>([]);
   const [centroDefecto, setCentroDefecto] = useState('');
+  const [avisoTercero, setAvisoTercero] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -199,10 +201,13 @@ export function AsientosPage() {
       return;
     }
 
+    setAvisoTercero(null);
     for (const linea of validLines) {
       const cuenta = cuentas.find((c) => c.account_code === linea.account_code);
-      if (cuenta?.requiere_tercero && !linea.tercero_nit.trim()) {
-        toast.error(`La cuenta ${linea.account_code} exige el NIT o la cédula del tercero`);
+      // El nombre alcanza para identificar al tercero. El NIT se pide, pero no
+      // traba el asiento: un proveedor sin documento no puede frenar la operación.
+      if (cuenta?.requiere_tercero && !linea.tercero_nit.trim() && !linea.tercero_nombre.trim()) {
+        setAvisoTercero(`La cuenta ${linea.account_code} necesita el nombre del tercero. El NIT se puede completar después.`);
         return;
       }
       const modoCentro = cuenta?.centro_costo_modo ?? (cuenta?.requiere_centro_costo ? 'obligatorio' : null);
@@ -642,7 +647,9 @@ export function AsientosPage() {
                                         : 'Centro de costo'}
                                     </option>
                                     {centros.map((cc) => (
-                                      <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
+                                      <option key={cc.id} value={cc.id}>
+                                        {cc.code} — {cc.name}{cc.id === centroDefecto ? ' (por defecto)' : ''}
+                                      </option>
                                     ))}
                                   </select>
                                   <select
@@ -691,6 +698,19 @@ export function AsientosPage() {
               </div>
             </div>
           </div>
+          {avisoTercero && (
+            <AvisoTonal tono="peligro" titulo={avisoTercero} className="mx-6 mb-2" />
+          )}
+          {!avisoTercero && formData.lines.some((linea) => {
+            const cuenta = cuentas.find((c) => c.account_code === linea.account_code);
+            return !!cuenta?.requiere_tercero && !linea.tercero_nit.trim() && !!linea.tercero_nombre.trim();
+          }) && (
+            <AvisoTonal
+              tono="advertencia"
+              titulo="Este tercero no tiene NIT. El asiento se guarda con el nombre y el documento se puede completar después."
+              className="mx-6 mb-2"
+            />
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)} className="dark:border-gray-600">
               Cancelar

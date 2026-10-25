@@ -428,7 +428,6 @@ export class BancosService {
           opening_balance: data.opening_balance,
           closing_balance: data.opening_balance,
           statement_balance: data.statement_balance || null,
-          difference: 0,
           status: 'draft',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

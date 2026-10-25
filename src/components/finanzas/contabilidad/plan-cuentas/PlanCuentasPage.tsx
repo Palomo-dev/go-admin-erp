@@ -5,26 +5,23 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import {
-  BookOpen, Plus, Loader2, Edit, Trash2, ChevronRight, ChevronDown,
-  ArrowLeft, Download, Upload, GitBranch,
+  BookOpen, Plus, Edit, Trash2, ChevronRight, ChevronDown,
+  ArrowLeft, Download, Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ContabilidadService, ChartAccount, type NaturalezaCuenta, type NivelCuenta } from '../ContabilidadService';
-import { presentacionDeCodigo, type PresentacionNiif } from '@/lib/finanzas/pucPrefijo';
+import { presentacionDeCodigo } from '@/lib/finanzas/pucPrefijo';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { SearchInput } from '@/components/kit/SearchInput';
 import { COLUMNAS_PLAN, interpretarFilas } from '@/lib/finanzas/pucExcel';
 import { armarArbolPlan, esMovimientoVisible, type NodoPlan } from '@/lib/finanzas/planCuentasVista';
 import {
-  esCodigoPuc, naturalezaDe, nivelDe, nombreNivel, siguienteCodigo, validarHijo,
+  claseDe, esCodigoPuc, naturalezaDe, nivelDe, nombreNivel, siguienteCodigo, tipoDeClase, validarHijo,
 } from '@/lib/finanzas/pucJerarquia';
 
 const ACCOUNT_TYPES = [
@@ -52,36 +49,45 @@ function modoCentroDe(codigo: string, modo?: string | null, requiere?: boolean |
   return ['4', '5', '6', '7'].includes(codigo[0] ?? '') ? 'obligatorio' : 'no_aplica';
 }
 
-const PRESENTACIONES: { value: PresentacionNiif | 'heredar'; label: string }[] = [
-  { value: 'heredar', label: 'Según el grupo' },
-  { value: 'corriente', label: 'Corriente' },
-  { value: 'no_corriente', label: 'No corriente' },
-  { value: 'segun_plazo', label: 'Según plazo' },
-];
-
-interface Formulario {
-  account_code: string;
-  name: string;
-  type: ChartAccount['type'];
-  parent_code: string;
-  description: string;
-  naturaleza: NaturalezaCuenta;
-  presentacion_niif: PresentacionNiif | '';
-  requiere_tercero: boolean;
-  centro_costo_modo: ModoCentroCosto;
+interface FilaNueva {
+  padre: string | null;
+  codigo: string;
+  nombre: string;
+  error: string | null;
 }
 
-const FORMULARIO_VACIO: Formulario = {
-  account_code: '',
-  name: '',
-  type: 'asset',
-  parent_code: '',
-  description: '',
-  naturaleza: 'debito',
-  presentacion_niif: '',
-  requiere_tercero: false,
-  centro_costo_modo: 'no_aplica',
-};
+/** Primera clase libre (1 a 9). La raíz no tiene padre al que aplicarle siguienteCodigo. */
+function siguienteClase(existentes: readonly string[]): string | null {
+  const usadas = new Set(existentes.filter((codigo) => codigo.length === 1));
+  for (let digito = 1; digito <= 9; digito += 1) {
+    const codigo = String(digito);
+    if (!usadas.has(codigo)) return codigo;
+  }
+  return null;
+}
+
+function errorDeCodigo(padre: string | null, codigo: string, nombre: string, existentes: readonly string[]): string | null {
+  if (!nombre.trim()) return 'Escribe el nombre';
+  if (!esCodigoPuc(codigo)) return 'El código usa solo dígitos y la longitud del PUC';
+  if (existentes.includes(codigo)) return 'Ese código ya existe';
+  if (!padre) {
+    return nivelDe(codigo) === 'clase' ? null : 'En la raíz solo cabe una clase de un dígito';
+  }
+  const error = validarHijo(padre, codigo);
+  if (error === 'prefijo') return 'El código tiene que empezar por el padre';
+  if (error) return 'El código mide el nivel siguiente';
+  return null;
+}
+
+function teclaFila(evento: React.KeyboardEvent, guardar: () => void, cancelar: () => void) {
+  if (evento.key === 'Enter') {
+    evento.preventDefault();
+    guardar();
+  } else if (evento.key === 'Escape') {
+    evento.preventDefault();
+    cancelar();
+  }
+}
 
 function mensajeCuenta(error: unknown): string {
   const texto = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
@@ -96,17 +102,15 @@ export function PlanCuentasPage() {
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<ChartAccount | null>(null);
-  const [padreFijo, setPadreFijo] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [conLineas, setConLineas] = useState<Set<string>>(new Set());
+  const [filaNueva, setFilaNueva] = useState<FilaNueva | null>(null);
+  const [editando, setEditando] = useState<{ codigo: string; nombre: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterNivel, setFilterNivel] = useState('all');
   const [filterNaturaleza, setFilterNaturaleza] = useState('all');
   const [filterMovimiento, setFilterMovimiento] = useState('all');
   const [filterActivas, setFilterActivas] = useState('all');
-  const [formData, setFormData] = useState<Formulario>(FORMULARIO_VACIO);
 
   useEffect(() => {
     loadCuentas();
@@ -115,8 +119,12 @@ export function PlanCuentasPage() {
   const loadCuentas = async () => {
     try {
       setIsLoading(true);
-      const data = await ContabilidadService.obtenerPlanCuentas();
+      const [data, conMovimiento] = await Promise.all([
+        ContabilidadService.obtenerPlanCuentas(),
+        ContabilidadService.cuentasConLineas().catch(() => [] as string[]),
+      ]);
       setCuentas(data);
+      setConLineas(new Set(conMovimiento));
     } catch (error) {
       console.error('Error cargando cuentas:', error);
       toast.error('Error al cargar el plan de cuentas');
@@ -162,137 +170,77 @@ export function PlanCuentasPage() {
   const expandAll = () => setExpandedNodes(new Set(cuentas.map((c) => c.account_code)));
   const collapseAll = () => setExpandedNodes(new Set());
 
-  const resetForm = () => {
-    setFormData(FORMULARIO_VACIO);
-    setEditingAccount(null);
-    setPadreFijo(false);
-  };
+  const codigos = cuentas.map((cuenta) => cuenta.account_code);
 
-  const handleOpenDialog = (account?: ChartAccount) => {
-    setPadreFijo(false);
-    if (account) {
-      setEditingAccount(account);
-      setFormData({
-        account_code: account.account_code,
-        name: account.name,
-        type: account.type,
-        parent_code: account.parent_code || '',
-        description: account.description || '',
-        naturaleza: naturalezaDe(account.account_code, account.naturaleza) ?? 'debito',
-        presentacion_niif: account.presentacion_niif ?? '',
-        requiere_tercero: account.requiere_tercero ?? false,
-        centro_costo_modo: modoCentroDe(account.account_code, account.centro_costo_modo, account.requiere_centro_costo),
+  const abrirAgregar = (padre: string | null) => {
+    const codigo = padre ? siguienteCodigo(padre, codigos) : siguienteClase(codigos);
+    if (!codigo) return;
+    setEditando(null);
+    setFilaNueva({ padre, codigo, nombre: '', error: null });
+    if (padre) {
+      setExpandedNodes((prev) => {
+        const siguiente = new Set(prev);
+        siguiente.add(padre);
+        return siguiente;
       });
-    } else {
-      resetForm();
     }
-    setShowDialog(true);
   };
 
-  const abrirSiguienteNivel = (padre: ChartAccount) => {
-    const codigo = siguienteCodigo(padre.account_code, cuentas.map((c) => c.account_code));
-    if (!codigo) {
-      toast.error('No hay un código libre en el nivel siguiente');
+  const guardarNueva = async () => {
+    if (!filaNueva) return;
+    const codigo = filaNueva.codigo.trim();
+    const nombre = filaNueva.nombre.trim();
+    const error = errorDeCodigo(filaNueva.padre, codigo, nombre, codigos);
+    if (error) {
+      setFilaNueva({ ...filaNueva, error });
       return;
     }
-    setEditingAccount(null);
-    setPadreFijo(true);
-    setFormData({
-      account_code: codigo,
-      name: '',
-      type: padre.type,
-      parent_code: padre.account_code,
-      description: '',
-      naturaleza: naturalezaDe(codigo, null) ?? 'debito',
-      presentacion_niif: presentacionDeCodigo(codigo) ?? '',
-      requiere_tercero: padre.requiere_tercero ?? false,
-      centro_costo_modo: modoCentroDe(codigo),
-    });
-    setShowDialog(true);
-  };
-
-  const handleSave = async () => {
-    if (!formData.account_code || !formData.name) {
-      toast.error('El código y el nombre son requeridos');
-      return;
-    }
-    const codigo = formData.account_code.trim();
-    if (!editingAccount && !esCodigoPuc(codigo)) {
-      toast.error('El código nuevo usa solo dígitos y la longitud del PUC');
-      return;
-    }
-    if (!editingAccount && nivelDe(codigo) !== 'clase' && !formData.parent_code) {
-      toast.error('Indica la cuenta padre');
-      return;
-    }
-    const padreNuevo = formData.parent_code || null;
-    const padreCambio = !editingAccount || padreNuevo !== (editingAccount.parent_code || null);
-    if (padreCambio && formData.parent_code && esCodigoPuc(codigo)) {
-      const error = validarHijo(formData.parent_code, codigo);
-      if (error) {
-        toast.error('El código tiene que empezar por el padre y medir el nivel siguiente');
-        return;
-      }
-    }
-
+    const padre = filaNueva.padre ? cuentas.find((cuenta) => cuenta.account_code === filaNueva.padre) : undefined;
+    const nivel = nivelDe(codigo);
+    const esTitulo = nivel === 'clase' || nivel === 'grupo';
+    const modo = modoCentroDe(codigo, padre?.centro_costo_modo, padre?.requiere_centro_costo);
     try {
-      setIsProcessing(true);
-      const payload = {
-        name: formData.name,
-        type: formData.type,
-        parent_code: formData.parent_code || null,
-        description: formData.description || null,
-        naturaleza: formData.naturaleza,
-        presentacion_niif: formData.presentacion_niif || null,
-        requiere_tercero: formData.requiere_tercero,
-        centro_costo_modo: formData.centro_costo_modo,
-        requiere_centro_costo: formData.centro_costo_modo === 'obligatorio',
-      };
-      const esTitulo = nivelDe(codigo) === 'clase' || nivelDe(codigo) === 'grupo';
-      if (editingAccount) {
-        await ContabilidadService.actualizarCuenta(editingAccount.account_code, {
-          ...payload,
-          ...(esTitulo ? { es_movimiento: false } : {}),
-        });
-        toast.success('Cuenta actualizada');
-      } else {
-        await ContabilidadService.crearCuenta({
-          ...payload,
-          account_code: codigo,
-          es_movimiento: esTitulo ? false : true,
-        });
-        toast.success('Cuenta creada');
-      }
-      setShowDialog(false);
-      resetForm();
-      loadCuentas();
+      await ContabilidadService.crearCuenta({
+        account_code: codigo,
+        name: nombre,
+        type: padre?.type ?? tipoDeClase(claseDe(codigo) ?? 1),
+        parent_code: filaNueva.padre,
+        naturaleza: naturalezaDe(codigo, padre?.naturaleza) ?? 'debito',
+        es_movimiento: !esTitulo,
+        requiere_tercero: padre?.requiere_tercero ?? false,
+        centro_costo_modo: modo,
+        requiere_centro_costo: modo === 'obligatorio',
+        presentacion_niif: presentacionDeCodigo(codigo) ?? null,
+      });
+      setFilaNueva(null);
+      toast.success('Cuenta creada');
+      await loadCuentas();
+    } catch (errorGuardar) {
+      setFilaNueva({ ...filaNueva, codigo, nombre, error: mensajeCuenta(errorGuardar) });
+    }
+  };
+
+  const guardarNombre = async (codigo: string, nombre: string) => {
+    const limpio = nombre.trim();
+    if (!limpio) return;
+    try {
+      await ContabilidadService.actualizarCuenta(codigo, { name: limpio });
+      setEditando(null);
+      await loadCuentas();
     } catch (error) {
-      console.error('Error guardando cuenta:', error);
       toast.error(mensajeCuenta(error));
-    } finally {
-      setIsProcessing(false);
     }
   };
 
   const handleDelete = async (code: string) => {
-    if (!confirm('Si la cuenta no tiene movimientos se elimina. Si los tiene, queda inactiva.')) return;
+    if (hijos.has(code) || conLineas.has(code)) return;
     try {
       await ContabilidadService.eliminarCuenta(code);
       toast.success('Cuenta eliminada');
+      await loadCuentas();
     } catch (error) {
-      const texto = mensajeCuenta(error);
-      if (texto.includes('movimientos')) {
-        try {
-          await ContabilidadService.actualizarCuenta(code, { is_active: false });
-          toast.success('La cuenta tiene movimientos. Quedó inactiva.');
-        } catch (deactivateError) {
-          toast.error(mensajeCuenta(deactivateError));
-        }
-      } else {
-        toast.error('No se pudo eliminar. Puede tener cuentas hijas.');
-      }
+      toast.error('No se puede borrar: tiene movimientos o cuentas hijas.');
     }
-    loadCuentas();
   };
 
   const exportar = () => {
@@ -366,15 +314,49 @@ export function PlanCuentasPage() {
     return <Badge className={t?.color || ''}>{t?.label || type}</Badge>;
   };
 
+  const filaDeAgregar = (padre: string | null, level: number) => {
+    if (!filaNueva || filaNueva.padre !== padre) return null;
+    return (
+      <div
+        className="my-1 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2"
+        style={{ marginLeft: `${level * 24}px` }}
+      >
+        <Input
+          value={filaNueva.codigo}
+          aria-label="Código"
+          aria-invalid={filaNueva.error ? true : undefined}
+          onChange={(evento) => setFilaNueva({ ...filaNueva, codigo: evento.target.value.trim(), error: null })}
+          onKeyDown={(evento) => teclaFila(evento, () => { void guardarNueva(); }, () => setFilaNueva(null))}
+          className="h-8 w-28 font-mono"
+        />
+        <Input
+          value={filaNueva.nombre}
+          aria-label="Nombre"
+          autoFocus
+          onChange={(evento) => setFilaNueva({ ...filaNueva, nombre: evento.target.value, error: null })}
+          onKeyDown={(evento) => teclaFila(evento, () => { void guardarNueva(); }, () => setFilaNueva(null))}
+          className="h-8 min-w-[12rem] flex-1"
+        />
+        <Button type="button" size="sm" onClick={() => { void guardarNueva(); }}>Guardar</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setFilaNueva(null)}>Cancelar</Button>
+        {filaNueva.error && (
+          <p role="alert" className="w-full text-xs text-danger-text">{filaNueva.error}</p>
+        )}
+      </div>
+    );
+  };
+
   const renderNode = (node: NodoPlan<ChartAccount>, level: number = 0) => {
     const hasChildren = node.children.length > 0;
-    const isExpanded = expandedNodes.has(node.cuenta.account_code);
+    const isExpanded = expandedNodes.has(node.cuenta.account_code) || filaNueva?.padre === node.cuenta.account_code;
     const nivel = node.cuenta.nivel ?? nivelDe(node.cuenta.account_code);
     const naturaleza = naturalezaDe(node.cuenta.account_code, node.cuenta.naturaleza);
-    const movimiento = esMovimientoVisible(node.cuenta.es_movimiento, hijos.has(node.cuenta.account_code) || hasChildren);
-    const siguiente = esCodigoPuc(node.cuenta.account_code)
-      ? siguienteCodigo(node.cuenta.account_code, cuentas.map((c) => c.account_code))
-      : null;
+    const tieneHijas = hijos.has(node.cuenta.account_code) || hasChildren;
+    const movimiento = esMovimientoVisible(node.cuenta.es_movimiento, tieneHijas);
+    const puedeAgregar = esCodigoPuc(node.cuenta.account_code)
+      && siguienteCodigo(node.cuenta.account_code, codigos) != null;
+    const bloqueada = tieneHijas || conLineas.has(node.cuenta.account_code);
+    const editandoEsta = editando?.codigo === node.cuenta.account_code;
 
     return (
       <div key={node.cuenta.account_code}>
@@ -383,19 +365,41 @@ export function PlanCuentasPage() {
           style={{ marginLeft: `${level * 24}px` }}
         >
           <button
-            onClick={() => hasChildren && toggleExpand(node.cuenta.account_code)}
-            className={`w-5 h-5 flex items-center justify-center shrink-0 ${hasChildren ? 'cursor-pointer' : 'invisible'}`}
+            type="button"
+            onClick={() => (hasChildren || filaNueva?.padre === node.cuenta.account_code) && toggleExpand(node.cuenta.account_code)}
+            className={`w-5 h-5 flex items-center justify-center shrink-0 ${(hasChildren || filaNueva?.padre === node.cuenta.account_code) ? 'cursor-pointer' : 'invisible'}`}
           >
-            {hasChildren && (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
+            {(hasChildren || filaNueva?.padre === node.cuenta.account_code) && (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
           </button>
           <span className="font-mono text-sm text-gray-600 dark:text-gray-400 w-28 shrink-0">
             {node.cuenta.account_code}
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-gray-900 dark:text-white font-medium break-words ${node.cuenta.is_active === false ? 'line-through opacity-60' : ''}`}>
-                {node.cuenta.name}
-              </span>
+              {editandoEsta ? (
+                <Input
+                  value={editando.nombre}
+                  aria-label={`Nombre de ${node.cuenta.account_code}`}
+                  autoFocus
+                  onChange={(evento) => setEditando({ codigo: node.cuenta.account_code, nombre: evento.target.value })}
+                  onKeyDown={(evento) => teclaFila(
+                    evento,
+                    () => { void guardarNombre(node.cuenta.account_code, editando.nombre); },
+                    () => setEditando(null),
+                  )}
+                  className="h-8 max-w-sm"
+                />
+              ) : (
+                <span
+                  className={`text-gray-900 dark:text-white font-medium break-words ${node.cuenta.is_active === false ? 'line-through opacity-60' : ''}`}
+                  onDoubleClick={() => {
+                    setFilaNueva(null);
+                    setEditando({ codigo: node.cuenta.account_code, nombre: node.cuenta.name });
+                  }}
+                >
+                  {node.cuenta.name}
+                </span>
+              )}
               <Badge variant="outline">{nombreNivel(nivel)}</Badge>
               {naturaleza && <Badge variant="outline">{NATURALEZAS.find((n) => n.value === naturaleza)?.label}</Badge>}
               {!movimiento && <Badge variant="outline">Título</Badge>}
@@ -404,26 +408,53 @@ export function PlanCuentasPage() {
           </div>
           {getTypeBadge(node.cuenta.type)}
           <div className="flex gap-1 shrink-0">
-            {siguiente && (
-              <Button variant="ghost" size="sm" onClick={() => abrirSiguienteNivel(node.cuenta)} className="h-8 px-2" title={nombreNivel(nivelDe(siguiente))}>
-                <GitBranch className="h-4 w-4 mr-1" />
-                {nombreNivel(nivelDe(siguiente))}
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(node.cuenta)} className="h-8 w-8 p-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Editar nombre de ${node.cuenta.account_code}`}
+              onClick={() => {
+                setFilaNueva(null);
+                setEditando({ codigo: node.cuenta.account_code, nombre: node.cuenta.name });
+              }}
+              className="h-8 w-8 p-0"
+            >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleDelete(node.cuenta.account_code)} className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Eliminar ${node.cuenta.account_code}`}
+              disabled={bloqueada}
+              title={bloqueada ? 'Tiene movimientos o cuentas hijas' : 'Eliminar'}
+              onClick={() => { void handleDelete(node.cuenta.account_code); }}
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 disabled:opacity-40"
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
         {isExpanded && node.children.map((child) => renderNode(child, level + 1))}
+        {isExpanded && puedeAgregar && (
+          filaNueva?.padre === node.cuenta.account_code
+            ? filaDeAgregar(node.cuenta.account_code, level + 1)
+            : (
+              <button
+                type="button"
+                className="flex items-center gap-1 px-3 py-2 text-sm text-fg-secondary"
+                style={{ marginLeft: `${(level + 1) * 24}px` }}
+                onClick={() => abrirAgregar(node.cuenta.account_code)}
+              >
+                <Plus className="h-4 w-4" /> Agregar
+              </button>
+            )
+        )}
       </div>
     );
   };
 
-  if (isLoading && !showDialog) {
+  if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />
@@ -433,7 +464,7 @@ export function PlanCuentasPage() {
     );
   }
 
-  const nivelSugerido = esCodigoPuc(formData.account_code) ? nombreNivel(nivelDe(formData.account_code)) : null;
+  const puedeClase = siguienteClase(codigos) != null;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -474,10 +505,6 @@ export function PlanCuentasPage() {
                 }}
               />
             </label>
-          </Button>
-          <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva cuenta
           </Button>
         </div>
       </div>
@@ -557,138 +584,22 @@ export function PlanCuentasPage() {
             {tree.length > 0 ? tree.map((node) => renderNode(node)) : (
               <p className="text-center text-gray-500 py-8">No se encontraron cuentas</p>
             )}
+            {puedeClase && (
+              filaNueva?.padre === null
+                ? filaDeAgregar(null, 0)
+                : (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 px-3 py-2 text-sm text-fg-secondary"
+                    onClick={() => abrirAgregar(null)}
+                  >
+                    <Plus className="h-4 w-4" /> Agregar
+                  </button>
+                )
+            )}
           </div>
         </CardContent>
       </Card>
-
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">
-              {editingAccount ? 'Editar cuenta' : padreFijo ? `Nueva ${nivelSugerido?.toLowerCase() ?? 'cuenta'}` : 'Nueva cuenta contable'}
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              {nivelSugerido ? `Nivel: ${nivelSugerido}. ` : ''}
-              El código del hijo empieza por el del padre y tiene la longitud del nivel siguiente.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Código</Label>
-                <Input
-                  value={formData.account_code}
-                  onChange={(e) => setFormData({ ...formData, account_code: e.target.value.trim() })}
-                  placeholder="14350501"
-                  disabled={!!editingAccount}
-                  className="dark:bg-gray-900 dark:border-gray-600 font-mono"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as ChartAccount['type'] })}>
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ACCOUNT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Nombre</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Cuenta padre</Label>
-                <Select
-                  value={formData.parent_code || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, parent_code: value === 'none' ? '' : value })}
-                  disabled={padreFijo}
-                >
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue placeholder="Sin cuenta padre" /></SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    <SelectItem value="none">Sin cuenta padre</SelectItem>
-                    {cuentas.filter((c) => c.account_code !== formData.account_code).map((c) => (
-                      <SelectItem key={c.account_code} value={c.account_code}>{c.account_code} - {c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Naturaleza</Label>
-                <Select value={formData.naturaleza} onValueChange={(value) => setFormData({ ...formData, naturaleza: value as NaturalezaCuenta })}>
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {NATURALEZAS.map((n) => <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Presentación NIIF</Label>
-              <Select
-                value={formData.presentacion_niif || 'heredar'}
-                onValueChange={(value) => setFormData({
-                  ...formData,
-                  presentacion_niif: value === 'heredar' ? '' : value as PresentacionNiif,
-                })}
-              >
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PRESENTACIONES.map((opcion) => (
-                    <SelectItem key={opcion.value} value={opcion.value}>{opcion.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                No cambia el nombre del grupo. 11 sigue siendo Disponible.
-              </p>
-            </div>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" checked={formData.requiere_tercero} onChange={(e) => setFormData({ ...formData, requiere_tercero: e.target.checked })} />
-                Requiere tercero
-              </label>
-              <div className="space-y-2">
-                <Label>Centro de costo</Label>
-                <Select
-                  value={formData.centro_costo_modo}
-                  onValueChange={(value) => setFormData({ ...formData, centro_costo_modo: value as ModoCentroCosto })}
-                >
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="obligatorio">Obligatorio</SelectItem>
-                    <SelectItem value="opcional">Opcional</SelectItem>
-                    <SelectItem value="no_aplica">No aplica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Descripción</Label>
-              <RichTextEditor
-                value={formData.description}
-                onChange={(html) => setFormData({ ...formData, description: html })}
-                placeholder="Descripción opcional"
-                className="dark:bg-gray-900 dark:border-gray-600"
-                minHeight={60}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)} className="dark:border-gray-600">Cancelar</Button>
-            <Button onClick={handleSave} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-700">
-              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingAccount ? 'Guardar cambios' : 'Crear cuenta'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

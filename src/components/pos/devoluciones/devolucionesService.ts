@@ -32,6 +32,18 @@ interface ProductoFila {
   qty_decimals?: number | null;
 }
 
+interface ItemDevolucionCrudo {
+  id?: string;
+  product_id?: number;
+  product_name?: string;
+  reason?: string;
+  reason_id?: number | null;
+  return_quantity?: number;
+  original_quantity?: number;
+  original_price?: number;
+  refund_amount?: number;
+}
+
 interface VentaFila {
   id: string;
   customer_id: string | null;
@@ -685,7 +697,7 @@ export class DevolucionesService {
       // Primero obtener devoluciones básicas
       let query = supabase
         .from('returns')
-        .select('id, organization_id, branch_id, sale_id, user_id, total_refund, reason, return_date, status, return_items, created_at, updated_at')
+        .select('id, organization_id, branch_id, sale_id, user_id, total_refund, reason, reason_id, return_date, status, return_items, created_at, updated_at')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
@@ -772,6 +784,55 @@ export class DevolucionesService {
         }
       }
 
+      const itemsCrudos = returnsData.flatMap((fila) =>
+        Array.isArray(fila.return_items) ? fila.return_items as ItemDevolucionCrudo[] : [],
+      );
+      const productIds = [...new Set(itemsCrudos.map((item) => Number(item.product_id)).filter((id) => Number.isFinite(id) && id > 0))];
+      const nombresProducto = new Map<number, string>();
+      if (productIds.length > 0) {
+        const { data: productos } = await supabase
+          .from('products')
+          .select('id, name')
+          .eq('organization_id', organizationId)
+          .in('id', productIds);
+        for (const producto of productos ?? []) {
+          nombresProducto.set(Number(producto.id), String(producto.name ?? ''));
+        }
+      }
+      const { data: motivos } = await supabase
+        .from('return_reasons')
+        .select('id, code, name')
+        .eq('organization_id', organizationId);
+      const catalogoMotivos = (motivos ?? []) as { id: number; code: string; name: string }[];
+      const nombreMotivo = (reasonId: number | null | undefined, texto: string | null | undefined): string => {
+        if (reasonId != null) {
+          const porId = catalogoMotivos.find((motivo) => motivo.id === Number(reasonId));
+          if (porId?.name) return porId.name;
+        }
+        const crudo = (texto ?? '').trim();
+        if (!crudo) return '';
+        const porCodigo = catalogoMotivos.find((motivo) => motivo.code.toUpperCase() === crudo.toUpperCase());
+        return porCodigo?.name || crudo;
+      };
+      const itemsConNombre = (crudos: unknown, reasonId: number | null): Return['return_items'] => {
+        const lista = Array.isArray(crudos) ? crudos as ItemDevolucionCrudo[] : [];
+        return lista.map((item) => {
+          const productId = Number(item.product_id);
+          return {
+            id: String(item.id ?? ''),
+            product_id: Number.isFinite(productId) ? productId : 0,
+            product_name: (item.product_name && String(item.product_name).trim())
+              || nombresProducto.get(productId)
+              || '',
+            original_quantity: Number(item.original_quantity) || Number(item.return_quantity) || 0,
+            return_quantity: Number(item.return_quantity) || 0,
+            original_price: Number(item.original_price) || 0,
+            refund_amount: Number(item.refund_amount) || 0,
+            reason: nombreMotivo(item.reason_id ?? reasonId, item.reason),
+          };
+        });
+      };
+
       const transformedData: Return[] = returnsData.map(returnItem => {
         // Encontrar venta relacionada
         const sale = salesData.find(s => s.id === returnItem.sale_id);
@@ -796,10 +857,10 @@ export class DevolucionesService {
           total_refund: desglose.total,
           refund_tax_amount: desglose.impuesto,
           refund_total_with_tax: desglose.total,
-          reason: returnItem.reason,
+          reason: nombreMotivo(returnItem.reason_id, returnItem.reason),
           return_date: returnItem.return_date,
           status: returnItem.status,
-          return_items: returnItem.return_items || [],
+          return_items: itemsConNombre(returnItem.return_items, returnItem.reason_id),
           created_at: returnItem.created_at,
           updated_at: returnItem.updated_at,
           // Datos de venta y cliente si existen

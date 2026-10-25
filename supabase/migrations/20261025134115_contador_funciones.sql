@@ -3167,6 +3167,7 @@ $function$;
 --      NC con su fecha y esta función no hace nada.) Excepción: factura que nunca llegó a la DIAN o fue
 --      rechazada (einvoice_status pending/processing/rejected/failed) → se anula SIN NC y SIN
 --      contra-asiento. einvoice_status NULL = factura no electrónica: contra-asiento normal.
+--      [SUPERADO por 134160: con asiento de venta publicado SIEMPRE hay contra-asiento, sin importar el estado DIAN.]
 --   2) Factura mixta INC+IVA ya NO es falla: el contra-asiento espeja LÍNEA POR LÍNEA el devengo, así
 --      cada impuesto vuelve a su cuenta (INC 24950501, IVA 24080501/24081001) igual que en la venta. Una
 --      línea sin cuenta (account_code vacío) no se reversa: va a pendientes (journal_entry_failures,

@@ -361,15 +361,14 @@ function cuentaDeRegla(item: ReglaAsiento, config: ConfigAsientos, tarifa?: numb
   if (ladoIva) {
     // 2408 es título: auxiliar por lado y tarifa (24080501/02 generado, 24081001/02 descontable).
     const base = reemplazo || (ladoIva === 'generado' ? '240805' : '240810');
-    return cuentaPuc(cuentaAuxiliarDeTitulo(base, { mapeoSede: config.mapeoSede, tarifa, lado: ladoIva, tipoOrg: config.tipoOrg },
-      ladoIva === 'generado' ? '24080501' : '24081001'));
+    return cuentaPuc(cuentaAuxiliarDeTitulo(base, { mapeoSede: config.mapeoSede, tarifa, lado: ladoIva, tipoOrg: config.tipoOrg }));
   }
   if (item.id === 4 || item.id === 33) {
     const base = reemplazo || cuentaCostoPorSector(config.tipoOrg);
     return cuentaPuc(cuentaAuxiliarDeTitulo(base, { mapeoSede: config.mapeoSede, tipoOrg: config.tipoOrg }));
   }
   if (item.id === 25) {
-    return cuentaPuc(cuentaAuxiliarDeTitulo(reemplazo || '530515', { mapeoSede: config.mapeoSede, tipoOrg: config.tipoOrg }, '53051501'));
+    return cuentaPuc(cuentaAuxiliarDeTitulo(reemplazo || '530515', { mapeoSede: config.mapeoSede, tipoOrg: config.tipoOrg }));
   }
   if (reemplazo) return cuentaPuc(reemplazo);
   return cuentaPuc(item.cuenta);

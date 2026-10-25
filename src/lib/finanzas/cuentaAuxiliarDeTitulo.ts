@@ -9,9 +9,22 @@
  *   3) antes de 134060, el código original si el plan dice que sigue siendo de movimiento;
  *   4) el auxiliar.
  * Nunca devuelve una cuenta de grupo: sin plan, solo auxiliares de 8 dígitos; con plan
- * (`cuentasMovimiento`), solo cuentas de movimiento del plan. Si no resuelve, el auxiliar por
- * defecto (del sector en el caso del costo).
+ * (`cuentasMovimiento`), solo cuentas de movimiento del plan.
+ *
+ * QA 25-oct: una cuenta que NO es P1 y no es de movimiento (p. ej. el grupo '5105' configurado como
+ * override) se RECHAZA con `CuentaNoMovimientoError`; nunca se sustituye en silencio por el costo del
+ * sector ni por otro defecto. Tampoco se acepta 6140/614005 fuera de hoteles y restaurantes (61400501
+ * solo existe en orgs type_id 1/2).
  */
+export class CuentaNoMovimientoError extends Error {
+  readonly cuenta: string;
+  constructor(cuenta: string, motivo: string) {
+    super(`La cuenta ${cuenta} no se puede usar: ${motivo}. Configure un auxiliar de movimiento.`);
+    this.name = 'CuentaNoMovimientoError';
+    this.cuenta = cuenta;
+  }
+}
+
 export type LadoIva = 'descontable' | 'generado';
 
 export interface OpcionesResolucion {
@@ -86,8 +99,11 @@ function valida(cuenta: string | null | undefined, op: OpcionesResolucion): cuen
   return /^\d{8}$/.test(c);
 }
 
-export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = {}, defecto?: string): string {
+export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = {}): string {
   const code = codigo.trim();
+  if ((code === '6140' || code === '614005' || BASE_DE[code] === '6140') && !esHotelORestaurante(op.tipoOrg)) {
+    throw new CuentaNoMovimientoError(code, 'el costo 6140 (61400501/61400502) solo existe en hoteles y restaurantes');
+  }
   let base: string;
   let aux: string;
   const estandar = auxiliarEstandar(code, op);
@@ -99,9 +115,12 @@ export function cuentaAuxiliarDeTitulo(codigo: string, op: OpcionesResolucion = 
     // Un auxiliar 19% con tarifa 5% pasa al 5%.
     aux = esCinco(op.tarifa) && (code === '24080501' || code === '24081001') ? code.slice(0, 7) + '2' : code;
   } else {
-    // No es P1: el mapeo de sede no aplica (igual que el SQL). Nunca un grupo.
+    // No es P1: el mapeo de sede no aplica (igual que el SQL). Nunca un grupo, y nunca se cambia
+    // en silencio por otra cuenta: se rechaza para que se corrija la configuración.
     if (valida(code, op)) return code;
-    return defecto ?? AUXILIAR[cuentaCostoPorSector(op.tipoOrg)];
+    throw new CuentaNoMovimientoError(code, op.cuentasMovimiento
+      ? 'no es una cuenta de movimiento del plan de la organización'
+      : 'es una cuenta de grupo o título (se exige un auxiliar de 8 dígitos)');
   }
   // 1) Mapeo de la sede por auxiliar o por la base; al 5% solo el del auxiliar 5%.
   const cinco = aux === '24080502' || aux === '24081002';

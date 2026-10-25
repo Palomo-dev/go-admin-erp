@@ -1,4 +1,4 @@
-import { cuentaAuxiliarDeTitulo, cuentaCostoPorSector } from '../cuentaAuxiliarDeTitulo';
+import { CuentaNoMovimientoError, cuentaAuxiliarDeTitulo, cuentaCostoPorSector } from '../cuentaAuxiliarDeTitulo';
 import { clasificarProductoRestaurante } from '../clasificacionInventarioRestaurante';
 
 describe('cuentaAuxiliarDeTitulo (paridad con fn_cuenta_auxiliar_de_titulo)', () => {
@@ -38,11 +38,18 @@ describe('cuentaAuxiliarDeTitulo (paridad con fn_cuenta_auxiliar_de_titulo)', ()
     }
   });
 
-  test('overrides no P1 nunca salen como grupo: caen al auxiliar por defecto', () => {
-    expect(cuentaAuxiliarDeTitulo('6140')).toBe('61400501');
+  test('subcuentas de título P1 van a su auxiliar; 6140 solo en hoteles/restaurantes', () => {
+    expect(cuentaAuxiliarDeTitulo('6140', { tipoOrg: 1 })).toBe('61400501');
+    expect(cuentaAuxiliarDeTitulo('614005', { tipoOrg: 2 })).toBe('61400501');
     expect(cuentaAuxiliarDeTitulo('613505')).toBe('61350501');
-    expect(cuentaAuxiliarDeTitulo('5105', { tipoOrg: 1 })).toBe('61400501');
-    expect(cuentaAuxiliarDeTitulo('5105', {}, '53051501')).toBe('53051501');
+    expect(() => cuentaAuxiliarDeTitulo('6140')).toThrow(CuentaNoMovimientoError);
+    expect(() => cuentaAuxiliarDeTitulo('61400501', { tipoOrg: 3 })).toThrow(/hoteles y restaurantes/);
+  });
+
+  test('override no P1 de grupo se RECHAZA, nunca se sustituye en silencio', () => {
+    expect(() => cuentaAuxiliarDeTitulo('5105', { tipoOrg: 1 })).toThrow(CuentaNoMovimientoError);
+    expect(() => cuentaAuxiliarDeTitulo('5105')).toThrow(/grupo o título/);
+    expect(() => cuentaAuxiliarDeTitulo('519595', { cuentasMovimiento: new Set(['51959501']) })).toThrow(/plan/);
     expect(cuentaAuxiliarDeTitulo('51050501', { mapeoSede: { '51050501': '99999999' } })).toBe('51050501');
   });
 
@@ -63,8 +70,12 @@ describe('clasificarProductoRestaurante', () => {
   test('comercio siempre 14350101', () => {
     expect(clasificarProductoRestaurante(3, { esIngrediente: true }).cuentaInventario).toBe('14350101');
   });
-  test('ingrediente = insumo 14050501 / 61400501; si se vende solo, revisión', () => {
-    const r = clasificarProductoRestaurante(1, { esIngrediente: true, seVendeSolo: true });
+  test('separación insumo desactivada por defecto (orgs existentes): el insumo sigue en 14350101', () => {
+    expect(clasificarProductoRestaurante(1, { esIngrediente: true })).toMatchObject({ clase: 'insumo', cuentaInventario: '14350101', cuentaCosto: '61400501' });
+    expect(clasificarProductoRestaurante(1, { esIngrediente: true }, undefined, false).cuentaInventario).toBe('14350101');
+  });
+  test('con separación activa: ingrediente = insumo 14050501 / 61400501; si se vende solo, revisión', () => {
+    const r = clasificarProductoRestaurante(1, { esIngrediente: true, seVendeSolo: true }, undefined, true);
     expect(r).toMatchObject({ clase: 'insumo', cuentaInventario: '14050501', cuentaCosto: '61400501' });
     expect(r.revisar).not.toBeNull();
   });

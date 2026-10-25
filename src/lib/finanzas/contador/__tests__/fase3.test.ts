@@ -45,7 +45,12 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       [4, '61350501', 'debito', 40000],
       [5, '1435', 'credito', 40000],
     ]);
-    const cambiada = configurarRegla(CONFIG_ASIENTOS_INICIAL, 4, '6140');
+    // 6140 solo existe en hoteles y restaurantes: el override se prueba con configuración de RESTAURANTE.
+    const restaurante: ConfigAsientos = { ...CONFIG_ASIENTOS_INICIAL, tipoOrg: 1 };
+    const cambiada = configurarRegla(restaurante, 4, '6140');
+    // En comercio, 6140 (61400501 no existe) y un grupo no P1 se rechazan, no se sustituyen.
+    expect(() => armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }, configurarRegla(CONFIG_ASIENTOS_INICIAL, 4, '6140'))).toThrow(/hoteles y restaurantes/);
+    expect(() => armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }, configurarRegla(restaurante, 4, '5105'))).toThrow(/grupo o título/);
     const lineas = espera(armarAsiento('venta_contado', { total: 1190, base: 1000, iva: 190, costo: 400 }, cambiada), [
       [1, '1105', 'debito', 119000],
       [2, '4135', 'credito', 100000],

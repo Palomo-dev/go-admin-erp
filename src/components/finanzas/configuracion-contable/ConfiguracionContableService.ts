@@ -25,6 +25,60 @@ export interface FalloContable {
   branch_id: number | null;
 }
 
+export interface ConfiguracionInvalida {
+  clave: ClaveContable;
+  branch_id: number | null;
+  account_code: string;
+  motivo: string;
+  /** Auxiliar de movimiento que se sugiere; null si hay que elegirlo a mano. */
+  sugerida: string | null;
+}
+
+/** Auxiliares de movimiento que cuelgan de una cuenta de título. */
+function auxiliaresDe(codigo: string, plan: CuentaContable[]): CuentaContable[] {
+  return plan.filter(
+    (c) => c.account_code !== codigo
+      && c.account_code.startsWith(codigo)
+      && c.es_movimiento !== false
+      && c.is_active !== false,
+  );
+}
+
+/**
+ * Configuraciones que hoy no sirven para un asiento (cuenta de título,
+ * inactiva o fuera del plan). Inventario siempre se sugiere a un auxiliar
+ * 143501xx, nunca 1435 sola ni 1405.
+ */
+export function configuracionesInvalidas(
+  filas: FilaConfiguracion[],
+  plan: CuentaContable[],
+): ConfiguracionInvalida[] {
+  const salida: ConfiguracionInvalida[] = [];
+  for (const fila of filas) {
+    const codigo = fila.account_code;
+    const cuenta = plan.find((c) => c.account_code === codigo);
+    const esInventarioViejo = fila.clave === 'inventario' && (codigo === '1405' || codigo.startsWith('1405'));
+    let motivo: string | null = null;
+    if (!cuenta) motivo = `La cuenta ${codigo} no existe en el plan`;
+    else if (cuenta.is_active === false) motivo = `La cuenta ${codigo} está inactiva`;
+    else if (cuenta.es_movimiento === false) motivo = `La cuenta ${codigo} es de título y no recibe movimientos`;
+    else if (esInventarioViejo) motivo = `El inventario no va en ${codigo}; usa un auxiliar de la 1435`;
+    if (!motivo) continue;
+
+    let sugerida: string | null = null;
+    if (fila.clave === 'inventario') {
+      sugerida = plan.find(
+        (c) => /^143501\d{2}$/.test(c.account_code) && c.es_movimiento !== false && c.is_active !== false,
+      )?.account_code ?? null;
+    } else {
+      const hijos = auxiliaresDe(codigo, plan);
+      sugerida = hijos.length === 1 ? hijos[0].account_code : null;
+    }
+    salida.push({ clave: fila.clave, branch_id: fila.branch_id, account_code: codigo, motivo, sugerida });
+  }
+  return salida;
+}
+
 export class ConfiguracionContableService {
   private static organizacionId(): number {
     const org = obtenerOrganizacionActiva();

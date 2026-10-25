@@ -335,7 +335,6 @@ export function propuestaPorSector(typeId: number | null | undefined): Record<Cl
       propuesta.ventas_productos = '414015';
       propuesta.ventas_servicios = '414095';
       propuesta.costo_ventas = '6140';
-      propuesta.inventario = '1405';
       break;
     case 2:
       propuesta.ventas_productos = '4140';

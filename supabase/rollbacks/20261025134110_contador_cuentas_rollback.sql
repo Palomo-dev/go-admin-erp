@@ -4,6 +4,7 @@
 do $$
 declare r record;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for r in select * from public.p1_puc_bitacora where migracion = '134110' and objeto = 'cuenta_nueva'
             order by length(clave) desc, id desc loop
@@ -84,3 +85,5 @@ begin
 end;
 $function$;
 revoke all on function public.fn_hoteles_asegurar_cuentas_ingreso(integer, text) from public, anon, authenticated;
+
+delete from supabase_migrations.schema_migrations where version = '20261025134110';

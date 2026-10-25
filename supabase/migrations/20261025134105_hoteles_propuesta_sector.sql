@@ -69,3 +69,7 @@ AS $function$
     ('compra_servicio', '2335')
   ) as v(clave, defecto);
 $function$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134105', 'hoteles_propuesta_sector', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

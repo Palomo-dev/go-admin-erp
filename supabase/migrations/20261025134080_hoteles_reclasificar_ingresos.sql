@@ -192,3 +192,7 @@ begin
     end loop;
   end loop;
 end $$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134080', 'hoteles_reclasificar_ingresos', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

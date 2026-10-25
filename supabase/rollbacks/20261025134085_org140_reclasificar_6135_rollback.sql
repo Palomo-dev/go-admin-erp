@@ -38,3 +38,5 @@ exception when others then
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
   raise;
 end $$;
+
+delete from supabase_migrations.schema_migrations where version = '20261025134085';

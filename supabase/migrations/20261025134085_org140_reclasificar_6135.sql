@@ -75,3 +75,7 @@ begin
     update public.chart_of_accounts set es_movimiento = false, updated_at = now() where organization_id = v_org and account_code = '6135';
   end if;
 end $$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134085', 'org140_reclasificar_6135', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

@@ -4,6 +4,7 @@
 do $$
 declare r record;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   for r in select b.organization_id, b.clave from public.p1_puc_bitacora b
             where b.migracion = '134070' and b.objeto = 'cuenta'
@@ -30,3 +31,5 @@ exception when others then
   raise;
 end $$;
 drop function if exists public.fn_hoteles_asegurar_cuentas_ingreso(integer, text);
+
+delete from supabase_migrations.schema_migrations where version = '20261025134070';

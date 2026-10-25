@@ -1,4 +1,4 @@
--- Rollback de 20261025134115: vuelven las versiones anteriores (vivas / 134095 / 134105). Revertir ANTES 134110.
+-- Rollback de 20261025134115: vuelven las versiones anteriores (vivas / 134075 / 134105). Revertir ANTES 134110.
 
 CREATE OR REPLACE FUNCTION public.fn_propuesta_configuracion_sector(p_type_id integer)
  RETURNS TABLE(clave text, account_code text)
@@ -1692,7 +1692,7 @@ begin
     (org_id, 'Cargo Folio Alimentos', 'Cargo a folio por alimentos', 'folio_item', 'created', '1305', v_folio_alim, null, false, 30, true),
     (org_id, 'Cargo Folio Servicios', 'Cargo a folio por servicios', 'folio_item', 'created', '1305', v_folio_serv, null, false, 31, true),
     (org_id, 'Pago Folio', 'Pago de folio', 'folio_payment', 'paid', '1105', '1305', null, false, 30, true),
-    (org_id, 'Comision OTA', 'Comision del canal: gasto contra cuenta por pagar al canal', 'ota_commission', 'confirmed', '52950501', '2335', null, false, 30, true),
+    (org_id, 'Comision OTA', 'Comision del canal: gasto contra cuenta por pagar al canal', 'ota_commission', 'confirmed', '529505', '2335', null, false, 30, true),
     (org_id, 'Mantenimiento', 'Gasto de mantenimiento', 'maintenance', 'created', '5145', '1110', null, false, 30, true),
     (org_id, 'Reserva Confirmada', 'Reserva confirmada', 'reservation', 'confirmed', '1305', '2805', null, false, 30, true),
     (org_id, 'Reserva no presentada', 'El anticipo pasa al ingreso del sector', 'reservation', 'no_show', '2805', v_noshow, null, false, 32, true),
@@ -1704,26 +1704,6 @@ begin
     (org_id, 'Inventario compra', 'Entrada de compra', 'inventory', 'purchase', v_inv, '2205', null, false, 43, true),
     (org_id, 'Inventario faltante', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory', 'loss', v_merma, v_inv, null, false, 44, true),
     (org_id, 'Inventario sobrante', 'Sobrante de inventario', 'inventory', 'gain', v_inv, '42959501', null, false, 45, true);
-
-  -- Comisiones de vendedor (contador 25-oct-2026), todos los tipos. fn_auto_journal_commission elige por
-  -- conditions.vinculo (empleado/externo) y usa el auxiliar si existe; si no, su cuenta de 4 dígitos.
-  --   Empleado: causación D52051801 / C25050501; pago D(pasivo de la causación) / C dinero.
-  --   Externo:  causación D52950501 / C23359501, retención 23652001 (tarifa/umbral en conditions); pago igual.
-  insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
-    debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active, conditions)
-  select org_id, v.n, v.d, 'commission', v.ev, v.deb, v.cre, v.tax, false, v.p, true, v.cond::jsonb
-    from (values
-      ('Comisión Causada Empleado', 'Comisión de vendedor empleado', 'accrued', '52051801', '25050501', null::text, 1,
-       '{"vinculo": "empleado"}'),
-      ('Comisión Causada Externo', 'Comisión de vendedor externo, con retención en la fuente sobre el umbral', 'accrued',
-       '52950501', '23359501', '23652001', 2, '{"vinculo": "externo", "retencion_tarifa": 10, "retencion_umbral": 0}'),
-      ('Pago Comisión Empleado', 'Pago de comisión a vendedor empleado', 'paid', '25050501', '1110', null, 1,
-       '{"vinculo": "empleado"}'),
-      ('Pago Comisión Externo', 'Pago de comisión a vendedor externo (neto de retención)', 'paid', '23359501', '1110', null, 2,
-       '{"vinculo": "externo"}')
-    ) v(n, d, ev, deb, cre, tax, p, cond)
-   where not exists (select 1 from public.accounting_rules x where x.organization_id = org_id
-                       and x.source_type = 'commission' and x.name = v.n);
 
   -- Hoteles (QA Soporte 25-oct): fn_auto_journal_folio_item elige la regla de folio por PRIORIDAD según el origen
   -- del cargo (10 = room/hospedaje, 11 = pos/food/minibar, 12 = resto). Con 30/31 caía al fallback "cualquier regla".
@@ -1793,10 +1773,6 @@ begin
   if v_tipo = 2 then
     perform public.fn_hoteles_asegurar_cuentas_ingreso(p_org, null);
   end if;
-
-  -- Comisiones (134090): 520518/52051801 y 529505/52950501. Con el trigger activo 5205 y 529505 pasan a título;
-  -- la clave 'comisiones' (529505 en la propuesta) cae a su único auxiliar 52950501 más abajo.
-  perform public.fn_comisiones_asegurar_cuentas(p_org, null);
 
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
@@ -1903,3 +1879,554 @@ begin
 end;
 $function$;
 
+-- FIX (A): versiones vivas de las funciones de venta/armado y fuera las auxiliares nuevas.
+CREATE OR REPLACE FUNCTION public.fn_auto_journal_sale()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+    v_rule RECORD;
+    v_entry_id integer;
+    v_base_key text;
+    v_fact_key text;
+    v_prev_id integer;
+    v_i integer;
+    v_branch integer;
+    v_debito text;
+    v_credito text;
+    v_fallo text;
+BEGIN
+    IF NEW.document_type IS NOT NULL AND NEW.document_type NOT IN ('invoice', 'debit_note') THEN
+        RETURN NEW;
+    END IF;
+    -- fase5-cuenta-linea venta
+
+    IF NEW.status IS NULL OR NEW.status NOT IN ('issued', 'paid', 'partial') THEN
+        RETURN NEW;
+    END IF;
+    IF TG_OP = 'UPDATE' AND OLD.status IN ('issued', 'paid', 'partial') THEN
+        RETURN NEW;
+    END IF;
+
+    -- Ya hay un devengo vivo de esta factura (con la clave de la factura o con
+    -- la de su venta): no se crea otro.
+    IF EXISTS (
+        SELECT 1 FROM journal_entries je
+         WHERE je.organization_id = NEW.organization_id
+           AND (je.fact_key LIKE 'accrual:invoice:' || NEW.id::text || '%'
+                OR (NEW.sale_id IS NOT NULL AND je.fact_key LIKE 'accrual:sale:' || NEW.sale_id::text || '%'))
+           AND NOT EXISTS (SELECT 1 FROM journal_entries r
+                            WHERE r.organization_id = je.organization_id AND r.fact_key = 'reversal:' || je.id)
+    ) THEN
+        RETURN NEW;
+    END IF;
+
+    v_base_key := CASE
+        WHEN NEW.sale_id IS NOT NULL THEN 'accrual:sale:' || NEW.sale_id::text
+        ELSE 'accrual:invoice:' || NEW.id::text
+    END;
+
+    v_fact_key := v_base_key;
+    FOR v_i IN 1..20 LOOP
+        SELECT id INTO v_prev_id FROM journal_entries
+        WHERE organization_id = NEW.organization_id AND fact_key = v_fact_key;
+        EXIT WHEN v_prev_id IS NULL;
+        EXIT WHEN NOT EXISTS (
+            SELECT 1 FROM journal_entries
+            WHERE organization_id = NEW.organization_id AND fact_key = 'reversal:' || v_prev_id);
+        v_fact_key := v_base_key || ':reemision:' || v_i;
+    END LOOP;
+
+    SELECT * INTO v_rule FROM fn_regla_devengo_venta(NEW.organization_id);
+
+    IF v_rule.debit_account_code IS NULL THEN
+        PERFORM fn_log_journal_failure(
+            NEW.organization_id, NEW.branch_id, COALESCE(NEW.issue_date, now()),
+            'invoice_sales', NEW.id::text, v_fact_key, NULL, NULL, NEW.total,
+            'no_rule', 'Sin regla contable activa de venta con cuenta de ingreso');
+        RETURN NEW;
+    END IF;
+
+    if public.fn_documento_tiene_cuenta_propia(NEW.organization_id, NEW.id, case when NEW.document_type = 'debit_note' then 'nota_debito' else 'venta' end) then
+      v_entry_id := public.fn_asiento_documento_por_lineas(NEW.id, case when NEW.document_type = 'debit_note' then 'nota_debito' else 'venta' end, v_fact_key);
+    elsif public.fn_bloqueo_tercero_documento(NEW.organization_id, NEW.branch_id, 'invoice_sales', NEW.id) is not null then
+      perform fn_log_journal_failure(
+        NEW.organization_id, NEW.branch_id, COALESCE(NEW.issue_date, now()),
+        'invoice_sales', NEW.id::text, v_fact_key,
+        v_rule.debit_account_code, v_rule.credit_account_code, NEW.total,
+        'tercero_requerido',
+        public.fn_bloqueo_tercero_documento(NEW.organization_id, NEW.branch_id, 'invoice_sales', NEW.id));
+    else
+      -- configuracion_antes_de_sede: sin cuenta propia, primero la configuración.
+      v_branch := NEW.branch_id;
+      IF v_branch IS NULL OR v_branch = 0 OR NOT EXISTS (
+        SELECT 1 FROM branches WHERE id = v_branch AND organization_id = NEW.organization_id
+      ) THEN
+        SELECT id INTO v_branch FROM branches
+        WHERE organization_id = NEW.organization_id AND is_main = true AND is_active = true
+        LIMIT 1;
+        IF v_branch IS NULL THEN
+          SELECT min(id) INTO v_branch FROM branches WHERE organization_id = NEW.organization_id;
+        END IF;
+      END IF;
+
+      SELECT r.cuenta, r.fallo INTO v_debito, v_fallo
+      FROM public.fn_cuenta_configurada_de_sede(
+        NEW.organization_id, v_branch, 'invoice_sales', 'debito', v_rule.debit_account_code
+      ) r;
+      IF v_fallo IS NOT NULL THEN
+        PERFORM fn_log_journal_failure(
+          NEW.organization_id, v_branch, COALESCE(NEW.issue_date, now()),
+          'invoice_sales', NEW.id::text, v_fact_key, v_debito, v_rule.credit_account_code, NEW.total,
+          'cuenta_no_configurada', v_fallo);
+        RETURN NEW;
+      END IF;
+
+      SELECT r.cuenta, r.fallo INTO v_credito, v_fallo
+      FROM public.fn_cuenta_configurada_de_sede(
+        NEW.organization_id, v_branch, 'invoice_sales', 'credito', v_rule.credit_account_code
+      ) r;
+      IF v_fallo IS NOT NULL THEN
+        PERFORM fn_log_journal_failure(
+          NEW.organization_id, v_branch, COALESCE(NEW.issue_date, now()),
+          'invoice_sales', NEW.id::text, v_fact_key, v_debito, v_credito, NEW.total,
+          'cuenta_no_configurada', v_fallo);
+        RETURN NEW;
+      END IF;
+
+      -- fase5-cuenta-linea: sin cuenta propia, el asiento sale igual que antes.
+      v_entry_id := fn_create_journal_entry(
+        p_organization_id := NEW.organization_id,
+        p_branch_id := v_branch,
+        p_entry_date := COALESCE(NEW.issue_date, now()),
+        p_memo := case when NEW.document_type = 'debit_note' then 'Nota débito ' else 'Venta ' end || COALESCE(NEW.number, NEW.id::text),
+        p_source := 'invoice_sales',
+        p_source_id := NEW.id::text,
+        p_debit_account := v_debito,
+        p_credit_account := v_credito,
+        p_amount := NEW.total,
+        p_tax_account := v_rule.tax_account_code,
+        p_tax_amount := CASE WHEN v_rule.use_tax_from_document THEN NEW.tax_total ELSE 0 END,
+        p_created_by := NEW.created_by,
+        p_tax_is_credit := true,
+        p_fact_key := v_fact_key
+      );
+    end if;
+
+    RETURN NEW;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_auto_journal_sale_pos()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+    v_rule RECORD;
+    v_entry_id integer;
+    v_fact_key text;
+    v_branch integer;
+    v_debito text;
+    v_credito text;
+    v_fallo text;
+BEGIN
+    IF NEW.status NOT IN ('paid', 'partial', 'confirmed', 'completed') THEN
+        RETURN NEW;
+    END IF;
+
+    v_fact_key := 'accrual:sale:' || NEW.id::text;
+
+    SELECT * INTO v_rule FROM fn_regla_devengo_venta(NEW.organization_id);
+
+    IF v_rule.debit_account_code IS NULL THEN
+        PERFORM fn_log_journal_failure(
+            NEW.organization_id, NEW.branch_id,
+            COALESCE(NEW.sale_date, NEW.created_at, now()),
+            'sales', NEW.id::text, v_fact_key, NULL, NULL, NEW.total,
+            'no_rule', 'Sin regla contable activa de venta con cuenta de ingreso');
+        RETURN NEW;
+    END IF;
+
+    -- configuracion_antes_de_sede: la misma sede que usará el asiento.
+    v_branch := NEW.branch_id;
+    IF v_branch IS NULL OR v_branch = 0 OR NOT EXISTS (
+      SELECT 1 FROM branches WHERE id = v_branch AND organization_id = NEW.organization_id
+    ) THEN
+      SELECT id INTO v_branch FROM branches
+      WHERE organization_id = NEW.organization_id AND is_main = true AND is_active = true
+      LIMIT 1;
+      IF v_branch IS NULL THEN
+        SELECT min(id) INTO v_branch FROM branches WHERE organization_id = NEW.organization_id;
+      END IF;
+    END IF;
+
+    SELECT r.cuenta, r.fallo INTO v_debito, v_fallo
+    FROM public.fn_cuenta_configurada_de_sede(
+      NEW.organization_id, v_branch, 'sales', 'debito', v_rule.debit_account_code
+    ) r;
+    IF v_fallo IS NOT NULL THEN
+      PERFORM fn_log_journal_failure(
+        NEW.organization_id, v_branch, COALESCE(NEW.sale_date, NEW.created_at, now()),
+        'sales', NEW.id::text, v_fact_key, v_debito, v_rule.credit_account_code, NEW.total,
+        'cuenta_no_configurada', v_fallo);
+      RETURN NEW;
+    END IF;
+
+    SELECT r.cuenta, r.fallo INTO v_credito, v_fallo
+    FROM public.fn_cuenta_configurada_de_sede(
+      NEW.organization_id, v_branch, 'sales', 'credito', v_rule.credit_account_code
+    ) r;
+    IF v_fallo IS NOT NULL THEN
+      PERFORM fn_log_journal_failure(
+        NEW.organization_id, v_branch, COALESCE(NEW.sale_date, NEW.created_at, now()),
+        'sales', NEW.id::text, v_fact_key, v_debito, v_credito, NEW.total,
+        'cuenta_no_configurada', v_fallo);
+      RETURN NEW;
+    END IF;
+
+    v_entry_id := fn_create_journal_entry(
+        p_organization_id := NEW.organization_id,
+        p_branch_id := COALESCE(v_branch, 0),
+        p_entry_date := COALESCE(NEW.sale_date, NEW.created_at, now()),
+        p_memo := 'Venta POS ' || NEW.id::text,
+        p_source := 'sales',
+        p_source_id := NEW.id::text,
+        p_debit_account := v_debito,
+        p_credit_account := v_credito,
+        p_amount := NEW.total,
+        p_tax_account := v_rule.tax_account_code,
+        p_tax_amount := CASE WHEN v_rule.use_tax_from_document THEN NEW.tax_total ELSE 0 END,
+        p_tax_is_credit := true,
+        p_fact_key := v_fact_key
+    );
+
+    RETURN NEW;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fn_armar_asiento_documento(p_tipo text, p_id uuid, p_lineas jsonb DEFAULT NULL::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org integer;
+  v_branch integer;
+  v_total numeric := 0;
+  v_tax numeric := 0;
+  v_neto numeric := 0;
+  v_fecha timestamptz;
+  v_memo text;
+  v_source text;
+  v_created_by uuid;
+  v_debito text;
+  v_credito text;
+  v_impuesto text;
+  v_usa_impuesto boolean := false;
+  v_cfg record;
+  v_nit text;
+  v_nombre text;
+  v_rol text;
+  v_impuesto_al_credito boolean;
+  v_lineas jsonb := '[]'::jsonb;
+  v_pesos numeric := 0;
+  v_asignado numeric := 0;
+  v_parte numeric;
+  v_cuenta text;
+  v_fallo text;
+  v_exige record;
+  v_i integer := 0;
+  v_n integer := 0;
+  v_base numeric := 0;
+  v_reparto jsonb := '[]'::jsonb;
+  v_suma_debe numeric := 0;
+  v_suma_haber numeric := 0;
+  v_fila record;
+begin
+  if p_tipo = 'compra' then
+    select i.organization_id, i.branch_id, abs(coalesce(i.total, 0)), abs(coalesce(i.tax_total, 0)),
+           coalesce(i.issue_date, now()), i.created_by,
+           'Compra ' || coalesce(i.number_ext, i.id::text)
+      into v_org, v_branch, v_total, v_tax, v_fecha, v_created_by, v_memo
+      from public.invoice_purchase i where i.id = p_id;
+    v_source := 'invoice_purchase';
+    v_impuesto_al_credito := false;
+  elsif p_tipo = 'documento_soporte' then
+    select d.organization_id, d.branch_id, abs(coalesce(d.total, 0)), abs(coalesce(d.tax_total, 0)),
+           coalesce(d.issue_date, now()), d.created_by,
+           'Documento soporte ' || coalesce(d.number, d.reference_code, d.id::text)
+      into v_org, v_branch, v_total, v_tax, v_fecha, v_created_by, v_memo
+      from public.support_documents d where d.id = p_id;
+    v_source := 'support_documents';
+    v_impuesto_al_credito := false;
+  elsif p_tipo = 'nota_credito' and p_lineas is not null then
+    select coalesce(sum(abs(coalesce((l->>'total_line')::numeric, 0))), 0)
+      into v_total
+      from jsonb_array_elements(p_lineas) l;
+    select i.organization_id, i.branch_id, coalesce(i.issue_date, now()), i.created_by,
+           abs(coalesce(i.tax_total, 0)), abs(coalesce(i.total, 0))
+      into v_org, v_branch, v_fecha, v_created_by, v_tax, v_base
+      from public.invoice_sales i where i.id = p_id;
+    if v_base > 0 then
+      v_tax := least(v_total, round(v_tax * v_total / v_base, 2));
+    else
+      v_tax := 0;
+    end if;
+    v_memo := 'Nota crédito';
+    v_source := 'invoice_sales';
+    v_impuesto_al_credito := false;
+  else
+    select i.organization_id, i.branch_id, abs(coalesce(i.total, 0)), abs(coalesce(i.tax_total, 0)),
+           coalesce(i.issue_date, now()), i.created_by,
+           case
+             when i.document_type = 'credit_note' then 'Nota crédito ' || coalesce(i.number, i.id::text)
+             when i.document_type = 'debit_note' then 'Nota débito ' || coalesce(i.number, i.id::text)
+             else 'Venta ' || coalesce(i.number, i.id::text)
+           end
+      into v_org, v_branch, v_total, v_tax, v_fecha, v_created_by, v_memo
+      from public.invoice_sales i where i.id = p_id;
+    v_source := 'invoice_sales';
+    v_impuesto_al_credito := p_tipo is distinct from 'nota_credito';
+  end if;
+
+  if v_org is null then
+    return jsonb_build_object('ok', false, 'fallo', 'Documento no encontrado', 'lineas', '[]'::jsonb);
+  end if;
+
+  if p_tipo in ('compra', 'documento_soporte') then
+    select r.debit_account_code, r.credit_account_code, r.tax_account_code, r.use_tax_from_document
+      into v_debito, v_credito, v_impuesto, v_usa_impuesto
+      from public.fn_regla_devengo_compra(v_org) r;
+  elsif p_tipo = 'nota_credito' then
+    select r.debit_account_code, r.credit_account_code, r.tax_account_code, r.use_tax_from_document
+      into v_debito, v_credito, v_impuesto, v_usa_impuesto
+      from public.accounting_rules r
+     where r.organization_id = v_org
+       and r.source_type = 'sale_credit_note'
+       and r.event_type = 'created'
+       and r.is_active = true
+     order by r.priority
+     limit 1;
+  else
+    select r.debit_account_code, r.credit_account_code, r.tax_account_code, r.use_tax_from_document
+      into v_debito, v_credito, v_impuesto, v_usa_impuesto
+      from public.fn_regla_devengo_venta(v_org) r;
+  end if;
+
+  if v_debito is null then
+    return jsonb_build_object('ok', false, 'fallo', 'No hay regla contable activa para este documento', 'lineas', '[]'::jsonb, 'organization_id', v_org);
+  end if;
+
+  select * into v_cfg
+    from public.fn_aplicar_configuracion_contable(
+      v_org, v_branch,
+      case when p_tipo = 'nota_credito' then 'sale_credit_note' else v_source end,
+      v_debito, v_credito, v_impuesto
+    );
+  if v_cfg.fallo is not null then
+    return jsonb_build_object('ok', false, 'fallo', v_cfg.fallo, 'lineas', '[]'::jsonb, 'organization_id', v_org);
+  end if;
+
+  if not coalesce(v_usa_impuesto, false) then
+    v_tax := 0;
+  end if;
+  v_total := round(coalesce(v_total, 0), 2);
+  v_tax := round(coalesce(v_tax, 0), 2);
+  if v_tax > v_total then
+    v_tax := v_total;
+  end if;
+  v_neto := round(v_total - v_tax, 2);
+
+  if round(coalesce(v_total, 0), 0) <= 0 then
+    return jsonb_build_object(
+      'ok', true, 'sin_importe', true, 'fallo', null,
+      'lineas', '[]'::jsonb, 'debitos', 0,
+      'organization_id', v_org, 'branch_id', v_branch, 'source', v_source
+    );
+  end if;
+
+  select t.nit, t.nombre into v_nit, v_nombre
+    from public.fn_tercero_de_documento(
+      case when p_tipo = 'nota_debito' then 'venta' else p_tipo end,
+      p_id
+    ) t;
+
+  if p_lineas is not null and p_tipo = 'nota_credito' then
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'orden', s.orden, 'cuenta', s.cuenta, 'monto', s.monto, 'descripcion', s.descripcion
+           ) order by s.orden), '[]'::jsonb)
+      into v_reparto
+      from (
+        select row_number() over () as orden,
+               coalesce(
+                 public.fn_cuenta_catalogo_linea(v_org, nullif(l->>'product_id', '')::integer, 'devolucion', l->>'cuenta_contable'),
+                 v_cfg.debito
+               ) as cuenta,
+               abs(coalesce((l->>'total_line')::numeric, 0)) as monto,
+               coalesce(nullif(btrim(l->>'descripcion'), ''), 'Nota crédito') as descripcion
+          from jsonb_array_elements(p_lineas) l
+      ) s;
+  else
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'orden', s.orden, 'cuenta', s.cuenta, 'monto', s.monto, 'descripcion', s.descripcion
+           ) order by s.orden), '[]'::jsonb)
+      into v_reparto
+      from (
+        select row_number() over (order by ii.created_at, ii.id) as orden,
+               coalesce(
+                 public.fn_cuenta_catalogo_linea(
+                   v_org,
+                   ii.product_id,
+                   case
+                     when p_tipo in ('compra', 'documento_soporte') and coalesce(pr.track_stock, false) then 'inventario'
+                     when p_tipo in ('compra', 'documento_soporte') then 'costo'
+                     when p_tipo = 'nota_credito' then 'devolucion'
+                     else 'ingreso'
+                   end,
+                   ii.cuenta_contable
+                 ),
+                 case when v_impuesto_al_credito then v_cfg.credito else v_cfg.debito end
+               ) as cuenta,
+               abs(coalesce(ii.total_line, 0)) as monto,
+               coalesce(nullif(btrim(ii.description), ''), v_memo) as descripcion
+          from public.invoice_items ii
+          left join public.products pr on pr.id = ii.product_id and pr.organization_id = v_org
+         where case p_tipo
+                 when 'compra' then ii.invoice_purchase_id = p_id
+                 when 'documento_soporte' then ii.support_document_id = p_id
+                 else ii.invoice_sales_id = p_id
+               end
+      ) s;
+  end if;
+
+  select coalesce(sum((e->>'monto')::numeric), 0), count(*)
+    into v_pesos, v_n
+    from jsonb_array_elements(v_reparto) e;
+  v_asignado := 0;
+
+  for v_fila in
+    select (e->>'cuenta') as cuenta,
+           (e->>'monto')::numeric as monto,
+           e->>'descripcion' as descripcion
+      from jsonb_array_elements(v_reparto) e
+     order by (e->>'orden')::integer
+  loop
+    v_i := v_i + 1;
+    if v_pesos = 0 then
+      v_parte := case when v_i = 1 then v_neto else 0 end;
+    elsif v_i = v_n then
+      v_parte := round(v_neto - v_asignado, 2);
+    else
+      v_parte := round(v_neto * v_fila.monto / v_pesos, 2);
+      v_asignado := v_asignado + v_parte;
+    end if;
+    if v_parte = 0 then
+      continue;
+    end if;
+    v_cuenta := public.fn_cuenta_movimiento_o_detalle(v_org, v_branch, v_fila.cuenta);
+    v_fallo := public.fn_validar_cuenta_movimiento(v_org, v_cuenta);
+    if v_fallo is not null then
+      return jsonb_build_object('ok', false, 'fallo', v_fallo, 'lineas', '[]'::jsonb, 'organization_id', v_org);
+    end if;
+    select * into v_exige from public.fn_exigencias_cuenta(v_org, v_cuenta);
+    if coalesce(v_exige.requiere_tercero, false) and v_nit is null and nullif(btrim(v_nombre), '') is null then
+      return jsonb_build_object('ok', false, 'fallo', 'La cuenta ' || v_cuenta || ' exige el NIT o la cédula del tercero', 'lineas', '[]'::jsonb, 'organization_id', v_org);
+    end if;
+    v_lineas := v_lineas || jsonb_build_array(jsonb_build_object(
+      'cuenta', v_cuenta,
+      'descripcion', v_fila.descripcion,
+      'debito', case when v_impuesto_al_credito then 0 else v_parte end,
+      'credito', case when v_impuesto_al_credito then v_parte else 0 end,
+      'tercero_nit', v_nit,
+      'tercero_nombre', v_nombre,
+      'cost_center_id', public.fn_centro_documento(v_org, v_branch, p_tipo, p_id)
+    ));
+  end loop;
+
+  if v_tax > 0 and v_cfg.impuesto is not null then
+    v_cuenta := public.fn_cuenta_movimiento_o_detalle(v_org, v_branch, v_cfg.impuesto);
+    v_fallo := public.fn_validar_cuenta_movimiento(v_org, v_cuenta);
+    if v_fallo is not null then
+      return jsonb_build_object('ok', false, 'fallo', v_fallo, 'lineas', '[]'::jsonb, 'organization_id', v_org);
+    end if;
+    select * into v_exige from public.fn_exigencias_cuenta(v_org, v_cuenta);
+    if coalesce(v_exige.requiere_tercero, false) and v_nit is null and nullif(btrim(v_nombre), '') is null then
+      return jsonb_build_object('ok', false, 'fallo', 'La cuenta ' || v_cuenta || ' exige el NIT o la cédula del tercero', 'lineas', '[]'::jsonb, 'organization_id', v_org);
+    end if;
+    v_lineas := v_lineas || jsonb_build_array(jsonb_build_object(
+      'cuenta', v_cuenta,
+      'descripcion', 'IVA - ' || v_memo,
+      'debito', case when v_impuesto_al_credito then 0 else v_tax end,
+      'credito', case when v_impuesto_al_credito then v_tax else 0 end,
+      'tercero_nit', v_nit,
+      'tercero_nombre', v_nombre
+    ));
+  end if;
+
+  v_cuenta := public.fn_cuenta_movimiento_o_detalle(
+    v_org, v_branch,
+    case when v_impuesto_al_credito then v_cfg.debito else v_cfg.credito end
+  );
+  v_fallo := public.fn_validar_cuenta_movimiento(v_org, v_cuenta);
+  if v_fallo is not null then
+    return jsonb_build_object('ok', false, 'fallo', v_fallo, 'lineas', '[]'::jsonb, 'organization_id', v_org);
+  end if;
+  select * into v_exige from public.fn_exigencias_cuenta(v_org, v_cuenta);
+  if coalesce(v_exige.requiere_tercero, false) and v_nit is null and nullif(btrim(v_nombre), '') is null then
+    return jsonb_build_object('ok', false, 'fallo', 'La cuenta ' || v_cuenta || ' exige el NIT o la cédula del tercero', 'lineas', '[]'::jsonb, 'organization_id', v_org);
+  end if;
+
+  v_lineas := v_lineas || jsonb_build_array(jsonb_build_object(
+    'cuenta', v_cuenta,
+    'descripcion', v_memo,
+    'debito', case when v_impuesto_al_credito then v_total else 0 end,
+    'credito', case when v_impuesto_al_credito then 0 else v_total end,
+    'tercero_nit', v_nit,
+    'tercero_nombre', v_nombre
+  ));
+
+  select coalesce(sum((l->>'debito')::numeric), 0), coalesce(sum((l->>'credito')::numeric), 0)
+    into v_suma_debe, v_suma_haber
+    from jsonb_array_elements(v_lineas) l;
+  if round(v_suma_debe, 2) <> round(v_suma_haber, 2) or v_suma_debe = 0 then
+    return jsonb_build_object(
+      'ok', false,
+      'fallo', 'El asiento no cuadra con las líneas del documento',
+      'lineas', '[]'::jsonb,
+      'organization_id', v_org
+    );
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'fallo', null,
+    'organization_id', v_org,
+    'branch_id', v_branch,
+    'fecha', v_fecha,
+    'memo', v_memo,
+    'source', v_source,
+    'source_id', p_id,
+    'created_by', v_created_by,
+    'tercero_nit', v_nit,
+    'tercero_nombre', v_nombre,
+    'lineas', v_lineas,
+    'debitos', v_total,
+    'creditos', v_total,
+    'cuadra', true
+  );
+end;
+$function$
+;
+
+drop function if exists public.fn_impuesto_inc_parte(text, text, numeric);
+drop function if exists public.fn_cuenta_inc(integer);
+drop function if exists public.fn_cuenta_iva_generado(integer);
+
+delete from supabase_migrations.schema_migrations where version = '20261025134115';

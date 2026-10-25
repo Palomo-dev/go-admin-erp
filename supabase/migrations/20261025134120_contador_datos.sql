@@ -7,21 +7,30 @@
 --   a. Reglas con 4105 (error de plantilla): débito 4105 (devolución, anulación por NC, reembolso) -> 41750101;
 --      crédito 4105: viaje/tour 41409501, parking/transporte 41409501, no-show 41409502, resto (caja, folio
 --      hospedaje, venta) 41400501.
---   b. No-show: crédito -> 41409502 y use_tax_from_document = false (IVA configurable, no automático). Regla nueva
---      'Reserva no presentada' D2805 C41409502 donde falte (al 25-oct: 130, 133, 136, 326).
+--   b. No-show: crédito -> 41409502 y use_tax_from_document = false (IVA configurable, no automático); débito
+--      2405/2805 -> 28050501 (FIX A; nunca 2405). Regla nueva 'Reserva no presentada' D28050501 C41409502 donde
+--      falte (al 25-oct: 130, 133, 136, 326). El saldo de anticipos en 2405 de reservas es global: commit (B).
 --   c. 'Cargo Folio Bar' (prioridad 13, C41402001) en hoteles con reglas de folio que no la tengan.
 --   d. Claves en 4105 -> 41400501 (devoluciones 41750101). Borradores en 4105: débito 41750101, crédito 41400501.
---   e. Saldo contabilizado en 4105: asiento 'contador_reclasif_4105:<org>'. Créditos de viaje -> 41409501, demás
+--   e. Saldo contabilizado en 4105: asiento 'contador_reclasif_4105:<org>'. Créditos de viaje (trip, trips,
+--      trip_tickets) -> 41409501, demás
 --      créditos y débitos de reversión -> 41400501, demás débitos (devoluciones/anulaciones/reembolsos) -> 41750101.
 --      4105 no pasa a título (sigue en el plan; ninguna regla de hotel la usa ya).
 -- RESTAURANTES (type_id 1):
 --   f. Claves/reglas/borradores 414015 -> 41401501 y 2495 -> 24950501; clave impuesto_consumo = 24950501 si falta.
---      Reglas de venta / NC / anulación con impuesto 2405/2408/240805/24080501 -> 24950501 (orgs con INC activo).
+--      FIX (A): ya NO se repuntan reglas de venta a 24950501: el INC se decide por LÍNEA al contabilizar (134115) y el
+--      IVA 19% (orgs 120/134/140/204/328 tienen ítems al 19%) sigue en IVA generado.
 --   g. Saldo contabilizado en 414015 -> 41401501, asiento 'contador_reclasif_414015:<org>' (al 25-oct: 140 y 142).
 --   h. Org 140: saldo de 2408 (título; -1.600 de la venta POS 26ed882f, asiento 47437, INC 8%) -> 24950501, asiento
 --      'contador_reclasif_inc_2408:140'. 2408 es título: se habilita de movimiento SOLO durante el insert y vuelve a
 --      título en la misma transacción. Si el saldo no es exactamente -1.600, aborta.
+--      FIX (A) NC-0001 (asiento 49408, 22-oct: D4105 20.000, D2405 1.600 / C1305 21.600) en el MISMO asiento:
+--      2405 +1.600 -> 24950501 (la NC reversa el INC donde se causó: INC de la venta anulada queda en 0) y el
+--      débito en 4105 -> 4135 (donde la venta 47437 causó el ingreso). Si no hay exactamente UNA NC así, aborta.
 --   i. 414015 y 2495 pasan a título (si quedan sin referencias y en 0).
+-- FIX (A) 2405: reglas con tax_account_code '2405' en orgs tipo 1 y 2 (no la 149) -> IVA generado (ventas/NC) o
+--   iva_descontable/24081001 (compras). (2405 de anticipos de reservas: commit B.)
+-- FIX (A) ALTO#1: set constraints trg_chart_cuenta_titulo_configurada immediate al inicio del DO.
 -- No toca organizations. Bitácora p1_puc_bitacora migracion '134120' (cuentas con su valor_anterior real).
 -- Rollback: supabase/rollbacks/20261025134120_contador_datos_rollback.sql
 
@@ -66,9 +75,30 @@ declare
   r record;
   v_nuevo text;
   v_txt text;
-  v_inc boolean;
   v_s numeric;
+  v_nc integer;
 begin
+  -- FIX (A) ALTO#1: los eventos del trigger diferido bloquean ALTER TABLE ... disable/enable trigger.
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
+
+  -- ===================== 2405 fuera de las reglas de impuesto (hoteles y restaurantes, no 149) =====================
+  for r in select x.id, x.organization_id org, x.source_type st, x.tax_account_code t
+             from public.accounting_rules x join public.organizations o on o.id = x.organization_id
+            where o.type_id in (1, 2) and o.id <> 149 and x.tax_account_code = '2405' order by x.id loop
+    if r.st in ('purchase', 'purchases', 'invoice_purchase', 'purchase_order', 'purchase_orders', 'support_document',
+                'support_documents', 'purchase_payment') then
+      v_nuevo := coalesce(public.fn_cuenta_por_clave(r.org, null, 'iva_descontable'), '24081001');
+    else
+      v_nuevo := coalesce(public.fn_cuenta_iva_generado(r.org), '24080501');
+    end if;
+    if not exists (select 1 from public.chart_of_accounts a where a.organization_id = r.org and a.account_code = v_nuevo
+                     and a.es_movimiento is true and v_nuevo like '2408%') then
+      raise exception '134120: org % sin cuenta IVA % de movimiento para la regla % (2405); abortar', r.org, v_nuevo, r.id;
+    end if;
+    update public.accounting_rules set tax_account_code = v_nuevo, updated_at = now() where id = r.id;
+    perform pg_temp.c_log(r.org, 'accounting_rules', r.id::text, 'tax_account_code', r.t, v_nuevo);
+  end loop;
+
   -- ===================== HOTELES =====================
   for v_org in select o.id from public.organizations o where o.type_id = 2 order by 1 loop
     if exists (select 1 from (values ('41400501'), ('41402001'), ('41409501'), ('41409502'), ('41750101')) v(c)
@@ -96,8 +126,14 @@ begin
     end loop;
 
     -- b. no-show
-    for r in select id, credit_account_code c, use_tax_from_document u from public.accounting_rules
+    v_txt := case when exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
+                                 and a.account_code = '28050501' and a.es_movimiento is true) then '28050501' else '2805' end;
+    for r in select id, debit_account_code d, credit_account_code c, use_tax_from_document u from public.accounting_rules
               where organization_id = v_org and source_type = 'reservation' and event_type = 'no_show' loop
+      if r.d in ('2405', '2805') and r.d is distinct from v_txt then
+        update public.accounting_rules set debit_account_code = v_txt, updated_at = now() where id = r.id;
+        perform pg_temp.c_log(v_org, 'accounting_rules', r.id::text, 'debit_account_code', r.d, v_txt);
+      end if;
       if r.c is distinct from '41409502' and r.c like '4%' then
         update public.accounting_rules set credit_account_code = '41409502', updated_at = now() where id = r.id;
         perform pg_temp.c_log(v_org, 'accounting_rules', r.id::text, 'credit_account_code', r.c, '41409502');
@@ -112,7 +148,7 @@ begin
       insert into public.accounting_rules (organization_id, name, description, source_type, event_type,
         debit_account_code, credit_account_code, tax_account_code, use_tax_from_document, priority, is_active)
       values (v_org, 'Reserva no presentada', 'No-show/cancelación: el anticipo pasa a 41409502 (IVA configurable)',
-        'reservation', 'no_show', '2805', '41409502', null, false, 32, true)
+        'reservation', 'no_show', v_txt, '41409502', null, false, 32, true)
       returning id::text into v_txt;
       perform pg_temp.c_log(v_org, 'accounting_rules_nueva', v_txt, 'insert', null, 'Reserva no presentada 41409502');
     end if;
@@ -149,7 +185,7 @@ begin
       insert into c_lin (cta, s)
       select x.cta, sum(x.s) from (
         select case
-                 when l.credit > 0 and e.source in ('trip', 'trips') then '41409501'
+                 when l.credit > 0 and e.source in ('trip', 'trips', 'trip_tickets') then '41409501'
                  when l.credit > 0 then '41400501'
                  when e.source = 'reversal' then '41400501'
                  else '41750101' end cta,
@@ -170,8 +206,6 @@ begin
                                     and a.account_code = v.c and a.es_movimiento is true)) then
       raise exception '134120: restaurante % sin 24950501/41401501 (134110); abortar', v_org;
     end if;
-    v_inc := exists (select 1 from public.organization_taxes ot where ot.organization_id = v_org and ot.is_active
-                       and ot.kind = 'tax' and (ot.template_id = 39 or ot.name ilike '%consumo%'));
 
     -- f. claves
     for r in select id, clave, account_code from public.configuracion_contable
@@ -204,9 +238,7 @@ begin
         update public.accounting_rules set discount_account_code = v_nuevo, updated_at = now() where id = r.id;
         perform pg_temp.c_log(v_org, 'accounting_rules', r.id::text, 'discount_account_code', r.x, v_nuevo);
       end if;
-      if r.t = '2495'
-         or (v_inc and r.t in ('2405', '2408', '240805', '24080501')
-             and (r.st = 'sale_credit_note' or (r.st = 'sale' and coalesce(r.et, 'created') in ('created', 'voided')))) then
+      if r.t = '2495' then
         update public.accounting_rules set tax_account_code = '24950501', updated_at = now() where id = r.id;
         perform pg_temp.c_log(v_org, 'accounting_rules', r.id::text, 'tax_account_code', r.t, '24950501');
       end if;
@@ -241,17 +273,33 @@ begin
       if v_s <> -1600 then
         raise exception '134120: saldo 2408 org 140 = % (esperado -1600); detener y revisar con el contador', v_s;
       end if;
+      -- FIX (A) NC-0001 (asiento 49408): exactamente una NC contabilizada y viva D4105 20.000, D2405 1.600 / C1305 21.600.
+      select count(*), min(e.id) into v_s, v_nc from public.journal_entries e
+       where e.organization_id = 140 and e.posted is true and e.source = 'invoice_sales'
+         and not exists (select 1 from public.journal_entries rv where rv.organization_id = 140 and rv.fact_key = 'reversal:' || e.id)
+         and (select count(*) from public.journal_lines l where l.journal_entry_id = e.id) = 3
+         and exists (select 1 from public.journal_lines l where l.journal_entry_id = e.id and l.account_code = '4105' and l.debit = 20000 and l.credit = 0)
+         and exists (select 1 from public.journal_lines l where l.journal_entry_id = e.id and l.account_code = '2405' and l.debit = 1600 and l.credit = 0)
+         and exists (select 1 from public.journal_lines l where l.journal_entry_id = e.id and l.account_code = '1305' and l.credit = 21600 and l.debit = 0);
+      if v_s <> 1 then
+        raise exception '134120: NC-0001 org 140 (D4105 20.000, D2405 1.600 / C1305 21.600) encontrada % veces (esperado 1); detener y revisar', v_s;
+      end if;
+      if exists (select 1 from (values ('2405'), ('4105'), ('4135'), ('24950501')) v(c)
+                  where not exists (select 1 from public.chart_of_accounts a where a.organization_id = 140
+                                      and a.account_code = v.c and a.es_movimiento is true)) then
+        raise exception '134120: org 140 sin 2405/4105/4135/24950501 de movimiento para NC-0001; detener';
+      end if;
+      raise notice '134120: org 140 NC-0001 = asiento % (en prod se espera 49408)', v_nc;
       delete from c_lin;
-      insert into c_lin values ('2408', 1600), ('24950501', -1600);
+      -- 2408 venta INC -> 24950501; NC: 2405 -> 24950501 (neto 0 en 24950501) y 4105 -> 4135.
+      insert into c_lin values ('2408', 1600), ('24950501', -1600), ('24950501', 1600), ('2405', -1600),
+                               ('4135', 20000), ('4105', -20000);
       alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
       update public.chart_of_accounts set es_movimiento = true where organization_id = 140 and account_code = '2408';
-      perform pg_temp.c_asiento(140, 'contador_reclasif_inc_2408:140', '2408');
+      perform pg_temp.c_asiento(140, 'contador_reclasif_inc_2408:140', '2408,NC-0001:' || v_nc);
       update public.chart_of_accounts set es_movimiento = false where organization_id = 140 and account_code = '2408';
-      -- trg_chart_cuenta_titulo_configurada es diferido: se dispara ya para poder reactivar el trigger (ALTER TABLE
-      -- no se permite con eventos de trigger pendientes) y vuelve a diferido.
-      set constraints public.trg_chart_cuenta_titulo_configurada immediate;
+            -- (immediate desde el inicio del DO: el ALTER TABLE no encuentra eventos pendientes.)
       alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
-      set constraints public.trg_chart_cuenta_titulo_configurada deferred;
     end if;
 
     -- i. títulos
@@ -280,3 +328,7 @@ exception when others then
   raise;
 end $$;
 drop table if exists c_lin;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134120', 'contador_datos', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

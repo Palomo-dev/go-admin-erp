@@ -61,3 +61,5 @@ AS $function$
     ('compra_servicio', '2335')
   ) as v(clave, defecto);
 $function$;
+
+delete from supabase_migrations.schema_migrations where version = '20261025134105';

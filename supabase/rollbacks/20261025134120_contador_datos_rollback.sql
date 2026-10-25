@@ -6,6 +6,7 @@ declare
   r record;
   v_ctas text[];
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   -- 1. Cuentas: vuelven a su valor anterior real (true o NULL), antes de los contraasientos.
   for r in select * from public.p1_puc_bitacora where migracion = '134120' and objeto = 'cuenta' order by id desc loop
@@ -61,3 +62,5 @@ exception when others then
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
   raise;
 end $$;
+
+delete from supabase_migrations.schema_migrations where version = '20261025134120';

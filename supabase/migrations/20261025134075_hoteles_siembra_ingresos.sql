@@ -299,3 +299,7 @@ begin
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
 $function$;
+
+insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
+values ('20261025134075', 'hoteles_siembra_ingresos', array[]::text[], 'p1_apply_executor')
+on conflict (version) do nothing;

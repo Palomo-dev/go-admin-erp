@@ -5,6 +5,8 @@
  * de las 41 (la devolución en compras no inventa el reverso de retenciones).
  */
 
+import { cuentaAuxiliarDeTitulo } from '../cuentaAuxiliarDeTitulo';
+
 export type EventoAsiento =
   | 'venta_contado'
   | 'compra_credito'
@@ -69,7 +71,7 @@ export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
   regla(1, 'venta_contado', 1, '1105', 'debito', 'total', 'cliente'),
   regla(2, 'venta_contado', 2, '4135', 'credito', 'base', 'cliente'),
   regla(3, 'venta_contado', 3, '2408', 'credito', 'iva', 'cliente'),
-  regla(4, 'venta_contado', 4, '6135', 'debito', 'costo', 'ninguno'),
+  regla(4, 'venta_contado', 4, '61350501', 'debito', 'costo', 'ninguno'),
   regla(5, 'venta_contado', 5, '1435', 'credito', 'costo', 'ninguno'),
 
   regla(6, 'compra_credito', 1, '1435', 'debito', 'base', 'proveedor'),
@@ -96,7 +98,7 @@ export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
   regla(23, 'venta_pasarela', 3, '2408', 'credito', 'iva', 'ninguno'),
 
   regla(24, 'liquidacion_pasarela', 1, '1110', 'debito', 'neto', 'banco', null, 'Conciliar con el extracto de cada pasarela.'),
-  regla(25, 'liquidacion_pasarela', 2, '530515', 'debito', 'comision', 'pasarela'),
+  regla(25, 'liquidacion_pasarela', 2, '53051501', 'debito', 'comision', 'pasarela'),
   regla(26, 'liquidacion_pasarela', 3, '2408', 'debito', 'iva_comision', 'pasarela', 'factura_comision', 'Solo si la facturan.'),
   regla(27, 'liquidacion_pasarela', 4, '1355', 'debito', 'retenciones_red', 'pasarela'),
   regla(28, 'liquidacion_pasarela', 5, '1305', 'credito', 'total', 'pasarela'),
@@ -105,7 +107,7 @@ export const REGLAS_ASIENTO: readonly ReglaAsiento[] = [
   regla(30, 'devolucion_ventas', 2, '2408', 'debito', 'iva', 'cliente'),
   regla(31, 'devolucion_ventas', 3, '1305', 'credito', 'total', 'cliente', null, '', ['1105']),
   regla(32, 'devolucion_ventas', 4, '1435', 'debito', 'costo', 'ninguno'),
-  regla(33, 'devolucion_ventas', 5, '6135', 'credito', 'costo', 'ninguno'),
+  regla(33, 'devolucion_ventas', 5, '61350501', 'credito', 'costo', 'ninguno'),
 
   regla(34, 'devolucion_compras', 1, '2205', 'debito', 'total', 'proveedor'),
   regla(35, 'devolucion_compras', 2, '1435', 'credito', 'base', 'proveedor'),
@@ -130,6 +132,11 @@ export interface ConfigAsientos {
   cuentaUtilidad: string;
   cuentaPerdida: string;
   cuentaPuente: string;
+  /**
+   * Mapeo por clave o sede (código de grupo → auxiliar), mismo criterio que
+   * fn_cuenta_auxiliar_de_titulo. Sin mapeo: 61350501 (costo) y 53051501 (comisión).
+   */
+  mapeoSede?: Readonly<Partial<Record<string, string>>>;
 }
 
 export const CONFIG_ASIENTOS_INICIAL: ConfigAsientos = {
@@ -340,6 +347,12 @@ function cuentaDeRegla(item: ReglaAsiento, config: ConfigAsientos): string {
     const auxiliar = reemplazo || (item.id === 37 ? config.auxiliarDestino : config.auxiliarOrigen);
     if (!auxiliar) throw new Error('La transferencia exige el auxiliar de cada banco');
     return auxiliarBanco(auxiliar);
+  }
+  if (item.id === 4 || item.id === 33) {
+    return cuentaPuc(cuentaAuxiliarDeTitulo(reemplazo || '6135', { mapeoSede: config.mapeoSede }));
+  }
+  if (item.id === 25) {
+    return cuentaPuc(cuentaAuxiliarDeTitulo(reemplazo || '530515', { mapeoSede: config.mapeoSede }));
   }
   if (reemplazo) return cuentaPuc(reemplazo);
   return cuentaPuc(item.cuenta);

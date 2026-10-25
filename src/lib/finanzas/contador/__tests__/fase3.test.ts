@@ -42,7 +42,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       [1, '1105', 'debito', 119000],
       [2, '4135', 'credito', 100000],
       [3, '2408', 'credito', 19000],
-      [4, '6135', 'debito', 40000],
+      [4, '61350501', 'debito', 40000],
       [5, '1435', 'credito', 40000],
     ]);
     const cambiada = configurarRegla(CONFIG_ASIENTOS_INICIAL, 4, '6140');
@@ -132,7 +132,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       neto: 1000, comision: 50, ivaComision: 9.5, retencionesRed: 10,
     }, conFactura), [
       [24, '1110', 'debito', 100000],
-      [25, '530515', 'debito', 5000],
+      [25, '53051501', 'debito', 5000],
       [26, '2408', 'debito', 950],
       [27, '1355', 'debito', 1000],
       [28, '1305', 'credito', 106950],
@@ -141,7 +141,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       neto: 1000, comision: 50, ivaComision: 9.5, retencionesRed: 10,
     }), [
       [24, '1110', 'debito', 100000],
-      [25, '530515', 'debito', 5000],
+      [25, '53051501', 'debito', 5000],
       [27, '1355', 'debito', 1000],
       [28, '1305', 'credito', 106000],
     ]);
@@ -153,7 +153,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       [30, '2408', 'debito', 19000],
       [31, '1305', 'credito', 119000],
       [32, '1435', 'debito', 40000],
-      [33, '6135', 'credito', 40000],
+      [33, '61350501', 'credito', 40000],
     ]);
     const efectivo = configurarRegla(CONFIG_ASIENTOS_INICIAL, 31, '1105');
     espera(armarAsiento('devolucion_ventas', { base: 1000, iva: 190, costo: 400 }, efectivo), [
@@ -161,7 +161,7 @@ describe('Fase 3 — 41 reglas de asientos y cuadre', () => {
       [30, '2408', 'debito', 19000],
       [31, '1105', 'credito', 119000],
       [32, '1435', 'debito', 40000],
-      [33, '6135', 'credito', 40000],
+      [33, '61350501', 'credito', 40000],
     ]);
     const compras = espera(armarAsiento('devolucion_compras', { base: 1000, iva: 190 }), [
       [34, '2205', 'debito', 119000],

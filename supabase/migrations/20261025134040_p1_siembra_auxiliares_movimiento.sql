@@ -177,6 +177,7 @@ begin
             when 'saldo_inicial' then '37050501'
             when 'faltante_inventario' then '61350502'
             when 'redondeo' then '42958101'
+            when 'ingresos_diversos' then '42959501'
             when 'comisiones' then '53051501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
@@ -186,6 +187,7 @@ begin
             when 'saldo_inicial' then '37050501'
             when 'faltante_inventario' then '61350502'
             when 'redondeo' then '42958101'
+            when 'ingresos_diversos' then '42959501'
             when 'comisiones' then '53051501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
@@ -208,6 +210,13 @@ begin
     on c.organization_id = p_org
    and c.account_code = x.codigo
    and c.es_movimiento is distinct from false
+  on conflict (organization_id, branch_id, clave) do nothing;
+
+  -- Ingresos diversos: 42959501 explícito (QA 25-oct), no solo el respaldo del resolver.
+  insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
+  select p_org, null, 'ingresos_diversos', '42959501'
+  where exists (select 1 from public.chart_of_accounts a
+                 where a.organization_id = p_org and a.account_code = '42959501' and a.es_movimiento is true)
   on conflict (organization_id, branch_id, clave) do nothing;
 
   -- Redondeo en contra (Ajuste al peso): 53959501 (clave creada en 134020).

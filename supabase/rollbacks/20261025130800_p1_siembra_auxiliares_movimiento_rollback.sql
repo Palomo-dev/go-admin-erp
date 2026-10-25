@@ -1,8 +1,8 @@
 -- Rollback de 130800: quita las filas nuevas de puc_plantilla, devuelve los padres a movimiento,
 -- restaura el nombre del trigger y las versiones vivas (25-oct) de las dos funciones.
 delete from public.puc_plantilla where codigo in ('370505','37050501','613505','61350501','61350502','429595',
-  '42959501','24080501','24080502','24081001','24081002','53051501');
-update public.puc_plantilla set es_movimiento = true where codigo in ('3705','6135','4295','240805','240810','530515');
+  '42959501','42959502','429581','42958101','539595','53959501','24080501','24080502','24081001','24081002','53051501');
+update public.puc_plantilla set es_movimiento = true where codigo in ('3705','6135','4295','5395','240805','240810','530515');
 update public.puc_plantilla set nombre = 'Comisiones bancarias' where codigo = '530515';
 alter trigger trg_zzzz_configuracion_contable on public.organizations rename to tr_zz_configuracion_contable;
 

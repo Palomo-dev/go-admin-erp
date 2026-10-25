@@ -1,6 +1,7 @@
 -- P1 (25-oct-2026): siembra de orgs NUEVAS siempre con auxiliares de movimiento. NO aplicada.
--- 1) puc_plantilla: agrega 370505/37050501, 613505/61350501/61350502, 429595/42959501,
---    24080501/24080502, 24081001/24081002, 53051501; los padres 3705/6135/4295/240805/240810/530515 de título.
+-- 1) puc_plantilla: agrega 370505/37050501, 613505/61350501/61350502, 429595/42959501/42959502,
+--    429581/42958101 y 539595/53959501 (Ajuste al peso a favor / en contra),
+--    24080501/24080502, 24081001/24081002, 53051501; los padres 3705/6135/4295/5395/240805/240810/530515 de título.
 -- 2) fn_create_default_accounting_rules: inventario 14350101, costo 61350501, apertura 37050501,
 --    sobrantes 42959501, faltantes 61350502, IVA 24080501/24081001 (nunca cuentas de grupo).
 -- 3) fn_sembrar_configuracion_contable: claves a los auxiliares del contador + mapeo por sede 6135->61350501.
@@ -22,6 +23,11 @@ select t.codigo, t.nombre, p.tipo, t.padre, null, p.naturaleza, t.mov,
     ('61350502', '613505', 'Mermas y faltantes de inventario',   true,  5),
     ('429595',   '4295',   'Otros ingresos diversos',            false, 6),
     ('42959501', '429595', 'Sobrantes de inventario',            true,  7),
+    ('42959502', '429595', 'Otros ingresos diversos',            true,  7),
+    ('429581',   '4295',   'Ajuste al peso',                     false, 7),
+    ('42958101', '429581', 'Ajuste al peso a favor',             true,  7),
+    ('539595',   '5395',   'Ajuste al peso',                     false, 7),
+    ('53959501', '539595', 'Ajuste al peso en contra',           true,  7),
     ('24080501', '240805', 'IVA generado 19%',                   true,  8),
     ('24080502', '240805', 'IVA generado 5%',                    true,  9),
     ('24081001', '240810', 'IVA descontable 19%',                true, 10),
@@ -29,11 +35,11 @@ select t.codigo, t.nombre, p.tipo, t.padre, null, p.naturaleza, t.mov,
     ('53051501', '530515', 'Comisiones bancarias y financieras', true, 12)
   ) t(codigo, padre, nombre, mov, orden)
   join public.puc_plantilla p on p.codigo = left(t.codigo, 4)
- order by t.orden
+ order by t.orden, length(t.codigo)
 on conflict (codigo) do nothing;
 
 update public.puc_plantilla set es_movimiento = false
- where codigo in ('3705', '6135', '4295', '240805', '240810', '530515') and es_movimiento is true;
+ where codigo in ('3705', '6135', '4295', '5395', '240805', '240810', '530515') and es_movimiento is true;
 update public.puc_plantilla set nombre = 'Comisiones' where codigo = '530515';
 
 alter trigger tr_zz_configuracion_contable on public.organizations rename to trg_zzzz_configuracion_contable;
@@ -170,7 +176,7 @@ begin
             when 'costo_ventas' then case when p.account_code = '6135' then '61350501' end
             when 'saldo_inicial' then '37050501'
             when 'faltante_inventario' then '61350502'
-            when 'redondeo' then '42959501'
+            when 'redondeo' then '42958101'
             when 'comisiones' then '53051501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
@@ -179,7 +185,7 @@ begin
             when 'costo_ventas' then '61350501'
             when 'saldo_inicial' then '37050501'
             when 'faltante_inventario' then '61350502'
-            when 'redondeo' then '42959501'
+            when 'redondeo' then '42958101'
             when 'comisiones' then '53051501'
             when 'iva_generado' then '24080501'
             when 'iva_descontable' then '24081001'
@@ -202,6 +208,13 @@ begin
     on c.organization_id = p_org
    and c.account_code = x.codigo
    and c.es_movimiento is distinct from false
+  on conflict (organization_id, branch_id, clave) do nothing;
+
+  -- Redondeo en contra (Ajuste al peso): 53959501 (clave creada en 130600).
+  insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
+  select p_org, null, 'redondeo_en_contra', '53959501'
+  where exists (select 1 from public.chart_of_accounts c
+                where c.organization_id = p_org and c.account_code = '53959501' and c.es_movimiento is true)
   on conflict (organization_id, branch_id, clave) do nothing;
 
   -- Costo de ventas por sede: 6135 -> 61350501 (igual que el Bloque B), si el auxiliar existe.

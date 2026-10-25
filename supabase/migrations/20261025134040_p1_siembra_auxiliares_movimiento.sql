@@ -9,6 +9,7 @@
 -- 4) Orden de triggers en organizations (alfabético): tr_zz_configuracion_contable corría ANTES de
 --    trg_create_default_branch_and_period (sin sede => sin auxiliar 14350101). Se renombra a
 --    trg_zzzz_configuracion_contable: corre después de tr_auto_create_chart_of_accounts* y de la sede.
+-- 5) Trigger de alta trg_p1_separacion_insumos_alta: orgs nuevas H/R con separación insumo/reventa activa.
 -- Rollback: supabase/rollbacks/20261025134040_p1_siembra_auxiliares_movimiento_rollback.sql
 
 insert into public.puc_plantilla (codigo, nombre, tipo, padre, descripcion, naturaleza, es_movimiento,
@@ -282,3 +283,30 @@ begin
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
 $function$;
+
+-- 5) Separación insumo/reventa (QA 558bea34 B1): fn_separacion_insumos_activa devuelve false sin fila.
+--    El ALTA de una org de restaurante/hotel (type_id 1/2) crea su fila con activa = true: nace sin saldo
+--    en 14350101 y puede separar desde el primer movimiento. Una org que nace con otro tipo no recibe fila
+--    (queda apagada aunque después cambie a restaurante/hotel: su stock ya estaría en 14350101).
+--    Las orgs existentes las siembra 134030 con activa = false.
+create or replace function public.fn_p1_separacion_insumos_alta()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+begin
+  if new.type_id in (1, 2) then
+    insert into public.p1_separacion_insumos (organization_id, activa, aprobada_en, nota)
+    values (new.id, true, now(), 'org nueva de restaurante/hotel: separación activa desde el alta')
+    on conflict (organization_id) do nothing;
+  end if;
+  return new;
+end;
+$function$;
+revoke all on function public.fn_p1_separacion_insumos_alta() from public, anon, authenticated;
+
+drop trigger if exists trg_p1_separacion_insumos_alta on public.organizations;
+create trigger trg_p1_separacion_insumos_alta
+  after insert on public.organizations
+  for each row execute function public.fn_p1_separacion_insumos_alta();

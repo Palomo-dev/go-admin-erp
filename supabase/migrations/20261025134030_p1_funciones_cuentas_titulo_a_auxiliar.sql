@@ -175,7 +175,9 @@ revoke all on function public.fn_cuenta_ingresos_diversos(integer, integer) from
 -- dejaría negativa. La reclasificación de saldos es un plan aparte que Juan debe aprobar; al aprobarlo, por
 -- org y en el mismo corte que el asiento: update public.p1_separacion_insumos set activa = true,
 -- aprobada_en = now(), nota = '...' where organization_id = <org>.
--- Orgs nuevas (sin fila, creadas después de aplicar) SÍ separan: no tienen saldo histórico.
+-- Sin fila = separación APAGADA (QA 558bea34 B1: una org existente que pasa luego a restaurante/hotel, o
+-- una sin tipo, no debe separar con su stock en 14350101). Las orgs NUEVAS de restaurante/hotel reciben su
+-- fila con activa = true en el alta (trigger trg_p1_separacion_insumos_alta, 134040): no tienen saldo histórico.
 -- Reversible: activa = false vuelve a mandar los insumos a 14350101 (el costo sigue en 61400501).
 create table if not exists public.p1_separacion_insumos (
   organization_id integer primary key references public.organizations(id) on delete cascade,
@@ -196,9 +198,12 @@ language sql
 stable security definer
 set search_path to 'public', 'pg_temp'
 as $function$
-  select coalesce((select s.activa from public.p1_separacion_insumos s where s.organization_id = p_org), true);
+  select coalesce((select s.activa from public.p1_separacion_insumos s where s.organization_id = p_org), false);
 $function$;
 revoke all on function public.fn_separacion_insumos_activa(integer) from public, anon;
+-- Solo un booleano por org: la vista previa de la carga inicial (DialogoRegistrarMovimiento) lo lee para
+-- mostrar la misma cuenta que postea el SQL (14050501 o 14350101).
+grant execute on function public.fn_separacion_insumos_activa(integer) to authenticated;
 
 -- Clasificación de inventario/costo por producto en hoteles y restaurantes (regla del contador, 25-oct).
 -- Orden: 1) override del producto (cuenta_inventario/cuenta_costo); 2) ingrediente de receta = INSUMO

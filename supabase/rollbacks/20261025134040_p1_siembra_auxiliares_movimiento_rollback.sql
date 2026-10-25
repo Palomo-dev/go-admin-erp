@@ -153,3 +153,7 @@ begin
   on conflict (organization_id, branch_id, clave) do nothing;
 end;
 $function$;
+
+-- QA 558bea34: trigger de alta de la separación insumo/reventa (las filas las elimina el rollback de 134030).
+drop trigger if exists trg_p1_separacion_insumos_alta on public.organizations;
+drop function if exists public.fn_p1_separacion_insumos_alta();

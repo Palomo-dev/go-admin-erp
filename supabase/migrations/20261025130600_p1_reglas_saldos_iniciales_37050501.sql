@@ -82,6 +82,7 @@ begin
   raise notice 'cfg costo_ventas: % (esperado 53)', n;
   n := pg_temp.p1_config($w$cc.clave = 'faltante_inventario' and cc.account_code = '519595'$w$, '61350502');
   raise notice 'cfg faltante_inventario: % (esperado 5)', n;
+  -- DECISIÓN ABIERTA: redondeo→42959501 pendiente de confirmación del contador
   n := pg_temp.p1_config($w$cc.clave = 'redondeo' and cc.account_code = '4295'$w$, '42959501');
   raise notice 'cfg redondeo: % (esperado 5) [decisión abierta]', n;
   n := pg_temp.p1_config($w$cc.clave = 'comisiones' and cc.account_code in ('5235','529505')$w$, '53051501');
@@ -130,7 +131,9 @@ begin
   order by ar.priority
   limit 1;
   v_inv := coalesce(nullif(btrim(v_inv), ''), '1405');
-  v_cmv := case when v_type in (1, 2) then '6140' else '6135' end;
+  -- 6135 pasa a título en 130700: el respaldo es su auxiliar 61350501. Igual que con 1435, el auxiliar
+  -- de la sede lo resuelve después fn_cuenta_configurada_de_sede (branch_account_mappings 6135->61350501).
+  v_cmv := case when v_type in (1, 2) then '6140' else '61350501' end;
   v_faltante := coalesce(
     public.fn_cuenta_por_clave(p_organization_id, null, 'faltante_inventario'),
     '61350502'

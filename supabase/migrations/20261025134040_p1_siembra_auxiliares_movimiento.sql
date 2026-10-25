@@ -54,6 +54,7 @@ declare
   v_type integer;
   v_inv text;
   v_cmv text;
+  v_merma text;
   v_prod text;
   v_serv text;
   v_noshow text;
@@ -79,7 +80,13 @@ begin
   -- Siempre auxiliares de movimiento (P1 25-oct-2026): el plan de la org nueva sale de puc_plantilla,
   -- que ya trae 14350101 (vía trg_sede_auxiliar_1435), 61350501/61350502, 37050501, 42959501, IVA 19%/5%.
   v_inv := '14350101';
-  v_cmv := case when v_cmv = '6135' or v_cmv is null then '61350501' else v_cmv end;
+  -- Costo según sector (regla del contador, decisión de Juan 22-oct): hoteles/restaurantes 61400501,
+  -- el resto 61350501. Mermas: 61400502 (cocina) o 61350502.
+  v_cmv := case
+             when v_type in (1, 2) then '61400501'
+             when v_cmv = '6135' or v_cmv is null then '61350501'
+             else v_cmv end;
+  v_merma := case when v_type in (1, 2) then '61400502' else '61350502' end;
   v_prod := coalesce(v_prod, '4135');
   v_serv := coalesce(v_serv, '4235');
   v_noshow := case when v_type = 2 then v_serv when v_type = 1 then v_prod else '4235' end;
@@ -109,7 +116,7 @@ begin
     (org_id, 'Propina', 'Registro de propina', 'tip', 'created', '5105', '1105', null, false, 30, true),
     (org_id, 'Movimiento de Caja', 'Movimiento de caja', 'cash_movement', 'created', '1105', v_prod, null, false, 30, true),
     (org_id, 'Ajuste Inventario Ganancia', 'Ajuste positivo de inventario', 'inventory_adjustment', 'gain', v_inv, '42959501', null, false, 30, true),
-    (org_id, 'Ajuste Inventario Perdida', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory_adjustment', 'loss', '61350502', v_inv, null, false, 31, true),
+    (org_id, 'Ajuste Inventario Perdida', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory_adjustment', 'loss', v_merma, v_inv, null, false, 31, true),
     (org_id, 'Orden de Compra Recibida', 'Recepcion de orden de compra', 'purchase_order', 'received', v_inv, '2205', '24081001', true, 30, true),
     (org_id, 'Membresia', 'Ingreso por membresia', 'membership', 'created', '1105', '4250', null, false, 30, true),
     (org_id, 'Sesion Parqueadero', 'Ingreso por sesion de parqueadero', 'parking', 'closed', '1105', '4235', null, false, 30, true),
@@ -133,7 +140,7 @@ begin
     (org_id, 'Inventario venta', 'Costo de la venta', 'inventory', 'sale', v_cmv, v_inv, null, false, 41, true),
     (org_id, 'Inventario devolucion', 'Devolucion al inventario', 'inventory', 'return', v_inv, v_cmv, null, false, 42, true),
     (org_id, 'Inventario compra', 'Entrada de compra', 'inventory', 'purchase', v_inv, '2205', null, false, 43, true),
-    (org_id, 'Inventario faltante', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory', 'loss', '61350502', v_inv, null, false, 44, true),
+    (org_id, 'Inventario faltante', 'Faltante de inventario. El robo y el siniestro debitan 5315.', 'inventory', 'loss', v_merma, v_inv, null, false, 44, true),
     (org_id, 'Inventario sobrante', 'Sobrante de inventario', 'inventory', 'gain', v_inv, '42959501', null, false, 45, true);
 end;
 $function$;
@@ -147,6 +154,7 @@ AS $function$
 declare
   v_tipo integer;
   v_inv text;
+  v_nivel integer;
 begin
   perform public.fn_assert_acceso_org(p_org);
   if exists (
@@ -156,6 +164,33 @@ begin
   end if;
 
   select o.type_id into v_tipo from public.organizations o where o.id = p_org;
+
+  -- Hoteles y restaurantes (type_id 1/2, regla del contador): plan propio de A&B, SOLO en esas orgs
+  -- (no va a puc_plantilla, que es de todas): 1405/140505/14050501 insumos de cocina y
+  -- 6140/614005/61400501 costo A&B, 61400502 mermas de cocina. En comercio no se crea nada.
+  if v_tipo in (1, 2) then
+   for v_nivel in 1..3 loop  -- por nivel: el hijo necesita al padre ya insertado
+    insert into public.chart_of_accounts (
+      organization_id, account_code, name, type, parent_code, is_active, activa,
+      naturaleza, es_movimiento, requiere_tercero, requiere_centro_costo, centro_costo_modo,
+      presentacion_niif, created_at, updated_at)
+    select p_org, t.codigo, t.nombre, p.type, t.padre, true, true, p.naturaleza, t.mov,
+           coalesce(p.requiere_tercero, false), p.requiere_centro_costo, p.centro_costo_modo,
+           p.presentacion_niif, now(), now()
+      from (values
+        ('1405',     '14',     'Materias primas',              false, 1),
+        ('140505',   '1405',   'Insumos de cocina',            false, 2),
+        ('14050501', '140505', 'Insumos de cocina',            true,  3),
+        ('6140',     '61',     'Hoteles y restaurantes',       false, 1),
+        ('614005',   '6140',   'Restaurantes',                 false, 2),
+        ('61400501', '614005', 'Costo de alimentos y bebidas', true,  3),
+        ('61400502', '614005', 'Mermas de cocina',             true,  3)
+      ) as t(codigo, padre, nombre, mov, orden)
+      join public.chart_of_accounts p on p.organization_id = p_org and p.account_code = t.padre
+     where t.orden = v_nivel
+    on conflict (organization_id, account_code) do nothing;
+   end loop;
+  end if;
 
   -- Inventario va SIEMPRE a un auxiliar 143501xx (regla de Juan: nunca 1435 sola ni 1405).
   -- Si aún no hay sede (la org se acaba de crear), fn_inventario_auxiliar_1435 devuelve null
@@ -173,9 +208,9 @@ begin
         select 1 from public.chart_of_accounts a
         where a.organization_id = p_org and a.es_movimiento is true
           and a.account_code = case p.clave
-            when 'costo_ventas' then case when p.account_code = '6135' then '61350501' end
+            when 'costo_ventas' then case when v_tipo in (1, 2) then '61400501' when p.account_code = '6135' then '61350501' end
             when 'saldo_inicial' then '37050501'
-            when 'faltante_inventario' then '61350502'
+            when 'faltante_inventario' then case when v_tipo in (1, 2) then '61400502' else '61350502' end
             when 'redondeo' then '42958101'
             when 'ingresos_diversos' then '42959501'
             when 'comisiones' then '53051501'
@@ -183,9 +218,9 @@ begin
             when 'iva_descontable' then '24081001'
           end
       ) then case p.clave
-            when 'costo_ventas' then '61350501'
+            when 'costo_ventas' then case when v_tipo in (1, 2) then '61400501' else '61350501' end
             when 'saldo_inicial' then '37050501'
-            when 'faltante_inventario' then '61350502'
+            when 'faltante_inventario' then case when v_tipo in (1, 2) then '61400502' else '61350502' end
             when 'redondeo' then '42958101'
             when 'ingresos_diversos' then '42959501'
             when 'comisiones' then '53051501'
@@ -235,5 +270,15 @@ begin
                 where c.organization_id = p_org and c.account_code = '61350501' and c.es_movimiento is true)
     and not exists (select 1 from public.branch_account_mappings m
                     where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6135');
+
+  -- Hoteles y restaurantes: costo por sede 6140 -> 61400501.
+  insert into public.branch_account_mappings (organization_id, branch_id, base_account_code, sub_account_code, created_at)
+  select p_org, b.id, '6140', '61400501', now()
+  from public.branches b
+  where b.organization_id = p_org and v_tipo in (1, 2)
+    and exists (select 1 from public.chart_of_accounts c
+                where c.organization_id = p_org and c.account_code = '61400501' and c.es_movimiento is true)
+    and not exists (select 1 from public.branch_account_mappings m
+                    where m.organization_id = p_org and m.branch_id = b.id and m.base_account_code = '6140');
 end;
 $function$;

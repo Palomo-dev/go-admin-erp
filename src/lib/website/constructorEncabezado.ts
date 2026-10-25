@@ -18,6 +18,9 @@ export const TIPOS = ['logo', 'menu', 'search', 'currency', 'cart', 'account', '
 export type TipoElemento = (typeof TIPOS)[number]
 
 export const BUSCADORES_NUEVOS = ['mini', 'icon_overlay', 'mega', 'pill_floating'] as const
+/** Estilos de la barra. `bar` sin variante sigue siendo la barra de hoy. */
+export const VARIANTES_BARRA = ['outline', 'pill', 'soft', 'underline', 'filled'] as const
+export type VarianteBarra = (typeof VARIANTES_BARRA)[number]
 export type BuscadorNuevo = (typeof BUSCADORES_NUEVOS)[number] | 'bar'
 
 export const ACCIONES_BOTON = ['link', 'whatsapp', 'call', 'cart', 'search', 'menu', 'modal', 'category', 'download'] as const
@@ -171,6 +174,7 @@ export interface CromoBuscador {
   iconBackground?: string
   button: 'none' | 'text' | 'icon'
   mobile: 'icon' | 'bar' | 'fullscreen'
+  variante?: VarianteBarra
 }
 
 export interface ConstructorEncabezado {
@@ -392,7 +396,7 @@ export function radioForma(shape: ContenedorIconos['shape'], radius?: number): s
   if (shape === 'circle') return '9999px'
   if (shape === 'square') return '0px'
   if (shape === 'rounded') return `${radius ?? 8}px`
-  if (shape === 'semi') return '8px'
+  if (shape === 'semi') return '14px'
   if (shape === 'squircle') return '30%'
   return '0px'
 }
@@ -509,26 +513,41 @@ function leerMenu(valor: unknown, i: number): MenuConstruido | null {
   }
 }
 
+const PRESET_BARRA: Record<VarianteBarra, { border: CromoBuscador['border']; radius: CromoBuscador['radius']; shadow: boolean; background?: string }> = {
+  outline: { border: 'thin', radius: 'rounded', shadow: false },
+  pill: { border: 'thin', radius: 'pill', shadow: false },
+  soft: { border: 'none', radius: 'rounded', shadow: false, background: '#F3F4F6' },
+  underline: { border: 'none', radius: 'square', shadow: false },
+  filled: { border: 'none', radius: 'rounded', shadow: true, background: '#EEF2FF' },
+}
+
 function leerBuscador(crudo: unknown, estiloSitio: unknown): CromoBuscador | null {
   const o = objeto(crudo) ?? {}
   const tipoNuevo = enLista(BUSCADORES_NUEVOS, o.type) ?? enLista(BUSCADORES_NUEVOS, estiloSitio)
-  const tipoBarra = (o.type === 'bar' || estiloSitio === 'bar') && (o.placeholder || o.border || o.radius || o.shadow || o.background || o.icon || o.button)
+  const variante = enLista(VARIANTES_BARRA, o.variant) ?? enLista(VARIANTES_BARRA, estiloSitio)
+  const cromoExplicito = !!(
+    variante || o.placeholder || o.border || o.radius || o.shadow === true || o.shadow === false
+    || o.background || o.icon || o.icon_side || o.button || o.border_color
+  )
+  const tipoBarra = (o.type === 'bar' || estiloSitio === 'bar' || !!variante) && cromoExplicito
   if (!tipoNuevo && !tipoBarra) return null
+  const preset = variante ? PRESET_BARRA[variante] : null
   return {
     tipo: tipoNuevo ?? 'bar',
     placeholder: texto(o.placeholder, 60),
     width: entero(o.width, 120, 960),
-    border: enLista(['none', 'thin', 'thick'] as const, o.border) ?? 'thin',
+    border: enLista(['none', 'thin', 'thick'] as const, o.border) ?? preset?.border ?? 'thin',
     borderColor: color(o.border_color),
-    radius: enLista(FORMAS, o.radius) ?? (tipoNuevo === 'pill_floating' ? 'pill' : 'rounded'),
-    shadow: o.shadow === true || tipoNuevo === 'pill_floating',
-    background: color(o.background),
+    radius: enLista(FORMAS, o.radius) ?? preset?.radius ?? (tipoNuevo === 'pill_floating' ? 'pill' : 'rounded'),
+    shadow: o.shadow === false ? false : (o.shadow === true || tipoNuevo === 'pill_floating' || preset?.shadow === true),
+    background: color(o.background) ?? preset?.background,
     icon: texto(o.icon, 40),
     iconSide: o.icon_side === 'right' ? 'right' : 'left',
     iconColor: color(o.icon_color),
     iconBackground: color(o.icon_background),
     button: enLista(['none', 'text', 'icon'] as const, o.button) ?? (tipoNuevo === 'mega' ? 'icon' : 'none'),
     mobile: enLista(['icon', 'bar', 'fullscreen'] as const, o.mobile) ?? 'icon',
+    ...(variante ? { variante } : {}),
   }
 }
 
@@ -572,4 +591,14 @@ export function leerConstructor(settings: unknown): ConstructorEncabezado | null
 /** El buscador nuevo va en la barra (mini, mega, píldora, barra con cromo). El overlay va en el ícono. */
 export function buscadorEnBarra(tipo: BuscadorNuevo | undefined): boolean {
   return !!tipo && tipo !== 'icon_overlay'
+}
+
+/**
+ * Dónde va la barra dentro del encabezado. `null` = el lugar de hoy
+ * (entre el menú y las acciones). `align` solo no enciende el cromo.
+ */
+export function alineacionBuscador(settings: unknown): 'left' | 'center' | 'right' | null {
+  const search = objeto(objeto(objeto(settings)?.header_builder)?.search)
+  const align = search?.align
+  return align === 'left' || align === 'center' || align === 'right' ? align : null
 }

@@ -32,6 +32,7 @@ import {
 import { CelularEncabezado } from './CelularEncabezado';
 import { ConstructorEncabezado } from './ConstructorEncabezado';
 import { PRESETS_CONTENEDOR } from '@/lib/website/constructorEncabezado';
+import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -256,6 +257,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
   return (
     <>
       <SelectorMenu {...p} comoTitulo etiqueta={t('zonaGlobal.menu.titulo')} />
+      <MenusSimultaneos ajustes={a} menus={p.menus} cambiar={cambiar} />
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idFuente}>{t('zonaGlobal.menu.fuente')}</EtiquetaGrupo>
         <ChipsOpcion
@@ -427,6 +429,51 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
             valor={presetContenedorActivo(a)}
             onValorChange={(v) => aplicarPresetContenedor(a, v, cambiar)}
           />
+          <EtiquetaGrupo id={`${idCaja}-forma`}>{t('zonaGlobal.diseno.formaCaja')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={`${idCaja}-forma`}
+            opciones={[
+              { valor: 'circle', etiqueta: t('zonaGlobal.diseno.formaCirculo') },
+              { valor: 'square', etiqueta: t('zonaGlobal.diseno.formaCuadrado') },
+              { valor: 'semi', etiqueta: t('zonaGlobal.diseno.formaSemi') },
+              { valor: 'none', etiqueta: t('zonaGlobal.diseno.formaNinguna') },
+            ]}
+            valor={formaCajaActiva(a)}
+            onValorChange={(v) => aplicarFormaCaja(a, v, cambiar)}
+          />
+          <EtiquetaGrupo>{t('zonaGlobal.diseno.sombraCaja')}</EtiquetaGrupo>
+          <ChipsOpcion
+            opciones={[
+              { valor: 'none', etiqueta: t('zonaGlobal.diseno.sombraNinguna') },
+              { valor: 'sm', etiqueta: 'S' },
+              { valor: 'md', etiqueta: 'M' },
+              { valor: 'lg', etiqueta: 'L' },
+            ]}
+            valor={textoCaja(a, 'shadow') || 'none'}
+            onValorChange={(v) => escribirCaja(a, { shadow: v }, cambiar)}
+          />
+          <EtiquetaGrupo>{t('zonaGlobal.diseno.bordeCaja')}</EtiquetaGrupo>
+          <ChipsOpcion
+            opciones={[
+              { valor: '0', etiqueta: '0' },
+              { valor: '1', etiqueta: '1' },
+              { valor: '2', etiqueta: '2' },
+            ]}
+            valor={String(numeroCaja(a, 'border_width') ?? 0)}
+            onValorChange={(v) => escribirCaja(a, { border_width: Number(v), border_style: Number(v) ? 'solid' : undefined, border_color: '#111827' }, cambiar)}
+          />
+          <ColorField
+            etiqueta={t('zonaGlobal.diseno.hoverCaja')}
+            valor={textoCaja(a, 'hover_background') || '#E5E7EB'}
+            onCambiar={(hex) => escribirCaja(a, { hover_background: hex, hover_scale: 105 }, cambiar)}
+          />
+          {formaCajaActiva(a) !== 'none' && (
+            <ColorField
+              etiqueta={t('zonaGlobal.diseno.fondoCaja')}
+              valor={textoCaja(a, 'background') || '#FFFFFF'}
+              onCambiar={(hex) => escribirCaja(a, { background: hex }, cambiar)}
+            />
+          )}
         </div>
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.headerSobreHero')}
@@ -601,11 +648,79 @@ function Diseno(p: Interno) {
           opciones={[
             { valor: 'icon', etiqueta: t('zonaGlobal.diseno.icono') },
             { valor: 'bar', etiqueta: t('zonaGlobal.diseno.barraVisible') },
+            { valor: 'outline', etiqueta: t('zonaGlobal.diseno.barraOutline') },
+            { valor: 'pill', etiqueta: t('zonaGlobal.diseno.barraPill') },
+            { valor: 'soft', etiqueta: t('zonaGlobal.diseno.barraSoft') },
+            { valor: 'underline', etiqueta: t('zonaGlobal.diseno.barraUnderline') },
+            { valor: 'filled', etiqueta: t('zonaGlobal.diseno.barraFilled') },
             { valor: 'hidden', etiqueta: t('zonaGlobal.diseno.oculto') },
           ]}
-          valor={valorOpcion<string>(a, 'search_style') ?? 'icon'}
-          onValorChange={(v) => cambiar({ search_style: v })}
+          valor={estiloBuscadorActivo(a)}
+          onValorChange={(v) => aplicarBuscador(a, v, cambiar)}
         />
+        {esBarraBuscador(a) && (
+          <>
+            <EtiquetaGrupo>{t('zonaGlobal.diseno.bordeBarra')}</EtiquetaGrupo>
+            <ChipsOpcion
+              opciones={[
+                { valor: 'none', etiqueta: '0' },
+                { valor: 'thin', etiqueta: '1' },
+                { valor: 'thick', etiqueta: '2' },
+              ]}
+              valor={textoBusqueda(a, 'border')}
+              onValorChange={(v) => escribirCromoBuscador(a, { border: v }, cambiar)}
+            />
+            <EtiquetaGrupo>{t('zonaGlobal.diseno.radioBarra')}</EtiquetaGrupo>
+            <ChipsOpcion
+              opciones={[
+                { valor: 'square', etiqueta: t('zonaGlobal.diseno.formaCuadrado') },
+                { valor: 'rounded', etiqueta: 'Redondeada' },
+                { valor: 'semi', etiqueta: t('zonaGlobal.diseno.formaSemi') },
+                { valor: 'pill', etiqueta: 'Píldora' },
+              ]}
+              valor={textoBusqueda(a, 'radius')}
+              onValorChange={(v) => escribirCromoBuscador(a, { radius: v }, cambiar)}
+            />
+            <EtiquetaGrupo>{t('zonaGlobal.diseno.sombraBarra')}</EtiquetaGrupo>
+            <ChipsOpcion
+              opciones={[
+                { valor: 'off', etiqueta: t('zonaGlobal.diseno.sombraNinguna') },
+                { valor: 'on', etiqueta: 'Con sombra' },
+              ]}
+              valor={busquedaDe(a).shadow === true ? 'on' : busquedaDe(a).shadow === false ? 'off' : null}
+              onValorChange={(v) => escribirCromoBuscador(a, { shadow: v === 'on' }, cambiar)}
+            />
+            <EtiquetaGrupo>{t('zonaGlobal.diseno.ladoIcono')}</EtiquetaGrupo>
+            <ChipsOpcion
+              opciones={[
+                { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
+                { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
+              ]}
+              valor={textoBusqueda(a, 'icon_side')}
+              onValorChange={(v) => escribirCromoBuscador(a, { icon_side: v }, cambiar)}
+            />
+            <EtiquetaGrupo>{t('zonaGlobal.diseno.posicionBarra')}</EtiquetaGrupo>
+            <ChipsOpcion
+              opciones={[
+                { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
+                { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
+                { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
+              ]}
+              valor={textoBusqueda(a, 'align')}
+              onValorChange={(v) => escribirAlineacionBuscador(a, v, cambiar)}
+            />
+            <ColorField
+              etiqueta={t('zonaGlobal.diseno.fondoBarra')}
+              valor={textoBusqueda(a, 'background') || '#F3F4F6'}
+              onCambiar={(hex) => escribirCromoBuscador(a, { background: hex }, cambiar)}
+            />
+            <ColorField
+              etiqueta={t('zonaGlobal.diseno.colorBorde')}
+              valor={textoBusqueda(a, 'border_color') || '#111827'}
+              onCambiar={(hex) => escribirCromoBuscador(a, { border_color: hex, border: textoBusqueda(a, 'border') || 'thin' }, cambiar)}
+            />
+          </>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idBm}>{t('zonaGlobal.diseno.buscadorCelular')}</EtiquetaGrupo>
@@ -624,11 +739,25 @@ function Diseno(p: Interno) {
         <EtiquetaGrupo id={idMc}>{t('zonaGlobal.diseno.menuCelular')}</EtiquetaGrupo>
         <ChipsOpcion
           aria-labelledby={idMc}
-          opciones={(['drawer', 'fullscreen', 'bottom_sheet', 'tabs'] as const).map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.diseno.menuCelularOpcion.${v}`) }))}
-          valor={valorOpcion<string>(a, 'mobile_menu_style') ?? 'drawer'}
-          onValorChange={(v) => cambiar({ mobile_menu_style: v })}
+          opciones={(['drawer', 'fullscreen', 'bottom_sheet', 'tabs', 'top_dropdown'] as const).map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.diseno.menuCelularOpcion.${v}`) }))}
+          valor={estiloMenuCelular(a)}
+          onValorChange={(v) => cambiar({ mobile_menu_style: v === 'drawer' ? ladoCajon(a) : v })}
         />
       </div>
+      {(estiloMenuCelular(a) === 'drawer' || valorOpcion<string>(a, 'mobile_menu_style') === 'drawer_left') && (
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={`${idMc}-lado`}>{t('zonaGlobal.diseno.ladoCajon')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={`${idMc}-lado`}
+            opciones={[
+              { valor: 'drawer', etiqueta: t('zonaGlobal.diseno.ladoDerecha') },
+              { valor: 'drawer_left', etiqueta: t('zonaGlobal.diseno.ladoIzquierda') },
+            ]}
+            valor={ladoCajon(a)}
+            onValorChange={(v) => cambiar({ mobile_menu_style: v })}
+          />
+        </div>
+      )}
       <FilaInterruptor titulo={t('zonaGlobal.diseno.barraCelular')} valor={opcionBooleana(a, 'mobile_show_topbar')} onCambiar={(v) => cambiar({ mobile_show_topbar: v })} />
     </>
   );
@@ -791,6 +920,163 @@ function presetContenedorActivo(ajustes: Record<string, unknown>): PresetVisible
     return clave
   }
   return null
+}
+
+const ESTILOS_BARRA = ['outline', 'pill', 'soft', 'underline', 'filled'] as const
+
+function estiloBuscadorActivo(ajustes: Record<string, unknown>): string {
+  const estilo = valorOpcion<string>(ajustes, 'search_style') ?? 'icon'
+  if (estilo !== 'bar') return estilo
+  const variante = registro(registro(ajustes.header_builder).search).variant
+  return typeof variante === 'string' && (ESTILOS_BARRA as readonly string[]).includes(variante) ? variante : 'bar'
+}
+
+function busquedaDe(ajustes: Record<string, unknown>): Record<string, unknown> {
+  return registro(registro(ajustes.header_builder).search)
+}
+
+function textoBusqueda(ajustes: Record<string, unknown>, clave: string): string | null {
+  const valor = busquedaDe(ajustes)[clave]
+  return typeof valor === 'string' && valor ? valor : null
+}
+
+function esBarraBuscador(ajustes: Record<string, unknown>): boolean {
+  const estilo = estiloBuscadorActivo(ajustes)
+  return estilo === 'bar' || (ESTILOS_BARRA as readonly string[]).includes(estilo)
+}
+
+function escribirCromoBuscador(ajustes: Record<string, unknown>, parcial: Record<string, unknown>, cambiar: (c: Record<string, unknown>) => void) {
+  const builder = registro(ajustes.header_builder)
+  const search = busquedaDe(ajustes)
+  const estilo = estiloBuscadorActivo(ajustes)
+  const variant = (ESTILOS_BARRA as readonly string[]).includes(estilo) ? estilo : undefined
+  const base = variant ? {} : { radius: search.radius ?? 'pill', border: search.border ?? 'thin' }
+  cambiar({
+    search_style: 'bar',
+    header_builder: { ...builder, search: { ...search, type: 'bar', ...base, ...(variant ? { variant } : {}), ...parcial } },
+  })
+}
+
+function escribirAlineacionBuscador(ajustes: Record<string, unknown>, align: string, cambiar: (c: Record<string, unknown>) => void) {
+  const builder = registro(ajustes.header_builder)
+  const search = busquedaDe(ajustes)
+  cambiar({ header_builder: { ...builder, search: { ...search, align } } })
+}
+
+function aplicarBuscador(ajustes: Record<string, unknown>, valor: string, cambiar: (c: Record<string, unknown>) => void) {
+  const builder = registro(ajustes.header_builder)
+  const search = registro(builder.search)
+  const esEstilo = (ESTILOS_BARRA as readonly string[]).includes(valor)
+  if (!esEstilo) {
+    const { variant: _variante, ...resto } = search
+    const { search: _buscar, ...sinBuscar } = builder
+    const header_builder = Object.keys(resto).length ? { ...builder, search: resto } : Object.keys(sinBuscar).length ? sinBuscar : null
+    cambiar({ search_style: valor, header_builder })
+    return
+  }
+  cambiar({
+    search_style: 'bar',
+    header_builder: { ...builder, search: { ...search, type: 'bar', variant: valor } },
+  })
+}
+
+function estiloMenuCelular(ajustes: Record<string, unknown>): string {
+  const valor = valorOpcion<string>(ajustes, 'mobile_menu_style') ?? 'drawer'
+  return valor === 'drawer_left' || valor === 'drawer_right' ? 'drawer' : valor
+}
+
+function ladoCajon(ajustes: Record<string, unknown>): string {
+  return valorOpcion<string>(ajustes, 'mobile_menu_style') === 'drawer_left' ? 'drawer_left' : 'drawer'
+}
+
+function cajaDe(ajustes: Record<string, unknown>): Record<string, unknown> {
+  return registro(registro(ajustes.header_builder).icon_container)
+}
+
+function formaCajaActiva(ajustes: Record<string, unknown>): string {
+  const forma = cajaDe(ajustes).shape
+  return typeof forma === 'string' ? forma : 'none'
+}
+
+function textoCaja(ajustes: Record<string, unknown>, clave: string): string {
+  const valor = cajaDe(ajustes)[clave]
+  return typeof valor === 'string' ? valor : ''
+}
+
+function numeroCaja(ajustes: Record<string, unknown>, clave: string): number | null {
+  const valor = cajaDe(ajustes)[clave]
+  return typeof valor === 'number' ? valor : null
+}
+
+function escribirCaja(ajustes: Record<string, unknown>, parcial: Record<string, unknown>, cambiar: (c: Record<string, unknown>) => void) {
+  const builder = registro(ajustes.header_builder)
+  const caja: Record<string, unknown> = { ...cajaDe(ajustes), ...parcial, scope: 'all' }
+  if (!caja.shape) caja.shape = 'circle'
+  cambiar({ header_icons_circle: false, header_builder: { ...builder, icon_container: caja } })
+}
+
+function aplicarFormaCaja(ajustes: Record<string, unknown>, forma: string, cambiar: (c: Record<string, unknown>) => void) {
+  if (forma === 'none' && !cajaDe(ajustes).shape) {
+    cambiar({ header_icons_circle: false })
+    return
+  }
+  escribirCaja(ajustes, { shape: forma, ...(forma === 'semi' ? { radius: 14 } : {}) }, cambiar)
+}
+
+function MenusSimultaneos({ ajustes, menus, cambiar }: { ajustes: Record<string, unknown>; menus: readonly MenuDisponible[]; cambiar: (c: Record<string, unknown>) => void }) {
+  const t = useTextosEditor()
+  const lista = (Array.isArray(ajustes.header_menus) ? ajustes.header_menus : []) as { menuId?: string; zone?: string }[]
+  const [menuId, setMenuId] = useState(menus[0]?.id ?? '')
+  const [zona, setZona] = useState('header')
+  const nombre = (id: string) => menus.find((m) => m.id === id)?.name ?? id
+  return (
+    <section className="flex flex-col gap-3">
+      <TituloBloque>{t('zonaGlobal.diseno.menusExtra')}</TituloBloque>
+      <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.menusExtraAyuda')}</p>
+      {lista.map((item, i) => (
+        <div key={`${item.menuId}-${i}`} className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2">
+          <span className="min-w-0 truncate text-sm text-fg">
+            {nombre(item.menuId || '')} · {item.zone === 'topbar' ? t('zonaGlobal.diseno.zonaTopbar') : item.zone === 'menu' ? t('zonaGlobal.diseno.zonaMenuBarra') : t('zonaGlobal.diseno.zonaHeader')}
+          </span>
+          <button
+            type="button"
+            className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+            onClick={() => cambiar({ header_menus: lista.filter((_, j) => j !== i) })}
+          >
+            {t('zonaGlobal.diseno.quitar')}
+          </button>
+        </div>
+      ))}
+      {menus.length > 0 && (
+        <>
+          <ChipsOpcion
+            opciones={menus.map((m) => ({ valor: m.id, etiqueta: m.name }))}
+            valor={menuId}
+            onValorChange={setMenuId}
+          />
+          <ChipsOpcion
+            opciones={[
+              { valor: 'header', etiqueta: t('zonaGlobal.diseno.zonaHeader') },
+              { valor: 'topbar', etiqueta: t('zonaGlobal.diseno.zonaTopbar') },
+              { valor: 'menu', etiqueta: t('zonaGlobal.diseno.zonaMenuBarra') },
+            ]}
+            valor={zona}
+            onValorChange={setZona}
+          />
+          <button
+            type="button"
+            className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'self-start')}
+            onClick={() => {
+              if (!menuId) return
+              cambiar({ header_menus: [...lista, { menuId, zone: zona }] })
+            }}
+          >
+            {t('zonaGlobal.diseno.agregarMenu')}
+          </button>
+        </>
+      )}
+    </section>
+  )
 }
 
 function aplicarPresetContenedor(ajustes: Record<string, unknown>, clave: PresetVisible, cambiar: (c: Record<string, unknown>) => void) {

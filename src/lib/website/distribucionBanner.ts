@@ -344,11 +344,50 @@ function fila(indices: number[]): BloqueBanner {
  * Grupos completos y, si sobra, una fila llena (o el último a todo el ancho).
  * Con `ultimoAncho` en falso, el sobrante no entra: así no queda un hueco ni un banner suelto.
  */
+/** Con menos banners que el grupo, la pieza que hay ocupa su lugar (grande, mitad, centro) y no se estira a una fila igual. */
+function parcial(layout: Distribucion, n: number): BloqueBanner {
+  if (layout === 'split_50') {
+    return {
+      columnas: 2,
+      filas: 1,
+      plantilla: '1fr 1fr',
+      celdas: Array.from({ length: n }, (_, i) => celda(i, i + 1, 1)),
+    }
+  }
+  if (layout === 'triple_center') {
+    if (n === 1) {
+      return { columnas: 3, filas: 1, plantilla: '1fr 1.4fr 1fr', celdas: [celda(0, 2, 1, 1, 1, true)] }
+    }
+    return {
+      columnas: 3,
+      filas: 1,
+      plantilla: '1fr 1.4fr 1fr',
+      celdas: [celda(0, 1, 1), celda(1, 2, 1, 1, 1, true)].slice(0, n),
+    }
+  }
+  if (layout === 'hero_plus_2' || layout === '2_plus_hero') {
+    const derecha = layout === '2_plus_hero'
+    const plantilla = derecha ? '1fr 2fr' : '2fr 1fr'
+    if (n === 1) {
+      return { columnas: 2, filas: 2, plantilla, celdas: [celda(0, derecha ? 2 : 1, 1, 1, 2)] }
+    }
+    return derecha
+      ? { columnas: 2, filas: 2, plantilla, celdas: [celda(0, 1, 1), celda(1, 2, 1, 1, 2)] }
+      : { columnas: 2, filas: 2, plantilla, celdas: [celda(0, 1, 1, 1, 2), celda(1, 2, 1)] }
+  }
+  if (layout === 'hero_plus_4') {
+    const celdas = [celda(0, 1, 1, 2, 2)]
+    for (let i = 1; i < n; i++) celdas.push(celda(i, 3 + ((i - 1) % 2), 1 + Math.floor((i - 1) / 2)))
+    return { columnas: 4, filas: 2, plantilla: '2fr 2fr 1fr 1fr', celdas }
+  }
+  return fila(Array.from({ length: n }, (_, i) => i))
+}
+
 export function bloquesDistribucion(layout: Distribucion, cantidad: number, ultimoAncho: boolean): BloqueBanner[] {
   const grupo = grupoDistribucion(layout)
   const n = Math.max(0, Math.floor(cantidad))
   if (n === 0 || grupo === 0) return []
-  if (n < grupo) return ultimoAncho ? [fila(Array.from({ length: n }, (_, i) => i))] : []
+  if (n < grupo) return [parcial(layout, n)]
   const grupos = Math.floor(n / grupo)
   const resto = n % grupo
   const bloques: BloqueBanner[] = []

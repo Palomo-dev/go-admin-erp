@@ -85,6 +85,7 @@ import {
 } from '@/lib/website/v2/estiloSeccion';
 import { useResumenSitio } from '@/components/sitio-web/resumen/useResumenSitio';
 import { useSitioV2 } from '@/components/sitio-web/useSitioV2';
+import { pedirRevalidacionSitio } from '@/components/sitio-web/revalidarSitioPublico';
 import { rutaEditorSitio } from '@/components/sitio-web/rutasSitioWeb';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
@@ -1063,8 +1064,16 @@ export function useEditorSitio() {
         setProgramacion(null);
         void clienteSitiosV2.listar().then(setSitios).catch(() => undefined);
         const aviso = avisoTrasPublicar({ v2AdoptadoAntes, activacion: r.activacion });
+        const doc = docLocalRef.current;
+        const pagina = currentPageRef.current;
+        if (doc) setDocumentoPublicado(pagina ? aplicarPaginaAlDocumento(doc, pagina) : doc);
         if (aviso.tipo === 'web_actualizada') {
-          toast.success(r.idempotente && !aviso.activadaAhora ? t('publicar.yaPublicada') : t('publicar.webActualizada'), {
+          const texto = r.idempotente && !aviso.activadaAhora
+            ? t('publicar.yaPublicada')
+            : r.cacheConfirmada
+              ? t('publicar.webActualizada')
+              : t('publicar.webActualizadaPendiente');
+          toast.success(texto, {
             ...(urlPublica
               ? { action: { label: t('barra.verPublicado'), onClick: () => window.open(urlPublica, '_blank', 'noopener,noreferrer') } }
               : {}),
@@ -1202,7 +1211,7 @@ export function useEditorSitio() {
         const guardado = await clienteSitiosV2.guardar(sitio.id, documento, servidor.version);
         if (accion === 'sobrescribir') {
           const r = await clienteSitiosV2.publicar(sitio.id, guardado.version, null);
-          revalidarSitioPublico();
+          await pedirRevalidacionSitio(sitio.id);
           toast.success(t('publicar.listo', { n: r.numero }));
         } else {
           toast.success(t('conflicto.combinado'));

@@ -1134,6 +1134,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       },
       campoIncluirSubcategorias(false),
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '12', group: 'data' },
+      { key: 'list_mode', label: 'Lista', type: 'select', group: 'layout', helpText: 'Vacío: igual que hoy. Lista larga muestra el tope de una vez. Paginación parte ese tope. «Por página» define cuántos entran en cada página.', options: [
+        { value: 'long', label: 'Lista larga' },
+        { value: 'pages', label: 'Paginación' },
+      ]},
       { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
         { value: 'default', label: 'Por defecto' },
         { value: 'price_asc', label: 'Precio ascendente' },
@@ -1212,6 +1216,11 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grid' },
       { id: 'horizontal', label: 'Horizontal' },
       { id: 'icons', label: 'Iconos' },
+      { id: 'circle', label: 'Círculos' },
+      { id: 'card_bottom', label: 'Tarjetas' },
+      { id: 'pill', label: 'Pastillas' },
+      { id: 'bento', label: 'Mosaico' },
+      { id: 'minimal_icon', label: 'Íconos con nombre' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
@@ -1916,6 +1925,37 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'America/Los_Angeles', label: 'EEUU Oeste (GMT-8)' },
       ]},
       { key: 'reset_hour', label: 'Hora de reinicio (0-23)', type: 'number', placeholder: '0' },
+    ],
+  },
+  {
+    type: 'urgencia',
+    label: 'Urgencia',
+    icon: 'Flame',
+    description: 'Contador, unidades que quedan y aviso de interés. Apagado no se ve.',
+    variants: [
+      { id: 'inline', label: 'En línea' },
+      { id: 'banner', label: 'Banner' },
+    ],
+    contentFields: [
+      { key: 'show_countdown', label: 'La oferta termina en…', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Apagado: la sección no muestra contador.' },
+      { key: 'show_stock', label: 'Quedan unidades', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Usa el stock real del producto. Sin stock no inventa un número.' },
+      { key: 'show_viewers', label: 'Personas viendo', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Número estable por producto. No es gente en vivo.' },
+      { key: 'title', label: 'Texto del contador', type: 'text', group: 'content', placeholder: 'La oferta termina en' },
+      { key: 'stock_text', label: 'Texto de stock', type: 'text', group: 'content', placeholder: 'Quedan {n} unidades' },
+      { key: 'stock_threshold', label: 'Mostrar si quedan hasta', type: 'number', group: 'content', placeholder: '5', min: 1, max: 999 },
+      { key: 'viewer_text', label: 'Texto de interés', type: 'text', group: 'content', placeholder: '{n} personas viendo' },
+      { key: 'accent', label: 'Color', type: 'color', group: 'style' },
+      {
+        key: 'shape',
+        label: 'Forma',
+        type: 'select',
+        group: 'style',
+        options: [
+          { value: 'rounded', label: 'Redondeada' },
+          { value: 'pill', label: 'Píldora' },
+          { value: 'square', label: 'Cuadrada' },
+        ],
+      },
     ],
   },
   // ============================================================

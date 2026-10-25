@@ -209,14 +209,27 @@ function Editor() {
       } else if (e.key === 'Delete' && ed.activeSectionId) {
         e.preventDefault();
         setEliminar(ed.activeSectionId);
-      } else if (e.key === 'Escape' && !hojaMenu) {
-        ed.seleccionarSeccion(null);
-        ed.seleccionarZona(null);
+      } else if (e.key === 'Escape') {
+        // Solo cierra el diálogo o la hoja que esté abierta. Un popover de
+        // Radix se cierra solo. Escape no deselecciona la sección.
+        if (carta) setCarta(null);
+        else if (vistaPrevia) setVistaPrevia(false);
+        else if (cambioPagina) setCambioPagina(null);
+        else if (disenoPagina) setDisenoPagina(false);
+        else if (seoAbierto) setSeoAbierto(false);
+        else if (hojaMenu) setHojaMenu(false);
+        else if (herencia) setHerencia(false);
+        else if (adopcion !== null) setAdopcion(null);
+        else if (crearSitio !== undefined) setCrearSitio(undefined);
+        else if (eliminar) setEliminar(null);
+        else if (conflictoAbierto) setConflictoAbierto(false);
+        else if (publicarAbierto) setPublicarAbierto(false);
+        else if (anadir) setAnadir(false);
       }
     };
     window.addEventListener('keydown', alPulsar);
     return () => window.removeEventListener('keydown', alPulsar);
-  }, [ed, hojaMenu]);
+  }, [ed, hojaMenu, carta, vistaPrevia, cambioPagina, disenoPagina, seoAbierto, herencia, adopcion, crearSitio, eliminar, conflictoAbierto, publicarAbierto, anadir]);
 
   // Salir con cambios: el navegador avisa (legacy sin guardar o un guardado V2 en curso).
   const pendiente = ed.hasChanges;

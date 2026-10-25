@@ -1020,6 +1020,8 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
         defaultValue: 'pill',
         options: [
           { value: 'pill', label: 'Píldora' },
+          { value: 'rounded', label: 'Redondeada' },
+          { value: 'semi', label: 'Semirredondeada' },
           { value: 'square', label: 'Cuadrado' },
           { value: 'ribbon', label: 'Cinta' },
           { value: 'corner', label: 'Esquina' },
@@ -1065,6 +1067,7 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
           { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'share', label: 'Compartir' },
           { value: 'view_detail', label: 'Ver detalle' },
+          { value: 'choose', label: 'Elegir' },
           { value: 'custom', label: 'Personalizado' },
         ],
       },

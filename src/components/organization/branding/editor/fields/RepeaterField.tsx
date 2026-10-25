@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -46,6 +46,26 @@ function isItemFieldVisible(
   return true;
 }
 
+function idProvisional(id: string | undefined): boolean {
+  return !id || id.startsWith('def-') || id.startsWith('tmp-');
+}
+
+/** Lo que se pinta. No es el valor guardado. */
+export function materializarRepeater(items: RepeaterItem[], field: ContentFieldDef): RepeaterItem[] {
+  if (items.length === 0 && field.defaultItems && field.defaultItems.length > 0) {
+    return field.defaultItems.map((item, i) => ({
+      ...item,
+      id: `def-${field.key}-${i}`,
+    }));
+  }
+  return items.map((item, i) => (item.id ? item : { ...item, id: `tmp-${field.key}-${i}` }));
+}
+
+/** Al editar, los ids de pantalla se cambian por uuid reales. */
+export function persistirRepeater(lista: RepeaterItem[]): RepeaterItem[] {
+  return lista.map((item) => (idProvisional(item.id) ? { ...item, id: crypto.randomUUID() } : item));
+}
+
 /**
  * Lista de items con agregar/duplicar/eliminar/reordenar (drag).
  * Cada item se expande y renderiza `itemFields` recursivamente vía
@@ -66,35 +86,16 @@ export default function RepeaterField({
   const labelKey = field.itemLabelKey || itemFields[0]?.key;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const didNormalize = useRef(false);
-  const didInitDefaults = useRef(false);
 
-  // Pre-poblar con defaultItems cuando el array está vacío (una sola vez).
-  // Esto hace que el editor muestre los botones/badges por defecto en lugar
-  // de "Sin elementos", pero el usuario puede eliminarlos si no los quiere.
-  useEffect(() => {
-    if (didInitDefaults.current) return;
-    if (items.length === 0 && field.defaultItems && field.defaultItems.length > 0) {
-      didInitDefaults.current = true;
-      const defaults = field.defaultItems.map((item) => ({
-        ...item,
-        id: crypto.randomUUID(),
-      }));
-      onChange(defaults);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Los valores por defecto y los ids que faltan se ven al instante, pero no
+  // se escriben hasta que la persona edita. Escribir al montar marcaba la
+  // sección como cambiada con solo abrir la pestaña, y las etiquetas pasaban
+  // de «(0)» a «(3)» después del primer render.
+  const visibles = materializarRepeater(items, field);
 
-  // Normalizar ids una sola vez (retrocompatibilidad con items sin id).
-  useEffect(() => {
-    if (didNormalize.current) return;
-    const needsIds = items.some((i) => !i.id);
-    if (needsIds && items.length > 0) {
-      didNormalize.current = true;
-      onChange(items.map((i) => (i.id ? i : { ...i, id: crypto.randomUUID() })));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const emitir = (lista: RepeaterItem[]) => {
+    onChange(persistirRepeater(lista));
+  };
 
   const buildEmptyItem = (): RepeaterItem => {
     const item: RepeaterItem = { id: crypto.randomUUID() };
@@ -105,29 +106,29 @@ export default function RepeaterField({
   };
 
   const handleAdd = () => {
-    if (field.maxItems && items.length >= field.maxItems) return;
+    if (field.maxItems && visibles.length >= field.maxItems) return;
     const newItem = buildEmptyItem();
-    onChange([...items, newItem]);
+    emitir([...visibles, newItem]);
     setExpandedId(newItem.id!);
   };
 
   const handleDuplicate = (idx: number) => {
-    if (field.maxItems && items.length >= field.maxItems) return;
-    const copy = { ...items[idx], id: crypto.randomUUID() };
-    const next = [...items];
+    if (field.maxItems && visibles.length >= field.maxItems) return;
+    const copy = { ...visibles[idx], id: crypto.randomUUID() };
+    const next = [...visibles];
     next.splice(idx + 1, 0, copy);
-    onChange(next);
+    emitir(next);
     setExpandedId(copy.id!);
   };
 
   const handleRemove = (idx: number) => {
-    const next = items.filter((_, i) => i !== idx);
-    onChange(next);
-    if (expandedId === items[idx]?.id) setExpandedId(null);
+    const next = visibles.filter((_, i) => i !== idx);
+    emitir(next);
+    if (expandedId === visibles[idx]?.id) setExpandedId(null);
   };
 
   const handleUpdateItem = (id: string, key: string, val: unknown) => {
-    onChange(items.map((i) => (i.id === id ? { ...i, [key]: val } : i)));
+    emitir(visibles.map((i) => ((i.id || '') === id ? { ...i, [key]: val } : i)));
   };
 
   const handleDragStart = (e: React.DragEvent, idx: number) => {
@@ -139,10 +140,10 @@ export default function RepeaterField({
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (dragIdx !== null && dragIdx !== idx) {
-      const reordered = [...items];
+      const reordered = [...visibles];
       const [moved] = reordered.splice(dragIdx, 1);
       reordered.splice(idx, 0, moved);
-      onChange(reordered);
+      emitir(reordered);
       setDragIdx(idx);
     }
   };
@@ -152,7 +153,7 @@ export default function RepeaterField({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          {field.label} ({items.length})
+          {field.label} ({visibles.length})
         </Label>
         <button
           type="button"
@@ -163,9 +164,9 @@ export default function RepeaterField({
         </button>
       </div>
 
-      {items.length > 0 ? (
+      {visibles.length > 0 ? (
         <div className="space-y-1.5">
-          {items.map((item, idx) => {
+          {visibles.map((item, idx) => {
             const itemId = item.id || `tmp-${idx}`;
             const isExpanded = expandedId === itemId;
             const labelVal = labelKey ? String(item[labelKey] || '') : '';

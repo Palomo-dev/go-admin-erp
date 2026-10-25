@@ -16,6 +16,7 @@
  * se sobrescribe sigue al «Estilo del sitio». No guarda: avisa cada cambio.
  */
 import { useId, useState, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { Lock, Pencil } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { CampoNumero, ChipsOpcion, SegmentedControl, SettingRow } from '@/components/kit';
@@ -58,6 +59,9 @@ import {
   type Visibilidad,
 } from '@/lib/website/v2/estiloSeccion';
 import { useTextosEditor, type TraductorEditor } from '../textos';
+import { clasesBoton } from '@/components/kit';
+
+const ImagePickerDialog = dynamic(() => import('@/components/common/ImagePickerDialog'), { ssr: false });
 
 export interface TemaEstiloSeccion {
   colores: ColoresMarca;
@@ -154,6 +158,7 @@ export function InspectorEstilo({
   const id = useId();
   const [rol, setRol] = useState<RolTexto>('titulo');
   const [avisoUltimo, setAvisoUltimo] = useState(false);
+  const [galeria, setGaleria] = useState(false);
   // En una sede, los grupos heredados se muestran plegados hasta «Cambiar» (figma-estilo/03).
   const [abiertos, setAbiertos] = useState<Set<GrupoEstilo>>(new Set());
 
@@ -268,6 +273,34 @@ export function InspectorEstilo({
                   onCambiar={(colorAlterno) => cambiar({ colorAlterno })}
                   deshabilitado={deshabilitado}
                 />
+              )}
+              {(estilo.fondo ?? ESTILO_POR_DEFECTO.fondo) === 'imagen' && (
+                <div className="flex flex-col gap-2">
+                  {estilo.imagenFondo ? (
+                    <img src={estilo.imagenFondo} alt="" className="h-24 w-full rounded-lg object-cover" />
+                  ) : (
+                    <p className={AYUDA}>Elige una imagen de la galería o súbela.</p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} disabled={deshabilitado} onClick={() => setGaleria(true)}>
+                      {estilo.imagenFondo ? 'Cambiar imagen' : 'Elegir imagen'}
+                    </button>
+                    {estilo.imagenFondo && (
+                      <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} disabled={deshabilitado} onClick={() => cambiar({ imagenFondo: undefined })}>
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                  <ImagePickerDialog
+                    open={galeria}
+                    onOpenChange={setGaleria}
+                    title="Fondo de la sección"
+                    onSelect={(url) => {
+                      cambiar({ fondo: 'imagen', imagenFondo: url })
+                      setGaleria(false)
+                    }}
+                  />
+                </div>
               )}
             </Grupo>
             <Grupo titulo={t('estilo.entradaTitulo')} id={`${id}-entrada`}>

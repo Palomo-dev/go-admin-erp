@@ -97,6 +97,8 @@ export interface ResultadoPublicacion {
   /** Solo si se pidió `activar` al publicar (ver activarAlPublicar.ts). */
   activacion?: 'activada' | 'fallo' | 'no_aplica';
   errorActivacion?: string;
+  /** La tienda confirmó que descartó la caché del documento. Lo pone el cliente, no el RPC. */
+  cacheConfirmada?: boolean;
 }
 
 export interface ResultadoCreacion {

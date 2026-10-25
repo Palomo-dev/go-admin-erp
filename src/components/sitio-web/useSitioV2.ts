@@ -23,6 +23,7 @@ import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { BorradorSitio, ResultadoPublicacion, RevisionResumen, SitioResumen } from '@/lib/website/v2/tipos';
 import { resolverEstadoPublicacion, type EstadoPublicacion } from './ui/estadoPublicacion';
+import { pedirRevalidacionSitio } from './revalidarSitioPublico';
 
 export interface OpcionesSitioV2 {
   /** Sede del sitio (`null` = sitio principal). */
@@ -61,12 +62,6 @@ export interface SitioV2 {
 
 function comoError(error: unknown): ErrorApiSitio {
   return error instanceof ErrorApiSitio ? error : new ErrorApiSitio('error_interno', 500, 'No se pudo completar la operación.');
-}
-
-/** Pide al sitio público que vuelva a generar sus páginas (como el editor). */
-function revalidarSitioPublico(): void {
-  if (typeof fetch === 'undefined') return;
-  fetch('/api/website/revalidate', { method: 'POST', keepalive: true }).catch(() => undefined);
 }
 
 export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitado = false }: OpcionesSitioV2 = {}): SitioV2 {
@@ -174,8 +169,8 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
       ref.current = siguiente;
       setBorrador(siguiente);
       setSitio(sitioPublicado);
-      revalidarSitioPublico();
-      return r;
+      const cacheConfirmada = await pedirRevalidacionSitio(actual.sitio.id);
+      return { ...r, cacheConfirmada };
     } catch (e) {
       const err = comoError(e);
       if (err.esConflicto) setConflicto(true);

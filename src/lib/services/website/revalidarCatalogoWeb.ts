@@ -33,11 +33,28 @@ function baseUrls(): string[] {
  * Resuelve siempre; el resultado solo se registra en consola.
  */
 export async function revalidarCatalogoWeb(organizationId: number): Promise<void> {
+  await avisarTienda(organizationId, { organization_id: organizationId }, 'revalidarCatalogoWeb');
+}
+
+/**
+ * Invalida el documento publicado del sitio (etiquetas V2), no solo el catálogo.
+ * Devuelve true si al menos un origen de la tienda confirmó la invalidación.
+ */
+export async function revalidarSitioWeb(organizationId: number, siteStateId: string | null): Promise<boolean> {
+  const cuerpo: { organization_id: number; sitio: true; site_state_id?: string } = {
+    organization_id: organizationId,
+    sitio: true,
+  };
+  if (siteStateId) cuerpo.site_state_id = siteStateId;
+  return avisarTienda(organizationId, cuerpo, 'revalidarSitioWeb');
+}
+
+async function avisarTienda(organizationId: number, cuerpo: Record<string, unknown>, etiqueta: string): Promise<boolean> {
   const secret = process.env.CRON_SECRET;
   const urls = baseUrls();
-  if (!secret || urls.length === 0 || !Number.isInteger(organizationId)) return;
+  if (!secret || urls.length === 0 || !Number.isInteger(organizationId)) return false;
 
-  await Promise.all(
+  const resultados = await Promise.all(
     urls.map(async (base) => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -45,17 +62,21 @@ export async function revalidarCatalogoWeb(organizationId: number): Promise<void
         const res = await fetch(`${base}/api/revalidate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-webhook-secret': secret },
-          body: JSON.stringify({ organization_id: organizationId }),
+          body: JSON.stringify(cuerpo),
           signal: controller.signal,
         });
         if (!res.ok) {
-          console.warn(`[revalidarCatalogoWeb] ${base} respondió ${res.status} para org ${organizationId}`);
+          console.warn(`[${etiqueta}] ${base} respondió ${res.status} para org ${organizationId}`);
+          return false;
         }
+        return true;
       } catch (err) {
-        console.warn(`[revalidarCatalogoWeb] sin respuesta de ${base}:`, err instanceof Error ? err.message : err);
+        console.warn(`[${etiqueta}] sin respuesta de ${base}:`, err instanceof Error ? err.message : err);
+        return false;
       } finally {
         clearTimeout(timer);
       }
     }),
   );
+  return resultados.some(Boolean);
 }

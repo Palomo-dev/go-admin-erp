@@ -2750,6 +2750,7 @@ end;
 $function$
 ;
 
+drop function if exists public.fn_revertir_asiento_en_fecha(integer, timestamptz, text, text);
 drop function if exists public.fn_impuesto_inc_parte(text, text, numeric);
 drop function if exists public.fn_cuenta_inc(integer);
 drop function if exists public.fn_cuenta_iva_generado(integer);

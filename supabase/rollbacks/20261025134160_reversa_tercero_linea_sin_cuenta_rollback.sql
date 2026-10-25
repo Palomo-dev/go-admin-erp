@@ -1,4 +1,4 @@
--- Rollback 134160: vuelve fn_revertir_asiento_en_fecha a la versión de 134115 y fn_auto_journal_void a la previa; elimina fn_reversar_linea_sin_cuenta.
+-- Rollback 134160: vuelve fn_revertir_asiento_en_fecha a la versión de 134115 y fn_auto_journal_void a la previa; elimina fn_reversar_linea_sin_cuenta, fn_revertir_asiento_publicar, journal_reversa_pendiente y la validación trg_zz_asiento_cuadrado.
 create or replace function public.fn_revertir_asiento_en_fecha(p_entry_id integer, p_fecha timestamptz,
   p_categoria text, p_lote text)
 returns integer language plpgsql security definer set search_path to 'public', 'pg_temp' as $$
@@ -39,6 +39,12 @@ end $$;
 revoke all on function public.fn_revertir_asiento_en_fecha(integer, timestamptz, text, text) from public, anon, authenticated;
 delete from public.chart_of_accounts c where c.description = 'Pendiente de clasificar (QA 25-oct-2026)' and not exists (select 1 from public.journal_lines l where l.organization_id = c.organization_id and l.account_code like c.account_code || '%');
 drop function if exists public.fn_reversar_linea_sin_cuenta(bigint, text);
+drop function if exists public.fn_reversar_linea_sin_cuenta(bigint, jsonb);
+drop function if exists public.fn_revertir_asiento_publicar(integer, timestamptz, text, text, jsonb);
+drop table if exists public.journal_reversa_pendiente;
+drop trigger if exists trg_zz_asiento_cuadrado on public.journal_lines;
+drop trigger if exists trg_zz_asiento_cuadrado on public.journal_entries;
+drop function if exists public.fn_trg_asiento_cuadrado();
 
 -- fn_auto_journal_void de 134115 (con la excepción einvoice)
 CREATE OR REPLACE FUNCTION public.fn_auto_journal_void()

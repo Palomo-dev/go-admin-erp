@@ -4,6 +4,9 @@
 --   fn_propuesta_configuracion_sector: tipo 1 ventas_productos 41401501 e impuesto_consumo 24950501 (sin comisiones).
 --   fn_cuenta_iva: un auxiliar INC 2495xx de movimiento se respeta; compras nunca 2405 (va 2408).
 --   fn_regla_devengo_venta: sin INC por org; la cuenta de impuesto es siempre IVA generado (2405/2408/2495 -> 2408xx).
+--   CORRECTIVO QA 801206c2: INC = tax_code INC% o |tarifa-0,08| < 0,0005 (8,0001/7,9999); fn_cuenta_inc acepta
+--     es_movimiento NULL; fn_nc_asiento_devolucion (procesar_devolucion) reversa el INC en 2495 y manda la NC mixta
+--     por líneas (el rollback restaura la versión viva).
 --   INC por LÍNEA (tax_code INC% o tarifa 8%): fn_impuesto_inc_parte, fn_cuenta_inc, fn_cuenta_iva_generado (nuevas).
 --     fn_auto_journal_sale: todo INC -> 2495; mixto -> asiento por líneas. fn_auto_journal_sale_pos: todo INC -> 2495;
 --     mixto -> journal_entry_failures 'impuesto_mixto_inc_iva'. fn_armar_asiento_documento: ventas/notas separan
@@ -1976,14 +1979,14 @@ begin
   if p_tabla = 'sales' then
     select coalesce(sum(w) filter (where es_inc), 0), coalesce(sum(w), 0) into v_inc, v_all
       from (select abs(coalesce(si.tax_amount, 0)) as w,
-                   (case when si.tax_rate > 1 then si.tax_rate / 100 else si.tax_rate end) = 0.08 as es_inc
+                   abs((case when si.tax_rate > 1 then si.tax_rate / 100 else si.tax_rate end) - 0.08) < 0.0005 as es_inc
               from public.sale_items si
              where si.sale_id::text = p_id and coalesce(si.tax_rate, 0) > 0) x;
   else
     select coalesce(sum(w) filter (where es_inc), 0), coalesce(sum(w), 0) into v_inc, v_all
       from (select abs(case when coalesce(ii.tax_included, false) then coalesce(ii.total_line, 0) * r / (1 + r)
                             else coalesce(ii.total_line, 0) * r end) as w,
-                   (upper(coalesce(ii.tax_code, '')) like 'INC%' or r = 0.08) as es_inc
+                   (upper(coalesce(ii.tax_code, '')) like 'INC%' or abs(r - 0.08) < 0.0005) as es_inc
               from (select i.*, case when i.tax_rate > 1 then i.tax_rate / 100 else coalesce(i.tax_rate, 0) end as r
                       from public.invoice_items i
                      where case p_tabla
@@ -2017,7 +2020,7 @@ AS $function$
    where c.organization_id = p_organization_id
      and c.account_code in (public.fn_cuenta_por_clave(p_organization_id, null, 'impuesto_consumo'), '24950501')
      and c.account_code like '2495%'
-     and coalesce(c.is_active, true) and c.es_movimiento is true
+     and coalesce(c.is_active, true) and c.es_movimiento is not false
    order by (c.account_code = '24950501')
    limit 1;
 $function$
@@ -2676,6 +2679,211 @@ $function$
 revoke all on function public.fn_impuesto_inc_parte(text, text, numeric) from public, anon, authenticated;
 revoke all on function public.fn_cuenta_inc(integer) from public, anon, authenticated;
 revoke all on function public.fn_cuenta_iva_generado(integer) from public, anon, authenticated;
+
+-- QA 801206c2 ALTO-C (correctivo): NC por devolución (procesar_devolucion) con INC reversa en 2495.
+CREATE OR REPLACE FUNCTION public.fn_nc_asiento_devolucion(p_org integer, p_nc uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_nc public.invoice_sales%rowtype;
+  v_rule record;
+  v_total numeric;
+  v_tax numeric;
+  v_neto numeric;
+  v_cfg text;
+  v_n integer;
+  v_cuenta text;
+  v_entry integer;
+  v_asignado numeric := 0;
+  v_monto numeric;
+  v_i integer := 0;
+  v_grupo record;
+  v_inc numeric := 0;
+  v_inc_cta text;
+  v_tax_cta text;
+begin
+  if p_nc is null then
+    return;
+  end if;
+  select * into v_nc
+    from public.invoice_sales
+   where id = p_nc and organization_id = p_org and document_type = 'credit_note';
+  if not found then
+    return;
+  end if;
+  if exists (
+    select 1 from public.journal_entries je
+     where je.organization_id = p_org
+       and je.fact_key = 'accrual:credit_note:' || p_nc::text
+  ) then
+    return;
+  end if;
+
+  select * into v_rule
+    from public.accounting_rules
+   where organization_id = p_org
+     and source_type = 'sale_credit_note'
+     and event_type = 'created'
+     and is_active
+   order by priority
+   limit 1;
+  if v_rule is null then
+    perform public.fn_log_journal_failure(
+      p_org, v_nc.branch_id, coalesce(v_nc.issue_date, now()),
+      'invoice_sales', p_nc::text, 'accrual:credit_note:' || p_nc::text,
+      null, null, abs(coalesce(v_nc.total, 0)),
+      'no_rule', 'Sin regla contable activa de nota crédito');
+    return;
+  end if;
+
+  v_total := abs(coalesce(v_nc.total, 0));
+  v_tax := case when coalesce(v_rule.use_tax_from_document, false)
+                then abs(coalesce(v_nc.tax_total, 0)) else 0 end;
+  if v_tax > v_total then
+    v_tax := v_total;
+  end if;
+  v_neto := v_total - v_tax;
+  if v_total <= 0 then
+    return;
+  end if;
+
+  -- QA 801206c2 ALTO-C: la NC reversa el impuesto donde la venta lo causó. INC decidido por LÍNEA
+  -- (fn_impuesto_inc_parte, tax_code INC% o tarifa 8% con tolerancia): todo INC -> cuenta INC (2495);
+  -- mixto INC+IVA -> asiento por líneas (fn_armar_asiento_documento separa INC e IVA).
+  if v_tax > 0 then
+    v_inc := public.fn_impuesto_inc_parte('invoice_sales', p_nc::text, v_tax);
+    v_inc_cta := public.fn_cuenta_inc(p_org);
+    if v_inc > 0 and v_inc_cta is not null then
+      if v_inc >= v_tax then
+        v_tax_cta := v_inc_cta;
+      else
+        perform public.fn_asiento_documento_por_lineas(p_nc, 'nota_credito', 'accrual:credit_note:' || p_nc::text);
+        return;
+      end if;
+    end if;
+  end if;
+
+  select c.account_code into v_cfg
+    from public.configuracion_contable c
+   where c.organization_id = p_org
+     and c.clave = 'devoluciones'
+     and (c.branch_id = v_nc.branch_id or c.branch_id is null)
+   order by c.branch_id nulls last
+   limit 1;
+
+  select count(*) into v_n
+    from (
+      select coalesce(
+               nullif(public.fn_cuenta_catalogo_linea(p_org, ii.product_id, 'devolucion', null), ''),
+               nullif(v_cfg, ''),
+               v_rule.debit_account_code
+             ) as cuenta
+        from public.invoice_items ii
+       where ii.invoice_sales_id = p_nc
+       group by 1
+    ) g;
+
+  if coalesce(v_n, 0) <= 1 then
+    select coalesce(
+             nullif(public.fn_cuenta_catalogo_linea(p_org, ii.product_id, 'devolucion', null), ''),
+             nullif(v_cfg, ''),
+             v_rule.debit_account_code
+           ) into v_cuenta
+      from public.invoice_items ii
+     where ii.invoice_sales_id = p_nc
+     limit 1;
+    v_cuenta := coalesce(v_cuenta, v_rule.debit_account_code);
+    perform public.fn_create_journal_entry(
+      p_organization_id := p_org,
+      p_branch_id := v_nc.branch_id,
+      p_entry_date := coalesce(v_nc.issue_date, now()),
+      p_memo := 'Nota Crédito ' || coalesce(v_nc.number, p_nc::text),
+      p_source := 'invoice_sales',
+      p_source_id := p_nc::text,
+      p_debit_account := v_cuenta,
+      p_credit_account := v_rule.credit_account_code,
+      p_amount := v_total,
+      p_tax_account := coalesce(v_tax_cta, v_rule.tax_account_code),
+      p_tax_amount := v_tax,
+      p_tax_is_credit := false,
+      p_fact_key := 'accrual:credit_note:' || p_nc::text,
+      p_created_by := auth.uid()
+    );
+    return;
+  end if;
+
+  insert into public.journal_entries (
+    organization_id, branch_id, entry_date, memo, source, source_id, posted, created_by, fact_key
+  ) values (
+    p_org, v_nc.branch_id, coalesce(v_nc.issue_date, now()),
+    'Nota Crédito ' || coalesce(v_nc.number, p_nc::text),
+    'invoice_sales', p_nc::text, true, auth.uid(),
+    'accrual:credit_note:' || p_nc::text
+  ) returning id into v_entry;
+
+  for v_grupo in
+    select g.cuenta, g.peso, row_number() over (order by g.cuenta) as nro,
+           count(*) over () as cuantos
+      from (
+        select coalesce(
+                 nullif(public.fn_cuenta_catalogo_linea(p_org, ii.product_id, 'devolucion', null), ''),
+                 nullif(v_cfg, ''),
+                 v_rule.debit_account_code
+               ) as cuenta,
+               sum(abs(coalesce(ii.total_line, 0))) as peso
+          from public.invoice_items ii
+         where ii.invoice_sales_id = p_nc
+         group by 1
+      ) g
+     order by g.cuenta
+  loop
+    v_i := v_i + 1;
+    if v_i = v_grupo.cuantos then
+      v_monto := v_neto - v_asignado;
+    elsif coalesce((select sum(abs(coalesce(total_line, 0))) from public.invoice_items where invoice_sales_id = p_nc), 0) = 0 then
+      v_monto := round(v_neto / v_grupo.cuantos, 2);
+    else
+      v_monto := round(v_neto * v_grupo.peso / nullif(
+        (select sum(abs(coalesce(total_line, 0))) from public.invoice_items where invoice_sales_id = p_nc), 0), 2);
+    end if;
+    v_asignado := v_asignado + coalesce(v_monto, 0);
+    insert into public.journal_lines (
+      journal_entry_id, account_code, description, debit, credit, debit_base, credit_base
+    ) values (
+      v_entry,
+      public.fn_puc_cuenta_de_sede(p_org, v_nc.branch_id, v_grupo.cuenta),
+      'Nota Crédito ' || coalesce(v_nc.number, p_nc::text),
+      coalesce(v_monto, 0), 0, coalesce(v_monto, 0), 0
+    );
+  end loop;
+
+  if v_tax > 0 and v_rule.tax_account_code is not null then
+    insert into public.journal_lines (
+      journal_entry_id, account_code, description, debit, credit, debit_base, credit_base
+    ) values (
+      v_entry,
+      public.fn_puc_cuenta_de_sede(
+        p_org, v_nc.branch_id,
+        coalesce(v_tax_cta, public.fn_cuenta_iva(p_org, v_nc.branch_id, 'invoice_sales', v_rule.tax_account_code))),
+      'IVA - Nota Crédito ' || coalesce(v_nc.number, p_nc::text),
+      v_tax, 0, v_tax, 0
+    );
+  end if;
+
+  insert into public.journal_lines (
+    journal_entry_id, account_code, description, debit, credit, debit_base, credit_base
+  ) values (
+    v_entry,
+    public.fn_puc_cuenta_de_sede(p_org, v_nc.branch_id, v_rule.credit_account_code),
+    'Nota Crédito ' || coalesce(v_nc.number, p_nc::text),
+    0, v_total, 0, v_total
+  );
+end;
+$function$
+;
 
 insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
 values ('20261025134115', 'contador_funciones', array[]::text[], 'p1_apply_executor')

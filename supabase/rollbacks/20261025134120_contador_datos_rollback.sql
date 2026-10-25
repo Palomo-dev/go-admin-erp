@@ -56,7 +56,8 @@ begin
   end loop;
   set constraints public.trg_chart_cuenta_titulo_configurada immediate;  -- diferido: sin eventos pendientes para el ALTER
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;
-  set constraints public.trg_chart_cuenta_titulo_configurada deferred;
+  -- QA 801206c2 BAJO: el constraint queda IMMEDIATE (no se vuelve a diferir) para que otro rollback encadenado
+  -- en la misma transacción no herede eventos diferidos pendientes.
   delete from public.p1_puc_bitacora where migracion = '134120';
 exception when others then
   alter table public.chart_of_accounts enable trigger trg_puc_validar_cuenta;

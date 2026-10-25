@@ -4,6 +4,7 @@
 do $$
 declare r record;
 begin
+  set constraints public.trg_chart_cuenta_titulo_configurada immediate;
   alter table public.chart_of_accounts disable trigger trg_puc_validar_cuenta;
   -- 1. PRIMERO las cuentas vuelven a movimiento (QA Soporte 25-oct, ALTO #1): el contraasiento usa la cuenta que
   --    la migración volvió título (p. ej. D6135) y zz_trg_puc_linea_solo_movimiento lo rechazaría.

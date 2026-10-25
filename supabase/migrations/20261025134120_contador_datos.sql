@@ -92,7 +92,7 @@ begin
       v_nuevo := coalesce(public.fn_cuenta_iva_generado(r.org), '24080501');
     end if;
     if not exists (select 1 from public.chart_of_accounts a where a.organization_id = r.org and a.account_code = v_nuevo
-                     and a.es_movimiento is true and v_nuevo like '2408%') then
+                     and a.es_movimiento is not false and v_nuevo like '2408%') then
       raise exception '134120: org % sin cuenta IVA % de movimiento para la regla % (2405); abortar', r.org, v_nuevo, r.id;
     end if;
     update public.accounting_rules set tax_account_code = v_nuevo, updated_at = now() where id = r.id;
@@ -103,7 +103,7 @@ begin
   for v_org in select o.id from public.organizations o where o.type_id = 2 order by 1 loop
     if exists (select 1 from (values ('41400501'), ('41402001'), ('41409501'), ('41409502'), ('41750101')) v(c)
                 where not exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
-                                    and a.account_code = v.c and a.es_movimiento is true)) then
+                                    and a.account_code = v.c and a.es_movimiento is not false)) then
       raise exception '134120: hotel % sin auxiliares 134070/134110; abortar', v_org;
     end if;
 
@@ -127,7 +127,7 @@ begin
 
     -- b. no-show
     v_txt := case when exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
-                                 and a.account_code = '28050501' and a.es_movimiento is true) then '28050501' else '2805' end;
+                                 and a.account_code = '28050501' and a.es_movimiento is not false) then '28050501' else '2805' end;
     for r in select id, debit_account_code d, credit_account_code c, use_tax_from_document u from public.accounting_rules
               where organization_id = v_org and source_type = 'reservation' and event_type = 'no_show' loop
       if r.d in ('2405', '2805') and r.d is distinct from v_txt then
@@ -203,7 +203,7 @@ begin
   for v_org in select o.id from public.organizations o where o.type_id = 1 order by 1 loop
     if exists (select 1 from (values ('24950501'), ('41401501')) v(c)
                 where not exists (select 1 from public.chart_of_accounts a where a.organization_id = v_org
-                                    and a.account_code = v.c and a.es_movimiento is true)) then
+                                    and a.account_code = v.c and a.es_movimiento is not false)) then
       raise exception '134120: restaurante % sin 24950501/41401501 (134110); abortar', v_org;
     end if;
 
@@ -286,7 +286,7 @@ begin
       end if;
       if exists (select 1 from (values ('2405'), ('4105'), ('4135'), ('24950501')) v(c)
                   where not exists (select 1 from public.chart_of_accounts a where a.organization_id = 140
-                                      and a.account_code = v.c and a.es_movimiento is true)) then
+                                      and a.account_code = v.c and a.es_movimiento is not false)) then
         raise exception '134120: org 140 sin 2405/4105/4135/24950501 de movimiento para NC-0001; detener';
       end if;
       raise notice '134120: org 140 NC-0001 = asiento % (en prod se espera 49408)', v_nc;

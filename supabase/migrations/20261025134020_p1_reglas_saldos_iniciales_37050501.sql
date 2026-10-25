@@ -70,6 +70,17 @@ begin
   raise notice 'gain -> 42959501: % (esperado 232)', n;
   n := pg_temp.p1_regla($w$ar.source_type in ('inventory','inventory_adjustment') and ar.event_type = 'loss' and ar.debit_account_code = '519595'$w$, 'debit_account_code', '61350502');
   raise notice 'loss -> 61350502: % (esperado 173)', n;
+  -- Hoteles y restaurantes (type_id 1/2, regla del contador): costo 61400501 y mermas 61400502, nunca 6135/6140.
+  n := pg_temp.p1_regla($w$ar.source_type = 'inventory' and ar.event_type = 'sale' and ar.debit_account_code in ('6135','6140') and ar.organization_id in (select id from public.organizations where type_id in (1, 2))$w$, 'debit_account_code', '61400501');
+  raise notice 'sale H/R -> 61400501: %', n;
+  n := pg_temp.p1_regla($w$ar.source_type = 'inventory' and ar.event_type = 'return' and ar.credit_account_code in ('6135','6140') and ar.organization_id in (select id from public.organizations where type_id in (1, 2))$w$, 'credit_account_code', '61400501');
+  raise notice 'return H/R -> 61400501: %', n;
+  n := pg_temp.p1_regla($w$ar.source_type in ('inventory','inventory_adjustment') and ar.event_type = 'loss' and ar.debit_account_code in ('519595','61350502') and ar.organization_id in (select id from public.organizations where type_id in (1, 2))$w$, 'debit_account_code', '61400502');
+  raise notice 'loss H/R -> 61400502: %', n;
+  n := pg_temp.p1_config($w$cc.clave = 'costo_ventas' and cc.account_code in ('6135','6140','61350501') and cc.organization_id in (select id from public.organizations where type_id in (1, 2))$w$, '61400501');
+  raise notice 'cfg costo_ventas H/R -> 61400501: %', n;
+  n := pg_temp.p1_config($w$cc.clave = 'faltante_inventario' and cc.account_code in ('519595','61350502') and cc.organization_id in (select id from public.organizations where type_id in (1, 2))$w$, '61400502');
+  raise notice 'cfg faltante H/R -> 61400502: %', n;
   n := pg_temp.p1_regla($w$ar.source_type = 'inventory' and ar.event_type = 'sale' and ar.debit_account_code = '6135'$w$, 'debit_account_code', '61350501');
   raise notice 'sale -> 61350501: %', n;
   n := pg_temp.p1_regla($w$ar.source_type = 'inventory' and ar.event_type = 'return' and ar.credit_account_code = '6135'$w$, 'credit_account_code', '61350501');
@@ -156,10 +167,11 @@ begin
   v_inv := coalesce(nullif(btrim(v_inv), ''), public.fn_inventario_auxiliar_1435(p_organization_id, null), '14350101');
   -- 6135 pasa a título en 134060: el respaldo es su auxiliar 61350501. Igual que con 1435, el auxiliar
   -- de la sede lo resuelve después fn_cuenta_configurada_de_sede (branch_account_mappings 6135->61350501).
-  v_cmv := case when v_type in (1, 2) then '6140' else '61350501' end;
+  -- Hoteles y restaurantes (regla del contador): 61400501 / mermas de cocina 61400502.
+  v_cmv := case when v_type in (1, 2) then '61400501' else '61350501' end;
   v_faltante := coalesce(
     public.fn_cuenta_por_clave(p_organization_id, null, 'faltante_inventario'),
-    '61350502'
+    case when v_type in (1, 2) then '61400502' else '61350502' end
   );
 
   evento := case

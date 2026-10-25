@@ -2300,7 +2300,7 @@ begin
     where jl.journal_entry_id = v_entry
       and jl.cost_center_id is not null
       and (
-        jl.account_code in ('4250', '3105', '4295')
+        jl.account_code in ('4250', '3105', '4295', '42959501', '42959502')
         or jl.account_code like '4250-%'
         or jl.account_code like '3105-%'
         or jl.account_code like '4295-%'
@@ -2324,7 +2324,7 @@ begin
     delete from public.journal_lines
     where journal_entry_id = v_entry
       and (
-        account_code in ('4250', '3105', '4295')
+        account_code in ('4250', '3105', '4295', '42959501', '42959502')
         or account_code like '4250-%'
         or account_code like '3105-%'
         or account_code like '4295-%'

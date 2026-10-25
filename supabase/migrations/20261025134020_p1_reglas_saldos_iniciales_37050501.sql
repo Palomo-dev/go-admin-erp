@@ -293,15 +293,19 @@ begin
     and coalesce(a.is_active, true)
     and a.es_movimiento is true
   limit 1;
-  -- Ajuste al peso (contador, 25-oct): a favor 42958101, en contra 53959501. 4295/5395 solo si la org
-  -- no tiene esos auxiliares (orgs fuera del alcance de 134010).
+  -- Ajuste al peso (contador, 25-oct): a favor 42958101, en contra 53959501. Nunca 4295/5395 (pasan a
+  -- título en 134060): si la org no tiene el auxiliar, el asiento queda sin redondear y con aviso.
   if v_cuenta is null then
     select a.account_code into v_cuenta
     from public.chart_of_accounts a
     where a.organization_id = v_org and a.es_movimiento is true and coalesce(a.is_active, true)
       and a.account_code = case when v_diff > 0 then '42958101' else '53959501' end;
   end if;
-  v_cuenta := coalesce(v_cuenta, case when v_diff > 0 then '4295' else '5395' end);
+  if v_cuenta is null then
+    raise notice 'redondeo_sin_cuenta: org % asiento % sin auxiliar %', v_org, p_entry_id,
+      case when v_diff > 0 then '42958101' else '53959501' end;
+    return;
+  end if;
 
   if v_diff > 0 then
     insert into public.journal_lines (

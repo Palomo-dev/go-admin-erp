@@ -18,8 +18,9 @@ delete from public.configuracion_contable where organization_id = 149 and clave 
    and account_code in ('24080501', '240805')
    and not exists (select 1 from public.p1_puc_bitacora b where b.migracion = '134020' and b.objeto = 'config' and b.organization_id = 149);
 
-delete from public.configuracion_contable cc using public.p1_puc_bitacora b
- where b.migracion = '134020' and b.objeto = 'config_nueva' and cc.id = b.clave::bigint;
+-- TODAS las filas redondeo_en_contra (también las que sembró fn_sembrar_configuracion_contable de 134040
+-- sin bitácora); si quedara alguna, recrear el CHECK sin esa clave fallaría.
+delete from public.configuracion_contable where clave = 'redondeo_en_contra';
 alter table public.configuracion_contable drop constraint configuracion_contable_clave_chk;
 alter table public.configuracion_contable add constraint configuracion_contable_clave_chk check (clave = any (array[
   'caja', 'bancos', 'clientes', 'proveedores', 'ventas_productos', 'ventas_servicios', 'devoluciones', 'descuentos',

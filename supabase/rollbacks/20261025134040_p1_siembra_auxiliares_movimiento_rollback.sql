@@ -4,6 +4,10 @@ delete from public.puc_plantilla where codigo in ('370505','37050501','613505','
   '42959501','42959502','429581','42958101','539595','53959501','24080501','24080502','24081001','24081002','53051501');
 update public.puc_plantilla set es_movimiento = true where codigo in ('3705','6135','4295','5395','240805','240810','530515');
 update public.puc_plantilla set nombre = 'Comisiones bancarias' where codigo = '530515';
+-- Claves sembradas por la fn_sembrar_configuracion_contable de 134040 en orgs nuevas, sin bitácora:
+-- redondeo_en_contra no existe en el CHECK previo a 134020; se borran todas para que su rollback pueda recrearlo.
+delete from public.configuracion_contable where clave = 'redondeo_en_contra';
+
 alter trigger trg_zzzz_configuracion_contable on public.organizations rename to tr_zz_configuracion_contable;
 
 CREATE OR REPLACE FUNCTION public.fn_create_default_accounting_rules(org_id integer, country_code text)

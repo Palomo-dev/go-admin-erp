@@ -3,7 +3,7 @@
 -- Ahora el título se busca por pagina_id (igual que la rama else) con
 -- coalesce(..., e->>'titulo', 'Legal') para que nunca quede null.
 -- Base: definición real leída con pg_get_functiondef el 25-oct-2026. NO corrige datos existentes.
--- Rollback: supabase/rollbacks/20261025120000_fix_etiquetas_menu_legales_rollback.sql
+-- Rollback: supabase/rollbacks/20261025122442_fix_etiquetas_menu_legales_rollback.sql
 
 CREATE OR REPLACE FUNCTION public.fn_rellenar_paginas_legales(doc jsonb, entradas jsonb)
  RETURNS jsonb

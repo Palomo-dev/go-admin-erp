@@ -2,7 +2,7 @@
 -- revisión con 5 ítems de menú con etiqueta null (el sitio cayó a legacy). El ERP ya valida
 -- con validarDocumentoSitio antes de publicar/programar; esta guarda cubre cualquier otra vía
 -- (cron de programadas, SQL manual). Solo afecta inserts nuevos; no toca filas existentes.
--- Rollback: supabase/rollbacks/20261025120100_revisiones_sitio_sin_etiquetas_nulas_rollback.sql
+-- Rollback: supabase/rollbacks/20261025122448_revisiones_sitio_sin_etiquetas_nulas_rollback.sql
 
 create or replace function public.fn_revision_sitio_exigir_etiquetas()
 returns trigger

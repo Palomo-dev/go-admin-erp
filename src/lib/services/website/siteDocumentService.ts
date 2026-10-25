@@ -102,6 +102,14 @@ export function errorDesdePostgrest(error: ErrorPostgrest, contexto: string): Er
         ? new ErrorSitio('sin_revision_publicada', 'Publica una versión antes de activar V2.')
         : new ErrorSitio('documento_invalido', 'El documento del sitio no es válido.');
     case '22023':
+      if (mensaje.startsWith('documento_invalido')) {
+        return new ErrorSitio(
+          'documento_invalido',
+          'No se puede publicar: el borrador tiene enlaces de menú sin texto; escríbeles un nombre en Menús.',
+          mensaje,
+        );
+      }
+      return new ErrorSitio('peticion_invalida', 'La petición no es válida.', mensaje);
     case '23514':
       return new ErrorSitio('peticion_invalida', 'La petición no es válida.', mensaje);
     default:

@@ -168,9 +168,12 @@ class WebOrderConfirmationService {
 
     // Confirmación en una sola transacción (E2/E3) detrás del interruptor de
     // despliegue. Si la base aún no tiene la función, sigue el camino de siempre.
-    if (confirmacionCompletaActiva()) {
+    // Un vencido solo se confirma por la RPC completa: ella re-reserva el stock (todo o nada)
+    // y lo vuelve a pending en la misma transacción (migración 20261025134165).
+    if (confirmacionCompletaActiva() || order.status === 'expired') {
       const completo = await this.confirmarCompleto(order, options, userId);
       if (completo) return completo;
+      if (order.status === 'expired') throw new Error('PEDIDO_NO_CONFIRMABLE');
     } else {
       // Interruptor apagado: camino de siempre (abajo), sin cambios.
     }

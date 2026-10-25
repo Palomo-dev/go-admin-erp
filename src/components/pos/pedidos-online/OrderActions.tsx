@@ -20,7 +20,6 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import type { WebOrder } from '@/lib/services/webOrdersService';
-import { pendienteDeConfirmar, puedeMarcarPagadoManual } from '@/lib/services/webOrderPagoManual';
 
 interface OrderActionsProps {
   order: WebOrder;
@@ -34,11 +33,6 @@ interface OrderActionsProps {
   onConvertToSale?: () => void;
   onPrint?: () => void;
   onMarkAsPaid?: () => void;
-  /**
-   * «Marcar como pagado (pago en línea)»: pago aprobado en la pasarela sin
-   * webhook. Vale para pendientes y vencidos y no depende de la caja.
-   */
-  onMarcarPagadoManual?: () => void;
   /** Cobrar en la caja de la sede (E4); `entregar` también lo marca entregado. */
   onCobrar?: (entregar: boolean) => void;
   /** La sede no tiene caja abierta: «Cobrar y entregar» queda deshabilitado (Figma 1982:841). */
@@ -61,7 +55,6 @@ export function OrderActions({
   onConvertToSale,
   onPrint,
   onMarkAsPaid,
-  onMarcarPagadoManual,
   onCobrar,
   sinCajaAbierta = false,
   cajaEtiqueta = null,
@@ -75,13 +68,10 @@ export function OrderActions({
   const isReady = order.status === 'ready';
   const isInDelivery = order.status === 'in_delivery';
   const isDelivered = order.status === 'delivered';
-  // Vencido por la expiración (sin webhook de pago): solo admite el pago manual.
   const isExpired = order.status === 'expired';
-  // Pago en línea aprobado sin webhook: reactivar y marcar pagado, sin caja.
-  // Solo pasarela (Wompi: tarjeta, Nequi, PSE…) o vencidos; efectivo/transferencia se cobran en caja.
-  const canMarcarPagadoManual = !!onMarcarPagadoManual && puedeMarcarPagadoManual(order);
-  // Pagado (p. ej. pago manual) y sin venta: «Confirmar pedido» es el reintento de la confirmación.
-  const faltaConfirmar = pendienteDeConfirmar(order);
+  // Vencido (expire_pending_web_orders): «Confirmar pedido» lo reactiva y confirma como un pendiente,
+  // con la misma casilla «Marcar como pagado» (la base re-reserva el stock, todo o nada).
+  const puedeConfirmar = isPending || isExpired;
   // Recoger y «Comer aquí» no salen a domicilio: de «Listo» pasan a «Entregado».
   const isPickup = !esDomicilio(order.delivery_type);
   // Cancelar también a partir de «Preparando» (Figma 449:208178 y 1981:175699).
@@ -100,14 +90,16 @@ export function OrderActions({
   if (variant === 'compact') {
     return (
       <div className="flex gap-2">
-        {isPending && (
+        {puedeConfirmar && (
           <>
             <Button size="sm" onClick={onConfirm} disabled={isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
             </Button>
-            <Button size="sm" variant="destructive" onClick={onReject} disabled={isLoading}>
-              <XCircle className="h-4 w-4" />
-            </Button>
+            {isPending && (
+              <Button size="sm" variant="destructive" onClick={onReject} disabled={isLoading}>
+                <XCircle className="h-4 w-4" />
+              </Button>
+            )}
           </>
         )}
         {isConfirmed && (
@@ -136,11 +128,8 @@ export function OrderActions({
 
   return (
     <div className="space-y-3">
-      {faltaConfirmar && (
-        <p className="text-sm text-fg-secondary">{t('pagoManual.reintentoConfirmacion')}</p>
-      )}
       {/* Acciones principales según estado */}
-      {isPending && (
+      {puedeConfirmar && (
         <div className="flex gap-2">
           <Button className="flex-1" onClick={onConfirm} disabled={isLoading}>
             {isLoading ? (
@@ -150,10 +139,12 @@ export function OrderActions({
             )}
             {t('orderActions.confirmarPedido')}
           </Button>
-          <Button variant="destructive" onClick={onReject} disabled={isLoading}>
-            <XCircle className="h-4 w-4 mr-2" />
-            {t('orderActions.rechazar')}
-          </Button>
+          {isPending && (
+            <Button variant="destructive" onClick={onReject} disabled={isLoading}>
+              <XCircle className="h-4 w-4 mr-2" />
+              {t('orderActions.rechazar')}
+            </Button>
+          )}
         </div>
       )}
 
@@ -268,28 +259,8 @@ export function OrderActions({
         </div>
       )}
 
-      {/* Pago en línea sin webhook: reactiva (si venció), marca pagado y confirma. Sin caja. */}
-      {canMarcarPagadoManual && (
-        <div className="space-y-2">
-          <Button
-            variant={isExpired ? 'default' : 'outline'}
-            className="w-full"
-            onClick={onMarcarPagadoManual}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <DollarSign className="h-4 w-4 mr-2" />
-            )}
-            {isExpired ? t('pagoManual.reactivarYMarcar') : t('pagoManual.marcarPagadoEnLinea')}
-          </Button>
-          {isExpired && <p className="text-sm text-fg-secondary">{t('pagoManual.ayudaVencido')}</p>}
-        </div>
-      )}
-
       {/* Respaldo: marcar como pagado (solo si no se pasa onCobrar) */}
-      {order.payment_status !== 'paid' && !onCobrar && onMarkAsPaid && !isPending && !isExpired && (
+      {order.payment_status !== 'paid' && !onCobrar && onMarkAsPaid && !isPending && (
         <Button
           variant="outline"
           className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"

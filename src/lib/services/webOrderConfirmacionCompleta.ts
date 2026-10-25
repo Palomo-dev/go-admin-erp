@@ -84,6 +84,10 @@ export async function confirmarPedidoWebCompleto(
   });
   if (error) {
     if (esFuncionAusente(error)) return null;
+    // Vencido sin stock para re-reservar: el detalle trae los faltantes (20261025134165).
+    if (/STOCK_INSUFICIENTE/.test(error.message ?? '') && error.details) {
+      throw new Error(`STOCK_INSUFICIENTE: ${error.details}`);
+    }
     throw new Error(error.message || 'No se pudo confirmar el pedido');
   }
   return normalizar(data);

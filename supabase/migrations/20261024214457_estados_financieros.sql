@@ -1,0 +1,1 @@
+-- applied from supabase/migrations/20261024211500_estados_financieros.sql

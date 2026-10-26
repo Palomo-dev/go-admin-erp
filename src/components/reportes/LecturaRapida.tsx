@@ -46,7 +46,7 @@ export function LecturaRapida({
   return (
     <Tarjeta titulo={t('lectura')}>
       <ul className="flex flex-col gap-3">
-        {lectura.length === 0 && <li className="text-sm text-fg-secondary">{t('sinMovimientos')}</li>}
+        {lectura.length === 0 && <li className="text-sm text-fg-secondary">{t('sinLectura')}</li>}
         {lectura.map((l, i) => {
           const Icono = l.direccion === 'baja' ? TrendingDown : l.direccion === 'sube' ? TrendingUp : ICONO[l.tono];
           return (

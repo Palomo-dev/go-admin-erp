@@ -3940,3 +3940,16 @@ Verificación: instalación aislada de 98 paquetes con npm ci --omit=dev y la di
 - El contrato acepta tema.tokens y roles de color opcionales. Si no vienen, el documento viejo sigue válido. El ERP solo escribe el preset combinable con NEXT_PUBLIC_WEBSITE_TOKENS_DISENO=1, después de que el sitio público acepte las claves.
 - El inspector vuelve a dejar elegir el icono de búsqueda, cuenta y moneda. La forma del carrito no pisa un icono distinto.
 - No hubo migración ni backfill. Jest del contrato, de las perillas y del encabezado: 45 en verde. eslint de los archivos tocados, sin avisos.
+
+### Fase: Estados financieros NIIF, libros e informes tributarios — 2026-10-24
+- Rama cursor/estados-financieros-bffb, contra main. Pull request 463. No se fusionó y no se tocó master.
+- Ronda 1. No hay calificación de QA ni de tester independiente. No se marca aprobado.
+- Qué se hizo: motor único de situación financiera, resultado integral, cambios en el patrimonio, flujo indirecto, notas, certificación, libro mayor, auxiliares, inventarios y balances, kárdex, indicadores, punto de equilibrio, y los borradores de los formularios 300 y 350, ICA, reteICA, exógena, certificados, conciliación fiscal, informe de gestión, accionistas y PILA. Las pantallas nuevas usan el kit del manual de marca. El balance y el estado de resultados del menú de Finanzas pasan a esos nombres y a ese motor. Los RPC que ya existían, incluido el flujo directo, no cambian de fórmula. El flujo directo solo cambia el título visible.
+- Migraciones ya aplicadas en el proyecto jgmgphmzusbluqhuqihj. 20261024214457 estados_financieros no creó objetos (md5 4f49ad9e3dd26934edfd0502a736b711). 20261024214634 estados_financieros_objetos crea el perfil, los topes, los accionistas, los ajustes y las funciones (md5 d42b20497fc4454ef948419a608789fb). No se sembraron organizaciones ni topes. La reversión está en supabase/rollbacks y no borra financial_report_account_metadata.
+- Pruebas: jest de cuadre, catálogo, traducciones, carga del estado de resultados y zona horaria, 126 en verde; el cuadre se volvió a correr después de quitar una función sin uso, 15 en verde. ESLint con max-warnings 0 en los archivos tocados, en verde. El tsc de todo el repositorio se quedó sin memoria del proceso (límite de heap); un tsc acotado a esta entrega no reportó errores en estos archivos. No hay sesión del ERP, así que las pantallas no se recorrieron en el navegador: la ruta nueva responde 307 hacia el login.
+- Qué falta: revisión de QA, recorrido con una organización real y el filtro de centro de costo dentro del visor de Reportes. En Finanzas el centro de costo sí filtra. En Reportes el visor sigue el periodo y la sucursal, igual que el resto del catálogo.
+
+### Fase: Estados financieros NIIF — margen por producto — 2026-10-24
+- Misma rama y el mismo pull request 463. No se fusionó y no se tocó master.
+- El margen de contribución por producto resta el costo de las salidas del kárdex del periodo, a promedio ponderado. Antes esa fila repetía la venta porque la línea de venta no trae costo.
+- Jest del cuadre: 16 pruebas en verde, incluida esa resta (venta 900, salida 400, margen 500). ESLint de los archivos tocados, sin avisos.

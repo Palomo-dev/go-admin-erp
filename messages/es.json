@@ -25490,6 +25490,7 @@
     },
     "errores": {
       "stock_insuficiente": "No hay existencias suficientes: disponible {disponible}, solicitado {solicitado}.",
+      "producto_padre_con_variantes": "Este producto tiene variantes: registra las existencias en cada variante (talla, color…), no en el producto padre.",
       "cantidad_invalida": "La cantidad debe ser mayor que cero.",
       "direccion_invalida": "Movimiento no válido.",
       "origen_requerido": "Falta el origen del movimiento.",

@@ -21289,6 +21289,7 @@
     },
     "errores": {
       "stock_insuficiente": "Estoque insuficiente: disponível {disponible}, solicitado {solicitado}.",
+      "producto_padre_con_variantes": "Este produto tem variantes: registre o estoque em cada variante (tamanho, cor…), não no produto pai.",
       "cantidad_invalida": "A quantidade deve ser maior que zero.",
       "direccion_invalida": "Movimento inválido.",
       "origen_requerido": "Falta a origem do movimento.",

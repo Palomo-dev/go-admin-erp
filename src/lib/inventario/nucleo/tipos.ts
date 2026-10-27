@@ -84,6 +84,7 @@ export interface ResultadoMovimiento {
 export const ERRORES_NUCLEO = [
   'stock_insuficiente', // 23514, detail JSON {product_id, branch_id, lot_id, disponible, solicitado}
   'cantidad_invalida', // 22023
+  'producto_padre_con_variantes', // trigger trg_bloquear_stock_padre_variantes (20261027214000)
   'direccion_invalida',
   'origen_requerido',
   'lote_invalido',

@@ -21288,6 +21288,7 @@
     },
     "errores": {
       "stock_insuficiente": "Stock insuffisant : disponible {disponible}, demandé {solicitado}.",
+      "producto_padre_con_variantes": "Ce produit a des variantes : enregistrez le stock sur chaque variante (taille, couleur…), pas sur le produit parent.",
       "cantidad_invalida": "La quantité doit être supérieure à zéro.",
       "direccion_invalida": "Mouvement invalide.",
       "origen_requerido": "L’origine du mouvement manque.",

@@ -25489,6 +25489,7 @@
     },
     "errores": {
       "stock_insuficiente": "Not enough stock: available {disponible}, requested {solicitado}.",
+      "producto_padre_con_variantes": "This product has variants: record stock on each variant (size, colour…), not on the parent product.",
       "cantidad_invalida": "Quantity must be greater than zero.",
       "direccion_invalida": "Invalid movement.",
       "origen_requerido": "The movement source is missing.",

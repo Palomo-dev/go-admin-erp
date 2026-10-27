@@ -382,16 +382,25 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         step: 5,
         defaultValue: 70,
         suffix: '%',
-        showIf: { field: 'show_overlay', equals: true, variantIn: ['fullscreen', 'video'] },
-        helpText: '0 = transparente, 100 = opaco. Por defecto 70%.',
+        showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split'] },
+        helpText: '0 = transparente, 100 = opaco. Sin tocar: 70% en Pantalla completa y Video, 40% en Slider, sin capa en Dividido.',
       },
       {
         key: 'overlay_color',
         label: 'Color del overlay',
         type: 'color',
         group: 'style',
-        showIf: { field: 'show_overlay', equals: true, variantIn: ['fullscreen', 'video'] },
-        helpText: 'Color del overlay sobre la imagen. Vacío = color primario.',
+        showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split'] },
+        helpText: 'Color de la capa sobre la imagen. Vacío: color primario en Pantalla completa y Video, negro en Slider y Dividido.',
+      },
+      // Paquete 5-nov D4: color propio del título (vacío = el de siempre).
+      {
+        key: 'title_color',
+        label: 'Color del título',
+        type: 'color',
+        group: 'style',
+        showIf: { variantIn: ['fullscreen', 'slider', 'split'] },
+        helpText: 'Vacío: blanco sobre foto, color del tema en Dividido.',
       },
       // F3.1 — Posición y alineación del contenido
       {

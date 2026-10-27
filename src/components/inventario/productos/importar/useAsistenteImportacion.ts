@@ -22,7 +22,8 @@ import { productosWebAFilas, type ProductoWeb } from '@/lib/inventario/importaci
 import { claveCategoria } from '@/lib/inventario/importacion/catalogo/deduplicacion';
 import type { PlataformaDetectada } from '@/lib/inventario/importacion/catalogo/tipos';
 import { OPCIONES_POR_DEFECTO, type FilaImport, type FilaValidada, type OpcionesImportacion, type ResultadoFila } from '@/lib/inventario/importacion/tipos';
-import { enviarLote, pedirContexto, type ContextoServidor } from './apiImportacion';
+import { enviarLote, ErrorApi, pedirContexto, type ContextoServidor } from './apiImportacion';
+import { reportarSentry } from '@/lib/monitoring/reportarSentry';
 import { borrarProgreso, guardarProgreso, huellaFilas, leerProgreso, primerLotePendiente, VERSION_PROGRESO, type ProgresoImportacion } from './progresoImportacion';
 
 export type Origen = 'archivo' | 'web';
@@ -359,6 +360,17 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
         };
         for (const f of lotes[i]) enviados.add(f.sku);
       } catch (e) {
+        // A5: el fallo de un bloque llega a Sentry con org, bloque y código.
+        reportarSentry(e, {
+          area: 'importar_lote',
+          orgId,
+          bloque: i + 1,
+          totalBloques: lotes.length,
+          filas: lotes[i].length,
+          status: e instanceof ErrorApi ? e.status : undefined,
+          codigo: e instanceof ErrorApi ? e.code : undefined,
+          origen,
+        });
         acumulado = {
           ...acumulado,
           procesadas: acumulado.procesadas + lotes[i].length,

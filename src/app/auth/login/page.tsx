@@ -46,6 +46,7 @@ import { avisoDesdeParametros, vieneDeSesionVencida, type AvisoUrl } from '@/lib
 import { FormField } from '@/components/kit/FormField';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
+import { orgIdDeCookie, reportarSentry } from '@/lib/monitoring/reportarSentry';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   EscenaAcceso,
@@ -97,6 +98,10 @@ function LoginContent() {
   // Avisos de la URL (catálogo único) y redirectTo validado.
   useEffect(() => {
     if (!searchParams) return;
+    // A5: llegar aquí por cookie de sesión dañada queda en Sentry (con la org activa).
+    if (searchParams.get('error') === 'corrupted-session') {
+      reportarSentry('corrupted-session', { area: 'sesion_corrupta', orgId: orgIdDeCookie(), redirectTo: searchParams.get('redirectTo') ?? undefined });
+    }
     const desdeUrl = avisoDesdeParametros(searchParams);
     if (desdeUrl) setAviso({ tipo: 'url', aviso: desdeUrl });
     const redirectTo = searchParams.get('redirectTo');

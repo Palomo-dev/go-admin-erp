@@ -136,9 +136,10 @@ describe('InspectorEncabezado', () => {
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
-    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador · celular' })).getByRole('radio', { name: 'Barra bajo el logo' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_search_style: 'bar' });
+    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center', mobile_logo_position: 'inherit' });
+    expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
+    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
   });
 
   test('Contenido: carrito y cuenta encendidos por defecto; segundo botón, barra superior, sede e idioma deshabilitado', () => {
@@ -156,7 +157,7 @@ describe('InspectorEncabezado', () => {
     fireEvent.click(screen.getByRole('switch', { name: /Moneda/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_show_currency: false });
     fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
-    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden' });
+    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden', mobile_search_style: null });
     // Fuera del Figma v2: ya no están en el panel.
     expect(screen.queryByRole('radio', { name: 'Relleno' })).toBeNull();
     expect(screen.queryByRole('switch', { name: /Header transparente sobre el hero/ })).toBeNull();

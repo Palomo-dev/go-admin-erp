@@ -33244,7 +33244,9 @@
             "bottom_sheet": "Bottom sheet",
             "tabs": "App-style bar"
           },
-          "barraCelular": "Top bar on mobile"
+          "barraCelular": "Top bar on mobile",
+          "buscador": "Search",
+          "buscadorAyuda": "Applies to desktop and mobile: on mobile the icon stays in the bar and the visible bar goes under the logo."
         },
         "estilo": {
           "avisoTitulo": "By default colors follow the template theme",
@@ -33403,7 +33405,8 @@
             "mobile_menu_login_text_color": "Mobile menu colors (login text)",
             "mobile_menu_register_border_color": "Mobile menu colors (register border)",
             "mobile_menu_register_text_color": "Mobile menu colors (register text)",
-            "mobile_menu_logout_color": "Mobile menu colors (logout)"
+            "mobile_menu_logout_color": "Mobile menu colors (logout)",
+            "mobile_search_style": "Separate mobile search"
           }
         }
       },

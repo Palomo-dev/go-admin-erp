@@ -33244,7 +33244,9 @@
             "bottom_sheet": "Panneau inférieur",
             "tabs": "Barre type appli"
           },
-          "barraCelular": "Barre supérieure sur mobile"
+          "barraCelular": "Barre supérieure sur mobile",
+          "buscador": "Recherche",
+          "buscadorAyuda": "S’applique à l’ordinateur et au mobile : sur mobile l’icône reste dans la barre et la barre visible passe sous le logo."
         },
         "estilo": {
           "avisoTitulo": "Par défaut, les couleurs suivent le thème du modèle",
@@ -33403,7 +33405,8 @@
             "mobile_menu_login_text_color": "Mobile menu colors (login text)",
             "mobile_menu_register_border_color": "Mobile menu colors (register border)",
             "mobile_menu_register_text_color": "Mobile menu colors (register text)",
-            "mobile_menu_logout_color": "Mobile menu colors (logout)"
+            "mobile_menu_logout_color": "Mobile menu colors (logout)",
+            "mobile_search_style": "Recherche mobile séparée"
           }
         }
       },

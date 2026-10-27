@@ -267,7 +267,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
 
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.barra.titulo')}</TituloBloque>
-        <FilaInterruptor titulo={t('zonaGlobal.barra.mostrar')} valor={opcionBooleana(a, 'show_topbar')} onCambiar={(v) => cambiar({ show_topbar: v })} />
+        <FilaInterruptor titulo={t('zonaGlobal.barra.mostrar')} valor={opcionBooleana(a, 'show_topbar')} onCambiar={(v) => cambiar({ show_topbar: v, mobile_show_topbar: null })} />
         {opcionBooleana(a, 'show_topbar') && (
           <>
             <span id={idBarra} className="sr-only">
@@ -315,7 +315,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           titulo={t('zonaGlobal.acciones.buscador')}
           ayuda={t('zonaGlobal.acciones.buscadorAyuda')}
           valor={valorOpcion(a, 'search_style') !== 'hidden'}
-          onCambiar={(v) => cambiar({ search_style: v ? 'icon' : 'hidden' })}
+          onCambiar={(v) => cambiar(cambioBuscador(a, v ? 'icon' : 'hidden'))}
         />
         <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
         <FilaInterruptor
@@ -395,7 +395,6 @@ function Diseno(p: Interno) {
   const idComp = useId();
   const idLogo = useId();
   const idBc = useId();
-  const idBm = useId();
   const idMc = useId();
   const idCol = useId();
   const composicion = valorOpcion<string>(a, 'header_style');
@@ -430,7 +429,7 @@ function Diseno(p: Interno) {
             { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
           ]}
           valor={valorOpcion<string>(a, 'logo_position') ?? (composicion === 'centered' || composicion === 'split' ? 'center' : 'left')}
-          onValorChange={(v) => cambiar({ logo_position: v })}
+          onValorChange={(v) => cambiar({ logo_position: v, mobile_logo_position: 'inherit' })}
         />
       </div>
       <SelectorMenu {...p} etiqueta={t('zonaGlobal.menu.tituloDiseno')} />
@@ -450,7 +449,7 @@ function Diseno(p: Interno) {
       )}
 
       <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idBc}>{t('zonaGlobal.diseno.buscadorComputador')}</EtiquetaGrupo>
+        <EtiquetaGrupo id={idBc}>{t('zonaGlobal.diseno.buscador')}</EtiquetaGrupo>
         <ChipsOpcion
           aria-labelledby={idBc}
           opciones={[
@@ -459,21 +458,9 @@ function Diseno(p: Interno) {
             { valor: 'hidden', etiqueta: t('zonaGlobal.diseno.oculto') },
           ]}
           valor={valorOpcion<string>(a, 'search_style') ?? 'icon'}
-          onValorChange={(v) => cambiar({ search_style: v })}
+          onValorChange={(v) => cambiar(cambioBuscador(a, v))}
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idBm}>{t('zonaGlobal.diseno.buscadorCelular')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idBm}
-          opciones={[
-            { valor: 'icon', etiqueta: t('zonaGlobal.diseno.icono') },
-            { valor: 'bar', etiqueta: t('zonaGlobal.diseno.barraBajoLogo') },
-            { valor: 'hidden', etiqueta: t('zonaGlobal.diseno.oculto') },
-          ]}
-          valor={valorOpcion<string>(a, 'mobile_search_style') ?? 'icon'}
-          onValorChange={(v) => cambiar({ mobile_search_style: v })}
-        />
+        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorAyuda')}</p>
       </div>
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idMc}>{t('zonaGlobal.diseno.menuCelular')}</EtiquetaGrupo>
@@ -587,6 +574,22 @@ function Estilo(p: Interno) {
   );
 }
 
+/**
+ * Una opción por función (27-oct): el buscador elegido vale para computador y celular. `null` en
+ * `mobile_search_style` = «sigue al de computador» en la tienda (`buscadorMovil`); también se quita
+ * el `search` del celular viejo (`mobile_header`), que si no mandaría.
+ */
+export function cambioBuscador(a: Record<string, unknown>, v: string): Record<string, unknown> {
+  const cambio: Record<string, unknown> = { search_style: v, mobile_search_style: null };
+  const movil = a.mobile_header;
+  if (movil && typeof movil === 'object' && 'search' in (movil as Record<string, unknown>)) {
+    const { search: _s, ...resto } = movil as Record<string, unknown>;
+    void _s;
+    cambio.mobile_header = resto;
+  }
+  return cambio;
+}
+
 const FORMAS_BOTON = [
   { valor: '0', clave: 'recto' },
   { valor: '8', clave: 'redondeado' },
@@ -631,6 +634,7 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'header_booking_bar',
   'mobile_logo_position',
   'mobile_show_topbar',
+  'mobile_search_style',
   'header_divider',
   'header_divider_color',
   'header_hover_color',

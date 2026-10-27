@@ -33256,7 +33256,9 @@
             "bottom_sheet": "Painel inferior",
             "tabs": "Barra tipo app"
           },
-          "barraCelular": "Barra superior no celular"
+          "barraCelular": "Barra superior no celular",
+          "buscador": "Busca",
+          "buscadorAyuda": "Vale para computador e celular: no celular o ícone fica na barra e a barra visível vai abaixo do logo."
         },
         "estilo": {
           "avisoTitulo": "Por padrão as cores seguem o tema do modelo",
@@ -33415,7 +33417,8 @@
             "mobile_menu_login_text_color": "Colores del menú del celular (login text)",
             "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
             "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
-            "mobile_menu_logout_color": "Colores del menú del celular (logout)"
+            "mobile_menu_logout_color": "Colores del menú del celular (logout)",
+            "mobile_search_style": "Busca própria do celular"
           }
         }
       },

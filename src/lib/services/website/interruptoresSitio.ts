@@ -121,9 +121,11 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
 };
 
 /** sección → interruptor → variante → estado con la clave ausente (lo que el sitio hace hoy). */
-export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, boolean>>>>>> = {
+export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, boolean | number>>>>>> = {
   // HeroSlider: `show_arrows ?? false`. CAROUSEL_FIELDS lo declara encendido.
-  hero: { show_arrows: { slider: false } },
+  // overlay_opacity (QA 27-oct, D4): lo que pinta la tienda sin valor guardado. Misma tabla que
+  // OPACIDAD_CAPA_POR_DEFECTO de goadmin-websites/lib/website/capaHero.ts: si cambia, cambiar las dos.
+  hero: { show_arrows: { slider: false }, overlay_opacity: { fullscreen: 70, video: 60, slider: 40, split: 0 } },
   // ContactFormWithMap solo pinta teléfono, email y dirección con `true`; «Dividido» los pinta salvo `false`.
   contact_form: {
     show_phone: { with_map: false },
@@ -211,9 +213,9 @@ export function aplicarInterruptoresSitio(seccion: SectionTypeDefinition): Secti
 
     const porVariante = defaults[c.key];
     if (!porVariante || visibles.length === 0) return [c];
-    const grupos = new Map<boolean, string[]>();
+    const grupos = new Map<boolean | number, string[]>();
     for (const v of visibles) {
-      const d = porVariante[v] ?? c.defaultValue === true;
+      const d = porVariante[v] ?? (typeof c.defaultValue === 'number' ? c.defaultValue : c.defaultValue === true);
       grupos.set(d, [...(grupos.get(d) ?? []), v]);
     }
     if (grupos.size === 1) return [{ ...c, defaultValue: [...grupos.keys()][0] }];

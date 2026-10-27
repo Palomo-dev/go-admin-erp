@@ -17,7 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { normalizarNombre } from '@/lib/inventario/importacion/texto';
 import { filaParaRpc, MAX_FILAS_POR_LOTE, type CuerpoLote, type FilaRpc } from '@/lib/inventario/importacion/payload';
-import type { ResultadoFila } from '@/lib/inventario/importacion/tipos';
+import type { CampoDuplicado, ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import { urlPublicaSegura } from '@/lib/services/urlSegura';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
 
@@ -129,7 +129,7 @@ interface RespuestaRpc {
   actualizados: number;
   omitidos: number;
   fallidos: number;
-  resultados: Array<{ fila: number; sku: string; ok: boolean; accion?: 'creado' | 'actualizado' | 'omitido'; product_id?: number; error?: string; avisos?: { codigo: string; detalle?: string }[] }>;
+  resultados: Array<{ fila: number; sku: string; ok: boolean; accion?: 'creado' | 'actualizado' | 'omitido'; product_id?: number; error?: string; detalle?: string | null; constraint?: string | null; avisos?: { codigo: string; detalle?: string }[] }>;
 }
 
 export interface ResultadoLote {
@@ -147,6 +147,71 @@ export function codigoErrorRpc(mensaje: string): string {
   if (m.includes('DUPLICATE KEY')) return 'DUPLICADO';
   if (m.includes('VIOLATES CHECK') || m.includes('VIOLATES FOREIGN KEY')) return 'DATO_NO_VALIDO';
   return 'ERROR';
+}
+
+/**
+ * Qué campo choca en un error de clave única (A6). Usa, por orden, el detalle
+ * de Postgres («Key (organization_id, barcode)=(347, 5059…) already exists»,
+ * desde la migración 20261027180000), el nombre del constraint y, si no hay
+ * más, el nombre del índice dentro del mensaje («… unique constraint "ux_products_org_barcode"»).
+ */
+export function analizarDuplicado(mensaje: string, detalle?: string | null, constraint?: string | null): { campo: CampoDuplicado; valor?: string } {
+  const columna = (c: string): CampoDuplicado => {
+    const x = c.toLowerCase();
+    if (x.includes('barcode')) return 'codigo_barras';
+    if (x.includes('plu')) return 'plu';
+    if (x.includes('slug')) return 'slug';
+    if (x.includes('sku')) return 'sku';
+    return 'otro';
+  };
+  const k = /Key \(([^)]*)\)=\((.*)\) already exists/i.exec(detalle ?? '');
+  if (k) {
+    const cols = k[1].split(',').map((s) => s.trim());
+    const vals = k[2].split(',').map((s) => s.trim());
+    const i = cols.findIndex((c) => columna(c) !== 'otro');
+    if (i >= 0) return { campo: columna(cols[i]), valor: vals.length === cols.length ? vals[i] : undefined };
+  }
+  const nombre = constraint || /constraint "([^"]+)"/i.exec(mensaje)?.[1] || '';
+  return { campo: columna(nombre) };
+}
+
+const COLUMNA_CAMPO: Partial<Record<CampoDuplicado, string>> = { codigo_barras: 'barcode', sku: 'sku', plu: 'scale_plu' };
+
+function valorDeFila(f: FilaRpc | undefined, campo: CampoDuplicado): string | undefined {
+  if (!f) return undefined;
+  const r = f as unknown as Record<string, unknown>;
+  const v = campo === 'codigo_barras' ? r.codigo_barras : campo === 'sku' ? r.sku : campo === 'plu' ? (r.plu ?? r.scale_plu) : undefined;
+  return v === undefined || v === null || v === '' ? undefined : String(v);
+}
+
+/** Completa los DUPLICADO con el valor que choca y el SKU del producto existente (misma org). */
+export async function completarDuplicados(
+  sb: SupabaseClient,
+  organizationId: number,
+  resultados: ResultadoFila[],
+  porFila: Map<number, FilaRpc>,
+): Promise<void> {
+  const pend = resultados.filter((r) => r.duplicado && COLUMNA_CAMPO[r.duplicado.campo]);
+  for (const r of pend) r.duplicado!.valor ??= valorDeFila(porFila.get(r.fila), r.duplicado!.campo);
+  const porCampo = new Map<CampoDuplicado, Set<string>>();
+  for (const r of pend) if (r.duplicado!.valor) (porCampo.get(r.duplicado!.campo) ?? porCampo.set(r.duplicado!.campo, new Set()).get(r.duplicado!.campo)!).add(r.duplicado!.valor);
+  for (const [campo, valores] of porCampo) {
+    const col = COLUMNA_CAMPO[campo]!;
+    try {
+      const { data } = await sb
+        .from('products')
+        .select(`id, sku, ${col}`)
+        .eq('organization_id', organizationId)
+        .neq('status', 'deleted')
+        .in(col, [...valores])
+        .limit(500);
+      const mapa = new Map<string, string>();
+      for (const p of (data ?? []) as unknown as Record<string, unknown>[]) mapa.set(String(p[col]), String(p.sku ?? ''));
+      for (const r of pend) if (r.duplicado!.campo === campo && r.duplicado!.valor) r.duplicado!.skuExistente = mapa.get(r.duplicado!.valor) || undefined;
+    } catch (e) {
+      console.warn('[importarLote] duplicados', e instanceof Error ? e.message : e);
+    }
+  }
 }
 
 export async function importarLote(
@@ -181,8 +246,10 @@ export async function importarLote(
     accion: x.accion,
     productId: x.product_id ?? undefined,
     error: x.ok ? undefined : codigoErrorRpc(x.error ?? ''),
+    duplicado: !x.ok && codigoErrorRpc(x.error ?? '') === 'DUPLICADO' ? analizarDuplicado(x.error ?? '', x.detalle, x.constraint) : undefined,
     avisos: [...(x.avisos ?? [])],
   }));
+  if (resultados.some((r) => r.duplicado)) await completarDuplicados(sbUsuario, organizationId, resultados, porFila);
 
   if (cuerpo.opciones.importar_imagenes) {
     const tareas = resultados.filter((res) => res.ok && res.productId && res.accion !== 'omitido' && porFila.get(res.fila));

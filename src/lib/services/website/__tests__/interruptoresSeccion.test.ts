@@ -53,9 +53,9 @@ describe('Portada (hero): cada interruptor solo donde el sitio lo pinta', () => 
     expect(campo('hero', 'show_overlay').defaultValue).toBe(true);
   });
 
-  it('opacidad y color del overlay solo donde el sitio los lee (el slider usa un velo fijo)', () => {
+  it('opacidad y color del overlay solo donde el sitio los lee (desde D4 también Slider y Dividido)', () => {
     for (const clave of ['overlay_opacity', 'overlay_color']) {
-      expect(variantesVisibles('hero', clave, { show_overlay: true }).sort()).toEqual(['fullscreen', 'video']);
+      expect(variantesVisibles('hero', clave, { show_overlay: true }).sort()).toEqual(['fullscreen', 'slider', 'split', 'video']);
       expect(variantesVisibles('hero', clave, { show_overlay: false })).toEqual([]);
     }
   });
@@ -100,5 +100,20 @@ describe('Formulario de contacto', () => {
     for (const clave of ['show_phone', 'show_email', 'show_address']) {
       expect(variantesVisibles('contact_form', clave).sort()).toEqual(['split', 'with_map']);
     }
+  });
+});
+
+describe('capa de la portada (QA 27-oct, D4): el editor muestra lo que pinta la tienda', () => {
+  it.each([
+    ['fullscreen', 70],
+    ['video', 60],
+    ['slider', 40],
+    ['split', 0],
+  ])('%s sin valor guardado → %i %%', (variante, esperado) => {
+    const visibles = (getSectionDefinition('hero')?.contentFields ?? []).filter(
+      (f) => f.key === 'overlay_opacity' && campoVisible(f, {}, variante),
+    );
+    expect(visibles).toHaveLength(1);
+    expect(visibles[0].defaultValue).toBe(esperado);
   });
 });

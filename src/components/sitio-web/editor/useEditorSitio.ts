@@ -183,6 +183,11 @@ export function useEditorSitio() {
   const [previewEntities, setPreviewEntities] = useState<{ id: string; label: string }[]>([]);
   const [previewEntityId, setPreviewEntityId] = useState<string | null>(null);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  /** Revalida la tienda pública y recarga la vista previa (datos del Inventario cambiados desde el editor). */
+  const refrescarLienzo = useCallback(() => {
+    revalidarSitioPublico();
+    setPreviewRefreshKey((k) => k + 1);
+  }, []);
 
   // ── Selección y lienzo ──────────────────────────────────────────────────────
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -1774,6 +1779,7 @@ export function useEditorSitio() {
     urlLienzo,
     preparandoLienzo,
     previewRefreshKey,
+    refrescarLienzo,
     ajustesLienzo,
     seccionesLienzo,
     pedirVistaPrevia,

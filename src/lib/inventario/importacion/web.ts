@@ -18,6 +18,7 @@
 import { crearGeneradorSku } from './lector';
 import { normalizarNombre, slugificar } from './texto';
 import type { FilaImport, Mensaje } from './tipos';
+import { esImagenRelleno, sinImagenesRelleno } from './imagenesRelleno';
 
 export interface ProductoWeb {
   name: string;
@@ -104,7 +105,7 @@ export function combinarDetalle(listado: ProductoWeb, detalle: ProductoWeb | nul
   return normalizarPrecios({
     ...listado,
     description: (detalle.description?.length ?? 0) > (listado.description?.length ?? 0) ? detalle.description : listado.description,
-    images: masLargo(listado.images, detalle.images),
+    images: masLargo(sinImagenesRelleno(listado.images), sinImagenesRelleno(detalle.images)),
     variants: masLargo(listado.variants, detalle.variants),
     tags: masLargo(listado.tags, detalle.tags),
     brand: detalle.brand || listado.brand,
@@ -211,7 +212,7 @@ export function productosWebAFilas(productos: ProductoWeb[], opciones: OpcionesF
       barcode: p.barcode?.trim() || undefined,
       reference: skuTienda || p.sku_repetido,
       tags: (p.tags ?? []).map((t) => t.trim()).filter(Boolean).join(';') || undefined,
-      imageUrls: (p.images ?? []).slice(0, MAX_IMAGENES_WEB).join(';') || undefined,
+      imageUrls: sinImagenesRelleno(p.images).slice(0, MAX_IMAGENES_WEB).join(';') || undefined,
       // Un padre con hijas no lleva stock propio: lo llevan sus variantes.
       stock: tieneHijas ? undefined : stockDe(p.existencias, p.stock),
       isParent: tieneHijas ? true : undefined,
@@ -237,8 +238,8 @@ export function productosWebAFilas(productos: ProductoWeb[], opciones: OpcionesF
         parentSku: sku,
         isParent: false,
         variantData: JSON.stringify(v.opciones),
-        imageUrls: v.imagen || undefined,
-        imagenesDelPadre: v.imagen ? undefined : true,
+        imageUrls: v.imagen && !esImagenRelleno(v.imagen) ? v.imagen : undefined,
+        imagenesDelPadre: v.imagen && !esImagenRelleno(v.imagen) ? undefined : true,
       });
     });
     combos.forEach((combo, j) => {

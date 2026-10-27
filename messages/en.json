@@ -14268,7 +14268,8 @@
         "archivo": "product_import_report"
       },
       "cuadre": "{seleccionados} selected · {importados} imported + {omitidos} skipped + {fallidos} failed + {sinIntentar} not attempted",
-      "conAvisosLinea": "{n, plural, one {# product imported with warnings} other {# products imported with warnings}}: see the report."
+      "conAvisosLinea": "{n, plural, one {# product imported with warnings} other {# products imported with warnings}}: see the report.",
+      "reanudado": "Resumed from batch {lote}"
     },
     "mensajes": {
       "sinNombre": "Name is missing",
@@ -14324,7 +14325,16 @@
       "DATO_NO_VALIDO": "Some value is not valid for the database",
       "LOTE": "The whole batch failed",
       "ERROR": "Error saving the row",
-      "skuRepetidoTienda": "The store SKU “{sku}” is already used by another product in the catalog: a new one was generated (kept as reference)."
+      "skuRepetidoTienda": "The store SKU “{sku}” is already used by another product in the catalog: a new one was generated (kept as reference).",
+      "DUPLICADO_CON_SKU": "The {campo} {valor} is already used by product {sku}",
+      "DUPLICADO_VALOR": "The {campo} {valor} is already used by another product",
+      "DUPLICADO_CAMPO": "The {campo} is already used by another record",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "barcode",
+        "plu": "scale PLU",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",
@@ -14426,6 +14436,11 @@
       "categoriasMas": "{n, plural, one {And # more category (pick it in the list)} other {And # more categories (pick them in the list)}}",
       "existencias": "{n, plural, one {Use the stock published by the store (# product)} other {Use the stock published by the store (# products)}}",
       "existenciasAyuda": "It is loaded as initial stock in the selected branch. It requires cost: without cost the row has an error."
+    },
+    "progreso": {
+      "titulo": "There is an unfinished import in this tab",
+      "descripcion": "{enviados} of {total} products were sent (batch {lote} of {lotes}). Load the same file with the same branch and press Import: it continues from the next batch without repeating what was sent.",
+      "descartar": "Discard"
     }
   },
   "productosFacebook": {
@@ -32350,7 +32365,11 @@
         "movimiento": "Motion",
         "pendiente": "Corner radius, buttons and motion apply once the published site supports them. For now they show in the preset samples.",
         "motivoPendiente": "The published site does not apply this setting yet",
-        "sinPresets": "There are no presets for your business type yet. Check the templates."
+        "sinPresets": "There are no presets for your business type yet. Check the templates.",
+        "secundario": "Secondary",
+        "secundarioAutomatico": "Back to automatic secondary",
+        "fuenteTitulos": "Heading font",
+        "fuenteCuerpo": "Body font"
       },
       "giroEnFrase": {
         "restaurante": "restaurant",
@@ -33193,7 +33212,11 @@
           "reserva": "Booking bar with dates",
           "reservaAyuda": "Hotel: check-in, check-out and guests below the header",
           "moneda": "Currency",
-          "monedaAyuda": "Only if the site sells in more than one"
+          "monedaAyuda": "Only if the site sells in more than one",
+          "circuloFondo": "Circle background",
+          "circuloFondoAcento": "Brand color",
+          "circuloIcono": "Icon color",
+          "circuloIconoAuto": "Automatic"
         },
         "diseno": {
           "titulo": "Header layout",
@@ -33221,7 +33244,9 @@
             "bottom_sheet": "Bottom sheet",
             "tabs": "App-style bar"
           },
-          "barraCelular": "Top bar on mobile"
+          "barraCelular": "Top bar on mobile",
+          "buscador": "Search",
+          "buscadorAyuda": "Applies to desktop and mobile: on mobile the icon stays in the bar and the visible bar goes under the logo."
         },
         "estilo": {
           "avisoTitulo": "By default colors follow the template theme",
@@ -33261,7 +33286,14 @@
           "menuEntrarTexto": "Sign-in text",
           "menuRegistroBorde": "Register border",
           "menuRegistroTexto": "Register text",
-          "menuSalir": "Sign out"
+          "menuSalir": "Sign out",
+          "iconos": "Icons",
+          "formaBoton": "Action button shape",
+          "forma": {
+            "recto": "Square",
+            "redondeado": "Rounded",
+            "pildora": "Pill"
+          }
         },
         "pie": {
           "menus": "Footer menus",
@@ -33336,6 +33368,46 @@
           "colorTexto": "Text",
           "separadores": "Dividers",
           "sinSeparadores": "None"
+        },
+        "anteriores": {
+          "titulo": "Settings from earlier versions ({n})",
+          "ayuda": "The store still applies them, but they are no longer in the panel. Remove them to go back to the default design.",
+          "quitar": "Remove",
+          "quitarTodos": "Remove all",
+          "clave": {
+            "header_builder": "Builder (zones and icons)",
+            "mobile_header": "Mobile (panel and bottom bar)",
+            "header_menu_source": "Menu source",
+            "header_icons_weight": "Icon weight",
+            "header_cart_glyph": "Cart shape",
+            "search_icon": "Search icon",
+            "auth_icon": "Account icon",
+            "currency_icon": "Currency icon",
+            "header_transparent_over_hero": "Transparent over hero",
+            "first_section_offset_px": "Space above first section",
+            "header_booking_bar": "Booking bar",
+            "mobile_logo_position": "Logo on mobile",
+            "mobile_show_topbar": "Top bar on mobile",
+            "header_divider": "Line under header",
+            "header_divider_color": "Line color",
+            "header_hover_color": "Icon hover",
+            "header_mobile_icon_color": "Mobile icon color",
+            "mobile_menu_bg_color": "Mobile menu colors (bg)",
+            "mobile_menu_text_color": "Mobile menu colors (text)",
+            "mobile_menu_link_hover_color": "Mobile menu colors (link hover)",
+            "mobile_menu_link_active_color": "Mobile menu colors (link active)",
+            "mobile_menu_title_color": "Mobile menu colors (title)",
+            "mobile_menu_divider_color": "Mobile menu colors (divider)",
+            "mobile_menu_currency_text_color": "Mobile menu colors (currency text)",
+            "mobile_menu_currency_border_color": "Mobile menu colors (currency border)",
+            "mobile_menu_currency_bg_color": "Mobile menu colors (currency bg)",
+            "mobile_menu_login_bg_color": "Mobile menu colors (login bg)",
+            "mobile_menu_login_text_color": "Mobile menu colors (login text)",
+            "mobile_menu_register_border_color": "Mobile menu colors (register border)",
+            "mobile_menu_register_text_color": "Mobile menu colors (register text)",
+            "mobile_menu_logout_color": "Mobile menu colors (logout)",
+            "mobile_search_style": "Separate mobile search"
+          }
         }
       },
       "barra": {
@@ -33458,7 +33530,17 @@
         "editarInventario": "Edit products and prices in Inventory",
         "cartaAyuda": "The order, featured items and hidden dishes of the menu are edited in Menu.",
         "editarCartaAqui": "Edit the menu",
-        "editarEnCarta": "Edit in Menu"
+        "editarEnCarta": "Edit in Menu",
+        "aparienciaTitulo": "Category image and icon",
+        "aparienciaAyuda": "Saved on the Inventory category: they look the same in the store, POS and menu.",
+        "aparienciaEditar": "Image and icon",
+        "aparienciaDialogo": "Appearance of “{nombre}”",
+        "aparienciaIcono": "Icon",
+        "aparienciaImagen": "Image",
+        "aparienciaGuardar": "Save",
+        "aparienciaGuardada": "Category appearance saved",
+        "aparienciaError": "Could not save the category",
+        "aparienciaSinPermiso": "You need permission to edit the Inventory catalog"
       },
       "avanzado": {
         "titulo": "For special cases",

@@ -16,6 +16,9 @@ import { ChipsOpcion, type OpcionChip } from '@/components/kit';
 import { StylePresetCard } from '../ui/StylePresetCard';
 import { FontPairOption } from '../ui/FontPairOption';
 import { ColorField } from '../ui/ColorField';
+import { FontField } from '../ui/FontField';
+import { resolverFuenteTema } from '@/lib/website/v2/fuenteTema';
+import { FONTS } from '@/lib/services/websiteSettingsService';
 import {
   ESTILOS_BOTON,
   MOVIMIENTOS_SITIO,
@@ -24,6 +27,7 @@ import {
   type EstiloEditable,
   type MovimientoSitio,
   type RadioSitio,
+  secundarioEfectivo,
 } from '@/lib/website/v2/tokensEstilo';
 import {
   claseDeFuentes,
@@ -125,6 +129,7 @@ export function EstiloDelSitioPanel({
     return [todos[actual], ...todos.slice(0, actual), ...todos.slice(actual + 1)];
   }, [presets, estilo.fuenteTitulos, estilo.fuenteCuerpo, seleccionado?.claseFuentes]);
   const paresVisibles = todosPares ? pares : pares.slice(0, PARES_VISIBLES);
+  const fuentesActuales = useMemo(() => ({ titulos: estilo.fuenteTitulos, cuerpo: estilo.fuenteCuerpo }), [estilo.fuenteTitulos, estilo.fuenteCuerpo]);
 
   useFuentesSitio([...visibles.flatMap((p) => [p.fuenteTitulos, p.fuenteCuerpo]), ...paresVisibles.map((p) => p.titulos)]);
 
@@ -200,6 +205,24 @@ export function EstiloDelSitioPanel({
           onCambiar={(acento) => onCambiar({ acento })}
           deshabilitado={deshabilitado}
         />
+        <ColorField
+          etiqueta={t('panel.secundario')}
+          valor={secundarioEfectivo(estilo)}
+          fondo={estilo.fondo}
+          coloresLogo={coloresLogo}
+          onCambiar={(secundario) => onCambiar({ secundario })}
+          deshabilitado={deshabilitado}
+        />
+        {estilo.secundario ? (
+          <button
+            type="button"
+            onClick={() => onCambiar({ secundario: null })}
+            disabled={deshabilitado}
+            className="self-start rounded-md text-[13px] font-medium leading-[18px] text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+          >
+            {t('panel.secundarioAutomatico')}
+          </button>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -228,6 +251,27 @@ export function EstiloDelSitioPanel({
             {todosPares ? t('panel.verMenosPares') : t('panel.verMasPares', { n: pares.length - PARES_VISIBLES })}
           </button>
         )}
+        {/* Fuentes libres (cualquier familia del catálogo), además de los pares sugeridos. */}
+        <FontField
+          etiqueta={t('panel.fuenteTitulos')}
+          valor={estilo.fuenteTitulos}
+          onCambiar={(v) => onCambiar({ fuenteTitulos: resolverFuenteTema(v, fuentesActuales, 'titulos') ?? estilo.fuenteTitulos })}
+          fuentesTema={fuentesActuales}
+          porDefecto="titulos"
+          catalogo={FONTS}
+          familiaCss={familiaCss}
+          deshabilitado={deshabilitado}
+        />
+        <FontField
+          etiqueta={t('panel.fuenteCuerpo')}
+          valor={estilo.fuenteCuerpo}
+          onCambiar={(v) => onCambiar({ fuenteCuerpo: resolverFuenteTema(v, fuentesActuales, 'cuerpo') ?? estilo.fuenteCuerpo })}
+          fuentesTema={fuentesActuales}
+          porDefecto="cuerpo"
+          catalogo={FONTS}
+          familiaCss={familiaCss}
+          deshabilitado={deshabilitado}
+        />
       </div>
 
       <div className="flex flex-col gap-2">

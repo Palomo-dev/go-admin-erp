@@ -181,25 +181,32 @@ async function serialesDeLaVenta(
   const ids = [...new Set(filas.flatMap((l) => idsSerialesLinea(l.serial_ids)))];
   const { data: porVenta, error } = await ctx.supabase
     .from('serial_numbers')
-    .select('id, serial_number, product_id, sale_id')
+    .select('id, serial, product_id, sale_id')
     .eq('organization_id', ctx.organizationId)
     .eq('sale_id', saleId);
-  if (error) throw new ErrorDetalleVenta('lectura_fallida', 500, error.message);
+  // Los seriales son un dato secundario: si su lectura falla, la venta se
+  // muestra igual (sin seriales) en vez de responder 500. La columna real es
+  // `serial_numbers.serial` (no `serial_number`): leer esa columna inexistente
+  // tumbó el detalle de TODAS las ventas (PostgREST 400 → 500).
+  if (error) {
+    console.error('[pos/ventas/[id]] seriales', { saleId, message: error.message });
+    return [];
+  }
   const vistos = new Set((porVenta ?? []).map((s) => Number(s.id)));
   const faltan = ids.filter((i) => !vistos.has(i));
   let extras: typeof porVenta = [];
   if (faltan.length > 0) {
     const extra = await ctx.supabase
       .from('serial_numbers')
-      .select('id, serial_number, product_id, sale_id')
+      .select('id, serial, product_id, sale_id')
       .eq('organization_id', ctx.organizationId)
       .in('id', faltan);
-    if (extra.error) throw new ErrorDetalleVenta('lectura_fallida', 500, extra.error.message);
-    extras = extra.data ?? [];
+    if (extra.error) console.error('[pos/ventas/[id]] seriales', { saleId, message: extra.error.message });
+    else extras = extra.data ?? [];
   }
   return [...(porVenta ?? []), ...(extras ?? [])].map((s) => ({
     id: Number(s.id),
-    codigo: String(s.serial_number ?? ''),
+    codigo: String(s.serial ?? ''),
     product_id: Number(s.product_id),
     sale_id: (s.sale_id as string | null) ?? null,
   }));

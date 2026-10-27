@@ -37,6 +37,26 @@ export interface DetalleClic {
 const ORIGENES_DESARROLLO = ['http://localhost:3002', 'http://localhost:3000', 'https://erp.goadmin.io', 'https://go-admin-erp.vercel.app'];
 const ESPERA_MS = 150;
 
+/**
+ * ¿`origen` es el mismo sitio que `destino` con o sin `www.`? Los dominios propios redirigen
+ * el apex a `www` (p. ej. tuhogarcolombia.store → www.tuhogarcolombia.store): el iframe queda
+ * en otro origen y, sin esto, el editor descartaba su `goadmin:ready` y le enviaba los cambios
+ * a un origen que ya no es el suyo (el navegador los tira en silencio: lienzo sin tiempo real).
+ */
+export function mismoSitioWww(origen: string, destino: string | null): boolean {
+  if (!destino || !origen) return false;
+  if (origen === destino) return true;
+  try {
+    const a = new URL(origen);
+    const b = new URL(destino);
+    if (a.protocol !== b.protocol || a.port !== b.port) return false;
+    const sin = (h: string) => h.replace(/^www\./, '');
+    return sin(a.hostname) === sin(b.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export interface OpcionesPuente {
   iframe: RefObject<HTMLIFrameElement | null>;
   url: string | null;
@@ -53,7 +73,13 @@ export interface OpcionesPuente {
 }
 
 export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, avisoSeccion, onClic, onQuitar, cartaSede, pagina }: OpcionesPuente) {
-  const destino = origenDe(url);
+  const destinoUrl = origenDe(url);
+  // Origen real del iframe (tras redirecciones apex ↔ www), aprendido de sus mensajes.
+  const origenReal = useRef<string | null>(null);
+  useEffect(() => {
+    origenReal.current = null;
+  }, [destinoUrl]);
+  const destino = destinoUrl;
   const ultimoSecciones = useRef('');
   const ultimoAjustes = useRef('');
   const seleccionRef = useRef(seleccion);
@@ -67,7 +93,7 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
       const w = iframe.current?.contentWindow;
       if (!w || !destino) return;
       try {
-        w.postMessage(mensaje, destino);
+        w.postMessage(mensaje, origenReal.current ?? destino);
       } catch {
         /* el lienzo puede no estar listo */
       }
@@ -154,9 +180,10 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
   useEffect(() => {
     const alRecibir = (e: MessageEvent) => {
       if (!e.data || typeof e.data !== 'object') return;
-      if (e.origin && e.origin !== destino && !ORIGENES_DESARROLLO.includes(e.origin)) return;
+      if (e.origin && !mismoSitioWww(e.origin, destino) && !ORIGENES_DESARROLLO.includes(e.origin)) return;
       // Solo se escucha al iframe del lienzo, no a cualquier ventana del mismo origen.
       if (iframe.current?.contentWindow && e.source && e.source !== iframe.current.contentWindow) return;
+      if (e.origin && mismoSitioWww(e.origin, destino)) origenReal.current = e.origin;
       const d = e.data as Record<string, unknown>;
       // El puente del sitio monta después de hidratar: puede estar listo después de `onLoad`.
       // Al avisar `goadmin:ready` se le manda el borrador y la selección.

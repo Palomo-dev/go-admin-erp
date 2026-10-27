@@ -25,6 +25,7 @@ import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
 import { EditorPestanas } from './EditorCascaron';
 import { EditorBoletin } from './EditorBoletin';
+import { AparienciaCategoriasEditor } from './AparienciaCategoriasEditor';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
@@ -93,7 +94,7 @@ export interface CampoSeccionProps {
   paleta?: ThemePalette;
   /** Fondo contra el que se mide el contraste de los colores. */
   fondo?: string | null;
-  categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean };
+  categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean; recargar?: () => void | Promise<void> };
   deshabilitado?: boolean;
 }
 
@@ -257,6 +258,9 @@ export function CampoSeccion({
               />
             )}
             {ayuda && <p className="text-xs leading-4 text-fg-secondary">{ayuda}</p>}
+            {!categorias.cargando && opcionesCategorias.length > 0 && (
+              <AparienciaCategoriasEditor lista={categorias.lista} elegidas={elegidas} onGuardado={categorias.recargar} deshabilitado={deshabilitado} />
+            )}
             <Link
               href={RUTA_PRODUCTOS_INVENTARIO}
               target="_blank"

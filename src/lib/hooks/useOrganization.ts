@@ -249,6 +249,16 @@ export async function persistirOrganizacionEnPerfil(organizationId: number): Pro
   }
 }
 
+/** Lee la org activa de la cookie que también usa el servidor (cliente únicamente). */
+function orgIdDeCookieCliente(): number | null {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(/(?:^|;\s*)(?:goadmin_org_id|org_id)=(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+/** Evita cambios de organización solapados (doble clic, dos menús a la vez). */
+let _cambioOrgEnCurso: Promise<void> | null = null;
+
 /**
  * Cambia la organización activa desde dentro de la app (no usar en el login inicial).
  * Limpia primero el estado dependiente de la organización anterior (sucursal
@@ -258,6 +268,17 @@ export async function persistirOrganizacionEnPerfil(organizationId: number): Pro
 export async function cambiarOrganizacionActiva(
   organizacion: Organizacion,
   options: { reload?: boolean } = { reload: true }
+): Promise<void> {
+  if (_cambioOrgEnCurso) return _cambioOrgEnCurso;
+  _cambioOrgEnCurso = cambiarOrganizacionActivaInterno(organizacion, options).finally(() => {
+    _cambioOrgEnCurso = null;
+  });
+  return _cambioOrgEnCurso;
+}
+
+async function cambiarOrganizacionActivaInterno(
+  organizacion: Organizacion,
+  options: { reload?: boolean }
 ): Promise<void> {
   try {
     localStorage.removeItem('currentBranchId');
@@ -284,6 +305,15 @@ export async function cambiarOrganizacionActiva(
   await persistirOrganizacionEnPerfil(organizacion.id);
 
   if (options.reload !== false) {
+    // Antes de recargar se espera a que termine cualquier renovación de token en
+    // curso (getSession espera el lock de auth). Si se recarga a mitad de un
+    // refresh, el token nuevo no llega a guardarse y la página siguiente reusa
+    // el refresh token ya consumido → sesión corrupta y vuelta al login.
+    try {
+      await supabase.auth.getSession();
+    } catch (e) {
+      console.warn('getSession antes de recargar falló:', e);
+    }
     window.location.reload();
   }
 }
@@ -495,28 +525,45 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
       return { data: null, error: new Error("Usuario no asociado a ninguna organización") };
     }
     
-    // Si el usuario tiene múltiples orgs, respetar la guardada en localStorage
+    // Si el usuario tiene múltiples orgs se elige, en orden: la guardada en
+    // este navegador, la cookie `goadmin_org_id`/`org_id` y `profiles.last_org_id`.
+    // Solo si ninguna coincide se cae a la primera (por id), y entonces se marca
+    // usedFallback=true para que el hook NO la persista: nunca en silencio.
     const savedOrg = obtenerOrganizacionActiva();
     let member: DbOrganizationMember;
     let usedFallback = false;
-    if (memberData.length > 1 && savedOrg?.id) {
-      const saved = memberData.find((m: any) => m.organization_id === savedOrg.id);
-      if (saved) {
-        member = saved as DbOrganizationMember;
+    const buscar = (id: unknown) => {
+      const n = Number(id);
+      return Number.isFinite(n) && n > 0
+        ? (memberData.find((m: { organization_id: number }) => Number(m.organization_id) === n) as DbOrganizationMember | undefined)
+        : undefined;
+    };
+    if (memberData.length === 1) {
+      member = memberData[0] as DbOrganizationMember;
+    } else {
+      let elegido = buscar(savedOrg?.id) ?? buscar(orgIdDeCookieCliente());
+      if (!elegido) {
+        try {
+          const { data: perfil } = await supabase
+            .from('profiles')
+            .select('last_org_id')
+            .eq('id', userId)
+            .maybeSingle();
+          elegido = buscar((perfil as { last_org_id?: number | null } | null)?.last_org_id);
+        } catch (e) {
+          console.warn('No se pudo leer profiles.last_org_id:', e);
+        }
+      }
+      if (elegido) {
+        member = elegido;
       } else {
-        // La org guardada no está entre las del usuario. No elegir otra en
-        // silencio: usamos la primera (ordenada por id) para que la UI tenga
-        // datos, pero marcamos usedFallback=true para que el hook NO persista
-        // esta elección. El usuario debe seleccionar explícitamente.
         console.warn(
-          `Organización guardada (id=${savedOrg.id}) no encontrada entre las del usuario. ` +
+          `Sin organización guardada válida (local=${savedOrg?.id ?? 'ninguna'}). ` +
           `Usando fallback temporal (id=${memberData[0].organization_id}), NO se persistirá.`
         );
         member = memberData[0] as DbOrganizationMember;
         usedFallback = true;
       }
-    } else {
-      member = memberData[0] as DbOrganizationMember;
     }
     
     // Paso 2: Obtener datos de la organización

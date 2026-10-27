@@ -238,7 +238,7 @@ function parseProductDetail(html: string, baseUrl: string): DetailData {
 }
 
 // Patrones de imágenes que NO son fotos de producto (íconos, logos, placeholders, medios de pago, redes, etc.)
-const IMAGE_BLOCKLIST = /(logo|icon|sprite|banner|flag|payment|favicon|placeholder|no[-_]?image|noimage|sin[-_]?imagen|blank|loader|loading|spinner|pixel|transparent|swatch|social|whatsapp|facebook|instagram|twitter|tiktok|youtube|visa|mastercard|amex|paypal|sistecredito|nequi|baloto|efecty|sello|garantia|envio|shipping|cintillo|blur|skeleton)/i;
+const IMAGE_BLOCKLIST = /(logo|icon|sprite|banner|flag|payment|favicon|placeholder|no[-_]?image|noimage|sin[-_]?imagen|blank|loader|loading|spinner|pixel|transparent|swatch|social|whatsapp|facebook|instagram|twitter|tiktok|youtube|visa|mastercard|amex|paypal|sistecredito|nequi|baloto|efecty|sello|garantia|envio|shipping|cintillo|blur|skeleton|sin[-_]?foto|espanol_default|\/img\/p\/[a-z]{2}-default-|\/[a-z]{2}-default-[a-z_]*default\.)/i; // mismo criterio que src/lib/inventario/importacion/imagenesRelleno.ts
 // Palabras cortas/ambiguas: solo bloquear como palabra completa para evitar falsos positivos
 // (p. ej. "pse" aparece dentro de dominios como "copservir.vteximg.com.br" sin ser el medio de pago PSE)
 const IMAGE_BLOCKLIST_STRICT = /\b(default|pse|addi|badge|seal|empty)\b/i;

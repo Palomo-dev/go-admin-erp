@@ -131,8 +131,8 @@ function Contenido(p: InspectorPieProps) {
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.pie.queMostrar')}</TituloBloque>
         <FilaInterruptor titulo={t('zonaGlobal.pie.contacto')} ayuda={t('zonaGlobal.pie.contactoAyuda')} valor={b('footer_show_contact')} onCambiar={(v) => cambiar({ footer_show_contact: v })} />
-        <FilaInterruptor titulo={t('zonaGlobal.pie.horario')} ayuda={t('zonaGlobal.pie.horarioAyuda')} valor={b('footer_show_hours')} onCambiar={(v) => cambiar({ footer_show_hours: v })} />
-        <FilaInterruptor titulo={t('zonaGlobal.pie.redes')} valor={b('footer_show_social')} onCambiar={(v) => cambiar({ footer_show_social: v })} />
+        <FilaInterruptor titulo={t('zonaGlobal.pie.horario')} ayuda={t('zonaGlobal.pie.horarioAyuda')} valor={b('footer_show_hours')} onCambiar={(v) => cambiar({ footer_show_hours: v, mobile_footer_show_hours: v })} />
+        <FilaInterruptor titulo={t('zonaGlobal.pie.redes')} valor={b('footer_show_social')} onCambiar={(v) => cambiar({ footer_show_social: v, mobile_footer_show_social: v })} />
         <FilaInterruptor titulo={t('zonaGlobal.pie.whatsapp')} ayuda={t('zonaGlobal.pie.whatsappAyuda')} nuevo valor={b('footer_show_whatsapp')} onCambiar={(v) => cambiar({ footer_show_whatsapp: v })} />
         <FilaInterruptor titulo={t('zonaGlobal.pie.mapa')} ayuda={t('zonaGlobal.pie.mapaAyuda')} nuevo valor={b('footer_show_map')} onCambiar={(v) => cambiar({ footer_show_map: v })} />
         <FilaInterruptor titulo={t('zonaGlobal.pie.pagos')} ayuda={t('zonaGlobal.pie.pagosAyuda')} nuevo valor={b('footer_show_payment_methods')} onCambiar={(v) => cambiar({ footer_show_payment_methods: v })} />
@@ -209,8 +209,6 @@ function Diseno(p: InspectorPieProps) {
           onValorChange={(v) => cambiar({ mobile_footer_style: v })}
         />
       </div>
-      <FilaInterruptor titulo={t('zonaGlobal.pie.redesCelular')} valor={opcionBooleana(a, 'mobile_footer_show_social')} onCambiar={(v) => cambiar({ mobile_footer_show_social: v })} />
-      <FilaInterruptor titulo={t('zonaGlobal.pie.horarioCelular')} valor={opcionBooleana(a, 'mobile_footer_show_hours')} onCambiar={(v) => cambiar({ mobile_footer_show_hours: v })} />
 
       <section className="flex flex-col gap-3">
         <FilaInterruptor

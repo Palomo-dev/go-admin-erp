@@ -14269,7 +14269,8 @@
         "archivo": "reporte_importacion_productos"
       },
       "cuadre": "{seleccionados} seleccionados · {importados} importados + {omitidos} omitidos + {fallidos} fallidos + {sinIntentar} sin intentar",
-      "conAvisosLinea": "{n, plural, one {# producto importado con avisos} other {# productos importados con avisos}}: están en el reporte."
+      "conAvisosLinea": "{n, plural, one {# producto importado con avisos} other {# productos importados con avisos}}: están en el reporte.",
+      "reanudado": "Retomado desde el bloque {lote}"
     },
     "mensajes": {
       "sinNombre": "Falta el nombre",
@@ -14325,7 +14326,16 @@
       "DATO_NO_VALIDO": "Algún dato no es válido para la base",
       "LOTE": "El lote completo falló",
       "ERROR": "Error al guardar la fila",
-      "skuRepetidoTienda": "El SKU «{sku}» de la tienda ya lo usa otro producto del catálogo: se generó uno nuevo (queda como referencia)."
+      "skuRepetidoTienda": "El SKU «{sku}» de la tienda ya lo usa otro producto del catálogo: se generó uno nuevo (queda como referencia).",
+      "DUPLICADO_CON_SKU": "El {campo} {valor} ya lo usa el producto {sku}",
+      "DUPLICADO_VALOR": "El {campo} {valor} ya está en uso en otro producto",
+      "DUPLICADO_CAMPO": "El {campo} ya está en uso en otro registro",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "código de barras",
+        "plu": "PLU de balanza",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",
@@ -14427,6 +14437,11 @@
       "categoriasMas": "{n, plural, one {Y # categoría más (elígela en la lista)} other {Y # categorías más (elígelas en la lista)}}",
       "existencias": "{n, plural, one {Usar las existencias que publica la tienda (# producto)} other {Usar las existencias que publica la tienda (# productos)}}",
       "existenciasAyuda": "Entran como stock inicial en la sucursal elegida. Exigen costo: sin costo la fila queda con error."
+    },
+    "progreso": {
+      "titulo": "Hay una importación sin terminar en esta pestaña",
+      "descripcion": "Se enviaron {enviados} de {total} productos (bloque {lote} de {lotes}). Vuelve a cargar el mismo archivo con la misma sede y pulsa Importar: se continúa desde el siguiente bloque sin repetir lo enviado.",
+      "descartar": "Descartar"
     }
   },
   "productosFacebook": {
@@ -32351,7 +32366,11 @@
         "movimiento": "Movimiento",
         "pendiente": "Redondeo, botones y movimiento se aplican cuando el sitio publicado los admita. Por ahora se ven en las muestras de los presets.",
         "motivoPendiente": "El sitio publicado aún no aplica este ajuste",
-        "sinPresets": "Aún no hay presets para tu giro. Mira las plantillas."
+        "sinPresets": "Aún no hay presets para tu giro. Mira las plantillas.",
+        "secundario": "Secundario",
+        "secundarioAutomatico": "Volver al secundario automático",
+        "fuenteTitulos": "Fuente de títulos",
+        "fuenteCuerpo": "Fuente del texto"
       },
       "giroEnFrase": {
         "restaurante": "restaurante",
@@ -33116,8 +33135,7 @@
         "pestana": {
           "contenido": "Contenido",
           "diseno": "Diseño",
-          "estilo": "Estilo",
-          "constructor": "Constructor"
+          "estilo": "Estilo"
         },
         "cerrar": "Cerrar {zona}",
         "restablecer": "Restablecer a la plantilla",
@@ -33214,7 +33232,11 @@
           "headerSobreHero": "Header transparente sobre el hero",
           "headerSobreHeroAyuda": "El encabezado queda fijo y transparente encima del hero. Apagado: encabezado opaco y el hero debajo, sin hueco.",
           "espacioPrimera": "Espacio superior de la primera sección",
-          "espacioPrimeraAyuda": "Píxeles entre el encabezado y la primera sección. 0 las deja pegadas."
+          "espacioPrimeraAyuda": "Píxeles entre el encabezado y la primera sección. 0 las deja pegadas.",
+          "circuloFondo": "Fondo del círculo",
+          "circuloFondoAcento": "Color de la marca",
+          "circuloIcono": "Color del ícono",
+          "circuloIconoAuto": "Automático"
         },
         "diseno": {
           "titulo": "Diseño del encabezado",
@@ -33242,7 +33264,9 @@
             "bottom_sheet": "Hoja inferior",
             "tabs": "Barra tipo app"
           },
-          "barraCelular": "Barra superior en el celular"
+          "barraCelular": "Barra superior en el celular",
+          "buscador": "Buscador",
+          "buscadorAyuda": "Vale para computador y celular: en el celular el ícono queda en la barra y la barra visible va bajo el logo."
         },
         "estilo": {
           "avisoTitulo": "Por defecto los colores siguen el tema de la plantilla",
@@ -33282,7 +33306,14 @@
           "menuEntrarTexto": "Texto de iniciar sesión",
           "menuRegistroBorde": "Borde de registrarse",
           "menuRegistroTexto": "Texto de registrarse",
-          "menuSalir": "Cerrar sesión"
+          "menuSalir": "Cerrar sesión",
+          "iconos": "Íconos",
+          "formaBoton": "Forma del botón de acción",
+          "forma": {
+            "recto": "Recto",
+            "redondeado": "Redondeado",
+            "pildora": "Píldora"
+          }
         },
         "pie": {
           "menus": "Menús del pie",
@@ -33357,6 +33388,46 @@
           "colorTexto": "Texto",
           "separadores": "Separadores",
           "sinSeparadores": "Ninguno"
+        },
+        "anteriores": {
+          "titulo": "Ajustes de versiones anteriores ({n})",
+          "ayuda": "La tienda los sigue aplicando, pero ya no están en el panel. Quítalos para volver al diseño de siempre.",
+          "quitar": "Quitar",
+          "quitarTodos": "Quitar todos",
+          "clave": {
+            "header_builder": "Constructor (zonas e íconos)",
+            "mobile_header": "Celular (panel y barra inferior)",
+            "header_menu_source": "Origen del menú",
+            "header_icons_weight": "Grosor de los íconos",
+            "header_cart_glyph": "Forma del carrito",
+            "search_icon": "Ícono del buscador",
+            "auth_icon": "Ícono de la cuenta",
+            "currency_icon": "Ícono de la moneda",
+            "header_transparent_over_hero": "Transparente sobre el hero",
+            "first_section_offset_px": "Espacio sobre la primera sección",
+            "header_booking_bar": "Barra de reserva",
+            "mobile_logo_position": "Logo en el celular",
+            "mobile_show_topbar": "Barra superior en el celular",
+            "header_divider": "Línea bajo el encabezado",
+            "header_divider_color": "Color de la línea",
+            "header_hover_color": "Hover de los íconos",
+            "header_mobile_icon_color": "Color de íconos en el celular",
+            "mobile_menu_bg_color": "Colores del menú del celular (bg)",
+            "mobile_menu_text_color": "Colores del menú del celular (text)",
+            "mobile_menu_link_hover_color": "Colores del menú del celular (link hover)",
+            "mobile_menu_link_active_color": "Colores del menú del celular (link active)",
+            "mobile_menu_title_color": "Colores del menú del celular (title)",
+            "mobile_menu_divider_color": "Colores del menú del celular (divider)",
+            "mobile_menu_currency_text_color": "Colores del menú del celular (currency text)",
+            "mobile_menu_currency_border_color": "Colores del menú del celular (currency border)",
+            "mobile_menu_currency_bg_color": "Colores del menú del celular (currency bg)",
+            "mobile_menu_login_bg_color": "Colores del menú del celular (login bg)",
+            "mobile_menu_login_text_color": "Colores del menú del celular (login text)",
+            "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
+            "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
+            "mobile_menu_logout_color": "Colores del menú del celular (logout)",
+            "mobile_search_style": "Buscador propio del celular"
+          }
         }
       },
       "barra": {
@@ -33479,7 +33550,17 @@
         "editarInventario": "Editar productos y precios en Inventario",
         "cartaAyuda": "El orden, los destacados y los platos ocultos de la carta se editan en Carta.",
         "editarCartaAqui": "Editar la carta",
-        "editarEnCarta": "Editar en Carta"
+        "editarEnCarta": "Editar en Carta",
+        "aparienciaTitulo": "Imagen e ícono de las categorías",
+        "aparienciaAyuda": "Se guardan en la categoría del Inventario: se ven igual en la tienda, el POS y el menú.",
+        "aparienciaEditar": "Imagen e ícono",
+        "aparienciaDialogo": "Apariencia de «{nombre}»",
+        "aparienciaIcono": "Ícono",
+        "aparienciaImagen": "Imagen",
+        "aparienciaGuardar": "Guardar",
+        "aparienciaGuardada": "Apariencia de la categoría guardada",
+        "aparienciaError": "No se pudo guardar la categoría",
+        "aparienciaSinPermiso": "Necesitas permiso para editar el catálogo del Inventario"
       },
       "avanzado": {
         "titulo": "Para casos especiales",

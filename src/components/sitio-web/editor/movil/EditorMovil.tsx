@@ -43,7 +43,7 @@ export interface EditorMovilProps {
   onPublicar: () => void;
   /** «Vista previa» del borrador en otra pestaña (el mismo flujo del computador). */
   onVistaPrevia: () => void;
-  categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean };
+  categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean; recargar?: () => void | Promise<void> };
 }
 
 function esPortada(s: WebsitePageSection): boolean {

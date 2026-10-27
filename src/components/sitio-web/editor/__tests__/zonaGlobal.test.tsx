@@ -124,7 +124,7 @@ describe('InspectorEncabezado', () => {
     const onCambiar = encabezado();
     expect(screen.getByRole('heading', { name: 'Encabezado' })).toBeTruthy();
     expect(screen.getByText('Global · aparece en todas las páginas')).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo', 'Celular', 'Constructor']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo']);
     expect(screen.getByText('Cambia en todas las páginas')).toBeTruthy();
     expect(screen.getByText('Valores por defecto de la plantilla «Noir Omakase»')).toBeTruthy();
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
@@ -136,9 +136,10 @@ describe('InspectorEncabezado', () => {
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
-    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador · celular' })).getByRole('radio', { name: 'Barra bajo el logo' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_search_style: 'bar' });
+    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center', mobile_logo_position: 'inherit' });
+    expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
+    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
   });
 
   test('Contenido: carrito y cuenta encendidos por defecto; segundo botón, barra superior, sede e idioma deshabilitado', () => {
@@ -149,36 +150,24 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_cta2_text: 'WhatsApp', header_cta2_url: 'whatsapp' });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Sede y horario' }));
     expect(onCambiar).toHaveBeenCalledWith({ topbar_show_branch_status: true });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Envío gratis' }));
-    expect(onCambiar).toHaveBeenCalledWith({ topbar_show_free_shipping: true });
+    expect(screen.queryByRole('checkbox', { name: 'Envío gratis' })).toBeNull();
     expect((screen.getByRole('checkbox', { name: 'Idioma' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('switch', { name: /Selector de sede en el encabezado/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_show_branch_selector: true });
-    fireEvent.click(screen.getByRole('switch', { name: /Barra de reserva con fechas/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_booking_bar: true });
     fireEvent.click(screen.getByRole('switch', { name: /Moneda/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_show_currency: false });
     fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
-    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden' });
-    fireEvent.click(screen.getByRole('radio', { name: 'Relleno' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_icons_weight: 'relleno' });
-    fireEvent.click(screen.getByRole('radio', { name: 'Carrito' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_cart_glyph: 'carrito', cart_icon: 'shopping-cart' });
-    fireEvent.click(screen.getByRole('radio', { name: 'Círculo acento' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
-    fireEvent.click(screen.getByRole('radio', { name: 'Cuadrado suave' }));
-    expect(onCambiar).toHaveBeenCalledWith(expect.objectContaining({
-      header_icons_circle: false,
-      header_builder: expect.objectContaining({
-        icon_container: expect.objectContaining({ shape: 'rounded', background: 'accent', radius: 10, shadow: 'sm' }),
-      }),
-    }));
-    fireEvent.click(screen.getByRole('switch', { name: /Header transparente sobre el hero/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_transparent_over_hero: true });
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Espacio superior de la primera sección' }), { target: { value: '12' } });
-    expect(onCambiar).toHaveBeenCalledWith({ first_section_offset_px: 12 });
-    fireEvent.click(screen.getByRole('radio', { name: 'Categorías de la carta' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_menu_source: 'categorias_carta' });
+    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden', mobile_search_style: null });
+    // Fuera del Figma v2: ya no están en el panel.
+    expect(screen.queryByRole('radio', { name: 'Relleno' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: /Header transparente sobre el hero/ })).toBeNull();
+    expect(screen.queryByText('Constructor')).toBeNull();
+  });
+
+  test('Contenido: los chips de la barra fuera del Figma salen solo si ya están prendidos', () => {
+    const onCambiar = encabezado({ show_topbar: true, topbar_show_free_shipping: true }, { pestanaInicial: 'contenido' });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Envío gratis' }));
+    expect(onCambiar).toHaveBeenCalledWith({ topbar_show_free_shipping: false });
   });
 
   test('Estilo: sigue el tema o fija color, transparencia sobre la portada y restablecer', () => {
@@ -187,34 +176,36 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_bg_color: '#0E0E0E' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces' })).getByRole('radio', { name: 'Fijar color' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_text_color: '#F5F1EA' });
-    expect(screen.getByRole('switch', { name: /Línea entre el logo y el menú/ }).getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByRole('switch', { name: /Línea entre el logo y el menú/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_divider: false });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Color de la línea' })).getByRole('radio', { name: 'Fijar color' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_divider_color: '#F5F1EA' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Hover de los íconos' })).getByRole('radio', { name: 'Fijar color' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_hover_color: '#F5F1EA' });
     expect(screen.getByRole('switch', { name: /Fijo al bajar/ }).getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByRole('switch', { name: /Fijo al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Color de íconos móviles' })).getByRole('radio', { name: 'Fijar color' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_mobile_icon_color: '#F5F1EA' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Fondo del menú' })).getByRole('radio', { name: 'Fijar color' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_menu_bg_color: '#0E0E0E' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces del menú' })).getByRole('radio', { name: 'Fijar color' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_menu_text_color: '#F5F1EA' });
+    fireEvent.click(screen.getByRole('switch', { name: /Círculo acento/ }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
+    fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
+    expect(onCambiar).toHaveBeenCalledWith({ cta_border_radius: 999 });
+    expect(screen.queryByText(/Ajustes de versiones anteriores/)).toBeNull();
     fireEvent.click(screen.getByRole('switch', { name: /Sobre la portada, sólido al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent' });
     fireEvent.click(screen.getAllByRole('button', { name: 'Restablecer a la plantilla' })[0]);
     expect(onCambiar).toHaveBeenLastCalledWith(expect.objectContaining({ header_style: 'default', logo_position: 'center', header_cta_text: 'Reservar mesa' }));
   });
 
-  test('Menú móvil: Automático deja el color en null', () => {
-    const onCambiar = encabezado({ mobile_menu_text_color: '#FFFFFF', header_mobile_icon_color: '#FFFFFF' }, { pestanaInicial: 'estilo' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces del menú' })).getByRole('radio', { name: 'Automático' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_menu_text_color: null });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Color de íconos móviles' })).getByRole('radio', { name: 'Automático' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_mobile_icon_color: null });
+  test('Círculo acento: fondo y color del ícono con Sigue el tema / Fijar color', () => {
+    const onCambiar = encabezado({ header_icons_circle: true }, { pestanaInicial: 'estilo' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Fondo del círculo' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle_bg: expect.any(String) });
+  });
+
+  test('Ajustes anteriores: solo con valores guardados, y Quitar vuelve al de siempre', () => {
+    const onCambiar = encabezado(
+      { header_builder: { icon_container: { shape: 'circle' } }, header_divider: false, mobile_menu_bg_color: '#111111' },
+      { pestanaInicial: 'estilo' },
+    );
+    expect(screen.getByText('Ajustes de versiones anteriores (3)')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Quitar' })[0]);
+    expect(onCambiar).toHaveBeenCalledWith({ header_builder: null });
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar todos' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_builder: null, header_divider: true, mobile_menu_bg_color: null });
   });
 });
 

@@ -406,9 +406,14 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
       // Cookie corrupta: se borra (con y sin dominio compartido, con sus
       // trozos) y se va al login. En las páginas de /auth/ NO se redirige:
       // redirigir al mismo login con la cookie todavía puesta era el bucle.
-      const response = pathname.startsWith('/auth/')
-        ? NextResponse.next()
-        : NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
+      // En /api/* NO se redirige: un fetch seguía la redirección y recibía el
+      // HTML del login con 200, que el cliente tomaba como éxito vacío. Se
+      // responde 401 JSON para que la llamada falle con un error claro.
+      const response = pathname.startsWith('/api/')
+        ? NextResponse.json({ error: 'sesion_corrupta', code: 'SESION_CORRUPTA' }, { status: 401 })
+        : pathname.startsWith('/auth/')
+          ? NextResponse.next()
+          : NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
       borrarCookiesDeSesion(response, request, projectRef);
       return response;
     }

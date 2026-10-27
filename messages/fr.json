@@ -10067,7 +10067,8 @@
         "archivo": "rapport_import_produits"
       },
       "cuadre": "{seleccionados} sélectionnés · {importados} importés + {omitidos} ignorés + {fallidos} en échec + {sinIntentar} non tentés",
-      "conAvisosLinea": "{n, plural, one {# produit importé avec des avertissements} other {# produits importés avec des avertissements}} : voir le rapport."
+      "conAvisosLinea": "{n, plural, one {# produit importé avec des avertissements} other {# produits importés avec des avertissements}} : voir le rapport.",
+      "reanudado": "Repris à partir du lot {lote}"
     },
     "mensajes": {
       "sinNombre": "Le nom manque",
@@ -10123,7 +10124,16 @@
       "DATO_NO_VALIDO": "Une valeur n’est pas valide pour la base",
       "LOTE": "Le lot entier a échoué",
       "ERROR": "Erreur lors de l’enregistrement de la ligne",
-      "skuRepetidoTienda": "Le SKU « {sku} » de la boutique est déjà utilisé par un autre produit du catalogue : un nouveau a été généré (conservé en référence)."
+      "skuRepetidoTienda": "Le SKU « {sku} » de la boutique est déjà utilisé par un autre produit du catalogue : un nouveau a été généré (conservé en référence).",
+      "DUPLICADO_CON_SKU": "Le {campo} {valor} est déjà utilisé par le produit {sku}",
+      "DUPLICADO_VALOR": "Le {campo} {valor} est déjà utilisé par un autre produit",
+      "DUPLICADO_CAMPO": "Le {campo} est déjà utilisé par un autre enregistrement",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "code-barres",
+        "plu": "PLU de balance",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",
@@ -10225,6 +10235,11 @@
       "categoriasMas": "{n, plural, one {Et # catégorie de plus (choisissez-la dans la liste)} other {Et # catégories de plus (choisissez-les dans la liste)}}",
       "existencias": "{n, plural, one {Utiliser le stock publié par la boutique (# produit)} other {Utiliser le stock publié par la boutique (# produits)}}",
       "existenciasAyuda": "Il entre comme stock initial dans l’agence choisie. Un coût est requis : sans coût la ligne est en erreur."
+    },
+    "progreso": {
+      "titulo": "Une importation inachevée existe dans cet onglet",
+      "descripcion": "{enviados} produits sur {total} ont été envoyés (lot {lote} sur {lotes}). Rechargez le même fichier avec le même site et cliquez sur Importer : la reprise se fait au lot suivant sans répéter ce qui a été envoyé.",
+      "descartar": "Ignorer"
     }
   },
   "productosFacebook": {
@@ -32350,7 +32365,11 @@
         "movimiento": "Mouvement",
         "pendiente": "L'arrondi, les boutons et le mouvement s'appliquent quand le site publié les prendra en charge. Pour l'instant, ils apparaissent dans les échantillons des préréglages.",
         "motivoPendiente": "Le site publié n'applique pas encore ce réglage",
-        "sinPresets": "Il n'y a pas encore de préréglages pour ton activité. Regarde les modèles."
+        "sinPresets": "Il n'y a pas encore de préréglages pour ton activité. Regarde les modèles.",
+        "secundario": "Secondaire",
+        "secundarioAutomatico": "Revenir au secondaire automatique",
+        "fuenteTitulos": "Police des titres",
+        "fuenteCuerpo": "Police du texte"
       },
       "giroEnFrase": {
         "restaurante": "de restaurant",
@@ -33193,7 +33212,11 @@
           "reserva": "Barre de réservation avec dates",
           "reservaAyuda": "Hôtel : arrivée, départ et voyageurs sous l'en-tête",
           "moneda": "Devise",
-          "monedaAyuda": "Seulement si le site vend dans plus d'une"
+          "monedaAyuda": "Seulement si le site vend dans plus d'une",
+          "circuloFondo": "Fond du cercle",
+          "circuloFondoAcento": "Couleur de la marque",
+          "circuloIcono": "Couleur de l’icône",
+          "circuloIconoAuto": "Automatique"
         },
         "diseno": {
           "titulo": "Mise en page de l'en-tête",
@@ -33221,7 +33244,9 @@
             "bottom_sheet": "Panneau inférieur",
             "tabs": "Barre type appli"
           },
-          "barraCelular": "Barre supérieure sur mobile"
+          "barraCelular": "Barre supérieure sur mobile",
+          "buscador": "Recherche",
+          "buscadorAyuda": "S’applique à l’ordinateur et au mobile : sur mobile l’icône reste dans la barre et la barre visible passe sous le logo."
         },
         "estilo": {
           "avisoTitulo": "Par défaut, les couleurs suivent le thème du modèle",
@@ -33261,7 +33286,14 @@
           "menuEntrarTexto": "Texte de connexion",
           "menuRegistroBorde": "Bordure d'inscription",
           "menuRegistroTexto": "Texte d'inscription",
-          "menuSalir": "Déconnexion"
+          "menuSalir": "Déconnexion",
+          "iconos": "Icônes",
+          "formaBoton": "Forme du bouton d’action",
+          "forma": {
+            "recto": "Carré",
+            "redondeado": "Arrondi",
+            "pildora": "Pilule"
+          }
         },
         "pie": {
           "menus": "Menus du pied de page",
@@ -33336,6 +33368,46 @@
           "colorTexto": "Texte",
           "separadores": "Séparateurs",
           "sinSeparadores": "Aucun"
+        },
+        "anteriores": {
+          "titulo": "Réglages des versions précédentes ({n})",
+          "ayuda": "La boutique les applique toujours, mais ils ne sont plus dans le panneau. Retirez-les pour revenir au design par défaut.",
+          "quitar": "Retirer",
+          "quitarTodos": "Tout retirer",
+          "clave": {
+            "header_builder": "Builder (zones and icons)",
+            "mobile_header": "Mobile (panel and bottom bar)",
+            "header_menu_source": "Menu source",
+            "header_icons_weight": "Icon weight",
+            "header_cart_glyph": "Cart shape",
+            "search_icon": "Search icon",
+            "auth_icon": "Account icon",
+            "currency_icon": "Currency icon",
+            "header_transparent_over_hero": "Transparent over hero",
+            "first_section_offset_px": "Space above first section",
+            "header_booking_bar": "Booking bar",
+            "mobile_logo_position": "Logo on mobile",
+            "mobile_show_topbar": "Top bar on mobile",
+            "header_divider": "Line under header",
+            "header_divider_color": "Line color",
+            "header_hover_color": "Icon hover",
+            "header_mobile_icon_color": "Mobile icon color",
+            "mobile_menu_bg_color": "Mobile menu colors (bg)",
+            "mobile_menu_text_color": "Mobile menu colors (text)",
+            "mobile_menu_link_hover_color": "Mobile menu colors (link hover)",
+            "mobile_menu_link_active_color": "Mobile menu colors (link active)",
+            "mobile_menu_title_color": "Mobile menu colors (title)",
+            "mobile_menu_divider_color": "Mobile menu colors (divider)",
+            "mobile_menu_currency_text_color": "Mobile menu colors (currency text)",
+            "mobile_menu_currency_border_color": "Mobile menu colors (currency border)",
+            "mobile_menu_currency_bg_color": "Mobile menu colors (currency bg)",
+            "mobile_menu_login_bg_color": "Mobile menu colors (login bg)",
+            "mobile_menu_login_text_color": "Mobile menu colors (login text)",
+            "mobile_menu_register_border_color": "Mobile menu colors (register border)",
+            "mobile_menu_register_text_color": "Mobile menu colors (register text)",
+            "mobile_menu_logout_color": "Mobile menu colors (logout)",
+            "mobile_search_style": "Recherche mobile séparée"
+          }
         }
       },
       "barra": {
@@ -33458,7 +33530,17 @@
         "editarInventario": "Modifier produits et prix dans l'Inventaire",
         "cartaAyuda": "L'ordre, les mises en avant et les plats masqués de la carte se modifient dans Carte.",
         "editarCartaAqui": "Modifier la carte",
-        "editarEnCarta": "Modifier dans Carte"
+        "editarEnCarta": "Modifier dans Carte",
+        "aparienciaTitulo": "Image et icône des catégories",
+        "aparienciaAyuda": "Enregistrées sur la catégorie de l’Inventaire : identiques dans la boutique, le POS et le menu.",
+        "aparienciaEditar": "Image et icône",
+        "aparienciaDialogo": "Apparence de « {nombre} »",
+        "aparienciaIcono": "Icône",
+        "aparienciaImagen": "Image",
+        "aparienciaGuardar": "Enregistrer",
+        "aparienciaGuardada": "Apparence de la catégorie enregistrée",
+        "aparienciaError": "Impossible d’enregistrer la catégorie",
+        "aparienciaSinPermiso": "Vous devez avoir l’autorisation de modifier le catalogue de l’Inventaire"
       },
       "avanzado": {
         "titulo": "Pour les cas particuliers",

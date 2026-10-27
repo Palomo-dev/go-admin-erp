@@ -20,8 +20,31 @@ async function llamar<T>(url: string, orgId: number | undefined, init: RequestIn
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (orgId) headers['x-organization-id'] = String(orgId);
   const res = await fetch(url, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> | undefined) } });
-  const json = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string };
-  if (!res.ok) throw new ErrorApi(json.error || `HTTP ${res.status}`, res.status, json.code || 'ERROR');
+  const tipo = res.headers.get('content-type') || '';
+  const esJson = tipo.includes('application/json');
+  // Si el servidor redirigió (p. ej. al login) o devolvió HTML, NO es un éxito
+  // vacío: antes `res.json().catch(() => ({}))` lo tomaba como `{}` y el lote
+  // «terminaba» sin crear nada.
+  if (res.redirected || /\/auth\/login/.test(res.url || '')) {
+    throw new ErrorApi('La sesión se cerró o está dañada. Vuelve a iniciar sesión y retoma la importación.', 401, 'SESION_CORRUPTA');
+  }
+  let json: (T & { error?: string; code?: string }) | null = null;
+  if (esJson) {
+    try {
+      json = (await res.json()) as T & { error?: string; code?: string };
+    } catch {
+      json = null;
+    }
+  }
+  if (!res.ok) {
+    if (res.status === 401 && json?.error === 'sesion_corrupta') {
+      throw new ErrorApi('La sesión está dañada. Vuelve a iniciar sesión y retoma la importación.', 401, 'SESION_CORRUPTA');
+    }
+    throw new ErrorApi(json?.error || `Error del servidor (HTTP ${res.status})`, res.status, json?.code || 'ERROR');
+  }
+  if (!json) {
+    throw new ErrorApi('Respuesta inesperada del servidor (no es JSON).', res.status, 'RESPUESTA_NO_JSON');
+  }
   return json;
 }
 

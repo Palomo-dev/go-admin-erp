@@ -383,7 +383,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         defaultValue: 70,
         suffix: '%',
         showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split'] },
-        helpText: '0 = transparente, 100 = opaco. Sin tocar: 70% en Pantalla completa y Video, 40% en Slider, sin capa en Dividido.',
+        helpText: '0 = transparente, 100 = opaco. Sin tocar: 70% en Pantalla completa, 60% en Video, 40% en Slider y sin capa (0%) en Dividido, igual que la tienda.',
       },
       {
         key: 'overlay_color',
@@ -391,7 +391,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'color',
         group: 'style',
         showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split'] },
-        helpText: 'Color de la capa sobre la imagen. Vacío: color primario en Pantalla completa y Video, negro en Slider y Dividido.',
+        helpText: 'Color de la capa sobre la imagen. Vacío: color primario en Pantalla completa, negro en Video, Slider y Dividido.',
       },
       // Paquete 5-nov D4: color propio del título (vacío = el de siempre).
       {

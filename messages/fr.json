@@ -25737,6 +25737,7 @@
     "errorActual": "Le mot de passe actuel est incorrect.",
     "errorIgualActual": "Le nouveau mot de passe doit être différent de l’actuel.",
     "errorDemasiadas": "Trop de tentatives d’affilée. Patientez quelques minutes et réessayez.",
+    "errorSesion": "Votre session a expiré. Reconnectez-vous puis réessayez.",
     "errorInesperado": "Nous n’avons pas pu changer le mot de passe. Réessayez dans un instant."
   },
   "posEtiquetasPeso": {

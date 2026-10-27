@@ -29938,6 +29938,7 @@
     "errorActual": "Your current password is incorrect.",
     "errorIgualActual": "The new password must be different from the current one.",
     "errorDemasiadas": "Too many attempts in a row. Wait a few minutes and try again.",
+    "errorSesion": "Your session expired. Sign in again and try once more.",
     "errorInesperado": "We could not change your password. Try again in a moment."
   },
   "posEtiquetasPeso": {

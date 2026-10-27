@@ -10,7 +10,7 @@
  * renovación) y reintenta la petición UNA vez, con el `Authorization: Bearer`
  * nuevo si la petición original lo llevaba.
  *
- * No reintenta: otros orígenes, rutas fuera de `/api/`, cuerpos que no se
+ * No reintenta: 401 de credenciales (ver `esRutaDeCredenciales`), otros orígenes, rutas fuera de `/api/`, cuerpos que no se
  * pueden reenviar (streams) ni peticiones que ya son el reintento. Un 401 se
  * produce antes de que la ruta haga nada, así que reenviar un POST es seguro.
  */
@@ -51,20 +51,28 @@ export function esApiPropia(input: RequestInfo | URL): boolean {
 }
 
 /**
- * Rutas donde un 401 es la respuesta a una credencial (contraseña, código, invitación), no una
- * sesión vencida: ni se renueva ni se reintenta, para que un intento fallido no cuente doble en
- * el límite de intentos (QA 27-oct, A4). Login, registro, restablecer y cambiar contraseña,
- * invitaciones y callbacks viven en /api/auth/*; el código OTP de Twilio y el login bancario
- * de Open Finance también reciben credenciales.
+ * Un 401 que responde a una credencial (contraseña mala en el login) no es una sesión vencida: ni
+ * se renueva ni se reintenta, para que un intento fallido no cuente doble en el límite de intentos
+ * (QA 27-oct, A4). Se reconoce por la ruta del login con contraseña (`/api/auth/acceso`) o porque
+ * el cuerpo trae `codigo: 'credenciales'`. El resto de `/api/auth/*` (cambiar contraseña,
+ * invitaciones…), la verificación de Twilio y el login de Open Finance sí se renuevan cuando la
+ * sesión vence: su 401 es de sesión; un dato malo lo responden con 400.
  */
-const RUTAS_DE_CREDENCIALES: readonly RegExp[] = [
-  /^\/api\/auth(\/|$)/,
-  /^\/api\/integrations\/twilio\/verify(\/|$)/,
-  /^\/api\/integrations\/open-finance\/links\/[^/]+\/login(\/|$)/,
-];
+const RUTAS_DE_CREDENCIALES: readonly RegExp[] = [/^\/api\/auth\/acceso(\/|$)/];
 
 export function esRutaDeCredenciales(pathname: string): boolean {
   return RUTAS_DE_CREDENCIALES.some((r) => r.test(pathname));
+}
+
+/** ¿El cuerpo del 401 dice `codigo: 'credenciales'`? Se lee de una copia: la respuesta sigue intacta. */
+export async function esRespuestaDeCredenciales(respuesta: Response): Promise<boolean> {
+  try {
+    if (typeof respuesta.clone !== 'function') return false;
+    const cuerpo = (await respuesta.clone().json()) as { codigo?: unknown } | null;
+    return !!cuerpo && typeof cuerpo === 'object' && cuerpo.codigo === 'credenciales';
+  } catch {
+    return false;
+  }
 }
 
 function cuerpoReenviable(init?: RequestInit): boolean {
@@ -85,6 +93,7 @@ export function crearFetchConRenovacion(fetchBase: typeof fetch, renovar: Renova
     const copia = typeof Request !== 'undefined' && input instanceof Request ? input.clone() : null;
     const respuesta = await fetchBase(input, init);
     if (respuesta.status !== 401) return respuesta;
+    if (await esRespuestaDeCredenciales(respuesta)) return respuesta;
 
     const token = await renovarUnaVez(renovar);
     if (!token) return respuesta;

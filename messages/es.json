@@ -29939,6 +29939,7 @@
     "errorActual": "La contraseña actual no es correcta.",
     "errorIgualActual": "La contraseña nueva debe ser distinta de la actual.",
     "errorDemasiadas": "Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.",
+    "errorSesion": "Tu sesión venció. Vuelve a iniciar sesión e inténtalo de nuevo.",
     "errorInesperado": "No pudimos cambiar la contraseña. Inténtalo de nuevo en un momento."
   },
   "posEtiquetasPeso": {

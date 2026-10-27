@@ -25738,6 +25738,7 @@
     "errorActual": "A senha atual está incorreta.",
     "errorIgualActual": "A nova senha deve ser diferente da atual.",
     "errorDemasiadas": "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.",
+    "errorSesion": "Sua sessão expirou. Entre novamente e tente de novo.",
     "errorInesperado": "Não conseguimos trocar a senha. Tente de novo em um instante."
   },
   "posEtiquetasPeso": {

@@ -85,6 +85,8 @@ export interface CategoriaInventarioMenu {
   nombre: string;
   slug: string;
   imagenUrl: string | null;
+  /** Nombre del ícono lucide de la categoría (Inventario › Categorías › Apariencia). */
+  icono?: string | null;
   activa: boolean;
   /** `null` = de toda la organización; un id = solo de esa sede. */
   branchId: number | null;

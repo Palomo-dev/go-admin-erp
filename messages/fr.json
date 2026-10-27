@@ -33462,7 +33462,17 @@
         "editarInventario": "Modifier produits et prix dans l'Inventaire",
         "cartaAyuda": "L'ordre, les mises en avant et les plats masqués de la carte se modifient dans Carte.",
         "editarCartaAqui": "Modifier la carte",
-        "editarEnCarta": "Modifier dans Carte"
+        "editarEnCarta": "Modifier dans Carte",
+        "aparienciaTitulo": "Image et icône des catégories",
+        "aparienciaAyuda": "Enregistrées sur la catégorie de l’Inventaire : identiques dans la boutique, le POS et le menu.",
+        "aparienciaEditar": "Image et icône",
+        "aparienciaDialogo": "Apparence de « {nombre} »",
+        "aparienciaIcono": "Icône",
+        "aparienciaImagen": "Image",
+        "aparienciaGuardar": "Enregistrer",
+        "aparienciaGuardada": "Apparence de la catégorie enregistrée",
+        "aparienciaError": "Impossible d’enregistrer la catégorie",
+        "aparienciaSinPermiso": "Vous devez avoir l’autorisation de modifier le catalogue de l’Inventaire"
       },
       "avanzado": {
         "titulo": "Pour les cas particuliers",

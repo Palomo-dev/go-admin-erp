@@ -33483,7 +33483,17 @@
         "editarInventario": "Editar productos y precios en Inventario",
         "cartaAyuda": "El orden, los destacados y los platos ocultos de la carta se editan en Carta.",
         "editarCartaAqui": "Editar la carta",
-        "editarEnCarta": "Editar en Carta"
+        "editarEnCarta": "Editar en Carta",
+        "aparienciaTitulo": "Imagen e ícono de las categorías",
+        "aparienciaAyuda": "Se guardan en la categoría del Inventario: se ven igual en la tienda, el POS y el menú.",
+        "aparienciaEditar": "Imagen e ícono",
+        "aparienciaDialogo": "Apariencia de «{nombre}»",
+        "aparienciaIcono": "Ícono",
+        "aparienciaImagen": "Imagen",
+        "aparienciaGuardar": "Guardar",
+        "aparienciaGuardada": "Apariencia de la categoría guardada",
+        "aparienciaError": "No se pudo guardar la categoría",
+        "aparienciaSinPermiso": "Necesitas permiso para editar el catálogo del Inventario"
       },
       "avanzado": {
         "titulo": "Para casos especiales",

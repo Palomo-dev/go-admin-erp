@@ -33462,7 +33462,17 @@
         "editarInventario": "Edit products and prices in Inventory",
         "cartaAyuda": "The order, featured items and hidden dishes of the menu are edited in Menu.",
         "editarCartaAqui": "Edit the menu",
-        "editarEnCarta": "Edit in Menu"
+        "editarEnCarta": "Edit in Menu",
+        "aparienciaTitulo": "Category image and icon",
+        "aparienciaAyuda": "Saved on the Inventory category: they look the same in the store, POS and menu.",
+        "aparienciaEditar": "Image and icon",
+        "aparienciaDialogo": "Appearance of “{nombre}”",
+        "aparienciaIcono": "Icon",
+        "aparienciaImagen": "Image",
+        "aparienciaGuardar": "Save",
+        "aparienciaGuardada": "Category appearance saved",
+        "aparienciaError": "Could not save the category",
+        "aparienciaSinPermiso": "You need permission to edit the Inventory catalog"
       },
       "avanzado": {
         "titulo": "For special cases",

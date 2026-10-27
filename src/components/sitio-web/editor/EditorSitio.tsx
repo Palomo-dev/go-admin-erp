@@ -162,7 +162,20 @@ function Editor() {
   const router = useRouter();
   const tp = useTextosPlantillaSede();
   const categoriasSitio = useCategoriasMenu(ed.enV2 ? ed.sitioBranch : ed.selectedBranchId, ed.estadoCarga !== 'listo');
-  const categorias = useMemo(() => ({ lista: categoriasSitio.categorias, cargando: categoriasSitio.cargando }), [categoriasSitio]);
+  const { refrescarLienzo } = ed;
+  const categorias = useMemo(
+    () => ({
+      lista: categoriasSitio.categorias,
+      cargando: categoriasSitio.cargando,
+      // Tras cambiar imagen/ícono de una categoría desde el editor (D1): relee
+      // las categorías y refresca catálogo público y vista previa.
+      recargar: async () => {
+        await categoriasSitio.recargar();
+        refrescarLienzo();
+      },
+    }),
+    [categoriasSitio, refrescarLienzo],
+  );
 
   // Entradas directas: ?seleccion=encabezado|pie (Diseño › Encabezado y pie), ?panel=seo (SEO y
   // redes › «Corregir»), ?accion=publicar (vista previa del borrador).

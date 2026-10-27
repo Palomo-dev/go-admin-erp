@@ -61,7 +61,7 @@ export interface InspectorSeccionProps {
   tema: TemaEstiloSeccion;
   paleta?: ThemePalette;
   catalogoFuentes: readonly string[];
-  categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean };
+  categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean; recargar?: () => void | Promise<void> };
   aviso?: AvisoFaltanDatos | null;
   /** Edición de una sede V2. */
   sede?: {

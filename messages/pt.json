@@ -33475,7 +33475,17 @@
         "editarInventario": "Editar produtos e preços no Estoque",
         "cartaAyuda": "A ordem, os destaques e os pratos ocultos do cardápio são editados em Cardápio.",
         "editarCartaAqui": "Editar o cardápio",
-        "editarEnCarta": "Editar em Cardápio"
+        "editarEnCarta": "Editar em Cardápio",
+        "aparienciaTitulo": "Imagem e ícone das categorias",
+        "aparienciaAyuda": "São salvos na categoria do Estoque: aparecem iguais na loja, no PDV e no menu.",
+        "aparienciaEditar": "Imagem e ícone",
+        "aparienciaDialogo": "Aparência de “{nombre}”",
+        "aparienciaIcono": "Ícone",
+        "aparienciaImagen": "Imagem",
+        "aparienciaGuardar": "Salvar",
+        "aparienciaGuardada": "Aparência da categoria salva",
+        "aparienciaError": "Não foi possível salvar a categoria",
+        "aparienciaSinPermiso": "Você precisa de permissão para editar o catálogo do Estoque"
       },
       "avanzado": {
         "titulo": "Para casos especiais",

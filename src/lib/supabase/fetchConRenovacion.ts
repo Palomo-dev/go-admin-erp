@@ -47,7 +47,24 @@ function urlDe(input: RequestInfo | URL): URL | null {
 export function esApiPropia(input: RequestInfo | URL): boolean {
   if (typeof window === 'undefined') return false;
   const url = urlDe(input);
-  return !!url && url.origin === window.location.origin && url.pathname.startsWith('/api/');
+  return !!url && url.origin === window.location.origin && url.pathname.startsWith('/api/') && !esRutaDeCredenciales(url.pathname);
+}
+
+/**
+ * Rutas donde un 401 es la respuesta a una credencial (contraseña, código, invitación), no una
+ * sesión vencida: ni se renueva ni se reintenta, para que un intento fallido no cuente doble en
+ * el límite de intentos (QA 27-oct, A4). Login, registro, restablecer y cambiar contraseña,
+ * invitaciones y callbacks viven en /api/auth/*; el código OTP de Twilio y el login bancario
+ * de Open Finance también reciben credenciales.
+ */
+const RUTAS_DE_CREDENCIALES: readonly RegExp[] = [
+  /^\/api\/auth(\/|$)/,
+  /^\/api\/integrations\/twilio\/verify(\/|$)/,
+  /^\/api\/integrations\/open-finance\/links\/[^/]+\/login(\/|$)/,
+];
+
+export function esRutaDeCredenciales(pathname: string): boolean {
+  return RUTAS_DE_CREDENCIALES.some((r) => r.test(pathname));
 }
 
 function cuerpoReenviable(init?: RequestInit): boolean {

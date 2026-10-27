@@ -47,4 +47,28 @@ describe('fetch con renovación (A4, QA 27-oct)', () => {
     await f('/app/inicio');
     expect(renovar).not.toHaveBeenCalled();
   });
+
+  it.each([
+    '/api/auth/contrasena',
+    '/api/auth/registro',
+    '/api/auth/restablecer',
+    '/api/auth',
+    '/api/integrations/twilio/verify/check',
+    '/api/integrations/open-finance/links/7/login',
+  ])('401 de credenciales (%s): ni renueva ni reintenta', async (ruta) => {
+    const base = jest.fn().mockResolvedValue(r(401));
+    const renovar = jest.fn().mockResolvedValue('t');
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    expect((await f(ruta, { method: 'POST', body: '{}' })).status).toBe(401);
+    expect(renovar).not.toHaveBeenCalled();
+    expect(base).toHaveBeenCalledTimes(1);
+  });
+
+  it('una ruta que solo empieza parecido sí se renueva', async () => {
+    const base = jest.fn().mockResolvedValueOnce(r(401)).mockResolvedValueOnce(r(200));
+    const renovar = jest.fn().mockResolvedValue('t');
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    expect((await f('/api/authz-algo')).status).toBe(200);
+    expect(renovar).toHaveBeenCalledTimes(1);
+  });
 });

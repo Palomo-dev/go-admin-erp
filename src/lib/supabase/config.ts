@@ -1,4 +1,5 @@
 import { createClient, type AuthError, type Session, type User } from '@supabase/supabase-js'
+import { instalarFetchConRenovacion } from './fetchConRenovacion';
 import { isAppOnline, getCachedForRequest, cacheFreshResponse, isCacheableRequest, resolveOfflineDataRequest } from '@/lib/utils/offlineCache'
 
 // Extrae la referencia del proyecto de la URL de Supabase
@@ -611,6 +612,16 @@ if (typeof window !== 'undefined') {
     }
     return originalRefreshSession(...args);
   };
+}
+
+// QA 27-oct (A4): el servidor ya no renueva el token. Toda llamada del navegador a /api/*
+// que reciba 401 renueva la sesión una vez (compartida) y se reintenta una vez.
+if (typeof window !== 'undefined') {
+  instalarFetchConRenovacion(async () => {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data?.session) return null;
+    return data.session.access_token;
+  });
 }
 
 // Función para forzar sincronización de sesión y cookies

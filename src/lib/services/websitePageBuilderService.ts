@@ -1326,9 +1326,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'inside', label: 'Dentro (sin gradiente)' },
         { value: 'on_hover', label: 'Al pasar el mouse' },
       ]},
-      { key: 'overlay_color', label: 'Color del gradiente', type: 'color', group: 'style', defaultValue: '#000000', showIf: { field: 'text_position', in: ['overlay', 'on_hover'] }, helpText: 'Color base del gradiente sobre la imagen' },
-      { key: 'overlay_opacity', label: 'Opacidad del gradiente', type: 'range', group: 'style', min: 0, max: 100, step: 10, defaultValue: 60, suffix: '%', showIf: { field: 'text_position', in: ['overlay', 'on_hover'] } },
-      { key: 'overlay_text_color', label: 'Color del texto sobre imagen', type: 'color', group: 'style', defaultValue: '#FFFFFF', showIf: { field: 'text_position', in: ['overlay', 'inside', 'on_hover'] } },
+      { key: 'overlay_color', label: 'Color del gradiente', type: 'color', group: 'style', defaultValue: '#000000', showIf: { field: 'text_position', in: ['overlay', 'on_hover', undefined] }, helpText: 'Color base del gradiente sobre la imagen' },
+      { key: 'overlay_opacity', label: 'Opacidad del gradiente', type: 'range', group: 'style', min: 0, max: 100, step: 10, defaultValue: 60, suffix: '%', showIf: { field: 'text_position', in: ['overlay', 'on_hover', undefined] } },
+      { key: 'overlay_text_color', label: 'Color del texto sobre imagen', type: 'color', group: 'style', defaultValue: '#FFFFFF', showIf: { field: 'text_position', in: ['overlay', 'inside', 'on_hover', undefined] } },
       { key: 'title_size', label: 'Tamaño del título', type: 'select', group: 'style', defaultValue: 'lg', options: [
         { value: 'sm', label: 'Pequeño' },
         { value: 'md', label: 'Mediano' },

@@ -56,15 +56,15 @@ const MODULES = [
     color: 'blue'
   },
   {
-    title: 'Estado de Resultados',
-    description: 'P&G: ingresos, costos y gastos',
+    title: 'Estado del resultado integral',
+    description: 'Ingresos, costos y gastos por función',
     icon: TrendingUp,
     href: '/app/finanzas/contabilidad/estado-resultados',
     color: 'green'
   },
   {
-    title: 'Balance General',
-    description: 'Estado de situación financiera',
+    title: 'Estado de situación financiera',
+    description: 'Activos, pasivos y patrimonio (antes balance general)',
     icon: Calculator,
     href: '/app/finanzas/contabilidad/balance-general',
     color: 'purple'

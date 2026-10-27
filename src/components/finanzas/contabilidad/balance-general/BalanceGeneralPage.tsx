@@ -13,6 +13,7 @@ import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { COMPARATIVO_POR_DEFECTO, TITULO_SITUACION_FINANCIERA, corteComparativo, importesPorCodigo } from '@/lib/finanzas/reportes/estadosNiif';
 import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
 
 // Cifra contable en la moneda base de la organizacion (los reportes contables
@@ -26,6 +27,7 @@ function renderRow(
   row: BalanceSheetRow,
   formatCifra: (value: number) => string,
   level: number = 0,
+  comparativo?: Map<string, number> | null,
 ): React.ReactNode {
   const indent = level * 20;
   const isParent = row.children.length > 0;
@@ -38,8 +40,11 @@ function renderRow(
           <span className={`${isParent ? 'font-bold' : 'font-normal'} text-gray-900 dark:text-white`}>{row.name}</span>
         </td>
         <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(row.amount)}</td>
+        {comparativo && (
+          <td className="py-2 px-3 text-right font-mono text-gray-500 dark:text-gray-400">{formatCifra(comparativo.get(row.account_code) ?? 0)}</td>
+        )}
       </tr>
-      {row.children.map(child => renderRow(child, formatCifra, level + 1))}
+      {row.children.map(child => renderRow(child, formatCifra, level + 1, comparativo))}
     </React.Fragment>
   );
 }
@@ -56,6 +61,9 @@ export function BalanceGeneralPage() {
   const [modo, setModo] = useState<ModoBalance>('puc');
   const [data, setData] = useState<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // NIIF Pymes 3.14: comparativo con el cierre del ejercicio anterior, activado por defecto.
+  const [conComparativo, setConComparativo] = useState(COMPARATIVO_POR_DEFECTO);
+  const [previo, setPrevio] = useState<{ mapa: Map<string, number>; totalAssets: number; totalLiabilities: number; totalEquity: number; corte: string } | null>(null);
 
   const arrancado = useRef(false);
 
@@ -72,8 +80,19 @@ export function BalanceGeneralPage() {
     if (!corte) return;
     try {
       setIsLoading(true);
-      const result = await ReportesContablesService.getBalanceSheet(corte, presentacion);
+      const corteAnterior = corteComparativo(corte);
+      const [result, anterior] = await Promise.all([
+        ReportesContablesService.getBalanceSheet(corte, presentacion),
+        ReportesContablesService.getBalanceSheet(corteAnterior, presentacion).catch(() => null),
+      ]);
       setData(result);
+      setPrevio(anterior ? {
+        mapa: importesPorCodigo([...anterior.assets, ...anterior.liabilities, ...anterior.equity]),
+        totalAssets: anterior.totalAssets,
+        totalLiabilities: anterior.totalLiabilities,
+        totalEquity: anterior.totalEquity,
+        corte: corteAnterior,
+      } : null);
     } catch (error) {
       console.error('Error cargando balance general:', error);
     } finally {
@@ -92,6 +111,17 @@ export function BalanceGeneralPage() {
   }
 
   if (!data) return null;
+  const comp = conComparativo && previo ? previo.mapa : null;
+  const celdaPrevia = (valor: number) => comp && (
+    <td className="py-3 px-3 text-right font-mono text-gray-500 dark:text-gray-400">{formatCifra(valor)}</td>
+  );
+  const encabezado = comp && (
+    <tr className="text-xs text-gray-500 dark:text-gray-400">
+      <th />
+      <th className="px-3 text-right font-medium">{asOfDate}</th>
+      <th className="px-3 text-right font-medium">{previo?.corte}</th>
+    </tr>
+  );
 
   const activos = filasEnNivel(data.assets, nivel);
   const pasivos = filasEnNivel(data.liabilities, nivel);
@@ -109,8 +139,8 @@ export function BalanceGeneralPage() {
           <Scale className="h-6 w-6 text-purple-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Balance General</h1>
-          <p className="text-gray-500 dark:text-gray-400">Estado de situacion financiera</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{TITULO_SITUACION_FINANCIERA}</h1>
+          <p className="text-gray-500 dark:text-gray-400">Activos, pasivos y patrimonio a la fecha de corte (antes «Balance general»)</p>
         </div>
       </div>
 
@@ -135,9 +165,13 @@ export function BalanceGeneralPage() {
                 <option value="niif">NIIF</option>
               </select>
             </label>
+            <label className="flex items-center gap-2 h-10 text-sm text-gray-700 dark:text-gray-300">
+              <input type="checkbox" checked={conComparativo} onChange={(e) => setConComparativo(e.target.checked)} />
+              Comparativo con el cierre anterior
+            </label>
             <BotonesExportar
               nombre={`situacion-financiera-${asOfDate}`}
-              titulo="Estado de situación financiera"
+              titulo={TITULO_SITUACION_FINANCIERA}
               columnas={['Seccion', 'Codigo', 'Nombre', 'Importe']}
               filas={exportables}
             />
@@ -168,13 +202,15 @@ export function BalanceGeneralPage() {
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
+              <thead>{encabezado}</thead>
               <tbody>
                 {activos
                   ? <FilasNivel filas={activos} formatCifra={formatCifra} />
-                  : data.assets.map(row => renderRow(row, formatCifra))}
+                  : data.assets.map(row => renderRow(row, formatCifra, 0, comp))}
                 <tr className="border-t-2 dark:border-gray-600 font-bold">
                   <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL ACTIVOS</td>
                   <td className="py-3 px-3 text-right font-mono text-blue-600 dark:text-blue-400">{formatCifra(data.totalAssets)}</td>
+                  {celdaPrevia(previo?.totalAssets ?? 0)}
                 </tr>
               </tbody>
             </table>
@@ -189,13 +225,15 @@ export function BalanceGeneralPage() {
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
+                <thead>{encabezado}</thead>
                 <tbody>
                   {pasivos
                     ? <FilasNivel filas={pasivos} formatCifra={formatCifra} />
-                    : data.liabilities.map(row => renderRow(row, formatCifra))}
+                    : data.liabilities.map(row => renderRow(row, formatCifra, 0, comp))}
                   <tr className="border-t-2 dark:border-gray-600 font-bold">
                     <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL PASIVOS</td>
                     <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalLiabilities)}</td>
+                  {celdaPrevia(previo?.totalLiabilities ?? 0)}
                   </tr>
                 </tbody>
               </table>
@@ -209,13 +247,15 @@ export function BalanceGeneralPage() {
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
+                <thead>{encabezado}</thead>
                 <tbody>
                   {patrimonio
                     ? <FilasNivel filas={patrimonio} formatCifra={formatCifra} />
-                    : data.equity.map(row => renderRow(row, formatCifra))}
+                    : data.equity.map(row => renderRow(row, formatCifra, 0, comp))}
                   <tr className="border-t-2 dark:border-gray-600 font-bold">
                     <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL PATRIMONIO</td>
                     <td className="py-3 px-3 text-right font-mono text-purple-600 dark:text-purple-400">{formatCifra(data.totalEquity)}</td>
+                  {celdaPrevia(previo?.totalEquity ?? 0)}
                   </tr>
                 </tbody>
               </table>

@@ -32,6 +32,7 @@ import {
 import { CelularEncabezado } from './CelularEncabezado';
 import { ConstructorEncabezado } from './ConstructorEncabezado';
 import { PRESETS_CONTENEDOR } from '@/lib/website/constructorEncabezado';
+import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -428,6 +429,30 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
             onValorChange={(v) => aplicarPresetContenedor(a, v, cambiar)}
           />
         </div>
+        {presetContenedorActivo(a) === 'circulo_acento' && (() => {
+          // Paquete 5-nov B1/B4: fondo del círculo (vacío = marca) y color del ícono (vacío = automático).
+          const hex = (k: string) => (typeof a[k] === 'string' && a[k] ? (a[k] as string) : null);
+          const fondoCirculo = hex('header_icons_circle_bg') ?? p.coloresTema.acento;
+          return (
+            <>
+              <ColorTema
+                etiqueta={t('zonaGlobal.acciones.circuloFondo')}
+                etiquetaNulo={t('zonaGlobal.acciones.circuloFondoAcento')}
+                valor={hex('header_icons_circle_bg')}
+                colorTema={p.coloresTema.acento}
+                onCambiar={(v) => cambiar({ header_icons_circle_bg: v })}
+              />
+              <ColorTema
+                etiqueta={t('zonaGlobal.acciones.circuloIcono')}
+                etiquetaNulo={t('zonaGlobal.acciones.circuloIconoAuto')}
+                valor={hex('header_icons_circle_fg')}
+                colorTema={textoSobreAcento(fondoCirculo)}
+                fondo={fondoCirculo}
+                onCambiar={(v) => cambiar({ header_icons_circle_fg: v })}
+              />
+            </>
+          );
+        })()}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.headerSobreHero')}
           ayuda={t('zonaGlobal.acciones.headerSobreHeroAyuda')}

@@ -33206,7 +33206,11 @@
           "headerSobreHero": "Cabeçalho transparente sobre o hero",
           "headerSobreHeroAyuda": "O cabeçalho fica fixo e transparente sobre o hero. Desligado: cabeçalho opaco e o hero abaixo, sem vão.",
           "espacioPrimera": "Espaço superior da primeira seção",
-          "espacioPrimeraAyuda": "Pixels entre o cabeçalho e a primeira seção. 0 as deixa coladas."
+          "espacioPrimeraAyuda": "Pixels entre o cabeçalho e a primeira seção. 0 as deixa coladas.",
+          "circuloFondo": "Fundo do círculo",
+          "circuloFondoAcento": "Cor da marca",
+          "circuloIcono": "Cor do ícone",
+          "circuloIconoAuto": "Automático"
         },
         "diseno": {
           "titulo": "Layout do cabeçalho",

@@ -228,6 +228,10 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_cart_glyph: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: FORMA_CARRITO_ENCABEZADO }, nueva: true },
   /** Círculo del color de la marca detrás de moneda, carrito y cuenta. */
   header_icons_circle: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
+  /** Fondo del «Círculo acento». `null` = el color de la marca (lo de hoy). */
+  header_icons_circle_bg: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Color del ícono en el círculo. `null` = automático (blanco sobre oscuro/saturado, oscuro sobre claro). */
+  header_icons_circle_fg: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /**
    * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
    * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.

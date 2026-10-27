@@ -33193,7 +33193,11 @@
           "reserva": "Barre de réservation avec dates",
           "reservaAyuda": "Hôtel : arrivée, départ et voyageurs sous l'en-tête",
           "moneda": "Devise",
-          "monedaAyuda": "Seulement si le site vend dans plus d'une"
+          "monedaAyuda": "Seulement si le site vend dans plus d'une",
+          "circuloFondo": "Fond du cercle",
+          "circuloFondoAcento": "Couleur de la marque",
+          "circuloIcono": "Couleur de l’icône",
+          "circuloIconoAuto": "Automatique"
         },
         "diseno": {
           "titulo": "Mise en page de l'en-tête",

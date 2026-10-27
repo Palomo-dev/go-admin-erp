@@ -33214,7 +33214,11 @@
           "headerSobreHero": "Header transparente sobre el hero",
           "headerSobreHeroAyuda": "El encabezado queda fijo y transparente encima del hero. Apagado: encabezado opaco y el hero debajo, sin hueco.",
           "espacioPrimera": "Espacio superior de la primera sección",
-          "espacioPrimeraAyuda": "Píxeles entre el encabezado y la primera sección. 0 las deja pegadas."
+          "espacioPrimeraAyuda": "Píxeles entre el encabezado y la primera sección. 0 las deja pegadas.",
+          "circuloFondo": "Fondo del círculo",
+          "circuloFondoAcento": "Color de la marca",
+          "circuloIcono": "Color del ícono",
+          "circuloIconoAuto": "Automático"
         },
         "diseno": {
           "titulo": "Diseño del encabezado",

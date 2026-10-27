@@ -33193,7 +33193,11 @@
           "reserva": "Booking bar with dates",
           "reservaAyuda": "Hotel: check-in, check-out and guests below the header",
           "moneda": "Currency",
-          "monedaAyuda": "Only if the site sells in more than one"
+          "monedaAyuda": "Only if the site sells in more than one",
+          "circuloFondo": "Circle background",
+          "circuloFondoAcento": "Brand color",
+          "circuloIcono": "Icon color",
+          "circuloIconoAuto": "Automatic"
         },
         "diseno": {
           "titulo": "Header layout",

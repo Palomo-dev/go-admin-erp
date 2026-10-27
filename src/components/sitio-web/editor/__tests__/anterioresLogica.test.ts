@@ -10,6 +10,8 @@ import {
 import { CLAVES_ANTERIORES_ENCABEZADO } from '../inspector/InspectorEncabezado';
 import { resolverSiguenAComputador } from '../loteLegacy';
 
+jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ organization: { id: 120 } }), getOrganizationId: () => 120, ORGANIZATION_CHANGED_EVENT: 'org-cambio' }));
+jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 // Encabezado de Run Sneak (org 345) en el borrador, leído por SELECT el 27-oct.
 const runSneak = {
   show_topbar: true,

@@ -33440,11 +33440,23 @@
             "mobile_header__search": "Buscador del celular (panel viejo)",
             "mobile_header__bottom_nav": "Barra inferior tipo app",
             "mobile_footer_show_hours": "Horario propio del celular",
-            "mobile_footer_show_social": "Redes propias del celular"
+            "mobile_footer_show_social": "Redes propias del celular",
+            "seccion_padding_top": "Relleno arriba",
+            "seccion_padding_bottom": "Relleno abajo",
+            "seccion_padding_x": "Relleno a los lados",
+            "seccion_margin_top": "Margen arriba",
+            "seccion_margin_bottom": "Margen abajo",
+            "seccion_full_bleed": "Ancho completo de pantalla",
+            "seccion_container_width": "Ancho del contenido",
+            "seccion_full_width": "Ancho completo de pantalla (categorías)",
+            "carrusel_avance": "Ítems por avance"
           },
           "motivo": {
             "enUso": "La tienda lo usa para el encabezado del celular: quitarlo cambiaría el celular.",
-            "circulo": "Se maneja con «Círculo acento» (computador y celular)."
+            "circulo": "Se maneja con «Círculo acento» (computador y celular).",
+            "mandaEspaciado": "Manda sobre Estilo › Espaciado: quítalo para que se vea lo que elijas ahí.",
+            "mandaAncho": "Manda sobre Estilo › Ancho: quítalo para que se vea lo que elijas ahí.",
+            "sinEfecto": "La tienda no lo usa: no cambia nada."
           }
         }
       },
@@ -34083,6 +34095,100 @@
         "titulo": "Editas el sitio en vivo:",
         "descripcion": "al guardar, los cambios salen en la web. Crea un borrador para revisarlos antes de publicar.",
         "crearBorrador": "Crear borrador"
+      },
+      "listas": {
+        "paginacion": "Paginación",
+        "carrusel": "Carrusel",
+        "usarGlobal": "Usar ajuste global",
+        "usarGlobalAyuda": "Sigue Diseño › Estilos del sitio. Apágalo para darle a esta sección su propio ajuste.",
+        "porPaginaComputador": "Por página en computador",
+        "porPaginaCelular": "Por página en celular",
+        "estilo": "Estilo",
+        "forma": "Forma",
+        "tamano": "Tamaño",
+        "alineacion": "Alineación",
+        "estiloPaginacion": {
+          "numerada": "Numerada",
+          "compacta": "Página 3 de 17",
+          "cargar_mas": "Botón «Cargar más»",
+          "infinito": "Scroll infinito",
+          "anterior_siguiente": "Anterior / Siguiente"
+        },
+        "formaOpcion": {
+          "cuadrado": "Cuadrada",
+          "semi": "Redondeada",
+          "circulo": "Círculo",
+          "pildora": "Píldora"
+        },
+        "tamanoOpcion": {
+          "sm": "Pequeño",
+          "md": "Mediano",
+          "lg": "Grande"
+        },
+        "alineacionOpcion": {
+          "izq": "Izquierda",
+          "centro": "Centro",
+          "der": "Derecha"
+        },
+        "colorActivo": "Color activo",
+        "colorInactivo": "Color inactivo",
+        "colorHover": "Color al pasar el mouse",
+        "extremos": "Primera y última página",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Contador de resultados",
+        "contadorAyuda": "«Mostrando 1–24 de 400» sobre la paginación.",
+        "textoAnterior": "Texto de «Anterior»",
+        "textoAnteriorEjemplo": "Vacío: flecha",
+        "textoSiguiente": "Texto de «Siguiente»",
+        "textoSiguienteEjemplo": "Vacío: flecha",
+        "textoCargarMas": "Texto del botón",
+        "textoCargarMasEjemplo": "Cargar más",
+        "vistaPrevia": "Vista previa",
+        "visiblesComputador": "Visibles en computador",
+        "visiblesTableta": "En tableta",
+        "visiblesCelular": "En celular",
+        "indicador": "Indicador",
+        "indicadorOpcion": {
+          "ninguno": "Ninguno",
+          "puntos": "Puntos",
+          "barra": "Barra",
+          "numeros": "Números",
+          "progreso": "Progreso",
+          "miniaturas": "Miniaturas"
+        },
+        "posicionIndicador": "Posición del indicador",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "Abajo, dentro",
+          "abajo_fuera": "Abajo, fuera"
+        },
+        "tamanoIndicador": "Tamaño del indicador",
+        "flechasComputador": "Flechas en computador",
+        "flechasCelular": "Flechas en celular",
+        "estiloFlechas": "Estilo de las flechas",
+        "estiloFlechaOpcion": {
+          "chevron": "Solo flecha",
+          "circulo": "Círculo",
+          "cuadrado": "Cuadrado",
+          "larga": "Flecha larga",
+          "hover": "Al pasar el mouse"
+        },
+        "posicionFlechas": "Posición de las flechas",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "A los lados, dentro",
+          "lados_fuera": "A los lados, fuera",
+          "titulo": "Junto al título",
+          "indicador": "Junto al indicador"
+        },
+        "tamanoFlecha": "Tamaño de las flechas",
+        "fondoFlecha": "Fondo de la flecha",
+        "bordeFlecha": "Borde de la flecha",
+        "iconoFlecha": "Color del ícono",
+        "sombraFlecha": "Sombra en las flechas",
+        "autoplay": "Avance automático",
+        "segundos": "Segundos por paso",
+        "pausaHover": "Pausa al pasar el mouse",
+        "bucle": "Volver al inicio al terminar",
+        "arrastre": "Deslizar con el dedo o el mouse"
       }
     },
     "paginas": {

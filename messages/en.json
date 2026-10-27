@@ -33420,11 +33420,23 @@
             "mobile_header__search": "Mobile search (old panel)",
             "mobile_header__bottom_nav": "App-style bottom bar",
             "mobile_footer_show_hours": "Mobile-only hours",
-            "mobile_footer_show_social": "Mobile-only social links"
+            "mobile_footer_show_social": "Mobile-only social links",
+            "seccion_padding_top": "Top padding",
+            "seccion_padding_bottom": "Bottom padding",
+            "seccion_padding_x": "Side padding",
+            "seccion_margin_top": "Top margin",
+            "seccion_margin_bottom": "Bottom margin",
+            "seccion_full_bleed": "Full screen width",
+            "seccion_container_width": "Content width",
+            "seccion_full_width": "Full screen width (categories)",
+            "carrusel_avance": "Items per step"
           },
           "motivo": {
             "enUso": "The store uses it for the mobile header: removing it would change mobile.",
-            "circulo": "Managed with “Accent circle” (desktop and mobile)."
+            "circulo": "Managed with “Accent circle” (desktop and mobile).",
+            "mandaEspaciado": "Overrides Style › Spacing: remove it so your choice there shows.",
+            "mandaAncho": "Overrides Style › Width: remove it so your choice there shows.",
+            "sinEfecto": "The store doesn't use it: it changes nothing."
           }
         }
       },
@@ -34063,6 +34075,100 @@
         "titulo": "You are editing the live site:",
         "descripcion": "when you save, changes go live. Create a draft to review them before publishing.",
         "crearBorrador": "Create draft"
+      },
+      "listas": {
+        "paginacion": "Pagination",
+        "carrusel": "Carousel",
+        "usarGlobal": "Use global setting",
+        "usarGlobalAyuda": "Follows Design › Site styles. Turn it off to give this section its own setting.",
+        "porPaginaComputador": "Per page on desktop",
+        "porPaginaCelular": "Per page on mobile",
+        "estilo": "Style",
+        "forma": "Shape",
+        "tamano": "Size",
+        "alineacion": "Alignment",
+        "estiloPaginacion": {
+          "numerada": "Numbered",
+          "compacta": "Page 3 of 17",
+          "cargar_mas": "“Load more” button",
+          "infinito": "Infinite scroll",
+          "anterior_siguiente": "Previous / Next"
+        },
+        "formaOpcion": {
+          "cuadrado": "Square",
+          "semi": "Rounded",
+          "circulo": "Circle",
+          "pildora": "Pill"
+        },
+        "tamanoOpcion": {
+          "sm": "Small",
+          "md": "Medium",
+          "lg": "Large"
+        },
+        "alineacionOpcion": {
+          "izq": "Left",
+          "centro": "Center",
+          "der": "Right"
+        },
+        "colorActivo": "Active color",
+        "colorInactivo": "Inactive color",
+        "colorHover": "Hover color",
+        "extremos": "First and last page",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Results counter",
+        "contadorAyuda": "“Showing 1–24 of 400” above the pagination.",
+        "textoAnterior": "“Previous” text",
+        "textoAnteriorEjemplo": "Empty: arrow",
+        "textoSiguiente": "“Next” text",
+        "textoSiguienteEjemplo": "Empty: arrow",
+        "textoCargarMas": "Button text",
+        "textoCargarMasEjemplo": "Load more",
+        "vistaPrevia": "Preview",
+        "visiblesComputador": "Visible on desktop",
+        "visiblesTableta": "On tablet",
+        "visiblesCelular": "On mobile",
+        "indicador": "Indicator",
+        "indicadorOpcion": {
+          "ninguno": "None",
+          "puntos": "Dots",
+          "barra": "Bar",
+          "numeros": "Numbers",
+          "progreso": "Progress",
+          "miniaturas": "Thumbnails"
+        },
+        "posicionIndicador": "Indicator position",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "Bottom, inside",
+          "abajo_fuera": "Bottom, outside"
+        },
+        "tamanoIndicador": "Indicator size",
+        "flechasComputador": "Arrows on desktop",
+        "flechasCelular": "Arrows on mobile",
+        "estiloFlechas": "Arrow style",
+        "estiloFlechaOpcion": {
+          "chevron": "Arrow only",
+          "circulo": "Circle",
+          "cuadrado": "Square",
+          "larga": "Long arrow",
+          "hover": "On hover"
+        },
+        "posicionFlechas": "Arrow position",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "Sides, inside",
+          "lados_fuera": "Sides, outside",
+          "titulo": "Next to the title",
+          "indicador": "Next to the indicator"
+        },
+        "tamanoFlecha": "Arrow size",
+        "fondoFlecha": "Arrow background",
+        "bordeFlecha": "Arrow border",
+        "iconoFlecha": "Icon color",
+        "sombraFlecha": "Arrow shadow",
+        "autoplay": "Autoplay",
+        "segundos": "Seconds per step",
+        "pausaHover": "Pause on hover",
+        "bucle": "Loop back to start",
+        "arrastre": "Swipe or drag"
       }
     },
     "paginas": {

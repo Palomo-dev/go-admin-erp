@@ -22,7 +22,7 @@ export interface EntradaAnterior {
   /** Cambio que quita el ajuste, o `null` si la tienda lo usa por una opción vigente. */
   quitar: Record<string, unknown> | null;
   /** Por qué no se puede quitar. */
-  motivo?: 'enUso' | 'circulo';
+  motivo?: 'enUso' | 'circulo' | 'mandaEspaciado' | 'mandaAncho' | 'sinEfecto';
 }
 
 const ESTILOS_MENU_NUEVOS = ['drawer_left', 'drawer_right', 'top_dropdown', 'none'];

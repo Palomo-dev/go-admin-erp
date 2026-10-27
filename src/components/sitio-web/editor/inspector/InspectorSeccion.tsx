@@ -32,6 +32,8 @@ import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
+import { AjustesAnteriores } from './InspectorEncabezado';
+import { aplicarCambioContenido, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
 import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
@@ -95,6 +97,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       // declarados porque el sitio público los pinta, pero no se muestran dos veces.
       if (boletin && c.type !== 'newsletter') return false;
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
+      // Espaciado y ancho: una sola opción, en Estilo (Figma v2). Lo guardado sale en «Ajustes de versiones anteriores».
+      if (campoCubiertoPorEstilo(c, s.section_type)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
       if (c.type === 'repeater' && c.key === 'items') {
@@ -317,6 +321,13 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             tema={p.tema}
             catalogoFuentes={p.catalogoFuentes}
             sede={p.sede?.estilo ?? null}
+          />
+        )}
+        {pestana === 'estilo' && (
+          <AjustesAnteriores
+            ajustes={contenido}
+            entradas={entradasAnterioresSeccion(contenido, s.section_type)}
+            cambiar={(c) => p.onCambiarContenido(aplicarCambioContenido(contenido, c))}
           />
         )}
 

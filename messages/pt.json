@@ -33432,11 +33432,23 @@
             "mobile_header__search": "Busca do celular (painel antigo)",
             "mobile_header__bottom_nav": "Barra inferior estilo app",
             "mobile_footer_show_hours": "Horário próprio do celular",
-            "mobile_footer_show_social": "Redes próprias do celular"
+            "mobile_footer_show_social": "Redes próprias do celular",
+            "seccion_padding_top": "Preenchimento em cima",
+            "seccion_padding_bottom": "Preenchimento embaixo",
+            "seccion_padding_x": "Preenchimento nas laterais",
+            "seccion_margin_top": "Margem em cima",
+            "seccion_margin_bottom": "Margem embaixo",
+            "seccion_full_bleed": "Largura total da tela",
+            "seccion_container_width": "Largura do conteúdo",
+            "seccion_full_width": "Largura total da tela (categorias)",
+            "carrusel_avance": "Itens por avanço"
           },
           "motivo": {
             "enUso": "A loja usa isto no cabeçalho do celular: removê-lo mudaria o celular.",
-            "circulo": "Controlado em «Círculo de destaque» (computador e celular)."
+            "circulo": "Controlado em «Círculo de destaque» (computador e celular).",
+            "mandaEspaciado": "Prevalece sobre Estilo › Espaçamento: remova para ver o que escolher lá.",
+            "mandaAncho": "Prevalece sobre Estilo › Largura: remova para ver o que escolher lá.",
+            "sinEfecto": "A loja não usa: não muda nada."
           }
         }
       },
@@ -34075,6 +34087,100 @@
         "titulo": "Você edita o site ao vivo:",
         "descripcion": "ao salvar, as mudanças vão para o site. Crie um rascunho para revisá-las antes de publicar.",
         "crearBorrador": "Criar rascunho"
+      },
+      "listas": {
+        "paginacion": "Paginação",
+        "carrusel": "Carrossel",
+        "usarGlobal": "Usar ajuste global",
+        "usarGlobalAyuda": "Segue Design › Estilos do site. Desligue para dar a esta seção seu próprio ajuste.",
+        "porPaginaComputador": "Por página no computador",
+        "porPaginaCelular": "Por página no celular",
+        "estilo": "Estilo",
+        "forma": "Forma",
+        "tamano": "Tamanho",
+        "alineacion": "Alinhamento",
+        "estiloPaginacion": {
+          "numerada": "Numerada",
+          "compacta": "Página 3 de 17",
+          "cargar_mas": "Botão «Carregar mais»",
+          "infinito": "Rolagem infinita",
+          "anterior_siguiente": "Anterior / Próxima"
+        },
+        "formaOpcion": {
+          "cuadrado": "Quadrada",
+          "semi": "Arredondada",
+          "circulo": "Círculo",
+          "pildora": "Pílula"
+        },
+        "tamanoOpcion": {
+          "sm": "Pequeno",
+          "md": "Médio",
+          "lg": "Grande"
+        },
+        "alineacionOpcion": {
+          "izq": "Esquerda",
+          "centro": "Centro",
+          "der": "Direita"
+        },
+        "colorActivo": "Cor ativa",
+        "colorInactivo": "Cor inativa",
+        "colorHover": "Cor ao passar o mouse",
+        "extremos": "Primeira e última página",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Contador de resultados",
+        "contadorAyuda": "«Mostrando 1–24 de 400» acima da paginação.",
+        "textoAnterior": "Texto de «Anterior»",
+        "textoAnteriorEjemplo": "Vazio: seta",
+        "textoSiguiente": "Texto de «Próxima»",
+        "textoSiguienteEjemplo": "Vazio: seta",
+        "textoCargarMas": "Texto do botão",
+        "textoCargarMasEjemplo": "Carregar mais",
+        "vistaPrevia": "Prévia",
+        "visiblesComputador": "Visíveis no computador",
+        "visiblesTableta": "No tablet",
+        "visiblesCelular": "No celular",
+        "indicador": "Indicador",
+        "indicadorOpcion": {
+          "ninguno": "Nenhum",
+          "puntos": "Pontos",
+          "barra": "Barra",
+          "numeros": "Números",
+          "progreso": "Progresso",
+          "miniaturas": "Miniaturas"
+        },
+        "posicionIndicador": "Posição do indicador",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "Embaixo, dentro",
+          "abajo_fuera": "Embaixo, fora"
+        },
+        "tamanoIndicador": "Tamanho do indicador",
+        "flechasComputador": "Setas no computador",
+        "flechasCelular": "Setas no celular",
+        "estiloFlechas": "Estilo das setas",
+        "estiloFlechaOpcion": {
+          "chevron": "Só seta",
+          "circulo": "Círculo",
+          "cuadrado": "Quadrado",
+          "larga": "Seta longa",
+          "hover": "Ao passar o mouse"
+        },
+        "posicionFlechas": "Posição das setas",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "Nas laterais, dentro",
+          "lados_fuera": "Nas laterais, fora",
+          "titulo": "Junto ao título",
+          "indicador": "Junto ao indicador"
+        },
+        "tamanoFlecha": "Tamanho das setas",
+        "fondoFlecha": "Fundo da seta",
+        "bordeFlecha": "Borda da seta",
+        "iconoFlecha": "Cor do ícone",
+        "sombraFlecha": "Sombra nas setas",
+        "autoplay": "Avanço automático",
+        "segundos": "Segundos por passo",
+        "pausaHover": "Pausar ao passar o mouse",
+        "bucle": "Voltar ao início ao terminar",
+        "arrastre": "Deslizar com o dedo ou o mouse"
       }
     },
     "paginas": {

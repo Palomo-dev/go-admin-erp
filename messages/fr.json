@@ -33420,11 +33420,23 @@
             "mobile_header__search": "Recherche mobile (ancien panneau)",
             "mobile_header__bottom_nav": "Barre inférieure type appli",
             "mobile_footer_show_hours": "Horaires propres au mobile",
-            "mobile_footer_show_social": "Réseaux propres au mobile"
+            "mobile_footer_show_social": "Réseaux propres au mobile",
+            "seccion_padding_top": "Marge intérieure en haut",
+            "seccion_padding_bottom": "Marge intérieure en bas",
+            "seccion_padding_x": "Marge intérieure latérale",
+            "seccion_margin_top": "Marge en haut",
+            "seccion_margin_bottom": "Marge en bas",
+            "seccion_full_bleed": "Pleine largeur d’écran",
+            "seccion_container_width": "Largeur du contenu",
+            "seccion_full_width": "Pleine largeur d’écran (catégories)",
+            "carrusel_avance": "Éléments par étape"
           },
           "motivo": {
             "enUso": "La boutique l'utilise pour l'en-tête mobile : le retirer changerait le mobile.",
-            "circulo": "Géré par « Cercle d’accent » (ordinateur et mobile)."
+            "circulo": "Géré par « Cercle d’accent » (ordinateur et mobile).",
+            "mandaEspaciado": "Prime sur Style › Espacement : retirez-le pour voir votre choix.",
+            "mandaAncho": "Prime sur Style › Largeur : retirez-le pour voir votre choix.",
+            "sinEfecto": "La boutique ne l’utilise pas : cela ne change rien."
           }
         }
       },
@@ -34063,6 +34075,100 @@
         "titulo": "Vous modifiez le site en direct :",
         "descripcion": "à l’enregistrement, les modifications sont en ligne. Créez un brouillon pour les vérifier avant de publier.",
         "crearBorrador": "Créer un brouillon"
+      },
+      "listas": {
+        "paginacion": "Pagination",
+        "carrusel": "Carrousel",
+        "usarGlobal": "Utiliser le réglage global",
+        "usarGlobalAyuda": "Suit Design › Styles du site. Désactivez-le pour donner à cette section son propre réglage.",
+        "porPaginaComputador": "Par page sur ordinateur",
+        "porPaginaCelular": "Par page sur mobile",
+        "estilo": "Style",
+        "forma": "Forme",
+        "tamano": "Taille",
+        "alineacion": "Alignement",
+        "estiloPaginacion": {
+          "numerada": "Numérotée",
+          "compacta": "Page 3 sur 17",
+          "cargar_mas": "Bouton « Charger plus »",
+          "infinito": "Défilement infini",
+          "anterior_siguiente": "Précédent / Suivant"
+        },
+        "formaOpcion": {
+          "cuadrado": "Carrée",
+          "semi": "Arrondie",
+          "circulo": "Cercle",
+          "pildora": "Pilule"
+        },
+        "tamanoOpcion": {
+          "sm": "Petite",
+          "md": "Moyenne",
+          "lg": "Grande"
+        },
+        "alineacionOpcion": {
+          "izq": "Gauche",
+          "centro": "Centre",
+          "der": "Droite"
+        },
+        "colorActivo": "Couleur active",
+        "colorInactivo": "Couleur inactive",
+        "colorHover": "Couleur au survol",
+        "extremos": "Première et dernière page",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Compteur de résultats",
+        "contadorAyuda": "« Affichage 1–24 sur 400 » au-dessus de la pagination.",
+        "textoAnterior": "Texte « Précédent »",
+        "textoAnteriorEjemplo": "Vide : flèche",
+        "textoSiguiente": "Texte « Suivant »",
+        "textoSiguienteEjemplo": "Vide : flèche",
+        "textoCargarMas": "Texte du bouton",
+        "textoCargarMasEjemplo": "Charger plus",
+        "vistaPrevia": "Aperçu",
+        "visiblesComputador": "Visibles sur ordinateur",
+        "visiblesTableta": "Sur tablette",
+        "visiblesCelular": "Sur mobile",
+        "indicador": "Indicateur",
+        "indicadorOpcion": {
+          "ninguno": "Aucun",
+          "puntos": "Points",
+          "barra": "Barre",
+          "numeros": "Numéros",
+          "progreso": "Progression",
+          "miniaturas": "Miniatures"
+        },
+        "posicionIndicador": "Position de l’indicateur",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "En bas, dedans",
+          "abajo_fuera": "En bas, dehors"
+        },
+        "tamanoIndicador": "Taille de l’indicateur",
+        "flechasComputador": "Flèches sur ordinateur",
+        "flechasCelular": "Flèches sur mobile",
+        "estiloFlechas": "Style des flèches",
+        "estiloFlechaOpcion": {
+          "chevron": "Flèche seule",
+          "circulo": "Cercle",
+          "cuadrado": "Carré",
+          "larga": "Flèche longue",
+          "hover": "Au survol"
+        },
+        "posicionFlechas": "Position des flèches",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "Sur les côtés, dedans",
+          "lados_fuera": "Sur les côtés, dehors",
+          "titulo": "À côté du titre",
+          "indicador": "À côté de l’indicateur"
+        },
+        "tamanoFlecha": "Taille des flèches",
+        "fondoFlecha": "Fond de la flèche",
+        "bordeFlecha": "Bordure de la flèche",
+        "iconoFlecha": "Couleur de l’icône",
+        "sombraFlecha": "Ombre des flèches",
+        "autoplay": "Défilement automatique",
+        "segundos": "Secondes par étape",
+        "pausaHover": "Pause au survol",
+        "bucle": "Revenir au début à la fin",
+        "arrastre": "Glisser au doigt ou à la souris"
       }
     },
     "paginas": {

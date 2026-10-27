@@ -33135,8 +33135,7 @@
         "pestana": {
           "contenido": "Contenido",
           "diseno": "Diseño",
-          "estilo": "Estilo",
-          "constructor": "Constructor"
+          "estilo": "Estilo"
         },
         "cerrar": "Cerrar {zona}",
         "restablecer": "Restablecer a la plantilla",
@@ -33305,7 +33304,14 @@
           "menuEntrarTexto": "Texto de iniciar sesión",
           "menuRegistroBorde": "Borde de registrarse",
           "menuRegistroTexto": "Texto de registrarse",
-          "menuSalir": "Cerrar sesión"
+          "menuSalir": "Cerrar sesión",
+          "iconos": "Íconos",
+          "formaBoton": "Forma del botón de acción",
+          "forma": {
+            "recto": "Recto",
+            "redondeado": "Redondeado",
+            "pildora": "Píldora"
+          }
         },
         "pie": {
           "menus": "Menús del pie",
@@ -33380,6 +33386,45 @@
           "colorTexto": "Texto",
           "separadores": "Separadores",
           "sinSeparadores": "Ninguno"
+        },
+        "anteriores": {
+          "titulo": "Ajustes de versiones anteriores ({n})",
+          "ayuda": "La tienda los sigue aplicando, pero ya no están en el panel. Quítalos para volver al diseño de siempre.",
+          "quitar": "Quitar",
+          "quitarTodos": "Quitar todos",
+          "clave": {
+            "header_builder": "Constructor (zonas e íconos)",
+            "mobile_header": "Celular (panel y barra inferior)",
+            "header_menu_source": "Origen del menú",
+            "header_icons_weight": "Grosor de los íconos",
+            "header_cart_glyph": "Forma del carrito",
+            "search_icon": "Ícono del buscador",
+            "auth_icon": "Ícono de la cuenta",
+            "currency_icon": "Ícono de la moneda",
+            "header_transparent_over_hero": "Transparente sobre el hero",
+            "first_section_offset_px": "Espacio sobre la primera sección",
+            "header_booking_bar": "Barra de reserva",
+            "mobile_logo_position": "Logo en el celular",
+            "mobile_show_topbar": "Barra superior en el celular",
+            "header_divider": "Línea bajo el encabezado",
+            "header_divider_color": "Color de la línea",
+            "header_hover_color": "Hover de los íconos",
+            "header_mobile_icon_color": "Color de íconos en el celular",
+            "mobile_menu_bg_color": "Colores del menú del celular (bg)",
+            "mobile_menu_text_color": "Colores del menú del celular (text)",
+            "mobile_menu_link_hover_color": "Colores del menú del celular (link hover)",
+            "mobile_menu_link_active_color": "Colores del menú del celular (link active)",
+            "mobile_menu_title_color": "Colores del menú del celular (title)",
+            "mobile_menu_divider_color": "Colores del menú del celular (divider)",
+            "mobile_menu_currency_text_color": "Colores del menú del celular (currency text)",
+            "mobile_menu_currency_border_color": "Colores del menú del celular (currency border)",
+            "mobile_menu_currency_bg_color": "Colores del menú del celular (currency bg)",
+            "mobile_menu_login_bg_color": "Colores del menú del celular (login bg)",
+            "mobile_menu_login_text_color": "Colores del menú del celular (login text)",
+            "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
+            "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
+            "mobile_menu_logout_color": "Colores del menú del celular (logout)"
+          }
         }
       },
       "barra": {

@@ -33284,7 +33284,14 @@
           "menuEntrarTexto": "Texte de connexion",
           "menuRegistroBorde": "Bordure d'inscription",
           "menuRegistroTexto": "Texte d'inscription",
-          "menuSalir": "Déconnexion"
+          "menuSalir": "Déconnexion",
+          "iconos": "Icônes",
+          "formaBoton": "Forme du bouton d’action",
+          "forma": {
+            "recto": "Carré",
+            "redondeado": "Arrondi",
+            "pildora": "Pilule"
+          }
         },
         "pie": {
           "menus": "Menus du pied de page",
@@ -33359,6 +33366,45 @@
           "colorTexto": "Texte",
           "separadores": "Séparateurs",
           "sinSeparadores": "Aucun"
+        },
+        "anteriores": {
+          "titulo": "Réglages des versions précédentes ({n})",
+          "ayuda": "La boutique les applique toujours, mais ils ne sont plus dans le panneau. Retirez-les pour revenir au design par défaut.",
+          "quitar": "Retirer",
+          "quitarTodos": "Tout retirer",
+          "clave": {
+            "header_builder": "Builder (zones and icons)",
+            "mobile_header": "Mobile (panel and bottom bar)",
+            "header_menu_source": "Menu source",
+            "header_icons_weight": "Icon weight",
+            "header_cart_glyph": "Cart shape",
+            "search_icon": "Search icon",
+            "auth_icon": "Account icon",
+            "currency_icon": "Currency icon",
+            "header_transparent_over_hero": "Transparent over hero",
+            "first_section_offset_px": "Space above first section",
+            "header_booking_bar": "Booking bar",
+            "mobile_logo_position": "Logo on mobile",
+            "mobile_show_topbar": "Top bar on mobile",
+            "header_divider": "Line under header",
+            "header_divider_color": "Line color",
+            "header_hover_color": "Icon hover",
+            "header_mobile_icon_color": "Mobile icon color",
+            "mobile_menu_bg_color": "Mobile menu colors (bg)",
+            "mobile_menu_text_color": "Mobile menu colors (text)",
+            "mobile_menu_link_hover_color": "Mobile menu colors (link hover)",
+            "mobile_menu_link_active_color": "Mobile menu colors (link active)",
+            "mobile_menu_title_color": "Mobile menu colors (title)",
+            "mobile_menu_divider_color": "Mobile menu colors (divider)",
+            "mobile_menu_currency_text_color": "Mobile menu colors (currency text)",
+            "mobile_menu_currency_border_color": "Mobile menu colors (currency border)",
+            "mobile_menu_currency_bg_color": "Mobile menu colors (currency bg)",
+            "mobile_menu_login_bg_color": "Mobile menu colors (login bg)",
+            "mobile_menu_login_text_color": "Mobile menu colors (login text)",
+            "mobile_menu_register_border_color": "Mobile menu colors (register border)",
+            "mobile_menu_register_text_color": "Mobile menu colors (register text)",
+            "mobile_menu_logout_color": "Mobile menu colors (logout)"
+          }
         }
       },
       "barra": {

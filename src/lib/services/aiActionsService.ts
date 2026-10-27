@@ -668,12 +668,23 @@ class AIActionsService {
     }
     update.updated_at = new Date().toISOString();
 
-    const { error } = await ctx.supabase
+    // La RLS de UPDATE exige fn_categorias_puede_editar: sin permiso no hay error, solo 0 filas
+    // (QA 27-oct, D1, como categoryService.update). Sin `.select()` el chat diría «actualizada».
+    const { data: filas, error } = await ctx.supabase
       .from('categories')
       .update(update)
       .eq('id', categoryId)
-      .eq('organization_id', ctx.organizationId);
-    if (error) throw new Error(error.message);
+      .eq('organization_id', ctx.organizationId)
+      .select('id');
+    if (error) {
+      if (error.code === '42501') {
+        return { success: false, errorCode: 'no_permission', message: 'No tienes permiso para editar esta categoría (o ya no existe).' };
+      }
+      throw new Error(error.message);
+    }
+    if (!filas || filas.length === 0) {
+      return { success: false, errorCode: 'no_permission', message: 'No tienes permiso para editar esta categoría (o ya no existe).' };
+    }
 
     return {
       success: true,

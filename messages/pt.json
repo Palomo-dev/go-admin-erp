@@ -33258,7 +33258,14 @@
           },
           "barraCelular": "Barra superior no celular",
           "buscador": "Busca",
-          "buscadorAyuda": "Vale para computador e celular: no celular o ícone fica na barra e a barra visível vai abaixo do logo."
+          "buscadorAyuda": "Vale para computador e celular: no celular o ícone fica na barra e a barra visível vai abaixo do logo.",
+          "buscadorCelularPropio": "No celular a busca continua como «{valor}» (ajuste anterior). Para seguir esta opção, remova «Busca própria do celular» em Ajustes de versões anteriores.",
+          "buscadorNombre": {
+            "icon": "Ícone",
+            "bar": "Barra visível",
+            "hidden": "Oculto",
+            "fullscreen": "Tela cheia"
+          }
         },
         "estilo": {
           "avisoTitulo": "Por padrão as cores seguem o tema do modelo",
@@ -33418,7 +33425,18 @@
             "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
             "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
             "mobile_menu_logout_color": "Colores del menú del celular (logout)",
-            "mobile_search_style": "Busca própria do celular"
+            "mobile_search_style": "Busca própria do celular",
+            "mobile_header__panel": "Painel do menu do celular",
+            "mobile_header__layout": "Disposição do cabeçalho no celular",
+            "mobile_header__icons": "Ícones do celular (círculo, conta)",
+            "mobile_header__search": "Busca do celular (painel antigo)",
+            "mobile_header__bottom_nav": "Barra inferior estilo app",
+            "mobile_footer_show_hours": "Horário próprio do celular",
+            "mobile_footer_show_social": "Redes próprias do celular"
+          },
+          "motivo": {
+            "enUso": "A loja usa isto no cabeçalho do celular: removê-lo mudaria o celular.",
+            "circulo": "Controlado em «Círculo de destaque» (computador e celular)."
           }
         }
       },

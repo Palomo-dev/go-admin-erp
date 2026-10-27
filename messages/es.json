@@ -33266,7 +33266,14 @@
           },
           "barraCelular": "Barra superior en el celular",
           "buscador": "Buscador",
-          "buscadorAyuda": "Vale para computador y celular: en el celular el ícono queda en la barra y la barra visible va bajo el logo."
+          "buscadorAyuda": "Vale para computador y celular: en el celular el ícono queda en la barra y la barra visible va bajo el logo.",
+          "buscadorCelularPropio": "En el celular el buscador sigue como «{valor}» (ajuste anterior). Para que siga esta opción, quita «Buscador propio del celular» en Ajustes de versiones anteriores.",
+          "buscadorNombre": {
+            "icon": "Ícono",
+            "bar": "Barra visible",
+            "hidden": "Oculto",
+            "fullscreen": "Pantalla completa"
+          }
         },
         "estilo": {
           "avisoTitulo": "Por defecto los colores siguen el tema de la plantilla",
@@ -33426,7 +33433,18 @@
             "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
             "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
             "mobile_menu_logout_color": "Colores del menú del celular (logout)",
-            "mobile_search_style": "Buscador propio del celular"
+            "mobile_search_style": "Buscador propio del celular",
+            "mobile_header__panel": "Panel del menú del celular",
+            "mobile_header__layout": "Disposición del encabezado en el celular",
+            "mobile_header__icons": "Íconos del celular (círculo, cuenta)",
+            "mobile_header__search": "Buscador del celular (panel viejo)",
+            "mobile_header__bottom_nav": "Barra inferior tipo app",
+            "mobile_footer_show_hours": "Horario propio del celular",
+            "mobile_footer_show_social": "Redes propias del celular"
+          },
+          "motivo": {
+            "enUso": "La tienda lo usa para el encabezado del celular: quitarlo cambiaría el celular.",
+            "circulo": "Se maneja con «Círculo acento» (computador y celular)."
           }
         }
       },

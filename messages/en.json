@@ -33246,7 +33246,14 @@
           },
           "barraCelular": "Top bar on mobile",
           "buscador": "Search",
-          "buscadorAyuda": "Applies to desktop and mobile: on mobile the icon stays in the bar and the visible bar goes under the logo."
+          "buscadorAyuda": "Applies to desktop and mobile: on mobile the icon stays in the bar and the visible bar goes under the logo.",
+          "buscadorCelularPropio": "On mobile the search stays as “{valor}” (previous setting). To follow this option, remove “Mobile-only search” in Previous version settings.",
+          "buscadorNombre": {
+            "icon": "Icon",
+            "bar": "Visible bar",
+            "hidden": "Hidden",
+            "fullscreen": "Full screen"
+          }
         },
         "estilo": {
           "avisoTitulo": "By default colors follow the template theme",
@@ -33406,7 +33413,18 @@
             "mobile_menu_register_border_color": "Mobile menu colors (register border)",
             "mobile_menu_register_text_color": "Mobile menu colors (register text)",
             "mobile_menu_logout_color": "Mobile menu colors (logout)",
-            "mobile_search_style": "Separate mobile search"
+            "mobile_search_style": "Separate mobile search",
+            "mobile_header__panel": "Mobile menu panel",
+            "mobile_header__layout": "Mobile header layout",
+            "mobile_header__icons": "Mobile icons (circle, account)",
+            "mobile_header__search": "Mobile search (old panel)",
+            "mobile_header__bottom_nav": "App-style bottom bar",
+            "mobile_footer_show_hours": "Mobile-only hours",
+            "mobile_footer_show_social": "Mobile-only social links"
+          },
+          "motivo": {
+            "enUso": "The store uses it for the mobile header: removing it would change mobile.",
+            "circulo": "Managed with “Accent circle” (desktop and mobile)."
           }
         }
       },

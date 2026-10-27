@@ -33246,7 +33246,14 @@
           },
           "barraCelular": "Barre supérieure sur mobile",
           "buscador": "Recherche",
-          "buscadorAyuda": "S’applique à l’ordinateur et au mobile : sur mobile l’icône reste dans la barre et la barre visible passe sous le logo."
+          "buscadorAyuda": "S’applique à l’ordinateur et au mobile : sur mobile l’icône reste dans la barre et la barre visible passe sous le logo.",
+          "buscadorCelularPropio": "Sur mobile, la recherche reste « {valor} » (ancien réglage). Pour suivre cette option, retirez « Recherche propre au mobile » dans Réglages des versions précédentes.",
+          "buscadorNombre": {
+            "icon": "Icône",
+            "bar": "Barre visible",
+            "hidden": "Masquée",
+            "fullscreen": "Plein écran"
+          }
         },
         "estilo": {
           "avisoTitulo": "Par défaut, les couleurs suivent le thème du modèle",
@@ -33406,7 +33413,18 @@
             "mobile_menu_register_border_color": "Mobile menu colors (register border)",
             "mobile_menu_register_text_color": "Mobile menu colors (register text)",
             "mobile_menu_logout_color": "Mobile menu colors (logout)",
-            "mobile_search_style": "Recherche mobile séparée"
+            "mobile_search_style": "Recherche mobile séparée",
+            "mobile_header__panel": "Panneau du menu mobile",
+            "mobile_header__layout": "Disposition de l'en-tête mobile",
+            "mobile_header__icons": "Icônes mobiles (cercle, compte)",
+            "mobile_header__search": "Recherche mobile (ancien panneau)",
+            "mobile_header__bottom_nav": "Barre inférieure type appli",
+            "mobile_footer_show_hours": "Horaires propres au mobile",
+            "mobile_footer_show_social": "Réseaux propres au mobile"
+          },
+          "motivo": {
+            "enUso": "La boutique l'utilise pour l'en-tête mobile : le retirer changerait le mobile.",
+            "circulo": "Géré par « Cercle d’accent » (ordinateur et mobile)."
           }
         }
       },

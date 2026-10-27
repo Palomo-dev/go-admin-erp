@@ -14269,7 +14269,8 @@
         "archivo": "reporte_importacion_productos"
       },
       "cuadre": "{seleccionados} seleccionados · {importados} importados + {omitidos} omitidos + {fallidos} fallidos + {sinIntentar} sin intentar",
-      "conAvisosLinea": "{n, plural, one {# producto importado con avisos} other {# productos importados con avisos}}: están en el reporte."
+      "conAvisosLinea": "{n, plural, one {# producto importado con avisos} other {# productos importados con avisos}}: están en el reporte.",
+      "reanudado": "Retomado desde el bloque {lote}"
     },
     "mensajes": {
       "sinNombre": "Falta el nombre",
@@ -14427,6 +14428,11 @@
       "categoriasMas": "{n, plural, one {Y # categoría más (elígela en la lista)} other {Y # categorías más (elígelas en la lista)}}",
       "existencias": "{n, plural, one {Usar las existencias que publica la tienda (# producto)} other {Usar las existencias que publica la tienda (# productos)}}",
       "existenciasAyuda": "Entran como stock inicial en la sucursal elegida. Exigen costo: sin costo la fila queda con error."
+    },
+    "progreso": {
+      "titulo": "Hay una importación sin terminar en esta pestaña",
+      "descripcion": "Se enviaron {enviados} de {total} productos (bloque {lote} de {lotes}). Vuelve a cargar el mismo archivo con la misma sede y pulsa Importar: se continúa desde el siguiente bloque sin repetir lo enviado.",
+      "descartar": "Descartar"
     }
   },
   "productosFacebook": {

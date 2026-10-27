@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, Download, FileSpreadsheet, Loader2, Play, Upload, Square, RotateCcw, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { PageHeader, RowActionsMenu, Stepper, type AccionFila } from '@/components/kit';
+import { AvisoTonal, PageHeader, RowActionsMenu, Stepper, type AccionFila } from '@/components/kit';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
@@ -162,6 +162,20 @@ export function ImportarProductosAsistente() {
         resumenMovil={(n, total, paso) => t('pasos.resumenMovil', { n, total, paso })}
         extra={t('extra', { origen: t(`origenes.${a.origen}`), sucursal: sucursal ?? '—' })}
       />
+
+      {a.progresoPendiente && a.paso !== 'resultado' && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('progreso.titulo')}
+          descripcion={t('progreso.descripcion', {
+            enviados: a.progresoPendiente.skusEnviados.length,
+            total: a.progresoPendiente.total,
+            lote: a.progresoPendiente.loteActual,
+            lotes: a.progresoPendiente.totalLotes,
+          })}
+          accion={{ etiqueta: t('progreso.descartar'), onClick: a.descartarProgreso }}
+        />
+      )}
 
       <section className="min-w-0" aria-live="polite">
         {a.paso === 'origen' && <PasoOrigen a={a} orgId={orgId} onError={error} onInfo={info} />}

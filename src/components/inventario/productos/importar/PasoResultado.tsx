@@ -71,6 +71,7 @@ export function PasoResultado({ a }: { a: AsistenteImportacion }) {
             <span className="flex items-center gap-2 text-fg">
               {corriendo && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
               {t('lote', { actual: e.loteActual, total: e.totalLotes, procesadas: e.procesadas, filas: e.total })}
+              {e.reanudadoDesde ? ` · ${t('reanudado', { lote: e.reanudadoDesde })}` : ''}
             </span>
             <span className="font-medium tabular-nums text-brand">{pct} %</span>
           </div>

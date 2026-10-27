@@ -11,7 +11,7 @@
  * del servidor) y enviar por lotes a la RPC.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { autoMapear, camposObligatoriosFaltantes, type Mapeo } from '@/lib/inventario/importacion/campos';
 import { aplicarSaldos, detectarFormato, detectarVariantesPorSku, leerFilas, leerSaldos, parsearFormatoSistema, parsearFormatoSpace, type FormatoArchivo, type Matriz, type Saldo } from '@/lib/inventario/importacion/lector';
 import { encontrarFilaCabecera } from '@/lib/inventario/importacion/campos';
@@ -23,6 +23,7 @@ import { claveCategoria } from '@/lib/inventario/importacion/catalogo/deduplicac
 import type { PlataformaDetectada } from '@/lib/inventario/importacion/catalogo/tipos';
 import { OPCIONES_POR_DEFECTO, type FilaImport, type FilaValidada, type OpcionesImportacion, type ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import { enviarLote, pedirContexto, type ContextoServidor } from './apiImportacion';
+import { borrarProgreso, guardarProgreso, huellaFilas, leerProgreso, primerLotePendiente, VERSION_PROGRESO, type ProgresoImportacion } from './progresoImportacion';
 
 export type Origen = 'archivo' | 'web';
 export type Paso = 'origen' | 'mapeo' | 'seleccion' | 'validacion' | 'vista' | 'resultado';
@@ -65,6 +66,8 @@ export interface EstadoEjecucion {
   fallidos: number;
   resultados: ResultadoFila[];
   erroresLote: { lote: number; mensaje: string; filas: number[] }[];
+  /** Bloque (1-based) desde el que se retomó una importación interrumpida (A3). */
+  reanudadoDesde?: number;
 }
 
 export function useAsistenteImportacion(orgId: number | undefined, saldoInicial = false) {
@@ -81,6 +84,23 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
   const [errorContexto, setErrorContexto] = useState<string | null>(null);
   const [excluidas, setExcluidas] = useState<Set<string>>(new Set());
   const [ejecucion, setEjecucion] = useState<EstadoEjecucion | null>(null);
+  // Progreso guardado en la pestaña de una importación que no terminó (A3).
+  const [progresoPendiente, setProgresoPendiente] = useState<ProgresoImportacion | null>(null);
+  useEffect(() => {
+    setProgresoPendiente(leerProgreso(orgId));
+  }, [orgId]);
+
+  // Aviso del navegador al cerrar/recargar mientras se envían bloques (A3).
+  const corriendo = ejecucion?.estado === 'corriendo';
+  useEffect(() => {
+    if (!corriendo || typeof window === 'undefined') return;
+    const avisar = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', avisar);
+    return () => window.removeEventListener('beforeunload', avisar);
+  }, [corriendo]);
   const detenerRef = useRef(false);
 
   /** Cambió lo leído: hay que volver a validar contra el catálogo. */
@@ -262,14 +282,55 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
     const conImagenes = opciones.importarImagenes && filas.some((f) => f.imagenes.length > 0 || f.imagenes_del_padre);
     const lotes = dividirEnLotes(filas, conImagenes ? TAMANO_LOTE_CON_IMAGENES : TAMANO_LOTE);
     detenerRef.current = false;
-    const inicial: EstadoEjecucion = { estado: 'corriendo', loteActual: 0, totalLotes: lotes.length, procesadas: 0, total: filas.length, creados: 0, actualizados: 0, omitidos: 0, fallidos: 0, resultados: [], erroresLote: [] };
+    // Retomar (A3): si la pestaña guardó el progreso de ESTE mismo archivo
+    // (misma org, sede y huella de SKU), se saltan los bloques ya enviados.
+    const huella = huellaFilas(filas.map((f) => f.sku));
+    const previo = orgId ? leerProgreso(orgId) : null;
+    const inicio = orgId ? primerLotePendiente(lotes, previo, { orgId, branchId, huella }) : 0;
+    const enviados = new Set<string>(inicio > 0 && previo ? previo.skusEnviados : []);
+    const yaProcesadas = lotes.slice(0, inicio).reduce((n, l) => n + l.length, 0);
+    const inicial: EstadoEjecucion = {
+      estado: 'corriendo',
+      loteActual: inicio,
+      totalLotes: lotes.length,
+      procesadas: yaProcesadas,
+      total: filas.length,
+      creados: inicio > 0 && previo ? previo.creados : 0,
+      actualizados: inicio > 0 && previo ? previo.actualizados : 0,
+      omitidos: 0,
+      fallidos: 0,
+      resultados: [],
+      erroresLote: [],
+      reanudadoDesde: inicio > 0 ? inicio + 1 : undefined,
+    };
     setEjecucion(inicial);
     setPaso('resultado');
+    setProgresoPendiente(null);
     let acumulado = inicial;
-    for (let i = 0; i < lotes.length; i++) {
+    const guardar = (estado: ProgresoImportacion['estado']) => {
+      if (!orgId) return;
+      guardarProgreso({
+        version: VERSION_PROGRESO,
+        orgId,
+        branchId,
+        huella,
+        paso: 'resultado',
+        loteActual: acumulado.loteActual,
+        totalLotes: lotes.length,
+        total: filas.length,
+        skusEnviados: [...enviados],
+        creados: acumulado.creados,
+        actualizados: acumulado.actualizados,
+        fallidos: acumulado.fallidos,
+        estado,
+        guardadoEn: new Date().toISOString(),
+      });
+    };
+    for (let i = inicio; i < lotes.length; i++) {
       if (detenerRef.current) {
         acumulado = { ...acumulado, estado: 'detenido' };
         setEjecucion(acumulado);
+        guardar('detenido');
         return;
       }
       acumulado = { ...acumulado, loteActual: i + 1 };
@@ -296,6 +357,7 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
           fallidos: acumulado.fallidos + r.fallidos,
           resultados: [...acumulado.resultados, ...r.resultados],
         };
+        for (const f of lotes[i]) enviados.add(f.sku);
       } catch (e) {
         acumulado = {
           ...acumulado,
@@ -306,13 +368,23 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
         };
       }
       setEjecucion(acumulado);
+      // «interrumpido» = lo que queda si la pestaña se cierra antes del final.
+      guardar('interrumpido');
     }
     setEjecucion({ ...acumulado, estado: 'terminado' });
+    // Sin bloques fallidos no hay nada que retomar; con fallos se conserva
+    // para reenviar solo los bloques que no entraron.
+    if (acumulado.erroresLote.length === 0) borrarProgreso(orgId);
   }, [branchId, validadas, excluidas, opciones, orgId, origen, web?.url, saldoInicial]);
 
   const detener = useCallback(() => {
     detenerRef.current = true;
   }, []);
+
+  const descartarProgreso = useCallback(() => {
+    borrarProgreso(orgId);
+    setProgresoPendiente(null);
+  }, [orgId]);
 
   const reiniciar = useCallback(() => {
     setPaso('origen');
@@ -374,6 +446,8 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
     editarFila,
     ejecucion,
     importar,
+    progresoPendiente,
+    descartarProgreso,
     detener,
     reiniciar,
   };

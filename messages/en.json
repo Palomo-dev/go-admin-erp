@@ -14268,7 +14268,8 @@
         "archivo": "product_import_report"
       },
       "cuadre": "{seleccionados} selected · {importados} imported + {omitidos} skipped + {fallidos} failed + {sinIntentar} not attempted",
-      "conAvisosLinea": "{n, plural, one {# product imported with warnings} other {# products imported with warnings}}: see the report."
+      "conAvisosLinea": "{n, plural, one {# product imported with warnings} other {# products imported with warnings}}: see the report.",
+      "reanudado": "Resumed from batch {lote}"
     },
     "mensajes": {
       "sinNombre": "Name is missing",
@@ -14426,6 +14427,11 @@
       "categoriasMas": "{n, plural, one {And # more category (pick it in the list)} other {And # more categories (pick them in the list)}}",
       "existencias": "{n, plural, one {Use the stock published by the store (# product)} other {Use the stock published by the store (# products)}}",
       "existenciasAyuda": "It is loaded as initial stock in the selected branch. It requires cost: without cost the row has an error."
+    },
+    "progreso": {
+      "titulo": "There is an unfinished import in this tab",
+      "descripcion": "{enviados} of {total} products were sent (batch {lote} of {lotes}). Load the same file with the same branch and press Import: it continues from the next batch without repeating what was sent.",
+      "descartar": "Discard"
     }
   },
   "productosFacebook": {

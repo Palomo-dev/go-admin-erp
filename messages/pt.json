@@ -10068,7 +10068,8 @@
         "archivo": "relatorio_importacao_produtos"
       },
       "cuadre": "{seleccionados} selecionados · {importados} importados + {omitidos} ignorados + {fallidos} com falha + {sinIntentar} não tentados",
-      "conAvisosLinea": "{n, plural, one {# produto importado com avisos} other {# produtos importados com avisos}}: veja o relatório."
+      "conAvisosLinea": "{n, plural, one {# produto importado com avisos} other {# produtos importados com avisos}}: veja o relatório.",
+      "reanudado": "Retomado a partir do lote {lote}"
     },
     "mensajes": {
       "sinNombre": "Falta o nome",
@@ -10226,6 +10227,11 @@
       "categoriasMas": "{n, plural, one {E mais # categoria (escolha na lista)} other {E mais # categorias (escolha na lista)}}",
       "existencias": "{n, plural, one {Usar o estoque publicado pela loja (# produto)} other {Usar o estoque publicado pela loja (# produtos)}}",
       "existenciasAyuda": "Entra como estoque inicial na filial escolhida. Exige custo: sem custo a linha fica com erro."
+    },
+    "progreso": {
+      "titulo": "Há uma importação não concluída nesta aba",
+      "descripcion": "Foram enviados {enviados} de {total} produtos (lote {lote} de {lotes}). Carregue o mesmo arquivo com a mesma filial e clique em Importar: continua a partir do próximo lote sem repetir o que foi enviado.",
+      "descartar": "Descartar"
     }
   },
   "productosFacebook": {

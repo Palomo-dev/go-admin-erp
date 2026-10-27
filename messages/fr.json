@@ -10067,7 +10067,8 @@
         "archivo": "rapport_import_produits"
       },
       "cuadre": "{seleccionados} sélectionnés · {importados} importés + {omitidos} ignorés + {fallidos} en échec + {sinIntentar} non tentés",
-      "conAvisosLinea": "{n, plural, one {# produit importé avec des avertissements} other {# produits importés avec des avertissements}} : voir le rapport."
+      "conAvisosLinea": "{n, plural, one {# produit importé avec des avertissements} other {# produits importés avec des avertissements}} : voir le rapport.",
+      "reanudado": "Repris à partir du lot {lote}"
     },
     "mensajes": {
       "sinNombre": "Le nom manque",
@@ -10225,6 +10226,11 @@
       "categoriasMas": "{n, plural, one {Et # catégorie de plus (choisissez-la dans la liste)} other {Et # catégories de plus (choisissez-les dans la liste)}}",
       "existencias": "{n, plural, one {Utiliser le stock publié par la boutique (# produit)} other {Utiliser le stock publié par la boutique (# produits)}}",
       "existenciasAyuda": "Il entre comme stock initial dans l’agence choisie. Un coût est requis : sans coût la ligne est en erreur."
+    },
+    "progreso": {
+      "titulo": "Une importation inachevée existe dans cet onglet",
+      "descripcion": "{enviados} produits sur {total} ont été envoyés (lot {lote} sur {lotes}). Rechargez le même fichier avec le même site et cliquez sur Importer : la reprise se fait au lot suivant sans répéter ce qui a été envoyé.",
+      "descartar": "Ignorer"
     }
   },
   "productosFacebook": {

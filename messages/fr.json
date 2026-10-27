@@ -10124,7 +10124,16 @@
       "DATO_NO_VALIDO": "Une valeur n’est pas valide pour la base",
       "LOTE": "Le lot entier a échoué",
       "ERROR": "Erreur lors de l’enregistrement de la ligne",
-      "skuRepetidoTienda": "Le SKU « {sku} » de la boutique est déjà utilisé par un autre produit du catalogue : un nouveau a été généré (conservé en référence)."
+      "skuRepetidoTienda": "Le SKU « {sku} » de la boutique est déjà utilisé par un autre produit du catalogue : un nouveau a été généré (conservé en référence).",
+      "DUPLICADO_CON_SKU": "Le {campo} {valor} est déjà utilisé par le produit {sku}",
+      "DUPLICADO_VALOR": "Le {campo} {valor} est déjà utilisé par un autre produit",
+      "DUPLICADO_CAMPO": "Le {campo} est déjà utilisé par un autre enregistrement",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "code-barres",
+        "plu": "PLU de balance",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",

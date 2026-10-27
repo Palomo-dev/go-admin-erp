@@ -10125,7 +10125,16 @@
       "DATO_NO_VALIDO": "Algum dado não é válido para o banco",
       "LOTE": "O lote inteiro falhou",
       "ERROR": "Erro ao salvar a linha",
-      "skuRepetidoTienda": "O SKU «{sku}» da loja já é usado por outro produto do catálogo: foi gerado um novo (fica como referência)."
+      "skuRepetidoTienda": "O SKU «{sku}» da loja já é usado por outro produto do catálogo: foi gerado um novo (fica como referência).",
+      "DUPLICADO_CON_SKU": "O {campo} {valor} já é usado pelo produto {sku}",
+      "DUPLICADO_VALOR": "O {campo} {valor} já está em uso em outro produto",
+      "DUPLICADO_CAMPO": "O {campo} já está em uso em outro registro",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "código de barras",
+        "plu": "PLU da balança",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",

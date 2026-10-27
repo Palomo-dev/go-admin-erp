@@ -14325,7 +14325,16 @@
       "DATO_NO_VALIDO": "Some value is not valid for the database",
       "LOTE": "The whole batch failed",
       "ERROR": "Error saving the row",
-      "skuRepetidoTienda": "The store SKU “{sku}” is already used by another product in the catalog: a new one was generated (kept as reference)."
+      "skuRepetidoTienda": "The store SKU “{sku}” is already used by another product in the catalog: a new one was generated (kept as reference).",
+      "DUPLICADO_CON_SKU": "The {campo} {valor} is already used by product {sku}",
+      "DUPLICADO_VALOR": "The {campo} {valor} is already used by another product",
+      "DUPLICADO_CAMPO": "The {campo} is already used by another record",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "barcode",
+        "plu": "scale PLU",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",

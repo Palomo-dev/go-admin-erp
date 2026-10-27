@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import type { ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import { AlertTriangle, CheckCircle2, CircleSlash, Clock, FileDown, Loader2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FormSection, KpiStrip, StatCard } from '@/components/kit';
@@ -25,7 +26,16 @@ export function PasoResultado({ a }: { a: AsistenteImportacion }) {
   const pct = e.total ? Math.round((e.procesadas / e.total) * 100) : 100;
   const corriendo = e.estado === 'corriendo';
   const r = recuentoImportacion(e);
-  const errorDe = (codigo?: string) => (codigo && tm.has(codigo) ? tm(codigo) : codigo ?? '');
+  const errorDe = (codigo?: string, dup?: ResultadoFila['duplicado']) => {
+    // A6: «El código de barras 5059726540791 ya lo usa GP-SD-11467-BLANCO».
+    if (codigo === 'DUPLICADO' && dup && dup.campo !== 'otro') {
+      const campo = tm(`camposDuplicado.${dup.campo}`);
+      if (dup.valor && dup.skuExistente) return tm('DUPLICADO_CON_SKU', { campo, valor: dup.valor, sku: dup.skuExistente });
+      if (dup.valor) return tm('DUPLICADO_VALOR', { campo, valor: dup.valor });
+      return tm('DUPLICADO_CAMPO', { campo });
+    }
+    return codigo && tm.has(codigo) ? tm(codigo) : codigo ?? '';
+  };
 
   const descargar = () => {
     const filas: FilaReporte[] = [];
@@ -50,7 +60,7 @@ export function PasoResultado({ a }: { a: AsistenteImportacion }) {
         sku: r.sku,
         nombre: porFila.get(r.fila)?.datos.name ?? '',
         resultado: r.ok ? t(`resultados.${r.accion ?? 'creado'}`) : t('resultados.error'),
-        mensajes: r.ok ? (r.avisos ?? []).map(texto) : [errorDe(r.error)],
+        mensajes: r.ok ? (r.avisos ?? []).map(texto) : [errorDe(r.error, r.duplicado)],
       });
     }
     filas.sort((x, y) => x.fila - y.fila);
@@ -132,7 +142,7 @@ export function PasoResultado({ a }: { a: AsistenteImportacion }) {
                     <XCircle className="size-4 text-danger" aria-hidden="true" /> {t('fila', { n: r.fila })}
                   </span>
                   <span className="shrink-0 font-mono text-xs text-fg sm:w-36 sm:truncate">{r.sku}</span>
-                  <span className="text-fg-secondary">{errorDe(r.error)}</span>
+                  <span className="text-fg-secondary">{errorDe(r.error, r.duplicado)}</span>
                 </li>
               ))}
             </ul>

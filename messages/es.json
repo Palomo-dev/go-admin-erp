@@ -14326,7 +14326,16 @@
       "DATO_NO_VALIDO": "Algún dato no es válido para la base",
       "LOTE": "El lote completo falló",
       "ERROR": "Error al guardar la fila",
-      "skuRepetidoTienda": "El SKU «{sku}» de la tienda ya lo usa otro producto del catálogo: se generó uno nuevo (queda como referencia)."
+      "skuRepetidoTienda": "El SKU «{sku}» de la tienda ya lo usa otro producto del catálogo: se generó uno nuevo (queda como referencia).",
+      "DUPLICADO_CON_SKU": "El {campo} {valor} ya lo usa el producto {sku}",
+      "DUPLICADO_VALOR": "El {campo} {valor} ya está en uso en otro producto",
+      "DUPLICADO_CAMPO": "El {campo} ya está en uso en otro registro",
+      "camposDuplicado": {
+        "sku": "SKU",
+        "codigo_barras": "código de barras",
+        "plu": "PLU de balanza",
+        "slug": "slug"
+      }
     },
     "cabeceras": {
       "sku": "SKU",

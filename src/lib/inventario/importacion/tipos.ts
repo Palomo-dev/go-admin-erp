@@ -125,6 +125,8 @@ export interface FilaValidada {
 }
 
 /** Resultado por fila que devuelve la importación en servidor. */
+export type CampoDuplicado = 'sku' | 'codigo_barras' | 'plu' | 'slug' | 'otro';
+
 export interface ResultadoFila {
   fila: number;
   sku: string;
@@ -132,6 +134,8 @@ export interface ResultadoFila {
   accion?: 'creado' | 'actualizado' | 'omitido';
   productId?: number;
   error?: string;
+  /** Con `error = 'DUPLICADO'`: qué campo choca, con qué valor y el SKU del producto que ya lo usa (A6). */
+  duplicado?: { campo: CampoDuplicado; valor?: string; skuExistente?: string };
   /** Avisos del servidor (códigos de la RPC y de las imágenes). */
   avisos?: { codigo: string; detalle?: string }[];
 }

@@ -44,6 +44,11 @@ export function avisoPeriodo(error: unknown, fallback: string): string {
   }
   if (msg.includes('periodo_cerrado') || msg.includes('periodo_no_abierto')) return 'Ese periodo no está abierto.';
   if (msg.includes('periodo_no_cerrado')) return 'Ese periodo no está cerrado.';
+  if (msg.includes('periodo_con_pendientes')) {
+    const detalle = msg.split('periodo_con_pendientes:')[1]?.trim();
+    return `No se puede cerrar: hay borradores o asientos pendientes en el periodo${detalle ? ` (${detalle})` : ''}. Contabilícelos o anúlelos primero.`;
+  }
+  if (msg.includes('motivo_obligatorio')) return 'Escriba el motivo de la reapertura (mínimo 5 caracteres).';
   if (msg.includes('sin_sucursal')) return 'La organización no tiene sucursal.';
   return fallback;
 }

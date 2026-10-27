@@ -37,8 +37,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <PantallaArranque estado="sinConexion" onReintentar={retryInit} onIniciarSesion={iniciarSesionDeNuevo} />;
   }
 
-  // Comprobando la sesión, o sin sesión mientras el efecto redirige al login.
-  if (loading || !session) {
+  // Pantalla de carga SOLO en la primera carga (todavía no hay sesión). En los
+  // refrescos de sesión (`loading` vuelve a true con sesión ya cargada) se
+  // mantiene la página montada: desmontarla perdía el estado (p. ej. el
+  // importador a mitad de lote).
+  if (loading && !session) {
+    return <PantallaArranque estado="comprobando" />;
+  }
+
+  // Sin sesión y sin cargar: el efecto de arriba redirige al login.
+  if (!session) {
     return <PantallaArranque estado="comprobando" />;
   }
 

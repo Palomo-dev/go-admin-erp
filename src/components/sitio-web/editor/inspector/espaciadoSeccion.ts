@@ -49,3 +49,22 @@ export function aplicarCambioContenido(contenido: Record<string, unknown>, cambi
   }
   return siguiente;
 }
+
+const IMAGENES_PORTADA = ['image_url', 'image_url_mobile'];
+const conImagen = (c: Record<string, unknown>) => IMAGENES_PORTADA.some((k) => typeof c[k] === 'string' && (c[k] as string).trim() !== '');
+
+/**
+ * Portada «Pantalla completa»: sin imagen la capa se ve al 100 (D4). Si quedó guardada en 100 y se
+ * sube la primera imagen, baja sola a 70 (el default con imagen) para que la foto se vea.
+ */
+export function capaAlSubirPrimeraImagen(
+  tipo: string,
+  variante: string | null | undefined,
+  antes: Record<string, unknown>,
+  despues: Record<string, unknown>,
+): Record<string, unknown> {
+  if (tipo !== 'hero' || variante !== 'fullscreen') return despues;
+  if (conImagen(antes) || !conImagen(despues)) return despues;
+  if (Number(despues.overlay_opacity) !== 100) return despues;
+  return { ...despues, overlay_opacity: 70 };
+}

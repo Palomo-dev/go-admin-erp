@@ -3,7 +3,7 @@
  */
 import { fireEvent, screen } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
-import { aplicarCambioContenido, campoCubiertoPorEstilo, entradasAnterioresSeccion } from '../inspector/espaciadoSeccion';
+import { aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from '../inspector/espaciadoSeccion';
 import { PanelCarrusel, PanelPaginacion } from '../inspector/PanelesListaCarrusel';
 
 jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ organization: { id: 120 } }), getOrganizationId: () => 120, ORGANIZATION_CHANGED_EVENT: 'org-cambio' }));
@@ -68,5 +68,16 @@ describe('PanelCarrusel (kit)', () => {
     expect(screen.getByText('Ítems por avance')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Quitar' }));
     expect(onCambiar).toHaveBeenLastCalledWith({ loop: true });
+  });
+});
+
+describe('capa de la portada al subir la primera imagen', () => {
+  test('100 sin imagen → 70 al subir la primera', () => {
+    expect(capaAlSubirPrimeraImagen('hero', 'fullscreen', { overlay_opacity: 100 }, { overlay_opacity: 100, image_url: 'a.jpg' }).overlay_opacity).toBe(70);
+  });
+  test('no toca otros valores, otras variantes ni si ya había imagen', () => {
+    expect(capaAlSubirPrimeraImagen('hero', 'fullscreen', { overlay_opacity: 40 }, { overlay_opacity: 40, image_url: 'a.jpg' }).overlay_opacity).toBe(40);
+    expect(capaAlSubirPrimeraImagen('hero', 'carousel', { overlay_opacity: 100 }, { overlay_opacity: 100, image_url: 'a.jpg' }).overlay_opacity).toBe(100);
+    expect(capaAlSubirPrimeraImagen('hero', 'fullscreen', { overlay_opacity: 100, image_url: 'a.jpg' }, { overlay_opacity: 100, image_url: 'b.jpg' }).overlay_opacity).toBe(100);
   });
 });

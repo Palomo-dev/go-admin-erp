@@ -52,6 +52,11 @@ export interface TokensEstilo {
 /** Estilo leído del borrador: tokens efectivos + id del preset del que parte (si se sabe). */
 export interface EstiloEditable extends TokensEstilo {
   preset: string | null;
+  /**
+   * Color secundario elegido a mano (`colores.secundario` / `secondary_color`).
+   * `null`/ausente = el derivado del estilo (`secundarioDe`), como siempre.
+   */
+  secundario?: string | null;
 }
 
 /**
@@ -83,6 +88,11 @@ export function secundarioDe(t: Pick<TokensEstilo, 'modo' | 'fondo' | 'texto'>):
   return t.modo === 'dark' ? t.fondo : t.texto;
 }
 
+/** Secundario efectivo: el elegido a mano o, si no hay, el derivado del estilo. */
+export function secundarioEfectivo(t: Pick<TokensEstilo, 'modo' | 'fondo' | 'texto'> & { secundario?: string | null }): string {
+  return normalizarHex(t.secundario ?? null) ?? secundarioDe(t);
+}
+
 function deLista<T extends string | number>(lista: readonly T[], valor: unknown): T | null {
   return (lista as readonly unknown[]).includes(valor) ? (valor as T) : null;
 }
@@ -95,11 +105,19 @@ function deLista<T extends string | number>(lista: readonly T[], valor: unknown)
 export function leerEstilo(documento: DocumentoSitio | null | undefined, base: TokensEstilo & { id?: string }): EstiloEditable {
   const tema = documento?.tema;
   const color = (c: unknown) => normalizarHex(c);
+  const modo = valorCampo(tema?.modo) ?? base.modo;
+  const fondo = color(valorCampo(tema?.colores.fondo)) ?? base.fondo;
+  const texto = color(valorCampo(tema?.colores.texto)) ?? base.texto;
+  // Solo cuenta como elegido a mano si difiere del derivado (los borradores
+  // anteriores siempre guardaron el derivado en `colores.secundario`).
+  const secundarioGuardado = color(valorCampo(tema?.colores.secundario));
+  const derivado = secundarioDe({ modo, fondo, texto });
   return {
     preset: valorCampo(tema?.preset) ?? null,
-    modo: valorCampo(tema?.modo) ?? base.modo,
-    fondo: color(valorCampo(tema?.colores.fondo)) ?? base.fondo,
-    texto: color(valorCampo(tema?.colores.texto)) ?? base.texto,
+    modo,
+    fondo,
+    texto,
+    secundario: secundarioGuardado && secundarioGuardado.toLowerCase() !== derivado.toLowerCase() ? secundarioGuardado : null,
     acento: color(valorCampo(tema?.colores.primario)) ?? base.acento,
     fuenteTitulos: valorCampo(tema?.tipografia.titulos) ?? base.fuenteTitulos,
     fuenteCuerpo: valorCampo(tema?.tipografia.cuerpo) ?? base.fuenteCuerpo,
@@ -122,7 +140,7 @@ export function escribirEstilo(documento: DocumentoSitio, estilo: EstiloEditable
     colores: {
       ...tema.colores,
       primario: valorPropio(estilo.acento),
-      secundario: valorPropio(secundarioDe(estilo)),
+      secundario: valorPropio(secundarioEfectivo(estilo)),
       fondo: valorPropio(estilo.fondo),
       texto: valorPropio(estilo.texto),
     },
@@ -145,6 +163,7 @@ export function mismoEstilo(a: EstiloEditable, b: EstiloEditable, extendidos: bo
     a.fondo === b.fondo &&
     a.texto === b.texto &&
     a.acento === b.acento &&
+    (a.secundario ?? null) === (b.secundario ?? null) &&
     a.fuenteTitulos === b.fuenteTitulos &&
     a.fuenteCuerpo === b.fuenteCuerpo;
   if (!extendidos) return base;
@@ -173,10 +192,10 @@ export function radioBoton(t: Pick<TokensEstilo, 'radio' | 'estiloBoton'>): numb
  * Columnas que el sitio aplica EN VIVO en la vista previa sin guardar
  * (`goadmin:settings`, `CLAVES_TEMA_VIVO` de `ajustesVivos.ts`).
  */
-export function ajustesVivosDeEstilo(t: TokensEstilo): Record<string, unknown> {
+export function ajustesVivosDeEstilo(t: TokensEstilo & { secundario?: string | null }): Record<string, unknown> {
   return {
     primary_color: t.acento,
-    secondary_color: secundarioDe(t),
+    secondary_color: secundarioEfectivo(t),
     background_color: t.fondo,
     text_color: t.texto,
     theme_mode: t.modo,

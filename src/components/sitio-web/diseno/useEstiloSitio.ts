@@ -120,7 +120,7 @@ export function useEstiloSitio(
     [guardarAhora],
   );
 
-  const aplicarPreset = useCallback((preset: EstiloCatalogo) => cambiar({ ...tokensDe(preset), preset: preset.id }), [cambiar]);
+  const aplicarPreset = useCallback((preset: EstiloCatalogo) => cambiar({ ...tokensDe(preset), preset: preset.id, secundario: null }), [cambiar]);
 
   // Al salir con cambios sin guardar, se guardan.
   const guardarAlSalir = useRef(guardarAhora);

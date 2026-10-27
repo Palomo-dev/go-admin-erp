@@ -32366,7 +32366,11 @@
         "movimiento": "Movimento",
         "pendiente": "Arredondamento, botões e movimento se aplicam quando o site publicado os aceitar. Por enquanto aparecem nas amostras das predefinições.",
         "motivoPendiente": "O site publicado ainda não aplica este ajuste",
-        "sinPresets": "Ainda não há predefinições para o seu ramo. Veja os modelos."
+        "sinPresets": "Ainda não há predefinições para o seu ramo. Veja os modelos.",
+        "secundario": "Secundária",
+        "secundarioAutomatico": "Voltar à secundária automática",
+        "fuenteTitulos": "Fonte dos títulos",
+        "fuenteCuerpo": "Fonte do texto"
       },
       "giroEnFrase": {
         "restaurante": "restaurante",

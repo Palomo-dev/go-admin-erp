@@ -31,6 +31,7 @@ import {
 } from '@/lib/website/contrato/catalogoPlantillas';
 import {
   ajustesVivosDeEstilo,
+  secundarioDe,
   aplicarPresetDiseno,
   cascaronTemaDisponible,
   tokensDisenoDisponibles,
@@ -68,6 +69,12 @@ function estiloLegacy(s: WebsiteSettings | null, base: EstiloCatalogo | null): E
     fondo: hex(r.background_color, base.fondo),
     texto: hex(r.text_color, base.texto),
     acento: hex(r.primary_color, base.acento),
+    secundario: (() => {
+      const guardado = normalizarHex(typeof r.secondary_color === 'string' ? r.secondary_color : null);
+      const modo = r.theme_mode === 'dark' ? 'dark' : r.theme_mode === 'light' ? 'light' : base.modo;
+      const derivado = secundarioDe({ modo, fondo: hex(r.background_color, base.fondo), texto: hex(r.text_color, base.texto) });
+      return guardado && guardado.toLowerCase() !== derivado.toLowerCase() ? guardado : null;
+    })(),
     fuenteTitulos: typeof r.font_heading === 'string' && r.font_heading ? r.font_heading : base.fuenteTitulos,
     fuenteCuerpo: typeof r.font_body === 'string' && r.font_body ? r.font_body : base.fuenteCuerpo,
     radio: base.radio,
@@ -149,6 +156,7 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
                     acento: preset.acento,
                     fuenteTitulos: preset.fuenteTitulos,
                     fuenteCuerpo: preset.fuenteCuerpo,
+                    secundario: null,
                   })
             }
             onCambiar={p.enV2 ? estiloV2.cambiar : cambiarLegacy}

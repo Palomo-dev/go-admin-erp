@@ -32366,7 +32366,11 @@
         "movimiento": "Movimiento",
         "pendiente": "Redondeo, botones y movimiento se aplican cuando el sitio publicado los admita. Por ahora se ven en las muestras de los presets.",
         "motivoPendiente": "El sitio publicado aún no aplica este ajuste",
-        "sinPresets": "Aún no hay presets para tu giro. Mira las plantillas."
+        "sinPresets": "Aún no hay presets para tu giro. Mira las plantillas.",
+        "secundario": "Secundario",
+        "secundarioAutomatico": "Volver al secundario automático",
+        "fuenteTitulos": "Fuente de títulos",
+        "fuenteCuerpo": "Fuente del texto"
       },
       "giroEnFrase": {
         "restaurante": "restaurante",

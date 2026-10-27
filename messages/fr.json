@@ -32365,7 +32365,11 @@
         "movimiento": "Mouvement",
         "pendiente": "L'arrondi, les boutons et le mouvement s'appliquent quand le site publié les prendra en charge. Pour l'instant, ils apparaissent dans les échantillons des préréglages.",
         "motivoPendiente": "Le site publié n'applique pas encore ce réglage",
-        "sinPresets": "Il n'y a pas encore de préréglages pour ton activité. Regarde les modèles."
+        "sinPresets": "Il n'y a pas encore de préréglages pour ton activité. Regarde les modèles.",
+        "secundario": "Secondaire",
+        "secundarioAutomatico": "Revenir au secondaire automatique",
+        "fuenteTitulos": "Police des titres",
+        "fuenteCuerpo": "Police du texte"
       },
       "giroEnFrase": {
         "restaurante": "de restaurant",

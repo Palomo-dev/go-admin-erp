@@ -32365,7 +32365,11 @@
         "movimiento": "Motion",
         "pendiente": "Corner radius, buttons and motion apply once the published site supports them. For now they show in the preset samples.",
         "motivoPendiente": "The published site does not apply this setting yet",
-        "sinPresets": "There are no presets for your business type yet. Check the templates."
+        "sinPresets": "There are no presets for your business type yet. Check the templates.",
+        "secundario": "Secondary",
+        "secundarioAutomatico": "Back to automatic secondary",
+        "fuenteTitulos": "Heading font",
+        "fuenteCuerpo": "Body font"
       },
       "giroEnFrase": {
         "restaurante": "restaurant",

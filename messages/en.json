@@ -34124,6 +34124,8 @@
         "usarGlobal": "Use global setting",
         "usarGlobalAyuda": "Follows Design › Site styles. Turn it off to give this section its own setting.",
         "porPaginaComputador": "Per page on desktop",
+        "mostrarPaginacion": "Show pagination",
+        "mostrarPaginacionAyuda": "Off: the whole list shows (up to the set quantity or rows), without page numbers.",
         "porPaginaCelular": "Per page on mobile",
         "estilo": "Style",
         "forma": "Shape",

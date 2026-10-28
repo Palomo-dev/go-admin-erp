@@ -66,11 +66,12 @@ function Numero({ etiqueta, valor, porDefecto, minimo, maximo, onCambiar, decima
 }
 
 /** Cabecera común: título, «Usar ajuste global» y, si está apagado, el resto. */
-function Panel({ titulo, usarGlobal, onUsarGlobal, deshabilitado, t, children }: { titulo: string; usarGlobal?: boolean; onUsarGlobal?: (v: boolean) => void; deshabilitado?: boolean; t: T; children: ReactNode }) {
+function Panel({ titulo, usarGlobal, onUsarGlobal, deshabilitado, t, antes, children }: { titulo: string; usarGlobal?: boolean; onUsarGlobal?: (v: boolean) => void; deshabilitado?: boolean; t: T; antes?: ReactNode; children: ReactNode }) {
   const oculto = onUsarGlobal != null && usarGlobal !== false;
   return (
     <section aria-label={titulo} className="flex flex-col gap-4 border-t border-line pt-4">
       <TituloBloque>{titulo}</TituloBloque>
+      {antes}
       {onUsarGlobal && (
         <FilaInterruptor titulo={t('listas.usarGlobal')} ayuda={t('listas.usarGlobalAyuda')} valor={usarGlobal !== false} onCambiar={onUsarGlobal} deshabilitado={deshabilitado} />
       )}
@@ -93,6 +94,7 @@ export function PanelPaginacion({
   onUsarGlobal,
   color,
   deshabilitado,
+  mostrar,
 }: {
   valor: ParcialPaginacion | null;
   onCambiar: (p: ParcialPaginacion) => void;
@@ -100,6 +102,8 @@ export function PanelPaginacion({
   onUsarGlobal?: (v: boolean) => void;
   color: string;
   deshabilitado?: boolean;
+  /** PAGINA-01: «Mostrar paginación» (content.show_pagination) vive aquí, una sola vez. */
+  mostrar?: { valor: boolean; onCambiar: (b: boolean) => void };
 }) {
   const t = useTextosEditor();
   const v = valor ?? {};
@@ -110,7 +114,10 @@ export function PanelPaginacion({
   const muestra = resolverPaginacion({ legado: 'grilla', porPagina: v.porPaginaEscritorio ?? 12 }, null, { ...v, usar_global: false }, false);
   const clases = clasesPaginacion({ ...muestra, activo: true });
   return (
-    <Panel titulo={t('listas.paginacion')} usarGlobal={usarGlobal} onUsarGlobal={onUsarGlobal} deshabilitado={deshabilitado} t={t}>
+    <Panel titulo={t('listas.paginacion')} usarGlobal={usarGlobal} onUsarGlobal={onUsarGlobal} deshabilitado={deshabilitado} t={t}
+      antes={mostrar && (
+        <FilaInterruptor titulo={t('listas.mostrarPaginacion')} ayuda={t('listas.mostrarPaginacionAyuda')} valor={mostrar.valor} onCambiar={mostrar.onCambiar} deshabilitado={deshabilitado} />
+      )}>
       <div className="grid grid-cols-2 items-end gap-3">
         <Numero etiqueta={t('listas.porPaginaComputador')} valor={v.porPaginaEscritorio} porDefecto={12} minimo={4} maximo={60} onCambiar={(n) => set({ porPaginaEscritorio: n })} />
         <Numero etiqueta={t('listas.porPaginaCelular')} valor={v.porPaginaMovil} porDefecto={v.porPaginaEscritorio ?? 12} minimo={4} maximo={60} onCambiar={(n) => set({ porPaginaMovil: n })} />

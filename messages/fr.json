@@ -34124,6 +34124,8 @@
         "usarGlobal": "Utiliser le réglage global",
         "usarGlobalAyuda": "Suit Design › Styles du site. Désactivez-le pour donner à cette section son propre réglage.",
         "porPaginaComputador": "Par page sur ordinateur",
+        "mostrarPaginacion": "Afficher la pagination",
+        "mostrarPaginacionAyuda": "Désactivé : toute la liste s'affiche (dans la limite de la quantité ou des lignes), sans numéros de page.",
         "porPaginaCelular": "Par page sur mobile",
         "estilo": "Style",
         "forma": "Forme",

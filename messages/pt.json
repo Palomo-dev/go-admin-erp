@@ -34134,6 +34134,8 @@
         "usarGlobal": "Usar ajuste global",
         "usarGlobalAyuda": "Segue Design › Estilos do site. Desligue para dar a esta seção seu próprio ajuste.",
         "porPaginaComputador": "Por página no computador",
+        "mostrarPaginacion": "Mostrar paginação",
+        "mostrarPaginacionAyuda": "Desligado: a lista inteira aparece (até a quantidade ou as linhas indicadas), sem números de página.",
         "porPaginaCelular": "Por página no celular",
         "estilo": "Estilo",
         "forma": "Forma",

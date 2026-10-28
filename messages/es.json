@@ -34142,6 +34142,8 @@
         "usarGlobal": "Usar ajuste global",
         "usarGlobalAyuda": "Sigue Diseño › Estilos del sitio. Apágalo para darle a esta sección su propio ajuste.",
         "porPaginaComputador": "Por página en computador",
+        "mostrarPaginacion": "Mostrar paginación",
+        "mostrarPaginacionAyuda": "Apagado: se ve toda la lista (con la cantidad o las filas indicadas), sin números de página.",
         "porPaginaCelular": "Por página en celular",
         "estilo": "Estilo",
         "forma": "Forma",

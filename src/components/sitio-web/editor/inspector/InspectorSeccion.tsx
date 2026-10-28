@@ -106,6 +106,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
       // Espaciado y ancho: una sola opción, en Estilo (Figma v2). Lo guardado sale en «Ajustes de versiones anteriores».
       if (campoCubiertoPorEstilo(c, s.section_type)) return false;
+      // PAGINA-01: «Mostrar paginación» se pinta una vez, dentro del panel de paginación.
+      if (c.key === 'show_pagination' && (TIPOS_PAGINACION as readonly string[]).includes(s.section_type)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
       if (c.type === 'repeater' && c.key === 'items') {
@@ -293,6 +295,9 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                 }}
                 onCambiar={(val) => onCambiarContenido({ ...contenido, paginacion: { usar_global: false, ...val } })}
                 color="#111827"
+                mostrar={definicion?.contentFields.some((c) => c.key === 'show_pagination')
+                  ? { valor: contenido.show_pagination !== false, onCambiar: (b) => onCambiarContenido({ ...contenido, show_pagination: b }) }
+                  : undefined}
               />
             )}
             {(TIPOS_CARRUSEL as readonly string[]).includes(s.section_type) && (

@@ -1,5 +1,5 @@
 /**
- * Carga inicial: 1.000 × 3.800 = 3.800.000 en 1435 contra 3105.
+ * Carga inicial: 1.000 × 3.800 = 3.800.000 en 1435 contra 37050501 (3710 con pérdida acumulada).
  * El sobrante acredita 4295. La compra sin orden no arma asiento.
  */
 import fs from 'fs';
@@ -24,7 +24,7 @@ import {
 } from '../cargaInicial';
 
 describe('asiento de la carga inicial', () => {
-  test('1.000 unidades a 3.800: débito 1435 y crédito 3105 por 3.800.000, sin 4250', () => {
+  test('1.000 unidades a 3.800: débito 1435 y crédito 37050501 por 3.800.000, sin 4250', () => {
     const asiento = asientoCargaInicial({ unidades: 1000, costo: 3800 });
     expect(asiento.total).toBe(3_800_000);
     expect(asiento.lineas).toEqual([
@@ -49,7 +49,10 @@ describe('asiento de la carga inicial', () => {
     });
     expect(asiento.total).toBe(3001);
     expect(asiento.lineas[0]).toMatchObject({ cuenta: '14350501', debito: 3001 });
-    expect(asiento.lineas[1]).toMatchObject({ cuenta: '310505', credito: 3001 });
+    // 3105 (capital) ya no es contrapartida: cae a 37050501.
+    expect(asiento.lineas[1]).toMatchObject({ cuenta: '37050501', credito: 3001 });
+    expect(asientoCargaInicial({ unidades: 1, costo: 10, cuentaSaldo: '37050502' }).lineas[1].cuenta).toBe('37050502');
+    expect(asientoCargaInicial({ unidades: 1, costo: 10, conPerdidaAcumulada: true }).lineas[1].cuenta).toBe('3710');
     expect(asiento.lineas.map((l) => l.cuenta).some((c) => c.startsWith('1405'))).toBe(false);
   });
 
@@ -71,14 +74,14 @@ describe('asiento de la carga inicial', () => {
   test('un total ya sumado no toca 4250', () => {
     const asiento = asientoPorTotal({ total: 3_800_000.4 });
     expect(asiento.total).toBe(3_800_000);
-    expect(asiento.lineas.map((l) => l.cuenta)).toEqual(['1435', '3105']);
+    expect(asiento.lineas.map((l) => l.cuenta)).toEqual(['1435', '37050501']);
   });
 });
 
 describe('motivo del ajuste de ganancia', () => {
-  test('saldo inicial acredita 3105 y el sobrante real acredita 4295, nunca 4250', () => {
-    expect(creditoDelAjuste('saldo_inicial')).toEqual({ tipo: 'saldo_inicial', cuenta: '3105' });
-    expect(creditoDelAjuste('initial_setup')).toEqual({ tipo: 'saldo_inicial', cuenta: '3105' });
+  test('saldo inicial acredita 37050501 y el sobrante real acredita 4295, nunca 4250', () => {
+    expect(creditoDelAjuste('saldo_inicial')).toEqual({ tipo: 'saldo_inicial', cuenta: '37050501' });
+    expect(creditoDelAjuste('initial_setup')).toEqual({ tipo: 'saldo_inicial', cuenta: '37050501' });
     for (const motivo of ['physical_count', 'audit', 'production_input', 'produccion_propia', 'sobrante', 'otro']) {
       expect(creditoDelAjuste(motivo)).toEqual({ tipo: 'diversos', cuenta: CUENTA_DIVERSOS });
     }

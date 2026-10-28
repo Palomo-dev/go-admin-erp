@@ -253,7 +253,7 @@ describe('plantilla por sector', () => {
       consumo_interno: '519595',
       manifiesto_por_pagar: '22050501',
       manifiesto_transporte: '23359501',
-      saldo_inicial: '3105',
+      saldo_inicial: '37050501',
       impuesto_consumo: '2495',
       redondeo: '42958101',
       compra_servicio: '23359501',

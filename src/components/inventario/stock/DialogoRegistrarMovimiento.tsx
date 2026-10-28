@@ -284,7 +284,7 @@ function Formulario({
   };
 
   // El documento guarda el código (`saldo_inicial`, `sobrante`…), no la etiqueta.
-  // El saldo inicial acredita 3105. Un sobrante real acredita 4295. «Otro» sí lleva el texto.
+  // El saldo inicial acredita 37050501 (3710 con pérdida acumulada). Un sobrante real acredita 4295. «Otro» sí lleva el texto.
   const motivoEnvio = (motivo === 'otro' ? motivoOtro.trim() : motivo).slice(0, LARGO_MOTIVO);
   const existenciaActual = enSucursal?.existencia ?? producto?.existencia ?? null;
   const desdeNegativo = entrada && sugerirCompraPorNegativo(existenciaActual);
@@ -625,6 +625,9 @@ function Formulario({
               total: moneda.formatear(asientoInicial.total),
             })}
           />
+        )}
+        {asientoInicial && (
+          <AvisoTonal tono="advertencia" titulo={t('contrapartidaTitulo')} descripcion={t('contrapartidaDetalle')} />
         )}
         {asientoDelSobrante && (
           <AvisoTonal

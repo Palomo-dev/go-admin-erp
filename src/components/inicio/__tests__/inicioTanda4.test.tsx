@@ -228,7 +228,7 @@ describe('Primeros pasos (organización nueva)', () => {
     sinClavesCrudas(container.textContent);
     if (idioma === 'es') {
       expect(container.textContent).toContain('3 de 8 · 38 %');
-      expect(container.textContent).toContain('débito 1435 y crédito 3105');
+      expect(container.textContent).toContain('débito 1435 y crédito 37050501');
       fireEvent.click(within(container).getByText('Ocultar por ahora'));
       expect(ocultar).toHaveBeenCalled();
     }

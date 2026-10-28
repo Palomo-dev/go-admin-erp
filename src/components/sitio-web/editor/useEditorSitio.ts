@@ -92,6 +92,7 @@ import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
 import { cambiosParaFilaLegacy } from './inspector/zonaGlobalLogica';
 import { programarAutoguardado, type Autoguardado } from './useAutoguardado';
+import { historialVacio, raicesCambiadas, registrar, reponerRaices, sacarParaDeshacer, sacarParaRehacer, valoresPrevios, type Historial } from './historialEditor';
 
 /**
  * Activar V2 bloquea el guardado legacy del sitio. Hasta que goadmin-websites lea la revisión
@@ -263,13 +264,40 @@ export function useEditorSitio() {
   // Undo / redo sobre las secciones (useHistory existente, 50 pasos).
   const {
     state: sectionsState,
-    set: setSectionsState,
+    set: fijarSeccionesBase,
     undo,
     redo,
-    reset: resetSections,
-    canUndo,
-    canRedo,
+    reset: resetSectionsBase,
   } = useHistory<WebsitePageSection[]>([]);
+  // Historial único (secciones + ajustes globales + documento): historialEditor.ts.
+  const historialRef = useRef<Historial>(historialVacio());
+  const [, setVersionHistorial] = useState(0);
+  const fijarHistorial = useCallback((h: Historial) => {
+    historialRef.current = h;
+    setVersionHistorial((n) => n + 1);
+  }, []);
+  const seccionesRef = useRef<WebsitePageSection[]>([]);
+  seccionesRef.current = sectionsState;
+  const setSectionsState = useCallback(
+    (siguiente: WebsitePageSection[]) => {
+      if (JSON.stringify(siguiente) !== JSON.stringify(seccionesRef.current)) {
+        fijarHistorial(registrar(historialRef.current, { tipo: 'secciones' }));
+      }
+      seccionesRef.current = siguiente;
+      fijarSeccionesBase(siguiente);
+    },
+    [fijarSeccionesBase, fijarHistorial],
+  );
+  const resetSections = useCallback(
+    (siguiente: WebsitePageSection[]) => {
+      seccionesRef.current = siguiente;
+      fijarHistorial(historialVacio());
+      resetSectionsBase(siguiente);
+    },
+    [resetSectionsBase, fijarHistorial],
+  );
+  const canUndo = historialRef.current.pasado.length > 0;
+  const canRedo = historialRef.current.futuro.length > 0;
 
   const marcarCambio = useCallback(() => {
     setHasChanges(true);
@@ -415,6 +443,8 @@ export function useEditorSitio() {
     return ajustesDesdeDocumento(docLocal, ajustesLegacyPrincipal ?? ({} as WebsiteSettings), v2.borrador?.basePrincipal?.documento ?? null);
   }, [enV2, docLocal, ajustesLegacyPrincipal, v2.borrador]);
   const settingsVista: WebsiteSettings | null = enV2 ? vistaAjustes?.ajustes ?? null : settings;
+  const settingsVistaRef = useRef(settingsVista);
+  settingsVistaRef.current = settingsVista;
 
   // Undo/redo → página en edición.
   useEffect(() => {
@@ -896,8 +926,13 @@ export function useEditorSitio() {
   );
 
   // ── Ajustes globales (encabezado, pie, tema) ───────────────────────────────
-  const cambiarAjustes = useCallback(
-    (cambios: Partial<WebsiteSettings>) => {
+  const aplicarAjustes = useCallback(
+    (cambios: Partial<WebsiteSettings>, anotar: boolean) => {
+      // Deshacer (historialEditor): los valores de antes, leídos de lo que ve el panel.
+      const antes = anotar ? valoresPrevios(cambios as Record<string, unknown>, settingsVistaRef.current as unknown as Record<string, unknown> | null) : null;
+      const anotarPaso = () => {
+        if (antes) fijarHistorial(registrar(historialRef.current, { tipo: 'ajustes', antes, despues: valoresPrevios(cambios as Record<string, unknown>, cambios as Record<string, unknown>) }));
+      };
       if (enV2) {
         const doc = docLocalRef.current;
         if (!doc) return;
@@ -926,6 +961,7 @@ export function useEditorSitio() {
           pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...(operacion as Partial<WebsiteSettings>) };
           setAjustesLegacyPrincipal((prev) => (prev ? { ...prev, ...(operacion as Partial<WebsiteSettings>) } : prev));
         }
+        anotarPaso();
         marcarCambio();
         return;
       }
@@ -936,10 +972,12 @@ export function useEditorSitio() {
       const { enviar } = cambiosParaFilaLegacy(cambios as Record<string, unknown>, actualesLegacy);
       setSettings((prev) => (prev ? { ...prev, ...cambios } : prev));
       pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...(enviar as Partial<WebsiteSettings>) };
+      anotarPaso();
       marcarCambio();
     },
-    [enV2, marcarCambio],
+    [enV2, marcarCambio, fijarHistorial],
   );
+  const cambiarAjustes = useCallback((cambios: Partial<WebsiteSettings>) => aplicarAjustes(cambios, true), [aplicarAjustes]);
 
   /** Cambia el documento entero (estilo del sitio, menús): solo V2. */
   const cambiarDocumento = useCallback(
@@ -948,12 +986,49 @@ export function useEditorSitio() {
       if (!doc) return;
       const nuevo = cambiar(doc);
       if (igualesNormalizados(nuevo, doc)) return;
+      const raices = raicesCambiadas(doc, nuevo);
+      fijarHistorial(registrar(historialRef.current, { tipo: 'documento', antes: raices.antes, despues: raices.despues }));
       docLocalRef.current = nuevo;
       setDocLocal(nuevo);
       marcarCambio();
     },
-    [marcarCambio],
+    [marcarCambio, fijarHistorial],
   );
+  /** Aplica un paso del historial (sin anotarlo otra vez). */
+  const aplicarPaso = useCallback(
+    (entrada: NonNullable<ReturnType<typeof sacarParaDeshacer>['entrada']>, sentido: 'deshacer' | 'rehacer') => {
+      if (entrada.tipo === 'secciones') {
+        if (sentido === 'deshacer') undo();
+        else redo();
+        marcarCambio();
+        return;
+      }
+      const valores = sentido === 'deshacer' ? entrada.antes : entrada.despues;
+      if (entrada.tipo === 'ajustes') {
+        aplicarAjustes(valores as Partial<WebsiteSettings>, false);
+        return;
+      }
+      const doc = docLocalRef.current;
+      if (!doc) return;
+      const nuevo = reponerRaices(doc, valores);
+      docLocalRef.current = nuevo;
+      setDocLocal(nuevo);
+      marcarCambio();
+    },
+    [undo, redo, marcarCambio, aplicarAjustes],
+  );
+  const deshacer = useCallback(() => {
+    const { entrada, historial } = sacarParaDeshacer(historialRef.current);
+    if (!entrada) return;
+    fijarHistorial(historial);
+    aplicarPaso(entrada, 'deshacer');
+  }, [aplicarPaso, fijarHistorial]);
+  const rehacer = useCallback(() => {
+    const { entrada, historial } = sacarParaRehacer(historialRef.current);
+    if (!entrada) return;
+    fijarHistorial(historial);
+    aplicarPaso(entrada, 'rehacer');
+  }, [aplicarPaso, fijarHistorial]);
 
   const cambiarItemsMenu = useCallback(
     (menuId: string, items: ItemMenu[]) => cambiarDocumento((d) => reemplazarItemsMenu(d, menuId, items)),
@@ -1726,14 +1801,8 @@ export function useEditorSitio() {
     dispositivo,
     setDispositivo,
     // historia
-    deshacer: () => {
-      undo();
-      marcarCambio();
-    },
-    rehacer: () => {
-      redo();
-      marcarCambio();
-    },
+    deshacer,
+    rehacer,
     canUndo,
     canRedo,
     // secciones

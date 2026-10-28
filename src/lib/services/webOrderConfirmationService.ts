@@ -26,6 +26,7 @@ import {
   debeCobrarseEnCaja,
   esMetodoCobroEnCaja,
   esMetodoDePasarela,
+  marcaPagadoPorPasarela,
   metodoDeCobroEnCaja,
   pedidoPagadoPorPasarela,
   type MetodoCobroEnCaja,
@@ -81,6 +82,13 @@ export interface ConfirmOrderResult {
    * confirmado SIN cobrar; se cobra después con «Cobrar».
    */
   cobroPendiente?: ErrorCobroEnCaja;
+  /**
+   * «Marcar como pagado» al confirmar un pedido de PASARELA: se confirma sin
+   * pagar y luego se marca pagado con fn_marcar_pedido_web_pagado_pasarela
+   * (método de la pasarela, sin caja, referencia MANUAL y auditoría
+   * MARK_PAID_GATEWAY_MANUAL). Si falla, `cobroPendiente` trae el motivo.
+   */
+  pagoPasarela?: PagoPasarelaResult;
 }
 
 export interface CobroEnCajaResult {
@@ -230,8 +238,12 @@ class WebOrderConfirmationService {
     // de confirmar sin pagar; sin E4, el comportamiento de siempre.
     const cobrarEnCajaTrasConfirmar =
       (options.markAsPaid ?? false) && debeCobrarseEnCaja(order) && (await this.cobroEnCajaDisponible());
+    // Pasarela sin pagar: nunca el camino viejo (factura y pago desde el navegador,
+    // sin referencia MANUAL ni auditoría). Se confirma sin pagar y luego se marca
+    // pagado con fn_marcar_pedido_web_pagado_pasarela.
+    const pagarPorPasarelaTrasConfirmar = (options.markAsPaid ?? false) && marcaPagadoPorPasarela(order);
     let markAsPaid: boolean;
-    if (cobrarEnCajaTrasConfirmar) {
+    if (cobrarEnCajaTrasConfirmar || pagarPorPasarelaTrasConfirmar) {
       markAsPaid = false;
     } else {
       markAsPaid = options.markAsPaid ?? false;
@@ -349,6 +361,13 @@ class WebOrderConfirmationService {
       throw new Error(`Error vinculando pedido con venta: ${updateError.message}`);
     }
 
+    if (pagarPorPasarelaTrasConfirmar) {
+      return {
+        saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, stockErrors,
+        ...(await this.pagarPasarelaTrasConfirmar(order, saleId)),
+      };
+    }
+
     if (cobrarEnCajaTrasConfirmar) {
       try {
         const cobro = await this.cobrarEnCaja(
@@ -392,8 +411,12 @@ class WebOrderConfirmationService {
     // con la venta fuera de caja y sin exigir caja abierta.
     const cobrarEnCajaTrasConfirmar =
       (options.markAsPaid ?? false) && debeCobrarseEnCaja(order) && (await this.cobroEnCajaDisponible());
+    // Pasarela sin pagar: nunca el camino viejo (factura y pago desde el navegador,
+    // sin referencia MANUAL ni auditoría). Se confirma sin pagar y luego se marca
+    // pagado con fn_marcar_pedido_web_pagado_pasarela.
+    const pagarPorPasarelaTrasConfirmar = (options.markAsPaid ?? false) && marcaPagadoPorPasarela(order);
     let markAsPaid: boolean;
-    if (cobrarEnCajaTrasConfirmar) {
+    if (cobrarEnCajaTrasConfirmar || pagarPorPasarelaTrasConfirmar) {
       markAsPaid = false;
     } else {
       // Sin E4 (o pedido ya pagado): el comportamiento de siempre.
@@ -420,7 +443,9 @@ class WebOrderConfirmationService {
           yaConfirmado: mesa.ya_completo,
           stockErrors: [],
           // Lo de la mesa se cobra al cerrar la cuenta de la mesa, no aquí.
-          ...(cobrarEnCajaTrasConfirmar ? { cobroPendiente: 'COBRAR_EN_LA_MESA' as const } : {}),
+          ...(cobrarEnCajaTrasConfirmar || pagarPorPasarelaTrasConfirmar
+            ? { cobroPendiente: 'COBRAR_EN_LA_MESA' as const }
+            : {}),
         };
       } else {
         // E3 sin aplicar: el pedido se confirma con venta propia (abajo).
@@ -511,6 +536,7 @@ class WebOrderConfirmationService {
     } else {
       // Sin «Marcar como pagado», o sin E4: nada más que hacer aquí.
     }
+    const pasarela = pagarPorPasarelaTrasConfirmar ? await this.pagarPasarelaTrasConfirmar(order, saleId) : {};
 
     return {
       saleId,
@@ -527,6 +553,15 @@ class WebOrderConfirmationService {
       completadoAhora: !r.venta_creada,
       ...(cobro ? { cobro, paymentId: cobro.paymentId, invoiceId: cobro.invoiceId, invoiceNumber: cobro.invoiceNumber ?? undefined } : {}),
       ...(cobroPendiente ? { cobroPendiente } : {}),
+      ...(pasarela.pagoPasarela
+        ? {
+            pagoPasarela: pasarela.pagoPasarela,
+            paymentId: pasarela.pagoPasarela.paymentId,
+            invoiceId: pasarela.pagoPasarela.invoiceId,
+            invoiceNumber: pasarela.pagoPasarela.invoiceNumber ?? undefined,
+          }
+        : {}),
+      ...(pasarela.cobroPendiente ? { cobroPendiente: pasarela.cobroPendiente } : {}),
     };
   }
 
@@ -677,6 +712,23 @@ class WebOrderConfirmationService {
       paymentId: String(r.payment_id ?? ''),
       yaPagado: r.ya_pagado === true,
     };
+  }
+
+  /**
+   * Casilla «Marcar como pagado» del diálogo de confirmación (uno o en lote)
+   * con un pedido de pasarela: ya confirmado, se marca pagado por la pasarela.
+   * Un fallo no deshace la confirmación: vuelve como `cobroPendiente`.
+   */
+  private async pagarPasarelaTrasConfirmar(
+    order: WebOrder,
+    saleId: string,
+  ): Promise<{ pagoPasarela?: PagoPasarelaResult; cobroPendiente?: ErrorCobroEnCaja }> {
+    try {
+      return { pagoPasarela: await this.marcarPagadoPasarela({ ...order, sale_id: saleId }) };
+    } catch (err) {
+      console.warn('[webOrderConfirmation] Pedido de pasarela confirmado sin marcar pagado:', err);
+      return { cobroPendiente: err instanceof CobroEnCajaError ? err.codigo : 'OTRO' };
+    }
   }
 
   /**

@@ -212,6 +212,45 @@ describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
     expect(mockRpc).toHaveBeenCalledWith('fn_confirmar_pedido_web_completo', expect.objectContaining({ p_pagado: true, p_marcar_confirmado: false }));
     expect(mockRpc.mock.calls.filter(([fn]) => fn === 'fn_cobrar_pedido_web_en_caja')).toHaveLength(1); // solo la sonda
   });
+
+  describe('pedido de pasarela (QA 98a021b73, amarillo 2)', () => {
+    const rpcPasarela = (marcar: () => unknown) =>
+      mockRpc.mockImplementation(async (fn: string) => {
+        if (fn === 'fn_confirmar_pedido_web_completo') {
+          return { data: { sale_id: 'sale-p', venta_creada: true, items_creados: 1, kitchen_ticket_id: 9, comanda_creada: true, estado_actualizado: true, ya_completo: false }, error: null };
+        }
+        if (fn === 'fn_marcar_pedido_web_pagado_pasarela') return marcar();
+        return { data: null, error: null };
+      });
+
+    it.each([
+      ['nequi pendiente', { status: 'pending', payment_method: 'nequi' }],
+      ['wompi vencido', { status: 'expired', payment_method: 'wompi' }],
+    ])('%s: confirma SIN pagar y marca pagado con fn_marcar_pedido_web_pagado_pasarela (nunca factura/pago del navegador ni caja)', async (_n, extra) => {
+      rpcPasarela(() => ({ data: { ok: true, ya_pagado: false, invoice_id: 'inv-p', invoice_number: 'FACT-0100', payment_id: 'pay-p' }, error: null }));
+      const pedido = { ...base, payment_status: 'pending', ...extra } as never;
+      const r = await webOrderConfirmationService.confirmOrder(pedido, { prepMs: 60000, markAsPaid: true });
+
+      expect(mockRpc).toHaveBeenCalledWith('fn_confirmar_pedido_web_completo', expect.objectContaining({ p_pagado: false, p_marcar_confirmado: true }));
+      expect(mockRpc).toHaveBeenCalledWith('fn_marcar_pedido_web_pagado_pasarela', expect.objectContaining({ p_order_id: 'wo-1' }));
+      expect(mockRpc.mock.calls.filter(([fn, args]) => fn === 'fn_cobrar_pedido_web_en_caja' && (args as { p_metodo?: string }).p_metodo)).toHaveLength(0);
+      expect(r.pagoPasarela).toEqual(expect.objectContaining({ paymentId: 'pay-p', yaPagado: false }));
+      expect(r.paymentId).toBe('pay-p');
+      expect(r.cobroPendiente).toBeUndefined();
+      const escriturasPago = mockFrom.mock.results
+        .map((x) => x.value as Chain)
+        .filter((c) => c.tabla === 'payments' && c.insert.mock.calls.length > 0);
+      expect(escriturasPago).toHaveLength(0);
+    });
+
+    it('si la RPC de pasarela falla, el pedido queda confirmado y se avisa el motivo', async () => {
+      rpcPasarela(() => ({ data: null, error: { code: '42501', message: 'SIN_PERMISO' } }));
+      const r = await webOrderConfirmationService.confirmOrder({ ...base, status: 'pending', payment_status: 'pending', payment_method: 'daviplata' } as never, { prepMs: 60000, markAsPaid: true });
+      expect(r.saleId).toBe('sale-p');
+      expect(r.pagoPasarela).toBeUndefined();
+      expect(r.cobroPendiente).toBe('SIN_PERMISO');
+    });
+  });
 });
 
 describe('cobro en lote', () => {

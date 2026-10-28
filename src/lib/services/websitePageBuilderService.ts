@@ -23,6 +23,7 @@ import {
 } from '@/lib/services/website/seccionesMesaCatalogo';
 import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
+import { CLAVES_TARJETA_EN_SECCION } from '@/lib/website/tarjetaProducto';
 
 // ============================================================
 // INTERFACES
@@ -246,6 +247,16 @@ export interface ContentFieldDef {
  * cuando la clave no existe, para que diga lo que el sitio hace (solo cambia el estado inicial del
  * switch: `defaultValue` no se escribe en el contenido).
  */
+/**
+ * En grilla, destacados y ofertas la tarjeta se edita en «Tarjeta de producto»: esas claves salen
+ * del catálogo (el panel lee lo ya guardado y el sitio lo sigue pintando). «Proporción» de la
+ * rejilla no la leía la tarjeta: la proporción es la de la imagen, en el mismo panel.
+ */
+const CARD_FIELDS_PRODUCTO: ContentFieldDef[] = CARD_FIELDS.filter(
+  (f) => !(CLAVES_TARJETA_EN_SECCION as readonly string[]).includes(f.key),
+);
+const GRID_FIELDS_PRODUCTO: ContentFieldDef[] = GRID_FIELDS.filter((f) => f.key !== 'aspect_ratio');
+
 const CARD_FIELDS_DESCRIPCION_VISIBLE: ContentFieldDef[] = CARD_FIELDS.map((f) =>
   f.key === 'show_description' ? { ...f, defaultValue: true } : f,
 );
@@ -563,8 +574,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       // Las galerías no abrían la foto: con la clave ausente el sitio sigue sin abrirla.
       { key: 'lightbox', label: 'Lightbox al hacer clic', type: 'boolean', group: 'behavior', defaultValue: false },
       ...GRID_FIELDS,
-      // CAROUSEL_FIELDS aplica sobre todo a la variante carousel
-      ...CAROUSEL_FIELDS,
+      // CAROUSEL_FIELDS: solo en las variantes que pasan fotos (Carrusel y Pantalla completa).
+      // «Mosaico» y «Grid» no son carruseles: el grupo no aparece (QA 27-oct). Lo fino por clave
+      // (apariencia y «Elementos visibles» solo en Carrusel) está en `interruptoresSitio.ts`.
+      ...CAROUSEL_FIELDS.map((f) => ({ ...f, showIf: { ...f.showIf, variantIn: ['carousel', 'fullscreen'] } })),
     ],
   },
   {
@@ -1209,8 +1222,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         defaultValue: true,
         showIf: { variantIn: ['carousel'] },
       },
-      ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...GRID_FIELDS_PRODUCTO,
+      ...CARD_FIELDS_PRODUCTO,
       ...PRODUCT_CARD_INTERACTION_FIELDS,
     ],
   },
@@ -1423,8 +1436,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         defaultValue: true,
         showIf: { variantIn: ['carousel'] },
       },
-      ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...GRID_FIELDS_PRODUCTO,
+      ...CARD_FIELDS_PRODUCTO,
       ...PRODUCT_CARD_INTERACTION_FIELDS,
     ],
   },
@@ -1637,8 +1650,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         defaultValue: true,
         helpText: 'Apagado: solo se ve la cantidad o las filas indicadas, sin números de página.',
       },
-      ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...GRID_FIELDS_PRODUCTO,
+      ...CARD_FIELDS_PRODUCTO,
       ...PRODUCT_CARD_INTERACTION_FIELDS,
     ],
   },

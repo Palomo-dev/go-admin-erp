@@ -35,6 +35,11 @@ interface OrderActionsProps {
   onMarkAsPaid?: () => void;
   /** Cobrar en la caja de la sede (E4); `entregar` también lo marca entregado. */
   onCobrar?: (entregar: boolean) => void;
+  /**
+   * Pedido de pasarela: «Marcar como pagado» de un clic (sin caja, sin
+   * referencia ni comprobante). Reemplaza a «Cobrar» para esos pedidos.
+   */
+  onMarcarPagadoPasarela?: () => void;
   /** La sede no tiene caja abierta: «Cobrar y entregar» queda deshabilitado (Figma 1982:841). */
   sinCajaAbierta?: boolean;
   /** «Entra a Caja N · {sede} · abierta», ya traducido; null si no se conoce la caja. */
@@ -56,6 +61,7 @@ export function OrderActions({
   onPrint,
   onMarkAsPaid,
   onCobrar,
+  onMarcarPagadoPasarela,
   sinCajaAbierta = false,
   cajaEtiqueta = null,
   isLoading = false,
@@ -86,6 +92,7 @@ export function OrderActions({
   const cobro = cobroDelPedido(order);
   const puedeCobrar = !!onCobrar && cobro.puedeCobrar;
   const cobraYEntrega = !!onCobrar && cobro.cobraYEntrega;
+  const marcaPagadoPasarela = !!onMarcarPagadoPasarela && cobro.marcarPagadoPasarela;
 
   if (variant === 'compact') {
     return (
@@ -179,6 +186,23 @@ export function OrderActions({
           )}
           {t('orderActions.enviarDomicilio')}
         </Button>
+      )}
+
+      {/* Pasarela (Wompi/nequi/daviplata/card, Bold…): nunca «Cobrar» en caja; un clic y queda pagado */}
+      {marcaPagadoPasarela && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            className={clasesBoton({ variante: 'primario', anchoCompleto: true })}
+            onClick={() => onMarcarPagadoPasarela?.()}
+            disabled={isLoading}
+            data-testid="marcar-pagado-pasarela"
+          >
+            {isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle className="size-4" aria-hidden="true" />}
+            {t('cobro.marcarPagadoPasarela')}
+          </button>
+          <p className="text-sm text-fg-secondary">{t('cobro.marcarPagadoPasarelaAyuda', { pasarela: order.payment_method ?? '' })}</p>
+        </div>
       )}
 
       {/* «Cobrar y entregar»: primaria de marca, con la caja a la que entra el dinero */}

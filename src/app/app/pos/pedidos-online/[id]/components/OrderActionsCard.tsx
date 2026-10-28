@@ -19,6 +19,7 @@ interface OrderActionsCardProps {
   onPrint?: () => void;
   onMarkAsPaid?: () => void;
   onCobrar?: (entregar: boolean) => void;
+  onMarcarPagadoPasarela?: () => void;
   sinCajaAbierta?: boolean;
   /** «Entra a Caja N · {sede} · abierta», bajo «Cobrar y entregar». */
   cajaEtiqueta?: string | null;
@@ -38,6 +39,7 @@ export function OrderActionsCard({
   onPrint,
   onMarkAsPaid,
   onCobrar,
+  onMarcarPagadoPasarela,
   sinCajaAbierta,
   cajaEtiqueta,
   isLoading = false,
@@ -65,6 +67,7 @@ export function OrderActionsCard({
           onPrint={onPrint}
           onMarkAsPaid={onMarkAsPaid}
           onCobrar={onCobrar}
+          onMarcarPagadoPasarela={onMarcarPagadoPasarela}
           sinCajaAbierta={sinCajaAbierta}
           cajaEtiqueta={cajaEtiqueta}
           isLoading={isLoading}

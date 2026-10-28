@@ -38,3 +38,21 @@ export function resolverFuenteTema(valor: unknown, fuentes: FuentesTema, porDefe
 export function sigueAlTema(valor: unknown): boolean {
   return valor === null || valor === undefined || valor === '' || rolFuenteDeReferencia(valor) !== null;
 }
+
+/**
+ * Fuente del encabezado de sección (`title_font` / `description_font`), guardada como la lee la
+ * tienda: sin clave o `'site'` = la del sitio; si no, una familia. Para `FontField`:
+ * `'site'`/vacío → `null`; al guardar, `null` o la referencia al rol por defecto → `undefined`
+ * (se borra la clave), la otra referencia del tema → su familia, una familia → igual.
+ */
+export function fuenteEncabezadoAlCampo(guardado: unknown): string | null {
+  return typeof guardado === 'string' && guardado && guardado !== 'site' ? guardado : null;
+}
+
+export function fuenteEncabezadoAlGuardar(valor: string | null, fuentes: FuentesTema, porDefecto: RolFuenteTema): string | undefined {
+  if (valor == null || valor === '' || valor === 'site') return undefined;
+  const rol = rolFuenteDeReferencia(valor);
+  if (rol === porDefecto) return undefined;
+  if (rol) return fuentes[rol] ?? undefined;
+  return valor;
+}

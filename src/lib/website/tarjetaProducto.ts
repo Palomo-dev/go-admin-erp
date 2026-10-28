@@ -39,9 +39,9 @@ export const TAMANOS_TEXTO = ['sm', 'md', 'lg'] as const
 export const POSICIONES_RESENA = ['above_title', 'below_title', 'over_image'] as const
 export const ESTILOS_RESENA = ['stars', 'number_star'] as const
 export const PESOS_TITULO = ['normal', 'medium', 'semibold', 'bold'] as const
-export const SOMBRAS_TARJETA = ['none', 'sm', 'md', 'lg', 'hover'] as const
-export const RATIOS_IMAGEN = ['1:1', '4:5', '3:4', '4:3'] as const
-export const AJUSTES_IMAGEN = ['contain', 'cover'] as const
+export const SOMBRAS_TARJETA = ['none', 'sm', 'md', 'lg', 'xl', 'hover'] as const
+export const RATIOS_IMAGEN = ['1:1', '4:5', '3:4', '4:3', '16:9'] as const
+export const AJUSTES_IMAGEN = ['contain', 'cover', 'fill'] as const
 export const HOVER_IMAGEN = ['none', 'zoom', 'second'] as const
 
 export const TIPOS_SECCION_TARJETA = ['products_grid', 'featured_products', 'offers'] as const
@@ -288,7 +288,7 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   const cat = bandera(o.show_category)
   if (cat != null) e.show_category = cat
   if (o.card_layout === 'horizontal' || o.card_layout === 'vertical') e.card_layout = o.card_layout
-  const radio = entero(o.card_radius, 0, 32)
+  const radio = entero(o.card_radius, 0, 48)
   if (radio != null) e.card_radius = radio
   const borde = entero(o.card_border_width, 0, 8)
   if (borde != null) e.card_border_width = borde
@@ -519,6 +519,47 @@ export function guardarCambioTarjeta(guardado: unknown, ruta: string, valor: unk
   return normalizarTarjeta(plano) ?? { card_preset: 'actual' }
 }
 
+/**
+ * Claves que la sección de productos guardaba sueltas en su contenido y que hoy edita el panel
+ * «Tarjeta de producto». El sitio las sigue leyendo (product_card_style gana clave a clave).
+ */
+export const CLAVES_TARJETA_EN_SECCION = [
+  'card_radius',
+  'card_shadow',
+  'card_border_width',
+  'card_border_color',
+  'card_bg',
+  'card_padding',
+  'image_fit',
+  'image_ratio',
+  'text_align',
+  'title_lines',
+  'price_color',
+  'show_compare_price',
+] as const
+
+/** Lo que la sección ya tenía guardado con las claves sueltas, leído como estilo de tarjeta. */
+export function tarjetaDesdeClavesSeccion(contenido: unknown): EstiloTarjetaProducto | null {
+  if (!contenido || typeof contenido !== 'object') return null
+  const c = contenido as Record<string, unknown>
+  const plano: Record<string, unknown> = {}
+  for (const k of CLAVES_TARJETA_EN_SECCION) if (c[k] != null && c[k] !== '') plano[k] = c[k]
+  if (!Object.keys(plano).length) return null
+  const e = normalizarTarjeta(plano)
+  return e && Object.keys(e).length ? e : null
+}
+
+/**
+ * Lo que la sección hereda en el inspector: sus claves sueltas de siempre y, encima, el estilo
+ * del sitio (mismo orden que pinta la tarjeta publicada).
+ */
+export function heredadoTarjetaSeccion(contenido: unknown, sitio: unknown): EstiloTarjetaProducto | undefined {
+  const legado = tarjetaDesdeClavesSeccion(contenido)
+  const deSitio = aplicarEstiloTarjeta(sitio)
+  if (!legado) return deSitio ?? (sitio as EstiloTarjetaProducto | undefined)
+  return deSitio ? fusionarEstilos(legado, deSitio) : legado
+}
+
 export function esSeccionTarjetaProducto(tipo: string | null | undefined): boolean {
   return !!tipo && (TIPOS_SECCION_TARJETA as readonly string[]).includes(tipo)
 }
@@ -649,4 +690,40 @@ export function fondoTarjeta(estilo: EstiloTarjetaProducto | null | undefined): 
   if (!estilo?.card_bg || !estilo.card_bg_2) return undefined
   const ang = estilo.card_bg_angle ?? 180
   return { backgroundImage: `linear-gradient(${ang}deg, ${estilo.card_bg}, ${estilo.card_bg_2})` }
+}
+
+/** Claves con valor propio en la sección: las del estilo de tarjeta y las sueltas de siempre. */
+export function clavesPropiasTarjeta(contenido: unknown): string[] {
+  if (!contenido || typeof contenido !== 'object') return []
+  const c = contenido as Record<string, unknown>
+  const g = c.product_card_style && typeof c.product_card_style === 'object' ? (c.product_card_style as Record<string, unknown>) : {}
+  const claves = Object.keys(g).filter((k) => k !== 'card_preset' && g[k] != null && g[k] !== '')
+  for (const k of CLAVES_TARJETA_EN_SECCION) if (c[k] != null && c[k] !== '' && !claves.includes(k)) claves.push(k)
+  return claves
+}
+
+/** Valores que se restablecen juntos (el fondo y su degradado son una sola opción). */
+const GRUPO_RESTABLECER: Record<string, readonly string[]> = {
+  card_bg: ['card_bg', 'card_bg_2', 'card_bg_angle'],
+  card_bg_2: ['card_bg', 'card_bg_2', 'card_bg_angle'],
+  card_bg_angle: ['card_bg', 'card_bg_2', 'card_bg_angle'],
+}
+
+/**
+ * Restablece un valor: lo quita del estilo de tarjeta de la sección y, si es una de las claves
+ * sueltas de siempre (CLAVES_TARJETA_EN_SECCION), también esa clave. Vuelve a mandar el preset
+ * de la sección si tiene uno; si no, el estilo del sitio (o el de siempre). Lo demás no cambia.
+ */
+export function restablecerClaveTarjeta(contenido: Record<string, unknown>, clave: string): Record<string, unknown> {
+  const siguiente = { ...contenido }
+  const claves = GRUPO_RESTABLECER[clave] ?? [clave]
+  for (const k of claves) if ((CLAVES_TARJETA_EN_SECCION as readonly string[]).includes(k)) delete siguiente[k]
+  const g = siguiente.product_card_style
+  if (g && typeof g === 'object') {
+    const estilo = { ...(g as Record<string, unknown>) }
+    for (const k of claves) delete estilo[k]
+    if (Object.keys(estilo).length) siguiente.product_card_style = estilo
+    else delete siguiente.product_card_style
+  }
+  return siguiente
 }

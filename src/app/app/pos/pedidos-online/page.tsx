@@ -260,7 +260,9 @@ export default function PedidosOnlinePage() {
   };
 
   // ── Confirmar (uno o varios) ────────────────────────────────────────────
-  const confirmarUno = async (orderId: string): Promise<{ ok: boolean; numero: string }> => {
+  const confirmarUno = async (
+    orderId: string,
+  ): Promise<{ ok: boolean; numero: string; sinPagar?: string }> => {
     const order = await webOrdersService.getOrderById(orderId);
     if (!order) throw new Error(tPedido('orderNotFoundState.pedidoNoEncontrado'));
     const result = await webOrderConfirmationService.confirmOrder(order, {
@@ -269,7 +271,12 @@ export default function PedidosOnlinePage() {
       markAsPaid,
     });
     if (!result.yaConfirmado) void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
-    if (confirmDialog.orderIds.length === 1) {
+    // «Marcar como pagado» que no se pudo hacer: va al resumen único del final
+    // (uno o en lote), no a un aviso por pedido (TOAST_LIMIT se los come).
+    const sinPagar = result.cobroPendiente
+      ? `${order.order_number} (${tPedido(`cobro.${claveAvisoCobro(result.cobroPendiente)}`)})`
+      : undefined;
+    if (confirmDialog.orderIds.length === 1 && !sinPagar) {
       if (result.yaConfirmado) {
         toast({ title: tPedido('confirmacion.yaConfirmado'), description: tPedido('confirmacion.yaConfirmadoDetalle') });
         return { ok: true, numero: order.order_number };
@@ -287,13 +294,6 @@ export default function PedidosOnlinePage() {
         description: parts.join(' · '),
       });
     }
-    if (result.cobroPendiente) {
-      toast({
-        title: tPedido('cobro.pendienteTrasConfirmar'),
-        description: `${order.order_number} · ${tPedido(`cobro.${claveAvisoCobro(result.cobroPendiente)}`)}`,
-        variant: 'destructive',
-      });
-    }
     if ((result.stockErrors ?? []).length > 0) {
       toast({
         title: tPedido('confirmacion.stockFallido', { n: result.stockErrors!.length }),
@@ -301,7 +301,7 @@ export default function PedidosOnlinePage() {
         variant: 'destructive',
       });
     }
-    return { ok: true, numero: order.order_number };
+    return { ok: true, numero: order.order_number, sinPagar };
   };
 
   const handleConfirmOrder = async () => {
@@ -310,11 +310,13 @@ export default function PedidosOnlinePage() {
     setActionLoading(true);
     const fallidos: string[] = [];
     let hechos = 0;
+    const sinPagar: string[] = [];
     // En serie: cada confirmación crea venta, comanda y movimientos de stock.
     for (const id of ids) {
       try {
-        await confirmarUno(id);
+        const r = await confirmarUno(id);
         hechos++;
+        if (r.sinPagar) sinPagar.push(r.sinPagar);
       } catch (error: unknown) {
         console.error('Error confirmando pedido:', error);
         const numero = orders.find((o) => o.id === id)?.order_number ?? id.slice(0, 8);
@@ -328,9 +330,19 @@ export default function PedidosOnlinePage() {
         }
       }
     }
-    if (ids.length > 1) {
-      if (hechos > 0) toast({ title: t('confirmarLote.resultado', { ok: hechos }) });
-      if (fallidos.length > 0) toast({ title: t('confirmarLote.fallidos', { n: fallidos.length, pedidos: fallidos.join(', ') }), variant: 'destructive' });
+    // Un solo resumen al final: confirmados, sin marcar como pagados (con motivo) y no confirmados.
+    if (ids.length > 1 || sinPagar.length > 0) {
+      const lineas = [
+        ...(sinPagar.length > 0
+          ? [t('confirmarLote.sinPagar', { n: sinPagar.length, pedidos: sinPagar.join(' · ') })]
+          : []),
+        ...(fallidos.length > 0 ? [t('confirmarLote.fallidos', { n: fallidos.length, pedidos: fallidos.join(', ') })] : []),
+      ];
+      toast({
+        title: t('confirmarLote.resultado', { ok: hechos }),
+        description: lineas.length > 0 ? lineas.join('. ') : undefined,
+        variant: sinPagar.length > 0 || fallidos.length > 0 ? 'destructive' : undefined,
+      });
     }
     setActionLoading(false);
     setConfirmDialog({ open: false, orderIds: [] });

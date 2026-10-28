@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
+import { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
 import { buscadorPropioCelular, cambioBuscador, cambioCirculoAcento, cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
 import { useTextosEditor } from '../textos';
 import {
@@ -527,7 +528,7 @@ function Estilo(p: Interno) {
   const a = p.ajustes;
   const cambiar = p.cambiar;
   const color = (k: string) => (typeof a[k] === 'string' && a[k] ? (a[k] as string) : null);
-  const transparente = valorOpcion(a, 'header_style') === 'transparent';
+  const idScroll = useId();
   return (
     <>
       <div className="flex flex-col gap-1.5 rounded-lg bg-subtle px-3 py-2.5">
@@ -596,15 +597,19 @@ function Estilo(p: Interno) {
           titulo={t('zonaGlobal.estilo.transparente')}
           ayuda={t('zonaGlobal.estilo.transparenteAyuda')}
           nuevo
-          valor={transparente}
-          onCambiar={(v) => cambiar({ header_style: v ? 'transparent' : p.porDefecto.header.composicion === 'transparent' ? 'default' : p.porDefecto.header.composicion })}
+          valor={encabezadoSobrePortada(a)}
+          onCambiar={(v) => cambiar(cambioSobrePortada(a, v, p.porDefecto.header.composicion))}
         />
-        <FilaInterruptor
-          titulo={t('zonaGlobal.estilo.fijo')}
-          ayuda={t('zonaGlobal.estilo.fijoAyuda')}
-          valor={opcionBooleana(a, 'header_sticky')}
-          onCambiar={(v) => cambiar({ header_sticky: v })}
-        />
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idScroll}>{t('zonaGlobal.estilo.alBajar')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={idScroll}
+            opciones={MODOS_AL_BAJAR.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.estilo.alBajarModo.${v}`) }))}
+            valor={modoAlBajar(a)}
+            onValorChange={(v) => cambiar(cambioAlBajar(v))}
+          />
+          <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.estilo.fijoAyuda')}</p>
+        </div>
       </section>
       <EspaciosEncabezado ajustes={a} cambiar={cambiar} />
       <FormaBoton ajustes={a} cambiar={cambiar} />
@@ -630,18 +635,10 @@ export function encabezadoSobrePortada(a: Record<string, unknown>): boolean {
 function EspaciosEncabezado({ ajustes: a, cambiar }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void }) {
   const t = useTextosEditor();
   const id = useId();
-  const transparente = a.header_style === 'transparent';
   const offset = typeof a.first_section_offset_px === 'number' ? a.first_section_offset_px : null;
   return (
     <section className="flex flex-col gap-3">
       <TituloBloque>{t('zonaGlobal.estilo.espacios')}</TituloBloque>
-      <FilaInterruptor
-        titulo={t('zonaGlobal.acciones.headerSobreHero')}
-        ayuda={t('zonaGlobal.acciones.headerSobreHeroAyuda')}
-        valor={encabezadoSobrePortada(a)}
-        // Transparente ya va encima por defecto: encender suelta la clave; si no, se escribe explícito.
-        onCambiar={(v) => cambiar({ header_transparent_over_hero: v ? (transparente ? null : true) : false })}
-      />
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={id}>{t('zonaGlobal.acciones.espacioPrimera')}</EtiquetaGrupo>
         <CampoNumero
@@ -661,6 +658,7 @@ function EspaciosEncabezado({ ajustes: a, cambiar }: { ajustes: Record<string, u
 }
 
 export { cambioBuscador } from './anterioresLogica';
+export { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
 
 const FORMAS_BOTON = [
   { valor: '0', clave: 'recto' },

@@ -69,9 +69,24 @@ export interface InspectorTarjetaProductoProps {
   heredado?: unknown;
   onCambiar: (estilo: EstiloTarjetaProducto) => void;
   onQuitar?: () => void;
+  /** Claves con valor propio de la sección (estilo de tarjeta o claves sueltas de siempre). */
+  propias?: string[];
+  /** Restablece un valor: lo borra del estilo y de la clave suelta heredada. */
+  onRestablecer?: (clave: string) => void;
   /** Copia el estilo efectivo a todas las secciones de productos de la página. */
   onAplicarTodas?: (estilo: EstiloTarjetaProducto) => void;
 }
+
+const NOMBRE_CLAVE: Record<string, string> = {
+  card_radius: 'Radio', card_shadow: 'Sombra', card_border_width: 'Borde', card_border_color: 'Color del borde',
+  card_bg: 'Fondo', card_bg_2: 'Fondo 2', card_bg_angle: 'Ángulo del fondo', card_padding: 'Relleno', card_gap: 'Separación',
+  image_fit: 'Ajuste de la imagen', image_ratio: 'Proporción de la imagen', image_bg: 'Fondo de la imagen',
+  image_padding: 'Relleno de la imagen', image_radius: 'Radio de la imagen', hover_image: 'Imagen al pasar el mouse',
+  text_align: 'Alineación', title_lines: 'Líneas del título', title_weight: 'Peso del título', title_size: 'Tamaño del título',
+  price_color: 'Color del precio', price_position: 'Precio', price_size: 'Tamaño del precio', show_compare_price: 'Precio anterior tachado',
+  show_reviews: 'Reseñas', reviews_position: 'Posición de reseñas', reviews_style: 'Estilo de reseñas', show_brand: 'Marca',
+  show_category: 'Categoría', label_shape: 'Forma de etiquetas', label_style: 'Estilo de etiquetas', label_position: 'Posición de etiquetas',
+};
 
 function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
@@ -157,7 +172,7 @@ function Rango({
   );
 }
 
-export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuitar, onAplicarTodas }: InspectorTarjetaProductoProps) {
+export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuitar, onAplicarTodas, propias, onRestablecer }: InspectorTarjetaProductoProps) {
   const tk = useTextosEditor();
   const [pestana, setPestana] = useState<Pestana>('preset');
   const [boton, setBoton] = useState<ClaveBoton>('add');
@@ -191,6 +206,19 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           { valor: 'contenedor', etiqueta: 'Contenedor' },
         ]}
       />
+
+      {onRestablecer && propias && propias.length > 0 && (
+        <div role="group" aria-label="Valores propios de esta sección" className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
+          <span>Valores propios de esta sección. Toca uno para restablecerlo: vuelve al del preset de la sección si tiene uno; si no, al estilo del sitio.</span>
+          <div className="flex flex-wrap gap-1">
+            {propias.map((k) => (
+              <button key={k} type="button" title="Restablecer" onClick={() => onRestablecer(k)} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                {NOMBRE_CLAVE[k] ?? k} ↺
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pestana === 'preset' && (
         <div className="grid grid-cols-2 gap-2">
@@ -279,10 +307,10 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
 
       {pestana === 'contenedor' && (
         <div className="flex flex-col gap-3">
-          <Rango etiqueta="Radio" valor={vista.card_radius} min={0} max={32} onCambiar={(n) => cambiar('card_radius', n)} />
+          <Rango etiqueta="Radio" valor={vista.card_radius} min={0} max={48} onCambiar={(n) => cambiar('card_radius', n)} />
           <Rango etiqueta="Borde" valor={vista.card_border_width} min={0} max={8} onCambiar={(n) => cambiar('card_border_width', n)} />
           <Color etiqueta="Color del borde" valor={vista.card_border_color} onCambiar={(v) => cambiar('card_border_color', v)} />
-          <Lista etiqueta="Sombra" valor={vista.card_shadow} opciones={SOMBRAS_TARJETA} nombres={{ none: 'Ninguna', sm: 'Suave', md: 'Media', lg: 'Fuerte', hover: 'Al pasar el mouse' }} onCambiar={(v) => cambiar('card_shadow', v)} />
+          <Lista etiqueta="Sombra" valor={vista.card_shadow} opciones={SOMBRAS_TARJETA} nombres={{ none: 'Ninguna', sm: 'Suave', md: 'Media', lg: 'Fuerte', xl: 'Muy fuerte', hover: 'Al pasar el mouse' }} onCambiar={(v) => cambiar('card_shadow', v)} />
           <div className="grid grid-cols-2 gap-2">
             <Color etiqueta="Fondo" valor={vista.card_bg === 'transparent' ? undefined : vista.card_bg} onCambiar={(v) => cambiar('card_bg', v)} />
             <Color etiqueta="Fondo 2" valor={vista.card_bg_2} onCambiar={(v) => cambiar('card_bg_2', v)} />
@@ -291,7 +319,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <Rango etiqueta="Relleno" valor={vista.card_padding} min={0} max={48} onCambiar={(n) => cambiar('card_padding', n)} />
           <Rango etiqueta="Separación entre tarjetas" valor={vista.card_gap} min={0} max={64} onCambiar={(n) => cambiar('card_gap', n)} />
           <Lista etiqueta="Proporción de la imagen" valor={vista.image_ratio} opciones={RATIOS_IMAGEN} onCambiar={(v) => cambiar('image_ratio', v)} />
-          <Lista etiqueta="Ajuste de la imagen" valor={vista.image_fit} opciones={AJUSTES_IMAGEN} nombres={{ cover: 'Cubrir', contain: 'Contener' }} onCambiar={(v) => cambiar('image_fit', v)} />
+          <Lista etiqueta="Ajuste de la imagen" valor={vista.image_fit} opciones={AJUSTES_IMAGEN} nombres={{ cover: 'Cubrir', contain: 'Contener', fill: 'Rellenar' }} onCambiar={(v) => cambiar('image_fit', v)} />
           <Color etiqueta="Fondo de la imagen" valor={vista.image_bg} onCambiar={(v) => cambiar('image_bg', v)} />
           <Rango etiqueta="Relleno de la imagen" valor={vista.image_padding} min={0} max={32} onCambiar={(n) => cambiar('image_padding', n)} />
           <Rango etiqueta="Radio de la imagen" valor={vista.image_radius} min={0} max={32} onCambiar={(n) => cambiar('image_radius', n)} />

@@ -10,7 +10,7 @@
  *    caja de la sede cuando E4 existe; sin caja, el pedido queda confirmado sin
  *    cobrar y se avisa. Sin E4, el camino de siempre.
  * 3. El cobro en lote no se corta en el primer pedido que no se puede cobrar.
- * 4. Una sola lista de métodos de cobro en caja (nequi/daviplata → transfer).
+ * 4. Una sola lista de métodos de cobro en caja (nequi/daviplata/card del pedido web = Wompi: nunca en caja).
  * 5. El cron reconoce el pedido pagado «a medias» aunque esté 'confirmed'.
  */
 
@@ -166,7 +166,7 @@ describe('servidor: pedido pagado en línea (el sitio ya lo marcó confirmed)', 
 });
 
 describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
-  const efectivo = { ...base, status: 'pending', payment_status: 'pending', payment_method: 'nequi' } as never;
+  const efectivo = { ...base, status: 'pending', payment_status: 'pending', payment_method: 'transfer' } as never;
   const rpcCon = (cobro: (args: Record<string, unknown>) => unknown) =>
     mockRpc.mockImplementation(async (fn: string, args: Record<string, unknown>) => {
       if (fn === 'fn_confirmar_pedido_web_completo') {
@@ -176,7 +176,7 @@ describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
       return { data: null, error: null };
     });
 
-  it('con E4: confirma sin pagar y cobra en la caja de la sede (nequi → transfer), sin escribir paid desde el navegador', async () => {
+  it('con E4: confirma sin pagar y cobra en la caja de la sede (transferencia en el local), sin escribir paid desde el navegador', async () => {
     rpcCon((args) =>
       args.p_order_id === '00000000-0000-0000-0000-000000000000'
         ? { data: null, error: { code: 'P0002', message: 'WEB_ORDER_NOT_FOUND' } }
@@ -212,6 +212,68 @@ describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
     expect(mockRpc).toHaveBeenCalledWith('fn_confirmar_pedido_web_completo', expect.objectContaining({ p_pagado: true, p_marcar_confirmado: false }));
     expect(mockRpc.mock.calls.filter(([fn]) => fn === 'fn_cobrar_pedido_web_en_caja')).toHaveLength(1); // solo la sonda
   });
+
+  describe('pedido de pasarela (QA 98a021b73, amarillo 2)', () => {
+    const rpcPasarela = (marcar: () => unknown) =>
+      mockRpc.mockImplementation(async (fn: string) => {
+        if (fn === 'fn_confirmar_pedido_web_completo') {
+          return { data: { sale_id: 'sale-p', venta_creada: true, items_creados: 1, kitchen_ticket_id: 9, comanda_creada: true, estado_actualizado: true, ya_completo: false }, error: null };
+        }
+        if (fn === 'fn_marcar_pedido_web_pagado_pasarela') return marcar();
+        return { data: null, error: null };
+      });
+
+    it.each([
+      ['nequi pendiente', { status: 'pending', payment_method: 'nequi' }],
+      ['wompi vencido', { status: 'expired', payment_method: 'wompi' }],
+    ])('%s: confirma SIN pagar y marca pagado con fn_marcar_pedido_web_pagado_pasarela (nunca factura/pago del navegador ni caja)', async (_n, extra) => {
+      rpcPasarela(() => ({ data: { ok: true, ya_pagado: false, invoice_id: 'inv-p', invoice_number: 'FACT-0100', payment_id: 'pay-p' }, error: null }));
+      const pedido = { ...base, payment_status: 'pending', ...extra } as never;
+      const r = await webOrderConfirmationService.confirmOrder(pedido, { prepMs: 60000, markAsPaid: true });
+
+      expect(mockRpc).toHaveBeenCalledWith('fn_confirmar_pedido_web_completo', expect.objectContaining({ p_pagado: false, p_marcar_confirmado: true }));
+      expect(mockRpc).toHaveBeenCalledWith('fn_marcar_pedido_web_pagado_pasarela', expect.objectContaining({ p_order_id: 'wo-1' }));
+      expect(mockRpc.mock.calls.filter(([fn, args]) => fn === 'fn_cobrar_pedido_web_en_caja' && (args as { p_metodo?: string }).p_metodo)).toHaveLength(0);
+      expect(r.pagoPasarela).toEqual(expect.objectContaining({ paymentId: 'pay-p', yaPagado: false }));
+      expect(r.paymentId).toBe('pay-p');
+      expect(r.cobroPendiente).toBeUndefined();
+      const escriturasPago = mockFrom.mock.results
+        .map((x) => x.value as Chain)
+        .filter((c) => c.tabla === 'payments' && c.insert.mock.calls.length > 0);
+      expect(escriturasPago).toHaveLength(0);
+    });
+
+    it.each([
+      ['wompi', '1577574-1793151765-89419'],
+      ['visa', '998877'],
+    ])('cancelado por pago fallido (%s): va por la RPC completa (reactiva) aunque el interruptor esté apagado y se marca pagado', async (payment_method, payment_reference) => {
+      rpcPasarela(() => ({ data: { ok: true, ya_pagado: false, invoice_id: 'inv-c', invoice_number: 'FACT-0101', payment_id: 'pay-c' }, error: null }));
+      const pedido = { ...base, status: 'cancelled', payment_status: 'failed', payment_method, payment_reference, sale_id: null } as never;
+      const r = await webOrderConfirmationService.confirmOrder(pedido, { prepMs: 60000, markAsPaid: true });
+      expect(mockRpc).toHaveBeenCalledWith('fn_confirmar_pedido_web_completo', expect.objectContaining({ p_pagado: false }));
+      expect(mockRpc).toHaveBeenCalledWith('fn_marcar_pedido_web_pagado_pasarela', expect.objectContaining({ p_order_id: 'wo-1' }));
+      expect(mockRpc.mock.calls.filter(([fn]) => fn === 'fn_cobrar_pedido_web_en_caja')).toHaveLength(0);
+      expect(r.pagoPasarela).toEqual(expect.objectContaining({ paymentId: 'pay-c' }));
+    });
+
+    it('cancelado por pago fallido sin stock: el error STOCK_INSUFICIENTE llega a quien llama', async () => {
+      mockRpc.mockImplementation(async (fn: string) => fn === 'fn_confirmar_pedido_web_completo'
+        ? { data: null, error: { code: '22023', message: 'STOCK_INSUFICIENTE', details: '[{"product_id":1,"available":0,"requested":2}]' } }
+        : { data: null, error: null });
+      const pedido = { ...base, status: 'cancelled', payment_status: 'failed', payment_method: 'wompi', payment_reference: '1-2-3', sale_id: null } as never;
+      await expect(webOrderConfirmationService.confirmOrder(pedido, { prepMs: 60000, markAsPaid: true })).rejects.toThrow(/STOCK_INSUFICIENTE/);
+      expect(mockRpc).not.toHaveBeenCalledWith('fn_marcar_pedido_web_pagado_pasarela', expect.anything());
+    });
+
+    it('si la RPC de pasarela falla, el pedido queda confirmado y se avisa el motivo', async () => {
+      rpcPasarela(() => ({ data: null, error: { code: '42501', message: 'SIN_PERMISO' } }));
+      const r = await webOrderConfirmationService.confirmOrder({ ...base, status: 'pending', payment_status: 'pending', payment_method: 'daviplata' } as never, { prepMs: 60000, markAsPaid: true });
+      expect(r.saleId).toBe('sale-p');
+      expect(r.pagoPasarela).toBeUndefined();
+      expect(r.cobroPendiente).toBe('SIN_PERMISO');
+      expect(r.marcarPagadoPendiente).toBe(true);
+    });
+  });
 });
 
 describe('cobro en lote', () => {
@@ -219,7 +281,8 @@ describe('cobro en lote', () => {
     const pedidos = [
       { ...base, id: 'a', order_number: 'W-1', payment_method: 'cash' },
       { ...base, id: 'b', order_number: 'W-2', payment_method: 'cash' },
-      { ...base, id: 'c', order_number: 'W-3', payment_method: 'daviplata' },
+      { ...base, id: 'c', order_number: 'W-3', payment_method: 'transfer' },
+      { ...base, id: 'e', order_number: 'W-5', payment_method: 'nequi' },
       { ...base, id: 'd', order_number: 'W-4', payment_method: 'cash' },
     ] as never[];
     const errores: Record<string, string> = { b: 'PEDIDO_SIN_CONFIRMAR', d: 'COBRAR_EN_LA_MESA' };
@@ -233,7 +296,8 @@ describe('cobro en lote', () => {
     const r = await webOrderConfirmationService.cobrarVariosEnCaja(pedidos, cargar);
 
     expect(r.cobrados).toEqual(['W-1', 'W-3']);
-    expect(r.pendientes).toEqual({ PEDIDO_SIN_CONFIRMAR: ['W-2'], COBRAR_EN_LA_MESA: ['W-4'] });
+    expect(r.pendientes).toEqual({ PEDIDO_SIN_CONFIRMAR: ['W-2'], COBRAR_EN_LA_MESA: ['W-4'], PEDIDO_DE_PASARELA: ['W-5'] });
+    expect(mockRpc).not.toHaveBeenCalledWith('fn_cobrar_pedido_web_en_caja', expect.objectContaining({ p_order_id: 'e' }));
     expect(mockRpc).toHaveBeenCalledWith('fn_cobrar_pedido_web_en_caja', expect.objectContaining({ p_order_id: 'c', p_metodo: 'transfer' }));
   });
 
@@ -246,10 +310,12 @@ describe('cobro en lote', () => {
 describe('métodos de cobro en caja', () => {
   it('una sola lista, sin métodos inactivos en payment_methods', () => {
     expect(METODOS_COBRO_EN_CAJA).toEqual(['cash', 'card', 'transfer', 'qr']);
-    expect(metodoDeCobroEnCaja('nequi')).toBe('transfer');
-    expect(metodoDeCobroEnCaja('daviplata')).toBe('transfer');
-    expect(metodoDeCobroEnCaja('card')).toBe('card');
-    expect(metodoDeCobroEnCaja('wompi')).toBe('cash');
+    // nequi/daviplata/card en web_orders llegan del webhook de Wompi: pasarela, nunca caja.
+    expect(metodoDeCobroEnCaja('nequi')).toBeNull();
+    expect(metodoDeCobroEnCaja('daviplata')).toBeNull();
+    expect(metodoDeCobroEnCaja('card')).toBeNull();
+    expect(metodoDeCobroEnCaja('transfer')).toBe('transfer');
+    expect(metodoDeCobroEnCaja('wompi')).toBeNull(); // pasarela: nunca efectivo (MRHJ)
     expect(metodoDeCobroEnCaja(null)).toBe('cash');
   });
 });

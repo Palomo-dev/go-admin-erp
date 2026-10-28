@@ -66,6 +66,7 @@ export default function WebOrderDetailPage() {
     handleConvertToSale,
     handleCreateShipment,
     handleCobrar,
+    handleMarcarPagadoPasarela,
     cobroDialogo,
     abrirCobro,
     cerrarCobro,
@@ -119,7 +120,7 @@ export default function WebOrderDetailPage() {
     toast({ title: t('ficha.avisoReenviado') });
   };
 
-  const confirmarCobro = async (valor: { metodo: string; referencia: string | null }) => {
+  const confirmarCobro = async (valor: { metodo: string | null; referencia: string | null }) => {
     const hecho = await handleCobrar(cobroDialogo.entregar, valor);
     if (!hecho) void trazabilidad.recargar();
   };
@@ -178,6 +179,7 @@ export default function WebOrderDetailPage() {
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
             onCobrar={abrirCobro}
+            onMarcarPagadoPasarela={() => void handleMarcarPagadoPasarela()}
             onPrint={trazabilidad.comandaId ? () => void imprimir() : undefined}
             sinCajaAbierta={sinCaja}
             cajaEtiqueta={cajaEtiqueta}

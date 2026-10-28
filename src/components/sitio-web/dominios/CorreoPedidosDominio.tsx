@@ -5,7 +5,7 @@
  * Los registros salen del servidor. Aquí no hay claves ni secretos.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Mail } from 'lucide-react';
+import { ICONO_TARJETA_DOMINIO } from './iconosDominios';
 import { StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
 import { DnsRecordRow } from '../ui/DnsRecordRow';
 import { limitePlanVisible } from '@/lib/services/website/dominios/correoTiendaReglas';
@@ -65,7 +65,7 @@ export function CorreoPedidosDominio({ dominioId, gestionar }: { dominioId: stri
   const tono = estado?.estado === 'verified' ? 'verified' : estado?.estado === 'failed' ? 'failed' : 'pending';
 
   return (
-    <Tarjeta titulo={t('detalle.correoTitulo')} icono={Mail} descripcion={t('detalle.correoTexto')}>
+    <Tarjeta titulo={t('detalle.correoTitulo')} icono={ICONO_TARJETA_DOMINIO.ayudaCorreo} descripcion={t('detalle.correoTexto')}>
       {cargando ? (
         <p className="text-[13px] text-fg-secondary">{t('detalle.correoPendiente')}</p>
       ) : (

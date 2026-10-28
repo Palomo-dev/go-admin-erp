@@ -22,7 +22,16 @@ import {
   type ResultadoConfirmacionCompleta,
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
-import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
+import {
+  debeCobrarseEnCaja,
+  esMetodoCobroEnCaja,
+  canceladoPorPagoFallido,
+  pedidoEsDePasarela,
+  marcaPagadoPorPasarela,
+  metodoDeCobroEnCaja,
+  pedidoPagadoPorPasarela,
+  type MetodoCobroEnCaja,
+} from '@/lib/pos/pedidosWeb/metodosCaja';
 import { resolveLineTax } from './taxResolver';
 import { resolveOrgCurrency } from './monedaOrganizacion';
 import { redimirCuponPedidoWeb } from './cuponPedidoWeb';
@@ -74,6 +83,15 @@ export interface ConfirmOrderResult {
    * confirmado SIN cobrar; se cobra después con «Cobrar».
    */
   cobroPendiente?: ErrorCobroEnCaja;
+  /**
+   * «Marcar como pagado» al confirmar un pedido de PASARELA: se confirma sin
+   * pagar y luego se marca pagado con fn_marcar_pedido_web_pagado_pasarela
+   * (método de la pasarela, sin caja, referencia MANUAL y auditoría
+   * MARK_PAID_GATEWAY_MANUAL). Si falla, `cobroPendiente` trae el motivo.
+   */
+  pagoPasarela?: PagoPasarelaResult;
+  /** `cobroPendiente` viene de «Marcar como pagado» de pasarela (no de un cobro en caja). */
+  marcarPagadoPendiente?: boolean;
 }
 
 export interface CobroEnCajaResult {
@@ -91,6 +109,11 @@ export type ErrorCobroEnCaja =
   | 'PEDIDO_SIN_CONFIRMAR'
   | 'COBRAR_EN_LA_MESA'
   | 'METODO_INVALIDO'
+  /** Pedido de pasarela: no se cobra en caja (se marca pagado por la pasarela). */
+  | 'PEDIDO_DE_PASARELA'
+  /** «Marcar como pagado» de pasarela sobre un pedido que se cobra en caja. */
+  | 'NO_ES_PASARELA'
+  | 'SIN_PERMISO'
   | 'FUNCION_AUSENTE'
   | 'OTRO';
 
@@ -105,14 +128,19 @@ export class CobroEnCajaError extends Error {
 export function codigoErrorCobro(error: unknown): ErrorCobroEnCaja {
   if (esFuncionAusente(error)) return 'FUNCION_AUSENTE';
   const m = String((error as { message?: string } | null)?.message ?? '');
-  for (const c of ['NO_OPEN_CASH_SESSION', 'PEDIDO_SIN_CONFIRMAR', 'COBRAR_EN_LA_MESA', 'METODO_INVALIDO'] as const) {
+  for (const c of [
+    'NO_OPEN_CASH_SESSION', 'PEDIDO_SIN_CONFIRMAR', 'COBRAR_EN_LA_MESA', 'METODO_INVALIDO',
+    'PEDIDO_DE_PASARELA', 'NO_ES_PASARELA', 'SIN_PERMISO',
+  ] as const) {
     if (m.includes(c)) return c;
   }
   return 'OTRO';
 }
 
 /** Clave i18n (`pedidoWeb.cobro.*`) del aviso para un cobro que no se pudo hacer. */
-export function claveAvisoCobro(codigo: ErrorCobroEnCaja): 'sinCaja' | 'sinConfirmar' | 'deMesa' | 'metodoInvalido' | 'error' {
+export function claveAvisoCobro(
+  codigo: ErrorCobroEnCaja,
+): 'sinCaja' | 'sinConfirmar' | 'deMesa' | 'metodoInvalido' | 'dePasarela' | 'noEsPasarela' | 'sinPermiso' | 'error' {
   switch (codigo) {
     case 'NO_OPEN_CASH_SESSION':
       return 'sinCaja';
@@ -122,9 +150,34 @@ export function claveAvisoCobro(codigo: ErrorCobroEnCaja): 'sinCaja' | 'sinConfi
       return 'deMesa';
     case 'METODO_INVALIDO':
       return 'metodoInvalido';
+    case 'PEDIDO_DE_PASARELA':
+      return 'dePasarela';
+    case 'NO_ES_PASARELA':
+      return 'noEsPasarela';
+    case 'SIN_PERMISO':
+      return 'sinPermiso';
     default:
       return 'error';
   }
+}
+
+/**
+ * Método de caja del pedido. Sin valor por defecto peligroso: un pedido de
+ * pasarela NUNCA cae en efectivo, lanza PEDIDO_DE_PASARELA.
+ */
+export function metodoCajaDelPedido(order: Pick<WebOrder, 'payment_method'> & { payment_reference?: string | null }): MetodoCobroEnCaja {
+  const metodo = metodoDeCobroEnCaja(order.payment_method, order.payment_reference);
+  if (!metodo) throw new CobroEnCajaError('PEDIDO_DE_PASARELA', 'Pedido de pasarela: no se cobra en caja');
+  return metodo;
+}
+
+/** Resultado de «Marcar como pagado» de un pedido de pasarela (sin caja). */
+export interface PagoPasarelaResult {
+  invoiceId: string;
+  invoiceNumber: string | null;
+  paymentId: string;
+  /** Ya tenía pago: no se creó otro (idempotente). */
+  yaPagado: boolean;
 }
 
 /** Resultado del cobro en lote: qué pedidos se cobraron y por qué no los demás. */
@@ -132,6 +185,8 @@ export interface ResumenCobroLote {
   cobrados: string[];
   /** Marcados como pagados con el respaldo sin caja (E4 sin aplicar). */
   respaldo: string[];
+  /** Ya pagados por pasarela: no se cobran en caja. */
+  yaPagadosPasarela?: string[];
   /** Pedidos sin cobrar, por motivo. */
   pendientes: Partial<Record<ErrorCobroEnCaja, string[]>>;
 }
@@ -169,11 +224,13 @@ class WebOrderConfirmationService {
     // Confirmación en una sola transacción (E2/E3) detrás del interruptor de
     // despliegue. Si la base aún no tiene la función, sigue el camino de siempre.
     // Un vencido solo se confirma por la RPC completa: ella re-reserva el stock (todo o nada)
-    // y lo vuelve a pending en la misma transacción (migración 20261025134165).
-    if (confirmacionCompletaActiva() || order.status === 'expired') {
+    // y lo vuelve a pending en la misma transacción (migración 20261025134165). Igual un
+    // pedido de pasarela cancelado por pago fallido (migración 20261027245000).
+    const reactivable = order.status === 'expired' || canceladoPorPagoFallido(order);
+    if (confirmacionCompletaActiva() || reactivable) {
       const completo = await this.confirmarCompleto(order, options, userId);
       if (completo) return completo;
-      if (order.status === 'expired') throw new Error('PEDIDO_NO_CONFIRMABLE');
+      if (reactivable) throw new Error('PEDIDO_NO_CONFIRMABLE');
     } else {
       // Interruptor apagado: camino de siempre (abajo), sin cambios.
     }
@@ -185,9 +242,13 @@ class WebOrderConfirmationService {
     // en la base (que exige E2 antes), el cobro va a la caja de la sede después
     // de confirmar sin pagar; sin E4, el comportamiento de siempre.
     const cobrarEnCajaTrasConfirmar =
-      (options.markAsPaid ?? false) && order.payment_status !== 'paid' && (await this.cobroEnCajaDisponible());
+      (options.markAsPaid ?? false) && debeCobrarseEnCaja(order) && (await this.cobroEnCajaDisponible());
+    // Pasarela sin pagar: nunca el camino viejo (factura y pago desde el navegador,
+    // sin referencia MANUAL ni auditoría). Se confirma sin pagar y luego se marca
+    // pagado con fn_marcar_pedido_web_pagado_pasarela.
+    const pagarPorPasarelaTrasConfirmar = (options.markAsPaid ?? false) && marcaPagadoPorPasarela(order);
     let markAsPaid: boolean;
-    if (cobrarEnCajaTrasConfirmar) {
+    if (cobrarEnCajaTrasConfirmar || pagarPorPasarelaTrasConfirmar) {
       markAsPaid = false;
     } else {
       markAsPaid = options.markAsPaid ?? false;
@@ -305,11 +366,18 @@ class WebOrderConfirmationService {
       throw new Error(`Error vinculando pedido con venta: ${updateError.message}`);
     }
 
+    if (pagarPorPasarelaTrasConfirmar) {
+      return {
+        saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, stockErrors,
+        ...(await this.pagarPasarelaTrasConfirmar(order, saleId)),
+      };
+    }
+
     if (cobrarEnCajaTrasConfirmar) {
       try {
         const cobro = await this.cobrarEnCaja(
           { ...order, sale_id: saleId },
-          { metodo: metodoDeCobroEnCaja(order.payment_method), referencia: order.payment_reference ?? null },
+          { metodo: metodoCajaDelPedido(order), referencia: order.payment_reference ?? null },
         );
         return {
           saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, accountReceivableId, stockErrors,
@@ -347,9 +415,13 @@ class WebOrderConfirmationService {
     // confirmar sin pagar. Antes se creaban factura y pago desde el navegador,
     // con la venta fuera de caja y sin exigir caja abierta.
     const cobrarEnCajaTrasConfirmar =
-      (options.markAsPaid ?? false) && order.payment_status !== 'paid' && (await this.cobroEnCajaDisponible());
+      (options.markAsPaid ?? false) && debeCobrarseEnCaja(order) && (await this.cobroEnCajaDisponible());
+    // Pasarela sin pagar: nunca el camino viejo (factura y pago desde el navegador,
+    // sin referencia MANUAL ni auditoría). Se confirma sin pagar y luego se marca
+    // pagado con fn_marcar_pedido_web_pagado_pasarela.
+    const pagarPorPasarelaTrasConfirmar = (options.markAsPaid ?? false) && marcaPagadoPorPasarela(order);
     let markAsPaid: boolean;
-    if (cobrarEnCajaTrasConfirmar) {
+    if (cobrarEnCajaTrasConfirmar || pagarPorPasarelaTrasConfirmar) {
       markAsPaid = false;
     } else {
       // Sin E4 (o pedido ya pagado): el comportamiento de siempre.
@@ -376,7 +448,9 @@ class WebOrderConfirmationService {
           yaConfirmado: mesa.ya_completo,
           stockErrors: [],
           // Lo de la mesa se cobra al cerrar la cuenta de la mesa, no aquí.
-          ...(cobrarEnCajaTrasConfirmar ? { cobroPendiente: 'COBRAR_EN_LA_MESA' as const } : {}),
+          ...(cobrarEnCajaTrasConfirmar || pagarPorPasarelaTrasConfirmar
+            ? { cobroPendiente: 'COBRAR_EN_LA_MESA' as const }
+            : {}),
         };
       } else {
         // E3 sin aplicar: el pedido se confirma con venta propia (abajo).
@@ -458,7 +532,7 @@ class WebOrderConfirmationService {
       try {
         cobro = await this.cobrarEnCaja(
           { ...order, sale_id: saleId },
-          { metodo: metodoDeCobroEnCaja(order.payment_method), referencia: order.payment_reference ?? null },
+          { metodo: metodoCajaDelPedido(order), referencia: order.payment_reference ?? null },
         );
       } catch (err) {
         cobroPendiente = err instanceof CobroEnCajaError ? err.codigo : 'OTRO';
@@ -467,6 +541,7 @@ class WebOrderConfirmationService {
     } else {
       // Sin «Marcar como pagado», o sin E4: nada más que hacer aquí.
     }
+    const pasarela = pagarPorPasarelaTrasConfirmar ? await this.pagarPasarelaTrasConfirmar(order, saleId) : {};
 
     return {
       saleId,
@@ -483,6 +558,15 @@ class WebOrderConfirmationService {
       completadoAhora: !r.venta_creada,
       ...(cobro ? { cobro, paymentId: cobro.paymentId, invoiceId: cobro.invoiceId, invoiceNumber: cobro.invoiceNumber ?? undefined } : {}),
       ...(cobroPendiente ? { cobroPendiente } : {}),
+      ...(pasarela.pagoPasarela
+        ? {
+            pagoPasarela: pasarela.pagoPasarela,
+            paymentId: pasarela.pagoPasarela.paymentId,
+            invoiceId: pasarela.pagoPasarela.invoiceId,
+            invoiceNumber: pasarela.pagoPasarela.invoiceNumber ?? undefined,
+          }
+        : {}),
+      ...(pasarela.cobroPendiente ? { cobroPendiente: pasarela.cobroPendiente, marcarPagadoPendiente: true } : {}),
     };
   }
 
@@ -492,9 +576,23 @@ class WebOrderConfirmationService {
    * función existe y PGRST202/42883 si no. Se recuerda por sesión de página.
    */
   private cobroEnCajaExiste: boolean | null = null;
+  private sondaCobroEnCaja: Promise<boolean> | null = null;
 
+  /**
+   * Con 20261027241500 la función responde `{sonda:true}` al uuid cero (antes
+   * WEB_ORDER_NOT_FOUND → 500/P0002 en cada carga). El resultado y la llamada
+   * en curso quedan en memoria por sesión: una sola sonda aunque se pida en
+   * paralelo.
+   */
   async cobroEnCajaDisponible(): Promise<boolean> {
     if (this.cobroEnCajaExiste !== null) return this.cobroEnCajaExiste;
+    this.sondaCobroEnCaja ??= this.sondearCobroEnCaja().finally(() => {
+      this.sondaCobroEnCaja = null;
+    });
+    return this.sondaCobroEnCaja;
+  }
+
+  private async sondearCobroEnCaja(): Promise<boolean> {
     const { error } = await supabase.rpc('fn_cobrar_pedido_web_en_caja', {
       p_order_id: '00000000-0000-0000-0000-000000000000',
       p_metodo: 'cash',
@@ -534,34 +632,14 @@ class WebOrderConfirmationService {
     order: WebOrder,
     opciones: { metodo: string; referencia?: string | null },
   ): Promise<CobroEnCajaResult> {
-    const { data: existente } = order.sale_id
-      ? await supabase
-          .from('invoice_sales')
-          .select('id')
-          .eq('organization_id', order.organization_id)
-          .eq('sale_id', order.sale_id)
-          .neq('status', 'void')
-          .limit(1)
-          .maybeSingle()
-      : { data: null };
-
-    // Factura nueva solo si la venta no tiene: número y líneas de la regla única.
-    let factura: Record<string, unknown> | null = null;
-    if (!existente) {
-      const reparto = repartirTotalesPedidoWeb(order);
-      const numero = await generateInvoiceNumber(order.organization_id, 'FACT');
-      const lineas = await lineasFacturaWebConImpuesto(order, '', resolveLineTax, reparto);
-      factura = {
-        number: numero,
-        subtotal: Number(order.subtotal) || 0,
-        tax_total: Number(order.tax_total) || 0,
-        total: Number(order.total) || 0,
-        tax_included: facturaWebConImpuestoIncluido(reparto),
-        lineas: lineas.map((l) =>
-          Object.fromEntries(Object.entries(l).filter(([k]) => k !== 'invoice_id' && k !== 'invoice_sales_id')),
-        ),
-      };
+    // Regla única: un pedido de pasarela (pagado o no) NUNCA se cobra en caja.
+    if (pedidoEsDePasarela(order)) {
+      throw new CobroEnCajaError('PEDIDO_DE_PASARELA', 'Pedido de pasarela: usa «Marcar como pagado»');
     }
+    if (!esMetodoCobroEnCaja(opciones.metodo)) {
+      throw new CobroEnCajaError('METODO_INVALIDO', `Método de caja inválido: ${opciones.metodo}`);
+    }
+    const factura = await this.facturaNuevaSiFalta(order);
 
     const { data, error } = await supabase.rpc('fn_cobrar_pedido_web_en_caja', {
       p_order_id: order.id,
@@ -571,6 +649,7 @@ class WebOrderConfirmationService {
       p_monto: null,
     });
     if (error) {
+      if (esFuncionAusente(error)) this.cobroEnCajaExiste = false;
       throw new CobroEnCajaError(codigoErrorCobro(error), error.message || 'No se pudo cobrar el pedido');
     }
     const r = (data ?? {}) as Record<string, unknown>;
@@ -581,6 +660,80 @@ class WebOrderConfirmationService {
       cashSessionId: Number(r.cash_session_id ?? 0),
       yaCobrado: r.ya_cobrado === true,
     };
+  }
+
+  /**
+   * Factura para la RPC solo si la venta aún no tiene: número y líneas de la
+   * regla única (webOrderTotals). `null` = la RPC usa la factura existente.
+   */
+  private async facturaNuevaSiFalta(order: WebOrder): Promise<Record<string, unknown> | null> {
+    const { data: existente } = order.sale_id
+      ? await supabase
+          .from('invoice_sales')
+          .select('id')
+          .eq('organization_id', order.organization_id)
+          .eq('sale_id', order.sale_id)
+          .neq('status', 'void')
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+    if (existente) return null;
+    const reparto = repartirTotalesPedidoWeb(order);
+    const numero = await generateInvoiceNumber(order.organization_id, 'FACT');
+    const lineas = await lineasFacturaWebConImpuesto(order, '', resolveLineTax, reparto);
+    return {
+      number: numero,
+      subtotal: Number(order.subtotal) || 0,
+      tax_total: Number(order.tax_total) || 0,
+      total: Number(order.total) || 0,
+      tax_included: facturaWebConImpuestoIncluido(reparto),
+      lineas: lineas.map((l) =>
+        Object.fromEntries(Object.entries(l).filter(([k]) => k !== 'invoice_id' && k !== 'invoice_sales_id')),
+      ),
+    };
+  }
+
+  /**
+   * «Marcar como pagado» de UN CLIC para un pedido de PASARELA ya confirmado
+   * (fn_marcar_pedido_web_pagado_pasarela, migración 20261027243000): pago con
+   * el método de la pasarela (wompi → 1110), sin caja, referencia MANUAL con
+   * quién y cuándo, idempotente. No pide referencia ni comprobante.
+   */
+  async marcarPagadoPasarela(order: WebOrder): Promise<PagoPasarelaResult> {
+    if (!pedidoEsDePasarela(order)) {
+      throw new CobroEnCajaError('NO_ES_PASARELA', 'El pedido se cobra en caja');
+    }
+    if (!order.sale_id) throw new CobroEnCajaError('PEDIDO_SIN_CONFIRMAR', 'Confirma el pedido primero');
+    const factura = await this.facturaNuevaSiFalta(order);
+    const { data, error } = await supabase.rpc('fn_marcar_pedido_web_pagado_pasarela', {
+      p_order_id: order.id,
+      p_factura: factura,
+    });
+    if (error) throw new CobroEnCajaError(codigoErrorCobro(error), error.message || 'No se pudo marcar como pagado');
+    const r = (data ?? {}) as Record<string, unknown>;
+    return {
+      invoiceId: String(r.invoice_id ?? ''),
+      invoiceNumber: (r.invoice_number as string) ?? null,
+      paymentId: String(r.payment_id ?? ''),
+      yaPagado: r.ya_pagado === true,
+    };
+  }
+
+  /**
+   * Casilla «Marcar como pagado» del diálogo de confirmación (uno o en lote)
+   * con un pedido de pasarela: ya confirmado, se marca pagado por la pasarela.
+   * Un fallo no deshace la confirmación: vuelve como `cobroPendiente`.
+   */
+  private async pagarPasarelaTrasConfirmar(
+    order: WebOrder,
+    saleId: string,
+  ): Promise<{ pagoPasarela?: PagoPasarelaResult; cobroPendiente?: ErrorCobroEnCaja; marcarPagadoPendiente?: boolean }> {
+    try {
+      return { pagoPasarela: await this.marcarPagadoPasarela({ ...order, sale_id: saleId }) };
+    } catch (err) {
+      console.warn('[webOrderConfirmation] Pedido de pasarela confirmado sin marcar pagado:', err);
+      return { cobroPendiente: err instanceof CobroEnCajaError ? err.codigo : 'OTRO', marcarPagadoPendiente: true };
+    }
   }
 
   /**
@@ -602,8 +755,19 @@ class WebOrderConfirmationService {
       let completo: WebOrder = o;
       try {
         completo = (await cargar(o.id)) ?? o;
+        // Pagado por pasarela: ya está cobrado, no se cobra otra vez en caja.
+        if (pedidoPagadoPorPasarela(completo)) {
+          (resumen.yaPagadosPasarela ??= []).push(completo.order_number);
+          continue;
+        }
+        const metodo = metodoDeCobroEnCaja(completo.payment_method, completo.payment_reference);
+        if (!metodo) {
+          // Pasarela sin pago confirmado: no es un cobro de mostrador.
+          anotar('PEDIDO_DE_PASARELA', completo.order_number);
+          continue;
+        }
         await this.cobrarEnCaja(completo, {
-          metodo: metodoDeCobroEnCaja(completo.payment_method),
+          metodo,
           referencia: completo.payment_reference ?? null,
         });
         resumen.cobrados.push(completo.order_number);

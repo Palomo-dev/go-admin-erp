@@ -21,7 +21,7 @@ interface CobrarPedidoDialogProps {
   /** La base cobra en caja (E4). Sin ella el cobro usa el respaldo sin caja. */
   cobroEnCaja: boolean;
   cargando: boolean;
-  onConfirmar: (valor: { metodo: string; referencia: string | null }) => void | Promise<void>;
+  onConfirmar: (valor: { metodo: string | null; referencia: string | null }) => void | Promise<void>;
 }
 
 /**
@@ -71,7 +71,7 @@ export function CobrarPedidoDialog({
       moneda={moneda}
       metodos={metodos}
       hoy={getToday()}
-      valorInicial={{ metodo: metodoDeCobroEnCaja(order.payment_method), monto: Number(order.total) || 0 }}
+      valorInicial={{ metodo: metodoDeCobroEnCaja(order.payment_method) ?? undefined, monto: Number(order.total) || 0 }}
       cobroTotal
       codigosEfectivo={['cash']}
       avisoCaja={
@@ -81,7 +81,7 @@ export function CobrarPedidoDialog({
       }
       textoConfirmar={entregar ? t('cobro.cobrarYEntregar') : t('cobro.cobrar')}
       cargando={cargando}
-      onConfirmar={(valor) => onConfirmar({ metodo: valor.metodo ?? 'cash', referencia: valor.referencia || null })}
+      onConfirmar={(valor) => onConfirmar({ metodo: valor.metodo ?? null, referencia: valor.referencia || null })}
     />
   );
 }

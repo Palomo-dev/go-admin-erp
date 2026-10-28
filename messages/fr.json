@@ -36092,6 +36092,13 @@
       "sinConfirmar": "La commande n’est pas confirmée : confirmez-la avant d’encaisser.",
       "deMesa": "C’est une commande de table : elle s’encaisse à la clôture de l’addition dans POS › Tables.",
       "metodoInvalido": "Le moyen de paiement n’est pas actif pour l’encaissement en caisse.",
+      "dePasarela": "Cette commande a été payée via une passerelle : elle ne s’encaisse pas en caisse. Utilisez « Marquer comme payée ».",
+      "noEsPasarela": "Cette commande s’encaisse en caisse, pas via une passerelle.",
+      "sinPermiso": "Vous n’avez pas l’autorisation de marquer des commandes comme payées.",
+      "marcarPagadoPasarela": "Marquer comme payée",
+      "marcarPagadoPasarelaAyuda": "Payée via {pasarela}. Enregistrée sans caisse, référence MANUAL.",
+      "marcadoPagadoPasarela": "Commande {numero} marquée comme payée ({pasarela})",
+      "yaPagadoPasarela": "La commande {numero} était déjà payée",
       "pendienteTrasConfirmar": "Commande confirmée sans encaissement",
       "marcadoPagado": "Commande marquée comme payée",
       "sinFacturaDetalle": "La vente liée n’a pas de facture : le paiement n’a donc pas été enregistré en caisse. Enregistrez-le depuis la facture lorsqu’elle existera.",
@@ -36125,7 +36132,10 @@
         "card": "par carte",
         "transfer": "par virement",
         "qr": "par QR"
-      }
+      },
+      "errorMarcarPagado": "Impossible de marquer comme payée",
+      "pendienteMarcarPagado": "Commande confirmée mais non marquée comme payée",
+      "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée."
     },
     "tipoCorto": {
       "pickup": "Retrait",
@@ -37772,7 +37782,8 @@
       "accion": "Confirmer {n} commandes",
       "resultado": "{ok, plural, one {# commande confirmée} other {# commandes confirmées}}",
       "fallidos": "{n, plural, one {# commande n'a pas pu être confirmée} other {# commandes n'ont pas pu être confirmées}} : {pedidos}",
-      "errorUno": "Impossible de confirmer la commande"
+      "errorUno": "Impossible de confirmer la commande",
+      "sinPagar": "{n, plural, one {# non marquée comme payée} other {# non marquées comme payées}} : {pedidos}"
     },
     "rechazo": {
       "titulo": "Refuser la commande",

@@ -152,10 +152,12 @@ describe('InspectorEncabezado', () => {
 
   test('Estilo: encabezado sobre la portada y espacio de la primera sección', () => {
     const onCambiar = encabezado({ header_style: 'transparent' }, { pestanaInicial: 'estilo' });
-    const sw = screen.getByRole('switch', { name: /Encabezado sobre la portada/ });
+    // ENCABE-80: un solo interruptor (Transparencia) para ir sobre la portada.
+    expect(screen.queryByRole('switch', { name: /Encabezado sobre la portada/ })).toBeNull();
+    const sw = screen.getByRole('switch', { name: /Sobre la portada, sólido al bajar/ });
     expect(sw.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(sw);
-    expect(onCambiar).toHaveBeenCalledWith({ header_transparent_over_hero: false });
+    expect(onCambiar).toHaveBeenCalledWith(expect.objectContaining({ header_transparent_over_hero: null }));
     const campo = screen.getByRole('textbox', { name: 'Espacio superior de la primera sección' });
     fireEvent.change(campo, { target: { value: '24' } });
     fireEvent.blur(campo);
@@ -196,16 +198,19 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_bg_color: '#0E0E0E' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces' })).getByRole('radio', { name: 'Fijar color' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_text_color: '#F5F1EA' });
-    expect(screen.getByRole('switch', { name: /Fijo al bajar/ }).getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByRole('switch', { name: /Fijo al bajar/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false });
+    // ENCABE-76: «Al bajar» une header_sticky y header_scroll.
+    expect(within(screen.getByRole('radiogroup', { name: 'Al bajar' })).getByRole('radio', { name: 'Fijo' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Se va con la página' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false, header_scroll: null });
+    fireEvent.click(screen.getByRole('radio', { name: 'Se encoge' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_sticky: true, header_scroll: 'encoger' });
     fireEvent.click(screen.getByRole('switch', { name: /Círculo acento/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
     fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
     expect(onCambiar).toHaveBeenCalledWith({ cta_border_radius: 999 });
     expect(screen.queryByText(/Ajustes de versiones anteriores/)).toBeNull();
     fireEvent.click(screen.getByRole('switch', { name: /Sobre la portada, sólido al bajar/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent' });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent', header_transparent_over_hero: true });
     fireEvent.click(screen.getAllByRole('button', { name: 'Restablecer a la plantilla' })[0]);
     expect(onCambiar).toHaveBeenLastCalledWith(expect.objectContaining({ header_style: 'default', logo_position: 'center', header_cta_text: 'Reservar mesa' }));
   });

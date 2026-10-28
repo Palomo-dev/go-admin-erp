@@ -36092,6 +36092,13 @@
       "sinConfirmar": "The order is not confirmed: confirm it before charging.",
       "deMesa": "It is a table order: it is charged when the bill is closed in POS › Tables.",
       "metodoInvalido": "The payment method is not active for charging at the register.",
+      "dePasarela": "This order was paid through a payment gateway: it is not charged at the register. Use “Mark as paid”.",
+      "noEsPasarela": "This order is charged at the register, not through a gateway.",
+      "sinPermiso": "You don't have permission to mark orders as paid.",
+      "marcarPagadoPasarela": "Mark as paid",
+      "marcarPagadoPasarelaAyuda": "Paid via {pasarela}. Recorded without the register, with reference MANUAL.",
+      "marcadoPagadoPasarela": "Order {numero} marked as paid ({pasarela})",
+      "yaPagadoPasarela": "Order {numero} was already paid",
       "pendienteTrasConfirmar": "Order confirmed without charging",
       "marcadoPagado": "Order marked as paid",
       "sinFacturaDetalle": "The linked sale has no invoice, so the payment was not recorded at the register. Record it from the invoice once it exists.",
@@ -36125,7 +36132,10 @@
         "card": "by card",
         "transfer": "by transfer",
         "qr": "by QR"
-      }
+      },
+      "errorMarcarPagado": "Couldn't mark as paid",
+      "pendienteMarcarPagado": "Order confirmed but not marked as paid",
+      "sinStockReactivar": "There is not enough stock to reactivate the order. Adjust the inventory of the missing products and try again; the order was not changed."
     },
     "tipoCorto": {
       "pickup": "Pickup",
@@ -37772,7 +37782,8 @@
       "accion": "Confirm {n} orders",
       "resultado": "{ok, plural, one {# order confirmed} other {# orders confirmed}}",
       "fallidos": "{n, plural, one {# order couldn't be confirmed} other {# orders couldn't be confirmed}}: {pedidos}",
-      "errorUno": "Couldn't confirm the order"
+      "errorUno": "Couldn't confirm the order",
+      "sinPagar": "{n, plural, one {# not marked as paid} other {# not marked as paid}}: {pedidos}"
     },
     "rechazo": {
       "titulo": "Reject order",

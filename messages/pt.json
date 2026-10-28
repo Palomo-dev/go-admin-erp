@@ -36102,6 +36102,13 @@
       "sinConfirmar": "O pedido não está confirmado: confirme-o antes de cobrar.",
       "deMesa": "É um pedido de mesa: é cobrado ao fechar a conta em POS › Mesas.",
       "metodoInvalido": "O método de pagamento não está ativo para cobrar no caixa.",
+      "dePasarela": "Este pedido foi pago por gateway: não se cobra no caixa. Use «Marcar como pago».",
+      "noEsPasarela": "Este pedido é cobrado no caixa, não por gateway.",
+      "sinPermiso": "Você não tem permissão para marcar pedidos como pagos.",
+      "marcarPagadoPasarela": "Marcar como pago",
+      "marcarPagadoPasarelaAyuda": "Pago via {pasarela}. Registrado sem caixa, com referência MANUAL.",
+      "marcadoPagadoPasarela": "Pedido {numero} marcado como pago ({pasarela})",
+      "yaPagadoPasarela": "O pedido {numero} já estava pago",
       "pendienteTrasConfirmar": "Pedido confirmado sem cobrar",
       "marcadoPagado": "Pedido marcado como pago",
       "sinFacturaDetalle": "A venda vinculada não tem fatura, então o pagamento não foi registrado no caixa. Registre-o pela fatura quando ela existir.",
@@ -36135,7 +36142,10 @@
         "card": "no cartão",
         "transfer": "por transferência",
         "qr": "por QR"
-      }
+      },
+      "errorMarcarPagado": "Não foi possível marcar como pago",
+      "pendienteMarcarPagado": "Pedido confirmado sem marcar como pago",
+      "sinStockReactivar": "Não há estoque suficiente para reativar o pedido. Ajuste o estoque dos produtos em falta e tente novamente; o pedido não foi alterado."
     },
     "tipoCorto": {
       "pickup": "Retirada",
@@ -37782,7 +37792,8 @@
       "accion": "Confirmar {n} pedidos",
       "resultado": "{ok, plural, one {# pedido confirmado} other {# pedidos confirmados}}",
       "fallidos": "{n, plural, one {# pedido não pôde ser confirmado} other {# pedidos não puderam ser confirmados}}: {pedidos}",
-      "errorUno": "Não foi possível confirmar o pedido"
+      "errorUno": "Não foi possível confirmar o pedido",
+      "sinPagar": "{n, plural, one {# não marcado como pago} other {# não marcados como pagos}}: {pedidos}"
     },
     "rechazo": {
       "titulo": "Recusar pedido",

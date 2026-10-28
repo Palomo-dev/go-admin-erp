@@ -45,6 +45,7 @@ import {
 import { BocetoPie, opcionesPie } from '@/components/organization/branding/editor/inspector/FooterInspector';
 import type { EditorSitio } from '../useEditorSitio';
 import { useTextosEditor, type TraductorEditor } from '../textos';
+import { cambioBuscador } from '../inspector/anterioresLogica';
 
 export const AJUSTES_ENCABEZADO_PIE = ['diseno', 'buscador', 'barra', 'boton', 'acciones', 'pie', 'celular'] as const;
 export type AjusteEncabezadoPie = (typeof AJUSTES_ENCABEZADO_PIE)[number];
@@ -75,7 +76,7 @@ export function resumenEncabezadoPie(settings: WebsiteSettings, t: TraductorEdit
   );
   return {
     diseno: `${nombre(t, 'encabezadoPie.estiloEncabezado', e.header_style)} · ${nombre(t, 'encabezadoPie.posicionMenu', e.menu_position)}`,
-    buscador: `${nombre(t, 'encabezadoPie.buscadorComputador', e.search_style)} · ${nombre(t, 'encabezadoPie.buscadorCelular', m.mobile_search_style)}`,
+    buscador: nombre(t, 'encabezadoPie.buscadorComputador', e.search_style),
     barra: e.show_topbar
       ? e.topbar_announcement
         ? t('encabezadoPie.barraActivaAviso', { aviso: e.topbar_announcement })
@@ -88,7 +89,7 @@ export function resumenEncabezadoPie(settings: WebsiteSettings, t: TraductorEdit
       : t('encabezadoPie.sinBoton'),
     acciones: acciones.length > 0 ? acciones.join(', ') : t('encabezadoPie.sinAcciones'),
     pie: `${nombre(t, 'encabezadoPie.estiloPie', p.footer_style)} · ${t('encabezadoPie.columnas', { n: p.footer_columns })}`,
-    celular: `${nombre(t, 'encabezadoPie.menuCelular', m.mobile_menu_style)}${m.mobile_sticky_header ? ` · ${t('encabezadoPie.fijo')}` : ''}`,
+    celular: `${nombre(t, 'encabezadoPie.menuCelular', m.mobile_menu_style)}${(settings as unknown as Record<string, unknown>).header_sticky !== false ? ` · ${t('encabezadoPie.fijo')}` : ''}`,
   };
 }
 
@@ -213,20 +214,12 @@ export function EncabezadoPieMovil({ editor, onVolver, onPublicar, onVistaPrevia
           )}
           {hoja === 'buscador' && (
             <>
-              <FormField etiqueta={t('encabezadoPie.buscadorEnComputador')}>
+              <FormField etiqueta={t('zonaGlobal.diseno.buscador')} ayuda={t('zonaGlobal.diseno.buscadorAyuda')}>
                 <SegmentedControl
                   anchoCompleto
                   valor={e.search_style}
-                  onValorChange={(v) => anotar({ search_style: v })}
+                  onValorChange={(v) => anotar(cambioBuscador(vista as unknown as Record<string, unknown>, v))}
                   opciones={(['bar', 'icon', 'hidden'] as const).map((v) => ({ valor: v, etiqueta: nombre(t, 'encabezadoPie.buscadorComputador', v) }))}
-                />
-              </FormField>
-              <FormField etiqueta={t('encabezadoPie.buscadorEnCelular')}>
-                <SegmentedControl
-                  anchoCompleto
-                  valor={m.mobile_search_style}
-                  onValorChange={(v) => anotar({ mobile_search_style: v })}
-                  opciones={(['bar', 'icon', 'hidden'] as const).map((v) => ({ valor: v, etiqueta: nombre(t, 'encabezadoPie.buscadorCelular', v) }))}
                 />
               </FormField>
             </>

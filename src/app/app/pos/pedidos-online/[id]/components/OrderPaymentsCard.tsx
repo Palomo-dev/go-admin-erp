@@ -54,7 +54,7 @@ export function OrderPaymentsCard({ order, pagos, porCobrarEnCaja, cajaEtiqueta 
         {porCobrarEnCaja && (
           <ListaDatos className="rounded-lg bg-subtle px-3 py-2">
             <FilaDato
-              etiqueta={`${nombreMetodo(metodoDeCobroEnCaja(order.payment_method))} · ${t('pagos.alEntregar')}`}
+              etiqueta={`${nombreMetodo(metodoDeCobroEnCaja(order.payment_method) ?? order.payment_method ?? 'cash')} · ${t('pagos.alEntregar')}`}
               valor={formatear(order.total)}
               tono="fuerte"
             />

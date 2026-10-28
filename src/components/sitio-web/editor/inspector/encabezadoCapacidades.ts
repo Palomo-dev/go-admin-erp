@@ -9,7 +9,8 @@ import { circuloAcentoActivo, cambioCirculoAcento } from './anterioresLogica';
 type Ajustes = Record<string, unknown>;
 const objeto = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
 
-export const FORMAS_CAJA = ['none', 'circle', 'square', 'rounded'] as const;
+/** Las mismas formas que acepta la tienda (FORMAS_CONTENEDOR en constructorEncabezado.ts). */
+export const FORMAS_CAJA = ['none', 'circle', 'square', 'rounded', 'semi', 'squircle'] as const;
 export const TAMANOS_ICONO = [20, 22, 28] as const;
 export const SOMBRAS_CAJA = ['none', 'sm', 'md', 'lg'] as const;
 export const BUSCADORES = ['icon', 'bar', 'mini', 'icon_overlay', 'mega', 'pill_floating', 'hidden'] as const;
@@ -60,7 +61,9 @@ export function cambioCaja(a: Ajustes, parte: Record<string, unknown>): Ajustes 
 export function cambioForma(a: Ajustes, forma: string): Ajustes {
   if (!cajaIconos(a) && (forma === 'circle' || forma === 'none')) return cambioCirculoAcento(a, forma === 'circle');
   const actual = base(a);
-  return cambioCaja(a, { shape: forma, background: forma === 'none' ? actual.background : actual.background ?? 'accent' });
+  // Sin caja: se limpian fondo, degradado y sombra (no quedan colores escondidos que vuelvan solos).
+  if (forma === 'none') return cambioCaja(a, { shape: 'none', background: null, gradient_1: null, gradient_2: null, shadow: null });
+  return cambioCaja(a, { shape: forma, background: actual.background ?? 'accent' });
 }
 
 export function cambioTamano(a: Ajustes, n: number | null): Ajustes {

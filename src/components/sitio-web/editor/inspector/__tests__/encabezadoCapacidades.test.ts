@@ -40,4 +40,9 @@ describe('Constructor → Encabezado', () => {
     expect(cambioBuscador(a, 'icon_overlay')).toMatchObject({ search_style: 'icon_overlay' });
     expect(cambioBuscador(a, 'pill_floating')).toMatchObject({ search_style: 'pill_floating' });
   });
+  it('H3: semi y squircle como en la tienda; «Sin caja» limpia fondo, degradado y sombra', () => {
+    expect(cambioForma({}, 'squircle')).toEqual({ header_icons_box: { shape: 'squircle', scope: 'all', background: 'accent' } });
+    const a = { header_icons_box: { shape: 'semi', scope: 'all', background: '#ff0000', gradient_1: '#111111', gradient_2: '#222222', shadow: 'md', icon: 22 } };
+    expect(cambioForma(a, 'none')).toEqual({ header_icons_box: { shape: 'none', scope: 'all', icon: 22 } });
+  });
 });

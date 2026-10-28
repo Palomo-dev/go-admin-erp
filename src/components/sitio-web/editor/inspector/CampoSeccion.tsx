@@ -210,6 +210,24 @@ export function CampoSeccion({
         </div>
       );
     }
+    case 'alignment': {
+      // Figma v2: alineación como chips del kit (mismas opciones que el campo).
+      const opciones = campo.options?.length ? campo.options : [{ value: 'left', label: 'Izquierda' }, { value: 'center', label: 'Centro' }, { value: 'right', label: 'Derecha' }];
+      // Sin valor guardado no se marca ninguno: la tienda decide según la forma (círculo = centro).
+      const actual = typeof valor === 'string' && valor ? valor : '';
+      return (
+        <FormField etiqueta={campo.label} ayuda={ayuda}>
+          {(c) => (
+            <ChipsOpcion
+              aria-labelledby={c.idEtiqueta}
+              opciones={opciones.map((o) => ({ valor: String(o.value), etiqueta: o.label, deshabilitada: deshabilitado }))}
+              valor={actual || null}
+              onValorChange={(v) => onCambiar(v)}
+            />
+          )}
+        </FormField>
+      );
+    }
     case 'select': {
       const actual = typeof valor === 'string' ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '';
       // Figma v2: hasta 5 opciones van como chips del kit; más, como desplegable.

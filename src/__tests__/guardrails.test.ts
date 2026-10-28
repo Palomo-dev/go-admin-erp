@@ -3436,6 +3436,10 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
       'No consulta stock_levels. El detector extiende el cuerpo hasta el final de 20261023102907 y ahí entra el backfill, que nombra stock_levels y products. La función solo descuenta por la primitiva.',
     fn_auto_journal_stock_movement:
       'No lista existencias. Toma el costo promedio y el nombre del product_id del movimiento que ya ocurrió, para armar el asiento. Excluir la variante de un padre eliminado dejaría ese movimiento sin contabilizar.',
+    fn_importar_productos_lote:
+      'No lista existencias: es el upsert de la importación por SKU. Busca el producto o el padre por SKU (y reactiva el eliminado que se vuelve a importar) y escribe stock_levels del producto de la fila. Filtrar por pp_elim haría que la fila no encuentre su propio producto. 20261027213000 solo agrega el permiso para crear categorías.',
+    fn_bloquear_stock_padre_variantes:
+      'Trigger de 20261027214000 sobre stock_levels: no lista existencias, solo bloquea entradas al padre si tiene variantes con status distinto de deleted (exclusión ya presente con alias v).',
   };
 
   function definicionesDeStock(sql: string): Array<{ nombre: string; conPredicado: boolean }> {

@@ -267,6 +267,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
 
       {pestana === 'etiquetas' && (
         <div className="flex flex-col gap-3">
+          <Interruptor etiqueta="Unidades vendidas («180 vendidos»)" valor={vista.show_sales_count === true} onCambiar={(v) => cambiar('show_sales_count', v ? true : undefined)} />
           <Lista etiqueta="Forma" valor={vista.label_shape} opciones={FORMAS_ETIQUETA} nombres={{ square: 'Cuadrada', rounded: 'Redonda', semi: 'Semi', pill: 'Píldora', circle: 'Círculo (el %)' }} onCambiar={(v) => cambiar('label_shape', v)} />
           <Lista etiqueta="Estilo" valor={vista.label_style} opciones={ESTILOS_ETIQUETA} nombres={{ solid: 'Sólido', soft: 'Suave', outline: 'Contorno', gradient: 'Degradado' }} onCambiar={(v) => cambiar('label_style', v)} />
           <Lista etiqueta="Posición" valor={vista.label_position} opciones={POSICIONES_ETIQUETA} nombres={{ top_left: 'Arriba izquierda', top_right: 'Arriba derecha', bottom_left: 'Abajo izquierda', bottom_right: 'Abajo derecha', over_title: 'Sobre el título' }} onCambiar={(v) => cambiar('label_position', v)} />

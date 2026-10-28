@@ -69,6 +69,8 @@ export function RepetidorSeccion({
   const guardados = Array.isArray(valor) ? (valor as Elemento[]) : [];
   const porDefecto = guardados.length === 0 && !!campo.defaultItems?.length;
   const lista: Elemento[] = porDefecto ? (campo.defaultItems as Elemento[]) : guardados;
+  // La tienda no usa los sugeridos: el panel dice lo que ella pinta y cuenta 0.
+  const vacioEnTienda = porDefecto && !!campo.emptyStoreText;
   const campos = campo.itemFields ?? [];
   const claveEtiqueta = campo.itemLabelKey || campos[0]?.key;
   const [abierto, setAbierto] = useState<number | null>(null);
@@ -81,14 +83,14 @@ export function RepetidorSeccion({
     <div className="flex flex-col gap-2" role="group" aria-label={campo.label}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-[13px] font-medium leading-[18px] text-fg">
-          {campo.label} <span className="text-fg-secondary">({lista.length})</span>
+          {campo.label} <span className="text-fg-secondary">({vacioEnTienda ? 0 : lista.length})</span>
         </p>
         <button type="button" className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-medium text-accent hover:bg-surface-hover disabled:opacity-40" disabled={des || lleno} onClick={() => { operar({ tipo: 'agregar', campos }); setAbierto(lista.length); }}>
           <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} /> {t('repetidor.agregar')}
         </button>
       </div>
       {campo.helpText ? <p className="text-xs leading-4 text-fg-secondary">{campo.helpText}</p> : null}
-      {porDefecto ? <p className="text-xs leading-4 text-fg-secondary">{t('repetidor.porDefecto')}</p> : null}
+      {porDefecto ? <p className="text-xs leading-4 text-fg-secondary">{vacioEnTienda ? t('repetidor.vacioEnTienda', { texto: campo.emptyStoreText as string }) : t('repetidor.porDefecto')}</p> : null}
       {lista.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-xs text-fg-secondary">{t('repetidor.vacio')}</p>
       ) : (

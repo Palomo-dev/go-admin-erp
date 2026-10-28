@@ -1042,6 +1042,7 @@ export const TEXTOS_EDITOR = {
     vacio: "Sin elementos. Usa «Agregar».",
     elemento: "{campo} {n}",
     porDefecto: "Se muestran los de siempre; al editar se guardan en la sección.",
+    vacioEnTienda: "La tienda muestra «{texto}». Abajo hay sugeridos: al editar uno se guardan en la sección.",
   },
   listas: {
     paginacion: "Paginación",

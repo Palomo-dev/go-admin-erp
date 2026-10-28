@@ -44,4 +44,14 @@ describe('CONTAC-04: repetidor del kit', () => {
     fireEvent.click(screen.getByRole('button', { name: /Agregar/ }));
     expect(cambiar.mock.calls.at(-1)[0]).toHaveLength(2);
   });
+
+  test('testimonials vacío: el panel dice lo que pinta la tienda y cuenta 0; no escribe', () => {
+    const items = getSectionDefinition('testimonials')!.contentFields.find((c) => c.key === 'items') as ContentFieldDef;
+    const cambiar = jest.fn();
+    renderConIdioma(<RepetidorSeccion campo={items} valor={[]} onCambiar={cambiar} categorias={categorias} />);
+    expect(screen.getByText(/La tienda muestra «No hay testimonios disponibles aún»/)).toBeTruthy();
+    expect(screen.queryByText(/Se muestran los de siempre/)).toBeNull();
+    expect(screen.getByText('(0)')).toBeTruthy();
+    expect(cambiar).not.toHaveBeenCalled();
+  });
 });

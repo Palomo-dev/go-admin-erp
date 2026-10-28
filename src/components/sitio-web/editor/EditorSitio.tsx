@@ -760,6 +760,7 @@ function Editor() {
                 enBorrador={ed.enV2}
                 dispositivo={ed.dispositivo}
                 coloresTema={coloresTema}
+                giro={giroShell}
                 onEditarMenu={() => setHojaMenu(true)}
                 onCerrar={() => ed.seleccionarZona(null)}
               />

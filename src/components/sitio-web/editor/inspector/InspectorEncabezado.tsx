@@ -84,6 +84,8 @@ export interface InspectorEncabezadoProps {
   onEditarMenu: () => void;
   onCerrar: () => void;
   pestanaInicial?: PestanaZona;
+  /** Giro del sitio: el menú inferior del restaurante arranca con «Reservar · Llamar · Cómo llegar · Pedir». */
+  giro?: string | null;
 }
 
 const COMPOSICIONES = ['default', 'centered', 'split', 'minimal', 'mega'] as const;
@@ -526,7 +528,7 @@ function Diseno(p: Interno) {
           </p>
         )}
       </div>
-      <CelularEncabezado ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
+      <CelularEncabezado ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} giro={p.giro} />
     </>
   );
 }

@@ -8,6 +8,16 @@
 import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PanelEstiloContador } from '../inspector/PanelEstiloContador';
+
+// Mismo componente, pero se puede leer con qué `columnaDisponible` lo monta PanelContador.
+jest.mock('../inspector/PanelEstiloContador', () => {
+  const real = jest.requireActual('../inspector/PanelEstiloContador');
+  return { ...real, PanelEstiloContador: jest.fn((p: Record<string, unknown>) => real.PanelEstiloContador(p)) };
+});
+const ultimaColumna = (): unknown => {
+  const llamadas = (PanelEstiloContador as unknown as jest.Mock).mock.calls;
+  return llamadas[llamadas.length - 1]?.[0]?.columnaDisponible;
+};
 import { PanelContador } from '../inspector/PanelContador';
 import { finLocal, leerContador, objetivoContador, partesFin, tiempoRestante, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
 import { ajustesParaLienzo, CLAVES_AJUSTES_VIVOS } from '@/lib/website/ajustesVivos';
@@ -144,6 +154,11 @@ describe('PanelContador', () => {
     montar({ ...FILA, countdown_mode: 'custom', countdown_end_date: '' });
     expect(screen.getByText('Fecha')).toBeTruthy();
     expect(screen.getByText('Hora')).toBeTruthy();
+    // La fila no trae `countdown_style`: la columna no se da por disponible.
+    expect(ultimaColumna()).toBe(false);
+    // Con la columna en la fila (aunque sea null), sí.
+    montar({ ...FILA, countdown_style: null });
+    expect(ultimaColumna()).toBe(true);
   });
 
   test('contraste: aviso discreto con colores propios por debajo de 4.5:1, sin bloquear', () => {

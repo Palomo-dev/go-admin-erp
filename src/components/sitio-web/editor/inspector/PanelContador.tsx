@@ -123,7 +123,7 @@ export function PanelContador({
             {sinFecha && <span className="text-[12px] text-fg-secondary">Sin fecha de fin el contador no se muestra.</span>}
           </div>
         ) : (
-          <label className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">Hora de reinicio (0–23)
+          <label className="flex flex-col gap-1.5 text-[13px] text-fg-secondary">Hora de reinicio (0–23)
             <NumeroKit min={0} max={23} disabled={deshabilitado} value={c.horaReinicio} onChange={(e) => {
               const n = Number(e.target.value);
               cambiar({ countdown_reset_hour: Number.isInteger(n) && n >= 0 && n <= 23 ? n : 0 });

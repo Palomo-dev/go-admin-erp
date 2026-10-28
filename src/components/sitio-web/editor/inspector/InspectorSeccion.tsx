@@ -34,7 +34,7 @@ import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './Insp
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
 import { AjustesAnteriores } from './InspectorEncabezado';
 import type { Apariencia } from './estiloUnico';
-import { carruselGlobalActivo, carruselDesdeClavesAnteriores, cambioTextoEncabezado, valorTextoEncabezado, aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
+import { carruselGlobalActivo, carruselDesdeClavesAnteriores, cambioTextoEncabezado, valorTextoEncabezado, aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion, campoUnicoPortada, valorUnicoPortada, cambioUnicoPortada } from './espaciadoSeccion';
 import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
@@ -139,6 +139,24 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             </Link>
           </div>
         </div>
+      );
+    }
+    if (campoUnicoPortada(s.section_type, s.section_variant, c.key)) {
+      const clave = c.key as 'radius' | 'shadow';
+      return (
+        <CampoSeccion
+          key={c.key}
+          campo={c}
+          valor={valorUnicoPortada(contenido, clave)}
+          contenido={contenido}
+          onCambiar={(v) => onCambiarContenido(cambioUnicoPortada(contenido, clave, v))}
+          onCambiarContenido={onCambiarContenido}
+          organizationId={p.organizationId}
+          paleta={p.paleta}
+          fondo={p.tema.colores.fondo ?? null}
+          fuentes={p.tema.fuentes}
+          categorias={p.categorias}
+        />
       );
     }
     return (

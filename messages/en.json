@@ -33227,7 +33227,34 @@
           "circuloIcono": "Icon color",
           "circuloIconoAuto": "Automatic",
           "headerSobreHero": "Header over the cover",
-          "headerSobreHeroAyuda": "The header sits on top of the cover image. Off: the header goes above and the cover below."
+          "headerSobreHeroAyuda": "The header sits on top of the cover image. Off: the header goes above and the cover below.",
+          "iconosTrazo": "Icon stroke",
+          "contorno": "Outline",
+          "relleno": "Filled",
+          "iconoAccion": {
+            "search": "Search icon",
+            "cart": "Cart icon",
+            "account": "Account icon",
+            "currency": "Currency icon"
+          },
+          "iconoNombre": {
+            "search": "Magnifier",
+            "search-lg": "Large magnifier",
+            "scan-search": "Framed magnifier",
+            "shopping-bag": "Bag",
+            "shopping-cart": "Cart",
+            "package": "Package",
+            "gift": "Gift",
+            "user": "Person",
+            "user-circle": "Person in circle",
+            "user-round": "Rounded person",
+            "circle-user": "Circle with person",
+            "globe": "Globe",
+            "coins": "Coins",
+            "wallet": "Wallet",
+            "banknote": "Banknote",
+            "dollar-sign": "Dollar sign"
+          }
         },
         "diseno": {
           "titulo": "Header layout",

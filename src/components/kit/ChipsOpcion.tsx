@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 
@@ -14,6 +15,8 @@ export interface OpcionChip<V extends string> {
   deshabilitada?: boolean;
   /** Por qué está deshabilitada (`title` y lector de pantalla). */
   motivo?: string;
+  /** Ícono antes del texto (decorativo; el texto sigue siendo el nombre accesible). */
+  adorno?: ReactNode;
 }
 
 interface Comunes<V extends string> {
@@ -60,6 +63,7 @@ export function ChipsOpcion<V extends string>(props: ChipsOpcionProps<V>) {
             )}
           >
             {activa && <Check aria-hidden className="size-3.5" strokeWidth={2} />}
+            {o.adorno}
             {o.etiqueta}
           </button>
         );

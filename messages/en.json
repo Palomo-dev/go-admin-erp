@@ -34118,6 +34118,16 @@
         "descripcion": "when you save, changes go live. Create a draft to review them before publishing.",
         "crearBorrador": "Create draft"
       },
+      "repetidor": {
+        "agregar": "Add",
+        "duplicar": "Duplicate",
+        "quitar": "Remove",
+        "subir": "Move up",
+        "bajar": "Move down",
+        "vacio": "No items. Use “Add”.",
+        "elemento": "{campo} {n}",
+        "porDefecto": "Showing the defaults; editing saves them to the section."
+      },
       "listas": {
         "paginacion": "Pagination",
         "carrusel": "Carousel",

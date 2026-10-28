@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
+import { RepetidorSeccion } from './RepetidorSeccion';
 import FieldRenderer from '@/components/organization/branding/editor/fields/FieldRenderer';
 import type { ThemePalette } from '@/components/organization/branding/editor/fields/types';
 import { ColorField } from '@/components/sitio-web/ui/ColorField';
@@ -131,6 +132,20 @@ export function CampoSeccion({
   }
 
   switch (campo.type) {
+    case 'repeater':
+      return (
+        <RepetidorSeccion
+          campo={campo}
+          valor={valor}
+          onCambiar={onCambiar}
+          organizationId={organizationId}
+          paleta={paleta}
+          fondo={fondo}
+          categorias={categorias}
+          deshabilitado={deshabilitado}
+          fuentes={fuentes}
+        />
+      );
     case 'text':
     case 'url':
       return (

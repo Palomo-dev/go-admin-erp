@@ -1032,6 +1032,16 @@ export const TEXTOS_EDITOR = {
       sinSeparadores: 'Ninguno',
     },
   },
+  repetidor: {
+    agregar: "Agregar",
+    duplicar: "Duplicar",
+    quitar: "Quitar",
+    subir: "Subir",
+    bajar: "Bajar",
+    vacio: "Sin elementos. Usa «Agregar».",
+    elemento: "{campo} {n}",
+    porDefecto: "Se muestran los de siempre; al editar se guardan en la sección.",
+  },
   listas: {
     paginacion: "Paginación",
     carrusel: "Carrusel",

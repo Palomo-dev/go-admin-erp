@@ -34128,6 +34128,16 @@
         "descripcion": "ao salvar, as mudanças vão para o site. Crie um rascunho para revisá-las antes de publicar.",
         "crearBorrador": "Criar rascunho"
       },
+      "repetidor": {
+        "agregar": "Adicionar",
+        "duplicar": "Duplicar",
+        "quitar": "Remover",
+        "subir": "Subir",
+        "bajar": "Descer",
+        "vacio": "Sem itens. Use “Adicionar”.",
+        "elemento": "{campo} {n}",
+        "porDefecto": "Mostrando os padrões; ao editar, eles são salvos na seção."
+      },
       "listas": {
         "paginacion": "Paginação",
         "carrusel": "Carrossel",

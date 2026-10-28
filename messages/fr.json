@@ -34118,6 +34118,16 @@
         "descripcion": "à l’enregistrement, les modifications sont en ligne. Créez un brouillon pour les vérifier avant de publier.",
         "crearBorrador": "Créer un brouillon"
       },
+      "repetidor": {
+        "agregar": "Ajouter",
+        "duplicar": "Dupliquer",
+        "quitar": "Retirer",
+        "subir": "Monter",
+        "bajar": "Descendre",
+        "vacio": "Aucun élément. Utilisez « Ajouter ».",
+        "elemento": "{campo} {n}",
+        "porDefecto": "Valeurs par défaut affichées ; les modifier les enregistre dans la section."
+      },
       "listas": {
         "paginacion": "Pagination",
         "carrusel": "Carrousel",

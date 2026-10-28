@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import { claveAvisoCobro, CobroEnCajaError, webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
-import { metodoDeCobroEnCaja, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
+import { metodoDeCobroEnCaja, pedidoPagadoPorPasarela, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
@@ -365,7 +365,16 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     setSinCajaAbierta(false);
     // El diálogo solo ofrece métodos de caja; cualquier otro valor cae en la regla única.
-    const metodo: MetodoCobroEnCaja = metodoDeCobroEnCaja(valor?.metodo ?? order.payment_method);
+    // Pagado por pasarela: ya está cobrado; cobrarEnCaja lo devuelve como ya cobrado sin tocar la caja.
+    const metodo: MetodoCobroEnCaja | null = pedidoPagadoPorPasarela(order)
+      ? 'cash'
+      : metodoDeCobroEnCaja(valor?.metodo ?? order.payment_method);
+    if (!metodo) {
+      // Pasarela sin pago confirmado: no se cobra en caja como efectivo.
+      toast({ title: t('cobro.error'), description: t('cobro.metodoInvalido'), variant: 'destructive' });
+      setActionLoading(false);
+      return false;
+    }
     try {
       const cobro = await webOrderConfirmationService.cobrarEnCaja(order, {
         metodo,

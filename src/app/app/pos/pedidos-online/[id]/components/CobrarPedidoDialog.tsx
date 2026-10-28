@@ -71,7 +71,7 @@ export function CobrarPedidoDialog({
       moneda={moneda}
       metodos={metodos}
       hoy={getToday()}
-      valorInicial={{ metodo: metodoDeCobroEnCaja(order.payment_method), monto: Number(order.total) || 0 }}
+      valorInicial={{ metodo: metodoDeCobroEnCaja(order.payment_method) ?? undefined, monto: Number(order.total) || 0 }}
       cobroTotal
       codigosEfectivo={['cash']}
       avisoCaja={

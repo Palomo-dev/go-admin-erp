@@ -158,3 +158,34 @@ describe('cobrarEnCaja', () => {
     expect(codigoErrorCobro({ message: 'otra cosa' })).toBe('OTRO');
   });
 });
+
+describe('pedido pagado por pasarela (WO-335-MVRDVAGK-MRHJ)', () => {
+  const pagadoWompi = { ...(pedido as object), id: 'wo-wompi', payment_status: 'paid', payment_method: 'wompi', sale_id: 'sale-w' } as never;
+
+  beforeEach(() => {
+    mockRpc.mockReset();
+    mockFrom.mockReset();
+  });
+
+  it('cobrarEnCaja no llama a la RPC: devuelve ya cobrado con la factura de la venta', async () => {
+    mockFrom.mockReturnValue(chain({ data: { id: 'inv-w', number: 'FACT-0003', currency: 'COP' }, error: null }));
+    const r = await webOrderConfirmationService.cobrarEnCaja(pagadoWompi, { metodo: 'cash' });
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ yaCobrado: true, invoiceId: 'inv-w', invoiceNumber: 'FACT-0003', paymentId: '' });
+  });
+
+  it('el cobro en lote lo salta y no crea pago', async () => {
+    mockFrom.mockReturnValue(chain());
+    const r = await webOrderConfirmationService.cobrarVariosEnCaja([pagadoWompi], async () => pagadoWompi);
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(r.cobrados).toEqual([]);
+    expect(r.yaPagadosPasarela).toEqual(['WO-140-CAJA']);
+  });
+
+  it('pendiente por Wompi en lote: no se cobra como efectivo (METODO_INVALIDO)', async () => {
+    const pendiente = { ...(pagadoWompi as object), payment_status: 'pending' } as never;
+    const r = await webOrderConfirmationService.cobrarVariosEnCaja([pendiente], async () => pendiente);
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(r.pendientes.METODO_INVALIDO).toEqual(['WO-140-CAJA']);
+  });
+});

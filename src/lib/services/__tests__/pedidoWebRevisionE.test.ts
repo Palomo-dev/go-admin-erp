@@ -249,7 +249,7 @@ describe('métodos de cobro en caja', () => {
     expect(metodoDeCobroEnCaja('nequi')).toBe('transfer');
     expect(metodoDeCobroEnCaja('daviplata')).toBe('transfer');
     expect(metodoDeCobroEnCaja('card')).toBe('card');
-    expect(metodoDeCobroEnCaja('wompi')).toBe('cash');
+    expect(metodoDeCobroEnCaja('wompi')).toBeNull(); // pasarela: nunca efectivo (MRHJ)
     expect(metodoDeCobroEnCaja(null)).toBe('cash');
   });
 });

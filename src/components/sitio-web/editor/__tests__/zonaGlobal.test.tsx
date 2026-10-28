@@ -125,7 +125,7 @@ describe('InspectorEncabezado', () => {
     const onCambiar = encabezado();
     expect(screen.getByRole('heading', { name: 'Encabezado' })).toBeTruthy();
     expect(screen.getByText('Global · aparece en todas las páginas')).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo', 'Celular']);
     expect(screen.getByText('Cambia en todas las páginas')).toBeTruthy();
     expect(screen.getByText('Valores por defecto de la plantilla «Noir Omakase»')).toBeTruthy();
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
@@ -141,6 +141,10 @@ describe('InspectorEncabezado', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
+    // Lo del celular (con el menú inferior) vive solo en la pestaña Celular, sin duplicarse en Diseño.
+    expect(screen.queryByRole('switch', { name: /Menú inferior/ })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Celular' }));
+    expect(screen.getAllByRole('switch', { name: /Menú inferior/ })).toHaveLength(1);
   });
 
   test('Logo centrado → Clásico: una sola opción; el lado vuelve a izquierda y Logo centrado oculta el selector', () => {

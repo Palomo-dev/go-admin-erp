@@ -64,7 +64,7 @@ import {
   valorOpcion,
 } from './zonaGlobalLogica';
 
-/** Figma 2058:40377 / 2064:102: tres pestañas. 'celular' y 'constructor' quedan como alias de Diseño (enlaces viejos). */
+/** Figma 2058:40377 / 2064:102: Contenido · Diseño · Estilo, más Celular (todo lo del celular, con el menú inferior). 'constructor' queda como alias de Diseño (enlaces viejos). */
 export type PestanaZona = 'contenido' | 'diseno' | 'estilo' | 'celular' | 'constructor';
 
 export interface MenuDisponible {
@@ -95,7 +95,7 @@ const SIN_MENU = '__ninguno';
 
 export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   const t = useTextosEditor();
-  const [pestana, setPestana] = useState<PestanaZona>(p.pestanaInicial === 'celular' || p.pestanaInicial === 'constructor' ? 'diseno' : p.pestanaInicial ?? 'diseno');
+  const [pestana, setPestana] = useState<PestanaZona>(p.pestanaInicial === 'constructor' ? 'diseno' : p.pestanaInicial ?? 'diseno');
   const a = p.ajustes;
   const titulo = t('zonaGlobal.titulo.header');
   const idTabs = 'inspector-encabezado';
@@ -112,6 +112,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           { valor: 'contenido', etiqueta: t('zonaGlobal.pestana.contenido') },
           { valor: 'diseno', etiqueta: t('zonaGlobal.pestana.diseno') },
           { valor: 'estilo', etiqueta: t('zonaGlobal.pestana.estilo') },
+          { valor: 'celular', etiqueta: t('zonaGlobal.pestana.celular') },
         ]}
         valor={pestana}
         onValorChange={setPestana}
@@ -127,6 +128,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           </>
         )}
         {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} />}
+        {pestana === 'celular' && <CelularEncabezado ajustes={p.ajustes} cambiar={cambiar} coloresTema={p.coloresTema} giro={p.giro} />}
       </div>
     </aside>
   );
@@ -530,7 +532,6 @@ function Diseno(p: Interno) {
           </p>
         )}
       </div>
-      <CelularEncabezado ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} giro={p.giro} />
     </>
   );
 }

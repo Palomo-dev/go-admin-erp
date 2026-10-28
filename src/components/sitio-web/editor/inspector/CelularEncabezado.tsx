@@ -118,7 +118,8 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajuste
           <CampoNumero aria-labelledby={idAncho} valor={Number(panel.width)} decimales={0} minimo={70} maximo={100} sufijo="%" alinear="izquierda" onValorChange={(v) => ponerPanel('width', v == null ? null : Math.min(100, Math.max(70, Math.round(v))))} />
         </div>
       )}
-      {conPanel && (
+      <fieldset disabled={!conPanel} aria-disabled={!conPanel} className={`flex flex-col gap-3 ${conPanel ? '' : 'opacity-50'}`} data-atenuado={!conPanel || undefined}>
+        {!conPanel && <p className="text-[11px] leading-[14px] text-fg-muted">{tm('sinMenuAyuda')}</p>}
         <>
           <div className="flex flex-col gap-2">
             <EtiquetaGrupo id={idFondo}>{tm('fondo')}</EtiquetaGrupo>
@@ -164,7 +165,7 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajuste
             />
           </div>
         </>
-      )}
+      </fieldset>
 
       {muestraBuscadorPantallaCompleta(a) && (
         <FilaInterruptor
@@ -193,14 +194,15 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajuste
           onValorChange={(v) => aplicar(cambioOrdenCelular(a, v))}
         />
       </div>
-      <div className="flex flex-col gap-2">
+      <div className={`flex flex-col gap-2 ${conPanel ? '' : 'opacity-50'}`} aria-disabled={!conPanel}>
         <EtiquetaGrupo id={idGlifo}>{tm('glifo')}</EtiquetaGrupo>
         <ChipsOpcion
           aria-labelledby={idGlifo}
-          opciones={GLIFOS_MENU.map((v) => ({ valor: v, etiqueta: tm(`glifoOpcion.${v}`) }))}
+          opciones={GLIFOS_MENU.map((v) => ({ valor: v, etiqueta: tm(`glifoOpcion.${v}`), deshabilitada: !conPanel }))}
           valor={glifoMenu(a)}
-          onValorChange={(v) => aplicar(cambioGlifoMenu(a, v))}
+          onValorChange={(v) => conPanel && aplicar(cambioGlifoMenu(a, v))}
         />
+        {!conPanel && <p className="text-[11px] leading-[14px] text-fg-muted">{tm('sinMenuAyuda')}</p>}
       </div>
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idEstilo}>{tm('estiloIconos')}</EtiquetaGrupo>

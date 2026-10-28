@@ -774,6 +774,7 @@ export const TEXTOS_EDITOR = {
       estiloIconos: 'Estilo de los íconos',
       estiloIconosOpcion: { computador: 'Como en computador', borde: 'Con borde' },
       estiloIconosAyuda: 'El círculo de color se elige en «Círculo acento», para computador y celular.',
+      sinMenuAyuda: 'Con «Pestañas fijas abajo» o «Sin menú» no hay botón de menú: estas opciones no aplican.',
       fijo: 'Fijo al desplazar',
       fijoAyuda: 'Solo en el celular. Si no lo cambias, sigue «Al bajar» de computador.',
       breakpoint: 'Diseño de celular por debajo de',

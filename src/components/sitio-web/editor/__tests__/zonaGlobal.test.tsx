@@ -130,16 +130,36 @@ describe('InspectorEncabezado', () => {
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
     expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú']);
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Megamenú' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega' });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega', header_layout: null, logo_position: 'left', mobile_logo_position: null });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Logo centrado' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', logo_position: 'center' });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', header_layout: null, logo_position: 'center', mobile_logo_position: null });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', logo_position: 'center' });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', header_layout: null, logo_position: 'center', mobile_logo_position: null });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
-    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center', mobile_logo_position: 'inherit' });
+    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center', mobile_logo_position: null });
     expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
+  });
+
+  test('Logo centrado → Clásico: una sola opción; el lado vuelve a izquierda y Logo centrado oculta el selector', () => {
+    const onCambiar = encabezado({ header_style: 'centered', logo_position: 'center' }, { pestanaInicial: 'diseno' });
+    expect(screen.queryByRole('radiogroup', { name: 'Posición del logo' })).toBeNull();
+    expect(screen.getByText('En esta composición el logo va al centro.')).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Diseño del encabezado' })).getByRole('radio', { name: 'Clásico' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'default', header_layout: null, logo_position: 'left', mobile_logo_position: null });
+  });
+
+  test('Estilo: encabezado sobre la portada y espacio de la primera sección', () => {
+    const onCambiar = encabezado({ header_style: 'transparent' }, { pestanaInicial: 'estilo' });
+    const sw = screen.getByRole('switch', { name: /Encabezado sobre la portada/ });
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(sw);
+    expect(onCambiar).toHaveBeenCalledWith({ header_transparent_over_hero: false });
+    const campo = screen.getByRole('textbox', { name: 'Espacio superior de la primera sección' });
+    fireEvent.change(campo, { target: { value: '24' } });
+    fireEvent.blur(campo);
+    expect(onCambiar).toHaveBeenCalledWith({ first_section_offset_px: 24 });
   });
 
   test('Contenido: carrito y cuenta encendidos por defecto; segundo botón, barra superior, sede e idioma deshabilitado', () => {

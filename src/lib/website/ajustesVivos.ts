@@ -71,11 +71,16 @@ export const CLAVES_AJUSTES_VIVOS: readonly string[] = Array.from(
 );
 
 /** Toma de los ajustes del editor solo las columnas que el lienzo aplica en vivo. */
+const TEMA_VIVO = new Set<string>(CLAVES_TEMA_VIVO);
+
 export function ajustesParaLienzo(ajustes: Record<string, unknown> | null | undefined): Record<string, unknown> {
   const resultado: Record<string, unknown> = {};
   if (!ajustes) return resultado;
   for (const clave of CLAVES_AJUSTES_VIVOS) {
     if (clave in ajustes) resultado[clave] = ajustes[clave];
+    // Una opción del encabezado/pie que se quitó viaja como `null`: el lienzo vuelve al default y
+    // no se queda con el valor que tenía al cargar (p. ej. `logo_position` al volver a Clásico).
+    else if (!TEMA_VIVO.has(clave)) resultado[clave] = null;
   }
   return resultado;
 }

@@ -33218,7 +33218,9 @@
           "circuloFondo": "Fond du cercle",
           "circuloFondoAcento": "Couleur de la marque",
           "circuloIcono": "Couleur de l’icône",
-          "circuloIconoAuto": "Automatique"
+          "circuloIconoAuto": "Automatique",
+          "headerSobreHero": "En-tête sur la couverture",
+          "headerSobreHeroAyuda": "L’en-tête se place sur l’image de couverture. Désactivé : l’en-tête au-dessus, la couverture en dessous."
         },
         "diseno": {
           "titulo": "Mise en page de l'en-tête",
@@ -33255,6 +33257,11 @@
             "bar": "Barre visible",
             "hidden": "Masquée",
             "fullscreen": "Plein écran"
+          },
+          "logoAyuda": "Même position sur ordinateur et sur mobile.",
+          "logoFijo": {
+            "centro": "Dans cette mise en page, le logo est centré.",
+            "izquierda": "Dans cette mise en page, le logo est à gauche."
           }
         },
         "estilo": {
@@ -33302,7 +33309,8 @@
             "recto": "Carré",
             "redondeado": "Arrondi",
             "pildora": "Pilule"
-          }
+          },
+          "espacios": "Espacements"
         },
         "pie": {
           "menus": "Menus du pied de page",

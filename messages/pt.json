@@ -33223,8 +33223,8 @@
           "presetBorde": "Borda fina",
           "presetSombra": "Sombra flutuante",
           "presetSolo": "Só o ícone",
-          "headerSobreHero": "Cabeçalho transparente sobre o hero",
-          "headerSobreHeroAyuda": "O cabeçalho fica fixo e transparente sobre o hero. Desligado: cabeçalho opaco e o hero abaixo, sem vão.",
+          "headerSobreHero": "Cabeçalho sobre a capa",
+          "headerSobreHeroAyuda": "O cabeçalho fica sobre a imagem de capa. Desligado: o cabeçalho vai em cima e a capa embaixo.",
           "espacioPrimera": "Espaço superior da primeira seção",
           "espacioPrimeraAyuda": "Pixels entre o cabeçalho e a primeira seção. 0 as deixa coladas.",
           "circuloFondo": "Fundo do círculo",
@@ -33267,6 +33267,11 @@
             "bar": "Barra visível",
             "hidden": "Oculto",
             "fullscreen": "Tela cheia"
+          },
+          "logoAyuda": "A mesma posição no computador e no celular.",
+          "logoFijo": {
+            "centro": "Nesta composição o logo fica no centro.",
+            "izquierda": "Nesta composição o logo fica à esquerda."
           }
         },
         "estilo": {
@@ -33314,7 +33319,8 @@
             "recto": "Reto",
             "redondeado": "Arredondado",
             "pildora": "Pílula"
-          }
+          },
+          "espacios": "Espaços"
         },
         "pie": {
           "menus": "Menus do rodapé",

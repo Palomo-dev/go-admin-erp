@@ -12,7 +12,7 @@
 import { useId, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
+import { CampoNumero, ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
@@ -31,6 +31,7 @@ import {
   TituloBloque,
 } from './PartesZonaGlobal';
 import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
+import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -388,6 +389,40 @@ function Anuncios({ valor, onCambiar }: { valor: unknown; onCambiar: (v: string 
 
 // ─── Diseño ────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Una sola opción para el lado del logo (computador y celular).
+ * La composición decide la estructura; solo «Clásico» deja elegir el lado (la tienda solo lo
+ * respeta ahí: HeaderClassic y FilaLogoMovil vía logoEfectivo). Al cambiar de composición se
+ * escribe el lado que esa composición pinta, con valor explícito (no `null`), para que el lienzo
+ * en vivo lo reciba y no se quede con el lado guardado. También se suelta `header_layout`
+ * (preset de estilo) porque en la tienda manda sobre `header_style`.
+ */
+export function cambioComposicion(c: string): Record<string, unknown> {
+  return {
+    header_style: c,
+    header_layout: null,
+    logo_position: c === 'centered' || c === 'split' ? 'center' : 'left',
+    mobile_logo_position: null,
+  };
+}
+
+export function composicionConLado(c: string | undefined): boolean {
+  return !c || c === 'default';
+}
+
+/** Composición que la tienda pinta: `header_layout` manda si viene (estiloDeHeaderLayout). */
+export function composicionEncabezado(a: Record<string, unknown>): string | undefined {
+  return estiloDeHeaderLayout(a.header_layout) ?? valorOpcion<string>(a, 'header_style');
+}
+
+/** Igual que `logoEfectivo` de la tienda. */
+export function ladoLogo(a: Record<string, unknown>): string {
+  const pos = a.logo_position;
+  if (pos === 'left' || pos === 'center' || pos === 'right') return pos;
+  const c = composicionEncabezado(a);
+  return c === 'centered' || c === 'split' ? 'center' : 'left';
+}
+
 function Diseno(p: Interno) {
   const t = useTextosEditor();
   const a = p.ajustes;
@@ -397,7 +432,7 @@ function Diseno(p: Interno) {
   const idBc = useId();
   const idMc = useId();
   const idCol = useId();
-  const composicion = valorOpcion<string>(a, 'header_style');
+  const composicion = composicionEncabezado(a);
   const megaId = typeof a.header_mega_menu_id === 'string' ? a.header_mega_menu_id : null;
   const mega = megaId ? p.menus.find((m) => m.id === megaId) : null;
 
@@ -411,7 +446,7 @@ function Diseno(p: Interno) {
               key={c}
               etiqueta={t(`zonaGlobal.diseno.composicion.${c}`)}
               seleccionada={composicion === c}
-              onElegir={() => cambiar(c === 'centered' || c === 'split' ? { header_style: c, logo_position: 'center' } : { header_style: c })}
+              onElegir={() => { if (c !== composicion) cambiar(cambioComposicion(c)); }}
             >
               <MiniaturaEncabezado composicion={c} />
             </TarjetaComposicion>
@@ -419,19 +454,24 @@ function Diseno(p: Interno) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idLogo}>{t('zonaGlobal.diseno.logo')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idLogo}
-          opciones={[
-            { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
-            { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
-            { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
-          ]}
-          valor={valorOpcion<string>(a, 'logo_position') ?? (composicion === 'centered' || composicion === 'split' ? 'center' : 'left')}
-          onValorChange={(v) => cambiar({ logo_position: v, mobile_logo_position: 'inherit' })}
-        />
-      </div>
+      {composicionConLado(composicion) ? (
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idLogo}>{t('zonaGlobal.diseno.logo')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={idLogo}
+            opciones={[
+              { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
+              { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
+              { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
+            ]}
+            valor={ladoLogo(a)}
+            onValorChange={(v) => cambiar({ logo_position: v, mobile_logo_position: null })}
+          />
+          <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.logoAyuda')}</p>
+        </div>
+      ) : (
+        <p className="text-xs leading-4 text-fg-muted">{t(`zonaGlobal.diseno.logoFijo.${composicion === 'centered' || composicion === 'split' ? 'centro' : 'izquierda'}`)}</p>
+      )}
       <SelectorMenu {...p} etiqueta={t('zonaGlobal.menu.tituloDiseno')} />
       {composicion === 'mega' && (
         <>
@@ -566,6 +606,7 @@ function Estilo(p: Interno) {
           onCambiar={(v) => cambiar({ header_sticky: v })}
         />
       </section>
+      <EspaciosEncabezado ajustes={a} cambiar={cambiar} />
       <FormaBoton ajustes={a} cambiar={cambiar} />
       <AjustesAnteriores ajustes={a} entradas={entradasAnterioresEncabezado(a, CLAVES_ANTERIORES_ENCABEZADO)} cambiar={cambiar} />
       <button
@@ -576,6 +617,46 @@ function Estilo(p: Interno) {
         {t('zonaGlobal.restablecer')}
       </button>
     </>
+  );
+}
+
+/** Igual que `headerSobreHero` de la tienda (lib/website/espacioHeader.ts). */
+export function encabezadoSobrePortada(a: Record<string, unknown>): boolean {
+  if (a.header_style === 'transparent' && a.header_transparent_over_hero !== false) return true;
+  return a.header_transparent_over_hero === true;
+}
+
+/** «Espacios»: encabezado sobre la portada y espacio encima de la primera sección (PR #426). */
+function EspaciosEncabezado({ ajustes: a, cambiar }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void }) {
+  const t = useTextosEditor();
+  const id = useId();
+  const transparente = a.header_style === 'transparent';
+  const offset = typeof a.first_section_offset_px === 'number' ? a.first_section_offset_px : null;
+  return (
+    <section className="flex flex-col gap-3">
+      <TituloBloque>{t('zonaGlobal.estilo.espacios')}</TituloBloque>
+      <FilaInterruptor
+        titulo={t('zonaGlobal.acciones.headerSobreHero')}
+        ayuda={t('zonaGlobal.acciones.headerSobreHeroAyuda')}
+        valor={encabezadoSobrePortada(a)}
+        // Transparente ya va encima por defecto: encender suelta la clave; si no, se escribe explícito.
+        onCambiar={(v) => cambiar({ header_transparent_over_hero: v ? (transparente ? null : true) : false })}
+      />
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={id}>{t('zonaGlobal.acciones.espacioPrimera')}</EtiquetaGrupo>
+        <CampoNumero
+          aria-labelledby={id}
+          valor={offset}
+          placeholder="0"
+          decimales={0}
+          minimo={0}
+          maximo={240}
+          alinear="izquierda"
+          onValorChange={(v) => cambiar({ first_section_offset_px: v == null || v <= 0 ? null : Math.min(240, Math.round(v)) })}
+        />
+        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.espacioPrimeraAyuda')}</p>
+      </div>
+    </section>
   );
 }
 
@@ -620,8 +701,6 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'search_icon',
   'auth_icon',
   'currency_icon',
-  'header_transparent_over_hero',
-  'first_section_offset_px',
   'header_booking_bar',
   'mobile_logo_position',
   'mobile_show_topbar',

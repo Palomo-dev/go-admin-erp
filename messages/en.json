@@ -33218,7 +33218,9 @@
           "circuloFondo": "Circle background",
           "circuloFondoAcento": "Brand color",
           "circuloIcono": "Icon color",
-          "circuloIconoAuto": "Automatic"
+          "circuloIconoAuto": "Automatic",
+          "headerSobreHero": "Header over the cover",
+          "headerSobreHeroAyuda": "The header sits on top of the cover image. Off: the header goes above and the cover below."
         },
         "diseno": {
           "titulo": "Header layout",
@@ -33255,6 +33257,11 @@
             "bar": "Visible bar",
             "hidden": "Hidden",
             "fullscreen": "Full screen"
+          },
+          "logoAyuda": "Same position on desktop and mobile.",
+          "logoFijo": {
+            "centro": "In this layout the logo is centered.",
+            "izquierda": "In this layout the logo is on the left."
           }
         },
         "estilo": {
@@ -33302,7 +33309,8 @@
             "recto": "Square",
             "redondeado": "Rounded",
             "pildora": "Pill"
-          }
+          },
+          "espacios": "Spacing"
         },
         "pie": {
           "menus": "Footer menus",

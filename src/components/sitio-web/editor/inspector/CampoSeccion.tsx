@@ -27,6 +27,7 @@ import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
 import { EditorPestanas } from './EditorCascaron';
 import type { FuentesTema } from '@/lib/website/v2/fuenteTema';
+import type { EspacioSeccion } from '@/lib/website/espacioSeccion';
 import { EditorBoletin } from './EditorBoletin';
 import { AparienciaCategoriasEditor } from './AparienciaCategoriasEditor';
 
@@ -101,6 +102,8 @@ export interface CampoSeccionProps {
   deshabilitado?: boolean;
   /** Fuentes del tema, para los selectores de fuente del encabezado. */
   fuentes?: FuentesTema;
+  /** Relleno y margen que la tienda aplica hoy (placeholders de «Fondo y espaciado»). */
+  espacio?: EspacioSeccion;
 }
 
 export function CampoSeccion({
@@ -115,6 +118,7 @@ export function CampoSeccion({
   categorias,
   deshabilitado,
   fuentes,
+  espacio,
 }: CampoSeccionProps) {
   const t = useTextosEditor();
   const ayuda = campo.helpText;
@@ -338,7 +342,7 @@ export function CampoSeccion({
     case 'chips':
       return <CampoChips campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
     case 'section_header':
-      return <EditorPestanas contenido={contenido} fuentes={fuentes} onCambiar={onCambiarContenido} />;
+      return <EditorPestanas contenido={contenido} fuentes={fuentes} espacio={espacio} onCambiar={onCambiarContenido} />;
     case 'section_background':
       return null;
     case 'notice':

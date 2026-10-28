@@ -5,6 +5,7 @@ import { SelectKit, NumeroKit, CasillaKit, ColorKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
 import { accionDesdeVerTodo, CLAVES_VER_TODO } from './espaciadoSeccion';
 import type { FuentesTema } from '@/lib/website/v2/fuenteTema';
+import type { EspacioSeccion, LadoEspacio } from '@/lib/website/espacioSeccion';
 
 /** Controles de `section_header` y `section_background`. No escriben nada hasta que se cambia un campo. */
 
@@ -203,7 +204,7 @@ function Medio({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) =
 
 const CLAVES_HEREDABLES = ['align', 'layout', 'title_font', 'title_size', 'title_weight', 'title_color', 'title_uppercase', 'title_line', 'description_size', 'description_color', 'description_font', 'description_weight']
 
-export function EditorPestanas({ contenido, onCambiar, fuentes }: { contenido: Record<string, unknown>; onCambiar: (v: Record<string, unknown>) => void; fuentes?: FuentesTema }) {
+export function EditorPestanas({ contenido, onCambiar, fuentes, espacio }: { contenido: Record<string, unknown>; onCambiar: (v: Record<string, unknown>) => void; fuentes?: FuentesTema; espacio?: EspacioSeccion }) {
   const [pestana, setPestana] = useState<'encabezado' | 'visual' | 'fondo'>('encabezado')
   const [local, setLocal] = useState(false)
   const setClave = (clave: string, valor: unknown) => {
@@ -238,7 +239,22 @@ export function EditorPestanas({ contenido, onCambiar, fuentes }: { contenido: R
         </>
       )}
       {pestana === 'visual' && <EditorVisual valor={contenido.section_display} onCambiar={(v) => setClave('section_display', v)} />}
-      {pestana === 'fondo' && <EditorFondo valor={contenido.section_background} onCambiar={(v) => setClave('section_background', v)} />}
+      {pestana === 'fondo' && (
+        <EditorFondo
+          valor={contenido.section_background}
+          espacio={espacio}
+          onCambiar={(v) => {
+            const siguiente: Record<string, unknown> = { ...contenido, section_background: v }
+            if (v == null) delete siguiente.section_background
+            // Un solo margen: el px por dispositivo reemplaza a la escala anterior (margin_top/bottom).
+            // Al escribirlo se guardan los dos dispositivos, así que la escala ya no aporta nada.
+            const bg = objeto(v)
+            if (bg.margin_top != null || bg.margin_top_mobile != null) delete siguiente.margin_top
+            if (bg.margin_bottom != null || bg.margin_bottom_mobile != null) delete siguiente.margin_bottom
+            onCambiar(siguiente)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -297,7 +313,37 @@ function EditorVisual({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unk
   )
 }
 
-export function EditorFondo({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void }) {
+/** «24 (predeterminado)» o «16 celular · 24 computador (actual)»: lo que la tienda aplica hoy. */
+export function textoHeredado(lado: LadoEspacio | undefined, dispositivo?: 'celular' | 'computador'): string | undefined {
+  if (!lado) return undefined;
+  const origen = lado.propio ? 'actual' : 'predeterminado';
+  if (dispositivo) return `${lado[dispositivo]} (${origen})`;
+  return lado.celular === lado.computador ? `${lado.computador} (${origen})` : `${lado.celular} celular · ${lado.computador} computador (${origen})`;
+}
+
+/** Cambia el margen de un dispositivo y fija el otro con lo que se ve hoy (no cambia sin querer). */
+export function cambioMargen(
+  f: Record<string, unknown>,
+  lado: 'top' | 'bottom',
+  dispositivo: 'celular' | 'computador',
+  valor: number | undefined,
+  actual: LadoEspacio | undefined,
+): Record<string, unknown> {
+  const kComp = `margin_${lado}`;
+  const kCel = `margin_${lado}_mobile`;
+  const siguiente = { ...f };
+  const otroK = dispositivo === 'celular' ? kComp : kCel;
+  const propioK = dispositivo === 'celular' ? kCel : kComp;
+  if (valor == null) {
+    delete siguiente[propioK];
+  } else {
+    siguiente[propioK] = valor;
+    if (siguiente[otroK] == null && actual) siguiente[otroK] = dispositivo === 'celular' ? actual.computador : actual.celular;
+  }
+  return siguiente;
+}
+
+export function EditorFondo({ valor, onCambiar, espacio }: { valor: unknown; onCambiar: (v: unknown) => void; espacio?: EspacioSeccion }) {
   const tk = useTextosEditor();
   const f = objeto(valor);
   const set = (k: string, v: unknown) => {
@@ -329,8 +375,24 @@ export function EditorFondo({ valor, onCambiar }: { valor: unknown; onCambiar: (
         </SelectKit>
       </Campo>
       <CasillaKit titulo="Parallax" checked={f.parallax === true} onChange={(ev) => set('parallax', ev.target.checked)} />
-      <Campo etiqueta="Relleno superior"><NumeroKit min={0} max={200} value={String(f.padding_top ?? '')} onChange={(ev) => set('padding_top', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
-      <Campo etiqueta="Relleno inferior"><NumeroKit min={0} max={200} value={String(f.padding_bottom ?? '')} onChange={(ev) => set('padding_bottom', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      {/* Vacío = lo que la tienda pone hoy, visible como placeholder; no se guarda nada si no se edita. */}
+      <Campo etiqueta="Relleno superior"><NumeroKit min={0} max={200} placeholder={textoHeredado(espacio?.rellenoArriba)} value={String(f.padding_top ?? '')} onChange={(ev) => set('padding_top', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      <Campo etiqueta="Relleno inferior"><NumeroKit min={0} max={200} placeholder={textoHeredado(espacio?.rellenoAbajo)} value={String(f.padding_bottom ?? '')} onChange={(ev) => set('padding_bottom', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
+      {(['top', 'bottom'] as const).map((lado) => {
+        const actual = lado === 'top' ? espacio?.margenArriba : espacio?.margenAbajo;
+        const cambiar = (d: 'celular' | 'computador', v: string) => {
+          const sig = cambioMargen(f, lado, d, v ? Number(v) : undefined, actual);
+          onCambiar(Object.keys(sig).length ? sig : undefined);
+        };
+        return (
+          <Campo key={lado} etiqueta={lado === 'top' ? 'Margen superior' : 'Margen inferior'}>
+            <div className="grid grid-cols-2 gap-2">
+              <Campo etiqueta="Computador"><NumeroKit min={0} max={200} placeholder={textoHeredado(actual, 'computador')} value={String(f[`margin_${lado}`] ?? '')} onChange={(ev) => cambiar('computador', ev.target.value)} /></Campo>
+              <Campo etiqueta="Celular"><NumeroKit min={0} max={200} placeholder={textoHeredado(actual, 'celular')} value={String(f[`margin_${lado}_mobile`] ?? '')} onChange={(ev) => cambiar('celular', ev.target.value)} /></Campo>
+            </div>
+          </Campo>
+        );
+      })}
       <Campo etiqueta="Ancho">
         <SelectKit className={control} value={String(f.width ?? '')} onChange={(ev) => set('width', ev.target.value)}>
           <option value="">Como hoy</option>

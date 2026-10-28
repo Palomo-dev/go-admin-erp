@@ -26,6 +26,7 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
+import { espacioSeccion } from '@/lib/website/espacioSeccion';
 import { clavesPropiasTarjeta, esSeccionTarjetaProducto, heredadoTarjetaSeccion, restablecerClaveTarjeta, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { InspectorBanners } from './InspectorBanners';
@@ -75,6 +76,8 @@ export interface InspectorSeccionProps {
   } | null;
   pestanaInicial?: PestanaSeccion;
   className?: string;
+  /** Primera sección visible y ajustes del sitio: para mostrar el espacio real de la sección. */
+  entornoEspacio?: { primera: boolean; ajustesSitio: Record<string, unknown> | null };
   /** `product_card_style` del sitio, para mostrarlo cuando la sección no lo reemplaza. */
   estiloTarjetaSitio?: unknown;
   /** Carrusel global del tema (`documento.tema.carrusel`). */
@@ -96,6 +99,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   const estilo = useMemo(() => leerEstiloSeccion(s.settings), [s.settings]);
   const visibilidad = useMemo(() => visibilidadDeSeccion(s), [s]);
   const idTabs = `inspector-seccion-${s.id}`;
+  // Relleno y margen que la tienda aplica hoy (mismo cálculo que SectionWrapperBase).
+  const espacio = useMemo(
+    () => espacioSeccion(contenido, { tipo: s.section_type, variante: s.section_variant, primera: p.entornoEspacio?.primera, ajustesSitio: p.entornoEspacio?.ajustesSitio ?? null, espaciado: estilo.espaciado ?? null }),
+    [contenido, s.section_type, s.section_variant, p.entornoEspacio?.primera, p.entornoEspacio?.ajustesSitio, estilo.espaciado],
+  );
 
   const boletin = (definicion?.contentFields ?? []).some((c) => c.type === 'newsletter');
   const campos = (pest: PestanaSeccion): ContentFieldDef[] =>
@@ -179,6 +187,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         fondo={p.tema.colores.fondo ?? null}
         fuentes={p.tema.fuentes}
         categorias={p.categorias}
+        espacio={espacio}
       />
     );
   };

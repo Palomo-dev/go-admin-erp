@@ -1,5 +1,6 @@
 -- Rollback exacto de 20261027241500: vuelve a la definición de PROD leída el 27-oct-2026
 -- (pg_get_functiondef) y borra el auxiliar fn_metodo_es_pasarela.
+-- ORDEN: si 20261027243000 está aplicada, revertirla ANTES (usa fn_metodo_es_pasarela, que este rollback borra).
 -- Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo>
 
 set lock_timeout = '3s';

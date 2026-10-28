@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import { claveAvisoCobro, CobroEnCajaError, webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
-import { metodoDeCobroEnCaja, pedidoPagadoPorPasarela, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
+import { esMetodoCobroEnCaja, esMetodoDePasarela, metodoDeCobroEnCaja, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
@@ -55,6 +55,12 @@ interface UseWebOrderDetailReturn {
    * sin ellos, el método del pedido. Devuelve true si el cobro quedó hecho.
    */
   handleCobrar: (entregar: boolean, valor?: { metodo?: string | null; referencia?: string | null }) => Promise<boolean>;
+  /**
+   * «Marcar como pagado» de UN CLIC para pedidos de pasarela (también vencidos):
+   * sin caja, sin referencia ni comprobante. Si no está confirmado lo confirma
+   * primero (sin cobro) y luego registra el pago de la pasarela.
+   */
+  handleMarcarPagadoPasarela: () => Promise<boolean>;
   /** Diálogo «Cobrar y entregar» (Figma 1982:946157): abierto y si entrega al cobrar. */
   cobroDialogo: { abierto: boolean; entregar: boolean };
   abrirCobro: (entregar: boolean) => void;
@@ -364,13 +370,18 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     if (!order) return false;
     setActionLoading(true);
     setSinCajaAbierta(false);
-    // El diálogo solo ofrece métodos de caja; cualquier otro valor cae en la regla única.
-    // Pagado por pasarela: ya está cobrado; cobrarEnCaja lo devuelve como ya cobrado sin tocar la caja.
-    const metodo: MetodoCobroEnCaja | null = pedidoPagadoPorPasarela(order)
-      ? 'cash'
-      : metodoDeCobroEnCaja(valor?.metodo ?? order.payment_method);
+    // Pedido de pasarela (pagado o no, también vencido): NUNCA en caja. El detalle
+    // ofrece «Marcar como pagado»; esto es la red por si llega aquí igual.
+    if (esMetodoDePasarela(order.payment_method)) {
+      toast({ title: t('cobro.error'), description: t('cobro.dePasarela'), variant: 'destructive' });
+      setActionLoading(false);
+      return false;
+    }
+    // Método elegido en el diálogo (datáfono incluido) o el del pedido.
+    const metodo: MetodoCobroEnCaja | null = esMetodoCobroEnCaja(valor?.metodo)
+      ? valor.metodo
+      : metodoDeCobroEnCaja(order.payment_method);
     if (!metodo) {
-      // Pasarela sin pago confirmado: no se cobra en caja como efectivo.
       toast({ title: t('cobro.error'), description: t('cobro.metodoInvalido'), variant: 'destructive' });
       setActionLoading(false);
       return false;
@@ -427,6 +438,42 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     return false;
   };
 
+  const handleMarcarPagadoPasarela = async (): Promise<boolean> => {
+    if (!order || !esMetodoDePasarela(order.payment_method)) return false;
+    setActionLoading(true);
+    try {
+      let pedido: WebOrder = order;
+      if (!pedido.sale_id) {
+        // Pendiente o vencido: confirmar primero, SIN cobro (markAsPaid=false).
+        const r = await webOrderConfirmationService.confirmOrder(pedido, {
+          prepMs: timeToMs(prepTime),
+          transitMs: esDomicilio(pedido.delivery_type) ? timeToMs(transitTime) : 0,
+          markAsPaid: false,
+        });
+        pedido = { ...pedido, sale_id: r.saleId };
+      }
+      const pago = await webOrderConfirmationService.marcarPagadoPasarela(pedido);
+      const datos = { numero: order.order_number, pasarela: order.payment_method ?? '' };
+      toast({
+        title: pago.yaPagado ? t('cobro.yaPagadoPasarela', datos) : t('cobro.marcadoPagadoPasarela', datos),
+        description: pago.invoiceNumber ? t('cobro.factura', { numero: pago.invoiceNumber }) : undefined,
+      });
+      loadOrder();
+      return true;
+    } catch (error: unknown) {
+      if (error instanceof CobroEnCajaError && error.codigo !== 'OTRO' && error.codigo !== 'FUNCION_AUSENTE') {
+        toast({ title: t('cobro.error'), description: t(`cobro.${claveAvisoCobro(error.codigo)}`), variant: 'destructive' });
+      } else {
+        console.error('Error marcando pagado por pasarela:', error);
+        toast({ title: t('cobro.error'), description: mensajeDeError(error), variant: 'destructive' });
+      }
+      loadOrder();
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const abrirCobro = useCallback((entregar: boolean) => setCobroDialogo({ abierto: true, entregar }), []);
   const cerrarCobro = useCallback(() => setCobroDialogo((d) => ({ ...d, abierto: false })), []);
 
@@ -459,6 +506,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     handleConvertToSale,
     handleCreateShipment,
     handleCobrar,
+    handleMarcarPagadoPasarela,
     cobroDialogo,
     abrirCobro,
     cerrarCobro,

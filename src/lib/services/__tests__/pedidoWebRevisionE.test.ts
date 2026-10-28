@@ -10,7 +10,7 @@
  *    caja de la sede cuando E4 existe; sin caja, el pedido queda confirmado sin
  *    cobrar y se avisa. Sin E4, el camino de siempre.
  * 3. El cobro en lote no se corta en el primer pedido que no se puede cobrar.
- * 4. Una sola lista de métodos de cobro en caja (nequi/daviplata → transfer).
+ * 4. Una sola lista de métodos de cobro en caja (nequi/daviplata/card del pedido web = Wompi: nunca en caja).
  * 5. El cron reconoce el pedido pagado «a medias» aunque esté 'confirmed'.
  */
 
@@ -166,7 +166,7 @@ describe('servidor: pedido pagado en línea (el sitio ya lo marcó confirmed)', 
 });
 
 describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
-  const efectivo = { ...base, status: 'pending', payment_status: 'pending', payment_method: 'nequi' } as never;
+  const efectivo = { ...base, status: 'pending', payment_status: 'pending', payment_method: 'transfer' } as never;
   const rpcCon = (cobro: (args: Record<string, unknown>) => unknown) =>
     mockRpc.mockImplementation(async (fn: string, args: Record<string, unknown>) => {
       if (fn === 'fn_confirmar_pedido_web_completo') {
@@ -176,7 +176,7 @@ describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
       return { data: null, error: null };
     });
 
-  it('con E4: confirma sin pagar y cobra en la caja de la sede (nequi → transfer), sin escribir paid desde el navegador', async () => {
+  it('con E4: confirma sin pagar y cobra en la caja de la sede (transferencia en el local), sin escribir paid desde el navegador', async () => {
     rpcCon((args) =>
       args.p_order_id === '00000000-0000-0000-0000-000000000000'
         ? { data: null, error: { code: 'P0002', message: 'WEB_ORDER_NOT_FOUND' } }
@@ -219,7 +219,8 @@ describe('cobro en lote', () => {
     const pedidos = [
       { ...base, id: 'a', order_number: 'W-1', payment_method: 'cash' },
       { ...base, id: 'b', order_number: 'W-2', payment_method: 'cash' },
-      { ...base, id: 'c', order_number: 'W-3', payment_method: 'daviplata' },
+      { ...base, id: 'c', order_number: 'W-3', payment_method: 'transfer' },
+      { ...base, id: 'e', order_number: 'W-5', payment_method: 'nequi' },
       { ...base, id: 'd', order_number: 'W-4', payment_method: 'cash' },
     ] as never[];
     const errores: Record<string, string> = { b: 'PEDIDO_SIN_CONFIRMAR', d: 'COBRAR_EN_LA_MESA' };
@@ -233,7 +234,8 @@ describe('cobro en lote', () => {
     const r = await webOrderConfirmationService.cobrarVariosEnCaja(pedidos, cargar);
 
     expect(r.cobrados).toEqual(['W-1', 'W-3']);
-    expect(r.pendientes).toEqual({ PEDIDO_SIN_CONFIRMAR: ['W-2'], COBRAR_EN_LA_MESA: ['W-4'] });
+    expect(r.pendientes).toEqual({ PEDIDO_SIN_CONFIRMAR: ['W-2'], COBRAR_EN_LA_MESA: ['W-4'], PEDIDO_DE_PASARELA: ['W-5'] });
+    expect(mockRpc).not.toHaveBeenCalledWith('fn_cobrar_pedido_web_en_caja', expect.objectContaining({ p_order_id: 'e' }));
     expect(mockRpc).toHaveBeenCalledWith('fn_cobrar_pedido_web_en_caja', expect.objectContaining({ p_order_id: 'c', p_metodo: 'transfer' }));
   });
 
@@ -246,9 +248,11 @@ describe('cobro en lote', () => {
 describe('métodos de cobro en caja', () => {
   it('una sola lista, sin métodos inactivos en payment_methods', () => {
     expect(METODOS_COBRO_EN_CAJA).toEqual(['cash', 'card', 'transfer', 'qr']);
-    expect(metodoDeCobroEnCaja('nequi')).toBe('transfer');
-    expect(metodoDeCobroEnCaja('daviplata')).toBe('transfer');
-    expect(metodoDeCobroEnCaja('card')).toBe('card');
+    // nequi/daviplata/card en web_orders llegan del webhook de Wompi: pasarela, nunca caja.
+    expect(metodoDeCobroEnCaja('nequi')).toBeNull();
+    expect(metodoDeCobroEnCaja('daviplata')).toBeNull();
+    expect(metodoDeCobroEnCaja('card')).toBeNull();
+    expect(metodoDeCobroEnCaja('transfer')).toBe('transfer');
     expect(metodoDeCobroEnCaja('wompi')).toBeNull(); // pasarela: nunca efectivo (MRHJ)
     expect(metodoDeCobroEnCaja(null)).toBe('cash');
   });

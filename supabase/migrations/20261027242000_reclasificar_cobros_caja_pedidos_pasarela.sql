@@ -1,6 +1,9 @@
 -- 20261027242000 · Corrección de datos: pedidos web pagados por pasarela que además
 -- quedaron con un pago de CAJA creado por fn_cobrar_pedido_web_en_caja (metodoDeCobroEnCaja
 -- devolvía 'cash' para 'wompi'). SIN APLICAR. NO cambia montos de ventas, facturas ni pagos.
+-- ORDEN Y CONDICIÓN: aplicar DESPUÉS de 20261027241500 (usa fn_metodo_es_pasarela, que crea esa
+-- migración) y SOLO después de confirmar en el PANEL DE WOMPI que cada pedido de la lista activa
+-- (hoy solo WO-335-MVRDVAGK-MRHJ) tiene la transacción APROBADA. Sin esa confirmación, NO aplicar.
 -- Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo> (directa o sesión 5432).
 -- Rollback exacto: supabase/rollbacks/20261027242000_reclasificar_cobros_caja_pedidos_pasarela_rollback.sql
 --
@@ -48,6 +51,7 @@ create table if not exists public._bk_20261027242000_cobros_pasarela (
   sale_id uuid not null,
   invoice_id uuid not null,
   old_payment_method text not null,
+  old_payment_updated_at timestamptz,
   new_payment_method text not null,
   old_invoice_payment_method text,
   old_include_in_cash_register boolean,
@@ -74,10 +78,10 @@ begin
   ;
 
   insert into public._bk_20261027242000_cobros_pasarela
-    (payment_id, web_order_id, sale_id, invoice_id, old_payment_method, new_payment_method,
+    (payment_id, web_order_id, sale_id, invoice_id, old_payment_method, old_payment_updated_at, new_payment_method,
      old_invoice_payment_method, old_include_in_cash_register, journal_line_id, old_account_code,
      new_account_code, cash_session_id)
-  select p.id, w.id, s.id, i.id, p.method, l.metodo_pasarela,
+  select p.id, w.id, s.id, i.id, p.method, p.updated_at, l.metodo_pasarela,
          i.payment_method, s.include_in_cash_register, jl.id, jl.account_code,
          coalesce(public.fn_money_account_code_pago(p.organization_id, p.branch_id, l.metodo_pasarela, null), jl.account_code),
          cs.id

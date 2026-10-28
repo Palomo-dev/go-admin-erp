@@ -22,7 +22,14 @@ import {
   type ResultadoConfirmacionCompleta,
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
-import { debeCobrarseEnCaja, metodoDeCobroEnCaja, pedidoPagadoPorPasarela } from '@/lib/pos/pedidosWeb/metodosCaja';
+import {
+  debeCobrarseEnCaja,
+  esMetodoCobroEnCaja,
+  esMetodoDePasarela,
+  metodoDeCobroEnCaja,
+  pedidoPagadoPorPasarela,
+  type MetodoCobroEnCaja,
+} from '@/lib/pos/pedidosWeb/metodosCaja';
 import { resolveLineTax } from './taxResolver';
 import { resolveOrgCurrency } from './monedaOrganizacion';
 import { redimirCuponPedidoWeb } from './cuponPedidoWeb';
@@ -91,6 +98,11 @@ export type ErrorCobroEnCaja =
   | 'PEDIDO_SIN_CONFIRMAR'
   | 'COBRAR_EN_LA_MESA'
   | 'METODO_INVALIDO'
+  /** Pedido de pasarela: no se cobra en caja (se marca pagado por la pasarela). */
+  | 'PEDIDO_DE_PASARELA'
+  /** «Marcar como pagado» de pasarela sobre un pedido que se cobra en caja. */
+  | 'NO_ES_PASARELA'
+  | 'SIN_PERMISO'
   | 'FUNCION_AUSENTE'
   | 'OTRO';
 
@@ -105,14 +117,19 @@ export class CobroEnCajaError extends Error {
 export function codigoErrorCobro(error: unknown): ErrorCobroEnCaja {
   if (esFuncionAusente(error)) return 'FUNCION_AUSENTE';
   const m = String((error as { message?: string } | null)?.message ?? '');
-  for (const c of ['NO_OPEN_CASH_SESSION', 'PEDIDO_SIN_CONFIRMAR', 'COBRAR_EN_LA_MESA', 'METODO_INVALIDO'] as const) {
+  for (const c of [
+    'NO_OPEN_CASH_SESSION', 'PEDIDO_SIN_CONFIRMAR', 'COBRAR_EN_LA_MESA', 'METODO_INVALIDO',
+    'PEDIDO_DE_PASARELA', 'NO_ES_PASARELA', 'SIN_PERMISO',
+  ] as const) {
     if (m.includes(c)) return c;
   }
   return 'OTRO';
 }
 
 /** Clave i18n (`pedidoWeb.cobro.*`) del aviso para un cobro que no se pudo hacer. */
-export function claveAvisoCobro(codigo: ErrorCobroEnCaja): 'sinCaja' | 'sinConfirmar' | 'deMesa' | 'metodoInvalido' | 'error' {
+export function claveAvisoCobro(
+  codigo: ErrorCobroEnCaja,
+): 'sinCaja' | 'sinConfirmar' | 'deMesa' | 'metodoInvalido' | 'dePasarela' | 'noEsPasarela' | 'sinPermiso' | 'error' {
   switch (codigo) {
     case 'NO_OPEN_CASH_SESSION':
       return 'sinCaja';
@@ -122,9 +139,34 @@ export function claveAvisoCobro(codigo: ErrorCobroEnCaja): 'sinCaja' | 'sinConfi
       return 'deMesa';
     case 'METODO_INVALIDO':
       return 'metodoInvalido';
+    case 'PEDIDO_DE_PASARELA':
+      return 'dePasarela';
+    case 'NO_ES_PASARELA':
+      return 'noEsPasarela';
+    case 'SIN_PERMISO':
+      return 'sinPermiso';
     default:
       return 'error';
   }
+}
+
+/**
+ * Método de caja del pedido. Sin valor por defecto peligroso: un pedido de
+ * pasarela NUNCA cae en efectivo, lanza PEDIDO_DE_PASARELA.
+ */
+export function metodoCajaDelPedido(order: Pick<WebOrder, 'payment_method'>): MetodoCobroEnCaja {
+  const metodo = metodoDeCobroEnCaja(order.payment_method);
+  if (!metodo) throw new CobroEnCajaError('PEDIDO_DE_PASARELA', 'Pedido de pasarela: no se cobra en caja');
+  return metodo;
+}
+
+/** Resultado de «Marcar como pagado» de un pedido de pasarela (sin caja). */
+export interface PagoPasarelaResult {
+  invoiceId: string;
+  invoiceNumber: string | null;
+  paymentId: string;
+  /** Ya tenía pago: no se creó otro (idempotente). */
+  yaPagado: boolean;
 }
 
 /** Resultado del cobro en lote: qué pedidos se cobraron y por qué no los demás. */
@@ -311,7 +353,7 @@ class WebOrderConfirmationService {
       try {
         const cobro = await this.cobrarEnCaja(
           { ...order, sale_id: saleId },
-          { metodo: metodoDeCobroEnCaja(order.payment_method) ?? 'cash', referencia: order.payment_reference ?? null },
+          { metodo: metodoCajaDelPedido(order), referencia: order.payment_reference ?? null },
         );
         return {
           saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, accountReceivableId, stockErrors,
@@ -460,7 +502,7 @@ class WebOrderConfirmationService {
       try {
         cobro = await this.cobrarEnCaja(
           { ...order, sale_id: saleId },
-          { metodo: metodoDeCobroEnCaja(order.payment_method) ?? 'cash', referencia: order.payment_reference ?? null },
+          { metodo: metodoCajaDelPedido(order), referencia: order.payment_reference ?? null },
         );
       } catch (err) {
         cobroPendiente = err instanceof CobroEnCajaError ? err.codigo : 'OTRO';
@@ -550,45 +592,14 @@ class WebOrderConfirmationService {
     order: WebOrder,
     opciones: { metodo: string; referencia?: string | null },
   ): Promise<CobroEnCajaResult> {
-    // Regla única: pagado por pasarela = ya cobrado. Nunca un segundo pago en caja.
-    if (pedidoPagadoPorPasarela(order)) {
-      const factura = order.sale_id ? await this.facturaDeLaVenta(order.organization_id, order.sale_id) : null;
-      return {
-        invoiceId: factura?.invoiceId ?? '',
-        invoiceNumber: factura?.invoiceNumber ?? null,
-        paymentId: '',
-        cashSessionId: 0,
-        yaCobrado: true,
-      };
+    // Regla única: un pedido de pasarela (pagado o no) NUNCA se cobra en caja.
+    if (esMetodoDePasarela(order.payment_method)) {
+      throw new CobroEnCajaError('PEDIDO_DE_PASARELA', 'Pedido de pasarela: usa «Marcar como pagado»');
     }
-    const { data: existente } = order.sale_id
-      ? await supabase
-          .from('invoice_sales')
-          .select('id')
-          .eq('organization_id', order.organization_id)
-          .eq('sale_id', order.sale_id)
-          .neq('status', 'void')
-          .limit(1)
-          .maybeSingle()
-      : { data: null };
-
-    // Factura nueva solo si la venta no tiene: número y líneas de la regla única.
-    let factura: Record<string, unknown> | null = null;
-    if (!existente) {
-      const reparto = repartirTotalesPedidoWeb(order);
-      const numero = await generateInvoiceNumber(order.organization_id, 'FACT');
-      const lineas = await lineasFacturaWebConImpuesto(order, '', resolveLineTax, reparto);
-      factura = {
-        number: numero,
-        subtotal: Number(order.subtotal) || 0,
-        tax_total: Number(order.tax_total) || 0,
-        total: Number(order.total) || 0,
-        tax_included: facturaWebConImpuestoIncluido(reparto),
-        lineas: lineas.map((l) =>
-          Object.fromEntries(Object.entries(l).filter(([k]) => k !== 'invoice_id' && k !== 'invoice_sales_id')),
-        ),
-      };
+    if (!esMetodoCobroEnCaja(opciones.metodo)) {
+      throw new CobroEnCajaError('METODO_INVALIDO', `Método de caja inválido: ${opciones.metodo}`);
     }
+    const factura = await this.facturaNuevaSiFalta(order);
 
     const { data, error } = await supabase.rpc('fn_cobrar_pedido_web_en_caja', {
       p_order_id: order.id,
@@ -608,6 +619,63 @@ class WebOrderConfirmationService {
       paymentId: String(r.payment_id ?? ''),
       cashSessionId: Number(r.cash_session_id ?? 0),
       yaCobrado: r.ya_cobrado === true,
+    };
+  }
+
+  /**
+   * Factura para la RPC solo si la venta aún no tiene: número y líneas de la
+   * regla única (webOrderTotals). `null` = la RPC usa la factura existente.
+   */
+  private async facturaNuevaSiFalta(order: WebOrder): Promise<Record<string, unknown> | null> {
+    const { data: existente } = order.sale_id
+      ? await supabase
+          .from('invoice_sales')
+          .select('id')
+          .eq('organization_id', order.organization_id)
+          .eq('sale_id', order.sale_id)
+          .neq('status', 'void')
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+    if (existente) return null;
+    const reparto = repartirTotalesPedidoWeb(order);
+    const numero = await generateInvoiceNumber(order.organization_id, 'FACT');
+    const lineas = await lineasFacturaWebConImpuesto(order, '', resolveLineTax, reparto);
+    return {
+      number: numero,
+      subtotal: Number(order.subtotal) || 0,
+      tax_total: Number(order.tax_total) || 0,
+      total: Number(order.total) || 0,
+      tax_included: facturaWebConImpuestoIncluido(reparto),
+      lineas: lineas.map((l) =>
+        Object.fromEntries(Object.entries(l).filter(([k]) => k !== 'invoice_id' && k !== 'invoice_sales_id')),
+      ),
+    };
+  }
+
+  /**
+   * «Marcar como pagado» de UN CLIC para un pedido de PASARELA ya confirmado
+   * (fn_marcar_pedido_web_pagado_pasarela, migración 20261027243000): pago con
+   * el método de la pasarela (wompi → 1110), sin caja, referencia MANUAL con
+   * quién y cuándo, idempotente. No pide referencia ni comprobante.
+   */
+  async marcarPagadoPasarela(order: WebOrder): Promise<PagoPasarelaResult> {
+    if (!esMetodoDePasarela(order.payment_method)) {
+      throw new CobroEnCajaError('NO_ES_PASARELA', 'El pedido se cobra en caja');
+    }
+    if (!order.sale_id) throw new CobroEnCajaError('PEDIDO_SIN_CONFIRMAR', 'Confirma el pedido primero');
+    const factura = await this.facturaNuevaSiFalta(order);
+    const { data, error } = await supabase.rpc('fn_marcar_pedido_web_pagado_pasarela', {
+      p_order_id: order.id,
+      p_factura: factura,
+    });
+    if (error) throw new CobroEnCajaError(codigoErrorCobro(error), error.message || 'No se pudo marcar como pagado');
+    const r = (data ?? {}) as Record<string, unknown>;
+    return {
+      invoiceId: String(r.invoice_id ?? ''),
+      invoiceNumber: (r.invoice_number as string) ?? null,
+      paymentId: String(r.payment_id ?? ''),
+      yaPagado: r.ya_pagado === true,
     };
   }
 
@@ -638,7 +706,7 @@ class WebOrderConfirmationService {
         const metodo = metodoDeCobroEnCaja(completo.payment_method);
         if (!metodo) {
           // Pasarela sin pago confirmado: no es un cobro de mostrador.
-          anotar('METODO_INVALIDO', completo.order_number);
+          anotar('PEDIDO_DE_PASARELA', completo.order_number);
           continue;
         }
         await this.cobrarEnCaja(completo, {

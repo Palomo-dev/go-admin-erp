@@ -1,4 +1,4 @@
--- Rollback exacto de 20261027242000: restaura método del pago, etiqueta de la factura,
+-- Rollback exacto de 20261027242000: restaura método y updated_at del pago, etiqueta de la factura,
 -- include_in_cash_register de la venta y la cuenta de la línea del asiento desde la
 -- tabla de respaldo, y la borra. Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo>
 
@@ -16,7 +16,7 @@ begin
     return;
   end if;
 
-  update public.payments p set method = b.old_payment_method, updated_at = now()
+  update public.payments p set method = b.old_payment_method, updated_at = b.old_payment_updated_at
     from public._bk_20261027242000_cobros_pasarela b where b.payment_id = p.id;
   update public.invoice_sales i set payment_method = b.old_invoice_payment_method
     from public._bk_20261027242000_cobros_pasarela b where b.invoice_id = i.id;

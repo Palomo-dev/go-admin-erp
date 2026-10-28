@@ -4,10 +4,13 @@
 -- Base: pg_get_functiondef de PROD (jgmgphmzusbluqhuqihj) leído el 27-oct-2026 21:10 (UTC-5).
 -- Cambios (firma, SECURITY INVOKER, search_path y grants iguales):
 --  1. p_order_id = uuid cero → {"sonda": true} (cobroEnCajaDisponible daba P0002/500).
---  2. Pedido paid con método de pasarela (fn_metodo_es_pasarela): tras PEDIDO_SIN_CONFIRMAR
---     marca la venta pagada SIN pago ni caja y devuelve ya_cobrado (caso WO-335-MVRDVAGK-MRHJ,
---     cobrado otra vez como CASH). No crea factura ni toca asientos.
---  3. Un vencido ('expired') pagado por pasarela no choca con PEDIDO_NO_CONFIRMABLE.
+--  2. Pedido de PASARELA (fn_metodo_es_pasarela), pagado o no, también vencido → PEDIDO_DE_PASARELA
+--     (22023). Nunca se cobra en caja: se marca pagado con fn_marcar_pedido_web_pagado_pasarela
+--     (20261027243000). Caso WO-335-MVRDVAGK-MRHJ, cobrado otra vez como CASH.
+--  3. fn_metodo_es_pasarela incluye nequi, daviplata y card: en web_orders solo llegan por el webhook
+--     de Wompi (goadmin-websites app/api/webhooks/wompi_co/route.ts escribe payment_method =
+--     payment_method_type) — 996 nequi / 99 daviplata / 62 card, todos con referencia Wompi
+--     (salvo 1 nequi). Sin EXECUTE para PUBLIC ni anon.
 -- Rollback: supabase/rollbacks/20261027241500_fn_cobrar_pedido_web_pasarela_rollback.sql
 
 set lock_timeout = '3s';
@@ -25,11 +28,11 @@ as $$
   select lower(btrim(coalesce(p_metodo, ''))) in (
            'wompi', 'wompi_co', 'epayco', 'mercadopago', 'mercado_pago', 'mp', 'payu', 'stripe', 'paypal',
            'bold', 'bold_link', 'bold_qr', 'bold_card', 'addi', 'pse', 'bancolombia_bnpl', 'bancolombia_collect',
-           'bancolombia_transfer', 'su_plus', 'sistecredito', 'conekta', 'oxxo', 'openpay', 'kushki', 'dlocal')
+           'bancolombia_transfer', 'su_plus', 'nequi', 'daviplata', 'card', 'sistecredito', 'conekta', 'oxxo', 'openpay', 'kushki', 'dlocal')
       or lower(btrim(coalesce(p_metodo, ''))) like 'wompi%'
       or lower(btrim(coalesce(p_metodo, ''))) like 'bold\_%';
 $$;
-revoke all on function public.fn_metodo_es_pasarela(text) from public;
+revoke all on function public.fn_metodo_es_pasarela(text) from public, anon;
 grant execute on function public.fn_metodo_es_pasarela(text) to authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_cobrar_pedido_web_en_caja(p_order_id uuid, p_metodo text, p_factura jsonb DEFAULT NULL::jsonb, p_referencia text DEFAULT NULL::text, p_monto numeric DEFAULT NULL::numeric)
@@ -45,7 +48,6 @@ declare
   v_pago uuid;
   v_ya boolean := false;
   v_moneda text;
-  v_pasarela_pagado boolean := false;
 begin
   if v_uid is null then
     raise exception 'SESION_REQUERIDA' using errcode = '42501';
@@ -62,10 +64,14 @@ begin
   if not public.app_branch_access(v_wo.branch_id) then
     raise exception 'sin_acceso_sucursal' using errcode = '42501';
   end if;
-  v_pasarela_pagado := v_wo.payment_status = 'paid' and public.fn_metodo_es_pasarela(v_wo.payment_method);
-  -- Un vencido pagado por pasarela no se bloquea aquí: solo se confirma (abajo, ya_cobrado).
-  if v_wo.status in ('cancelled', 'rejected', 'refunded')
-     or (v_wo.status = 'expired' and not v_pasarela_pagado) then
+  -- Pedido de pasarela (pagado o no, también vencido): nunca un cobro de caja.
+  if public.fn_metodo_es_pasarela(v_wo.payment_method) then
+    raise exception 'PEDIDO_DE_PASARELA' using errcode = '22023',
+      detail = 'Pedido ' || v_wo.order_number || ' (' || coalesce(v_wo.payment_method, '-')
+               || '): se marca pagado por la pasarela, no en caja.',
+      hint = 'Usa «Marcar como pagado» (fn_marcar_pedido_web_pagado_pasarela).';
+  end if;
+  if v_wo.status in ('cancelled', 'rejected', 'refunded', 'expired') then
     raise exception 'PEDIDO_NO_CONFIRMABLE' using errcode = '22023';
   end if;
   if v_wo.table_session_id is not null then
@@ -73,31 +79,6 @@ begin
   end if;
   if v_wo.sale_id is null then
     raise exception 'PEDIDO_SIN_CONFIRMAR' using errcode = '22023';
-  end if;
-  -- Respaldo: pagado por pasarela = ya cobrado. Sin pago nuevo, sin caja y sin
-  -- factura nueva (la del flujo de pasarela y su asiento quedan como están).
-  if v_pasarela_pagado then
-    select * into v_inv from public.invoice_sales i
-     where i.sale_id = v_wo.sale_id and i.organization_id = v_wo.organization_id
-       and coalesce(i.document_type, 'invoice') = 'invoice' and i.status <> 'void'
-     order by i.created_at asc limit 1;
-    if v_inv.id is not null then
-      select p.id into v_pago from public.payments p
-       where p.source = 'invoice_sales' and p.source_id = v_inv.id::text and p.status = 'completed'
-       limit 1;
-    end if;
-    update public.sales set
-      status = 'paid', payment_status = 'paid', balance = 0, updated_at = now()
-     where id = v_wo.sale_id
-       and (status is distinct from 'paid' or payment_status is distinct from 'paid' or balance is distinct from 0);
-    return jsonb_build_object(
-      'ya_cobrado', true,
-      'pasarela', true,
-      'invoice_id', v_inv.id,
-      'invoice_number', v_inv.number,
-      'payment_id', v_pago,
-      'cash_session_id', null,
-      'sale_id', v_wo.sale_id);
   end if;
   if not exists (select 1 from public.payment_methods pm where pm.code = p_metodo and coalesce(pm.is_active, true)) then
     raise exception 'METODO_INVALIDO' using errcode = '22023';

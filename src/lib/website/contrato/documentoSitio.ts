@@ -287,7 +287,12 @@ export const esquemaAjusteCarrusel = z
 const primitivoTarjeta = z.union([z.string().max(200), z.number().finite(), z.boolean(), z.null()]);
 export const esquemaTarjetaProducto = z.record(
   z.string().max(64),
-  z.union([primitivoTarjeta, z.record(z.string().max(64), primitivoTarjeta)]),
+  z.union([
+    primitivoTarjeta,
+    z.record(z.string().max(64), primitivoTarjeta),
+    // `labels_custom`: etiquetas propias («Originales»…), en orden.
+    z.array(z.record(z.string().max(64), primitivoTarjeta)).max(12),
+  ]),
 );
 export type TarjetaProductoDocumento = z.infer<typeof esquemaTarjetaProducto>;
 

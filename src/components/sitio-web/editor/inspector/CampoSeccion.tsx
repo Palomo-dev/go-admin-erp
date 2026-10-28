@@ -11,6 +11,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import { ColorTema } from './PartesZonaGlobal';
 import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, SettingRow, Skeleton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -245,16 +246,22 @@ export function CampoSeccion({
         </FormField>
       );
     }
-    case 'color':
+    case 'color': {
+      // Figma v2: vacío = «Sigue el tema» (lo que pinta la tienda sin clave), no un blanco ficticio.
+      const fijo = typeof valor === 'string' && valor ? valor : null;
+      if (deshabilitado) {
+        return <ColorField etiqueta={campo.label} valor={fijo ?? '#FFFFFF'} fondo={fondo ?? undefined} onCambiar={(v) => onCambiar(v)} deshabilitado />;
+      }
       return (
-        <ColorField
+        <ColorTema
           etiqueta={campo.label}
-          valor={typeof valor === 'string' && valor ? valor : '#FFFFFF'}
+          valor={fijo}
+          colorTema={typeof campo.defaultValue === 'string' && campo.defaultValue ? campo.defaultValue : '#FFFFFF'}
           fondo={fondo ?? undefined}
           onCambiar={(v) => onCambiar(v)}
-          deshabilitado={deshabilitado}
         />
       );
+    }
     case 'entity':
       if (campo.entity === 'category' && campo.multiple) {
         const elegidas = (Array.isArray(valor) ? valor : []).map(String);

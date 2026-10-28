@@ -237,5 +237,5 @@ revoke all on function public.fn_productos_precio_masivo(integer, integer[], tex
 grant execute on function public.fn_productos_precio_masivo(integer, integer[], text, text, jsonb) to authenticated, service_role;
 
 insert into supabase_migrations.schema_migrations (version, name, statements, created_by)
-values ('20261027200000', 'productos_precio_masivo_en_bloque', array[]::text[], 'p1_apply_executor')
+values ('20261027230000', 'productos_precio_masivo_en_bloque', array[]::text[], 'p1_apply_executor')
 on conflict (version) do nothing;

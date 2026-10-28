@@ -1,4 +1,4 @@
--- Rollback de 20261027200000: vuelve a la definición de fn_productos_precio_masivo que estaba en prod
+-- Rollback de 20261027230000: vuelve a la definición de fn_productos_precio_masivo que estaba en prod
 -- el 2026-10-27 (pg_get_functiondef, loop fila por fila). Reintroduce el timeout en lotes grandes.
 CREATE OR REPLACE FUNCTION public.fn_productos_precio_masivo(p_organization_id integer, p_product_ids integer[], p_tipo text, p_operacion text, p_opciones jsonb DEFAULT '{}'::jsonb)
  RETURNS jsonb
@@ -178,4 +178,4 @@ $function$;
 revoke all on function public.fn_productos_precio_masivo(integer, integer[], text, text, jsonb) from public, anon;
 grant execute on function public.fn_productos_precio_masivo(integer, integer[], text, text, jsonb) to authenticated, service_role;
 
-delete from supabase_migrations.schema_migrations where version = '20261027200000';
+delete from supabase_migrations.schema_migrations where version = '20261027230000';

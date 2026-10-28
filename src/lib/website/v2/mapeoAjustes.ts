@@ -8,7 +8,8 @@
  * Fuente: docs/website-builder-v2/D12-CLASIFICACION-COLUMNAS.md. Decisión aprobada el 2026-10-05:
  * las 15 columnas sin efecto en el sitio público (`background_color`, `text_color`,
  * `font_heading`, `font_body`, los seis `enable_*`, `tax_rate`, `tax_name`, `menu_position`,
- * `categories_menu_style`, `mobile_sticky_header`) NO se importan. Tampoco comercio,
+ * `categories_menu_style`, `mobile_sticky_header`) NO se importan (`mobile_sticky_header` y
+ * `mobile_breakpoint` viven ahora como opciones nuevas del documento, apartado Celular). Tampoco comercio,
  * integraciones, metadatos ni obsoletas: siguen en la fila legacy (operación, D12).
  *
  * Defaults verificados por MCP (`information_schema.columns`) el 2026-10-05.
@@ -213,6 +214,10 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Fijo al bajar (sticky). `true` = lo de hoy. */
   header_sticky: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
+  /** «Fijo al desplazar» solo en el celular (apartado Celular). `null` = sigue `header_sticky` (lo de hoy). */
+  mobile_sticky_header: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /** «Diseño de celular por debajo de» (px). 1024 = lo de hoy en las tiendas v2. */
+  mobile_breakpoint: { zona: 'header', porDefecto: 1024, regla: { tipo: 'entero', min: 640, max: 1024 }, nueva: true },
   /**
    * Línea entre el logo y el menú. `true` = visible (lo de hoy, con el lavado del fondo).
    * `false` quita el borde.

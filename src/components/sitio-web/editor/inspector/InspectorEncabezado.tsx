@@ -697,7 +697,6 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'header_divider',
   'header_divider_color',
   'header_hover_color',
-  'header_mobile_icon_color',
   'mobile_menu_bg_color',
   'mobile_menu_text_color',
   'mobile_menu_link_hover_color',

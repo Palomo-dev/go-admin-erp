@@ -124,8 +124,8 @@ describe('bloque 3 · Celular completo (panel, íconos, buscador)', () => {
 describe('QA 28-oct · duplicados', () => {
   it('logo y orden del celular ya no aparecen en «anteriores»; el resto de layout sí', () => {
     expect(entradasAnterioresEncabezado({ mobile_header: { layout: { logo: 'center', arrangement: 'menu-logo-acciones' } } }, ['mobile_header'])).toEqual([]);
-    const e = entradasAnterioresEncabezado({ mobile_header: { layout: { logo: 'center', header_height: 70 } } }, ['mobile_header']);
-    expect(e.map((x) => x.id)).toEqual(['mobile_header__layout']);
+    // Alto, tamaño, fijo, ocultar y transparente también viven ya en «Celular».
+    expect(entradasAnterioresEncabezado({ mobile_header: { layout: { logo: 'center', header_height: 70 } } }, ['mobile_header'])).toEqual([]);
   });
 
   it('el orden solo no cambia el encabezado de siempre en la tienda (P2)', () => {

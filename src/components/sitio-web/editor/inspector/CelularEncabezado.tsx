@@ -48,6 +48,20 @@ import {
   menuInferior,
   ordenCelular,
   type ItemMenuInferior,
+  BREAKPOINTS_CELULAR,
+  ICONOS_VISIBLES,
+  breakpointCelular,
+  cambioBreakpointCelular,
+  cambioColorIconosCelular,
+  cambioFijoCelular,
+  cambioIconoVisible,
+  cambioInterruptorCelular,
+  cambioMedidaCelular,
+  colorIconosCelular,
+  fijoCelular,
+  iconoVisible,
+  interruptorCelular,
+  medidaCelular,
 } from './celularLogica';
 
 export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void; coloresTema?: { fondo: string; texto: string } }) {
@@ -63,6 +77,9 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajuste
   const idOrden = useId();
   const idGlifo = useId();
   const idEstilo = useId();
+  const idBreak = useId();
+  const idTamano = useId();
+  const idAlto = useId();
   const aplicar = (c: Record<string, unknown>) => {
     if (Object.keys(c).length) cambiar(c);
   };
@@ -197,6 +214,38 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajuste
           onValorChange={(v) => aplicar(cambioBordeIconos(a, v === 'borde'))}
         />
         <p className="text-[11px] leading-[14px] text-fg-muted">{tm('estiloIconosAyuda')}</p>
+      </div>
+
+      <FilaInterruptor titulo={tm('fijo')} ayuda={tm('fijoAyuda')} valor={fijoCelular(a)} onCambiar={(v) => aplicar(cambioFijoCelular(a, v))} />
+      <FilaInterruptor titulo={tm('ocultarAlBajar')} valor={interruptorCelular(a, 'hide_on_scroll')} onCambiar={(v) => aplicar(cambioInterruptorCelular(a, 'hide_on_scroll', v))} />
+      <FilaInterruptor titulo={tm('transparente')} valor={interruptorCelular(a, 'transparent_hero')} onCambiar={(v) => aplicar(cambioInterruptorCelular(a, 'transparent_hero', v))} />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idTamano}>{tm('tamanoLogo')}</EtiquetaGrupo>
+          <CampoNumero aria-labelledby={idTamano} valor={medidaCelular(a, 'logo_size')} decimales={0} minimo={24} maximo={96} sufijo="px" placeholder={tm('automatico')} alinear="izquierda" onValorChange={(v) => aplicar(cambioMedidaCelular(a, 'logo_size', v))} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idAlto}>{tm('alto')}</EtiquetaGrupo>
+          <CampoNumero aria-labelledby={idAlto} valor={medidaCelular(a, 'header_height')} decimales={0} minimo={48} maximo={120} sufijo="px" placeholder={tm('automatico')} alinear="izquierda" onValorChange={(v) => aplicar(cambioMedidaCelular(a, 'header_height', v))} />
+        </div>
+      </div>
+      <p className="text-[11px] leading-[14px] text-fg-muted">{tm('medidasAyuda')}</p>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo>{tm('iconos')}</EtiquetaGrupo>
+        {ICONOS_VISIBLES.map((k) => (
+          <FilaInterruptor key={k} titulo={tm(`iconoVisible.${k}`)} valor={iconoVisible(a, k)} onCambiar={(v) => aplicar(cambioIconoVisible(a, k, v))} />
+        ))}
+      </div>
+      <ColorTema etiqueta={tm('colorIconos')} valor={colorIconosCelular(a)} colorTema={coloresTema?.texto ?? '#111827'} onCambiar={(v) => cambiar(cambioColorIconosCelular(a, v))} />
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={idBreak}>{tm('breakpoint')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={idBreak}
+          opciones={BREAKPOINTS_CELULAR.map((v) => ({ valor: String(v) as `${typeof v}`, etiqueta: `${v} px` }))}
+          valor={String(breakpointCelular(a)) as `${(typeof BREAKPOINTS_CELULAR)[number]}`}
+          onValorChange={(v) => aplicar(cambioBreakpointCelular(a, Number(v) as (typeof BREAKPOINTS_CELULAR)[number]))}
+        />
+        <p className="text-[11px] leading-[14px] text-fg-muted">{tm('breakpointAyuda')}</p>
       </div>
 
       <FilaInterruptor titulo={tm('inferior')} ayuda={tm('inferiorAyuda')} valor={inferior.activo} onCambiar={(v) => cambiar(cambioMenuInferiorActivo(a, v))} />

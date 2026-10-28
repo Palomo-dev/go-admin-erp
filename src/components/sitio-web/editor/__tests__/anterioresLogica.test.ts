@@ -29,20 +29,16 @@ describe('Ajustes anteriores por clave y con dependencias', () => {
     const iconos = e.find((x) => x.id === 'mobile_header__icons');
     // El estilo círculo vive en «Círculo acento»: ya no se lista como anterior.
     expect(iconos).toBeUndefined();
-    expect(e.find((x) => x.id === 'header_mobile_icon_color')?.quitar).toEqual({ header_mobile_icon_color: null });
+    // El color de los íconos del celular vive en «Celular» (fuente única): ya no es anterior.
+    expect(e.find((x) => x.id === 'header_mobile_icon_color')).toBeUndefined();
     const todos = cambioQuitarTodos(runSneak, e);
     expect(todos).not.toHaveProperty('mobile_header');
     expect(usaEncabezadoMovilNuevo({ ...runSneak, ...todos }.mobile_header, 'tabs')).toBe(true);
   });
 
-  it('una parte del celular se quita sola si el encabezado del celular sigue igual', () => {
+  it('layout e íconos del celular viven en «Celular»: «anteriores» ya no los lista', () => {
     const a = { mobile_header: { icons: { color: '#111111' }, layout: { header_height: 60 } } };
-    const e = entradasAnterioresEncabezado(a, ['mobile_header']);
-    expect(e.map((x) => x.id)).toEqual(['mobile_header__layout', 'mobile_header__icons']);
-    expect(e[0].quitar).toEqual({ mobile_header: { icons: { color: '#111111' } } });
-    // Por separado cada una se puede quitar, pero juntas no: «Quitar todos» deja una.
-    const todos = cambioQuitarTodos(a, e);
-    expect(usaEncabezadoMovilNuevo(todos.mobile_header, undefined)).toBe(true);
+    expect(entradasAnterioresEncabezado(a, ['mobile_header'])).toEqual([]);
   });
 
   it('Círculo acento: refleja los íconos viejos y al apagarlo el celular conserva su encabezado', () => {
@@ -101,12 +97,9 @@ describe('Legacy: el buscador único se puede guardar (columnas NOT NULL)', () =
 });
 
 describe('mobile_header editable (auditoría 27-oct, 6)', () => {
-  it('org 134: layout.sticky se edita sin borrar el resto', () => {
+  it('org 134: layout.sticky se edita en «Celular» (Fijo al desplazar), no en «anteriores»', () => {
     const a = { mobile_header: { layout: { sticky: true, logo: 'inherit' }, panel: { show_logo: false } } };
     const e = entradasAnterioresEncabezado(a, CLAVES_ANTERIORES_ENCABEZADO);
-    const layout = e.find((x) => x.id === 'mobile_header__layout');
-    const sticky = layout?.editables?.find((x) => x.clave === 'sticky');
-    expect(sticky?.valor).toBe(true);
-    expect(sticky?.cambio(false)).toEqual({ mobile_header: { layout: { sticky: false, logo: 'inherit' }, panel: { show_logo: false } } });
+    expect(e.find((x) => x.id === 'mobile_header__layout')).toBeUndefined();
   });
 });

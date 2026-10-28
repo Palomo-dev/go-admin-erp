@@ -49,7 +49,10 @@ const ESTILOS_MENU_NUEVOS = ['drawer_left', 'drawer_right', 'top_dropdown', 'non
 // `bottom_nav`, `panel`, `search`, el glifo/estilo de `icons` y el logo/orden de `layout` se editan en «Celular».
 export const PARTES_MOVIL = ['layout', 'icons'] as const;
 /** Claves que ya tienen opción en «Celular» (o en «Círculo acento»): no se listan como anteriores. */
-const EN_CELULAR: Readonly<Record<string, readonly string[]>> = { icons: ['menu', 'style'], layout: ['logo', 'arrangement'] };
+const EN_CELULAR: Readonly<Record<string, readonly string[]>> = {
+  icons: ['menu', 'style', 'show_menu', 'show_search', 'show_cart', 'show_account', 'color'],
+  layout: ['logo', 'arrangement', 'logo_size', 'header_height', 'sticky', 'hide_on_scroll', 'transparent_hero'],
+};
 
 /** La parte sin lo que ya se edita en «Celular» (solo `icons` tiene claves repartidas). */
 function restoAnterior(h: Record<string, unknown>, p: string): Record<string, unknown> | null {

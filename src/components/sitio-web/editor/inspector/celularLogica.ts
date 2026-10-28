@@ -251,3 +251,88 @@ export function cambioBuscadorPantallaCompleta(a: Record<string, unknown>, si: b
   else delete cabecera.search;
   return { mobile_header: Object.keys(cabecera).length ? cabecera : null };
 }
+
+// ─── Medidas, fijo, breakpoint e íconos (antes solo en «anteriores») ─────────────────────────────
+
+/**
+ * «Fijo al desplazar» en el celular. Fuente única: `mobile_sticky_header` (`null` = sigue «Fijo al
+ * bajar» de computador). El `layout.sticky` viejo se lee como respaldo y se quita al cambiar.
+ */
+export function fijoCelular(a: Record<string, unknown>): boolean {
+  if (typeof a.mobile_sticky_header === 'boolean') return a.mobile_sticky_header;
+  const viejo = layout(a).l?.sticky;
+  if (typeof viejo === 'boolean') return viejo;
+  return a.header_sticky !== false;
+}
+
+export function cambioFijoCelular(a: Record<string, unknown>, si: boolean): Record<string, unknown> {
+  const { l } = layout(a);
+  const limpio = l && 'sticky' in l ? conLayout(a, { sticky: undefined }) : {};
+  if (fijoCelular(a) === si && !('sticky' in (l ?? {}))) return {};
+  return { ...limpio, mobile_sticky_header: si === (a.header_sticky !== false) ? null : si };
+}
+
+export const BREAKPOINTS_CELULAR = [640, 768, 1024] as const;
+/** 1024 es lo de hoy (la tienda usa `mobile_breakpoint || 1024`): elegirlo guarda `null`. */
+export function breakpointCelular(a: Record<string, unknown>): (typeof BREAKPOINTS_CELULAR)[number] {
+  const v = a.mobile_breakpoint;
+  return (BREAKPOINTS_CELULAR as readonly unknown[]).includes(v) ? (v as (typeof BREAKPOINTS_CELULAR)[number]) : 1024;
+}
+
+export function cambioBreakpointCelular(a: Record<string, unknown>, v: (typeof BREAKPOINTS_CELULAR)[number]): Record<string, unknown> {
+  if (breakpointCelular(a) === v && (v !== 1024 || a.mobile_breakpoint == null)) return {};
+  return { mobile_breakpoint: v === 1024 ? null : v };
+}
+
+type MedidaLayout = 'logo_size' | 'header_height';
+const RANGO_MEDIDA: Record<MedidaLayout, [number, number]> = { logo_size: [24, 96], header_height: [48, 120] };
+
+/** Tamaño del logo y alto del encabezado (px). `null` = automático, lo de hoy. */
+export function medidaCelular(a: Record<string, unknown>, k: MedidaLayout): number | null {
+  const v = layout(a).l?.[k];
+  const [min, max] = RANGO_MEDIDA[k];
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : null;
+}
+
+export function cambioMedidaCelular(a: Record<string, unknown>, k: MedidaLayout, v: number | null): Record<string, unknown> {
+  const [min, max] = RANGO_MEDIDA[k];
+  // Fuera del rango no se guarda (se está escribiendo, p. ej. «6» camino a «64»).
+  if (v != null && (!Number.isFinite(v) || v < min || v > max)) return {};
+  const valor = v == null ? undefined : Math.round(v);
+  if ((valor ?? null) === medidaCelular(a, k)) return {};
+  return conLayout(a, { [k]: valor });
+}
+
+type InterruptorLayout = 'hide_on_scroll' | 'transparent_hero';
+export function interruptorCelular(a: Record<string, unknown>, k: InterruptorLayout): boolean {
+  return layout(a).l?.[k] === true;
+}
+export function cambioInterruptorCelular(a: Record<string, unknown>, k: InterruptorLayout, si: boolean): Record<string, unknown> {
+  if (interruptorCelular(a, k) === si) return {};
+  return conLayout(a, { [k]: si ? true : undefined });
+}
+
+export const ICONOS_VISIBLES = ['show_menu', 'show_search', 'show_cart', 'show_account'] as const;
+export type IconoVisible = (typeof ICONOS_VISIBLES)[number];
+/** Mostrar u ocultar cada ícono. Visible es lo de hoy: encenderlo quita la clave. */
+export function iconoVisible(a: Record<string, unknown>, k: IconoVisible): boolean {
+  return objeto(objeto(a.mobile_header)?.icons)?.[k] !== false;
+}
+export function cambioIconoVisible(a: Record<string, unknown>, k: IconoVisible, si: boolean): Record<string, unknown> {
+  if (iconoVisible(a, k) === si) return {};
+  return conIconos(a, k, si ? undefined : false);
+}
+
+/**
+ * Color de los íconos del celular. Fuente única: `header_mobile_icon_color` (lo pintan todos los
+ * encabezados del celular). El `icons.color` viejo se lee como respaldo y se quita al cambiar.
+ */
+export function colorIconosCelular(a: Record<string, unknown>): string | null {
+  const viejo = objeto(objeto(a.mobile_header)?.icons)?.color;
+  if (typeof viejo === 'string' && viejo) return viejo;
+  return typeof a.header_mobile_icon_color === 'string' && a.header_mobile_icon_color ? a.header_mobile_icon_color : null;
+}
+export function cambioColorIconosCelular(a: Record<string, unknown>, color: string | null): Record<string, unknown> {
+  const tieneViejo = objeto(objeto(a.mobile_header)?.icons)?.color !== undefined;
+  return { ...(tieneViejo ? conIconos(a, 'color', undefined) : {}), header_mobile_icon_color: color };
+}

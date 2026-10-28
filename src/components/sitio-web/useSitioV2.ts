@@ -135,17 +135,8 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
     setGuardando(true);
     try {
       const documento = cambiar(actual.documento);
-      let r;
-      try {
-        r = await clienteSitiosV2.guardar(actual.sitio.id, documento, actual.version);
-      } catch (e) {
-        // 401: la sesión venció. Se renueva y se reintenta UNA vez antes de avisar (auditoría 27-oct, 3).
-        if (!(e instanceof ErrorApiSitio) || e.estado !== 401) throw e;
-        const { refreshSessionToken } = await import('@/lib/supabase/auth-manager');
-        const renovada = await refreshSessionToken().catch(() => null);
-        if (!renovada?.session) throw e;
-        r = await clienteSitiosV2.guardar(actual.sitio.id, documento, actual.version);
-      }
+      // El 401 ya se renueva y reintenta una vez en el envoltorio global de fetch (fetchConRenovacion, 3e8c9f99).
+      const r = await clienteSitiosV2.guardar(actual.sitio.id, documento, actual.version);
       const siguiente: BorradorSitio = {
         ...actual,
         documento,

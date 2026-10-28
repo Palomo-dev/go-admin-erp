@@ -18,8 +18,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
-import { buscadorPropioCelular, cambioBuscador, cambioCirculoAcento, cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
+import { buscadorPropioCelular, cambioBuscador, cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
 import { useTextosEditor } from '../textos';
+import {
+  BOTONES_EXTRA,
+  BUSCADORES,
+  FORMAS_CAJA,
+  MENUS_EXTRA,
+  SOMBRAS_CAJA,
+  TAMANOS_ICONO,
+  botonesConValor,
+  cajaIconos,
+  cambioCaja,
+  cambioForma,
+  cambioTamano,
+  enlacesMenu,
+  formaCaja,
+  menusConValor,
+  tamanoIcono,
+} from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
 import {
   BandaGlobal,
@@ -249,6 +266,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
   return (
     <>
       <SelectorMenu {...p} comoTitulo etiqueta={t('zonaGlobal.menu.titulo')} />
+      <MenusAdicionales ajustes={a} cambiar={cambiar} />
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.boton.principal')}</TituloBloque>
         <CampoBoton etiquetaTexto={t('zonaGlobal.boton.texto')} claveTexto="header_cta_text" claveUrl="header_cta_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />
@@ -267,6 +285,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
         />
         {segundo && <CampoBoton etiquetaTexto={t('zonaGlobal.boton.texto')} claveTexto="header_cta2_text" claveUrl="header_cta2_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />}
       </section>
+      <MasBotones ajustes={a} cambiar={cambiar} paginas={p.paginas} />
 
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.barra.titulo')}</TituloBloque>
@@ -493,11 +512,10 @@ function Diseno(p: Interno) {
         <EtiquetaGrupo id={idBc}>{t('zonaGlobal.diseno.buscador')}</EtiquetaGrupo>
         <ChipsOpcion
           aria-labelledby={idBc}
-          opciones={[
-            { valor: 'icon', etiqueta: t('zonaGlobal.diseno.icono') },
-            { valor: 'bar', etiqueta: t('zonaGlobal.diseno.barraVisible') },
-            { valor: 'hidden', etiqueta: t('zonaGlobal.diseno.oculto') },
-          ]}
+          opciones={BUSCADORES.map((v) => ({
+            valor: v,
+            etiqueta: v === 'icon' ? t('zonaGlobal.diseno.icono') : v === 'bar' ? t('zonaGlobal.diseno.barraVisible') : v === 'hidden' ? t('zonaGlobal.diseno.oculto') : t(`zonaGlobal.diseno.buscadorNombre.${v}`),
+          }))}
           valor={valorOpcion<string>(a, 'search_style') ?? 'icon'}
           onValorChange={(v) => cambiar(cambioBuscador(a, v))}
         />
@@ -553,13 +571,8 @@ function Estilo(p: Interno) {
       )}
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.estilo.iconos')}</TituloBloque>
-        <FilaInterruptor
-          titulo={t('zonaGlobal.acciones.presetCirculo')}
-          ayuda={t('zonaGlobal.acciones.iconosCirculoAyuda')}
-          valor={circuloAcentoActivo(a)}
-          onCambiar={(v) => cambiar(cambioCirculoAcento(a, v))}
-        />
-        {circuloAcentoActivo(a) && (() => {
+        <CajaIconos ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
+        {circuloAcentoActivo(a) && !cajaIconos(a) && (() => {
           // Paquete 5-nov B1/B4: fondo del círculo (vacío = marca) y color del ícono (vacío = automático).
           const fondoCirculo = color('header_icons_circle_bg') ?? p.coloresTema.acento;
           return (
@@ -677,8 +690,169 @@ function FormaBoton({ ajustes, cambiar }: { ajustes: Record<string, unknown>; ca
   );
 }
 
+// ─── Lo que antes solo hacía el Constructor (ahora en Encabezado) ───────────────────────────────
+
+/** Caja de los íconos: forma, tamaño, degradado, sombra y hover (antes `icon_container`). */
+function CajaIconos({ ajustes: a, cambiar, coloresTema }: Pick<Interno, 'ajustes' | 'cambiar' | 'coloresTema'>) {
+  const t = useTextosEditor();
+  const idForma = useId();
+  const idTam = useId();
+  const idSombra = useId();
+  const caja = cajaIconos(a);
+  const forma = formaCaja(a);
+  const formas: string[] = [...FORMAS_CAJA];
+  if (!formas.includes(forma)) formas.push(forma);
+  const tam = tamanoIcono(a);
+  const tamanos: (number | null)[] = [null, ...TAMANOS_ICONO];
+  if (tam !== null && !tamanos.includes(tam)) tamanos.push(tam);
+  const hex = (v: unknown) => (typeof v === 'string' && /^#/.test(v) ? v : null);
+  const conCaja = !!caja && forma !== 'none';
+  const degradado = !!caja && !!caja.gradient_1 && !!caja.gradient_2;
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={idForma}>{t('zonaGlobal.acciones.forma')}</EtiquetaGrupo>
+        <ChipsOpcion aria-labelledby={idForma} opciones={formas.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.acciones.formaNombre.${v}`) }))} valor={forma} onValorChange={(v) => cambiar(cambioForma(a, v))} />
+        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.iconosCirculoAyuda')}</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={idTam}>{t('zonaGlobal.acciones.tamano')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={idTam}
+          opciones={tamanos.map((n) => ({ valor: n === null ? 'normal' : String(n), etiqueta: n === null ? t('zonaGlobal.acciones.tamanoNormal') : t('zonaGlobal.acciones.tamanoPx', { n }) }))}
+          valor={tam === null ? 'normal' : String(tam)}
+          onValorChange={(v) => cambiar(cambioTamano(a, v === 'normal' ? null : Number(v)))}
+        />
+      </div>
+      {conCaja && (
+        <>
+          <ColorTema
+            etiqueta={t('zonaGlobal.acciones.cajaFondo')}
+            etiquetaNulo={t('zonaGlobal.acciones.cajaFondoAcento')}
+            valor={hex(caja.background)}
+            colorTema={coloresTema.acento}
+            onCambiar={(v) => cambiar(cambioCaja(a, { background: v ?? 'accent' }))}
+          />
+          <FilaInterruptor
+            titulo={t('zonaGlobal.acciones.degradado')}
+            valor={degradado}
+            onCambiar={(v) => cambiar(cambioCaja(a, v ? { gradient_1: hex(caja.background) ?? coloresTema.acento, gradient_2: coloresTema.texto } : { gradient_1: null, gradient_2: null }))}
+          />
+          {degradado && (
+            <>
+              <ColorTema etiqueta={t('zonaGlobal.acciones.degradado1')} valor={hex(caja.gradient_1)} colorTema={coloresTema.acento} onCambiar={(v) => cambiar(cambioCaja(a, { gradient_1: v ?? coloresTema.acento }))} />
+              <ColorTema etiqueta={t('zonaGlobal.acciones.degradado2')} valor={hex(caja.gradient_2)} colorTema={coloresTema.texto} onCambiar={(v) => cambiar(cambioCaja(a, { gradient_2: v ?? coloresTema.texto }))} />
+            </>
+          )}
+          <div className="flex flex-col gap-2">
+            <EtiquetaGrupo id={idSombra}>{t('zonaGlobal.acciones.sombra')}</EtiquetaGrupo>
+            <ChipsOpcion
+              aria-labelledby={idSombra}
+              opciones={SOMBRAS_CAJA.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.acciones.sombraNombre.${v}`) }))}
+              valor={typeof caja.shadow === 'string' ? caja.shadow : 'none'}
+              onValorChange={(v) => cambiar(cambioCaja(a, { shadow: v === 'none' ? null : v }))}
+            />
+          </div>
+          <ColorTema
+            etiqueta={t('zonaGlobal.acciones.hoverFondo')}
+            etiquetaNulo={t('zonaGlobal.acciones.hoverFondoIgual')}
+            valor={hex(caja.hover_background)}
+            colorTema={coloresTema.acento}
+            onCambiar={(v) => cambiar(cambioCaja(a, { hover_background: v }))}
+          />
+        </>
+      )}
+      {(conCaja || !!caja) && (
+        <FilaInterruptor titulo={t('zonaGlobal.acciones.hoverAgrandar')} valor={typeof caja?.hover_scale === 'number' && caja.hover_scale > 100} onCambiar={(v) => cambiar(cambioCaja(a, { hover_scale: v ? 110 : null }))} />
+      )}
+    </>
+  );
+}
+
+/** Botones 3 a 6 (antes solo en el Constructor): mismo campo que el principal y el segundo. */
+function MasBotones({ ajustes: a, cambiar, paginas }: Pick<Interno, 'ajustes' | 'cambiar' | 'paginas'>) {
+  const t = useTextosEditor();
+  const [visibles, setVisibles] = useState<number[]>(() => botonesConValor(a));
+  const siguiente = BOTONES_EXTRA.find((n) => !visibles.includes(n));
+  return (
+    <section className="flex flex-col gap-3">
+      <TituloBloque>{t('zonaGlobal.boton.mas')}</TituloBloque>
+      <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.boton.masAyuda')}</p>
+      {visibles.map((n) => (
+        <div key={n} className="flex flex-col gap-2 rounded-lg border border-line p-3">
+          <div className="flex items-center justify-between gap-2">
+            <EtiquetaGrupo>{t('zonaGlobal.boton.botonN', { n })}</EtiquetaGrupo>
+            <button type="button" aria-label={t('zonaGlobal.boton.quitar')} title={t('zonaGlobal.boton.quitar')} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => { setVisibles((v) => v.filter((x) => x !== n)); cambiar({ [`header_cta${n}_text`]: null, [`header_cta${n}_url`]: null }); }}>
+              <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <CampoBoton etiquetaTexto={t('zonaGlobal.boton.texto')} claveTexto={`header_cta${n}_text`} claveUrl={`header_cta${n}_url`} ajustes={a} cambiar={cambiar} paginas={paginas} />
+        </div>
+      ))}
+      {siguiente && (
+        <button type="button" className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'self-start')} onClick={() => setVisibles((v) => [...v, siguiente])}>
+          <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} /> {t('zonaGlobal.boton.agregar')}
+        </button>
+      )}
+    </section>
+  );
+}
+
+/** Menús adicionales (antes en el Constructor): nombre y enlaces; desplegables tras el principal. */
+function MenusAdicionales({ ajustes: a, cambiar }: Pick<Interno, 'ajustes' | 'cambiar'>) {
+  const t = useTextosEditor();
+  const [visibles, setVisibles] = useState<number[]>(() => menusConValor(a));
+  const siguiente = MENUS_EXTRA.find((n) => !visibles.includes(n));
+  return (
+    <section className="flex flex-col gap-3">
+      <TituloBloque>{t('zonaGlobal.menu.adicionales')}</TituloBloque>
+      <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.menu.adicionalesAyuda')}</p>
+      {visibles.map((n) => {
+        const enlaces = enlacesMenu(a, n);
+        const escribir = (lista: { label: string; href: string }[]) => cambiar({ [`header_menu${n}_links`]: lista.length ? lista : null });
+        return (
+          <div key={n} className="flex flex-col gap-2 rounded-lg border border-line p-3" role="group" aria-label={t('zonaGlobal.menu.menuN', { n })}>
+            <div className="flex items-center gap-2">
+              <Input
+                aria-label={t('zonaGlobal.menu.nombreMenu')}
+                placeholder={t('zonaGlobal.menu.nombreMenu')}
+                maxLength={40}
+                value={typeof a[`header_menu${n}_label`] === 'string' ? (a[`header_menu${n}_label`] as string) : ''}
+                onChange={(e) => cambiar({ [`header_menu${n}_label`]: e.target.value || null })}
+                className="h-9 min-w-0 flex-1"
+              />
+              <button type="button" aria-label={t('zonaGlobal.menu.quitarMenu')} title={t('zonaGlobal.menu.quitarMenu')} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => { setVisibles((v) => v.filter((x) => x !== n)); cambiar({ [`header_menu${n}_label`]: null, [`header_menu${n}_links`]: null }); }}>
+                <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              </button>
+            </div>
+            {enlaces.map((e, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input aria-label={t('zonaGlobal.menu.enlaceTexto')} placeholder={t('zonaGlobal.menu.enlaceTexto')} maxLength={60} value={e.label} onChange={(ev) => escribir(enlaces.map((x, j) => (j === i ? { ...x, label: ev.target.value } : x)))} className="h-9 min-w-0 flex-1" />
+                <Input aria-label={t('zonaGlobal.menu.enlaceDestino')} placeholder="/pagina" maxLength={300} value={e.href} onChange={(ev) => escribir(enlaces.map((x, j) => (j === i ? { ...x, href: ev.target.value } : x)))} className="h-9 min-w-0 flex-1" />
+                <button type="button" aria-label={t('zonaGlobal.menu.quitarEnlace')} title={t('zonaGlobal.menu.quitarEnlace')} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => escribir(enlaces.filter((_, j) => j !== i))}>
+                  <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                </button>
+              </div>
+            ))}
+            {enlaces.length < 12 && (
+              <button type="button" className={cn(clasesBoton({ variante: 'fantasma', tamano: 'sm' }), 'self-start')} onClick={() => escribir([...enlaces, { label: '', href: '' }])}>
+                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} /> {t('zonaGlobal.menu.agregarEnlace')}
+              </button>
+            )}
+          </div>
+        );
+      })}
+      {siguiente && (
+        <button type="button" className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'self-start')} onClick={() => setVisibles((v) => [...v, siguiente])}>
+          <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} /> {t('zonaGlobal.menu.agregarMenu')}
+        </button>
+      )}
+    </section>
+  );
+}
+
 /**
- * Claves que el panel ya no muestra (Constructor rechazado y controles fuera del Figma v2). La
+ * Claves que el panel ya no muestra (Constructor: sus capacidades ya están en Encabezado; header_builder se sigue leyendo y controles fuera del Figma v2). La
  * tienda las sigue pintando tal cual; aquí solo se listan si la tienda tiene un valor guardado
  * distinto del de siempre, para poder quitarlo. Sin valores guardados, este bloque no aparece.
  */

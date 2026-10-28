@@ -211,14 +211,16 @@ export function buscadorPropioCelular(a: Record<string, unknown>): string | null
 
 export function cambioBuscador(a: Record<string, unknown>, v: string): Record<string, unknown> {
   const propio = buscadorPropioCelular(a);
-  if (propio && v !== 'hidden' && v !== propio) return { search_style: v };
+  // Tipos de buscador del Constructor (mini, overlay, grande, píldora): en el celular, ícono o barra.
+  const vm = v === 'icon_overlay' ? 'icon' : v === 'mini' || v === 'mega' || v === 'pill_floating' ? 'bar' : v;
+  if (propio && vm !== 'hidden' && vm !== propio) return { search_style: v };
   const cambio: Record<string, unknown> = { search_style: v, mobile_search_style: null };
   const h = objeto(a.mobile_header);
-  if (h && 'search' in h && !(h.search === 'fullscreen' && v === 'icon')) {
+  if (h && 'search' in h && !(h.search === 'fullscreen' && vm === 'icon')) {
     const resto = sinPartes(h, ['search']);
     // Sin el buscador viejo el celular dejaría su encabezado: se le pone el mismo buscador.
     const deja = usaEncabezadoMovilNuevo(h, a.mobile_menu_style) && !usaEncabezadoMovilNuevo(resto, a.mobile_menu_style);
-    cambio.mobile_header = deja && v !== 'hidden' ? { ...h, search: v } : resto;
+    cambio.mobile_header = deja && vm !== 'hidden' ? { ...h, search: vm } : resto;
   }
   return cambio;
 }

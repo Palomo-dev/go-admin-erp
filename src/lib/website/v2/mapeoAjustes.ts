@@ -184,6 +184,28 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   /** Segundo botón (contorno). Sin texto o sin enlace no se pinta. */
   header_cta2_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
   header_cta2_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  /**
+   * Botones 3 a 6 del encabezado (antes solo el Constructor tenía más de 2). Mismo estilo que el
+   * segundo; sin texto o sin enlace no se pintan. Sin valor, ninguna tienda cambia.
+   */
+  header_cta3_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta3_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  header_cta4_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta4_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  header_cta5_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta5_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  header_cta6_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta6_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  /**
+   * Menús adicionales del encabezado (antes en el Constructor): nombre + enlaces `{ label, href }`.
+   * Se pintan como desplegables después del menú principal. Sin valor, nada cambia.
+   */
+  header_menu2_label: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_menu2_links: { zona: 'header', porDefecto: null, nueva: true },
+  header_menu3_label: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_menu3_links: { zona: 'header', porDefecto: null, nueva: true },
+  header_menu4_label: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_menu4_links: { zona: 'header', porDefecto: null, nueva: true },
   /** Barra superior: sede y «Abierto ahora · Cierra a las…» con el horario de la sede. */
   topbar_show_branch_status: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
   /** Barra superior: «Envío gratis desde $…» (`free_shipping_threshold`). */
@@ -237,6 +259,11 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_icons_circle_bg: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Color del ícono en el círculo. `null` = automático (blanco sobre oscuro/saturado, oscuro sobre claro). */
   header_icons_circle_fg: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /**
+   * Caja de los íconos del encabezado (forma, tamaño, degradado, sombra, hover). Mismo formato que
+   * el `icon_container` del Constructor, que se sigue leyendo si esta no tiene valor.
+   */
+  header_icons_box: { zona: 'header', porDefecto: null, nueva: true },
   /**
    * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
    * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.

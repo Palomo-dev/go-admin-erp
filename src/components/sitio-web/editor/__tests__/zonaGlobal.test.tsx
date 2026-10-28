@@ -204,8 +204,12 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false, header_scroll: null });
     fireEvent.click(screen.getByRole('radio', { name: 'Se encoge' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: true, header_scroll: 'encoger' });
-    fireEvent.click(screen.getByRole('switch', { name: /Círculo acento/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Círculo' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Cuadrado' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'square', scope: 'all', background: 'accent' } });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Tamaño de los íconos' })).getByRole('radio', { name: '28 px' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'none', scope: 'all', icon: 28 } });
     fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
     expect(onCambiar).toHaveBeenCalledWith({ cta_border_radius: 999 });
     expect(screen.queryByText(/Ajustes de versiones anteriores/)).toBeNull();

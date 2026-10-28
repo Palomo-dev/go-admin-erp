@@ -33468,6 +33468,20 @@
             "mandaEspaciado": "Manda sobre Estilo › Espaciado: quítalo para que se vea lo que elijas ahí.",
             "mandaAncho": "Manda sobre Estilo › Ancho: quítalo para que se vea lo que elijas ahí.",
             "sinEfecto": "La tienda no lo usa: no cambia nada."
+          },
+          "campoMovil": {
+            "show_logo": "Logo en el menú del celular",
+            "show_search": "Buscador",
+            "show_social": "Redes sociales en el menú",
+            "show_contact": "Contacto en el menú",
+            "sticky": "Fijo al desplazarse",
+            "hide_on_scroll": "Ocultar al bajar",
+            "transparent_hero": "Transparente sobre la portada",
+            "show_cart": "Carrito",
+            "show_menu": "Botón de menú",
+            "show_account": "Cuenta",
+            "enabled": "Barra inferior activa",
+            "showLabel": "Mostrar texto"
           }
         }
       },

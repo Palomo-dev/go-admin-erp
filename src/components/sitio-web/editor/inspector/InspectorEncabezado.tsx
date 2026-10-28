@@ -742,7 +742,8 @@ export function AjustesAnteriores({ ajustes, entradas, cambiar }: { ajustes: Rec
       <p className="mt-2 text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.anteriores.ayuda')}</p>
       <ul className="mt-2 flex flex-col gap-1.5">
         {entradas.map((e) => (
-          <li key={e.id} className="flex items-center justify-between gap-2 text-xs text-fg-secondary">
+          <li key={e.id} className="flex flex-col gap-1.5 text-xs text-fg-secondary">
+           <div className="flex items-center justify-between gap-2">
             <span className="flex flex-col">
               <span>{t(`zonaGlobal.anteriores.clave.${e.id}`)}</span>
               {e.motivo && <span className="text-[11px] leading-[14px] text-fg-muted">{t(`zonaGlobal.anteriores.motivo.${e.motivo}`)}</span>}
@@ -752,6 +753,10 @@ export function AjustesAnteriores({ ajustes, entradas, cambiar }: { ajustes: Rec
                 {t('zonaGlobal.anteriores.quitar')}
               </button>
             )}
+           </div>
+            {e.editables?.map((ed) => (
+              <FilaInterruptor key={ed.clave} titulo={t(`zonaGlobal.anteriores.campoMovil.${ed.clave}`)} valor={ed.valor} onCambiar={(v) => cambiar(ed.cambio(v))} />
+            ))}
           </li>
         ))}
       </ul>

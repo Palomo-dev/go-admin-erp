@@ -33460,6 +33460,20 @@
             "mandaEspaciado": "Prevalece sobre Estilo › Espaçamento: remova para ver o que escolher lá.",
             "mandaAncho": "Prevalece sobre Estilo › Largura: remova para ver o que escolher lá.",
             "sinEfecto": "A loja não usa: não muda nada."
+          },
+          "campoMovil": {
+            "show_logo": "Logo no menu do celular",
+            "show_search": "Busca",
+            "show_social": "Redes sociais no menu",
+            "show_contact": "Contato no menu",
+            "sticky": "Fixo ao rolar",
+            "hide_on_scroll": "Ocultar ao descer",
+            "transparent_hero": "Transparente sobre a capa",
+            "show_cart": "Carrinho",
+            "show_menu": "Botão de menu",
+            "show_account": "Conta",
+            "enabled": "Barra inferior ativa",
+            "showLabel": "Mostrar texto"
           }
         }
       },

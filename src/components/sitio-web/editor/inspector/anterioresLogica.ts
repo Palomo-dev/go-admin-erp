@@ -23,6 +23,26 @@ export interface EntradaAnterior {
   quitar: Record<string, unknown> | null;
   /** Por qué no se puede quitar. */
   motivo?: 'enUso' | 'circulo' | 'mandaEspaciado' | 'mandaAncho' | 'sinEfecto';
+  /** Interruptores que siguen editables (sin equivalente en el panel nuevo; auditoría 27-oct, 6). */
+  editables?: { clave: string; valor: boolean; cambio: (v: boolean) => Record<string, unknown> }[];
+}
+
+function conEditables(h: Record<string, unknown>, parte: string): Pick<EntradaAnterior, 'editables'> {
+  const e = editablesMovil(h, parte);
+  return e.length > 0 ? { editables: e } : {};
+}
+
+/** Interruptores de una parte de `mobile_header` (p. ej. `layout.sticky`): se editan sin borrar el resto. */
+function editablesMovil(h: Record<string, unknown>, parte: string): NonNullable<EntradaAnterior['editables']> {
+  const o = objeto(h[parte]);
+  if (!o) return [];
+  return Object.entries(o)
+    .filter(([, v]) => typeof v === 'boolean')
+    .map(([k, v]) => ({
+      clave: k,
+      valor: v as boolean,
+      cambio: (nuevo: boolean) => ({ mobile_header: { ...h, [parte]: { ...o, [k]: nuevo } } }),
+    }));
 }
 
 const ESTILOS_MENU_NUEVOS = ['drawer_left', 'drawer_right', 'top_dropdown', 'none'];
@@ -86,9 +106,9 @@ function entradasMovil(a: Record<string, unknown>): EntradaAnterior[] {
   return PARTES_MOVIL.filter((p) => !vacio(h[p])).map((p) => {
     const resto = sinPartes(h, [p]);
     if (usa && !usaEncabezadoMovilNuevo(resto, a.mobile_menu_style)) {
-      return { id: `mobile_header__${p}`, quitar: null, motivo: p === 'icons' && iconosSoloCirculo(h) ? 'circulo' : 'enUso' };
+      return { id: `mobile_header__${p}`, quitar: null, motivo: p === 'icons' && iconosSoloCirculo(h) ? 'circulo' : 'enUso', ...conEditables(h, p) };
     }
-    return { id: `mobile_header__${p}`, quitar: { mobile_header: resto } };
+    return { id: `mobile_header__${p}`, quitar: { mobile_header: resto }, ...conEditables(h, p) };
   });
 }
 

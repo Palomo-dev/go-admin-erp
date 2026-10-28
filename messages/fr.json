@@ -33450,6 +33450,20 @@
             "mandaEspaciado": "Prime sur Style › Espacement : retirez-le pour voir votre choix.",
             "mandaAncho": "Prime sur Style › Largeur : retirez-le pour voir votre choix.",
             "sinEfecto": "La boutique ne l’utilise pas : cela ne change rien."
+          },
+          "campoMovil": {
+            "show_logo": "Logo dans le menu mobile",
+            "show_search": "Recherche",
+            "show_social": "Réseaux sociaux dans le menu",
+            "show_contact": "Contact dans le menu",
+            "sticky": "Fixe au défilement",
+            "hide_on_scroll": "Masquer en descendant",
+            "transparent_hero": "Transparent sur la couverture",
+            "show_cart": "Panier",
+            "show_menu": "Bouton de menu",
+            "show_account": "Compte",
+            "enabled": "Barre inférieure active",
+            "showLabel": "Afficher le texte"
           }
         }
       },

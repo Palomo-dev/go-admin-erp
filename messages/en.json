@@ -33450,6 +33450,20 @@
             "mandaEspaciado": "Overrides Style › Spacing: remove it so your choice there shows.",
             "mandaAncho": "Overrides Style › Width: remove it so your choice there shows.",
             "sinEfecto": "The store doesn't use it: it changes nothing."
+          },
+          "campoMovil": {
+            "show_logo": "Logo in the mobile menu",
+            "show_search": "Search",
+            "show_social": "Social links in the menu",
+            "show_contact": "Contact in the menu",
+            "sticky": "Sticky on scroll",
+            "hide_on_scroll": "Hide on scroll down",
+            "transparent_hero": "Transparent over the hero",
+            "show_cart": "Cart",
+            "show_menu": "Menu button",
+            "show_account": "Account",
+            "enabled": "Bottom bar on",
+            "showLabel": "Show label"
           }
         }
       },

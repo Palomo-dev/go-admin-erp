@@ -98,3 +98,14 @@ describe('Legacy: el buscador único se puede guardar (columnas NOT NULL)', () =
     expect(lote).toEqual({});
   });
 });
+
+describe('mobile_header editable (auditoría 27-oct, 6)', () => {
+  it('org 134: layout.sticky se edita sin borrar el resto', () => {
+    const a = { mobile_header: { layout: { sticky: true, logo: 'inherit' }, panel: { show_logo: false } } };
+    const e = entradasAnterioresEncabezado(a, CLAVES_ANTERIORES_ENCABEZADO);
+    const layout = e.find((x) => x.id === 'mobile_header__layout');
+    const sticky = layout?.editables?.find((x) => x.clave === 'sticky');
+    expect(sticky?.valor).toBe(true);
+    expect(sticky?.cambio(false)).toEqual({ mobile_header: { layout: { sticky: false, logo: 'inherit' }, panel: { show_logo: false } } });
+  });
+});

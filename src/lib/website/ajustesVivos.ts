@@ -66,12 +66,23 @@ export const CLAVES_TEMA_VIVO = [
  * `header_mega_menu_id` no van: cambiar de menú exige cargar otro menú, y eso
  * sí necesita guardar.
  */
+/**
+ * Contador regresivo (las mismas columnas del editor viejo): el lienzo lo pinta en vivo en el
+ * encabezado, el carrito, el pago, la ficha de producto y la portada.
+ */
+export const CLAVES_CONTADOR_VIVO = [
+  'countdown_enabled', 'countdown_title', 'countdown_mode', 'countdown_end_date', 'countdown_timezone',
+  'countdown_reset_hour', 'countdown_show_in_header', 'countdown_show_in_cart', 'countdown_show_in_product',
+  'countdown_show_in_hero', 'checkout_show_countdown',
+] as const;
+
 export const CLAVES_AJUSTES_VIVOS: readonly string[] = Array.from(
-  new Set<string>([...CLAVES_ENCABEZADO, ...CLAVES_TEMA_VIVO].filter((c) => c !== 'header_menu_id' && c !== 'header_mega_menu_id')),
+  new Set<string>([...CLAVES_ENCABEZADO, ...CLAVES_TEMA_VIVO, ...CLAVES_CONTADOR_VIVO].filter((c) => c !== 'header_menu_id' && c !== 'header_mega_menu_id')),
 );
 
 /** Toma de los ajustes del editor solo las columnas que el lienzo aplica en vivo. */
-const TEMA_VIVO = new Set<string>(CLAVES_TEMA_VIVO);
+// Sin valor en los ajustes no se mandan (no se pisan con `null`): el tema y el contador.
+const TEMA_VIVO = new Set<string>([...CLAVES_TEMA_VIVO, ...CLAVES_CONTADOR_VIVO]);
 
 export function ajustesParaLienzo(ajustes: Record<string, unknown> | null | undefined): Record<string, unknown> {
   const resultado: Record<string, unknown> = {};

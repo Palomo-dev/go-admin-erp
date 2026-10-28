@@ -262,7 +262,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             {esSeccionTarjetaProducto(s.section_type) && (
               <InspectorTarjetaProducto
                 guardado={contenido.product_card_style}
-                heredado={heredadoTarjetaSeccion(contenido, p.estiloTarjetaSitio)}
+                heredado={heredadoTarjetaSeccion(contenido, p.estiloTarjetaSitio, s.section_type, s.section_variant)}
                 onCambiar={(estilo) => onCambiarContenido({ ...contenido, product_card_style: estilo })}
                 onQuitar={() => {
                   const siguiente = { ...contenido };

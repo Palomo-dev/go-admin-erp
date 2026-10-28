@@ -553,11 +553,22 @@ export function tarjetaDesdeClavesSeccion(contenido: unknown): EstiloTarjetaProd
  * Lo que la sección hereda en el inspector: sus claves sueltas de siempre y, encima, el estilo
  * del sitio (mismo orden que pinta la tarjeta publicada).
  */
-export function heredadoTarjetaSeccion(contenido: unknown, sitio: unknown): EstiloTarjetaProducto | undefined {
+export function heredadoTarjetaSeccion(
+  contenido: unknown,
+  sitio: unknown,
+  tipo?: string | null,
+  variante?: string | null,
+): EstiloTarjetaProducto | undefined {
   const legado = tarjetaDesdeClavesSeccion(contenido)
   const deSitio = aplicarEstiloTarjeta(sitio)
-  if (!legado) return deSitio ?? (sitio as EstiloTarjetaProducto | undefined)
-  return deSitio ? fusionarEstilos(legado, deSitio) : legado
+  const base = !legado ? deSitio ?? (sitio as EstiloTarjetaProducto | undefined) : deSitio ? fusionarEstilos(legado, deSitio) : legado
+  // Destacados «Producto héroe» (FeaturedProductsHero) solo tacha con la clave suelta en `true`;
+  // el tachado del sitio no le llega. El panel dice eso mismo hasta que se edita.
+  if (tipo === 'featured_products' && variante === 'hero_product') {
+    const suelta = (contenido as Record<string, unknown> | null)?.show_compare_price
+    return { ...(base ?? {}), show_compare_price: suelta === true || suelta === 'true' }
+  }
+  return base
 }
 
 export function esSeccionTarjetaProducto(tipo: string | null | undefined): boolean {

@@ -20,6 +20,7 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 
 import { getSectionDefinition, type ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import { campoVisible } from '@/components/sitio-web/editor/inspector/CampoSeccion';
+import { heredadoTarjetaSeccion, vistaEditorTarjeta } from '@/lib/website/tarjetaProducto';
 
 /** Definiciones de `clave` que el inspector muestra en la variante (contenido vacío). */
 function visibles(tipo: string, clave: string, variante: string, contenido: Record<string, unknown> = {}): ContentFieldDef[] {
@@ -100,7 +101,6 @@ describe('No se oculta de más: lo que el sitio sí lee sigue visible', () => {
     ['products_grid', 'show_filters', 'grid'],
     ['products_grid', 'show_filters', 'default'],
     ['featured_products', 'show_rating', 'grid'],
-    ['featured_products', 'show_compare_price', 'carousel'],
     ['featured_products', 'show_description', 'hero_product'],
     ['services_list', 'show_description', 'cards'],
     ['room_types', 'show_description', 'detailed'],
@@ -159,7 +159,6 @@ const IMPLEMENTADOS: FilaImplementado[] = [
   ['products_grid', 'show_filters', 'list'],
   ...['default', 'grid', 'carousel', 'list'].map((v): [string, string, string] => ['products_grid', 'show_search', v]),
   ...['grid', 'carousel', 'hero_product'].flatMap((v): [string, string, string][] => [['featured_products', 'show_filters', v], ['featured_products', 'show_search', v]]),
-  ['featured_products', 'show_compare_price', 'hero_product'],
   ['offers', 'show_filters', 'grid'],
   ['offers', 'show_search', 'grid'],
   ['menu_preview', 'show_compare_price', 'tabs'],
@@ -234,8 +233,6 @@ const DEFAULTS_IMPLEMENTADOS: FilaDefault[] = [
   ['featured_products', 'show_search', 'hero_product', false],
   ['offers', 'show_filters', 'grid', true],
   ['offers', 'show_search', 'grid', false],
-  ['featured_products', 'show_compare_price', 'hero_product', false],
-  ['featured_products', 'show_compare_price', 'grid', true],
   ['menu_preview', 'show_compare_price', 'tabs', false],
   ['membership_plans', 'show_compare_price', 'pricing_table', false],
   ['specialties', 'show_compare_price', 'featured', false],
@@ -262,5 +259,28 @@ describe('Implementados: con la clave ausente el switch dice lo que el sitio hac
     expect(item('hero', 'buttons', 'full_width_mobile').defaultValue).toBe(true);
     expect(item('products_grid', 'card_buttons', 'full_width_mobile').defaultValue).toBe(false);
     expect(item('products_grid', 'card_buttons', 'full_width').defaultValue).toBe(true);
+  });
+});
+
+/**
+ * Destacados: desde B4 (975a96478) el tachado se edita solo en «Tarjeta de producto»
+ * (product_card_style.show_compare_price), no como interruptor suelto. El panel dice lo que la
+ * tienda hace con la clave ausente: la tarjeta (grilla, carrusel) tacha; «Producto héroe» no.
+ */
+describe('Destacados · «Precio anterior tachado» vive en el panel Tarjeta', () => {
+  it.each(['grid', 'carousel', 'hero_product'])('%s: sin interruptor suelto en el inspector', (v) => {
+    expect(visibles('featured_products', 'show_compare_price', v)).toHaveLength(0);
+  });
+  it('grilla/carrusel con la clave ausente: el panel lo muestra encendido', () => {
+    const h = heredadoTarjetaSeccion({}, undefined, 'featured_products', 'grid');
+    expect(vistaEditorTarjeta(undefined, h).show_compare_price).not.toBe(false);
+  });
+  it('producto héroe con la clave ausente: el panel lo muestra apagado (como la tienda)', () => {
+    const h = heredadoTarjetaSeccion({}, undefined, 'featured_products', 'hero_product');
+    expect(vistaEditorTarjeta(undefined, h).show_compare_price).toBe(false);
+  });
+  it('producto héroe con la clave suelta en true: encendido', () => {
+    const h = heredadoTarjetaSeccion({ show_compare_price: true }, undefined, 'featured_products', 'hero_product');
+    expect(vistaEditorTarjeta(undefined, h).show_compare_price).toBe(true);
   });
 });

@@ -5,6 +5,8 @@ import { applyBranchFilterStrict } from '@/lib/services/branchFilterHelper';
 import { TEMPLATE_PRESETS, TYPE_ID_TO_BUSINESS, type TemplatePresetInfo } from '@/lib/website/contrato/presetsPlantillas';
 
 // Interfaces
+import { quitarColumnasOpcionalesAusentes } from '@/lib/website/columnasOpcionales';
+
 export interface WebsiteSettings {
   id: string;
   organization_id: number;
@@ -313,12 +315,17 @@ class WebsiteSettingsService {
     const { data: existing } = await query.maybeSingle();
 
     if (existing) {
-      const { data, error } = await supabase
-        .from('website_settings')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
-        .select()
-        .single();
+      const actualizar = (cambios: Record<string, unknown>) =>
+        supabase
+          .from('website_settings')
+          .update({ ...cambios, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+          .select()
+          .single();
+      let { data, error } = await actualizar(updates as Record<string, unknown>);
+      // Columna opcional aún sin migrar (p. ej. `countdown_style`): se guarda el resto, no falla todo.
+      const sinOpcionales = error ? quitarColumnasOpcionalesAusentes(updates as Record<string, unknown>, error) : null;
+      if (sinOpcionales) ({ data, error } = await actualizar(sinOpcionales));
       if (error) throw error;
       return data as WebsiteSettings;
     }

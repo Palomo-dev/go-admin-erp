@@ -7,6 +7,7 @@
  */
 import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { PanelEstiloContador } from '../inspector/PanelEstiloContador';
 import { PanelContador } from '../inspector/PanelContador';
 import { finLocal, leerContador, objetivoContador, partesFin, tiempoRestante, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
 import { ajustesParaLienzo, CLAVES_AJUSTES_VIVOS } from '@/lib/website/ajustesVivos';
@@ -104,6 +105,33 @@ describe('PanelContador', () => {
     expect(screen.getByTestId('vista-contador').style.color).toBe('rgb(17, 17, 17)');
     rerender(<PanelContador settings={FILA as unknown as WebsiteSettings} onCambiarAjustes={jest.fn()} colorPrimario="#1E3A8A" />);
     expect(screen.getByTestId('vista-contador').style.color).toBe('rgb(255, 255, 255)');
+  });
+
+  test('estilo: apagado sin columna (NULL) = vista de siempre; encenderlo escribe countdown_style', () => {
+    const onCambiar = montar();
+    expect(screen.getByTestId('vista-contador')).toBeTruthy();
+    fireEvent.click(screen.getByRole('switch', { name: 'Personalizar estilo' }));
+    const ultimo = onCambiar.mock.calls.at(-1)[0];
+    expect(ultimo.countdown_style).toMatchObject({ fondo: { tipo: 'sitio' }, temporizador: { caja: 'redondeada' } });
+  });
+
+  test('estilo: cambiar caja y fondo escribe el objeto entero; avisa si la columna aún no existe', () => {
+    const onCambiar = jest.fn();
+    render(<PanelContador settings={{ ...FILA, countdown_style: { tamano: 'grande' } } as unknown as WebsiteSettings} onCambiarAjustes={onCambiar} colorPrimario="#A0D241" />);
+    expect(screen.queryByTestId('vista-contador')).toBeNull();
+    expect(screen.getByTestId('vista-contador-estilo')).toBeTruthy();
+    expect(screen.queryByText(/todavía no se guarda/)).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
+    expect(onCambiar.mock.calls.at(-1)[0].countdown_style).toMatchObject({ tamano: 'grande', temporizador: { caja: 'pildora' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Degradado' }));
+    expect(onCambiar.mock.calls.at(-1)[0].countdown_style.fondo).toMatchObject({ tipo: 'degradado', desde: '#A0D241' });
+    fireEvent.click(screen.getByRole('switch', { name: 'Personalizar estilo' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ countdown_style: null });
+  });
+
+  test('estilo: fila sin la columna (migración pendiente) avisa que no se guarda', () => {
+    render(<PanelEstiloContador valor={{ tamano: 'grande' }} onCambiar={jest.fn()} primario="#A0D241" titulo="Hoy" segundos={60} columnaDisponible={false} />);
+    expect(screen.getByText(/todavía no se guarda/)).toBeTruthy();
   });
 
   test('modo fecha muestra el fin y avisa si falta', () => {

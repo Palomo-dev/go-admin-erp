@@ -10,6 +10,7 @@
  *    organización de la sesión en cada `where`, en el mismo orden que antes hacía el
  *    navegador. Ese respaldo NO es atómico: se retira al aplicar la migración.
  */
+import { quitarColumnasOpcionalesAusentes } from '@/lib/website/columnasOpcionales';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { permisosSitio } from '@/lib/services/website/paginasSitioService';
 import { ErrorSitio } from '@/lib/services/website/siteDocumentService';
@@ -126,13 +127,18 @@ async function escribirAjustes(ctx: Ctx, sedeId: number | null, cambios: Record<
   if (eFila) traducirError(eFila, 'ajustes.buscar');
 
   if (fila) {
-    const { data, error } = await db
-      .from('website_settings')
-      .update({ ...cambios, updated_at: ahora })
-      .eq('id', (fila as { id: string }).id)
-      .eq('organization_id', org)
-      .select()
-      .maybeSingle();
+    const actualizar = (c: Record<string, unknown>) =>
+      db
+        .from('website_settings')
+        .update({ ...c, updated_at: ahora })
+        .eq('id', (fila as { id: string }).id)
+        .eq('organization_id', org)
+        .select()
+        .maybeSingle();
+    let { data, error } = await actualizar(cambios);
+    // Columna opcional sin migrar (`countdown_style`): se guarda el resto.
+    const sinOpcionales = error ? quitarColumnasOpcionalesAusentes(cambios, error) : null;
+    if (sinOpcionales) ({ data, error } = await actualizar(sinOpcionales));
     if (error) traducirError(error, 'ajustes.update');
     if (!data) throw new ErrorSitio('sin_permiso', 'No se pudieron guardar los ajustes: revisa tus permisos.');
     return data as Record<string, unknown>;

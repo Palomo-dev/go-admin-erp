@@ -13720,7 +13720,8 @@
         "ayudaTipo": "La apertura debita inventario y acredita patrimonio. Un ajuste de entrada acredita otros ingresos y uno de salida debita gastos. Una entrada que no es devolución no acredita costos.",
         "avisoKardex": "Cada ajuste queda en el kardex y genera su asiento de inventario.",
         "sinCosto": "{count, plural, one {{n} ajuste quedó sin costo: está en el kardex pero no generó asiento.} other {{n} ajustes quedaron sin costo: están en el kardex pero no generaron asiento.}}",
-        "sinPermiso": "No tienes permiso para ajustar el inventario."
+        "sinPermiso": "No tienes permiso para ajustar el inventario.",
+        "padresOmitidos": "{cantidad} productos padre con variantes se omitieron: el stock se ajusta en sus variantes."
       },
       "categoria": {
         "titulo": "Asignar categoría",
@@ -14172,7 +14173,8 @@
       "categoriaSugerida": "categoría sugerida por el nombre",
       "preparadoSinInventario": "platos preparados sin inventario propio",
       "filaInternaAlegra": "filas internas de Alegra (excluidas)",
-      "skuRepetidoTienda": "SKU de la tienda repetido"
+      "skuRepetidoTienda": "SKU de la tienda repetido",
+      "stockEnPadre": "stock en el padre (no se carga)"
     },
     "vista": {
       "titulo": "Previsualización ({n} filas)",
@@ -14336,7 +14338,8 @@
         "codigo_barras": "código de barras",
         "plu": "PLU de balanza",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Trae stock ({cantidad}) en un producto padre con variantes: no se carga. Ponlo en las variantes."
     },
     "cabeceras": {
       "sku": "SKU",

@@ -162,3 +162,13 @@ export function sumarResumen(acumulado: ResumenAjusteStock, lote: Partial<Record
     sin_costo: acumulado.sin_costo + n(lote.sin_costo),
   };
 }
+
+/**
+ * El stock vive en las variantes: un padre con variantes no recibe ajuste (la base lo bloquea con
+ * `producto_padre_con_variantes`). Devuelve los ids a ajustar y cuántos padres se omitieron.
+ */
+export function quitarPadresConVariantes(ids: number[], padresConVariantes: Iterable<number>): { ids: number[]; omitidos: number } {
+  const padres = new Set(padresConVariantes);
+  const quedan = ids.filter((id) => !padres.has(id));
+  return { ids: quedan, omitidos: ids.length - quedan.length };
+}

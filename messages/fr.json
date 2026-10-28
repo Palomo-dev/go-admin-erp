@@ -9518,7 +9518,8 @@
         "ayudaTipo": "L’ouverture débite le stock et crédite les capitaux propres. Un ajustement d’entrée crédite les autres produits et un de sortie débite les charges. Une entrée qui n’est pas un retour ne crédite pas les coûts.",
         "avisoKardex": "Chaque ajustement est enregistré dans le kardex et génère son écriture d’inventaire.",
         "sinCosto": "{count, plural, one {{n} ajustement sans coût : il figure au kardex mais n’a pas généré d’écriture.} other {{n} ajustements sans coût : ils figurent au kardex mais n’ont pas généré d’écriture.}}",
-        "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire."
+        "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire.",
+        "padresOmitidos": "{cantidad} produits parents avec variantes ont été ignorés : le stock est ajusté sur leurs variantes."
       },
       "categoria": {
         "titulo": "Attribuer une catégorie",
@@ -9970,7 +9971,8 @@
       "categoriaSugerida": "catégorie suggérée d'après le nom",
       "preparadoSinInventario": "plats préparés sans stock propre",
       "filaInternaAlegra": "lignes internes Alegra (exclues)",
-      "skuRepetidoTienda": "SKU de la boutique répété"
+      "skuRepetidoTienda": "SKU de la boutique répété",
+      "stockEnPadre": "stock sur le parent (non chargé)"
     },
     "vista": {
       "titulo": "Aperçu ({n} lignes)",
@@ -10134,7 +10136,8 @@
         "codigo_barras": "code-barres",
         "plu": "PLU de balance",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Contient du stock ({cantidad}) sur un produit parent avec variantes : il n'est pas chargé. Mettez-le sur les variantes."
     },
     "cabeceras": {
       "sku": "SKU",

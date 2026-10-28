@@ -13719,7 +13719,8 @@
         "ayudaTipo": "Opening debits inventory and credits equity. An inbound adjustment credits other income and an outbound one debits expenses. An inbound movement that is not a return does not credit costs.",
         "avisoKardex": "Every adjustment is recorded in the stock ledger and posts its inventory journal entry.",
         "sinCosto": "{count, plural, one {{n} adjustment had no cost: it is in the stock ledger but posted no journal entry.} other {{n} adjustments had no cost: they are in the stock ledger but posted no journal entry.}}",
-        "sinPermiso": "You do not have permission to adjust inventory."
+        "sinPermiso": "You do not have permission to adjust inventory.",
+        "padresOmitidos": "{cantidad} parent products with variants were skipped: stock is adjusted on their variants."
       },
       "categoria": {
         "titulo": "Assign category",
@@ -14171,7 +14172,8 @@
       "categoriaSugerida": "category suggested from the name",
       "preparadoSinInventario": "prepared dishes without their own stock",
       "filaInternaAlegra": "internal Alegra rows (excluded)",
-      "skuRepetidoTienda": "store SKU repeated"
+      "skuRepetidoTienda": "store SKU repeated",
+      "stockEnPadre": "stock on parent (not loaded)"
     },
     "vista": {
       "titulo": "Preview ({n} rows)",
@@ -14335,7 +14337,8 @@
         "codigo_barras": "barcode",
         "plu": "scale PLU",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Has stock ({cantidad}) on a parent product with variants: it is not loaded. Put it on the variants."
     },
     "cabeceras": {
       "sku": "SKU",

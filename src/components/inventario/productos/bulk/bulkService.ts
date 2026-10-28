@@ -16,6 +16,7 @@
 import { supabase } from '@/lib/supabase/config';
 import {
   partirEnLotes,
+  quitarPadresConVariantes,
   RESUMEN_VACIO,
   sumarResumen,
   validarAjusteMasivo,
@@ -23,6 +24,7 @@ import {
   type ResumenAjusteStock,
   type TipoContableStock,
 } from './ajusteMasivoStock';
+import { padresConVariantes } from './padresConVariantes';
 import {
   errorDeRpc,
   errorMasivo,
@@ -161,6 +163,8 @@ export interface ResultadoAjusteStock extends ConteoMasivo {
   errores: string[];
   /** Suma de los resúmenes de la RPC (entradas, salidas, sin costo…). */
   resumen: ResumenAjusteStock;
+  /** Padres con variantes que no se ajustaron: su stock va en las variantes. */
+  padresOmitidos: number;
 }
 
 /**
@@ -185,7 +189,7 @@ export async function bulkUpdateStock(
   motivo?: string | null,
   tipo: TipoContableStock = 'ajuste',
 ): Promise<ResultadoAjusteStock> {
-  const resultado: ResultadoAjusteStock = { exitosos: 0, fallidos: 0, errores: [], resumen: { ...RESUMEN_VACIO } };
+  const resultado: ResultadoAjusteStock = { exitosos: 0, fallidos: 0, errores: [], resumen: { ...RESUMEN_VACIO }, padresOmitidos: 0 };
   const entrada = validarAjusteMasivo({ productIds, branchId, cantidad, modo, motivo });
   if (!entrada.ok) {
     resultado.fallidos = productIds.length;
@@ -204,7 +208,18 @@ export async function bulkUpdateStock(
     resultado.errores.push(errorAlcance.message);
     return resultado;
   }
-  const ids = ((alcance as number[] | null) ?? []).map(Number);
+  const alcanceIds = ((alcance as number[] | null) ?? []).map(Number);
+  // El stock va en las variantes: los padres con variantes se omiten (y se avisa).
+  let padres: Set<number>;
+  try {
+    padres = await padresConVariantes(organizationId, alcanceIds);
+  } catch (e) {
+    resultado.fallidos = entrada.productIds.length;
+    resultado.errores.push((e as { message?: string })?.message ?? String(e));
+    return resultado;
+  }
+  const { ids, omitidos } = quitarPadresConVariantes(alcanceIds, padres);
+  resultado.padresOmitidos = omitidos;
 
   // 2. Ajuste por lotes (cada uno atómico).
   for (const lote of partirEnLotes(ids)) {

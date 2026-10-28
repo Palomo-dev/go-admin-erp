@@ -217,6 +217,9 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
       const r = await bulkUpdateStock(organization.id, selectedIds, parseInt(selectedBranch), cantidad, modoStock, motivoStock, tipoStock);
       const errores = r.errores.map((e) => (e.includes('sin_permiso') ? t('stock.sinPermiso') : e));
       mostrarResultado(t('resultado.stock'), r.exitosos, r.fallidos, errores);
+      if (r.padresOmitidos > 0) {
+        toast({ title: t('resultado.stock'), description: t('stock.padresOmitidos', { cantidad: entero(r.padresOmitidos) }) });
+      }
       if (r.resumen.sin_costo > 0) {
         toast({ title: t('resultado.stock'), description: t('stock.sinCosto', { count: r.resumen.sin_costo, n: entero(r.resumen.sin_costo) }) });
       }

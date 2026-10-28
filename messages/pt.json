@@ -9519,7 +9519,8 @@
         "ayudaTipo": "A abertura debita o estoque e credita o patrimônio. Um ajuste de entrada credita outras receitas e um de saída debita despesas. Uma entrada que não é devolução não credita custos.",
         "avisoKardex": "Cada ajuste fica no kardex e gera o seu lançamento de estoque.",
         "sinCosto": "{count, plural, one {{n} ajuste ficou sem custo: está no kardex, mas não gerou lançamento.} other {{n} ajustes ficaram sem custo: estão no kardex, mas não geraram lançamento.}}",
-        "sinPermiso": "Você não tem permissão para ajustar o estoque."
+        "sinPermiso": "Você não tem permissão para ajustar o estoque.",
+        "padresOmitidos": "{cantidad} produtos pai com variantes foram omitidos: o estoque é ajustado nas variantes."
       },
       "categoria": {
         "titulo": "Atribuir categoria",
@@ -9971,7 +9972,8 @@
       "categoriaSugerida": "categoria sugerida pelo nome",
       "preparadoSinInventario": "pratos preparados sem estoque próprio",
       "filaInternaAlegra": "linhas internas do Alegra (excluídas)",
-      "skuRepetidoTienda": "SKU da loja repetido"
+      "skuRepetidoTienda": "SKU da loja repetido",
+      "stockEnPadre": "estoque no produto pai (não carregado)"
     },
     "vista": {
       "titulo": "Pré-visualização ({n} linhas)",
@@ -10135,7 +10137,8 @@
         "codigo_barras": "código de barras",
         "plu": "PLU da balança",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Tem estoque ({cantidad}) em um produto pai com variantes: não é carregado. Coloque-o nas variantes."
     },
     "cabeceras": {
       "sku": "SKU",

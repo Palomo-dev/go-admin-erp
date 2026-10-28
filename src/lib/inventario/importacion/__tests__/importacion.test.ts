@@ -268,6 +268,21 @@ describe('validación por fila', () => {
     expect(dup[0]).toMatchObject({ accion: 'crear' });
     expect(dup[0].datos.sku).toBe('D-2');
   });
+  it('stock en un padre con variantes: no se carga y se avisa; las variantes sí lo cargan', () => {
+    const v = validarFilas(
+      [
+        { fila: 2, sku: 'P', name: 'Camisa', stock: 10, cost: 5 },
+        { fila: 3, sku: 'P-S', name: 'Camisa S', parentSku: 'P', stock: 4, cost: 5 },
+        { fila: 4, sku: 'Q', name: 'Gorra', isParent: true, stock: 2 },
+      ],
+      ctx(),
+    );
+    expect(v[0].datos.stock).toBeUndefined();
+    expect(v[0].avisos).toEqual(expect.arrayContaining([{ codigo: 'stockEnPadre', params: { cantidad: 10 } }]));
+    expect(v[1].datos.stock).toBe(4);
+    expect(v[2].datos.stock).toBeUndefined();
+    expect(v[2].errores).toEqual([]);
+  });
   it('sumar stock a un existente no exige costo en la fila (lo busca la RPC)', () => {
     const v = validarFilas([{ fila: 2, sku: 'D', name: 'X', stock: 4 }], ctx({ existentes: new Map([['D', 1]]) }, { stockExistentes: 'sumar' }));
     expect(v[0].errores).toEqual([]);

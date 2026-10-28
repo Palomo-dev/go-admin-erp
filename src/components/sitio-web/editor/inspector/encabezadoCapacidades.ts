@@ -61,8 +61,23 @@ export function cambioCaja(a: Ajustes, parte: Record<string, unknown>): Ajustes 
 export function cambioForma(a: Ajustes, forma: string): Ajustes {
   if (!cajaIconos(a) && (forma === 'circle' || forma === 'none')) return cambioCirculoAcento(a, forma === 'circle');
   const actual = base(a);
-  // Sin caja: se limpian fondo, degradado y sombra (no quedan colores escondidos que vuelvan solos).
-  if (forma === 'none') return cambioCaja(a, { shape: 'none', background: null, gradient_1: null, gradient_2: null, shadow: null });
+  // Sin caja: se limpian fondo, degradado, sombra, opacidad, borde y hover (no quedan colores escondidos que vuelvan solos).
+  if (forma === 'none') {
+    return cambioCaja(a, {
+      shape: 'none',
+      background: null,
+      gradient_1: null,
+      gradient_2: null,
+      shadow: null,
+      shadow_color: null,
+      opacity: null,
+      border_width: null,
+      border_color: null,
+      border_style: null,
+      hover_background: null,
+      hover_scale: null,
+    });
+  }
   return cambioCaja(a, { shape: forma, background: actual.background ?? 'accent' });
 }
 

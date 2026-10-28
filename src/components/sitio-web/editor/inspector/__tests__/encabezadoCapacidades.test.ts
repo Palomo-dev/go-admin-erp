@@ -45,4 +45,8 @@ describe('Constructor → Encabezado', () => {
     const a = { header_icons_box: { shape: 'semi', scope: 'all', background: '#ff0000', gradient_1: '#111111', gradient_2: '#222222', shadow: 'md', icon: 22 } };
     expect(cambioForma(a, 'none')).toEqual({ header_icons_box: { shape: 'none', scope: 'all', icon: 22 } });
   });
+  it('«Sin caja» limpia también hover, color de sombra, opacidad y borde', () => {
+    const a = { header_icons_box: { shape: 'rounded', scope: 'all', icon: 20, hover_background: '#333333', hover_scale: 110, shadow_color: '#000000', opacity: 80, border_width: 2, border_color: '#444444', border_style: 'dotted' } };
+    expect(cambioForma(a, 'none')).toEqual({ header_icons_box: { shape: 'none', scope: 'all', icon: 20 } });
+  });
 });

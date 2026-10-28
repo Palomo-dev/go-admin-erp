@@ -254,24 +254,6 @@ export function cambioBuscadorPantallaCompleta(a: Record<string, unknown>, si: b
 
 // ─── Medidas, fijo, breakpoint e íconos (antes solo en «anteriores») ─────────────────────────────
 
-/**
- * «Fijo al desplazar» en el celular. Fuente única: `mobile_sticky_header` (`null` = sigue «Fijo al
- * bajar» de computador). El `layout.sticky` viejo se lee como respaldo y se quita al cambiar.
- */
-export function fijoCelular(a: Record<string, unknown>): boolean {
-  if (typeof a.mobile_sticky_header === 'boolean') return a.mobile_sticky_header;
-  const viejo = layout(a).l?.sticky;
-  if (typeof viejo === 'boolean') return viejo;
-  return a.header_sticky !== false;
-}
-
-export function cambioFijoCelular(a: Record<string, unknown>, si: boolean): Record<string, unknown> {
-  const { l } = layout(a);
-  const limpio = l && 'sticky' in l ? conLayout(a, { sticky: undefined }) : {};
-  if (fijoCelular(a) === si && !('sticky' in (l ?? {}))) return {};
-  return { ...limpio, mobile_sticky_header: si === (a.header_sticky !== false) ? null : si };
-}
-
 export const BREAKPOINTS_CELULAR = [640, 768, 1024] as const;
 /** 1024 es lo de hoy (la tienda usa `mobile_breakpoint || 1024`): elegirlo guarda `null`. */
 export function breakpointCelular(a: Record<string, unknown>): (typeof BREAKPOINTS_CELULAR)[number] {
@@ -303,23 +285,17 @@ export function cambioMedidaCelular(a: Record<string, unknown>, k: MedidaLayout,
   return conLayout(a, { [k]: valor });
 }
 
-type InterruptorLayout = 'hide_on_scroll' | 'transparent_hero';
-export function interruptorCelular(a: Record<string, unknown>, k: InterruptorLayout): boolean {
-  return layout(a).l?.[k] === true;
-}
-export function cambioInterruptorCelular(a: Record<string, unknown>, k: InterruptorLayout, si: boolean): Record<string, unknown> {
-  if (interruptorCelular(a, k) === si) return {};
-  return conLayout(a, { [k]: si ? true : undefined });
-}
-
 export const ICONOS_VISIBLES = ['show_menu', 'show_search', 'show_cart', 'show_account'] as const;
 export type IconoVisible = (typeof ICONOS_VISIBLES)[number];
 /** Mostrar u ocultar cada ícono. Visible es lo de hoy: encenderlo quita la clave. */
 export function iconoVisible(a: Record<string, unknown>, k: IconoVisible): boolean {
-  return objeto(objeto(a.mobile_header)?.icons)?.[k] !== false;
+  const v = objeto(objeto(a.mobile_header)?.icons)?.[k];
+  // La cuenta no sale hoy en el encabezado del celular: visible solo si se pidió.
+  return k === 'show_account' ? v === true : v !== false;
 }
 export function cambioIconoVisible(a: Record<string, unknown>, k: IconoVisible, si: boolean): Record<string, unknown> {
   if (iconoVisible(a, k) === si) return {};
+  if (k === 'show_account') return conIconos(a, k, si ? true : undefined);
   return conIconos(a, k, si ? undefined : false);
 }
 
@@ -335,4 +311,35 @@ export function colorIconosCelular(a: Record<string, unknown>): string | null {
 export function cambioColorIconosCelular(a: Record<string, unknown>, color: string | null): Record<string, unknown> {
   const tieneViejo = objeto(objeto(a.mobile_header)?.icons)?.color !== undefined;
   return { ...(tieneViejo ? conIconos(a, 'color', undefined) : {}), header_mobile_icon_color: color };
+}
+
+// ─── Una sola opción para computador y celular: «Al bajar» y «Sobre portada» ─────────────────────
+
+/**
+ * Ajustes del celular guardados antes con un valor distinto al de computador. La tienda los sigue
+ * respetando (nada cambia); el panel no muestra un segundo control, solo un aviso para igualarlos.
+ */
+export function ajustesDistintosCelular(a: Record<string, unknown>): string[] {
+  const { l } = layout(a);
+  const fijoPc = a.header_sticky !== false;
+  const scroll = typeof a.header_scroll === 'string' ? a.header_scroll : '';
+  const ocultaPc = fijoPc && (scroll === 'ocultar_al_bajar' || scroll === 'ocultar_y_encoger');
+  const sobrePc = (a.header_style === 'transparent' && a.header_transparent_over_hero !== false) || a.header_transparent_over_hero === true;
+  const d: string[] = [];
+  if (typeof a.mobile_sticky_header === 'boolean' && a.mobile_sticky_header !== fijoPc) d.push('fijo');
+  else if (typeof l?.sticky === 'boolean' && l.sticky !== fijoPc) d.push('fijo');
+  if (l?.hide_on_scroll === true && !ocultaPc) d.push('ocultar');
+  if (l?.transparent_hero === true && !sobrePc) d.push('transparente');
+  return d;
+}
+
+/** «Igualar»: el celular vuelve a seguir «Al bajar» y «Sobre portada» de computador. */
+export function cambioIgualarCelular(a: Record<string, unknown>): Record<string, unknown> {
+  const { l } = layout(a);
+  const cambio: Record<string, unknown> = {};
+  if (a.mobile_sticky_header != null) cambio.mobile_sticky_header = null;
+  if (l && ('sticky' in l || 'hide_on_scroll' in l || 'transparent_hero' in l)) {
+    Object.assign(cambio, conLayout(a, { sticky: undefined, hide_on_scroll: undefined, transparent_hero: undefined }));
+  }
+  return cambio;
 }

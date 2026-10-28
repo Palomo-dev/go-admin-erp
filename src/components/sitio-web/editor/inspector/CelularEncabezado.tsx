@@ -53,15 +53,13 @@ import {
   breakpointCelular,
   cambioBreakpointCelular,
   cambioColorIconosCelular,
-  cambioFijoCelular,
   cambioIconoVisible,
-  cambioInterruptorCelular,
   cambioMedidaCelular,
   colorIconosCelular,
-  fijoCelular,
   iconoVisible,
-  interruptorCelular,
   medidaCelular,
+  ajustesDistintosCelular,
+  cambioIgualarCelular,
 } from './celularLogica';
 
 export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void; coloresTema?: { fondo: string; texto: string } }) {
@@ -218,9 +216,15 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema }: { ajuste
         <p className="text-[11px] leading-[14px] text-fg-muted">{tm('estiloIconosAyuda')}</p>
       </div>
 
-      <FilaInterruptor titulo={tm('fijo')} ayuda={tm('fijoAyuda')} valor={fijoCelular(a)} onCambiar={(v) => aplicar(cambioFijoCelular(a, v))} />
-      <FilaInterruptor titulo={tm('ocultarAlBajar')} valor={interruptorCelular(a, 'hide_on_scroll')} onCambiar={(v) => aplicar(cambioInterruptorCelular(a, 'hide_on_scroll', v))} />
-      <FilaInterruptor titulo={tm('transparente')} valor={interruptorCelular(a, 'transparent_hero')} onCambiar={(v) => aplicar(cambioInterruptorCelular(a, 'transparent_hero', v))} />
+      {ajustesDistintosCelular(a).length > 0 && (
+        <div role="status" className="flex flex-col gap-2 rounded-lg border border-border bg-subtle p-2.5" data-aviso="celular-distinto">
+          <p className="text-[12px] leading-[16px] text-fg">{tm('distinto')}</p>
+          <p className="text-[11px] leading-[14px] text-fg-muted">{ajustesDistintosCelular(a).map((k) => tm(`distintoOpcion.${k}`)).join(' · ')}</p>
+          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => aplicar(cambioIgualarCelular(a))}>
+            {tm('igualar')}
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-2">
           <EtiquetaGrupo id={idTamano}>{tm('tamanoLogo')}</EtiquetaGrupo>

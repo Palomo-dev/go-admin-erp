@@ -261,16 +261,11 @@ export function leerPresentacionMovil(settings: unknown): PresentacionMovil | nu
   const iconos = header ? leerIconos(header.icons) : null
   const buscador = header ? enLista(BUSCADORES, header.search) ?? null : null
   if (!estiloNuevo && !panel && !barra && !layout && !iconos && !buscador) return null
-  // Logo y orden solos los pinta el encabezado de siempre (FilaLogoMovil): cambiar el orden no
-  // cambia el resto del aspecto (QA 28-oct P2).
-  const layoutPropio = !!layout && (layout.logoSize != null || layout.headerHeight != null || !layout.sticky || layout.hideOnScroll || layout.transparentHero)
-  // `icons.style: 'circle'` solo, con «Círculo acento» encendido, ya lo pinta el encabezado de la
-  // plantilla (p. ej. retail_bold con pestañas, org 345): no cambia de encabezado.
-  const iconosPropios = !!iconos && !(
-    iconos.style === 'circle' && s.header_icons_circle === true && iconos.menu === 'lines3' && !iconos.color &&
-    iconos.showMenu && iconos.showSearch && iconos.showCart && iconos.showAccount
-  )
-  const usarHeaderNuevo = Boolean(estiloNuevo || panel || layoutPropio || iconosPropios || buscador || (barra && estilo === 'tabs'))
+  // El encabezado lo decide solo el estilo del menú (o lo que solo el configurable sabe pintar:
+  // panel, buscador a pantalla completa, menú inferior con pestañas). Logo, orden, tamaño, alto,
+  // fijo, ocultar al bajar, transparente e íconos los pintan también los 4 encabezados de
+  // plantilla: cambiar una opción suelta nunca cambia de encabezado (QA 28-oct).
+  const usarHeaderNuevo = Boolean(estiloNuevo || panel || buscador || (barra && estilo === 'tabs'))
   return { estilo, usarHeaderNuevo, panel, barra, layout, iconos, buscador }
 }
 

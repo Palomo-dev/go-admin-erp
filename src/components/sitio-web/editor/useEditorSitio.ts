@@ -85,6 +85,7 @@ import {
 } from '@/lib/website/v2/estiloSeccion';
 import { useResumenSitio } from '@/components/sitio-web/resumen/useResumenSitio';
 import { useSitioV2 } from '@/components/sitio-web/useSitioV2';
+import { detalleErrorGuardado, motivoErrorGuardado } from './avisoErrorGuardado';
 import { rutaEditorSitio } from '@/components/sitio-web/rutasSitioWeb';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
@@ -549,13 +550,15 @@ export function useEditorSitio() {
     autoguardadoRef.current?.habilitar(enV2);
   }, [enV2]);
 
-  // Error de guardado (no conflicto): aviso persistente con «Reintentar» (D/05-26).
-  const errorV2 = v2.error && !v2.error.esConflicto && estadoGuardado === 'error' ? v2.error.message : null;
+  // Error de guardado (no conflicto de versión): aviso persistente con «Reintentar» y el motivo según el
+  // código HTTP (401 sesión, 403 permiso, 409 otra pestaña, 422 datos inválidos, red) (auditoría 27-oct, 3).
+  const errorV2 = v2.error && !v2.error.esConflicto && estadoGuardado === 'error' ? v2.error : null;
   useEffect(() => {
     if (!errorV2) return;
+    const motivo = motivoErrorGuardado(errorV2);
     toast.error(t('guardado.errorTitulo'), {
       id: 'editor-error-guardado',
-      description: t('guardado.errorDescripcion'),
+      description: t(`guardado.motivo.${motivo}`, { detalle: detalleErrorGuardado(errorV2) }),
       duration: Infinity,
       action: { label: t('acciones.reintentar'), onClick: () => void autoguardadoRef.current?.ahora() },
     });

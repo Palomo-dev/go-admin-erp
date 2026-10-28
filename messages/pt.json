@@ -33972,7 +33972,15 @@
         "errorTitulo": "O rascunho não foi salvo",
         "errorDescripcion": "Verifique sua conexão. Suas alterações continuam no editor.",
         "errorOperacion": "Os ajustes de operação não foram salvos",
-        "operacionSoloPrincipal": "Entrega, contador e botões de compra são configurados no site principal por enquanto."
+        "operacionSoloPrincipal": "Entrega, contador e botões de compra são configurados no site principal por enquanto.",
+        "motivo": {
+          "sesion": "Sua sessão expirou. Entre novamente; suas alterações continuam no editor.",
+          "permiso": "Você não tem permissão para editar este site. Peça acesso a um administrador.",
+          "otraPestana": "Este site foi editado em outra aba ou por outra pessoa. Recarregue para ver a versão mais recente.",
+          "invalido": "Há dados inválidos: {detalle}. Corrija-os e salve novamente.",
+          "red": "Verifique sua conexão. Suas alterações continuam no editor.",
+          "generico": "Ocorreu um erro no servidor. Suas alterações continuam no editor; tente novamente."
+        }
       },
       "encabezadoPie": {
         "titulo": "Cabeçalho e rodapé",

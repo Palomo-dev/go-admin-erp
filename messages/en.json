@@ -33962,7 +33962,15 @@
         "errorTitulo": "The draft was not saved",
         "errorDescripcion": "Check your connection. Your changes are still in the editor.",
         "errorOperacion": "Operation settings were not saved",
-        "operacionSoloPrincipal": "Shipping, counter and purchase buttons are set on the main site for now."
+        "operacionSoloPrincipal": "Shipping, counter and purchase buttons are set on the main site for now.",
+        "motivo": {
+          "sesion": "Your session expired. Sign in again; your changes are still in the editor.",
+          "permiso": "You don't have permission to edit this site. Ask an administrator for access.",
+          "otraPestana": "This site was edited in another tab or by someone else. Reload to see the latest version.",
+          "invalido": "Some data is not valid: {detalle}. Fix it and save again.",
+          "red": "Check your connection. Your changes are still in the editor.",
+          "generico": "A server error occurred. Your changes are still in the editor; try again."
+        }
       },
       "encabezadoPie": {
         "titulo": "Header and footer",

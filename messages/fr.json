@@ -33962,7 +33962,15 @@
         "errorTitulo": "Le brouillon n'a pas été enregistré",
         "errorDescripcion": "Vérifiez votre connexion. Vos modifications restent dans l'éditeur.",
         "errorOperacion": "Les réglages d'exploitation n'ont pas été enregistrés",
-        "operacionSoloPrincipal": "Livraison, compteur et boutons d'achat se règlent sur le site principal pour l'instant."
+        "operacionSoloPrincipal": "Livraison, compteur et boutons d'achat se règlent sur le site principal pour l'instant.",
+        "motivo": {
+          "sesion": "Votre session a expiré. Reconnectez-vous ; vos modifications restent dans l’éditeur.",
+          "permiso": "Vous n’avez pas l’autorisation de modifier ce site. Demandez l’accès à un administrateur.",
+          "otraPestana": "Ce site a été modifié dans un autre onglet ou par une autre personne. Rechargez pour voir la dernière version.",
+          "invalido": "Certaines données ne sont pas valides : {detalle}. Corrigez-les et enregistrez à nouveau.",
+          "red": "Vérifiez votre connexion. Vos modifications restent dans l’éditeur.",
+          "generico": "Une erreur serveur est survenue. Vos modifications restent dans l’éditeur ; réessayez."
+        }
       },
       "encabezadoPie": {
         "titulo": "En-tête et pied de page",

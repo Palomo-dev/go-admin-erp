@@ -1,5 +1,6 @@
 "use client";
 
+import { SucursalesMetodoBadges } from "./SucursalesMetodoPago";
 import React, { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase/config";
@@ -174,6 +175,7 @@ function SortableRow({
       <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center gap-1">
           <span>{nombreVisibleMetodo(method.settings, method.payment_method?.name, method.payment_method_code)}</span>
+          <SucursalesMetodoBadges organizationId={method.organization_id} branchIds={method.branch_ids} />
           {method.payment_method?.is_system && (
             <Badge variant="secondary" className="text-xs w-fit dark:bg-gray-700 dark:text-gray-300">Sistema</Badge>
           )}

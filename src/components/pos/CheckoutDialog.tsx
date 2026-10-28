@@ -1,5 +1,6 @@
 'use client';
 
+import { metodosConMonto } from '@/lib/finanzas/metodosPagoAlcance';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileCheck2, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2, TriangleAlert } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -717,6 +718,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     calculateCartTotals(() => vivo);
     return () => { vivo = false; };
   }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded, casillaMovida]);
+
+  // Promociones limitadas por método de pago (20261028180000): al elegir o
+  // cambiar el método se reevalúan y el total se recalcula. En el cobro de una
+  // venta que ya existe (deuda, mesa) los descuentos ya están en sus líneas.
+  const firmaMetodosCobro = metodosConMonto(payments).join(',');
+  useEffect(() => {
+    if (!open || showReceipt || !cart.items.length) return;
+    if (cart.sale_id && cart.invoice_id) return;
+    let vivo = true;
+    POSService.recalcularPromocionesPorMetodo(cart, firmaMetodosCobro ? firmaMetodosCobro.split(',') : [])
+      .then((cambio) => { if (vivo && cambio) calculateCartTotals(() => vivo); })
+      .catch((e) => console.warn('[cobro] no se pudieron recalcular las promociones por método', e));
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, showReceipt, firmaMetodosCobro, cart.id]);
 
   // La entrada que el modal pre-rellenó sigue al total. Si no, al mover
   // «Impuestos incluidos» el total cambia y el monto a cobrar se queda en

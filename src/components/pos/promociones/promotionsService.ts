@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { esColumnaAusente, normalizarCodigosMetodo, normalizarSucursales, seleccionarConColumnaOpcional } from '@/lib/finanzas/metodosPagoAlcance';
+import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { 
   Promotion, 
@@ -56,7 +58,29 @@ function limpiarFranjaYPaquete<T extends Partial<CreatePromotionData>>(datos: T)
   if ('branches' in out && Array.isArray(out.branches) && out.branches.length === 0) {
     out.branches = undefined;
   }
+  // Métodos de pago (20261028180000): lista vacía = cualquiera = NULL.
+  if ('payment_method_codes' in out) {
+    out.payment_method_codes = normalizarCodigosMetodo(out.payment_method_codes);
+  }
   return out;
+}
+
+/**
+ * Escribe la promoción con `payment_method_codes`; si la columna todavía no
+ * existe (migración sin aplicar) y no hay restricción, repite sin ella. Con
+ * restricción, avisa en lugar de guardar algo que no se cumpliría.
+ */
+export async function conMetodosPagoOpcionales<T extends Record<string, unknown>, R extends { error: unknown }>(
+  fila: T,
+  escribir: (fila: T) => PromiseLike<R>,
+): Promise<R> {
+  const r = await escribir(fila);
+  if (!('payment_method_codes' in fila) || !r.error || !esColumnaAusente(r.error, 'payment_method_codes')) return r;
+  const { payment_method_codes: codigos, ...sinCodigos } = fila;
+  if (codigos != null) {
+    throw new Error('La restricción por método de pago todavía no está habilitada en la base de datos. Deja «Cualquier método» o pide aplicar la migración.');
+  }
+  return await escribir(sinCodigos as T);
 }
 
 /** Convierte los dias del formulario en los instantes que van a la columna. */
@@ -230,10 +254,10 @@ export class PromotionsService {
       const limpia = prepararPromocion(limpiarFranjaYPaquete(promotionData));
       const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
-      const { data: result, error } = await supabase
+      const { data: result, error } = await conMetodosPagoOpcionales(limpia, (fila) => supabase
         .from('promotions')
         .insert([{
-          ...limpia,
+          ...fila,
           ...vigencia,
           organization_id: organizationId,
           created_by: userData?.user?.id,
@@ -243,7 +267,7 @@ export class PromotionsService {
           usage_count: 0
         }])
         .select()
-        .single();
+        .single());
 
       if (error) {
         console.error('Error creating promotion:', error);
@@ -273,17 +297,17 @@ export class PromotionsService {
       const limpia = prepararPromocion(limpiarFranjaYPaquete(promotionData));
       const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
-      const { data: result, error } = await supabase
+      const { data: result, error } = await conMetodosPagoOpcionales(limpia, (fila) => supabase
         .from('promotions')
         .update({
-          ...limpia,
+          ...fila,
           ...vigencia,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .eq('organization_id', organizationId)
         .select()
-        .single();
+        .single());
 
       if (error) {
         console.error('Error updating promotion:', error);
@@ -411,6 +435,30 @@ export class PromotionsService {
    * Replica el patrón de purchaseOrderService.getProducts: trae variant_data,
    * mapea el nombre del padre y excluye productos padre y servicios.
    */
+  /** Métodos de pago activos de la organización, con sus sucursales (para limitar la promoción). */
+  static async getMetodosPago(): Promise<{ code: string; name: string; branch_ids: number[] | null }[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await seleccionarConColumnaOpcional('organization_payment_methods', 'branch_ids', (extra) => supabase
+      .from('organization_payment_methods')
+      .select(`payment_method_code, settings, payment_methods!inner(name)${extra}`)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .order('website_display_order', { ascending: true, nullsFirst: false }));
+    if (error) {
+      console.error('Error loading payment methods:', error);
+      return [];
+    }
+    type Fila = { payment_method_code: string; settings: unknown; payment_methods: { name?: string } | { name?: string }[] | null; branch_ids?: unknown };
+    return ((data ?? []) as unknown as Fila[]).map((f) => {
+      const pm = Array.isArray(f.payment_methods) ? f.payment_methods[0] : f.payment_methods;
+      return {
+        code: f.payment_method_code,
+        name: nombreVisibleMetodo(f.settings, pm?.name, f.payment_method_code),
+        branch_ids: normalizarSucursales(f.branch_ids),
+      };
+    });
+  }
+
   static async getBranches(): Promise<{ id: number; name: string }[]> {
     const organizationId = this.getOrganizationId();
     const { data, error } = await supabase

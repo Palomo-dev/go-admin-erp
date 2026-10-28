@@ -42,6 +42,8 @@ import AccountMappingForm from "@/components/finanzas/metodos-pago/AccountMappin
 import { useTranslations } from "next-intl";
 import { claveErrorMetodoPago, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
 import Link from "next/link";
+import { SelectorSucursalesMetodoPago } from "./SucursalesMetodoPago";
+import { normalizarSucursales, esColumnaAusente } from "@/lib/finanzas/metodosPagoAlcance";
 
 interface PaymentMethodFormProps {
   organizationId: number;
@@ -117,6 +119,8 @@ export default function PaymentMethodForm({
   const [accountMapping, setAccountMapping] = useState<Record<string, string>>({});
   const [showAdvancedAccounting, setShowAdvancedAccounting] = useState(false);
   const tErr = useTranslations("metodosPagoSeguridad");
+  // Sucursales del método (20261028180000): null = todas.
+  const [sucursales, setSucursales] = useState<number[] | null>(normalizarSucursales(selectedMethod?.branch_ids));
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as unknown as Resolver<FormValues>,
@@ -145,6 +149,7 @@ export default function PaymentMethodForm({
       setIsNewMethod(false);
       setGatewayConfig(selectedMethod.settings?.gateway_config || {});
       setAccountMapping(selectedMethod.settings?.account_mapping || {});
+      setSucursales(normalizarSucursales(selectedMethod.branch_ids));
       form.reset({
         payment_method_code: selectedMethod.payment_method_code,
         is_active: selectedMethod.is_active,
@@ -161,6 +166,7 @@ export default function PaymentMethodForm({
       setIsNewMethod(false);
       setGatewayConfig({});
       setAccountMapping({});
+      setSucursales(null);
       form.reset({
         payment_method_code: "",
         is_active: true,
@@ -271,6 +277,20 @@ export default function PaymentMethodForm({
         account_mapping: Object.keys(accountMapping).length > 0 ? accountMapping : undefined,
       };
       
+      // `branch_ids` solo viaja si hay restricción o si ya la había (la columna
+      // existe); así, antes de aplicar la migración, guardar sigue igual que hoy.
+      const conSucursales = sucursales !== null || (selectedMethod?.branch_ids !== undefined && selectedMethod?.branch_ids !== null);
+      let avisoSucursales = false;
+      const conAlcance = async <R extends { error: unknown }>(escribir: (extra: { branch_ids?: number[] | null }) => PromiseLike<R>): Promise<R> => {
+        if (!conSucursales) return await escribir({});
+        const r = await escribir({ branch_ids: sucursales });
+        if (r.error && esColumnaAusente(r.error, "branch_ids")) {
+          avisoSucursales = sucursales !== null;
+          return await escribir({});
+        }
+        return r;
+      };
+
       const payloadWebsite = {
         show_on_website: values.show_on_website ?? true,
         website_display_order: values.website_display_order ?? 0,
@@ -290,15 +310,15 @@ export default function PaymentMethodForm({
         if (checkOrgError) console.error("Error al verificar método existente:", checkOrgError);
         
         if (existingOrgMethod?.id) {
-          const { error } = await supabase
+          const { error } = await conAlcance((extra) => supabase
             .from("organization_payment_methods")
-            .update({ is_active: values.is_active, settings, ...payloadWebsite, updated_at: new Date().toISOString() })
-            .eq("id", existingOrgMethod.id);
+            .update({ is_active: values.is_active, settings, ...payloadWebsite, ...extra, updated_at: new Date().toISOString() })
+            .eq("id", existingOrgMethod.id));
           if (error) throw error;
         } else {
-          const { error } = await supabase
+          const { error } = await conAlcance((extra) => supabase
             .from("organization_payment_methods")
-            .insert({ organization_id: organizationId, payment_method_code: values.payment_method_code, is_active: values.is_active, settings, ...payloadWebsite });
+            .insert({ organization_id: organizationId, payment_method_code: values.payment_method_code, is_active: values.is_active, settings, ...payloadWebsite, ...extra }));
           if (error) throw error;
         }
       } else {
@@ -306,16 +326,18 @@ export default function PaymentMethodForm({
         // vínculo de la organización (settings), nunca en el catálogo global
         // `payment_methods`, que comparten todas. `.select()` para detectar un
         // UPDATE que RLS bloquea (0 filas, sin error).
-        const { data: filas, error } = await supabase
+        const { data: filas, error } = await conAlcance((extra) => supabase
           .from("organization_payment_methods")
-          .update({ is_active: values.is_active, settings, ...payloadWebsite, updated_at: new Date().toISOString() })
+          .update({ is_active: values.is_active, settings, ...payloadWebsite, ...extra, updated_at: new Date().toISOString() })
           .eq("id", selectedMethod.id)
-          .select("id");
+          .select("id"));
         if (error) throw error;
         if (!filas || filas.length === 0) throw { message: "sin_permiso" };
       }
       
-      toast({ title: "Método de pago guardado", description: "Configurado exitosamente" });
+      toast(avisoSucursales
+        ? { title: "Método de pago guardado", description: "La restricción por sucursal todavía no está habilitada en la base de datos; por ahora el método sigue en todas las sucursales." }
+        : { title: "Método de pago guardado", description: "Configurado exitosamente" });
       onSaveComplete();
     } catch (error: unknown) {
       console.error("Error al guardar método de pago:", error);
@@ -548,6 +570,9 @@ export default function PaymentMethodForm({
                 )}
               />
             </div>
+
+            {/* Sucursales donde se puede cobrar con el método (NULL = todas) */}
+            <SelectorSucursalesMetodoPago organizationId={organizationId} valor={sucursales} onChange={setSucursales} />
 
             {/* ═══════════════ SECCIÓN 3: PERSONALIZACIÓN PARA WEB ═══════════════ */}
             <div className="rounded-lg border dark:border-gray-700 overflow-hidden">

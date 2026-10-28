@@ -1,3 +1,4 @@
+import { seleccionarConColumnaOpcional, metodoCatalogoVisible } from '@/lib/finanzas/metodosPagoAlcance';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CLASE_IMPUESTO_VENTA, sinRetenciones } from '@/lib/services/taxResolverCore';
@@ -162,7 +163,8 @@ export class ConfiguracionService {
   static async getPaymentMethods(): Promise<OrganizationPaymentMethod[]> {
     const orgId = getOrganizationId();
 
-    const { data, error } = await supabase
+    // `branch_ids` (20261028180000) si la migración ya está aplicada.
+    const { data, error } = await seleccionarConColumnaOpcional('organization_payment_methods', 'branch_ids', (extra) => supabase
       .from('organization_payment_methods')
       .select(`
         id,
@@ -170,10 +172,10 @@ export class ConfiguracionService {
         payment_method_code,
         is_active,
         settings,
-        payment_methods!inner(code, name, requires_reference, is_active, is_system)
+        payment_methods!inner(code, name, requires_reference, is_active, is_system)${extra}
       `)
       .eq('organization_id', orgId)
-      .order('payment_method_code');
+      .order('payment_method_code'));
 
     if (error) throw error;
     // supabase-js tipa payment_methods como arreglo aunque sea relacion a-uno
@@ -182,14 +184,17 @@ export class ConfiguracionService {
 
   // Obtener todos los métodos de pago disponibles
   static async getAllPaymentMethods(): Promise<PaymentMethod[]> {
-    const { data, error } = await supabase
-      .from('payment_methods')
-      .select('*')
-      .eq('is_active', true)
-      .order('name');
+    const orgId = getOrganizationId();
+    const [{ data, error }, propios] = await Promise.all([
+      supabase.from('payment_methods').select('*').eq('is_active', true).order('name'),
+      supabase.from('organization_payment_methods').select('payment_method_code').eq('organization_id', orgId),
+    ]);
 
     if (error) throw error;
-    return data || [];
+    // Aislamiento por organización (20261028181000): sistema + propios; nunca el
+    // personalizado de otra organización.
+    const codigos = new Set(((propios.data || []) as Array<{ payment_method_code: string }>).map((r) => r.payment_method_code));
+    return ((data || []) as Array<PaymentMethod & { organization_id?: number | null }>).filter((m) => metodoCatalogoVisible(m, orgId, codigos));
   }
 
   // Activar/desactivar método de pago

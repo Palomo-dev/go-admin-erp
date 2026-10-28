@@ -729,3 +729,19 @@ describe('quitar la promoción de una línea', () => {
     ]);
   });
 });
+
+describe('promociones limitadas por método de pago (20261028180000)', () => {
+  const didi = () => promo({ promotion_type: 'fixed_amount', discount_value: 5000, payment_method_codes: ['didi_transferencia'], branches: [7] });
+  it('sin método elegido no aplica; con DIDI sí; al volver a efectivo se quita', () => {
+    const p = didi();
+    const lineas = [linea(1, 1, 20000)];
+    expect(evaluarPromociones([p], lineas, ctx()).discountTotal).toBe(0);
+    expect(evaluarPromociones([p], lineas, ctx({ metodosPago: ['didi_transferencia'] })).discountTotal).toBe(5000);
+    expect(evaluarPromociones([p], lineas, ctx({ metodosPago: ['cash'] })).discountTotal).toBe(0);
+  });
+  it('sin la columna (migración sin aplicar) se comporta como hoy', () => {
+    const p = promo({ promotion_type: 'fixed_amount', discount_value: 5000 });
+    expect(evaluarPromociones([p], [linea(1, 1, 20000)], ctx({ metodosPago: ['cash'] })).discountTotal).toBe(5000);
+    expect(evaluarPromociones([p], [linea(1, 1, 20000)], ctx()).discountTotal).toBe(5000);
+  });
+});

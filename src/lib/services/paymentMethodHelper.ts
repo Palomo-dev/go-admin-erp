@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
+import { filtrarMetodosPorSucursal, seleccionarConColumnaOpcional } from '@/lib/finanzas/metodosPagoAlcance';
 
 /**
  * Obtiene un mapa de códigos de método de pago -> nombre legible
@@ -13,43 +14,51 @@ import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
  * propio de la organización (`settings.display_name`) si lo fijó.
  */
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-const cachePorOrganizacion = new Map<number, { etiquetas: Record<string, string>; guardadoEn: number }>();
+const cachePorOrganizacion = new Map<string, { etiquetas: Record<string, string>; guardadoEn: number }>();
 
 /** Solo pruebas: vacía la caché. */
 export function limpiarCacheEtiquetasMetodosPago(): void {
   cachePorOrganizacion.clear();
 }
 
-export async function getPaymentMethodLabels(organizationId: number = getOrganizationId()): Promise<Record<string, string>> {
+/**
+ * `branchId` (opcional): solo los métodos habilitados en esa sucursal
+ * (`branch_ids IS NULL OR branchId = ANY(branch_ids)`, 20261028180000), para
+ * listas de cobro. Sin él, todos: los nombres de pagos ya hechos no se filtran.
+ */
+export async function getPaymentMethodLabels(organizationId: number = getOrganizationId(), branchId?: number | null): Promise<Record<string, string>> {
   const now = Date.now();
-  const enCache = cachePorOrganizacion.get(organizationId);
+  const claveCache = `${organizationId}:${branchId ?? '*'}`;
+  const enCache = cachePorOrganizacion.get(claveCache);
   if (enCache && now - enCache.guardadoEn < CACHE_TTL) {
     return enCache.etiquetas;
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await seleccionarConColumnaOpcional('organization_payment_methods', 'branch_ids', (extra) => supabase
       .from('organization_payment_methods')
       .select(`
         payment_method_code,
         is_active,
         settings,
-        payment_methods!inner(code, name)
+        payment_methods!inner(code, name)${extra}
       `)
       .eq('organization_id', organizationId)
-      .eq('is_active', true);
+      .eq('is_active', true));
 
     if (error) throw error;
 
     const labels: Record<string, string> = {};
-    for (const item of (data || []) as Array<{ payment_method_code: string; settings: unknown; payment_methods: { name?: string } | Array<{ name?: string }> | null }>) {
+    type FilaEtiqueta = { payment_method_code: string; settings: unknown; payment_methods: { name?: string } | Array<{ name?: string }> | null; branch_ids?: unknown };
+    const filas = (data || []) as unknown as FilaEtiqueta[];
+    for (const item of branchId == null ? filas : filtrarMetodosPorSucursal(filas, branchId)) {
       const code = item.payment_method_code;
       const pm = item.payment_methods;
       const nombreGlobal = Array.isArray(pm) ? pm[0]?.name : pm?.name;
       labels[code] = nombreVisibleMetodo(item.settings, nombreGlobal, code);
     }
 
-    cachePorOrganizacion.set(organizationId, { etiquetas: labels, guardadoEn: now });
+    cachePorOrganizacion.set(claveCache, { etiquetas: labels, guardadoEn: now });
     return labels;
   } catch (error) {
     console.error('Error fetching payment method labels:', error);

@@ -1,5 +1,6 @@
 "use client";
 
+import { seleccionarConColumnaOpcional, metodoCatalogoVisible } from "@/lib/finanzas/metodosPagoAlcance";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useOrganization } from "@/lib/hooks/useOrganization";
@@ -53,6 +54,8 @@ export interface OrganizationPaymentMethod {
   };
   payment_method?: PaymentMethod;
   integration_connection_id?: string | null;
+  /** Sucursales donde se cobra (20261028180000). null/ausente = todas. */
+  branch_ids?: number[] | null;
   // Campos de configuración para Website
   show_on_website?: boolean;
   website_display_order?: number;
@@ -121,10 +124,26 @@ export default function PaymentMethodsPage() {
         }
       }
       
+      // Aislamiento por organización (20261028181000): sistema + propios + los
+      // comunes que ya tiene; nunca el personalizado de otra organización.
+      const { data: codigosOrg } = await supabase
+        .from("organization_payment_methods")
+        .select("payment_method_code")
+        .eq("organization_id", organizationId);
+      const codigosPropios = new Set(((codigosOrg || []) as Array<{ payment_method_code: string }>).map((r) => r.payment_method_code));
+      const recomendadosPais = new Set(
+        ((methodsData || []) as Array<{ code: string; countries?: PaymentMethodCountry[] }>)
+          .filter((m) => (m.countries || []).length > 0)
+          .map((m) => m.code),
+      );
+      const visibles = (methodsData || []).filter((m: { code: string; is_system?: boolean | null; organization_id?: number | null }) =>
+        // Los del catálogo por país (pasarelas comunes) siguen ofreciéndose para activar.
+        metodoCatalogoVisible(m, organizationId, codigosPropios) || (m.organization_id == null && recomendadosPais.has(m.code)));
+
       // Filtrar métodos de pago según el país de la organización
-      let filteredMethods = methodsData || [];
+      let filteredMethods = visibles;
       if (currentCountryCode) {
-        filteredMethods = (methodsData || []).filter(method => {
+        filteredMethods = visibles.filter(method => {
           // Si no tiene países asignados, es global (disponible para todos)
           if (!method.countries || method.countries.length === 0) {
             return true;
@@ -135,7 +154,8 @@ export default function PaymentMethodsPage() {
       }
       
       // Obtener métodos de pago de la organización
-      const { data: orgMethodsData, error: orgMethodsError } = await supabase
+      // `branch_ids` (20261028180000) solo si la migración ya está aplicada.
+      const { data: orgMethodsData, error: orgMethodsError } = await seleccionarConColumnaOpcional("organization_payment_methods", "branch_ids", (extraSucursales) => supabase
         .from("organization_payment_methods")
         .select(`
           id,
@@ -149,9 +169,9 @@ export default function PaymentMethodsPage() {
           website_display_name,
           website_description,
           website_icon,
-          payment_method:payment_method_code(*)
+          payment_method:payment_method_code(*)${extraSucursales}
         `)
-        .eq("organization_id", organizationId);
+        .eq("organization_id", organizationId));
 
       if (orgMethodsError) throw orgMethodsError;
       
@@ -167,10 +187,10 @@ export default function PaymentMethodsPage() {
       }
       
       setPaymentMethods(filteredMethods);
-      setOrgPaymentMethods(orgMethodsData?.map(item => ({
-        ...item,
+      setOrgPaymentMethods(((orgMethodsData ?? []) as unknown as Record<string, unknown>[]).map(item => ({
+        ...(item as unknown as OrganizationPaymentMethod),
         payment_method: item.payment_method as unknown as PaymentMethod
-      })) || []);
+      })));
       setRecommendedMethods(recommendedData || []);
       setActualCountryCode(currentCountryCode || null);
     } catch (error: unknown) {

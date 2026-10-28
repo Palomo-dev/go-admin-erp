@@ -205,6 +205,8 @@ export interface CatalogPaymentMethod {
   payment_methods: { name: string } | null;
   /** Orden propio de la organización (el POS lo respeta también sin red). */
   website_display_order?: number | null;
+  /** Sucursales donde se cobra (20261028180000). Ausente/null = todas. */
+  branch_ids?: number[] | null;
 }
 
 export interface CatalogOrganizationTax {

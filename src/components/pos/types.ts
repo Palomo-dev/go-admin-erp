@@ -176,6 +176,8 @@ export interface CartItem {
 
 export interface Cart {
   id: string;
+  /** Métodos de cobro elegidos en el cobro: las promociones limitadas por método se evalúan con ellos. */
+  payment_methods?: string[];
   organization_id: number;
   branch_id: number;
   customer_id?: string;

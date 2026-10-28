@@ -156,6 +156,17 @@ describe('objetivoContador = tienda (relojContador.ts), con cambio de horario', 
   test('hora repetida de otoño: la segunda ocurrencia (como la tienda)', () => {
     expect(fin('2026-10-25T02:30', 'Europe/Madrid')).toBe('2026-10-25T01:30:00.000Z');
   });
+  test('hora repetida: SIEMPRE la segunda ocurrencia (Nueva York, Madrid)', () => {
+    expect(fin('2026-11-01T01:00', 'America/New_York')).toBe('2026-11-01T06:00:00.000Z');
+    expect(fin('2026-11-01T01:30', 'America/New_York')).toBe('2026-11-01T06:30:00.000Z');
+    expect(fin('2026-11-01T00:30', 'America/New_York')).toBe('2026-11-01T04:30:00.000Z');
+    expect(fin('2026-11-01T02:00', 'America/New_York')).toBe('2026-11-01T07:00:00.000Z');
+    expect(fin('2026-10-25T02:00', 'Europe/Madrid')).toBe('2026-10-25T01:00:00.000Z');
+    const ny = (ahora: string) =>
+      obj({ countdown_mode: 'daily_reset', countdown_timezone: 'America/New_York', countdown_reset_hour: 1 }, ahora);
+    expect(ny('2026-11-01T04:00:00Z')).toBe('2026-11-01T06:00:00.000Z');
+    expect(ny('2026-11-01T05:30:00Z')).toBe('2026-11-01T06:00:00.000Z');
+  });
   test('reinicio diario en el día del cambio', () => {
     const diario = (zona: string, hora: number, ahora: string) =>
       obj({ countdown_mode: 'daily_reset', countdown_timezone: zona, countdown_reset_hour: hora }, ahora);

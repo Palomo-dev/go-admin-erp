@@ -6,7 +6,8 @@
  * cada lado aplica su zona por defecto antes de llamar aquí.
  *
  * Cambio de horario: una hora que no existe ese día (hueco de primavera) da la siguiente hora
- * válida, nunca una antes; una hora repetida (otoño) da la segunda ocurrencia.
+ * válida, nunca una antes; una hora repetida (otoño) da SIEMPRE la segunda ocurrencia
+ * (Madrid, Nueva York, Santiago…).
  */
 
 /** Fecha y hora de pared en `zona` (hourCycle h23: la medianoche es 00, nunca 24). */
@@ -34,14 +35,14 @@ export function instanteFinEnZona(fin: string, zona: string): Date | null {
     const q = partesEnZona(new Date(utc), zona)
     return Date.UTC(q.y, q.mo - 1, q.d, q.h, q.mi, q.s) - utc
   }
-  const d1 = desfase(comoUtc)
-  const d2 = desfase(comoUtc - d1)
+  // Desfases de la zona alrededor de esa hora de pared (±18 h cubren cualquier zona y un solo cambio).
+  const desfases = [...new Set([-64_800_000, 0, 64_800_000].map((k) => desfase(comoUtc + k)))]
+  const candidatos = desfases.map((o) => comoUtc - o)
   // La hora pedida existe si el instante, visto en la zona, da esa misma hora de pared.
-  const existe = (t: number) => desfase(t) + t === comoUtc
-  if (existe(comoUtc - d2)) return new Date(comoUtc - d2)
-  if (existe(comoUtc - d1)) return new Date(comoUtc - d1)
-  // Hueco del cambio de horario (esa hora no existe ese día): la siguiente hora válida, nunca una antes.
-  return new Date(Math.max(comoUtc - d1, comoUtc - d2))
+  const validos = candidatos.filter((t) => desfase(t) + t === comoUtc)
+  // Hora repetida (otoño): la segunda ocurrencia, la más tardía. Hueco (primavera, esa hora no existe
+  // ese día): la siguiente hora válida, nunca una antes, que también es el candidato más tardío.
+  return new Date(Math.max(...(validos.length > 0 ? validos : candidatos)))
 }
 
 /** Próximo reinicio diario a `hora` (0–23; otra cosa → 0) en `zona`, estrictamente después de `ahora`. */

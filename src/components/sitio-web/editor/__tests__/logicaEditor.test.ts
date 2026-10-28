@@ -173,7 +173,7 @@ describe('tableta, carta y encabezado en el celular', () => {
     );
     expect(Object.keys(r)).toEqual([...AJUSTES_ENCABEZADO_PIE]);
     expect(r.diseno).toBe('Megamenú · barra de menú bajo el logo');
-    expect(r.buscador).toBe('Barra visible · icono en el celular');
+    expect(r.buscador).toBe('Barra visible');
     expect(r.barra).toBe('Activa');
     expect(r.boton).toBe('Reservar → /reservas');
     expect(r.acciones).toBe('Carrito, Cuenta');

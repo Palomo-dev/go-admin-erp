@@ -279,10 +279,10 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
 
       {pestana === 'contenedor' && (
         <div className="flex flex-col gap-3">
-          <Rango etiqueta="Radio" valor={vista.card_radius} min={0} max={32} onCambiar={(n) => cambiar('card_radius', n)} />
+          <Rango etiqueta="Radio" valor={vista.card_radius} min={0} max={48} onCambiar={(n) => cambiar('card_radius', n)} />
           <Rango etiqueta="Borde" valor={vista.card_border_width} min={0} max={8} onCambiar={(n) => cambiar('card_border_width', n)} />
           <Color etiqueta="Color del borde" valor={vista.card_border_color} onCambiar={(v) => cambiar('card_border_color', v)} />
-          <Lista etiqueta="Sombra" valor={vista.card_shadow} opciones={SOMBRAS_TARJETA} nombres={{ none: 'Ninguna', sm: 'Suave', md: 'Media', lg: 'Fuerte', hover: 'Al pasar el mouse' }} onCambiar={(v) => cambiar('card_shadow', v)} />
+          <Lista etiqueta="Sombra" valor={vista.card_shadow} opciones={SOMBRAS_TARJETA} nombres={{ none: 'Ninguna', sm: 'Suave', md: 'Media', lg: 'Fuerte', xl: 'Muy fuerte', hover: 'Al pasar el mouse' }} onCambiar={(v) => cambiar('card_shadow', v)} />
           <div className="grid grid-cols-2 gap-2">
             <Color etiqueta="Fondo" valor={vista.card_bg === 'transparent' ? undefined : vista.card_bg} onCambiar={(v) => cambiar('card_bg', v)} />
             <Color etiqueta="Fondo 2" valor={vista.card_bg_2} onCambiar={(v) => cambiar('card_bg_2', v)} />
@@ -291,7 +291,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <Rango etiqueta="Relleno" valor={vista.card_padding} min={0} max={48} onCambiar={(n) => cambiar('card_padding', n)} />
           <Rango etiqueta="Separación entre tarjetas" valor={vista.card_gap} min={0} max={64} onCambiar={(n) => cambiar('card_gap', n)} />
           <Lista etiqueta="Proporción de la imagen" valor={vista.image_ratio} opciones={RATIOS_IMAGEN} onCambiar={(v) => cambiar('image_ratio', v)} />
-          <Lista etiqueta="Ajuste de la imagen" valor={vista.image_fit} opciones={AJUSTES_IMAGEN} nombres={{ cover: 'Cubrir', contain: 'Contener' }} onCambiar={(v) => cambiar('image_fit', v)} />
+          <Lista etiqueta="Ajuste de la imagen" valor={vista.image_fit} opciones={AJUSTES_IMAGEN} nombres={{ cover: 'Cubrir', contain: 'Contener', fill: 'Rellenar' }} onCambiar={(v) => cambiar('image_fit', v)} />
           <Color etiqueta="Fondo de la imagen" valor={vista.image_bg} onCambiar={(v) => cambiar('image_bg', v)} />
           <Rango etiqueta="Relleno de la imagen" valor={vista.image_padding} min={0} max={32} onCambiar={(n) => cambiar('image_padding', n)} />
           <Rango etiqueta="Radio de la imagen" valor={vista.image_radius} min={0} max={32} onCambiar={(n) => cambiar('image_radius', n)} />

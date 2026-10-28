@@ -26,7 +26,7 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
-import { esSeccionTarjetaProducto, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
+import { esSeccionTarjetaProducto, heredadoTarjetaSeccion, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
@@ -256,7 +256,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             {esSeccionTarjetaProducto(s.section_type) && (
               <InspectorTarjetaProducto
                 guardado={contenido.product_card_style}
-                heredado={p.estiloTarjetaSitio}
+                heredado={heredadoTarjetaSeccion(contenido, p.estiloTarjetaSitio)}
                 onCambiar={(estilo) => onCambiarContenido({ ...contenido, product_card_style: estilo })}
                 onQuitar={() => {
                   const siguiente = { ...contenido };

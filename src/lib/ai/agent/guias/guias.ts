@@ -38,7 +38,7 @@ export const RUTA_CARGOS = '/app/roles?vista=cargos';
  * `PaymentMethodForm`. Mientras no esté en el formulario, la guía lo marca
  * como no disponible (la prueba compara esta constante con el formulario).
  */
-export const METODOS_PAGO_POR_SUCURSAL_DISPONIBLE = false;
+export const METODOS_PAGO_POR_SUCURSAL_DISPONIBLE = true;
 
 export const GUIAS: readonly Guia[] = [
   {
@@ -72,7 +72,9 @@ export const GUIAS: readonly Guia[] = [
         ],
     rutas: [{ ruta: '/app/finanzas/metodos-pago', nombre: 'Finanzas > Métodos de pago' }],
     disponible: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE,
-    notas: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE ? [] : ['La opción por sucursal está en desarrollo; no la prometas como disponible.'],
+    notas: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE
+      ? ['Si al guardar aparece el aviso «la restricción por sucursal todavía no está habilitada en la base de datos», el método sigue en todas las sucursales: dilo así.']
+      : ['La opción por sucursal está en desarrollo; no la prometas como disponible.'],
   },
   {
     id: 'promociones',

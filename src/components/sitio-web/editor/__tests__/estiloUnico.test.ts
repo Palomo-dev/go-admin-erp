@@ -63,14 +63,17 @@ describe('ESTILO-01 fondo: una sola opción en Estilo', () => {
 });
 
 describe('ESTILO-06 color del texto', () => {
-  it('lee Avanzado > anterior > Estilo y al editar deja solo Estilo', () => {
+  it('lee Avanzado > anterior; al editar queda en contenido.text_color (donde la tienda lo lee) sin copias', () => {
     expect(leerColorTextoUnico(vacia)).toBeUndefined();
     expect(leerColorTextoUnico({ settings: { text_color: '#111111' }, contenido: {} })).toBe('#111111');
     expect(leerColorTextoUnico({ settings: { text_color: '#111111' }, contenido: { text_color: '#222222' } })).toBe('#222222');
     const r = cambioColorTextoUnico({ settings: { text_color: '#111111' }, contenido: { text_color: '#222222' } }, 'marca:primario');
     expect(r.settings.text_color).toBeUndefined();
-    expect(r.contenido.text_color).toBeUndefined();
-    expect(leerEstiloSeccion(r.settings).colores?.texto).toBe('marca:primario');
+    expect(r.contenido.text_color).toBe('var(--primary-color)');
+    expect(leerColorTextoUnico(r)).toBe('marca:primario');
+    expect(leerEstiloSeccion(r.settings).colores?.texto).toBeUndefined();
+    const nuevo = cambioColorTextoUnico(vacia, 'marca:primario');
+    expect(leerEstiloSeccion(nuevo.settings).colores?.texto).toBe('marca:primario');
   });
 });
 
@@ -119,5 +122,48 @@ describe('colores del encabezado (ESTILO-06, antes en Cascarón)', () => {
   });
   it('el segundo color sin título fija ambos', () => {
     expect(cambioColorEncabezado(base, 'title_color_2', '#333333').contenido.section_header).toEqual({ title_color_2: '#333333', title_color: '#333333' });
+  });
+});
+
+import { BORDE_TIENDA, DEGRADADO_TIENDA, textoUnico } from '../inspector/estiloUnico';
+import { leerFondoUnico as leerFondoQA, cambioFondoUnico as cambioFondoQA, cambioColorTextoUnico as cambioTextoQA, leerColorBordeUnico as leerBordeQA } from '../inspector/estiloUnico';
+
+describe('QA bloque 4 (ROJO e40363ba3): secciones reales', () => {
+  it('349 s-1d59b2e0 (text_color #FAF7F2): el color se queda en contenido.text_color, sin pasar a Estilo', () => {
+    const a = { settings: {}, contenido: { text_color: '#FAF7F2' } };
+    expect(textoUnico(a)).toEqual({ valor: '#FAF7F2', alcance: 'envoltorio' });
+    const r = cambioTextoQA(a, '#FAF7F2');
+    expect(r.contenido).toEqual({ text_color: '#FAF7F2' });
+    expect(r.settings).toEqual({});
+  });
+  it('338 4c044ae8: editar no fuerza el color sobre títulos y párrafos (sin colores.texto)', () => {
+    const a = { settings: { text_color: '#101010' }, contenido: {} };
+    const r = cambioTextoQA(a, '#202020');
+    expect(r.contenido).toEqual({ text_color: '#202020' });
+    expect(JSON.stringify(r.settings)).not.toContain('texto');
+    expect(r.settings).not.toHaveProperty('text_color');
+  });
+  it('326 461068fe borrador {bg_type:gradient}: muestra #000000 → #ffffff, to-br (como la tienda)', () => {
+    expect(leerFondoQA({ settings: {}, contenido: { bg_type: 'gradient' } })).toMatchObject({ modo: 'degradado', ...DEGRADADO_TIENDA });
+  });
+  it('Cascarón: ángulo ausente = 180° (to-b); con un solo color no hay degradado', () => {
+    expect(leerFondoQA({ settings: {}, contenido: { section_background: { gradient_1: '#111111', gradient_2: '#222222' } } }).direccion).toBe('to-b');
+    expect(leerFondoQA({ settings: {}, contenido: { section_background: { gradient_1: '#111111' } } }).modo).not.toBe('degradado');
+  });
+  it('fuente del Cascarón: no pasa a Estilo (mismo alcance que hoy)', () => {
+    const a = { settings: {}, contenido: { section_header: { title_font: 'Lora' } } };
+    const r = cambioFondoQA(a, { modo: 'tema' });
+    expect((r.contenido.section_header as Record<string, unknown>).title_font).toBe('Lora');
+    expect(JSON.stringify(r.settings)).not.toContain('Lora');
+  });
+  it('borde sin color: muestra el borde por defecto que pinta la tienda', () => {
+    expect(leerBordeQA({ settings: {}, contenido: {} }) ?? BORDE_TIENDA).toBe('#e5e5e5');
+  });
+  it('org no v2: editar settings.bg_color lo deja en settings (conserva dark:bg-gray-900/40)', () => {
+    const r = cambioFondoQA({ settings: { bg_color: '#f5f5f5' }, contenido: {} }, { modo: 'color', color: '#eeeeee' });
+    expect(r).toEqual({ settings: { bg_color: '#eeeeee' }, contenido: {} });
+  });
+  it('fondo «Oscuro» (338 e88e5ba7, 333 s-a20dd89b, 340 s-3f00ee2a): el texto se ve blanco', () => {
+    expect(textoUnico({ settings: { estilo: { fondo: 'oscuro' } }, contenido: {} })).toEqual({ valor: '#ffffff', alcance: 'oscuro' });
   });
 });

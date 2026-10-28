@@ -10,7 +10,12 @@
  *
  * Puro: sin React ni Supabase.
  */
-import { escribirEstiloSeccion, leerEstiloSeccion, type EstiloSeccion } from '@/lib/website/v2/estiloSeccion';
+import { colorCss, escribirEstiloSeccion, leerEstiloSeccion, type EstiloSeccion } from '@/lib/website/v2/estiloSeccion';
+
+const ROLES_MARCA = ['primario', 'secundario', 'acento', 'texto', 'fondo'] as const;
+/** `content.text_color` es CSS crudo: la marca va como variable y se lee de vuelta como referencia. */
+const aCssCrudo = (v: string): string => colorCss(v) ?? v;
+const deCssCrudo = (v: string): string => ROLES_MARCA.map((r) => `marca:${r}`).find((m) => colorCss(m) === v) ?? v;
 
 export const MODOS_FONDO = ['tema', 'alterno', 'oscuro', 'color', 'degradado', 'imagen'] as const;
 export type ModoFondo = (typeof MODOS_FONDO)[number];
@@ -42,9 +47,12 @@ const CLAVES_FONDO_CASCARON = ['color', 'gradient_1', 'gradient_2', 'gradient_an
 /** Claves de Avanzado que ahora viven en Estilo (no se muestran dos veces). */
 export const CLAVES_AVANZADO_EN_ESTILO: readonly string[] = [...CLAVES_FONDO_AVANZADO, 'text_color', 'border_color'];
 
+/** Lo que pinta la tienda (buildSectionStyle) con un degradado sin colores ni dirección. */
+export const DEGRADADO_TIENDA = { desde: '#000000', hasta: '#ffffff', direccion: 'to-br' } as const;
+
 /** Ángulo del Cascarón → dirección de Avanzado (la más cercana). */
 function direccionDeAngulo(a: unknown): string {
-  const n = typeof a === 'number' ? ((a % 360) + 360) % 360 : 90;
+  const n = typeof a === 'number' ? ((a % 360) + 360) % 360 : 180; // la tienda: `gradient_angle ?? 180`
   const tabla: [number, string][] = [[0, 'to-t'], [45, 'to-tr'], [90, 'to-r'], [135, 'to-br'], [180, 'to-b'], [225, 'to-bl'], [270, 'to-l'], [315, 'to-tl'], [360, 'to-t']];
   return tabla.reduce((m, x) => (Math.abs(x[0] - n) < Math.abs(m[0] - n) ? x : m))[1];
 }
@@ -54,12 +62,13 @@ export function leerFondoUnico({ settings, contenido }: Apariencia): FondoUnico 
   const sb = obj(contenido.section_background);
   if (sb) {
     if (txt(sb.image_url)) return { modo: 'imagen', imagen: sb.image_url as string, capa: typeof sb.overlay_opacity === 'number' ? sb.overlay_opacity : undefined, origen: 'cascaron' };
-    if (txt(sb.gradient_1)) return { modo: 'degradado', desde: sb.gradient_1 as string, hasta: txt(sb.gradient_2) ?? (sb.gradient_1 as string), direccion: direccionDeAngulo(sb.gradient_angle), origen: 'cascaron' };
+    // La tienda solo pinta el degradado del Cascarón con los dos colores (estilosFondo).
+    if (txt(sb.gradient_1) && txt(sb.gradient_2)) return { modo: 'degradado', desde: sb.gradient_1 as string, hasta: sb.gradient_2 as string, direccion: direccionDeAngulo(sb.gradient_angle), origen: 'cascaron' };
     if (txt(sb.color)) return { modo: 'color', color: sb.color as string, origen: 'cascaron' };
   }
   const tipo = contenido.bg_type;
   if (tipo === 'color' && txt(contenido.bg_color)) return { modo: 'color', color: contenido.bg_color as string, origen: 'avanzado' };
-  if (tipo === 'gradient') return { modo: 'degradado', desde: txt(contenido.bg_gradient_from) ?? '#ffffff', hasta: txt(contenido.bg_gradient_to) ?? '#ffffff', direccion: txt(contenido.bg_gradient_dir) ?? 'to-r', origen: 'avanzado' };
+  if (tipo === 'gradient') return { modo: 'degradado', desde: txt(contenido.bg_gradient_from) ?? DEGRADADO_TIENDA.desde, hasta: txt(contenido.bg_gradient_to) ?? DEGRADADO_TIENDA.hasta, direccion: txt(contenido.bg_gradient_dir) ?? DEGRADADO_TIENDA.direccion, origen: 'avanzado' };
   if (tipo === 'image' && txt(contenido.bg_image)) return { modo: 'imagen', imagen: contenido.bg_image as string, capa: typeof contenido.bg_overlay === 'number' ? contenido.bg_overlay : undefined, origen: 'avanzado' };
   if (txt(settings.bg_color)) return { modo: 'color', color: settings.bg_color as string, origen: 'anterior' };
   const e = leerEstiloSeccion(settings);
@@ -88,6 +97,11 @@ export function cambioFondoUnico({ settings, contenido }: Apariencia, f: Omit<Fo
     const resto = sinClaves(sb, CLAVES_FONDO_CASCARON);
     c = Object.keys(resto).length ? { ...c, section_background: resto } : sinClaves(c, ['section_background']);
   }
+  // Color anterior (`settings.bg_color`, orgs no v2): se queda donde está. La tienda lo pinta con
+  // `dark:bg-gray-900/40`; pasarlo a Avanzado perdería ese fondo en modo oscuro.
+  if (f.modo === 'color' && txt(settings.bg_color) && !obj(contenido.section_background) && contenido.bg_type == null) {
+    return { settings: { ...settings, bg_color: f.color ?? (settings.bg_color as string) }, contenido };
+  }
   let s = sinClaves(settings, ['bg_color']);
   if (f.modo === 'tema' || f.modo === 'alterno' || f.modo === 'oscuro') {
     s = conEstilo(s, { fondo: f.modo });
@@ -96,7 +110,7 @@ export function cambioFondoUnico({ settings, contenido }: Apariencia, f: Omit<Fo
     c = { ...c, bg_type: 'color', bg_color: f.color ?? '#ffffff' };
   } else if (f.modo === 'degradado') {
     s = conEstilo(s, { fondo: undefined });
-    c = { ...c, bg_type: 'gradient', bg_gradient_from: f.desde ?? '#ffffff', bg_gradient_to: f.hasta ?? '#ffffff', bg_gradient_dir: f.direccion ?? 'to-r' };
+    c = { ...c, bg_type: 'gradient', bg_gradient_from: f.desde ?? DEGRADADO_TIENDA.desde, bg_gradient_to: f.hasta ?? DEGRADADO_TIENDA.hasta, bg_gradient_dir: f.direccion ?? DEGRADADO_TIENDA.direccion };
   } else {
     s = conEstilo(s, { fondo: 'imagen' });
     // La imagen va al fondo común (`section_background`), que además tiene imagen de celular,
@@ -112,13 +126,36 @@ export function cambioFondoUnico({ settings, contenido }: Apariencia, f: Omit<Fo
 
 // ─── Color del texto (ESTILO-06) ─────────────────────────────────────────────
 
-/** Lo que se ve: Avanzado (`text_color`) > anterior (`settings.text_color`) > Estilo. */
-export function leerColorTextoUnico({ settings, contenido }: Apariencia): string | undefined {
-  return txt(contenido.text_color) ?? txt(settings.text_color) ?? leerEstiloSeccion(settings).colores?.texto;
+/**
+ * Dónde está el color y hasta dónde llega en la tienda:
+ * - `envoltorio`: `content.text_color` o `settings.text_color` (buildSectionStyle → `--sec-text` en
+ *   la sección). Solo lo hereda el texto SIN color propio: títulos y párrafos de la plantilla
+ *   conservan el suyo. El control lo dice; no lo presenta como el color de títulos y párrafos.
+ * - `todo`: Estilo (`colores.texto`), que globals.css impone a h1–h6, p y li.
+ * - `oscuro`: fondo «Oscuro» sin color propio: la tienda pinta todo el texto en blanco.
+ * - `tema`: nada guardado; cada plantilla usa sus colores de texto.
+ */
+export type AlcanceTexto = 'envoltorio' | 'todo' | 'oscuro' | 'tema';
+export function textoUnico({ settings, contenido }: Apariencia): { valor?: string; alcance: AlcanceTexto } {
+  const env = txt(contenido.text_color) ?? txt(settings.text_color);
+  const e = leerEstiloSeccion(settings);
+  if (e.colores?.texto) return { valor: e.colores.texto, alcance: 'todo' };
+  if (env) return { valor: deCssCrudo(env), alcance: 'envoltorio' };
+  if (e.fondo === 'oscuro' && !obj(contenido.section_background) && contenido.bg_type == null && !txt(settings.bg_color)) return { valor: '#ffffff', alcance: 'oscuro' };
+  return { alcance: 'tema' };
 }
+export function leerColorTextoUnico(a: Apariencia): string | undefined {
+  return textoUnico(a).valor;
+}
+/** Guarda donde la tienda lo lee hoy: si ya estaba en la sección (`content`/`settings.text_color`),
+ *  en `content.text_color` (mismo alcance) y se borran las copias; si no, en Estilo. */
 export function cambioColorTextoUnico({ settings, contenido }: Apariencia, valor: string): Apariencia {
   const e = leerEstiloSeccion(settings);
-  const s = escribirEstiloSeccion(sinClaves(settings, ['text_color']), { ...e, colores: { ...e.colores, texto: valor } });
+  const sinCopias = sinClaves(settings, ['text_color']);
+  if (!e.colores?.texto && (txt(contenido.text_color) || txt(settings.text_color))) {
+    return { settings: sinCopias, contenido: { ...contenido, text_color: aCssCrudo(valor) } };
+  }
+  const s = escribirEstiloSeccion(sinCopias, { ...e, colores: { ...e.colores, texto: valor } });
   return { settings: s, contenido: sinClaves(contenido, ['text_color']) };
 }
 
@@ -134,6 +171,8 @@ export function cambioGrosorBordeUnico({ settings, contenido }: Apariencia, n: n
   return { settings, contenido: g > 0 ? { ...contenido, border_width: g } : sinClaves(contenido, ['border_width']) };
 }
 /** Un solo color de borde: Avanzado (`border_color`) > Estilo. */
+/** Sin color guardado la tienda pinta el borde por defecto del sitio (`border-border`, hsl(0 0% 89.8%)). */
+export const BORDE_TIENDA = '#e5e5e5';
 export function leerColorBordeUnico({ settings, contenido }: Apariencia): string | undefined {
   return txt(contenido.border_color) ?? leerEstiloSeccion(settings).colores?.borde;
 }

@@ -45,7 +45,6 @@ import {
   LIMITES_TAMANO_PX,
   TAMANOS_TEXTO,
   escalaDeInterlineado,
-  escribirEstiloSeccion,
   escalaDePx,
   estiloVacio,
   interlineadoNumero,
@@ -66,11 +65,12 @@ import {
   cambioColorTextoUnico,
   cambioFondoUnico,
   cambioGrosorBordeUnico,
-  estiloConFuentesCascaron,
   fuentesCascaron,
   grosorBordeUnico,
   leerColorBordeUnico,
   leerColorTextoUnico,
+  textoUnico,
+  BORDE_TIENDA,
   leerColorEncabezado,
   cambioColorEncabezado,
   type ClaveColorEncabezado,
@@ -185,15 +185,15 @@ export function InspectorEstilo({
 }: InspectorEstiloProps) {
   const t = useTextosEditor();
   const id = useId();
-  let estilo = estiloProp;
+  const estilo = estiloProp;
   const [rol, setRol] = useState<RolTexto>('titulo');
   const [avisoUltimo, setAvisoUltimo] = useState(false);
   // En una sede, los grupos heredados se muestran plegados hasta «Cambiar» (figma-estilo/03).
   const [abiertos, setAbiertos] = useState<Set<GrupoEstilo>>(new Set());
 
-  // Fuente guardada en el Cascarón: se ve como «Personalizada» y, al editar, pasa a Estilo.
-  const conCascaron = unico && (fuentesCascaron(unico.apariencia).titulo || fuentesCascaron(unico.apariencia).texto);
-  if (conCascaron) estilo = estiloConFuentesCascaron(unico.apariencia);
+  // Fuente guardada en el Cascarón: solo afecta al encabezado de la sección (mismo alcance que
+  // hoy). No pasa a Estilo; se muestra aparte y se puede quitar.
+  const fuentesEnc = unico ? fuentesCascaron(unico.apariencia) : {};
   const fondoU: FondoUnico | null = unico ? leerFondoUnico(unico.apariencia) : null;
   const ponerFondo = (f: Omit<FondoUnico, 'origen'>) => unico?.aplicar(cambioFondoUnico(unico.apariencia, f));
   const tipografia = estilo.tipografia?.modo === 'propia' ? estilo.tipografia : null;
@@ -204,10 +204,6 @@ export function InspectorEstilo({
   useFuentesSitio(fuentesUsadas);
 
   const cambiar = (parcial: Partial<EstiloSeccion>) => {
-    if (conCascaron && unico) {
-      unico.aplicar({ settings: escribirEstiloSeccion(unico.apariencia.settings, { ...estilo, ...parcial }), contenido: sinFuentesCascaron(unico.apariencia.contenido) });
-      return;
-    }
     onCambiarEstilo({ ...estilo, ...parcial });
   };
   const cambiarTexto = (parcial: Partial<EstiloTexto>) => {
@@ -427,6 +423,21 @@ export function InspectorEstilo({
             <p className={AYUDA}>
               {t('estilo.tipografia.ayuda', { titulos: tema.fuentes.titulos ?? '—', cuerpo: tema.fuentes.cuerpo ?? '—' })}
             </p>
+            {unico && (fuentesEnc.titulo || fuentesEnc.texto) && (
+              <div className="flex flex-col gap-1">
+                <p className={AYUDA}>
+                  {t('estiloUnico.fuenteEncabezado', { titulo: fuentesEnc.titulo ?? '—', texto: fuentesEnc.texto ?? '—' })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => unico.aplicar({ settings: unico.apariencia.settings, contenido: sinFuentesCascaron(unico.apariencia.contenido) })}
+                  disabled={deshabilitado}
+                  className="self-start rounded-md text-[13px] font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  {t('estiloUnico.fuenteEncabezadoQuitar')}
+                </button>
+              </div>
+            )}
             {tipografia && (
               <>
                 <FontField
@@ -586,9 +597,10 @@ export function InspectorEstilo({
               colores={tema.colores}
               deshabilitado={deshabilitado}
             />
+            {unico && <p className={AYUDA}>{t(`estiloUnico.alcanceTexto.${textoUnico(unico.apariencia).alcance}`)}</p>}
             <ColorMarcaField
               etiqueta={t('estilo.colorBorde')}
-              valor={(unico ? leerColorBordeUnico(unico.apariencia) : estilo.colores?.borde) ?? 'marca:secundario'}
+              valor={(unico ? leerColorBordeUnico(unico.apariencia) ?? BORDE_TIENDA : estilo.colores?.borde) ?? 'marca:secundario'}
               onCambiar={(borde) => (unico ? unico.aplicar(cambioColorBordeUnico(unico.apariencia, borde)) : cambiar({ colores: { ...estilo.colores, borde } }))}
               colores={tema.colores}
               minimo={1}

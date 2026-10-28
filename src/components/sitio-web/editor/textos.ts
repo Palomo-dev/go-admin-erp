@@ -1157,6 +1157,14 @@ export const TEXTOS_EDITOR = {
   estiloUnico: {
     fuenteEnEstilo: 'La fuente del título y de la descripción se elige en Estilo › Tipografía.',
     fondoEnEstilo: 'Color, degradado e imagen se eligen en Estilo › Fondo.',
+    alcanceTexto: {
+      envoltorio: 'Este color llega solo al texto sin color propio. Los títulos y párrafos de la plantilla conservan el suyo.',
+      todo: 'Este color se aplica a títulos, párrafos y listas de la sección.',
+      oscuro: 'Con fondo «Oscuro» la tienda pinta el texto en blanco. Al elegir un color, se aplica a títulos, párrafos y listas.',
+      tema: 'Sin color propio: títulos y párrafos usan los colores de la plantilla. Al elegir uno, se aplica a títulos, párrafos y listas.',
+    },
+    fuenteEncabezado: 'El encabezado de esta sección tiene fuente propia (título: {titulo}; descripción: {texto}). Solo afecta al encabezado.',
+    fuenteEncabezadoQuitar: 'Usar en el encabezado la fuente de Estilo',
     colorEnEstilo: 'Los colores del título y de la descripción se eligen en Estilo › Colores.',
   },
   controles: {

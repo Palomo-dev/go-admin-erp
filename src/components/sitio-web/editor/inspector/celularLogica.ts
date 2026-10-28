@@ -255,15 +255,15 @@ export function cambioBuscadorPantallaCompleta(a: Record<string, unknown>, si: b
 // ─── Medidas, fijo, breakpoint e íconos (antes solo en «anteriores») ─────────────────────────────
 
 export const BREAKPOINTS_CELULAR = [640, 768, 1024] as const;
-/** 1024 es lo de hoy (la tienda usa `mobile_breakpoint || 1024`): elegirlo guarda `null`. */
+/** 768 es lo de hoy (la tienda usa `mobile_breakpoint ?? 768`): elegirlo guarda `null`. */
 export function breakpointCelular(a: Record<string, unknown>): (typeof BREAKPOINTS_CELULAR)[number] {
   const v = a.mobile_breakpoint;
-  return (BREAKPOINTS_CELULAR as readonly unknown[]).includes(v) ? (v as (typeof BREAKPOINTS_CELULAR)[number]) : 1024;
+  return (BREAKPOINTS_CELULAR as readonly unknown[]).includes(v) ? (v as (typeof BREAKPOINTS_CELULAR)[number]) : 768;
 }
 
 export function cambioBreakpointCelular(a: Record<string, unknown>, v: (typeof BREAKPOINTS_CELULAR)[number]): Record<string, unknown> {
-  if (breakpointCelular(a) === v && (v !== 1024 || a.mobile_breakpoint == null)) return {};
-  return { mobile_breakpoint: v === 1024 ? null : v };
+  if (breakpointCelular(a) === v && (v !== 768 || a.mobile_breakpoint == null)) return {};
+  return { mobile_breakpoint: v === 768 ? null : v };
 }
 
 type MedidaLayout = 'logo_size' | 'header_height';

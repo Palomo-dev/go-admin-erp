@@ -217,7 +217,7 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   /** «Fijo al desplazar» solo en el celular (apartado Celular). `null` = sigue `header_sticky` (lo de hoy). */
   mobile_sticky_header: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
   /** «Diseño de celular por debajo de» (px). 1024 = lo de hoy en las tiendas v2. */
-  mobile_breakpoint: { zona: 'header', porDefecto: 1024, regla: { tipo: 'entero', min: 640, max: 1024 }, nueva: true },
+  mobile_breakpoint: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 640, max: 1024 }, nueva: true },
   /**
    * Línea entre el logo y el menú. `true` = visible (lo de hoy, con el lavado del fondo).
    * `false` quita el borde.

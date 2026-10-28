@@ -24,7 +24,7 @@ describe('Ninguna opción suelta cambia el encabezado del celular (QA 28-oct)', 
     sinMenu: cambioIconoVisible({}, 'show_menu', false),
     cuenta: cambioIconoVisible({}, 'show_account', true),
     color: cambioColorIconosCelular({}, '#ff0000'),
-    breakpoint: cambioBreakpointCelular({}, 768),
+    breakpoint: cambioBreakpointCelular({}, 1024),
     igualar: cambioIgualarCelular({ mobile_sticky_header: false, mobile_header: { layout: { sticky: false } } }),
     fijoViejo: { mobile_header: { layout: { sticky: false } } },
     ocultarViejo: { mobile_header: { layout: { hide_on_scroll: true } } },
@@ -44,14 +44,14 @@ describe('Celular: fijo, breakpoint, medidas e íconos (una sola fuente)', () =>
   it('sin claves: lo de hoy y sin cambios al elegir lo de hoy', () => {
     const a = {};
     expect(ajustesDistintosCelular(a)).toEqual([]);
-    expect(breakpointCelular(a)).toBe(1024);
+    expect(breakpointCelular(a)).toBe(768);
     expect(medidaCelular(a, 'logo_size')).toBeNull();
     expect(iconoVisible(a, 'show_cart')).toBe(true);
     expect(colorIconosCelular(a)).toBeNull();
     expect(cambioIgualarCelular(a)).toEqual({});
-    expect(cambioBreakpointCelular(a, 1024)).toEqual({});
+    expect(cambioBreakpointCelular(a, 768)).toEqual({});
     expect(cambioIconoVisible(a, 'show_cart', true)).toEqual({});
-    expect(normalizarOpcionShell('mobile_breakpoint', undefined)).toBe(1024);
+    expect(normalizarOpcionShell('mobile_breakpoint', undefined)).toBeNull();
     expect(normalizarOpcionShell('mobile_sticky_header', undefined)).toBeNull();
   });
   it('fijo, ocultar y transparente: una opción con computador; lo distinto guardado se avisa y se iguala', () => {
@@ -67,10 +67,12 @@ describe('Celular: fijo, breakpoint, medidas e íconos (una sola fuente)', () =>
       mobile_header: { layout: { logo_size: 40 } },
     });
   });
-  it('breakpoint: 640/768 se guardan; 1024 vuelve a null', () => {
-    expect(cambioBreakpointCelular({}, 768)).toEqual({ mobile_breakpoint: 768 });
+  it('breakpoint: 640/1024 se guardan; 768 (lo de hoy) vuelve a null', () => {
+    expect(cambioBreakpointCelular({}, 1024)).toEqual({ mobile_breakpoint: 1024 });
+    expect(cambioBreakpointCelular({}, 640)).toEqual({ mobile_breakpoint: 640 });
     expect(breakpointCelular({ mobile_breakpoint: 640 })).toBe(640);
-    expect(cambioBreakpointCelular({ mobile_breakpoint: 640 }, 1024)).toEqual({ mobile_breakpoint: null });
+    expect(breakpointCelular({ mobile_breakpoint: 1024 })).toBe(1024);
+    expect(cambioBreakpointCelular({ mobile_breakpoint: 640 }, 768)).toEqual({ mobile_breakpoint: null });
   });
   it('medidas y conmutadores van a mobile_header.layout; fuera de rango no se guarda', () => {
     expect(cambioMedidaCelular({}, 'logo_size', 48)).toEqual({ mobile_header: { layout: { logo_size: 48 } } });

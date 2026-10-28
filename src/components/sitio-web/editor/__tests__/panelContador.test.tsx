@@ -8,7 +8,7 @@
 import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PanelContador } from '../inspector/PanelContador';
-import { finLocal, leerContador, partesFin, tiempoRestante, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
+import { finLocal, leerContador, objetivoContador, partesFin, tiempoRestante, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
 import { ajustesParaLienzo, CLAVES_AJUSTES_VIVOS } from '@/lib/website/ajustesVivos';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 
@@ -141,3 +141,28 @@ describe('tiempoRestante (vista previa, misma regla que la tienda)', () => {
     expect(tiempoRestante(diario({ countdown_mode: 'custom', countdown_end_date: '' }), new Date())).toBeNull();
   });
 });
+
+describe('objetivoContador = tienda (relojContador.ts), con cambio de horario', () => {
+  const obj = (extra: Record<string, unknown>, ahora: string) =>
+    objetivoContador(leerContador({ countdown_enabled: true, ...extra }), new Date(ahora))?.toISOString() ?? null;
+  const fin = (f: string, zona: string) => obj({ countdown_mode: 'custom', countdown_end_date: f, countdown_timezone: zona }, '2026-01-01T00:00:00Z');
+  test('hueco de primavera: la siguiente hora válida, nunca una antes', () => {
+    expect(fin('2026-09-06T00:00', 'America/Santiago')).toBe('2026-09-06T04:00:00.000Z');
+    expect(fin('2026-03-29T02:00', 'Europe/Madrid')).toBe('2026-03-29T01:00:00.000Z');
+    expect(fin('2026-03-29T02:30', 'Europe/Madrid')).toBe('2026-03-29T01:30:00.000Z');
+    expect(fin('2026-03-29T01:00', 'Europe/Madrid')).toBe('2026-03-29T00:00:00.000Z');
+    expect(fin('2026-03-29T04:00', 'Europe/Madrid')).toBe('2026-03-29T02:00:00.000Z');
+  });
+  test('hora repetida de otoño: la segunda ocurrencia (como la tienda)', () => {
+    expect(fin('2026-10-25T02:30', 'Europe/Madrid')).toBe('2026-10-25T01:30:00.000Z');
+  });
+  test('reinicio diario en el día del cambio', () => {
+    const diario = (zona: string, hora: number, ahora: string) =>
+      obj({ countdown_mode: 'daily_reset', countdown_timezone: zona, countdown_reset_hour: hora }, ahora);
+    expect(diario('Europe/Madrid', 2, '2026-03-28T23:30:00Z')).toBe('2026-03-29T01:00:00.000Z');
+    expect(diario('America/Santiago', 0, '2026-09-06T03:59:58Z')).toBe('2026-09-06T04:00:00.000Z');
+    expect(diario('America/Santiago', 0, '2026-09-06T04:00:00Z')).toBe('2026-09-07T03:00:00.000Z');
+    expect(diario('Europe/Madrid', 2, '2026-10-25T00:00:00Z')).toBe('2026-10-25T01:00:00.000Z');
+  });
+});
+

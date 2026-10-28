@@ -4,7 +4,8 @@
  * valores. Una sola configuración: lo que se cambie aquí lo ve el editor viejo y al revés.
  * Lógica pura (sin React) para poder probarla.
  */
-import { partirFin, unirFin } from './finContador';
+import { partirFin } from './finContador';
+import { instanteFinEnZona, proximoReinicioEnZona } from '@/lib/website/relojContador';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 
 export const ZONAS_CONTADOR = [
@@ -96,33 +97,15 @@ export function zonaValida(zona: string): string {
   }
 }
 
-function diaEnZona(instante: Date, zona: string, desplazo: number): string {
-  const p = new Intl.DateTimeFormat('en-US', { timeZone: zona, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(instante);
-  const v = (t: string) => Number(p.find((x) => x.type === t)?.value ?? 0);
-  // Aritmética de calendario pura (el día ya viene en la zona); UTC solo como calendario neutro.
-  const f = new Date(Date.UTC(v('year'), v('month') - 1, v('day') + desplazo));
-  return `${f.getUTCFullYear()}-${String(f.getUTCMonth() + 1).padStart(2, '0')}-${String(f.getUTCDate()).padStart(2, '0')}`;
-}
-
 /**
- * Instante en que termina la cuenta según la configuración, con la misma regla que la tienda
- * (`CountdownBanner` de goadmin-websites): diario → próximo reinicio estrictamente después de
- * `ahora`; fecha → el fin leído en la zona. `null` si no hay fin.
+ * Instante en que termina la cuenta según la configuración, con EXACTAMENTE la lógica de la tienda
+ * (relojContador.ts, copia idéntica en goadmin-websites, incluido el cambio de horario): diario →
+ * próximo reinicio estrictamente después de `ahora`; fecha → el fin leído en la zona. `null` si no hay fin.
  */
 export function objetivoContador(c: ContadorLegacy, ahora: Date): Date | null {
   const zona = zonaValida(c.zona);
-  if (c.modo === 'custom') {
-    const { dia, hora } = partesFin(c.fin, zona);
-    if (!dia) return null;
-    const d = new Date(unirFin(dia, hora || '23:59', zona));
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const hh = horaATexto(c.horaReinicio);
-  for (const desplazo of [0, 1]) {
-    const d = new Date(unirFin(diaEnZona(ahora, zona, desplazo), hh, zona));
-    if (d.getTime() > ahora.getTime()) return d;
-  }
-  return null;
+  if (c.modo === 'custom') return instanteFinEnZona(c.fin, zona);
+  return proximoReinicioEnZona(ahora, zona, c.horaReinicio);
 }
 
 /** «HH:MM:SS» que faltan (horas totales, como la tienda) o `null` si ya terminó / no hay fin. */

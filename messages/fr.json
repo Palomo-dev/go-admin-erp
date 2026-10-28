@@ -33262,7 +33262,11 @@
             "icon": "Icône",
             "bar": "Barre visible",
             "hidden": "Masquée",
-            "fullscreen": "Plein écran"
+            "fullscreen": "Plein écran",
+            "mini": "Barre compacte",
+            "icon_overlay": "Icône qui ouvre la recherche par-dessus",
+            "mega": "Grande recherche",
+            "pill_floating": "Pilule flottante"
           },
           "logoAyuda": "Même position sur ordinateur et sur mobile.",
           "logoFijo": {
@@ -34207,6 +34211,10 @@
         "pausaHover": "Pause au survol",
         "bucle": "Revenir au début à la fin",
         "arrastre": "Glisser au doigt ou à la souris"
+      },
+      "controles": {
+        "degradado1": "Couleur de début du dégradé",
+        "degradado2": "Couleur de fin du dégradé"
       }
     },
     "paginas": {

@@ -33280,7 +33280,11 @@
             "icon": "Ícono",
             "bar": "Barra visible",
             "hidden": "Oculto",
-            "fullscreen": "Pantalla completa"
+            "fullscreen": "Pantalla completa",
+            "mini": "Barra compacta",
+            "icon_overlay": "Ícono que abre el buscador encima",
+            "mega": "Buscador grande",
+            "pill_floating": "Píldora flotante"
           },
           "logoAyuda": "La misma posición en computador y en celular.",
           "logoFijo": {
@@ -34225,6 +34229,10 @@
         "pausaHover": "Pausa al pasar el mouse",
         "bucle": "Volver al inicio al terminar",
         "arrastre": "Deslizar con el dedo o el mouse"
+      },
+      "controles": {
+        "degradado1": "Color inicial del degradado",
+        "degradado2": "Color final del degradado"
       }
     },
     "paginas": {

@@ -33262,7 +33262,11 @@
             "icon": "Icon",
             "bar": "Visible bar",
             "hidden": "Hidden",
-            "fullscreen": "Full screen"
+            "fullscreen": "Full screen",
+            "mini": "Compact bar",
+            "icon_overlay": "Icon that opens search on top",
+            "mega": "Large search",
+            "pill_floating": "Floating pill"
           },
           "logoAyuda": "Same position on desktop and mobile.",
           "logoFijo": {
@@ -34207,6 +34211,10 @@
         "pausaHover": "Pause on hover",
         "bucle": "Loop back to start",
         "arrastre": "Swipe or drag"
+      },
+      "controles": {
+        "degradado1": "Gradient start color",
+        "degradado2": "Gradient end color"
       }
     },
     "paginas": {

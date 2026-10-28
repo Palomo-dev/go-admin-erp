@@ -728,6 +728,10 @@ export const TEXTOS_EDITOR = {
         bar: "Barra visible",
         hidden: "Oculto",
         fullscreen: "Pantalla completa",
+        mini: "Barra compacta",
+        icon_overlay: "Ícono que abre el buscador encima",
+        mega: "Buscador grande",
+        pill_floating: "Píldora flotante",
       },
       buscadorCelular: 'Buscador · celular',
       icono: 'Icono',
@@ -1051,6 +1055,10 @@ export const TEXTOS_EDITOR = {
     avisoAyuda: 'Sale en la barra superior del sitio. Déjalo vacío para quitarlo.',
     avisoPlaceholder: 'Hoy cerramos a las 8:00 p. m.',
     guardarBorrador: 'Guardar en borrador',
+  },
+  controles: {
+    degradado1: 'Color inicial del degradado',
+    degradado2: 'Color final del degradado',
   },
 } as const;
 

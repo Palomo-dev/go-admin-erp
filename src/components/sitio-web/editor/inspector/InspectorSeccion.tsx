@@ -140,11 +140,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       <CampoSeccion
         key={c.key}
         campo={c}
-        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : valorTextoEncabezado(contenido, c.key)}
+        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : valorTextoEncabezado(contenido, c.key, s.section_type)}
         contenido={contenido}
         onCambiar={(v) => {
           const siguiente: Record<string, unknown> =
-            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : cambioTextoEncabezado(contenido, c.key, v);
+            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : cambioTextoEncabezado(contenido, c.key, v, s.section_type);
           // Exclusión mutua de categories_grid (como en el editor anterior).
           if (c.key === 'show_icon' && v === true) siguiente.show_image = false;
           if (c.key === 'show_image' && v === true) siguiente.show_icon = false;

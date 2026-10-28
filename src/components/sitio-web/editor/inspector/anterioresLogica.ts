@@ -22,7 +22,7 @@ export interface EntradaAnterior {
   /** Cambio que quita el ajuste, o `null` si la tienda lo usa por una opción vigente. */
   quitar: Record<string, unknown> | null;
   /** Por qué no se puede quitar. */
-  motivo?: 'enUso' | 'circulo' | 'mandaEspaciado' | 'mandaAncho' | 'sinEfecto' | 'mandaCarrusel';
+  motivo?: 'enUso' | 'circulo' | 'mandaEspaciado' | 'mandaAncho' | 'sinEfecto' | 'mandaCarrusel' | 'tituloEncabezado' | 'pasaABanners';
   /** Interruptores que siguen editables (sin equivalente en el panel nuevo; auditoría 27-oct, 6). */
   editables?: { clave: string; valor: boolean; cambio: (v: boolean) => Record<string, unknown> }[];
 }

@@ -44,7 +44,7 @@ describe('fuente del encabezado con FontField (ENCABE-93/97)', () => {
 describe('carrusel anterior de productos (PRODUC-37..40, FEATUR-14..17)', () => {
   it('oculta el grupo carousel y lo lista en anteriores', () => {
     expect(campoCubiertoPorEstilo({ key: 'loop', type: 'boolean', group: 'carousel' }, 'products_grid')).toBe(true);
-    expect(campoCubiertoPorEstilo({ key: 'loop', type: 'boolean', group: 'carousel' }, 'hero')).toBe(false);
+    expect(campoCubiertoPorEstilo({ key: 'loop', type: 'boolean', group: 'carousel' }, 'faq')).toBe(false);
     const e = entradasAnterioresSeccion({ slides_per_view: 3 }, 'featured_products');
     expect(e.find((x) => x.id === 'seccion_carrusel')?.motivo).toBe('mandaCarrusel');
   });

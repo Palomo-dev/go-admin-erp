@@ -709,7 +709,8 @@ export function useEditorSitio() {
           organization_id: organizationId,
           section_type: tipo,
           section_variant: variante,
-          content: {},
+          // Portada nueva: margen superior en 0 (valor explícito; las guardadas sin él no cambian).
+          content: tipo === 'hero' ? { section_background: { padding_top: 0 } } : {},
           settings: {},
           sort_order: posicion,
           is_visible: true,

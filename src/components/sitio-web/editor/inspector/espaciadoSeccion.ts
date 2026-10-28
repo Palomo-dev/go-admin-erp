@@ -14,6 +14,10 @@ export function campoCubiertoPorEstilo(c: Pick<ContentFieldDef, 'key' | 'type'> 
   if (c.type === 'spacing') return true;
   // PRODUC-37..40 / FEATUR-14..17: el panel «Carrusel» manda; lo guardado pasa a él al editarlo.
   if (c.group === 'carousel' && TIPOS_CARRUSEL_ANTERIOR.includes(tipoSeccion) && (CLAVES_CARRUSEL_ANTERIOR as readonly string[]).includes(c.key)) return true;
+  // BANNER-01: la distribución se elige en «Banners».
+  if (tipoSeccion === 'promo_banners' && ['layout', 'columns', 'rows', 'gap', 'columns_mobile'].includes(c.key)) return true;
+  // HERO-29..44: en la portada el panel «Carrusel» manda; la transición y su velocidad siguen aquí.
+  if (c.group === 'carousel' && tipoSeccion === 'hero' && (c.key === 'slides_per_view' || (CLAVES_CARRUSEL_HERO as readonly string[]).includes(c.key))) return true;
   if (c.key === 'full_bleed' || c.key === 'container_width') return true;
   // `categories_grid.full_width`: la tienda no lo lee (sin efecto); el ancho lo da Estilo › Ancho.
   // MAP-09: el mapa embebido siempre muestra el marcador; `show_marker` no tiene efecto.
@@ -23,6 +27,40 @@ export function campoCubiertoPorEstilo(c: Pick<ContentFieldDef, 'key' | 'type'> 
 
 const TIPOS_CARRUSEL_ANTERIOR = ['products_grid', 'featured_products'];
 const CLAVES_CARRUSEL_ANTERIOR = ['slides_per_view', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe'] as const;
+
+const CLAVES_CARRUSEL_HERO = [
+  'autoplay', 'interval_ms', 'pause_on_hover', 'loop', 'show_arrows', 'arrow_style', 'arrow_position',
+  'arrow_size', 'arrow_color', 'arrow_bg_color', 'show_dots', 'dot_style', 'enable_swipe',
+] as const;
+
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/** Carrusel anterior de la portada (CAROUSEL_FIELDS) leído como panel «Carrusel», con los valores por defecto de HeroSlider. */
+function carruselHeroDesdeAnteriores(c: Record<string, unknown>): Record<string, unknown> {
+  const flechas = c.show_arrows === true;
+  const puntos = c.show_dots !== false;
+  const estilo = ({ circle: 'circulo', square: 'cuadrado', minimal: 'chevron', chevron: 'chevron' } as Record<string, string>)[String(c.arrow_style ?? 'circle')] ?? 'circulo';
+  const posicion = c.arrow_position === 'outside' ? 'lados_fuera' : 'lados_dentro';
+  const px = numeroEntre(c.arrow_size, 16, 96) ?? 40;
+  const indicador = !puntos ? 'ninguno' : (({ dots: 'puntos', bars: 'barra', numbers: 'numeros' } as Record<string, string>)[String(c.dot_style ?? 'dots')] ?? 'puntos');
+  const segundos = numeroEntre(Number(c.interval_ms) / 1000, 1, 15) ?? 5;
+  const salida: Record<string, unknown> = {
+    autoplay: c.autoplay !== false,
+    segundos,
+    pausaHover: c.pause_on_hover !== false,
+    loop: c.loop !== false,
+    arrastre: c.enable_swipe !== false,
+    flechasEscritorio: flechas,
+    flechasMovil: flechas,
+    estiloFlechas: estilo,
+    posicionFlechas: posicion,
+    tamanoFlecha: px < 36 ? 'sm' : px <= 44 ? 'md' : 'lg',
+    indicador,
+  };
+  if (typeof c.arrow_color === 'string' && HEX_COLOR.test(c.arrow_color)) salida.colorIcono = c.arrow_color;
+  if (typeof c.arrow_bg_color === 'string' && HEX_COLOR.test(c.arrow_bg_color)) salida.fondoFlecha = c.arrow_bg_color;
+  return salida;
+}
 
 function numeroEntre(v: unknown, min: number, max: number): number | undefined {
   const n = typeof v === 'string' && v.trim() ? Number(v) : v;
@@ -35,6 +73,7 @@ function numeroEntre(v: unknown, min: number, max: number): number | undefined {
  * valores por defecto de siempre), así la tienda se ve igual al cambiar de opción.
  */
 export function carruselDesdeClavesAnteriores(contenido: Record<string, unknown>, tipoSeccion: string): Record<string, unknown> {
+  if (tipoSeccion === 'hero') return carruselHeroDesdeAnteriores(contenido);
   if (!TIPOS_CARRUSEL_ANTERIOR.includes(tipoSeccion)) return {};
   // Igual que FeaturedProductsCarousel / ProductsCarousel de la tienda (HOY + slides_per_view).
   const spv = contenido.slides_per_view;
@@ -67,6 +106,25 @@ function booleano(v: unknown): boolean | undefined {
   return undefined;
 }
 
+const CLAVES_BANNERS_ANTERIOR = ['layout', 'columns', 'columns_mobile', 'gap'] as const;
+
+/** Distribución anterior de promo_banners (layout grid/carousel/stack, columns, columns_mobile, gap). */
+export function bannersDesdeAnteriores(c: Record<string, unknown>): { layout: string; estilo: Record<string, number> } {
+  const layout = c.layout === 'carousel' ? 'carousel' : c.layout === 'stack' ? 'full_stack' : 'grid';
+  const estilo: Record<string, number> = {};
+  const col = c.columns;
+  const o = col && typeof col === 'object' ? (col as Record<string, unknown>) : null;
+  const d = numeroEntre(o ? o.desktop : col, 1, 6);
+  const t = numeroEntre(o?.tablet, 1, 4);
+  const m = numeroEntre(c.columns_mobile ?? o?.mobile, 1, 2);
+  if (d != null) estilo.columns_desktop = d;
+  if (t != null) estilo.columns_tablet = t;
+  if (m != null) estilo.columns_mobile = m;
+  const g = numeroEntre(c.gap, 0, 64);
+  if (g != null) estilo.gap = g;
+  return { layout, estilo };
+}
+
 const GRUPOS: ReadonlyArray<{ id: string; claves: readonly string[]; motivo?: EntradaAnterior['motivo']; solo?: string }> = [
   { id: 'seccion_padding_top', claves: ['padding_top', 'padding_top_px'], motivo: 'mandaEspaciado' },
   { id: 'seccion_padding_bottom', claves: ['padding_bottom', 'padding_bottom_px'], motivo: 'mandaEspaciado' },
@@ -77,6 +135,10 @@ const GRUPOS: ReadonlyArray<{ id: string; claves: readonly string[]; motivo?: En
   { id: 'seccion_container_width', claves: ['container_width'], motivo: 'mandaAncho' },
   { id: 'seccion_full_width', claves: ['full_width'], motivo: 'sinEfecto', solo: 'categories_grid' },
   { id: 'seccion_show_marker', claves: ['show_marker'], motivo: 'sinEfecto', solo: 'map' },
+  { id: 'banners_distribucion', claves: CLAVES_BANNERS_ANTERIOR, motivo: 'pasaABanners', solo: 'promo_banners' },
+  { id: 'banners_filas', claves: ['rows'], motivo: 'sinEfecto', solo: 'promo_banners' },
+  { id: 'seccion_carrusel_portada', claves: CLAVES_CARRUSEL_HERO, motivo: 'mandaCarrusel', solo: 'hero' },
+  { id: 'seccion_slides_per_view', claves: ['slides_per_view'], motivo: 'sinEfecto', solo: 'hero' },
   ...TIPOS_CARRUSEL_ANTERIOR.map((solo) => ({ id: 'seccion_carrusel', claves: CLAVES_CARRUSEL_ANTERIOR, motivo: 'mandaCarrusel' as const, solo })),
 ];
 
@@ -89,6 +151,16 @@ export function entradasAnterioresSeccion(contenido: Record<string, unknown>, ti
     if (g.solo && g.solo !== tipoSeccion) continue;
     if (!g.claves.some((k) => presente(contenido[k]))) continue;
     salida.push({ id: g.id, quitar: Object.fromEntries(g.claves.map((k) => [k, null])), ...(g.motivo ? { motivo: g.motivo } : {}) });
+  }
+  // HERO-01/02: la portada pinta su propio título; el del encabezado (Cascarón anterior) es aparte.
+  const h = contenido.section_header;
+  if (tipoSeccion === 'hero' && h && typeof h === 'object') {
+    const header = { ...(h as Record<string, unknown>) };
+    if (presente(header.title) || presente(header.description)) {
+      delete header.title;
+      delete header.description;
+      salida.push({ id: 'encabezado_titulo_portada', quitar: { section_header: Object.keys(header).length ? header : null }, motivo: 'tituloEncabezado' });
+    }
   }
   return salida;
 }
@@ -130,8 +202,8 @@ export function capaAlSubirPrimeraImagen(
  */
 const CLAVE_ENCABEZADO_DE: Record<string, 'title' | 'description'> = { title: 'title', subtitle: 'description', description: 'description' };
 
-export function valorTextoEncabezado(contenido: Record<string, unknown>, clave: string): unknown {
-  const k = CLAVE_ENCABEZADO_DE[clave];
+export function valorTextoEncabezado(contenido: Record<string, unknown>, clave: string, tipoSeccion?: string): unknown {
+  const k = tipoSeccion === 'hero' ? undefined : CLAVE_ENCABEZADO_DE[clave];
   const h = contenido.section_header;
   if (k && h && typeof h === 'object') {
     const v = (h as Record<string, unknown>)[k];
@@ -140,9 +212,9 @@ export function valorTextoEncabezado(contenido: Record<string, unknown>, clave: 
   return contenido[clave];
 }
 
-export function cambioTextoEncabezado(contenido: Record<string, unknown>, clave: string, valor: unknown): Record<string, unknown> {
+export function cambioTextoEncabezado(contenido: Record<string, unknown>, clave: string, valor: unknown, tipoSeccion?: string): Record<string, unknown> {
   const siguiente: Record<string, unknown> = { ...contenido, [clave]: valor };
-  const k = CLAVE_ENCABEZADO_DE[clave];
+  const k = tipoSeccion === 'hero' ? undefined : CLAVE_ENCABEZADO_DE[clave];
   const h = contenido.section_header;
   if (k && h && typeof h === 'object' && k in (h as Record<string, unknown>)) {
     const header = { ...(h as Record<string, unknown>) };

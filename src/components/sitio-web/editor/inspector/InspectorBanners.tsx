@@ -4,6 +4,7 @@
  * Inspector «Banners»: distribución, lista reordenable, texto, botón, estilo y hover.
  * Escribe `banner_layout` y `banner_style`. Sin esas claves la tienda no cambia.
  */
+import { bannersDesdeAnteriores } from './espaciadoSeccion';
 import { useTextosEditor } from '../textos';
 import { ColorTema } from './PartesZonaGlobal';
 import { SelectKit, NumeroKit, CasillaKit } from './controlesKit';
@@ -169,8 +170,12 @@ export function InspectorBanners({
   const [pestana, setPestana] = useState<Pestana>('distribucion');
   const [abierto, setAbierto] = useState<number | null>(0);
   const [arrastre, setArrastre] = useState<number | null>(null);
-  const layout = (typeof contenido.banner_layout === 'string' ? contenido.banner_layout : 'grid') as Distribucion;
-  const estilo = normalizarEstiloBanners(contenido.banner_style) ?? {};
+  // BANNER-01: una sola «Distribución». Sin claves nuevas se muestra (y se toma al editar) lo que
+  // la sección tenía en layout / columns / columns_mobile / gap, para que la tienda se vea igual.
+  const modoNuevo = contenido.banner_layout != null || contenido.banner_style != null;
+  const legado = bannersDesdeAnteriores(contenido);
+  const layout = (modoNuevo ? (typeof contenido.banner_layout === 'string' ? contenido.banner_layout : 'grid') : legado.layout) as Distribucion;
+  const estilo = (modoNuevo ? normalizarEstiloBanners(contenido.banner_style) : legado.estilo) ?? {};
   const banners = Array.isArray(contenido.banners) ? (contenido.banners as Record<string, unknown>[]) : [];
   const aviso = avisoDistribucion(DISTRIBUCIONES.includes(layout as Distribucion) ? (layout as Distribucion) : 'grid', banners.length, estilo.last_full !== false);
 
@@ -179,7 +184,11 @@ export function InspectorBanners({
     for (const [k, v] of Object.entries(parcial)) {
       if (v == null || v === '') delete (siguiente as Record<string, unknown>)[k];
     }
-    onCambiar({ ...contenido, banner_style: Object.keys(siguiente).length ? siguiente : undefined });
+    onCambiar({
+      ...contenido,
+      ...(modoNuevo ? {} : { banner_layout: legado.layout }),
+      banner_style: Object.keys(siguiente).length ? siguiente : undefined,
+    });
   };
   const ponerBanner = (i: number, parcial: Record<string, unknown>) => {
     const lista = banners.map((b, n) => (n === i ? { ...b, ...parcial } : b));
@@ -224,8 +233,8 @@ export function InspectorBanners({
               <button
                 key={id}
                 type="button"
-                onClick={() => onCambiar({ ...contenido, banner_layout: id === 'grid' ? undefined : id })}
-                className={`flex flex-col gap-1 rounded-lg border p-2 text-left text-[12px] ${layout === id || (id === 'grid' && !contenido.banner_layout) ? 'border-brand text-brand' : 'border-line text-fg'}`}
+                onClick={() => onCambiar({ ...contenido, banner_layout: id, ...(modoNuevo || !Object.keys(legado.estilo).length ? {} : { banner_style: legado.estilo }) })}
+                className={`flex flex-col gap-1 rounded-lg border p-2 text-left text-[12px] ${layout === id ? 'border-brand text-brand' : 'border-line text-fg'}`}
               >
                 <Miniatura layout={id} />
                 <span className="font-medium">{NOMBRE[id]}</span>

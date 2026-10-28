@@ -211,6 +211,21 @@ export function CampoSeccion({
     }
     case 'select': {
       const actual = typeof valor === 'string' ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '';
+      // Figma v2: hasta 5 opciones van como chips del kit; más, como desplegable.
+      if ((campo.options?.length ?? 0) > 0 && (campo.options?.length ?? 0) <= 5) {
+        return (
+          <FormField etiqueta={campo.label} ayuda={ayuda}>
+            {(c) => (
+              <ChipsOpcion
+                aria-labelledby={c.idEtiqueta}
+                opciones={(campo.options ?? []).map((o) => ({ valor: String(o.value), etiqueta: o.label, deshabilitada: deshabilitado }))}
+                valor={actual || null}
+                onValorChange={(v) => onCambiar(v)}
+              />
+            )}
+          </FormField>
+        );
+      }
       return (
         <FormField etiqueta={campo.label} ayuda={ayuda}>
           {(c) => (

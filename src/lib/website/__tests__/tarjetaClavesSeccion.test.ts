@@ -1,4 +1,6 @@
 import {
+  clavesPropiasTarjeta,
+  restablecerClaveTarjeta,
   heredadoTarjetaSeccion,
   tarjetaDesdeClavesSeccion,
   vistaEditorTarjeta,
@@ -39,3 +41,13 @@ describe('claves sueltas de la sección en «Tarjeta de producto»', () => {
     expect(vista.card_padding).toBe(20);
   });
 });
+
+describe('restablecer un valor de la tarjeta', () => {
+  it('borra el valor del estilo y la clave suelta; lo demás queda igual', () => {
+    const c = { card_radius: 20, card_shadow: 'lg', product_card_style: { card_radius: 8, show_brand: true } }
+    expect(clavesPropiasTarjeta(c)).toEqual(['card_radius', 'show_brand', 'card_shadow'])
+    const r = restablecerClaveTarjeta(c, 'card_radius')
+    expect(r).toEqual({ card_shadow: 'lg', product_card_style: { show_brand: true } })
+    expect(clavesPropiasTarjeta(r)).toEqual(['show_brand', 'card_shadow'])
+  })
+})

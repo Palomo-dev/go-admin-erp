@@ -26,7 +26,7 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
-import { esSeccionTarjetaProducto, heredadoTarjetaSeccion, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
+import { clavesPropiasTarjeta, esSeccionTarjetaProducto, heredadoTarjetaSeccion, restablecerClaveTarjeta, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
@@ -264,6 +264,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                   onCambiarContenido(siguiente);
                 }}
                 onAplicarTodas={p.onAplicarTarjeta}
+                propias={clavesPropiasTarjeta(contenido)}
+                onRestablecer={(clave) => onCambiarContenido(restablecerClaveTarjeta(contenido, clave))}
               />
             )}
             {s.section_type === 'promo_banners' && (

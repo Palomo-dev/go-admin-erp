@@ -691,3 +691,29 @@ export function fondoTarjeta(estilo: EstiloTarjetaProducto | null | undefined): 
   const ang = estilo.card_bg_angle ?? 180
   return { backgroundImage: `linear-gradient(${ang}deg, ${estilo.card_bg}, ${estilo.card_bg_2})` }
 }
+
+/** Claves con valor propio en la sección: las del estilo de tarjeta y las sueltas de siempre. */
+export function clavesPropiasTarjeta(contenido: unknown): string[] {
+  if (!contenido || typeof contenido !== 'object') return []
+  const c = contenido as Record<string, unknown>
+  const g = c.product_card_style && typeof c.product_card_style === 'object' ? (c.product_card_style as Record<string, unknown>) : {}
+  const claves = Object.keys(g).filter((k) => k !== 'card_preset' && g[k] != null && g[k] !== '')
+  for (const k of CLAVES_TARJETA_EN_SECCION) if (c[k] != null && c[k] !== '' && !claves.includes(k)) claves.push(k)
+  return claves
+}
+
+/**
+ * Restablece un valor: lo quita del estilo de tarjeta de la sección y también la clave suelta
+ * heredada, para que vuelva a mandar el estilo del sitio (o el de siempre). Lo demás no cambia.
+ */
+export function restablecerClaveTarjeta(contenido: Record<string, unknown>, clave: string): Record<string, unknown> {
+  const siguiente = { ...contenido }
+  delete siguiente[clave]
+  const g = siguiente.product_card_style
+  if (g && typeof g === 'object') {
+    const estilo = { ...(g as Record<string, unknown>) }
+    delete estilo[clave]
+    siguiente.product_card_style = estilo
+  }
+  return siguiente
+}

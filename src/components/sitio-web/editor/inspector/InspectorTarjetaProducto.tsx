@@ -69,9 +69,24 @@ export interface InspectorTarjetaProductoProps {
   heredado?: unknown;
   onCambiar: (estilo: EstiloTarjetaProducto) => void;
   onQuitar?: () => void;
+  /** Claves con valor propio de la sección (estilo de tarjeta o claves sueltas de siempre). */
+  propias?: string[];
+  /** Restablece un valor: lo borra del estilo y de la clave suelta heredada. */
+  onRestablecer?: (clave: string) => void;
   /** Copia el estilo efectivo a todas las secciones de productos de la página. */
   onAplicarTodas?: (estilo: EstiloTarjetaProducto) => void;
 }
+
+const NOMBRE_CLAVE: Record<string, string> = {
+  card_radius: 'Radio', card_shadow: 'Sombra', card_border_width: 'Borde', card_border_color: 'Color del borde',
+  card_bg: 'Fondo', card_bg_2: 'Fondo 2', card_bg_angle: 'Ángulo del fondo', card_padding: 'Relleno', card_gap: 'Separación',
+  image_fit: 'Ajuste de la imagen', image_ratio: 'Proporción de la imagen', image_bg: 'Fondo de la imagen',
+  image_padding: 'Relleno de la imagen', image_radius: 'Radio de la imagen', hover_image: 'Imagen al pasar el mouse',
+  text_align: 'Alineación', title_lines: 'Líneas del título', title_weight: 'Peso del título', title_size: 'Tamaño del título',
+  price_color: 'Color del precio', price_position: 'Precio', price_size: 'Tamaño del precio', show_compare_price: 'Precio anterior tachado',
+  show_reviews: 'Reseñas', reviews_position: 'Posición de reseñas', reviews_style: 'Estilo de reseñas', show_brand: 'Marca',
+  show_category: 'Categoría', label_shape: 'Forma de etiquetas', label_style: 'Estilo de etiquetas', label_position: 'Posición de etiquetas',
+};
 
 function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
@@ -157,7 +172,7 @@ function Rango({
   );
 }
 
-export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuitar, onAplicarTodas }: InspectorTarjetaProductoProps) {
+export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuitar, onAplicarTodas, propias, onRestablecer }: InspectorTarjetaProductoProps) {
   const tk = useTextosEditor();
   const [pestana, setPestana] = useState<Pestana>('preset');
   const [boton, setBoton] = useState<ClaveBoton>('add');
@@ -191,6 +206,19 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           { valor: 'contenedor', etiqueta: 'Contenedor' },
         ]}
       />
+
+      {onRestablecer && propias && propias.length > 0 && (
+        <div role="group" aria-label="Valores propios de esta sección" className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
+          <span>Valores propios de esta sección (toca uno para restablecerlo):</span>
+          <div className="flex flex-wrap gap-1">
+            {propias.map((k) => (
+              <button key={k} type="button" title="Restablecer" onClick={() => onRestablecer(k)} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                {NOMBRE_CLAVE[k] ?? k} ↺
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pestana === 'preset' && (
         <div className="grid grid-cols-2 gap-2">

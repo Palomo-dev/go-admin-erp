@@ -2,7 +2,7 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { renderConIdioma as render } from '@/test-utils/renderConIdioma';
 import { ControlEspaciado, EditorFondo, cambioMargen, textoHeredado } from '../EditorCascaron';
-import { anchoEfectivo, cambioAncho } from '../espacioUnico';
+import { anchoEfectivo, aplicarAtajo, atajoActual, cambioAncho, cambioEspacio } from '../espacioUnico';
 import { espacioSeccion } from '@/lib/website/espacioSeccion';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: { from: jest.fn() }, getProjectRef: jest.fn(() => 'test') }));
@@ -80,5 +80,20 @@ describe('Un solo Ancho (Estilo › Ancho + «Ancho completo» de la portada)', 
   test('claves de antes que tapan el estilo se ajustan, no se borran', () => {
     const r = cambioAncho({ full_bleed: true, container_width: 'full' }, { v: 1 } as never, 'contenedor', 'faq');
     expect(r.contenido).toEqual({ full_bleed: false, container_width: 'lg' });
+  });
+});
+
+describe('QA unificación: atajo con el hueco del header y celular igual a computador', () => {
+  test('primera sección: el atajo no escribe relleno superior (como antes con la escala)', () => {
+    const e = espacioSeccion({}, { tipo: 'faq', primera: true });
+    expect(e.arribaFijo).toBe(true);
+    expect(aplicarAtajo({}, 'amplio', e)).toEqual({ padding_bottom: 96, padding_bottom_mobile: 64 });
+    expect(aplicarAtajo({}, 'amplio', espacioSeccion({}, { tipo: 'faq' }))).toMatchObject({ padding_top: 96, padding_top_mobile: 64 });
+    expect(atajoActual(e)).toBe('normal');
+  });
+  test('celular igual a computador no se guarda aparte', () => {
+    expect(cambioEspacio({}, 'margin', 'top', 'computador', 16, { celular: 16, computador: 16, propio: true })).toEqual({ margin_top: 16 });
+    expect(cambioEspacio({ padding_top: 20 }, 'padding', 'top', 'celular', 20, undefined)).toEqual({ padding_top: 20 });
+    expect(cambioEspacio({}, 'padding', 'top', 'computador', 30, { celular: 48, computador: 64, propio: false })).toEqual({ padding_top: 30, padding_top_mobile: 48 });
   });
 });

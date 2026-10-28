@@ -17,13 +17,17 @@ export const ATAJOS_ESPACIADO = Object.keys(ATAJOS_RELLENO) as AtajoEspaciado[];
 export function atajoActual(espacio: EspacioSeccion | undefined): AtajoEspaciado | null {
   if (!espacio) return null;
   const igual = (l: LadoEspacio, a: AtajoEspaciado) => l.celular === ATAJOS_RELLENO[a].celular && l.computador === ATAJOS_RELLENO[a].computador;
-  return ATAJOS_ESPACIADO.find((a) => igual(espacio.rellenoArriba, a) && igual(espacio.rellenoAbajo, a)) ?? null;
+  // Primera sección / solapa: arriba manda el hueco del header; el atajo se lee solo abajo.
+  return ATAJOS_ESPACIADO.find((a) => (espacio.arribaFijo || igual(espacio.rellenoArriba, a)) && igual(espacio.rellenoAbajo, a)) ?? null;
 }
 
 /** Elegir un atajo escribe los px de la escala (los mismos de antes) en el relleno de la sección. */
-export function aplicarAtajo(fondo: unknown, a: AtajoEspaciado): Obj {
+export function aplicarAtajo(fondo: unknown, a: AtajoEspaciado, espacio?: EspacioSeccion): Obj {
   const p = ATAJOS_RELLENO[a];
-  return { ...objeto(fondo), padding_top: p.computador, padding_top_mobile: p.celular, padding_bottom: p.computador, padding_bottom_mobile: p.celular };
+  const siguiente: Obj = { ...objeto(fondo), padding_bottom: p.computador, padding_bottom_mobile: p.celular };
+  // Como antes con la escala: en la primera sección o con solapa, el atajo no suma relleno al hueco del header.
+  if (!espacio?.arribaFijo) Object.assign(siguiente, { padding_top: p.computador, padding_top_mobile: p.celular });
+  return siguiente;
 }
 
 /**
@@ -48,6 +52,8 @@ export function cambioEspacio(
     siguiente[propioK] = valor;
     if (siguiente[otroK] == null && actual) siguiente[otroK] = dispositivo === 'celular' ? actual.computador : actual.celular;
   }
+  // Celular igual a computador: no se guarda aparte (la tienda usa el de computador para los dos).
+  if (siguiente[kCel] != null && siguiente[kCel] === siguiente[kComp]) delete siguiente[kCel];
   return siguiente;
 }
 

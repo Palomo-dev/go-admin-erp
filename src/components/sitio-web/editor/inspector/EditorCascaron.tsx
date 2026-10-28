@@ -357,7 +357,7 @@ export function ControlEspaciado({ valor, onCambiar, espacio, etiquetasAtajo, de
         etiqueta="Atajos de relleno"
         opciones={ATAJOS_ESPACIADO.map((a) => ({ valor: a, etiqueta: etiquetasAtajo[a], deshabilitada: deshabilitado }))}
         valor={atajoActual(espacio) ?? ''}
-        onValorChange={(a) => enviar(aplicarAtajo(f, a as AtajoEspaciado))}
+        onValorChange={(a) => enviar(aplicarAtajo(f, a as AtajoEspaciado, espacio))}
       />
       {filas.map(({ tipo, lado, etiqueta, actual }) => {
         const k = `${tipo}_${lado}`;

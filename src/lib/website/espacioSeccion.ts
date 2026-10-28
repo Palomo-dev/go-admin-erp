@@ -96,6 +96,11 @@ export interface EspacioSeccion {
   rellenoAbajo: LadoEspacio
   margenArriba: LadoEspacio
   margenAbajo: LadoEspacio
+  /**
+   * `true` en la primera sección o en un hero con solapa: arriba manda el hueco del header y la escala
+   * (`lg`, estilo) no se aplica. Un atajo no debe escribir relleno superior ahí.
+   */
+  arribaFijo?: boolean
 }
 
 const par = (n: number): ParDispositivo => ({ celular: n, computador: n })
@@ -181,5 +186,5 @@ export function espacioSeccion(contenidoGuardado: unknown, e: EntornoSeccion = {
     ? { celular: propio.margin_bottom_mobile ?? propio.margin_bottom ?? mbBase, computador: propio.margin_bottom ?? mbBase, propio: true }
     : { ...par(mbBase), propio: margenExplicito(c.margin_bottom) }
 
-  return { rellenoArriba, rellenoAbajo, margenArriba, margenAbajo }
+  return { rellenoArriba, rellenoAbajo, margenArriba, margenAbajo, arribaFijo: !!primera || solapa }
 }

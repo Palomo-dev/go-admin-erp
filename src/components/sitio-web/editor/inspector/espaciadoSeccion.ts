@@ -22,7 +22,7 @@ export function campoCubiertoPorEstilo(c: Pick<ContentFieldDef, 'key' | 'type'> 
 }
 
 const TIPOS_CARRUSEL_ANTERIOR = ['products_grid', 'featured_products'];
-const CLAVES_CARRUSEL_ANTERIOR = ['slides_per_view', 'autoplay', 'loop', 'enable_swipe'] as const;
+const CLAVES_CARRUSEL_ANTERIOR = ['slides_per_view', 'autoplay', 'interval_ms', 'loop', 'pause_on_hover', 'show_arrows', 'show_dots', 'enable_swipe'] as const;
 
 function numeroEntre(v: unknown, min: number, max: number): number | undefined {
   const n = typeof v === 'string' && v.trim() ? Number(v) : v;
@@ -36,17 +36,35 @@ function numeroEntre(v: unknown, min: number, max: number): number | undefined {
  */
 export function carruselDesdeClavesAnteriores(contenido: Record<string, unknown>, tipoSeccion: string): Record<string, unknown> {
   if (!TIPOS_CARRUSEL_ANTERIOR.includes(tipoSeccion)) return {};
+  // Igual que FeaturedProductsCarousel / ProductsCarousel de la tienda (HOY + slides_per_view).
   const spv = contenido.slides_per_view;
   const o = spv && typeof spv === 'object' ? (spv as Record<string, unknown>) : null;
   const escritorio = numeroEntre(o ? o.desktop : spv, 1, 8) ?? 4;
+  const tableta = numeroEntre(o ? o.tablet : spv, 1, 8) ?? Math.min(3, escritorio);
+  const movil = numeroEntre(o ? o.mobile : spv, 1, 8) ?? Math.min(2, escritorio);
+  const ms = Number(contenido.interval_ms);
+  const flechas = booleano(contenido.show_arrows) ?? true;
   return {
     visiblesEscritorio: escritorio,
-    visiblesTableta: numeroEntre(o?.tablet, 1, 8) ?? Math.min(3, escritorio),
-    visiblesMovil: numeroEntre(o?.mobile, 1, 8) ?? Math.min(2, escritorio),
-    autoplay: contenido.autoplay === true,
-    loop: contenido.loop !== false,
-    arrastre: contenido.enable_swipe !== false,
+    visiblesTableta: tableta,
+    visiblesMovil: movil,
+    autoplay: booleano(contenido.autoplay) ?? false,
+    segundos: Number.isFinite(ms) && ms > 0 ? Math.min(15, Math.max(1, Math.round(ms / 1000))) : 5,
+    loop: booleano(contenido.loop) ?? false,
+    pausaHover: booleano(contenido.pause_on_hover) ?? true,
+    flechasEscritorio: flechas,
+    flechasMovil: flechas,
+    indicador: (booleano(contenido.show_dots) ?? true) ? 'puntos' : 'ninguno',
+    arrastre: booleano(contenido.enable_swipe) ?? true,
   };
+}
+
+/** Como `booleano` de la tienda: acepta true/false y "true"/"false". */
+function booleano(v: unknown): boolean | undefined {
+  if (typeof v === 'boolean') return v;
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return undefined;
 }
 
 const GRUPOS: ReadonlyArray<{ id: string; claves: readonly string[]; motivo?: EntradaAnterior['motivo']; solo?: string }> = [
@@ -110,7 +128,7 @@ export function capaAlSubirPrimeraImagen(
  * Contenido muestra lo que se ve y, al editar, escribe la clave de Contenido y borra la copia
  * del encabezado (si no, el cambio no se vería).
  */
-const CLAVE_ENCABEZADO_DE: Record<string, 'title' | 'description'> = { title: 'title', subtitle: 'description' };
+const CLAVE_ENCABEZADO_DE: Record<string, 'title' | 'description'> = { title: 'title', subtitle: 'description', description: 'description' };
 
 export function valorTextoEncabezado(contenido: Record<string, unknown>, clave: string): unknown {
   const k = CLAVE_ENCABEZADO_DE[clave];
@@ -146,11 +164,13 @@ export const CLAVES_VER_TODO = ['view_all', 'view_all_label', 'view_all_url', 'v
 
 /** El botón «Ver todo» anterior, como lo pinta la tienda (`accionDesdeVerTodo` de goadmin-websites). */
 export function accionDesdeVerTodo(e: Record<string, unknown>): Record<string, unknown> | undefined {
-  if (e.view_all !== true || typeof e.view_all_url !== 'string' || !e.view_all_url) return undefined;
+  const url = typeof e.view_all_url === 'string' ? e.view_all_url.trim().slice(0, 500) : '';
+  // Misma validación que la tienda (urlSegura de cascaronSeccion): ruta, ancla o http(s).
+  if (e.view_all !== true || !(url.startsWith('/') || url.startsWith('#') || /^https?:\/\//i.test(url))) return undefined;
   const estilo = typeof e.view_all_style === 'string' && e.view_all_style ? e.view_all_style : undefined;
   return {
     text: typeof e.view_all_label === 'string' && e.view_all_label ? e.view_all_label : 'Ver todo',
-    href: e.view_all_url,
+    href: url,
     kind: estilo === 'ghost' ? 'link' : 'button',
     position: e.layout === 'inline' ? 'inline' : 'below',
     ...(estilo ? { style: estilo } : {}),

@@ -50,9 +50,17 @@ describe('carrusel anterior de productos (PRODUC-37..40, FEATUR-14..17)', () => 
   });
   it('arranca el carrusel propio con lo guardado y los valores de siempre', () => {
     expect(carruselDesdeClavesAnteriores({ slides_per_view: { desktop: 5, mobile: 1 }, autoplay: true }, 'products_grid')).toEqual({
-      visiblesEscritorio: 5, visiblesTableta: 3, visiblesMovil: 1, autoplay: true, loop: true, arrastre: true,
+      visiblesEscritorio: 5, visiblesTableta: 3, visiblesMovil: 1, autoplay: true, segundos: 5, loop: false, pausaHover: true,
+      flechasEscritorio: true, flechasMovil: true, indicador: 'puntos', arrastre: true,
     });
-    expect(carruselDesdeClavesAnteriores({}, 'hero')).toEqual({});
+    // Org 348: featured_products con 4 por vista, autoplay y sin loop → 4 en todos los tamaños, sin bucle.
+    expect(carruselDesdeClavesAnteriores({ slides_per_view: 4, autoplay: true }, 'featured_products')).toMatchObject({
+      visiblesEscritorio: 4, visiblesTableta: 4, visiblesMovil: 4, autoplay: true, loop: false,
+    });
+    expect(carruselDesdeClavesAnteriores({ autoplay: 'true', loop: 'false', show_dots: 'false', show_arrows: false, interval_ms: 3000, pause_on_hover: 'false' }, 'products_grid')).toMatchObject({
+      autoplay: true, loop: false, indicador: 'ninguno', flechasEscritorio: false, flechasMovil: false, segundos: 3, pausaHover: false,
+    });
+    expect(carruselDesdeClavesAnteriores({}, 'faq')).toEqual({});
     expect(carruselGlobalActivo({ usar_global: true })).toBe(false);
     expect(carruselGlobalActivo({ autoplay: true })).toBe(true);
   });

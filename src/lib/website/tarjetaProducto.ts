@@ -465,7 +465,8 @@ export function aplicarEstiloTarjeta(crudo: unknown): EstiloTarjetaProducto | nu
   const normal = normalizarTarjeta(crudo)
   if (!normal) return null
   // «Unidades vendidas» va aparte (vendidosEnTarjeta): sola no activa el estilo de la tarjeta.
-  const { show_sales_count: _vendidos, ...explicito } = normal
+  const explicito: EstiloTarjetaProducto = { ...normal }
+  delete explicito.show_sales_count
   if (Object.keys(explicito).length === 0 || soloPresetActual(explicito)) return null
   const preset = explicito.card_preset
   if (!preset || preset === 'actual') return explicito

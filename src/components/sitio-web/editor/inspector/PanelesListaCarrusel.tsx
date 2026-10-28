@@ -187,7 +187,7 @@ export function PanelCarrusel({
       <div className="grid grid-cols-3 items-end gap-2">
         <Numero etiqueta={t('listas.visiblesComputador')} valor={v.visiblesEscritorio} porDefecto={4} minimo={1} maximo={8} onCambiar={(n) => set({ visiblesEscritorio: n })} />
         <Numero etiqueta={t('listas.visiblesTableta')} valor={v.visiblesTableta} porDefecto={3} minimo={1} maximo={6} onCambiar={(n) => set({ visiblesTableta: n })} />
-        <Numero etiqueta={t('listas.visiblesCelular')} valor={v.visiblesMovil} porDefecto={2} minimo={1} maximo={3} onCambiar={(n) => set({ visiblesMovil: n })} />
+        <Numero etiqueta={t('listas.visiblesCelular')} valor={v.visiblesMovil} porDefecto={Math.min(2, v.visiblesEscritorio ?? 4)} minimo={1} maximo={3} onCambiar={(n) => set({ visiblesMovil: n })} />
       </div>
       <Chips etiqueta={t('listas.indicador')} opciones={INDICADORES} valor={indicador} onCambiar={(i) => set({ indicador: i })} t={t} prefijo="listas.indicadorOpcion" />
       {indicador !== 'ninguno' && (

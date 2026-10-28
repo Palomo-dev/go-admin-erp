@@ -243,6 +243,28 @@ describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
       expect(escriturasPago).toHaveLength(0);
     });
 
+    it.each([
+      ['wompi', '1577574-1793151765-89419'],
+      ['visa', '998877'],
+    ])('cancelado por pago fallido (%s): va por la RPC completa (reactiva) aunque el interruptor esté apagado y se marca pagado', async (payment_method, payment_reference) => {
+      rpcPasarela(() => ({ data: { ok: true, ya_pagado: false, invoice_id: 'inv-c', invoice_number: 'FACT-0101', payment_id: 'pay-c' }, error: null }));
+      const pedido = { ...base, status: 'cancelled', payment_status: 'failed', payment_method, payment_reference, sale_id: null } as never;
+      const r = await webOrderConfirmationService.confirmOrder(pedido, { prepMs: 60000, markAsPaid: true });
+      expect(mockRpc).toHaveBeenCalledWith('fn_confirmar_pedido_web_completo', expect.objectContaining({ p_pagado: false }));
+      expect(mockRpc).toHaveBeenCalledWith('fn_marcar_pedido_web_pagado_pasarela', expect.objectContaining({ p_order_id: 'wo-1' }));
+      expect(mockRpc.mock.calls.filter(([fn]) => fn === 'fn_cobrar_pedido_web_en_caja')).toHaveLength(0);
+      expect(r.pagoPasarela).toEqual(expect.objectContaining({ paymentId: 'pay-c' }));
+    });
+
+    it('cancelado por pago fallido sin stock: el error STOCK_INSUFICIENTE llega a quien llama', async () => {
+      mockRpc.mockImplementation(async (fn: string) => fn === 'fn_confirmar_pedido_web_completo'
+        ? { data: null, error: { code: '22023', message: 'STOCK_INSUFICIENTE', details: '[{"product_id":1,"available":0,"requested":2}]' } }
+        : { data: null, error: null });
+      const pedido = { ...base, status: 'cancelled', payment_status: 'failed', payment_method: 'wompi', payment_reference: '1-2-3', sale_id: null } as never;
+      await expect(webOrderConfirmationService.confirmOrder(pedido, { prepMs: 60000, markAsPaid: true })).rejects.toThrow(/STOCK_INSUFICIENTE/);
+      expect(mockRpc).not.toHaveBeenCalledWith('fn_marcar_pedido_web_pagado_pasarela', expect.anything());
+    });
+
     it('si la RPC de pasarela falla, el pedido queda confirmado y se avisa el motivo', async () => {
       rpcPasarela(() => ({ data: null, error: { code: '42501', message: 'SIN_PERMISO' } }));
       const r = await webOrderConfirmationService.confirmOrder({ ...base, status: 'pending', payment_status: 'pending', payment_method: 'daviplata' } as never, { prepMs: 60000, markAsPaid: true });

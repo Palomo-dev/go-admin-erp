@@ -36134,7 +36134,8 @@
         "qr": "by QR"
       },
       "errorMarcarPagado": "Couldn't mark as paid",
-      "pendienteMarcarPagado": "Order confirmed but not marked as paid"
+      "pendienteMarcarPagado": "Order confirmed but not marked as paid",
+      "sinStockReactivar": "There is not enough stock to reactivate the order. Adjust the inventory of the missing products and try again; the order was not changed."
     },
     "tipoCorto": {
       "pickup": "Pickup",

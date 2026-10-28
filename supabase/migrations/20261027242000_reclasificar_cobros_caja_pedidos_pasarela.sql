@@ -1,7 +1,7 @@
 -- 20261027242000 · Corrección de datos: pedidos web pagados por pasarela que además
--- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
---   242000 → 244000 → 243000 → 241500.
+--   242000 → 245000 → 244000 → 243000 → 241500.
 -- quedaron con un pago de CAJA creado por fn_cobrar_pedido_web_en_caja (metodoDeCobroEnCaja
 -- devolvía 'cash' para 'wompi'). SIN APLICAR. NO cambia montos de ventas, facturas ni pagos.
 -- ORDEN Y CONDICIÓN: aplicar DESPUÉS de 20261027241500 (usa fn_metodo_es_pasarela, que crea esa

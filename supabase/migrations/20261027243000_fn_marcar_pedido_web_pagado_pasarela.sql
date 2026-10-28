@@ -1,7 +1,7 @@
 -- 20261027243000 · fn_marcar_pedido_web_pagado_pasarela: «Marcar como pagado» de UN CLIC para pedidos de pasarela
--- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
---   242000 → 244000 → 243000 → 241500.
+--   242000 → 245000 → 244000 → 243000 → 241500.
 -- SIN APLICAR. Aplicar DESPUÉS de 20261027241500 (usa fn_metodo_es_pasarela), con:
 --   psql -v ON_ERROR_STOP=1 -f <archivo>   (conexión directa o sesión 5432)
 --
@@ -64,7 +64,7 @@ begin
     raise exception 'SIN_PERMISO' using errcode = '42501';
   end if;
   v_crudo := lower(btrim(coalesce(v_wo.payment_method, '')));
-  if not public.fn_metodo_es_pasarela(v_crudo) then
+  if not public.fn_pedido_web_es_pasarela(v_crudo, v_wo.payment_reference) then
     raise exception 'NO_ES_PASARELA' using errcode = '22023',
       detail = 'Método ' || coalesce(nullif(v_crudo, ''), '-') || ': se cobra en caja.';
   end if;
@@ -79,16 +79,11 @@ begin
   end if;
 
   -- Método de la pasarela tal como existe (activo) en payment_methods.
-  v_metodo := case
-    when v_crudo like 'wompi%' or v_crudo in ('nequi', 'daviplata', 'card', 'pse', 'bancolombia_bnpl',
-         'bancolombia_collect', 'bancolombia_transfer', 'su_plus') then 'wompi'
-    when v_crudo in ('mercadopago', 'mercado_pago') then 'mp'
-    when v_crudo = 'bold' then 'bold_link'
-    else v_crudo
-  end;
+  -- Cualquier pasarela (Wompi, Mercado Pago, PayU, Stripe, PayPal, Bold…): fn_pasarela_metodo_pago.
+  v_metodo := public.fn_pasarela_metodo_pago(v_wo.organization_id, v_crudo);
   if not exists (select 1 from public.payment_methods pm where pm.code = v_metodo and coalesce(pm.is_active, true)) then
     raise exception 'METODO_INVALIDO' using errcode = '22023',
-      detail = 'La pasarela ' || v_crudo || ' no tiene método activo (' || v_metodo || ').';
+      detail = 'La pasarela ' || v_crudo || ' no tiene método activo (' || coalesce(v_metodo, '-') || ').';
   end if;
 
   select * into v_inv from public.invoice_sales i
@@ -183,7 +178,11 @@ begin
     jsonb_build_object('status', v_wo.status, 'payment_status', v_wo.payment_status,
                        'payment_method', v_wo.payment_method, 'payment_reference', v_wo.payment_reference),
     jsonb_build_object('payment_status', 'paid', 'payment_id', v_pago, 'method', v_metodo, 'reference', 'MANUAL'),
-    jsonb_build_object('order_number', v_wo.order_number, 'invoice_id', v_inv.id, 'marcado_en', v_ahora)
+    jsonb_build_object('order_number', v_wo.order_number, 'invoice_id', v_inv.id, 'marcado_en', v_ahora,
+                       'cancelado_por_pago_fallido', exists (
+                         select 1 from public.ops_audit_log a
+                          where a.entity_type = 'web_orders' and a.entity_id = v_wo.id::text
+                            and a.action = 'REACTIVATE_FAILED_PAYMENT'))
   );
 
   return jsonb_build_object('ok', true, 'ya_pagado', false, 'order_id', v_wo.id, 'invoice_id', v_inv.id,

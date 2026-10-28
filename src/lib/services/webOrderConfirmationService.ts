@@ -25,7 +25,8 @@ import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import {
   debeCobrarseEnCaja,
   esMetodoCobroEnCaja,
-  esMetodoDePasarela,
+  canceladoPorPagoFallido,
+  pedidoEsDePasarela,
   marcaPagadoPorPasarela,
   metodoDeCobroEnCaja,
   pedidoPagadoPorPasarela,
@@ -164,8 +165,8 @@ export function claveAvisoCobro(
  * Método de caja del pedido. Sin valor por defecto peligroso: un pedido de
  * pasarela NUNCA cae en efectivo, lanza PEDIDO_DE_PASARELA.
  */
-export function metodoCajaDelPedido(order: Pick<WebOrder, 'payment_method'>): MetodoCobroEnCaja {
-  const metodo = metodoDeCobroEnCaja(order.payment_method);
+export function metodoCajaDelPedido(order: Pick<WebOrder, 'payment_method'> & { payment_reference?: string | null }): MetodoCobroEnCaja {
+  const metodo = metodoDeCobroEnCaja(order.payment_method, order.payment_reference);
   if (!metodo) throw new CobroEnCajaError('PEDIDO_DE_PASARELA', 'Pedido de pasarela: no se cobra en caja');
   return metodo;
 }
@@ -223,11 +224,13 @@ class WebOrderConfirmationService {
     // Confirmación en una sola transacción (E2/E3) detrás del interruptor de
     // despliegue. Si la base aún no tiene la función, sigue el camino de siempre.
     // Un vencido solo se confirma por la RPC completa: ella re-reserva el stock (todo o nada)
-    // y lo vuelve a pending en la misma transacción (migración 20261025134165).
-    if (confirmacionCompletaActiva() || order.status === 'expired') {
+    // y lo vuelve a pending en la misma transacción (migración 20261025134165). Igual un
+    // pedido de pasarela cancelado por pago fallido (migración 20261027245000).
+    const reactivable = order.status === 'expired' || canceladoPorPagoFallido(order);
+    if (confirmacionCompletaActiva() || reactivable) {
       const completo = await this.confirmarCompleto(order, options, userId);
       if (completo) return completo;
-      if (order.status === 'expired') throw new Error('PEDIDO_NO_CONFIRMABLE');
+      if (reactivable) throw new Error('PEDIDO_NO_CONFIRMABLE');
     } else {
       // Interruptor apagado: camino de siempre (abajo), sin cambios.
     }
@@ -630,7 +633,7 @@ class WebOrderConfirmationService {
     opciones: { metodo: string; referencia?: string | null },
   ): Promise<CobroEnCajaResult> {
     // Regla única: un pedido de pasarela (pagado o no) NUNCA se cobra en caja.
-    if (esMetodoDePasarela(order.payment_method)) {
+    if (pedidoEsDePasarela(order)) {
       throw new CobroEnCajaError('PEDIDO_DE_PASARELA', 'Pedido de pasarela: usa «Marcar como pagado»');
     }
     if (!esMetodoCobroEnCaja(opciones.metodo)) {
@@ -697,7 +700,7 @@ class WebOrderConfirmationService {
    * quién y cuándo, idempotente. No pide referencia ni comprobante.
    */
   async marcarPagadoPasarela(order: WebOrder): Promise<PagoPasarelaResult> {
-    if (!esMetodoDePasarela(order.payment_method)) {
+    if (!pedidoEsDePasarela(order)) {
       throw new CobroEnCajaError('NO_ES_PASARELA', 'El pedido se cobra en caja');
     }
     if (!order.sale_id) throw new CobroEnCajaError('PEDIDO_SIN_CONFIRMAR', 'Confirma el pedido primero');
@@ -757,7 +760,7 @@ class WebOrderConfirmationService {
           (resumen.yaPagadosPasarela ??= []).push(completo.order_number);
           continue;
         }
-        const metodo = metodoDeCobroEnCaja(completo.payment_method);
+        const metodo = metodoDeCobroEnCaja(completo.payment_method, completo.payment_reference);
         if (!metodo) {
           // Pasarela sin pago confirmado: no es un cobro de mostrador.
           anotar('PEDIDO_DE_PASARELA', completo.order_number);

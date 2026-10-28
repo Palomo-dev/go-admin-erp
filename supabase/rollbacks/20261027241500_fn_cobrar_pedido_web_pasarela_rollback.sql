@@ -1,9 +1,11 @@
 -- Rollback exacto de 20261027241500: vuelve a la definición de PROD leída el 27-oct-2026
--- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
---   242000 → 244000 → 243000 → 241500.
--- (pg_get_functiondef) y borra el auxiliar fn_metodo_es_pasarela.
--- ORDEN: si están aplicadas, revertir ANTES 20261027244000 (la RPC vieja llama a fn_metodo_es_pasarela:
+--   242000 → 245000 → 244000 → 243000 → 241500.
+-- (pg_get_functiondef) y borra los auxiliares fn_metodo_es_pasarela, fn_pedido_web_es_pasarela y
+-- fn_pasarela_metodo_pago.
+-- ORDEN: si están aplicadas, revertir ANTES 20261027245000 (fn_confirmar_pedido_web_completo usa
+--   fn_pedido_web_es_pasarela), 20261027244000 (la RPC vieja llama a fn_metodo_es_pasarela:
 --   sin ese rollback falla en ejecución) y 20261027243000 (también la usa); este rollback la borra.
 --   Si la 242000 está aplicada, revertirla primero de todas.
 -- Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo>
@@ -137,6 +139,8 @@ $function$;
 revoke all on function public.fn_cobrar_pedido_web_en_caja(uuid, text, jsonb, text, numeric) from public;
 grant execute on function public.fn_cobrar_pedido_web_en_caja(uuid, text, jsonb, text, numeric) to authenticated, service_role;
 
+drop function if exists public.fn_pasarela_metodo_pago(integer, text);
+drop function if exists public.fn_pedido_web_es_pasarela(text, text);
 drop function if exists public.fn_metodo_es_pasarela(text);
 
 commit;

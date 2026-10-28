@@ -36144,7 +36144,8 @@
         "qr": "por QR"
       },
       "errorMarcarPagado": "Não foi possível marcar como pago",
-      "pendienteMarcarPagado": "Pedido confirmado sem marcar como pago"
+      "pendienteMarcarPagado": "Pedido confirmado sem marcar como pago",
+      "sinStockReactivar": "Não há estoque suficiente para reativar o pedido. Ajuste o estoque dos produtos em falta e tente novamente; o pedido não foi alterado."
     },
     "tipoCorto": {
       "pickup": "Retirada",

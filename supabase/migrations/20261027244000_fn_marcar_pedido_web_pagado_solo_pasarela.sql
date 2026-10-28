@@ -1,7 +1,7 @@
 -- 20261027244000 · fn_marcar_pedido_web_pagado (RPC VIEJA): cerrada para pedidos de pasarela y para métodos de caja
--- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
---   242000 → 244000 → 243000 → 241500.
+--   242000 → 245000 → 244000 → 243000 → 241500.
 -- SIN APLICAR. Aplicar DESPUÉS de 20261027241500 (fn_metodo_es_pasarela) y 20261027243000
 -- (fn_marcar_pedido_web_pagado_pasarela), con: psql -v ON_ERROR_STOP=1 -f <archivo>
 --
@@ -78,7 +78,7 @@ begin
   end if;
   -- 20261027244000: un pedido de pasarela solo se marca pagado con fn_marcar_pedido_web_pagado_pasarela
   -- (pago de la pasarela, referencia MANUAL, auditoría MARK_PAID_GATEWAY_MANUAL), nunca aquí.
-  if public.fn_metodo_es_pasarela(v_wo.payment_method) then
+  if public.fn_pedido_web_es_pasarela(v_wo.payment_method, v_wo.payment_reference) then
     raise exception 'USAR_MARCAR_PAGADO_PASARELA' using errcode = '22023',
       detail = 'Pedido ' || v_wo.order_number || ' (' || coalesce(v_wo.payment_method, '-')
                || '): pedido de pasarela.',

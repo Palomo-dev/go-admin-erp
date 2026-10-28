@@ -58,3 +58,30 @@ describe('notasInternasVisibles', () => {
     expect(notasInternasVisibles(null)).toBe('');
   });
 });
+
+describe('cobroDelPedido · cancelado por pago fallido y cualquier pasarela (t334/t335)', () => {
+  test('cancelado por pago fallido de pasarela, sin venta: «Marcar como pagado» de un clic', () => {
+    const c = cobroDelPedido({ ...base, status: 'cancelled', payment_status: 'failed', payment_method: 'wompi', payment_reference: '1-2-3' });
+    expect(c).toEqual({ puedeCobrar: false, cobraYEntrega: false, marcarPagadoPasarela: true });
+  });
+  test('cancelado por pago fallido pero con venta, de mesa o no de pasarela: sin botón', () => {
+    const cf = { ...base, status: 'cancelled', payment_status: 'failed' } as const;
+    expect(cobroDelPedido({ ...cf, payment_method: 'wompi', sale_id: 's-1' }).marcarPagadoPasarela).toBe(false);
+    expect(cobroDelPedido({ ...cf, payment_method: 'wompi', table_session_id: 't-1' }).marcarPagadoPasarela).toBe(false);
+    expect(cobroDelPedido({ ...cf, payment_method: 'cash' }).marcarPagadoPasarela).toBe(false);
+  });
+  test.each([
+    ['mp_checkout', null], ['stripe_payments', null], ['paypal_checkout', null], ['payu_co', null], ['bold_link', null],
+    ['visa', '1234567'], ['account_money', '987'], ['link', 'pi_1'], ['pasarela_futura', 'ref-1'],
+  ])('%s (ref %s): pasarela, nunca «Cobrar» en caja', (payment_method, payment_reference) => {
+    expect(cobroDelPedido({ ...base, payment_method, payment_reference })).toEqual({
+      puedeCobrar: false, cobraYEntrega: false, marcarPagadoPasarela: true,
+    });
+  });
+  test.each([['cash', 'REF-1'], ['transfer', 'REF-1'], ['qr', null], ['mesa', null]])(
+    '%s (ref %s) sigue cobrándose en caja',
+    (payment_method, payment_reference) => {
+      expect(cobroDelPedido({ ...base, payment_method, payment_reference }).puedeCobrar).toBe(true);
+    },
+  );
+});

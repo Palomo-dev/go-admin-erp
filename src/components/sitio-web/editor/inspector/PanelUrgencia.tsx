@@ -1,6 +1,13 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
+import { Tag } from 'lucide-react'
 import { SelectKit, NumeroKit, CasillaKit } from './controlesKit'
+import { CampoFecha, SelectorEntidad } from '@/components/kit'
+import { CampoHora } from '@/components/kit/CampoHora'
+import { supabase } from '@/lib/supabase/config'
+import { getOrganizationId } from '@/lib/hooks/useOrganization'
+import { partirFin, unirFin } from './finContador'
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio'
 import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext'
 import { conversionDesdeColumnas, type ConversionSitio, type ContadorConversion, type UbicacionContador } from '@/lib/website/conversion'
@@ -79,9 +86,7 @@ export function PanelUrgencia({
         </SelectKit>
       </div>
       {contador?.modo.tipo === 'fecha' && (
-        <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fin
-          <input className={control} disabled={deshabilitado} value={contador.modo.fin} onChange={(e) => setContador({ modo: { tipo: 'fecha', fin: e.target.value, zona: contador.modo.tipo === 'fecha' ? contador.modo.zona : timezone } })} />
-        </label>
+        <FinContador fin={contador.modo.fin} zona={contador.modo.zona || timezone} deshabilitado={deshabilitado} onCambiar={(fin) => setContador({ modo: { tipo: 'fecha', fin, zona: contador.modo.tipo === 'fecha' && contador.modo.zona ? contador.modo.zona : timezone } })} />
       )}
       {contador?.modo.tipo === 'diario' && (
         <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Hora de reinicio
@@ -89,9 +94,7 @@ export function PanelUrgencia({
         </label>
       )}
       {contador?.modo.tipo === 'promocion' && (
-        <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Id de promoción
-          <input className={control} disabled={deshabilitado} value={contador.modo.promotionId} onChange={(e) => setContador({ modo: { tipo: 'promocion', promotionId: e.target.value } })} />
-        </label>
+        <SelectorPromocion promotionId={contador.modo.promotionId} deshabilitado={deshabilitado} onCambiar={(promotionId) => setContador({ modo: { tipo: 'promocion', promotionId } })} />
       )}
       {contador?.modo.tipo === 'evergreen' && (
         <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Minutos por sesión
@@ -134,5 +137,64 @@ export function PanelUrgencia({
       <CasillaKit titulo="Reserva en carrito" disabled checked={false} onChange={() => undefined} />
       <p className="text-[12px] text-fg-secondary">La reserva y «personas viendo» siguen apagadas: no hay una métrica real y no se inventan números.</p>
     </section>
+  )
+}
+
+function FinContador({ fin, zona, deshabilitado, onCambiar }: { fin: string; zona: string; deshabilitado?: boolean; onCambiar: (fin: string) => void }) {
+  const { dia, hora } = partirFin(fin)
+  return (
+    <div role="group" aria-label="Fin" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fin ({zona})
+      <div className="grid grid-cols-2 gap-2">
+        <CampoFecha tamano="sm" valor={dia || null} disabled={deshabilitado} onValorChange={(d) => onCambiar(unirFin(d, hora, zona))} />
+        <CampoHora tamano="sm" valor={hora || null} disabled={deshabilitado || !dia} onValorChange={(h) => onCambiar(unirFin(dia, h, zona))} />
+      </div>
+    </div>
+  )
+}
+
+type Promocion = { id: string; name: string | null; end_date: string | null; is_active: boolean | null; applies_to_web: boolean | null }
+const SIN_PROMOCION = '00000000-0000-4000-8000-000000000000'
+
+function SelectorPromocion({ promotionId, deshabilitado, onCambiar }: { promotionId: string; deshabilitado?: boolean; onCambiar: (id: string) => void }) {
+  const buscar = useCallback(async (texto: string, senal: AbortSignal) => {
+    let q = supabase
+      .from('promotions')
+      .select('id, name, end_date, is_active, applies_to_web')
+      .eq('organization_id', getOrganizationId())
+      .order('name')
+      .limit(20)
+      .abortSignal(senal)
+    const limpio = texto.trim().replace(/[%,()]/g, '')
+    if (limpio) q = q.ilike('name', `%${limpio}%`)
+    const { data, error } = await q
+    if (error) throw error
+    return (data ?? []) as Promocion[]
+  }, [])
+  const elegida = !!promotionId && promotionId !== SIN_PROMOCION
+  const [actual, setActual] = useState<Promocion | null>(null)
+  useEffect(() => {
+    if (!elegida || actual?.id === promotionId) return
+    let vivo = true
+    supabase.from('promotions').select('id, name, end_date, is_active, applies_to_web').eq('organization_id', getOrganizationId()).eq('id', promotionId).maybeSingle()
+      .then(({ data }) => { if (vivo && data) setActual(data as Promocion) })
+    return () => { vivo = false }
+  }, [elegida, promotionId, actual?.id])
+  const valor: Promocion | null = !elegida ? null : actual?.id === promotionId ? actual : { id: promotionId, name: null, end_date: null, is_active: null, applies_to_web: null }
+  return (
+    <SelectorEntidad<Promocion>
+      layout="campo"
+      etiqueta="Promoción"
+      icono={Tag}
+      valor={valor}
+      deshabilitado={deshabilitado}
+      aOpcion={(p) => ({
+        id: p.id,
+        titulo: p.name ?? p.id,
+        subtitulo: p.is_active === null ? undefined : [p.end_date ? `Termina ${p.end_date}` : 'Sin fecha fin', p.is_active && p.applies_to_web ? null : 'No activa en la web'].filter(Boolean).join(' · '),
+      })}
+      buscar={buscar}
+      onCambiar={(p) => { setActual(p); onCambiar(p.id) }}
+      textos={{ placeholder: 'Elegir promoción', buscar: 'Buscar promoción', titulo: 'Promoción', vacio: 'Sin promociones', sinResultados: 'Ninguna promoción con ese nombre' }}
+    />
   )
 }

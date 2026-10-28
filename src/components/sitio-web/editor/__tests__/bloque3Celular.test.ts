@@ -66,3 +66,71 @@ describe('Bloque 3: celular del encabezado', () => {
     expect(ids).not.toContain('mobile_header__bottom_nav');
   });
 });
+
+import {
+  cambioBordeIconos,
+  cambioBuscadorPantallaCompleta,
+  cambioGlifoMenu,
+  cambioLadoCajon,
+  cambioPanel,
+  cambioTarjetaMenu,
+  glifoMenu,
+  muestraBuscadorPantallaCompleta,
+  panelMenu,
+  tarjetaMenu,
+} from '../inspector/celularLogica';
+import { entradasAnterioresEncabezado } from '../inspector/anterioresLogica';
+import { leerPresentacionMovil } from '@/lib/website/menuMovil';
+
+describe('bloque 3 · Celular completo (panel, íconos, buscador)', () => {
+  it('sin nada guardado: valores de siempre y la tienda sigue con el encabezado de hoy', () => {
+    expect(tarjetaMenu({})).toBe('cajon');
+    expect(panelMenu({})).toMatchObject({ width: 85, background: 'color', overlay: 50, animation: 'slide' });
+    expect(glifoMenu({})).toBe('lines3');
+    expect(leerPresentacionMovil({})).toBeNull();
+  });
+
+  it('el valor de siempre no se guarda; otro sí y la tienda lo lee', () => {
+    expect(cambioPanel({}, 'width', 85)).toEqual({ mobile_header: null });
+    const c = cambioPanel({}, 'width', 92);
+    expect(c).toEqual({ mobile_header: { panel: { width: 92 } } });
+    expect(leerPresentacionMovil(c)?.panel?.width).toBe(92);
+    const g = cambioPanel({ mobile_header: { panel: { background: 'gradient', gradient_1: '#000', gradient_2: '#fff' } } }, 'background', 'blur');
+    expect(g).toEqual({ mobile_header: { panel: { background: 'blur' } } });
+  });
+
+  it('cajón lateral: la tarjeta conserva el lado y el lado cambia el estilo', () => {
+    expect(cambioTarjetaMenu({ mobile_menu_style: 'drawer_left' }, 'cajon')).toEqual({});
+    expect(cambioTarjetaMenu({ mobile_menu_style: 'tabs' }, 'cajon')).toEqual({ mobile_menu_style: 'drawer' });
+    expect(cambioLadoCajon({}, 'izquierda')).toEqual({ mobile_menu_style: 'drawer_left' });
+  });
+
+  it('íconos: tres líneas y «como en computador» no se guardan; el círculo queda', () => {
+    expect(cambioGlifoMenu({}, 'lines3')).toEqual({});
+    expect(cambioGlifoMenu({}, 'dots')).toEqual({ mobile_header: { icons: { menu: 'dots' } } });
+    expect(cambioGlifoMenu({ mobile_header: { icons: { menu: 'dots' } } }, 'lines3')).toEqual({ mobile_header: null });
+    expect(cambioBordeIconos({}, true)).toEqual({ mobile_header: { icons: { style: 'border' } } });
+    expect(cambioBordeIconos({ mobile_header: { icons: { style: 'circle' } } }, false)).toEqual({});
+  });
+
+  it('buscador: pantalla completa solo con el ícono; ya no aparece en «anteriores»', () => {
+    expect(muestraBuscadorPantallaCompleta({})).toBe(true);
+    expect(muestraBuscadorPantallaCompleta({ search_style: 'bar', mobile_search_style: null })).toBe(false);
+    expect(cambioBuscadorPantallaCompleta({}, true)).toEqual({ mobile_header: { search: 'fullscreen' } });
+    expect(cambioBuscadorPantallaCompleta({ mobile_header: { search: 'fullscreen' } }, false)).toEqual({ mobile_header: null });
+    const a = { mobile_header: { search: 'fullscreen', panel: { width: 90 }, icons: { menu: 'dots' } } };
+    expect(entradasAnterioresEncabezado(a, ['mobile_header'])).toEqual([]);
+  });
+});
+
+describe('QA 28-oct · duplicados', () => {
+  it('logo y orden del celular ya no aparecen en «anteriores»; el resto de layout sí', () => {
+    expect(entradasAnterioresEncabezado({ mobile_header: { layout: { logo: 'center', arrangement: 'menu-logo-acciones' } } }, ['mobile_header'])).toEqual([]);
+    const e = entradasAnterioresEncabezado({ mobile_header: { layout: { logo: 'center', header_height: 70 } } }, ['mobile_header']);
+    expect(e.map((x) => x.id)).toEqual(['mobile_header__layout']);
+  });
+
+  it('el orden solo no cambia el encabezado de siempre en la tienda (P2)', () => {
+    expect(leerPresentacionMovil({ mobile_menu_style: 'fullscreen', mobile_header: { layout: { arrangement: 'menu-logo-acciones' } } })?.usarHeaderNuevo).toBe(false);
+  });
+});

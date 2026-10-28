@@ -130,13 +130,13 @@ describe('InspectorEncabezado', () => {
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
     expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú']);
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Megamenú' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega', header_layout: null, logo_position: 'left', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega', header_layout: null, logo_position: 'left' });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Logo centrado' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', header_layout: null, logo_position: 'center', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', header_layout: null, logo_position: 'center' });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', header_layout: null, logo_position: 'center', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', header_layout: null, logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
-    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
     expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
@@ -147,7 +147,7 @@ describe('InspectorEncabezado', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Posición del logo' })).toBeNull();
     expect(screen.getByText('En esta composición el logo va al centro.')).toBeTruthy();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Diseño del encabezado' })).getByRole('radio', { name: 'Clásico' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'default', header_layout: null, logo_position: 'left', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'default', header_layout: null, logo_position: 'left' });
   });
 
   test('Estilo: encabezado sobre la portada y espacio de la primera sección', () => {

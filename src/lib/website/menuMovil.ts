@@ -261,6 +261,15 @@ export function leerPresentacionMovil(settings: unknown): PresentacionMovil | nu
   const iconos = header ? leerIconos(header.icons) : null
   const buscador = header ? enLista(BUSCADORES, header.search) ?? null : null
   if (!estiloNuevo && !panel && !barra && !layout && !iconos && !buscador) return null
-  const usarHeaderNuevo = Boolean(estiloNuevo || panel || layout || iconos || buscador || (barra && estilo === 'tabs'))
+  // Logo y orden solos los pinta el encabezado de siempre (FilaLogoMovil): cambiar el orden no
+  // cambia el resto del aspecto (QA 28-oct P2).
+  const layoutPropio = !!layout && (layout.logoSize != null || layout.headerHeight != null || !layout.sticky || layout.hideOnScroll || layout.transparentHero)
+  const usarHeaderNuevo = Boolean(estiloNuevo || panel || layoutPropio || iconos || buscador || (barra && estilo === 'tabs'))
   return { estilo, usarHeaderNuevo, panel, barra, layout, iconos, buscador }
+}
+
+/** Orden de logo e íconos en el celular (`mobile_header.layout.arrangement`); sin clave, el de hoy. */
+export function ordenMovil(settings: unknown): (typeof DISPOSICIONES)[number] {
+  const layout = objeto(objeto(objeto(settings)?.mobile_header)?.layout)
+  return enLista(DISPOSICIONES, layout?.arrangement) ?? 'logo-acciones-menu'
 }

@@ -404,7 +404,7 @@ export function cambioComposicion(c: string): Record<string, unknown> {
     header_style: c,
     header_layout: null,
     logo_position: c === 'centered' || c === 'split' ? 'center' : 'left',
-    mobile_logo_position: null,
+    // El logo del celular elegido en «Celular» se conserva (QA 28-oct P3).
   };
 }
 
@@ -466,7 +466,7 @@ function Diseno(p: Interno) {
               { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
             ]}
             valor={ladoLogo(a)}
-            onValorChange={(v) => cambiar({ logo_position: v, mobile_logo_position: null })}
+            onValorChange={(v) => cambiar({ logo_position: v })}
           />
           <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.logoAyuda')}</p>
         </div>
@@ -508,7 +508,7 @@ function Diseno(p: Interno) {
           </p>
         )}
       </div>
-      <CelularEncabezado ajustes={a} cambiar={cambiar} />
+      <CelularEncabezado ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
     </>
   );
 }

@@ -27,7 +27,8 @@ describe('Ajustes anteriores por clave y con dependencias', () => {
   it('Run Sneak: los íconos del celular no se pueden quitar (borraría círculo y cuenta)', () => {
     const e = entradasAnterioresEncabezado(runSneak, CLAVES_ANTERIORES_ENCABEZADO);
     const iconos = e.find((x) => x.id === 'mobile_header__icons');
-    expect(iconos).toEqual({ id: 'mobile_header__icons', quitar: null, motivo: 'circulo' });
+    // El estilo círculo vive en «Círculo acento»: ya no se lista como anterior.
+    expect(iconos).toBeUndefined();
     expect(e.find((x) => x.id === 'header_mobile_icon_color')?.quitar).toEqual({ header_mobile_icon_color: null });
     const todos = cambioQuitarTodos(runSneak, e);
     expect(todos).not.toHaveProperty('mobile_header');
@@ -35,10 +36,10 @@ describe('Ajustes anteriores por clave y con dependencias', () => {
   });
 
   it('una parte del celular se quita sola si el encabezado del celular sigue igual', () => {
-    const a = { mobile_header: { icons: { style: 'circle' }, panel: { width: 80 } } };
+    const a = { mobile_header: { icons: { color: '#111111' }, layout: { header_height: 60 } } };
     const e = entradasAnterioresEncabezado(a, ['mobile_header']);
-    expect(e.map((x) => x.id)).toEqual(['mobile_header__panel', 'mobile_header__icons']);
-    expect(e[0].quitar).toEqual({ mobile_header: { icons: { style: 'circle' } } });
+    expect(e.map((x) => x.id)).toEqual(['mobile_header__layout', 'mobile_header__icons']);
+    expect(e[0].quitar).toEqual({ mobile_header: { icons: { color: '#111111' } } });
     // Por separado cada una se puede quitar, pero juntas no: «Quitar todos» deja una.
     const todos = cambioQuitarTodos(a, e);
     expect(usaEncabezadoMovilNuevo(todos.mobile_header, undefined)).toBe(true);

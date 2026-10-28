@@ -9,13 +9,13 @@
  * - Menú inferior tipo app: `mobile_header.bottom_nav` (apagado = `enabled` false o ausente).
  *   Encenderlo no cambia el encabezado (la tienda lo pone sobre el de hoy).
  */
-import { ICONOS_ITEM, ITEMS_BARRA_INICIALES, TIPOS_ITEM, leerBarra, type ItemBarra } from '@/lib/website/menuMovil';
+import { ANIMACIONES, FONDOS_PANEL, GLIFOS_MENU, ICONOS_ITEM, ITEMS_BARRA_INICIALES, LISTAS_CATEGORIA, TIPOS_ITEM, leerBarra, type ItemBarra } from '@/lib/website/menuMovil';
 
 export const MENUS_CELULAR = ['drawer', 'drawer_left', 'bottom_sheet', 'top_dropdown', 'fullscreen', 'tabs', 'none'] as const;
 export type MenuCelular = (typeof MENUS_CELULAR)[number];
 export const LOGOS_CELULAR = ['inherit', 'left', 'center', 'right'] as const;
 export const ORDENES_CELULAR = ['logo-acciones-menu', 'menu-logo-acciones', 'logo-sobre-acciones', 'acciones-sobre-logo'] as const;
-export { ICONOS_ITEM, TIPOS_ITEM };
+export { ANIMACIONES, FONDOS_PANEL, GLIFOS_MENU, ICONOS_ITEM, LISTAS_CATEGORIA, TIPOS_ITEM };
 
 const objeto = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
 const en = <T extends string>(l: readonly T[], v: unknown): T | undefined => (typeof v === 'string' && (l as readonly string[]).includes(v) ? (v as T) : undefined);
@@ -134,4 +134,120 @@ export function itemNuevo(items: readonly ItemMenuInferior[]): ItemMenuInferior 
 export function itemConTipo(it: ItemMenuInferior, kind: (typeof TIPOS_ITEM)[number]): ItemMenuInferior {
   const base = leerBarra({ enabled: true, items: [{ kind }, { kind: 'home' }, { kind: 'home' }] })!.items[0];
   return { ...aGuardado(base), id: it.id, show_label: it.show_label };
+}
+
+// ─── Tarjetas del menú (Figma 1787:903064): «Cajón lateral» con su lado aparte ───────────────────
+
+export const TARJETAS_MENU = ['cajon', 'bottom_sheet', 'fullscreen', 'tabs', 'top_dropdown', 'none'] as const;
+export type TarjetaMenu = (typeof TARJETAS_MENU)[number];
+
+export function tarjetaMenu(a: Record<string, unknown>): TarjetaMenu {
+  const m = menuCelular(a);
+  return m === 'drawer' || m === 'drawer_left' ? 'cajon' : m;
+}
+
+export function ladoCajon(a: Record<string, unknown>): 'derecha' | 'izquierda' {
+  return menuCelular(a) === 'drawer_left' ? 'izquierda' : 'derecha';
+}
+
+export function cambioTarjetaMenu(a: Record<string, unknown>, v: TarjetaMenu): Record<string, unknown> {
+  if (v === 'cajon') return tarjetaMenu(a) === 'cajon' ? {} : { mobile_menu_style: 'drawer' };
+  return cambioMenuCelular(a, v);
+}
+
+export function cambioLadoCajon(a: Record<string, unknown>, lado: 'derecha' | 'izquierda'): Record<string, unknown> {
+  return cambioMenuCelular(a, lado === 'izquierda' ? 'drawer_left' : 'drawer');
+}
+
+// ─── Panel del menú (`mobile_header.panel`) ───────────────────────────────────────────────────────
+
+/** Valores con los que la tienda pinta el panel cuando no hay nada guardado (`leerPanel`). */
+export const PANEL_POR_DEFECTO = { width: 85, background: 'color', overlay: 50, animation: 'slide', show_logo: false, show_search: false, show_social: false, show_contact: false, categories: 'accordion' } as const;
+export type ClavePanel = keyof typeof PANEL_POR_DEFECTO | 'color' | 'gradient_1' | 'gradient_2';
+
+export function panelMenu(a: Record<string, unknown>): Record<string, unknown> {
+  const p = objeto(objeto(a.mobile_header)?.panel) ?? {};
+  return { ...PANEL_POR_DEFECTO, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v != null && v !== '')) };
+}
+
+/**
+ * Cambia una opción del panel. El valor de siempre no se guarda: con el panel vacío la tienda
+ * sigue con el menú de hoy (cualquier clave del panel pasa el celular al encabezado configurable).
+ */
+export function cambioPanel(a: Record<string, unknown>, clave: ClavePanel, valor: unknown): Record<string, unknown> {
+  const h = objeto(a.mobile_header) ?? {};
+  const p: Record<string, unknown> = { ...(objeto(h.panel) ?? {}) };
+  const def = (PANEL_POR_DEFECTO as Record<string, unknown>)[clave];
+  if (valor == null || valor === '' || valor === def) delete p[clave];
+  else p[clave] = valor;
+  if (clave === 'background' && valor !== 'gradient') {
+    delete p.gradient_1;
+    delete p.gradient_2;
+  }
+  const cabecera: Record<string, unknown> = { ...h };
+  if (Object.keys(p).length) cabecera.panel = p;
+  else delete cabecera.panel;
+  return { mobile_header: Object.keys(cabecera).length ? cabecera : null };
+}
+
+// ─── Íconos (`mobile_header.icons`) ──────────────────────────────────────────────────────────────
+
+function conIconos(a: Record<string, unknown>, clave: string, valor: unknown): Record<string, unknown> {
+  const h = objeto(a.mobile_header) ?? {};
+  const i: Record<string, unknown> = { ...(objeto(h.icons) ?? {}) };
+  if (valor === undefined) delete i[clave];
+  else i[clave] = valor;
+  const cabecera: Record<string, unknown> = { ...h };
+  if (Object.keys(i).length) cabecera.icons = i;
+  else delete cabecera.icons;
+  return { mobile_header: Object.keys(cabecera).length ? cabecera : null };
+}
+
+export function glifoMenu(a: Record<string, unknown>): (typeof GLIFOS_MENU)[number] {
+  return en(GLIFOS_MENU, objeto(objeto(a.mobile_header)?.icons)?.menu) ?? 'lines3';
+}
+
+/** Tres líneas es el ícono de siempre: elegirlo quita la clave. */
+export function cambioGlifoMenu(a: Record<string, unknown>, v: (typeof GLIFOS_MENU)[number]): Record<string, unknown> {
+  if (glifoMenu(a) === v) return {};
+  return conIconos(a, 'menu', v === 'lines3' ? undefined : v);
+}
+
+/**
+ * Estilo de los íconos del celular. El círculo se elige en «Círculo acento» (una opción para
+ * computador y celular); aquí queda «Como en computador» o «Con borde».
+ */
+export function bordeIconos(a: Record<string, unknown>): boolean {
+  return objeto(objeto(a.mobile_header)?.icons)?.style === 'border';
+}
+
+export function cambioBordeIconos(a: Record<string, unknown>, borde: boolean): Record<string, unknown> {
+  if (bordeIconos(a) === borde) return {};
+  return conIconos(a, 'style', borde ? 'border' : undefined);
+}
+
+// ─── Buscador del celular (`mobile_header.search`) ───────────────────────────────────────────────
+
+/** El estilo (ícono, barra, oculto) es la opción única «Buscador»; aquí solo cómo abre el ícono. */
+export function buscadorPantallaCompleta(a: Record<string, unknown>): boolean {
+  return objeto(a.mobile_header)?.search === 'fullscreen';
+}
+
+export function muestraBuscadorPantallaCompleta(a: Record<string, unknown>): boolean {
+  const s = objeto(a.mobile_header)?.search;
+  if (s === 'fullscreen' || s === 'icon') return true;
+  if (s === 'bar') return false;
+  // Igual que `buscadorMovil` de la tienda (lib/website/opcionUnica.ts).
+  const propio = a.mobile_search_style;
+  if (propio === 'icon' || propio === 'bar' || propio === 'hidden') return propio === 'icon';
+  if (propio === null) return (a.search_style ?? 'icon') === 'icon';
+  return true;
+}
+
+export function cambioBuscadorPantallaCompleta(a: Record<string, unknown>, si: boolean): Record<string, unknown> {
+  const h = objeto(a.mobile_header) ?? {};
+  const cabecera: Record<string, unknown> = { ...h };
+  if (si) cabecera.search = 'fullscreen';
+  else delete cabecera.search;
+  return { mobile_header: Object.keys(cabecera).length ? cabecera : null };
 }

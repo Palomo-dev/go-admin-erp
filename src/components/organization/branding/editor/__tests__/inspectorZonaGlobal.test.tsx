@@ -153,7 +153,7 @@ describe('HeaderInspector', () => {
   test('con el lienzo en celular abre en «Celular» con el panel móvil', () => {
     renderConIdioma(<HeaderInspector {...base} devicePreview="mobile" />);
     expect(screen.getByRole('tab', { name: 'Celular' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByText('Estilo del menú móvil')).toBeTruthy();
+    expect(screen.getByText('Menú en el celular')).toBeTruthy();
   });
 
   test('Contenido trae el menú con «Editar menú»; Estilo, los colores', () => {

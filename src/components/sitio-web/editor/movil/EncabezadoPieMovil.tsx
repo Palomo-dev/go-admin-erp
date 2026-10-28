@@ -36,11 +36,11 @@ import HeaderLayoutSelector from '@/components/organization/branding/editor/Head
 import HeaderOptionsPanel from '@/components/organization/branding/editor/HeaderOptionsPanel';
 import FooterLayoutSelector from '@/components/organization/branding/editor/FooterLayoutSelector';
 import FooterOptionsPanel from '@/components/organization/branding/editor/FooterOptionsPanel';
-import MobileHeaderPanel from '@/components/organization/branding/editor/MobileHeaderPanel';
+import { CelularEncabezado } from '@/components/sitio-web/editor/inspector/CelularEncabezado';
+import { tarjetaMenu } from '@/components/sitio-web/editor/inspector/celularLogica';
 import {
   BocetoEncabezado,
   opcionesEncabezado,
-  opcionesEncabezadoMovil,
 } from '@/components/organization/branding/editor/inspector/HeaderInspector';
 import { BocetoPie, opcionesPie } from '@/components/organization/branding/editor/inspector/FooterInspector';
 import type { EditorSitio } from '../useEditorSitio';
@@ -69,7 +69,6 @@ function nombre(t: TraductorEditor, clave: string, valor: string): string {
 /** Resumen de cada ajuste (segunda línea de la fila), con los mismos valores por defecto del inspector. */
 export function resumenEncabezadoPie(settings: WebsiteSettings, t: TraductorEditor): Record<AjusteEncabezadoPie, string> {
   const e = opcionesEncabezado(settings);
-  const m = opcionesEncabezadoMovil(settings);
   const { opciones: p } = opcionesPie(settings);
   const acciones = [e.show_header_cart && t('encabezadoPie.accion.carrito'), e.show_header_auth && t('encabezadoPie.accion.cuenta')].filter(
     (x): x is string => typeof x === 'string',
@@ -89,7 +88,7 @@ export function resumenEncabezadoPie(settings: WebsiteSettings, t: TraductorEdit
       : t('encabezadoPie.sinBoton'),
     acciones: acciones.length > 0 ? acciones.join(', ') : t('encabezadoPie.sinAcciones'),
     pie: `${nombre(t, 'encabezadoPie.estiloPie', p.footer_style)} · ${t('encabezadoPie.columnas', { n: p.footer_columns })}`,
-    celular: `${nombre(t, 'encabezadoPie.menuCelular', m.mobile_menu_style)}${(settings as unknown as Record<string, unknown>).header_sticky !== false ? ` · ${t('encabezadoPie.fijo')}` : ''}`,
+    celular: `${t(`zonaGlobal.movilEncabezado.menuOpcion.${tarjetaMenu(settings as unknown as Record<string, unknown>)}`)}${(settings as unknown as Record<string, unknown>).header_sticky !== false ? ` · ${t('encabezadoPie.fijo')}` : ''}`,
   };
 }
 
@@ -126,7 +125,6 @@ export function EncabezadoPieMovil({ editor, onVolver, onPublicar, onVistaPrevia
   };
 
   const e = opcionesEncabezado(vista);
-  const m = opcionesEncabezadoMovil(vista);
   const { opciones: p } = opcionesPie(vista);
 
   return (
@@ -273,7 +271,7 @@ export function EncabezadoPieMovil({ editor, onVolver, onPublicar, onVistaPrevia
               <FooterOptionsPanel grupo="diseno" settings={p} onUpdate={anotar} />
             </>
           )}
-          {hoja === 'celular' && <MobileHeaderPanel settings={m} onUpdate={anotar} />}
+          {hoja === 'celular' && <CelularEncabezado ajustes={vista as unknown as Record<string, unknown>} cambiar={anotar} />}
         </div>
       </PanelAdaptable>
     </div>

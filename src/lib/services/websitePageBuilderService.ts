@@ -563,8 +563,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       // Las galerías no abrían la foto: con la clave ausente el sitio sigue sin abrirla.
       { key: 'lightbox', label: 'Lightbox al hacer clic', type: 'boolean', group: 'behavior', defaultValue: false },
       ...GRID_FIELDS,
-      // CAROUSEL_FIELDS aplica sobre todo a la variante carousel
-      ...CAROUSEL_FIELDS,
+      // CAROUSEL_FIELDS: solo en las variantes que pasan fotos (Carrusel y Pantalla completa).
+      // «Mosaico» y «Grid» no son carruseles: el grupo no aparece (QA 27-oct). Lo fino por clave
+      // (apariencia y «Elementos visibles» solo en Carrusel) está en `interruptoresSitio.ts`.
+      ...CAROUSEL_FIELDS.map((f) => ({ ...f, showIf: { ...f.showIf, variantIn: ['carousel', 'fullscreen'] } })),
     ],
   },
   {

@@ -61,6 +61,14 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
     'pause_on_hover': ['carousel', 'fullscreen'],
     'show_arrows': ['carousel', 'fullscreen'],
     'show_dots': ['carousel', 'fullscreen'],
+    // Apariencia (goadmin-websites 391e570) y «Elementos visibles» (d46d4f5): solo GalleryCarousel.
+    'arrow_size': ['carousel'],
+    'arrow_style': ['carousel'],
+    'arrow_color': ['carousel'],
+    'arrow_bg_color': ['carousel'],
+    'dot_style': ['carousel'],
+    'transition_ms': ['carousel'],
+    'slides_per_view': ['carousel'],
   },
   // El iframe de Google Maps no permite quitar el marcador.
   map: {

@@ -1,5 +1,13 @@
 -- RLS sin subconsultas por fila + índices parciales para el conteo de ofertas. SIN APLICAR en prod.
 --
+-- ORDEN DE APLICACIÓN:
+--   1) 20261027235900_indices_ofertas_concurrently.sql — FUERA de transacción (CREATE INDEX
+--      CONCURRENTLY, no bloquea escrituras del POS). Se corre ANTES.
+--   2) Este archivo (20261027240000), en transacción con lock_timeout 3s / statement_timeout 60s:
+--      si no consigue los locks de las tablas (DROP/CREATE POLICY toma ACCESS EXCLUSIVE), falla y se
+--      revierte entero en vez de dejar en cola al POS. Los CREATE INDEX IF NOT EXISTS de abajo son
+--      no-op si (1) ya corrió; solo construyen (con SHARE lock) si alguien se saltó el paso 1.
+--
 -- Causa (prod, 27-oct, 18:49–19:03 COT): HEAD /rest/v1/products?select=id,product_prices!inner(id)
 -- &organization_id=eq.145&status=eq.active&product_prices.effective_to=is.null
 -- &product_prices.compare_price=gt.0 (UA node; conteo «ofertas» de /api/website/fuentes-datos)
@@ -25,13 +33,13 @@
 --
 -- Tamaños (pg_total_relation_size / heap, 2026-10-27): products 246 MB / 101 MB;
 -- product_prices 38 MB / 19 MB (~254 k filas, ~61 k vigentes); sale_items 4,7 MB / 3,2 MB
--- (~17 k filas); organization_members 128 kB.
--- Los índices van SIN CONCURRENTLY porque execute_sql corre en transacción: CREATE INDEX toma
--- SHARE lock (bloquea escrituras, no lecturas) mientras se construye. product_prices: segundos;
--- sale_items: instantáneo. Aplicar en horario de baja escritura (o crear los índices aparte con
--- CONCURRENTLY fuera de transacción y dejar aquí el IF NOT EXISTS).
+-- (~17 k filas); sales 4,7 MB (~11 k filas); organization_members 128 kB.
+-- Los índices se crean antes con CONCURRENTLY en 20261027235900 (ver ORDEN arriba); aquí quedan
+-- como respaldo IF NOT EXISTS sin CONCURRENTLY (no se puede dentro de transacción).
 
 begin;
+set local lock_timeout = '3s';
+set local statement_timeout = '60s';
 
 create or replace function public.fn_mis_orgs(p_incluir_inactivas boolean default false)
 returns integer[]
@@ -77,6 +85,22 @@ create policy select_product_prices_by_org_membership on public.product_prices
     where p.id = product_prices.product_id
       and p.organization_id = any ((select public.fn_mis_orgs(true))::integer[])));
 
+-- sales ---------------------------------------------------------------------------------------
+-- pg_policies (2026-10-27 ~19:35 COT): sales_select_policy (SELECT) y sales_insert_update_delete_policy
+-- (FOR ALL, USING y WITH CHECK) = organization_id IN (organization_members WHERE user_id = auth.uid()),
+-- sin is_active → los inactivos hoy ven/escriben → fn_mis_orgs(true). La FOR ALL también aplica a
+-- SELECT. «Allow user to delete own sales» (DELETE, user_id = auth.uid()) no se toca.
+drop policy if exists sales_select_policy on public.sales;
+create policy sales_select_policy on public.sales
+  for select to public
+  using (organization_id = any ((select public.fn_mis_orgs(true))::integer[]));
+
+drop policy if exists sales_insert_update_delete_policy on public.sales;
+create policy sales_insert_update_delete_policy on public.sales
+  for all to public
+  using (organization_id = any ((select public.fn_mis_orgs(true))::integer[]))
+  with check (organization_id = any ((select public.fn_mis_orgs(true))::integer[]));
+
 -- sale_items ----------------------------------------------------------------------------------
 drop policy if exists sale_items_select_policy on public.sale_items;
 create policy sale_items_select_policy on public.sale_items
@@ -94,7 +118,7 @@ create policy sale_items_insert_update_delete_policy on public.sale_items
     where s.id = sale_items.sale_id
       and s.organization_id = any ((select public.fn_mis_orgs(true))::integer[])));
 
--- índices parciales ---------------------------------------------------------------------------
+-- índices parciales (no-op si 20261027235900 ya los creó con CONCURRENTLY) ---------------------------------------------------------------------------
 create index if not exists idx_product_prices_ofertas_vigentes
   on public.product_prices (product_id)
   where effective_to is null and compare_price > 0;

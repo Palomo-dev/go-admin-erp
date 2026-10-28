@@ -11,7 +11,8 @@ export type EstadoPublicacion =
   | { tipo: 'publicado' }
   | { tipo: 'cambios'; cantidad: number }
   | { tipo: 'borrador' }
-  | { tipo: 'guardando' }
+  /** `pendiente`: hay cambios que el autoguardado todavía no envió («Cambios sin guardar»). */
+  | { tipo: 'guardando'; pendiente?: boolean }
   | { tipo: 'programado'; fecha: string | Date }
   | { tipo: 'sin_publicar' }
   | { tipo: 'error' };

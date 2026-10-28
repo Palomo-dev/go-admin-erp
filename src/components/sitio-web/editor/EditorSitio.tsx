@@ -297,6 +297,8 @@ function Editor() {
   const estadoPill: EstadoPublicacion | null = useMemo(() => {
     if (!ed.enV2) return null;
     if (ed.programacion && !ed.hasChanges) return { tipo: 'programado', fecha: ed.programacion.ejecutarEn };
+    // Cambios que el autoguardado aún no envió: aviso explícito hasta que empiece a guardar.
+    if (ed.estadoGuardado === 'cambios') return { tipo: 'guardando', pendiente: true };
     if (ed.estadoGuardado === 'guardando' || ed.hasChanges) return { tipo: 'guardando' };
     if (ed.listaCambios) {
       return resolverEstadoPublicacion({

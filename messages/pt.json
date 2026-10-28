@@ -31563,6 +31563,7 @@
         "borrador": "Salvo como rascunho",
         "guardando": "Salvando…",
         "programado": "Agendado · {fecha}",
+        "sinGuardar": "Alterações não salvas",
         "sinPublicar": "Não publicado",
         "error": "Não foi possível publicar"
       },

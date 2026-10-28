@@ -31562,6 +31562,7 @@
         "borrador": "Enregistré en brouillon",
         "guardando": "Enregistrement…",
         "programado": "Programmé · {fecha}",
+        "sinGuardar": "Modifications non enregistrées",
         "sinPublicar": "Non publié",
         "error": "Échec de la publication"
       },

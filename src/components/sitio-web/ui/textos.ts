@@ -18,6 +18,7 @@ export const TEXTOS_COMUN = {
     cambios: '{n} cambios sin publicar',
     borrador: 'Guardado en borrador',
     guardando: 'Guardando…',
+    sinGuardar: 'Cambios sin guardar',
     programado: 'Programado · {fecha}',
     sinPublicar: 'Sin publicar',
     error: 'No se pudo publicar',

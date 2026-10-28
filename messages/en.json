@@ -31562,6 +31562,7 @@
         "borrador": "Saved as draft",
         "guardando": "Saving…",
         "programado": "Scheduled · {fecha}",
+        "sinGuardar": "Unsaved changes",
         "sinPublicar": "Not published",
         "error": "Could not publish"
       },

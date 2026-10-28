@@ -31563,6 +31563,7 @@
         "borrador": "Guardado en borrador",
         "guardando": "Guardando…",
         "programado": "Programado · {fecha}",
+        "sinGuardar": "Cambios sin guardar",
         "sinPublicar": "Sin publicar",
         "error": "No se pudo publicar"
       },

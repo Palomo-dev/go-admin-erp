@@ -5,6 +5,7 @@
 -- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
 --   242000 → 245000 → 244000 → 243000 → 241500.
+--   20261027246000 (liberar reservas de cancelados) es INDEPENDIENTE: va aparte, con su respaldo y su rollback.
 -- Revertir esta ANTES que 20261027241500 (usa fn_pedido_web_es_pasarela) y DESPUÉS de 20261027242000.
 
 set lock_timeout = '3s';

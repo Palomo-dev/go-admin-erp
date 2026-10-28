@@ -74,7 +74,7 @@ import {
   type PaymentStatus,
   type OrderSource,
 } from '@/lib/services/webOrdersService';
-import { claveAvisoCobro, webOrderConfirmationService, type ErrorCobroEnCaja } from '@/lib/services/webOrderConfirmationService';
+import { claveAvisoCobro, claveAvisoPendiente, webOrderConfirmationService, type ErrorCobroEnCaja } from '@/lib/services/webOrderConfirmationService';
 import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { PERIODOS_LISTADO, rangosDelPeriodo, variacionPct, type PeriodoListado } from '@/lib/pos/pedidosWeb/listadoPedidos';
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
@@ -274,7 +274,7 @@ export default function PedidosOnlinePage() {
     // «Marcar como pagado» que no se pudo hacer: va al resumen único del final
     // (uno o en lote), no a un aviso por pedido (TOAST_LIMIT se los come).
     const sinPagar = result.cobroPendiente
-      ? `${order.order_number} (${tPedido(`cobro.${claveAvisoCobro(result.cobroPendiente)}`)})`
+      ? `${order.order_number} (${tPedido(`cobro.${claveAvisoPendiente(result.cobroPendiente, result.marcarPagadoPendiente)}`)})`
       : undefined;
     if (confirmDialog.orderIds.length === 1 && !sinPagar) {
       if (result.yaConfirmado) {

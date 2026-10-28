@@ -351,3 +351,26 @@ describe('cron: pedidos pagados a medias', () => {
     expect(await filtrarAMedias(roto as never, candidatos)).toEqual([]);
   });
 });
+
+describe('Marcar como pagado: motivo y permiso (QA 0d189afc4)', () => {
+  it('OTRO y FUNCION_AUSENTE dicen «No se pudo marcar como pagado»', () => {
+    const { claveAvisoMarcarPagado, claveAvisoPendiente } = jest.requireActual('../webOrderConfirmationService');
+    expect(claveAvisoMarcarPagado('OTRO')).toBe('errorMarcarPagado');
+    expect(claveAvisoMarcarPagado('FUNCION_AUSENTE')).toBe('errorMarcarPagado');
+    expect(claveAvisoMarcarPagado('SIN_PERMISO')).toBe('sinPermiso');
+    expect(claveAvisoPendiente('OTRO', true)).toBe('errorMarcarPagado');
+    expect(claveAvisoPendiente('OTRO', false)).toBe('error');
+  });
+
+  it('sin pos.pedidos_web.marcar_pagado ni pos.void no hay botón', async () => {
+    const { webOrderConfirmationService } = jest.requireActual('../webOrderConfirmationService');
+    mockRpc.mockReset();
+    mockRpc.mockResolvedValue({ data: false, error: null });
+    await expect(webOrderConfirmationService.puedeMarcarPagado(140)).resolves.toBe(false);
+    expect(mockRpc.mock.calls.map((c) => (c[1] as { p_code: string }).p_code)).toEqual(['pos.pedidos_web.marcar_pagado', 'pos.void']);
+    mockRpc.mockReset();
+    mockRpc.mockImplementation(async (_f: string, a: { p_code: string }) => ({ data: a.p_code === 'pos.void', error: null }));
+    await expect(webOrderConfirmationService.puedeMarcarPagado(140)).resolves.toBe(true);
+    await expect(webOrderConfirmationService.puedeMarcarPagado(null)).resolves.toBe(false);
+  });
+});

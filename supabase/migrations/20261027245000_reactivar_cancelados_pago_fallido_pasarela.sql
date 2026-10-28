@@ -3,7 +3,9 @@
 -- SIN APLICAR. Juan (27-oct): «Marcar como pagado» de un pedido de pasarela es su decisión manual
 -- (independiente de Wompi u otra pasarela) y vale también para los CANCELADOS por pago fallido
 -- (status 'cancelled' + payment_status 'failed'): igual que un vencido.
---   * Solo pedidos de pasarela (fn_pedido_web_es_pasarela, migración 20261027241500), sin venta y sin mesa.
+--   * Solo pedidos de pasarela (fn_pedido_web_es_pasarela, migración 20261027241500), sin venta y sin mesa,
+--     y con el MISMO permiso que fn_marcar_pedido_web_pagado_pasarela (pos.pedidos_web.marcar_pagado o
+--     pos.void); sin él → SIN_PERMISO (42501).
 --   * Stock TODO O NADA: muchos cancelados conservan reservas vivas (stock_reservations sin released_at,
 --     p. ej. WO-335-MVRG940J-HZTB con 3); se liberan (release_stock_for_order) y se vuelve a reservar
 --     todo (reserve_stock_for_web_order). Sin stock → STOCK_INSUFICIENTE (22023), detail = faltantes,
@@ -18,6 +20,7 @@
 -- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
 --   242000 → 245000 → 244000 → 243000 → 241500.
+--   20261027246000 (liberar reservas de cancelados) es INDEPENDIENTE: va aparte, con su respaldo y su rollback.
 -- Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo>
 -- Rollback: supabase/rollbacks/20261027245000_reactivar_cancelados_pago_fallido_pasarela_rollback.sql
 --   (definición exacta de prod, md5 pg_get_functiondef 4f7fa842de636850415efb3f0b45e0ae)
@@ -65,6 +68,13 @@ begin
     and public.fn_pedido_web_es_pasarela(v_wo.payment_method, v_wo.payment_reference);
   if (v_wo.status = 'expired' or v_cancelado_pago_fallido)
      and v_wo.sale_id is null and v_wo.table_session_id is null then
+    -- Mismo permiso que fn_marcar_pedido_web_pagado_pasarela (20261027243000).
+    if v_cancelado_pago_fallido
+       and not (public.fn_tiene_permiso(v_wo.organization_id, 'pos.pedidos_web.marcar_pagado')
+                or public.fn_tiene_permiso(v_wo.organization_id, 'pos.void')) then
+      raise exception 'SIN_PERMISO' using errcode = '42501',
+        detail = 'Reactivar un pedido cancelado por pago fallido exige el permiso de marcarlo pagado.';
+    end if;
     if v_cancelado_pago_fallido and exists (
          select 1 from public.stock_reservations r
           where r.ref_type = 'web_order' and r.ref_id = p_order_id::text and r.released_at is null) then

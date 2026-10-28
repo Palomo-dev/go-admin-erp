@@ -1,6 +1,12 @@
 /// <reference types="jest" />
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
+  CONFIRMAR_CANCELADOS_ANTIGUOS,
   debeCobrarseEnCaja,
+  diasCanceladoQuePidenConfirmacion,
+  METODOS_NO_PASARELA,
+  pedidoEsDePasarela,
   esMetodoCobroEnCaja,
   esMetodoDePasarela,
   marcaPagadoPorPasarela,
@@ -70,5 +76,50 @@ describe('marcaPagadoPorPasarela', () => {
     expect(marcaPagadoPorPasarela({ status: 'rejected', payment_status: 'pending', payment_method: 'wompi' })).toBe(false);
     expect(marcaPagadoPorPasarela({ status: 'confirmed', payment_status: 'pending', payment_method: 'wompi', table_session_id: 'ts' })).toBe(false);
     expect(marcaPagadoPorPasarela({ status: 'confirmed', payment_status: 'pending', payment_method: 'cash' })).toBe(false);
+  });
+});
+
+describe('METODOS_NO_PASARELA (caja) = lista de fn_pedido_web_es_pasarela', () => {
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20261027241500_fn_cobrar_pedido_web_pasarela.sql'),
+    'utf8',
+  );
+  const m = sql.match(/-- METODOS_NO_PASARELA[^\n]*\n\s*and lower\(btrim\(coalesce\(p_metodo, ''\)\)\) not in \(([\s\S]*?)\)\);/);
+  const enSql = new Set([...(m?.[1] ?? '').matchAll(/'([^']*)'/g)].map((x) => x[1]));
+
+  it('SQL y TS tienen exactamente los mismos métodos', () => {
+    expect(m).not.toBeNull();
+    expect([...enSql].sort()).toEqual([...METODOS_NO_PASARELA].sort());
+  });
+
+  it.each([
+    'pos', 'tarjeta', 'tarjeta_credito', 'tarjeta_debito', 'datafono', 'datáfono', 'contra_entrega',
+    'contraentrega', 'efectivo', 'consignacion', 'transferencia_bancaria', 'credito', 'fiado', 'cheque',
+  ])('%s con referencia NO es de pasarela', (metodo) => {
+    expect(METODOS_NO_PASARELA.has(metodo)).toBe(true);
+    expect(pedidoEsDePasarela({ payment_method: metodo, payment_reference: 'REF-123' } as never)).toBe(false);
+  });
+
+  it('un submétodo desconocido con referencia sigue siendo de pasarela', () => {
+    expect(pedidoEsDePasarela({ payment_method: 'pse', payment_reference: 'REF-1' } as never)).toBe(true);
+  });
+});
+
+describe('confirmación de cancelados antiguos (opción apagada)', () => {
+  const viejo = {
+    status: 'cancelled', payment_status: 'failed', payment_method: 'wompi', payment_reference: null,
+    cancelled_at: '2026-08-01T00:00:00Z',
+  } as never;
+  const ahora = new Date('2026-10-27T12:00:00Z');
+
+  it('hoy está apagada: clic directo', () => {
+    expect(CONFIRMAR_CANCELADOS_ANTIGUOS).toBe(false);
+    expect(diasCanceladoQuePidenConfirmacion(viejo, ahora)).toBeNull();
+  });
+
+  it('encendida: pide confirmar solo si pasan de 30 días', () => {
+    expect(diasCanceladoQuePidenConfirmacion(viejo, ahora, true)).toBe(87);
+    const reciente = { ...(viejo as object), cancelled_at: '2026-10-10T00:00:00Z' } as never;
+    expect(diasCanceladoQuePidenConfirmacion(reciente, ahora, true)).toBeNull();
   });
 });

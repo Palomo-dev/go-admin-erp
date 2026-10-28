@@ -137,6 +137,21 @@ export function codigoErrorCobro(error: unknown): ErrorCobroEnCaja {
   return 'OTRO';
 }
 
+/**
+ * Clave i18n del motivo de un «Marcar como pagado» que no se pudo hacer: igual
+ * que `claveAvisoCobro`, pero lo genérico (OTRO, FUNCION_AUSENTE…) dice «No se
+ * pudo marcar como pagado», no «No se pudo cobrar el pedido».
+ */
+export function claveAvisoMarcarPagado(codigo: ErrorCobroEnCaja): ReturnType<typeof claveAvisoCobro> | 'errorMarcarPagado' {
+  const clave = claveAvisoCobro(codigo);
+  return clave === 'error' ? 'errorMarcarPagado' : clave;
+}
+
+/** Motivo de un cobro o «Marcar como pagado» pendiente tras confirmar. */
+export function claveAvisoPendiente(codigo: ErrorCobroEnCaja, marcarPagado?: boolean) {
+  return marcarPagado ? claveAvisoMarcarPagado(codigo) : claveAvisoCobro(codigo);
+}
+
 /** Clave i18n (`pedidoWeb.cobro.*`) del aviso para un cobro que no se pudo hacer. */
 export function claveAvisoCobro(
   codigo: ErrorCobroEnCaja,
@@ -699,6 +714,20 @@ class WebOrderConfirmationService {
    * el método de la pasarela (wompi → 1110), sin caja, referencia MANUAL con
    * quién y cuándo, idempotente. No pide referencia ni comprobante.
    */
+  /**
+   * ¿El usuario puede «Marcar como pagado» (y reactivar un cancelado por pago
+   * fallido)? Mismos permisos que la base (fn_marcar_pedido_web_pagado_pasarela
+   * y fn_confirmar_pedido_web_completo): solo decide si se muestra el botón.
+   */
+  async puedeMarcarPagado(organizationId: number | null): Promise<boolean> {
+    if (!organizationId) return false;
+    for (const codigo of ['pos.pedidos_web.marcar_pagado', 'pos.void']) {
+      const { data, error } = await supabase.rpc('fn_tiene_permiso', { p_organization_id: organizationId, p_code: codigo });
+      if (!error && data === true) return true;
+    }
+    return false;
+  }
+
   async marcarPagadoPasarela(order: WebOrder): Promise<PagoPasarelaResult> {
     if (!pedidoEsDePasarela(order)) {
       throw new CobroEnCajaError('NO_ES_PASARELA', 'El pedido se cobra en caja');

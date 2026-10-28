@@ -2,6 +2,7 @@
 -- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027245000 → 20261027242000
 --   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
 --   242000 → 245000 → 244000 → 243000 → 241500.
+--   20261027246000 (liberar reservas de cancelados) es INDEPENDIENTE: va aparte, con su respaldo y su rollback.
 -- SIN APLICAR. Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo> (directa o sesión 5432).
 --
 -- Base: pg_get_functiondef de PROD (jgmgphmzusbluqhuqihj) leído el 27-oct-2026 21:10 (UTC-5).
@@ -63,9 +64,11 @@ as $$
   select public.fn_metodo_es_pasarela(p_metodo)
       or (nullif(btrim(coalesce(p_referencia, '')), '') is not null
           and upper(btrim(p_referencia)) <> 'MANUAL'
+          -- METODOS_NO_PASARELA (igual que en metodosCaja.ts; lo verifica metodosCaja.test.ts)
           and lower(btrim(coalesce(p_metodo, ''))) not in (
-                '', 'cash', 'efectivo', 'transfer', 'transferencia', 'qr', 'mesa', 'cash_on_delivery',
-                'contraentrega', 'contra_entrega', 'credit', 'check', 'datafono'));
+                '', 'cash', 'efectivo', 'transfer', 'transferencia', 'transferencia_bancaria', 'consignacion', 'qr', 'mesa',
+                'cash_on_delivery', 'contraentrega', 'contra_entrega', 'credit', 'credito', 'fiado', 'check', 'cheque',
+                'datafono', 'datáfono', 'pos', 'tarjeta', 'tarjeta_credito', 'tarjeta_debito'));
 $$;
 revoke all on function public.fn_pedido_web_es_pasarela(text, text) from public, anon;
 grant execute on function public.fn_pedido_web_es_pasarela(text, text) to authenticated, service_role;

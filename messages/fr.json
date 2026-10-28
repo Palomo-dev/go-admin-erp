@@ -36135,7 +36135,8 @@
       },
       "errorMarcarPagado": "Impossible de marquer comme payée",
       "pendienteMarcarPagado": "Commande confirmée mais non marquée comme payée",
-      "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée."
+      "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée.",
+      "confirmarCanceladoAntiguo": "La commande {numero} a été annulée il y a {dias} jours. La marquer comme payée quand même ?"
     },
     "tipoCorto": {
       "pickup": "Retrait",

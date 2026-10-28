@@ -114,9 +114,9 @@ export function bannersDesdeAnteriores(c: Record<string, unknown>): { layout: st
   const estilo: Record<string, number> = {};
   const col = c.columns;
   const o = col && typeof col === 'object' ? (col as Record<string, unknown>) : null;
-  const d = numeroEntre(o ? o.desktop : col, 1, 6);
-  const t = numeroEntre(o?.tablet, 1, 4);
-  const m = numeroEntre(c.columns_mobile ?? o?.mobile, 1, 2);
+  const d = numeroEntre(o ? o.desktop : col, 1, 8);
+  const t = numeroEntre(o?.tablet, 1, 8);
+  const m = numeroEntre(c.columns_mobile ?? o?.mobile, 1, 8);
   if (d != null) estilo.columns_desktop = d;
   if (t != null) estilo.columns_tablet = t;
   if (m != null) estilo.columns_mobile = m;

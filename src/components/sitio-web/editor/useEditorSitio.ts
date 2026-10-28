@@ -733,6 +733,8 @@ export function useEditorSitio() {
           section_type: tipo,
           section_variant: variante,
           sort_order: posicion,
+          // Igual que en v2: portada nueva con margen superior 0 explícito.
+          ...(tipo === 'hero' ? { content: { section_background: { padding_top: 0 } } } : {}),
         });
         const lista = [...pagina.sections];
         lista.splice(Math.min(posicion, lista.length), 0, creada);

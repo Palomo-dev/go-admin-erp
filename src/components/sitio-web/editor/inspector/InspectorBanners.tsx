@@ -255,13 +255,13 @@ export function InspectorBanners({
           />
           <div className="grid grid-cols-3 gap-2">
             <Campo etiqueta="Columnas escritorio">
-              <NumeroKit min={1} max={6} value={estilo.columns_desktop ?? ''} onChange={(e) => ponerEstilo({ columns_desktop: e.target.value ? Number(e.target.value) : undefined })} />
+              <NumeroKit min={1} max={8} value={estilo.columns_desktop ?? ''} onChange={(e) => ponerEstilo({ columns_desktop: e.target.value ? Number(e.target.value) : undefined })} />
             </Campo>
             <Campo etiqueta="Tablet">
-              <NumeroKit min={1} max={4} value={estilo.columns_tablet ?? ''} onChange={(e) => ponerEstilo({ columns_tablet: e.target.value ? Number(e.target.value) : undefined })} />
+              <NumeroKit min={1} max={8} value={estilo.columns_tablet ?? ''} onChange={(e) => ponerEstilo({ columns_tablet: e.target.value ? Number(e.target.value) : undefined })} />
             </Campo>
             <Campo etiqueta="Celular">
-              <NumeroKit min={1} max={2} value={estilo.columns_mobile ?? ''} onChange={(e) => ponerEstilo({ columns_mobile: e.target.value ? Number(e.target.value) : undefined })} />
+              <NumeroKit min={1} max={8} value={estilo.columns_mobile ?? ''} onChange={(e) => ponerEstilo({ columns_mobile: e.target.value ? Number(e.target.value) : undefined })} />
             </Campo>
           </div>
           {(layout === 'carousel' || estilo.mobile_layout === 'carousel') && (

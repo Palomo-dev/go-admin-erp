@@ -23,9 +23,11 @@ import type { ThemePalette } from '@/components/organization/branding/editor/fie
 import { SectionThumbnail } from '@/components/sitio-web/ui/SectionThumbnail';
 import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tiposPaginas';
-import { leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
+import { escribirEstiloSeccion, leerEstiloSeccion, visibilidadDeSeccion, type EstiloSeccion, type Visibilidad } from '@/lib/website/v2/estiloSeccion';
 import { miniaturaDeSeccion, nombreDeSeccion, nombreDeVariante } from '../iconosSeccion';
 import { useTextosEditor } from '../textos';
+import { ControlEspaciado } from './EditorCascaron';
+import { anchoEfectivo, cambioAncho } from './espacioUnico';
 import { espacioSeccion } from '@/lib/website/espacioSeccion';
 import { clavesPropiasTarjeta, esSeccionTarjetaProducto, heredadoTarjetaSeccion, restablecerClaveTarjeta, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
@@ -100,9 +102,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   const visibilidad = useMemo(() => visibilidadDeSeccion(s), [s]);
   const idTabs = `inspector-seccion-${s.id}`;
   // Relleno y margen que la tienda aplica hoy (mismo cálculo que SectionWrapperBase).
+  const primera = p.entornoEspacio?.primera;
+  const ajustesSitio = p.entornoEspacio?.ajustesSitio ?? null;
   const espacio = useMemo(
-    () => espacioSeccion(contenido, { tipo: s.section_type, variante: s.section_variant, primera: p.entornoEspacio?.primera, ajustesSitio: p.entornoEspacio?.ajustesSitio ?? null, espaciado: estilo.espaciado ?? null }),
-    [contenido, s.section_type, s.section_variant, p.entornoEspacio?.primera, p.entornoEspacio?.ajustesSitio, estilo.espaciado],
+    () => espacioSeccion(s.content ?? {}, { tipo: s.section_type, variante: s.section_variant, primera, ajustesSitio, espaciado: estilo.espaciado ?? null }),
+    [s.content, s.section_type, s.section_variant, primera, ajustesSitio, estilo.espaciado],
   );
 
   const boletin = (definicion?.contentFields ?? []).some((c) => c.type === 'newsletter');
@@ -364,6 +368,35 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             tema={p.tema}
             catalogoFuentes={p.catalogoFuentes}
             sede={p.sede?.estilo ?? null}
+            controlEspaciado={
+              <ControlEspaciado
+                valor={contenido.section_background}
+                espacio={espacio}
+                etiquetasAtajo={{ compacto: t('estilo.espaciado.compacto'), normal: t('estilo.espaciado.normal'), amplio: t('estilo.espaciado.amplio') }}
+                onCambiar={(v) => {
+                  const siguiente: Record<string, unknown> = { ...contenido, section_background: v };
+                  if (v == null) delete siguiente.section_background;
+                  onCambiarContenido(siguiente);
+                }}
+              />
+            }
+            ancho={
+              p.sede
+                ? null
+                : {
+                    valor: anchoEfectivo(contenido, estilo.ancho, s.section_type, s.section_variant),
+                    cambiar: (a) => {
+                      const r = cambioAncho(contenido, estilo, a, s.section_type, s.section_variant);
+                      if (r.estilo === estilo) return;
+                      if (r.contenido === contenido || !p.onCambiarApariencia) {
+                        p.onCambiarEstilo(r.estilo);
+                        if (r.contenido !== contenido) onCambiarContenido(r.contenido);
+                      } else {
+                        p.onCambiarApariencia({ settings: escribirEstiloSeccion(s.settings, r.estilo), contenido: r.contenido });
+                      }
+                    },
+                  }
+            }
             encabezado={{
               apariencia: { settings: (s.settings ?? {}) as Record<string, unknown>, contenido },
               aplicar: (a) => onCambiarContenido(a.contenido),

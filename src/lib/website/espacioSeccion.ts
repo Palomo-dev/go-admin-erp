@@ -40,6 +40,19 @@ const SIN_RELLENO: ReadonlySet<string> = new Set([
 
 export const MARGEN_MAX_PX = 200
 
+/** ¿El relleno tiene valor propio de celular? Solo entonces la tienda usa variables por dispositivo. */
+export function rellenoPorDispositivo(contenido: unknown): boolean {
+  const f = objeto(objeto(contenido).section_background)
+  return pxEnRango(f.padding_top_mobile, 0, 200) != null || pxEnRango(f.padding_bottom_mobile, 0, 200) != null
+}
+
+/** Atajos de relleno: los mismos px que la escala de Estilo › Espaciado (compacto = sm, normal = lg, amplio = xl). */
+export const ATAJOS_RELLENO: Readonly<Record<'compacto' | 'normal' | 'amplio', ParDispositivo>> = {
+  compacto: RELLENO_ESCALA_PX.sm,
+  normal: RELLENO_ESCALA_PX.lg,
+  amplio: RELLENO_ESCALA_PX.xl,
+}
+
 export interface MargenPropio {
   margin_top?: number
   margin_bottom?: number
@@ -118,29 +131,39 @@ export function espacioSeccion(contenidoGuardado: unknown, e: EntornoSeccion = {
   const ptPx = pxEnRango(c.padding_top_px, 0, 480)
   const pbPx = pxEnRango(c.padding_bottom_px, 0, 480)
 
-  // ── Relleno arriba ──
-  let rellenoArriba: LadoEspacio
-  if (fPt != null) {
-    const v = primera && !solapa && offset > 0 ? offset + fPt : fPt
-    rellenoArriba = { ...par(v), propio: true }
-  } else if (ptPx != null) {
-    rellenoArriba = { ...par(ptPx), propio: true }
+  const fPtM = pxEnRango(fondo.padding_top_mobile, 0, 200)
+  const fPbM = pxEnRango(fondo.padding_bottom_mobile, 0, 200)
+
+  // ── Relleno arriba ── (px del Cascarón > padding_top_px > escala / estilo / primera sección)
+  let baseArriba: LadoEspacio
+  if (ptPx != null) {
+    baseArriba = { ...par(ptPx), propio: true }
   } else {
     const clave = ptExplicito ? String(c.padding_top) : (sinRelleno || cartaQr ? 'none' : 'lg')
     let p = escalaRelleno(clave)
     if (solapa) p = ptExplicito && c.padding_top !== 'lg' ? escalaRelleno(clave) : RELLENO_ESCALA_PX.none
     if (primera && !ptExplicito && !solapa) p = par(offset)
-    rellenoArriba = { ...p, propio: ptExplicito && !(esc && vacio(objeto(contenidoGuardado).padding_top)) }
+    baseArriba = { ...p, propio: ptExplicito && !(esc && vacio(objeto(contenidoGuardado).padding_top)) }
+  }
+  let rellenoArriba = baseArriba
+  if (fPt != null || fPtM != null) {
+    // La primera sección suma el hueco del sitio al relleno propio.
+    const extra = primera && !solapa && offset > 0 ? offset : 0
+    const comp = fPt != null ? fPt + extra : baseArriba.computador
+    const cel = fPtM != null ? fPtM + extra : fPt != null ? fPt + extra : baseArriba.celular
+    rellenoArriba = { celular: cel, computador: comp, propio: true }
   }
 
   // ── Relleno abajo ──
-  let rellenoAbajo: LadoEspacio
-  if (fPb != null) rellenoAbajo = { ...par(fPb), propio: true }
-  else if (pbPx != null) rellenoAbajo = { ...par(pbPx), propio: true }
+  let baseAbajo: LadoEspacio
+  if (pbPx != null) baseAbajo = { ...par(pbPx), propio: true }
   else {
     const clave = !vacio(c.padding_bottom) ? String(c.padding_bottom) : (sinRelleno ? 'none' : 'lg')
-    rellenoAbajo = { ...escalaRelleno(clave), propio: !vacio(objeto(contenidoGuardado).padding_bottom) }
+    baseAbajo = { ...escalaRelleno(clave), propio: !vacio(objeto(contenidoGuardado).padding_bottom) }
   }
+  const rellenoAbajo: LadoEspacio = fPb != null || fPbM != null
+    ? { celular: fPbM ?? fPb ?? baseAbajo.celular, computador: fPb ?? baseAbajo.computador, propio: true }
+    : baseAbajo
 
   // ── Margen arriba ──
   const mtEscala = MARGEN_ESCALA_PX[String(c.margin_top ?? 'none')] ?? 0

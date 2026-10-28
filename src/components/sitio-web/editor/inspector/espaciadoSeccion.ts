@@ -27,6 +27,8 @@ export function campoCubiertoPorEstilo(c: Pick<ContentFieldDef, 'key' | 'type'> 
   // `categories_grid.full_width`: la tienda no lo lee (sin efecto); el ancho lo da Estilo › Ancho.
   // MAP-09: el mapa embebido siempre muestra el marcador; `show_marker` no tiene efecto.
   if (c.key === 'show_marker' && tipoSeccion === 'map') return true;
+  // Portada: «Ancho completo» del carrusel lo maneja Estilo › Ancho (un solo control; lee `full_width`).
+  if (c.key === 'full_width' && tipoSeccion === 'hero') return true;
   return c.key === 'full_width' && tipoSeccion === 'categories_grid';
 }
 
@@ -157,12 +159,23 @@ const GRUPOS: ReadonlyArray<{ id: string; claves: readonly string[]; motivo?: En
 
 const presente = (v: unknown) => v !== undefined && v !== null && v !== '';
 
+/** ¿Hay margen en px (computador o celular) en `section_background`? */
+function pxPropio(contenido: Record<string, unknown>, k: 'margin_top' | 'margin_bottom'): boolean {
+  const bg = contenido.section_background;
+  if (!bg || typeof bg !== 'object') return false;
+  const o = bg as Record<string, unknown>;
+  return presente(o[k]) || presente(o[`${k}_mobile`]);
+}
+
 /** Entradas «Ajustes de versiones anteriores» de una sección (solo las que tienen valor guardado). */
 export function entradasAnterioresSeccion(contenido: Record<string, unknown>, tipoSeccion: string): EntradaAnterior[] {
   const salida: EntradaAnterior[] = [];
   for (const g of GRUPOS) {
     if (g.solo && g.solo !== tipoSeccion) continue;
     if (!g.claves.some((k) => presente(contenido[k]))) continue;
+    // El margen en px del Cascarón ya manda: la escala anterior queda guardada como respaldo, sin repetirse aquí.
+    if (g.id === 'seccion_margin_top' && pxPropio(contenido, 'margin_top')) continue;
+    if (g.id === 'seccion_margin_bottom' && pxPropio(contenido, 'margin_bottom')) continue;
     salida.push({ id: g.id, quitar: Object.fromEntries(g.claves.map((k) => [k, null])), ...(g.motivo ? { motivo: g.motivo } : {}) });
   }
   // HERO-01/02: la portada pinta su propio título; el del encabezado (Cascarón anterior) es aparte.
@@ -299,17 +312,21 @@ export function valorUnicoPortada(contenido: Record<string, unknown>, clave: 'ra
 }
 
 export function cambioUnicoPortada(contenido: Record<string, unknown>, clave: 'radius' | 'shadow', v: unknown): Record<string, unknown> {
+  // Las claves anteriores (radius/shadow del contenedor) no se borran: se dejan en 0 / 'none' al editar,
+  // para que no sumen un segundo radio o sombra al del carrusel (un solo valor efectivo).
   const siguiente = { ...contenido };
   if (clave === 'radius') {
     const n = numero(v);
     if (n > 0) siguiente.border_radius = n;
     else delete siguiente.border_radius;
-    delete siguiente.radius;
+    if (presente(siguiente.radius)) siguiente.radius = 0;
   } else {
+    // Elegir el mismo escalón que ya se ve no cambia el valor guardado (7 sigue en 7, no pasa a 6).
+    if (String(v) === valorUnicoPortada(contenido, 'shadow')) return contenido;
     const n = INTENSIDAD_DE_SOMBRA[String(v)] ?? 0;
     if (n > 0) siguiente.shadow_intensity = n;
     else delete siguiente.shadow_intensity;
-    delete siguiente.shadow;
+    if (presente(siguiente.shadow)) siguiente.shadow = 'none';
   }
   return siguiente;
 }

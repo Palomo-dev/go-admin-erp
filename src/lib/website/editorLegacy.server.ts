@@ -150,11 +150,12 @@ async function escribirAjustes(ctx: Ctx, sedeId: number | null, cambios: Record<
   delete base.id;
   delete base.created_at;
   delete base.updated_at;
-  const { data, error } = await db
-    .from('website_settings')
-    .insert({ ...base, ...cambios, organization_id: org, branch_id: sedeId, updated_at: ahora })
-    .select()
-    .single();
+  const insertar = (fila: Record<string, unknown>) => db.from('website_settings').insert(fila).select().single();
+  const filaNueva: Record<string, unknown> = { ...base, ...cambios, organization_id: org, branch_id: sedeId, updated_at: ahora };
+  let { data, error } = await insertar(filaNueva);
+  // Columna opcional sin migrar (`countdown_style`): se crea la fila con el resto.
+  const sinOpcionales = error ? quitarColumnasOpcionalesAusentes(filaNueva, error) : null;
+  if (sinOpcionales) ({ data, error } = await insertar(sinOpcionales));
   if (error) traducirError(error, 'ajustes.insert');
   return data as Record<string, unknown>;
 }

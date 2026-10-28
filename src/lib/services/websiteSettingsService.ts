@@ -360,11 +360,12 @@ class WebsiteSettingsService {
       branch_id: branch,
     };
 
-    const { data, error } = await supabase
-      .from('website_settings')
-      .insert(mergedInsert)
-      .select()
-      .single();
+    const insertar = (fila: Record<string, unknown>) =>
+      supabase.from('website_settings').insert(fila).select().single();
+    let { data, error } = await insertar(mergedInsert);
+    // Columna opcional sin migrar (`countdown_style`): se crea la fila con el resto.
+    const sinOpcionales = error ? quitarColumnasOpcionalesAusentes(mergedInsert, error) : null;
+    if (sinOpcionales) ({ data, error } = await insertar(sinOpcionales));
     if (error) throw error;
     return data as WebsiteSettings;
   }

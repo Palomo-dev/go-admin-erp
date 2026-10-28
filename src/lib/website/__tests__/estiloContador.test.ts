@@ -1,4 +1,4 @@
-import { ESTILO_CONTADOR_INICIAL, leerEstiloContador, resolverEstiloContador, unidadesContador } from '../estiloContador';
+import { avisosContrasteContador, contrasteContador, ESTILO_CONTADOR_INICIAL, leerEstiloContador, resolverEstiloContador, unidadesContador } from '../estiloContador';
 import { quitarColumnasOpcionalesAusentes } from '../columnasOpcionales';
 import { textoSobreAcento } from '../v2/tokensEstilo';
 
@@ -25,6 +25,20 @@ describe('estiloContador', () => {
     expect(propio.colorTexto).toBe('#ff00aa');
     expect(propio.colorDigitos).toBe('#000000');
     expect(propio.conCaja).toBe(false);
+  });
+  test('degradado: el automático mira AMBOS colores (mejor contraste mínimo)', () => {
+    // Gris → casi negro: con solo «desde» saldría negro, que sobre #111827 no se lee.
+    const e = leerEstiloContador({ fondo: { tipo: 'degradado', desde: '#9CA3AF', hasta: '#111827', angulo: 90 } })!;
+    const c = resolverEstiloContador(e, '#A0D241', textoSobreAcento).colorTexto;
+    const min = (x: string) => Math.min(contrasteContador(x, '#9CA3AF'), contrasteContador(x, '#111827'));
+    expect(min(c)).toBeGreaterThanOrEqual(Math.max(min('#111111'), min('#FFFFFF')) - 1e-9);
+    expect(c).toBe('#FFFFFF');
+  });
+  test('contraste: avisa solo con colores propios bajo 4.5:1', () => {
+    expect(contrasteContador('#000000', '#FFFFFF')).toBeCloseTo(21);
+    expect(avisosContrasteContador(ESTILO_CONTADOR_INICIAL, '#A0D241', textoSobreAcento)).toEqual([]);
+    const e = leerEstiloContador({ fondo: { tipo: 'degradado', desde: '#FFFFFF', hasta: '#000000' }, texto: { color: '#FFFFFF' }, temporizador: { caja: 'cuadrada', colorCaja: '#A0D241', colorDigitos: '#111111' } })!;
+    expect(avisosContrasteContador(e, '#A0D241', textoSobreAcento)).toEqual(['texto']);
   });
   test('unidades: días solo con 24 h o más', () => {
     expect(unidadesContador(3725).map((u) => u.valor)).toEqual(['01', '02', '05']);

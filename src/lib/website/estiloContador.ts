@@ -147,6 +147,50 @@ const ESCALA: Record<TamanoContador, number> = { compacto: 0.85, normal: 1, gran
 const TEXTO_PX: Record<TamanoContador, number> = { compacto: 12, normal: 14, grande: 16 };
 const PESO: Record<GrosorTexto, number> = { normal: 400, medio: 500, negrita: 700 };
 
+function canal(c: number): number {
+  const v = c / 255;
+  return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+}
+function luminancia(hex: string): number {
+  let h = hex.trim().slice(1);
+  if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+  const n = parseInt(h, 16);
+  return 0.2126 * canal((n >> 16) & 255) + 0.7152 * canal((n >> 8) & 255) + 0.0722 * canal(n & 255);
+}
+/** Contraste WCAG entre dos hex (1 a 21). Si alguno no es hex, 21 (no se puede medir: sin aviso). */
+export function contrasteContador(a: string, b: string): number {
+  if (!esHexContador(a) || !esHexContador(b)) return 21;
+  const [x, y] = [luminancia(a), luminancia(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+}
+/** Color automático sobre un fondo de uno o dos colores: el candidato con mejor contraste mínimo frente a ambos. */
+function autoSobreFondo(desde: string, hasta: string, sobre: (hex: string) => string): string {
+  const okA = esHexContador(desde);
+  const okB = esHexContador(hasta);
+  if (!okA && !okB) return '#ffffff';
+  if (!okA || !okB) return sobre(okA ? desde : hasta);
+  const candidatos = Array.from(new Set([sobre(desde), sobre(hasta)]));
+  if (candidatos.length === 1) return candidatos[0];
+  const minimo = (c: string) => Math.min(contrasteContador(c, desde), contrasteContador(c, hasta));
+  return candidatos.reduce((m, c) => (minimo(c) > minimo(m) ? c : m));
+}
+
+/** Avisos (no bloquean) cuando un color PROPIO de texto o dígitos queda por debajo de 4.5:1. */
+export function avisosContrasteContador(e: EstiloContador, primario: string, sobre: (hex: string) => string): ('texto' | 'digitos')[] {
+  const f = e.fondo;
+  const fondos =
+    f.tipo === 'solido' && f.color ? [f.color] : f.tipo === 'degradado' ? [f.desde || primario, f.hasta || f.desde || primario] : [primario];
+  const r = resolverEstiloContador(e, primario, sobre);
+  const peor = (c: string, bs: string[]) => Math.min(...bs.map((b) => contrasteContador(c, b)));
+  const out: ('texto' | 'digitos')[] = [];
+  if (e.texto.color && peor(e.texto.color, fondos) < 4.5) out.push('texto');
+  if (e.temporizador.colorDigitos) {
+    const cajaOpaca = r.conCaja && esHexContador(e.temporizador.colorCaja);
+    if (peor(e.temporizador.colorDigitos, cajaOpaca ? [e.temporizador.colorCaja] : fondos) < 4.5) out.push('digitos');
+  }
+  return out;
+}
+
 /**
  * @param primario color primario del sitio (fondo «sitio»).
  * @param sobre negro o blanco de más contraste sobre un hex (textoSobreAcento de cada repo).
@@ -155,16 +199,19 @@ export function resolverEstiloContador(e: EstiloContador, primario: string, sobr
   const f = e.fondo;
   let fondo = primario;
   let base = primario;
+  let hasta = primario;
   if (f.tipo === 'solido' && f.color) {
     fondo = f.color;
     base = f.color;
+    hasta = f.color;
   } else if (f.tipo === 'degradado') {
     const a = f.desde || primario;
     const b = f.hasta || f.desde || primario;
     fondo = `linear-gradient(${f.angulo}deg, ${a}, ${b})`;
     base = a;
+    hasta = b;
   }
-  const auto = esHexContador(base) ? sobre(base) : '#ffffff';
+  const auto = autoSobreFondo(base, hasta, sobre);
   const colorTexto = e.texto.color || auto;
   const k = ESCALA[e.tamano];
   const caja = e.temporizador.caja;

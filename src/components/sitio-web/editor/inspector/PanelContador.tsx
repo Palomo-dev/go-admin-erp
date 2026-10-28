@@ -63,7 +63,7 @@ export function PanelContador({
   return (
     <section aria-label="Contador regresivo" className="mt-[14px] flex flex-col gap-[14px] px-1">
       <div className="flex flex-col gap-0.5">
-        <h3 className="text-[13px] font-medium text-fg">Contador regresivo</h3>
+        <h3 className="text-[12px] font-semibold text-fg">Contador regresivo</h3>
         <p className="text-[12px] leading-4 text-fg-muted">Una barra con la cuenta atrás de tu oferta. Usa el color principal del sitio.</p>
       </div>
       {!conEstilo && <div
@@ -111,10 +111,14 @@ export function PanelContador({
           )}
         </FormField>
         {c.modo === 'custom' ? (
-          <div role="group" aria-label="Termina" className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">Termina
+          <div role="group" aria-label="Termina" className="flex flex-col gap-1.5 text-[13px] text-fg-secondary">Termina
             <div className="grid grid-cols-2 gap-2">
+              <span className="flex flex-col gap-1 text-[12px]">Fecha
               <CampoFecha tamano="sm" valor={dia || null} disabled={deshabilitado} onValorChange={(d) => cambiar({ countdown_end_date: finLocal(d ?? '', hora) })} />
+              </span>
+              <span className="flex flex-col gap-1 text-[12px]">Hora
               <CampoHora tamano="sm" aria-label="Hora de fin" valor={hora || null} disabled={deshabilitado || !dia} onValorChange={(h) => cambiar({ countdown_end_date: finLocal(dia, h) })} />
+              </span>
             </div>
             {sinFecha && <span className="text-[12px] text-fg-secondary">Sin fecha de fin el contador no se muestra.</span>}
           </div>
@@ -126,13 +130,13 @@ export function PanelContador({
             }} />
           </label>
         )}
-        <div role="group" aria-label="Zona horaria" className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">Zona horaria
+        <div role="group" aria-label="Zona horaria" className="flex flex-col gap-1.5 text-[13px] text-fg-secondary">Zona horaria
           <SelectKit aria-label="Zona horaria" disabled={deshabilitado} value={c.zona} onChange={(e) => cambiar({ countdown_timezone: e.target.value })}>
             {ZONAS_CONTADOR.some(([z]) => z === c.zona) ? null : <option value={c.zona}>{c.zona}</option>}
             {ZONAS_CONTADOR.map(([z, nombre]) => <option key={z} value={z}>{nombre}</option>)}
           </SelectKit>
         </div>
-        <div className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">
+        <div className="flex flex-col gap-1.5 text-[13px] text-fg-secondary">
           <span id={idDonde}>Dónde se ve</span>
           <ChipsOpcion
             multiple
@@ -157,7 +161,7 @@ export function PanelContador({
             primario={fondoVista}
             titulo={c.titulo || TITULO_POR_DEFECTO}
             segundos={segundos}
-            columnaDisponible={!settings || 'countdown_style' in (settings as object)}
+            columnaDisponible={!!settings && 'countdown_style' in (settings as object)}
             deshabilitado={deshabilitado}
           />
         </div>

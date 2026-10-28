@@ -17,6 +17,7 @@ import {
   ICONOS_CONTADOR,
   leerEstiloContador,
   resolverEstiloContador,
+  avisosContrasteContador,
   unidadesContador,
   type EstiloContador,
 } from '@/lib/website/estiloContador';
@@ -176,6 +177,14 @@ export function PanelEstiloContador({
           Vista previa: este estilo todavía no se guarda en la tienda (falta activar la columna en la base).
         </p>
       )}
+      {e && (() => {
+        const bajos = avisosContrasteContador(e, primario, textoSobreAcento);
+        return bajos.length > 0 ? (
+          <p role="status" data-testid="aviso-contraste-contador" className="text-[12px] leading-4 text-fg-muted">
+            Poco contraste ({bajos.map((b) => (b === 'texto' ? 'texto' : 'dígitos')).join(' y ')}): menos de 4.5:1, puede leerse mal.
+          </p>
+        ) : null;
+      })()}
       {e && (
         <>
           <VistaContadorEstilo estilo={e} primario={primario} titulo={titulo} segundos={segundos} />

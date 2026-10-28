@@ -16,7 +16,7 @@ import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 // El kit (CampoFecha/CampoHora) toma sus textos de next-intl; aquí basta con devolver la clave.
 jest.mock('next-intl', () => ({
   useLocale: () => 'es',
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => Object.assign((key: string) => key, { has: () => false }),
 }));
 
 const FILA = {
@@ -138,6 +138,22 @@ describe('PanelContador', () => {
     montar({ ...FILA, countdown_mode: 'custom', countdown_end_date: '' });
     expect(screen.getByRole('group', { name: 'Termina' })).toBeTruthy();
     expect(screen.getByText('Sin fecha de fin el contador no se muestra.')).toBeTruthy();
+  });
+
+  test('modo fecha: subetiquetas Fecha y Hora; sin fila cargada no da la columna por disponible', () => {
+    montar({ ...FILA, countdown_mode: 'custom', countdown_end_date: '' });
+    expect(screen.getByText('Fecha')).toBeTruthy();
+    expect(screen.getByText('Hora')).toBeTruthy();
+  });
+
+  test('contraste: aviso discreto con colores propios por debajo de 4.5:1, sin bloquear', () => {
+    const onCambiar = jest.fn();
+    const { rerender } = render(<PanelEstiloContador valor={{ fondo: { tipo: 'solido', color: '#FFFFFF' }, texto: { color: '#DDDDDD' } }} onCambiar={onCambiar} primario="#A0D241" titulo="Hoy" segundos={60} columnaDisponible />);
+    expect(screen.getByTestId('aviso-contraste-contador').textContent).toMatch(/texto/);
+    fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
+    expect(onCambiar).toHaveBeenCalled();
+    rerender(<PanelEstiloContador valor={{ fondo: { tipo: 'solido', color: '#FFFFFF' }, texto: { color: '#111111' } }} onCambiar={onCambiar} primario="#A0D241" titulo="Hoy" segundos={60} columnaDisponible />);
+    expect(screen.queryByTestId('aviso-contraste-contador')).toBeNull();
   });
 });
 

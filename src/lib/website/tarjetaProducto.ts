@@ -702,18 +702,28 @@ export function clavesPropiasTarjeta(contenido: unknown): string[] {
   return claves
 }
 
+/** Valores que se restablecen juntos (el fondo y su degradado son una sola opción). */
+const GRUPO_RESTABLECER: Record<string, readonly string[]> = {
+  card_bg: ['card_bg', 'card_bg_2', 'card_bg_angle'],
+  card_bg_2: ['card_bg', 'card_bg_2', 'card_bg_angle'],
+  card_bg_angle: ['card_bg', 'card_bg_2', 'card_bg_angle'],
+}
+
 /**
- * Restablece un valor: lo quita del estilo de tarjeta de la sección y también la clave suelta
- * heredada, para que vuelva a mandar el estilo del sitio (o el de siempre). Lo demás no cambia.
+ * Restablece un valor: lo quita del estilo de tarjeta de la sección y, si es una de las claves
+ * sueltas de siempre (CLAVES_TARJETA_EN_SECCION), también esa clave. Vuelve a mandar el preset
+ * de la sección si tiene uno; si no, el estilo del sitio (o el de siempre). Lo demás no cambia.
  */
 export function restablecerClaveTarjeta(contenido: Record<string, unknown>, clave: string): Record<string, unknown> {
   const siguiente = { ...contenido }
-  delete siguiente[clave]
+  const claves = GRUPO_RESTABLECER[clave] ?? [clave]
+  for (const k of claves) if ((CLAVES_TARJETA_EN_SECCION as readonly string[]).includes(k)) delete siguiente[k]
   const g = siguiente.product_card_style
   if (g && typeof g === 'object') {
     const estilo = { ...(g as Record<string, unknown>) }
-    delete estilo[clave]
-    siguiente.product_card_style = estilo
+    for (const k of claves) delete estilo[k]
+    if (Object.keys(estilo).length) siguiente.product_card_style = estilo
+    else delete siguiente.product_card_style
   }
   return siguiente
 }

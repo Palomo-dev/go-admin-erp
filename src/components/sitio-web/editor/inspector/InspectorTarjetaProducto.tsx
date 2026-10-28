@@ -209,7 +209,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
 
       {onRestablecer && propias && propias.length > 0 && (
         <div role="group" aria-label="Valores propios de esta sección" className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
-          <span>Valores propios de esta sección (toca uno para restablecerlo):</span>
+          <span>Valores propios de esta sección. Toca uno para restablecerlo: vuelve al del preset de la sección si tiene uno; si no, al estilo del sitio.</span>
           <div className="flex flex-wrap gap-1">
             {propias.map((k) => (
               <button key={k} type="button" title="Restablecer" onClick={() => onRestablecer(k)} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>

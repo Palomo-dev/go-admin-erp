@@ -50,4 +50,14 @@ describe('restablecer un valor de la tarjeta', () => {
     expect(r).toEqual({ card_shadow: 'lg', product_card_style: { show_brand: true } })
     expect(clavesPropiasTarjeta(r)).toEqual(['show_brand', 'card_shadow'])
   })
+  it('no borra claves de la raíz que no son de la tarjeta', () => {
+    expect(restablecerClaveTarjeta({ title_size: 'lg', product_card_style: { title_size: 'sm' } }, 'title_size')).toEqual({ title_size: 'lg' })
+  })
+  it('sin valores restantes borra product_card_style', () => {
+    expect(restablecerClaveTarjeta({ product_card_style: { card_radius: 8 } }, 'card_radius')).toEqual({})
+  })
+  it('el fondo se restablece con su degradado y ángulo', () => {
+    const r = restablecerClaveTarjeta({ card_bg: '#fff', product_card_style: { card_bg: '#000', card_bg_2: '#111', card_bg_angle: 90, card_radius: 4 } }, 'card_bg_2')
+    expect(r).toEqual({ product_card_style: { card_radius: 4 } })
+  })
 })

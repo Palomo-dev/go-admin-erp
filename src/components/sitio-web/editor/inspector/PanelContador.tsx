@@ -7,6 +7,7 @@
  * van a la fila del principal con el autoguardado. El lienzo las pinta en vivo (`goadmin:settings`)
  * en el encabezado, el carrito, el pago, la ficha de producto y la portada.
  */
+import { useEffect, useState } from 'react';
 import { SelectKit, NumeroKit, CasillaKit } from './controlesKit';
 import { CampoFecha } from '@/components/kit';
 import { CampoHora } from '@/components/kit/CampoHora';
@@ -18,6 +19,7 @@ import {
   finLocal,
   leerContador,
   partesFin,
+  tiempoRestante,
 } from './contadorLegacy';
 
 const control = 'h-8 w-full rounded-md border border-line bg-surface px-2 text-sm text-fg';
@@ -37,6 +39,13 @@ export function PanelContador({
   const cambiar = (cambios: Record<string, unknown>) => onCambiarAjustes(cambios as Partial<WebsiteSettings>);
   const { dia, hora } = partesFin(c.fin, c.zona);
   const sinFecha = c.modo === 'custom' && !dia;
+  // Vista previa con el tiempo real que falta (misma regla que la tienda), al segundo.
+  const [ahora, setAhora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const restante = tiempoRestante(c, ahora);
   return (
     <section aria-label="Contador regresivo" className="mt-4 flex flex-col gap-3 border-t border-line px-1 pt-3">
       <div>
@@ -49,7 +58,7 @@ export function PanelContador({
         style={{ background: colorPrimario || '#3B82F6' }}
       >
         <span>🔥 {c.titulo || TITULO_POR_DEFECTO}</span>
-        <span className="ml-2 font-mono font-bold">00:10:00</span>
+        <span className="ml-2 font-mono font-bold">{restante ?? 'Terminado: no se muestra'}</span>
       </div>
       <CasillaKit titulo="Mostrar contador" disabled={deshabilitado} checked={c.activo} onChange={(e) => cambiar({ countdown_enabled: e.target.checked })} />
       <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Texto

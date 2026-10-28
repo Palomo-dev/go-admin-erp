@@ -8,7 +8,7 @@
 import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PanelContador } from '../inspector/PanelContador';
-import { finLocal, leerContador, partesFin, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
+import { finLocal, leerContador, partesFin, tiempoRestante, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
 import { ajustesParaLienzo, CLAVES_AJUSTES_VIVOS } from '@/lib/website/ajustesVivos';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 
@@ -41,11 +41,12 @@ describe('contadorLegacy', () => {
       countdown_show_in_header: true, countdown_show_in_cart: true, checkout_show_countdown: true,
       countdown_show_in_product: true, countdown_show_in_hero: false,
     });
-    const vacio = leerContador({});
+    // NULL = apagado, como en la tienda (que exige === true): el editor no marca lo que no se pinta.
+    const vacio = leerContador({ countdown_show_in_header: null, countdown_show_in_cart: null });
     expect(vacio.activo).toBe(false);
     expect(vacio.ubicaciones).toEqual({
-      countdown_show_in_header: true, countdown_show_in_cart: true, checkout_show_countdown: false,
-      countdown_show_in_product: true, countdown_show_in_hero: false,
+      countdown_show_in_header: false, countdown_show_in_cart: false, checkout_show_countdown: false,
+      countdown_show_in_product: false, countdown_show_in_hero: false,
     });
   });
 
@@ -114,5 +115,25 @@ describe('lienzo en vivo', () => {
     expect(vivos.countdown_enabled).toBe(true);
     expect(vivos.checkout_show_countdown).toBe(true);
     expect('countdown_title' in ajustesParaLienzo({})).toBe(false);
+  });
+});
+
+describe('tiempoRestante (vista previa, misma regla que la tienda)', () => {
+  const diario = (extra: Record<string, unknown> = {}) => leerContador({ ...FILA, ...extra });
+  test('medianoche en Bogotá (00:30): faltan 23:30:00, no se oculta', () => {
+    expect(tiempoRestante(diario(), new Date('2026-10-29T05:30:00Z'))).toBe('23:30:00');
+    expect(tiempoRestante(diario(), new Date('2026-10-29T05:00:00Z'))).toBe('24:00:00');
+  });
+  test('reinicio a las 18 y a la tarde', () => {
+    expect(tiempoRestante(diario({ countdown_reset_hour: 18 }), new Date('2026-10-28T20:00:00Z'))).toBe('03:00:00');
+  });
+  test('zona inválida cae en la zona por defecto, no en la del visitante', () => {
+    expect(tiempoRestante(diario({ countdown_timezone: 'Marte/Olympus' }), new Date('2026-10-29T05:30:00Z'))).toBe('23:30:00');
+  });
+  test('hasta una fecha: lo que falta, y null si ya pasó o no hay fecha', () => {
+    const c = diario({ countdown_mode: 'custom', countdown_end_date: '2026-10-29T10:00' });
+    expect(tiempoRestante(c, new Date('2026-10-29T14:00:00Z'))).toBe('01:00:00');
+    expect(tiempoRestante(c, new Date('2026-10-29T16:00:00Z'))).toBeNull();
+    expect(tiempoRestante(diario({ countdown_mode: 'custom', countdown_end_date: '' }), new Date())).toBeNull();
   });
 });

@@ -223,7 +223,8 @@ export function estiloConFuentesCascaron(a: Apariencia): EstiloSeccion {
 export const CLAVES_COLOR_ENCABEZADO = ['title_color', 'title_color_2', 'description_color'] as const;
 export type ClaveColorEncabezado = (typeof CLAVES_COLOR_ENCABEZADO)[number];
 
-const esHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v.trim());
+// Mismo patrón que la tienda (cascaronSeccion.ts HEX): 3, 6 u 8 dígitos.
+const esHex = (v: unknown): v is string => typeof v === 'string' && /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v.trim());
 
 export function leerColorEncabezado({ contenido }: Apariencia, clave: ClaveColorEncabezado): string | undefined {
   const v = obj(contenido.section_header)?.[clave];

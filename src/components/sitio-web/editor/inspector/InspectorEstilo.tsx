@@ -16,6 +16,7 @@
  * se sobrescribe sigue al «Estilo del sitio». No guarda: avisa cada cambio.
  */
 import { useId, useState, type ReactNode } from 'react';
+import { ColorTema } from './PartesZonaGlobal';
 import { Lock, Pencil } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { CampoNumero, ChipsOpcion, SegmentedControl, SettingRow } from '@/components/kit';
@@ -73,7 +74,6 @@ import {
   BORDE_TIENDA,
   leerColorEncabezado,
   cambioColorEncabezado,
-  type ClaveColorEncabezado,
   leerFondoUnico,
   sinFuentesCascaron,
   type Apariencia,
@@ -680,28 +680,16 @@ function ColoresEncabezado({
   const titulo = leerColorEncabezado(a, 'title_color');
   const titulo2 = leerColorEncabezado(a, 'title_color_2');
   const desc = leerColorEncabezado(a, 'description_color');
-  const quitar = (clave: ClaveColorEncabezado) => (
-    <button
-      type="button"
-      onClick={() => unico.aplicar(cambioColorEncabezado(a, clave, null))}
-      disabled={deshabilitado}
-      className="self-start rounded-md text-[13px] font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-    >
-      {t('estilo.encabezado.comoTexto')}
-    </button>
-  );
+  // Sin color guardado no se inventa un hex: el título y la descripción siguen el texto o la plantilla.
+  const nulo = t('estilo.encabezado.comoPlantilla');
   return (
-    <>
-      <ColorField etiqueta={t('estilo.encabezado.titulo')} valor={titulo ?? base} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'title_color', c))} deshabilitado={deshabilitado} />
+    <fieldset disabled={deshabilitado} className="flex min-w-0 flex-col gap-3">
+      <ColorTema etiqueta={t('estilo.encabezado.titulo')} etiquetaNulo={nulo} valor={titulo ?? null} colorTema={base} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'title_color', c))} />
       {titulo && (
-        <>
-          <ColorField etiqueta={t('estilo.encabezado.titulo2')} valor={titulo2 ?? titulo} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'title_color_2', c === titulo ? null : c))} deshabilitado={deshabilitado} />
-          {quitar('title_color')}
-        </>
+        <ColorField etiqueta={t('estilo.encabezado.titulo2')} valor={titulo2 ?? titulo} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'title_color_2', c === titulo ? null : c))} deshabilitado={deshabilitado} />
       )}
-      <ColorField etiqueta={t('estilo.encabezado.descripcion')} valor={desc ?? base} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'description_color', c))} deshabilitado={deshabilitado} />
-      {desc && quitar('description_color')}
+      <ColorTema etiqueta={t('estilo.encabezado.descripcion')} etiquetaNulo={nulo} valor={desc ?? null} colorTema={base} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'description_color', c))} />
       <p className={AYUDA}>{t('estilo.encabezado.ayuda')}</p>
-    </>
+    </fieldset>
   );
 }

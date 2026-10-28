@@ -176,3 +176,10 @@ describe('colores del encabezado en una sede', () => {
     expect(r.contenido).toEqual({ title: 'X', section_header: { title_color: '#123456' } });
   });
 });
+
+describe('QA 4b: hex del encabezado con el patrón de la tienda (3, 6 u 8)', () => {
+  it.each([['#abc', true], ['#aabbcc', true], ['#aabbccdd', true], ['#abcd', false], ['#abcde', false], ['#abcdeff', false]])('%s → %s', (hex, ok) => {
+    const a = { settings: {}, contenido: { section_header: { title_color: hex } } };
+    expect(leerColorEncabezado(a, 'title_color')).toBe(ok ? hex : undefined);
+  });
+});

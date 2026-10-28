@@ -174,6 +174,7 @@ export const TEXTOS_EDITOR = {
       titulo2: 'Segundo color del título (degradado)',
       descripcion: 'Color de la descripción del encabezado',
       comoTexto: 'Usar el color del texto',
+      comoPlantilla: 'Como el texto / la plantilla',
       ayuda: 'Sin cambiar, el título y la descripción usan el color del texto de la sección.',
     },
     entrada: { ninguna: 'Ninguna', aparecer: 'Aparecer', revelar_texto: 'Revelar texto' },

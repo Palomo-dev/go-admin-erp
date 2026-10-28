@@ -141,6 +141,7 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
     if (!contexto) return [];
     return validarFilas(filasBase, {
       existentes: new Map(Object.entries(contexto.existentes)),
+      padresExistentes: new Set(contexto.padres ?? []),
       existentesPorNombre: origen === 'web' ? new Map(Object.entries(contexto.porNombre)) : undefined,
       categorias: new Set(contexto.categorias),
       impuestos: new Set(contexto.impuestos),

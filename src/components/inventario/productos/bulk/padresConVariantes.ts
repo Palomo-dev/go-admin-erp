@@ -1,15 +1,15 @@
 /**
- * Solo lectura: qué productos de la lista son padres con variantes vivas. El ajuste masivo los omite
- * porque el stock vive en las variantes (la migración 20261027214000 lo bloquea en la base).
+ * Solo lectura: qué productos de la lista son padres con variantes vivas (no eliminadas). El stock vive en
+ * las variantes (la migración 20261027214000 lo bloquea en la base): el ajuste masivo omite a esos padres y
+ * el importador no les carga stock. Recibe el cliente para servir en el navegador y en el servidor.
  */
-import { supabase } from '@/lib/supabase/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { partirEnLotes } from './ajusteMasivoStock';
 
-/** Padres (de la lista) que tienen variantes vivas. */
-export async function padresConVariantes(organizationId: number, ids: number[]): Promise<Set<number>> {
+export async function padresConVariantes(cliente: SupabaseClient, organizationId: number, ids: number[]): Promise<Set<number>> {
   const padres = new Set<number>();
   for (const lote of partirEnLotes(ids)) {
-    const { data, error } = await supabase
+    const { data, error } = await cliente
       .from('products')
       .select('parent_product_id')
       .eq('organization_id', organizationId)

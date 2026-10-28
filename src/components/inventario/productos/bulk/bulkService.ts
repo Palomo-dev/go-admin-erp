@@ -212,7 +212,7 @@ export async function bulkUpdateStock(
   // El stock va en las variantes: los padres con variantes se omiten (y se avisa).
   let padres: Set<number>;
   try {
-    padres = await padresConVariantes(organizationId, alcanceIds);
+    padres = await padresConVariantes(supabase, organizationId, alcanceIds);
   } catch (e) {
     resultado.fallidos = entrada.productIds.length;
     resultado.errores.push((e as { message?: string })?.message ?? String(e));

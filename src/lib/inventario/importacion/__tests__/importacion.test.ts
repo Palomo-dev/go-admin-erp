@@ -283,6 +283,15 @@ describe('validación por fila', () => {
     expect(v[2].datos.stock).toBeUndefined();
     expect(v[2].errores).toEqual([]);
   });
+  it('padre con variantes que ya existe en la base (no marcado en el archivo): no carga stock y avisa', () => {
+    const v = validarFilas(
+      [{ fila: 2, sku: 'p-base', name: 'Pantalón', stock: 7 }, { fila: 3, sku: 'SIMPLE', name: 'Gorra', stock: 3, cost: 2 }],
+      ctx({ existentes: new Map([['P-BASE', 50], ['SIMPLE', 51]]), padresExistentes: new Set(['P-BASE']) }, { stockExistentes: 'sumar' }),
+    );
+    expect(v[0].datos.stock).toBeUndefined();
+    expect(v[0].avisos).toEqual(expect.arrayContaining([{ codigo: 'stockEnPadre', params: { cantidad: 7 } }]));
+    expect(v[1].datos.stock).toBe(3);
+  });
   it('sumar stock a un existente no exige costo en la fila (lo busca la RPC)', () => {
     const v = validarFilas([{ fila: 2, sku: 'D', name: 'X', stock: 4 }], ctx({ existentes: new Map([['D', 1]]) }, { stockExistentes: 'sumar' }));
     expect(v[0].errores).toEqual([]);

@@ -74,13 +74,16 @@ describe('contarFuentesDatos', () => {
         const filtros: unknown[][] = [];
         llamadas.push({ tabla, filtros });
         const q: Record<string, unknown> = {};
-        for (const m of ['select', 'eq', 'is', 'or', 'gt']) {
+        for (const m of ['select', 'eq', 'is', 'or', 'gt', 'limit']) {
           q[m] = (...args: unknown[]) => {
             filtros.push([m, ...args]);
             return q;
           };
         }
-        q.then = (ok: (v: unknown) => unknown) => ok({ count: respuestas[tabla]?.count ?? 0, error: respuestas[tabla]?.error ?? null });
+        q.then = (ok: (v: unknown) => unknown) => {
+          const n = respuestas[tabla]?.count ?? 0;
+          return ok({ count: n, data: Array.from({ length: n ?? 0 }, (_, i) => ({ id: i + 1 })), error: respuestas[tabla]?.error ?? null });
+        };
         return q;
       },
     };
@@ -95,6 +98,20 @@ describe('contarFuentesDatos', () => {
       expect(l.filtros).toContainEqual(['eq', 'organization_id', 120]);
       expect(l.filtros[0]).toEqual(['select', 'id', { count: 'exact', head: true }]);
     }
+  });
+
+  test('ofertas: existencia con limit(1), sin count exacto (evita el 57014 del conteo con RLS)', async () => {
+    const { cliente, llamadas } = clienteFalso({ products: { count: 1 } });
+    expect(await contarFuentesDatos(cliente, 145, null, ['ofertas'])).toEqual({ ofertas: 1 });
+    const f = llamadas[0].filtros;
+    expect(f[0]).toEqual(['select', 'id, product_prices!inner(id)']);
+    expect(f).toContainEqual(['eq', 'organization_id', 145]);
+    expect(f).toContainEqual(['gt', 'product_prices.compare_price', 0]);
+    expect(f).toContainEqual(['limit', 1]);
+    const vacio = clienteFalso({ products: { count: 0 } });
+    expect(await contarFuentesDatos(vacio.cliente, 145, null, ['ofertas'])).toEqual({ ofertas: 0 });
+    const roto = clienteFalso({ products: { count: 0, error: { code: '57014' } } });
+    expect(await contarFuentesDatos(roto.cliente, 145, null, ['ofertas'])).toEqual({});
   });
 
   test('parking_zones (sin organization_id) filtra por la sede de la organización', async () => {

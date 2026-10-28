@@ -141,7 +141,7 @@ export function PanelUrgencia({
 }
 
 function FinContador({ fin, zona, deshabilitado, onCambiar }: { fin: string; zona: string; deshabilitado?: boolean; onCambiar: (fin: string) => void }) {
-  const { dia, hora } = partirFin(fin)
+  const { dia, hora } = partirFin(fin, zona)
   return (
     <div role="group" aria-label="Fin" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fin ({zona})
       <div className="grid grid-cols-2 gap-2">

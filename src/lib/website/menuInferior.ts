@@ -171,6 +171,21 @@ const DE_ACCION_BARRA: Record<string, AccionMenu> = {
   llamar: 'call', whatsapp: 'whatsapp', como_llegar: 'location',
 }
 
+/**
+ * `mobile_bottom_bar` como lo lee la tienda (normalizarOpcionShell de lib/website/v2/mapeoAjustes.ts):
+ * ausente → `auto`; texto de la columna legacy («reservar», «whatsapp,llamar») → lista; una lista
+ * vacía, repetida, de más de 4 o con una acción desconocida → `auto`. Así el primer guardado de v2
+ * da exactamente la barra que se ve hoy.
+ */
+export function barraGuardada(valor: unknown): 'auto' | 'ninguna' | string[] {
+  if (valor === null || valor === undefined) return 'auto'
+  if (valor === 'auto' || valor === 'ninguna') return valor
+  const lista = typeof valor === 'string' ? valor.split(',').map((v) => v.trim()).filter(Boolean) : valor
+  const valida = Array.isArray(lista) && lista.length >= 1 && lista.length <= 4 && new Set(lista).size === lista.length
+    && lista.every((v) => typeof v === 'string' && v in DE_ACCION_BARRA)
+  return valida ? (lista as string[]) : 'auto'
+}
+
 const DE_TIPO_V1: Record<string, AccionMenu> = {
   home: 'home', categories: 'categories_page', search: 'search', cart: 'cart', account: 'account', whatsapp: 'whatsapp',
 }
@@ -229,16 +244,12 @@ export function menuInicial(settings: unknown, opciones: { restaurante?: boolean
   if (s.mobile_menu_style === 'tabs') {
     return { menu: { v: 2, enabled: true, variant: 'tabs', items: PESTANAS.map((b) => ({ ...b })), style: { labels: 'always' } }, fuente: 'tabs' }
   }
-  const barra = s.mobile_bottom_bar
-  if (Array.isArray(barra) && barra.length) {
-    const items = barra
-      .map((a) => DE_ACCION_BARRA[String(a)])
-      .filter((a): a is AccionMenu => !!a)
-      .slice(0, MAX_BOTONES.actions)
-      .map((a) => boton(a, a))
-    if (items.length) return { menu: { v: 2, enabled: true, variant: 'actions', items, style: { labels: 'always' } }, fuente: 'acciones' }
+  const barra = barraGuardada(s.mobile_bottom_bar)
+  if (Array.isArray(barra)) {
+    const items = barra.map((a) => boton(DE_ACCION_BARRA[a], DE_ACCION_BARRA[a]))
+    return { menu: { v: 2, enabled: true, variant: 'actions', items, style: { labels: 'always' } }, fuente: 'acciones' }
   }
-  if (opciones.restaurante && (barra == null || barra === 'auto')) {
+  if (opciones.restaurante && barra === 'auto') {
     const items = (['booking', 'call', 'location', 'order'] as const).map((a) => boton(a, a))
     return { menu: { v: 2, enabled: true, variant: 'actions', items, style: { labels: 'always' } }, fuente: 'restaurante' }
   }
@@ -286,11 +297,12 @@ function digitos(t: string): string {
   return t.replace(/\D/g, '')
 }
 
-/** `tel:` desde un número escrito (10 dígitos = Colombia). */
+/** `tel:` desde un número escrito (10 dígitos = Colombia; 12 que empiezan por 57 = Colombia con indicativo). */
 export function telDe(t: string): string | null {
   const d = digitos(t)
   if (d.length < 7) return null
-  return `tel:${t.trim().startsWith('+') ? '+' : d.length === 10 ? '+57' : ''}${d}`
+  const mas = t.trim().startsWith('+') || (d.length === 12 && d.startsWith('57'))
+  return `tel:${mas ? '+' : d.length === 10 ? '+57' : ''}${d}`
 }
 
 /** wa.me desde un número escrito y un mensaje opcional. */

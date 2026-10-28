@@ -11,6 +11,7 @@ import {
   DEFECTO_ACCION,
   MAX_BOTONES,
   aGuardar,
+  barraGuardada,
   menuInicial,
   type AccionMenu,
   type BotonMenu,
@@ -28,7 +29,26 @@ export function menuDelEditor(a: Record<string, unknown>, giro?: string | null):
 /** Parche: el menú entero con `v: 2` (las demás claves de `mobile_header` se conservan). */
 export function cambioMenuV2(a: Record<string, unknown>, menu: MenuInferior): Record<string, unknown> {
   const h = objeto(a.mobile_header) ?? {};
-  return { mobile_header: { ...h, bottom_nav: aGuardar(menu) } };
+  const cambios: Record<string, unknown> = { mobile_header: { ...h, bottom_nav: aGuardar(menu) } };
+  // La lista de antes (`mobile_bottom_bar`) deja de verse con la v2: ya pasó al menú (acciones) o
+  // estaba oculta (pestañas). Se limpia para que no quede guardado algo que no se ve.
+  if (Array.isArray(barraGuardada(a.mobile_bottom_bar))) cambios.mobile_bottom_bar = 'auto';
+  return cambios;
+}
+
+/** Datos de la tienda que dan destino a los botones sin destino propio (null = aún no se sabe). */
+export interface DatosDestinoTienda { telefono: boolean; whatsapp: boolean; direccion: boolean; pedir: boolean; reservar: boolean }
+
+/** Acciones que la tienda no puede mostrar (sin destino escrito ni dato de la tienda), como en vivo. */
+export function accionesSinDestino(d: DatosDestinoTienda | null, restaurante: boolean): ReadonlySet<AccionMenu> {
+  const s = new Set<AccionMenu>();
+  if (!d) return s;
+  if (!d.telefono) s.add('call');
+  if (!d.whatsapp) s.add('whatsapp');
+  if (!d.direccion) s.add('location');
+  if (restaurante && !d.pedir) s.add('order');
+  if (restaurante && !d.reservar) s.add('booking');
+  return s;
 }
 
 /** «Abrir menú» solo funciona si el encabezado del celular tiene botón de menú. */
@@ -81,9 +101,10 @@ export function conVariante(m: MenuInferior, variant: VarianteMenu): MenuInferio
 }
 
 /** Qué falta para que el botón se vea en la tienda (null = nada). */
-export type AvisoBoton = 'destinoPagina' | 'destinoUrl' | null;
-export function avisoBoton(b: BotonMenu): AvisoBoton {
+export type AvisoBoton = 'destinoPagina' | 'destinoUrl' | 'sinDestino' | null;
+export function avisoBoton(b: BotonMenu, sinDestino: ReadonlySet<AccionMenu> = new Set()): AvisoBoton {
   const t = b.target?.trim() ?? '';
+  if (!t && sinDestino.has(b.action)) return 'sinDestino';
   if (b.action === 'page' && !t.startsWith('/')) return 'destinoPagina';
   if (b.action === 'url' && !/^(https?:\/\/|mailto:|tel:)/i.test(t)) return 'destinoUrl';
   return null;

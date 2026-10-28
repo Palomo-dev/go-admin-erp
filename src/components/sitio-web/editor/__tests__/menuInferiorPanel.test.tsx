@@ -8,6 +8,10 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import { MenuInferiorPanel } from '../inspector/MenuInferiorPanel';
 
+let destinos: unknown = null;
+jest.mock('../inspector/useDestinosTienda', () => ({ useDestinosTienda: () => destinos }));
+afterEach(() => { destinos = null; });
+
 const panel = (ajustes: Record<string, unknown>, giro: string | null = null) => {
   const cambiar = jest.fn();
   renderConIdioma(<MenuInferiorPanel ajustes={ajustes} cambiar={cambiar} giro={giro} />);
@@ -45,5 +49,10 @@ describe('MenuInferiorPanel', () => {
     panel({}, 'restaurante');
     const lista = screen.getByRole('list', { name: 'Botones del menú inferior' });
     for (const x of ['Reservar', 'Llamar', 'Cómo llegar', 'Pedir']) expect(within(lista).getAllByText(x).length).toBeGreaterThan(0);
+  });
+  test('restaurante sin teléfono ni reservas: «Sin destino: no se muestra», como en vivo', () => {
+    destinos = { telefono: false, whatsapp: false, direccion: true, pedir: true, reservar: false };
+    panel({}, 'restaurante');
+    expect(screen.getAllByText('Sin destino: no se muestra')).toHaveLength(2);
   });
 });

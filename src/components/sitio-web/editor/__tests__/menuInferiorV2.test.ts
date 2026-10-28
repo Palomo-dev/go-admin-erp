@@ -1,5 +1,5 @@
 import { leerMenuInferior, menuInicial, botonesVisibles } from '@/lib/website/menuInferior';
-import { accionesDisponibles, avisoBoton, botonConAccion, botonNuevo, cambioMenuV2, conVariante, menuDelEditor, mover } from '../inspector/menuInferiorLogica';
+import { accionesDisponibles, accionesSinDestino, avisoBoton, botonConAccion, botonNuevo, cambioMenuV2, conVariante, menuDelEditor, mover } from '../inspector/menuInferiorLogica';
 
 const D = { llamar: 'tel:+5760000000', whatsapp: 'https://wa.me/570000000000', comoLlegar: null, reservar: '/reservas', pedir: '/productos' };
 
@@ -56,5 +56,24 @@ describe('Menú inferior v2 (Encabezado › Celular)', () => {
   it('sin Favoritos (la tienda no tiene esa página)', () => {
     expect(accionesDisponibles({})).not.toContain('favorites' as never);
     expect(menuInicial({}).menu.items.every((b) => b.action !== ('favorites' as never))).toBe(true);
+  });
+  it('barras de texto de antes («reservar», «whatsapp,llamar») dan la misma barra que hoy', () => {
+    expect(menuDelEditor({ mobile_menu_style: 'fullscreen', mobile_bottom_bar: 'whatsapp,llamar' }).menu.items.map((b) => b.action)).toEqual(['whatsapp', 'call']);
+    expect(menuDelEditor({ mobile_menu_style: 'fullscreen', mobile_bottom_bar: 'reservar' }).menu.items.map((b) => b.action)).toEqual(['booking']);
+    expect(menuDelEditor({ mobile_bottom_bar: 'xx,yy' }, 'restaurante').menu.items.map((b) => b.action)).toEqual(['booking', 'call', 'location', 'order']);
+  });
+  it('al guardar la v2 se limpia la lista de antes; sin lista no se toca', () => {
+    const a = { mobile_menu_style: 'tabs', mobile_bottom_bar: ['whatsapp', 'llamar'] };
+    expect(cambioMenuV2(a, menuDelEditor(a).menu).mobile_bottom_bar).toBe('auto');
+    expect(cambioMenuV2({ mobile_bottom_bar: 'whatsapp,llamar' }, menuDelEditor({}).menu).mobile_bottom_bar).toBe('auto');
+    expect('mobile_bottom_bar' in cambioMenuV2({ mobile_bottom_bar: 'ninguna' }, menuDelEditor({}).menu)).toBe(false);
+  });
+  it('sin destino de la tienda: aviso solo si no hay destino escrito', () => {
+    const s = accionesSinDestino({ telefono: false, whatsapp: true, direccion: true, pedir: false, reservar: true }, true);
+    expect([...s].sort()).toEqual(['call', 'order']);
+    expect(avisoBoton({ id: 'a', action: 'call', label: 'Llamar', icon: 'phone', visible: true } as never, s)).toBe('sinDestino');
+    expect(avisoBoton({ id: 'a', action: 'call', label: 'Llamar', icon: 'phone', visible: true, target: '6000000' } as never, s)).toBe(null);
+    expect(accionesSinDestino(null, true).size).toBe(0);
+    expect(accionesSinDestino({ telefono: true, whatsapp: true, direccion: true, pedir: false, reservar: false }, false).size).toBe(0);
   });
 });

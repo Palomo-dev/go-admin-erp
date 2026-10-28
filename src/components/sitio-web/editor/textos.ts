@@ -908,7 +908,7 @@ export const TEXTOS_EDITOR = {
           whatsapp: 'WhatsApp', 'map-pin': 'Ubicación', calendar: 'Calendario', 'calendar-check': 'Cita', package: 'Paquete', truck: 'Envío',
           tag: 'Etiqueta', percent: 'Descuento', star: 'Estrella', heart: 'Corazón', sparkles: 'Destellos', link: 'Enlace',
         },
-        aviso: { destinoPagina: 'Falta la página (empieza con /): no se muestra', destinoUrl: 'Falta el enlace (https://…): no se muestra' },
+        aviso: { destinoPagina: 'Falta la página (empieza con /): no se muestra', destinoUrl: 'Falta el enlace (https://…): no se muestra', sinDestino: 'Sin destino: no se muestra' },
       },
     },
     estilo: {

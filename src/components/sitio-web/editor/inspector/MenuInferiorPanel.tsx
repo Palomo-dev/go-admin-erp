@@ -19,7 +19,8 @@ import { MenuLinkRow, type TipoEnlaceMenu } from '@/components/sitio-web/ui/Menu
 import { ICONOS_MENU, MAX_BOTONES, MAX_TEXTO, VARIANTES_MENU, type AccionMenu, type BotonMenu, type IconoMenu, type MenuInferior } from '@/lib/website/menuInferior';
 import { useTextosEditor } from '../textos';
 import { ColorTema, EtiquetaGrupo, FilaInterruptor, TarjetaComposicion } from './PartesZonaGlobal';
-import { accionesDisponibles, avisoBoton, botonConAccion, botonNuevo, campoDestino, cambioMenuV2, conVariante, menuDelEditor, mover } from './menuInferiorLogica';
+import { useDestinosTienda } from './useDestinosTienda';
+import { accionesDisponibles, accionesSinDestino, avisoBoton, botonConAccion, botonNuevo, campoDestino, cambioMenuV2, conVariante, menuDelEditor, mover } from './menuInferiorLogica';
 
 export const ICONO_MENU: Record<IconoMenu, LucideIcon> = {
   home: Home, grid: LayoutGrid, search: Search, bag: ShoppingBag, cart: ShoppingCart, user: User, menu: Menu,
@@ -41,6 +42,7 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
   const idTextos = useId();
   const idDestacado = useId();
   const { menu } = menuDelEditor(a, giro);
+  const sinDestino = accionesSinDestino(useDestinosTienda(a, giro === 'restaurante'), giro === 'restaurante');
   const disponibles = accionesDisponibles(a);
   const [abierto, setAbierto] = useState<string | null>(null);
   const poner = (m: MenuInferior) => cambiar(cambioMenuV2(a, m));
@@ -76,7 +78,7 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
 
         <ul className="flex flex-col gap-1" aria-label={tm('botones')}>
           {menu.items.map((b, i) => {
-            const aviso = avisoBoton(b);
+            const aviso = avisoBoton(b, sinDestino);
             return (
               <li key={b.id} className="flex flex-col gap-2">
                 <MenuLinkRow

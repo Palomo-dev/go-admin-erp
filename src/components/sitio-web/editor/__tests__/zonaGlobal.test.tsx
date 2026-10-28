@@ -24,6 +24,7 @@ import {
 import { InspectorEncabezado } from '../inspector/InspectorEncabezado';
 import { InspectorPie } from '../inspector/InspectorPie';
 
+jest.mock('../inspector/useDestinosTienda', () => ({ useDestinosTienda: () => null }));
 jest.mock('@/lib/hooks/useOrganization', () => ({
   useOrganization: () => ({ organization: { id: 120 } }),
   getOrganizationId: () => 120,

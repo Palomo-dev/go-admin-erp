@@ -28,6 +28,13 @@ export interface Guia {
   notas?: string[];
   /** `false` = la función descrita aún no existe; el asistente no la afirma. */
   disponible?: boolean;
+  /**
+   * Comprobación en la base de la organización antes de decir que está
+   * disponible (p. ej. que exista la columna). Si falla, se usan
+   * `pasosNoDisponible` y `disponible` pasa a `false`.
+   */
+  requiereColumna?: { tabla: string; columna: string };
+  pasosNoDisponible?: string[];
 }
 
 export const RUTA_CARGOS = '/app/roles?vista=cargos';
@@ -60,21 +67,18 @@ export const GUIAS: readonly Guia[] = [
     id: 'metodos-pago-sucursal',
     titulo: 'Método de pago solo para una sucursal',
     palabras: ['metodo de pago sucursal', 'metodo de pago por sucursal', 'pago para una sucursal', 'forma de pago sucursal', 'metodo de pago sede'],
-    pasos: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE
-      ? [
-          'Abre Finanzas > Métodos de pago y edita (o crea) el método.',
-          'En el selector de sucursales, marca solo las sucursales donde se puede usar.',
-          'Guarda. Las demás sucursales no lo ven en el POS.',
-        ]
-      : [
-          'Hoy los métodos de pago son de toda la organización: no se pueden limitar a una sucursal.',
-          'Puedes crear o activar el método en Finanzas > Métodos de pago; quedará en todas las sucursales.',
-        ],
+    pasos: [
+      'Abre Finanzas > Métodos de pago y edita (o crea) el método.',
+      'En el selector de sucursales, marca solo las sucursales donde se puede usar.',
+      'Guarda. Las demás sucursales no lo ven en el POS.',
+    ],
+    pasosNoDisponible: [
+      'Por ahora los métodos de pago son de toda la organización: la restricción por sucursal todavía no está habilitada en la base de datos.',
+      'Puedes crear o activar el método en Finanzas > Métodos de pago; quedará en todas las sucursales.',
+    ],
     rutas: [{ ruta: '/app/finanzas/metodos-pago', nombre: 'Finanzas > Métodos de pago' }],
     disponible: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE,
-    notas: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE
-      ? ['Si al guardar aparece el aviso «la restricción por sucursal todavía no está habilitada en la base de datos», el método sigue en todas las sucursales: dilo así.']
-      : ['La opción por sucursal está en desarrollo; no la prometas como disponible.'],
+    requiereColumna: { tabla: 'organization_payment_methods', columna: 'branch_ids' },
   },
   {
     id: 'promociones',

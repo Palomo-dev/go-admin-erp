@@ -34,12 +34,13 @@ function caps(p: Partial<AssistantCapabilities> = {}): AssistantCapabilities {
 }
 
 /** Cliente falso: `permissions` y `organization_members` con `maybeSingle()`. */
-function sesion(filas: { permiso?: { code: string; name: string } | null; cargo?: string | null }): SupabaseClient {
+function sesion(filas: { permiso?: { code: string; name: string } | null; cargo?: string | null; sinColumna?: boolean }): SupabaseClient {
   return {
     from(tabla: string) {
       const q = {
         select: () => q,
         eq: () => q,
+        limit: async () => (filas.sinColumna ? { data: null, error: { code: '42703', message: 'column does not exist' } } : { data: [], error: null }),
         maybeSingle: async () => {
           if (tabla === 'permissions') return { data: filas.permiso ?? null, error: null };
           if (tabla === 'organization_members')
@@ -89,6 +90,14 @@ describe('buscar_guia', () => {
     expect(data.guias[0].disponible).toBe(METODOS_PAGO_POR_SUCURSAL_DISPONIBLE);
     expect(data.guias[0].rutas[0].ruta).toBe('/app/finanzas/metodos-pago');
     expect(data.guias.map((g) => g.id)).toContain('metodos-pago');
+  });
+
+  it('por sucursal: si la columna branch_ids no está en la base, NO la afirma', async () => {
+    const r = await buscarGuia.execute(ctx(caps(), sesion({ sinColumna: true })), { consulta: 'método de pago para una sucursal' });
+    const g = (r.data as { guias: Array<{ id: string; disponible: boolean; pasos: string[] }> }).guias[0];
+    expect(g.id).toBe('metodos-pago-sucursal');
+    expect(g.disponible).toBe(false);
+    expect(g.pasos[0]).toContain('todavía no está habilitada');
   });
 
   it('«¿cómo dejo que el cajero quite una promoción?» → guía de quitar promoción con la ruta de cargos', () => {

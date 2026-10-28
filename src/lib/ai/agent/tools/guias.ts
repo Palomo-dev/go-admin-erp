@@ -24,12 +24,31 @@ const READ_PREVIEW: ToolPreview = {
   reversible: true,
 };
 
-function serializarGuia(g: Guia) {
+/**
+ * ¿Existe en la base la columna que la guía necesita? Solo lectura (`limit 0`).
+ * Ante cualquier error se responde «no»: nunca se afirma algo sin comprobarlo.
+ */
+async function columnaExiste(ctx: ToolContext, tabla: string, columna: string): Promise<boolean> {
+  try {
+    const { error } = await ctx.supabase.from(tabla).select(columna).limit(0);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+async function resolverDisponible(ctx: ToolContext, g: Guia): Promise<boolean> {
+  if (g.disponible === false) return false;
+  if (!g.requiereColumna) return true;
+  return columnaExiste(ctx, g.requiereColumna.tabla, g.requiereColumna.columna);
+}
+
+function serializarGuia(g: Guia, disponible: boolean) {
   return {
     id: g.id,
     titulo: g.titulo,
-    disponible: g.disponible !== false,
-    pasos: g.pasos,
+    disponible,
+    pasos: disponible ? g.pasos : g.pasosNoDisponible ?? g.pasos,
     rutas: g.rutas,
     permisos: g.permisos ?? [],
     notas: g.notas ?? [],
@@ -69,7 +88,7 @@ export const buscarGuia: ToolDefinition<BuscarGuiaArgs> = {
     return READ_PREVIEW;
   },
 
-  async execute(_ctx: ToolContext, args: BuscarGuiaArgs): Promise<ToolResult> {
+  async execute(ctx: ToolContext, args: BuscarGuiaArgs): Promise<ToolResult> {
     const guias = buscarGuias(args.consulta);
     if (guias.length === 0) {
       return {
@@ -81,7 +100,7 @@ export const buscarGuia: ToolDefinition<BuscarGuiaArgs> = {
     return {
       ok: true,
       message: `Guía: ${guias[0].titulo}.`,
-      data: { encontradas: guias.length, guias: guias.map(serializarGuia) },
+      data: { encontradas: guias.length, guias: await Promise.all(guias.map(async (g) => serializarGuia(g, await resolverDisponible(ctx, g)))) },
     };
   },
 };

@@ -167,3 +167,12 @@ describe('QA bloque 4 (ROJO e40363ba3): secciones reales', () => {
     expect(textoUnico({ settings: { estilo: { fondo: 'oscuro' } }, contenido: {} })).toEqual({ valor: '#ffffff', alcance: 'oscuro' });
   });
 });
+
+describe('colores del encabezado en una sede', () => {
+  it('el cambio solo toca el contenido (pasa por onCambiarContenido y la pregunta de la sede)', () => {
+    const a = { settings: { estilo: { fondo: 'alterno' } }, contenido: { title: 'X' } };
+    const r = cambioColorEncabezado(a, 'title_color', '#123456');
+    expect(r.settings).toBe(a.settings);
+    expect(r.contenido).toEqual({ title: 'X', section_header: { title_color: '#123456' } });
+  });
+});

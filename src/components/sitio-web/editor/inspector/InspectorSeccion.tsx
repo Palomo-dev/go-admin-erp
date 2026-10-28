@@ -332,6 +332,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             tema={p.tema}
             catalogoFuentes={p.catalogoFuentes}
             sede={p.sede?.estilo ?? null}
+            encabezado={{
+              apariencia: { settings: (s.settings ?? {}) as Record<string, unknown>, contenido },
+              aplicar: (a) => onCambiarContenido(a.contenido),
+            }}
             unico={
               p.onCambiarApariencia && !p.sede
                 ? {

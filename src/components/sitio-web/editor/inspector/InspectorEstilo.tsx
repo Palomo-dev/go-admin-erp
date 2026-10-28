@@ -111,6 +111,12 @@ export interface InspectorEstiloProps {
     aplicar: (a: Apariencia) => void;
     campoImagen: (valor: string | undefined, onCambiar: (v: string | undefined) => void) => ReactNode;
   } | null;
+  /**
+   * Colores del título y la descripción del encabezado (`content.section_header`). Va aparte de
+   * `unico` para que también esté en una sede (mismo control y misma regla; el cambio de contenido
+   * pasa por la pregunta de la sede).
+   */
+  encabezado?: { apariencia: Apariencia; aplicar: (a: Apariencia) => void } | null;
 }
 
 const TITULO = 'text-[13px] font-semibold leading-[18px] text-fg';
@@ -182,6 +188,7 @@ export function InspectorEstilo({
   sede,
   deshabilitado,
   unico,
+  encabezado,
 }: InspectorEstiloProps) {
   const t = useTextosEditor();
   const id = useId();
@@ -622,11 +629,11 @@ export function InspectorEstilo({
                   />
                 </Grupo>
                 <p className={AYUDA}>{t('estilo.grosorBordeAyuda')}</p>
-                <ColoresEncabezado unico={unico} tema={tema} t={t} deshabilitado={deshabilitado} />
               </>
             )}
           </>
         )}
+        {encabezado && <ColoresEncabezado unico={encabezado} tema={tema} t={t} deshabilitado={deshabilitado} />}
       </section>
 
       {sede ? (
@@ -662,7 +669,7 @@ function ColoresEncabezado({
   t,
   deshabilitado,
 }: {
-  unico: NonNullable<InspectorEstiloProps['unico']>;
+  unico: NonNullable<InspectorEstiloProps['encabezado']>;
   tema: { colores: ColoresMarca };
   t: TraductorEditor;
   deshabilitado?: boolean;

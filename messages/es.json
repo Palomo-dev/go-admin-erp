@@ -14319,6 +14319,7 @@
       "PADRE_NO_ENCONTRADO": "El SKU padre no existe",
       "VARIANTE_PADRE_ELIMINADO": "La variante es de un producto eliminado: restaura el producto padre primero",
       "STOCK_SIN_COSTO": "Stock sin costo: el kardex exige costo",
+      "SIN_PERMISO_CREAR_CATEGORIA": "No tienes permiso para crear categorías; usa una existente o pide permiso",
       "PRECIO_INVALIDO": "Precio no válido",
       "COSTO_INVALIDO": "Costo no válido",
       "STOCK_INVALIDO": "Stock no válido",

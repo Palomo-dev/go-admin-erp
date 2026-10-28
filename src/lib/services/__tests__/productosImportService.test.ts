@@ -35,6 +35,7 @@ describe('validarCuerpoLote', () => {
 describe('codigoErrorRpc', () => {
   it('traduce los mensajes de la RPC y de Postgres', () => {
     expect(codigoErrorRpc('STOCK_SIN_COSTO')).toBe('STOCK_SIN_COSTO');
+    expect(codigoErrorRpc('SIN_PERMISO_CREAR_CATEGORIA: Bebidas')).toBe('SIN_PERMISO_CREAR_CATEGORIA');
     expect(codigoErrorRpc('duplicate key value violates unique constraint')).toBe('DUPLICADO');
     expect(codigoErrorRpc('new row violates check constraint "products_station_check"')).toBe('DATO_NO_VALIDO');
     expect(codigoErrorRpc('otra cosa')).toBe('ERROR');

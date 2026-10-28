@@ -10118,6 +10118,7 @@
       "PADRE_NO_ENCONTRADO": "O SKU pai não existe",
       "VARIANTE_PADRE_ELIMINADO": "A variante é de um produto excluído: restaure primeiro o produto pai",
       "STOCK_SIN_COSTO": "Estoque sem custo: o razão de estoque exige custo",
+      "SIN_PERMISO_CREAR_CATEGORIA": "Você não tem permissão para criar categorias; use uma existente ou peça permissão",
       "PRECIO_INVALIDO": "Preço inválido",
       "COSTO_INVALIDO": "Custo inválido",
       "STOCK_INVALIDO": "Estoque inválido",

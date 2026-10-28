@@ -9,6 +9,9 @@
 -- Impacto medido el 27-oct (SELECT): 188 miembros activos; 42 (9 orgs) sin ninguno de esos
 -- permisos pierden crear categorías por esta RPC; ninguno es super admin ni rol 1-2, y ninguno
 -- pasa el permiso de la pantalla de importar, así que por la pantalla nadie pierde nada.
+-- Con service_role y sin usuario (auth.uid() nulo) sí se crean: el servidor ya autorizó.
+-- Registro: se aplica a mano con execute_sql, como las demás migraciones de esta serie, NO con
+-- `supabase db push`; por eso la fila de schema_migrations va dentro del archivo (y el rollback la borra).
 -- Rollback: supabase/rollbacks/20261027213000_importar_lote_crear_categoria_exige_permiso_rollback.sql
 begin;
 CREATE OR REPLACE FUNCTION public.fn_importar_productos_lote(p_organization_id integer, p_branch_id integer, p_modo text, p_filas jsonb, p_opciones jsonb DEFAULT '{}'::jsonb)
@@ -79,7 +82,9 @@ begin
   perform public.fn_assert_acceso_org(p_organization_id);
   -- Crear categorías exige permiso de catálogo, como la RLS de INSERT de categories
   -- (20261027200000); esta función es SECURITY DEFINER y salta esa RLS.
-  v_puede_crear_categoria := public.fn_categorias_puede_editar(p_organization_id)
+  -- Con service_role y sin usuario (auth.uid() nulo) el servidor ya autorizó: se permite.
+  v_puede_crear_categoria := (v_uid is null and coalesce(auth.role(), '') = 'service_role')
+    or public.fn_categorias_puede_editar(p_organization_id)
     or coalesce(public.check_user_permission(v_uid, p_organization_id, 'inventory.create'), false);
 
   if p_modo not in ('crear_y_actualizar', 'solo_crear', 'solo_actualizar', 'duplicar') then

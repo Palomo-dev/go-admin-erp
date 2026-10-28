@@ -10117,6 +10117,7 @@
       "PADRE_NO_ENCONTRADO": "Le SKU parent n’existe pas",
       "VARIANTE_PADRE_ELIMINADO": "La variante appartient à un produit supprimé : restaurez d’abord le produit parent",
       "STOCK_SIN_COSTO": "Stock sans coût : le registre de stock exige un coût",
+      "SIN_PERMISO_CREAR_CATEGORIA": "Vous n’avez pas l’autorisation de créer des catégories ; utilisez-en une existante ou demandez l’autorisation",
       "PRECIO_INVALIDO": "Prix non valide",
       "COSTO_INVALIDO": "Coût non valide",
       "STOCK_INVALIDO": "Stock non valide",

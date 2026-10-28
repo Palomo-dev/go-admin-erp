@@ -14318,6 +14318,7 @@
       "PADRE_NO_ENCONTRADO": "Parent SKU does not exist",
       "VARIANTE_PADRE_ELIMINADO": "The variant belongs to a deleted product: restore the parent product first",
       "STOCK_SIN_COSTO": "Stock without cost: the stock ledger requires a cost",
+      "SIN_PERMISO_CREAR_CATEGORIA": "You don't have permission to create categories; use an existing one or ask for permission",
       "PRECIO_INVALIDO": "Invalid price",
       "COSTO_INVALIDO": "Invalid cost",
       "STOCK_INVALIDO": "Invalid stock",

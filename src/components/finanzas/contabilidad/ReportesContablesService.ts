@@ -603,7 +603,7 @@ export class ReportesContablesService {
 
   /**
    * Auxiliar por tercero con saldo corrido (saldo inicial + cada movimiento). Necesita la migración
-   * 20261027213000; si aún no está en la base, devuelve `disponible: false` y la pantalla cae al resumen.
+   * 20261027213500; si aún no está en la base, devuelve `disponible: false` y la pantalla cae al resumen.
    */
   static async getAuxiliarTerceroDetalle(
     startDate: string,

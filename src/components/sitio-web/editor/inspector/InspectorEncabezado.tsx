@@ -20,6 +20,7 @@ import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
 import { buscadorPropioCelular, cambioBuscador, cambioCirculoAcento, cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
 import { useTextosEditor } from '../textos';
+import { CelularEncabezado } from './CelularEncabezado';
 import {
   BandaGlobal,
   CabeceraZona,
@@ -431,7 +432,6 @@ function Diseno(p: Interno) {
   const idComp = useId();
   const idLogo = useId();
   const idBc = useId();
-  const idMc = useId();
   const idCol = useId();
   const composicion = composicionEncabezado(a);
   const megaId = typeof a.header_mega_menu_id === 'string' ? a.header_mega_menu_id : null;
@@ -508,15 +508,7 @@ function Diseno(p: Interno) {
           </p>
         )}
       </div>
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idMc}>{t('zonaGlobal.diseno.menuCelular')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idMc}
-          opciones={(['drawer', 'fullscreen', 'bottom_sheet', 'tabs'] as const).map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.diseno.menuCelularOpcion.${v}`) }))}
-          valor={valorOpcion<string>(a, 'mobile_menu_style') ?? 'drawer'}
-          onValorChange={(v) => cambiar({ mobile_menu_style: v })}
-        />
-      </div>
+      <CelularEncabezado ajustes={a} cambiar={cambiar} />
     </>
   );
 }
@@ -700,7 +692,6 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'auth_icon',
   'currency_icon',
   'header_booking_bar',
-  'mobile_logo_position',
   'mobile_show_topbar',
   'mobile_search_style',
   'header_divider',

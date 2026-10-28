@@ -46,7 +46,8 @@ function editablesMovil(h: Record<string, unknown>, parte: string): NonNullable<
 }
 
 const ESTILOS_MENU_NUEVOS = ['drawer_left', 'drawer_right', 'top_dropdown', 'none'];
-export const PARTES_MOVIL = ['panel', 'layout', 'icons', 'search', 'bottom_nav'] as const;
+// `bottom_nav` ya se edita en «Menú inferior tipo app» (panel Encabezado › Celular).
+export const PARTES_MOVIL = ['panel', 'layout', 'icons', 'search'] as const;
 /** Claves del celular que, en `null`, siguen a su par de computador en la tienda (`opcionUnica.ts`). */
 export const SIGUEN_A_COMPUTADOR: Readonly<Record<string, string>> = {
   mobile_search_style: 'search_style',

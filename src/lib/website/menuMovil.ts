@@ -119,7 +119,7 @@ function texto(valor: unknown, max: number): string | undefined {
   return t ? t.slice(0, max) : undefined
 }
 
-const ICONOS_ITEM = ['home', 'grid', 'search', 'bag', 'cart', 'user', 'heart', 'tag', 'whatsapp', 'link'] as const
+export const ICONOS_ITEM = ['home', 'grid', 'search', 'bag', 'cart', 'user', 'heart', 'tag', 'whatsapp', 'link'] as const
 
 const DEFECTO_ITEM: Record<(typeof TIPOS_ITEM)[number], Pick<ItemBarra, 'label' | 'icon' | 'action' | 'href'>> = {
   home: { label: 'Inicio', icon: 'home', action: 'link', href: '/' },

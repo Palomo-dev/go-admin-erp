@@ -69,4 +69,18 @@ describe('CONTAC-04: repetidor del kit', () => {
     expect(cambiar).toHaveBeenCalledTimes(1);
     expect(cambiar.mock.calls[0][0].map((e: { id: string }) => e.id)).toEqual(['b', 'c', 'a']);
   });
+
+  // Regresión de los repetidores de todas las secciones (QA dbeea6fe0): se pintan, abrir un
+  // elemento no escribe, y editar el primer campo hijo escribe solo ese elemento.
+  const repetidores = SECTION_CATALOG.flatMap((s) => s.contentFields.filter((c) => c.type === 'repeater').map((c) => [s.type, c.key, c] as const));
+  test.each(repetidores.map(([t, k, c]) => [`${t}.${k}`, c]))('%s', (_n, campo) => {
+    const c = campo as ContentFieldDef;
+    const cambiar = jest.fn();
+    const muestra = Object.fromEntries((c.itemFields ?? []).map((f) => [f.key, f.defaultValue ?? (f.type === 'number' ? 1 : f.type === 'boolean' ? false : f.type === 'repeater' ? [] : '')]));
+    const { container } = renderConIdioma(<RepetidorSeccion campo={c} valor={[{ id: 'x', ...muestra }]} onCambiar={cambiar} categorias={categorias} />);
+    expect(screen.getByRole('group', { name: c.label })).toBeTruthy();
+    const boton = container.querySelector('[draggable] button');
+    if (boton) fireEvent.click(boton);
+    expect(cambiar).not.toHaveBeenCalled();
+  });
 });

@@ -420,35 +420,35 @@ export default function GlobalSettingsPanel({
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.header')}</span>
                     <Switch
-                      checked={(settings as any).countdown_show_in_header ?? true}
+                      checked={(settings as any).countdown_show_in_header === true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_header: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.carrito')}</span>
                     <Switch
-                      checked={(settings as any).countdown_show_in_cart ?? true}
+                      checked={(settings as any).countdown_show_in_cart === true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_cart: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.detalleProducto')}</span>
                     <Switch
-                      checked={(settings as any).countdown_show_in_product ?? true}
+                      checked={(settings as any).countdown_show_in_product === true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_product: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.heroInicio')}</span>
                     <Switch
-                      checked={(settings as any).countdown_show_in_hero ?? false}
+                      checked={(settings as any).countdown_show_in_hero === true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_hero: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-gray-600 dark:text-gray-400">{tx('globalSettingsPanel.checkout')}</span>
                     <Switch
-                      checked={(settings as any).checkout_show_countdown ?? false}
+                      checked={(settings as any).checkout_show_countdown === true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_countdown: checked } as any)}
                     />
                   </div>

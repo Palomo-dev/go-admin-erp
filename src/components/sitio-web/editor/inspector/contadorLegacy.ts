@@ -57,7 +57,7 @@ export function leerContador(settings: Record<string, unknown> | null | undefine
     titulo: typeof s.countdown_title === 'string' ? s.countdown_title : '',
     modo: s.countdown_mode === 'custom' ? 'custom' : 'daily_reset',
     fin: typeof s.countdown_end_date === 'string' ? s.countdown_end_date : '',
-    zona: typeof s.countdown_timezone === 'string' && s.countdown_timezone ? s.countdown_timezone : DEFAULT_TIMEZONE,
+    zona: typeof s.countdown_timezone === 'string' && s.countdown_timezone ? zonaValida(s.countdown_timezone) : DEFAULT_TIMEZONE,
     horaReinicio: Number.isInteger(hora) && hora >= 0 && hora <= 23 ? hora : 0,
     ubicaciones,
   };

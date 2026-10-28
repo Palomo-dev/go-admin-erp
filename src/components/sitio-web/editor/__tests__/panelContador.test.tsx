@@ -127,6 +127,10 @@ describe('tiempoRestante (vista previa, misma regla que la tienda)', () => {
   test('reinicio a las 18 y a la tarde', () => {
     expect(tiempoRestante(diario({ countdown_reset_hour: 18 }), new Date('2026-10-28T20:00:00Z'))).toBe('03:00:00');
   });
+  test('leerContador valida la zona: inválida → zona por defecto', () => {
+    expect(diario({ countdown_timezone: 'Marte/Olympus' }).zona).toBe(DEFAULT_TIMEZONE);
+    expect(diario({ countdown_timezone: 'Europe/Madrid' }).zona).toBe('Europe/Madrid');
+  });
   test('zona inválida cae en la zona por defecto, no en la del visitante', () => {
     expect(tiempoRestante(diario({ countdown_timezone: 'Marte/Olympus' }), new Date('2026-10-29T05:30:00Z'))).toBe('23:30:00');
   });

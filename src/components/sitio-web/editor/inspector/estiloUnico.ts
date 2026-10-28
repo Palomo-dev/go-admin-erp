@@ -174,3 +174,28 @@ export function estiloConFuentesCascaron(a: Apariencia): EstiloSeccion {
     },
   };
 }
+
+/**
+ * Colores del encabezado de la sección (título, segundo color del degradado y descripción).
+ * Antes estaban en Cascarón; ahora viven solo en Estilo › Colores. Se guardan donde siempre
+ * (`content.section_header`), así la tienda los lee igual. Sin valor, el encabezado usa el color
+ * del texto de la sección: eso es lo que muestra el control hasta que se edita.
+ */
+export const CLAVES_COLOR_ENCABEZADO = ['title_color', 'title_color_2', 'description_color'] as const;
+export type ClaveColorEncabezado = (typeof CLAVES_COLOR_ENCABEZADO)[number];
+
+const esHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v.trim());
+
+export function leerColorEncabezado({ contenido }: Apariencia, clave: ClaveColorEncabezado): string | undefined {
+  const v = obj(contenido.section_header)?.[clave];
+  return esHex(v) ? v : undefined;
+}
+
+/** `null` quita el color (vuelve a «como el texto»). Quitar el título quita también el degradado. */
+export function cambioColorEncabezado(a: Apariencia, clave: ClaveColorEncabezado, valor: string | null): Apariencia {
+  const h = obj(a.contenido.section_header) ?? {};
+  let nuevo: Obj = valor ? { ...h, [clave]: valor } : sinClaves(h, clave === 'title_color' ? ['title_color', 'title_color_2'] : [clave]);
+  if (valor && clave === 'title_color_2' && !esHex(h.title_color)) nuevo = { ...nuevo, title_color: valor };
+  const contenido = Object.keys(nuevo).length ? { ...a.contenido, section_header: nuevo } : sinClaves(a.contenido, ['section_header']);
+  return { settings: a.settings, contenido };
+}

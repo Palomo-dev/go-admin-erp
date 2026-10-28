@@ -97,3 +97,27 @@ describe('ESTILO-05 tipografía', () => {
     expect(estiloConFuentesCascaron(vacia)).toEqual(leerEstiloSeccion({}));
   });
 });
+
+import { cambioColorEncabezado, leerColorEncabezado } from '../inspector/estiloUnico';
+
+describe('colores del encabezado (ESTILO-06, antes en Cascarón)', () => {
+  const base = { settings: {}, contenido: { title: 'Hola' } };
+  it('sin valor no lee nada ni cambia el contenido', () => {
+    expect(leerColorEncabezado(base, 'title_color')).toBeUndefined();
+  });
+  it('lee el valor guardado en section_header', () => {
+    expect(leerColorEncabezado({ settings: {}, contenido: { section_header: { title_color: '#ff0000' } } }, 'title_color')).toBe('#ff0000');
+  });
+  it('escribe en section_header sin tocar settings', () => {
+    const r = cambioColorEncabezado(base, 'description_color', '#00ff00');
+    expect(r.contenido).toEqual({ title: 'Hola', section_header: { description_color: '#00ff00' } });
+    expect(r.settings).toBe(base.settings);
+  });
+  it('quitar el título quita también el degradado y limpia section_header vacío', () => {
+    const a = { settings: {}, contenido: { section_header: { title_color: '#111111', title_color_2: '#222222' } } };
+    expect(cambioColorEncabezado(a, 'title_color', null).contenido).toEqual({});
+  });
+  it('el segundo color sin título fija ambos', () => {
+    expect(cambioColorEncabezado(base, 'title_color_2', '#333333').contenido.section_header).toEqual({ title_color_2: '#333333', title_color: '#333333' });
+  });
+});

@@ -76,8 +76,6 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
       </Campo>
       <ColorKit etiqueta="Color de la línea" value={typeof e.line_color === 'string' && e.line_color.startsWith('#') ? e.line_color : '#111827'} onChange={(ev) => set('line_color', ev.target.value)} />
       <CasillaKit titulo="Mayúsculas" checked={e.title_uppercase === true} onChange={(ev) => set('title_uppercase', ev.target.checked)} />
-      <ColorKit etiqueta="Color del título" value={typeof e.title_color === 'string' && e.title_color.startsWith('#') ? e.title_color : '#111827'} onChange={(ev) => set('title_color', ev.target.value)} />
-      <ColorKit etiqueta="Color 2 (degradado)" value={typeof e.title_color_2 === 'string' && e.title_color_2.startsWith('#') ? e.title_color_2 : '#111827'} onChange={(ev) => set('title_color_2', ev.target.value)} />
       <Campo etiqueta="Tamaño de la descripción">
         <SelectKit className={control} value={String(e.description_size ?? '')} onChange={(ev) => set('description_size', ev.target.value)}>
           <option value="">Como hoy</option>
@@ -86,13 +84,14 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
           <option value="lg">Grande</option>
         </SelectKit>
       </Campo>
-      <ColorKit etiqueta="Color de la descripción" value={typeof e.description_color === 'string' && e.description_color.startsWith('#') ? e.description_color : '#4b5563'} onChange={(ev) => set('description_color', ev.target.value)} />
       <Campo etiqueta="Peso de la descripción">
         <SelectKit className={control} value={String(e.description_weight ?? '')} onChange={(ev) => set('description_weight', ev.target.value)}>
           <option value="">Como hoy</option>
           {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
         </SelectKit>
       </Campo>
+      {/* ESTILO-06: los colores del título y la descripción se eligen en Estilo › Colores (una sola opción). */}
+      <p className="text-[12px] leading-4 text-fg-muted">{tk('estiloUnico.colorEnEstilo')}</p>
       {/* ESTILO-05: la fuente del título y de la descripción se elige en Estilo › Tipografía (una sola opción). */}
       <p className="text-[12px] leading-4 text-fg-muted">{tk('estiloUnico.fuenteEnEstilo')}</p>
       <Campo etiqueta="Ancho máximo de la descripción (caracteres)"><NumeroKit min={20} max={80} value={String(e.description_max ?? '')} onChange={(ev) => set('description_max', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>

@@ -169,6 +169,13 @@ export const TEXTOS_EDITOR = {
     fondoCapa: 'Oscurecer la imagen',
     grosorBorde: 'Borde de la sección',
     grosorBordeAyuda: '0 = sin borde. El color es «Color del borde».',
+    encabezado: {
+      titulo: 'Color del título del encabezado',
+      titulo2: 'Segundo color del título (degradado)',
+      descripcion: 'Color de la descripción del encabezado',
+      comoTexto: 'Usar el color del texto',
+      ayuda: 'Sin cambiar, el título y la descripción usan el color del texto de la sección.',
+    },
     entrada: { ninguna: 'Ninguna', aparecer: 'Aparecer', revelar_texto: 'Revelar texto' },
     espaciado: { compacto: 'Compacto', normal: 'Normal', amplio: 'Amplio' },
     ancho: { contenedor: 'Contenedor', completo: 'Pantalla completa' },
@@ -1150,6 +1157,7 @@ export const TEXTOS_EDITOR = {
   estiloUnico: {
     fuenteEnEstilo: 'La fuente del título y de la descripción se elige en Estilo › Tipografía.',
     fondoEnEstilo: 'Color, degradado e imagen se eligen en Estilo › Fondo.',
+    colorEnEstilo: 'Los colores del título y de la descripción se eligen en Estilo › Colores.',
   },
   controles: {
     degradado1: 'Color inicial del degradado',

@@ -29,7 +29,7 @@ import { DeviceVisibilityChip } from '@/components/sitio-web/ui/DeviceVisibility
 import { InheritanceTag } from '@/components/sitio-web/ui/InheritanceTag';
 import { familiaCss } from '@/components/sitio-web/diseno/catalogo';
 import { useFuentesSitio } from '@/components/sitio-web/diseno/useFuentesSitio';
-import { rolDeReferencia, type ColoresMarca } from '@/lib/website/v2/colorMarca';
+import { resolverColorMarca, rolDeReferencia, type ColoresMarca } from '@/lib/website/v2/colorMarca';
 import { resolverFuenteTema, type FuentesTema } from '@/lib/website/v2/fuenteTema';
 import {
   ANCHOS_SECCION,
@@ -71,6 +71,9 @@ import {
   grosorBordeUnico,
   leerColorBordeUnico,
   leerColorTextoUnico,
+  leerColorEncabezado,
+  cambioColorEncabezado,
+  type ClaveColorEncabezado,
   leerFondoUnico,
   sinFuentesCascaron,
   type Apariencia,
@@ -607,6 +610,7 @@ export function InspectorEstilo({
                   />
                 </Grupo>
                 <p className={AYUDA}>{t('estilo.grosorBordeAyuda')}</p>
+                <ColoresEncabezado unico={unico} tema={tema} t={t} deshabilitado={deshabilitado} />
               </>
             )}
           </>
@@ -636,5 +640,49 @@ export function InspectorEstilo({
         </button>
       )}
     </div>
+  );
+}
+
+/** Título, degradado y descripción del encabezado: una sola opción (antes duplicada en Cascarón). */
+function ColoresEncabezado({
+  unico,
+  tema,
+  t,
+  deshabilitado,
+}: {
+  unico: NonNullable<InspectorEstiloProps['unico']>;
+  tema: { colores: ColoresMarca };
+  t: TraductorEditor;
+  deshabilitado?: boolean;
+}) {
+  const a = unico.apariencia;
+  const texto = resolverColorMarca(leerColorTextoUnico(a) ?? 'marca:texto', tema.colores);
+  const base = texto && /^#[0-9a-f]{3,8}$/i.test(texto) ? texto : '#111827';
+  const titulo = leerColorEncabezado(a, 'title_color');
+  const titulo2 = leerColorEncabezado(a, 'title_color_2');
+  const desc = leerColorEncabezado(a, 'description_color');
+  const quitar = (clave: ClaveColorEncabezado) => (
+    <button
+      type="button"
+      onClick={() => unico.aplicar(cambioColorEncabezado(a, clave, null))}
+      disabled={deshabilitado}
+      className="self-start rounded-md text-[13px] font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      {t('estilo.encabezado.comoTexto')}
+    </button>
+  );
+  return (
+    <>
+      <ColorField etiqueta={t('estilo.encabezado.titulo')} valor={titulo ?? base} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'title_color', c))} deshabilitado={deshabilitado} />
+      {titulo && (
+        <>
+          <ColorField etiqueta={t('estilo.encabezado.titulo2')} valor={titulo2 ?? titulo} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'title_color_2', c === titulo ? null : c))} deshabilitado={deshabilitado} />
+          {quitar('title_color')}
+        </>
+      )}
+      <ColorField etiqueta={t('estilo.encabezado.descripcion')} valor={desc ?? base} onCambiar={(c) => unico.aplicar(cambioColorEncabezado(a, 'description_color', c))} deshabilitado={deshabilitado} />
+      {desc && quitar('description_color')}
+      <p className={AYUDA}>{t('estilo.encabezado.ayuda')}</p>
+    </>
   );
 }

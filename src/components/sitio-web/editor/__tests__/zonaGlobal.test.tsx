@@ -279,16 +279,14 @@ describe('InspectorPie', () => {
     expect(screen.getAllByText('Nuevo').length).toBeGreaterThanOrEqual(3);
   });
 
-  test('Diseño: composiciones, columnas, celular y barra fija abajo con acciones', () => {
+  test('Diseño: composiciones, columnas y celular (la barra fija abajo vive en Encabezado › Celular)', () => {
     const onCambiar = pie({ mobile_bottom_bar: 'reservar,llamar' }, { pestanaInicial: 'diseno', giro: 'hotel' });
     const comp = screen.getByRole('radiogroup', { name: 'Diseño del pie' });
     expect(within(comp).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', '3 columnas', 'Centrado', 'Mínimo', 'Dividido']);
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Columnas' })).getByRole('radio', { name: '3' }));
     expect(onCambiar).toHaveBeenCalledWith({ footer_columns: 3 });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Cómo llegar' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_bottom_bar: ['reservar', 'llamar', 'como_llegar'] });
-    fireEvent.click(screen.getByRole('switch', { name: /Barra fija abajo/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_bottom_bar: 'ninguna' });
+    expect(screen.queryByRole('switch', { name: /Barra fija abajo/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Cómo llegar' })).toBeNull();
   });
 
   test('Estilo: fondo «Tema» y personalizado con color', () => {

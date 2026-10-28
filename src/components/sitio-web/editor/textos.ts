@@ -814,6 +814,7 @@ export const TEXTOS_EDITOR = {
         mandaEspaciado: "Manda sobre Estilo › Espaciado: quítalo para que se vea lo que elijas ahí.",
         mandaAncho: "Manda sobre Estilo › Ancho: quítalo para que se vea lo que elijas ahí.",
         sinEfecto: "La tienda no lo usa: no cambia nada.",
+        mandaCarrusel: "Se usa mientras la sección siga el carrusel global sin configurar. Al apagar «Usar global» en Carrusel, pasa a ese panel.",
       },
       clave: {
         seccion_padding_top: "Relleno arriba",
@@ -824,6 +825,8 @@ export const TEXTOS_EDITOR = {
         seccion_full_bleed: "Ancho completo de pantalla",
         seccion_container_width: "Ancho del contenido",
         seccion_full_width: "Ancho completo de pantalla (categorías)",
+        seccion_carrusel: "Carrusel anterior (visibles, automático, bucle, deslizar)",
+        seccion_show_marker: "Mostrar marcador (el mapa siempre lo muestra)",
         carrusel_avance: "Ítems por avance",
         header_builder: "Constructor (zonas e íconos)",
         mobile_header: "Celular (panel y barra inferior)",

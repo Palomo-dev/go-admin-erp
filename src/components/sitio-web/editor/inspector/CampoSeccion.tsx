@@ -24,6 +24,7 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { useTextosEditor } from '../textos';
 import { CampoChecklist, CampoChips } from './CamposListas';
 import { EditorPestanas } from './EditorCascaron';
+import type { FuentesTema } from '@/lib/website/v2/fuenteTema';
 import { EditorBoletin } from './EditorBoletin';
 import { AparienciaCategoriasEditor } from './AparienciaCategoriasEditor';
 
@@ -96,6 +97,8 @@ export interface CampoSeccionProps {
   fondo?: string | null;
   categorias: { lista: readonly CategoriaInventarioMenu[]; cargando: boolean; recargar?: () => void | Promise<void> };
   deshabilitado?: boolean;
+  /** Fuentes del tema, para los selectores de fuente del encabezado. */
+  fuentes?: FuentesTema;
 }
 
 export function CampoSeccion({
@@ -109,6 +112,7 @@ export function CampoSeccion({
   fondo,
   categorias,
   deshabilitado,
+  fuentes,
 }: CampoSeccionProps) {
   const t = useTextosEditor();
   const ayuda = campo.helpText;
@@ -279,7 +283,7 @@ export function CampoSeccion({
     case 'chips':
       return <CampoChips campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
     case 'section_header':
-      return <EditorPestanas contenido={contenido} onCambiar={onCambiarContenido} />;
+      return <EditorPestanas contenido={contenido} fuentes={fuentes} onCambiar={onCambiarContenido} />;
     case 'section_background':
       return null;
     case 'notice':

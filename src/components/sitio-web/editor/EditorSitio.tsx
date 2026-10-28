@@ -796,6 +796,7 @@ function Editor() {
               onEditarCarta={seccion.section_type === 'menu_full' ? () => setCarta({ seccionId: seccion.id }) : undefined}
               tema={tema}
               estiloTarjetaSitio={valorCampo(ed.documento?.tema.tarjetaProducto)}
+              carruselSitio={valorCampo(ed.documento?.tema.carrusel)}
               onAplicarTarjeta={(estilo: EstiloTarjetaProducto) => {
                 for (const s of ed.currentPage?.sections ?? []) {
                   if (!esSeccionTarjetaProducto(s.section_type)) continue;

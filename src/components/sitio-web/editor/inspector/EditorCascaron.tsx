@@ -3,6 +3,11 @@
 import { useTextosEditor } from '../textos';
 import { SelectKit, NumeroKit, CasillaKit, ColorKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
+import { accionDesdeVerTodo, CLAVES_VER_TODO } from './espaciadoSeccion';
+import { FontField } from '@/components/sitio-web/ui/FontField';
+import { FONTS } from '@/lib/services/websiteSettingsService';
+import { familiaCss } from '@/components/sitio-web/diseno/catalogo';
+import { fuenteEncabezadoAlCampo, fuenteEncabezadoAlGuardar, type FuentesTema } from '@/lib/website/v2/fuenteTema';
 
 /** Controles de `section_header` y `section_background`. No escriben nada hasta que se cambia un campo. */
 
@@ -21,7 +26,7 @@ function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }
   );
 }
 
-export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void }) {
+export function EditorEncabezado({ valor, onCambiar, fuentes = {} }: { valor: unknown; onCambiar: (v: unknown) => void; fuentes?: FuentesTema }) {
   const e = objeto(valor);
   const set = (k: string, v: unknown) => {
     const siguiente = { ...e, [k]: v };
@@ -32,8 +37,8 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
     <div className="flex flex-col gap-2 rounded-lg border border-line p-3">
       <p className="text-sm font-semibold text-fg">Encabezado de la sección</p>
       <Campo etiqueta="Etiqueta pequeña"><input className={control} value={String(e.eyebrow ?? '')} onChange={(ev) => set('eyebrow', ev.target.value)} /></Campo>
-      <Campo etiqueta="Título"><input className={control} value={String(e.title ?? '')} onChange={(ev) => set('title', ev.target.value)} /></Campo>
-      <Campo etiqueta="Descripción"><textarea className={control} rows={2} value={String(e.description ?? '')} onChange={(ev) => set('description', ev.target.value)} /></Campo>
+      {/* CASCAR-02: el título y la descripción se escriben en Contenido › Título / Subtítulo (un solo campo). */}
+      <p className="text-[11px] leading-[14px] text-fg-muted">El título y la descripción se escriben en Contenido.</p>
       <CasillaKit titulo="Mostrar título" checked={e.show_title !== false} onChange={(ev) => set('show_title', ev.target.checked)} />
       <CasillaKit titulo="Mostrar descripción" checked={e.show_description !== false} onChange={(ev) => set('show_description', ev.target.checked)} />
       <Campo etiqueta="Tamaño del título">
@@ -75,7 +80,8 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
       <CasillaKit titulo="Mayúsculas" checked={e.title_uppercase === true} onChange={(ev) => set('title_uppercase', ev.target.checked)} />
       <ColorKit etiqueta="Color del título" value={typeof e.title_color === 'string' && e.title_color.startsWith('#') ? e.title_color : '#111827'} onChange={(ev) => set('title_color', ev.target.value)} />
       <ColorKit etiqueta="Color 2 (degradado)" value={typeof e.title_color_2 === 'string' && e.title_color_2.startsWith('#') ? e.title_color_2 : '#111827'} onChange={(ev) => set('title_color_2', ev.target.value)} />
-      <Campo etiqueta="Fuente (site o nombre)"><input className={control} value={String(e.title_font ?? '')} onChange={(ev) => set('title_font', ev.target.value)} /></Campo>
+      {/* ENCABE-93: fuente del título con el selector del kit (lee 'site' o la familia guardada). */}
+      <FontField etiqueta="Fuente del título" valor={fuenteEncabezadoAlCampo(e.title_font)} onCambiar={(v) => set('title_font', fuenteEncabezadoAlGuardar(v, fuentes, 'titulos'))} fuentesTema={fuentes} porDefecto="titulos" catalogo={FONTS} familiaCss={familiaCss} />
       <Campo etiqueta="Tamaño de la descripción">
         <SelectKit className={control} value={String(e.description_size ?? '')} onChange={(ev) => set('description_size', ev.target.value)}>
           <option value="">Como hoy</option>
@@ -91,20 +97,19 @@ export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambi
           {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
         </SelectKit>
       </Campo>
-      <Campo etiqueta="Fuente de la descripción"><input className={control} value={String(e.description_font ?? '')} onChange={(ev) => set('description_font', ev.target.value)} /></Campo>
+      {/* ENCABE-97 */}
+      <FontField etiqueta="Fuente de la descripción" valor={fuenteEncabezadoAlCampo(e.description_font)} onCambiar={(v) => set('description_font', fuenteEncabezadoAlGuardar(v, fuentes, 'cuerpo'))} fuentesTema={fuentes} porDefecto="cuerpo" catalogo={FONTS} familiaCss={familiaCss} />
       <Campo etiqueta="Ancho máximo de la descripción (caracteres)"><NumeroKit min={20} max={80} value={String(e.description_max ?? '')} onChange={(ev) => set('description_max', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
-      <CasillaKit titulo="Botón «Ver todo»" checked={e.view_all === true} onChange={(ev) => set('view_all', ev.target.checked)} />
-      <Campo etiqueta="Texto del botón"><input className={control} value={String(e.view_all_label ?? '')} onChange={(ev) => set('view_all_label', ev.target.value)} /></Campo>
-      <Campo etiqueta="Enlace del botón"><input className={control} value={String(e.view_all_url ?? '')} onChange={(ev) => set('view_all_url', ev.target.value)} /></Campo>
-      <Campo etiqueta="Estilo del botón">
-        <SelectKit className={control} value={String(e.view_all_style ?? '')} onChange={(ev) => set('view_all_style', ev.target.value)}>
-          <option value="">Sólido</option>
-          <option value="solid">Sólido</option>
-          <option value="outline">Contorno</option>
-          <option value="ghost">Texto</option>
-        </SelectKit>
-      </Campo>
-      <Accion valor={e.section_action} onCambiar={(v) => set('section_action', v)} />
+      {/* CASCAR-05/06: una sola acción «Ver todo». Lee el botón anterior (view_all_*) y al editar lo pasa a section_action. */}
+      <Accion
+        valor={e.section_action ?? accionDesdeVerTodo(e)}
+        onCambiar={(v) => {
+          const siguiente = { ...e, section_action: v };
+          for (const k of CLAVES_VER_TODO) delete siguiente[k];
+          if (v == null) delete siguiente.section_action;
+          onCambiar(Object.keys(siguiente).length ? siguiente : undefined);
+        }}
+      />
       <Medio valor={e.media} onCambiar={(v) => set('media', v)} />
     </div>
   );
@@ -203,7 +208,7 @@ function Medio({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) =
 
 const CLAVES_HEREDABLES = ['align', 'layout', 'title_font', 'title_size', 'title_weight', 'title_color', 'title_uppercase', 'title_line', 'description_size', 'description_color', 'description_font', 'description_weight']
 
-export function EditorPestanas({ contenido, onCambiar }: { contenido: Record<string, unknown>; onCambiar: (v: Record<string, unknown>) => void }) {
+export function EditorPestanas({ contenido, onCambiar, fuentes }: { contenido: Record<string, unknown>; onCambiar: (v: Record<string, unknown>) => void; fuentes?: FuentesTema }) {
   const [pestana, setPestana] = useState<'encabezado' | 'visual' | 'fondo'>('encabezado')
   const [local, setLocal] = useState(false)
   const setClave = (clave: string, valor: unknown) => {
@@ -233,7 +238,7 @@ export function EditorPestanas({ contenido, onCambiar }: { contenido: Record<str
                 if (ev.target.checked) { setLocal(false); restablecer() }
                 else setLocal(true)
               }} />
-          <EditorEncabezado valor={contenido.section_header} onCambiar={(v) => setClave('section_header', v)} />
+          <EditorEncabezado valor={contenido.section_header} fuentes={fuentes} onCambiar={(v) => setClave('section_header', v)} />
           <button type="button" className="text-left text-xs underline" onClick={restablecer}>Restablecer sección al estilo global</button>
         </>
       )}

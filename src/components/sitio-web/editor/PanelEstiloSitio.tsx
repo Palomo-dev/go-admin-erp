@@ -47,6 +47,10 @@ import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
 import { PanelUrgencia } from './inspector/PanelUrgencia';
+import { FontField } from '@/components/sitio-web/ui/FontField';
+import { FONTS } from '@/lib/services/websiteSettingsService';
+import { familiaCss } from '@/components/sitio-web/diseno/catalogo';
+import { fuenteEncabezadoAlCampo, fuenteEncabezadoAlGuardar, type FuentesTema } from '@/lib/website/v2/fuenteTema';
 
 export interface PanelEstiloSitioProps {
   enV2: boolean;
@@ -274,6 +278,10 @@ function EstiloGlobalSecciones({
       return { ...d, tema: { ...d.tema, seccion: Object.keys(seccion).length ? seccion : undefined } }
     })
   }
+  const fuentes: FuentesTema = {
+    titulos: valorCampo(documento.tema.tipografia?.titulos) ?? null,
+    cuerpo: valorCampo(documento.tema.tipografia?.cuerpo) ?? null,
+  }
   const aplicar = () => {
     onCambiarDocumento((d) => ({
       ...d,
@@ -332,9 +340,7 @@ function EstiloGlobalSecciones({
         </SelectKit>
       </div>
       <ColorKit etiqueta="Color del título" disabled={deshabilitado} value={typeof actual.title_color === 'string' && actual.title_color.startsWith('#') ? actual.title_color : '#111827'} onChange={(e) => set('title_color', e.target.value)} />
-      <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fuente del título
-        <input className={control} disabled={deshabilitado} value={String(actual.title_font ?? '')} onChange={(e) => set('title_font', e.target.value)} />
-      </label>
+      <FontField etiqueta="Fuente del título" deshabilitado={deshabilitado} valor={fuenteEncabezadoAlCampo(actual.title_font)} onCambiar={(v) => set('title_font', fuenteEncabezadoAlGuardar(v, fuentes, 'titulos'))} fuentesTema={fuentes} porDefecto="titulos" catalogo={FONTS} familiaCss={familiaCss} />
       <div role="group" aria-label="Tamaño de la descripción" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Tamaño de la descripción
         <SelectKit className={control} disabled={deshabilitado} value={String(actual.description_size ?? '')} onChange={(e) => set('description_size', e.target.value)}>
           <option value="">Como hoy</option>
@@ -350,9 +356,7 @@ function EstiloGlobalSecciones({
         </SelectKit>
       </div>
       <ColorKit etiqueta="Color de la descripción" disabled={deshabilitado} value={typeof actual.description_color === 'string' && actual.description_color.startsWith('#') ? actual.description_color : '#4b5563'} onChange={(e) => set('description_color', e.target.value)} />
-      <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fuente de la descripción
-        <input className={control} disabled={deshabilitado} value={String(actual.description_font ?? '')} onChange={(e) => set('description_font', e.target.value)} />
-      </label>
+      <FontField etiqueta="Fuente de la descripción" deshabilitado={deshabilitado} valor={fuenteEncabezadoAlCampo(actual.description_font)} onCambiar={(v) => set('description_font', fuenteEncabezadoAlGuardar(v, fuentes, 'cuerpo'))} fuentesTema={fuentes} porDefecto="cuerpo" catalogo={FONTS} familiaCss={familiaCss} />
       <button type="button" className="text-left text-sm font-medium underline" disabled={deshabilitado} onClick={aplicar}>Aplicar a todas las secciones</button>
     </div>
   )

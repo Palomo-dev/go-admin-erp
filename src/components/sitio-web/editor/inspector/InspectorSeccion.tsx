@@ -33,7 +33,7 @@ import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
 import { AjustesAnteriores } from './InspectorEncabezado';
-import { aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
+import { carruselGlobalActivo, carruselDesdeClavesAnteriores, cambioTextoEncabezado, valorTextoEncabezado, aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
 import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
@@ -74,6 +74,8 @@ export interface InspectorSeccionProps {
   className?: string;
   /** `product_card_style` del sitio, para mostrarlo cuando la sección no lo reemplaza. */
   estiloTarjetaSitio?: unknown;
+  /** Carrusel global del tema (`documento.tema.carrusel`). */
+  carruselSitio?: unknown;
   /** Copia el estilo de esta tarjeta a las demás secciones de productos de la página. */
   onAplicarTarjeta?: (estilo: EstiloTarjetaProducto) => void;
 }
@@ -138,11 +140,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       <CampoSeccion
         key={c.key}
         campo={c}
-        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : contenido[c.key]}
+        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : valorTextoEncabezado(contenido, c.key)}
         contenido={contenido}
         onCambiar={(v) => {
           const siguiente: Record<string, unknown> =
-            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : { ...contenido, [c.key]: v };
+            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : cambioTextoEncabezado(contenido, c.key, v);
           // Exclusión mutua de categories_grid (como en el editor anterior).
           if (c.key === 'show_icon' && v === true) siguiente.show_image = false;
           if (c.key === 'show_image' && v === true) siguiente.show_icon = false;
@@ -152,6 +154,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         organizationId={p.organizationId}
         paleta={p.paleta}
         fondo={p.tema.colores.fondo ?? null}
+        fuentes={p.tema.fuentes}
         categorias={p.categorias}
       />
     );
@@ -299,7 +302,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                     delete siguiente.carrusel;
                     onCambiarContenido(siguiente);
                   } else {
-                    onCambiarContenido({ ...contenido, carrusel: { usar_global: false } });
+                    // Arranca con lo que la sección ya tenía (claves anteriores), para que se vea igual.
+                    onCambiarContenido({ ...contenido, carrusel: { usar_global: false, ...(carruselGlobalActivo(p.carruselSitio) ? {} : carruselDesdeClavesAnteriores(contenido, s.section_type)) } });
                   }
                 }}
                 onCambiar={(val) => onCambiarContenido({ ...contenido, carrusel: { usar_global: false, ...val } })}

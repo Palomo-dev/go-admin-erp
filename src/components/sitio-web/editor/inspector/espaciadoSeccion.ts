@@ -37,24 +37,32 @@ const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 
 /** Carrusel anterior de la portada (CAROUSEL_FIELDS) leído como panel «Carrusel», con los valores por defecto de HeroSlider. */
 function carruselHeroDesdeAnteriores(c: Record<string, unknown>): Record<string, unknown> {
-  const flechas = c.show_arrows === true;
-  const puntos = c.show_dots !== false;
-  const estilo = ({ circle: 'circulo', square: 'cuadrado', minimal: 'chevron', chevron: 'chevron' } as Record<string, string>)[String(c.arrow_style ?? 'circle')] ?? 'circulo';
-  const posicion = c.arrow_position === 'outside' ? 'lados_fuera' : 'lados_dentro';
-  const px = numeroEntre(c.arrow_size, 16, 96) ?? 40;
-  const indicador = !puntos ? 'ninguno' : (({ dots: 'puntos', bars: 'barra', numbers: 'numeros' } as Record<string, string>)[String(c.dot_style ?? 'dots')] ?? 'puntos');
-  const segundos = numeroEntre(Number(c.interval_ms) / 1000, 1, 15) ?? 5;
+  // Misma lectura que HeroSlider (`clave ?? valor por defecto`), con los valores exactos.
+  const si = (v: unknown, porDefecto: boolean) => Boolean(v ?? porDefecto);
+  const flechas = si(c.show_arrows, false);
+  const puntos = si(c.show_dots, true);
+  const estilo = ({ circle: 'circulo', square: 'cuadrado', minimal: 'minimo', chevron: 'chevron' } as Record<string, string>)[String(c.arrow_style || 'circle')] ?? 'circulo';
+  const posicion = ({ inside: 'lados_dentro', outside: 'lados_fuera', 'top-right': 'arriba_derecha', bottom: 'abajo' } as Record<string, string>)[String(c.arrow_position || 'inside')] ?? 'lados_dentro';
+  const px = Number(c.arrow_size) || 40;
+  const indicador = !puntos ? 'ninguno' : (({ dots: 'puntos', bars: 'barra', numbers: 'numeros' } as Record<string, string>)[String(c.dot_style || 'dots')] ?? 'puntos');
+  const ms = Number(c.interval_ms) || 5000;
   const salida: Record<string, unknown> = {
-    autoplay: c.autoplay !== false,
-    segundos,
-    pausaHover: c.pause_on_hover !== false,
-    loop: c.loop !== false,
-    arrastre: c.enable_swipe !== false,
+    // Flechas y puntos con las piezas de la portada: dentro de la imagen, en blanco, como hoy.
+    controlesPortada: true,
+    posicionIndicador: 'abajo_dentro',
+    colorActivo: '#FFFFFF',
+    colorInactivo: '#FFFFFF80',
+    autoplay: si(c.autoplay, true),
+    segundos: Math.min(15, Math.max(1, Math.round(ms / 10) / 100)),
+    pausaHover: si(c.pause_on_hover, true),
+    loop: si(c.loop, true),
+    arrastre: si(c.enable_swipe, true),
     flechasEscritorio: flechas,
     flechasMovil: flechas,
     estiloFlechas: estilo,
     posicionFlechas: posicion,
     tamanoFlecha: px < 36 ? 'sm' : px <= 44 ? 'md' : 'lg',
+    tamanoFlechaPx: Math.min(96, Math.max(16, Math.round(px))),
     indicador,
   };
   if (typeof c.arrow_color === 'string' && HEX_COLOR.test(c.arrow_color)) salida.colorIcono = c.arrow_color;
@@ -88,7 +96,7 @@ export function carruselDesdeClavesAnteriores(contenido: Record<string, unknown>
     visiblesTableta: tableta,
     visiblesMovil: movil,
     autoplay: booleano(contenido.autoplay) ?? false,
-    segundos: Number.isFinite(ms) && ms > 0 ? Math.min(15, Math.max(1, Math.round(ms / 1000))) : 5,
+    segundos: Number.isFinite(ms) && ms > 0 ? Math.min(15, Math.max(1, Math.round(ms / 10) / 100)) : 5,
     loop: booleano(contenido.loop) ?? false,
     pausaHover: booleano(contenido.pause_on_hover) ?? true,
     flechasEscritorio: flechas,
@@ -98,12 +106,12 @@ export function carruselDesdeClavesAnteriores(contenido: Record<string, unknown>
   };
 }
 
-/** Como `booleano` de la tienda: acepta true/false y "true"/"false". */
+/** Como `booleano` de la tienda (lib/carrusel/opcionesCarrusel): vacío = sin valor; "false" y "0" = false. */
 function booleano(v: unknown): boolean | undefined {
+  if (v === undefined || v === null || v === '') return undefined;
   if (typeof v === 'boolean') return v;
-  if (v === 'true') return true;
-  if (v === 'false') return false;
-  return undefined;
+  if (typeof v === 'string') return v !== 'false' && v !== '0';
+  return Boolean(v);
 }
 
 const CLAVES_BANNERS_ANTERIOR = ['layout', 'columns', 'columns_mobile', 'gap'] as const;
@@ -115,13 +123,13 @@ export function bannersDesdeAnteriores(c: Record<string, unknown>): { layout: st
   const col = c.columns;
   const o = col && typeof col === 'object' ? (col as Record<string, unknown>) : null;
   const d = numeroEntre(o ? o.desktop : col, 1, 8);
-  const t = numeroEntre(o?.tablet, 1, 8);
+  // Igual que clasesColumnasBanner: un número deja la tableta en min(d, 2).
+  const t = o ? numeroEntre(o.tablet ?? o.desktop, 1, 8) ?? (d != null ? Math.min(d, 2) : undefined) : d != null ? Math.min(d, 2) : undefined;
   const m = numeroEntre(c.columns_mobile ?? o?.mobile, 1, 8);
   if (d != null) estilo.columns_desktop = d;
   if (t != null) estilo.columns_tablet = t;
   if (m != null) estilo.columns_mobile = m;
-  const g = numeroEntre(c.gap, 0, 64);
-  if (g != null) estilo.gap = g;
+  // `gap` anterior no lo usa la tienda (gap-6 = 24 px fijo): no se copia.
   return { layout, estilo };
 }
 

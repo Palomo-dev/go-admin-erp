@@ -709,8 +709,8 @@ export function useEditorSitio() {
           organization_id: organizationId,
           section_type: tipo,
           section_variant: variante,
-          // Portada nueva: margen superior en 0 (valor explícito; las guardadas sin él no cambian).
-          content: tipo === 'hero' ? { section_background: { padding_top: 0 } } : {},
+          // Portada o banners nuevos: margen superior en 0 (valor explícito; las guardadas sin él no cambian).
+          content: tipo === 'hero' || tipo === 'promo_banners' ? { section_background: { padding_top: 0 } } : {},
           settings: {},
           sort_order: posicion,
           is_visible: true,
@@ -734,7 +734,7 @@ export function useEditorSitio() {
           section_variant: variante,
           sort_order: posicion,
           // Igual que en v2: portada nueva con margen superior 0 explícito.
-          ...(tipo === 'hero' ? { content: { section_background: { padding_top: 0 } } } : {}),
+          ...(tipo === 'hero' || tipo === 'promo_banners' ? { content: { section_background: { padding_top: 0 } } } : {}),
         });
         const lista = [...pagina.sections];
         lista.splice(Math.min(posicion, lista.length), 0, creada);

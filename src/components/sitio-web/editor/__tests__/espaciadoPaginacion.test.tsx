@@ -14,8 +14,8 @@ describe('espaciado de sección: una sola opción (Estilo)', () => {
     expect(campoCubiertoPorEstilo({ key: 'full_bleed', type: 'boolean' }, 'offers')).toBe(true);
     expect(campoCubiertoPorEstilo({ key: 'container_width', type: 'select' }, 'offers')).toBe(true);
     expect(campoCubiertoPorEstilo({ key: 'full_width', type: 'boolean' }, 'categories_grid')).toBe(true);
-    // El hero «Slider» sí lee full_width en la tienda.
-    expect(campoCubiertoPorEstilo({ key: 'full_width', type: 'boolean' }, 'hero')).toBe(false);
+    // El hero «Slider» lee full_width en la tienda, pero se elige en Estilo › Ancho (un solo control).
+    expect(campoCubiertoPorEstilo({ key: 'full_width', type: 'boolean' }, 'hero')).toBe(true);
     expect(campoCubiertoPorEstilo({ key: 'gap', type: 'range' }, 'offers')).toBe(false);
   });
 

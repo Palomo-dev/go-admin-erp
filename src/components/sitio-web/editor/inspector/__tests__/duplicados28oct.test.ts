@@ -1,5 +1,5 @@
 import { cambioIconoAccion, iconoAccionEncabezado, OPCIONES_ICONO_ACCION, ICONOS_LUCIDE_ENCABEZADO } from '../iconosAccionesLogica';
-import { campoCubiertoPorEstilo, campoUnicoPortada, cambioUnicoPortada, valorUnicoPortada } from '../espaciadoSeccion';
+import { entradasAnterioresSeccion, campoCubiertoPorEstilo, campoUnicoPortada, cambioUnicoPortada, valorUnicoPortada } from '../espaciadoSeccion';
 
 describe('íconos del encabezado', () => {
   test('muestra lo que pinta la tienda (misma precedencia)', () => {
@@ -38,9 +38,19 @@ describe('portada: un solo radio y una sola sombra', () => {
     expect(valorUnicoPortada({}, 'shadow')).toBe('none');
   });
   test('al editar escribe en el carrusel y quita el de la sección', () => {
-    expect(cambioUnicoPortada({ radius: 30, title: 'x' }, 'radius', 16)).toEqual({ border_radius: 16, title: 'x' });
-    expect(cambioUnicoPortada({ radius: 30, border_radius: 8 }, 'radius', 0)).toEqual({});
-    expect(cambioUnicoPortada({ shadow: 'sm' }, 'shadow', 'lg')).toEqual({ shadow_intensity: 24 });
+    expect(cambioUnicoPortada({ radius: 30, title: 'x' }, 'radius', 16)).toEqual({ radius: 0, border_radius: 16, title: 'x' });
+    expect(cambioUnicoPortada({ radius: 30, border_radius: 8 }, 'radius', 0)).toEqual({ radius: 0 });
+    expect(cambioUnicoPortada({ shadow: 'sm' }, 'shadow', 'lg')).toEqual({ shadow: 'none', shadow_intensity: 24 });
     expect(cambioUnicoPortada({ shadow_intensity: 10 }, 'shadow', 'none')).toEqual({});
+    // Mismo escalón que ya se ve: no se reescribe (7 sigue en 7).
+    const siete = { shadow_intensity: 7 };
+    expect(cambioUnicoPortada(siete, 'shadow', 'sm')).toBe(siete);
+  });
+  it('Margen en px: la escala anterior no sale repetida en «versiones anteriores» y no se borra', () => {
+    const c = { margin_top: 'sm', margin_bottom: 'md', section_background: { margin_top_mobile: 8 } };
+    const ids = entradasAnterioresSeccion(c, 'hero').map((e) => e.id);
+    expect(ids).not.toContain('seccion_margin_top');
+    expect(ids).toContain('seccion_margin_bottom');
+    expect(c.margin_top).toBe('sm');
   });
 });

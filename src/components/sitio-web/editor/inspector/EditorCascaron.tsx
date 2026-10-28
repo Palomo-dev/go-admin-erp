@@ -4,6 +4,8 @@ import { useTextosEditor } from '../textos';
 import { SelectKit, NumeroKit, CasillaKit, ColorKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
 import { accionDesdeVerTodo, CLAVES_VER_TODO } from './espaciadoSeccion';
+import { ATAJOS_ESPACIADO, aplicarAtajo, atajoActual, cambioEspacio, type AtajoEspaciado } from './espacioUnico';
+import { ChipsOpcion } from '@/components/kit';
 import type { FuentesTema } from '@/lib/website/v2/fuenteTema';
 import type { EspacioSeccion, LadoEspacio } from '@/lib/website/espacioSeccion';
 
@@ -246,11 +248,8 @@ export function EditorPestanas({ contenido, onCambiar, fuentes, espacio }: { con
           onCambiar={(v) => {
             const siguiente: Record<string, unknown> = { ...contenido, section_background: v }
             if (v == null) delete siguiente.section_background
-            // Un solo margen: el px por dispositivo reemplaza a la escala anterior (margin_top/bottom).
-            // Al escribirlo se guardan los dos dispositivos, así que la escala ya no aporta nada.
-            const bg = objeto(v)
-            if (bg.margin_top != null || bg.margin_top_mobile != null) delete siguiente.margin_top
-            if (bg.margin_bottom != null || bg.margin_bottom_mobile != null) delete siguiente.margin_bottom
+            // Un solo margen: el px manda en la tienda; la escala anterior (margin_top/bottom) se conserva
+            // para que, al vaciar los campos, la sección vuelva a lo de antes (p. ej. 16 px en 333).
             onCambiar(siguiente)
           }}
         />
@@ -329,21 +328,54 @@ export function cambioMargen(
   valor: number | undefined,
   actual: LadoEspacio | undefined,
 ): Record<string, unknown> {
-  const kComp = `margin_${lado}`;
-  const kCel = `margin_${lado}_mobile`;
-  const siguiente = { ...f };
-  const otroK = dispositivo === 'celular' ? kComp : kCel;
-  const propioK = dispositivo === 'celular' ? kCel : kComp;
-  if (valor == null) {
-    delete siguiente[propioK];
-  } else {
-    siguiente[propioK] = valor;
-    if (siguiente[otroK] == null && actual) siguiente[otroK] = dispositivo === 'celular' ? actual.computador : actual.celular;
-  }
-  return siguiente;
+  return cambioEspacio(f, 'margin', lado, dispositivo, valor, actual);
 }
 
-export function EditorFondo({ valor, onCambiar, espacio }: { valor: unknown; onCambiar: (v: unknown) => void; espacio?: EspacioSeccion }) {
+/**
+ * Estilo › Espaciado: un solo control. Atajos (compacto / normal / amplio = los px de la escala de siempre),
+ * relleno y margen en px por dispositivo. Vacío = lo que la tienda pone hoy, visible como placeholder.
+ * Abrirlo no guarda nada.
+ */
+export function ControlEspaciado({ valor, onCambiar, espacio, etiquetasAtajo, deshabilitado }: {
+  valor: unknown;
+  onCambiar: (v: Record<string, unknown> | undefined) => void;
+  espacio?: EspacioSeccion;
+  etiquetasAtajo: Record<AtajoEspaciado, string>;
+  deshabilitado?: boolean;
+}) {
+  const f = objeto(valor);
+  const enviar = (sig: Record<string, unknown>) => onCambiar(Object.keys(sig).length ? sig : undefined);
+  const filas: Array<{ tipo: 'padding' | 'margin'; lado: 'top' | 'bottom'; etiqueta: string; actual?: LadoEspacio }> = [
+    { tipo: 'padding', lado: 'top', etiqueta: 'Relleno superior', actual: espacio?.rellenoArriba },
+    { tipo: 'padding', lado: 'bottom', etiqueta: 'Relleno inferior', actual: espacio?.rellenoAbajo },
+    { tipo: 'margin', lado: 'top', etiqueta: 'Margen superior', actual: espacio?.margenArriba },
+    { tipo: 'margin', lado: 'bottom', etiqueta: 'Margen inferior', actual: espacio?.margenAbajo },
+  ];
+  return (
+    <div className="flex flex-col gap-2">
+      <ChipsOpcion<string>
+        etiqueta="Atajos de relleno"
+        opciones={ATAJOS_ESPACIADO.map((a) => ({ valor: a, etiqueta: etiquetasAtajo[a], deshabilitada: deshabilitado }))}
+        valor={atajoActual(espacio) ?? ''}
+        onValorChange={(a) => enviar(aplicarAtajo(f, a as AtajoEspaciado, espacio))}
+      />
+      {filas.map(({ tipo, lado, etiqueta, actual }) => {
+        const k = `${tipo}_${lado}`;
+        const cambiar = (d: 'celular' | 'computador', v: string) => enviar(cambioEspacio(f, tipo, lado, d, v ? Number(v) : undefined, actual));
+        return (
+          <Campo key={k} etiqueta={etiqueta}>
+            <div className="grid grid-cols-2 gap-2">
+              <Campo etiqueta="Computador"><NumeroKit min={0} max={200} disabled={deshabilitado} placeholder={textoHeredado(actual, 'computador')} value={String(f[k] ?? '')} onChange={(ev) => cambiar('computador', ev.target.value)} /></Campo>
+              <Campo etiqueta="Celular"><NumeroKit min={0} max={200} disabled={deshabilitado} placeholder={textoHeredado(actual, 'celular')} value={String(f[`${k}_mobile`] ?? '')} onChange={(ev) => cambiar('celular', ev.target.value)} /></Campo>
+            </div>
+          </Campo>
+        );
+      })}
+    </div>
+  );
+}
+
+export function EditorFondo({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void; espacio?: EspacioSeccion }) {
   const tk = useTextosEditor();
   const f = objeto(valor);
   const set = (k: string, v: unknown) => {
@@ -375,31 +407,8 @@ export function EditorFondo({ valor, onCambiar, espacio }: { valor: unknown; onC
         </SelectKit>
       </Campo>
       <CasillaKit titulo="Parallax" checked={f.parallax === true} onChange={(ev) => set('parallax', ev.target.checked)} />
-      {/* Vacío = lo que la tienda pone hoy, visible como placeholder; no se guarda nada si no se edita. */}
-      <Campo etiqueta="Relleno superior"><NumeroKit min={0} max={200} placeholder={textoHeredado(espacio?.rellenoArriba)} value={String(f.padding_top ?? '')} onChange={(ev) => set('padding_top', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
-      <Campo etiqueta="Relleno inferior"><NumeroKit min={0} max={200} placeholder={textoHeredado(espacio?.rellenoAbajo)} value={String(f.padding_bottom ?? '')} onChange={(ev) => set('padding_bottom', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
-      {(['top', 'bottom'] as const).map((lado) => {
-        const actual = lado === 'top' ? espacio?.margenArriba : espacio?.margenAbajo;
-        const cambiar = (d: 'celular' | 'computador', v: string) => {
-          const sig = cambioMargen(f, lado, d, v ? Number(v) : undefined, actual);
-          onCambiar(Object.keys(sig).length ? sig : undefined);
-        };
-        return (
-          <Campo key={lado} etiqueta={lado === 'top' ? 'Margen superior' : 'Margen inferior'}>
-            <div className="grid grid-cols-2 gap-2">
-              <Campo etiqueta="Computador"><NumeroKit min={0} max={200} placeholder={textoHeredado(actual, 'computador')} value={String(f[`margin_${lado}`] ?? '')} onChange={(ev) => cambiar('computador', ev.target.value)} /></Campo>
-              <Campo etiqueta="Celular"><NumeroKit min={0} max={200} placeholder={textoHeredado(actual, 'celular')} value={String(f[`margin_${lado}_mobile`] ?? '')} onChange={(ev) => cambiar('celular', ev.target.value)} /></Campo>
-            </div>
-          </Campo>
-        );
-      })}
-      <Campo etiqueta="Ancho">
-        <SelectKit className={control} value={String(f.width ?? '')} onChange={(ev) => set('width', ev.target.value)}>
-          <option value="">Como hoy</option>
-          <option value="content">Contenido</option>
-          <option value="full">Completo</option>
-        </SelectKit>
-      </Campo>
+      {/* Relleno, margen y ancho: un solo control en Estilo › Espaciado y Estilo › Ancho (leen lo guardado aquí). */}
+      <p className="text-[12px] leading-4 text-fg-muted">El relleno, el margen y el ancho se eligen en Estilo › Espaciado y Estilo › Ancho.</p>
       <Campo etiqueta="Separador">
         <SelectKit className={control} value={String(f.separator ?? '')} onChange={(ev) => set('separator', ev.target.value)}>
           <option value="">Ninguno</option>

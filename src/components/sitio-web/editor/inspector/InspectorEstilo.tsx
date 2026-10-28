@@ -51,6 +51,7 @@ import {
   interlineadoNumero,
   puedeOcultar,
   tamanoEnPx,
+  type AnchoSeccion,
   type EstiloSeccion,
   type EstiloTexto,
   type GrupoEstilo,
@@ -117,6 +118,10 @@ export interface InspectorEstiloProps {
    * pasa por la pregunta de la sede).
    */
   encabezado?: { apariencia: Apariencia; aplicar: (a: Apariencia) => void } | null;
+  /** Un solo control de espaciado (atajos + relleno y margen en px). Sin él, los atajos de siempre. */
+  controlEspaciado?: ReactNode;
+  /** Ancho que se ve hoy y cómo cambiarlo (incluye el «Ancho completo» de la portada). */
+  ancho?: { valor: AnchoSeccion; cambiar: (a: AnchoSeccion) => void } | null;
 }
 
 const TITULO = 'text-[13px] font-semibold leading-[18px] text-fg';
@@ -189,6 +194,8 @@ export function InspectorEstilo({
   deshabilitado,
   unico,
   encabezado,
+  controlEspaciado,
+  ancho,
 }: InspectorEstiloProps) {
   const t = useTextosEditor();
   const id = useId();
@@ -367,19 +374,21 @@ export function InspectorEstilo({
               <p className={AYUDA}>{t('estilo.entradaAyuda')}</p>
             </Grupo>
             <Grupo titulo={t('estilo.espaciadoTitulo')} id={`${id}-espaciado`}>
-              <ChipsOpcion
-                aria-labelledby={`${id}-espaciado`}
-                opciones={opciones(ESPACIADOS_SECCION, 'estilo.espaciado')}
-                valor={estilo.espaciado ?? ESTILO_POR_DEFECTO.espaciado}
-                onValorChange={(espaciado) => cambiar({ espaciado })}
-              />
+              {controlEspaciado ?? (
+                <ChipsOpcion
+                  aria-labelledby={`${id}-espaciado`}
+                  opciones={opciones(ESPACIADOS_SECCION, 'estilo.espaciado')}
+                  valor={estilo.espaciado ?? ESTILO_POR_DEFECTO.espaciado}
+                  onValorChange={(espaciado) => cambiar({ espaciado })}
+                />
+              )}
             </Grupo>
             <Grupo titulo={t('estilo.anchoTitulo')} id={`${id}-ancho`}>
               <ChipsOpcion
                 aria-labelledby={`${id}-ancho`}
                 opciones={opciones(ANCHOS_SECCION, 'estilo.ancho')}
-                valor={estilo.ancho ?? ESTILO_POR_DEFECTO.ancho}
-                onValorChange={(ancho) => cambiar({ ancho })}
+                valor={ancho?.valor ?? estilo.ancho ?? ESTILO_POR_DEFECTO.ancho}
+                onValorChange={(a) => (ancho ? ancho.cambiar(a) : cambiar({ ancho: a }))}
               />
             </Grupo>
           </>

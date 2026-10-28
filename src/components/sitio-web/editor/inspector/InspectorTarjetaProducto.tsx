@@ -6,6 +6,7 @@
  */
 import { useTextosEditor } from '../textos';
 import { ColorTema } from './PartesZonaGlobal';
+import { EtiquetasPropiasTarjeta } from './EtiquetasPropiasTarjeta';
 import { SelectKit, CasillaKit, NumeroKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
 import { TabBar, clasesBoton } from '@/components/kit';
@@ -285,6 +286,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
             <Color etiqueta={tk('controles.degradado1')} valor={e.gradient_1} onCambiar={(v) => setEtiquetaCampo('gradient_1', v)} />
             <Color etiqueta={tk('controles.degradado2')} valor={e.gradient_2} onCambiar={(v) => setEtiquetaCampo('gradient_2', v)} />
           </div>
+          <EtiquetasPropiasTarjeta lista={vista.labels_custom ?? []} onCambiar={(l) => cambiar('labels_custom', l.length > 0 ? l : undefined)} />
         </div>
       )}
 

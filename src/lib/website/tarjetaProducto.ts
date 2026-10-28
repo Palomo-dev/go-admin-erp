@@ -100,6 +100,30 @@ export interface EstiloEtiquetaTarjeta {
   gradient_angle?: number
 }
 
+/** Posiciones de la etiqueta propia: una esquina de la imagen (se apila con las demás, no las tapa). */
+export const POSICIONES_ETIQUETA_PROPIA = ['top_left', 'top_right', 'bottom_left', 'bottom_right'] as const
+
+/** Largo máximo del texto de la etiqueta propia («Originales»). */
+export const MAX_TEXTO_ETIQUETA_PROPIA = 24
+
+/** Íconos opcionales de una etiqueta propia (los pinta la tarjeta común). */
+export const ICONOS_ETIQUETA_PROPIA = ['check', 'shield', 'star', 'zap', 'trending'] as const
+
+/** Cuántas etiquetas propias admite el estilo de tarjeta. */
+export const MAX_ETIQUETAS_PROPIAS = 6
+
+/** Etiqueta propia con texto fijo («Originales») en todas las tarjetas. */
+export interface EtiquetaPropiaTarjeta {
+  id: string
+  label: string
+  show?: boolean
+  bg?: string
+  /** Sin color de texto: blanco o negro según el contraste con el fondo. */
+  text?: string
+  position?: (typeof POSICIONES_ETIQUETA_PROPIA)[number]
+  icon?: (typeof ICONOS_ETIQUETA_PROPIA)[number]
+}
+
 export interface EstiloTarjetaProducto {
   card_preset?: PresetTarjeta
   add?: EstiloBotonTarjeta
@@ -146,6 +170,12 @@ export interface EstiloTarjetaProducto {
    * las etiquetas de la sección). No cuenta como estilo: prenderla no cambia nada más de la tarjeta.
    */
   show_sales_count?: boolean
+  /**
+   * Etiquetas propias con texto fijo («Originales»), en orden, para todos los productos. Como
+   * `show_sales_count`, no cuentan como estilo: solas no cambian nada más de la tarjeta. La lista
+   * de la sección reemplaza a la del sitio; sin lista = como hoy.
+   */
+  labels_custom?: EtiquetaPropiaTarjeta[]
 }
 
 const CLAVES_BOTON = ['add', 'buy', 'choose'] as const
@@ -245,6 +275,47 @@ function etiqueta(crudo: unknown): EstiloEtiquetaTarjeta | undefined {
   return Object.keys(e).length > 0 ? e : undefined
 }
 
+function etiquetasPropias(crudo: unknown): EtiquetaPropiaTarjeta[] | undefined {
+  if (!Array.isArray(crudo)) return undefined
+  const salida: EtiquetaPropiaTarjeta[] = []
+  const ids = new Set<string>()
+  for (const item of crudo) {
+    if (salida.length >= MAX_ETIQUETAS_PROPIAS) break
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue
+    const o = item as Record<string, unknown>
+    const label = typeof o.label === 'string' ? o.label.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTO_ETIQUETA_PROPIA) : ''
+    if (!label) continue
+    let id = typeof o.id === 'string' && o.id.trim() ? o.id.trim().slice(0, 40) : `et${salida.length + 1}`
+    while (ids.has(id)) id = `${id}_`
+    ids.add(id)
+    const e: EtiquetaPropiaTarjeta = { id, label }
+    if (o.show === false) e.show = false
+    const bg = color(o.bg)
+    if (bg && bg !== 'transparent') e.bg = bg
+    const text = color(o.text)
+    if (text && text !== 'transparent') e.text = text
+    const pos = enLista(POSICIONES_ETIQUETA_PROPIA, o.position)
+    if (pos) e.position = pos
+    const icon = enLista(ICONOS_ETIQUETA_PROPIA, o.icon)
+    if (icon) e.icon = icon
+    salida.push(e)
+  }
+  return salida.length > 0 ? salida : undefined
+}
+
+/** Blanco o casi negro según el contraste con el fondo (#RGB o #RRGGBB; otro = blanco). */
+export function textoContraste(bg: string): string {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})/i.exec(bg)
+  if (!m) return '#FFFFFF'
+  const h = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1]
+  const [r, g, b] = [0, 2, 4].map((k) => {
+    const c = parseInt(h.slice(k, k + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return (1.05 / (l + 0.05)) >= ((l + 0.05) / 0.05) ? '#FFFFFF' : '#111827'
+}
+
 /** Quita claves desconocidas y valores que no se pueden pintar. `null` si no queda nada. */
 export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null {
   if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) return null
@@ -293,6 +364,8 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   const cat = bandera(o.show_category)
   if (cat != null) e.show_category = cat
   if (o.show_sales_count === true) e.show_sales_count = true
+  const propias = etiquetasPropias(o.labels_custom)
+  if (propias) e.labels_custom = propias
   if (o.card_layout === 'horizontal' || o.card_layout === 'vertical') e.card_layout = o.card_layout
   const radio = entero(o.card_radius, 0, 48)
   if (radio != null) e.card_radius = radio
@@ -336,6 +409,9 @@ export function fusionarEstilos(a: EstiloTarjetaProducto, b: EstiloTarjetaProduc
   const out: EstiloTarjetaProducto = { ...a, ...b }
   for (const k of CLAVES_BOTON) out[k] = fusionarPlano(a[k], b[k])
   for (const k of CLAVES_ETIQUETA) out[k] = fusionarPlano(a[k], b[k])
+  const propias = b.labels_custom ?? a.labels_custom
+  if (propias) out.labels_custom = propias
+  else delete out.labels_custom
   return out
 }
 
@@ -467,6 +543,7 @@ export function aplicarEstiloTarjeta(crudo: unknown): EstiloTarjetaProducto | nu
   // «Unidades vendidas» va aparte (vendidosEnTarjeta): sola no activa el estilo de la tarjeta.
   const explicito: EstiloTarjetaProducto = { ...normal }
   delete explicito.show_sales_count
+  delete explicito.labels_custom
   if (Object.keys(explicito).length === 0 || soloPresetActual(explicito)) return null
   const preset = explicito.card_preset
   if (!preset || preset === 'actual') return explicito
@@ -489,6 +566,32 @@ export function vendidosEnTarjeta(sitio: unknown, seccion: unknown): boolean {
   return normalizarTarjeta(seccion)?.show_sales_count === true || normalizarTarjeta(sitio)?.show_sales_count === true
 }
 
+/**
+ * Etiquetas propias que se pintan en la tarjeta, en orden (la lista de la sección reemplaza a la
+ * del sitio). Van en una esquina de la imagen y se apilan con descuento, nuevo y vendidos.
+ */
+export function etiquetasPropiasEnTarjeta(sitio: unknown, seccion: unknown): (EtiquetaPintada & { icon?: string })[] {
+  const a = normalizarTarjeta(sitio)
+  const b = normalizarTarjeta(seccion)
+  const lista = b?.labels_custom ?? a?.labels_custom ?? []
+  const forma = b?.label_shape ?? a?.label_shape
+  const modo = b?.label_style ?? a?.label_style
+  return lista
+    .filter((e) => e.show !== false)
+    .map((e) => {
+      const bg = e.bg || '#111827'
+      const text = e.text || textoContraste(bg)
+      return {
+        type: 'custom',
+        label: e.label,
+        position: posicionEtiquetaInterna(e.position ?? 'top_right'),
+        shape: forma === 'rounded' || forma === 'semi' || forma === 'square' ? forma : 'pill',
+        ...estiloEtiqueta(modo, bg, text),
+        ...(e.icon ? { icon: e.icon } : {}),
+      }
+    })
+}
+
 /** Lo que ve el inspector: el preset rellena las opciones y lo guardado queda encima. */
 export function vistaEditorTarjeta(guardado: unknown, heredado: unknown): EstiloTarjetaProducto {
   const g = normalizarTarjeta(guardado)
@@ -497,6 +600,8 @@ export function vistaEditorTarjeta(guardado: unknown, heredado: unknown): Estilo
   const efectivo = resolverTarjetaProducto(heredado, guardado)
   const vista = fusionarEstilos(valoresDePreset(preset), efectivo ?? {})
   if (vendidosEnTarjeta(heredado, guardado)) vista.show_sales_count = true
+  const propias = g?.labels_custom ?? h?.labels_custom
+  if (propias) vista.labels_custom = propias
   return vista
 }
 

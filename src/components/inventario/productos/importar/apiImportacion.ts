@@ -50,6 +50,8 @@ async function llamar<T>(url: string, orgId: number | undefined, init: RequestIn
 
 export interface ContextoServidor {
   existentes: Record<string, number>;
+  /** SKU (en mayúsculas) que ya son padres con variantes: no reciben stock (opcional por compatibilidad). */
+  padres?: string[];
   porNombre: Record<string, { id: number; sku: string }>;
   categorias: string[];
   impuestos: string[];

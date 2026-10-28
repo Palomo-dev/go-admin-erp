@@ -600,4 +600,76 @@ export class ReportesContablesService {
     }));
     return { filas, truncado: filas.length >= limite };
   }
+
+  /**
+   * Auxiliar por tercero con saldo corrido (saldo inicial + cada movimiento). Necesita la migración
+   * 20261027213500; si aún no está en la base, devuelve `disponible: false` y la pantalla cae al resumen.
+   */
+  static async getAuxiliarTerceroDetalle(
+    startDate: string,
+    endDate: string,
+    cuenta?: string,
+    tercero?: string,
+    limite = 2000,
+  ): Promise<{ filas: FilaAuxiliarDetalle[]; truncado: boolean; disponible: boolean }> {
+    const organizationId = this.getOrganizationId();
+    const timezone = await resolveTimezone(organizationId);
+    const { start, end } = getDateRange(startDate, endDate, timezone);
+    const { data, error } = await supabase.rpc('fn_auxiliar_tercero_detalle', {
+      p_organization_id: organizationId,
+      p_desde: start,
+      p_hasta: end,
+      p_cuenta: cuenta?.trim() || null,
+      p_tercero: tercero?.trim() || null,
+      p_limite: limite,
+    });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') return { filas: [], truncado: false, disponible: false };
+      throw error;
+    }
+    const filas = ((data || []) as FilaAuxiliarDetalle[]).map((fila) => ({
+      ...fila,
+      tercero_nit: fila.tercero_nit || '—',
+      debit: Number(fila.debit) || 0,
+      credit: Number(fila.credit) || 0,
+      saldo_inicial: Number(fila.saldo_inicial) || 0,
+      saldo_corrido: Number(fila.saldo_corrido) || 0,
+    }));
+    return { filas, truncado: filas.length >= limite, disponible: true };
+  }
+}
+
+export interface FilaAuxiliarDetalle {
+  tercero_nit: string;
+  tercero_nombre: string;
+  account_code: string;
+  journal_entry_id: number;
+  entry_date: string;
+  memo: string | null;
+  debit: number;
+  credit: number;
+  saldo_inicial: number;
+  saldo_corrido: number;
+}
+
+/** Agrupa el detalle por tercero y cuenta, en el orden del RPC, con saldo inicial y final de cada grupo. */
+export function agruparAuxiliar(filas: readonly FilaAuxiliarDetalle[]): Array<{
+  clave: string; tercero_nit: string; tercero_nombre: string; account_code: string;
+  saldo_inicial: number; saldo_final: number; debitos: number; creditos: number; movimientos: FilaAuxiliarDetalle[];
+}> {
+  const grupos = new Map<string, ReturnType<typeof agruparAuxiliar>[number]>();
+  for (const fila of filas) {
+    const clave = `${fila.tercero_nit}|${fila.account_code}`;
+    let grupo = grupos.get(clave);
+    if (!grupo) {
+      grupo = { clave, tercero_nit: fila.tercero_nit, tercero_nombre: fila.tercero_nombre, account_code: fila.account_code,
+        saldo_inicial: fila.saldo_inicial, saldo_final: fila.saldo_inicial, debitos: 0, creditos: 0, movimientos: [] };
+      grupos.set(clave, grupo);
+    }
+    grupo.movimientos.push(fila);
+    grupo.debitos += fila.debit;
+    grupo.creditos += fila.credit;
+    grupo.saldo_final = fila.saldo_corrido;
+  }
+  return [...grupos.values()];
 }

@@ -56,7 +56,8 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   CUENTA_INEXISTENTE: 'Una de las cuentas no existe en el plan de cuentas.',
   CUENTA_DE_TITULO: 'Una de las cuentas agrupa otras y no recibe movimientos. Elige una cuenta de detalle.',
   CUENTA_NO_ES_DE_DETALLE: 'Una de las cuentas tiene subcuentas: usa una de ellas.',
-  TERCERO_REQUERIDO: 'Esa cuenta exige el NIT o la cédula del tercero.',
+  TERCERO_REQUERIDO: 'Esa cuenta exige el tercero para contabilizar. El borrador sí se puede guardar sin él.',
+  TERCERO_RETENCION_REQUERIDO: 'Las retenciones (2365, 2367, 2368) exigen el NIT o la cédula del tercero para contabilizar. El borrador sí se puede guardar sin él.',
   CENTRO_REQUERIDO: 'Esa cuenta exige un centro de costo.',
   CENTRO_INVALIDO: 'El centro de costo no pertenece a la organización.',
   NOMBRE_REQUERIDO: 'Escribe el nombre de la plantilla.',
@@ -70,6 +71,30 @@ const MENSAJES_ASIENTO: Record<string, string> = {
 };
 
 /** Traduce el código que devuelve la base a un mensaje para el usuario. */
+/** 2365 retención en la fuente, 2367 IVA retenido, 2368 ICA retenido: NIT obligatorio para contabilizar. */
+export function cuentaRetencionExigeNit(cuenta: string | null | undefined): boolean {
+  return /^236[578]/.test((cuenta ?? '').trim());
+}
+
+/**
+ * Líneas que no se pueden contabilizar todavía por falta de tercero. Guardar el borrador no se bloquea:
+ * la pantalla avisa y el servidor lo exige al contabilizar (y la DIAN, al transmitir).
+ */
+export function lineasSinTerceroParaContabilizar(
+  lineas: ReadonlyArray<{ account_code: string; tercero_nit?: string | null; tercero_nombre?: string | null }>,
+  exigeTercero: (cuenta: string) => boolean,
+): string[] {
+  const faltan: string[] = [];
+  for (const l of lineas) {
+    const nit = (l.tercero_nit ?? '').trim();
+    const nombre = (l.tercero_nombre ?? '').trim();
+    if (cuentaRetencionExigeNit(l.account_code) ? !nit || /^2{9,}$/.test(nit) : exigeTercero(l.account_code) && !nit && !nombre) {
+      faltan.push(l.account_code);
+    }
+  }
+  return faltan;
+}
+
 export function mensajeErrorAsiento(error: { message?: string } | null | undefined): string {
   const texto = error?.message ?? '';
   const codigo = texto.split(':')[0].trim();

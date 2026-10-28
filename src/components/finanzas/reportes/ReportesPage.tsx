@@ -185,7 +185,7 @@ export function ReportesPage() {
               </Button>
             </div>
             <CardTitle className="text-lg text-gray-900 dark:text-white">
-              Estado de Resultados (P&G)
+              Estado del resultado integral
             </CardTitle>
             <CardDescription className="text-gray-500 dark:text-gray-400">
               Ingresos, costos y utilidades

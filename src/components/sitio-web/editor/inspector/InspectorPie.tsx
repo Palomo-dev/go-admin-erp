@@ -15,7 +15,8 @@ import { ACCIONES_BARRA_MOVIL } from '@/lib/website/v2/mapeoAjustes';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { useTextosEditor } from '../textos';
 import { BandaGlobal, CabeceraZona, CampoTexto, ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, MiniaturaPie, TarjetaComposicion, TarjetaPlantilla, TituloBloque } from './PartesZonaGlobal';
-import type { PestanaZona } from './InspectorEncabezado';
+import { AjustesAnteriores, type PestanaZona } from './InspectorEncabezado';
+import { entradasAnterioresPie } from './anterioresLogica';
 import { cambiosRestablecer, leerBarraMovil, opcionBooleana, valorBarraMovil, valorOpcion, type AccionBarraMovil, type ModoBarraMovil } from './zonaGlobalLogica';
 
 export interface MenuPie {
@@ -152,6 +153,7 @@ function Contenido(p: InspectorPieProps) {
         <TituloBloque>{t('zonaGlobal.pie.texto')}</TituloBloque>
         <CampoTexto etiqueta={t('zonaGlobal.pie.textoEtiqueta')} valor={txt('footer_text')} placeholder={t('zonaGlobal.pie.textoPlaceholder', { anio })} onCambiar={(v) => cambiar({ footer_text: v })} />
       </section>
+      <AjustesAnteriores ajustes={p.ajustes} entradas={entradasAnterioresPie(p.ajustes)} cambiar={cambiar} />
     </>
   );
 }

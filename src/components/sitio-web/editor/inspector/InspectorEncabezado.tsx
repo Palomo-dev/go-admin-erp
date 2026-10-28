@@ -12,11 +12,12 @@
 import { useId, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
+import { CampoNumero, ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
+import { buscadorPropioCelular, cambioBuscador, cambioCirculoAcento, cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
 import { useTextosEditor } from '../textos';
 import {
   BandaGlobal,
@@ -30,7 +31,7 @@ import {
   TituloBloque,
 } from './PartesZonaGlobal';
 import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
-import { OPCIONES_SHELL } from '@/lib/website/v2/mapeoAjustes';
+import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes';
 import {
   DESTINO_PROPIO,
   cambiosRestablecer,
@@ -388,6 +389,40 @@ function Anuncios({ valor, onCambiar }: { valor: unknown; onCambiar: (v: string 
 
 // ─── Diseño ────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Una sola opción para el lado del logo (computador y celular).
+ * La composición decide la estructura; solo «Clásico» deja elegir el lado (la tienda solo lo
+ * respeta ahí: HeaderClassic y FilaLogoMovil vía logoEfectivo). Al cambiar de composición se
+ * escribe el lado que esa composición pinta, con valor explícito (no `null`), para que el lienzo
+ * en vivo lo reciba y no se quede con el lado guardado. También se suelta `header_layout`
+ * (preset de estilo) porque en la tienda manda sobre `header_style`.
+ */
+export function cambioComposicion(c: string): Record<string, unknown> {
+  return {
+    header_style: c,
+    header_layout: null,
+    logo_position: c === 'centered' || c === 'split' ? 'center' : 'left',
+    mobile_logo_position: null,
+  };
+}
+
+export function composicionConLado(c: string | undefined): boolean {
+  return !c || c === 'default';
+}
+
+/** Composición que la tienda pinta: `header_layout` manda si viene (estiloDeHeaderLayout). */
+export function composicionEncabezado(a: Record<string, unknown>): string | undefined {
+  return estiloDeHeaderLayout(a.header_layout) ?? valorOpcion<string>(a, 'header_style');
+}
+
+/** Igual que `logoEfectivo` de la tienda. */
+export function ladoLogo(a: Record<string, unknown>): string {
+  const pos = a.logo_position;
+  if (pos === 'left' || pos === 'center' || pos === 'right') return pos;
+  const c = composicionEncabezado(a);
+  return c === 'centered' || c === 'split' ? 'center' : 'left';
+}
+
 function Diseno(p: Interno) {
   const t = useTextosEditor();
   const a = p.ajustes;
@@ -397,7 +432,7 @@ function Diseno(p: Interno) {
   const idBc = useId();
   const idMc = useId();
   const idCol = useId();
-  const composicion = valorOpcion<string>(a, 'header_style');
+  const composicion = composicionEncabezado(a);
   const megaId = typeof a.header_mega_menu_id === 'string' ? a.header_mega_menu_id : null;
   const mega = megaId ? p.menus.find((m) => m.id === megaId) : null;
 
@@ -411,7 +446,7 @@ function Diseno(p: Interno) {
               key={c}
               etiqueta={t(`zonaGlobal.diseno.composicion.${c}`)}
               seleccionada={composicion === c}
-              onElegir={() => cambiar(c === 'centered' || c === 'split' ? { header_style: c, logo_position: 'center' } : { header_style: c })}
+              onElegir={() => { if (c !== composicion) cambiar(cambioComposicion(c)); }}
             >
               <MiniaturaEncabezado composicion={c} />
             </TarjetaComposicion>
@@ -419,19 +454,24 @@ function Diseno(p: Interno) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idLogo}>{t('zonaGlobal.diseno.logo')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idLogo}
-          opciones={[
-            { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
-            { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
-            { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
-          ]}
-          valor={valorOpcion<string>(a, 'logo_position') ?? (composicion === 'centered' || composicion === 'split' ? 'center' : 'left')}
-          onValorChange={(v) => cambiar({ logo_position: v, mobile_logo_position: 'inherit' })}
-        />
-      </div>
+      {composicionConLado(composicion) ? (
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idLogo}>{t('zonaGlobal.diseno.logo')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={idLogo}
+            opciones={[
+              { valor: 'left', etiqueta: t('zonaGlobal.diseno.izquierda') },
+              { valor: 'center', etiqueta: t('zonaGlobal.diseno.centro') },
+              { valor: 'right', etiqueta: t('zonaGlobal.diseno.derecha') },
+            ]}
+            valor={ladoLogo(a)}
+            onValorChange={(v) => cambiar({ logo_position: v, mobile_logo_position: null })}
+          />
+          <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.logoAyuda')}</p>
+        </div>
+      ) : (
+        <p className="text-xs leading-4 text-fg-muted">{t(`zonaGlobal.diseno.logoFijo.${composicion === 'centered' || composicion === 'split' ? 'centro' : 'izquierda'}`)}</p>
+      )}
       <SelectorMenu {...p} etiqueta={t('zonaGlobal.menu.tituloDiseno')} />
       {composicion === 'mega' && (
         <>
@@ -461,6 +501,11 @@ function Diseno(p: Interno) {
           onValorChange={(v) => cambiar(cambioBuscador(a, v))}
         />
         <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorAyuda')}</p>
+        {buscadorPropioCelular(a) && (
+          <p role="note" className="rounded-md bg-surface-muted px-2 py-1.5 text-[11px] leading-[14px] text-fg-secondary">
+            {t('zonaGlobal.diseno.buscadorCelularPropio', { valor: t(`zonaGlobal.diseno.buscadorNombre.${buscadorPropioCelular(a)}`) })}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idMc}>{t('zonaGlobal.diseno.menuCelular')}</EtiquetaGrupo>
@@ -518,10 +563,10 @@ function Estilo(p: Interno) {
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.presetCirculo')}
           ayuda={t('zonaGlobal.acciones.iconosCirculoAyuda')}
-          valor={opcionBooleana(a, 'header_icons_circle')}
-          onCambiar={(v) => cambiar({ header_icons_circle: v })}
+          valor={circuloAcentoActivo(a)}
+          onCambiar={(v) => cambiar(cambioCirculoAcento(a, v))}
         />
-        {opcionBooleana(a, 'header_icons_circle') && (() => {
+        {circuloAcentoActivo(a) && (() => {
           // Paquete 5-nov B1/B4: fondo del círculo (vacío = marca) y color del ícono (vacío = automático).
           const fondoCirculo = color('header_icons_circle_bg') ?? p.coloresTema.acento;
           return (
@@ -561,8 +606,9 @@ function Estilo(p: Interno) {
           onCambiar={(v) => cambiar({ header_sticky: v })}
         />
       </section>
+      <EspaciosEncabezado ajustes={a} cambiar={cambiar} />
       <FormaBoton ajustes={a} cambiar={cambiar} />
-      <AjustesAnteriores ajustes={a} cambiar={cambiar} />
+      <AjustesAnteriores ajustes={a} entradas={entradasAnterioresEncabezado(a, CLAVES_ANTERIORES_ENCABEZADO)} cambiar={cambiar} />
       <button
         type="button"
         onClick={() => cambiar(cambiosRestablecer('header', p.porDefecto.header))}
@@ -574,21 +620,47 @@ function Estilo(p: Interno) {
   );
 }
 
-/**
- * Una opción por función (27-oct): el buscador elegido vale para computador y celular. `null` en
- * `mobile_search_style` = «sigue al de computador» en la tienda (`buscadorMovil`); también se quita
- * el `search` del celular viejo (`mobile_header`), que si no mandaría.
- */
-export function cambioBuscador(a: Record<string, unknown>, v: string): Record<string, unknown> {
-  const cambio: Record<string, unknown> = { search_style: v, mobile_search_style: null };
-  const movil = a.mobile_header;
-  if (movil && typeof movil === 'object' && 'search' in (movil as Record<string, unknown>)) {
-    const { search: _s, ...resto } = movil as Record<string, unknown>;
-    void _s;
-    cambio.mobile_header = resto;
-  }
-  return cambio;
+/** Igual que `headerSobreHero` de la tienda (lib/website/espacioHeader.ts). */
+export function encabezadoSobrePortada(a: Record<string, unknown>): boolean {
+  if (a.header_style === 'transparent' && a.header_transparent_over_hero !== false) return true;
+  return a.header_transparent_over_hero === true;
 }
+
+/** «Espacios»: encabezado sobre la portada y espacio encima de la primera sección (PR #426). */
+function EspaciosEncabezado({ ajustes: a, cambiar }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void }) {
+  const t = useTextosEditor();
+  const id = useId();
+  const transparente = a.header_style === 'transparent';
+  const offset = typeof a.first_section_offset_px === 'number' ? a.first_section_offset_px : null;
+  return (
+    <section className="flex flex-col gap-3">
+      <TituloBloque>{t('zonaGlobal.estilo.espacios')}</TituloBloque>
+      <FilaInterruptor
+        titulo={t('zonaGlobal.acciones.headerSobreHero')}
+        ayuda={t('zonaGlobal.acciones.headerSobreHeroAyuda')}
+        valor={encabezadoSobrePortada(a)}
+        // Transparente ya va encima por defecto: encender suelta la clave; si no, se escribe explícito.
+        onCambiar={(v) => cambiar({ header_transparent_over_hero: v ? (transparente ? null : true) : false })}
+      />
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={id}>{t('zonaGlobal.acciones.espacioPrimera')}</EtiquetaGrupo>
+        <CampoNumero
+          aria-labelledby={id}
+          valor={offset}
+          placeholder="0"
+          decimales={0}
+          minimo={0}
+          maximo={240}
+          alinear="izquierda"
+          onValorChange={(v) => cambiar({ first_section_offset_px: v == null || v <= 0 ? null : Math.min(240, Math.round(v)) })}
+        />
+        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.espacioPrimeraAyuda')}</p>
+      </div>
+    </section>
+  );
+}
+
+export { cambioBuscador } from './anterioresLogica';
 
 const FORMAS_BOTON = [
   { valor: '0', clave: 'recto' },
@@ -629,8 +701,6 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'search_icon',
   'auth_icon',
   'currency_icon',
-  'header_transparent_over_hero',
-  'first_section_offset_px',
   'header_booking_bar',
   'mobile_logo_position',
   'mobile_show_topbar',
@@ -656,39 +726,45 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
 ] as const;
 
 export function clavesAnterioresConValor(ajustes: Record<string, unknown>): string[] {
-  return CLAVES_ANTERIORES_ENCABEZADO.filter((k) => {
-    const v = ajustes[k];
-    if (v === null || v === undefined || v === '') return false;
-    const def = OPCIONES_SHELL[k]?.porDefecto ?? null;
-    return JSON.stringify(v) !== JSON.stringify(def);
-  });
+  return entradasAnterioresEncabezado(ajustes, CLAVES_ANTERIORES_ENCABEZADO).map((e) => e.id);
 }
 
-function AjustesAnteriores({ ajustes, cambiar }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void }) {
+/** Bloque «Ajustes de versiones anteriores» (encabezado y pie): quitar por clave, con dependencias. */
+export function AjustesAnteriores({ ajustes, entradas, cambiar }: { ajustes: Record<string, unknown>; entradas: readonly EntradaAnterior[]; cambiar: (c: Record<string, unknown>) => void }) {
   const t = useTextosEditor();
-  const claves = clavesAnterioresConValor(ajustes);
-  if (claves.length === 0) return null;
-  const quitar = (lista: readonly string[]) =>
-    cambiar(Object.fromEntries(lista.map((k) => [k, OPCIONES_SHELL[k]?.porDefecto ?? null])));
+  if (entradas.length === 0) return null;
+  const quitables = entradas.filter((e) => e.quitar);
   return (
     <details className="rounded-lg border border-line bg-surface px-3 py-2">
       <summary className="cursor-pointer text-[13px] font-semibold leading-[18px] text-fg">
-        {t('zonaGlobal.anteriores.titulo', { n: claves.length })}
+        {t('zonaGlobal.anteriores.titulo', { n: entradas.length })}
       </summary>
       <p className="mt-2 text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.anteriores.ayuda')}</p>
       <ul className="mt-2 flex flex-col gap-1.5">
-        {claves.map((k) => (
-          <li key={k} className="flex items-center justify-between gap-2 text-xs text-fg-secondary">
-            <span>{t(`zonaGlobal.anteriores.clave.${k}`)}</span>
-            <button type="button" onClick={() => quitar([k])} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
-              {t('zonaGlobal.anteriores.quitar')}
-            </button>
+        {entradas.map((e) => (
+          <li key={e.id} className="flex flex-col gap-1.5 text-xs text-fg-secondary">
+           <div className="flex items-center justify-between gap-2">
+            <span className="flex flex-col">
+              <span>{t(`zonaGlobal.anteriores.clave.${e.id}`)}</span>
+              {e.motivo && <span className="text-[11px] leading-[14px] text-fg-muted">{t(`zonaGlobal.anteriores.motivo.${e.motivo}`)}</span>}
+            </span>
+            {e.quitar && (
+              <button type="button" onClick={() => cambiar(e.quitar!)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+                {t('zonaGlobal.anteriores.quitar')}
+              </button>
+            )}
+           </div>
+            {e.editables?.map((ed) => (
+              <FilaInterruptor key={ed.clave} titulo={t(`zonaGlobal.anteriores.campoMovil.${ed.clave}`)} valor={ed.valor} onCambiar={(v) => cambiar(ed.cambio(v))} />
+            ))}
           </li>
         ))}
       </ul>
-      <button type="button" onClick={() => quitar(claves)} className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'mt-2')}>
-        {t('zonaGlobal.anteriores.quitarTodos')}
-      </button>
+      {quitables.length > 1 && (
+        <button type="button" onClick={() => cambiar(cambioQuitarTodos(ajustes, entradas))} className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'mt-2')}>
+          {t('zonaGlobal.anteriores.quitarTodos')}
+        </button>
+      )}
     </details>
   );
 }

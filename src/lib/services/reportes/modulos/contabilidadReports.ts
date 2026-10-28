@@ -154,7 +154,7 @@ export const contabilidadReports: DefinicionModulo[] = [
   {
     id: 'estado-resultados',
     modulo: 'finance',
-    titulo: 'Estado de resultados',
+    titulo: 'Estado del resultado integral',
     descripcion: 'Ingresos, costos y gastos del periodo, por cuenta, sucursal y centro de costo',
     categoria: 'contable',
     alcance: 'organizacion',
@@ -199,7 +199,7 @@ export const contabilidadReports: DefinicionModulo[] = [
 
       return {
         ...buildReportData(
-          'estado-resultados', 'Estado de resultados', 'finance', periodo,
+          'estado-resultados', 'Estado del resultado integral', 'finance', periodo,
           [
             { titulo: 'Ingresos', valor: ingresos, formato: 'moneda' },
             { titulo: 'Costos', valor: num(d.costos), formato: 'moneda' },
@@ -266,7 +266,7 @@ export const contabilidadReports: DefinicionModulo[] = [
   {
     id: 'balance-general',
     modulo: 'finance',
-    titulo: 'Balance general',
+    titulo: 'Estado de situación financiera',
     descripcion: 'Activo, pasivo y patrimonio a la fecha de corte · Fuente: libro mayor',
     categoria: 'contable',
     alcance: 'organizacion',
@@ -286,7 +286,7 @@ export const contabilidadReports: DefinicionModulo[] = [
 
       return {
         ...buildReportData(
-          'balance-general', 'Balance general', 'finance', periodo,
+          'balance-general', 'Estado de situación financiera', 'finance', periodo,
           [
             { titulo: 'Total activos', valor: activos, formato: 'moneda' },
             { titulo: 'Total pasivos', valor: num(d.pasivos), formato: 'moneda' },

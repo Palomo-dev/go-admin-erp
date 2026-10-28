@@ -86,11 +86,13 @@ export default function SeguridadSection({ user, clienteMfa = clienteMfaNavegado
         reiniciar();
         return;
       }
-      const codigo = cuerpo.codigo ?? 'inesperado';
+      // Sin `codigo` legible (proxy, HTML de error) se deduce del estado HTTP en vez de caer en «inesperado».
+      const codigo = cuerpo.codigo ?? (res.status === 401 ? 'sin_sesion' : res.status === 429 ? 'demasiadas' : 'inesperado');
       if (codigo in CLAVE_MOTIVO) setError(tp(CLAVE_MOTIVO[codigo as MotivoRechazo]));
       else if (codigo === 'actual_incorrecta') setError(t('errorActual'));
       else if (codigo === 'igual_a_la_actual') setError(t('errorIgualActual'));
       else if (codigo === 'demasiadas') setError(t('errorDemasiadas'));
+      else if (codigo === 'sin_sesion') setError(t('errorSesion'));
       else setError(t('errorInesperado'));
     } catch {
       setError(t('errorInesperado'));

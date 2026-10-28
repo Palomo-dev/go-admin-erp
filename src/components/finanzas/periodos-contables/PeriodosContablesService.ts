@@ -120,12 +120,15 @@ export class PeriodosContablesService {
     return periodo;
   }
 
-  static async reabrirPeriodo(id: string): Promise<FiscalPeriod> {
+  static async reabrirPeriodo(id: string, motivo: string): Promise<FiscalPeriod> {
     const organizationId = this.getOrganizationId();
     if (!organizationId) throw new Error('No hay organización activa');
+    const limpio = (motivo ?? '').trim();
+    if (limpio.length < 5) throw new Error('motivo_obligatorio');
     const { error } = await supabase.rpc('fn_reabrir_periodo', {
       p_organization_id: organizationId,
       p_period_id: id,
+      p_motivo: limpio,
     });
     if (error) {
       console.error('Error reabriendo periodo:', error);

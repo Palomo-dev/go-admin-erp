@@ -1006,7 +1006,7 @@
       "pendiente": "Pending",
       "ir": "Go",
       "irA": "Go to {paso}",
-      "inventarioAsiento": "The journal will debit {inventario} and credit {saldo} (opening balances). Recoveries are not used.",
+      "inventarioAsiento": "The journal will debit {inventario} and credit {saldo} (retained earnings; 3710 if there are losses). Recoveries are not used.",
       "importarExcel": "Import Excel",
       "cargarMano": "Enter by hand",
       "sinMovimientosTitulo": "No activity yet",
@@ -13719,7 +13719,8 @@
         "ayudaTipo": "Opening debits inventory and credits equity. An inbound adjustment credits other income and an outbound one debits expenses. An inbound movement that is not a return does not credit costs.",
         "avisoKardex": "Every adjustment is recorded in the stock ledger and posts its inventory journal entry.",
         "sinCosto": "{count, plural, one {{n} adjustment had no cost: it is in the stock ledger but posted no journal entry.} other {{n} adjustments had no cost: they are in the stock ledger but posted no journal entry.}}",
-        "sinPermiso": "You do not have permission to adjust inventory."
+        "sinPermiso": "You do not have permission to adjust inventory.",
+        "padresOmitidos": "{cantidad} parent products with variants were skipped: stock is adjusted on their variants."
       },
       "categoria": {
         "titulo": "Assign category",
@@ -14171,7 +14172,8 @@
       "categoriaSugerida": "category suggested from the name",
       "preparadoSinInventario": "prepared dishes without their own stock",
       "filaInternaAlegra": "internal Alegra rows (excluded)",
-      "skuRepetidoTienda": "store SKU repeated"
+      "skuRepetidoTienda": "store SKU repeated",
+      "stockEnPadre": "stock on parent (not loaded)"
     },
     "vista": {
       "titulo": "Preview ({n} rows)",
@@ -14318,6 +14320,7 @@
       "PADRE_NO_ENCONTRADO": "Parent SKU does not exist",
       "VARIANTE_PADRE_ELIMINADO": "The variant belongs to a deleted product: restore the parent product first",
       "STOCK_SIN_COSTO": "Stock without cost: the stock ledger requires a cost",
+      "SIN_PERMISO_CREAR_CATEGORIA": "You don't have permission to create categories; use an existing one or ask for permission",
       "PRECIO_INVALIDO": "Invalid price",
       "COSTO_INVALIDO": "Invalid cost",
       "STOCK_INVALIDO": "Invalid stock",
@@ -14334,7 +14337,8 @@
         "codigo_barras": "barcode",
         "plu": "scale PLU",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Has stock ({cantidad}) on a parent product with variants: it is not loaded. Put it on the variants."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -25489,6 +25493,7 @@
     },
     "errores": {
       "stock_insuficiente": "Not enough stock: available {disponible}, requested {solicitado}.",
+      "producto_padre_con_variantes": "This product has variants: record stock on each variant (size, colour…), not on the parent product.",
       "cantidad_invalida": "Quantity must be greater than zero.",
       "direccion_invalida": "Invalid movement.",
       "origen_requerido": "The movement source is missing.",
@@ -26992,6 +26997,8 @@
       "confirmarAjusteDetalle": "The organization is less than 30 days old, or the amount is over the threshold. A note is required.",
       "asientoTitulo": "Opening inventory journal",
       "asientoDetalle": "Debit {inventario} / credit {saldo} for {total}.",
+      "contrapartidaTitulo": "The counterpart is no longer capital (3105)",
+      "contrapartidaDetalle": "The opening load credits 3705 retained earnings; if the company carries accumulated losses it goes to 3710. Check it with your accountant before closing the period.",
       "asientoSobranteTitulo": "Surplus journal",
       "asientoSobranteDetalle": "One journal only: debit {inventario} and credit {diversos} for {total}. Recoveries are not used.",
       "corregirConteo": "Correct the count",
@@ -29938,6 +29945,7 @@
     "errorActual": "Your current password is incorrect.",
     "errorIgualActual": "The new password must be different from the current one.",
     "errorDemasiadas": "Too many attempts in a row. Wait a few minutes and try again.",
+    "errorSesion": "Your session expired. Sign in again and try once more.",
     "errorInesperado": "We could not change your password. Try again in a moment."
   },
   "posEtiquetasPeso": {
@@ -33216,7 +33224,9 @@
           "circuloFondo": "Circle background",
           "circuloFondoAcento": "Brand color",
           "circuloIcono": "Icon color",
-          "circuloIconoAuto": "Automatic"
+          "circuloIconoAuto": "Automatic",
+          "headerSobreHero": "Header over the cover",
+          "headerSobreHeroAyuda": "The header sits on top of the cover image. Off: the header goes above and the cover below."
         },
         "diseno": {
           "titulo": "Header layout",
@@ -33246,7 +33256,23 @@
           },
           "barraCelular": "Top bar on mobile",
           "buscador": "Search",
-          "buscadorAyuda": "Applies to desktop and mobile: on mobile the icon stays in the bar and the visible bar goes under the logo."
+          "buscadorAyuda": "Applies to desktop and mobile: on mobile the icon stays in the bar and the visible bar goes under the logo.",
+          "buscadorCelularPropio": "On mobile the search stays as “{valor}” (previous setting). To follow this option, remove “Mobile-only search” in Previous version settings.",
+          "buscadorNombre": {
+            "icon": "Icon",
+            "bar": "Visible bar",
+            "hidden": "Hidden",
+            "fullscreen": "Full screen",
+            "mini": "Compact bar",
+            "icon_overlay": "Icon that opens search on top",
+            "mega": "Large search",
+            "pill_floating": "Floating pill"
+          },
+          "logoAyuda": "Same position on desktop and mobile.",
+          "logoFijo": {
+            "centro": "In this layout the logo is centered.",
+            "izquierda": "In this layout the logo is on the left."
+          }
         },
         "estilo": {
           "avisoTitulo": "By default colors follow the template theme",
@@ -33293,7 +33319,8 @@
             "recto": "Square",
             "redondeado": "Rounded",
             "pildora": "Pill"
-          }
+          },
+          "espacios": "Spacing"
         },
         "pie": {
           "menus": "Footer menus",
@@ -33406,7 +33433,44 @@
             "mobile_menu_register_border_color": "Mobile menu colors (register border)",
             "mobile_menu_register_text_color": "Mobile menu colors (register text)",
             "mobile_menu_logout_color": "Mobile menu colors (logout)",
-            "mobile_search_style": "Separate mobile search"
+            "mobile_search_style": "Separate mobile search",
+            "mobile_header__panel": "Mobile menu panel",
+            "mobile_header__layout": "Mobile header layout",
+            "mobile_header__icons": "Mobile icons (circle, account)",
+            "mobile_header__search": "Mobile search (old panel)",
+            "mobile_header__bottom_nav": "App-style bottom bar",
+            "mobile_footer_show_hours": "Mobile-only hours",
+            "mobile_footer_show_social": "Mobile-only social links",
+            "seccion_padding_top": "Top padding",
+            "seccion_padding_bottom": "Bottom padding",
+            "seccion_padding_x": "Side padding",
+            "seccion_margin_top": "Top margin",
+            "seccion_margin_bottom": "Bottom margin",
+            "seccion_full_bleed": "Full screen width",
+            "seccion_container_width": "Content width",
+            "seccion_full_width": "Full screen width (categories)",
+            "carrusel_avance": "Items per step"
+          },
+          "motivo": {
+            "enUso": "The store uses it for the mobile header: removing it would change mobile.",
+            "circulo": "Managed with “Accent circle” (desktop and mobile).",
+            "mandaEspaciado": "Overrides Style › Spacing: remove it so your choice there shows.",
+            "mandaAncho": "Overrides Style › Width: remove it so your choice there shows.",
+            "sinEfecto": "The store doesn't use it: it changes nothing."
+          },
+          "campoMovil": {
+            "show_logo": "Logo in the mobile menu",
+            "show_search": "Search",
+            "show_social": "Social links in the menu",
+            "show_contact": "Contact in the menu",
+            "sticky": "Sticky on scroll",
+            "hide_on_scroll": "Hide on scroll down",
+            "transparent_hero": "Transparent over the hero",
+            "show_cart": "Cart",
+            "show_menu": "Menu button",
+            "show_account": "Account",
+            "enabled": "Bottom bar on",
+            "showLabel": "Show label"
           }
         }
       },
@@ -33919,7 +33983,15 @@
         "errorTitulo": "The draft was not saved",
         "errorDescripcion": "Check your connection. Your changes are still in the editor.",
         "errorOperacion": "Operation settings were not saved",
-        "operacionSoloPrincipal": "Shipping, counter and purchase buttons are set on the main site for now."
+        "operacionSoloPrincipal": "Shipping, counter and purchase buttons are set on the main site for now.",
+        "motivo": {
+          "sesion": "Your session expired. Sign in again; your changes are still in the editor.",
+          "permiso": "You don't have permission to edit this site. Ask an administrator for access.",
+          "otraPestana": "This site was edited in another tab or by someone else. Reload to see the latest version.",
+          "invalido": "Some data is not valid: {detalle}. Fix it and save again.",
+          "red": "Check your connection. Your changes are still in the editor.",
+          "generico": "A server error occurred. Your changes are still in the editor; try again."
+        }
       },
       "encabezadoPie": {
         "titulo": "Header and footer",
@@ -34045,6 +34117,104 @@
         "titulo": "You are editing the live site:",
         "descripcion": "when you save, changes go live. Create a draft to review them before publishing.",
         "crearBorrador": "Create draft"
+      },
+      "listas": {
+        "paginacion": "Pagination",
+        "carrusel": "Carousel",
+        "usarGlobal": "Use global setting",
+        "usarGlobalAyuda": "Follows Design › Site styles. Turn it off to give this section its own setting.",
+        "porPaginaComputador": "Per page on desktop",
+        "porPaginaCelular": "Per page on mobile",
+        "estilo": "Style",
+        "forma": "Shape",
+        "tamano": "Size",
+        "alineacion": "Alignment",
+        "estiloPaginacion": {
+          "numerada": "Numbered",
+          "compacta": "Page 3 of 17",
+          "cargar_mas": "“Load more” button",
+          "infinito": "Infinite scroll",
+          "anterior_siguiente": "Previous / Next"
+        },
+        "formaOpcion": {
+          "cuadrado": "Square",
+          "semi": "Rounded",
+          "circulo": "Circle",
+          "pildora": "Pill"
+        },
+        "tamanoOpcion": {
+          "sm": "Small",
+          "md": "Medium",
+          "lg": "Large"
+        },
+        "alineacionOpcion": {
+          "izq": "Left",
+          "centro": "Center",
+          "der": "Right"
+        },
+        "colorActivo": "Active color",
+        "colorInactivo": "Inactive color",
+        "colorHover": "Hover color",
+        "extremos": "First and last page",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Results counter",
+        "contadorAyuda": "“Showing 1–24 of 400” above the pagination.",
+        "textoAnterior": "“Previous” text",
+        "textoAnteriorEjemplo": "Empty: arrow",
+        "textoSiguiente": "“Next” text",
+        "textoSiguienteEjemplo": "Empty: arrow",
+        "textoCargarMas": "Button text",
+        "textoCargarMasEjemplo": "Load more",
+        "vistaPrevia": "Preview",
+        "visiblesComputador": "Visible on desktop",
+        "visiblesTableta": "On tablet",
+        "visiblesCelular": "On mobile",
+        "indicador": "Indicator",
+        "indicadorOpcion": {
+          "ninguno": "None",
+          "puntos": "Dots",
+          "barra": "Bar",
+          "numeros": "Numbers",
+          "progreso": "Progress",
+          "miniaturas": "Thumbnails"
+        },
+        "posicionIndicador": "Indicator position",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "Bottom, inside",
+          "abajo_fuera": "Bottom, outside"
+        },
+        "tamanoIndicador": "Indicator size",
+        "flechasComputador": "Arrows on desktop",
+        "flechasCelular": "Arrows on mobile",
+        "estiloFlechas": "Arrow style",
+        "estiloFlechaOpcion": {
+          "chevron": "Arrow only",
+          "circulo": "Circle",
+          "cuadrado": "Square",
+          "larga": "Long arrow",
+          "hover": "On hover"
+        },
+        "posicionFlechas": "Arrow position",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "Sides, inside",
+          "lados_fuera": "Sides, outside",
+          "titulo": "Next to the title",
+          "indicador": "Next to the indicator"
+        },
+        "tamanoFlecha": "Arrow size",
+        "fondoFlecha": "Arrow background",
+        "bordeFlecha": "Arrow border",
+        "iconoFlecha": "Icon color",
+        "sombraFlecha": "Arrow shadow",
+        "autoplay": "Autoplay",
+        "segundos": "Seconds per step",
+        "pausaHover": "Pause on hover",
+        "bucle": "Loop back to start",
+        "arrastre": "Swipe or drag"
+      },
+      "controles": {
+        "degradado1": "Gradient start color",
+        "degradado2": "Gradient end color"
       }
     },
     "paginas": {

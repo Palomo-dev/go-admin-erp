@@ -95,6 +95,36 @@ describe('bulkService — solo RPC', () => {
     expect(from).not.toHaveBeenCalled();
   });
 
+  it('precio: lotes de 50 y solo reintenta una vez el lote con statement timeout', async () => {
+    expect(LOTE_PRECIOS).toBe(50);
+    const alcance = Array.from({ length: 120 }, (_, i) => i + 1);
+    let fallo = false;
+    rpc.mockImplementation((nombre: string, args: Record<string, unknown>) => {
+      if (nombre === 'fn_productos_masivo_alcance') return Promise.resolve({ data: alcance, error: null });
+      const ids = args.p_product_ids as number[];
+      if (ids[0] === 51 && !fallo) {
+        fallo = true;
+        return Promise.resolve({ data: null, error: { code: '57014', message: 'canceling statement due to statement timeout' } });
+      }
+      return Promise.resolve({ data: { cambiados: ids.length, sin_cambio: 0 }, error: null });
+    });
+    const r = await servicio.bulkUpdatePrices(7, alcance, 'venta', 'valor', 100);
+    const lotes = rpc.mock.calls.filter((c) => c[0] === 'fn_productos_precio_masivo').map((c) => (c[1].p_product_ids as number[])[0]);
+    expect(lotes).toEqual([1, 51, 51, 101]);
+    expect(r).toEqual({ exitosos: 120, fallidos: 0, errores: [] });
+  });
+
+  it('precio: un error que no es timeout no se reintenta', async () => {
+    rpc.mockImplementation((nombre: string) =>
+      Promise.resolve(nombre === 'fn_productos_masivo_alcance'
+        ? { data: [1, 2], error: null }
+        : { data: null, error: { code: '22023', message: 'modo_invalido' } }),
+    );
+    const r = await servicio.bulkUpdatePrices(7, [1, 2], 'venta', 'valor', 1);
+    expect(rpc.mock.calls.filter((c) => c[0] === 'fn_productos_precio_masivo')).toHaveLength(1);
+    expect(r.fallidos).toBe(2);
+  });
+
   it('redondeo y copia a comparación pasan su operación', async () => {
     rpc.mockImplementation((nombre: string) =>
       Promise.resolve({ data: nombre === 'fn_productos_masivo_alcance' ? [5] : { cambiados: 1 }, error: null }),

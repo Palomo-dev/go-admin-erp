@@ -53,6 +53,7 @@ export function armarLoteLegacy(p: PendientesLegacy): LoteLegacy {
       ([k, v]) => !(AJUSTES_PROHIBIDOS as readonly string[]).includes(k) && v !== undefined,
     ),
   );
+  resolverSiguenAComputador(ajustes);
   return {
     paginaId: p.pagina.id,
     sedeId: p.sedeId,
@@ -66,4 +67,25 @@ export function armarLoteLegacy(p: PendientesLegacy): LoteLegacy {
       .map(([id, cambios]) => ({ id, cambios: filtrar(cambios, CAMPOS_MENU) }))
       .filter((m) => Object.keys(m.cambios).length > 0),
   };
+}
+
+/**
+ * En legacy (`website_settings`) estas columnas son NOT NULL: el `null` de «sigue al computador»
+ * (una opción por función, 27-oct) se guarda como el valor del computador que va en el mismo lote;
+ * si no va, no se toca la columna (queda como estaba).
+ */
+const SIGUEN_A_COMPUTADOR_LEGACY: Readonly<Record<string, string>> = {
+  mobile_search_style: 'search_style',
+  mobile_show_topbar: 'show_topbar',
+  mobile_footer_show_hours: 'footer_show_hours',
+  mobile_footer_show_social: 'footer_show_social',
+};
+
+export function resolverSiguenAComputador(ajustes: Record<string, unknown>): void {
+  for (const [movil, computador] of Object.entries(SIGUEN_A_COMPUTADOR_LEGACY)) {
+    if (!(movil in ajustes) || ajustes[movil] !== null) continue;
+    const v = ajustes[computador];
+    if (v === null || v === undefined) delete ajustes[movil];
+    else ajustes[movil] = v;
+  }
 }

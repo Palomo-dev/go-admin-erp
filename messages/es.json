@@ -1006,7 +1006,7 @@
       "pendiente": "Pendiente",
       "ir": "Ir",
       "irA": "Ir a {paso}",
-      "inventarioAsiento": "El asiento será débito {inventario} y crédito {saldo} (saldos iniciales). No usa recuperaciones.",
+      "inventarioAsiento": "El asiento será débito {inventario} y crédito {saldo} (utilidades acumuladas; 3710 si hay pérdidas). No usa recuperaciones.",
       "importarExcel": "Importar Excel",
       "cargarMano": "Cargar a mano",
       "sinMovimientosTitulo": "Todavía no hay movimientos",
@@ -13720,7 +13720,8 @@
         "ayudaTipo": "La apertura debita inventario y acredita patrimonio. Un ajuste de entrada acredita otros ingresos y uno de salida debita gastos. Una entrada que no es devolución no acredita costos.",
         "avisoKardex": "Cada ajuste queda en el kardex y genera su asiento de inventario.",
         "sinCosto": "{count, plural, one {{n} ajuste quedó sin costo: está en el kardex pero no generó asiento.} other {{n} ajustes quedaron sin costo: están en el kardex pero no generaron asiento.}}",
-        "sinPermiso": "No tienes permiso para ajustar el inventario."
+        "sinPermiso": "No tienes permiso para ajustar el inventario.",
+        "padresOmitidos": "{cantidad} productos padre con variantes se omitieron: el stock se ajusta en sus variantes."
       },
       "categoria": {
         "titulo": "Asignar categoría",
@@ -14172,7 +14173,8 @@
       "categoriaSugerida": "categoría sugerida por el nombre",
       "preparadoSinInventario": "platos preparados sin inventario propio",
       "filaInternaAlegra": "filas internas de Alegra (excluidas)",
-      "skuRepetidoTienda": "SKU de la tienda repetido"
+      "skuRepetidoTienda": "SKU de la tienda repetido",
+      "stockEnPadre": "stock en el padre (no se carga)"
     },
     "vista": {
       "titulo": "Previsualización ({n} filas)",
@@ -14319,6 +14321,7 @@
       "PADRE_NO_ENCONTRADO": "El SKU padre no existe",
       "VARIANTE_PADRE_ELIMINADO": "La variante es de un producto eliminado: restaura el producto padre primero",
       "STOCK_SIN_COSTO": "Stock sin costo: el kardex exige costo",
+      "SIN_PERMISO_CREAR_CATEGORIA": "No tienes permiso para crear categorías; usa una existente o pide permiso",
       "PRECIO_INVALIDO": "Precio no válido",
       "COSTO_INVALIDO": "Costo no válido",
       "STOCK_INVALIDO": "Stock no válido",
@@ -14335,7 +14338,8 @@
         "codigo_barras": "código de barras",
         "plu": "PLU de balanza",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Trae stock ({cantidad}) en un producto padre con variantes: no se carga. Ponlo en las variantes."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -25490,6 +25494,7 @@
     },
     "errores": {
       "stock_insuficiente": "No hay existencias suficientes: disponible {disponible}, solicitado {solicitado}.",
+      "producto_padre_con_variantes": "Este producto tiene variantes: registra las existencias en cada variante (talla, color…), no en el producto padre.",
       "cantidad_invalida": "La cantidad debe ser mayor que cero.",
       "direccion_invalida": "Movimiento no válido.",
       "origen_requerido": "Falta el origen del movimiento.",
@@ -26993,6 +26998,8 @@
       "confirmarAjusteDetalle": "La organización tiene menos de 30 días o el monto supera el umbral. La nota es obligatoria.",
       "asientoTitulo": "Asiento de la carga inicial",
       "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
+      "contrapartidaTitulo": "La contrapartida ya no es capital (3105)",
+      "contrapartidaDetalle": "La carga inicial acredita 3705 utilidades acumuladas; si la empresa arrastra pérdidas va a 3710. Revísalo con tu contador antes de cerrar el periodo.",
       "asientoSobranteTitulo": "Asiento del sobrante",
       "asientoSobranteDetalle": "Un solo asiento: débito {inventario} y crédito {diversos} por {total}. No usa recuperaciones.",
       "corregirConteo": "Corregir el conteo",
@@ -29939,6 +29946,7 @@
     "errorActual": "La contraseña actual no es correcta.",
     "errorIgualActual": "La contraseña nueva debe ser distinta de la actual.",
     "errorDemasiadas": "Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.",
+    "errorSesion": "Tu sesión venció. Vuelve a iniciar sesión e inténtalo de nuevo.",
     "errorInesperado": "No pudimos cambiar la contraseña. Inténtalo de nuevo en un momento."
   },
   "posEtiquetasPeso": {
@@ -33229,8 +33237,8 @@
           "presetBorde": "Borde fino",
           "presetSombra": "Sombra flotante",
           "presetSolo": "Solo ícono",
-          "headerSobreHero": "Header transparente sobre el hero",
-          "headerSobreHeroAyuda": "El encabezado queda fijo y transparente encima del hero. Apagado: encabezado opaco y el hero debajo, sin hueco.",
+          "headerSobreHero": "Encabezado sobre la portada",
+          "headerSobreHeroAyuda": "El encabezado queda encima de la imagen de portada. Apagado: el encabezado va arriba y la portada debajo.",
           "espacioPrimera": "Espacio superior de la primera sección",
           "espacioPrimeraAyuda": "Píxeles entre el encabezado y la primera sección. 0 las deja pegadas.",
           "circuloFondo": "Fondo del círculo",
@@ -33266,7 +33274,23 @@
           },
           "barraCelular": "Barra superior en el celular",
           "buscador": "Buscador",
-          "buscadorAyuda": "Vale para computador y celular: en el celular el ícono queda en la barra y la barra visible va bajo el logo."
+          "buscadorAyuda": "Vale para computador y celular: en el celular el ícono queda en la barra y la barra visible va bajo el logo.",
+          "buscadorCelularPropio": "En el celular el buscador sigue como «{valor}» (ajuste anterior). Para que siga esta opción, quita «Buscador propio del celular» en Ajustes de versiones anteriores.",
+          "buscadorNombre": {
+            "icon": "Ícono",
+            "bar": "Barra visible",
+            "hidden": "Oculto",
+            "fullscreen": "Pantalla completa",
+            "mini": "Barra compacta",
+            "icon_overlay": "Ícono que abre el buscador encima",
+            "mega": "Buscador grande",
+            "pill_floating": "Píldora flotante"
+          },
+          "logoAyuda": "La misma posición en computador y en celular.",
+          "logoFijo": {
+            "centro": "En esta composición el logo va al centro.",
+            "izquierda": "En esta composición el logo va a la izquierda."
+          }
         },
         "estilo": {
           "avisoTitulo": "Por defecto los colores siguen el tema de la plantilla",
@@ -33313,7 +33337,8 @@
             "recto": "Recto",
             "redondeado": "Redondeado",
             "pildora": "Píldora"
-          }
+          },
+          "espacios": "Espacios"
         },
         "pie": {
           "menus": "Menús del pie",
@@ -33426,7 +33451,44 @@
             "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
             "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
             "mobile_menu_logout_color": "Colores del menú del celular (logout)",
-            "mobile_search_style": "Buscador propio del celular"
+            "mobile_search_style": "Buscador propio del celular",
+            "mobile_header__panel": "Panel del menú del celular",
+            "mobile_header__layout": "Disposición del encabezado en el celular",
+            "mobile_header__icons": "Íconos del celular (círculo, cuenta)",
+            "mobile_header__search": "Buscador del celular (panel viejo)",
+            "mobile_header__bottom_nav": "Barra inferior tipo app",
+            "mobile_footer_show_hours": "Horario propio del celular",
+            "mobile_footer_show_social": "Redes propias del celular",
+            "seccion_padding_top": "Relleno arriba",
+            "seccion_padding_bottom": "Relleno abajo",
+            "seccion_padding_x": "Relleno a los lados",
+            "seccion_margin_top": "Margen arriba",
+            "seccion_margin_bottom": "Margen abajo",
+            "seccion_full_bleed": "Ancho completo de pantalla",
+            "seccion_container_width": "Ancho del contenido",
+            "seccion_full_width": "Ancho completo de pantalla (categorías)",
+            "carrusel_avance": "Ítems por avance"
+          },
+          "motivo": {
+            "enUso": "La tienda lo usa para el encabezado del celular: quitarlo cambiaría el celular.",
+            "circulo": "Se maneja con «Círculo acento» (computador y celular).",
+            "mandaEspaciado": "Manda sobre Estilo › Espaciado: quítalo para que se vea lo que elijas ahí.",
+            "mandaAncho": "Manda sobre Estilo › Ancho: quítalo para que se vea lo que elijas ahí.",
+            "sinEfecto": "La tienda no lo usa: no cambia nada."
+          },
+          "campoMovil": {
+            "show_logo": "Logo en el menú del celular",
+            "show_search": "Buscador",
+            "show_social": "Redes sociales en el menú",
+            "show_contact": "Contacto en el menú",
+            "sticky": "Fijo al desplazarse",
+            "hide_on_scroll": "Ocultar al bajar",
+            "transparent_hero": "Transparente sobre la portada",
+            "show_cart": "Carrito",
+            "show_menu": "Botón de menú",
+            "show_account": "Cuenta",
+            "enabled": "Barra inferior activa",
+            "showLabel": "Mostrar texto"
           }
         }
       },
@@ -33939,7 +34001,15 @@
         "errorTitulo": "No se guardó el borrador",
         "errorDescripcion": "Revisa tu conexión. Tus cambios siguen en el editor.",
         "errorOperacion": "No se guardaron los ajustes de operación",
-        "operacionSoloPrincipal": "Envío, contador y botones de compra se configuran en el sitio principal por ahora."
+        "operacionSoloPrincipal": "Envío, contador y botones de compra se configuran en el sitio principal por ahora.",
+        "motivo": {
+          "sesion": "Tu sesión venció. Vuelve a iniciar sesión; tus cambios siguen en el editor.",
+          "permiso": "No tienes permiso para editar este sitio. Pide acceso a un administrador.",
+          "otraPestana": "Este sitio se editó en otra pestaña o por otra persona. Recarga para ver la última versión.",
+          "invalido": "Hay datos que no son válidos: {detalle}. Corrígelos y vuelve a guardar.",
+          "red": "Revisa tu conexión. Tus cambios siguen en el editor.",
+          "generico": "Ocurrió un error en el servidor. Tus cambios siguen en el editor; inténtalo de nuevo."
+        }
       },
       "encabezadoPie": {
         "titulo": "Encabezado y pie",
@@ -34065,6 +34135,104 @@
         "titulo": "Editas el sitio en vivo:",
         "descripcion": "al guardar, los cambios salen en la web. Crea un borrador para revisarlos antes de publicar.",
         "crearBorrador": "Crear borrador"
+      },
+      "listas": {
+        "paginacion": "Paginación",
+        "carrusel": "Carrusel",
+        "usarGlobal": "Usar ajuste global",
+        "usarGlobalAyuda": "Sigue Diseño › Estilos del sitio. Apágalo para darle a esta sección su propio ajuste.",
+        "porPaginaComputador": "Por página en computador",
+        "porPaginaCelular": "Por página en celular",
+        "estilo": "Estilo",
+        "forma": "Forma",
+        "tamano": "Tamaño",
+        "alineacion": "Alineación",
+        "estiloPaginacion": {
+          "numerada": "Numerada",
+          "compacta": "Página 3 de 17",
+          "cargar_mas": "Botón «Cargar más»",
+          "infinito": "Scroll infinito",
+          "anterior_siguiente": "Anterior / Siguiente"
+        },
+        "formaOpcion": {
+          "cuadrado": "Cuadrada",
+          "semi": "Redondeada",
+          "circulo": "Círculo",
+          "pildora": "Píldora"
+        },
+        "tamanoOpcion": {
+          "sm": "Pequeño",
+          "md": "Mediano",
+          "lg": "Grande"
+        },
+        "alineacionOpcion": {
+          "izq": "Izquierda",
+          "centro": "Centro",
+          "der": "Derecha"
+        },
+        "colorActivo": "Color activo",
+        "colorInactivo": "Color inactivo",
+        "colorHover": "Color al pasar el mouse",
+        "extremos": "Primera y última página",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Contador de resultados",
+        "contadorAyuda": "«Mostrando 1–24 de 400» sobre la paginación.",
+        "textoAnterior": "Texto de «Anterior»",
+        "textoAnteriorEjemplo": "Vacío: flecha",
+        "textoSiguiente": "Texto de «Siguiente»",
+        "textoSiguienteEjemplo": "Vacío: flecha",
+        "textoCargarMas": "Texto del botón",
+        "textoCargarMasEjemplo": "Cargar más",
+        "vistaPrevia": "Vista previa",
+        "visiblesComputador": "Visibles en computador",
+        "visiblesTableta": "En tableta",
+        "visiblesCelular": "En celular",
+        "indicador": "Indicador",
+        "indicadorOpcion": {
+          "ninguno": "Ninguno",
+          "puntos": "Puntos",
+          "barra": "Barra",
+          "numeros": "Números",
+          "progreso": "Progreso",
+          "miniaturas": "Miniaturas"
+        },
+        "posicionIndicador": "Posición del indicador",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "Abajo, dentro",
+          "abajo_fuera": "Abajo, fuera"
+        },
+        "tamanoIndicador": "Tamaño del indicador",
+        "flechasComputador": "Flechas en computador",
+        "flechasCelular": "Flechas en celular",
+        "estiloFlechas": "Estilo de las flechas",
+        "estiloFlechaOpcion": {
+          "chevron": "Solo flecha",
+          "circulo": "Círculo",
+          "cuadrado": "Cuadrado",
+          "larga": "Flecha larga",
+          "hover": "Al pasar el mouse"
+        },
+        "posicionFlechas": "Posición de las flechas",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "A los lados, dentro",
+          "lados_fuera": "A los lados, fuera",
+          "titulo": "Junto al título",
+          "indicador": "Junto al indicador"
+        },
+        "tamanoFlecha": "Tamaño de las flechas",
+        "fondoFlecha": "Fondo de la flecha",
+        "bordeFlecha": "Borde de la flecha",
+        "iconoFlecha": "Color del ícono",
+        "sombraFlecha": "Sombra en las flechas",
+        "autoplay": "Avance automático",
+        "segundos": "Segundos por paso",
+        "pausaHover": "Pausa al pasar el mouse",
+        "bucle": "Volver al inicio al terminar",
+        "arrastre": "Deslizar con el dedo o el mouse"
+      },
+      "controles": {
+        "degradado1": "Color inicial del degradado",
+        "degradado2": "Color final del degradado"
       }
     },
     "paginas": {

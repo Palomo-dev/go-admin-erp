@@ -15,6 +15,7 @@ import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { COMPARATIVO_POR_DEFECTO, TITULO_RESULTADO_INTEGRAL, gastosPorFuncion, importesPorCodigo, rangoComparativo, resultadoIntegral } from '@/lib/finanzas/reportes/estadosNiif';
 import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
 
 // Cifra contable en la moneda base de la organizacion (los reportes contables
@@ -28,6 +29,7 @@ function renderRow(
   row: IncomeStatementRow,
   formatCifra: (value: number) => string,
   level: number = 0,
+  comparativo?: Map<string, number> | null,
 ): React.ReactNode {
   const indent = level * 20;
   const isParent = row.children.length > 0;
@@ -40,8 +42,11 @@ function renderRow(
           <span className={`${isParent ? 'font-bold' : 'font-normal'} text-gray-900 dark:text-white`}>{row.name}</span>
         </td>
         <td className="py-2 px-3 text-right font-mono text-gray-900 dark:text-white">{formatCifra(row.amount)}</td>
+        {comparativo && (
+          <td className="py-2 px-3 text-right font-mono text-gray-500 dark:text-gray-400">{formatCifra(comparativo.get(row.account_code) ?? 0)}</td>
+        )}
       </tr>
-      {row.children.map(child => renderRow(child, formatCifra, level + 1))}
+      {row.children.map(child => renderRow(child, formatCifra, level + 1, comparativo))}
     </React.Fragment>
   );
 }
@@ -61,6 +66,9 @@ export function EstadoResultadosPage() {
   const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
   const [data, setData] = useState<{ income: IncomeStatementRow[]; expenses: IncomeStatementRow[]; totalIncome: number; totalExpenses: number; netIncome: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // NIIF Pymes 3.14: comparativo con el mismo periodo del año anterior, activado por defecto.
+  const [conComparativo, setConComparativo] = useState(COMPARATIVO_POR_DEFECTO);
+  const [previo, setPrevio] = useState<{ income: IncomeStatementRow[]; expenses: IncomeStatementRow[]; totalIncome: number; desde: string; hasta: string } | null>(null);
 
   const arrancado = useRef(false);
 
@@ -79,8 +87,13 @@ export function EstadoResultadosPage() {
     if (!desde || !hasta) return;
     try {
       setIsLoading(true);
-      const result = await ReportesContablesService.getIncomeStatement(desde, hasta);
+      const rango = rangoComparativo(desde, hasta);
+      const [result, anterior] = await Promise.all([
+        ReportesContablesService.getIncomeStatement(desde, hasta),
+        ReportesContablesService.getIncomeStatement(rango.desde, rango.hasta).catch(() => null),
+      ]);
       setData(result);
+      setPrevio(anterior ? { ...anterior, ...rango } : null);
     } catch (error) {
       console.error('Error cargando estado de resultados:', error);
       // Sin esto la página hacía `return null`: el 500 quedaba en la consola
@@ -108,8 +121,8 @@ export function EstadoResultadosPage() {
           <TrendingUp className="h-6 w-6 text-green-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Estado de Resultados</h1>
-          <p className="text-gray-500 dark:text-gray-400">Ingresos y gastos del periodo</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{TITULO_RESULTADO_INTEGRAL}</h1>
+          <p className="text-gray-500 dark:text-gray-400">Ingresos menos costos y gastos por función (antes «Estado de resultados»)</p>
         </div>
       </div>
 
@@ -127,6 +140,10 @@ export function EstadoResultadosPage() {
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
             </div>
             <SelectorNivel valor={nivel} onChange={setNivel} />
+            <label className="flex items-center gap-2 h-10 text-sm text-gray-700 dark:text-gray-300">
+              <input type="checkbox" checked={conComparativo} onChange={(e) => setConComparativo(e.target.checked)} />
+              Comparativo año anterior
+            </label>
             <Button onClick={() => loadData()} className="bg-blue-600 hover:bg-blue-700">
               <Calendar className="h-4 w-4 mr-2" />
               Consultar
@@ -146,7 +163,7 @@ export function EstadoResultadosPage() {
           <div className="flex justify-end">
             <BotonesExportar
               nombre={`estado-resultados-${startDate}-${endDate}`}
-              titulo="Estado de resultados"
+              titulo={TITULO_RESULTADO_INTEGRAL}
               columnas={['Seccion', 'Codigo', 'Nombre', 'Importe']}
               filas={[
                 ...(filasEnNivel(data.income, nivel) ?? importesPropios(data.income)).map((fila) => ['Ingreso', fila.codigo, fila.nombre, fila.importe] as (string | number)[]),
@@ -168,7 +185,7 @@ export function EstadoResultadosPage() {
                   <tbody>
                     {filasEnNivel(data.income, nivel)
                       ? <FilasNivel filas={filasEnNivel(data.income, nivel) || []} formatCifra={formatCifra} />
-                      : data.income.map(row => renderRow(row, formatCifra))}
+                      : data.income.map(row => renderRow(row, formatCifra, 0, conComparativo && previo ? importesPorCodigo(previo.income) : null))}
                     <tr className="border-t-2 dark:border-gray-600 font-bold">
                       <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL INGRESOS</td>
                       <td className="py-3 px-3 text-right font-mono text-green-600 dark:text-green-400">{formatCifra(data.totalIncome)}</td>
@@ -191,7 +208,7 @@ export function EstadoResultadosPage() {
                   <tbody>
                     {filasEnNivel(data.expenses, nivel)
                       ? <FilasNivel filas={filasEnNivel(data.expenses, nivel) || []} formatCifra={formatCifra} />
-                      : data.expenses.map(row => renderRow(row, formatCifra))}
+                      : data.expenses.map(row => renderRow(row, formatCifra, 0, conComparativo && previo ? importesPorCodigo(previo.expenses) : null))}
                     <tr className="border-t-2 dark:border-gray-600 font-bold">
                       <td className="py-3 px-3 text-gray-900 dark:text-white">TOTAL GASTOS</td>
                       <td className="py-3 px-3 text-right font-mono text-red-600 dark:text-red-400">{formatCifra(data.totalExpenses)}</td>
@@ -202,6 +219,56 @@ export function EstadoResultadosPage() {
             </Card>
           </div>
     
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-gray-900 dark:text-white">{TITULO_RESULTADO_INTEGRAL} — gastos por función</CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                Los costos y gastos se muestran en positivo y se restan; un saldo crédito aparece negativo en su renglón.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const actual = gastosPorFuncion(data.expenses);
+                const anterior = conComparativo && previo ? gastosPorFuncion(previo.expenses) : null;
+                const celda = (valor: number, tenue = false) => (
+                  <td className={`py-2 px-3 text-right font-mono ${tenue ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>{formatCifra(valor)}</td>
+                );
+                return (
+                  <table className="w-full text-sm">
+                    {anterior && (
+                      <thead>
+                        <tr className="text-xs text-gray-500 dark:text-gray-400">
+                          <th />
+                          <th className="px-3 text-right font-medium">{startDate} a {endDate}</th>
+                          <th className="px-3 text-right font-medium">{previo?.desde} a {previo?.hasta}</th>
+                        </tr>
+                      </thead>
+                    )}
+                    <tbody>
+                      <tr className="border-b dark:border-gray-700/50 font-semibold">
+                        <td className="py-2 px-3 text-gray-900 dark:text-white">Ingresos</td>
+                        {celda(data.totalIncome)}
+                        {anterior && celda(previo?.totalIncome ?? 0, true)}
+                      </tr>
+                      {actual.map((renglon, i) => (
+                        <tr key={renglon.clave} className="border-b dark:border-gray-700/50">
+                          <td className="py-2 px-3 text-gray-700 dark:text-gray-300">(−) {renglon.titulo}{renglon.clave.length === 2 ? ` (${renglon.clave})` : ''}</td>
+                          {celda(renglon.importe)}
+                          {anterior && celda(anterior[i]?.importe ?? 0, true)}
+                        </tr>
+                      ))}
+                      <tr className="border-t-2 dark:border-gray-600 font-bold">
+                        <td className="py-3 px-3 text-gray-900 dark:text-white">RESULTADO INTEGRAL DEL PERIODO</td>
+                        {celda(resultadoIntegral(data.totalIncome, actual))}
+                        {anterior && celda(resultadoIntegral(previo?.totalIncome ?? 0, anterior), true)}
+                      </tr>
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           <Card className={`dark:bg-gray-800 dark:border-gray-700 ${data.netIncome >= 0 ? 'border-green-300 dark:border-green-700' : 'border-red-300 dark:border-red-700'}`}>
             <CardContent className="py-6">
               <div className="flex flex-wrap items-center justify-between">

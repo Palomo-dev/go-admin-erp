@@ -147,6 +147,10 @@ export interface FieldCondition {
   equals?: unknown;
   in?: unknown[];
   variantIn?: string[];
+  /** Todas estas claves vacías (undefined, null o ''). */
+  allEmpty?: string[];
+  /** Alguna de estas claves con valor. */
+  anyFilled?: string[];
 }
 
 export interface ContentFieldDef {

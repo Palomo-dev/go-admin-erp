@@ -135,6 +135,7 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
     setGuardando(true);
     try {
       const documento = cambiar(actual.documento);
+      // El 401 ya se renueva y reintenta una vez en el envoltorio global de fetch (fetchConRenovacion, 3e8c9f99).
       const r = await clienteSitiosV2.guardar(actual.sitio.id, documento, actual.version);
       const siguiente: BorradorSitio = {
         ...actual,

@@ -122,8 +122,13 @@ export function PeriodosContablesPage() {
   };
 
   const handleReopenPeriodo = async (periodo: FiscalPeriod) => {
+    const motivo = window.prompt('Motivo de la reapertura (obligatorio). Queda registrado quién reabrió y cuándo.') ?? '';
+    if (motivo.trim().length < 5) {
+      if (motivo.trim().length > 0) toast.error('Escriba el motivo de la reapertura (mínimo 5 caracteres).');
+      return;
+    }
     try {
-      await PeriodosContablesService.reabrirPeriodo(periodo.id);
+      await PeriodosContablesService.reabrirPeriodo(periodo.id, motivo.trim());
       toast.success('Periodo reabierto exitosamente');
       loadPeriodos();
     } catch (error) {

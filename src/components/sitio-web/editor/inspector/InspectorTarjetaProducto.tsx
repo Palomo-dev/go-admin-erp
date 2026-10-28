@@ -4,6 +4,9 @@
  * Inspector «Tarjeta de producto»: preset, botones, etiquetas, texto y contenedor.
  * Lo guardado es `product_card_style`. Elegir «Actual» no cambia el render de hoy.
  */
+import { useTextosEditor } from '../textos';
+import { ColorTema } from './PartesZonaGlobal';
+import { SelectKit, CasillaKit, NumeroKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
 import { TabBar, clasesBoton } from '@/components/kit';
 import {
@@ -72,10 +75,10 @@ export interface InspectorTarjetaProductoProps {
 
 function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
+    <div role="group" aria-label={etiqueta} className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
       <span>{etiqueta}</span>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -96,13 +99,13 @@ function Lista<T extends string>({
 }) {
   return (
     <Campo etiqueta={etiqueta}>
-      <select className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
+      <SelectKit className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
         {opciones.map((o) => (
           <option key={o} value={o}>
             {nombres?.[o] ?? o}
           </option>
         ))}
-      </select>
+      </SelectKit>
     </Campo>
   );
 }
@@ -117,29 +120,13 @@ function Color({
   onCambiar: (valor: string | null) => void;
 }) {
   return (
-    <Campo etiqueta={etiqueta}>
-      <span className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={etiqueta}
-          className="h-8 w-10 cursor-pointer rounded border border-line bg-surface"
-          value={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : '#111827'}
-          onChange={(e) => onCambiar(e.target.value)}
-        />
-        <button type="button" className="text-[12px] text-fg-secondary underline" onClick={() => onCambiar(null)}>
-          Quitar
-        </button>
-      </span>
-    </Campo>
+    <ColorTema etiqueta={etiqueta} valor={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : null} colorTema="#111827" onCambiar={onCambiar} />
   );
 }
 
 function Interruptor({ etiqueta, valor, onCambiar }: { etiqueta: string; valor: boolean | undefined; onCambiar: (v: boolean) => void }) {
   return (
-    <label className="flex items-center justify-between gap-2 text-sm text-fg">
-      <span>{etiqueta}</span>
-      <input type="checkbox" checked={valor === true} onChange={(e) => onCambiar(e.target.checked)} />
-    </label>
+    <CasillaKit titulo={etiqueta} checked={valor === true} onChange={(e) => onCambiar(e.target.checked)} />
   );
 }
 
@@ -158,8 +145,8 @@ function Rango({
 }) {
   return (
     <Campo etiqueta={`${etiqueta}${valor != null ? `: ${valor}` : ''}`}>
-      <input
-        type="range"
+      <NumeroKit
+       
         min={min}
         max={max}
         value={valor ?? min}
@@ -171,6 +158,7 @@ function Rango({
 }
 
 export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuitar, onAplicarTodas }: InspectorTarjetaProductoProps) {
+  const tk = useTextosEditor();
   const [pestana, setPestana] = useState<Pestana>('preset');
   const [boton, setBoton] = useState<ClaveBoton>('add');
   const [etiqueta, setEtiqueta] = useState<ClaveEtiqueta>('label_discount');
@@ -242,8 +230,8 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
             <Color etiqueta="Texto" valor={b.text} onCambiar={(v) => setBotonCampo('text', v)} />
             <Color etiqueta="Borde" valor={b.border} onCambiar={(v) => setBotonCampo('border', v)} />
             <Color etiqueta="Hover" valor={b.hover} onCambiar={(v) => setBotonCampo('hover', v)} />
-            <Color etiqueta="Degradado 1" valor={b.gradient_1} onCambiar={(v) => setBotonCampo('gradient_1', v)} />
-            <Color etiqueta="Degradado 2" valor={b.gradient_2} onCambiar={(v) => setBotonCampo('gradient_2', v)} />
+            <Color etiqueta={tk('controles.degradado1')} valor={b.gradient_1} onCambiar={(v) => setBotonCampo('gradient_1', v)} />
+            <Color etiqueta={tk('controles.degradado2')} valor={b.gradient_2} onCambiar={(v) => setBotonCampo('gradient_2', v)} />
           </div>
           <Rango etiqueta="Ángulo del degradado" valor={b.gradient_angle} min={0} max={360} onCambiar={(n) => setBotonCampo('gradient_angle', n)} />
         </div>
@@ -265,8 +253,8 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <div className="grid grid-cols-2 gap-2">
             <Color etiqueta="Fondo" valor={e.bg} onCambiar={(v) => setEtiquetaCampo('bg', v)} />
             <Color etiqueta="Texto" valor={e.text} onCambiar={(v) => setEtiquetaCampo('text', v)} />
-            <Color etiqueta="Degradado 1" valor={e.gradient_1} onCambiar={(v) => setEtiquetaCampo('gradient_1', v)} />
-            <Color etiqueta="Degradado 2" valor={e.gradient_2} onCambiar={(v) => setEtiquetaCampo('gradient_2', v)} />
+            <Color etiqueta={tk('controles.degradado1')} valor={e.gradient_1} onCambiar={(v) => setEtiquetaCampo('gradient_1', v)} />
+            <Color etiqueta={tk('controles.degradado2')} valor={e.gradient_2} onCambiar={(v) => setEtiquetaCampo('gradient_2', v)} />
           </div>
         </div>
       )}

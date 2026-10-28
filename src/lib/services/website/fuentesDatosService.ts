@@ -36,6 +36,14 @@ interface ResultadoConteo {
 
 type ConsultaConteo = PromiseLike<ResultadoConteo>;
 
+/** Convierte una lectura `limit(1)` en conteo 0/1 (existencia), sin `count`. */
+function existe(consulta: PromiseLike<{ data: unknown[] | null; error: unknown }>): ConsultaConteo {
+  return Promise.resolve(consulta).then(({ data, error }) => ({
+    count: error ? null : Array.isArray(data) && data.length > 0 ? 1 : 0,
+    error,
+  }));
+}
+
 /**
  * Consultas por fuente. `sede` (opcional, ya validada contra la organización)
  * acota las tablas que tienen `branch_id`: lo de esa sede y lo de toda la
@@ -64,17 +72,20 @@ function consultas(
       return q;
     },
     ofertas: () =>
-      // Se parte de `products` (índice por organización) y no de `product_prices`:
-      // filtrar por `products.organization_id` desde `product_prices` obligaba a
-      // recorrer toda la tabla de precios y el conteo se pasaba del statement_timeout.
-      // Cuenta productos con oferta vigente (aproximación aceptable del total).
-      cliente
-        .from('products')
-        .select('id, product_prices!inner(id)', conteo)
-        .eq('organization_id', org)
-        .eq('status', 'active')
-        .is('product_prices.effective_to', null)
-        .gt('product_prices.compare_price', 0),
+      // Solo importa si hay al menos una oferta (el aviso «Faltan datos» mira `n > 0`), así que
+      // se pide UNA fila en vez de `count: 'exact'`: el conteo exacto recorría todos los precios
+      // vigentes con RLS y se cortaba por statement_timeout (57014, prod 27-oct, org 145).
+      // Devuelve 0 o 1.
+      existe(
+        cliente
+          .from('products')
+          .select('id, product_prices!inner(id)')
+          .eq('organization_id', org)
+          .eq('status', 'active')
+          .is('product_prices.effective_to', null)
+          .gt('product_prices.compare_price', 0)
+          .limit(1),
+      ),
     zonas_parqueo: () => {
       let q = cliente
         .from('parking_zones')

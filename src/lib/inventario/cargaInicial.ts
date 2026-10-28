@@ -2,7 +2,8 @@
  * Carga inicial de inventario y el crédito del ajuste de ganancia.
  *
  * El débito es el auxiliar de la sede bajo 1435 (por ejemplo 14350501).
- * Nunca 1405. El saldo inicial acredita 3105. Un sobrante real acredita
+ * Nunca 1405. El saldo inicial acredita 37050501 (utilidades acumuladas; 3710 si hay
+ * pérdida acumulada), no 3105: el capital solo se mueve con aportes. Un sobrante real acredita
  * 42959501 (auxiliar de 4295, que es título), clave `ingresos_diversos`, configurable. 4250 es de reintegros de
  * periodos anteriores: ningún flujo de inventario la usa. La compra sin
  * orden no genera asiento aquí: va a la factura de compra.
@@ -11,7 +12,17 @@
 import { clasificarProductoRestaurante, type ProductoClasificable } from '@/lib/finanzas/clasificacionInventarioRestaurante';
 
 export const CUENTA_INVENTARIO_COMERCIO = '1435';
-export const CUENTA_SALDO_INICIAL = '3105';
+export const CUENTA_SALDO_INICIAL = '37050501';
+/** Pérdidas acumuladas: contrapartida cuando la organización arrastra pérdida o la carga se corrige a la baja. */
+export const CUENTA_PERDIDA_ACUMULADA = '3710';
+/** Antes la carga acreditaba capital (3105); ya no se acepta como contrapartida. */
+export const CUENTA_CAPITAL = '3105';
+
+/** La contrapartida de la carga solo puede ser de la 37 (resultados de ejercicios anteriores). */
+export function contrapartidaCargaValida(cuenta: string | null | undefined): boolean {
+  const c = (cuenta ?? '').trim();
+  return c.startsWith('3705') || c.startsWith('3710');
+}
 export const CUENTA_DIVERSOS = '42959501';
 /** 4250 no entra en inventario. Se nombra para que las pruebas lo vigilen. */
 export const CUENTA_RECUPERACIONES = '4250';
@@ -85,7 +96,7 @@ export function importeCarga(unidades: number, costo: number): number {
 
 /**
  * Asiento de un total ya calculado: un débito de inventario y un crédito.
- * El débito queda bajo 1435. Un crédito 4250 no se acepta: pasa a 3105.
+ * El débito queda bajo 1435. Un crédito 4250 no se acepta: pasa a la cuenta por defecto.
  */
 export function asientoPorTotal(p: {
   total: number;
@@ -105,17 +116,21 @@ export function asientoPorTotal(p: {
   };
 }
 
-/** Asiento de la carga: débito 1435 (o su auxiliar) y crédito 3105. */
+/** Asiento de la carga: débito 1435 (o su auxiliar) y crédito 37050501 (3710 con pérdida acumulada). */
 export function asientoCargaInicial(p: {
   unidades: number;
   costo: number;
   cuentaInventario?: string | null;
   cuentaSaldo?: string | null;
+  conPerdidaAcumulada?: boolean;
 }): AsientoCargaInicial {
+  const saldo = p.conPerdidaAcumulada
+    ? CUENTA_PERDIDA_ACUMULADA
+    : contrapartidaCargaValida(p.cuentaSaldo) ? p.cuentaSaldo : CUENTA_SALDO_INICIAL;
   return asientoPorTotal({
     total: importeCarga(p.unidades, p.costo),
     cuentaInventario: p.cuentaInventario,
-    cuentaSaldo: p.cuentaSaldo,
+    cuentaSaldo: saldo,
   });
 }
 

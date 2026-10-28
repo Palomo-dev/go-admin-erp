@@ -136,12 +136,16 @@ export interface ProductoDeCategoria extends ProductoFila {
  * `CATEGORIA_NO_ENCONTRADA`… `sinPermiso` = la BD negó el acceso a la
  * organización (`fn_assert_acceso_org`, 42501) o RLS rechazó la operación.
  */
+const SIN_PERMISO_EDITAR = 'No tienes permiso para editar esta categoría (o ya no existe)';
+
 export class ErrorCategoria extends Error {
   codigo: string | null;
   sinPermiso: boolean;
   slugDuplicado: boolean;
 
   constructor(error: { message?: string; code?: string; hint?: string | null; details?: string | null }) {
+    // update().select().single() sin filas: la RLS (editar catálogo) filtró la fila.
+    if (error.code === 'PGRST116') error = { ...error, code: '42501', message: SIN_PERMISO_EDITAR };
     const slugDuplicado =
       error.code === '23505' && `${error.message ?? ''} ${error.details ?? ''}`.includes('slug');
     super(
@@ -400,37 +404,9 @@ const categoryService = {
     return data;
   },
 
-  /** Elimina una categoría */
-  async delete(id: number): Promise<void> {
-    // Primero, mover subcategorías a raíz
-    await supabase
-      .from('categories')
-      .update({ parent_id: null })
-      .eq('parent_id', id);
-
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw new ErrorCategoria(error);
-  },
-
-  /** Elimina una categoría por UUID */
-  async deleteByUuid(uuid: string): Promise<void> {
-    const cat = await this.getByUuid(uuid);
-    await supabase
-      .from('categories')
-      .update({ parent_id: null })
-      .eq('parent_id', cat.id);
-
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('uuid', uuid);
-
-    if (error) throw new ErrorCategoria(error);
-  },
+  // QA 27-oct (D1): los viejos delete/deleteByUuid/move/toggleActive* hacían UPDATE/DELETE
+  // directo y, con la RLS que exige editar catálogo, fallaban en silencio (0 filas, sin error).
+  // No los usaba nadie: eliminar va por eliminarCategoria y mover por moverCategorias (RPC).
 
   /** Duplica una categoría */
   async duplicate(id: number, organizationId: number): Promise<Category> {
@@ -486,36 +462,6 @@ const categoryService = {
       cuenta_inventario: original.cuenta_inventario ?? '',
       cuenta_devolucion: original.cuenta_devolucion ?? '',
     });
-  },
-
-  /** Mueve una categoría (reordenar / cambiar padre) */
-  async move(id: number, parentId: number | null, rank: number): Promise<void> {
-    const { error } = await supabase
-      .from('categories')
-      .update({ parent_id: parentId, rank, updated_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (error) throw new ErrorCategoria(error);
-  },
-
-  /** Toggle activo/inactivo */
-  async toggleActive(id: number, isActive: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('categories')
-      .update({ is_active: isActive, updated_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (error) throw new ErrorCategoria(error);
-  },
-
-  /** Toggle activo/inactivo por UUID */
-  async toggleActiveByUuid(uuid: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('categories')
-      .update({ is_active: isActive, updated_at: new Date().toISOString() })
-      .eq('uuid', uuid);
-
-    if (error) throw new ErrorCategoria(error);
   },
 
   // ─── Rediseño (RPC 20260923191636_categorias_arbol_sin_ciclos_y_rpc) ──────
@@ -581,12 +527,15 @@ const categoryService = {
   /** Activa o desactiva varias categorías de la organización de una vez. */
   async setActivas(organizationId: number, ids: number[], isActive: boolean): Promise<void> {
     if (!ids.length) return;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('categories')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('organization_id', organizationId)
-      .in('id', ids);
+      .in('id', ids)
+      .select('id');
     if (error) throw new ErrorCategoria(error);
+    // La RLS no da error al filtrar filas: si no se tocaron todas, falta el permiso.
+    if ((data?.length ?? 0) < new Set(ids).size) throw new ErrorCategoria({ code: '42501', message: SIN_PERMISO_EDITAR });
   },
 
   /** ¿El slug está libre en la organización? (`categories_organization_id_slug_key`). */

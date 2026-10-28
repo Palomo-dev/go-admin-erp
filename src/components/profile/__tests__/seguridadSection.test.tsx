@@ -68,4 +68,36 @@ describe('SeguridadSection', () => {
     // Activado: no se descarta el factor recién verificado.
     expect(cliente.unenroll).not.toHaveBeenCalledWith({ factorId: 'f-nuevo' });
   });
+
+  it.each([
+    [400, { ok: false, codigo: 'actual_incorrecta' }, 'La contraseña actual no es correcta.'],
+    [400, { ok: false, codigo: 'igual_a_la_actual' }, 'La contraseña nueva debe ser distinta de la actual.'],
+    [429, { ok: false, codigo: 'demasiadas' }, 'Demasiados intentos seguidos. Espera unos minutos y vuelve a intentarlo.'],
+    [401, { ok: false, codigo: 'sin_sesion' }, 'Tu sesión venció. Vuelve a iniciar sesión e inténtalo de nuevo.'],
+    [401, {}, 'Tu sesión venció. Vuelve a iniciar sesión e inténtalo de nuevo.'],
+  ])('cambiar contraseña: un %i muestra el mensaje real, no «error inesperado»', async (status, cuerpo, mensaje) => {
+    const original = global.fetch;
+    const llamadas: string[] = [];
+    global.fetch = jest.fn(async (url: RequestInfo | URL) => {
+      llamadas.push(String(url));
+      return String(url).includes('/api/auth/contrasena')
+        ? { status, ok: status < 400, json: async () => cuerpo }
+        : { status: 200, ok: true, text: async () => 'ABCDEF:1\n' };
+    }) as unknown as typeof fetch;
+    try {
+      const cliente = clienteFalso();
+      renderConIdioma(<SeguridadSection user={usuario} clienteMfa={() => cliente} banderaMfa={undefined} />);
+      fireEvent.click(screen.getAllByRole('button', { name: /Cambiar/ })[0]);
+      fireEvent.change(await screen.findByLabelText(/Contraseña actual/), { target: { value: 'una-clave-mala' } });
+      fireEvent.change(screen.getByLabelText(/Nueva contraseña|Contraseña nueva/), { target: { value: 'Otra-Clave-Larga-2026' } });
+      fireEvent.change(screen.getByLabelText(/Confirma|Repite/), { target: { value: 'Otra-Clave-Larga-2026' } });
+      await act(async () => {
+        fireEvent.submit(screen.getByLabelText(/Contraseña actual/).closest('form')!);
+      });
+      await waitFor(() => expect(llamadas.some((u) => u.includes('/api/auth/contrasena'))).toBe(true));
+      await waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent ?? document.body.textContent).toContain(mensaje));
+    } finally {
+      global.fetch = original;
+    }
+  });
 });

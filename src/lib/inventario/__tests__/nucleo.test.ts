@@ -79,6 +79,10 @@ describe('errores del núcleo', () => {
     expect(claveErrorInventario({ message: 'algo raro', code: 'XX000' })).toBe('desconocido');
     expect(claveErrorInventario(null)).toBe('desconocido');
   });
+  test('stock en un padre con variantes', () => {
+    expect(claveErrorInventario({ message: 'producto_padre_con_variantes: el producto 104 tiene variantes; registra…', code: 'P0001' })).toBe('producto_padre_con_variantes');
+  });
+
   test('detalle JSON de stock_insuficiente', () => {
     const d = detalleStockInsuficiente({
       message: 'stock_insuficiente',

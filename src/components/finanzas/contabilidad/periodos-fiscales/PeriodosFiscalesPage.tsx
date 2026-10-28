@@ -15,7 +15,12 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { PeriodosFiscalesService, FiscalPeriod } from './PeriodosFiscalesService';
+import {
+  PeriodosFiscalesService,
+  FiscalPeriod,
+  ConsecutivoComprobante,
+  motivoReaperturaValido,
+} from './PeriodosFiscalesService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -49,6 +54,24 @@ export function PeriodosFiscalesPage() {
   const [newPeriodType, setNewPeriodType] = useState<'monthly' | 'yearly'>('monthly');
   const [closePeriod, setClosePeriod] = useState<FiscalPeriod | null>(null);
   const [closeNotes, setCloseNotes] = useState('');
+  const [pendientesCierre, setPendientesCierre] = useState<{ borradores: number; pendientes: number } | null>(null);
+  const [consecutivos, setConsecutivos] = useState<ConsecutivoComprobante[]>([]);
+  const [reopenPeriod, setReopenPeriod] = useState<FiscalPeriod | null>(null);
+  const [reopenReason, setReopenReason] = useState('');
+
+  useEffect(() => {
+    if (!closePeriod) {
+      setPendientesCierre(null);
+      setConsecutivos([]);
+      return;
+    }
+    let vigente = true;
+    void PeriodosFiscalesService.pendientesDelPeriodo(closePeriod.id).then((p) => { if (vigente) setPendientesCierre(p); });
+    void PeriodosFiscalesService.consecutivosDelPeriodo(closePeriod.id).then((c) => { if (vigente) setConsecutivos(c); });
+    return () => { vigente = false; };
+  }, [closePeriod]);
+
+  const cierreBloqueado = !!pendientesCierre && (pendientesCierre.borradores > 0 || pendientesCierre.pendientes > 0);
 
   useEffect(() => {
     loadPeriodos();
@@ -98,11 +121,19 @@ export function PeriodosFiscalesPage() {
     }
   };
 
-  const handleReopen = async (periodo: FiscalPeriod) => {
-    if (!confirm(`¿Reabrir ${getPeriodLabel(periodo)}? Se podrán volver a registrar asientos con fecha en ese periodo. Reabrir no reversa el asiento de cierre.`)) return;
+  const handleReopen = async () => {
+    const periodo = reopenPeriod;
+    if (!periodo) return;
+    const motivo = motivoReaperturaValido(reopenReason);
+    if (!motivo) {
+      toast.error('Escriba el motivo de la reapertura (mínimo 5 caracteres).');
+      return;
+    }
     try {
-      await PeriodosFiscalesService.reabrirPeriodo(periodo.id);
+      await PeriodosFiscalesService.reabrirPeriodo(periodo.id, motivo);
       toast.success('Período reabierto');
+      setReopenPeriod(null);
+      setReopenReason('');
       loadPeriodos();
     } catch (error) {
       console.error('Error:', error);
@@ -214,6 +245,11 @@ export function PeriodosFiscalesPage() {
                       {periodo.closed_at && (
                         <p>Cerrado: {formatDate(periodo.closed_at)}</p>
                       )}
+                      {periodo.reopened_at && (
+                        <p title={periodo.reopen_reason ?? undefined}>
+                          Reabierto: {formatDate(periodo.reopened_at)}{periodo.reopen_reason ? ` — ${periodo.reopen_reason}` : ''}
+                        </p>
+                      )}
                     </div>
                     {periodo.notes && (
                       <p className="text-xs text-gray-400 italic border-t pt-2">{periodo.notes}</p>
@@ -233,7 +269,7 @@ export function PeriodosFiscalesPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleReopen(periodo)}
+                          onClick={() => { setReopenPeriod(periodo); setReopenReason(''); }}
                         >
                           <Unlock className="h-3.5 w-3.5 mr-1" />
                           Reabrir
@@ -317,6 +353,30 @@ export function PeriodosFiscalesPage() {
               Está por cerrar el período <strong>{closePeriod && getPeriodLabel(closePeriod)}</strong>.
               Una vez cerrado, no se podrán crear asientos en este período.
             </p>
+            {cierreBloqueado && pendientesCierre && (
+              <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                No se puede cerrar: hay {pendientesCierre.borradores} borrador(es) y {pendientesCierre.pendientes} asiento(s)
+                pendiente(s) con fecha en el periodo. Contabilícelos o anúlelos primero.
+              </p>
+            )}
+            {consecutivos.length > 0 && (
+              <div className="space-y-1">
+                <Label>Consecutivo por tipo de comprobante</Label>
+                <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                  {consecutivos.map((c) => (
+                    <li key={`${c.comprobante_tipo}-${c.comprobante_prefijo}`}>
+                      <strong>{c.comprobante_tipo.replace(/_/g, ' ')}{c.comprobante_prefijo ? ` ${c.comprobante_prefijo}` : ''}</strong>:
+                      {' '}del {c.desde} al {c.hasta} ({c.cantidad})
+                      {c.saltos.length > 0 ? (
+                        <span className="text-red-600 dark:text-red-400"> — faltan {c.saltos.slice(0, 20).join(', ')}{c.saltos.length > 20 ? '…' : ''}</span>
+                      ) : (
+                        <span className="text-green-600 dark:text-green-400"> — sin saltos</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Notas (opcional)</Label>
               <Textarea
@@ -329,7 +389,36 @@ export function PeriodosFiscalesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setClosePeriod(null)}>Cancelar</Button>
-            <Button onClick={handleClose} disabled={!puede(PERMISO_CERRAR_PERIODO)}>Cerrar Período</Button>
+            <Button onClick={handleClose} disabled={!puede(PERMISO_CERRAR_PERIODO) || cierreBloqueado}>Cerrar Período</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Reabrir Período: el motivo es obligatorio */}
+      <Dialog open={!!reopenPeriod} onOpenChange={(v) => !v && setReopenPeriod(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reabrir Período</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Reabrir <strong>{reopenPeriod && getPeriodLabel(reopenPeriod)}</strong> permite volver a registrar asientos con fecha en ese periodo.
+              Reabrir no reversa el asiento de cierre. Queda registrado quién lo reabrió, cuándo y por qué.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="motivo-reapertura">Motivo (obligatorio)</Label>
+              <Textarea
+                id="motivo-reapertura"
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                placeholder="Ej.: ajuste de una factura de proveedor recibida tarde"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReopenPeriod(null)}>Cancelar</Button>
+            <Button onClick={() => { void handleReopen(); }} disabled={!motivoReaperturaValido(reopenReason)}>Reabrir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

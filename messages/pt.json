@@ -1006,7 +1006,7 @@
       "pendiente": "Pendente",
       "ir": "Ir",
       "irA": "Ir para {paso}",
-      "inventarioAsiento": "O lançamento será débito {inventario} e crédito {saldo} (saldos iniciais). Não usa recuperações.",
+      "inventarioAsiento": "O lançamento será débito {inventario} e crédito {saldo} (lucros acumulados; 3710 se houver prejuízos). Não usa recuperações.",
       "importarExcel": "Importar Excel",
       "cargarMano": "Lançar à mão",
       "sinMovimientosTitulo": "Ainda não há movimentos",
@@ -9519,7 +9519,8 @@
         "ayudaTipo": "A abertura debita o estoque e credita o patrimônio. Um ajuste de entrada credita outras receitas e um de saída debita despesas. Uma entrada que não é devolução não credita custos.",
         "avisoKardex": "Cada ajuste fica no kardex e gera o seu lançamento de estoque.",
         "sinCosto": "{count, plural, one {{n} ajuste ficou sem custo: está no kardex, mas não gerou lançamento.} other {{n} ajustes ficaram sem custo: estão no kardex, mas não geraram lançamento.}}",
-        "sinPermiso": "Você não tem permissão para ajustar o estoque."
+        "sinPermiso": "Você não tem permissão para ajustar o estoque.",
+        "padresOmitidos": "{cantidad} produtos pai com variantes foram omitidos: o estoque é ajustado nas variantes."
       },
       "categoria": {
         "titulo": "Atribuir categoria",
@@ -9971,7 +9972,8 @@
       "categoriaSugerida": "categoria sugerida pelo nome",
       "preparadoSinInventario": "pratos preparados sem estoque próprio",
       "filaInternaAlegra": "linhas internas do Alegra (excluídas)",
-      "skuRepetidoTienda": "SKU da loja repetido"
+      "skuRepetidoTienda": "SKU da loja repetido",
+      "stockEnPadre": "estoque no produto pai (não carregado)"
     },
     "vista": {
       "titulo": "Pré-visualização ({n} linhas)",
@@ -10118,6 +10120,7 @@
       "PADRE_NO_ENCONTRADO": "O SKU pai não existe",
       "VARIANTE_PADRE_ELIMINADO": "A variante é de um produto excluído: restaure primeiro o produto pai",
       "STOCK_SIN_COSTO": "Estoque sem custo: o razão de estoque exige custo",
+      "SIN_PERMISO_CREAR_CATEGORIA": "Você não tem permissão para criar categorias; use uma existente ou peça permissão",
       "PRECIO_INVALIDO": "Preço inválido",
       "COSTO_INVALIDO": "Custo inválido",
       "STOCK_INVALIDO": "Estoque inválido",
@@ -10134,7 +10137,8 @@
         "codigo_barras": "código de barras",
         "plu": "PLU da balança",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Tem estoque ({cantidad}) em um produto pai com variantes: não é carregado. Coloque-o nas variantes."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -21289,6 +21293,7 @@
     },
     "errores": {
       "stock_insuficiente": "Estoque insuficiente: disponível {disponible}, solicitado {solicitado}.",
+      "producto_padre_con_variantes": "Este produto tem variantes: registre o estoque em cada variante (tamanho, cor…), não no produto pai.",
       "cantidad_invalida": "A quantidade deve ser maior que zero.",
       "direccion_invalida": "Movimento inválido.",
       "origen_requerido": "Falta a origem do movimento.",
@@ -22792,6 +22797,8 @@
       "confirmarAjusteDetalle": "A organização tem menos de 30 dias ou o valor passa do limite. A observação é obrigatória.",
       "asientoTitulo": "Lançamento da carga inicial",
       "asientoDetalle": "Débito {inventario} / crédito {saldo} por {total}.",
+      "contrapartidaTitulo": "A contrapartida não é mais capital (3105)",
+      "contrapartidaDetalle": "A carga inicial credita 3705 lucros acumulados; se a empresa tem prejuízos acumulados vai para 3710. Revise com seu contador antes de fechar o período.",
       "asientoSobranteTitulo": "Lançamento da sobra",
       "asientoSobranteDetalle": "Um só lançamento: débito {inventario} e crédito {diversos} por {total}. Não usa recuperações.",
       "corregirConteo": "Corrigir a contagem",
@@ -25738,6 +25745,7 @@
     "errorActual": "A senha atual está incorreta.",
     "errorIgualActual": "A nova senha deve ser diferente da atual.",
     "errorDemasiadas": "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.",
+    "errorSesion": "Sua sessão expirou. Entre novamente e tente de novo.",
     "errorInesperado": "Não conseguimos trocar a senha. Tente de novo em um instante."
   },
   "posEtiquetasPeso": {
@@ -33221,8 +33229,8 @@
           "presetBorde": "Borda fina",
           "presetSombra": "Sombra flutuante",
           "presetSolo": "Só o ícone",
-          "headerSobreHero": "Cabeçalho transparente sobre o hero",
-          "headerSobreHeroAyuda": "O cabeçalho fica fixo e transparente sobre o hero. Desligado: cabeçalho opaco e o hero abaixo, sem vão.",
+          "headerSobreHero": "Cabeçalho sobre a capa",
+          "headerSobreHeroAyuda": "O cabeçalho fica sobre a imagem de capa. Desligado: o cabeçalho vai em cima e a capa embaixo.",
           "espacioPrimera": "Espaço superior da primeira seção",
           "espacioPrimeraAyuda": "Pixels entre o cabeçalho e a primeira seção. 0 as deixa coladas.",
           "circuloFondo": "Fundo do círculo",
@@ -33258,7 +33266,23 @@
           },
           "barraCelular": "Barra superior no celular",
           "buscador": "Busca",
-          "buscadorAyuda": "Vale para computador e celular: no celular o ícone fica na barra e a barra visível vai abaixo do logo."
+          "buscadorAyuda": "Vale para computador e celular: no celular o ícone fica na barra e a barra visível vai abaixo do logo.",
+          "buscadorCelularPropio": "No celular a busca continua como «{valor}» (ajuste anterior). Para seguir esta opção, remova «Busca própria do celular» em Ajustes de versões anteriores.",
+          "buscadorNombre": {
+            "icon": "Ícone",
+            "bar": "Barra visível",
+            "hidden": "Oculto",
+            "fullscreen": "Tela cheia",
+            "mini": "Barra compacta",
+            "icon_overlay": "Ícone que abre a busca por cima",
+            "mega": "Busca grande",
+            "pill_floating": "Pílula flutuante"
+          },
+          "logoAyuda": "A mesma posição no computador e no celular.",
+          "logoFijo": {
+            "centro": "Nesta composição o logo fica no centro.",
+            "izquierda": "Nesta composição o logo fica à esquerda."
+          }
         },
         "estilo": {
           "avisoTitulo": "Por padrão as cores seguem o tema do modelo",
@@ -33305,7 +33329,8 @@
             "recto": "Reto",
             "redondeado": "Arredondado",
             "pildora": "Pílula"
-          }
+          },
+          "espacios": "Espaços"
         },
         "pie": {
           "menus": "Menus do rodapé",
@@ -33418,7 +33443,44 @@
             "mobile_menu_register_border_color": "Colores del menú del celular (register border)",
             "mobile_menu_register_text_color": "Colores del menú del celular (register text)",
             "mobile_menu_logout_color": "Colores del menú del celular (logout)",
-            "mobile_search_style": "Busca própria do celular"
+            "mobile_search_style": "Busca própria do celular",
+            "mobile_header__panel": "Painel do menu do celular",
+            "mobile_header__layout": "Disposição do cabeçalho no celular",
+            "mobile_header__icons": "Ícones do celular (círculo, conta)",
+            "mobile_header__search": "Busca do celular (painel antigo)",
+            "mobile_header__bottom_nav": "Barra inferior estilo app",
+            "mobile_footer_show_hours": "Horário próprio do celular",
+            "mobile_footer_show_social": "Redes próprias do celular",
+            "seccion_padding_top": "Preenchimento em cima",
+            "seccion_padding_bottom": "Preenchimento embaixo",
+            "seccion_padding_x": "Preenchimento nas laterais",
+            "seccion_margin_top": "Margem em cima",
+            "seccion_margin_bottom": "Margem embaixo",
+            "seccion_full_bleed": "Largura total da tela",
+            "seccion_container_width": "Largura do conteúdo",
+            "seccion_full_width": "Largura total da tela (categorias)",
+            "carrusel_avance": "Itens por avanço"
+          },
+          "motivo": {
+            "enUso": "A loja usa isto no cabeçalho do celular: removê-lo mudaria o celular.",
+            "circulo": "Controlado em «Círculo de destaque» (computador e celular).",
+            "mandaEspaciado": "Prevalece sobre Estilo › Espaçamento: remova para ver o que escolher lá.",
+            "mandaAncho": "Prevalece sobre Estilo › Largura: remova para ver o que escolher lá.",
+            "sinEfecto": "A loja não usa: não muda nada."
+          },
+          "campoMovil": {
+            "show_logo": "Logo no menu do celular",
+            "show_search": "Busca",
+            "show_social": "Redes sociais no menu",
+            "show_contact": "Contato no menu",
+            "sticky": "Fixo ao rolar",
+            "hide_on_scroll": "Ocultar ao descer",
+            "transparent_hero": "Transparente sobre a capa",
+            "show_cart": "Carrinho",
+            "show_menu": "Botão de menu",
+            "show_account": "Conta",
+            "enabled": "Barra inferior ativa",
+            "showLabel": "Mostrar texto"
           }
         }
       },
@@ -33931,7 +33993,15 @@
         "errorTitulo": "O rascunho não foi salvo",
         "errorDescripcion": "Verifique sua conexão. Suas alterações continuam no editor.",
         "errorOperacion": "Os ajustes de operação não foram salvos",
-        "operacionSoloPrincipal": "Entrega, contador e botões de compra são configurados no site principal por enquanto."
+        "operacionSoloPrincipal": "Entrega, contador e botões de compra são configurados no site principal por enquanto.",
+        "motivo": {
+          "sesion": "Sua sessão expirou. Entre novamente; suas alterações continuam no editor.",
+          "permiso": "Você não tem permissão para editar este site. Peça acesso a um administrador.",
+          "otraPestana": "Este site foi editado em outra aba ou por outra pessoa. Recarregue para ver a versão mais recente.",
+          "invalido": "Há dados inválidos: {detalle}. Corrija-os e salve novamente.",
+          "red": "Verifique sua conexão. Suas alterações continuam no editor.",
+          "generico": "Ocorreu um erro no servidor. Suas alterações continuam no editor; tente novamente."
+        }
       },
       "encabezadoPie": {
         "titulo": "Cabeçalho e rodapé",
@@ -34057,6 +34127,104 @@
         "titulo": "Você edita o site ao vivo:",
         "descripcion": "ao salvar, as mudanças vão para o site. Crie um rascunho para revisá-las antes de publicar.",
         "crearBorrador": "Criar rascunho"
+      },
+      "listas": {
+        "paginacion": "Paginação",
+        "carrusel": "Carrossel",
+        "usarGlobal": "Usar ajuste global",
+        "usarGlobalAyuda": "Segue Design › Estilos do site. Desligue para dar a esta seção seu próprio ajuste.",
+        "porPaginaComputador": "Por página no computador",
+        "porPaginaCelular": "Por página no celular",
+        "estilo": "Estilo",
+        "forma": "Forma",
+        "tamano": "Tamanho",
+        "alineacion": "Alinhamento",
+        "estiloPaginacion": {
+          "numerada": "Numerada",
+          "compacta": "Página 3 de 17",
+          "cargar_mas": "Botão «Carregar mais»",
+          "infinito": "Rolagem infinita",
+          "anterior_siguiente": "Anterior / Próxima"
+        },
+        "formaOpcion": {
+          "cuadrado": "Quadrada",
+          "semi": "Arredondada",
+          "circulo": "Círculo",
+          "pildora": "Pílula"
+        },
+        "tamanoOpcion": {
+          "sm": "Pequeno",
+          "md": "Médio",
+          "lg": "Grande"
+        },
+        "alineacionOpcion": {
+          "izq": "Esquerda",
+          "centro": "Centro",
+          "der": "Direita"
+        },
+        "colorActivo": "Cor ativa",
+        "colorInactivo": "Cor inativa",
+        "colorHover": "Cor ao passar o mouse",
+        "extremos": "Primeira e última página",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Contador de resultados",
+        "contadorAyuda": "«Mostrando 1–24 de 400» acima da paginação.",
+        "textoAnterior": "Texto de «Anterior»",
+        "textoAnteriorEjemplo": "Vazio: seta",
+        "textoSiguiente": "Texto de «Próxima»",
+        "textoSiguienteEjemplo": "Vazio: seta",
+        "textoCargarMas": "Texto do botão",
+        "textoCargarMasEjemplo": "Carregar mais",
+        "vistaPrevia": "Prévia",
+        "visiblesComputador": "Visíveis no computador",
+        "visiblesTableta": "No tablet",
+        "visiblesCelular": "No celular",
+        "indicador": "Indicador",
+        "indicadorOpcion": {
+          "ninguno": "Nenhum",
+          "puntos": "Pontos",
+          "barra": "Barra",
+          "numeros": "Números",
+          "progreso": "Progresso",
+          "miniaturas": "Miniaturas"
+        },
+        "posicionIndicador": "Posição do indicador",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "Embaixo, dentro",
+          "abajo_fuera": "Embaixo, fora"
+        },
+        "tamanoIndicador": "Tamanho do indicador",
+        "flechasComputador": "Setas no computador",
+        "flechasCelular": "Setas no celular",
+        "estiloFlechas": "Estilo das setas",
+        "estiloFlechaOpcion": {
+          "chevron": "Só seta",
+          "circulo": "Círculo",
+          "cuadrado": "Quadrado",
+          "larga": "Seta longa",
+          "hover": "Ao passar o mouse"
+        },
+        "posicionFlechas": "Posição das setas",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "Nas laterais, dentro",
+          "lados_fuera": "Nas laterais, fora",
+          "titulo": "Junto ao título",
+          "indicador": "Junto ao indicador"
+        },
+        "tamanoFlecha": "Tamanho das setas",
+        "fondoFlecha": "Fundo da seta",
+        "bordeFlecha": "Borda da seta",
+        "iconoFlecha": "Cor do ícone",
+        "sombraFlecha": "Sombra nas setas",
+        "autoplay": "Avanço automático",
+        "segundos": "Segundos por passo",
+        "pausaHover": "Pausar ao passar o mouse",
+        "bucle": "Voltar ao início ao terminar",
+        "arrastre": "Deslizar com o dedo ou o mouse"
+      },
+      "controles": {
+        "degradado1": "Cor inicial do degradê",
+        "degradado2": "Cor final do degradê"
       }
     },
     "paginas": {

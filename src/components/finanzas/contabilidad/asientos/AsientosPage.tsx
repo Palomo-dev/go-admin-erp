@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento } from '../ContabilidadService';
+import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento, lineasSinTerceroParaContabilizar, cuentaRetencionExigeNit } from '../ContabilidadService';
 import { AlertasContables } from '../AlertasContables';
 import { esCuentaDeTitulo } from '@/lib/finanzas/cuentasTitulo';
 import { esCuentaDeMovimiento } from '@/lib/finanzas/contabilidad/cuentaLinea';
@@ -199,12 +199,16 @@ export function AsientosPage() {
       return;
     }
 
+    // El tercero no bloquea guardar el borrador: se exige al contabilizar (y el NIT, al transmitir a la DIAN).
+    const sinTercero = lineasSinTerceroParaContabilizar(
+      validLines,
+      (codigo) => !!cuentas.find((c) => c.account_code === codigo)?.requiere_tercero,
+    );
+    if (sinTercero.length > 0) {
+      toast.warning(`Se guarda como borrador. Para contabilizarlo falta el tercero en: ${[...new Set(sinTercero)].join(', ')}`);
+    }
     for (const linea of validLines) {
       const cuenta = cuentas.find((c) => c.account_code === linea.account_code);
-      if (cuenta?.requiere_tercero && !linea.tercero_nit.trim()) {
-        toast.error(`La cuenta ${linea.account_code} exige el NIT o la cédula del tercero`);
-        return;
-      }
       const modoCentro = cuenta?.centro_costo_modo ?? (cuenta?.requiere_centro_costo ? 'obligatorio' : null);
       if (modoCentro === 'obligatorio' && centros.length > 0 && !linea.cost_center_id && !linea.distribucion_id) {
         toast.error(`La cuenta ${linea.account_code} exige un centro de costo`);
@@ -623,7 +627,7 @@ export function AsientosPage() {
                                 <CampoTerceroAsiento
                                   nit={line.tercero_nit}
                                   nombre={line.tercero_nombre}
-                                  obligatorio={!!cuentas.find((c) => c.account_code === line.account_code)?.requiere_tercero}
+                                  obligatorio={cuentaRetencionExigeNit(line.account_code) || !!cuentas.find((c) => c.account_code === line.account_code)?.requiere_tercero}
                                   onCambiar={(nit, nombre) => fijarTercero(index, nit, nombre)}
                                 />
                               </div>

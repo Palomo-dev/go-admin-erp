@@ -1,5 +1,7 @@
 'use client'
 
+import { useTextosEditor } from '../textos'
+import { SelectKit, NumeroKit, CasillaKit, ColorKit } from './controlesKit'
 import { useState, type ReactNode } from 'react'
 import { ETIQUETA_LAYOUT, LAYOUTS_BOLETIN, precargaBoletin, type LayoutBoletin } from '@/lib/website/boletinPresets'
 
@@ -11,10 +13,10 @@ function objeto(valor: unknown): Record<string, unknown> {
 
 function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">
+    <div role="group" aria-label={etiqueta} className="flex flex-col gap-1 text-[12px] text-fg-secondary">
       <span>{etiqueta}</span>
       {children}
-    </label>
+    </div>
   )
 }
 
@@ -35,19 +37,19 @@ function Tipografia({
     <div className="flex flex-col gap-2 border-t border-line pt-2">
       <p className="text-xs font-semibold text-fg">Tipografía de {nombre}</p>
       <Campo etiqueta="Tamaño">
-        <select className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_size`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_size`, e.target.value)}>
+        <SelectKit className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_size`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_size`, e.target.value)}>
           <option value="">Como hoy</option>
           {['sm', 'md', 'lg', 'xl', '2xl', '3xl'].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        </SelectKit>
       </Campo>
       <Campo etiqueta="Peso">
-        <select className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_weight`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_weight`, e.target.value)}>
+        <SelectKit className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_weight`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_weight`, e.target.value)}>
           <option value="">Como hoy</option>
           {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        </SelectKit>
       </Campo>
       <Campo etiqueta="Fuente"><input className={control} disabled={deshabilitado} value={String(textos[`${prefijo}_font`] ?? '')} onChange={(e) => onCambiar(`${prefijo}_font`, e.target.value)} /></Campo>
-      <Campo etiqueta="Color"><input type="color" disabled={deshabilitado} value={typeof textos[`${prefijo}_color`] === 'string' ? String(textos[`${prefijo}_color`]) : '#111827'} onChange={(e) => onCambiar(`${prefijo}_color`, e.target.value)} /></Campo>
+      <ColorKit etiqueta="Color" disabled={deshabilitado} value={typeof textos[`${prefijo}_color`] === 'string' ? String(textos[`${prefijo}_color`]) : '#111827'} onChange={(e) => onCambiar(`${prefijo}_color`, e.target.value)} />
     </div>
   )
 }
@@ -93,6 +95,7 @@ export function EditorBoletin({
   onCambiar: (v: Record<string, unknown>) => void
   deshabilitado?: boolean
 }) {
+  const tk = useTextosEditor()
   const [pestana, setPestana] = useState<(typeof PESTANAS)[number]>('diseno')
   const [ancho, setAncho] = useState<'escritorio' | 'celular'>('escritorio')
   const boletin = objeto(contenido.newsletter)
@@ -167,12 +170,12 @@ export function EditorBoletin({
             </button>
           ))}
           <Campo etiqueta="Alineación">
-            <select className={control} disabled={deshabilitado} value={String(boletin.align ?? '')} onChange={(e) => setBoletin({ align: e.target.value || undefined })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(boletin.align ?? '')} onChange={(e) => setBoletin({ align: e.target.value || undefined })}>
               <option value="">Como hoy</option>
               <option value="left">Izquierda</option>
               <option value="center">Centro</option>
               <option value="right">Derecha</option>
-            </select>
+            </SelectKit>
           </Campo>
         </div>
       )}
@@ -196,84 +199,84 @@ export function EditorBoletin({
 
       {pestana === 'formulario' && (
         <div className="flex flex-col gap-2">
-          <label className="flex justify-between text-sm text-fg"><span>Pedir nombre</span><input type="checkbox" disabled={deshabilitado} checked={form.show_name === true} onChange={(e) => setNivel('form', form, 'show_name', e.target.checked || undefined)} /></label>
-          <label className="flex justify-between text-sm text-fg"><span>Pedir teléfono o WhatsApp</span><input type="checkbox" disabled={deshabilitado} checked={form.show_phone === true} onChange={(e) => setNivel('form', form, 'show_phone', e.target.checked || undefined)} /></label>
-          <label className="flex justify-between text-sm text-fg"><span>Pedir cumpleaños</span><input type="checkbox" disabled={deshabilitado} checked={form.show_birthday === true} onChange={(e) => setNivel('form', form, 'show_birthday', e.target.checked || undefined)} /></label>
-          <label className="flex justify-between text-sm text-fg"><span>Casilla de datos (Ley 1581)</span><input type="checkbox" disabled={deshabilitado} checked={form.show_consent === true} onChange={(e) => setNivel('form', form, 'show_consent', e.target.checked || undefined)} /></label>
+          <CasillaKit titulo="Pedir nombre" disabled={deshabilitado} checked={form.show_name === true} onChange={(e) => setNivel('form', form, 'show_name', e.target.checked || undefined)} />
+          <CasillaKit titulo="Pedir teléfono o WhatsApp" disabled={deshabilitado} checked={form.show_phone === true} onChange={(e) => setNivel('form', form, 'show_phone', e.target.checked || undefined)} />
+          <CasillaKit titulo="Pedir cumpleaños" disabled={deshabilitado} checked={form.show_birthday === true} onChange={(e) => setNivel('form', form, 'show_birthday', e.target.checked || undefined)} />
+          <CasillaKit titulo="Casilla de datos (Ley 1581)" disabled={deshabilitado} checked={form.show_consent === true} onChange={(e) => setNivel('form', form, 'show_consent', e.target.checked || undefined)} />
           <Campo etiqueta="Texto de la casilla"><input className={control} disabled={deshabilitado} value={String(form.consent_label ?? '')} onChange={(e) => setNivel('form', form, 'consent_label', e.target.value)} /></Campo>
           <Campo etiqueta="Enlace de la casilla"><input className={control} disabled={deshabilitado} value={String(form.consent_href ?? '')} onChange={(e) => setNivel('form', form, 'consent_href', e.target.value)} /></Campo>
           <Campo etiqueta="Disposición">
-            <select className={control} disabled={deshabilitado} value={String(form.arrangement ?? '')} onChange={(e) => setNivel('form', form, 'arrangement', e.target.value)}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(form.arrangement ?? '')} onChange={(e) => setNivel('form', form, 'arrangement', e.target.value)}>
               <option value="">En línea</option>
               <option value="inline">En línea</option>
               <option value="stacked">Apilados</option>
               <option value="inside">Botón dentro</option>
-            </select>
+            </SelectKit>
           </Campo>
           <Campo etiqueta="Placeholder"><input className={control} disabled={deshabilitado} value={String(form.placeholder ?? contenido.placeholder ?? '')} onChange={(e) => onCambiar({ ...contenido, placeholder: e.target.value || undefined, newsletter: { ...boletin, form: { ...form, placeholder: e.target.value || undefined } } })} /></Campo>
           <Campo etiqueta="Estilo del campo">
-            <select className={control} disabled={deshabilitado} value={String(input.style ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, style: e.target.value || undefined } } })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(input.style ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, style: e.target.value || undefined } } })}>
               <option value="">Contorno</option>
               <option value="outline">Contorno</option>
               <option value="filled">Relleno</option>
               <option value="underline">Subrayado</option>
-            </select>
+            </SelectKit>
           </Campo>
           <Campo etiqueta="Forma del campo">
-            <select className={control} disabled={deshabilitado} value={String(input.shape ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, shape: e.target.value || undefined } } })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(input.shape ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, shape: e.target.value || undefined } } })}>
               <option value="">Redondeado</option>
               <option value="square">Cuadrado</option>
               <option value="rounded">Redondeado</option>
               <option value="semi">Semi</option>
               <option value="pill">Píldora</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <Campo etiqueta="Ancho del borde"><input className={control} type="number" min={0} max={8} disabled={deshabilitado} value={String(input.border_width ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, border_width: e.target.value ? Number(e.target.value) : undefined } } })} /></Campo>
-          <Campo etiqueta="Color del borde"><input type="color" disabled={deshabilitado} value={typeof input.border_color === 'string' ? input.border_color : '#d1d5db'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, border_color: e.target.value } } })} /></Campo>
-          <Campo etiqueta="Color al enfocar"><input type="color" disabled={deshabilitado} value={typeof input.focus_color === 'string' ? input.focus_color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, focus_color: e.target.value } } })} /></Campo>
-          <Campo etiqueta="Fondo del campo"><input type="color" disabled={deshabilitado} value={typeof input.background === 'string' ? input.background : '#ffffff'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, background: e.target.value } } })} /></Campo>
-          <Campo etiqueta="Color del texto"><input type="color" disabled={deshabilitado} value={typeof input.color === 'string' ? input.color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, color: e.target.value } } })} /></Campo>
-          <Campo etiqueta="Color del placeholder"><input type="color" disabled={deshabilitado} value={typeof input.placeholder_color === 'string' ? input.placeholder_color : '#9ca3af'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, placeholder_color: e.target.value } } })} /></Campo>
+          <Campo etiqueta="Ancho del borde"><NumeroKit min={0} max={8} disabled={deshabilitado} value={String(input.border_width ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, border_width: e.target.value ? Number(e.target.value) : undefined } } })} /></Campo>
+          <ColorKit etiqueta="Color del borde" disabled={deshabilitado} value={typeof input.border_color === 'string' ? input.border_color : '#d1d5db'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, border_color: e.target.value } } })} />
+          <ColorKit etiqueta="Color al enfocar" disabled={deshabilitado} value={typeof input.focus_color === 'string' ? input.focus_color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, focus_color: e.target.value } } })} />
+          <ColorKit etiqueta="Fondo del campo" disabled={deshabilitado} value={typeof input.background === 'string' ? input.background : '#ffffff'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, background: e.target.value } } })} />
+          <ColorKit etiqueta="Color del texto" disabled={deshabilitado} value={typeof input.color === 'string' ? input.color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, color: e.target.value } } })} />
+          <ColorKit etiqueta="Color del placeholder" disabled={deshabilitado} value={typeof input.placeholder_color === 'string' ? input.placeholder_color : '#9ca3af'} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, placeholder_color: e.target.value } } })} />
           <Campo etiqueta="Tamaño del campo">
-            <select className={control} disabled={deshabilitado} value={String(input.size ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, size: e.target.value || undefined } } })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(input.size ?? '')} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, size: e.target.value || undefined } } })}>
               <option value="">Mediano</option>
               <option value="sm">Pequeño</option>
               <option value="md">Mediano</option>
               <option value="lg">Grande</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <label className="flex justify-between text-sm text-fg"><span>Ícono de sobre</span><input type="checkbox" disabled={deshabilitado} checked={input.icon === true} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, icon: e.target.checked || undefined } } })} /></label>
+          <CasillaKit titulo="Ícono de sobre" disabled={deshabilitado} checked={input.icon === true} onChange={(e) => setBoletin({ form: { ...form, input: { ...input, icon: e.target.checked || undefined } } })} />
           <Campo etiqueta="Texto del botón"><input className={control} disabled={deshabilitado} value={String(boton.text ?? contenido.button_text ?? '')} onChange={(e) => onCambiar({ ...contenido, button_text: e.target.value || undefined, newsletter: { ...boletin, form: { ...form, button: { ...boton, text: e.target.value || undefined } } } })} /></Campo>
           <Campo etiqueta="Estilo del botón">
-            <select className={control} disabled={deshabilitado} value={String(boton.style ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, style: e.target.value || undefined } } })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(boton.style ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, style: e.target.value || undefined } } })}>
               <option value="">Sólido</option>
               <option value="solid">Sólido</option>
               <option value="outline">Contorno</option>
               <option value="gradient">Degradado</option>
               <option value="icon_only">Solo ícono</option>
-            </select>
+            </SelectKit>
           </Campo>
           <Campo etiqueta="Tamaño del botón">
-            <select className={control} disabled={deshabilitado} value={String(boton.size ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, size: e.target.value || undefined } } })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(boton.size ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, size: e.target.value || undefined } } })}>
               <option value="">Mediano</option>
               <option value="sm">Pequeño</option>
               <option value="md">Mediano</option>
               <option value="lg">Grande</option>
-            </select>
+            </SelectKit>
           </Campo>
           <Campo etiqueta="Forma del botón">
-            <select className={control} disabled={deshabilitado} value={String(boton.shape ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, shape: e.target.value || undefined } } })}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(boton.shape ?? '')} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, shape: e.target.value || undefined } } })}>
               <option value="">Redondeado</option>
               <option value="square">Cuadrado</option>
               <option value="rounded">Redondeado</option>
               <option value="semi">Semi</option>
               <option value="pill">Píldora</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <Campo etiqueta="Color del botón"><input type="color" disabled={deshabilitado} value={typeof boton.color === 'string' ? boton.color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, color: e.target.value } } })} /></Campo>
-          <Campo etiqueta="Color del texto del botón"><input type="color" disabled={deshabilitado} value={typeof boton.text_color === 'string' ? boton.text_color : '#ffffff'} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, text_color: e.target.value } } })} /></Campo>
-          <Campo etiqueta="Color al pasar"><input type="color" disabled={deshabilitado} value={typeof boton.hover === 'string' ? boton.hover : '#111827'} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, hover: e.target.value } } })} /></Campo>
-          <label className="flex justify-between text-sm text-fg"><span>Ícono en el botón</span><input type="checkbox" disabled={deshabilitado} checked={boton.icon === true} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, icon: e.target.checked || undefined } } })} /></label>
+          <ColorKit etiqueta="Color del botón" disabled={deshabilitado} value={typeof boton.color === 'string' ? boton.color : '#111827'} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, color: e.target.value } } })} />
+          <ColorKit etiqueta="Color del texto del botón" disabled={deshabilitado} value={typeof boton.text_color === 'string' ? boton.text_color : '#ffffff'} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, text_color: e.target.value } } })} />
+          <ColorKit etiqueta="Color al pasar" disabled={deshabilitado} value={typeof boton.hover === 'string' ? boton.hover : '#111827'} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, hover: e.target.value } } })} />
+          <CasillaKit titulo="Ícono en el botón" disabled={deshabilitado} checked={boton.icon === true} onChange={(e) => setBoletin({ form: { ...form, button: { ...boton, icon: e.target.checked || undefined } } })} />
         </div>
       )}
 
@@ -282,71 +285,71 @@ export function EditorBoletin({
           <Campo etiqueta="Imagen de escritorio"><input className={control} disabled={deshabilitado} value={String(media.desktop ?? contenido.image_url ?? '')} onChange={(e) => onCambiar({ ...contenido, image_url: e.target.value || undefined, newsletter: { ...boletin, media: { ...media, desktop: e.target.value || undefined } } })} /></Campo>
           <Campo etiqueta="Imagen de celular"><input className={control} disabled={deshabilitado} value={String(media.mobile ?? '')} onChange={(e) => setNivel('media', media, 'mobile', e.target.value)} /></Campo>
           <Campo etiqueta="Ajuste">
-            <select className={control} disabled={deshabilitado} value={String(media.fit ?? '')} onChange={(e) => setNivel('media', media, 'fit', e.target.value)}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(media.fit ?? '')} onChange={(e) => setNivel('media', media, 'fit', e.target.value)}>
               <option value="">Cubrir</option>
               <option value="cover">Cubrir</option>
               <option value="contain">Contener</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <Campo etiqueta="Radio"><input className={control} type="number" min={0} max={48} disabled={deshabilitado} value={String(media.radius ?? '')} onChange={(e) => setNivel('media', media, 'radius', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <Campo etiqueta="Radio"><NumeroKit min={0} max={48} disabled={deshabilitado} value={String(media.radius ?? '')} onChange={(e) => setNivel('media', media, 'radius', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
           <Campo etiqueta="Posición">
-            <select className={control} disabled={deshabilitado} value={String(media.focal ?? '')} onChange={(e) => setNivel('media', media, 'focal', e.target.value)}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(media.focal ?? '')} onChange={(e) => setNivel('media', media, 'focal', e.target.value)}>
               <option value="">Centro</option>
               <option value="center">Centro</option>
               <option value="top">Arriba</option>
               <option value="bottom">Abajo</option>
               <option value="left">Izquierda</option>
               <option value="right">Derecha</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <label className="flex justify-between text-sm text-fg"><span>Sombra de la imagen</span><input type="checkbox" disabled={deshabilitado} checked={media.shadow === true} onChange={(e) => setNivel('media', media, 'shadow', e.target.checked || undefined)} /></label>
-          <label className="flex justify-between text-sm text-fg"><span>Ocultar imagen en celular</span><input type="checkbox" disabled={deshabilitado} checked={media.hide_mobile === true} onChange={(e) => setNivel('media', media, 'hide_mobile', e.target.checked || undefined)} /></label>
-          <Campo etiqueta="Color de fondo"><input type="color" disabled={deshabilitado} value={typeof fondo.color === 'string' ? fondo.color : '#ffffff'} onChange={(e) => setNivel('background', fondo, 'color', e.target.value)} /></Campo>
-          <Campo etiqueta="Degradado 1"><input type="color" disabled={deshabilitado} value={typeof fondo.gradient_1 === 'string' ? fondo.gradient_1 : '#ffffff'} onChange={(e) => setNivel('background', fondo, 'gradient_1', e.target.value)} /></Campo>
-          <Campo etiqueta="Degradado 2"><input type="color" disabled={deshabilitado} value={typeof fondo.gradient_2 === 'string' ? fondo.gradient_2 : '#e5e7eb'} onChange={(e) => setNivel('background', fondo, 'gradient_2', e.target.value)} /></Campo>
-          <Campo etiqueta="Degradado 3"><input type="color" disabled={deshabilitado} value={typeof fondo.gradient_3 === 'string' ? fondo.gradient_3 : '#111827'} onChange={(e) => setNivel('background', fondo, 'gradient_3', e.target.value)} /></Campo>
-          <Campo etiqueta="Ángulo"><input className={control} type="number" min={0} max={360} disabled={deshabilitado} value={String(fondo.angle ?? '')} onChange={(e) => setNivel('background', fondo, 'angle', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <CasillaKit titulo="Sombra de la imagen" disabled={deshabilitado} checked={media.shadow === true} onChange={(e) => setNivel('media', media, 'shadow', e.target.checked || undefined)} />
+          <CasillaKit titulo="Ocultar imagen en celular" disabled={deshabilitado} checked={media.hide_mobile === true} onChange={(e) => setNivel('media', media, 'hide_mobile', e.target.checked || undefined)} />
+          <ColorKit etiqueta="Color de fondo" disabled={deshabilitado} value={typeof fondo.color === 'string' ? fondo.color : '#ffffff'} onChange={(e) => setNivel('background', fondo, 'color', e.target.value)} />
+          <ColorKit etiqueta={tk('controles.degradado1')} disabled={deshabilitado} value={typeof fondo.gradient_1 === 'string' ? fondo.gradient_1 : '#ffffff'} onChange={(e) => setNivel('background', fondo, 'gradient_1', e.target.value)} />
+          <ColorKit etiqueta={tk('controles.degradado2')} disabled={deshabilitado} value={typeof fondo.gradient_2 === 'string' ? fondo.gradient_2 : '#e5e7eb'} onChange={(e) => setNivel('background', fondo, 'gradient_2', e.target.value)} />
+          <ColorKit etiqueta="Degradado 3" disabled={deshabilitado} value={typeof fondo.gradient_3 === 'string' ? fondo.gradient_3 : '#111827'} onChange={(e) => setNivel('background', fondo, 'gradient_3', e.target.value)} />
+          <Campo etiqueta="Ángulo"><NumeroKit min={0} max={360} disabled={deshabilitado} value={String(fondo.angle ?? '')} onChange={(e) => setNivel('background', fondo, 'angle', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
           <Campo etiqueta="Tipo de degradado">
-            <select className={control} disabled={deshabilitado} value={String(fondo.gradient_type ?? '')} onChange={(e) => setNivel('background', fondo, 'gradient_type', e.target.value)}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(fondo.gradient_type ?? '')} onChange={(e) => setNivel('background', fondo, 'gradient_type', e.target.value)}>
               <option value="">Lineal</option>
               <option value="linear">Lineal</option>
               <option value="radial">Radial</option>
-            </select>
+            </SelectKit>
           </Campo>
           <Campo etiqueta="Imagen de fondo"><input className={control} disabled={deshabilitado} value={String(fondo.image ?? '')} onChange={(e) => setNivel('background', fondo, 'image', e.target.value)} /></Campo>
-          <Campo etiqueta="Color de la capa"><input type="color" disabled={deshabilitado} value={typeof fondo.overlay === 'string' ? fondo.overlay : '#000000'} onChange={(e) => setNivel('background', fondo, 'overlay', e.target.value)} /></Campo>
-          <Campo etiqueta="Opacidad de la capa"><input className={control} type="number" min={0} max={100} disabled={deshabilitado} value={String(fondo.overlay_opacity ?? '')} onChange={(e) => setNivel('background', fondo, 'overlay_opacity', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
-          <label className="flex justify-between text-sm text-fg"><span>Patrón</span><input type="checkbox" disabled={deshabilitado} checked={fondo.pattern === true} onChange={(e) => setNivel('background', fondo, 'pattern', e.target.checked || undefined)} /></label>
-          <Campo etiqueta="Relleno"><input className={control} type="number" min={0} max={160} disabled={deshabilitado} value={String(fondo.padding ?? '')} onChange={(e) => setNivel('background', fondo, 'padding', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <ColorKit etiqueta="Color de la capa" disabled={deshabilitado} value={typeof fondo.overlay === 'string' ? fondo.overlay : '#000000'} onChange={(e) => setNivel('background', fondo, 'overlay', e.target.value)} />
+          <Campo etiqueta="Opacidad de la capa"><NumeroKit min={0} max={100} disabled={deshabilitado} value={String(fondo.overlay_opacity ?? '')} onChange={(e) => setNivel('background', fondo, 'overlay_opacity', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <CasillaKit titulo="Patrón" disabled={deshabilitado} checked={fondo.pattern === true} onChange={(e) => setNivel('background', fondo, 'pattern', e.target.checked || undefined)} />
+          <Campo etiqueta="Relleno"><NumeroKit min={0} max={160} disabled={deshabilitado} value={String(fondo.padding ?? '')} onChange={(e) => setNivel('background', fondo, 'padding', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
           <Campo etiqueta="Ancho">
-            <select className={control} disabled={deshabilitado} value={String(fondo.width ?? '')} onChange={(e) => setNivel('background', fondo, 'width', e.target.value)}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(fondo.width ?? '')} onChange={(e) => setNivel('background', fondo, 'width', e.target.value)}>
               <option value="">Contenido</option>
               <option value="content">Contenido</option>
               <option value="full">Completo</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <Campo etiqueta="Fondo del bloque"><input type="color" disabled={deshabilitado} value={typeof caja.color === 'string' ? caja.color : '#ffffff'} onChange={(e) => setNivel('container', caja, 'color', e.target.value)} /></Campo>
-          <Campo etiqueta="Borde del bloque"><input type="color" disabled={deshabilitado} value={typeof caja.border === 'string' ? caja.border : '#e5e7eb'} onChange={(e) => setNivel('container', caja, 'border', e.target.value)} /></Campo>
-          <Campo etiqueta="Radio del bloque"><input className={control} type="number" min={0} max={48} disabled={deshabilitado} value={String(caja.radius ?? '')} onChange={(e) => setNivel('container', caja, 'radius', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
-          <Campo etiqueta="Relleno del bloque"><input className={control} type="number" min={0} max={80} disabled={deshabilitado} value={String(caja.padding ?? '')} onChange={(e) => setNivel('container', caja, 'padding', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
-          <Campo etiqueta="Ancho máximo"><input className={control} type="number" min={280} max={1200} disabled={deshabilitado} value={String(caja.max_width ?? '')} onChange={(e) => setNivel('container', caja, 'max_width', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
-          <label className="flex justify-between text-sm text-fg"><span>Sombra del bloque</span><input type="checkbox" disabled={deshabilitado} checked={caja.shadow === true} onChange={(e) => setNivel('container', caja, 'shadow', e.target.checked || undefined)} /></label>
+          <ColorKit etiqueta="Fondo del bloque" disabled={deshabilitado} value={typeof caja.color === 'string' ? caja.color : '#ffffff'} onChange={(e) => setNivel('container', caja, 'color', e.target.value)} />
+          <ColorKit etiqueta="Borde del bloque" disabled={deshabilitado} value={typeof caja.border === 'string' ? caja.border : '#e5e7eb'} onChange={(e) => setNivel('container', caja, 'border', e.target.value)} />
+          <Campo etiqueta="Radio del bloque"><NumeroKit min={0} max={48} disabled={deshabilitado} value={String(caja.radius ?? '')} onChange={(e) => setNivel('container', caja, 'radius', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <Campo etiqueta="Relleno del bloque"><NumeroKit min={0} max={80} disabled={deshabilitado} value={String(caja.padding ?? '')} onChange={(e) => setNivel('container', caja, 'padding', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <Campo etiqueta="Ancho máximo"><NumeroKit min={280} max={1200} disabled={deshabilitado} value={String(caja.max_width ?? '')} onChange={(e) => setNivel('container', caja, 'max_width', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <CasillaKit titulo="Sombra del bloque" disabled={deshabilitado} checked={caja.shadow === true} onChange={(e) => setNivel('container', caja, 'shadow', e.target.checked || undefined)} />
         </div>
       )}
 
       {pestana === 'popup' && (
         <div className="flex flex-col gap-2">
-          <label className="flex justify-between text-sm text-fg"><span>Mostrar también como ventana</span><input type="checkbox" disabled={deshabilitado} checked={popup.enabled === true} onChange={(e) => setNivel('popup', popup, 'enabled', e.target.checked || undefined)} /></label>
+          <CasillaKit titulo="Mostrar también como ventana" disabled={deshabilitado} checked={popup.enabled === true} onChange={(e) => setNivel('popup', popup, 'enabled', e.target.checked || undefined)} />
           <Campo etiqueta="Cuándo">
-            <select className={control} disabled={deshabilitado} value={String(popup.trigger ?? 'enter')} onChange={(e) => setNivel('popup', popup, 'trigger', e.target.value)}>
+            <SelectKit className={control} disabled={deshabilitado} value={String(popup.trigger ?? 'enter')} onChange={(e) => setNivel('popup', popup, 'trigger', e.target.value)}>
               <option value="enter">Al entrar</option>
               <option value="delay">Después de un tiempo</option>
               <option value="exit">Al intentar salir</option>
-            </select>
+            </SelectKit>
           </Campo>
-          <Campo etiqueta="Segundos"><input className={control} type="number" min={2} max={60} disabled={deshabilitado} value={String(popup.delay ?? '')} onChange={(e) => setNivel('popup', popup, 'delay', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
+          <Campo etiqueta="Segundos"><NumeroKit min={2} max={60} disabled={deshabilitado} value={String(popup.delay ?? '')} onChange={(e) => setNivel('popup', popup, 'delay', e.target.value ? Number(e.target.value) : undefined)} /></Campo>
           <p className="text-[12px] text-fg-secondary">Sale una vez por sesión del navegador.</p>
-          <label className="flex justify-between text-sm text-fg"><span>Logos de redes</span><input type="checkbox" disabled={deshabilitado} checked={boletin.social === true} onChange={(e) => setBoletin({ social: e.target.checked || undefined })} /></label>
+          <CasillaKit titulo="Logos de redes" disabled={deshabilitado} checked={boletin.social === true} onChange={(e) => setBoletin({ social: e.target.checked || undefined })} />
         </div>
       )}
     </div>

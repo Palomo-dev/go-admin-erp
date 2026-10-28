@@ -62,6 +62,7 @@ export type CodigoMensaje =
   // avisos
   | 'skuGenerado'
   | 'skuRepetidoTienda'
+  | 'stockEnPadre'
   | 'costoMayorPrecio'
   | 'costoPrecioIntercambiados'
   | 'promoEnNotas'

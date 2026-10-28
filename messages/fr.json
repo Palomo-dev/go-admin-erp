@@ -1006,7 +1006,7 @@
       "pendiente": "À faire",
       "ir": "Aller",
       "irA": "Aller à {paso}",
-      "inventarioAsiento": "L'écriture débitera {inventario} et créditera {saldo} (soldes initiaux). Les récupérations ne sont pas utilisées.",
+      "inventarioAsiento": "L'écriture débitera {inventario} et créditera {saldo} (résultats reportés ; 3710 en cas de pertes). Les récupérations ne sont pas utilisées.",
       "importarExcel": "Importer Excel",
       "cargarMano": "Saisir à la main",
       "sinMovimientosTitulo": "Aucun mouvement pour l'instant",
@@ -9518,7 +9518,8 @@
         "ayudaTipo": "L’ouverture débite le stock et crédite les capitaux propres. Un ajustement d’entrée crédite les autres produits et un de sortie débite les charges. Une entrée qui n’est pas un retour ne crédite pas les coûts.",
         "avisoKardex": "Chaque ajustement est enregistré dans le kardex et génère son écriture d’inventaire.",
         "sinCosto": "{count, plural, one {{n} ajustement sans coût : il figure au kardex mais n’a pas généré d’écriture.} other {{n} ajustements sans coût : ils figurent au kardex mais n’ont pas généré d’écriture.}}",
-        "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire."
+        "sinPermiso": "Vous n’avez pas l’autorisation d’ajuster l’inventaire.",
+        "padresOmitidos": "{cantidad} produits parents avec variantes ont été ignorés : le stock est ajusté sur leurs variantes."
       },
       "categoria": {
         "titulo": "Attribuer une catégorie",
@@ -9970,7 +9971,8 @@
       "categoriaSugerida": "catégorie suggérée d'après le nom",
       "preparadoSinInventario": "plats préparés sans stock propre",
       "filaInternaAlegra": "lignes internes Alegra (exclues)",
-      "skuRepetidoTienda": "SKU de la boutique répété"
+      "skuRepetidoTienda": "SKU de la boutique répété",
+      "stockEnPadre": "stock sur le parent (non chargé)"
     },
     "vista": {
       "titulo": "Aperçu ({n} lignes)",
@@ -10117,6 +10119,7 @@
       "PADRE_NO_ENCONTRADO": "Le SKU parent n’existe pas",
       "VARIANTE_PADRE_ELIMINADO": "La variante appartient à un produit supprimé : restaurez d’abord le produit parent",
       "STOCK_SIN_COSTO": "Stock sans coût : le registre de stock exige un coût",
+      "SIN_PERMISO_CREAR_CATEGORIA": "Vous n’avez pas l’autorisation de créer des catégories ; utilisez-en une existante ou demandez l’autorisation",
       "PRECIO_INVALIDO": "Prix non valide",
       "COSTO_INVALIDO": "Coût non valide",
       "STOCK_INVALIDO": "Stock non valide",
@@ -10133,7 +10136,8 @@
         "codigo_barras": "code-barres",
         "plu": "PLU de balance",
         "slug": "slug"
-      }
+      },
+      "stockEnPadre": "Contient du stock ({cantidad}) sur un produit parent avec variantes : il n'est pas chargé. Mettez-le sur les variantes."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -21288,6 +21292,7 @@
     },
     "errores": {
       "stock_insuficiente": "Stock insuffisant : disponible {disponible}, demandé {solicitado}.",
+      "producto_padre_con_variantes": "Ce produit a des variantes : enregistrez le stock sur chaque variante (taille, couleur…), pas sur le produit parent.",
       "cantidad_invalida": "La quantité doit être supérieure à zéro.",
       "direccion_invalida": "Mouvement invalide.",
       "origen_requerido": "L’origine du mouvement manque.",
@@ -22791,6 +22796,8 @@
       "confirmarAjusteDetalle": "L'organisation a moins de 30 jours ou le montant dépasse le seuil. La note est obligatoire.",
       "asientoTitulo": "Écriture du stock initial",
       "asientoDetalle": "Débit {inventario} / crédit {saldo} pour {total}.",
+      "contrapartidaTitulo": "La contrepartie n’est plus le capital (3105)",
+      "contrapartidaDetalle": "Le stock initial crédite 3705 résultats reportés ; si l’entreprise a des pertes reportées, il va en 3710. Vérifiez avec votre comptable avant de clôturer la période.",
       "asientoSobranteTitulo": "Écriture de l'excédent",
       "asientoSobranteDetalle": "Une seule écriture : débit {inventario} et crédit {diversos} pour {total}. Les récupérations ne sont pas utilisées.",
       "corregirConteo": "Corriger le comptage",
@@ -25737,6 +25744,7 @@
     "errorActual": "Le mot de passe actuel est incorrect.",
     "errorIgualActual": "Le nouveau mot de passe doit être différent de l’actuel.",
     "errorDemasiadas": "Trop de tentatives d’affilée. Patientez quelques minutes et réessayez.",
+    "errorSesion": "Votre session a expiré. Reconnectez-vous puis réessayez.",
     "errorInesperado": "Nous n’avons pas pu changer le mot de passe. Réessayez dans un instant."
   },
   "posEtiquetasPeso": {
@@ -33216,7 +33224,9 @@
           "circuloFondo": "Fond du cercle",
           "circuloFondoAcento": "Couleur de la marque",
           "circuloIcono": "Couleur de l’icône",
-          "circuloIconoAuto": "Automatique"
+          "circuloIconoAuto": "Automatique",
+          "headerSobreHero": "En-tête sur la couverture",
+          "headerSobreHeroAyuda": "L’en-tête se place sur l’image de couverture. Désactivé : l’en-tête au-dessus, la couverture en dessous."
         },
         "diseno": {
           "titulo": "Mise en page de l'en-tête",
@@ -33246,7 +33256,23 @@
           },
           "barraCelular": "Barre supérieure sur mobile",
           "buscador": "Recherche",
-          "buscadorAyuda": "S’applique à l’ordinateur et au mobile : sur mobile l’icône reste dans la barre et la barre visible passe sous le logo."
+          "buscadorAyuda": "S’applique à l’ordinateur et au mobile : sur mobile l’icône reste dans la barre et la barre visible passe sous le logo.",
+          "buscadorCelularPropio": "Sur mobile, la recherche reste « {valor} » (ancien réglage). Pour suivre cette option, retirez « Recherche propre au mobile » dans Réglages des versions précédentes.",
+          "buscadorNombre": {
+            "icon": "Icône",
+            "bar": "Barre visible",
+            "hidden": "Masquée",
+            "fullscreen": "Plein écran",
+            "mini": "Barre compacte",
+            "icon_overlay": "Icône qui ouvre la recherche par-dessus",
+            "mega": "Grande recherche",
+            "pill_floating": "Pilule flottante"
+          },
+          "logoAyuda": "Même position sur ordinateur et sur mobile.",
+          "logoFijo": {
+            "centro": "Dans cette mise en page, le logo est centré.",
+            "izquierda": "Dans cette mise en page, le logo est à gauche."
+          }
         },
         "estilo": {
           "avisoTitulo": "Par défaut, les couleurs suivent le thème du modèle",
@@ -33293,7 +33319,8 @@
             "recto": "Carré",
             "redondeado": "Arrondi",
             "pildora": "Pilule"
-          }
+          },
+          "espacios": "Espacements"
         },
         "pie": {
           "menus": "Menus du pied de page",
@@ -33406,7 +33433,44 @@
             "mobile_menu_register_border_color": "Mobile menu colors (register border)",
             "mobile_menu_register_text_color": "Mobile menu colors (register text)",
             "mobile_menu_logout_color": "Mobile menu colors (logout)",
-            "mobile_search_style": "Recherche mobile séparée"
+            "mobile_search_style": "Recherche mobile séparée",
+            "mobile_header__panel": "Panneau du menu mobile",
+            "mobile_header__layout": "Disposition de l'en-tête mobile",
+            "mobile_header__icons": "Icônes mobiles (cercle, compte)",
+            "mobile_header__search": "Recherche mobile (ancien panneau)",
+            "mobile_header__bottom_nav": "Barre inférieure type appli",
+            "mobile_footer_show_hours": "Horaires propres au mobile",
+            "mobile_footer_show_social": "Réseaux propres au mobile",
+            "seccion_padding_top": "Marge intérieure en haut",
+            "seccion_padding_bottom": "Marge intérieure en bas",
+            "seccion_padding_x": "Marge intérieure latérale",
+            "seccion_margin_top": "Marge en haut",
+            "seccion_margin_bottom": "Marge en bas",
+            "seccion_full_bleed": "Pleine largeur d’écran",
+            "seccion_container_width": "Largeur du contenu",
+            "seccion_full_width": "Pleine largeur d’écran (catégories)",
+            "carrusel_avance": "Éléments par étape"
+          },
+          "motivo": {
+            "enUso": "La boutique l'utilise pour l'en-tête mobile : le retirer changerait le mobile.",
+            "circulo": "Géré par « Cercle d’accent » (ordinateur et mobile).",
+            "mandaEspaciado": "Prime sur Style › Espacement : retirez-le pour voir votre choix.",
+            "mandaAncho": "Prime sur Style › Largeur : retirez-le pour voir votre choix.",
+            "sinEfecto": "La boutique ne l’utilise pas : cela ne change rien."
+          },
+          "campoMovil": {
+            "show_logo": "Logo dans le menu mobile",
+            "show_search": "Recherche",
+            "show_social": "Réseaux sociaux dans le menu",
+            "show_contact": "Contact dans le menu",
+            "sticky": "Fixe au défilement",
+            "hide_on_scroll": "Masquer en descendant",
+            "transparent_hero": "Transparent sur la couverture",
+            "show_cart": "Panier",
+            "show_menu": "Bouton de menu",
+            "show_account": "Compte",
+            "enabled": "Barre inférieure active",
+            "showLabel": "Afficher le texte"
           }
         }
       },
@@ -33919,7 +33983,15 @@
         "errorTitulo": "Le brouillon n'a pas été enregistré",
         "errorDescripcion": "Vérifiez votre connexion. Vos modifications restent dans l'éditeur.",
         "errorOperacion": "Les réglages d'exploitation n'ont pas été enregistrés",
-        "operacionSoloPrincipal": "Livraison, compteur et boutons d'achat se règlent sur le site principal pour l'instant."
+        "operacionSoloPrincipal": "Livraison, compteur et boutons d'achat se règlent sur le site principal pour l'instant.",
+        "motivo": {
+          "sesion": "Votre session a expiré. Reconnectez-vous ; vos modifications restent dans l’éditeur.",
+          "permiso": "Vous n’avez pas l’autorisation de modifier ce site. Demandez l’accès à un administrateur.",
+          "otraPestana": "Ce site a été modifié dans un autre onglet ou par une autre personne. Rechargez pour voir la dernière version.",
+          "invalido": "Certaines données ne sont pas valides : {detalle}. Corrigez-les et enregistrez à nouveau.",
+          "red": "Vérifiez votre connexion. Vos modifications restent dans l’éditeur.",
+          "generico": "Une erreur serveur est survenue. Vos modifications restent dans l’éditeur ; réessayez."
+        }
       },
       "encabezadoPie": {
         "titulo": "En-tête et pied de page",
@@ -34045,6 +34117,104 @@
         "titulo": "Vous modifiez le site en direct :",
         "descripcion": "à l’enregistrement, les modifications sont en ligne. Créez un brouillon pour les vérifier avant de publier.",
         "crearBorrador": "Créer un brouillon"
+      },
+      "listas": {
+        "paginacion": "Pagination",
+        "carrusel": "Carrousel",
+        "usarGlobal": "Utiliser le réglage global",
+        "usarGlobalAyuda": "Suit Design › Styles du site. Désactivez-le pour donner à cette section son propre réglage.",
+        "porPaginaComputador": "Par page sur ordinateur",
+        "porPaginaCelular": "Par page sur mobile",
+        "estilo": "Style",
+        "forma": "Forme",
+        "tamano": "Taille",
+        "alineacion": "Alignement",
+        "estiloPaginacion": {
+          "numerada": "Numérotée",
+          "compacta": "Page 3 sur 17",
+          "cargar_mas": "Bouton « Charger plus »",
+          "infinito": "Défilement infini",
+          "anterior_siguiente": "Précédent / Suivant"
+        },
+        "formaOpcion": {
+          "cuadrado": "Carrée",
+          "semi": "Arrondie",
+          "circulo": "Cercle",
+          "pildora": "Pilule"
+        },
+        "tamanoOpcion": {
+          "sm": "Petite",
+          "md": "Moyenne",
+          "lg": "Grande"
+        },
+        "alineacionOpcion": {
+          "izq": "Gauche",
+          "centro": "Centre",
+          "der": "Droite"
+        },
+        "colorActivo": "Couleur active",
+        "colorInactivo": "Couleur inactive",
+        "colorHover": "Couleur au survol",
+        "extremos": "Première et dernière page",
+        "extremosAyuda": "1 … 4 5 6 … 17",
+        "contador": "Compteur de résultats",
+        "contadorAyuda": "« Affichage 1–24 sur 400 » au-dessus de la pagination.",
+        "textoAnterior": "Texte « Précédent »",
+        "textoAnteriorEjemplo": "Vide : flèche",
+        "textoSiguiente": "Texte « Suivant »",
+        "textoSiguienteEjemplo": "Vide : flèche",
+        "textoCargarMas": "Texte du bouton",
+        "textoCargarMasEjemplo": "Charger plus",
+        "vistaPrevia": "Aperçu",
+        "visiblesComputador": "Visibles sur ordinateur",
+        "visiblesTableta": "Sur tablette",
+        "visiblesCelular": "Sur mobile",
+        "indicador": "Indicateur",
+        "indicadorOpcion": {
+          "ninguno": "Aucun",
+          "puntos": "Points",
+          "barra": "Barre",
+          "numeros": "Numéros",
+          "progreso": "Progression",
+          "miniaturas": "Miniatures"
+        },
+        "posicionIndicador": "Position de l’indicateur",
+        "posicionIndicadorOpcion": {
+          "abajo_dentro": "En bas, dedans",
+          "abajo_fuera": "En bas, dehors"
+        },
+        "tamanoIndicador": "Taille de l’indicateur",
+        "flechasComputador": "Flèches sur ordinateur",
+        "flechasCelular": "Flèches sur mobile",
+        "estiloFlechas": "Style des flèches",
+        "estiloFlechaOpcion": {
+          "chevron": "Flèche seule",
+          "circulo": "Cercle",
+          "cuadrado": "Carré",
+          "larga": "Flèche longue",
+          "hover": "Au survol"
+        },
+        "posicionFlechas": "Position des flèches",
+        "posicionFlechaOpcion": {
+          "lados_dentro": "Sur les côtés, dedans",
+          "lados_fuera": "Sur les côtés, dehors",
+          "titulo": "À côté du titre",
+          "indicador": "À côté de l’indicateur"
+        },
+        "tamanoFlecha": "Taille des flèches",
+        "fondoFlecha": "Fond de la flèche",
+        "bordeFlecha": "Bordure de la flèche",
+        "iconoFlecha": "Couleur de l’icône",
+        "sombraFlecha": "Ombre des flèches",
+        "autoplay": "Défilement automatique",
+        "segundos": "Secondes par étape",
+        "pausaHover": "Pause au survol",
+        "bucle": "Revenir au début à la fin",
+        "arrastre": "Glisser au doigt ou à la souris"
+      },
+      "controles": {
+        "degradado1": "Couleur de début du dégradé",
+        "degradado2": "Couleur de fin du dégradé"
       }
     },
     "paginas": {

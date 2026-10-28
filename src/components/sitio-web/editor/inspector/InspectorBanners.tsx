@@ -4,6 +4,9 @@
  * Inspector «Banners»: distribución, lista reordenable, texto, botón, estilo y hover.
  * Escribe `banner_layout` y `banner_style`. Sin esas claves la tienda no cambia.
  */
+import { useTextosEditor } from '../textos';
+import { ColorTema } from './PartesZonaGlobal';
+import { SelectKit, NumeroKit, CasillaKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
 import { GripVertical } from 'lucide-react';
 import { TabBar, clasesBoton } from '@/components/kit';
@@ -115,10 +118,10 @@ function Miniatura({ layout }: { layout: Distribucion }) {
 
 function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
+    <div role="group" aria-label={etiqueta} className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
       <span>{etiqueta}</span>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -137,34 +140,21 @@ function Lista<T extends string>({
 }) {
   return (
     <Campo etiqueta={etiqueta}>
-      <select className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
+      <SelectKit className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
         <option value="">Sin cambio</option>
         {opciones.map((o) => (
           <option key={o} value={o}>
             {nombres?.[o] ?? o}
           </option>
         ))}
-      </select>
+      </SelectKit>
     </Campo>
   );
 }
 
 function Color({ etiqueta, valor, onCambiar }: { etiqueta: string; valor?: string; onCambiar: (v: string | null) => void }) {
   return (
-    <Campo etiqueta={etiqueta}>
-      <span className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={etiqueta}
-          className="h-8 w-10 cursor-pointer rounded border border-line bg-surface"
-          value={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : '#111827'}
-          onChange={(e) => onCambiar(e.target.value)}
-        />
-        <button type="button" className="text-[12px] underline" onClick={() => onCambiar(null)}>
-          Quitar
-        </button>
-      </span>
-    </Campo>
+    <ColorTema etiqueta={etiqueta} valor={valor && /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : null} colorTema="#111827" onCambiar={onCambiar} />
   );
 }
 
@@ -175,6 +165,7 @@ export function InspectorBanners({
   contenido: Record<string, unknown>;
   onCambiar: (contenido: Record<string, unknown>) => void;
 }) {
+  const tk = useTextosEditor();
   const [pestana, setPestana] = useState<Pestana>('distribucion');
   const [abierto, setAbierto] = useState<number | null>(0);
   const [arrastre, setArrastre] = useState<number | null>(null);
@@ -245,10 +236,7 @@ export function InspectorBanners({
           {aviso && (
             <p className={`text-[12px] leading-4 ${aviso.tipo === 'ok' ? 'text-fg-secondary' : 'text-amber-700'}`}>{aviso.texto}</p>
           )}
-          <label className="flex items-center justify-between gap-2 text-sm text-fg">
-            <span>El último ocupa el ancho completo</span>
-            <input type="checkbox" checked={estilo.last_full !== false} onChange={(e) => ponerEstilo({ last_full: e.target.checked })} />
-          </label>
+          <CasillaKit titulo="El último ocupa el ancho completo" checked={estilo.last_full !== false} onChange={(e) => ponerEstilo({ last_full: e.target.checked })} />
           <Lista
             etiqueta="En celular"
             valor={estilo.mobile_layout}
@@ -258,26 +246,26 @@ export function InspectorBanners({
           />
           <div className="grid grid-cols-3 gap-2">
             <Campo etiqueta="Columnas escritorio">
-              <input className={claseControl} type="number" min={1} max={6} value={estilo.columns_desktop ?? ''} onChange={(e) => ponerEstilo({ columns_desktop: e.target.value ? Number(e.target.value) : undefined })} />
+              <NumeroKit min={1} max={6} value={estilo.columns_desktop ?? ''} onChange={(e) => ponerEstilo({ columns_desktop: e.target.value ? Number(e.target.value) : undefined })} />
             </Campo>
             <Campo etiqueta="Tablet">
-              <input className={claseControl} type="number" min={1} max={4} value={estilo.columns_tablet ?? ''} onChange={(e) => ponerEstilo({ columns_tablet: e.target.value ? Number(e.target.value) : undefined })} />
+              <NumeroKit min={1} max={4} value={estilo.columns_tablet ?? ''} onChange={(e) => ponerEstilo({ columns_tablet: e.target.value ? Number(e.target.value) : undefined })} />
             </Campo>
             <Campo etiqueta="Celular">
-              <input className={claseControl} type="number" min={1} max={2} value={estilo.columns_mobile ?? ''} onChange={(e) => ponerEstilo({ columns_mobile: e.target.value ? Number(e.target.value) : undefined })} />
+              <NumeroKit min={1} max={2} value={estilo.columns_mobile ?? ''} onChange={(e) => ponerEstilo({ columns_mobile: e.target.value ? Number(e.target.value) : undefined })} />
             </Campo>
           </div>
           {(layout === 'carousel' || estilo.mobile_layout === 'carousel') && (
             <div className="grid grid-cols-2 gap-2">
               <Campo etiqueta="Visibles (1–4)">
-                <input className={claseControl} type="number" min={1} max={4} value={estilo.slides ?? 1} onChange={(e) => ponerEstilo({ slides: Number(e.target.value) })} />
+                <NumeroKit min={1} max={4} value={estilo.slides ?? 1} onChange={(e) => ponerEstilo({ slides: Number(e.target.value) })} />
               </Campo>
               <Campo etiqueta="Intervalo (ms)">
-                <input className={claseControl} type="number" min={1500} max={20000} step={500} value={estilo.interval_ms ?? 5000} onChange={(e) => ponerEstilo({ interval_ms: Number(e.target.value) })} />
+                <NumeroKit min={1500} max={20000} step={500} value={estilo.interval_ms ?? 5000} onChange={(e) => ponerEstilo({ interval_ms: Number(e.target.value) })} />
               </Campo>
-              <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" checked={estilo.autoplay === true} onChange={(e) => ponerEstilo({ autoplay: e.target.checked })} /> Autoplay</label>
-              <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" checked={estilo.show_arrows !== false} onChange={(e) => ponerEstilo({ show_arrows: e.target.checked })} /> Flechas</label>
-              <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" checked={estilo.show_dots !== false} onChange={(e) => ponerEstilo({ show_dots: e.target.checked })} /> Puntos</label>
+              <CasillaKit titulo="Autoplay" checked={estilo.autoplay === true} onChange={(e) => ponerEstilo({ autoplay: e.target.checked })} />
+              <CasillaKit titulo="Flechas" checked={estilo.show_arrows !== false} onChange={(e) => ponerEstilo({ show_arrows: e.target.checked })} />
+              <CasillaKit titulo="Puntos" checked={estilo.show_dots !== false} onChange={(e) => ponerEstilo({ show_dots: e.target.checked })} />
             </div>
           )}
         </div>
@@ -323,10 +311,7 @@ export function InspectorBanners({
                   <Campo etiqueta="Etiqueta pequeña">
                     <input className={claseControl} value={typeof b.kicker === 'string' ? b.kicker : ''} onChange={(e) => ponerBanner(i, { kicker: e.target.value || undefined })} />
                   </Campo>
-                  <label className="flex items-center justify-between text-sm text-fg">
-                    <span>Texto sobre la imagen</span>
-                    <input type="checkbox" checked={b.show_overlay_text !== false && estilo.show_overlay_text !== false} onChange={(e) => ponerBanner(i, { show_overlay_text: e.target.checked })} />
-                  </label>
+                  <CasillaKit titulo="Texto sobre la imagen" checked={b.show_overlay_text !== false && estilo.show_overlay_text !== false} onChange={(e) => ponerBanner(i, { show_overlay_text: e.target.checked })} />
                 </div>
               )}
             </li>
@@ -337,10 +322,7 @@ export function InspectorBanners({
 
       {pestana === 'texto' && (
         <div className="flex flex-col gap-3">
-          <label className="flex items-center justify-between text-sm text-fg">
-            <span>Texto sobre la imagen</span>
-            <input type="checkbox" checked={estilo.show_overlay_text !== false} onChange={(e) => ponerEstilo({ show_overlay_text: e.target.checked })} />
-          </label>
+          <CasillaKit titulo="Texto sobre la imagen" checked={estilo.show_overlay_text !== false} onChange={(e) => ponerEstilo({ show_overlay_text: e.target.checked })} />
           <Lista etiqueta="Horizontal" valor={estilo.text_align} opciones={ALINEACIONES} nombres={{ left: 'Izquierda', center: 'Centro', right: 'Derecha' }} onCambiar={(v) => ponerEstilo({ text_align: v })} />
           <Lista etiqueta="Vertical" valor={estilo.text_valign} opciones={VALIGN} nombres={{ top: 'Arriba', center: 'Centro', bottom: 'Abajo' }} onCambiar={(v) => ponerEstilo({ text_valign: v })} />
           <Lista etiqueta="Tamaño" valor={estilo.title_size} opciones={['sm', 'md', 'lg'] as const} nombres={{ sm: 'Chico', md: 'Mediano', lg: 'Grande' }} onCambiar={(v) => ponerEstilo({ title_size: v })} />
@@ -353,20 +335,17 @@ export function InspectorBanners({
             <Color etiqueta="Color 2" valor={estilo.overlay_color_2} onCambiar={(v) => ponerEstilo({ overlay_color_2: v ?? undefined })} />
           </div>
           <Campo etiqueta={`Ángulo${estilo.overlay_angle != null ? `: ${estilo.overlay_angle}` : ''}`}>
-            <input type="range" min={0} max={360} value={estilo.overlay_angle ?? 180} onChange={(e) => ponerEstilo({ overlay_angle: Number(e.target.value) })} />
+            <NumeroKit min={0} max={360} value={estilo.overlay_angle ?? 180} onChange={(e) => ponerEstilo({ overlay_angle: Number(e.target.value) })} />
           </Campo>
           <Campo etiqueta={`Opacidad${estilo.overlay_opacity != null ? `: ${estilo.overlay_opacity}` : ''}`}>
-            <input type="range" min={0} max={100} value={estilo.overlay_opacity ?? 55} onChange={(e) => ponerEstilo({ overlay_opacity: Number(e.target.value) })} />
+            <NumeroKit min={0} max={100} value={estilo.overlay_opacity ?? 55} onChange={(e) => ponerEstilo({ overlay_opacity: Number(e.target.value) })} />
           </Campo>
         </div>
       )}
 
       {pestana === 'boton' && (
         <div className="flex flex-col gap-3">
-          <label className="flex items-center justify-between text-sm text-fg">
-            <span>Mostrar botón</span>
-            <input type="checkbox" checked={estilo.button_on !== false} onChange={(e) => ponerEstilo({ button_on: e.target.checked })} />
-          </label>
+          <CasillaKit titulo="Mostrar botón" checked={estilo.button_on !== false} onChange={(e) => ponerEstilo({ button_on: e.target.checked })} />
           <Lista etiqueta="Estilo" valor={estilo.button_style} opciones={ESTILOS_BOTON} nombres={{ solid: 'Sólido', outline: 'Contorno', ghost: 'Fantasma', gradient: 'Degradado', icon_only: 'Solo ícono' }} onCambiar={(v) => ponerEstilo({ button_style: v })} />
           <Lista etiqueta="Forma" valor={estilo.button_shape} opciones={FORMAS_BOTON} nombres={{ square: 'Cuadrada', rounded: 'Redonda', semi: 'Semi', pill: 'Píldora', circle: 'Círculo' }} onCambiar={(v) => ponerEstilo({ button_shape: v })} />
           <Lista etiqueta="Tamaño" valor={estilo.button_size} opciones={TAMANOS_BOTON} nombres={{ sm: 'Chico', md: 'Mediano', lg: 'Grande' }} onCambiar={(v) => ponerEstilo({ button_size: v })} />
@@ -376,8 +355,8 @@ export function InspectorBanners({
             <Color etiqueta="Texto" valor={estilo.button_color} onCambiar={(v) => ponerEstilo({ button_color: v ?? undefined })} />
             <Color etiqueta="Borde" valor={estilo.button_border} onCambiar={(v) => ponerEstilo({ button_border: v ?? undefined })} />
             <Color etiqueta="Hover" valor={estilo.button_hover} onCambiar={(v) => ponerEstilo({ button_hover: v ?? undefined })} />
-            <Color etiqueta="Degradado 1" valor={estilo.button_gradient_1} onCambiar={(v) => ponerEstilo({ button_gradient_1: v ?? undefined })} />
-            <Color etiqueta="Degradado 2" valor={estilo.button_gradient_2} onCambiar={(v) => ponerEstilo({ button_gradient_2: v ?? undefined })} />
+            <Color etiqueta={tk('controles.degradado1')} valor={estilo.button_gradient_1} onCambiar={(v) => ponerEstilo({ button_gradient_1: v ?? undefined })} />
+            <Color etiqueta={tk('controles.degradado2')} valor={estilo.button_gradient_2} onCambiar={(v) => ponerEstilo({ button_gradient_2: v ?? undefined })} />
           </div>
         </div>
       )}
@@ -386,18 +365,18 @@ export function InspectorBanners({
         <div className="flex flex-col gap-3">
           <Lista etiqueta="Forma" valor={estilo.banner_shape} opciones={FORMAS_BANNER} nombres={{ rect: 'Rectangular', rounded: 'Redondeado', semi: 'Semi', circle: 'Círculo', arch: 'Arco' }} onCambiar={(v) => ponerEstilo({ banner_shape: v })} />
           <Campo etiqueta={`Radio${estilo.banner_radius != null ? `: ${estilo.banner_radius}` : ''}`}>
-            <input type="range" min={0} max={48} value={estilo.banner_radius ?? 16} onChange={(e) => ponerEstilo({ banner_radius: Number(e.target.value) })} />
+            <NumeroKit min={0} max={48} value={estilo.banner_radius ?? 16} onChange={(e) => ponerEstilo({ banner_radius: Number(e.target.value) })} />
           </Campo>
           <Campo etiqueta="Borde">
-            <input className={claseControl} type="number" min={0} max={8} value={estilo.border_width ?? 0} onChange={(e) => ponerEstilo({ border_width: Number(e.target.value) })} />
+            <NumeroKit min={0} max={8} value={estilo.border_width ?? 0} onChange={(e) => ponerEstilo({ border_width: Number(e.target.value) })} />
           </Campo>
           <Color etiqueta="Color del borde" valor={estilo.border_color} onCambiar={(v) => ponerEstilo({ border_color: v ?? undefined })} />
           <Lista etiqueta="Sombra" valor={estilo.shadow} opciones={SOMBRAS_BANNER} nombres={{ none: 'Ninguna', sm: 'Suave', md: 'Media', lg: 'Fuerte' }} onCambiar={(v) => ponerEstilo({ shadow: v })} />
           <Campo etiqueta={`Separación${estilo.gap != null ? `: ${estilo.gap}` : ''}`}>
-            <input type="range" min={0} max={64} value={estilo.gap ?? 24} onChange={(e) => ponerEstilo({ gap: Number(e.target.value) })} />
+            <NumeroKit min={0} max={64} value={estilo.gap ?? 24} onChange={(e) => ponerEstilo({ gap: Number(e.target.value) })} />
           </Campo>
           <Campo etiqueta={`Margen de la sección${estilo.section_margin != null ? `: ${estilo.section_margin}` : ''}`}>
-            <input type="range" min={0} max={80} value={estilo.section_margin ?? 0} onChange={(e) => ponerEstilo({ section_margin: Number(e.target.value) })} />
+            <NumeroKit min={0} max={80} value={estilo.section_margin ?? 0} onChange={(e) => ponerEstilo({ section_margin: Number(e.target.value) })} />
           </Campo>
           <div className="grid grid-cols-2 gap-2">
             <Color etiqueta="Fondo" valor={estilo.section_bg} onCambiar={(v) => ponerEstilo({ section_bg: v ?? undefined })} />

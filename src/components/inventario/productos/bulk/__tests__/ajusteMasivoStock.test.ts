@@ -149,10 +149,24 @@ describe('sumarResumen', () => {
   });
 });
 
+/** `products` responde qué padres (de la lista) tienen variantes. */
+function mockPadres(padres: number[]) {
+  from.mockImplementation(() => {
+    const cadena = {
+      select: () => cadena,
+      eq: () => cadena,
+      neq: () => Promise.resolve({ data: padres.map((id) => ({ parent_product_id: id })), error: null }),
+      in: () => cadena,
+    };
+    return cadena;
+  });
+}
+
 describe('bulkUpdateStock — servicio', () => {
   beforeEach(() => {
     rpc.mockReset();
     from.mockReset();
+    mockPadres([]);
   });
 
   it('expande una vez en el servidor, ajusta por lotes sin re-expandir y no toca stock_levels', async () => {
@@ -174,10 +188,23 @@ describe('bulkUpdateStock — servicio', () => {
     });
     expect(lotes.flat()).toEqual(alcance);
     expect(new Set(lotes.flat()).size).toBe(alcance.length);
-    expect(from).not.toHaveBeenCalled();
+    expect(from.mock.calls.every(([tabla]) => tabla === 'products')).toBe(true);
     expect(r.fallidos).toBe(0);
     expect(r.exitosos).toBe(450);
     expect(r.resumen.ajustados).toBe(448);
+  });
+
+  it('omite los padres con variantes: el stock va en las variantes', async () => {
+    mockPadres([10]);
+    rpc.mockImplementation((nombre: string, args: Record<string, unknown>) => {
+      if (nombre === 'fn_productos_stock_masivo_alcance') return Promise.resolve({ data: [10, 11, 12], error: null });
+      const n = (args.p_product_ids as number[]).length;
+      return Promise.resolve({ data: { productos: n, ajustados: n }, error: null });
+    });
+    const r = await bulkUpdateStock(9, [10], 4, 5, 'set', null, 'apertura');
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_product_ids: [11, 12] });
+    expect(r.padresOmitidos).toBe(1);
+    expect(r.exitosos).toBe(2);
   });
 
   it('la apertura se declara en la RPC y el ajuste es el valor por defecto', async () => {

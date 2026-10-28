@@ -20,6 +20,7 @@ import { filaParaRpc, MAX_FILAS_POR_LOTE, type CuerpoLote, type FilaRpc } from '
 import type { CampoDuplicado, ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import { urlPublicaSegura } from '@/lib/services/urlSegura';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
+import { padresConVariantes } from '@/components/inventario/productos/bulk/padresConVariantes';
 
 const BUCKET = 'product-images';
 const MAX_BYTES_IMAGEN = 8 * 1024 * 1024;
@@ -29,6 +30,8 @@ const MODOS = new Set(['crear_y_actualizar', 'solo_crear', 'solo_actualizar', 'd
 
 export interface ContextoRespuesta {
   existentes: Record<string, number>;
+  /** SKU (en mayúsculas) de los existentes que son padres con variantes no eliminadas: no reciben stock. */
+  padres: string[];
   porNombre: Record<string, { id: number; sku: string }>;
   categorias: string[];
   impuestos: string[];
@@ -51,6 +54,10 @@ export async function contextoImportacion(
     if (error) throw new Error(error.message);
     for (const p of (data ?? []) as { id: number; sku: string }[]) existentes[p.sku.toUpperCase()] = p.id;
   }
+
+  // Padres con variantes que ya existen en la base (solo lectura, en lotes).
+  const padresIds = await padresConVariantes(sb, organizationId, Object.values(existentes));
+  const padres = Object.entries(existentes).filter(([, id]) => padresIds.has(id)).map(([sku]) => sku);
 
   const porNombre: Record<string, { id: number; sku: string }> = {};
   const buscados = new Set(entrada.nombres.map(normalizarNombre).filter(Boolean));
@@ -87,6 +94,7 @@ export async function contextoImportacion(
   }
   return {
     existentes,
+    padres,
     porNombre,
     categorias: Array.from(new Set(((cats ?? []) as { name: string }[]).map((c) => normalizarNombre(c.name)))),
     impuestos: Array.from(impuestos),
@@ -143,7 +151,7 @@ export interface ResultadoLote {
 /** Traduce los errores de la base a un código estable para la UI. */
 export function codigoErrorRpc(mensaje: string): string {
   const m = mensaje.toUpperCase();
-  for (const c of ['SIN_SKU', 'SIN_NOMBRE', 'VARIANTE_PADRE_ELIMINADO', 'PADRE_NO_ENCONTRADO', 'STOCK_SIN_COSTO', 'PRECIO_INVALIDO', 'COSTO_INVALIDO', 'STOCK_INVALIDO']) if (m.includes(c)) return c;
+  for (const c of ['SIN_PERMISO_CREAR_CATEGORIA', 'SIN_SKU', 'SIN_NOMBRE', 'VARIANTE_PADRE_ELIMINADO', 'PADRE_NO_ENCONTRADO', 'STOCK_SIN_COSTO', 'PRECIO_INVALIDO', 'COSTO_INVALIDO', 'STOCK_INVALIDO']) if (m.includes(c)) return c;
   if (m.includes('DUPLICATE KEY')) return 'DUPLICADO';
   if (m.includes('VIOLATES CHECK') || m.includes('VIOLATES FOREIGN KEY')) return 'DATO_NO_VALIDO';
   return 'ERROR';

@@ -322,6 +322,9 @@ export function campoVisible(campo: ContentFieldDef, contenido: Record<string, u
   const c = campo.showIf;
   if (!c) return true;
   if (c.variantIn && !c.variantIn.includes(variante)) return false;
+  const vacio = (k: string) => contenido?.[k] == null || contenido?.[k] === '';
+  if (c.allEmpty && !c.allEmpty.every(vacio)) return false;
+  if (c.anyFilled && c.anyFilled.every(vacio)) return false;
   if (c.field) {
     const v = contenido?.[c.field];
     if (c.equals !== undefined && v !== c.equals) return false;

@@ -25,6 +25,8 @@ export const AVISOS_INFORMATIVOS = new Set<string>(['skuGenerado', 'promoEnNotas
 export interface ContextoValidacion {
   /** SKU existente (en mayúsculas) → id. */
   existentes: Map<string, number>;
+  /** SKU (en mayúsculas) que en la base ya son padres con variantes no eliminadas. */
+  padresExistentes?: Set<string>;
   /**
    * Nombre normalizado → producto existente. Solo lo usa la importación web
    * (los productos de una tienda no traen nuestro SKU): una fila sin variantes
@@ -63,6 +65,8 @@ export function validarFilas(filas: FilaImport[], ctx: ContextoValidacion): Fila
   const generarSku = crearGeneradorSku('IMP', ocupados);
   const primeraFilaPorSku = new Map<string, number>();
   const skusArchivo = new Set(filas.map((f) => f.sku).filter((s): s is string => !!s).map(claveSku));
+  // Padres del archivo: marcados «es padre» o citados como «SKU padre» por alguna variante.
+  const padresArchivo = new Set(filas.map((f) => f.parentSku).filter((s): s is string => !!s?.trim()).map(claveSku));
 
   return filas.map((original) => {
     const f: FilaImport = { ...original };
@@ -125,6 +129,16 @@ export function validarFilas(filas: FilaImport[], ctx: ContextoValidacion): Fila
       avisos.push({ codigo: 'skuRenombrado', params: { sku: nuevo } });
       f.sku = nuevo;
       productoId = undefined;
+    }
+
+    // ── Stock en un padre con variantes ────────────────────────────────
+    // El stock vive en las variantes: si el archivo trae stock en el padre, no se carga y se avisa.
+    const esPadreConVariantes =
+      f.isParent === true ||
+      (!!f.sku?.trim() && (padresArchivo.has(claveSku(f.sku)) || !!ctx.padresExistentes?.has(claveSku(f.sku))));
+    if (esPadreConVariantes && (f.stock ?? 0) > 0) {
+      avisos.push({ codigo: 'stockEnPadre', params: { cantidad: f.stock as number } });
+      f.stock = undefined;
     }
 
     // ── Stock ───────────────────────────────────────────────────────────

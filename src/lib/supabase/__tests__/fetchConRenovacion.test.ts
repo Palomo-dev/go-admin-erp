@@ -6,6 +6,11 @@ import { crearFetchConRenovacion, reiniciarRenovacionParaTests } from '../fetchC
 beforeEach(() => reiniciarRenovacionParaTests());
 
 const r = (status: number) => ({ status, ok: status < 400 }) as Response;
+/** Respuesta con cuerpo JSON que se puede clonar y leer (como la de `fetch`). */
+const rj = (status: number, cuerpo: unknown): Response => {
+  const hacer = (): Response => ({ status, ok: status < 400, json: async () => cuerpo, clone: hacer }) as unknown as Response;
+  return hacer();
+};
 
 describe('fetch con renovación (A4, QA 27-oct)', () => {
   it('401 en /api: renueva una vez y reintenta con el Bearer nuevo', async () => {
@@ -46,5 +51,58 @@ describe('fetch con renovación (A4, QA 27-oct)', () => {
     await f('https://otro.com/api/x');
     await f('/app/inicio');
     expect(renovar).not.toHaveBeenCalled();
+  });
+
+  it('login con contraseña mala (/api/auth/acceso): un solo 401, sin renovar', async () => {
+    const base = jest.fn().mockResolvedValue(rj(401, { ok: false, codigo: 'credenciales' }));
+    const renovar = jest.fn().mockResolvedValue('t');
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    const res = await f('/api/auth/acceso', { method: 'POST', body: '{}' });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ ok: false, codigo: 'credenciales' });
+    expect(renovar).not.toHaveBeenCalled();
+    expect(base).toHaveBeenCalledTimes(1);
+  });
+
+  it("cualquier ruta cuyo 401 trae codigo: 'credenciales' no se renueva ni se reintenta", async () => {
+    const base = jest.fn().mockResolvedValue(rj(401, { codigo: 'credenciales' }));
+    const renovar = jest.fn().mockResolvedValue('t');
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    expect((await f('/api/otra/login', { method: 'POST', body: '{}' })).status).toBe(401);
+    expect(renovar).not.toHaveBeenCalled();
+    expect(base).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    '/api/auth/contrasena',
+    '/api/auth/invite/pendiente',
+    '/api/integrations/twilio/verify/check',
+    '/api/integrations/twilio/verify/send',
+    '/api/integrations/open-finance/links/7/login',
+  ])('sesión vencida en %s: renueva y reintenta', async (ruta) => {
+    const base = jest.fn().mockResolvedValueOnce(rj(401, { ok: false, codigo: 'sin_sesion' })).mockResolvedValueOnce(r(200));
+    const renovar = jest.fn().mockResolvedValue('t');
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    expect((await f(ruta, { method: 'POST', body: '{}' })).status).toBe(200);
+    expect(renovar).toHaveBeenCalledTimes(1);
+    expect(base).toHaveBeenCalledTimes(2);
+  });
+
+  it('un 400 (contraseña actual incorrecta) pasa tal cual, sin renovar', async () => {
+    const base = jest.fn().mockResolvedValue(rj(400, { ok: false, codigo: 'actual_incorrecta' }));
+    const renovar = jest.fn();
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    const res = await f('/api/auth/contrasena', { method: 'POST', body: '{}' });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ ok: false, codigo: 'actual_incorrecta' });
+    expect(renovar).not.toHaveBeenCalled();
+  });
+
+  it('una ruta que solo empieza parecido sí se renueva', async () => {
+    const base = jest.fn().mockResolvedValueOnce(r(401)).mockResolvedValueOnce(r(200));
+    const renovar = jest.fn().mockResolvedValue('t');
+    const f = crearFetchConRenovacion(base as unknown as typeof fetch, renovar);
+    expect((await f('/api/authz-algo')).status).toBe(200);
+    expect(renovar).toHaveBeenCalledTimes(1);
   });
 });

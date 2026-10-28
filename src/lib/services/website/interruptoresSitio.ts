@@ -222,5 +222,23 @@ export function aplicarInterruptoresSitio(seccion: SectionTypeDefinition): Secti
     return [...grupos.entries()].map(([d, vs]) => ({ ...conVariantes(c, vs), defaultValue: d }));
   });
 
-  return { ...seccion, contentFields };
+  return { ...seccion, contentFields: seccion.type === 'hero' ? capaPantallaCompletaSinImagen(contentFields) : contentFields };
+}
+
+/**
+ * HeroFullscreen sin imagen (ni de escritorio ni de celular) pinta la capa al 100 % (hace de
+ * fondo); con imagen, al 70 %. El inspector muestra el que corresponde (QA 27-oct, D4).
+ */
+const IMAGENES_HERO = ['image_url', 'image_url_mobile'];
+function capaPantallaCompletaSinImagen(campos: ContentFieldDef[]): ContentFieldDef[] {
+  return campos.flatMap((c) => {
+    if (c.key !== 'overlay_opacity' || !c.showIf?.variantIn?.includes('fullscreen')) return [c];
+    const otras = c.showIf.variantIn.filter((v) => v !== 'fullscreen');
+    const fullscreen = { ...c.showIf, variantIn: ['fullscreen'] };
+    return [
+      ...(otras.length ? [{ ...c, showIf: { ...c.showIf, variantIn: otras } }] : []),
+      { ...c, showIf: { ...fullscreen, anyFilled: IMAGENES_HERO } },
+      { ...c, showIf: { ...fullscreen, allEmpty: IMAGENES_HERO }, defaultValue: 100 },
+    ];
+  });
 }

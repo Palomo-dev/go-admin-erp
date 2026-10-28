@@ -32,6 +32,8 @@ import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
+import { AjustesAnteriores } from './InspectorEncabezado';
+import { aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
 import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
 export type PestanaSeccion = 'diseno' | 'contenido' | 'estilo' | 'avanzado';
@@ -84,6 +86,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   const nombre = nombreDeSeccion(s.section_type);
   const variante = nombreDeVariante(s.section_type, s.section_variant);
   const contenido = (s.content ?? {}) as Record<string, unknown>;
+  const onCambiarContenido = (siguiente: Record<string, unknown>) =>
+    p.onCambiarContenido(capaAlSubirPrimeraImagen(s.section_type, s.section_variant, contenido, siguiente));
   const estilo = useMemo(() => leerEstiloSeccion(s.settings), [s.settings]);
   const visibilidad = useMemo(() => visibilidadDeSeccion(s), [s]);
   const idTabs = `inspector-seccion-${s.id}`;
@@ -95,6 +99,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       // declarados porque el sitio público los pinta, pero no se muestran dos veces.
       if (boletin && c.type !== 'newsletter') return false;
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
+      // Espaciado y ancho: una sola opción, en Estilo (Figma v2). Lo guardado sale en «Ajustes de versiones anteriores».
+      if (campoCubiertoPorEstilo(c, s.section_type)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
       if (c.type === 'repeater' && c.key === 'items') {
@@ -140,9 +146,9 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           // Exclusión mutua de categories_grid (como en el editor anterior).
           if (c.key === 'show_icon' && v === true) siguiente.show_image = false;
           if (c.key === 'show_image' && v === true) siguiente.show_icon = false;
-          p.onCambiarContenido(siguiente);
+          onCambiarContenido(siguiente);
         }}
-        onCambiarContenido={p.onCambiarContenido}
+        onCambiarContenido={onCambiarContenido}
         organizationId={p.organizationId}
         paleta={p.paleta}
         fondo={p.tema.colores.fondo ?? null}
@@ -251,17 +257,17 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
               <InspectorTarjetaProducto
                 guardado={contenido.product_card_style}
                 heredado={p.estiloTarjetaSitio}
-                onCambiar={(estilo) => p.onCambiarContenido({ ...contenido, product_card_style: estilo })}
+                onCambiar={(estilo) => onCambiarContenido({ ...contenido, product_card_style: estilo })}
                 onQuitar={() => {
                   const siguiente = { ...contenido };
                   delete siguiente.product_card_style;
-                  p.onCambiarContenido(siguiente);
+                  onCambiarContenido(siguiente);
                 }}
                 onAplicarTodas={p.onAplicarTarjeta}
               />
             )}
             {s.section_type === 'promo_banners' && (
-              <InspectorBanners contenido={contenido} onCambiar={p.onCambiarContenido} />
+              <InspectorBanners contenido={contenido} onCambiar={onCambiarContenido} />
             )}
             {pintarConBloques(campos('diseno'))}
             {(TIPOS_PAGINACION as readonly string[]).includes(s.section_type) && (
@@ -272,12 +278,12 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                   if (v) {
                     const siguiente = { ...contenido };
                     delete siguiente.paginacion;
-                    p.onCambiarContenido(siguiente);
+                    onCambiarContenido(siguiente);
                   } else {
-                    p.onCambiarContenido({ ...contenido, paginacion: { usar_global: false } });
+                    onCambiarContenido({ ...contenido, paginacion: { usar_global: false } });
                   }
                 }}
-                onCambiar={(val) => p.onCambiarContenido({ ...contenido, paginacion: { usar_global: false, ...val } })}
+                onCambiar={(val) => onCambiarContenido({ ...contenido, paginacion: { usar_global: false, ...val } })}
                 color="#111827"
               />
             )}
@@ -289,12 +295,12 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                   if (v) {
                     const siguiente = { ...contenido };
                     delete siguiente.carrusel;
-                    p.onCambiarContenido(siguiente);
+                    onCambiarContenido(siguiente);
                   } else {
-                    p.onCambiarContenido({ ...contenido, carrusel: { usar_global: false } });
+                    onCambiarContenido({ ...contenido, carrusel: { usar_global: false } });
                   }
                 }}
-                onCambiar={(val) => p.onCambiarContenido({ ...contenido, carrusel: { usar_global: false, ...val } })}
+                onCambiar={(val) => onCambiarContenido({ ...contenido, carrusel: { usar_global: false, ...val } })}
               />
             )}
             {avisoBorrador}
@@ -317,6 +323,13 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             tema={p.tema}
             catalogoFuentes={p.catalogoFuentes}
             sede={p.sede?.estilo ?? null}
+          />
+        )}
+        {pestana === 'estilo' && (
+          <AjustesAnteriores
+            ajustes={contenido}
+            entradas={entradasAnterioresSeccion(contenido, s.section_type)}
+            cambiar={(c) => onCambiarContenido(aplicarCambioContenido(contenido, c))}
           />
         )}
 

@@ -11,6 +11,7 @@
  *   `primary_color`, fuentes → `font_heading`/`font_body`…); redondeo, botones y movimiento no
  *   tienen columna y se muestran deshabilitados con su motivo.
  */
+import { SelectKit, CasillaKit, ColorKit } from './inspector/controlesKit';
 import { useMemo } from 'react';
 import { X } from 'lucide-react';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
@@ -82,6 +83,9 @@ function estiloLegacy(s: WebsiteSettings | null, base: EstiloCatalogo | null): E
     movimiento: base.movimiento,
   };
 }
+
+const PESOS = [['normal', 'Normal'], ['medium', 'Medio'], ['semibold', 'Seminegrita'], ['bold', 'Negrita']] as const;
+const TAMANOS_TITULO = [['sm', 'Pequeño'], ['md', 'Mediano'], ['lg', 'Grande'], ['xl', 'Muy grande'], ['2xl', 'Enorme'], ['3xl', 'Gigante'], ['4xl', 'Máximo']] as const;
 
 export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
   const t = useTextosEditor();
@@ -290,67 +294,63 @@ function EstiloGlobalSecciones({
   return (
     <div className="mt-4 flex flex-col gap-2 border-t border-line px-1 pt-3">
       <p className="text-sm font-semibold text-fg">Encabezados de sección</p>
-      <p className="text-[12px] text-fg-secondary">Aplican a toda la tienda. Cada sección puede heredarlos o pisarlos.</p>
-      <label className="text-[12px] text-fg-secondary">Alineación
-        <select className={control} disabled={deshabilitado} value={String(actual.align ?? '')} onChange={(e) => set('align', e.target.value)}>
+      <p className="flex flex-col gap-1 text-[12px] text-fg-secondary">Aplican a toda la tienda. Cada sección puede heredarlos o pisarlos.</p>
+      <div role="group" aria-label="Alineación" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Alineación
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.align ?? '')} onChange={(e) => set('align', e.target.value)}>
           <option value="">Como hoy</option>
           <option value="left">Izquierda</option>
           <option value="center">Centro</option>
           <option value="right">Derecha</option>
-        </select>
-      </label>
-      <label className="text-[12px] text-fg-secondary">Disposición
-        <select className={control} disabled={deshabilitado} value={String(actual.layout ?? '')} onChange={(e) => set('layout', e.target.value)}>
+        </SelectKit>
+      </div>
+      <div role="group" aria-label="Disposición" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Disposición
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.layout ?? '')} onChange={(e) => set('layout', e.target.value)}>
           <option value="">Como hoy</option>
           <option value="stacked">Título arriba</option>
           <option value="inline">Título y enlace en fila</option>
           <option value="side">Columna lateral</option>
-        </select>
-      </label>
-      <label className="text-[12px] text-fg-secondary">Tamaño del título
-        <select className={control} disabled={deshabilitado} value={String(actual.title_size ?? '')} onChange={(e) => set('title_size', e.target.value)}>
+        </SelectKit>
+      </div>
+      <div role="group" aria-label="Tamaño del título" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Tamaño del título
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.title_size ?? '')} onChange={(e) => set('title_size', e.target.value)}>
           <option value="">Como hoy</option>
-          {['sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl'].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </label>
-      <label className="text-[12px] text-fg-secondary">Peso
-        <select className={control} disabled={deshabilitado} value={String(actual.title_weight ?? '')} onChange={(e) => set('title_weight', e.target.value)}>
+          {TAMANOS_TITULO.map(([v, e]) => <option key={v} value={v}>{e}</option>)}
+        </SelectKit>
+      </div>
+      <div role="group" aria-label="Peso" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Peso
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.title_weight ?? '')} onChange={(e) => set('title_weight', e.target.value)}>
           <option value="">Como hoy</option>
-          {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </label>
-      <label className="flex justify-between text-sm text-fg"><span>Mayúsculas</span><input type="checkbox" disabled={deshabilitado} checked={actual.title_uppercase === true} onChange={(e) => set('title_uppercase', e.target.checked)} /></label>
-      <label className="text-[12px] text-fg-secondary">Línea decorativa
-        <select className={control} disabled={deshabilitado} value={String(actual.title_line ?? '')} onChange={(e) => set('title_line', e.target.value)}>
+          {PESOS.map(([v, e]) => <option key={v} value={v}>{e}</option>)}
+        </SelectKit>
+      </div>
+      <CasillaKit titulo="Mayúsculas" disabled={deshabilitado} checked={actual.title_uppercase === true} onChange={(e) => set('title_uppercase', e.target.checked)} />
+      <div role="group" aria-label="Línea decorativa" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Línea decorativa
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.title_line ?? '')} onChange={(e) => set('title_line', e.target.value)}>
           <option value="">Ninguna</option>
           <option value="below">Debajo</option>
           <option value="sides">A los lados</option>
-        </select>
-      </label>
-      <label className="text-[12px] text-fg-secondary">Color del título
-        <input type="color" disabled={deshabilitado} value={typeof actual.title_color === 'string' && actual.title_color.startsWith('#') ? actual.title_color : '#111827'} onChange={(e) => set('title_color', e.target.value)} />
-      </label>
-      <label className="text-[12px] text-fg-secondary">Fuente del título
+        </SelectKit>
+      </div>
+      <ColorKit etiqueta="Color del título" disabled={deshabilitado} value={typeof actual.title_color === 'string' && actual.title_color.startsWith('#') ? actual.title_color : '#111827'} onChange={(e) => set('title_color', e.target.value)} />
+      <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fuente del título
         <input className={control} disabled={deshabilitado} value={String(actual.title_font ?? '')} onChange={(e) => set('title_font', e.target.value)} />
       </label>
-      <label className="text-[12px] text-fg-secondary">Tamaño de la descripción
-        <select className={control} disabled={deshabilitado} value={String(actual.description_size ?? '')} onChange={(e) => set('description_size', e.target.value)}>
+      <div role="group" aria-label="Tamaño de la descripción" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Tamaño de la descripción
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.description_size ?? '')} onChange={(e) => set('description_size', e.target.value)}>
           <option value="">Como hoy</option>
           <option value="sm">Pequeño</option>
           <option value="md">Mediano</option>
           <option value="lg">Grande</option>
-        </select>
-      </label>
-      <label className="text-[12px] text-fg-secondary">Peso de la descripción
-        <select className={control} disabled={deshabilitado} value={String(actual.description_weight ?? '')} onChange={(e) => set('description_weight', e.target.value)}>
+        </SelectKit>
+      </div>
+      <div role="group" aria-label="Peso de la descripción" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Peso de la descripción
+        <SelectKit className={control} disabled={deshabilitado} value={String(actual.description_weight ?? '')} onChange={(e) => set('description_weight', e.target.value)}>
           <option value="">Como hoy</option>
-          {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </label>
-      <label className="text-[12px] text-fg-secondary">Color de la descripción
-        <input type="color" disabled={deshabilitado} value={typeof actual.description_color === 'string' && actual.description_color.startsWith('#') ? actual.description_color : '#4b5563'} onChange={(e) => set('description_color', e.target.value)} />
-      </label>
-      <label className="text-[12px] text-fg-secondary">Fuente de la descripción
+          {PESOS.map(([v, e]) => <option key={v} value={v}>{e}</option>)}
+        </SelectKit>
+      </div>
+      <ColorKit etiqueta="Color de la descripción" disabled={deshabilitado} value={typeof actual.description_color === 'string' && actual.description_color.startsWith('#') ? actual.description_color : '#4b5563'} onChange={(e) => set('description_color', e.target.value)} />
+      <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Fuente de la descripción
         <input className={control} disabled={deshabilitado} value={String(actual.description_font ?? '')} onChange={(e) => set('description_font', e.target.value)} />
       </label>
       <button type="button" className="text-left text-sm font-medium underline" disabled={deshabilitado} onClick={aplicar}>Aplicar a todas las secciones</button>

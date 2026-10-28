@@ -104,14 +104,18 @@ describe('Formulario de contacto', () => {
 });
 
 describe('capa de la portada (QA 27-oct, D4): el editor muestra lo que pinta la tienda', () => {
+  const conFoto = { image_url: 'https://x/a.jpg' };
   it.each([
-    ['fullscreen', 70],
-    ['video', 60],
-    ['slider', 40],
-    ['split', 0],
-  ])('%s sin valor guardado → %i %%', (variante, esperado) => {
+    ['fullscreen', conFoto, 70],
+    ['fullscreen', { image_url_mobile: 'https://x/m.jpg' }, 70],
+    ['fullscreen', {}, 100],
+    ['fullscreen', { image_url: '', image_url_mobile: null }, 100],
+    ['video', {}, 60],
+    ['slider', conFoto, 40],
+    ['split', conFoto, 0],
+  ])('%s %j sin valor guardado → %i %%', (variante, contenido, esperado) => {
     const visibles = (getSectionDefinition('hero')?.contentFields ?? []).filter(
-      (f) => f.key === 'overlay_opacity' && campoVisible(f, {}, variante),
+      (f) => f.key === 'overlay_opacity' && campoVisible(f, contenido as Record<string, unknown>, variante),
     );
     expect(visibles).toHaveLength(1);
     expect(visibles[0].defaultValue).toBe(esperado);

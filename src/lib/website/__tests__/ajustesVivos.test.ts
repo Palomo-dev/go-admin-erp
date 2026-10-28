@@ -11,7 +11,18 @@ describe('ajustes en vivo del lienzo', () => {
       analytics_id: 'G-1',
       custom_scripts: '<script>',
     });
-    expect(r).toEqual({ header_style: 'centered', footer_columns: 3, primary_color: '#000' });
+    expect(r).toMatchObject({ header_style: 'centered', footer_columns: 3, primary_color: '#000' });
+    for (const k of ['shipping_flat_rate', 'analytics_id', 'custom_scripts']) expect(k in r).toBe(false);
+  });
+
+  test('una opción quitada viaja como null para que el lienzo no se quede con la guardada', () => {
+    const r = ajustesParaLienzo({ header_style: 'default' });
+    expect(r.logo_position).toBeNull();
+    expect(r.header_layout).toBeNull();
+    expect(r.first_section_offset_px).toBeNull();
+    // Tema y marca no: el logo o los colores del servidor se quedan.
+    expect('logo_url' in r).toBe(false);
+    expect('primary_color' in r).toBe(false);
   });
 
   test('cambiar de menú no va en vivo (exige cargar otro menú)', () => {
@@ -28,7 +39,7 @@ describe('ajustes en vivo del lienzo', () => {
       expect(CLAVES_AJUSTES_VIVOS).toContain(c);
     }
     expect(CLAVES_PIE).toContain('footer_show_map');
-    expect(ajustesParaLienzo({ mobile_bottom_bar: ['reservar', 'llamar'] })).toEqual({ mobile_bottom_bar: ['reservar', 'llamar'] });
+    expect(ajustesParaLienzo({ mobile_bottom_bar: ['reservar', 'llamar'] })).toMatchObject({ mobile_bottom_bar: ['reservar', 'llamar'] });
   });
 
   test('los colores del menú móvil rechazan CSS inyectado y aceptan un hex', () => {

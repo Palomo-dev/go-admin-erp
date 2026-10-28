@@ -85,6 +85,8 @@ import {
 } from '@/lib/website/v2/estiloSeccion';
 import { useResumenSitio } from '@/components/sitio-web/resumen/useResumenSitio';
 import { useSitioV2 } from '@/components/sitio-web/useSitioV2';
+import { detalleErrorGuardado, motivoErrorGuardado } from './avisoErrorGuardado';
+import { cambiosEfectivos, igualesNormalizados } from './sinCambioReal';
 import { rutaEditorSitio } from '@/components/sitio-web/rutasSitioWeb';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
@@ -224,6 +226,8 @@ export function useEditorSitio() {
   /** Sitio cuyo borrador está cargado en la vista (`undefined` = ninguno aún). */
   const [sitioCargado, setSitioCargado] = useState<number | null | undefined>(undefined);
   const [ajustesLegacyPrincipal, setAjustesLegacyPrincipal] = useState<WebsiteSettings | null>(null);
+  const ajustesLegacyPrincipalRef = useRef(ajustesLegacyPrincipal);
+  ajustesLegacyPrincipalRef.current = ajustesLegacyPrincipal;
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('guardado');
   const [seccionesPersonalizadas, setSeccionesPersonalizadas] = useState<Set<string>>(new Set());
   const [programacion, setProgramacion] = useState<ProgramacionPublicacion | null>(null);
@@ -549,13 +553,15 @@ export function useEditorSitio() {
     autoguardadoRef.current?.habilitar(enV2);
   }, [enV2]);
 
-  // Error de guardado (no conflicto): aviso persistente con «Reintentar» (D/05-26).
-  const errorV2 = v2.error && !v2.error.esConflicto && estadoGuardado === 'error' ? v2.error.message : null;
+  // Error de guardado (no conflicto de versión): aviso persistente con «Reintentar» y el motivo según el
+  // código HTTP (401 sesión, 403 permiso, 409 otra pestaña, 422 datos inválidos, red) (auditoría 27-oct, 3).
+  const errorV2 = v2.error && !v2.error.esConflicto && estadoGuardado === 'error' ? v2.error : null;
   useEffect(() => {
     if (!errorV2) return;
+    const motivo = motivoErrorGuardado(errorV2);
     toast.error(t('guardado.errorTitulo'), {
       id: 'editor-error-guardado',
-      description: t('guardado.errorDescripcion'),
+      description: t(`guardado.motivo.${motivo}`, { detalle: detalleErrorGuardado(errorV2) }),
       duration: Infinity,
       action: { label: t('acciones.reintentar'), onClick: () => void autoguardadoRef.current?.ahora() },
     });
@@ -892,11 +898,21 @@ export function useEditorSitio() {
           if (columnaVaAlDocumento(clave)) delDocumento[clave] = valor;
           else operacion[clave] = valor;
         }
+        // Se compara después de normalizar: si nada cambia de verdad, no hay «cambios sin guardar» (auditoría 27-oct, 4).
+        let cambioReal = false;
         if (Object.keys(delDocumento).length > 0) {
           const nuevo = aplicarAjustesAlDocumento(doc, delDocumento).documento;
-          docLocalRef.current = nuevo;
-          setDocLocal(nuevo);
+          if (!igualesNormalizados(nuevo, doc)) {
+            cambioReal = true;
+            docLocalRef.current = nuevo;
+            setDocLocal(nuevo);
+          }
         }
+        const vigentes = { ...(ajustesLegacyPrincipalRef.current ?? {}), ...pendingSettingsUpdates.current } as Record<string, unknown>;
+        const operacionReal = cambiosEfectivos(operacion, vigentes);
+        for (const k of Object.keys(operacion)) if (!(k in operacionReal)) delete operacion[k];
+        if (Object.keys(operacion).length > 0) cambioReal = true;
+        if (!cambioReal) return;
         if (Object.keys(operacion).length > 0) {
           pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...(operacion as Partial<WebsiteSettings>) };
           setAjustesLegacyPrincipal((prev) => (prev ? { ...prev, ...(operacion as Partial<WebsiteSettings>) } : prev));
@@ -906,7 +922,9 @@ export function useEditorSitio() {
       }
       // Legacy: la fila de `website_settings`. Una columna nueva que aún no exista en la base no
       // se envía (el lienzo la pinta igual); la barra móvil va como texto «a,b».
-      const { enviar } = cambiosParaFilaLegacy(cambios as Record<string, unknown>, settingsRef.current as unknown as Record<string, unknown> | null);
+      const actualesLegacy = settingsRef.current as unknown as Record<string, unknown> | null;
+      if (Object.keys(cambiosEfectivos(cambios as Record<string, unknown>, actualesLegacy)).length === 0) return;
+      const { enviar } = cambiosParaFilaLegacy(cambios as Record<string, unknown>, actualesLegacy);
       setSettings((prev) => (prev ? { ...prev, ...cambios } : prev));
       pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...(enviar as Partial<WebsiteSettings>) };
       marcarCambio();
@@ -920,6 +938,7 @@ export function useEditorSitio() {
       const doc = docLocalRef.current;
       if (!doc) return;
       const nuevo = cambiar(doc);
+      if (igualesNormalizados(nuevo, doc)) return;
       docLocalRef.current = nuevo;
       setDocLocal(nuevo);
       marcarCambio();

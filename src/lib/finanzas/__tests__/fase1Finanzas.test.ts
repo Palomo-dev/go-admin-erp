@@ -8,6 +8,8 @@ import {
   cuentaCanonicaImpuesto,
   cuentasBancariasElegibles,
   esImpuestoIva,
+  CUENTAS_IMPUESTO_OBSOLETAS,
+  MAPEO_IMPUESTOS_SIEMBRA,
 } from '@/lib/finanzas/mapeoImpuesto';
 import {
   DEBITO_REVISADO,
@@ -142,18 +144,29 @@ describe('egreso que no es compra', () => {
 
 describe('mapeo de impuestos', () => {
   it('el IVA cae en 2408 y no en el auxiliar que no existe', () => {
-    expect(cuentaCanonicaImpuesto('IVA_19', 'IVA 19%')).toBe('2408');
-    expect(cuentaCanonicaImpuesto('IVA_5', 'IVA 5%')).toBe('2408');
-    expect(cuentaCanonicaImpuesto('IVA_0', 'Exento de IVA')).toBe('2408');
-    expect(cuentaAplicableDeMapeo('24080501', 'IVA_19', 'IVA 19%', new Set(['2365', '2408']))).toBe('2408');
+    expect(cuentaCanonicaImpuesto('IVA_19', 'IVA 19%')).toBe('24080501');
+    expect(cuentaCanonicaImpuesto('IVA 19', 'IVA 19%')).toBe('2408');
+    expect(cuentaCanonicaImpuesto('IVA_0', 'Exento de IVA')).toBeNull();
+    expect(cuentaAplicableDeMapeo('24080501', 'IVA 19', 'IVA 19%', new Set(['2365', '2408']))).toBe('2408');
     expect(cuentaAplicableDeMapeo('24080501', 'IVA_19', 'IVA 19%', new Set(['2365']))).toBeNull();
   });
 
   it('retefuente e ICA caen en el auxiliar de movimiento (2365/2367/2368 son título)', () => {
-    expect(cuentaAplicableDeMapeo('23650501', 'RETE_4', 'Retención en la Fuente 4%', PLAN)).toBe('23654001');
+    expect(cuentaAplicableDeMapeo('23650501', 'RETE_4', 'Retención en la Fuente 4%', new Set([...PLAN, '23652501']))).toBe('23652501');
+    expect(cuentaAplicableDeMapeo('23650501', 'RETE_X', 'Retención en la Fuente', PLAN)).toBe('23654001');
     expect(cuentaAplicableDeMapeo('23170501', 'ICA_0.966', 'ICA Bogotá 9.66x1000', PLAN)).toBe('23680501');
     expect(cuentaCanonicaImpuesto('RETEIVA_15', 'ReteIVA 15%')).toBe('23670501');
     expect(cuentaAplicableDeMapeo('23170501', 'ICA_0.966', 'ICA', new Set(['2368']))).toBeNull();
+  });
+
+  it('la siembra no usa las cuentas obsoletas y el exento no lleva cuenta', () => {
+    for (const cuenta of Object.values(MAPEO_IMPUESTOS_SIEMBRA)) {
+      expect(CUENTAS_IMPUESTO_OBSOLETAS as readonly string[]).not.toContain(cuenta);
+    }
+    expect(MAPEO_IMPUESTOS_SIEMBRA.IVA_0).toBeNull();
+    expect(MAPEO_IMPUESTOS_SIEMBRA.RETE_11_COMISION).toBe('23652001');
+    const sql = leer('supabase/migrations/20261027211000_siembra_mapeo_impuestos.sql');
+    for (const vieja of CUENTAS_IMPUESTO_OBSOLETAS) expect(sql).not.toMatch(new RegExp(`'${vieja}'`));
   });
 
   it('si la cuenta mapeada existe, se respeta', () => {

@@ -16,8 +16,27 @@ export interface FiscalPeriod {
   closed_by: string | null;
   closed_at: string | null;
   notes: string | null;
+  /** Reapertura (20261027212000): quién, cuándo y por qué. */
+  reopened_by?: string | null;
+  reopened_at?: string | null;
+  reopen_reason?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ConsecutivoComprobante {
+  comprobante_tipo: string;
+  comprobante_prefijo: string;
+  cantidad: number;
+  desde: number;
+  hasta: number;
+  saltos: number[];
+}
+
+/** El motivo de reapertura es obligatorio (mínimo 5 caracteres). Devuelve el texto limpio o null. */
+export function motivoReaperturaValido(motivo: string | null | undefined): string | null {
+  const limpio = (motivo ?? '').trim();
+  return limpio.length >= 5 ? limpio : null;
 }
 
 export class PeriodosFiscalesService {
@@ -74,14 +93,40 @@ export class PeriodosFiscalesService {
     if (error) throw error;
   }
 
-  static async reabrirPeriodo(id: string): Promise<void> {
+  /** Reabrir exige motivo; la base guarda quién, cuándo y el motivo. */
+  static async reabrirPeriodo(id: string, motivo: string): Promise<void> {
     const orgId = this.getOrganizationId();
     if (!orgId) throw new Error('No hay organización activa');
+    const limpio = motivoReaperturaValido(motivo);
+    if (!limpio) throw new Error('motivo_obligatorio');
     const { error } = await supabase.rpc('fn_reabrir_periodo', {
       p_organization_id: orgId,
       p_period_id: id,
+      p_motivo: limpio,
     });
     if (error) throw error;
+  }
+
+  /** Borradores y asientos pendientes con fecha en el periodo (bloquean el cierre). */
+  static async pendientesDelPeriodo(id: string): Promise<{ borradores: number; pendientes: number } | null> {
+    const orgId = this.getOrganizationId();
+    if (!orgId) return null;
+    const { data, error } = await supabase.rpc('fn_periodo_pendientes', { p_organization_id: orgId, p_period_id: id });
+    if (error || !data) return null;
+    const fila = data as { borradores?: number; pendientes?: number };
+    return { borradores: Number(fila.borradores) || 0, pendientes: Number(fila.pendientes) || 0 };
+  }
+
+  /** Consecutivo por tipo de comprobante del periodo, con los números que faltan. */
+  static async consecutivosDelPeriodo(id: string): Promise<ConsecutivoComprobante[]> {
+    const orgId = this.getOrganizationId();
+    if (!orgId) return [];
+    const { data, error } = await supabase.rpc('fn_consecutivos_periodo', { p_organization_id: orgId, p_period_id: id });
+    if (error || !Array.isArray(data)) return [];
+    return (data as ConsecutivoComprobante[]).map((fila) => ({
+      ...fila,
+      saltos: Array.isArray(fila.saltos) ? fila.saltos : [],
+    }));
   }
 
   /**

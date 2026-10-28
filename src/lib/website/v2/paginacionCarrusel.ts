@@ -296,7 +296,8 @@ export function sanitizarCarrusel(valor: unknown): ParcialCarrusel | null {
 
 function sinUsarGlobal<T extends { usar_global?: boolean }>(p: T | null): T | null {
   if (!p) return null
-  const { usar_global: _u, ...resto } = p
+  const resto: Partial<T> = { ...p }
+  delete resto.usar_global
   return Object.keys(resto).length ? (resto as T) : null
 }
 

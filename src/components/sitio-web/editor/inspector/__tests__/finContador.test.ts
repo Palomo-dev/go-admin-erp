@@ -24,3 +24,19 @@ describe('fin del contador (URGENC-03)', () => {
     expect(partirFin(viejo)).toEqual({ dia: '2026-12-25', hora: '04:59' })
   })
 })
+
+describe('desfaseZona en cambio de horario y segundos (QA fd02df326)', () => {
+  test('el desfase es el de esa hora local, no el de horas antes (Nueva York, 8 mar 2026 y 1 nov 2026)', () => {
+    expect(desfaseZona('2026-03-08', '03:30', 'America/New_York')).toBe('-04:00')
+    expect(desfaseZona('2026-03-08', '01:30', 'America/New_York')).toBe('-05:00')
+    expect(desfaseZona('2026-11-01', '03:00', 'America/New_York')).toBe('-05:00')
+    expect(desfaseZona('2026-07-01', '12:00', 'Europe/Madrid')).toBe('+02:00')
+    expect(desfaseZona('2026-12-24', '18:30', 'America/Bogota')).toBe('-05:00')
+  })
+  test('se conservan los segundos al editar día u hora', () => {
+    const p = partirFin('2026-12-24T18:30:45-05:00', 'America/Bogota')
+    expect(p).toEqual({ dia: '2026-12-24', hora: '18:30', seg: '45' })
+    expect(unirFin('2026-12-25', p.hora, 'America/Bogota', p.seg)).toBe('2026-12-25T18:30:45-05:00')
+    expect(partirFin('2026-12-24T18:30:00').seg).toBeUndefined()
+  })
+})

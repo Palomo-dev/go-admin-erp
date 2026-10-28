@@ -104,7 +104,7 @@ export function EditorEncabezado({ valor, onCambiar, fuentes = {} }: { valor: un
       <Accion
         valor={e.section_action ?? accionDesdeVerTodo(e)}
         onCambiar={(v) => {
-          const siguiente = { ...e, section_action: v };
+          const siguiente: Record<string, unknown> = { ...e, section_action: v };
           for (const k of CLAVES_VER_TODO) delete siguiente[k];
           if (v == null) delete siguiente.section_action;
           onCambiar(Object.keys(siguiente).length ? siguiente : undefined);

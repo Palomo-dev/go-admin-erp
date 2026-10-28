@@ -5,6 +5,7 @@
  * `checkout_show_countdown` del editor viejo, con sus defaults, y el lienzo las recibe en vivo.
  * Datos ficticios con la forma real de prod (daily_reset, hora 0, America/Bogota).
  */
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PanelContador } from '../inspector/PanelContador';
 import { finLocal, leerContador, partesFin, UBICACIONES_CONTADOR } from '../inspector/contadorLegacy';
@@ -21,7 +22,7 @@ const FILA = {
   countdown_enabled: true,
   countdown_mode: 'daily_reset',
   countdown_end_date: '',
-  countdown_timezone: 'America/Bogota',
+  countdown_timezone: DEFAULT_TIMEZONE,
   countdown_reset_hour: 0,
   countdown_title: '',
   countdown_show_in_header: true,
@@ -35,7 +36,7 @@ const FILA = {
 describe('contadorLegacy', () => {
   test('lee la fila como el editor viejo, con sus defaults', () => {
     const c = leerContador(FILA);
-    expect(c).toMatchObject({ activo: true, modo: 'daily_reset', zona: 'America/Bogota', horaReinicio: 0 });
+    expect(c).toMatchObject({ activo: true, modo: 'daily_reset', zona: DEFAULT_TIMEZONE, horaReinicio: 0 });
     expect(c.ubicaciones).toEqual({
       countdown_show_in_header: true, countdown_show_in_cart: true, checkout_show_countdown: true,
       countdown_show_in_product: true, countdown_show_in_hero: false,
@@ -52,9 +53,9 @@ describe('contadorLegacy', () => {
     expect(finLocal('2026-12-24', '20:30')).toBe('2026-12-24T20:30');
     expect(finLocal('2026-12-24', '')).toBe('2026-12-24T23:59');
     expect(finLocal('', '10:00')).toBe('');
-    expect(partesFin('2026-12-24T20:30', 'America/Bogota')).toEqual({ dia: '2026-12-24', hora: '20:30' });
+    expect(partesFin('2026-12-24T20:30', DEFAULT_TIMEZONE)).toEqual({ dia: '2026-12-24', hora: '20:30' });
     // Un valor viejo en UTC se muestra en la zona elegida.
-    expect(partesFin('2026-12-25T01:30:00Z', 'America/Bogota')).toEqual({ dia: '2026-12-24', hora: '20:30' });
+    expect(partesFin('2026-12-25T01:30:00Z', DEFAULT_TIMEZONE)).toEqual({ dia: '2026-12-24', hora: '20:30' });
   });
 
   test('cada ubicación es una columna real del editor viejo', () => {

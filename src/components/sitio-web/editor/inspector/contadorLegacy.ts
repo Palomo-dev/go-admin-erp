@@ -5,9 +5,10 @@
  * Lógica pura (sin React) para poder probarla.
  */
 import { partirFin } from './finContador';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 
 export const ZONAS_CONTADOR = [
-  ['America/Bogota', 'Colombia (GMT-5)'],
+  [DEFAULT_TIMEZONE, 'Colombia (GMT-5)'],
   ['America/Mexico_City', 'México (GMT-6)'],
   ['America/Argentina/Buenos_Aires', 'Argentina (GMT-3)'],
   ['America/Santiago', 'Chile (GMT-4)'],
@@ -53,7 +54,7 @@ export function leerContador(settings: Record<string, unknown> | null | undefine
     titulo: typeof s.countdown_title === 'string' ? s.countdown_title : '',
     modo: s.countdown_mode === 'custom' ? 'custom' : 'daily_reset',
     fin: typeof s.countdown_end_date === 'string' ? s.countdown_end_date : '',
-    zona: typeof s.countdown_timezone === 'string' && s.countdown_timezone ? s.countdown_timezone : 'America/Bogota',
+    zona: typeof s.countdown_timezone === 'string' && s.countdown_timezone ? s.countdown_timezone : DEFAULT_TIMEZONE,
     horaReinicio: Number.isInteger(hora) && hora >= 0 && hora <= 23 ? hora : 0,
     ubicaciones,
   };

@@ -7,9 +7,11 @@
  * van a la fila del principal con el autoguardado. El lienzo las pinta en vivo (`goadmin:settings`)
  * en el encabezado, el carrito, el pago, la ficha de producto y la portada.
  */
-import { useEffect, useState } from 'react';
-import { SelectKit, NumeroKit, CasillaKit } from './controlesKit';
-import { CampoFecha } from '@/components/kit';
+import { useEffect, useId, useState } from 'react';
+import { SelectKit, NumeroKit } from './controlesKit';
+import { CampoFecha, ChipsOpcion, FormField, SegmentedControl } from '@/components/kit';
+import { Switch } from '@/components/ui/switch';
+import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
 import { CampoHora } from '@/components/kit/CampoHora';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import {
@@ -46,71 +48,104 @@ export function PanelContador({
     return () => clearInterval(id);
   }, []);
   const restante = tiempoRestante(c, ahora);
+  const idMostrar = useId();
+  const idDonde = useId();
+  const fondoVista = colorPrimario || '#3B82F6';
+  // Texto y dígitos en «texto sobre primario» (negro o blanco, el de más contraste), como la tienda.
+  const textoVista = textoSobreAcento(fondoVista);
+  const ubicacionesActivas = UBICACIONES_CONTADOR.filter((u) => c.ubicaciones[u.columna]).map((u) => u.columna);
   return (
-    <section aria-label="Contador regresivo" className="mt-4 flex flex-col gap-3 border-t border-line px-1 pt-3">
-      <div>
-        <h3 className="text-sm font-semibold text-fg">Contador regresivo</h3>
-        <p className="text-[12px] text-fg-secondary">Una barra con la cuenta atrás de tu oferta. Usa el color principal del sitio.</p>
+    <section aria-label="Contador regresivo" className="mt-[14px] flex flex-col gap-[14px] px-1">
+      <div className="flex flex-col gap-0.5">
+        <h3 className="text-[13px] font-medium text-fg">Contador regresivo</h3>
+        <p className="text-[12px] leading-4 text-fg-muted">Una barra con la cuenta atrás de tu oferta. Usa el color principal del sitio.</p>
       </div>
       <div
         aria-hidden="true"
-        className={`rounded-lg px-3 py-2 text-center text-sm font-medium text-white ${c.activo ? '' : 'opacity-50'}`}
-        style={{ background: colorPrimario || '#3B82F6' }}
+        data-testid="vista-contador"
+        className={`flex flex-wrap items-center justify-center gap-2 rounded-lg px-3 py-2 text-center text-sm font-medium ${c.activo ? '' : 'opacity-50'}`}
+        style={{ background: fondoVista, color: textoVista }}
       >
         <span>🔥 {c.titulo || TITULO_POR_DEFECTO}</span>
-        <span className="ml-2 font-mono font-bold">{restante ?? 'Terminado: no se muestra'}</span>
+        <span className="font-mono font-bold">{restante ?? 'Terminado: no se muestra'}</span>
       </div>
-      <CasillaKit titulo="Mostrar contador" disabled={deshabilitado} checked={c.activo} onChange={(e) => cambiar({ countdown_enabled: e.target.checked })} />
-      <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Texto
-        <input
-          className={control}
-          disabled={deshabilitado}
-          value={c.titulo}
-          placeholder={TITULO_POR_DEFECTO}
-          maxLength={200}
-          onChange={(e) => cambiar({ countdown_title: e.target.value })}
-        />
-      </label>
-      <div role="group" aria-label="Modo" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Modo
-        <SelectKit aria-label="Modo" disabled={deshabilitado} value={c.modo} onChange={(e) => cambiar({ countdown_mode: e.target.value })}>
-          <option value="daily_reset">Se reinicia cada día</option>
-          <option value="custom">Hasta una fecha</option>
-        </SelectKit>
-      </div>
-      {c.modo === 'custom' ? (
-        <div role="group" aria-label="Termina" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Termina
-          <div className="grid grid-cols-2 gap-2">
-            <CampoFecha tamano="sm" valor={dia || null} disabled={deshabilitado} onValorChange={(d) => cambiar({ countdown_end_date: finLocal(d ?? '', hora) })} />
-            <CampoHora tamano="sm" aria-label="Hora de fin" valor={hora || null} disabled={deshabilitado || !dia} onValorChange={(h) => cambiar({ countdown_end_date: finLocal(dia, h) })} />
-          </div>
-          {sinFecha && <span className="text-[12px] text-fg-secondary">Sin fecha de fin el contador no se muestra.</span>}
+      <div className={`flex items-center justify-between gap-3 ${deshabilitado ? 'opacity-60' : ''}`}>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <label htmlFor={idMostrar} className="text-sm font-medium text-fg">Mostrar contador</label>
+          <span className="text-[12px] text-fg-muted">En las ubicaciones que elijas abajo</span>
         </div>
-      ) : (
-        <label className="flex flex-col gap-1 text-[12px] text-fg-secondary">Hora de reinicio (0–23)
-          <NumeroKit min={0} max={23} disabled={deshabilitado} value={c.horaReinicio} onChange={(e) => {
-            const n = Number(e.target.value);
-            cambiar({ countdown_reset_hour: Number.isInteger(n) && n >= 0 && n <= 23 ? n : 0 });
-          }} />
-        </label>
-      )}
-      <div role="group" aria-label="Zona horaria" className="flex flex-col gap-1 text-[12px] text-fg-secondary">Zona horaria
-        <SelectKit aria-label="Zona horaria" disabled={deshabilitado} value={c.zona} onChange={(e) => cambiar({ countdown_timezone: e.target.value })}>
-          {ZONAS_CONTADOR.some(([z]) => z === c.zona) ? null : <option value={c.zona}>{c.zona}</option>}
-          {ZONAS_CONTADOR.map(([z, nombre]) => <option key={z} value={z}>{nombre}</option>)}
-        </SelectKit>
+        <Switch id={idMostrar} checked={c.activo} disabled={deshabilitado} onCheckedChange={(v) => cambiar({ countdown_enabled: v })} className="shrink-0" />
       </div>
-      <fieldset className="flex flex-col gap-2 text-[12px] text-fg-secondary">
-        <legend className="mb-1">Dónde se ve</legend>
-        {UBICACIONES_CONTADOR.map((u) => (
-          <CasillaKit
-            key={u.columna}
-            titulo={u.etiqueta}
-            disabled={deshabilitado}
-            checked={c.ubicaciones[u.columna]}
-            onChange={(e) => cambiar({ [u.columna]: e.target.checked })}
+      <div className={`flex flex-col gap-[14px] ${c.activo ? '' : 'opacity-50'}`}>
+        <FormField etiqueta="Texto">
+          {(campo) => (
+            <input
+              id={campo.id}
+              aria-describedby={campo['aria-describedby']}
+              className={control}
+              disabled={deshabilitado}
+              value={c.titulo}
+              placeholder={TITULO_POR_DEFECTO}
+              maxLength={200}
+              onChange={(e) => cambiar({ countdown_title: e.target.value })}
+            />
+          )}
+        </FormField>
+        <FormField etiqueta="Modo">
+          {(campo) => (
+            <SegmentedControl
+              aria-labelledby={campo.idEtiqueta}
+              tamano="sm"
+              anchoCompleto
+              deshabilitado={deshabilitado}
+              valor={c.modo === 'custom' ? 'custom' : 'daily_reset'}
+              opciones={MODOS}
+              onValorChange={(v) => cambiar({ countdown_mode: v })}
+            />
+          )}
+        </FormField>
+        {c.modo === 'custom' ? (
+          <div role="group" aria-label="Termina" className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">Termina
+            <div className="grid grid-cols-2 gap-2">
+              <CampoFecha tamano="sm" valor={dia || null} disabled={deshabilitado} onValorChange={(d) => cambiar({ countdown_end_date: finLocal(d ?? '', hora) })} />
+              <CampoHora tamano="sm" aria-label="Hora de fin" valor={hora || null} disabled={deshabilitado || !dia} onValorChange={(h) => cambiar({ countdown_end_date: finLocal(dia, h) })} />
+            </div>
+            {sinFecha && <span className="text-[12px] text-fg-secondary">Sin fecha de fin el contador no se muestra.</span>}
+          </div>
+        ) : (
+          <label className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">Hora de reinicio (0–23)
+            <NumeroKit min={0} max={23} disabled={deshabilitado} value={c.horaReinicio} onChange={(e) => {
+              const n = Number(e.target.value);
+              cambiar({ countdown_reset_hour: Number.isInteger(n) && n >= 0 && n <= 23 ? n : 0 });
+            }} />
+          </label>
+        )}
+        <div role="group" aria-label="Zona horaria" className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">Zona horaria
+          <SelectKit aria-label="Zona horaria" disabled={deshabilitado} value={c.zona} onChange={(e) => cambiar({ countdown_timezone: e.target.value })}>
+            {ZONAS_CONTADOR.some(([z]) => z === c.zona) ? null : <option value={c.zona}>{c.zona}</option>}
+            {ZONAS_CONTADOR.map(([z, nombre]) => <option key={z} value={z}>{nombre}</option>)}
+          </SelectKit>
+        </div>
+        <div className="flex flex-col gap-1.5 text-[12px] text-fg-secondary">
+          <span id={idDonde}>Dónde se ve</span>
+          <ChipsOpcion
+            multiple
+            aria-labelledby={idDonde}
+            opciones={UBICACIONES_CONTADOR.map((u) => ({ valor: u.columna, etiqueta: u.etiqueta, deshabilitada: deshabilitado }))}
+            valor={ubicacionesActivas}
+            onValorChange={(sig) => {
+              // Una sola columna por clic: la que cambió (mismo cambio que la casilla de antes).
+              const u = UBICACIONES_CONTADOR.find((x) => sig.includes(x.columna) !== c.ubicaciones[x.columna]);
+              if (u) cambiar({ [u.columna]: sig.includes(u.columna) });
+            }}
           />
-        ))}
-      </fieldset>
+        </div>
+      </div>
     </section>
   );
 }
+
+const MODOS = [
+  { valor: 'daily_reset', etiqueta: 'Se reinicia cada día' },
+  { valor: 'custom', etiqueta: 'Hasta una fecha' },
+] as const;

@@ -80,13 +80,13 @@ describe('PanelContador', () => {
     expect(onCambiar).toHaveBeenLastCalledWith({ countdown_enabled: true });
     fireEvent.change(screen.getByPlaceholderText('¡Oferta por tiempo limitado!'), { target: { value: 'Solo hoy' } });
     expect(onCambiar).toHaveBeenLastCalledWith({ countdown_title: 'Solo hoy' });
-    fireEvent.click(screen.getByRole('switch', { name: 'Pago (checkout)' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pago (checkout)' }));
     expect(onCambiar).toHaveBeenLastCalledWith({ checkout_show_countdown: false });
-    fireEvent.click(screen.getByRole('switch', { name: 'Portada (hero)' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Portada (hero)' }));
     expect(onCambiar).toHaveBeenLastCalledWith({ countdown_show_in_hero: true });
-    fireEvent.click(screen.getByRole('switch', { name: 'Encabezado' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Encabezado' }));
     expect(onCambiar).toHaveBeenLastCalledWith({ countdown_show_in_header: false });
-    fireEvent.click(screen.getByRole('switch', { name: 'Carrito' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Carrito' }));
     expect(onCambiar).toHaveBeenLastCalledWith({ countdown_show_in_cart: false });
   });
 
@@ -97,6 +97,13 @@ describe('PanelContador', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'México (GMT-6)' }));
     expect(onCambiar).toHaveBeenLastCalledWith({ countdown_timezone: 'America/Mexico_City' });
     expect(screen.getByText('Hora de reinicio (0–23)')).toBeTruthy();
+  });
+
+  test('vista previa: texto sobre primario (negro sobre claro, blanco sobre oscuro)', () => {
+    const { rerender } = render(<PanelContador settings={FILA as unknown as WebsiteSettings} onCambiarAjustes={jest.fn()} colorPrimario="#A0D241" />);
+    expect(screen.getByTestId('vista-contador').style.color).toBe('rgb(17, 17, 17)');
+    rerender(<PanelContador settings={FILA as unknown as WebsiteSettings} onCambiarAjustes={jest.fn()} colorPrimario="#1E3A8A" />);
+    expect(screen.getByTestId('vista-contador').style.color).toBe('rgb(255, 255, 255)');
   });
 
   test('modo fecha muestra el fin y avisa si falta', () => {

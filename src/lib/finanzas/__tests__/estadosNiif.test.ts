@@ -11,7 +11,8 @@ import {
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const n = (account_code: string, amount: number, children: ReturnType<typeof n>[] = []) => ({ account_code, amount, children });
+type Nodo = { account_code: string; amount: number; children: Nodo[] };
+const n = (account_code: string, amount: number, children: Nodo[] = []): Nodo => ({ account_code, amount, children });
 
 describe('estados financieros NIIF Pymes', () => {
   it('nombres y comparativo por defecto (3.14)', () => {

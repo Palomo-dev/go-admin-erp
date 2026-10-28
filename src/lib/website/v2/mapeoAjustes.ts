@@ -196,6 +196,8 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_cta5_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
   header_cta6_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
   header_cta6_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  /** Estilo de los botones 3 a 6: sin valor (null) = «Con borde», como hasta ahora (Figma 2292:51519). */
+  header_extra_buttons_style: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: ['outline', 'solid', 'text'] }, nueva: true },
   /**
    * Menús adicionales del encabezado (antes en el Constructor): nombre + enlaces `{ label, href }`.
    * Se pintan como desplegables después del menú principal. Sin valor, nada cambia.

@@ -50,3 +50,20 @@ describe('Constructor → Encabezado', () => {
     expect(cambioForma(a, 'none')).toEqual({ header_icons_box: { shape: 'none', scope: 'all', icon: 20 } });
   });
 });
+
+describe('estilo de los botones 3 a 6 (Figma 2292:51519)', () => {
+  it('sin valor o desconocido = «Con borde» (como hoy); relleno y solo texto', async () => {
+    const { estiloBotonesExtra, ESTILOS_BOTONES_EXTRA } = await import('../encabezadoCapacidades');
+    expect(ESTILOS_BOTONES_EXTRA).toEqual(['outline', 'solid', 'text']);
+    expect(estiloBotonesExtra({})).toBe('outline');
+    expect(estiloBotonesExtra({ header_extra_buttons_style: 'raro' })).toBe('outline');
+    expect(estiloBotonesExtra({ header_extra_buttons_style: 'solid' })).toBe('solid');
+    expect(estiloBotonesExtra({ header_extra_buttons_style: 'text' })).toBe('text');
+  });
+  it('va en vivo al lienzo y es opción del documento (mapeo igual a la tienda)', async () => {
+    const { CLAVES_AJUSTES_VIVOS } = await import('@/lib/website/ajustesVivos');
+    const { columnaVaAlDocumento } = await import('@/lib/website/v2/mapeoAjustes');
+    expect(CLAVES_AJUSTES_VIVOS).toContain('header_extra_buttons_style');
+    expect(columnaVaAlDocumento('header_extra_buttons_style')).toBe(true);
+  });
+});

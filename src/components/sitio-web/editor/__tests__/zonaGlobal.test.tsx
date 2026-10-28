@@ -181,7 +181,9 @@ describe('InspectorEncabezado', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden', mobile_search_style: null });
     // Fuera del Figma v2: ya no están en el panel.
-    expect(screen.queryByRole('radio', { name: 'Relleno' })).toBeNull();
+    // «Relleno» solo existe como estilo de los botones 3 a 6 (Figma 2292:51519), no del botón principal.
+    expect(screen.getAllByRole('radio', { name: 'Relleno' })).toHaveLength(1);
+    expect(screen.getByRole('radiogroup', { name: 'Estilo de los botones 3 a 6' })).toBeTruthy();
     expect(screen.queryByRole('switch', { name: /Header transparente sobre el hero/ })).toBeNull();
     expect(screen.queryByText('Constructor')).toBeNull();
   });

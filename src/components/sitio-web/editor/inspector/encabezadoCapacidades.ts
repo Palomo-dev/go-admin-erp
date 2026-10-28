@@ -99,3 +99,11 @@ export function menusConValor(a: Ajustes): number[] {
 export function botonesConValor(a: Ajustes): number[] {
   return BOTONES_EXTRA.filter((n) => a[`header_cta${n}_text`] || a[`header_cta${n}_url`]);
 }
+
+/** Estilo de los botones 3 a 6 (`header_extra_buttons_style`, igual que la tienda): sin valor = «Con borde». */
+export const ESTILOS_BOTONES_EXTRA = ['outline', 'solid', 'text'] as const;
+export type EstiloBotonesExtra = (typeof ESTILOS_BOTONES_EXTRA)[number];
+export function estiloBotonesExtra(a: Record<string, unknown>): EstiloBotonesExtra {
+  const v = a.header_extra_buttons_style;
+  return v === 'solid' || v === 'text' ? v : 'outline';
+}

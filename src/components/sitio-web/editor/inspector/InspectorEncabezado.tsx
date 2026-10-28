@@ -36,6 +36,8 @@ import {
   formaCaja,
   menusConValor,
   tamanoIcono,
+  ESTILOS_BOTONES_EXTRA,
+  estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
 import {
@@ -775,11 +777,21 @@ function CajaIconos({ ajustes: a, cambiar, coloresTema }: Pick<Interno, 'ajustes
 function MasBotones({ ajustes: a, cambiar, paginas }: Pick<Interno, 'ajustes' | 'cambiar' | 'paginas'>) {
   const t = useTextosEditor();
   const [visibles, setVisibles] = useState<number[]>(() => botonesConValor(a));
+  const idEstilo = useId();
   const siguiente = BOTONES_EXTRA.find((n) => !visibles.includes(n));
   return (
     <section className="flex flex-col gap-3">
       <TituloBloque>{t('zonaGlobal.boton.mas')}</TituloBloque>
       <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.boton.masAyuda')}</p>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={idEstilo}>{t('zonaGlobal.boton.estiloExtra')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={idEstilo}
+          opciones={ESTILOS_BOTONES_EXTRA.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.boton.estiloExtraNombre.${v}`) }))}
+          valor={estiloBotonesExtra(a)}
+          onValorChange={(v) => cambiar({ header_extra_buttons_style: v === 'outline' ? null : v })}
+        />
+      </div>
       {visibles.map((n) => (
         <div key={n} className="flex flex-col gap-2 rounded-lg border border-line p-3">
           <div className="flex items-center justify-between gap-2">

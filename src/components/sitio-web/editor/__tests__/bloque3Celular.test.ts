@@ -79,8 +79,6 @@ import {
   panelMenu,
   tarjetaMenu,
 } from '../inspector/celularLogica';
-import { entradasAnterioresEncabezado } from '../inspector/anterioresLogica';
-import { leerPresentacionMovil } from '@/lib/website/menuMovil';
 
 describe('bloque 3 · Celular completo (panel, íconos, buscador)', () => {
   it('sin nada guardado: valores de siempre y la tienda sigue con el encabezado de hoy', () => {

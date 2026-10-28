@@ -264,7 +264,13 @@ export function leerPresentacionMovil(settings: unknown): PresentacionMovil | nu
   // Logo y orden solos los pinta el encabezado de siempre (FilaLogoMovil): cambiar el orden no
   // cambia el resto del aspecto (QA 28-oct P2).
   const layoutPropio = !!layout && (layout.logoSize != null || layout.headerHeight != null || !layout.sticky || layout.hideOnScroll || layout.transparentHero)
-  const usarHeaderNuevo = Boolean(estiloNuevo || panel || layoutPropio || iconos || buscador || (barra && estilo === 'tabs'))
+  // `icons.style: 'circle'` solo, con «Círculo acento» encendido, ya lo pinta el encabezado de la
+  // plantilla (p. ej. retail_bold con pestañas, org 345): no cambia de encabezado.
+  const iconosPropios = !!iconos && !(
+    iconos.style === 'circle' && s.header_icons_circle === true && iconos.menu === 'lines3' && !iconos.color &&
+    iconos.showMenu && iconos.showSearch && iconos.showCart && iconos.showAccount
+  )
+  const usarHeaderNuevo = Boolean(estiloNuevo || panel || layoutPropio || iconosPropios || buscador || (barra && estilo === 'tabs'))
   return { estilo, usarHeaderNuevo, panel, barra, layout, iconos, buscador }
 }
 

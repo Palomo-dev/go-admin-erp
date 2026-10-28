@@ -38,7 +38,7 @@ export const errorMasivo = (codigo: CodigoErrorMasivo, valores?: Record<string, 
 export const resultadoVacio = (): ResultadoMasivo => ({ exitosos: 0, fallidos: 0, errores: [] });
 
 /** Productos por llamada a `fn_productos_precio_masivo` (acepta hasta 1.000). */
-export const LOTE_PRECIOS = 250;
+export const LOTE_PRECIOS = 50;
 /** Productos por llamada a estado y categoría masivos (aceptan hasta 5.000). */
 export const LOTE_CATALOGO = 1000;
 

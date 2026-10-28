@@ -87,14 +87,19 @@ async function precioMasivo(
     return resultado;
   }
   let desde = 0;
-  for (const lote of partirEnLotes(ids, LOTE_PRECIOS)) {
-    const { data, error } = await supabase.rpc('fn_productos_precio_masivo', {
+  const llamar = (lote: number[]) =>
+    supabase.rpc('fn_productos_precio_masivo', {
       p_organization_id: organizationId,
       p_product_ids: lote,
       p_tipo: tipo,
       p_operacion: operacion,
       p_opciones: opciones,
     });
+  for (const lote of partirEnLotes(ids, LOTE_PRECIOS)) {
+    let { data, error } = await llamar(lote);
+    // Un statement timeout (57014) revierte el lote completo: reintentarlo una vez
+    // no aplica dos veces un ajuste. Otros errores no se reintentan.
+    if (error?.code === '57014') ({ data, error } = await llamar(lote));
     if (error) {
       resultado.fallidos += lote.length;
       resultado.errores.push(errorDeRpc(error, desde, desde + lote.length));

@@ -4,7 +4,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import { RepetidorSeccion, operarRepetidor, campoElementoVisible } from '../inspector/RepetidorSeccion';
-import { getSectionDefinition, type ContentFieldDef } from '@/lib/services/websitePageBuilderService';
+import { getSectionDefinition, SECTION_CATALOG, type ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: { from: jest.fn() }, getProjectRef: jest.fn(() => 'test') }));
 jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ organization: { id: 120 } }), getOrganizationId: () => 120, ORGANIZATION_CHANGED_EVENT: 'org-cambio' }));
@@ -53,5 +53,20 @@ describe('CONTAC-04: repetidor del kit', () => {
     expect(screen.queryByText(/Se muestran los de siempre/)).toBeNull();
     expect(screen.getByText('(0)')).toBeTruthy();
     expect(cambiar).not.toHaveBeenCalled();
+  });
+
+  test('arrastrar reordena una sola vez, al soltar', () => {
+    const cambiar = jest.fn();
+    const v = [{ id: 'a', name: 'a', label: 'Uno' }, { id: 'b', name: 'b', label: 'Dos' }, { id: 'c', name: 'c', label: 'Tres' }];
+    const { container } = renderConIdioma(<RepetidorSeccion campo={formFields} valor={v} onCambiar={cambiar} categorias={categorias} />);
+    const filas = container.querySelectorAll('[draggable="true"]');
+    const dt = { setData: jest.fn(), effectAllowed: '' };
+    fireEvent.dragStart(filas[0], { dataTransfer: dt });
+    fireEvent.dragOver(filas[1], { dataTransfer: dt });
+    fireEvent.dragOver(filas[2], { dataTransfer: dt });
+    expect(cambiar).not.toHaveBeenCalled();
+    fireEvent.drop(filas[2], { dataTransfer: dt });
+    expect(cambiar).toHaveBeenCalledTimes(1);
+    expect(cambiar.mock.calls[0][0].map((e: { id: string }) => e.id)).toEqual(['b', 'c', 'a']);
   });
 });

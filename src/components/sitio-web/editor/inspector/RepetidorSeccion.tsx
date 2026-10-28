@@ -101,7 +101,8 @@ export function RepetidorSeccion({
               key={e.id ?? `i-${i}`}
               draggable={!des}
               onDragStart={(ev) => { setArrastrado(i); ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(i)); }}
-              onDragOver={(ev) => { ev.preventDefault(); if (arrastrado !== null && arrastrado !== i) { operar({ tipo: 'mover', de: arrastrado, a: i }); setArrastrado(i); } }}
+              onDragOver={(ev) => { if (arrastrado !== null) ev.preventDefault(); }}
+              onDrop={(ev) => { ev.preventDefault(); if (arrastrado !== null && arrastrado !== i) operar({ tipo: 'mover', de: arrastrado, a: i }); setArrastrado(null); }}
               onDragEnd={() => setArrastrado(null)}
               className={arrastrado === i ? 'opacity-50' : undefined}
             >

@@ -175,7 +175,7 @@ export function InspectorBanners({
   const modoNuevo = contenido.banner_layout != null || contenido.banner_style != null;
   const legado = bannersDesdeAnteriores(contenido);
   const layout = (modoNuevo ? (typeof contenido.banner_layout === 'string' ? contenido.banner_layout : 'grid') : legado.layout) as Distribucion;
-  const estilo = (modoNuevo ? normalizarEstiloBanners(contenido.banner_style) : legado.estilo) ?? {};
+  const estilo = ((modoNuevo ? normalizarEstiloBanners(contenido.banner_style) : legado.estilo) ?? {}) as EstiloBanners;
   const banners = Array.isArray(contenido.banners) ? (contenido.banners as Record<string, unknown>[]) : [];
   const aviso = avisoDistribucion(DISTRIBUCIONES.includes(layout as Distribucion) ? (layout as Distribucion) : 'grid', banners.length, estilo.last_full !== false);
 

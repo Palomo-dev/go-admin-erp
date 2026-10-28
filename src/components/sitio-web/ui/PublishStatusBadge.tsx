@@ -49,7 +49,7 @@ export function useEtiquetaPublicacion(): (estado: EstadoPublicacion) => string 
         case 'borrador':
           return tx('publicacion.borrador');
         case 'guardando':
-          return tx('publicacion.guardando');
+          return estado.pendiente ? tx('publicacion.sinGuardar') : tx('publicacion.guardando');
         case 'programado':
           return tx('publicacion.programado', {
             fecha: formatDateInTz(estado.fecha, timezone, {
@@ -85,14 +85,14 @@ export function PublishStatusBadge({ estado, tamano = 'md', indicador = 'icono',
   const Icono = ICONO_ESTADO_PUBLICACION[estado.tipo];
   return (
     <span role="status" aria-live="polite" className="inline-flex">
-      <span data-estado={estado.tipo} className={cn(clasesBadgeTono(tono, apariencia, tamano), className)}>
+      <span data-estado={estado.tipo} data-pendiente={estado.tipo === 'guardando' && estado.pendiente ? '' : undefined} className={cn(clasesBadgeTono(tono, apariencia, tamano), className)}>
         <Icono
           aria-hidden="true"
           strokeWidth={2}
           className={cn(
             tamano === 'sm' ? 'size-3' : 'size-3.5',
             'shrink-0',
-            iconoGira(estado.tipo) && 'animate-spin motion-reduce:animate-none',
+            iconoGira(estado.tipo) && !(estado.tipo === 'guardando' && estado.pendiente) && 'animate-spin motion-reduce:animate-none',
           )}
         />
         <span className="truncate">{etiqueta}</span>

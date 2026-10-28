@@ -8,7 +8,8 @@
  * Fuente: docs/website-builder-v2/D12-CLASIFICACION-COLUMNAS.md. Decisión aprobada el 2026-10-05:
  * las 15 columnas sin efecto en el sitio público (`background_color`, `text_color`,
  * `font_heading`, `font_body`, los seis `enable_*`, `tax_rate`, `tax_name`, `menu_position`,
- * `categories_menu_style`, `mobile_sticky_header`) NO se importan. Tampoco comercio,
+ * `categories_menu_style`, `mobile_sticky_header`) NO se importan (`mobile_sticky_header` y
+ * `mobile_breakpoint` viven ahora como opciones nuevas del documento, apartado Celular). Tampoco comercio,
  * integraciones, metadatos ni obsoletas: siguen en la fila legacy (operación, D12).
  *
  * Defaults verificados por MCP (`information_schema.columns`) el 2026-10-05.
@@ -183,6 +184,30 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   /** Segundo botón (contorno). Sin texto o sin enlace no se pinta. */
   header_cta2_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
   header_cta2_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  /**
+   * Botones 3 a 6 del encabezado (antes solo el Constructor tenía más de 2). Mismo estilo que el
+   * segundo; sin texto o sin enlace no se pintan. Sin valor, ninguna tienda cambia.
+   */
+  header_cta3_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta3_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  header_cta4_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta4_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  header_cta5_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta5_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  header_cta6_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta6_url: { zona: 'header', porDefecto: null, regla: { tipo: 'enlace', especiales: ENLACES_ESPECIALES }, nueva: true },
+  /** Estilo de los botones 3 a 6: sin valor (null) = «Con borde», como hasta ahora (Figma 2292:51519). */
+  header_extra_buttons_style: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: ['outline', 'solid', 'text'] }, nueva: true },
+  /**
+   * Menús adicionales del encabezado (antes en el Constructor): nombre + enlaces `{ label, href }`.
+   * Se pintan como desplegables después del menú principal. Sin valor, nada cambia.
+   */
+  header_menu2_label: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_menu2_links: { zona: 'header', porDefecto: null, nueva: true },
+  header_menu3_label: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_menu3_links: { zona: 'header', porDefecto: null, nueva: true },
+  header_menu4_label: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_menu4_links: { zona: 'header', porDefecto: null, nueva: true },
   /** Barra superior: sede y «Abierto ahora · Cierra a las…» con el horario de la sede. */
   topbar_show_branch_status: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
   /** Barra superior: «Envío gratis desde $…» (`free_shipping_threshold`). */
@@ -213,6 +238,10 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Fijo al bajar (sticky). `true` = lo de hoy. */
   header_sticky: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
+  /** «Fijo al desplazar» solo en el celular (apartado Celular). `null` = sigue `header_sticky` (lo de hoy). */
+  mobile_sticky_header: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /** «Diseño de celular por debajo de» (px). 1024 = lo de hoy en las tiendas v2. */
+  mobile_breakpoint: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 640, max: 1024 }, nueva: true },
   /**
    * Línea entre el logo y el menú. `true` = visible (lo de hoy, con el lavado del fondo).
    * `false` quita el borde.
@@ -232,6 +261,11 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_icons_circle_bg: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Color del ícono en el círculo. `null` = automático (blanco sobre oscuro/saturado, oscuro sobre claro). */
   header_icons_circle_fg: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /**
+   * Caja de los íconos del encabezado (forma, tamaño, degradado, sombra, hover). Mismo formato que
+   * el `icon_container` del Constructor, que se sigue leyendo si esta no tiene valor.
+   */
+  header_icons_box: { zona: 'header', porDefecto: null, nueva: true },
   /**
    * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
    * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.

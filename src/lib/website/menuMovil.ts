@@ -119,7 +119,7 @@ function texto(valor: unknown, max: number): string | undefined {
   return t ? t.slice(0, max) : undefined
 }
 
-const ICONOS_ITEM = ['home', 'grid', 'search', 'bag', 'cart', 'user', 'heart', 'tag', 'whatsapp', 'link'] as const
+export const ICONOS_ITEM = ['home', 'grid', 'search', 'bag', 'cart', 'user', 'heart', 'tag', 'whatsapp', 'link'] as const
 
 const DEFECTO_ITEM: Record<(typeof TIPOS_ITEM)[number], Pick<ItemBarra, 'label' | 'icon' | 'action' | 'href'>> = {
   home: { label: 'Inicio', icon: 'home', action: 'link', href: '/' },
@@ -261,6 +261,16 @@ export function leerPresentacionMovil(settings: unknown): PresentacionMovil | nu
   const iconos = header ? leerIconos(header.icons) : null
   const buscador = header ? enLista(BUSCADORES, header.search) ?? null : null
   if (!estiloNuevo && !panel && !barra && !layout && !iconos && !buscador) return null
-  const usarHeaderNuevo = Boolean(estiloNuevo || panel || layout || iconos || buscador || (barra && estilo === 'tabs'))
+  // El encabezado lo decide solo el estilo del menú (o lo que solo el configurable sabe pintar:
+  // panel, buscador a pantalla completa, menú inferior con pestañas). Logo, orden, tamaño, alto,
+  // fijo, ocultar al bajar, transparente e íconos los pintan también los 4 encabezados de
+  // plantilla: cambiar una opción suelta nunca cambia de encabezado (QA 28-oct).
+  const usarHeaderNuevo = Boolean(estiloNuevo || panel || buscador || (barra && estilo === 'tabs'))
   return { estilo, usarHeaderNuevo, panel, barra, layout, iconos, buscador }
+}
+
+/** Orden de logo e íconos en el celular (`mobile_header.layout.arrangement`); sin clave, el de hoy. */
+export function ordenMovil(settings: unknown): (typeof DISPOSICIONES)[number] {
+  const layout = objeto(objeto(objeto(settings)?.mobile_header)?.layout)
+  return enLista(DISPOSICIONES, layout?.arrangement) ?? 'logo-acciones-menu'
 }

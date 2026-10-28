@@ -35,6 +35,15 @@ describe('espaciado de sección: una sola opción (Estilo)', () => {
 });
 
 describe('PanelPaginacion (kit)', () => {
+  test('PAGINA-01: «Mostrar paginación» se ve una vez en el panel, también con el ajuste global', () => {
+    const cambiar = jest.fn();
+    renderConIdioma(<PanelPaginacion valor={null} usarGlobal onUsarGlobal={jest.fn()} onCambiar={jest.fn()} color="#111" mostrar={{ valor: true, onCambiar: cambiar }} />);
+    const sw = screen.getAllByRole('switch', { name: 'Mostrar paginación' });
+    expect(sw).toHaveLength(1);
+    fireEvent.click(sw[0]);
+    expect(cambiar).toHaveBeenCalledWith(false);
+  });
+
   test('con «Usar ajuste global» encendido oculta el resto', () => {
     renderConIdioma(<PanelPaginacion valor={null} usarGlobal onUsarGlobal={jest.fn()} onCambiar={jest.fn()} color="#111" />);
     expect(screen.getByRole('switch', { name: 'Usar ajuste global' }).getAttribute('aria-checked')).toBe('true');

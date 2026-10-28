@@ -4466,8 +4466,8 @@
       "finanzas_contabilidad_libro-diario": "Journal général",
       "finanzas_contabilidad_auxiliar-tercero": "Auxiliaire par tiers",
       "finanzas_contabilidad_balance-comprobacion": "Balance de vérification",
-      "finanzas_contabilidad_estado-resultados": "Compte de résultat",
-      "finanzas_contabilidad_balance-general": "Bilan",
+      "finanzas_contabilidad_estado-resultados": "État du résultat global",
+      "finanzas_contabilidad_balance-general": "État de la situation financière",
       "finanzas_contabilidad_periodos-fiscales": "Exercices comptables",
       "finanzas_reglas-contables": "Règles comptables",
       "finanzas_centro-costos": "Centres de coûts",
@@ -31562,6 +31562,7 @@
         "borrador": "Enregistré en brouillon",
         "guardando": "Enregistrement…",
         "programado": "Programmé · {fecha}",
+        "sinGuardar": "Modifications non enregistrées",
         "sinPublicar": "Non publié",
         "error": "Échec de la publication"
       },
@@ -34118,12 +34119,24 @@
         "descripcion": "à l’enregistrement, les modifications sont en ligne. Créez un brouillon pour les vérifier avant de publier.",
         "crearBorrador": "Créer un brouillon"
       },
+      "repetidor": {
+        "agregar": "Ajouter",
+        "duplicar": "Dupliquer",
+        "quitar": "Retirer",
+        "subir": "Monter",
+        "bajar": "Descendre",
+        "vacio": "Aucun élément. Utilisez « Ajouter ».",
+        "elemento": "{campo} {n}",
+        "porDefecto": "Valeurs par défaut affichées ; les modifier les enregistre dans la section."
+      },
       "listas": {
         "paginacion": "Pagination",
         "carrusel": "Carrousel",
         "usarGlobal": "Utiliser le réglage global",
         "usarGlobalAyuda": "Suit Design › Styles du site. Désactivez-le pour donner à cette section son propre réglage.",
         "porPaginaComputador": "Par page sur ordinateur",
+        "mostrarPaginacion": "Afficher la pagination",
+        "mostrarPaginacionAyuda": "Désactivé : toute la liste s'affiche (dans la limite de la quantité ou des lignes), sans numéros de page.",
         "porPaginaCelular": "Par page sur mobile",
         "estilo": "Style",
         "forma": "Forme",
@@ -36135,7 +36148,8 @@
       },
       "errorMarcarPagado": "Impossible de marquer comme payée",
       "pendienteMarcarPagado": "Commande confirmée mais non marquée comme payée",
-      "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée."
+      "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée.",
+      "confirmarCanceladoAntiguo": "La commande {numero} a été annulée il y a {dias} jours. La marquer comme payée quand même ?"
     },
     "tipoCorto": {
       "pickup": "Retrait",

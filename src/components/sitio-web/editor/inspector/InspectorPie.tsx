@@ -11,13 +11,12 @@ import { Plus, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { ColorField } from '@/components/sitio-web/ui/ColorField';
-import { ACCIONES_BARRA_MOVIL } from '@/lib/website/v2/mapeoAjustes';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { useTextosEditor } from '../textos';
 import { BandaGlobal, CabeceraZona, CampoTexto, ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, MiniaturaPie, TarjetaComposicion, TarjetaPlantilla, TituloBloque } from './PartesZonaGlobal';
 import { AjustesAnteriores, type PestanaZona } from './InspectorEncabezado';
 import { entradasAnterioresPie } from './anterioresLogica';
-import { cambiosRestablecer, leerBarraMovil, opcionBooleana, valorBarraMovil, valorOpcion, type AccionBarraMovil, type ModoBarraMovil } from './zonaGlobalLogica';
+import { cambiosRestablecer, opcionBooleana, valorOpcion } from './zonaGlobalLogica';
 
 export interface MenuPie {
   id: string;
@@ -167,13 +166,7 @@ function Diseno(p: InspectorPieProps) {
   const idComp = useId();
   const idCol = useId();
   const idCel = useId();
-  const idModo = useId();
-  const idAcc = useId();
   const composicion = valorOpcion<string>(a, 'footer_style');
-  const barra = leerBarraMovil(a);
-  const activa = barra.modo !== 'ninguna';
-  const cambiarBarra = (modo: ModoBarraMovil, acciones: readonly AccionBarraMovil[] = barra.acciones) =>
-    cambiar({ mobile_bottom_bar: valorBarraMovil(modo, acciones, p.giro) });
 
   return (
     <>
@@ -212,48 +205,7 @@ function Diseno(p: InspectorPieProps) {
         />
       </div>
 
-      <section className="flex flex-col gap-3">
-        <FilaInterruptor
-          titulo={t('zonaGlobal.pie.barraMovil')}
-          ayuda={t('zonaGlobal.pie.barraMovilAyuda')}
-          nuevo
-          valor={activa}
-          onCambiar={(v) => cambiarBarra(v ? (p.giro === 'restaurante' ? 'auto' : 'lista') : 'ninguna')}
-        />
-        {activa && (
-          <>
-            <div className="flex flex-col gap-2">
-              <EtiquetaGrupo id={idModo}>{t('zonaGlobal.pie.barraModo')}</EtiquetaGrupo>
-              <ChipsOpcion
-                aria-labelledby={idModo}
-                opciones={[
-                  { valor: 'auto', etiqueta: t('zonaGlobal.pie.barraAuto') },
-                  { valor: 'lista', etiqueta: t('zonaGlobal.pie.barraElegir') },
-                ]}
-                valor={barra.modo === 'lista' ? 'lista' : 'auto'}
-                onValorChange={(v) => cambiarBarra(v as ModoBarraMovil)}
-              />
-              {barra.modo === 'auto' && <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.pie.barraAutoAyuda')}</p>}
-            </div>
-            {barra.modo === 'lista' && (
-              <div className="flex flex-col gap-2">
-                <EtiquetaGrupo id={idAcc}>{t('zonaGlobal.pie.barraAcciones')}</EtiquetaGrupo>
-                <ChipsOpcion
-                  multiple
-                  aria-labelledby={idAcc}
-                  opciones={ACCIONES_BARRA_MOVIL.map((acc) => ({
-                    valor: acc,
-                    etiqueta: t(`zonaGlobal.pie.accion.${acc}`),
-                    deshabilitada: !barra.acciones.includes(acc) && barra.acciones.length >= 4,
-                  }))}
-                  valor={barra.acciones}
-                  onValorChange={(lista) => lista.length > 0 && cambiarBarra('lista', lista)}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </section>
+      {/* La barra fija abajo del celular vive en Encabezado › Celular › Menú inferior. */}
     </>
   );
 }

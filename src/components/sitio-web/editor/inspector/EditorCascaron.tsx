@@ -4,10 +4,7 @@ import { useTextosEditor } from '../textos';
 import { SelectKit, NumeroKit, CasillaKit, ColorKit } from './controlesKit';
 import { useState, type ReactNode } from 'react';
 import { accionDesdeVerTodo, CLAVES_VER_TODO } from './espaciadoSeccion';
-import { FontField } from '@/components/sitio-web/ui/FontField';
-import { FONTS } from '@/lib/services/websiteSettingsService';
-import { familiaCss } from '@/components/sitio-web/diseno/catalogo';
-import { fuenteEncabezadoAlCampo, fuenteEncabezadoAlGuardar, type FuentesTema } from '@/lib/website/v2/fuenteTema';
+import type { FuentesTema } from '@/lib/website/v2/fuenteTema';
 
 /** Controles de `section_header` y `section_background`. No escriben nada hasta que se cambia un campo. */
 
@@ -26,7 +23,8 @@ function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }
   );
 }
 
-export function EditorEncabezado({ valor, onCambiar, fuentes = {} }: { valor: unknown; onCambiar: (v: unknown) => void; fuentes?: FuentesTema }) {
+export function EditorEncabezado({ valor, onCambiar }: { valor: unknown; onCambiar: (v: unknown) => void; fuentes?: FuentesTema }) {
+  const tk = useTextosEditor();
   const e = objeto(valor);
   const set = (k: string, v: unknown) => {
     const siguiente = { ...e, [k]: v };
@@ -78,10 +76,6 @@ export function EditorEncabezado({ valor, onCambiar, fuentes = {} }: { valor: un
       </Campo>
       <ColorKit etiqueta="Color de la línea" value={typeof e.line_color === 'string' && e.line_color.startsWith('#') ? e.line_color : '#111827'} onChange={(ev) => set('line_color', ev.target.value)} />
       <CasillaKit titulo="Mayúsculas" checked={e.title_uppercase === true} onChange={(ev) => set('title_uppercase', ev.target.checked)} />
-      <ColorKit etiqueta="Color del título" value={typeof e.title_color === 'string' && e.title_color.startsWith('#') ? e.title_color : '#111827'} onChange={(ev) => set('title_color', ev.target.value)} />
-      <ColorKit etiqueta="Color 2 (degradado)" value={typeof e.title_color_2 === 'string' && e.title_color_2.startsWith('#') ? e.title_color_2 : '#111827'} onChange={(ev) => set('title_color_2', ev.target.value)} />
-      {/* ENCABE-93: fuente del título con el selector del kit (lee 'site' o la familia guardada). */}
-      <FontField etiqueta="Fuente del título" valor={fuenteEncabezadoAlCampo(e.title_font)} onCambiar={(v) => set('title_font', fuenteEncabezadoAlGuardar(v, fuentes, 'titulos'))} fuentesTema={fuentes} porDefecto="titulos" catalogo={FONTS} familiaCss={familiaCss} />
       <Campo etiqueta="Tamaño de la descripción">
         <SelectKit className={control} value={String(e.description_size ?? '')} onChange={(ev) => set('description_size', ev.target.value)}>
           <option value="">Como hoy</option>
@@ -90,15 +84,16 @@ export function EditorEncabezado({ valor, onCambiar, fuentes = {} }: { valor: un
           <option value="lg">Grande</option>
         </SelectKit>
       </Campo>
-      <ColorKit etiqueta="Color de la descripción" value={typeof e.description_color === 'string' && e.description_color.startsWith('#') ? e.description_color : '#4b5563'} onChange={(ev) => set('description_color', ev.target.value)} />
       <Campo etiqueta="Peso de la descripción">
         <SelectKit className={control} value={String(e.description_weight ?? '')} onChange={(ev) => set('description_weight', ev.target.value)}>
           <option value="">Como hoy</option>
           {['normal', 'medium', 'semibold', 'bold'].map((t) => <option key={t} value={t}>{t}</option>)}
         </SelectKit>
       </Campo>
-      {/* ENCABE-97 */}
-      <FontField etiqueta="Fuente de la descripción" valor={fuenteEncabezadoAlCampo(e.description_font)} onCambiar={(v) => set('description_font', fuenteEncabezadoAlGuardar(v, fuentes, 'cuerpo'))} fuentesTema={fuentes} porDefecto="cuerpo" catalogo={FONTS} familiaCss={familiaCss} />
+      {/* ESTILO-06: los colores del título y la descripción se eligen en Estilo › Colores (una sola opción). */}
+      <p className="text-[12px] leading-4 text-fg-muted">{tk('estiloUnico.colorEnEstilo')}</p>
+      {/* ESTILO-05: la fuente del título y de la descripción se elige en Estilo › Tipografía (una sola opción). */}
+      <p className="text-[12px] leading-4 text-fg-muted">{tk('estiloUnico.fuenteEnEstilo')}</p>
       <Campo etiqueta="Ancho máximo de la descripción (caracteres)"><NumeroKit min={20} max={80} value={String(e.description_max ?? '')} onChange={(ev) => set('description_max', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
       {/* CASCAR-05/06: una sola acción «Ver todo». Lee el botón anterior (view_all_*) y al editar lo pasa a section_action. */}
       <Accion
@@ -313,11 +308,8 @@ export function EditorFondo({ valor, onCambiar }: { valor: unknown; onCambiar: (
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line p-3">
       <p className="text-sm font-semibold text-fg">Fondo de la sección</p>
-      <ColorKit etiqueta="Color" value={typeof f.color === 'string' && f.color.startsWith('#') ? f.color : '#ffffff'} onChange={(ev) => set('color', ev.target.value)} />
-      <ColorKit etiqueta={tk('controles.degradado1')} value={typeof f.gradient_1 === 'string' && f.gradient_1.startsWith('#') ? f.gradient_1 : '#ffffff'} onChange={(ev) => set('gradient_1', ev.target.value)} />
-      <ColorKit etiqueta={tk('controles.degradado2')} value={typeof f.gradient_2 === 'string' && f.gradient_2.startsWith('#') ? f.gradient_2 : '#ffffff'} onChange={(ev) => set('gradient_2', ev.target.value)} />
-      <Campo etiqueta="Ángulo"><NumeroKit min={0} max={360} value={String(f.gradient_angle ?? '')} onChange={(ev) => set('gradient_angle', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
-      <Campo etiqueta="Imagen de escritorio"><input className={control} value={String(f.image_url ?? '')} onChange={(ev) => set('image_url', ev.target.value)} /></Campo>
+      {/* ESTILO-01: color, degradado e imagen se eligen en Estilo › Fondo (una sola opción). Aquí, lo propio del fondo común. */}
+      <p className="text-[12px] leading-4 text-fg-muted">{tk('estiloUnico.fondoEnEstilo')}</p>
       <Campo etiqueta="Imagen de celular"><input className={control} value={String(f.image_url_mobile ?? '')} onChange={(ev) => set('image_url_mobile', ev.target.value)} /></Campo>
       <Campo etiqueta="Ajuste">
         <SelectKit className={control} value={String(f.image_fit ?? '')} onChange={(ev) => set('image_fit', ev.target.value)}>
@@ -336,7 +328,6 @@ export function EditorFondo({ valor, onCambiar }: { valor: unknown; onCambiar: (
           <option value="right">Derecha</option>
         </SelectKit>
       </Campo>
-      <Campo etiqueta="Opacidad de la capa"><NumeroKit min={0} max={100} value={String(f.overlay_opacity ?? '')} onChange={(ev) => set('overlay_opacity', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
       <CasillaKit titulo="Parallax" checked={f.parallax === true} onChange={(ev) => set('parallax', ev.target.checked)} />
       <Campo etiqueta="Relleno superior"><NumeroKit min={0} max={200} value={String(f.padding_top ?? '')} onChange={(ev) => set('padding_top', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>
       <Campo etiqueta="Relleno inferior"><NumeroKit min={0} max={200} value={String(f.padding_bottom ?? '')} onChange={(ev) => set('padding_bottom', ev.target.value ? Number(ev.target.value) : undefined)} /></Campo>

@@ -11,12 +11,14 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
+import { ColorTema } from './PartesZonaGlobal';
 import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, SettingRow, Skeleton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
+import { RepetidorSeccion } from './RepetidorSeccion';
 import FieldRenderer from '@/components/organization/branding/editor/fields/FieldRenderer';
 import type { ThemePalette } from '@/components/organization/branding/editor/fields/types';
 import { ColorField } from '@/components/sitio-web/ui/ColorField';
@@ -130,6 +132,20 @@ export function CampoSeccion({
   }
 
   switch (campo.type) {
+    case 'repeater':
+      return (
+        <RepetidorSeccion
+          campo={campo}
+          valor={valor}
+          onCambiar={onCambiar}
+          organizationId={organizationId}
+          paleta={paleta}
+          fondo={fondo}
+          categorias={categorias}
+          deshabilitado={deshabilitado}
+          fuentes={fuentes}
+        />
+      );
     case 'text':
     case 'url':
       return (
@@ -209,8 +225,41 @@ export function CampoSeccion({
         </div>
       );
     }
+    case 'alignment': {
+      // Figma v2: alineación como chips del kit (mismas opciones que el campo).
+      const opciones = campo.options?.length ? campo.options : [{ value: 'left', label: 'Izquierda' }, { value: 'center', label: 'Centro' }, { value: 'right', label: 'Derecha' }];
+      // Sin valor guardado no se marca ninguno: la tienda decide según la forma (círculo = centro).
+      const actual = typeof valor === 'string' && valor ? valor : '';
+      return (
+        <FormField etiqueta={campo.label} ayuda={ayuda}>
+          {(c) => (
+            <ChipsOpcion
+              aria-labelledby={c.idEtiqueta}
+              opciones={opciones.map((o) => ({ valor: String(o.value), etiqueta: o.label, deshabilitada: deshabilitado }))}
+              valor={actual || null}
+              onValorChange={(v) => onCambiar(v)}
+            />
+          )}
+        </FormField>
+      );
+    }
     case 'select': {
       const actual = typeof valor === 'string' ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '';
+      // Figma v2: hasta 5 opciones van como chips del kit; más, como desplegable.
+      if ((campo.options?.length ?? 0) > 0 && (campo.options?.length ?? 0) <= 5) {
+        return (
+          <FormField etiqueta={campo.label} ayuda={ayuda}>
+            {(c) => (
+              <ChipsOpcion
+                aria-labelledby={c.idEtiqueta}
+                opciones={(campo.options ?? []).map((o) => ({ valor: String(o.value), etiqueta: o.label, deshabilitada: deshabilitado }))}
+                valor={actual || null}
+                onValorChange={(v) => onCambiar(v)}
+              />
+            )}
+          </FormField>
+        );
+      }
       return (
         <FormField etiqueta={campo.label} ayuda={ayuda}>
           {(c) => (
@@ -230,16 +279,22 @@ export function CampoSeccion({
         </FormField>
       );
     }
-    case 'color':
+    case 'color': {
+      // Figma v2: vacío = «Sigue el tema» (lo que pinta la tienda sin clave), no un blanco ficticio.
+      const fijo = typeof valor === 'string' && valor ? valor : null;
+      if (deshabilitado) {
+        return <ColorField etiqueta={campo.label} valor={fijo ?? '#FFFFFF'} fondo={fondo ?? undefined} onCambiar={(v) => onCambiar(v)} deshabilitado />;
+      }
       return (
-        <ColorField
+        <ColorTema
           etiqueta={campo.label}
-          valor={typeof valor === 'string' && valor ? valor : '#FFFFFF'}
+          valor={fijo}
+          colorTema={typeof campo.defaultValue === 'string' && campo.defaultValue ? campo.defaultValue : '#FFFFFF'}
           fondo={fondo ?? undefined}
           onCambiar={(v) => onCambiar(v)}
-          deshabilitado={deshabilitado}
         />
       );
+    }
     case 'entity':
       if (campo.entity === 'category' && campo.multiple) {
         const elegidas = (Array.isArray(valor) ? valor : []).map(String);

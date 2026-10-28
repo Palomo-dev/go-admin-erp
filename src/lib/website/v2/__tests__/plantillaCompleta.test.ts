@@ -235,7 +235,7 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
         expect({ tipo: s.tipo, existe: Boolean(def) }).toEqual({ tipo: s.tipo, existe: true });
         expect(def!.variants.map((v) => v.id)).toContain(s.variante);
         const claves = new Set(def!.contentFields.map((f) => f.key));
-        for (const k of Object.keys(s.contenido)) expect({ tipo: s.tipo, clave: k, declarada: claves.has(k) }).toEqual({ tipo: s.tipo, clave: k, declarada: true });
+        for (const k of Object.keys(s.contenido)) expect({ tipo: s.tipo, clave: k, declarada: claves.has(k) || k === 'section_background' }).toEqual({ tipo: s.tipo, clave: k, declarada: true });
       }
     }
   });

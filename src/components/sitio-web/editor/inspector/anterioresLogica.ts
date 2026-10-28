@@ -22,7 +22,7 @@ export interface EntradaAnterior {
   /** Cambio que quita el ajuste, o `null` si la tienda lo usa por una opción vigente. */
   quitar: Record<string, unknown> | null;
   /** Por qué no se puede quitar. */
-  motivo?: 'enUso' | 'circulo' | 'mandaEspaciado' | 'mandaAncho' | 'sinEfecto' | 'mandaCarrusel';
+  motivo?: 'enUso' | 'circulo' | 'mandaEspaciado' | 'mandaAncho' | 'sinEfecto' | 'mandaCarrusel' | 'tituloEncabezado' | 'pasaABanners';
   /** Interruptores que siguen editables (sin equivalente en el panel nuevo; auditoría 27-oct, 6). */
   editables?: { clave: string; valor: boolean; cambio: (v: boolean) => Record<string, unknown> }[];
 }
@@ -37,7 +37,7 @@ function editablesMovil(h: Record<string, unknown>, parte: string): NonNullable<
   const o = objeto(h[parte]);
   if (!o) return [];
   return Object.entries(o)
-    .filter(([, v]) => typeof v === 'boolean')
+    .filter(([k, v]) => typeof v === 'boolean' && !(EN_CELULAR[parte] ?? []).includes(k))
     .map(([k, v]) => ({
       clave: k,
       valor: v as boolean,
@@ -46,7 +46,32 @@ function editablesMovil(h: Record<string, unknown>, parte: string): NonNullable<
 }
 
 const ESTILOS_MENU_NUEVOS = ['drawer_left', 'drawer_right', 'top_dropdown', 'none'];
-export const PARTES_MOVIL = ['panel', 'layout', 'icons', 'search', 'bottom_nav'] as const;
+// `bottom_nav`, `panel`, `search`, el glifo/estilo de `icons` y el logo/orden de `layout` se editan en «Celular».
+export const PARTES_MOVIL = ['layout', 'icons'] as const;
+/** Claves que ya tienen opción en «Celular» (o en «Círculo acento»): no se listan como anteriores. */
+const EN_CELULAR: Readonly<Record<string, readonly string[]>> = {
+  icons: ['menu', 'style', 'show_menu', 'show_search', 'show_cart', 'show_account', 'color'],
+  layout: ['logo', 'arrangement', 'logo_size', 'header_height', 'sticky', 'hide_on_scroll', 'transparent_hero'],
+};
+
+/** La parte sin lo que ya se edita en «Celular» (solo `icons` tiene claves repartidas). */
+function restoAnterior(h: Record<string, unknown>, p: string): Record<string, unknown> | null {
+  const o = objeto(h[p]);
+  const propias = EN_CELULAR[p];
+  if (!propias || !o) return o;
+  const r = Object.fromEntries(Object.entries(o).filter(([k]) => !propias.includes(k)));
+  return Object.keys(r).length ? r : null;
+}
+
+/** Quita la parte vieja y deja lo que vive en «Celular». */
+function sinParteAnterior(h: Record<string, unknown>, p: string): Record<string, unknown> | null {
+  const resto = sinPartes(h, [p]);
+  const o = objeto(h[p]);
+  const propias = EN_CELULAR[p];
+  if (!propias || !o) return resto;
+  const queda = Object.fromEntries(Object.entries(o).filter(([k]) => propias.includes(k)));
+  return Object.keys(queda).length ? { ...resto, [p]: queda } : resto;
+}
 /** Claves del celular que, en `null`, siguen a su par de computador en la tienda (`opcionUnica.ts`). */
 export const SIGUEN_A_COMPUTADOR: Readonly<Record<string, string>> = {
   mobile_search_style: 'search_style',
@@ -103,8 +128,8 @@ function entradasMovil(a: Record<string, unknown>): EntradaAnterior[] {
   const h = objeto(a.mobile_header);
   if (!h) return [];
   const usa = usaEncabezadoMovilNuevo(h, a.mobile_menu_style);
-  return PARTES_MOVIL.filter((p) => !vacio(h[p])).map((p) => {
-    const resto = sinPartes(h, [p]);
+  return PARTES_MOVIL.filter((p) => !vacio(restoAnterior(h, p))).map((p) => {
+    const resto = sinParteAnterior(h, p);
     if (usa && !usaEncabezadoMovilNuevo(resto, a.mobile_menu_style)) {
       return { id: `mobile_header__${p}`, quitar: null, motivo: p === 'icons' && iconosSoloCirculo(h) ? 'circulo' : 'enUso', ...conEditables(h, p) };
     }
@@ -186,14 +211,16 @@ export function buscadorPropioCelular(a: Record<string, unknown>): string | null
 
 export function cambioBuscador(a: Record<string, unknown>, v: string): Record<string, unknown> {
   const propio = buscadorPropioCelular(a);
-  if (propio && v !== 'hidden' && v !== propio) return { search_style: v };
+  // Tipos de buscador del Constructor (mini, overlay, grande, píldora): en el celular, ícono o barra.
+  const vm = v === 'icon_overlay' ? 'icon' : v === 'mini' || v === 'mega' || v === 'pill_floating' ? 'bar' : v;
+  if (propio && vm !== 'hidden' && vm !== propio) return { search_style: v };
   const cambio: Record<string, unknown> = { search_style: v, mobile_search_style: null };
   const h = objeto(a.mobile_header);
-  if (h && 'search' in h) {
+  if (h && 'search' in h && !(h.search === 'fullscreen' && vm === 'icon')) {
     const resto = sinPartes(h, ['search']);
     // Sin el buscador viejo el celular dejaría su encabezado: se le pone el mismo buscador.
     const deja = usaEncabezadoMovilNuevo(h, a.mobile_menu_style) && !usaEncabezadoMovilNuevo(resto, a.mobile_menu_style);
-    cambio.mobile_header = deja && v !== 'hidden' ? { ...h, search: v } : resto;
+    cambio.mobile_header = deja && vm !== 'hidden' ? { ...h, search: vm } : resto;
   }
   return cambio;
 }

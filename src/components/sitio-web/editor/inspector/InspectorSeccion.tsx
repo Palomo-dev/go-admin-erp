@@ -33,6 +33,7 @@ import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
 import { AjustesAnteriores } from './InspectorEncabezado';
+import type { Apariencia } from './estiloUnico';
 import { carruselGlobalActivo, carruselDesdeClavesAnteriores, cambioTextoEncabezado, valorTextoEncabezado, aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
 import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
@@ -54,6 +55,8 @@ export interface InspectorSeccionProps {
   onCambiarContenido: (contenido: Record<string, unknown>) => void;
   onCambiarVariante: (variante: string) => void;
   onCambiarEstilo: (estilo: EstiloSeccion | null) => void;
+  /** Bloque 4: Estilo escribe ajustes y contenido a la vez (una sola opción por función). */
+  onCambiarApariencia?: (a: Apariencia) => void;
   onCambiarVisibilidad: (v: Visibilidad) => void;
   onAlternarVisible: () => void;
   onDuplicar: () => void;
@@ -103,6 +106,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       if (!GRUPOS[pest].includes(c.group ?? 'content')) return false;
       // Espaciado y ancho: una sola opción, en Estilo (Figma v2). Lo guardado sale en «Ajustes de versiones anteriores».
       if (campoCubiertoPorEstilo(c, s.section_type)) return false;
+      // PAGINA-01: «Mostrar paginación» se pinta una vez, dentro del panel de paginación.
+      if (c.key === 'show_pagination' && (TIPOS_PAGINACION as readonly string[]).includes(s.section_type)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
       if (c.type === 'repeater' && c.key === 'items') {
@@ -140,11 +145,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       <CampoSeccion
         key={c.key}
         campo={c}
-        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : valorTextoEncabezado(contenido, c.key)}
+        valor={c.key === 'body' ? (contenido.body ?? contenido.content) : valorTextoEncabezado(contenido, c.key, s.section_type)}
         contenido={contenido}
         onCambiar={(v) => {
           const siguiente: Record<string, unknown> =
-            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : cambioTextoEncabezado(contenido, c.key, v);
+            c.key === 'body' ? contenidoTrasEditarBody(contenido, String(v ?? ''), new Date().toISOString()) : cambioTextoEncabezado(contenido, c.key, v, s.section_type);
           // Exclusión mutua de categories_grid (como en el editor anterior).
           if (c.key === 'show_icon' && v === true) siguiente.show_image = false;
           if (c.key === 'show_image' && v === true) siguiente.show_icon = false;
@@ -259,7 +264,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             {esSeccionTarjetaProducto(s.section_type) && (
               <InspectorTarjetaProducto
                 guardado={contenido.product_card_style}
-                heredado={heredadoTarjetaSeccion(contenido, p.estiloTarjetaSitio)}
+                heredado={heredadoTarjetaSeccion(contenido, p.estiloTarjetaSitio, s.section_type, s.section_variant)}
                 onCambiar={(estilo) => onCambiarContenido({ ...contenido, product_card_style: estilo })}
                 onQuitar={() => {
                   const siguiente = { ...contenido };
@@ -290,6 +295,9 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                 }}
                 onCambiar={(val) => onCambiarContenido({ ...contenido, paginacion: { usar_global: false, ...val } })}
                 color="#111827"
+                mostrar={definicion?.contentFields.some((c) => c.key === 'show_pagination')
+                  ? { valor: contenido.show_pagination !== false, onCambiar: (b) => onCambiarContenido({ ...contenido, show_pagination: b }) }
+                  : undefined}
               />
             )}
             {(TIPOS_CARRUSEL as readonly string[]).includes(s.section_type) && (
@@ -329,6 +337,30 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             tema={p.tema}
             catalogoFuentes={p.catalogoFuentes}
             sede={p.sede?.estilo ?? null}
+            encabezado={{
+              apariencia: { settings: (s.settings ?? {}) as Record<string, unknown>, contenido },
+              aplicar: (a) => onCambiarContenido(a.contenido),
+            }}
+            unico={
+              p.onCambiarApariencia && !p.sede
+                ? {
+                    apariencia: { settings: (s.settings ?? {}) as Record<string, unknown>, contenido },
+                    aplicar: p.onCambiarApariencia,
+                    campoImagen: (valor, onCambiar) => (
+                      <CampoSeccion
+                        campo={{ key: 'bg_image', label: t('estilo.fondoImagen'), type: 'image', group: 'style' }}
+                        valor={valor}
+                        contenido={contenido}
+                        onCambiar={(v) => onCambiar(typeof v === 'string' && v ? v : undefined)}
+                        onCambiarContenido={onCambiarContenido}
+                        organizationId={p.organizationId}
+                        paleta={p.paleta}
+                        categorias={p.categorias}
+                      />
+                    ),
+                  }
+                : null
+            }
           />
         )}
         {pestana === 'estilo' && (

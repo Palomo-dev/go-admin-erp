@@ -4469,8 +4469,8 @@
       "finanzas_contabilidad_libro-diario": "General journal",
       "finanzas_contabilidad_auxiliar-tercero": "Subsidiary ledger by third party",
       "finanzas_contabilidad_balance-comprobacion": "Trial balance",
-      "finanzas_contabilidad_estado-resultados": "Income statement",
-      "finanzas_contabilidad_balance-general": "Balance sheet",
+      "finanzas_contabilidad_estado-resultados": "Statement of comprehensive income",
+      "finanzas_contabilidad_balance-general": "Statement of financial position",
       "finanzas_contabilidad_periodos-fiscales": "Fiscal periods",
       "finanzas_reglas-contables": "Accounting rules",
       "finanzas_centro-costos": "Cost centers",
@@ -31562,6 +31562,7 @@
         "borrador": "Saved as draft",
         "guardando": "Saving…",
         "programado": "Scheduled · {fecha}",
+        "sinGuardar": "Unsaved changes",
         "sinPublicar": "Not published",
         "error": "Could not publish"
       },
@@ -34118,12 +34119,24 @@
         "descripcion": "when you save, changes go live. Create a draft to review them before publishing.",
         "crearBorrador": "Create draft"
       },
+      "repetidor": {
+        "agregar": "Add",
+        "duplicar": "Duplicate",
+        "quitar": "Remove",
+        "subir": "Move up",
+        "bajar": "Move down",
+        "vacio": "No items. Use “Add”.",
+        "elemento": "{campo} {n}",
+        "porDefecto": "Showing the defaults; editing saves them to the section."
+      },
       "listas": {
         "paginacion": "Pagination",
         "carrusel": "Carousel",
         "usarGlobal": "Use global setting",
         "usarGlobalAyuda": "Follows Design › Site styles. Turn it off to give this section its own setting.",
         "porPaginaComputador": "Per page on desktop",
+        "mostrarPaginacion": "Show pagination",
+        "mostrarPaginacionAyuda": "Off: the whole list shows (up to the set quantity or rows), without page numbers.",
         "porPaginaCelular": "Per page on mobile",
         "estilo": "Style",
         "forma": "Shape",
@@ -36135,7 +36148,8 @@
       },
       "errorMarcarPagado": "Couldn't mark as paid",
       "pendienteMarcarPagado": "Order confirmed but not marked as paid",
-      "sinStockReactivar": "There is not enough stock to reactivate the order. Adjust the inventory of the missing products and try again; the order was not changed."
+      "sinStockReactivar": "There is not enough stock to reactivate the order. Adjust the inventory of the missing products and try again; the order was not changed.",
+      "confirmarCanceladoAntiguo": "Order {numero} was cancelled {dias} days ago. Mark it as paid anyway?"
     },
     "tipoCorto": {
       "pickup": "Pickup",

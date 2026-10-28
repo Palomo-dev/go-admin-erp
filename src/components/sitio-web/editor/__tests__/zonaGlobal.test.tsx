@@ -24,6 +24,7 @@ import {
 import { InspectorEncabezado } from '../inspector/InspectorEncabezado';
 import { InspectorPie } from '../inspector/InspectorPie';
 
+jest.mock('../inspector/useDestinosTienda', () => ({ useDestinosTienda: () => null }));
 jest.mock('@/lib/hooks/useOrganization', () => ({
   useOrganization: () => ({ organization: { id: 120 } }),
   getOrganizationId: () => 120,
@@ -124,22 +125,26 @@ describe('InspectorEncabezado', () => {
     const onCambiar = encabezado();
     expect(screen.getByRole('heading', { name: 'Encabezado' })).toBeTruthy();
     expect(screen.getByText('Global · aparece en todas las páginas')).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Contenido', 'Diseño', 'Estilo', 'Celular']);
     expect(screen.getByText('Cambia en todas las páginas')).toBeTruthy();
     expect(screen.getByText('Valores por defecto de la plantilla «Noir Omakase»')).toBeTruthy();
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
     expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú']);
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Megamenú' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega', header_layout: null, logo_position: 'left', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega', header_layout: null, logo_position: 'left' });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Logo centrado' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', header_layout: null, logo_position: 'center', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'centered', header_layout: null, logo_position: 'center' });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Dividido' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', header_layout: null, logo_position: 'center', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', header_layout: null, logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
-    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
     expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
+    // Lo del celular (con el menú inferior) vive solo en la pestaña Celular, sin duplicarse en Diseño.
+    expect(screen.queryByRole('switch', { name: /Menú inferior/ })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Celular' }));
+    expect(screen.getAllByRole('switch', { name: /Menú inferior/ })).toHaveLength(1);
   });
 
   test('Logo centrado → Clásico: una sola opción; el lado vuelve a izquierda y Logo centrado oculta el selector', () => {
@@ -147,7 +152,7 @@ describe('InspectorEncabezado', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Posición del logo' })).toBeNull();
     expect(screen.getByText('En esta composición el logo va al centro.')).toBeTruthy();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Diseño del encabezado' })).getByRole('radio', { name: 'Clásico' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'default', header_layout: null, logo_position: 'left', mobile_logo_position: null });
+    expect(onCambiar).toHaveBeenCalledWith({ header_style: 'default', header_layout: null, logo_position: 'left' });
   });
 
   test('Estilo: encabezado sobre la portada y espacio de la primera sección', () => {
@@ -181,7 +186,9 @@ describe('InspectorEncabezado', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden', mobile_search_style: null });
     // Fuera del Figma v2: ya no están en el panel.
-    expect(screen.queryByRole('radio', { name: 'Relleno' })).toBeNull();
+    // «Relleno» solo existe como estilo de los botones 3 a 6 (Figma 2292:51519), no del botón principal.
+    expect(screen.getAllByRole('radio', { name: 'Relleno' })).toHaveLength(1);
+    expect(screen.getByRole('radiogroup', { name: 'Estilo de los botones 3 a 6' })).toBeTruthy();
     expect(screen.queryByRole('switch', { name: /Header transparente sobre el hero/ })).toBeNull();
     expect(screen.queryByText('Constructor')).toBeNull();
   });
@@ -204,8 +211,12 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false, header_scroll: null });
     fireEvent.click(screen.getByRole('radio', { name: 'Se encoge' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: true, header_scroll: 'encoger' });
-    fireEvent.click(screen.getByRole('switch', { name: /Círculo acento/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Círculo' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Cuadrado' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'square', scope: 'all', background: 'accent' } });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Tamaño de los íconos' })).getByRole('radio', { name: '28 px' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'none', scope: 'all', icon: 28 } });
     fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
     expect(onCambiar).toHaveBeenCalledWith({ cta_border_radius: 999 });
     expect(screen.queryByText(/Ajustes de versiones anteriores/)).toBeNull();
@@ -275,16 +286,14 @@ describe('InspectorPie', () => {
     expect(screen.getAllByText('Nuevo').length).toBeGreaterThanOrEqual(3);
   });
 
-  test('Diseño: composiciones, columnas, celular y barra fija abajo con acciones', () => {
+  test('Diseño: composiciones, columnas y celular (la barra fija abajo vive en Encabezado › Celular)', () => {
     const onCambiar = pie({ mobile_bottom_bar: 'reservar,llamar' }, { pestanaInicial: 'diseno', giro: 'hotel' });
     const comp = screen.getByRole('radiogroup', { name: 'Diseño del pie' });
     expect(within(comp).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', '3 columnas', 'Centrado', 'Mínimo', 'Dividido']);
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Columnas' })).getByRole('radio', { name: '3' }));
     expect(onCambiar).toHaveBeenCalledWith({ footer_columns: 3 });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Cómo llegar' }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_bottom_bar: ['reservar', 'llamar', 'como_llegar'] });
-    fireEvent.click(screen.getByRole('switch', { name: /Barra fija abajo/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ mobile_bottom_bar: 'ninguna' });
+    expect(screen.queryByRole('switch', { name: /Barra fija abajo/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Cómo llegar' })).toBeNull();
   });
 
   test('Estilo: fondo «Tema» y personalizado con color', () => {

@@ -7,8 +7,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
-import { claveAvisoCobro, CobroEnCajaError, webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
-import { esMetodoCobroEnCaja, metodoDeCobroEnCaja, pedidoEsDePasarela, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
+import { claveAvisoCobro, claveAvisoMarcarPagado, claveAvisoPendiente, CobroEnCajaError, webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
+import { diasCanceladoQuePidenConfirmacion, esMetodoCobroEnCaja, metodoDeCobroEnCaja, pedidoEsDePasarela, type MetodoCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
@@ -61,6 +61,8 @@ interface UseWebOrderDetailReturn {
    * primero (sin cobro) y luego registra el pago de la pasarela.
    */
   handleMarcarPagadoPasarela: () => Promise<boolean>;
+  /** Permiso de «Marcar como pagado» (pos.pedidos_web.marcar_pagado o pos.void): sin él no hay botón. */
+  puedeMarcarPagado: boolean;
   /** Diálogo «Cobrar y entregar» (Figma 1982:946157): abierto y si entrega al cobrar. */
   cobroDialogo: { abierto: boolean; entregar: boolean };
   abrirCobro: (entregar: boolean) => void;
@@ -80,6 +82,12 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const { organization } = useOrganization();
   const orgTypeId = organization?.type_id ?? 3;
   const isRetail = orgTypeId === 3;
+  const [puedeMarcarPagado, setPuedeMarcarPagado] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    void webOrderConfirmationService.puedeMarcarPagado(organizationId).then((ok) => vivo && setPuedeMarcarPagado(ok));
+    return () => { vivo = false; };
+  }, [organizationId]);
 
   const [order, setOrder] = useState<WebOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -206,7 +214,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         if (result.cobroPendiente === 'NO_OPEN_CASH_SESSION') setSinCajaAbierta(true);
         toast({
           title: result.marcarPagadoPendiente ? t('cobro.pendienteMarcarPagado') : t('cobro.pendienteTrasConfirmar'),
-          description: t(`cobro.${claveAvisoCobro(result.cobroPendiente)}`),
+          description: t(`cobro.${claveAvisoPendiente(result.cobroPendiente, result.marcarPagadoPendiente)}`),
           variant: 'destructive',
         });
       }
@@ -440,6 +448,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
 
   const handleMarcarPagadoPasarela = async (): Promise<boolean> => {
     if (!order || !pedidoEsDePasarela(order)) return false;
+    // Opción apagada (CONFIRMAR_CANCELADOS_ANTIGUOS): confirmación de un clic para cancelados viejos.
+    const dias = diasCanceladoQuePidenConfirmacion(order);
+    if (dias !== null && !window.confirm(t('cobro.confirmarCanceladoAntiguo', { numero: order.order_number, dias }))) return false;
     setActionLoading(true);
     try {
       let pedido: WebOrder = order;
@@ -463,7 +474,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       return true;
     } catch (error: unknown) {
       if (error instanceof CobroEnCajaError && error.codigo !== 'OTRO' && error.codigo !== 'FUNCION_AUSENTE') {
-        toast({ title: t('cobro.errorMarcarPagado'), description: t(`cobro.${claveAvisoCobro(error.codigo)}`), variant: 'destructive' });
+        toast({ title: t('cobro.errorMarcarPagado'), description: t(`cobro.${claveAvisoMarcarPagado(error.codigo)}`), variant: 'destructive' });
       } else if (/^STOCK_INSUFICIENTE/.test(error instanceof Error ? error.message : '')) {
         // Vencido o cancelado por pago fallido sin stock para re-reservar: no cambió nada.
         toast({ title: t('cobro.errorMarcarPagado'), description: t('cobro.sinStockReactivar'), variant: 'destructive' });
@@ -511,6 +522,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     handleCreateShipment,
     handleCobrar,
     handleMarcarPagadoPasarela,
+    puedeMarcarPagado,
     cobroDialogo,
     abrirCobro,
     cerrarCobro,

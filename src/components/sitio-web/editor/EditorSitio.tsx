@@ -297,6 +297,8 @@ function Editor() {
   const estadoPill: EstadoPublicacion | null = useMemo(() => {
     if (!ed.enV2) return null;
     if (ed.programacion && !ed.hasChanges) return { tipo: 'programado', fecha: ed.programacion.ejecutarEn };
+    // Cambios que el autoguardado aún no envió: aviso explícito hasta que empiece a guardar.
+    if (ed.estadoGuardado === 'cambios') return { tipo: 'guardando', pendiente: true };
     if (ed.estadoGuardado === 'guardando' || ed.hasChanges) return { tipo: 'guardando' };
     if (ed.listaCambios) {
       return resolverEstadoPublicacion({
@@ -760,6 +762,7 @@ function Editor() {
                 enBorrador={ed.enV2}
                 dispositivo={ed.dispositivo}
                 coloresTema={coloresTema}
+                giro={giroShell}
                 onEditarMenu={() => setHojaMenu(true)}
                 onCerrar={() => ed.seleccionarZona(null)}
               />
@@ -789,6 +792,7 @@ function Editor() {
               onCambiarContenido={(c) => ed.cambiarContenido(seccion.id, c)}
               onCambiarVariante={(v) => ed.cambiarVariante(seccion.id, v)}
               onCambiarEstilo={(e) => ed.cambiarEstilo(seccion.id, e)}
+              onCambiarApariencia={(a) => ed.cambiarApariencia(seccion.id, a.settings, a.contenido)}
               onCambiarVisibilidad={(v) => ed.cambiarVisibilidad(seccion.id, v)}
               onAlternarVisible={() => ed.alternarVisible(seccion.id, !seccion.is_visible)}
               onDuplicar={() => void ed.duplicarSeccion(seccion.id)}

@@ -27,9 +27,9 @@ export const INDICADORES = ['ninguno', 'puntos', 'barra', 'numeros', 'progreso',
 export type IndicadorCarrusel = (typeof INDICADORES)[number]
 export const POSICIONES_INDICADOR = ['abajo_dentro', 'abajo_fuera'] as const
 export type PosicionIndicador = (typeof POSICIONES_INDICADOR)[number]
-export const ESTILOS_FLECHA = ['chevron', 'circulo', 'cuadrado', 'larga', 'hover'] as const
+export const ESTILOS_FLECHA = ['chevron', 'circulo', 'cuadrado', 'larga', 'hover', 'minimo'] as const
 export type EstiloFlecha = (typeof ESTILOS_FLECHA)[number]
-export const POSICIONES_FLECHA = ['lados_dentro', 'lados_fuera', 'titulo', 'indicador'] as const
+export const POSICIONES_FLECHA = ['lados_dentro', 'lados_fuera', 'titulo', 'indicador', 'arriba_derecha', 'abajo'] as const
 export type PosicionFlecha = (typeof POSICIONES_FLECHA)[number]
 
 export const TIPOS_PAGINACION = ['products_grid', 'offers', 'featured_products', 'categories_grid'] as const
@@ -93,6 +93,10 @@ export interface ParcialCarrusel {
   sombraFlecha?: boolean
   colorIcono?: string
   tamanoFlecha?: TamanoControl
+  /** Tamaño exacto de la flecha en px (16–96); gana a `tamanoFlecha`. */
+  tamanoFlechaPx?: number
+  /** Portada: flechas y puntos con las piezas propias del hero (las de siempre). */
+  controlesPortada?: boolean
   autoplay?: boolean
   segundos?: number
   loop?: boolean
@@ -247,6 +251,10 @@ export function sanitizarCarrusel(valor: unknown): ParcialCarrusel | null {
   if (estilo) c.estiloFlechas = estilo
   if (posF) c.posicionFlechas = posF
   if (tamF) c.tamanoFlecha = tamF
+  const tamPx = entero(o.tamanoFlechaPx, 16, 96)
+  if (tamPx) c.tamanoFlechaPx = tamPx
+  const portada = booleano(o.controlesPortada)
+  if (portada !== undefined) c.controlesPortada = portada
   const fe = booleano(o.flechasEscritorio)
   const fm = booleano(o.flechasMovil)
   const sombra = booleano(o.sombraFlecha)
@@ -261,7 +269,9 @@ export function sanitizarCarrusel(valor: unknown): ParcialCarrusel | null {
   if (loop !== undefined) c.loop = loop
   if (pausa !== undefined) c.pausaHover = pausa
   if (arrastre !== undefined) c.arrastre = arrastre
-  const seg = entero(o.segundos, 1, 15)
+  // Segundos con decimales (3,5 s se conserva); centésimas como máximo.
+  const segN = typeof o.segundos === 'number' ? o.segundos : typeof o.segundos === 'string' && o.segundos.trim() ? Number(o.segundos) : NaN
+  const seg = Number.isFinite(segN) && segN >= 1 && segN <= 15 ? Math.round(segN * 100) / 100 : undefined
   const ve = entero(o.visiblesEscritorio, 1, 8)
   const vt = entero(o.visiblesTableta, 1, 6)
   const vm = entero(o.visiblesMovil, 1, 3)
@@ -286,7 +296,8 @@ export function sanitizarCarrusel(valor: unknown): ParcialCarrusel | null {
 
 function sinUsarGlobal<T extends { usar_global?: boolean }>(p: T | null): T | null {
   if (!p) return null
-  const { usar_global: _u, ...resto } = p
+  const resto: Partial<T> = { ...p }
+  delete resto.usar_global
   return Object.keys(resto).length ? (resto as T) : null
 }
 
@@ -435,7 +446,7 @@ export function clasesFlecha(estilo: EstiloFlecha, tamano: TamanoControl, sombra
   const px = tamano === 'sm' ? 'w-8 h-8' : tamano === 'lg' ? 'w-12 h-12' : 'w-10 h-10'
   const sombraCls = sombra ? 'shadow-lg' : ''
   const base = `flex items-center justify-center transition-all ${px} ${sombraCls} ${FOCO}`
-  if (estilo === 'chevron') return `${base} bg-transparent`
+  if (estilo === 'chevron' || estilo === 'minimo') return `${base} bg-transparent`
   if (estilo === 'cuadrado') return `${base} rounded-lg bg-white dark:bg-gray-800 border dark:border-gray-700`
   if (estilo === 'larga') return `${base} w-14 rounded-full bg-white dark:bg-gray-800 border dark:border-gray-700`
   if (estilo === 'hover') {
@@ -455,6 +466,9 @@ export function clasesPunto(activo: boolean, tamano: TamanoControl, indicador: I
 /** Posición de las flechas respecto del carrusel. `hover` ya trae la opacidad. */
 export function posicionFlecha(pos: PosicionFlecha, direccion: 'anterior' | 'siguiente'): string {
   if (pos === 'titulo' || pos === 'indicador') return ''
+  // Como la portada de siempre: las dos juntas arriba a la derecha o abajo al centro.
+  if (pos === 'arriba_derecha') return direccion === 'anterior' ? 'absolute top-4 right-16 z-20' : 'absolute top-4 right-4 z-20'
+  if (pos === 'abajo') return direccion === 'anterior' ? 'absolute bottom-4 right-1/2 mr-1 z-20' : 'absolute bottom-4 left-1/2 ml-1 z-20'
   const fuera = pos === 'lados_fuera'
   if (direccion === 'anterior') {
     return `absolute top-1/2 -translate-y-1/2 z-20 ${fuera ? '-left-5' : 'left-0 -translate-x-1/2'}`

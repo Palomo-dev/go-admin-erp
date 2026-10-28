@@ -55,10 +55,16 @@ export const PASARELAS_DE_PAGO: ReadonlySet<string> = new Set([
 
 const PREFIJOS_PASARELA = ['wompi', 'bold_', 'mp_', 'payu_', 'stripe_', 'paypal_', 'mercadopago'];
 
-/** Métodos de caja/mostrador: con referencia NO convierten el pedido en de pasarela. */
-const METODOS_NO_PASARELA: ReadonlySet<string> = new Set([
-  '', 'cash', 'efectivo', 'transfer', 'transferencia', 'qr', 'mesa', 'cash_on_delivery',
-  'contraentrega', 'contra_entrega', 'credit', 'check', 'datafono',
+/**
+ * Métodos de caja/mostrador: con referencia NO convierten el pedido en de
+ * pasarela (variantes en español y con guion bajo incluidas). Debe ser IGUAL a
+ * la lista de `fn_pedido_web_es_pasarela` (migración 20261027241500); lo
+ * verifica metodosCaja.test.ts.
+ */
+export const METODOS_NO_PASARELA: ReadonlySet<string> = new Set([
+  '', 'cash', 'efectivo', 'transfer', 'transferencia', 'transferencia_bancaria', 'consignacion', 'qr', 'mesa',
+  'cash_on_delivery', 'contraentrega', 'contra_entrega', 'credit', 'credito', 'fiado', 'check', 'cheque',
+  'datafono', 'datáfono', 'pos', 'tarjeta', 'tarjeta_credito', 'tarjeta_debito',
 ]);
 
 const normalizar = (m: string | null | undefined) => (m ?? '').trim().toLowerCase();
@@ -168,4 +174,24 @@ export function marcaPagadoPorPasarela(order: {
     !order.table_session_id &&
     !['cancelled', 'rejected', 'refunded'].includes(order.status ?? '')
   );
+}
+
+/**
+ * Opción (APAGADA) para Juan: pedir una confirmación de un clic antes de
+ * marcar pagado un cancelado por pago fallido de hace más de
+ * `DIAS_CANCELADO_ANTIGUO` días. En `false`, «Marcar como pagado» sigue siendo
+ * un clic directo para todos.
+ */
+export const CONFIRMAR_CANCELADOS_ANTIGUOS = false;
+export const DIAS_CANCELADO_ANTIGUO = 30;
+
+/** Días desde la cancelación si hay que pedir confirmación; `null` = clic directo. */
+export function diasCanceladoQuePidenConfirmacion(
+  order: Parameters<typeof canceladoPorPagoFallido>[0] & { cancelled_at?: string | null },
+  ahora: Date = new Date(),
+  activo: boolean = CONFIRMAR_CANCELADOS_ANTIGUOS,
+): number | null {
+  if (!activo || !canceladoPorPagoFallido(order) || !order.cancelled_at) return null;
+  const dias = Math.floor((ahora.getTime() - new Date(order.cancelled_at).getTime()) / 86_400_000);
+  return dias > DIAS_CANCELADO_ANTIGUO ? dias : null;
 }

@@ -132,7 +132,7 @@ export function HeaderInspector({ settings, onUpdate, availableMenus, devicePrev
           <>
             {mockup(true)}
             <MobileHeaderPanel
-              settings={opcionesEncabezadoMovil(settings)}
+              settings={settings}
               onUpdate={onUpdate}
             />
           </>

@@ -157,11 +157,11 @@ export function normalizarEstiloBanners(crudo: unknown): EstiloBanners | null {
   if (movil) e.mobile_layout = movil
   const ultimo = bandera(o.last_full)
   if (ultimo != null) e.last_full = ultimo
-  const cd = entero(o.columns_desktop, 1, 6)
+  const cd = entero(o.columns_desktop, 1, 8)
   if (cd != null) e.columns_desktop = cd
-  const ct = entero(o.columns_tablet, 1, 4)
+  const ct = entero(o.columns_tablet, 1, 8)
   if (ct != null) e.columns_tablet = ct
-  const cm = entero(o.columns_mobile, 1, 2)
+  const cm = entero(o.columns_mobile, 1, 8)
   if (cm != null) e.columns_mobile = cm
   const slides = entero(o.slides, 1, 4)
   if (slides != null) e.slides = slides

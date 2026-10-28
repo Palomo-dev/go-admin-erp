@@ -4470,8 +4470,8 @@
       "finanzas_contabilidad_libro-diario": "Libro diario",
       "finanzas_contabilidad_auxiliar-tercero": "Auxiliar por tercero",
       "finanzas_contabilidad_balance-comprobacion": "Balance de comprobación",
-      "finanzas_contabilidad_estado-resultados": "Estado de resultados",
-      "finanzas_contabilidad_balance-general": "Balance general",
+      "finanzas_contabilidad_estado-resultados": "Estado del resultado integral",
+      "finanzas_contabilidad_balance-general": "Estado de situación financiera",
       "finanzas_contabilidad_periodos-fiscales": "Períodos fiscales",
       "finanzas_reglas-contables": "Reglas contables",
       "finanzas_centro-costos": "Centros de costos",
@@ -31563,6 +31563,7 @@
         "borrador": "Guardado en borrador",
         "guardando": "Guardando…",
         "programado": "Programado · {fecha}",
+        "sinGuardar": "Cambios sin guardar",
         "sinPublicar": "Sin publicar",
         "error": "No se pudo publicar"
       },
@@ -34136,12 +34137,24 @@
         "descripcion": "al guardar, los cambios salen en la web. Crea un borrador para revisarlos antes de publicar.",
         "crearBorrador": "Crear borrador"
       },
+      "repetidor": {
+        "agregar": "Agregar",
+        "duplicar": "Duplicar",
+        "quitar": "Quitar",
+        "subir": "Subir",
+        "bajar": "Bajar",
+        "vacio": "Sin elementos. Usa «Agregar».",
+        "elemento": "{campo} {n}",
+        "porDefecto": "Se muestran los de siempre; al editar se guardan en la sección."
+      },
       "listas": {
         "paginacion": "Paginación",
         "carrusel": "Carrusel",
         "usarGlobal": "Usar ajuste global",
         "usarGlobalAyuda": "Sigue Diseño › Estilos del sitio. Apágalo para darle a esta sección su propio ajuste.",
         "porPaginaComputador": "Por página en computador",
+        "mostrarPaginacion": "Mostrar paginación",
+        "mostrarPaginacionAyuda": "Apagado: se ve toda la lista (con la cantidad o las filas indicadas), sin números de página.",
         "porPaginaCelular": "Por página en celular",
         "estilo": "Estilo",
         "forma": "Forma",
@@ -36153,7 +36166,8 @@
       },
       "errorMarcarPagado": "No se pudo marcar como pagado",
       "pendienteMarcarPagado": "Pedido confirmado sin marcar como pagado",
-      "sinStockReactivar": "No hay stock suficiente para reactivar el pedido. Ajusta el inventario de los productos faltantes y vuelve a intentarlo; el pedido no cambió."
+      "sinStockReactivar": "No hay stock suficiente para reactivar el pedido. Ajusta el inventario de los productos faltantes y vuelve a intentarlo; el pedido no cambió.",
+      "confirmarCanceladoAntiguo": "El pedido {numero} se canceló hace {dias} días. ¿Marcarlo como pagado de todas formas?"
     },
     "tipoCorto": {
       "pickup": "Retiro",

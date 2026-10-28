@@ -47,6 +47,7 @@ import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
 import { PanelUrgencia } from './inspector/PanelUrgencia';
+import { PanelContador } from './inspector/PanelContador';
 import { FontField } from '@/components/sitio-web/ui/FontField';
 import { FONTS } from '@/lib/services/websiteSettingsService';
 import { familiaCss } from '@/components/sitio-web/diseno/catalogo';
@@ -250,8 +251,16 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
         {cascaronTemaDisponible() && p.enV2 && p.documento && (
           <EstiloGlobalSecciones documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
         )}
-        {urgenciaDocumentoDisponible() && p.enV2 && p.documento && (
+        {urgenciaDocumentoDisponible() && p.enV2 && p.documento ? (
           <PanelUrgencia documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
+        ) : (
+          // Las mismas columnas `countdown_*` del editor viejo: una sola configuración del contador.
+          <PanelContador
+            settings={p.settings}
+            onCambiarAjustes={p.onCambiarAjustes}
+            colorPrimario={p.settings?.primary_color ?? null}
+            deshabilitado={p.deshabilitado}
+          />
         )}
       </div>
     </aside>

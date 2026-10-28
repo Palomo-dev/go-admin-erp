@@ -227,6 +227,8 @@ export interface ContentFieldDef {
   maxItems?: number;
   /** Items por defecto que se muestran cuando el repeater está vacío. */
   defaultItems?: Record<string, unknown>[];
+  /** Lo que pinta la tienda con la lista vacía cuando NO usa `defaultItems` (el panel lo dice tal cual). */
+  emptyStoreText?: string;
   // ---- type='entity' ----
   /** Tipo de entidad seleccionable. */
   entity?: 'category' | 'product' | 'branch' | 'page' | 'table_zone';
@@ -631,6 +633,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
         itemLabelKey: 'name',
         showIf: { field: 'data_source', in: ['manual', undefined] },
+        // TestimonialsGrid/Quotes/Minimal/Carousel no usan los sugeridos: con la lista vacía pintan esto.
+        emptyStoreText: 'No hay testimonios disponibles aún',
         defaultItems: [
           {
             name: 'María González',
@@ -911,7 +915,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'lng', label: 'Longitud', type: 'number', placeholder: '-74.0721', group: 'data' },
       { key: 'zoom', label: 'Zoom', type: 'range', min: 1, max: 20, step: 1, defaultValue: 14, group: 'layout' },
       { key: 'height', label: 'Altura (px)', type: 'number', placeholder: '400', group: 'layout' },
-      { key: 'map_style', label: 'Estilo del mapa', type: 'select', group: 'style', options: [
+      { key: 'map_style', label: 'Estilo del mapa', type: 'select', group: 'style', defaultValue: 'default', options: [
         { value: 'default', label: 'Estándar' },
         { value: 'satellite', label: 'Satélite' },
         { value: 'dark', label: 'Oscuro' },

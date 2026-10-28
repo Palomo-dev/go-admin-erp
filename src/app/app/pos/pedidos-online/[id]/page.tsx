@@ -67,6 +67,7 @@ export default function WebOrderDetailPage() {
     handleCreateShipment,
     handleCobrar,
     handleMarcarPagadoPasarela,
+    puedeMarcarPagado,
     cobroDialogo,
     abrirCobro,
     cerrarCobro,
@@ -179,7 +180,7 @@ export default function WebOrderDetailPage() {
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
             onCobrar={abrirCobro}
-            onMarcarPagadoPasarela={() => void handleMarcarPagadoPasarela()}
+            onMarcarPagadoPasarela={puedeMarcarPagado ? () => void handleMarcarPagadoPasarela() : undefined}
             onPrint={trazabilidad.comandaId ? () => void imprimir() : undefined}
             sinCajaAbierta={sinCaja}
             cajaEtiqueta={cajaEtiqueta}

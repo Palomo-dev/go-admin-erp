@@ -415,10 +415,10 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
     case 'hero': {
       if (!c.esInicio) {
         const imagen = variante === 'minimal' ? null : (fotos[0]?.url ?? c.portada);
-        return { contenido: conValor({ title: c.pagina.titulo, subtitle: SUBTITULO_PAGINA[c.pagina.slug] ?? null, image_url: imagen }), visible: true };
+        return { contenido: { ...conValor({ title: c.pagina.titulo, subtitle: SUBTITULO_PAGINA[c.pagina.slug] ?? null, image_url: imagen }), section_background: { padding_top: 0 } }, visible: true };
       }
       return {
-        contenido: conValor({
+        contenido: { ...conValor({
           title: nombre ?? textos.bienvenida,
           subtitle: lema ?? textos.subtituloInicio,
           image_url: c.portada,
@@ -428,6 +428,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
           show_title: true,
           show_overlay: Boolean(c.portada),
         }),
+        // Portada nueva: margen superior en 0 explícito (las tiendas guardadas sin él no cambian).
+        section_background: { padding_top: 0 } },
         visible: true,
       };
     }

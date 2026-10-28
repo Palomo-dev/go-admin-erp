@@ -141,6 +141,11 @@ export interface EstiloTarjetaProducto {
   image_padding?: number
   image_radius?: number
   hover_image?: (typeof HOVER_IMAGEN)[number]
+  /**
+   * «Unidades vendidas» («180 vendidos»). Solo se guarda `true`; ausente = como hoy (lo deciden
+   * las etiquetas de la sección). No cuenta como estilo: prenderla no cambia nada más de la tarjeta.
+   */
+  show_sales_count?: boolean
 }
 
 const CLAVES_BOTON = ['add', 'buy', 'choose'] as const
@@ -287,6 +292,7 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   if (marca != null) e.show_brand = marca
   const cat = bandera(o.show_category)
   if (cat != null) e.show_category = cat
+  if (o.show_sales_count === true) e.show_sales_count = true
   if (o.card_layout === 'horizontal' || o.card_layout === 'vertical') e.card_layout = o.card_layout
   const radio = entero(o.card_radius, 0, 48)
   if (radio != null) e.card_radius = radio
@@ -456,9 +462,12 @@ function soloPresetActual(e: EstiloTarjetaProducto): boolean {
  * que cambiar respecto a la tarjeta de hoy.
  */
 export function aplicarEstiloTarjeta(crudo: unknown): EstiloTarjetaProducto | null {
-  const explicito = normalizarTarjeta(crudo)
-  if (!explicito) return null
-  if (soloPresetActual(explicito)) return null
+  const normal = normalizarTarjeta(crudo)
+  if (!normal) return null
+  // «Unidades vendidas» va aparte (vendidosEnTarjeta): sola no activa el estilo de la tarjeta.
+  const explicito: EstiloTarjetaProducto = { ...normal }
+  delete explicito.show_sales_count
+  if (Object.keys(explicito).length === 0 || soloPresetActual(explicito)) return null
   const preset = explicito.card_preset
   if (!preset || preset === 'actual') return explicito
   return fusionarEstilos(valoresDePreset(preset), explicito)
@@ -475,13 +484,20 @@ export function resolverTarjetaProducto(sitio: unknown, seccion: unknown): Estil
   return soloPresetActual(junto) ? null : junto
 }
 
+/** «Unidades vendidas» prendida en el sitio o en la sección. */
+export function vendidosEnTarjeta(sitio: unknown, seccion: unknown): boolean {
+  return normalizarTarjeta(seccion)?.show_sales_count === true || normalizarTarjeta(sitio)?.show_sales_count === true
+}
+
 /** Lo que ve el inspector: el preset rellena las opciones y lo guardado queda encima. */
 export function vistaEditorTarjeta(guardado: unknown, heredado: unknown): EstiloTarjetaProducto {
   const g = normalizarTarjeta(guardado)
   const h = normalizarTarjeta(heredado)
   const preset = g?.card_preset ?? h?.card_preset ?? 'actual'
   const efectivo = resolverTarjetaProducto(heredado, guardado)
-  return fusionarEstilos(valoresDePreset(preset), efectivo ?? {})
+  const vista = fusionarEstilos(valoresDePreset(preset), efectivo ?? {})
+  if (vendidosEnTarjeta(heredado, guardado)) vista.show_sales_count = true
+  return vista
 }
 
 /** Al elegir un preset se rellenan las opciones. `actual` no cambia el render. */

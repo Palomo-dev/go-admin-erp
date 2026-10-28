@@ -33227,7 +33227,34 @@
           "circuloIcono": "Couleur de l’icône",
           "circuloIconoAuto": "Automatique",
           "headerSobreHero": "En-tête sur la couverture",
-          "headerSobreHeroAyuda": "L’en-tête se place sur l’image de couverture. Désactivé : l’en-tête au-dessus, la couverture en dessous."
+          "headerSobreHeroAyuda": "L’en-tête se place sur l’image de couverture. Désactivé : l’en-tête au-dessus, la couverture en dessous.",
+          "iconosTrazo": "Trait des icônes",
+          "contorno": "Contour",
+          "relleno": "Plein",
+          "iconoAccion": {
+            "search": "Icône de recherche",
+            "cart": "Icône du panier",
+            "account": "Icône du compte",
+            "currency": "Icône de devise"
+          },
+          "iconoNombre": {
+            "search": "Loupe",
+            "search-lg": "Grande loupe",
+            "scan-search": "Loupe encadrée",
+            "shopping-bag": "Sac",
+            "shopping-cart": "Panier",
+            "package": "Colis",
+            "gift": "Cadeau",
+            "user": "Personne",
+            "user-circle": "Personne dans un cercle",
+            "user-round": "Personne arrondie",
+            "circle-user": "Cercle avec personne",
+            "globe": "Globe",
+            "coins": "Pièces",
+            "wallet": "Portefeuille",
+            "banknote": "Billet",
+            "dollar-sign": "Symbole dollar"
+          }
         },
         "diseno": {
           "titulo": "Mise en page de l'en-tête",

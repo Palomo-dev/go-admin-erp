@@ -73,7 +73,7 @@ export const CLAVES_TEMA_VIVO = [
 export const CLAVES_CONTADOR_VIVO = [
   'countdown_enabled', 'countdown_title', 'countdown_mode', 'countdown_end_date', 'countdown_timezone',
   'countdown_reset_hour', 'countdown_show_in_header', 'countdown_show_in_cart', 'countdown_show_in_product',
-  'countdown_show_in_hero', 'checkout_show_countdown',
+  'countdown_show_in_hero', 'checkout_show_countdown', 'countdown_style',
 ] as const;
 
 export const CLAVES_AJUSTES_VIVOS: readonly string[] = Array.from(

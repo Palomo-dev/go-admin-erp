@@ -187,7 +187,8 @@ export function cambiosParaFilaLegacy(
   const enviar: Record<string, unknown> = {};
   const omitidas: string[] = [];
   for (const [columna, valor] of Object.entries(cambios)) {
-    if (COLUMNAS_NUEVAS_SHELL.includes(columna) && filaCargada && !(columna in filaCargada)) {
+    // `countdown_style`: migración pendiente; sin la columna en la fila cargada no se envía.
+    if ((COLUMNAS_NUEVAS_SHELL.includes(columna) || columna === 'countdown_style') && filaCargada && !(columna in filaCargada)) {
       omitidas.push(columna);
       continue;
     }

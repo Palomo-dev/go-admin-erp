@@ -11,6 +11,7 @@
  */
 import { useId, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import { ACCIONES_ICONO, ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, iconoAccionEncabezado } from './iconosAccionesLogica';
 import { cn } from '@/utils/Utils';
 import { CampoNumero, ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { Input } from '@/components/ui/input';
@@ -339,12 +340,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
 
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.acciones.titulo')}</TituloBloque>
-        <FilaInterruptor
-          titulo={t('zonaGlobal.acciones.buscador')}
-          ayuda={t('zonaGlobal.acciones.buscadorAyuda')}
-          valor={valorOpcion(a, 'search_style') !== 'hidden'}
-          onCambiar={(v) => cambiar(cambioBuscador(a, v ? 'icon' : 'hidden'))}
-        />
+        {/* DUP-28oct: el buscador (mostrar u ocultar) se elige una sola vez, en Diseño › Buscador (`search_style`). */}
         <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.cuenta')}
@@ -577,6 +573,7 @@ function Estilo(p: Interno) {
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.estilo.iconos')}</TituloBloque>
         <CajaIconos ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
+        <IconosAcciones ajustes={a} cambiar={cambiar} />
         {circuloAcentoActivo(a) && !cajaIconos(a) && (() => {
           // Paquete 5-nov B1/B4: fondo del círculo (vacío = marca) y color del ícono (vacío = automático).
           const fondoCirculo = color('header_icons_circle_bg') ?? p.coloresTema.acento;
@@ -692,6 +689,56 @@ function FormaBoton({ ajustes, cambiar }: { ajustes: Record<string, unknown>; ca
         onValorChange={(v) => cambiar({ cta_border_radius: v === '8' ? null : Number(v) })}
       />
     </div>
+  );
+}
+
+/**
+ * Íconos de buscar, carrito, cuenta y moneda (pedido de Juan, 28-oct): el set ya lo pinta la tienda
+ * (`resolverIconoEncabezado`: `header_icons` › `search_icon`/`cart_icon`/`auth_icon`/`currency_icon` ›
+ * `header_cart_glyph`) y el trazo `header_icons_weight`. Aquí se eligen; antes solo salían en
+ * «Ajustes de versiones anteriores». Muestra lo que hoy se ve; sin elegir, nada cambia.
+ */
+function IconosAcciones({ ajustes: a, cambiar }: Pick<Interno, 'ajustes' | 'cambiar'>) {
+  const t = useTextosEditor();
+  const idTrazo = useId();
+  const idBase = useId();
+  const trazo = valorOpcion<string>(a, 'header_icons_weight') === 'relleno' ? 'relleno' : 'contorno';
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={idTrazo}>{t('zonaGlobal.acciones.iconosTrazo')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={idTrazo}
+          opciones={[{ valor: 'contorno', etiqueta: t('zonaGlobal.acciones.contorno') }, { valor: 'relleno', etiqueta: t('zonaGlobal.acciones.relleno') }]}
+          valor={trazo}
+          onValorChange={(v) => cambiar({ header_icons_weight: v })}
+        />
+      </div>
+      {ACCIONES_ICONO.map((accion) => {
+        const actual = iconoAccionEncabezado(a, accion);
+        const nombres: string[] = [...OPCIONES_ICONO_ACCION[accion]];
+        if (!nombres.includes(actual)) nombres.push(actual);
+        const id = `${idBase}-${accion}`;
+        return (
+          <div key={accion} className="flex flex-col gap-2">
+            <EtiquetaGrupo id={id}>{t(`zonaGlobal.acciones.iconoAccion.${accion}`)}</EtiquetaGrupo>
+            <ChipsOpcion
+              aria-labelledby={id}
+              opciones={nombres.map((n) => {
+                const Icono = ICONOS_LUCIDE_ENCABEZADO[n];
+                return {
+                  valor: n,
+                  etiqueta: ICONOS_LUCIDE_ENCABEZADO[n] ? t(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
+                  adorno: Icono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
+                };
+              })}
+              valor={actual}
+              onValorChange={(v) => cambiar(cambioIconoAccion(a, accion, v))}
+            />
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -875,11 +922,6 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'header_builder',
   'mobile_header',
   'header_menu_source',
-  'header_icons_weight',
-  'header_cart_glyph',
-  'search_icon',
-  'auth_icon',
-  'currency_icon',
   'header_booking_bar',
   'mobile_show_topbar',
   'mobile_search_style',

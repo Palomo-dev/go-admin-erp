@@ -787,6 +787,10 @@ function Editor() {
               key={seccion.id}
               className="h-full"
               seccion={seccion}
+              entornoEspacio={{
+                primera: (ed.currentPage?.sections ?? []).filter((x) => x.is_visible !== false).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.id === seccion.id,
+                ajustesSitio: settings as unknown as Record<string, unknown>,
+              }}
               organizationId={ed.organizationId}
               enBorrador={ed.enV2}
               onCambiarContenido={(c) => ed.cambiarContenido(seccion.id, c)}

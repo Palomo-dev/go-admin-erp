@@ -22,6 +22,8 @@ export function campoCubiertoPorEstilo(c: Pick<ContentFieldDef, 'key' | 'type'> 
   // HERO-29..44: en la portada el panel «Carrusel» manda; la transición y su velocidad siguen aquí.
   if (c.group === 'carousel' && tipoSeccion === 'hero' && (c.key === 'slides_per_view' || (CLAVES_CARRUSEL_HERO as readonly string[]).includes(c.key))) return true;
   if (c.key === 'full_bleed' || c.key === 'container_width') return true;
+  // DUP-28oct: «Bordes redondeados» e «Intensidad de sombra» de la portada van en Avanzado (Radio de borde, Sombra).
+  if (tipoSeccion === 'hero' && (c.key === 'border_radius' || c.key === 'shadow_intensity')) return true;
   // `categories_grid.full_width`: la tienda no lo lee (sin efecto); el ancho lo da Estilo › Ancho.
   // MAP-09: el mapa embebido siempre muestra el marcador; `show_marker` no tiene efecto.
   if (c.key === 'show_marker' && tipoSeccion === 'map') return true;
@@ -261,3 +263,53 @@ export function accionDesdeVerTodo(e: Record<string, unknown>): Record<string, u
   };
 }
 
+
+// ─── DUP-28oct: un solo «Radio de borde» y una sola «Sombra» en la portada con carrusel ──────────
+
+/**
+ * La portada `slider` tenía dos radios y dos sombras: Avanzado (`radius`, `shadow`: el contenedor de
+ * la sección) y Contenido (`border_radius`, `shadow_intensity`: el carrusel, que es lo que se ve).
+ * Queda el de Avanzado. Lee lo del carrusel si tiene valor y, si no, lo de la sección; al editarlo
+ * escribe en el carrusel y quita el de la sección. Sin editar, nada cambia en la tienda.
+ */
+export function campoUnicoPortada(tipoSeccion: string, variante: string | null | undefined, clave: string): boolean {
+  return tipoSeccion === 'hero' && variante === 'slider' && (clave === 'radius' || clave === 'shadow');
+}
+
+const INTENSIDAD_DE_SOMBRA: Record<string, number> = { none: 0, sm: 6, md: 12, lg: 24, xl: 40 };
+const numero = (v: unknown): number => (typeof v === 'number' ? v : typeof v === 'string' ? Number(v) || 0 : 0);
+
+/** Sombra del carrusel (px de desenfoque) en la escala de Avanzado. */
+export function sombraDeIntensidad(n: number): string {
+  if (n <= 0) return 'none';
+  if (n <= 8) return 'sm';
+  if (n <= 16) return 'md';
+  if (n <= 30) return 'lg';
+  return 'xl';
+}
+
+export function valorUnicoPortada(contenido: Record<string, unknown>, clave: 'radius' | 'shadow'): unknown {
+  if (clave === 'radius') {
+    const carrusel = numero(contenido.border_radius);
+    return carrusel > 0 ? carrusel : numero(contenido.radius);
+  }
+  const intensidad = numero(contenido.shadow_intensity);
+  if (intensidad > 0) return sombraDeIntensidad(intensidad);
+  return typeof contenido.shadow === 'string' && contenido.shadow ? contenido.shadow : 'none';
+}
+
+export function cambioUnicoPortada(contenido: Record<string, unknown>, clave: 'radius' | 'shadow', v: unknown): Record<string, unknown> {
+  const siguiente = { ...contenido };
+  if (clave === 'radius') {
+    const n = numero(v);
+    if (n > 0) siguiente.border_radius = n;
+    else delete siguiente.border_radius;
+    delete siguiente.radius;
+  } else {
+    const n = INTENSIDAD_DE_SOMBRA[String(v)] ?? 0;
+    if (n > 0) siguiente.shadow_intensity = n;
+    else delete siguiente.shadow_intensity;
+    delete siguiente.shadow;
+  }
+  return siguiente;
+}

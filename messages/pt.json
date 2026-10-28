@@ -33237,7 +33237,34 @@
           "circuloFondo": "Fundo do círculo",
           "circuloFondoAcento": "Cor da marca",
           "circuloIcono": "Cor do ícone",
-          "circuloIconoAuto": "Automático"
+          "circuloIconoAuto": "Automático",
+          "iconosTrazo": "Traço dos ícones",
+          "contorno": "Contorno",
+          "relleno": "Preenchido",
+          "iconoAccion": {
+            "search": "Ícone de busca",
+            "cart": "Ícone do carrinho",
+            "account": "Ícone da conta",
+            "currency": "Ícone de moeda"
+          },
+          "iconoNombre": {
+            "search": "Lupa",
+            "search-lg": "Lupa grande",
+            "scan-search": "Lupa com moldura",
+            "shopping-bag": "Sacola",
+            "shopping-cart": "Carrinho",
+            "package": "Pacote",
+            "gift": "Presente",
+            "user": "Pessoa",
+            "user-circle": "Pessoa em círculo",
+            "user-round": "Pessoa arredondada",
+            "circle-user": "Círculo com pessoa",
+            "globe": "Mundo",
+            "coins": "Moedas",
+            "wallet": "Carteira",
+            "banknote": "Cédula",
+            "dollar-sign": "Cifrão"
+          }
         },
         "diseno": {
           "titulo": "Layout do cabeçalho",

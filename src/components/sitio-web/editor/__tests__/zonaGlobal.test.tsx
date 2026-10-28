@@ -183,8 +183,8 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_show_branch_selector: true });
     fireEvent.click(screen.getByRole('switch', { name: /Moneda/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_show_currency: false });
-    fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
-    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden', mobile_search_style: null });
+    // DUP-28oct: mostrar u ocultar el buscador se elige una sola vez, en Diseño › Buscador («Oculto»).
+    expect(screen.queryByRole('switch', { name: 'Buscador' })).toBeNull();
     // Fuera del Figma v2: ya no están en el panel.
     // «Relleno» solo existe como estilo de los botones 3 a 6 (Figma 2292:51519), no del botón principal.
     expect(screen.getAllByRole('radio', { name: 'Relleno' })).toHaveLength(1);
@@ -224,6 +224,22 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent', header_transparent_over_hero: true });
     fireEvent.click(screen.getAllByRole('button', { name: 'Restablecer a la plantilla' })[0]);
     expect(onCambiar).toHaveBeenLastCalledWith(expect.objectContaining({ header_style: 'default', logo_position: 'center', header_cta_text: 'Reservar mesa' }));
+  });
+
+  test('Estilo › Íconos: trazo y un ícono por acción (lo que hoy se ve marcado)', () => {
+    const onCambiar = encabezado({ cart_icon: 'gift', header_cart_glyph: null }, { pestanaInicial: 'estilo' });
+    const carrito = screen.getByRole('radiogroup', { name: 'Ícono del carrito' });
+    expect(within(carrito).getByRole('radio', { name: 'Regalo' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(carrito).getByRole('radio', { name: 'Carrito' }));
+    expect(onCambiar).toHaveBeenCalledWith({ cart_icon: 'shopping-cart' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de buscar' })).getByRole('radio', { name: 'Lupa con marco' }));
+    expect(onCambiar).toHaveBeenCalledWith({ search_icon: 'scan-search' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de cuenta' })).getByRole('radio', { name: 'Persona redonda' }));
+    expect(onCambiar).toHaveBeenCalledWith({ auth_icon: 'user-round' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Monedas' }));
+    expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'coins' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Trazo de los iconos' })).getByRole('radio', { name: 'Relleno' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_weight: 'relleno' });
   });
 
   test('Círculo acento: fondo y color del ícono con Sigue el tema / Fijar color', () => {

@@ -670,6 +670,12 @@ export function useEditorSitio() {
     (id: string, content: Record<string, unknown>) => cambiarSeccion(id, (s) => ({ ...s, content })),
     [cambiarSeccion],
   );
+  /** Bloque 4: Estilo escribe ajustes y contenido de una vez (una sola opción, limpia los duplicados). */
+  const cambiarApariencia = useCallback(
+    (id: string, settings: Record<string, unknown>, content: Record<string, unknown>) =>
+      cambiarSeccion(id, (s) => ({ ...s, settings: settings as typeof s.settings, content })),
+    [cambiarSeccion],
+  );
   const cambiarVariante = useCallback(
     (id: string, variante: string) => cambiarSeccion(id, (s) => ({ ...s, section_variant: variante })),
     [cambiarSeccion],
@@ -1736,6 +1742,7 @@ export function useEditorSitio() {
     alternarVisible,
     cambiarVisibilidad,
     cambiarEstilo,
+    cambiarApariencia,
     anadirSeccion,
     eliminarSeccion,
     duplicarSeccion,

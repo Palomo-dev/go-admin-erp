@@ -45,6 +45,7 @@ import {
   LIMITES_TAMANO_PX,
   TAMANOS_TEXTO,
   escalaDeInterlineado,
+  escribirEstiloSeccion,
   escalaDePx,
   estiloVacio,
   interlineadoNumero,
@@ -58,6 +59,24 @@ import {
   type Visibilidad,
 } from '@/lib/website/v2/estiloSeccion';
 import { useTextosEditor, type TraductorEditor } from '../textos';
+import {
+  DIRECCIONES_DEGRADADO,
+  MODOS_FONDO,
+  cambioColorBordeUnico,
+  cambioColorTextoUnico,
+  cambioFondoUnico,
+  cambioGrosorBordeUnico,
+  estiloConFuentesCascaron,
+  fuentesCascaron,
+  grosorBordeUnico,
+  leerColorBordeUnico,
+  leerColorTextoUnico,
+  leerFondoUnico,
+  sinFuentesCascaron,
+  type Apariencia,
+  type FondoUnico,
+} from './estiloUnico';
+import { SelectKit } from './controlesKit';
 
 export interface TemaEstiloSeccion {
   colores: ColoresMarca;
@@ -79,6 +98,16 @@ export interface InspectorEstiloProps {
   catalogoFuentes: readonly string[];
   sede?: SedeEstilo | null;
   deshabilitado?: boolean;
+  /**
+   * Bloque 4: una sola opción por función. Con la sección completa, Fondo, Color del texto,
+   * Borde y Tipografía leen lo que hoy se ve (Avanzado, Cascarón o formato anterior) y, al
+   * editar, escriben en un solo sitio y limpian los otros.
+   */
+  unico?: {
+    apariencia: Apariencia;
+    aplicar: (a: Apariencia) => void;
+    campoImagen: (valor: string | undefined, onCambiar: (v: string | undefined) => void) => ReactNode;
+  } | null;
 }
 
 const TITULO = 'text-[13px] font-semibold leading-[18px] text-fg';
@@ -141,7 +170,7 @@ export function resumenGrupo(
 }
 
 export function InspectorEstilo({
-  estilo,
+  estilo: estiloProp,
   visibilidad,
   onCambiarEstilo,
   onCambiarVisibilidad,
@@ -149,14 +178,21 @@ export function InspectorEstilo({
   catalogoFuentes,
   sede,
   deshabilitado,
+  unico,
 }: InspectorEstiloProps) {
   const t = useTextosEditor();
   const id = useId();
+  let estilo = estiloProp;
   const [rol, setRol] = useState<RolTexto>('titulo');
   const [avisoUltimo, setAvisoUltimo] = useState(false);
   // En una sede, los grupos heredados se muestran plegados hasta «Cambiar» (figma-estilo/03).
   const [abiertos, setAbiertos] = useState<Set<GrupoEstilo>>(new Set());
 
+  // Fuente guardada en el Cascarón: se ve como «Personalizada» y, al editar, pasa a Estilo.
+  const conCascaron = unico && (fuentesCascaron(unico.apariencia).titulo || fuentesCascaron(unico.apariencia).texto);
+  if (conCascaron) estilo = estiloConFuentesCascaron(unico.apariencia);
+  const fondoU: FondoUnico | null = unico ? leerFondoUnico(unico.apariencia) : null;
+  const ponerFondo = (f: Omit<FondoUnico, 'origen'>) => unico?.aplicar(cambioFondoUnico(unico.apariencia, f));
   const tipografia = estilo.tipografia?.modo === 'propia' ? estilo.tipografia : null;
   const texto: EstiloTexto = (rol === 'titulo' ? tipografia?.titulo : tipografia?.texto) ?? {};
   const fuentesUsadas = [tema.fuentes.titulos, tema.fuentes.cuerpo, tipografia?.titulo?.fuente, tipografia?.texto?.fuente].filter(
@@ -164,7 +200,13 @@ export function InspectorEstilo({
   );
   useFuentesSitio(fuentesUsadas);
 
-  const cambiar = (parcial: Partial<EstiloSeccion>) => onCambiarEstilo({ ...estilo, ...parcial });
+  const cambiar = (parcial: Partial<EstiloSeccion>) => {
+    if (conCascaron && unico) {
+      unico.aplicar({ settings: escribirEstiloSeccion(unico.apariencia.settings, { ...estilo, ...parcial }), contenido: sinFuentesCascaron(unico.apariencia.contenido) });
+      return;
+    }
+    onCambiarEstilo({ ...estilo, ...parcial });
+  };
   const cambiarTexto = (parcial: Partial<EstiloTexto>) => {
     const actual = tipografia ?? { modo: 'propia' as const };
     const siguiente = { ...(rol === 'titulo' ? actual.titulo : actual.texto), ...parcial };
@@ -255,12 +297,51 @@ export function InspectorEstilo({
             <Grupo titulo={t('estilo.fondoTitulo')} id={`${id}-fondo`}>
               <ChipsOpcion
                 aria-labelledby={`${id}-fondo`}
-                opciones={opciones(FONDOS_SECCION, 'estilo.fondo')}
-                valor={estilo.fondo ?? ESTILO_POR_DEFECTO.fondo}
-                onValorChange={(fondo) => cambiar({ fondo })}
+                opciones={fondoU ? opciones(MODOS_FONDO, 'estilo.fondo') : opciones(FONDOS_SECCION, 'estilo.fondo')}
+                valor={fondoU ? fondoU.modo : estilo.fondo ?? ESTILO_POR_DEFECTO.fondo}
+                onValorChange={(fondo) =>
+                  fondoU
+                    ? ponerFondo({ ...fondoU, modo: fondo as FondoUnico['modo'], ...(fondo === 'imagen' && !fondoU.imagen ? { imagen: undefined } : {}) })
+                    : cambiar({ fondo: fondo as EstiloSeccion['fondo'] })
+                }
               />
               <p className={AYUDA}>{t('estilo.fondoAyuda')}</p>
-              {(estilo.fondo ?? ESTILO_POR_DEFECTO.fondo) === 'alterno' && (
+              {fondoU?.modo === 'color' && (
+                <ColorField etiqueta={t('estilo.fondoColor')} valor={fondoU.color ?? '#FFFFFF'} onCambiar={(color) => ponerFondo({ ...fondoU, color })} deshabilitado={deshabilitado} />
+              )}
+              {fondoU?.modo === 'degradado' && (
+                <>
+                  <ColorField etiqueta={t('estilo.fondoDesde')} valor={fondoU.desde ?? '#FFFFFF'} onCambiar={(desde) => ponerFondo({ ...fondoU, desde })} deshabilitado={deshabilitado} />
+                  <ColorField etiqueta={t('estilo.fondoHasta')} valor={fondoU.hasta ?? '#FFFFFF'} onCambiar={(hasta) => ponerFondo({ ...fondoU, hasta })} deshabilitado={deshabilitado} />
+                  <SelectKit aria-label={t('estilo.fondoDireccion')} value={fondoU.direccion ?? 'to-r'} onChange={(ev) => ponerFondo({ ...fondoU, direccion: ev.target.value })} disabled={deshabilitado}>
+                    {DIRECCIONES_DEGRADADO.map((d) => (
+                      <option key={d} value={d}>{t(`estilo.fondoDirecciones.${d}`)}</option>
+                    ))}
+                  </SelectKit>
+                </>
+              )}
+              {fondoU?.modo === 'imagen' && unico && (
+                <>
+                  {unico.campoImagen(fondoU.imagen, (imagen) => ponerFondo({ ...fondoU, imagen }))}
+                  {fondoU.imagen && (
+                    <Grupo titulo={t('estilo.fondoCapa')} id={`${id}-capa`}>
+                      <CampoNumero
+                        aria-labelledby={`${id}-capa`}
+                        valor={fondoU.capa ?? 0}
+                        decimales={0}
+                        minimo={0}
+                        maximo={100}
+                        sufijo="%"
+                        alinear="izquierda"
+                        disabled={deshabilitado}
+                        onValorChange={(v) => v != null && v >= 0 && v <= 100 && ponerFondo({ ...fondoU, capa: Math.round(v) })}
+                      />
+                    </Grupo>
+                  )}
+                  <p className={AYUDA}>{t('estilo.fondoImagenAyuda')}</p>
+                </>
+              )}
+              {(fondoU ? fondoU.modo : estilo.fondo ?? ESTILO_POR_DEFECTO.fondo) === 'alterno' && (
                 <ColorField
                   etiqueta={t('estilo.colorAlterno')}
                   descripcion={t('estilo.colorAlternoAyuda')}
@@ -497,19 +578,37 @@ export function InspectorEstilo({
             <p className={AYUDA}>{t('estilo.coloresAyuda')}</p>
             <ColorMarcaField
               etiqueta={t('estilo.colorTexto')}
-              valor={estilo.colores?.texto ?? 'marca:texto'}
-              onCambiar={(texto) => cambiar({ colores: { ...estilo.colores, texto } })}
+              valor={(unico ? leerColorTextoUnico(unico.apariencia) : estilo.colores?.texto) ?? 'marca:texto'}
+              onCambiar={(texto) => (unico ? unico.aplicar(cambioColorTextoUnico(unico.apariencia, texto)) : cambiar({ colores: { ...estilo.colores, texto } }))}
               colores={tema.colores}
               deshabilitado={deshabilitado}
             />
             <ColorMarcaField
               etiqueta={t('estilo.colorBorde')}
-              valor={estilo.colores?.borde ?? 'marca:secundario'}
-              onCambiar={(borde) => cambiar({ colores: { ...estilo.colores, borde } })}
+              valor={(unico ? leerColorBordeUnico(unico.apariencia) : estilo.colores?.borde) ?? 'marca:secundario'}
+              onCambiar={(borde) => (unico ? unico.aplicar(cambioColorBordeUnico(unico.apariencia, borde)) : cambiar({ colores: { ...estilo.colores, borde } }))}
               colores={tema.colores}
               minimo={1}
               deshabilitado={deshabilitado}
             />
+            {unico && (
+              <>
+                <Grupo titulo={t('estilo.grosorBorde')} id={`${id}-grosor-borde`}>
+                  <CampoNumero
+                    aria-labelledby={`${id}-grosor-borde`}
+                    valor={grosorBordeUnico(unico.apariencia)}
+                    decimales={0}
+                    minimo={0}
+                    maximo={8}
+                    sufijo="px"
+                    alinear="izquierda"
+                    disabled={deshabilitado}
+                    onValorChange={(v) => v != null && v >= 0 && v <= 8 && unico.aplicar(cambioGrosorBordeUnico(unico.apariencia, v))}
+                  />
+                </Grupo>
+                <p className={AYUDA}>{t('estilo.grosorBordeAyuda')}</p>
+              </>
+            )}
           </>
         )}
       </section>

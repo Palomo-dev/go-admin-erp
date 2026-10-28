@@ -33,6 +33,7 @@ import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
 import { AjustesAnteriores } from './InspectorEncabezado';
+import type { Apariencia } from './estiloUnico';
 import { carruselGlobalActivo, carruselDesdeClavesAnteriores, cambioTextoEncabezado, valorTextoEncabezado, aplicarCambioContenido, capaAlSubirPrimeraImagen, campoCubiertoPorEstilo, entradasAnterioresSeccion } from './espaciadoSeccion';
 import { TIPOS_CARRUSEL, TIPOS_PAGINACION, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 
@@ -54,6 +55,8 @@ export interface InspectorSeccionProps {
   onCambiarContenido: (contenido: Record<string, unknown>) => void;
   onCambiarVariante: (variante: string) => void;
   onCambiarEstilo: (estilo: EstiloSeccion | null) => void;
+  /** Bloque 4: Estilo escribe ajustes y contenido a la vez (una sola opción por función). */
+  onCambiarApariencia?: (a: Apariencia) => void;
   onCambiarVisibilidad: (v: Visibilidad) => void;
   onAlternarVisible: () => void;
   onDuplicar: () => void;
@@ -329,6 +332,26 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             tema={p.tema}
             catalogoFuentes={p.catalogoFuentes}
             sede={p.sede?.estilo ?? null}
+            unico={
+              p.onCambiarApariencia && !p.sede
+                ? {
+                    apariencia: { settings: (s.settings ?? {}) as Record<string, unknown>, contenido },
+                    aplicar: p.onCambiarApariencia,
+                    campoImagen: (valor, onCambiar) => (
+                      <CampoSeccion
+                        campo={{ key: 'bg_image', label: t('estilo.fondoImagen'), type: 'image', group: 'style' }}
+                        valor={valor}
+                        contenido={contenido}
+                        onCambiar={(v) => onCambiar(typeof v === 'string' && v ? v : undefined)}
+                        onCambiarContenido={onCambiarContenido}
+                        organizationId={p.organizationId}
+                        paleta={p.paleta}
+                        categorias={p.categorias}
+                      />
+                    ),
+                  }
+                : null
+            }
           />
         )}
         {pestana === 'estilo' && (

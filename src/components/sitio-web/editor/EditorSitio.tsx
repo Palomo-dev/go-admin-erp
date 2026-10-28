@@ -789,6 +789,7 @@ function Editor() {
               onCambiarContenido={(c) => ed.cambiarContenido(seccion.id, c)}
               onCambiarVariante={(v) => ed.cambiarVariante(seccion.id, v)}
               onCambiarEstilo={(e) => ed.cambiarEstilo(seccion.id, e)}
+              onCambiarApariencia={(a) => ed.cambiarApariencia(seccion.id, a.settings, a.contenido)}
               onCambiarVisibilidad={(v) => ed.cambiarVisibilidad(seccion.id, v)}
               onAlternarVisible={() => ed.alternarVisible(seccion.id, !seccion.is_visible)}
               onDuplicar={() => void ed.duplicarSeccion(seccion.id)}

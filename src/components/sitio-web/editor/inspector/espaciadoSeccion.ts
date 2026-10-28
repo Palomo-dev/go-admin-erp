@@ -1,3 +1,4 @@
+import { CLAVES_AVANZADO_EN_ESTILO } from './estiloUnico';
 import { sanitizarCarrusel } from '@/lib/website/v2/paginacionCarrusel';
 /**
  * Espaciado y ancho de una sección: una sola opción por función (Figma v2,
@@ -12,6 +13,8 @@ import type { EntradaAnterior } from './anterioresLogica';
 /** Campos del catálogo que ya no se pintan: su función la cubre Estilo › Espaciado / Ancho. */
 export function campoCubiertoPorEstilo(c: Pick<ContentFieldDef, 'key' | 'type'> & { group?: string }, tipoSeccion: string): boolean {
   if (c.type === 'spacing') return true;
+  // ESTILO-01/06/07: fondo, color del texto y borde se eligen en Estilo (leen y limpian lo de Avanzado).
+  if (c.group === 'style' && (CLAVES_AVANZADO_EN_ESTILO.includes(c.key) || c.key === 'border_width')) return true;
   // PRODUC-37..40 / FEATUR-14..17: el panel «Carrusel» manda; lo guardado pasa a él al editarlo.
   if (c.group === 'carousel' && TIPOS_CARRUSEL_ANTERIOR.includes(tipoSeccion) && (CLAVES_CARRUSEL_ANTERIOR as readonly string[]).includes(c.key)) return true;
   // BANNER-01: la distribución se elige en «Banners».

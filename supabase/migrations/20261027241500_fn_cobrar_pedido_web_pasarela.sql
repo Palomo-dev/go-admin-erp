@@ -1,4 +1,7 @@
 -- 20261027241500 · fn_cobrar_pedido_web_en_caja: sonda sin 500 y pasarela pagada = ya cobrado
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+--   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
+--   242000 → 244000 → 243000 → 241500.
 -- SIN APLICAR. Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo> (directa o sesión 5432).
 --
 -- Base: pg_get_functiondef de PROD (jgmgphmzusbluqhuqihj) leído el 27-oct-2026 21:10 (UTC-5).

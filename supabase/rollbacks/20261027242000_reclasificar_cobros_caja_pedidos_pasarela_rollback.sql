@@ -1,4 +1,7 @@
 -- Rollback exacto de 20261027242000: restaura método y updated_at del pago, etiqueta de la factura,
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+--   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
+--   242000 → 244000 → 243000 → 241500.
 -- include_in_cash_register de la venta y la cuenta de la línea del asiento desde la
 -- tabla de respaldo, y la borra. Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo>
 

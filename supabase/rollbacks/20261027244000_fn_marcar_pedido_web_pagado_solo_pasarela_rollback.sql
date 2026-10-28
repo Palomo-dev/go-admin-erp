@@ -1,4 +1,7 @@
 -- Rollback de 20261027244000: restaura EXACTAMENTE la definición de prod de fn_marcar_pedido_web_pagado
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+--   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
+--   242000 → 244000 → 243000 → 241500.
 -- (pg_get_functiondef leído de jgmgphmzusbluqhuqihj el 27-oct-2026 ~22:00 UTC-5;
 --  md5 aa40a852fda85d60893de1752351874c) y sus grants de prod
 --  (proacl {postgres=X, authenticated=X, service_role=X}: sin PUBLIC ni anon).

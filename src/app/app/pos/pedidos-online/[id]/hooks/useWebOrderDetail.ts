@@ -205,7 +205,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       if (result.cobroPendiente) {
         if (result.cobroPendiente === 'NO_OPEN_CASH_SESSION') setSinCajaAbierta(true);
         toast({
-          title: t('cobro.pendienteTrasConfirmar'),
+          title: result.marcarPagadoPendiente ? t('cobro.pendienteMarcarPagado') : t('cobro.pendienteTrasConfirmar'),
           description: t(`cobro.${claveAvisoCobro(result.cobroPendiente)}`),
           variant: 'destructive',
         });
@@ -462,10 +462,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       return true;
     } catch (error: unknown) {
       if (error instanceof CobroEnCajaError && error.codigo !== 'OTRO' && error.codigo !== 'FUNCION_AUSENTE') {
-        toast({ title: t('cobro.error'), description: t(`cobro.${claveAvisoCobro(error.codigo)}`), variant: 'destructive' });
+        toast({ title: t('cobro.errorMarcarPagado'), description: t(`cobro.${claveAvisoCobro(error.codigo)}`), variant: 'destructive' });
       } else {
         console.error('Error marcando pagado por pasarela:', error);
-        toast({ title: t('cobro.error'), description: mensajeDeError(error), variant: 'destructive' });
+        toast({ title: t('cobro.errorMarcarPagado'), description: mensajeDeError(error), variant: 'destructive' });
       }
       loadOrder();
       return false;

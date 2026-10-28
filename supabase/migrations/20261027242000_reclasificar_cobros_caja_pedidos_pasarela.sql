@@ -1,8 +1,11 @@
 -- 20261027242000 · Corrección de datos: pedidos web pagados por pasarela que además
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+--   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
+--   242000 → 244000 → 243000 → 241500.
 -- quedaron con un pago de CAJA creado por fn_cobrar_pedido_web_en_caja (metodoDeCobroEnCaja
 -- devolvía 'cash' para 'wompi'). SIN APLICAR. NO cambia montos de ventas, facturas ni pagos.
 -- ORDEN Y CONDICIÓN: aplicar DESPUÉS de 20261027241500 (usa fn_metodo_es_pasarela, que crea esa
--- migración) y SOLO después de confirmar en el PANEL DE WOMPI que cada pedido de la lista activa
+-- migración), después de 20261027243000 y 20261027244000, y SOLO después de confirmar en el PANEL DE WOMPI que cada pedido de la lista activa
 -- (hoy solo WO-335-MVRDVAGK-MRHJ) tiene la transacción APROBADA. Sin esa confirmación, NO aplicar.
 -- Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo> (directa o sesión 5432).
 -- Rollback exacto: supabase/rollbacks/20261027242000_reclasificar_cobros_caja_pedidos_pasarela_rollback.sql

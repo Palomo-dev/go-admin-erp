@@ -36132,7 +36132,9 @@
         "card": "par carte",
         "transfer": "par virement",
         "qr": "par QR"
-      }
+      },
+      "errorMarcarPagado": "Impossible de marquer comme payée",
+      "pendienteMarcarPagado": "Commande confirmée mais non marquée comme payée"
     },
     "tipoCorto": {
       "pickup": "Retrait",
@@ -37779,7 +37781,8 @@
       "accion": "Confirmer {n} commandes",
       "resultado": "{ok, plural, one {# commande confirmée} other {# commandes confirmées}}",
       "fallidos": "{n, plural, one {# commande n'a pas pu être confirmée} other {# commandes n'ont pas pu être confirmées}} : {pedidos}",
-      "errorUno": "Impossible de confirmer la commande"
+      "errorUno": "Impossible de confirmer la commande",
+      "sinPagar": "{n, plural, one {# non marquée comme payée} other {# non marquées comme payées}} : {pedidos}"
     },
     "rechazo": {
       "titulo": "Refuser la commande",

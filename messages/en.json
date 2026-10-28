@@ -36132,7 +36132,9 @@
         "card": "by card",
         "transfer": "by transfer",
         "qr": "by QR"
-      }
+      },
+      "errorMarcarPagado": "Couldn't mark as paid",
+      "pendienteMarcarPagado": "Order confirmed but not marked as paid"
     },
     "tipoCorto": {
       "pickup": "Pickup",
@@ -37779,7 +37781,8 @@
       "accion": "Confirm {n} orders",
       "resultado": "{ok, plural, one {# order confirmed} other {# orders confirmed}}",
       "fallidos": "{n, plural, one {# order couldn't be confirmed} other {# orders couldn't be confirmed}}: {pedidos}",
-      "errorUno": "Couldn't confirm the order"
+      "errorUno": "Couldn't confirm the order",
+      "sinPagar": "{n, plural, one {# not marked as paid} other {# not marked as paid}}: {pedidos}"
     },
     "rechazo": {
       "titulo": "Reject order",

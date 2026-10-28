@@ -36142,7 +36142,9 @@
         "card": "no cartão",
         "transfer": "por transferência",
         "qr": "por QR"
-      }
+      },
+      "errorMarcarPagado": "Não foi possível marcar como pago",
+      "pendienteMarcarPagado": "Pedido confirmado sem marcar como pago"
     },
     "tipoCorto": {
       "pickup": "Retirada",
@@ -37789,7 +37791,8 @@
       "accion": "Confirmar {n} pedidos",
       "resultado": "{ok, plural, one {# pedido confirmado} other {# pedidos confirmados}}",
       "fallidos": "{n, plural, one {# pedido não pôde ser confirmado} other {# pedidos não puderam ser confirmados}}: {pedidos}",
-      "errorUno": "Não foi possível confirmar o pedido"
+      "errorUno": "Não foi possível confirmar o pedido",
+      "sinPagar": "{n, plural, one {# não marcado como pago} other {# não marcados como pagos}}: {pedidos}"
     },
     "rechazo": {
       "titulo": "Recusar pedido",

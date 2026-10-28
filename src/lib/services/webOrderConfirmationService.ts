@@ -89,6 +89,8 @@ export interface ConfirmOrderResult {
    * MARK_PAID_GATEWAY_MANUAL). Si falla, `cobroPendiente` trae el motivo.
    */
   pagoPasarela?: PagoPasarelaResult;
+  /** `cobroPendiente` viene de «Marcar como pagado» de pasarela (no de un cobro en caja). */
+  marcarPagadoPendiente?: boolean;
 }
 
 export interface CobroEnCajaResult {
@@ -561,7 +563,7 @@ class WebOrderConfirmationService {
             invoiceNumber: pasarela.pagoPasarela.invoiceNumber ?? undefined,
           }
         : {}),
-      ...(pasarela.cobroPendiente ? { cobroPendiente: pasarela.cobroPendiente } : {}),
+      ...(pasarela.cobroPendiente ? { cobroPendiente: pasarela.cobroPendiente, marcarPagadoPendiente: true } : {}),
     };
   }
 
@@ -722,12 +724,12 @@ class WebOrderConfirmationService {
   private async pagarPasarelaTrasConfirmar(
     order: WebOrder,
     saleId: string,
-  ): Promise<{ pagoPasarela?: PagoPasarelaResult; cobroPendiente?: ErrorCobroEnCaja }> {
+  ): Promise<{ pagoPasarela?: PagoPasarelaResult; cobroPendiente?: ErrorCobroEnCaja; marcarPagadoPendiente?: boolean }> {
     try {
       return { pagoPasarela: await this.marcarPagadoPasarela({ ...order, sale_id: saleId }) };
     } catch (err) {
       console.warn('[webOrderConfirmation] Pedido de pasarela confirmado sin marcar pagado:', err);
-      return { cobroPendiente: err instanceof CobroEnCajaError ? err.codigo : 'OTRO' };
+      return { cobroPendiente: err instanceof CobroEnCajaError ? err.codigo : 'OTRO', marcarPagadoPendiente: true };
     }
   }
 

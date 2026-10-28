@@ -1,6 +1,11 @@
 -- Rollback exacto de 20261027241500: vuelve a la definición de PROD leída el 27-oct-2026
+-- ORDEN COMPLETO (aplicar): 20261027241500 → 20261027243000 → 20261027244000 → 20261027242000
+--   (la 242000 SOLO tras confirmar en el panel de Wompi). ROLLBACK en orden INVERSO:
+--   242000 → 244000 → 243000 → 241500.
 -- (pg_get_functiondef) y borra el auxiliar fn_metodo_es_pasarela.
--- ORDEN: si 20261027243000 está aplicada, revertirla ANTES (usa fn_metodo_es_pasarela, que este rollback borra).
+-- ORDEN: si están aplicadas, revertir ANTES 20261027244000 (la RPC vieja llama a fn_metodo_es_pasarela:
+--   sin ese rollback falla en ejecución) y 20261027243000 (también la usa); este rollback la borra.
+--   Si la 242000 está aplicada, revertirla primero de todas.
 -- Aplicar con: psql -v ON_ERROR_STOP=1 -f <archivo>
 
 set lock_timeout = '3s';

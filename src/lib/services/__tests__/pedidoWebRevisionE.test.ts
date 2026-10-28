@@ -249,6 +249,7 @@ describe('diálogo «Confirmar» con «Marcar como pagado»', () => {
       expect(r.saleId).toBe('sale-p');
       expect(r.pagoPasarela).toBeUndefined();
       expect(r.cobroPendiente).toBe('SIN_PERMISO');
+      expect(r.marcarPagadoPendiente).toBe(true);
     });
   });
 });

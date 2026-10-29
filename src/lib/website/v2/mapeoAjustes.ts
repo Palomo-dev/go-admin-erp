@@ -154,7 +154,7 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   mobile_menu_style: { zona: 'header', porDefecto: 'drawer' },
   mobile_search_style: { zona: 'header', porDefecto: 'icon' },
   /** Desplegable de categorías en la barra de búsqueda del celular (BuscadorCromoCompacto). false = la barra de siempre. */
-  mobile_search_bar_categories: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
+  mobile_search_same_as_desktop: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
   mobile_show_topbar: { zona: 'header', porDefecto: false },
   header_opacity: { zona: 'header', porDefecto: 95 },
   header_bg_color: { zona: 'header', porDefecto: null },

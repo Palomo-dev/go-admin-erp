@@ -4,20 +4,20 @@ import { opcionBooleana, cambiosParaFilaLegacy } from '../inspector/zonaGlobalLo
 import { campoLayoutCategorias } from '../inspector/layoutCategorias';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 
-describe('mobile_search_bar_categories', () => {
+describe('mobile_search_same_as_desktop', () => {
   it('está en el contrato del encabezado, booleana y apagada por defecto', () => {
-    expect(OPCIONES_SHELL.mobile_search_bar_categories).toMatchObject({ zona: 'header', porDefecto: false, regla: { tipo: 'booleano' }, nueva: true });
-    expect(COLUMNAS_NUEVAS_SHELL).toContain('mobile_search_bar_categories');
+    expect(OPCIONES_SHELL.mobile_search_same_as_desktop).toMatchObject({ zona: 'header', porDefecto: false, regla: { tipo: 'booleano' }, nueva: true });
+    expect(COLUMNAS_NUEVAS_SHELL).toContain('mobile_search_same_as_desktop');
   });
   it('la vista previa en vivo la manda al lienzo', () => {
-    expect(CLAVES_ENCABEZADO as readonly string[]).toContain('mobile_search_bar_categories');
+    expect(CLAVES_ENCABEZADO as readonly string[]).toContain('mobile_search_same_as_desktop');
   });
   it('sin guardar: false; guardada: su valor', () => {
-    expect(opcionBooleana({}, 'mobile_search_bar_categories')).toBe(false);
-    expect(opcionBooleana({ mobile_search_bar_categories: true }, 'mobile_search_bar_categories')).toBe(true);
+    expect(opcionBooleana({}, 'mobile_search_same_as_desktop')).toBe(false);
+    expect(opcionBooleana({ mobile_search_same_as_desktop: true }, 'mobile_search_same_as_desktop')).toBe(true);
   });
   it('legacy sin la columna: no se envía (no rompe el guardado)', () => {
-    expect(cambiosParaFilaLegacy({ mobile_search_bar_categories: true }, { search_style: 'bar' }).omitidas).toEqual(['mobile_search_bar_categories']);
+    expect(cambiosParaFilaLegacy({ mobile_search_same_as_desktop: true }, { search_style: 'bar' }).omitidas).toEqual(['mobile_search_same_as_desktop']);
   });
 });
 

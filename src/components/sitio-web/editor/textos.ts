@@ -796,8 +796,8 @@ export const TEXTOS_EDITOR = {
       buscadorComputador: 'Buscador · computador',
       buscador: 'Buscador',
       buscadorAyuda: 'Vale para computador y celular: en el celular el ícono queda en la barra y la barra visible va bajo el logo.',
-      categoriasBuscadorCelular: 'Categorías en el buscador del celular',
-      categoriasBuscadorCelularAyuda: 'Pone el desplegable de categorías («Todas») y el botón de buscar en la barra del celular.',
+      categoriasBuscadorCelular: 'Buscador del celular igual al de escritorio',
+      categoriasBuscadorCelularAyuda: 'El celular muestra el mismo buscador que el computador (barra, grande con «Todas», píldora…), ajustado a la pantalla.',
       buscadorCelularPropio: "En el celular el buscador sigue como «{valor}» (ajuste anterior). Para que siga esta opción, quita «Buscador propio del celular» en Ajustes de versiones anteriores.",
       buscadorNombre: {
         icon: "Ícono",

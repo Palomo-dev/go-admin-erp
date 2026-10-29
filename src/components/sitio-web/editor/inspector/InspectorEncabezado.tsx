@@ -526,13 +526,13 @@ function Diseno(p: Interno) {
           onValorChange={(v) => cambiar(cambioBuscador(a, v))}
         />
         <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorAyuda')}</p>
-        {valorOpcion<string>(a, 'search_style') === 'bar' && (
+        {(valorOpcion<string>(a, 'search_style') ?? 'icon') !== 'hidden' && (
           <FilaInterruptor
             titulo={t('zonaGlobal.diseno.categoriasBuscadorCelular')}
             ayuda={t('zonaGlobal.diseno.categoriasBuscadorCelularAyuda')}
             nuevo
-            valor={opcionBooleana(a, 'mobile_search_bar_categories')}
-            onCambiar={(v) => cambiar({ mobile_search_bar_categories: v })}
+            valor={opcionBooleana(a, 'mobile_search_same_as_desktop')}
+            onCambiar={(v) => cambiar({ mobile_search_same_as_desktop: v })}
           />
         )}
         {buscadorPropioCelular(a) && (

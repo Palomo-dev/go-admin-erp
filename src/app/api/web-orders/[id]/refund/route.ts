@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient } from '@supabase/supabase-js';
-import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
-import { resolveLineTaxWith } from '@/lib/services/taxResolverCore';
 import type { WebOrder } from '@/lib/services/webOrdersService';
-import {
-  facturaWebConImpuestoIncluido,
-  lineasFacturaWebConImpuesto,
-  lineasNotaCreditoWeb,
-  repartirTotalesPedidoWeb,
-  type LineaFacturaOriginal,
-} from '@/lib/services/webOrderTotals';
-import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+import { crearNotaCreditoPedidoWeb } from '@/lib/services/webOrderCreditNote';
 
 /**
  * POST /api/web-orders/[id]/refund
@@ -23,7 +14,7 @@ import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
  * 4. Marca web_orders.payment_status = 'refunded'
  * 5. El asiento contable de reversión se crea automáticamente via trigger trg_auto_journal_credit_note
  *
- * Soporta reembolso total y parcial.
+ * Soporta reembolso total y parcial. El parcial NO cancela el pedido (28-oct-2026).
  *
  * Body:
  *   - amount: monto a reembolsar (opcional, default = total de la orden)
@@ -99,114 +90,14 @@ export async function POST(
     const isFullRefund = refundAmount === 0 || refundAmount >= orderTotal;
     const effectiveRefundAmount = isFullRefund ? orderTotal : refundAmount;
 
-    // 2. Buscar la factura original (invoice_sales con sale_id = order.sale_id)
-    const { data: originalInvoice } = await supabase
-      .from('invoice_sales')
-      .select('id, number, total, balance, status, tax_included, currency')
-      .eq('sale_id', order.sale_id)
-      .eq('document_type', 'invoice')
-      .limit(1)
-      .maybeSingle();
-
-    // 3. Crear nota crédito
-    let creditNoteId: string | undefined;
-    let creditNoteNumber: string | undefined;
-    // Modo de impuesto de la nota: el de la factura que revierte. Si no hay
-    // factura, el que habría tenido la del pedido (F-42).
-    const creditNoteTaxIncluded: boolean = originalInvoice
-      ? Boolean(originalInvoice.tax_included)
-      : facturaWebConImpuestoIncluido(repartirTotalesPedidoWeb(order as WebOrder));
-    const resolverImpuesto = (input: Parameters<typeof resolveLineTaxWith>[1]) => resolveLineTaxWith(supabase, input);
-
-    try {
-      creditNoteNumber = await generateInvoiceNumberWithClient(
-        supabase,
-        order.organization_id,
-        'NC'
-      );
-
-      const creditNoteTotal = isFullRefund ? orderTotal : effectiveRefundAmount;
-      const creditNoteSubtotal = isFullRefund
-        ? Number(order.subtotal) || 0
-        : effectiveRefundAmount - (Number(order.tax_total) || 0);
-      const creditNoteTax = isFullRefund ? Number(order.tax_total) || 0 : 0;
-
-      const { data: creditNote, error: cnError } = await supabase
-        .from('invoice_sales')
-        .insert({
-          organization_id: order.organization_id,
-          branch_id: order.branch_id,
-          customer_id: order.customer_id || null,
-          sale_id: order.sale_id,
-          related_invoice_id: originalInvoice?.id || null,
-          number: creditNoteNumber,
-          issue_date: now,
-          due_date: now,
-          // La nota va en la moneda de la factura que revierte; sin factura,
-          // null y el trigger trg_00_moneda_base_por_defecto pone la base.
-          currency: normalizarCodigoMoneda(originalInvoice?.currency),
-          subtotal: creditNoteSubtotal,
-          tax_total: creditNoteTax,
-          total: creditNoteTotal,
-          balance: 0,
-          status: 'paid',
-          payment_method: order.payment_method || 'card',
-          payment_terms: 0,
-          tax_included: creditNoteTaxIncluded,
-          document_type: 'credit_note',
-          notes: `Nota crédito por reembolso web - Pedido ${order.order_number}. ${reason}`,
-        })
-        .select('id, number')
-        .single();
-
-      if (cnError) {
-        console.error('[Refund] Error creando nota crédito:', cnError);
-      } else {
-        creditNoteId = creditNote.id;
-        creditNoteNumber = creditNote.number;
-
-        // Crear invoice_items para la nota crédito.
-        // F-42: la nota copia las líneas de la factura original (tarifa y código
-        // definitivos, resolver para el total), así revierte exactamente lo
-        // facturado. Si el pedido no tiene factura, se parte de las líneas que
-        // la habrían formado. Antes estas líneas iban con invoice_type
-        // 'credit_note', que la restricción de invoice_items rechaza: la nota
-        // quedaba sin líneas. Ver `lineasNotaCreditoWeb`.
-        let lineasOriginales: LineaFacturaOriginal[] = [];
-        if (originalInvoice) {
-          const { data: originalLines } = await supabase
-            .from('invoice_items')
-            .select('id, product_id, description, qty, unit_price, discount_amount, tax_rate, tax_code, total_line')
-            .eq('invoice_sales_id', originalInvoice.id);
-          lineasOriginales = (originalLines || []) as LineaFacturaOriginal[];
-        }
-        if (lineasOriginales.length === 0) {
-          lineasOriginales = await lineasFacturaWebConImpuesto(order as WebOrder, creditNote.id, resolverImpuesto);
-        }
-
-        const creditNoteItems = await lineasNotaCreditoWeb(
-          {
-            creditNoteId: creditNote.id,
-            organizationId: order.organization_id,
-            orderNumber: order.order_number,
-            lineasOriginales,
-            taxIncluded: creditNoteTaxIncluded,
-            itemsParciales: partialItems,
-            montoParcial: !isFullRefund && partialItems.length === 0 ? effectiveRefundAmount : null,
-          },
-          resolverImpuesto,
-        );
-
-        if (creditNoteItems.length > 0) {
-          const { error: cnItemsError } = await supabase.from('invoice_items').insert(creditNoteItems);
-          if (cnItemsError) {
-            console.error('[Refund] Error creando líneas de la nota crédito:', cnItemsError);
-          }
-        }
-      }
-    } catch (cnError) {
-      console.error('[Refund] Error en creación de nota crédito:', cnError);
-    }
+    // 2-3. Nota crédito contra la factura original (servicio compartido con los cambios de pedido).
+    const { originalInvoice, creditNoteId, creditNoteNumber } = await crearNotaCreditoPedidoWeb(supabase, order as WebOrder, {
+      isFullRefund,
+      monto: effectiveRefundAmount,
+      motivo: `Nota crédito por reembolso web - Pedido ${order.order_number}. ${reason}`,
+      itemsParciales: partialItems,
+      now,
+    });
 
     // 4. Devolver stock al inventario
     const stockErrors: string[] = [];
@@ -284,17 +175,29 @@ export async function POST(
       }
     }
 
-    // 7. Marcar web_orders como reembolsada
-    await supabase
-      .from('web_orders')
-      .update({
-        payment_status: 'refunded',
-        status: 'cancelled',
-        cancelled_at: now,
-        cancellation_reason: `Reembolso: ${reason}`,
-        updated_at: now,
-      })
-      .eq('id', order.id);
+    // 7. Total: el pedido queda reembolsado y cancelado. Parcial: el pedido SIGUE vivo
+    //    (payment_status 'paid'); solo se deja nota interna. Antes el parcial también cancelaba.
+    if (isFullRefund) {
+      await supabase
+        .from('web_orders')
+        .update({
+          payment_status: 'refunded',
+          status: 'cancelled',
+          cancelled_at: now,
+          cancellation_reason: `Reembolso: ${reason}`,
+          updated_at: now,
+        })
+        .eq('id', order.id);
+    } else {
+      const nota = `[REEMBOLSO PARCIAL ${now}] ${effectiveRefundAmount} · ${reason}`;
+      await supabase
+        .from('web_orders')
+        .update({
+          internal_notes: [order.internal_notes, nota].filter(Boolean).join('\n'),
+          updated_at: now,
+        })
+        .eq('id', order.id);
+    }
 
     // El asiento contable de reversión se crea automáticamente via
     // trg_auto_journal_credit_note cuando se inserta la nota crédito.

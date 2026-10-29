@@ -88,7 +88,7 @@ function prorratearCentavos(montoCentavos: number, pesos: number[]): number[] {
  * subtotal (impuesto NO incluido en el precio). `web_orders` no guarda esa
  * bandera; se infiere comparando qué fórmula reproduce mejor `order.total`.
  */
-function impuestoVaSobreBase(order: Pick<WebOrder, 'subtotal' | 'tax_total' | 'discount_total' | 'delivery_fee' | 'tip_amount' | 'total'>): boolean {
+export function impuestoVaSobreBase(order: Pick<WebOrder, 'subtotal' | 'tax_total' | 'discount_total' | 'delivery_fee' | 'tip_amount' | 'total'>): boolean {
   const impuesto = numero(order.tax_total);
   if (impuesto <= 0) return false;
   const base = numero(order.subtotal) - numero(order.discount_total) + numero(order.delivery_fee) + numero(order.tip_amount);

@@ -252,6 +252,9 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <Lista etiqueta="Ancho" valor={b.button_width} opciones={ANCHOS_BOTON} nombres={{ full: 'Completo', auto: 'Automático' }} onCambiar={(v) => setBotonCampo('button_width', v)} />
           <Lista etiqueta="Posición" valor={b.button_position} opciones={POSICIONES_BOTON} nombres={{ bottom: 'Abajo', over_image_bottom: 'Sobre la imagen', over_image_corner: 'Esquina de la imagen', inline_price: 'Junto al precio' }} onCambiar={(v) => setBotonCampo('button_position', v)} />
           <Lista etiqueta="Visibilidad" valor={b.button_visibility} opciones={VISIBILIDAD_BOTON} nombres={{ always: 'Siempre', hover: 'Al pasar el mouse (en celular, siempre)' }} onCambiar={(v) => setBotonCampo('button_visibility', v)} />
+          {boton === 'add' && b.button_style === 'icon_only' && b.button_shape === 'circle' && (
+            <Interruptor etiqueta="Contador de cantidad" valor={b.quantity_stepper === true} onCambiar={(v) => setBotonCampo('quantity_stepper', v ? true : undefined)} />
+          )}
           <Lista etiqueta="Ícono" valor={b.icon || undefined} opciones={ICONOS_BOTON} onCambiar={(v) => setBotonCampo('icon', v)} />
           <Lista etiqueta="Lado del ícono" valor={b.icon_side} opciones={LADOS_ICONO} nombres={{ left: 'Izquierda', right: 'Derecha' }} onCambiar={(v) => setBotonCampo('icon_side', v)} />
           <div className="grid grid-cols-2 gap-2">

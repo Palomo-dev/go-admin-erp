@@ -88,6 +88,11 @@ export interface EstiloBotonTarjeta {
   icon?: string
   icon_side?: (typeof LADOS_ICONO)[number]
   show?: boolean
+  /**
+   * «Contador de cantidad» (solo `add`). Solo se guarda `true`; ausente = el botón de siempre
+   * (+1 y «✓ Listo»). Lo lee la tienda solo con `icon_only` + `circle` ({@link contadorCantidadActivo}).
+   */
+  quantity_stepper?: boolean
 }
 
 export interface EstiloEtiquetaTarjeta {
@@ -251,7 +256,13 @@ function boton(crudo: unknown): EstiloBotonTarjeta | undefined {
   if (lado) b.icon_side = lado
   const show = bandera(o.show)
   if (show != null) b.show = show
+  if (o.quantity_stepper === true) b.quantity_stepper = true
   return Object.keys(b).length > 0 ? b : undefined
+}
+
+/** ¿El botón «Agregar» pinta el contador «− qty +»? Solo encendido y con ícono solo en círculo. */
+export function contadorCantidadActivo(b: EstiloBotonTarjeta | null | undefined): boolean {
+  return b?.quantity_stepper === true && b.button_style === 'icon_only' && b.button_shape === 'circle'
 }
 
 function etiqueta(crudo: unknown): EstiloEtiquetaTarjeta | undefined {

@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Calendar, CircleCheck, CircleOff, Copy, Edit, Plus, Tag, Trash2 } from 'lucide-react';
+import { Calendar, CalendarClock, CircleCheck, CircleOff, Copy, Edit, Plus, Tag, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
+import { BulkActionBar } from '@/components/kit/BulkActionBar';
 import { StatusBadge } from '@/components/kit/StatusBadge';
 import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
 import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
@@ -14,6 +15,7 @@ import { localeIntl } from '@/components/kit/idioma';
 import { Promotion, type WeekDay } from './types';
 import { diasDelIdioma } from './diasPromocion';
 import { PromotionsService } from './promotionsService';
+import { EdicionMasivaHorario } from './EdicionMasivaHorario';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
@@ -48,6 +50,10 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [seleccion, setSeleccion] = useState<Set<string>>(() => new Set());
+  const [edicionMasiva, setEdicionMasiva] = useState(false);
+  // Solo cuentan las seleccionadas que siguen en la lista (filtros, recarga).
+  const idsSeleccionados = promotions.filter((p) => seleccion.has(p.id)).map((p) => p.id);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -138,6 +144,16 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
     return String(valor).slice(0, 5);
   };
 
+  /** «Todo el día», «Desde 18:00», «Hasta 02:00» o «18:00–02:00 (día siguiente)». Nunca un «00:00» de relleno. */
+  const franjaDe = (promo: Promotion): string => {
+    const ini = horaCorta(promo.start_time);
+    const fin = horaCorta(promo.end_time);
+    if (!ini && !fin) return t('lista.todoElDia');
+    if (ini && !fin) return t('lista.desde', { hora: ini });
+    if (!ini && fin) return t('lista.hasta', { hora: fin });
+    return fin < ini ? `${ini}–${fin} (${t('lista.diaSiguiente')})` : `${ini}–${fin}`;
+  };
+
   const accionesDe = (promo: Promotion): AccionFila[] => [
     {
       id: 'editar',
@@ -213,11 +229,7 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
             </span>
           </div>
           {diasDeVigencia(promo.applicable_days) && <div>{diasDeVigencia(promo.applicable_days)}</div>}
-          {(promo.start_time || promo.end_time) && (
-            <div className="tabular-nums">
-              {horaCorta(promo.start_time) || '00:00'}–{horaCorta(promo.end_time) || '24:00'}
-            </div>
-          )}
+          <div className="tabular-nums">{franjaDe(promo)}</div>
         </div>
       ),
     },
@@ -260,6 +272,8 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
         onFilaClick={(promo) => router.push(`/app/pos/promociones/${promo.id}`)}
         etiquetaFila={(promo) => promo.name}
         acciones={accionesDe}
+        seleccion={seleccion}
+        onSeleccionChange={setSeleccion}
         onLimpiarFiltros={onLimpiarFiltros}
         vacio={{
           titulo: t('lista.vacioTitulo'),
@@ -284,6 +298,29 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
             <RowActionsMenu acciones={accionesDe(promo)} titulo={promo.name} />
           </article>
         )}
+      />
+
+      <BulkActionBar
+        seleccionados={idsSeleccionados.length}
+        acciones={[
+          {
+            id: 'horario',
+            etiqueta: t('masivo.accion'),
+            icono: CalendarClock,
+            onClick: () => setEdicionMasiva(true),
+          },
+        ]}
+        onLimpiar={() => setSeleccion(new Set())}
+      />
+
+      <EdicionMasivaHorario
+        abierto={edicionMasiva}
+        onAbiertoChange={setEdicionMasiva}
+        ids={idsSeleccionados}
+        onAplicado={() => {
+          setSeleccion(new Set());
+          onRefresh();
+        }}
       />
 
       <ConfirmDialog

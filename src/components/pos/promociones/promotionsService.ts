@@ -8,7 +8,8 @@ import {
   CreatePromotionData, 
   UpdatePromotionData,
   PromotionFilters,
-  CreatePromotionRuleData
+  CreatePromotionRuleData,
+  WeekDay
 } from './types';
 
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
@@ -108,6 +109,47 @@ export class PromotionsService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
     return org.id;
+  }
+
+  /**
+   * Edición masiva de días y franja horaria. Solo toca las promociones de la
+   * organización activa (`organization_id`, además del RLS) y solo las
+   * columnas pedidas: `undefined` = no cambiar ese campo. Días vacíos o
+   * `null` = todos los días; franja `{ null, null }` = todo el día.
+   * Devuelve cuántas filas cambió la base.
+   */
+  static async updateHorarioMasivo(
+    ids: string[],
+    cambios: {
+      applicable_days?: WeekDay[] | null;
+      franja?: { start_time: string | null; end_time: string | null };
+    },
+  ): Promise<number> {
+    const unicos = Array.from(new Set(ids.filter(Boolean)));
+    if (unicos.length === 0) return 0;
+    const fila: Record<string, unknown> = {};
+    if (cambios.applicable_days !== undefined) {
+      fila.applicable_days = cambios.applicable_days && cambios.applicable_days.length > 0 ? cambios.applicable_days : null;
+    }
+    if (cambios.franja !== undefined) {
+      const limpia = limpiarFranjaYPaquete({ start_time: cambios.franja.start_time, end_time: cambios.franja.end_time });
+      fila.start_time = limpia.start_time ?? null;
+      fila.end_time = limpia.end_time ?? null;
+    }
+    if (Object.keys(fila).length === 0) return 0;
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('promotions')
+      .update({ ...fila, updated_at: new Date().toISOString() })
+      .eq('organization_id', organizationId)
+      .in('id', unicos)
+      .select('id');
+    if (error) {
+      console.error('Error en edición masiva de horario:', error);
+      throw new Error(`Error al actualizar las promociones: ${error.message}`);
+    }
+    avisarCambioPromociones();
+    return Array.isArray(data) ? data.length : 0;
   }
 
   /**

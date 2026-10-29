@@ -242,6 +242,56 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_weight: 'relleno' });
   });
 
+  test('Estilo › Íconos: los nuevos (canasta, tienda, persona redonda, entrar, pesos en círculo, idiomas)', () => {
+    const onCambiar = encabezado({}, { pestanaInicial: 'estilo' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Canasta' }));
+    expect(onCambiar).toHaveBeenCalledWith({ cart_icon: 'shopping-basket' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }));
+    expect(onCambiar).toHaveBeenCalledWith({ cart_icon: 'store' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de cuenta' })).getByRole('radio', { name: 'Persona en círculo redondo' }));
+    expect(onCambiar).toHaveBeenCalledWith({ auth_icon: 'circle-user-round' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de cuenta' })).getByRole('radio', { name: 'Entrar' }));
+    expect(onCambiar).toHaveBeenCalledWith({ auth_icon: 'log-in' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Pesos en círculo' }));
+    expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'circle-dollar-sign' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Idiomas' }));
+    expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'languages' });
+  });
+
+  test('Contenido › Acciones: el ícono va debajo de cada interruptor encendido y usa la misma clave que Estilo', () => {
+    const onCambiar = encabezado({ cart_icon: 'store', auth_icon: 'log-in', currency_icon: 'languages' }, { pestanaInicial: 'contenido' });
+    const carrito = screen.getByRole('radiogroup', { name: 'Ícono del carrito' });
+    expect(within(carrito).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked')).toBe('true');
+    expect(within(screen.getByRole('radiogroup', { name: 'Ícono de cuenta' })).getByRole('radio', { name: 'Entrar' }).getAttribute('aria-checked')).toBe('true');
+    expect(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Idiomas' }).getAttribute('aria-checked')).toBe('true');
+    // El buscador se elige en Estilo › Íconos; Contenido no tiene interruptor para él.
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono de buscar' })).toBeNull();
+    // Debajo de su interruptor: el selector viene justo después en el documento.
+    const interruptor = screen.getByRole('switch', { name: 'Carrito' });
+    expect(interruptor.compareDocumentPosition(carrito) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(within(carrito).getByRole('radio', { name: 'Canasta' }));
+    expect(onCambiar).toHaveBeenCalledWith({ cart_icon: 'shopping-basket' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Pesos en círculo' }));
+    expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'circle-dollar-sign' });
+  });
+
+  test('Contenido › Acciones: con el interruptor apagado no sale el selector', () => {
+    encabezado({ show_header_cart: false, show_header_auth: false, header_show_currency: false }, { pestanaInicial: 'contenido' });
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono del carrito' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono de cuenta' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono de moneda' })).toBeNull();
+  });
+
+  test('Estilo y Contenido marcan el mismo ícono (misma clave de settings)', () => {
+    const ajustes = { header_icons: { cart: { icono: 'store' } } };
+    encabezado(ajustes, { pestanaInicial: 'estilo' });
+    const enEstilo = within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked');
+    document.body.innerHTML = '';
+    encabezado(ajustes, { pestanaInicial: 'contenido' });
+    const enContenido = within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked');
+    expect([enEstilo, enContenido]).toEqual(['true', 'true']);
+  });
+
   test('Círculo acento: fondo y color del ícono con Sigue el tema / Fijar color', () => {
     const onCambiar = encabezado({ header_icons_circle: true }, { pestanaInicial: 'estilo' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Fondo del círculo' })).getByRole('radio', { name: 'Fijar color' }));

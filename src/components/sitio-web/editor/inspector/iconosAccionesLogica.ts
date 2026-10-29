@@ -4,16 +4,39 @@
  * columna (`search_icon`, `cart_icon`, `auth_icon`, `currency_icon`) › `header_cart_glyph` › el de hoy.
  * Los nombres son los del `ICON_MAP` de la tienda (HeaderShared): fuera de él, la tienda pinta el de hoy.
  */
-import { Banknote, CircleUser, Coins, DollarSign, Gift, Globe, Package, ScanSearch, Search, ShoppingBag, ShoppingCart, User, UserCircle, UserRound, Wallet, type LucideIcon } from 'lucide-react';
+import {
+  Banknote,
+  CircleDollarSign,
+  CircleUser,
+  CircleUserRound,
+  Coins,
+  DollarSign,
+  Gift,
+  Globe,
+  Languages,
+  LogIn,
+  Package,
+  ScanSearch,
+  Search,
+  ShoppingBag,
+  ShoppingBasket,
+  ShoppingCart,
+  Store,
+  User,
+  UserCircle,
+  UserRound,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 import { resolverIconoEncabezado, type AccionEncabezado } from '@/lib/website/v2/iconosEncabezado';
 
 export const ACCIONES_ICONO: readonly AccionEncabezado[] = ['search', 'cart', 'account', 'currency'];
 
 export const OPCIONES_ICONO_ACCION: Record<AccionEncabezado, readonly string[]> = {
   search: ['search', 'scan-search'],
-  cart: ['shopping-bag', 'shopping-cart', 'package', 'gift'],
-  account: ['user', 'user-circle', 'user-round', 'circle-user'],
-  currency: ['globe', 'coins', 'wallet', 'banknote', 'dollar-sign'],
+  cart: ['shopping-bag', 'shopping-cart', 'shopping-basket', 'store', 'package', 'gift'],
+  account: ['user', 'user-circle', 'user-round', 'circle-user', 'circle-user-round', 'log-in'],
+  currency: ['globe', 'languages', 'coins', 'wallet', 'banknote', 'dollar-sign', 'circle-dollar-sign'],
 };
 
 export const ICONOS_LUCIDE_ENCABEZADO: Record<string, LucideIcon> = {
@@ -33,6 +56,12 @@ export const ICONOS_LUCIDE_ENCABEZADO: Record<string, LucideIcon> = {
   wallet: Wallet,
   banknote: Banknote,
   'dollar-sign': DollarSign,
+  'shopping-basket': ShoppingBasket,
+  store: Store,
+  'circle-user-round': CircleUserRound,
+  'log-in': LogIn,
+  'circle-dollar-sign': CircleDollarSign,
+  languages: Languages,
 };
 
 const COLUMNA: Record<AccionEncabezado, string> = { search: 'search_icon', cart: 'cart_icon', account: 'auth_icon', currency: 'currency_icon' };

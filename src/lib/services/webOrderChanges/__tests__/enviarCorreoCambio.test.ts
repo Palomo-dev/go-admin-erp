@@ -16,6 +16,8 @@ jest.mock('@/lib/services/crm/email/resendClient', () => ({
 }));
 jest.mock('@/lib/services/crm/email/domainsService', () => ({ resolveSender: jest.fn() }));
 
+import { EmailError } from '@/lib/services/crm/email/types';
+
 import { enviarCorreoCambio, enmascararCorreo } from '../webOrderChangesServer';
 import { resolveSender } from '@/lib/services/crm/email/domainsService';
 import { fakeDb } from './fakeDb';
@@ -25,7 +27,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const ctx = { userId: 'u1', organizationId: 7, roleId: 2, isSuperAdmin: false, supabase: {} } as unknown as ServerOrgContext;
 const mockResolve = resolveSender as jest.Mock;
 
-function db(extraCambio: Record<string, unknown> = {}, fallo?: Parameters<typeof fakeDb>[2]) {
+type Rpc = Parameters<typeof fakeDb>[1];
+const rpcOk: Rpc = (fn, a) => (fn === 'fn_web_order_change_registrar_correo' ? { data: { ok: true, email_sent_at: '2026-10-29T03:30:00Z', email_sent_count: 3, email_message_id: a.p_message_id, email_sent_to_masked: a.p_to_masked }, error: null } : { data: null, error: null });
+const rpcSinFuncion = (code: string): Rpc => () => ({ data: null, error: { code, message: 'function does not exist' } as { message: string } });
+
+function db(extraCambio: Record<string, unknown> = {}, fallo?: Parameters<typeof fakeDb>[2], rpc: Rpc = rpcSinFuncion('42883')) {
   return fakeDb(
     {
       web_orders: [{ id: 'o1', organization_id: 7, order_number: 'WO-1', customer_email: 'laura@cliente.com', customer_name: 'Laura', branch_id: 2, internal_notes: 'previa', items: [] }],
@@ -34,7 +40,7 @@ function db(extraCambio: Record<string, unknown> = {}, fallo?: Parameters<typeof
       email_domains: [{ organization_id: 7, reply_to: 'tienda@gmail.com', is_default: false }],
       ops_audit_log: [],
     },
-    () => ({ data: null, error: null }),
+    rpc,
     fallo,
   );
 }
@@ -50,17 +56,26 @@ it('enmascara el correo', () => {
   expect(enmascararCorreo('malo')).toBe('***');
 });
 
-it('guarda el rastro, la nota y el audit log, y lo devuelve', async () => {
-  const d = db({ email_sent_count: 1 });
+it('camino normal: una sola RPC atómica (contador, nota, audit) y devuelve lo que guardó la base', async () => {
+  const d = db({ email_sent_count: 2 }, undefined, rpcOk);
   const r = await enviarCorreoCambio(ctx, 'ch1-abcdef', comoDb(d));
-  expect(r).toMatchObject({ ok: true, email_sent_count: 2, email_message_id: 'msg_master', email_sent_to_masked: 'l***@cliente.com', rastro: true });
-  const up = d.llamadas.find((l) => l.tabla === 'web_order_changes' && l.op === 'update');
-  expect(up?.valores).toMatchObject({ email_sent_count: 2, email_message_id: 'msg_master', email_sent_to_masked: 'l***@cliente.com' });
-  const nota = d.llamadas.find((l) => l.tabla === 'web_orders' && l.op === 'update');
-  expect(String(nota?.valores?.internal_notes)).toMatch(/^previa\n\[CORREO CAMBIO .*l\*\*\*@cliente\.com \(envío 2\)\.$/);
-  expect(String(nota?.valores?.internal_notes)).not.toContain('laura@');
+  const call = d.rpcs.find((x) => x.fn === 'fn_web_order_change_registrar_correo');
+  expect(call?.args).toMatchObject({ p_change_id: 'ch1-abcdef', p_organization_id: 7, p_message_id: 'msg_master', p_to_masked: 'l***@cliente.com', p_user: 'u1', p_timezone: 'America/Lima' });
+  expect(r).toMatchObject({ ok: true, email_sent_count: 3, email_sent_at: '2026-10-29T03:30:00Z', rastro: true });
+  // Ni el contador ni la nota se escriben desde el código.
+  expect(d.llamadas.filter((l) => l.op === 'update' || l.op === 'insert')).toHaveLength(0);
+});
+
+it.each(['42883', 'PGRST202'])('sin la función (%s): guarda columnas y audit, NO escribe notas desde el código', async (code) => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  const d = db({ email_sent_count: 1 }, undefined, rpcSinFuncion(code));
+  const r = await enviarCorreoCambio(ctx, 'ch1-abcdef', comoDb(d));
+  expect(r).toMatchObject({ ok: true, email_sent_count: 2, email_sent_to_masked: 'l***@cliente.com', rastro: true });
+  expect(d.llamadas.some((l) => l.tabla === 'web_orders' && l.op === 'update')).toBe(false);
   const audit = d.llamadas.find((l) => l.tabla === 'ops_audit_log');
   expect(audit?.valores).toMatchObject({ action: 'WEB_ORDER_CHANGE_EMAIL_SENT', entity_id: 'o1', user_id: 'u1', metadata: expect.objectContaining({ to_masked: 'l***@cliente.com', count: 2 }) });
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('fn_web_order_change_registrar_correo'));
+  warn.mockRestore();
 });
 
 it.each(['42703', 'PGRST204'])('sin columnas (%s) el correo sale igual y avisa en el log', async (code) => {
@@ -93,10 +108,19 @@ it('sin dominio verificado usa la plataforma y el reply-to registrado de la tien
   process.env.EMAIL_FROM_ADDRESS = prev;
 });
 
-it('si resolver el remitente falla, cae al respaldo', async () => {
-  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-  mockResolve.mockRejectedValue(new Error('NO_SENDER'));
-  await enviarCorreoCambio(ctx, 'ch1-abcdef', comoDb(db()));
-  expect(envioMaster).toHaveBeenCalledTimes(1);
-  warn.mockRestore();
+it('política block sin dominio verificado: no envía y devuelve REMITENTE_BLOQUEADO (422)', async () => {
+  mockResolve.mockRejectedValue(new EmailError('NO_SENDER', 'La organización exige dominio propio verificado para enviar correos', 422));
+  const d = db();
+  await expect(enviarCorreoCambio(ctx, 'ch1-abcdef', comoDb(d))).rejects.toMatchObject({ status: 422, code: 'REMITENTE_BLOQUEADO' });
+  expect(envioMaster).not.toHaveBeenCalled();
+  expect(envioOrg).not.toHaveBeenCalled();
+  expect(d.rpcs).toHaveLength(0);
+});
+
+it('error inesperado de resolveSender: falla cerrado, no envía desde la plataforma', async () => {
+  const err = jest.spyOn(console, 'error').mockImplementation(() => {});
+  mockResolve.mockRejectedValue(new Error('timeout'));
+  await expect(enviarCorreoCambio(ctx, 'ch1-abcdef', comoDb(db()))).rejects.toMatchObject({ status: 502, code: 'REMITENTE_FALLO' });
+  expect(envioMaster).not.toHaveBeenCalled();
+  err.mockRestore();
 });

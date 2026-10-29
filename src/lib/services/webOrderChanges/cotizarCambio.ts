@@ -1,5 +1,5 @@
 import type { WebOrder, WebOrderItem } from '../webOrdersService';
-import { impuestoVaSobreBase } from '../webOrderTotals';
+import { impuestoVaSobreBase, prorratearCentavos } from '../webOrderTotals';
 
 /**
  * Cotización de un cambio de productos en un pedido web pagado (web_order_changes).
@@ -11,7 +11,13 @@ import { impuestoVaSobreBase } from '../webOrderTotals';
  *  - IVA: el modo del pedido (sobre la base o incluido) se infiere igual que en la factura
  *    (`impuestoVaSobreBase` de webOrderTotals). La tarifa de cada línea nueva la da el resolver
  *    de impuestos del servidor (`tasa`).
- *  - Descuento de pedido (cupón): se conserva el importe original, sin pasar del subtotal nuevo.
+ *  - Descuento, con el mismo modelo que `repartirTotalesPedidoWeb`:
+ *      · el de línea (promoción del producto) se conserva por unidad para las unidades que siguen;
+ *        las unidades nuevas y los productos quitados no lo llevan;
+ *      · el de pedido (cupón: discount_total menos lo que ya está en las líneas) se escala por la
+ *        base elegible (neto de las líneas sin `promo_excluded`): nueva/antes, sin superar 1
+ *        (agregar productos no agranda el cupón; quitar el producto con cupón lo reduce), y se
+ *        prorratea en centavos entre las líneas elegibles, igual que en la factura.
  *  - Envío: se recalcula. Recogida/mesa → 0; domicilio → `envio.nuevo` si el servidor/usuario lo
  *    trae, si no el cobrado. Propina: igual.
  */
@@ -35,6 +41,8 @@ export interface ItemCotizado {
   tax_amount: number;
   discount_amount: number;
   total: number;
+  /** Se hereda del pedido original: una línea con la promoción quitada no recibe el cupón. */
+  promo_excluded: boolean;
 }
 
 export interface TotalesCotizados {
@@ -55,7 +63,7 @@ export interface Cotizacion {
 }
 
 export type OrdenCotizable = Pick<WebOrder, 'subtotal' | 'tax_total' | 'discount_total' | 'delivery_fee' | 'tip_amount' | 'total' | 'delivery_type'> & {
-  items?: Array<Pick<WebOrderItem, 'product_id' | 'quantity' | 'unit_price'>>;
+  items?: Array<Pick<WebOrderItem, 'product_id' | 'quantity' | 'unit_price'> & { discount_amount?: number | null; promo_excluded?: boolean | null }>;
 };
 
 const r2 = (n: number): number => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
@@ -81,21 +89,31 @@ export function cotizarCambio(order: OrdenCotizable, lineas: LineaPedida[], envi
   if (!Array.isArray(lineas) || lineas.length === 0) throw new CotizacionError('SIN_ITEMS');
   const sobreBase = impuestoVaSobreBase(order as Parameters<typeof impuestoVaSobreBase>[0]);
 
-  // Cantidad y precio pagados por producto en el pedido original.
-  const pagados = new Map<number, { qty: number; precio: number }>();
+  // Por producto en el pedido original: cantidad, precio pagado, descuento de línea por unidad
+  // y si la promoción estaba quitada.
+  const pagados = new Map<number, { qty: number; precio: number; descUnit: number; excluido: boolean }>();
+  let descuentoEnItemsAntes = 0;
+  let baseElegibleAntes = 0;
   for (const it of order.items ?? []) {
+    const qty = num(it.quantity);
+    const bruto = qty * num(it.unit_price);
+    const desc = Math.min(Math.max(num(it.discount_amount), 0), bruto);
+    descuentoEnItemsAntes += desc;
+    if (!it.promo_excluded) baseElegibleAntes += bruto - desc;
     if (!it.product_id) continue;
     const prev = pagados.get(it.product_id);
-    const qty = num(it.quantity);
     if (prev) {
-      // Precio promedio ponderado si el producto venía en varias líneas.
-      const total = prev.qty * prev.precio + qty * num(it.unit_price);
-      prev.qty += qty;
-      prev.precio = prev.qty > 0 ? r2(total / prev.qty) : prev.precio;
+      // Varias líneas del mismo producto: precio y descuento promedio ponderados.
+      const totalQty = prev.qty + qty;
+      prev.precio = totalQty > 0 ? (prev.qty * prev.precio + bruto) / totalQty : prev.precio;
+      prev.descUnit = totalQty > 0 ? (prev.qty * prev.descUnit + desc) / totalQty : prev.descUnit;
+      prev.qty = totalQty;
+      prev.excluido = prev.excluido || Boolean(it.promo_excluded);
     } else {
-      pagados.set(it.product_id, { qty, precio: num(it.unit_price) });
+      pagados.set(it.product_id, { qty, precio: num(it.unit_price), descUnit: qty > 0 ? desc / qty : 0, excluido: Boolean(it.promo_excluded) });
     }
   }
+  const cuponAntes = Math.max(r2(num(order.discount_total) - descuentoEnItemsAntes), 0);
 
   // Agrupar por producto (una línea por producto).
   const agrupadas = new Map<number, LineaPedida>();
@@ -107,33 +125,48 @@ export function cotizarCambio(order: OrdenCotizable, lineas: LineaPedida[], envi
     agrupadas.set(l.product_id, prev ? { ...prev, quantity: prev.quantity + qty } : { ...l, quantity: qty });
   }
 
-  const items: ItemCotizado[] = [];
-  // El subtotal suma el bruto exacto de cada línea (no cantidad × unitario redondeado: 32.000/3 × 3 ≠ 32.000).
-  let subtotalBruto = 0;
-  for (const l of Array.from(agrupadas.values())) {
+  // 1) Bruto y descuento de línea.
+  const base = Array.from(agrupadas.values()).map((l) => {
     const pagado = pagados.get(l.product_id);
     const qtyAlPrecioPagado = pagado ? Math.min(pagado.qty, l.quantity) : 0;
     const qtyNueva = l.quantity - qtyAlPrecioPagado;
+    // El subtotal suma el bruto exacto de cada línea (no cantidad × unitario redondeado).
     const bruto = r2(qtyAlPrecioPagado * (pagado?.precio ?? 0) + qtyNueva * num(l.precio));
-    const unit = l.quantity > 0 ? r2(bruto / l.quantity) : 0;
-    subtotalBruto += bruto;
-    const tasa = Math.max(num(l.tasa), 0);
-    const impuesto = sobreBase ? r2(bruto * (tasa / 100)) : r2(bruto - bruto / (1 + tasa / 100));
-    items.push({
-      product_id: l.product_id,
-      product_name: l.nombre,
-      product_sku: l.sku ?? null,
-      quantity: l.quantity,
-      unit_price: unit,
-      tax_amount: impuesto,
-      discount_amount: 0,
-      total: sobreBase ? r2(bruto + impuesto) : bruto,
-    });
-  }
+    const descLinea = Math.min(r2(qtyAlPrecioPagado * (pagado?.descUnit ?? 0)), bruto);
+    return { l, bruto, descLinea, excluido: pagado?.excluido ?? false };
+  });
 
-  const subtotal = r2(subtotalBruto);
+  // 2) Cupón escalado por la base elegible y prorrateado como en la factura.
+  const baseElegibleNueva = base.reduce((s, b) => s + (b.excluido ? 0 : b.bruto - b.descLinea), 0);
+  const factor = baseElegibleAntes > 0 ? Math.min(baseElegibleNueva / baseElegibleAntes, 1) : 0;
+  const cuponNuevo = Math.min(r2(cuponAntes * factor), r2(baseElegibleNueva));
+  const partes = prorratearCentavos(
+    Math.round(cuponNuevo * 100),
+    base.map((b) => (b.excluido ? 0 : Math.round((b.bruto - b.descLinea) * 100))),
+  );
+
+  const items: ItemCotizado[] = base.map((b, i) => {
+    const descuento = r2(b.descLinea + partes[i] / 100);
+    const tasa = Math.max(num(b.l.tasa), 0);
+    // IVA sobre el bruto, como el pedido original (el descuento no cambia la tarifa).
+    const impuesto = sobreBase ? r2(b.bruto * (tasa / 100)) : r2(b.bruto - b.bruto / (1 + tasa / 100));
+    const neto = r2(b.bruto - descuento);
+    return {
+      product_id: b.l.product_id,
+      product_name: b.l.nombre,
+      product_sku: b.l.sku ?? null,
+      quantity: b.l.quantity,
+      unit_price: b.l.quantity > 0 ? r2(b.bruto / b.l.quantity) : 0,
+      tax_amount: impuesto,
+      discount_amount: descuento,
+      total: sobreBase ? r2(neto + impuesto) : neto,
+      promo_excluded: b.excluido,
+    };
+  });
+
+  const subtotal = r2(base.reduce((s, b) => s + b.bruto, 0));
   const tax = r2(items.reduce((s, i) => s + i.tax_amount, 0));
-  const descuento = r2(Math.min(Math.max(num(order.discount_total), 0), subtotal));
+  const descuento = r2(items.reduce((s, i) => s + i.discount_amount, 0));
   const envioNuevo = envioRecalculado(order, envio?.nuevo);
   const propina = r2(Math.max(num(order.tip_amount), 0));
   const total = r2(subtotal - descuento + (sobreBase ? tax : 0) + envioNuevo + propina);

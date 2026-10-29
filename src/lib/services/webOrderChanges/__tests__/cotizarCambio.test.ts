@@ -87,11 +87,54 @@ describe('cotizarCambio · IVA y envío', () => {
     expect(c.delta.total).toBe(3000);
   });
 
-  it('el descuento se conserva, acotado al nuevo subtotal', () => {
-    const conDesc = { ...incluido, discount_total: 15000, total: 10000 };
-    const c = cotizarCambio(conDesc, [linea(1, 1, 10000)]);
-    expect(c.totales.discount_total).toBe(10000);
-    expect(c.totales.total).toBe(5000);
+  it('cupón de pedido: al quitar la mitad de la base, se devuelve la mitad del cupón (no se queda entero)', () => {
+    // 2 × 10.000 con cupón de 4.000 (sin descuento por línea). Total 16.000 + 5.000 envío = 21.000.
+    const conCupon = { ...incluido, discount_total: 4000, total: 21000 };
+    const c = cotizarCambio(conCupon, [linea(1, 1, 10000)]);
+    expect(c.totales.discount_total).toBe(2000);
+    expect(c.items[0].discount_amount).toBe(2000);
+    expect(c.totales.total).toBe(10000 - 2000 + 5000);
+    expect(c.delta.total).toBe(-8000); // devuelve lo que pagó por esa unidad (10.000 − 2.000)
+  });
+
+  it('cupón: agregar productos no hace crecer el cupón', () => {
+    const conCupon = { ...incluido, discount_total: 4000, total: 21000 };
+    const c = cotizarCambio(conCupon, [linea(1, 2, 10000), linea(2, 1, 6000, 0)]);
+    expect(c.totales.discount_total).toBe(4000);
+    expect(c.delta.total).toBe(6000);
+    // Prorrateo en centavos sobre ambas líneas, suma exacta.
+    expect(c.items.reduce((s, i) => s + i.discount_amount, 0)).toBe(4000);
+  });
+
+  it('promo por línea: quitar el producto en promo devuelve su precio neto, no el bruto', () => {
+    // P1 2 × 10.000 con 3.000 de promo en la línea; P2 1 × 5.000 sin promo.
+    const o: OrdenCotizable = {
+      subtotal: 25000, tax_total: 0, discount_total: 3000, delivery_fee: 0, tip_amount: 0, total: 22000, delivery_type: 'pickup',
+      items: [{ product_id: 1, quantity: 2, unit_price: 10000, discount_amount: 3000 }, { product_id: 2, quantity: 1, unit_price: 5000, discount_amount: 0 }],
+    };
+    const c = cotizarCambio(o, [linea(1, 1, 10000, 0), linea(2, 1, 5000, 0)]);
+    expect(c.items.find((i) => i.product_id === 1)?.discount_amount).toBe(1500);
+    expect(c.items.find((i) => i.product_id === 2)?.discount_amount).toBe(0);
+    expect(c.totales.discount_total).toBe(1500);
+    expect(c.delta.total).toBe(-8500);
+    // Quitar del todo el producto en promo.
+    const sinP1 = cotizarCambio(o, [linea(2, 1, 5000, 0)]);
+    expect(sinP1.totales.discount_total).toBe(0);
+    expect(sinP1.delta.total).toBe(-17000);
+  });
+
+  it('promo_excluded: el cupón no se reparte en esa línea ni se escala por ella', () => {
+    // P1 excluida (10.000), P2 elegible (10.000) con cupón de 2.000. Total 18.000.
+    const o: OrdenCotizable = {
+      subtotal: 20000, tax_total: 0, discount_total: 2000, delivery_fee: 0, tip_amount: 0, total: 18000, delivery_type: 'pickup',
+      items: [{ product_id: 1, quantity: 1, unit_price: 10000, promo_excluded: true }, { product_id: 2, quantity: 1, unit_price: 10000 }],
+    };
+    const quitarExcluida = cotizarCambio(o, [linea(2, 1, 10000, 0)]);
+    expect(quitarExcluida.totales.discount_total).toBe(2000);
+    expect(quitarExcluida.delta.total).toBe(-10000);
+    const mismo = cotizarCambio(o, [linea(1, 1, 10000, 0), linea(2, 1, 10000, 0)]);
+    expect(mismo.items.find((i) => i.product_id === 1)).toMatchObject({ discount_amount: 0, promo_excluded: true });
+    expect(mismo.delta.total).toBe(0);
   });
 
   it('conserva la propina', () => {

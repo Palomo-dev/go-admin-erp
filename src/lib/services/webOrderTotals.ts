@@ -61,7 +61,7 @@ const numero = (v: unknown): number => {
  * superar cada peso y dejando el residuo del redondeo en la última posición
  * con capacidad. Devuelve las partes en centavos.
  */
-function prorratearCentavos(montoCentavos: number, pesos: number[]): number[] {
+export function prorratearCentavos(montoCentavos: number, pesos: number[]): number[] {
   const partes = pesos.map(() => 0);
   const totalPesos = pesos.reduce((s, p) => s + Math.max(p, 0), 0);
   if (montoCentavos <= 0 || totalPesos <= 0) return partes;

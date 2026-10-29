@@ -5,7 +5,7 @@ import { displayCostRateLimitStore } from '@/lib/pos/display/server/displayRateL
 import { resolveDisplayActor } from '@/lib/pos/display/server/displayActor';
 import { DISPLAY_PROMOTIONS_MAX, toDisplayPromotion, type DisplayPromotion } from '@/lib/pos/display/promotions';
 import { PROMOTIONS_RATE_LIMIT, PROMOTIONS_RATE_LIMIT_PREFIX, PROMOTIONS_READ_LIMIT } from '@/lib/pos/display/server/displayFeedback';
-import { appliesOnWeekDay, appliesToBranch, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
+import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, diaEfectivoDeFranja, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
 import { tieneUsosDisponibles } from '@/lib/promotions/motorPromociones';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     const [promotionsRes, orgRes] = await Promise.all([
       service
         .from('promotions')
-        .select('id, name, description, start_date, end_date, applicable_days, branches, usage_limit, usage_count')
+        .select('id, name, description, start_date, end_date, applicable_days, start_time, end_time, branches, usage_limit, usage_count')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
         .eq('applies_to_pos', true)
@@ -101,10 +101,14 @@ export async function GET(request: Request) {
       weekDay = weekDayOfPlainDate(toPlainDate(now, DEFAULT_TIMEZONE));
     }
 
+    // Misma franja que el POS (`promocionVigente`): fuera de horario no se
+    // anuncia, y la madrugada de una franja que cruza la medianoche cuenta
+    // como el día en que empezó.
+    const hora = horaEnZona(now, timezone);
     const rows = (Array.isArray(promotionsRes.data) ? promotionsRes.data : []) as Array<Record<string, unknown>>;
     const promotions: DisplayPromotion[] = rows
       // Con usos agotados el POS ya no la aplica: la pantalla tampoco la anuncia.
-      .filter((row) => isWithinEndDate(row, now) && appliesOnWeekDay(row, weekDay) && appliesToBranch(row, branchId) && tieneUsosDisponibles(row))
+      .filter((row) => isWithinEndDate(row, now) && appliesOnWeekDay(row, diaEfectivoDeFranja(row, weekDay, hora)) && appliesInTimeWindow(row, hora) && appliesToBranch(row, branchId) && tieneUsosDisponibles(row))
       .map(toDisplayPromotion)
       .filter((p): p is DisplayPromotion => p !== null)
       .slice(0, DISPLAY_PROMOTIONS_MAX);

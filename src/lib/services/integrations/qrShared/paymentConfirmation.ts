@@ -59,7 +59,7 @@ export const WEB_ORDER_CHANGE_SOURCE = 'web_order_change';
 export async function aplicarCambioPedidoTrasPago(
   session: { source?: string | null; source_id?: string | null; reference?: string | null; organization_id?: number },
   paymentId: string | null,
-): Promise<{ ok: boolean; error?: string; yaAplicado?: boolean }> {
+): Promise<{ ok: boolean; error?: string; yaAplicado?: boolean; pagoTardio?: boolean }> {
   if (session.source !== WEB_ORDER_CHANGE_SOURCE || !session.source_id) return { ok: true };
   const supabase = getSupabaseAdmin();
   const { data: cambio } = await supabase
@@ -71,6 +71,18 @@ export async function aplicarCambioPedidoTrasPago(
     return { ok: false, error: 'Cambio de pedido no encontrado para la sesión' };
   }
   if (cambio.estado === 'applied') return { ok: true, yaAplicado: true };
+  // Pago a un cambio ya cancelado o vencido: no se aplica ni se reintenta. Alerta + nota interna y
+  // el webhook responde 200 (reintentar no lo arregla; lo resuelve una persona).
+  const pagoTardio = async () => {
+    const { error: e } = await supabase.rpc('fn_web_order_change_pago_tardio', {
+      p_change_id: cambio.id,
+      p_payment_id: paymentId,
+      p_reference: session.reference ?? null,
+    });
+    if (e) console.error('[paymentConfirmation] fn_web_order_change_pago_tardio:', e.message);
+    return { ok: true, pagoTardio: true };
+  };
+  if (cambio.estado === 'cancelled' || cambio.estado === 'expired') return pagoTardio();
   const { data, error } = await supabase.rpc('fn_web_order_change_aplicar', {
     p_change_id: cambio.id,
     p_user: null,
@@ -78,7 +90,11 @@ export async function aplicarCambioPedidoTrasPago(
     p_refund_mode: null,
     p_provider_reference: session.reference ?? null,
   });
-  if (error) return { ok: false, error: `fn_web_order_change_aplicar: ${error.message}` };
+  if (error) {
+    // Carrera: el cron lo venció entre la lectura y el aplicar.
+    if (/CAMBIO_CERRADO/.test(error.message)) return pagoTardio();
+    return { ok: false, error: `fn_web_order_change_aplicar: ${error.message}` };
+  }
   return { ok: true, yaAplicado: Boolean((data as { ya_aplicado?: boolean } | null)?.ya_aplicado) };
 }
 

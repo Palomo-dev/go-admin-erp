@@ -2,7 +2,7 @@ jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: jest.fn() 
 jest.mock('@/lib/services/taxResolverCore', () => ({ resolveLineTaxWith: jest.fn(async () => ({ tax_rate: 19 })) }));
 jest.mock('@/lib/services/webOrderCreditNote', () => ({ crearNotaCreditoPedidoWeb: jest.fn(async () => ({ creditNoteId: 'nc-1', creditNoteNumber: 'NC-1', originalInvoice: null })) }));
 jest.mock('@/lib/services/integrations/wompi/wompiService', () => ({
-  wompiService: { getCredentials: jest.fn(async () => ({ privateKey: 'x' })), createPaymentLink: jest.fn(async () => ({ id: 'lnk_1', url: 'https://checkout.wompi.co/l/lnk_1' })) },
+  wompiService: { getCredentials: jest.fn(async () => ({ privateKey: 'x' })), createPaymentLink: jest.fn(async () => ({ id: 'lnk_1', url: 'https://checkout.wompi.co/l/lnk_1' })), deactivatePaymentLink: jest.fn(async () => true) },
 }));
 jest.mock('@/lib/services/integrations/bold', () => ({ boldService: { createPaymentLink: jest.fn() } }));
 jest.mock('@/lib/services/integrations/qrShared/qrSessionService', () => ({ createQrSession: jest.fn(async () => ({ id: 'ses-1' })) }));
@@ -10,7 +10,7 @@ jest.mock('@/lib/services/integrations/qrShared/cobroQrServidor', () => ({ MONED
 jest.mock('@/lib/services/integrations/qrShared/paymentConfirmation', () => ({ WEB_ORDER_CHANGE_SOURCE: 'web_order_change' }));
 jest.mock('@/lib/services/crm/email/resendClient', () => ({ getMasterResend: jest.fn(), getMasterResendKey: jest.fn(() => null) }));
 
-import { aplicarCambio, crearCambio, cancelarCambio, CambioPedidoError } from '../webOrderChangesServer';
+import { aplicarCambio, crearCambio, cancelarCambio, CambioPedidoError, desactivarLinkCambio, colorDeMarca } from '../webOrderChangesServer';
 import { crearNotaCreditoPedidoWeb } from '@/lib/services/webOrderCreditNote';
 import { wompiService } from '@/lib/services/integrations/wompi/wompiService';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
@@ -148,5 +148,41 @@ describe('aplicar', () => {
   it('con link pendiente no se puede re-aplicar', async () => {
     const d = db({ id: 'ch1', organization_id: 7, web_order_id: 'o1', estado: 'pending_payment', delta_total: 5000 });
     await expect(aplicarCambio(ctx(p), 'ch1', {}, comoDb(d))).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe('desactivar link y color de marca', () => {
+  const tablas = (cambio: Record<string, unknown>) => ({
+    web_order_changes: [cambio],
+    payment_qr_sessions: [{ id: 'ses-1', external_qr_id: 'lnk_1' }],
+  });
+  const noRpc = () => ({ data: null, error: null });
+
+  it('Wompi: desactiva el link y marca link_disabled_at', async () => {
+    const d = fakeDb(tablas({ id: 'ch1', provider_code: 'wompi_link', integration_connection_id: 'cx1', qr_session_id: 'ses-1', link_disabled_at: null }), noRpc);
+    expect(await desactivarLinkCambio(d as unknown as SupabaseClient, 'ch1')).toBe('desactivado');
+    expect(wompiService.deactivatePaymentLink).toHaveBeenCalledWith(expect.anything(), 'lnk_1');
+    expect(d.llamadas.some((l) => l.tabla === 'web_order_changes' && l.op === 'update' && l.valores?.link_disabled_at)).toBe(true);
+  });
+
+  it('Bold: no hay API para anular ⇒ no_soportado, sin llamadas', async () => {
+    (wompiService.deactivatePaymentLink as jest.Mock).mockClear();
+    const d = fakeDb(tablas({ id: 'ch1', provider_code: 'bold_link', integration_connection_id: 'cx1', qr_session_id: 'ses-1', link_disabled_at: null }), noRpc);
+    expect(await desactivarLinkCambio(d as unknown as SupabaseClient, 'ch1')).toBe('no_soportado');
+    expect(wompiService.deactivatePaymentLink).not.toHaveBeenCalled();
+  });
+
+  it('fallo de Wompi no lanza ni marca', async () => {
+    (wompiService.deactivatePaymentLink as jest.Mock).mockResolvedValueOnce(false);
+    const d = fakeDb(tablas({ id: 'ch1', provider_code: 'wompi_link', integration_connection_id: 'cx1', qr_session_id: 'ses-1', link_disabled_at: null }), noRpc);
+    expect(await desactivarLinkCambio(d as unknown as SupabaseClient, 'ch1')).toBe('fallo');
+    expect(d.llamadas.some((l) => l.op === 'update')).toBe(false);
+  });
+
+  it('color: website_settings primero, luego la organización', async () => {
+    const a = fakeDb({ website_settings: [{ organization_id: 7, primary_color: '#112233' }], organizations: [{ id: 7, primary_color: '#999999' }] }, noRpc);
+    expect(await colorDeMarca(a as unknown as SupabaseClient, 7)).toBe('#112233');
+    const b = fakeDb({ website_settings: [], organizations: [{ id: 7, primary_color: '#999999' }] }, noRpc);
+    expect(await colorDeMarca(b as unknown as SupabaseClient, 7)).toBe('#999999');
   });
 });

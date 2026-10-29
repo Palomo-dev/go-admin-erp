@@ -46,9 +46,26 @@ describe('aplicarCambioPedidoTrasPago (webhook)', () => {
     expect(estado.rpc).not.toHaveBeenCalled();
   });
 
-  it('error de la función se propaga para que el webhook reintente', async () => {
+  it('error genérico de la función se propaga para que el webhook reintente', async () => {
     estado.cambio = { id: 'ch1', organization_id: 7, estado: 'pending_payment' };
-    estado.rpc.mockResolvedValue({ data: null, error: { message: 'CAMBIO_CERRADO' } });
-    expect(await aplicarCambioPedidoTrasPago(sesion, 'p1')).toMatchObject({ ok: false, error: expect.stringContaining('CAMBIO_CERRADO') });
+    estado.rpc.mockResolvedValue({ data: null, error: { message: 'deadlock detected' } });
+    expect(await aplicarCambioPedidoTrasPago(sesion, 'p1')).toMatchObject({ ok: false, error: expect.stringContaining('deadlock') });
+  });
+
+  it.each(['cancelled', 'expired'])('pago a un cambio %s ⇒ pago tardío, ok (webhook 200), no aplica', async (e) => {
+    estado.cambio = { id: 'ch1', organization_id: 7, estado: e };
+    estado.rpc.mockResolvedValue({ data: { ok: true }, error: null });
+    expect(await aplicarCambioPedidoTrasPago(sesion, 'p1')).toEqual({ ok: true, pagoTardio: true });
+    expect(estado.rpc).toHaveBeenCalledTimes(1);
+    expect(estado.rpc).toHaveBeenCalledWith('fn_web_order_change_pago_tardio', { p_change_id: 'ch1', p_payment_id: 'p1', p_reference: 'CHG-1' });
+  });
+
+  it('carrera con el cron: CAMBIO_CERRADO ⇒ pago tardío, ok', async () => {
+    estado.cambio = { id: 'ch1', organization_id: 7, estado: 'pending_payment' };
+    estado.rpc
+      .mockResolvedValueOnce({ data: null, error: { message: 'CAMBIO_CERRADO' } })
+      .mockResolvedValueOnce({ data: { ok: true }, error: null });
+    expect(await aplicarCambioPedidoTrasPago(sesion, 'p1')).toEqual({ ok: true, pagoTardio: true });
+    expect(estado.rpc.mock.calls[1][0]).toBe('fn_web_order_change_pago_tardio');
   });
 });

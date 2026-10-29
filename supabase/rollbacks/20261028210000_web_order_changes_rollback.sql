@@ -1,7 +1,10 @@
 -- Rollback de 20261028210000_web_order_changes. Libera antes las reservas CHG-* abiertas.
+set lock_timeout = '3s';
+set statement_timeout = '60s';
 begin;
 select public.fn_inv_int_liberar(c.organization_id, 'CHG-' || c.id, 'rollback_web_order_changes')
   from public.web_order_changes c where c.estado in ('draft', 'pending_payment', 'pending_refund');
+drop function if exists public.fn_web_order_change_pago_tardio(uuid, uuid, text);
 drop function if exists public.fn_web_order_changes_expirar();
 drop function if exists public.fn_web_order_change_cancelar(uuid, uuid, text);
 drop function if exists public.fn_web_order_change_aplicar(uuid, uuid, uuid, text, text);

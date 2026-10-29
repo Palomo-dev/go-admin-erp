@@ -296,6 +296,30 @@ class WompiService {
   }
 
   /**
+   * Desactiva un link de pago (PATCH /payment_links/{id} {active:false}, llave privada). Wompi solo
+   * deja cambiar `active`. Devuelve true si quedó inactivo (o ya no existe).
+   */
+  async deactivatePaymentLink(credentials: WompiCredentials, linkId: string): Promise<boolean> {
+    const baseUrl = getWompiBaseUrl(credentials.environment);
+    try {
+      const response = await fetch(`${baseUrl}/payment_links/${encodeURIComponent(linkId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credentials.privateKey}` },
+        body: JSON.stringify({ active: false }),
+      });
+      if (response.status === 404) return true;
+      if (!response.ok) {
+        console.error('[Wompi] Error desactivando link de pago:', response.status);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[Wompi] Error en deactivatePaymentLink:', err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
+
+  /**
    * Consulta el estado de una transacción.
    */
   async getTransaction(

@@ -15,6 +15,7 @@
 --                                    actualiza totales, saldo a favor opcional, auditoría.
 --      fn_web_order_change_cancelar  libera la reserva CHG-<id> (cancelado o vencido).
 --      fn_web_order_changes_expirar  cron: vence los links sin pagar y libera reservas.
+--      fn_web_order_change_pago_tardio  pago llegado a un cambio cerrado: alerta + nota interna, no aplica.
 --
 -- Por qué no replaced_by_change_id: ninguna lectura de web_order_items (tienda, confirmación de stock,
 -- refund, totales, comandas) filtra líneas reemplazadas; marcar y conservar duplicaría cantidades.
@@ -60,6 +61,12 @@ create table if not exists public.web_order_changes (
   credit_note_id uuid,
   customer_credit_id uuid,
   factus_document jsonb,
+  -- Link desactivado en la pasarela al cancelar o vencer (null: activo o la pasarela no lo permite).
+  link_disabled_at timestamptz,
+  -- Pago que llegó con el cambio ya cerrado: no se aplica; queda para revisión manual.
+  late_payment_id uuid,
+  late_payment_at timestamptz,
+  alerta text,
   created_by uuid,
   applied_by uuid,
   applied_at timestamptz,
@@ -82,7 +89,10 @@ create policy web_order_changes_select_org on public.web_order_changes
   for select to authenticated
   using (organization_id in (select om.organization_id from public.organization_members om
                               where om.user_id = (select auth.uid()) and om.is_active = true));
-revoke insert, update, delete on public.web_order_changes from anon, authenticated;
+-- Los default ACL del esquema dan todo a anon/authenticated: se quita todo y solo se devuelve SELECT
+-- (con RLS) a authenticated. anon no ve nada; nadie más que service_role trunca, referencia o crea triggers.
+revoke all on public.web_order_changes from anon;
+revoke all on public.web_order_changes from authenticated;
 grant select on public.web_order_changes to authenticated;
 grant all on public.web_order_changes to service_role;
 
@@ -263,11 +273,13 @@ begin
   -- Ítems: se reemplazan por los de la cotización (la foto anterior queda en items_before).
   delete from public.web_order_items where web_order_id = v_wo.id;
   insert into public.web_order_items (web_order_id, product_id, product_name, product_sku, quantity, unit_price,
-                                      tax_amount, discount_amount, total, modifiers, notes, status, change_id)
+                                      tax_amount, discount_amount, total, modifiers, notes, status, change_id,
+                                      promo_excluded)
   select v_wo.id, (x->>'product_id')::integer, coalesce(x->>'product_name', ''), x->>'product_sku',
          (x->>'quantity')::numeric, (x->>'unit_price')::numeric, coalesce((x->>'tax_amount')::numeric, 0),
          coalesce((x->>'discount_amount')::numeric, 0), coalesce((x->>'total')::numeric, 0),
-         coalesce(x->'modifiers', '[]'::jsonb), x->>'notes', 'pending', v_c.id
+         coalesce(x->'modifiers', '[]'::jsonb), x->>'notes', 'pending', v_c.id,
+         coalesce((x->>'promo_excluded')::boolean, false)
     from jsonb_array_elements(v_c.items_after) x;
 
   v_t := v_c.totales_after;
@@ -347,6 +359,38 @@ begin
 end;
 $function$;
 
+-- Pago que llega a un cambio cancelado o vencido: NO se aplica (el stock ya se liberó y el pedido
+-- pudo cambiar). Se deja constancia en el cambio (alerta visible en la ficha) y una nota interna.
+create or replace function public.fn_web_order_change_pago_tardio(
+  p_change_id uuid, p_payment_id uuid default null, p_reference text default null
+)
+returns jsonb
+language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_c public.web_order_changes%rowtype;
+  v_nota text;
+begin
+  select * into v_c from public.web_order_changes where id = p_change_id for update;
+  if not found then raise exception 'CAMBIO_NO_ENCONTRADO' using errcode = 'P0002'; end if;
+  if v_c.late_payment_at is not null then
+    return jsonb_build_object('ok', true, 'ya_registrado', true);
+  end if;
+  v_nota := format('[REVISAR PAGO %s] Llegó un pago de %s al cambio %s, que estaba %s. No se aplicó: devuélvelo o rehaz el cambio a mano. Ref: %s',
+                   to_char(now(), 'YYYY-MM-DD HH24:MI'), v_c.delta_total, left(v_c.id::text, 8), v_c.estado, coalesce(p_reference, '-'));
+  update public.web_order_changes
+     set late_payment_id = p_payment_id, late_payment_at = now(), alerta = v_nota, updated_at = now()
+   where id = v_c.id;
+  update public.web_orders
+     set internal_notes = concat_ws(E'\n', nullif(internal_notes, ''), v_nota), updated_at = now()
+   where id = v_c.web_order_id;
+  insert into public.ops_audit_log (organization_id, branch_id, user_id, entity_type, entity_id, action, metadata)
+  values (v_c.organization_id, v_c.branch_id, null, 'web_orders', v_c.web_order_id::text, 'WEB_ORDER_CHANGE_LATE_PAYMENT',
+          jsonb_build_object('change_id', v_c.id, 'payment_id', p_payment_id, 'estado', v_c.estado, 'monto', v_c.delta_total));
+  return jsonb_build_object('ok', true, 'ya_registrado', false);
+end;
+$function$;
+
 create or replace function public.fn_web_order_changes_expirar()
 returns jsonb
 language plpgsql security definer set search_path to 'public', 'pg_temp'
@@ -371,9 +415,11 @@ revoke all on function public.fn_web_order_change_crear(uuid, uuid, jsonb, jsonb
 revoke all on function public.fn_web_order_change_aplicar(uuid, uuid, uuid, text, text) from public, anon, authenticated;
 revoke all on function public.fn_web_order_change_cancelar(uuid, uuid, text) from public, anon, authenticated;
 revoke all on function public.fn_web_order_changes_expirar() from public, anon, authenticated;
+revoke all on function public.fn_web_order_change_pago_tardio(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.fn_web_order_change_crear(uuid, uuid, jsonb, jsonb, text) to service_role;
 grant execute on function public.fn_web_order_change_aplicar(uuid, uuid, uuid, text, text) to service_role;
 grant execute on function public.fn_web_order_change_cancelar(uuid, uuid, text) to service_role;
 grant execute on function public.fn_web_order_changes_expirar() to service_role;
+grant execute on function public.fn_web_order_change_pago_tardio(uuid, uuid, text) to service_role;
 
 commit;

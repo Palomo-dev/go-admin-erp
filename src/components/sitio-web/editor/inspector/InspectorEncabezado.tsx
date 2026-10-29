@@ -750,11 +750,13 @@ function SelectorIconoAccion({ accion, ajustes: a, cambiar }: { accion: AccionEn
       <ChipsOpcion
         aria-labelledby={id}
         opciones={nombres.map((n) => {
+          // Un nombre guardado puede no estar en el mapa: sin ícono se muestra el nombre tal cual.
           const Icono = ICONOS_LUCIDE_ENCABEZADO[n];
+          const conIcono = Object.prototype.hasOwnProperty.call(ICONOS_LUCIDE_ENCABEZADO, n);
           return {
             valor: n,
-            etiqueta: Icono ? t(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
-            adorno: Icono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
+            etiqueta: conIcono ? t(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
+            adorno: conIcono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
           };
         })}
         valor={actual}

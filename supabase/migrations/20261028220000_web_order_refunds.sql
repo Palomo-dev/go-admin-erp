@@ -37,8 +37,11 @@ create table if not exists public.web_order_refunds (
   updated_at timestamptz not null default now()
 );
 create index if not exists idx_web_order_refunds_order on public.web_order_refunds (web_order_id);
-create unique index if not exists uq_web_order_refunds_reference on public.web_order_refunds (web_order_id, reference)
-  where reference is not null;
+-- Parcial: una referencia que falló (estado 'failed') se puede reintentar; la búsqueda de duplicados
+-- de fn_web_order_reembolso_reservar usa la misma condición.
+drop index if exists public.uq_web_order_refunds_reference;
+create unique index uq_web_order_refunds_reference on public.web_order_refunds (web_order_id, reference)
+  where reference is not null and estado <> 'failed';
 
 alter table public.web_order_refunds enable row level security;
 drop policy if exists web_order_refunds_select_org on public.web_order_refunds;
@@ -99,9 +102,17 @@ begin
   end if;
   v_completo := v_disp - v_monto <= 0.004;
 
-  insert into public.web_order_refunds (web_order_id, organization_id, amount, completo, estado_previo, reason, reference)
-  values (p_order_id, v_wo.organization_id, v_monto, v_completo, v_wo.status, left(p_motivo, 500), p_reference)
-  returning * into v_r;
+  begin
+    insert into public.web_order_refunds (web_order_id, organization_id, amount, completo, estado_previo, reason, reference)
+    values (p_order_id, v_wo.organization_id, v_monto, v_completo, v_wo.status, left(p_motivo, 500), p_reference)
+    returning * into v_r;
+  exception when unique_violation then
+    -- Defensa: la referencia ya está registrada (no debería pasar con el FOR UPDATE): idempotente.
+    select * into v_r from public.web_order_refunds
+     where web_order_id = p_order_id and reference = p_reference and estado <> 'failed';
+    return jsonb_build_object('ok', true, 'ya_registrado', true, 'refund_id', v_r.id, 'monto', v_r.amount,
+                              'completo', v_r.completo, 'estado', v_r.estado);
+  end;
 
   if v_completo then
     update public.web_orders

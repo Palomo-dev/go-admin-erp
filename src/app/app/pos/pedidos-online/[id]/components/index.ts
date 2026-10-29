@@ -17,3 +17,4 @@ export { OrderDocumentsCard } from './OrderDocumentsCard';
 export { ConfirmOrderDialog, type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './ConfirmOrderDialog';
 export { CancelOrderDialog } from './CancelOrderDialog';
 export { CobrarPedidoDialog } from './CobrarPedidoDialog';
+export { CambiarProductosDialog } from './CambiarProductosDialog';

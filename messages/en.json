@@ -36592,7 +36592,8 @@
       "correoVeces": "{n, plural, one {# send} other {# sends}}",
       "reenviarTitulo": "Resend the email?",
       "reenviarDescripcion": "The link was already sent to {correo} ({n, plural, one {# time} other {# times}}). Send it again?",
-      "reenviar": "Resend"
+      "reenviar": "Resend",
+      "remitenteBloqueado": "Your store requires sending from its own verified domain and has none active. Check the email domain or change the sending policy."
     }
   },
   "posMesasFlujo": {

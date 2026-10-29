@@ -156,7 +156,7 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
     setEnviando(true);
     const r = await cambios.enviarCorreo(pendiente.id);
     setEnviando(false);
-    toast(r.ok ? { title: t('correoEnviado') } : { title: r.error ?? t('error'), variant: 'destructive' });
+    toast(r.ok ? { title: t('correoEnviado') } : { title: r.code === 'REMITENTE_BLOQUEADO' ? t('remitenteBloqueado') : r.error ?? t('error'), variant: 'destructive' });
     if (r.ok) await cambios.recargar();
   };
 

@@ -36607,7 +36607,8 @@
       "correoVeces": "{n, plural, one {# envío} other {# envíos}}",
       "reenviarTitulo": "¿Reenviar el correo?",
       "reenviarDescripcion": "El link ya se envió a {correo} ({n, plural, one {# vez} other {# veces}}). ¿Quieres enviarlo de nuevo?",
-      "reenviar": "Reenviar"
+      "reenviar": "Reenviar",
+      "remitenteBloqueado": "Tu tienda exige enviar desde su propio dominio verificado y no tiene uno activo. Revisa el dominio de correo o cambia la política de envío."
     }
   },
   "posMesasFlujo": {

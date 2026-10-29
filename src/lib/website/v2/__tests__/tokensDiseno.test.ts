@@ -71,6 +71,17 @@ describe('perillas y encabezado', () => {
     expect(resolverIconoEncabezado('account', { auth_icon: 'user-circle' }).nombre).toBe('user-circle');
   });
 
+  it('íconos nuevos de carrito, cuenta y moneda; sin configurar, la moneda sigue en globe', () => {
+    expect(resolverIconoEncabezado('currency', null).nombre).toBe('globe');
+    expect(resolverIconoEncabezado('currency', {}).nombre).toBe('globe');
+    expect(resolverIconoEncabezado('currency', { currency_icon: 'languages' }).nombre).toBe('languages');
+    expect(resolverIconoEncabezado('currency', { currency_icon: 'coins', header_icons: { currency: { icono: 'circle-dollar-sign' } } }).nombre).toBe('circle-dollar-sign');
+    expect(resolverIconoEncabezado('cart', { cart_icon: 'shopping-basket', header_cart_glyph: 'carrito' }).nombre).toBe('shopping-basket');
+    expect(resolverIconoEncabezado('cart', { cart_icon: 'store' }).nombre).toBe('store');
+    expect(resolverIconoEncabezado('account', { auth_icon: 'circle-user-round' }).nombre).toBe('circle-user-round');
+    expect(resolverIconoEncabezado('account', { auth_icon: 'log-in' }).nombre).toBe('log-in');
+  });
+
   it('sin layout nuevo se conserva el header_style', () => {
     expect(estiloDeHeaderLayout(null)).toBeNull();
     expect(estiloDeHeaderLayout(undefined)).toBeNull();

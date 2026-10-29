@@ -11,6 +11,7 @@
  */
 import { useId, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import type { AccionEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { ACCIONES_ICONO, ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, iconoAccionEncabezado } from './iconosAccionesLogica';
 import { cn } from '@/utils/Utils';
 import { CampoNumero, ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
@@ -342,18 +343,21 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
         <TituloBloque>{t('zonaGlobal.acciones.titulo')}</TituloBloque>
         {/* DUP-28oct: el buscador (mostrar u ocultar) se elige una sola vez, en Diseño › Buscador (`search_style`). */}
         <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
+        {opcionBooleana(a, 'show_header_cart') && <SelectorIconoAccion accion="cart" ajustes={a} cambiar={cambiar} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.cuenta')}
           ayuda={t('zonaGlobal.acciones.cuentaAyuda')}
           valor={opcionBooleana(a, 'show_header_auth')}
           onCambiar={(v) => cambiar({ show_header_auth: v })}
         />
+        {opcionBooleana(a, 'show_header_auth') && <SelectorIconoAccion accion="account" ajustes={a} cambiar={cambiar} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.moneda')}
           ayuda={t('zonaGlobal.acciones.monedaAyuda')}
           valor={opcionBooleana(a, 'header_show_currency')}
           onCambiar={(v) => cambiar({ header_show_currency: v })}
         />
+        {opcionBooleana(a, 'header_show_currency') && <SelectorIconoAccion accion="currency" ajustes={a} cambiar={cambiar} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}
@@ -701,7 +705,6 @@ function FormaBoton({ ajustes, cambiar }: { ajustes: Record<string, unknown>; ca
 function IconosAcciones({ ajustes: a, cambiar }: Pick<Interno, 'ajustes' | 'cambiar'>) {
   const t = useTextosEditor();
   const idTrazo = useId();
-  const idBase = useId();
   const trazo = valorOpcion<string>(a, 'header_icons_weight') === 'relleno' ? 'relleno' : 'contorno';
   return (
     <>
@@ -714,31 +717,41 @@ function IconosAcciones({ ajustes: a, cambiar }: Pick<Interno, 'ajustes' | 'camb
           onValorChange={(v) => cambiar({ header_icons_weight: v })}
         />
       </div>
-      {ACCIONES_ICONO.map((accion) => {
-        const actual = iconoAccionEncabezado(a, accion);
-        const nombres: string[] = [...OPCIONES_ICONO_ACCION[accion]];
-        if (!nombres.includes(actual)) nombres.push(actual);
-        const id = `${idBase}-${accion}`;
-        return (
-          <div key={accion} className="flex flex-col gap-2">
-            <EtiquetaGrupo id={id}>{t(`zonaGlobal.acciones.iconoAccion.${accion}`)}</EtiquetaGrupo>
-            <ChipsOpcion
-              aria-labelledby={id}
-              opciones={nombres.map((n) => {
-                const Icono = ICONOS_LUCIDE_ENCABEZADO[n];
-                return {
-                  valor: n,
-                  etiqueta: ICONOS_LUCIDE_ENCABEZADO[n] ? t(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
-                  adorno: Icono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
-                };
-              })}
-              valor={actual}
-              onValorChange={(v) => cambiar(cambioIconoAccion(a, accion, v))}
-            />
-          </div>
-        );
-      })}
+      {ACCIONES_ICONO.map((accion) => (
+        <SelectorIconoAccion key={accion} accion={accion} ajustes={a} cambiar={cambiar} />
+      ))}
     </>
+  );
+}
+
+/**
+ * Ícono de una acción (buscar, carrito, cuenta o moneda). Se usa en Estilo › Íconos y debajo de cada
+ * interruptor de Contenido › Acciones: los dos escriben la misma columna (`cambioIconoAccion`), así
+ * que lo elegido en uno se ve marcado en el otro. Muestra lo que hoy pinta la tienda.
+ */
+function SelectorIconoAccion({ accion, ajustes: a, cambiar }: { accion: AccionEncabezado } & Pick<Interno, 'ajustes' | 'cambiar'>) {
+  const t = useTextosEditor();
+  const id = useId();
+  const actual = iconoAccionEncabezado(a, accion);
+  const nombres: string[] = [...OPCIONES_ICONO_ACCION[accion]];
+  if (!nombres.includes(actual)) nombres.push(actual);
+  return (
+    <div className="flex flex-col gap-2">
+      <EtiquetaGrupo id={id}>{t(`zonaGlobal.acciones.iconoAccion.${accion}`)}</EtiquetaGrupo>
+      <ChipsOpcion
+        aria-labelledby={id}
+        opciones={nombres.map((n) => {
+          const Icono = ICONOS_LUCIDE_ENCABEZADO[n];
+          return {
+            valor: n,
+            etiqueta: Icono ? t(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
+            adorno: Icono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
+          };
+        })}
+        valor={actual}
+        onValorChange={(v) => cambiar(cambioIconoAccion(a, accion, v))}
+      />
+    </div>
   );
 }
 

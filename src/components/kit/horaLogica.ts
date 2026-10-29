@@ -37,8 +37,9 @@ export function opcionesConValor(lista: readonly string[], valor: string, min?: 
 }
 
 /** «3:00 p. m.» / «15:00» según el idioma (reloj puro: se formatea en UTC para no mover la hora). */
-export function etiquetaHora(hhmm: string, locale: string): string {
+export function etiquetaHora(hhmm: string, locale: string, formato24h = false): string {
   if (!esHora(hhmm)) return '';
+  if (formato24h) return hhmm;
   const [h, m] = hhmm.split(':').map(Number);
   return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(new Date(Date.UTC(2000, 0, 1, h, m)));
 }

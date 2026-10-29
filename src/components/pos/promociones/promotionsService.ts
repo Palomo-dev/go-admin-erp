@@ -47,7 +47,12 @@ function limpiarFranjaYPaquete<T extends Partial<CreatePromotionData>>(datos: T)
   const out = { ...datos };
   const hora = (valor: string | null | undefined): string | null => {
     if (valor == null || String(valor).trim() === '') return null;
-    return String(valor).trim();
+    const texto = String(valor).trim();
+    // Una hora a medio escribir no puede guardarse como «todo el día» en silencio.
+    if (!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(texto)) {
+      throw new Error(`Hora inválida en la franja: «${texto}». Usa HH:mm (24 h).`);
+    }
+    return texto;
   };
   if ('start_time' in out) out.start_time = hora(out.start_time);
   if ('end_time' in out) out.end_time = hora(out.end_time);

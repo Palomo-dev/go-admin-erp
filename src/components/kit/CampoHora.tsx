@@ -30,6 +30,8 @@ export interface CampoHoraProps {
   min?: string | null;
   max?: string | null;
   limpiable?: boolean;
+  /** Rótulos en 24 h («02:00», «18:30») en lugar del formato del idioma. */
+  formato24h?: boolean;
   placeholder?: string;
   id?: string;
   disabled?: boolean;
@@ -52,6 +54,7 @@ export const CampoHora = React.forwardRef<HTMLButtonElement, CampoHoraProps>(fun
     min,
     max,
     limpiable,
+    formato24h = false,
     placeholder,
     id,
     disabled,
@@ -78,7 +81,7 @@ export const CampoHora = React.forwardRef<HTMLButtonElement, CampoHoraProps>(fun
   const refBoton = React.useRef<HTMLButtonElement | null>(null);
   const refLista = React.useRef<HTMLUListElement | null>(null);
   const invalido = ariaInvalid === true || ariaInvalid === 'true';
-  const texto = hora ? etiquetaHora(hora, locale) : (placeholder ?? t('hora.elegir'));
+  const texto = hora ? etiquetaHora(hora, locale, formato24h) : (placeholder ?? t('hora.elegir'));
   const puedeLimpiar = (limpiable ?? !(required || ariaRequired)) && Boolean(hora);
 
   const unirRef = (nodo: HTMLButtonElement | null) => {
@@ -202,7 +205,7 @@ export const CampoHora = React.forwardRef<HTMLButtonElement, CampoHoraProps>(fun
                     elegida ? 'bg-brand text-fg-on-brand' : i === activo ? 'bg-subtle text-fg' : 'text-fg',
                   )}
                 >
-                  {etiquetaHora(h, locale)}
+                  {etiquetaHora(h, locale, formato24h)}
                 </li>
               );
             })}

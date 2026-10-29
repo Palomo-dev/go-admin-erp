@@ -19,6 +19,7 @@ import { crearNotaCreditoPedidoWeb } from '@/lib/services/webOrderCreditNote';
 import { wompiService } from '@/lib/services/integrations/wompi/wompiService';
 import { boldService } from '@/lib/services/integrations/bold';
 import { MONEDA_RIELES_QR } from '@/lib/services/integrations/qrShared/cobroQrServidor';
+import { zonaHorariaEnServidor } from '@/lib/utils/zonaHorariaServidor';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
 import { WEB_ORDER_CHANGE_SOURCE } from '@/lib/services/integrations/qrShared/paymentConfirmation';
 import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/resendClient';
@@ -241,6 +242,15 @@ export async function conexionesDeLink(db: SupabaseClient, organizationId: numbe
   return lista;
 }
 
+/** Color de marca para el correo: el de la tienda web y, si no hay, el de la organización. */
+export async function colorDeMarca(db: SupabaseClient, organizationId: number): Promise<string | null> {
+  const { data: web } = await db.from('website_settings').select('primary_color').eq('organization_id', organizationId).limit(1).maybeSingle();
+  const deWeb = (web as Fila | null)?.primary_color;
+  if (deWeb) return String(deWeb);
+  const { data: org } = await db.from('organizations').select('primary_color').eq('id', organizationId).maybeSingle();
+  return ((org as Fila | null)?.primary_color as string | null) ?? null;
+}
+
 async function nombreNegocio(db: SupabaseClient, organizationId: number): Promise<string> {
   const { data } = await db.from('organizations').select('name').eq('id', organizationId).maybeSingle();
   return String((data as Fila | null)?.name ?? '');
@@ -420,14 +430,48 @@ export async function cancelarCambio(ctx: ServerOrgContext, changeId: string, db
   await cargarCambio(db, ctx.organizationId, changeId);
   const { data, error } = await db.rpc('fn_web_order_change_cancelar', { p_change_id: changeId, p_user: ctx.userId, p_estado: 'cancelled' });
   if (error) throw errorDeRpc(error.message);
+  await desactivarLinkCambio(db, changeId);
   return data;
+}
+
+/**
+ * Apaga el link de pago de un cambio cancelado o vencido.
+ * - Wompi: PATCH /payment_links/{id} {active:false} → marca link_disabled_at.
+ * - Bold: su API de links no tiene endpoint para anular (solo crear y consultar); el link muere en
+ *   su expiration_date (la misma vigencia del cambio). Si alguien paga antes, el webhook lo registra
+ *   como pago tardío (fn_web_order_change_pago_tardio) con alerta en el pedido.
+ * Nunca lanza: un fallo de la pasarela no debe bloquear la cancelación.
+ */
+export async function desactivarLinkCambio(db: SupabaseClient, changeId: string): Promise<'desactivado' | 'no_soportado' | 'fallo' | 'sin_link'> {
+  try {
+    const { data: c } = await db
+      .from('web_order_changes')
+      .select('id, provider_code, integration_connection_id, qr_session_id, link_disabled_at')
+      .eq('id', changeId)
+      .maybeSingle();
+    const cambio = c as Fila | null;
+    if (!cambio || !cambio.qr_session_id || cambio.link_disabled_at) return 'sin_link';
+    if (cambio.provider_code !== 'wompi_link') return 'no_soportado';
+    const { data: s } = await db.from('payment_qr_sessions').select('external_qr_id').eq('id', String(cambio.qr_session_id)).maybeSingle();
+    const linkId = (s as Fila | null)?.external_qr_id;
+    if (!linkId || !cambio.integration_connection_id) return 'sin_link';
+    const creds = await wompiService.getCredentials(String(cambio.integration_connection_id), db);
+    if (!creds) return 'fallo';
+    const ok = await wompiService.deactivatePaymentLink(creds, String(linkId));
+    if (!ok) return 'fallo';
+    await db.from('web_order_changes').update({ link_disabled_at: new Date().toISOString() }).eq('id', changeId);
+    return 'desactivado';
+  } catch (e) {
+    console.error('[CambioPedido] desactivarLinkCambio:', e instanceof Error ? e.message : e);
+    return 'fallo';
+  }
 }
 
 export async function listarCambios(ctx: ServerOrgContext, orderId: string, db: SupabaseClient = getServiceClient()) {
   await cargarPedido(db, ctx.organizationId, orderId);
   const { data } = await db
     .from('web_order_changes')
-    .select('id, estado, delta_total, subtotal_delta, tax_delta, shipping_delta, payment_link_url, provider_code, provider_reference, expires_at, paid_at, refund_mode, refund_status, credit_note_id, customer_credit_id, items_before, items_after, motivo, created_at, applied_at, cancelled_at')
+    .select('id, estado, delta_total, subtotal_delta, tax_delta, shipping_delta, payment_link_url, provider_code, provider_reference, expires_at, paid_at, refund_mode, refund_status, credit_note_id, customer_credit_id, items_before, items_after, motivo, created_at, applied_at, cancelled_at, link_disabled_at, late_payment_at, alerta')
     .eq('web_order_id', orderId)
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false })
@@ -467,13 +511,15 @@ export async function enviarCorreoCambio(ctx: ServerOrgContext, changeId: string
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) throw new CambioPedidoError(400, 'SIN_CORREO', 'El pedido no tiene correo del cliente.');
   if (!getMasterResendKey()) throw new CambioPedidoError(503, 'SIN_PROVEEDOR_CORREO', 'El envío de correos no está configurado.');
   const negocio = await nombreNegocio(db, ctx.organizationId);
+  const zona = await zonaHorariaEnServidor({ supabase: db, organizationId: ctx.organizationId }, (pedido.branch_id as number | null) ?? null);
   const plantilla = correoCambio({
     negocio,
     numeroPedido: String(pedido.order_number),
     nombreCliente: String(pedido.customer_name ?? ''),
     montoTexto: new Intl.NumberFormat('es-CO', { style: 'currency', currency: MONEDA_RIELES_QR, maximumFractionDigits: 0 }).format(Number(cambio.delta_total)),
     url: String(cambio.payment_link_url),
-    vence: cambio.expires_at ? new Date(String(cambio.expires_at)).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : null,
+    vence: cambio.expires_at ? new Date(String(cambio.expires_at)).toLocaleString('es-CO', { timeZone: zona }) : null,
+    colorMarca: await colorDeMarca(db, ctx.organizationId).catch(() => null),
   });
   const remitente = `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
   const { error } = await getMasterResend().emails.send({ from: remitente, to: correo, subject: plantilla.asunto, html: plantilla.html, text: plantilla.text });

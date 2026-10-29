@@ -7,6 +7,7 @@ import { AvisoTonal, CampoNumero, Dialogo, FilaDato, ListaDatos, SearchInput, cl
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { sentidoDelta, type Cotizacion } from '@/lib/services/webOrderChanges/cotizarCambio';
@@ -37,6 +38,7 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
   const t = useTranslations('pedidoWeb.cambio');
   const { toast } = useToast();
   const { formatear } = useMonedaOrganizacion();
+  const { formatDateTime } = useFormatDate(order.branch_id);
   const inicial = useMemo<Linea[]>(
     () => (order.items ?? []).filter((i) => i.product_id).map((i) => ({ product_id: Number(i.product_id), nombre: i.product_name, quantity: Number(i.quantity) })),
     [order.items],
@@ -143,7 +145,7 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
         nombreCliente: order.customer_name ?? '',
         montoTexto: formatear(Number(pendiente.delta_total)),
         url: pendiente.payment_link_url ?? '',
-        vence: pendiente.expires_at ? new Date(pendiente.expires_at).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : null,
+        vence: pendiente.expires_at ? formatDateTime(pendiente.expires_at) : null,
       }
     : null;
 

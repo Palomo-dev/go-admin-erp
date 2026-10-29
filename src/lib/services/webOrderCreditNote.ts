@@ -30,6 +30,8 @@ export interface NotaCreditoPedidoWebResultado {
   originalInvoice: { id: string; number: string; total: number; balance: number; status: string; tax_included: boolean; currency: string | null } | null;
   creditNoteId?: string;
   creditNoteNumber?: string;
+  /** Motivo si la nota no se pudo crear (los errores se registran y no se lanzan). */
+  error?: string;
 }
 
 export async function crearNotaCreditoPedidoWeb(
@@ -55,6 +57,7 @@ export async function crearNotaCreditoPedidoWeb(
   // 3. Crear nota crédito
   let creditNoteId: string | undefined;
   let creditNoteNumber: string | undefined;
+  let errorNota: string | undefined;
   // Modo de impuesto de la nota: el de la factura que revierte. Si no hay
   // factura, el que habría tenido la del pedido (F-42).
   const creditNoteTaxIncluded: boolean = originalInvoice
@@ -105,6 +108,8 @@ export async function crearNotaCreditoPedidoWeb(
 
     if (cnError) {
       console.error('[Refund] Error creando nota crédito:', cnError);
+      errorNota = cnError.message || 'No se pudo crear la nota crédito';
+      creditNoteNumber = undefined;
     } else {
       creditNoteId = creditNote.id;
       creditNoteNumber = creditNote.number;
@@ -150,7 +155,11 @@ export async function crearNotaCreditoPedidoWeb(
     }
   } catch (cnError) {
     console.error('[Refund] Error en creación de nota crédito:', cnError);
+    if (!creditNoteId) {
+      errorNota = cnError instanceof Error ? cnError.message : String(cnError);
+      creditNoteNumber = undefined;
+    }
   }
 
-  return { originalInvoice: (originalInvoice as NotaCreditoPedidoWebResultado['originalInvoice']) ?? null, creditNoteId, creditNoteNumber };
+  return { originalInvoice: (originalInvoice as NotaCreditoPedidoWebResultado['originalInvoice']) ?? null, creditNoteId, creditNoteNumber, ...(errorNota ? { error: errorNota } : {}) };
 }

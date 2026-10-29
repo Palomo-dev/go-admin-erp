@@ -5,7 +5,8 @@
  * SQL (fn_web_order_reembolso_reservar), que bloquea la fila del pedido: dos peticiones simultáneas
  * se serializan y la segunda ve lo que reservó la primera. Si el saldo queda en 0, la misma función
  * deja el pedido en refunded. Si la nota crédito falla, el saldo se devuelve (fn_web_order_reembolso_cerrar).
- * Sin la migración 20261028220000 (42P01/42883/PGRST202) usa el comportamiento anterior (e64eefcb) y avisa en el log.
+ * Sin la migración 20261028220000 (42P01/42883/PGRST202/PGRST205) solo admite el reembolso total (como e64eefcb);
+ * los parciales responden 409. Un 23505 (referencia repetida en carrera) responde 409, nunca 500.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebOrder } from '@/lib/services/webOrdersService';
@@ -80,19 +81,34 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
   let r: Reserva;
   let legado = false;
   if (errReserva) {
-    if (!SIN_MIGRACION.has(String((errReserva as { code?: string }).code ?? ''))) {
+    const codigo = String((errReserva as { code?: string }).code ?? '');
+    if (codigo === '23505') {
+      // Otra petición con la misma referencia ganó la carrera: no es un fallo del servidor.
+      return { status: 409, body: { error: 'Ya hay un reembolso en curso con esa referencia. Vuelve a consultar el pedido en unos segundos.', code: 'REFERENCIA_DUPLICADA' } };
+    }
+    if (!SIN_MIGRACION.has(codigo)) {
       console.error('[Refund] fn_web_order_reembolso_reservar:', errReserva.message);
       return { status: 500, body: { error: 'No se pudo registrar el reembolso.', code: 'RESERVA_FALLO' } };
     }
-    // Migración 20261028220000 sin aplicar: comportamiento anterior (e64eefcb), sin tope acumulado.
-    console.warn('[Refund] web_order_refunds no instalado (migración 20261028220000 sin aplicar): reembolso sin tope acumulado.');
+    // Migración 20261028220000 sin aplicar: solo el reembolso total (como en e64eefcb). Los parciales
+    // se rechazan: sin web_order_refunds no hay tope acumulado.
     if (order.payment_status !== 'paid') {
       return { status: 400, body: { error: `No se puede reembolsar un pedido con payment_status='${order.payment_status}'` } };
     }
     const totalPedido = Number(order.total) || 0;
     const total = montoPedido === 0 || montoPedido >= totalPedido;
+    if (!total) {
+      console.warn('[Refund] reembolso parcial rechazado: migración 20261028220000 sin aplicar.');
+      return {
+        status: 409,
+        body: {
+          error: 'Los reembolsos parciales estarán disponibles cuando se active la actualización de reembolsos. Por ahora solo se puede reembolsar el pedido completo.',
+          code: 'PARCIAL_NO_DISPONIBLE',
+        },
+      };
+    }
     legado = true;
-    r = { ok: true, monto: total ? totalPedido : montoPedido, completo: total, reembolsado_antes: 0, restante: total ? 0 : totalPedido - montoPedido };
+    r = { ok: true, monto: totalPedido, completo: true, reembolsado_antes: 0, restante: 0 };
   } else {
     r = reserva as Reserva;
   }
@@ -121,6 +137,9 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
       itemsParciales: partialItems,
       now,
     });
+    // Un error devuelto (no lanzado) se trata igual que una excepción: no se cierra el reembolso como
+    // done sin nota crédito. En modo sin migración se conserva el comportamiento de e64eefcb.
+    if (nc.error && !legado) throw new Error(`Nota crédito: ${nc.error}`);
   } catch (e) {
     if (!legado) await supabase.rpc('fn_web_order_reembolso_cerrar', { p_refund_id: r.refund_id, p_ok: false, p_credit_note_id: null });
     throw e;
@@ -197,7 +216,6 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
       orderId: order.id,
       orderNumber: order.order_number,
       refundId: r.refund_id ?? null,
-      ...(legado ? { aviso: 'Reembolso sin tope acumulado: migración 20261028220000 sin aplicar.' } : {}),
       refundAmount: monto,
       isFullRefund: completo,
       restante: Number(r.restante ?? 0),

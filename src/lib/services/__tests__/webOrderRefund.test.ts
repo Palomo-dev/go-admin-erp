@@ -88,18 +88,42 @@ describe('reembolsarPedidoWeb · tope', () => {
     expect(nc).not.toHaveBeenCalled();
   });
 
-  it.each(['42P01', '42883', 'PGRST202'])('sin la migración (%s): parcial con el comportamiento anterior, no cancela, avisa en el log', async (code) => {
+  it.each(['42P01', '42883', 'PGRST202', 'PGRST205'])('sin la migración (%s): parcial → 409 en español, sin nota ni cambios', async (code) => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const d = db(null, { rpcError: { code, message: 'no existe' } });
     const r = await reembolsarPedidoWeb(d.client, 'o1', { amount: 30000 });
-    expect(r.status).toBe(200);
-    expect(nc.mock.calls[0][2]).toMatchObject({ isFullRefund: false, monto: 30000 });
-    expect(d.updates.some((u) => u.values.payment_status)).toBe(false);
-    expect(d.updates.some((u) => String(u.values.internal_notes ?? '').includes('REEMBOLSO PARCIAL'))).toBe(true);
-    expect(d.rpcs.some((x) => x.name === 'fn_web_order_reembolso_cerrar')).toBe(false);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('20261028220000'));
-    expect(r.body.aviso).toMatch(/sin tope/);
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe('PARCIAL_NO_DISPONIBLE');
+    expect(String(r.body.error)).toMatch(/Los reembolsos parciales estarán disponibles cuando se active la actualización/);
+    expect(nc).not.toHaveBeenCalled();
+    expect(d.updates).toHaveLength(0);
+    expect(d.rpcs.filter((x) => x.name !== 'fn_web_order_reembolso_reservar')).toHaveLength(0);
     warn.mockRestore();
+  });
+
+  it('sin la migración: monto igual o mayor al total cuenta como total (como e64eefcb)', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const d = db(null, { rpcError: { code: 'PGRST205', message: 'no existe' } });
+    const r = await reembolsarPedidoWeb(d.client, 'o1', { amount: 100000 });
+    expect(r.status).toBe(200);
+    expect(nc.mock.calls[0][2]).toMatchObject({ isFullRefund: true, monto: 100000 });
+    expect(d.updates.some((u) => u.values.payment_status === 'refunded')).toBe(true);
+  });
+
+  it('23505 en la reserva (referencia repetida en carrera) ⇒ 409, nunca 500', async () => {
+    const r = await reembolsarPedidoWeb(db(null, { rpcError: { code: '23505', message: 'duplicate key' } }).client, 'o1', { amount: 1000, reference: 'w-1' });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe('REFERENCIA_DUPLICADA');
+    expect(nc).not.toHaveBeenCalled();
+  });
+
+  it('nota crédito devuelta con error (no lanzada) ⇒ cerrar failed y propaga, nunca done', async () => {
+    nc.mockResolvedValueOnce({ originalInvoice: null, error: 'insert falló' });
+    const d = db({ ok: true, refund_id: 'r5', monto: 10000, completo: false, reembolsado_antes: 0, restante: 90000 });
+    await expect(reembolsarPedidoWeb(d.client, 'o1', { amount: 10000 })).rejects.toThrow(/insert falló/);
+    expect(d.rpcs.at(-1)).toEqual({ name: 'fn_web_order_reembolso_cerrar', args: { p_refund_id: 'r5', p_ok: false, p_credit_note_id: null } });
+    expect(d.rpcs.some((x) => x.name === 'fn_web_order_reembolso_cerrar' && x.args.p_ok === true)).toBe(false);
+    expect(d.rpcs.some((x) => x.name === 'fn_stock_entrada_al_costo')).toBe(false);
   });
 
   it('sin la migración: total como antes (refunded/cancelled y devuelve stock)', async () => {

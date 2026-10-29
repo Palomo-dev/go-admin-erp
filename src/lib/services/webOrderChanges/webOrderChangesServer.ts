@@ -22,7 +22,9 @@ import { MONEDA_RIELES_QR } from '@/lib/services/integrations/qrShared/cobroQrSe
 import { zonaHorariaEnServidor } from '@/lib/utils/zonaHorariaServidor';
 import { createQrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
 import { WEB_ORDER_CHANGE_SOURCE } from '@/lib/services/integrations/qrShared/paymentConfirmation';
-import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/resendClient';
+import { getMasterResend, getMasterResendKey, getResendClient } from '@/lib/services/crm/email/resendClient';
+import { resolveSender } from '@/lib/services/crm/email/domainsService';
+import { isEmailError } from '@/lib/services/crm/email/types';
 import {
   cotizarCambio,
   bloqueoPorEstado,
@@ -469,15 +471,21 @@ export async function desactivarLinkCambio(db: SupabaseClient, changeId: string)
 
 export async function listarCambios(ctx: ServerOrgContext, orderId: string, db: SupabaseClient = getServiceClient()) {
   await cargarPedido(db, ctx.organizationId, orderId);
-  const { data } = await db
+  const base = 'id, estado, delta_total, subtotal_delta, tax_delta, shipping_delta, payment_link_url, provider_code, provider_reference, expires_at, paid_at, refund_mode, refund_status, credit_note_id, customer_credit_id, items_before, items_after, motivo, created_at, applied_at, cancelled_at, link_disabled_at, late_payment_at, alerta';
+  const leer = (cols: string) => db
     .from('web_order_changes')
-    .select('id, estado, delta_total, subtotal_delta, tax_delta, shipping_delta, payment_link_url, provider_code, provider_reference, expires_at, paid_at, refund_mode, refund_status, credit_note_id, customer_credit_id, items_before, items_after, motivo, created_at, applied_at, cancelled_at, link_disabled_at, late_payment_at, alerta')
+    .select(cols)
     .eq('web_order_id', orderId)
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false })
     .limit(50);
+  let { data, error } = await leer(`${base}, email_sent_at, email_sent_count, email_sent_to_masked`);
+  if (error && COLUMNA_FALTANTE.has(String((error as { code?: string }).code ?? ''))) {
+    console.warn('[CambioPedido] faltan las columnas email_* de web_order_changes; se listan sin rastro de correo.');
+    ({ data, error } = await leer(base));
+  }
   return {
-    cambios: (data as Fila[] | null) ?? [],
+    cambios: (data as unknown as Fila[] | null) ?? [],
     pasarelas: (await conexionesDeLink(db, ctx.organizationId, null)).map((c) => ({ id: c.id, code: c.connectorCode })),
     negocio: await nombreNegocio(db, ctx.organizationId),
     puedeCambiar: await tienePermiso(ctx, PERMISO_CAMBIO),
@@ -521,10 +529,169 @@ export async function enviarCorreoCambio(ctx: ServerOrgContext, changeId: string
     vence: cambio.expires_at ? new Date(String(cambio.expires_at)).toLocaleString('es-CO', { timeZone: zona }) : null,
     colorMarca: await colorDeMarca(db, ctx.organizationId).catch(() => null),
   });
-  const remitente = `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
-  const { error } = await getMasterResend().emails.send({ from: remitente, to: correo, subject: plantilla.asunto, html: plantilla.html, text: plantilla.text });
+  const envio = await remitenteCambio(db, ctx.organizationId, negocio);
+  const { data: enviado, error } = await envio.cliente.emails.send({
+    from: envio.from,
+    to: correo,
+    subject: plantilla.asunto,
+    html: plantilla.html,
+    text: plantilla.text,
+    ...(envio.replyTo ? { replyTo: envio.replyTo } : {}),
+  });
   if (error) throw new CambioPedidoError(502, 'CORREO_FALLO', 'No se pudo enviar el correo.');
-  return { ok: true };
+  return registrarEnvioCorreo(ctx, db, cambio, pedido, {
+    messageId: (enviado as { id?: string } | null)?.id ?? null,
+    destinoMasked: enmascararCorreo(correo),
+    dominio: envio.dominio,
+    zona,
+  });
+}
+
+/** l***@dominio.com: primera letra del local-part y el dominio completo. */
+export function enmascararCorreo(correo: string): string {
+  const [local, dominio] = correo.trim().split('@');
+  if (!local || !dominio) return '***';
+  return `${local[0]}***@${dominio.toLowerCase()}`;
+}
+
+export interface RemitenteCambio {
+  cliente: { emails: { send: (p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> } };
+  from: string;
+  replyTo: string | null;
+  /** Dominio desde el que sale; `null` = respaldo de la plataforma. */
+  dominio: string | null;
+}
+
+const limpiarNombre = (n: string) => n.replace(/[<>"]/g, '').trim();
+
+/**
+ * Remitente del correo del cambio. Reutiliza `resolveSender` del CRM (email_domains verificados
+ * de la org, con su from_email —hoy pedidos@<dominio>— y su reply_to). Si la org no tiene dominio
+ * verificado y su política lo permite, sale desde la plataforma (EMAIL_FROM_ADDRESS), con el reply-to
+ * de la tienda si está registrado. Con política «block» lanza REMITENTE_BLOQUEADO. No crea ni modifica dominios.
+ */
+export async function remitenteCambio(db: SupabaseClient, organizationId: number, negocio: string): Promise<RemitenteCambio> {
+  // Igual que el resto del sistema (CRM, documentos): un error de resolveSender no se salta.
+  // Si la política de la org es «block» y no hay dominio verificado, resolveSender lanza NO_SENDER
+  // y NO se envía desde la plataforma.
+  let s: Awaited<ReturnType<typeof resolveSender>>;
+  try {
+    s = await resolveSender(organizationId, { kind: 'transactional', orgName: negocio }, db);
+  } catch (e) {
+    if (isEmailError(e) && e.code === 'NO_SENDER') {
+      throw new CambioPedidoError(422, 'REMITENTE_BLOQUEADO', 'La tienda exige enviar desde su propio dominio verificado y no tiene uno activo.');
+    }
+    console.error('[CambioPedido] no se pudo resolver el remitente:', e instanceof Error ? e.message : e);
+    throw new CambioPedidoError(502, 'REMITENTE_FALLO', 'No se pudo preparar el remitente del correo.');
+  }
+  if (s.mode === 'org' && s.domain && s.fromEmail) {
+    const nombre = limpiarNombre(negocio || s.domain.from_name || '');
+    return {
+      cliente: getResendClient(s.apiKey) as unknown as RemitenteCambio['cliente'],
+      from: nombre ? `${nombre} <${s.fromEmail}>` : s.fromEmail,
+      replyTo: s.replyTo,
+      dominio: s.domain.domain,
+    };
+  }
+  let replyTo: string | null = null;
+  try {
+    const { data } = await db.from('email_domains').select('reply_to, is_default').eq('organization_id', organizationId);
+    const filas = ((data as Fila[] | null) ?? []).filter((f) => typeof f.reply_to === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(f.reply_to)));
+    replyTo = String((filas.find((f) => f.is_default) ?? filas[0])?.reply_to ?? '') || null;
+  } catch {
+    replyTo = null;
+  }
+  return {
+    cliente: getMasterResend() as unknown as RemitenteCambio['cliente'],
+    from: `${limpiarNombre(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`,
+    replyTo,
+    dominio: null,
+  };
+}
+
+const COLUMNA_FALTANTE = new Set(['42703', 'PGRST204']);
+
+const FUNCION_FALTANTE = new Set(['42883', 'PGRST202']);
+
+/**
+ * Rastro del envío. Camino normal: fn_web_order_change_registrar_correo (atómica: contador +1 en SQL,
+ * nota interna con coalesce(internal_notes,'') || nota y ops_audit_log). Si la función no existe
+ * (42883/PGRST202) NO se escriben notas desde el código: se intenta guardar las columnas email_* (si
+ * existen) y se deja el registro en ops_audit_log, con un aviso en el log. Nunca lanza: el correo ya salió.
+ */
+async function registrarEnvioCorreo(
+  ctx: ServerOrgContext,
+  db: SupabaseClient,
+  cambio: Fila,
+  pedido: WebOrder & Fila,
+  d: { messageId: string | null; destinoMasked: string; dominio: string | null; zona: string },
+) {
+  const base = { ok: true as const, email_message_id: d.messageId, email_sent_to_masked: d.destinoMasked, from_domain: d.dominio };
+  try {
+    const { data, error } = await db.rpc('fn_web_order_change_registrar_correo', {
+      p_change_id: String(cambio.id),
+      p_organization_id: ctx.organizationId,
+      p_message_id: d.messageId,
+      p_to_masked: d.destinoMasked,
+      p_user: ctx.userId,
+      p_from_domain: d.dominio,
+      p_timezone: d.zona,
+    });
+    if (!error) {
+      const r = (data ?? {}) as Fila;
+      return { ...base, email_sent_at: String(r.email_sent_at ?? new Date().toISOString()), email_sent_count: Number(r.email_sent_count ?? 1), rastro: true };
+    }
+    const code = String((error as { code?: string }).code ?? '');
+    if (FUNCION_FALTANTE.has(code)) console.warn('[CambioPedido] falta fn_web_order_change_registrar_correo (migración 20261028230000); rastro parcial sin nota interna.');
+    else console.warn('[CambioPedido] no se pudo registrar el envío del correo:', (error as { message?: string }).message ?? code);
+  } catch (e) {
+    console.warn('[CambioPedido] no se pudo registrar el envío del correo:', e instanceof Error ? e.message : e);
+  }
+  return respaldoRastro(ctx, db, cambio, pedido, d, base);
+}
+
+async function respaldoRastro(
+  ctx: ServerOrgContext,
+  db: SupabaseClient,
+  cambio: Fila,
+  pedido: WebOrder & Fila,
+  d: { messageId: string | null; destinoMasked: string; dominio: string | null },
+  base: { ok: true; email_message_id: string | null; email_sent_to_masked: string; from_domain: string | null },
+) {
+  const enviadoEn = new Date().toISOString();
+  const veces = Number(cambio.email_sent_count ?? 0) + 1;
+  let rastro = true;
+  try {
+    const { error } = await db
+      .from('web_order_changes')
+      .update({ email_sent_at: enviadoEn, email_sent_count: veces, email_message_id: d.messageId, email_sent_to_masked: d.destinoMasked })
+      .eq('id', String(cambio.id))
+      .eq('organization_id', ctx.organizationId);
+    if (error) {
+      rastro = false;
+      const code = String((error as { code?: string }).code ?? '');
+      if (COLUMNA_FALTANTE.has(code)) console.warn('[CambioPedido] faltan las columnas email_* de web_order_changes (migración 20261028230000); el correo salió sin rastro.');
+      else console.warn('[CambioPedido] no se pudo guardar el rastro del correo:', (error as { message?: string }).message ?? code);
+    }
+  } catch (e) {
+    rastro = false;
+    console.warn('[CambioPedido] no se pudo guardar el rastro del correo:', e instanceof Error ? e.message : e);
+  }
+  try {
+    const { error: eAudit } = await db.from('ops_audit_log').insert({
+      organization_id: ctx.organizationId,
+      branch_id: (pedido.branch_id as number | null) ?? null,
+      user_id: ctx.userId,
+      entity_type: 'web_orders',
+      entity_id: String(pedido.id),
+      action: 'WEB_ORDER_CHANGE_EMAIL_SENT',
+      metadata: { change_id: cambio.id, to_masked: d.destinoMasked, message_id: d.messageId, from_domain: d.dominio, count: veces },
+    });
+    if (eAudit) console.warn('[CambioPedido] no se pudo registrar el envío en ops_audit_log:', eAudit.message);
+  } catch (e) {
+    console.warn('[CambioPedido] no se pudo registrar el envío en ops_audit_log:', e instanceof Error ? e.message : e);
+  }
+  return { ...base, email_sent_at: enviadoEn, email_sent_count: veces, rastro };
 }
 
 export function respuestaError(err: unknown): Response {

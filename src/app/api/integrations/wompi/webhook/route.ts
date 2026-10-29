@@ -110,6 +110,18 @@ async function pagoPendiente(admin: SupabaseClient, organizationId: number, refe
   return ((data as Fila[] | null) ?? [])[0] ?? null;
 }
 
+/** Sesión de un link de pago Wompi (provider_code 'wompi_link') de ESA conexión. */
+async function sesionDeLinkDePago(admin: SupabaseClient, connectionId: string, linkId: string): Promise<QrSession | null> {
+  const { data } = await admin
+    .from('payment_qr_sessions')
+    .select('*')
+    .eq('integration_connection_id', connectionId)
+    .eq('provider_code', 'wompi_link')
+    .eq('external_qr_id', linkId)
+    .limit(1);
+  return (((data as QrSession[] | null) ?? [])[0]) ?? null;
+}
+
 function importeCoincide(sesion: QrSession, tx: WompiWebhookEvent['data']['transaction']): boolean {
   const centavos = Math.round(Number(sesion.amount) * 100);
   const moneda = String(sesion.currency ?? '').trim().toUpperCase();
@@ -152,6 +164,18 @@ export async function POST(request: NextRequest) {
         if (sesionQr) {
           elegida = f;
           break;
+        }
+      }
+      // Link de pago (cambio de pedido web, CHG-…): Wompi pone su propia referencia a la
+      // transacción; la sesión se encuentra por `payment_link_id` = external_qr_id de la conexión.
+      const linkId = String(tx.payment_link_id ?? '');
+      if (!sesionQr && linkId) {
+        for (const f of firmantes) {
+          sesionQr = await sesionDeLinkDePago(admin, f.id, linkId);
+          if (sesionQr) {
+            elegida = f;
+            break;
+          }
         }
       }
       if (!sesionQr) {

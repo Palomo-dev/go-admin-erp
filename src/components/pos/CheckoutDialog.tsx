@@ -119,6 +119,12 @@ interface CheckoutDialogProps {
    * pre-cuenta) y el post-venta «¡Mesa 4 cobrada!» con «Volver al plano». Sin
    * él, el cobro del mostrador no cambia.
    */
+  /**
+   * Cobro de una cuenta guardada (mesa): las promociones viven en sus líneas.
+   * Al cambiar los métodos del cobro se recalculan en el servidor con el mismo
+   * motor y el padre entrega el carrito nuevo (20261028180000).
+   */
+  onMetodosPagoCambian?: (metodos: string[]) => Promise<void>;
   contextoMesa?: {
     titulo: string;
     meseroId?: string | null;
@@ -141,7 +147,7 @@ function mapaDeSeriales(valor: unknown): Record<number, number[]> | undefined {
   return valor as Record<number, number[]>;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente, contextoMesa }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente, contextoMesa, onMetodosPagoCambian }: CheckoutDialogProps) {
   const tMembresias = useTranslations('membresias');
   const { timezone } = useOrgTimezone();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -726,6 +732,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   useEffect(() => {
     if (!open || showReceipt || !cart.items.length) return;
     if (cart.sale_id && cart.invoice_id) return;
+    if (contextoMesa) {
+      // Mesa: el descuento se recalcula sobre la cuenta guardada (lo que cobra
+      // `pos_checkout_v1` en modo settle), nunca solo en pantalla.
+      if (!onMetodosPagoCambian) return;
+      onMetodosPagoCambian(firmaMetodosCobro ? firmaMetodosCobro.split(',') : [])
+        .catch((e) => console.warn('[cobro] no se pudieron recalcular las promociones de la mesa por método', e));
+      return;
+    }
     let vivo = true;
     POSService.recalcularPromocionesPorMetodo(cart, firmaMetodosCobro ? firmaMetodosCobro.split(',') : [])
       .then((cambio) => { if (vivo && cambio) calculateCartTotals(() => vivo); })

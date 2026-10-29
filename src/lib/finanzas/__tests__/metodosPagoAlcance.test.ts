@@ -8,8 +8,9 @@ import {
   promocionAplicaConMetodos,
   reiniciarColumnasAusentes,
   seleccionarConColumnaOpcional,
+  TTL_COLUMNA_AUSENTE_MS,
 } from '../metodosPagoAlcance';
-import { sucursalesParaGuardar } from '@/components/finanzas/metodos-pago/SucursalesMetodoPago';
+import { opcionesSucursalesMetodo, sucursalesParaGuardar } from '@/components/finanzas/metodos-pago/SucursalesMetodoPago';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 
@@ -94,8 +95,44 @@ describe('retrocompatible con la columna ausente', () => {
     await seleccionarConColumnaOpcional('t', 'branch_ids', async (extra) => { llamadas.push(extra); return { data: [], error: null }; });
     expect(llamadas[2]).toBe('');
   });
+  it('la marca de columna ausente vence a los 5 min (migración aplicada sin recargar)', async () => {
+    const llamadas: string[] = [];
+    const ahora = jest.spyOn(Date, 'now');
+    ahora.mockReturnValue(1_000_000);
+    await seleccionarConColumnaOpcional('t', 'branch_ids', async (extra) => {
+      llamadas.push(extra);
+      return extra ? { data: null, error: { code: '42703', message: 'column branch_ids does not exist' } } : { data: [], error: null };
+    });
+    ahora.mockReturnValue(1_000_000 + TTL_COLUMNA_AUSENTE_MS - 1);
+    await seleccionarConColumnaOpcional('t', 'branch_ids', async (extra) => { llamadas.push(extra); return { data: [], error: null }; });
+    ahora.mockReturnValue(1_000_000 + TTL_COLUMNA_AUSENTE_MS);
+    await seleccionarConColumnaOpcional('t', 'branch_ids', async (extra) => { llamadas.push(extra); return { data: [], error: null }; });
+    expect(llamadas).toEqual([', branch_ids', '', '', ', branch_ids']);
+    ahora.mockRestore();
+  });
   it('no confunde otros errores', () => {
     expect(esColumnaAusente({ code: '42501', message: 'permission denied' }, 'branch_ids')).toBe(false);
     expect(esColumnaAusente({ code: 'PGRST204', message: "Could not find the 'payment_method_codes' column" }, 'payment_method_codes')).toBe(true);
+  });
+});
+
+describe('selector de sucursales: solo activas (y las inactivas ya marcadas, con aviso)', () => {
+  const sucursales = [
+    { id: 117, name: 'El Socorro', is_active: true },
+    { id: 120, name: 'San Javier', is_active: true },
+    { id: 121, name: 'La 88', is_active: false },
+    { id: 130, name: 'Sin dato' },
+  ];
+  it('oculta la inactiva no marcada; la marcada sale como «· inactiva»', () => {
+    expect(opcionesSucursalesMetodo(sucursales, null).map((o) => o.etiqueta)).toEqual(['El Socorro', 'San Javier', 'Sin dato']);
+    expect(opcionesSucursalesMetodo(sucursales, [121]).map((o) => [o.etiqueta, o.inactiva])).toEqual([
+      ['El Socorro', false], ['San Javier', false], ['La 88 · inactiva', true], ['Sin dato', false],
+    ]);
+  });
+  it('todas las activas marcadas = NULL; con una inactiva marcada se guarda la lista', () => {
+    const activas = [117, 120, 130];
+    expect(sucursalesParaGuardar([117, 120, 130], activas)).toBeNull();
+    expect(sucursalesParaGuardar([117, 120, 121, 130], activas)).toEqual([117, 120, 121, 130]);
+    expect(sucursalesParaGuardar([117, 121], activas)).toEqual([117, 121]);
   });
 });

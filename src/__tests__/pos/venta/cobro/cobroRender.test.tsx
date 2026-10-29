@@ -28,6 +28,7 @@ jest.mock('@/lib/services/posService', () => ({
     getOrganizationMembers: jest.fn(async () => []),
     getProductTaxes: jest.fn(async () => []),
     checkout: (...args: unknown[]) => mockCheckout(...args),
+    recalcularPromocionesPorMetodo: jest.fn(async () => false),
   },
 }));
 jest.mock('@/lib/hooks/useOrgCurrency', () => {
@@ -261,6 +262,29 @@ describe('Cobro · contenedor (paso 11)', () => {
     await screen.findByRole('radio', { name: /Tarjeta/ });
     expect(screen.getByRole('dialog', { name: 'Process payment' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Complete sale/ })).toBeTruthy();
+  });
+});
+
+describe('Cobro de mesa · promociones por método de pago (20261028180000)', () => {
+  const contextoMesa = { titulo: 'Mesa 4', meseroId: null, propinaPorcentaje: null, propinaValor: null };
+
+  test('al cambiar el método se recalcula la cuenta guardada (no solo la pantalla)', async () => {
+    const onMetodosPagoCambian = jest.fn(async () => undefined);
+    const recalculoPantalla = POSService.recalcularPromocionesPorMetodo as jest.Mock;
+    recalculoPantalla.mockClear();
+    await abrirCobro({ contextoMesa, onMetodosPagoCambian });
+    await waitFor(() => expect(onMetodosPagoCambian).toHaveBeenLastCalledWith(['cash']));
+    fireEvent.click(screen.getByRole('radio', { name: /Transferencia/ }));
+    await waitFor(() => expect(onMetodosPagoCambian).toHaveBeenLastCalledWith(['transfer']));
+    expect(recalculoPantalla).not.toHaveBeenCalled();
+  });
+
+  test('en el mostrador sigue recalculando el carrito en pantalla', async () => {
+    const recalculoPantalla = POSService.recalcularPromocionesPorMetodo as jest.Mock;
+    recalculoPantalla.mockClear();
+    await abrirCobro();
+    fireEvent.click(screen.getByRole('radio', { name: /Tarjeta/ }));
+    await waitFor(() => expect(recalculoPantalla).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'carrito-1' }), ['card']));
   });
 });
 

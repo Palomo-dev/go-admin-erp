@@ -554,7 +554,14 @@ export class PedidosService {
     if (saleId) await this.recalcularPromocionesMesa(saleId);
   }
 
-  static async recalcularPromocionesMesa(saleId: string): Promise<void> {
+  /**
+   * Recalcula las promociones de la cuenta abierta. `metodosPago` son los
+   * métodos con monto del cobro en curso (20261028180000: una promoción con
+   * `payment_method_codes` solo aplica con uno de ellos). Sin métodos (agregar
+   * platos, quitar una promoción) se evalúa como hasta ahora: la promoción
+   * limitada por método no aplica hasta que el cajero elige el método.
+   */
+  static async recalcularPromocionesMesa(saleId: string, opciones?: { metodosPago?: readonly string[] }): Promise<void> {
     const organizationId = getOrganizationId();
     try {
       const { data: venta, error: eVenta } = await supabase
@@ -585,6 +592,7 @@ export class PedidosService {
         channel: 'pos',
         organization_id: organizationId,
         branch_id: venta.branch_id ?? undefined,
+        payment_methods: opciones?.metodosPago ? [...opciones.metodosPago] : [],
         items: lineas.map((l) => ({
           product_id: Number(l.product_id),
           parent_product_id: l.product?.parent_product_id ?? null,

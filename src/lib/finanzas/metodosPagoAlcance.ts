@@ -104,14 +104,28 @@ export function esColumnaAusente(error: unknown, columna: string): boolean {
     && texto.includes(columna);
 }
 
-const columnasAusentes = new Set<string>();
+/**
+ * Columnas que la BD dijo que no existen, con la hora en que se anotó. La marca
+ * vence a los 5 min: al aplicar la migración, la pestaña abierta vuelve a pedir
+ * la columna sin recargar.
+ */
+export const TTL_COLUMNA_AUSENTE_MS = 5 * 60 * 1000;
+const columnasAusentes = new Map<string, number>();
 
 /** Solo pruebas. */
 export function reiniciarColumnasAusentes(): void { columnasAusentes.clear(); }
 
+function columnaMarcadaAusente(k: string, ahora: number): boolean {
+  const desde = columnasAusentes.get(k);
+  if (desde == null) return false;
+  if (ahora - desde < TTL_COLUMNA_AUSENTE_MS) return true;
+  columnasAusentes.delete(k);
+  return false;
+}
+
 /**
  * Ejecuta la consulta con la columna opcional y, si la BD responde que no
- * existe, la repite sin ella (y lo recuerda para no insistir en la sesión).
+ * existe, la repite sin ella (y lo recuerda 5 min para no insistir en cada consulta).
  */
 export async function seleccionarConColumnaOpcional<R extends { data: unknown; error: unknown }>(
   clave: string,
@@ -119,10 +133,10 @@ export async function seleccionarConColumnaOpcional<R extends { data: unknown; e
   ejecutar: (extra: string) => PromiseLike<R>,
 ): Promise<R> {
   const k = `${clave}.${columna}`;
-  if (columnasAusentes.has(k)) return await ejecutar('');
+  if (columnaMarcadaAusente(k, Date.now())) return await ejecutar('');
   const r = await ejecutar(`, ${columna}`);
   if (r.error && esColumnaAusente(r.error, columna)) {
-    columnasAusentes.add(k);
+    columnasAusentes.set(k, Date.now());
     return await ejecutar('');
   }
   return r;

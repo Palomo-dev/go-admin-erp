@@ -144,6 +144,8 @@ export default function MesaCuentaPage() {
   // Diálogos
   const [abrir, setAbrir] = useState(false);
   const pendienteAlAbrir = useRef<null | (() => void)>(null);
+  // Métodos con los que se recalcularon las promociones de la cuenta en el cobro abierto.
+  const firmaMetodosMesa = useRef<string | null>(null);
   const [clienteAbierto, setClienteAbierto] = useState(false);
   const [notaAbierta, setNotaAbierta] = useState(false);
   const [guardandoNota, setGuardandoNota] = useState(false);
@@ -665,6 +667,7 @@ export default function MesaCuentaPage() {
       return;
     }
     liberacionFallida.current = false;
+    firmaMetodosMesa.current = null;
     setCobro({ parte, propina });
   };
 
@@ -751,6 +754,20 @@ export default function MesaCuentaPage() {
       created_at: sesion.opened_at,
       updated_at: sesion.opened_at,
     };
+  };
+
+  // Promociones limitadas por método de pago (20261028180000): al elegir o
+  // cambiar el método en el cobro de la cuenta entera, se recalculan en el
+  // servidor con el mismo motor del POS y se recarga la cuenta (el diálogo
+  // recibe el carrito nuevo). Una parte o el saldo tras un abono es un importe
+  // fijo: ahí no se recalcula y la valida pos_checkout_v1.
+  const alCambiarMetodosCobro = async (metodos: string[]) => {
+    if (!sesion?.sale_id || !cobro || cobro.parte || totales.abonado > 0) return;
+    const firma = Array.from(new Set(metodos)).sort().join(',');
+    if (firmaMetodosMesa.current === firma) return;
+    firmaMetodosMesa.current = firma;
+    await PedidosService.recalcularPromocionesMesa(sesion.sale_id, { metodosPago: firma ? firma.split(',') : [] });
+    await cargar(true);
   };
 
   // El mismo cobro del POS (pos_checkout_v1 en modo settle) y, si el saldo queda en
@@ -1231,11 +1248,18 @@ export default function MesaCuentaPage() {
             onOpenChange={(v) => {
               if (!v) {
                 setCobro(null);
+                // Cobro cancelado tras elegir un método: la cuenta vuelve a evaluarse
+                // sin método (una venta ya cobrada no se toca: la función sale).
+                if (firmaMetodosMesa.current && sesion?.sale_id) {
+                  firmaMetodosMesa.current = null;
+                  void PedidosService.recalcularPromocionesMesa(sesion.sale_id).then(() => cargar(true));
+                }
                 if (cobro.parte && partes) setPartes(partes.map((p) => (p.estado === 'cobrando' ? { ...p, estado: 'pendiente' } : p)));
               }
             }}
             onCheckoutComplete={() => void alTerminarCobro()}
             onProcessPayment={procesarPago}
+            onMetodosPagoCambian={alCambiarMetodosCobro}
             organization={organization ? { name: organization.name } : undefined}
             branch={sucursal ? { name: sucursal.name, address: sucursal.address, phone: sucursal.phone } : undefined}
             contextoMesa={{

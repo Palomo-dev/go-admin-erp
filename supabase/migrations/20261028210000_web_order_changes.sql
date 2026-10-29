@@ -203,6 +203,8 @@ declare
 begin
   select * into v_c from public.web_order_changes where id = p_change_id for update;
   if not found then raise exception 'CAMBIO_NO_ENCONTRADO' using errcode = 'P0002'; end if;
+  -- Desde el webhook no hay usuario: se atribuye a quien creó el cambio.
+  p_user := coalesce(p_user, v_c.created_by);
   if v_c.estado = 'applied' then
     return jsonb_build_object('ok', true, 'ya_aplicado', true, 'change_id', v_c.id);
   end if;

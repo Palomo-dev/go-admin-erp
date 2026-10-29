@@ -10,7 +10,7 @@ import {
   seleccionarConColumnaOpcional,
   TTL_COLUMNA_AUSENTE_MS,
 } from '../metodosPagoAlcance';
-import { opcionesSucursalesMetodo, sucursalesParaGuardar } from '@/components/finanzas/metodos-pago/SucursalesMetodoPago';
+import { AVISO_UNICA_SUCURSAL, hayUnicaSucursalActiva, opcionesSucursalesMetodo, sucursalesParaGuardar } from '@/components/finanzas/metodos-pago/SucursalesMetodoPago';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 
@@ -134,5 +134,16 @@ describe('selector de sucursales: solo activas (y las inactivas ya marcadas, con
     expect(sucursalesParaGuardar([117, 120, 130], activas)).toBeNull();
     expect(sucursalesParaGuardar([117, 120, 121, 130], activas)).toEqual([117, 120, 121, 130]);
     expect(sucursalesParaGuardar([117, 121], activas)).toEqual([117, 121]);
+  });
+});
+
+describe('selector de sucursales: aviso con una sola sucursal activa', () => {
+  it('se muestra solo con exactamente una sucursal activa', () => {
+    expect(AVISO_UNICA_SUCURSAL).toBe('Con una sola sucursal, el método queda disponible en todas');
+    expect(hayUnicaSucursalActiva([{ id: 1, name: 'Centro', is_active: true }])).toBe(true);
+    expect(hayUnicaSucursalActiva([{ id: 1, name: 'Centro' }, { id: 2, name: 'Vieja', is_active: false }])).toBe(true);
+    expect(hayUnicaSucursalActiva([{ id: 1, name: 'A' }, { id: 2, name: 'B' }])).toBe(false);
+    expect(hayUnicaSucursalActiva([])).toBe(false);
+    expect(hayUnicaSucursalActiva([{ id: 2, name: 'Vieja', is_active: false }])).toBe(false);
   });
 });

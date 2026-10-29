@@ -65,6 +65,13 @@ export function sucursalesParaGuardar(valor: readonly number[] | null, total?: n
   return ids;
 }
 
+/** Texto del aviso cuando la org tiene una sola sucursal activa (marcarla equivale a «Todas»). */
+export const AVISO_UNICA_SUCURSAL = 'Con una sola sucursal, el método queda disponible en todas';
+
+/** ¿Mostrar el aviso de sucursal única? Solo con exactamente una sucursal activa. */
+export const hayUnicaSucursalActiva = (sucursales: readonly SucursalBasica[]): boolean =>
+  sucursales.filter(sucursalActiva).length === 1;
+
 export function SelectorSucursalesMetodoPago({
   organizationId,
   valor,
@@ -99,6 +106,11 @@ export function SelectorSucursalesMetodoPago({
           Todas
         </button>
       </div>
+      {hayUnicaSucursalActiva(sucursales) && (
+        <p className="text-[13px] leading-[18px] text-fg-secondary" data-testid="aviso-sucursal-unica">
+          {AVISO_UNICA_SUCURSAL}
+        </p>
+      )}
       {inactivasMarcadas.length > 0 && (
         <p role="status" className="text-[13px] leading-[18px] text-warning-text" data-testid="aviso-sucursales-inactivas">
           {inactivasMarcadas.length === 1

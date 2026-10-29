@@ -13,16 +13,22 @@ import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
  * propio de la organización (`settings.display_name`) si lo fijó.
  */
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-const cachePorOrganizacion = new Map<number, { etiquetas: Record<string, string>; guardadoEn: number }>();
+const cachePorOrganizacion = new Map<string, { etiquetas: Record<string, string>; guardadoEn: number }>();
 
 /** Solo pruebas: vacía la caché. */
 export function limpiarCacheEtiquetasMetodosPago(): void {
   cachePorOrganizacion.clear();
 }
 
+/**
+ * Nombres de TODOS los métodos activos de la organización, sin filtrar por
+ * sucursal (20261028180000): sirven para nombrar pagos ya hechos, en cualquier
+ * sede. Las listas de cobro filtran por sucursal en su propio servicio.
+ */
 export async function getPaymentMethodLabels(organizationId: number = getOrganizationId()): Promise<Record<string, string>> {
   const now = Date.now();
-  const enCache = cachePorOrganizacion.get(organizationId);
+  const claveCache = String(organizationId);
+  const enCache = cachePorOrganizacion.get(claveCache);
   if (enCache && now - enCache.guardadoEn < CACHE_TTL) {
     return enCache.etiquetas;
   }
@@ -42,14 +48,16 @@ export async function getPaymentMethodLabels(organizationId: number = getOrganiz
     if (error) throw error;
 
     const labels: Record<string, string> = {};
-    for (const item of (data || []) as Array<{ payment_method_code: string; settings: unknown; payment_methods: { name?: string } | Array<{ name?: string }> | null }>) {
+    type FilaEtiqueta = { payment_method_code: string; settings: unknown; payment_methods: { name?: string } | Array<{ name?: string }> | null };
+    const filas = (data || []) as unknown as FilaEtiqueta[];
+    for (const item of filas) {
       const code = item.payment_method_code;
       const pm = item.payment_methods;
       const nombreGlobal = Array.isArray(pm) ? pm[0]?.name : pm?.name;
       labels[code] = nombreVisibleMetodo(item.settings, nombreGlobal, code);
     }
 
-    cachePorOrganizacion.set(organizationId, { etiquetas: labels, guardadoEn: now });
+    cachePorOrganizacion.set(claveCache, { etiquetas: labels, guardadoEn: now });
     return labels;
   } catch (error) {
     console.error('Error fetching payment method labels:', error);

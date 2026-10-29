@@ -1,5 +1,6 @@
 'use client';
 
+import { metodosPagoParaPromocion } from '@/lib/finanzas/metodosPagoAlcance';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -164,6 +165,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [productSearch, setProductSearch] = useState('');
   
   const [sucursales, setSucursales] = useState<{ id: number; name: string }[]>([]);
+  const [metodosPago, setMetodosPago] = useState<{ code: string; name: string; branch_ids: number[] | null }[]>([]);
   const [conflictos, setConflictos] = useState<ConflictoSolape[]>([]);
   const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
   const [erroresPaso, setErroresPaso] = useState<Partial<Record<CampoDescuento, string>>>({});
@@ -239,6 +241,9 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     PromotionsService.getBranches()
       .then(setSucursales)
       .catch(() => setSucursales([]));
+    PromotionsService.getMetodosPago()
+      .then(setMetodosPago)
+      .catch(() => setMetodosPago([]));
   }, []);
 
   useEffect(() => {
@@ -900,6 +905,37 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                       const ids = valor.map((id) => Number(id)).filter((id) => Number.isFinite(id));
                       handleChange('branches', ids.length === 0 ? undefined : ids);
                     }}
+                  />
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3" data-testid="promo-metodos-pago">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p id="etiqueta-promo-metodos" className="text-sm font-medium text-fg">Métodos de pago</p>
+                    <p className="text-[13px] leading-[18px] text-fg-secondary">
+                      {(formData.payment_method_codes ?? []).length === 0
+                        ? 'Aplica con cualquier método de pago.'
+                        : 'Solo aplica cuando el cobro usa uno de estos métodos.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+                    onClick={() => handleChange('payment_method_codes', null)}
+                  >
+                    Cualquiera
+                  </button>
+                </div>
+                {metodosPagoParaPromocion(metodosPago, formData.branches).length === 0 ? (
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">No hay métodos de pago activos.</p>
+                ) : (
+                  <ChipsOpcion
+                    multiple
+                    aria-labelledby="etiqueta-promo-metodos"
+                    opciones={metodosPagoParaPromocion(metodosPago, formData.branches).map((m) => ({ valor: m.code, etiqueta: m.name }))}
+                    valor={formData.payment_method_codes ?? []}
+                    onValorChange={(valor) => handleChange('payment_method_codes', valor.length === 0 ? null : valor)}
                   />
                 )}
               </div>

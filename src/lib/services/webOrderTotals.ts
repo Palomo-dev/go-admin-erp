@@ -61,7 +61,7 @@ const numero = (v: unknown): number => {
  * superar cada peso y dejando el residuo del redondeo en la última posición
  * con capacidad. Devuelve las partes en centavos.
  */
-function prorratearCentavos(montoCentavos: number, pesos: number[]): number[] {
+export function prorratearCentavos(montoCentavos: number, pesos: number[]): number[] {
   const partes = pesos.map(() => 0);
   const totalPesos = pesos.reduce((s, p) => s + Math.max(p, 0), 0);
   if (montoCentavos <= 0 || totalPesos <= 0) return partes;
@@ -88,7 +88,7 @@ function prorratearCentavos(montoCentavos: number, pesos: number[]): number[] {
  * subtotal (impuesto NO incluido en el precio). `web_orders` no guarda esa
  * bandera; se infiere comparando qué fórmula reproduce mejor `order.total`.
  */
-function impuestoVaSobreBase(order: Pick<WebOrder, 'subtotal' | 'tax_total' | 'discount_total' | 'delivery_fee' | 'tip_amount' | 'total'>): boolean {
+export function impuestoVaSobreBase(order: Pick<WebOrder, 'subtotal' | 'tax_total' | 'discount_total' | 'delivery_fee' | 'tip_amount' | 'total'>): boolean {
   const impuesto = numero(order.tax_total);
   if (impuesto <= 0) return false;
   const base = numero(order.subtotal) - numero(order.discount_total) + numero(order.delivery_fee) + numero(order.tip_amount);

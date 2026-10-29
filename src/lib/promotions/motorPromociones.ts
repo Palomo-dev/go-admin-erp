@@ -67,6 +67,7 @@
  *      `vigencia.ts`); el sitio convierte con `Number`, mismo resultado.
  */
 
+import { promocionAplicaConMetodos } from '@/lib/finanzas/metodosPagoAlcance';
 import { JS_DAY_TO_WEEKDAY, type WeekDay } from '@/components/pos/promociones/types';
 import { toPlainDate, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
@@ -128,6 +129,8 @@ export interface FilaPromocion {
   applies_to_pos?: boolean | null;
   applies_to_web?: boolean | null;
   applies_to_finances?: boolean | null;
+  /** Métodos de cobro con los que aplica (20261028180000). Nulo/ausente/vacío = cualquiera. */
+  payment_method_codes?: unknown;
   rules?: ReglaPromocion[] | null;
   promotion_rules?: ReglaPromocion[] | null;
 }
@@ -158,6 +161,12 @@ export interface ContextoPromocion {
   zonaHoraria: string;
   /** Sucursal de la venta; `null` solo alcanza promociones sin sucursales. */
   sucursalId: number | null;
+  /**
+   * Métodos de cobro elegidos (los que tienen monto). Una promoción con
+   * `payment_method_codes` solo aplica si alguno está en su lista; sin método
+   * elegido no aplica (se recalcula al elegirlo).
+   */
+  metodosPago?: readonly string[] | null;
 }
 
 export interface PromocionAplicada {
@@ -255,6 +264,7 @@ export function promocionVigente(p: FilaPromocion, ctx: ContextoPromocion, dia?:
   if (!tieneUsosDisponibles(p)) return false;
   if (!appliesOnWeekDay(p, dia ?? diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria))) return false;
   if (!appliesToBranch(p, ctx.sucursalId)) return false;
+  if (!promocionAplicaConMetodos(p.payment_method_codes, ctx.metodosPago ?? null)) return false;
   if (!appliesInTimeWindow(p, horaEnZona(ctx.ahora, ctx.zonaHoraria))) return false;
   return true;
 }

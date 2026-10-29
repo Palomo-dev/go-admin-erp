@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { filtrarMetodosPorSucursal, metodosConMonto, seleccionarConColumnaOpcional } from '@/lib/finanzas/metodosPagoAlcance';
 import { getTaxIncludedSetting } from '@/lib/utils/taxCalculations';
 import { resolveLineTax } from '@/lib/services/taxResolver';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
@@ -1537,6 +1538,27 @@ export class POSService {
     }
   }
 
+  /**
+   * El cajero eligió o cambió el método de cobro: se vuelven a evaluar las
+   * promociones (las limitadas por método entran o salen) y se guarda el
+   * carrito. Devuelve `true` si los métodos cambiaron y se recalculó.
+   */
+  static async recalcularPromocionesPorMetodo(cart: Cart, metodos: readonly string[]): Promise<boolean> {
+    const firma = (m: readonly string[]) => Array.from(new Set(m.filter(Boolean))).sort().join(',');
+    const nueva = firma(metodos);
+    if (firma(cart.payment_methods ?? []) === nueva) return false;
+    cart.payment_methods = nueva ? nueva.split(',') : [];
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    const carts = this.readAllCarts();
+    const i = this.indexOfLiveCart(carts, cart.id);
+    if (i !== -1) {
+      carts[i] = cart;
+      this.saveCartsToStorage(carts);
+    }
+    return true;
+  }
+
   static async recalculateCart(cartId: string): Promise<Cart> {
     try {
       const carts = this.readAllCarts();
@@ -1776,6 +1798,8 @@ export class POSService {
       // cada cambio de la cuenta (PedidosService.recalcularPromocionesMesa).
       const cobraVentaExistente = esCobroDeVentaExistente(checkoutData.settle, cart);
       if (!cobraVentaExistente) {
+        // Con los métodos REALES del cobro (los que tienen monto).
+        cart.payment_methods = metodosConMonto(payments as Array<{ method?: string | null; amount?: number | null }>);
         promocionesUsadas = await this.aplicarPromociones(cart);
       }
 
@@ -2038,11 +2062,15 @@ export class POSService {
       // Desktop sin red: mismas filas desde el catálogo local, mismo mapeo.
       // El orden es el de la organización (website_display_order, el que
       // arrastra en «Métodos de pago»), en línea y sin red.
+      // Métodos por sucursal (20261028180000): `branch_ids` NULL = todas.
+      const sucursal = getCurrentBranchId();
       if (this.usesLocalCatalog()) {
-        return ordenarMetodosDeLaOrganizacion(await posOfflineReads.getPaymentMethodRows(this.organizationId)).map((m) => this.mapPaymentMethodRow(m));
+        const filasLocales = await posOfflineReads.getPaymentMethodRows(this.organizationId);
+        return ordenarMetodosDeLaOrganizacion(filtrarMetodosPorSucursal(filasLocales as Array<typeof filasLocales[number] & { branch_ids?: unknown }>, sucursal)).map((m) => this.mapPaymentMethodRow(m));
       }
 
-      const { data, error } = await supabase
+      const orgId = this.organizationId;
+      const { data, error } = await seleccionarConColumnaOpcional('organization_payment_methods', 'branch_ids', (extra) => supabase
         .from('organization_payment_methods')
         .select(`
           payment_method_code,
@@ -2051,17 +2079,17 @@ export class POSService {
           website_display_order,
           payment_methods!inner (
             name
-          )
+          )${extra}
         `)
-        .eq('organization_id', this.organizationId)
+        .eq('organization_id', orgId)
         .eq('is_active', true)
         .order('website_display_order', { ascending: true, nullsFirst: false })
-        .order('payment_method_code', { ascending: true });
+        .order('payment_method_code', { ascending: true }));
 
       if (error) throw error;
 
-      const filas = (data || []) as unknown as Array<Parameters<typeof POSService.mapPaymentMethodRow>[0] & { website_display_order?: number | null }>;
-      return ordenarMetodosDeLaOrganizacion(filas).map((method) => this.mapPaymentMethodRow(method));
+      const filas = (data || []) as unknown as Array<Parameters<typeof POSService.mapPaymentMethodRow>[0] & { website_display_order?: number | null; branch_ids?: unknown }>;
+      return ordenarMetodosDeLaOrganizacion(filtrarMetodosPorSucursal(filas, sucursal)).map((method) => this.mapPaymentMethodRow(method));
     } catch (error) {
       console.error('Error getting payment methods:', error);
       // Fallback a métodos básicos
@@ -2502,6 +2530,8 @@ export class POSService {
         organization_id: cart.organization_id,
         branch_id: cart.branch_id,
         customer_id: cart.customer_id,
+        // Promociones limitadas por método de pago (20261028180000).
+        payment_methods: cart.payment_methods ?? [],
       });
       const finales = combinarDescuentos(cart.items, promoResult.lineDiscounts);
       cart.items.forEach((item, idx) => {

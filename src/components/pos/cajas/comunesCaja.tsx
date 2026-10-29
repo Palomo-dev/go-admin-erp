@@ -7,6 +7,8 @@
  * activos, texto de error traducido y la fila bajo la cabecera («Abierta ·
  * Sucursal · Cajera: … · Abierta hoy 07:58»).
  */
+import { metodoPermitidoEnSucursal } from '@/lib/finanzas/metodosPagoAlcance';
+import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BranchBadge, EmptyState, StatusBadge } from '@/components/kit';
@@ -46,7 +48,9 @@ export function useMetodosPagoActivos(): string[] {
     ConfiguracionService.getPaymentMethods()
       .then((lista) => {
         if (!vigente) return;
-        setMetodos(lista.filter((m) => m.is_active && m.payment_method_code !== 'cash').map((m) => m.payment_method_code));
+        // Solo los métodos habilitados en la sucursal de la caja (20261028180000).
+        const sucursal = getCurrentBranchId();
+        setMetodos(lista.filter((m) => m.is_active && m.payment_method_code !== 'cash' && metodoPermitidoEnSucursal((m as { branch_ids?: unknown }).branch_ids, sucursal)).map((m) => m.payment_method_code));
       })
       .catch((e) => console.warn('[cajas] métodos de pago no disponibles', e));
     return () => {

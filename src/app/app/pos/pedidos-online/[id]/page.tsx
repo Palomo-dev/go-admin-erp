@@ -8,10 +8,13 @@ import KitchenService from '@/lib/services/kitchenService';
 import { webOrdersService } from '@/lib/services/webOrdersService';
 import { imprimirComanda, textosImpresionDe } from '@/lib/pos/cocina/imprimirComanda';
 import { useTranslations } from 'next-intl';
-import { DollarSign, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { DollarSign, Loader2, Repeat } from 'lucide-react';
 import { clasesBoton } from '@/components/kit';
 import { useWebOrderDetail } from './hooks/useWebOrderDetail';
 import { useTrazabilidadPedido } from './hooks/useTrazabilidadPedido';
+import { useCambiosPedido } from './hooks/useCambiosPedido';
+import { bloqueoPorEstado } from '@/lib/services/webOrderChanges/cotizarCambio';
 import {
   OrderHeader,
   OrderLoadingState,
@@ -23,6 +26,7 @@ import {
   OrderCustomerCard,
   OrderDeliveryCard,
   OrderPaymentsCard,
+  CambiarProductosDialog,
   OrderDocumentsCard,
   ConfirmOrderDialog,
   CancelOrderDialog,
@@ -81,6 +85,8 @@ export default function WebOrderDetailPage() {
   const tCocina = useTranslations('posCocina');
   const { toast } = useToast();
   const trazabilidad = useTrazabilidadPedido(order);
+  const cambios = useCambiosPedido(orderId, organizationId);
+  const [cambioAbierto, setCambioAbierto] = useState(false);
 
   // Estado de carga
   if (loading) {
@@ -95,6 +101,11 @@ export default function WebOrderDetailPage() {
   // Caja de la sede a la que entra el cobro (fn_caja_abierta_para, la regla de la RPC).
   // Sin E4 aplicada el cobro usa el respaldo sin caja: no se anuncia caja ni se bloquea.
   const cobro = cobroDelPedido(order);
+  // «Cambiar productos»: pagado, sin despachar, no de mesa, con permiso y sin líneas libres.
+  const puedeCambiarProductos =
+    cambios.puedeCambiar &&
+    (bloqueoPorEstado(order) === null || cambios.abierto !== null) &&
+    (order.items ?? []).every((i) => i.product_id);
   const sede = order.branch?.name ?? '';
   const cajaConocida = trazabilidad.cobroEnCaja && trazabilidad.cajaId !== null;
   const sinCaja = trazabilidad.cobroEnCaja && !trazabilidad.cargando && (trazabilidad.cajaId === null || sinCajaAbierta);
@@ -186,6 +197,16 @@ export default function WebOrderDetailPage() {
             cajaEtiqueta={cajaEtiqueta}
             isLoading={actionLoading}
           />
+          {puedeCambiarProductos && (
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'secundario', tamano: 'md', anchoCompleto: true })}
+              onClick={() => setCambioAbierto(true)}
+            >
+              <Repeat className="size-4" aria-hidden="true" />
+              {cambios.abierto?.estado === 'pending_payment' ? t('cambio.verLink') : t('cambio.boton')}
+            </button>
+          )}
           <OrderCustomerCard order={order} />
           {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
           {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
@@ -205,6 +226,17 @@ export default function WebOrderDetailPage() {
             pagos={trazabilidad.pagos}
             porCobrarEnCaja={cobro.puedeCobrar}
             cajaEtiqueta={cajaDeLaSede}
+            cambios={cambios.cambios}
+            onVerCambio={() => setCambioAbierto(true)}
+            onReembolsoHecho={
+              cambios.puedeReembolsar
+                ? async (id) => {
+                    const r = await cambios.reembolsoHecho(id);
+                    toast(r.ok ? { title: t('cambio.reembolsoMarcado') } : { title: r.error ?? t('cambio.error'), variant: 'destructive' });
+                    void cambios.recargar();
+                  }
+                : undefined
+            }
           />
         </div>
       </div>
@@ -260,6 +292,23 @@ export default function WebOrderDetailPage() {
         onConfirm={order.status === 'pending' ? handleRejectOrder : handleCancelOrder}
         isLoading={actionLoading}
       />
+
+      {organizationId && puedeCambiarProductos && (
+        <CambiarProductosDialog
+          order={order}
+          organizationId={organizationId}
+          abierto={cambioAbierto}
+          onAbiertoChange={(v) => {
+            setCambioAbierto(v);
+            if (!v) void cambios.recargar();
+          }}
+          cambios={cambios}
+          onAplicado={() => {
+            void loadOrder();
+            void trazabilidad.recargar();
+          }}
+        />
+      )}
 
       {/* Diálogo de asignación de delivery */}
       {organizationId && (

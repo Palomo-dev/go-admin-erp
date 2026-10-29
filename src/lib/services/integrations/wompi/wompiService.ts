@@ -246,6 +246,80 @@ class WompiService {
   }
 
   /**
+   * Crea un link de pago de Wompi por monto (API `POST /payment_links`, llave privada).
+   * Los pagos que entran por el link llegan al webhook con `transaction.payment_link_id`
+   * = `data.id` (la referencia de la transacción la genera Wompi). URL pública:
+   * https://checkout.wompi.co/l/<id>. Usado por los cambios de pedido web (CHG-…).
+   */
+  async createPaymentLink(
+    credentials: WompiCredentials,
+    link: {
+      name: string;
+      description: string;
+      amount_in_cents: number;
+      /** Moneda de Wompi (solo COP): el llamador la pasa (MONEDA_RIELES_QR). */
+      currency: string;
+      expires_at?: string;
+      redirect_url?: string;
+      sku?: string;
+    },
+  ): Promise<{ id: string; url: string } | null> {
+    const baseUrl = getWompiBaseUrl(credentials.environment);
+    try {
+      const response = await fetch(`${baseUrl}/payment_links`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credentials.privateKey}` },
+        body: JSON.stringify({
+          name: link.name.slice(0, 64),
+          description: link.description.slice(0, 255),
+          single_use: true,
+          collect_shipping: false,
+          currency: link.currency,
+          amount_in_cents: link.amount_in_cents,
+          ...(link.expires_at ? { expires_at: link.expires_at } : {}),
+          ...(link.redirect_url ? { redirect_url: link.redirect_url } : {}),
+          ...(link.sku ? { sku: link.sku.slice(0, 36) } : {}),
+        }),
+      });
+      if (!response.ok) {
+        console.error('[Wompi] Error creando link de pago:', response.status);
+        return null;
+      }
+      const json = (await response.json()) as { data?: { id?: string } };
+      const id = json?.data?.id;
+      if (!id) return null;
+      return { id, url: `https://checkout.wompi.co/l/${id}` };
+    } catch (err) {
+      console.error('[Wompi] Error en createPaymentLink:', err instanceof Error ? err.message : err);
+      return null;
+    }
+  }
+
+  /**
+   * Desactiva un link de pago (PATCH /payment_links/{id} {active:false}, llave privada). Wompi solo
+   * deja cambiar `active`. Devuelve true si quedó inactivo (o ya no existe).
+   */
+  async deactivatePaymentLink(credentials: WompiCredentials, linkId: string): Promise<boolean> {
+    const baseUrl = getWompiBaseUrl(credentials.environment);
+    try {
+      const response = await fetch(`${baseUrl}/payment_links/${encodeURIComponent(linkId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credentials.privateKey}` },
+        body: JSON.stringify({ active: false }),
+      });
+      if (response.status === 404) return true;
+      if (!response.ok) {
+        console.error('[Wompi] Error desactivando link de pago:', response.status);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[Wompi] Error en deactivatePaymentLink:', err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
+
+  /**
    * Consulta el estado de una transacción.
    */
   async getTransaction(

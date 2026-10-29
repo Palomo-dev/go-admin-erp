@@ -23,6 +23,7 @@ import { PREGUNTA_TOOLS } from './tools/pregunta';
 import { DOCUMENTOS_TOOLS } from './tools/documentos';
 import { NAVEGACION_TOOLS } from './tools/navegacion';
 import { REPORTES_TOOLS } from './tools/reportes';
+import { GUIAS_TOOLS } from './tools/guias';
 import type { ToolDefinition } from './types';
 
 /** Formato de herramienta de la API de chat completions de OpenAI. */
@@ -53,6 +54,7 @@ function buildRegistry(): Map<string, ToolDefinition<never>> {
     ...(DOCUMENTOS_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(NAVEGACION_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(REPORTES_TOOLS as unknown as Array<ToolDefinition<never>>),
+    ...(GUIAS_TOOLS as unknown as Array<ToolDefinition<never>>),
     ...(catalogTools() as unknown as Array<ToolDefinition<never>>),
   ];
 

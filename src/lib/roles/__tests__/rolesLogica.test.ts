@@ -202,3 +202,12 @@ describe('comparar roles', () => {
     expect(diferenciaContraPrimero(roles)).toEqual([0, 2]);
   });
 });
+
+describe('catálogo del editor de cargos: pos.promotions.remove (revisión 2026-10-28)', () => {
+  it('la fila de `permissions` llega a la matriz en el módulo POS', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { clasificarCatalogo } = require('../matrizPermisos') as typeof import('../matrizPermisos');
+    const [p] = clasificarCatalogo([{ id: 205, code: 'pos.promotions.remove', module: 'pos', name: 'Quitar promoción de una línea', description: null }]);
+    expect(p).toMatchObject({ id: 205, codigo: 'pos.promotions.remove', modulo: 'pos', accion: 'otros' });
+  });
+});

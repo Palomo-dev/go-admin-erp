@@ -1,5 +1,6 @@
 'use client';
 
+import { metodosConMonto } from '@/lib/finanzas/metodosPagoAlcance';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileCheck2, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2, TriangleAlert } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -118,6 +119,12 @@ interface CheckoutDialogProps {
    * pre-cuenta) y el post-venta «¡Mesa 4 cobrada!» con «Volver al plano». Sin
    * él, el cobro del mostrador no cambia.
    */
+  /**
+   * Cobro de una cuenta guardada (mesa): las promociones viven en sus líneas.
+   * Al cambiar los métodos del cobro se recalculan en el servidor con el mismo
+   * motor y el padre entrega el carrito nuevo (20261028180000).
+   */
+  onMetodosPagoCambian?: (metodos: string[]) => Promise<void>;
   contextoMesa?: {
     titulo: string;
     meseroId?: string | null;
@@ -140,7 +147,7 @@ function mapaDeSeriales(valor: unknown): Record<number, number[]> | undefined {
   return valor as Record<number, number[]>;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente, contextoMesa }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente, contextoMesa, onMetodosPagoCambian }: CheckoutDialogProps) {
   const tMembresias = useTranslations('membresias');
   const { timezone } = useOrgTimezone();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -717,6 +724,29 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     calculateCartTotals(() => vivo);
     return () => { vivo = false; };
   }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded, casillaMovida]);
+
+  // Promociones limitadas por método de pago (20261028180000): al elegir o
+  // cambiar el método se reevalúan y el total se recalcula. En el cobro de una
+  // venta que ya existe (deuda, mesa) los descuentos ya están en sus líneas.
+  const firmaMetodosCobro = metodosConMonto(payments).join(',');
+  useEffect(() => {
+    if (!open || showReceipt || !cart.items.length) return;
+    if (cart.sale_id && cart.invoice_id) return;
+    if (contextoMesa) {
+      // Mesa: el descuento se recalcula sobre la cuenta guardada (lo que cobra
+      // `pos_checkout_v1` en modo settle), nunca solo en pantalla.
+      if (!onMetodosPagoCambian) return;
+      onMetodosPagoCambian(firmaMetodosCobro ? firmaMetodosCobro.split(',') : [])
+        .catch((e) => console.warn('[cobro] no se pudieron recalcular las promociones de la mesa por método', e));
+      return;
+    }
+    let vivo = true;
+    POSService.recalcularPromocionesPorMetodo(cart, firmaMetodosCobro ? firmaMetodosCobro.split(',') : [])
+      .then((cambio) => { if (vivo && cambio) calculateCartTotals(() => vivo); })
+      .catch((e) => console.warn('[cobro] no se pudieron recalcular las promociones por método', e));
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, showReceipt, firmaMetodosCobro, cart.id]);
 
   // La entrada que el modal pre-rellenó sigue al total. Si no, al mover
   // «Impuestos incluidos» el total cambia y el monto a cobrar se queda en

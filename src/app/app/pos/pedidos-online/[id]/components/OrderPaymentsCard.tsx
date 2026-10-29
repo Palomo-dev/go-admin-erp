@@ -3,12 +3,13 @@
 import { useTranslations } from 'next-intl';
 import { CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FilaDato, ListaDatos } from '@/components/kit';
+import { AvisoTonal, FilaDato, ListaDatos } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import type { PaymentStatus, WebOrder } from '@/lib/services/webOrdersService';
 import type { PagoDelPedido } from '../hooks/useTrazabilidadPedido';
+import type { CambioPedido } from '../hooks/useCambiosPedido';
 
 interface OrderPaymentsCardProps {
   order: WebOrder;
@@ -17,6 +18,12 @@ interface OrderPaymentsCardProps {
   porCobrarEnCaja: boolean;
   /** «Caja N · {sede} · abierta», ya traducido; null sin caja abierta. */
   cajaEtiqueta: string | null;
+  /** Cambios de productos (link de diferencia, reembolso parcial, saldo a favor), del más reciente. */
+  cambios?: CambioPedido[];
+  /** Abre el link pendiente de un cambio. */
+  onVerCambio?: () => void;
+  /** Marca hecho un reembolso manual (sin él, no se muestra la acción). */
+  onReembolsoHecho?: (id: string) => void;
 }
 
 const CLAVE_ESTADO: Record<PaymentStatus, string> = {
@@ -28,7 +35,7 @@ const CLAVE_ESTADO: Record<PaymentStatus, string> = {
 };
 
 /** Tarjeta «Pagos» (Figma 1981:175699): estado del cobro y pagos reales del pedido. */
-export function OrderPaymentsCard({ order, pagos, porCobrarEnCaja, cajaEtiqueta }: OrderPaymentsCardProps) {
+export function OrderPaymentsCard({ order, pagos, porCobrarEnCaja, cajaEtiqueta, cambios = [], onVerCambio, onReembolsoHecho }: OrderPaymentsCardProps) {
   const t = useTranslations('pedidoWeb');
   const { formatDateTime } = useFormatDate(order.branch_id);
   const { formatear } = useMonedaOrganizacion();
@@ -79,6 +86,53 @@ export function OrderPaymentsCard({ order, pagos, porCobrarEnCaja, cajaEtiqueta 
           </ListaDatos>
         ) : (
           !porCobrarEnCaja && <p className="text-sm text-fg-secondary">{t('pagos.sinPagos')}</p>
+        )}
+
+        {cambios
+          .filter((c) => c.late_payment_at)
+          .map((c) => (
+            <AvisoTonal
+              key={`tardio-${c.id}`}
+              tono="advertencia"
+              titulo={t('cambio.pagoTardio.titulo', { monto: formatear(Math.abs(Number(c.delta_total))) })}
+              descripcion={t('cambio.pagoTardio.descripcion', { fecha: formatDateTime(c.late_payment_at as string) })}
+            />
+          ))}
+
+        {cambios.length > 0 && (
+          <div className="space-y-2 border-t border-line pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-fg-secondary">{t('cambio.lineaTiempo')}</p>
+            <ol className="space-y-2">
+              {cambios.map((c) => {
+                const delta = Number(c.delta_total);
+                const fecha = c.applied_at ?? c.cancelled_at ?? c.created_at;
+                return (
+                  <li key={c.id} className="text-sm">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-fg">{t(`cambio.estados.${c.estado}`)}</span>
+                      <span className="font-medium text-fg">{delta > 0 ? '+' : delta < 0 ? '−' : ''}{formatear(Math.abs(delta))}</span>
+                    </div>
+                    <p className="text-xs text-fg-secondary">
+                      {formatDateTime(fecha)}
+                      {c.refund_mode && ` · ${t(`cambio.modos.${c.refund_mode}`)}`}
+                      {c.refund_status === 'manual_pending' && ` · ${t('cambio.reembolsoPendiente')}`}
+                      {c.refund_status === 'done' && ` · ${t('cambio.reembolsoHecho')}`}
+                    </p>
+                    {c.estado === 'pending_payment' && onVerCambio && (
+                      <button type="button" className="text-xs font-medium text-primary underline-offset-2 hover:underline" onClick={onVerCambio}>
+                        {t('cambio.verLink')}
+                      </button>
+                    )}
+                    {c.refund_status === 'manual_pending' && onReembolsoHecho && (
+                      <button type="button" className="text-xs font-medium text-primary underline-offset-2 hover:underline" onClick={() => onReembolsoHecho(c.id)}>
+                        {t('cambio.marcarReembolsoHecho')}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         )}
       </CardContent>
     </Card>

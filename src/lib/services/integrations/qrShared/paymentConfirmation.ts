@@ -49,6 +49,55 @@ export interface PaymentConfirmationResult {
  *  7. Crea notificacion de pago recibido (o expirado si fue rechazado)
  *  8. Retorna los IDs creados
  */
+export const WEB_ORDER_CHANGE_SOURCE = 'web_order_change';
+
+/**
+ * Aplica el cambio de pedido pagado con esta sesión (source 'web_order_change', source_id = id del
+ * cambio). Idempotente: el mismo evento dos veces no aplica dos veces (la función SQL bloquea la fila
+ * del cambio y devuelve ya_aplicado). Otras fuentes: no hace nada.
+ */
+export async function aplicarCambioPedidoTrasPago(
+  session: { source?: string | null; source_id?: string | null; reference?: string | null; organization_id?: number },
+  paymentId: string | null,
+): Promise<{ ok: boolean; error?: string; yaAplicado?: boolean; pagoTardio?: boolean }> {
+  if (session.source !== WEB_ORDER_CHANGE_SOURCE || !session.source_id) return { ok: true };
+  const supabase = getSupabaseAdmin();
+  const { data: cambio } = await supabase
+    .from('web_order_changes')
+    .select('id, organization_id, estado')
+    .eq('id', session.source_id)
+    .maybeSingle();
+  if (!cambio || (session.organization_id && Number(cambio.organization_id) !== Number(session.organization_id))) {
+    return { ok: false, error: 'Cambio de pedido no encontrado para la sesión' };
+  }
+  if (cambio.estado === 'applied') return { ok: true, yaAplicado: true };
+  // Pago a un cambio ya cancelado o vencido: no se aplica ni se reintenta. Alerta + nota interna y
+  // el webhook responde 200 (reintentar no lo arregla; lo resuelve una persona).
+  const pagoTardio = async () => {
+    const { error: e } = await supabase.rpc('fn_web_order_change_pago_tardio', {
+      p_change_id: cambio.id,
+      p_payment_id: paymentId,
+      p_reference: session.reference ?? null,
+    });
+    if (e) console.error('[paymentConfirmation] fn_web_order_change_pago_tardio:', e.message);
+    return { ok: true, pagoTardio: true };
+  };
+  if (cambio.estado === 'cancelled' || cambio.estado === 'expired') return pagoTardio();
+  const { data, error } = await supabase.rpc('fn_web_order_change_aplicar', {
+    p_change_id: cambio.id,
+    p_user: null,
+    p_payment_id: paymentId,
+    p_refund_mode: null,
+    p_provider_reference: session.reference ?? null,
+  });
+  if (error) {
+    // Carrera: el cron lo venció entre la lectura y el aplicar.
+    if (/CAMBIO_CERRADO/.test(error.message)) return pagoTardio();
+    return { ok: false, error: `fn_web_order_change_aplicar: ${error.message}` };
+  }
+  return { ok: true, yaAplicado: Boolean((data as { ya_aplicado?: boolean } | null)?.ya_aplicado) };
+}
+
 export async function confirmQrPayment(
   input: PaymentConfirmationInput,
 ): Promise<PaymentConfirmationResult> {
@@ -72,6 +121,10 @@ export async function confirmQrPayment(
 
     // 2. Idempotencia: si ya esta pagada, retornar success
     if (session.status === 'paid') {
+      // Reintento del proveedor: si el cambio de pedido no quedó aplicado la primera vez, se
+      // reintenta (fn_web_order_change_aplicar es idempotente: aplicado → ya_aplicado).
+      const aplicado = await aplicarCambioPedidoTrasPago(session, session.payment_id ?? null);
+      if (!aplicado.ok) return { success: false, error: aplicado.error };
       return {
         success: true,
         paymentId: session.payment_id ?? undefined,
@@ -149,6 +202,10 @@ export async function confirmQrPayment(
     const paymentRow: Record<string, unknown> = {
       organization_id: input.organizationId,
       branch_id: session.branch_id,
+      // Cambio de pedido web: el pago queda con el método de la pasarela y enlazado al cambio.
+      ...(session.source === WEB_ORDER_CHANGE_SOURCE && session.source_id
+        ? { source: WEB_ORDER_CHANGE_SOURCE, source_id: String(session.source_id) }
+        : {}),
       amount: session.amount,
       currency: session.currency,
       status: 'completed',
@@ -279,6 +336,13 @@ export async function confirmQrPayment(
     } catch (notifErr) {
       // No fallar toda la operacion si la notificacion falla
       console.error('[paymentConfirmation] Error en notificacion payment_received:', notifErr);
+    }
+
+    // 7b. Cambio de productos de un pedido web (web_order_changes): se aplica en la misma
+    //     confirmación, atómico en SQL. Si falla, el webhook responde error y el proveedor reintenta.
+    if (input.status === 'paid') {
+      const aplicado = await aplicarCambioPedidoTrasPago(session, paymentId ?? null);
+      if (!aplicado.ok) return { success: false, error: aplicado.error, paymentId };
     }
 
     // 8. Retornar IDs creados

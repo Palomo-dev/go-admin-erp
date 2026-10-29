@@ -65,6 +65,8 @@ export interface PromotionContext {
   items: PromotionItem[];
   organization_id: number;
   branch_id?: number;
+  /** Métodos de cobro elegidos; una promoción limitada por método solo aplica con uno de ellos. */
+  payment_methods?: string[];
   customer_id?: string;
   date?: Date; // Para testing; por defecto now()
   /** Zona IANA de la organización. Si falta, `getOrganizationTimezone`. */
@@ -183,6 +185,7 @@ class PromotionEngineService {
       ahora: date,
       zonaHoraria,
       sucursalId: ctx.branch_id ?? null,
+      metodosPago: ctx.payment_methods ?? null,
     });
 
     return {

@@ -209,6 +209,8 @@ export interface WompiWebhookEvent {
       status: WompiTransactionStatus;
       status_message?: string;
       redirect_url?: string;
+      /** Presente cuando la transacción entró por un link de pago (`POST /payment_links`). */
+      payment_link_id?: string | null;
     };
   };
   environment: string;

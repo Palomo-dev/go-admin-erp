@@ -49,6 +49,7 @@
       "path": "/api/cron/expire-pending-web-orders",
       "schedule": "*/15 * * * *"
     },
+    { "path": "/api/cron/expire-web-order-changes", "schedule": "*/30 * * * *" },
     {
       "path": "/api/cron/correo-dominio-tienda",
       "schedule": "*/15 * * * *"

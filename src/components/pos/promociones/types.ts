@@ -53,6 +53,8 @@ export interface Promotion {
   is_combinable: boolean;
   priority: number;
   branches?: number[];
+  /** Métodos de pago con los que aplica (20261028180000). NULL/vacío = cualquiera. */
+  payment_method_codes?: string[] | null;
   // --- Canales de aplicación ---
   applies_to_web?: boolean;
   applies_to_pos?: boolean;
@@ -110,6 +112,8 @@ export interface CreatePromotionData {
   is_combinable?: boolean;
   priority?: number;
   branches?: number[];
+  /** Métodos de pago con los que aplica (20261028180000). NULL/vacío = cualquiera. */
+  payment_method_codes?: string[] | null;
   // --- Canales de aplicación ---
   applies_to_web?: boolean;
   applies_to_pos?: boolean;

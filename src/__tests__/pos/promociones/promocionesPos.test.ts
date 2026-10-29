@@ -342,6 +342,44 @@ describe('G · mesa: se evalúa la cuenta completa', () => {
   });
 });
 
+describe('G2 · mesa: promoción limitada por método de pago (20261028180000)', () => {
+  const soloDidi = () => promo({ min_purchase_amount: null, payment_method_codes: ['didi_transferencia'] });
+
+  it('sin método elegido (agregar platos) no aplica; con DIDI en el cobro, sí', async () => {
+    const p = soloDidi();
+    promociones = [p];
+    lineasMesa = [lineaMesa('a', 1001, 1, 30000)];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa');
+    expect(aplicadas()).toEqual([]);
+
+    fake.reset();
+    await PedidosService.recalcularPromocionesMesa('venta-mesa', { metodosPago: ['didi_transferencia'] });
+    expect(aplicadas()).toEqual([[{ sale_item_id: 'a', discount_amount: 3000, promotion_ids: [p.id] }]]);
+  });
+
+  it('el cajero cambia DIDI por efectivo: el descuento se quita de la cuenta', async () => {
+    const p = soloDidi();
+    promociones = [p];
+    lineasMesa = [lineaMesa('a', 1001, 1, 30000, { discount_amount: '3000.00', notes: { descuento_promocion: 3000, promociones: [p.id] } })];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa', { metodosPago: ['cash'] });
+    expect(aplicadas()).toEqual([[{ sale_item_id: 'a', discount_amount: 0, promotion_ids: [] }]]);
+  });
+
+  it('pago mixto efectivo + DIDI: aplica; sin restricción (NULL) aplica con cualquier método', async () => {
+    const p = soloDidi();
+    promociones = [p];
+    lineasMesa = [lineaMesa('a', 1001, 1, 30000)];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa', { metodosPago: ['cash', 'didi_transferencia'] });
+    expect(aplicadas()).toEqual([[{ sale_item_id: 'a', discount_amount: 3000, promotion_ids: [p.id] }]]);
+
+    fake.reset();
+    const libre = promo({ min_purchase_amount: null });
+    promociones = [libre];
+    await PedidosService.recalcularPromocionesMesa('venta-mesa', { metodosPago: ['cash'] });
+    expect(aplicadas()).toEqual([[{ sale_item_id: 'a', discount_amount: 3000, promotion_ids: [libre.id] }]]);
+  });
+});
+
 describe('mostrador: recalcular el carrito abierto aplica el paquete y respeta el manual', () => {
   it('20 % cada 3 descuenta 1200; sin N, 1400; el descuento del cajero no se pisa', async () => {
     promociones = [promo({

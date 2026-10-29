@@ -2,7 +2,7 @@
  * Aviso del asistente: dos promociones se pisan solo si comparten producto
  * o categoría, sucursal, canal y vigencia, y ninguna es combinable.
  */
-import { conflictosSolapados, franjasSeCruzan, seSolapan, type PromoSolape } from '../solapamiento';
+import { conflictosSolapados, franjasSeCruzan, semanasSeCruzan, seSolapan, type PromoSolape } from '../solapamiento';
 
 function promo(parcial: Partial<PromoSolape> & Pick<PromoSolape, 'id'>): PromoSolape {
   return {
@@ -71,5 +71,24 @@ describe('seSolapan', () => {
     expect(franjasSeCruzan(noche, madrugada)).toBe(true);
     expect(franjasSeCruzan(noche, tarde)).toBe(false);
     expect(seSolapan(noche, tarde)).toBe(false);
+  });
+});
+
+describe('franjas que cruzan la medianoche se asignan al día de inicio', () => {
+  it('«lunes a miércoles 18:00–02:00» se pisa con «jueves 00:00–03:00» (madrugada del jueves)', () => {
+    const lunMie = promo({ id: 'a', applicable_days: ['monday', 'tuesday', 'wednesday'], start_time: '18:00', end_time: '02:00' });
+    const juevesMadrugada = promo({ id: 'b', applicable_days: ['thursday'], start_time: '00:00', end_time: '03:00' });
+    expect(semanasSeCruzan(lunMie, juevesMadrugada)).toBe(true);
+    expect(seSolapan(lunMie, juevesMadrugada)).toBe(true);
+  });
+  it('no se pisa con «jueves 10:00–16:00» ni con «lunes 03:00–10:00»', () => {
+    const lunMie = promo({ id: 'a', applicable_days: ['monday', 'tuesday', 'wednesday'], start_time: '18:00', end_time: '02:00' });
+    expect(seSolapan(lunMie, promo({ id: 'b', applicable_days: ['thursday'], start_time: '10:00', end_time: '16:00' }))).toBe(false);
+    expect(seSolapan(lunMie, promo({ id: 'c', applicable_days: ['monday'], start_time: '03:00', end_time: '10:00' }))).toBe(false);
+  });
+  it('domingo 22:00–02:00 llega al lunes de la semana siguiente', () => {
+    const dom = promo({ id: 'a', applicable_days: ['sunday'], start_time: '22:00', end_time: '02:00' });
+    expect(seSolapan(dom, promo({ id: 'b', applicable_days: ['monday'], start_time: '01:00', end_time: '05:00' }))).toBe(true);
+    expect(seSolapan(dom, promo({ id: 'c', applicable_days: ['saturday'], start_time: '01:00', end_time: '05:00' }))).toBe(false);
   });
 });

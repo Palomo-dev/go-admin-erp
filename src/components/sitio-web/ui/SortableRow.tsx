@@ -151,7 +151,7 @@ export function SortableRow({
           {acciones && acciones.length > 0 && (
             // El menú ocupa sitio solo al pasar o enfocar la fila: así el nombre de la sección se ve
             // entero en el panel de 280 px (Figma), con el texto completo en `title`.
-            <span className="hidden shrink-0 group-hover:flex group-focus-within:flex">
+            <span className="hidden shrink-0 group-hover:flex group-focus-within:flex [&:has([data-state=open])]:flex">
               <RowActionsMenu acciones={acciones} titulo={etiqueta} orientacion="horizontal" />
             </span>
           )}

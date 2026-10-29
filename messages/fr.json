@@ -36587,7 +36587,12 @@
       "pagoTardio": {
         "titulo": "Un paiement de {monto} est arrivé pour une modification clôturée",
         "descripcion": "Il n'a pas été appliqué à la commande. Vérifiez-le sur la passerelle et remboursez-le ou refaites la modification à la main. Reçu : {fecha}."
-      }
+      },
+      "correoEnviadoA": "Envoyé à {correo} le {fecha} à {hora}",
+      "correoVeces": "{n, plural, one {# envoi} other {# envois}}",
+      "reenviarTitulo": "Renvoyer l’e-mail ?",
+      "reenviarDescripcion": "Le lien a déjà été envoyé à {correo} ({n, plural, one {# fois} other {# fois}}). Voulez-vous le renvoyer ?",
+      "reenviar": "Renvoyer"
     }
   },
   "posMesasFlujo": {

@@ -21,6 +21,10 @@ export interface CambioPedido {
   late_payment_at?: string | null;
   alerta?: string | null;
   link_disabled_at?: string | null;
+  /** Rastro del envío del link por correo (ausente si la migración no está aplicada). */
+  email_sent_at?: string | null;
+  email_sent_count?: number | null;
+  email_sent_to_masked?: string | null;
 }
 
 export interface RespuestaApi<T> {
@@ -78,7 +82,8 @@ export function useCambiosPedido(orderId: string, organizationId: number | null 
   const aplicar = (id: string, body: { reembolso?: 'refund' | 'customer_credit'; connection_id?: string | null }) =>
     llamar<{ cambio: CambioPedido; accion: 'link' | 'aplicado' | 'ya_aplicado' }>(`/${id}/apply`, body);
   const cancelar = (id: string) => llamar(`/${id}/cancel`, {});
-  const enviarCorreo = (id: string) => llamar(`/${id}/send`, {});
+  const enviarCorreo = (id: string) =>
+    llamar<{ ok: true; email_sent_at: string; email_sent_count: number; email_sent_to_masked: string; rastro: boolean }>(`/${id}/send`, {});
   const reembolsoHecho = (id: string) => llamar(`/${id}/refund-done`, {});
 
   const abierto = cambios.find((c) => ['draft', 'pending_payment', 'pending_refund'].includes(c.estado)) ?? null;

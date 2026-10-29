@@ -36602,7 +36602,12 @@
       "pagoTardio": {
         "titulo": "Llegó un pago de {monto} a un cambio ya cerrado",
         "descripcion": "No se aplicó al pedido. Revísalo en la pasarela y devuélvelo o rehaz el cambio a mano. Recibido: {fecha}."
-      }
+      },
+      "correoEnviadoA": "Enviado a {correo} el {fecha} a las {hora}",
+      "correoVeces": "{n, plural, one {# envío} other {# envíos}}",
+      "reenviarTitulo": "¿Reenviar el correo?",
+      "reenviarDescripcion": "El link ya se envió a {correo} ({n, plural, one {# vez} other {# veces}}). ¿Quieres enviarlo de nuevo?",
+      "reenviar": "Reenviar"
     }
   },
   "posMesasFlujo": {

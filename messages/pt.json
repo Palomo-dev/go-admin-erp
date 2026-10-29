@@ -36597,7 +36597,12 @@
       "pagoTardio": {
         "titulo": "Chegou um pagamento de {monto} para uma alteração já encerrada",
         "descripcion": "Não foi aplicado ao pedido. Verifique no gateway e reembolse ou refaça a alteração manualmente. Recebido: {fecha}."
-      }
+      },
+      "correoEnviadoA": "Enviado para {correo} em {fecha} às {hora}",
+      "correoVeces": "{n, plural, one {# envio} other {# envios}}",
+      "reenviarTitulo": "Reenviar o e-mail?",
+      "reenviarDescripcion": "O link já foi enviado para {correo} ({n, plural, one {# vez} other {# vezes}}). Deseja enviá-lo novamente?",
+      "reenviar": "Reenviar"
     }
   },
   "posMesasFlujo": {

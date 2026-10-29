@@ -36587,7 +36587,12 @@
       "pagoTardio": {
         "titulo": "A {monto} payment arrived for a closed change",
         "descripcion": "It was not applied to the order. Check it in the payment gateway and refund it or redo the change manually. Received: {fecha}."
-      }
+      },
+      "correoEnviadoA": "Sent to {correo} on {fecha} at {hora}",
+      "correoVeces": "{n, plural, one {# send} other {# sends}}",
+      "reenviarTitulo": "Resend the email?",
+      "reenviarDescripcion": "The link was already sent to {correo} ({n, plural, one {# time} other {# times}}). Send it again?",
+      "reenviar": "Resend"
     }
   },
   "posMesasFlujo": {

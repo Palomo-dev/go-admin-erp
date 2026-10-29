@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Copy, Mail, MessageCircle, Minus, Plus, Trash2 } from 'lucide-react';
-import { AvisoTonal, CampoNumero, Dialogo, FilaDato, ListaDatos, SearchInput, clasesBoton } from '@/components/kit';
+import { AvisoTonal, CampoNumero, ConfirmDialog, Dialogo, FilaDato, ListaDatos, SearchInput, clasesBoton } from '@/components/kit';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { sentidoDelta, type Cotizacion } from '@/lib/services/webOrderChanges/cotizarCambio';
@@ -38,7 +39,7 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
   const t = useTranslations('pedidoWeb.cambio');
   const { toast } = useToast();
   const { formatear } = useMonedaOrganizacion();
-  const { formatDateTime } = useFormatDate(order.branch_id);
+  const { formatDateTime, formatTime, timezone } = useFormatDate(order.branch_id);
   const inicial = useMemo<Linea[]>(
     () => (order.items ?? []).filter((i) => i.product_id).map((i) => ({ product_id: Number(i.product_id), nombre: i.product_name, quantity: Number(i.quantity) })),
     [order.items],
@@ -51,6 +52,7 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
   const [motivo, setMotivo] = useState('');
   const [reembolso, setReembolso] = useState<'refund' | 'customer_credit'>('refund');
   const [enviando, setEnviando] = useState(false);
+  const [confirmarReenvio, setConfirmarReenvio] = useState(false);
   const pendiente = cambios.abierto?.estado === 'pending_payment' ? cambios.abierto : null;
 
   useEffect(() => {
@@ -149,6 +151,15 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
       }
     : null;
 
+  const enviarCorreo = async () => {
+    if (!pendiente) return;
+    setEnviando(true);
+    const r = await cambios.enviarCorreo(pendiente.id);
+    setEnviando(false);
+    toast(r.ok ? { title: t('correoEnviado') } : { title: r.error ?? t('error'), variant: 'destructive' });
+    if (r.ok) await cambios.recargar();
+  };
+
   if (pendiente && datosPlantilla) {
     return (
       <Dialogo
@@ -183,19 +194,40 @@ export function CambiarProductosDialog({ order, organizationId, abierto, onAbier
               className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
               disabled={!order.customer_email || enviando}
               title={!order.customer_email ? t('sinCorreo') : undefined}
-              onClick={async () => {
-                setEnviando(true);
-                const r = await cambios.enviarCorreo(pendiente.id);
-                setEnviando(false);
-                toast(r.ok ? { title: t('correoEnviado') } : { title: r.error ?? t('error'), variant: 'destructive' });
-              }}
+              onClick={() => (pendiente.email_sent_at ? setConfirmarReenvio(true) : void enviarCorreo())}
             >
               <Mail className="size-4" aria-hidden="true" />
               {t('email')}
             </button>
           </div>
+          {pendiente.email_sent_at && (
+            <p className="text-xs text-fg-secondary" role="status">
+              {t('correoEnviadoA', {
+                correo: pendiente.email_sent_to_masked ?? '',
+                fecha: formatDateInTz(pendiente.email_sent_at, timezone, { day: '2-digit', month: '2-digit' }),
+                hora: formatTime(pendiente.email_sent_at),
+              })}
+              {' · '}
+              {t('correoVeces', { n: Number(pendiente.email_sent_count ?? 1) })}
+            </p>
+          )}
           {datosPlantilla.vence && <p className="text-xs text-fg-secondary">{t('vence', { fecha: datosPlantilla.vence })}</p>}
         </div>
+        <ConfirmDialog
+          abierto={confirmarReenvio}
+          onAbiertoChange={setConfirmarReenvio}
+          titulo={t('reenviarTitulo')}
+          descripcion={t('reenviarDescripcion', { correo: pendiente.email_sent_to_masked ?? '', n: Number(pendiente.email_sent_count ?? 1) })}
+          textoConfirmar={t('reenviar')}
+          textoCancelar={t('cerrar')}
+          tono="marca"
+          icono={Mail}
+          cargando={enviando}
+          onConfirmar={async () => {
+            await enviarCorreo();
+            setConfirmarReenvio(false);
+          }}
+        />
       </Dialogo>
     );
   }

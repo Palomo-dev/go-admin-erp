@@ -31,6 +31,7 @@ import { anchoEfectivo, cambioAncho } from './espacioUnico';
 import { espacioSeccion } from '@/lib/website/espacioSeccion';
 import { clavesPropiasTarjeta, esSeccionTarjetaProducto, heredadoTarjetaSeccion, restablecerClaveTarjeta, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
+import { campoLayoutCategorias } from './layoutCategorias';
 import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
@@ -121,6 +122,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       // PAGINA-01: «Mostrar paginación» se pinta una vez, dentro del panel de paginación.
       if (c.key === 'show_pagination' && (TIPOS_PAGINACION as readonly string[]).includes(s.section_type)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
+      if (!campoLayoutCategorias(c, contenido, s.section_type)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
       if (c.type === 'repeater' && c.key === 'items') {
         const conErp = definicion?.contentFields.some((x) => x.type === 'entity' && x.entity === 'category');
@@ -128,7 +130,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         if (conErp && (!Array.isArray(items) || items.length === 0)) return false;
       }
       return true;
-    });
+    }).map((c) => campoLayoutCategorias(c, contenido, s.section_type) ?? c);
 
   const pintarCampo = (c: ContentFieldDef) => {
     if (c.type === 'carta') {

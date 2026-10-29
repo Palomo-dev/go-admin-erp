@@ -5,6 +5,7 @@
  * SQL (fn_web_order_reembolso_reservar), que bloquea la fila del pedido: dos peticiones simultáneas
  * se serializan y la segunda ve lo que reservó la primera. Si el saldo queda en 0, la misma función
  * deja el pedido en refunded. Si la nota crédito falla, el saldo se devuelve (fn_web_order_reembolso_cerrar).
+ * Sin la migración 20261028220000 (42P01/42883/PGRST202) usa el comportamiento anterior (e64eefcb) y avisa en el log.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebOrder } from '@/lib/services/webOrdersService';
@@ -49,6 +50,9 @@ export function mensajeRechazoReembolso(r: { error?: string; disponible?: number
   }
 }
 
+/** Errores de «la migración aún no está aplicada»: tabla o función inexistente. */
+const SIN_MIGRACION = new Set(['42P01', '42883', 'PGRST202', 'PGRST205']);
+
 export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: string, input: ReembolsoInput): Promise<ReembolsoResultado> {
   const reason = (input.reason || 'Reembolso solicitado por la pasarela de pago').toString();
   const partialItems = Array.isArray(input.items) ? input.items : [];
@@ -69,15 +73,29 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
     p_motivo: reason,
     p_reference: input.reference ? String(input.reference).slice(0, 120) : null,
   });
-  if (errReserva) {
-    // Sin la migración 20261028220000 no hay forma segura de topar parciales: se rechazan.
-    console.error('[Refund] fn_web_order_reembolso_reservar:', errReserva.message);
-    return { status: 503, body: { error: 'Los reembolsos no están disponibles: falta aplicar la migración de tope de reembolsos.', code: 'SIN_TOPE' } };
-  }
-  const r = reserva as {
+  type Reserva = {
     ok: boolean; error?: string; ya_registrado?: boolean; refund_id?: string; monto?: number; completo?: boolean;
     reembolsado_antes?: number; restante?: number; disponible?: number; reembolsado?: number; solicitado?: number; payment_status?: string;
   };
+  let r: Reserva;
+  let legado = false;
+  if (errReserva) {
+    if (!SIN_MIGRACION.has(String((errReserva as { code?: string }).code ?? ''))) {
+      console.error('[Refund] fn_web_order_reembolso_reservar:', errReserva.message);
+      return { status: 500, body: { error: 'No se pudo registrar el reembolso.', code: 'RESERVA_FALLO' } };
+    }
+    // Migración 20261028220000 sin aplicar: comportamiento anterior (e64eefcb), sin tope acumulado.
+    console.warn('[Refund] web_order_refunds no instalado (migración 20261028220000 sin aplicar): reembolso sin tope acumulado.');
+    if (order.payment_status !== 'paid') {
+      return { status: 400, body: { error: `No se puede reembolsar un pedido con payment_status='${order.payment_status}'` } };
+    }
+    const totalPedido = Number(order.total) || 0;
+    const total = montoPedido === 0 || montoPedido >= totalPedido;
+    legado = true;
+    r = { ok: true, monto: total ? totalPedido : montoPedido, completo: total, reembolsado_antes: 0, restante: total ? 0 : totalPedido - montoPedido };
+  } else {
+    r = reserva as Reserva;
+  }
   if (!r.ok) {
     if (r.error === 'YA_REEMBOLSADO') return { status: 200, body: { success: true, message: 'El pedido ya fue reembolsado', alreadyRefunded: true } };
     return mensajeRechazoReembolso(r);
@@ -104,7 +122,7 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
       now,
     });
   } catch (e) {
-    await supabase.rpc('fn_web_order_reembolso_cerrar', { p_refund_id: r.refund_id, p_ok: false, p_credit_note_id: null });
+    if (!legado) await supabase.rpc('fn_web_order_reembolso_cerrar', { p_refund_id: r.refund_id, p_ok: false, p_credit_note_id: null });
     throw e;
   }
 
@@ -161,8 +179,16 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
 
   // 7. El estado (refunded/cancelled al llegar a 0) ya lo puso la función SQL. Aquí solo la nota.
   const nota = `[REEMBOLSO ${completo ? 'FINAL' : 'PARCIAL'} ${now}] ${monto} · ${reason}${completo ? '' : ` · restante ${Number(r.restante ?? 0)}`}`;
-  await supabase.from('web_orders').update({ internal_notes: [order.internal_notes, nota].filter(Boolean).join('\n'), updated_at: now }).eq('id', order.id);
-  await supabase.rpc('fn_web_order_reembolso_cerrar', { p_refund_id: r.refund_id, p_ok: true, p_credit_note_id: nc.creditNoteId ?? null });
+  if (legado && completo) {
+    // Sin la tabla, el estado lo pone la ruta como antes.
+    await supabase
+      .from('web_orders')
+      .update({ payment_status: 'refunded', status: 'cancelled', cancelled_at: now, cancellation_reason: `Reembolso: ${reason}`, updated_at: now })
+      .eq('id', order.id);
+  } else {
+    await supabase.from('web_orders').update({ internal_notes: [order.internal_notes, nota].filter(Boolean).join('\n'), updated_at: now }).eq('id', order.id);
+  }
+  if (!legado) await supabase.rpc('fn_web_order_reembolso_cerrar', { p_refund_id: r.refund_id, p_ok: true, p_credit_note_id: nc.creditNoteId ?? null });
 
   return {
     status: 200,
@@ -170,7 +196,8 @@ export async function reembolsarPedidoWeb(supabase: SupabaseClient, orderId: str
       success: true,
       orderId: order.id,
       orderNumber: order.order_number,
-      refundId: r.refund_id,
+      refundId: r.refund_id ?? null,
+      ...(legado ? { aviso: 'Reembolso sin tope acumulado: migración 20261028220000 sin aplicar.' } : {}),
       refundAmount: monto,
       isFullRefund: completo,
       restante: Number(r.restante ?? 0),

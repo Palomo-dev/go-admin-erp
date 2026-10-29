@@ -6,7 +6,7 @@ const nc = crearNotaCreditoPedidoWeb as jest.Mock;
 
 type Rpc = { name: string; args: Record<string, unknown> };
 
-function db(reserva: unknown, opts: { order?: Record<string, unknown>; rpcError?: { message: string } } = {}) {
+function db(reserva: unknown, opts: { order?: Record<string, unknown>; rpcError?: { message: string; code?: string } } = {}) {
   const rpcs: Rpc[] = [];
   const updates: Array<{ table: string; values: Record<string, unknown> }> = [];
   const order = { id: 'o1', order_number: 'WO-1', organization_id: 1, branch_id: 2, payment_status: 'paid', total: 100000, internal_notes: null, customer_id: null, sale_id: null,
@@ -88,9 +88,34 @@ describe('reembolsarPedidoWeb · tope', () => {
     expect(nc).not.toHaveBeenCalled();
   });
 
-  it('sin la migración (función inexistente) rechaza con 503 en vez de reembolsar sin tope', async () => {
-    const r = await reembolsarPedidoWeb(db(null, { rpcError: { message: 'function does not exist' } }).client, 'o1', { amount: 1000 });
-    expect(r.status).toBe(503);
+  it.each(['42P01', '42883', 'PGRST202'])('sin la migración (%s): parcial con el comportamiento anterior, no cancela, avisa en el log', async (code) => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const d = db(null, { rpcError: { code, message: 'no existe' } });
+    const r = await reembolsarPedidoWeb(d.client, 'o1', { amount: 30000 });
+    expect(r.status).toBe(200);
+    expect(nc.mock.calls[0][2]).toMatchObject({ isFullRefund: false, monto: 30000 });
+    expect(d.updates.some((u) => u.values.payment_status)).toBe(false);
+    expect(d.updates.some((u) => String(u.values.internal_notes ?? '').includes('REEMBOLSO PARCIAL'))).toBe(true);
+    expect(d.rpcs.some((x) => x.name === 'fn_web_order_reembolso_cerrar')).toBe(false);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('20261028220000'));
+    expect(r.body.aviso).toMatch(/sin tope/);
+    warn.mockRestore();
+  });
+
+  it('sin la migración: total como antes (refunded/cancelled y devuelve stock)', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const d = db(null, { rpcError: { code: '42883', message: 'no existe' } });
+    const r = await reembolsarPedidoWeb(d.client, 'o1', {});
+    expect(nc.mock.calls[0][2]).toMatchObject({ isFullRefund: true, monto: 100000 });
+    expect(d.updates.some((u) => u.values.payment_status === 'refunded' && u.values.status === 'cancelled')).toBe(true);
+    expect(d.rpcs.filter((x) => x.name === 'fn_stock_entrada_al_costo')).toHaveLength(1);
+    expect(r.body.isFullRefund).toBe(true);
+  });
+
+  it('otro error de la reserva ⇒ 500, no reembolsa', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await reembolsarPedidoWeb(db(null, { rpcError: { code: '57014', message: 'timeout' } }).client, 'o1', { amount: 1000 });
+    expect(r.status).toBe(500);
     expect(nc).not.toHaveBeenCalled();
   });
 

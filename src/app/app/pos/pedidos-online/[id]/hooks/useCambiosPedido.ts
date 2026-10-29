@@ -17,6 +17,10 @@ export interface CambioPedido {
   created_at: string;
   applied_at: string | null;
   cancelled_at: string | null;
+  /** Pago que llegó con el cambio ya cancelado o vencido (no se aplicó). */
+  late_payment_at?: string | null;
+  alerta?: string | null;
+  link_disabled_at?: string | null;
 }
 
 export interface RespuestaApi<T> {

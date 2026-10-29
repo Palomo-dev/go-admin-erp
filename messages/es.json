@@ -36598,6 +36598,10 @@
         "gateway": "Reembolso por pasarela",
         "manual": "Reembolso parcial",
         "customer_credit": "Saldo a favor"
+      },
+      "pagoTardio": {
+        "titulo": "Llegó un pago de {monto} a un cambio ya cerrado",
+        "descripcion": "No se aplicó al pedido. Revísalo en la pasarela y devuélvelo o rehaz el cambio a mano. Recibido: {fecha}."
       }
     }
   },

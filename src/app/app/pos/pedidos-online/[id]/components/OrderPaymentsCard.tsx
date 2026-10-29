@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FilaDato, ListaDatos } from '@/components/kit';
+import { AvisoTonal, FilaDato, ListaDatos } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
@@ -87,6 +87,17 @@ export function OrderPaymentsCard({ order, pagos, porCobrarEnCaja, cajaEtiqueta,
         ) : (
           !porCobrarEnCaja && <p className="text-sm text-fg-secondary">{t('pagos.sinPagos')}</p>
         )}
+
+        {cambios
+          .filter((c) => c.late_payment_at)
+          .map((c) => (
+            <AvisoTonal
+              key={`tardio-${c.id}`}
+              tono="advertencia"
+              titulo={t('cambio.pagoTardio.titulo', { monto: formatear(Math.abs(Number(c.delta_total))) })}
+              descripcion={t('cambio.pagoTardio.descripcion', { fecha: formatDateTime(c.late_payment_at as string) })}
+            />
+          ))}
 
         {cambios.length > 0 && (
           <div className="space-y-2 border-t border-line pt-3">

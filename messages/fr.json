@@ -36583,6 +36583,10 @@
         "gateway": "Remboursement passerelle",
         "manual": "Remboursement partiel",
         "customer_credit": "Avoir client"
+      },
+      "pagoTardio": {
+        "titulo": "Un paiement de {monto} est arrivé pour une modification clôturée",
+        "descripcion": "Il n'a pas été appliqué à la commande. Vérifiez-le sur la passerelle et remboursez-le ou refaites la modification à la main. Reçu : {fecha}."
       }
     }
   },

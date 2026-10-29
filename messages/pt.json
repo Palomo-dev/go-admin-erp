@@ -36593,6 +36593,10 @@
         "gateway": "Reembolso pelo gateway",
         "manual": "Reembolso parcial",
         "customer_credit": "Crédito do cliente"
+      },
+      "pagoTardio": {
+        "titulo": "Chegou um pagamento de {monto} para uma alteração já encerrada",
+        "descripcion": "Não foi aplicado ao pedido. Verifique no gateway e reembolse ou refaça a alteração manualmente. Recebido: {fecha}."
       }
     }
   },

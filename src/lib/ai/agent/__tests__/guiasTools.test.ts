@@ -7,8 +7,8 @@ import fs from 'fs';
 import path from 'path';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AssistantCapabilities } from '@/lib/ai/assistant/capabilities';
-import { GUIAS, METODOS_PAGO_POR_SUCURSAL_DISPONIBLE, RUTA_CARGOS, buscarGuias } from '../guias/guias';
-import { buscarGuia, revisarPermisosUsuario } from '../tools/guias';
+import { GUIAS, RUTA_CARGOS, buscarGuias } from '../guias/guias';
+import { buscarGuia, columnaExiste, limpiarCacheColumnas, revisarPermisosUsuario } from '../tools/guias';
 import { getTool, resetRegistry } from '../toolRegistry';
 import type { ToolContext } from '../types';
 
@@ -74,20 +74,15 @@ describe('guías: rutas reales', () => {
       expect(g.rutas.length).toBeGreaterThan(0);
     }
   });
-
-  it('método de pago por sucursal: la marca coincide con el formulario real', () => {
-    const form = fs.readFileSync(path.join(RAIZ, 'src/components/finanzas/metodos-pago/PaymentMethodForm.tsx'), 'utf8');
-    // Si el selector de sucursales llega al formulario, hay que activar la guía (y viceversa).
-    expect(METODOS_PAGO_POR_SUCURSAL_DISPONIBLE).toBe(form.includes('branch_ids'));
-  });
 });
 
 describe('buscar_guia', () => {
+  beforeEach(() => limpiarCacheColumnas());
   it('«¿cómo creo un método de pago para una sucursal?» → guía por sucursal primero', async () => {
     const r = await buscarGuia.execute(ctx(caps(), sesion({})), { consulta: '¿Cómo creo un método de pago para una sucursal?' });
     const data = r.data as { guias: Array<{ id: string; disponible: boolean; rutas: Array<{ ruta: string }> }> };
     expect(data.guias[0].id).toBe('metodos-pago-sucursal');
-    expect(data.guias[0].disponible).toBe(METODOS_PAGO_POR_SUCURSAL_DISPONIBLE);
+    expect(data.guias[0].disponible).toBe(true);
     expect(data.guias[0].rutas[0].ruta).toBe('/app/finanzas/metodos-pago');
     expect(data.guias.map((g) => g.id)).toContain('metodos-pago');
   });
@@ -174,5 +169,56 @@ describe('registro', () => {
       expect(t?.risk).toBe('low');
       expect(t?.minLevel).toBe('read');
     }
+  });
+});
+
+describe('columnaExiste: caché de 5 minutos', () => {
+  beforeEach(() => limpiarCacheColumnas());
+
+  function sb(respuestas: Array<{ error: unknown } | 'lanza'>) {
+    const limit = jest.fn(async () => {
+      const r = respuestas.shift();
+      if (r === 'lanza') throw new Error('red caída');
+      return { data: [], ...(r as object) };
+    });
+    const cliente = { from: () => ({ select: () => ({ limit }) }) } as unknown as SupabaseClient;
+    return { cliente, limit };
+  }
+
+  it('cachea «existe» y «columna ausente» durante 5 minutos y vuelve a mirar después', async () => {
+    const { cliente, limit } = sb([{ error: { code: '42703', message: 'column x does not exist' } }, { error: null }]);
+    const c = ctx(caps(), cliente);
+    expect(await columnaExiste(c, 't', 'x', 0)).toBe(false);
+    expect(await columnaExiste(c, 't', 'x', 4 * 60 * 1000)).toBe(false);
+    expect(limit).toHaveBeenCalledTimes(1);
+    expect(await columnaExiste(c, 't', 'x', 5 * 60 * 1000 + 1)).toBe(true);
+    expect(limit).toHaveBeenCalledTimes(2);
+  });
+
+  it('error de red o de base: false en esa llamada y NO se guarda', async () => {
+    const { cliente, limit } = sb(['lanza', { error: { code: '57P01', message: 'terminating connection' } }, { error: null }]);
+    const c = ctx(caps(), cliente);
+    expect(await columnaExiste(c, 't', 'y', 0)).toBe(false);
+    expect(await columnaExiste(c, 't', 'y', 1)).toBe(false);
+    expect(await columnaExiste(c, 't', 'y', 2)).toBe(true);
+    expect(limit).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('guías: roles del sistema y quitar promoción', () => {
+  it('roles avisa que los del sistema son de solo lectura y cómo cambiarlos', () => {
+    const g = GUIAS.find((x) => x.id === 'roles-permisos')!;
+    const texto = g.pasos.join(' ');
+    expect(texto).toMatch(/solo lectura/);
+    expect(texto).toMatch(/duplícalos/);
+    expect(texto).toMatch(/cargo/);
+  });
+
+  it('quitar promoción: Empleado no se edita, duplicar, cargo asignado y columna Otras acciones', () => {
+    const texto = GUIAS.find((x) => x.id === 'quitar-promocion')!.pasos.join(' ');
+    expect(texto).toMatch(/«Empleado».*no se puede editar/);
+    expect(texto).toMatch(/duplicar/);
+    expect(texto).toMatch(/tener ese cargo asignado/);
+    expect(texto).toContain('POS, columna «Otras acciones»');
   });
 });

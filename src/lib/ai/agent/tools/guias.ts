@@ -24,17 +24,42 @@ const READ_PREVIEW: ToolPreview = {
   reversible: true,
 };
 
+/** Caché en memoria de `columnaExiste` (por proceso). Solo respuestas reales de la base. */
+const TTL_COLUMNA_MS = 5 * 60 * 1000;
+const cacheColumnas = new Map<string, { existe: boolean; vence: number }>();
+
+/** Solo para tests. */
+export function limpiarCacheColumnas(): void {
+  cacheColumnas.clear();
+}
+
+/** «La columna no existe»: 42703 de Postgres o PGRST204 de PostgREST. */
+function esColumnaAusente(error: { code?: string; message?: string }): boolean {
+  return error.code === '42703' || error.code === 'PGRST204' || /column .* does not exist/i.test(error.message ?? '');
+}
+
 /**
  * ¿Existe en la base la columna que la guía necesita? Solo lectura (`limit 0`).
- * Ante cualquier error se responde «no»: nunca se afirma algo sin comprobarlo.
+ * Se cachea unos 5 minutos lo que la base contesta (existe o «columna
+ * ausente»). Un error de red o cualquier otro error de la base responde
+ * `false` en ESTA llamada y no se guarda: nunca se afirma algo sin comprobarlo,
+ * pero un fallo pasajero tampoco lo apaga 5 minutos.
  */
-async function columnaExiste(ctx: ToolContext, tabla: string, columna: string): Promise<boolean> {
+export async function columnaExiste(ctx: ToolContext, tabla: string, columna: string, ahora: number = Date.now()): Promise<boolean> {
+  const clave = `${tabla}.${columna}`;
+  const previo = cacheColumnas.get(clave);
+  if (previo && previo.vence > ahora) return previo.existe;
+  let existe: boolean;
   try {
     const { error } = await ctx.supabase.from(tabla).select(columna).limit(0);
-    return !error;
+    if (!error) existe = true;
+    else if (esColumnaAusente(error as { code?: string; message?: string })) existe = false;
+    else return false;
   } catch {
     return false;
   }
+  cacheColumnas.set(clave, { existe, vence: ahora + TTL_COLUMNA_MS });
+  return existe;
 }
 
 async function resolverDisponible(ctx: ToolContext, g: Guia): Promise<boolean> {

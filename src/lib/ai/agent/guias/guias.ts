@@ -39,14 +39,6 @@ export interface Guia {
 
 export const RUTA_CARGOS = '/app/roles?vista=cargos';
 
-/**
- * Métodos de pago por sucursal: hay un trabajo en curso que agrega
- * `branch_ids` a `organization_payment_methods` y un selector en
- * `PaymentMethodForm`. Mientras no esté en el formulario, la guía lo marca
- * como no disponible (la prueba compara esta constante con el formulario).
- */
-export const METODOS_PAGO_POR_SUCURSAL_DISPONIBLE = true;
-
 export const GUIAS: readonly Guia[] = [
   {
     id: 'metodos-pago',
@@ -77,7 +69,7 @@ export const GUIAS: readonly Guia[] = [
       'Puedes crear o activar el método en Finanzas > Métodos de pago; quedará en todas las sucursales.',
     ],
     rutas: [{ ruta: '/app/finanzas/metodos-pago', nombre: 'Finanzas > Métodos de pago' }],
-    disponible: METODOS_PAGO_POR_SUCURSAL_DISPONIBLE,
+    // La disponibilidad la decide solo la base (`columnaExiste` en tools/guias.ts).
     requiereColumna: { tabla: 'organization_payment_methods', columna: 'branch_ids' },
   },
   {
@@ -99,24 +91,28 @@ export const GUIAS: readonly Guia[] = [
     titulo: 'Dejar que el cajero quite una promoción de una línea',
     palabras: ['quitar promocion', 'quitar la promocion', 'quite una promocion', 'remover promocion', 'cajero promocion', 'pos.promotions.remove'],
     pasos: [
-      'Hace falta el permiso «Quitar promoción de una línea» (pos.promotions.remove). Los administradores ya lo tienen.',
-      'Un administrador abre Roles y permisos > Cargos y entra al cargo del cajero.',
-      'En la matriz, módulo POS, marca «Quitar promoción de una línea» y guarda.',
+      'Hace falta el permiso «Quitar promoción de una línea» (pos.promotions.remove). Los administradores (roles 1 y 2 y superadministradores) ya lo tienen.',
+      'El rol «Empleado» es un rol del sistema y no se puede editar. Hay dos caminos: dar el permiso en el cargo del cajero (recomendado) o duplicar «Empleado» en Roles y permisos y editar la copia.',
+      'Con el cargo: un administrador abre Roles y permisos > Cargos y entra al cargo del cajero.',
+      'En la matriz, en POS, columna «Otras acciones», marca «Quitar promoción de una línea» y guarda.',
+      'El cajero tiene que tener ese cargo asignado: el editor del cargo muestra quién lo tiene. Si no aparece, asígnale el cargo.',
       'El cajero vuelve a entrar al POS; en el carrito verá la acción para quitar la promoción de la línea.',
     ],
     rutas: [
       { ruta: RUTA_CARGOS, nombre: 'Roles y permisos > Cargos' },
       { ruta: '/app/roles/cargos/[id]', nombre: 'Editor del cargo' },
+      { ruta: '/app/roles', nombre: 'Roles y permisos (duplicar un rol)' },
     ],
     permisos: ['pos.promotions.remove'],
   },
   {
     id: 'roles-permisos',
     titulo: 'Roles y permisos',
-    palabras: ['rol', 'roles', 'permiso', 'permisos', 'acceso', 'que puede hacer'],
+    palabras: ['rol', 'roles', 'permiso', 'permisos', 'acceso', 'que puede hacer', 'duplicar rol', 'rol empleado'],
     pasos: [
       'Abre Roles y permisos.',
       'En la vista Roles, entra a un rol para ver y cambiar sus permisos por módulo.',
+      'Los roles del sistema (como «Empleado») son de solo lectura y no se pueden editar. Para cambiarlos, duplícalos y edita la copia, o da el permiso en un cargo.',
       'Usa «Comparar» para ver las diferencias entre dos roles.',
       'Para dar un permiso solo a un grupo de personas, hazlo en su cargo (vista Cargos): el cargo manda sobre el rol.',
     ],
@@ -124,6 +120,7 @@ export const GUIAS: readonly Guia[] = [
       { ruta: '/app/roles', nombre: 'Roles y permisos' },
       { ruta: '/app/roles/[id]', nombre: 'Editor del rol' },
       { ruta: '/app/roles?vista=comparar', nombre: 'Comparar roles' },
+      { ruta: RUTA_CARGOS, nombre: 'Roles y permisos > Cargos' },
     ],
   },
   {

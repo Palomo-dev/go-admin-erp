@@ -91,10 +91,15 @@ const nextConfig = {
   // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
   // cpus: 1 = solo 1 worker de webpack (en vez de 4 por defecto).
   // workerThreads: false = usar proceso hijo en vez de thread (menos memoria).
-  // Con 1 worker × 6GB + 1GB main = 7GB, cabe en 8GB de Vercel.
+  // Heap de 5 GB (vercel.json) + main ≈ 6-7 GB, cabe en 8 GB de Vercel.
   experimental: {
     workerThreads: false,
     cpus: 1,
+    // 28-oct-2026: a778d949 murió por OOM (SIGKILL) generando las páginas
+    // estáticas (276/369) con 6 GB de heap. Bajamos el heap a 5 GB en
+    // vercel.json y limitamos a 2 las páginas en paralelo por worker para
+    // que el pico de memoria quepa en la máquina de 8 GB.
+    staticGenerationMaxConcurrency: 2,
     // Solo en el build del desktop: el servidor standalone NO precarga todas
     // las rutas al arrancar. Con el default (true) `next-server` evalúa los
     // manifests de las ~cientos de páginas y API routes en el hilo principal

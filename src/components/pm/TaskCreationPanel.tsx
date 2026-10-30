@@ -236,8 +236,8 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
           setPmsActive(!!data);
           if (data) {
             supabase.from('spaces')
-              .select('id, label, space_types(name)')
-              .eq('organization_id', orgId)
+              .select('id, label, space_types(name), branches!inner(organization_id)')
+              .eq('branches.organization_id', orgId)
               .limit(200)
               .then(({ data: spaceData }) => {
                 setSpaces((spaceData || []).map((s: any) => ({

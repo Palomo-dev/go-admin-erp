@@ -13,6 +13,7 @@ import MaintenanceService, {
   type MaintenanceOrder,
   type MaintenanceStats as Stats,
 } from '@/lib/services/maintenanceService';
+import { cargaAislada } from '@/lib/utils/cargaAislada';
 import SpacesService, { type Space } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -21,7 +22,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 export default function MaintenancePage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const { branchFilter, selectedBranchId } = useBranch();
+  const { branchFilter, selectedBranchId, isLoading: branchLoading } = useBranch();
 
   // Estado de datos
   const [orders, setOrders] = useState<MaintenanceOrder[]>([]);
@@ -48,10 +49,10 @@ export default function MaintenancePage() {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && !branchLoading) {
       loadData();
     }
-  }, [organization?.id, branchFilter]);
+  }, [organization?.id, branchFilter, branchLoading]);
 
   const loadData = async () => {
     try {
@@ -59,16 +60,25 @@ export default function MaintenancePage() {
 
       const branchId = branchFilter ?? undefined;
 
+      const fallos: string[] = [];
       const [ordersData, statsData, spacesData, usersData] = await Promise.all([
-        MaintenanceService.getOrders({ branch_id: branchId }),
-        MaintenanceService.getStats(branchId),
-        SpacesService.getSpaces({ organizationId: organization!.id, branchId: branchId }),
-        MaintenanceService.getAvailableUsers(organization!.id),
+        cargaAislada(MaintenanceService.getOrders({ branch_id: branchId }), [] as Awaited<ReturnType<typeof MaintenanceService.getOrders>>, 'órdenes', fallos),
+        cargaAislada(MaintenanceService.getStats(branchId), null as unknown as Awaited<ReturnType<typeof MaintenanceService.getStats>>, 'estadísticas', fallos),
+        cargaAislada(SpacesService.getSpaces({ organizationId: organization!.id, branchId: branchId }), [] as Space[], 'espacios', fallos),
+        cargaAislada(MaintenanceService.getAvailableUsers(organization!.id), [] as Awaited<ReturnType<typeof MaintenanceService.getAvailableUsers>>, 'usuarios', fallos),
       ]);
+
+      if (fallos.length > 0) {
+        toast({
+          title: 'Carga parcial',
+          description: `No se pudo cargar: ${fallos.join(', ')}.`,
+          variant: 'destructive',
+        });
+      }
 
       setOrders(ordersData);
       setFilteredOrders(ordersData);
-      setStats(statsData);
+      if (statsData) setStats(statsData);
       setSpaces(spacesData);
       setUsers(usersData);
     } catch (error) {

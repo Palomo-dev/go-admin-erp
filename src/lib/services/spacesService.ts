@@ -82,9 +82,12 @@ class SpacesService {
           space_types (
             *,
             category:space_categories!space_types_category_code_fkey (*)
-          )
+          ),
+          branches!inner ( organization_id )
         `)
-        .eq('organization_id', filters.organizationId)
+        // public.spaces NO tiene organization_id (42703): se filtra por la
+        // organización de la sucursal (inner join a branches).
+        .eq('branches.organization_id', filters.organizationId)
         .order('label', { ascending: true });
 
       if (filters.branchId) {

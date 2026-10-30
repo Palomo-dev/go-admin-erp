@@ -34,6 +34,7 @@ import {
 } from '@/components/pms/espacios';
 import { Badge } from '@/components/ui/badge';
 import { Layers } from 'lucide-react';
+import { cargaAislada } from '@/lib/utils/cargaAislada';
 import SpacesService, { type Space, type SpaceType, type SpaceStatus, type SpaceCategory } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -103,13 +104,22 @@ export default function EspaciosPage() {
       setIsRefreshing(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
+      const fallos: string[] = [];
       const [spacesData, typesData, categoriesData, zonesData, orgSvcs] = await Promise.all([
-        SpacesService.getSpaces({ organizationId: organization.id, branchId: branchFilter ?? undefined }),
-        SpacesService.getSpaceTypes(organization.id),
-        SpacesService.getSpaceCategories(),
-        branchFilter ? SpacesService.getFloorZones(branchFilter) : Promise.resolve([]),
-        spaceServicesService.getOrgServices(organization.id),
+        cargaAislada(SpacesService.getSpaces({ organizationId: organization.id, branchId: branchFilter ?? undefined }), [] as Space[], 'espacios', fallos),
+        cargaAislada(SpacesService.getSpaceTypes(organization.id), [] as Awaited<ReturnType<typeof SpacesService.getSpaceTypes>>, 'tipos de espacio', fallos),
+        cargaAislada(SpacesService.getSpaceCategories(), [] as Awaited<ReturnType<typeof SpacesService.getSpaceCategories>>, 'categorías', fallos),
+        cargaAislada(branchFilter ? SpacesService.getFloorZones(branchFilter) : Promise.resolve([] as string[]), [] as string[], 'zonas', fallos),
+        cargaAislada(spaceServicesService.getOrgServices(organization.id), [] as Awaited<ReturnType<typeof spaceServicesService.getOrgServices>>, 'servicios', fallos),
       ]);
+
+      if (fallos.length > 0) {
+        toast({
+          title: 'Carga parcial',
+          description: `No se pudo cargar: ${fallos.join(', ')}.`,
+          variant: 'destructive',
+        });
+      }
 
       setSpaces(spacesData);
       setSpaceTypes(typesData);

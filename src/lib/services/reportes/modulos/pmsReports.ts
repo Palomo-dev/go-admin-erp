@@ -34,7 +34,7 @@ export const pmsReports: DefinicionModulo[] = [
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       // Filtrar spaces por branch_id cuando branchId != null
-      let spacesQuery = db.from('spaces').select('id, status').eq('organization_id', orgId);
+      let spacesQuery = db.from('spaces').select('id, status, branches!inner(organization_id)').eq('branches.organization_id', orgId);
       spacesQuery = applyBranchFilter(spacesQuery, branchId);
       const { data: spaces } = await spacesQuery;
 
@@ -133,7 +133,7 @@ export const pmsReports: DefinicionModulo[] = [
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       // Obtener spaceIds de la sucursal (o todas) para filtrar housekeeping_tasks
-      let spacesQuery = db.from('spaces').select('id').eq('organization_id', orgId);
+      let spacesQuery = db.from('spaces').select('id, branches!inner(organization_id)').eq('branches.organization_id', orgId);
       spacesQuery = applyBranchFilter(spacesQuery, branchId);
       const { data: orgSpaces } = await spacesQuery;
       const spaceIds = (orgSpaces ?? []).map((s: Record<string, unknown>) => s.id);

@@ -583,55 +583,6 @@ class CheckoutService {
       }
     }
 
-    // Obtener datos actuales de la reserva para metadata
-    const { data: currentReservation } = await supabase
-      .from('reservations')
-      .select('metadata, checkout, checkin')
-      .eq('id', reservationId)
-      .single();
-
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    // Actualizar estado de la reserva con campos de auditoría
-    const { error: reservationError } = await supabase
-      .from('reservations')
-      .update({
-        status: 'checked_out',
-        updated_at: new Date().toISOString(),
-        // Si se actualiza la fecha (anticipado o tardío)
-        ...(updateCheckoutDate ? {
-          checkout: todayStr,
-          end_date: todayStr,
-        } : {}),
-        // Campos de auditoría
-        actual_checkout_at: new Date().toISOString(),
-        checkout_by: userId || null,
-        checkout_notes: notes || null,
-        // Preservar metadata existente y registrar noches extra
-        metadata: {
-          ...(currentReservation?.metadata || {}),
-          ...(extraNightsCount > 0 ? {
-            late_checkout: {
-              original_checkout: currentReservation?.checkout,
-              actual_checkout: todayStr,
-              extra_nights: extraNightsCount,
-              extra_charge: extraNightsCharge,
-            },
-          } : {}),
-        },
-      })
-      .eq('id', reservationId);
-
-    if (reservationError) throw reservationError;
-
-    // Si se actualizó la fecha, actualizar también reservation_spaces
-    if (updateCheckoutDate) {
-      await supabase
-        .from('reservation_spaces')
-        .update({ checkout: todayStr })
-        .eq('reservation_id', reservationId);
-    }
-
     // Establecer contexto de organización para RLS antes de operar con folios
     try {
       const orgId = await this.getOrganizationIdFromReservation(reservationId);
@@ -684,6 +635,58 @@ class CheckoutService {
         console.error('Error cerrando folio:', { folioId: folio.id, error: folioError });
         throw folioError;
       }
+    }
+
+    // 3. Marcar la reserva como checked_out SOLO después de facturar y cerrar
+    //    el folio: si algo falla antes, la reserva no queda a medias
+    //    (checked_out con folio abierto).
+    // Obtener datos actuales de la reserva para metadata
+    const { data: currentReservation } = await supabase
+      .from('reservations')
+      .select('metadata, checkout, checkin')
+      .eq('id', reservationId)
+      .single();
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Actualizar estado de la reserva con campos de auditoría
+    const { error: reservationError } = await supabase
+      .from('reservations')
+      .update({
+        status: 'checked_out',
+        updated_at: new Date().toISOString(),
+        // Si se actualiza la fecha (anticipado o tardío)
+        ...(updateCheckoutDate ? {
+          checkout: todayStr,
+          end_date: todayStr,
+        } : {}),
+        // Campos de auditoría
+        actual_checkout_at: new Date().toISOString(),
+        checkout_by: userId || null,
+        checkout_notes: notes || null,
+        // Preservar metadata existente y registrar noches extra
+        metadata: {
+          ...(currentReservation?.metadata || {}),
+          ...(extraNightsCount > 0 ? {
+            late_checkout: {
+              original_checkout: currentReservation?.checkout,
+              actual_checkout: todayStr,
+              extra_nights: extraNightsCount,
+              extra_charge: extraNightsCharge,
+            },
+          } : {}),
+        },
+      })
+      .eq('id', reservationId);
+
+    if (reservationError) throw reservationError;
+
+    // Si se actualizó la fecha, actualizar también reservation_spaces
+    if (updateCheckoutDate) {
+      await supabase
+        .from('reservation_spaces')
+        .update({ checkout: todayStr })
+        .eq('reservation_id', reservationId);
     }
 
     // Crear tarea de limpieza para las habitaciones
@@ -805,6 +808,30 @@ class CheckoutService {
     const isPaid = totalPaid >= finalTotal && finalTotal > 0;
     const remainingBalance = Math.max(0, finalTotal - totalPaid);
 
+    // Idempotencia: si un intento anterior de checkout ya creó la venta y la
+    // factura (y falló después, al cerrar el folio), no se duplican.
+    const { data: previousSales } = await supabase
+      .from('sales')
+      .select('id')
+      .eq('organization_id', reservation.organization_id)
+      .eq('source', 'reservation')
+      .or(`notes.eq."Checkout reserva ${reservationId}",notes.eq."Checkout reserva ${reservationId.slice(0, 8)}"`)
+      .limit(1);
+    if (previousSales && previousSales.length > 0) {
+      const prevSaleId = previousSales[0].id;
+      const { data: prevInvoice } = await supabase
+        .from('invoice_sales')
+        .select('id')
+        .eq('sale_id', prevSaleId)
+        .limit(1);
+      if (prevInvoice && prevInvoice.length > 0) {
+        // Normaliza la nota al UUID completo para que el trigger de cierre la reconozca.
+        await supabase.from('sales').update({ notes: `Checkout reserva ${reservationId}` }).eq('id', prevSaleId);
+        console.log('createSaleFromFolio: venta/factura ya existían, se reutilizan', prevSaleId);
+        return;
+      }
+    }
+
     // Crear la venta
     // source='reservation' e include_in_cash_register=false: no entra en caja POS.
     const { data: sale, error: saleError } = await supabase
@@ -824,7 +851,11 @@ class CheckoutService {
         tax_included: taxIncluded,
         source: 'reservation',
         include_in_cash_register: false,
-        notes: `Checkout reserva ${reservationId.slice(0, 8)}`,
+        // UUID completo: el trigger fn_auto_journal_folio_close busca
+        // sales.notes LIKE '%Checkout reserva <uuid>%' para no duplicar factura.
+        // Con solo 8 caracteres no la encontraba e insertaba su propia factura
+        // con status 'confirmed' (no permitido por invoice_sales_status_check).
+        notes: `Checkout reserva ${reservationId}`,
         // sale_date: default now() de la base (hora oficial del servidor).
       })
       .select('id')

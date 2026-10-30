@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { MergeModal } from './MergeModal';
 import { CompanyContactsManager, type PendingContact } from '@/components/clientes/CompanyContactsManager';
@@ -70,7 +71,17 @@ interface ClienteDuplicado {
 }
 
 /** Mensaje de un error de Supabase o de JS; cadena vacía si no trae. */
+/** El correo ya pertenece a otro cliente de la organización (índice único unique_customer_email_per_org). */
+export function esCorreoDuplicado(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: string; message?: string; details?: string };
+  return /unique_customer_email_per_org/.test(`${e.message ?? ''} ${e.details ?? ''}`) || (e.code === '23505' && /email/i.test(`${e.message ?? ''} ${e.details ?? ''}`));
+}
+
+const MENSAJE_CORREO_DUPLICADO = 'Ya existe un cliente con ese correo en esta organización. No se puede crear otro con el mismo correo: usa el cliente existente o cambia el correo.';
+
 function mensajeDe(err: unknown): string {
+  if (esCorreoDuplicado(err)) return MENSAJE_CORREO_DUPLICADO;
   if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') return err.message;
   return '';
 }
@@ -755,6 +766,23 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     } catch (err) {
       console.error('Error en operación de fusión:', err);
       setError(mensajeDe(err) || t('avisos.errorOperacion'));
+      if (esCorreoDuplicado(err)) {
+        // Antes fallaba en silencio (el error quedaba arriba del formulario, fuera de vista).
+        const existente = duplicateClient;
+        toast({
+          title: 'Correo ya registrado',
+          description: MENSAJE_CORREO_DUPLICADO,
+          variant: 'destructive',
+          action: existente?.id ? (
+            <ToastAction altText="Usar cliente existente" onClick={() => (onSuccess ? onSuccess({ ...existente } as ClienteGuardado) : router.push(`/app/clientes/${existente.id}`))}>
+              Usar cliente existente
+            </ToastAction>
+          ) : undefined,
+        });
+      } else {
+        toast({ title: t('avisos.errorOperacion'), description: mensajeDe(err) || undefined, variant: 'destructive' });
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
       setDuplicateFound(false);

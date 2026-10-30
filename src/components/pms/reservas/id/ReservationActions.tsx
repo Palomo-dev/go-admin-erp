@@ -18,6 +18,7 @@ import {
   Receipt,
   MoreVertical,
   ArrowLeft,
+  LogOut,
 } from 'lucide-react';
 
 interface ReservationActionsProps {
@@ -29,6 +30,8 @@ interface ReservationActionsProps {
   onCancel: () => void;
   onInvoice: () => void;
   onReceipt: () => void;
+  /** Salida anticipada: solo para reservas con check-in (distinta de cancelar). */
+  onEarlyDeparture?: () => void;
 }
 
 export function ReservationActions({
@@ -39,8 +42,10 @@ export function ReservationActions({
   onCancel,
   onInvoice,
   onReceipt,
+  onEarlyDeparture,
 }: ReservationActionsProps) {
   const canCancel = ['tentative', 'confirmed'].includes(status);
+  const canEndStay = status === 'checked_in' && !!onEarlyDeparture;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -80,6 +85,16 @@ export function ReservationActions({
             <Receipt className="mr-2 h-4 w-4" />
             Generar Recibo
           </DropdownMenuItem>
+
+          {canEndStay && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onEarlyDeparture} className="text-amber-700 dark:text-amber-400">
+                <LogOut className="mr-2 h-4 w-4" />
+                Cancelar estadía (salida anticipada)
+              </DropdownMenuItem>
+            </>
+          )}
 
           {canCancel && (
             <>

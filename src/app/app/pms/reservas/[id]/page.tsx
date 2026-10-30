@@ -14,6 +14,7 @@ import {
   PaymentsTab,
   NotesTab,
 } from '@/components/pms/reservas/id';
+import { SalidaAnticipadaDialog } from '@/components/pms/reservas/id/SalidaAnticipadaDialog';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
@@ -38,6 +39,7 @@ export default function ReservationDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showEarlyDeparture, setShowEarlyDeparture] = useState(false);
 
   useEffect(() => {
     if (reservationId) {
@@ -196,8 +198,16 @@ export default function ReservationDetailPage() {
           onPrint={handlePrint}
           onDuplicate={handleDuplicate}
           onCancel={() => setShowCancelDialog(true)}
+          onEarlyDeparture={() => setShowEarlyDeparture(true)}
           onInvoice={handleInvoice}
           onReceipt={handleReceipt}
+        />
+
+        <SalidaAnticipadaDialog
+          reservationId={reservation.id}
+          open={showEarlyDeparture}
+          onOpenChange={setShowEarlyDeparture}
+          onDone={loadReservation}
         />
 
         {/* Header */}

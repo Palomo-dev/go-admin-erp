@@ -8,6 +8,7 @@ import reservationBlocksService, {
   BlockStats,
   CreateBlockData,
 } from '@/lib/services/reservationBlocksService';
+import { cargaAislada } from '@/lib/utils/cargaAislada';
 import SpacesService from '@/lib/services/spacesService';
 import SpaceTypesService from '@/lib/services/spaceTypesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -40,7 +41,7 @@ interface SpaceType {
 export default function BloqueosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const { branchFilter, selectedBranchId } = useBranch();
+  const { branchFilter, selectedBranchId, isLoading: branchLoading } = useBranch();
   const [blocks, setBlocks] = useState<ReservationBlock[]>([]);
   const [stats, setStats] = useState<BlockStats>({
     total: 0,
@@ -65,15 +66,24 @@ export default function BloqueosPage() {
     try {
       setIsLoading(true);
 
+      const fallos: string[] = [];
       const [blocksData, statsData, spacesData, typesData] = await Promise.all([
-        reservationBlocksService.getBlocks(organizationId, { branchId: branchId ?? undefined }),
-        reservationBlocksService.getStats(organizationId, branchId ?? undefined),
-        SpacesService.getSpaces({ organizationId, branchId: branchId ?? undefined }),
-        SpaceTypesService.getSpaceTypes(organizationId),
+        cargaAislada(reservationBlocksService.getBlocks(organizationId, { branchId: branchId ?? undefined }), [] as Awaited<ReturnType<typeof reservationBlocksService.getBlocks>>, 'bloqueos', fallos),
+        cargaAislada(reservationBlocksService.getStats(organizationId, branchId ?? undefined), null as unknown as Awaited<ReturnType<typeof reservationBlocksService.getStats>>, 'estadísticas', fallos),
+        cargaAislada(SpacesService.getSpaces({ organizationId, branchId: branchId ?? undefined }), [], 'espacios', fallos),
+        cargaAislada(SpaceTypesService.getSpaceTypes(organizationId), [] as Awaited<ReturnType<typeof SpaceTypesService.getSpaceTypes>>, 'tipos de espacio', fallos),
       ]);
 
+      if (fallos.length > 0) {
+        toast({
+          title: 'Carga parcial',
+          description: `No se pudo cargar: ${fallos.join(', ')}.`,
+          variant: 'destructive',
+        });
+      }
+
       setBlocks(blocksData);
-      setStats(statsData);
+      if (statsData) setStats(statsData);
       setSpaces(spacesData as Space[]);
       setSpaceTypes(typesData as SpaceType[]);
     } catch (error) {
@@ -89,8 +99,9 @@ export default function BloqueosPage() {
   };
 
   useEffect(() => {
+    if (branchLoading) return;
     loadData();
-  }, [organizationId, branchFilter, selectedBranchId]);
+  }, [organizationId, branchFilter, selectedBranchId, branchLoading]);
 
   const handleNewBlock = () => {
     if (branchId == null && selectedBranchId == null) {

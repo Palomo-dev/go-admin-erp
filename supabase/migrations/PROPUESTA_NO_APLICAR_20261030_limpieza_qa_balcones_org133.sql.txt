@@ -1,0 +1,57 @@
+-- PROPUESTA – NO APLICAR SIN APROBACIÓN DE JUAN.
+-- Limpieza de los datos QA del PMS en Hotel Balcones (org 133), 30-oct-2026.
+-- Ids verificados con SELECT (solo lectura) el 30-oct-2026 ~10:30 (UTC-5).
+-- Antes de borrar: respaldo en tablas _bk_qa_balcones_20261030_*.
+-- ALTERNATIVA contable (recomendada si FACT-0022 ya se reportó/numeró): en vez de
+-- borrar la factura y los asientos, anularla con public.fn_factura_venta_anular
+-- (genera reverso) y borrar solo reserva/cliente/mantenimiento.
+BEGIN;
+
+-- 0) Guardas: abortar si algo no coincide
+DO $$
+BEGIN
+  IF (SELECT count(*) FROM reservations WHERE id='1e6e1ba7-db7e-4bb6-bfbb-3c4dd30055b5' AND organization_id=133) <> 1 THEN RAISE EXCEPTION 'reserva no encontrada'; END IF;
+  IF (SELECT count(*) FROM customers WHERE id='d3542ae5-5b82-4e0f-9307-85425e447c65' AND organization_id=133 AND last_name ILIKE '%BORRAR%') <> 1 THEN RAISE EXCEPTION 'cliente QA no coincide'; END IF;
+  IF (SELECT count(*) FROM reservations WHERE customer_id='d3542ae5-5b82-4e0f-9307-85425e447c65') <> 1 THEN RAISE EXCEPTION 'el cliente QA tiene otras reservas'; END IF;
+  IF EXISTS (SELECT 1 FROM payments WHERE source_id IN ('1e6e1ba7-db7e-4bb6-bfbb-3c4dd30055b5','77c16468-226f-4813-97f2-2cb195e6e60d','ba2c778e-518e-4211-8983-3f7e744a82a0','e3ce619d-04a2-4263-ba29-86f593d0c9a8')) THEN RAISE EXCEPTION 'hay pagos: revisar antes'; END IF;
+END $$;
+
+-- 1) Respaldos
+CREATE TABLE _bk_qa_balcones_20261030_customers        AS SELECT * FROM customers WHERE id='d3542ae5-5b82-4e0f-9307-85425e447c65';
+CREATE TABLE _bk_qa_balcones_20261030_reservations     AS SELECT * FROM reservations WHERE id='1e6e1ba7-db7e-4bb6-bfbb-3c4dd30055b5';
+CREATE TABLE _bk_qa_balcones_20261030_res_spaces       AS SELECT * FROM reservation_spaces WHERE reservation_id='1e6e1ba7-db7e-4bb6-bfbb-3c4dd30055b5';
+CREATE TABLE _bk_qa_balcones_20261030_folios           AS SELECT * FROM folios WHERE id='77c16468-226f-4813-97f2-2cb195e6e60d';
+CREATE TABLE _bk_qa_balcones_20261030_folio_items      AS SELECT * FROM folio_items WHERE folio_id='77c16468-226f-4813-97f2-2cb195e6e60d';
+CREATE TABLE _bk_qa_balcones_20261030_sales            AS SELECT * FROM sales WHERE id='ba2c778e-518e-4211-8983-3f7e744a82a0';
+CREATE TABLE _bk_qa_balcones_20261030_sale_items       AS SELECT * FROM sale_items WHERE sale_id='ba2c778e-518e-4211-8983-3f7e744a82a0';
+CREATE TABLE _bk_qa_balcones_20261030_invoice_sales    AS SELECT * FROM invoice_sales WHERE id='e3ce619d-04a2-4263-ba29-86f593d0c9a8';
+CREATE TABLE _bk_qa_balcones_20261030_invoice_items    AS SELECT * FROM invoice_items WHERE invoice_sales_id='e3ce619d-04a2-4263-ba29-86f593d0c9a8';
+CREATE TABLE _bk_qa_balcones_20261030_ar               AS SELECT * FROM accounts_receivable WHERE id='1e3bca8d-32e2-4aa9-9354-482af0c29aff';
+CREATE TABLE _bk_qa_balcones_20261030_journal_entries  AS SELECT * FROM journal_entries WHERE id IN (74572,74573);
+CREATE TABLE _bk_qa_balcones_20261030_journal_lines    AS SELECT * FROM journal_lines WHERE journal_entry_id IN (74572,74573);
+CREATE TABLE _bk_qa_balcones_20261030_maintenance      AS SELECT * FROM maintenance_orders WHERE id='63d5431f-b93b-4469-a32c-6ee56df6d0e1';
+CREATE TABLE _bk_qa_balcones_20261030_space101         AS SELECT * FROM spaces WHERE id='c931ab18-6de6-425c-9530-862aa0872865';
+
+-- 2) Borrado en orden de dependencias (esperado entre paréntesis)
+DELETE FROM journal_lines       WHERE journal_entry_id IN (74572,74573);                         -- (4)
+DELETE FROM journal_entries     WHERE id IN (74572,74573) AND organization_id=133;               -- (2)
+DELETE FROM accounts_receivable WHERE id='1e3bca8d-32e2-4aa9-9354-482af0c29aff';                 -- (1)
+DELETE FROM invoice_items       WHERE invoice_sales_id='e3ce619d-04a2-4263-ba29-86f593d0c9a8';   -- (1)
+DELETE FROM invoice_sales       WHERE id='e3ce619d-04a2-4263-ba29-86f593d0c9a8';                 -- (1) FACT-0022
+DELETE FROM sale_items          WHERE sale_id='ba2c778e-518e-4211-8983-3f7e744a82a0';            -- (1)
+DELETE FROM sales               WHERE id='ba2c778e-518e-4211-8983-3f7e744a82a0';                 -- (1)
+DELETE FROM folio_items         WHERE folio_id='77c16468-226f-4813-97f2-2cb195e6e60d';           -- (1)
+DELETE FROM folios              WHERE id='77c16468-226f-4813-97f2-2cb195e6e60d';                 -- (1)
+DELETE FROM reservation_spaces  WHERE reservation_id='1e6e1ba7-db7e-4bb6-bfbb-3c4dd30055b5';     -- (1)
+DELETE FROM reservations        WHERE id='1e6e1ba7-db7e-4bb6-bfbb-3c4dd30055b5';                 -- (1)
+DELETE FROM maintenance_orders  WHERE id='63d5431f-b93b-4469-a32c-6ee56df6d0e1';                 -- (1)
+DELETE FROM customers           WHERE id='d3542ae5-5b82-4e0f-9307-85425e447c65';                 -- (1)
+
+-- 3) Habitación 101 vuelve a disponible (hoy: status 'cleaning'; no hay housekeeping_tasks)
+UPDATE spaces SET status='available', updated_at=now() WHERE id='c931ab18-6de6-425c-9530-862aa0872865';
+
+-- Revisar los conteos y luego COMMIT; (o ROLLBACK;)
+-- Nota: si algún DELETE falla por FK (p. ej. notificaciones/auditoría que apunten a la
+-- reserva o al cliente), revisar esa tabla y respaldarla igual antes de seguir.
+-- Numeración: borrar FACT-0022 deja un hueco en el consecutivo FACT.
+ROLLBACK; -- cambiar a COMMIT solo tras aprobación

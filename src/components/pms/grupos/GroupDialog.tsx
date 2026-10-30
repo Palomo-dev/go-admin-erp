@@ -105,7 +105,7 @@ export function GroupDialog({ open, onOpenChange, group, onSave }: GroupDialogPr
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Fecha de Pickup</Label>
+              <Label>Fecha de liberación del cupo (pickup)</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -152,7 +152,7 @@ export function GroupDialog({ open, onOpenChange, group, onSave }: GroupDialogPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="roomNights">Room Nights contratados</Label>
+            <Label htmlFor="roomNights">Noches-habitación contratadas</Label>
             <Input
               id="roomNights"
               type="number"

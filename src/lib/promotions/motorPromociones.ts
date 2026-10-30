@@ -70,7 +70,7 @@
 import { promocionAplicaConMetodos } from '@/lib/finanzas/metodosPagoAlcance';
 import { JS_DAY_TO_WEEKDAY, type WeekDay } from '@/components/pos/promociones/types';
 import { toPlainDate, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
-import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
+import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, diaEfectivoDeFranja, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
 import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
 
@@ -262,10 +262,13 @@ export function promocionVigente(p: FilaPromocion, ctx: ContextoPromocion, dia?:
   }
   if (!isWithinEndDate(p, ctx.ahora)) return false;
   if (!tieneUsosDisponibles(p)) return false;
-  if (!appliesOnWeekDay(p, dia ?? diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria))) return false;
+  const hora = horaEnZona(ctx.ahora, ctx.zonaHoraria);
+  // Franja que cruza la medianoche: la madrugada cuenta como el día anterior.
+  const diaReloj = dia ?? diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria);
+  if (!appliesOnWeekDay(p, diaEfectivoDeFranja(p, diaReloj, hora))) return false;
   if (!appliesToBranch(p, ctx.sucursalId)) return false;
   if (!promocionAplicaConMetodos(p.payment_method_codes, ctx.metodosPago ?? null)) return false;
-  if (!appliesInTimeWindow(p, horaEnZona(ctx.ahora, ctx.zonaHoraria))) return false;
+  if (!appliesInTimeWindow(p, hora)) return false;
   return true;
 }
 

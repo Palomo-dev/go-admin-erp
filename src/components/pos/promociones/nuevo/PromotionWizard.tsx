@@ -49,6 +49,7 @@ import {
 } from '../types';
 import { toast } from 'sonner';
 import { CampoFecha } from '@/components/kit/CampoFecha';
+import { CampoHora } from '@/components/kit/CampoHora';
 import { formatearEnteroEn } from '@/components/kit/idioma';
 import { diasDelIdioma } from '../diasPromocion';
 
@@ -98,12 +99,19 @@ function diaDelFormulario(valor: string, timezone: string): string {
   return valor.length <= 10 ? valor : plainDayOfInstant(valor, timezone);
 }
 
-/** `HH:mm` para un `<input type="time">`. La columna `time` llega como `HH:mm:ss`. */
+/** `HH:mm` del formulario (`CampoHora`). La columna `time` llega como `HH:mm:ss`. */
 function horaDelFormulario(valor: string | null | undefined): string {
   if (!valor) return '';
   const m = String(valor).match(/^(\d{1,2}):(\d{2})/);
   if (!m) return '';
   return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+
+/** ¿La franja termina al día siguiente (fin anterior al inicio)? */
+function cruzaMedianoche(inicio: string | null | undefined, fin: string | null | undefined): boolean {
+  const a = horaDelFormulario(inicio);
+  const b = horaDelFormulario(fin);
+  return Boolean(a && b && b < a);
 }
 
 function enteroDelCampo(valor: string): number | null {
@@ -857,25 +865,49 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-fg">{t('formulario.horaInicio')}</Label>
-                  <Input
-                    type="time"
-                    value={horaDelFormulario(formData.start_time)}
-                    onChange={(e) => handleChange('start_time', e.target.value || null)}
+                  <Label id="promo-hora-inicio" className="text-fg">{t('formulario.horaInicio')}</Label>
+                  <CampoHora
+                    aria-labelledby="promo-hora-inicio"
+                    valor={horaDelFormulario(formData.start_time)}
+                    onValorChange={(hora) => handleChange('start_time', hora || null)}
+                    paso={15}
+                    formato24h
+                    limpiable
+                    placeholder={t('formulario.todoElDia')}
                   />
                 </div>
                 <div>
-                  <Label className="text-fg">{t('formulario.horaFin')}</Label>
-                  <Input
-                    type="time"
-                    value={horaDelFormulario(formData.end_time)}
-                    onChange={(e) => handleChange('end_time', e.target.value || null)}
+                  <Label id="promo-hora-fin" className="text-fg">{t('formulario.horaFin')}</Label>
+                  <CampoHora
+                    aria-labelledby="promo-hora-fin"
+                    valor={horaDelFormulario(formData.end_time)}
+                    onValorChange={(hora) => handleChange('end_time', hora || null)}
+                    paso={15}
+                    formato24h
+                    limpiable
+                    placeholder={t('formulario.todoElDia')}
                   />
                 </div>
               </div>
-              <p className="text-[13px] leading-[18px] text-fg-secondary -mt-2">
-                {t('formulario.franjaAyuda')}
-              </p>
+              <div className="-mt-2 flex flex-col gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {t('formulario.franjaAyuda')}
+                  </p>
+                  {(formData.start_time || formData.end_time) && (
+                    <button
+                      type="button"
+                      className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+                      onClick={() => setFormData((prev) => ({ ...prev, start_time: null, end_time: null }))}
+                    >
+                      {t('formulario.quitarHorario')}
+                    </button>
+                  )}
+                </div>
+                {cruzaMedianoche(formData.start_time, formData.end_time) && (
+                  <p className="text-[13px] leading-[18px] text-fg">{t('formulario.franjaCruzaMedianoche')}</p>
+                )}
+              </div>
 
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">

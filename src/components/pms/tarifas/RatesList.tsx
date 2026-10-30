@@ -17,6 +17,14 @@ interface RatesListProps {
   onToggleActive: (rateId: string) => void;
 }
 
+const PLAN_LABELS: Record<string, string> = {
+  solo_alojamiento: 'Solo alojamiento',
+  con_desayuno: 'Con desayuno',
+  media_pension: 'Media pensión',
+  pension_completa: 'Pensión completa',
+  todo_incluido: 'Todo incluido',
+};
+
 export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesListProps) {
   if (rates.length === 0) {
     return (
@@ -59,7 +67,7 @@ export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesList
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 {rate.restrictions?.plan && (
                   <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                    {rate.restrictions.plan}
+                    {PLAN_LABELS[rate.restrictions.plan] || rate.restrictions.plan.replace(/_/g, ' ')}
                   </Badge>
                 )}
                 {rate.priority > 0 && (

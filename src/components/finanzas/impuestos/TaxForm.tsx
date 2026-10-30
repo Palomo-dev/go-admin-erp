@@ -239,7 +239,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
         return;
       }
       setMapeoInexistente(codigoGuardado);
-      setCuenta(codigos.has('2408') ? '2408' : '');
+      setCuenta(cuentaIvaSugerida(cuentasDetalle) ?? '');
     };
 
     if (!editMode || !tax) {
@@ -590,9 +590,15 @@ const TaxForm: React.FC<TaxFormProps> = ({
                 </p>
               )}
               {!cuentasDetalle.some((c) => c.codigo === '2408') && (
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  El plan no tiene la cuenta 2408 (IVA por pagar). Elige otra de pasivo de detalle, o créala en el plan de cuentas.
-                </p>
+                cuentaIvaSugerida(cuentasDetalle) ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    La 2408 es de título en tu plan; el IVA se registra en su auxiliar {cuentaIvaSugerida(cuentasDetalle)}.
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    El plan no tiene una cuenta de detalle bajo 2408 (IVA por pagar). Elige otra de pasivo de detalle, o créala en el plan de cuentas.
+                  </p>
+                )
               )}
             </div>
           )}
@@ -734,5 +740,14 @@ const TaxForm: React.FC<TaxFormProps> = ({
     </Dialog>
   );
 };
+
+
+/** 2408 si es de detalle; si no 24080501; si no la primera de detalle bajo 240805 y luego bajo 2408. */
+export function cuentaIvaSugerida(cuentas: Array<{ codigo: string }>): string | null {
+  const codigos = cuentas.map((c) => c.codigo).sort();
+  if (codigos.includes('2408')) return '2408';
+  if (codigos.includes('24080501')) return '24080501';
+  return codigos.find((c) => c.startsWith('240805')) ?? codigos.find((c) => c.startsWith('2408')) ?? null;
+}
 
 export default TaxForm;

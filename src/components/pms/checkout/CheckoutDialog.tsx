@@ -90,6 +90,27 @@ export interface CheckoutDialogData {
   change?: number;
 }
 
+
+/**
+ * Hospedaje que todavía NO está cargado en el folio.
+ * El check-in inserta un folio_item con source='room_charge' por el hospedaje y
+ * applyExtraNightsCharge inserta otro por las noches extra; esos ya vienen en
+ * folio.total_charges / folio.items. Solo si el folio no los tiene se usa
+ * total_estimated (+ noches extra calculadas en el diálogo).
+ */
+function lodgingOutsideFolio(
+  reservation: { total_estimated?: number | null; folio?: { items?: Array<{ source?: string | null; description?: string | null }> } | null },
+  extraNightsCharge: number,
+): number {
+  const items = reservation.folio?.items || [];
+  const lodgingItems = items.filter((i) => i.source === 'room_charge');
+  if (lodgingItems.length === 0) {
+    return Number(reservation.total_estimated || 0) + extraNightsCharge;
+  }
+  const extraYaEnFolio = lodgingItems.some((i) => /noche\(s\) extra/i.test(i.description || ''));
+  return extraYaEnFolio ? 0 : extraNightsCharge;
+}
+
 export function CheckoutDialog({
   open,
   onOpenChange,
@@ -149,7 +170,10 @@ export function CheckoutDialog({
       const items: CartItem[] = [];
 
       // Item de hospedaje (incluye noches extra si se aplicaron)
-      const lodgingTotal = reservation.total_estimated + extraNightsCharge;
+      // Si el hospedaje ya está en el folio (folio_item source='room_charge'
+      // creado en el check-in), no se vuelve a sumar total_estimated: entra
+      // abajo como ítem del folio. Antes se cobraba dos veces.
+      const lodgingTotal = lodgingOutsideFolio(reservation, extraNightsCharge);
       if (lodgingTotal > 0) {
         items.push({
           id: 'housing',
@@ -512,7 +536,7 @@ export function CheckoutDialog({
   }, [reservation?.folio?.items, branchFilter]);
 
   // Totales pre-calculados (necesarios antes del early return para los calculados de pago)
-  const lodgingTotal = (reservation?.total_estimated || 0) + extraNightsCharge;
+  const lodgingTotal = reservation ? lodgingOutsideFolio(reservation, extraNightsCharge) : 0;
   const totalToCharge = lodgingTotal + (reservation?.folio?.total_charges || 0);
   const folioPaymentsTotal = reservation?.folio?.total_payments || 0;
   const depositTotal = (reservation?.deposit_payments || []).reduce((sum, p) => sum + p.amount, 0);
@@ -1105,7 +1129,11 @@ export function CheckoutDialog({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Hospedaje ({reservation.nights} noches)</span>
-                <span className="font-medium">{formatear(reservation.total_estimated)}</span>
+                <span className="font-medium">
+                  {(reservation.folio?.items || []).some((i) => i.source === 'room_charge')
+                    ? `Incluido en cargos del folio (${formatear(reservation.total_estimated)})`
+                    : formatear(reservation.total_estimated)}
+                </span>
               </div>
               {extraNightsCharge > 0 && (
                 <div className="flex justify-between">

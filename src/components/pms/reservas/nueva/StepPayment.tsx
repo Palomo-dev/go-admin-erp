@@ -89,7 +89,9 @@ export function StepPayment({
   organizationId,
 }: StepPaymentProps) {
   const { selectedBranchId } = useBranch();
-  const isValid = paymentMethod !== '';
+  // Sin anticipo (monto 0) no hace falta elegir método: el servicio solo
+  // registra pago si payment_amount > 0.
+  const isValid = paymentMethod !== '' || !(Number(paymentAmount) > 0);
 
   const handleSetPercentage = (percentage: number) => {
     const amount = (totalEstimated * percentage) / 100;

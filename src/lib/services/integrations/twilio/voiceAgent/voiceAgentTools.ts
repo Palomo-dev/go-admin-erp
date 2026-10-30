@@ -182,8 +182,8 @@ async function checkAvailability(
   const supabase = getServiceSupabase();
   const { data: spaces, error } = await supabase
     .from('spaces')
-    .select('id, label, status, space_types(name, max_occupancy)')
-    .eq('organization_id', orgId)
+    .select('id, label, status, space_types(name, max_occupancy), branches!inner(organization_id)')
+    .eq('branches.organization_id', orgId)
     .eq('status', 'available');
 
   if (error) throw error;

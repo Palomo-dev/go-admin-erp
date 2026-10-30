@@ -14,15 +14,17 @@ import HousekeepingService, {
   type HousekeepingTask,
   type HousekeepingStats as Stats,
 } from '@/lib/services/housekeepingService';
+import { cargaAislada } from '@/lib/utils/cargaAislada';
 import SpacesService, { type Space } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { AvisoSucursalRestaurante } from '@/components/pms/AvisoSucursalRestaurante';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function HousekeepingPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
 
   // Estado de datos
   const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
@@ -48,10 +50,10 @@ export default function HousekeepingPage() {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && !branchLoading) {
       loadData();
     }
-  }, [organization?.id, selectedDate, branchFilter]);
+  }, [organization?.id, selectedDate, branchFilter, branchLoading]);
 
   const loadData = async () => {
     try {
@@ -62,12 +64,21 @@ export default function HousekeepingPage() {
         ? selectedDate.toISOString().split('T')[0]
         : undefined;
 
+      const fallos: string[] = [];
       const [tasksData, statsData, spacesData, usersData] = await Promise.all([
-        HousekeepingService.getTasks({ date: dateFilter }),
-        HousekeepingService.getStats(dateFilter),
-        SpacesService.getSpaces({ organizationId: organization!.id, branchId: branchFilter ?? undefined }),
-        HousekeepingService.getAvailableUsers(organization!.id),
+        cargaAislada(HousekeepingService.getTasks({ date: dateFilter }), [] as Awaited<ReturnType<typeof HousekeepingService.getTasks>>, 'tareas', fallos),
+        cargaAislada(HousekeepingService.getStats(dateFilter), { total: 0, pending: 0, in_progress: 0, done: 0, cancelled: 0 } as Awaited<ReturnType<typeof HousekeepingService.getStats>>, 'estadísticas', fallos),
+        cargaAislada(SpacesService.getSpaces({ organizationId: organization!.id, branchId: branchFilter ?? undefined }), [] as Space[], 'espacios', fallos),
+        cargaAislada(HousekeepingService.getAvailableUsers(organization!.id), [] as Awaited<ReturnType<typeof HousekeepingService.getAvailableUsers>>, 'usuarios', fallos),
       ]);
+
+      if (fallos.length > 0) {
+        toast({
+          title: 'Carga parcial',
+          description: `No se pudo cargar: ${fallos.join(', ')}.`,
+          variant: 'destructive',
+        });
+      }
 
       // Filtrar tareas por los spaces de la sucursal seleccionada (branch isolation)
       const spaceIds = spacesData.map(s => s.id);
@@ -227,6 +238,7 @@ export default function HousekeepingPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <AvisoSucursalRestaurante />
       {/* Header */}
       <HousekeepingHeader
         viewMode={viewMode}

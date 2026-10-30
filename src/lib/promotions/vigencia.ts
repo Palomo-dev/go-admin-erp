@@ -138,6 +138,33 @@ export function appliesInTimeWindow(promotion: FranjaHoraria, hora: string): boo
   return hora >= inicio! || hora <= fin!;
 }
 
+/** Día anterior de la semana (lunes → domingo). */
+export function diaAnterior(dia: WeekDay): WeekDay {
+  const orden: WeekDay[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return orden[(orden.indexOf(dia) + 6) % 7];
+}
+
+/**
+ * ¿La hora cae en la «madrugada» de una franja que cruza la medianoche?
+ * (inicio > fin y hora ≤ fin, p. ej. 18:00–02:00 a la 01:00). Esa madrugada
+ * pertenece al día en que EMPEZÓ la franja, no al día del reloj.
+ */
+export function esMadrugadaDeFranja(promotion: FranjaHoraria, hora: string): boolean {
+  const inicio = horaNormalizada(promotion.start_time);
+  const fin = horaNormalizada(promotion.end_time);
+  if (!inicio || !fin || inicio <= fin) return false;
+  return hora <= fin && hora < inicio;
+}
+
+/**
+ * Día de la semana contra el que se evalúa `applicable_days`. Una promo
+ * «lunes a miércoles 18:00–02:00» sigue vigente el jueves a la 01:00 porque
+ * esa madrugada es la cola de la franja del miércoles.
+ */
+export function diaEfectivoDeFranja(promotion: FranjaHoraria, diaReloj: WeekDay, hora: string): WeekDay {
+  return esMadrugadaDeFranja(promotion, hora) ? diaAnterior(diaReloj) : diaReloj;
+}
+
 export function appliesToBranch(promotion: PromotionVigencia, branchId: number | null): boolean {
   const branches = promotion.branches;
   if (!Array.isArray(branches) || branches.length === 0) return true;

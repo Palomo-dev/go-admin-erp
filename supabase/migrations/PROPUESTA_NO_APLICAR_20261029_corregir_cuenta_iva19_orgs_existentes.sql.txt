@@ -1,0 +1,14 @@
+-- PROPUESTA, NO APLICAR sin visto bueno de Juan. Solo rellena la cuenta vacía del IVA 19 % (57 orgs al
+-- 29-oct-2026, todas con 24080501 de movimiento). NO cambia tax_included (cambiaría el cálculo de precios).
+-- Excluir 358 si Juan lo pide (hoy pidió no tocarla).
+insert into public.tax_account_mapping (organization_id, tax_template_id, organization_tax_id, account_code, account_type, is_active)
+select ot.organization_id, ot.template_id, ot.id, public.fn_cuenta_iva19_sugerida(ot.organization_id), 'tax_payable', true
+  from public.organization_taxes ot
+  join public.tax_templates tt on tt.id = ot.template_id and tt.code = 'IVA_19'
+ where ot.kind = 'tax'
+   and ot.organization_id <> 358
+   and public.fn_cuenta_iva19_sugerida(ot.organization_id) is not null
+   and not exists (select 1 from public.tax_account_mapping m
+                    where m.organization_id = ot.organization_id
+                      and (m.organization_tax_id = ot.id or m.tax_template_id = ot.template_id))
+on conflict do nothing;

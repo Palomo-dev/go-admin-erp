@@ -274,6 +274,25 @@ describe('vigencia general', () => {
     expect(promocionVigente(promo({ start_time: '22:00', end_time: '06:00' }), ctx())).toBe(false);
     expect(promocionVigente(promo({ start_time: '19:00', end_time: '02:00' }), ctx())).toBe(true);
   });
+  it('franja que cruza la medianoche: la madrugada cuenta como el día en que empezó (caso «lunes a miércoles hasta las 2 a. m.»)', () => {
+    const lunAMie = promo({ applicable_days: ['monday', 'tuesday', 'wednesday'], start_time: '18:00', end_time: '02:00' });
+    // Jueves 8 de octubre 01:00 Bogotá: cola de la franja del miércoles → vigente.
+    expect(promocionVigente(lunAMie, ctx({ ahora: new Date('2026-10-08T06:00:00.000Z') }))).toBe(true);
+    // Jueves 02:00 en punto: último minuto incluido.
+    expect(promocionVigente(lunAMie, ctx({ ahora: new Date('2026-10-08T07:00:00.000Z') }))).toBe(true);
+    // Jueves 02:01: ya terminó.
+    expect(promocionVigente(lunAMie, ctx({ ahora: new Date('2026-10-08T07:01:00.000Z') }))).toBe(false);
+    // Jueves 20:00: el jueves no está en los días.
+    expect(promocionVigente(lunAMie, ctx({ ahora: new Date('2026-10-09T01:00:00.000Z') }))).toBe(false);
+    // Lunes 01:00 (madrugada del domingo): el domingo no está → no aplica.
+    expect(promocionVigente(lunAMie, ctx({ ahora: new Date('2026-10-05T06:00:00.000Z') }))).toBe(false);
+    // Martes 01:00 (cola del lunes) → vigente.
+    expect(promocionVigente(lunAMie, ctx({ ahora: new Date('2026-10-06T06:00:00.000Z') }))).toBe(true);
+    // evaluarPromociones (que precalcula el día) usa el mismo criterio.
+    const jueves1am = ctx({ ahora: new Date('2026-10-08T06:00:00.000Z') });
+    const conDescuento = promo({ ...lunAMie, id: lunAMie.id });
+    expect(evaluarPromociones([conDescuento], [linea(1, 1, 10000)], jueves1am).discountTotal).toBeGreaterThan(0);
+  });
 });
 
 describe('cantidad mínima y compra mínima de las líneas que entran', () => {

@@ -66,7 +66,7 @@ export function GroupsStats({
         color="bg-green-100 dark:bg-green-900/30"
       />
       <StatCard
-        title="Room Nights"
+        title="Noches-habitación"
         value={totalRoomNights}
         icon={<Moon className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
         color="bg-purple-100 dark:bg-purple-900/30"

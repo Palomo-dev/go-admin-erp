@@ -67,7 +67,8 @@ function vigenciasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
   return a0 <= b1 && b0 <= a1;
 }
 
-function diasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
+/** Solo días, sin franja (se conserva por compatibilidad; `seSolapan` usa `semanasSeCruzan`). */
+export function diasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
   return DIAS.some((dia) => appliesOnWeekDay(a, dia) && appliesOnWeekDay(b, dia));
 }
 
@@ -108,6 +109,43 @@ export function franjasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
     return puntos.map(horaDeMinutos);
   };
   return [...marcas(a), ...marcas(b)].some((hora) => appliesInTimeWindow(a, hora) && appliesInTimeWindow(b, hora));
+}
+
+const MIN_DIA = 24 * 60;
+const MIN_SEMANA = 7 * MIN_DIA;
+
+/**
+ * Tramos de la semana (minutos desde el lunes 00:00, extremos incluidos) en
+ * que la promoción está vigente. Una franja que cruza la medianoche se
+ * asigna al día en que EMPIEZA: «lunes 18:00–02:00» ocupa del lunes 18:00 al
+ * martes 02:00, igual que lo evalúa el motor (`diaEfectivoDeFranja`).
+ */
+function tramosSemanales(p: PromoSolape): Array<[number, number]> {
+  const ini = minutos(p.start_time);
+  const fin = minutos(p.end_time);
+  let desde: number;
+  let hasta: number;
+  if (ini == null && fin == null) { desde = 0; hasta = MIN_DIA - 1; }
+  else if (ini != null && fin == null) { desde = ini; hasta = MIN_DIA - 1; }
+  else if (ini == null && fin != null) { desde = 0; hasta = fin; }
+  else if (ini! <= fin!) { desde = ini!; hasta = fin!; }
+  else { desde = ini!; hasta = MIN_DIA + fin!; }
+  return DIAS.filter((dia) => appliesOnWeekDay(p, dia)).map((dia) => {
+    const base = DIAS.indexOf(dia) * MIN_DIA;
+    return [base + desde, base + hasta] as [number, number];
+  });
+}
+
+/** ¿Comparten algún minuto de la semana, contando días y franja juntos? */
+export function semanasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
+  const ta = tramosSemanales(a);
+  const tb = tramosSemanales(b);
+  return ta.some(([a0, a1]) =>
+    tb.some(([b0, b1]) =>
+      // El domingo que cruza la medianoche cae en el lunes siguiente: se prueba desplazado una semana.
+      [-MIN_SEMANA, 0, MIN_SEMANA].some((d) => a0 <= b1 + d && b0 + d <= a1),
+    ),
+  );
 }
 
 function canalesSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
@@ -213,7 +251,7 @@ function alcancesSeCruzan(a: Alcance, b: Alcance, catalogo: Map<number, Producto
 export function seSolapan(a: PromoSolape, b: PromoSolape, catalogo: ProductoCatalogo[] = []): boolean {
   if (a.is_combinable === true || b.is_combinable === true) return false;
   if (a.is_active === false || b.is_active === false) return false;
-  if (!vigenciasSeCruzan(a, b) || !diasSeCruzan(a, b) || !franjasSeCruzan(a, b)) return false;
+  if (!vigenciasSeCruzan(a, b) || !semanasSeCruzan(a, b)) return false;
   if (!canalesSeCruzan(a, b) || !sucursalesSeCruzan(a, b)) return false;
   return alcancesSeCruzan(alcanceDe(a), alcanceDe(b), mapaCatalogo(catalogo));
 }

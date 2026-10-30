@@ -1,5 +1,7 @@
 'use client';
 
+import { useBranch } from '@/lib/context/BranchContext';
+import { esSucursalRestaurante } from '@/lib/pms/sucursalesPms';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, FileSpreadsheet, Mail, Printer, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -58,7 +60,12 @@ export function VisorReporte({
   const [recarga, setRecarga] = useState(0);
   // PMS consolidado: por defecto solo sucursales hoteleras (o sin tipo); opción para incluir todas.
   const [incluirTodas, setIncluirTodas] = useState(false);
-  const opcionPms = def?.modulo === 'pms_hotel' && efectivos?.sucursal == null;
+  const opcionPms = def?.modulo === 'pms_hotel';
+  const { branches: sucursalesOrg } = useBranch();
+  const restaurantesOcultos = useMemo(
+    () => (opcionPms && !incluirTodas ? sucursalesOrg.filter(esSucursalRestaurante).map((b) => b.id as number) : undefined),
+    [opcionPms, incluirTodas, sucursalesOrg],
+  );
 
   useEffect(() => {
     if (!ctx.orgId || !def || !efectivos || !permitido) return;
@@ -200,7 +207,7 @@ export function VisorReporte({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <BarraFiltros filtros={filtros} onCambiar={onCambiar} hoy={hoy} ctx={ctx} def={def} />
+        <BarraFiltros filtros={filtros} onCambiar={onCambiar} hoy={hoy} ctx={ctx} def={def} ocultarSucursalIds={restaurantesOcultos} />
         <div className="flex items-center gap-2">
           <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => acciones.abrirCierre({ plantilla: 'personalizada', reportes: [def.id] })}>
             {t('visor.agregar')}

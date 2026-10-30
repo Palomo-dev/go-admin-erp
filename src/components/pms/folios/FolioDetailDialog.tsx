@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import {
@@ -28,6 +30,16 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import FoliosService, { type Folio, type FolioItem } from '@/lib/services/foliosService';
 import { FolioPaymentDialog } from '@/components/pms/FolioPaymentDialog';
+
+const ORIGEN_CARGO: Record<string, string> = {
+  room_charge: 'Hospedaje',
+  room_service: 'Servicio a la habitación',
+  laundry: 'Lavandería',
+  spa: 'Spa',
+  activities: 'Actividades',
+  pos: 'Punto de venta',
+  other: 'Otro',
+};
 
 interface FolioDetailDialogProps {
   open: boolean;
@@ -57,6 +69,12 @@ export function FolioDetailDialog({
     paidCount: 0,
   });
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  // Cargo/consumo manual (minibar, lavandería, daños, etc.)
+  const [showChargeForm, setShowChargeForm] = useState(false);
+  const [chargeDescription, setChargeDescription] = useState('');
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [chargeSource, setChargeSource] = useState('room_service');
+  const [savingCharge, setSavingCharge] = useState(false);
 
   useEffect(() => {
     if (open && folioId) {
@@ -108,6 +126,41 @@ export function FolioDetailDialog({
         description: 'No se pudo eliminar el item',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleAddCharge = async () => {
+    if (!folioId) return;
+    const amount = Number(chargeAmount);
+    if (!chargeDescription.trim() || !Number.isFinite(amount) || amount <= 0) {
+      toast({ title: 'Datos incompletos', description: 'Escribe una descripción y un monto mayor a 0.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSavingCharge(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      await FoliosService.addFolioItem({
+        folio_id: folioId,
+        source: chargeSource,
+        description: chargeDescription.trim(),
+        amount,
+        quantity: 1,
+        unit_price: amount,
+        payment_status: 'pending',
+        charge_type: 'room_charge',
+        created_by: user?.id,
+      });
+      setChargeDescription('');
+      setChargeAmount('');
+      setShowChargeForm(false);
+      await loadFolioDetails();
+      if (onUpdate) onUpdate();
+      toast({ title: 'Cargo agregado', description: 'El cargo se agregó al folio' });
+    } catch (error) {
+      console.error('Error agregando cargo:', error);
+      toast({ title: 'Error', description: 'No se pudo agregar el cargo', variant: 'destructive' });
+    } finally {
+      setSavingCharge(false);
     }
   };
 
@@ -259,6 +312,13 @@ export function FolioDetailDialog({
                   <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Items ({summary.itemCount})
                 </h3>
+                <div className="flex flex-wrap gap-2">
+                {folio?.status === 'open' && (
+                  <Button size="sm" variant="outline" onClick={() => setShowChargeForm((v) => !v)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar cargo
+                  </Button>
+                )}
                 {summary.totalPending > 0 && folio?.status === 'open' && (
                   <Button
                     size="sm"
@@ -269,7 +329,52 @@ export function FolioDetailDialog({
                     Pagar ${summary.totalPending.toLocaleString()}
                   </Button>
                 )}
+                </div>
               </div>
+
+              {showChargeForm && folio?.status === 'open' && (
+                <Card className="p-4 mb-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Input
+                      className="sm:col-span-2"
+                      placeholder="Descripción (p. ej. Minibar, Lavandería)"
+                      value={chargeDescription}
+                      onChange={(e) => setChargeDescription(e.target.value)}
+                      maxLength={255}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="any"
+                      placeholder="Monto"
+                      value={chargeAmount}
+                      onChange={(e) => setChargeAmount(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <select
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                      value={chargeSource}
+                      onChange={(e) => setChargeSource(e.target.value)}
+                      aria-label="Tipo de cargo"
+                    >
+                      <option value="room_service">Servicio a la habitación</option>
+                      <option value="laundry">Lavandería</option>
+                      <option value="spa">Spa</option>
+                      <option value="activities">Actividades</option>
+                      <option value="other">Otro</option>
+                    </select>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setShowChargeForm(false)} disabled={savingCharge}>
+                        Cancelar
+                      </Button>
+                      <Button size="sm" onClick={handleAddCharge} disabled={savingCharge}>
+                        {savingCharge ? 'Guardando…' : 'Agregar'}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               {folio.items && folio.items.length > 0 ? (
                 <div className="space-y-2">
@@ -283,7 +388,7 @@ export function FolioDetailDialog({
                         <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <Badge variant="outline" className="text-xs">
-                              {item.source}
+                              {ORIGEN_CARGO[item.source] || item.source}
                             </Badge>
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {item.description}

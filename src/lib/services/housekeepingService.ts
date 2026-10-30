@@ -1,3 +1,4 @@
+import { todayInTz, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { supabase } from '@/lib/supabase/config';
 
 export interface HousekeepingTask {
@@ -125,7 +126,7 @@ class HousekeepingService {
    * Obtener tareas del día actual
    */
   async getTodayTasks(): Promise<HousekeepingTask[]> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInTz(DEFAULT_TIMEZONE); // no UTC: después de las 19:00 en Bogotá sería «mañana»
     return this.getTasks({ date: today });
   }
 

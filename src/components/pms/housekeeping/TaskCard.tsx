@@ -125,7 +125,7 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
 
         <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
           <Calendar className="h-4 w-4" />
-          <span>{format(new Date(task.task_date), 'PPP', { locale: es })}</span>
+          <span>{format(new Date(task.task_date + 'T00:00:00'), 'PPP', { locale: es })}</span>
         </div>
 
         {task.assigned_user && (

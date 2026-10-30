@@ -27,7 +27,6 @@ export interface ContextoSalidaAnticipada {
   resumen: ResumenSalidaAnticipada;
 }
 
-export const hoyLocal = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD en la zona del navegador
 
 const esHospedaje = (it: { source: string | null; description: string | null }) =>
   it.source === 'room_charge' && !/noche\(?s?\)? extra/i.test(it.description || '');
@@ -41,7 +40,8 @@ export async function obtenerContextoSalidaAnticipada(reservationId: string): Pr
   if (error || !res) throw new Error('Reserva no encontrada');
   if (res.status !== 'checked_in') throw new Error('Solo se puede cancelar la estadía de una reserva con check-in');
 
-  const hoy = hoyLocal();
+  // «Hoy» en la zona de la organización (no la del navegador ni UTC).
+  const hoy = await CheckoutService.hoyDeReserva(reservationId);
   const { data: folio } = await supabase
     .from('folios')
     .select('id')

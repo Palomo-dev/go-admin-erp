@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { todayInTz, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { resolveLineTax, type ResolveTaxInput } from '@/lib/services/taxResolver';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
@@ -84,6 +86,19 @@ export interface CheckoutData {
 }
 
 class CheckoutService {
+  /**
+   * «Hoy» en la zona de la organización de la reserva (por defecto America/Bogota).
+   * No usar toISOString(): en UTC, después de las 19:00 de Bogotá ya es «mañana».
+   */
+  async hoyDeReserva(reservationId: string): Promise<string> {
+    try {
+      const orgId = await this.getOrganizationIdFromReservation(reservationId);
+      return todayInTz(orgId ? await getOrganizationTimezone(Number(orgId)) : DEFAULT_TIMEZONE);
+    } catch {
+      return todayInTz(DEFAULT_TIMEZONE);
+    }
+  }
+
   /**
    * Obtener reservas con salida para un rango de fechas
    */
@@ -453,7 +468,7 @@ class CheckoutService {
 
     if (!currentReservation?.checkout) return 0;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = await this.hoyDeReserva(reservationId);
     const originalCheckout = new Date(currentReservation.checkout + 'T00:00:00');
     const today = new Date(todayStr + 'T00:00:00');
     const diffMs = today.getTime() - originalCheckout.getTime();
@@ -647,7 +662,7 @@ class CheckoutService {
       .eq('id', reservationId)
       .single();
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = await this.hoyDeReserva(reservationId);
 
     // Actualizar estado de la reserva con campos de auditoría
     const { error: reservationError } = await supabase
@@ -1046,9 +1061,10 @@ class CheckoutService {
     if (!reservationSpaces || reservationSpaces.length === 0) return;
 
     // Crear tarea de limpieza para cada espacio
+    const hoy = await this.hoyDeReserva(reservationId);
     const tasks = reservationSpaces.map((rs) => ({
       space_id: rs.space_id,
-      task_date: new Date().toISOString().split('T')[0],
+      task_date: hoy,
       status: 'pending' as const,
       notes: `Limpieza post check-out - Reserva ${reservationId.slice(0, 8)}`,
     }));

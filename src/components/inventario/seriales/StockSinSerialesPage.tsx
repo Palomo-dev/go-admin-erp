@@ -1,89 +1,180 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+/**
+ * Inventario › Informes › Stock sin seriales (Figma v2).
+ * Productos con control de serial cuya existencia supera los seriales en stock
+ * o reservados de la sucursal. Solo lectura: no crea seriales; las acciones
+ * llevan a Seriales del producto o a un ajuste para registrarlos.
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle } from 'lucide-react';
-import { PageHeader } from '@/components/kit';
-import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { Boxes, Building2, CheckCircle2, ClipboardPlus, Package, PackageX, RefreshCw, ScanBarcode } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  BranchBadgeActiva,
+  DataTable,
+  KpiStrip,
+  ListCard,
+  PageHeader,
+  SearchInput,
+  StatCard,
+  type AccionFila,
+  type ColumnaTabla,
+} from '@/components/kit';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { clasesSelect } from '@/components/reportes/BarraFiltros';
 import { ErrorPeticionSeriales, clienteSeriales } from '@/lib/services/seriales/cliente';
 import type { FilaStockSinSerial } from '@/lib/services/seriales/contrato';
 import { RUTA_SERIALES } from './logica';
+import { filtrarStockSinSeriales, num, sucursalesDelReporte, totalesStockSinSeriales } from './logicaStockSinSeriales';
 
-function numero(valor: unknown): number {
-  const n = Number(valor);
-  return Number.isFinite(n) ? n : 0;
-}
+const idFila = (f: FilaStockSinSerial) => `${f.product_id}-${f.branch_id}`;
 
-/**
- * Reporte de existencia sin serial. No genera números: solo muestra el hueco
- * para capturarlo en un ajuste.
- */
 export function StockSinSerialesPage() {
   const t = useTranslations('inventarioSeriales.stockSinSeriales');
-  const locale = useLocaleIntl();
-  const [filas, setFilas] = useState<FilaStockSinSerial[] | null>(null);
-  const [error, setError] = useState(false);
+  const router = useRouter();
+  const entero = useFormatoEntero();
+  const [filas, setFilas] = useState<FilaStockSinSerial[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+  const [sucursal, setSucursal] = useState<number | null>(null);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    const control = new AbortController();
+    const ctrl = new AbortController();
+    setCargando(true);
+    setError(null);
     clienteSeriales
-      .stockSinSeriales(control.signal)
-      .then((r) => {
-        if (!control.signal.aborted) setFilas(Array.isArray(r.filas) ? r.filas : []);
+      .stockSinSeriales(ctrl.signal)
+      .then((r) => setFilas(r.filas))
+      .catch((e) => {
+        if (ctrl.signal.aborted) return;
+        setError(e instanceof ErrorPeticionSeriales ? e.message : t('error'));
       })
-      .catch((err: unknown) => {
-        if (control.signal.aborted || (err instanceof ErrorPeticionSeriales && err.codigo === 'sin_sesion')) return;
-        if (!control.signal.aborted) setError(true);
+      .finally(() => {
+        if (!ctrl.signal.aborted) setCargando(false);
       });
-    return () => control.abort();
-  }, []);
+    return () => ctrl.abort();
+  }, [t, version]);
 
-  const formato = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(n);
+  const recargar = useCallback(() => setVersion((v) => v + 1), []);
+  const sucursales = useMemo(() => sucursalesDelReporte(filas), [filas]);
+  const visibles = useMemo(() => filtrarStockSinSeriales(filas, sucursal, busqueda), [filas, sucursal, busqueda]);
+  const tot = useMemo(() => totalesStockSinSeriales(visibles), [visibles]);
+  const hayFiltros = busqueda.trim() !== '' || sucursal != null;
+
+  const rutaSerialesProducto = (f: FilaStockSinSerial) => `${RUTA_SERIALES}?producto=${encodeURIComponent(String(f.product_id))}`;
+
+  const acciones = (f: FilaStockSinSerial): AccionFila[] => [
+    { id: 'seriales', etiqueta: t('verSeriales'), icono: ScanBarcode, onSelect: () => router.push(rutaSerialesProducto(f)) },
+    {
+      id: 'ajuste',
+      etiqueta: t('registrarAjuste'),
+      icono: ClipboardPlus,
+      onSelect: () => router.push(`/app/inventario/ajustes/nuevo?branchId=${encodeURIComponent(String(f.branch_id))}`),
+    },
+  ];
+
+  const columnas: ColumnaTabla<FilaStockSinSerial>[] = [
+    {
+      id: 'producto',
+      encabezado: t('producto'),
+      celda: (f) => <span className="font-medium text-fg">{f.nombre}</span>,
+    },
+    { id: 'sku', encabezado: t('sku'), variante: 'mono', celda: (f) => f.sku || '—', ocultarDebajo: 'sm' },
+    { id: 'sucursal', encabezado: t('sucursal'), celda: (f) => f.sucursal, ocultarDebajo: 'md' },
+    { id: 'existencia', encabezado: t('existencia'), variante: 'importe', celda: (f) => entero(num(f.qty_on_hand)) },
+    { id: 'seriales', encabezado: t('serialesOcupando'), variante: 'importe', celda: (f) => entero(num(f.seriales)), ocultarDebajo: 'lg' },
+    {
+      id: 'diferencia',
+      encabezado: t('diferencia'),
+      variante: 'importe',
+      celda: (f) => <span className="font-semibold text-warning-text">+{entero(num(f.sin_serial))}</span>,
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader titulo={t('titulo')} subtitulo={t('descripcion')} icono={AlertTriangle} variante="form" volverA={RUTA_SERIALES} cargando={filas === null && !error} />
-      {error && (
-        <p role="alert" className="text-sm text-danger-text">
-          {t('error')}
-        </p>
-      )}
-      {filas && filas.length === 0 && <p className="text-sm text-fg-secondary">{t('vacio')}</p>}
-      {filas && filas.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-line text-fg-secondary">
-              <tr>
-                <th className="px-3 py-2 font-medium">{t('producto')}</th>
-                <th className="px-3 py-2 font-medium">{t('sku')}</th>
-                <th className="px-3 py-2 font-medium">{t('sucursal')}</th>
-                <th className="px-3 py-2 text-right font-medium">{t('existencia')}</th>
-                <th className="px-3 py-2 text-right font-medium">{t('seriales')}</th>
-                <th className="px-3 py-2 text-right font-medium">{t('disponibles')}</th>
-                <th className="px-3 py-2 text-right font-medium">{t('sinSerial')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filas.map((f) => (
-                <tr key={`${f.product_id}-${f.branch_id}`} className="border-b border-line last:border-0">
-                  <td className="px-3 py-2">
-                    <Link className="text-brand hover:underline" href={`${RUTA_SERIALES}?producto=${f.product_id}`}>
-                      {f.nombre}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-fg-secondary">{f.sku || '—'}</td>
-                  <td className="px-3 py-2">{f.sucursal}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formato(numero(f.qty_on_hand))}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formato(numero(f.seriales))}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formato(numero(f.seriales_disponibles))}</td>
-                  <td className="px-3 py-2 text-right font-medium tabular-nums text-warning-text">{formato(numero(f.sin_serial))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+    <div className="space-y-4">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('descripcion')}
+        icono={PackageX}
+        cargando={cargando}
+        migas={[{ etiqueta: t('migasInventario'), href: '/app/inventario' }, { etiqueta: t('migasInformes') }]}
+        debajo={<BranchBadgeActiva />}
+        acciones={
+          <Button variant="outline" size="icon" className="size-10" onClick={recargar} disabled={cargando} aria-label={t('actualizar')} title={t('actualizar')}>
+            <RefreshCw className={cargando ? 'size-4 animate-spin' : 'size-4'} aria-hidden />
+          </Button>
+        }
+      />
+
+      <KpiStrip>
+        <StatCard etiqueta={t('kpiProductos')} valor={entero(tot.productos)} icono={Package} cargando={cargando} tamano="sm" />
+        <StatCard etiqueta={t('kpiSucursales')} valor={entero(tot.sucursales)} icono={Building2} cargando={cargando} tamano="sm" />
+        <StatCard etiqueta={t('kpiExistencia')} valor={entero(tot.existencia)} icono={Boxes} cargando={cargando} tamano="sm" />
+        <StatCard
+          etiqueta={t('kpiSinSerial')}
+          valor={entero(tot.sinSerial)}
+          icono={PackageX}
+          tono={tot.sinSerial > 0 ? 'advertencia' : 'exito'}
+          resaltada={tot.sinSerial > 0}
+          cargando={cargando}
+          tamano="sm"
+        />
+      </KpiStrip>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar')} etiqueta={t('buscar')} className="sm:max-w-sm sm:flex-1" />
+        <select
+          aria-label={t('filtroSucursal')}
+          className={clasesSelect}
+          value={sucursal ?? ''}
+          onChange={(e) => setSucursal(e.target.value ? Number(e.target.value) : null)}
+          disabled={cargando || sucursales.length < 2}
+        >
+          <option value="">{t('todasSucursales')}</option>
+          {sucursales.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <DataTable
+        columnas={columnas}
+        filas={visibles}
+        obtenerId={idFila}
+        etiqueta={t('titulo')}
+        estado={cargando ? 'cargando' : error ? 'error' : filas.length > 0 && visibles.length === 0 ? 'sinResultados' : 'listo'}
+        acciones={acciones}
+        tonoFila={() => 'advertencia'}
+        termino={busqueda}
+        onReintentar={recargar}
+        onLimpiarFiltros={hayFiltros ? () => { setBusqueda(''); setSucursal(null); } : undefined}
+        error={{ titulo: t('error'), descripcion: error ?? undefined }}
+        sinResultados={{ descripcion: t('sinResultados') }}
+        vacio={{
+          icono: CheckCircle2,
+          titulo: t('vacioTitulo'),
+          descripcion: t('vacioDescripcion'),
+          accion: { etiqueta: t('irSeriales'), href: RUTA_SERIALES },
+        }}
+        tarjetaMovil={(f) => (
+          <ListCard
+            icono={PackageX}
+            titulo={f.nombre}
+            subtitulo={`${f.sku || '—'} · ${f.sucursal}`}
+            meta={`${t('existencia')} ${entero(num(f.qty_on_hand))} · ${t('seriales')} ${entero(num(f.seriales))}`}
+            estado={<span className="text-sm font-semibold text-warning-text">+{entero(num(f.sin_serial))}</span>}
+            acciones={acciones(f)}
+            onClick={() => router.push(rutaSerialesProducto(f))}
+          />
+        )}
+      />
     </div>
   );
 }

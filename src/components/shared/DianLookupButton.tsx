@@ -24,6 +24,9 @@ import { useKitT } from '@/components/kit/useIdiomaKit';
 import { urlPoliticaPublica } from '@/components/sitio-web/configuracion/apiLegales';
 import type { DianNormalizedData } from '@/lib/services/dianLookupService';
 
+/** Los avisos de la consulta DIAN van arriba: abajo tapaban el botón Guardar del formulario del cliente. */
+const AVISO_ARRIBA = { position: 'top-center' as const, duration: 6000 };
+
 interface DianLookupButtonProps {
   documentType: string;
   documentNumber: string;
@@ -53,7 +56,7 @@ export function DianLookupButton({
 
   const handleConsultar = async () => {
     if (!documentNumber || documentNumber.length < 4) {
-      toast.error(t('consultaDian.documentoInvalido'));
+      toast.error(t('consultaDian.documentoInvalido'), AVISO_ARRIBA);
       return;
     }
 
@@ -68,7 +71,12 @@ export function DianLookupButton({
       const data = await res.json();
 
       if (!data.success) {
-        toast.error(data.error || t('consultaDian.sinResultados'));
+        toast.error(
+          /factus/i.test(String(data.error ?? ''))
+            ? 'La consulta DIAN no está disponible: faltan las credenciales de Factus de la organización. Puedes llenar los datos a mano y guardar.'
+            : data.error || t('consultaDian.sinResultados'),
+          AVISO_ARRIBA,
+        );
         return;
       }
 
@@ -76,12 +84,12 @@ export function DianLookupButton({
         : data.provider === 'coresoft' ? 'CoreSoft'
         : data.provider === 'factus' ? 'Factus'
         : data.provider;
-      toast.success(t(data.fromCache ? 'consultaDian.obtenidosCache' : 'consultaDian.obtenidos', { proveedor: providerLabel }));
+      toast.success(t(data.fromCache ? 'consultaDian.obtenidosCache' : 'consultaDian.obtenidos', { proveedor: providerLabel }), AVISO_ARRIBA);
 
       onResult(data.data, data.provider, data.fromCache);
     } catch (err: unknown) {
       console.error('Error consultando DIAN:', err);
-      toast.error(t('consultaDian.errorConexion'));
+      toast.error(t('consultaDian.errorConexion'), AVISO_ARRIBA);
     } finally {
       setLoading(false);
     }

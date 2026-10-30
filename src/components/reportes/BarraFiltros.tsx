@@ -31,9 +31,11 @@ export interface BarraFiltrosProps {
   /** Ranura extra al final (filtro de usuario del historial). */
   extra?: React.ReactNode;
   className?: string;
+  /** Sucursales que no se ofrecen en el filtro (PMS: restaurantes salvo «incluir todas»). */
+  ocultarSucursalIds?: number[];
 }
 
-export function BarraFiltros({ filtros, onCambiar, hoy, ctx, def, sinComparar, extra, className }: BarraFiltrosProps) {
+export function BarraFiltros({ filtros, onCambiar, hoy, ctx, def, sinComparar, extra, className, ocultarSucursalIds }: BarraFiltrosProps) {
   const t = useTranslations('reportes.filtros');
   const etiqueta = useEtiquetaPeriodo();
   const id = useId();
@@ -82,7 +84,7 @@ export function BarraFiltros({ filtros, onCambiar, hoy, ctx, def, sinComparar, e
     >
       {deOrganizacion && <option value="org">{t('todaLaOrganizacion')}</option>}
       {!deOrganizacion && ctx.accesoTotal && <option value="todas">{t('todasLasSucursales')}</option>}
-      {!deOrganizacion && ctx.sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+      {!deOrganizacion && ctx.sucursales.filter((s) => s.id === sucursal || !ocultarSucursalIds?.includes(s.id)).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
     </select>
   );
 

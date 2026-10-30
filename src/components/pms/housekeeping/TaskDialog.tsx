@@ -35,6 +35,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { toPlainDate } from '@/lib/utils/timezone';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { esSucursalRestaurante } from '@/lib/pms/sucursalesPms';
 
 interface TaskDialogProps {
   open: boolean;
@@ -70,7 +71,9 @@ export function TaskDialog({
   // Sucursal: las tareas de limpieza no tienen branch_id propio (la sucursal
   // se deriva del espacio seleccionado). El campo permite filtrar los espacios
   // por sucursal dentro del formulario.
-  const { selectedBranchId } = useBranch();
+  const { selectedBranchId: seleccion, branches } = useBranch();
+  // Una sucursal tipo restaurante (elegida en otro módulo) no sirve como valor inicial.
+  const selectedBranchId = esSucursalRestaurante(branches.find((b) => b.id === seleccion)) ? null : seleccion;
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId ?? null);
 
   // Espacios filtrados por la sucursal seleccionada en el formulario
@@ -81,7 +84,7 @@ export function TaskDialog({
   useEffect(() => {
     if (task) {
       setSpaceId(task.space_id);
-      setTaskDate(new Date(task.task_date));
+      setTaskDate(new Date(task.task_date + 'T00:00:00'));
       setNotes(task.notes || '');
       setAssignedTo(task.assigned_to || 'unassigned');
       setStatus(task.status);
@@ -135,6 +138,7 @@ export function TaskDialog({
             value={branchId}
             onChange={setBranchId}
             required
+            excluirSucursal={esSucursalRestaurante}
           />
 
           {/* Espacio */}

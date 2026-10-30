@@ -25,6 +25,7 @@ import type { MaintenanceOrder } from '@/lib/services/maintenanceService';
 import type { Space } from '@/lib/services/spacesService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import { esSucursalRestaurante } from '@/lib/pms/sucursalesPms';
 
 interface OrderDialogProps {
   open: boolean;
@@ -67,14 +68,16 @@ export function OrderDialog({
 
   // Sucursal: se reutiliza el branchId del prop (página) como valor inicial,
   // pero se permite al usuario cambiarla dentro del formulario.
-  const { selectedBranchId } = useBranch();
+  const { selectedBranchId: seleccion, branches } = useBranch();
+  // Una sucursal tipo restaurante (elegida en otro módulo) no sirve como valor inicial.
+  const selectedBranchId = esSucursalRestaurante(branches.find((b) => b.id === seleccion)) ? null : seleccion;
   const [formBranchId, setFormBranchId] = useState<number | null>(
     branchId ?? selectedBranchId ?? null
   );
 
   useEffect(() => {
-    setFormBranchId(branchId ?? selectedBranchId ?? null);
-  }, [branchId, selectedBranchId]);
+    setFormBranchId(esSucursalRestaurante(branches.find((b) => b.id === branchId)) ? selectedBranchId : branchId ?? selectedBranchId ?? null);
+  }, [branchId, selectedBranchId, branches]);
 
   useEffect(() => {
     if (order) {
@@ -144,6 +147,7 @@ export function OrderDialog({
             value={formBranchId}
             onChange={setFormBranchId}
             required
+            excluirSucursal={esSucursalRestaurante}
           />
 
           {/* Espacio */}

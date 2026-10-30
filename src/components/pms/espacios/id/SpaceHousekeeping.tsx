@@ -78,7 +78,7 @@ export function SpaceHousekeeping({ tasks, onUpdateStatus }: SpaceHousekeepingPr
                 Última tarea
               </p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {format(new Date(latestTask.task_date), 'dd MMMM yyyy', { locale: es })}
+                {format(new Date(latestTask.task_date + 'T00:00:00'), 'dd MMMM yyyy', { locale: es })}
               </p>
               {latestTask.notes && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
@@ -114,7 +114,7 @@ export function SpaceHousekeeping({ tasks, onUpdateStatus }: SpaceHousekeepingPr
                       <StatusIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {format(new Date(task.task_date), 'dd MMMM', { locale: es })}
+                          {format(new Date(task.task_date + 'T00:00:00'), 'dd MMMM', { locale: es })}
                         </p>
                         {task.notes && (
                           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -189,7 +189,7 @@ export function SpaceHousekeeping({ tasks, onUpdateStatus }: SpaceHousekeepingPr
                     className="flex items-center justify-between p-2 text-sm"
                   >
                     <span className="text-gray-600 dark:text-gray-400">
-                      {format(new Date(task.task_date), 'dd MMM yyyy', { locale: es })}
+                      {format(new Date(task.task_date + 'T00:00:00'), 'dd MMM yyyy', { locale: es })}
                     </span>
                     <Badge className={statusInfo.color} variant="outline">
                       {statusInfo.label}

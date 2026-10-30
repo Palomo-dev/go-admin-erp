@@ -28,6 +28,11 @@ interface BranchSelectorFieldProps {
   className?: string;
   /** Si es true, muestra el campo compacto (sin label encima). */
   compact?: boolean;
+  /**
+   * Oculta sucursales de la lista (p. ej. el PMS excluye las tipo restaurante).
+   * Sin este prop el campo se comporta igual que siempre.
+   */
+  excluirSucursal?: (branch: { branch_type?: string | null }) => boolean;
 }
 
 /**
@@ -48,8 +53,12 @@ export function BranchSelectorField({
   placeholder,
   className = '',
   compact = false,
+  excluirSucursal,
 }: BranchSelectorFieldProps) {
-  const { branches, selectedBranchId, isAllSelected, isLoading } = useBranch();
+  const { branches: todas, selectedBranchId: seleccionContexto, isAllSelected, isLoading } = useBranch();
+  const branches = useMemo(() => (excluirSucursal ? todas.filter((b) => !excluirSucursal(b)) : todas), [todas, excluirSucursal]);
+  // Si la sucursal del encabezado quedó excluida, no se usa como valor inicial.
+  const selectedBranchId = seleccionContexto != null && branches.some((b) => b.id === seleccionContexto) ? seleccionContexto : null;
   const t = useKitT();
   const etiqueta = label ?? t('sucursal.sucursal');
   const textoVacio = placeholder ?? t('sucursal.seleccionar');

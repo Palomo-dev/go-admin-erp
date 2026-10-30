@@ -56,6 +56,9 @@ export function VisorReporte({
   const [estado, setEstado] = useState<'cargando' | 'listo' | 'error'>('cargando');
   const [favorito, setFavorito] = useState(false);
   const [recarga, setRecarga] = useState(0);
+  // PMS consolidado: por defecto solo sucursales hoteleras (o sin tipo); opción para incluir todas.
+  const [incluirTodas, setIncluirTodas] = useState(false);
+  const opcionPms = def?.modulo === 'pms_hotel' && efectivos?.sucursal == null;
 
   useEffect(() => {
     if (!ctx.orgId || !def || !efectivos || !permitido) return;
@@ -63,8 +66,9 @@ export function VisorReporte({
     setEstado('cargando');
     void (async () => {
       try {
-        const actual = await ejecutarReporte(def.id, ctx.orgId!, efectivos.periodo, efectivos.sucursal);
-        const anterior = comparado ? await ejecutarReporte(def.id, ctx.orgId!, comparado, efectivos.sucursal).catch(() => null) : null;
+        const opciones = { incluirTodasSucursales: incluirTodas };
+        const actual = await ejecutarReporte(def.id, ctx.orgId!, efectivos.periodo, efectivos.sucursal, undefined, opciones);
+        const anterior = comparado ? await ejecutarReporte(def.id, ctx.orgId!, comparado, efectivos.sucursal, undefined, opciones).catch(() => null) : null;
         if (!vivo) return;
         setData(actual);
         setPrevio(anterior);
@@ -78,7 +82,7 @@ export function VisorReporte({
     };
     // efectivos se reconstruye en cada render; la clave estable es el periodo y la sucursal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.orgId, def?.id, efectivos?.periodo.tipo, efectivos?.periodo.fechaInicio, efectivos?.periodo.fechaFin, efectivos?.periodo.horaInicio, efectivos?.periodo.horaFin, efectivos?.sucursal, efectivos?.comparar, permitido, recarga]);
+  }, [ctx.orgId, def?.id, efectivos?.periodo.tipo, efectivos?.periodo.fechaInicio, efectivos?.periodo.fechaFin, efectivos?.periodo.horaInicio, efectivos?.periodo.horaFin, efectivos?.sucursal, efectivos?.comparar, permitido, recarga, incluirTodas]);
 
   useEffect(() => {
     if (!ctx.orgId || !def || !efectivos || estado !== 'listo') return;
@@ -204,6 +208,12 @@ export function VisorReporte({
           <RowActionsMenu acciones={menu} etiquetaBoton={t('visor.exportar')} iconoBoton={Download} tamano="md" titulo={def.titulo} />
         </div>
       </div>
+      {opcionPms && (
+        <label className="flex items-center gap-2 text-sm text-fg-muted">
+          <input type="checkbox" checked={incluirTodas} onChange={(e) => setIncluirTodas(e.target.checked)} />
+          Incluir sucursales no hoteleras (restaurantes, etc.)
+        </label>
+      )}
       {pestanasVista.length > 0 && (
         <TabBar id="vista" etiqueta={def.titulo} tamano="sm" valor={vistaId ?? 'principal'} onValorChange={(v) => onCambiar({ vista: v === 'principal' ? null : v })} pestanas={pestanasVista} />
       )}

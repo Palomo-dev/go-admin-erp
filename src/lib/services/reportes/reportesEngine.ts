@@ -3,7 +3,7 @@
 // Orquesta la ejecución de reportes individuales y cierres consolidados
 // ============================================================
 
-import type { PeriodoCierre, ReportData, ReportDefinition, ReportesClient } from './types';
+import type { OpcionesReporte, PeriodoCierre, ReportData, ReportDefinition, ReportesClient } from './types';
 import { getReporteById, getReportesVisibles } from './reportesCatalogo';
 import { reportePermitido } from './alcanceSucursal';
 
@@ -21,6 +21,7 @@ export async function ejecutarReporte(
   periodo: PeriodoCierre,
   branchId?: number | null,
   client?: ReportesClient,
+  opciones?: OpcionesReporte,
 ): Promise<ReportData> {
   const def = getReporteById(reportId);
 
@@ -29,7 +30,7 @@ export async function ejecutarReporte(
   }
 
   try {
-    const data = await def.fetch(orgId, periodo, branchId, client);
+    const data = await def.fetch(orgId, periodo, branchId, client, opciones);
     return data;
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Error desconocido';

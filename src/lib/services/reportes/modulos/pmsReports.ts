@@ -11,7 +11,20 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
-import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre, OpcionesReporte } from '../types';
+import { esSucursalHotelera } from '@/lib/pms/sucursalesPms';
+
+/**
+ * Consolidado (sin sucursal) sin «incluir todas»: ids de las sucursales hoteleras
+ * (branch_type 'hotel' o null). `null` = no filtrar por tipo.
+ */
+async function sucursalesHoteleras(
+  db: ReportesClient | typeof browserSupabase, orgId: number, branchId: number | null | undefined, opciones?: OpcionesReporte,
+): Promise<number[] | null> {
+  if (normalizeBranchParam(branchId) != null || opciones?.incluirTodasSucursales) return null;
+  const { data } = await (db as typeof browserSupabase).from('branches').select('id, branch_type').eq('organization_id', orgId);
+  return (data ?? []).filter((b: { branch_type: string | null }) => esSucursalHotelera(b)).map((b: { id: number }) => b.id);
+}
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -31,11 +44,13 @@ export const pmsReports: DefinicionModulo[] = [
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient, opciones?: OpcionesReporte): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const hoteles = await sucursalesHoteleras(db, orgId, branchId, opciones);
       // Filtrar spaces por branch_id cuando branchId != null
       let spacesQuery = db.from('spaces').select('id, status, branches!inner(organization_id)').eq('branches.organization_id', orgId);
       spacesQuery = applyBranchFilter(spacesQuery, branchId);
+      if (hoteles) spacesQuery = spacesQuery.in('branch_id', hoteles);
       const { data: spaces } = await spacesQuery;
 
       let reservationsQuery = db
@@ -45,6 +60,7 @@ export const pmsReports: DefinicionModulo[] = [
         .gte('checkin', periodo.fechaInicio)
         .lte('checkin', periodo.fechaFin);
       reservationsQuery = applyBranchFilter(reservationsQuery, branchId);
+      if (hoteles) reservationsQuery = reservationsQuery.in('branch_id', hoteles);
       const { data: reservations } = await reservationsQuery;
 
       const totalRooms = spaces?.length ?? 0;
@@ -83,8 +99,9 @@ export const pmsReports: DefinicionModulo[] = [
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient, opciones?: OpcionesReporte): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const hoteles = await sucursalesHoteleras(db, orgId, branchId, opciones);
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       let foliosQuery = db
         .from('folios')
@@ -95,6 +112,7 @@ export const pmsReports: DefinicionModulo[] = [
       // `folios` no tiene branch_id: la sucursal es la de su reserva.
       const sucursal = normalizeBranchParam(branchId);
       if (sucursal != null) foliosQuery = foliosQuery.eq('reservations.branch_id', sucursal);
+      if (hoteles) foliosQuery = foliosQuery.in('reservations.branch_id', hoteles);
       const { data, error } = await foliosQuery;
 
       if (error) throw error;
@@ -130,11 +148,13 @@ export const pmsReports: DefinicionModulo[] = [
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient, opciones?: OpcionesReporte): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const hoteles = await sucursalesHoteleras(db, orgId, branchId, opciones);
       // Obtener spaceIds de la sucursal (o todas) para filtrar housekeeping_tasks
       let spacesQuery = db.from('spaces').select('id, branches!inner(organization_id)').eq('branches.organization_id', orgId);
       spacesQuery = applyBranchFilter(spacesQuery, branchId);
+      if (hoteles) spacesQuery = spacesQuery.in('branch_id', hoteles);
       const { data: orgSpaces } = await spacesQuery;
       const spaceIds = (orgSpaces ?? []).map((s: Record<string, unknown>) => s.id);
 

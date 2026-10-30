@@ -62,7 +62,7 @@ describe('guardarraíl estático: los 19 módulos de reportes aceptan el cliente
       // ese cuerpo). Un archivo sin `fetch` no puede saltarse el cliente.
       if (!src.includes('async fetch(')) continue;
       const fetches = (src.match(/async fetch\(/g) ?? []).length;
-      const withClient = (src.match(/async fetch\(orgId: number, periodo: PeriodoCierre, branchId\?: number \| null, client\?: ReportesClient\)/g) ?? []).length;
+      const withClient = (src.match(/async fetch\(orgId: number, periodo: PeriodoCierre, branchId\?: number \| null, client\?: ReportesClient(?:, opciones\?: OpcionesReporte)?\)/g) ?? []).length;
       const fallbacks = (src.match(/const db = client \?\? browserSupabase;/g) ?? []).length;
       const rawUses = src.replace(/import \{ supabase as browserSupabase \}[^\n]*/g, '').match(/\bsupabase\b/g) ?? [];
       if (fetches === 0 || withClient !== fetches || fallbacks !== fetches || rawUses.length > 0) {

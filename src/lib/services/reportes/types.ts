@@ -181,7 +181,13 @@ export interface DefinicionModulo {
   categoria: CategoriaReporte;
   alcance: AlcanceReporte;
   periodosSugeridos: TipoCierre[];
-  fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient) => Promise<ReportData>;
+  fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient, opciones?: OpcionesReporte) => Promise<ReportData>;
+}
+
+/** Opciones extra de un reporte (hoy solo las usa PMS). */
+export interface OpcionesReporte {
+  /** PMS consolidado: incluir sucursales no hoteleras (p. ej. restaurante). Por defecto solo hotel o sin tipo. */
+  incluirTodasSucursales?: boolean;
 }
 
 /** Definición (catálogo) de un reporte disponible */

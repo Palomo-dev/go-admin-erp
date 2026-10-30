@@ -17,7 +17,8 @@
  */
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { sucursalesParaRuta } from '@/lib/pms/sucursalesPms';
 import { useTranslations } from 'next-intl';
 import { ArrowUpRight, Check, ChevronsUpDown, Layers, Plus, Search, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -173,12 +174,15 @@ function PanelSucursales({ onNavegar }: { onNavegar: () => void }) {
   const { datos: capacidades } = useCapacidades();
   const { datos: plan } = usePlanSesion();
   const [consulta, setConsulta] = useState('');
+  const pathname = usePathname();
 
   const visibles = useMemo(() => {
+    // En Limpieza/Mantenimiento del PMS no se ofrecen sucursales tipo restaurante.
+    const base = sucursalesParaRuta(branches, pathname);
     const q = consulta.trim().toLowerCase();
-    if (!q) return branches;
-    return branches.filter((b) => b.name?.toLowerCase().includes(q) || b.address?.toLowerCase().includes(q) || b.city?.toLowerCase().includes(q));
-  }, [branches, consulta]);
+    if (!q) return base;
+    return base.filter((b) => b.name?.toLowerCase().includes(q) || b.address?.toLowerCase().includes(q) || b.city?.toLowerCase().includes(q));
+  }, [branches, consulta, pathname]);
 
   const esAdmin = capacidades?.esAdmin ?? false;
   const uso = plan?.uso.sucursales;

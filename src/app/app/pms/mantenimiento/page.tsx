@@ -17,6 +17,7 @@ import { cargaAislada } from '@/lib/utils/cargaAislada';
 import SpacesService, { type Space } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { AvisoSucursalRestaurante } from '@/components/pms/AvisoSucursalRestaurante';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function MaintenancePage() {
@@ -240,6 +241,7 @@ export default function MaintenancePage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <AvisoSucursalRestaurante />
       {/* Header */}
       <MaintenanceHeader onNewOrder={handleNewOrder} />
 

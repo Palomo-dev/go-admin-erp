@@ -7,7 +7,7 @@ comentarios, commits y UI.
 ## Reglas duras
 
 1. **La base de datos se toca SOLO por el MCP de Supabase** (`apply_migration`,
-   `execute_sql`, `list_tables`, `get_advisors`). Proyecto: `jgmgphmzusbluqhuqihj`.
+   `execute_sql`, `list_tables`, `get_advisors`). Proyecto: `taqjemqjtumhwptchcxk` (Postgres 17; desde el 2026-11-03 reemplaza a `jgmgphmzusbluqhuqihj`, que se borró por error).
    Cada migración deja además su `.sql` en `supabase/migrations/` y su reversión
    en `supabase/rollbacks/`, en el mismo commit: ver `docs/POLITICA-MIGRACIONES.md`.
    Nunca credenciales dentro de un `.sql` — el repositorio es público. Los `.sql`

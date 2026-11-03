@@ -101,7 +101,7 @@
   "rewrites": [
     {
       "source": "/auth/v1/:path*",
-      "destination": "https://jgmgphmzusbluqhuqihj.supabase.co/auth/v1/:path*"
+      "destination": "https://taqjemqjtumhwptchcxk.supabase.co/auth/v1/:path*"
     }
   ]
 }

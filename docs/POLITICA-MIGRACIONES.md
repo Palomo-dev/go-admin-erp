@@ -93,6 +93,6 @@ No hay que «arreglarlo» sino apagarlo, por dos razones:
    release del escritorio.
 
 Cómo apagarlo (dashboard, no hay API por MCP): Supabase → proyecto
-`jgmgphmzusbluqhuqihj` → **Branches** (o Project Settings → Integrations →
+`taqjemqjtumhwptchcxk` → **Branches** (o Project Settings → Integrations →
 GitHub) → *Disable branching* / desmarcar *Automatic branching* y
 *Supabase changes on push*. Con eso el check desaparece de los commits.

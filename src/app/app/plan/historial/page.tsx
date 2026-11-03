@@ -49,7 +49,7 @@ interface Subscription {
     name: string;
     price_usd_month: number;
     price_usd_year: number;
-    max_modules: number;
+    max_modules: number | null;
     max_branches: number;
   };
 }
@@ -215,7 +215,8 @@ export default function HistorialPage() {
             name: String(sub.plans.name),
             price_usd_month: Number(sub.plans.price_usd_month),
             price_usd_year: Number(sub.plans.price_usd_year),
-            max_modules: Number(sub.plans.max_modules),
+            // NULL = sin límite; Number(null) lo volvía 0.
+            max_modules: sub.plans.max_modules == null ? null : Number(sub.plans.max_modules),
             max_branches: Number(sub.plans.max_branches)
           }
         }));
@@ -372,7 +373,7 @@ export default function HistorialPage() {
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Límites del plan</p>
                       <p className="font-medium">
-                        {subscription.plans.max_modules} módulos, {subscription.plans.max_branches} sucursales
+                        {subscription.plans.max_modules == null ? 'Módulos ilimitados' : `${subscription.plans.max_modules} módulos`}, {subscription.plans.max_branches} sucursales
                       </p>
                     </div>
                   </div>

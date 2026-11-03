@@ -148,16 +148,20 @@ export default function WebsiteChannelSettingsPage() {
 
     try {
       setIsTogglingWebsite(true);
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('website_settings')
         .update({
           chat_widget_enabled: enabled,
           chat_widget_public_key: enabled ? channel.public_key : null,
           updated_at: new Date().toISOString()
         })
-        .eq('organization_id', organizationId);
+        .eq('organization_id', organizationId)
+        .select('id');
 
       if (error) throw error;
+      // Sin permiso de edición del sitio, RLS no devuelve error: actualiza 0 filas.
+      // Sin esto el interruptor decía «visible» y el sitio no cambiaba.
+      if (!data || data.length === 0) throw new Error('website_settings sin filas actualizadas');
 
       setShowInWebsite(enabled);
       toast({

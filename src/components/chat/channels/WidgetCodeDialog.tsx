@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Copy, Check, Code, Key, FileCode, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Copy, Check, Code, Key, FileCode, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatChannel } from '@/lib/services/chatChannelsService';
+import { codigoDelWidget } from '@/lib/chat/codigoWidget';
 
 interface WidgetCodeDialogProps {
   open: boolean;
@@ -30,13 +31,8 @@ export default function WidgetCodeDialog({
 
   if (!channel) return null;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co';
-  const widgetUrl = `${supabaseUrl}/functions/v1/chat-widget`;
-
-  const widgetCode = `<!-- GO Chat Widget -->
-<script src="${widgetUrl}"></script>
-<script>goChat('init', '${channel.public_key}');</script>
-<!-- End GO Chat Widget -->`;
+  // Un solo generador (src/lib/chat/codigoWidget.ts): funciona pegado en cualquier página.
+  const widgetCode = codigoDelWidget(channel.public_key);
 
   const handleCopyCode = async () => {
     try {
@@ -63,7 +59,7 @@ export default function WidgetCodeDialog({
     { step: 2, text: 'Abre el archivo HTML principal de tu sitio web' },
     { step: 3, text: 'Pega el código justo antes de la etiqueta </body>' },
     { step: 4, text: 'Guarda los cambios y súbelos a tu servidor' },
-    { step: 5, text: '¡Listo! El widget aparecerá en la esquina inferior derecha' },
+    { step: 5, text: '¡Listo! El chat aparecerá en la esquina que configuraste' },
   ];
 
   return (
@@ -178,7 +174,7 @@ export default function WidgetCodeDialog({
 
               <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                 <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Nota:</strong> El widget solo funcionará en los dominios que hayas configurado como permitidos en la configuración del canal.
+                  <strong>Nota:</strong> Funciona en cualquier página. Si configuras dominios permitidos en el canal, solo funcionará en esos dominios (y en tu sitio GO Admin). En tu sitio GO Admin no hace falta pegar nada: basta con activar «Mostrar en sitio web».
                 </p>
               </div>
             </TabsContent>

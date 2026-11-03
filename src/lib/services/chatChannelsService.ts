@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { codigoDelWidget } from '@/lib/chat/codigoWidget';
 
 export type ChannelType = 'website' | 'whatsapp' | 'facebook' | 'instagram' | 'telegram' | 'email';
 export type ChannelStatus = 'active' | 'inactive' | 'pending';
@@ -12,7 +13,7 @@ export interface ChatChannel {
   status: ChannelStatus;
   public_key: string | null;
   ai_mode: AIMode;
-  business_hours: Record<string, any> | null;
+  business_hours: Record<string, unknown> | null;
   auto_close_inactive_hours: number;
   created_at: string;
   updated_at: string;
@@ -89,7 +90,7 @@ export interface ChannelCredentials {
   id: string;
   channel_id: string;
   provider: string;
-  credentials: Record<string, any>;
+  credentials: Record<string, unknown>;
   is_valid: boolean;
   last_validated_at: string | null;
   created_at: string;
@@ -114,7 +115,7 @@ export interface UpdateChannelData {
   name?: string;
   status?: ChannelStatus;
   ai_mode?: AIMode;
-  business_hours?: Record<string, any>;
+  business_hours?: Record<string, unknown>;
   auto_close_inactive_hours?: number;
 }
 
@@ -374,20 +375,9 @@ class ChatChannelsService {
     return stats;
   }
 
+  /** Código de instalación del widget (ver `src/lib/chat/codigoWidget.ts`). */
   generateWidgetCode(channel: ChatChannel): string {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    
-    return `<!-- GO Chat Widget -->
-<script>
-  (function(w,d,s,o,f,js,fjs){
-    w['GOChatWidget']=o;w[o]=w[o]||function(){
-    (w[o].q=w[o].q||[]).push(arguments)};
-    js=d.createElement(s);fjs=d.getElementsByTagName(s)[0];
-    js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-  }(window,document,'script','goChat','${supabaseUrl}/chat-widget.js'));
-  goChat('init', '${channel.public_key}');
-</script>
-<!-- End GO Chat Widget -->`;
+    return codigoDelWidget(channel.public_key);
   }
 
   getTypeLabel(type: ChannelType): string {
@@ -595,7 +585,7 @@ class ChatChannelsService {
     channelId: string,
     action: string,
     userId: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ): Promise<void> {
     try {
       await supabase.from('chat_audit_logs').insert({

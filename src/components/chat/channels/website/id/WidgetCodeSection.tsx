@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ChatChannel } from '@/lib/services/chatChannelsService';
+import { codigoDelWidget } from '@/lib/chat/codigoWidget';
 
 interface WidgetCodeSectionProps {
   channel: ChatChannel;
@@ -31,13 +32,8 @@ export default function WidgetCodeSection({
   const [copied, setCopied] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co';
-  const widgetUrl = `${supabaseUrl}/functions/v1/chat-widget`;
-
-  const widgetCode = `<!-- GO Chat Widget -->
-<script src="${widgetUrl}"></script>
-<script>goChat('init', '${channel.public_key}');</script>
-<!-- End GO Chat Widget -->`;
+  // Un solo generador (src/lib/chat/codigoWidget.ts): funciona pegado en cualquier página.
+  const widgetCode = codigoDelWidget(channel.public_key);
 
   const handleCopyCode = async () => {
     try {
@@ -131,8 +127,8 @@ export default function WidgetCodeSection({
                     ¿Rotar clave pública?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Al rotar la clave pública, deberás actualizar el código del widget en todos los sitios donde esté instalado. 
-                    Las sesiones existentes dejarán de funcionar hasta que actualices el código.
+                    Tu sitio GO Admin pasa a usar la clave nueva solo. En cualquier otra página donde hayas pegado
+                    el código, deberás pegarlo de nuevo: hasta entonces el chat no aparecerá allí.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

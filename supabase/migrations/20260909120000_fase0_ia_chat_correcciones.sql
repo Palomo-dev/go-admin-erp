@@ -162,7 +162,7 @@ begin
   limit 1;
 
   perform net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/ai-auto-response',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/ai-auto-response',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-internal-secret', coalesce(v_secret, '')

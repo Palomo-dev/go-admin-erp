@@ -4,7 +4,7 @@ description: Analizar y despues crear página
 
 Analizar y después crear página
 
-Recuerda que tienes el MCP de supabase, el proyecto con ID: jgmgphmzusbluqhuqihj
+Recuerda que tienes el MCP de supabase, el proyecto con ID: taqjemqjtumhwptchcxk
 
 Analizar antes de hacer cambios y trabajar con lo que ya esta creado. conectar la página  con la tablas de supabases correspondientes así que analizar primero muy bien las tablas de supabase.
 

@@ -64,7 +64,7 @@ begin
   return new;
  end if;
  select decrypted_secret into v_secret from vault.decrypted_secrets where name='AI_INTERNAL_SECRET' limit 1;
- perform net.http_post(url:='https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/channel-dispatch',
+ perform net.http_post(url:='https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/channel-dispatch',
   headers:=jsonb_build_object('Content-Type','application/json','x-internal-secret',coalesce(v_secret,'')),
   body:=jsonb_build_object('messageId',new.id,'conversationId',new.conversation_id,'organizationId',new.organization_id));
  return new;
@@ -120,7 +120,7 @@ begin
   limit 1;
 
   perform net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/ai-auto-response',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/ai-auto-response',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-internal-secret', coalesce(v_secret, '')

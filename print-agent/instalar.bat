@@ -6,7 +6,7 @@ title GO Admin - Instalador del Agente de Impresion
 :: ══════════════════════════════════════════════════════════════
 ::  CONFIGURACION FIJA (editar solo si cambia el proyecto)
 :: ══════════════════════════════════════════════════════════════
-set "SUPABASE_URL=https://jgmgphmzusbluqhuqihj.supabase.co"
+set "SUPABASE_URL=https://taqjemqjtumhwptchcxk.supabase.co"
 set "SUPABASE_ANON_KEY=PEGAR_AQUI_LA_ANON_KEY_ANTES_DE_DISTRIBUIR"
 
 echo.

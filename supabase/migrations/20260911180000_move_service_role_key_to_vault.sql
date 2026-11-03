@@ -51,7 +51,7 @@ begin
   end if;
 
   select net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/actualizar-tasas-cambio',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/actualizar-tasas-cambio',
     headers := jsonb_build_object(
       'Authorization', 'Bearer ' || v_key,
       'Content-Type', 'application/json',

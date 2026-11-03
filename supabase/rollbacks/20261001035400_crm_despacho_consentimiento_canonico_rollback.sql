@@ -54,7 +54,7 @@ BEGIN
   END IF;
 
   PERFORM net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/channel-dispatch',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/channel-dispatch',
     headers := jsonb_build_object('Content-Type', 'application/json'),
     body := jsonb_build_object(
       'messageId', NEW.id,
@@ -109,7 +109,7 @@ begin
   limit 1;
 
   perform net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/ai-auto-response',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/ai-auto-response',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-internal-secret', coalesce(v_secret, '')

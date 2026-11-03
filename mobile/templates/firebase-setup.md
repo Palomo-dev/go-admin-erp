@@ -126,7 +126,7 @@ supabase secrets set FCM_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n----
 ```
 
 O via Supabase Dashboard:
-1. Ir a https://supabase.com/dashboard/project/jgmgphmzusbluqhuqihj
+1. Ir a https://supabase.com/dashboard/project/taqjemqjtumhwptchcxk
 2. **Edge Functions** → **Secrets**
 3. Añadir las 3 variables:
    - `FCM_PROJECT_ID`
@@ -196,7 +196,7 @@ for each row execute function public.notify_push();
 
 -- Configurar la URL de Supabase (setting global)
 -- Reemplazar con tu URL de proyecto
-alter database postgres set app.settings.supabase_url = 'https://jgmgphmzusbluqhuqihj.supabase.co';
+alter database postgres set app.settings.supabase_url = 'https://taqjemqjtumhwptchcxk.supabase.co';
 ```
 
 Ejecutar en Supabase Dashboard → **SQL Editor**.
@@ -208,7 +208,7 @@ Ejecutar en Supabase Dashboard → **SQL Editor**.
 > 3. **Tabla:** `notifications`
 > 4. **Eventos:** `INSERT`
 > 5. **Filtro:** `body->>'channel' = 'push'`
-> 6. **URL:** `https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/push`
+> 6. **URL:** `https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/push`
 > 7. **Método:** `POST`
 > 8. **Headers:** `{ "Content-Type": "application/json" }`
 
@@ -245,4 +245,4 @@ Ejecutar en Supabase Dashboard → **SQL Editor**.
 - Edge Function: `supabase/functions/push/index.ts`
 - Plan de pendientes: `docs/PLAN_CAPACITOR_MOVIL_PENDIENTES.md` (sección P2)
 - Firebase Console: https://console.firebase.google.com/
-- Supabase Dashboard: https://supabase.com/dashboard/project/jgmgphmzusbluqhuqihj
+- Supabase Dashboard: https://supabase.com/dashboard/project/taqjemqjtumhwptchcxk

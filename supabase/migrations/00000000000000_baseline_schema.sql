@@ -993,7 +993,7 @@ DECLARE
   v_response_id BIGINT;
 BEGIN
   -- URL del proyecto Supabase
-  v_project_url := 'https://jgmgphmzusbluqhuqihj.supabase.co';
+  v_project_url := 'https://taqjemqjtumhwptchcxk.supabase.co';
   
   -- Obtener anon key desde vault o usar una hardcoded para cron
   -- Nota: La Edge Function tiene verify_jwt: false, así que no necesitamos auth real
@@ -3936,7 +3936,7 @@ BEGIN
             
             -- Llamar Edge Function con fecha específica para datos históricos reales
             PERFORM net.http_post(
-                url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/actualizar-tasas-cambio',
+                url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/actualizar-tasas-cambio',
                 headers := jsonb_build_object(
                     'Authorization', 'Bearer <SERVICE_ROLE_KEY>',
                     'Content-Type', 'application/json',
@@ -4018,7 +4018,7 @@ BEGIN
             
             -- Llamar Edge Function para fecha específica
             PERFORM net.http_post(
-                url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/actualizar-tasas-cambio',
+                url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/actualizar-tasas-cambio',
                 headers := jsonb_build_object(
                     'Authorization', 'Bearer <SERVICE_ROLE_KEY>',
                     'Content-Type', 'application/json',
@@ -20633,7 +20633,7 @@ BEGIN
   -- Esto permite que el push funcione sin necesidad de ALTER DATABASE (que
   -- requiere superuser). Los settings de BD siguen siendo preferidos si existen.
   IF v_supabase_url IS NULL THEN
-    v_supabase_url := 'https://jgmgphmzusbluqhuqihj.supabase.co';
+    v_supabase_url := 'https://taqjemqjtumhwptchcxk.supabase.co';
   END IF;
   IF v_service_role_key IS NULL THEN
     v_service_role_key := '<SERVICE_ROLE_KEY>';
@@ -23316,7 +23316,7 @@ begin
   limit 1;
 
   perform net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/ai-auto-response',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/ai-auto-response',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-internal-secret', coalesce(v_secret, '')
@@ -23379,7 +23379,7 @@ BEGIN
   END IF;
 
   PERFORM net.http_post(
-    url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/channel-dispatch',
+    url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/channel-dispatch',
     headers := jsonb_build_object('Content-Type', 'application/json'),
     body := jsonb_build_object(
       'messageId', NEW.id,

@@ -142,7 +142,7 @@ BEGIN
 
             -- Llamar Edge Function con fecha específica para datos históricos reales
             PERFORM net.http_post(
-                url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/actualizar-tasas-cambio',
+                url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/actualizar-tasas-cambio',
                 headers := jsonb_build_object(
                     'Authorization', 'Bearer ' || private.get_secret('service_role_key'),
                     'Content-Type', 'application/json',
@@ -221,7 +221,7 @@ BEGIN
 
             -- Llamar Edge Function para fecha específica
             PERFORM net.http_post(
-                url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/actualizar-tasas-cambio',
+                url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/actualizar-tasas-cambio',
                 headers := jsonb_build_object(
                     'Authorization', 'Bearer ' || private.get_secret('service_role_key'),
                     'Content-Type', 'application/json',

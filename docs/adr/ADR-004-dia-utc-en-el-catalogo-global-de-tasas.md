@@ -268,3 +268,22 @@ explícitamente.
    global desde un rol anónimo. No se ha tocado —cambiar una ACL no es una
    corrección de fecha— pero es exactamente el patrón del que avisa la memoria
    del proyecto sobre RPC abiertas a `anon`.
+
+## Actualización 2026-11-03: deuda 1 saldada en la Edge Function reconstruida
+
+El proyecto Supabase anterior se borró y la versión 19 de `actualizar-tasas-cambio`
+se perdió con él (su código nunca estuvo versionado). Se reconstruyó en
+`supabase/functions/actualizar-tasas-cambio/index.ts`, desplegada como versión 1
+del proyecto `taqjemqjtumhwptchcxk` con `verify_jwt=false` (la clave `sb_secret_…`
+de Vault no es un JWT); la función valida ella misma la clave contra las del runtime.
+
+- **Deuda 1, saldada:** el día sale de `public.fn_today_system()`, leído por RPC.
+  La función no calcula ningún día en Deno ni cablea zona alguna.
+- **Deuda 3, saldada:** `target_date` ya se lee: un día pasado se pide a
+  `historical/<día>.json` y se escribe con ese `rate_date`; un día futuro es 400.
+- Escribe por `update_global_exchange_rates` (actualiza o inserta por
+  `(code, rate_date)`): dos ejecuciones el mismo día dejan las mismas filas.
+- Cron recreado por la migración `20261103214949_tasas_cron_diario_proyecto_nuevo`
+  (`mantener-datos-reales-diarios`, `0 2 * * 1-6`). El antiguo job de
+  `auto_update_exchange_rates()` no se recrea.
+- La serie empieza el 2026-11-03: el histórico no se reconstruyó (decisión del dueño).

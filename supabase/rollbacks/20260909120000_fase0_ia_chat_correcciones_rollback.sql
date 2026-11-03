@@ -48,7 +48,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  supabase_url := 'https://jgmgphmzusbluqhuqihj.supabase.co/functions/v1/ai-auto-response';
+  supabase_url := 'https://taqjemqjtumhwptchcxk.supabase.co/functions/v1/ai-auto-response';
 
   PERFORM net.http_post(
     url := supabase_url,

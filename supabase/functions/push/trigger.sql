@@ -2,7 +2,7 @@
 -- cuando se inserta una notificación con channel='push' o channel='app'.
 --
 -- Configuración preferida (opcional, en Supabase Dashboard SQL Editor como superuser):
---   alter database postgres set app.settings.supabase_url = 'https://jgmgphmzusbluqhuqihj.supabase.co';
+--   alter database postgres set app.settings.supabase_url = 'https://taqjemqjtumhwptchcxk.supabase.co';
 --   alter database postgres set app.settings.service_role_key = '<service_role_key>';
 --
 -- Si los settings de BD no están configurados, la función usa valores fallback
@@ -37,7 +37,7 @@ begin
   -- La clave NUNCA va escrita aquí: vive en vault.secrets y se lee con
   -- private.get_secret (ver migración 20260910041620_secretos_fuera_de_pg_proc).
   if v_supabase_url is null then
-    v_supabase_url := 'https://jgmgphmzusbluqhuqihj.supabase.co';
+    v_supabase_url := 'https://taqjemqjtumhwptchcxk.supabase.co';
   end if;
   if v_service_role_key is null then
     v_service_role_key := private.get_secret('service_role_key');

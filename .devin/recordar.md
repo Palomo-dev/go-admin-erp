@@ -2,7 +2,7 @@
 description: Constante
 ---
 
-1- Recuerda que tienes el MCP de supabase, el proyecto con ID: jgmgphmzusbluqhuqihj
+1- Recuerda que tienes el MCP de supabase, el proyecto con ID: taqjemqjtumhwptchcxk
 
 2- Analizar antes de hacer cambios y trabajar con lo que ya esta creado. conectar esta página de /app/crm con la tabla de supabase de: customers, pipelines, stages, opportunities, tasks
 

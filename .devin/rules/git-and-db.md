@@ -27,7 +27,7 @@ scripts, dumps) en el repositorio.**
 
 - Los cambios de esquema (tablas, columnas, índices, constraints, RLS) se
   aplican **siempre** vía el MCP de Supabase (`apply_migration`,
-  `execute_sql`, etc.) sobre el proyecto `jgmgphmzusbluqhuqihj`.
+  `execute_sql`, etc.) sobre el proyecto `taqjemqjtumhwptchcxk`.
 - No generes archivos `supabase/migrations/*.sql`, ni `db/*.sql`, ni scripts
   SQL sueltos en ninguna ruta del repo.
 - Si el usuario pide un cambio de esquema, úsalo vía MCP directamente.

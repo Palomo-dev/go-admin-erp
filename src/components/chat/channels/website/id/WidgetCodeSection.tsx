@@ -31,7 +31,7 @@ export default function WidgetCodeSection({
   const [copied, setCopied] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://taqjemqjtumhwptchcxk.supabase.co';
   const widgetUrl = `${supabaseUrl}/functions/v1/chat-widget`;
 
   const widgetCode = `<!-- GO Chat Widget -->

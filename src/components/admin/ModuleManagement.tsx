@@ -178,8 +178,10 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
     .concat(orgStatus.active_modules.map(code => orgStatus.available_modules.find(m => m.code === code)).filter(Boolean) as Module[])
     .filter((module, index, self) => self.findIndex(m => m.code === module.code) === index);
 
-  const usagePercentage = orgStatus.max_modules_allowed > 0 
-    ? (orgStatus.paid_modules_count / orgStatus.max_modules_allowed) * 100 
+  // `null` = plan sin límite de módulos pagos (ver limiteDeModulos).
+  const maxPermitidos = orgStatus.max_modules_allowed;
+  const usagePercentage = maxPermitidos !== null && maxPermitidos > 0
+    ? (orgStatus.paid_modules_count / maxPermitidos) * 100
     : 0;
 
   return (
@@ -205,23 +207,23 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {orgStatus.max_modules_allowed}
+                {maxPermitidos === null ? 'Ilimitados' : maxPermitidos}
               </div>
               <div className="text-sm text-green-600 dark:text-green-400">Módulos Permitidos</div>
             </div>
             <div className="text-center p-4 bg-purple-50 rounded-lg">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {orgStatus.max_modules_allowed - orgStatus.paid_modules_count}
+                {maxPermitidos === null ? 'Sin tope' : Math.max(0, maxPermitidos - orgStatus.paid_modules_count)}
               </div>
               <div className="text-sm text-purple-600 dark:text-purple-400">Módulos Disponibles</div>
             </div>
           </div>
 
-          {orgStatus.max_modules_allowed > 0 && (
+          {maxPermitidos !== null && maxPermitidos > 0 && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Uso de módulos</span>
-                <span>{orgStatus.paid_modules_count} / {orgStatus.max_modules_allowed}</span>
+                <span>{orgStatus.paid_modules_count} / {maxPermitidos}</span>
               </div>
               <Progress value={usagePercentage} className="h-2" />
             </div>

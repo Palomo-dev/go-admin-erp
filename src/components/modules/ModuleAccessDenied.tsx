@@ -112,7 +112,8 @@ export default function ModuleAccessDenied({ moduleCode, organizationId }: Modul
     switch (errorType) {
       case 'module_not_activated':
         if (planInfo && moduleInfo) {
-          if (planInfo.max_modules > 0) {
+          // max_modules NULL = plan sin límite: también se puede activar.
+          if (planInfo.max_modules == null || planInfo.max_modules > 0) {
             actions.push({
               label: 'Activar Módulo',
               description: 'Contacta a tu administrador para activar este módulo',
@@ -214,7 +215,7 @@ export default function ModuleAccessDenied({ moduleCode, organizationId }: Modul
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{planInfo.name}</span>
-                <Badge variant="outline">{planInfo.max_modules} módulos</Badge>
+                <Badge variant="outline">{planInfo.max_modules == null ? 'Módulos ilimitados' : `${planInfo.max_modules} módulos`}</Badge>
               </div>
               
               {planInfo.features && (

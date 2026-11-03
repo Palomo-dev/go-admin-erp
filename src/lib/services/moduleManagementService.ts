@@ -21,7 +21,8 @@ export interface Plan {
   price_usd_month: string;
   price_usd_year: string;
   trial_days: number;
-  max_modules: number;
+  /** `null` = sin límite de módulos pagos. */
+  max_modules: number | null;
   max_branches: number;
   features: Record<string, any>;
   is_active: boolean;
@@ -47,10 +48,41 @@ export interface OrganizationModuleStatus {
   plan: Plan | null;
   active_modules_count: number;
   paid_modules_count: number;
-  max_modules_allowed: number;
+  /** Tope de módulos pagos; `null` = ilimitado (ver `limiteDeModulos`). */
+  max_modules_allowed: number | null;
+  is_unlimited: boolean;
   can_activate_more: boolean;
   active_modules: string[];
   available_modules: Module[];
+}
+
+export interface LimiteDeModulos {
+  /** Tope de módulos pagos; `null` = ilimitado. */
+  maxPermitidos: number | null;
+  ilimitado: boolean;
+  puedeActivarMas: boolean;
+  /** Cuántos módulos pagos activos sobran (0 si no hay tope o no se excede). */
+  excedente: number;
+}
+
+/**
+ * Límite de módulos pagos de un plan. En `plans.max_modules`, NULL significa
+ * «sin límite» (igual que `get_module_usage.is_unlimited`). Antes se hacía
+ * `max_modules || 0`: NULL se volvía 0, ninguna organización en Ultimate podía
+ * encender un módulo pago y la corrección de inconsistencias los habría
+ * desactivado todos. Un 0 explícito sí es un tope de cero.
+ */
+export function limiteDeModulos(maxModules: number | null | undefined, pagosActivos: number): LimiteDeModulos {
+  if (maxModules === null || maxModules === undefined) {
+    return { maxPermitidos: null, ilimitado: true, puedeActivarMas: true, excedente: 0 };
+  }
+  const tope = Math.max(0, Number(maxModules) || 0);
+  return {
+    maxPermitidos: tope,
+    ilimitado: false,
+    puedeActivarMas: pagosActivos < tope,
+    excedente: Math.max(0, pagosActivos - tope),
+  };
 }
 
 export interface ModulePageStatus {
@@ -163,9 +195,8 @@ export const moduleManagementService = {
       paidModules.some(m => m.code === code)
     );
 
-    const maxModulesAllowed = plan?.max_modules || 0;
     const paidModulesCount = activePaidModules.length;
-    const canActivateMore = paidModulesCount < maxModulesAllowed;
+    const limite = limiteDeModulos(plan.max_modules, paidModulesCount);
 
     // Módulos disponibles para activar (no activos actualmente)
     const availableModules = allModules.filter(module => 
@@ -178,8 +209,9 @@ export const moduleManagementService = {
       plan,
       active_modules_count: activeModuleCodes.length,
       paid_modules_count: paidModulesCount,
-      max_modules_allowed: maxModulesAllowed,
-      can_activate_more: canActivateMore,
+      max_modules_allowed: limite.maxPermitidos,
+      is_unlimited: limite.ilimitado,
+      can_activate_more: limite.puedeActivarMas,
       active_modules: activeModuleCodes,
       available_modules: availableModules
     };
@@ -529,16 +561,17 @@ export const moduleManagementService = {
             .rpc('get_current_plan', { org_id: org.id });
           
           const planInfo = planData?.[0];
-          const maxModules = planInfo?.max_modules || 0;
+          if (!planInfo) continue;
           const paidModules = org.organization_modules?.filter(om =>
             om.modules && !om.modules[0]?.is_core
           ).length || 0;
+          const limite = limiteDeModulos(planInfo.max_modules, paidModules);
 
-          if (paidModules > maxModules) {
+          if (limite.excedente > 0 && limite.maxPermitidos !== null) {
             organizationsExceedingLimits.push({
               organizationId: org.id,
               currentModules: paidModules,
-              maxAllowed: maxModules
+              maxAllowed: limite.maxPermitidos
             });
           }
         } catch (error) {
@@ -792,7 +825,8 @@ export const moduleManagementService = {
 
       // 3. Verificar y corregir límites de módulos pagados
       const orgStatus = await this.getOrganizationModuleStatus(organizationId, supabaseClient);
-      if (orgStatus.paid_modules_count > orgStatus.max_modules_allowed) {
+      const limite = limiteDeModulos(orgStatus.max_modules_allowed, orgStatus.paid_modules_count);
+      if (limite.excedente > 0 && limite.maxPermitidos !== null) {
         // Desactivar módulos pagados excedentes (mantener los más antiguos)
         const { data: paidActiveModules } = await supabaseClient
           .from('organization_modules')
@@ -807,7 +841,7 @@ export const moduleManagementService = {
           .order('activated_at', { ascending: false });
 
         if (paidActiveModules) {
-          const excessModules = paidActiveModules.slice(orgStatus.max_modules_allowed);
+          const excessModules = paidActiveModules.slice(limite.maxPermitidos);
           for (const excessModule of excessModules) {
             await this.deactivateModule(organizationId, excessModule.module_code, supabaseClient);
           }

@@ -29,8 +29,7 @@ import {
   WidgetPosition,
   WidgetStyle,
   WidgetBehavior,
-  BrandConfig
-} from '@/lib/services/chatChannelsService';
+  BrandConfig, normalizarPosicionWidget } from '@/lib/services/chatChannelsService';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function WebsiteChannelSettingsPage() {
@@ -488,7 +487,8 @@ export default function WebsiteChannelSettingsPage() {
   // Ensure brand_config has all required fields
   const brandConfig: BrandConfig = {
     ...defaultBrandConfig,
-    ...websiteSettings.brand_config
+    ...websiteSettings.brand_config,
+    position: normalizarPosicionWidget(websiteSettings.brand_config?.position),
   };
 
   return (

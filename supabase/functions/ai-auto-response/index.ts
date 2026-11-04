@@ -496,7 +496,10 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
       sku: p.sku,
       price: p.precio ? Number(p.precio) : 0,
       comparePrice: p.precio_anterior ? Number(p.precio_anterior) : null,
-      imageUrl: p.imagen ? `${supabaseUrl}/storage/v1/object/public/product-images/${p.imagen}` : null,
+      // storage_path puede ser una URL externa completa (catálogos importados): se usa tal cual.
+      imageUrl: p.imagen
+        ? (/^https?:\/\//i.test(p.imagen) ? p.imagen : `${supabaseUrl}/storage/v1/object/public/product-images/${p.imagen}`)
+        : null,
       stock: p.stock !== null && p.stock !== undefined ? Number(p.stock) : null,
       presentaciones: p.presentaciones ?? 1,
     }));

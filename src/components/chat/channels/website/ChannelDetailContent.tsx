@@ -16,6 +16,7 @@ import ChatChannelsService, {
   WidgetStyle,
   WidgetBehavior,
   BrandConfig,
+  normalizarPosicionWidget
 } from '@/lib/services/chatChannelsService';
 import {
   WebsiteSettingsHeader,
@@ -487,6 +488,7 @@ export default function ChannelDetailContent({ channelId }: ChannelDetailContent
   const brandConfig: BrandConfig = {
     ...defaultBrandConfig,
     ...websiteSettings.brand_config,
+    position: normalizarPosicionWidget(websiteSettings.brand_config?.position),
   };
 
   return (

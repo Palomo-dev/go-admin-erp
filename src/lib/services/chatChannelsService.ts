@@ -29,6 +29,35 @@ export interface WidgetPosition {
   offsetY: number;
 }
 
+/**
+ * Los canales anteriores guardan `brand_config.position` como texto ('bottom-right');
+ * los actuales, como objeto. Sin normalizar, la pantalla esparcía el texto en el
+ * estado (claves '0', '1'…) y mostraba márgenes por defecto. Misma regla que lee el
+ * widget (supabase/functions/_shared/chat-widget/reglas.ts).
+ */
+export function normalizarPosicionWidget(valor: unknown): WidgetPosition {
+  const base: WidgetPosition = { side: 'right', vertical: 'bottom', offsetX: 20, offsetY: 20 };
+  if (typeof valor === 'string') {
+    return {
+      ...base,
+      side: valor.includes('left') ? 'left' : 'right',
+      vertical: valor.startsWith('top') ? 'top' : 'bottom',
+    };
+  }
+  if (!valor || typeof valor !== 'object') return base;
+  const p = valor as Partial<Record<keyof WidgetPosition, unknown>>;
+  const numero = (v: unknown, def: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(200, Math.round(n))) : def;
+  };
+  return {
+    side: p.side === 'left' ? 'left' : 'right',
+    vertical: p.vertical === 'top' ? 'top' : 'bottom',
+    offsetX: numero(p.offsetX, base.offsetX),
+    offsetY: numero(p.offsetY, base.offsetY),
+  };
+}
+
 export interface WidgetStyle {
   primaryColor: string;
   iconColor: string;

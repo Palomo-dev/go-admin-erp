@@ -682,3 +682,198 @@ function ordenarClaves(valor: unknown): unknown {
   }
   return valor;
 }
+
+// ─── Ficha de producto: opciones por bloque (PDP personalizable, fase 2) ────────────────────
+
+/*
+ * Opciones por bloque de la plantilla `product_detail`. Viajan en `contenido.ficha` de cada
+ * sección (un objeto aparte para no chocar con claves viejas del contenido: `layout`, `zoom`,
+ * `title`… ya tienen otro significado en esos bloques). Son OPCIONALES y NO forman parte de
+ * `esquemaSeccion`: `contenido` sigue siendo un registro libre, así que un valor que no cumpla
+ * estos esquemas nunca rechaza el documento. La tienda los lee con `leerOpcionesBloqueFicha`,
+ * que devuelve solo los campos válidos; un campo ausente o inválido = lo que la ficha pinta hoy
+ * (`OPCIONES_FICHA_POR_DEFECTO`). Fase 2: la tienda todavía no los aplica (fase 3).
+ */
+
+/** Clave de `contenido` donde viven las opciones del bloque de ficha. */
+export const CLAVE_OPCIONES_FICHA = 'ficha' as const;
+
+export const TIPOS_BLOQUE_FICHA = [
+  'product_gallery',
+  'product_info',
+  'product_actions',
+  'product_benefits',
+  'product_description',
+  'related_products',
+  'product_reviews',
+] as const;
+export type TipoBloqueFicha = (typeof TIPOS_BLOQUE_FICHA)[number];
+
+const colorFicha = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+
+/** Galería. `ancho` = % del ancho de la ficha en escritorio (el resto, la información). */
+export const esquemaOpcionesGaleriaFicha = z
+  .object({
+    layout: z.enum(['izquierda', 'derecha', 'miniaturas_abajo', 'miniaturas_lateral', 'grilla', 'scroll']),
+    ancho: z.number().int().min(30).max(70),
+    sticky: z.boolean(),
+    flechas: z.boolean(),
+    puntos: z.boolean(),
+    zoom: z.boolean(),
+  })
+  .partial();
+
+/** Información (nombre y precio siempre se muestran). `mostrarAvisoStock` respeta `conversion`. */
+export const esquemaOpcionesInfoFicha = z
+  .object({
+    mostrarSku: z.boolean(),
+    mostrarRating: z.boolean(),
+    mostrarMarca: z.boolean(),
+    mostrarPrecioComparado: z.boolean(),
+    mostrarAvisoStock: z.boolean(),
+  })
+  .partial();
+
+/** Acciones (cantidad, Agregar, Comprar ahora). Solo presentación: la compra no cambia. */
+export const esquemaOpcionesAccionesFicha = z
+  .object({
+    disposicion: z.enum(['stacked', 'inline']),
+    estilo: z.enum(['heredar_tarjeta', 'tema', 'solido', 'contorno', 'pastilla']),
+    mostrarComprarAhora: z.boolean(),
+    variantes: z.enum(['chips', 'select', 'swatches']),
+  })
+  .partial();
+
+export const esquemaBeneficioFicha = z
+  .object({
+    icono: z.string().min(1).max(40),
+    titulo: z.string().min(1).max(80),
+    texto: z.string().max(200).optional(),
+    color: colorFicha.optional(),
+  })
+  .strict();
+
+export const esquemaOpcionesBeneficiosFicha = z
+  .object({
+    items: z.array(esquemaBeneficioFicha).min(1).max(8),
+    columnas: z.number().int().min(1).max(4),
+    ocultar: z.boolean(),
+  })
+  .partial();
+
+export const esquemaOpcionesDescripcionFicha = z
+  .object({
+    modo: z.enum(['expandible', 'pestanas', 'acordeon']),
+  })
+  .partial();
+
+/** Relacionados. `fuente: 'automatica'` = lo de hoy (categoría, luego etiqueta, luego al azar). */
+export const esquemaOpcionesRelacionadosFicha = z
+  .object({
+    modo: z.enum(['carrusel', 'grilla']),
+    cantidad: z.number().int().min(1).max(24),
+    titulo: z.string().min(1).max(120),
+    fuente: z.enum(['automatica', 'categoria', 'etiqueta']),
+  })
+  .partial();
+
+export const esquemaOpcionesResenasFicha = z
+  .object({
+    histograma: z.boolean(),
+    filtros: z.boolean(),
+    orden: z.enum(['recientes', 'utiles']),
+    ocultarFormulario: z.boolean(),
+  })
+  .partial();
+
+export type OpcionesGaleriaFicha = z.infer<typeof esquemaOpcionesGaleriaFicha>;
+export type OpcionesInfoFicha = z.infer<typeof esquemaOpcionesInfoFicha>;
+export type OpcionesAccionesFicha = z.infer<typeof esquemaOpcionesAccionesFicha>;
+export type BeneficioFicha = z.infer<typeof esquemaBeneficioFicha>;
+export type OpcionesBeneficiosFicha = z.infer<typeof esquemaOpcionesBeneficiosFicha>;
+export type OpcionesDescripcionFicha = z.infer<typeof esquemaOpcionesDescripcionFicha>;
+export type OpcionesRelacionadosFicha = z.infer<typeof esquemaOpcionesRelacionadosFicha>;
+export type OpcionesResenasFicha = z.infer<typeof esquemaOpcionesResenasFicha>;
+
+export interface OpcionesBloqueFicha {
+  product_gallery: OpcionesGaleriaFicha;
+  product_info: OpcionesInfoFicha;
+  product_actions: OpcionesAccionesFicha;
+  product_benefits: OpcionesBeneficiosFicha;
+  product_description: OpcionesDescripcionFicha;
+  related_products: OpcionesRelacionadosFicha;
+  product_reviews: OpcionesResenasFicha;
+}
+
+const ESQUEMAS_BLOQUE_FICHA: { [T in TipoBloqueFicha]: z.AnyZodObject } = {
+  product_gallery: esquemaOpcionesGaleriaFicha,
+  product_info: esquemaOpcionesInfoFicha,
+  product_actions: esquemaOpcionesAccionesFicha,
+  product_benefits: esquemaOpcionesBeneficiosFicha,
+  product_description: esquemaOpcionesDescripcionFicha,
+  related_products: esquemaOpcionesRelacionadosFicha,
+  product_reviews: esquemaOpcionesResenasFicha,
+};
+
+/**
+ * Lo que la ficha pinta hoy sin opciones (referencia para el editor; la tienda no lo necesita:
+ * para ella un campo ausente ya es esto). `mostrarComprarAhora` sigue además sujeto a
+ * `show_buy_now_button` del sitio y `mostrarAvisoStock` a `conversion.urgencia.stockBajo`.
+ */
+export const OPCIONES_FICHA_POR_DEFECTO: { [T in TipoBloqueFicha]: Required<Omit<OpcionesBloqueFicha[T], 'items'>> } = {
+  product_gallery: { layout: 'miniaturas_abajo', ancho: 50, sticky: true, flechas: true, puntos: true, zoom: false },
+  product_info: { mostrarSku: true, mostrarRating: true, mostrarMarca: false, mostrarPrecioComparado: true, mostrarAvisoStock: true },
+  product_actions: { disposicion: 'stacked', estilo: 'tema', mostrarComprarAhora: true, variantes: 'chips' },
+  product_benefits: { columnas: 2, ocultar: false },
+  product_description: { modo: 'expandible' },
+  related_products: { modo: 'carrusel', cantidad: 8, titulo: 'Productos relacionados', fuente: 'automatica' },
+  product_reviews: { histograma: true, filtros: true, orden: 'recientes', ocultarFormulario: false },
+};
+
+export function esTipoBloqueFicha(tipo: string): tipo is TipoBloqueFicha {
+  return (TIPOS_BLOQUE_FICHA as readonly string[]).includes(tipo);
+}
+
+/** Beneficios: se conservan los ítems válidos (un color inválido se descarta sin perder el ítem). */
+function leerBeneficiosFicha(valor: unknown): BeneficioFicha[] | undefined {
+  if (!Array.isArray(valor)) return undefined;
+  const items: BeneficioFicha[] = [];
+  for (const crudo of valor.slice(0, 8)) {
+    if (crudo === null || typeof crudo !== 'object' || Array.isArray(crudo)) continue;
+    const fuente = crudo as Record<string, unknown>;
+    const item: Record<string, unknown> = { icono: fuente.icono, titulo: fuente.titulo };
+    if (esquemaBeneficioFicha.shape.texto.safeParse(fuente.texto).success && fuente.texto !== undefined) item.texto = fuente.texto;
+    if (esquemaBeneficioFicha.shape.color.safeParse(fuente.color).success && fuente.color !== undefined) item.color = fuente.color;
+    const resultado = esquemaBeneficioFicha.safeParse(item);
+    if (resultado.success) items.push(resultado.data);
+  }
+  return items.length ? items : undefined;
+}
+
+/**
+ * Opciones válidas de un bloque de ficha, leídas de `contenido.ficha`. Nunca lanza: campo por
+ * campo, lo inválido se omite (= default de hoy). Tipo desconocido, `contenido` o `ficha` que no
+ * sean objeto → `{}`.
+ */
+export function leerOpcionesBloqueFicha<T extends TipoBloqueFicha>(tipo: T, contenido: unknown): OpcionesBloqueFicha[T];
+export function leerOpcionesBloqueFicha(tipo: string, contenido: unknown): Record<string, unknown>;
+export function leerOpcionesBloqueFicha(tipo: string, contenido: unknown): Record<string, unknown> {
+  if (!esTipoBloqueFicha(tipo)) return {};
+  if (contenido === null || typeof contenido !== 'object' || Array.isArray(contenido)) return {};
+  const crudo = (contenido as Record<string, unknown>)[CLAVE_OPCIONES_FICHA];
+  if (crudo === null || typeof crudo !== 'object' || Array.isArray(crudo)) return {};
+  const fuente = crudo as Record<string, unknown>;
+  const forma = ESQUEMAS_BLOQUE_FICHA[tipo].shape as Record<string, z.ZodTypeAny>;
+  const opciones: Record<string, unknown> = {};
+  for (const [clave, esquema] of Object.entries(forma)) {
+    if (!Object.prototype.hasOwnProperty.call(fuente, clave)) continue;
+    if (tipo === 'product_benefits' && clave === 'items') {
+      const items = leerBeneficiosFicha(fuente.items);
+      if (items) opciones.items = items;
+      continue;
+    }
+    const resultado = esquema.safeParse(fuente[clave]);
+    if (resultado.success && resultado.data !== undefined) opciones[clave] = resultado.data;
+  }
+  return opciones;
+}

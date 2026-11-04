@@ -328,7 +328,7 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
 .gc-omitir{border:0;background:none;color:#4B5563;text-decoration:underline;padding:6px;align-self:center}
 .gc-alerta{margin:0;padding:8px 14px;background:#FEE2E2;color:#991B1B;font-size:13px;flex:none}
 @media (max-width:520px){
-  .gc-panel{inset:0;top:var(--gc-arriba,0px);left:0;right:0;bottom:auto;width:100%;max-width:none;height:var(--gc-alto,100vh);min-height:0;border-radius:0;animation:none}
+  .gc-panel{inset:0;top:var(--gc-arriba,0px);left:0;right:0;bottom:auto;width:100%;max-width:none;height:var(--gc-alto,100vh);min-height:0;border-radius:0;animation:none;box-shadow:0 100vh 0 100vh #fff}
   .gc-cab{padding-top:calc(12px + env(safe-area-inset-top,0px));padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(12px + env(safe-area-inset-right,0px))}
   .gc-pie{padding-left:calc(12px + env(safe-area-inset-left,0px));padding-right:calc(12px + env(safe-area-inset-right,0px))}
   .gc-abierto .gc-lanzador{display:none}
@@ -838,6 +838,10 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
   }
 
   // ---------------------------------------------------------------- abrir / cerrar --
+  // iOS: con el teclado abierto, Safari deja visible por debajo del visualViewport la
+  // franja de su barra flotante; el panel mide exactamente vv.height, así que ahí se
+  // veía la página. En el celular el panel proyecta una sombra blanca sólida hacia
+  // abajo (box-shadow 0 100vh 0 100vh) que tapa esa franja sin cambiar su altura.
   function ajustarAlTeclado() {
     const vv = ventana.visualViewport;
     if (!nodos.panel) return;

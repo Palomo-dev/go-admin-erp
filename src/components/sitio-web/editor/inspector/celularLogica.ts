@@ -9,6 +9,7 @@
  * - Menú inferior tipo app: `mobile_header.bottom_nav` (apagado = `enabled` false o ausente).
  *   Encenderlo no cambia el encabezado (la tienda lo pone sobre el de hoy).
  */
+import { buscadorCelular, formaBuscadorCelular } from './buscadorCelularLogica';
 import { ANIMACIONES, FONDOS_PANEL, GLIFOS_MENU, ICONOS_ITEM, ITEMS_BARRA_INICIALES, LISTAS_CATEGORIA, TIPOS_ITEM, leerBarra, type ItemBarra } from '@/lib/website/menuMovil';
 
 export const MENUS_CELULAR = ['drawer', 'drawer_left', 'bottom_sheet', 'top_dropdown', 'fullscreen', 'tabs', 'none'] as const;
@@ -234,14 +235,9 @@ export function buscadorPantallaCompleta(a: Record<string, unknown>): boolean {
 }
 
 export function muestraBuscadorPantallaCompleta(a: Record<string, unknown>): boolean {
-  const s = objeto(a.mobile_header)?.search;
-  if (s === 'fullscreen' || s === 'icon') return true;
-  if (s === 'bar') return false;
-  // Igual que `buscadorMovil` de la tienda (lib/website/opcionUnica.ts).
-  const propio = a.mobile_search_style;
-  if (propio === 'icon' || propio === 'bar' || propio === 'hidden') return propio === 'icon';
-  if (propio === null) return (a.search_style ?? 'icon') === 'icon';
-  return true;
+  if (objeto(a.mobile_header)?.search === 'fullscreen') return true;
+  // Igual que la tienda (lib/website/opcionUnica.ts): en conjunto o por separado, con ícono.
+  return formaBuscadorCelular(buscadorCelular(a)) === 'icon';
 }
 
 export function cambioBuscadorPantallaCompleta(a: Record<string, unknown>, si: boolean): Record<string, unknown> {

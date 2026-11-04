@@ -42,6 +42,12 @@ Los tres pasos van en el mismo commit.
 - **Toda función con elevación** (`SECURITY DEFINER`) lleva su `REVOKE ... FROM anon, public` y su
   comprobación de pertenencia a la organización **en la misma migración**. Una guarda sin su revoke
   no es media medida: es ninguna.
+- **Las funciones nuevas nacen cerradas a anon** (desde 20261104053000). Una función que cree
+  `postgres` en `public` solo la pueden ejecutar `authenticated` y `service_role`. Si la llama la
+  clave pública (tiendas, widget, carta QR o una política RLS `to public` que anon evalúa), su
+  migración lleva el permiso explícito: `grant execute on function public.f(...) to anon;`. Sin él,
+  la tienda recibe 42501 «permission denied for function». `CREATE OR REPLACE` conserva el ACL que
+  ya tenía; un `DROP` + `CREATE` la deja cerrada.
 - **Un rollback que no revierte datos, lo dice**. Si la migración borra o transforma filas, el
   rollback restaura la estructura pero no los datos; que el archivo lo advierta en un comentario.
 

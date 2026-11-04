@@ -2433,7 +2433,15 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { value: 'normal', label: 'Normal' },
           { value: 'fast', label: 'Rápida' },
         ],
-        helpText: 'Con «reducir movimiento» del visitante, la franja queda quieta.',
+        helpText: 'Con «reducir movimiento» del visitante, las frases corren a la mitad de velocidad y las fotos quedan quietas.',
+      },
+      {
+        key: 'respect_reduced_motion',
+        label: 'Detener con «reducir movimiento»',
+        type: 'boolean',
+        defaultValue: false,
+        helpText: 'Apagado: si el visitante pidió reducir el movimiento, las frases siguen corriendo, más lentas. Encendido: quedan quietas.',
+        showIf: { variantIn: ['text'] },
       },
       {
         key: 'label',

@@ -6,7 +6,14 @@
 
 import crypto from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { resolverSecreto } from '../secretosIntegracion';
+
+/** Mapeo de codigo de proveedor (URL) a codigo de connector en BD. */
+const PROVIDER_TO_CONNECTOR: Record<string, string> = {
+  wompi: 'wompi_co',
+  bancolombia: 'bancolombia_qr',
+  breb: 'breb_mono',
+  redeban: 'redeban_qr',
+};
 
 /** Proposito de la credencial que almacena el secreto de webhook. */
 const WEBHOOK_SECRET_PURPOSE = 'events_secret';
@@ -142,9 +149,7 @@ export async function getWebhookSecret(
       return null;
     }
 
-    // Del Vault si `secret_ref` es su uuid; en claro si es anterior a Vault.
-    const valor = await resolverSecreto(supabase, connectionId, WEBHOOK_SECRET_PURPOSE, data.secret_ref as string);
-    return valor || null;
+    return data.secret_ref as string;
   } catch (err) {
     console.error('[webhookSecurity] Error obteniendo secreto de webhook:', err);
     return null;
@@ -153,7 +158,7 @@ export async function getWebhookSecret(
 
 /**
  * Registra un evento de webhook entrante en la tabla integration_events.
- * Exige la conexión (`connectionIdOverride`): sin ella no registra nada.
+ * Resuelve la conexion activa del proveedor si no se provee connectionId.
  *
  * @param provider Codigo del proveedor (wompi, bancolombia, breb, redeban).
  * @param event Tipo de evento recibido.
@@ -176,11 +181,47 @@ export async function logWebhookEvent(
     let connectionId = connectionIdOverride;
     let organizationId = organizationIdOverride;
 
-    // Sin conexión explícita no se registra: resolver «la conexión connected más reciente» del
-    // conector podía atribuir el evento a otra organización.
+    // Si no se provee connectionId, resolver la conexion activa mas reciente
     if (!connectionId) {
-      console.warn(`[webhookSecurity] Evento de ${provider} sin conexión: no se registra.`);
-      return;
+      const connectorCode = PROVIDER_TO_CONNECTOR[provider];
+      if (!connectorCode) {
+        console.warn(
+          `[webhookSecurity] Proveedor desconocido: ${provider}. No se pudo registrar evento.`,
+        );
+        return;
+      }
+
+      const { data: connector } = await supabase
+        .from('integration_connectors')
+        .select('id')
+        .eq('code', connectorCode)
+        .single();
+
+      if (!connector) {
+        console.warn(
+          `[webhookSecurity] Connector no encontrado para proveedor: ${provider}`,
+        );
+        return;
+      }
+
+      const { data: connection } = await supabase
+        .from('integration_connections')
+        .select('id, organization_id')
+        .eq('connector_id', connector.id)
+        .eq('status', 'connected')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!connection) {
+        console.warn(
+          `[webhookSecurity] No hay conexion activa para proveedor: ${provider}`,
+        );
+        return;
+      }
+
+      connectionId = connection.id as string;
+      organizationId = (connection.organization_id as number) ?? undefined;
     }
 
     const statusMap: Record<string, string> = {

@@ -32,7 +32,8 @@ export const RESERVED_SLUGS = [
   'ofertas', 'reserva', 'reservas', 'agendar', 'cotizar', 'pedido',
   'ticket', 'tracking', 'viajes', 'pases', 'membresias', 'checkout', 'retomar',
   'carrito', 'mi-cuenta', 'consultar-pedido', 'auth', 'api', 'admin',
-  'app', 'www', 'contacto', 'nosotros', 'vista-previa',
+  'app', 'www', 'contacto', 'nosotros', 'vista-previa', 'buscar', 'search',
+  'pruebas-internas',
 ];
 
 /**

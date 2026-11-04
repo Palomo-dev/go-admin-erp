@@ -211,6 +211,69 @@ describe('chat-widget · enviar y recibir', () => {
   });
 });
 
+describe('chat-widget · tarjetas de producto arman el pedido', () => {
+  const PRODUCTOS = [
+    { id: '1', nombre: 'Minibar 94 L', precio: 119980, precioAntes: 999900, imagen: 'https://img.test/a.png' },
+    { id: '2', nombre: 'Nevecon 541 L', precio: 535980, precioAntes: null, imagen: null },
+  ];
+
+  async function conTarjetas() {
+    responder = (accion) => {
+      if (accion === 'config') return { status: 200, cuerpo: { config: CONFIG } };
+      if (accion === 'sesion') return { status: 200, cuerpo: { token: 't'.repeat(43), conversacion: true, mensajes: [{ id: 'p1', autor: 'ia', tipo: 'text', texto: 'Estas son las neveras:', url: null, nombreArchivo: null, creado: '2026-11-04T05:08:00Z', idCliente: null, productos: PRODUCTOS, pedido: null }] } };
+      return { status: 200, cuerpo: { mensajes: [] } };
+    };
+    window.localStorage.setItem('gochat:v2:' + CLAVE, JSON.stringify({ t: 't'.repeat(43) }));
+    iniciarWidgetGoChat(window, 'https://x/functions/v1/chat-widget');
+    (window as unknown as { goChat: (...a: unknown[]) => void }).goChat('init', CLAVE);
+    await drenar();
+    const r = raiz();
+    (r.querySelector('.gc-lanzador') as HTMLButtonElement).click();
+    await drenar();
+    return r;
+  }
+
+  it('cada tarjeta es un botón con nombre accesible y la lista conserva su rol', async () => {
+    const r = await conTarjetas();
+    const fila = r.querySelector('.gc-productos') as HTMLElement;
+    expect(fila.getAttribute('role')).toBe('list');
+    expect(fila.querySelectorAll('[role=listitem]').length).toBe(2);
+    const botones = r.querySelectorAll('button.gc-prod');
+    expect(botones.length).toBe(2);
+    expect(botones[0].getAttribute('aria-label')).toBe('Agregar Minibar 94 L al pedido');
+    expect(botones[0].getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('tocar tarjetas agrega los productos al mensaje separados por comas, sin repetirlos', async () => {
+    const r = await conTarjetas();
+    const ta = r.querySelector('textarea') as HTMLTextAreaElement;
+    const [a, b] = Array.from(r.querySelectorAll('button.gc-prod')) as HTMLButtonElement[];
+    a.click();
+    expect(ta.value).toBe('Minibar 94 L');
+    b.click();
+    expect(ta.value).toBe('Minibar 94 L, Nevecon 541 L');
+    a.click();
+    expect(ta.value).toBe('Minibar 94 L, Nevecon 541 L');
+    expect(a.getAttribute('aria-pressed')).toBe('true');
+    expect(b.querySelector('.gc-prod-accion')?.textContent).toBe('✓ Agregado');
+    expect((r.querySelector('.gc-enviar') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('respeta lo que el visitante ya escribió y al enviar las tarjetas vuelven a «Agregar»', async () => {
+    const r = await conTarjetas();
+    const ta = r.querySelector('textarea') as HTMLTextAreaElement;
+    ta.value = 'Quiero 2 de';
+    ta.dispatchEvent(new Event('input'));
+    (r.querySelectorAll('button.gc-prod')[1] as HTMLButtonElement).click();
+    expect(ta.value).toBe('Quiero 2 de, Nevecon 541 L');
+    (r.querySelector('.gc-pie') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await drenar();
+    expect(llamadas.find((l) => l.accion === 'enviar')?.cuerpo).toMatchObject({ texto: 'Quiero 2 de, Nevecon 541 L' });
+    expect(ta.value).toBe('');
+    expect(r.querySelectorAll('button.gc-prod[aria-pressed=true]').length).toBe(0);
+  });
+});
+
 describe('chat-widget · código que genera el ERP (Chat › Canales › Sitio web)', () => {
   it('pegado en una página cualquiera, el script lo recoge de la cola y arranca', async () => {
     const codigo = codigoDelWidget(CLAVE, 'https://x.supabase.co/');

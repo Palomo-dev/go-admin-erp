@@ -1274,6 +1274,35 @@ export function useEditorSitio() {
     [v2, guardarAhora, documentoActual, versionServidor, t],
   );
 
+  /**
+   * «Descartar cambios» (barra del editor): el borrador vuelve a la versión PUBLICADA. Antes se
+   * guarda lo pendiente (como `restaurar`, para no competir con un autoguardado en curso) y lo que
+   * había queda como guardado automático «descartado» (si la tabla existe), por si fue un error.
+   * El servidor escribe el borrador con compare-and-swap; la revisión publicada y la web no
+   * cambian. Al recargar, la vista sale del borrador nuevo: contador en 0 e historial vacío.
+   */
+  const descartarCambios = useCallback(async (): Promise<boolean> => {
+    const sitio = v2.sitio;
+    if (!enV2 || !sitio?.revisionPublicadaId) return false;
+    if (!(await guardarAhora())) return false;
+    const actual = documentoActual();
+    try {
+      const version = await versionServidor();
+      if (!version) return false;
+      if (actual) await clienteSitiosV2.crearInstantanea(sitio.id, actual, version, 'descartado').catch(() => undefined);
+      await clienteSitiosV2.descartar(sitio.id, version);
+      autoguardadoRef.current?.reiniciar();
+      await v2.recargar();
+      fijarHistorial(historialVacio());
+      toast.success(t('descartar.listo'), { description: t('descartar.listoDescripcion') });
+      return true;
+    } catch (error) {
+      toast.error(t('descartar.error'), { description: mensaje(error, '') });
+      if (error instanceof ErrorApiSitio && error.esConflicto) await v2.recargar();
+      return false;
+    }
+  }, [enV2, v2, guardarAhora, documentoActual, versionServidor, fijarHistorial, t]);
+
   // ── Conflicto (A/05i) ───────────────────────────────────────────────────────
   /** Calcula la combinación; si hay choques los devuelve para elegir «la mía» o «la suya». */
   const prepararCombinacion = useCallback(
@@ -1745,6 +1774,17 @@ export function useEditorSitio() {
     const actual = currentPage ? aplicarPaginaAlDocumento(docLocal, currentPage) : docLocal;
     return listarCambios(actual, documentoPublicado);
   }, [enV2, docLocal, currentPage, documentoPublicado, v2.sitio]);
+  /**
+   * Hay un borrador con cambios que se pueden descartar (V2 con una versión publicada). Sin
+   * publicación no hay a qué volver. Si la lista aún no se conoce, manda la marca del servidor.
+   */
+  const puedeDescartar = enV2 && !!v2.sitio?.revisionPublicadaId && (listaCambios ? listaCambios.length > 0 : cambiosSinPublicar);
+  /**
+   * Deshacer sin historial (p. ej. tras recargar la página): mientras exista un borrador con
+   * cambios, Deshacer sigue disponible y lleva a «Descartar cambios» (volver a lo publicado),
+   * siempre con confirmación. Antes quedaba deshabilitado aunque hubiera cambios pendientes.
+   */
+  const deshacerDescarta = !canUndo && puedeDescartar;
 
   return {
     // carga
@@ -1803,8 +1843,11 @@ export function useEditorSitio() {
     // historia
     deshacer,
     rehacer,
-    canUndo,
+    canUndo: canUndo || puedeDescartar,
     canRedo,
+    deshacerDescarta,
+    puedeDescartar,
+    descartarCambios,
     // secciones
     cambiarContenido,
     cambiarVariante,

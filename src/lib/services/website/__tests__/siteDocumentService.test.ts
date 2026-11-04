@@ -14,7 +14,10 @@ import {
   ErrorSitio,
   cambiarAdopcion,
   crearSitio,
+  descartarBorrador,
   errorDesdePostgrest,
+  hayCambiosSinPublicar,
+  listarSitios,
   guardarBorrador,
   listarRevisiones,
   llevarMenuAlBorrador,
@@ -272,6 +275,55 @@ describe('restaurar', () => {
   test('revisión de otro sitio → revision_no_encontrada', async () => {
     const { cliente } = clienteFake(tablasBase());
     expect(await codigoDe(restaurar(cliente, 120, SITIO, '99999999-9999-4999-8999-999999999999', 3))).toBe('revision_no_encontrada');
+  });
+});
+
+describe('descartarBorrador («Descartar cambios» del editor)', () => {
+  test('el borrador vuelve a la revisión publicada como versión nueva; la revisión no cambia', async () => {
+    const t = tablasBase();
+    const { cliente, llamadas } = clienteFake(t);
+    const r = await descartarBorrador(cliente, 120, SITIO, 3);
+    expect(r.version).toBe(4);
+    expect((t.website_site_drafts[0].document as DocumentoSitio).paginas[0].titulo).toBe('Publicada');
+    expect((t.website_site_revisions[0].document as DocumentoSitio).paginas[0].titulo).toBe('Publicada');
+    expect(t.website_site_states[0].published_revision_id).toBe(REV);
+    expect(llamadas.filter((l) => l.op === 'update').map((l) => l.tabla)).toEqual(['website_site_drafts']);
+    const sinOrg = llamadas.filter((l) => !l.filtros.some(([tipo, col, v]) => tipo === 'eq' && col === 'organization_id' && v === 120));
+    expect(sinOrg).toEqual([]);
+  });
+
+  test('tras descartar, el contador del servidor queda en «sin cambios» aunque la versión subió', async () => {
+    const t = tablasBase();
+    const { cliente } = clienteFake(t);
+    expect((await obtenerBorrador(cliente, 120, SITIO)).sitio.cambiosSinPublicar).toBe(true);
+    await descartarBorrador(cliente, 120, SITIO, 3);
+    expect((await obtenerBorrador(cliente, 120, SITIO)).sitio.cambiosSinPublicar).toBe(false);
+    expect((await listarSitios(cliente, 120)).find((x) => x.id === SITIO)?.cambiosSinPublicar).toBe(false);
+  });
+
+  test('otra organización, sin publicación o versión vieja: no se escribe nada', async () => {
+    const t = tablasBase();
+    t.website_site_states.push({ id: SEDE, organization_id: 120, branch_id: 7, v2_adopted: false, v2_adopted_at: null, published_revision_id: null });
+    t.website_site_drafts.push({ site_state_id: SEDE, organization_id: 120, version: 1, updated_at: 'x', document: documento('Sede') });
+    const { cliente, llamadas } = clienteFake(t);
+    expect(await codigoDe(descartarBorrador(cliente, 120, SITIO_AJENO, 1))).toBe('sitio_no_encontrado');
+    expect(await codigoDe(descartarBorrador(cliente, 120, SEDE, 1))).toBe('sin_revision_publicada');
+    expect(await codigoDe(descartarBorrador(cliente, 120, SITIO, 2))).toBe('conflicto_version');
+    expect((t.website_site_drafts[1].document as DocumentoSitio).paginas[0].titulo).toBe('Ajeno');
+    expect((t.website_site_drafts[0].document as DocumentoSitio).paginas[0].titulo).toBe('Inicio');
+    expect(llamadas.filter((l) => l.op === 'update' && l.valores && 'document' in l.valores).every((l) => l.filtros.some(([, c, v]) => c === 'version' && v === 2))).toBe(true);
+  });
+});
+
+describe('hayCambiosSinPublicar', () => {
+  test.each([
+    [null, 3, undefined, false, true],
+    ['rev', 3, 3, false, false],
+    ['rev', 4, 3, false, true],
+    ['rev', 4, 3, true, false],
+    ['rev', undefined, 3, false, true],
+  ])('publicada %s, borrador v%s, fuente v%s, igual %s → %s', (pub, ver, fuente, igual, esperado) => {
+    expect(hayCambiosSinPublicar(pub as string | null, ver as number | undefined, fuente as number | undefined, igual as boolean)).toBe(esperado);
   });
 });
 

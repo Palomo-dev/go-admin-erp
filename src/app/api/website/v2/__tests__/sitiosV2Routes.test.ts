@@ -56,6 +56,7 @@ const servicio = {
   publicarYActivar: jest.fn(async () => ({ revisionId: 'r', numero: 1, publicadaEn: 'x', idempotente: false, activacion: 'activada' })),
   listarRevisiones: jest.fn(async () => []),
   restaurar: jest.fn(async () => ({ version: 3, actualizadoEn: 'x' })),
+  descartarBorrador: jest.fn(async () => ({ version: 4, actualizadoEn: 'x' })),
   cambiarAdopcion: jest.fn(async () => ({ id: 's' })),
   llevarMenuAlBorrador: jest.fn(async () => ({ version: 2, actualizadoEn: 'x', menuId: 'm', copiado: true })),
 };
@@ -70,6 +71,7 @@ import * as rutaBorrador from '../sites/[siteId]/draft/route';
 import * as rutaPublicaciones from '../sites/[siteId]/publications/route';
 import * as rutaRevisiones from '../sites/[siteId]/revisions/route';
 import * as rutaRestauraciones from '../sites/[siteId]/restorations/route';
+import * as rutaDescartar from '../sites/[siteId]/discard/route';
 import * as rutaAdopcion from '../sites/[siteId]/adoption/route';
 import * as rutaMenus from '../sites/[siteId]/menus/route';
 
@@ -95,6 +97,7 @@ const escrituras: [string, (r: Request) => Promise<Response>, string, Record<str
   ['PUT draft', (r) => rutaBorrador.PUT(r, params()), `/api/website/v2/sites/${SITIO}/draft`, { documento, version: 1 }, 'guardarBorrador'],
   ['POST publications', (r) => rutaPublicaciones.POST(r, params()), `/api/website/v2/sites/${SITIO}/publications`, { version: 1, nota: 'n' }, 'publicar'],
   ['POST restorations', (r) => rutaRestauraciones.POST(r, params()), `/api/website/v2/sites/${SITIO}/restorations`, { revisionId: REV, version: 1 }, 'restaurar'],
+  ['POST discard', (r) => rutaDescartar.POST(r, params()), `/api/website/v2/sites/${SITIO}/discard`, { version: 1 }, 'descartarBorrador'],
   ['POST adoption', (r) => rutaAdopcion.POST(r, params()), `/api/website/v2/sites/${SITIO}/adoption`, { adoptado: true }, 'cambiarAdopcion'],
   ['POST menus', (r) => rutaMenus.POST(r, params()), `/api/website/v2/sites/${SITIO}/menus`, { menuId: MENU, version: 1 }, 'llevarMenuAlBorrador'],
 ];
@@ -139,6 +142,18 @@ describe('caminos válidos', () => {
     );
     expect(res.status).toBe(200);
     expect(servicio.guardarBorrador).toHaveBeenCalledWith(clienteDeSesion, 120, SITIO, documento, 4);
+  });
+
+  test('descartar cambios → el servicio recibe la org de la sesión, el sitio de la ruta y la versión', async () => {
+    const res = await rutaDescartar.POST(peticion(`/api/website/v2/sites/${SITIO}/discard`, 'POST', { version: 6 }), params());
+    expect(res.status).toBe(200);
+    expect(servicio.descartarBorrador).toHaveBeenCalledWith(clienteDeSesion, 120, SITIO, 6);
+  });
+
+  test('descartar sin versión → 400 y no se llama al servicio', async () => {
+    const res = await rutaDescartar.POST(peticion(`/api/website/v2/sites/${SITIO}/discard`, 'POST', {}), params());
+    expect(res.status).toBe(400);
+    expect(servicio.descartarBorrador).not.toHaveBeenCalled();
   });
 
   test('crear sede → 201 con el branchId del body; organización siempre de la sesión', async () => {

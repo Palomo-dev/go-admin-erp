@@ -19,7 +19,7 @@
  * publicar». No guarda nada por su cuenta: todo llega del hook del editor.
  */
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink, Eye, Loader2, Redo2, Save, Send, Undo2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Eye, Loader2, Redo2, RotateCcw, Save, Send, Undo2 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { RowActionsMenu, StatusBadge, clasesBoton, type AccionFila } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
@@ -51,6 +51,12 @@ export interface BarraEditorProps {
   onRehacer: () => void;
   puedeDeshacer: boolean;
   puedeRehacer: boolean;
+  /**
+   * «Descartar cambios»: vuelve el borrador a la versión publicada (pide confirmación quien lo
+   * monta). Solo V2 con una publicación; sin `onDescartar` no se muestra.
+   */
+  onDescartar?: () => void;
+  puedeDescartar?: boolean;
   /** V2: estado de publicación; legacy: `null` y se usa `cambiosLegacy`. */
   estado: EstadoPublicacion | null;
   /** No se pudo guardar el borrador (píldora roja «No se guardó»). */
@@ -159,6 +165,19 @@ export function BarraEditor(p: BarraEditorProps) {
           <Redo2 aria-hidden="true" className="size-4 xl:hidden" strokeWidth={1.5} />
           <span className="hidden xl:inline">{t('barra.rehacer')}</span>
         </button>
+        {p.onDescartar && (
+          <button
+            type="button"
+            onClick={p.onDescartar}
+            disabled={!p.puedeDescartar}
+            aria-label={t('barra.descartar')}
+            title={t('barra.descartarAyuda')}
+            className={cn(clasesBoton({ variante: 'fantasma', tamano: 'sm' }), 'w-8 px-0 xl:w-auto xl:px-3')}
+          >
+            <RotateCcw aria-hidden="true" className="size-4 xl:hidden" strokeWidth={1.5} />
+            <span className="hidden xl:inline">{t('barra.descartar')}</span>
+          </button>
+        )}
 
         {p.enV2 ? (
           p.errorGuardado ? (

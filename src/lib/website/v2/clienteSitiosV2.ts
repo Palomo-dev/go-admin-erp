@@ -110,6 +110,9 @@ export const clienteSitiosV2 = {
       method: 'POST',
       body: activar ? { version, nota, activar } : { version, nota },
     }),
+  /** «Descartar cambios»: el borrador vuelve a la versión publicada (lo publicado no cambia). */
+  descartar: (sitioId: string, version: number) =>
+    pedir<ResultadoGuardado>(`/${sitioId}/discard`, { method: 'POST', body: { version } }),
   revisiones: async (sitioId: string) => (await pedir<{ revisiones: RevisionResumen[] }>(`/${sitioId}/revisions`)).revisiones,
   restaurar: (sitioId: string, revisionId: string, version: number) =>
     pedir<ResultadoGuardado>(`/${sitioId}/restorations`, { method: 'POST', body: { revisionId, version } }),

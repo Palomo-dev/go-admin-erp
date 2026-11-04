@@ -177,7 +177,29 @@ async function fuenteDeRevisiones(
   return new Map(((data ?? []) as { id: string; source_draft_version: number }[]).map((r) => [r.id, r.source_draft_version]));
 }
 
-function resumen(estado: FilaEstado, borrador: FilaBorrador | undefined, fuentePublicada: number | undefined): SitioResumen {
+/**
+ * ¿El borrador tiene algo que la revisión publicada no tiene? Sin publicar nunca: sí. Con la misma
+ * versión de la que salió la revisión: no. Con otra versión, decide el contenido: tras «Descartar
+ * cambios» (o deshacer todo) el borrador sube de versión pero vuelve a ser igual a lo publicado.
+ * Puro: lo prueba descartarBorrador.test.ts.
+ */
+export function hayCambiosSinPublicar(
+  publicadaId: string | null,
+  versionBorrador: number | undefined,
+  fuentePublicada: number | undefined,
+  igualAPublicado = false,
+): boolean {
+  if (!publicadaId) return true;
+  if (fuentePublicada === versionBorrador) return false;
+  return !igualAPublicado;
+}
+
+function resumen(
+  estado: FilaEstado,
+  borrador: FilaBorrador | undefined,
+  fuentePublicada: number | undefined,
+  igualAPublicado = false,
+): SitioResumen {
   return {
     id: estado.id,
     branchId: estado.branch_id,
@@ -186,8 +208,43 @@ function resumen(estado: FilaEstado, borrador: FilaBorrador | undefined, fuenteP
     revisionPublicadaId: estado.published_revision_id,
     versionBorrador: borrador?.version ?? null,
     borradorActualizadoEn: borrador?.updated_at ?? null,
-    cambiosSinPublicar: !estado.published_revision_id || fuentePublicada !== borrador?.version,
+    cambiosSinPublicar: hayCambiosSinPublicar(estado.published_revision_id, borrador?.version, fuentePublicada, igualAPublicado),
   };
+}
+
+/**
+ * Sitios cuyo borrador, con otra versión que la publicada, tiene el MISMO contenido que la
+ * revisión publicada. Solo se piden los documentos de esos sitios (pocos KB cada uno). Si una
+ * lectura falla se devuelve vacío: el sitio sigue mostrando «cambios sin publicar» (nunca al revés).
+ */
+async function borradoresIgualesAPublicado(
+  cliente: SupabaseClient,
+  org: number,
+  pares: { sitioId: string; revisionId: string }[],
+): Promise<Set<string>> {
+  if (pares.length === 0) return new Set();
+  const [borradores, revisiones] = await Promise.all([
+    cliente
+      .from('website_site_drafts')
+      .select('site_state_id, document')
+      .eq('organization_id', org)
+      .in('site_state_id', pares.map((p) => p.sitioId)),
+    cliente
+      .from('website_site_revisions')
+      .select('id, document')
+      .eq('organization_id', org)
+      .in('id', pares.map((p) => p.revisionId)),
+  ]);
+  if (borradores.error || revisiones.error) return new Set();
+  const docBorrador = new Map(((borradores.data ?? []) as { site_state_id: string; document: unknown }[]).map((b) => [b.site_state_id, b.document]));
+  const docRevision = new Map(((revisiones.data ?? []) as { id: string; document: unknown }[]).map((r) => [r.id, r.document]));
+  const iguales = new Set<string>();
+  for (const p of pares) {
+    const b = docBorrador.get(p.sitioId);
+    const r = docRevision.get(p.revisionId);
+    if (b !== undefined && r !== undefined && igualesEstructural(b, r)) iguales.add(p.sitioId);
+  }
+  return iguales;
 }
 
 /** Lee el estado legacy (sitio principal: `branch_id` NULL) que alimenta el importador. */
@@ -309,7 +366,16 @@ export async function listarSitios(cliente: SupabaseClient, org: number): Promis
     org,
     filas.map((e) => e.published_revision_id).filter((id): id is string => Boolean(id)),
   );
-  return filas.map((e) => resumen(e, porSitio.get(e.id), e.published_revision_id ? fuentes.get(e.published_revision_id) : undefined));
+  const fuenteDe = (e: FilaEstado) => (e.published_revision_id ? fuentes.get(e.published_revision_id) : undefined);
+  // Versión distinta a la publicada: se compara el contenido (p. ej. tras «Descartar cambios»).
+  const iguales = await borradoresIgualesAPublicado(
+    cliente,
+    org,
+    filas
+      .filter((e) => e.published_revision_id && porSitio.has(e.id) && fuenteDe(e) !== porSitio.get(e.id)?.version)
+      .map((e) => ({ sitioId: e.id, revisionId: e.published_revision_id as string })),
+  );
+  return filas.map((e) => resumen(e, porSitio.get(e.id), fuenteDe(e), iguales.has(e.id)));
 }
 
 async function resumenDe(cliente: SupabaseClient, org: number, sitioId: string): Promise<SitioResumen> {
@@ -429,8 +495,16 @@ export async function obtenerBorrador(cliente: SupabaseClient, org: number, siti
   const borrador = await borradorDe(cliente, org, sitioId);
   const validacion = validarDocumentoSitio(borrador.document);
   const fuentes = await fuenteDeRevisiones(cliente, org, estado.published_revision_id ? [estado.published_revision_id] : []);
+  const fuente = estado.published_revision_id ? fuentes.get(estado.published_revision_id) : undefined;
+  // Otra versión que la publicada: decide el contenido (tras «Descartar cambios» es igual).
+  const igual =
+    estado.published_revision_id && fuente !== borrador.version
+      ? await documentoDeRevision(cliente, org, sitioId, estado.published_revision_id)
+          .then((doc) => doc !== null && igualesEstructural(borrador.document, doc))
+          .catch(() => false)
+      : false;
   return {
-    sitio: resumen(estado, borrador, estado.published_revision_id ? fuentes.get(estado.published_revision_id) : undefined),
+    sitio: resumen(estado, borrador, fuente, igual),
     documento: (validacion.ok ? validacion.documento : borrador.document) as DocumentoSitio,
     version: borrador.version,
     actualizadoEn: borrador.updated_at,
@@ -647,6 +721,39 @@ export async function restaurar(
   if (error) throw errorDesdePostgrest(error, 'restaurar');
   if (!data) throw new ErrorSitio('revision_no_encontrada', 'La versión no existe en este sitio.');
   return guardarBorrador(cliente, org, sitioId, (data as { document: unknown }).document, versionEsperada);
+}
+
+async function documentoDeRevision(cliente: SupabaseClient, org: number, sitioId: string, revisionId: string): Promise<unknown | null> {
+  const { data, error } = await cliente
+    .from('website_site_revisions')
+    .select('document')
+    .eq('id', revisionId)
+    .eq('site_state_id', sitioId)
+    .eq('organization_id', org)
+    .maybeSingle();
+  if (error) throw errorDesdePostgrest(error, 'documentoDeRevision');
+  return data ? (data as { document: unknown }).document : null;
+}
+
+/**
+ * «Descartar cambios» del editor: el borrador vuelve a ser la revisión PUBLICADA del sitio. Es un
+ * guardado más del borrador (compare-and-swap con `versionEsperada`): la revisión publicada y lo
+ * que ve la web no cambian, y otro sitio u organización nunca se toca (todo filtra por `org` y
+ * `sitioId`). Sin revisión publicada no hay a qué volver: `sin_revision_publicada`.
+ */
+export async function descartarBorrador(
+  cliente: SupabaseClient,
+  org: number,
+  sitioId: string,
+  versionEsperada: number,
+): Promise<ResultadoGuardado> {
+  const estado = await estadoDeOrg(cliente, org, sitioId);
+  if (!estado.published_revision_id) {
+    throw new ErrorSitio('sin_revision_publicada', 'El sitio aún no tiene una versión publicada a la que volver.');
+  }
+  const documento = await documentoDeRevision(cliente, org, sitioId, estado.published_revision_id);
+  if (documento === null) throw new ErrorSitio('revision_no_encontrada', 'La versión publicada no existe en este sitio.');
+  return guardarBorrador(cliente, org, sitioId, documento, versionEsperada);
 }
 
 /** Adopción explícita (D4): el único interruptor que cambia lo que sirve la web pública. */

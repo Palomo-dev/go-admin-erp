@@ -1340,6 +1340,19 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'initial', label: 'Inicial sobre color' },
       ]},
       { key: 'media_max_width', label: 'Ancho máximo del medio', type: 'number', group: 'layout', placeholder: 'Auto', suffix: 'px', helpText: 'Útil para layout lista/iconos' },
+      // --- Ícono de la categoría (4-nov; contrato: esquemaColorIconoCategoria / esquemaFondoIconoCategoria) ---
+      // Sin `categories.icon`, la tienda elige el ícono por el nombre (lib/website/iconosCategoria.ts).
+      { key: 'icon_color', label: 'Color del ícono', type: 'select', group: 'behavior', defaultValue: 'category', helpText: 'Se ve cuando la categoría muestra su ícono. Sin ícono propio, se elige uno por el nombre (Celulares, Hogar, Mascotas…).', options: [
+        { value: 'category', label: 'De la categoría' },
+        { value: 'primary', label: 'Primario' },
+        { value: 'secondary', label: 'Secundario' },
+        { value: 'custom', label: 'Personalizado' },
+      ]},
+      { key: 'icon_bg_mode', label: 'Fondo del ícono', type: 'select', group: 'behavior', defaultValue: 'soft', helpText: 'Suave: un tinte del color del ícono. Sólido: el color lleno y el ícono en blanco. «Fondo de la imagen», si lo eliges, pone el color.', options: [
+        { value: 'soft', label: 'Suave' },
+        { value: 'solid', label: 'Sólido' },
+        { value: 'none', label: 'Sin fondo' },
+      ]},
       // --- F4.3: composición de la tarjeta ---
       { key: 'text_position', label: 'Posición del texto', type: 'select', group: 'layout', defaultValue: 'overlay', options: [
         { value: 'overlay', label: 'Superpuesto (con gradiente)' },

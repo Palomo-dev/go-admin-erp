@@ -32,6 +32,7 @@ import { espacioSeccion } from '@/lib/website/espacioSeccion';
 import { clavesPropiasTarjeta, esSeccionTarjetaProducto, heredadoTarjetaSeccion, restablecerClaveTarjeta, type EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
 import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { campoLayoutCategorias } from './layoutCategorias';
+import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
@@ -153,6 +154,19 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             </Link>
           </div>
         </div>
+      );
+    }
+    // «Color del ícono» de categorías: chips + color propio; guarda 'category' | 'primary' | 'secondary' | '#hex'.
+    if (s.section_type === 'categories_grid' && c.key === 'icon_color') {
+      return (
+        <CampoColorIconoCategoria
+          key={c.key}
+          campo={c}
+          valor={contenido.icon_color}
+          colorInicial={p.paleta?.primary ?? '#111827'}
+          fondo={p.tema.colores.fondo ?? undefined}
+          onCambiar={(v) => onCambiarContenido({ ...contenido, icon_color: v })}
+        />
       );
     }
     if (campoUnicoPortada(s.section_type, s.section_variant, c.key)) {

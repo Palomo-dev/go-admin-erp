@@ -296,6 +296,25 @@ export const esquemaTarjetaProducto = z.record(
 );
 export type TarjetaProductoDocumento = z.infer<typeof esquemaTarjetaProducto>;
 
+/**
+ * Ícono de la rejilla de categorías (`categories_grid`), en el `contenido` de la sección (4-nov).
+ * - `icon_color`: color del ícono. `category` (el de cada categoría, `categories.color`),
+ *   `primary`, `secondary` o un hex. El editor ofrece `category` por defecto.
+ * - `icon_bg_mode`: fondo del ícono. `soft` (tinte suave del color del ícono), `solid` (el color
+ *   lleno y el ícono en blanco) o `none`. `image_bg`, si está, manda como color del fondo.
+ * Ausentes = el ícono de hoy. `contenido` no se valida por clave: un valor que no cumpla estos
+ * esquemas no rechaza la sección; la tienda lo ignora y pinta lo de hoy.
+ */
+export const COLORES_ICONO_CATEGORIA = ['category', 'primary', 'secondary'] as const;
+export const esquemaColorIconoCategoria = z.union([
+  z.enum(COLORES_ICONO_CATEGORIA),
+  z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
+]);
+export type ColorIconoCategoria = z.infer<typeof esquemaColorIconoCategoria>;
+export const FONDOS_ICONO_CATEGORIA = ['soft', 'solid', 'none'] as const;
+export const esquemaFondoIconoCategoria = z.enum(FONDOS_ICONO_CATEGORIA);
+export type FondoIconoCategoria = z.infer<typeof esquemaFondoIconoCategoria>;
+
 /** Tokens de tema (D12 grupo «tema»). */
 export const esquemaTema = z
   .object({

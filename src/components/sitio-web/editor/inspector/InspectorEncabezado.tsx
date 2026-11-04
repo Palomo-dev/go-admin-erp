@@ -20,7 +20,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
-import { buscadorPropioCelular, cambioBuscador, cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
+import { cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
+import {
+  buscadorCelular,
+  buscadorComputador,
+  buscadorEnConjunto,
+  cambioBuscadorCelular,
+  cambioBuscadorComputador,
+  cambioBuscadorEnConjunto,
+  type BuscadorOpcion,
+} from './buscadorCelularLogica';
 import { useTextosEditor } from '../textos';
 import {
   BOTONES_EXTRA,
@@ -457,7 +466,13 @@ function Diseno(p: Interno) {
   const idComp = useId();
   const idLogo = useId();
   const idBc = useId();
+  const idBcPc = useId();
+  const idBcCel = useId();
   const idCol = useId();
+  const opcionesBuscador = BUSCADORES.map((v) => ({
+    valor: v,
+    etiqueta: v === 'icon' ? t('zonaGlobal.diseno.icono') : v === 'bar' ? t('zonaGlobal.diseno.barraVisible') : v === 'hidden' ? t('zonaGlobal.diseno.oculto') : t(`zonaGlobal.diseno.buscadorNombre.${v}`),
+  }));
   const composicion = composicionEncabezado(a);
   const megaId = typeof a.header_mega_menu_id === 'string' ? a.header_mega_menu_id : null;
   const mega = megaId ? p.menus.find((m) => m.id === megaId) : null;
@@ -516,29 +531,40 @@ function Diseno(p: Interno) {
 
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idBc}>{t('zonaGlobal.diseno.buscador')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idBc}
-          opciones={BUSCADORES.map((v) => ({
-            valor: v,
-            etiqueta: v === 'icon' ? t('zonaGlobal.diseno.icono') : v === 'bar' ? t('zonaGlobal.diseno.barraVisible') : v === 'hidden' ? t('zonaGlobal.diseno.oculto') : t(`zonaGlobal.diseno.buscadorNombre.${v}`),
-          }))}
-          valor={valorOpcion<string>(a, 'search_style') ?? 'icon'}
-          onValorChange={(v) => cambiar(cambioBuscador(a, v))}
+        <FilaInterruptor
+          titulo={t('zonaGlobal.diseno.categoriasBuscadorCelular')}
+          ayuda={t('zonaGlobal.diseno.categoriasBuscadorCelularAyuda')}
+          valor={buscadorEnConjunto(a)}
+          onCambiar={(v) => cambiar(cambioBuscadorEnConjunto(a, v))}
         />
-        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorAyuda')}</p>
-        {(valorOpcion<string>(a, 'search_style') ?? 'icon') !== 'hidden' && (
-          <FilaInterruptor
-            titulo={t('zonaGlobal.diseno.categoriasBuscadorCelular')}
-            ayuda={t('zonaGlobal.diseno.categoriasBuscadorCelularAyuda')}
-            nuevo
-            valor={opcionBooleana(a, 'mobile_search_same_as_desktop')}
-            onCambiar={(v) => cambiar({ mobile_search_same_as_desktop: v })}
-          />
-        )}
-        {buscadorPropioCelular(a) && (
-          <p role="note" className="rounded-md bg-surface-muted px-2 py-1.5 text-[11px] leading-[14px] text-fg-secondary">
-            {t('zonaGlobal.diseno.buscadorCelularPropio', { valor: t(`zonaGlobal.diseno.buscadorNombre.${buscadorPropioCelular(a)}`) })}
-          </p>
+        {buscadorEnConjunto(a) ? (
+          <>
+            <ChipsOpcion
+              aria-labelledby={idBc}
+              opciones={opcionesBuscador}
+              valor={buscadorComputador(a)}
+              onValorChange={(v) => cambiar(cambioBuscadorComputador(a, v))}
+            />
+            <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorAyuda')}</p>
+          </>
+        ) : (
+          <>
+            <EtiquetaGrupo id={idBcPc}>{t('zonaGlobal.diseno.buscadorEnComputador')}</EtiquetaGrupo>
+            <ChipsOpcion
+              aria-labelledby={idBcPc}
+              opciones={opcionesBuscador}
+              valor={buscadorComputador(a)}
+              onValorChange={(v) => cambiar(cambioBuscadorComputador(a, v))}
+            />
+            <EtiquetaGrupo id={idBcCel}>{t('zonaGlobal.diseno.buscadorEnCelular')}</EtiquetaGrupo>
+            <ChipsOpcion
+              aria-labelledby={idBcCel}
+              opciones={opcionesBuscador}
+              valor={buscadorCelular(a)}
+              onValorChange={(v) => cambiar(cambioBuscadorCelular(a, v as BuscadorOpcion))}
+            />
+            <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorCelularAyuda')}</p>
+          </>
         )}
       </div>
     </>
@@ -948,7 +974,7 @@ export const CLAVES_ANTERIORES_ENCABEZADO = [
   'header_menu_source',
   'header_booking_bar',
   'mobile_show_topbar',
-  'mobile_search_style',
+  // `mobile_search_style` ya no es anterior: es el selector «Celular» de Diseño › Buscador (4-nov).
   'header_divider',
   'header_divider_color',
   'header_hover_color',

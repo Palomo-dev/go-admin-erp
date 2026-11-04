@@ -298,11 +298,16 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
 .gc-err{color:#B91C1C}
 .gc-reintentar{border:0;background:none;color:#B91C1C;text-decoration:underline;padding:0;font-size:11.5px}
 .gc-productos{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 2px;max-width:100%;scroll-snap-type:x mandatory}
-.gc-prod{flex:none;width:136px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;scroll-snap-align:start}
+.gc-productos>[role=listitem]{flex:none;display:flex;scroll-snap-align:start}
+.gc-prod{flex:none;width:136px;display:flex;flex-direction:column;text-align:left;padding:0;cursor:pointer;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+.gc-prod:hover{border-color:var(--c)}
+.gc-prod:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.gc-prod[aria-pressed=true]{border-color:var(--c);box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 35%,transparent)}
 .gc-prod img{display:block;width:100%;height:100px;object-fit:cover;background:#F3F4F6}
-.gc-prod p{margin:0;padding:6px 8px 0;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.gc-prod strong{display:block;padding:2px 8px 8px;font-size:13px}
+.gc-prod-nombre{display:-webkit-box;margin:0;padding:6px 8px 0;font-size:13px;line-height:1.3;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gc-prod strong{display:block;padding:2px 8px 4px;font-size:13px}
 .gc-prod s{color:#6B7280;font-weight:400;margin-left:4px;font-size:12px}
+.gc-prod-accion{display:block;margin-top:auto;padding:6px 8px;font-size:12px;font-weight:600;color:var(--c);border-top:1px solid #F3F4F6}
 .gc-boton{display:inline-flex;align-items:center;justify-content:center;min-height:40px;margin-top:6px;padding:8px 16px;border-radius:10px;background:var(--c);color:var(--ct);text-decoration:none;font-weight:600;border:0}
 .gc-escribiendo{display:flex;width:max-content;gap:4px;margin-top:8px;padding:12px 14px;background:#fff;border:1px solid #E5E7EB;border-radius:16px 16px 16px 4px}
 .gc-escribiendo span{width:7px;height:7px;border-radius:50%;background:#9CA3AF;animation:gc-salta 1.2s infinite ease-in-out}
@@ -479,7 +484,7 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
       ta.style.height = Math.min(ta.scrollHeight + 2, 132) + 'px';
       env.disabled = !ta.value.trim();
     };
-    ta.addEventListener('input', ajustar);
+    ta.addEventListener('input', () => { ajustar(); marcarTarjetas(); });
     ta.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && !esMovil()) {
         ev.preventDefault();
@@ -493,6 +498,7 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
       if (!t.trim()) return;
       ta.value = '';
       ajustar();
+      marcarTarjetas();
       void enviar(t);
       ta.focus();
     });
@@ -567,14 +573,23 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
       fila.setAttribute('role', 'list');
       fila.setAttribute('aria-label', 'Productos sugeridos');
       for (const p of m.productos) {
-        const t = el('div', 'gc-prod');
-        t.setAttribute('role', 'listitem');
+        // Tocar la tarjeta agrega el producto al mensaje en curso ("A, B, C"), para que el
+        // visitante arme el pedido y lo envíe de una vez. El bot toma el pedido desde ahí.
+        const item = el('div');
+        item.setAttribute('role', 'listitem');
+        const t = el('button', 'gc-prod');
+        t.type = 'button';
+        t.setAttribute('aria-label', 'Agregar ' + p.nombre + ' al pedido');
+        t.setAttribute('aria-pressed', enMensaje(p.nombre) ? 'true' : 'false');
         if (p.imagen) { const im = el('img'); im.src = p.imagen; im.alt = ''; im.loading = 'lazy'; t.appendChild(im); }
-        t.appendChild(el('p', undefined, p.nombre));
+        t.appendChild(el('span', 'gc-prod-nombre', p.nombre));
         const pr = el('strong', undefined, precio(p.precio));
         if (p.precioAntes && p.precio !== null && p.precioAntes > p.precio) pr.appendChild(el('s', undefined, precio(p.precioAntes)));
         t.appendChild(pr);
-        fila.appendChild(t);
+        t.appendChild(el('span', 'gc-prod-accion', '+ Agregar'));
+        t.addEventListener('click', () => agregarAlMensaje(p.nombre));
+        item.appendChild(t);
+        fila.appendChild(item);
       }
       li.appendChild(fila);
     }
@@ -601,6 +616,47 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
     }
     if (pie.childNodes.length || pie.textContent) li.appendChild(pie);
     return li;
+  }
+
+  /** Partes del mensaje en curso separadas por comas (vacías fuera). */
+  function partesDelMensaje(): string[] {
+    const ta = nodos.texto as HTMLTextAreaElement | undefined;
+    return ta ? ta.value.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  }
+
+  function enMensaje(nombre: string): boolean {
+    return partesDelMensaje().includes(nombre.trim());
+  }
+
+  /** Marca como agregadas las tarjetas cuyo producto ya está en el mensaje en curso. */
+  function marcarTarjetas() {
+    if (!nodos.lista) return;
+    const partes = partesDelMensaje();
+    nodos.lista.querySelectorAll('.gc-prod').forEach((b) => {
+      const n = (b.querySelector('.gc-prod-nombre') as HTMLElement | null)?.textContent || '';
+      const dentro = partes.includes(n.trim());
+      b.setAttribute('aria-pressed', dentro ? 'true' : 'false');
+      const acc = b.querySelector('.gc-prod-accion');
+      if (acc) acc.textContent = dentro ? '✓ Agregado' : '+ Agregar';
+    });
+  }
+
+  /** Agrega el producto al mensaje en curso, separado por comas y sin repetirlo. */
+  function agregarAlMensaje(nombre: string) {
+    const ta = nodos.texto as HTMLTextAreaElement | undefined;
+    const limpio = nombre.trim();
+    if (!ta || !limpio) return;
+    const partes = partesDelMensaje();
+    if (!partes.includes(limpio)) {
+      const nuevo = [...partes, limpio].join(', ');
+      if (nuevo.length > ta.maxLength) return;
+      ta.value = nuevo;
+    }
+    ta.dispatchEvent(new Event('input'));
+    if (!esMovil()) {
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
   }
 
   function quitar(id: string) {

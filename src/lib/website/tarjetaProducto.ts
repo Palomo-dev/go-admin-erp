@@ -213,8 +213,9 @@ function color(valor: unknown): string | undefined {
   return HEX.test(t) ? t : undefined
 }
 
+/** Ícono de botón: uno de ICONOS_BOTON, o «Sin ícono» (`''`; 'none' es lo mismo: solo el texto). */
 function icono(valor: unknown): string | undefined {
-  if (valor === '') return ''
+  if (valor === '' || valor === 'none') return ''
   return enLista(ICONOS_BOTON, valor)
 }
 

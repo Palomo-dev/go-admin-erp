@@ -5,8 +5,9 @@
 import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
-import { getWompiBaseUrl, WOMPI_CREDENTIAL_PURPOSES } from './wompiConfig';
+import { getWompiBaseUrl } from './wompiConfig';
 import { verificarChecksumWompi } from './wompiFirma';
+import { resolverSecreto } from '../secretosIntegracion';
 import type {
   WompiCredentials,
   WompiEnvironment,
@@ -59,20 +60,29 @@ class WompiService {
       return null;
     }
 
+    // Del Vault si `secret_ref` es su uuid; en claro si la credencial es anterior a Vault.
     const findCred = (purpose: string) =>
-      creds.find((c) => c.purpose === purpose)?.secret_ref || '';
+      resolverSecreto(db, connectionId, purpose, creds.find((c) => c.purpose === purpose)?.secret_ref);
+    const [publicKey, privateKey, eventsSecret, integritySecret] = await Promise.all([
+      findCred('public_key'),
+      findCred('private_key'),
+      findCred('events_secret'),
+      findCred('integrity_secret'),
+    ]);
 
     return {
-      publicKey: findCred('public_key'),
-      privateKey: findCred('private_key'),
-      eventsSecret: findCred('events_secret'),
-      integritySecret: findCred('integrity_secret'),
+      publicKey,
+      privateKey,
+      eventsSecret,
+      integritySecret,
       environment: (connection.environment as WompiEnvironment) || 'sandbox',
     };
   }
 
   /**
-   * Guarda las 4 credenciales de Wompi para una conexión.
+   * Guarda las 4 credenciales de Wompi para una conexión. Las guarda el servidor en el Vault
+   * (`PUT /api/integrations/wompi/credentials` → `fn_set_provider_secret`): el navegador nunca
+   * escribe el secreto en `integration_credentials`.
    */
   async saveCredentials(
     connectionId: string,
@@ -83,62 +93,22 @@ class WompiService {
       integritySecret: string;
     }
   ): Promise<boolean> {
-    const entries = [
-      {
-        ...WOMPI_CREDENTIAL_PURPOSES.PUBLIC_KEY,
-        secret_ref: credentials.publicKey,
-        key_prefix: credentials.publicKey.substring(0, 12) + '...',
-      },
-      {
-        ...WOMPI_CREDENTIAL_PURPOSES.PRIVATE_KEY,
-        secret_ref: credentials.privateKey,
-        key_prefix: credentials.privateKey.substring(0, 12) + '...',
-      },
-      {
-        ...WOMPI_CREDENTIAL_PURPOSES.EVENTS_SECRET,
-        secret_ref: credentials.eventsSecret,
-        key_prefix: credentials.eventsSecret.substring(0, 15) + '...',
-      },
-      {
-        ...WOMPI_CREDENTIAL_PURPOSES.INTEGRITY_SECRET,
-        secret_ref: credentials.integritySecret,
-        key_prefix: credentials.integritySecret.substring(0, 18) + '...',
-      },
-    ];
-
-    // Eliminar credenciales previas de esta conexión
-    await supabase
-      .from('integration_credentials')
-      .delete()
-      .eq('connection_id', connectionId);
-
-    const { error } = await supabase.from('integration_credentials').insert(
-      entries.map((entry) => ({
-        connection_id: connectionId,
-        credential_type: entry.credential_type,
-        purpose: entry.purpose,
-        secret_ref: entry.secret_ref,
-        key_prefix: entry.key_prefix,
-        status: 'active',
-      }))
-    );
-
-    if (error) {
+    try {
+      const res = await fetch('/api/integrations/wompi/credentials', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId, ...credentials }),
+      });
+      if (!res.ok) {
+        const cuerpo = await res.json().catch(() => ({}));
+        console.error('[Wompi] Error guardando credenciales:', res.status, cuerpo?.error ?? '');
+        return false;
+      }
+      return true;
+    } catch (error) {
       console.error('[Wompi] Error guardando credenciales:', error);
       return false;
     }
-
-    // Marcar conexión como connected
-    await supabase
-      .from('integration_connections')
-      .update({
-        status: 'connected',
-        connected_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', connectionId);
-
-    return true;
   }
 
   // ----------------------------------------------------------

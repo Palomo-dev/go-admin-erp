@@ -35,6 +35,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { verificarChecksumWompi } from '@/lib/services/integrations/wompi/wompiFirma';
+import { resolverSecreto } from '@/lib/services/integrations/secretosIntegracion';
 import { getQrSessionForWebhook, type QrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
 import { confirmQrPayment } from '@/lib/services/integrations/qrShared/paymentConfirmation';
 import type { WompiWebhookEvent } from '@/lib/services/integrations/wompi/wompiTypes';
@@ -88,9 +89,13 @@ async function conexionesQueFirmaron(admin: SupabaseClient, event: WompiWebhookE
     .eq('purpose', 'events_secret')
     .eq('status', 'active');
   if (errSecretos) throw new Error(`integration_credentials: ${errSecretos.message}`);
+  // Del Vault si `secret_ref` es su uuid; en claro si es anterior a Vault. Sin valor → '' y el
+  // checksum no valida (falla cerrado).
   const secretoPorConexion = new Map<string, string>();
   for (const s of (secretos as Fila[] | null) ?? []) {
-    if (typeof s.secret_ref === 'string' && s.secret_ref) secretoPorConexion.set(String(s.connection_id), s.secret_ref);
+    if (typeof s.secret_ref !== 'string' || !s.secret_ref) continue;
+    const valor = await resolverSecreto(admin, String(s.connection_id), 'events_secret', s.secret_ref);
+    if (valor) secretoPorConexion.set(String(s.connection_id), valor);
   }
 
   return filas

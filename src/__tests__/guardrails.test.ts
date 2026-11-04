@@ -2344,6 +2344,7 @@ describe('27b. Integraciones y Factus: todo handler pasa por una puerta del serv
       'paypal/health-check': 'admin',
       'stripe/health-check': 'admin',
       'wompi/health-check': 'admin',
+      'wompi/credentials': 'admin', // guarda las credenciales en el Vault (fn_set_provider_secret)
       'sendgrid/health-check': 'admin',
       'meta/health-check': 'admin',
       'tiktok/health-check': 'admin',

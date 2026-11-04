@@ -81,7 +81,9 @@ export type ReglaOpcionShell =
   /** Uno de `valores` o una lista de `acciones` (texto «a,b» en la columna legacy). */
   | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number }
   /** Entero inclusive. */
-  | { tipo: 'entero'; min: number; max: number };
+  | { tipo: 'entero'; min: number; max: number }
+  /** Lista de textos libres sin repetir: 1–`max` elementos de 1–`largo` caracteres (sin espacios de más). */
+  | { tipo: 'listaTextos'; max: number; largo: number };
 
 export interface OpcionShell {
   zona: 'header' | 'footer';
@@ -154,6 +156,11 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   mobile_menu_style: { zona: 'header', porDefecto: 'drawer' },
   mobile_search_style: { zona: 'header', porDefecto: 'icon' },
   /** Desplegable de categorías en la barra de búsqueda del celular (BuscadorCromoCompacto). false = la barra de siempre. */
+  /**
+   * Búsquedas populares del buscador (chips «Populares» al abrirlo vacío). Lista de textos; sin
+   * valor, la tienda usa las primeras categorías del menú (nunca una lista genérica).
+   */
+  search_popular: { zona: 'header', porDefecto: null, regla: { tipo: 'listaTextos', max: 8, largo: 30 }, nueva: true },
   mobile_search_same_as_desktop: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
   mobile_show_topbar: { zona: 'header', porDefecto: false },
   header_opacity: { zona: 'header', porDefecto: 95 },
@@ -378,6 +385,14 @@ export function cumpleRegla(regla: ReglaOpcionShell, valor: unknown): boolean {
         new Set(valor).size === valor.length &&
         valor.every((v) => typeof v === 'string' && regla.valores.includes(v))
       );
+    case 'listaTextos':
+      return (
+        Array.isArray(valor) &&
+        valor.length >= 1 &&
+        valor.length <= regla.max &&
+        valor.every((v) => typeof v === 'string' && v.length >= 1 && v.length <= regla.largo) &&
+        new Set(valor.map((v) => (v as string).toLowerCase())).size === valor.length
+      );
     case 'opcionOLista':
       if (typeof valor === 'string' && regla.valores.includes(valor)) return true;
       return (
@@ -411,6 +426,9 @@ export function normalizarOpcionShell(columna: string, valor: unknown): unknown 
     candidato = valor.split(',').map((v) => v.trim()).filter(Boolean);
   }
   if (regla.tipo === 'texto' && typeof candidato === 'string') candidato = candidato.trim();
+  if (regla.tipo === 'listaTextos' && Array.isArray(candidato)) {
+    candidato = candidato.map((v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : v));
+  }
   return cumpleRegla(regla, candidato) ? candidato : porDefecto;
 }
 

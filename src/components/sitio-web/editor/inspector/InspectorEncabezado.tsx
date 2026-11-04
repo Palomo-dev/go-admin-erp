@@ -30,6 +30,7 @@ import {
   cambioBuscadorEnConjunto,
   type BuscadorOpcion,
 } from './buscadorCelularLogica';
+import { BusquedasPopulares } from './BusquedasPopulares';
 import { useTextosEditor } from '../textos';
 import {
   BOTONES_EXTRA,
@@ -565,6 +566,9 @@ function Diseno(p: Interno) {
             />
             <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorCelularAyuda')}</p>
           </>
+        )}
+        {(buscadorComputador(a) !== 'hidden' || buscadorCelular(a) !== 'hidden') && (
+          <BusquedasPopulares ajustes={a} onCambiar={cambiar} />
         )}
       </div>
     </>

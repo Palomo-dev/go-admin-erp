@@ -1,18 +1,22 @@
 'use client';
 
-/** «Color del ícono» de la rejilla de categorías: chips + campo de color en «Personalizado». */
+/**
+ * Color con chips + campo de color en «Personalizado»: «Color del ícono» de la rejilla de categorías
+ * y «Color del separador» de la franja (con `vacio='inherit'`, «Del texto», que borra la clave).
+ */
 import { useId } from 'react';
 import { ChipsOpcion } from '@/components/kit';
 import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import { EtiquetaGrupo } from './PartesZonaGlobal';
-import { chipColorIcono, hexColorIcono, valorColorIcono, type ChipColorIcono } from './iconoCategoriaLogica';
+import { chipColorTokens, hexColorIcono, valorColorIcono } from './iconoCategoriaLogica';
 
 export function CampoColorIconoCategoria({
   campo,
   valor,
   colorInicial,
   fondo,
+  vacio = 'category',
   onCambiar,
 }: {
   campo: ContentFieldDef;
@@ -20,10 +24,12 @@ export function CampoColorIconoCategoria({
   /** Con el que arranca «Personalizado» (el primario del tema). */
   colorInicial: string;
   fondo?: string;
-  onCambiar: (v: string) => void;
+  /** Chip que se ve sin valor guardado (o con uno inválido). */
+  vacio?: string;
+  onCambiar: (v: string | null) => void;
 }) {
   const id = useId();
-  const chip = chipColorIcono(valor);
+  const chip = chipColorTokens(valor, vacio);
   const hex = hexColorIcono(valor);
   return (
     <div className="flex flex-col gap-2">
@@ -32,7 +38,7 @@ export function CampoColorIconoCategoria({
         aria-labelledby={id}
         opciones={(campo.options ?? []).map((o) => ({ valor: o.value, etiqueta: o.label }))}
         valor={chip}
-        onValorChange={(v) => onCambiar(valorColorIcono(v as ChipColorIcono, valor, colorInicial))}
+        onValorChange={(v) => onCambiar(valorColorIcono(v, valor, colorInicial))}
       />
       {chip === 'custom' && hex && <ColorField etiqueta={campo.label} valor={hex} fondo={fondo} onCambiar={(v) => onCambiar(v)} />}
       {campo.helpText ? <p className="text-xs leading-4 text-fg-secondary">{campo.helpText}</p> : null}

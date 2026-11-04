@@ -12,7 +12,7 @@ import {
   esquemaFondoIconoCategoria,
   esquemaSeccion,
 } from '@/lib/website/contrato/documentoSitio';
-import { chipColorIcono, hexColorIcono, valorColorIcono } from '../inspector/iconoCategoriaLogica';
+import { chipColorIcono, chipColorTokens, hexColorIcono, valorColorIcono } from '../inspector/iconoCategoriaLogica';
 
 describe('contrato: ícono de la rejilla de categorías', () => {
   it('icon_color: category, primary, secondary o un hex', () => {
@@ -101,5 +101,44 @@ describe('CampoColorIconoCategoria', () => {
     const grupo = screen.getByRole('radiogroup', { name: 'Color del ícono' });
     expect(within(grupo).getByRole('radio', { name: 'Personalizado' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getAllByDisplayValue(/abcdef/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe('franja (marquee): tamaño y color del separador; pastillas: alineación', () => {
+  const marquee = getSectionDefinition('marquee')?.contentFields ?? [];
+  const campo = (k: string) => marquee.find((c) => c.key === k);
+
+  it('«Tamaño»: Chica, Mediana, Grande; por defecto Grande (la franja de siempre), solo en frases', () => {
+    expect(campo('size')?.options?.map((o) => o.value)).toEqual(['sm', 'md', 'lg']);
+    expect(campo('size')?.defaultValue).toBe('lg');
+    expect(campo('size')?.showIf).toEqual({ variantIn: ['text'] });
+  });
+
+  it('«Color del separador»: Del texto (borra la clave), Secundario, Primario, Personalizado', () => {
+    expect(campo('separator_color')?.options?.map((o) => o.value)).toEqual(['inherit', 'secondary', 'primary', 'custom']);
+    expect(campo('separator_color')?.showIf).toEqual({ variantIn: ['text'] });
+    expect(chipColorTokens(undefined, 'inherit')).toBe('inherit');
+    expect(chipColorTokens('secondary', 'inherit')).toBe('secondary');
+    expect(chipColorTokens('#C9A227', 'inherit')).toBe('custom');
+    expect(valorColorIcono('inherit', 'secondary', '#123456')).toBeNull();
+    expect(valorColorIcono('custom', undefined, '#123456')).toBe('#123456');
+    // «Color del ícono» sigue igual: sin valor, «De la categoría».
+    expect(chipColorIcono(undefined)).toBe('category');
+  });
+
+  it('«Alineación de las pastillas»: centradas por defecto, solo con «Pastilla»', () => {
+    const c = getSectionDefinition('categories_grid')?.contentFields.find((x) => x.key === 'align');
+    expect(c?.options?.map((o) => o.value)).toEqual(['center', 'left']);
+    expect(c?.defaultValue).toBe('center');
+    expect(c?.showIf).toEqual({ field: 'category_style', equals: 'pill' });
+  });
+
+  it('el chip «Del texto» del separador borra la clave', () => {
+    const onCambiar = jest.fn();
+    renderConIdioma(<CampoColorIconoCategoria campo={campo('separator_color')!} valor="secondary" vacio="inherit" colorInicial="#123456" onCambiar={onCambiar} />);
+    const grupo = screen.getByRole('radiogroup', { name: 'Color del separador' });
+    expect(within(grupo).getByRole('radio', { name: 'Secundario' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(grupo).getByRole('radio', { name: 'Del texto' }));
+    expect(onCambiar).toHaveBeenLastCalledWith(null);
   });
 });

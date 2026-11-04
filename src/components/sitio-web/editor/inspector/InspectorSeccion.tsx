@@ -156,16 +156,29 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         </div>
       );
     }
-    // «Color del ícono» de categorías: chips + color propio; guarda 'category' | 'primary' | 'secondary' | '#hex'.
-    if (s.section_type === 'categories_grid' && c.key === 'icon_color') {
+    // Colores con chips + color propio: «Color del ícono» de categorías ('category' | 'primary' |
+    // 'secondary' | '#hex') y «Color del separador» de la franja («Del texto» borra la clave).
+    const campoColor =
+      s.section_type === 'categories_grid' && c.key === 'icon_color'
+        ? { vacio: 'category' }
+        : s.section_type === 'marquee' && c.key === 'separator_color'
+          ? { vacio: 'inherit' }
+          : null;
+    if (campoColor) {
       return (
         <CampoColorIconoCategoria
           key={c.key}
           campo={c}
-          valor={contenido.icon_color}
+          valor={contenido[c.key]}
+          vacio={campoColor.vacio}
           colorInicial={p.paleta?.primary ?? '#111827'}
           fondo={p.tema.colores.fondo ?? undefined}
-          onCambiar={(v) => onCambiarContenido({ ...contenido, icon_color: v })}
+          onCambiar={(v) => {
+            const siguiente: Record<string, unknown> = { ...contenido };
+            if (v === null) delete siguiente[c.key];
+            else siguiente[c.key] = v;
+            onCambiarContenido(siguiente);
+          }}
         />
       );
     }

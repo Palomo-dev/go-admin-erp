@@ -1307,6 +1307,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'list', label: 'Lista' },
         { value: 'carousel', label: 'Carrusel' },
       ]},
+      { key: 'align', label: 'Alineación de las pastillas', type: 'select', group: 'layout', defaultValue: 'center', options: [
+        { value: 'center', label: 'Centradas' },
+        { value: 'left', label: 'A la izquierda' },
+      ], helpText: 'En escritorio. Si no caben en una fila, empiezan a la izquierda y se desplazan.', showIf: { field: 'category_style', equals: 'pill' } },
       { key: 'list_scroll', label: 'Lista con scroll horizontal', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Convierte la lista en un carrusel con scroll horizontal y flechas', showIf: { field: 'desktop_layout', in: ['list'] } },
       // Reemplaza CategorySelectorEditor ad-hoc
       {
@@ -2382,6 +2386,32 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         showIf: { variantIn: ['text'] },
       },
       { key: 'separator', label: 'Separador', type: 'text', placeholder: '✦', showIf: { variantIn: ['text'] } },
+      {
+        key: 'separator_color',
+        label: 'Color del separador',
+        type: 'select',
+        options: [
+          { value: 'inherit', label: 'Del texto' },
+          { value: 'secondary', label: 'Secundario' },
+          { value: 'primary', label: 'Primario' },
+          { value: 'custom', label: 'Personalizado' },
+        ],
+        helpText: 'Color del ✦ (o del separador que elijas). «Del texto»: el blanco de siempre.',
+        showIf: { variantIn: ['text'] },
+      },
+      {
+        key: 'size',
+        label: 'Tamaño',
+        type: 'select',
+        defaultValue: 'lg',
+        options: [
+          { value: 'sm', label: 'Chica' },
+          { value: 'md', label: 'Mediana' },
+          { value: 'lg', label: 'Grande' },
+        ],
+        helpText: 'Chica: una franja delgada con la letra del cuerpo, como un aviso. Grande: la de siempre.',
+        showIf: { variantIn: ['text'] },
+      },
       {
         key: 'images',
         label: 'Imágenes',

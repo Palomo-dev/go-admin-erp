@@ -265,6 +265,28 @@ export function contadorCantidadActivo(b: EstiloBotonTarjeta | null | undefined)
   return b?.quantity_stepper === true && b.button_style === 'icon_only' && b.button_shape === 'circle'
 }
 
+/**
+ * Por qué una tarjeta que pide el contador (`add.quantity_stepper`) no lo pinta (la tienda lo deja
+ * en `data-contador-razon` para depurar). `null`: lo pinta, o no lo pide.
+ * - `estilo`: «Agregar» no quedó en Solo ícono + Círculo (el estilo resuelto, sitio + sección).
+ * - `carrito_externo`: la sección usa su propio carrito (restaurante, mesa).
+ * - `padre`: producto con variantes; el «+» abre el selector de variantes (o no hay variantes).
+ * - `sin_stock`, `sin_precio`: no hay nada que agregar.
+ */
+export type RazonSinContador = 'estilo' | 'carrito_externo' | 'padre' | 'sin_stock' | 'sin_precio'
+export function razonSinContador(
+  b: EstiloBotonTarjeta | null | undefined,
+  p: { esPadre: boolean; sinStock: boolean; sinPrecio: boolean; carritoExterno: boolean },
+): RazonSinContador | null {
+  if (b?.quantity_stepper !== true) return null
+  if (!contadorCantidadActivo(b)) return 'estilo'
+  if (p.carritoExterno) return 'carrito_externo'
+  if (p.esPadre) return 'padre'
+  if (p.sinStock) return 'sin_stock'
+  if (p.sinPrecio) return 'sin_precio'
+  return null
+}
+
 function etiqueta(crudo: unknown): EstiloEtiquetaTarjeta | undefined {
   if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) return undefined
   const o = crudo as Record<string, unknown>
@@ -548,7 +570,8 @@ function soloPresetActual(e: EstiloTarjetaProducto): boolean {
  * Aplica el preset y deja que las claves escritas ganen. `null` si no hay nada
  * que cambiar respecto a la tarjeta de hoy.
  */
-export function aplicarEstiloTarjeta(crudo: unknown): EstiloTarjetaProducto | null {
+/** Lo escrito, sin el preset aplicado. `null` si no hay nada que cambiar. */
+function explicitoTarjeta(crudo: unknown): EstiloTarjetaProducto | null {
   const normal = normalizarTarjeta(crudo)
   if (!normal) return null
   // «Unidades vendidas» va aparte (vendidosEnTarjeta): sola no activa el estilo de la tarjeta.
@@ -556,12 +579,29 @@ export function aplicarEstiloTarjeta(crudo: unknown): EstiloTarjetaProducto | nu
   delete explicito.show_sales_count
   delete explicito.labels_custom
   if (Object.keys(explicito).length === 0 || soloPresetActual(explicito)) return null
-  const preset = explicito.card_preset
-  if (!preset || preset === 'actual') return explicito
-  return fusionarEstilos(valoresDePreset(preset), explicito)
+  return explicito
 }
 
-/** Sitio primero, sección después. `null` = pintar la tarjeta de hoy. */
+function valoresPresetDe(e: EstiloTarjetaProducto | null): EstiloTarjetaProducto | null {
+  const preset = e?.card_preset
+  return preset && preset !== 'actual' ? valoresDePreset(preset) : null
+}
+
+export function aplicarEstiloTarjeta(crudo: unknown): EstiloTarjetaProducto | null {
+  const explicito = explicitoTarjeta(crudo)
+  if (!explicito) return null
+  const base = valoresPresetDe(explicito)
+  return base ? fusionarEstilos(base, explicito) : explicito
+}
+
+/**
+ * Sitio primero, sección después. `null` = pintar la tarjeta de hoy.
+ *
+ * Botones (`add`, `buy`, `choose`), clave por clave (4-nov): preset del sitio < preset de la
+ * sección < lo escrito en el sitio < lo escrito en la sección. Así el preset de una sección (que
+ * trae un «Agregar» sólido y redondeado completo) no borra el «Solo ícono · Círculo · Contador»
+ * escrito en el sitio; lo escrito en la sección sigue ganando. El resto de claves, como siempre.
+ */
 export function resolverTarjetaProducto(sitio: unknown, seccion: unknown): EstiloTarjetaProducto | null {
   const a = aplicarEstiloTarjeta(sitio)
   const b = aplicarEstiloTarjeta(seccion)
@@ -569,6 +609,18 @@ export function resolverTarjetaProducto(sitio: unknown, seccion: unknown): Estil
   if (!a) return b
   if (!b) return a
   const junto = fusionarEstilos(a, b)
+  const escritoSitio = explicitoTarjeta(sitio)
+  const escritoSeccion = explicitoTarjeta(seccion)
+  const presetSitio = valoresPresetDe(escritoSitio)
+  const presetSeccion = valoresPresetDe(escritoSeccion)
+  for (const k of CLAVES_BOTON) {
+    const boton = [presetSitio?.[k], presetSeccion?.[k], escritoSitio?.[k], escritoSeccion?.[k]].reduce<EstiloBotonTarjeta | undefined>(
+      (acc, capa) => (capa ? { ...(acc ?? {}), ...capa } : acc),
+      undefined,
+    )
+    if (boton) junto[k] = boton
+    else delete junto[k]
+  }
   return soloPresetActual(junto) ? null : junto
 }
 

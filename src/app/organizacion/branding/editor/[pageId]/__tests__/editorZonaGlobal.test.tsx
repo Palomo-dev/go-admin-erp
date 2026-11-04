@@ -184,7 +184,9 @@ describe('Editor · encabezado y pie globales', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Celular · 390 px' }));
     fireEvent.click(screen.getByRole('button', { name: /^Encabezado$/ }));
     expect(screen.getByRole('tab', { name: 'Diseño' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('radiogroup', { name: 'Buscador · celular' })).toBeTruthy();
+    // Buscador por separado (interruptor apagado): el selector «Celular» junto al de «Computador».
+    expect(screen.getByRole('radiogroup', { name: 'Celular' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Computador' })).toBeTruthy();
   });
 });
 

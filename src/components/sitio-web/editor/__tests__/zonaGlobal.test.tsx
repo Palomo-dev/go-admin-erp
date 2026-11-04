@@ -138,13 +138,37 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'split', header_layout: null, logo_position: 'center' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Posición del logo' })).getByRole('radio', { name: 'Centro' }));
     expect(onCambiar).toHaveBeenCalledWith({ logo_position: 'center' });
-    expect(screen.queryByRole('radiogroup', { name: 'Buscador · celular' })).toBeNull();
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Buscador' })).getByRole('radio', { name: 'Barra visible' }));
-    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar', mobile_search_style: null });
+    // Buscador por separado (interruptor apagado, lo de siempre): «Computador» y «Celular», las 7 opciones en cada uno.
+    const opciones7 = ['Icono', 'Barra visible', 'Barra compacta', 'Ícono que abre el buscador encima', 'Buscador grande', 'Píldora flotante', 'Oculto'];
+    expect(screen.queryByRole('radiogroup', { name: 'Buscador' })).toBeNull();
+    const pc = screen.getByRole('radiogroup', { name: 'Computador' });
+    const cel = screen.getByRole('radiogroup', { name: 'Celular' });
+    expect(within(pc).getAllByRole('radio').map((r) => r.textContent)).toEqual(opciones7);
+    expect(within(cel).getAllByRole('radio').map((r) => r.textContent)).toEqual(opciones7);
+    fireEvent.click(within(pc).getByRole('radio', { name: 'Barra visible' }));
+    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'bar' });
+    fireEvent.click(within(cel).getByRole('radio', { name: 'Buscador grande' }));
+    expect(onCambiar).toHaveBeenCalledWith({ mobile_search_style: 'mega' });
+    const igual = screen.getByRole('switch', { name: 'Buscador del celular igual al de escritorio' });
+    expect(screen.getByText('Enciéndelo para usar el mismo buscador en computador y celular, o apágalo para elegir uno distinto en cada uno.')).toBeTruthy();
+    fireEvent.click(igual);
+    expect(onCambiar).toHaveBeenCalledWith({ mobile_search_same_as_desktop: true });
     // Lo del celular (con el menú inferior) vive solo en la pestaña Celular, sin duplicarse en Diseño.
     expect(screen.queryByRole('switch', { name: /Menú inferior/ })).toBeNull();
     fireEvent.click(screen.getByRole('tab', { name: 'Celular' }));
     expect(screen.getAllByRole('switch', { name: /Menú inferior/ })).toHaveLength(1);
+  });
+
+  test('buscador en conjunto (interruptor encendido): un solo selector y el celular lo sigue', () => {
+    const onCambiar = encabezado({ mobile_search_same_as_desktop: true, search_style: 'icon', mobile_search_style: 'bar' });
+    expect(screen.queryByRole('radiogroup', { name: 'Computador' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Celular' })).toBeNull();
+    const uno = screen.getByRole('radiogroup', { name: 'Buscador' });
+    expect(within(uno).getAllByRole('radio')).toHaveLength(7);
+    fireEvent.click(within(uno).getByRole('radio', { name: 'Píldora flotante' }));
+    expect(onCambiar).toHaveBeenCalledWith({ search_style: 'pill_floating', mobile_search_style: null });
+    fireEvent.click(screen.getByRole('switch', { name: 'Buscador del celular igual al de escritorio' }));
+    expect(onCambiar).toHaveBeenCalledWith({ mobile_search_same_as_desktop: false, mobile_search_style: null });
   });
 
   test('Logo centrado → Clásico: una sola opción; el lado vuelve a izquierda y Logo centrado oculta el selector', () => {

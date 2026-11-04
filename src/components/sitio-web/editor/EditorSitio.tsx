@@ -151,6 +151,9 @@ function Editor() {
   const [crearSitio, setCrearSitio] = useState<number | null | undefined>(undefined);
   const [creandoSitio, setCreandoSitio] = useState(false);
   const [adopcion, setAdopcion] = useState<boolean | null>(null);
+  /** Confirmación de «Descartar cambios» (también la abre Deshacer sin historial). */
+  const [descartarAbierto, setDescartarAbierto] = useState(false);
+  const [descartando, setDescartando] = useState(false);
   const [herencia, setHerencia] = useState(false);
   const [hojaMenu, setHojaMenu] = useState(false);
   const [seoAbierto, setSeoAbierto] = useState(false);
@@ -212,7 +215,8 @@ function Editor() {
       if (escribiendo) return;
       if (ctrl && !e.shiftKey && k === 'z') {
         e.preventDefault();
-        if (ed.canUndo) ed.deshacer();
+        if (ed.deshacerDescarta) setDescartarAbierto(true);
+        else if (ed.canUndo) ed.deshacer();
       } else if (ctrl && ((e.shiftKey && k === 'z') || k === 'y')) {
         e.preventDefault();
         if (ed.canRedo) ed.rehacer();
@@ -564,6 +568,27 @@ function Editor() {
         }}
       />
       <ConfirmDialog
+        abierto={descartarAbierto}
+        onAbiertoChange={(a) => !a && !descartando && setDescartarAbierto(false)}
+        titulo={t('descartar.titulo')}
+        descripcion={
+          ed.listaCambios && ed.listaCambios.length > 0
+            ? ed.listaCambios.length === 1
+              ? t('descartar.descripcionUno')
+              : t('descartar.descripcion', { n: ed.listaCambios.length })
+            : t('descartar.descripcionSinConteo')
+        }
+        textoConfirmar={t('descartar.confirmar')}
+        tono="peligro"
+        cargando={descartando}
+        onConfirmar={async () => {
+          setDescartando(true);
+          const ok = await ed.descartarCambios();
+          setDescartando(false);
+          if (ok) setDescartarAbierto(false);
+        }}
+      />
+      <ConfirmDialog
         abierto={cambioPagina !== null}
         onAbiertoChange={(a) => !a && setCambioPagina(null)}
         titulo={t('pagina.descartarTitulo')}
@@ -622,10 +647,12 @@ function Editor() {
         onCambiarSitio={sedesSwitcher.length > 0 ? (id) => void elegirSitio(id) : undefined}
         dispositivo={ed.dispositivo}
         onDispositivo={ed.setDispositivo}
-        onDeshacer={ed.deshacer}
+        onDeshacer={() => (ed.deshacerDescarta ? setDescartarAbierto(true) : ed.deshacer())}
         onRehacer={ed.rehacer}
         puedeDeshacer={ed.canUndo}
         puedeRehacer={ed.canRedo}
+        onDescartar={ed.enV2 && ed.hayPublicacion ? () => setDescartarAbierto(true) : undefined}
+        puedeDescartar={ed.puedeDescartar && !ed.publicando && !descartando}
         estado={estadoPill}
         errorGuardado={ed.enV2 && ed.estadoGuardado === 'error' && !ed.conflicto}
         cambiosLegacy={ed.hasChanges}

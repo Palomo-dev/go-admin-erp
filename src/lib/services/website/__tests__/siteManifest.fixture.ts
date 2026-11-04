@@ -132,6 +132,8 @@ export const siteManifestFixture: SectionManifest = {
         'label',
         'phrases',
         'separator',
+        'separator_color',
+        'size',
         'speed',
       ],
     },

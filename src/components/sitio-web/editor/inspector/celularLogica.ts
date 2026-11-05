@@ -283,15 +283,17 @@ export function cambioMedidaCelular(a: Record<string, unknown>, k: MedidaLayout,
 
 export const ICONOS_VISIBLES = ['show_menu', 'show_search', 'show_cart', 'show_account'] as const;
 export type IconoVisible = (typeof ICONOS_VISIBLES)[number];
-/** Mostrar u ocultar cada ícono. Visible es lo de hoy: encenderlo quita la clave. */
+/**
+ * Mostrar u ocultar cada ícono. Visible es lo de hoy: encenderlo quita la clave y apagarlo guarda
+ * `false`. La cuenta también: la tienda la muestra en el celular si «Cuenta» está activa en el
+ * encabezado (`show_header_auth`), salvo `show_account: false` (goadmin-websites, 5-nov-2026).
+ */
 export function iconoVisible(a: Record<string, unknown>, k: IconoVisible): boolean {
   const v = objeto(objeto(a.mobile_header)?.icons)?.[k];
-  // La cuenta no sale hoy en el encabezado del celular: visible solo si se pidió.
-  return k === 'show_account' ? v === true : v !== false;
+  return v !== false;
 }
 export function cambioIconoVisible(a: Record<string, unknown>, k: IconoVisible, si: boolean): Record<string, unknown> {
   if (iconoVisible(a, k) === si) return {};
-  if (k === 'show_account') return conIconos(a, k, si ? true : undefined);
   return conIconos(a, k, si ? undefined : false);
 }
 

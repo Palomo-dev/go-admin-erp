@@ -22,7 +22,7 @@ import { productosWebAFilas, type ProductoWeb } from '@/lib/inventario/importaci
 import { claveCategoria } from '@/lib/inventario/importacion/catalogo/deduplicacion';
 import type { PlataformaDetectada } from '@/lib/inventario/importacion/catalogo/tipos';
 import { OPCIONES_POR_DEFECTO, type FilaImport, type FilaValidada, type OpcionesImportacion, type ResultadoFila } from '@/lib/inventario/importacion/tipos';
-import { enviarLote, ErrorApi, pedirContexto, type ContextoServidor } from './apiImportacion';
+import { enviarLote, ErrorApi, pedirContexto, reportadoPorServidor, type ContextoServidor } from './apiImportacion';
 import { reportarSentry } from '@/lib/monitoring/reportarSentry';
 import { borrarProgreso, guardarProgreso, huellaFilas, leerProgreso, primerLotePendiente, VERSION_PROGRESO, type ProgresoImportacion } from './progresoImportacion';
 
@@ -349,7 +349,7 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
             ...(saldoInicial ? { motivo: 'saldo_inicial' as const } : {}),
           },
           filas: lotes[i],
-        });
+        }, i + 1);
         acumulado = {
           ...acumulado,
           procesadas: acumulado.procesadas + lotes[i].length,
@@ -361,8 +361,10 @@ export function useAsistenteImportacion(orgId: number | undefined, saldoInicial 
         };
         for (const f of lotes[i]) enviados.add(f.sku);
       } catch (e) {
-        // A5: el fallo de un bloque llega a Sentry con org, bloque y código.
-        reportarSentry(e, {
+        // A5: el fallo de un bloque llega a Sentry con org, bloque y código. Un 500 del
+        // servidor (RPC_ERROR / INTERNAL) ya lo reportó /importar/lote con el error real: aquí
+        // no se repite.
+        if (!reportadoPorServidor(e)) reportarSentry(e, {
           area: 'importar_lote',
           orgId,
           bloque: i + 1,

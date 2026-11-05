@@ -24,6 +24,8 @@ jest.mock('@/components/pos/promociones/promotionsService', () => ({
     getProducts: jest.fn(async () => []),
     getCategories: jest.fn(async () => []),
     getBranches: jest.fn(async () => []),
+    // El asistente carga al montar los métodos de pago (promociones por método de pago, 32c388a98).
+    getMetodosPago: jest.fn(async () => []),
     create: jest.fn(),
     update: jest.fn(),
   },

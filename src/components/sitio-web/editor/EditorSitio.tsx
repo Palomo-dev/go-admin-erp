@@ -686,7 +686,9 @@ function Editor() {
       )}
 
       <div className="flex min-h-0 flex-1">
-        <div className={panelIzquierdo === 'estilo' ? 'w-[360px] shrink-0 border-r border-line' : 'w-[280px] shrink-0 border-r border-line'}>
+        {/* El panel izquierdo limita su alto (flex col + min-h-0): así el scroll interno de «Estilo del
+            sitio» y de la lista de secciones funciona y no lo recorta el overflow-hidden de la raíz. */}
+        <div className={panelIzquierdo === 'estilo' ? 'flex min-h-0 w-[360px] shrink-0 flex-col border-r border-line' : 'flex min-h-0 w-[280px] shrink-0 flex-col border-r border-line'}>
           {panelIzquierdo === 'estilo' ? (
             <PanelEstiloSitio
               enV2={ed.enV2}

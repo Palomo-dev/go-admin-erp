@@ -544,7 +544,15 @@ describe('Z · gracia tras el vencimiento local: bordes', () => {
     // (fuera del alcance de la Parte C; por eso la vía desde la caja importa).
     const paymentRow = /const paymentRow: Record<string, unknown> = \{([\s\S]*?)\};/.exec(CONFIRMATION);
     expect(paymentRow).not.toBeNull();
-    expect(paymentRow![1]).not.toMatch(/source|sale_id/);
+    const fila = paymentRow![1];
+    expect(fila).not.toMatch(/sale_id/);
+    // La única vía a source/source_id es el cambio de pedido web (a5f54bbbd), condicionada a
+    // `session.source === 'web_order_change'`: una sesión QR del POS no la toma.
+    expect(CONFIRMATION).toMatch(/export const WEB_ORDER_CHANGE_SOURCE = 'web_order_change';/);
+    const guardaCambioWeb =
+      /\.\.\.\(session\.source === WEB_ORDER_CHANGE_SOURCE && session\.source_id\s*\?\s*\{[^}]*\}\s*:\s*\{\}\),/;
+    expect(fila).toMatch(guardaCambioWeb);
+    expect(fila.replace(guardaCambioWeb, '')).not.toMatch(/source|sale_id/);
   });
 
   it('AA · «Verificar pago» con `pending`: el poller vuelve a pararse (no reanuda los ~24 min de Z) y el botón sigue disponible para otra pulsación', async () => {

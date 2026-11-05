@@ -43,19 +43,19 @@ function variantesVisibles(tipo: string, clave: string, contenido: Record<string
 describe('Portada (hero): cada interruptor solo donde el sitio lo pinta', () => {
   it('«Mostrar título» y «Mostrar botón» en todas las variantes, encendidos por defecto (el sitio los lee con `!== false`)', () => {
     for (const clave of ['show_title', 'show_cta']) {
-      expect(variantesVisibles('hero', clave).sort()).toEqual(['fullscreen', 'minimal', 'slider', 'split', 'video']);
+      expect(variantesVisibles('hero', clave).sort()).toEqual(['carousel_editorial', 'fullscreen', 'minimal', 'slider', 'split', 'video']);
       expect(campo('hero', clave).defaultValue).toBe(true);
     }
   });
 
-  it('«Mostrar overlay oscuro» solo en pantalla completa, slider y video: Minimal y Dividido no tienen overlay', () => {
-    expect(variantesVisibles('hero', 'show_overlay').sort()).toEqual(['fullscreen', 'slider', 'video']);
+  it('«Mostrar overlay oscuro» solo en pantalla completa, slider, video y carrusel editorial: Minimal y Dividido no tienen overlay', () => {
+    expect(variantesVisibles('hero', 'show_overlay').sort()).toEqual(['carousel_editorial', 'fullscreen', 'slider', 'video']);
     expect(campo('hero', 'show_overlay').defaultValue).toBe(true);
   });
 
   it('opacidad y color del overlay solo donde el sitio los lee (desde D4 también Slider y Dividido)', () => {
     for (const clave of ['overlay_opacity', 'overlay_color']) {
-      expect(variantesVisibles('hero', clave, { show_overlay: true }).sort()).toEqual(['fullscreen', 'slider', 'split', 'video']);
+      expect(variantesVisibles('hero', clave, { show_overlay: true }).sort()).toEqual(['carousel_editorial', 'fullscreen', 'slider', 'split', 'video']);
       expect(variantesVisibles('hero', clave, { show_overlay: false })).toEqual([]);
     }
   });
@@ -119,5 +119,83 @@ describe('capa de la portada (QA 27-oct, D4): el editor muestra lo que pinta la 
     );
     expect(visibles).toHaveLength(1);
     expect(visibles[0].defaultValue).toBe(esperado);
+  });
+});
+
+/** Default que pinta el inspector en esa variante con la clave ausente (una sola definición visible). */
+function defaultEn(tipo: string, clave: string, variante: string, contenido: Record<string, unknown> = {}): unknown {
+  const visibles = (getSectionDefinition(tipo)?.contentFields ?? []).filter((f) => f.key === clave && campoVisible(f, contenido, variante));
+  expect(visibles).toHaveLength(1);
+  return visibles[0].defaultValue;
+}
+
+describe('«Café de especialidad»: cada variante nueva con los defaults de su lámina (contrato seccionesCafe.ts)', () => {
+  it('Carrusel editorial: sin flechas, 6 s, fundido, barras, pantalla completa, a la izquierda y bajo el encabezado', () => {
+    expect(defaultEn('hero', 'show_arrows', 'carousel_editorial')).toBe(false);
+    expect(defaultEn('hero', 'interval_ms', 'carousel_editorial', { autoplay: true })).toBe(6000);
+    expect(defaultEn('hero', 'transition', 'carousel_editorial')).toBe('fade');
+    expect(defaultEn('hero', 'dot_style', 'carousel_editorial', { show_dots: true })).toBe('bars');
+    expect(defaultEn('hero', 'height', 'carousel_editorial')).toBe('100vh');
+    expect(defaultEn('hero', 'text_align', 'carousel_editorial')).toBe('left');
+    expect(defaultEn('hero', 'overlap_header', 'carousel_editorial')).toBe(true);
+    expect(defaultEn('hero', 'overlay_opacity', 'carousel_editorial', { show_overlay: true })).toBe(45);
+  });
+
+  it('el slider y las demás portadas no cambian', () => {
+    expect(defaultEn('hero', 'interval_ms', 'slider', { autoplay: true })).toBe(5000);
+    expect(defaultEn('hero', 'transition', 'slider')).toBe('slide');
+    expect(defaultEn('hero', 'height', 'fullscreen')).toBe('auto');
+    expect(defaultEn('hero', 'text_align', 'split')).toBe('center');
+    expect(defaultEn('hero', 'overlap_header', 'fullscreen')).toBe(false);
+  });
+
+  it('Carrusel editorial: fotos y hasta 3 botones propios; la imagen única y el video no aplican', () => {
+    const def = getSectionDefinition('hero')!;
+    const enEditorial = (k: string) => def.contentFields.filter((f) => f.key === k && campoVisible(f, {}, 'carousel_editorial'));
+    expect(enEditorial('buttons').map((f) => f.maxItems)).toEqual([3]);
+    expect(enEditorial('slides')[0].itemFields?.map((f) => f.key)).toEqual(['image_url', 'image_url_mobile', 'alt']);
+    expect(variantesVisibles('hero', 'buttons').sort()).toEqual(['carousel_editorial', 'fullscreen', 'minimal', 'slider', 'split', 'video']);
+    expect(variantesVisibles('hero', 'image_url')).not.toContain('carousel_editorial');
+    expect(variantesVisibles('hero', 'eyebrow')).toEqual(['carousel_editorial']);
+    expect(variantesVisibles('hero', 'slides_per_view')).toEqual(['slider']);
+  });
+
+  it('Capítulos: etiqueta e imagen por capítulo, animación e entrada encendidas, separación 28', () => {
+    const def = getSectionDefinition('how_it_works')!;
+    const items = def.contentFields.filter((f) => f.key === 'items' && campoVisible(f, {}, 'chapters'));
+    expect(items).toHaveLength(1);
+    expect(items[0].itemFields?.map((f) => f.key)).toEqual(expect.arrayContaining(['step', 'label', 'title', 'description', 'image_url', 'image_alt', 'icon']));
+    expect(items[0].maxItems).toBe(6);
+    for (const clave of ['show_numbers', 'hover_motion', 'reveal_on_scroll']) {
+      expect(variantesVisibles('how_it_works', clave)).toEqual(['chapters']);
+      expect(defaultEn('how_it_works', clave, 'chapters')).toBe(true);
+    }
+    expect(defaultEn('how_it_works', 'gap', 'chapters')).toBe(28);
+    expect(defaultEn('how_it_works', 'gap', 'steps')).toBe(16);
+    expect(defaultEn('how_it_works', 'card_radius', 'chapters')).toBe(24);
+  });
+
+  it('Línea de puntos: sin fotos, tamaño regular y los interruptores nuevos solo en esa variante', () => {
+    expect(defaultEn('menu_full', 'show_photos', 'dotted')).toBe(false);
+    expect(defaultEn('menu_full', 'size', 'dotted')).toBe('regular');
+    expect(defaultEn('menu_full', 'size', 'anchors')).toBe('auto');
+    for (const clave of ['show_options', 'show_branch_selector', 'show_counter', 'sticky_tabs']) {
+      expect(variantesVisibles('menu_full', clave)).toEqual(['dotted']);
+      expect(defaultEn('menu_full', clave, 'dotted')).toBe(true);
+    }
+    expect(defaultEn('menu_full', 'show_compare_price', 'dotted')).toBe(false);
+  });
+
+  it('Plano de mesas: reglas del formulario de siempre, y «Registrar también» solo por WhatsApp', () => {
+    for (const clave of ['branch_ids', 'min_guests', 'max_guests', 'max_days', 'show_notes', 'require_email', 'policy_text', 'success_message', 'pending_message']) {
+      expect(variantesVisibles('reservation', clave)).toContain('floor_plan');
+    }
+    expect(variantesVisibles('reservation', 'also_register', { booking_mode: 'whatsapp' })).toEqual(['floor_plan']);
+    expect(variantesVisibles('reservation', 'also_register', { booking_mode: 'erp' })).toEqual([]);
+    expect(variantesVisibles('reservation', 'ask_time_first', { booking_mode: 'whatsapp' })).toEqual([]);
+    expect(variantesVisibles('reservation', 'ask_time_first')).toEqual(['floor_plan']);
+    for (const clave of ['table_optional', 'dim_small_tables', 'show_legend', 'show_capacity']) {
+      expect(defaultEn('reservation', clave, 'floor_plan')).toBe(true);
+    }
   });
 });

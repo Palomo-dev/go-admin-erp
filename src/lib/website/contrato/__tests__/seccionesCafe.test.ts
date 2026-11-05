@@ -120,6 +120,18 @@ describe('Historia · Capítulos (lámina 13)', () => {
     expect(normalizarHistoriaCapitulos({ items, show_numbers: false }).capitulos.map((c) => c.numero)).toEqual(['1', '2019']);
   });
 
+  test('sin capítulos con texto, los de ejemplo (lo mismo que muestra el editor con la lista vacía)', () => {
+    const r = normalizarHistoriaCapitulos({ items: [] });
+    expect(r.capitulos.map((c) => [c.numero, c.label])).toEqual([['01', 'El origen'], ['02', 'El oficio'], ['03', 'La casa']]);
+    expect(normalizarHistoriaCapitulos({}).capitulos).toHaveLength(3);
+  });
+
+  test('proporción 16:10 y texto a la izquierda por defecto', () => {
+    expect(normalizarHistoriaCapitulos({})).toMatchObject({ proporcionImagen: '16/10', textAlign: 'left' });
+    expect(normalizarHistoriaCapitulos({ aspect_ratio: '1/1', text_align: 'center' })).toMatchObject({ proporcionImagen: '1/1', textAlign: 'center' });
+    expect(normalizarHistoriaCapitulos({ aspect_ratio: '21/9' }).proporcionImagen).toBe('16/10');
+  });
+
   test('defaults: título, animación y entrada al hacer scroll encendidas; hasta 6 capítulos', () => {
     const r = normalizarHistoriaCapitulos({ items: Array.from({ length: 9 }, (_, i) => ({ title: `C${i}` })) });
     expect(r).toMatchObject({ title: 'Nuestra historia', showNumbers: true, hoverMotion: true, revealOnScroll: true, proporcionImagen: '16/10' });

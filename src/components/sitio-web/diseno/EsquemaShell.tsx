@@ -67,15 +67,16 @@ function Boton({ b, c, escala, lleno, encabezado }: { b: BotonDibujo; c: Ctx; es
   const solido = b.variante === 'solido';
   // Botón circular del encabezado (`header_cta_shape: 'circle'`): el texto dentro de un círculo.
   if (encabezado && solido && d.encabezado.formaBoton === 'circulo') {
-    const lado = (mini ? 30 : 46) * u;
+    // En la miniatura el círculo va sin texto (no cabe), como en la lámina 10.
+    const lado = mini ? 18 : 46 * u;
     return (
       <span
         data-boton={b.variante}
         data-forma="circulo"
         style={bloque({
           flexShrink: 0,
-          width: Math.max(lado, mini ? 22 : 0),
-          height: Math.max(lado, mini ? 22 : 0),
+          width: lado,
+          height: lado,
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 999,
@@ -88,7 +89,7 @@ function Boton({ b, c, escala, lleno, encabezado }: { b: BotonDibujo; c: Ctx; es
           whiteSpace: 'nowrap',
         })}
       >
-        {b.corto}
+        {mini ? null : b.corto}
       </span>
     );
   }

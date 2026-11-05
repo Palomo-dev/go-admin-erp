@@ -22,6 +22,8 @@ import {
   VARIANTE_PORTADA_MESA_CATALOGO,
 } from '@/lib/services/website/seccionesMesaCatalogo';
 import {
+  CAMPO_ANTETITULO_CAPITULOS,
+  CAMPO_ANTETITULO_PORTADA,
   CAMPOS_CARTA_PUNTOS,
   CAMPOS_HISTORIA_CAPITULOS,
   CAMPOS_PORTADA_EDITORIAL,
@@ -293,6 +295,9 @@ function campoIncluirSubcategorias(porDefecto: boolean): ContentFieldDef {
 
 const AYUDA_CATEGORIAS_PRODUCTO = 'Sin selección se muestran todos los productos. Con selección, solo los de esas categorías.';
 
+/** Portadas de siempre (botón único y botones): todas menos el carrusel editorial. */
+const HERO_CON_BOTON_UNICO = ['fullscreen', 'minimal', 'slider', 'split', 'video'];
+
 /** Variantes de «Reserva de mesa» con el formulario del ERP (sedes, reglas, política y mensajes). */
 const RESERVA_CON_FORMULARIO = ['stepper', 'form_image', 'band', 'hero_widget', VARIANTE_RESERVA_PLANO];
 
@@ -312,19 +317,22 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       VARIANTE_PORTADA_EDITORIAL_CATALOGO,
     ],
     contentFields: [
+      CAMPO_ANTETITULO_PORTADA,
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Título principal' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción breve' },
       { key: 'image_url', label: 'Imagen de escritorio', type: 'image', helpText: 'Se ve en computador y tableta. Si queda vacía y hay foto de celular, esa se usa también aquí. Si hay video, el computador muestra el video y esta foto es el cartel. Minimal no lleva foto.', showIf: { variantIn: ['fullscreen', 'slider', 'split', 'video'] } },
       { key: 'image_url_mobile', label: 'Imagen de celular', type: 'image', helpText: 'En el celular. Si queda vacía, usa la de escritorio. Si solo subes esta, se ve en todos los anchos. Si hay video, esta foto tapa el video solo en el celular.', showIf: { variantIn: ['fullscreen', 'slider', 'split', 'video'] } },
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...', showIf: { variantIn: ['video'] } },
-      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
-      { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
+      // El carrusel editorial lleva sus botones (hasta 3) y no tiene imagen única que enlazar.
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora', showIf: { variantIn: HERO_CON_BOTON_UNICO } },
+      { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas', showIf: { variantIn: HERO_CON_BOTON_UNICO } },
       {
         key: 'link_url',
         label: 'Enlace de la imagen',
         type: 'url',
         placeholder: '/ofertas',
         helpText: 'Clic en toda la imagen. Si lo dejas vacío y apagas «Mostrar botón», se usa la URL del botón.',
+        showIf: { variantIn: HERO_CON_BOTON_UNICO },
       },
       // El overlay solo existe en las variantes con fondo (pantalla completa, slider y video):
       // Minimal y Dividido no tienen nada que oscurecer.
@@ -466,7 +474,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         maxItems: 4,
         helpText: 'Botones múltiples. Si está vacío, se usa el botón único de arriba.',
         // «Carrusel editorial» lleva su copia con máximo 3 (CAMPOS_PORTADA_EDITORIAL).
-        showIf: { variantIn: ['fullscreen', 'minimal', 'slider', 'split', 'video'] },
+        showIf: { variantIn: HERO_CON_BOTON_UNICO },
         // HeroButtons solo ocupa todo el ancho con `full_width: true` (ausente = como antes).
         itemFields: BUTTON_ITEM_FIELDS.map((f) => (f.key === 'full_width' ? { ...f, defaultValue: false } : f)),
       },
@@ -1608,7 +1616,6 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       },
       { key: 'show_description', label: 'Mostrar descripción', type: 'boolean', defaultValue: true },
       ...CAMPOS_CARTA_QR,
-      ...CAMPOS_CARTA_PUNTOS,
       {
         key: 'pdf_url',
         label: 'Enlace a la carta en PDF',
@@ -1647,6 +1654,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         helpText:
           'Orden, platos ocultos, destacados y descripción o foto solo para la carta. Se editan en «Editar la carta». El precio, el agotado y lo oculto por sede se editan ahí mismo, en la sede.',
       },
+      // «Línea de puntos»: después de categorías y platos, como en la lámina 14.
+      ...CAMPOS_CARTA_PUNTOS,
     ],
   },
   {
@@ -2084,6 +2093,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa' },
       { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Confirmación inmediata en la mayoría de sedes.' },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar reserva' },
+      // «Plano de mesas» (lámina 15): cómo se confirma y el plano, antes de sedes y reglas.
+      ...CAMPOS_RESERVA_PLANO,
       {
         key: 'image_url',
         label: 'Imagen',
@@ -2203,7 +2214,6 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         placeholder: 'reservar',
         helpText: 'Los botones «Reservar» de «Horario y sedes» enlazan a #reservar con la sede elegida.',
       },
-      ...CAMPOS_RESERVA_PLANO,
     ],
   },
   {
@@ -2959,6 +2969,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       VARIANTE_HISTORIA_CAPITULOS_CATALOGO,
     ],
     contentFields: [
+      CAMPO_ANTETITULO_CAPITULOS,
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Cómo funciona' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       {
@@ -2976,7 +2987,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'icon', label: 'Icono', type: 'icon' },
         ],
       },
-      ...GRID_FIELDS,
+      // «Capítulos» trae su propia proporción de imagen (16:10).
+      ...GRID_FIELDS.map((f) => (f.key === 'aspect_ratio' ? { ...f, showIf: { variantIn: ['steps'] } } : f)),
       ...CAMPOS_HISTORIA_CAPITULOS,
     ],
   },

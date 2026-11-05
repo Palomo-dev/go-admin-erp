@@ -14,7 +14,7 @@
  * muestra la de la variante y el contenido guardado no cambia al cambiar de variante.
  */
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
-import { BUTTON_ITEM_FIELDS, CARD_FIELDS } from '@/lib/services/website/sectionFieldGroups';
+import { BUTTON_ITEM_FIELDS, CARD_FIELDS, GRID_FIELDS } from '@/lib/services/website/sectionFieldGroups';
 import {
   CAPITULOS_EJEMPLO,
   DEFAULT_CARTA_PUNTOS,
@@ -42,16 +42,18 @@ export const VARIANTE_PORTADA_EDITORIAL_CATALOGO = { id: VARIANTE_PORTADA_EDITOR
 
 const SOLO_EDITORIAL = solo(VARIANTE_PORTADA_EDITORIAL);
 
+/** Antetítulo: va antes del título, como en el bloque «Textos» de la lámina. */
+export const CAMPO_ANTETITULO_PORTADA: ContentFieldDef = {
+  key: 'eyebrow',
+  label: 'Antetítulo',
+  type: 'text',
+  placeholder: 'Medellín · Café de especialidad',
+  helpText: 'Línea corta sobre el título. Vacío: no se muestra.',
+  showIf: SOLO_EDITORIAL,
+};
+
 /** Campos nuevos de la portada y las copias de fotos y botones para esta variante. */
 export const CAMPOS_PORTADA_EDITORIAL: ContentFieldDef[] = [
-  {
-    key: 'eyebrow',
-    label: 'Antetítulo',
-    type: 'text',
-    placeholder: 'Medellín · Café de especialidad',
-    helpText: 'Línea corta sobre el título. Vacío: no se muestra.',
-    showIf: SOLO_EDITORIAL,
-  },
   {
     key: 'slides',
     label: 'Fotos del carrusel',
@@ -105,15 +107,17 @@ const DEFAULT_TARJETA_CAPITULO: Record<string, unknown> = {
   card_border_width: DISENO_HISTORIA_CAPITULOS.cardBorderWidth,
 };
 
+/** Antetítulo de los capítulos: antes del título. */
+export const CAMPO_ANTETITULO_CAPITULOS: ContentFieldDef = {
+  key: 'eyebrow',
+  label: 'Antetítulo',
+  type: 'text',
+  placeholder: 'Nuestra historia',
+  helpText: 'Vacío: no se muestra.',
+  showIf: SOLO_CAPITULOS,
+};
+
 export const CAMPOS_HISTORIA_CAPITULOS: ContentFieldDef[] = [
-  {
-    key: 'eyebrow',
-    label: 'Antetítulo',
-    type: 'text',
-    placeholder: 'Nuestra historia',
-    helpText: 'Vacío: no se muestra.',
-    showIf: SOLO_CAPITULOS,
-  },
   {
     key: 'items',
     label: 'Capítulos',
@@ -140,6 +144,31 @@ export const CAMPOS_HISTORIA_CAPITULOS: ContentFieldDef[] = [
     type: 'boolean',
     defaultValue: DEFAULT_HISTORIA_CAPITULOS.showNumbers,
     helpText: '01, 02, 03… según el orden de los capítulos.',
+    showIf: SOLO_CAPITULOS,
+  },
+  // Rejilla de «Capítulos» (lámina 13): la proporción de la imagen es 16:10 y el texto, a la izquierda.
+  {
+    ...(GRID_FIELDS.find((f) => f.key === 'aspect_ratio') as ContentFieldDef),
+    label: 'Proporción de la imagen',
+    defaultValue: DEFAULT_HISTORIA_CAPITULOS.proporcionImagen,
+    options: [
+      { value: '16/10', label: '16:10' },
+      { value: '4/3', label: '4:3' },
+      { value: '1/1', label: 'Cuadrada' },
+      { value: '3/4', label: '3:4 (vertical)' },
+    ],
+    showIf: SOLO_CAPITULOS,
+  },
+  {
+    key: 'text_align',
+    label: 'Alineación del texto',
+    type: 'select',
+    group: 'layout',
+    defaultValue: DEFAULT_HISTORIA_CAPITULOS.textAlign,
+    options: [
+      { value: 'left', label: 'Izquierda' },
+      { value: 'center', label: 'Centro' },
+    ],
     showIf: SOLO_CAPITULOS,
   },
   {
@@ -196,7 +225,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
   },
   {
     key: 'branch_ids',
-    label: 'Sedes del selector',
+    label: 'Sedes que se muestran',
     type: 'entity',
     entity: 'branch',
     multiple: true,
@@ -232,26 +261,26 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
   },
   {
     key: 'tabs_style',
-    label: 'Estilo de las pestañas',
+    label: 'Pestañas de categoría',
     type: 'select',
     group: 'layout',
     defaultValue: DEFAULT_CARTA_PUNTOS.tabsStyle,
     options: [
-      { value: 'italic', label: 'Cursiva' },
-      { value: 'underline', label: 'Subrayado' },
+      { value: 'italic', label: 'Cursiva con subrayado' },
       { value: 'pill', label: 'Píldora' },
+      { value: 'underline', label: 'Subrayado' },
     ],
     showIf: SOLO_PUNTOS,
   },
   {
     key: 'branch_selector_style',
-    label: 'Estilo del selector de sede',
+    label: 'Selector de sede',
     type: 'select',
     group: 'layout',
     defaultValue: DEFAULT_CARTA_PUNTOS.branchSelectorStyle,
     options: [
-      { value: 'pill', label: 'Píldoras' },
-      { value: 'select', label: 'Desplegable' },
+      { value: 'pill', label: 'Píldora centrada' },
+      { value: 'list', label: 'Lista' },
     ],
     showIf: { field: 'show_branch_selector', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS] },
   },
@@ -307,7 +336,7 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
   },
   {
     key: 'booking_mode',
-    label: 'Cómo se confirma',
+    label: 'Modo',
     type: 'select',
     group: 'data',
     options: [
@@ -329,10 +358,10 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
   },
   {
     key: '_whatsapp_sede',
-    label: 'Número de WhatsApp',
+    label: 'WhatsApp que recibe',
     type: 'notice',
     group: 'data',
-    helpText: 'Sale del WhatsApp del sitio (Configuración). No se escribe en la sección.',
+    helpText: 'El de cada sede: sale de la sede o del sitio (Configuración); no se escribe aquí.',
     showIf: MODO_WHATSAPP,
   },
   {
@@ -364,24 +393,25 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
   },
   {
     key: 'plan_position',
-    label: 'Posición del plano',
+    label: 'Plano y formulario',
     type: 'select',
     group: 'layout',
     defaultValue: DEFAULT_RESERVA_PLANO.planPosition,
     options: [
-      { value: 'left', label: 'Izquierda' },
-      { value: 'right', label: 'Derecha' },
+      { value: 'left', label: 'Plano a la izquierda' },
+      { value: 'right', label: 'Plano a la derecha' },
+      { value: 'top', label: 'Plano arriba' },
     ],
     showIf: SOLO_PLANO,
   },
   {
     key: 'mobile_plan',
-    label: 'Plano en el celular',
+    label: 'En celular',
     type: 'select',
     group: 'layout',
     defaultValue: DEFAULT_RESERVA_PLANO.mobilePlan,
     options: [
-      { value: 'sheet', label: 'Hoja con la mesa elegida' },
+      { value: 'sheet', label: 'Plano a lo ancho + hoja con la mesa' },
       { value: 'list', label: 'Lista de mesas' },
     ],
     showIf: SOLO_PLANO,

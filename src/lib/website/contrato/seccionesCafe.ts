@@ -273,7 +273,7 @@ export function normalizarPortadaEditorial(content: Record<string, unknown> | nu
 /** Claves nuevas de contenido. Título, subtítulo e `items[]` ya existían. */
 export const CLAVES_HISTORIA_CAPITULOS = ['eyebrow', 'show_numbers'] as const;
 /** Claves nuevas de la pestaña Diseño (bloque Movimiento). */
-export const CLAVES_DISENO_HISTORIA_CAPITULOS = ['hover_motion', 'reveal_on_scroll'] as const;
+export const CLAVES_DISENO_HISTORIA_CAPITULOS = ['hover_motion', 'reveal_on_scroll', 'text_align'] as const;
 /** Campos NUEVOS de cada capítulo (`items[]`); `step`, `title`, `description` e `icon` ya existían. */
 export const CLAVES_ITEM_CAPITULO = ['label', 'image_url', 'image_alt'] as const;
 
@@ -304,8 +304,9 @@ export interface HistoriaCapitulos {
   /** En celular (sin cursor) la animación se cambia por una entrada suave al hacer scroll. */
   revealOnScroll: boolean;
   capitulos: Capitulo[];
-  /** Proporción de la imagen cuando la rejilla está en «Automática». */
+  /** Proporción de la imagen de cada capítulo (`aspect_ratio`; en esta variante, 16:10). */
   proporcionImagen: string;
+  textAlign: 'left' | 'center';
 }
 
 export const DEFAULT_HISTORIA_CAPITULOS: Omit<HistoriaCapitulos, 'capitulos'> = {
@@ -316,7 +317,11 @@ export const DEFAULT_HISTORIA_CAPITULOS: Omit<HistoriaCapitulos, 'capitulos'> = 
   hoverMotion: true,
   revealOnScroll: true,
   proporcionImagen: '16/10',
+  textAlign: 'left',
 };
+
+/** Proporciones de la imagen del capítulo. */
+export const PROPORCIONES_CAPITULO = ['16/10', '4/3', '1/1', '3/4'] as const;
 
 /** Defaults de la rejilla y la tarjeta en esta variante (lámina 13). */
 export const DISENO_HISTORIA_CAPITULOS = { columns: 3, gap: 28, cardRadius: 24, cardShadow: 'none', cardBorderWidth: 1 } as const;
@@ -330,6 +335,19 @@ export const CAPITULOS_EJEMPLO: readonly { step: number; label: string; title: s
 
 export function numeroCapitulo(indice: number): string {
   return String(indice + 1).padStart(2, '0');
+}
+
+/** Sin capítulos con texto, los de ejemplo: lo mismo que muestra el editor con la lista vacía. */
+function capitulosEjemplo(showNumbers: boolean): Capitulo[] {
+  return CAPITULOS_EJEMPLO.map((x, i) => ({
+    numero: showNumbers ? numeroCapitulo(i) : String(x.step),
+    label: x.label,
+    title: x.title,
+    description: x.description,
+    imageUrl: '',
+    imageAlt: '',
+    icon: '',
+  }));
 }
 
 export function normalizarHistoriaCapitulos(content: Record<string, unknown> | null | undefined): HistoriaCapitulos {
@@ -360,8 +378,9 @@ export function normalizarHistoriaCapitulos(content: Record<string, unknown> | n
     showNumbers,
     hoverMotion: booleano(c.hover_motion, d.hoverMotion),
     revealOnScroll: booleano(c.reveal_on_scroll, d.revealOnScroll),
-    capitulos,
-    proporcionImagen: d.proporcionImagen,
+    capitulos: capitulos.length > 0 ? capitulos : capitulosEjemplo(showNumbers),
+    proporcionImagen: unoDe(c.aspect_ratio, PROPORCIONES_CAPITULO, d.proporcionImagen as (typeof PROPORCIONES_CAPITULO)[number]),
+    textAlign: unoDe(c.text_align, ['left', 'center'] as const, d.textAlign),
   };
 }
 
@@ -373,7 +392,7 @@ export const CLAVES_CARTA_PUNTOS = ['show_options', 'show_branch_selector', 'bra
 export const CLAVES_DISENO_CARTA_PUNTOS = ['tabs_style', 'branch_selector_style', 'sticky_tabs', 'leader_style', 'show_compare_price'] as const;
 
 export const ESTILOS_PESTANAS = ['italic', 'underline', 'pill'] as const;
-export const ESTILOS_SELECTOR_SEDE = ['pill', 'select'] as const;
+export const ESTILOS_SELECTOR_SEDE = ['pill', 'list'] as const;
 export const ESTILOS_LINEA_PRECIO = ['dots', 'line', 'none'] as const;
 
 export interface CartaPuntos {
@@ -470,7 +489,7 @@ export const CLAVES_DISENO_RESERVA_PLANO = ['plan_position', 'mobile_plan', 'ask
  */
 export const MODOS_RESERVA = ['erp', 'whatsapp'] as const;
 export type ModoReserva = (typeof MODOS_RESERVA)[number];
-export const POSICIONES_PLANO = ['left', 'right'] as const;
+export const POSICIONES_PLANO = ['left', 'right', 'top'] as const;
 /** En celular: hoja con la mesa elegida (`sheet`) o lista de mesas (`list`). */
 export const PLANOS_CELULAR = ['sheet', 'list'] as const;
 export const ESTILOS_PLANO = ['line', 'filled'] as const;

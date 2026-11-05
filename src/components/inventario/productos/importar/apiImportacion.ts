@@ -69,8 +69,21 @@ export interface RespuestaLote {
   resultados: ResultadoFila[];
 }
 
-export function enviarLote(orgId: number | undefined, cuerpo: CuerpoLote): Promise<RespuestaLote> {
-  return llamar('/api/inventario/productos/importar/lote', orgId, { method: 'POST', body: JSON.stringify(cuerpo) });
+/** `bloque` (1, 2…) viaja en un header para que el servidor lo ponga en su reporte a Sentry. */
+export function enviarLote(orgId: number | undefined, cuerpo: CuerpoLote, bloque?: number): Promise<RespuestaLote> {
+  return llamar('/api/inventario/productos/importar/lote', orgId, {
+    method: 'POST',
+    body: JSON.stringify(cuerpo),
+    ...(bloque ? { headers: { 'x-import-bloque': String(bloque) } } : {}),
+  });
+}
+
+/**
+ * ¿El servidor ya reportó este fallo a Sentry? Sí cuando /importar/lote respondió 500 con
+ * RPC_ERROR o INTERNAL (lo reporta con el error real). Cortes de red, 4xx y sesión, no.
+ */
+export function reportadoPorServidor(e: unknown): boolean {
+  return e instanceof ErrorApi && e.status >= 500 && (e.code === 'RPC_ERROR' || e.code === 'INTERNAL');
 }
 
 export interface SaldoWeb {

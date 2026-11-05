@@ -139,7 +139,7 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
   };
 
   return (
-    <aside aria-label={t('estiloSitio.titulo')} className="relative flex min-h-0 flex-col bg-surface">
+    <aside aria-label={t('estiloSitio.titulo')} className="relative flex h-full min-h-0 flex-1 flex-col bg-surface">
       {/* El título y la descripción los pone el mismo panel de Diseño; aquí solo se cierra. */}
       <button
         type="button"

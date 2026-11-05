@@ -22,7 +22,7 @@ describe('Ninguna opción suelta cambia el encabezado del celular (QA 28-oct)', 
     sinCarrito: cambioIconoVisible({}, 'show_cart', false),
     sinBuscar: cambioIconoVisible({}, 'show_search', false),
     sinMenu: cambioIconoVisible({}, 'show_menu', false),
-    cuenta: cambioIconoVisible({}, 'show_account', true),
+    sinCuenta: cambioIconoVisible({}, 'show_account', false),
     color: cambioColorIconosCelular({}, '#ff0000'),
     breakpoint: cambioBreakpointCelular({}, 1024),
     igualar: cambioIgualarCelular({ mobile_sticky_header: false, mobile_header: { layout: { sticky: false } } }),
@@ -81,8 +81,13 @@ describe('Celular: fijo, breakpoint, medidas e íconos (una sola fuente)', () =>
   });
   it('íconos: ocultar guarda false; color único en header_mobile_icon_color', () => {
     expect(cambioIconoVisible({}, 'show_cart', false)).toEqual({ mobile_header: { icons: { show_cart: false } } });
-    expect(iconoVisible({}, 'show_account')).toBe(false);
-    expect(cambioIconoVisible({}, 'show_account', true)).toEqual({ mobile_header: { icons: { show_account: true } } });
+    // Cuenta: visible por defecto (la tienda la muestra si está activa en el encabezado); ocultarla
+    // guarda false; un `true` viejo sigue visible y al apagarlo queda en false.
+    expect(iconoVisible({}, 'show_account')).toBe(true);
+    expect(cambioIconoVisible({}, 'show_account', true)).toEqual({});
+    expect(cambioIconoVisible({}, 'show_account', false)).toEqual({ mobile_header: { icons: { show_account: false } } });
+    expect(iconoVisible({ mobile_header: { icons: { show_account: true } } }, 'show_account')).toBe(true);
+    expect(cambioIconoVisible({ mobile_header: { icons: { show_account: true } } }, 'show_account', false)).toEqual({ mobile_header: { icons: { show_account: false } } });
     expect(colorIconosCelular({ mobile_header: { icons: { color: '#ff0000' } } })).toBe('#ff0000');
     expect(cambioColorIconosCelular({ mobile_header: { icons: { color: '#ff0000' } } }, '#00ff00')).toEqual({ mobile_header: null, header_mobile_icon_color: '#00ff00' });
     expect(cambioColorIconosCelular({}, null)).toEqual({ header_mobile_icon_color: null });

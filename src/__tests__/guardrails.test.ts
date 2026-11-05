@@ -2200,7 +2200,9 @@ describe('27b. Integraciones y Factus: todo handler pasa por una puerta del serv
   const INTEGRACIONES = path.join(SRC_ROOT, 'app', 'api', 'integrations');
   const OPEN_FINANCE = path.join(INTEGRACIONES, 'open-finance');
   const RAICES = [INTEGRACIONES, path.join(SRC_ROOT, 'app', 'api', 'factus')];
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification|verifyWebhook|verifyWebhookEvent|verificarChecksumWompi|verifyTwilioWebhook|verifyMetaSignature|verificarSuscripcionWebhook|acceptMarketingOAuthState|requireOwnedChannel)\s*\(/;
+  // `verificarWebhookLogistica` (avisos de transportadoras, Effi y Dropi, GO-1 Fase 1): resuelve la
+  // conexión por la URL y rechaza (501) mientras el adaptador no verifique la firma del proveedor.
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification|verifyWebhook|verifyWebhookEvent|verificarChecksumWompi|verifyTwilioWebhook|verifyMetaSignature|verificarSuscripcionWebhook|acceptMarketingOAuthState|requireOwnedChannel|verificarWebhookLogistica)\s*\(/;
   /** `ruta MÉTODO` → motivo. Solo para lo que de verdad no aplique; vacía. */
   const SIN_PUERTA_PERMITIDA = new Map<string, string>([]);
   /** `export async function POST() { … 401 … }`: sin parámetros no lee nada de la petición. */

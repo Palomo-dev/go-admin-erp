@@ -32,6 +32,7 @@ import {
   StepCredentials,
 } from '@/components/integraciones/conexiones/nueva';
 import { PROVIDER_CONFIGS } from '@/components/integraciones/conexiones';
+import { entradaRegistro, motivoNoConectable, puedeConectarLogistica } from '@/lib/integrations/core/registro';
 
 export type FormMode = 'create' | 'edit' | 'duplicate';
 
@@ -246,6 +247,22 @@ export default function NuevaConexionPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Logística (transportadoras, Effi, Dropi, apps de domicilios): este asistente no las conecta.
+  // Las que tienen adaptador van al flujo con formulario por proveedor y prueba real; el resto no
+  // se puede conectar todavía. Nunca pasan por la validación genérica de este asistente.
+  useEffect(() => {
+    const provider = wizardData.provider;
+    if (!provider || provider.category !== 'delivery') return;
+    if (wizardData.connectionId && entradaRegistro(provider.code)) {
+      router.replace(`/app/integraciones/conexiones/logistica?conexion=${wizardData.connectionId}`);
+    } else if (mode !== 'edit' && puedeConectarLogistica(provider.code, provider.metadata)) {
+      router.replace(`/app/integraciones/conexiones/logistica?proveedor=${encodeURIComponent(provider.code)}`);
+    } else {
+      toast({ title: 'Próximamente', description: motivoNoConectable(provider.code) });
+      router.replace('/app/integraciones/conexiones');
+    }
+  }, [wizardData.provider, wizardData.connectionId, mode, router, toast]);
 
   // Actualizar tipo de credencial cuando cambia el proveedor
   useEffect(() => {

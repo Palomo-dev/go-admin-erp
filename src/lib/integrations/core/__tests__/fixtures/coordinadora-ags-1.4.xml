@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Extracto literal del WSDL oficial https://sandbox.coordinadora.com/ags/1.4/server.php?wsdl
+     descargado el 2026-11-04. Solo los tipos de entrada que usan los formularios de conexión. -->
+<fragmento>
+<xsd:complexType name="Cotizador_cotizarIn"><xsd:all><xsd:element name="nit" type="xsd:string"/><xsd:element name="div" type="xsd:string"/><xsd:element name="cuenta" type="xsd:string"/><xsd:element name="producto" type="xsd:string"/><xsd:element name="origen" type="xsd:string"/><xsd:element name="destino" type="xsd:string"/><xsd:element name="valoracion" type="xsd:string"/><xsd:element name="nivel_servicio" type="tns:ArrayOfInt"/><xsd:element name="detalle" type="tns:ArrayOfCotizador_detalleempaques"/><xsd:element name="apikey" type="xsd:string"/><xsd:element name="clave" type="xsd:string"/></xsd:all></xsd:complexType>
+<xsd:complexType name="Seguimiento_detalladoIn"><xsd:all><xsd:element name="codigo_remision" type="xsd:string"/><xsd:element name="nit" type="xsd:string"/><xsd:element name="div" type="xsd:string"/><xsd:element name="referencia" type="xsd:string"/><xsd:element name="imagen" type="xsd:int"/><xsd:element name="anexo" type="xsd:int"/><xsd:element name="apikey" type="xsd:string"/><xsd:element name="clave" type="xsd:string"/></xsd:all></xsd:complexType>
+</fragmento>

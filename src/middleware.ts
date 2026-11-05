@@ -13,6 +13,8 @@ import {
   MW_DB_BUDGET_MS,
 } from '@/lib/supabase/edge-rest';
 import { cargoPuedeEntrarAModulo, resolverCargoMiembro } from '@/lib/navigation/accesoCargo';
+import { reportarSentryServidor } from '@/lib/monitoring/sentryServidor';
+import { motivoCookieCorrupta } from '@/lib/auth/motivoCookieCorrupta';
 
 const ACTIVITY_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
 // La marca solo evita un UPDATE por petición. Si la cookie dura 10 minutos,
@@ -397,11 +399,8 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     // No hay cookie de autenticación
   } else {
     // Verificar que la cookie no esté corrupta
-    if (authCookie.value === '[object Object]' || 
-        authCookie.value.includes('[object Object]') ||
-        authCookie.value === 'undefined' ||
-        authCookie.value === 'null' ||
-        !authCookie.value.trim().startsWith('{')) {
+    const motivoCorrupta = motivoCookieCorrupta(authCookie.value);
+    if (motivoCorrupta) {
       
       // Cookie corrupta: se borra (con y sin dominio compartido, con sus
       // trozos) y se va al login. En las páginas de /auth/ NO se redirige:
@@ -414,6 +413,17 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         : pathname.startsWith('/auth/')
           ? NextResponse.next()
           : NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
+      // Solo la redirección al login por sesión dañada va a Sentry (warning): ruta y motivo,
+      // nunca el valor de la cookie. Las redirecciones normales al login no pasan por aquí.
+      if (!pathname.startsWith('/api/') && !pathname.startsWith('/auth/')) {
+        const org = request.cookies.get('org_id')?.value;
+        event.waitUntil(reportarSentryServidor({
+          mensaje: 'Redirección al login por sesión dañada',
+          nivel: 'warning',
+          tags: { area: 'sesion_corrupta', motivo: motivoCorrupta, organization_id: org && /^\d{1,10}$/.test(org) ? org : null },
+          extra: { ruta: pathname },
+        }));
+      }
       borrarCookiesDeSesion(response, request, projectRef);
       return response;
     }

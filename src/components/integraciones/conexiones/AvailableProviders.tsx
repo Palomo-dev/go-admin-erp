@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { IntegrationConnection, IntegrationConnector, IntegrationProvider } from '@/lib/services/integrationsService';
 import { ProviderCard } from './ProviderCard';
+import { motivoNoConectable, puedeConectarLogistica } from '@/lib/integrations/core/registro';
 
 interface ProviderConfig {
   code: string;
@@ -293,6 +294,8 @@ interface AvailableProvidersProps {
   onConnectBookingApi?: (providerId: string) => void;
   onConnectExpediaApi?: (providerId: string) => void;
   onConnectTripAdvisorApi?: (providerId: string) => void;
+  /** Categoría preseleccionada (p. ej. `delivery` desde Transporte → Transportadoras). */
+  initialCategory?: string | null;
 }
 
 export function AvailableProviders({ 
@@ -311,9 +314,10 @@ export function AvailableProviders({
   onConnectBookingApi,
   onConnectExpediaApi,
   onConnectTripAdvisorApi,
+  initialCategory,
 }: AvailableProvidersProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory ?? null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [environmentFilter, setEnvironmentFilter] = useState<string | null>(null);
   const [countryFilter, setCountryFilter] = useState<'all' | 'my_country' | 'other'>('all');
@@ -656,6 +660,11 @@ export function AvailableProviders({
               const providerConnections = getProviderConnectionsFiltered(provider.id);
 
               const availableInCountry = isProviderAvailableInCountry(provider.id);
+              // Catálogo honesto: un proveedor de entregas sin adaptador (Rappi, iFood, Uber Eats,
+              // Effi, Dropi…) no se puede conectar.
+              const motivoNoDisponible = provider.category === 'delivery' && !puedeConectarLogistica(provider.code, provider.metadata)
+                ? motivoNoConectable(provider.code)
+                : undefined;
 
               return (
                 <ProviderCard
@@ -665,6 +674,7 @@ export function AvailableProviders({
                   connections={providerConnections}
                   branches={branches}
                   isAvailableInCountry={availableInCountry}
+                  motivoNoDisponible={motivoNoDisponible}
                   organizationCountryCode={orgCountryIso2}
                   onConnect={onConnect}
                   onConfigure={onConfigure}

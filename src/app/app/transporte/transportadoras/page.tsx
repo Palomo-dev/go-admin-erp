@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Plug } from 'lucide-react';
+import { entradaRegistro } from '@/lib/integrations/core/registro';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { transportService, TransportCarrier } from '@/lib/services/transportService';
@@ -10,7 +14,8 @@ import {
   CarrierDialog,
   TrackingPreviewDialog,
   ApiCredentialsDialog,
-  ImportCarriersDialog
+  ImportCarriersDialog,
+  AjustesEnvioCard,
 } from '@/components/transporte/transportadoras';
 import {
   AlertDialog,
@@ -23,8 +28,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const RUTA_LOGISTICA = '/app/integraciones/conexiones/logistica';
+
 export default function TransportadorasPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const { organization } = useOrganization();
   
   const [isLoading, setIsLoading] = useState(true);
@@ -193,6 +201,13 @@ export default function TransportadorasPage() {
   };
 
   const handleManageCredentials = (carrier: TransportCarrier) => {
+    // Transportadoras con adaptador (Coordinadora, Servientrega, Envía Colvanes, Interrapidísimo):
+    // un solo flujo en Integraciones → Conexiones, con formulario por proveedor, Vault y prueba real.
+    const entrada = carrier.api_provider ? entradaRegistro(carrier.api_provider) : null;
+    if (entrada?.creaTransportadora) {
+      router.push(`${RUTA_LOGISTICA}?proveedor=${encodeURIComponent(entrada.code)}`);
+      return;
+    }
     setCredentialsCarrier(carrier);
     setShowCredentialsDialog(true);
   };
@@ -243,6 +258,21 @@ export default function TransportadorasPage() {
         onRefresh={loadData}
         isLoading={isLoading}
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 px-4 py-3">
+        <p className="text-sm text-blue-900 dark:text-blue-200">
+          Las transportadoras con integración (Coordinadora, Servientrega, Envía Colvanes, Interrapidísimo) se conectan desde Integraciones.
+        </p>
+        <Link
+          href="/app/integraciones/conexiones?categoria=delivery"
+          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        >
+          <Plug className="h-4 w-4" aria-hidden="true" />
+          Conectar transportadora
+        </Link>
+      </div>
+
+      <AjustesEnvioCard />
 
       <CarriersList
         carriers={filteredCarriers}

@@ -29,6 +29,9 @@ import {
   AvailableProviders,
   ImportDialog,
 } from '@/components/integraciones/conexiones';
+import { entradaRegistro, motivoNoConectable, puedeConectarLogistica } from '@/lib/integrations/core/registro';
+
+const RUTA_LOGISTICA = '/app/integraciones/conexiones/logistica';
 
 export default function ConexionesPage() {
   const router = useRouter();
@@ -136,8 +139,43 @@ export default function ConexionesPage() {
     setIsRefreshing(false);
   };
 
+  /** Código del proveedor de logística de la conexión (transportadora, Effi, Dropi), o null. */
+  const codigoLogisticaDe = (connection: IntegrationConnection): string | null => {
+    const connector = connection.connector ?? connectors.find((c) => c.id === connection.connector_id);
+    const provider = connector ? providers.find((p) => p.id === connector.provider_id) : undefined;
+    return provider && provider.category === 'delivery' && entradaRegistro(provider.code) ? provider.code : null;
+  };
+
+  /** Prueba real de una conexión de logística: el único camino a `connected`. */
+  const probarLogistica = async (connection: IntegrationConnection) => {
+    toast({ title: 'Probando conexión...', description: `Verificando "${connection.name}"` });
+    try {
+      const res = await fetch(`/api/integrations/logistica/conexiones/${connection.id}/probar`, { method: 'POST' });
+      const datos = (await res.json().catch(() => ({}))) as { ok?: boolean; mensaje?: string; error?: string };
+      const ok = res.ok && datos.ok === true;
+      toast({
+        title: ok ? 'Conexión OK' : 'La conexión no quedó activa',
+        description: ok ? 'El proveedor aceptó las credenciales.' : datos.mensaje ?? datos.error ?? 'No se pudo probar la conexión.',
+        variant: ok ? 'default' : 'destructive',
+      });
+    } catch {
+      toast({ title: 'Error de conexión', description: 'No se pudo probar la conexión.', variant: 'destructive' });
+    }
+    loadConnections();
+  };
+
   // Conectar con proveedor
   const handleConnectProvider = (provider: IntegrationProvider) => {
+    // Logística: solo proveedores con adaptador en el registro (catálogo honesto).
+    if (provider.category === 'delivery') {
+      if (!puedeConectarLogistica(provider.code, provider.metadata)) {
+        toast({ title: 'Próximamente', description: motivoNoConectable(provider.code) });
+        return;
+      }
+      router.push(`${RUTA_LOGISTICA}?proveedor=${encodeURIComponent(provider.code)}`);
+      return;
+    }
+
     // Twilio es gestionado centralmente por GO Admin — redirigir al panel dedicado
     if (provider.code === 'twilio') {
       router.push('/app/integraciones/twilio');
@@ -157,6 +195,11 @@ export default function ConexionesPage() {
   // Toggle estado (pausar/reanudar)
   const handleToggleStatus = async (connection: IntegrationConnection) => {
     const newStatus = connection.status === 'paused' ? 'connected' : 'paused';
+    // Una conexión de logística no se reanuda sin probarla otra vez.
+    if (newStatus === 'connected' && codigoLogisticaDe(connection)) {
+      await probarLogistica(connection);
+      return;
+    }
     const success = await integrationsService.toggleConnectionStatus(connection.id, newStatus);
 
     if (success) {
@@ -195,6 +238,10 @@ export default function ConexionesPage() {
 
   // Health check
   const handleHealthCheck = async (connection: IntegrationConnection) => {
+    if (codigoLogisticaDe(connection)) {
+      await probarLogistica(connection);
+      return;
+    }
     toast({
       title: 'Probando conexión...',
       description: `Verificando "${connection.name}"`,
@@ -356,15 +403,20 @@ export default function ConexionesPage() {
             branches={branches}
             organizationCountryCode={organization?.country_code ?? undefined}
             onConnect={handleConnectProvider}
-            onConfigure={(conn) => router.push(`/app/integraciones/conexiones/nueva?mode=edit&id=${conn.id}`)}
+            onConfigure={(conn) => router.push(
+              codigoLogisticaDe(conn) ? `${RUTA_LOGISTICA}?conexion=${conn.id}` : `/app/integraciones/conexiones/nueva?mode=edit&id=${conn.id}`,
+            )}
             onToggleStatus={handleToggleStatus}
             onRevoke={handleRevoke}
             onHealthCheck={handleHealthCheck}
-            onDuplicate={(conn) => router.push(`/app/integraciones/conexiones/nueva?mode=duplicate&id=${conn.id}`)}
+            onDuplicate={(conn) => router.push(
+              codigoLogisticaDe(conn) ? `${RUTA_LOGISTICA}?conexion=${conn.id}` : `/app/integraciones/conexiones/nueva?mode=duplicate&id=${conn.id}`,
+            )}
             onDelete={confirmDelete}
             onConnectBookingApi={(providerId: string) => router.push(`/app/integraciones/conexiones/nueva?provider=${providerId}`)}
             onConnectExpediaApi={(providerId: string) => router.push(`/app/integraciones/conexiones/nueva?provider=${providerId}`)}
             onConnectTripAdvisorApi={(providerId: string) => router.push(`/app/integraciones/conexiones/nueva?provider=${providerId}`)}
+            initialCategory={searchParams?.get('categoria')}
           />
         )}
       </div>

@@ -10,7 +10,8 @@
 
 jest.mock('@/lib/supabase/config', () => {
   const chain: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gte', 'lte', 'or', 'not']) {
+  // `range`: el precio de sede (filasDeSede → leerPorLotes) pagina con `.range()`; sin él, getProductPrice falla.
+  for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'gte', 'lte', 'or', 'not', 'range']) {
     chain[m] = () => chain;
   }
   chain.maybeSingle = () => Promise.resolve({ data: null, error: null });

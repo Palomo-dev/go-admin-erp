@@ -33,7 +33,7 @@ import {
   VARIANTE_PORTADA_EDITORIAL_CATALOGO,
   VARIANTE_RESERVA_PLANO_CATALOGO,
 } from '@/lib/services/website/seccionesCafeCatalogo';
-import { VARIANTE_PORTADA_EDITORIAL, VARIANTE_RESERVA_PLANO } from '@/lib/website/contrato/seccionesCafe';
+import { VARIANTE_PORTADA_EDITORIAL } from '@/lib/website/contrato/seccionesCafe';
 import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { CLAVES_TARJETA_EN_SECCION } from '@/lib/website/tarjetaProducto';
@@ -165,6 +165,8 @@ export interface FieldCondition {
   allEmpty?: string[];
   /** Alguna de estas claves con valor. */
   anyFilled?: string[];
+  /** Otra condición que también debe cumplirse (dos campos a la vez). */
+  and?: FieldCondition;
 }
 
 export interface ContentFieldDef {
@@ -216,6 +218,16 @@ export interface ContentFieldDef {
   itemType?: 'number' | 'text';
   /** `type='notice'`: enlace del aviso. */
   link?: { label: string; href: string };
+  /**
+   * Forma del control cuando no es la habitual:
+   * - `dropdown` (`type='select'`): lista desplegable aunque tenga 5 opciones o menos (por defecto
+   *   van como chips).
+   * - `field` (`type='notice'`): campo de solo lectura con `placeholder` como valor, para un dato
+   *   que sale del ERP y no se escribe en el editor («WhatsApp que recibe: El de cada sede»).
+   */
+  display?: 'dropdown' | 'field';
+  /** Media columna: dos campos `half` seguidos van en la misma fila («Personas desde · hasta»). */
+  half?: boolean;
   /** Condición para mostrar el campo. */
   showIf?: FieldCondition;
   options?: { value: string; label: string }[];
@@ -299,7 +311,12 @@ const AYUDA_CATEGORIAS_PRODUCTO = 'Sin selección se muestran todos los producto
 const HERO_CON_BOTON_UNICO = ['fullscreen', 'minimal', 'slider', 'split', 'video'];
 
 /** Variantes de «Reserva de mesa» con el formulario del ERP (sedes, reglas, política y mensajes). */
-const RESERVA_CON_FORMULARIO = ['stepper', 'form_image', 'band', 'hero_widget', VARIANTE_RESERVA_PLANO];
+const RESERVA_CON_FORMULARIO = ['stepper', 'form_image', 'band', 'hero_widget'];
+/**
+ * Variantes de `reservation` que usan los campos de siempre. «Plano de mesas» (lámina 15) trae sus
+ * copias con la misma clave, en sus bloques y su orden (`CAMPOS_RESERVA_PLANO`).
+ */
+const RESERVA_SIN_PLANO = [...RESERVA_CON_FORMULARIO, 'external'];
 
 const RAW_CATALOG: SectionTypeDefinition[] = [
   {
@@ -2089,11 +2106,11 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       VARIANTE_RESERVA_PLANO_CATALOGO,
     ],
     contentFields: [
-      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Reservas' },
-      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa' },
-      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Confirmación inmediata en la mayoría de sedes.' },
-      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar reserva' },
-      // «Plano de mesas» (lámina 15): cómo se confirma y el plano, antes de sedes y reglas.
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Reservas', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Confirmación inmediata en la mayoría de sedes.', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar reserva', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      // «Plano de mesas» (lámina 15): Textos · Cómo se confirma · Sedes y plano · Reglas, y su Diseño.
       ...CAMPOS_RESERVA_PLANO,
       {
         key: 'image_url',
@@ -2213,6 +2230,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'text',
         placeholder: 'reservar',
         helpText: 'Los botones «Reservar» de «Horario y sedes» enlazan a #reservar con la sede elegida.',
+        showIf: { variantIn: RESERVA_SIN_PLANO },
       },
     ],
   },

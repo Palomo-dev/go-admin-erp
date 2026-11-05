@@ -32,6 +32,8 @@ export interface TemplateCardProps {
   iconoGiro?: LucideIcon;
   modo?: 'sitio' | 'pagina';
   secciones?: number;
+  /** Páginas propias de la plantilla («· 4 páginas»). Sin valor: no se dice. */
+  paginas?: number | null;
   enUso?: boolean;
   /** Texto de la insignia «En uso» (p. ej. «En uso en <sede>» con una sede elegida). */
   etiquetaEnUso?: string;
@@ -52,6 +54,7 @@ export function TemplateCard({
   iconoGiro: IconoGiro,
   modo = 'sitio',
   secciones,
+  paginas,
   enUso,
   etiquetaEnUso,
   seleccionada,
@@ -113,6 +116,7 @@ export function TemplateCard({
           <span className="inline-flex items-center gap-1 text-xs tabular-nums text-fg-secondary">
             <LayoutList aria-hidden="true" className={cn(CLASE_TAMANO_ICONO.meta, 'shrink-0')} strokeWidth={TRAZO_ICONO} />
             {secciones === 1 ? tx('plantilla.seccionesUna') : tx('plantilla.secciones', { n: secciones })}
+            {typeof paginas === 'number' && paginas > 1 ? ` · ${tx('plantilla.paginas', { n: paginas })}` : null}
           </span>
         ) : null}
         {insigniaEnFila ? nodoInsignia : null}

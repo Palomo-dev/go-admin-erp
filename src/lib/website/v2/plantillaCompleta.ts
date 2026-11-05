@@ -484,7 +484,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
       if (variante === VARIANTE_CARTA_PUNTOS) {
         return {
           contenido: c.esInicio
-            ? { eyebrow: 'La carta', title: 'Lo que más se pide' }
+            ? // Inicio (láminas 11 y 12): solo los destacados, con el botón a la carta completa.
+              { eyebrow: 'De la barra', title: 'Lo que más se pide', subtitle: 'En la carta completa eliges la sede.', only_featured: true }
             : { title: 'Nuestra carta', subtitle: SUBTITULO_PAGINA.carta },
           visible: true,
         };
@@ -815,6 +816,16 @@ export const PAGINAS_POR_PLANTILLA: Readonly<Record<string, PaginasDePlantilla>>
     quita: ['domicilios', 'contacto', 'galeria'],
   },
 };
+
+/**
+ * Páginas que trae la plantilla por sí misma (Inicio más las suyas), para la tarjeta de la galería
+ * («5 secciones · 4 páginas», lámina 10). null si la plantilla solo trae Inicio: la tarjeta no
+ * dice nada de páginas (las demás salen del giro, igual en todas sus plantillas).
+ */
+export function paginasPropiasDePlantilla(plantillaId: string): number | null {
+  const propias = PAGINAS_POR_PLANTILLA[plantillaId];
+  return propias && propias.reemplazos.length > 0 ? 1 + propias.reemplazos.length : null;
+}
 
 /** El juego del giro con las páginas propias de la plantilla (si las tiene). */
 export function paginasDePlantilla(plantillaId: string, delGiro: readonly PaginaBase[]): PaginaBase[] {

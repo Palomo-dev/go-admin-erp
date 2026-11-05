@@ -31641,6 +31641,7 @@
       "plantilla": {
         "seccionesUna": "1 sección",
         "secciones": "{n} secciones",
+        "paginas": "{n} páginas",
         "enUso": "En uso",
         "seleccionada": "Seleccionada",
         "pagina": "Página",

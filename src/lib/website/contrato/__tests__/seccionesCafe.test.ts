@@ -15,7 +15,9 @@ import {
   MAX_BOTONES_PORTADA,
   MAX_CAPITULOS,
   MAX_FOTOS_PORTADA,
+  TEXTO_BOTON_RESERVA,
   VARIANTES_CAFE,
+  cartaConBarra,
   esVarianteCafe,
   mensajeReservaWhatsapp,
   mesasMasParecidas,
@@ -160,12 +162,32 @@ describe('Carta · Línea de puntos (lámina 14)', () => {
   test('contador', () => {
     expect(textoContador('Café', 12, 'preparaciones')).toBe('Café · 12 preparaciones');
   });
+
+  test('«Solo destacados» (Inicio): apagado por defecto; 6 platos y botón a /carta', () => {
+    const entera = normalizarCartaPuntos({});
+    expect(entera).toMatchObject({ onlyFeatured: false, featuredLimit: 6, viewAllText: 'Ver la carta completa', viewAllUrl: '/carta' });
+    expect(cartaConBarra(entera)).toBe(true);
+    const solo = normalizarCartaPuntos({ only_featured: true, featured_limit: '8', view_all_text: '', view_all_url: '/menu' });
+    expect(cartaConBarra(solo)).toBe(false);
+    expect(solo).toMatchObject({ onlyFeatured: true, featuredLimit: 8, viewAllText: '', viewAllUrl: '/menu' });
+  });
+
+  test('«Solo destacados»: cantidad fuera de 2–12 y enlaces raros vuelven al default', () => {
+    expect(normalizarCartaPuntos({ featured_limit: 1 }).featuredLimit).toBe(6);
+    expect(normalizarCartaPuntos({ featured_limit: 40 }).featuredLimit).toBe(6);
+    expect(normalizarCartaPuntos({ view_all_url: 'javascript:alert(1)' }).viewAllUrl).toBe('/carta');
+    expect(normalizarCartaPuntos({ view_all_url: '//otro.sitio' }).viewAllUrl).toBe('/carta');
+  });
 });
 
 describe('Reserva · Plano de mesas (lámina 15)', () => {
   test('sin contenido: directo al ERP, mesa opcional y zonas de la sede', () => {
     expect(normalizarReservaPlano({})).toEqual(DEFAULT_RESERVA_PLANO);
     expect(DEFAULT_RESERVA_PLANO).toMatchObject({ bookingMode: 'erp', tableOptional: true, zones: [], alsoRegister: true, mobilePlan: 'sheet' });
+  });
+
+  test('texto del botón con `cta_text` vacío, según el modo', () => {
+    expect(TEXTO_BOTON_RESERVA).toEqual({ erp: 'Solicitar reserva', whatsapp: 'Reservar por WhatsApp' });
   });
 
   test('zonas: textos sin repetir (sin distinguir mayúsculas)', () => {

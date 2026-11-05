@@ -387,7 +387,17 @@ export function normalizarHistoriaCapitulos(content: Record<string, unknown> | n
 // ─── menu_full · «Línea de puntos» (lámina 14) ──────────────────────────────────────────────
 
 /** Claves nuevas de contenido (las demás siguen en MenuFull.CONTENT_KEYS). */
-export const CLAVES_CARTA_PUNTOS = ['show_options', 'show_branch_selector', 'branch_ids', 'show_counter', 'counter_label'] as const;
+export const CLAVES_CARTA_PUNTOS = [
+  'show_options',
+  'show_branch_selector',
+  'branch_ids',
+  'show_counter',
+  'counter_label',
+  'only_featured',
+  'featured_limit',
+  'view_all_text',
+  'view_all_url',
+] as const;
 /** Claves nuevas de Diseño y Avanzado. */
 export const CLAVES_DISENO_CARTA_PUNTOS = ['tabs_style', 'branch_selector_style', 'sticky_tabs', 'leader_style', 'show_compare_price'] as const;
 
@@ -413,6 +423,17 @@ export interface CartaPuntos {
   leaderStyle: (typeof ESTILOS_LINEA_PRECIO)[number];
   /** Tachar el precio anterior (`compare_price`) solo si se activa. */
   showComparePrice: boolean;
+  /**
+   * «Solo destacados» (la carta de Inicio, lámina 11/12): sin pestañas, contador ni selector de
+   * sede; pinta los platos marcados como destacados en «Editar la carta» (`carta_platos.destacados`,
+   * en su orden) hasta `featuredLimit`, en dos columnas, y el botón «Ver la carta completa». Sin
+   * destacados marcados: los primeros `featuredLimit` platos de la carta (nunca una sección vacía).
+   */
+  onlyFeatured: boolean;
+  featuredLimit: number;
+  /** Botón al pie con `onlyFeatured`. Texto vacío: sin botón. */
+  viewAllText: string;
+  viewAllUrl: string;
   /** Claves que ya existían, con el default de esta variante. */
   showPhotos: boolean;
   showDescription: boolean;
@@ -430,10 +451,22 @@ export const DEFAULT_CARTA_PUNTOS: CartaPuntos = {
   stickyTabs: true,
   leaderStyle: 'dots',
   showComparePrice: false,
+  onlyFeatured: false,
+  featuredLimit: 6,
+  viewAllText: 'Ver la carta completa',
+  viewAllUrl: '/carta',
   showPhotos: false,
   showDescription: true,
   columns: 2,
 };
+
+export const MIN_DESTACADOS_CARTA = 2;
+export const MAX_DESTACADOS_CARTA = 12;
+
+/** ¿Se pinta la barra de la carta (pestañas, contador, selector de sede)? No con «solo destacados». */
+export function cartaConBarra(carta: Pick<CartaPuntos, 'onlyFeatured'>): boolean {
+  return !carta.onlyFeatured;
+}
 
 /** Tamaño del plato en esta variante (`size` ya existía; su default general es «auto»). */
 export const TAMANO_CARTA_PUNTOS = 'regular' as const;
@@ -452,6 +485,11 @@ export function normalizarCartaPuntos(content: Record<string, unknown> | null | 
     stickyTabs: booleano(c.sticky_tabs, d.stickyTabs),
     leaderStyle: unoDe(c.leader_style, ESTILOS_LINEA_PRECIO, d.leaderStyle),
     showComparePrice: booleano(c.show_compare_price, d.showComparePrice),
+    onlyFeatured: booleano(c.only_featured, d.onlyFeatured),
+    featuredLimit: enteroEntre(c.featured_limit, MIN_DESTACADOS_CARTA, MAX_DESTACADOS_CARTA, d.featuredLimit),
+    viewAllText: textoOpcional(c.view_all_text, d.viewAllText, MAX_ETIQUETA),
+    // Misma regla que los enlaces de imagen: https://, http:// o ruta propia del sitio.
+    viewAllUrl: urlImagen(c.view_all_url) || d.viewAllUrl,
     showPhotos: booleano(c.show_photos, d.showPhotos),
     showDescription: booleano(c.show_description, d.showDescription),
     columns: c.columns === '1' || c.columns === 1 ? 1 : 2,
@@ -489,6 +527,8 @@ export const CLAVES_DISENO_RESERVA_PLANO = ['plan_position', 'mobile_plan', 'ask
  */
 export const MODOS_RESERVA = ['erp', 'whatsapp'] as const;
 export type ModoReserva = (typeof MODOS_RESERVA)[number];
+/** Texto del botón con `cta_text` vacío, por modo (lámina 15). */
+export const TEXTO_BOTON_RESERVA: Record<ModoReserva, string> = { erp: 'Solicitar reserva', whatsapp: 'Reservar por WhatsApp' };
 export const POSICIONES_PLANO = ['left', 'right', 'top'] as const;
 /** En celular: hoja con la mesa elegida (`sheet`) o lista de mesas (`list`). */
 export const PLANOS_CELULAR = ['sheet', 'list'] as const;

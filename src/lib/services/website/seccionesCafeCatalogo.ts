@@ -24,14 +24,16 @@ import {
   ETIQUETAS_VARIANTE_CAFE,
   MAX_BOTONES_PORTADA,
   MAX_CAPITULOS,
+  MAX_DESTACADOS_CARTA,
   MAX_FOTOS_PORTADA,
+  MIN_DESTACADOS_CARTA,
+  TEXTO_BOTON_RESERVA,
   VARIANTE_CARTA_PUNTOS,
   VARIANTE_HISTORIA_CAPITULOS,
   VARIANTE_PORTADA_EDITORIAL,
   VARIANTE_RESERVA_PLANO,
 } from '@/lib/website/contrato/seccionesCafe';
 
-const RUTA_MESAS = '/app/pos/mesas';
 const RUTA_PRODUCTOS = '/app/inventario/productos';
 
 const solo = (variante: string) => ({ variantIn: [variante] });
@@ -203,6 +205,9 @@ export const CAMPOS_HISTORIA_CAPITULOS: ContentFieldDef[] = [
 export const VARIANTE_CARTA_PUNTOS_CATALOGO = { id: VARIANTE_CARTA_PUNTOS, label: ETIQUETAS_VARIANTE_CAFE.menu_full };
 
 const SOLO_PUNTOS = solo(VARIANTE_CARTA_PUNTOS);
+/** La carta entera (no «Solo destacados»): pestañas, contador y selector de sede. */
+const CARTA_ENTERA = { field: 'only_featured', in: [false, undefined, null], variantIn: [VARIANTE_CARTA_PUNTOS] };
+const SOLO_DESTACADOS = { field: 'only_featured', equals: true, variantIn: [VARIANTE_CARTA_PUNTOS] };
 
 export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
   {
@@ -215,13 +220,51 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
     showIf: SOLO_PUNTOS,
   },
   {
+    key: 'only_featured',
+    label: 'Solo destacados',
+    type: 'boolean',
+    group: 'data',
+    defaultValue: DEFAULT_CARTA_PUNTOS.onlyFeatured,
+    helpText:
+      'Para Inicio: los platos marcados como destacados en «Editar la carta», sin pestañas ni selector de sede, y el botón a la carta completa. Sin destacados marcados: los primeros de la carta.',
+    showIf: SOLO_PUNTOS,
+  },
+  {
+    key: 'featured_limit',
+    label: 'Cuántos platos',
+    type: 'number',
+    group: 'data',
+    min: MIN_DESTACADOS_CARTA,
+    max: MAX_DESTACADOS_CARTA,
+    placeholder: String(DEFAULT_CARTA_PUNTOS.featuredLimit),
+    helpText: 'En dos columnas.',
+    showIf: SOLO_DESTACADOS,
+  },
+  {
+    key: 'view_all_text',
+    label: 'Texto del botón',
+    type: 'text',
+    group: 'data',
+    placeholder: DEFAULT_CARTA_PUNTOS.viewAllText,
+    helpText: 'Vacío: sin botón.',
+    showIf: SOLO_DESTACADOS,
+  },
+  {
+    key: 'view_all_url',
+    label: 'Enlace del botón',
+    type: 'url',
+    group: 'data',
+    placeholder: DEFAULT_CARTA_PUNTOS.viewAllUrl,
+    showIf: SOLO_DESTACADOS,
+  },
+  {
     key: 'show_branch_selector',
     label: 'Selector de sede para el visitante',
     type: 'boolean',
     group: 'data',
     defaultValue: DEFAULT_CARTA_PUNTOS.showBranchSelector,
     helpText: 'Cambia precios y platos sin recargar. En la página de una sede no se muestra.',
-    showIf: SOLO_PUNTOS,
+    showIf: CARTA_ENTERA,
   },
   {
     key: 'branch_ids',
@@ -231,7 +274,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
     multiple: true,
     group: 'data',
     helpText: 'Sin selección: las sedes con sitio publicado.',
-    showIf: { field: 'show_branch_selector', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS] },
+    showIf: { field: 'show_branch_selector', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS], and: CARTA_ENTERA },
   },
   {
     key: 'show_counter',
@@ -240,7 +283,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
     group: 'data',
     defaultValue: DEFAULT_CARTA_PUNTOS.showCounter,
     helpText: '«Café · 12 preparaciones»: cuenta los platos visibles de la pestaña.',
-    showIf: SOLO_PUNTOS,
+    showIf: CARTA_ENTERA,
   },
   {
     key: 'counter_label',
@@ -248,7 +291,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
     type: 'text',
     group: 'data',
     placeholder: DEFAULT_CARTA_PUNTOS.counterLabel,
-    showIf: { field: 'show_counter', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS] },
+    showIf: { field: 'show_counter', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS], and: CARTA_ENTERA },
   },
   {
     key: 'show_options',
@@ -270,7 +313,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
       { value: 'pill', label: 'Píldora' },
       { value: 'underline', label: 'Subrayado' },
     ],
-    showIf: SOLO_PUNTOS,
+    showIf: CARTA_ENTERA,
   },
   {
     key: 'branch_selector_style',
@@ -282,7 +325,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
       { value: 'pill', label: 'Píldora centrada' },
       { value: 'list', label: 'Lista' },
     ],
-    showIf: { field: 'show_branch_selector', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS] },
+    showIf: { field: 'show_branch_selector', in: [true, undefined], variantIn: [VARIANTE_CARTA_PUNTOS], and: CARTA_ENTERA },
   },
   {
     key: 'sticky_tabs',
@@ -290,7 +333,7 @@ export const CAMPOS_CARTA_PUNTOS: ContentFieldDef[] = [
     type: 'boolean',
     group: 'layout',
     defaultValue: DEFAULT_CARTA_PUNTOS.stickyTabs,
-    showIf: SOLO_PUNTOS,
+    showIf: CARTA_ENTERA,
   },
   {
     key: 'leader_style',
@@ -323,28 +366,46 @@ export const VARIANTE_RESERVA_PLANO_CATALOGO = { id: VARIANTE_RESERVA_PLANO, lab
 const SOLO_PLANO = solo(VARIANTE_RESERVA_PLANO);
 const MODO_WHATSAPP = { field: 'booking_mode', equals: 'whatsapp', variantIn: [VARIANTE_RESERVA_PLANO] };
 
+/**
+ * Pestaña Contenido en el orden y con los bloques de la lámina 15: Textos · Cómo se confirma ·
+ * Sedes y plano · Reglas. Los campos de textos, sedes y reglas ya existían en `reservation`: aquí
+ * van COPIAS con la misma clave, limitadas a esta variante, para que el panel tenga los bloques y
+ * el orden de la lámina (en las demás variantes no cambia nada y el contenido guardado es el
+ * mismo). El ancla pasa a Avanzado, como en la lámina.
+ */
+const TEXTOS = 'Textos';
+const CONFIRMA = 'Cómo se confirma';
+const SEDES_PLANO = 'Sedes y plano';
+const REGLAS = 'Reglas';
+
 export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
+  { key: 'eyebrow', label: 'Antetítulo', type: 'text', section: TEXTOS, placeholder: 'Reservas', showIf: SOLO_PLANO },
+  { key: 'title', label: 'Título', type: 'text', section: TEXTOS, placeholder: 'Reserva tu mesa', showIf: SOLO_PLANO },
+  { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', section: TEXTOS, placeholder: 'Escoge la fecha, toca en el plano la mesa que prefieras y déjanos tus datos.', showIf: SOLO_PLANO },
   {
-    key: '_origen_plano',
-    label: 'De dónde sale el plano',
-    type: 'notice',
-    group: 'data',
-    helpText:
-      'Es el plano de POS › Mesas de la sede: forma, posición, giro y capacidad de cada mesa, sus zonas y los elementos fijos. Si la sede no tiene plano, la sección se muestra como «Pasos» con el mismo contenido.',
-    link: { label: 'Abrir POS › Mesas', href: RUTA_MESAS },
+    key: 'cta_text',
+    label: 'Texto del botón',
+    type: 'text',
+    section: TEXTOS,
+    placeholder: TEXTO_BOTON_RESERVA.erp,
+    helpText: `Vacío: «${TEXTO_BOTON_RESERVA.erp}»; en modo WhatsApp, «${TEXTO_BOTON_RESERVA.whatsapp}».`,
     showIf: SOLO_PLANO,
   },
   {
     key: 'booking_mode',
     label: 'Modo',
     type: 'select',
+    display: 'dropdown',
     group: 'data',
+    section: CONFIRMA,
+    // Sin elegir lo resuelve la sede (E1): así lo dice el campo en vez de «Elige una opción».
+    placeholder: 'Según la sede',
     options: [
       { value: 'erp', label: 'Directo al ERP' },
       { value: 'whatsapp', label: 'Por WhatsApp' },
     ],
     helpText:
-      'Directo al ERP: disponibilidad real por mesa y hora, y la reserva entra a POS › Reservas de mesas. Por WhatsApp: abre el chat de la sede con el mensaje armado. Sin elegir: directo al ERP si la sede tiene las reservas activas; si no, por WhatsApp.',
+      'Directo al ERP: disponibilidad real por mesa y hora; la reserva entra a POS › Reservas de mesas. Por WhatsApp: abre el chat de la sede con el mensaje armado. Sin elegir: directo al ERP si la sede tiene las reservas activas; si no, por WhatsApp.',
     showIf: SOLO_PLANO,
   },
   {
@@ -352,6 +413,7 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
     label: 'Registrar también en el ERP',
     type: 'boolean',
     group: 'data',
+    section: CONFIRMA,
     defaultValue: DEFAULT_RESERVA_PLANO.alsoRegister,
     helpText: 'La solicitud queda «Por confirmar» en POS › Reservas de mesas.',
     showIf: MODO_WHATSAPP,
@@ -360,18 +422,33 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
     key: '_whatsapp_sede',
     label: 'WhatsApp que recibe',
     type: 'notice',
+    display: 'field',
     group: 'data',
-    helpText: 'El de cada sede: sale de la sede o del sitio (Configuración); no se escribe aquí.',
+    section: CONFIRMA,
+    placeholder: 'El de cada sede',
+    helpText: 'Sale de la sede o del sitio (Configuración); no se escribe aquí.',
     showIf: MODO_WHATSAPP,
   },
   {
+    key: 'branch_ids',
+    label: 'Sedes que reciben reservas',
+    type: 'entity',
+    entity: 'branch',
+    multiple: true,
+    group: 'data',
+    section: SEDES_PLANO,
+    helpText: 'Sin selección: las sedes con mesas y reservas activas. En la página de una sede, solo esa. El plano es el de POS › Mesas de cada sede.',
+    showIf: SOLO_PLANO,
+  },
+  {
     key: 'zones',
-    label: 'Zonas visibles',
+    label: 'Zonas que se muestran',
     type: 'entity',
     entity: 'zone',
     multiple: true,
     group: 'data',
-    helpText: 'Sin selección: las zonas que la sede deja reservar en POS › Reservas de mesas › Configuración; si no hay, todas con mesas reservables.',
+    section: SEDES_PLANO,
+    helpText: 'Sin selección: las zonas que la sede deja reservar (POS › Reservas de mesas › Configuración).',
     showIf: SOLO_PLANO,
   },
   {
@@ -379,6 +456,7 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
     label: 'Mostrar leyenda',
     type: 'boolean',
     group: 'data',
+    section: SEDES_PLANO,
     defaultValue: DEFAULT_RESERVA_PLANO.showLegend,
     helpText: 'Disponible · Tu selección · No disponible a esa hora.',
     showIf: SOLO_PLANO,
@@ -388,7 +466,72 @@ export const CAMPOS_RESERVA_PLANO: ContentFieldDef[] = [
     label: 'Mostrar capacidad bajo cada mesa',
     type: 'boolean',
     group: 'data',
+    section: SEDES_PLANO,
     defaultValue: DEFAULT_RESERVA_PLANO.showCapacity,
+    showIf: SOLO_PLANO,
+  },
+  { key: 'min_guests', label: 'Personas desde', type: 'number', group: 'data', section: REGLAS, half: true, min: 1, max: 50, placeholder: '1', showIf: SOLO_PLANO },
+  {
+    key: 'max_guests',
+    label: 'hasta',
+    type: 'number',
+    group: 'data',
+    section: REGLAS,
+    half: true,
+    min: 1,
+    max: 100,
+    placeholder: '8',
+    showIf: SOLO_PLANO,
+  },
+  {
+    key: 'max_days',
+    label: 'Días de anticipación',
+    type: 'number',
+    group: 'data',
+    section: REGLAS,
+    min: 0,
+    max: 365,
+    placeholder: '30',
+    helpText: 'Personas y días nunca salen de lo que permite la sede.',
+    showIf: SOLO_PLANO,
+  },
+  { key: 'show_notes', label: 'Pedir notas', type: 'boolean', group: 'data', section: REGLAS, defaultValue: true, showIf: SOLO_PLANO },
+  { key: 'require_email', label: 'Correo obligatorio', type: 'boolean', group: 'data', section: REGLAS, defaultValue: false, showIf: SOLO_PLANO },
+  {
+    key: 'policy_text',
+    label: 'Política de reservas',
+    type: 'textarea',
+    group: 'data',
+    section: REGLAS,
+    placeholder: 'Vacío: la de la sede',
+    helpText: 'Si la sede tiene política en su configuración, manda la de la sede.',
+    showIf: SOLO_PLANO,
+  },
+  {
+    key: 'success_message',
+    label: 'Mensaje: confirmada',
+    type: 'text',
+    group: 'data',
+    section: REGLAS,
+    placeholder: 'Te esperamos. Si dejaste tu correo, te enviamos la confirmación.',
+    showIf: SOLO_PLANO,
+  },
+  {
+    key: 'pending_message',
+    label: 'Mensaje: por confirmar',
+    type: 'text',
+    group: 'data',
+    section: REGLAS,
+    placeholder: 'El equipo revisará tu solicitud y te avisará cuando la confirme.',
+    showIf: SOLO_PLANO,
+  },
+  {
+    key: 'anchor_id',
+    label: 'Ancla de la sección',
+    type: 'text',
+    group: 'advanced',
+    placeholder: 'reservar',
+    helpText: 'Los botones «Reservar» de «Horario y sedes» enlazan a #reservar con la sede elegida.',
     showIf: SOLO_PLANO,
   },
   {

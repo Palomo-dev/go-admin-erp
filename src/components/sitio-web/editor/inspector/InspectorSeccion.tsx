@@ -228,7 +228,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   /** Campos con el título de su bloque («TEXTOS», «PAGO»…) cuando el bloque cambia (lámina 17). */
   const pintarConBloques = (lista: readonly ContentFieldDef[]) => {
     let bloque: string | undefined;
-    return lista.flatMap((c) => {
+    // Dos campos `half` seguidos del mismo bloque van en una fila: el segundo lo pinta el primero.
+    let enFila = -1;
+    return lista.flatMap((c, i) => {
+      if (i === enFila) return [];
       const nodos = [];
       // Tras los bloques propios de la sección, los campos comunes (ancho, espaciado) van aparte.
       const titulo = c.section ?? (bloque ? t('inspector.masOpciones') : undefined);
@@ -240,7 +243,18 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         );
       }
       bloque = c.section;
-      nodos.push(pintarCampo(c));
+      const siguiente = lista[i + 1];
+      if (c.half && siguiente?.half && siguiente.section === c.section) {
+        enFila = i + 1;
+        nodos.push(
+          <div key={`fila-${c.key}`} className="grid grid-cols-2 gap-3">
+            {pintarCampo(c)}
+            {pintarCampo(siguiente)}
+          </div>,
+        );
+      } else {
+        nodos.push(pintarCampo(c));
+      }
       return nodos;
     });
   };

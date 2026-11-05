@@ -31640,6 +31640,7 @@
       "plantilla": {
         "seccionesUna": "1 section",
         "secciones": "{n} sections",
+        "paginas": "{n} pages",
         "enUso": "Utilisé",
         "seleccionada": "Sélectionné",
         "pagina": "Page",

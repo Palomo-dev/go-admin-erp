@@ -34,6 +34,7 @@ import {
   bannerDelSitio,
   construirSitioDePlantilla,
   modoPorDefecto,
+  paginasPropiasDePlantilla,
   plantillaPorDefectoDelGiro,
   type DatosNegocio,
 } from '../plantillaCompleta';
@@ -543,6 +544,16 @@ describe('«Café de especialidad» (Figma 2223:46106, lámina 11): Inicio, Cart
       { label: 'Ver carta', url: '/carta', variant: 'outline' },
     ]);
     expect(porSlug('home')!.secciones[3].contenido).toMatchObject({ cta_url: '/reservas-mesa' });
+  });
+
+  test('la carta de Inicio es «solo destacados» (láminas 11 y 12); la de /carta, la entera', () => {
+    expect(porSlug('home')!.secciones[2].contenido).toMatchObject({ eyebrow: 'De la barra', title: 'Lo que más se pide', only_featured: true });
+    expect(porSlug('carta')!.secciones[0].contenido).not.toHaveProperty('only_featured');
+  });
+
+  test('la tarjeta de la galería dice «4 páginas» (lámina 10); una plantilla sin páginas propias, nada', () => {
+    expect(paginasPropiasDePlantilla('cafe_especialidad')).toBe(4);
+    expect(paginasPropiasDePlantilla('fine_dining_oscuro')).toBeNull();
   });
 
   test('el plano no fija el modo de confirmación (lo resuelve la sede, E1) y los capítulos traen ejemplos sin hechos', () => {

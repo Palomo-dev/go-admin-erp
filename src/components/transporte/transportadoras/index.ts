@@ -4,3 +4,4 @@ export * from './CarrierDialog';
 export * from './TrackingPreviewDialog';
 export * from './ApiCredentialsDialog';
 export * from './ImportCarriersDialog';
+export { AjustesEnvioCard } from './AjustesEnvioCard';

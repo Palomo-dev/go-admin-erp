@@ -498,6 +498,7 @@ function Editor() {
         v2Adoptado={!!ed.sitioV2.sitio?.v2Adoptado}
         activaraWeb={activarAlPublicarSitio(!!ed.sitioV2.sitio?.v2Adoptado)}
         programarDisponible={ed.programarDisponible}
+        sitioId={ed.sitioV2.sitio?.id ?? null}
         publicando={ed.publicando}
         onVer={(destino) => {
           if (destino.paginaId !== pagina.id) void ed.cambiarPagina(destino.paginaId);

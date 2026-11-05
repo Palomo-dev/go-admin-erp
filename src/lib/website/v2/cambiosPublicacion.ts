@@ -116,3 +116,128 @@ export function listarCambios(borrador: DocumentoSitio | null, publicado: Docume
   }
   return cambios;
 }
+
+// ─── Revisión con los datos de la sede (Figma «16 Sitio web» 2264:51434, lámina 16) ──────────
+
+/**
+ * Qué del borrador pide revisar datos del ERP antes de publicar. Solo las variantes que dependen
+ * de ellos: el plano de mesas (`reservation` · `floor_plan`), la carta por sede (`menu_full` ·
+ * `dotted`) y el carrusel editorial (`hero` · `carousel_editorial`, fotos para celular).
+ * `sedes` vacío = las de la organización (la sección no eligió).
+ */
+export interface UsosConDatos {
+  plano: { sedes: number[] } | null;
+  carta: { sedes: number[] } | null;
+  /** Fotos del carrusel editorial: cuántas y cuántas traen versión para celular. */
+  portada: { fotos: number; conCelular: number } | null;
+}
+
+const idsSedes = (valor: unknown): number[] =>
+  Array.isArray(valor) ? valor.map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0) : [];
+
+/** Sedes de dos secciones: si alguna no eligió (vacío = todas), todas. */
+function unirSedes(previo: { sedes: number[] } | null, nuevas: number[]): { sedes: number[] } {
+  if (previo && previo.sedes.length === 0) return previo;
+  if (nuevas.length === 0) return { sedes: [] };
+  return { sedes: [...new Set([...(previo?.sedes ?? []), ...nuevas])] };
+}
+
+/** Lee del documento qué secciones visibles necesitan la revisión (puro; lo usa el servidor). */
+export function usosConDatos(documento: DocumentoSitio | null): UsosConDatos {
+  const usos: UsosConDatos = { plano: null, carta: null, portada: null };
+  for (const pagina of documento?.paginas ?? []) {
+    for (const s of pagina.secciones) {
+      const vis = s.visibilidad as { movil?: boolean; escritorio?: boolean } | undefined;
+      if (vis && vis.movil === false && vis.escritorio === false) continue;
+      const c = (s.contenido ?? {}) as Record<string, unknown>;
+      if (s.tipo === 'reservation' && s.variante === 'floor_plan') {
+        usos.plano = unirSedes(usos.plano, idsSedes(c.branch_ids));
+      } else if (s.tipo === 'menu_full' && s.variante === 'dotted') {
+        usos.carta = unirSedes(usos.carta, idsSedes(c.branch_ids));
+      } else if (s.tipo === 'hero' && s.variante === 'carousel_editorial') {
+        const fotos = Array.isArray(c.slides) ? (c.slides as Record<string, unknown>[]).filter((f) => f && (f.image_url || f.image_url_mobile)) : [];
+        const previo = usos.portada ?? { fotos: 0, conCelular: 0 };
+        usos.portada = { fotos: previo.fotos + fotos.length, conCelular: previo.conCelular + fotos.filter((f) => typeof f.image_url_mobile === 'string' && f.image_url_mobile).length };
+      }
+    }
+  }
+  return usos;
+}
+
+/** Lo que el servidor leyó de una sede (organización ya validada). */
+export interface DatosSedePublicacion {
+  id: number;
+  nombre: string;
+  /** Mesas de la sede: zona y si tienen posición en el plano. */
+  mesas: readonly { zona: string | null; conPosicion: boolean }[];
+  /** Elementos fijos del plano que se ven en la web. */
+  elementos: number;
+  /** `restaurant_booking_settings.is_enabled` de la sede (o el de la organización); `null` = sin configuración. */
+  reservasActivas: boolean | null;
+  /** Precios propios vigentes de la sede (`product_branch_prices`). */
+  preciosPropios: number;
+}
+
+export type ClaveAvisoPublicacion =
+  | 'planoListo'
+  | 'zonaSinPlano'
+  | 'sinMesas'
+  | 'reservasActivas'
+  | 'reservasApagadas'
+  | 'preciosSede'
+  | 'precioGeneral'
+  | 'fotosPortada';
+
+/** Una línea de la revisión. Ninguna bloquea: cada sección tiene su respaldo. */
+export interface AvisoPublicacion {
+  clave: ClaveAvisoPublicacion;
+  /** `ok` = ✓; `aviso` = ! (no bloquea). */
+  estado: 'ok' | 'aviso';
+  valores: Record<string, string | number>;
+}
+
+/**
+ * Revisión antes de publicar (lámina 16): plano por zona, reservas activas, precios por sede y
+ * fotos de la portada. Puro: recibe lo que leyó el servidor, nunca valores del navegador.
+ */
+export function avisosPublicacion(usos: UsosConDatos, sedes: readonly DatosSedePublicacion[]): AvisoPublicacion[] {
+  const avisos: AvisoPublicacion[] = [];
+  const nombre = (s: DatosSedePublicacion) => s.nombre;
+  const delPlano = usos.plano ? sedes.filter((s) => usos.plano!.sedes.length === 0 || usos.plano!.sedes.includes(s.id)) : [];
+  for (const s of delPlano) {
+    if (s.mesas.length === 0) {
+      avisos.push({ clave: 'sinMesas', estado: 'aviso', valores: { sede: nombre(s) } });
+      continue;
+    }
+    const zonas = new Map<string, { total: number; conPosicion: number }>();
+    for (const m of s.mesas) {
+      const z = (m.zona ?? '').trim();
+      const actual = zonas.get(z) ?? { total: 0, conPosicion: 0 };
+      actual.total += 1;
+      if (m.conPosicion) actual.conPosicion += 1;
+      zonas.set(z, actual);
+    }
+    for (const [zona, n] of [...zonas.entries()].sort(([a], [b]) => a.localeCompare(b, 'es'))) {
+      const valores = { sede: nombre(s), zona: zona || '—', mesas: n.total, sinPosicion: n.total - n.conPosicion, elementos: s.elementos };
+      avisos.push(n.conPosicion === n.total ? { clave: 'planoListo', estado: 'ok', valores } : { clave: 'zonaSinPlano', estado: 'aviso', valores });
+    }
+    avisos.push(
+      s.reservasActivas === false
+        ? { clave: 'reservasApagadas', estado: 'aviso', valores: { sede: nombre(s) } }
+        : { clave: 'reservasActivas', estado: 'ok', valores: { sede: nombre(s) } },
+    );
+  }
+  const deLaCarta = usos.carta ? sedes.filter((s) => usos.carta!.sedes.length === 0 || usos.carta!.sedes.includes(s.id)) : [];
+  for (const s of deLaCarta) {
+    avisos.push(
+      s.preciosPropios > 0
+        ? { clave: 'preciosSede', estado: 'ok', valores: { sede: nombre(s), n: s.preciosPropios } }
+        : { clave: 'precioGeneral', estado: 'aviso', valores: { sede: nombre(s) } },
+    );
+  }
+  if (usos.portada && usos.portada.fotos > 0) {
+    const { fotos, conCelular } = usos.portada;
+    avisos.push({ clave: 'fotosPortada', estado: conCelular === fotos ? 'ok' : 'aviso', valores: { n: conCelular, total: fotos } });
+  }
+  return avisos;
+}

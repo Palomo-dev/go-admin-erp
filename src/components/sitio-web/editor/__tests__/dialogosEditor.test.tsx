@@ -29,6 +29,34 @@ const baseDialogo = {
 };
 
 describe('DialogoPublicar', () => {
+  test('revisión con los datos de la sede (lámina 16): la pide al servidor por el sitio y no bloquea', async () => {
+    const fetchOriginal = global.fetch;
+    const llamado = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        avisos: [
+          { clave: 'planoListo', estado: 'ok', valores: { sede: 'Sede Laureles', zona: 'Salón', mesas: 12, sinPosicion: 0, elementos: 3 } },
+          { clave: 'precioGeneral', estado: 'aviso', valores: { sede: 'Sede Laureles' } },
+        ],
+      }),
+    });
+    global.fetch = llamado as unknown as typeof fetch;
+    try {
+      const onPublicar = jest.fn();
+      renderConIdioma(<DialogoPublicar {...baseDialogo} sitioId="0f8fad5b-d9cb-469f-a165-70867728950e" programarDisponible cambios={[]} onPublicar={onPublicar} />);
+      expect(await screen.findByText('Revisión con los datos de la sede')).toBeTruthy();
+      expect(screen.getByText('Plano de Salón en Sede Laureles: 12 mesas con posición y 3 elementos fijos')).toBeTruthy();
+      expect(screen.getByText('Sin precios propios de Sede Laureles: la carta muestra el precio general')).toBeTruthy();
+      expect(llamado).toHaveBeenCalledWith('/api/website/v2/sites/0f8fad5b-d9cb-469f-a165-70867728950e/avisos-publicacion', expect.anything());
+      // Sin organización en la petición: el servidor la toma de la sesión.
+      expect(String(llamado.mock.calls[0][0])).not.toMatch(/organization/i);
+      fireEvent.click(screen.getByRole('button', { name: 'Publicar ahora' }));
+      expect(onPublicar).toHaveBeenCalled();
+    } finally {
+      global.fetch = fetchOriginal;
+    }
+  });
+
   test('lista los cambios, publica ahora con la nota y «Ver» lleva a la sección', () => {
     const onPublicar = jest.fn();
     const onVer = jest.fn();

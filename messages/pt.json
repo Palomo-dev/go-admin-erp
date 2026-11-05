@@ -7711,7 +7711,7 @@
       "cuentas": {
         "titulo": "Contas contábeis",
         "descripcion": "Usadas quando o produto não traz a sua.",
-        "ajuda": "Vazia: a fatura usa a configuração contábil.",
+        "ayuda": "Vazia: a fatura usa a configuração contábil.",
         "ingreso": "Receita",
         "costo": "Custo",
         "inventario": "Estoque",

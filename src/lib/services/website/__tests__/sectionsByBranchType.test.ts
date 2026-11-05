@@ -17,14 +17,18 @@ import { BRANCH_TYPES, type BranchType } from '@/types/branch';
 import {
   GRUPOS_SECCIONES,
   RECOMENDADAS_POR_TIPO,
+  VARIANTES_EN_CATALOGO,
+  claveEntrada,
   coincideBusqueda,
   filtrarCatalogo,
   getSectionCatalogForBranch, tipoSedeDesdeGiro,
   normalizarBusqueda,
 } from '../sectionsByBranchType';
 
+/** Tipos de las tarjetas de tipo (sin las de variante destacada, que repiten su tipo). */
 const tiposDe = (c: ReturnType<typeof getSectionCatalogForBranch>) =>
-  c.grupos.flatMap((g) => g.secciones.map((s) => s.type)).sort();
+  c.grupos.flatMap((g) => g.secciones.filter((s) => !s.varianteDestacada).map((s) => s.type)).sort();
+const TOTAL_TARJETAS = SECTION_CATALOG.length + VARIANTES_EN_CATALOGO.length;
 
 describe('getSectionCatalogForBranch', () => {
   const todos = SECTION_CATALOG.map((s) => s.type).sort();
@@ -34,7 +38,7 @@ describe('getSectionCatalogForBranch', () => {
     (tipo) => {
       const c = getSectionCatalogForBranch(tipo as BranchType | null | undefined);
       expect(tiposDe(c)).toEqual(todos);
-      expect(c.total).toBe(SECTION_CATALOG.length);
+      expect(c.total).toBe(TOTAL_TARJETAS);
     },
   );
 
@@ -46,7 +50,7 @@ describe('getSectionCatalogForBranch', () => {
 
   test('las recomendadas salen primero según el tipo y siguen en su grupo', () => {
     const c = getSectionCatalogForBranch('restaurant');
-    expect(c.recomendadas.map((s) => s.type)).toEqual(RECOMENDADAS_POR_TIPO.restaurant);
+    expect(c.recomendadas.map(claveEntrada)).toEqual(RECOMENDADAS_POR_TIPO.restaurant);
     const carta = c.grupos.find((g) => g.id === 'carta');
     expect(carta?.secciones.map((s) => s.type)).toEqual(expect.arrayContaining(['menu_full', 'signature_dishes']));
   });
@@ -63,7 +67,7 @@ describe('getSectionCatalogForBranch', () => {
   test('sin tipo de sede no hay recomendadas, pero sí todo el catálogo', () => {
     const c = getSectionCatalogForBranch(null);
     expect(c.recomendadas).toEqual([]);
-    expect(c.total).toBe(SECTION_CATALOG.length);
+    expect(c.total).toBe(TOTAL_TARJETAS);
   });
 
   test('en la plantilla de producto recomienda los bloques de la ficha', () => {
@@ -73,8 +77,8 @@ describe('getSectionCatalogForBranch', () => {
     );
   });
 
-  test('toda recomendación existe en el catálogo', () => {
-    const existentes = new Set(SECTION_CATALOG.map((s) => s.type));
+  test('toda recomendación existe en el catálogo (tipo, o tipo:variante de una tarjeta de variante)', () => {
+    const existentes = new Set([...SECTION_CATALOG.map((s) => s.type), ...VARIANTES_EN_CATALOGO.map((v) => `${v.tipo}:${v.variante}`)]);
     for (const tipos of Object.values(RECOMENDADAS_POR_TIPO)) {
       for (const t of tipos) expect(existentes.has(t)).toBe(true);
     }
@@ -133,5 +137,34 @@ describe('recomendadas sin tipo de sede (sitio principal)', () => {
     expect(tipoSedeDesdeGiro(null)).toBeNull();
     const tipos = getSectionCatalogForBranch(tipoSedeDesdeGiro('restaurante')).recomendadas.map((s) => s.type);
     expect(tipos).toEqual(expect.arrayContaining(['menu_full', 'reservation', 'hours_location']));
+  });
+});
+
+describe('tarjetas de variante («Café de especialidad», Figma 2223:46106)', () => {
+  test('cada variante sale junto a su tipo, en su grupo, y añade ESA variante', () => {
+    const c = getSectionCatalogForBranch(null);
+    for (const v of VARIANTES_EN_CATALOGO) {
+      const grupo = c.grupos.find((g) => g.secciones.some((s) => s.type === v.tipo && !s.varianteDestacada))!;
+      const lista = grupo.secciones.map(claveEntrada);
+      expect(lista.indexOf(`${v.tipo}:${v.variante}`)).toBe(lista.indexOf(v.tipo) + 1);
+      const tarjeta = grupo.secciones.find((s) => claveEntrada(s) === `${v.tipo}:${v.variante}`)!;
+      expect(tarjeta.variants[0].id).toBe(v.variante);
+      expect(tarjeta.label).toBe(v.etiqueta);
+    }
+  });
+
+  test.each([
+    ['carrusel portada fotos', 'hero:carousel_editorial'],
+    ['historia capítulos', 'how_it_works:chapters'],
+    ['carta sede puntos', 'menu_full:dotted'],
+    ['plano mesas reservar', 'reservation:floor_plan'],
+  ])('«%s» encuentra %s', (busqueda, clave) => {
+    const r = filtrarCatalogo(getSectionCatalogForBranch(null), busqueda);
+    expect(r.grupos.flatMap((g) => g.secciones.map(claveEntrada))).toContain(clave);
+  });
+
+  test('un restaurante las ve en «Recomendadas»', () => {
+    const claves = getSectionCatalogForBranch('restaurant').recomendadas.map(claveEntrada);
+    expect(claves).toEqual(expect.arrayContaining(['hero:carousel_editorial', 'how_it_works:chapters', 'menu_full:dotted', 'reservation:floor_plan']));
   });
 });

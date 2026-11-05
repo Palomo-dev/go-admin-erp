@@ -120,8 +120,15 @@ export function iconoDeSeccion(tipo: string): LucideIcon {
   return (nombre && ICONOS[nombre]) || LayoutGrid;
 }
 
-/** Miniatura del kit del módulo más cercana al propósito de la sección. */
-export function miniaturaDeSeccion(tipo: string): TipoMiniaturaSeccion {
+/** Variantes cuyo propósito pide otra miniatura que la del tipo (Historia por capítulos: tarjetas con imagen). */
+const MINIATURA_VARIANTE: Readonly<Record<string, TipoMiniaturaSeccion>> = {
+  'how_it_works:chapters': 'galeria',
+};
+
+/** Miniatura del kit del módulo más cercana al propósito de la sección (y de su variante, si cambia). */
+export function miniaturaDeSeccion(tipo: string, variante?: string | null): TipoMiniaturaSeccion {
+  const propia = variante ? MINIATURA_VARIANTE[`${tipo}:${variante}`] : undefined;
+  if (propia) return propia;
   const t = tipo.toLowerCase();
   if (t.includes('hero') || t === 'category_header') return 'portada';
   if (t.startsWith('menu') || t.includes('dish') || t === 'specialties') return 'carta_destacada';
@@ -148,6 +155,11 @@ export function nombreDeSeccion(tipo: string): string {
 const NOMBRE_EN_LISTA: Readonly<Record<string, string>> = {
   'restaurant_hero:mesa': 'Portada de mesa',
   'menu_full:qr': 'Carta completa · QR',
+  // «Café de especialidad» (Figma 2223:46106, láminas 12 a 15).
+  'hero:carousel_editorial': 'Portada · Carrusel editorial',
+  'how_it_works:chapters': 'Historia por capítulos',
+  'menu_full:dotted': 'Carta completa · Línea de puntos',
+  'reservation:floor_plan': 'Reserva con plano de mesas',
 };
 
 export function nombreEnLista(tipo: string, variante: string): string {

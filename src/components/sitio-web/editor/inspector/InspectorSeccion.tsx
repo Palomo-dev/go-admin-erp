@@ -312,7 +312,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                   {definicion.variants.map((v) => (
                     <SectionThumbnail
                       key={v.id}
-                      tipo={miniaturaDeSeccion(s.section_type)}
+                      tipo={miniaturaDeSeccion(s.section_type, v.id)}
                       etiqueta={v.label}
                       seleccionada={s.section_variant === v.id}
                       onSeleccionar={() => p.onCambiarVariante(v.id)}

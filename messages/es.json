@@ -4055,7 +4055,8 @@
         "buscarSucursal": "Buscar sucursal...",
         "noHaySucursalesCreadas": "No hay sucursales creadas",
         "buscarZona": "Buscar zona...",
-        "noHayZonasConfiguradas": "No hay zonas configuradas"
+        "noHayZonasConfiguradas": "No hay zonas configuradas",
+        "zonaDetalle": "{sedes} · {n} mesas reservables en la web"
       },
       "iconField": {
         "sinIcono": "Sin icono",

@@ -359,7 +359,8 @@ export function CampoSeccion({
       break;
   }
 
-  const muestraEtiqueta = campo.type === 'image' || campo.type === 'icon';
+  // Las entidades (sedes, zonas…) delegadas a FieldRenderer no pintan su etiqueta ni su ayuda.
+  const muestraEtiqueta = campo.type === 'image' || campo.type === 'icon' || campo.type === 'entity';
   return (
     <div className="flex flex-col gap-1.5">
       {muestraEtiqueta && (

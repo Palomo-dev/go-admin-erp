@@ -4055,7 +4055,8 @@
         "buscarSucursal": "Search branch...",
         "noHaySucursalesCreadas": "No branches created",
         "buscarZona": "Search zone...",
-        "noHayZonasConfiguradas": "No zones configured"
+        "noHayZonasConfiguradas": "No zones configured",
+        "zonaDetalle": "{sedes} · {n} tables bookable online"
       },
       "iconField": {
         "sinIcono": "No icon",

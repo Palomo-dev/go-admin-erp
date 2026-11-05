@@ -129,7 +129,7 @@ describe('InspectorEncabezado', () => {
     expect(screen.getByText('Cambia en todas las páginas')).toBeTruthy();
     expect(screen.getByText('Valores por defecto de la plantilla «Noir Omakase»')).toBeTruthy();
     const composiciones = screen.getByRole('radiogroup', { name: 'Diseño del encabezado' });
-    expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú']);
+    expect(within(composiciones).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Clásico', 'Logo centrado', 'Dividido', 'Mínimo', 'Megamenú', 'Menú en píldora']);
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Megamenú' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'mega', header_layout: null, logo_position: 'left' });
     fireEvent.click(within(composiciones).getByRole('radio', { name: 'Logo centrado' }));

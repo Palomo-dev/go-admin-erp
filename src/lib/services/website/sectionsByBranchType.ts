@@ -3,6 +3,12 @@ import {
   SECTION_CATALOG,
   type SectionTypeDefinition,
 } from '@/lib/services/websitePageBuilderService';
+import {
+  VARIANTE_CARTA_PUNTOS,
+  VARIANTE_HISTORIA_CAPITULOS,
+  VARIANTE_PORTADA_EDITORIAL,
+  VARIANTE_RESERVA_PLANO,
+} from '@/lib/website/contrato/seccionesCafe';
 
 /**
  * Catálogo del diálogo «Añadir sección» (Figma «16 Sitio web › 05 Editor»,
@@ -134,12 +140,80 @@ export const GRUPOS_SECCIONES: readonly DefinicionGrupo[] = [
 ];
 
 /**
+ * Variantes que salen como tarjeta propia en «Añadir sección», junto a su tipo (Figma «16 Sitio
+ * web» 2223:46106, paso 1 de las láminas 12 a 15: «Portada · Carrusel editorial» al lado de
+ * «Portada · Pantalla completa»). No son tipos nuevos: la tarjeta añade el MISMO tipo con esa
+ * variante. Sus palabras de búsqueda van aquí porque la del tipo no las nombra.
+ */
+export interface VarianteEnCatalogo {
+  tipo: string;
+  variante: string;
+  etiqueta: string;
+  descripcion: string;
+  palabras: string;
+}
+
+export const VARIANTES_EN_CATALOGO: readonly VarianteEnCatalogo[] = [
+  {
+    tipo: 'hero',
+    variante: VARIANTE_PORTADA_EDITORIAL,
+    etiqueta: 'Portada · Carrusel editorial',
+    descripcion: 'Fotos que rotan con texto fijo: antetítulo, título, subtítulo en cursiva y hasta 3 botones.',
+    palabras: 'carrusel portada fotos editorial slider',
+  },
+  {
+    tipo: 'how_it_works',
+    variante: VARIANTE_HISTORIA_CAPITULOS,
+    etiqueta: 'Historia por capítulos',
+    descripcion: 'Tarjetas numeradas con etiqueta, imagen, título y texto.',
+    palabras: 'historia capitulos nosotros origen quienes somos',
+  },
+  {
+    tipo: 'menu_full',
+    variante: VARIANTE_CARTA_PUNTOS,
+    etiqueta: 'Carta · Línea de puntos',
+    descripcion: 'Pestañas en cursiva, contador y línea de puntos hasta el precio; el visitante elige la sede.',
+    palabras: 'carta sede puntos precios menu cafe',
+  },
+  {
+    tipo: 'reservation',
+    variante: VARIANTE_RESERVA_PLANO,
+    etiqueta: 'Reserva con plano de mesas',
+    descripcion: 'El visitante toca una mesa en el plano de la sede y reserva directo o por WhatsApp.',
+    palabras: 'plano mesas reservar reserva whatsapp',
+  },
+];
+
+/** Entrada de «Añadir sección»: un tipo, o un tipo con una variante destacada (`variants[0]`). */
+export type EntradaCatalogo = SectionTypeDefinition & { varianteDestacada?: string };
+
+/** Clave única de una entrada: `tipo` o `tipo:variante` (la de las recomendadas). */
+export function claveEntrada(entrada: EntradaCatalogo): string {
+  return entrada.varianteDestacada ? `${entrada.type}:${entrada.varianteDestacada}` : entrada.type;
+}
+
+/** La tarjeta de una variante: el tipo con esa variante primero (la que se añade). */
+function entradaDeVariante(def: SectionTypeDefinition, v: VarianteEnCatalogo): EntradaCatalogo | null {
+  const variante = def.variants.find((x) => x.id === v.variante);
+  if (!variante) return null;
+  return {
+    ...def,
+    label: v.etiqueta,
+    description: v.descripcion,
+    variants: [variante, ...def.variants.filter((x) => x.id !== v.variante)],
+    varianteDestacada: v.variante,
+  };
+}
+
+/**
  * Secciones recomendadas por tipo de sede, en orden. Solo ordenan: no
- * restringen nada.
+ * restringen nada. `tipo:variante` recomienda la tarjeta de esa variante.
  */
 export const RECOMENDADAS_POR_TIPO: Readonly<Record<BranchType, readonly string[]>> = {
   restaurant: [
-    'restaurant_hero', 'signature_dishes', 'menu_full', 'reservation', 'private_events', 'gallery_bento', 'hours_location',
+    'restaurant_hero', `hero:${VARIANTE_PORTADA_EDITORIAL}`, 'signature_dishes', 'menu_full', `menu_full:${VARIANTE_CARTA_PUNTOS}`,
+    'reservation', `reservation:${VARIANTE_RESERVA_PLANO}`, `how_it_works:${VARIANTE_HISTORIA_CAPITULOS}`,
+    'private_events', 'gallery_bento', 'hours_location',
   ],
   hotel: ['room_types', 'amenities', 'booking_cta', 'why_choose_us', 'gallery', 'testimonials'],
   retail: ['products_grid', 'featured_products', 'categories_grid', 'offers', 'promo_banners', 'brands'],
@@ -242,15 +316,15 @@ export interface GrupoCatalogo {
   id: IdGrupoSecciones;
   etiqueta: string;
   proposito: string;
-  secciones: SectionTypeDefinition[];
+  secciones: EntradaCatalogo[];
 }
 
 export interface CatalogoSede {
   /** Secciones recomendadas por el tipo de la sede (vacío si no tiene tipo). */
-  recomendadas: SectionTypeDefinition[];
-  /** Todas las secciones del catálogo, agrupadas por propósito. */
+  recomendadas: EntradaCatalogo[];
+  /** Todas las secciones del catálogo, agrupadas por propósito (con las tarjetas de variante). */
   grupos: GrupoCatalogo[];
-  /** Número de secciones del catálogo: ninguna queda fuera. */
+  /** Número de tarjetas: cada tipo del catálogo más las de {@link VARIANTES_EN_CATALOGO}. */
   total: number;
 }
 
@@ -266,6 +340,18 @@ export function getSectionCatalogForBranch(
 ): CatalogoSede {
   const catalogo = opciones.catalogo ?? SECTION_CATALOG;
   const porTipo = new Map(catalogo.map((s) => [s.type, s]));
+  const porClave = new Map<string, EntradaCatalogo>(catalogo.map((s) => [s.type, s]));
+  const variantesDe = new Map<string, EntradaCatalogo[]>();
+  for (const v of VARIANTES_EN_CATALOGO) {
+    const def = porTipo.get(v.tipo);
+    const entrada = def ? entradaDeVariante(def, v) : null;
+    if (!entrada) continue;
+    porClave.set(claveEntrada(entrada), entrada);
+    variantesDe.set(v.tipo, [...(variantesDe.get(v.tipo) ?? []), entrada]);
+  }
+  // Cada tipo seguido de las tarjetas de sus variantes destacadas.
+  const conVariantes = (secciones: SectionTypeDefinition[]): EntradaCatalogo[] =>
+    secciones.flatMap((s) => [s, ...(variantesDe.get(s.type) ?? [])]);
   const usados = new Set<string>();
 
   const grupos: GrupoCatalogo[] = [];
@@ -275,12 +361,12 @@ export function getSectionCatalogForBranch(
       .filter((s): s is SectionTypeDefinition => Boolean(s) && !usados.has((s as SectionTypeDefinition).type));
     secciones.forEach((s) => usados.add(s.type));
     if (secciones.length > 0) {
-      grupos.push({ id: g.id, etiqueta: g.etiqueta, proposito: g.proposito, secciones });
+      grupos.push({ id: g.id, etiqueta: g.etiqueta, proposito: g.proposito, secciones: conVariantes(secciones) });
     }
   }
   const sueltas = catalogo.filter((s) => !usados.has(s.type));
   if (sueltas.length > 0) {
-    grupos.push({ id: 'otras', etiqueta: 'Otras', proposito: 'más bloques', secciones: sueltas });
+    grupos.push({ id: 'otras', etiqueta: 'Otras', proposito: 'más bloques', secciones: conVariantes(sueltas) });
   }
 
   const grupoDePagina = opciones.pageType ? RECOMENDADAS_POR_TIPO_DE_PAGINA[opciones.pageType] : undefined;
@@ -290,10 +376,10 @@ export function getSectionCatalogForBranch(
       ? RECOMENDADAS_POR_TIPO[branchType] ?? []
       : [];
   const recomendadas = tiposRecomendados
-    .map((t) => porTipo.get(t))
-    .filter((s): s is SectionTypeDefinition => Boolean(s));
+    .map((t) => porClave.get(t))
+    .filter((s): s is EntradaCatalogo => Boolean(s));
 
-  return { recomendadas, grupos, total: catalogo.length };
+  return { recomendadas, grupos, total: grupos.reduce((n, g) => n + g.secciones.length, 0) };
 }
 
 /** Minúsculas y sin tildes, para buscar «menú» con «menu». */
@@ -306,9 +392,12 @@ export function normalizarBusqueda(texto: string): string {
 }
 
 /** ¿La sección coincide con lo buscado? (nombre, tipo, descripción, grupo o palabras clave). */
-export function coincideBusqueda(seccion: SectionTypeDefinition, busqueda: string, grupo?: GrupoCatalogo): boolean {
+export function coincideBusqueda(seccion: EntradaCatalogo, busqueda: string, grupo?: GrupoCatalogo): boolean {
   const q = normalizarBusqueda(busqueda);
   if (!q) return true;
+  const deVariante = seccion.varianteDestacada
+    ? VARIANTES_EN_CATALOGO.find((v) => v.tipo === seccion.type && v.variante === seccion.varianteDestacada)
+    : undefined;
   const pajar = normalizarBusqueda(
     [
       seccion.label,
@@ -316,6 +405,7 @@ export function coincideBusqueda(seccion: SectionTypeDefinition, busqueda: strin
       seccion.description,
       grupo ? `${grupo.etiqueta} ${grupo.proposito}` : '',
       PALABRAS_CLAVE[seccion.type] ?? '',
+      deVariante?.palabras ?? '',
     ].join(' '),
   );
   return q.split(/\s+/).every((palabra) => pajar.includes(palabra));
@@ -325,12 +415,12 @@ export function coincideBusqueda(seccion: SectionTypeDefinition, busqueda: strin
 export function filtrarCatalogo(catalogo: CatalogoSede, busqueda: string): CatalogoSede & { coincidencias: number } {
   if (!normalizarBusqueda(busqueda)) return { ...catalogo, coincidencias: catalogo.total };
   const grupoDe = new Map<string, GrupoCatalogo>();
-  catalogo.grupos.forEach((g) => g.secciones.forEach((s) => grupoDe.set(s.type, g)));
+  catalogo.grupos.forEach((g) => g.secciones.forEach((s) => grupoDe.set(claveEntrada(s), g)));
   const grupos = catalogo.grupos.map((g) => ({
     ...g,
     secciones: g.secciones.filter((s) => coincideBusqueda(s, busqueda, g)),
   }));
-  const recomendadas = catalogo.recomendadas.filter((s) => coincideBusqueda(s, busqueda, grupoDe.get(s.type)));
+  const recomendadas = catalogo.recomendadas.filter((s) => coincideBusqueda(s, busqueda, grupoDe.get(claveEntrada(s))));
   const coincidencias = grupos.reduce((n, g) => n + g.secciones.length, 0);
   return { recomendadas, grupos, total: catalogo.total, coincidencias };
 }

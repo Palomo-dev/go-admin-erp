@@ -213,3 +213,22 @@ describe('la sede sin plantilla elegida queda igual que hoy', () => {
     expect(documentoPlantillaSede(principal(), null, generador())).toBeNull();
   });
 });
+
+describe('«Café de especialidad» por sede (plantillaSede.ts)', () => {
+  const CAFE = plantillaPorId(CATALOGO_PLANTILLAS, 'cafe_especialidad')!;
+
+  test('es del giro restaurante: vale como «Plantilla completa» en una sede restaurante', () => {
+    const v = validarPlantillaSede('cafe_especialidad', 'restaurant', 'completa');
+    expect(v.ok && v.plantilla.id).toBe('cafe_especialidad');
+  });
+
+  test('arma Inicio, Carta, Reservas e Historia en el borrador de la sede, con su encabezado en píldora', () => {
+    const r = armarPlantillaSede({ base: principal(), actual: sedeDeHoy() }, CAFE, generador(), { extendidos: false });
+    const slugs = r.documento.paginas.map((p) => p.slug);
+    expect(slugs).toEqual(expect.arrayContaining(['home', 'carta', 'reservas-mesa', 'historia']));
+    expect(slugs).not.toContain('menu');
+    expect(r.documento.paginas.find((p) => p.slug === 'reservas-mesa')?.secciones[0]).toMatchObject({ tipo: 'reservation', variante: 'floor_plan' });
+    expect(r.documento.shell.header.composicion).toBe('pill');
+    expect(validarDocumentoSitio(r.documento).ok).toBe(true);
+  });
+});

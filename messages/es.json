@@ -4055,7 +4055,8 @@
         "buscarSucursal": "Buscar sucursal...",
         "noHaySucursalesCreadas": "No hay sucursales creadas",
         "buscarZona": "Buscar zona...",
-        "noHayZonasConfiguradas": "No hay zonas configuradas"
+        "noHayZonasConfiguradas": "No hay zonas configuradas",
+        "zonaDetalle": "{sedes} · {n} mesas reservables en la web"
       },
       "iconField": {
         "sinIcono": "Sin icono",
@@ -31640,6 +31641,7 @@
       "plantilla": {
         "seccionesUna": "1 sección",
         "secciones": "{n} secciones",
+        "paginas": "{n} páginas",
         "enUso": "En uso",
         "seleccionada": "Seleccionada",
         "pagina": "Página",
@@ -32629,7 +32631,9 @@
           "reserva": "Encabezado con barra de reserva",
           "carta": "Menú con la carta",
           "dosBotones": "Encabezado con dos botones",
-          "transparent": "Encabezado transparente"
+          "transparent": "Encabezado transparente",
+          "pill": "Menú en píldora",
+          "pillCirculo": "Menú en píldora y botón circular"
         },
         "pie": {
           "default": "Pie clásico",
@@ -32673,6 +32677,7 @@
           "barraSuperiorCon": "barra superior con {lista}",
           "boton": "botón «{texto}»",
           "boton2": "segundo botón «{texto}»",
+          "botonCirculo": "botón circular «{texto}»",
           "barraReserva": "barra de reserva con fechas",
           "menusUno": "1 menú de enlaces",
           "menus": "{n} menús de enlaces",
@@ -33297,8 +33302,12 @@
             "centered": "Logo centrado",
             "split": "Dividido",
             "minimal": "Mínimo",
-            "mega": "Megamenú"
+            "mega": "Megamenú",
+            "pill": "Menú en píldora"
           },
+          "formaBoton": "Forma del botón",
+          "formaBotonPastilla": "Pastilla",
+          "formaBotonCirculo": "Círculo",
           "logo": "Posición del logo",
           "izquierda": "Izquierda",
           "centro": "Centro",
@@ -33808,6 +33817,19 @@
         "calculando": "Revisando los cambios…",
         "listaCambios": "Cambios por publicar",
         "sinCambios": "No hay cambios desde la última publicación.",
+        "revision": {
+          "titulo": "Revisión con los datos de la sede",
+          "ayuda": "Nada de esto bloquea: cada sección tiene su respaldo.",
+          "revisando": "Revisando los datos de la sede…",
+          "planoListo": "Plano de {zona} en {sede}: {mesas} mesas con posición y {elementos} elementos fijos",
+          "zonaSinPlano": "{zona} en {sede} tiene {sinPosicion} de {mesas} mesas sin posición en el plano: ahí se reserva sin elegir mesa",
+          "sinMesas": "{sede} no tiene mesas en POS › Mesas: la reserva se muestra por pasos, sin plano",
+          "reservasActivas": "Reservas de mesa activas en {sede}",
+          "reservasApagadas": "{sede} tiene las reservas de mesa apagadas: actívalas en POS › Reservas de mesas",
+          "preciosSede": "{sede} tiene {n} precios propios en la carta",
+          "precioGeneral": "Sin precios propios de {sede}: la carta muestra el precio general",
+          "fotosPortada": "Fotos de la portada: {n} de {total} con versión para celular"
+        },
         "ver": "Ver",
         "cuando": "¿Cuándo?",
         "ahora": "Publicar ahora",

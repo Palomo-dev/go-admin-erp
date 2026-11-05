@@ -4055,7 +4055,8 @@
         "buscarSucursal": "Buscar unidade...",
         "noHaySucursalesCreadas": "Nenhuma unidade criada",
         "buscarZona": "Buscar zona...",
-        "noHayZonasConfiguradas": "Nenhuma zona configurada"
+        "noHayZonasConfiguradas": "Nenhuma zona configurada",
+        "zonaDetalle": "{sedes} · {n} mesas reserváveis online"
       },
       "iconField": {
         "sinIcono": "Sem ícone",
@@ -7710,7 +7711,7 @@
       "cuentas": {
         "titulo": "Contas contábeis",
         "descripcion": "Usadas quando o produto não traz a sua.",
-        "ajuda": "Vazia: a fatura usa a configuração contábil.",
+        "ayuda": "Vazia: a fatura usa a configuração contábil.",
         "ingreso": "Receita",
         "costo": "Custo",
         "inventario": "Estoque",
@@ -31640,6 +31641,7 @@
       "plantilla": {
         "seccionesUna": "1 seção",
         "secciones": "{n} seções",
+        "paginas": "{n} páginas",
         "enUso": "Em uso",
         "seleccionada": "Selecionado",
         "pagina": "Página",
@@ -32629,7 +32631,9 @@
           "reserva": "Cabeçalho com barra de reserva",
           "carta": "Menu com o cardápio",
           "dosBotones": "Cabeçalho com dois botões",
-          "transparent": "Cabeçalho transparente"
+          "transparent": "Cabeçalho transparente",
+          "pill": "Menu em pílula",
+          "pillCirculo": "Menu em pílula e botão redondo"
         },
         "pie": {
           "default": "Rodapé clássico",
@@ -32673,6 +32677,7 @@
           "barraSuperiorCon": "barra superior com {lista}",
           "boton": "botão «{texto}»",
           "boton2": "segundo botão «{texto}»",
+          "botonCirculo": "botão redondo “{texto}”",
           "barraReserva": "barra de reserva com datas",
           "menusUno": "1 menu de links",
           "menus": "{n} menus de links",
@@ -33292,8 +33297,12 @@
             "centered": "Logo centralizado",
             "split": "Dividido",
             "minimal": "Mínimo",
-            "mega": "Megamenu"
+            "mega": "Megamenu",
+            "pill": "Menu em pílula"
           },
+          "formaBoton": "Formato do botão",
+          "formaBotonPastilla": "Pílula",
+          "formaBotonCirculo": "Círculo",
           "logo": "Posição do logo",
           "izquierda": "Esquerda",
           "centro": "Centro",
@@ -33803,6 +33812,19 @@
         "calculando": "Revisando as alterações…",
         "listaCambios": "Alterações a publicar",
         "sinCambios": "Não há alterações desde a última publicação.",
+        "revision": {
+          "titulo": "Revisão com os dados da unidade",
+          "ayuda": "Nada disto bloqueia: cada seção tem sua alternativa.",
+          "revisando": "Revisando os dados da unidade…",
+          "planoListo": "Planta de {zona} em {sede}: {mesas} mesas posicionadas e {elementos} elementos fixos",
+          "zonaSinPlano": "{zona} em {sede} tem {sinPosicion} de {mesas} mesas sem posição na planta: ali se reserva sem escolher mesa",
+          "sinMesas": "{sede} não tem mesas em PDV › Mesas: a reserva é mostrada por etapas, sem planta",
+          "reservasActivas": "Reservas de mesa ativas em {sede}",
+          "reservasApagadas": "{sede} está com as reservas de mesa desativadas: ative-as em PDV › Reservas de mesas",
+          "preciosSede": "{sede} tem {n} preços próprios no cardápio",
+          "precioGeneral": "Sem preços próprios de {sede}: o cardápio mostra o preço geral",
+          "fotosPortada": "Fotos da capa: {n} de {total} com versão para celular"
+        },
         "ver": "Ver",
         "cuando": "Quando?",
         "ahora": "Publicar agora",

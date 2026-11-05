@@ -99,7 +99,10 @@ function freshData(): Record<string, Row[]> {
       { id: 'c-meta', code: 'meta_marketing' },
       { id: 'c-tiktok', code: 'tiktok_marketing' },
     ],
-    organization_domains: [{ organization_id: ORG, host: 'tienda.ejemplo.test', is_primary: true, is_active: true }],
+    // Dominio propio principal verificado: la regla de `hostSitio` (y de `fn_url_publica_org`).
+    organization_domains: [
+      { organization_id: ORG, host: 'tienda.ejemplo.test', domain_type: 'custom_domain', status: 'verified', is_primary: true, is_active: true },
+    ],
     organizations: [
       { id: ORG, name: 'Org 120', subdomain: 'org120' },
       { id: OTRA_ORG, name: 'Org 121', subdomain: 'org121' },

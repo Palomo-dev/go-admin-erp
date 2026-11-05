@@ -272,6 +272,8 @@ export const TEXTOS_DISENO = {
       carta: 'Menú con la carta',
       dosBotones: 'Encabezado con dos botones',
       transparent: 'Encabezado transparente',
+      pill: 'Menú en píldora',
+      pillCirculo: 'Menú en píldora y botón circular',
     },
     pie: {
       default: 'Pie clásico',
@@ -315,6 +317,7 @@ export const TEXTOS_DISENO = {
       barraSuperiorCon: 'barra superior con {lista}',
       boton: 'botón «{texto}»',
       boton2: 'segundo botón «{texto}»',
+      botonCirculo: 'botón circular «{texto}»',
       barraReserva: 'barra de reserva con fechas',
       menusUno: '1 menú de enlaces',
       menus: '{n} menús de enlaces',

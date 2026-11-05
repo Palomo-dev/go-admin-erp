@@ -249,8 +249,9 @@ export function CampoSeccion({
     }
     case 'select': {
       const actual = typeof valor === 'string' ? valor : typeof campo.defaultValue === 'string' ? campo.defaultValue : '';
-      // Figma v2: hasta 5 opciones van como chips del kit; más, como desplegable.
-      if ((campo.options?.length ?? 0) > 0 && (campo.options?.length ?? 0) <= 5) {
+      // Figma v2: hasta 5 opciones van como chips del kit; más, como desplegable. `display:
+      // 'dropdown'` pide el desplegable aunque sean pocas (el «Modo» de la lámina 15).
+      if (campo.display !== 'dropdown' && (campo.options?.length ?? 0) > 0 && (campo.options?.length ?? 0) <= 5) {
         return (
           <FormField etiqueta={campo.label} ayuda={ayuda}>
             {(c) => (
@@ -269,7 +270,7 @@ export function CampoSeccion({
           {(c) => (
             <Select value={actual || undefined} onValueChange={(v) => onCambiar(v)} disabled={deshabilitado}>
               <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className="h-10 rounded-lg">
-                <SelectValue placeholder={t('campo.elegir')} />
+                <SelectValue placeholder={campo.placeholder ?? t('campo.elegir')} />
               </SelectTrigger>
               <SelectContent>
                 {(campo.options ?? []).map((o) => (
@@ -346,6 +347,14 @@ export function CampoSeccion({
     case 'section_background':
       return null;
     case 'notice':
+      // Dato del ERP que no se escribe aquí: un campo de solo lectura («WhatsApp que recibe»).
+      if (campo.display === 'field') {
+        return (
+          <FormField etiqueta={campo.label} ayuda={ayuda}>
+            <Input type="text" value={campo.placeholder ?? ''} readOnly aria-readonly="true" className="h-10 rounded-lg bg-subtle text-fg-secondary" />
+          </FormField>
+        );
+      }
       // Aviso del catálogo (no guarda nada): «Pagar en línea necesita una pasarela activa».
       return (
         <AvisoTonal
@@ -359,7 +368,8 @@ export function CampoSeccion({
       break;
   }
 
-  const muestraEtiqueta = campo.type === 'image' || campo.type === 'icon';
+  // Las entidades (sedes, zonas…) delegadas a FieldRenderer no pintan su etiqueta ni su ayuda.
+  const muestraEtiqueta = campo.type === 'image' || campo.type === 'icon' || campo.type === 'entity';
   return (
     <div className="flex flex-col gap-1.5">
       {muestraEtiqueta && (
@@ -384,6 +394,7 @@ export function CampoSeccion({
 export function campoVisible(campo: ContentFieldDef, contenido: Record<string, unknown>, variante: string): boolean {
   const c = campo.showIf;
   if (!c) return true;
+  if (c.and && !campoVisible({ ...campo, showIf: c.and }, contenido, variante)) return false;
   if (c.variantIn && !c.variantIn.includes(variante)) return false;
   const vacio = (k: string) => contenido?.[k] == null || contenido?.[k] === '';
   if (c.allEmpty && !c.allEmpty.every(vacio)) return false;

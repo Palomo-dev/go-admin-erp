@@ -93,7 +93,7 @@ describe('Contrato editor ↔ sitio (F0.6)', () => {
       expect(issues).toEqual([])
 
       const entry = SECTION_CATALOG.find((s) => s.type === 'menu_full')
-      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'editorial', 'per_category', 'qr', 'tabs'])
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'dotted', 'editorial', 'per_category', 'qr', 'tabs'])
     })
   })
 
@@ -164,7 +164,7 @@ describe('Contrato editor ↔ sitio (F0.6)', () => {
   // ---- Reserva de mesa y Horario y sedes (Figma 141:5796 y 144:6644) ----
   describe('reservation y hours_location', () => {
     it.each([
-      ['reservation', ['band', 'external', 'form_image', 'hero_widget', 'stepper']],
+      ['reservation', ['band', 'external', 'floor_plan', 'form_image', 'hero_widget', 'stepper']],
       ['hours_location', ['cards', 'hours_map', 'list']],
     ])('%s: catálogo y sitio coinciden en variantes y claves de contenido', (type, variants) => {
       const issues = [...result.errors, ...result.warnings].filter((i) => i.type === type)
@@ -184,6 +184,30 @@ describe('Contrato editor ↔ sitio (F0.6)', () => {
     it('reservation_cta sigue en el catálogo con sus variantes', () => {
       const entry = SECTION_CATALOG.find((s) => s.type === 'reservation_cta')
       expect(entry?.variants.map((v) => v.id).sort()).toEqual(['simple', 'with_form'])
+    })
+  })
+
+  // ---- «Café de especialidad» (Figma 2223:46106, láminas 12 a 15) ----
+  describe('variantes de «Café de especialidad»', () => {
+    it.each([
+      ['hero', 'carousel_editorial'],
+      ['how_it_works', 'chapters'],
+      ['menu_full', 'dotted'],
+      ['reservation', 'floor_plan'],
+    ])('%s ofrece la variante %s y el sitio la declara', (type, variante) => {
+      expect(SECTION_CATALOG.find((s) => s.type === type)?.variants.map((v) => v.id)).toContain(variante)
+      expect([...result.errors, ...result.warnings].filter((i) => i.type === type)).toEqual([])
+    })
+
+    it('«Plano de mesas» elige zonas con la entidad `zone` y el modo de confirmación erp | whatsapp', () => {
+      const campos = SECTION_CATALOG.find((s) => s.type === 'reservation')?.contentFields ?? []
+      expect(campos.find((f) => f.key === 'zones')).toMatchObject({ type: 'entity', entity: 'zone', multiple: true, group: 'data' })
+      expect(campos.find((f) => f.key === 'booking_mode')?.options?.map((o) => o.value)).toEqual(['erp', 'whatsapp'])
+    })
+
+    it('«Línea de puntos» elige sedes con el selector de sedes', () => {
+      const campo = SECTION_CATALOG.find((s) => s.type === 'menu_full')?.contentFields.find((f) => f.key === 'branch_ids')
+      expect(campo).toMatchObject({ type: 'entity', entity: 'branch', multiple: true, group: 'data' })
     })
   })
 

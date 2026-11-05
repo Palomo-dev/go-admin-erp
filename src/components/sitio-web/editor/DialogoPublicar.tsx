@@ -11,11 +11,14 @@
  *   también el sitio principal».
  * - si la web aún no muestra este sitio y el lector está listo, una línea avisa que publicar
  *   también la activa (y cómo volver: ⋯ › Desactivar).
+ * - «Revisión con los datos de la sede» (Figma 2264:51434, lámina 16): plano de mesas por zona,
+ *   reservas activas, precios por sede y fotos de la portada. La calcula el servidor con el
+ *   borrador guardado (`GET /api/website/v2/sites/:id/avisos-publicacion`); ningún aviso bloquea.
  *
  * Programar se apaga con su motivo mientras su migración no esté aplicada (503 de la API).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import {
   AvisoTonal,
   CampoFecha,
@@ -29,7 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { nextPlainDay } from '@/lib/utils/dateDisplay';
-import type { CambioPublicacion } from '@/lib/website/v2/cambiosPublicacion';
+import type { AvisoPublicacion, CambioPublicacion } from '@/lib/website/v2/cambiosPublicacion';
 import { LIMITES_PROGRAMACION, validarFechaProgramacion } from '@/lib/website/v2/tiposEditor';
 import { describirCambio } from './describirCambio';
 import { useTextosEditor } from './textos';
@@ -52,6 +55,33 @@ export interface DialogoPublicarProps {
   onVer: (destino: { paginaId: string; seccionId?: string }) => void;
   onPublicar: (opciones: { nota: string | null; tambienPrincipal: boolean }) => void;
   onProgramar: (ejecutarEn: string, nota: string | null) => void;
+  /** Sitio V2 que se publica: con él se pide la revisión con los datos de la sede. */
+  sitioId?: string | null;
+}
+
+/** Revisión con los datos de la sede: `null` mientras carga; si falla, no se muestra (no bloquea). */
+function useAvisosPublicacion(abierto: boolean, sitioId: string | null | undefined): AvisoPublicacion[] | null {
+  const [avisos, setAvisos] = useState<AvisoPublicacion[] | null>([]);
+  useEffect(() => {
+    if (!abierto || !sitioId) {
+      setAvisos([]);
+      return;
+    }
+    let vivo = true;
+    setAvisos(null);
+    fetch(`/api/website/v2/sites/${encodeURIComponent(sitioId)}/avisos-publicacion`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { avisos: [] }))
+      .then((d: { avisos?: AvisoPublicacion[] }) => {
+        if (vivo) setAvisos(Array.isArray(d.avisos) ? d.avisos : []);
+      })
+      .catch(() => {
+        if (vivo) setAvisos([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [abierto, sitioId]);
+  return avisos;
 }
 
 export function DialogoPublicar(p: DialogoPublicarProps) {
@@ -62,6 +92,7 @@ export function DialogoPublicar(p: DialogoPublicarProps) {
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('08:00');
   const [tambienPrincipal, setTambienPrincipal] = useState(false);
+  const avisos = useAvisosPublicacion(p.abierto, p.sitioId);
 
   useEffect(() => {
     if (!p.abierto) return;
@@ -153,6 +184,32 @@ export function DialogoPublicar(p: DialogoPublicarProps) {
         ) : (
           <p className="rounded-xl bg-subtle p-3 text-[13px] leading-[18px] text-fg-secondary">{t('publicar.sinCambios')}</p>
         )}
+
+        {avisos === null ? (
+          <p className="text-[13px] leading-[18px] text-fg-secondary" aria-live="polite">{t('publicar.revision.revisando')}</p>
+        ) : avisos.length > 0 ? (
+          <section aria-labelledby="publicar-revision" className="flex flex-col gap-2">
+            <div className="flex flex-col gap-0.5">
+              <h3 id="publicar-revision" className="text-[13px] font-semibold leading-[18px] text-fg">{t('publicar.revision.titulo')}</h3>
+              <p className="text-xs leading-4 text-fg-secondary">{t('publicar.revision.ayuda')}</p>
+            </div>
+            <ul className="flex flex-col gap-1 rounded-xl bg-subtle p-2">
+              {avisos.map((a, i) => {
+                const Icono = a.estado === 'ok' ? CheckCircle2 : AlertTriangle;
+                return (
+                  <li key={`${a.clave}-${i}`} className="flex items-start gap-3 rounded-lg px-2 py-1.5">
+                    <Icono
+                      aria-hidden="true"
+                      className={a.estado === 'ok' ? 'mt-0.5 size-4 shrink-0 text-success-text' : 'mt-0.5 size-4 shrink-0 text-warning-text'}
+                      strokeWidth={1.5}
+                    />
+                    <p className="min-w-0 flex-1 text-[13px] leading-[18px] text-fg">{t(`publicar.revision.${a.clave}`, a.valores)}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-[13px] font-semibold leading-[18px] text-fg">{t('publicar.cuando')}</legend>

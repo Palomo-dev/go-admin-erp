@@ -18,6 +18,14 @@ import {
   TIPOS_SECCION_MESA,
   VARIANTES_SECCION_MESA,
 } from '@/lib/website/contrato/seccionesMesa'
+import {
+  CLAVES_CARTA_PUNTOS,
+  CLAVES_RESERVA_PLANO,
+  VARIANTE_CARTA_PUNTOS,
+  VARIANTE_HISTORIA_CAPITULOS,
+  VARIANTE_PORTADA_EDITORIAL,
+  VARIANTE_RESERVA_PLANO,
+} from '@/lib/website/contrato/seccionesCafe'
 
 /** Claves sin repetir y ordenadas (el manifiesto vivo las publica así). */
 const unir = (...listas: ReadonlyArray<readonly string[]>): string[] => [...new Set(listas.flat())].sort()
@@ -99,7 +107,8 @@ export const siteManifestFixture: SectionManifest = {
       ],
     },
     { type: 'gym_features', variants: ['icons'], contentKeys: [] },
-    { type: 'hero', variants: ['fullscreen', 'minimal', 'slider', 'split', 'video'], contentKeys: [] },
+    // «Café de especialidad» (contrato seccionesCafe.ts): una variante nueva por tipo existente.
+    { type: 'hero', variants: ['fullscreen', 'minimal', 'slider', 'split', 'video', VARIANTE_PORTADA_EDITORIAL], contentKeys: [] },
     {
       type: 'hours_location',
       variants: ['cards', 'hours_map', 'list'],
@@ -119,7 +128,7 @@ export const siteManifestFixture: SectionManifest = {
         'title',
       ],
     },
-    { type: 'how_it_works', variants: ['steps'], contentKeys: [] },
+    { type: 'how_it_works', variants: ['steps', VARIANTE_HISTORIA_CAPITULOS], contentKeys: [] },
     { type: 'image_text', variants: ['image_left', 'image_right', 'image_top'], contentKeys: [] },
     { type: 'integrations', variants: ['logos'], contentKeys: [] },
     { type: 'map', variants: ['default', 'embedded', 'full_width', 'with_directions'], contentKeys: [] },
@@ -142,7 +151,7 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'menu_preview', variants: ['tabs'], contentKeys: [] },
     {
       type: 'menu_full',
-      variants: ['anchors', 'editorial', 'per_category', 'qr', 'tabs'],
+      variants: ['anchors', VARIANTE_CARTA_PUNTOS, 'editorial', 'per_category', 'qr', 'tabs'],
       // MenuFull expone CONTENT_KEYS como estática: el manifiesto vivo las publica.
       // La variante «qr» suma las claves de la Carta QR (contrato seccionesMesa.ts).
       contentKeys: unir(
@@ -160,6 +169,7 @@ export const siteManifestFixture: SectionManifest = {
           'title',
         ],
         CLAVES_CARTA_QR,
+        CLAVES_CARTA_PUNTOS,
       ),
     },
     { type: 'newsletter', variants: ['banner', 'simple', 'with_image'], contentKeys: [] },
@@ -201,9 +211,10 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'promo_banners', variants: ['carousel', 'grid', 'stack'], contentKeys: [] },
     {
       type: 'reservation',
-      variants: ['band', 'external', 'form_image', 'hero_widget', 'stepper'],
-      // Reservation expone CONTENT_KEYS (Figma TableReservation 141:5796).
-      contentKeys: [
+      variants: ['band', 'external', VARIANTE_RESERVA_PLANO, 'form_image', 'hero_widget', 'stepper'],
+      // Reservation expone CONTENT_KEYS (Figma TableReservation 141:5796); la variante del plano
+      // suma las suyas (contrato seccionesCafe.ts).
+      contentKeys: unir(CLAVES_RESERVA_PLANO, [
         'anchor_id',
         'branch_ids',
         'cta_text',
@@ -222,7 +233,7 @@ export const siteManifestFixture: SectionManifest = {
         'subtitle',
         'success_message',
         'title',
-      ],
+      ]),
     },
     { type: 'reservation_cta', variants: ['simple', 'with_form'], contentKeys: [] },
     {

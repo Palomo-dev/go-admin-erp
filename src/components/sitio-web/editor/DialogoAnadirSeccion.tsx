@@ -12,9 +12,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/utils/Utils';
 import { Dialogo, EmptyState, SearchInput } from '@/components/kit';
-import type { SectionTypeDefinition } from '@/lib/services/websitePageBuilderService';
 import type { BranchType } from '@/types/branch';
-import { filtrarCatalogo, getSectionCatalogForBranch } from '@/lib/services/website/sectionsByBranchType';
+import { claveEntrada, filtrarCatalogo, getSectionCatalogForBranch, type EntradaCatalogo } from '@/lib/services/website/sectionsByBranchType';
 import { avisoFaltanDatos, type ConteoFuentes } from '@/lib/services/website/fuentesDatosSecciones';
 import { AvisoConAccion } from '@/components/organization/branding/editor/AvisoConAccion';
 import { SectionThumbnail } from '@/components/sitio-web/ui/SectionThumbnail';
@@ -40,7 +39,8 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
   const t = useTextosEditor();
   const [busqueda, setBusqueda] = useState('');
   const [grupo, setGrupo] = useState<string>(RECOMENDADAS);
-  const [elegida, setElegida] = useState<SectionTypeDefinition | null>(null);
+  // Una tarjeta es un tipo o un tipo con su variante destacada («Portada · Carrusel editorial»).
+  const [elegida, setElegida] = useState<EntradaCatalogo | null>(null);
   const catalogo = useMemo(() => getSectionCatalogForBranch(p.tipoSede, { pageType: p.tipoPagina }), [p.tipoSede, p.tipoPagina]);
   const filtrado = useMemo(() => filtrarCatalogo(catalogo, busqueda), [catalogo, busqueda]);
   const buscando = busqueda.trim().length > 0;
@@ -128,10 +128,10 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {activo.secciones.map((def) => (
                     <SectionThumbnail
-                      key={def.type}
-                      tipo={miniaturaDeSeccion(def.type)}
+                      key={claveEntrada(def)}
+                      tipo={miniaturaDeSeccion(def.type, def.varianteDestacada)}
                       etiqueta={def.label}
-                      seleccionada={elegida?.type === def.type}
+                      seleccionada={elegida !== null && claveEntrada(elegida) === claveEntrada(def)}
                       onSeleccionar={() => setElegida(def)}
                     />
                   ))}

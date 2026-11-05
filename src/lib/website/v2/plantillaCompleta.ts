@@ -39,6 +39,13 @@ import type { DocumentoSitio, ItemMenu, MenuSitio, PaginaSitio, SeccionSitio } f
 import { construirCatalogo, plantillasDelGiro, type CatalogoPlantillas, type GiroCatalogo, type PlantillaCatalogo, type SeccionPlantilla } from '@/lib/website/contrato/catalogoPlantillas';
 import { construirPaginaBase, paginasBasePorGiro, plantillaPorId, type GenerarId, type Giro, type PaginaBase } from '@/components/sitio-web/paginas/plantillasPagina';
 import { VARIANTE_CARTA_QR, VARIANTE_PORTADA_MESA } from '@/lib/website/contrato/seccionesMesa';
+import {
+  CAPITULOS_EJEMPLO,
+  VARIANTE_CARTA_PUNTOS,
+  VARIANTE_HISTORIA_CAPITULOS,
+  VARIANTE_PORTADA_EDITORIAL,
+  VARIANTE_RESERVA_PLANO,
+} from '@/lib/website/contrato/seccionesCafe';
 import { esInicio, esPaginaLegal, esPlantillaTienda } from '@/components/sitio-web/paginas/tipoPagina';
 import { type ClaveLegal } from '@/lib/website/configuracionSitio';
 import { paginaPorClave } from '@/lib/website/legales/documentoLegal';
@@ -277,6 +284,8 @@ const TEXTOS_GIRO: Record<Giro, TextosGiro> = {
 /** Subtítulo de la cabecera de cada página del juego base (por dirección). */
 const SUBTITULO_PAGINA: Readonly<Record<string, string>> = {
   menu: 'Descubre nuestros platos y bebidas',
+  carta: 'Los precios y algunos platos cambian según la sede.',
+  historia: 'Cómo empezó todo y lo que nos mueve',
   domicilios: 'Pide en línea para recoger o a domicilio',
   'reservas-mesa': 'Elige el día, la hora y cuántas personas vienen',
   nosotros: 'Conoce quiénes somos',
@@ -372,7 +381,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
   // Solo destinos internos (página o ruta del sitio): «whatsapp» / «maps» no van en una sección.
   const cta = c.cta && c.cta.url.startsWith('/') ? c.cta : null;
   const rutaCta = cta?.url ?? null;
-  const carta = c.ruta('menu');
+  // «Café de especialidad» llama «Carta» (/carta) a la página del menú.
+  const carta = c.ruta('menu') ?? c.ruta('carta');
   const reservas = c.ruta('reservas-mesa');
   const pedir = c.ruta('domicilios');
   const contacto = c.ruta('contacto');
@@ -413,6 +423,31 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
       };
     }
     case 'hero': {
+      if (variante === VARIANTE_PORTADA_EDITORIAL) {
+        // Carrusel editorial (lámina 12): una foto (la portada) para empezar; el dueño suma las suyas.
+        const foto = c.portada ?? fotos[0]?.url ?? null;
+        const botones = [
+          reservas && { label: 'Reservar mesa', url: reservas, variant: 'solid' },
+          carta && { label: 'Ver carta', url: carta, variant: 'outline' },
+        ].filter(Boolean) as Record<string, unknown>[];
+        return {
+          contenido: {
+            ...conValor({
+              eyebrow: limpio(datos.ciudad),
+              title: nombre ?? textos.bienvenida,
+              subtitle: lema ?? textos.subtituloInicio,
+              subtitle_style: 'italic',
+              slides: foto ? [{ image_url: foto, alt: nombre ?? 'Portada' }] : null,
+              buttons: botones.length > 0 ? botones : null,
+              show_title: true,
+              show_cta: botones.length > 0,
+              show_overlay: Boolean(foto),
+            }),
+            section_background: { padding_top: 0 },
+          },
+          visible: true,
+        };
+      }
       if (!c.esInicio) {
         const imagen = variante === 'minimal' ? null : (fotos[0]?.url ?? c.portada);
         return { contenido: { ...conValor({ title: c.pagina.titulo, subtitle: SUBTITULO_PAGINA[c.pagina.slug] ?? null, image_url: imagen }), section_background: { padding_top: 0 } }, visible: true };
@@ -445,8 +480,32 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
     case 'menu_full':
       // La carta QR va sin título grande: arriba están la bienvenida y la barra de la mesa.
       if (variante === VARIANTE_CARTA_QR) return { contenido: {}, visible: true };
+      // Línea de puntos (lámina 14): en Inicio, una muestra; en Carta, con la nota de la sede.
+      if (variante === VARIANTE_CARTA_PUNTOS) {
+        return {
+          contenido: c.esInicio
+            ? // Inicio (láminas 11 y 12): solo los destacados, con el botón a la carta completa.
+              { eyebrow: 'De la barra', title: 'Lo que más se pide', subtitle: 'En la carta completa eliges la sede.', only_featured: true }
+            : { title: 'Nuestra carta', subtitle: SUBTITULO_PAGINA.carta },
+          visible: true,
+        };
+      }
       return { contenido: { title: 'Nuestra carta' }, visible: true };
     case 'reservation':
+      if (variante === VARIANTE_RESERVA_PLANO) {
+        // Plano de mesas (lámina 15). El modo de confirmación queda sin elegir: lo resuelve la
+        // sede (E1, `resolverModoReserva`): directo al ERP si tiene reservas activas.
+        return {
+          contenido: {
+            eyebrow: 'Reservas',
+            title: 'Elige tu mesa',
+            subtitle: 'Escoge la fecha, toca en el plano la mesa que prefieras y déjanos tus datos.',
+            cta_text: 'Solicitar reserva',
+            anchor_id: 'reservar',
+          },
+          visible: true,
+        };
+      }
       return {
         contenido: conValor({
           eyebrow: 'Reservas',
@@ -501,7 +560,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
     case 'image_text':
       return {
         contenido: conValor({
-          title: 'Nuestra historia',
+          // En «Historia» la cuentan los capítulos: aquí va lo que mueve al negocio.
+          title: c.pagina.slug === 'historia' ? 'Lo que nos mueve' : 'Nuestra historia',
           body: limpio(datos.descripcion) ?? `${nombre ?? 'Nuestro equipo'} te recibe con gusto. Conoce quiénes somos y lo que hacemos cada día.`,
           image_url: fotos[0]?.url ?? c.portada,
           cta_text: c.ruta('nosotros') ? 'Conócenos' : null,
@@ -519,6 +579,10 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
     case 'faq':
       return { contenido: { title: 'Preguntas frecuentes', items: textos.preguntas.map((p) => ({ ...p })) }, visible: true };
     case 'how_it_works':
+      // Capítulos (lámina 13): tres de ejemplo que no inventan hechos; el dueño cuenta su historia.
+      if (variante === VARIANTE_HISTORIA_CAPITULOS) {
+        return { contenido: { eyebrow: 'Nuestra historia', title: 'Nuestra historia', items: CAPITULOS_EJEMPLO.map((x) => ({ ...x })), show_numbers: true }, visible: true };
+      }
       return { contenido: { title: 'Así funciona', items: textos.pasos.map((p, i) => ({ step: i + 1, ...p })) }, visible: true };
     case 'features_grid':
     case 'why_choose_us':
@@ -717,6 +781,61 @@ export function paginasExtraDelGiro(giro: Giro, yaEnElJuego: readonly PaginaBase
   return [{ titulo: 'Carta QR', slug: plantilla.slug, tipo: plantilla.tipo, enMenu: false, secciones: plantilla.secciones }];
 }
 
+/**
+ * Páginas propias de una plantilla sobre el juego del giro: `reemplaza` cambia la página de esa
+ * dirección por la propia (en su lugar del menú); `quita`, las que la plantilla no trae.
+ */
+interface PaginasDePlantilla {
+  reemplazos: readonly { reemplaza: string; pagina: PaginaBase }[];
+  quita: readonly string[];
+}
+
+/**
+ * «Café de especialidad» (Figma 2223:46106, lámina 11): Inicio, Carta (/carta), Reservas
+ * (/reservas-mesa) e Historia (/historia). Las legales y la Carta QR del giro siguen.
+ */
+export const PAGINAS_POR_PLANTILLA: Readonly<Record<string, PaginasDePlantilla>> = {
+  cafe_especialidad: {
+    reemplazos: [
+      { reemplaza: 'menu', pagina: { titulo: 'Carta', slug: 'carta', tipo: 'builtin', enMenu: true, secciones: [sec('menu_full', VARIANTE_CARTA_PUNTOS)] } },
+      {
+        reemplaza: 'reservas-mesa',
+        pagina: { titulo: 'Reservas', slug: 'reservas-mesa', tipo: 'builtin', enMenu: true, secciones: [sec('reservation', VARIANTE_RESERVA_PLANO), sec('hours_location', 'list')] },
+      },
+      {
+        reemplaza: 'nosotros',
+        pagina: {
+          titulo: 'Historia',
+          slug: 'historia',
+          tipo: 'builtin',
+          enMenu: true,
+          secciones: [sec('how_it_works', VARIANTE_HISTORIA_CAPITULOS), sec('image_text', 'image_left'), sec('reservation', 'band')],
+        },
+      },
+    ],
+    quita: ['domicilios', 'contacto', 'galeria'],
+  },
+};
+
+/**
+ * Páginas que trae la plantilla por sí misma (Inicio más las suyas), para la tarjeta de la galería
+ * («5 secciones · 4 páginas», lámina 10). null si la plantilla solo trae Inicio: la tarjeta no
+ * dice nada de páginas (las demás salen del giro, igual en todas sus plantillas).
+ */
+export function paginasPropiasDePlantilla(plantillaId: string): number | null {
+  const propias = PAGINAS_POR_PLANTILLA[plantillaId];
+  return propias && propias.reemplazos.length > 0 ? 1 + propias.reemplazos.length : null;
+}
+
+/** El juego del giro con las páginas propias de la plantilla (si las tiene). */
+export function paginasDePlantilla(plantillaId: string, delGiro: readonly PaginaBase[]): PaginaBase[] {
+  const propias = PAGINAS_POR_PLANTILLA[plantillaId];
+  if (!propias) return [...delGiro];
+  return delGiro
+    .filter((b) => !propias.quita.includes(b.slug))
+    .map((b) => propias.reemplazos.find((r) => r.reemplaza === b.slug)?.pagina ?? b);
+}
+
 /** Páginas extra (por dirección) que piden los menús del pie y los botones de la lámina. */
 export function paginasQuePideElShell(shell: ShellPlantilla): string[] {
   const porMenu: Partial<Record<ClaveMenuPie, readonly string[]>> = {
@@ -835,7 +954,7 @@ function itemsMenuPie(clave: ClaveMenuPie, c: ContextoMenus): { nombre: string; 
         items: c.menusPedidos.includes('legal') ? [...porSlug('politica-estadia'), enlace('Reservar', '/reservas'), ...porSlug('contacto')] : legales(),
       };
     case 'la-casa':
-      return { nombre: 'La casa', items: porSlug('nosotros', 'galeria', 'contacto') };
+      return { nombre: 'La casa', items: porSlug('nosotros', 'historia', 'galeria', 'contacto') };
     case 'eventos':
       return { nombre: 'Eventos', items: porSlug('eventos', 'reservas-mesa', 'contacto') };
     case 'ayuda':
@@ -904,7 +1023,7 @@ export function armarPlantillaCompleta(
   // 1. Lo que se conserva: páginas de sistema (carrito, checkout…) y legales.
   const conservadas = base.paginas.filter((p) => esPlantillaTienda(p) || esPaginaLegal(p));
   const slugsConservados = new Set(conservadas.map((p) => p.slug));
-  const delGiro = paginasBasePorGiro(giro, { envios: giro === 'tienda' || giro === 'restaurante' || datos.envios === true });
+  const delGiro = paginasDePlantilla(plantilla.id, paginasBasePorGiro(giro, { envios: giro === 'tienda' || giro === 'restaurante' || datos.envios === true }));
   const extras = paginasQuePideElShell(shell)
     .filter((slug) => !delGiro.some((b) => b.slug === slug))
     .map((slug) => PAGINAS_DEL_SHELL[slug]);

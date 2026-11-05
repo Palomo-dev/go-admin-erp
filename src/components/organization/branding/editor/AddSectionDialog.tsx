@@ -10,6 +10,7 @@ import type { BranchType } from '@/types/branch';
 import type { SectionTypeDefinition } from '@/lib/services/websitePageBuilderService';
 import {
   NOMBRE_TIPO_SEDE,
+  claveEntrada,
   filtrarCatalogo,
   getSectionCatalogForBranch,
   type GrupoCatalogo,
@@ -78,7 +79,7 @@ export default function AddSectionDialog({
   const filtrado = useMemo(() => filtrarCatalogo(catalogo, busqueda), [catalogo, busqueda]);
   const hayBusqueda = busqueda.trim().length > 0;
   const sinResultados = hayBusqueda && filtrado.coincidencias === 0;
-  const tiposRecomendados = useMemo(() => new Set(catalogo.recomendadas.map((s) => s.type)), [catalogo]);
+  const tiposRecomendados = useMemo(() => new Set(catalogo.recomendadas.map(claveEntrada)), [catalogo]);
   const sujeto = contexto.sede ?? 'Tu organización';
 
   useEffect(() => {
@@ -129,20 +130,20 @@ export default function AddSectionDialog({
 
   // ── Piezas ──────────────────────────────────────────────────────────────
   const tarjetas = (secciones: SectionTypeDefinition[], enRecomendadas: boolean, columnas: string) => {
-    const elegidaAqui = elegida && secciones.some((s) => s.type === elegida.type) ? elegida : null;
+    const elegidaAqui = elegida && secciones.some((s) => claveEntrada(s) === claveEntrada(elegida)) ? elegida : null;
     const avisoAqui = elegidaAqui ? aviso(elegidaAqui) : null;
     return (
       <>
         <div className={cn('grid gap-3', columnas)}>
           {secciones.map((def) => (
             <SectionPickerCard
-              key={def.type}
+              key={claveEntrada(def)}
               tipo={def.type}
               etiqueta={def.label}
               descripcion={def.description}
-              seleccionada={elegida?.type === def.type}
+              seleccionada={elegida !== null && claveEntrada(elegida) === claveEntrada(def)}
               faltanDatos={Boolean(aviso(def))}
-              recomendada={!enRecomendadas && tiposRecomendados.has(def.type)}
+              recomendada={!enRecomendadas && tiposRecomendados.has(claveEntrada(def))}
               onSeleccionar={() => setElegida(def)}
               onConfirmar={() => anadir(def)}
             />

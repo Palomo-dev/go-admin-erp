@@ -93,6 +93,9 @@ export default function EntityField({ field, value, onChange, organizationId }: 
       />
     );
   }
+  if (entity === 'zone') {
+    return <ZoneEntity field={field} value={value} onChange={onChange} multiple={multiple} />;
+  }
   if (entity === 'table_zone') {
     return (
       <TableZoneEntity
@@ -733,6 +736,105 @@ function TableZoneEntity({
       ) : (
         <p className="text-[10px] text-gray-400 text-center py-2">
           {zones.length === 0 ? tx('entityField.noHayZonasConfiguradas') : tx('entityField.sinResultados')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// ZONE — zonas de restaurante por NOMBRE (reserva con plano de mesas)
+// ============================================================
+
+interface ZonaRestauranteNode {
+  nombre: string;
+  sedes: { id: number; nombre: string }[];
+  mesasWeb: number;
+}
+
+/**
+ * Zonas de los recuadros del plano y de las mesas (`restaurant_zone_layouts.zone_name` y
+ * `restaurant_tables.zone`), juntas por nombre. Guarda los NOMBRES (la misma clave que usan la
+ * mesa y `restaurant_booking_settings.allowed_zones`). La organización sale de la sesión en el
+ * servidor (`/api/sitio-web/zonas-restaurante`): el navegador no la manda.
+ */
+function ZoneEntity({
+  value,
+  onChange,
+  multiple,
+}: {
+  field: BaseFieldProps['field'];
+  value: unknown;
+  onChange: (v: unknown) => void;
+  multiple: boolean;
+}) {
+  const tx = useTranslations('branding.editor');
+  const [zonas, setZonas] = useState<ZonaRestauranteNode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    let vivo = true;
+    setLoading(true);
+    fetch('/api/sitio-web/zonas-restaurante', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { zonas: [] }))
+      .then((d: { zonas?: ZonaRestauranteNode[] }) => {
+        if (vivo) setZonas(Array.isArray(d.zonas) ? d.zonas : []);
+      })
+      .catch(() => {
+        if (vivo) setZonas([]);
+      })
+      .finally(() => {
+        if (vivo) setLoading(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const elegidas = (Array.isArray(value) ? value : typeof value === 'string' && value ? [value] : []).filter((v): v is string => typeof v === 'string');
+  const filtradas = zonas.filter((z) => z.nombre.toLowerCase().includes(query.toLowerCase()));
+
+  const alternar = (nombre: string, marcada: boolean) => {
+    if (multiple) onChange(marcada ? [...elegidas, nombre] : elegidas.filter((n) => n !== nombre));
+    else onChange(marcada ? nombre : null);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-1">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-8 w-full rounded" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {zonas.length > 6 && (
+        <div className="relative">
+          <Search className="h-3 w-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={tx('entityField.buscarZona')} className="h-7 text-[11px] pl-6" />
+        </div>
+      )}
+      {filtradas.length > 0 ? (
+        <div className="max-h-48 overflow-y-auto space-y-1 rounded border border-gray-200 dark:border-gray-700 p-1">
+          {filtradas.map((zona) => (
+            <label key={zona.nombre} className="flex items-start gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer">
+              <Checkbox className="mt-0.5" checked={elegidas.includes(zona.nombre)} onCheckedChange={(c) => alternar(zona.nombre, !!c)} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs text-gray-700 dark:text-gray-300 break-words">{zona.nombre}</span>
+                <span className="block text-[10px] text-gray-400 dark:text-gray-500">
+                  {tx('entityField.zonaDetalle', { sedes: zona.sedes.map((s) => s.nombre).join(', ') || '—', n: zona.mesasWeb })}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[10px] text-gray-400 text-center py-2">
+          {zonas.length === 0 ? tx('entityField.noHayZonasConfiguradas') : tx('entityField.sinResultados')}
         </p>
       )}
     </div>

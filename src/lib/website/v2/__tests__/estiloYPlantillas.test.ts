@@ -88,10 +88,11 @@ const valido = (d: DocumentoSitio) => {
 };
 
 describe('catálogo de plantillas (A/06b)', () => {
-  test('restaurante: las 8 de Figma, en su orden, y la primera por defecto', () => {
+  test('restaurante: las 8 de Figma y el café (lámina 10, tercero), en su orden, y la primera por defecto', () => {
     expect(plantillasDelGiro(CATALOGO, 'restaurante').map((p) => p.nombre)).toEqual([
       'Noir Omakase',
       'Velvet Lounge',
+      'Café de especialidad',
       'Fine Dining Oscuro',
       'Editorial Marfil',
       'Mediterráneo',
@@ -104,7 +105,7 @@ describe('catálogo de plantillas (A/06b)', () => {
 
   test('los demás giros salen de las plantillas reales del sitio; los contadores, del catálogo', () => {
     const c = contarPorGiro(CATALOGO);
-    expect(c.restaurante).toBe(8);
+    expect(c.restaurante).toBe(9);
     expect(c.tienda).toBe(TEMPLATE_PRESETS.filter((p) => p.business_type === 'retail').length);
     expect(c.todas).toBe(CATALOGO.plantillas.length);
     expect(CATALOGO.plantillas.some((p) => p.id === 'restaurant_modern')).toBe(false);
@@ -128,7 +129,7 @@ describe('catálogo de plantillas (A/06b)', () => {
     expect(giroCatalogoDeTipo(3)).toBe('tienda');
     expect(giroCatalogoDeTipo(7)).toBe('parqueadero');
     expect(giroCatalogoDeTipo(null)).toBeNull();
-    expect(estilosDelGiro(CATALOGO, 'restaurante')).toHaveLength(8);
+    expect(estilosDelGiro(CATALOGO, 'restaurante')).toHaveLength(9);
   });
 
   test('pares tipográficos sin repetir', () => {

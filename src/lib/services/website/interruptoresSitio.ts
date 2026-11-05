@@ -10,9 +10,10 @@
  *    interruptor que no aparece aquí se lee en todas las variantes donde el catálogo lo ofrece.
  *    Las claves `repetidor[].campo` son campos dentro de un repetidor: el repetidor no conoce la
  *    variante, así que solo se pueden quitar cuando ninguna variante los lee (lista vacía).
- * 2. `DEFAULT_POR_VARIANTE`: el estado que pinta el switch cuando la clave no existe, cuando el
+ * 2. `DEFAULT_POR_VARIANTE`: el estado que pinta el control cuando la clave no existe, cuando el
  *    sitio no hace lo mismo en todas las variantes. Debe ser lo que el sitio hace HOY con la clave
- *    ausente.
+ *    ausente (en una variante nueva, el default de su contrato: `contrato/seccionesCafe.ts`).
+ *    Admite interruptores, números y opciones de lista.
  *
  * Solo cambia lo que muestra el inspector (`showIf.variantIn`, `defaultValue`): nada se escribe
  * ni se borra del contenido guardado, y los ítems de un repetidor conservan sus claves al editarse.
@@ -25,6 +26,12 @@
  * `__tests__/interruptoresSeccion.test.ts` fija la lista.
  */
 import type { ContentFieldDef, SectionTypeDefinition } from '@/lib/services/websitePageBuilderService';
+import {
+  DEFAULT_CARTA_PUNTOS,
+  DEFAULT_PORTADA_EDITORIAL,
+  DISENO_HISTORIA_CAPITULOS,
+  TAMANO_CARTA_PUNTOS,
+} from '@/lib/website/contrato/seccionesCafe';
 
 /**
  * sección → interruptor → variantes cuyo componente lo lee.
@@ -128,12 +135,26 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
   },
 };
 
+export type DefaultVariante = boolean | number | string;
+
 /** sección → interruptor → variante → estado con la clave ausente (lo que el sitio hace hoy). */
-export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, boolean | number>>>>>> = {
+export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, DefaultVariante>>>>>> = {
   // HeroSlider: `show_arrows ?? false`. CAROUSEL_FIELDS lo declara encendido.
   // overlay_opacity (QA 27-oct, D4): lo que pinta la tienda sin valor guardado. Misma tabla que
   // OPACIDAD_CAPA_POR_DEFECTO de goadmin-websites/lib/website/capaHero.ts: si cambia, cambiar las dos.
-  hero: { show_arrows: { slider: false }, overlay_opacity: { fullscreen: 70, video: 60, slider: 40, split: 0 } },
+  // «Carrusel editorial» (lámina 12): DEFAULT_PORTADA_EDITORIAL del contrato seccionesCafe.ts.
+  hero: {
+    show_arrows: { slider: false, carousel_editorial: DEFAULT_PORTADA_EDITORIAL.showArrows },
+    overlay_opacity: { fullscreen: 70, video: 60, slider: 40, split: 0, carousel_editorial: DEFAULT_PORTADA_EDITORIAL.overlayOpacity },
+    interval_ms: { carousel_editorial: DEFAULT_PORTADA_EDITORIAL.intervalMs },
+    transition: { carousel_editorial: DEFAULT_PORTADA_EDITORIAL.transition },
+    dot_style: { carousel_editorial: DEFAULT_PORTADA_EDITORIAL.dotStyle },
+    height: { carousel_editorial: DEFAULT_PORTADA_EDITORIAL.height },
+    text_align: { carousel_editorial: DEFAULT_PORTADA_EDITORIAL.textAlign },
+    overlap_header: { carousel_editorial: DEFAULT_PORTADA_EDITORIAL.overlapHeader },
+  },
+  // «Capítulos» (lámina 13): separación de 28 px.
+  how_it_works: { gap: { chapters: DISENO_HISTORIA_CAPITULOS.gap } },
   // ContactFormWithMap solo pinta teléfono, email y dirección con `true`; «Dividido» los pinta salvo `false`.
   contact_form: {
     show_phone: { with_map: false },
@@ -175,6 +196,8 @@ export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<strin
   offers: { show_filters: { grid: true } },
   // Secciones que tachan el precio por primera vez: solo con `true`.
   menu_preview: { show_compare_price: { tabs: false } },
+  // «Línea de puntos» (lámina 14): sin fotos y platos en tamaño regular.
+  menu_full: { show_photos: { dotted: DEFAULT_CARTA_PUNTOS.showPhotos }, size: { dotted: TAMANO_CARTA_PUNTOS } },
   membership_plans: { show_compare_price: { pricing_table: false } },
   specialties: { show_compare_price: { featured: false }, show_description: { featured: false } },
   // Tarjetas de habitación e iconos de servicios no pintaban la descripción: solo con `true`.
@@ -221,9 +244,11 @@ export function aplicarInterruptoresSitio(seccion: SectionTypeDefinition): Secti
 
     const porVariante = defaults[c.key];
     if (!porVariante || visibles.length === 0) return [c];
-    const grupos = new Map<boolean | number, string[]>();
+    const grupos = new Map<DefaultVariante, string[]>();
     for (const v of visibles) {
-      const d = porVariante[v] ?? (typeof c.defaultValue === 'number' ? c.defaultValue : c.defaultValue === true);
+      const d =
+        porVariante[v] ??
+        (typeof c.defaultValue === 'number' || typeof c.defaultValue === 'string' ? c.defaultValue : c.defaultValue === true);
       grupos.set(d, [...(grupos.get(d) ?? []), v]);
     }
     if (grupos.size === 1) return [{ ...c, defaultValue: [...grupos.keys()][0] }];

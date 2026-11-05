@@ -190,6 +190,16 @@ const Cta = ({ x, y = 10, w = 10 }: { x: number; y?: number; w?: number }) => (
 /** Miniatura de una composición del encabezado. */
 export function MiniaturaEncabezado({ composicion }: { composicion: string }) {
   switch (composicion) {
+    case 'pill':
+      // Menú en píldora flotante centrada y botón circular (plantilla «Café de especialidad»).
+      return (
+        <>
+          <Logo x={8} />
+          <span className="absolute h-3.5 w-[66px] rounded-full border border-line-strong bg-surface" style={{ left: 42, top: 6 }} />
+          {[50, 66, 82].map((x) => <Enlace key={x} x={x} />)}
+          <span className="absolute size-4 rounded-full bg-brand-action" style={{ left: 128, top: 5 }} />
+        </>
+      );
     case 'centered':
       return (
         <>

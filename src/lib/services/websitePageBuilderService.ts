@@ -21,6 +21,19 @@ import {
   VARIANTE_CARTA_QR_CATALOGO,
   VARIANTE_PORTADA_MESA_CATALOGO,
 } from '@/lib/services/website/seccionesMesaCatalogo';
+import {
+  CAMPO_ANTETITULO_CAPITULOS,
+  CAMPO_ANTETITULO_PORTADA,
+  CAMPOS_CARTA_PUNTOS,
+  CAMPOS_HISTORIA_CAPITULOS,
+  CAMPOS_PORTADA_EDITORIAL,
+  CAMPOS_RESERVA_PLANO,
+  VARIANTE_CARTA_PUNTOS_CATALOGO,
+  VARIANTE_HISTORIA_CAPITULOS_CATALOGO,
+  VARIANTE_PORTADA_EDITORIAL_CATALOGO,
+  VARIANTE_RESERVA_PLANO_CATALOGO,
+} from '@/lib/services/website/seccionesCafeCatalogo';
+import { VARIANTE_PORTADA_EDITORIAL } from '@/lib/website/contrato/seccionesCafe';
 import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { CLAVES_TARJETA_EN_SECCION } from '@/lib/website/tarjetaProducto';
@@ -152,6 +165,8 @@ export interface FieldCondition {
   allEmpty?: string[];
   /** Alguna de estas claves con valor. */
   anyFilled?: string[];
+  /** Otra condición que también debe cumplirse (dos campos a la vez). */
+  and?: FieldCondition;
 }
 
 export interface ContentFieldDef {
@@ -203,6 +218,16 @@ export interface ContentFieldDef {
   itemType?: 'number' | 'text';
   /** `type='notice'`: enlace del aviso. */
   link?: { label: string; href: string };
+  /**
+   * Forma del control cuando no es la habitual:
+   * - `dropdown` (`type='select'`): lista desplegable aunque tenga 5 opciones o menos (por defecto
+   *   van como chips).
+   * - `field` (`type='notice'`): campo de solo lectura con `placeholder` como valor, para un dato
+   *   que sale del ERP y no se escribe en el editor («WhatsApp que recibe: El de cada sede»).
+   */
+  display?: 'dropdown' | 'field';
+  /** Media columna: dos campos `half` seguidos van en la misma fila («Personas desde · hasta»). */
+  half?: boolean;
   /** Condición para mostrar el campo. */
   showIf?: FieldCondition;
   options?: { value: string; label: string }[];
@@ -231,7 +256,7 @@ export interface ContentFieldDef {
   emptyStoreText?: string;
   // ---- type='entity' ----
   /** Tipo de entidad seleccionable. */
-  entity?: 'category' | 'product' | 'branch' | 'page' | 'table_zone';
+  entity?: 'category' | 'product' | 'branch' | 'page' | 'table_zone' | 'zone';
   /** Si es `true`, permite seleccionar varias entidades. */
   multiple?: boolean;
 }
@@ -282,6 +307,17 @@ function campoIncluirSubcategorias(porDefecto: boolean): ContentFieldDef {
 
 const AYUDA_CATEGORIAS_PRODUCTO = 'Sin selección se muestran todos los productos. Con selección, solo los de esas categorías.';
 
+/** Portadas de siempre (botón único y botones): todas menos el carrusel editorial. */
+const HERO_CON_BOTON_UNICO = ['fullscreen', 'minimal', 'slider', 'split', 'video'];
+
+/** Variantes de «Reserva de mesa» con el formulario del ERP (sedes, reglas, política y mensajes). */
+const RESERVA_CON_FORMULARIO = ['stepper', 'form_image', 'band', 'hero_widget'];
+/**
+ * Variantes de `reservation` que usan los campos de siempre. «Plano de mesas» (lámina 15) trae sus
+ * copias con la misma clave, en sus bloques y su orden (`CAMPOS_RESERVA_PLANO`).
+ */
+const RESERVA_SIN_PLANO = [...RESERVA_CON_FORMULARIO, 'external'];
+
 const RAW_CATALOG: SectionTypeDefinition[] = [
   {
     type: 'hero',
@@ -294,25 +330,30 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'slider', label: 'Slider' },
       { id: 'split', label: 'Dividido' },
       { id: 'video', label: 'Video' },
+      // «Café de especialidad» (lámina 12): fotos que rotan con texto fijo.
+      VARIANTE_PORTADA_EDITORIAL_CATALOGO,
     ],
     contentFields: [
+      CAMPO_ANTETITULO_PORTADA,
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Título principal' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción breve' },
       { key: 'image_url', label: 'Imagen de escritorio', type: 'image', helpText: 'Se ve en computador y tableta. Si queda vacía y hay foto de celular, esa se usa también aquí. Si hay video, el computador muestra el video y esta foto es el cartel. Minimal no lleva foto.', showIf: { variantIn: ['fullscreen', 'slider', 'split', 'video'] } },
       { key: 'image_url_mobile', label: 'Imagen de celular', type: 'image', helpText: 'En el celular. Si queda vacía, usa la de escritorio. Si solo subes esta, se ve en todos los anchos. Si hay video, esta foto tapa el video solo en el celular.', showIf: { variantIn: ['fullscreen', 'slider', 'split', 'video'] } },
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...', showIf: { variantIn: ['video'] } },
-      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
-      { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
+      // El carrusel editorial lleva sus botones (hasta 3) y no tiene imagen única que enlazar.
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora', showIf: { variantIn: HERO_CON_BOTON_UNICO } },
+      { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas', showIf: { variantIn: HERO_CON_BOTON_UNICO } },
       {
         key: 'link_url',
         label: 'Enlace de la imagen',
         type: 'url',
         placeholder: '/ofertas',
         helpText: 'Clic en toda la imagen. Si lo dejas vacío y apagas «Mostrar botón», se usa la URL del botón.',
+        showIf: { variantIn: HERO_CON_BOTON_UNICO },
       },
       // El overlay solo existe en las variantes con fondo (pantalla completa, slider y video):
       // Minimal y Dividido no tienen nada que oscurecer.
-      { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true, showIf: { variantIn: ['fullscreen', 'slider', 'video'] } },
+      { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true, showIf: { variantIn: ['fullscreen', 'slider', 'video', VARIANTE_PORTADA_EDITORIAL] } },
       { key: 'show_title', label: 'Mostrar título', type: 'boolean', defaultValue: true },
       { key: 'show_cta', label: 'Mostrar botón', type: 'boolean', defaultValue: true },
       // Solo el slider lee `full_width` (y sus bordes y sombra); las demás variantes ya van a sangre.
@@ -399,7 +440,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         step: 5,
         defaultValue: 70,
         suffix: '%',
-        showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split'] },
+        showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split', VARIANTE_PORTADA_EDITORIAL] },
         helpText: '0 = transparente, 100 = opaco. Sin tocar: 70% en Pantalla completa, 60% en Video, 40% en Slider y sin capa (0%) en Dividido, igual que la tienda.',
       },
       {
@@ -407,7 +448,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         label: 'Color del overlay',
         type: 'color',
         group: 'style',
-        showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split'] },
+        showIf: { field: 'show_overlay', in: [true, undefined], variantIn: ['fullscreen', 'video', 'slider', 'split', VARIANTE_PORTADA_EDITORIAL] },
         helpText: 'Color de la capa sobre la imagen. Vacío: color primario en Pantalla completa, negro en Video, Slider y Dividido.',
       },
       // Paquete 5-nov D4: color propio del título (vacío = el de siempre).
@@ -416,7 +457,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         label: 'Color del título',
         type: 'color',
         group: 'style',
-        showIf: { variantIn: ['fullscreen', 'slider', 'split'] },
+        showIf: { variantIn: ['fullscreen', 'slider', 'split', VARIANTE_PORTADA_EDITORIAL] },
         helpText: 'Vacío: blanco sobre foto, color del tema en Dividido.',
       },
       // F3.1 — Posición y alineación del contenido
@@ -449,6 +490,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         itemLabelKey: 'label',
         maxItems: 4,
         helpText: 'Botones múltiples. Si está vacío, se usa el botón único de arriba.',
+        // «Carrusel editorial» lleva su copia con máximo 3 (CAMPOS_PORTADA_EDITORIAL).
+        showIf: { variantIn: HERO_CON_BOTON_UNICO },
         // HeroButtons solo ocupa todo el ancho con `full_width: true` (ausente = como antes).
         itemFields: BUTTON_ITEM_FIELDS.map((f) => (f.key === 'full_width' ? { ...f, defaultValue: false } : f)),
       },
@@ -487,8 +530,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           },
         ],
       },
-      // F3.1 — CAROUSEL_FIELDS solo para la variante slider
-      ...CAROUSEL_FIELDS.map((f) => ({ ...f, showIf: { ...f.showIf, variantIn: ['slider'] } })),
+      // F3.1 — CAROUSEL_FIELDS para el slider y el carrusel editorial (sin «Elementos visibles»:
+      // el editorial pasa una foto a la vez).
+      ...CAROUSEL_FIELDS.map((f) => ({
+        ...f,
+        showIf: { ...f.showIf, variantIn: f.key === 'slides_per_view' ? ['slider'] : ['slider', VARIANTE_PORTADA_EDITORIAL] },
+      })),
+      ...CAMPOS_PORTADA_EDITORIAL,
     ],
   },
   {
@@ -1540,6 +1588,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'per_category', label: 'Una página por categoría' },
       { id: 'editorial', label: 'Editorial (nombres grandes)' },
       VARIANTE_CARTA_QR_CATALOGO,
+      // «Café de especialidad» (lámina 14): pestañas en cursiva, contador y línea de puntos.
+      VARIANTE_CARTA_PUNTOS_CATALOGO,
     ],
     contentFields: [
       { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Carta' },
@@ -1621,6 +1671,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         helpText:
           'Orden, platos ocultos, destacados y descripción o foto solo para la carta. Se editan en «Editar la carta». El precio, el agotado y lo oculto por sede se editan ahí mismo, en la sede.',
       },
+      // «Línea de puntos»: después de categorías y platos, como en la lámina 14.
+      ...CAMPOS_CARTA_PUNTOS,
     ],
   },
   {
@@ -2050,12 +2102,16 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'band', label: 'Banda con botón' },
       { id: 'hero_widget', label: 'Hero con buscador de mesa' },
       { id: 'external', label: 'Proveedor externo (enlace)' },
+      // «Café de especialidad» (lámina 15): el visitante toca una mesa en el plano de la sede.
+      VARIANTE_RESERVA_PLANO_CATALOGO,
     ],
     contentFields: [
-      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Reservas' },
-      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa' },
-      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Confirmación inmediata en la mayoría de sedes.' },
-      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar reserva' },
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Reservas', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Confirmación inmediata en la mayoría de sedes.', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar reserva', showIf: { variantIn: RESERVA_SIN_PLANO } },
+      // «Plano de mesas» (lámina 15): Textos · Cómo se confirma · Sedes y plano · Reglas, y su Diseño.
+      ...CAMPOS_RESERVA_PLANO,
       {
         key: 'image_url',
         label: 'Imagen',
@@ -2096,7 +2152,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'data',
         helpText:
           'Sin selección: todas las sedes con mesas y reservas habilitadas. Con más de una, el cliente elige la sede. En la página de una sede, solo esa.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'min_guests',
@@ -2106,7 +2162,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         min: 1,
         max: 50,
         helpText: 'Nunca por debajo del mínimo de la configuración de reservas de la sede.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'max_guests',
@@ -2116,7 +2172,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         min: 1,
         max: 100,
         helpText: 'Nunca por encima del máximo de la sede. Grupos grandes: por teléfono.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'max_days',
@@ -2127,7 +2183,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         max: 365,
         placeholder: '30',
         helpText: 'Hasta cuántos días adelante se puede reservar (tope: el de la sede).',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'require_email',
@@ -2136,7 +2192,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'data',
         defaultValue: false,
         helpText: 'El celular sigue la configuración de reservas de la sede.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'show_notes',
@@ -2144,21 +2200,21 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'boolean',
         group: 'data',
         defaultValue: true,
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'policy_text',
         label: 'Política de reservas',
         type: 'textarea',
         helpText: 'Se pide aceptarla antes de reservar. Si la sede tiene política en su configuración, manda la de la sede.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'success_message',
         label: 'Mensaje de reserva confirmada',
         type: 'textarea',
         placeholder: 'Te esperamos. Si dejaste tu correo, te enviamos la confirmación.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'pending_message',
@@ -2166,7 +2222,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'textarea',
         placeholder: 'El equipo revisará tu solicitud y te avisará cuando la confirme.',
         helpText: 'Para sedes que exigen confirmación del equipo.',
-        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+        showIf: { variantIn: RESERVA_CON_FORMULARIO },
       },
       {
         key: 'anchor_id',
@@ -2174,6 +2230,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'text',
         placeholder: 'reservar',
         helpText: 'Los botones «Reservar» de «Horario y sedes» enlazan a #reservar con la sede elegida.',
+        showIf: { variantIn: RESERVA_SIN_PLANO },
       },
     ],
   },
@@ -2926,8 +2983,11 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     description: 'Pasos de un proceso numerado',
     variants: [
       { id: 'steps', label: 'Pasos' },
+      // «Café de especialidad» (lámina 13): capítulos con etiqueta, imagen y animación.
+      VARIANTE_HISTORIA_CAPITULOS_CATALOGO,
     ],
     contentFields: [
+      CAMPO_ANTETITULO_CAPITULOS,
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Cómo funciona' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       {
@@ -2936,6 +2996,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'repeater',
         group: 'content',
         itemLabelKey: 'title',
+        // «Capítulos» lleva su copia con etiqueta e imagen (CAMPOS_HISTORIA_CAPITULOS).
+        showIf: { variantIn: ['steps'] },
         itemFields: [
           { key: 'step', label: 'Número de paso', type: 'number', placeholder: '1' },
           { key: 'title', label: 'Título', type: 'text', placeholder: 'Regístrate' },
@@ -2943,7 +3005,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'icon', label: 'Icono', type: 'icon' },
         ],
       },
-      ...GRID_FIELDS,
+      // «Capítulos» trae su propia proporción de imagen (16:10).
+      ...GRID_FIELDS.map((f) => (f.key === 'aspect_ratio' ? { ...f, showIf: { variantIn: ['steps'] } } : f)),
+      ...CAMPOS_HISTORIA_CAPITULOS,
     ],
   },
   {

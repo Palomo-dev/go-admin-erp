@@ -7,12 +7,15 @@ const createSetupIntent = jest.fn().mockResolvedValue({
   client_secret: 'seti_domain_secret',
 });
 
-jest.mock('@/lib/stripe/server', () => ({
-  stripe: {
+// La ruta llama a `requireStripe()` (rechaza una clave que no es live en producción)
+// antes de usar `stripe`: el doble expone los dos y devuelven el mismo cliente.
+jest.mock('@/lib/stripe/server', () => {
+  const stripe = {
     customers: { list: listCustomers, create: createCustomer },
     setupIntents: { create: createSetupIntent },
-  },
-}));
+  };
+  return { stripe, requireStripe: () => stripe };
+});
 
 jest.mock('@/lib/utils/orgContext', () => {
   const actual = jest.requireActual('@/lib/utils/orgContextError');

@@ -15,7 +15,8 @@
  *   («Plantilla completa», `v2/plantillaCompleta.ts`).
  *
  * De dónde sale:
- * - Restaurante: las 8 plantillas aprobadas en Figma (A/06b, A/07h), con sus
+ * - Restaurante: las 8 plantillas aprobadas en Figma (A/06b, A/07h) más «Café de especialidad»
+ *   (2223:46106, lámina 11), con sus
  *   tokens medidos en las capturas. Cada una se apoya en una plantilla base que
  *   el sitio público ya sabe pintar (`base`: `restaurant_elegant`, …): esa es la
  *   que se guarda en `tema.plantillaBase`, porque el sitio resuelve la plantilla
@@ -97,7 +98,7 @@ export interface CatalogoPlantillas {
   plantillas: readonly PlantillaCatalogo[];
 }
 
-// ─── Restaurante: las 8 de Figma (A/06b, A/07h) ────────────────────────────────────────────
+// ─── Restaurante: las 8 de Figma (A/06b, A/07h) y el café (2223:46106) ─────────────────
 
 interface DefinicionRestaurante {
   id: string;
@@ -167,6 +168,32 @@ const RESTAURANTE: readonly DefinicionRestaurante[] = [
     fuenteTitulos: 'Playfair Display',
     fuenteCuerpo: 'Lato',
     radio: 12,
+    estiloBoton: 'pastilla',
+    movimiento: 'medio',
+    claseFuentes: 'elegante',
+  },
+  {
+    // «Café de especialidad» (Figma «16 Sitio web» 2223:46106, lámina 11; tercera en la galería,
+    // lámina 10). Sus cuatro piezas son variantes de tipos que ya existen (contrato seccionesCafe.ts).
+    id: 'cafe_especialidad',
+    nombre: 'Café de especialidad',
+    descripcion: 'Portada en carrusel, historia, carta por sede y reserva en el plano.',
+    subgiro: 'Cafetería',
+    base: 'restaurant_rustic',
+    inicio: [
+      ['hero', 'carousel_editorial'],
+      ['how_it_works', 'chapters'],
+      ['menu_full', 'dotted'],
+      ['reservation', 'band'],
+      ['hours_location', 'cards'],
+    ],
+    modo: 'light',
+    fondo: '#F7F2EA',
+    texto: '#2E3328',
+    acento: '#4A5638',
+    fuenteTitulos: 'Playfair Display',
+    fuenteCuerpo: 'Inter',
+    radio: 24,
     estiloBoton: 'pastilla',
     movimiento: 'medio',
     claseFuentes: 'elegante',
@@ -462,7 +489,7 @@ function plantillaRestaurante(d: DefinicionRestaurante, indice: number): Plantil
   };
 }
 
-/** Catálogo completo: las 8 de restaurante y las plantillas del sitio de los demás giros. */
+/** Catálogo completo: las 9 de restaurante y las plantillas del sitio de los demás giros. */
 export function construirCatalogo(bases: readonly PlantillaBaseSitio[]): CatalogoPlantillas {
   const otras = bases.map(plantillaDesdeBase).filter((p): p is PlantillaCatalogo => p !== null);
   return { version: VERSION_CATALOGO_PLANTILLAS, plantillas: [...RESTAURANTE.map(plantillaRestaurante), ...otras] };

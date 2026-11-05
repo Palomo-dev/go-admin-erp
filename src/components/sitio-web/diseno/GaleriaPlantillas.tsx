@@ -27,7 +27,7 @@ import { TemplateCard } from '../ui/TemplateCard';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
 import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import { validarPlantillaSede, type SedeParaPlantillas } from '@/lib/website/v2/plantillaSede';
-import { modoPorDefecto, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
+import { modoPorDefecto, paginasPropiasDePlantilla, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { MiniaturaPlantilla, useShellDePlantilla } from './MiniaturaPlantilla';
 import { DialogoVistaPreviaPlantilla } from './DialogoVistaPreviaPlantilla';
 import { useContextoDiseno } from './useContextoDiseno';
@@ -88,6 +88,7 @@ function TarjetaPlantilla({
       giro={t(`plantillas.giro.${p.giro}`)}
       iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
       secciones={p.inicio.length}
+      paginas={paginasPropiasDePlantilla(p.id)}
       enUso={enUso}
       etiquetaEnUso={etiquetaEnUso}
       onSeleccionar={onAbrir}

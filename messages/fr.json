@@ -4055,7 +4055,8 @@
         "buscarSucursal": "Rechercher un établissement...",
         "noHaySucursalesCreadas": "Aucun établissement créé",
         "buscarZona": "Rechercher une zone...",
-        "noHayZonasConfiguradas": "Aucune zone configurée"
+        "noHayZonasConfiguradas": "Aucune zone configurée",
+        "zonaDetalle": "{sedes} · {n} tables réservables en ligne"
       },
       "iconField": {
         "sinIcono": "Sans icône",
@@ -31639,6 +31640,7 @@
       "plantilla": {
         "seccionesUna": "1 section",
         "secciones": "{n} sections",
+        "paginas": "{n} pages",
         "enUso": "Utilisé",
         "seleccionada": "Sélectionné",
         "pagina": "Page",
@@ -32628,7 +32630,9 @@
           "reserva": "En-tête avec barre de réservation",
           "carta": "Menu avec la carte",
           "dosBotones": "En-tête avec deux boutons",
-          "transparent": "En-tête transparent"
+          "transparent": "En-tête transparent",
+          "pill": "Menu en pilule",
+          "pillCirculo": "Menu en pilule et bouton rond"
         },
         "pie": {
           "default": "Pied de page classique",
@@ -32672,6 +32676,7 @@
           "barraSuperiorCon": "barre supérieure avec {lista}",
           "boton": "bouton « {texto} »",
           "boton2": "second bouton « {texto} »",
+          "botonCirculo": "bouton rond « {texto} »",
           "barraReserva": "barre de réservation avec dates",
           "menusUno": "1 menu de liens",
           "menus": "{n} menus de liens",
@@ -33282,8 +33287,12 @@
             "centered": "Logo centré",
             "split": "Divisé",
             "minimal": "Minimal",
-            "mega": "Méga-menu"
+            "mega": "Méga-menu",
+            "pill": "Menu en pilule"
           },
+          "formaBoton": "Forme du bouton",
+          "formaBotonPastilla": "Pilule",
+          "formaBotonCirculo": "Cercle",
           "logo": "Position du logo",
           "izquierda": "Gauche",
           "centro": "Centre",
@@ -33793,6 +33802,19 @@
         "calculando": "Vérification des modifications…",
         "listaCambios": "Modifications à publier",
         "sinCambios": "Aucune modification depuis la dernière publication.",
+        "revision": {
+          "titulo": "Vérification avec les données de l’établissement",
+          "ayuda": "Rien de tout cela ne bloque : chaque section a sa solution de repli.",
+          "revisando": "Vérification des données de l’établissement…",
+          "planoListo": "Plan de {zona} à {sede} : {mesas} tables placées et {elementos} éléments fixes",
+          "zonaSinPlano": "{zona} à {sede} a {sinPosicion} tables sur {mesas} sans position sur le plan : on y réserve sans choisir de table",
+          "sinMesas": "{sede} n’a pas de tables dans POS › Tables : la réservation s’affiche par étapes, sans plan",
+          "reservasActivas": "Réservations de table actives à {sede}",
+          "reservasApagadas": "Les réservations de table sont désactivées à {sede} : activez-les dans POS › Réservations de table",
+          "preciosSede": "{sede} a {n} prix propres sur la carte",
+          "precioGeneral": "Pas de prix propres pour {sede} : la carte affiche le prix général",
+          "fotosPortada": "Photos de couverture : {n} sur {total} avec une version mobile"
+        },
         "ver": "Voir",
         "cuando": "Quand ?",
         "ahora": "Publier maintenant",

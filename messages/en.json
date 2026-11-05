@@ -4055,7 +4055,8 @@
         "buscarSucursal": "Search branch...",
         "noHaySucursalesCreadas": "No branches created",
         "buscarZona": "Search zone...",
-        "noHayZonasConfiguradas": "No zones configured"
+        "noHayZonasConfiguradas": "No zones configured",
+        "zonaDetalle": "{sedes} · {n} tables bookable online"
       },
       "iconField": {
         "sinIcono": "No icon",
@@ -31639,6 +31640,7 @@
       "plantilla": {
         "seccionesUna": "1 section",
         "secciones": "{n} sections",
+        "paginas": "{n} pages",
         "enUso": "In use",
         "seleccionada": "Selected",
         "pagina": "Page",
@@ -32628,7 +32630,9 @@
           "reserva": "Header with booking bar",
           "carta": "Menu from the food menu",
           "dosBotones": "Header with two buttons",
-          "transparent": "Transparent header"
+          "transparent": "Transparent header",
+          "pill": "Pill menu",
+          "pillCirculo": "Pill menu and round button"
         },
         "pie": {
           "default": "Classic footer",
@@ -32672,6 +32676,7 @@
           "barraSuperiorCon": "top bar with {lista}",
           "boton": "“{texto}” button",
           "boton2": "second button “{texto}”",
+          "botonCirculo": "round button “{texto}”",
           "barraReserva": "booking bar with dates",
           "menusUno": "1 link menu",
           "menus": "{n} link menus",
@@ -33282,8 +33287,12 @@
             "centered": "Centered logo",
             "split": "Split",
             "minimal": "Minimal",
-            "mega": "Mega menu"
+            "mega": "Mega menu",
+            "pill": "Pill menu"
           },
+          "formaBoton": "Button shape",
+          "formaBotonPastilla": "Pill",
+          "formaBotonCirculo": "Circle",
           "logo": "Logo position",
           "izquierda": "Left",
           "centro": "Center",
@@ -33793,6 +33802,19 @@
         "calculando": "Reviewing the changes…",
         "listaCambios": "Changes to publish",
         "sinCambios": "There are no changes since the last publication.",
+        "revision": {
+          "titulo": "Check against the branch data",
+          "ayuda": "None of this blocks publishing: every section has a fallback.",
+          "revisando": "Checking the branch data…",
+          "planoListo": "{zona} floor plan at {sede}: {mesas} tables placed and {elementos} fixed elements",
+          "zonaSinPlano": "{zona} at {sede} has {sinPosicion} of {mesas} tables without a position on the plan: guests book there without choosing a table",
+          "sinMesas": "{sede} has no tables in POS › Tables: booking is shown as steps, without a plan",
+          "reservasActivas": "Table reservations are on at {sede}",
+          "reservasApagadas": "Table reservations are off at {sede}: turn them on in POS › Table reservations",
+          "preciosSede": "{sede} has {n} own prices on the menu",
+          "precioGeneral": "{sede} has no own prices: the menu shows the general price",
+          "fotosPortada": "Hero photos: {n} of {total} with a mobile version"
+        },
         "ver": "View",
         "cuando": "When?",
         "ahora": "Publish now",

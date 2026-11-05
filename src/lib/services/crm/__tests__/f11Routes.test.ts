@@ -187,9 +187,12 @@ describe('crons F11 — fail-closed', () => {
   });
 
   it('GET /renewals/sync: la organización sale de la sesión; ?organization_id= de otra org se ignora', async () => {
+    // closed_at relativo a hoy: el GET solo lista vencimientos entre -30 días y `days`.
+    // Con una fecha fija (2026-09-01, ciclo de 1 mes) la prueba caducó el 2026-10-31.
+    const cerrada = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
     ctxState.db!.rows.opportunities.push(
-      { id: 'won-120', organization_id: ORG, status: 'won', customer_id: 'cust-a', amount: 10, currency: 'COP', salesperson_id: null, billing_cycle_months: 1, closed_at: '2026-09-01T00:00:00Z', deal_type: 'new' },
-      { id: 'won-121', organization_id: DECOY, status: 'won', customer_id: 'cust-121', amount: 99, currency: 'COP', salesperson_id: null, billing_cycle_months: 1, closed_at: '2026-09-01T00:00:00Z', deal_type: 'new' },
+      { id: 'won-120', organization_id: ORG, status: 'won', customer_id: 'cust-a', amount: 10, currency: 'COP', salesperson_id: null, billing_cycle_months: 1, closed_at: cerrada, deal_type: 'new' },
+      { id: 'won-121', organization_id: DECOY, status: 'won', customer_id: 'cust-121', amount: 99, currency: 'COP', salesperson_id: null, billing_cycle_months: 1, closed_at: cerrada, deal_type: 'new' },
     );
     const res = await getRenewals(req(`/api/crm/renewals/sync?days=365&organization_id=${DECOY}`));
     expect(res.status).toBe(200);

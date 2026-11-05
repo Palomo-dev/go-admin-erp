@@ -32629,7 +32629,9 @@
           "reserva": "En-tête avec barre de réservation",
           "carta": "Menu avec la carte",
           "dosBotones": "En-tête avec deux boutons",
-          "transparent": "En-tête transparent"
+          "transparent": "En-tête transparent",
+          "pill": "Menu en pilule",
+          "pillCirculo": "Menu en pilule et bouton rond"
         },
         "pie": {
           "default": "Pied de page classique",
@@ -32673,6 +32675,7 @@
           "barraSuperiorCon": "barre supérieure avec {lista}",
           "boton": "bouton « {texto} »",
           "boton2": "second bouton « {texto} »",
+          "botonCirculo": "bouton rond « {texto} »",
           "barraReserva": "barre de réservation avec dates",
           "menusUno": "1 menu de liens",
           "menus": "{n} menus de liens",
@@ -33283,8 +33286,12 @@
             "centered": "Logo centré",
             "split": "Divisé",
             "minimal": "Minimal",
-            "mega": "Méga-menu"
+            "mega": "Méga-menu",
+            "pill": "Menu en pilule"
           },
+          "formaBoton": "Forme du bouton",
+          "formaBotonPastilla": "Pilule",
+          "formaBotonCirculo": "Cercle",
           "logo": "Position du logo",
           "izquierda": "Gauche",
           "centro": "Centre",

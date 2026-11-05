@@ -61,10 +61,37 @@ function Logo({ c, color }: { c: Ctx; color?: string }) {
   );
 }
 
-function Boton({ b, c, escala, lleno }: { b: BotonDibujo; c: Ctx; escala?: number; lleno?: boolean }) {
+function Boton({ b, c, escala, lleno, encabezado }: { b: BotonDibujo; c: Ctx; escala?: number; lleno?: boolean; encabezado?: boolean }) {
   const { d, mini } = c;
   const u = escala ?? c.u;
   const solido = b.variante === 'solido';
+  // Botón circular del encabezado (`header_cta_shape: 'circle'`): el texto dentro de un círculo.
+  if (encabezado && solido && d.encabezado.formaBoton === 'circulo') {
+    const lado = (mini ? 30 : 46) * u;
+    return (
+      <span
+        data-boton={b.variante}
+        data-forma="circulo"
+        style={bloque({
+          flexShrink: 0,
+          width: Math.max(lado, mini ? 22 : 0),
+          height: Math.max(lado, mini ? 22 : 0),
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 999,
+          backgroundColor: d.colores.acento,
+          color: d.colores.textoAcento,
+          fontSize: mini ? TEXTO_BOTON_MINI : 9 * u,
+          fontWeight: 500,
+          lineHeight: 1.1,
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
+        })}
+      >
+        {b.corto}
+      </span>
+    );
+  }
   return (
     <span
       data-boton={b.variante}
@@ -156,7 +183,7 @@ function Encabezado({ c, enlaces, celular }: { c: Ctx; enlaces: readonly string[
   const lista = enlaces.slice(0, E.enlaces);
   const acciones = E.acciones.filter((a) => !celular || (a !== 'barraBusqueda' && a !== 'sede'));
   const nodosAcciones = acciones.map((a) => <Accion key={a} a={a} c={c} />);
-  const nodosBotones = celular ? [] : E.botones.map((b) => <Boton key={b.texto} b={b} c={c} />);
+  const nodosBotones = celular ? [] : E.botones.map((b) => <Boton key={b.texto} b={b} c={c} encabezado />);
   const fila = (hijos: ReactNode) => (
     <span data-zona="fila-principal" style={bloque({ alignItems: 'center', gap: 12 * u, padding: `${12 * u}px ${16 * u}px` })}>
       {hijos}
@@ -212,6 +239,20 @@ function Encabezado({ c, enlaces, celular }: { c: Ctx; enlaces: readonly string[
           <Enlaces lista={lista} c={c} centrado />
         </span>
       </>
+    );
+  } else if (E.menu === 'pildora') {
+    // Menú en píldora flotante centrada (composición `pill`).
+    cuerpo = fila(
+      <>
+        <Logo c={c} />
+        <Espacio />
+        <span data-zona="menu-pildora" style={bloque({ alignItems: 'center', padding: `${6 * u}px ${14 * u}px`, borderRadius: 999, border: `1px solid ${d.colores.linea}`, backgroundColor: d.colores.contenido, minWidth: 0 })}>
+          <Enlaces lista={lista} c={c} centrado />
+        </span>
+        <Espacio />
+        {nodosAcciones}
+        {nodosBotones}
+      </>,
     );
   } else if (E.menu === 'oculto') {
     cuerpo = fila(

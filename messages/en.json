@@ -32629,7 +32629,9 @@
           "reserva": "Header with booking bar",
           "carta": "Menu from the food menu",
           "dosBotones": "Header with two buttons",
-          "transparent": "Transparent header"
+          "transparent": "Transparent header",
+          "pill": "Pill menu",
+          "pillCirculo": "Pill menu and round button"
         },
         "pie": {
           "default": "Classic footer",
@@ -32673,6 +32675,7 @@
           "barraSuperiorCon": "top bar with {lista}",
           "boton": "“{texto}” button",
           "boton2": "second button “{texto}”",
+          "botonCirculo": "round button “{texto}”",
           "barraReserva": "booking bar with dates",
           "menusUno": "1 link menu",
           "menus": "{n} link menus",
@@ -33283,8 +33286,12 @@
             "centered": "Centered logo",
             "split": "Split",
             "minimal": "Minimal",
-            "mega": "Mega menu"
+            "mega": "Mega menu",
+            "pill": "Pill menu"
           },
+          "formaBoton": "Button shape",
+          "formaBotonPastilla": "Pill",
+          "formaBotonCirculo": "Circle",
           "logo": "Logo position",
           "izquierda": "Left",
           "centro": "Center",

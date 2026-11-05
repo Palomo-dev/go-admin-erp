@@ -102,7 +102,7 @@ export interface InspectorEncabezadoProps {
   giro?: string | null;
 }
 
-const COMPOSICIONES = ['default', 'centered', 'split', 'minimal', 'mega'] as const;
+const COMPOSICIONES = ['default', 'centered', 'split', 'minimal', 'mega', 'pill'] as const;
 const SIN_MENU = '__ninguno';
 
 export function InspectorEncabezado(p: InspectorEncabezadoProps) {
@@ -470,6 +470,7 @@ function Diseno(p: Interno) {
   const idBcPc = useId();
   const idBcCel = useId();
   const idCol = useId();
+  const idFormaBoton = useId();
   const opcionesBuscador = BUSCADORES.map((v) => ({
     valor: v,
     etiqueta: v === 'icon' ? t('zonaGlobal.diseno.icono') : v === 'bar' ? t('zonaGlobal.diseno.barraVisible') : v === 'hidden' ? t('zonaGlobal.diseno.oculto') : t(`zonaGlobal.diseno.buscadorNombre.${v}`),
@@ -495,6 +496,22 @@ function Diseno(p: Interno) {
           ))}
         </div>
       </div>
+
+      {composicion === 'pill' && (
+        // Botón principal de la píldora: el de hoy o circular (`header_cta_shape`, lámina 11 del café).
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idFormaBoton}>{t('zonaGlobal.diseno.formaBoton')}</EtiquetaGrupo>
+          <ChipsOpcion
+            aria-labelledby={idFormaBoton}
+            opciones={[
+              { valor: 'pill', etiqueta: t('zonaGlobal.diseno.formaBotonPastilla') },
+              { valor: 'circle', etiqueta: t('zonaGlobal.diseno.formaBotonCirculo') },
+            ]}
+            valor={String(valorOpcion(a, 'header_cta_shape') ?? 'pill')}
+            onValorChange={(v) => cambiar({ header_cta_shape: v })}
+          />
+        </div>
+      )}
 
       {composicionConLado(composicion) ? (
         <div className="flex flex-col gap-2">

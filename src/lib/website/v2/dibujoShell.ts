@@ -40,9 +40,10 @@ export type BloquePie = 'horario' | 'contacto' | 'redes' | 'whatsapp' | 'mapa' |
  * - `partido`: el logo al centro y los enlaces a los dos lados;
  * - `fila`: en una fila propia, centrada, debajo del logo;
  * - `oculto`: tras el botón de menú (hamburguesa);
- * - `categorias`: fila de categorías del megamenú.
+ * - `categorias`: fila de categorías del megamenú;
+ * - `pildora`: en una píldora flotante centrada entre el logo y el botón (composición `pill`).
  */
-export type PosicionMenu = 'linea' | 'partido' | 'fila' | 'oculto' | 'categorias';
+export type PosicionMenu = 'linea' | 'partido' | 'fila' | 'oculto' | 'categorias' | 'pildora';
 
 export interface BotonDibujo {
   texto: string;
@@ -60,6 +61,8 @@ export interface DibujoEncabezado {
   /** `null`: sin barra superior. */
   barraSuperior: readonly PiezaBarraSuperior[] | null;
   botones: readonly BotonDibujo[];
+  /** Forma del botón principal (`header_cta_shape`): la de hoy o un círculo con el texto dentro. */
+  formaBoton: 'pastilla' | 'circulo';
   acciones: readonly AccionEncabezado[];
   /** Megamenú abierto con N columnas de categorías. */
   megamenu: { columnas: number } | null;
@@ -162,7 +165,9 @@ export function dibujoEncabezado(e: EntradaShell['encabezado']): DibujoEncabezad
         ? { logo: 'izquierda', menu: 'oculto' }
         : composicion === 'mega'
           ? { logo: 'izquierda', menu: 'categorias' }
-          : composicion === 'split' || logoCentro
+          : composicion === 'pill'
+            ? { logo: 'izquierda', menu: 'pildora' }
+            : composicion === 'split' || logoCentro
             ? { logo: 'centro', menu: 'partido' }
             : { logo: 'izquierda', menu: 'linea' };
 
@@ -195,6 +200,7 @@ export function dibujoEncabezado(e: EntradaShell['encabezado']): DibujoEncabezad
     enlaces: Math.max(1, Math.min(MAX_ENLACES, e.enlaces ?? ENLACES_POR_DEFECTO)),
     barraSuperior: si('show_topbar', o) ? barraSuperior : null,
     botones,
+    formaBoton: opcion('header_cta_shape', o) === 'circle' ? 'circulo' : 'pastilla',
     acciones,
     megamenu: composicion === 'mega' ? { columnas: Number.isFinite(columnas) && columnas >= 2 ? Math.min(columnas, 6) : 4 } : null,
     barraReserva: si('header_booking_bar', o),
@@ -376,6 +382,7 @@ const BLOQUES_DISTINTIVOS: readonly BloquePie[] = ['mapa', 'boletin', 'pagos', '
 /** Rasgo principal del encabezado (para la línea corta). */
 export function rasgoPrincipalEncabezado(e: DibujoEncabezado): RasgoShell {
   if (e.megamenu) return { clave: 'encabezado.mega' };
+  if (e.menu === 'pildora') return { clave: e.formaBoton === 'circulo' && e.botones.length > 0 ? 'encabezado.pillCirculo' : 'encabezado.pill' };
   if (e.composicion === 'centered') return { clave: 'encabezado.centered' };
   if (e.composicion === 'minimal') return { clave: 'encabezado.minimal' };
   if (e.menu === 'partido') return { clave: 'encabezado.logoCentro' };
@@ -406,7 +413,12 @@ export function rasgosShell(d: DibujoShell): { encabezado: RasgoShell[]; pie: Ra
       e.barraSuperior.length ? { clave: 'rasgo.barraSuperiorCon', lista: e.barraSuperior.map((p) => `barra.${p}`) } : { clave: 'rasgo.barraSuperior' },
     );
   }
-  e.botones.forEach((b) => encabezado.push({ clave: b.variante === 'solido' ? 'rasgo.boton' : 'rasgo.boton2', valores: { texto: b.texto } }));
+  e.botones.forEach((b) =>
+    encabezado.push({
+      clave: b.variante !== 'solido' ? 'rasgo.boton2' : e.formaBoton === 'circulo' ? 'rasgo.botonCirculo' : 'rasgo.boton',
+      valores: { texto: b.texto },
+    }),
+  );
   if (e.barraReserva && principal.clave !== 'encabezado.reserva') encabezado.push({ clave: 'rasgo.barraReserva' });
   e.acciones.forEach((a) => encabezado.push({ clave: `accion.${a}` }));
 

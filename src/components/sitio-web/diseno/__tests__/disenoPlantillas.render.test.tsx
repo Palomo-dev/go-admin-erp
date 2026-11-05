@@ -143,7 +143,7 @@ describe('Diseño (A/06a)', () => {
     expect(screen.getByRole('tab', { name: 'Logo y favicon' })).toBeTruthy();
     const marfil = screen.getByRole('radio', { name: /Editorial Marfil/ });
     expect(marfil.getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByText('Ver los 8 presets de restaurante')).toBeTruthy();
+    expect(screen.getByText('Ver los 9 presets de restaurante')).toBeTruthy();
     expect(screen.getByText('Vista previa en vivo · Inicio')).toBeTruthy();
     expect(screen.getAllByRole('button', { name: /Publicar/ }).length).toBeGreaterThan(0);
   });
@@ -211,7 +211,7 @@ describe('Plantillas (A/06b-06e)', () => {
     expect(screen.getAllByText('Usar una plantilla crea un borrador: tu contenido se conserva').length).toBeGreaterThan(0);
     const pestana = screen.getByRole('tab', { name: /Restaurante/ });
     expect(pestana.getAttribute('aria-selected')).toBe('true');
-    expect(within(pestana).getByText('8')).toBeTruthy();
+    expect(within(pestana).getByText('9')).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Todas/ })).toBeTruthy();
     expect(screen.getByText('Noir Omakase')).toBeTruthy();
     // El borrador usa la base `restaurant_rustic` con Libre Caslon: Editorial Marfil.

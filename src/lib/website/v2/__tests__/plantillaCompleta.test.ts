@@ -126,9 +126,9 @@ const inicioDe = (d: DocumentoSitio): PaginaSitio => d.paginas.find((p) => esIni
 const visibles = (p: PaginaSitio) => p.secciones.filter((s) => s.visibilidad.movil || s.visibilidad.escritorio);
 
 describe('catálogo: plantillas por giro', () => {
-  it('Restaurante 8, Tienda 4, Hotel 4, Servicios 4, Gimnasio 4', () => {
+  it('Restaurante 9, Tienda 4, Hotel 4, Servicios 4, Gimnasio 4', () => {
     const c = contarPorGiro(CATALOGO);
-    expect([c.restaurante, c.tienda, c.hotel, c.servicios, c.gimnasio]).toEqual([8, 4, 4, 4, 4]);
+    expect([c.restaurante, c.tienda, c.hotel, c.servicios, c.gimnasio]).toEqual([9, 4, 4, 4, 4]);
   });
 
   it('cada giro tiene una plantilla por defecto', () => {
@@ -500,5 +500,55 @@ describe('encabezado y pie por plantilla (láminas aprobadas en Figma)', () => {
     // Sin la página Eventos, el segundo botón no se pone (nunca un enlace roto).
     const sinEventos = { ...d, paginas: d.paginas.filter((p) => p.slug !== 'eventos') };
     expect(shellPorDefectoDelDocumento(sinEventos, 'restaurante').header.opciones.header_cta2_url).toBeUndefined();
+  });
+});
+
+describe('«Café de especialidad» (Figma 2223:46106, lámina 11): Inicio, Carta, Reservas e Historia', () => {
+  const cafe = plantillaPorId(CATALOGO, 'cafe_especialidad')!;
+  const datos: DatosNegocio = { ...DATOS_VACIOS, nombre: 'Café de prueba', ciudad: 'Medellín', portadaUrl: BANNER };
+  const { documento } = armarPlantillaCompleta(borradorImportado(), cafe, datos, { extendidos: false, generarId: generador() });
+  const porSlug = (slug: string) => documento.paginas.find((p) => p.slug === slug);
+  const estructura = (slug: string) => porSlug(slug)?.secciones.map((s) => `${s.tipo}:${s.variante}`);
+
+  test('las cuatro páginas de la lámina, con sus secciones, y sin las del juego que la plantilla no trae', () => {
+    expect(estructura('home')).toEqual(['hero:carousel_editorial', 'how_it_works:chapters', 'menu_full:dotted', 'reservation:band', 'hours_location:cards']);
+    expect(estructura('carta')).toEqual(['menu_full:dotted']);
+    expect(estructura('reservas-mesa')).toEqual(['reservation:floor_plan', 'hours_location:list']);
+    expect(estructura('historia')).toEqual(['how_it_works:chapters', 'image_text:image_left', 'reservation:band']);
+    for (const slug of ['menu', 'nosotros', 'domicilios', 'contacto', 'galeria']) expect(porSlug(slug)).toBeUndefined();
+    const encabezado = documento.menus.find((m) => m.id === documento.shell.header.menuPrincipalId)!;
+    expect(encabezado.items.map((i) => i.etiqueta)).toEqual(['Inicio', 'Carta', 'Reservas', 'Historia']);
+  });
+
+  test('encabezado en píldora con «Reservar» circular hacia Reservas, transparente sobre la portada', () => {
+    expect(documento.shell.header.composicion).toBe('pill');
+    expect(documento.shell.header.opciones).toMatchObject({
+      header_cta_text: 'Reservar',
+      header_cta_url: '/reservas-mesa',
+      header_cta_shape: 'circle',
+      header_transparent_over_hero: true,
+    });
+    expect(documento.shell.footer.composicion).toBe('three_columns');
+    expect(documento.shell.footer.opciones).toMatchObject({ footer_background: 'primary', footer_show_whatsapp: true });
+    const laCasa = documento.menus.find((m) => m.nombre === 'La casa')!;
+    expect(laCasa.items.map((i) => i.etiqueta)).toEqual(['Historia']);
+  });
+
+  test('la portada lleva la foto de la sede, subtítulo en cursiva y los botones a páginas reales', () => {
+    const portada = porSlug('home')!.secciones[0].contenido;
+    expect(portada).toMatchObject({ eyebrow: 'Medellín', title: 'Café de prueba', subtitle_style: 'italic', show_overlay: true });
+    expect(portada.slides).toEqual([{ image_url: BANNER, alt: 'Café de prueba' }]);
+    expect(portada.buttons).toEqual([
+      { label: 'Reservar mesa', url: '/reservas-mesa', variant: 'solid' },
+      { label: 'Ver carta', url: '/carta', variant: 'outline' },
+    ]);
+    expect(porSlug('home')!.secciones[3].contenido).toMatchObject({ cta_url: '/reservas-mesa' });
+  });
+
+  test('el plano no fija el modo de confirmación (lo resuelve la sede, E1) y los capítulos traen ejemplos sin hechos', () => {
+    const plano = porSlug('reservas-mesa')!.secciones[0].contenido;
+    expect(plano).not.toHaveProperty('booking_mode');
+    const capitulos = porSlug('historia')!.secciones[0].contenido.items as unknown[];
+    expect(capitulos).toHaveLength(3);
   });
 });

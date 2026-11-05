@@ -32630,7 +32630,9 @@
           "reserva": "Cabeçalho com barra de reserva",
           "carta": "Menu com o cardápio",
           "dosBotones": "Cabeçalho com dois botões",
-          "transparent": "Cabeçalho transparente"
+          "transparent": "Cabeçalho transparente",
+          "pill": "Menu em pílula",
+          "pillCirculo": "Menu em pílula e botão redondo"
         },
         "pie": {
           "default": "Rodapé clássico",
@@ -32674,6 +32676,7 @@
           "barraSuperiorCon": "barra superior com {lista}",
           "boton": "botão «{texto}»",
           "boton2": "segundo botão «{texto}»",
+          "botonCirculo": "botão redondo “{texto}”",
           "barraReserva": "barra de reserva com datas",
           "menusUno": "1 menu de links",
           "menus": "{n} menus de links",
@@ -33293,8 +33296,12 @@
             "centered": "Logo centralizado",
             "split": "Dividido",
             "minimal": "Mínimo",
-            "mega": "Megamenu"
+            "mega": "Megamenu",
+            "pill": "Menu em pílula"
           },
+          "formaBoton": "Formato do botão",
+          "formaBotonPastilla": "Pílula",
+          "formaBotonCirculo": "Círculo",
           "logo": "Posição do logo",
           "izquierda": "Esquerda",
           "centro": "Centro",

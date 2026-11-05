@@ -1,7 +1,7 @@
 /**
  * Modelo de dibujo del encabezado y el pie (`dibujoShell.ts`, Figma «16 Sitio web» › «Plantillas ·
  * encabezado y pie en la galería, la vista previa y «Usar»»): cada composición se dibuja
- * distinto, las 32 plantillas del catálogo tienen su dibujo (las que no tienen lámina, el de su
+ * distinto, las 33 plantillas del catálogo tienen su dibujo (las que no tienen lámina, el de su
  * giro, igual que `shellDePlantilla`), las opciones ausentes valen lo que el sitio de hoy, y la
  * línea corta y el texto alternativo nombran lo que distingue a cada una.
  */
@@ -65,9 +65,9 @@ describe('cada composición produce un dibujo distinto', () => {
   });
 });
 
-describe('las 32 plantillas tienen miniatura', () => {
-  test('el catálogo trae 32 plantillas y todas tienen dibujo válido', () => {
-    expect(CATALOGO.plantillas).toHaveLength(32);
+describe('las 33 plantillas tienen miniatura', () => {
+  test('el catálogo trae 33 plantillas y todas tienen dibujo válido', () => {
+    expect(CATALOGO.plantillas).toHaveLength(33);
     for (const p of CATALOGO.plantillas) {
       const d = dibujo(p);
       expect(COMPOSICIONES_HEADER).toContain(d.encabezado.composicion);
@@ -90,11 +90,11 @@ describe('las 32 plantillas tienen miniatura', () => {
     expect(dibujo(porId('parking_tech')).encabezado.composicion).toBe('minimal');
   });
 
-  test('las 8 de restaurante se distinguen entre sí por su encabezado o su pie', () => {
+  test('las 9 de restaurante se distinguen entre sí por su encabezado o su pie', () => {
     const restaurante = CATALOGO.plantillas.filter((p) => p.giro === 'restaurante');
-    expect(restaurante).toHaveLength(8);
+    expect(restaurante).toHaveLength(9);
     const firma = (d: DibujoShell) => JSON.stringify([d.encabezado.logo, d.encabezado.menu, d.encabezado.botones.length, d.encabezado.barraSuperior, d.encabezado.acciones, d.pie.composicion, d.pie.bloques]);
-    expect(new Set(restaurante.map((p) => firma(dibujo(p)))).size).toBe(8);
+    expect(new Set(restaurante.map((p) => firma(dibujo(p)))).size).toBe(9);
   });
 });
 
@@ -113,6 +113,27 @@ describe('fiel a la lámina de cada plantilla', () => {
     const d = dibujo(porId('velvet_lounge'));
     expect(d.encabezado.botones.map((b) => [b.texto, b.variante])).toEqual([['Reservar', 'solido'], ['Eventos', 'contorno']]);
     expect(d.pie).toMatchObject({ composicion: 'three_columns', boletinTitulo: 'Agenda de eventos' });
+  });
+
+  test('Café de especialidad (lámina 11): menú en píldora, botón circular «Reservar» y pie oscuro en 3 columnas', () => {
+    const p = porId('cafe_especialidad');
+    const d = dibujo(p);
+    expect(d.encabezado).toMatchObject({ composicion: 'pill', logo: 'izquierda', menu: 'pildora', formaBoton: 'circulo', acciones: [] });
+    expect(d.encabezado.botones).toEqual([{ texto: 'Reservar', corto: 'Reservar', variante: 'solido' }]);
+    expect(d.pie).toMatchObject({ composicion: 'three_columns', menus: [{ clave: 'la-casa' }, { clave: 'legal' }] });
+    expect(d.pie.bloques).toEqual(expect.arrayContaining(['horario', 'redes', 'whatsapp']));
+    // Pie «primary»: el acento oliva de la plantilla, con texto legible.
+    expect(d.colores.fondoPie).toBe(p.estilo.acento);
+    expect(d.barraCelular).toEqual(['reservar', 'como_llegar', 'llamar']);
+    expect(rasgoPrincipalEncabezado(d.encabezado)).toEqual({ clave: 'encabezado.pillCirculo' });
+    expect(rasgosShell(d).encabezado).toContainEqual({ clave: 'rasgo.botonCirculo', valores: { texto: 'Reservar' } });
+  });
+
+  test('la píldora sin forma circular: el botón de siempre', () => {
+    const e = encabezado('pill', {}, ['Reservar']);
+    expect(e).toMatchObject({ menu: 'pildora', formaBoton: 'pastilla' });
+    expect(rasgoPrincipalEncabezado(e)).toEqual({ clave: 'encabezado.pill' });
+    expect(encabezado('default', { header_cta_shape: 'triangulo' }).formaBoton).toBe('pastilla');
   });
 
   test('Retail Moderno: megamenú de 4 columnas con barra de búsqueda; pie con boletín y medios de pago', () => {

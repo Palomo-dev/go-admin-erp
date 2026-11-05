@@ -112,8 +112,13 @@ export const LAYOUTS_ENCABEZADO = [
 ] as const;
 export const SCROLL_ENCABEZADO = ['fijo', 'ocultar_al_bajar', 'encoger', 'ocultar_y_encoger'] as const;
 
-/** Composiciones del encabezado que pinta el sitio (`header_style` / `shell.header.composicion`). */
-export const COMPOSICIONES_HEADER = ['default', 'centered', 'split', 'minimal', 'mega', 'transparent'] as const;
+/**
+ * Composiciones del encabezado que pinta el sitio (`header_style` / `shell.header.composicion`).
+ * `pill` (plantilla «Café de especialidad», Figma 2223:46106 lámina 11): logo a la izquierda, el
+ * menú en una píldora flotante centrada y el botón a la derecha; transparente sobre la portada
+ * con `header_transparent_over_hero`.
+ */
+export const COMPOSICIONES_HEADER = ['default', 'centered', 'split', 'minimal', 'mega', 'transparent', 'pill'] as const;
 /** Composiciones del pie (`footer_style` / `shell.footer.composicion`). */
 export const COMPOSICIONES_FOOTER = ['default', 'minimal', 'centered', 'three_columns', 'split'] as const;
 /** Fondos del pie. `tema`: el fondo y el texto del tema del sitio. */
@@ -136,6 +141,8 @@ export const ACCIONES_BARRA_MOVIL = ['pedir', 'reservar', 'agendar', 'prueba', '
 export const PESO_ICONO_ENCABEZADO = ['contorno', 'relleno'] as const;
 /** Forma del carrito. El default `null` no pisa `cart_icon`. */
 export const FORMA_CARRITO_ENCABEZADO = ['bolsa', 'carrito'] as const;
+/** Forma del botón principal del encabezado: la de hoy (`pill`) o un círculo con el texto dentro. */
+export const FORMAS_BOTON_ENCABEZADO = ['pill', 'circle'] as const;
 
 const BOOL: ReglaOpcionShell = { tipo: 'booleano' };
 
@@ -147,6 +154,8 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   mobile_logo_position: { zona: 'header', porDefecto: 'inherit', regla: { tipo: 'opcion', valores: ['inherit', 'left', 'center', 'right'] }, nueva: true },
   header_cta_text: { zona: 'header', porDefecto: null },
   header_cta_url: { zona: 'header', porDefecto: null },
+  /** Botón principal circular («Reservar» del café). `pill` = el botón de hoy. */
+  header_cta_shape: { zona: 'header', porDefecto: 'pill', regla: { tipo: 'opcion', valores: FORMAS_BOTON_ENCABEZADO }, nueva: true },
   show_header_cart: { zona: 'header', porDefecto: true },
   show_header_auth: { zona: 'header', porDefecto: true },
   show_topbar: { zona: 'header', porDefecto: false },

@@ -86,7 +86,10 @@ function freshData(): Record<string, Row[]> {
       { id: CONN_TIKTOK, organization_id: ORG, status: 'connected', integration_connectors: { code: 'tiktok_marketing' } },
     ],
     integration_connectors: [{ id: 'c-google', code: 'google_ads' }],
-    organization_domains: [{ organization_id: ORG, host: 'tienda.ejemplo.test', is_primary: true, is_active: true }],
+    // Dominio propio principal verificado: la regla de `hostSitio` (y de `fn_url_publica_org`).
+    organization_domains: [
+      { organization_id: ORG, host: 'tienda.ejemplo.test', domain_type: 'custom_domain', status: 'verified', is_primary: true, is_active: true },
+    ],
     organizations: [{ id: ORG, name: 'Org 120', subdomain: 'org120' }],
     organization_members: [{ id: 1, organization_id: ORG, user_id: USER, role_id: 2, is_super_admin: false, is_active: true }],
     products: [

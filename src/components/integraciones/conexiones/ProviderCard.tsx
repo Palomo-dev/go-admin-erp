@@ -39,6 +39,8 @@ interface ProviderCardProps {
   onConnectBookingApi?: () => void;
   onConnectExpediaApi?: () => void;
   onConnectTripAdvisorApi?: () => void;
+  /** Si viene, el proveedor no se puede conectar todavía: se muestra «Próximamente» con el motivo. */
+  motivoNoDisponible?: string;
 }
 
 export function ProviderCard({
@@ -58,6 +60,7 @@ export function ProviderCard({
   onConnectBookingApi,
   onConnectExpediaApi,
   onConnectTripAdvisorApi,
+  motivoNoDisponible,
 }: ProviderCardProps) {
   const hasConnections = connections.length > 0;
   const connectedCount = connections.filter(c => c.status === 'connected').length;
@@ -130,6 +133,10 @@ export function ProviderCard({
             >
               {hasErrors ? 'Error' : connectedCount > 0 ? `${connectedCount} activa${connectedCount > 1 ? 's' : ''}` : 'Pausado'}
             </Badge>
+          ) : motivoNoDisponible ? (
+            <Badge variant="outline" className="text-gray-500 dark:text-gray-400 text-xs shrink-0">
+              Próximamente
+            </Badge>
           ) : isAvailableInCountry ? (
             <Badge variant="outline" className="text-gray-500 dark:text-gray-400 text-xs shrink-0">
               Disponible
@@ -163,7 +170,16 @@ export function ProviderCard({
 
       {/* Botón de acción */}
       <div className="p-3 pt-2 bg-white/30 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800">
-        {provider.code === 'booking' ? (
+        {motivoNoDisponible ? (
+          <div className="space-y-1.5">
+            <Button variant="outline" size="sm" className="w-full gap-2" disabled aria-describedby={`motivo-${provider.id}`}>
+              Próximamente
+            </Button>
+            <p id={`motivo-${provider.id}`} className="text-xs text-gray-500 dark:text-gray-400">
+              {motivoNoDisponible}
+            </p>
+          </div>
+        ) : provider.code === 'booking' ? (
           <div className="flex gap-2">
             <Button
               size="sm"

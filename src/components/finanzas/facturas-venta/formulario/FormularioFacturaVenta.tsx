@@ -25,7 +25,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Barcode, Copy, FileMinus, FileText, Landmark, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
-import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { DialogoCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/DialogoCuentaLinea';
+import { InterruptorCuentas, PieCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/PiezasCuentaLinea';
+import { useCuentasEfectivas } from '@/components/finanzas/contabilidad/cuentas/useCuentasEfectivas';
+import { useVerCuentas } from '@/components/finanzas/contabilidad/cuentas/useVerCuentas';
+import type { ConsultaCuenta } from '@/lib/finanzas/contabilidad/cuentaEfectiva';
 import { TablaVistaPrevia, vistaPreviaAsientoDocumento, type VistaPreviaAsiento } from '@/components/finanzas/contabilidad/VistaPreviaAsiento';
 import {
   EmptyState,
@@ -729,6 +733,11 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   );
 
   // ── Vista: no editable (emitida o anulada) ──────────────────────────────
+  // Solo lectura: lo que guarda el documento no pasa por aquí, con el interruptor encendido o apagado.
+  const verCuentas = useVerCuentas();
+  const consultasCuenta: ConsultaCuenta[] = lineas.map((l) => ({ clave: l.clave, product_id: l.product_id, cuenta_contable: l.cuenta_contable }));
+  const cuentasLineas = useCuentasEfectivas(sucursal, 'venta', consultasCuenta, verCuentas.activo || !!cuentaLinea);
+
   if (modo.tipo === 'noEditable') {
     return <VistaNoEditable factura={modo.factura} lineas={modo.lineas} cliente={modo.cliente} incluido={incluido} moneda={ctxMoneda} />;
   }
@@ -769,6 +778,9 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       error: errores[`linea.${l.clave}`] ?? null,
       aviso: falta > 0 ? t('lineas.avisoStock', { stock: l.stock ?? 0, sucursal: nombreSucursal ?? '—', faltan: falta }) : null,
       insignias,
+      pieLinea: verCuentas.activo ? (
+        <PieCuentaLinea efectiva={cuentasLineas.porClave.get(l.clave)} cargando={cuentasLineas.cargando} onAbrir={() => setCuentaLinea(l)} />
+      ) : undefined,
       detalleTotal: k.impuesto > 0 ? (incluido ? t('lineas.impuestoIncluido', { importe: formatear(k.impuesto) }) : t('lineas.impuesto', { importe: formatear(k.impuesto) })) : null,
     };
   });
@@ -1122,6 +1134,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       lineas={
         <FormSection titulo={t('secciones.lineas', { n: lineas.length })} icono={ListPlus}>
           <div id="lineas-factura" tabIndex={-1} className="outline-none">
+            <InterruptorCuentas activo={verCuentas.activo} onCambiar={verCuentas.cambiar} />
             <DocumentoLineas
               lineas={lineasKit}
               modo="edicion"
@@ -1383,29 +1396,18 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
               setNotaLinea(null);
             }}
           />
-          <Dialogo
+          <DialogoCuentaLinea
             abierto={!!cuentaLinea}
             onAbiertoChange={(v) => !v && setCuentaLinea(null)}
-            titulo={t('lineas.cuenta')}
-            descripcion={t('lineas.cuentaAyuda')}
-            ancho={520}
-            icono={Landmark}
-            textoCancelar={tk('salir.cancelar')}
-            primario={{
-              etiqueta: t('lineas.cuentaListo'),
-              onClick: () => setCuentaLinea(null),
+            descripcionLinea={cuentaLinea?.descripcion ?? ''}
+            efectiva={cuentaLinea ? cuentasLineas.porClave.get(cuentaLinea.clave) : undefined}
+            cargando={cuentasLineas.cargando}
+            productoId={cuentaLinea?.product_id ?? null}
+            onAplicar={(cambio) => {
+              if (cuentaLinea) cambiarLinea(cuentaLinea.clave, { cuenta_contable: cambio.cuentaLinea });
+              cuentasLineas.recargar();
             }}
-          >
-            {cuentaLinea && (
-              <CampoCuentaContable
-                value={cuentaLinea.cuenta_contable}
-                onChange={(cuenta) => {
-                  cambiarLinea(cuentaLinea.clave, { cuenta_contable: cuenta });
-                  setCuentaLinea((actual) => (actual ? { ...actual, cuenta_contable: cuenta } : actual));
-                }}
-              />
-            )}
-          </Dialogo>
+          />
           <Dialogo
             abierto={!!previa}
             onAbiertoChange={(v) => !v && setPrevia(null)}

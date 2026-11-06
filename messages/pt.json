@@ -40100,5 +40100,300 @@
         "detalle": "Detalhe"
       }
     }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Ver contas contábeis",
+    "cuentaContable": "Conta contábil",
+    "abrirCuenta": "Alterar a conta desta linha",
+    "errorGuardar": "Não foi possível salvar a conta",
+    "estado": {
+      "automatica": "Automática",
+      "categoria": "Da categoria",
+      "propia": "Conta própria",
+      "titulo": "Revisar",
+      "sin_cuenta": "Sem conta"
+    },
+    "rol": {
+      "ingreso": "Receita",
+      "costo": "Custo",
+      "inventario": "Estoque",
+      "devolucion": "Devolução"
+    },
+    "rolCuenta": {
+      "ingreso": "Conta de receita",
+      "costo": "Conta de custo",
+      "inventario": "Conta de estoque",
+      "devolucion": "Conta de devolução"
+    },
+    "accion": {
+      "cambiar": "Alterar",
+      "volverAutomatica": "Voltar para automática",
+      "elegirAuxiliar": "Escolher subconta",
+      "elegirCuenta": "Escolher conta"
+    },
+    "origen": {
+      "linea": "Escolhida para esta linha",
+      "producto": "Vem do produto",
+      "categoria": "Vem da categoria {nombre}",
+      "sede": "Vem da configuração da filial",
+      "sedeClave": "Vem da configuração da filial · {clave}",
+      "empresa": "Vem da configuração contábil",
+      "empresaClave": "Vem da configuração contábil · {clave}",
+      "sector": "Vem da proposta do setor",
+      "sectorClave": "Vem da proposta do setor · {clave}",
+      "regla": "Vem da regra contábil",
+      "ninguno": "Sem conta configurada",
+      "prevista": "Subconta da filial. Criada ao confirmar o documento",
+      "sinCuenta": "Não há conta para este movimento",
+      "tituloConAuxiliar": "{cuenta} é conta de título. O lançamento usará {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} é conta de título e não recebe movimentos"
+    },
+    "selector": {
+      "placeholder": "Escolher conta",
+      "buscar": "Buscar por código ou nome",
+      "vacio": "Não há contas de movimento",
+      "sinResultados": "Nenhuma conta de movimento corresponde"
+    },
+    "resumen": {
+      "automaticaTitulo": "Contabilidade automática",
+      "automatica": {
+        "producto": "Este produto usa as contas da sua categoria e da configuração contábil. Você não precisa fazer nada.",
+        "categoria": "Esta categoria usa as contas da configuração contábil. Você não precisa fazer nada."
+      },
+      "insigniaAutomatica": "Automática",
+      "insigniaPropias": "Personalizado",
+      "propiasTitulo": "{n, plural, one {1 conta própria} other {# contas próprias}}",
+      "propiasCuerpo": "Próprias: {cuentas}. {n, plural, =0 {} one {A outra continua automática.} other {As outras # continuam automáticas.}}",
+      "revisarTitulo": "{n, plural, one {1 conta para revisar} other {# contas para revisar}}",
+      "revisarCuerpo": "A conta de {rol} não recebe movimentos.",
+      "ver": "Ver ou alterar contas",
+      "ocultar": "Ocultar contas",
+      "corregir": "Corrigir",
+      "siNoCambias": "Se você não alterar nada, cada conta continua automática.",
+      "dondeAplica": "Estas contas são usadas em faturas de venda e de compra. O ponto de venda continua usando a regra contábil."
+    },
+    "sugerencia": {
+      "texto": "Sugerida: {cuenta} {nombre}. Usada em {veces} das últimas {compras} compras deste fornecedor.",
+      "usar": "Usar"
+    },
+    "dialogo": {
+      "titulo": "Conta contábil desta linha",
+      "hoySeUsa": "Em uso hoje",
+      "cambiarPor": "Alterar para",
+      "ayudaBuscar": "Busque por código ou nome. Só aparecem contas de movimento.",
+      "dondeAplicar": "Onde aplicar a alteração?",
+      "aplicar": "Aplicar",
+      "eligeCuenta": "Escolha uma conta"
+    },
+    "alcance": {
+      "documento": "Somente nesta fatura",
+      "producto": "Sempre para este produto",
+      "categoria": "Para toda a categoria {nombre}",
+      "categoriaConProductos": "Para toda a categoria {nombre} ({n, plural, one {1 produto} other {# produtos}})",
+      "aviso": "Aplica-se aos novos documentos. Os lançamentos já publicados não mudam."
+    },
+    "config": {
+      "titulo": "Configuração contábil",
+      "subtitulo": "Contas padrão usadas pelos lançamentos automáticos",
+      "subtituloCategoria": "Defina uma vez por categoria e todos os produtos herdam",
+      "migaFinanzas": "Finanças",
+      "migaContabilidad": "Contabilidade",
+      "pestanaDefecto": "Padrão",
+      "pestanaCategoria": "Por categoria",
+      "pestanaFallos": "Falhas de contabilização",
+      "proponer": "Propor conforme o setor",
+      "guardar": "Salvar",
+      "aplicarA": "Aplicar a",
+      "todaOrganizacion": "Toda a organização",
+      "ayudaAlcance": "Uma filial pode ter suas próprias contas; se não, herda as da organização.",
+      "cuenta": "Conta",
+      "origenColumna": "Origem",
+      "usaRegla": "Usa a conta da regra",
+      "usarRegla": "Usar a conta da regra",
+      "nClaves": "{n, plural, one {1 conta} other {# contas}}",
+      "ventasPorRegla": "Hoje as vendas usam a conta {cuenta} da regra contábil, não estas chaves. Alterá-las aqui não muda esse lançamento.",
+      "errorCargar": "Não foi possível carregar a configuração contábil",
+      "errorGuardar": "Não foi possível salvar. A conta precisa existir e ser de movimento.",
+      "guardadaOrganizacion": "Configuração da organização salva",
+      "guardadaSede": "Configuração da filial salva",
+      "sinFallos": "Sem falhas de contabilização",
+      "sinFallosAyuda": "Todos os documentos têm seu lançamento.",
+      "categoria": "Categoria",
+      "productos": "Produtos",
+      "buscarCategoria": "Buscar categoria",
+      "soloPropias": "Somente com conta própria",
+      "sinCategorias": "Não há categorias",
+      "deCategoria": "de {nombre}",
+      "editarCuentas": "Editar contas",
+      "cuentasDe": "Contas de {nombre}",
+      "heredan": "{n, plural, one {1 produto herda estas contas} other {# produtos herdam estas contas}}, assim como suas subcategorias.",
+      "guardadaCategoria": "Contas de {nombre} salvas",
+      "grupo": {
+        "tesoreria_cartera": "Tesouraria e carteira",
+        "ventas": "Vendas",
+        "inventario": "Estoque",
+        "impuestos": "Impostos",
+        "personal": "Pessoal"
+      },
+      "origen": {
+        "regla": "Regra contábil",
+        "hereda": "Herda da organização",
+        "sede": "Desta filial",
+        "sector": "Proposta do setor",
+        "contador": "Escolhida pelo seu contador"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 conta para revisar} other {# contas para revisar}}",
+        "conSugerida": "{clave} aponta para {cuenta}, que não recebe movimentos. Sugerida: {sugerida}.",
+        "sinSugerida": "{clave} aponta para {cuenta}, que não recebe movimentos. Escolha uma conta de movimento.",
+        "usar": "Usar a sugerida"
+      },
+      "reclasificar": {
+        "accion": "Reclassificar o IVA histórico",
+        "titulo": "Reclassificar IVA de 2405 para 2408",
+        "descripcion": "É criado um novo lançamento (débito 2405, crédito 2408) pelo líquido das linhas de IVA já publicadas em 2405. As linhas anteriores ficam iguais. Sem saldo, nenhum lançamento é criado.",
+        "crear": "Criar o lançamento",
+        "repetida": "Essa reclassificação já foi feita",
+        "sinSaldo": "Não há IVA em 2405 para reclassificar",
+        "creado": "Lançamento de reclassificação criado",
+        "error": "Não foi possível reclassificar o IVA"
+      },
+      "asistente": {
+        "titulo": "Proposta para {sector}",
+        "descripcion": "Vem do modelo do plano de contas e do setor. É salva no escopo escolhido, organização ou filial. Só são salvas as contas de movimento que já estão no plano. O resto continua com a regra.",
+        "aplicar": "Aplicar esta proposta",
+        "noEnPlan": "não será salva: não está no plano"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Caixa",
+        "ayuda": "Substitui o 1105 quando a regra usa caixa."
+      },
+      "bancos": {
+        "nombre": "Bancos",
+        "ayuda": "Substitui o 1110. A subconta de um banco específico não é alterada."
+      },
+      "anticipos": {
+        "nombre": "Adiantamentos",
+        "ayuda": "Substitui o 2805, adiantamentos recebidos."
+      },
+      "clientes": {
+        "nombre": "Clientes",
+        "ayuda": "Substitui o 1305, exceto empréstimos a funcionários."
+      },
+      "proveedores": {
+        "nombre": "Fornecedores",
+        "ayuda": "Substitui o 2205 e o 2105 que as regras antigas usavam para fornecedores."
+      },
+      "ventas_productos": {
+        "nombre": "Vendas de produtos",
+        "ayuda": "Receita creditada em 4135, 414015, 4145 ou 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Vendas de serviços",
+        "ayuda": "Receita creditada em 4235, 4115, 4140 ou 4155."
+      },
+      "devoluciones": {
+        "nombre": "Devoluções",
+        "ayuda": "Notas de crédito, anulações e o débito de uma conta de receita."
+      },
+      "descuentos": {
+        "nombre": "Descontos",
+        "ayuda": "A linha de desconto do lançamento. Não substitui a devolução."
+      },
+      "inventario": {
+        "nombre": "Estoque",
+        "ayuda": "Substitui o 1435 e o 1405 das regras antigas."
+      },
+      "costo_ventas": {
+        "nombre": "Custo das vendas",
+        "ayuda": "Substitui o 6135, o 6140 e o 6105."
+      },
+      "iva_generado": {
+        "nombre": "IVA gerado",
+        "ayuda": "IVA da venda. Creditado em 240805 e não debitado no reconhecimento."
+      },
+      "iva_descontable": {
+        "nombre": "IVA dedutível",
+        "ayuda": "IVA da compra. Debitado em 240810."
+      },
+      "retefuente": {
+        "nombre": "Retenção na fonte",
+        "ayuda": "Substitui o 2365 quando a compra não tem conta própria no imposto."
+      },
+      "reteiva": {
+        "nombre": "Retenção de IVA",
+        "ayuda": "23670501 (subconta de 2367, conta de título)."
+      },
+      "reteica": {
+        "nombre": "Retenção de ICA",
+        "ayuda": "23680501 (subconta de 2368, conta de título)."
+      },
+      "propinas": {
+        "nombre": "Gorjetas",
+        "ayuda": "O 5105 somente quando o documento é uma gorjeta."
+      },
+      "comisiones": {
+        "nombre": "Comissões",
+        "ayuda": "52950501 (canais/OTA, subconta de 529505) ou 52051801 (funcionários). 5235 é «Serviços» de vendas, não comissões."
+      },
+      "nomina": {
+        "nombre": "Folha de pagamento",
+        "ayuda": "O 5105 somente quando o documento é folha de pagamento."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Folha a pagar",
+        "ayuda": "O 2505 somente na folha."
+      },
+      "nomina_aportes": {
+        "nombre": "Contribuições da folha",
+        "ayuda": "O 2370 somente na folha. Uma comissão que ainda usa 2370 não é movida."
+      },
+      "faltante_inventario": {
+        "nombre": "Falta de estoque",
+        "ayuda": "Débito da falta. Padrão 519595. O custo das vendas não é usado aqui."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Roubo e sinistro",
+        "ayuda": "Débito quando o motivo do ajuste é roubo ou sinistro. Padrão 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Consumo interno",
+        "ayuda": "Débito do consumo interno. Padrão 519595. Nunca a classe 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifesto a pagar",
+        "ayuda": "Crédito do manifesto que não é de transporte. Padrão 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Manifesto de transporte",
+        "ayuda": "Crédito quando a organização é de transporte. Padrão 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Saldo inicial",
+        "ayuda": "Crédito do saldo inicial de estoque: 37050501 lucros acumulados (3710 se houver prejuízo acumulado). Não use 3105: o capital só se move com aportes."
+      },
+      "impuesto_consumo": {
+        "nombre": "Imposto sobre consumo",
+        "ayuda": "Imposto sobre consumo. Padrão 2495."
+      },
+      "redondeo": {
+        "nombre": "Arredondamento a favor",
+        "ayuda": "Crédito da linha de arredondamento em pesos. Padrão 42958101. Sem conta válida, o lançamento fica pendente."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Arredondamento contra",
+        "ayuda": "Débito da linha de arredondamento em pesos. Padrão 53959501. Sem conta válida, o lançamento fica pendente."
+      },
+      "compra_servicio": {
+        "nombre": "Compra de serviço",
+        "ayuda": "Crédito de uma compra de serviço ou de transporte. Padrão 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Receitas diversas",
+        "ayuda": "Crédito de uma sobra real de estoque. Padrão 42959501 (subconta de 4295). Não é 4250."
+      }
+    }
   }
 }

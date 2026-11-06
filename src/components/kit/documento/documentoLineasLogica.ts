@@ -3,6 +3,7 @@
  * compra, NC, cotización, recepción de OC). Sin React. **No calcula** el total
  * de la línea ni sus impuestos: llegan del servicio.
  */
+import type { ReactNode } from 'react';
 import { contextoMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 export type ModoLineas = 'lectura' | 'edicion' | 'recepcion';
@@ -55,6 +56,8 @@ export interface LineaDocumento {
   aviso?: string | null;
   /** Chips bajo el producto: «Stock 14», «Faltan 2», «Ítem manual», «Recibido 12/12». */
   insignias?: readonly InsigniaLinea[];
+  /** Bajo el producto, a todo el ancho de la celda: la cuenta contable de la línea. */
+  pieLinea?: ReactNode;
   /** Edición: la descripción se escribe en la línea (ítem manual). */
   descripcionEditable?: boolean;
   /** Edición: impuestos elegidos de la organización (`ImpuestosLinea`). */

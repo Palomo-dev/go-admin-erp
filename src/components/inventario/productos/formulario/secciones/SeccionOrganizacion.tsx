@@ -19,7 +19,7 @@ import { PROVEEDOR_VACIO, type ProveedorForm } from '../../logica/formularioProd
 import { HojaNuevoProveedor } from '../../detalle/proveedores/HojaNuevoProveedor';
 import { DialogoNuevaEtiqueta } from '../../detalle/proveedores/DialogoNuevaEtiqueta';
 import { hexEtiqueta } from '../../detalle/proveedores/colorEtiqueta';
-import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { BloqueCuentasCatalogo } from '@/components/finanzas/contabilidad/cuentas/BloqueCuentasCatalogo';
 import { ESTACIONES_COCINA, esEstacionCocina, type EstacionCocina } from '@/lib/pos/estacionEfectiva';
 
 /**
@@ -50,6 +50,15 @@ export function SeccionOrganizacion({
   const setProveedor = <K extends keyof ProveedorForm>(k: K, v: ProveedorForm[K]) => cambiar('proveedor', { ...proveedor, [k]: v });
 
   const categoria = catalogos.categorias.find((c) => c.id === estado.category_id) ?? null;
+  const valoresCuentas = useMemo(
+    () => ({
+      ingreso: estado.cuenta_ingreso,
+      costo: estado.cuenta_costo,
+      inventario: estado.cuenta_inventario,
+      devolucion: estado.cuenta_devolucion,
+    }),
+    [estado.cuenta_ingreso, estado.cuenta_costo, estado.cuenta_inventario, estado.cuenta_devolucion],
+  );
   const estacionDeCategoria = categoria?.station;
   const estacionCategoria: EstacionCocina | null = esEstacionCocina(estacionDeCategoria) ? estacionDeCategoria : null;
   // Estación: por defecto hereda la de la categoría (station NULL) y sigue sus
@@ -225,20 +234,12 @@ export function SeccionOrganizacion({
       <div className="border-t border-line pt-4">
         <p className="text-sm font-medium text-fg">{t('cuentas.titulo')}</p>
         <p className="mb-3 text-xs text-fg-secondary">{t('cuentas.ayuda')}</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FormField etiqueta={t('cuentas.ingreso')}>
-            <CampoCuentaContable value={estado.cuenta_ingreso} onChange={(cuenta) => cambiar('cuenta_ingreso', cuenta)} />
-          </FormField>
-          <FormField etiqueta={t('cuentas.costo')}>
-            <CampoCuentaContable value={estado.cuenta_costo} onChange={(cuenta) => cambiar('cuenta_costo', cuenta)} />
-          </FormField>
-          <FormField etiqueta={t('cuentas.inventario')}>
-            <CampoCuentaContable value={estado.cuenta_inventario} onChange={(cuenta) => cambiar('cuenta_inventario', cuenta)} />
-          </FormField>
-          <FormField etiqueta={t('cuentas.devolucion')}>
-            <CampoCuentaContable value={estado.cuenta_devolucion} onChange={(cuenta) => cambiar('cuenta_devolucion', cuenta)} />
-          </FormField>
-        </div>
+        <BloqueCuentasCatalogo
+          sujeto="producto"
+          categoriaId={estado.category_id}
+          valores={valoresCuentas}
+          onCambiar={(rol, cuenta) => cambiar(`cuenta_${rol}`, cuenta)}
+        />
       </div>
 
       <div className="border-t border-line pt-4">

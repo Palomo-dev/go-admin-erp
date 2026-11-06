@@ -40090,5 +40090,300 @@
         "detalle": "Detail"
       }
     }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Show ledger accounts",
+    "cuentaContable": "Ledger account",
+    "abrirCuenta": "Change the account of this line",
+    "errorGuardar": "The account could not be saved",
+    "estado": {
+      "automatica": "Automatic",
+      "categoria": "From category",
+      "propia": "Own account",
+      "titulo": "Review",
+      "sin_cuenta": "No account"
+    },
+    "rol": {
+      "ingreso": "Income",
+      "costo": "Cost",
+      "inventario": "Inventory",
+      "devolucion": "Return"
+    },
+    "rolCuenta": {
+      "ingreso": "Income account",
+      "costo": "Cost account",
+      "inventario": "Inventory account",
+      "devolucion": "Returns account"
+    },
+    "accion": {
+      "cambiar": "Change",
+      "volverAutomatica": "Back to automatic",
+      "elegirAuxiliar": "Choose sub-account",
+      "elegirCuenta": "Choose account"
+    },
+    "origen": {
+      "linea": "Chosen for this line",
+      "producto": "Comes from the product",
+      "categoria": "Comes from the category {nombre}",
+      "sede": "Comes from the branch settings",
+      "sedeClave": "Comes from the branch settings · {clave}",
+      "empresa": "Comes from the accounting settings",
+      "empresaClave": "Comes from the accounting settings · {clave}",
+      "sector": "Comes from the industry proposal",
+      "sectorClave": "Comes from the industry proposal · {clave}",
+      "regla": "Comes from the accounting rule",
+      "ninguno": "No account configured",
+      "prevista": "Branch sub-account. Created when the document is confirmed",
+      "sinCuenta": "There is no account for this entry",
+      "tituloConAuxiliar": "{cuenta} is a header account. The entry will use {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} is a header account and takes no postings"
+    },
+    "selector": {
+      "placeholder": "Choose account",
+      "buscar": "Search by code or name",
+      "vacio": "There are no posting accounts",
+      "sinResultados": "No posting account matches"
+    },
+    "resumen": {
+      "automaticaTitulo": "Automatic accounting",
+      "automatica": {
+        "producto": "This product uses the accounts of its category and the accounting settings. You have nothing to do.",
+        "categoria": "This category uses the accounts of the accounting settings. You have nothing to do."
+      },
+      "insigniaAutomatica": "Automatic",
+      "insigniaPropias": "Customized",
+      "propiasTitulo": "{n, plural, one {1 own account} other {# own accounts}}",
+      "propiasCuerpo": "Own: {cuentas}. {n, plural, =0 {} one {The other one stays automatic.} other {The other # stay automatic.}}",
+      "revisarTitulo": "{n, plural, one {1 account to review} other {# accounts to review}}",
+      "revisarCuerpo": "The {rol} account takes no postings.",
+      "ver": "View or change accounts",
+      "ocultar": "Hide accounts",
+      "corregir": "Fix",
+      "siNoCambias": "If you change nothing, each account stays automatic.",
+      "dondeAplica": "These accounts are used on sales and purchase invoices. The point of sale still uses the accounting rule."
+    },
+    "sugerencia": {
+      "texto": "Suggested: {cuenta} {nombre}. Used in {veces} of the last {compras} purchases from this supplier.",
+      "usar": "Use"
+    },
+    "dialogo": {
+      "titulo": "Ledger account of this line",
+      "hoySeUsa": "In use today",
+      "cambiarPor": "Change to",
+      "ayudaBuscar": "Search by code or name. Only posting accounts are listed.",
+      "dondeAplicar": "Where should the change apply?",
+      "aplicar": "Apply",
+      "eligeCuenta": "Choose an account"
+    },
+    "alcance": {
+      "documento": "Only on this invoice",
+      "producto": "Always for this product",
+      "categoria": "For the whole category {nombre}",
+      "categoriaConProductos": "For the whole category {nombre} ({n, plural, one {1 product} other {# products}})",
+      "aviso": "Applies to new documents. Entries already posted do not change."
+    },
+    "config": {
+      "titulo": "Accounting settings",
+      "subtitulo": "Default accounts used by automatic entries",
+      "subtituloCategoria": "Assign once per category and all its products inherit",
+      "migaFinanzas": "Finance",
+      "migaContabilidad": "Accounting",
+      "pestanaDefecto": "Default",
+      "pestanaCategoria": "By category",
+      "pestanaFallos": "Posting failures",
+      "proponer": "Propose by industry",
+      "guardar": "Save",
+      "aplicarA": "Apply to",
+      "todaOrganizacion": "Whole organization",
+      "ayudaAlcance": "A branch can have its own accounts; otherwise it inherits those of the organization.",
+      "cuenta": "Account",
+      "origenColumna": "Source",
+      "usaRegla": "Uses the rule account",
+      "usarRegla": "Use the rule account",
+      "nClaves": "{n, plural, one {1 account} other {# accounts}}",
+      "ventasPorRegla": "Sales currently take account {cuenta} from the accounting rule, not from these keys. Changing them here does not change that entry.",
+      "errorCargar": "The accounting settings could not be loaded",
+      "errorGuardar": "It could not be saved. The account must exist and be a posting account.",
+      "guardadaOrganizacion": "Organization settings saved",
+      "guardadaSede": "Branch settings saved",
+      "sinFallos": "No posting failures",
+      "sinFallosAyuda": "All documents have their entry.",
+      "categoria": "Category",
+      "productos": "Products",
+      "buscarCategoria": "Search category",
+      "soloPropias": "Only with own account",
+      "sinCategorias": "There are no categories",
+      "deCategoria": "from {nombre}",
+      "editarCuentas": "Edit accounts",
+      "cuentasDe": "Accounts of {nombre}",
+      "heredan": "{n, plural, one {1 product inherits these accounts} other {# products inherit these accounts}}, and so do its subcategories.",
+      "guardadaCategoria": "Accounts of {nombre} saved",
+      "grupo": {
+        "tesoreria_cartera": "Treasury and receivables",
+        "ventas": "Sales",
+        "inventario": "Inventory",
+        "impuestos": "Taxes",
+        "personal": "Staff"
+      },
+      "origen": {
+        "regla": "Accounting rule",
+        "hereda": "Inherited from the organization",
+        "sede": "From this branch",
+        "sector": "Industry proposal",
+        "contador": "Chosen by your accountant"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 account to review} other {# accounts to review}}",
+        "conSugerida": "{clave} points to {cuenta}, which takes no postings. Suggested: {sugerida}.",
+        "sinSugerida": "{clave} points to {cuenta}, which takes no postings. Choose a posting account.",
+        "usar": "Use the suggested one"
+      },
+      "reclasificar": {
+        "accion": "Reclassify historical VAT",
+        "titulo": "Reclassify VAT from 2405 to 2408",
+        "descripcion": "A new entry is created (debit 2405, credit 2408) for the net of the VAT lines already posted to 2405. Earlier lines stay the same. With no balance, no entry is created.",
+        "crear": "Create the entry",
+        "repetida": "That reclassification was already done",
+        "sinSaldo": "There is no VAT in 2405 to reclassify",
+        "creado": "Reclassification entry created",
+        "error": "The VAT could not be reclassified"
+      },
+      "asistente": {
+        "titulo": "Proposal for {sector}",
+        "descripcion": "It comes from the chart of accounts template and the industry. It is saved in the chosen scope, organization or branch. Only accounts already in the chart that are posting accounts are saved. The rest stay with the rule.",
+        "aplicar": "Apply this proposal",
+        "noEnPlan": "will not be saved: not in the chart"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Cash",
+        "ayuda": "Replaces 1105 when the rule uses cash."
+      },
+      "bancos": {
+        "nombre": "Banks",
+        "ayuda": "Replaces 1110. The sub-account of a specific bank is not changed."
+      },
+      "anticipos": {
+        "nombre": "Advances",
+        "ayuda": "Replaces 2805, advances received."
+      },
+      "clientes": {
+        "nombre": "Customers",
+        "ayuda": "Replaces 1305, except loans to employees."
+      },
+      "proveedores": {
+        "nombre": "Suppliers",
+        "ayuda": "Replaces 2205 and the 2105 that old rules used for suppliers."
+      },
+      "ventas_productos": {
+        "nombre": "Product sales",
+        "ayuda": "Income credited to 4135, 414015, 4145 or 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Service sales",
+        "ayuda": "Income credited to 4235, 4115, 4140 or 4155."
+      },
+      "devoluciones": {
+        "nombre": "Returns",
+        "ayuda": "Credit notes, voids and the debit of an income account."
+      },
+      "descuentos": {
+        "nombre": "Discounts",
+        "ayuda": "The discount line of the entry. It does not replace returns."
+      },
+      "inventario": {
+        "nombre": "Inventory",
+        "ayuda": "Replaces 1435 and 1405 from old rules."
+      },
+      "costo_ventas": {
+        "nombre": "Cost of sales",
+        "ayuda": "Replaces 6135, 6140 and 6105."
+      },
+      "iva_generado": {
+        "nombre": "Output VAT",
+        "ayuda": "VAT on sales. Credited to 240805 and not debited on accrual."
+      },
+      "iva_descontable": {
+        "nombre": "Input VAT",
+        "ayuda": "VAT on purchases. Debited to 240810."
+      },
+      "retefuente": {
+        "nombre": "Income tax withholding",
+        "ayuda": "Replaces 2365 when the purchase has no account of its own in the tax."
+      },
+      "reteiva": {
+        "nombre": "VAT withholding",
+        "ayuda": "23670501 (sub-account of 2367, a header account)."
+      },
+      "reteica": {
+        "nombre": "ICA withholding",
+        "ayuda": "23680501 (sub-account of 2368, a header account)."
+      },
+      "propinas": {
+        "nombre": "Tips",
+        "ayuda": "5105 only when the document is a tip."
+      },
+      "comisiones": {
+        "nombre": "Commissions",
+        "ayuda": "52950501 (channels/OTA, sub-account of 529505) or 52051801 (employees). 5235 is sales “Services”, not commissions."
+      },
+      "nomina": {
+        "nombre": "Payroll",
+        "ayuda": "5105 only when the document is payroll."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Payroll payable",
+        "ayuda": "2505 only in payroll."
+      },
+      "nomina_aportes": {
+        "nombre": "Payroll contributions",
+        "ayuda": "2370 only in payroll. A commission still using 2370 is not moved."
+      },
+      "faltante_inventario": {
+        "nombre": "Inventory shortage",
+        "ayuda": "Debit of the shortage. Default 519595. Cost of sales is not used here."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Theft and loss",
+        "ayuda": "Debit when the adjustment reason is theft or casualty. Default 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Internal use",
+        "ayuda": "Debit of internal use. Default 519595. Never class 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifest payable",
+        "ayuda": "Credit of a non-transport manifest. Default 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Transport manifest",
+        "ayuda": "Credit when the organization is a transport company. Default 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Opening balance",
+        "ayuda": "Credit of the opening inventory balance: 37050501 retained earnings (3710 with accumulated losses). Do not use 3105: capital only moves with contributions."
+      },
+      "impuesto_consumo": {
+        "nombre": "Consumption tax",
+        "ayuda": "Consumption tax. Default 2495."
+      },
+      "redondeo": {
+        "nombre": "Rounding gain",
+        "ayuda": "Credit of the peso rounding line. Default 42958101. Without a valid account, the entry stays pending."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Rounding loss",
+        "ayuda": "Debit of the peso rounding line. Default 53959501. Without a valid account, the entry stays pending."
+      },
+      "compra_servicio": {
+        "nombre": "Service purchase",
+        "ayuda": "Credit of a service or transport purchase. Default 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Other income",
+        "ayuda": "Credit of an actual inventory surplus. Default 42959501 (sub-account of 4295). It is not 4250."
+      }
+    }
   }
 }

@@ -24,6 +24,19 @@ Orden de resolución:
 
 Los pasos 1 a 3 los resuelve `fn_cuenta_catalogo_linea`, y los pasos 4 a 6, `fn_cuenta_por_clave`.
 
+**Corrección del 2026-11-06, tras leer el motor y probarlo con asientos reales:** el orden de arriba
+vale para la línea, el producto y la categoría. Sin ninguno de los tres, el asiento **no** sigue los
+pasos 4 a 6: parte de la regla contable.
+
+| Documento | De dónde sale la cuenta sin cuenta propia |
+|---|---|
+| Venta | La regla. La clave solo se consulta si el código de la regla es uno que `fn_clave_cuenta_configurable` reconoce. Con los auxiliares de hoy, en 30 de 33 organizaciones la clave `ventas_productos` no se consulta, y `ventas_servicios` en ninguna |
+| Compra | La regla, y luego el auxiliar de inventario de la sede, aunque la línea sea un gasto |
+| POS (`sales`) | Siempre la regla: `fn_auto_journal_sale_pos` no mira producto ni categoría |
+| Costo de lo vendido | La regla de inventario. `products.cuenta_costo` solo aplica en hoteles y restaurantes |
+
+`fn_cuentas_efectivas` responde esto tal cual: muestra lo que hará el asiento, no el orden ideal.
+
 Medido el 2026-11-06:
 
 | Dato | Valor |
@@ -102,12 +115,12 @@ Componentes nuevos en `2317:39697`: `FilaPlanCuenta`, `CampoCuentaAutomatica`, `
 
 | # | Qué | Por qué |
 |---|---|---|
-| 1 | RPC de lectura «cuenta efectiva» por línea, producto o categoría: código, nombre y origen | Mostrar lo mismo que hará el asiento, sin duplicar lógica en el navegador |
+| 1 | RPC de lectura «cuenta efectiva» por línea, producto o categoría: código, nombre y origen | **Hecho:** `fn_cuentas_efectivas` |
 | 2 | RPC que crea el auxiliar y traslada el saldo del padre con su asiento | **Hecho:** `fn_plan_crear_auxiliar` |
 | 3 | Completar `puc_plantilla` con las subcuentas del Decreto 2650 | Autocompletar nombres |
-| 4 | Heredar la cuenta de la categoría padre | Hoy `fn_cuenta_catalogo_linea` solo mira la categoría directa |
-| 5 | Cuenta sugerida por proveedor en líneas manuales de compra | Decisión 3 |
-| 6 | Verificar que un producto de tipo servicio use `ventas_servicios` | Sin verificar en este análisis |
+| 4 | Heredar la cuenta de la categoría padre | **Hecho:** `fn_cuenta_categoria_heredada`. La categoría más cercana gana |
+| 5 | Cuenta sugerida por proveedor en líneas manuales de compra | **Hecho:** `fn_cuenta_sugerida_proveedor`. No se escribe sola: la acepta la persona |
+| 6 | Verificar que un producto de tipo servicio use `ventas_servicios` | **Verificado: no la usa.** El rol es `ingreso` sin mirar `product_type` |
 
 Regla: cada RPC con su `.sql` y su reversión, según `docs/POLITICA-MIGRACIONES.md`, y textos en es/en/fr/pt.
 

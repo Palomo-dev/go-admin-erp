@@ -40090,5 +40090,300 @@
         "detalle": "Détail"
       }
     }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Voir les comptes comptables",
+    "cuentaContable": "Compte comptable",
+    "abrirCuenta": "Changer le compte de cette ligne",
+    "errorGuardar": "Le compte n’a pas pu être enregistré",
+    "estado": {
+      "automatica": "Automatique",
+      "categoria": "De la catégorie",
+      "propia": "Compte propre",
+      "titulo": "À vérifier",
+      "sin_cuenta": "Sans compte"
+    },
+    "rol": {
+      "ingreso": "Produit",
+      "costo": "Coût",
+      "inventario": "Stock",
+      "devolucion": "Retour"
+    },
+    "rolCuenta": {
+      "ingreso": "Compte de produit",
+      "costo": "Compte de coût",
+      "inventario": "Compte de stock",
+      "devolucion": "Compte de retour"
+    },
+    "accion": {
+      "cambiar": "Changer",
+      "volverAutomatica": "Revenir à automatique",
+      "elegirAuxiliar": "Choisir un sous-compte",
+      "elegirCuenta": "Choisir un compte"
+    },
+    "origen": {
+      "linea": "Choisi pour cette ligne",
+      "producto": "Vient du produit",
+      "categoria": "Vient de la catégorie {nombre}",
+      "sede": "Vient de la configuration de l’établissement",
+      "sedeClave": "Vient de la configuration de l’établissement · {clave}",
+      "empresa": "Vient de la configuration comptable",
+      "empresaClave": "Vient de la configuration comptable · {clave}",
+      "sector": "Vient de la proposition du secteur",
+      "sectorClave": "Vient de la proposition du secteur · {clave}",
+      "regla": "Vient de la règle comptable",
+      "ninguno": "Aucun compte configuré",
+      "prevista": "Sous-compte de l’établissement. Créé à la confirmation du document",
+      "sinCuenta": "Il n’y a pas de compte pour ce mouvement",
+      "tituloConAuxiliar": "{cuenta} est un compte de titre. L’écriture utilisera {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} est un compte de titre et ne reçoit pas de mouvements"
+    },
+    "selector": {
+      "placeholder": "Choisir un compte",
+      "buscar": "Rechercher par code ou nom",
+      "vacio": "Il n’y a pas de comptes de mouvement",
+      "sinResultados": "Aucun compte de mouvement ne correspond"
+    },
+    "resumen": {
+      "automaticaTitulo": "Comptabilité automatique",
+      "automatica": {
+        "producto": "Ce produit utilise les comptes de sa catégorie et de la configuration comptable. Vous n’avez rien à faire.",
+        "categoria": "Cette catégorie utilise les comptes de la configuration comptable. Vous n’avez rien à faire."
+      },
+      "insigniaAutomatica": "Automatique",
+      "insigniaPropias": "Personnalisé",
+      "propiasTitulo": "{n, plural, one {1 compte propre} other {# comptes propres}}",
+      "propiasCuerpo": "Propres : {cuentas}. {n, plural, =0 {} one {L’autre reste automatique.} other {Les # autres restent automatiques.}}",
+      "revisarTitulo": "{n, plural, one {1 compte à vérifier} other {# comptes à vérifier}}",
+      "revisarCuerpo": "Le compte {rol} ne reçoit pas de mouvements.",
+      "ver": "Voir ou changer les comptes",
+      "ocultar": "Masquer les comptes",
+      "corregir": "Corriger",
+      "siNoCambias": "Si vous ne changez rien, chaque compte reste automatique.",
+      "dondeAplica": "Ces comptes sont utilisés sur les factures de vente et d’achat. Le point de vente utilise toujours la règle comptable."
+    },
+    "sugerencia": {
+      "texto": "Suggéré : {cuenta} {nombre}. Utilisé dans {veces} des {compras} derniers achats à ce fournisseur.",
+      "usar": "Utiliser"
+    },
+    "dialogo": {
+      "titulo": "Compte comptable de cette ligne",
+      "hoySeUsa": "Utilisé aujourd’hui",
+      "cambiarPor": "Remplacer par",
+      "ayudaBuscar": "Recherchez par code ou nom. Seuls les comptes de mouvement apparaissent.",
+      "dondeAplicar": "Où appliquer le changement ?",
+      "aplicar": "Appliquer",
+      "eligeCuenta": "Choisissez un compte"
+    },
+    "alcance": {
+      "documento": "Seulement sur cette facture",
+      "producto": "Toujours pour ce produit",
+      "categoria": "Pour toute la catégorie {nombre}",
+      "categoriaConProductos": "Pour toute la catégorie {nombre} ({n, plural, one {1 produit} other {# produits}})",
+      "aviso": "S’applique aux nouveaux documents. Les écritures déjà publiées ne changent pas."
+    },
+    "config": {
+      "titulo": "Configuration comptable",
+      "subtitulo": "Comptes par défaut utilisés par les écritures automatiques",
+      "subtituloCategoria": "Attribuez une fois par catégorie et tous ses produits héritent",
+      "migaFinanzas": "Finances",
+      "migaContabilidad": "Comptabilité",
+      "pestanaDefecto": "Par défaut",
+      "pestanaCategoria": "Par catégorie",
+      "pestanaFallos": "Échecs de comptabilisation",
+      "proponer": "Proposer selon le secteur",
+      "guardar": "Enregistrer",
+      "aplicarA": "Appliquer à",
+      "todaOrganizacion": "Toute l’organisation",
+      "ayudaAlcance": "Un établissement peut avoir ses propres comptes ; sinon, il hérite de ceux de l’organisation.",
+      "cuenta": "Compte",
+      "origenColumna": "Origine",
+      "usaRegla": "Utilise le compte de la règle",
+      "usarRegla": "Utiliser le compte de la règle",
+      "nClaves": "{n, plural, one {1 compte} other {# comptes}}",
+      "ventasPorRegla": "Aujourd’hui, les ventes prennent le compte {cuenta} de la règle comptable, pas ces clés. Les modifier ici ne change pas cette écriture.",
+      "errorCargar": "La configuration comptable n’a pas pu être chargée",
+      "errorGuardar": "Impossible d’enregistrer. Le compte doit exister et être un compte de mouvement.",
+      "guardadaOrganizacion": "Configuration de l’organisation enregistrée",
+      "guardadaSede": "Configuration de l’établissement enregistrée",
+      "sinFallos": "Aucun échec de comptabilisation",
+      "sinFallosAyuda": "Tous les documents ont leur écriture.",
+      "categoria": "Catégorie",
+      "productos": "Produits",
+      "buscarCategoria": "Rechercher une catégorie",
+      "soloPropias": "Seulement avec compte propre",
+      "sinCategorias": "Il n’y a pas de catégories",
+      "deCategoria": "de {nombre}",
+      "editarCuentas": "Modifier les comptes",
+      "cuentasDe": "Comptes de {nombre}",
+      "heredan": "{n, plural, one {1 produit hérite de ces comptes} other {# produits héritent de ces comptes}}, ainsi que ses sous-catégories.",
+      "guardadaCategoria": "Comptes de {nombre} enregistrés",
+      "grupo": {
+        "tesoreria_cartera": "Trésorerie et créances",
+        "ventas": "Ventes",
+        "inventario": "Stock",
+        "impuestos": "Taxes",
+        "personal": "Personnel"
+      },
+      "origen": {
+        "regla": "Règle comptable",
+        "hereda": "Hérité de l’organisation",
+        "sede": "De cet établissement",
+        "sector": "Proposition du secteur",
+        "contador": "Choisi par votre comptable"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 compte à vérifier} other {# comptes à vérifier}}",
+        "conSugerida": "{clave} pointe vers {cuenta}, qui ne reçoit pas de mouvements. Suggéré : {sugerida}.",
+        "sinSugerida": "{clave} pointe vers {cuenta}, qui ne reçoit pas de mouvements. Choisissez un compte de mouvement.",
+        "usar": "Utiliser le compte suggéré"
+      },
+      "reclasificar": {
+        "accion": "Reclasser la TVA historique",
+        "titulo": "Reclasser la TVA de 2405 vers 2408",
+        "descripcion": "Une nouvelle écriture est créée (débit 2405, crédit 2408) pour le net des lignes de TVA déjà publiées sur 2405. Les lignes précédentes restent identiques. Sans solde, aucune écriture n’est créée.",
+        "crear": "Créer l’écriture",
+        "repetida": "Ce reclassement a déjà été fait",
+        "sinSaldo": "Il n’y a pas de TVA à reclasser sur 2405",
+        "creado": "Écriture de reclassement créée",
+        "error": "La TVA n’a pas pu être reclassée"
+      },
+      "asistente": {
+        "titulo": "Proposition pour {sector}",
+        "descripcion": "Elle vient du modèle de plan comptable et du secteur. Elle s’enregistre dans la portée choisie, organisation ou établissement. Seuls les comptes de mouvement déjà au plan sont enregistrés. Le reste suit la règle.",
+        "aplicar": "Appliquer cette proposition",
+        "noEnPlan": "ne sera pas enregistré : absent du plan"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Caisse",
+        "ayuda": "Remplace le 1105 quand la règle utilise la caisse."
+      },
+      "bancos": {
+        "nombre": "Banques",
+        "ayuda": "Remplace le 1110. Le sous-compte d’une banque précise reste inchangé."
+      },
+      "anticipos": {
+        "nombre": "Avances",
+        "ayuda": "Remplace le 2805, avances et acomptes reçus."
+      },
+      "clientes": {
+        "nombre": "Clients",
+        "ayuda": "Remplace le 1305, sauf les prêts aux salariés."
+      },
+      "proveedores": {
+        "nombre": "Fournisseurs",
+        "ayuda": "Remplace le 2205 et le 2105 que les anciennes règles utilisaient pour les fournisseurs."
+      },
+      "ventas_productos": {
+        "nombre": "Ventes de produits",
+        "ayuda": "Produit crédité sur 4135, 414015, 4145 ou 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Ventes de services",
+        "ayuda": "Produit crédité sur 4235, 4115, 4140 ou 4155."
+      },
+      "devoluciones": {
+        "nombre": "Retours",
+        "ayuda": "Avoirs, annulations et débit d’un compte de produits."
+      },
+      "descuentos": {
+        "nombre": "Remises",
+        "ayuda": "La ligne de remise de l’écriture. Elle ne remplace pas le retour."
+      },
+      "inventario": {
+        "nombre": "Stock",
+        "ayuda": "Remplace le 1435 et le 1405 des anciennes règles."
+      },
+      "costo_ventas": {
+        "nombre": "Coût des ventes",
+        "ayuda": "Remplace le 6135, le 6140 et le 6105."
+      },
+      "iva_generado": {
+        "nombre": "TVA collectée",
+        "ayuda": "TVA sur les ventes. Créditée sur 240805 et non débitée à la constatation."
+      },
+      "iva_descontable": {
+        "nombre": "TVA déductible",
+        "ayuda": "TVA sur les achats. Débitée sur 240810."
+      },
+      "retefuente": {
+        "nombre": "Retenue à la source",
+        "ayuda": "Remplace le 2365 quand l’achat n’a pas de compte propre dans la taxe."
+      },
+      "reteiva": {
+        "nombre": "Retenue de TVA",
+        "ayuda": "23670501 (sous-compte de 2367, compte de titre)."
+      },
+      "reteica": {
+        "nombre": "Retenue ICA",
+        "ayuda": "23680501 (sous-compte de 2368, compte de titre)."
+      },
+      "propinas": {
+        "nombre": "Pourboires",
+        "ayuda": "Le 5105 seulement quand le document est un pourboire."
+      },
+      "comisiones": {
+        "nombre": "Commissions",
+        "ayuda": "52950501 (canaux/OTA, sous-compte de 529505) ou 52051801 (salariés). 5235 correspond aux « Services » de vente, pas aux commissions."
+      },
+      "nomina": {
+        "nombre": "Paie",
+        "ayuda": "Le 5105 seulement quand le document est une paie."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Paie à payer",
+        "ayuda": "Le 2505 seulement dans la paie."
+      },
+      "nomina_aportes": {
+        "nombre": "Cotisations de paie",
+        "ayuda": "Le 2370 seulement dans la paie. Une commission qui utilise encore le 2370 ne bouge pas."
+      },
+      "faltante_inventario": {
+        "nombre": "Manquant de stock",
+        "ayuda": "Débit du manquant. Par défaut 519595. Le coût des ventes n’est pas utilisé ici."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Vol et sinistre",
+        "ayuda": "Débit quand le motif de l’ajustement est un vol ou un sinistre. Par défaut 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Consommation interne",
+        "ayuda": "Débit de la consommation interne. Par défaut 519595. Jamais la classe 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifeste à payer",
+        "ayuda": "Crédit du manifeste hors transport. Par défaut 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Manifeste de transport",
+        "ayuda": "Crédit quand l’organisation est une entreprise de transport. Par défaut 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Solde initial",
+        "ayuda": "Crédit du solde initial de stock : 37050501 résultats reportés (3710 en cas de pertes cumulées). N’utilisez pas le 3105 : le capital ne bouge qu’avec des apports."
+      },
+      "impuesto_consumo": {
+        "nombre": "Taxe à la consommation",
+        "ayuda": "Taxe à la consommation. Par défaut 2495."
+      },
+      "redondeo": {
+        "nombre": "Arrondi positif",
+        "ayuda": "Crédit de la ligne d’arrondi en pesos. Par défaut 42958101. Sans compte valide, l’écriture reste en attente."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Arrondi négatif",
+        "ayuda": "Débit de la ligne d’arrondi en pesos. Par défaut 53959501. Sans compte valide, l’écriture reste en attente."
+      },
+      "compra_servicio": {
+        "nombre": "Achat de service",
+        "ayuda": "Crédit d’un achat de service ou de transport. Par défaut 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Produits divers",
+        "ayuda": "Crédit d’un excédent réel de stock. Par défaut 42959501 (sous-compte de 4295). Ce n’est pas le 4250."
+      }
+    }
   }
 }

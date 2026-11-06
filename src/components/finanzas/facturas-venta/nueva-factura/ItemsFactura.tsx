@@ -21,7 +21,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import type { CartItem } from '@/components/pos/types';
 import { EtiquetaSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
-import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { CampoCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/CampoCuentaLinea';
 
 type ItemsFacturaProps = {
   items: InvoiceItem[];
@@ -286,9 +286,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                     />
                     {mostrarCuenta && (
                       <div className="mt-2">
-                        <CampoCuentaContable
-                          value={item.cuenta_contable}
-                          onChange={(cuenta) => updateItem(index, 'cuenta_contable', cuenta)}
+                        <CampoCuentaLinea
+                          documento="documento_soporte"
+                          branchId={branchId}
+                          productId={item.product_id}
+                          valor={item.cuenta_contable}
+                          onCambiar={(cuenta) => updateItem(index, 'cuenta_contable', cuenta)}
                         />
                       </div>
                     )}

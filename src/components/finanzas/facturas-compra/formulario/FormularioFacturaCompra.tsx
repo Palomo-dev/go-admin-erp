@@ -36,7 +36,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Barcode, CheckCircle2, FileText, Hash, Landmark, ListPlus, Percent, Plus, ReceiptText, Save, Search, StickyNote, Trash2, Truck, Wallet } from 'lucide-react';
-import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { DialogoCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/DialogoCuentaLinea';
+import { InterruptorCuentas, PieCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/PiezasCuentaLinea';
+import { useCuentasEfectivas, useSugerenciaProveedor } from '@/components/finanzas/contabilidad/cuentas/useCuentasEfectivas';
+import { useVerCuentas } from '@/components/finanzas/contabilidad/cuentas/useVerCuentas';
+import { lineaAceptaSugerencia, type ConsultaCuenta } from '@/lib/finanzas/contabilidad/cuentaEfectiva';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { FormField, FormSection, KbdButton, Tarjeta, useAtajos, type AccionFila } from '@/components/kit';
 import { CampoFecha } from '@/components/kit/CampoFecha';
@@ -440,6 +444,16 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     setLineas((prev) => prev.map((l) => (l.key === key ? { ...l, ...cambio } : l)));
   };
 
+  // Solo lectura: lo que guarda el documento no pasa por aquí, con el interruptor encendido o apagado.
+  const verCuentas = useVerCuentas();
+  const cuentasActivas = verCuentas.activo || !!lineaCuenta;
+  const consultasCuenta: ConsultaCuenta[] = lineas.map((l) => ({ clave: l.key, product_id: l.product_id, cuenta_contable: l.cuenta_contable }));
+  const cuentasLineas = useCuentasEfectivas(sucursal, 'compra', consultasCuenta, cuentasActivas);
+  const sugerenciaCuenta = useSugerenciaProveedor(
+    proveedor ? Number(proveedor.id) : null,
+    cuentasActivas && lineas.some(lineaAceptaSugerencia),
+  );
+
   const lineasKit: LineaDocumento[] = lineas.map((l) => {
     const insignias: InsigniaLinea[] = [];
     if (l.manual) insignias.push({ texto: tk('lineas.itemManual') });
@@ -450,6 +464,15 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     const k = calcularLineaCompra(l, ivaIncluido);
     return {
       id: l.key,
+      pieLinea: verCuentas.activo ? (
+        <PieCuentaLinea
+          efectiva={cuentasLineas.porClave.get(l.key)}
+          cargando={cuentasLineas.cargando}
+          sugerencia={lineaAceptaSugerencia(l) ? sugerenciaCuenta : null}
+          onAbrir={() => setLineaCuenta(l)}
+          onUsarSugerencia={(cuenta) => cambiarLinea(l.key, { cuenta_contable: cuenta })}
+        />
+      ) : undefined,
       descripcion: l.description,
       sku: l.sku,
       nota: l.note,
@@ -895,6 +918,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
       lineas={
         <FormSection titulo={tf('v2.secciones.lineas', { n: lineas.length })} icono={ListPlus}>
           <div id="lineas-compra" tabIndex={-1} className="outline-none">
+            <InterruptorCuentas activo={verCuentas.activo} onCambiar={verCuentas.cambiar} />
             <DocumentoLineas
               lineas={lineasKit}
               modo="edicion"
@@ -1205,25 +1229,19 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
               setLineaNota(null);
             }}
           />
-          <Dialogo
+          <DialogoCuentaLinea
             abierto={!!lineaCuenta}
             onAbiertoChange={(v) => !v && setLineaCuenta(null)}
-            titulo={tf('lineas.cuenta')}
-            descripcion={tf('lineas.cuentaAyuda')}
-            ancho={520}
-            icono={Landmark}
-            primario={{ etiqueta: tf('lineas.cuentaListo'), onClick: () => setLineaCuenta(null) }}
-          >
-            {lineaCuenta && (
-              <CampoCuentaContable
-                value={lineaCuenta.cuenta_contable}
-                onChange={(cuenta) => {
-                  cambiarLinea(lineaCuenta.key, { cuenta_contable: cuenta });
-                  setLineaCuenta((actual) => (actual ? { ...actual, cuenta_contable: cuenta } : actual));
-                }}
-              />
-            )}
-          </Dialogo>
+            descripcionLinea={lineaCuenta?.description ?? ''}
+            efectiva={lineaCuenta ? cuentasLineas.porClave.get(lineaCuenta.key) : undefined}
+            cargando={cuentasLineas.cargando}
+            productoId={lineaCuenta?.product_id ?? null}
+            sugerencia={lineaCuenta && lineaAceptaSugerencia(lineaCuenta) ? sugerenciaCuenta : null}
+            onAplicar={(cambio) => {
+              if (lineaCuenta) cambiarLinea(lineaCuenta.key, { cuenta_contable: cambio.cuentaLinea });
+              cuentasLineas.recargar();
+            }}
+          />
           {confirmarId && (
             <DialogoConfirmarCompra
               abierto

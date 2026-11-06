@@ -40105,5 +40105,300 @@
         "detalle": "Detalle"
       }
     }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Ver cuentas contables",
+    "cuentaContable": "Cuenta contable",
+    "abrirCuenta": "Cambiar la cuenta de esta línea",
+    "errorGuardar": "No se pudo guardar la cuenta",
+    "estado": {
+      "automatica": "Automática",
+      "categoria": "De la categoría",
+      "propia": "Cuenta propia",
+      "titulo": "Revisar",
+      "sin_cuenta": "Sin cuenta"
+    },
+    "rol": {
+      "ingreso": "Ingreso",
+      "costo": "Costo",
+      "inventario": "Inventario",
+      "devolucion": "Devolución"
+    },
+    "rolCuenta": {
+      "ingreso": "Cuenta de ingreso",
+      "costo": "Cuenta de costo",
+      "inventario": "Cuenta de inventario",
+      "devolucion": "Cuenta de devolución"
+    },
+    "accion": {
+      "cambiar": "Cambiar",
+      "volverAutomatica": "Volver a automática",
+      "elegirAuxiliar": "Elegir auxiliar",
+      "elegirCuenta": "Elegir cuenta"
+    },
+    "origen": {
+      "linea": "Elegida para esta línea",
+      "producto": "Viene del producto",
+      "categoria": "Viene de la categoría {nombre}",
+      "sede": "Viene de la configuración de la sede",
+      "sedeClave": "Viene de la configuración de la sede · {clave}",
+      "empresa": "Viene de la configuración contable",
+      "empresaClave": "Viene de la configuración contable · {clave}",
+      "sector": "Viene de la propuesta del sector",
+      "sectorClave": "Viene de la propuesta del sector · {clave}",
+      "regla": "Viene de la regla contable",
+      "ninguno": "Sin cuenta configurada",
+      "prevista": "Auxiliar de la sede. Se crea al confirmar el documento",
+      "sinCuenta": "No hay una cuenta para este movimiento",
+      "tituloConAuxiliar": "{cuenta} es de título. El asiento usará {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} es de título y no recibe movimientos"
+    },
+    "selector": {
+      "placeholder": "Elegir cuenta",
+      "buscar": "Buscar por código o nombre",
+      "vacio": "No hay cuentas de movimiento",
+      "sinResultados": "Ninguna cuenta de movimiento coincide"
+    },
+    "resumen": {
+      "automaticaTitulo": "Contabilidad automática",
+      "automatica": {
+        "producto": "Este producto usa las cuentas de su categoría y de la configuración contable. No tienes que hacer nada.",
+        "categoria": "Esta categoría usa las cuentas de la configuración contable. No tienes que hacer nada."
+      },
+      "insigniaAutomatica": "Automática",
+      "insigniaPropias": "Personalizado",
+      "propiasTitulo": "{n, plural, one {1 cuenta propia} other {# cuentas propias}}",
+      "propiasCuerpo": "Propias: {cuentas}. {n, plural, =0 {} one {La otra sigue automática.} other {Las otras # siguen automáticas.}}",
+      "revisarTitulo": "{n, plural, one {Falta revisar 1 cuenta} other {Faltan revisar # cuentas}}",
+      "revisarCuerpo": "La cuenta de {rol} no recibe movimientos.",
+      "ver": "Ver o cambiar cuentas",
+      "ocultar": "Ocultar cuentas",
+      "corregir": "Corregir",
+      "siNoCambias": "Si no cambias nada, cada cuenta sigue automática.",
+      "dondeAplica": "Estas cuentas se usan en facturas de venta y de compra. El punto de venta sigue usando la regla contable."
+    },
+    "sugerencia": {
+      "texto": "Sugerida: {cuenta} {nombre}. Usada en {veces} de las últimas {compras} compras a este proveedor.",
+      "usar": "Usar"
+    },
+    "dialogo": {
+      "titulo": "Cuenta contable de esta línea",
+      "hoySeUsa": "Hoy se usa",
+      "cambiarPor": "Cambiar por",
+      "ayudaBuscar": "Busca por código o nombre. Solo salen cuentas de movimiento.",
+      "dondeAplicar": "¿Dónde aplicar el cambio?",
+      "aplicar": "Aplicar",
+      "eligeCuenta": "Elige una cuenta"
+    },
+    "alcance": {
+      "documento": "Solo en esta factura",
+      "producto": "Siempre para este producto",
+      "categoria": "Para toda la categoría {nombre}",
+      "categoriaConProductos": "Para toda la categoría {nombre} ({n, plural, one {1 producto} other {# productos}})",
+      "aviso": "Aplica a los documentos nuevos. Los asientos ya publicados no cambian."
+    },
+    "config": {
+      "titulo": "Configuración contable",
+      "subtitulo": "Cuentas por defecto que usan los asientos automáticos",
+      "subtituloCategoria": "Asigna una vez por categoría y todos sus productos heredan",
+      "migaFinanzas": "Finanzas",
+      "migaContabilidad": "Contabilidad",
+      "pestanaDefecto": "Por defecto",
+      "pestanaCategoria": "Por categoría",
+      "pestanaFallos": "Fallos de contabilización",
+      "proponer": "Proponer según el sector",
+      "guardar": "Guardar",
+      "aplicarA": "Aplicar a",
+      "todaOrganizacion": "Toda la organización",
+      "ayudaAlcance": "Una sede puede tener sus propias cuentas; si no, hereda las de la organización.",
+      "cuenta": "Cuenta",
+      "origenColumna": "Origen",
+      "usaRegla": "Usa la cuenta de la regla",
+      "usarRegla": "Usar la cuenta de la regla",
+      "nClaves": "{n, plural, one {1 cuenta} other {# cuentas}}",
+      "ventasPorRegla": "Hoy las ventas toman la cuenta {cuenta} de la regla contable, no estas claves. Cambiarlas aquí no cambia ese asiento.",
+      "errorCargar": "No se pudo cargar la configuración contable",
+      "errorGuardar": "No se pudo guardar. La cuenta tiene que existir y ser de movimiento.",
+      "guardadaOrganizacion": "Configuración de la organización guardada",
+      "guardadaSede": "Configuración de la sede guardada",
+      "sinFallos": "Sin fallos de contabilización",
+      "sinFallosAyuda": "Todos los documentos tienen su asiento.",
+      "categoria": "Categoría",
+      "productos": "Productos",
+      "buscarCategoria": "Buscar categoría",
+      "soloPropias": "Solo con cuenta propia",
+      "sinCategorias": "No hay categorías",
+      "deCategoria": "de {nombre}",
+      "editarCuentas": "Editar cuentas",
+      "cuentasDe": "Cuentas de {nombre}",
+      "heredan": "{n, plural, one {1 producto hereda estas cuentas} other {# productos heredan estas cuentas}}, y también sus subcategorías.",
+      "guardadaCategoria": "Cuentas de {nombre} guardadas",
+      "grupo": {
+        "tesoreria_cartera": "Tesorería y cartera",
+        "ventas": "Ventas",
+        "inventario": "Inventario",
+        "impuestos": "Impuestos",
+        "personal": "Personal"
+      },
+      "origen": {
+        "regla": "Regla contable",
+        "hereda": "Hereda de la organización",
+        "sede": "De esta sede",
+        "sector": "Propuesta del sector",
+        "contador": "Elegida por tu contador"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 cuenta por revisar} other {# cuentas por revisar}}",
+        "conSugerida": "{clave} apunta a {cuenta}, que no recibe movimientos. Sugerida: {sugerida}.",
+        "sinSugerida": "{clave} apunta a {cuenta}, que no recibe movimientos. Elige una cuenta de movimiento.",
+        "usar": "Usar la sugerida"
+      },
+      "reclasificar": {
+        "accion": "Reclasificar el IVA histórico",
+        "titulo": "Reclasificar IVA de 2405 a 2408",
+        "descripcion": "Se crea un asiento nuevo (débito 2405, crédito 2408) por el neto de las líneas de IVA ya publicadas en 2405. Las líneas anteriores quedan igual. Si no hay saldo, no se crea asiento.",
+        "crear": "Crear el asiento",
+        "repetida": "Esa reclasificación ya estaba hecha",
+        "sinSaldo": "No hay IVA en 2405 por reclasificar",
+        "creado": "Asiento de reclasificación creado",
+        "error": "No se pudo reclasificar el IVA"
+      },
+      "asistente": {
+        "titulo": "Propuesta para {sector}",
+        "descripcion": "Sale de la plantilla PUC y del sector. Se guarda en el alcance elegido, la organización o la sede. Solo se guardan las cuentas que ya están en el plan y son de movimiento. El resto sigue con la regla.",
+        "aplicar": "Aplicar esta propuesta",
+        "noEnPlan": "no se guardará: no está en el plan"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Caja",
+        "ayuda": "Reemplaza el 1105 cuando la regla usa caja."
+      },
+      "bancos": {
+        "nombre": "Bancos",
+        "ayuda": "Reemplaza el 1110. El auxiliar de un banco concreto no se toca."
+      },
+      "anticipos": {
+        "nombre": "Anticipos",
+        "ayuda": "Reemplaza el 2805, anticipos y avances recibidos."
+      },
+      "clientes": {
+        "nombre": "Clientes",
+        "ayuda": "Reemplaza el 1305, salvo préstamos a trabajadores."
+      },
+      "proveedores": {
+        "nombre": "Proveedores",
+        "ayuda": "Reemplaza el 2205 y el 2105 que las reglas viejas usaban como proveedores."
+      },
+      "ventas_productos": {
+        "nombre": "Ventas de productos",
+        "ayuda": "Ingreso al crédito en 4135, 414015, 4145 o 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Ventas de servicios",
+        "ayuda": "Ingreso al crédito en 4235, 4115, 4140 o 4155."
+      },
+      "devoluciones": {
+        "nombre": "Devoluciones",
+        "ayuda": "Notas crédito, anulaciones y el débito de una cuenta de ingreso."
+      },
+      "descuentos": {
+        "nombre": "Descuentos",
+        "ayuda": "La línea de descuento del asiento. No reemplaza la devolución."
+      },
+      "inventario": {
+        "nombre": "Inventario",
+        "ayuda": "Reemplaza el 1435 y el 1405 de las reglas viejas."
+      },
+      "costo_ventas": {
+        "nombre": "Costo de ventas",
+        "ayuda": "Reemplaza el 6135, el 6140 y el 6105."
+      },
+      "iva_generado": {
+        "nombre": "IVA generado",
+        "ayuda": "IVA de la venta. Se acredita en 240805 y no se debita en el devengo."
+      },
+      "iva_descontable": {
+        "nombre": "IVA descontable",
+        "ayuda": "IVA de la compra. Se debita en 240810."
+      },
+      "retefuente": {
+        "nombre": "ReteFuente",
+        "ayuda": "Reemplaza el 2365 cuando la compra no tiene una cuenta propia en el impuesto."
+      },
+      "reteiva": {
+        "nombre": "ReteIVA",
+        "ayuda": "23670501 (auxiliar de 2367, título)."
+      },
+      "reteica": {
+        "nombre": "ReteICA",
+        "ayuda": "23680501 (auxiliar de 2368, título)."
+      },
+      "propinas": {
+        "nombre": "Propinas",
+        "ayuda": "El 5105 solo cuando el documento es una propina."
+      },
+      "comisiones": {
+        "nombre": "Comisiones",
+        "ayuda": "52950501 (canales/OTA, auxiliar de 529505) o 52051801 (empleados). 5235 es «Servicios» de ventas, no comisiones."
+      },
+      "nomina": {
+        "nombre": "Nómina",
+        "ayuda": "El 5105 solo cuando el documento es nómina."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Nómina por pagar",
+        "ayuda": "El 2505 solo en la nómina."
+      },
+      "nomina_aportes": {
+        "nombre": "Aportes de nómina",
+        "ayuda": "El 2370 solo en la nómina. Una comisión que aún usa 2370 no se mueve."
+      },
+      "faltante_inventario": {
+        "nombre": "Faltante de inventario",
+        "ayuda": "Débito del faltante. Por defecto 519595. El costo de ventas no se usa aquí."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Robo y siniestro",
+        "ayuda": "Débito cuando el ajuste trae motivo robo o siniestro. Por defecto 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Consumo interno",
+        "ayuda": "Débito del consumo interno. Por defecto 519595. Nunca la clase 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifiesto por pagar",
+        "ayuda": "Crédito del manifiesto que no es de transporte. Por defecto 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Manifiesto de transporte",
+        "ayuda": "Crédito cuando la organización es de transporte. Por defecto 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Saldo inicial",
+        "ayuda": "Crédito del saldo inicial de inventario: 37050501 utilidades acumuladas (3710 si hay pérdida acumulada). No uses 3105: el capital solo se mueve con aportes."
+      },
+      "impuesto_consumo": {
+        "nombre": "Impuesto al consumo",
+        "ayuda": "Impuesto al consumo. Por defecto 2495."
+      },
+      "redondeo": {
+        "nombre": "Redondeo a favor",
+        "ayuda": "Crédito de la línea de redondeo a pesos. Por defecto 42958101. Sin cuenta válida, el asiento queda pendiente."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Redondeo en contra",
+        "ayuda": "Débito de la línea de redondeo a pesos. Por defecto 53959501. Sin cuenta válida, el asiento queda pendiente."
+      },
+      "compra_servicio": {
+        "nombre": "Compra de servicio",
+        "ayuda": "Crédito de una compra de servicio o de transporte. Por defecto 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Ingresos diversos",
+        "ayuda": "Crédito de un sobrante real de inventario. Por defecto 42959501 (auxiliar de 4295). No es 4250."
+      }
+    }
   }
 }

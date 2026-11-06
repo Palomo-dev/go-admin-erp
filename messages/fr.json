@@ -38996,5 +38996,66 @@
         "guardar": "Impossible d'enregistrer le compte."
       }
     }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Arrondi à l’unité · les autres lignes ne changent pas",
+      "cuadradoTitulo": "Écriture équilibrée",
+      "cuadradoTexto": "L’arrondi figure sur sa propre ligne, avec un compte autorisé.",
+      "reversaTitulo": "Contrepassation de l’écriture n° {id}",
+      "publicado": "Comptabilisée · {fecha}",
+      "motivo": "Motif : {motivo}",
+      "verOriginal": "Voir l’original",
+      "sede": "Site",
+      "moneda": "Devise",
+      "copiaTitulo": "Copie exacte de l’original",
+      "copiaTexto": "Mêmes comptes, tiers, centre de coûts, site et devise, avec débit et crédit inversés. Une écriture ne se contrepasse qu’une fois.",
+      "auxiliarTitulo": "Contrepassation avec un sous-compte",
+      "auxiliarTexto": "Une ligne va sur un sous-compte, car son compte est aujourd’hui un compte de regroupement. Le reste est une copie de l’original, avec débit et crédit inversés.",
+      "revertido": "Écriture contrepassée par l’écriture n° {id}",
+      "reversaPendiente": "La contrepassation est dans Écritures en attente : une ligne est sur un compte de regroupement et il faut choisir son sous-compte."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité",
+        "pendientes": "Écritures en attente"
+      },
+      "estado": "En attente · hors du grand livre",
+      "sinNombre": "Document sans nom",
+      "configurarCuenta": "Configurer le compte",
+      "configurar": "Configurer",
+      "reintentar": "Réessayer",
+      "faltaFavor": "Le compte de gain d’arrondi manque",
+      "faltaContra": "Le compte de perte d’arrondi manque",
+      "faltaTexto": "Ce document présente un écart d’arrondi de {valor}. Il reste en attente jusqu’à la configuration du compte. Rien n’est comptabilisé déséquilibré.",
+      "diferencia": "Écart",
+      "sinCuenta": "Aucun compte d’arrondi",
+      "publicado": "L’écriture a été comptabilisée avec sa ligne d’arrondi.",
+      "sigue": "L’écriture reste en attente.",
+      "columnas": {
+        "cuenta": "Compte",
+        "descripcion": "Description",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "auxiliar": "Sous-compte"
+      },
+      "reversaTitulo": "Contrepassation en attente de l’écriture n° {id}",
+      "verOriginal": "Voir l’original",
+      "tituloAvisoTitulo": "Des lignes sont sur des comptes de regroupement",
+      "sinCuentaTitulo": "Des lignes n’ont pas de compte",
+      "tituloAvisoTexto": "Un compte de regroupement ne reçoit pas de mouvements : toute la contrepassation attend et rien n’a été comptabilisé. Choisissez un sous-compte du même compte pour chaque ligne.",
+      "elegirAuxiliar": "Choisissez un sous-compte",
+      "crearAuxiliar": "Créer un sous-compte",
+      "publicarReversa": "Comptabiliser la contrepassation",
+      "reversaPublicada": "Contrepassation comptabilisée : écriture n° {id}",
+      "resueltoTitulo": "Élément résolu",
+      "verAsiento": "Voir l’écriture",
+      "volver": "Retour aux écritures en attente",
+      "noDisponible": "Élément indisponible",
+      "errorTitulo": "Impossible de lire cet élément",
+      "errorTexto": "Vérifiez votre connexion et réessayez.",
+      "reintentarCarga": "Réessayer"
+    }
   }
 }

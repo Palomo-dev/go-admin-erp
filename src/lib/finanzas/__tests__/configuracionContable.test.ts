@@ -256,6 +256,7 @@ describe('plantilla por sector', () => {
       saldo_inicial: '37050501',
       impuesto_consumo: '2495',
       redondeo: '42958101',
+      redondeo_en_contra: '53959501',
       compra_servicio: '23359501',
       ingresos_diversos: '42959501',
     });

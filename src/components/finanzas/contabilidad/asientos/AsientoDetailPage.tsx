@@ -18,6 +18,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ContabilidadService, JournalEntry, EstadoReversion } from '../ContabilidadService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
+import { AvisoTonal } from '@/components/kit';
+import { useFormatDateFor } from '@/lib/context/OrganizationTimezoneContext';
+import { reversaEsCopiaExacta } from '@/lib/finanzas/contabilidad/redondeoReversa';
 import { OrigenCompraAsiento } from './OrigenCompraAsiento';
 import { DatosAsiento } from './DatosAsiento';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
@@ -38,7 +41,12 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const [dialogoRevertir, setDialogoRevertir] = useState(false);
   const [motivo, setMotivo] = useState('');
   const tl = useTranslations('asientoContable.lineas');
+  const tr = useTranslations('redondeoReversa.asiento');
+  const { formatDate } = useFormatDateFor(asiento?.branch_id);
   const [centros, setCentros] = useState<Map<string, { code: string; name: string }>>(new Map());
+  const [sede, setSede] = useState<string | null>(null);
+  const [motivoReversa, setMotivoReversa] = useState<string | null>(null);
+  const [copiaExacta, setCopiaExacta] = useState(true);
 
   const loadAsiento = useCallback(async () => {
     try {
@@ -57,6 +65,16 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       ]);
       setReversion(estadoReversion);
       setCentros(nombresCentros);
+      if (data.source === 'reversal' && estadoReversion.reversionDe) {
+        const [nombreSede, motivoTexto, asientoOriginal] = await Promise.all([
+          ContabilidadService.nombreSucursal(data.branch_id).catch(() => null),
+          ContabilidadService.motivoReversa(data.id).catch(() => null),
+          ContabilidadService.obtenerAsiento(estadoReversion.reversionDe),
+        ]);
+        setSede(nombreSede);
+        setMotivoReversa(motivoTexto);
+        setCopiaExacta(!asientoOriginal?.lines || reversaEsCopiaExacta(asientoOriginal.lines, data.lines ?? []));
+      }
     } catch (error) {
       console.error('Error cargando asiento:', error);
       toast.error('Error al cargar el asiento');
@@ -118,7 +136,11 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
     try {
       setIsProcessing(true);
       const contraAsiento = await ContabilidadService.revertirAsiento(asiento.id, motivo.trim());
-      toast.success(`Asiento revertido con el contra-asiento #${contraAsiento}`);
+      if (contraAsiento) {
+        toast.success(tr('revertido', { id: contraAsiento }));
+      } else {
+        toast.warning(tr('reversaPendiente'));
+      }
       setDialogoRevertir(false);
       setMotivo('');
       loadAsiento();
@@ -133,6 +155,14 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const esManual = asiento?.source === 'manual';
   const esContraAsiento = asiento?.source === 'reversal';
   const revertible = !!asiento?.posted && esManual && !reversion.revertidoPor;
+
+  // Reversa: tercero, centro, sede y moneda, cada columna solo si hay datos. La descripción sobra: es la del original.
+  const hayTercero = !!asiento?.lines?.some((l) => l.tercero_nit);
+  const monedaDe = (linea: { currency_code?: string | null }) => linea.currency_code ?? asiento?.currency_code ?? null;
+  const hayMoneda = esContraAsiento && !!asiento?.lines?.some((l) => monedaDe(l));
+  const haySede = esContraAsiento && !!sede;
+  const hayRedondeo = !!asiento?.lines?.some((l) => l.redondeo_traza);
+  const tituloReversa = esContraAsiento && reversion.reversionDe ? tr('reversaTitulo', { id: reversion.reversionDe }) : null;
 
   const getTotalDebits = () => asiento?.lines?.reduce((sum, l) => sum + (l.debit || 0), 0) || 0;
   const getTotalCredits = () => asiento?.lines?.reduce((sum, l) => sum + (l.credit || 0), 0) || 0;
@@ -166,12 +196,14 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)
+              {tituloReversa ?? (textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)
                 ? `${esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : 'Comprobante'} ${textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)}`
-                : `Asiento #${asiento.id}`}
+                : `Asiento #${asiento.id}`)}
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              {asiento.memo || 'Sin descripción'}
+              {tituloReversa
+                ? [asiento.posted ? tr('publicado', { fecha: formatDate(asiento.entry_date) }) : null, motivoReversa ? tr('motivo', { motivo: motivoReversa }) : null].filter(Boolean).join(' · ')
+                : asiento.memo || 'Sin descripción'}
             </p>
           </div>
           {asiento.posted
@@ -195,6 +227,11 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {reversion.reversionDe && (
+            <Link href={`/app/finanzas/contabilidad/asientos/${reversion.reversionDe}`}>
+              <Button variant="outline">{tr('verOriginal')}</Button>
+            </Link>
+          )}
           <Link href={`/app/finanzas/contabilidad/asientos/${asiento.id}/comprobante`}>
             <Button variant="outline" className="dark:border-gray-600">
               <Printer className="h-4 w-4 mr-2" />
@@ -281,16 +318,18 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
             <TableHeader>
               <TableRow className="dark:border-gray-700">
                 <TableHead className="dark:text-gray-300">Cuenta</TableHead>
-                <TableHead className="dark:text-gray-300">Descripción</TableHead>
+                {!esContraAsiento && <TableHead className="dark:text-gray-300">Descripción</TableHead>}
+                {hayTercero && <TableHead className="dark:text-gray-300">{tl('tercero')}</TableHead>}
                 {centros.size > 0 && <TableHead className="dark:text-gray-300">{tl('centroCosto')}</TableHead>}
-                {asiento.lines?.some((l) => l.tercero_nit) && <TableHead className="dark:text-gray-300">{tl('tercero')}</TableHead>}
+                {haySede && <TableHead>{tr('sede')}</TableHead>}
+                {hayMoneda && <TableHead>{tr('moneda')}</TableHead>}
                 <TableHead className="text-right dark:text-gray-300">Débito</TableHead>
                 <TableHead className="text-right dark:text-gray-300">Crédito</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {asiento.lines?.map((line) => (
-                <TableRow key={line.id} className="dark:border-gray-700">
+                <TableRow key={line.id} className={`dark:border-gray-700 ${line.redondeo_traza ? 'bg-info-subtle font-medium' : ''}`}>
                   <TableCell>
                     <div>
                       <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
@@ -303,9 +342,16 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-gray-700 dark:text-gray-300">
-                    {line.description || '-'}
-                  </TableCell>
+                  {!esContraAsiento && (
+                    <TableCell className="text-gray-700 dark:text-gray-300">
+                      {line.redondeo_traza ? tr('lineaRedondeo') : line.description || '-'}
+                    </TableCell>
+                  )}
+                  {hayTercero && (
+                    <TableCell className="text-gray-700 dark:text-gray-300">
+                      {line.tercero_nit ? `${line.tercero_nombre ? `${line.tercero_nombre} · ` : ''}${line.tercero_nit}` : '-'}
+                    </TableCell>
+                  )}
                   {centros.size > 0 && (
                     <TableCell className="text-gray-700 dark:text-gray-300">
                       {line.cost_center_id && centros.get(line.cost_center_id)
@@ -313,11 +359,8 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
                         : '-'}
                     </TableCell>
                   )}
-                  {asiento.lines?.some((l) => l.tercero_nit) && (
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      {line.tercero_nit ? `${line.tercero_nombre ? `${line.tercero_nombre} · ` : ''}${line.tercero_nit}` : '-'}
-                    </TableCell>
-                  )}
+                  {haySede && <TableCell className="text-fg-secondary">{sede}</TableCell>}
+                  {hayMoneda && <TableCell className="text-fg-secondary">{monedaDe(line) ?? '-'}</TableCell>}
                   <TableCell className="text-right font-mono text-gray-900 dark:text-white">
                     {line.debit > 0 ? formatear(line.debit) : '-'}
                   </TableCell>
@@ -356,6 +399,17 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       </Card>
       <DatosAsiento asiento={asiento} />
       </div>
+
+      {hayRedondeo && !esContraAsiento && (
+        <AvisoTonal tono="informacion" titulo={tr('cuadradoTitulo')} descripcion={tr('cuadradoTexto')} />
+      )}
+      {esContraAsiento && reversion.reversionDe && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={copiaExacta ? tr('copiaTitulo') : tr('auxiliarTitulo')}
+          descripcion={copiaExacta ? tr('copiaTexto') : tr('auxiliarTexto')}
+        />
+      )}
     </div>
   );
 }

@@ -39011,5 +39011,66 @@
         "guardar": "No se pudo guardar la cuenta."
       }
     }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Redondeo a pesos · no altera las otras líneas",
+      "cuadradoTitulo": "Asiento cuadrado",
+      "cuadradoTexto": "El redondeo queda en su propia línea, con cuenta autorizada.",
+      "reversaTitulo": "Reversa del asiento #{id}",
+      "publicado": "Publicado · {fecha}",
+      "motivo": "Motivo: {motivo}",
+      "verOriginal": "Ver original",
+      "sede": "Sede",
+      "moneda": "Moneda",
+      "copiaTitulo": "Copia exacta del original",
+      "copiaTexto": "Mismas cuentas, tercero, centro, sede y moneda, con débito y crédito invertidos. Un asiento solo se revierte una vez.",
+      "auxiliarTitulo": "Reversa con auxiliar",
+      "auxiliarTexto": "Una línea va a un auxiliar porque su cuenta hoy es de título. Lo demás es copia del original, con débito y crédito invertidos.",
+      "revertido": "Asiento revertido con el contra-asiento #{id}",
+      "reversaPendiente": "La reversa quedó en Pendientes contables: una línea está en una cuenta de título y hay que elegir su auxiliar."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finanzas",
+        "contabilidad": "Contabilidad",
+        "pendientes": "Pendientes contables"
+      },
+      "estado": "Pendiente · no está en el mayor",
+      "sinNombre": "Documento sin nombre",
+      "configurarCuenta": "Configurar cuenta",
+      "configurar": "Configurar",
+      "reintentar": "Reintentar",
+      "faltaFavor": "Falta la cuenta de redondeo a favor",
+      "faltaContra": "Falta la cuenta de redondeo en contra",
+      "faltaTexto": "Este documento tiene una diferencia de {valor} por redondeo. Queda pendiente hasta configurar la cuenta. No se publica descuadrado.",
+      "diferencia": "Diferencia",
+      "sinCuenta": "Sin cuenta de redondeo",
+      "publicado": "El asiento se publicó con su línea de redondeo.",
+      "sigue": "El asiento sigue pendiente.",
+      "columnas": {
+        "cuenta": "Cuenta",
+        "descripcion": "Descripción",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "auxiliar": "Auxiliar"
+      },
+      "reversaTitulo": "Reversa pendiente del asiento #{id}",
+      "verOriginal": "Ver original",
+      "tituloAvisoTitulo": "Hay líneas en cuentas de título",
+      "sinCuentaTitulo": "Hay líneas sin cuenta",
+      "tituloAvisoTexto": "Una cuenta de título no recibe movimientos, así que la reversa completa espera: no se publicó nada. Elige un auxiliar de la misma cuenta para cada línea.",
+      "elegirAuxiliar": "Elige un auxiliar",
+      "crearAuxiliar": "Crear auxiliar",
+      "publicarReversa": "Publicar reversa",
+      "reversaPublicada": "Reversa publicada: contra-asiento #{id}",
+      "resueltoTitulo": "Pendiente resuelto",
+      "verAsiento": "Ver asiento",
+      "volver": "Volver a pendientes",
+      "noDisponible": "Pendiente no disponible",
+      "errorTitulo": "No se pudo leer el pendiente",
+      "errorTexto": "Revisa tu conexión e inténtalo de nuevo.",
+      "reintentarCarga": "Reintentar"
+    }
   }
 }

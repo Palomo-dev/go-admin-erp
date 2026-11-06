@@ -38996,5 +38996,66 @@
         "guardar": "The account could not be saved."
       }
     }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Rounding to whole pesos · other lines unchanged",
+      "cuadradoTitulo": "Balanced entry",
+      "cuadradoTexto": "Rounding sits on its own line, with an authorized account.",
+      "reversaTitulo": "Reversal of entry #{id}",
+      "publicado": "Posted · {fecha}",
+      "motivo": "Reason: {motivo}",
+      "verOriginal": "View original",
+      "sede": "Branch",
+      "moneda": "Currency",
+      "copiaTitulo": "Exact copy of the original",
+      "copiaTexto": "Same accounts, third party, cost center, branch and currency, with debit and credit swapped. An entry can only be reversed once.",
+      "auxiliarTitulo": "Reversal with a sub-account",
+      "auxiliarTexto": "One line goes to a sub-account because its account is now a header account. The rest is a copy of the original, with debit and credit swapped.",
+      "revertido": "Entry reversed with offsetting entry #{id}",
+      "reversaPendiente": "The reversal is in Pending entries: one line is on a header account and needs a sub-account."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting",
+        "pendientes": "Pending entries"
+      },
+      "estado": "Pending · not in the ledger",
+      "sinNombre": "Unnamed document",
+      "configurarCuenta": "Set up account",
+      "configurar": "Set up",
+      "reintentar": "Retry",
+      "faltaFavor": "The rounding gain account is missing",
+      "faltaContra": "The rounding loss account is missing",
+      "faltaTexto": "This document has a rounding difference of {valor}. It stays pending until the account is set up. It is not posted unbalanced.",
+      "diferencia": "Difference",
+      "sinCuenta": "No rounding account",
+      "publicado": "The entry was posted with its rounding line.",
+      "sigue": "The entry is still pending.",
+      "columnas": {
+        "cuenta": "Account",
+        "descripcion": "Description",
+        "debito": "Debit",
+        "credito": "Credit",
+        "auxiliar": "Sub-account"
+      },
+      "reversaTitulo": "Pending reversal of entry #{id}",
+      "verOriginal": "View original",
+      "tituloAvisoTitulo": "Some lines are on header accounts",
+      "sinCuentaTitulo": "Some lines have no account",
+      "tituloAvisoTexto": "A header account takes no postings, so the whole reversal waits: nothing was posted. Choose a sub-account of the same account for each line.",
+      "elegirAuxiliar": "Choose a sub-account",
+      "crearAuxiliar": "Create sub-account",
+      "publicarReversa": "Post reversal",
+      "reversaPublicada": "Reversal posted: offsetting entry #{id}",
+      "resueltoTitulo": "Pending item resolved",
+      "verAsiento": "View entry",
+      "volver": "Back to pending entries",
+      "noDisponible": "Pending item not available",
+      "errorTitulo": "The pending item could not be read",
+      "errorTexto": "Check your connection and try again.",
+      "reintentarCarga": "Retry"
+    }
   }
 }

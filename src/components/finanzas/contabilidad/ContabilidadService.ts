@@ -3,6 +3,7 @@ import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/timezone';
 import { obtenerOrganizacionActiva, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import type { SaldoCuenta } from '@/lib/finanzas/planCuentasAlta';
+import type { TrazaRedondeo } from '@/lib/finanzas/contabilidad/redondeoReversa';
 
 export interface JournalEntry {
   id: number;
@@ -24,6 +25,22 @@ export interface JournalEntry {
   comprobante_prefijo?: string | null;
   comprobante_numero?: number | null;
   lines?: JournalLine[];
+}
+
+/** Fila de `journal_entry_failures` para la pantalla de un pendiente. */
+export interface AsientoPendiente {
+  id: number;
+  source: string | null;
+  source_id: string | null;
+  fact_key: string | null;
+  amount: number | null;
+  reason: string;
+  detail: string | null;
+  entry_date: string | null;
+  resolved_at: string | null;
+  resolved_entry_id: number | null;
+  resolution: string | null;
+  asiento_propuesto: unknown;
 }
 
 export interface EstadoReversion {
@@ -69,6 +86,7 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   LINEAS_INSUFICIENTES: 'Un asiento necesita al menos dos líneas.',
   SUCURSAL_INVALIDA: 'Selecciona una sucursal de la organización.',
   ASIENTO_PUBLICADO_INMUTABLE: 'Un asiento publicado no se edita ni se borra: se revierte.',
+  REDONDEO_SIN_CUENTA: 'Falta la cuenta de redondeo en la configuración contable.',
 };
 
 /** Traduce el código que devuelve la base a un mensaje para el usuario. */
@@ -115,6 +133,10 @@ export interface JournalLine {
   cost_center_id?: string | null;
   tercero_nit?: string | null;
   tercero_nombre?: string | null;
+  currency_code?: string | null;
+  exchange_rate?: number | null;
+  /** Solo la línea explícita de redondeo a pesos: clave, diferencia y totales. */
+  redondeo_traza?: TrazaRedondeo | null;
   account?: ChartAccount;
 }
 
@@ -650,9 +672,10 @@ export class ContabilidadService {
   /**
    * Revierte un asiento manual publicado con un contra-asiento y un motivo.
    * El permiso «Revertir asientos» y el periodo se resuelven en la base.
-   * Devuelve el id del contra-asiento.
+   * Devuelve el id del contra-asiento, o null si quedó pendiente en Pendientes contables
+   * (una línea está en una cuenta que hoy es de título: nada se publicó).
    */
-  static async revertirAsiento(id: number, motivo: string): Promise<number> {
+  static async revertirAsiento(id: number, motivo: string): Promise<number | null> {
     const { data, error } = await supabase.rpc('fn_revertir_asiento_manual', {
       p_entry_id: id,
       p_motivo: motivo,
@@ -662,7 +685,41 @@ export class ContabilidadService {
       console.error('Error revirtiendo asiento:', error);
       throw new Error(mensajeErrorAsiento(error));
     }
-    return data as number;
+    return (data as number | null) ?? null;
+  }
+
+  /** Motivo de una reversa manual. `journal_reversals` no se lee desde el cliente. */
+  static async motivoReversa(reversalEntryId: number): Promise<string | null> {
+    const { data, error } = await supabase.rpc('fn_asiento_motivo_reversa', { p_reversal_entry_id: reversalEntryId });
+    if (error) throw error;
+    return (data as string | null) ?? null;
+  }
+
+  /** Un pendiente de la organización activa. La lectura la limita RLS. */
+  static async obtenerAsientoPendiente(id: number): Promise<AsientoPendiente | null> {
+    const { data, error } = await supabase
+      .from('journal_entry_failures')
+      .select('id, source, source_id, fact_key, amount, reason, detail, entry_date, resolved_at, resolved_entry_id, resolution, asiento_propuesto')
+      .eq('organization_id', this.getOrganizationId())
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data as AsientoPendiente | null;
+  }
+
+  /** Publica el asiento propuesto si la cuenta de redondeo ya está. Organización y permiso, en la base. */
+  static async reintentarRedondeo(id: number): Promise<{ publicado: boolean; journalEntryId: number | null; detalle: string | null }> {
+    const { data, error } = await supabase.rpc('fn_reintentar_redondeo_pendiente', { p_failure_id: id });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+    const r = (data ?? {}) as { publicado?: boolean; journal_entry_id?: number | null; detalle?: string | null };
+    return { publicado: r.publicado === true, journalEntryId: r.journal_entry_id ?? null, detalle: r.detalle ?? null };
+  }
+
+  /** Asigna el auxiliar de cada línea detenida. Con todas, publica la reversa completa y devuelve su id. */
+  static async resolverReversaPendiente(id: number, cuentas: Record<string, string>): Promise<number | null> {
+    const { data, error } = await supabase.rpc('fn_reversar_linea_sin_cuenta', { p_failure_id: id, p_cuentas: cuentas });
+    if (error) throw new Error(mensajeErrorAsiento(error));
+    return (data as number | null) ?? null;
   }
 
   /** Solo decide si se muestra el botón: la base vuelve a comprobarlo al revertir. */

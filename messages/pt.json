@@ -39006,5 +39006,66 @@
         "guardar": "Não foi possível salvar a conta."
       }
     }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Arredondamento para unidade · não altera as outras linhas",
+      "cuadradoTitulo": "Lançamento equilibrado",
+      "cuadradoTexto": "O arredondamento fica na sua própria linha, com conta autorizada.",
+      "reversaTitulo": "Estorno do lançamento #{id}",
+      "publicado": "Publicado · {fecha}",
+      "motivo": "Motivo: {motivo}",
+      "verOriginal": "Ver original",
+      "sede": "Filial",
+      "moneda": "Moeda",
+      "copiaTitulo": "Cópia exata do original",
+      "copiaTexto": "Mesmas contas, terceiro, centro de custo, filial e moeda, com débito e crédito invertidos. Um lançamento só é estornado uma vez.",
+      "auxiliarTitulo": "Estorno com conta auxiliar",
+      "auxiliarTexto": "Uma linha vai para uma conta auxiliar porque sua conta hoje é sintética. O resto é cópia do original, com débito e crédito invertidos.",
+      "revertido": "Lançamento estornado com o contralançamento #{id}",
+      "reversaPendiente": "O estorno ficou em Lançamentos pendentes: uma linha está em conta sintética e é preciso escolher a auxiliar."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finanças",
+        "contabilidad": "Contabilidade",
+        "pendientes": "Lançamentos pendentes"
+      },
+      "estado": "Pendente · fora do razão",
+      "sinNombre": "Documento sem nome",
+      "configurarCuenta": "Configurar conta",
+      "configurar": "Configurar",
+      "reintentar": "Tentar de novo",
+      "faltaFavor": "Falta a conta de arredondamento a favor",
+      "faltaContra": "Falta a conta de arredondamento contra",
+      "faltaTexto": "Este documento tem uma diferença de {valor} por arredondamento. Fica pendente até configurar a conta. Não é publicado desequilibrado.",
+      "diferencia": "Diferença",
+      "sinCuenta": "Sem conta de arredondamento",
+      "publicado": "O lançamento foi publicado com sua linha de arredondamento.",
+      "sigue": "O lançamento continua pendente.",
+      "columnas": {
+        "cuenta": "Conta",
+        "descripcion": "Descrição",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "auxiliar": "Auxiliar"
+      },
+      "reversaTitulo": "Estorno pendente do lançamento #{id}",
+      "verOriginal": "Ver original",
+      "tituloAvisoTitulo": "Há linhas em contas sintéticas",
+      "sinCuentaTitulo": "Há linhas sem conta",
+      "tituloAvisoTexto": "Uma conta sintética não recebe movimentos, então todo o estorno aguarda: nada foi publicado. Escolha uma auxiliar da mesma conta para cada linha.",
+      "elegirAuxiliar": "Escolha uma auxiliar",
+      "crearAuxiliar": "Criar auxiliar",
+      "publicarReversa": "Publicar estorno",
+      "reversaPublicada": "Estorno publicado: contralançamento #{id}",
+      "resueltoTitulo": "Pendência resolvida",
+      "verAsiento": "Ver lançamento",
+      "volver": "Voltar às pendências",
+      "noDisponible": "Pendência indisponível",
+      "errorTitulo": "Não foi possível ler a pendência",
+      "errorTexto": "Verifique sua conexão e tente de novo.",
+      "reintentarCarga": "Tentar de novo"
+    }
   }
 }

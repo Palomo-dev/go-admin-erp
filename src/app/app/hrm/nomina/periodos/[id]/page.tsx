@@ -9,6 +9,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
 import type { PayrollPeriod, PayrollRun } from '@/lib/services/payrollService';
 import { RunsTable } from '@/components/hrm/nomina/periodos/[id]';
+import { DeduccionesPeriodo } from '@/components/hrm/nomina/periodos/[id]/DeduccionesPeriodo';
+import { ejecucionVigente, esBloqueoDeduccion } from '@/lib/services/nominaDeducciones';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,6 +78,7 @@ export default function PeriodoDetallePage() {
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deduccionesPendientes, setDeduccionesPendientes] = useState(0);
 
   // Dialog states
   const [runDialogOpen, setRunDialogOpen] = useState(false);
@@ -181,10 +184,12 @@ export default function PeriodoDetallePage() {
       toast({ title: 'Periodo aprobado' });
       setApproveOpen(false);
       await loadData();
-    } catch {
+    } catch (e: unknown) {
       toast({
         title: 'Error',
-        description: 'No se pudo aprobar el periodo',
+        description: esBloqueoDeduccion(e)
+          ? 'Falta escribir deducciones sin calcular en algunas colillas'
+          : 'No se pudo aprobar el periodo',
         variant: 'destructive',
       });
     }
@@ -228,7 +233,8 @@ export default function PeriodoDetallePage() {
   }
 
   const canExecuteRun = period.status === 'draft' || period.status === 'calculating';
-  const canApprove = period.status === 'reviewing';
+  const vigente = ejecucionVigente(runs);
+  const canApprove = period.status === 'reviewing' && deduccionesPendientes === 0;
   const hasFinalRun = runs.some(r => r.is_final);
 
   return (
@@ -285,6 +291,10 @@ export default function PeriodoDetallePage() {
           )}
         </div>
       </div>
+
+      {vigente && (
+        <DeduccionesPeriodo ejecucionId={vigente.id} onPendientes={setDeduccionesPendientes} onCambio={loadData} />
+      )}
 
       {/* Period Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

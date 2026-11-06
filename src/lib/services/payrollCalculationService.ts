@@ -24,6 +24,7 @@ export interface PayrollCalculationResult {
     gross_pay: number;
     total_deductions: number;
     net_pay: number;
+    employer_cost: number;
   };
 }
 
@@ -339,6 +340,10 @@ export class PayrollCalculationService {
       employerParafiscales + employerSeverance + employerSeveranceInterest +
       employerVacation + employerBonus;
 
+    // Cuotas de préstamo que vencen en el periodo. Se muestran y se confirman a mano: el
+    // descuento real depende del tope del préstamo y de lo que ya se registró en Préstamos.
+    const cuotasPrestamo = await this.getCuotasPrestamo(employee.id, periodStart, periodEnd);
+
     // Crear payroll slip
     const { data: slip, error: slipError } = await supabase
       .from('payroll_slips')
@@ -362,8 +367,10 @@ export class PayrollCalculationService {
         health_deduction: healthDeduction,
         pension_deduction: pensionDeduction,
         solidarity_fund: solidarityFund,
-        tax_withholding: 0, // TODO: Calcular retención en la fuente
-        loan_deductions: 0, // TODO: Obtener deducciones de préstamos
+        // NULL = sin calcular, no cero: la retención no tiene regla verificada y la escribe
+        // una persona (fn_nomina_fijar_deduccion). Mientras tanto la colilla no se aprueba.
+        tax_withholding: null,
+        loan_deductions: cuotasPrestamo.length > 0 ? null : 0,
         advance_deductions: 0,
         other_deductions: 0,
         total_deductions: totalDeductions,
@@ -388,6 +395,7 @@ export class PayrollCalculationService {
           period_start: periodStart,
           period_end: periodEnd,
           commission_ids: commissionAmount.ids,
+          cuotas_prestamo: cuotasPrestamo,
         },
       })
       .select('id')
@@ -408,6 +416,7 @@ export class PayrollCalculationService {
         gross_pay: grossPay,
         total_deductions: totalDeductions,
         net_pay: netPay,
+        employer_cost: totalEmployerCost,
       },
     };
   }
@@ -623,6 +632,29 @@ export class PayrollCalculationService {
   }
 
   /**
+   * Cuotas pendientes de préstamos activos con descuento por nómina que vencen en el período.
+   */
+  private async getCuotasPrestamo(
+    employmentId: string,
+    periodStart: string,
+    periodEnd: string
+  ): Promise<{ id: string; amount: number }[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('loan_installments')
+      .select('id, amount, employee_loans!loan_installments_loan_id_fkey!inner(employment_id, status, auto_deduct)')
+      .eq('employee_loans.employment_id', employmentId)
+      .eq('employee_loans.status', 'active')
+      .eq('employee_loans.auto_deduct', true)
+      .in('status', ['pending', 'partial'])
+      .gte('due_date', periodStart)
+      .lte('due_date', periodEnd);
+
+    if (error) throw error;
+    return (data ?? []).map((c) => ({ id: String(c.id), amount: Number(c.amount) }));
+  }
+
+  /**
    * Calcula totales del período
    */
   private calculateTotals(results: PayrollCalculationResult[]): {
@@ -637,7 +669,7 @@ export class PayrollCalculationService {
       gross_pay: successResults.reduce((sum, r) => sum + (r.summary?.gross_pay || 0), 0),
       total_deductions: successResults.reduce((sum, r) => sum + (r.summary?.total_deductions || 0), 0),
       net_pay: successResults.reduce((sum, r) => sum + (r.summary?.net_pay || 0), 0),
-      employer_cost: 0, // TODO: Sumar costos empleador
+      employer_cost: successResults.reduce((sum, r) => sum + (r.summary?.employer_cost || 0), 0),
     };
   }
 

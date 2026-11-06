@@ -104,6 +104,7 @@ const ERROR_POR_MOTIVO: Record<string, ErrorPendiente> = {
   cuenta_no_configurada: 'cuentaSinConfigurar',
   cuenta_banco_sin_puc: 'cuentaSinConfigurar',
   sin_cuenta: 'cuentaSinConfigurar',
+  faltan_cuentas: 'cuentaSinConfigurar',
   cuenta_no_es_de_movimiento: 'cuentaDeTitulo',
   cuenta_de_titulo: 'cuentaDeTitulo',
   cuenta_linea: 'cuentaDeTitulo',

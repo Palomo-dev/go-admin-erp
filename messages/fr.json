@@ -39466,5 +39466,195 @@
       "errorTexto": "Vérifiez votre connexion et réessayez.",
       "reintentarCarga": "Réessayer"
     }
+  },
+  "carteraEdades": {
+    "titulo": "Balance âgée",
+    "subtitulo": "Retard calculé à la date d’arrêté",
+    "corteMovil": "Arrêté au {fecha}",
+    "migas": {
+      "finanzas": "Finances",
+      "informes": "Rapports"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Consulter",
+    "total": "Total",
+    "filtros": {
+      "corte": "Date d’arrêté",
+      "tipo": "Type",
+      "clientes": "Clients",
+      "proveedores": "Fournisseurs",
+      "agrupar": "Regrouper par",
+      "porTercero": "Tiers",
+      "porDocumento": "Document"
+    },
+    "kpi": {
+      "resumen": "Résumé de la balance",
+      "total": "Total",
+      "vencida": "Échu",
+      "porcentaje": "{pct} %",
+      "anticipos": "Acomptes non imputés",
+      "anticiposProveedores": "Acomptes fournisseurs",
+      "anticiposAparte": "À part, non déduit",
+      "anticiposMayor": "Grand livre {cuenta}, non déduit",
+      "mayor": "Grand livre {cuenta}",
+      "cuadra": "Équilibré",
+      "diferencia": "Écart {valor}"
+    },
+    "noCuadra": {
+      "titulo": "Le solde ne correspond pas au grand livre {cuenta}",
+      "descripcion": "Il y a un écart de {valor} entre le grand livre et les documents à cette date. Vérifiez les éléments comptables en attente et les écritures manuelles de ce compte."
+    },
+    "bandas": {
+      "corriente": "À jour",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Plus de 90"
+    },
+    "columnas": {
+      "tercero": "Tiers",
+      "total": "Total",
+      "documento": "Document",
+      "vence": "Échéance",
+      "dias": "Jours de retard",
+      "banda": "Ancienneté",
+      "saldo": "Solde à l’arrêté"
+    },
+    "vacio": {
+      "titulo": "Aucun solde à cette date",
+      "descripcion": "Aucun document n’a de solde à la date d’arrêté."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "Voir"
+    },
+    "hoja": {
+      "subtitulo": "{total} sur {n, plural, one {# document} other {# documents}}",
+      "vence": "Échéance {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Immobilisations",
+    "subtitulo": "Amortissement mensuel linéaire",
+    "migas": {
+      "finanzas": "Finances"
+    },
+    "nuevo": "Nouvelle immobilisation",
+    "depreciar": "Amortir {mes}",
+    "meses": "{n, plural, one {# mois} other {# mois}}",
+    "lineaRecta": "Linéaire",
+    "metodoNoDisponible": "Non disponible",
+    "editar": "Modifier {nombre}",
+    "borrar": "Supprimer {nombre}",
+    "columnas": {
+      "activo": "Immobilisation",
+      "costo": "Coût",
+      "vidaUtil": "Durée d’utilité",
+      "acumulada": "Amortissement cumulé",
+      "libros": "Valeur comptable",
+      "metodo": "Méthode"
+    },
+    "vacio": {
+      "titulo": "Aucune immobilisation",
+      "descripcion": "Enregistrez la première immobilisation pour l’amortir chaque mois."
+    },
+    "tarjeta": {
+      "libros": "Valeur comptable {valor}",
+      "acumulada": "Cumulé {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Les autres méthodes ne sont pas disponibles",
+      "descripcion": "Le dégressif et les unités de production ne sont pas encore calculés. Ils ne sont pas proposés pour éviter de faux zéros."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {Aucune nouvelle écriture} one {# écriture comptabilisée} other {# écritures comptabilisées}} · {total}",
+      "sinPendientes": "Toutes les immobilisations sont à jour."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Méthode non disponible",
+      "faltan_cuentas": "En attente : comptes de charge et d’amortissement manquants",
+      "cuenta_no_es_de_movimiento": "En attente : un compte n’existe pas ou est un compte de regroupement",
+      "acumulada_sin_detalle": "En attente : l’amortissement cumulé ne correspond pas au détail",
+      "period_closed": "En attente : la période comptable est clôturée",
+      "otro": "En attente : vérifiez les éléments comptables en attente"
+    },
+    "errores": {
+      "guardar": "Impossible d’enregistrer l’immobilisation",
+      "borrar": "Impossible de supprimer l’immobilisation",
+      "depreciar": "Impossible de comptabiliser l’amortissement",
+      "sinPermiso": "Vous n’avez pas l’autorisation de comptabiliser l’amortissement"
+    },
+    "tipos": {
+      "building": "Bâtiment",
+      "vehicle": "Véhicule",
+      "equipment": "Équipement",
+      "furniture": "Mobilier",
+      "computer": "Informatique",
+      "software": "Logiciel",
+      "land": "Terrain (non amorti)",
+      "other": "Autre"
+    },
+    "form": {
+      "tituloNuevo": "Nouvelle immobilisation",
+      "tituloEditar": "Modifier l’immobilisation",
+      "guardar": "Enregistrer",
+      "requeridos": "Le code et le nom sont obligatoires",
+      "codigo": "Code",
+      "tipo": "Type",
+      "nombre": "Nom",
+      "descripcion": "Description",
+      "fecha": "Date d’acquisition",
+      "costo": "Coût d’acquisition",
+      "residual": "Valeur résiduelle",
+      "vida": "Durée d’utilité en mois",
+      "cuentaActivo": "Compte d’immobilisation",
+      "cuentaGasto": "Compte de charge",
+      "cuentaDepreciacion": "Amortissement cumulé",
+      "sinCuenta": "Sans compte",
+      "ayudaCuentas": "Sans ces deux comptes de mouvement, l’immobilisation n’est pas amortie.",
+      "conDepreciacion": "Cette immobilisation a déjà un amortissement comptabilisé : la date, le coût, la valeur résiduelle et la durée ne peuvent pas être modifiés."
+    },
+    "borrado": {
+      "titulo": "Supprimer {nombre} ?",
+      "descripcion": "L’immobilisation est retirée de la liste. Elle n’a aucun amortissement comptabilisé.",
+      "confirmar": "Supprimer"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Bulletins de la période",
+    "sinCalcular": "Non calculé",
+    "noAplica": "Sans objet",
+    "vacio": "Aucun bulletin dans cette exécution",
+    "bloqueo": {
+      "titulo": "Clôture impossible : la retenue à la source manque",
+      "tituloPrestamo": "Clôture impossible : une échéance de prêt doit être confirmée",
+      "descripcion": "GO Admin ne calcule pas encore cette retenue. Saisissez-la à la main ou consultez votre comptable. Elle n’est pas prise pour 0 $.",
+      "ingresar": "Saisir la valeur"
+    },
+    "columnas": {
+      "empleado": "Employé",
+      "devengado": "Brut",
+      "saludPension": "Santé et retraite",
+      "retencion": "Retenue",
+      "prestamos": "Prêts",
+      "neto": "Net"
+    },
+    "dialogo": {
+      "titulo": "Retenue à la source",
+      "tituloPrestamo": "Échéance de prêt",
+      "valor": "Valeur",
+      "ayudaCero": "Saisissez 0 si elle ne s’applique pas. L’auteur de la décision est enregistré.",
+      "nota": "Note",
+      "guardar": "Enregistrer la valeur",
+      "faltaValor": "Saisissez la valeur"
+    },
+    "errores": {
+      "titulo": "Non enregistré",
+      "netoNegativo": "La valeur rend le net négatif",
+      "sinPermiso": "Vous n’avez pas l’autorisation de traiter la paie",
+      "noEditable": "Le bulletin ou la période ne peut plus être modifié",
+      "generico": "Impossible d’enregistrer la valeur"
+    }
   }
 }

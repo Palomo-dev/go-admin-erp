@@ -40,22 +40,41 @@ export interface FixedAssetInput {
   cost_center_id?: string | null;
 }
 
-export const ASSET_TYPES = [
-  { value: 'building', label: 'Edificio' },
-  { value: 'vehicle', label: 'Vehiculo' },
-  { value: 'equipment', label: 'Equipo' },
-  { value: 'furniture', label: 'Mobiliario' },
-  { value: 'computer', label: 'Computo' },
-  { value: 'software', label: 'Software' },
-  { value: 'land', label: 'Terreno' },
-  { value: 'other', label: 'Otro' },
-];
+export const TIPOS_ACTIVO = ['building', 'vehicle', 'equipment', 'furniture', 'computer', 'software', 'land', 'other'] as const;
 
-export const DEPRECIATION_METHODS = [
-  { value: 'straight_line', label: 'Linea Recta' },
-  { value: 'declining_balance', label: 'Saldo Decreciente' },
-  { value: 'units_of_production', label: 'Unidades de Produccion' },
-];
+/** Único método con cálculo verificado. Los demás no se ofrecen: el servidor los rechaza. */
+export const METODO_DEPRECIACION = 'straight_line';
+
+/** Por qué un activo no se deprecia (`fn_depreciacion_bloqueo`) o por qué falló su asiento. */
+export type MotivoPendiente =
+  | 'metodo_no_disponible'
+  | 'faltan_cuentas'
+  | 'cuenta_no_es_de_movimiento'
+  | 'acumulada_sin_detalle'
+  | 'period_closed'
+  | string;
+
+export interface PendienteDepreciacion {
+  activo_id: string;
+  codigo?: string;
+  mes?: string;
+  motivo: MotivoPendiente;
+}
+
+export interface ResultadoDepreciacion {
+  mes: string;
+  asientos: number;
+  total: number;
+  ya_depreciados: number;
+  terminados: number;
+  pendientes: PendienteDepreciacion[];
+}
+
+export interface EstadoDepreciacion {
+  hoy: string;
+  ultimo_mes: string | null;
+  bloqueos: { activo_id: string; motivo: MotivoPendiente }[];
+}
 
 export class FixedAssetService {
   private static getOrganizationId(): number {
@@ -107,10 +126,30 @@ export class FixedAssetService {
     if (error) throw error;
   }
 
-  static calculateMonthlyDepreciation(asset: FixedAsset): number {
-    if (asset.depreciation_method !== 'straight_line') return 0;
-    const depreciableAmount = asset.acquisition_cost - asset.salvage_value;
-    if (asset.useful_life_months <= 0) return 0;
-    return depreciableAmount / asset.useful_life_months;
+  static async estado(): Promise<EstadoDepreciacion> {
+    const { data, error } = await supabase.rpc('fn_depreciacion_estado', {
+      p_organization_id: this.getOrganizationId(),
+    });
+    if (error) throw error;
+    return data as EstadoDepreciacion;
+  }
+
+  /** Contabiliza el mes y los meses atrasados. Repetirlo no duplica. `mes`: `YYYY-MM-DD`. */
+  static async depreciarMes(mes: string): Promise<ResultadoDepreciacion> {
+    const { data, error } = await supabase.rpc('fn_depreciar_mes', {
+      p_organization_id: this.getOrganizationId(),
+      p_mes: mes,
+    });
+    if (error) throw error;
+    return data as ResultadoDepreciacion;
+  }
+
+  /**
+   * Cuota mensual en línea recta. `null` si el método no tiene cálculo: nunca un 0, que se
+   * leería como «no se deprecia».
+   */
+  static calculateMonthlyDepreciation(asset: Pick<FixedAsset, 'depreciation_method' | 'acquisition_cost' | 'salvage_value' | 'useful_life_months'>): number | null {
+    if (asset.depreciation_method !== METODO_DEPRECIACION || asset.useful_life_months <= 0) return null;
+    return (asset.acquisition_cost - asset.salvage_value) / asset.useful_life_months;
   }
 }

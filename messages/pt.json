@@ -39476,5 +39476,195 @@
       "errorTexto": "Verifique sua conexão e tente de novo.",
       "reintentarCarga": "Tentar de novo"
     }
+  },
+  "carteraEdades": {
+    "titulo": "Carteira por idades",
+    "subtitulo": "Atraso calculado na data de corte",
+    "corteMovil": "Corte {fecha}",
+    "migas": {
+      "finanzas": "Finanças",
+      "informes": "Relatórios"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Consultar",
+    "total": "Total",
+    "filtros": {
+      "corte": "Data de corte",
+      "tipo": "Tipo",
+      "clientes": "Clientes",
+      "proveedores": "Fornecedores",
+      "agrupar": "Agrupar por",
+      "porTercero": "Terceiro",
+      "porDocumento": "Documento"
+    },
+    "kpi": {
+      "resumen": "Resumo da carteira",
+      "total": "Total da carteira",
+      "vencida": "Vencida",
+      "porcentaje": "{pct} %",
+      "anticipos": "Adiantamentos não aplicados",
+      "anticiposProveedores": "Adiantamentos a fornecedores",
+      "anticiposAparte": "À parte, não subtrai",
+      "anticiposMayor": "Razão {cuenta}, não subtrai",
+      "mayor": "Razão {cuenta}",
+      "cuadra": "Confere",
+      "diferencia": "Diferença {valor}"
+    },
+    "noCuadra": {
+      "titulo": "A carteira não confere com o razão {cuenta}",
+      "descripcion": "Há uma diferença de {valor} entre o razão e os documentos nesta data. Revise as pendências contábeis e os lançamentos manuais dessa conta."
+    },
+    "bandas": {
+      "corriente": "Em dia",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Mais de 90"
+    },
+    "columnas": {
+      "tercero": "Terceiro",
+      "total": "Total",
+      "documento": "Documento",
+      "vence": "Vencimento",
+      "dias": "Dias de atraso",
+      "banda": "Idade",
+      "saldo": "Saldo no corte"
+    },
+    "vacio": {
+      "titulo": "Sem saldos nesta data",
+      "descripcion": "Não há documentos com saldo na data de corte."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "Ver"
+    },
+    "hoja": {
+      "subtitulo": "{total} em {n, plural, one {# documento} other {# documentos}}",
+      "vence": "Vence {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Ativos fixos",
+    "subtitulo": "Depreciação mensal em linha reta",
+    "migas": {
+      "finanzas": "Finanças"
+    },
+    "nuevo": "Novo ativo",
+    "depreciar": "Depreciar {mes}",
+    "meses": "{n, plural, one {# mês} other {# meses}}",
+    "lineaRecta": "Linha reta",
+    "metodoNoDisponible": "Não disponível",
+    "editar": "Editar {nombre}",
+    "borrar": "Excluir {nombre}",
+    "columnas": {
+      "activo": "Ativo",
+      "costo": "Custo",
+      "vidaUtil": "Vida útil",
+      "acumulada": "Depreciação acumulada",
+      "libros": "Valor contábil",
+      "metodo": "Método"
+    },
+    "vacio": {
+      "titulo": "Sem ativos fixos",
+      "descripcion": "Cadastre o primeiro ativo para depreciá-lo todo mês."
+    },
+    "tarjeta": {
+      "libros": "Valor contábil {valor}",
+      "acumulada": "Acumulada {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Outros métodos não estão disponíveis",
+      "descripcion": "Saldos decrescentes e unidades de produção ainda não são calculados. Não aparecem como opção para evitar zeros falsos."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {Sem lançamentos novos} one {# lançamento contabilizado} other {# lançamentos contabilizados}} · {total}",
+      "sinPendientes": "Todos os ativos estão em dia."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Método não disponível",
+      "faltan_cuentas": "Pendente: faltam as contas de despesa e de depreciação",
+      "cuenta_no_es_de_movimiento": "Pendente: uma conta não existe ou é sintética",
+      "acumulada_sin_detalle": "Pendente: a depreciação acumulada não coincide com o detalhe",
+      "period_closed": "Pendente: o período contábil está fechado",
+      "otro": "Pendente: revise as pendências contábeis"
+    },
+    "errores": {
+      "guardar": "Não foi possível salvar o ativo",
+      "borrar": "Não foi possível excluir o ativo",
+      "depreciar": "Não foi possível contabilizar a depreciação",
+      "sinPermiso": "Você não tem permissão para contabilizar a depreciação"
+    },
+    "tipos": {
+      "building": "Edifício",
+      "vehicle": "Veículo",
+      "equipment": "Equipamento",
+      "furniture": "Mobiliário",
+      "computer": "Informática",
+      "software": "Software",
+      "land": "Terreno (não depreciado)",
+      "other": "Outro"
+    },
+    "form": {
+      "tituloNuevo": "Novo ativo fixo",
+      "tituloEditar": "Editar ativo fixo",
+      "guardar": "Salvar",
+      "requeridos": "Código e nome são obrigatórios",
+      "codigo": "Código",
+      "tipo": "Tipo",
+      "nombre": "Nome",
+      "descripcion": "Descrição",
+      "fecha": "Data de aquisição",
+      "costo": "Custo de aquisição",
+      "residual": "Valor residual",
+      "vida": "Vida útil em meses",
+      "cuentaActivo": "Conta do ativo",
+      "cuentaGasto": "Conta de despesa",
+      "cuentaDepreciacion": "Depreciação acumulada",
+      "sinCuenta": "Sem conta",
+      "ayudaCuentas": "Sem estas duas contas analíticas o ativo não é depreciado.",
+      "conDepreciacion": "Este ativo já tem depreciação contabilizada: a data, o custo, o residual e a vida útil não podem ser alterados."
+    },
+    "borrado": {
+      "titulo": "Excluir {nombre}?",
+      "descripcion": "O ativo sai da lista. Ele não tem depreciação contabilizada.",
+      "confirmar": "Excluir"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Holerites do período",
+    "sinCalcular": "Não calculado",
+    "noAplica": "Não se aplica",
+    "vacio": "Sem holerites nesta execução",
+    "bloqueo": {
+      "titulo": "Não é possível fechar: falta a retenção na fonte",
+      "tituloPrestamo": "Não é possível fechar: falta confirmar uma parcela de empréstimo",
+      "descripcion": "O GO Admin ainda não calcula esta dedução. Digite-a à mão ou consulte o contador. Não é considerada $ 0.",
+      "ingresar": "Inserir valor"
+    },
+    "columnas": {
+      "empleado": "Funcionário",
+      "devengado": "Bruto",
+      "saludPension": "Saúde e pensão",
+      "retencion": "Retenção",
+      "prestamos": "Empréstimos",
+      "neto": "Líquido"
+    },
+    "dialogo": {
+      "titulo": "Retenção na fonte",
+      "tituloPrestamo": "Parcela de empréstimo",
+      "valor": "Valor",
+      "ayudaCero": "Digite 0 se não se aplicar. Fica registrado quem decidiu.",
+      "nota": "Nota",
+      "guardar": "Salvar valor",
+      "faltaValor": "Digite o valor"
+    },
+    "errores": {
+      "titulo": "Não salvo",
+      "netoNegativo": "O valor deixa o líquido negativo",
+      "sinPermiso": "Você não tem permissão para processar a folha",
+      "noEditable": "O holerite ou o período não pode mais ser editado",
+      "generico": "Não foi possível salvar o valor"
+    }
   }
 }

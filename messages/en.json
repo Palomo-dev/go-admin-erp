@@ -39466,5 +39466,195 @@
       "errorTexto": "Check your connection and try again.",
       "reintentarCarga": "Retry"
     }
+  },
+  "carteraEdades": {
+    "titulo": "Aging report",
+    "subtitulo": "Days past due calculated at the cutoff date",
+    "corteMovil": "As of {fecha}",
+    "migas": {
+      "finanzas": "Finance",
+      "informes": "Reports"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Run",
+    "total": "Total",
+    "filtros": {
+      "corte": "Cutoff date",
+      "tipo": "Type",
+      "clientes": "Customers",
+      "proveedores": "Suppliers",
+      "agrupar": "Group by",
+      "porTercero": "Party",
+      "porDocumento": "Document"
+    },
+    "kpi": {
+      "resumen": "Aging summary",
+      "total": "Total balance",
+      "vencida": "Past due",
+      "porcentaje": "{pct} %",
+      "anticipos": "Unapplied advances",
+      "anticiposProveedores": "Supplier advances",
+      "anticiposAparte": "Separate, not deducted",
+      "anticiposMayor": "Ledger {cuenta}, not deducted",
+      "mayor": "Ledger {cuenta}",
+      "cuadra": "Reconciled",
+      "diferencia": "Difference {valor}"
+    },
+    "noCuadra": {
+      "titulo": "The balance does not match ledger {cuenta}",
+      "descripcion": "There is a difference of {valor} between the ledger and the documents at this date. Review pending accounting items and manual entries on that account."
+    },
+    "bandas": {
+      "corriente": "Current",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Over 90"
+    },
+    "columnas": {
+      "tercero": "Party",
+      "total": "Total",
+      "documento": "Document",
+      "vence": "Due",
+      "dias": "Days past due",
+      "banda": "Age",
+      "saldo": "Balance at cutoff"
+    },
+    "vacio": {
+      "titulo": "No balances at this date",
+      "descripcion": "There are no documents with a balance at the cutoff date."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "View"
+    },
+    "hoja": {
+      "subtitulo": "{total} in {n, plural, one {# document} other {# documents}}",
+      "vence": "Due {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Fixed assets",
+    "subtitulo": "Monthly straight-line depreciation",
+    "migas": {
+      "finanzas": "Finance"
+    },
+    "nuevo": "New asset",
+    "depreciar": "Depreciate {mes}",
+    "meses": "{n, plural, one {# month} other {# months}}",
+    "lineaRecta": "Straight line",
+    "metodoNoDisponible": "Not available",
+    "editar": "Edit {nombre}",
+    "borrar": "Delete {nombre}",
+    "columnas": {
+      "activo": "Asset",
+      "costo": "Cost",
+      "vidaUtil": "Useful life",
+      "acumulada": "Accumulated depreciation",
+      "libros": "Book value",
+      "metodo": "Method"
+    },
+    "vacio": {
+      "titulo": "No fixed assets",
+      "descripcion": "Add your first asset to depreciate it every month."
+    },
+    "tarjeta": {
+      "libros": "Book value {valor}",
+      "acumulada": "Accumulated {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Other methods are not available",
+      "descripcion": "Declining balance and units of production are not calculated yet. They are not offered so they cannot show false zeros."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {No new entries} one {# entry posted} other {# entries posted}} · {total}",
+      "sinPendientes": "All assets are up to date."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Method not available",
+      "faltan_cuentas": "Pending: expense and depreciation accounts are missing",
+      "cuenta_no_es_de_movimiento": "Pending: an account does not exist or is a header account",
+      "acumulada_sin_detalle": "Pending: accumulated depreciation does not match the detail",
+      "period_closed": "Pending: the accounting period is closed",
+      "otro": "Pending: check pending accounting items"
+    },
+    "errores": {
+      "guardar": "The asset could not be saved",
+      "borrar": "The asset could not be deleted",
+      "depreciar": "Depreciation could not be posted",
+      "sinPermiso": "You do not have permission to post depreciation"
+    },
+    "tipos": {
+      "building": "Building",
+      "vehicle": "Vehicle",
+      "equipment": "Equipment",
+      "furniture": "Furniture",
+      "computer": "Computers",
+      "software": "Software",
+      "land": "Land (not depreciated)",
+      "other": "Other"
+    },
+    "form": {
+      "tituloNuevo": "New fixed asset",
+      "tituloEditar": "Edit fixed asset",
+      "guardar": "Save",
+      "requeridos": "Code and name are required",
+      "codigo": "Code",
+      "tipo": "Type",
+      "nombre": "Name",
+      "descripcion": "Description",
+      "fecha": "Acquisition date",
+      "costo": "Acquisition cost",
+      "residual": "Residual value",
+      "vida": "Useful life in months",
+      "cuentaActivo": "Asset account",
+      "cuentaGasto": "Expense account",
+      "cuentaDepreciacion": "Accumulated depreciation",
+      "sinCuenta": "No account",
+      "ayudaCuentas": "Without these two posting accounts the asset is not depreciated.",
+      "conDepreciacion": "This asset already has posted depreciation: date, cost, residual value and useful life cannot be changed."
+    },
+    "borrado": {
+      "titulo": "Delete {nombre}?",
+      "descripcion": "The asset is removed from the list. It has no posted depreciation.",
+      "confirmar": "Delete"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Period payslips",
+    "sinCalcular": "Not calculated",
+    "noAplica": "Not applicable",
+    "vacio": "No payslips in this run",
+    "bloqueo": {
+      "titulo": "Cannot close: withholding tax is missing",
+      "tituloPrestamo": "Cannot close: a loan installment needs confirmation",
+      "descripcion": "GO Admin does not calculate this deduction yet. Enter it by hand or check with your accountant. It is not taken as $ 0.",
+      "ingresar": "Enter value"
+    },
+    "columnas": {
+      "empleado": "Employee",
+      "devengado": "Gross pay",
+      "saludPension": "Health and pension",
+      "retencion": "Withholding",
+      "prestamos": "Loans",
+      "neto": "Net"
+    },
+    "dialogo": {
+      "titulo": "Withholding tax",
+      "tituloPrestamo": "Loan installment",
+      "valor": "Value",
+      "ayudaCero": "Enter 0 if it does not apply. Who decided it is recorded.",
+      "nota": "Note",
+      "guardar": "Save value",
+      "faltaValor": "Enter the value"
+    },
+    "errores": {
+      "titulo": "Not saved",
+      "netoNegativo": "The value makes net pay negative",
+      "sinPermiso": "You do not have permission to process payroll",
+      "noEditable": "The payslip or period can no longer be edited",
+      "generico": "The value could not be saved"
+    }
   }
 }

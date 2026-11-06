@@ -15,6 +15,7 @@ import type { ReportesClient } from '../types';
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { DefinicionModulo, ReportData, PeriodoCierre, VistaReporte } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
+import { normalizarCartera, porcentajeVencido, type Banda, type CarteraEdades } from '@/lib/finanzas/reportes/carteraEdades';
 import { vistaRentabilidadProducto } from './rentabilidadProducto';
 
 function buildReportData(
@@ -28,6 +29,75 @@ function buildReportData(
   totales?: Record<string, unknown>,
 ): ReportData {
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
+}
+
+const RANGO_EDAD: Record<Banda, string> = {
+  corriente: 'Corriente',
+  '1-30': '1-30 días',
+  '31-60': '31-60 días',
+  '61-90': '61-90 días',
+  '+90': '+90 días',
+};
+
+/**
+ * Reportes `cxc-aging` y `cxp-aging`. Mora y saldo salen de la RPC, a la fecha de corte; nada
+ * se calcula aquí con `days_overdue` ni con el saldo de hoy.
+ */
+function reporteEdades(
+  cfg: { id: string; titulo: string; prefijo: string; columnaTercero: string; kpiTerceros: string },
+  periodo: PeriodoCierre,
+  c: CarteraEdades,
+): ReportData {
+  const banda = (b: Banda) => c.bandas.find((x) => x.banda === b) ?? { banda: b, total: 0, cantidad: 0 };
+  const conDetalle = c.documentos.length > 0;
+
+  return buildReportData(
+        cfg.id, cfg.titulo, 'finance', periodo,
+        [
+          { titulo: `Total ${cfg.prefijo}`, valor: c.total, formato: 'moneda' },
+          { titulo: 'Corriente', valor: banda('corriente').total, formato: 'moneda' },
+          { titulo: 'Vencido', valor: c.vencida, formato: 'moneda' },
+          { titulo: '% Vencido', valor: porcentajeVencido(c), formato: 'porcentaje' },
+          { titulo: 'N° Facturas', valor: c.documentos.length, formato: 'numero' },
+          { titulo: cfg.kpiTerceros, valor: c.terceros.length, formato: 'numero' },
+          { titulo: '1-30 días', valor: banda('1-30').cantidad, formato: 'numero' },
+          { titulo: '31-90 días', valor: banda('31-60').cantidad + banda('61-90').cantidad, formato: 'numero' },
+          { titulo: '+90 días', valor: banda('+90').cantidad, formato: 'numero' },
+          { titulo: `Mayor ${c.mayor.cuenta}`, valor: c.mayor.saldo, formato: 'moneda' },
+          { titulo: 'Diferencia con el mayor', valor: c.mayor.diferencia, formato: 'moneda' },
+          { titulo: 'Anticipos (aparte)', valor: c.anticipos.total, formato: 'moneda' },
+        ],
+        conDetalle
+          ? [
+              { key: 'tercero', titulo: cfg.columnaTercero, tipo: 'texto' },
+              { key: 'factura', titulo: 'Factura', tipo: 'texto' },
+              { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
+              { key: 'abonado', titulo: 'Abonado al corte', tipo: 'moneda', alinear: 'right' },
+              { key: 'saldo', titulo: 'Saldo al corte', tipo: 'moneda', alinear: 'right' },
+              { key: 'vencimiento', titulo: 'Vencimiento', tipo: 'fecha' },
+              { key: 'dias_vencido', titulo: 'Días', tipo: 'numero', alinear: 'right' },
+              { key: 'rango', titulo: 'Rango', tipo: 'texto' },
+            ]
+          : [
+              { key: 'rango', titulo: 'Rango', tipo: 'texto' },
+              { key: 'cantidad', titulo: 'N° Facturas', tipo: 'numero', alinear: 'right' },
+              { key: 'total', titulo: 'Total', tipo: 'moneda', alinear: 'right' },
+            ],
+        conDetalle
+          ? c.documentos.map((f) => ({
+              tercero: f.tercero,
+              factura: f.numero ?? '—',
+              monto: f.monto,
+              abonado: f.abonado,
+              saldo: f.saldo,
+              // `date` puro: sin hora, para que el reporte no le aplique zona.
+              vencimiento: f.vence,
+              dias_vencido: f.diasMora,
+              rango: RANGO_EDAD[f.banda],
+            }))
+          : c.bandas.map((b) => ({ rango: RANGO_EDAD[b.banda], cantidad: b.cantidad, total: b.total })),
+        conDetalle ? { saldo: c.total } : { total: c.total },
+  );
 }
 
 interface RetencionesPracticadas {
@@ -210,7 +280,7 @@ export const finanzasReports: DefinicionModulo[] = [
     id: 'cxc-aging',
     modulo: 'finance',
     titulo: 'CxC — edades de saldo',
-    descripcion: 'Cartera por rangos: corriente, 1–30, 31–60, 61–90 y más de 90 días',
+    descripcion: 'Cartera por rangos a la fecha de corte: corriente, 1–30, 31–60, 61–90 y más de 90 días',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -222,111 +292,15 @@ export const finanzasReports: DefinicionModulo[] = [
         p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
-
-      const d = data ?? {};
-      const buckets: Record<string, unknown>[] = d.buckets ?? [];
-
-      const bucketLabel: Record<string, string> = {
-        corriente: 'Corriente',
-        '1-30': '1-30 días',
-        '31-60': '31-60 días',
-        '61-90': '61-90 días',
-        '+90': '+90 días',
-      };
-
-      const bucketsTraducidos: Record<string, unknown>[] = buckets.map((b) => ({
-        ...b,
-        rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
-      }));
-
-      let detalleQuery = db
-        .from('accounts_receivable')
-        .select('id, customer_id, amount, balance, due_date, days_overdue, status, customers(first_name, last_name, customer_type, company_name)')
-        .eq('organization_id', orgId)
-        .not('status', 'in', '("paid","cancelled")')
-        .order('days_overdue', { ascending: false });
-      // Filtrar detalle de accounts_receivable por branch_id cuando branchId != null
-      detalleQuery = applyBranchFilter(detalleQuery, branchId);
-      const { data: detalleData, error: errDetalle } = await detalleQuery;
-
-      if (errDetalle) throw errDetalle;
-
-      const detalle = (detalleData ?? []).map((r: Record<string, unknown>) => {
-        const c = r.customers as Record<string, unknown> | null;
-        const tipo = String(c?.customer_type ?? 'persona');
-        const nombre = tipo === 'empresa'
-          ? String(c?.company_name ?? '—')
-          : `${c?.first_name ?? ''} ${c?.last_name ?? ''}`.trim() || '—';
-        const dias = Number(r.days_overdue ?? 0);
-        const rango = dias === 0 ? 'Corriente'
-          : dias <= 30 ? '1-30 días'
-          : dias <= 60 ? '31-60 días'
-          : dias <= 90 ? '61-90 días'
-          : '+90 días';
-        return {
-          cliente: nombre,
-          tipo_cliente: tipo === 'empresa' ? 'Empresa' : 'Persona',
-          monto: Number(r.amount ?? 0),
-          saldo: Number(r.balance ?? 0),
-          vencimiento: r.due_date,
-          dias_vencido: dias,
-          rango,
-        };
-      });
-
-      const totalCxC = Number(d.total ?? 0);
-      const totalCorriente = bucketsTraducidos.find((b) => b.bucket === 'corriente')?.total ?? 0;
-      const totalVencido = totalCxC - Number(totalCorriente);
-      const numFacturas = bucketsTraducidos.reduce((s: number, b: Record<string, unknown>) => s + Number(b.cantidad ?? 0), 0);
-      const pctVencido = totalCxC > 0 ? Math.round((totalVencido / totalCxC) * 100) : 0;
-      const clientesAfectados = new Set(detalle.map((i) => i.cliente)).size;
-      const rango30 = bucketsTraducidos.find((b) => b.bucket === '1-30')?.cantidad ?? 0;
-      const rango60 = bucketsTraducidos.find((b) => b.bucket === '31-60')?.cantidad ?? 0;
-      const rango90 = bucketsTraducidos.find((b) => b.bucket === '61-90')?.cantidad ?? 0;
-      const rango180 = bucketsTraducidos.find((b) => b.bucket === '+90')?.cantidad ?? 0;
-
-      const filas = detalle.length > 0 ? detalle : bucketsTraducidos;
-
-      return buildReportData(
-        'cxc-aging', 'CxC — edades de saldo', 'finance', periodo,
-        [
-          { titulo: 'Total CxC', valor: totalCxC, formato: 'moneda' },
-          { titulo: 'Corriente', valor: Number(totalCorriente), formato: 'moneda' },
-          { titulo: 'Vencido', valor: totalVencido, formato: 'moneda' },
-          { titulo: '% Vencido', valor: pctVencido, formato: 'porcentaje' },
-          { titulo: 'N° Facturas', valor: numFacturas, formato: 'numero' },
-          { titulo: 'Clientes', valor: clientesAfectados, formato: 'numero' },
-          { titulo: '1-30 días', valor: Number(rango30), formato: 'numero' },
-          { titulo: '31-90 días', valor: Number(rango60) + Number(rango90), formato: 'numero' },
-          { titulo: '+90 días', valor: Number(rango180), formato: 'numero' },
-        ],
-        detalle.length > 0
-          ? [
-              { key: 'cliente', titulo: 'Cliente', tipo: 'texto' },
-              { key: 'tipo_cliente', titulo: 'Tipo', tipo: 'texto' },
-              { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
-              { key: 'saldo', titulo: 'Saldo', tipo: 'moneda', alinear: 'right' },
-              { key: 'vencimiento', titulo: 'Vencimiento', tipo: 'fecha' },
-              { key: 'dias_vencido', titulo: 'Días', tipo: 'numero', alinear: 'right' },
-              { key: 'rango', titulo: 'Rango', tipo: 'texto' },
-            ]
-          : [
-              { key: 'rango', titulo: 'Rango', tipo: 'texto' },
-              { key: 'cantidad', titulo: 'N° Facturas', tipo: 'numero', alinear: 'right' },
-              { key: 'total', titulo: 'Total', tipo: 'moneda', alinear: 'right' },
-            ],
-        filas,
-        detalle.length > 0
-          ? { saldo: detalle.reduce((s, i) => s + i.saldo, 0) }
-          : { total: totalCxC },
-      );
+      const c = normalizarCartera('cxc', periodo.fechaFin, data);
+      return reporteEdades({ id: 'cxc-aging', titulo: 'CxC — edades de saldo', prefijo: 'CxC', columnaTercero: 'Cliente', kpiTerceros: 'Clientes' }, periodo, c);
     },
   },
   {
     id: 'cxp-aging',
     modulo: 'finance',
     titulo: 'CxP — edades de saldo',
-    descripcion: 'Cuentas por pagar a proveedores por rango de vencimiento',
+    descripcion: 'Cuentas por pagar a proveedores por rango de vencimiento, a la fecha de corte',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -338,126 +312,8 @@ export const finanzasReports: DefinicionModulo[] = [
         p_branch_id: normalizeBranchParam(branchId),
       });
       if (error) throw error;
-
-      const d = data ?? {};
-      const buckets: Record<string, unknown>[] = d.buckets ?? [];
-
-      const bucketLabel: Record<string, string> = {
-        corriente: 'Corriente',
-        '1-30': '1-30 días',
-        '31-60': '31-60 días',
-        '61-90': '61-90 días',
-        '+90': '+90 días',
-      };
-
-      const bucketsTraducidos: Record<string, unknown>[] = buckets.map((b) => ({
-        ...b,
-        rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
-      }));
-
-      let detalleQuery = db
-        .from('accounts_payable')
-        .select('id, supplier_id, invoice_id, amount, balance, due_date, days_overdue, status, branch_id, suppliers(name)')
-        .eq('organization_id', orgId)
-        .not('status', 'in', '("paid","cancelled")')
-        .order('days_overdue', { ascending: false });
-      detalleQuery = applyBranchFilter(detalleQuery, branchId);
-      const { data: detalleData, error: errDetalle } = await detalleQuery;
-
-      if (errDetalle) throw errDetalle;
-
-      const rawData = detalleData ?? [];
-
-      const branchIds = [...new Set(rawData.map((r: Record<string, unknown>) => Number(r.branch_id)).filter(Boolean))];
-      const { data: sucursales } = await db
-        .from('branches')
-        .select('id, name')
-        .in('id', branchIds);
-
-      const sucursalesMap: Record<number, string> = {};
-      (sucursales ?? []).forEach((b: Record<string, unknown>) => {
-        sucursalesMap[Number(b.id)] = String(b.name ?? '—');
-      });
-
-      const statusLabel: Record<string, string> = {
-        open: 'Abierta',
-        partial: 'Pago Parcial',
-        overdue: 'Vencida',
-        disputed: 'Disputada',
-        written_off: 'Castigada',
-      };
-
-      const detalle = rawData.map((r: Record<string, unknown>) => {
-        const s = r.suppliers as Record<string, unknown> | null;
-        const dias = Number(r.days_overdue ?? 0);
-        const rango = dias === 0 ? 'Corriente'
-          : dias <= 30 ? '1-30 días'
-          : dias <= 60 ? '31-60 días'
-          : dias <= 90 ? '61-90 días'
-          : '+90 días';
-        return {
-          proveedor: s?.name ?? '—',
-          sucursal: sucursalesMap[Number(r.branch_id)] ?? '—',
-          factura: String(r.invoice_id ?? '—').slice(0, 8),
-          monto: Number(r.amount ?? 0),
-          abonado: Number(r.amount ?? 0) - Number(r.balance ?? 0),
-          saldo: Number(r.balance ?? 0),
-          vencimiento: r.due_date,
-          dias_vencido: dias,
-          rango,
-          estado: statusLabel[String(r.status ?? '')] ?? String(r.status ?? '—'),
-        };
-      });
-
-      const totalCxP = Number(d.total ?? 0);
-      const totalCorriente = bucketsTraducidos.find((b) => b.bucket === 'corriente')?.total ?? 0;
-      const totalVencido = totalCxP - Number(totalCorriente);
-      const numFacturas = bucketsTraducidos.reduce((s: number, b: Record<string, unknown>) => s + Number(b.cantidad ?? 0), 0);
-      const pctVencido = totalCxP > 0 ? Math.round((totalVencido / totalCxP) * 100) : 0;
-      const proveedoresAfectados = new Set(detalle.map((i) => i.proveedor)).size;
-      const rango30 = bucketsTraducidos.find((b) => b.bucket === '1-30')?.cantidad ?? 0;
-      const rango60 = bucketsTraducidos.find((b) => b.bucket === '31-60')?.cantidad ?? 0;
-      const rango90 = bucketsTraducidos.find((b) => b.bucket === '61-90')?.cantidad ?? 0;
-      const rango180 = bucketsTraducidos.find((b) => b.bucket === '+90')?.cantidad ?? 0;
-
-      const filas = detalle.length > 0 ? detalle : bucketsTraducidos;
-
-      return buildReportData(
-        'cxp-aging', 'CxP — edades de saldo', 'finance', periodo,
-        [
-          { titulo: 'Total CxP', valor: totalCxP, formato: 'moneda' },
-          { titulo: 'Corriente', valor: Number(totalCorriente), formato: 'moneda' },
-          { titulo: 'Vencido', valor: totalVencido, formato: 'moneda' },
-          { titulo: '% Vencido', valor: pctVencido, formato: 'porcentaje' },
-          { titulo: 'N° Facturas', valor: numFacturas, formato: 'numero' },
-          { titulo: 'Proveedores', valor: proveedoresAfectados, formato: 'numero' },
-          { titulo: '1-30 días', valor: Number(rango30), formato: 'numero' },
-          { titulo: '31-90 días', valor: Number(rango60) + Number(rango90), formato: 'numero' },
-          { titulo: '+90 días', valor: Number(rango180), formato: 'numero' },
-        ],
-        detalle.length > 0
-          ? [
-              { key: 'proveedor', titulo: 'Proveedor', tipo: 'texto' },
-              { key: 'sucursal', titulo: 'Sucursal', tipo: 'texto' },
-              { key: 'factura', titulo: 'Factura', tipo: 'texto' },
-              { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
-              { key: 'abonado', titulo: 'Abonado', tipo: 'moneda', alinear: 'right' },
-              { key: 'saldo', titulo: 'Saldo', tipo: 'moneda', alinear: 'right' },
-              { key: 'vencimiento', titulo: 'Vencimiento', tipo: 'fecha' },
-              { key: 'dias_vencido', titulo: 'Días', tipo: 'numero', alinear: 'right' },
-              { key: 'rango', titulo: 'Rango', tipo: 'texto' },
-              { key: 'estado', titulo: 'Estado', tipo: 'texto' },
-            ]
-          : [
-              { key: 'rango', titulo: 'Rango', tipo: 'texto' },
-              { key: 'cantidad', titulo: 'N° Facturas', tipo: 'numero', alinear: 'right' },
-              { key: 'total', titulo: 'Total', tipo: 'moneda', alinear: 'right' },
-            ],
-        filas,
-        detalle.length > 0
-          ? { saldo: detalle.reduce((s, i) => s + i.saldo, 0) }
-          : { total: totalCxP },
-      );
+      const c = normalizarCartera('cxp', periodo.fechaFin, data);
+      return reporteEdades({ id: 'cxp-aging', titulo: 'CxP — edades de saldo', prefijo: 'CxP', columnaTercero: 'Proveedor', kpiTerceros: 'Proveedores' }, periodo, c);
     },
   },
   {

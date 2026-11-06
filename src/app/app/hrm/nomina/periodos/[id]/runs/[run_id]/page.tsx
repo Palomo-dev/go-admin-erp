@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
+import { esBloqueoDeduccion } from '@/lib/services/nominaDeducciones';
 import type { PayrollRun, PayrollSlip } from '@/lib/services/payrollService';
 import { SlipsTable } from '@/components/hrm/nomina/periodos/[id]/runs/[run_id]';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -148,10 +149,12 @@ export default function RunDetallePage() {
       setSelectedSlips([]);
       setApproveOpen(false);
       await loadData();
-    } catch {
+    } catch (e: unknown) {
       toast({
         title: 'Error',
-        description: 'No se pudieron aprobar las colillas',
+        description: esBloqueoDeduccion(e)
+          ? 'Hay colillas con deducciones sin calcular: escríbalas en el periodo antes de aprobar'
+          : 'No se pudieron aprobar las colillas',
         variant: 'destructive',
       });
     }

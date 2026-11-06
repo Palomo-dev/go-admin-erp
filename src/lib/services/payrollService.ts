@@ -498,6 +498,21 @@ class PayrollService {
     return this.getSlipById(data.id) as Promise<PayrollSlip>;
   }
 
+  /**
+   * Escribe a mano la retención o la cuota de préstamo de una colilla en borrador. La RPC
+   * recalcula deducciones, neto y totales del periodo, y exige hr.payroll.process.
+   */
+  async fijarDeduccion(slipId: string, concepto: 'retencion' | 'prestamo', valor: number, nota?: string): Promise<void> {
+    const { error } = await supabase.rpc('fn_nomina_fijar_deduccion', {
+      p_slip_id: slipId,
+      p_concepto: concepto,
+      p_valor: valor,
+      p_nota: nota?.trim() || null,
+    });
+
+    if (error) throw error;
+  }
+
   async approveSlips(slipIds: string[]): Promise<void> {
     const { error } = await supabase
       .from('payroll_slips')

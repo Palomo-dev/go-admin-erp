@@ -39481,5 +39481,195 @@
       "errorTexto": "Revisa tu conexión e inténtalo de nuevo.",
       "reintentarCarga": "Reintentar"
     }
+  },
+  "carteraEdades": {
+    "titulo": "Cartera por edades",
+    "subtitulo": "Mora calculada a la fecha de corte",
+    "corteMovil": "Corte {fecha}",
+    "migas": {
+      "finanzas": "Finanzas",
+      "informes": "Informes"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Consultar",
+    "total": "Total",
+    "filtros": {
+      "corte": "Fecha de corte",
+      "tipo": "Tipo",
+      "clientes": "Clientes",
+      "proveedores": "Proveedores",
+      "agrupar": "Agrupar por",
+      "porTercero": "Tercero",
+      "porDocumento": "Documento"
+    },
+    "kpi": {
+      "resumen": "Resumen de cartera",
+      "total": "Total cartera",
+      "vencida": "Vencida",
+      "porcentaje": "{pct} %",
+      "anticipos": "Anticipos sin aplicar",
+      "anticiposProveedores": "Anticipos a proveedores",
+      "anticiposAparte": "Aparte, no resta",
+      "anticiposMayor": "Mayor {cuenta}, no resta",
+      "mayor": "Mayor {cuenta}",
+      "cuadra": "Cuadra",
+      "diferencia": "Diferencia {valor}"
+    },
+    "noCuadra": {
+      "titulo": "La cartera no cuadra con el mayor {cuenta}",
+      "descripcion": "Hay una diferencia de {valor} entre el mayor y los documentos a esta fecha. Revise los pendientes contables y los asientos manuales de esa cuenta."
+    },
+    "bandas": {
+      "corriente": "Al día",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Más de 90"
+    },
+    "columnas": {
+      "tercero": "Tercero",
+      "total": "Total",
+      "documento": "Documento",
+      "vence": "Vence",
+      "dias": "Días de mora",
+      "banda": "Edad",
+      "saldo": "Saldo al corte"
+    },
+    "vacio": {
+      "titulo": "Sin saldos a esta fecha",
+      "descripcion": "No hay documentos con saldo a la fecha de corte."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "Ver"
+    },
+    "hoja": {
+      "subtitulo": "{total} en {n, plural, one {# documento} other {# documentos}}",
+      "vence": "Vence {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Activos fijos",
+    "subtitulo": "Depreciación mensual en línea recta",
+    "migas": {
+      "finanzas": "Finanzas"
+    },
+    "nuevo": "Nuevo activo",
+    "depreciar": "Depreciar {mes}",
+    "meses": "{n, plural, one {# mes} other {# meses}}",
+    "lineaRecta": "Línea recta",
+    "metodoNoDisponible": "No disponible",
+    "editar": "Editar {nombre}",
+    "borrar": "Eliminar {nombre}",
+    "columnas": {
+      "activo": "Activo",
+      "costo": "Costo",
+      "vidaUtil": "Vida útil",
+      "acumulada": "Depreciación acumulada",
+      "libros": "Valor en libros",
+      "metodo": "Método"
+    },
+    "vacio": {
+      "titulo": "Sin activos fijos",
+      "descripcion": "Registre el primer activo para depreciarlo cada mes."
+    },
+    "tarjeta": {
+      "libros": "Valor en libros {valor}",
+      "acumulada": "Acumulada {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Otros métodos no están disponibles",
+      "descripcion": "Saldos decrecientes y unidades de producción no se calculan todavía. No se muestran como opción para evitar ceros falsos."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {Sin asientos nuevos} one {# asiento contabilizado} other {# asientos contabilizados}} · {total}",
+      "sinPendientes": "Todos los activos quedaron al día."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Método no disponible",
+      "faltan_cuentas": "Pendiente: faltan las cuentas de gasto y de depreciación",
+      "cuenta_no_es_de_movimiento": "Pendiente: una cuenta no existe o es de título",
+      "acumulada_sin_detalle": "Pendiente: la depreciación acumulada no coincide con el detalle",
+      "period_closed": "Pendiente: el periodo contable está cerrado",
+      "otro": "Pendiente: revise los pendientes contables"
+    },
+    "errores": {
+      "guardar": "No se pudo guardar el activo",
+      "borrar": "No se pudo eliminar el activo",
+      "depreciar": "No se pudo contabilizar la depreciación",
+      "sinPermiso": "No tiene permiso para contabilizar la depreciación"
+    },
+    "tipos": {
+      "building": "Edificio",
+      "vehicle": "Vehículo",
+      "equipment": "Equipo",
+      "furniture": "Mobiliario",
+      "computer": "Cómputo",
+      "software": "Software",
+      "land": "Terreno (no se deprecia)",
+      "other": "Otro"
+    },
+    "form": {
+      "tituloNuevo": "Nuevo activo fijo",
+      "tituloEditar": "Editar activo fijo",
+      "guardar": "Guardar",
+      "requeridos": "Código y nombre son obligatorios",
+      "codigo": "Código",
+      "tipo": "Tipo",
+      "nombre": "Nombre",
+      "descripcion": "Descripción",
+      "fecha": "Fecha de adquisición",
+      "costo": "Costo de adquisición",
+      "residual": "Valor residual",
+      "vida": "Vida útil en meses",
+      "cuentaActivo": "Cuenta del activo",
+      "cuentaGasto": "Cuenta de gasto",
+      "cuentaDepreciacion": "Depreciación acumulada",
+      "sinCuenta": "Sin cuenta",
+      "ayudaCuentas": "Sin estas dos cuentas de movimiento el activo no se deprecia.",
+      "conDepreciacion": "Este activo ya tiene depreciación contabilizada: la fecha, el costo, el residual y la vida útil no se pueden cambiar."
+    },
+    "borrado": {
+      "titulo": "¿Eliminar {nombre}?",
+      "descripcion": "El activo se borra del listado. No tiene depreciación contabilizada.",
+      "confirmar": "Eliminar"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Colillas del periodo",
+    "sinCalcular": "Sin calcular",
+    "noAplica": "No aplica",
+    "vacio": "Sin colillas en esta ejecución",
+    "bloqueo": {
+      "titulo": "No se puede cerrar: falta la retención en la fuente",
+      "tituloPrestamo": "No se puede cerrar: falta confirmar una cuota de préstamo",
+      "descripcion": "GO Admin aún no calcula esta deducción. Escríbala a mano o consúltela con el Contador. No se toma como $ 0.",
+      "ingresar": "Ingresar valor"
+    },
+    "columnas": {
+      "empleado": "Empleado",
+      "devengado": "Devengado",
+      "saludPension": "Salud y pensión",
+      "retencion": "Retención",
+      "prestamos": "Préstamos",
+      "neto": "Neto"
+    },
+    "dialogo": {
+      "titulo": "Retención en la fuente",
+      "tituloPrestamo": "Cuota de préstamo",
+      "valor": "Valor",
+      "ayudaCero": "Escriba 0 si no aplica. Queda registrado quién lo decidió.",
+      "nota": "Nota",
+      "guardar": "Guardar valor",
+      "faltaValor": "Escriba el valor"
+    },
+    "errores": {
+      "titulo": "No se guardó",
+      "netoNegativo": "El valor deja el neto en negativo",
+      "sinPermiso": "No tiene permiso para procesar nómina",
+      "noEditable": "La colilla o el periodo ya no se pueden editar",
+      "generico": "No se pudo guardar el valor"
+    }
   }
 }

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Eye, MoreHorizontal, CheckCircle, DollarSign, Download, FileText } from 'lucide-react';
 import { CopyableId } from '@/components/common/CopyableId';
+import { colillaCompleta } from '@/lib/services/nominaDeducciones';
 
 interface SlipsListTableProps {
   slips: PayrollSlip[];
@@ -164,7 +165,7 @@ export function SlipsListTable({
                 -{formatCurrency(slip.total_deductions, slip.currency_code)}
               </TableCell>
               <TableCell className="text-green-600 dark:text-green-400 font-bold">
-                {formatCurrency(slip.net_pay, slip.currency_code)}
+                {colillaCompleta(slip) ? formatCurrency(slip.net_pay, slip.currency_code) : '—'}
               </TableCell>
               <TableCell>
                 <Badge className={statusColors[slip.status || 'draft']}>

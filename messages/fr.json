@@ -4565,7 +4565,14 @@
       "sitio-web_sedes": "Sites sur le web",
       "sitio-web_configuracion": "Configuration",
       "plan_historial": "Achats",
-      "finanzas_contabilidad_pendientes": "Anomalies comptables"
+      "finanzas_contabilidad_pendientes": "Anomalies comptables",
+      "finanzas_contabilidad_informes_flujo-efectivo": "Tableau des flux de trésorerie",
+      "finanzas_contabilidad_informes_cambios-patrimonio": "Variations des capitaux propres",
+      "finanzas_contabilidad_informes_notas": "Notes aux états financiers",
+      "finanzas_contabilidad_informes_certificacion": "Certification des états financiers",
+      "finanzas_contabilidad_informes_indicadores": "Indicateurs financiers",
+      "finanzas_contabilidad_informes_presupuesto-real": "Budget contre réel",
+      "finanzas_contabilidad_informes_libros": "Livres comptables"
     },
     "grupos": {
       "venta": "Vente",
@@ -39655,6 +39662,433 @@
       "sinPermiso": "Vous n’avez pas l’autorisation de traiter la paie",
       "noEditable": "Le bulletin ou la période ne peut plus être modifié",
       "generico": "Impossible d’enregistrer la valeur"
+    }
+  },
+  "estadosFinancieros": {
+    "comun": {
+      "finanzas": "Finances",
+      "informes": "Rapports",
+      "desde": "Du",
+      "hasta": "Au",
+      "anioAnterior": "Année précédente",
+      "consultar": "Consulter",
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir ce rapport",
+      "sinPermisoDetalle": "Demandez l’accès aux Finances à l’administrateur de votre organisation.",
+      "alcance": "Ce rapport couvre toute l’entreprise",
+      "alcanceDetalle": "Il faut un accès à toutes les succursales pour le voir.",
+      "error": "Impossible de charger le rapport"
+    },
+    "flujo": {
+      "titulo": "Tableau des flux de trésorerie",
+      "subtitulo": "Méthode indirecte · IFRS pour les PME, section 7",
+      "miga": "Flux de trésorerie",
+      "concepto": "Rubrique",
+      "grupo": "Groupe {grupo}",
+      "resultado": "Résultat de la période",
+      "variacion": "Variation de la trésorerie",
+      "inicial": "Trésorerie d’ouverture",
+      "efectoCambiario": "Effet des taux de change",
+      "final": "Trésorerie de clôture",
+      "restringido": "Trésorerie soumise à restrictions (à part)",
+      "pendienteClasificar": "À classer",
+      "seccion": {
+        "operacion": "Activités d’exploitation",
+        "inversion": "Activités d’investissement",
+        "financiacion": "Activités de financement"
+      },
+      "neto": {
+        "operacion": "Trésorerie nette d’exploitation",
+        "inversion": "Trésorerie nette d’investissement",
+        "financiacion": "Trésorerie nette de financement"
+      },
+      "cuadra": "Concorde avec les banques et la caisse",
+      "noCuadra": "Ne concorde pas : écart de {diferencia}",
+      "cuadraDetalle": "Ouverture + variation + effet de change = clôture. Exclut les virements entre banques et les opérations sans trésorerie.",
+      "incompleto": {
+        "titulo": "Ce tableau est incomplet",
+        "detalle": "{cuentas, plural, one {# compte n’a} other {# comptes n’ont}} pas de catégorie de flux. Les montants ne sont pas devinés : ils restent dans « À classer » jusqu’à ce que le comptable les marque."
+      },
+      "propuesta": {
+        "titulo": "Trésorerie proposée par le plan comptable",
+        "detalle": "Les comptes 11 sont pris comme trésorerie car le plan est sans ambiguïté. Les équivalents et la trésorerie soumise à restrictions se marquent à la main ; rien n’est enregistré par supposition."
+      },
+      "politicas": {
+        "pendienteTitulo": "Politiques en attente du comptable",
+        "pendienteDetalle": "Intérêts, impôts et dividendes suivent le critère de départ d’IFRS pour les PME 7.14 à 7.17 jusqu’à confirmation du comptable.",
+        "ver": "Voir les politiques"
+      },
+      "sinContabilizar": {
+        "titulo": "Des mouvements ne sont pas entrés au grand livre",
+        "detalle": "{borradores, plural, one {# brouillon} other {# brouillons}} et {fallos, plural, one {# élément comptable en attente} other {# éléments comptables en attente}} pour {monto}. Ils ne figurent pas dans ce tableau.",
+        "ver": "Voir les éléments en attente"
+      },
+      "pendientes": {
+        "titulo": "Comptes à classer",
+        "detalle": "Choisissez leur catégorie. Le marquage vaut pour toutes les périodes et ne modifie aucune écriture.",
+        "clasificar": "Classer"
+      },
+      "sinEfectivo": {
+        "titulo": "Opérations sans trésorerie",
+        "detalle": "Elles sont indiquées ici car aucune trésorerie n’a bougé : un achat à crédit n’est pas un investissement.",
+        "asiento": "Écriture {id}"
+      },
+      "renglon": {
+        "ajuste": {
+          "depreciacion_amortizacion": "Amortissements",
+          "deterioro": "Dépréciation",
+          "venta_activos": "Résultat de cession d’actifs",
+          "reclasificado_financiacion": "Intérêts présentés en financement",
+          "diferencia_cambio": "Écart de change sur la trésorerie",
+          "otras_sin_efectivo": "Autres éléments sans trésorerie"
+        },
+        "variacion": {
+          "g13": "Variation des créances",
+          "g14": "Variation des stocks",
+          "g22": "Variation des fournisseurs",
+          "g23": "Variation des dettes",
+          "g24": "Variation des impôts à payer",
+          "g25": "Variation des dettes sociales",
+          "g26": "Variation des passifs estimés",
+          "g28": "Variation des avances et de l’argent de tiers"
+        },
+        "inversion": {
+          "g12": {
+            "entrada": "Cession de placements",
+            "salida": "Achat de placements"
+          },
+          "g15": {
+            "entrada": "Cession d’actifs",
+            "salida": "Achat d’actifs au comptant"
+          },
+          "g16": {
+            "entrada": "Cession d’incorporels",
+            "salida": "Achat d’incorporels"
+          }
+        },
+        "financiacion": {
+          "g21": {
+            "entrada": "Emprunts reçus",
+            "salida": "Remboursements d’emprunts"
+          },
+          "g23": {
+            "entrada": "Dividendes restitués",
+            "salida": "Dividendes versés"
+          },
+          "g31": {
+            "entrada": "Apports des associés",
+            "salida": "Restitution d’apports"
+          },
+          "g32": {
+            "entrada": "Primes de capital",
+            "salida": "Restitution de primes"
+          },
+          "g53": {
+            "entrada": "Intérêts restitués",
+            "salida": "Intérêts versés"
+          }
+        }
+      }
+    },
+    "clasificar": {
+      "titulo": "Classer le compte {cuenta}",
+      "categoria": "Catégorie de flux",
+      "categorias": {
+        "operacion": "Exploitation",
+        "inversion": "Investissement",
+        "financiacion": "Financement"
+      },
+      "ayuda": "C’est une décision du comptable. Aucune écriture ne change.",
+      "alcance": "Appliquer à",
+      "guardar": "Classer",
+      "guardado": "Compte classé",
+      "sinPermiso": "Vous n’avez pas l’autorisation de classer des comptes",
+      "sinCuenta": "Ce compte n’existe pas dans votre plan comptable",
+      "error": "Impossible de classer le compte"
+    },
+    "politicas": {
+      "titulo": "Politiques du tableau des flux",
+      "detalle": "Décision du comptable, IFRS pour les PME 7.14 à 7.17. Appliquées par préfixe du plan comptable.",
+      "confirmar": "Confirmer les politiques",
+      "sinPermiso": "Seule une personne qui approuve en Finances peut les confirmer",
+      "sinConfirmar": "Pas encore confirmées : le critère de départ est utilisé.",
+      "guardado": "Politiques confirmées",
+      "versionObsoleta": "Quelqu’un d’autre a enregistré. Rouvrez et recommencez.",
+      "error": "Impossible d’enregistrer les politiques",
+      "clave": {
+        "intereses_pagados": "Intérêts versés",
+        "intereses_recibidos": "Intérêts reçus",
+        "dividendos_recibidos": "Dividendes reçus",
+        "dividendos_pagados": "Dividendes versés",
+        "impuestos": "Impôts sur le résultat"
+      },
+      "valor": {
+        "operacion": "Exploitation",
+        "financiacion": "Financement",
+        "inversion": "Investissement"
+      },
+      "nota": {
+        "intereses_pagados": "Compte 530520. Section 7.14 : exploitation ou financement.",
+        "intereses_recibidos": "Compte 421005. Section 7.14 : exploitation ou investissement.",
+        "dividendos_recibidos": "Compte 4215. Section 7.15 : exploitation ou investissement.",
+        "dividendos_pagados": "Compte 2360. Section 7.15 : financement ou exploitation.",
+        "impuestos": "Comptes 54 et 2404. Section 7.17 : exploitation, sauf identification spécifique."
+      }
+    },
+    "patrimonio": {
+      "titulo": "État des variations des capitaux propres",
+      "subtitulo": "Du {desde} au {hasta}",
+      "miga": "Variations des capitaux propres",
+      "concepto": "Rubrique",
+      "total": "Total",
+      "columna": {
+        "capital": "Capital",
+        "reservas": "Réserves",
+        "ejercicio": "Résultat de l’exercice",
+        "acumulados": "Résultats cumulés",
+        "otros": "Autres"
+      },
+      "fila": {
+        "saldo_inicial": "Solde d’ouverture",
+        "traslado": "Report du résultat antérieur",
+        "resultado": "Résultat de la période",
+        "dividendos": "Dividendes décidés",
+        "aportes": "Apports des associés",
+        "capitalizacion": "Capitalisation des résultats",
+        "reservas": "Constitution de réserves",
+        "ori": "Autres éléments du résultat global",
+        "otros": "Autres mouvements à revoir",
+        "saldo_final": "Solde de clôture"
+      },
+      "otros": {
+        "titulo": "Des mouvements de capitaux propres ne sont pas classés",
+        "detalle": "Ils sont dans « Autres mouvements à revoir » pour que le total reste exact. Rien n’a été déduit du texte de l’écriture."
+      },
+      "cuadra": "Concorde avec l’état de la situation financière",
+      "noCuadra": "Ne concorde pas : écart de {diferencia}",
+      "cuadraDetalle": "Le total correspond aux capitaux propres. L’écriture de clôture ne double pas le résultat."
+    },
+    "indicadores": {
+      "titulo": "Indicateurs financiers",
+      "subtitulo": "Issus du grand livre de la période choisie",
+      "subtituloComparado": "Comparé à {anio}",
+      "miga": "Indicateurs",
+      "indicador": "Indicateur",
+      "formula": "Formule",
+      "sinDato": "Sans donnée",
+      "dias": "{valor} jours",
+      "veces": "{valor} fois",
+      "enAnio": "{valor} en {anio}",
+      "sinClasificar": {
+        "titulo": "Des soldes ne sont pas classés en courant ou non courant",
+        "detalle": "{monto} n’entrent pas dans le ratio de liquidité. Classez-les dans le plan comptable.",
+        "ver": "Voir le plan comptable"
+      },
+      "nombre": {
+        "razon_corriente": "Ratio de liquidité",
+        "endeudamiento": "Endettement",
+        "margen_neto": "Marge nette",
+        "ciclo_caja": "Cycle de trésorerie",
+        "rotacion_cartera": "Rotation des créances",
+        "dias_inventario": "Jours de stock",
+        "dias_proveedores": "Jours fournisseurs",
+        "margen_operacional": "Marge d’exploitation",
+        "roe": "ROE",
+        "roa": "ROA"
+      },
+      "definicion": {
+        "razon_corriente": "Actif courant ÷ passif courant",
+        "endeudamiento": "Passif ÷ actif",
+        "margen_neto": "Résultat ÷ produits",
+        "ciclo_caja": "Jours de créances + jours de stock − jours fournisseurs",
+        "rotacion_cartera": "Produits ÷ créances moyennes",
+        "dias_inventario": "Stock moyen ÷ coût × jours",
+        "dias_proveedores": "Fournisseurs moyens ÷ achats × jours",
+        "margen_operacional": "Résultat d’exploitation ÷ produits",
+        "roe": "Résultat ÷ capitaux propres moyens",
+        "roa": "Résultat ÷ actif moyen"
+      }
+    },
+    "presupuesto": {
+      "titulo": "Budget contre réel",
+      "subtitulo": "Budgets approuvés uniquement · le réel vient du grand livre",
+      "miga": "Budget contre réel",
+      "codigo": "Code",
+      "cuenta": "Compte",
+      "presupuesto": "Budget",
+      "real": "Réel",
+      "variacion": "Écart",
+      "borradores": "{n, plural, one {# budget en brouillon n’est pas pris en compte} other {# budgets en brouillon ne sont pas pris en compte}}",
+      "verPresupuestos": "Voir les budgets",
+      "repetidos": "Plusieurs budgets approuvés existent pour la même année : leurs chiffres s’additionnent.",
+      "sinPresupuesto": "Avec mouvements et sans budget",
+      "vacio": {
+        "titulo": "Aucun budget approuvé",
+        "detalle": "Approuvez un budget pour le comparer au réel."
+      }
+    },
+    "resultado": {
+      "titulo": "État du résultat global",
+      "subtituloNaturaleza": "Produits moins coûts et charges, par nature",
+      "subtituloFuncion": "Produits moins coûts et charges, par fonction",
+      "miga": "État du résultat global",
+      "concepto": "Rubrique",
+      "variacion": "Variation",
+      "total": "RÉSULTAT GLOBAL DE LA PÉRIODE",
+      "presentacion": "Présentation",
+      "porNaturaleza": "Par nature",
+      "porFuncion": "Par fonction",
+      "error": "Impossible de charger l’état du résultat global",
+      "ori": "Comprend d’autres éléments du résultat global pour {valor}, issus des comptes 38 marqués.",
+      "filaOri": "Autres éléments du résultat global",
+      "detalle": "Détail par compte",
+      "nivel": "Niveau du plan",
+      "niveles": {
+        "n2": "Groupe",
+        "n4": "Compte",
+        "n6": "Sous-compte",
+        "n8": "Auxiliaire"
+      },
+      "fila": {
+        "ingresos": "Produits des activités ordinaires",
+        "otros_ingresos": "Autres produits",
+        "costo_ventas": "Coût des marchandises vendues",
+        "costo_produccion": "Coûts de production",
+        "personal": "Charges de personnel",
+        "honorarios": "Honoraires, services et loyers",
+        "impuestos": "Impôts autres que sur le résultat",
+        "depreciacion": "Amortissements",
+        "otros_gastos": "Autres charges",
+        "renta": "Impôt sur le résultat",
+        "ingresos_totales": "Produits",
+        "funcion_costos": "Coût des ventes et de production",
+        "funcion_51": "Charges administratives",
+        "funcion_52": "Charges commerciales",
+        "funcion_53": "Autres charges",
+        "funcion_54": "Impôt sur le résultat"
+      }
+    },
+    "notas": {
+      "titulo": "Notes aux états financiers",
+      "subtitulo": "Arrêté au {corte} · Brouillon",
+      "miga": "Notes",
+      "guardar": "Enregistrer le brouillon",
+      "guardado": "Notes enregistrées",
+      "versionObsoleta": "Quelqu’un d’autre a enregistré. Rechargez et recommencez.",
+      "errorGuardar": "Impossible d’enregistrer les notes",
+      "corte": "Arrêté",
+      "aviso": "C’est un brouillon : les soldes viennent du grand livre et le comptable revoit le texte.",
+      "nota": "Note",
+      "contenido": "Contenu",
+      "origen": "Origine",
+      "estado": "État",
+      "abrir": "Ouvrir",
+      "cerrar": "Fermer",
+      "revisada": "Revue par le comptable",
+      "cuenta": "Compte",
+      "nombre": {
+        "entidad": "Entité présentant les états",
+        "politicas": "Méthodes comptables",
+        "efectivo": "Trésorerie et équivalents",
+        "deudores": "Créances",
+        "inventarios": "Stocks",
+        "ppe": "Immobilisations corporelles"
+      },
+      "origenes": {
+        "empresa": "Données de l’entreprise",
+        "contador": "Texte du comptable",
+        "mayor": "Issu du grand livre",
+        "activos": "Immobilisations"
+      },
+      "estados": {
+        "completa": "Complète",
+        "por_revisar": "À revoir",
+        "sin_datos": "Sans données"
+      },
+      "plantilla": {
+        "entidad": "Décrivez l’entité, son siège, son activité, sa durée et l’organe qui autorise ces états financiers.",
+        "politicas": "Décrivez le référentiel appliqué, la base d’évaluation, la monnaie de présentation et les méthodes pour la trésorerie et équivalents, les stocks, les immobilisations corporelles et les produits."
+      }
+    },
+    "certificacion": {
+      "titulo": "Certification des états financiers",
+      "subtitulo": "Article 37 de la loi 222 de 1995 · Générer ce document ne le signe pas",
+      "miga": "Certification",
+      "guardar": "Enregistrer",
+      "guardado": "Certification enregistrée",
+      "versionObsoleta": "Quelqu’un d’autre a enregistré. Rechargez et recommencez.",
+      "errorGuardar": "Impossible d’enregistrer la certification",
+      "sinValidar": {
+        "titulo": "Texte légal en attente du comptable",
+        "detalle": "C’est un texte de départ. Le comptable doit le valider avant la signature."
+      },
+      "faltan": {
+        "titulo": "Données manquantes pour signer"
+      },
+      "campo": {
+        "representante_nombre": "Nom du représentant légal",
+        "representante_cedula": "Pièce d’identité du représentant légal",
+        "contador_nombre": "Nom du comptable",
+        "contador_cedula": "Pièce d’identité du comptable",
+        "contador_tarjeta": "Carte professionnelle du comptable",
+        "empresa_nombre": "Nom de l’entreprise",
+        "empresa_nit": "Numéro fiscal de l’entreprise"
+      },
+      "corte": "Arrêté",
+      "texto": "Texte de la certification",
+      "textoAyuda": "La marque {corte} est remplacée par la date d’arrêté.",
+      "textoBase": "Les soussignés, représentant légal et comptable, certifions avoir préparé les états financiers de la société au {corte}, conformément aux normes en vigueur, et avoir vérifié les affirmations qu’ils contiennent avant de les mettre à disposition, conformément à l’article 37 de la loi 222 de 1995.",
+      "validado": "Texte validé par le comptable",
+      "representante": "Représentant légal",
+      "contador": "Comptable"
+    },
+    "libros": {
+      "titulo": "Livres comptables",
+      "subtitulo": "Exportez les livres de la période",
+      "miga": "Livres comptables",
+      "nivel": "Niveau de consolidation",
+      "niveles": {
+        "n2": "Groupe",
+        "n4": "Compte",
+        "n6": "Sous-compte",
+        "n8": "Auxiliaire"
+      },
+      "truncado": "Le livre a dépassé 100 000 lignes et il est incomplet. Choisissez une période plus courte.",
+      "libro": "Livre",
+      "contenido": "Contenu",
+      "estado": "État",
+      "disponible": "Disponible",
+      "generando": "Génération…",
+      "sinMovimientos": "Aucun mouvement sur la période",
+      "error": "Impossible d’exporter le livre",
+      "nombre": {
+        "diario": "Livre-journal",
+        "mayor": "Grand livre et balances",
+        "inventarios": "Inventaires et balances",
+        "auxiliar_cuenta": "Auxiliaires par compte",
+        "tercero": "Auxiliaire par tiers",
+        "centro": "Auxiliaire par centre de coût"
+      },
+      "descripcion": {
+        "diario": "Écritures validées de la période",
+        "mayor": "Soldes par compte, consolidés",
+        "inventarios": "Actifs, passifs et capitaux propres à la clôture",
+        "auxiliar_cuenta": "Mouvements et solde progressif",
+        "tercero": "Solde par numéro fiscal",
+        "centro": "Solde par centre"
+      },
+      "columna": {
+        "codigo": "Code",
+        "cuenta": "Nom",
+        "inicial": "Solde d’ouverture",
+        "debitos": "Débits",
+        "creditos": "Crédits",
+        "final": "Solde de clôture",
+        "saldo": "Solde",
+        "fecha": "Date",
+        "asiento": "Écriture",
+        "tercero": "Tiers",
+        "detalle": "Détail"
+      }
     }
   }
 }

@@ -57,7 +57,7 @@ const MODULES = [
   },
   {
     title: 'Estado del resultado integral',
-    description: 'Ingresos, costos y gastos por función',
+    description: 'Ingresos menos costos y gastos, por naturaleza',
     icon: TrendingUp,
     href: '/app/finanzas/contabilidad/estado-resultados',
     color: 'green'
@@ -68,6 +68,55 @@ const MODULES = [
     icon: Calculator,
     href: '/app/finanzas/contabilidad/balance-general',
     color: 'purple'
+  },
+  {
+    title: 'Estado de flujos de efectivo',
+    description: 'Método indirecto, con efectivo inicial y final',
+    icon: BarChart3,
+    href: '/app/finanzas/contabilidad/informes/flujo-efectivo',
+    color: 'blue'
+  },
+  {
+    title: 'Cambios en el patrimonio',
+    description: 'Capital, reservas y resultados del periodo',
+    icon: BarChart3,
+    href: '/app/finanzas/contabilidad/informes/cambios-patrimonio',
+    color: 'purple'
+  },
+  {
+    title: 'Notas a los estados financieros',
+    description: 'Revelaciones del corte, en borrador',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/informes/notas',
+    color: 'blue'
+  },
+  {
+    title: 'Certificación de estados financieros',
+    description: 'Documento para el representante legal y el contador',
+    icon: FileText,
+    href: '/app/finanzas/contabilidad/informes/certificacion',
+    color: 'blue'
+  },
+  {
+    title: 'Indicadores financieros',
+    description: 'Liquidez, endeudamiento, márgenes y ciclo de caja',
+    icon: BarChart3,
+    href: '/app/finanzas/contabilidad/informes/indicadores',
+    color: 'green'
+  },
+  {
+    title: 'Presupuesto contra lo real',
+    description: 'Presupuestos aprobados frente al mayor',
+    icon: Target,
+    href: '/app/finanzas/contabilidad/informes/presupuesto-real',
+    color: 'orange'
+  },
+  {
+    title: 'Libros contables',
+    description: 'Diario, mayor, inventarios y balances, auxiliares',
+    icon: BookOpen,
+    href: '/app/finanzas/contabilidad/informes/libros',
+    color: 'blue'
   },
   {
     title: 'Mayor Contable',

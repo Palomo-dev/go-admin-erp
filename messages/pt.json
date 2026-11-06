@@ -4566,7 +4566,14 @@
       "sitio-web_sedes": "Unidades na web",
       "sitio-web_configuracion": "Configurações",
       "plan_historial": "Compras",
-      "finanzas_contabilidad_pendientes": "Pendências contábeis"
+      "finanzas_contabilidad_pendientes": "Pendências contábeis",
+      "finanzas_contabilidad_informes_flujo-efectivo": "Demonstração dos fluxos de caixa",
+      "finanzas_contabilidad_informes_cambios-patrimonio": "Mutações do patrimônio",
+      "finanzas_contabilidad_informes_notas": "Notas às demonstrações financeiras",
+      "finanzas_contabilidad_informes_certificacion": "Certificação das demonstrações financeiras",
+      "finanzas_contabilidad_informes_indicadores": "Indicadores financeiros",
+      "finanzas_contabilidad_informes_presupuesto-real": "Orçamento versus realizado",
+      "finanzas_contabilidad_informes_libros": "Livros contábeis"
     },
     "grupos": {
       "venta": "Venda",
@@ -39665,6 +39672,433 @@
       "sinPermiso": "Você não tem permissão para processar a folha",
       "noEditable": "O holerite ou o período não pode mais ser editado",
       "generico": "Não foi possível salvar o valor"
+    }
+  },
+  "estadosFinancieros": {
+    "comun": {
+      "finanzas": "Finanças",
+      "informes": "Relatórios",
+      "desde": "De",
+      "hasta": "Até",
+      "anioAnterior": "Ano anterior",
+      "consultar": "Consultar",
+      "sinPermiso": "Você não tem permissão para ver este relatório",
+      "sinPermisoDetalle": "Peça acesso a Finanças ao administrador da sua organização.",
+      "alcance": "Este relatório é de toda a empresa",
+      "alcanceDetalle": "É preciso ter acesso a todas as filiais para vê-lo.",
+      "error": "Não foi possível carregar o relatório"
+    },
+    "flujo": {
+      "titulo": "Demonstração dos fluxos de caixa",
+      "subtitulo": "Método indireto · IFRS para PMEs, seção 7",
+      "miga": "Fluxos de caixa",
+      "concepto": "Item",
+      "grupo": "Grupo {grupo}",
+      "resultado": "Resultado do período",
+      "variacion": "Variação do caixa",
+      "inicial": "Caixa inicial",
+      "efectoCambiario": "Efeito da taxa de câmbio",
+      "final": "Caixa final",
+      "restringido": "Caixa restrito (à parte)",
+      "pendienteClasificar": "Pendente de classificação",
+      "seccion": {
+        "operacion": "Atividades operacionais",
+        "inversion": "Atividades de investimento",
+        "financiacion": "Atividades de financiamento"
+      },
+      "neto": {
+        "operacion": "Caixa líquido das operações",
+        "inversion": "Caixa líquido de investimento",
+        "financiacion": "Caixa líquido de financiamento"
+      },
+      "cuadra": "Confere com bancos e caixa",
+      "noCuadra": "Não confere: diferença de {diferencia}",
+      "cuadraDetalle": "Inicial + variação + efeito cambial = final. Exclui transferências entre bancos e operações sem caixa.",
+      "incompleto": {
+        "titulo": "Esta demonstração está incompleta",
+        "detalle": "{cuentas, plural, one {# conta está} other {# contas estão}} sem categoria de fluxo. Os valores não são deduzidos: ficam em “Pendente de classificação” até o contador marcá-las."
+      },
+      "propuesta": {
+        "titulo": "Caixa proposto pelo plano de contas",
+        "detalle": "As contas 11 são consideradas caixa porque o plano é inequívoco. Equivalentes e caixa restrito são marcados à mão; nada é salvo por suposição."
+      },
+      "politicas": {
+        "pendienteTitulo": "Políticas pendentes do contador",
+        "pendienteDetalle": "Juros, impostos e dividendos usam o critério inicial da IFRS para PMEs 7.14 a 7.17 até o contador confirmar.",
+        "ver": "Ver políticas"
+      },
+      "sinContabilizar": {
+        "titulo": "Há movimentos que não entraram no razão",
+        "detalle": "{borradores, plural, one {# rascunho} other {# rascunhos}} e {fallos, plural, one {# pendência contábil} other {# pendências contábeis}} por {monto}. Não estão nesta demonstração.",
+        "ver": "Ver pendências"
+      },
+      "pendientes": {
+        "titulo": "Contas a classificar",
+        "detalle": "Escolha a categoria. A marca vale para todos os períodos e não altera nenhum lançamento.",
+        "clasificar": "Classificar"
+      },
+      "sinEfectivo": {
+        "titulo": "Operações sem caixa",
+        "detalle": "São divulgadas aqui porque não movimentaram caixa: uma compra a prazo não é investimento.",
+        "asiento": "Lançamento {id}"
+      },
+      "renglon": {
+        "ajuste": {
+          "depreciacion_amortizacion": "Depreciação e amortização",
+          "deterioro": "Perda por redução ao valor recuperável",
+          "venta_activos": "Resultado na venda de ativos",
+          "reclasificado_financiacion": "Juros apresentados em financiamento",
+          "diferencia_cambio": "Diferença cambial do caixa",
+          "otras_sin_efectivo": "Outros itens sem caixa"
+        },
+        "variacion": {
+          "g13": "Variação de contas a receber",
+          "g14": "Variação de estoques",
+          "g22": "Variação de fornecedores",
+          "g23": "Variação de contas a pagar",
+          "g24": "Variação de impostos a pagar",
+          "g25": "Variação de obrigações trabalhistas",
+          "g26": "Variação de passivos estimados",
+          "g28": "Variação de adiantamentos e dinheiro de terceiros"
+        },
+        "inversion": {
+          "g12": {
+            "entrada": "Venda de investimentos",
+            "salida": "Compra de investimentos"
+          },
+          "g15": {
+            "entrada": "Venda de ativos",
+            "salida": "Compra de ativos à vista"
+          },
+          "g16": {
+            "entrada": "Venda de intangíveis",
+            "salida": "Compra de intangíveis"
+          }
+        },
+        "financiacion": {
+          "g21": {
+            "entrada": "Empréstimos recebidos",
+            "salida": "Amortização de empréstimos"
+          },
+          "g23": {
+            "entrada": "Dividendos devolvidos",
+            "salida": "Dividendos pagos"
+          },
+          "g31": {
+            "entrada": "Aportes de sócios",
+            "salida": "Devolução de aportes"
+          },
+          "g32": {
+            "entrada": "Reserva de capital",
+            "salida": "Devolução de reserva"
+          },
+          "g53": {
+            "entrada": "Juros devolvidos",
+            "salida": "Juros pagos"
+          }
+        }
+      }
+    },
+    "clasificar": {
+      "titulo": "Classificar a conta {cuenta}",
+      "categoria": "Categoria de fluxo",
+      "categorias": {
+        "operacion": "Operacional",
+        "inversion": "Investimento",
+        "financiacion": "Financiamento"
+      },
+      "ayuda": "É uma decisão do contador. Nenhum lançamento muda.",
+      "alcance": "Aplicar a",
+      "guardar": "Classificar",
+      "guardado": "Conta classificada",
+      "sinPermiso": "Você não tem permissão para classificar contas",
+      "sinCuenta": "Essa conta não existe no seu plano de contas",
+      "error": "Não foi possível classificar a conta"
+    },
+    "politicas": {
+      "titulo": "Políticas da demonstração de fluxos",
+      "detalle": "Decisão do contador, IFRS para PMEs 7.14 a 7.17. Aplicadas por prefixo do plano de contas.",
+      "confirmar": "Confirmar políticas",
+      "sinPermiso": "Só quem aprova em Finanças pode confirmá-las",
+      "sinConfirmar": "Ainda sem confirmar: está em uso o critério inicial.",
+      "guardado": "Políticas confirmadas",
+      "versionObsoleta": "Outra pessoa salvou alterações. Abra de novo e repita.",
+      "error": "Não foi possível salvar as políticas",
+      "clave": {
+        "intereses_pagados": "Juros pagos",
+        "intereses_recibidos": "Juros recebidos",
+        "dividendos_recibidos": "Dividendos recebidos",
+        "dividendos_pagados": "Dividendos pagos",
+        "impuestos": "Impostos sobre o lucro"
+      },
+      "valor": {
+        "operacion": "Operacional",
+        "financiacion": "Financiamento",
+        "inversion": "Investimento"
+      },
+      "nota": {
+        "intereses_pagados": "Conta 530520. Seção 7.14: operacional ou financiamento.",
+        "intereses_recibidos": "Conta 421005. Seção 7.14: operacional ou investimento.",
+        "dividendos_recibidos": "Conta 4215. Seção 7.15: operacional ou investimento.",
+        "dividendos_pagados": "Conta 2360. Seção 7.15: financiamento ou operacional.",
+        "impuestos": "Contas 54 e 2404. Seção 7.17: operacional, salvo identificação específica."
+      }
+    },
+    "patrimonio": {
+      "titulo": "Demonstração das mutações do patrimônio",
+      "subtitulo": "De {desde} a {hasta}",
+      "miga": "Mutações do patrimônio",
+      "concepto": "Item",
+      "total": "Total",
+      "columna": {
+        "capital": "Capital",
+        "reservas": "Reservas",
+        "ejercicio": "Resultado do exercício",
+        "acumulados": "Resultados acumulados",
+        "otros": "Outros"
+      },
+      "fila": {
+        "saldo_inicial": "Saldo inicial",
+        "traslado": "Transferência do resultado anterior",
+        "resultado": "Resultado do período",
+        "dividendos": "Dividendos declarados",
+        "aportes": "Aportes de sócios",
+        "capitalizacion": "Capitalização de resultados",
+        "reservas": "Constituição de reservas",
+        "ori": "Outros resultados abrangentes",
+        "otros": "Outros movimentos a revisar",
+        "saldo_final": "Saldo final"
+      },
+      "otros": {
+        "titulo": "Há movimentos de patrimônio sem classificar",
+        "detalle": "Estão em “Outros movimentos a revisar” para que o total continue conferindo. Nada foi deduzido do texto do lançamento."
+      },
+      "cuadra": "Confere com o balanço patrimonial",
+      "noCuadra": "Não confere: diferença de {diferencia}",
+      "cuadraDetalle": "O total coincide com o patrimônio. O lançamento de encerramento não duplica o lucro."
+    },
+    "indicadores": {
+      "titulo": "Indicadores financeiros",
+      "subtitulo": "Saem do razão do período escolhido",
+      "subtituloComparado": "Comparado com {anio}",
+      "miga": "Indicadores",
+      "indicador": "Indicador",
+      "formula": "Fórmula",
+      "sinDato": "Sem dado",
+      "dias": "{valor} dias",
+      "veces": "{valor} vezes",
+      "enAnio": "{valor} em {anio}",
+      "sinClasificar": {
+        "titulo": "Há saldos sem classificar como circulantes ou não circulantes",
+        "detalle": "{monto} não entram na liquidez corrente. Classifique-os no plano de contas.",
+        "ver": "Ver plano de contas"
+      },
+      "nombre": {
+        "razon_corriente": "Liquidez corrente",
+        "endeudamiento": "Endividamento",
+        "margen_neto": "Margem líquida",
+        "ciclo_caja": "Ciclo de caixa",
+        "rotacion_cartera": "Giro de contas a receber",
+        "dias_inventario": "Dias de estoque",
+        "dias_proveedores": "Dias de fornecedores",
+        "margen_operacional": "Margem operacional",
+        "roe": "ROE",
+        "roa": "ROA"
+      },
+      "definicion": {
+        "razon_corriente": "Ativo circulante ÷ passivo circulante",
+        "endeudamiento": "Passivo ÷ ativo",
+        "margen_neto": "Resultado ÷ receitas",
+        "ciclo_caja": "Dias de recebimento + dias de estoque − dias de fornecedores",
+        "rotacion_cartera": "Receitas ÷ contas a receber médias",
+        "dias_inventario": "Estoque médio ÷ custo × dias",
+        "dias_proveedores": "Fornecedores médios ÷ compras × dias",
+        "margen_operacional": "Resultado operacional ÷ receitas",
+        "roe": "Resultado ÷ patrimônio médio",
+        "roa": "Resultado ÷ ativo médio"
+      }
+    },
+    "presupuesto": {
+      "titulo": "Orçamento versus realizado",
+      "subtitulo": "Só orçamentos aprovados · o realizado sai do razão",
+      "miga": "Orçamento versus realizado",
+      "codigo": "Código",
+      "cuenta": "Conta",
+      "presupuesto": "Orçamento",
+      "real": "Realizado",
+      "variacion": "Variação",
+      "borradores": "{n, plural, one {# orçamento em rascunho não é considerado} other {# orçamentos em rascunho não são considerados}}",
+      "verPresupuestos": "Ver orçamentos",
+      "repetidos": "Há mais de um orçamento aprovado para o mesmo ano: seus valores se somam.",
+      "sinPresupuesto": "Com movimento e sem orçamento",
+      "vacio": {
+        "titulo": "Não há orçamentos aprovados",
+        "detalle": "Aprove um orçamento para compará-lo com o realizado."
+      }
+    },
+    "resultado": {
+      "titulo": "Demonstração do resultado abrangente",
+      "subtituloNaturaleza": "Receitas menos custos e despesas, por natureza",
+      "subtituloFuncion": "Receitas menos custos e despesas, por função",
+      "miga": "Demonstração do resultado abrangente",
+      "concepto": "Item",
+      "variacion": "Variação",
+      "total": "RESULTADO ABRANGENTE DO PERÍODO",
+      "presentacion": "Apresentação",
+      "porNaturaleza": "Por natureza",
+      "porFuncion": "Por função",
+      "error": "Não foi possível carregar a demonstração do resultado abrangente",
+      "ori": "Inclui outros resultados abrangentes de {valor}, das contas 38 marcadas.",
+      "filaOri": "Outros resultados abrangentes",
+      "detalle": "Detalhe por conta",
+      "nivel": "Nível do plano",
+      "niveles": {
+        "n2": "Grupo",
+        "n4": "Conta",
+        "n6": "Subconta",
+        "n8": "Auxiliar"
+      },
+      "fila": {
+        "ingresos": "Receita de atividades ordinárias",
+        "otros_ingresos": "Outras receitas",
+        "costo_ventas": "Custo das mercadorias vendidas",
+        "costo_produccion": "Custos de produção",
+        "personal": "Despesas com pessoal",
+        "honorarios": "Honorários, serviços e aluguéis",
+        "impuestos": "Impostos que não sobre o lucro",
+        "depreciacion": "Depreciação e amortização",
+        "otros_gastos": "Outras despesas",
+        "renta": "Imposto sobre o lucro",
+        "ingresos_totales": "Receitas",
+        "funcion_costos": "Custo de vendas e de produção",
+        "funcion_51": "Despesas administrativas",
+        "funcion_52": "Despesas de vendas",
+        "funcion_53": "Outras despesas",
+        "funcion_54": "Imposto sobre o lucro"
+      }
+    },
+    "notas": {
+      "titulo": "Notas às demonstrações financeiras",
+      "subtitulo": "Data-base {corte} · Rascunho",
+      "miga": "Notas",
+      "guardar": "Salvar rascunho",
+      "guardado": "Notas salvas",
+      "versionObsoleta": "Outra pessoa salvou alterações. Recarregue e repita.",
+      "errorGuardar": "Não foi possível salvar as notas",
+      "corte": "Data-base",
+      "aviso": "É um rascunho: os saldos saem do razão e o contador revisa o texto.",
+      "nota": "Nota",
+      "contenido": "Conteúdo",
+      "origen": "Origem",
+      "estado": "Estado",
+      "abrir": "Abrir",
+      "cerrar": "Fechar",
+      "revisada": "Revisada pelo contador",
+      "cuenta": "Conta",
+      "nombre": {
+        "entidad": "Entidade que reporta",
+        "politicas": "Políticas contábeis",
+        "efectivo": "Caixa e equivalentes",
+        "deudores": "Contas a receber",
+        "inventarios": "Estoques",
+        "ppe": "Ativo imobilizado"
+      },
+      "origenes": {
+        "empresa": "Dados da empresa",
+        "contador": "Texto do contador",
+        "mayor": "Sai do razão",
+        "activos": "Ativos fixos"
+      },
+      "estados": {
+        "completa": "Completa",
+        "por_revisar": "A revisar",
+        "sin_datos": "Sem dados"
+      },
+      "plantilla": {
+        "entidad": "Descreva a entidade, seu domicílio, atividade econômica, duração e o órgão que autoriza estas demonstrações financeiras.",
+        "politicas": "Descreva a estrutura normativa aplicada, a base de mensuração, a moeda de apresentação e as políticas de caixa e equivalentes, estoques, ativo imobilizado e receitas."
+      }
+    },
+    "certificacion": {
+      "titulo": "Certificação das demonstrações financeiras",
+      "subtitulo": "Artigo 37 da Lei 222 de 1995 · Gerar este documento não o assina",
+      "miga": "Certificação",
+      "guardar": "Salvar",
+      "guardado": "Certificação salva",
+      "versionObsoleta": "Outra pessoa salvou alterações. Recarregue e repita.",
+      "errorGuardar": "Não foi possível salvar a certificação",
+      "sinValidar": {
+        "titulo": "Texto legal pendente do contador",
+        "detalle": "É um texto inicial. O contador deve validá-lo antes da assinatura."
+      },
+      "faltan": {
+        "titulo": "Faltam dados para assinar"
+      },
+      "campo": {
+        "representante_nombre": "Nome do representante legal",
+        "representante_cedula": "Documento do representante legal",
+        "contador_nombre": "Nome do contador",
+        "contador_cedula": "Documento do contador",
+        "contador_tarjeta": "Registro profissional do contador",
+        "empresa_nombre": "Nome da empresa",
+        "empresa_nit": "Identificação fiscal da empresa"
+      },
+      "corte": "Data-base",
+      "texto": "Texto da certificação",
+      "textoAyuda": "A marca {corte} é substituída pela data-base.",
+      "textoBase": "Os abaixo assinados, representante legal e contador, certificamos que preparamos as demonstrações financeiras da sociedade em {corte}, com base nas normas vigentes, e que antes de disponibilizá-las verificamos as afirmações nelas contidas, conforme o artigo 37 da Lei 222 de 1995.",
+      "validado": "Texto validado pelo contador",
+      "representante": "Representante legal",
+      "contador": "Contador"
+    },
+    "libros": {
+      "titulo": "Livros contábeis",
+      "subtitulo": "Exporte os livros do período",
+      "miga": "Livros contábeis",
+      "nivel": "Nível de consolidação",
+      "niveles": {
+        "n2": "Grupo",
+        "n4": "Conta",
+        "n6": "Subconta",
+        "n8": "Auxiliar"
+      },
+      "truncado": "O livro passou de 100 000 linhas e saiu incompleto. Escolha um período menor.",
+      "libro": "Livro",
+      "contenido": "Conteúdo",
+      "estado": "Estado",
+      "disponible": "Disponível",
+      "generando": "Gerando…",
+      "sinMovimientos": "Não há movimentos no período",
+      "error": "Não foi possível exportar o livro",
+      "nombre": {
+        "diario": "Livro diário",
+        "mayor": "Razão e balanços",
+        "inventarios": "Inventários e balanços",
+        "auxiliar_cuenta": "Auxiliares por conta",
+        "tercero": "Auxiliar por terceiro",
+        "centro": "Auxiliar por centro de custo"
+      },
+      "descripcion": {
+        "diario": "Lançamentos publicados do período",
+        "mayor": "Saldos por conta, consolidado",
+        "inventarios": "Ativos, passivos e patrimônio no fechamento",
+        "auxiliar_cuenta": "Movimento e saldo corrido",
+        "tercero": "Saldo por identificação fiscal",
+        "centro": "Saldo por centro"
+      },
+      "columna": {
+        "codigo": "Código",
+        "cuenta": "Nome",
+        "inicial": "Saldo inicial",
+        "debitos": "Débitos",
+        "creditos": "Créditos",
+        "final": "Saldo final",
+        "saldo": "Saldo",
+        "fecha": "Data",
+        "asiento": "Lançamento",
+        "tercero": "Terceiro",
+        "detalle": "Detalhe"
+      }
     }
   }
 }

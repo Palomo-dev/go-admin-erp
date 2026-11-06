@@ -319,8 +319,10 @@ export const finanzasReports: DefinicionModulo[] = [
   {
     id: 'flujo-efectivo',
     modulo: 'finance',
-    titulo: 'Flujo de efectivo',
-    descripcion: 'Flujo operativo, de inversión y de financiación del periodo',
+    // fn_reporte_flujo_efectivo solo suma pagos: inversión y financiación vienen en cero. No es el
+    // estado de flujos: ese está en Contabilidad, sale del mayor y tiene los tres flujos.
+    titulo: 'Cobros y pagos del periodo',
+    descripcion: 'Solo pagos recibidos y pagados. No incluye inversión ni financiación: el estado completo está en Contabilidad, Estado de flujos de efectivo',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -338,22 +340,20 @@ export const finanzasReports: DefinicionModulo[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'flujo-efectivo', 'Flujo de efectivo', 'finance', periodo,
+        'flujo-efectivo', 'Cobros y pagos del periodo', 'finance', periodo,
         [
-          { titulo: 'Flujo Operativo', valor: d.operativo ?? 0, formato: 'moneda' },
-          { titulo: 'Flujo Neto', valor: d.neto ?? 0, formato: 'moneda' },
+          { titulo: 'Cobros', valor: d.entradas ?? 0, formato: 'moneda' },
+          { titulo: 'Pagos', valor: d.salidas ?? 0, formato: 'moneda' },
+          { titulo: 'Neto de cobros y pagos', valor: d.operativo ?? 0, formato: 'moneda' },
         ],
         [
           { key: 'concepto', titulo: 'Concepto', tipo: 'texto' },
           { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
         ],
         [
-          { concepto: 'Entradas Operativas', monto: d.entradas ?? 0 },
-          { concepto: 'Salidas Operativas', monto: -(d.salidas ?? 0) },
-          { concepto: 'Flujo Operativo Neto', monto: d.operativo ?? 0 },
-          { concepto: 'Inversión', monto: d.inversion ?? 0 },
-          { concepto: 'Financiación', monto: d.financiacion ?? 0 },
-          { concepto: 'Flujo Neto Total', monto: d.neto ?? 0 },
+          { concepto: 'Cobros', monto: d.entradas ?? 0 },
+          { concepto: 'Pagos', monto: -(d.salidas ?? 0) },
+          { concepto: 'Neto de cobros y pagos', monto: d.operativo ?? 0 },
         ],
       );
     },

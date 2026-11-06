@@ -4568,7 +4568,14 @@
       "sitio-web_sedes": "Locations on the web",
       "sitio-web_configuracion": "Settings",
       "plan_historial": "Purchases",
-      "finanzas_contabilidad_pendientes": "Accounting exceptions"
+      "finanzas_contabilidad_pendientes": "Accounting exceptions",
+      "finanzas_contabilidad_informes_flujo-efectivo": "Statement of cash flows",
+      "finanzas_contabilidad_informes_cambios-patrimonio": "Changes in equity",
+      "finanzas_contabilidad_informes_notas": "Notes to the financial statements",
+      "finanzas_contabilidad_informes_certificacion": "Certification of financial statements",
+      "finanzas_contabilidad_informes_indicadores": "Financial ratios",
+      "finanzas_contabilidad_informes_presupuesto-real": "Budget versus actual",
+      "finanzas_contabilidad_informes_libros": "Accounting books"
     },
     "grupos": {
       "venta": "Sales",
@@ -39655,6 +39662,433 @@
       "sinPermiso": "You do not have permission to process payroll",
       "noEditable": "The payslip or period can no longer be edited",
       "generico": "The value could not be saved"
+    }
+  },
+  "estadosFinancieros": {
+    "comun": {
+      "finanzas": "Finance",
+      "informes": "Reports",
+      "desde": "From",
+      "hasta": "To",
+      "anioAnterior": "Previous year",
+      "consultar": "Run",
+      "sinPermiso": "You don't have permission to view this report",
+      "sinPermisoDetalle": "Ask your organization's administrator for Finance access.",
+      "alcance": "This report covers the whole company",
+      "alcanceDetalle": "You need access to every branch to view it.",
+      "error": "The report could not be loaded"
+    },
+    "flujo": {
+      "titulo": "Statement of cash flows",
+      "subtitulo": "Indirect method · IFRS for SMEs, section 7",
+      "miga": "Cash flows",
+      "concepto": "Item",
+      "grupo": "Group {grupo}",
+      "resultado": "Profit or loss for the period",
+      "variacion": "Change in cash",
+      "inicial": "Opening cash",
+      "efectoCambiario": "Effect of exchange rates",
+      "final": "Closing cash",
+      "restringido": "Restricted cash (separate)",
+      "pendienteClasificar": "Pending classification",
+      "seccion": {
+        "operacion": "Operating activities",
+        "inversion": "Investing activities",
+        "financiacion": "Financing activities"
+      },
+      "neto": {
+        "operacion": "Net cash from operations",
+        "inversion": "Net cash from investing",
+        "financiacion": "Net cash from financing"
+      },
+      "cuadra": "Reconciles with banks and cash",
+      "noCuadra": "Does not reconcile: difference of {diferencia}",
+      "cuadraDetalle": "Opening + change + exchange effect = closing. Excludes transfers between banks and non-cash transactions.",
+      "incompleto": {
+        "titulo": "This statement is incomplete",
+        "detalle": "{cuentas, plural, one {# account has} other {# accounts have}} no cash flow category. Amounts are not guessed: they stay in “Pending classification” until the accountant marks them."
+      },
+      "propuesta": {
+        "titulo": "Cash proposed from the chart of accounts",
+        "detalle": "Accounts under 11 are taken as cash because the chart is unambiguous. Equivalents and restricted cash are marked by hand; nothing is saved by assumption."
+      },
+      "politicas": {
+        "pendienteTitulo": "Policies pending from the accountant",
+        "pendienteDetalle": "Interest, taxes and dividends use the starting criterion of IFRS for SMEs 7.14 to 7.17 until the accountant confirms it.",
+        "ver": "View policies"
+      },
+      "sinContabilizar": {
+        "titulo": "Some movements did not reach the ledger",
+        "detalle": "{borradores, plural, one {# draft} other {# drafts}} and {fallos, plural, one {# accounting pending item} other {# accounting pending items}} for {monto}. They are not in this statement.",
+        "ver": "View pending items"
+      },
+      "pendientes": {
+        "titulo": "Accounts to classify",
+        "detalle": "Choose their category. The mark applies to every period and changes no entry.",
+        "clasificar": "Classify"
+      },
+      "sinEfectivo": {
+        "titulo": "Non-cash transactions",
+        "detalle": "Disclosed here because no cash moved: a purchase on credit is not an investment.",
+        "asiento": "Entry {id}"
+      },
+      "renglon": {
+        "ajuste": {
+          "depreciacion_amortizacion": "Depreciation and amortization",
+          "deterioro": "Impairment",
+          "venta_activos": "Gain or loss on sale of assets",
+          "reclasificado_financiacion": "Interest presented in financing",
+          "diferencia_cambio": "Exchange difference on cash",
+          "otras_sin_efectivo": "Other non-cash items"
+        },
+        "variacion": {
+          "g13": "Change in receivables",
+          "g14": "Change in inventories",
+          "g22": "Change in suppliers",
+          "g23": "Change in accounts payable",
+          "g24": "Change in taxes payable",
+          "g25": "Change in employee obligations",
+          "g26": "Change in estimated liabilities",
+          "g28": "Change in advances and third-party money"
+        },
+        "inversion": {
+          "g12": {
+            "entrada": "Sale of investments",
+            "salida": "Purchase of investments"
+          },
+          "g15": {
+            "entrada": "Sale of assets",
+            "salida": "Cash purchase of assets"
+          },
+          "g16": {
+            "entrada": "Sale of intangibles",
+            "salida": "Purchase of intangibles"
+          }
+        },
+        "financiacion": {
+          "g21": {
+            "entrada": "Loans received",
+            "salida": "Loan repayments"
+          },
+          "g23": {
+            "entrada": "Dividends returned",
+            "salida": "Dividends paid"
+          },
+          "g31": {
+            "entrada": "Owner contributions",
+            "salida": "Return of contributions"
+          },
+          "g32": {
+            "entrada": "Capital surplus",
+            "salida": "Return of surplus"
+          },
+          "g53": {
+            "entrada": "Interest returned",
+            "salida": "Interest paid"
+          }
+        }
+      }
+    },
+    "clasificar": {
+      "titulo": "Classify account {cuenta}",
+      "categoria": "Cash flow category",
+      "categorias": {
+        "operacion": "Operating",
+        "inversion": "Investing",
+        "financiacion": "Financing"
+      },
+      "ayuda": "This is the accountant's decision. No entry changes.",
+      "alcance": "Apply to",
+      "guardar": "Classify",
+      "guardado": "Account classified",
+      "sinPermiso": "You don't have permission to classify accounts",
+      "sinCuenta": "That account does not exist in your chart of accounts",
+      "error": "The account could not be classified"
+    },
+    "politicas": {
+      "titulo": "Cash flow statement policies",
+      "detalle": "Accountant's decision, IFRS for SMEs 7.14 to 7.17. Applied by chart of accounts prefix.",
+      "confirmar": "Confirm policies",
+      "sinPermiso": "Only someone who approves in Finance can confirm them",
+      "sinConfirmar": "Not confirmed yet: the starting criterion is in use.",
+      "guardado": "Policies confirmed",
+      "versionObsoleta": "Someone else saved changes. Reopen and try again.",
+      "error": "The policies could not be saved",
+      "clave": {
+        "intereses_pagados": "Interest paid",
+        "intereses_recibidos": "Interest received",
+        "dividendos_recibidos": "Dividends received",
+        "dividendos_pagados": "Dividends paid",
+        "impuestos": "Income taxes"
+      },
+      "valor": {
+        "operacion": "Operating",
+        "financiacion": "Financing",
+        "inversion": "Investing"
+      },
+      "nota": {
+        "intereses_pagados": "Account 530520. Section 7.14: operating or financing.",
+        "intereses_recibidos": "Account 421005. Section 7.14: operating or investing.",
+        "dividendos_recibidos": "Account 4215. Section 7.15: operating or investing.",
+        "dividendos_pagados": "Account 2360. Section 7.15: financing or operating.",
+        "impuestos": "Accounts 54 and 2404. Section 7.17: operating, unless specifically identified."
+      }
+    },
+    "patrimonio": {
+      "titulo": "Statement of changes in equity",
+      "subtitulo": "From {desde} to {hasta}",
+      "miga": "Changes in equity",
+      "concepto": "Item",
+      "total": "Total",
+      "columna": {
+        "capital": "Capital",
+        "reservas": "Reserves",
+        "ejercicio": "Profit for the year",
+        "acumulados": "Retained earnings",
+        "otros": "Other"
+      },
+      "fila": {
+        "saldo_inicial": "Opening balance",
+        "traslado": "Transfer of prior result",
+        "resultado": "Profit or loss for the period",
+        "dividendos": "Dividends declared",
+        "aportes": "Owner contributions",
+        "capitalizacion": "Capitalization of earnings",
+        "reservas": "Reserves created",
+        "ori": "Other comprehensive income",
+        "otros": "Other movements to review",
+        "saldo_final": "Closing balance"
+      },
+      "otros": {
+        "titulo": "Some equity movements are unclassified",
+        "detalle": "They are in “Other movements to review” so the total still reconciles. Nothing was inferred from the entry text."
+      },
+      "cuadra": "Reconciles with the statement of financial position",
+      "noCuadra": "Does not reconcile: difference of {diferencia}",
+      "cuadraDetalle": "The total matches equity. The closing entry does not double the profit."
+    },
+    "indicadores": {
+      "titulo": "Financial ratios",
+      "subtitulo": "From the ledger for the selected period",
+      "subtituloComparado": "Compared with {anio}",
+      "miga": "Ratios",
+      "indicador": "Ratio",
+      "formula": "Formula",
+      "sinDato": "No data",
+      "dias": "{valor} days",
+      "veces": "{valor} times",
+      "enAnio": "{valor} in {anio}",
+      "sinClasificar": {
+        "titulo": "Some balances are not classified as current or non-current",
+        "detalle": "{monto} are left out of the current ratio. Classify them in the chart of accounts.",
+        "ver": "View chart of accounts"
+      },
+      "nombre": {
+        "razon_corriente": "Current ratio",
+        "endeudamiento": "Debt ratio",
+        "margen_neto": "Net margin",
+        "ciclo_caja": "Cash cycle",
+        "rotacion_cartera": "Receivables turnover",
+        "dias_inventario": "Inventory days",
+        "dias_proveedores": "Supplier days",
+        "margen_operacional": "Operating margin",
+        "roe": "ROE",
+        "roa": "ROA"
+      },
+      "definicion": {
+        "razon_corriente": "Current assets ÷ current liabilities",
+        "endeudamiento": "Liabilities ÷ assets",
+        "margen_neto": "Result ÷ revenue",
+        "ciclo_caja": "Receivable days + inventory days − supplier days",
+        "rotacion_cartera": "Revenue ÷ average receivables",
+        "dias_inventario": "Average inventory ÷ cost × days",
+        "dias_proveedores": "Average suppliers ÷ purchases × days",
+        "margen_operacional": "Operating result ÷ revenue",
+        "roe": "Result ÷ average equity",
+        "roa": "Result ÷ average assets"
+      }
+    },
+    "presupuesto": {
+      "titulo": "Budget versus actual",
+      "subtitulo": "Approved budgets only · actuals come from the ledger",
+      "miga": "Budget versus actual",
+      "codigo": "Code",
+      "cuenta": "Account",
+      "presupuesto": "Budget",
+      "real": "Actual",
+      "variacion": "Variance",
+      "borradores": "{n, plural, one {# draft budget is not counted} other {# draft budgets are not counted}}",
+      "verPresupuestos": "View budgets",
+      "repetidos": "More than one approved budget exists for the same year: their figures add up.",
+      "sinPresupuesto": "With activity and no budget",
+      "vacio": {
+        "titulo": "No approved budgets",
+        "detalle": "Approve a budget to compare it with actuals."
+      }
+    },
+    "resultado": {
+      "titulo": "Statement of comprehensive income",
+      "subtituloNaturaleza": "Revenue less costs and expenses, by nature",
+      "subtituloFuncion": "Revenue less costs and expenses, by function",
+      "miga": "Statement of comprehensive income",
+      "concepto": "Item",
+      "variacion": "Change",
+      "total": "COMPREHENSIVE INCOME FOR THE PERIOD",
+      "presentacion": "Presentation",
+      "porNaturaleza": "By nature",
+      "porFuncion": "By function",
+      "error": "The statement of comprehensive income could not be loaded",
+      "ori": "Includes other comprehensive income of {valor}, from marked 38 accounts.",
+      "filaOri": "Other comprehensive income",
+      "detalle": "Detail by account",
+      "nivel": "Chart level",
+      "niveles": {
+        "n2": "Group",
+        "n4": "Account",
+        "n6": "Sub-account",
+        "n8": "Auxiliary"
+      },
+      "fila": {
+        "ingresos": "Revenue from ordinary activities",
+        "otros_ingresos": "Other income",
+        "costo_ventas": "Cost of goods sold",
+        "costo_produccion": "Production costs",
+        "personal": "Employee expenses",
+        "honorarios": "Fees, services and rent",
+        "impuestos": "Taxes other than income tax",
+        "depreciacion": "Depreciation and amortization",
+        "otros_gastos": "Other expenses",
+        "renta": "Income tax",
+        "ingresos_totales": "Income",
+        "funcion_costos": "Cost of sales and production",
+        "funcion_51": "Administrative expenses",
+        "funcion_52": "Selling expenses",
+        "funcion_53": "Other expenses",
+        "funcion_54": "Income tax"
+      }
+    },
+    "notas": {
+      "titulo": "Notes to the financial statements",
+      "subtitulo": "Cut-off {corte} · Draft",
+      "miga": "Notes",
+      "guardar": "Save draft",
+      "guardado": "Notes saved",
+      "versionObsoleta": "Someone else saved changes. Reload and try again.",
+      "errorGuardar": "The notes could not be saved",
+      "corte": "Cut-off",
+      "aviso": "This is a draft: balances come from the ledger and the accountant reviews the text.",
+      "nota": "Note",
+      "contenido": "Content",
+      "origen": "Source",
+      "estado": "Status",
+      "abrir": "Open",
+      "cerrar": "Close",
+      "revisada": "Reviewed by the accountant",
+      "cuenta": "Account",
+      "nombre": {
+        "entidad": "Reporting entity",
+        "politicas": "Accounting policies",
+        "efectivo": "Cash and equivalents",
+        "deudores": "Receivables",
+        "inventarios": "Inventories",
+        "ppe": "Property, plant and equipment"
+      },
+      "origenes": {
+        "empresa": "Company data",
+        "contador": "Accountant's text",
+        "mayor": "From the ledger",
+        "activos": "Fixed assets"
+      },
+      "estados": {
+        "completa": "Complete",
+        "por_revisar": "To review",
+        "sin_datos": "No data"
+      },
+      "plantilla": {
+        "entidad": "Describe the entity, its domicile, business activity, duration and the body that authorizes these financial statements.",
+        "politicas": "Describe the framework applied, the measurement basis, the presentation currency and the policies for cash and equivalents, inventories, property, plant and equipment, and revenue."
+      }
+    },
+    "certificacion": {
+      "titulo": "Certification of the financial statements",
+      "subtitulo": "Article 37 of Law 222 of 1995 · Generating this document does not sign it",
+      "miga": "Certification",
+      "guardar": "Save",
+      "guardado": "Certification saved",
+      "versionObsoleta": "Someone else saved changes. Reload and try again.",
+      "errorGuardar": "The certification could not be saved",
+      "sinValidar": {
+        "titulo": "Legal text pending from the accountant",
+        "detalle": "This is a starting text. The accountant must validate it before signing."
+      },
+      "faltan": {
+        "titulo": "Data missing before signing"
+      },
+      "campo": {
+        "representante_nombre": "Legal representative's name",
+        "representante_cedula": "Legal representative's ID",
+        "contador_nombre": "Accountant's name",
+        "contador_cedula": "Accountant's ID",
+        "contador_tarjeta": "Accountant's professional card",
+        "empresa_nombre": "Company name",
+        "empresa_nit": "Company tax ID"
+      },
+      "corte": "Cut-off",
+      "texto": "Certification text",
+      "textoAyuda": "The {corte} mark is replaced by the cut-off date.",
+      "textoBase": "The undersigned legal representative and accountant certify that we have prepared the company's financial statements as of {corte}, based on current regulations, and that before making them available we have verified the statements contained in them, in accordance with article 37 of Law 222 of 1995.",
+      "validado": "Text validated by the accountant",
+      "representante": "Legal representative",
+      "contador": "Accountant"
+    },
+    "libros": {
+      "titulo": "Accounting books",
+      "subtitulo": "Export the books for the period",
+      "miga": "Accounting books",
+      "nivel": "Consolidation level",
+      "niveles": {
+        "n2": "Group",
+        "n4": "Account",
+        "n6": "Sub-account",
+        "n8": "Auxiliary"
+      },
+      "truncado": "The book exceeded 100,000 lines and came out incomplete. Choose a shorter period.",
+      "libro": "Book",
+      "contenido": "Content",
+      "estado": "Status",
+      "disponible": "Available",
+      "generando": "Generating…",
+      "sinMovimientos": "No movements in the period",
+      "error": "The book could not be exported",
+      "nombre": {
+        "diario": "Journal",
+        "mayor": "General ledger and balances",
+        "inventarios": "Inventories and balances",
+        "auxiliar_cuenta": "Subledgers by account",
+        "tercero": "Subledger by third party",
+        "centro": "Subledger by cost center"
+      },
+      "descripcion": {
+        "diario": "Posted entries for the period",
+        "mayor": "Balances by account, consolidated",
+        "inventarios": "Assets, liabilities and equity at close",
+        "auxiliar_cuenta": "Movements and running balance",
+        "tercero": "Balance by tax ID",
+        "centro": "Balance by center"
+      },
+      "columna": {
+        "codigo": "Code",
+        "cuenta": "Name",
+        "inicial": "Opening balance",
+        "debitos": "Debits",
+        "creditos": "Credits",
+        "final": "Closing balance",
+        "saldo": "Balance",
+        "fecha": "Date",
+        "asiento": "Entry",
+        "tercero": "Third party",
+        "detalle": "Detail"
+      }
     }
   }
 }

@@ -4568,7 +4568,8 @@
       "sitio-web_analitica": "Analítica",
       "sitio-web_sedes": "Sedes en la web",
       "sitio-web_configuracion": "Configuración",
-      "plan_historial": "Compras"
+      "plan_historial": "Compras",
+      "finanzas_contabilidad_pendientes": "Pendientes contables"
     },
     "grupos": {
       "venta": "Venta",
@@ -39046,67 +39047,6 @@
       }
     }
   },
-  "redondeoReversa": {
-    "asiento": {
-      "lineaRedondeo": "Redondeo a pesos · no altera las otras líneas",
-      "cuadradoTitulo": "Asiento cuadrado",
-      "cuadradoTexto": "El redondeo queda en su propia línea, con cuenta autorizada.",
-      "reversaTitulo": "Reversa del asiento #{id}",
-      "publicado": "Publicado · {fecha}",
-      "motivo": "Motivo: {motivo}",
-      "verOriginal": "Ver original",
-      "sede": "Sede",
-      "moneda": "Moneda",
-      "copiaTitulo": "Copia exacta del original",
-      "copiaTexto": "Mismas cuentas, tercero, centro, sede y moneda, con débito y crédito invertidos. Un asiento solo se revierte una vez.",
-      "auxiliarTitulo": "Reversa con auxiliar",
-      "auxiliarTexto": "Una línea va a un auxiliar porque su cuenta hoy es de título. Lo demás es copia del original, con débito y crédito invertidos.",
-      "revertido": "Asiento revertido con el contra-asiento #{id}",
-      "reversaPendiente": "La reversa quedó en Pendientes contables: una línea está en una cuenta de título y hay que elegir su auxiliar."
-    },
-    "pendiente": {
-      "migas": {
-        "finanzas": "Finanzas",
-        "contabilidad": "Contabilidad",
-        "pendientes": "Pendientes contables"
-      },
-      "estado": "Pendiente · no está en el mayor",
-      "sinNombre": "Documento sin nombre",
-      "configurarCuenta": "Configurar cuenta",
-      "configurar": "Configurar",
-      "reintentar": "Reintentar",
-      "faltaFavor": "Falta la cuenta de redondeo a favor",
-      "faltaContra": "Falta la cuenta de redondeo en contra",
-      "faltaTexto": "Este documento tiene una diferencia de {valor} por redondeo. Queda pendiente hasta configurar la cuenta. No se publica descuadrado.",
-      "diferencia": "Diferencia",
-      "sinCuenta": "Sin cuenta de redondeo",
-      "publicado": "El asiento se publicó con su línea de redondeo.",
-      "sigue": "El asiento sigue pendiente.",
-      "columnas": {
-        "cuenta": "Cuenta",
-        "descripcion": "Descripción",
-        "debito": "Débito",
-        "credito": "Crédito",
-        "auxiliar": "Auxiliar"
-      },
-      "reversaTitulo": "Reversa pendiente del asiento #{id}",
-      "verOriginal": "Ver original",
-      "tituloAvisoTitulo": "Hay líneas en cuentas de título",
-      "sinCuentaTitulo": "Hay líneas sin cuenta",
-      "tituloAvisoTexto": "Una cuenta de título no recibe movimientos, así que la reversa completa espera: no se publicó nada. Elige un auxiliar de la misma cuenta para cada línea.",
-      "elegirAuxiliar": "Elige un auxiliar",
-      "crearAuxiliar": "Crear auxiliar",
-      "publicarReversa": "Publicar reversa",
-      "reversaPublicada": "Reversa publicada: contra-asiento #{id}",
-      "resueltoTitulo": "Pendiente resuelto",
-      "verAsiento": "Ver asiento",
-      "volver": "Volver a pendientes",
-      "noDisponible": "Pendiente no disponible",
-      "errorTitulo": "No se pudo leer el pendiente",
-      "errorTexto": "Revisa tu conexión e inténtalo de nuevo.",
-      "reintentarCarga": "Reintentar"
-    }
-  },
   "reglasContables": {
     "titulo": "Reglas contables",
     "descripcion": "Configuración de asientos automáticos",
@@ -39252,6 +39192,294 @@
       "propuesta": "Propuesta",
       "evidencia": "Evidencia",
       "usos": "Asientos con la propuesta"
+    }
+  },
+  "conciliacionCierre": {
+    "tarjetas": {
+      "resumen": "Resumen de la conciliación",
+      "saldoLibros": "Saldo en libros",
+      "saldoInicial": "Saldo inicial {valor}",
+      "saldoExtracto": "Saldo del extracto",
+      "conciliado": "Conciliado",
+      "diferencia": "Diferencia",
+      "partidasPendientes": "Partidas pendientes"
+    },
+    "sentido": {
+      "sinDiferencia": "Sin diferencia",
+      "librosMayor": "Libros mayor que el extracto",
+      "extractoMayor": "Extracto mayor que libros",
+      "faltaExtracto": "Falta el saldo del extracto",
+      "resueltas": "{n, plural, one {Con # partida resuelta} other {Con # partidas resueltas}}"
+    },
+    "cerrada": {
+      "por": "Cerrada por {nombre} el {fecha}",
+      "motivo": "Motivo: {motivo}"
+    },
+    "cerrar": {
+      "titulo": "Cerrar conciliación",
+      "confirmar": "Cerrar conciliación",
+      "conPartida": "Cerrar con partida pendiente",
+      "exito": "Conciliación cerrada",
+      "motivo": "Motivo",
+      "motivoEjemplo": "Consignación que el banco abona el mes siguiente",
+      "registro": "Queda registrado quién cerró y cuándo.",
+      "sinDiferencia": "Libros y extracto coinciden. Una conciliación cerrada ya no se puede modificar.",
+      "quedaPendiente": "La diferencia de {valor} queda pendiente",
+      "quedaPendienteDetalle": "Pasa como partida conciliatoria a la siguiente conciliación. No se ajusta contra resultados.",
+      "yaExplicada": "La diferencia de {valor} sigue en partidas traídas",
+      "yaExplicadaDetalle": "No se crea una partida nueva: las traídas continúan a la siguiente conciliación."
+    },
+    "saldoExtracto": {
+      "titulo": "Saldo del extracto",
+      "descripcion": "Sin este saldo no se conoce la diferencia. Escríbelo tal como aparece en el extracto del banco.",
+      "guardar": "Guardar y continuar",
+      "falta": "Escribe el saldo del extracto"
+    },
+    "partidas": {
+      "tituloPropias": "Partidas conciliatorias pendientes",
+      "tituloTraidas": "Traídas de conciliaciones anteriores",
+      "tituloTraidasMes": "Traídas de {mes}",
+      "fecha": "Fecha",
+      "descripcion": "Descripción",
+      "valor": "Valor",
+      "estado": "Estado",
+      "registradaPor": "Registrada por",
+      "pendiente": "Pendiente",
+      "resueltaEl": "Resuelta {fecha}",
+      "verMovimiento": "Ver movimiento",
+      "marcarResuelta": "Marcar resuelta",
+      "nota": "La partida no genera asiento ni ajuste a resultados: pasa a la conciliación siguiente hasta que aparezca en el extracto.",
+      "errorTitulo": "No pudimos revisar las partidas pendientes",
+      "errorDetalle": "Esto no significa que no haya partidas. Vuelve a intentarlo antes de cerrar.",
+      "reintentar": "Reintentar"
+    },
+    "resolver": {
+      "titulo": "Marcar partida como resuelta",
+      "descripcion": "Úsalo cuando la partida ya apareció en el extracto. No genera asiento.",
+      "confirmar": "Marcar resuelta",
+      "movimiento": "Movimiento que la resuelve",
+      "sinMovimiento": "Sin movimiento asociado",
+      "movimientoN": "Movimiento {id}"
+    },
+    "errores": {
+      "motivo_obligatorio": "Escribe el motivo del cierre: con diferencia es obligatorio.",
+      "motivo_largo": "El motivo es demasiado largo.",
+      "conciliacion_ya_cerrada": "Esta conciliación ya estaba cerrada.",
+      "conciliacion_cerrada": "La conciliación está cerrada y no admite cambios.",
+      "conciliacion_anterior_abierta": "Primero cierra la conciliación anterior de esta cuenta.",
+      "conciliacion_no_encontrada": "No encontramos esta conciliación.",
+      "falta_saldo_extracto": "Registra el saldo del extracto antes de cerrar.",
+      "partida_ya_resuelta": "Esta partida ya estaba resuelta.",
+      "partida_no_encontrada": "No encontramos esta partida.",
+      "partida_de_otra_conciliacion": "Esta partida no se puede resolver en esta conciliación.",
+      "movimiento_ajeno": "El movimiento no es de esta cuenta.",
+      "sin_permiso": "No tienes permiso para hacer esto.",
+      "desconocido": "No se pudo completar. Vuelve a intentarlo."
+    }
+  },
+  "pendientesContables": {
+    "titulo": "Pendientes contables",
+    "subtitulo": "Documentos que no entraron al mayor. Nada de esto suma en los informes hasta resolverse.",
+    "subtituloCorto": "Documentos que no entraron al mayor.",
+    "movilSinContabilizar": "{n} sin contabilizar",
+    "migas": {
+      "finanzas": "Finanzas",
+      "contabilidad": "Contabilidad"
+    },
+    "buscar": "Buscar por documento o cuenta",
+    "exportar": "Exportar",
+    "dias": "{n, plural, one {# día} other {# días}}",
+    "sustantivo": {
+      "singular": "pendiente",
+      "plural": "pendientes"
+    },
+    "kpis": {
+      "resumen": "Resumen de pendientes",
+      "pendientes": "Pendientes",
+      "masAntiguo": "Más antiguo",
+      "bloqueanCierre": "Bloquean el cierre",
+      "valor": "Valor sin contabilizar"
+    },
+    "columnas": {
+      "documento": "Documento",
+      "error": "Error",
+      "dato": "Cuenta o dato faltante",
+      "responsable": "Responsable",
+      "antiguedad": "Antigüedad"
+    },
+    "errores": {
+      "periodoCerrado": "Periodo cerrado",
+      "terceroRequerido": "El documento exige un tercero",
+      "cuentaNoExiste": "La regla usa una cuenta que no existe",
+      "sinRegla": "No hay regla contable para este documento",
+      "reglaIncompleta": "La regla no trae cuenta de débito o de crédito",
+      "mismaCuenta": "Débito y crédito sobre la misma cuenta",
+      "cuentaSinConfigurar": "Falta configurar la cuenta",
+      "cuentaDeTitulo": "La cuenta es de título y no recibe movimientos",
+      "importeInvalido": "El importe no es válido",
+      "sinSede": "El documento no tiene sede",
+      "impuestoMixto": "El documento mezcla IVA e impuesto al consumo",
+      "otro": "No se pudo contabilizar",
+      "redondeoSinCuenta": "Falta la cuenta de redondeo",
+      "reversaCuentaTitulo": "La reversa tiene líneas en cuentas de título",
+      "reversaLineaSinCuenta": "La reversa tiene líneas sin cuenta"
+    },
+    "datos": {
+      "cuenta": "Cuenta {cuenta}",
+      "periodo": "Periodo del documento",
+      "tercero": "Tercero del documento",
+      "regla": "Regla contable",
+      "configuracion": "Configuración contable",
+      "importe": "Importe del documento",
+      "sede": "Sede del documento",
+      "impuesto": "Impuestos del documento",
+      "revisar": "Revisar el detalle",
+      "redondeo": "Cuenta de redondeo",
+      "auxiliar": "Auxiliar de cada línea"
+    },
+    "responsables": {
+      "contador": "Contador",
+      "compras": "Compras",
+      "ventas": "Ventas",
+      "tesoreria": "Tesorería",
+      "inventario": "Inventario"
+    },
+    "acciones": {
+      "reabrirPeriodo": "Reabrir periodo",
+      "completarTercero": "Completar tercero",
+      "corregirRegla": "Corregir regla",
+      "configurar": "Configurar",
+      "elegirAuxiliar": "Elegir auxiliar",
+      "verDetalle": "Ver detalle",
+      "configurarRedondeo": "Configurar redondeo",
+      "asignarCuenta": "Asignar cuenta"
+    },
+    "documentos": {
+      "factura": "Factura",
+      "compra": "Compra",
+      "venta": "Venta",
+      "ajuste": "Ajuste de inventario",
+      "caja": "Movimiento de caja",
+      "banco": "Movimiento bancario",
+      "transferencia": "Transferencia",
+      "devolucion": "Devolución",
+      "reversa": "Reversa",
+      "otro": "Documento"
+    },
+    "error": {
+      "titulo": "No pudimos revisar los pendientes",
+      "descripcion": "Esto no significa que no haya incidencias. Vuelve a intentarlo antes de cerrar el periodo.",
+      "reintentar": "Reintentar"
+    },
+    "vacio": {
+      "titulo": "No hay pendientes",
+      "descripcion": "Todos los documentos están en el mayor. Última revisión: {fecha}.",
+      "descripcionSinFecha": "Todos los documentos están en el mayor.",
+      "volver": "Volver a Contabilidad"
+    },
+    "detalle": {
+      "desde": "Sin contabilizar desde el {fecha}",
+      "dato": "Dato faltante",
+      "sede": "Sede",
+      "intentos": "Intentos",
+      "intentosUltimo": "{n} · último {fecha}",
+      "cerrar": "Cerrar",
+      "reintentar": "Reintentar ahora",
+      "reintentando": "Reintentando…",
+      "notaReintento": "Al reintentar, el documento se contabiliza con su fecha original, si el periodo sigue abierto.",
+      "notaPeriodoCerrado": "El periodo de este documento está cerrado: no se reintenta hasta que se reabra.",
+      "notaSinClave": "Este rechazo no identifica el hecho contable: se resuelve desde el documento.",
+      "notaReversa": "La reversa se publica completa cuando todas sus líneas tienen cuenta. Elige los auxiliares en su página."
+    },
+    "reintento": {
+      "resuelto": "Documento contabilizado",
+      "periodo_cerrado": "El periodo de este documento está cerrado",
+      "no_reintentable": "Este documento no se puede reintentar desde aquí",
+      "sigue": "Sigue sin contabilizarse: corrige la causa y vuelve a intentarlo",
+      "error": "No se pudo reintentar",
+      "faltan_cuentas": "Falta elegir la cuenta de alguna línea",
+      "sinPermiso": "No tienes permiso para hacer esto"
+    },
+    "csv": {
+      "archivo": "pendientes-contables.csv",
+      "error": "Error",
+      "documento": "Documento",
+      "dato": "Cuenta o dato faltante",
+      "responsable": "Responsable",
+      "antiguedad": "Antigüedad (días)",
+      "valor": "Valor",
+      "errorExportar": "No se pudo exportar"
+    },
+    "alertas": {
+      "cargando": "Revisando pendientes contables",
+      "vacio": "Sin pendientes contables",
+      "fallos": "{n, plural, one {{cantidad} documento sin contabilizar} other {{cantidad} documentos sin contabilizar}}",
+      "sinLineas": "{n, plural, one {{cantidad} asiento sin líneas} other {{cantidad} asientos sin líneas}}",
+      "verBandeja": "Ver pendientes",
+      "asiento": "Asiento {id}",
+      "publicado": "publicado",
+      "borrador": "borrador"
+    }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Redondeo a pesos · no altera las otras líneas",
+      "cuadradoTitulo": "Asiento cuadrado",
+      "cuadradoTexto": "El redondeo queda en su propia línea, con cuenta autorizada.",
+      "reversaTitulo": "Reversa del asiento #{id}",
+      "publicado": "Publicado · {fecha}",
+      "motivo": "Motivo: {motivo}",
+      "verOriginal": "Ver original",
+      "sede": "Sede",
+      "moneda": "Moneda",
+      "copiaTitulo": "Copia exacta del original",
+      "copiaTexto": "Mismas cuentas, tercero, centro, sede y moneda, con débito y crédito invertidos. Un asiento solo se revierte una vez.",
+      "auxiliarTitulo": "Reversa con auxiliar",
+      "auxiliarTexto": "Una línea va a un auxiliar porque su cuenta hoy es de título. Lo demás es copia del original, con débito y crédito invertidos.",
+      "revertido": "Asiento revertido con el contra-asiento #{id}",
+      "reversaPendiente": "La reversa quedó en Pendientes contables: una línea está en una cuenta de título y hay que elegir su auxiliar."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finanzas",
+        "contabilidad": "Contabilidad",
+        "pendientes": "Pendientes contables"
+      },
+      "estado": "Pendiente · no está en el mayor",
+      "sinNombre": "Documento sin nombre",
+      "configurarCuenta": "Configurar cuenta",
+      "configurar": "Configurar",
+      "reintentar": "Reintentar",
+      "faltaFavor": "Falta la cuenta de redondeo a favor",
+      "faltaContra": "Falta la cuenta de redondeo en contra",
+      "faltaTexto": "Este documento tiene una diferencia de {valor} por redondeo. Queda pendiente hasta configurar la cuenta. No se publica descuadrado.",
+      "diferencia": "Diferencia",
+      "sinCuenta": "Sin cuenta de redondeo",
+      "publicado": "El asiento se publicó con su línea de redondeo.",
+      "sigue": "El asiento sigue pendiente.",
+      "columnas": {
+        "cuenta": "Cuenta",
+        "descripcion": "Descripción",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "auxiliar": "Auxiliar"
+      },
+      "reversaTitulo": "Reversa pendiente del asiento #{id}",
+      "verOriginal": "Ver original",
+      "tituloAvisoTitulo": "Hay líneas en cuentas de título",
+      "sinCuentaTitulo": "Hay líneas sin cuenta",
+      "tituloAvisoTexto": "Una cuenta de título no recibe movimientos, así que la reversa completa espera: no se publicó nada. Elige un auxiliar de la misma cuenta para cada línea.",
+      "elegirAuxiliar": "Elige un auxiliar",
+      "crearAuxiliar": "Crear auxiliar",
+      "publicarReversa": "Publicar reversa",
+      "reversaPublicada": "Reversa publicada: contra-asiento #{id}",
+      "resueltoTitulo": "Pendiente resuelto",
+      "verAsiento": "Ver asiento",
+      "volver": "Volver a pendientes",
+      "noDisponible": "Pendiente no disponible",
+      "errorTitulo": "No se pudo leer el pendiente",
+      "errorTexto": "Revisa tu conexión e inténtalo de nuevo.",
+      "reintentarCarga": "Reintentar"
     }
   }
 }

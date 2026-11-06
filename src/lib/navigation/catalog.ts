@@ -488,6 +488,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/contabilidad/plan-cuentas', nombre: 'Plan de cuentas', icono: ListChecks, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/actualizar-puc', nombre: 'Actualizar PUC', icono: RefreshCw, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/asientos', nombre: 'Asientos', icono: FileText, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/pendientes', nombre: 'Pendientes contables', icono: ListChecks, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/plantillas', nombre: 'Plantillas de asientos', icono: FileText, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/mayor-contable', nombre: 'Mayor contable', icono: BookOpen, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/libro-diario', nombre: 'Libro diario', icono: BookOpen, grupo: 'Contabilidad' },

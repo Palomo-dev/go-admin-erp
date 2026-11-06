@@ -4567,7 +4567,8 @@
       "sitio-web_analitica": "Analytics",
       "sitio-web_sedes": "Locations on the web",
       "sitio-web_configuracion": "Settings",
-      "plan_historial": "Purchases"
+      "plan_historial": "Purchases",
+      "finanzas_contabilidad_pendientes": "Accounting exceptions"
     },
     "grupos": {
       "venta": "Sales",
@@ -39031,67 +39032,6 @@
       }
     }
   },
-  "redondeoReversa": {
-    "asiento": {
-      "lineaRedondeo": "Rounding to whole pesos · other lines unchanged",
-      "cuadradoTitulo": "Balanced entry",
-      "cuadradoTexto": "Rounding sits on its own line, with an authorized account.",
-      "reversaTitulo": "Reversal of entry #{id}",
-      "publicado": "Posted · {fecha}",
-      "motivo": "Reason: {motivo}",
-      "verOriginal": "View original",
-      "sede": "Branch",
-      "moneda": "Currency",
-      "copiaTitulo": "Exact copy of the original",
-      "copiaTexto": "Same accounts, third party, cost center, branch and currency, with debit and credit swapped. An entry can only be reversed once.",
-      "auxiliarTitulo": "Reversal with a sub-account",
-      "auxiliarTexto": "One line goes to a sub-account because its account is now a header account. The rest is a copy of the original, with debit and credit swapped.",
-      "revertido": "Entry reversed with offsetting entry #{id}",
-      "reversaPendiente": "The reversal is in Pending entries: one line is on a header account and needs a sub-account."
-    },
-    "pendiente": {
-      "migas": {
-        "finanzas": "Finance",
-        "contabilidad": "Accounting",
-        "pendientes": "Pending entries"
-      },
-      "estado": "Pending · not in the ledger",
-      "sinNombre": "Unnamed document",
-      "configurarCuenta": "Set up account",
-      "configurar": "Set up",
-      "reintentar": "Retry",
-      "faltaFavor": "The rounding gain account is missing",
-      "faltaContra": "The rounding loss account is missing",
-      "faltaTexto": "This document has a rounding difference of {valor}. It stays pending until the account is set up. It is not posted unbalanced.",
-      "diferencia": "Difference",
-      "sinCuenta": "No rounding account",
-      "publicado": "The entry was posted with its rounding line.",
-      "sigue": "The entry is still pending.",
-      "columnas": {
-        "cuenta": "Account",
-        "descripcion": "Description",
-        "debito": "Debit",
-        "credito": "Credit",
-        "auxiliar": "Sub-account"
-      },
-      "reversaTitulo": "Pending reversal of entry #{id}",
-      "verOriginal": "View original",
-      "tituloAvisoTitulo": "Some lines are on header accounts",
-      "sinCuentaTitulo": "Some lines have no account",
-      "tituloAvisoTexto": "A header account takes no postings, so the whole reversal waits: nothing was posted. Choose a sub-account of the same account for each line.",
-      "elegirAuxiliar": "Choose a sub-account",
-      "crearAuxiliar": "Create sub-account",
-      "publicarReversa": "Post reversal",
-      "reversaPublicada": "Reversal posted: offsetting entry #{id}",
-      "resueltoTitulo": "Pending item resolved",
-      "verAsiento": "View entry",
-      "volver": "Back to pending entries",
-      "noDisponible": "Pending item not available",
-      "errorTitulo": "The pending item could not be read",
-      "errorTexto": "Check your connection and try again.",
-      "reintentarCarga": "Retry"
-    }
-  },
   "reglasContables": {
     "titulo": "Accounting rules",
     "descripcion": "Automatic journal entry settings",
@@ -39237,6 +39177,294 @@
       "propuesta": "Proposal",
       "evidencia": "Evidence",
       "usos": "Entries on the proposal"
+    }
+  },
+  "conciliacionCierre": {
+    "tarjetas": {
+      "resumen": "Reconciliation summary",
+      "saldoLibros": "Book balance",
+      "saldoInicial": "Opening balance {valor}",
+      "saldoExtracto": "Statement balance",
+      "conciliado": "Reconciled",
+      "diferencia": "Difference",
+      "partidasPendientes": "Open items"
+    },
+    "sentido": {
+      "sinDiferencia": "No difference",
+      "librosMayor": "Books higher than statement",
+      "extractoMayor": "Statement higher than books",
+      "faltaExtracto": "Statement balance missing",
+      "resueltas": "{n, plural, one {With # resolved item} other {With # resolved items}}"
+    },
+    "cerrada": {
+      "por": "Closed by {nombre} on {fecha}",
+      "motivo": "Reason: {motivo}"
+    },
+    "cerrar": {
+      "titulo": "Close reconciliation",
+      "confirmar": "Close reconciliation",
+      "conPartida": "Close with open item",
+      "exito": "Reconciliation closed",
+      "motivo": "Reason",
+      "motivoEjemplo": "Deposit the bank credits next month",
+      "registro": "Who closed it and when is recorded.",
+      "sinDiferencia": "Books and statement match. A closed reconciliation can no longer be changed.",
+      "quedaPendiente": "The difference of {valor} stays open",
+      "quedaPendienteDetalle": "It moves to the next reconciliation as a reconciling item. It is not adjusted against income.",
+      "yaExplicada": "The difference of {valor} remains in carried items",
+      "yaExplicadaDetalle": "No new item is created: the carried items continue to the next reconciliation."
+    },
+    "saldoExtracto": {
+      "titulo": "Statement balance",
+      "descripcion": "Without this balance the difference is unknown. Enter it exactly as shown on the bank statement.",
+      "guardar": "Save and continue",
+      "falta": "Enter the statement balance"
+    },
+    "partidas": {
+      "tituloPropias": "Open reconciling items",
+      "tituloTraidas": "Carried from previous reconciliations",
+      "tituloTraidasMes": "Carried from {mes}",
+      "fecha": "Date",
+      "descripcion": "Description",
+      "valor": "Amount",
+      "estado": "Status",
+      "registradaPor": "Recorded by",
+      "pendiente": "Open",
+      "resueltaEl": "Resolved {fecha}",
+      "verMovimiento": "View transaction",
+      "marcarResuelta": "Mark resolved",
+      "nota": "The item creates no journal entry or income adjustment: it moves to the next reconciliation until it appears on the statement.",
+      "errorTitulo": "We could not check the open items",
+      "errorDetalle": "This does not mean there are none. Try again before closing.",
+      "reintentar": "Try again"
+    },
+    "resolver": {
+      "titulo": "Mark item as resolved",
+      "descripcion": "Use this once the item appears on the statement. It creates no journal entry.",
+      "confirmar": "Mark resolved",
+      "movimiento": "Transaction that resolves it",
+      "sinMovimiento": "No linked transaction",
+      "movimientoN": "Transaction {id}"
+    },
+    "errores": {
+      "motivo_obligatorio": "Enter the closing reason: it is required when there is a difference.",
+      "motivo_largo": "The reason is too long.",
+      "conciliacion_ya_cerrada": "This reconciliation was already closed.",
+      "conciliacion_cerrada": "The reconciliation is closed and cannot be changed.",
+      "conciliacion_anterior_abierta": "Close the previous reconciliation of this account first.",
+      "conciliacion_no_encontrada": "We could not find this reconciliation.",
+      "falta_saldo_extracto": "Enter the statement balance before closing.",
+      "partida_ya_resuelta": "This item was already resolved.",
+      "partida_no_encontrada": "We could not find this item.",
+      "partida_de_otra_conciliacion": "This item cannot be resolved in this reconciliation.",
+      "movimiento_ajeno": "The transaction does not belong to this account.",
+      "sin_permiso": "You do not have permission to do this.",
+      "desconocido": "This could not be completed. Try again."
+    }
+  },
+  "pendientesContables": {
+    "titulo": "Accounting exceptions",
+    "subtitulo": "Documents that did not reach the ledger. None of this counts in reports until resolved.",
+    "subtituloCorto": "Documents that did not reach the ledger.",
+    "movilSinContabilizar": "{n} not posted",
+    "migas": {
+      "finanzas": "Finance",
+      "contabilidad": "Accounting"
+    },
+    "buscar": "Search by document or account",
+    "exportar": "Export",
+    "dias": "{n, plural, one {# day} other {# days}}",
+    "sustantivo": {
+      "singular": "exception",
+      "plural": "exceptions"
+    },
+    "kpis": {
+      "resumen": "Exceptions summary",
+      "pendientes": "Exceptions",
+      "masAntiguo": "Oldest",
+      "bloqueanCierre": "Blocking close",
+      "valor": "Value not posted"
+    },
+    "columnas": {
+      "documento": "Document",
+      "error": "Error",
+      "dato": "Missing account or data",
+      "responsable": "Owner",
+      "antiguedad": "Age"
+    },
+    "errores": {
+      "periodoCerrado": "Period closed",
+      "terceroRequerido": "The document requires a third party",
+      "cuentaNoExiste": "The rule uses an account that does not exist",
+      "sinRegla": "There is no accounting rule for this document",
+      "reglaIncompleta": "The rule has no debit or credit account",
+      "mismaCuenta": "Debit and credit on the same account",
+      "cuentaSinConfigurar": "The account is not configured",
+      "cuentaDeTitulo": "The account is a header account and takes no postings",
+      "importeInvalido": "The amount is not valid",
+      "sinSede": "The document has no branch",
+      "impuestoMixto": "The document mixes VAT and consumption tax",
+      "otro": "Could not be posted",
+      "redondeoSinCuenta": "The rounding account is missing",
+      "reversaCuentaTitulo": "The reversal has lines on header accounts",
+      "reversaLineaSinCuenta": "The reversal has lines without an account"
+    },
+    "datos": {
+      "cuenta": "Account {cuenta}",
+      "periodo": "Document period",
+      "tercero": "Document third party",
+      "regla": "Accounting rule",
+      "configuracion": "Accounting settings",
+      "importe": "Document amount",
+      "sede": "Document branch",
+      "impuesto": "Document taxes",
+      "revisar": "Review the details",
+      "redondeo": "Rounding account",
+      "auxiliar": "Sub-account for each line"
+    },
+    "responsables": {
+      "contador": "Accountant",
+      "compras": "Purchasing",
+      "ventas": "Sales",
+      "tesoreria": "Treasury",
+      "inventario": "Inventory"
+    },
+    "acciones": {
+      "reabrirPeriodo": "Reopen period",
+      "completarTercero": "Complete third party",
+      "corregirRegla": "Fix rule",
+      "configurar": "Configure",
+      "elegirAuxiliar": "Choose sub-account",
+      "verDetalle": "View details",
+      "configurarRedondeo": "Set up rounding",
+      "asignarCuenta": "Assign account"
+    },
+    "documentos": {
+      "factura": "Invoice",
+      "compra": "Purchase",
+      "venta": "Sale",
+      "ajuste": "Inventory adjustment",
+      "caja": "Cash movement",
+      "banco": "Bank transaction",
+      "transferencia": "Transfer",
+      "devolucion": "Return",
+      "reversa": "Reversal",
+      "otro": "Document"
+    },
+    "error": {
+      "titulo": "We could not check the exceptions",
+      "descripcion": "This does not mean there are none. Try again before closing the period.",
+      "reintentar": "Try again"
+    },
+    "vacio": {
+      "titulo": "No exceptions",
+      "descripcion": "All documents are in the ledger. Last check: {fecha}.",
+      "descripcionSinFecha": "All documents are in the ledger.",
+      "volver": "Back to Accounting"
+    },
+    "detalle": {
+      "desde": "Not posted since {fecha}",
+      "dato": "Missing data",
+      "sede": "Branch",
+      "intentos": "Attempts",
+      "intentosUltimo": "{n} · last {fecha}",
+      "cerrar": "Close",
+      "reintentar": "Retry now",
+      "reintentando": "Retrying…",
+      "notaReintento": "On retry, the document is posted with its original date, if the period is still open.",
+      "notaPeriodoCerrado": "This document’s period is closed: it is not retried until the period is reopened.",
+      "notaSinClave": "This rejection does not identify the accounting fact: resolve it from the document.",
+      "notaReversa": "The reversal is posted in full once every line has an account. Choose the sub-accounts on its page."
+    },
+    "reintento": {
+      "resuelto": "Document posted",
+      "periodo_cerrado": "This document’s period is closed",
+      "no_reintentable": "This document cannot be retried from here",
+      "sigue": "Still not posted: fix the cause and try again",
+      "error": "Could not retry",
+      "faltan_cuentas": "An account still has to be chosen for a line",
+      "sinPermiso": "You do not have permission to do this"
+    },
+    "csv": {
+      "archivo": "accounting-exceptions.csv",
+      "error": "Error",
+      "errorExportar": "Could not export",
+      "documento": "Document",
+      "dato": "Missing account or data",
+      "responsable": "Owner",
+      "antiguedad": "Age (days)",
+      "valor": "Amount"
+    },
+    "alertas": {
+      "cargando": "Checking accounting exceptions",
+      "vacio": "No accounting exceptions",
+      "fallos": "{n, plural, one {{cantidad} document not posted} other {{cantidad} documents not posted}}",
+      "sinLineas": "{n, plural, one {{cantidad} entry without lines} other {{cantidad} entries without lines}}",
+      "verBandeja": "View exceptions",
+      "asiento": "Entry {id}",
+      "publicado": "posted",
+      "borrador": "draft"
+    }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Rounding to whole pesos · other lines unchanged",
+      "cuadradoTitulo": "Balanced entry",
+      "cuadradoTexto": "Rounding sits on its own line, with an authorized account.",
+      "reversaTitulo": "Reversal of entry #{id}",
+      "publicado": "Posted · {fecha}",
+      "motivo": "Reason: {motivo}",
+      "verOriginal": "View original",
+      "sede": "Branch",
+      "moneda": "Currency",
+      "copiaTitulo": "Exact copy of the original",
+      "copiaTexto": "Same accounts, third party, cost center, branch and currency, with debit and credit swapped. An entry can only be reversed once.",
+      "auxiliarTitulo": "Reversal with a sub-account",
+      "auxiliarTexto": "One line goes to a sub-account because its account is now a header account. The rest is a copy of the original, with debit and credit swapped.",
+      "revertido": "Entry reversed with offsetting entry #{id}",
+      "reversaPendiente": "The reversal is in Pending entries: one line is on a header account and needs a sub-account."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting",
+        "pendientes": "Pending entries"
+      },
+      "estado": "Pending · not in the ledger",
+      "sinNombre": "Unnamed document",
+      "configurarCuenta": "Set up account",
+      "configurar": "Set up",
+      "reintentar": "Retry",
+      "faltaFavor": "The rounding gain account is missing",
+      "faltaContra": "The rounding loss account is missing",
+      "faltaTexto": "This document has a rounding difference of {valor}. It stays pending until the account is set up. It is not posted unbalanced.",
+      "diferencia": "Difference",
+      "sinCuenta": "No rounding account",
+      "publicado": "The entry was posted with its rounding line.",
+      "sigue": "The entry is still pending.",
+      "columnas": {
+        "cuenta": "Account",
+        "descripcion": "Description",
+        "debito": "Debit",
+        "credito": "Credit",
+        "auxiliar": "Sub-account"
+      },
+      "reversaTitulo": "Pending reversal of entry #{id}",
+      "verOriginal": "View original",
+      "tituloAvisoTitulo": "Some lines are on header accounts",
+      "sinCuentaTitulo": "Some lines have no account",
+      "tituloAvisoTexto": "A header account takes no postings, so the whole reversal waits: nothing was posted. Choose a sub-account of the same account for each line.",
+      "elegirAuxiliar": "Choose a sub-account",
+      "crearAuxiliar": "Create sub-account",
+      "publicarReversa": "Post reversal",
+      "reversaPublicada": "Reversal posted: offsetting entry #{id}",
+      "resueltoTitulo": "Pending item resolved",
+      "verAsiento": "View entry",
+      "volver": "Back to pending entries",
+      "noDisponible": "Pending item not available",
+      "errorTitulo": "The pending item could not be read",
+      "errorTexto": "Check your connection and try again.",
+      "reintentarCarga": "Retry"
     }
   }
 }

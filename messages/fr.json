@@ -4564,7 +4564,8 @@
       "sitio-web_analitica": "Analytique",
       "sitio-web_sedes": "Sites sur le web",
       "sitio-web_configuracion": "Configuration",
-      "plan_historial": "Achats"
+      "plan_historial": "Achats",
+      "finanzas_contabilidad_pendientes": "Anomalies comptables"
     },
     "grupos": {
       "venta": "Vente",
@@ -39031,67 +39032,6 @@
       }
     }
   },
-  "redondeoReversa": {
-    "asiento": {
-      "lineaRedondeo": "Arrondi à l’unité · les autres lignes ne changent pas",
-      "cuadradoTitulo": "Écriture équilibrée",
-      "cuadradoTexto": "L’arrondi figure sur sa propre ligne, avec un compte autorisé.",
-      "reversaTitulo": "Contrepassation de l’écriture n° {id}",
-      "publicado": "Comptabilisée · {fecha}",
-      "motivo": "Motif : {motivo}",
-      "verOriginal": "Voir l’original",
-      "sede": "Site",
-      "moneda": "Devise",
-      "copiaTitulo": "Copie exacte de l’original",
-      "copiaTexto": "Mêmes comptes, tiers, centre de coûts, site et devise, avec débit et crédit inversés. Une écriture ne se contrepasse qu’une fois.",
-      "auxiliarTitulo": "Contrepassation avec un sous-compte",
-      "auxiliarTexto": "Une ligne va sur un sous-compte, car son compte est aujourd’hui un compte de regroupement. Le reste est une copie de l’original, avec débit et crédit inversés.",
-      "revertido": "Écriture contrepassée par l’écriture n° {id}",
-      "reversaPendiente": "La contrepassation est dans Écritures en attente : une ligne est sur un compte de regroupement et il faut choisir son sous-compte."
-    },
-    "pendiente": {
-      "migas": {
-        "finanzas": "Finances",
-        "contabilidad": "Comptabilité",
-        "pendientes": "Écritures en attente"
-      },
-      "estado": "En attente · hors du grand livre",
-      "sinNombre": "Document sans nom",
-      "configurarCuenta": "Configurer le compte",
-      "configurar": "Configurer",
-      "reintentar": "Réessayer",
-      "faltaFavor": "Le compte de gain d’arrondi manque",
-      "faltaContra": "Le compte de perte d’arrondi manque",
-      "faltaTexto": "Ce document présente un écart d’arrondi de {valor}. Il reste en attente jusqu’à la configuration du compte. Rien n’est comptabilisé déséquilibré.",
-      "diferencia": "Écart",
-      "sinCuenta": "Aucun compte d’arrondi",
-      "publicado": "L’écriture a été comptabilisée avec sa ligne d’arrondi.",
-      "sigue": "L’écriture reste en attente.",
-      "columnas": {
-        "cuenta": "Compte",
-        "descripcion": "Description",
-        "debito": "Débit",
-        "credito": "Crédit",
-        "auxiliar": "Sous-compte"
-      },
-      "reversaTitulo": "Contrepassation en attente de l’écriture n° {id}",
-      "verOriginal": "Voir l’original",
-      "tituloAvisoTitulo": "Des lignes sont sur des comptes de regroupement",
-      "sinCuentaTitulo": "Des lignes n’ont pas de compte",
-      "tituloAvisoTexto": "Un compte de regroupement ne reçoit pas de mouvements : toute la contrepassation attend et rien n’a été comptabilisé. Choisissez un sous-compte du même compte pour chaque ligne.",
-      "elegirAuxiliar": "Choisissez un sous-compte",
-      "crearAuxiliar": "Créer un sous-compte",
-      "publicarReversa": "Comptabiliser la contrepassation",
-      "reversaPublicada": "Contrepassation comptabilisée : écriture n° {id}",
-      "resueltoTitulo": "Élément résolu",
-      "verAsiento": "Voir l’écriture",
-      "volver": "Retour aux écritures en attente",
-      "noDisponible": "Élément indisponible",
-      "errorTitulo": "Impossible de lire cet élément",
-      "errorTexto": "Vérifiez votre connexion et réessayez.",
-      "reintentarCarga": "Réessayer"
-    }
-  },
   "reglasContables": {
     "titulo": "Règles comptables",
     "descripcion": "Configuration des écritures automatiques",
@@ -39237,6 +39177,294 @@
       "propuesta": "Proposition",
       "evidencia": "Justification",
       "usos": "Écritures sur la proposition"
+    }
+  },
+  "conciliacionCierre": {
+    "tarjetas": {
+      "resumen": "Résumé du rapprochement",
+      "saldoLibros": "Solde comptable",
+      "saldoInicial": "Solde initial {valor}",
+      "saldoExtracto": "Solde du relevé",
+      "conciliado": "Rapproché",
+      "diferencia": "Écart",
+      "partidasPendientes": "Éléments en suspens"
+    },
+    "sentido": {
+      "sinDiferencia": "Aucun écart",
+      "librosMayor": "Comptabilité supérieure au relevé",
+      "extractoMayor": "Relevé supérieur à la comptabilité",
+      "faltaExtracto": "Solde du relevé manquant",
+      "resueltas": "{n, plural, one {Avec # élément résolu} other {Avec # éléments résolus}}"
+    },
+    "cerrada": {
+      "por": "Clôturé par {nombre} le {fecha}",
+      "motivo": "Motif : {motivo}"
+    },
+    "cerrar": {
+      "titulo": "Clôturer le rapprochement",
+      "confirmar": "Clôturer le rapprochement",
+      "conPartida": "Clôturer avec élément en suspens",
+      "exito": "Rapprochement clôturé",
+      "motivo": "Motif",
+      "motivoEjemplo": "Dépôt crédité par la banque le mois suivant",
+      "registro": "Qui a clôturé et quand reste enregistré.",
+      "sinDiferencia": "La comptabilité et le relevé concordent. Un rapprochement clôturé ne peut plus être modifié.",
+      "quedaPendiente": "L’écart de {valor} reste en suspens",
+      "quedaPendienteDetalle": "Il passe au rapprochement suivant comme élément de rapprochement. Il n’est pas ajusté en résultat.",
+      "yaExplicada": "L’écart de {valor} reste dans les éléments reportés",
+      "yaExplicadaDetalle": "Aucun nouvel élément n’est créé : les éléments reportés passent au rapprochement suivant."
+    },
+    "saldoExtracto": {
+      "titulo": "Solde du relevé",
+      "descripcion": "Sans ce solde, l’écart est inconnu. Saisissez-le tel qu’il figure sur le relevé bancaire.",
+      "guardar": "Enregistrer et continuer",
+      "falta": "Saisissez le solde du relevé"
+    },
+    "partidas": {
+      "tituloPropias": "Éléments de rapprochement en suspens",
+      "tituloTraidas": "Reportés des rapprochements précédents",
+      "tituloTraidasMes": "Reportés de {mes}",
+      "fecha": "Date",
+      "descripcion": "Description",
+      "valor": "Montant",
+      "estado": "Statut",
+      "registradaPor": "Enregistré par",
+      "pendiente": "En suspens",
+      "resueltaEl": "Résolu {fecha}",
+      "verMovimiento": "Voir le mouvement",
+      "marcarResuelta": "Marquer résolu",
+      "nota": "L’élément ne génère ni écriture ni ajustement en résultat : il passe au rapprochement suivant jusqu’à ce qu’il figure sur le relevé.",
+      "errorTitulo": "Impossible de vérifier les éléments en suspens",
+      "errorDetalle": "Cela ne signifie pas qu’il n’y en a pas. Réessayez avant de clôturer.",
+      "reintentar": "Réessayer"
+    },
+    "resolver": {
+      "titulo": "Marquer l’élément comme résolu",
+      "descripcion": "À utiliser lorsque l’élément figure sur le relevé. Aucune écriture n’est générée.",
+      "confirmar": "Marquer résolu",
+      "movimiento": "Mouvement qui le résout",
+      "sinMovimiento": "Aucun mouvement lié",
+      "movimientoN": "Mouvement {id}"
+    },
+    "errores": {
+      "motivo_obligatorio": "Saisissez le motif de clôture : il est obligatoire en cas d’écart.",
+      "motivo_largo": "Le motif est trop long.",
+      "conciliacion_ya_cerrada": "Ce rapprochement était déjà clôturé.",
+      "conciliacion_cerrada": "Le rapprochement est clôturé et ne peut pas être modifié.",
+      "conciliacion_anterior_abierta": "Clôturez d’abord le rapprochement précédent de ce compte.",
+      "conciliacion_no_encontrada": "Rapprochement introuvable.",
+      "falta_saldo_extracto": "Saisissez le solde du relevé avant de clôturer.",
+      "partida_ya_resuelta": "Cet élément était déjà résolu.",
+      "partida_no_encontrada": "Élément introuvable.",
+      "partida_de_otra_conciliacion": "Cet élément ne peut pas être résolu dans ce rapprochement.",
+      "movimiento_ajeno": "Le mouvement n’appartient pas à ce compte.",
+      "sin_permiso": "Vous n’avez pas l’autorisation de le faire.",
+      "desconocido": "Opération impossible. Réessayez."
+    }
+  },
+  "pendientesContables": {
+    "titulo": "Anomalies comptables",
+    "subtitulo": "Documents qui ne sont pas entrés au grand livre. Rien de ceci ne compte dans les rapports avant résolution.",
+    "subtituloCorto": "Documents qui ne sont pas entrés au grand livre.",
+    "movilSinContabilizar": "{n} non comptabilisés",
+    "migas": {
+      "finanzas": "Finances",
+      "contabilidad": "Comptabilité"
+    },
+    "buscar": "Rechercher par document ou compte",
+    "exportar": "Exporter",
+    "dias": "{n, plural, one {# jour} other {# jours}}",
+    "sustantivo": {
+      "singular": "anomalie",
+      "plural": "anomalies"
+    },
+    "kpis": {
+      "resumen": "Résumé des anomalies",
+      "pendientes": "Anomalies",
+      "masAntiguo": "La plus ancienne",
+      "bloqueanCierre": "Bloquent la clôture",
+      "valor": "Valeur non comptabilisée"
+    },
+    "columnas": {
+      "documento": "Document",
+      "error": "Erreur",
+      "dato": "Compte ou donnée manquante",
+      "responsable": "Responsable",
+      "antiguedad": "Ancienneté"
+    },
+    "errores": {
+      "periodoCerrado": "Période clôturée",
+      "terceroRequerido": "Le document exige un tiers",
+      "cuentaNoExiste": "La règle utilise un compte inexistant",
+      "sinRegla": "Aucune règle comptable pour ce document",
+      "reglaIncompleta": "La règle n’a pas de compte de débit ou de crédit",
+      "mismaCuenta": "Débit et crédit sur le même compte",
+      "cuentaSinConfigurar": "Le compte n’est pas configuré",
+      "cuentaDeTitulo": "Le compte est un compte de titre et ne reçoit pas de mouvements",
+      "importeInvalido": "Le montant n’est pas valide",
+      "sinSede": "Le document n’a pas de succursale",
+      "impuestoMixto": "Le document mélange TVA et taxe à la consommation",
+      "otro": "Comptabilisation impossible",
+      "redondeoSinCuenta": "Le compte d’arrondi manque",
+      "reversaCuentaTitulo": "La contre-passation a des lignes sur des comptes de titre",
+      "reversaLineaSinCuenta": "La contre-passation a des lignes sans compte"
+    },
+    "datos": {
+      "cuenta": "Compte {cuenta}",
+      "periodo": "Période du document",
+      "tercero": "Tiers du document",
+      "regla": "Règle comptable",
+      "configuracion": "Configuration comptable",
+      "importe": "Montant du document",
+      "sede": "Succursale du document",
+      "impuesto": "Taxes du document",
+      "revisar": "Consulter le détail",
+      "redondeo": "Compte d’arrondi",
+      "auxiliar": "Sous-compte de chaque ligne"
+    },
+    "responsables": {
+      "contador": "Comptable",
+      "compras": "Achats",
+      "ventas": "Ventes",
+      "tesoreria": "Trésorerie",
+      "inventario": "Stocks"
+    },
+    "acciones": {
+      "reabrirPeriodo": "Rouvrir la période",
+      "completarTercero": "Compléter le tiers",
+      "corregirRegla": "Corriger la règle",
+      "configurar": "Configurer",
+      "elegirAuxiliar": "Choisir un sous-compte",
+      "verDetalle": "Voir le détail",
+      "configurarRedondeo": "Configurer l’arrondi",
+      "asignarCuenta": "Attribuer un compte"
+    },
+    "documentos": {
+      "factura": "Facture",
+      "compra": "Achat",
+      "venta": "Vente",
+      "ajuste": "Ajustement de stock",
+      "caja": "Mouvement de caisse",
+      "banco": "Mouvement bancaire",
+      "transferencia": "Virement",
+      "devolucion": "Retour",
+      "reversa": "Contre-passation",
+      "otro": "Document"
+    },
+    "error": {
+      "titulo": "Impossible de vérifier les anomalies",
+      "descripcion": "Cela ne signifie pas qu’il n’y en a pas. Réessayez avant de clôturer la période.",
+      "reintentar": "Réessayer"
+    },
+    "vacio": {
+      "titulo": "Aucune anomalie",
+      "descripcion": "Tous les documents sont au grand livre. Dernière vérification : {fecha}.",
+      "descripcionSinFecha": "Tous les documents sont au grand livre.",
+      "volver": "Retour à la Comptabilité"
+    },
+    "detalle": {
+      "desde": "Non comptabilisé depuis le {fecha}",
+      "dato": "Donnée manquante",
+      "sede": "Succursale",
+      "intentos": "Tentatives",
+      "intentosUltimo": "{n} · dernière {fecha}",
+      "cerrar": "Fermer",
+      "reintentar": "Réessayer maintenant",
+      "reintentando": "Nouvelle tentative…",
+      "notaReintento": "À la nouvelle tentative, le document est comptabilisé à sa date d’origine, si la période est encore ouverte.",
+      "notaPeriodoCerrado": "La période de ce document est clôturée : aucune tentative tant qu’elle n’est pas rouverte.",
+      "notaSinClave": "Ce rejet n’identifie pas le fait comptable : il se résout depuis le document.",
+      "notaReversa": "La contre-passation est publiée en entier lorsque chaque ligne a un compte. Choisissez les sous-comptes sur sa page."
+    },
+    "reintento": {
+      "resuelto": "Document comptabilisé",
+      "periodo_cerrado": "La période de ce document est clôturée",
+      "no_reintentable": "Ce document ne peut pas être relancé ici",
+      "sigue": "Toujours non comptabilisé : corrigez la cause et réessayez",
+      "error": "Nouvelle tentative impossible",
+      "faltan_cuentas": "Il reste à choisir le compte d’une ligne",
+      "sinPermiso": "Vous n’avez pas l’autorisation de le faire"
+    },
+    "csv": {
+      "archivo": "anomalies-comptables.csv",
+      "error": "Erreur",
+      "errorExportar": "Exportation impossible",
+      "documento": "Document",
+      "dato": "Compte ou donnée manquante",
+      "responsable": "Responsable",
+      "antiguedad": "Ancienneté (jours)",
+      "valor": "Montant"
+    },
+    "alertas": {
+      "cargando": "Vérification des anomalies comptables",
+      "vacio": "Aucune anomalie comptable",
+      "fallos": "{n, plural, one {{cantidad} document non comptabilisé} other {{cantidad} documents non comptabilisés}}",
+      "sinLineas": "{n, plural, one {{cantidad} écriture sans lignes} other {{cantidad} écritures sans lignes}}",
+      "verBandeja": "Voir les anomalies",
+      "asiento": "Écriture {id}",
+      "publicado": "publiée",
+      "borrador": "brouillon"
+    }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Arrondi à l’unité · les autres lignes ne changent pas",
+      "cuadradoTitulo": "Écriture équilibrée",
+      "cuadradoTexto": "L’arrondi figure sur sa propre ligne, avec un compte autorisé.",
+      "reversaTitulo": "Contrepassation de l’écriture n° {id}",
+      "publicado": "Comptabilisée · {fecha}",
+      "motivo": "Motif : {motivo}",
+      "verOriginal": "Voir l’original",
+      "sede": "Site",
+      "moneda": "Devise",
+      "copiaTitulo": "Copie exacte de l’original",
+      "copiaTexto": "Mêmes comptes, tiers, centre de coûts, site et devise, avec débit et crédit inversés. Une écriture ne se contrepasse qu’une fois.",
+      "auxiliarTitulo": "Contrepassation avec un sous-compte",
+      "auxiliarTexto": "Une ligne va sur un sous-compte, car son compte est aujourd’hui un compte de regroupement. Le reste est une copie de l’original, avec débit et crédit inversés.",
+      "revertido": "Écriture contrepassée par l’écriture n° {id}",
+      "reversaPendiente": "La contrepassation est dans Écritures en attente : une ligne est sur un compte de regroupement et il faut choisir son sous-compte."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité",
+        "pendientes": "Écritures en attente"
+      },
+      "estado": "En attente · hors du grand livre",
+      "sinNombre": "Document sans nom",
+      "configurarCuenta": "Configurer le compte",
+      "configurar": "Configurer",
+      "reintentar": "Réessayer",
+      "faltaFavor": "Le compte de gain d’arrondi manque",
+      "faltaContra": "Le compte de perte d’arrondi manque",
+      "faltaTexto": "Ce document présente un écart d’arrondi de {valor}. Il reste en attente jusqu’à la configuration du compte. Rien n’est comptabilisé déséquilibré.",
+      "diferencia": "Écart",
+      "sinCuenta": "Aucun compte d’arrondi",
+      "publicado": "L’écriture a été comptabilisée avec sa ligne d’arrondi.",
+      "sigue": "L’écriture reste en attente.",
+      "columnas": {
+        "cuenta": "Compte",
+        "descripcion": "Description",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "auxiliar": "Sous-compte"
+      },
+      "reversaTitulo": "Contrepassation en attente de l’écriture n° {id}",
+      "verOriginal": "Voir l’original",
+      "tituloAvisoTitulo": "Des lignes sont sur des comptes de regroupement",
+      "sinCuentaTitulo": "Des lignes n’ont pas de compte",
+      "tituloAvisoTexto": "Un compte de regroupement ne reçoit pas de mouvements : toute la contrepassation attend et rien n’a été comptabilisé. Choisissez un sous-compte du même compte pour chaque ligne.",
+      "elegirAuxiliar": "Choisissez un sous-compte",
+      "crearAuxiliar": "Créer un sous-compte",
+      "publicarReversa": "Comptabiliser la contrepassation",
+      "reversaPublicada": "Contrepassation comptabilisée : écriture n° {id}",
+      "resueltoTitulo": "Élément résolu",
+      "verAsiento": "Voir l’écriture",
+      "volver": "Retour aux écritures en attente",
+      "noDisponible": "Élément indisponible",
+      "errorTitulo": "Impossible de lire cet élément",
+      "errorTexto": "Vérifiez votre connexion et réessayez.",
+      "reintentarCarga": "Réessayer"
     }
   }
 }

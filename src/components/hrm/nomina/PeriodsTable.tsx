@@ -40,7 +40,7 @@ interface PeriodsTableProps {
 }
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+  open: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
   calculating: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   reviewing: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -49,8 +49,9 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  draft: 'Borrador',
+  open: 'Abierto',
   calculating: 'Calculando',
+  calculated: 'Calculado',
   reviewing: 'En Revisión',
   approved: 'Aprobado',
   paid: 'Pagado',
@@ -155,8 +156,8 @@ export function PeriodsTable({
                 {formatear(period.total_net || 0)}
               </TableCell>
               <TableCell className="py-2 sm:py-3">
-                <Badge className={`${statusColors[period.status || 'draft']} text-[10px] sm:text-xs`}>
-                  {statusLabels[period.status || 'draft']}
+                <Badge className={`${statusColors[period.status || 'open']} text-[10px] sm:text-xs`}>
+                  {statusLabels[period.status || 'open']}
                 </Badge>
               </TableCell>
               <TableCell className="py-2 sm:py-3 text-right" onClick={(e) => e.stopPropagation()}>
@@ -171,7 +172,7 @@ export function PeriodsTable({
                       <Eye className="mr-2 h-4 w-4" />
                       Ver detalle
                     </DropdownMenuItem>
-                    {period.status === 'draft' && (
+                    {period.status === 'open' && (
                       <DropdownMenuItem onClick={() => handleViewDetail(period)}>
                         <Play className="mr-2 h-4 w-4" />
                         Ejecutar cálculo
@@ -190,7 +191,7 @@ export function PeriodsTable({
                         Marcar pagado
                       </DropdownMenuItem>
                     )}
-                    {(period.status === 'draft' || period.status === 'calculating') && (
+                    {(period.status === 'open' || period.status === 'calculating') && (
                       <>
                         <DropdownMenuItem onClick={() => onChangeStatus(period, 'cancelled')}>
                           <XCircle className="mr-2 h-4 w-4" />

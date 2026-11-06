@@ -48,8 +48,7 @@ También en `main`: plan de cuentas con auxiliares en la fila (`20261106170000`,
 
 ## Pendiente
 
-- **Crear periodos de nómina falla:** `createPeriod` manda `status: 'draft'` y la base no lo admite. Por eso hay 0 periodos.
-  No se tocó porque cambia el flujo de Recursos Humanos.
+- Periodos de nómina: **corregido el 2026-11-06.** Crear periodo usa `open`, las corridas usan `running` y el detalle ejecuta el cálculo real en lugar de simularlo. Sin recorrer con sesión real.
 - `fn_reporte_estado_resultados`, `fn_saldos_cuentas` y `getIncomeStatement` no excluyen el asiento de cierre. Hoy no pesa:
   hay 0 cierres. Hay que corregirlo antes del primer cierre de año.
 - Nada llama `fn_reintentar_fallos_asiento` y no existe cron: los rechazos se reintentan a mano desde la bandeja.

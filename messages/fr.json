@@ -17685,7 +17685,10 @@
       "tercero_requerido": "Ce compte exige le NIT du tiers.",
       "soporte_invalido": "La pièce doit être un PDF ou une image de cette organisation.",
       "asiento_publicado_inmutable": "L'écriture est déjà validée et ne peut pas être modifiée. Contrepassez-la.",
-      "desconocido": "L'opération n'a pas pu aboutir."
+      "desconocido": "L'opération n'a pas pu aboutir.",
+      "categoria_no_imputable": "« Impôts » regroupe les sous-catégories. Choisissez-en une.",
+      "categoria_requiere_cuenta": "Cette catégorie d’impôts nécessite un compte du plan.",
+      "impuesto_cancela_pasivo": "Payer cet impôt solde un passif : choisissez un compte de classe 2."
     },
     "movimiento": {
       "tituloIngreso": "Nouvel encaissement",
@@ -17733,7 +17736,10 @@
       "faltaCentro": "Ce compte exige un centre de coût.",
       "faltaTercero": "Ce compte exige le NIT du tiers.",
       "soporteTipo": "La pièce doit être un PDF, JPG, PNG ou WebP.",
-      "soportePeso": "La pièce ne peut pas dépasser 5 Mo."
+      "soportePeso": "La pièce ne peut pas dépasser 5 Mo.",
+      "ayudaPasivo": "Solde le passif. Ne va pas en charge.",
+      "ayudaGasto": "C’est une charge directe.",
+      "ayudaSinCuenta": "Votre plan n’a pas le compte suggéré. Choisissez-en un ou créez-le dans le plan comptable."
     },
     "categorias": {
       "titulo": "Catégories de trésorerie",
@@ -17759,7 +17765,35 @@
       "vacio": "Il n'y a pas de catégories dans ce groupe.",
       "errorCarga": "Les catégories n'ont pas pu être chargées.",
       "errorGuardar": "La catégorie n'a pas pu être enregistrée.",
-      "buscarCuenta": "Rechercher un compte"
+      "buscarCuenta": "Rechercher un compte",
+      "buscar": "Rechercher une catégorie",
+      "nombreColumna": "Catégorie",
+      "cuentaColumna": "Compte suggéré",
+      "tipoColumna": "Type",
+      "estadoColumna": "État",
+      "accionesColumna": "Actions",
+      "tipoAgrupa": "Regroupe",
+      "tipoCancelaPasivo": "Solde le passif",
+      "tipoGasto": "Charge",
+      "cuentaPadre": "Sans compte : organise, ne reçoit pas de mouvements",
+      "cuentaFaltante": "Sans compte : exigé à l’utilisation",
+      "padreAyuda": "Cette catégorie regroupe les sous-catégories d’impôts. Elle n’a pas de compte et ne se choisit pas dans un mouvement.",
+      "ayudaPasivo": "Comptes de classe 2 uniquement : le paiement solde le passif.",
+      "avisoTitulo": "Payer un impôt ne constate pas la charge une seconde fois",
+      "avisoDetalle": "Le paiement solde le passif constaté lors de la vente ou de l’achat. Seuls ceux marqués Charge, comme la taxe sur les mouvements financiers, sont des charges directes.",
+      "activar": "Activer",
+      "desactivarAccion": "Désactiver",
+      "eliminarTitulo": "Supprimer la catégorie ?",
+      "eliminarDetalle": "« {nombre} » ne sera plus disponible. Les mouvements enregistrés ne changent pas.",
+      "errores": {
+        "padre_no_imputable": "« Impôts » regroupe et n’a pas de compte.",
+        "cuenta_obligatoria": "Cette catégorie d’impôts nécessite un compte.",
+        "impuesto_cancela_pasivo": "Cette catégorie solde un passif : choisissez un compte de classe 2.",
+        "cuenta_no_es_de_movimiento": "Ce n’est pas un compte de mouvement. Choisissez un sous-compte du plan."
+      },
+      "migaFinanzas": "Finances",
+      "migaTesoreria": "Trésorerie",
+      "migaCategorias": "Catégories"
     },
     "reporte": {
       "titulo": "Rapport par catégorie",
@@ -39056,6 +39090,153 @@
       "errorTitulo": "Impossible de lire cet élément",
       "errorTexto": "Vérifiez votre connexion et réessayez.",
       "reintentarCarga": "Réessayer"
+    }
+  },
+  "reglasContables": {
+    "titulo": "Règles comptables",
+    "descripcion": "Configuration des écritures automatiques",
+    "migas": {
+      "finanzas": "Finances",
+      "contabilidad": "Comptabilité"
+    },
+    "exportar": "Exporter",
+    "nueva": "Nouvelle règle",
+    "configuracion": "Paramètres comptables",
+    "buscar": "Rechercher une règle ou un compte",
+    "filtros": {
+      "titulo": "Filtrer par origine",
+      "todos": "Toutes les origines",
+      "etiqueta": "Origine"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# règle pointe vers un compte inexistant ou de regroupement} other {# règles pointent vers des comptes inexistants ou de regroupement}}",
+      "detalle": "Un document utilisant ces règles peut rester en attente et ne pas entrer au grand livre. Les écritures publiées ne changent pas.",
+      "verSolo": "Voir seulement celles-ci",
+      "verTodas": "Tout voir"
+    },
+    "columnas": {
+      "regla": "Règle",
+      "evento": "Événement",
+      "debito": "Débit",
+      "credito": "Crédit",
+      "propuesta": "Proposition",
+      "acciones": "Actions"
+    },
+    "estadoCuenta": {
+      "inexistente": "inexistant",
+      "inactiva": "inactif",
+      "titulo": "de regroupement"
+    },
+    "lado": {
+      "debito": "débit",
+      "credito": "crédit",
+      "impuesto": "taxe",
+      "descuento": "remise"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · utilisé dans {n, plural, one {# écriture} other {# écritures}}",
+      "vigente": "{cuenta} · plan en vigueur",
+      "pendiente": "En attente du comptable"
+    },
+    "inactiva": "Inactive",
+    "vacio": {
+      "titulo": "Aucune règle",
+      "descripcion": "Créez la première règle d’écritures automatiques."
+    },
+    "sinResultados": "Aucune règle avec ce filtre.",
+    "acciones": {
+      "corregir": "Corriger le compte",
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "eliminar": "Supprimer"
+    },
+    "corregir": {
+      "titulo": "Corriger le compte de la règle",
+      "avisoInexistente": "Le compte {cuenta} n’existe pas dans cette entreprise",
+      "avisoInactiva": "Le compte {cuenta} est inactif dans cette entreprise",
+      "avisoTitulo": "Le compte {cuenta} est un compte de regroupement",
+      "avisoDetalle": "Seul un compte de mouvement du plan peut être choisi.",
+      "cuenta": "Compte",
+      "buscarCuenta": "Rechercher un compte",
+      "ayudaConfiguracion": "Suggéré : le compte configuré pour ce concept.",
+      "ayudaPlan": "Suggéré : le seul sous-compte de mouvement de ce compte.",
+      "ayudaUso": "Suggéré : le compte que vos écritures utilisent déjà.",
+      "ayudaConflicto": "Les paramètres et le plan diffèrent. Le comptable décide.",
+      "ayudaNinguna": "Aucun élément ne permet de suggérer un compte. Le comptable décide.",
+      "alcance": "S’applique uniquement aux documents nouveaux et en attente. Les écritures publiées ne sont pas touchées.",
+      "guardar": "Enregistrer",
+      "exito": "Compte corrigé."
+    },
+    "bloqueo": {
+      "titulo": "Enregistrement impossible",
+      "regla": "Règle « {nombre} »",
+      "noExiste": "Le compte {cuenta} n’existe pas dans votre plan",
+      "noExisteDetalle": "Créez-le dans le plan comptable ou choisissez un autre compte de mouvement.",
+      "inactiva": "Le compte {cuenta} est inactif",
+      "inactivaDetalle": "Activez-le dans le plan comptable ou choisissez un autre compte de mouvement.",
+      "titulocuenta": "Le compte {cuenta} est un compte de regroupement",
+      "tituloDetalle": "Les comptes de regroupement ne reçoivent pas d’écritures. Choisissez un sous-compte de mouvement.",
+      "irAlPlan": "Aller au plan comptable",
+      "elegirOtra": "Choisir un autre compte"
+    },
+    "formulario": {
+      "tituloNueva": "Nouvelle règle comptable",
+      "tituloEditar": "Modifier la règle",
+      "descripcion": "Configurez la règle qui génère les écritures automatiques.",
+      "nombre": "Nom",
+      "nombreEjemplo": "Ex. : Vente avec TVA",
+      "descripcionCampo": "Description",
+      "descripcionEjemplo": "Description de la règle…",
+      "origen": "Origine",
+      "evento": "Événement",
+      "seleccionar": "Sélectionner",
+      "cuentas": "Comptes",
+      "cuentaDebito": "Compte de débit",
+      "cuentaCredito": "Compte de crédit",
+      "cuentaIva": "Compte de TVA (facultatif)",
+      "sinIva": "Sans compte de TVA",
+      "usarIva": "Utiliser la TVA du document",
+      "prioridad": "Priorité",
+      "prioridadAyuda": "Plus le nombre est petit, plus la priorité est haute.",
+      "guardar": "Enregistrer les modifications",
+      "crear": "Créer la règle",
+      "faltanDatos": "Remplissez les champs requis."
+    },
+    "eliminar": {
+      "titulo": "Supprimer la règle ?",
+      "descripcion": "« {nombre} » ne générera plus d’écritures. Les écritures publiées ne changent pas.",
+      "confirmar": "Supprimer"
+    },
+    "exito": {
+      "creada": "Règle créée.",
+      "actualizada": "Règle mise à jour.",
+      "duplicada": "Règle dupliquée.",
+      "activada": "Règle activée.",
+      "desactivada": "Règle désactivée.",
+      "eliminada": "Règle supprimée."
+    },
+    "errores": {
+      "carga": "Impossible de charger les règles.",
+      "regla_otra_organizacion": "Une règle ne peut pas être déplacée vers une autre entreprise.",
+      "regla_no_encontrada": "La règle n’existe pas dans cette entreprise.",
+      "datos_invalidos": "Vérifiez les données de la règle.",
+      "sin_permiso": "Vous n’avez pas l’autorisation pour cette opération.",
+      "desconocido": "L’opération n’a pas pu aboutir."
+    },
+    "seContabiliza": "Comptabilisé sur {cuenta}",
+    "copia": "(copie)",
+    "csv": {
+      "origen": "Origine",
+      "evento": "Événement",
+      "regla": "Règle",
+      "lado": "Côté",
+      "cuenta": "Compte",
+      "estado": "État",
+      "propuesta": "Proposition",
+      "evidencia": "Justification",
+      "usos": "Écritures sur la proposition"
     }
   }
 }

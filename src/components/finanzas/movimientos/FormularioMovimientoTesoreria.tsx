@@ -23,6 +23,14 @@ import { supabase } from '@/lib/supabase/config';
 import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { movimientosService, type BankAccount } from '@/lib/services/movimientosService';
+import {
+  cuentaPermitidaParaRol,
+  esImputable,
+  exigeCuentaAlUsar,
+  rolImpuesto,
+  type RolImpuesto,
+} from '@/lib/finanzas/categoriasTesoreria';
+import { formatCurrency } from '@/utils/Utils';
 import { ThirdPartyPicker, useAtajos, type TerceroElegido } from '@/components/kit';
 import { SelectorCategoria, type OpcionCategoria } from './SelectorCategoria';
 
@@ -55,6 +63,11 @@ interface Vista {
   cuentaTesoreria: string | null;
 }
 
+interface CategoriaFormulario extends OpcionCategoria {
+  rol: RolImpuesto | null;
+  clave: string | null;
+}
+
 const MAX_SOPORTE = 5 * 1024 * 1024;
 const MIME_SOPORTE: Record<string, string> = {
   'application/pdf': 'pdf',
@@ -77,7 +90,7 @@ export function FormularioMovimientoTesoreria({
   const t = useTranslations('tesoreria');
   const { selectedBranchId } = useBranch();
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
-  const [categorias, setCategorias] = useState<OpcionCategoria[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaFormulario[]>([]);
   const [cuentas, setCuentas] = useState<CuentaPlan[]>([]);
   const [centros, setCentros] = useState<CentroCosto[]>([]);
   const [defectoPorSede, setDefectoPorSede] = useState<Record<number, string>>({});
@@ -101,6 +114,8 @@ export function FormularioMovimientoTesoreria({
   const [guardando, setGuardando] = useState(false);
   const [sembrando, setSembrando] = useState(false);
 
+  const categoriaElegida = categorias.find((fila) => fila.id === categoriaId);
+  const rolElegido = categoriaElegida?.rol ?? null;
   const cuentaElegida = cuentas.find((fila) => fila.account_code === cuenta);
   const modoCentro = cuentaElegida?.centro_costo_modo
     ?? (cuentaElegida?.requiere_centro_costo ? 'obligatorio' : null);
@@ -118,7 +133,7 @@ export function FormularioMovimientoTesoreria({
     const [cats, plan, costos, sedes, cuentasBanco, dists] = await Promise.all([
       supabase
         .from('categorias_tesoreria')
-        .select('id, nombre, icono, cuenta_sugerida')
+        .select('id, nombre, icono, cuenta_sugerida, clave, padre_id')
         .eq('organization_id', orgId)
         .eq('tipo', tipo)
         .eq('activa', true)
@@ -151,13 +166,25 @@ export function FormularioMovimientoTesoreria({
     if (plan.error) throw plan.error;
     if (costos.error) throw costos.error;
     if (sedes.error) throw sedes.error;
+    const filasCategoria = cats.data ?? [];
+    const porId = new Map(filasCategoria.map((fila) => [Number(fila.id), fila]));
     setCategorias(
-      (cats.data ?? []).map((fila) => ({
-        id: Number(fila.id),
-        nombre: String(fila.nombre),
-        icono: String(fila.icono || 'circle'),
-        cuenta: fila.cuenta_sugerida ? String(fila.cuenta_sugerida) : null,
-      })),
+      filasCategoria
+        .map((fila) => {
+          const padre = fila.padre_id ? porId.get(Number(fila.padre_id)) : undefined;
+          const nombre = String(fila.nombre);
+          return {
+            id: Number(fila.id),
+            nombre,
+            etiqueta: padre ? `${padre.nombre} › ${nombre}` : nombre,
+            icono: String(fila.icono || 'circle'),
+            cuenta: fila.cuenta_sugerida ? String(fila.cuenta_sugerida) : null,
+            clave: fila.clave ? String(fila.clave) : null,
+            rol: rolImpuesto(fila.clave, padre?.clave),
+          };
+        })
+        // El padre organiza: no se elige en un movimiento.
+        .filter((fila) => esImputable(fila.rol)),
     );
     setCuentas((plan.data ?? []) as CuentaPlan[]);
     const listaCentros = (costos.data ?? []) as CentroCosto[];
@@ -199,7 +226,9 @@ export function FormularioMovimientoTesoreria({
     setCategoriaId(id);
     const categoria = categorias.find((fila) => fila.id === id);
     if (!categoria) return;
+    // Un impuesto sin cuenta no hereda la de la categoría anterior: se elige a conciencia.
     if (categoria.cuenta) setCuenta(categoria.cuenta);
+    else if (categoria.rol) setCuenta('');
     if (!conceptoTocado) setConcepto(categoria.nombre);
   };
 
@@ -247,9 +276,9 @@ export function FormularioMovimientoTesoreria({
 
   const opcionesCuenta = useMemo(
     () => cuentas
-      .filter((fila) => fila.es_movimiento !== false)
+      .filter((fila) => fila.es_movimiento !== false && cuentaPermitidaParaRol(rolElegido, fila.account_code))
       .map((fila) => ({ value: fila.account_code, label: `${fila.account_code} · ${fila.name}` })),
-    [cuentas],
+    [cuentas, rolElegido],
   );
   const opcionesBanco = useMemo(
     () => bancos.map((fila) => ({ value: String(fila.id), label: fila.name })),
@@ -379,6 +408,9 @@ export function FormularioMovimientoTesoreria({
     }
   };
 
+  const valorVista = Number(monto.replace(',', '.'));
+  const importeVista = Number.isFinite(valorVista) && valorVista > 0 ? formatCurrency(valorVista) : '—';
+
   const nombreCuenta = (codigo: string | null) => {
     if (!codigo) return '';
     const fila = cuentas.find((cuentaPlan) => cuentaPlan.account_code === codigo);
@@ -436,6 +468,11 @@ export function FormularioMovimientoTesoreria({
               placeholder={t('movimiento.cuenta')}
               searchPlaceholder={t('movimiento.buscarCuenta')}
             />
+            {rolElegido === 'pasivo' ? <p className="text-xs font-medium text-fg-muted">{t('movimiento.ayudaPasivo')}</p> : null}
+            {rolElegido === 'gasto' ? <p className="text-xs font-medium text-fg-muted">{t('movimiento.ayudaGasto')}</p> : null}
+            {exigeCuentaAlUsar(rolElegido, categoriaElegida?.clave) && !categoriaElegida?.cuenta ? (
+              <p className="text-xs font-medium text-warning-text">{t('movimiento.ayudaSinCuenta')}</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -553,15 +590,27 @@ export function FormularioMovimientoTesoreria({
             ) : null}
           </div>
 
-          <div className="rounded-md border border-line p-3 text-sm">
-            <p className="mb-1 font-medium">{t('movimiento.vistaPrevia')}</p>
-            {vistaCargando ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {vista?.fallo ? <p className="text-danger-text">{vista.fallo}</p> : null}
+          <div className="overflow-hidden rounded-xl border border-line text-sm">
+            <div className="flex items-center bg-subtle px-3 py-2.5 text-xs font-semibold text-fg-secondary">
+              <span className="min-w-0 flex-1">{t('movimiento.vistaPrevia')}</span>
+              <span className="w-28 text-right sm:w-32">{t('movimiento.debito')}</span>
+              <span className="w-28 text-right sm:w-32">{t('movimiento.credito')}</span>
+            </div>
+            {vistaCargando ? <Loader2 className="m-3 h-4 w-4 animate-spin" /> : null}
+            {vista?.fallo ? <p className="px-3 py-2.5 text-danger-text">{vista.fallo}</p> : null}
             {vista && !vista.fallo ? (
-              <ul className="space-y-1 text-fg-secondary">
-                <li>{t('movimiento.debito')}: {nombreCuenta(vista.debito)}</li>
-                <li>{t('movimiento.credito')}: {nombreCuenta(vista.credito)}</li>
-              </ul>
+              <>
+                <div className="flex items-center border-t border-line px-3 py-2.5 text-fg">
+                  <span className="min-w-0 flex-1 truncate">{nombreCuenta(vista.debito)}</span>
+                  <span className="w-28 text-right sm:w-32">{importeVista}</span>
+                  <span className="w-28 sm:w-32" />
+                </div>
+                <div className="flex items-center border-t border-line px-3 py-2.5 text-fg">
+                  <span className="min-w-0 flex-1 truncate">{nombreCuenta(vista.credito)}</span>
+                  <span className="w-28 sm:w-32" />
+                  <span className="w-28 text-right sm:w-32">{importeVista}</span>
+                </div>
+              </>
             ) : null}
           </div>
 

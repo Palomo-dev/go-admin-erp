@@ -21887,7 +21887,10 @@
       "tercero_requerido": "Esta cuenta exige el NIT del tercero.",
       "soporte_invalido": "El soporte debe ser un PDF o una imagen de esta organización.",
       "asiento_publicado_inmutable": "El asiento ya está publicado y no se puede modificar. Se revierte con un contra-asiento.",
-      "desconocido": "No se pudo completar la operación."
+      "desconocido": "No se pudo completar la operación.",
+      "categoria_no_imputable": "«Impuestos» agrupa las subcategorías. Elige una de ellas.",
+      "categoria_requiere_cuenta": "Esta categoría de impuestos necesita una cuenta del plan.",
+      "impuesto_cancela_pasivo": "Pagar este impuesto cancela un pasivo: elige una cuenta de la clase 2."
     },
     "movimiento": {
       "tituloIngreso": "Nuevo ingreso",
@@ -21935,7 +21938,10 @@
       "faltaCentro": "Esta cuenta exige un centro de costo.",
       "faltaTercero": "Esta cuenta exige el NIT del tercero.",
       "soporteTipo": "El soporte debe ser PDF, JPG, PNG o WebP.",
-      "soportePeso": "El soporte no puede pasar de 5 MB."
+      "soportePeso": "El soporte no puede pasar de 5 MB.",
+      "ayudaPasivo": "Cancela el pasivo. No va a gasto.",
+      "ayudaGasto": "Es gasto directo.",
+      "ayudaSinCuenta": "Tu plan no tiene la cuenta sugerida. Elige una o créala en el plan de cuentas."
     },
     "categorias": {
       "titulo": "Categorías de tesorería",
@@ -21961,7 +21967,35 @@
       "vacio": "No hay categorías en este grupo.",
       "errorCarga": "No se pudieron cargar las categorías.",
       "errorGuardar": "No se pudo guardar la categoría.",
-      "buscarCuenta": "Buscar cuenta"
+      "buscarCuenta": "Buscar cuenta",
+      "buscar": "Buscar categoría",
+      "nombreColumna": "Categoría",
+      "cuentaColumna": "Cuenta sugerida",
+      "tipoColumna": "Tipo",
+      "estadoColumna": "Estado",
+      "accionesColumna": "Acciones",
+      "tipoAgrupa": "Agrupa",
+      "tipoCancelaPasivo": "Cancela pasivo",
+      "tipoGasto": "Gasto",
+      "cuentaPadre": "Sin cuenta: organiza, no recibe movimientos",
+      "cuentaFaltante": "Sin cuenta: se exige al usarla",
+      "padreAyuda": "Esta categoría agrupa las subcategorías de impuestos. No lleva cuenta y no se elige en un movimiento.",
+      "ayudaPasivo": "Solo cuentas de la clase 2: el pago cancela el pasivo.",
+      "avisoTitulo": "Pagar un impuesto no vuelve a causar el gasto",
+      "avisoDetalle": "El pago cancela el pasivo que ya se causó en la venta o la compra. Solo las marcadas como Gasto, como el GMF, son gasto directo.",
+      "activar": "Activar",
+      "desactivarAccion": "Desactivar",
+      "eliminarTitulo": "¿Eliminar la categoría?",
+      "eliminarDetalle": "«{nombre}» dejará de estar disponible. Los movimientos registrados no cambian.",
+      "errores": {
+        "padre_no_imputable": "«Impuestos» agrupa y no lleva cuenta.",
+        "cuenta_obligatoria": "Esta categoría de impuestos necesita una cuenta.",
+        "impuesto_cancela_pasivo": "Esta categoría cancela un pasivo: elige una cuenta de la clase 2.",
+        "cuenta_no_es_de_movimiento": "La cuenta no es de movimiento. Elige un auxiliar del plan."
+      },
+      "migaFinanzas": "Finanzas",
+      "migaTesoreria": "Tesorería",
+      "migaCategorias": "Categorías"
     },
     "reporte": {
       "titulo": "Reporte por categoría",
@@ -39071,6 +39105,153 @@
       "errorTitulo": "No se pudo leer el pendiente",
       "errorTexto": "Revisa tu conexión e inténtalo de nuevo.",
       "reintentarCarga": "Reintentar"
+    }
+  },
+  "reglasContables": {
+    "titulo": "Reglas contables",
+    "descripcion": "Configuración de asientos automáticos",
+    "migas": {
+      "finanzas": "Finanzas",
+      "contabilidad": "Contabilidad"
+    },
+    "exportar": "Exportar",
+    "nueva": "Nueva regla",
+    "configuracion": "Configuración contable",
+    "buscar": "Buscar regla o cuenta",
+    "filtros": {
+      "titulo": "Filtrar por origen",
+      "todos": "Todos los orígenes",
+      "etiqueta": "Origen"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# regla apunta a una cuenta que no existe o es de título} other {# reglas apuntan a cuentas que no existen o son de título}}",
+      "detalle": "Un documento con estas reglas puede quedar pendiente y no entrar al mayor. Los asientos ya publicados no cambian.",
+      "verSolo": "Ver solo estas",
+      "verTodas": "Ver todas"
+    },
+    "columnas": {
+      "regla": "Regla",
+      "evento": "Evento",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "propuesta": "Propuesta",
+      "acciones": "Acciones"
+    },
+    "estadoCuenta": {
+      "inexistente": "no existe",
+      "inactiva": "inactiva",
+      "titulo": "de título"
+    },
+    "lado": {
+      "debito": "débito",
+      "credito": "crédito",
+      "impuesto": "impuesto",
+      "descuento": "descuento"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · usada en {n, plural, one {# asiento} other {# asientos}}",
+      "vigente": "{cuenta} · plan vigente",
+      "pendiente": "Pendiente del Contador"
+    },
+    "inactiva": "Inactiva",
+    "vacio": {
+      "titulo": "Sin reglas",
+      "descripcion": "Crea la primera regla de asientos automáticos."
+    },
+    "sinResultados": "No hay reglas con ese filtro.",
+    "acciones": {
+      "corregir": "Corregir cuenta",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "activar": "Activar",
+      "desactivar": "Desactivar",
+      "eliminar": "Eliminar"
+    },
+    "corregir": {
+      "titulo": "Corregir cuenta de la regla",
+      "avisoInexistente": "La cuenta {cuenta} no existe en esta empresa",
+      "avisoInactiva": "La cuenta {cuenta} está inactiva en esta empresa",
+      "avisoTitulo": "La cuenta {cuenta} es de título",
+      "avisoDetalle": "Solo se puede elegir una cuenta de movimiento del plan.",
+      "cuenta": "Cuenta",
+      "buscarCuenta": "Buscar cuenta",
+      "ayudaConfiguracion": "Sugerida: es la cuenta configurada para este concepto.",
+      "ayudaPlan": "Sugerida: es el único auxiliar de movimiento de esa cuenta.",
+      "ayudaUso": "Sugerida: es la cuenta que ya usan tus asientos.",
+      "ayudaConflicto": "La configuración y el plan no coinciden. Lo decide el Contador.",
+      "ayudaNinguna": "No hay evidencia para sugerir una cuenta. Lo decide el Contador.",
+      "alcance": "Solo aplica a documentos nuevos y a los pendientes. Los asientos publicados no se tocan.",
+      "guardar": "Guardar",
+      "exito": "Cuenta corregida."
+    },
+    "bloqueo": {
+      "titulo": "No se puede guardar",
+      "regla": "Regla «{nombre}»",
+      "noExiste": "La cuenta {cuenta} no existe en tu plan",
+      "noExisteDetalle": "Créala en el plan de cuentas o elige otra de movimiento.",
+      "inactiva": "La cuenta {cuenta} está inactiva",
+      "inactivaDetalle": "Actívala en el plan de cuentas o elige otra de movimiento.",
+      "titulocuenta": "La cuenta {cuenta} es de título",
+      "tituloDetalle": "Las cuentas de título agrupan y no reciben asientos. Elige un auxiliar de movimiento.",
+      "irAlPlan": "Ir al plan de cuentas",
+      "elegirOtra": "Elegir otra cuenta"
+    },
+    "formulario": {
+      "tituloNueva": "Nueva regla contable",
+      "tituloEditar": "Editar regla",
+      "descripcion": "Configura la regla para generar asientos automáticos.",
+      "nombre": "Nombre",
+      "nombreEjemplo": "Ej: Venta con IVA",
+      "descripcionCampo": "Descripción",
+      "descripcionEjemplo": "Descripción de la regla…",
+      "origen": "Origen",
+      "evento": "Evento",
+      "seleccionar": "Seleccionar",
+      "cuentas": "Cuentas contables",
+      "cuentaDebito": "Cuenta débito",
+      "cuentaCredito": "Cuenta crédito",
+      "cuentaIva": "Cuenta IVA (opcional)",
+      "sinIva": "Sin cuenta de IVA",
+      "usarIva": "Usar IVA del documento",
+      "prioridad": "Prioridad",
+      "prioridadAyuda": "Menor número, mayor prioridad.",
+      "guardar": "Guardar cambios",
+      "crear": "Crear regla",
+      "faltanDatos": "Completa los campos requeridos."
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar la regla?",
+      "descripcion": "«{nombre}» dejará de generar asientos. Los ya publicados no cambian.",
+      "confirmar": "Eliminar"
+    },
+    "exito": {
+      "creada": "Regla creada.",
+      "actualizada": "Regla actualizada.",
+      "duplicada": "Regla duplicada.",
+      "activada": "Regla activada.",
+      "desactivada": "Regla desactivada.",
+      "eliminada": "Regla eliminada."
+    },
+    "errores": {
+      "carga": "No se pudieron cargar las reglas.",
+      "regla_otra_organizacion": "Una regla no se puede mover a otra empresa.",
+      "regla_no_encontrada": "La regla no existe en esta empresa.",
+      "datos_invalidos": "Revisa los datos de la regla.",
+      "sin_permiso": "No tienes permiso para esta operación.",
+      "desconocido": "No se pudo completar la operación."
+    },
+    "seContabiliza": "Se contabiliza en {cuenta}",
+    "copia": "(copia)",
+    "csv": {
+      "origen": "Origen",
+      "evento": "Evento",
+      "regla": "Regla",
+      "lado": "Lado",
+      "cuenta": "Cuenta",
+      "estado": "Estado",
+      "propuesta": "Propuesta",
+      "evidencia": "Evidencia",
+      "usos": "Asientos con la propuesta"
     }
   }
 }

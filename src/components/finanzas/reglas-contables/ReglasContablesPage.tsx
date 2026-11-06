@@ -1,533 +1,630 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import Link from 'next/link';
-import { Settings, Plus, Loader2, Copy, Trash2, Edit, Power, PowerOff, ArrowLeftRight } from 'lucide-react';
+import { Copy, Download, ListChecks, Pencil, Plus, Power, PowerOff, Settings, Trash2, Wrench } from 'lucide-react';
 import {
-  PageHeaderSkeleton,
-  StatsSkeleton,
-  CardListSkeleton,
-} from '@/components/common/PageSkeletons';
+  AvisoTonal,
+  ConfirmDialog,
+  Dialogo,
+  EmptyState,
+  FilterButton,
+  PageHeader,
+  RowActionsMenu,
+  SearchInput,
+  StatusBadge,
+  type AccionFila,
+} from '@/components/kit';
+import { CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ReglasContablesService, AccountingRule, ChartAccount, SOURCE_TYPES, EVENT_TYPES } from './ReglasContablesService';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ConfiguracionContableService } from '@/components/finanzas/configuracion-contable/ConfiguracionContableService';
+import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import {
   etiquetaEvento,
   etiquetaOrigen,
   resolverLado,
-  validarCuentasDeRegla,
   type FilaConfiguracion,
 } from '@/lib/finanzas/configuracionContable';
+import {
+  COLUMNA_LADO,
+  agruparPorRegla,
+  coincideBusqueda,
+  cuentaBloqueada,
+  falloCuentaEnRegla,
+  filasInventario,
+  type CodigoFalloCuenta,
+  type CuentaInvalida,
+} from '@/lib/finanzas/reglasContables';
+import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
+import {
+  ErrorReglaContable,
+  EVENT_TYPES,
+  ReglasContablesService,
+  SOURCE_TYPES,
+  type AccountingRule,
+  type ChartAccount,
+} from './ReglasContablesService';
+
+const PLAN_DE_CUENTAS = '/app/finanzas/contabilidad/plan-cuentas';
+
+const FORMULARIO_VACIO = {
+  name: '',
+  description: '',
+  source_type: '',
+  event_type: '',
+  debit_account_code: '',
+  credit_account_code: '',
+  tax_account_code: '',
+  use_tax_from_document: false,
+  priority: 0,
+};
+
+interface Bloqueo {
+  regla: string;
+  cuenta: string;
+  codigo: CodigoFalloCuenta;
+}
+
+interface Correccion {
+  regla: AccountingRule;
+  invalida: CuentaInvalida;
+  cuenta: string;
+}
 
 export function ReglasContablesPage() {
+  const t = useTranslations('reglasContables');
+  const router = useRouter();
+  const { crear: puedeEscribir } = usePermisosFinanzas();
   const [reglas, setReglas] = useState<AccountingRule[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
   const [configuracion, setConfiguracion] = useState<FilaConfiguracion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editingRule, setEditingRule] = useState<AccountingRule | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [filterSource, setFilterSource] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    source_type: '',
-    event_type: '',
-    debit_account_code: '',
-    credit_account_code: '',
-    tax_account_code: '',
-    use_tax_from_document: false,
-    priority: 0
-  });
+  const [invalidas, setInvalidas] = useState<CuentaInvalida[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [origen, setOrigen] = useState('');
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const [soloInvalidas, setSoloInvalidas] = useState(false);
+  const [dialogoAbierto, setDialogoAbierto] = useState(false);
+  const [editando, setEditando] = useState<AccountingRule | null>(null);
+  const [formulario, setFormulario] = useState(FORMULARIO_VACIO);
+  const [guardando, setGuardando] = useState(false);
+  const [correccion, setCorreccion] = useState<Correccion | null>(null);
+  const [bloqueo, setBloqueo] = useState<Bloqueo | null>(null);
+  const [porEliminar, setPorEliminar] = useState<AccountingRule | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const cargar = useCallback(async () => {
     try {
-      setIsLoading(true);
-      const [reglasData, cuentasData, configData] = await Promise.all([
+      setCargando(true);
+      const [reglasData, cuentasData, configData, diagnostico] = await Promise.all([
         ReglasContablesService.obtenerReglas(),
         ReglasContablesService.obtenerCuentasContables(),
         ConfiguracionContableService.listar().catch(() => [] as FilaConfiguracion[]),
+        ReglasContablesService.obtenerDiagnostico().catch(() => [] as CuentaInvalida[]),
       ]);
       setReglas(reglasData);
       setCuentas(cuentasData);
       setConfiguracion(configData);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast.error('Error al cargar los datos');
+      setInvalidas(diagnostico);
+    } catch {
+      toast.error(t('errores.carga'));
     } finally {
-      setIsLoading(false);
+      setCargando(false);
     }
+  }, [t]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const porRegla = useMemo(() => agruparPorRegla(invalidas), [invalidas]);
+  const reglasInvalidas = useMemo(
+    () => reglas.filter((regla) => regla.is_active && porRegla.has(regla.id)).length,
+    [reglas, porRegla],
+  );
+  const filas = useMemo(
+    () => reglas.filter((regla) => (
+      (!origen || regla.source_type === origen)
+      && (!soloInvalidas || porRegla.has(regla.id))
+      && coincideBusqueda(regla, busqueda)
+    )),
+    [reglas, origen, soloInvalidas, porRegla, busqueda],
+  );
+
+  const opcionesCuenta = useMemo(
+    () => cuentas
+      .filter((cuenta) => falloCuentaEnRegla(cuenta.account_code, cuentas) === null)
+      .map((cuenta) => ({ value: cuenta.account_code, label: `${cuenta.account_code} · ${cuenta.name}` })),
+    [cuentas],
+  );
+
+  /** Una cuenta inválida ya guardada sigue visible en el formulario, marcada. */
+  const opcionesCon = (codigo: string) => {
+    if (!codigo || opcionesCuenta.some((opcion) => opcion.value === codigo)) return opcionesCuenta;
+    return [{ value: codigo, label: `${codigo} · ${t(`estadoCuenta.${estadoDe(codigo)}`)}` }, ...opcionesCuenta];
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      source_type: '',
-      event_type: '',
-      debit_account_code: '',
-      credit_account_code: '',
-      tax_account_code: '',
-      use_tax_from_document: false,
-      priority: 0
-    });
-    setEditingRule(null);
+  const estadoDe = (codigo: string): 'inexistente' | 'inactiva' | 'titulo' => {
+    const fallo = falloCuentaEnRegla(codigo, cuentas);
+    if (fallo === 'cuenta_de_titulo') return 'titulo';
+    return fallo === 'cuenta_inactiva' ? 'inactiva' : 'inexistente';
   };
 
-  const handleOpenDialog = (rule?: AccountingRule) => {
-    if (rule) {
-      setEditingRule(rule);
-      setFormData({
-        name: rule.name,
-        description: rule.description || '',
-        source_type: rule.source_type,
-        event_type: rule.event_type,
-        debit_account_code: rule.debit_account_code,
-        credit_account_code: rule.credit_account_code,
-        tax_account_code: rule.tax_account_code || '',
-        use_tax_from_document: rule.use_tax_from_document,
-        priority: rule.priority
-      });
-    } else {
-      resetForm();
-    }
-    setShowDialog(true);
+  const nombreCuenta = (codigo: string) => cuentas.find((cuenta) => cuenta.account_code === codigo)?.name ?? '';
+
+  const abrirFormulario = (regla?: AccountingRule) => {
+    setEditando(regla ?? null);
+    setFormulario(regla
+      ? {
+          name: regla.name,
+          description: regla.description ?? '',
+          source_type: regla.source_type,
+          event_type: regla.event_type,
+          debit_account_code: regla.debit_account_code,
+          credit_account_code: regla.credit_account_code,
+          tax_account_code: regla.tax_account_code ?? '',
+          use_tax_from_document: regla.use_tax_from_document,
+          priority: regla.priority,
+        }
+      : FORMULARIO_VACIO);
+    setDialogoAbierto(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.name || !formData.source_type || !formData.event_type || 
-        !formData.debit_account_code || !formData.credit_account_code) {
-      toast.error('Completa todos los campos requeridos');
-      return;
-    }
-
-    const errorCuentas = validarCuentasDeRegla({
-      debito: formData.debit_account_code,
-      credito: formData.credit_account_code,
-      impuesto: formData.tax_account_code,
-    }, cuentas);
-    if (errorCuentas) {
-      toast.error(errorCuentas);
-      return;
-    }
-
-    try {
-      setIsProcessing(true);
-      if (editingRule) {
-        await ReglasContablesService.actualizarRegla(editingRule.id, formData);
-        toast.success('Regla actualizada exitosamente');
-      } else {
-        await ReglasContablesService.crearRegla(formData);
-        toast.success('Regla creada exitosamente');
+  const mostrarError = (error: unknown, regla: string) => {
+    if (error instanceof ErrorReglaContable) {
+      const { codigo, cuenta } = error.fallo;
+      if (cuenta && (codigo === 'cuenta_no_existe' || codigo === 'cuenta_inactiva' || codigo === 'cuenta_de_titulo')) {
+        setBloqueo({ regla, cuenta, codigo });
+        return;
       }
-      setShowDialog(false);
-      resetForm();
-      loadData();
+      if (codigo !== 'cuenta_no_existe' && codigo !== 'cuenta_inactiva' && codigo !== 'cuenta_de_titulo') {
+        toast.error(t(`errores.${codigo}`));
+        return;
+      }
+    }
+    toast.error(t('errores.desconocido'));
+  };
+
+  const guardar = async () => {
+    if (!formulario.name.trim() || !formulario.source_type || !formulario.event_type
+      || !formulario.debit_account_code || !formulario.credit_account_code) {
+      toast.error(t('formulario.faltanDatos'));
+      return;
+    }
+    const rechazada = cuentaBloqueada(formulario, editando, cuentas);
+    if (rechazada) {
+      setBloqueo({ regla: formulario.name, cuenta: rechazada.cuenta, codigo: rechazada.codigo });
+      return;
+    }
+    try {
+      setGuardando(true);
+      if (editando) {
+        await ReglasContablesService.actualizarRegla(editando.id, formulario);
+        toast.success(t('exito.actualizada'));
+      } else {
+        await ReglasContablesService.crearRegla(formulario);
+        toast.success(t('exito.creada'));
+      }
+      setDialogoAbierto(false);
+      await cargar();
     } catch (error) {
-      console.error('Error guardando regla:', error);
-      toast.error('Error al guardar la regla');
+      mostrarError(error, formulario.name);
     } finally {
-      setIsProcessing(false);
+      setGuardando(false);
     }
   };
 
-  const handleDuplicate = async (rule: AccountingRule) => {
+  const guardarCorreccion = async () => {
+    if (!correccion?.cuenta) return;
     try {
-      await ReglasContablesService.duplicarRegla(rule.id);
-      toast.success('Regla duplicada exitosamente');
-      loadData();
-    } catch {
-      toast.error('Error al duplicar la regla');
+      setGuardando(true);
+      await ReglasContablesService.actualizarRegla(correccion.regla.id, {
+        [COLUMNA_LADO[correccion.invalida.lado]]: correccion.cuenta,
+      });
+      toast.success(t('corregir.exito'));
+      setCorreccion(null);
+      await cargar();
+    } catch (error) {
+      mostrarError(error, correccion.regla.name);
+    } finally {
+      setGuardando(false);
     }
   };
 
-  const handleToggleActive = async (rule: AccountingRule) => {
+  const ejecutar = async (accion: () => Promise<unknown>, exito: string, regla: string) => {
     try {
-      await ReglasContablesService.toggleActivo(rule.id, !rule.is_active);
-      toast.success(rule.is_active ? 'Regla desactivada' : 'Regla activada');
-      loadData();
-    } catch {
-      toast.error('Error al cambiar estado');
+      await accion();
+      toast.success(exito);
+      await cargar();
+    } catch (error) {
+      mostrarError(error, regla);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta regla?')) return;
-    try {
-      await ReglasContablesService.eliminarRegla(id);
-      toast.success('Regla eliminada exitosamente');
-      loadData();
-    } catch {
-      toast.error('Error al eliminar la regla');
+  const exportar = () => {
+    descargarCsv('reglas-cuentas-invalidas.csv', aCsv([
+      [t('csv.origen'), t('csv.evento'), t('csv.regla'), t('csv.lado'), t('csv.cuenta'), t('csv.estado'), t('csv.propuesta'), t('csv.evidencia'), t('csv.usos')],
+      ...filasInventario(reglas, invalidas),
+    ]));
+  };
+
+  const accionesDeFila = (regla: AccountingRule): AccionFila[] => {
+    const invalidasRegla = porRegla.get(regla.id) ?? [];
+    const acciones: AccionFila[] = invalidasRegla.map((invalida) => ({
+      id: `corregir-${invalida.lado}`,
+      etiqueta: invalidasRegla.length > 1 ? `${t('acciones.corregir')} (${t(`lado.${invalida.lado}`)})` : t('acciones.corregir'),
+      icono: Wrench,
+      onSelect: () => setCorreccion({ regla, invalida, cuenta: invalida.propuesta ?? '' }),
+    }));
+    return [
+      ...acciones,
+      { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => abrirFormulario(regla) },
+      {
+        id: 'duplicar',
+        etiqueta: t('acciones.duplicar'),
+        icono: Copy,
+        onSelect: () => void ejecutar(() => ReglasContablesService.duplicarRegla(regla, t('copia')), t('exito.duplicada'), regla.name),
+      },
+      {
+        id: 'estado',
+        etiqueta: regla.is_active ? t('acciones.desactivar') : t('acciones.activar'),
+        icono: regla.is_active ? PowerOff : Power,
+        onSelect: () => void ejecutar(
+          () => ReglasContablesService.toggleActivo(regla.id, !regla.is_active),
+          regla.is_active ? t('exito.desactivada') : t('exito.activada'),
+          regla.name,
+        ),
+      },
+      { id: 'eliminar', etiqueta: t('acciones.eliminar'), icono: Trash2, destructiva: true, separadorAntes: true, onSelect: () => setPorEliminar(regla) },
+    ];
+  };
+
+  const celdaCuenta = (regla: AccountingRule, lado: 'debito' | 'credito') => {
+    const codigo = regla[COLUMNA_LADO[lado]] ?? '';
+    const invalida = porRegla.get(regla.id)?.find((fila) => fila.lado === lado);
+    if (invalida) {
+      return <span className="text-danger-text">{codigo} · {t(`estadoCuenta.${invalida.estado}`)}</span>;
     }
-  };
-
-  const getSourceLabel = (value: string) => etiquetaOrigen(value);
-  const getEventLabel = (value: string) => etiquetaEvento(value);
-  const notaCuenta = (codigo: string, lado: 'debito' | 'credito', source: string) => {
-    const resuelto = resolverLado({
-      source,
-      lado,
-      codigo,
-      branchId: null,
-      filas: configuracion,
-      plan: cuentas,
-    });
-    if (resuelto.fallo) return resuelto.fallo;
-    if (resuelto.cuenta && resuelto.cuenta !== codigo) return `Se contabiliza en ${resuelto.cuenta}`;
-    return null;
-  };
-  const filteredReglas = filterSource 
-    ? reglas.filter(r => r.source_type === filterSource)
-    : reglas;
-
-  if (isLoading) {
+    const resuelto = resolverLado({ source: regla.source_type, lado, codigo, branchId: null, filas: configuracion, plan: cuentas });
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <>
+        <span className="block truncate text-fg">{codigo} {nombreCuenta(codigo)}</span>
+        {resuelto.cuenta && resuelto.cuenta !== codigo ? (
+          <span className="block text-xs text-fg-secondary">{t('seContabiliza', { cuenta: resuelto.cuenta })}</span>
+        ) : null}
+      </>
+    );
+  };
+
+  const celdaPropuesta = (regla: AccountingRule) => (porRegla.get(regla.id) ?? []).map((invalida) => {
+    if (!invalida.propuesta) {
+      return <span key={invalida.lado} className="block text-warning-text">{t('propuesta.pendiente')}</span>;
+    }
+    return (
+      <span key={invalida.lado} className="block text-success-text">
+        {invalida.usos_propuesta > 0
+          ? t('propuesta.usada', { cuenta: invalida.propuesta, n: invalida.usos_propuesta })
+          : t('propuesta.vigente', { cuenta: invalida.propuesta })}
+      </span>
+    );
+  });
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
         <PageHeaderSkeleton />
-        <StatsSkeleton count={4} />
         <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
 
+  const corregida = correccion?.invalida;
+  const claveAviso = corregida?.estado === 'titulo' ? 'avisoTitulo' : corregida?.estado === 'inactiva' ? 'avisoInactiva' : 'avisoInexistente';
+  const claveAyuda = corregida
+    ? { configuracion: 'ayudaConfiguracion', plan: 'ayudaPlan', uso: 'ayudaUso', conflicto: 'ayudaConflicto', ninguna: 'ayudaNinguna' }[corregida.evidencia]
+    : 'ayudaNinguna';
+  const textoBloqueo = bloqueo?.codigo === 'cuenta_de_titulo'
+    ? { titulo: 'bloqueo.titulocuenta', detalle: 'bloqueo.tituloDetalle' }
+    : bloqueo?.codigo === 'cuenta_inactiva'
+      ? { titulo: 'bloqueo.inactiva', detalle: 'bloqueo.inactivaDetalle' }
+      : { titulo: 'bloqueo.noExiste', detalle: 'bloqueo.noExisteDetalle' };
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <Settings className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Reglas Contables
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Configuración de asientos automáticos. Las cuentas por defecto se eligen en{' '}
-              <Link href="/app/finanzas/configuracion-contable" className="text-blue-600 dark:text-blue-400 underline">
-                Configuración contable
-              </Link>.
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('descripcion')}
+        icono={ListChecks}
+        migas={[
+          { etiqueta: t('migas.finanzas'), href: '/app/finanzas' },
+          { etiqueta: t('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
+          { etiqueta: t('titulo') },
+        ]}
+        acciones={(
+          <>
+            <Button type="button" variant="outline" onClick={exportar} disabled={invalidas.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              {t('exportar')}
+            </Button>
+            {puedeEscribir ? (
+              <Button type="button" onClick={() => abrirFormulario()}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t('nueva')}
+              </Button>
+            ) : null}
+            <RowActionsMenu
+              orientacion="horizontal"
+              tamano="md"
+              titulo={t('titulo')}
+              acciones={[{
+                id: 'configuracion',
+                etiqueta: t('configuracion'),
+                icono: Settings,
+                onSelect: () => router.push('/app/finanzas/configuracion-contable'),
+              }]}
+            />
+          </>
+        )}
+      />
 
-        <div className="flex flex-wrap gap-2">
-          <Select
-            value={filterSource || 'all'}
-            onValueChange={(value) => setFilterSource(value === 'all' ? null : value)}
-          >
-            <SelectTrigger className="w-[160px] dark:bg-gray-800 dark:border-gray-700">
-              <SelectValue placeholder="Filtrar origen" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los orígenes</SelectItem>
-              {SOURCE_TYPES.map(source => (
-                <SelectItem key={source.value} value={source.value}>{source.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Regla
-          </Button>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={t('buscar')} />
         </div>
+        <Popover open={filtrosAbiertos} onOpenChange={setFiltrosAbiertos}>
+          <PopoverTrigger asChild>
+            <FilterButton conteo={origen ? 1 : 0} abierto={filtrosAbiertos} />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 space-y-2 p-3">
+            <Label>{t('filtros.titulo')}</Label>
+            <SearchSelect
+              options={SOURCE_TYPES.map((fuente) => ({ value: fuente.value, label: fuente.label }))}
+              value={origen || 'todos'}
+              onValueChange={(valor) => setOrigen(valor === 'todos' ? '' : valor)}
+              noneLabel={t('filtros.todos')}
+              noneValue="todos"
+              placeholder={t('filtros.etiqueta')}
+              searchPlaceholder={t('filtros.etiqueta')}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Reglas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{reglas.length}</div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Reglas Activas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {reglas.filter(r => r.is_active).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Reglas Inactivas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">
-              {reglas.filter(r => !r.is_active).length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {reglasInvalidas > 0 ? (
+        <AvisoTonal
+          tono="peligro"
+          titulo={t('aviso.titulo', { n: reglasInvalidas })}
+          descripcion={t('aviso.detalle')}
+          accion={{
+            etiqueta: soloInvalidas ? t('aviso.verTodas') : t('aviso.verSolo'),
+            onClick: () => setSoloInvalidas((valor) => !valor),
+          }}
+        />
+      ) : null}
 
-      {/* Tabla */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Lista de Reglas</CardTitle>
-          <CardDescription className="dark:text-gray-400">
-            {filteredReglas.length} reglas encontradas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead className="dark:text-gray-300">Nombre</TableHead>
-                  <TableHead className="dark:text-gray-300">Origen</TableHead>
-                  <TableHead className="dark:text-gray-300">Evento</TableHead>
-                  <TableHead className="dark:text-gray-300">Débito</TableHead>
-                  <TableHead className="dark:text-gray-300">Crédito</TableHead>
-                  <TableHead className="dark:text-gray-300">Estado</TableHead>
-                  <TableHead className="text-right dark:text-gray-300">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredReglas.map((regla) => (
-                  <TableRow key={regla.id} className={`dark:border-gray-700 ${!regla.is_active ? 'opacity-50' : ''}`}>
-                    <TableCell className="font-medium text-gray-900 dark:text-white">
+      {reglas.length === 0 ? (
+        <EmptyState titulo={t('vacio.titulo')} descripcion={t('vacio.descripcion')} icono={ListChecks} />
+      ) : filas.length === 0 ? (
+        <p className="py-8 text-center text-sm text-fg-secondary">{t('sinResultados')}</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-subtle">
+                <TableHead>{t('columnas.regla')}</TableHead>
+                <TableHead>{t('columnas.evento')}</TableHead>
+                <TableHead>{t('columnas.debito')}</TableHead>
+                <TableHead>{t('columnas.credito')}</TableHead>
+                <TableHead>{t('columnas.propuesta')}</TableHead>
+                <TableHead className="w-12"><span className="sr-only">{t('columnas.acciones')}</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filas.map((regla) => (
+                <TableRow key={regla.id} className={regla.is_active ? undefined : 'opacity-60'}>
+                  <TableCell className="font-medium text-fg">
+                    <span className="flex flex-wrap items-center gap-2">
                       {regla.name}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="dark:border-gray-600">
-                        {getSourceLabel(regla.source_type)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      {getEventLabel(regla.event_type)}
-                    </TableCell>
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      <span className="text-xs">{regla.debit_account_code}</span>
-                      {notaCuenta(regla.debit_account_code, 'debito', regla.source_type) && (
-                        <span className="block text-xs text-blue-600 dark:text-blue-400">
-                          {notaCuenta(regla.debit_account_code, 'debito', regla.source_type)}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      <span className="text-xs">{regla.credit_account_code}</span>
-                      {notaCuenta(regla.credit_account_code, 'credito', regla.source_type) && (
-                        <span className="block text-xs text-blue-600 dark:text-blue-400">
-                          {notaCuenta(regla.credit_account_code, 'credito', regla.source_type)}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {regla.is_active 
-                        ? <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Activa</Badge>
-                        : <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Inactiva</Badge>
-                      }
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(regla)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDuplicate(regla)}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleToggleActive(regla)}>
-                          {regla.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(regla.id)} className="text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      {regla.is_active ? null : <StatusBadge estado="inactive" etiqueta={t('inactiva')} />}
+                    </span>
+                    <span className="block text-xs font-normal text-fg-secondary">{etiquetaOrigen(regla.source_type)}</span>
+                  </TableCell>
+                  <TableCell className="text-fg">{etiquetaEvento(regla.event_type)}</TableCell>
+                  <TableCell className="max-w-56">{celdaCuenta(regla, 'debito')}</TableCell>
+                  <TableCell className="max-w-56">{celdaCuenta(regla, 'credito')}</TableCell>
+                  <TableCell>{celdaPropuesta(regla)}</TableCell>
+                  <TableCell className="text-right">
+                    {puedeEscribir ? <RowActionsMenu acciones={accionesDeFila(regla)} titulo={regla.name} /> : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <Dialogo
+        abierto={dialogoAbierto}
+        onAbiertoChange={setDialogoAbierto}
+        titulo={editando ? t('formulario.tituloEditar') : t('formulario.tituloNueva')}
+        descripcion={t('formulario.descripcion')}
+        ancho={672}
+        primario={{
+          etiqueta: editando ? t('formulario.guardar') : t('formulario.crear'),
+          onClick: () => void guardar(),
+          cargando: guardando,
+        }}
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="regla-nombre">{t('formulario.nombre')} *</Label>
+          <Input
+            id="regla-nombre"
+            value={formulario.name}
+            onChange={(event) => setFormulario({ ...formulario, name: event.target.value })}
+            placeholder={t('formulario.nombreEjemplo')}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>{t('formulario.descripcionCampo')}</Label>
+          <RichTextEditor
+            value={formulario.description}
+            onChange={(html) => setFormulario({ ...formulario, description: html })}
+            placeholder={t('formulario.descripcionEjemplo')}
+            minHeight={60}
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>{t('formulario.origen')} *</Label>
+            <SearchSelect
+              options={SOURCE_TYPES.map((fuente) => ({ value: fuente.value, label: fuente.label }))}
+              value={formulario.source_type}
+              onValueChange={(source_type) => setFormulario({ ...formulario, source_type })}
+              placeholder={t('formulario.seleccionar')}
+              searchPlaceholder={t('formulario.origen')}
+            />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">
-              {editingRule ? 'Editar Regla' : 'Nueva Regla Contable'}
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Configura la regla para generar asientos automáticos
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Nombre *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Ej: Venta con IVA"
-                className="dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
-              <RichTextEditor
-                value={formData.description}
-                onChange={(html) => setFormData({ ...formData, description: html })}
-                placeholder="Descripción de la regla..."
-                className="dark:bg-gray-900 dark:border-gray-600"
-                minHeight={60}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Origen *</Label>
-                <Select
-                  value={formData.source_type}
-                  onValueChange={(value) => setFormData({ ...formData, source_type: value })}
-                >
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                    <SelectValue placeholder="Seleccionar origen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SOURCE_TYPES.map(s => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Evento *</Label>
-                <Select
-                  value={formData.event_type}
-                  onValueChange={(value) => setFormData({ ...formData, event_type: value })}
-                >
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                    <SelectValue placeholder="Seleccionar evento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EVENT_TYPES.map(e => (
-                      <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 mb-3">
-                <ArrowLeftRight className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-gray-900 dark:text-white">Cuentas Contables</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">Cuenta Débito *</Label>
-                  <Select
-                    value={formData.debit_account_code}
-                    onValueChange={(value) => setFormData({ ...formData, debit_account_code: value })}
-                  >
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                      <SelectValue placeholder="Seleccionar cuenta" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {cuentas.map(c => (
-                        <SelectItem key={c.account_code} value={c.account_code}>
-                          {c.account_code} - {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">Cuenta Crédito *</Label>
-                  <Select
-                    value={formData.credit_account_code}
-                    onValueChange={(value) => setFormData({ ...formData, credit_account_code: value })}
-                  >
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                      <SelectValue placeholder="Seleccionar cuenta" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {cuentas.map(c => (
-                        <SelectItem key={c.account_code} value={c.account_code}>
-                          {c.account_code} - {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Cuenta IVA (opcional)</Label>
-              <Select
-                value={formData.tax_account_code || 'none'}
-                onValueChange={(value) => setFormData({ ...formData, tax_account_code: value === 'none' ? '' : value })}
-              >
-                <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                  <SelectValue placeholder="Seleccionar cuenta de IVA" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  <SelectItem value="none">Sin cuenta de IVA</SelectItem>
-                  {cuentas.map(c => (
-                    <SelectItem key={c.account_code} value={c.account_code}>
-                      {c.account_code} - {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={formData.use_tax_from_document}
-                onCheckedChange={(checked) => setFormData({ ...formData, use_tax_from_document: checked })}
-              />
-              <Label className="text-gray-700 dark:text-gray-300">Usar IVA del documento</Label>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Prioridad</Label>
-              <Input
-                type="number"
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
-                className="dark:bg-gray-900 dark:border-gray-600"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Menor número = mayor prioridad
-              </p>
-            </div>
+          <div className="space-y-1.5">
+            <Label>{t('formulario.evento')} *</Label>
+            <SearchSelect
+              options={EVENT_TYPES.map((evento) => ({ value: evento.value, label: evento.label }))}
+              value={formulario.event_type}
+              onValueChange={(event_type) => setFormulario({ ...formulario, event_type })}
+              placeholder={t('formulario.seleccionar')}
+              searchPlaceholder={t('formulario.evento')}
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)} className="dark:border-gray-600">
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-700">
-              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingRule ? 'Guardar Cambios' : 'Crear Regla'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>{t('formulario.cuentaDebito')} *</Label>
+            <SearchSelect
+              options={opcionesCon(formulario.debit_account_code)}
+              value={formulario.debit_account_code}
+              onValueChange={(debit_account_code) => setFormulario({ ...formulario, debit_account_code })}
+              placeholder={t('formulario.seleccionar')}
+              searchPlaceholder={t('corregir.buscarCuenta')}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t('formulario.cuentaCredito')} *</Label>
+            <SearchSelect
+              options={opcionesCon(formulario.credit_account_code)}
+              value={formulario.credit_account_code}
+              onValueChange={(credit_account_code) => setFormulario({ ...formulario, credit_account_code })}
+              placeholder={t('formulario.seleccionar')}
+              searchPlaceholder={t('corregir.buscarCuenta')}
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>{t('formulario.cuentaIva')}</Label>
+          <SearchSelect
+            options={opcionesCon(formulario.tax_account_code)}
+            value={formulario.tax_account_code}
+            onValueChange={(tax_account_code) => setFormulario({ ...formulario, tax_account_code })}
+            noneLabel={t('formulario.sinIva')}
+            noneValue=""
+            placeholder={t('formulario.sinIva')}
+            searchPlaceholder={t('corregir.buscarCuenta')}
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={formulario.use_tax_from_document}
+            onCheckedChange={(use_tax_from_document) => setFormulario({ ...formulario, use_tax_from_document })}
+          />
+          <Label>{t('formulario.usarIva')}</Label>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="regla-prioridad">{t('formulario.prioridad')}</Label>
+          <Input
+            id="regla-prioridad"
+            type="number"
+            value={formulario.priority}
+            onChange={(event) => setFormulario({ ...formulario, priority: parseInt(event.target.value, 10) || 0 })}
+          />
+          <p className="text-xs text-fg-muted">{t('formulario.prioridadAyuda')}</p>
+        </div>
+      </Dialogo>
+
+      <Dialogo
+        abierto={correccion !== null}
+        onAbiertoChange={(abierto) => { if (!abierto) setCorreccion(null); }}
+        titulo={t('corregir.titulo')}
+        descripcion={correccion ? `${correccion.regla.name} · ${t(`lado.${correccion.invalida.lado}`)}` : undefined}
+        ancho={560}
+        primario={{
+          etiqueta: t('corregir.guardar'),
+          onClick: () => void guardarCorreccion(),
+          cargando: guardando,
+          deshabilitada: !correccion?.cuenta,
+        }}
+      >
+        {corregida ? (
+          <>
+            <AvisoTonal
+              tono="peligro"
+              titulo={t(`corregir.${claveAviso}`, { cuenta: corregida.cuenta })}
+              descripcion={t('corregir.avisoDetalle')}
+            />
+            <div className="space-y-1.5">
+              <Label>{t('corregir.cuenta')} *</Label>
+              <SearchSelect
+                options={opcionesCuenta}
+                value={correccion?.cuenta ?? ''}
+                onValueChange={(cuenta) => setCorreccion((actual) => (actual ? { ...actual, cuenta } : actual))}
+                placeholder={t('corregir.cuenta')}
+                searchPlaceholder={t('corregir.buscarCuenta')}
+              />
+              <p className="text-xs font-medium text-fg-muted">{t(`corregir.${claveAyuda}`)}</p>
+            </div>
+            <p className="text-sm text-fg-secondary">{t('corregir.alcance')}</p>
+          </>
+        ) : null}
+      </Dialogo>
+
+      <Dialogo
+        abierto={bloqueo !== null}
+        onAbiertoChange={(abierto) => { if (!abierto) setBloqueo(null); }}
+        titulo={t('bloqueo.titulo')}
+        descripcion={bloqueo ? t('bloqueo.regla', { nombre: bloqueo.regla }) : undefined}
+        ancho={560}
+        textoCancelar={t('bloqueo.irAlPlan')}
+        onCancelar={() => router.push(PLAN_DE_CUENTAS)}
+        primario={{ etiqueta: t('bloqueo.elegirOtra'), onClick: () => setBloqueo(null) }}
+      >
+        {bloqueo ? (
+          <AvisoTonal
+            tono="peligro"
+            rol="alert"
+            titulo={t(textoBloqueo.titulo, { cuenta: bloqueo.cuenta })}
+            descripcion={t(textoBloqueo.detalle)}
+          />
+        ) : null}
+      </Dialogo>
+
+      <ConfirmDialog
+        abierto={porEliminar !== null}
+        onAbiertoChange={(abierto) => { if (!abierto) setPorEliminar(null); }}
+        titulo={t('eliminar.titulo')}
+        descripcion={porEliminar ? t('eliminar.descripcion', { nombre: porEliminar.name }) : ''}
+        textoConfirmar={t('eliminar.confirmar')}
+        tono="peligro"
+        onConfirmar={() => {
+          const regla = porEliminar;
+          setPorEliminar(null);
+          if (regla) void ejecutar(() => ReglasContablesService.eliminarRegla(regla.id), t('exito.eliminada'), regla.name);
+        }}
+      />
     </div>
   );
 }

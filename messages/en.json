@@ -21886,7 +21886,10 @@
       "tercero_requerido": "This account requires the third party's tax ID.",
       "soporte_invalido": "The attachment must be a PDF or an image for this organization.",
       "asiento_publicado_inmutable": "The journal entry is already posted and cannot be changed. Reverse it with an offsetting entry.",
-      "desconocido": "The operation could not be completed."
+      "desconocido": "The operation could not be completed.",
+      "categoria_no_imputable": "“Taxes” groups the subcategories. Choose one of them.",
+      "categoria_requiere_cuenta": "This tax category needs an account from the chart.",
+      "impuesto_cancela_pasivo": "Paying this tax settles a liability: choose a class 2 account."
     },
     "movimiento": {
       "tituloIngreso": "New income entry",
@@ -21934,7 +21937,10 @@
       "faltaCentro": "This account requires a cost center.",
       "faltaTercero": "This account requires the third party's tax ID.",
       "soporteTipo": "The attachment must be a PDF, JPG, PNG or WebP.",
-      "soportePeso": "The attachment cannot exceed 5 MB."
+      "soportePeso": "The attachment cannot exceed 5 MB.",
+      "ayudaPasivo": "Settles the liability. It is not an expense.",
+      "ayudaGasto": "It is a direct expense.",
+      "ayudaSinCuenta": "Your chart does not have the suggested account. Choose one or create it in the chart of accounts."
     },
     "categorias": {
       "titulo": "Treasury categories",
@@ -21960,7 +21966,35 @@
       "vacio": "There are no categories in this group.",
       "errorCarga": "Categories could not be loaded.",
       "errorGuardar": "The category could not be saved.",
-      "buscarCuenta": "Search account"
+      "buscarCuenta": "Search account",
+      "buscar": "Search category",
+      "nombreColumna": "Category",
+      "cuentaColumna": "Suggested account",
+      "tipoColumna": "Type",
+      "estadoColumna": "Status",
+      "accionesColumna": "Actions",
+      "tipoAgrupa": "Groups",
+      "tipoCancelaPasivo": "Settles liability",
+      "tipoGasto": "Expense",
+      "cuentaPadre": "No account: it organizes, it takes no movements",
+      "cuentaFaltante": "No account: required when used",
+      "padreAyuda": "This category groups the tax subcategories. It has no account and cannot be chosen in a movement.",
+      "ayudaPasivo": "Class 2 accounts only: the payment settles the liability.",
+      "avisoTitulo": "Paying a tax does not book the expense again",
+      "avisoDetalle": "The payment settles the liability booked on the sale or purchase. Only those marked Expense, like the financial transactions levy, are direct expenses.",
+      "activar": "Activate",
+      "desactivarAccion": "Deactivate",
+      "eliminarTitulo": "Delete this category?",
+      "eliminarDetalle": "“{nombre}” will no longer be available. Recorded movements do not change.",
+      "errores": {
+        "padre_no_imputable": "“Taxes” groups and has no account.",
+        "cuenta_obligatoria": "This tax category needs an account.",
+        "impuesto_cancela_pasivo": "This category settles a liability: choose a class 2 account.",
+        "cuenta_no_es_de_movimiento": "The account is not a posting account. Choose a sub-account from the chart."
+      },
+      "migaFinanzas": "Finance",
+      "migaTesoreria": "Treasury",
+      "migaCategorias": "Categories"
     },
     "reporte": {
       "titulo": "Report by category",
@@ -39056,6 +39090,153 @@
       "errorTitulo": "The pending item could not be read",
       "errorTexto": "Check your connection and try again.",
       "reintentarCarga": "Retry"
+    }
+  },
+  "reglasContables": {
+    "titulo": "Accounting rules",
+    "descripcion": "Automatic journal entry settings",
+    "migas": {
+      "finanzas": "Finance",
+      "contabilidad": "Accounting"
+    },
+    "exportar": "Export",
+    "nueva": "New rule",
+    "configuracion": "Accounting settings",
+    "buscar": "Search rule or account",
+    "filtros": {
+      "titulo": "Filter by source",
+      "todos": "All sources",
+      "etiqueta": "Source"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# rule points to an account that does not exist or is a header account} other {# rules point to accounts that do not exist or are header accounts}}",
+      "detalle": "A document using these rules may stay pending and not reach the ledger. Posted entries do not change.",
+      "verSolo": "Show only these",
+      "verTodas": "Show all"
+    },
+    "columnas": {
+      "regla": "Rule",
+      "evento": "Event",
+      "debito": "Debit",
+      "credito": "Credit",
+      "propuesta": "Proposal",
+      "acciones": "Actions"
+    },
+    "estadoCuenta": {
+      "inexistente": "does not exist",
+      "inactiva": "inactive",
+      "titulo": "header account"
+    },
+    "lado": {
+      "debito": "debit",
+      "credito": "credit",
+      "impuesto": "tax",
+      "descuento": "discount"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · used in {n, plural, one {# entry} other {# entries}}",
+      "vigente": "{cuenta} · current chart",
+      "pendiente": "Pending accountant"
+    },
+    "inactiva": "Inactive",
+    "vacio": {
+      "titulo": "No rules",
+      "descripcion": "Create the first automatic journal entry rule."
+    },
+    "sinResultados": "No rules match this filter.",
+    "acciones": {
+      "corregir": "Fix account",
+      "editar": "Edit",
+      "duplicar": "Duplicate",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "eliminar": "Delete"
+    },
+    "corregir": {
+      "titulo": "Fix the rule account",
+      "avisoInexistente": "Account {cuenta} does not exist in this company",
+      "avisoInactiva": "Account {cuenta} is inactive in this company",
+      "avisoTitulo": "Account {cuenta} is a header account",
+      "avisoDetalle": "Only a posting account from the chart can be selected.",
+      "cuenta": "Account",
+      "buscarCuenta": "Search account",
+      "ayudaConfiguracion": "Suggested: the account configured for this concept.",
+      "ayudaPlan": "Suggested: the only posting sub-account of that account.",
+      "ayudaUso": "Suggested: the account your entries already use.",
+      "ayudaConflicto": "The settings and the chart disagree. The accountant decides.",
+      "ayudaNinguna": "There is no evidence to suggest an account. The accountant decides.",
+      "alcance": "Applies only to new and pending documents. Posted entries are not touched.",
+      "guardar": "Save",
+      "exito": "Account fixed."
+    },
+    "bloqueo": {
+      "titulo": "Cannot save",
+      "regla": "Rule “{nombre}”",
+      "noExiste": "Account {cuenta} does not exist in your chart",
+      "noExisteDetalle": "Create it in the chart of accounts or choose another posting account.",
+      "inactiva": "Account {cuenta} is inactive",
+      "inactivaDetalle": "Activate it in the chart of accounts or choose another posting account.",
+      "titulocuenta": "Account {cuenta} is a header account",
+      "tituloDetalle": "Header accounts group others and receive no entries. Choose a posting sub-account.",
+      "irAlPlan": "Go to chart of accounts",
+      "elegirOtra": "Choose another account"
+    },
+    "formulario": {
+      "tituloNueva": "New accounting rule",
+      "tituloEditar": "Edit rule",
+      "descripcion": "Set up the rule that generates automatic entries.",
+      "nombre": "Name",
+      "nombreEjemplo": "E.g. Sale with VAT",
+      "descripcionCampo": "Description",
+      "descripcionEjemplo": "Rule description…",
+      "origen": "Source",
+      "evento": "Event",
+      "seleccionar": "Select",
+      "cuentas": "Accounts",
+      "cuentaDebito": "Debit account",
+      "cuentaCredito": "Credit account",
+      "cuentaIva": "VAT account (optional)",
+      "sinIva": "No VAT account",
+      "usarIva": "Use the document VAT",
+      "prioridad": "Priority",
+      "prioridadAyuda": "Lower number, higher priority.",
+      "guardar": "Save changes",
+      "crear": "Create rule",
+      "faltanDatos": "Complete the required fields."
+    },
+    "eliminar": {
+      "titulo": "Delete this rule?",
+      "descripcion": "“{nombre}” will stop generating entries. Posted entries do not change.",
+      "confirmar": "Delete"
+    },
+    "exito": {
+      "creada": "Rule created.",
+      "actualizada": "Rule updated.",
+      "duplicada": "Rule duplicated.",
+      "activada": "Rule activated.",
+      "desactivada": "Rule deactivated.",
+      "eliminada": "Rule deleted."
+    },
+    "errores": {
+      "carga": "The rules could not be loaded.",
+      "regla_otra_organizacion": "A rule cannot be moved to another company.",
+      "regla_no_encontrada": "The rule does not exist in this company.",
+      "datos_invalidos": "Check the rule data.",
+      "sin_permiso": "You do not have permission for this operation.",
+      "desconocido": "The operation could not be completed."
+    },
+    "seContabiliza": "Posted to {cuenta}",
+    "copia": "(copy)",
+    "csv": {
+      "origen": "Source",
+      "evento": "Event",
+      "regla": "Rule",
+      "lado": "Side",
+      "cuenta": "Account",
+      "estado": "Status",
+      "propuesta": "Proposal",
+      "evidencia": "Evidence",
+      "usos": "Entries on the proposal"
     }
   }
 }

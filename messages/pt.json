@@ -17686,7 +17686,10 @@
       "tercero_requerido": "Esta conta exige o NIT do terceiro.",
       "soporte_invalido": "O anexo deve ser um PDF ou uma imagem desta organização.",
       "asiento_publicado_inmutable": "O lançamento já está publicado e não pode ser alterado. Estorne-o com um lançamento contrário.",
-      "desconocido": "Não foi possível concluir a operação."
+      "desconocido": "Não foi possível concluir a operação.",
+      "categoria_no_imputable": "“Impostos” agrupa as subcategorias. Escolha uma delas.",
+      "categoria_requiere_cuenta": "Esta categoria de impostos precisa de uma conta do plano.",
+      "impuesto_cancela_pasivo": "Pagar este imposto quita um passivo: escolha uma conta da classe 2."
     },
     "movimiento": {
       "tituloIngreso": "Nova receita",
@@ -17734,7 +17737,10 @@
       "faltaCentro": "Esta conta exige um centro de custo.",
       "faltaTercero": "Esta conta exige o NIT do terceiro.",
       "soporteTipo": "O anexo deve ser PDF, JPG, PNG ou WebP.",
-      "soportePeso": "O anexo não pode passar de 5 MB."
+      "soportePeso": "O anexo não pode passar de 5 MB.",
+      "ayudaPasivo": "Quita o passivo. Não vai para despesa.",
+      "ayudaGasto": "É despesa direta.",
+      "ayudaSinCuenta": "Seu plano não tem a conta sugerida. Escolha uma ou crie-a no plano de contas."
     },
     "categorias": {
       "titulo": "Categorias de tesouraria",
@@ -17760,7 +17766,35 @@
       "vacio": "Não há categorias neste grupo.",
       "errorCarga": "Não foi possível carregar as categorias.",
       "errorGuardar": "Não foi possível salvar a categoria.",
-      "buscarCuenta": "Buscar conta"
+      "buscarCuenta": "Buscar conta",
+      "buscar": "Buscar categoria",
+      "nombreColumna": "Categoria",
+      "cuentaColumna": "Conta sugerida",
+      "tipoColumna": "Tipo",
+      "estadoColumna": "Estado",
+      "accionesColumna": "Ações",
+      "tipoAgrupa": "Agrupa",
+      "tipoCancelaPasivo": "Quita passivo",
+      "tipoGasto": "Despesa",
+      "cuentaPadre": "Sem conta: organiza, não recebe movimentos",
+      "cuentaFaltante": "Sem conta: exigida ao usar",
+      "padreAyuda": "Esta categoria agrupa as subcategorias de impostos. Não tem conta e não pode ser escolhida em um movimento.",
+      "ayudaPasivo": "Somente contas da classe 2: o pagamento quita o passivo.",
+      "avisoTitulo": "Pagar um imposto não registra a despesa de novo",
+      "avisoDetalle": "O pagamento quita o passivo registrado na venda ou na compra. Só as marcadas como Despesa, como o imposto sobre movimentações financeiras, são despesa direta.",
+      "activar": "Ativar",
+      "desactivarAccion": "Desativar",
+      "eliminarTitulo": "Excluir a categoria?",
+      "eliminarDetalle": "“{nombre}” deixará de estar disponível. Os movimentos registrados não mudam.",
+      "errores": {
+        "padre_no_imputable": "“Impostos” agrupa e não tem conta.",
+        "cuenta_obligatoria": "Esta categoria de impostos precisa de uma conta.",
+        "impuesto_cancela_pasivo": "Esta categoria quita um passivo: escolha uma conta da classe 2.",
+        "cuenta_no_es_de_movimiento": "A conta não é analítica. Escolha uma conta analítica do plano."
+      },
+      "migaFinanzas": "Finanças",
+      "migaTesoreria": "Tesouraria",
+      "migaCategorias": "Categorias"
     },
     "reporte": {
       "titulo": "Relatório por categoria",
@@ -39066,6 +39100,153 @@
       "errorTitulo": "Não foi possível ler a pendência",
       "errorTexto": "Verifique sua conexão e tente de novo.",
       "reintentarCarga": "Tentar de novo"
+    }
+  },
+  "reglasContables": {
+    "titulo": "Regras contábeis",
+    "descripcion": "Configuração de lançamentos automáticos",
+    "migas": {
+      "finanzas": "Finanças",
+      "contabilidad": "Contabilidade"
+    },
+    "exportar": "Exportar",
+    "nueva": "Nova regra",
+    "configuracion": "Configuração contábil",
+    "buscar": "Buscar regra ou conta",
+    "filtros": {
+      "titulo": "Filtrar por origem",
+      "todos": "Todas as origens",
+      "etiqueta": "Origem"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# regra aponta para uma conta inexistente ou sintética} other {# regras apontam para contas inexistentes ou sintéticas}}",
+      "detalle": "Um documento com essas regras pode ficar pendente e não entrar no razão. Os lançamentos publicados não mudam.",
+      "verSolo": "Ver só estas",
+      "verTodas": "Ver todas"
+    },
+    "columnas": {
+      "regla": "Regra",
+      "evento": "Evento",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "propuesta": "Proposta",
+      "acciones": "Ações"
+    },
+    "estadoCuenta": {
+      "inexistente": "não existe",
+      "inactiva": "inativa",
+      "titulo": "sintética"
+    },
+    "lado": {
+      "debito": "débito",
+      "credito": "crédito",
+      "impuesto": "imposto",
+      "descuento": "desconto"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · usada em {n, plural, one {# lançamento} other {# lançamentos}}",
+      "vigente": "{cuenta} · plano vigente",
+      "pendiente": "Pendente do contador"
+    },
+    "inactiva": "Inativa",
+    "vacio": {
+      "titulo": "Sem regras",
+      "descripcion": "Crie a primeira regra de lançamentos automáticos."
+    },
+    "sinResultados": "Nenhuma regra com esse filtro.",
+    "acciones": {
+      "corregir": "Corrigir conta",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "eliminar": "Excluir"
+    },
+    "corregir": {
+      "titulo": "Corrigir conta da regra",
+      "avisoInexistente": "A conta {cuenta} não existe nesta empresa",
+      "avisoInactiva": "A conta {cuenta} está inativa nesta empresa",
+      "avisoTitulo": "A conta {cuenta} é sintética",
+      "avisoDetalle": "Só é possível escolher uma conta analítica do plano.",
+      "cuenta": "Conta",
+      "buscarCuenta": "Buscar conta",
+      "ayudaConfiguracion": "Sugerida: a conta configurada para este conceito.",
+      "ayudaPlan": "Sugerida: a única conta analítica dessa conta.",
+      "ayudaUso": "Sugerida: a conta que seus lançamentos já usam.",
+      "ayudaConflicto": "A configuração e o plano não coincidem. O contador decide.",
+      "ayudaNinguna": "Não há evidência para sugerir uma conta. O contador decide.",
+      "alcance": "Aplica-se apenas a documentos novos e pendentes. Os lançamentos publicados não são alterados.",
+      "guardar": "Salvar",
+      "exito": "Conta corrigida."
+    },
+    "bloqueo": {
+      "titulo": "Não é possível salvar",
+      "regla": "Regra “{nombre}”",
+      "noExiste": "A conta {cuenta} não existe no seu plano",
+      "noExisteDetalle": "Crie-a no plano de contas ou escolha outra conta analítica.",
+      "inactiva": "A conta {cuenta} está inativa",
+      "inactivaDetalle": "Ative-a no plano de contas ou escolha outra conta analítica.",
+      "titulocuenta": "A conta {cuenta} é sintética",
+      "tituloDetalle": "Contas sintéticas agrupam e não recebem lançamentos. Escolha uma conta analítica.",
+      "irAlPlan": "Ir ao plano de contas",
+      "elegirOtra": "Escolher outra conta"
+    },
+    "formulario": {
+      "tituloNueva": "Nova regra contábil",
+      "tituloEditar": "Editar regra",
+      "descripcion": "Configure a regra que gera lançamentos automáticos.",
+      "nombre": "Nome",
+      "nombreEjemplo": "Ex.: Venda com imposto",
+      "descripcionCampo": "Descrição",
+      "descripcionEjemplo": "Descrição da regra…",
+      "origen": "Origem",
+      "evento": "Evento",
+      "seleccionar": "Selecionar",
+      "cuentas": "Contas contábeis",
+      "cuentaDebito": "Conta de débito",
+      "cuentaCredito": "Conta de crédito",
+      "cuentaIva": "Conta de imposto (opcional)",
+      "sinIva": "Sem conta de imposto",
+      "usarIva": "Usar o imposto do documento",
+      "prioridad": "Prioridade",
+      "prioridadAyuda": "Menor número, maior prioridade.",
+      "guardar": "Salvar alterações",
+      "crear": "Criar regra",
+      "faltanDatos": "Preencha os campos obrigatórios."
+    },
+    "eliminar": {
+      "titulo": "Excluir a regra?",
+      "descripcion": "“{nombre}” deixará de gerar lançamentos. Os publicados não mudam.",
+      "confirmar": "Excluir"
+    },
+    "exito": {
+      "creada": "Regra criada.",
+      "actualizada": "Regra atualizada.",
+      "duplicada": "Regra duplicada.",
+      "activada": "Regra ativada.",
+      "desactivada": "Regra desativada.",
+      "eliminada": "Regra excluída."
+    },
+    "errores": {
+      "carga": "Não foi possível carregar as regras.",
+      "regla_otra_organizacion": "Uma regra não pode ser movida para outra empresa.",
+      "regla_no_encontrada": "A regra não existe nesta empresa.",
+      "datos_invalidos": "Revise os dados da regra.",
+      "sin_permiso": "Você não tem permissão para esta operação.",
+      "desconocido": "Não foi possível concluir a operação."
+    },
+    "seContabiliza": "Contabilizado em {cuenta}",
+    "copia": "(cópia)",
+    "csv": {
+      "origen": "Origem",
+      "evento": "Evento",
+      "regla": "Regra",
+      "lado": "Lado",
+      "cuenta": "Conta",
+      "estado": "Estado",
+      "propuesta": "Proposta",
+      "evidencia": "Evidência",
+      "usos": "Lançamentos na proposta"
     }
   }
 }

@@ -39,6 +39,8 @@ export interface DialogoProps {
   primario: AccionDialogo;
   /** Texto del botón que cierra sin hacer nada; por defecto «Cancelar». */
   textoCancelar?: string;
+  /** Ese botón hace otra cosa además de cerrar («Ir al plan de cuentas»). La «×» siempre solo cierra. */
+  onCancelar?: () => void;
   ancho?: 440 | 520 | 560 | 672 | 880 | 1024;
   className?: string;
   /** Caja de icono de 40 px junto al título (Figma «Imprimir etiquetas», «Generar códigos»). */
@@ -66,6 +68,7 @@ export function Dialogo({
   children,
   primario,
   textoCancelar: textoCancelarProp,
+  onCancelar,
   ancho = 520,
   className,
   icono: Icono,
@@ -117,7 +120,10 @@ export function Dialogo({
           <button
             type="button"
             disabled={ocupado}
-            onClick={() => onAbiertoChange(false)}
+            onClick={() => {
+              onAbiertoChange(false);
+              onCancelar?.();
+            }}
             className="flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
           >
             {textoCancelar}

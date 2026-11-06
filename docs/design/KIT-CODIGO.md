@@ -843,3 +843,18 @@ lo resuelve la regla. Una pieza nueva con barra fija abajo usa `useBarraInferior
 Pruebas: `src/components/shell/header/__tests__/barraInferior.test.tsx` (inicio y raíz visibles; detalle,
 formulario, POS, flujos, BulkActionBar abierta y teclado ocultan; override; espacio inferior; AppLayout sin
 envoltorio `h-full`).
+
+## Adenda 2026-11-06 — cuentas automáticas
+
+Figma `02 Componentes`, sección `2317:39697`. La cuenta la decide la base (`fn_cuentas_efectivas`):
+estos componentes solo la muestran. Textos en el namespace `cuentasAutomaticas`.
+
+- `CampoCuentaAutomatica`: siempre dice qué cuenta se usa y de dónde sale. Estados: automática, de la
+  categoría, propia, revisar (título) y sin cuenta.
+- `ChipCuenta`: código y estado para las líneas de un documento. Solo con «Ver cuentas contables» encendido.
+- `ResumenCuentas`: una frase, cerrado por defecto. Los campos se montan al abrir.
+- `SelectorCuenta`: búsqueda por código o nombre sobre `SelectorEntidad`. Quien lo usa pasa solo cuentas
+  de movimiento. Funciona dentro de `Dialogo`, a diferencia de un `Select` de Radix.
+- `LineaDocumento.pieLinea`: contenido bajo el producto en `DocumentoLineas`.
+
+Los conectores con la base están en `src/components/finanzas/contabilidad/cuentas/`.

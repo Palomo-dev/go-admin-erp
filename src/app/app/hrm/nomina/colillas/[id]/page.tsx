@@ -53,6 +53,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
+import { colillaCompleta, esBloqueoDeduccion } from '@/lib/services/nominaDeducciones';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
@@ -165,10 +166,12 @@ export default function ColillaDetallePage() {
       toast({ title: 'Colilla marcada como pagada' });
       setMarkPaidOpen(false);
       await loadData();
-    } catch {
+    } catch (e: unknown) {
       toast({
         title: 'Error',
-        description: 'No se pudo marcar como pagada',
+        description: esBloqueoDeduccion(e)
+          ? 'Hay deducciones sin calcular: escríbalas en el periodo'
+          : 'No se pudo marcar como pagada',
         variant: 'destructive',
       });
     }
@@ -436,8 +439,11 @@ export default function ColillaDetallePage() {
             <div className="pt-4 border-t border-blue-200 dark:border-blue-700">
               <p className="text-sm text-green-700 dark:text-green-300">Neto a Pagar</p>
               <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(slip.net_pay, slip.currency_code)}
+                {colillaCompleta(slip) ? formatCurrency(slip.net_pay, slip.currency_code) : '—'}
               </p>
+              {slip.tax_withholding === null && (
+                <p className="mt-1 text-sm text-warning-text">Retención en la fuente: sin calcular</p>
+              )}
             </div>
             {slip.total_employer_cost && (
               <div className="pt-4 border-t border-blue-200 dark:border-blue-700">

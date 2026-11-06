@@ -1,32 +1,46 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Loader2, Settings, Sparkles } from 'lucide-react';
+import { ArrowLeftRight, ListChecks, Loader2, Sparkles } from 'lucide-react';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
+import { Dialogo } from '@/components/kit/Dialogo';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
+import { SeccionPlegable } from '@/components/kit/SeccionPlegable';
+import { SelectorCuenta, type OpcionCuenta } from '@/components/kit/SelectorCuenta';
+import { TabBar, idPanel, idPestana } from '@/components/kit/TabBar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useBranch } from '@/lib/context/BranchContext';
 import {
   CLAVES_CONTABLES,
-  DEFINICIONES_CLAVE,
   nombreSector,
   propuestaPorSector,
   validarCuentaDeMovimiento,
   type ClaveContable,
   type CuentaContable,
+  type DefinicionClave,
   type FilaConfiguracion,
 } from '@/lib/finanzas/configuracionContable';
+import { GRUPOS_ABIERTOS, definicionesPorGrupo, origenDeClave, type GrupoConfiguracion } from '@/lib/finanzas/configuracionGrupos';
+import { buscarCuentas } from '@/components/finanzas/contabilidad/cuentas/CuentasAutomaticasService';
+import { useCuentasEfectivas } from '@/components/finanzas/contabilidad/cuentas/useCuentasEfectivas';
 import { AlertasFalloContable } from './AlertasFalloContable';
 import { ConfiguracionContableService, configuracionesInvalidas, type MapeoSede } from './ConfiguracionContableService';
+import { PorCategoria } from './PorCategoria';
 
 const USAR_REGLA = 'regla';
+const PESTANAS = 'config-contable';
+const GRUPOS = definicionesPorGrupo();
+const CONSULTA_INGRESO = [{ clave: 'ingreso', rol: 'ingreso' as const }];
 
+type Pestana = 'defecto' | 'categoria' | 'fallos';
 type Elecciones = Record<ClaveContable, string>;
 
 function vacias(): Elecciones {
@@ -44,7 +58,9 @@ function eleccionesDe(filas: FilaConfiguracion[], branchId: number | null): Elec
 }
 
 export function ConfiguracionContablePage() {
+  const t = useTranslations('cuentasAutomaticas');
   const { branches } = useBranch();
+  const [pestana, setPestana] = useState<Pestana>('defecto');
   const [filas, setFilas] = useState<FilaConfiguracion[]>([]);
   const [cuentas, setCuentas] = useState<CuentaContable[]>([]);
   const [mapeos, setMapeos] = useState<MapeoSede[]>([]);
@@ -56,6 +72,9 @@ export function ConfiguracionContablePage() {
   const [reclasificarAbierto, setReclasificarAbierto] = useState(false);
   const [reclasificando, setReclasificando] = useState(false);
   const [tipo, setTipo] = useState<number | null>(null);
+  const [editando, setEditando] = useState<ClaveContable | null>(null);
+  const [nuevaCuenta, setNuevaCuenta] = useState<OpcionCuenta | null>(null);
+  const [fallos, setFallos] = useState(0);
 
   const branchId = alcance === 'org' ? null : Number(alcance);
   const sedes = branches.filter((sede) => typeof sede.id === 'number');
@@ -70,55 +89,43 @@ export function ConfiguracionContablePage() {
         console.error(error);
         return [] as MapeoSede[];
       }),
-    ]).then(([guardadas, plan, mapeosSede]) => {
+      ConfiguracionContableService.tipoNegocio().catch(() => null),
+      ConfiguracionContableService.fallosPendientes(1).catch(() => ({ total: 0, filas: [] })),
+    ]).then(([guardadas, plan, mapeosSede, tipoNegocio, pendientes]) => {
       if (!vivo) return;
       setFilas(guardadas);
       setCuentas(plan);
       setMapeos(mapeosSede);
+      setTipo(tipoNegocio);
+      setFallos(pendientes.total);
     }).catch((error) => {
       console.error(error);
-      if (vivo) toast.error('No se pudo cargar la configuración contable');
+      if (vivo) toast.error(t('config.errorCargar'));
     }).finally(() => {
       if (vivo) setCargando(false);
     });
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!cargando) setElecciones(eleccionesDe(filas, branchId));
   }, [alcance, filas, cargando, branchId]);
 
-  const cuentasDeMovimiento = useMemo(
-    () => cuentas.filter((cuenta) => cuenta.is_active !== false && cuenta.es_movimiento !== false),
-    [cuentas],
-  );
+  // La venta hoy puede tomar la cuenta de la regla, no estas claves. La pantalla lo dice.
+  const { porClave: ingreso } = useCuentasEfectivas(branchId, 'catalogo', CONSULTA_INGRESO, pestana === 'defecto');
+  const ingresoEfectivo = ingreso.get('ingreso');
 
-  // No se ocultan: una configuración que apunta a una cuenta de título (p. ej. 1435)
-  // detiene los asientos, así que se muestra con aviso para corregirla.
+  const nombreCuenta = (codigo: string) => cuentas.find((c) => c.account_code === codigo)?.name ?? '';
+  const propuesta = propuestaPorSector(tipo);
   const sedePrincipalId = (sedes.find((sede) => sede.is_main === true) ?? sedes[0])?.id ?? null;
   const invalidas = useMemo(
-    () => configuracionesInvalidas(filas, cuentas, mapeos, sedePrincipalId),
-    [filas, cuentas, mapeos, sedePrincipalId],
+    () => configuracionesInvalidas(filas, cuentas, mapeos, sedePrincipalId)
+      .filter((item) => (branchId == null ? item.branch_id == null : item.branch_id === branchId)),
+    [filas, cuentas, mapeos, sedePrincipalId, branchId],
   );
-  const invalidaDe = (clave: ClaveContable) =>
-    invalidas.find((item) => item.clave === clave && (branchId == null ? item.branch_id == null : item.branch_id === branchId));
-
-  const grupos = useMemo(() => {
-    const mapa = new Map<string, typeof DEFINICIONES_CLAVE>();
-    for (const definicion of DEFINICIONES_CLAVE) {
-      const lista = mapa.get(definicion.grupo) ?? [];
-      lista.push(definicion);
-      mapa.set(definicion.grupo, lista);
-    }
-    return Array.from(mapa.entries());
-  }, []);
-
-  const heredada = (clave: ClaveContable): string | null => {
-    if (branchId == null) return null;
-    return filas.find((fila) => fila.clave === clave && fila.branch_id == null)?.account_code ?? null;
-  };
+  const invalidaDe = (clave: ClaveContable) => invalidas.find((item) => item.clave === clave && elecciones[clave] === item.account_code);
 
   const guardar = async (siguientes: Elecciones) => {
     for (const clave of CLAVES_CONTABLES) {
@@ -138,36 +145,23 @@ export function ConfiguracionContablePage() {
     setGuardando(true);
     try {
       await ConfiguracionContableService.guardar(branchId, payload);
-      toast.success(branchId == null ? 'Configuración de la organización guardada' : 'Configuración de la sede guardada');
-      const guardadas = await ConfiguracionContableService.listar();
-      setFilas(guardadas);
+      toast.success(branchId == null ? t('config.guardadaOrganizacion') : t('config.guardadaSede'));
+      setFilas(await ConfiguracionContableService.listar());
     } catch (error) {
       console.error(error);
-      toast.error('No se pudo guardar. La cuenta tiene que existir y ser de movimiento.');
+      toast.error(t('config.errorGuardar'));
     } finally {
       setGuardando(false);
     }
   };
 
-  const abrirAsistente = async () => {
-    try {
-      const tipoNegocio = await ConfiguracionContableService.tipoNegocio();
-      setTipo(tipoNegocio);
-      setAsistenteAbierto(true);
-    } catch (error) {
-      console.error(error);
-      toast.error('No se pudo leer el sector del negocio');
-    }
-  };
-
-  const propuesta = propuestaPorSector(tipo);
   const filasPropuesta = CLAVES_CONTABLES.map((clave) => {
     const codigo = clave === 'inventario'
       ? cuentas.find((c) => /^143501\d{2}$/.test(c.account_code) && c.es_movimiento !== false && c.is_active !== false)?.account_code ?? propuesta[clave]
       : propuesta[clave];
     const cuenta = cuentas.find((item) => item.account_code === codigo);
     const sirve = !!cuenta && cuenta.es_movimiento !== false && cuenta.is_active !== false;
-    return { clave, codigo, nombre: DEFINICIONES_CLAVE.find((item) => item.clave === clave)?.nombre ?? clave, sirve, nombreCuenta: cuenta?.name };
+    return { clave, codigo, sirve, nombreCuenta: cuenta?.name };
   });
 
   const aplicarAsistente = async () => {
@@ -180,190 +174,250 @@ export function ConfiguracionContablePage() {
     await guardar(siguientes);
   };
 
-  if (cargando) {
-    return (
-      <div className="p-6 flex items-center gap-2 text-gray-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Cargando configuración contable
-      </div>
-    );
-  }
+  const reclasificar = () => {
+    setReclasificando(true);
+    void ConfiguracionContableService.reclasificarIvaGenerado()
+      .then((r) => {
+        if (r.repetida) toast.message(t('config.reclasificar.repetida'));
+        else if (!r.journal_entry_id || r.monto <= 0.01) toast.message(t('config.reclasificar.sinSaldo'));
+        else toast.success(t('config.reclasificar.creado'));
+        setReclasificarAbierto(false);
+      })
+      .catch(() => toast.error(t('config.reclasificar.error')))
+      .finally(() => setReclasificando(false));
+  };
+
+  const textoOrigen = (clave: ClaveContable) => {
+    const valor = elecciones[clave] === USAR_REGLA ? null : elecciones[clave];
+    return t(`config.origen.${origenDeClave({ clave, valor, branchId, filas, propuesta })}`);
+  };
+
+  const textoCuenta = (clave: ClaveContable) => {
+    const valor = elecciones[clave];
+    if (valor !== USAR_REGLA) return `${valor} · ${nombreCuenta(valor)}`;
+    const deLaEmpresa = branchId != null ? filas.find((f) => f.clave === clave && f.branch_id == null)?.account_code : null;
+    return deLaEmpresa ? `${deLaEmpresa} · ${nombreCuenta(deLaEmpresa)}` : t('config.usaRegla');
+  };
+
+  const columnasDe = (grupo: GrupoConfiguracion): ColumnaTabla<DefinicionClave>[] => [
+    {
+      id: 'clave',
+      encabezado: t(`config.grupo.${grupo}`),
+      celda: (d) => (
+        <span title={t(`claves.${d.clave}.ayuda`)} className="font-medium text-fg">{t(`claves.${d.clave}.nombre`)}</span>
+      ),
+    },
+    {
+      id: 'cuenta',
+      encabezado: t('config.cuenta'),
+      celda: (d) => {
+        const invalida = invalidaDe(d.clave);
+        return (
+          <span className={invalida ? 'text-warning-text' : elecciones[d.clave] === USAR_REGLA ? 'text-fg-secondary' : 'text-fg'}>
+            {textoCuenta(d.clave)}
+          </span>
+        );
+      },
+    },
+    { id: 'origen', encabezado: t('config.origenColumna'), celda: (d) => <span className="text-fg-secondary">{textoOrigen(d.clave)}</span>, ocultarDebajo: 'sm' },
+    {
+      id: 'cambiar',
+      encabezado: '',
+      alinear: 'derecha',
+      ancho: 96,
+      celda: (d) => (
+        <button
+          type="button"
+          onClick={() => {
+            setNuevaCuenta(null);
+            setEditando(d.clave);
+          }}
+          className="text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {t('accion.cambiar')}
+        </button>
+      ),
+    },
+  ];
+
+  const tablaGrupo = (grupo: GrupoConfiguracion, definiciones: DefinicionClave[]) => (
+    <DataTable
+      columnas={columnasDe(grupo)}
+      filas={definiciones}
+      obtenerId={(d) => d.clave}
+      etiqueta={t(`config.grupo.${grupo}`)}
+      densidad="compacta"
+      tonoFila={(d) => (invalidaDe(d.clave) ? 'advertencia' : undefined)}
+    />
+  );
+
+  const aviso = invalidas[0];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <Settings className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configuración contable</h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Cuentas por defecto que usan los asientos automáticos
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => void abrirAsistente()} className="dark:border-gray-600">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Proponer según el sector
-          </Button>
-          <Button onClick={() => void guardar(elecciones)} disabled={guardando} className="bg-blue-600 hover:bg-blue-700">
-            {guardando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Guardar
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        titulo={t('config.titulo')}
+        subtitulo={pestana === 'categoria' ? t('config.subtituloCategoria') : t('config.subtitulo')}
+        icono={ListChecks}
+        migas={[{ etiqueta: t('config.migaFinanzas'), href: '/app/finanzas' }, { etiqueta: t('config.migaContabilidad'), href: '/app/finanzas/contabilidad' }, { etiqueta: t('config.titulo') }]}
+        acciones={
+          pestana === 'defecto' ? (
+            <>
+              <Button variant="outline" onClick={() => setAsistenteAbierto(true)} disabled={cargando}>
+                <Sparkles className="mr-2 size-4" strokeWidth={1.5} />
+                {t('config.proponer')}
+              </Button>
+              <Button onClick={() => void guardar(elecciones)} disabled={guardando || cargando}>
+                {guardando && <Loader2 className="mr-2 size-4 animate-spin" strokeWidth={1.5} />}
+                {t('config.guardar')}
+              </Button>
+              <RowActionsMenu
+                orientacion="horizontal"
+                tamano="md"
+                titulo={t('config.titulo')}
+                acciones={[{ id: 'reclasificar', etiqueta: t('config.reclasificar.accion'), icono: ArrowLeftRight, onSelect: () => setReclasificarAbierto(true) }]}
+              />
+            </>
+          ) : undefined
+        }
+      />
 
-      <AlertasFalloContable />
+      <TabBar<Pestana>
+        id={PESTANAS}
+        etiqueta={t('config.titulo')}
+        valor={pestana}
+        onValorChange={setPestana}
+        pestanas={[
+          { valor: 'defecto', etiqueta: t('config.pestanaDefecto') },
+          { valor: 'categoria', etiqueta: t('config.pestanaCategoria') },
+          { valor: 'fallos', etiqueta: t('config.pestanaFallos'), contador: fallos },
+        ]}
+      />
 
-      <Alert variant="info">
-        <AlertTitle>Si no eliges cuenta, se usa la de la regla</AlertTitle>
-        <AlertDescription>
-          Una clave vacía no detiene el documento. Si eliges una cuenta y después deja de ser de movimiento, el documento queda con fallo contable y se avisa aquí. La sede solo reemplaza las claves que guardes en ella.
-        </AlertDescription>
-      </Alert>
-
-      <div className="max-w-md space-y-2">
-        <Label>Alcance</Label>
-        <Select value={alcance} onValueChange={setAlcance}>
-          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="org">Toda la organización</SelectItem>
-            {sedes.map((sede) => (
-              <SelectItem key={sede.id} value={String(sede.id)}>{sede.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {grupos.map(([grupo, definiciones]) => (
-        <Card key={grupo} className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">{grupo}</CardTitle>
-            <CardDescription className="dark:text-gray-400">
-              {branchId == null ? 'Valor de la organización' : 'Reemplazo de esta sede'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {definiciones.map((definicion) => {
-              const valor = elecciones[definicion.clave] || USAR_REGLA;
-              const deLaOrganizacion = heredada(definicion.clave);
-              const invalida = invalidaDe(definicion.clave);
-              const opciones = cuentasDeMovimiento.some((cuenta) => cuenta.account_code === valor) || valor === USAR_REGLA
-                ? cuentasDeMovimiento
-                : [...cuentasDeMovimiento, ...cuentas.filter((cuenta) => cuenta.account_code === valor)];
-              return (
-                <div key={definicion.clave} className="grid gap-2 md:grid-cols-[16rem_1fr] md:items-center">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{definicion.nombre}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{definicion.ayuda}</p>
-                    {deLaOrganizacion && valor === USAR_REGLA && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400">Hereda {deLaOrganizacion} de la organización</p>
-                    )}
-                    {invalida && valor === invalida.account_code && (
-                      <p className="text-xs text-amber-700 dark:text-amber-300">
-                        {invalida.motivo}{invalida.sugerida ? `. Elige ${invalida.sugerida}` : ''}
-                      </p>
-                    )}
-                  </div>
-                  <Select
-                    value={valor}
-                    onValueChange={(cuenta) => setElecciones((prev) => ({ ...prev, [definicion.clave]: cuenta }))}
-                  >
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value={USAR_REGLA}>Usar la cuenta de la regla</SelectItem>
-                      {opciones.map((cuenta) => (
-                        <SelectItem key={cuenta.account_code} value={cuenta.account_code}>
-                          {cuenta.account_code}{cuenta.name ? ` - ${cuenta.name}` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
-
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">IVA generado en 2405</CardTitle>
-          <CardDescription className="dark:text-gray-400">
-            Las ventas nuevas usan la cuenta de IVA de esta configuración (2408 cuando se sembró el plan). Los asientos ya publicados no se reescriben. Esta acción crea un asiento nuevo que pasa el neto histórico de 2405 a 2408.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" onClick={() => setReclasificarAbierto(true)} disabled={reclasificando}>
-            Reclasificar el IVA histórico
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Dialog open={reclasificarAbierto} onOpenChange={setReclasificarAbierto}>
-        <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">Reclasificar IVA de 2405 a 2408</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se crea un asiento nuevo (débito 2405, crédito 2408) por el neto de las líneas de IVA ya publicadas en 2405. Las líneas anteriores quedan igual. Si no hay saldo, no se crea asiento.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReclasificarAbierto(false)} className="dark:border-gray-600">Cancelar</Button>
-            <Button
-              disabled={reclasificando}
-              onClick={() => {
-                setReclasificando(true);
-                void ConfiguracionContableService.reclasificarIvaGenerado()
-                  .then((r) => {
-                    if (r.repetida) toast.message('Esa reclasificación ya estaba hecha');
-                    else if (!r.journal_entry_id || r.monto <= 0.01) toast.message('No hay IVA en 2405 por reclasificar');
-                    else toast.success('Asiento de reclasificación creado');
-                    setReclasificarAbierto(false);
-                  })
-                  .catch(() => toast.error('No se pudo reclasificar el IVA'))
-                  .finally(() => setReclasificando(false));
-              }}
-            >
-              Crear el asiento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={asistenteAbierto} onOpenChange={setAsistenteAbierto}>
-        <DialogContent className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">Propuesta para {nombreSector(tipo)}</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Sale de la plantilla PUC y del sector. Se guarda en el alcance elegido arriba, la organización o la sede. Solo se guardan las cuentas que ya están en el plan y son de movimiento. El resto sigue con la regla.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto space-y-2 py-2">
-            {filasPropuesta.map((fila) => (
-              <div key={fila.clave} className="flex items-start justify-between gap-3 text-sm">
-                <span className="text-gray-700 dark:text-gray-300">{fila.nombre}</span>
-                <span className={fila.sirve ? 'text-gray-900 dark:text-white' : 'text-amber-700 dark:text-amber-300'}>
-                  {fila.codigo}{fila.nombreCuenta ? ` - ${fila.nombreCuenta}` : ''}
-                  {fila.sirve ? '' : ' · no se guardará: no está en el plan'}
-                </span>
+      <div role="tabpanel" id={idPanel(PESTANAS, pestana)} aria-labelledby={idPestana(PESTANAS, pestana)} className="flex flex-col gap-4">
+        {pestana === 'defecto' && (
+          <>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+              <div className="w-full max-w-xs space-y-1.5">
+                <Label htmlFor="config-alcance">{t('config.aplicarA')}</Label>
+                <Select value={alcance} onValueChange={setAlcance}>
+                  <SelectTrigger id="config-alcance">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="org">{t('config.todaOrganizacion')}</SelectItem>
+                    {sedes.map((sede) => (
+                      <SelectItem key={sede.id} value={String(sede.id)}>{sede.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAsistenteAbierto(false)} className="dark:border-gray-600">Cancelar</Button>
-            <Button onClick={() => void aplicarAsistente()} disabled={guardando} className="bg-blue-600 hover:bg-blue-700">
-              Aplicar esta propuesta
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <p className="text-sm text-fg-secondary sm:pb-2">{t('config.ayudaAlcance')}</p>
+            </div>
+
+            {aviso && (
+              <AvisoTonal
+                tono="advertencia"
+                titulo={t('config.revisar.titulo', { n: invalidas.length })}
+                descripcion={
+                  aviso.sugerida
+                    ? t('config.revisar.conSugerida', { clave: t(`claves.${aviso.clave}.nombre`), cuenta: aviso.account_code, sugerida: aviso.sugerida })
+                    : t('config.revisar.sinSugerida', { clave: t(`claves.${aviso.clave}.nombre`), cuenta: aviso.account_code })
+                }
+                accion={
+                  aviso.sugerida
+                    ? { etiqueta: t('config.revisar.usar'), onClick: () => setElecciones((prev) => ({ ...prev, [aviso.clave]: aviso.sugerida as string })) }
+                    : undefined
+                }
+              />
+            )}
+
+            {cargando ? (
+              <Skeleton className="h-64 w-full rounded-lg" />
+            ) : (
+              GRUPOS.map(({ grupo, definiciones }) => {
+                const avisoVentas = grupo === 'ventas' && ingresoEfectivo?.origen === 'regla' && ingresoEfectivo.cuenta ? (
+                  <AvisoTonal compacto tono="informacion" titulo={t('config.ventasPorRegla', { cuenta: ingresoEfectivo.cuenta })} />
+                ) : null;
+                return GRUPOS_ABIERTOS.includes(grupo) ? (
+                  <div key={grupo} className="flex flex-col gap-2">
+                    {avisoVentas}
+                    {tablaGrupo(grupo, definiciones)}
+                  </div>
+                ) : (
+                  <SeccionPlegable key={grupo} titulo={t(`config.grupo.${grupo}`)} resumen={t('config.nClaves', { n: definiciones.length })}>
+                    {tablaGrupo(grupo, definiciones)}
+                  </SeccionPlegable>
+                );
+              })
+            )}
+          </>
+        )}
+
+        {pestana === 'categoria' && <PorCategoria />}
+
+        {pestana === 'fallos' && (
+          <>
+            <AlertasFalloContable />
+            {fallos === 0 && <EmptyState titulo={t('config.sinFallos')} descripcion={t('config.sinFallosAyuda')} />}
+          </>
+        )}
+      </div>
+
+      <Dialogo
+        abierto={!!editando}
+        onAbiertoChange={(v) => !v && setEditando(null)}
+        titulo={editando ? t(`claves.${editando}.nombre`) : ''}
+        descripcion={editando ? t(`claves.${editando}.ayuda`) : undefined}
+        ancho={520}
+        secundarios={[{
+          etiqueta: t('config.usarRegla'),
+          onClick: () => {
+            if (editando) setElecciones((prev) => ({ ...prev, [editando]: USAR_REGLA }));
+            setEditando(null);
+          },
+        }]}
+        primario={{
+          etiqueta: t('dialogo.aplicar'),
+          deshabilitada: !nuevaCuenta,
+          motivo: nuevaCuenta ? undefined : t('dialogo.eligeCuenta'),
+          onClick: () => {
+            if (editando && nuevaCuenta) setElecciones((prev) => ({ ...prev, [editando]: nuevaCuenta.account_code }));
+            setEditando(null);
+          },
+        }}
+      >
+        <SelectorCuenta valor={nuevaCuenta} onCambiar={setNuevaCuenta} buscar={buscarCuentas} etiqueta={t('dialogo.cambiarPor')} />
+      </Dialogo>
+
+      <Dialogo
+        abierto={reclasificarAbierto}
+        onAbiertoChange={setReclasificarAbierto}
+        titulo={t('config.reclasificar.titulo')}
+        descripcion={t('config.reclasificar.descripcion')}
+        primario={{ etiqueta: t('config.reclasificar.crear'), cargando: reclasificando, onClick: reclasificar }}
+      />
+
+      <Dialogo
+        abierto={asistenteAbierto}
+        onAbiertoChange={setAsistenteAbierto}
+        titulo={t('config.asistente.titulo', { sector: nombreSector(tipo) })}
+        descripcion={t('config.asistente.descripcion')}
+        ancho={672}
+        primario={{ etiqueta: t('config.asistente.aplicar'), cargando: guardando, onClick: () => void aplicarAsistente() }}
+      >
+        <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
+          {filasPropuesta.map((fila) => (
+            <div key={fila.clave} className="flex items-start justify-between gap-3 text-sm">
+              <span className="text-fg-secondary">{t(`claves.${fila.clave}.nombre`)}</span>
+              <span className={fila.sirve ? 'text-fg' : 'text-warning-text'}>
+                {fila.codigo}{fila.nombreCuenta ? ` · ${fila.nombreCuenta}` : ''}
+                {fila.sirve ? '' : ` · ${t('config.asistente.noEnPlan')}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Dialogo>
     </div>
   );
 }

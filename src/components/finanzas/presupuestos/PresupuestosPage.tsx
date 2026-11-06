@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { BudgetService, Budget, BudgetLine } from './BudgetService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
@@ -27,6 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function PresupuestosPage() {
   // Importes en la moneda base de la organización (con su locale y decimales).
   const { formatear: formatCurrency } = useMonedaOrganizacion();
+  const permisos = usePermisosFinanzas();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [lines, setLines] = useState<BudgetLine[]>([]);
@@ -52,6 +54,15 @@ export function PresupuestosPage() {
     if (!formData.name) { toast.error('Nombre requerido'); return; }
     try { await BudgetService.create(formData); toast.success('Presupuesto creado'); setShowDialog(false); load(); }
     catch { toast.error('Error al crear'); }
+  };
+
+  const handleAprobar = async (id: string) => {
+    try {
+      const respuesta = await fetch(`/api/finanzas/presupuestos/${id}/aprobar`, { method: 'POST' });
+      if (!respuesta.ok) throw new Error('aprobar');
+      toast.success('Presupuesto aprobado');
+      load();
+    } catch { toast.error('No se pudo aprobar'); }
   };
 
   const handleDelete = async (id: string) => {
@@ -102,6 +113,9 @@ export function PresupuestosPage() {
                       <div className="text-xs text-gray-500 dark:text-gray-400">{b.fiscal_year} | {formatCurrency(b.total_amount)}</div>
                     </div>
                     <Badge className={STATUS_COLORS[b.status] || ''}>{b.status}</Badge>
+                    {b.status === 'draft' && permisos.aprobar && (
+                      <Button variant="outline" size="sm" className="h-8" onClick={(e) => { e.stopPropagation(); void handleAprobar(b.id); }}>Aprobar</Button>
+                    )}
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}

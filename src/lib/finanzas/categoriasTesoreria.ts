@@ -55,9 +55,9 @@ export const PREDEFINIDAS: readonly CategoriaPredefinida[] = [
   { tipo: 'egreso', clave: 'aseo', nombre: 'Aseo y cafetería', icono: 'coffee', cuenta: '5195', orden: 120, ayuda: 'Diversos. Elija el auxiliar de aseo si existe.' },
   { tipo: 'egreso', clave: 'honorarios', nombre: 'Honorarios', icono: 'briefcase', cuenta: '5110', orden: 130, ayuda: 'Honorarios.' },
   { tipo: 'egreso', clave: 'seguros', nombre: 'Seguros', icono: 'shield-check', cuenta: '5130', orden: 140, ayuda: 'Seguros.' },
-  { tipo: 'egreso', clave: 'impuestos', nombre: 'Impuestos', icono: 'landmark', cuenta: '5115', orden: 150, ayuda: 'Gasto. Según el caso use 2408 (IVA) o 2365 (retención en la fuente).' },
+  { tipo: 'egreso', clave: 'impuestos', nombre: 'Impuestos', icono: 'landmark', cuenta: '', orden: 150, ayuda: 'Agrupa las subcategorías. No lleva cuenta y no recibe movimientos.' },
   { tipo: 'egreso', clave: 'comisiones_bancarias', nombre: 'Comisiones bancarias', icono: 'landmark', cuenta: '53051501', orden: 160, ayuda: 'Comisiones bancarias.' },
-  { tipo: 'egreso', clave: 'gmf', nombre: 'GMF 4x1000', icono: 'banknote', cuenta: '511595', orden: 170, ayuda: 'Gravamen a los movimientos financieros.' },
+  { tipo: 'egreso', clave: 'gmf', nombre: 'GMF 4x1000', icono: 'banknote', cuenta: '511595', orden: 170, ayuda: 'Gravamen a los movimientos financieros. Es gasto directo.' },
   { tipo: 'egreso', clave: 'intereses_pagados', nombre: 'Intereses', icono: 'percent', cuenta: '530520', orden: 180, ayuda: 'Intereses pagados.' },
   { tipo: 'egreso', clave: 'software', nombre: 'Software y suscripciones', icono: 'monitor', cuenta: '5165', orden: 190, ayuda: 'La alternativa es 5195, diversos.' },
   { tipo: 'egreso', clave: 'combustible', nombre: 'Combustible', icono: 'fuel', cuenta: '5195', orden: 200, ayuda: 'Diversos. Elija el auxiliar de combustible si existe.' },
@@ -68,6 +68,96 @@ export const PREDEFINIDAS: readonly CategoriaPredefinida[] = [
   { tipo: 'egreso', clave: 'devoluciones_clientes', nombre: 'Devoluciones a clientes', icono: 'undo-2', cuenta: '4175', orden: 250, ayuda: 'Devoluciones en ventas. Se debita contra el ingreso.' },
   { tipo: 'egreso', clave: 'otros_gastos', nombre: 'Otros gastos', icono: 'circle-minus', cuenta: '5195', orden: 260, ayuda: 'Diversos.' },
 ];
+
+/**
+ * Subcategorías bajo «Impuestos» (`fn_tesoreria_sembrar_impuestos`,
+ * 20261107101000). Los códigos son los aprobados en 20261027210000; la siembra
+ * solo los usa si existen en el plan de la empresa, nunca los crea.
+ */
+export const SUBCATEGORIAS_IMPUESTO: readonly { clave: string; nombre: string; cuenta: string }[] = [
+  { clave: 'imp_iva', nombre: 'Pago de IVA', cuenta: '24080501' },
+  { clave: 'imp_inc', nombre: 'Pago de INC', cuenta: '24950501' },
+  { clave: 'imp_retefuente', nombre: 'Pago de retención en la fuente', cuenta: '23652501' },
+  { clave: 'imp_reteiva', nombre: 'Pago de ReteIVA', cuenta: '23670501' },
+  { clave: 'imp_reteica', nombre: 'Pago de ReteICA', cuenta: '23680501' },
+  { clave: 'imp_ica', nombre: 'Pago de ICA propio', cuenta: '24120501' },
+  { clave: 'imp_renta', nombre: 'Pago de renta', cuenta: '24040501' },
+  { clave: 'imp_gasto', nombre: 'Impuestos que son gasto', cuenta: '51159501' },
+];
+
+export type RolImpuesto = 'agrupa' | 'pasivo' | 'gasto' | 'subcategoria';
+
+const CLAVES_PASIVO = new Set(['imp_iva', 'imp_inc', 'imp_retefuente', 'imp_reteiva', 'imp_reteica', 'imp_ica', 'imp_renta']);
+
+/** Mismo criterio que `fn_categoria_impuesto_rol`. `null` si no es de impuestos. */
+export function rolImpuesto(clave: string | null | undefined, clavePadre: string | null | undefined): RolImpuesto | null {
+  if (clave === 'impuestos') return 'agrupa';
+  if (clave && CLAVES_PASIVO.has(clave)) return 'pasivo';
+  if (clave === 'imp_gasto' || clave === 'gmf') return 'gasto';
+  if (clavePadre === 'impuestos') return 'subcategoria';
+  return null;
+}
+
+/** El padre organiza: no se elige en un movimiento. */
+export function esImputable(rol: RolImpuesto | null): boolean {
+  return rol !== 'agrupa';
+}
+
+/** Sin cuenta, el movimiento caería en el asiento genérico de gasto. */
+export function exigeCuentaAlUsar(rol: RolImpuesto | null, clave: string | null | undefined): boolean {
+  return rol === 'pasivo' || rol === 'subcategoria' || clave === 'imp_gasto';
+}
+
+/** Pagar un impuesto de pasivo cancela la clase 2; no vuelve a causar el gasto. */
+export function cuentaPermitidaParaRol(rol: RolImpuesto | null, cuenta: string): boolean {
+  return rol !== 'pasivo' || cuenta.startsWith('2');
+}
+
+/** Lo que muestra la columna Tipo. Una subcategoría manual se clasifica por su cuenta. */
+export function tipoImpuesto(rol: RolImpuesto | null, cuenta: string | null | undefined): 'agrupa' | 'cancela_pasivo' | 'gasto' | null {
+  if (rol === 'agrupa') return 'agrupa';
+  if (rol === 'pasivo') return 'cancela_pasivo';
+  if (rol === 'gasto') return 'gasto';
+  if (rol === 'subcategoria') return cuenta?.startsWith('2') ? 'cancela_pasivo' : 'gasto';
+  return null;
+}
+
+export const CODIGOS_ERROR_CATEGORIA = [
+  'padre_no_imputable',
+  'cuenta_obligatoria',
+  'impuesto_cancela_pasivo',
+  'cuenta_no_es_de_movimiento',
+] as const;
+export type CodigoErrorCategoria = (typeof CODIGOS_ERROR_CATEGORIA)[number];
+
+export function codigoErrorCategoria(error: { message?: string } | null | undefined): CodigoErrorCategoria | null {
+  const mensaje = error?.message ?? '';
+  return CODIGOS_ERROR_CATEGORIA.find((codigo) => mensaje.includes(codigo)) ?? null;
+}
+
+export interface CategoriaOrdenable {
+  id: number;
+  padre_id: number | null;
+  orden: number;
+}
+
+/**
+ * Cada padre seguido de sus hijas, para pintarlas con sangría. Una hija cuyo
+ * padre no está en la lista (filtrado o de otro tipo) queda en la raíz.
+ */
+export function ordenarConHijas<T extends CategoriaOrdenable>(categorias: readonly T[]): { fila: T; nivel: 0 | 1 }[] {
+  const ids = new Set(categorias.map((categoria) => categoria.id));
+  const porOrden = (a: T, b: T) => a.orden - b.orden || a.id - b.id;
+  const raices = categorias.filter((categoria) => categoria.padre_id == null || !ids.has(categoria.padre_id)).sort(porOrden);
+  const salida: { fila: T; nivel: 0 | 1 }[] = [];
+  for (const raiz of raices) {
+    salida.push({ fila: raiz, nivel: 0 });
+    for (const hija of categorias.filter((categoria) => categoria.padre_id === raiz.id).sort(porOrden)) {
+      salida.push({ fila: hija, nivel: 1 });
+    }
+  }
+  return salida;
+}
 
 export const MENSAJE_ELIGE_CUENTA = 'Elige una cuenta de movimiento';
 export const MENSAJE_SIN_TESORERIA = 'No hay cuenta de caja o banco para este movimiento';

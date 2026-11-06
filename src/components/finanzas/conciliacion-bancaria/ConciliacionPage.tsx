@@ -4,9 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { 
-  ArrowLeft, ArrowRightLeft, Plus, RefreshCw, 
-  Calendar, CheckCircle, Clock, FileText, Eye 
+import {
+  ArrowLeft, ArrowRightLeft, Plus, RefreshCw,
+  Calendar, CheckCircle, Clock, FileText, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +19,13 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useTranslations } from 'next-intl';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { sentidoDiferencia } from '@/lib/finanzas/conciliacion/diferencia';
+import { SIN_DATO } from '@/lib/finanzas/pendientesContables';
 
 export function ConciliacionPage() {
+  const t = useTranslations('conciliacionCierre');
   const router = useRouter();
   const { branchFilter } = useBranch();
   const { paraDocumento } = useMonedaOrganizacion();
@@ -60,13 +65,6 @@ export function ConciliacionPage() {
     setIsRefreshing(false);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -138,7 +136,7 @@ export function ConciliacionPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
-          <Button 
+          <Button
             onClick={() => router.push('/app/finanzas/conciliacion-bancaria/nuevo')}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
@@ -254,7 +252,7 @@ export function ConciliacionPage() {
               <p className="text-gray-500 dark:text-gray-400 mb-4">
                 Crea una nueva conciliación para comenzar a conciliar tus movimientos bancarios.
               </p>
-              <Button 
+              <Button
                 onClick={() => router.push('/app/finanzas/conciliacion-bancaria/nuevo')}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -265,7 +263,7 @@ export function ConciliacionPage() {
           ) : (
             <div className="space-y-3">
               {filteredReconciliations.map(rec => (
-                <div 
+                <div
                   key={rec.id}
                   className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors cursor-pointer"
                   onClick={() => router.push(`/app/finanzas/conciliacion-bancaria/${rec.id}`)}
@@ -285,22 +283,32 @@ export function ConciliacionPage() {
                       </p>
                       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <Calendar className="h-3 w-3" />
-                        <span>{formatDate(rec.period_start)} - {formatDate(rec.period_end)}</span>
+                        <span>{formatPlainDate(rec.period_start)} - {formatPlainDate(rec.period_end)}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-sm text-gray-500 dark:text-gray-400">Diferencia</p>
+                      {/* Sin saldo del extracto la diferencia se desconoce: no es cero. */}
                       <p className={`font-semibold ${
-                        (rec.difference || 0) === 0 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
+                        rec.statement_balance === null
+                          ? 'text-gray-500 dark:text-gray-400'
+                          : (rec.difference ?? 0) === 0
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {formatMoneda(
-                          rec.difference || 0,
-                          paraDocumento(accounts.find((a) => a.id === rec.bank_account_id)?.currency),
-                        )}
+                        {rec.statement_balance === null
+                          ? SIN_DATO
+                          : formatMoneda(
+                              rec.difference ?? 0,
+                              paraDocumento(accounts.find((a) => a.id === rec.bank_account_id)?.currency),
+                            )}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {rec.statement_balance === null
+                          ? t('sentido.faltaExtracto')
+                          : t(`sentido.${sentidoDiferencia(rec.difference ?? 0)}`)}
                       </p>
                     </div>
                     {getStatusBadge(rec.status)}

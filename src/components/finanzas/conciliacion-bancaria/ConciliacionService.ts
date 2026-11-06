@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { BancosService, BankReconciliation, BankReconciliationItem, BankAccount, BankTransaction } from '../bancos/BancosService';
+import { BancosService, BankReconciliation, BankReconciliationItem, BankAccount, BankTransaction, ResultadoCierreConciliacion } from '../bancos/BancosService';
 import type { CategoriaExtracto, LineaExtracto } from '@/lib/finanzas/conciliacion/extracto';
+import { aNumero } from '@/lib/finanzas/conciliacion/diferencia';
 
 export interface LineaExtractoGuardada {
   id: string;
@@ -14,6 +15,28 @@ export interface LineaExtractoGuardada {
   estado: 'pendiente' | 'emparejada' | 'creada';
   empareje: string | null;
   bank_transaction_id: number | null;
+}
+
+export interface PartidaConciliacion {
+  id: string;
+  fecha: string;
+  descripcion: string;
+  /** Con el signo de la diferencia: saldo en libros - saldo del extracto. */
+  valor: number;
+  estado: 'pendiente' | 'resuelta';
+  registrada_por: string | null;
+  resuelta_en: string | null;
+  resuelta_aqui: boolean;
+  bank_transaction_id: number | null;
+  origen_fin: string;
+}
+
+export interface PartidasDeConciliacion {
+  cierre: { cerrada_por: string | null; cerrada_en: string | null; motivo: string | null } | null;
+  /** Suma de las pendientes de conciliaciones anteriores de la cuenta. */
+  traidas_pendientes: number;
+  propias: PartidaConciliacion[];
+  traidas: PartidaConciliacion[];
 }
 
 export interface ConciliacionStats {
@@ -70,8 +93,8 @@ export class ConciliacionService {
         ...rec,
         opening_balance: parseFloat(rec.opening_balance),
         closing_balance: parseFloat(rec.closing_balance),
-        statement_balance: rec.statement_balance ? parseFloat(rec.statement_balance) : null,
-        difference: rec.difference ? parseFloat(rec.difference) : null,
+        statement_balance: aNumero(rec.statement_balance),
+        difference: aNumero(rec.difference),
         bank_account: rec.bank_accounts
       }));
     } catch (error) {
@@ -159,9 +182,10 @@ export class ConciliacionService {
     return BancosService.crearConciliacion(data);
   }
 
+  // `difference` es generada y `closing_balance` lo calcula la base: no se escriben.
   static async actualizarConciliacion(
     id: string,
-    updates: Partial<BankReconciliation>
+    updates: Partial<Pick<BankReconciliation, 'opening_balance' | 'statement_balance' | 'notes'>>
   ): Promise<void> {
     const organizationId = this.getOrganizationId();
     try {
@@ -181,8 +205,40 @@ export class ConciliacionService {
     }
   }
 
-  static async cerrarConciliacion(id: string): Promise<void> {
-    return BancosService.cerrarConciliacion(id);
+  static async cerrarConciliacion(id: string, motivo?: string | null): Promise<ResultadoCierreConciliacion> {
+    return BancosService.cerrarConciliacion(id, motivo);
+  }
+
+  static async obtenerPartidas(reconciliationId: string): Promise<PartidasDeConciliacion> {
+    const { data, error } = await supabase.rpc('fn_conciliacion_partidas', {
+      p_organization_id: this.getOrganizationId(),
+      p_reconciliation_id: reconciliationId,
+    });
+    if (error) throw error;
+    const crudo = (data ?? {}) as Partial<PartidasDeConciliacion>;
+    const filas = (lista: PartidaConciliacion[] | undefined) =>
+      (lista ?? []).map((p) => ({ ...p, valor: Number(p.valor) }));
+    return {
+      cierre: crudo.cierre ?? null,
+      traidas_pendientes: Number(crudo.traidas_pendientes ?? 0),
+      propias: filas(crudo.propias),
+      traidas: filas(crudo.traidas),
+    };
+  }
+
+  /** La partida apareció en el extracto. No genera asiento. */
+  static async resolverPartida(
+    partidaId: string,
+    reconciliationId: string,
+    transactionId: number | null
+  ): Promise<void> {
+    const { error } = await supabase.rpc('fn_conciliacion_partida_resolver', {
+      p_organization_id: this.getOrganizationId(),
+      p_partida_id: partidaId,
+      p_reconciliation_id: reconciliationId,
+      p_bank_transaction_id: transactionId,
+    });
+    if (error) throw error;
   }
 
   static async matchTransaccion(
@@ -233,37 +289,6 @@ export class ConciliacionService {
     } catch (error) {
       console.error('Error obteniendo estadísticas:', error);
       return { total: 0, draft: 0, in_progress: 0, closed: 0 };
-    }
-  }
-
-  static async recalcularDiferencia(reconciliationId: string): Promise<number> {
-    try {
-      const reconciliation = await this.obtenerConciliacion(reconciliationId);
-      if (!reconciliation) throw new Error('Conciliación no encontrada');
-
-      const items = await this.obtenerItemsConciliacion(reconciliationId);
-      const matchedAmount = items
-        .filter(i => i.is_matched)
-        .reduce((sum, i) => sum + i.amount, 0);
-
-      const difference = (reconciliation.statement_balance || 0) - 
-        (reconciliation.opening_balance + matchedAmount);
-
-      const { error } = await supabase
-        .from('bank_reconciliations')
-        // `difference` es una columna GENERATED en bank_reconciliations: no se escribe.
-        .update({
-          closing_balance: reconciliation.opening_balance + matchedAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reconciliationId)
-        .eq('organization_id', this.getOrganizationId());
-      if (error) throw error;
-
-      return difference;
-    } catch (error) {
-      console.error('Error recalculando diferencia:', error);
-      throw error;
     }
   }
 

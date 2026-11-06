@@ -4567,7 +4567,15 @@
       "sitio-web_analitica": "Analytics",
       "sitio-web_sedes": "Locations on the web",
       "sitio-web_configuracion": "Settings",
-      "plan_historial": "Purchases"
+      "plan_historial": "Purchases",
+      "finanzas_contabilidad_pendientes": "Accounting exceptions",
+      "finanzas_contabilidad_informes_flujo-efectivo": "Statement of cash flows",
+      "finanzas_contabilidad_informes_cambios-patrimonio": "Changes in equity",
+      "finanzas_contabilidad_informes_notas": "Notes to the financial statements",
+      "finanzas_contabilidad_informes_certificacion": "Certification of financial statements",
+      "finanzas_contabilidad_informes_indicadores": "Financial ratios",
+      "finanzas_contabilidad_informes_presupuesto-real": "Budget versus actual",
+      "finanzas_contabilidad_informes_libros": "Accounting books"
     },
     "grupos": {
       "venta": "Sales",
@@ -21886,7 +21894,10 @@
       "tercero_requerido": "This account requires the third party's tax ID.",
       "soporte_invalido": "The attachment must be a PDF or an image for this organization.",
       "asiento_publicado_inmutable": "The journal entry is already posted and cannot be changed. Reverse it with an offsetting entry.",
-      "desconocido": "The operation could not be completed."
+      "desconocido": "The operation could not be completed.",
+      "categoria_no_imputable": "“Taxes” groups the subcategories. Choose one of them.",
+      "categoria_requiere_cuenta": "This tax category needs an account from the chart.",
+      "impuesto_cancela_pasivo": "Paying this tax settles a liability: choose a class 2 account."
     },
     "movimiento": {
       "tituloIngreso": "New income entry",
@@ -21934,7 +21945,10 @@
       "faltaCentro": "This account requires a cost center.",
       "faltaTercero": "This account requires the third party's tax ID.",
       "soporteTipo": "The attachment must be a PDF, JPG, PNG or WebP.",
-      "soportePeso": "The attachment cannot exceed 5 MB."
+      "soportePeso": "The attachment cannot exceed 5 MB.",
+      "ayudaPasivo": "Settles the liability. It is not an expense.",
+      "ayudaGasto": "It is a direct expense.",
+      "ayudaSinCuenta": "Your chart does not have the suggested account. Choose one or create it in the chart of accounts."
     },
     "categorias": {
       "titulo": "Treasury categories",
@@ -21960,7 +21974,35 @@
       "vacio": "There are no categories in this group.",
       "errorCarga": "Categories could not be loaded.",
       "errorGuardar": "The category could not be saved.",
-      "buscarCuenta": "Search account"
+      "buscarCuenta": "Search account",
+      "buscar": "Search category",
+      "nombreColumna": "Category",
+      "cuentaColumna": "Suggested account",
+      "tipoColumna": "Type",
+      "estadoColumna": "Status",
+      "accionesColumna": "Actions",
+      "tipoAgrupa": "Groups",
+      "tipoCancelaPasivo": "Settles liability",
+      "tipoGasto": "Expense",
+      "cuentaPadre": "No account: it organizes, it takes no movements",
+      "cuentaFaltante": "No account: required when used",
+      "padreAyuda": "This category groups the tax subcategories. It has no account and cannot be chosen in a movement.",
+      "ayudaPasivo": "Class 2 accounts only: the payment settles the liability.",
+      "avisoTitulo": "Paying a tax does not book the expense again",
+      "avisoDetalle": "The payment settles the liability booked on the sale or purchase. Only those marked Expense, like the financial transactions levy, are direct expenses.",
+      "activar": "Activate",
+      "desactivarAccion": "Deactivate",
+      "eliminarTitulo": "Delete this category?",
+      "eliminarDetalle": "“{nombre}” will no longer be available. Recorded movements do not change.",
+      "errores": {
+        "padre_no_imputable": "“Taxes” groups and has no account.",
+        "cuenta_obligatoria": "This tax category needs an account.",
+        "impuesto_cancela_pasivo": "This category settles a liability: choose a class 2 account.",
+        "cuenta_no_es_de_movimiento": "The account is not a posting account. Choose a sub-account from the chart."
+      },
+      "migaFinanzas": "Finance",
+      "migaTesoreria": "Treasury",
+      "migaCategorias": "Categories"
     },
     "reporte": {
       "titulo": "Report by category",
@@ -38711,6 +38753,1637 @@
       "desactivada": "Promotion deactivated",
       "activada": "Promotion activated",
       "errorEstado": "Couldn't change the status"
+    }
+  },
+  "pedidosManuales": {
+    "acciones": {
+      "pedidoManual": "Manual order",
+      "reconstruir": "Rebuild paid order",
+      "pagosSinPedido": "Payments without order"
+    },
+    "productos": {
+      "buscar": "Search product by name or SKU",
+      "vacio": "Search and add the order's products.",
+      "precioCobrado": "Price charged",
+      "precioVigente": "Current",
+      "menos": "One unit less",
+      "mas": "One unit more",
+      "quitar": "Remove product",
+      "cantidad": "Quantity"
+    },
+    "manual": {
+      "titulo": "Manual order",
+      "descripcion": "Creates a store order with its WO-… number, pending payment. If Wompi or Bold is connected, a payment link is generated.",
+      "crear": "Create order",
+      "tienda": "Store (branch)",
+      "elegirTienda": "Choose the branch",
+      "canal": "Channel",
+      "canalWhatsapp": "WhatsApp",
+      "canalTelefono": "Phone",
+      "cliente": "Customer",
+      "nombre": "Name",
+      "celular": "Mobile",
+      "correo": "Email",
+      "direccion": "Address",
+      "entrega": "Delivery",
+      "recoger": "Pick up at the store",
+      "domicilio": "Home delivery",
+      "envio": "Shipping cost",
+      "productos": "Products",
+      "preciosVigentes": "Prices and taxes are the current ones from Inventory; the server calculates them.",
+      "notas": "Order notes (optional)",
+      "generarLink": "Generate payment link",
+      "generarLinkAyuda": "With the connected gateway (Wompi or Bold), for the order total.",
+      "faltaSede": "Choose the store",
+      "faltaNombre": "Enter the customer's name",
+      "faltanProductos": "Add at least one product",
+      "errorCrear": "The order could not be created.",
+      "creadoTitulo": "Order {pedido} created",
+      "creadoDescripcion": "Total {total}. Pending payment.",
+      "listo": "Done",
+      "cerrar": "Close",
+      "linkDePago": "Payment link",
+      "copiarLink": "Copy link",
+      "enviarWhatsapp": "Send via WhatsApp",
+      "linkCopiado": "Link copied",
+      "linkAviso": "When the customer pays, rebuild the payment from «Payments without order»: the link payment is recognized and this same order is completed.",
+      "linkFallo": "The order was created, but the gateway did not generate the payment link.",
+      "sinPasarela": "The order was created. The organization has no Wompi or Bold connected to generate the link.",
+      "sinLink": "The order was created without a payment link.",
+      "mensajeWhatsapp": "Hi, here is the link to pay your order {pedido} for {total}: {url}"
+    },
+    "reconstruir": {
+      "titulo": "Rebuild paid order",
+      "descripcion": "For an approved payment with no order. The gateway is queried (read only) and the order is created only if the payment is approved and the amount matches.",
+      "pasarela": "Gateway",
+      "elegirPasarela": "Choose the gateway",
+      "proximamente": "no lookup yet",
+      "sinPasarelas": "The organization has no connected payment gateways.",
+      "buscarPor": "Search by",
+      "referencia": "Reference",
+      "transaccion": "Transaction ID",
+      "boldSoloId": "Bold is looked up by transaction ID.",
+      "valor": "Amount charged",
+      "fecha": "Payment date",
+      "fechaAyuda": "Empty: the one reported by the gateway.",
+      "verificar": "Verify with the gateway",
+      "estadoCobro": "Payment status",
+      "aprobado": "Approved",
+      "metodo": "Method",
+      "decision": {
+        "ya_existe": "This payment already has an order: it will not be duplicated.",
+        "completar": "There is a pending order with this payment: that same order will be marked as paid.",
+        "crear": "The order will be created with the same store number.",
+        "crear_nuevo": "The payment has no store WO-… prefix: it will be created with a new number and the original reference will be kept in the notes.",
+        "rechazar": "This payment cannot be rebuilt here."
+      },
+      "rechazo": {
+        "otraTienda": "The reference belongs to another store: rebuild it from that organization.",
+        "otraOrganizacion": "That payment already has an order in another organization."
+      },
+      "cliente": "Customer",
+      "nombre": "Name",
+      "celular": "Mobile",
+      "correo": "Email",
+      "direccion": "Address",
+      "tienda": "Store (branch)",
+      "elegirTienda": "Choose the branch",
+      "sugerida": "suggested by the products",
+      "envio": "Shipping cost",
+      "productos": "Products",
+      "productosAyuda": "Required: the gateway does not send the lines. Enter the price charged if it is not the current one; the sum plus shipping must equal the amount.",
+      "confirmarTienda": "I confirm this payment belongs to the store {tienda}",
+      "confirmarTiendaAyuda": "Several organizations may share the gateway merchant: without the WO-… prefix there is no way to tell automatically.",
+      "primeroVerificar": "Verify the payment with the gateway first",
+      "faltaNombre": "Enter the customer's name",
+      "faltanProductos": "Add the order's products",
+      "faltaSede": "Choose the store",
+      "faltaConfirmar": "Confirm the payment's store",
+      "verPedido": "View order",
+      "completar": "Mark that order as paid",
+      "reconstruir": "Rebuild order",
+      "errorVerificar": "The payment could not be verified.",
+      "errorReconstruir": "The order could not be rebuilt.",
+      "totalNoCuadra": "Products and shipping add up to {total} and the payment was {valor}.",
+      "soloLectura": "Verify only queries the gateway: it does not charge, void or change anything there.",
+      "listo": "Order {pedido} ready"
+    },
+    "sinPedido": {
+      "titulo": "Payments without order",
+      "subtitulo": "Approved payments from the connected gateways with no order",
+      "pedidosOnline": "Online orders",
+      "actualizar": "Refresh",
+      "origen": "They come from the notifications (webhooks) recorded by the gateways in the last 90 days.",
+      "origenDetalle": "Payments with another store's prefix are not shown. For an older payment, use «Rebuild paid order» with the reference or ID from the gateway dashboard.",
+      "vacioTitulo": "No payments without order",
+      "vacioDescripcion": "Every recorded approved payment has its order.",
+      "fecha": "Date",
+      "pasarela": "Gateway",
+      "referencia": "Reference",
+      "transaccion": "Transaction",
+      "valor": "Amount",
+      "sinPrefijo": "No store prefix",
+      "reconstruir": "Rebuild",
+      "error": "Payments could not be loaded.",
+      "listo": "Order {pedido} ready"
+    }
+  },
+  "planCuentas": {
+    "titulo": "Chart of accounts",
+    "decreto": "Colombian commercial PUC, Decree 2650 of 1993",
+    "subtitulo": "{cuentas} accounts · {movimiento} posting · Colombian commercial PUC, Decree 2650 of 1993",
+    "exportar": "Export",
+    "importar": "Import",
+    "expandir": "Expand all",
+    "colapsar": "Collapse all",
+    "nuevaCuenta": "New account",
+    "buscar": "Search by code or name",
+    "verResultados": "View {cuentas} accounts",
+    "resultado": "{cuentas, plural, one {1 account matches} other {# accounts match}}. They show their path so you can create below them without leaving the search.",
+    "importadas": "{cuentas} accounts imported",
+    "migas": {
+      "finanzas": "Finance",
+      "contabilidad": "Accounting"
+    },
+    "columnas": {
+      "cuenta": "Account",
+      "nivel": "Level",
+      "naturaleza": "Nature",
+      "saldo": "Balance today",
+      "acciones": "Actions"
+    },
+    "nivel": {
+      "clase": "Class",
+      "grupo": "Group",
+      "cuenta": "Account",
+      "subcuenta": "Sub-account",
+      "auxiliar": "Auxiliary",
+      "subauxiliar": "Sub-auxiliary",
+      "legacy": "Legacy"
+    },
+    "naturaleza": {
+      "debito": "Debit",
+      "credito": "Credit",
+      "orden": "Memorandum"
+    },
+    "filtros": {
+      "nivel": "Level",
+      "naturaleza": "Nature",
+      "tipo": "Type",
+      "todos": "All",
+      "titulosYMovimiento": "Header and posting",
+      "movimiento": "Posting only",
+      "titulo": "Header only",
+      "soloActivas": "Active only"
+    },
+    "vacio": {
+      "titulo": "No chart of accounts yet",
+      "descripcion": "Create the first account or import your chart from Excel."
+    },
+    "errores": {
+      "cargarTitulo": "The chart of accounts could not be loaded",
+      "cargar": "Check your connection and try again.",
+      "guardar": "The account could not be saved.",
+      "eliminar": "It could not be deleted. It may have child accounts or entries.",
+      "importar": "The file could not be imported."
+    },
+    "eliminar": {
+      "titulo": "Delete {cuenta}?",
+      "descripcion": "This cannot be undone. The account has no entries or child accounts.",
+      "confirmar": "Delete account"
+    },
+    "fila": {
+      "abrirRama": "Open {cuenta}",
+      "cerrarRama": "Close {cuenta}",
+      "crearDebajo": "Create {nivel} under {cuenta}",
+      "inactiva": "Inactive",
+      "debito": "D",
+      "credito": "C",
+      "editar": "Edit",
+      "verMayor": "View in ledger",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "eliminar": "Delete",
+      "activada": "Account activated",
+      "desactivada": "Account deactivated",
+      "eliminada": "Account deleted"
+    },
+    "alta": {
+      "codigo": "Code",
+      "nombre": "Name",
+      "nombrePlaceholder": "Auxiliary name",
+      "pistaEnter": "saves and opens another",
+      "guardar": "Save",
+      "guardarYOtro": "Save and create another",
+      "terminar": "Finish",
+      "tituloHoja": "New auxiliary",
+      "debajoDe": "Under {cuenta}",
+      "atajoEnter": "saves and opens another auxiliary",
+      "atajoEsc": "finishes",
+      "sinCodigo": "This sub-account has no free codes left.",
+      "saldoTitulo": "{cuenta} has a balance of {saldo}",
+      "saldoDetalle": "Once the auxiliary exists it stops receiving entries. The balance moves with a reclassification entry dated today.",
+      "trasladar": "Create and transfer",
+      "nota": "Entry note",
+      "notaAyuda": "Optional. It is added to the entry description.",
+      "tituloTitulo": "{cuenta} will become a header account",
+      "tituloDetalle": "It has no balance, so there is nothing to transfer. From now on entries go to its auxiliaries.",
+      "trasladoHecho": "{asientos, plural, one {Balance transferred with 1 entry} other {Balance transferred with # entries}}",
+      "errores": {
+        "ocupado": "That code already exists. The next free one is {codigo}.",
+        "ocupadoSinLibre": "That code already exists and no free codes are left.",
+        "codigo": "An auxiliary has 8 digits and starts with the sub-account. It cannot end in 00.",
+        "padre": "The sub-account does not exist or is inactive.",
+        "nombre": "Enter the auxiliary name.",
+        "periodo": "Today's period is closed. Open it to transfer the balance.",
+        "tercero": "The balance has entries with no third party and this account requires one. Fix them before transferring.",
+        "permiso": "You do not have permission to create accounts.",
+        "sinCodigo": "This sub-account has no free codes left.",
+        "otro": "The auxiliary could not be created."
+      }
+    },
+    "panel": {
+      "tituloNueva": "New account",
+      "descripcionNueva": "For classes, groups, accounts and sub-accounts. Auxiliaries are created in the row.",
+      "sinRuta": "Top-level account",
+      "codigo": "Code",
+      "codigoAyuda": "The parent comes from the code: 110505 sits under 1105.",
+      "nombre": "Name",
+      "naturaleza": "Nature",
+      "presentacion": "IFRS presentation",
+      "presentacionAyuda": "It does not change the group name. 11 is still Disponible.",
+      "presentacionGrupo": "By group",
+      "corriente": "Current",
+      "noCorriente": "Non-current",
+      "segunPlazo": "By term",
+      "centro": "Cost center",
+      "centroObligatorio": "Required",
+      "centroOpcional": "Optional",
+      "centroNoAplica": "Not applicable",
+      "exogena": "Exógena concept",
+      "tercero": "Requires third party",
+      "descripcion": "Description",
+      "uso": "Balance {saldo} · {movimientos, plural, one {1 entry} other {# entries}}",
+      "creadaPor": "Created by {nombre} · {fecha}",
+      "creadaEl": "Created on {fecha}",
+      "crear": "Create account",
+      "guardar": "Save changes",
+      "creada": "Account created",
+      "actualizada": "Account updated",
+      "errores": {
+        "nombre": "Enter the account name.",
+        "codigo": "The code uses digits only and a PUC length: 1, 2, 4, 6, 8, or 10 and up.",
+        "ocupado": "That code already exists.",
+        "padre": "Account {padre} must exist first.",
+        "guardar": "The account could not be saved."
+      }
+    }
+  },
+  "reglasContables": {
+    "titulo": "Accounting rules",
+    "descripcion": "Automatic journal entry settings",
+    "migas": {
+      "finanzas": "Finance",
+      "contabilidad": "Accounting"
+    },
+    "exportar": "Export",
+    "nueva": "New rule",
+    "configuracion": "Accounting settings",
+    "buscar": "Search rule or account",
+    "filtros": {
+      "titulo": "Filter by source",
+      "todos": "All sources",
+      "etiqueta": "Source"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# rule points to an account that does not exist or is a header account} other {# rules point to accounts that do not exist or are header accounts}}",
+      "detalle": "A document using these rules may stay pending and not reach the ledger. Posted entries do not change.",
+      "verSolo": "Show only these",
+      "verTodas": "Show all"
+    },
+    "columnas": {
+      "regla": "Rule",
+      "evento": "Event",
+      "debito": "Debit",
+      "credito": "Credit",
+      "propuesta": "Proposal",
+      "acciones": "Actions"
+    },
+    "estadoCuenta": {
+      "inexistente": "does not exist",
+      "inactiva": "inactive",
+      "titulo": "header account"
+    },
+    "lado": {
+      "debito": "debit",
+      "credito": "credit",
+      "impuesto": "tax",
+      "descuento": "discount"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · used in {n, plural, one {# entry} other {# entries}}",
+      "vigente": "{cuenta} · current chart",
+      "pendiente": "Pending accountant"
+    },
+    "inactiva": "Inactive",
+    "vacio": {
+      "titulo": "No rules",
+      "descripcion": "Create the first automatic journal entry rule."
+    },
+    "sinResultados": "No rules match this filter.",
+    "acciones": {
+      "corregir": "Fix account",
+      "editar": "Edit",
+      "duplicar": "Duplicate",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "eliminar": "Delete"
+    },
+    "corregir": {
+      "titulo": "Fix the rule account",
+      "avisoInexistente": "Account {cuenta} does not exist in this company",
+      "avisoInactiva": "Account {cuenta} is inactive in this company",
+      "avisoTitulo": "Account {cuenta} is a header account",
+      "avisoDetalle": "Only a posting account from the chart can be selected.",
+      "cuenta": "Account",
+      "buscarCuenta": "Search account",
+      "ayudaConfiguracion": "Suggested: the account configured for this concept.",
+      "ayudaPlan": "Suggested: the only posting sub-account of that account.",
+      "ayudaUso": "Suggested: the account your entries already use.",
+      "ayudaConflicto": "The settings and the chart disagree. The accountant decides.",
+      "ayudaNinguna": "There is no evidence to suggest an account. The accountant decides.",
+      "alcance": "Applies only to new and pending documents. Posted entries are not touched.",
+      "guardar": "Save",
+      "exito": "Account fixed."
+    },
+    "bloqueo": {
+      "titulo": "Cannot save",
+      "regla": "Rule “{nombre}”",
+      "noExiste": "Account {cuenta} does not exist in your chart",
+      "noExisteDetalle": "Create it in the chart of accounts or choose another posting account.",
+      "inactiva": "Account {cuenta} is inactive",
+      "inactivaDetalle": "Activate it in the chart of accounts or choose another posting account.",
+      "titulocuenta": "Account {cuenta} is a header account",
+      "tituloDetalle": "Header accounts group others and receive no entries. Choose a posting sub-account.",
+      "irAlPlan": "Go to chart of accounts",
+      "elegirOtra": "Choose another account"
+    },
+    "formulario": {
+      "tituloNueva": "New accounting rule",
+      "tituloEditar": "Edit rule",
+      "descripcion": "Set up the rule that generates automatic entries.",
+      "nombre": "Name",
+      "nombreEjemplo": "E.g. Sale with VAT",
+      "descripcionCampo": "Description",
+      "descripcionEjemplo": "Rule description…",
+      "origen": "Source",
+      "evento": "Event",
+      "seleccionar": "Select",
+      "cuentas": "Accounts",
+      "cuentaDebito": "Debit account",
+      "cuentaCredito": "Credit account",
+      "cuentaIva": "VAT account (optional)",
+      "sinIva": "No VAT account",
+      "usarIva": "Use the document VAT",
+      "prioridad": "Priority",
+      "prioridadAyuda": "Lower number, higher priority.",
+      "guardar": "Save changes",
+      "crear": "Create rule",
+      "faltanDatos": "Complete the required fields."
+    },
+    "eliminar": {
+      "titulo": "Delete this rule?",
+      "descripcion": "“{nombre}” will stop generating entries. Posted entries do not change.",
+      "confirmar": "Delete"
+    },
+    "exito": {
+      "creada": "Rule created.",
+      "actualizada": "Rule updated.",
+      "duplicada": "Rule duplicated.",
+      "activada": "Rule activated.",
+      "desactivada": "Rule deactivated.",
+      "eliminada": "Rule deleted."
+    },
+    "errores": {
+      "carga": "The rules could not be loaded.",
+      "regla_otra_organizacion": "A rule cannot be moved to another company.",
+      "regla_no_encontrada": "The rule does not exist in this company.",
+      "datos_invalidos": "Check the rule data.",
+      "sin_permiso": "You do not have permission for this operation.",
+      "desconocido": "The operation could not be completed."
+    },
+    "seContabiliza": "Posted to {cuenta}",
+    "copia": "(copy)",
+    "csv": {
+      "origen": "Source",
+      "evento": "Event",
+      "regla": "Rule",
+      "lado": "Side",
+      "cuenta": "Account",
+      "estado": "Status",
+      "propuesta": "Proposal",
+      "evidencia": "Evidence",
+      "usos": "Entries on the proposal"
+    }
+  },
+  "conciliacionCierre": {
+    "tarjetas": {
+      "resumen": "Reconciliation summary",
+      "saldoLibros": "Book balance",
+      "saldoInicial": "Opening balance {valor}",
+      "saldoExtracto": "Statement balance",
+      "conciliado": "Reconciled",
+      "diferencia": "Difference",
+      "partidasPendientes": "Open items"
+    },
+    "sentido": {
+      "sinDiferencia": "No difference",
+      "librosMayor": "Books higher than statement",
+      "extractoMayor": "Statement higher than books",
+      "faltaExtracto": "Statement balance missing",
+      "resueltas": "{n, plural, one {With # resolved item} other {With # resolved items}}"
+    },
+    "cerrada": {
+      "por": "Closed by {nombre} on {fecha}",
+      "motivo": "Reason: {motivo}"
+    },
+    "cerrar": {
+      "titulo": "Close reconciliation",
+      "confirmar": "Close reconciliation",
+      "conPartida": "Close with open item",
+      "exito": "Reconciliation closed",
+      "motivo": "Reason",
+      "motivoEjemplo": "Deposit the bank credits next month",
+      "registro": "Who closed it and when is recorded.",
+      "sinDiferencia": "Books and statement match. A closed reconciliation can no longer be changed.",
+      "quedaPendiente": "The difference of {valor} stays open",
+      "quedaPendienteDetalle": "It moves to the next reconciliation as a reconciling item. It is not adjusted against income.",
+      "yaExplicada": "The difference of {valor} remains in carried items",
+      "yaExplicadaDetalle": "No new item is created: the carried items continue to the next reconciliation."
+    },
+    "saldoExtracto": {
+      "titulo": "Statement balance",
+      "descripcion": "Without this balance the difference is unknown. Enter it exactly as shown on the bank statement.",
+      "guardar": "Save and continue",
+      "falta": "Enter the statement balance"
+    },
+    "partidas": {
+      "tituloPropias": "Open reconciling items",
+      "tituloTraidas": "Carried from previous reconciliations",
+      "tituloTraidasMes": "Carried from {mes}",
+      "fecha": "Date",
+      "descripcion": "Description",
+      "valor": "Amount",
+      "estado": "Status",
+      "registradaPor": "Recorded by",
+      "pendiente": "Open",
+      "resueltaEl": "Resolved {fecha}",
+      "verMovimiento": "View transaction",
+      "marcarResuelta": "Mark resolved",
+      "nota": "The item creates no journal entry or income adjustment: it moves to the next reconciliation until it appears on the statement.",
+      "errorTitulo": "We could not check the open items",
+      "errorDetalle": "This does not mean there are none. Try again before closing.",
+      "reintentar": "Try again"
+    },
+    "resolver": {
+      "titulo": "Mark item as resolved",
+      "descripcion": "Use this once the item appears on the statement. It creates no journal entry.",
+      "confirmar": "Mark resolved",
+      "movimiento": "Transaction that resolves it",
+      "sinMovimiento": "No linked transaction",
+      "movimientoN": "Transaction {id}"
+    },
+    "errores": {
+      "motivo_obligatorio": "Enter the closing reason: it is required when there is a difference.",
+      "motivo_largo": "The reason is too long.",
+      "conciliacion_ya_cerrada": "This reconciliation was already closed.",
+      "conciliacion_cerrada": "The reconciliation is closed and cannot be changed.",
+      "conciliacion_anterior_abierta": "Close the previous reconciliation of this account first.",
+      "conciliacion_no_encontrada": "We could not find this reconciliation.",
+      "falta_saldo_extracto": "Enter the statement balance before closing.",
+      "partida_ya_resuelta": "This item was already resolved.",
+      "partida_no_encontrada": "We could not find this item.",
+      "partida_de_otra_conciliacion": "This item cannot be resolved in this reconciliation.",
+      "movimiento_ajeno": "The transaction does not belong to this account.",
+      "sin_permiso": "You do not have permission to do this.",
+      "desconocido": "This could not be completed. Try again."
+    }
+  },
+  "pendientesContables": {
+    "titulo": "Accounting exceptions",
+    "subtitulo": "Documents that did not reach the ledger. None of this counts in reports until resolved.",
+    "subtituloCorto": "Documents that did not reach the ledger.",
+    "movilSinContabilizar": "{n} not posted",
+    "migas": {
+      "finanzas": "Finance",
+      "contabilidad": "Accounting"
+    },
+    "buscar": "Search by document or account",
+    "exportar": "Export",
+    "dias": "{n, plural, one {# day} other {# days}}",
+    "sustantivo": {
+      "singular": "exception",
+      "plural": "exceptions"
+    },
+    "kpis": {
+      "resumen": "Exceptions summary",
+      "pendientes": "Exceptions",
+      "masAntiguo": "Oldest",
+      "bloqueanCierre": "Blocking close",
+      "valor": "Value not posted"
+    },
+    "columnas": {
+      "documento": "Document",
+      "error": "Error",
+      "dato": "Missing account or data",
+      "responsable": "Owner",
+      "antiguedad": "Age"
+    },
+    "errores": {
+      "periodoCerrado": "Period closed",
+      "terceroRequerido": "The document requires a third party",
+      "cuentaNoExiste": "The rule uses an account that does not exist",
+      "sinRegla": "There is no accounting rule for this document",
+      "reglaIncompleta": "The rule has no debit or credit account",
+      "mismaCuenta": "Debit and credit on the same account",
+      "cuentaSinConfigurar": "The account is not configured",
+      "cuentaDeTitulo": "The account is a header account and takes no postings",
+      "importeInvalido": "The amount is not valid",
+      "sinSede": "The document has no branch",
+      "impuestoMixto": "The document mixes VAT and consumption tax",
+      "otro": "Could not be posted",
+      "redondeoSinCuenta": "The rounding account is missing",
+      "reversaCuentaTitulo": "The reversal has lines on header accounts",
+      "reversaLineaSinCuenta": "The reversal has lines without an account"
+    },
+    "datos": {
+      "cuenta": "Account {cuenta}",
+      "periodo": "Document period",
+      "tercero": "Document third party",
+      "regla": "Accounting rule",
+      "configuracion": "Accounting settings",
+      "importe": "Document amount",
+      "sede": "Document branch",
+      "impuesto": "Document taxes",
+      "revisar": "Review the details",
+      "redondeo": "Rounding account",
+      "auxiliar": "Sub-account for each line"
+    },
+    "responsables": {
+      "contador": "Accountant",
+      "compras": "Purchasing",
+      "ventas": "Sales",
+      "tesoreria": "Treasury",
+      "inventario": "Inventory"
+    },
+    "acciones": {
+      "reabrirPeriodo": "Reopen period",
+      "completarTercero": "Complete third party",
+      "corregirRegla": "Fix rule",
+      "configurar": "Configure",
+      "elegirAuxiliar": "Choose sub-account",
+      "verDetalle": "View details",
+      "configurarRedondeo": "Set up rounding",
+      "asignarCuenta": "Assign account"
+    },
+    "documentos": {
+      "factura": "Invoice",
+      "compra": "Purchase",
+      "venta": "Sale",
+      "ajuste": "Inventory adjustment",
+      "caja": "Cash movement",
+      "banco": "Bank transaction",
+      "transferencia": "Transfer",
+      "devolucion": "Return",
+      "reversa": "Reversal",
+      "otro": "Document"
+    },
+    "error": {
+      "titulo": "We could not check the exceptions",
+      "descripcion": "This does not mean there are none. Try again before closing the period.",
+      "reintentar": "Try again"
+    },
+    "vacio": {
+      "titulo": "No exceptions",
+      "descripcion": "All documents are in the ledger. Last check: {fecha}.",
+      "descripcionSinFecha": "All documents are in the ledger.",
+      "volver": "Back to Accounting"
+    },
+    "detalle": {
+      "desde": "Not posted since {fecha}",
+      "dato": "Missing data",
+      "sede": "Branch",
+      "intentos": "Attempts",
+      "intentosUltimo": "{n} · last {fecha}",
+      "cerrar": "Close",
+      "reintentar": "Retry now",
+      "reintentando": "Retrying…",
+      "notaReintento": "On retry, the document is posted with its original date, if the period is still open.",
+      "notaPeriodoCerrado": "This document’s period is closed: it is not retried until the period is reopened.",
+      "notaSinClave": "This rejection does not identify the accounting fact: resolve it from the document.",
+      "notaReversa": "The reversal is posted in full once every line has an account. Choose the sub-accounts on its page."
+    },
+    "reintento": {
+      "resuelto": "Document posted",
+      "periodo_cerrado": "This document’s period is closed",
+      "no_reintentable": "This document cannot be retried from here",
+      "sigue": "Still not posted: fix the cause and try again",
+      "error": "Could not retry",
+      "faltan_cuentas": "An account still has to be chosen for a line",
+      "sinPermiso": "You do not have permission to do this"
+    },
+    "csv": {
+      "archivo": "accounting-exceptions.csv",
+      "error": "Error",
+      "errorExportar": "Could not export",
+      "documento": "Document",
+      "dato": "Missing account or data",
+      "responsable": "Owner",
+      "antiguedad": "Age (days)",
+      "valor": "Amount"
+    },
+    "alertas": {
+      "cargando": "Checking accounting exceptions",
+      "vacio": "No accounting exceptions",
+      "fallos": "{n, plural, one {{cantidad} document not posted} other {{cantidad} documents not posted}}",
+      "sinLineas": "{n, plural, one {{cantidad} entry without lines} other {{cantidad} entries without lines}}",
+      "verBandeja": "View exceptions",
+      "asiento": "Entry {id}",
+      "publicado": "posted",
+      "borrador": "draft"
+    }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Rounding to whole pesos · other lines unchanged",
+      "cuadradoTitulo": "Balanced entry",
+      "cuadradoTexto": "Rounding sits on its own line, with an authorized account.",
+      "reversaTitulo": "Reversal of entry #{id}",
+      "publicado": "Posted · {fecha}",
+      "motivo": "Reason: {motivo}",
+      "verOriginal": "View original",
+      "sede": "Branch",
+      "moneda": "Currency",
+      "copiaTitulo": "Exact copy of the original",
+      "copiaTexto": "Same accounts, third party, cost center, branch and currency, with debit and credit swapped. An entry can only be reversed once.",
+      "auxiliarTitulo": "Reversal with a sub-account",
+      "auxiliarTexto": "One line goes to a sub-account because its account is now a header account. The rest is a copy of the original, with debit and credit swapped.",
+      "revertido": "Entry reversed with offsetting entry #{id}",
+      "reversaPendiente": "The reversal is in Pending entries: one line is on a header account and needs a sub-account."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting",
+        "pendientes": "Pending entries"
+      },
+      "estado": "Pending · not in the ledger",
+      "sinNombre": "Unnamed document",
+      "configurarCuenta": "Set up account",
+      "configurar": "Set up",
+      "reintentar": "Retry",
+      "faltaFavor": "The rounding gain account is missing",
+      "faltaContra": "The rounding loss account is missing",
+      "faltaTexto": "This document has a rounding difference of {valor}. It stays pending until the account is set up. It is not posted unbalanced.",
+      "diferencia": "Difference",
+      "sinCuenta": "No rounding account",
+      "publicado": "The entry was posted with its rounding line.",
+      "sigue": "The entry is still pending.",
+      "columnas": {
+        "cuenta": "Account",
+        "descripcion": "Description",
+        "debito": "Debit",
+        "credito": "Credit",
+        "auxiliar": "Sub-account"
+      },
+      "reversaTitulo": "Pending reversal of entry #{id}",
+      "verOriginal": "View original",
+      "tituloAvisoTitulo": "Some lines are on header accounts",
+      "sinCuentaTitulo": "Some lines have no account",
+      "tituloAvisoTexto": "A header account takes no postings, so the whole reversal waits: nothing was posted. Choose a sub-account of the same account for each line.",
+      "elegirAuxiliar": "Choose a sub-account",
+      "crearAuxiliar": "Create sub-account",
+      "publicarReversa": "Post reversal",
+      "reversaPublicada": "Reversal posted: offsetting entry #{id}",
+      "resueltoTitulo": "Pending item resolved",
+      "verAsiento": "View entry",
+      "volver": "Back to pending entries",
+      "noDisponible": "Pending item not available",
+      "errorTitulo": "The pending item could not be read",
+      "errorTexto": "Check your connection and try again.",
+      "reintentarCarga": "Retry"
+    }
+  },
+  "carteraEdades": {
+    "titulo": "Aging report",
+    "subtitulo": "Days past due calculated at the cutoff date",
+    "corteMovil": "As of {fecha}",
+    "migas": {
+      "finanzas": "Finance",
+      "informes": "Reports"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Run",
+    "total": "Total",
+    "filtros": {
+      "corte": "Cutoff date",
+      "tipo": "Type",
+      "clientes": "Customers",
+      "proveedores": "Suppliers",
+      "agrupar": "Group by",
+      "porTercero": "Party",
+      "porDocumento": "Document"
+    },
+    "kpi": {
+      "resumen": "Aging summary",
+      "total": "Total balance",
+      "vencida": "Past due",
+      "porcentaje": "{pct} %",
+      "anticipos": "Unapplied advances",
+      "anticiposProveedores": "Supplier advances",
+      "anticiposAparte": "Separate, not deducted",
+      "anticiposMayor": "Ledger {cuenta}, not deducted",
+      "mayor": "Ledger {cuenta}",
+      "cuadra": "Reconciled",
+      "diferencia": "Difference {valor}"
+    },
+    "noCuadra": {
+      "titulo": "The balance does not match ledger {cuenta}",
+      "descripcion": "There is a difference of {valor} between the ledger and the documents at this date. Review pending accounting items and manual entries on that account."
+    },
+    "bandas": {
+      "corriente": "Current",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Over 90"
+    },
+    "columnas": {
+      "tercero": "Party",
+      "total": "Total",
+      "documento": "Document",
+      "vence": "Due",
+      "dias": "Days past due",
+      "banda": "Age",
+      "saldo": "Balance at cutoff"
+    },
+    "vacio": {
+      "titulo": "No balances at this date",
+      "descripcion": "There are no documents with a balance at the cutoff date."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "View"
+    },
+    "hoja": {
+      "subtitulo": "{total} in {n, plural, one {# document} other {# documents}}",
+      "vence": "Due {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Fixed assets",
+    "subtitulo": "Monthly straight-line depreciation",
+    "migas": {
+      "finanzas": "Finance"
+    },
+    "nuevo": "New asset",
+    "depreciar": "Depreciate {mes}",
+    "meses": "{n, plural, one {# month} other {# months}}",
+    "lineaRecta": "Straight line",
+    "metodoNoDisponible": "Not available",
+    "editar": "Edit {nombre}",
+    "borrar": "Delete {nombre}",
+    "columnas": {
+      "activo": "Asset",
+      "costo": "Cost",
+      "vidaUtil": "Useful life",
+      "acumulada": "Accumulated depreciation",
+      "libros": "Book value",
+      "metodo": "Method"
+    },
+    "vacio": {
+      "titulo": "No fixed assets",
+      "descripcion": "Add your first asset to depreciate it every month."
+    },
+    "tarjeta": {
+      "libros": "Book value {valor}",
+      "acumulada": "Accumulated {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Other methods are not available",
+      "descripcion": "Declining balance and units of production are not calculated yet. They are not offered so they cannot show false zeros."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {No new entries} one {# entry posted} other {# entries posted}} · {total}",
+      "sinPendientes": "All assets are up to date."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Method not available",
+      "faltan_cuentas": "Pending: expense and depreciation accounts are missing",
+      "cuenta_no_es_de_movimiento": "Pending: an account does not exist or is a header account",
+      "acumulada_sin_detalle": "Pending: accumulated depreciation does not match the detail",
+      "period_closed": "Pending: the accounting period is closed",
+      "otro": "Pending: check pending accounting items"
+    },
+    "errores": {
+      "guardar": "The asset could not be saved",
+      "borrar": "The asset could not be deleted",
+      "depreciar": "Depreciation could not be posted",
+      "sinPermiso": "You do not have permission to post depreciation"
+    },
+    "tipos": {
+      "building": "Building",
+      "vehicle": "Vehicle",
+      "equipment": "Equipment",
+      "furniture": "Furniture",
+      "computer": "Computers",
+      "software": "Software",
+      "land": "Land (not depreciated)",
+      "other": "Other"
+    },
+    "form": {
+      "tituloNuevo": "New fixed asset",
+      "tituloEditar": "Edit fixed asset",
+      "guardar": "Save",
+      "requeridos": "Code and name are required",
+      "codigo": "Code",
+      "tipo": "Type",
+      "nombre": "Name",
+      "descripcion": "Description",
+      "fecha": "Acquisition date",
+      "costo": "Acquisition cost",
+      "residual": "Residual value",
+      "vida": "Useful life in months",
+      "cuentaActivo": "Asset account",
+      "cuentaGasto": "Expense account",
+      "cuentaDepreciacion": "Accumulated depreciation",
+      "sinCuenta": "No account",
+      "ayudaCuentas": "Without these two posting accounts the asset is not depreciated.",
+      "conDepreciacion": "This asset already has posted depreciation: date, cost, residual value and useful life cannot be changed."
+    },
+    "borrado": {
+      "titulo": "Delete {nombre}?",
+      "descripcion": "The asset is removed from the list. It has no posted depreciation.",
+      "confirmar": "Delete"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Period payslips",
+    "sinCalcular": "Not calculated",
+    "noAplica": "Not applicable",
+    "vacio": "No payslips in this run",
+    "bloqueo": {
+      "titulo": "Cannot close: withholding tax is missing",
+      "tituloPrestamo": "Cannot close: a loan installment needs confirmation",
+      "descripcion": "GO Admin does not calculate this deduction yet. Enter it by hand or check with your accountant. It is not taken as $ 0.",
+      "ingresar": "Enter value"
+    },
+    "columnas": {
+      "empleado": "Employee",
+      "devengado": "Gross pay",
+      "saludPension": "Health and pension",
+      "retencion": "Withholding",
+      "prestamos": "Loans",
+      "neto": "Net"
+    },
+    "dialogo": {
+      "titulo": "Withholding tax",
+      "tituloPrestamo": "Loan installment",
+      "valor": "Value",
+      "ayudaCero": "Enter 0 if it does not apply. Who decided it is recorded.",
+      "nota": "Note",
+      "guardar": "Save value",
+      "faltaValor": "Enter the value"
+    },
+    "errores": {
+      "titulo": "Not saved",
+      "netoNegativo": "The value makes net pay negative",
+      "sinPermiso": "You do not have permission to process payroll",
+      "noEditable": "The payslip or period can no longer be edited",
+      "generico": "The value could not be saved"
+    }
+  },
+  "estadosFinancieros": {
+    "comun": {
+      "finanzas": "Finance",
+      "informes": "Reports",
+      "desde": "From",
+      "hasta": "To",
+      "anioAnterior": "Previous year",
+      "consultar": "Run",
+      "sinPermiso": "You don't have permission to view this report",
+      "sinPermisoDetalle": "Ask your organization's administrator for Finance access.",
+      "alcance": "This report covers the whole company",
+      "alcanceDetalle": "You need access to every branch to view it.",
+      "error": "The report could not be loaded"
+    },
+    "flujo": {
+      "titulo": "Statement of cash flows",
+      "subtitulo": "Indirect method · IFRS for SMEs, section 7",
+      "miga": "Cash flows",
+      "concepto": "Item",
+      "grupo": "Group {grupo}",
+      "resultado": "Profit or loss for the period",
+      "variacion": "Change in cash",
+      "inicial": "Opening cash",
+      "efectoCambiario": "Effect of exchange rates",
+      "final": "Closing cash",
+      "restringido": "Restricted cash (separate)",
+      "pendienteClasificar": "Pending classification",
+      "seccion": {
+        "operacion": "Operating activities",
+        "inversion": "Investing activities",
+        "financiacion": "Financing activities"
+      },
+      "neto": {
+        "operacion": "Net cash from operations",
+        "inversion": "Net cash from investing",
+        "financiacion": "Net cash from financing"
+      },
+      "cuadra": "Reconciles with banks and cash",
+      "noCuadra": "Does not reconcile: difference of {diferencia}",
+      "cuadraDetalle": "Opening + change + exchange effect = closing. Excludes transfers between banks and non-cash transactions.",
+      "incompleto": {
+        "titulo": "This statement is incomplete",
+        "detalle": "{cuentas, plural, one {# account has} other {# accounts have}} no cash flow category. Amounts are not guessed: they stay in “Pending classification” until the accountant marks them."
+      },
+      "propuesta": {
+        "titulo": "Cash proposed from the chart of accounts",
+        "detalle": "Accounts under 11 are taken as cash because the chart is unambiguous. Equivalents and restricted cash are marked by hand; nothing is saved by assumption."
+      },
+      "politicas": {
+        "pendienteTitulo": "Policies pending from the accountant",
+        "pendienteDetalle": "Interest, taxes and dividends use the starting criterion of IFRS for SMEs 7.14 to 7.17 until the accountant confirms it.",
+        "ver": "View policies"
+      },
+      "sinContabilizar": {
+        "titulo": "Some movements did not reach the ledger",
+        "detalle": "{borradores, plural, one {# draft} other {# drafts}} and {fallos, plural, one {# accounting pending item} other {# accounting pending items}} for {monto}. They are not in this statement.",
+        "ver": "View pending items"
+      },
+      "pendientes": {
+        "titulo": "Accounts to classify",
+        "detalle": "Choose their category. The mark applies to every period and changes no entry.",
+        "clasificar": "Classify"
+      },
+      "sinEfectivo": {
+        "titulo": "Non-cash transactions",
+        "detalle": "Disclosed here because no cash moved: a purchase on credit is not an investment.",
+        "asiento": "Entry {id}"
+      },
+      "renglon": {
+        "ajuste": {
+          "depreciacion_amortizacion": "Depreciation and amortization",
+          "deterioro": "Impairment",
+          "venta_activos": "Gain or loss on sale of assets",
+          "reclasificado_financiacion": "Interest presented in financing",
+          "diferencia_cambio": "Exchange difference on cash",
+          "otras_sin_efectivo": "Other non-cash items"
+        },
+        "variacion": {
+          "g13": "Change in receivables",
+          "g14": "Change in inventories",
+          "g22": "Change in suppliers",
+          "g23": "Change in accounts payable",
+          "g24": "Change in taxes payable",
+          "g25": "Change in employee obligations",
+          "g26": "Change in estimated liabilities",
+          "g28": "Change in advances and third-party money"
+        },
+        "inversion": {
+          "g12": {
+            "entrada": "Sale of investments",
+            "salida": "Purchase of investments"
+          },
+          "g15": {
+            "entrada": "Sale of assets",
+            "salida": "Cash purchase of assets"
+          },
+          "g16": {
+            "entrada": "Sale of intangibles",
+            "salida": "Purchase of intangibles"
+          }
+        },
+        "financiacion": {
+          "g21": {
+            "entrada": "Loans received",
+            "salida": "Loan repayments"
+          },
+          "g23": {
+            "entrada": "Dividends returned",
+            "salida": "Dividends paid"
+          },
+          "g31": {
+            "entrada": "Owner contributions",
+            "salida": "Return of contributions"
+          },
+          "g32": {
+            "entrada": "Capital surplus",
+            "salida": "Return of surplus"
+          },
+          "g53": {
+            "entrada": "Interest returned",
+            "salida": "Interest paid"
+          }
+        }
+      }
+    },
+    "clasificar": {
+      "titulo": "Classify account {cuenta}",
+      "categoria": "Cash flow category",
+      "categorias": {
+        "operacion": "Operating",
+        "inversion": "Investing",
+        "financiacion": "Financing"
+      },
+      "ayuda": "This is the accountant's decision. No entry changes.",
+      "alcance": "Apply to",
+      "guardar": "Classify",
+      "guardado": "Account classified",
+      "sinPermiso": "You don't have permission to classify accounts",
+      "sinCuenta": "That account does not exist in your chart of accounts",
+      "error": "The account could not be classified"
+    },
+    "politicas": {
+      "titulo": "Cash flow statement policies",
+      "detalle": "Accountant's decision, IFRS for SMEs 7.14 to 7.17. Applied by chart of accounts prefix.",
+      "confirmar": "Confirm policies",
+      "sinPermiso": "Only someone who approves in Finance can confirm them",
+      "sinConfirmar": "Not confirmed yet: the starting criterion is in use.",
+      "guardado": "Policies confirmed",
+      "versionObsoleta": "Someone else saved changes. Reopen and try again.",
+      "error": "The policies could not be saved",
+      "clave": {
+        "intereses_pagados": "Interest paid",
+        "intereses_recibidos": "Interest received",
+        "dividendos_recibidos": "Dividends received",
+        "dividendos_pagados": "Dividends paid",
+        "impuestos": "Income taxes"
+      },
+      "valor": {
+        "operacion": "Operating",
+        "financiacion": "Financing",
+        "inversion": "Investing"
+      },
+      "nota": {
+        "intereses_pagados": "Account 530520. Section 7.14: operating or financing.",
+        "intereses_recibidos": "Account 421005. Section 7.14: operating or investing.",
+        "dividendos_recibidos": "Account 4215. Section 7.15: operating or investing.",
+        "dividendos_pagados": "Account 2360. Section 7.15: financing or operating.",
+        "impuestos": "Accounts 54 and 2404. Section 7.17: operating, unless specifically identified."
+      }
+    },
+    "patrimonio": {
+      "titulo": "Statement of changes in equity",
+      "subtitulo": "From {desde} to {hasta}",
+      "miga": "Changes in equity",
+      "concepto": "Item",
+      "total": "Total",
+      "columna": {
+        "capital": "Capital",
+        "reservas": "Reserves",
+        "ejercicio": "Profit for the year",
+        "acumulados": "Retained earnings",
+        "otros": "Other"
+      },
+      "fila": {
+        "saldo_inicial": "Opening balance",
+        "traslado": "Transfer of prior result",
+        "resultado": "Profit or loss for the period",
+        "dividendos": "Dividends declared",
+        "aportes": "Owner contributions",
+        "capitalizacion": "Capitalization of earnings",
+        "reservas": "Reserves created",
+        "ori": "Other comprehensive income",
+        "otros": "Other movements to review",
+        "saldo_final": "Closing balance"
+      },
+      "otros": {
+        "titulo": "Some equity movements are unclassified",
+        "detalle": "They are in “Other movements to review” so the total still reconciles. Nothing was inferred from the entry text."
+      },
+      "cuadra": "Reconciles with the statement of financial position",
+      "noCuadra": "Does not reconcile: difference of {diferencia}",
+      "cuadraDetalle": "The total matches equity. The closing entry does not double the profit."
+    },
+    "indicadores": {
+      "titulo": "Financial ratios",
+      "subtitulo": "From the ledger for the selected period",
+      "subtituloComparado": "Compared with {anio}",
+      "miga": "Ratios",
+      "indicador": "Ratio",
+      "formula": "Formula",
+      "sinDato": "No data",
+      "dias": "{valor} days",
+      "veces": "{valor} times",
+      "enAnio": "{valor} in {anio}",
+      "sinClasificar": {
+        "titulo": "Some balances are not classified as current or non-current",
+        "detalle": "{monto} are left out of the current ratio. Classify them in the chart of accounts.",
+        "ver": "View chart of accounts"
+      },
+      "nombre": {
+        "razon_corriente": "Current ratio",
+        "endeudamiento": "Debt ratio",
+        "margen_neto": "Net margin",
+        "ciclo_caja": "Cash cycle",
+        "rotacion_cartera": "Receivables turnover",
+        "dias_inventario": "Inventory days",
+        "dias_proveedores": "Supplier days",
+        "margen_operacional": "Operating margin",
+        "roe": "ROE",
+        "roa": "ROA"
+      },
+      "definicion": {
+        "razon_corriente": "Current assets ÷ current liabilities",
+        "endeudamiento": "Liabilities ÷ assets",
+        "margen_neto": "Result ÷ revenue",
+        "ciclo_caja": "Receivable days + inventory days − supplier days",
+        "rotacion_cartera": "Revenue ÷ average receivables",
+        "dias_inventario": "Average inventory ÷ cost × days",
+        "dias_proveedores": "Average suppliers ÷ purchases × days",
+        "margen_operacional": "Operating result ÷ revenue",
+        "roe": "Result ÷ average equity",
+        "roa": "Result ÷ average assets"
+      }
+    },
+    "presupuesto": {
+      "titulo": "Budget versus actual",
+      "subtitulo": "Approved budgets only · actuals come from the ledger",
+      "miga": "Budget versus actual",
+      "codigo": "Code",
+      "cuenta": "Account",
+      "presupuesto": "Budget",
+      "real": "Actual",
+      "variacion": "Variance",
+      "borradores": "{n, plural, one {# draft budget is not counted} other {# draft budgets are not counted}}",
+      "verPresupuestos": "View budgets",
+      "repetidos": "More than one approved budget exists for the same year: their figures add up.",
+      "sinPresupuesto": "With activity and no budget",
+      "vacio": {
+        "titulo": "No approved budgets",
+        "detalle": "Approve a budget to compare it with actuals."
+      }
+    },
+    "resultado": {
+      "titulo": "Statement of comprehensive income",
+      "subtituloNaturaleza": "Revenue less costs and expenses, by nature",
+      "subtituloFuncion": "Revenue less costs and expenses, by function",
+      "miga": "Statement of comprehensive income",
+      "concepto": "Item",
+      "variacion": "Change",
+      "total": "COMPREHENSIVE INCOME FOR THE PERIOD",
+      "presentacion": "Presentation",
+      "porNaturaleza": "By nature",
+      "porFuncion": "By function",
+      "error": "The statement of comprehensive income could not be loaded",
+      "ori": "Includes other comprehensive income of {valor}, from marked 38 accounts.",
+      "filaOri": "Other comprehensive income",
+      "detalle": "Detail by account",
+      "nivel": "Chart level",
+      "niveles": {
+        "n2": "Group",
+        "n4": "Account",
+        "n6": "Sub-account",
+        "n8": "Auxiliary"
+      },
+      "fila": {
+        "ingresos": "Revenue from ordinary activities",
+        "otros_ingresos": "Other income",
+        "costo_ventas": "Cost of goods sold",
+        "costo_produccion": "Production costs",
+        "personal": "Employee expenses",
+        "honorarios": "Fees, services and rent",
+        "impuestos": "Taxes other than income tax",
+        "depreciacion": "Depreciation and amortization",
+        "otros_gastos": "Other expenses",
+        "renta": "Income tax",
+        "ingresos_totales": "Income",
+        "funcion_costos": "Cost of sales and production",
+        "funcion_51": "Administrative expenses",
+        "funcion_52": "Selling expenses",
+        "funcion_53": "Other expenses",
+        "funcion_54": "Income tax"
+      }
+    },
+    "notas": {
+      "titulo": "Notes to the financial statements",
+      "subtitulo": "Cut-off {corte} · Draft",
+      "miga": "Notes",
+      "guardar": "Save draft",
+      "guardado": "Notes saved",
+      "versionObsoleta": "Someone else saved changes. Reload and try again.",
+      "errorGuardar": "The notes could not be saved",
+      "corte": "Cut-off",
+      "aviso": "This is a draft: balances come from the ledger and the accountant reviews the text.",
+      "nota": "Note",
+      "contenido": "Content",
+      "origen": "Source",
+      "estado": "Status",
+      "abrir": "Open",
+      "cerrar": "Close",
+      "revisada": "Reviewed by the accountant",
+      "cuenta": "Account",
+      "nombre": {
+        "entidad": "Reporting entity",
+        "politicas": "Accounting policies",
+        "efectivo": "Cash and equivalents",
+        "deudores": "Receivables",
+        "inventarios": "Inventories",
+        "ppe": "Property, plant and equipment"
+      },
+      "origenes": {
+        "empresa": "Company data",
+        "contador": "Accountant's text",
+        "mayor": "From the ledger",
+        "activos": "Fixed assets"
+      },
+      "estados": {
+        "completa": "Complete",
+        "por_revisar": "To review",
+        "sin_datos": "No data"
+      },
+      "plantilla": {
+        "entidad": "Describe the entity, its domicile, business activity, duration and the body that authorizes these financial statements.",
+        "politicas": "Describe the framework applied, the measurement basis, the presentation currency and the policies for cash and equivalents, inventories, property, plant and equipment, and revenue."
+      }
+    },
+    "certificacion": {
+      "titulo": "Certification of the financial statements",
+      "subtitulo": "Article 37 of Law 222 of 1995 · Generating this document does not sign it",
+      "miga": "Certification",
+      "guardar": "Save",
+      "guardado": "Certification saved",
+      "versionObsoleta": "Someone else saved changes. Reload and try again.",
+      "errorGuardar": "The certification could not be saved",
+      "sinValidar": {
+        "titulo": "Legal text pending from the accountant",
+        "detalle": "This is a starting text. The accountant must validate it before signing."
+      },
+      "faltan": {
+        "titulo": "Data missing before signing"
+      },
+      "campo": {
+        "representante_nombre": "Legal representative's name",
+        "representante_cedula": "Legal representative's ID",
+        "contador_nombre": "Accountant's name",
+        "contador_cedula": "Accountant's ID",
+        "contador_tarjeta": "Accountant's professional card",
+        "empresa_nombre": "Company name",
+        "empresa_nit": "Company tax ID"
+      },
+      "corte": "Cut-off",
+      "texto": "Certification text",
+      "textoAyuda": "The {corte} mark is replaced by the cut-off date.",
+      "textoBase": "The undersigned legal representative and accountant certify that we have prepared the company's financial statements as of {corte}, based on current regulations, and that before making them available we have verified the statements contained in them, in accordance with article 37 of Law 222 of 1995.",
+      "validado": "Text validated by the accountant",
+      "representante": "Legal representative",
+      "contador": "Accountant"
+    },
+    "libros": {
+      "titulo": "Accounting books",
+      "subtitulo": "Export the books for the period",
+      "miga": "Accounting books",
+      "nivel": "Consolidation level",
+      "niveles": {
+        "n2": "Group",
+        "n4": "Account",
+        "n6": "Sub-account",
+        "n8": "Auxiliary"
+      },
+      "truncado": "The book exceeded 100,000 lines and came out incomplete. Choose a shorter period.",
+      "libro": "Book",
+      "contenido": "Content",
+      "estado": "Status",
+      "disponible": "Available",
+      "generando": "Generating…",
+      "sinMovimientos": "No movements in the period",
+      "error": "The book could not be exported",
+      "nombre": {
+        "diario": "Journal",
+        "mayor": "General ledger and balances",
+        "inventarios": "Inventories and balances",
+        "auxiliar_cuenta": "Subledgers by account",
+        "tercero": "Subledger by third party",
+        "centro": "Subledger by cost center"
+      },
+      "descripcion": {
+        "diario": "Posted entries for the period",
+        "mayor": "Balances by account, consolidated",
+        "inventarios": "Assets, liabilities and equity at close",
+        "auxiliar_cuenta": "Movements and running balance",
+        "tercero": "Balance by tax ID",
+        "centro": "Balance by center"
+      },
+      "columna": {
+        "codigo": "Code",
+        "cuenta": "Name",
+        "inicial": "Opening balance",
+        "debitos": "Debits",
+        "creditos": "Credits",
+        "final": "Closing balance",
+        "saldo": "Balance",
+        "fecha": "Date",
+        "asiento": "Entry",
+        "tercero": "Third party",
+        "detalle": "Detail"
+      }
+    }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Show ledger accounts",
+    "cuentaContable": "Ledger account",
+    "abrirCuenta": "Change the account of this line",
+    "errorGuardar": "The account could not be saved",
+    "estado": {
+      "automatica": "Automatic",
+      "categoria": "From category",
+      "propia": "Own account",
+      "titulo": "Review",
+      "sin_cuenta": "No account"
+    },
+    "rol": {
+      "ingreso": "Income",
+      "costo": "Cost",
+      "inventario": "Inventory",
+      "devolucion": "Return"
+    },
+    "rolCuenta": {
+      "ingreso": "Income account",
+      "costo": "Cost account",
+      "inventario": "Inventory account",
+      "devolucion": "Returns account"
+    },
+    "accion": {
+      "cambiar": "Change",
+      "volverAutomatica": "Back to automatic",
+      "elegirAuxiliar": "Choose sub-account",
+      "elegirCuenta": "Choose account"
+    },
+    "origen": {
+      "linea": "Chosen for this line",
+      "producto": "Comes from the product",
+      "categoria": "Comes from the category {nombre}",
+      "sede": "Comes from the branch settings",
+      "sedeClave": "Comes from the branch settings · {clave}",
+      "empresa": "Comes from the accounting settings",
+      "empresaClave": "Comes from the accounting settings · {clave}",
+      "sector": "Comes from the industry proposal",
+      "sectorClave": "Comes from the industry proposal · {clave}",
+      "regla": "Comes from the accounting rule",
+      "ninguno": "No account configured",
+      "prevista": "Branch sub-account. Created when the document is confirmed",
+      "sinCuenta": "There is no account for this entry",
+      "tituloConAuxiliar": "{cuenta} is a header account. The entry will use {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} is a header account and takes no postings"
+    },
+    "selector": {
+      "placeholder": "Choose account",
+      "buscar": "Search by code or name",
+      "vacio": "There are no posting accounts",
+      "sinResultados": "No posting account matches"
+    },
+    "resumen": {
+      "automaticaTitulo": "Automatic accounting",
+      "automatica": {
+        "producto": "This product uses the accounts of its category and the accounting settings. You have nothing to do.",
+        "categoria": "This category uses the accounts of the accounting settings. You have nothing to do."
+      },
+      "insigniaAutomatica": "Automatic",
+      "insigniaPropias": "Customized",
+      "propiasTitulo": "{n, plural, one {1 own account} other {# own accounts}}",
+      "propiasCuerpo": "Own: {cuentas}. {n, plural, =0 {} one {The other one stays automatic.} other {The other # stay automatic.}}",
+      "revisarTitulo": "{n, plural, one {1 account to review} other {# accounts to review}}",
+      "revisarCuerpo": "The {rol} account takes no postings.",
+      "ver": "View or change accounts",
+      "ocultar": "Hide accounts",
+      "corregir": "Fix",
+      "siNoCambias": "If you change nothing, each account stays automatic.",
+      "dondeAplica": "These accounts are used on sales and purchase invoices. The point of sale still uses the accounting rule."
+    },
+    "sugerencia": {
+      "texto": "Suggested: {cuenta} {nombre}. Used in {veces} of the last {compras} purchases from this supplier.",
+      "usar": "Use"
+    },
+    "dialogo": {
+      "titulo": "Ledger account of this line",
+      "hoySeUsa": "In use today",
+      "cambiarPor": "Change to",
+      "ayudaBuscar": "Search by code or name. Only posting accounts are listed.",
+      "dondeAplicar": "Where should the change apply?",
+      "aplicar": "Apply",
+      "eligeCuenta": "Choose an account"
+    },
+    "alcance": {
+      "documento": "Only on this invoice",
+      "producto": "Always for this product",
+      "categoria": "For the whole category {nombre}",
+      "categoriaConProductos": "For the whole category {nombre} ({n, plural, one {1 product} other {# products}})",
+      "aviso": "Applies to new documents. Entries already posted do not change."
+    },
+    "config": {
+      "titulo": "Accounting settings",
+      "subtitulo": "Default accounts used by automatic entries",
+      "subtituloCategoria": "Assign once per category and all its products inherit",
+      "migaFinanzas": "Finance",
+      "migaContabilidad": "Accounting",
+      "pestanaDefecto": "Default",
+      "pestanaCategoria": "By category",
+      "pestanaFallos": "Posting failures",
+      "proponer": "Propose by industry",
+      "guardar": "Save",
+      "aplicarA": "Apply to",
+      "todaOrganizacion": "Whole organization",
+      "ayudaAlcance": "A branch can have its own accounts; otherwise it inherits those of the organization.",
+      "cuenta": "Account",
+      "origenColumna": "Source",
+      "usaRegla": "Uses the rule account",
+      "usarRegla": "Use the rule account",
+      "nClaves": "{n, plural, one {1 account} other {# accounts}}",
+      "ventasPorRegla": "Sales currently take account {cuenta} from the accounting rule, not from these keys. Changing them here does not change that entry.",
+      "errorCargar": "The accounting settings could not be loaded",
+      "errorGuardar": "It could not be saved. The account must exist and be a posting account.",
+      "guardadaOrganizacion": "Organization settings saved",
+      "guardadaSede": "Branch settings saved",
+      "sinFallos": "No posting failures",
+      "sinFallosAyuda": "All documents have their entry.",
+      "categoria": "Category",
+      "productos": "Products",
+      "buscarCategoria": "Search category",
+      "soloPropias": "Only with own account",
+      "sinCategorias": "There are no categories",
+      "deCategoria": "from {nombre}",
+      "editarCuentas": "Edit accounts",
+      "cuentasDe": "Accounts of {nombre}",
+      "heredan": "{n, plural, one {1 product inherits these accounts} other {# products inherit these accounts}}, and so do its subcategories.",
+      "guardadaCategoria": "Accounts of {nombre} saved",
+      "grupo": {
+        "tesoreria_cartera": "Treasury and receivables",
+        "ventas": "Sales",
+        "inventario": "Inventory",
+        "impuestos": "Taxes",
+        "personal": "Staff"
+      },
+      "origen": {
+        "regla": "Accounting rule",
+        "hereda": "Inherited from the organization",
+        "sede": "From this branch",
+        "sector": "Industry proposal",
+        "contador": "Chosen by your accountant"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 account to review} other {# accounts to review}}",
+        "conSugerida": "{clave} points to {cuenta}, which takes no postings. Suggested: {sugerida}.",
+        "sinSugerida": "{clave} points to {cuenta}, which takes no postings. Choose a posting account.",
+        "usar": "Use the suggested one"
+      },
+      "reclasificar": {
+        "accion": "Reclassify historical VAT",
+        "titulo": "Reclassify VAT from 2405 to 2408",
+        "descripcion": "A new entry is created (debit 2405, credit 2408) for the net of the VAT lines already posted to 2405. Earlier lines stay the same. With no balance, no entry is created.",
+        "crear": "Create the entry",
+        "repetida": "That reclassification was already done",
+        "sinSaldo": "There is no VAT in 2405 to reclassify",
+        "creado": "Reclassification entry created",
+        "error": "The VAT could not be reclassified"
+      },
+      "asistente": {
+        "titulo": "Proposal for {sector}",
+        "descripcion": "It comes from the chart of accounts template and the industry. It is saved in the chosen scope, organization or branch. Only accounts already in the chart that are posting accounts are saved. The rest stay with the rule.",
+        "aplicar": "Apply this proposal",
+        "noEnPlan": "will not be saved: not in the chart"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Cash",
+        "ayuda": "Replaces 1105 when the rule uses cash."
+      },
+      "bancos": {
+        "nombre": "Banks",
+        "ayuda": "Replaces 1110. The sub-account of a specific bank is not changed."
+      },
+      "anticipos": {
+        "nombre": "Advances",
+        "ayuda": "Replaces 2805, advances received."
+      },
+      "clientes": {
+        "nombre": "Customers",
+        "ayuda": "Replaces 1305, except loans to employees."
+      },
+      "proveedores": {
+        "nombre": "Suppliers",
+        "ayuda": "Replaces 2205 and the 2105 that old rules used for suppliers."
+      },
+      "ventas_productos": {
+        "nombre": "Product sales",
+        "ayuda": "Income credited to 4135, 414015, 4145 or 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Service sales",
+        "ayuda": "Income credited to 4235, 4115, 4140 or 4155."
+      },
+      "devoluciones": {
+        "nombre": "Returns",
+        "ayuda": "Credit notes, voids and the debit of an income account."
+      },
+      "descuentos": {
+        "nombre": "Discounts",
+        "ayuda": "The discount line of the entry. It does not replace returns."
+      },
+      "inventario": {
+        "nombre": "Inventory",
+        "ayuda": "Replaces 1435 and 1405 from old rules."
+      },
+      "costo_ventas": {
+        "nombre": "Cost of sales",
+        "ayuda": "Replaces 6135, 6140 and 6105."
+      },
+      "iva_generado": {
+        "nombre": "Output VAT",
+        "ayuda": "VAT on sales. Credited to 240805 and not debited on accrual."
+      },
+      "iva_descontable": {
+        "nombre": "Input VAT",
+        "ayuda": "VAT on purchases. Debited to 240810."
+      },
+      "retefuente": {
+        "nombre": "Income tax withholding",
+        "ayuda": "Replaces 2365 when the purchase has no account of its own in the tax."
+      },
+      "reteiva": {
+        "nombre": "VAT withholding",
+        "ayuda": "23670501 (sub-account of 2367, a header account)."
+      },
+      "reteica": {
+        "nombre": "ICA withholding",
+        "ayuda": "23680501 (sub-account of 2368, a header account)."
+      },
+      "propinas": {
+        "nombre": "Tips",
+        "ayuda": "5105 only when the document is a tip."
+      },
+      "comisiones": {
+        "nombre": "Commissions",
+        "ayuda": "52950501 (channels/OTA, sub-account of 529505) or 52051801 (employees). 5235 is sales “Services”, not commissions."
+      },
+      "nomina": {
+        "nombre": "Payroll",
+        "ayuda": "5105 only when the document is payroll."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Payroll payable",
+        "ayuda": "2505 only in payroll."
+      },
+      "nomina_aportes": {
+        "nombre": "Payroll contributions",
+        "ayuda": "2370 only in payroll. A commission still using 2370 is not moved."
+      },
+      "faltante_inventario": {
+        "nombre": "Inventory shortage",
+        "ayuda": "Debit of the shortage. Default 519595. Cost of sales is not used here."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Theft and loss",
+        "ayuda": "Debit when the adjustment reason is theft or casualty. Default 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Internal use",
+        "ayuda": "Debit of internal use. Default 519595. Never class 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifest payable",
+        "ayuda": "Credit of a non-transport manifest. Default 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Transport manifest",
+        "ayuda": "Credit when the organization is a transport company. Default 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Opening balance",
+        "ayuda": "Credit of the opening inventory balance: 37050501 retained earnings (3710 with accumulated losses). Do not use 3105: capital only moves with contributions."
+      },
+      "impuesto_consumo": {
+        "nombre": "Consumption tax",
+        "ayuda": "Consumption tax. Default 2495."
+      },
+      "redondeo": {
+        "nombre": "Rounding gain",
+        "ayuda": "Credit of the peso rounding line. Default 42958101. Without a valid account, the entry stays pending."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Rounding loss",
+        "ayuda": "Debit of the peso rounding line. Default 53959501. Without a valid account, the entry stays pending."
+      },
+      "compra_servicio": {
+        "nombre": "Service purchase",
+        "ayuda": "Credit of a service or transport purchase. Default 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Other income",
+        "ayuda": "Credit of an actual inventory surplus. Default 42959501 (sub-account of 4295). It is not 4250."
+      }
     }
   }
 }

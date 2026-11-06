@@ -4565,7 +4565,15 @@
       "sitio-web_analitica": "Análise",
       "sitio-web_sedes": "Unidades na web",
       "sitio-web_configuracion": "Configurações",
-      "plan_historial": "Compras"
+      "plan_historial": "Compras",
+      "finanzas_contabilidad_pendientes": "Pendências contábeis",
+      "finanzas_contabilidad_informes_flujo-efectivo": "Demonstração dos fluxos de caixa",
+      "finanzas_contabilidad_informes_cambios-patrimonio": "Mutações do patrimônio",
+      "finanzas_contabilidad_informes_notas": "Notas às demonstrações financeiras",
+      "finanzas_contabilidad_informes_certificacion": "Certificação das demonstrações financeiras",
+      "finanzas_contabilidad_informes_indicadores": "Indicadores financeiros",
+      "finanzas_contabilidad_informes_presupuesto-real": "Orçamento versus realizado",
+      "finanzas_contabilidad_informes_libros": "Livros contábeis"
     },
     "grupos": {
       "venta": "Venda",
@@ -17686,7 +17694,10 @@
       "tercero_requerido": "Esta conta exige o NIT do terceiro.",
       "soporte_invalido": "O anexo deve ser um PDF ou uma imagem desta organização.",
       "asiento_publicado_inmutable": "O lançamento já está publicado e não pode ser alterado. Estorne-o com um lançamento contrário.",
-      "desconocido": "Não foi possível concluir a operação."
+      "desconocido": "Não foi possível concluir a operação.",
+      "categoria_no_imputable": "“Impostos” agrupa as subcategorias. Escolha uma delas.",
+      "categoria_requiere_cuenta": "Esta categoria de impostos precisa de uma conta do plano.",
+      "impuesto_cancela_pasivo": "Pagar este imposto quita um passivo: escolha uma conta da classe 2."
     },
     "movimiento": {
       "tituloIngreso": "Nova receita",
@@ -17734,7 +17745,10 @@
       "faltaCentro": "Esta conta exige um centro de custo.",
       "faltaTercero": "Esta conta exige o NIT do terceiro.",
       "soporteTipo": "O anexo deve ser PDF, JPG, PNG ou WebP.",
-      "soportePeso": "O anexo não pode passar de 5 MB."
+      "soportePeso": "O anexo não pode passar de 5 MB.",
+      "ayudaPasivo": "Quita o passivo. Não vai para despesa.",
+      "ayudaGasto": "É despesa direta.",
+      "ayudaSinCuenta": "Seu plano não tem a conta sugerida. Escolha uma ou crie-a no plano de contas."
     },
     "categorias": {
       "titulo": "Categorias de tesouraria",
@@ -17760,7 +17774,35 @@
       "vacio": "Não há categorias neste grupo.",
       "errorCarga": "Não foi possível carregar as categorias.",
       "errorGuardar": "Não foi possível salvar a categoria.",
-      "buscarCuenta": "Buscar conta"
+      "buscarCuenta": "Buscar conta",
+      "buscar": "Buscar categoria",
+      "nombreColumna": "Categoria",
+      "cuentaColumna": "Conta sugerida",
+      "tipoColumna": "Tipo",
+      "estadoColumna": "Estado",
+      "accionesColumna": "Ações",
+      "tipoAgrupa": "Agrupa",
+      "tipoCancelaPasivo": "Quita passivo",
+      "tipoGasto": "Despesa",
+      "cuentaPadre": "Sem conta: organiza, não recebe movimentos",
+      "cuentaFaltante": "Sem conta: exigida ao usar",
+      "padreAyuda": "Esta categoria agrupa as subcategorias de impostos. Não tem conta e não pode ser escolhida em um movimento.",
+      "ayudaPasivo": "Somente contas da classe 2: o pagamento quita o passivo.",
+      "avisoTitulo": "Pagar um imposto não registra a despesa de novo",
+      "avisoDetalle": "O pagamento quita o passivo registrado na venda ou na compra. Só as marcadas como Despesa, como o imposto sobre movimentações financeiras, são despesa direta.",
+      "activar": "Ativar",
+      "desactivarAccion": "Desativar",
+      "eliminarTitulo": "Excluir a categoria?",
+      "eliminarDetalle": "“{nombre}” deixará de estar disponível. Os movimentos registrados não mudam.",
+      "errores": {
+        "padre_no_imputable": "“Impostos” agrupa e não tem conta.",
+        "cuenta_obligatoria": "Esta categoria de impostos precisa de uma conta.",
+        "impuesto_cancela_pasivo": "Esta categoria quita um passivo: escolha uma conta da classe 2.",
+        "cuenta_no_es_de_movimiento": "A conta não é analítica. Escolha uma conta analítica do plano."
+      },
+      "migaFinanzas": "Finanças",
+      "migaTesoreria": "Tesouraria",
+      "migaCategorias": "Categorias"
     },
     "reporte": {
       "titulo": "Relatório por categoria",
@@ -38721,6 +38763,1637 @@
       "desactivada": "Promoção desativada",
       "activada": "Promoção ativada",
       "errorEstado": "Não foi possível mudar o estado"
+    }
+  },
+  "pedidosManuales": {
+    "acciones": {
+      "pedidoManual": "Pedido manual",
+      "reconstruir": "Reconstruir pedido pago",
+      "pagosSinPedido": "Pagamentos sem pedido"
+    },
+    "productos": {
+      "buscar": "Buscar produto por nome ou SKU",
+      "vacio": "Busque e adicione os produtos do pedido.",
+      "precioCobrado": "Preço cobrado",
+      "precioVigente": "Vigente",
+      "menos": "Uma unidade a menos",
+      "mas": "Uma unidade a mais",
+      "quitar": "Remover produto",
+      "cantidad": "Quantidade"
+    },
+    "manual": {
+      "titulo": "Pedido manual",
+      "descripcion": "Cria um pedido da loja com seu número WO-…, pendente de pagamento. Se houver Wompi ou Bold conectado, o link de pagamento é gerado.",
+      "crear": "Criar pedido",
+      "tienda": "Loja (filial)",
+      "elegirTienda": "Escolha a filial",
+      "canal": "Canal",
+      "canalWhatsapp": "WhatsApp",
+      "canalTelefono": "Telefone",
+      "cliente": "Cliente",
+      "nombre": "Nome",
+      "celular": "Celular",
+      "correo": "E-mail",
+      "direccion": "Endereço",
+      "entrega": "Entrega",
+      "recoger": "Retira na loja",
+      "domicilio": "Entrega em domicílio",
+      "envio": "Valor do frete",
+      "productos": "Produtos",
+      "preciosVigentes": "Os preços e impostos são os vigentes do Inventário; o servidor os calcula.",
+      "notas": "Observações do pedido (opcional)",
+      "generarLink": "Gerar link de pagamento",
+      "generarLinkAyuda": "Com o gateway conectado (Wompi ou Bold), pelo total do pedido.",
+      "faltaSede": "Escolha a loja",
+      "faltaNombre": "Escreva o nome do cliente",
+      "faltanProductos": "Adicione pelo menos um produto",
+      "errorCrear": "Não foi possível criar o pedido.",
+      "creadoTitulo": "Pedido {pedido} criado",
+      "creadoDescripcion": "Total {total}. Fica pendente de pagamento.",
+      "listo": "Pronto",
+      "cerrar": "Fechar",
+      "linkDePago": "Link de pagamento",
+      "copiarLink": "Copiar link",
+      "enviarWhatsapp": "Enviar pelo WhatsApp",
+      "linkCopiado": "Link copiado",
+      "linkAviso": "Quando o cliente pagar, reconstrua o pagamento em «Pagamentos sem pedido»: o pagamento do link é reconhecido e este mesmo pedido é concluído.",
+      "linkFallo": "O pedido foi criado, mas o gateway não gerou o link de pagamento.",
+      "sinPasarela": "O pedido foi criado. A organização não tem Wompi nem Bold conectado para gerar o link.",
+      "sinLink": "O pedido foi criado sem link de pagamento.",
+      "mensajeWhatsapp": "Olá, este é o link para pagar seu pedido {pedido} de {total}: {url}"
+    },
+    "reconstruir": {
+      "titulo": "Reconstruir pedido pago",
+      "descripcion": "Para um pagamento aprovado sem pedido. O gateway é consultado (somente leitura) e o pedido só é criado se o pagamento estiver aprovado e o valor coincidir.",
+      "pasarela": "Gateway",
+      "elegirPasarela": "Escolha o gateway",
+      "proximamente": "sem consulta ainda",
+      "sinPasarelas": "A organização não tem gateways de pagamento conectados.",
+      "buscarPor": "Buscar por",
+      "referencia": "Referência",
+      "transaccion": "ID da transação",
+      "boldSoloId": "A Bold é consultada pelo ID da transação.",
+      "valor": "Valor cobrado",
+      "fecha": "Data do pagamento",
+      "fechaAyuda": "Vazia: a informada pelo gateway.",
+      "verificar": "Verificar no gateway",
+      "estadoCobro": "Status do pagamento",
+      "aprobado": "Aprovado",
+      "metodo": "Método",
+      "decision": {
+        "ya_existe": "Este pagamento já tem pedido: não será duplicado.",
+        "completar": "Há um pedido pendente com este pagamento: esse mesmo pedido será marcado como pago.",
+        "crear": "O pedido será criado com o mesmo número da loja.",
+        "crear_nuevo": "O pagamento não tem o prefixo WO-… da loja: será criado com um número novo e a referência original ficará nas observações.",
+        "rechazar": "Este pagamento não pode ser reconstruído aqui."
+      },
+      "rechazo": {
+        "otraTienda": "A referência é de outra loja: reconstrua a partir dessa organização.",
+        "otraOrganizacion": "Esse pagamento já tem pedido em outra organização."
+      },
+      "cliente": "Cliente",
+      "nombre": "Nome",
+      "celular": "Celular",
+      "correo": "E-mail",
+      "direccion": "Endereço",
+      "tienda": "Loja (filial)",
+      "elegirTienda": "Escolha a filial",
+      "sugerida": "sugerida pelos produtos",
+      "envio": "Valor do frete",
+      "productos": "Produtos",
+      "productosAyuda": "Obrigatórios: o gateway não envia as linhas. Escreva o preço cobrado se não for o vigente; a soma com o frete deve dar o valor.",
+      "confirmarTienda": "Confirmo que este pagamento é da loja {tienda}",
+      "confirmarTiendaAyuda": "Várias organizações podem compartilhar o comerciante do gateway: sem o prefixo WO-… não há como saber automaticamente.",
+      "primeroVerificar": "Primeiro verifique o pagamento no gateway",
+      "faltaNombre": "Escreva o nome do cliente",
+      "faltanProductos": "Adicione os produtos do pedido",
+      "faltaSede": "Escolha a loja",
+      "faltaConfirmar": "Confirme a loja do pagamento",
+      "verPedido": "Ver pedido",
+      "completar": "Marcar esse pedido como pago",
+      "reconstruir": "Reconstruir pedido",
+      "errorVerificar": "Não foi possível verificar o pagamento.",
+      "errorReconstruir": "Não foi possível reconstruir o pedido.",
+      "totalNoCuadra": "Os produtos e o frete somam {total} e o pagamento foi de {valor}.",
+      "soloLectura": "Verificar apenas consulta o gateway: não cobra, não estorna nem altera nada lá.",
+      "listo": "Pedido {pedido} pronto"
+    },
+    "sinPedido": {
+      "titulo": "Pagamentos sem pedido",
+      "subtitulo": "Pagamentos aprovados dos gateways conectados sem pedido",
+      "pedidosOnline": "Pedidos online",
+      "actualizar": "Atualizar",
+      "origen": "Vêm dos avisos (webhooks) registrados pelos gateways nos últimos 90 dias.",
+      "origenDetalle": "Os pagamentos com o prefixo de outra loja não aparecem. Para um pagamento mais antigo, use «Reconstruir pedido pago» com a referência ou o ID do painel do gateway.",
+      "vacioTitulo": "Não há pagamentos sem pedido",
+      "vacioDescripcion": "Todos os pagamentos aprovados registrados têm seu pedido.",
+      "fecha": "Data",
+      "pasarela": "Gateway",
+      "referencia": "Referência",
+      "transaccion": "Transação",
+      "valor": "Valor",
+      "sinPrefijo": "Sem prefixo de loja",
+      "reconstruir": "Reconstruir",
+      "error": "Não foi possível carregar os pagamentos.",
+      "listo": "Pedido {pedido} pronto"
+    }
+  },
+  "planCuentas": {
+    "titulo": "Plano de contas",
+    "decreto": "PUC comercial, Decreto 2650 de 1993",
+    "subtitulo": "{cuentas} contas · {movimiento} de movimento · PUC comercial, Decreto 2650 de 1993",
+    "exportar": "Exportar",
+    "importar": "Importar",
+    "expandir": "Expandir tudo",
+    "colapsar": "Recolher tudo",
+    "nuevaCuenta": "Nova conta",
+    "buscar": "Buscar por código ou nome",
+    "verResultados": "Ver {cuentas} contas",
+    "resultado": "{cuentas, plural, one {1 conta coincide} other {# contas coincidem}}. Elas mostram o caminho para você criar abaixo sem sair da busca.",
+    "importadas": "{cuentas} contas importadas",
+    "migas": {
+      "finanzas": "Finanças",
+      "contabilidad": "Contabilidade"
+    },
+    "columnas": {
+      "cuenta": "Conta",
+      "nivel": "Nível",
+      "naturaleza": "Natureza",
+      "saldo": "Saldo de hoje",
+      "acciones": "Ações"
+    },
+    "nivel": {
+      "clase": "Classe",
+      "grupo": "Grupo",
+      "cuenta": "Conta",
+      "subcuenta": "Subconta",
+      "auxiliar": "Auxiliar",
+      "subauxiliar": "Subauxiliar",
+      "legacy": "Anterior"
+    },
+    "naturaleza": {
+      "debito": "Débito",
+      "credito": "Crédito",
+      "orden": "Ordem"
+    },
+    "filtros": {
+      "nivel": "Nível",
+      "naturaleza": "Natureza",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "titulosYMovimiento": "Títulos e movimento",
+      "movimiento": "Só movimento",
+      "titulo": "Só título",
+      "soloActivas": "Só ativas"
+    },
+    "vacio": {
+      "titulo": "Ainda não há plano de contas",
+      "descripcion": "Crie a primeira conta ou importe seu plano do Excel."
+    },
+    "errores": {
+      "cargarTitulo": "Não foi possível carregar o plano de contas",
+      "cargar": "Verifique sua conexão e tente de novo.",
+      "guardar": "Não foi possível salvar a conta.",
+      "eliminar": "Não foi possível excluir. Ela pode ter contas filhas ou lançamentos.",
+      "importar": "Não foi possível importar o arquivo."
+    },
+    "eliminar": {
+      "titulo": "Excluir {cuenta}?",
+      "descripcion": "Esta ação não pode ser desfeita. A conta não tem lançamentos nem contas filhas.",
+      "confirmar": "Excluir conta"
+    },
+    "fila": {
+      "abrirRama": "Abrir {cuenta}",
+      "cerrarRama": "Fechar {cuenta}",
+      "crearDebajo": "Criar {nivel} abaixo de {cuenta}",
+      "inactiva": "Inativa",
+      "debito": "D",
+      "credito": "C",
+      "editar": "Editar",
+      "verMayor": "Ver no razão",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "eliminar": "Excluir",
+      "activada": "Conta ativada",
+      "desactivada": "Conta desativada",
+      "eliminada": "Conta excluída"
+    },
+    "alta": {
+      "codigo": "Código",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Nome do auxiliar",
+      "pistaEnter": "salva e abre outro",
+      "guardar": "Salvar",
+      "guardarYOtro": "Salvar e criar outro",
+      "terminar": "Concluir",
+      "tituloHoja": "Novo auxiliar",
+      "debajoDe": "Abaixo de {cuenta}",
+      "atajoEnter": "salva e abre outro auxiliar",
+      "atajoEsc": "conclui",
+      "sinCodigo": "Esta subconta não tem mais códigos livres.",
+      "saldoTitulo": "{cuenta} tem saldo de {saldo}",
+      "saldoDetalle": "Ao criar o auxiliar, ela deixa de receber lançamentos. O saldo é transferido com um lançamento de reclassificação com a data de hoje.",
+      "trasladar": "Criar e transferir",
+      "nota": "Nota do lançamento",
+      "notaAyuda": "Opcional. É adicionada à descrição do lançamento.",
+      "tituloTitulo": "{cuenta} passará a ser conta de título",
+      "tituloDetalle": "Não tem saldo, então não há nada a transferir. A partir de agora os lançamentos vão nos auxiliares.",
+      "trasladoHecho": "{asientos, plural, one {Saldo transferido com 1 lançamento} other {Saldo transferido com # lançamentos}}",
+      "errores": {
+        "ocupado": "Esse código já existe. O próximo livre é {codigo}.",
+        "ocupadoSinLibre": "Esse código já existe e não restam códigos livres.",
+        "codigo": "O auxiliar tem 8 dígitos e começa pela subconta. Não pode terminar em 00.",
+        "padre": "A subconta não existe ou está inativa.",
+        "nombre": "Digite o nome do auxiliar.",
+        "periodo": "O período de hoje está fechado. Abra-o para transferir o saldo.",
+        "tercero": "O saldo tem lançamentos sem terceiro e esta conta o exige. Corrija-os antes de transferir.",
+        "permiso": "Você não tem permissão para criar contas.",
+        "sinCodigo": "Esta subconta não tem mais códigos livres.",
+        "otro": "Não foi possível criar o auxiliar."
+      }
+    },
+    "panel": {
+      "tituloNueva": "Nova conta",
+      "descripcionNueva": "Para classes, grupos, contas e subcontas. Os auxiliares são criados na própria linha.",
+      "sinRuta": "Conta principal",
+      "codigo": "Código",
+      "codigoAyuda": "O pai vem do código: 110505 fica abaixo de 1105.",
+      "nombre": "Nome",
+      "naturaleza": "Natureza",
+      "presentacion": "Apresentação IFRS",
+      "presentacionAyuda": "Não muda o nome do grupo. 11 continua sendo Disponible.",
+      "presentacionGrupo": "Conforme o grupo",
+      "corriente": "Circulante",
+      "noCorriente": "Não circulante",
+      "segunPlazo": "Conforme o prazo",
+      "centro": "Centro de custo",
+      "centroObligatorio": "Obrigatório",
+      "centroOpcional": "Opcional",
+      "centroNoAplica": "Não se aplica",
+      "exogena": "Conceito de exógena",
+      "tercero": "Exige terceiro",
+      "descripcion": "Descrição",
+      "uso": "Saldo {saldo} · {movimientos, plural, one {1 lançamento} other {# lançamentos}}",
+      "creadaPor": "Criada por {nombre} · {fecha}",
+      "creadaEl": "Criada em {fecha}",
+      "crear": "Criar conta",
+      "guardar": "Salvar alterações",
+      "creada": "Conta criada",
+      "actualizada": "Conta atualizada",
+      "errores": {
+        "nombre": "Digite o nome da conta.",
+        "codigo": "O código usa só dígitos e um comprimento do PUC: 1, 2, 4, 6, 8, ou 10 em diante.",
+        "ocupado": "Esse código já existe.",
+        "padre": "A conta {padre} precisa existir antes.",
+        "guardar": "Não foi possível salvar a conta."
+      }
+    }
+  },
+  "reglasContables": {
+    "titulo": "Regras contábeis",
+    "descripcion": "Configuração de lançamentos automáticos",
+    "migas": {
+      "finanzas": "Finanças",
+      "contabilidad": "Contabilidade"
+    },
+    "exportar": "Exportar",
+    "nueva": "Nova regra",
+    "configuracion": "Configuração contábil",
+    "buscar": "Buscar regra ou conta",
+    "filtros": {
+      "titulo": "Filtrar por origem",
+      "todos": "Todas as origens",
+      "etiqueta": "Origem"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# regra aponta para uma conta inexistente ou sintética} other {# regras apontam para contas inexistentes ou sintéticas}}",
+      "detalle": "Um documento com essas regras pode ficar pendente e não entrar no razão. Os lançamentos publicados não mudam.",
+      "verSolo": "Ver só estas",
+      "verTodas": "Ver todas"
+    },
+    "columnas": {
+      "regla": "Regra",
+      "evento": "Evento",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "propuesta": "Proposta",
+      "acciones": "Ações"
+    },
+    "estadoCuenta": {
+      "inexistente": "não existe",
+      "inactiva": "inativa",
+      "titulo": "sintética"
+    },
+    "lado": {
+      "debito": "débito",
+      "credito": "crédito",
+      "impuesto": "imposto",
+      "descuento": "desconto"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · usada em {n, plural, one {# lançamento} other {# lançamentos}}",
+      "vigente": "{cuenta} · plano vigente",
+      "pendiente": "Pendente do contador"
+    },
+    "inactiva": "Inativa",
+    "vacio": {
+      "titulo": "Sem regras",
+      "descripcion": "Crie a primeira regra de lançamentos automáticos."
+    },
+    "sinResultados": "Nenhuma regra com esse filtro.",
+    "acciones": {
+      "corregir": "Corrigir conta",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "eliminar": "Excluir"
+    },
+    "corregir": {
+      "titulo": "Corrigir conta da regra",
+      "avisoInexistente": "A conta {cuenta} não existe nesta empresa",
+      "avisoInactiva": "A conta {cuenta} está inativa nesta empresa",
+      "avisoTitulo": "A conta {cuenta} é sintética",
+      "avisoDetalle": "Só é possível escolher uma conta analítica do plano.",
+      "cuenta": "Conta",
+      "buscarCuenta": "Buscar conta",
+      "ayudaConfiguracion": "Sugerida: a conta configurada para este conceito.",
+      "ayudaPlan": "Sugerida: a única conta analítica dessa conta.",
+      "ayudaUso": "Sugerida: a conta que seus lançamentos já usam.",
+      "ayudaConflicto": "A configuração e o plano não coincidem. O contador decide.",
+      "ayudaNinguna": "Não há evidência para sugerir uma conta. O contador decide.",
+      "alcance": "Aplica-se apenas a documentos novos e pendentes. Os lançamentos publicados não são alterados.",
+      "guardar": "Salvar",
+      "exito": "Conta corrigida."
+    },
+    "bloqueo": {
+      "titulo": "Não é possível salvar",
+      "regla": "Regra “{nombre}”",
+      "noExiste": "A conta {cuenta} não existe no seu plano",
+      "noExisteDetalle": "Crie-a no plano de contas ou escolha outra conta analítica.",
+      "inactiva": "A conta {cuenta} está inativa",
+      "inactivaDetalle": "Ative-a no plano de contas ou escolha outra conta analítica.",
+      "titulocuenta": "A conta {cuenta} é sintética",
+      "tituloDetalle": "Contas sintéticas agrupam e não recebem lançamentos. Escolha uma conta analítica.",
+      "irAlPlan": "Ir ao plano de contas",
+      "elegirOtra": "Escolher outra conta"
+    },
+    "formulario": {
+      "tituloNueva": "Nova regra contábil",
+      "tituloEditar": "Editar regra",
+      "descripcion": "Configure a regra que gera lançamentos automáticos.",
+      "nombre": "Nome",
+      "nombreEjemplo": "Ex.: Venda com imposto",
+      "descripcionCampo": "Descrição",
+      "descripcionEjemplo": "Descrição da regra…",
+      "origen": "Origem",
+      "evento": "Evento",
+      "seleccionar": "Selecionar",
+      "cuentas": "Contas contábeis",
+      "cuentaDebito": "Conta de débito",
+      "cuentaCredito": "Conta de crédito",
+      "cuentaIva": "Conta de imposto (opcional)",
+      "sinIva": "Sem conta de imposto",
+      "usarIva": "Usar o imposto do documento",
+      "prioridad": "Prioridade",
+      "prioridadAyuda": "Menor número, maior prioridade.",
+      "guardar": "Salvar alterações",
+      "crear": "Criar regra",
+      "faltanDatos": "Preencha os campos obrigatórios."
+    },
+    "eliminar": {
+      "titulo": "Excluir a regra?",
+      "descripcion": "“{nombre}” deixará de gerar lançamentos. Os publicados não mudam.",
+      "confirmar": "Excluir"
+    },
+    "exito": {
+      "creada": "Regra criada.",
+      "actualizada": "Regra atualizada.",
+      "duplicada": "Regra duplicada.",
+      "activada": "Regra ativada.",
+      "desactivada": "Regra desativada.",
+      "eliminada": "Regra excluída."
+    },
+    "errores": {
+      "carga": "Não foi possível carregar as regras.",
+      "regla_otra_organizacion": "Uma regra não pode ser movida para outra empresa.",
+      "regla_no_encontrada": "A regra não existe nesta empresa.",
+      "datos_invalidos": "Revise os dados da regra.",
+      "sin_permiso": "Você não tem permissão para esta operação.",
+      "desconocido": "Não foi possível concluir a operação."
+    },
+    "seContabiliza": "Contabilizado em {cuenta}",
+    "copia": "(cópia)",
+    "csv": {
+      "origen": "Origem",
+      "evento": "Evento",
+      "regla": "Regra",
+      "lado": "Lado",
+      "cuenta": "Conta",
+      "estado": "Estado",
+      "propuesta": "Proposta",
+      "evidencia": "Evidência",
+      "usos": "Lançamentos na proposta"
+    }
+  },
+  "conciliacionCierre": {
+    "tarjetas": {
+      "resumen": "Resumo da conciliação",
+      "saldoLibros": "Saldo contábil",
+      "saldoInicial": "Saldo inicial {valor}",
+      "saldoExtracto": "Saldo do extrato",
+      "conciliado": "Conciliado",
+      "diferencia": "Diferença",
+      "partidasPendientes": "Itens pendentes"
+    },
+    "sentido": {
+      "sinDiferencia": "Sem diferença",
+      "librosMayor": "Contábil maior que o extrato",
+      "extractoMayor": "Extrato maior que o contábil",
+      "faltaExtracto": "Falta o saldo do extrato",
+      "resueltas": "{n, plural, one {Com # item resolvido} other {Com # itens resolvidos}}"
+    },
+    "cerrada": {
+      "por": "Fechada por {nombre} em {fecha}",
+      "motivo": "Motivo: {motivo}"
+    },
+    "cerrar": {
+      "titulo": "Fechar conciliação",
+      "confirmar": "Fechar conciliação",
+      "conPartida": "Fechar com item pendente",
+      "exito": "Conciliação fechada",
+      "motivo": "Motivo",
+      "motivoEjemplo": "Depósito que o banco credita no mês seguinte",
+      "registro": "Fica registrado quem fechou e quando.",
+      "sinDiferencia": "Contábil e extrato coincidem. Uma conciliação fechada não pode mais ser alterada.",
+      "quedaPendiente": "A diferença de {valor} fica pendente",
+      "quedaPendienteDetalle": "Passa como item de conciliação para a próxima conciliação. Não é ajustada contra resultados.",
+      "yaExplicada": "A diferença de {valor} continua nos itens trazidos",
+      "yaExplicadaDetalle": "Nenhum item novo é criado: os trazidos seguem para a próxima conciliação."
+    },
+    "saldoExtracto": {
+      "titulo": "Saldo do extrato",
+      "descripcion": "Sem este saldo a diferença é desconhecida. Digite-o como aparece no extrato do banco.",
+      "guardar": "Salvar e continuar",
+      "falta": "Digite o saldo do extrato"
+    },
+    "partidas": {
+      "tituloPropias": "Itens de conciliação pendentes",
+      "tituloTraidas": "Trazidos de conciliações anteriores",
+      "tituloTraidasMes": "Trazidos de {mes}",
+      "fecha": "Data",
+      "descripcion": "Descrição",
+      "valor": "Valor",
+      "estado": "Status",
+      "registradaPor": "Registrado por",
+      "pendiente": "Pendente",
+      "resueltaEl": "Resolvido {fecha}",
+      "verMovimiento": "Ver movimento",
+      "marcarResuelta": "Marcar resolvido",
+      "nota": "O item não gera lançamento nem ajuste em resultados: passa para a próxima conciliação até aparecer no extrato.",
+      "errorTitulo": "Não foi possível verificar os itens pendentes",
+      "errorDetalle": "Isso não significa que não haja itens. Tente novamente antes de fechar.",
+      "reintentar": "Tentar novamente"
+    },
+    "resolver": {
+      "titulo": "Marcar item como resolvido",
+      "descripcion": "Use quando o item já apareceu no extrato. Não gera lançamento.",
+      "confirmar": "Marcar resolvido",
+      "movimiento": "Movimento que o resolve",
+      "sinMovimiento": "Sem movimento associado",
+      "movimientoN": "Movimento {id}"
+    },
+    "errores": {
+      "motivo_obligatorio": "Digite o motivo do fechamento: é obrigatório quando há diferença.",
+      "motivo_largo": "O motivo é longo demais.",
+      "conciliacion_ya_cerrada": "Esta conciliação já estava fechada.",
+      "conciliacion_cerrada": "A conciliação está fechada e não aceita alterações.",
+      "conciliacion_anterior_abierta": "Feche primeiro a conciliação anterior desta conta.",
+      "conciliacion_no_encontrada": "Não encontramos esta conciliação.",
+      "falta_saldo_extracto": "Registre o saldo do extrato antes de fechar.",
+      "partida_ya_resuelta": "Este item já estava resolvido.",
+      "partida_no_encontrada": "Não encontramos este item.",
+      "partida_de_otra_conciliacion": "Este item não pode ser resolvido nesta conciliação.",
+      "movimiento_ajeno": "O movimento não é desta conta.",
+      "sin_permiso": "Você não tem permissão para fazer isso.",
+      "desconocido": "Não foi possível concluir. Tente novamente."
+    }
+  },
+  "pendientesContables": {
+    "titulo": "Pendências contábeis",
+    "subtitulo": "Documentos que não entraram no razão. Nada disso soma nos relatórios até ser resolvido.",
+    "subtituloCorto": "Documentos que não entraram no razão.",
+    "movilSinContabilizar": "{n} sem contabilizar",
+    "migas": {
+      "finanzas": "Finanças",
+      "contabilidad": "Contabilidade"
+    },
+    "buscar": "Buscar por documento ou conta",
+    "exportar": "Exportar",
+    "dias": "{n, plural, one {# dia} other {# dias}}",
+    "sustantivo": {
+      "singular": "pendência",
+      "plural": "pendências"
+    },
+    "kpis": {
+      "resumen": "Resumo das pendências",
+      "pendientes": "Pendências",
+      "masAntiguo": "Mais antiga",
+      "bloqueanCierre": "Bloqueiam o fechamento",
+      "valor": "Valor sem contabilizar"
+    },
+    "columnas": {
+      "documento": "Documento",
+      "error": "Erro",
+      "dato": "Conta ou dado faltante",
+      "responsable": "Responsável",
+      "antiguedad": "Antiguidade"
+    },
+    "errores": {
+      "periodoCerrado": "Período fechado",
+      "terceroRequerido": "O documento exige um terceiro",
+      "cuentaNoExiste": "A regra usa uma conta que não existe",
+      "sinRegla": "Não há regra contábil para este documento",
+      "reglaIncompleta": "A regra não traz conta de débito ou de crédito",
+      "mismaCuenta": "Débito e crédito na mesma conta",
+      "cuentaSinConfigurar": "Falta configurar a conta",
+      "cuentaDeTitulo": "A conta é sintética e não recebe movimentos",
+      "importeInvalido": "O valor não é válido",
+      "sinSede": "O documento não tem filial",
+      "impuestoMixto": "O documento mistura IVA e imposto ao consumo",
+      "otro": "Não foi possível contabilizar",
+      "redondeoSinCuenta": "Falta a conta de arredondamento",
+      "reversaCuentaTitulo": "O estorno tem linhas em contas sintéticas",
+      "reversaLineaSinCuenta": "O estorno tem linhas sem conta"
+    },
+    "datos": {
+      "cuenta": "Conta {cuenta}",
+      "periodo": "Período do documento",
+      "tercero": "Terceiro do documento",
+      "regla": "Regra contábil",
+      "configuracion": "Configuração contábil",
+      "importe": "Valor do documento",
+      "sede": "Filial do documento",
+      "impuesto": "Impostos do documento",
+      "revisar": "Revisar o detalhe",
+      "redondeo": "Conta de arredondamento",
+      "auxiliar": "Conta analítica de cada linha"
+    },
+    "responsables": {
+      "contador": "Contador",
+      "compras": "Compras",
+      "ventas": "Vendas",
+      "tesoreria": "Tesouraria",
+      "inventario": "Estoque"
+    },
+    "acciones": {
+      "reabrirPeriodo": "Reabrir período",
+      "completarTercero": "Completar terceiro",
+      "corregirRegla": "Corrigir regra",
+      "configurar": "Configurar",
+      "elegirAuxiliar": "Escolher conta analítica",
+      "verDetalle": "Ver detalhe",
+      "configurarRedondeo": "Configurar arredondamento",
+      "asignarCuenta": "Atribuir conta"
+    },
+    "documentos": {
+      "factura": "Fatura",
+      "compra": "Compra",
+      "venta": "Venda",
+      "ajuste": "Ajuste de estoque",
+      "caja": "Movimento de caixa",
+      "banco": "Movimento bancário",
+      "transferencia": "Transferência",
+      "devolucion": "Devolução",
+      "reversa": "Estorno",
+      "otro": "Documento"
+    },
+    "error": {
+      "titulo": "Não foi possível verificar as pendências",
+      "descripcion": "Isso não significa que não haja ocorrências. Tente novamente antes de fechar o período.",
+      "reintentar": "Tentar novamente"
+    },
+    "vacio": {
+      "titulo": "Não há pendências",
+      "descripcion": "Todos os documentos estão no razão. Última verificação: {fecha}.",
+      "descripcionSinFecha": "Todos os documentos estão no razão.",
+      "volver": "Voltar para Contabilidade"
+    },
+    "detalle": {
+      "desde": "Sem contabilizar desde {fecha}",
+      "dato": "Dado faltante",
+      "sede": "Filial",
+      "intentos": "Tentativas",
+      "intentosUltimo": "{n} · última {fecha}",
+      "cerrar": "Fechar",
+      "reintentar": "Tentar agora",
+      "reintentando": "Tentando…",
+      "notaReintento": "Ao tentar novamente, o documento é contabilizado com a data original, se o período ainda estiver aberto.",
+      "notaPeriodoCerrado": "O período deste documento está fechado: não há nova tentativa até ser reaberto.",
+      "notaSinClave": "Esta rejeição não identifica o fato contábil: resolve-se a partir do documento.",
+      "notaReversa": "O estorno é publicado por completo quando todas as linhas têm conta. Escolha as contas analíticas na página dele."
+    },
+    "reintento": {
+      "resuelto": "Documento contabilizado",
+      "periodo_cerrado": "O período deste documento está fechado",
+      "no_reintentable": "Este documento não pode ser reprocessado aqui",
+      "sigue": "Ainda sem contabilizar: corrija a causa e tente novamente",
+      "error": "Não foi possível tentar novamente",
+      "faltan_cuentas": "Falta escolher a conta de alguma linha",
+      "sinPermiso": "Você não tem permissão para fazer isso"
+    },
+    "csv": {
+      "archivo": "pendencias-contabeis.csv",
+      "error": "Erro",
+      "errorExportar": "Não foi possível exportar",
+      "documento": "Documento",
+      "dato": "Conta ou dado faltante",
+      "responsable": "Responsável",
+      "antiguedad": "Antiguidade (dias)",
+      "valor": "Valor"
+    },
+    "alertas": {
+      "cargando": "Verificando pendências contábeis",
+      "vacio": "Sem pendências contábeis",
+      "fallos": "{n, plural, one {{cantidad} documento sem contabilizar} other {{cantidad} documentos sem contabilizar}}",
+      "sinLineas": "{n, plural, one {{cantidad} lançamento sem linhas} other {{cantidad} lançamentos sem linhas}}",
+      "verBandeja": "Ver pendências",
+      "asiento": "Lançamento {id}",
+      "publicado": "publicado",
+      "borrador": "rascunho"
+    }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Arredondamento para unidade · não altera as outras linhas",
+      "cuadradoTitulo": "Lançamento equilibrado",
+      "cuadradoTexto": "O arredondamento fica na sua própria linha, com conta autorizada.",
+      "reversaTitulo": "Estorno do lançamento #{id}",
+      "publicado": "Publicado · {fecha}",
+      "motivo": "Motivo: {motivo}",
+      "verOriginal": "Ver original",
+      "sede": "Filial",
+      "moneda": "Moeda",
+      "copiaTitulo": "Cópia exata do original",
+      "copiaTexto": "Mesmas contas, terceiro, centro de custo, filial e moeda, com débito e crédito invertidos. Um lançamento só é estornado uma vez.",
+      "auxiliarTitulo": "Estorno com conta auxiliar",
+      "auxiliarTexto": "Uma linha vai para uma conta auxiliar porque sua conta hoje é sintética. O resto é cópia do original, com débito e crédito invertidos.",
+      "revertido": "Lançamento estornado com o contralançamento #{id}",
+      "reversaPendiente": "O estorno ficou em Lançamentos pendentes: uma linha está em conta sintética e é preciso escolher a auxiliar."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finanças",
+        "contabilidad": "Contabilidade",
+        "pendientes": "Lançamentos pendentes"
+      },
+      "estado": "Pendente · fora do razão",
+      "sinNombre": "Documento sem nome",
+      "configurarCuenta": "Configurar conta",
+      "configurar": "Configurar",
+      "reintentar": "Tentar de novo",
+      "faltaFavor": "Falta a conta de arredondamento a favor",
+      "faltaContra": "Falta a conta de arredondamento contra",
+      "faltaTexto": "Este documento tem uma diferença de {valor} por arredondamento. Fica pendente até configurar a conta. Não é publicado desequilibrado.",
+      "diferencia": "Diferença",
+      "sinCuenta": "Sem conta de arredondamento",
+      "publicado": "O lançamento foi publicado com sua linha de arredondamento.",
+      "sigue": "O lançamento continua pendente.",
+      "columnas": {
+        "cuenta": "Conta",
+        "descripcion": "Descrição",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "auxiliar": "Auxiliar"
+      },
+      "reversaTitulo": "Estorno pendente do lançamento #{id}",
+      "verOriginal": "Ver original",
+      "tituloAvisoTitulo": "Há linhas em contas sintéticas",
+      "sinCuentaTitulo": "Há linhas sem conta",
+      "tituloAvisoTexto": "Uma conta sintética não recebe movimentos, então todo o estorno aguarda: nada foi publicado. Escolha uma auxiliar da mesma conta para cada linha.",
+      "elegirAuxiliar": "Escolha uma auxiliar",
+      "crearAuxiliar": "Criar auxiliar",
+      "publicarReversa": "Publicar estorno",
+      "reversaPublicada": "Estorno publicado: contralançamento #{id}",
+      "resueltoTitulo": "Pendência resolvida",
+      "verAsiento": "Ver lançamento",
+      "volver": "Voltar às pendências",
+      "noDisponible": "Pendência indisponível",
+      "errorTitulo": "Não foi possível ler a pendência",
+      "errorTexto": "Verifique sua conexão e tente de novo.",
+      "reintentarCarga": "Tentar de novo"
+    }
+  },
+  "carteraEdades": {
+    "titulo": "Carteira por idades",
+    "subtitulo": "Atraso calculado na data de corte",
+    "corteMovil": "Corte {fecha}",
+    "migas": {
+      "finanzas": "Finanças",
+      "informes": "Relatórios"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Consultar",
+    "total": "Total",
+    "filtros": {
+      "corte": "Data de corte",
+      "tipo": "Tipo",
+      "clientes": "Clientes",
+      "proveedores": "Fornecedores",
+      "agrupar": "Agrupar por",
+      "porTercero": "Terceiro",
+      "porDocumento": "Documento"
+    },
+    "kpi": {
+      "resumen": "Resumo da carteira",
+      "total": "Total da carteira",
+      "vencida": "Vencida",
+      "porcentaje": "{pct} %",
+      "anticipos": "Adiantamentos não aplicados",
+      "anticiposProveedores": "Adiantamentos a fornecedores",
+      "anticiposAparte": "À parte, não subtrai",
+      "anticiposMayor": "Razão {cuenta}, não subtrai",
+      "mayor": "Razão {cuenta}",
+      "cuadra": "Confere",
+      "diferencia": "Diferença {valor}"
+    },
+    "noCuadra": {
+      "titulo": "A carteira não confere com o razão {cuenta}",
+      "descripcion": "Há uma diferença de {valor} entre o razão e os documentos nesta data. Revise as pendências contábeis e os lançamentos manuais dessa conta."
+    },
+    "bandas": {
+      "corriente": "Em dia",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Mais de 90"
+    },
+    "columnas": {
+      "tercero": "Terceiro",
+      "total": "Total",
+      "documento": "Documento",
+      "vence": "Vencimento",
+      "dias": "Dias de atraso",
+      "banda": "Idade",
+      "saldo": "Saldo no corte"
+    },
+    "vacio": {
+      "titulo": "Sem saldos nesta data",
+      "descripcion": "Não há documentos com saldo na data de corte."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "Ver"
+    },
+    "hoja": {
+      "subtitulo": "{total} em {n, plural, one {# documento} other {# documentos}}",
+      "vence": "Vence {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Ativos fixos",
+    "subtitulo": "Depreciação mensal em linha reta",
+    "migas": {
+      "finanzas": "Finanças"
+    },
+    "nuevo": "Novo ativo",
+    "depreciar": "Depreciar {mes}",
+    "meses": "{n, plural, one {# mês} other {# meses}}",
+    "lineaRecta": "Linha reta",
+    "metodoNoDisponible": "Não disponível",
+    "editar": "Editar {nombre}",
+    "borrar": "Excluir {nombre}",
+    "columnas": {
+      "activo": "Ativo",
+      "costo": "Custo",
+      "vidaUtil": "Vida útil",
+      "acumulada": "Depreciação acumulada",
+      "libros": "Valor contábil",
+      "metodo": "Método"
+    },
+    "vacio": {
+      "titulo": "Sem ativos fixos",
+      "descripcion": "Cadastre o primeiro ativo para depreciá-lo todo mês."
+    },
+    "tarjeta": {
+      "libros": "Valor contábil {valor}",
+      "acumulada": "Acumulada {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Outros métodos não estão disponíveis",
+      "descripcion": "Saldos decrescentes e unidades de produção ainda não são calculados. Não aparecem como opção para evitar zeros falsos."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {Sem lançamentos novos} one {# lançamento contabilizado} other {# lançamentos contabilizados}} · {total}",
+      "sinPendientes": "Todos os ativos estão em dia."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Método não disponível",
+      "faltan_cuentas": "Pendente: faltam as contas de despesa e de depreciação",
+      "cuenta_no_es_de_movimiento": "Pendente: uma conta não existe ou é sintética",
+      "acumulada_sin_detalle": "Pendente: a depreciação acumulada não coincide com o detalhe",
+      "period_closed": "Pendente: o período contábil está fechado",
+      "otro": "Pendente: revise as pendências contábeis"
+    },
+    "errores": {
+      "guardar": "Não foi possível salvar o ativo",
+      "borrar": "Não foi possível excluir o ativo",
+      "depreciar": "Não foi possível contabilizar a depreciação",
+      "sinPermiso": "Você não tem permissão para contabilizar a depreciação"
+    },
+    "tipos": {
+      "building": "Edifício",
+      "vehicle": "Veículo",
+      "equipment": "Equipamento",
+      "furniture": "Mobiliário",
+      "computer": "Informática",
+      "software": "Software",
+      "land": "Terreno (não depreciado)",
+      "other": "Outro"
+    },
+    "form": {
+      "tituloNuevo": "Novo ativo fixo",
+      "tituloEditar": "Editar ativo fixo",
+      "guardar": "Salvar",
+      "requeridos": "Código e nome são obrigatórios",
+      "codigo": "Código",
+      "tipo": "Tipo",
+      "nombre": "Nome",
+      "descripcion": "Descrição",
+      "fecha": "Data de aquisição",
+      "costo": "Custo de aquisição",
+      "residual": "Valor residual",
+      "vida": "Vida útil em meses",
+      "cuentaActivo": "Conta do ativo",
+      "cuentaGasto": "Conta de despesa",
+      "cuentaDepreciacion": "Depreciação acumulada",
+      "sinCuenta": "Sem conta",
+      "ayudaCuentas": "Sem estas duas contas analíticas o ativo não é depreciado.",
+      "conDepreciacion": "Este ativo já tem depreciação contabilizada: a data, o custo, o residual e a vida útil não podem ser alterados."
+    },
+    "borrado": {
+      "titulo": "Excluir {nombre}?",
+      "descripcion": "O ativo sai da lista. Ele não tem depreciação contabilizada.",
+      "confirmar": "Excluir"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Holerites do período",
+    "sinCalcular": "Não calculado",
+    "noAplica": "Não se aplica",
+    "vacio": "Sem holerites nesta execução",
+    "bloqueo": {
+      "titulo": "Não é possível fechar: falta a retenção na fonte",
+      "tituloPrestamo": "Não é possível fechar: falta confirmar uma parcela de empréstimo",
+      "descripcion": "O GO Admin ainda não calcula esta dedução. Digite-a à mão ou consulte o contador. Não é considerada $ 0.",
+      "ingresar": "Inserir valor"
+    },
+    "columnas": {
+      "empleado": "Funcionário",
+      "devengado": "Bruto",
+      "saludPension": "Saúde e pensão",
+      "retencion": "Retenção",
+      "prestamos": "Empréstimos",
+      "neto": "Líquido"
+    },
+    "dialogo": {
+      "titulo": "Retenção na fonte",
+      "tituloPrestamo": "Parcela de empréstimo",
+      "valor": "Valor",
+      "ayudaCero": "Digite 0 se não se aplicar. Fica registrado quem decidiu.",
+      "nota": "Nota",
+      "guardar": "Salvar valor",
+      "faltaValor": "Digite o valor"
+    },
+    "errores": {
+      "titulo": "Não salvo",
+      "netoNegativo": "O valor deixa o líquido negativo",
+      "sinPermiso": "Você não tem permissão para processar a folha",
+      "noEditable": "O holerite ou o período não pode mais ser editado",
+      "generico": "Não foi possível salvar o valor"
+    }
+  },
+  "estadosFinancieros": {
+    "comun": {
+      "finanzas": "Finanças",
+      "informes": "Relatórios",
+      "desde": "De",
+      "hasta": "Até",
+      "anioAnterior": "Ano anterior",
+      "consultar": "Consultar",
+      "sinPermiso": "Você não tem permissão para ver este relatório",
+      "sinPermisoDetalle": "Peça acesso a Finanças ao administrador da sua organização.",
+      "alcance": "Este relatório é de toda a empresa",
+      "alcanceDetalle": "É preciso ter acesso a todas as filiais para vê-lo.",
+      "error": "Não foi possível carregar o relatório"
+    },
+    "flujo": {
+      "titulo": "Demonstração dos fluxos de caixa",
+      "subtitulo": "Método indireto · IFRS para PMEs, seção 7",
+      "miga": "Fluxos de caixa",
+      "concepto": "Item",
+      "grupo": "Grupo {grupo}",
+      "resultado": "Resultado do período",
+      "variacion": "Variação do caixa",
+      "inicial": "Caixa inicial",
+      "efectoCambiario": "Efeito da taxa de câmbio",
+      "final": "Caixa final",
+      "restringido": "Caixa restrito (à parte)",
+      "pendienteClasificar": "Pendente de classificação",
+      "seccion": {
+        "operacion": "Atividades operacionais",
+        "inversion": "Atividades de investimento",
+        "financiacion": "Atividades de financiamento"
+      },
+      "neto": {
+        "operacion": "Caixa líquido das operações",
+        "inversion": "Caixa líquido de investimento",
+        "financiacion": "Caixa líquido de financiamento"
+      },
+      "cuadra": "Confere com bancos e caixa",
+      "noCuadra": "Não confere: diferença de {diferencia}",
+      "cuadraDetalle": "Inicial + variação + efeito cambial = final. Exclui transferências entre bancos e operações sem caixa.",
+      "incompleto": {
+        "titulo": "Esta demonstração está incompleta",
+        "detalle": "{cuentas, plural, one {# conta está} other {# contas estão}} sem categoria de fluxo. Os valores não são deduzidos: ficam em “Pendente de classificação” até o contador marcá-las."
+      },
+      "propuesta": {
+        "titulo": "Caixa proposto pelo plano de contas",
+        "detalle": "As contas 11 são consideradas caixa porque o plano é inequívoco. Equivalentes e caixa restrito são marcados à mão; nada é salvo por suposição."
+      },
+      "politicas": {
+        "pendienteTitulo": "Políticas pendentes do contador",
+        "pendienteDetalle": "Juros, impostos e dividendos usam o critério inicial da IFRS para PMEs 7.14 a 7.17 até o contador confirmar.",
+        "ver": "Ver políticas"
+      },
+      "sinContabilizar": {
+        "titulo": "Há movimentos que não entraram no razão",
+        "detalle": "{borradores, plural, one {# rascunho} other {# rascunhos}} e {fallos, plural, one {# pendência contábil} other {# pendências contábeis}} por {monto}. Não estão nesta demonstração.",
+        "ver": "Ver pendências"
+      },
+      "pendientes": {
+        "titulo": "Contas a classificar",
+        "detalle": "Escolha a categoria. A marca vale para todos os períodos e não altera nenhum lançamento.",
+        "clasificar": "Classificar"
+      },
+      "sinEfectivo": {
+        "titulo": "Operações sem caixa",
+        "detalle": "São divulgadas aqui porque não movimentaram caixa: uma compra a prazo não é investimento.",
+        "asiento": "Lançamento {id}"
+      },
+      "renglon": {
+        "ajuste": {
+          "depreciacion_amortizacion": "Depreciação e amortização",
+          "deterioro": "Perda por redução ao valor recuperável",
+          "venta_activos": "Resultado na venda de ativos",
+          "reclasificado_financiacion": "Juros apresentados em financiamento",
+          "diferencia_cambio": "Diferença cambial do caixa",
+          "otras_sin_efectivo": "Outros itens sem caixa"
+        },
+        "variacion": {
+          "g13": "Variação de contas a receber",
+          "g14": "Variação de estoques",
+          "g22": "Variação de fornecedores",
+          "g23": "Variação de contas a pagar",
+          "g24": "Variação de impostos a pagar",
+          "g25": "Variação de obrigações trabalhistas",
+          "g26": "Variação de passivos estimados",
+          "g28": "Variação de adiantamentos e dinheiro de terceiros"
+        },
+        "inversion": {
+          "g12": {
+            "entrada": "Venda de investimentos",
+            "salida": "Compra de investimentos"
+          },
+          "g15": {
+            "entrada": "Venda de ativos",
+            "salida": "Compra de ativos à vista"
+          },
+          "g16": {
+            "entrada": "Venda de intangíveis",
+            "salida": "Compra de intangíveis"
+          }
+        },
+        "financiacion": {
+          "g21": {
+            "entrada": "Empréstimos recebidos",
+            "salida": "Amortização de empréstimos"
+          },
+          "g23": {
+            "entrada": "Dividendos devolvidos",
+            "salida": "Dividendos pagos"
+          },
+          "g31": {
+            "entrada": "Aportes de sócios",
+            "salida": "Devolução de aportes"
+          },
+          "g32": {
+            "entrada": "Reserva de capital",
+            "salida": "Devolução de reserva"
+          },
+          "g53": {
+            "entrada": "Juros devolvidos",
+            "salida": "Juros pagos"
+          }
+        }
+      }
+    },
+    "clasificar": {
+      "titulo": "Classificar a conta {cuenta}",
+      "categoria": "Categoria de fluxo",
+      "categorias": {
+        "operacion": "Operacional",
+        "inversion": "Investimento",
+        "financiacion": "Financiamento"
+      },
+      "ayuda": "É uma decisão do contador. Nenhum lançamento muda.",
+      "alcance": "Aplicar a",
+      "guardar": "Classificar",
+      "guardado": "Conta classificada",
+      "sinPermiso": "Você não tem permissão para classificar contas",
+      "sinCuenta": "Essa conta não existe no seu plano de contas",
+      "error": "Não foi possível classificar a conta"
+    },
+    "politicas": {
+      "titulo": "Políticas da demonstração de fluxos",
+      "detalle": "Decisão do contador, IFRS para PMEs 7.14 a 7.17. Aplicadas por prefixo do plano de contas.",
+      "confirmar": "Confirmar políticas",
+      "sinPermiso": "Só quem aprova em Finanças pode confirmá-las",
+      "sinConfirmar": "Ainda sem confirmar: está em uso o critério inicial.",
+      "guardado": "Políticas confirmadas",
+      "versionObsoleta": "Outra pessoa salvou alterações. Abra de novo e repita.",
+      "error": "Não foi possível salvar as políticas",
+      "clave": {
+        "intereses_pagados": "Juros pagos",
+        "intereses_recibidos": "Juros recebidos",
+        "dividendos_recibidos": "Dividendos recebidos",
+        "dividendos_pagados": "Dividendos pagos",
+        "impuestos": "Impostos sobre o lucro"
+      },
+      "valor": {
+        "operacion": "Operacional",
+        "financiacion": "Financiamento",
+        "inversion": "Investimento"
+      },
+      "nota": {
+        "intereses_pagados": "Conta 530520. Seção 7.14: operacional ou financiamento.",
+        "intereses_recibidos": "Conta 421005. Seção 7.14: operacional ou investimento.",
+        "dividendos_recibidos": "Conta 4215. Seção 7.15: operacional ou investimento.",
+        "dividendos_pagados": "Conta 2360. Seção 7.15: financiamento ou operacional.",
+        "impuestos": "Contas 54 e 2404. Seção 7.17: operacional, salvo identificação específica."
+      }
+    },
+    "patrimonio": {
+      "titulo": "Demonstração das mutações do patrimônio",
+      "subtitulo": "De {desde} a {hasta}",
+      "miga": "Mutações do patrimônio",
+      "concepto": "Item",
+      "total": "Total",
+      "columna": {
+        "capital": "Capital",
+        "reservas": "Reservas",
+        "ejercicio": "Resultado do exercício",
+        "acumulados": "Resultados acumulados",
+        "otros": "Outros"
+      },
+      "fila": {
+        "saldo_inicial": "Saldo inicial",
+        "traslado": "Transferência do resultado anterior",
+        "resultado": "Resultado do período",
+        "dividendos": "Dividendos declarados",
+        "aportes": "Aportes de sócios",
+        "capitalizacion": "Capitalização de resultados",
+        "reservas": "Constituição de reservas",
+        "ori": "Outros resultados abrangentes",
+        "otros": "Outros movimentos a revisar",
+        "saldo_final": "Saldo final"
+      },
+      "otros": {
+        "titulo": "Há movimentos de patrimônio sem classificar",
+        "detalle": "Estão em “Outros movimentos a revisar” para que o total continue conferindo. Nada foi deduzido do texto do lançamento."
+      },
+      "cuadra": "Confere com o balanço patrimonial",
+      "noCuadra": "Não confere: diferença de {diferencia}",
+      "cuadraDetalle": "O total coincide com o patrimônio. O lançamento de encerramento não duplica o lucro."
+    },
+    "indicadores": {
+      "titulo": "Indicadores financeiros",
+      "subtitulo": "Saem do razão do período escolhido",
+      "subtituloComparado": "Comparado com {anio}",
+      "miga": "Indicadores",
+      "indicador": "Indicador",
+      "formula": "Fórmula",
+      "sinDato": "Sem dado",
+      "dias": "{valor} dias",
+      "veces": "{valor} vezes",
+      "enAnio": "{valor} em {anio}",
+      "sinClasificar": {
+        "titulo": "Há saldos sem classificar como circulantes ou não circulantes",
+        "detalle": "{monto} não entram na liquidez corrente. Classifique-os no plano de contas.",
+        "ver": "Ver plano de contas"
+      },
+      "nombre": {
+        "razon_corriente": "Liquidez corrente",
+        "endeudamiento": "Endividamento",
+        "margen_neto": "Margem líquida",
+        "ciclo_caja": "Ciclo de caixa",
+        "rotacion_cartera": "Giro de contas a receber",
+        "dias_inventario": "Dias de estoque",
+        "dias_proveedores": "Dias de fornecedores",
+        "margen_operacional": "Margem operacional",
+        "roe": "ROE",
+        "roa": "ROA"
+      },
+      "definicion": {
+        "razon_corriente": "Ativo circulante ÷ passivo circulante",
+        "endeudamiento": "Passivo ÷ ativo",
+        "margen_neto": "Resultado ÷ receitas",
+        "ciclo_caja": "Dias de recebimento + dias de estoque − dias de fornecedores",
+        "rotacion_cartera": "Receitas ÷ contas a receber médias",
+        "dias_inventario": "Estoque médio ÷ custo × dias",
+        "dias_proveedores": "Fornecedores médios ÷ compras × dias",
+        "margen_operacional": "Resultado operacional ÷ receitas",
+        "roe": "Resultado ÷ patrimônio médio",
+        "roa": "Resultado ÷ ativo médio"
+      }
+    },
+    "presupuesto": {
+      "titulo": "Orçamento versus realizado",
+      "subtitulo": "Só orçamentos aprovados · o realizado sai do razão",
+      "miga": "Orçamento versus realizado",
+      "codigo": "Código",
+      "cuenta": "Conta",
+      "presupuesto": "Orçamento",
+      "real": "Realizado",
+      "variacion": "Variação",
+      "borradores": "{n, plural, one {# orçamento em rascunho não é considerado} other {# orçamentos em rascunho não são considerados}}",
+      "verPresupuestos": "Ver orçamentos",
+      "repetidos": "Há mais de um orçamento aprovado para o mesmo ano: seus valores se somam.",
+      "sinPresupuesto": "Com movimento e sem orçamento",
+      "vacio": {
+        "titulo": "Não há orçamentos aprovados",
+        "detalle": "Aprove um orçamento para compará-lo com o realizado."
+      }
+    },
+    "resultado": {
+      "titulo": "Demonstração do resultado abrangente",
+      "subtituloNaturaleza": "Receitas menos custos e despesas, por natureza",
+      "subtituloFuncion": "Receitas menos custos e despesas, por função",
+      "miga": "Demonstração do resultado abrangente",
+      "concepto": "Item",
+      "variacion": "Variação",
+      "total": "RESULTADO ABRANGENTE DO PERÍODO",
+      "presentacion": "Apresentação",
+      "porNaturaleza": "Por natureza",
+      "porFuncion": "Por função",
+      "error": "Não foi possível carregar a demonstração do resultado abrangente",
+      "ori": "Inclui outros resultados abrangentes de {valor}, das contas 38 marcadas.",
+      "filaOri": "Outros resultados abrangentes",
+      "detalle": "Detalhe por conta",
+      "nivel": "Nível do plano",
+      "niveles": {
+        "n2": "Grupo",
+        "n4": "Conta",
+        "n6": "Subconta",
+        "n8": "Auxiliar"
+      },
+      "fila": {
+        "ingresos": "Receita de atividades ordinárias",
+        "otros_ingresos": "Outras receitas",
+        "costo_ventas": "Custo das mercadorias vendidas",
+        "costo_produccion": "Custos de produção",
+        "personal": "Despesas com pessoal",
+        "honorarios": "Honorários, serviços e aluguéis",
+        "impuestos": "Impostos que não sobre o lucro",
+        "depreciacion": "Depreciação e amortização",
+        "otros_gastos": "Outras despesas",
+        "renta": "Imposto sobre o lucro",
+        "ingresos_totales": "Receitas",
+        "funcion_costos": "Custo de vendas e de produção",
+        "funcion_51": "Despesas administrativas",
+        "funcion_52": "Despesas de vendas",
+        "funcion_53": "Outras despesas",
+        "funcion_54": "Imposto sobre o lucro"
+      }
+    },
+    "notas": {
+      "titulo": "Notas às demonstrações financeiras",
+      "subtitulo": "Data-base {corte} · Rascunho",
+      "miga": "Notas",
+      "guardar": "Salvar rascunho",
+      "guardado": "Notas salvas",
+      "versionObsoleta": "Outra pessoa salvou alterações. Recarregue e repita.",
+      "errorGuardar": "Não foi possível salvar as notas",
+      "corte": "Data-base",
+      "aviso": "É um rascunho: os saldos saem do razão e o contador revisa o texto.",
+      "nota": "Nota",
+      "contenido": "Conteúdo",
+      "origen": "Origem",
+      "estado": "Estado",
+      "abrir": "Abrir",
+      "cerrar": "Fechar",
+      "revisada": "Revisada pelo contador",
+      "cuenta": "Conta",
+      "nombre": {
+        "entidad": "Entidade que reporta",
+        "politicas": "Políticas contábeis",
+        "efectivo": "Caixa e equivalentes",
+        "deudores": "Contas a receber",
+        "inventarios": "Estoques",
+        "ppe": "Ativo imobilizado"
+      },
+      "origenes": {
+        "empresa": "Dados da empresa",
+        "contador": "Texto do contador",
+        "mayor": "Sai do razão",
+        "activos": "Ativos fixos"
+      },
+      "estados": {
+        "completa": "Completa",
+        "por_revisar": "A revisar",
+        "sin_datos": "Sem dados"
+      },
+      "plantilla": {
+        "entidad": "Descreva a entidade, seu domicílio, atividade econômica, duração e o órgão que autoriza estas demonstrações financeiras.",
+        "politicas": "Descreva a estrutura normativa aplicada, a base de mensuração, a moeda de apresentação e as políticas de caixa e equivalentes, estoques, ativo imobilizado e receitas."
+      }
+    },
+    "certificacion": {
+      "titulo": "Certificação das demonstrações financeiras",
+      "subtitulo": "Artigo 37 da Lei 222 de 1995 · Gerar este documento não o assina",
+      "miga": "Certificação",
+      "guardar": "Salvar",
+      "guardado": "Certificação salva",
+      "versionObsoleta": "Outra pessoa salvou alterações. Recarregue e repita.",
+      "errorGuardar": "Não foi possível salvar a certificação",
+      "sinValidar": {
+        "titulo": "Texto legal pendente do contador",
+        "detalle": "É um texto inicial. O contador deve validá-lo antes da assinatura."
+      },
+      "faltan": {
+        "titulo": "Faltam dados para assinar"
+      },
+      "campo": {
+        "representante_nombre": "Nome do representante legal",
+        "representante_cedula": "Documento do representante legal",
+        "contador_nombre": "Nome do contador",
+        "contador_cedula": "Documento do contador",
+        "contador_tarjeta": "Registro profissional do contador",
+        "empresa_nombre": "Nome da empresa",
+        "empresa_nit": "Identificação fiscal da empresa"
+      },
+      "corte": "Data-base",
+      "texto": "Texto da certificação",
+      "textoAyuda": "A marca {corte} é substituída pela data-base.",
+      "textoBase": "Os abaixo assinados, representante legal e contador, certificamos que preparamos as demonstrações financeiras da sociedade em {corte}, com base nas normas vigentes, e que antes de disponibilizá-las verificamos as afirmações nelas contidas, conforme o artigo 37 da Lei 222 de 1995.",
+      "validado": "Texto validado pelo contador",
+      "representante": "Representante legal",
+      "contador": "Contador"
+    },
+    "libros": {
+      "titulo": "Livros contábeis",
+      "subtitulo": "Exporte os livros do período",
+      "miga": "Livros contábeis",
+      "nivel": "Nível de consolidação",
+      "niveles": {
+        "n2": "Grupo",
+        "n4": "Conta",
+        "n6": "Subconta",
+        "n8": "Auxiliar"
+      },
+      "truncado": "O livro passou de 100 000 linhas e saiu incompleto. Escolha um período menor.",
+      "libro": "Livro",
+      "contenido": "Conteúdo",
+      "estado": "Estado",
+      "disponible": "Disponível",
+      "generando": "Gerando…",
+      "sinMovimientos": "Não há movimentos no período",
+      "error": "Não foi possível exportar o livro",
+      "nombre": {
+        "diario": "Livro diário",
+        "mayor": "Razão e balanços",
+        "inventarios": "Inventários e balanços",
+        "auxiliar_cuenta": "Auxiliares por conta",
+        "tercero": "Auxiliar por terceiro",
+        "centro": "Auxiliar por centro de custo"
+      },
+      "descripcion": {
+        "diario": "Lançamentos publicados do período",
+        "mayor": "Saldos por conta, consolidado",
+        "inventarios": "Ativos, passivos e patrimônio no fechamento",
+        "auxiliar_cuenta": "Movimento e saldo corrido",
+        "tercero": "Saldo por identificação fiscal",
+        "centro": "Saldo por centro"
+      },
+      "columna": {
+        "codigo": "Código",
+        "cuenta": "Nome",
+        "inicial": "Saldo inicial",
+        "debitos": "Débitos",
+        "creditos": "Créditos",
+        "final": "Saldo final",
+        "saldo": "Saldo",
+        "fecha": "Data",
+        "asiento": "Lançamento",
+        "tercero": "Terceiro",
+        "detalle": "Detalhe"
+      }
+    }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Ver contas contábeis",
+    "cuentaContable": "Conta contábil",
+    "abrirCuenta": "Alterar a conta desta linha",
+    "errorGuardar": "Não foi possível salvar a conta",
+    "estado": {
+      "automatica": "Automática",
+      "categoria": "Da categoria",
+      "propia": "Conta própria",
+      "titulo": "Revisar",
+      "sin_cuenta": "Sem conta"
+    },
+    "rol": {
+      "ingreso": "Receita",
+      "costo": "Custo",
+      "inventario": "Estoque",
+      "devolucion": "Devolução"
+    },
+    "rolCuenta": {
+      "ingreso": "Conta de receita",
+      "costo": "Conta de custo",
+      "inventario": "Conta de estoque",
+      "devolucion": "Conta de devolução"
+    },
+    "accion": {
+      "cambiar": "Alterar",
+      "volverAutomatica": "Voltar para automática",
+      "elegirAuxiliar": "Escolher subconta",
+      "elegirCuenta": "Escolher conta"
+    },
+    "origen": {
+      "linea": "Escolhida para esta linha",
+      "producto": "Vem do produto",
+      "categoria": "Vem da categoria {nombre}",
+      "sede": "Vem da configuração da filial",
+      "sedeClave": "Vem da configuração da filial · {clave}",
+      "empresa": "Vem da configuração contábil",
+      "empresaClave": "Vem da configuração contábil · {clave}",
+      "sector": "Vem da proposta do setor",
+      "sectorClave": "Vem da proposta do setor · {clave}",
+      "regla": "Vem da regra contábil",
+      "ninguno": "Sem conta configurada",
+      "prevista": "Subconta da filial. Criada ao confirmar o documento",
+      "sinCuenta": "Não há conta para este movimento",
+      "tituloConAuxiliar": "{cuenta} é conta de título. O lançamento usará {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} é conta de título e não recebe movimentos"
+    },
+    "selector": {
+      "placeholder": "Escolher conta",
+      "buscar": "Buscar por código ou nome",
+      "vacio": "Não há contas de movimento",
+      "sinResultados": "Nenhuma conta de movimento corresponde"
+    },
+    "resumen": {
+      "automaticaTitulo": "Contabilidade automática",
+      "automatica": {
+        "producto": "Este produto usa as contas da sua categoria e da configuração contábil. Você não precisa fazer nada.",
+        "categoria": "Esta categoria usa as contas da configuração contábil. Você não precisa fazer nada."
+      },
+      "insigniaAutomatica": "Automática",
+      "insigniaPropias": "Personalizado",
+      "propiasTitulo": "{n, plural, one {1 conta própria} other {# contas próprias}}",
+      "propiasCuerpo": "Próprias: {cuentas}. {n, plural, =0 {} one {A outra continua automática.} other {As outras # continuam automáticas.}}",
+      "revisarTitulo": "{n, plural, one {1 conta para revisar} other {# contas para revisar}}",
+      "revisarCuerpo": "A conta de {rol} não recebe movimentos.",
+      "ver": "Ver ou alterar contas",
+      "ocultar": "Ocultar contas",
+      "corregir": "Corrigir",
+      "siNoCambias": "Se você não alterar nada, cada conta continua automática.",
+      "dondeAplica": "Estas contas são usadas em faturas de venda e de compra. O ponto de venda continua usando a regra contábil."
+    },
+    "sugerencia": {
+      "texto": "Sugerida: {cuenta} {nombre}. Usada em {veces} das últimas {compras} compras deste fornecedor.",
+      "usar": "Usar"
+    },
+    "dialogo": {
+      "titulo": "Conta contábil desta linha",
+      "hoySeUsa": "Em uso hoje",
+      "cambiarPor": "Alterar para",
+      "ayudaBuscar": "Busque por código ou nome. Só aparecem contas de movimento.",
+      "dondeAplicar": "Onde aplicar a alteração?",
+      "aplicar": "Aplicar",
+      "eligeCuenta": "Escolha uma conta"
+    },
+    "alcance": {
+      "documento": "Somente nesta fatura",
+      "producto": "Sempre para este produto",
+      "categoria": "Para toda a categoria {nombre}",
+      "categoriaConProductos": "Para toda a categoria {nombre} ({n, plural, one {1 produto} other {# produtos}})",
+      "aviso": "Aplica-se aos novos documentos. Os lançamentos já publicados não mudam."
+    },
+    "config": {
+      "titulo": "Configuração contábil",
+      "subtitulo": "Contas padrão usadas pelos lançamentos automáticos",
+      "subtituloCategoria": "Defina uma vez por categoria e todos os produtos herdam",
+      "migaFinanzas": "Finanças",
+      "migaContabilidad": "Contabilidade",
+      "pestanaDefecto": "Padrão",
+      "pestanaCategoria": "Por categoria",
+      "pestanaFallos": "Falhas de contabilização",
+      "proponer": "Propor conforme o setor",
+      "guardar": "Salvar",
+      "aplicarA": "Aplicar a",
+      "todaOrganizacion": "Toda a organização",
+      "ayudaAlcance": "Uma filial pode ter suas próprias contas; se não, herda as da organização.",
+      "cuenta": "Conta",
+      "origenColumna": "Origem",
+      "usaRegla": "Usa a conta da regra",
+      "usarRegla": "Usar a conta da regra",
+      "nClaves": "{n, plural, one {1 conta} other {# contas}}",
+      "ventasPorRegla": "Hoje as vendas usam a conta {cuenta} da regra contábil, não estas chaves. Alterá-las aqui não muda esse lançamento.",
+      "errorCargar": "Não foi possível carregar a configuração contábil",
+      "errorGuardar": "Não foi possível salvar. A conta precisa existir e ser de movimento.",
+      "guardadaOrganizacion": "Configuração da organização salva",
+      "guardadaSede": "Configuração da filial salva",
+      "sinFallos": "Sem falhas de contabilização",
+      "sinFallosAyuda": "Todos os documentos têm seu lançamento.",
+      "categoria": "Categoria",
+      "productos": "Produtos",
+      "buscarCategoria": "Buscar categoria",
+      "soloPropias": "Somente com conta própria",
+      "sinCategorias": "Não há categorias",
+      "deCategoria": "de {nombre}",
+      "editarCuentas": "Editar contas",
+      "cuentasDe": "Contas de {nombre}",
+      "heredan": "{n, plural, one {1 produto herda estas contas} other {# produtos herdam estas contas}}, assim como suas subcategorias.",
+      "guardadaCategoria": "Contas de {nombre} salvas",
+      "grupo": {
+        "tesoreria_cartera": "Tesouraria e carteira",
+        "ventas": "Vendas",
+        "inventario": "Estoque",
+        "impuestos": "Impostos",
+        "personal": "Pessoal"
+      },
+      "origen": {
+        "regla": "Regra contábil",
+        "hereda": "Herda da organização",
+        "sede": "Desta filial",
+        "sector": "Proposta do setor",
+        "contador": "Escolhida pelo seu contador"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 conta para revisar} other {# contas para revisar}}",
+        "conSugerida": "{clave} aponta para {cuenta}, que não recebe movimentos. Sugerida: {sugerida}.",
+        "sinSugerida": "{clave} aponta para {cuenta}, que não recebe movimentos. Escolha uma conta de movimento.",
+        "usar": "Usar a sugerida"
+      },
+      "reclasificar": {
+        "accion": "Reclassificar o IVA histórico",
+        "titulo": "Reclassificar IVA de 2405 para 2408",
+        "descripcion": "É criado um novo lançamento (débito 2405, crédito 2408) pelo líquido das linhas de IVA já publicadas em 2405. As linhas anteriores ficam iguais. Sem saldo, nenhum lançamento é criado.",
+        "crear": "Criar o lançamento",
+        "repetida": "Essa reclassificação já foi feita",
+        "sinSaldo": "Não há IVA em 2405 para reclassificar",
+        "creado": "Lançamento de reclassificação criado",
+        "error": "Não foi possível reclassificar o IVA"
+      },
+      "asistente": {
+        "titulo": "Proposta para {sector}",
+        "descripcion": "Vem do modelo do plano de contas e do setor. É salva no escopo escolhido, organização ou filial. Só são salvas as contas de movimento que já estão no plano. O resto continua com a regra.",
+        "aplicar": "Aplicar esta proposta",
+        "noEnPlan": "não será salva: não está no plano"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Caixa",
+        "ayuda": "Substitui o 1105 quando a regra usa caixa."
+      },
+      "bancos": {
+        "nombre": "Bancos",
+        "ayuda": "Substitui o 1110. A subconta de um banco específico não é alterada."
+      },
+      "anticipos": {
+        "nombre": "Adiantamentos",
+        "ayuda": "Substitui o 2805, adiantamentos recebidos."
+      },
+      "clientes": {
+        "nombre": "Clientes",
+        "ayuda": "Substitui o 1305, exceto empréstimos a funcionários."
+      },
+      "proveedores": {
+        "nombre": "Fornecedores",
+        "ayuda": "Substitui o 2205 e o 2105 que as regras antigas usavam para fornecedores."
+      },
+      "ventas_productos": {
+        "nombre": "Vendas de produtos",
+        "ayuda": "Receita creditada em 4135, 414015, 4145 ou 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Vendas de serviços",
+        "ayuda": "Receita creditada em 4235, 4115, 4140 ou 4155."
+      },
+      "devoluciones": {
+        "nombre": "Devoluções",
+        "ayuda": "Notas de crédito, anulações e o débito de uma conta de receita."
+      },
+      "descuentos": {
+        "nombre": "Descontos",
+        "ayuda": "A linha de desconto do lançamento. Não substitui a devolução."
+      },
+      "inventario": {
+        "nombre": "Estoque",
+        "ayuda": "Substitui o 1435 e o 1405 das regras antigas."
+      },
+      "costo_ventas": {
+        "nombre": "Custo das vendas",
+        "ayuda": "Substitui o 6135, o 6140 e o 6105."
+      },
+      "iva_generado": {
+        "nombre": "IVA gerado",
+        "ayuda": "IVA da venda. Creditado em 240805 e não debitado no reconhecimento."
+      },
+      "iva_descontable": {
+        "nombre": "IVA dedutível",
+        "ayuda": "IVA da compra. Debitado em 240810."
+      },
+      "retefuente": {
+        "nombre": "Retenção na fonte",
+        "ayuda": "Substitui o 2365 quando a compra não tem conta própria no imposto."
+      },
+      "reteiva": {
+        "nombre": "Retenção de IVA",
+        "ayuda": "23670501 (subconta de 2367, conta de título)."
+      },
+      "reteica": {
+        "nombre": "Retenção de ICA",
+        "ayuda": "23680501 (subconta de 2368, conta de título)."
+      },
+      "propinas": {
+        "nombre": "Gorjetas",
+        "ayuda": "O 5105 somente quando o documento é uma gorjeta."
+      },
+      "comisiones": {
+        "nombre": "Comissões",
+        "ayuda": "52950501 (canais/OTA, subconta de 529505) ou 52051801 (funcionários). 5235 é «Serviços» de vendas, não comissões."
+      },
+      "nomina": {
+        "nombre": "Folha de pagamento",
+        "ayuda": "O 5105 somente quando o documento é folha de pagamento."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Folha a pagar",
+        "ayuda": "O 2505 somente na folha."
+      },
+      "nomina_aportes": {
+        "nombre": "Contribuições da folha",
+        "ayuda": "O 2370 somente na folha. Uma comissão que ainda usa 2370 não é movida."
+      },
+      "faltante_inventario": {
+        "nombre": "Falta de estoque",
+        "ayuda": "Débito da falta. Padrão 519595. O custo das vendas não é usado aqui."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Roubo e sinistro",
+        "ayuda": "Débito quando o motivo do ajuste é roubo ou sinistro. Padrão 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Consumo interno",
+        "ayuda": "Débito do consumo interno. Padrão 519595. Nunca a classe 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifesto a pagar",
+        "ayuda": "Crédito do manifesto que não é de transporte. Padrão 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Manifesto de transporte",
+        "ayuda": "Crédito quando a organização é de transporte. Padrão 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Saldo inicial",
+        "ayuda": "Crédito do saldo inicial de estoque: 37050501 lucros acumulados (3710 se houver prejuízo acumulado). Não use 3105: o capital só se move com aportes."
+      },
+      "impuesto_consumo": {
+        "nombre": "Imposto sobre consumo",
+        "ayuda": "Imposto sobre consumo. Padrão 2495."
+      },
+      "redondeo": {
+        "nombre": "Arredondamento a favor",
+        "ayuda": "Crédito da linha de arredondamento em pesos. Padrão 42958101. Sem conta válida, o lançamento fica pendente."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Arredondamento contra",
+        "ayuda": "Débito da linha de arredondamento em pesos. Padrão 53959501. Sem conta válida, o lançamento fica pendente."
+      },
+      "compra_servicio": {
+        "nombre": "Compra de serviço",
+        "ayuda": "Crédito de uma compra de serviço ou de transporte. Padrão 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Receitas diversas",
+        "ayuda": "Crédito de uma sobra real de estoque. Padrão 42959501 (subconta de 4295). Não é 4250."
+      }
     }
   }
 }

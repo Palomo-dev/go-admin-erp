@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import type { EstadoMovimientoBancario, TipoMovimientoBancario } from '@/lib/finanzas/movimientoBancario';
+import { aNumero } from '@/lib/finanzas/conciliacion/diferencia';
 
 export interface BankAccount {
   id: number;
@@ -59,6 +60,7 @@ export interface BankReconciliation {
   notes: string | null;
   created_by: string | null;
   closed_by: string | null;
+  close_reason: string | null;
   created_at: string;
   updated_at: string;
   closed_at: string | null;
@@ -80,6 +82,24 @@ export interface BankReconciliationItem {
   match_date: string | null;
   notes: string | null;
   created_at: string;
+  // El movimiento trae el signo real; los items del extracto guardan abs(valor).
+  bank_transactions?: {
+    id: number;
+    trans_date: string | null;
+    description: string | null;
+    amount: number;
+    transaction_type: string;
+  } | null;
+}
+
+/** Lo que devuelve `fn_conciliacion_cerrar`. */
+export interface ResultadoCierreConciliacion {
+  saldo_libros: number;
+  saldo_extracto: number;
+  diferencia: number;
+  traidas: number;
+  partida_nueva: number;
+  partida_id: string | null;
 }
 
 export interface BankAccountStats {
@@ -366,8 +386,8 @@ export class BancosService {
         ...rec,
         opening_balance: parseFloat(rec.opening_balance),
         closing_balance: parseFloat(rec.closing_balance),
-        statement_balance: rec.statement_balance ? parseFloat(rec.statement_balance) : null,
-        difference: rec.difference ? parseFloat(rec.difference) : null,
+        statement_balance: aNumero(rec.statement_balance),
+        difference: aNumero(rec.difference),
         bank_account: rec.bank_accounts
       }));
     } catch (error) {
@@ -398,8 +418,8 @@ export class BancosService {
         ...data,
         opening_balance: parseFloat(data.opening_balance),
         closing_balance: parseFloat(data.closing_balance),
-        statement_balance: data.statement_balance ? parseFloat(data.statement_balance) : null,
-        difference: data.difference ? parseFloat(data.difference) : null,
+        statement_balance: aNumero(data.statement_balance),
+        difference: aNumero(data.difference),
         bank_account: data.bank_accounts
       };
     } catch (error) {
@@ -426,9 +446,8 @@ export class BancosService {
           period_start: data.period_start,
           period_end: data.period_end,
           opening_balance: data.opening_balance,
-          closing_balance: data.opening_balance,
-          statement_balance: data.statement_balance || null,
-          difference: 0,
+          // closing_balance lo calcula la base y `difference` es una columna generada.
+          statement_balance: data.statement_balance ?? null,
           status: 'draft',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -444,24 +463,21 @@ export class BancosService {
     }
   }
 
-  static async cerrarConciliacion(reconciliationId: string): Promise<void> {
-    const organizationId = this.getOrganizationId();
-    try {
-      const { error } = await supabase
-        .from('bank_reconciliations')
-        .update({
-          status: 'closed',
-          closed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reconciliationId)
-        .eq('organization_id', organizationId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error cerrando conciliación:', error);
-      throw error;
-    }
+  /**
+   * Solo cierra la RPC: valida el motivo, registra quién cierra y deja la
+   * diferencia como partida pendiente. No genera asiento.
+   */
+  static async cerrarConciliacion(
+    reconciliationId: string,
+    motivo?: string | null
+  ): Promise<ResultadoCierreConciliacion> {
+    const { data, error } = await supabase.rpc('fn_conciliacion_cerrar', {
+      p_organization_id: this.getOrganizationId(),
+      p_reconciliation_id: reconciliationId,
+      p_motivo: motivo ?? null,
+    });
+    if (error) throw error;
+    return data as ResultadoCierreConciliacion;
   }
 
   // ==================== ITEMS DE CONCILIACIÓN ====================

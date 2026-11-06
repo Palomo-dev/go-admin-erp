@@ -194,6 +194,7 @@ export function DocumentoLineas({
           ))}
         </span>
       )}
+      {l.pieLinea}
     </div>
   );
 

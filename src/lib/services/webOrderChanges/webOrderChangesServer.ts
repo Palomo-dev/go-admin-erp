@@ -83,7 +83,7 @@ async function cargarCambio(db: SupabaseClient, organizationId: number, changeId
 }
 
 /** Precio vigente (product_prices) y datos de cada producto de la organización. */
-async function lineasConPrecio(
+export async function lineasConPrecio(
   db: SupabaseClient,
   organizationId: number,
   pedidas: Array<{ product_id: number; quantity: number }>,

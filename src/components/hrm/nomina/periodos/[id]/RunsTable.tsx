@@ -23,16 +23,16 @@ interface RunsTableProps {
 }
 
 const statusColors: Record<string, string> = {
-  calculating: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  running: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  error: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   superseded: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
 };
 
 const statusLabels: Record<string, string> = {
-  calculating: 'Calculando',
+  running: 'Calculando',
   completed: 'Completado',
-  error: 'Error',
+  failed: 'Error',
   superseded: 'Reemplazado',
 };
 
@@ -96,8 +96,8 @@ export function RunsTable({
                 {run.executed_at ? formatDate(run.executed_at) : '-'}
               </TableCell>
               <TableCell>
-                <Badge className={statusColors[run.status || 'calculating']}>
-                  {statusLabels[run.status || 'calculating']}
+                <Badge className={statusColors[run.status || 'running']}>
+                  {statusLabels[run.status || 'running']}
                 </Badge>
               </TableCell>
               <TableCell>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {BookOpen, Search} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,7 +44,9 @@ export function MayorContablePage() {
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [selectedAccount, setSelectedAccount] = useState('');
+  // «Ver en el mayor» del plan de cuentas llega con ?cuenta=.
+  const cuentaInicial = useSearchParams()?.get('cuenta') ?? '';
+  const [selectedAccount, setSelectedAccount] = useState(cuentaInicial);
   const [accounts, setAccounts] = useState<Pick<ChartAccount, 'account_code' | 'name' | 'type'>[]>([]);
   const [ledger, setLedger] = useState<LedgerAccount | null>(null);
   const [isLoading, setIsLoading] = useState(false);

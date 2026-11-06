@@ -1,27 +1,39 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Loader2, Plus, Tags } from 'lucide-react';
+import { Loader2, Pencil, Plus, Power, PowerOff, Tags, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { SearchSelect } from '@/components/ui/search-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  AvisoTonal,
+  ConfirmDialog,
+  Dialogo,
+  PageHeader,
+  RowActionsMenu,
+  SearchInput,
+  StatusBadge,
+  type AccionFila,
+} from '@/components/kit';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { PREDEFINIDAS, padresValidos, type TipoCategoria } from '@/lib/finanzas/categoriasTesoreria';
+import {
+  PREDEFINIDAS,
+  codigoErrorCategoria,
+  cuentaPermitidaParaRol,
+  exigeCuentaAlUsar,
+  ordenarConHijas,
+  padresValidos,
+  rolImpuesto,
+  tipoImpuesto,
+  type RolImpuesto,
+  type TipoCategoria,
+} from '@/lib/finanzas/categoriasTesoreria';
 import { ICONOS_CATEGORIA, IconoCategoria } from './iconosCategoria';
 
 interface Categoria {
@@ -52,6 +64,7 @@ const VACIO = {
   padreId: '',
   activa: true,
   esPredefinida: false,
+  clave: null as string | null,
 };
 
 export function CategoriasTesoreriaPage() {
@@ -63,6 +76,8 @@ export function CategoriasTesoreriaPage() {
   const [formulario, setFormulario] = useState(VACIO);
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [porEliminar, setPorEliminar] = useState<Categoria | null>(null);
 
   const cargar = useCallback(async () => {
     const orgId = getOrganizationId();
@@ -94,12 +109,28 @@ export function CategoriasTesoreriaPage() {
     void cargar();
   }, [cargar]);
 
+  const porId = useMemo(() => new Map(filas.map((fila) => [fila.id, fila])), [filas]);
+
+  const rolDe = useCallback(
+    (fila: Pick<Categoria, 'clave' | 'padre_id'>): RolImpuesto | null => (
+      rolImpuesto(fila.clave, fila.padre_id ? porId.get(fila.padre_id)?.clave : null)
+    ),
+    [porId],
+  );
+
+  const rolFormulario = rolDe({
+    clave: formulario.clave,
+    padre_id: formulario.padreId ? Number(formulario.padreId) : null,
+  });
+
   const opcionesCuenta = useMemo(
     () => cuentas
-      .filter((cuenta) => cuenta.es_movimiento !== false)
+      .filter((cuenta) => cuenta.es_movimiento !== false && cuentaPermitidaParaRol(rolFormulario, cuenta.account_code))
       .map((cuenta) => ({ value: cuenta.account_code, label: `${cuenta.account_code} · ${cuenta.name}` })),
-    [cuentas],
+    [cuentas, rolFormulario],
   );
+
+  const nombreCuenta = (codigo: string) => cuentas.find((cuenta) => cuenta.account_code === codigo)?.name ?? '';
 
   const abrirNueva = (tipo: TipoCategoria) => {
     setFormulario({ ...VACIO, tipo });
@@ -116,6 +147,7 @@ export function CategoriasTesoreriaPage() {
       padreId: fila.padre_id ? String(fila.padre_id) : '',
       activa: fila.activa,
       esPredefinida: fila.es_predefinida,
+      clave: fila.clave,
     });
     setAbierto(true);
   };
@@ -128,6 +160,15 @@ export function CategoriasTesoreriaPage() {
     .filter((fila) => padres.some((padre) => padre.id === fila.id))
     .map((fila) => ({ value: String(fila.id), label: fila.nombre }));
 
+  const avisarError = (error: { message?: string } | null) => {
+    const codigo = codigoErrorCategoria(error);
+    toast({
+      title: t('errorTitulo'),
+      description: codigo ? t(`categorias.errores.${codigo}`) : t('categorias.errorGuardar'),
+      variant: 'destructive',
+    });
+  };
+
   const guardar = async () => {
     const orgId = getOrganizationId();
     if (!orgId || !formulario.nombre.trim()) return;
@@ -135,7 +176,7 @@ export function CategoriasTesoreriaPage() {
     const payload = {
       nombre: formulario.nombre.trim(),
       icono: formulario.icono,
-      cuenta_sugerida: formulario.cuenta || null,
+      cuenta_sugerida: rolFormulario === 'agrupa' ? null : formulario.cuenta || null,
       padre_id: formulario.padreId ? Number(formulario.padreId) : null,
       activa: formulario.activa,
     };
@@ -151,7 +192,7 @@ export function CategoriasTesoreriaPage() {
     const { error } = await consulta;
     setGuardando(false);
     if (error) {
-      toast({ title: t('errorTitulo'), description: t('categorias.errorGuardar'), variant: 'destructive' });
+      avisarError(error);
       return;
     }
     setAbierto(false);
@@ -181,7 +222,7 @@ export function CategoriasTesoreriaPage() {
       .eq('id', fila.id)
       .eq('organization_id', orgId);
     if (error) {
-      toast({ title: t('errorTitulo'), description: t('categorias.errorGuardar'), variant: 'destructive' });
+      avisarError(error);
       return;
     }
     setFilas((actual) => actual.map((item) => (item.id === fila.id ? { ...item, activa } : item)));
@@ -198,7 +239,7 @@ export function CategoriasTesoreriaPage() {
       .eq('organization_id', orgId)
       .eq('es_predefinida', false);
     if (error) {
-      toast({ title: t('errorTitulo'), description: t('categorias.errorGuardar'), variant: 'destructive' });
+      avisarError(error);
       return;
     }
     await cargar();
@@ -206,135 +247,213 @@ export function CategoriasTesoreriaPage() {
 
   const ayuda = (clave: string | null) => PREDEFINIDAS.find((fila) => fila.clave === clave)?.ayuda;
 
-  const bloque = (tipo: TipoCategoria, titulo: string) => (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{titulo}</h2>
-        <Button type="button" variant="outline" onClick={() => abrirNueva(tipo)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('categorias.nueva')}
-        </Button>
-      </div>
-      {filas.filter((fila) => fila.tipo === tipo).length === 0 ? (
-        <p className="text-sm text-gray-500">{t('categorias.vacio')}</p>
-      ) : (
-        filas.filter((fila) => fila.tipo === tipo).map((fila) => (
-          <Card key={fila.id} className={fila.activa ? '' : 'opacity-60'}>
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-              <IconoCategoria nombre={fila.icono} className="h-5 w-5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-gray-900 dark:text-white">{fila.nombre}</p>
-                <p className="text-sm text-gray-500">
-                  {fila.cuenta_sugerida || '—'}
-                  {ayuda(fila.clave) ? ` · ${ayuda(fila.clave)}` : ''}
-                </p>
-              </div>
-              {fila.es_predefinida ? <Badge variant="secondary">{t('categorias.predefinida')}</Badge> : null}
-              <div className="flex items-center gap-2">
-                <Switch checked={fila.activa} onCheckedChange={(valor) => void cambiarActiva(fila, valor)} />
-                <span className="text-xs text-gray-500">{fila.activa ? t('categorias.activa') : t('categorias.desactivar')}</span>
-              </div>
-              <Button type="button" variant="outline" onClick={() => abrirEdicion(fila)}>{t('categorias.editar')}</Button>
-              {!fila.es_predefinida ? (
-                <Button type="button" variant="ghost" onClick={() => void eliminar(fila)}>{t('categorias.eliminar')}</Button>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))
-      )}
-    </section>
-  );
+  const accionesDeFila = (fila: Categoria): AccionFila[] => [
+    { id: 'editar', etiqueta: t('categorias.editar'), icono: Pencil, onSelect: () => abrirEdicion(fila) },
+    {
+      id: 'estado',
+      etiqueta: fila.activa ? t('categorias.desactivarAccion') : t('categorias.activar'),
+      icono: fila.activa ? PowerOff : Power,
+      onSelect: () => void cambiarActiva(fila, !fila.activa),
+    },
+    ...(fila.es_predefinida
+      ? []
+      : [{ id: 'eliminar', etiqueta: t('categorias.eliminar'), icono: Trash2, destructiva: true, separadorAntes: true, onSelect: () => setPorEliminar(fila) }]),
+  ];
+
+  const textoCuenta = (fila: Categoria, rol: RolImpuesto | null) => {
+    if (rol === 'agrupa') return <span className="text-fg-secondary">{t('categorias.cuentaPadre')}</span>;
+    if (fila.cuenta_sugerida) {
+      return <span className="text-fg">{fila.cuenta_sugerida} {nombreCuenta(fila.cuenta_sugerida) ? `· ${nombreCuenta(fila.cuenta_sugerida)}` : ''}</span>;
+    }
+    if (exigeCuentaAlUsar(rol, fila.clave)) {
+      return <span className="text-warning-text">{t('categorias.cuentaFaltante')}</span>;
+    }
+    return <span className="text-fg-secondary">—</span>;
+  };
+
+  const insigniaTipo = (fila: Categoria, rol: RolImpuesto | null) => {
+    const tipo = tipoImpuesto(rol, fila.cuenta_sugerida);
+    if (tipo === 'agrupa') return <StatusBadge estado="agrupa" etiqueta={t('categorias.tipoAgrupa')} tono="neutro" apariencia="contorno" />;
+    if (tipo === 'cancela_pasivo') return <StatusBadge estado="pasivo" etiqueta={t('categorias.tipoCancelaPasivo')} tono="informacion" apariencia="contorno" />;
+    if (tipo === 'gasto') return <StatusBadge estado="gasto" etiqueta={t('categorias.tipoGasto')} tono="advertencia" apariencia="contorno" />;
+    return <span className="text-fg-secondary">{fila.tipo === 'ingreso' ? t('categorias.ingresos') : t('categorias.egresos')}</span>;
+  };
+
+  const bloque = (tipo: TipoCategoria, titulo: string) => {
+    const texto = busqueda.trim().toLowerCase();
+    const delTipo = filas.filter((fila) => fila.tipo === tipo);
+    const visibles = texto
+      ? delTipo.filter((fila) => fila.nombre.toLowerCase().includes(texto) || (fila.cuenta_sugerida ?? '').includes(texto))
+      : delTipo;
+    return (
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-fg">{titulo}</h2>
+          <Button type="button" variant="outline" onClick={() => abrirNueva(tipo)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('categorias.nueva')}
+          </Button>
+        </div>
+        {visibles.length === 0 ? (
+          <p className="text-sm text-fg-secondary">{t('categorias.vacio')}</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-subtle">
+                  <TableHead>{t('categorias.nombreColumna')}</TableHead>
+                  <TableHead>{t('categorias.cuentaColumna')}</TableHead>
+                  <TableHead>{t('categorias.tipoColumna')}</TableHead>
+                  <TableHead>{t('categorias.estadoColumna')}</TableHead>
+                  <TableHead className="w-12"><span className="sr-only">{t('categorias.accionesColumna')}</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ordenarConHijas(visibles).map(({ fila, nivel }) => {
+                  const rol = rolDe(fila);
+                  return (
+                    <TableRow key={fila.id} className={rol === 'agrupa' ? 'bg-subtle' : undefined}>
+                      <TableCell className={nivel === 1 ? 'pl-8' : undefined}>
+                        <span className={`flex items-center gap-2 text-fg ${rol === 'agrupa' ? 'font-medium' : ''}`}>
+                          <IconoCategoria nombre={fila.icono} className="h-4 w-4 shrink-0 text-fg-secondary" />
+                          {fila.nombre}
+                        </span>
+                        {ayuda(fila.clave) ? <span className="block text-xs text-fg-secondary">{ayuda(fila.clave)}</span> : null}
+                      </TableCell>
+                      <TableCell>{textoCuenta(fila, rol)}</TableCell>
+                      <TableCell>{insigniaTipo(fila, rol)}</TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          estado={fila.activa ? 'active' : 'inactive'}
+                          etiqueta={fila.activa ? t('categorias.activa') : t('categorias.desactivar')}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <RowActionsMenu acciones={accionesDeFila(fila)} titulo={fila.nombre} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+    );
+  };
 
   return (
-    <div className="min-h-screen space-y-6 bg-gray-50 p-4 dark:bg-gray-900 md:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/app/finanzas/bancos">
-            <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
-          </Link>
-          <div className="rounded-xl bg-blue-100 p-2 dark:bg-blue-900/30">
-            <Tags className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('categorias.titulo')}</h1>
-            <p className="text-gray-500">{t('categorias.descripcion')}</p>
-          </div>
-        </div>
-        <Button type="button" onClick={() => void sembrar()} disabled={sembrando}>
-          {sembrando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {t('categorias.completar')}
-        </Button>
-      </div>
+    <div className="min-h-screen space-y-6 bg-canvas p-4 md:p-6">
+      <PageHeader
+        titulo={t('categorias.titulo')}
+        subtitulo={t('categorias.descripcion')}
+        icono={Tags}
+        migas={[
+          { etiqueta: t('categorias.migaFinanzas'), href: '/app/finanzas' },
+          { etiqueta: t('categorias.migaTesoreria'), href: '/app/finanzas/bancos' },
+          { etiqueta: t('categorias.migaCategorias') },
+        ]}
+        acciones={(
+          <Button type="button" variant="outline" onClick={() => void sembrar()} disabled={sembrando}>
+            {sembrando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {t('categorias.completar')}
+          </Button>
+        )}
+      />
+
+      <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={t('categorias.buscar')} />
 
       {cargando ? <Loader2 className="h-6 w-6 animate-spin" /> : (
         <div className="space-y-8">
-          {bloque('ingreso', t('categorias.ingresos'))}
           {bloque('egreso', t('categorias.egresos'))}
+          <AvisoTonal tono="informacion" titulo={t('categorias.avisoTitulo')} descripcion={t('categorias.avisoDetalle')} />
+          {bloque('ingreso', t('categorias.ingresos'))}
         </div>
       )}
 
-      <Dialog open={abierto} onOpenChange={setAbierto}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{formulario.id ? t('categorias.editar') : t('categorias.nueva')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>{t('categorias.nombre')}</Label>
-              <Input value={formulario.nombre} onChange={(event) => setFormulario({ ...formulario, nombre: event.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('categorias.icono')}</Label>
-              <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto">
-                {ICONOS_CATEGORIA.map((icono) => (
-                  <button
-                    key={icono}
-                    type="button"
-                    className={`rounded border p-2 ${formulario.icono === icono ? 'border-blue-600 bg-blue-50' : 'border-transparent'}`}
-                    onClick={() => setFormulario({ ...formulario, icono })}
-                  >
-                    <IconoCategoria nombre={icono} className="h-4 w-4" />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('categorias.cuenta')}</Label>
-              <SearchSelect
-                options={opcionesCuenta}
-                value={formulario.cuenta}
-                onValueChange={(cuenta) => setFormulario({ ...formulario, cuenta })}
-                placeholder={t('categorias.cuenta')}
-                searchPlaceholder={t('categorias.buscarCuenta')}
-                noneLabel={t('categorias.sinCuenta')}
-                noneValue=""
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('categorias.padre')}</Label>
-              <SearchSelect
-                options={opcionesPadre}
-                value={formulario.padreId || 'none'}
-                onValueChange={(padreId) => setFormulario({ ...formulario, padreId: padreId === 'none' ? '' : padreId })}
-                noneLabel={t('categorias.sinPadre')}
-                placeholder={t('categorias.padre')}
-                searchPlaceholder={t('categorias.nombre')}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={formulario.activa} onCheckedChange={(activa) => setFormulario({ ...formulario, activa })} />
-              <span>{t('categorias.activa')}</span>
-            </div>
+      <Dialogo
+        abierto={abierto}
+        onAbiertoChange={setAbierto}
+        titulo={formulario.id ? t('categorias.editar') : t('categorias.nueva')}
+        ancho={520}
+        textoCancelar={t('categorias.cancelar')}
+        primario={{
+          etiqueta: t('categorias.guardar'),
+          onClick: () => void guardar(),
+          cargando: guardando,
+          deshabilitada: !formulario.nombre.trim(),
+        }}
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="categoria-nombre">{t('categorias.nombre')}</Label>
+          <Input id="categoria-nombre" value={formulario.nombre} onChange={(event) => setFormulario({ ...formulario, nombre: event.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>{t('categorias.icono')}</Label>
+          <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto">
+            {ICONOS_CATEGORIA.map((icono) => (
+              <button
+                key={icono}
+                type="button"
+                aria-label={icono}
+                aria-pressed={formulario.icono === icono}
+                className={`rounded border p-2 ${formulario.icono === icono ? 'border-brand bg-brand-tint' : 'border-transparent'}`}
+                onClick={() => setFormulario({ ...formulario, icono })}
+              >
+                <IconoCategoria nombre={icono} className="h-4 w-4" />
+              </button>
+            ))}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setAbierto(false)}>{t('categorias.cancelar')}</Button>
-            <Button type="button" onClick={() => void guardar()} disabled={guardando || !formulario.nombre.trim()}>
-              {guardando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {t('categorias.guardar')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        {rolFormulario === 'agrupa' ? (
+          <p className="text-sm text-fg-secondary">{t('categorias.padreAyuda')}</p>
+        ) : (
+          <div className="space-y-1.5">
+            <Label>{t('categorias.cuenta')}</Label>
+            <SearchSelect
+              options={opcionesCuenta}
+              value={formulario.cuenta}
+              onValueChange={(cuenta) => setFormulario({ ...formulario, cuenta })}
+              placeholder={t('categorias.cuenta')}
+              searchPlaceholder={t('categorias.buscarCuenta')}
+              noneLabel={t('categorias.sinCuenta')}
+              noneValue=""
+            />
+            {rolFormulario === 'pasivo' ? <p className="text-xs font-medium text-fg-muted">{t('categorias.ayudaPasivo')}</p> : null}
+          </div>
+        )}
+        {rolFormulario === 'agrupa' ? null : (
+          <div className="space-y-1.5">
+            <Label>{t('categorias.padre')}</Label>
+            <SearchSelect
+              options={opcionesPadre}
+              value={formulario.padreId || 'none'}
+              onValueChange={(padreId) => setFormulario({ ...formulario, padreId: padreId === 'none' ? '' : padreId })}
+              noneLabel={t('categorias.sinPadre')}
+              placeholder={t('categorias.padre')}
+              searchPlaceholder={t('categorias.nombre')}
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Switch checked={formulario.activa} onCheckedChange={(activa) => setFormulario({ ...formulario, activa })} />
+          <span className="text-sm text-fg">{t('categorias.activa')}</span>
+        </div>
+      </Dialogo>
+
+      <ConfirmDialog
+        abierto={porEliminar !== null}
+        onAbiertoChange={(valor) => { if (!valor) setPorEliminar(null); }}
+        titulo={t('categorias.eliminarTitulo')}
+        descripcion={porEliminar ? t('categorias.eliminarDetalle', { nombre: porEliminar.nombre }) : ''}
+        textoConfirmar={t('categorias.eliminar')}
+        tono="peligro"
+        onConfirmar={() => {
+          const fila = porEliminar;
+          setPorEliminar(null);
+          if (fila) void eliminar(fila);
+        }}
+      />
     </div>
   );
 }

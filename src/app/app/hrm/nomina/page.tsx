@@ -205,8 +205,8 @@ export default function NominaPage() {
   const statuses = getService()?.getPeriodStatuses() || [];
   const frequencies = getService()?.getFrequencies() || [];
   
-  // Períodos disponibles para cálculo (open, draft o reviewing)
-  const calculablePeriods = periods.filter(p => ['open', 'draft', 'reviewing'].includes(p.status || ''));
+  // Períodos disponibles para cálculo (open o reviewing)
+  const calculablePeriods = periods.filter(p => ['open', 'reviewing'].includes(p.status || ''));
 
   if (orgLoading || isLoading) {
     return (

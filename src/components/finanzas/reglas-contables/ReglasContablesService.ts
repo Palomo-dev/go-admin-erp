@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import {
+  errorDeRegla,
+  type CuentaInvalida,
+  type ErrorRegla,
+} from '@/lib/finanzas/reglasContables';
 
 export interface AccountingRule {
   id: string;
@@ -11,6 +16,7 @@ export interface AccountingRule {
   debit_account_code: string;
   credit_account_code: string;
   tax_account_code: string | null;
+  discount_account_code: string | null;
   use_tax_from_document: boolean;
   is_active: boolean;
   priority: number;
@@ -30,149 +36,111 @@ export interface ChartAccount {
   es_movimiento?: boolean | null;
 }
 
+export type DatosRegla = Partial<Omit<AccountingRule, 'id' | 'organization_id' | 'created_at' | 'updated_at'>>;
+
 export { ORIGENES_REGLA as SOURCE_TYPES, EVENTOS_REGLA as EVENT_TYPES } from '@/lib/finanzas/configuracionContable';
 
-export class ReglasContablesService {
-  private static getOrganizationId(): number {
-    const org = obtenerOrganizacionActiva();
-    return org?.id || 0;
-  }
+/** Lo que devuelve el servidor al rechazar una escritura. */
+export class ErrorReglaContable extends Error {
+  readonly fallo: ErrorRegla;
 
+  constructor(fallo: ErrorRegla) {
+    super(fallo.codigo);
+    this.name = 'ErrorReglaContable';
+    this.fallo = fallo;
+  }
+}
+
+/**
+ * Las lecturas van con el cliente del navegador y RLS. Las escrituras van por
+ * `/api/finanzas/reglas-contables`: ahí la organización sale de la sesión, el
+ * permiso se resuelve en el servidor y siempre se filtra por empresa.
+ */
+async function escribir<T>(ruta: string, metodo: 'POST' | 'PATCH' | 'DELETE', cuerpo?: DatosRegla): Promise<T> {
+  const org = getOrganizationId();
+  const respuesta = await fetch(`/api/finanzas/reglas-contables${ruta}`, {
+    method: metodo,
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(org > 0 ? { 'x-organization-id': String(org) } : {}),
+    },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
+  const datos = (await respuesta.json().catch(() => null)) as (T & Partial<ErrorRegla>) | null;
+  if (!respuesta.ok) {
+    throw new ErrorReglaContable({
+      codigo: datos?.codigo ?? 'desconocido',
+      lado: datos?.lado ?? null,
+      cuenta: datos?.cuenta ?? null,
+    });
+  }
+  return datos as T;
+}
+
+export class ReglasContablesService {
   static async obtenerReglas(): Promise<AccountingRule[]> {
-    const organizationId = this.getOrganizationId();
-    
     const { data, error } = await supabase
       .from('accounting_rules')
       .select('*')
-      .eq('organization_id', organizationId)
+      .eq('organization_id', getOrganizationId())
       .order('source_type')
       .order('priority', { ascending: true });
 
-    if (error) {
-      console.error('Error obteniendo reglas:', error);
-      throw error;
-    }
-
+    if (error) throw new ErrorReglaContable(errorDeRegla(error));
     return data || [];
   }
 
-  static async obtenerRegla(id: string): Promise<AccountingRule | null> {
-    const { data, error } = await supabase
-      .from('accounting_rules')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('Error obteniendo regla:', error);
-      return null;
-    }
-
-    return data;
+  static async obtenerDiagnostico(): Promise<CuentaInvalida[]> {
+    const { data, error } = await supabase.rpc('fn_reglas_contables_diagnostico', {
+      p_organization_id: getOrganizationId(),
+    });
+    if (error) throw new ErrorReglaContable(errorDeRegla(error));
+    return (data ?? []) as CuentaInvalida[];
   }
 
-  static async crearRegla(regla: Partial<AccountingRule>): Promise<AccountingRule> {
-    const organizationId = this.getOrganizationId();
-    
-    const { data, error } = await supabase
-      .from('accounting_rules')
-      .insert({
-        name: regla.name,
-        description: regla.description || null,
-        source_type: regla.source_type,
-        event_type: regla.event_type,
-        debit_account_code: regla.debit_account_code,
-        credit_account_code: regla.credit_account_code,
-        tax_account_code: regla.tax_account_code || null,
-        use_tax_from_document: regla.use_tax_from_document || false,
-        priority: regla.priority || 0,
-        conditions: regla.conditions || null,
-        organization_id: organizationId,
-        is_active: true
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creando regla:', error);
-      throw error;
-    }
-
-    return data;
+  static crearRegla(regla: DatosRegla): Promise<AccountingRule> {
+    return escribir<AccountingRule>('', 'POST', regla);
   }
 
-  static async actualizarRegla(id: string, regla: Partial<AccountingRule>): Promise<AccountingRule> {
-    const { data, error } = await supabase
-      .from('accounting_rules')
-      .update({
-        ...regla,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error actualizando regla:', error);
-      throw error;
-    }
-
-    return data;
+  static actualizarRegla(id: string, regla: DatosRegla): Promise<AccountingRule> {
+    return escribir<AccountingRule>(`/${id}`, 'PATCH', regla);
   }
 
   static async eliminarRegla(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('accounting_rules')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error eliminando regla:', error);
-      throw error;
-    }
+    await escribir<{ ok: true }>(`/${id}`, 'DELETE');
   }
 
   static async toggleActivo(id: string, isActive: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('accounting_rules')
-      .update({ is_active: isActive, updated_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error actualizando estado:', error);
-      throw error;
-    }
+    await escribir<AccountingRule>(`/${id}`, 'PATCH', { is_active: isActive });
   }
 
-  static async duplicarRegla(reglaId: string): Promise<AccountingRule> {
-    const original = await this.obtenerRegla(reglaId);
-    if (!original) throw new Error('Regla no encontrada');
-
-    const { id: _idOriginal, created_at: _c, updated_at: _u, ...rest } = original;
-    void _idOriginal;
-    void _c;
-    void _u;
+  static duplicarRegla(regla: AccountingRule, sufijo: string): Promise<AccountingRule> {
     return this.crearRegla({
-      ...rest,
-      name: `${rest.name} (copia)`
+      name: `${regla.name} ${sufijo}`,
+      description: regla.description,
+      source_type: regla.source_type,
+      event_type: regla.event_type,
+      debit_account_code: regla.debit_account_code,
+      credit_account_code: regla.credit_account_code,
+      tax_account_code: regla.tax_account_code,
+      discount_account_code: regla.discount_account_code,
+      use_tax_from_document: regla.use_tax_from_document,
+      priority: regla.priority,
+      conditions: regla.conditions,
     });
   }
 
   static async obtenerCuentasContables(): Promise<ChartAccount[]> {
-    const organizationId = this.getOrganizationId();
-    
     const { data, error } = await supabase
       .from('chart_of_accounts')
       .select('*')
-      .eq('organization_id', organizationId)
+      .eq('organization_id', getOrganizationId())
       .eq('is_active', true)
       .order('account_code');
 
-    if (error) {
-      console.error('Error obteniendo cuentas:', error);
-      throw error;
-    }
-
+    if (error) throw new ErrorReglaContable(errorDeRegla(error));
     return data || [];
   }
 }

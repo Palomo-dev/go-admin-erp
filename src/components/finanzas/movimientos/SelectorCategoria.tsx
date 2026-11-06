@@ -10,6 +10,8 @@ import { IconoCategoria } from '@/components/finanzas/categorias-tesoreria/icono
 export interface OpcionCategoria {
   id: number;
   nombre: string;
+  /** Con la ruta del padre: «Impuestos › Pago de IVA». Sin ella, el nombre. */
+  etiqueta?: string;
   icono: string;
   cuenta: string | null;
 }
@@ -33,7 +35,7 @@ export function SelectorCategoria({
   const [texto, setTexto] = useState('');
   const actual = categorias.find((categoria) => categoria.id === value);
   const filas = useMemo(
-    () => filtrarPorTexto(categorias, texto, (categoria) => [categoria.nombre, categoria.cuenta ?? '']),
+    () => filtrarPorTexto(categorias, texto, (categoria) => [categoria.etiqueta ?? categoria.nombre, categoria.cuenta ?? '']),
     [categorias, texto],
   );
 
@@ -44,7 +46,7 @@ export function SelectorCategoria({
           {actual ? (
             <>
               <IconoCategoria nombre={actual.icono} className="mr-2 h-4 w-4" />
-              <span className="truncate">{actual.nombre}</span>
+              <span className="truncate">{actual.etiqueta ?? actual.nombre}</span>
             </>
           ) : (
             <span className="text-gray-500">{placeholder}</span>
@@ -73,7 +75,7 @@ export function SelectorCategoria({
                 }}
               >
                 <IconoCategoria nombre={categoria.icono} className="h-4 w-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{categoria.nombre}</span>
+                <span className="min-w-0 flex-1 truncate">{categoria.etiqueta ?? categoria.nombre}</span>
                 {categoria.cuenta ? <span className="text-xs text-gray-500">{categoria.cuenta}</span> : null}
               </button>
             ))

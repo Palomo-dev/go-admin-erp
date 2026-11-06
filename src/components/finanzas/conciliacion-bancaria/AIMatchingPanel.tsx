@@ -197,7 +197,7 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-gray-900 dark:text-white">Sugerencias IA</CardTitle>
+            <CardTitle className="text-gray-900 dark:text-white">Sugerencias</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -215,7 +215,7 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-gray-900 dark:text-white">Sugerencias IA</CardTitle>
+            <CardTitle className="text-gray-900 dark:text-white">Sugerencias</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -239,7 +239,7 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-gray-900 dark:text-white">Sugerencias IA</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-white">Sugerencias</CardTitle>
             </div>
             <CardDescription className="dark:text-gray-400">
               {suggestions.length} sugerencia(s) encontrada(s)

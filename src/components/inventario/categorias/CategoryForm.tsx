@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChefHat, Globe, Info, Landmark, Layers, Loader2, Lock, Save, Sparkles, Tags, TriangleAlert, Wand2 } from 'lucide-react';
-import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
+import { BloqueCuentasCatalogo } from '@/components/finanzas/contabilidad/cuentas/BloqueCuentasCatalogo';
 import { EmptyState, FormField, FormSection, PageHeader } from '@/components/kit';
 import { TreeCell } from '@/components/kit/TreeCell';
 import { TreeSelect, type OpcionArbol } from '@/components/kit/TreePicker';
@@ -172,6 +172,15 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   };
 
   // ── Árbol para el padre y la vista previa ────────────────────────────────
+  const valoresCuentas = useMemo(
+    () => ({
+      ingreso: datos.cuenta_ingreso,
+      costo: datos.cuenta_costo,
+      inventario: datos.cuenta_inventario,
+      devolucion: datos.cuenta_devolucion,
+    }),
+    [datos.cuenta_ingreso, datos.cuenta_costo, datos.cuenta_inventario, datos.cuenta_devolucion],
+  );
   const opciones: OpcionArbol[] = useMemo(
     () =>
       categorias.map((c) => ({
@@ -519,19 +528,13 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
             </FormField>
           </FormSection>
 
-          <FormSection titulo={t('formulario.cuentas.titulo')} descripcion={t('formulario.cuentas.descripcion')} columnas={2} icono={Landmark} colapsable>
-            <FormField etiqueta={t('formulario.cuentas.ingreso')} ayuda={t('formulario.cuentas.ayuda')}>
-              <CampoCuentaContable value={datos.cuenta_ingreso} onChange={(cuenta) => cambiar('cuenta_ingreso', cuenta ?? '')} />
-            </FormField>
-            <FormField etiqueta={t('formulario.cuentas.costo')}>
-              <CampoCuentaContable value={datos.cuenta_costo} onChange={(cuenta) => cambiar('cuenta_costo', cuenta ?? '')} />
-            </FormField>
-            <FormField etiqueta={t('formulario.cuentas.inventario')}>
-              <CampoCuentaContable value={datos.cuenta_inventario} onChange={(cuenta) => cambiar('cuenta_inventario', cuenta ?? '')} />
-            </FormField>
-            <FormField etiqueta={t('formulario.cuentas.devolucion')}>
-              <CampoCuentaContable value={datos.cuenta_devolucion} onChange={(cuenta) => cambiar('cuenta_devolucion', cuenta ?? '')} />
-            </FormField>
+          <FormSection titulo={t('formulario.cuentas.titulo')} descripcion={t('formulario.cuentas.descripcion')} columnas={1} icono={Landmark} colapsable>
+            <BloqueCuentasCatalogo
+              sujeto="categoria"
+              categoriaId={datos.parent_id}
+              valores={valoresCuentas}
+              onCambiar={(rol, cuenta) => cambiar(`cuenta_${rol}`, cuenta ?? '')}
+            />
           </FormSection>
 
           <FormSection titulo={t('detalle.apariencia.titulo')} descripcion={t('formulario.apariencia.descripcion')} columnas={2} icono={Layers} colapsable>

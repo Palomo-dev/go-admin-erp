@@ -4564,7 +4564,15 @@
       "sitio-web_analitica": "Analytique",
       "sitio-web_sedes": "Sites sur le web",
       "sitio-web_configuracion": "Configuration",
-      "plan_historial": "Achats"
+      "plan_historial": "Achats",
+      "finanzas_contabilidad_pendientes": "Anomalies comptables",
+      "finanzas_contabilidad_informes_flujo-efectivo": "Tableau des flux de trésorerie",
+      "finanzas_contabilidad_informes_cambios-patrimonio": "Variations des capitaux propres",
+      "finanzas_contabilidad_informes_notas": "Notes aux états financiers",
+      "finanzas_contabilidad_informes_certificacion": "Certification des états financiers",
+      "finanzas_contabilidad_informes_indicadores": "Indicateurs financiers",
+      "finanzas_contabilidad_informes_presupuesto-real": "Budget contre réel",
+      "finanzas_contabilidad_informes_libros": "Livres comptables"
     },
     "grupos": {
       "venta": "Vente",
@@ -17685,7 +17693,10 @@
       "tercero_requerido": "Ce compte exige le NIT du tiers.",
       "soporte_invalido": "La pièce doit être un PDF ou une image de cette organisation.",
       "asiento_publicado_inmutable": "L'écriture est déjà validée et ne peut pas être modifiée. Contrepassez-la.",
-      "desconocido": "L'opération n'a pas pu aboutir."
+      "desconocido": "L'opération n'a pas pu aboutir.",
+      "categoria_no_imputable": "« Impôts » regroupe les sous-catégories. Choisissez-en une.",
+      "categoria_requiere_cuenta": "Cette catégorie d’impôts nécessite un compte du plan.",
+      "impuesto_cancela_pasivo": "Payer cet impôt solde un passif : choisissez un compte de classe 2."
     },
     "movimiento": {
       "tituloIngreso": "Nouvel encaissement",
@@ -17733,7 +17744,10 @@
       "faltaCentro": "Ce compte exige un centre de coût.",
       "faltaTercero": "Ce compte exige le NIT du tiers.",
       "soporteTipo": "La pièce doit être un PDF, JPG, PNG ou WebP.",
-      "soportePeso": "La pièce ne peut pas dépasser 5 Mo."
+      "soportePeso": "La pièce ne peut pas dépasser 5 Mo.",
+      "ayudaPasivo": "Solde le passif. Ne va pas en charge.",
+      "ayudaGasto": "C’est une charge directe.",
+      "ayudaSinCuenta": "Votre plan n’a pas le compte suggéré. Choisissez-en un ou créez-le dans le plan comptable."
     },
     "categorias": {
       "titulo": "Catégories de trésorerie",
@@ -17759,7 +17773,35 @@
       "vacio": "Il n'y a pas de catégories dans ce groupe.",
       "errorCarga": "Les catégories n'ont pas pu être chargées.",
       "errorGuardar": "La catégorie n'a pas pu être enregistrée.",
-      "buscarCuenta": "Rechercher un compte"
+      "buscarCuenta": "Rechercher un compte",
+      "buscar": "Rechercher une catégorie",
+      "nombreColumna": "Catégorie",
+      "cuentaColumna": "Compte suggéré",
+      "tipoColumna": "Type",
+      "estadoColumna": "État",
+      "accionesColumna": "Actions",
+      "tipoAgrupa": "Regroupe",
+      "tipoCancelaPasivo": "Solde le passif",
+      "tipoGasto": "Charge",
+      "cuentaPadre": "Sans compte : organise, ne reçoit pas de mouvements",
+      "cuentaFaltante": "Sans compte : exigé à l’utilisation",
+      "padreAyuda": "Cette catégorie regroupe les sous-catégories d’impôts. Elle n’a pas de compte et ne se choisit pas dans un mouvement.",
+      "ayudaPasivo": "Comptes de classe 2 uniquement : le paiement solde le passif.",
+      "avisoTitulo": "Payer un impôt ne constate pas la charge une seconde fois",
+      "avisoDetalle": "Le paiement solde le passif constaté lors de la vente ou de l’achat. Seuls ceux marqués Charge, comme la taxe sur les mouvements financiers, sont des charges directes.",
+      "activar": "Activer",
+      "desactivarAccion": "Désactiver",
+      "eliminarTitulo": "Supprimer la catégorie ?",
+      "eliminarDetalle": "« {nombre} » ne sera plus disponible. Les mouvements enregistrés ne changent pas.",
+      "errores": {
+        "padre_no_imputable": "« Impôts » regroupe et n’a pas de compte.",
+        "cuenta_obligatoria": "Cette catégorie d’impôts nécessite un compte.",
+        "impuesto_cancela_pasivo": "Cette catégorie solde un passif : choisissez un compte de classe 2.",
+        "cuenta_no_es_de_movimiento": "Ce n’est pas un compte de mouvement. Choisissez un sous-compte du plan."
+      },
+      "migaFinanzas": "Finances",
+      "migaTesoreria": "Trésorerie",
+      "migaCategorias": "Catégories"
     },
     "reporte": {
       "titulo": "Rapport par catégorie",
@@ -38711,6 +38753,1637 @@
       "desactivada": "Promotion désactivée",
       "activada": "Promotion activée",
       "errorEstado": "Impossible de changer l'état"
+    }
+  },
+  "pedidosManuales": {
+    "acciones": {
+      "pedidoManual": "Commande manuelle",
+      "reconstruir": "Reconstituer une commande payée",
+      "pagosSinPedido": "Paiements sans commande"
+    },
+    "productos": {
+      "buscar": "Rechercher un produit par nom ou SKU",
+      "vacio": "Recherchez et ajoutez les produits de la commande.",
+      "precioCobrado": "Prix encaissé",
+      "precioVigente": "Actuel",
+      "menos": "Une unité de moins",
+      "mas": "Une unité de plus",
+      "quitar": "Retirer le produit",
+      "cantidad": "Quantité"
+    },
+    "manual": {
+      "titulo": "Commande manuelle",
+      "descripcion": "Crée une commande de la boutique avec son numéro WO-…, en attente de paiement. Si Wompi ou Bold est connecté, un lien de paiement est généré.",
+      "crear": "Créer la commande",
+      "tienda": "Boutique (agence)",
+      "elegirTienda": "Choisissez l'agence",
+      "canal": "Canal",
+      "canalWhatsapp": "WhatsApp",
+      "canalTelefono": "Téléphone",
+      "cliente": "Client",
+      "nombre": "Nom",
+      "celular": "Mobile",
+      "correo": "E-mail",
+      "direccion": "Adresse",
+      "entrega": "Livraison",
+      "recoger": "Retrait en boutique",
+      "domicilio": "Livraison à domicile",
+      "envio": "Frais de livraison",
+      "productos": "Produits",
+      "preciosVigentes": "Les prix et taxes sont ceux en vigueur dans l'Inventaire ; le serveur les calcule.",
+      "notas": "Notes de la commande (facultatif)",
+      "generarLink": "Générer un lien de paiement",
+      "generarLinkAyuda": "Avec la passerelle connectée (Wompi ou Bold), pour le total de la commande.",
+      "faltaSede": "Choisissez la boutique",
+      "faltaNombre": "Saisissez le nom du client",
+      "faltanProductos": "Ajoutez au moins un produit",
+      "errorCrear": "La commande n'a pas pu être créée.",
+      "creadoTitulo": "Commande {pedido} créée",
+      "creadoDescripcion": "Total {total}. En attente de paiement.",
+      "listo": "Terminé",
+      "cerrar": "Fermer",
+      "linkDePago": "Lien de paiement",
+      "copiarLink": "Copier le lien",
+      "enviarWhatsapp": "Envoyer par WhatsApp",
+      "linkCopiado": "Lien copié",
+      "linkAviso": "Quand le client paie, reconstituez le paiement depuis « Paiements sans commande » : le paiement du lien est reconnu et cette même commande est complétée.",
+      "linkFallo": "La commande a été créée, mais la passerelle n'a pas généré le lien de paiement.",
+      "sinPasarela": "La commande a été créée. L'organisation n'a ni Wompi ni Bold connecté pour générer le lien.",
+      "sinLink": "La commande a été créée sans lien de paiement.",
+      "mensajeWhatsapp": "Bonjour, voici le lien pour payer votre commande {pedido} de {total} : {url}"
+    },
+    "reconstruir": {
+      "titulo": "Reconstituer une commande payée",
+      "descripcion": "Pour un paiement approuvé sans commande. La passerelle est consultée (lecture seule) et la commande n'est créée que si le paiement est approuvé et le montant correspond.",
+      "pasarela": "Passerelle",
+      "elegirPasarela": "Choisissez la passerelle",
+      "proximamente": "pas encore de consultation",
+      "sinPasarelas": "L'organisation n'a aucune passerelle de paiement connectée.",
+      "buscarPor": "Rechercher par",
+      "referencia": "Référence",
+      "transaccion": "ID de transaction",
+      "boldSoloId": "Bold se consulte par l'ID de transaction.",
+      "valor": "Montant encaissé",
+      "fecha": "Date du paiement",
+      "fechaAyuda": "Vide : celle indiquée par la passerelle.",
+      "verificar": "Vérifier auprès de la passerelle",
+      "estadoCobro": "État du paiement",
+      "aprobado": "Approuvé",
+      "metodo": "Méthode",
+      "decision": {
+        "ya_existe": "Ce paiement a déjà une commande : il ne sera pas dupliqué.",
+        "completar": "Une commande en attente correspond à ce paiement : cette même commande sera marquée payée.",
+        "crear": "La commande sera créée avec le même numéro de la boutique.",
+        "crear_nuevo": "Le paiement n'a pas le préfixe WO-… de la boutique : il sera créé avec un nouveau numéro et la référence d'origine restera dans les notes.",
+        "rechazar": "Ce paiement ne peut pas être reconstitué ici."
+      },
+      "rechazo": {
+        "otraTienda": "La référence appartient à une autre boutique : reconstituez-la depuis cette organisation.",
+        "otraOrganizacion": "Ce paiement a déjà une commande dans une autre organisation."
+      },
+      "cliente": "Client",
+      "nombre": "Nom",
+      "celular": "Mobile",
+      "correo": "E-mail",
+      "direccion": "Adresse",
+      "tienda": "Boutique (agence)",
+      "elegirTienda": "Choisissez l'agence",
+      "sugerida": "suggérée par les produits",
+      "envio": "Frais de livraison",
+      "productos": "Produits",
+      "productosAyuda": "Obligatoires : la passerelle n'envoie pas les lignes. Saisissez le prix encaissé s'il n'est pas l'actuel ; la somme avec la livraison doit égaler le montant.",
+      "confirmarTienda": "Je confirme que ce paiement appartient à la boutique {tienda}",
+      "confirmarTiendaAyuda": "Plusieurs organisations peuvent partager le commerçant de la passerelle : sans le préfixe WO-…, impossible de le savoir automatiquement.",
+      "primeroVerificar": "Vérifiez d'abord le paiement auprès de la passerelle",
+      "faltaNombre": "Saisissez le nom du client",
+      "faltanProductos": "Ajoutez les produits de la commande",
+      "faltaSede": "Choisissez la boutique",
+      "faltaConfirmar": "Confirmez la boutique du paiement",
+      "verPedido": "Voir la commande",
+      "completar": "Marquer cette commande payée",
+      "reconstruir": "Reconstituer la commande",
+      "errorVerificar": "Le paiement n'a pas pu être vérifié.",
+      "errorReconstruir": "La commande n'a pas pu être reconstituée.",
+      "totalNoCuadra": "Les produits et la livraison font {total} et le paiement était de {valor}.",
+      "soloLectura": "Vérifier ne fait que consulter la passerelle : rien n'y est encaissé, annulé ni modifié.",
+      "listo": "Commande {pedido} prête"
+    },
+    "sinPedido": {
+      "titulo": "Paiements sans commande",
+      "subtitulo": "Paiements approuvés des passerelles connectées sans commande",
+      "pedidosOnline": "Commandes en ligne",
+      "actualizar": "Actualiser",
+      "origen": "Ils proviennent des notifications (webhooks) enregistrées par les passerelles au cours des 90 derniers jours.",
+      "origenDetalle": "Les paiements avec le préfixe d'une autre boutique ne sont pas affichés. Pour un paiement plus ancien, utilisez « Reconstituer une commande payée » avec la référence ou l'ID du tableau de bord de la passerelle.",
+      "vacioTitulo": "Aucun paiement sans commande",
+      "vacioDescripcion": "Chaque paiement approuvé enregistré a sa commande.",
+      "fecha": "Date",
+      "pasarela": "Passerelle",
+      "referencia": "Référence",
+      "transaccion": "Transaction",
+      "valor": "Montant",
+      "sinPrefijo": "Sans préfixe de boutique",
+      "reconstruir": "Reconstituer",
+      "error": "Les paiements n'ont pas pu être chargés.",
+      "listo": "Commande {pedido} prête"
+    }
+  },
+  "planCuentas": {
+    "titulo": "Plan comptable",
+    "decreto": "PUC commercial, décret 2650 de 1993",
+    "subtitulo": "{cuentas} comptes · {movimiento} de mouvement · PUC commercial, décret 2650 de 1993",
+    "exportar": "Exporter",
+    "importar": "Importer",
+    "expandir": "Tout développer",
+    "colapsar": "Tout réduire",
+    "nuevaCuenta": "Nouveau compte",
+    "buscar": "Rechercher par code ou nom",
+    "verResultados": "Voir {cuentas} comptes",
+    "resultado": "{cuentas, plural, one {1 compte correspond} other {# comptes correspondent}}. Ils affichent leur chemin pour créer en dessous sans quitter la recherche.",
+    "importadas": "{cuentas} comptes importés",
+    "migas": {
+      "finanzas": "Finances",
+      "contabilidad": "Comptabilité"
+    },
+    "columnas": {
+      "cuenta": "Compte",
+      "nivel": "Niveau",
+      "naturaleza": "Nature",
+      "saldo": "Solde du jour",
+      "acciones": "Actions"
+    },
+    "nivel": {
+      "clase": "Classe",
+      "grupo": "Groupe",
+      "cuenta": "Compte",
+      "subcuenta": "Sous-compte",
+      "auxiliar": "Auxiliaire",
+      "subauxiliar": "Sous-auxiliaire",
+      "legacy": "Ancien"
+    },
+    "naturaleza": {
+      "debito": "Débit",
+      "credito": "Crédit",
+      "orden": "Ordre"
+    },
+    "filtros": {
+      "nivel": "Niveau",
+      "naturaleza": "Nature",
+      "tipo": "Type",
+      "todos": "Tous",
+      "titulosYMovimiento": "Titres et mouvement",
+      "movimiento": "Mouvement uniquement",
+      "titulo": "Titre uniquement",
+      "soloActivas": "Actifs uniquement"
+    },
+    "vacio": {
+      "titulo": "Pas encore de plan comptable",
+      "descripcion": "Créez le premier compte ou importez votre plan depuis Excel."
+    },
+    "errores": {
+      "cargarTitulo": "Impossible de charger le plan comptable",
+      "cargar": "Vérifiez votre connexion et réessayez.",
+      "guardar": "Impossible d'enregistrer le compte.",
+      "eliminar": "Suppression impossible. Il a peut-être des comptes enfants ou des écritures.",
+      "importar": "Impossible d'importer le fichier."
+    },
+    "eliminar": {
+      "titulo": "Supprimer {cuenta} ?",
+      "descripcion": "Cette action est irréversible. Le compte n'a ni écritures ni comptes enfants.",
+      "confirmar": "Supprimer le compte"
+    },
+    "fila": {
+      "abrirRama": "Ouvrir {cuenta}",
+      "cerrarRama": "Fermer {cuenta}",
+      "crearDebajo": "Créer {nivel} sous {cuenta}",
+      "inactiva": "Inactif",
+      "debito": "D",
+      "credito": "C",
+      "editar": "Modifier",
+      "verMayor": "Voir au grand livre",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "eliminar": "Supprimer",
+      "activada": "Compte activé",
+      "desactivada": "Compte désactivé",
+      "eliminada": "Compte supprimé"
+    },
+    "alta": {
+      "codigo": "Code",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Nom de l'auxiliaire",
+      "pistaEnter": "enregistre et en ouvre un autre",
+      "guardar": "Enregistrer",
+      "guardarYOtro": "Enregistrer et en créer un autre",
+      "terminar": "Terminer",
+      "tituloHoja": "Nouvel auxiliaire",
+      "debajoDe": "Sous {cuenta}",
+      "atajoEnter": "enregistre et ouvre un autre auxiliaire",
+      "atajoEsc": "termine",
+      "sinCodigo": "Ce sous-compte n'a plus de codes libres.",
+      "saldoTitulo": "{cuenta} a un solde de {saldo}",
+      "saldoDetalle": "Une fois l'auxiliaire créé, il ne reçoit plus d'écritures. Le solde est transféré par une écriture de reclassement datée d'aujourd'hui.",
+      "trasladar": "Créer et transférer",
+      "nota": "Note de l'écriture",
+      "notaAyuda": "Facultatif. Elle s'ajoute à la description de l'écriture.",
+      "tituloTitulo": "{cuenta} deviendra un compte de titre",
+      "tituloDetalle": "Il n'a pas de solde, il n'y a donc rien à transférer. Désormais, les écritures vont dans ses auxiliaires.",
+      "trasladoHecho": "{asientos, plural, one {Solde transféré par 1 écriture} other {Solde transféré par # écritures}}",
+      "errores": {
+        "ocupado": "Ce code existe déjà. Le prochain libre est {codigo}.",
+        "ocupadoSinLibre": "Ce code existe déjà et il ne reste aucun code libre.",
+        "codigo": "Un auxiliaire a 8 chiffres et commence par le sous-compte. Il ne peut pas finir par 00.",
+        "padre": "Le sous-compte n'existe pas ou est inactif.",
+        "nombre": "Saisissez le nom de l'auxiliaire.",
+        "periodo": "La période du jour est clôturée. Ouvrez-la pour transférer le solde.",
+        "tercero": "Le solde a des écritures sans tiers et ce compte l'exige. Corrigez-les avant de transférer.",
+        "permiso": "Vous n'avez pas l'autorisation de créer des comptes.",
+        "sinCodigo": "Ce sous-compte n'a plus de codes libres.",
+        "otro": "Impossible de créer l'auxiliaire."
+      }
+    },
+    "panel": {
+      "tituloNueva": "Nouveau compte",
+      "descripcionNueva": "Pour les classes, groupes, comptes et sous-comptes. Les auxiliaires se créent dans la ligne.",
+      "sinRuta": "Compte principal",
+      "codigo": "Code",
+      "codigoAyuda": "Le parent se déduit du code : 110505 dépend de 1105.",
+      "nombre": "Nom",
+      "naturaleza": "Nature",
+      "presentacion": "Présentation IFRS",
+      "presentacionAyuda": "Cela ne change pas le nom du groupe. 11 reste Disponible.",
+      "presentacionGrupo": "Selon le groupe",
+      "corriente": "Courant",
+      "noCorriente": "Non courant",
+      "segunPlazo": "Selon l'échéance",
+      "centro": "Centre de coût",
+      "centroObligatorio": "Obligatoire",
+      "centroOpcional": "Facultatif",
+      "centroNoAplica": "Non applicable",
+      "exogena": "Concept d'exógena",
+      "tercero": "Exige un tiers",
+      "descripcion": "Description",
+      "uso": "Solde {saldo} · {movimientos, plural, one {1 écriture} other {# écritures}}",
+      "creadaPor": "Créé par {nombre} · {fecha}",
+      "creadaEl": "Créé le {fecha}",
+      "crear": "Créer le compte",
+      "guardar": "Enregistrer les modifications",
+      "creada": "Compte créé",
+      "actualizada": "Compte mis à jour",
+      "errores": {
+        "nombre": "Saisissez le nom du compte.",
+        "codigo": "Le code n'utilise que des chiffres et une longueur du PUC : 1, 2, 4, 6, 8, ou 10 et plus.",
+        "ocupado": "Ce code existe déjà.",
+        "padre": "Le compte {padre} doit d'abord exister.",
+        "guardar": "Impossible d'enregistrer le compte."
+      }
+    }
+  },
+  "reglasContables": {
+    "titulo": "Règles comptables",
+    "descripcion": "Configuration des écritures automatiques",
+    "migas": {
+      "finanzas": "Finances",
+      "contabilidad": "Comptabilité"
+    },
+    "exportar": "Exporter",
+    "nueva": "Nouvelle règle",
+    "configuracion": "Paramètres comptables",
+    "buscar": "Rechercher une règle ou un compte",
+    "filtros": {
+      "titulo": "Filtrer par origine",
+      "todos": "Toutes les origines",
+      "etiqueta": "Origine"
+    },
+    "aviso": {
+      "titulo": "{n, plural, one {# règle pointe vers un compte inexistant ou de regroupement} other {# règles pointent vers des comptes inexistants ou de regroupement}}",
+      "detalle": "Un document utilisant ces règles peut rester en attente et ne pas entrer au grand livre. Les écritures publiées ne changent pas.",
+      "verSolo": "Voir seulement celles-ci",
+      "verTodas": "Tout voir"
+    },
+    "columnas": {
+      "regla": "Règle",
+      "evento": "Événement",
+      "debito": "Débit",
+      "credito": "Crédit",
+      "propuesta": "Proposition",
+      "acciones": "Actions"
+    },
+    "estadoCuenta": {
+      "inexistente": "inexistant",
+      "inactiva": "inactif",
+      "titulo": "de regroupement"
+    },
+    "lado": {
+      "debito": "débit",
+      "credito": "crédit",
+      "impuesto": "taxe",
+      "descuento": "remise"
+    },
+    "propuesta": {
+      "usada": "{cuenta} · utilisé dans {n, plural, one {# écriture} other {# écritures}}",
+      "vigente": "{cuenta} · plan en vigueur",
+      "pendiente": "En attente du comptable"
+    },
+    "inactiva": "Inactive",
+    "vacio": {
+      "titulo": "Aucune règle",
+      "descripcion": "Créez la première règle d’écritures automatiques."
+    },
+    "sinResultados": "Aucune règle avec ce filtre.",
+    "acciones": {
+      "corregir": "Corriger le compte",
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "eliminar": "Supprimer"
+    },
+    "corregir": {
+      "titulo": "Corriger le compte de la règle",
+      "avisoInexistente": "Le compte {cuenta} n’existe pas dans cette entreprise",
+      "avisoInactiva": "Le compte {cuenta} est inactif dans cette entreprise",
+      "avisoTitulo": "Le compte {cuenta} est un compte de regroupement",
+      "avisoDetalle": "Seul un compte de mouvement du plan peut être choisi.",
+      "cuenta": "Compte",
+      "buscarCuenta": "Rechercher un compte",
+      "ayudaConfiguracion": "Suggéré : le compte configuré pour ce concept.",
+      "ayudaPlan": "Suggéré : le seul sous-compte de mouvement de ce compte.",
+      "ayudaUso": "Suggéré : le compte que vos écritures utilisent déjà.",
+      "ayudaConflicto": "Les paramètres et le plan diffèrent. Le comptable décide.",
+      "ayudaNinguna": "Aucun élément ne permet de suggérer un compte. Le comptable décide.",
+      "alcance": "S’applique uniquement aux documents nouveaux et en attente. Les écritures publiées ne sont pas touchées.",
+      "guardar": "Enregistrer",
+      "exito": "Compte corrigé."
+    },
+    "bloqueo": {
+      "titulo": "Enregistrement impossible",
+      "regla": "Règle « {nombre} »",
+      "noExiste": "Le compte {cuenta} n’existe pas dans votre plan",
+      "noExisteDetalle": "Créez-le dans le plan comptable ou choisissez un autre compte de mouvement.",
+      "inactiva": "Le compte {cuenta} est inactif",
+      "inactivaDetalle": "Activez-le dans le plan comptable ou choisissez un autre compte de mouvement.",
+      "titulocuenta": "Le compte {cuenta} est un compte de regroupement",
+      "tituloDetalle": "Les comptes de regroupement ne reçoivent pas d’écritures. Choisissez un sous-compte de mouvement.",
+      "irAlPlan": "Aller au plan comptable",
+      "elegirOtra": "Choisir un autre compte"
+    },
+    "formulario": {
+      "tituloNueva": "Nouvelle règle comptable",
+      "tituloEditar": "Modifier la règle",
+      "descripcion": "Configurez la règle qui génère les écritures automatiques.",
+      "nombre": "Nom",
+      "nombreEjemplo": "Ex. : Vente avec TVA",
+      "descripcionCampo": "Description",
+      "descripcionEjemplo": "Description de la règle…",
+      "origen": "Origine",
+      "evento": "Événement",
+      "seleccionar": "Sélectionner",
+      "cuentas": "Comptes",
+      "cuentaDebito": "Compte de débit",
+      "cuentaCredito": "Compte de crédit",
+      "cuentaIva": "Compte de TVA (facultatif)",
+      "sinIva": "Sans compte de TVA",
+      "usarIva": "Utiliser la TVA du document",
+      "prioridad": "Priorité",
+      "prioridadAyuda": "Plus le nombre est petit, plus la priorité est haute.",
+      "guardar": "Enregistrer les modifications",
+      "crear": "Créer la règle",
+      "faltanDatos": "Remplissez les champs requis."
+    },
+    "eliminar": {
+      "titulo": "Supprimer la règle ?",
+      "descripcion": "« {nombre} » ne générera plus d’écritures. Les écritures publiées ne changent pas.",
+      "confirmar": "Supprimer"
+    },
+    "exito": {
+      "creada": "Règle créée.",
+      "actualizada": "Règle mise à jour.",
+      "duplicada": "Règle dupliquée.",
+      "activada": "Règle activée.",
+      "desactivada": "Règle désactivée.",
+      "eliminada": "Règle supprimée."
+    },
+    "errores": {
+      "carga": "Impossible de charger les règles.",
+      "regla_otra_organizacion": "Une règle ne peut pas être déplacée vers une autre entreprise.",
+      "regla_no_encontrada": "La règle n’existe pas dans cette entreprise.",
+      "datos_invalidos": "Vérifiez les données de la règle.",
+      "sin_permiso": "Vous n’avez pas l’autorisation pour cette opération.",
+      "desconocido": "L’opération n’a pas pu aboutir."
+    },
+    "seContabiliza": "Comptabilisé sur {cuenta}",
+    "copia": "(copie)",
+    "csv": {
+      "origen": "Origine",
+      "evento": "Événement",
+      "regla": "Règle",
+      "lado": "Côté",
+      "cuenta": "Compte",
+      "estado": "État",
+      "propuesta": "Proposition",
+      "evidencia": "Justification",
+      "usos": "Écritures sur la proposition"
+    }
+  },
+  "conciliacionCierre": {
+    "tarjetas": {
+      "resumen": "Résumé du rapprochement",
+      "saldoLibros": "Solde comptable",
+      "saldoInicial": "Solde initial {valor}",
+      "saldoExtracto": "Solde du relevé",
+      "conciliado": "Rapproché",
+      "diferencia": "Écart",
+      "partidasPendientes": "Éléments en suspens"
+    },
+    "sentido": {
+      "sinDiferencia": "Aucun écart",
+      "librosMayor": "Comptabilité supérieure au relevé",
+      "extractoMayor": "Relevé supérieur à la comptabilité",
+      "faltaExtracto": "Solde du relevé manquant",
+      "resueltas": "{n, plural, one {Avec # élément résolu} other {Avec # éléments résolus}}"
+    },
+    "cerrada": {
+      "por": "Clôturé par {nombre} le {fecha}",
+      "motivo": "Motif : {motivo}"
+    },
+    "cerrar": {
+      "titulo": "Clôturer le rapprochement",
+      "confirmar": "Clôturer le rapprochement",
+      "conPartida": "Clôturer avec élément en suspens",
+      "exito": "Rapprochement clôturé",
+      "motivo": "Motif",
+      "motivoEjemplo": "Dépôt crédité par la banque le mois suivant",
+      "registro": "Qui a clôturé et quand reste enregistré.",
+      "sinDiferencia": "La comptabilité et le relevé concordent. Un rapprochement clôturé ne peut plus être modifié.",
+      "quedaPendiente": "L’écart de {valor} reste en suspens",
+      "quedaPendienteDetalle": "Il passe au rapprochement suivant comme élément de rapprochement. Il n’est pas ajusté en résultat.",
+      "yaExplicada": "L’écart de {valor} reste dans les éléments reportés",
+      "yaExplicadaDetalle": "Aucun nouvel élément n’est créé : les éléments reportés passent au rapprochement suivant."
+    },
+    "saldoExtracto": {
+      "titulo": "Solde du relevé",
+      "descripcion": "Sans ce solde, l’écart est inconnu. Saisissez-le tel qu’il figure sur le relevé bancaire.",
+      "guardar": "Enregistrer et continuer",
+      "falta": "Saisissez le solde du relevé"
+    },
+    "partidas": {
+      "tituloPropias": "Éléments de rapprochement en suspens",
+      "tituloTraidas": "Reportés des rapprochements précédents",
+      "tituloTraidasMes": "Reportés de {mes}",
+      "fecha": "Date",
+      "descripcion": "Description",
+      "valor": "Montant",
+      "estado": "Statut",
+      "registradaPor": "Enregistré par",
+      "pendiente": "En suspens",
+      "resueltaEl": "Résolu {fecha}",
+      "verMovimiento": "Voir le mouvement",
+      "marcarResuelta": "Marquer résolu",
+      "nota": "L’élément ne génère ni écriture ni ajustement en résultat : il passe au rapprochement suivant jusqu’à ce qu’il figure sur le relevé.",
+      "errorTitulo": "Impossible de vérifier les éléments en suspens",
+      "errorDetalle": "Cela ne signifie pas qu’il n’y en a pas. Réessayez avant de clôturer.",
+      "reintentar": "Réessayer"
+    },
+    "resolver": {
+      "titulo": "Marquer l’élément comme résolu",
+      "descripcion": "À utiliser lorsque l’élément figure sur le relevé. Aucune écriture n’est générée.",
+      "confirmar": "Marquer résolu",
+      "movimiento": "Mouvement qui le résout",
+      "sinMovimiento": "Aucun mouvement lié",
+      "movimientoN": "Mouvement {id}"
+    },
+    "errores": {
+      "motivo_obligatorio": "Saisissez le motif de clôture : il est obligatoire en cas d’écart.",
+      "motivo_largo": "Le motif est trop long.",
+      "conciliacion_ya_cerrada": "Ce rapprochement était déjà clôturé.",
+      "conciliacion_cerrada": "Le rapprochement est clôturé et ne peut pas être modifié.",
+      "conciliacion_anterior_abierta": "Clôturez d’abord le rapprochement précédent de ce compte.",
+      "conciliacion_no_encontrada": "Rapprochement introuvable.",
+      "falta_saldo_extracto": "Saisissez le solde du relevé avant de clôturer.",
+      "partida_ya_resuelta": "Cet élément était déjà résolu.",
+      "partida_no_encontrada": "Élément introuvable.",
+      "partida_de_otra_conciliacion": "Cet élément ne peut pas être résolu dans ce rapprochement.",
+      "movimiento_ajeno": "Le mouvement n’appartient pas à ce compte.",
+      "sin_permiso": "Vous n’avez pas l’autorisation de le faire.",
+      "desconocido": "Opération impossible. Réessayez."
+    }
+  },
+  "pendientesContables": {
+    "titulo": "Anomalies comptables",
+    "subtitulo": "Documents qui ne sont pas entrés au grand livre. Rien de ceci ne compte dans les rapports avant résolution.",
+    "subtituloCorto": "Documents qui ne sont pas entrés au grand livre.",
+    "movilSinContabilizar": "{n} non comptabilisés",
+    "migas": {
+      "finanzas": "Finances",
+      "contabilidad": "Comptabilité"
+    },
+    "buscar": "Rechercher par document ou compte",
+    "exportar": "Exporter",
+    "dias": "{n, plural, one {# jour} other {# jours}}",
+    "sustantivo": {
+      "singular": "anomalie",
+      "plural": "anomalies"
+    },
+    "kpis": {
+      "resumen": "Résumé des anomalies",
+      "pendientes": "Anomalies",
+      "masAntiguo": "La plus ancienne",
+      "bloqueanCierre": "Bloquent la clôture",
+      "valor": "Valeur non comptabilisée"
+    },
+    "columnas": {
+      "documento": "Document",
+      "error": "Erreur",
+      "dato": "Compte ou donnée manquante",
+      "responsable": "Responsable",
+      "antiguedad": "Ancienneté"
+    },
+    "errores": {
+      "periodoCerrado": "Période clôturée",
+      "terceroRequerido": "Le document exige un tiers",
+      "cuentaNoExiste": "La règle utilise un compte inexistant",
+      "sinRegla": "Aucune règle comptable pour ce document",
+      "reglaIncompleta": "La règle n’a pas de compte de débit ou de crédit",
+      "mismaCuenta": "Débit et crédit sur le même compte",
+      "cuentaSinConfigurar": "Le compte n’est pas configuré",
+      "cuentaDeTitulo": "Le compte est un compte de titre et ne reçoit pas de mouvements",
+      "importeInvalido": "Le montant n’est pas valide",
+      "sinSede": "Le document n’a pas de succursale",
+      "impuestoMixto": "Le document mélange TVA et taxe à la consommation",
+      "otro": "Comptabilisation impossible",
+      "redondeoSinCuenta": "Le compte d’arrondi manque",
+      "reversaCuentaTitulo": "La contre-passation a des lignes sur des comptes de titre",
+      "reversaLineaSinCuenta": "La contre-passation a des lignes sans compte"
+    },
+    "datos": {
+      "cuenta": "Compte {cuenta}",
+      "periodo": "Période du document",
+      "tercero": "Tiers du document",
+      "regla": "Règle comptable",
+      "configuracion": "Configuration comptable",
+      "importe": "Montant du document",
+      "sede": "Succursale du document",
+      "impuesto": "Taxes du document",
+      "revisar": "Consulter le détail",
+      "redondeo": "Compte d’arrondi",
+      "auxiliar": "Sous-compte de chaque ligne"
+    },
+    "responsables": {
+      "contador": "Comptable",
+      "compras": "Achats",
+      "ventas": "Ventes",
+      "tesoreria": "Trésorerie",
+      "inventario": "Stocks"
+    },
+    "acciones": {
+      "reabrirPeriodo": "Rouvrir la période",
+      "completarTercero": "Compléter le tiers",
+      "corregirRegla": "Corriger la règle",
+      "configurar": "Configurer",
+      "elegirAuxiliar": "Choisir un sous-compte",
+      "verDetalle": "Voir le détail",
+      "configurarRedondeo": "Configurer l’arrondi",
+      "asignarCuenta": "Attribuer un compte"
+    },
+    "documentos": {
+      "factura": "Facture",
+      "compra": "Achat",
+      "venta": "Vente",
+      "ajuste": "Ajustement de stock",
+      "caja": "Mouvement de caisse",
+      "banco": "Mouvement bancaire",
+      "transferencia": "Virement",
+      "devolucion": "Retour",
+      "reversa": "Contre-passation",
+      "otro": "Document"
+    },
+    "error": {
+      "titulo": "Impossible de vérifier les anomalies",
+      "descripcion": "Cela ne signifie pas qu’il n’y en a pas. Réessayez avant de clôturer la période.",
+      "reintentar": "Réessayer"
+    },
+    "vacio": {
+      "titulo": "Aucune anomalie",
+      "descripcion": "Tous les documents sont au grand livre. Dernière vérification : {fecha}.",
+      "descripcionSinFecha": "Tous les documents sont au grand livre.",
+      "volver": "Retour à la Comptabilité"
+    },
+    "detalle": {
+      "desde": "Non comptabilisé depuis le {fecha}",
+      "dato": "Donnée manquante",
+      "sede": "Succursale",
+      "intentos": "Tentatives",
+      "intentosUltimo": "{n} · dernière {fecha}",
+      "cerrar": "Fermer",
+      "reintentar": "Réessayer maintenant",
+      "reintentando": "Nouvelle tentative…",
+      "notaReintento": "À la nouvelle tentative, le document est comptabilisé à sa date d’origine, si la période est encore ouverte.",
+      "notaPeriodoCerrado": "La période de ce document est clôturée : aucune tentative tant qu’elle n’est pas rouverte.",
+      "notaSinClave": "Ce rejet n’identifie pas le fait comptable : il se résout depuis le document.",
+      "notaReversa": "La contre-passation est publiée en entier lorsque chaque ligne a un compte. Choisissez les sous-comptes sur sa page."
+    },
+    "reintento": {
+      "resuelto": "Document comptabilisé",
+      "periodo_cerrado": "La période de ce document est clôturée",
+      "no_reintentable": "Ce document ne peut pas être relancé ici",
+      "sigue": "Toujours non comptabilisé : corrigez la cause et réessayez",
+      "error": "Nouvelle tentative impossible",
+      "faltan_cuentas": "Il reste à choisir le compte d’une ligne",
+      "sinPermiso": "Vous n’avez pas l’autorisation de le faire"
+    },
+    "csv": {
+      "archivo": "anomalies-comptables.csv",
+      "error": "Erreur",
+      "errorExportar": "Exportation impossible",
+      "documento": "Document",
+      "dato": "Compte ou donnée manquante",
+      "responsable": "Responsable",
+      "antiguedad": "Ancienneté (jours)",
+      "valor": "Montant"
+    },
+    "alertas": {
+      "cargando": "Vérification des anomalies comptables",
+      "vacio": "Aucune anomalie comptable",
+      "fallos": "{n, plural, one {{cantidad} document non comptabilisé} other {{cantidad} documents non comptabilisés}}",
+      "sinLineas": "{n, plural, one {{cantidad} écriture sans lignes} other {{cantidad} écritures sans lignes}}",
+      "verBandeja": "Voir les anomalies",
+      "asiento": "Écriture {id}",
+      "publicado": "publiée",
+      "borrador": "brouillon"
+    }
+  },
+  "redondeoReversa": {
+    "asiento": {
+      "lineaRedondeo": "Arrondi à l’unité · les autres lignes ne changent pas",
+      "cuadradoTitulo": "Écriture équilibrée",
+      "cuadradoTexto": "L’arrondi figure sur sa propre ligne, avec un compte autorisé.",
+      "reversaTitulo": "Contrepassation de l’écriture n° {id}",
+      "publicado": "Comptabilisée · {fecha}",
+      "motivo": "Motif : {motivo}",
+      "verOriginal": "Voir l’original",
+      "sede": "Site",
+      "moneda": "Devise",
+      "copiaTitulo": "Copie exacte de l’original",
+      "copiaTexto": "Mêmes comptes, tiers, centre de coûts, site et devise, avec débit et crédit inversés. Une écriture ne se contrepasse qu’une fois.",
+      "auxiliarTitulo": "Contrepassation avec un sous-compte",
+      "auxiliarTexto": "Une ligne va sur un sous-compte, car son compte est aujourd’hui un compte de regroupement. Le reste est une copie de l’original, avec débit et crédit inversés.",
+      "revertido": "Écriture contrepassée par l’écriture n° {id}",
+      "reversaPendiente": "La contrepassation est dans Écritures en attente : une ligne est sur un compte de regroupement et il faut choisir son sous-compte."
+    },
+    "pendiente": {
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité",
+        "pendientes": "Écritures en attente"
+      },
+      "estado": "En attente · hors du grand livre",
+      "sinNombre": "Document sans nom",
+      "configurarCuenta": "Configurer le compte",
+      "configurar": "Configurer",
+      "reintentar": "Réessayer",
+      "faltaFavor": "Le compte de gain d’arrondi manque",
+      "faltaContra": "Le compte de perte d’arrondi manque",
+      "faltaTexto": "Ce document présente un écart d’arrondi de {valor}. Il reste en attente jusqu’à la configuration du compte. Rien n’est comptabilisé déséquilibré.",
+      "diferencia": "Écart",
+      "sinCuenta": "Aucun compte d’arrondi",
+      "publicado": "L’écriture a été comptabilisée avec sa ligne d’arrondi.",
+      "sigue": "L’écriture reste en attente.",
+      "columnas": {
+        "cuenta": "Compte",
+        "descripcion": "Description",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "auxiliar": "Sous-compte"
+      },
+      "reversaTitulo": "Contrepassation en attente de l’écriture n° {id}",
+      "verOriginal": "Voir l’original",
+      "tituloAvisoTitulo": "Des lignes sont sur des comptes de regroupement",
+      "sinCuentaTitulo": "Des lignes n’ont pas de compte",
+      "tituloAvisoTexto": "Un compte de regroupement ne reçoit pas de mouvements : toute la contrepassation attend et rien n’a été comptabilisé. Choisissez un sous-compte du même compte pour chaque ligne.",
+      "elegirAuxiliar": "Choisissez un sous-compte",
+      "crearAuxiliar": "Créer un sous-compte",
+      "publicarReversa": "Comptabiliser la contrepassation",
+      "reversaPublicada": "Contrepassation comptabilisée : écriture n° {id}",
+      "resueltoTitulo": "Élément résolu",
+      "verAsiento": "Voir l’écriture",
+      "volver": "Retour aux écritures en attente",
+      "noDisponible": "Élément indisponible",
+      "errorTitulo": "Impossible de lire cet élément",
+      "errorTexto": "Vérifiez votre connexion et réessayez.",
+      "reintentarCarga": "Réessayer"
+    }
+  },
+  "carteraEdades": {
+    "titulo": "Balance âgée",
+    "subtitulo": "Retard calculé à la date d’arrêté",
+    "corteMovil": "Arrêté au {fecha}",
+    "migas": {
+      "finanzas": "Finances",
+      "informes": "Rapports"
+    },
+    "excel": "Excel",
+    "pdf": "PDF",
+    "consultar": "Consulter",
+    "total": "Total",
+    "filtros": {
+      "corte": "Date d’arrêté",
+      "tipo": "Type",
+      "clientes": "Clients",
+      "proveedores": "Fournisseurs",
+      "agrupar": "Regrouper par",
+      "porTercero": "Tiers",
+      "porDocumento": "Document"
+    },
+    "kpi": {
+      "resumen": "Résumé de la balance",
+      "total": "Total",
+      "vencida": "Échu",
+      "porcentaje": "{pct} %",
+      "anticipos": "Acomptes non imputés",
+      "anticiposProveedores": "Acomptes fournisseurs",
+      "anticiposAparte": "À part, non déduit",
+      "anticiposMayor": "Grand livre {cuenta}, non déduit",
+      "mayor": "Grand livre {cuenta}",
+      "cuadra": "Équilibré",
+      "diferencia": "Écart {valor}"
+    },
+    "noCuadra": {
+      "titulo": "Le solde ne correspond pas au grand livre {cuenta}",
+      "descripcion": "Il y a un écart de {valor} entre le grand livre et les documents à cette date. Vérifiez les éléments comptables en attente et les écritures manuelles de ce compte."
+    },
+    "bandas": {
+      "corriente": "À jour",
+      "d1_30": "1–30",
+      "d31_60": "31–60",
+      "d61_90": "61–90",
+      "mas90": "Plus de 90"
+    },
+    "columnas": {
+      "tercero": "Tiers",
+      "total": "Total",
+      "documento": "Document",
+      "vence": "Échéance",
+      "dias": "Jours de retard",
+      "banda": "Ancienneté",
+      "saldo": "Solde à l’arrêté"
+    },
+    "vacio": {
+      "titulo": "Aucun solde à cette date",
+      "descripcion": "Aucun document n’a de solde à la date d’arrêté."
+    },
+    "tarjeta": {
+      "total": "Total {valor}",
+      "ver": "Voir"
+    },
+    "hoja": {
+      "subtitulo": "{total} sur {n, plural, one {# document} other {# documents}}",
+      "vence": "Échéance {fecha}"
+    }
+  },
+  "activosFijos": {
+    "titulo": "Immobilisations",
+    "subtitulo": "Amortissement mensuel linéaire",
+    "migas": {
+      "finanzas": "Finances"
+    },
+    "nuevo": "Nouvelle immobilisation",
+    "depreciar": "Amortir {mes}",
+    "meses": "{n, plural, one {# mois} other {# mois}}",
+    "lineaRecta": "Linéaire",
+    "metodoNoDisponible": "Non disponible",
+    "editar": "Modifier {nombre}",
+    "borrar": "Supprimer {nombre}",
+    "columnas": {
+      "activo": "Immobilisation",
+      "costo": "Coût",
+      "vidaUtil": "Durée d’utilité",
+      "acumulada": "Amortissement cumulé",
+      "libros": "Valeur comptable",
+      "metodo": "Méthode"
+    },
+    "vacio": {
+      "titulo": "Aucune immobilisation",
+      "descripcion": "Enregistrez la première immobilisation pour l’amortir chaque mois."
+    },
+    "tarjeta": {
+      "libros": "Valeur comptable {valor}",
+      "acumulada": "Cumulé {valor}"
+    },
+    "otrosMetodos": {
+      "titulo": "Les autres méthodes ne sont pas disponibles",
+      "descripcion": "Le dégressif et les unités de production ne sont pas encore calculés. Ils ne sont pas proposés pour éviter de faux zéros."
+    },
+    "resultado": {
+      "titulo": "{n, plural, =0 {Aucune nouvelle écriture} one {# écriture comptabilisée} other {# écritures comptabilisées}} · {total}",
+      "sinPendientes": "Toutes les immobilisations sont à jour."
+    },
+    "motivos": {
+      "metodo_no_disponible": "Méthode non disponible",
+      "faltan_cuentas": "En attente : comptes de charge et d’amortissement manquants",
+      "cuenta_no_es_de_movimiento": "En attente : un compte n’existe pas ou est un compte de regroupement",
+      "acumulada_sin_detalle": "En attente : l’amortissement cumulé ne correspond pas au détail",
+      "period_closed": "En attente : la période comptable est clôturée",
+      "otro": "En attente : vérifiez les éléments comptables en attente"
+    },
+    "errores": {
+      "guardar": "Impossible d’enregistrer l’immobilisation",
+      "borrar": "Impossible de supprimer l’immobilisation",
+      "depreciar": "Impossible de comptabiliser l’amortissement",
+      "sinPermiso": "Vous n’avez pas l’autorisation de comptabiliser l’amortissement"
+    },
+    "tipos": {
+      "building": "Bâtiment",
+      "vehicle": "Véhicule",
+      "equipment": "Équipement",
+      "furniture": "Mobilier",
+      "computer": "Informatique",
+      "software": "Logiciel",
+      "land": "Terrain (non amorti)",
+      "other": "Autre"
+    },
+    "form": {
+      "tituloNuevo": "Nouvelle immobilisation",
+      "tituloEditar": "Modifier l’immobilisation",
+      "guardar": "Enregistrer",
+      "requeridos": "Le code et le nom sont obligatoires",
+      "codigo": "Code",
+      "tipo": "Type",
+      "nombre": "Nom",
+      "descripcion": "Description",
+      "fecha": "Date d’acquisition",
+      "costo": "Coût d’acquisition",
+      "residual": "Valeur résiduelle",
+      "vida": "Durée d’utilité en mois",
+      "cuentaActivo": "Compte d’immobilisation",
+      "cuentaGasto": "Compte de charge",
+      "cuentaDepreciacion": "Amortissement cumulé",
+      "sinCuenta": "Sans compte",
+      "ayudaCuentas": "Sans ces deux comptes de mouvement, l’immobilisation n’est pas amortie.",
+      "conDepreciacion": "Cette immobilisation a déjà un amortissement comptabilisé : la date, le coût, la valeur résiduelle et la durée ne peuvent pas être modifiés."
+    },
+    "borrado": {
+      "titulo": "Supprimer {nombre} ?",
+      "descripcion": "L’immobilisation est retirée de la liste. Elle n’a aucun amortissement comptabilisé.",
+      "confirmar": "Supprimer"
+    }
+  },
+  "nominaDeducciones": {
+    "titulo": "Bulletins de la période",
+    "sinCalcular": "Non calculé",
+    "noAplica": "Sans objet",
+    "vacio": "Aucun bulletin dans cette exécution",
+    "bloqueo": {
+      "titulo": "Clôture impossible : la retenue à la source manque",
+      "tituloPrestamo": "Clôture impossible : une échéance de prêt doit être confirmée",
+      "descripcion": "GO Admin ne calcule pas encore cette retenue. Saisissez-la à la main ou consultez votre comptable. Elle n’est pas prise pour 0 $.",
+      "ingresar": "Saisir la valeur"
+    },
+    "columnas": {
+      "empleado": "Employé",
+      "devengado": "Brut",
+      "saludPension": "Santé et retraite",
+      "retencion": "Retenue",
+      "prestamos": "Prêts",
+      "neto": "Net"
+    },
+    "dialogo": {
+      "titulo": "Retenue à la source",
+      "tituloPrestamo": "Échéance de prêt",
+      "valor": "Valeur",
+      "ayudaCero": "Saisissez 0 si elle ne s’applique pas. L’auteur de la décision est enregistré.",
+      "nota": "Note",
+      "guardar": "Enregistrer la valeur",
+      "faltaValor": "Saisissez la valeur"
+    },
+    "errores": {
+      "titulo": "Non enregistré",
+      "netoNegativo": "La valeur rend le net négatif",
+      "sinPermiso": "Vous n’avez pas l’autorisation de traiter la paie",
+      "noEditable": "Le bulletin ou la période ne peut plus être modifié",
+      "generico": "Impossible d’enregistrer la valeur"
+    }
+  },
+  "estadosFinancieros": {
+    "comun": {
+      "finanzas": "Finances",
+      "informes": "Rapports",
+      "desde": "Du",
+      "hasta": "Au",
+      "anioAnterior": "Année précédente",
+      "consultar": "Consulter",
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir ce rapport",
+      "sinPermisoDetalle": "Demandez l’accès aux Finances à l’administrateur de votre organisation.",
+      "alcance": "Ce rapport couvre toute l’entreprise",
+      "alcanceDetalle": "Il faut un accès à toutes les succursales pour le voir.",
+      "error": "Impossible de charger le rapport"
+    },
+    "flujo": {
+      "titulo": "Tableau des flux de trésorerie",
+      "subtitulo": "Méthode indirecte · IFRS pour les PME, section 7",
+      "miga": "Flux de trésorerie",
+      "concepto": "Rubrique",
+      "grupo": "Groupe {grupo}",
+      "resultado": "Résultat de la période",
+      "variacion": "Variation de la trésorerie",
+      "inicial": "Trésorerie d’ouverture",
+      "efectoCambiario": "Effet des taux de change",
+      "final": "Trésorerie de clôture",
+      "restringido": "Trésorerie soumise à restrictions (à part)",
+      "pendienteClasificar": "À classer",
+      "seccion": {
+        "operacion": "Activités d’exploitation",
+        "inversion": "Activités d’investissement",
+        "financiacion": "Activités de financement"
+      },
+      "neto": {
+        "operacion": "Trésorerie nette d’exploitation",
+        "inversion": "Trésorerie nette d’investissement",
+        "financiacion": "Trésorerie nette de financement"
+      },
+      "cuadra": "Concorde avec les banques et la caisse",
+      "noCuadra": "Ne concorde pas : écart de {diferencia}",
+      "cuadraDetalle": "Ouverture + variation + effet de change = clôture. Exclut les virements entre banques et les opérations sans trésorerie.",
+      "incompleto": {
+        "titulo": "Ce tableau est incomplet",
+        "detalle": "{cuentas, plural, one {# compte n’a} other {# comptes n’ont}} pas de catégorie de flux. Les montants ne sont pas devinés : ils restent dans « À classer » jusqu’à ce que le comptable les marque."
+      },
+      "propuesta": {
+        "titulo": "Trésorerie proposée par le plan comptable",
+        "detalle": "Les comptes 11 sont pris comme trésorerie car le plan est sans ambiguïté. Les équivalents et la trésorerie soumise à restrictions se marquent à la main ; rien n’est enregistré par supposition."
+      },
+      "politicas": {
+        "pendienteTitulo": "Politiques en attente du comptable",
+        "pendienteDetalle": "Intérêts, impôts et dividendes suivent le critère de départ d’IFRS pour les PME 7.14 à 7.17 jusqu’à confirmation du comptable.",
+        "ver": "Voir les politiques"
+      },
+      "sinContabilizar": {
+        "titulo": "Des mouvements ne sont pas entrés au grand livre",
+        "detalle": "{borradores, plural, one {# brouillon} other {# brouillons}} et {fallos, plural, one {# élément comptable en attente} other {# éléments comptables en attente}} pour {monto}. Ils ne figurent pas dans ce tableau.",
+        "ver": "Voir les éléments en attente"
+      },
+      "pendientes": {
+        "titulo": "Comptes à classer",
+        "detalle": "Choisissez leur catégorie. Le marquage vaut pour toutes les périodes et ne modifie aucune écriture.",
+        "clasificar": "Classer"
+      },
+      "sinEfectivo": {
+        "titulo": "Opérations sans trésorerie",
+        "detalle": "Elles sont indiquées ici car aucune trésorerie n’a bougé : un achat à crédit n’est pas un investissement.",
+        "asiento": "Écriture {id}"
+      },
+      "renglon": {
+        "ajuste": {
+          "depreciacion_amortizacion": "Amortissements",
+          "deterioro": "Dépréciation",
+          "venta_activos": "Résultat de cession d’actifs",
+          "reclasificado_financiacion": "Intérêts présentés en financement",
+          "diferencia_cambio": "Écart de change sur la trésorerie",
+          "otras_sin_efectivo": "Autres éléments sans trésorerie"
+        },
+        "variacion": {
+          "g13": "Variation des créances",
+          "g14": "Variation des stocks",
+          "g22": "Variation des fournisseurs",
+          "g23": "Variation des dettes",
+          "g24": "Variation des impôts à payer",
+          "g25": "Variation des dettes sociales",
+          "g26": "Variation des passifs estimés",
+          "g28": "Variation des avances et de l’argent de tiers"
+        },
+        "inversion": {
+          "g12": {
+            "entrada": "Cession de placements",
+            "salida": "Achat de placements"
+          },
+          "g15": {
+            "entrada": "Cession d’actifs",
+            "salida": "Achat d’actifs au comptant"
+          },
+          "g16": {
+            "entrada": "Cession d’incorporels",
+            "salida": "Achat d’incorporels"
+          }
+        },
+        "financiacion": {
+          "g21": {
+            "entrada": "Emprunts reçus",
+            "salida": "Remboursements d’emprunts"
+          },
+          "g23": {
+            "entrada": "Dividendes restitués",
+            "salida": "Dividendes versés"
+          },
+          "g31": {
+            "entrada": "Apports des associés",
+            "salida": "Restitution d’apports"
+          },
+          "g32": {
+            "entrada": "Primes de capital",
+            "salida": "Restitution de primes"
+          },
+          "g53": {
+            "entrada": "Intérêts restitués",
+            "salida": "Intérêts versés"
+          }
+        }
+      }
+    },
+    "clasificar": {
+      "titulo": "Classer le compte {cuenta}",
+      "categoria": "Catégorie de flux",
+      "categorias": {
+        "operacion": "Exploitation",
+        "inversion": "Investissement",
+        "financiacion": "Financement"
+      },
+      "ayuda": "C’est une décision du comptable. Aucune écriture ne change.",
+      "alcance": "Appliquer à",
+      "guardar": "Classer",
+      "guardado": "Compte classé",
+      "sinPermiso": "Vous n’avez pas l’autorisation de classer des comptes",
+      "sinCuenta": "Ce compte n’existe pas dans votre plan comptable",
+      "error": "Impossible de classer le compte"
+    },
+    "politicas": {
+      "titulo": "Politiques du tableau des flux",
+      "detalle": "Décision du comptable, IFRS pour les PME 7.14 à 7.17. Appliquées par préfixe du plan comptable.",
+      "confirmar": "Confirmer les politiques",
+      "sinPermiso": "Seule une personne qui approuve en Finances peut les confirmer",
+      "sinConfirmar": "Pas encore confirmées : le critère de départ est utilisé.",
+      "guardado": "Politiques confirmées",
+      "versionObsoleta": "Quelqu’un d’autre a enregistré. Rouvrez et recommencez.",
+      "error": "Impossible d’enregistrer les politiques",
+      "clave": {
+        "intereses_pagados": "Intérêts versés",
+        "intereses_recibidos": "Intérêts reçus",
+        "dividendos_recibidos": "Dividendes reçus",
+        "dividendos_pagados": "Dividendes versés",
+        "impuestos": "Impôts sur le résultat"
+      },
+      "valor": {
+        "operacion": "Exploitation",
+        "financiacion": "Financement",
+        "inversion": "Investissement"
+      },
+      "nota": {
+        "intereses_pagados": "Compte 530520. Section 7.14 : exploitation ou financement.",
+        "intereses_recibidos": "Compte 421005. Section 7.14 : exploitation ou investissement.",
+        "dividendos_recibidos": "Compte 4215. Section 7.15 : exploitation ou investissement.",
+        "dividendos_pagados": "Compte 2360. Section 7.15 : financement ou exploitation.",
+        "impuestos": "Comptes 54 et 2404. Section 7.17 : exploitation, sauf identification spécifique."
+      }
+    },
+    "patrimonio": {
+      "titulo": "État des variations des capitaux propres",
+      "subtitulo": "Du {desde} au {hasta}",
+      "miga": "Variations des capitaux propres",
+      "concepto": "Rubrique",
+      "total": "Total",
+      "columna": {
+        "capital": "Capital",
+        "reservas": "Réserves",
+        "ejercicio": "Résultat de l’exercice",
+        "acumulados": "Résultats cumulés",
+        "otros": "Autres"
+      },
+      "fila": {
+        "saldo_inicial": "Solde d’ouverture",
+        "traslado": "Report du résultat antérieur",
+        "resultado": "Résultat de la période",
+        "dividendos": "Dividendes décidés",
+        "aportes": "Apports des associés",
+        "capitalizacion": "Capitalisation des résultats",
+        "reservas": "Constitution de réserves",
+        "ori": "Autres éléments du résultat global",
+        "otros": "Autres mouvements à revoir",
+        "saldo_final": "Solde de clôture"
+      },
+      "otros": {
+        "titulo": "Des mouvements de capitaux propres ne sont pas classés",
+        "detalle": "Ils sont dans « Autres mouvements à revoir » pour que le total reste exact. Rien n’a été déduit du texte de l’écriture."
+      },
+      "cuadra": "Concorde avec l’état de la situation financière",
+      "noCuadra": "Ne concorde pas : écart de {diferencia}",
+      "cuadraDetalle": "Le total correspond aux capitaux propres. L’écriture de clôture ne double pas le résultat."
+    },
+    "indicadores": {
+      "titulo": "Indicateurs financiers",
+      "subtitulo": "Issus du grand livre de la période choisie",
+      "subtituloComparado": "Comparé à {anio}",
+      "miga": "Indicateurs",
+      "indicador": "Indicateur",
+      "formula": "Formule",
+      "sinDato": "Sans donnée",
+      "dias": "{valor} jours",
+      "veces": "{valor} fois",
+      "enAnio": "{valor} en {anio}",
+      "sinClasificar": {
+        "titulo": "Des soldes ne sont pas classés en courant ou non courant",
+        "detalle": "{monto} n’entrent pas dans le ratio de liquidité. Classez-les dans le plan comptable.",
+        "ver": "Voir le plan comptable"
+      },
+      "nombre": {
+        "razon_corriente": "Ratio de liquidité",
+        "endeudamiento": "Endettement",
+        "margen_neto": "Marge nette",
+        "ciclo_caja": "Cycle de trésorerie",
+        "rotacion_cartera": "Rotation des créances",
+        "dias_inventario": "Jours de stock",
+        "dias_proveedores": "Jours fournisseurs",
+        "margen_operacional": "Marge d’exploitation",
+        "roe": "ROE",
+        "roa": "ROA"
+      },
+      "definicion": {
+        "razon_corriente": "Actif courant ÷ passif courant",
+        "endeudamiento": "Passif ÷ actif",
+        "margen_neto": "Résultat ÷ produits",
+        "ciclo_caja": "Jours de créances + jours de stock − jours fournisseurs",
+        "rotacion_cartera": "Produits ÷ créances moyennes",
+        "dias_inventario": "Stock moyen ÷ coût × jours",
+        "dias_proveedores": "Fournisseurs moyens ÷ achats × jours",
+        "margen_operacional": "Résultat d’exploitation ÷ produits",
+        "roe": "Résultat ÷ capitaux propres moyens",
+        "roa": "Résultat ÷ actif moyen"
+      }
+    },
+    "presupuesto": {
+      "titulo": "Budget contre réel",
+      "subtitulo": "Budgets approuvés uniquement · le réel vient du grand livre",
+      "miga": "Budget contre réel",
+      "codigo": "Code",
+      "cuenta": "Compte",
+      "presupuesto": "Budget",
+      "real": "Réel",
+      "variacion": "Écart",
+      "borradores": "{n, plural, one {# budget en brouillon n’est pas pris en compte} other {# budgets en brouillon ne sont pas pris en compte}}",
+      "verPresupuestos": "Voir les budgets",
+      "repetidos": "Plusieurs budgets approuvés existent pour la même année : leurs chiffres s’additionnent.",
+      "sinPresupuesto": "Avec mouvements et sans budget",
+      "vacio": {
+        "titulo": "Aucun budget approuvé",
+        "detalle": "Approuvez un budget pour le comparer au réel."
+      }
+    },
+    "resultado": {
+      "titulo": "État du résultat global",
+      "subtituloNaturaleza": "Produits moins coûts et charges, par nature",
+      "subtituloFuncion": "Produits moins coûts et charges, par fonction",
+      "miga": "État du résultat global",
+      "concepto": "Rubrique",
+      "variacion": "Variation",
+      "total": "RÉSULTAT GLOBAL DE LA PÉRIODE",
+      "presentacion": "Présentation",
+      "porNaturaleza": "Par nature",
+      "porFuncion": "Par fonction",
+      "error": "Impossible de charger l’état du résultat global",
+      "ori": "Comprend d’autres éléments du résultat global pour {valor}, issus des comptes 38 marqués.",
+      "filaOri": "Autres éléments du résultat global",
+      "detalle": "Détail par compte",
+      "nivel": "Niveau du plan",
+      "niveles": {
+        "n2": "Groupe",
+        "n4": "Compte",
+        "n6": "Sous-compte",
+        "n8": "Auxiliaire"
+      },
+      "fila": {
+        "ingresos": "Produits des activités ordinaires",
+        "otros_ingresos": "Autres produits",
+        "costo_ventas": "Coût des marchandises vendues",
+        "costo_produccion": "Coûts de production",
+        "personal": "Charges de personnel",
+        "honorarios": "Honoraires, services et loyers",
+        "impuestos": "Impôts autres que sur le résultat",
+        "depreciacion": "Amortissements",
+        "otros_gastos": "Autres charges",
+        "renta": "Impôt sur le résultat",
+        "ingresos_totales": "Produits",
+        "funcion_costos": "Coût des ventes et de production",
+        "funcion_51": "Charges administratives",
+        "funcion_52": "Charges commerciales",
+        "funcion_53": "Autres charges",
+        "funcion_54": "Impôt sur le résultat"
+      }
+    },
+    "notas": {
+      "titulo": "Notes aux états financiers",
+      "subtitulo": "Arrêté au {corte} · Brouillon",
+      "miga": "Notes",
+      "guardar": "Enregistrer le brouillon",
+      "guardado": "Notes enregistrées",
+      "versionObsoleta": "Quelqu’un d’autre a enregistré. Rechargez et recommencez.",
+      "errorGuardar": "Impossible d’enregistrer les notes",
+      "corte": "Arrêté",
+      "aviso": "C’est un brouillon : les soldes viennent du grand livre et le comptable revoit le texte.",
+      "nota": "Note",
+      "contenido": "Contenu",
+      "origen": "Origine",
+      "estado": "État",
+      "abrir": "Ouvrir",
+      "cerrar": "Fermer",
+      "revisada": "Revue par le comptable",
+      "cuenta": "Compte",
+      "nombre": {
+        "entidad": "Entité présentant les états",
+        "politicas": "Méthodes comptables",
+        "efectivo": "Trésorerie et équivalents",
+        "deudores": "Créances",
+        "inventarios": "Stocks",
+        "ppe": "Immobilisations corporelles"
+      },
+      "origenes": {
+        "empresa": "Données de l’entreprise",
+        "contador": "Texte du comptable",
+        "mayor": "Issu du grand livre",
+        "activos": "Immobilisations"
+      },
+      "estados": {
+        "completa": "Complète",
+        "por_revisar": "À revoir",
+        "sin_datos": "Sans données"
+      },
+      "plantilla": {
+        "entidad": "Décrivez l’entité, son siège, son activité, sa durée et l’organe qui autorise ces états financiers.",
+        "politicas": "Décrivez le référentiel appliqué, la base d’évaluation, la monnaie de présentation et les méthodes pour la trésorerie et équivalents, les stocks, les immobilisations corporelles et les produits."
+      }
+    },
+    "certificacion": {
+      "titulo": "Certification des états financiers",
+      "subtitulo": "Article 37 de la loi 222 de 1995 · Générer ce document ne le signe pas",
+      "miga": "Certification",
+      "guardar": "Enregistrer",
+      "guardado": "Certification enregistrée",
+      "versionObsoleta": "Quelqu’un d’autre a enregistré. Rechargez et recommencez.",
+      "errorGuardar": "Impossible d’enregistrer la certification",
+      "sinValidar": {
+        "titulo": "Texte légal en attente du comptable",
+        "detalle": "C’est un texte de départ. Le comptable doit le valider avant la signature."
+      },
+      "faltan": {
+        "titulo": "Données manquantes pour signer"
+      },
+      "campo": {
+        "representante_nombre": "Nom du représentant légal",
+        "representante_cedula": "Pièce d’identité du représentant légal",
+        "contador_nombre": "Nom du comptable",
+        "contador_cedula": "Pièce d’identité du comptable",
+        "contador_tarjeta": "Carte professionnelle du comptable",
+        "empresa_nombre": "Nom de l’entreprise",
+        "empresa_nit": "Numéro fiscal de l’entreprise"
+      },
+      "corte": "Arrêté",
+      "texto": "Texte de la certification",
+      "textoAyuda": "La marque {corte} est remplacée par la date d’arrêté.",
+      "textoBase": "Les soussignés, représentant légal et comptable, certifions avoir préparé les états financiers de la société au {corte}, conformément aux normes en vigueur, et avoir vérifié les affirmations qu’ils contiennent avant de les mettre à disposition, conformément à l’article 37 de la loi 222 de 1995.",
+      "validado": "Texte validé par le comptable",
+      "representante": "Représentant légal",
+      "contador": "Comptable"
+    },
+    "libros": {
+      "titulo": "Livres comptables",
+      "subtitulo": "Exportez les livres de la période",
+      "miga": "Livres comptables",
+      "nivel": "Niveau de consolidation",
+      "niveles": {
+        "n2": "Groupe",
+        "n4": "Compte",
+        "n6": "Sous-compte",
+        "n8": "Auxiliaire"
+      },
+      "truncado": "Le livre a dépassé 100 000 lignes et il est incomplet. Choisissez une période plus courte.",
+      "libro": "Livre",
+      "contenido": "Contenu",
+      "estado": "État",
+      "disponible": "Disponible",
+      "generando": "Génération…",
+      "sinMovimientos": "Aucun mouvement sur la période",
+      "error": "Impossible d’exporter le livre",
+      "nombre": {
+        "diario": "Livre-journal",
+        "mayor": "Grand livre et balances",
+        "inventarios": "Inventaires et balances",
+        "auxiliar_cuenta": "Auxiliaires par compte",
+        "tercero": "Auxiliaire par tiers",
+        "centro": "Auxiliaire par centre de coût"
+      },
+      "descripcion": {
+        "diario": "Écritures validées de la période",
+        "mayor": "Soldes par compte, consolidés",
+        "inventarios": "Actifs, passifs et capitaux propres à la clôture",
+        "auxiliar_cuenta": "Mouvements et solde progressif",
+        "tercero": "Solde par numéro fiscal",
+        "centro": "Solde par centre"
+      },
+      "columna": {
+        "codigo": "Code",
+        "cuenta": "Nom",
+        "inicial": "Solde d’ouverture",
+        "debitos": "Débits",
+        "creditos": "Crédits",
+        "final": "Solde de clôture",
+        "saldo": "Solde",
+        "fecha": "Date",
+        "asiento": "Écriture",
+        "tercero": "Tiers",
+        "detalle": "Détail"
+      }
+    }
+  },
+  "cuentasAutomaticas": {
+    "interruptor": "Voir les comptes comptables",
+    "cuentaContable": "Compte comptable",
+    "abrirCuenta": "Changer le compte de cette ligne",
+    "errorGuardar": "Le compte n’a pas pu être enregistré",
+    "estado": {
+      "automatica": "Automatique",
+      "categoria": "De la catégorie",
+      "propia": "Compte propre",
+      "titulo": "À vérifier",
+      "sin_cuenta": "Sans compte"
+    },
+    "rol": {
+      "ingreso": "Produit",
+      "costo": "Coût",
+      "inventario": "Stock",
+      "devolucion": "Retour"
+    },
+    "rolCuenta": {
+      "ingreso": "Compte de produit",
+      "costo": "Compte de coût",
+      "inventario": "Compte de stock",
+      "devolucion": "Compte de retour"
+    },
+    "accion": {
+      "cambiar": "Changer",
+      "volverAutomatica": "Revenir à automatique",
+      "elegirAuxiliar": "Choisir un sous-compte",
+      "elegirCuenta": "Choisir un compte"
+    },
+    "origen": {
+      "linea": "Choisi pour cette ligne",
+      "producto": "Vient du produit",
+      "categoria": "Vient de la catégorie {nombre}",
+      "sede": "Vient de la configuration de l’établissement",
+      "sedeClave": "Vient de la configuration de l’établissement · {clave}",
+      "empresa": "Vient de la configuration comptable",
+      "empresaClave": "Vient de la configuration comptable · {clave}",
+      "sector": "Vient de la proposition du secteur",
+      "sectorClave": "Vient de la proposition du secteur · {clave}",
+      "regla": "Vient de la règle comptable",
+      "ninguno": "Aucun compte configuré",
+      "prevista": "Sous-compte de l’établissement. Créé à la confirmation du document",
+      "sinCuenta": "Il n’y a pas de compte pour ce mouvement",
+      "tituloConAuxiliar": "{cuenta} est un compte de titre. L’écriture utilisera {auxiliar}",
+      "tituloSinAuxiliar": "{cuenta} est un compte de titre et ne reçoit pas de mouvements"
+    },
+    "selector": {
+      "placeholder": "Choisir un compte",
+      "buscar": "Rechercher par code ou nom",
+      "vacio": "Il n’y a pas de comptes de mouvement",
+      "sinResultados": "Aucun compte de mouvement ne correspond"
+    },
+    "resumen": {
+      "automaticaTitulo": "Comptabilité automatique",
+      "automatica": {
+        "producto": "Ce produit utilise les comptes de sa catégorie et de la configuration comptable. Vous n’avez rien à faire.",
+        "categoria": "Cette catégorie utilise les comptes de la configuration comptable. Vous n’avez rien à faire."
+      },
+      "insigniaAutomatica": "Automatique",
+      "insigniaPropias": "Personnalisé",
+      "propiasTitulo": "{n, plural, one {1 compte propre} other {# comptes propres}}",
+      "propiasCuerpo": "Propres : {cuentas}. {n, plural, =0 {} one {L’autre reste automatique.} other {Les # autres restent automatiques.}}",
+      "revisarTitulo": "{n, plural, one {1 compte à vérifier} other {# comptes à vérifier}}",
+      "revisarCuerpo": "Le compte {rol} ne reçoit pas de mouvements.",
+      "ver": "Voir ou changer les comptes",
+      "ocultar": "Masquer les comptes",
+      "corregir": "Corriger",
+      "siNoCambias": "Si vous ne changez rien, chaque compte reste automatique.",
+      "dondeAplica": "Ces comptes sont utilisés sur les factures de vente et d’achat. Le point de vente utilise toujours la règle comptable."
+    },
+    "sugerencia": {
+      "texto": "Suggéré : {cuenta} {nombre}. Utilisé dans {veces} des {compras} derniers achats à ce fournisseur.",
+      "usar": "Utiliser"
+    },
+    "dialogo": {
+      "titulo": "Compte comptable de cette ligne",
+      "hoySeUsa": "Utilisé aujourd’hui",
+      "cambiarPor": "Remplacer par",
+      "ayudaBuscar": "Recherchez par code ou nom. Seuls les comptes de mouvement apparaissent.",
+      "dondeAplicar": "Où appliquer le changement ?",
+      "aplicar": "Appliquer",
+      "eligeCuenta": "Choisissez un compte"
+    },
+    "alcance": {
+      "documento": "Seulement sur cette facture",
+      "producto": "Toujours pour ce produit",
+      "categoria": "Pour toute la catégorie {nombre}",
+      "categoriaConProductos": "Pour toute la catégorie {nombre} ({n, plural, one {1 produit} other {# produits}})",
+      "aviso": "S’applique aux nouveaux documents. Les écritures déjà publiées ne changent pas."
+    },
+    "config": {
+      "titulo": "Configuration comptable",
+      "subtitulo": "Comptes par défaut utilisés par les écritures automatiques",
+      "subtituloCategoria": "Attribuez une fois par catégorie et tous ses produits héritent",
+      "migaFinanzas": "Finances",
+      "migaContabilidad": "Comptabilité",
+      "pestanaDefecto": "Par défaut",
+      "pestanaCategoria": "Par catégorie",
+      "pestanaFallos": "Échecs de comptabilisation",
+      "proponer": "Proposer selon le secteur",
+      "guardar": "Enregistrer",
+      "aplicarA": "Appliquer à",
+      "todaOrganizacion": "Toute l’organisation",
+      "ayudaAlcance": "Un établissement peut avoir ses propres comptes ; sinon, il hérite de ceux de l’organisation.",
+      "cuenta": "Compte",
+      "origenColumna": "Origine",
+      "usaRegla": "Utilise le compte de la règle",
+      "usarRegla": "Utiliser le compte de la règle",
+      "nClaves": "{n, plural, one {1 compte} other {# comptes}}",
+      "ventasPorRegla": "Aujourd’hui, les ventes prennent le compte {cuenta} de la règle comptable, pas ces clés. Les modifier ici ne change pas cette écriture.",
+      "errorCargar": "La configuration comptable n’a pas pu être chargée",
+      "errorGuardar": "Impossible d’enregistrer. Le compte doit exister et être un compte de mouvement.",
+      "guardadaOrganizacion": "Configuration de l’organisation enregistrée",
+      "guardadaSede": "Configuration de l’établissement enregistrée",
+      "sinFallos": "Aucun échec de comptabilisation",
+      "sinFallosAyuda": "Tous les documents ont leur écriture.",
+      "categoria": "Catégorie",
+      "productos": "Produits",
+      "buscarCategoria": "Rechercher une catégorie",
+      "soloPropias": "Seulement avec compte propre",
+      "sinCategorias": "Il n’y a pas de catégories",
+      "deCategoria": "de {nombre}",
+      "editarCuentas": "Modifier les comptes",
+      "cuentasDe": "Comptes de {nombre}",
+      "heredan": "{n, plural, one {1 produit hérite de ces comptes} other {# produits héritent de ces comptes}}, ainsi que ses sous-catégories.",
+      "guardadaCategoria": "Comptes de {nombre} enregistrés",
+      "grupo": {
+        "tesoreria_cartera": "Trésorerie et créances",
+        "ventas": "Ventes",
+        "inventario": "Stock",
+        "impuestos": "Taxes",
+        "personal": "Personnel"
+      },
+      "origen": {
+        "regla": "Règle comptable",
+        "hereda": "Hérité de l’organisation",
+        "sede": "De cet établissement",
+        "sector": "Proposition du secteur",
+        "contador": "Choisi par votre comptable"
+      },
+      "revisar": {
+        "titulo": "{n, plural, one {1 compte à vérifier} other {# comptes à vérifier}}",
+        "conSugerida": "{clave} pointe vers {cuenta}, qui ne reçoit pas de mouvements. Suggéré : {sugerida}.",
+        "sinSugerida": "{clave} pointe vers {cuenta}, qui ne reçoit pas de mouvements. Choisissez un compte de mouvement.",
+        "usar": "Utiliser le compte suggéré"
+      },
+      "reclasificar": {
+        "accion": "Reclasser la TVA historique",
+        "titulo": "Reclasser la TVA de 2405 vers 2408",
+        "descripcion": "Une nouvelle écriture est créée (débit 2405, crédit 2408) pour le net des lignes de TVA déjà publiées sur 2405. Les lignes précédentes restent identiques. Sans solde, aucune écriture n’est créée.",
+        "crear": "Créer l’écriture",
+        "repetida": "Ce reclassement a déjà été fait",
+        "sinSaldo": "Il n’y a pas de TVA à reclasser sur 2405",
+        "creado": "Écriture de reclassement créée",
+        "error": "La TVA n’a pas pu être reclassée"
+      },
+      "asistente": {
+        "titulo": "Proposition pour {sector}",
+        "descripcion": "Elle vient du modèle de plan comptable et du secteur. Elle s’enregistre dans la portée choisie, organisation ou établissement. Seuls les comptes de mouvement déjà au plan sont enregistrés. Le reste suit la règle.",
+        "aplicar": "Appliquer cette proposition",
+        "noEnPlan": "ne sera pas enregistré : absent du plan"
+      }
+    },
+    "claves": {
+      "caja": {
+        "nombre": "Caisse",
+        "ayuda": "Remplace le 1105 quand la règle utilise la caisse."
+      },
+      "bancos": {
+        "nombre": "Banques",
+        "ayuda": "Remplace le 1110. Le sous-compte d’une banque précise reste inchangé."
+      },
+      "anticipos": {
+        "nombre": "Avances",
+        "ayuda": "Remplace le 2805, avances et acomptes reçus."
+      },
+      "clientes": {
+        "nombre": "Clients",
+        "ayuda": "Remplace le 1305, sauf les prêts aux salariés."
+      },
+      "proveedores": {
+        "nombre": "Fournisseurs",
+        "ayuda": "Remplace le 2205 et le 2105 que les anciennes règles utilisaient pour les fournisseurs."
+      },
+      "ventas_productos": {
+        "nombre": "Ventes de produits",
+        "ayuda": "Produit crédité sur 4135, 414015, 4145 ou 4105."
+      },
+      "ventas_servicios": {
+        "nombre": "Ventes de services",
+        "ayuda": "Produit crédité sur 4235, 4115, 4140 ou 4155."
+      },
+      "devoluciones": {
+        "nombre": "Retours",
+        "ayuda": "Avoirs, annulations et débit d’un compte de produits."
+      },
+      "descuentos": {
+        "nombre": "Remises",
+        "ayuda": "La ligne de remise de l’écriture. Elle ne remplace pas le retour."
+      },
+      "inventario": {
+        "nombre": "Stock",
+        "ayuda": "Remplace le 1435 et le 1405 des anciennes règles."
+      },
+      "costo_ventas": {
+        "nombre": "Coût des ventes",
+        "ayuda": "Remplace le 6135, le 6140 et le 6105."
+      },
+      "iva_generado": {
+        "nombre": "TVA collectée",
+        "ayuda": "TVA sur les ventes. Créditée sur 240805 et non débitée à la constatation."
+      },
+      "iva_descontable": {
+        "nombre": "TVA déductible",
+        "ayuda": "TVA sur les achats. Débitée sur 240810."
+      },
+      "retefuente": {
+        "nombre": "Retenue à la source",
+        "ayuda": "Remplace le 2365 quand l’achat n’a pas de compte propre dans la taxe."
+      },
+      "reteiva": {
+        "nombre": "Retenue de TVA",
+        "ayuda": "23670501 (sous-compte de 2367, compte de titre)."
+      },
+      "reteica": {
+        "nombre": "Retenue ICA",
+        "ayuda": "23680501 (sous-compte de 2368, compte de titre)."
+      },
+      "propinas": {
+        "nombre": "Pourboires",
+        "ayuda": "Le 5105 seulement quand le document est un pourboire."
+      },
+      "comisiones": {
+        "nombre": "Commissions",
+        "ayuda": "52950501 (canaux/OTA, sous-compte de 529505) ou 52051801 (salariés). 5235 correspond aux « Services » de vente, pas aux commissions."
+      },
+      "nomina": {
+        "nombre": "Paie",
+        "ayuda": "Le 5105 seulement quand le document est une paie."
+      },
+      "nomina_por_pagar": {
+        "nombre": "Paie à payer",
+        "ayuda": "Le 2505 seulement dans la paie."
+      },
+      "nomina_aportes": {
+        "nombre": "Cotisations de paie",
+        "ayuda": "Le 2370 seulement dans la paie. Une commission qui utilise encore le 2370 ne bouge pas."
+      },
+      "faltante_inventario": {
+        "nombre": "Manquant de stock",
+        "ayuda": "Débit du manquant. Par défaut 519595. Le coût des ventes n’est pas utilisé ici."
+      },
+      "gastos_extraordinarios": {
+        "nombre": "Vol et sinistre",
+        "ayuda": "Débit quand le motif de l’ajustement est un vol ou un sinistre. Par défaut 5315."
+      },
+      "consumo_interno": {
+        "nombre": "Consommation interne",
+        "ayuda": "Débit de la consommation interne. Par défaut 519595. Jamais la classe 6."
+      },
+      "manifiesto_por_pagar": {
+        "nombre": "Manifeste à payer",
+        "ayuda": "Crédit du manifeste hors transport. Par défaut 2205."
+      },
+      "manifiesto_transporte": {
+        "nombre": "Manifeste de transport",
+        "ayuda": "Crédit quand l’organisation est une entreprise de transport. Par défaut 2335."
+      },
+      "saldo_inicial": {
+        "nombre": "Solde initial",
+        "ayuda": "Crédit du solde initial de stock : 37050501 résultats reportés (3710 en cas de pertes cumulées). N’utilisez pas le 3105 : le capital ne bouge qu’avec des apports."
+      },
+      "impuesto_consumo": {
+        "nombre": "Taxe à la consommation",
+        "ayuda": "Taxe à la consommation. Par défaut 2495."
+      },
+      "redondeo": {
+        "nombre": "Arrondi positif",
+        "ayuda": "Crédit de la ligne d’arrondi en pesos. Par défaut 42958101. Sans compte valide, l’écriture reste en attente."
+      },
+      "redondeo_en_contra": {
+        "nombre": "Arrondi négatif",
+        "ayuda": "Débit de la ligne d’arrondi en pesos. Par défaut 53959501. Sans compte valide, l’écriture reste en attente."
+      },
+      "compra_servicio": {
+        "nombre": "Achat de service",
+        "ayuda": "Crédit d’un achat de service ou de transport. Par défaut 2335."
+      },
+      "ingresos_diversos": {
+        "nombre": "Produits divers",
+        "ayuda": "Crédit d’un excédent réel de stock. Par défaut 42959501 (sous-compte de 4295). Ce n’est pas le 4250."
+      }
     }
   }
 }

@@ -7,8 +7,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
+import PayrollCalculationService from '@/lib/services/payrollCalculationService';
+import { supabase } from '@/lib/supabase/config';
 import type { PayrollPeriod, PayrollRun } from '@/lib/services/payrollService';
 import { RunsTable } from '@/components/hrm/nomina/periodos/[id]';
+import { DeduccionesPeriodo } from '@/components/hrm/nomina/periodos/[id]/DeduccionesPeriodo';
+import { ejecucionVigente, esBloqueoDeduccion } from '@/lib/services/nominaDeducciones';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +44,7 @@ import {
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+  open: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
   calculating: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   reviewing: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -49,8 +53,9 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  draft: 'Borrador',
+  open: 'Abierto',
   calculating: 'Calculando',
+  calculated: 'Calculado',
   reviewing: 'En Revisión',
   approved: 'Aprobado',
   paid: 'Pagado',
@@ -76,6 +81,7 @@ export default function PeriodoDetallePage() {
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deduccionesPendientes, setDeduccionesPendientes] = useState(0);
 
   // Dialog states
   const [runDialogOpen, setRunDialogOpen] = useState(false);
@@ -130,24 +136,25 @@ export default function PeriodoDetallePage() {
 
   // Handlers
   const handleExecuteRun = async () => {
-    const service = getService();
-    if (!service) return;
+    if (!organization?.id) return;
 
     try {
-      const run = await service.createRun(periodId, 'current-user');
-      toast({ title: 'Cálculo de nómina iniciado' });
+      const { data: sesion } = await supabase.auth.getUser();
+      const usuario = sesion.user?.id;
+      if (!usuario) throw new Error('Inicia sesión de nuevo para ejecutar el cálculo');
+
+      const calculo = new PayrollCalculationService(organization.id);
+      const resultado = await calculo.calculatePeriod(periodId, usuario);
       setRunDialogOpen(false);
-      // Simulate calculation completion
-      setTimeout(async () => {
-        await service.updateRunStatus(run.id, 'completed');
-        await loadData();
-        toast({ title: 'Cálculo completado' });
-      }, 2000);
+      toast({
+        title: 'Cálculo completado',
+        description: `Colillas creadas: ${resultado.created}. Errores: ${resultado.errors}.`,
+      });
       await loadData();
-    } catch {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: 'No se pudo ejecutar el cálculo',
+        description: (error as { message?: string } | null)?.message || 'No se pudo ejecutar el cálculo',
         variant: 'destructive',
       });
     }
@@ -181,10 +188,12 @@ export default function PeriodoDetallePage() {
       toast({ title: 'Periodo aprobado' });
       setApproveOpen(false);
       await loadData();
-    } catch {
+    } catch (e: unknown) {
       toast({
         title: 'Error',
-        description: 'No se pudo aprobar el periodo',
+        description: esBloqueoDeduccion(e)
+          ? 'Falta escribir deducciones sin calcular en algunas colillas'
+          : 'No se pudo aprobar el periodo',
         variant: 'destructive',
       });
     }
@@ -227,8 +236,9 @@ export default function PeriodoDetallePage() {
     );
   }
 
-  const canExecuteRun = period.status === 'draft' || period.status === 'calculating';
-  const canApprove = period.status === 'reviewing';
+  const canExecuteRun = period.status === 'open' || period.status === 'calculating' || period.status === 'reviewing';
+  const vigente = ejecucionVigente(runs);
+  const canApprove = period.status === 'reviewing' && deduccionesPendientes === 0;
   const hasFinalRun = runs.some(r => r.is_final);
 
   return (
@@ -286,14 +296,18 @@ export default function PeriodoDetallePage() {
         </div>
       </div>
 
+      {vigente && (
+        <DeduccionesPeriodo ejecucionId={vigente.id} onPendientes={setDeduccionesPendientes} onCambio={loadData} />
+      )}
+
       {/* Period Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="text-gray-900 dark:text-white">Información del Periodo</span>
-              <Badge className={statusColors[period.status || 'draft']}>
-                {statusLabels[period.status || 'draft']}
+              <Badge className={statusColors[period.status || 'open']}>
+                {statusLabels[period.status || 'open']}
               </Badge>
             </CardTitle>
           </CardHeader>

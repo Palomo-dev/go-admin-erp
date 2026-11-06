@@ -223,11 +223,15 @@ describe('archivos de la fase', () => {
       join(RAIZ, 'src/components/finanzas/contabilidad/plan-cuentas/PlanCuentasPage.tsx'),
       'utf8',
     );
+    // Los textos viven en messages/<idioma>.json desde el alta en la fila (2026-11-06).
+    const textos = JSON.parse(readFileSync(join(RAIZ, 'messages/es.json'), 'utf8')).planCuentas;
     expect(pagina).toContain('naturaleza');
     expect(pagina).toContain('xlsx');
-    expect(pagina).toContain('Exportar');
-    expect(pagina).toContain('Importar');
-    expect(pagina).toContain('siguienteCodigo');
-    expect(pagina).toContain('Solo movimiento');
+    expect(pagina).toContain("t('exportar')");
+    expect(pagina).toContain("t('importar')");
+    expect(pagina).toContain('siguienteAuxiliar');
+    expect(textos.exportar).toBe('Exportar');
+    expect(textos.importar).toBe('Importar');
+    expect(textos.filtros.movimiento).toBe('Solo movimiento');
   });
 });

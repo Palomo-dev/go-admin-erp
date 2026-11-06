@@ -1,114 +1,123 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { AvisoTonal } from '@/components/kit';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { errorDePendiente } from '@/lib/finanzas/pendientesContables';
 import {
   ContabilidadService,
   type AlertasContablesDatos,
-  type FalloContable,
 } from './ContabilidadService';
 
-const MOTIVOS: Record<string, string> = {
-  amount_invalid: 'Importe no válido',
-  no_rule: 'No hay regla contable para este hecho',
-  cuenta_banco_sin_puc: 'La cuenta bancaria no tiene PUC',
-  sin_cuenta: 'No hay cuenta de detalle para el movimiento',
-  cuenta_no_existe: 'La cuenta no existe en el plan',
-  cuenta_de_titulo: 'La cuenta es de título y no recibe movimientos',
-};
+const RUTA_PENDIENTES = '/app/finanzas/contabilidad/pendientes';
+/** fn_alertas_contables devuelve como mucho 50 de cada lista. */
+const TOPE_ALERTAS = 50;
+const VISIBLES = 5;
 
-function motivoLegible(fallo: FalloContable): string {
-  const codigo = fallo.motivo ?? '';
-  return MOTIVOS[codigo] ?? (codigo || 'Fallo contable');
-}
+type EstadoAlertas =
+  | { tipo: 'cargando' }
+  | { tipo: 'error' }
+  | { tipo: 'listo'; datos: AlertasContablesDatos };
 
 /**
- * Fallos de asiento aún abiertos y asientos que quedaron sin líneas.
- * Si la función todavía no está desplegada, no bloquea la pantalla.
+ * Fallos de asiento abiertos y asientos sin líneas. Cargando, error y vacío son
+ * estados distintos: un error de consulta no puede verse como «sin incidencias».
  */
 export function AlertasContables() {
+  const t = useTranslations('pendientesContables');
   const { formatDate } = useFormatDate();
-  const [datos, setDatos] = useState<AlertasContablesDatos | null>(null);
+  const [estado, setEstado] = useState<EstadoAlertas>({ tipo: 'cargando' });
 
-  useEffect(() => {
+  const cargar = useCallback(() => {
     let cancelado = false;
+    setEstado({ tipo: 'cargando' });
     ContabilidadService.obtenerAlertas()
-      .then((alerta) => {
-        if (!cancelado) setDatos(alerta);
+      .then((datos) => {
+        if (!cancelado) setEstado({ tipo: 'listo', datos });
       })
       .catch((error) => {
         console.error('No se pudieron leer las alertas contables:', error);
-        if (!cancelado) setDatos(null);
+        if (!cancelado) setEstado({ tipo: 'error' });
       });
     return () => {
       cancelado = true;
     };
   }, []);
 
-  if (!datos || (datos.fallos.length === 0 && datos.sinLineas.length === 0)) return null;
+  useEffect(() => cargar(), [cargar]);
+
+  if (estado.tipo === 'cargando') {
+    return <Skeleton aria-label={t('alertas.cargando')} className="h-16 w-full rounded-xl" />;
+  }
+
+  if (estado.tipo === 'error') {
+    return (
+      <AvisoTonal
+        tono="peligro"
+        rol="alert"
+        titulo={t('error.titulo')}
+        descripcion={t('error.descripcion')}
+        accion={{ etiqueta: t('error.reintentar'), onClick: () => cargar() }}
+      />
+    );
+  }
+
+  const { fallos, sinLineas } = estado.datos;
+
+  if (fallos.length === 0 && sinLineas.length === 0) {
+    return <AvisoTonal tono="exito" compacto titulo={t('alertas.vacio')} />;
+  }
+
+  const cuantos = (n: number) => (n >= TOPE_ALERTAS ? `${TOPE_ALERTAS}+` : String(n));
 
   return (
-    <section
-      aria-label="Alertas contables"
-      className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-4 dark:border-amber-800 dark:bg-amber-950/40"
-    >
-      <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
-        <AlertTriangle className="h-5 w-5 shrink-0" />
-        <h2 className="text-sm font-semibold">Pendientes contables</h2>
-      </div>
-
-      {datos.fallos.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm text-amber-900 dark:text-amber-100">
-            {datos.fallos.length} fallo{datos.fallos.length === 1 ? '' : 's'} de asiento sin resolver
-          </p>
-          <ul className="space-y-2">
-            {datos.fallos.map((fallo) => (
-              <li
-                key={fallo.id}
-                className="rounded-lg bg-white/80 px-3 py-2 text-sm text-gray-800 dark:bg-gray-900/60 dark:text-gray-200"
-              >
-                <p className="font-medium">{motivoLegible(fallo)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDate(fallo.fecha)}
-                  {fallo.origen ? ` · ${fallo.origen}` : ''}
-                  {fallo.origenId ? ` ${fallo.origenId}` : ''}
-                  {fallo.debito || fallo.credito
-                    ? ` · D ${fallo.debito ?? '—'} / C ${fallo.credito ?? '—'}`
-                    : ''}
-                  {fallo.importe != null ? ` · ${fallo.importe}` : ''}
-                </p>
-                {fallo.detalle && (
-                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{fallo.detalle}</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+    <section aria-label={t('titulo')} className="space-y-4 rounded-xl border border-line-warning bg-warning-subtle p-4">
+      {fallos.length > 0 && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('alertas.fallos', { n: fallos.length, cantidad: cuantos(fallos.length) })}
+          accion={{ etiqueta: t('alertas.verBandeja'), href: RUTA_PENDIENTES }}
+          descripcion={
+            <ul className="mt-1 space-y-1">
+              {fallos.slice(0, VISIBLES).map((fallo) => (
+                <li key={fallo.id} className="text-sm text-fg">
+                  {t(`errores.${errorDePendiente(fallo.motivo ?? '')}`)}
+                  <span className="text-xs text-fg-secondary">
+                    {' · '}
+                    {formatDate(fallo.fecha)}
+                    {fallo.origen ? ` · ${fallo.origen}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          }
+        />
       )}
 
-      {datos.sinLineas.length > 0 && (
+      {sinLineas.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm text-amber-900 dark:text-amber-100">
-            {datos.sinLineas.length} asiento{datos.sinLineas.length === 1 ? '' : 's'} sin líneas
+          <p className="text-sm font-medium text-warning-text">
+            {t('alertas.sinLineas', { n: sinLineas.length, cantidad: cuantos(sinLineas.length) })}
           </p>
           <ul className="space-y-2">
-            {datos.sinLineas.map((asiento) => (
+            {sinLineas.slice(0, VISIBLES).map((asiento) => (
               <li key={asiento.id}>
                 <Link
                   href={`/app/finanzas/contabilidad/asientos/${asiento.id}`}
-                  className="block rounded-lg bg-white/80 px-3 py-2 text-sm text-gray-800 hover:bg-white dark:bg-gray-900/60 dark:text-gray-200 dark:hover:bg-gray-900"
+                  className="block rounded-lg bg-surface px-3 py-2 text-sm text-fg hover:bg-hover"
                 >
-                  <span className="font-medium">Asiento {asiento.id}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {' '}
-                    · {formatDate(asiento.fecha)}
+                  <span className="font-medium">{t('alertas.asiento', { id: asiento.id })}</span>
+                  <span className="text-xs text-fg-secondary">
+                    {' · '}
+                    {formatDate(asiento.fecha)}
                     {asiento.origen ? ` · ${asiento.origen}` : ''}
-                    {asiento.publicado ? ' · publicado' : ' · borrador'}
+                    {' · '}
+                    {asiento.publicado ? t('alertas.publicado') : t('alertas.borrador')}
                   </span>
-                  {asiento.memo && <span className="block text-xs mt-1">{asiento.memo}</span>}
+                  {asiento.memo && <span className="mt-1 block text-xs text-fg-secondary">{asiento.memo}</span>}
                 </Link>
               </li>
             ))}

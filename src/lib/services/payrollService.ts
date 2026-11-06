@@ -246,7 +246,7 @@ class PayrollService {
         period_end: dto.period_end,
         payment_date: dto.payment_date,
         frequency: dto.frequency,
-        status: 'draft',
+        status: 'open',
         notes: dto.notes,
       })
       .select()
@@ -278,7 +278,7 @@ class PayrollService {
       .delete()
       .eq('id', id)
       .eq('organization_id', this.organizationId)
-      .eq('status', 'draft');
+      .eq('status', 'open');
 
     if (error) throw error;
   }
@@ -346,7 +346,7 @@ class PayrollService {
         run_number: nextRunNumber,
         executed_by: executedBy,
         executed_at: new Date().toISOString(),
-        status: 'calculating',
+        status: 'running',
         is_final: false,
       })
       .select()
@@ -498,6 +498,21 @@ class PayrollService {
     return this.getSlipById(data.id) as Promise<PayrollSlip>;
   }
 
+  /**
+   * Escribe a mano la retención o la cuota de préstamo de una colilla en borrador. La RPC
+   * recalcula deducciones, neto y totales del periodo, y exige hr.payroll.process.
+   */
+  async fijarDeduccion(slipId: string, concepto: 'retencion' | 'prestamo', valor: number, nota?: string): Promise<void> {
+    const { error } = await supabase.rpc('fn_nomina_fijar_deduccion', {
+      p_slip_id: slipId,
+      p_concepto: concepto,
+      p_valor: valor,
+      p_nota: nota?.trim() || null,
+    });
+
+    if (error) throw error;
+  }
+
   async approveSlips(slipIds: string[]): Promise<void> {
     const { error } = await supabase
       .from('payroll_slips')
@@ -559,7 +574,7 @@ class PayrollService {
     const periods = await this.getPeriods();
     
     const pending = periods.filter(p => 
-      p.status === 'draft' || p.status === 'calculating' || p.status === 'reviewing'
+      p.status === 'open' || p.status === 'calculating' || p.status === 'calculated' || p.status === 'reviewing'
     ).length;
 
     const approved = periods.filter(p => p.status === 'approved' || p.status === 'paid');
@@ -679,20 +694,23 @@ class PayrollService {
 
   getPeriodStatuses(): { value: string; label: string; color: string }[] {
     return [
-      { value: 'draft', label: 'Borrador', color: 'gray' },
+      { value: 'open', label: 'Abierto', color: 'gray' },
       { value: 'calculating', label: 'Calculando', color: 'amber' },
+      { value: 'calculated', label: 'Calculado', color: 'blue' },
       { value: 'reviewing', label: 'En Revisión', color: 'blue' },
       { value: 'approved', label: 'Aprobado', color: 'green' },
+      { value: 'paying', label: 'En pago', color: 'purple' },
       { value: 'paid', label: 'Pagado', color: 'purple' },
+      { value: 'closed', label: 'Cerrado', color: 'gray' },
       { value: 'cancelled', label: 'Cancelado', color: 'red' },
     ];
   }
 
   getRunStatuses(): { value: string; label: string; color: string }[] {
     return [
-      { value: 'calculating', label: 'Calculando', color: 'amber' },
+      { value: 'running', label: 'Calculando', color: 'amber' },
       { value: 'completed', label: 'Completado', color: 'green' },
-      { value: 'error', label: 'Error', color: 'red' },
+      { value: 'failed', label: 'Error', color: 'red' },
       { value: 'superseded', label: 'Reemplazado', color: 'gray' },
     ];
   }

@@ -18,6 +18,8 @@ import {
   Bell,
   BellOff,
   CheckCircle,
+  CircleDollarSign,
+  ClipboardPlus,
   Clock,
   Coins,
   Download,
@@ -30,6 +32,7 @@ import {
   ShoppingBag,
   TriangleAlert,
   Volume2,
+  Wrench,
   VolumeX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -66,6 +69,8 @@ import { clasesBoton } from '@/components/kit/botonClases';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
 import { TablaPedidosOnline, metodoDePago } from '@/components/pos/pedidos-online/listado/TablaPedidosOnline';
+import { DialogoPedidoManual } from '@/components/pos/pedidos-online/manual/DialogoPedidoManual';
+import { DialogoReconstruirPedido } from '@/components/pos/pedidos-online/manual/DialogoReconstruirPedido';
 import {
   webOrdersService,
   type WebOrder,
@@ -121,6 +126,10 @@ export default function PedidosOnlinePage() {
   const { toast } = useToast();
   const t = useTranslations('pedidosOnlineListado');
   const tPedido = useTranslations('pedidoWeb');
+  const tManual = useTranslations('pedidosManuales');
+  // Pedido manual y reconstrucción de pedidos pagados (Pedidos online · pagos sin pedido).
+  const [manualAbierto, setManualAbierto] = useState(false);
+  const [reconstruirAbierto, setReconstruirAbierto] = useState(false);
   const { getToday } = useFormatDate();
   const { timezone } = useOrgTimezone();
   const { organization } = useOrganization();
@@ -584,6 +593,19 @@ export default function PedidosOnlinePage() {
       onSelect: () => setAutoRefresh((v) => !v),
     },
     {
+      id: 'reconstruir',
+      etiqueta: tManual('acciones.reconstruir'),
+      icono: Wrench,
+      separadorAntes: true,
+      onSelect: () => setReconstruirAbierto(true),
+    },
+    {
+      id: 'sin-pedido',
+      etiqueta: tManual('acciones.pagosSinPedido'),
+      icono: CircleDollarSign,
+      onSelect: () => router.push('/app/pos/pedidos-online/pagos-sin-pedido'),
+    },
+    {
       id: 'avisos',
       etiqueta: t('acciones.avisosCliente'),
       icono: Settings,
@@ -691,6 +713,10 @@ export default function PedidosOnlinePage() {
             >
               <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('acciones.exportar')}
+            </button>
+            <button type="button" onClick={() => setManualAbierto(true)} disabled={!organization?.id} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+              <ClipboardPlus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tManual('acciones.pedidoManual')}
             </button>
             <button
               type="button"
@@ -1045,6 +1071,22 @@ export default function PedidosOnlinePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {organization?.id && (
+        <>
+          <DialogoPedidoManual organizationId={organization.id} abierto={manualAbierto} onAbiertoChange={setManualAbierto} onCreado={() => void loadOrders()} />
+          <DialogoReconstruirPedido
+            organizationId={organization.id}
+            abierto={reconstruirAbierto}
+            onAbiertoChange={setReconstruirAbierto}
+            onReconstruido={(r) => {
+              setReconstruirAbierto(false);
+              toast({ title: tManual('reconstruir.listo', { pedido: r.pedido.order_number }) });
+              void loadOrders();
+              router.push(`/app/pos/pedidos-online/${r.pedido.id}`);
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

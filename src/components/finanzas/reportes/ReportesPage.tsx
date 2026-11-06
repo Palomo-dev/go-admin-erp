@@ -20,6 +20,7 @@ import {ArrowLeft,
   AlertTriangle,
   CheckCircle,
   DollarSign,
+  ListChecks,
   Percent} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -40,6 +41,7 @@ import {
 } from '@/lib/services/reportesFinancierosService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useTranslations } from 'next-intl';
 
 type RangeOption = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
@@ -83,6 +85,7 @@ function getDateRange(option: RangeOption): DateRange {
 
 export function ReportesPage() {
   const { branchFilter } = useBranch();
+  const tCartera = useTranslations('carteraEdades');
   // Informes agregados: en la moneda base de la organización.
   const { formatear } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(true);
@@ -483,6 +486,12 @@ export function ReportesPage() {
               <Button variant="outline" className="w-full justify-start dark:border-gray-700">
                 <TrendingDown className="h-4 w-4 mr-2" />
                 Egresos
+              </Button>
+            </Link>
+            <Link href="/app/finanzas/reportes/cartera-edades">
+              <Button variant="outline" className="w-full justify-start">
+                <ListChecks className="h-4 w-4 mr-2" />
+                {tCartera('titulo')}
               </Button>
             </Link>
             <Link href="/app/finanzas/cuentas-por-cobrar">

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
+import { esBloqueoDeduccion } from '@/lib/services/nominaDeducciones';
 import type { PayrollRun, PayrollSlip } from '@/lib/services/payrollService';
 import { SlipsTable } from '@/components/hrm/nomina/periodos/[id]/runs/[run_id]';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -37,16 +38,16 @@ import {
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 const statusColors: Record<string, string> = {
-  calculating: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  running: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  error: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   superseded: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
 };
 
 const statusLabels: Record<string, string> = {
-  calculating: 'Calculando',
+  running: 'Calculando',
   completed: 'Completado',
-  error: 'Error',
+  failed: 'Error',
   superseded: 'Reemplazado',
 };
 
@@ -148,10 +149,12 @@ export default function RunDetallePage() {
       setSelectedSlips([]);
       setApproveOpen(false);
       await loadData();
-    } catch {
+    } catch (e: unknown) {
       toast({
         title: 'Error',
-        description: 'No se pudieron aprobar las colillas',
+        description: esBloqueoDeduccion(e)
+          ? 'Hay colillas con deducciones sin calcular: escríbalas en el periodo antes de aprobar'
+          : 'No se pudieron aprobar las colillas',
         variant: 'destructive',
       });
     }
@@ -236,8 +239,8 @@ export default function RunDetallePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Estado</p>
-                <Badge className={`mt-1 ${statusColors[run.status || 'calculating']}`}>
-                  {statusLabels[run.status || 'calculating']}
+                <Badge className={`mt-1 ${statusColors[run.status || 'running']}`}>
+                  {statusLabels[run.status || 'running']}
                 </Badge>
               </div>
               {run.is_final && (

@@ -39,3 +39,37 @@ export async function descargarPdf(
   });
   doc.save(nombre.endsWith('.pdf') ? nombre : `${nombre}.pdf`);
 }
+
+/** Documento de texto con espacio para firmar. Las firmas las ponen sus titulares. */
+export async function descargarPdfDocumento(
+  nombre: string,
+  encabezado: string,
+  titulo: string,
+  parrafos: string[],
+  firmas: string[],
+): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const ancho = doc.internal.pageSize.getWidth() - 96;
+  let y = 64;
+  doc.setFontSize(10);
+  doc.text(encabezado, 48, y);
+  y += 28;
+  doc.setFontSize(14);
+  doc.text(titulo, 48, y);
+  y += 28;
+  doc.setFontSize(11);
+  for (const parrafo of parrafos) {
+    const lineas = doc.splitTextToSize(parrafo, ancho) as string[];
+    doc.text(lineas, 48, y);
+    y += lineas.length * 15 + 12;
+  }
+  y += 60;
+  doc.setFontSize(9);
+  for (const firma of firmas) {
+    doc.line(48, y, 288, y);
+    doc.text(doc.splitTextToSize(firma, ancho) as string[], 48, y + 12);
+    y += 72;
+  }
+  doc.save(nombre.endsWith('.pdf') ? nombre : `${nombre}.pdf`);
+}

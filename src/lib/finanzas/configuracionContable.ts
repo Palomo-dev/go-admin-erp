@@ -45,6 +45,7 @@ export const CLAVES_CONTABLES = [
   'saldo_inicial',
   'impuesto_consumo',
   'redondeo',
+  'redondeo_en_contra',
   'compra_servicio',
   'ingresos_diversos',
 ] as const;
@@ -89,7 +90,8 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'manifiesto_transporte', nombre: 'Manifiesto de transporte', grupo: 'Cartera', ayuda: 'Crédito cuando la organización es de transporte. Por defecto 2335.' },
   { clave: 'saldo_inicial', nombre: 'Saldo inicial', grupo: 'Inventario', ayuda: 'Crédito del saldo inicial de inventario: 37050501 utilidades acumuladas (3710 si hay pérdida acumulada). No uses 3105: el capital solo se mueve con aportes.' },
   { clave: 'impuesto_consumo', nombre: 'Impuesto al consumo', grupo: 'Impuestos', ayuda: 'Impuesto al consumo. Por defecto 2495.' },
-  { clave: 'redondeo', nombre: 'Redondeo', grupo: 'Ventas', ayuda: 'Diferencia al redondear un asiento a pesos. Por defecto 42958101 (a favor); en contra 53959501.' },
+  { clave: 'redondeo', nombre: 'Redondeo a favor', grupo: 'Ventas', ayuda: 'Crédito de la línea de redondeo a pesos. Por defecto 42958101. Sin cuenta válida, el asiento queda pendiente.' },
+  { clave: 'redondeo_en_contra', nombre: 'Redondeo en contra', grupo: 'Ventas', ayuda: 'Débito de la línea de redondeo a pesos. Por defecto 53959501. Sin cuenta válida, el asiento queda pendiente.' },
   { clave: 'compra_servicio', nombre: 'Compra de servicio', grupo: 'Cartera', ayuda: 'Crédito de una compra de servicio o de transporte. Por defecto 2335.' },
   { clave: 'ingresos_diversos', nombre: 'Ingresos diversos', grupo: 'Inventario', ayuda: 'Crédito de un sobrante real de inventario. Por defecto 42959501 (auxiliar de 4295). No es 4250.' },
 ];
@@ -323,6 +325,7 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   saldo_inicial: '37050501',
   impuesto_consumo: '2495',
   redondeo: '42958101',
+  redondeo_en_contra: '53959501',
   compra_servicio: '23359501',
   ingresos_diversos: '42959501',
 };

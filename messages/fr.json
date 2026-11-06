@@ -38845,5 +38845,156 @@
       "error": "Les paiements n'ont pas pu être chargés.",
       "listo": "Commande {pedido} prête"
     }
+  },
+  "planCuentas": {
+    "titulo": "Plan comptable",
+    "decreto": "PUC commercial, décret 2650 de 1993",
+    "subtitulo": "{cuentas} comptes · {movimiento} de mouvement · PUC commercial, décret 2650 de 1993",
+    "exportar": "Exporter",
+    "importar": "Importer",
+    "expandir": "Tout développer",
+    "colapsar": "Tout réduire",
+    "nuevaCuenta": "Nouveau compte",
+    "buscar": "Rechercher par code ou nom",
+    "verResultados": "Voir {cuentas} comptes",
+    "resultado": "{cuentas, plural, one {1 compte correspond} other {# comptes correspondent}}. Ils affichent leur chemin pour créer en dessous sans quitter la recherche.",
+    "importadas": "{cuentas} comptes importés",
+    "migas": {
+      "finanzas": "Finances",
+      "contabilidad": "Comptabilité"
+    },
+    "columnas": {
+      "cuenta": "Compte",
+      "nivel": "Niveau",
+      "naturaleza": "Nature",
+      "saldo": "Solde du jour",
+      "acciones": "Actions"
+    },
+    "nivel": {
+      "clase": "Classe",
+      "grupo": "Groupe",
+      "cuenta": "Compte",
+      "subcuenta": "Sous-compte",
+      "auxiliar": "Auxiliaire",
+      "subauxiliar": "Sous-auxiliaire",
+      "legacy": "Ancien"
+    },
+    "naturaleza": {
+      "debito": "Débit",
+      "credito": "Crédit",
+      "orden": "Ordre"
+    },
+    "filtros": {
+      "nivel": "Niveau",
+      "naturaleza": "Nature",
+      "tipo": "Type",
+      "todos": "Tous",
+      "titulosYMovimiento": "Titres et mouvement",
+      "movimiento": "Mouvement uniquement",
+      "titulo": "Titre uniquement",
+      "soloActivas": "Actifs uniquement"
+    },
+    "vacio": {
+      "titulo": "Pas encore de plan comptable",
+      "descripcion": "Créez le premier compte ou importez votre plan depuis Excel."
+    },
+    "errores": {
+      "cargarTitulo": "Impossible de charger le plan comptable",
+      "cargar": "Vérifiez votre connexion et réessayez.",
+      "guardar": "Impossible d'enregistrer le compte.",
+      "eliminar": "Suppression impossible. Il a peut-être des comptes enfants ou des écritures.",
+      "importar": "Impossible d'importer le fichier."
+    },
+    "eliminar": {
+      "titulo": "Supprimer {cuenta} ?",
+      "descripcion": "Cette action est irréversible. Le compte n'a ni écritures ni comptes enfants.",
+      "confirmar": "Supprimer le compte"
+    },
+    "fila": {
+      "abrirRama": "Ouvrir {cuenta}",
+      "cerrarRama": "Fermer {cuenta}",
+      "crearDebajo": "Créer {nivel} sous {cuenta}",
+      "inactiva": "Inactif",
+      "debito": "D",
+      "credito": "C",
+      "editar": "Modifier",
+      "verMayor": "Voir au grand livre",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "eliminar": "Supprimer",
+      "activada": "Compte activé",
+      "desactivada": "Compte désactivé",
+      "eliminada": "Compte supprimé"
+    },
+    "alta": {
+      "codigo": "Code",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Nom de l'auxiliaire",
+      "pistaEnter": "enregistre et en ouvre un autre",
+      "guardar": "Enregistrer",
+      "guardarYOtro": "Enregistrer et en créer un autre",
+      "terminar": "Terminer",
+      "tituloHoja": "Nouvel auxiliaire",
+      "debajoDe": "Sous {cuenta}",
+      "atajoEnter": "enregistre et ouvre un autre auxiliaire",
+      "atajoEsc": "termine",
+      "sinCodigo": "Ce sous-compte n'a plus de codes libres.",
+      "saldoTitulo": "{cuenta} a un solde de {saldo}",
+      "saldoDetalle": "Une fois l'auxiliaire créé, il ne reçoit plus d'écritures. Le solde est transféré par une écriture de reclassement datée d'aujourd'hui.",
+      "trasladar": "Créer et transférer",
+      "nota": "Note de l'écriture",
+      "notaAyuda": "Facultatif. Elle s'ajoute à la description de l'écriture.",
+      "tituloTitulo": "{cuenta} deviendra un compte de titre",
+      "tituloDetalle": "Il n'a pas de solde, il n'y a donc rien à transférer. Désormais, les écritures vont dans ses auxiliaires.",
+      "trasladoHecho": "{asientos, plural, one {Solde transféré par 1 écriture} other {Solde transféré par # écritures}}",
+      "errores": {
+        "ocupado": "Ce code existe déjà. Le prochain libre est {codigo}.",
+        "ocupadoSinLibre": "Ce code existe déjà et il ne reste aucun code libre.",
+        "codigo": "Un auxiliaire a 8 chiffres et commence par le sous-compte. Il ne peut pas finir par 00.",
+        "padre": "Le sous-compte n'existe pas ou est inactif.",
+        "nombre": "Saisissez le nom de l'auxiliaire.",
+        "periodo": "La période du jour est clôturée. Ouvrez-la pour transférer le solde.",
+        "tercero": "Le solde a des écritures sans tiers et ce compte l'exige. Corrigez-les avant de transférer.",
+        "permiso": "Vous n'avez pas l'autorisation de créer des comptes.",
+        "sinCodigo": "Ce sous-compte n'a plus de codes libres.",
+        "otro": "Impossible de créer l'auxiliaire."
+      }
+    },
+    "panel": {
+      "tituloNueva": "Nouveau compte",
+      "descripcionNueva": "Pour les classes, groupes, comptes et sous-comptes. Les auxiliaires se créent dans la ligne.",
+      "sinRuta": "Compte principal",
+      "codigo": "Code",
+      "codigoAyuda": "Le parent se déduit du code : 110505 dépend de 1105.",
+      "nombre": "Nom",
+      "naturaleza": "Nature",
+      "presentacion": "Présentation IFRS",
+      "presentacionAyuda": "Cela ne change pas le nom du groupe. 11 reste Disponible.",
+      "presentacionGrupo": "Selon le groupe",
+      "corriente": "Courant",
+      "noCorriente": "Non courant",
+      "segunPlazo": "Selon l'échéance",
+      "centro": "Centre de coût",
+      "centroObligatorio": "Obligatoire",
+      "centroOpcional": "Facultatif",
+      "centroNoAplica": "Non applicable",
+      "exogena": "Concept d'exógena",
+      "tercero": "Exige un tiers",
+      "descripcion": "Description",
+      "uso": "Solde {saldo} · {movimientos, plural, one {1 écriture} other {# écritures}}",
+      "creadaPor": "Créé par {nombre} · {fecha}",
+      "creadaEl": "Créé le {fecha}",
+      "crear": "Créer le compte",
+      "guardar": "Enregistrer les modifications",
+      "creada": "Compte créé",
+      "actualizada": "Compte mis à jour",
+      "errores": {
+        "nombre": "Saisissez le nom du compte.",
+        "codigo": "Le code n'utilise que des chiffres et une longueur du PUC : 1, 2, 4, 6, 8, ou 10 et plus.",
+        "ocupado": "Ce code existe déjà.",
+        "padre": "Le compte {padre} doit d'abord exister.",
+        "guardar": "Impossible d'enregistrer le compte."
+      }
+    }
   }
 }

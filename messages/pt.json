@@ -38855,5 +38855,156 @@
       "error": "Não foi possível carregar os pagamentos.",
       "listo": "Pedido {pedido} pronto"
     }
+  },
+  "planCuentas": {
+    "titulo": "Plano de contas",
+    "decreto": "PUC comercial, Decreto 2650 de 1993",
+    "subtitulo": "{cuentas} contas · {movimiento} de movimento · PUC comercial, Decreto 2650 de 1993",
+    "exportar": "Exportar",
+    "importar": "Importar",
+    "expandir": "Expandir tudo",
+    "colapsar": "Recolher tudo",
+    "nuevaCuenta": "Nova conta",
+    "buscar": "Buscar por código ou nome",
+    "verResultados": "Ver {cuentas} contas",
+    "resultado": "{cuentas, plural, one {1 conta coincide} other {# contas coincidem}}. Elas mostram o caminho para você criar abaixo sem sair da busca.",
+    "importadas": "{cuentas} contas importadas",
+    "migas": {
+      "finanzas": "Finanças",
+      "contabilidad": "Contabilidade"
+    },
+    "columnas": {
+      "cuenta": "Conta",
+      "nivel": "Nível",
+      "naturaleza": "Natureza",
+      "saldo": "Saldo de hoje",
+      "acciones": "Ações"
+    },
+    "nivel": {
+      "clase": "Classe",
+      "grupo": "Grupo",
+      "cuenta": "Conta",
+      "subcuenta": "Subconta",
+      "auxiliar": "Auxiliar",
+      "subauxiliar": "Subauxiliar",
+      "legacy": "Anterior"
+    },
+    "naturaleza": {
+      "debito": "Débito",
+      "credito": "Crédito",
+      "orden": "Ordem"
+    },
+    "filtros": {
+      "nivel": "Nível",
+      "naturaleza": "Natureza",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "titulosYMovimiento": "Títulos e movimento",
+      "movimiento": "Só movimento",
+      "titulo": "Só título",
+      "soloActivas": "Só ativas"
+    },
+    "vacio": {
+      "titulo": "Ainda não há plano de contas",
+      "descripcion": "Crie a primeira conta ou importe seu plano do Excel."
+    },
+    "errores": {
+      "cargarTitulo": "Não foi possível carregar o plano de contas",
+      "cargar": "Verifique sua conexão e tente de novo.",
+      "guardar": "Não foi possível salvar a conta.",
+      "eliminar": "Não foi possível excluir. Ela pode ter contas filhas ou lançamentos.",
+      "importar": "Não foi possível importar o arquivo."
+    },
+    "eliminar": {
+      "titulo": "Excluir {cuenta}?",
+      "descripcion": "Esta ação não pode ser desfeita. A conta não tem lançamentos nem contas filhas.",
+      "confirmar": "Excluir conta"
+    },
+    "fila": {
+      "abrirRama": "Abrir {cuenta}",
+      "cerrarRama": "Fechar {cuenta}",
+      "crearDebajo": "Criar {nivel} abaixo de {cuenta}",
+      "inactiva": "Inativa",
+      "debito": "D",
+      "credito": "C",
+      "editar": "Editar",
+      "verMayor": "Ver no razão",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "eliminar": "Excluir",
+      "activada": "Conta ativada",
+      "desactivada": "Conta desativada",
+      "eliminada": "Conta excluída"
+    },
+    "alta": {
+      "codigo": "Código",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Nome do auxiliar",
+      "pistaEnter": "salva e abre outro",
+      "guardar": "Salvar",
+      "guardarYOtro": "Salvar e criar outro",
+      "terminar": "Concluir",
+      "tituloHoja": "Novo auxiliar",
+      "debajoDe": "Abaixo de {cuenta}",
+      "atajoEnter": "salva e abre outro auxiliar",
+      "atajoEsc": "conclui",
+      "sinCodigo": "Esta subconta não tem mais códigos livres.",
+      "saldoTitulo": "{cuenta} tem saldo de {saldo}",
+      "saldoDetalle": "Ao criar o auxiliar, ela deixa de receber lançamentos. O saldo é transferido com um lançamento de reclassificação com a data de hoje.",
+      "trasladar": "Criar e transferir",
+      "nota": "Nota do lançamento",
+      "notaAyuda": "Opcional. É adicionada à descrição do lançamento.",
+      "tituloTitulo": "{cuenta} passará a ser conta de título",
+      "tituloDetalle": "Não tem saldo, então não há nada a transferir. A partir de agora os lançamentos vão nos auxiliares.",
+      "trasladoHecho": "{asientos, plural, one {Saldo transferido com 1 lançamento} other {Saldo transferido com # lançamentos}}",
+      "errores": {
+        "ocupado": "Esse código já existe. O próximo livre é {codigo}.",
+        "ocupadoSinLibre": "Esse código já existe e não restam códigos livres.",
+        "codigo": "O auxiliar tem 8 dígitos e começa pela subconta. Não pode terminar em 00.",
+        "padre": "A subconta não existe ou está inativa.",
+        "nombre": "Digite o nome do auxiliar.",
+        "periodo": "O período de hoje está fechado. Abra-o para transferir o saldo.",
+        "tercero": "O saldo tem lançamentos sem terceiro e esta conta o exige. Corrija-os antes de transferir.",
+        "permiso": "Você não tem permissão para criar contas.",
+        "sinCodigo": "Esta subconta não tem mais códigos livres.",
+        "otro": "Não foi possível criar o auxiliar."
+      }
+    },
+    "panel": {
+      "tituloNueva": "Nova conta",
+      "descripcionNueva": "Para classes, grupos, contas e subcontas. Os auxiliares são criados na própria linha.",
+      "sinRuta": "Conta principal",
+      "codigo": "Código",
+      "codigoAyuda": "O pai vem do código: 110505 fica abaixo de 1105.",
+      "nombre": "Nome",
+      "naturaleza": "Natureza",
+      "presentacion": "Apresentação IFRS",
+      "presentacionAyuda": "Não muda o nome do grupo. 11 continua sendo Disponible.",
+      "presentacionGrupo": "Conforme o grupo",
+      "corriente": "Circulante",
+      "noCorriente": "Não circulante",
+      "segunPlazo": "Conforme o prazo",
+      "centro": "Centro de custo",
+      "centroObligatorio": "Obrigatório",
+      "centroOpcional": "Opcional",
+      "centroNoAplica": "Não se aplica",
+      "exogena": "Conceito de exógena",
+      "tercero": "Exige terceiro",
+      "descripcion": "Descrição",
+      "uso": "Saldo {saldo} · {movimientos, plural, one {1 lançamento} other {# lançamentos}}",
+      "creadaPor": "Criada por {nombre} · {fecha}",
+      "creadaEl": "Criada em {fecha}",
+      "crear": "Criar conta",
+      "guardar": "Salvar alterações",
+      "creada": "Conta criada",
+      "actualizada": "Conta atualizada",
+      "errores": {
+        "nombre": "Digite o nome da conta.",
+        "codigo": "O código usa só dígitos e um comprimento do PUC: 1, 2, 4, 6, 8, ou 10 em diante.",
+        "ocupado": "Esse código já existe.",
+        "padre": "A conta {padre} precisa existir antes.",
+        "guardar": "Não foi possível salvar a conta."
+      }
+    }
   }
 }

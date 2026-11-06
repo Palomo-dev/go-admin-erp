@@ -38845,5 +38845,156 @@
       "error": "Payments could not be loaded.",
       "listo": "Order {pedido} ready"
     }
+  },
+  "planCuentas": {
+    "titulo": "Chart of accounts",
+    "decreto": "Colombian commercial PUC, Decree 2650 of 1993",
+    "subtitulo": "{cuentas} accounts · {movimiento} posting · Colombian commercial PUC, Decree 2650 of 1993",
+    "exportar": "Export",
+    "importar": "Import",
+    "expandir": "Expand all",
+    "colapsar": "Collapse all",
+    "nuevaCuenta": "New account",
+    "buscar": "Search by code or name",
+    "verResultados": "View {cuentas} accounts",
+    "resultado": "{cuentas, plural, one {1 account matches} other {# accounts match}}. They show their path so you can create below them without leaving the search.",
+    "importadas": "{cuentas} accounts imported",
+    "migas": {
+      "finanzas": "Finance",
+      "contabilidad": "Accounting"
+    },
+    "columnas": {
+      "cuenta": "Account",
+      "nivel": "Level",
+      "naturaleza": "Nature",
+      "saldo": "Balance today",
+      "acciones": "Actions"
+    },
+    "nivel": {
+      "clase": "Class",
+      "grupo": "Group",
+      "cuenta": "Account",
+      "subcuenta": "Sub-account",
+      "auxiliar": "Auxiliary",
+      "subauxiliar": "Sub-auxiliary",
+      "legacy": "Legacy"
+    },
+    "naturaleza": {
+      "debito": "Debit",
+      "credito": "Credit",
+      "orden": "Memorandum"
+    },
+    "filtros": {
+      "nivel": "Level",
+      "naturaleza": "Nature",
+      "tipo": "Type",
+      "todos": "All",
+      "titulosYMovimiento": "Header and posting",
+      "movimiento": "Posting only",
+      "titulo": "Header only",
+      "soloActivas": "Active only"
+    },
+    "vacio": {
+      "titulo": "No chart of accounts yet",
+      "descripcion": "Create the first account or import your chart from Excel."
+    },
+    "errores": {
+      "cargarTitulo": "The chart of accounts could not be loaded",
+      "cargar": "Check your connection and try again.",
+      "guardar": "The account could not be saved.",
+      "eliminar": "It could not be deleted. It may have child accounts or entries.",
+      "importar": "The file could not be imported."
+    },
+    "eliminar": {
+      "titulo": "Delete {cuenta}?",
+      "descripcion": "This cannot be undone. The account has no entries or child accounts.",
+      "confirmar": "Delete account"
+    },
+    "fila": {
+      "abrirRama": "Open {cuenta}",
+      "cerrarRama": "Close {cuenta}",
+      "crearDebajo": "Create {nivel} under {cuenta}",
+      "inactiva": "Inactive",
+      "debito": "D",
+      "credito": "C",
+      "editar": "Edit",
+      "verMayor": "View in ledger",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "eliminar": "Delete",
+      "activada": "Account activated",
+      "desactivada": "Account deactivated",
+      "eliminada": "Account deleted"
+    },
+    "alta": {
+      "codigo": "Code",
+      "nombre": "Name",
+      "nombrePlaceholder": "Auxiliary name",
+      "pistaEnter": "saves and opens another",
+      "guardar": "Save",
+      "guardarYOtro": "Save and create another",
+      "terminar": "Finish",
+      "tituloHoja": "New auxiliary",
+      "debajoDe": "Under {cuenta}",
+      "atajoEnter": "saves and opens another auxiliary",
+      "atajoEsc": "finishes",
+      "sinCodigo": "This sub-account has no free codes left.",
+      "saldoTitulo": "{cuenta} has a balance of {saldo}",
+      "saldoDetalle": "Once the auxiliary exists it stops receiving entries. The balance moves with a reclassification entry dated today.",
+      "trasladar": "Create and transfer",
+      "nota": "Entry note",
+      "notaAyuda": "Optional. It is added to the entry description.",
+      "tituloTitulo": "{cuenta} will become a header account",
+      "tituloDetalle": "It has no balance, so there is nothing to transfer. From now on entries go to its auxiliaries.",
+      "trasladoHecho": "{asientos, plural, one {Balance transferred with 1 entry} other {Balance transferred with # entries}}",
+      "errores": {
+        "ocupado": "That code already exists. The next free one is {codigo}.",
+        "ocupadoSinLibre": "That code already exists and no free codes are left.",
+        "codigo": "An auxiliary has 8 digits and starts with the sub-account. It cannot end in 00.",
+        "padre": "The sub-account does not exist or is inactive.",
+        "nombre": "Enter the auxiliary name.",
+        "periodo": "Today's period is closed. Open it to transfer the balance.",
+        "tercero": "The balance has entries with no third party and this account requires one. Fix them before transferring.",
+        "permiso": "You do not have permission to create accounts.",
+        "sinCodigo": "This sub-account has no free codes left.",
+        "otro": "The auxiliary could not be created."
+      }
+    },
+    "panel": {
+      "tituloNueva": "New account",
+      "descripcionNueva": "For classes, groups, accounts and sub-accounts. Auxiliaries are created in the row.",
+      "sinRuta": "Top-level account",
+      "codigo": "Code",
+      "codigoAyuda": "The parent comes from the code: 110505 sits under 1105.",
+      "nombre": "Name",
+      "naturaleza": "Nature",
+      "presentacion": "IFRS presentation",
+      "presentacionAyuda": "It does not change the group name. 11 is still Disponible.",
+      "presentacionGrupo": "By group",
+      "corriente": "Current",
+      "noCorriente": "Non-current",
+      "segunPlazo": "By term",
+      "centro": "Cost center",
+      "centroObligatorio": "Required",
+      "centroOpcional": "Optional",
+      "centroNoAplica": "Not applicable",
+      "exogena": "Exógena concept",
+      "tercero": "Requires third party",
+      "descripcion": "Description",
+      "uso": "Balance {saldo} · {movimientos, plural, one {1 entry} other {# entries}}",
+      "creadaPor": "Created by {nombre} · {fecha}",
+      "creadaEl": "Created on {fecha}",
+      "crear": "Create account",
+      "guardar": "Save changes",
+      "creada": "Account created",
+      "actualizada": "Account updated",
+      "errores": {
+        "nombre": "Enter the account name.",
+        "codigo": "The code uses digits only and a PUC length: 1, 2, 4, 6, 8, or 10 and up.",
+        "ocupado": "That code already exists.",
+        "padre": "Account {padre} must exist first.",
+        "guardar": "The account could not be saved."
+      }
+    }
   }
 }

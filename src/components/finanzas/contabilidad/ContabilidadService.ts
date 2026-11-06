@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/timezone';
 import { obtenerOrganizacionActiva, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import type { SaldoCuenta } from '@/lib/finanzas/planCuentasAlta';
 
 export interface JournalEntry {
   id: number;
@@ -121,6 +122,15 @@ export type TipoCuentaContable = 'asset' | 'liability' | 'equity' | 'income' | '
 export type NaturalezaCuenta = 'debito' | 'credito' | 'orden';
 export type NivelCuenta = 'clase' | 'grupo' | 'cuenta' | 'subcuenta' | 'auxiliar' | 'subauxiliar' | 'legacy';
 
+export interface AuxiliarCreado {
+  account_code: string;
+  parent_code: string;
+  padre_paso_a_titulo: boolean;
+  saldo_trasladado: number;
+  asientos: number[];
+  referencias_actualizadas: number;
+}
+
 export interface ChartAccount {
   account_code: string;
   organization_id: number;
@@ -144,6 +154,10 @@ export interface ChartAccount {
   presentacion_niif?: 'corriente' | 'no_corriente' | 'segun_plazo' | null;
   /** Generada a partir de is_active. No se escribe. */
   activa?: boolean | null;
+  /** Concepto de exógena de la cuenta. Null si no aplica. */
+  concepto_exogena?: string | null;
+  /** Quién la creó. Null en cuentas anteriores a 2026-11-06 o sembradas por el sistema. */
+  created_by?: string | null;
 }
 
 const CAMPOS_CUENTA = [
@@ -158,6 +172,7 @@ const CAMPOS_CUENTA = [
   'requiere_tercero',
   'requiere_centro_costo',
   'centro_costo_modo',
+  'concepto_exogena',
 ] as const;
 
 function camposDeCuenta(cuenta: Partial<ChartAccount>): Record<string, unknown> {
@@ -320,6 +335,63 @@ export class ContabilidadService {
     }
 
     return data;
+  }
+
+  /** Saldo y movimientos publicados por cuenta (`fn_plan_saldos`). */
+  static async obtenerSaldosPlan(): Promise<Map<string, SaldoCuenta>> {
+    const { data, error } = await supabase.rpc('fn_plan_saldos', {
+      p_organization_id: this.getOrganizationId(),
+    });
+    if (error) {
+      console.error('Error obteniendo saldos del plan:', error);
+      throw error;
+    }
+    const salida = new Map<string, SaldoCuenta>();
+    for (const fila of (data ?? []) as { account_code: string; saldo: number; movimientos: number }[]) {
+      salida.set(fila.account_code, { saldo: Number(fila.saldo), movimientos: Number(fila.movimientos) });
+    }
+    return salida;
+  }
+
+  /**
+   * Crea un auxiliar de 8 dígitos debajo de una subcuenta (`fn_plan_crear_auxiliar`).
+   * Si la subcuenta tiene saldo, responde PADRE_CON_SALDO salvo que se confirme el
+   * traslado. Todo ocurre en una sola transacción en el servidor.
+   */
+  static async crearAuxiliar(entrada: {
+    padre: string;
+    nombre: string;
+    codigo?: string | null;
+    trasladarSaldo?: boolean;
+    nota?: string | null;
+  }): Promise<AuxiliarCreado> {
+    const { data, error } = await supabase.rpc('fn_plan_crear_auxiliar', {
+      p_organization_id: this.getOrganizationId(),
+      p_parent_code: entrada.padre,
+      p_name: entrada.nombre,
+      p_account_code: entrada.codigo ?? null,
+      p_trasladar_saldo: entrada.trasladarSaldo ?? false,
+      p_nota: entrada.nota ?? null,
+    });
+    if (error) {
+      console.error('Error creando auxiliar:', error);
+      throw error;
+    }
+    return data as AuxiliarCreado;
+  }
+
+  /** Quién creó la cuenta y cuándo (`fn_plan_cuenta_autor`). */
+  static async autorCuenta(accountCode: string): Promise<{ creadaPor: string | null; creadaEn: string | null }> {
+    const { data, error } = await supabase.rpc('fn_plan_cuenta_autor', {
+      p_organization_id: this.getOrganizationId(),
+      p_account_code: accountCode,
+    });
+    if (error) {
+      console.error('Error obteniendo el autor de la cuenta:', error);
+      throw error;
+    }
+    const fila = (data ?? [])[0] as { creada_por: string | null; creada_en: string | null } | undefined;
+    return { creadaPor: fila?.creada_por ?? null, creadaEn: fila?.creada_en ?? null };
   }
 
   static async actualizarCuenta(accountCode: string, cuenta: Partial<ChartAccount>): Promise<ChartAccount> {

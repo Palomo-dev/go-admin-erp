@@ -27,6 +27,7 @@ import { supabase } from '@/lib/supabase/config';
 import { proceedWithLogin, activarOrganizacion } from '@/lib/auth';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 import { destinoTrasLogin } from '@/lib/auth/recuperacionSesion';
+import { limpiarSesionMuerta, sesionMurio } from '@/lib/auth/deadSession';
 import {
   CLAVE_FAVORITAS,
   estadoOrganizacion,
@@ -78,6 +79,11 @@ async function sesionActiva(): Promise<Session | null> {
   return data.session;
 }
 
+async function irAlLoginPorSesionVencida(): Promise<void> {
+  await limpiarSesionMuerta();
+  window.location.replace('/auth/login?reason=expired');
+}
+
 function SelectOrganizationContent() {
   const t = useTranslations('acceso.seleccion');
   const tc = useTranslations('acceso.comun');
@@ -106,6 +112,10 @@ function SelectOrganizationContent() {
         await proceedWithLogin(false, s.user.email || '', { destino });
       } catch (err) {
         console.error('[select-organization] No se pudo entrar:', err);
+        if (await sesionMurio(err)) {
+          await irAlLoginPorSesionVencida();
+          return;
+        }
         setEntrando(false);
         setError(true);
       }
@@ -166,6 +176,11 @@ function SelectOrganizationContent() {
         if (filas.length === 1) await entrar(filas[0], s);
       } catch (err) {
         console.error('[select-organization] Error cargando organizaciones:', err);
+        if (!vivo) return;
+        if (await sesionMurio(err)) {
+          await irAlLoginPorSesionVencida();
+          return;
+        }
         if (vivo) setError(true);
       }
     })();

@@ -34,12 +34,14 @@ export function saveGeolocationPreference(preference: GeolocationPreference) {
 }
 
 /**
- * Intenta obtener la ubicación del navegador según la preferencia guardada
+ * Intenta obtener la ubicación del navegador. El único permiso es el del propio
+ * navegador (o el del sistema en la app móvil): GO Admin ya no pregunta antes.
+ * Solo se deja de intentar si quedó guardado un rechazo o que no hay soporte.
  */
 export async function getLocationFromBrowser(): Promise<string | null> {
   const preference = getGeolocationPreference()
 
-  if (preference !== 'allowed') {
+  if (preference === 'denied' || preference === 'not_supported') {
     return getLocationStatusMessage(preference)
   }
 
@@ -87,10 +89,14 @@ export async function getLocationFromBrowser(): Promise<string | null> {
       )
     })
     
+    saveGeolocationPreference('allowed')
     return `Coordenadas GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
     
   } catch (error: any) {
     console.log('Error al obtener geolocalización:', error.message)
+    // Código 1: la persona dijo que no en el navegador. Un tiempo agotado no es
+    // un rechazo y no se guarda: el navegador puede volver a preguntar.
+    if (error?.code === 1) saveGeolocationPreference('denied')
     return 'Error al obtener ubicación GPS'
   }
 }
@@ -98,22 +104,13 @@ export async function getLocationFromBrowser(): Promise<string | null> {
 /**
  * Obtiene el mensaje de estado según la preferencia
  */
-function getLocationStatusMessage(preference: GeolocationPreference | null): string {
+function getLocationStatusMessage(preference: GeolocationPreference): string {
   switch (preference) {
     case 'denied':
       return 'Usuario denegó el acceso a la ubicación'
     case 'not_supported':
       return 'Geolocalización no soportada por el navegador'
-    case null:
-      return 'Preferencia de ubicación no establecida'
     default:
       return 'Estado de ubicación desconocido'
   }
-}
-
-/**
- * Verifica si necesita mostrar el modal de geolocalización
- */
-export function shouldShowGeolocationModal(): boolean {
-  return getGeolocationPreference() === null
 }

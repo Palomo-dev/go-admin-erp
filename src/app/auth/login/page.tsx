@@ -7,10 +7,11 @@
  * Conserva todo lo de antes (matriz de paridad §12.2): correo y contraseña,
  * «Recordar mi correo» (solo el correo), Google, Microsoft y biometría en la
  * app, recuperación de la sesión vencida (`?reason=expired`), `?addAccount=1`,
- * `redirectTo` (ahora validado), el modal de geolocalización y el registro del
- * dispositivo. Cambia: un único mensaje de credenciales, bloqueo por intentos
- * con hora de desbloqueo, catálogo único de avisos de la URL y, al entrar, el
- * selector único de organización (se salta si solo hay una).
+ * `redirectTo` (ahora validado) y el registro del dispositivo. Cambia: un único
+ * mensaje de credenciales, bloqueo por intentos con hora de desbloqueo, catálogo
+ * único de avisos de la URL y, al entrar, el selector único de organización (se
+ * salta si solo hay una). La ubicación ya no tiene diálogo propio: pregunta el
+ * navegador al registrar el dispositivo (ver `getLocationFromBrowser`).
  */
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -28,8 +29,6 @@ import {
   handleMicrosoftLogin,
   type ErrorLogin,
 } from '@/lib/auth';
-import GeolocationModal from '@/components/auth/GeolocationModal';
-import { shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
 import { useMobileAuth } from '@/hooks/useMobileAuth';
 import { useMobileNative } from '@/hooks/useMobileNative';
 import {
@@ -88,7 +87,6 @@ function LoginContent() {
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
   const [reenviando, setReenviando] = useState(false);
-  const [showGeolocationModal, setShowGeolocationModal] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string | null>(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -103,10 +101,6 @@ function LoginContent() {
     if (desdeUrl) setAviso({ tipo: 'url', aviso: desdeUrl });
     const redirectTo = searchParams.get('redirectTo');
     if (redirectTo) sessionStorage.setItem('redirectTo', destinoTrasLogin(redirectTo));
-    if (shouldShowGeolocationModal()) {
-      const temporizador = setTimeout(() => setShowGeolocationModal(true), 1000);
-      return () => clearTimeout(temporizador);
-    }
   }, [searchParams]);
 
   // Sesión vencida (GO-sec 2026-09-24): el middleware manda aquí con
@@ -420,15 +414,6 @@ function LoginContent() {
           )}
         </div>
       </TarjetaAcceso>
-
-      <GeolocationModal
-        isOpen={showGeolocationModal}
-        onClose={() => {
-          if (shouldShowGeolocationModal()) saveGeolocationPreference('denied');
-          setShowGeolocationModal(false);
-        }}
-        onSelection={() => setShowGeolocationModal(false)}
-      />
     </EscenaAcceso>
   );
 }

@@ -41,7 +41,8 @@ import { DialogoRevisarCambios } from '../resumen/DialogoRevisarCambios';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
 import { esInicio } from '../paginas/tipoPagina';
 import { estiloEnUso, estilosDelGiro, plantillaEnUso } from '@/lib/website/contrato/catalogoPlantillas';
-import { escribirEstilo, temaParaLienzo, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { escribirEstilo, temaParaLienzo, tokensDisenoDisponibles, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { cambiarBotonesSecciones, leerBotonesSecciones } from '@/lib/website/v2/botonesSecciones';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { CATALOGO_SITIO } from './catalogo';
 import { EstiloDelSitioPanel } from './EstiloDelSitioPanel';
@@ -303,6 +304,15 @@ export function PaginaDiseno() {
                   giro={ctx.giro}
                   coloresLogo={coloresLogo}
                   extendidos={extendidos}
+                  botonesSecciones={
+                    documento
+                      ? {
+                          valor: leerBotonesSecciones(documento),
+                          onCambiar: (c) => void sitio.guardar((d) => cambiarBotonesSecciones(d, c)),
+                          disponible: tokensDisenoDisponibles(),
+                        }
+                      : undefined
+                  }
                   // A/06g: en el celular el panel va sin tarjeta ni título (ya están en la cabecera).
                   cabeceraSoloEscritorio
                   className="max-lg:gap-4 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:p-0"

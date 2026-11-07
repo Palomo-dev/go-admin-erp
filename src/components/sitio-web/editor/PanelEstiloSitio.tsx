@@ -40,6 +40,7 @@ import {
   type EstiloEditable,
 } from '@/lib/website/v2/tokensEstilo';
 import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
+import { cambiarBotonesSecciones, leerBotonesSecciones } from '@/lib/website/v2/botonesSecciones';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
 import { urgenciaDocumentoDisponible } from '@/lib/website/conversion';
@@ -173,6 +174,16 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
             coloresLogo={coloresLogo}
             extendidos={extendidos}
             deshabilitado={p.deshabilitado}
+            botonesSecciones={
+              p.enV2 && p.documento
+                ? {
+                    valor: leerBotonesSecciones(p.documento),
+                    // Tokens y `buttons_theme_active` en el mismo cambio del borrador (como `aplicarPresetDiseno`).
+                    onCambiar: (c) => p.onCambiarDocumento((d) => cambiarBotonesSecciones(d, c)),
+                    disponible: tokensDisenoDisponibles(),
+                  }
+                : undefined
+            }
             className="border-0 p-1"
           />
         ) : null}

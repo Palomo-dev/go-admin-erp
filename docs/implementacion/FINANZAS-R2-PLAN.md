@@ -117,3 +117,19 @@ migraciones propuestas sin aplicar. Los frentes no editan este archivo.
 | E. Activos, plantillas, egreso | KPIs y vacío de activos; bloqueo tras la primera depreciación; plantillas con cuadre y archivar con confirmación; usar plantilla con fecha y sucursal; detalle de egreso/ingreso con estado real (anulado) | 109 | Ninguna |
 | F. Menú | «Conectar banco» y «Cobros y dispersiones» en Tesorería, 4 idiomas | 1.018 | Ninguna |
 | G. Reportes al módulo Reportes | 16 páginas redirigen a `/app/reportes/...`; informes auditados dentro del visor; nada recalculado | 1.594 | `PROPUESTA_NO_APLICAR_20261107_balance_general_corte_zona` (el balance de Reportes corta a medianoche UTC) |
+
+### Migraciones aplicadas (2026-11-07, con orden del dueño)
+
+Aplicadas por el MCP en `taqjemqjtumhwptchcxk`; verificado después de aplicar:
+
+- `20261107180000_finanzas_tasa_manual`: columnas `created_by` y `reason`; la RPC sin permiso para
+  `anon`; en `exchange_rates` solo quedan `exchange_rates_select_org` y la de service_role.
+- `20261107210000_revisiones_alertas_bancarias`: tabla `bank_alert_reviews` con RLS (leer y dar de
+  alta), sin acceso de `anon`.
+- `20261107220000_metodo_pago_con_pagos_no_se_borra`: trigger activo en `organization_payment_methods`.
+- `20261107230000_balance_general_corte_zona` (antes `PROPUESTA_NO_APLICAR_…`): org 338 al
+  2026-11-07, con un miembro activo en una transacción revertida: activos 200.276, pasivos 85.024,
+  resultado 115.252. Son las mismas cifras de la pantalla de Finanzas (antes: 188.040 / 84.131 / 103.909).
+
+Siguen pendientes: la RPC transaccional y la RLS de presupuestos (frente D), y que facturas y
+contabilidad lean la tasa manual (frente C).

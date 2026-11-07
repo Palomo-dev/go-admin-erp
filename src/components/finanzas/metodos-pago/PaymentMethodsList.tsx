@@ -550,7 +550,7 @@ export default function PaymentMethodsList({
         .eq('id', deleteTarget.id)
         .select('id');
       if (orgError) {
-        // Trigger propuesto (20261107220000, sin aplicar): la base rechaza borrar un método con pagos.
+        // Trigger 20261107220000 (aplicado el 2026-11-07): la base rechaza borrar un método con pagos.
         if (/metodo_con_pagos/.test(String(orgError.message))) throw new Error(t("metodos.quitar.conPagosError"));
         throw orgError;
       }

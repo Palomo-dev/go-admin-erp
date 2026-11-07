@@ -48,3 +48,9 @@ Cifras comparadas en solo lectura en las organizaciones 333, 335, 338 y 339, del
 - El filtro «comparativo» del visor no afecta la vista principal de estado de resultados ni del
   balance: esos componentes tienen su propio «año anterior».
 - Para el Contador: si los informes nuevos deben entrar en los cierres, hace falta su versión tabular.
+
+## Actualización 2026-11-07
+
+El corte del balance general quedó aplicado como `20261107230000_balance_general_corte_zona`, con
+orden del dueño. Org 338 al 2026-11-07: activos 200.276, igual que la pantalla de Finanzas.
+Cierres y asistente ya reciben el día de corte completo.

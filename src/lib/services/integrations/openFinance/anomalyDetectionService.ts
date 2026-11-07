@@ -717,7 +717,7 @@ export class AnomalyDetectionService {
   /**
    * Revisiones guardadas de la organización (`bank_alert_reviews`), con el
    * nombre de quien revisó. `disponible: false` si la tabla aún no existe
-   * (migración 20261107210000 sin aplicar): la pantalla lo avisa.
+   * (antes de la migración 20261107210000): la pantalla lo avisa.
    *
    * Recibe el cliente de la SESIÓN (RLS por pertenencia), no el service role.
    */
@@ -753,7 +753,7 @@ export class AnomalyDetectionService {
    * - Se escribe con el cliente de la SESIÓN: la RLS exige pertenencia,
    *   `finance.create` y que `reviewed_by` sea quien escribe.
    * - Una alerta ya revisada responde `ya_revisada` (historial inmutable).
-   * - Sin la tabla (migración sin aplicar) responde `revision_no_disponible`.
+   * - Sin la tabla (base sin la migración 20261107210000) responde `revision_no_disponible`.
    */
   static async markAnomalyResolved(
     supabase: SupabaseClient,

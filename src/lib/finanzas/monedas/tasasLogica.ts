@@ -33,9 +33,9 @@ export interface TasaManualFila {
   /** `date` (YYYY-MM-DD). */
   effective_date: string;
   source?: string | null;
-  /** Columna propuesta por la migración 20261107180000 (aún sin aplicar). */
+  /** Columna de la migración 20261107180000 (aplicada el 2026-11-07). */
   created_by?: string | null;
-  /** Columna propuesta por la migración 20261107180000 (aún sin aplicar). */
+  /** Columna de la migración 20261107180000 (aplicada el 2026-11-07). */
   reason?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -332,7 +332,7 @@ export type ClaveErrorTasa =
 
 /**
  * Errores de `fn_finanzas_registrar_tasa_manual`. `noDisponible`: la función
- * aún no existe en la base (migración 20261107180000 sin aplicar): PostgREST
+ * no existe en la base (antes de la migración 20261107180000): PostgREST
  * responde PGRST202 y Postgres 42883.
  */
 export function claveErrorTasa(error: unknown): ClaveErrorTasa | null {

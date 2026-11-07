@@ -10,7 +10,7 @@
 // Finanzas, ronda 2 (A1/A2, 2026-11-07): antes el servicio solo hacia
 // `console.log`. Ahora guarda autor (la sesion), fecha y motivo en
 // `bank_alert_reviews` con el cliente de la sesion (RLS). Sin la tabla
-// (migracion 20261107210000 sin aplicar) responde 503 `revision_no_disponible`
+// (antes de la migracion 20261107210000) responde 503 `revision_no_disponible`
 // y la pantalla lo explica.
 // ============================================================
 

@@ -9,8 +9,8 @@
  *   src/__tests__/seguridad/gosecMonedasOrganizacion.test.ts).
  * - `currency_rates` es el catálogo GLOBAL (solo lectura para las organizaciones).
  * - `exchange_rates` es de la organización; la tasa manual se escribe SOLO por
- *   `fn_finanzas_registrar_tasa_manual` (migración 20261107180000, propuesta
- *   sin aplicar): guarda autor y motivo y exige el permiso en la base.
+ *   `fn_finanzas_registrar_tasa_manual` (migración 20261107180000, aplicada
+ *   el 2026-11-07): guarda autor y motivo y exige el permiso en la base.
  *
  * La lógica de cruce y de «la manual manda» está en
  * `src/components/finanzas/monedas/tasasLogica.ts`.

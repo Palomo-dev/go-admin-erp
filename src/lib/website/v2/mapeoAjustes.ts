@@ -82,6 +82,8 @@ export type ReglaOpcionShell =
   | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number }
   /** Entero inclusive. */
   | { tipo: 'entero'; min: number; max: number }
+  /** Imagen: `https://` o ruta propia (`/img/x.png`), hasta 2048 caracteres y sin espacios. */
+  | { tipo: 'imagen' }
   /** Lista de textos libres sin repetir: 1–`max` elementos de 1–`largo` caracteres (sin espacios de más). */
   | { tipo: 'listaTextos'; max: number; largo: number };
 
@@ -143,6 +145,13 @@ export const PESO_ICONO_ENCABEZADO = ['contorno', 'relleno'] as const;
 export const FORMA_CARRITO_ENCABEZADO = ['bolsa', 'carrito'] as const;
 /** Forma del botón principal del encabezado: la de hoy (`pill`) o un círculo con el texto dentro. */
 export const FORMAS_BOTON_ENCABEZADO = ['pill', 'circle'] as const;
+/**
+ * Marca del pie (plantillas de tienda, 2026-11): `none` = el pie de hoy; `giant` = el nombre de la
+ * tienda en grande a todo el ancho (con la figura de `footer_brand_figure_url` encima, si hay).
+ */
+export const MARCAS_PIE = ['none', 'giant'] as const;
+/** Enlaces del pie: `normal` = los de hoy; `display` = en la fuente de títulos y grandes. */
+export const ESTILOS_ENLACES_PIE = ['normal', 'display'] as const;
 
 const BOOL: ReglaOpcionShell = { tipo: 'booleano' };
 
@@ -329,6 +338,14 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_transparent_over_hero: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
   /** Hueco en px entre el encabezado y la primera sección. 0 = pegadas. */
   first_section_offset_px: { zona: 'header', porDefecto: 0, regla: { tipo: 'entero', min: 0, max: 240 }, nueva: true },
+  /**
+   * Plantillas de tienda (2026-11): pinta las mayúsculas espaciadas de `tema.tokens.boton.mayusculas`
+   * en los botones de TODO el sitio (vive en `shell.header.opciones` porque el esquema solo acepta
+   * claves libres ahí; no es del encabezado). `false` = lo de hoy: hay sitios publicados que ya
+   * guardan `mayusculas: true` por un preset y su botón no debe cambiar. Lo escribe «Plantilla
+   * completa» de las plantillas nuevas que piden mayúsculas, y el editor cuando el dueño las prende.
+   */
+  buttons_uppercase_active: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },
@@ -355,6 +372,15 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   footer_text_color: { zona: 'footer', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
   /** Líneas separadoras del pie (bordes entre bloques y sobre el copyright). `true` = lo de hoy. */
   footer_show_dividers: { zona: 'footer', porDefecto: true, regla: BOOL, nueva: true },
+  // Plantillas de tienda (2026-11, PLANO §2 ítems 23-25). Defaults = el pie de hoy.
+  /** Nombre de la tienda en grande en el pie. `none` = lo de hoy. */
+  footer_brand_display: { zona: 'footer', porDefecto: 'none', regla: { tipo: 'opcion', valores: MARCAS_PIE }, nueva: true },
+  /** Figura (PNG recortado) sobre la marca gigante. `null` = solo el texto. Sin `giant` no se pinta. */
+  footer_brand_figure_url: { zona: 'footer', porDefecto: null, regla: { tipo: 'imagen' }, nueva: true },
+  /** Pie como tarjeta con margen de 16 px y el radio del tema. `false` = a todo el ancho (lo de hoy). */
+  footer_inset: { zona: 'footer', porDefecto: false, regla: BOOL, nueva: true },
+  /** Estilo de los enlaces del pie. `normal` = lo de hoy. */
+  footer_links_style: { zona: 'footer', porDefecto: 'normal', regla: { tipo: 'opcion', valores: ESTILOS_ENLACES_PIE }, nueva: true },
 };
 
 /** Reglas de opciones que ya existían y ganan valores nuevos (`transparent`, `tema`). */
@@ -413,6 +439,8 @@ export function cumpleRegla(regla: ReglaOpcionShell, valor: unknown): boolean {
       );
     case 'entero':
       return typeof valor === 'number' && Number.isInteger(valor) && valor >= regla.min && valor <= regla.max;
+    case 'imagen':
+      return typeof valor === 'string' && valor.length <= 2048 && (/^https:\/\/[^\s]+$/i.test(valor) || ENLACE_PROPIO.test(valor));
   }
 }
 
@@ -434,7 +462,7 @@ export function normalizarOpcionShell(columna: string, valor: unknown): unknown 
   if (regla.tipo === 'opcionOLista' && typeof valor === 'string' && !regla.valores.includes(valor)) {
     candidato = valor.split(',').map((v) => v.trim()).filter(Boolean);
   }
-  if (regla.tipo === 'texto' && typeof candidato === 'string') candidato = candidato.trim();
+  if ((regla.tipo === 'texto' || regla.tipo === 'imagen') && typeof candidato === 'string') candidato = candidato.trim();
   if (regla.tipo === 'listaTextos' && Array.isArray(candidato)) {
     candidato = candidato.map((v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : v));
   }

@@ -95,6 +95,35 @@ export function variablesDeTokens(tokens: TokensCrudos | null | undefined): Reco
   return vars;
 }
 
+/**
+ * Mayúsculas espaciadas de los botones (`tokens.boton.mayusculas`, PLANO §2 ítem 11). Va APARTE de
+ * {@link variablesDeTokens} a propósito: hay sitios publicados que ya guardan `mayusculas: true`
+ * (los presets «minimal_premium» y «lujo_oscuro» la escriben) y hoy no se pinta. Meterla allí
+ * cambiaría su `style` y su `data-tokens-diseno`.
+ *
+ * Solo se activa con `activa` = la opción `buttons_uppercase_active` del shell ya normalizada
+ * (`normalizarOpcionShell`), que escriben las plantillas de tienda nuevas. Sin ella, aunque el
+ * token diga `true`, no se emite nada: el botón de hoy.
+ * Vacío = el botón de hoy (el CSS usa `var(--gw-btn-case, none)` y `var(--gw-btn-tracking, normal)`).
+ */
+export function variablesMayusculasBoton(tokens: TokensCrudos | null | undefined, activa: boolean): Record<string, string> {
+  if (activa !== true || valor(tokens?.boton?.mayusculas) !== true) return {};
+  return { '--gw-btn-case': 'uppercase', '--gw-btn-tracking': '.08em' };
+}
+
+/** Hovers de botón con efecto propio. `ninguno` y ausente = el hover de hoy. */
+export const HOVERS_BOTON = ['sutil', 'expresivo'] as const;
+export type HoverBoton = (typeof HOVERS_BOTON)[number];
+
+/**
+ * Valor del atributo `data-tema-hover` (`tokens.hover`, PLANO §2 ítem 12): `sutil` = oscurece 8 %;
+ * `expresivo` = sube 1 px y la flecha avanza 3 px. `null` = no se pone el atributo (lo de hoy).
+ */
+export function hoverDeTokens(tokens: TokensCrudos | null | undefined): HoverBoton | null {
+  const h = valor(tokens?.hover);
+  return h === 'sutil' || h === 'expresivo' ? h : null;
+}
+
 /** Familias de Google Fonts que pide un par, para no dejar la variable sin archivo. */
 export function familiasDePar(par: string | undefined): string[] {
   if (!par || !(par in PARES_TIPOGRAFICOS)) return [];

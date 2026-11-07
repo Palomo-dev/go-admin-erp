@@ -41544,5 +41544,58 @@
       "monedaNoAsignada": "La organización no tiene esa moneda. Agrégala primero.",
       "guardar": "No se pudo guardar la tasa. Inténtalo de nuevo."
     }
+  },
+  "inicioFinanzas": {
+    "fila": {
+      "badgePendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
+      "badgeVencidas": "{n, plural, one {# vencida} other {# vencidas}}",
+      "alDia": "Al día",
+      "carteraAlDia": "Cartera al día",
+      "carteraVencida": "Cartera vencida {valor}",
+      "carteraVencidaCuentas": "{n, plural, one {# cuenta vencida} other {# cuentas vencidas}}",
+      "porPagar": "Por pagar {valor}",
+      "porPagarCuentas": "{n, plural, one {# cuenta por pagar} other {# cuentas por pagar}}"
+    },
+    "kpis": {
+      "disponible": "Dinero disponible",
+      "noDisponible": "No disponible",
+      "disponibleMotivo": "Falta sumarlo por moneda en el servidor",
+      "porCobrarVencido": "Por cobrar vencido",
+      "porPagar": "Por pagar en 7 días",
+      "resultado": "Resultado de {mes}",
+      "resultadoDetalle": "Utilidad neta · mayor contable",
+      "resultadoError": "No se pudo leer el mayor"
+    },
+    "pendientes": {
+      "titulo": "Pendientes",
+      "soloTusPermisos": "Solo lo que puedes resolver con tus permisos",
+      "vacio": "No hay pendientes de Finanzas.",
+      "parcial": "Algunos pendientes no se pudieron leer: la lista puede estar incompleta.",
+      "errorTitulo": "No se pudieron leer los pendientes",
+      "errorDesc": "Vuelve a intentarlo en un momento.",
+      "que": {
+        "pendientesContables": "Pendientes contables por resolver",
+        "conciliacionMes": "Conciliación de {mes} sin cerrar",
+        "conciliaciones": "{n, plural, one {# conciliación sin cerrar} other {# conciliaciones sin cerrar}}",
+        "dianRechazados": "Documentos rechazados por la DIAN",
+        "dianSinEnviar": "Documentos sin enviar a la DIAN",
+        "mesSinCerrar": "{mes} sin cerrar",
+        "mesesSinCerrar": "{n, plural, one {# mes sin cerrar} other {# meses sin cerrar}}"
+      },
+      "donde": {
+        "contabilidadPendientes": "Contabilidad · Pendientes",
+        "bancosConciliacion": "Bancos · Conciliación",
+        "facturacionElectronica": "Facturación electrónica",
+        "contabilidadPeriodos": "Contabilidad · Periodos"
+      },
+      "accion": {
+        "resolver": "Resolver",
+        "continuar": "Continuar",
+        "ver": "Ver",
+        "revisar": "Revisar",
+        "cerrarPeriodo": "Cerrar periodo"
+      }
+    },
+    "reportes": "Reportes de Finanzas → módulo Reportes"
   }
 }

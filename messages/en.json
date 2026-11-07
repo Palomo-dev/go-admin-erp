@@ -41529,5 +41529,58 @@
       "monedaNoAsignada": "The organization does not have that currency. Add it first.",
       "guardar": "The rate could not be saved. Try again."
     }
+  },
+  "inicioFinanzas": {
+    "fila": {
+      "badgePendientes": "{n, plural, one {# pending} other {# pending}}",
+      "badgeVencidas": "{n, plural, one {# overdue} other {# overdue}}",
+      "alDia": "Up to date",
+      "carteraAlDia": "Receivables up to date",
+      "carteraVencida": "Overdue receivables {valor}",
+      "carteraVencidaCuentas": "{n, plural, one {# overdue account} other {# overdue accounts}}",
+      "porPagar": "To pay {valor}",
+      "porPagarCuentas": "{n, plural, one {# account to pay} other {# accounts to pay}}"
+    },
+    "kpis": {
+      "disponible": "Available cash",
+      "noDisponible": "Not available",
+      "disponibleMotivo": "Still needs a per-currency total on the server",
+      "porCobrarVencido": "Overdue receivables",
+      "porPagar": "To pay in 7 days",
+      "resultado": "{mes} result",
+      "resultadoDetalle": "Net income · general ledger",
+      "resultadoError": "The ledger could not be read"
+    },
+    "pendientes": {
+      "titulo": "Pending",
+      "soloTusPermisos": "Only what you can resolve with your permissions",
+      "vacio": "No pending Finance items.",
+      "parcial": "Some pending items could not be read: the list may be incomplete.",
+      "errorTitulo": "Pending items could not be read",
+      "errorDesc": "Try again in a moment.",
+      "que": {
+        "pendientesContables": "Accounting items to resolve",
+        "conciliacionMes": "{mes} reconciliation not closed",
+        "conciliaciones": "{n, plural, one {# reconciliation not closed} other {# reconciliations not closed}}",
+        "dianRechazados": "Documents rejected by DIAN",
+        "dianSinEnviar": "Documents not sent to DIAN",
+        "mesSinCerrar": "{mes} not closed",
+        "mesesSinCerrar": "{n, plural, one {# month not closed} other {# months not closed}}"
+      },
+      "donde": {
+        "contabilidadPendientes": "Accounting · Pending",
+        "bancosConciliacion": "Banks · Reconciliation",
+        "facturacionElectronica": "Electronic invoicing",
+        "contabilidadPeriodos": "Accounting · Periods"
+      },
+      "accion": {
+        "resolver": "Resolve",
+        "continuar": "Continue",
+        "ver": "View",
+        "revisar": "Review",
+        "cerrarPeriodo": "Close period"
+      }
+    },
+    "reportes": "Finance reports → Reports module"
   }
 }

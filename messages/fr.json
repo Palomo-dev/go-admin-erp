@@ -41529,5 +41529,58 @@
       "monedaNoAsignada": "L'organisation n'a pas cette devise. Ajoutez-la d'abord.",
       "guardar": "Le taux n'a pas pu être enregistré. Réessayez."
     }
+  },
+  "inicioFinanzas": {
+    "fila": {
+      "badgePendientes": "{n, plural, one {# en attente} other {# en attente}}",
+      "badgeVencidas": "{n, plural, one {# échue} other {# échues}}",
+      "alDia": "À jour",
+      "carteraAlDia": "Créances à jour",
+      "carteraVencida": "Créances échues {valor}",
+      "carteraVencidaCuentas": "{n, plural, one {# compte échu} other {# comptes échus}}",
+      "porPagar": "À payer {valor}",
+      "porPagarCuentas": "{n, plural, one {# compte à payer} other {# comptes à payer}}"
+    },
+    "kpis": {
+      "disponible": "Trésorerie disponible",
+      "noDisponible": "Non disponible",
+      "disponibleMotivo": "Le total par devise reste à calculer sur le serveur",
+      "porCobrarVencido": "Créances échues",
+      "porPagar": "À payer sous 7 jours",
+      "resultado": "Résultat de {mes}",
+      "resultadoDetalle": "Résultat net · grand livre",
+      "resultadoError": "Impossible de lire le grand livre"
+    },
+    "pendientes": {
+      "titulo": "En attente",
+      "soloTusPermisos": "Uniquement ce que vous pouvez traiter avec vos autorisations",
+      "vacio": "Aucun élément en attente dans Finances.",
+      "parcial": "Certains éléments n’ont pas pu être lus : la liste peut être incomplète.",
+      "errorTitulo": "Impossible de lire les éléments en attente",
+      "errorDesc": "Réessayez dans un instant.",
+      "que": {
+        "pendientesContables": "Écritures comptables à résoudre",
+        "conciliacionMes": "Rapprochement de {mes} non clôturé",
+        "conciliaciones": "{n, plural, one {# rapprochement non clôturé} other {# rapprochements non clôturés}}",
+        "dianRechazados": "Documents rejetés par la DIAN",
+        "dianSinEnviar": "Documents non envoyés à la DIAN",
+        "mesSinCerrar": "{mes} non clôturé",
+        "mesesSinCerrar": "{n, plural, one {# mois non clôturé} other {# mois non clôturés}}"
+      },
+      "donde": {
+        "contabilidadPendientes": "Comptabilité · En attente",
+        "bancosConciliacion": "Banques · Rapprochement",
+        "facturacionElectronica": "Facturation électronique",
+        "contabilidadPeriodos": "Comptabilité · Périodes"
+      },
+      "accion": {
+        "resolver": "Résoudre",
+        "continuar": "Continuer",
+        "ver": "Voir",
+        "revisar": "Vérifier",
+        "cerrarPeriodo": "Clôturer la période"
+      }
+    },
+    "reportes": "Rapports de Finances → module Rapports"
   }
 }

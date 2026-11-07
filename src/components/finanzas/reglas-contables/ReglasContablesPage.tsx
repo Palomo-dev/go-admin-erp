@@ -4,18 +4,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Copy, Download, ListChecks, Pencil, Plus, Power, PowerOff, Settings, Trash2, Wrench } from 'lucide-react';
+import { CircleAlert, Copy, Download, ListChecks, Pencil, Plus, Power, PowerOff, Settings, Trash2, Wrench } from 'lucide-react';
 import {
   AvisoTonal,
   ConfirmDialog,
+  DataTable,
   Dialogo,
-  EmptyState,
   FilterButton,
+  ListCard,
   PageHeader,
   RowActionsMenu,
   SearchInput,
   StatusBadge,
   type AccionFila,
+  type ColumnaTabla,
 } from '@/components/kit';
 import { CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
@@ -24,7 +26,6 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SearchSelect } from '@/components/ui/search-select';
 import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ConfiguracionContableService } from '@/components/finanzas/configuracion-contable/ConfiguracionContableService';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
@@ -45,6 +46,10 @@ import {
   type CuentaInvalida,
 } from '@/lib/finanzas/reglasContables';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { vistaPreviaRegla } from '@/lib/finanzas/contabilidad/vistaPreviaRegla';
+import { TablaContable } from '@/components/finanzas/contabilidad/piezas';
+import { cn } from '@/lib/utils';
 import {
   ErrorReglaContable,
   EVENT_TYPES,
@@ -82,7 +87,9 @@ interface Correccion {
 
 export function ReglasContablesPage() {
   const t = useTranslations('reglasContables');
+  const tv = useTranslations('finanzasContabilidadR3.reglas');
   const router = useRouter();
+  const { formatear } = useMonedaOrganizacion();
   const { crear: puedeEscribir } = usePermisosFinanzas();
   const [reglas, setReglas] = useState<AccountingRule[]>([]);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
@@ -317,6 +324,50 @@ export function ReglasContablesPage() {
     );
   });
 
+  const columnas: ColumnaTabla<AccountingRule>[] = [
+    {
+      id: 'regla',
+      encabezado: t('columnas.regla'),
+      celda: (regla) => (
+        <span className={cn('block', !regla.is_active && 'opacity-60')}>
+          <span className="flex flex-wrap items-center gap-2 font-medium text-fg">
+            {regla.name}
+            {regla.is_active ? null : <StatusBadge estado="inactive" etiqueta={t('inactiva')} />}
+          </span>
+          <span className="block text-xs font-normal text-fg-secondary">{etiquetaOrigen(regla.source_type)}</span>
+        </span>
+      ),
+    },
+    { id: 'evento', encabezado: t('columnas.evento'), ocultarDebajo: 'xl', celda: (regla) => <span className="text-fg">{etiquetaEvento(regla.event_type)}</span> },
+    { id: 'debito', encabezado: t('columnas.debito'), className: 'max-w-56', celda: (regla) => celdaCuenta(regla, 'debito') },
+    { id: 'credito', encabezado: t('columnas.credito'), className: 'max-w-56', celda: (regla) => celdaCuenta(regla, 'credito') },
+    { id: 'propuesta', encabezado: t('columnas.propuesta'), celda: (regla) => celdaPropuesta(regla) },
+  ];
+
+  // Vista previa del asiento con lo que hay en el formulario (no escribe nada).
+  const vista = vistaPreviaRegla(formulario, cuentas);
+  const bloqueoFormulario = dialogoAbierto ? cuentaBloqueada(formulario, editando, cuentas) : null;
+  const avisoCuenta = (codigo: string) => {
+    if (!codigo) return null;
+    const fallo = falloCuentaEnRegla(codigo, cuentas);
+    if (!fallo) return null;
+    const subcuenta = fallo === 'cuenta_de_titulo'
+      ? cuentas.find((c) => c.parent_code === codigo && falloCuentaEnRegla(c.account_code, cuentas) === null)
+      : undefined;
+    return (
+      <p className="flex items-start gap-1.5 text-xs text-danger-text">
+        <CircleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} />
+        {fallo === 'cuenta_de_titulo'
+          ? subcuenta
+            ? tv('campo.agrupadoraCon', { cuenta: codigo, subcuenta: `${subcuenta.account_code} · ${subcuenta.name}` })
+            : tv('campo.agrupadora', { cuenta: codigo })
+          : fallo === 'cuenta_inactiva'
+            ? tv('campo.inactiva', { cuenta: codigo })
+            : tv('campo.inexistente', { cuenta: codigo })}
+      </p>
+    );
+  };
+
   if (cargando) {
     return (
       <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
@@ -410,59 +461,58 @@ export function ReglasContablesPage() {
         />
       ) : null}
 
-      {reglas.length === 0 ? (
-        <EmptyState titulo={t('vacio.titulo')} descripcion={t('vacio.descripcion')} icono={ListChecks} />
-      ) : filas.length === 0 ? (
-        <p className="py-8 text-center text-sm text-fg-secondary">{t('sinResultados')}</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-subtle">
-                <TableHead>{t('columnas.regla')}</TableHead>
-                <TableHead>{t('columnas.evento')}</TableHead>
-                <TableHead>{t('columnas.debito')}</TableHead>
-                <TableHead>{t('columnas.credito')}</TableHead>
-                <TableHead>{t('columnas.propuesta')}</TableHead>
-                <TableHead className="w-12"><span className="sr-only">{t('columnas.acciones')}</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filas.map((regla) => (
-                <TableRow key={regla.id} className={regla.is_active ? undefined : 'opacity-60'}>
-                  <TableCell className="font-medium text-fg">
-                    <span className="flex flex-wrap items-center gap-2">
-                      {regla.name}
-                      {regla.is_active ? null : <StatusBadge estado="inactive" etiqueta={t('inactiva')} />}
-                    </span>
-                    <span className="block text-xs font-normal text-fg-secondary">{etiquetaOrigen(regla.source_type)}</span>
-                  </TableCell>
-                  <TableCell className="text-fg">{etiquetaEvento(regla.event_type)}</TableCell>
-                  <TableCell className="max-w-56">{celdaCuenta(regla, 'debito')}</TableCell>
-                  <TableCell className="max-w-56">{celdaCuenta(regla, 'credito')}</TableCell>
-                  <TableCell>{celdaPropuesta(regla)}</TableCell>
-                  <TableCell className="text-right">
-                    {puedeEscribir ? <RowActionsMenu acciones={accionesDeFila(regla)} titulo={regla.name} /> : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      <DataTable
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={filas}
+        obtenerId={(regla) => regla.id}
+        estado={reglas.length === 0 ? 'vacio' : filas.length === 0 ? 'sinResultados' : 'listo'}
+        termino={busqueda}
+        vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), icono: ListChecks }}
+        sinResultados={{ titulo: t('sinResultados') }}
+        onLimpiarFiltros={() => {
+          setBusqueda('');
+          setOrigen('');
+          setSoloInvalidas(false);
+        }}
+        acciones={puedeEscribir ? accionesDeFila : undefined}
+        etiquetaFila={(regla) => regla.name}
+        atributosFila={(regla) => ({ 'data-inactiva': regla.is_active ? undefined : 'true' })}
+        tarjetaMovil={(regla) => (
+          <ListCard
+            titulo={regla.name}
+            insignia={regla.is_active ? undefined : <StatusBadge estado="inactive" etiqueta={t('inactiva')} />}
+            subtitulo={`${etiquetaOrigen(regla.source_type)} · ${etiquetaEvento(regla.event_type)}`}
+            meta={(
+              <span className="grid gap-1 text-xs">
+                <span><span className="text-fg-muted">{t('columnas.debito')}:</span> {celdaCuenta(regla, 'debito')}</span>
+                <span><span className="text-fg-muted">{t('columnas.credito')}:</span> {celdaCuenta(regla, 'credito')}</span>
+                {porRegla.has(regla.id) ? celdaPropuesta(regla) : null}
+              </span>
+            )}
+            acciones={puedeEscribir ? accionesDeFila(regla) : undefined}
+            className={regla.is_active ? undefined : 'opacity-60'}
+          />
+        )}
+      />
 
       <Dialogo
         abierto={dialogoAbierto}
         onAbiertoChange={setDialogoAbierto}
         titulo={editando ? t('formulario.tituloEditar') : t('formulario.tituloNueva')}
         descripcion={t('formulario.descripcion')}
-        ancho={672}
+        ancho={1024}
+        pie={<p className="text-xs text-fg-muted">{tv('permiso')}</p>}
         primario={{
           etiqueta: editando ? t('formulario.guardar') : t('formulario.crear'),
           onClick: () => void guardar(),
           cargando: guardando,
+          deshabilitada: bloqueoFormulario !== null,
+          motivo: bloqueoFormulario ? tv('noSePuedeGuardar') : undefined,
         }}
       >
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <div className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="regla-nombre">{t('formulario.nombre')} *</Label>
           <Input
@@ -513,6 +563,7 @@ export function ReglasContablesPage() {
               placeholder={t('formulario.seleccionar')}
               searchPlaceholder={t('corregir.buscarCuenta')}
             />
+            {avisoCuenta(formulario.debit_account_code)}
           </div>
           <div className="space-y-1.5">
             <Label>{t('formulario.cuentaCredito')} *</Label>
@@ -523,6 +574,7 @@ export function ReglasContablesPage() {
               placeholder={t('formulario.seleccionar')}
               searchPlaceholder={t('corregir.buscarCuenta')}
             />
+            {avisoCuenta(formulario.credit_account_code)}
           </div>
         </div>
         <div className="space-y-1.5">
@@ -536,6 +588,7 @@ export function ReglasContablesPage() {
             placeholder={t('formulario.sinIva')}
             searchPlaceholder={t('corregir.buscarCuenta')}
           />
+          {avisoCuenta(formulario.tax_account_code)}
         </div>
         <div className="flex items-center gap-3">
           <Switch
@@ -553,6 +606,52 @@ export function ReglasContablesPage() {
             onChange={(event) => setFormulario({ ...formulario, priority: parseInt(event.target.value, 10) || 0 })}
           />
           <p className="text-xs text-fg-muted">{t('formulario.prioridadAyuda')}</p>
+        </div>
+        </div>
+        <section
+          aria-labelledby="vista-previa-regla"
+          className="h-fit space-y-3 rounded-xl border border-line bg-subtle p-4"
+        >
+          <h3 id="vista-previa-regla" className="text-base font-semibold text-fg">{tv('vista.titulo')}</h3>
+          {vista.estado === 'sinDatos' ? (
+            <p className="text-sm text-fg-secondary">{tv('vista.sinDatos')}</p>
+          ) : (
+            <>
+              <p className="text-sm text-fg-secondary">
+                {tv('vista.ejemplo', {
+                  documento: formulario.source_type ? etiquetaOrigen(formulario.source_type) : tv('vista.documento'),
+                  total: formatear(vista.total),
+                })}
+              </p>
+              <TablaContable
+                lineas={vista.lineas.map((l) => ({
+                  id: l.lado,
+                  cuenta: l.cuenta,
+                  nombreCuenta: l.nombre,
+                  descripcion: tv(`vista.lado.${l.lado}`),
+                  debito: l.debito,
+                  credito: l.credito,
+                  aviso: l.estado === 'agrupadora' ? tv('vista.agrupadora') : l.estado === 'inexistente' ? tv('vista.inexistente') : null,
+                }))}
+                formatear={formatear}
+                enlazarMayor={false}
+                etiqueta={tv('vista.titulo')}
+              />
+              <p
+                role="status"
+                className={cn(
+                  'flex items-start gap-1.5 text-sm',
+                  vista.estado === 'cuadra' ? 'text-success-text' : 'text-danger-text',
+                )}
+              >
+                {vista.estado === 'cuadra' ? null : <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />}
+                {vista.estado === 'cuadra' || bloqueoFormulario
+                  ? tv(`vista.estado.${vista.estado}`)
+                  : tv(`vista.aviso.${vista.estado === 'agrupadora' ? 'agrupadora' : 'inexistente'}`)}
+              </p>
+            </>
+          )}
+        </section>
         </div>
       </Dialogo>
 

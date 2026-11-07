@@ -1,15 +1,63 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Building2, ChevronRight, Plus, Pencil } from 'lucide-react';
+/**
+ * Centros de costo (Figma «Escritorio / Centros de costo — árbol» 2327:125607,
+ * «Aplicar plantilla de centros» 2327:126295 y «Nueva distribución»
+ * 2327:126356). Árbol por código, sucursal y estado, y las distribuciones que
+ * reparten un gasto entre varios centros.
+ *
+ * Acciones que ya existían y se conservan: crear, editar (el código no cambia),
+ * agregar hijo, elegir padre, activar y desactivar, aplicar plantilla con vista
+ * previa (base, sector, por sucursal) y crear distribución. Nuevas: sucursal del
+ * centro, buscar y filtrar, editar una distribución (la RPC ya lo admitía).
+ * No hay borrado: un centro se desactiva (la base niega borrar uno con
+ * movimientos, `fn_cost_centers_bloquear_borrado`).
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Building2, GitFork, ListTree, Pencil, Plus, Power, PowerOff, Shuffle, Trash2 } from 'lucide-react';
+import {
+  AvisoTonal,
+  ConfirmDialog,
+  DataTable,
+  Dialogo,
+  EmptyState,
+  FilterPanel,
+  FormField,
+  ListToolbar,
+  PageHeader,
+  RowActionsMenu,
+  SearchInput,
+  SegmentedControl,
+  StatusBadge,
+  TarjetaSeleccionable,
+  TreeCard,
+  TreeCell,
+  TreeSelect,
+  clasesBoton,
+  type AccionFila,
+  type ColumnaTabla,
+  type OpcionArbol,
+} from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useBranchOpcional } from '@/lib/context/BranchContext';
+import { cn } from '@/lib/utils';
+import {
+  descendientesYPropio,
+  errorGuardarCentro,
+  errorRpcDistribucion,
+  filasCentros,
+  hayFiltros,
+  porcentajeDe,
+  resumenDistribucion,
+  sumaDistribucion,
+  validarDistribucion,
+  type FilaCentro,
+  type FiltroEstadoCentro,
+  type LineaDistribucionForm,
+} from '@/lib/finanzas/centros/centrosVista';
 import {
   CostCenterService,
   type AlcancePlantilla,
@@ -18,472 +66,653 @@ import {
   type ResultadoPlantilla,
 } from './CostCenterService';
 
-const FORMULARIO_VACIO = { code: '', name: '', parent_id: '', is_active: true };
+const NS = 'finanzasContabilidadR3.centros';
+const ALCANCES: AlcancePlantilla[] = ['base', 'sector', 'sucursal'];
+const CAMPO = 'h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
-const PLANTILLAS: { id: AlcancePlantilla; titulo: string; detalle: string }[] = [
-  { id: 'base', titulo: 'Base', detalle: '100 Administración, 200 Ventas/Comercial y 300 Operación/Producción.' },
-  { id: 'sector', titulo: 'Sector', detalle: 'La base más los centros del tipo de organización.' },
-  { id: 'sucursal', titulo: 'Por sucursal', detalle: 'La base y un subcentro de ventas por cada sucursal.' },
+type Estado = 'cargando' | 'listo' | 'error';
+
+interface FormCentro {
+  code: string;
+  name: string;
+  parent_id: string;
+  branch_id: string;
+  is_active: boolean;
+}
+
+const FORM_VACIO: FormCentro = { code: '', name: '', parent_id: '', branch_id: '', is_active: true };
+const LINEAS_INICIALES: LineaDistribucionForm[] = [
+  { centroId: '', porcentaje: '60' },
+  { centroId: '', porcentaje: '40' },
 ];
 
-interface Nodo extends CostCenter {
-  hijos: Nodo[];
-}
-
-function armarArbol(centros: CostCenter[]): Nodo[] {
-  const nodos = new Map<string, Nodo>(centros.map((centro) => [centro.id, { ...centro, hijos: [] }]));
-  const raices: Nodo[] = [];
-  for (const nodo of nodos.values()) {
-    const padre = nodo.parent_id ? nodos.get(nodo.parent_id) : undefined;
-    if (padre) padre.hijos.push(nodo);
-    else raices.push(nodo);
-  }
-  const ordenar = (lista: Nodo[]) => {
-    lista.sort((a, b) => a.code.localeCompare(b.code, 'es'));
-    lista.forEach((nodo) => ordenar(nodo.hijos));
-  };
-  ordenar(raices);
-  return raices;
-}
-
 export function CentroCostosPage() {
-  const [centers, setCenters] = useState<CostCenter[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState<CostCenter | null>(null);
-  const [formData, setFormData] = useState(FORMULARIO_VACIO);
+  const t = useTranslations(NS);
+  const locale = useLocale();
+  const sucursales = useBranchOpcional()?.branches;
+  const branches = useMemo(() => (sucursales ?? []).filter((b) => b.id != null), [sucursales]);
+  const nombreSucursal = useCallback(
+    (id: number | null | undefined) => (id ? branches.find((b) => b.id === id)?.name ?? null : null),
+    [branches],
+  );
+  const formatoPorcentaje = useMemo(() => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }), [locale]);
+  const pct = useCallback((n: number) => `${formatoPorcentaje.format(n)} %`, [formatoPorcentaje]);
+
+  const [centros, setCentros] = useState<CostCenter[]>([]);
+  const [estado, setEstado] = useState<Estado>('cargando');
+  const [distribuciones, setDistribuciones] = useState<DistribucionCentro[]>([]);
+  const [estadoDist, setEstadoDist] = useState<Estado>('cargando');
+
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoCentro>('todos');
+  const [filtroSucursal, setFiltroSucursal] = useState<number | null>(null);
+  const [cerrados, setCerrados] = useState<Set<string>>(new Set());
+
+  const [formAbierto, setFormAbierto] = useState(false);
+  const [editando, setEditando] = useState<CostCenter | null>(null);
+  const [form, setForm] = useState<FormCentro>(FORM_VACIO);
+  const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [porDesactivar, setPorDesactivar] = useState<CostCenter | null>(null);
+
   const [plantillaAbierta, setPlantillaAbierta] = useState(false);
   const [alcance, setAlcance] = useState<AlcancePlantilla>('base');
   const [vistaPrevia, setVistaPrevia] = useState<ResultadoPlantilla | null>(null);
   const [aplicando, setAplicando] = useState(false);
-  const [distribuciones, setDistribuciones] = useState<DistribucionCentro[]>([]);
+
   const [distAbierta, setDistAbierta] = useState(false);
+  const [distEditando, setDistEditando] = useState<DistribucionCentro | null>(null);
   const [nombreDist, setNombreDist] = useState('');
-  const [lineasDist, setLineasDist] = useState([{ centroId: '', porcentaje: '60' }, { centroId: '', porcentaje: '40' }]);
+  const [lineasDist, setLineasDist] = useState<LineaDistribucionForm[]>(LINEAS_INICIALES);
+  const [errorDist, setErrorDist] = useState<string | null>(null);
   const [guardandoDist, setGuardandoDist] = useState(false);
 
-  const arbol = useMemo(() => armarArbol(centers), [centers]);
-  const sumaDist = lineasDist.reduce((total, linea) => total + (Number(linea.porcentaje) || 0), 0);
-  const centrosActivos = centers.filter((centro) => centro.is_active);
-
-  useEffect(() => { void load(); }, []);
-
-  const load = async () => {
+  const cargarCentros = useCallback(async () => {
+    setEstado('cargando');
     try {
-      setIsLoading(true);
-      const [centros, reps] = await Promise.all([
-        CostCenterService.getAll(),
-        CostCenterService.distribuciones(),
-      ]);
-      setCenters(centros);
-      setDistribuciones(reps);
+      setCentros(await CostCenterService.getAll());
+      setEstado('listo');
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al cargar centros de costos');
-    } finally {
-      setIsLoading(false);
+      console.error('No se pudieron cargar los centros de costo:', error);
+      setEstado('error');
     }
+  }, []);
+
+  const cargarDistribuciones = useCallback(async () => {
+    setEstadoDist('cargando');
+    try {
+      setDistribuciones(await CostCenterService.distribuciones());
+      setEstadoDist('listo');
+    } catch (error) {
+      console.error('No se pudieron cargar las distribuciones:', error);
+      setEstadoDist('error');
+    }
+  }, []);
+
+  const cargar = useCallback(async () => {
+    await Promise.all([cargarCentros(), cargarDistribuciones()]);
+  }, [cargarCentros, cargarDistribuciones]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const filtros = { busqueda, estado: filtroEstado, sucursal: filtroSucursal };
+  const filas = useMemo(
+    () => filasCentros(centros, { busqueda, estado: filtroEstado, sucursal: filtroSucursal, cerrados }),
+    [centros, busqueda, filtroEstado, filtroSucursal, cerrados],
+  );
+  const conteoFiltros = (filtroEstado !== 'todos' ? 1 : 0) + (filtroSucursal !== null ? 1 : 0);
+  const centrosActivos = useMemo(() => centros.filter((c) => c.is_active).sort((a, b) => a.code.localeCompare(b.code, 'es', { numeric: true })), [centros]);
+
+  const alternar = (id: string) =>
+    setCerrados((actual) => {
+      const siguiente = new Set(actual);
+      if (siguiente.has(id)) siguiente.delete(id);
+      else siguiente.add(id);
+      return siguiente;
+    });
+
+  // ── Centro: crear, editar, hijo, estado ────────────────────────────────
+  const abrirCentro = (centro?: CostCenter, padre?: CostCenter) => {
+    setEditando(centro ?? null);
+    setErrorForm(null);
+    setForm(
+      centro
+        ? { code: centro.code, name: centro.name, parent_id: centro.parent_id ?? '', branch_id: centro.branch_id ? String(centro.branch_id) : '', is_active: centro.is_active }
+        : { ...FORM_VACIO, parent_id: padre?.id ?? '', branch_id: padre?.branch_id ? String(padre.branch_id) : '' },
+    );
+    setFormAbierto(true);
   };
 
-  const abrir = (centro?: CostCenter, padreId = '') => {
-    setEditing(centro ?? null);
-    setFormData(centro
-      ? { code: centro.code, name: centro.name, parent_id: centro.parent_id || '', is_active: centro.is_active }
-      : { ...FORMULARIO_VACIO, parent_id: padreId });
-    setShowDialog(true);
-  };
-
-  const handleSave = async () => {
-    if (!formData.code.trim() || !formData.name.trim()) {
-      toast.error('Código y nombre son requeridos');
+  const guardarCentro = async () => {
+    if (!form.code.trim() || !form.name.trim()) {
+      setErrorForm(t('errores.codigoNombre'));
       return;
     }
+    setGuardando(true);
     try {
-      const input = {
-        code: formData.code.trim(),
-        name: formData.name.trim(),
-        parent_id: formData.parent_id || null,
-        is_active: formData.is_active,
+      const datos = {
+        code: form.code.trim(),
+        name: form.name.trim(),
+        parent_id: form.parent_id || null,
+        branch_id: form.branch_id ? Number(form.branch_id) : null,
+        is_active: form.is_active,
       };
-      if (editing) {
-        await CostCenterService.update(editing.id, input);
-        toast.success('Centro de costo actualizado');
+      if (editando) {
+        await CostCenterService.update(editando.id, datos);
+        toast.success(t('exito.actualizado'));
       } else {
-        await CostCenterService.create(input);
-        toast.success('Centro de costo creado');
+        await CostCenterService.create(datos);
+        toast.success(t('exito.creado'));
       }
-      setShowDialog(false);
-      await load();
+      setFormAbierto(false);
+      await cargarCentros();
     } catch (error) {
-      const texto = error instanceof Error ? error.message : '';
-      if (texto.includes('CENTRO_CICLO')) toast.error('Ese padre formaría un ciclo');
-      else toast.error('Error al guardar');
+      const mensaje = error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? '');
+      setErrorForm(t(`errores.${errorGuardarCentro(mensaje)}`));
+    } finally {
+      setGuardando(false);
     }
   };
 
   const cambiarEstado = async (centro: CostCenter, activo: boolean) => {
     try {
       await CostCenterService.desactivar(centro.id, activo);
-      toast.success(activo ? 'Centro activado' : 'Centro desactivado');
-      await load();
+      toast.success(activo ? t('exito.activado') : t('exito.desactivado'));
+      await cargarCentros();
     } catch {
-      toast.error('No se pudo cambiar el estado');
+      toast.error(t('errores.estado'));
     }
   };
 
+  // ── Plantilla ──────────────────────────────────────────────────────────
   const previsualizar = async (siguiente: AlcancePlantilla) => {
     setAlcance(siguiente);
+    setVistaPrevia(null);
     setAplicando(true);
     try {
       setVistaPrevia(await CostCenterService.sembrar(siguiente, false));
     } catch (error) {
       console.error(error);
-      toast.error('No se pudo calcular la plantilla');
+      toast.error(t('errores.plantillaVista'));
     } finally {
       setAplicando(false);
     }
   };
 
-  const aplicar = async () => {
+  const abrirPlantilla = () => {
+    setPlantillaAbierta(true);
+    void previsualizar('base');
+  };
+
+  const aplicarPlantilla = async () => {
     setAplicando(true);
     try {
-      const resultado = await CostCenterService.sembrar(alcance, true);
-      toast.success(resultado.creados > 0
-        ? `Se crearon ${resultado.creados} centros. ${resultado.ya_existian} ya existían.`
-        : 'La plantilla ya estaba aplicada. No se crearon duplicados.');
+      const r = await CostCenterService.sembrar(alcance, true);
+      toast.success(r.creados > 0 ? t('plantilla.creados', { n: r.creados, existian: r.ya_existian }) : t('plantilla.yaAplicada'));
       setPlantillaAbierta(false);
-      await load();
+      await cargarCentros();
     } catch (error) {
       console.error(error);
-      toast.error('No se pudo aplicar la plantilla');
+      toast.error(t('errores.plantillaAplicar'));
     } finally {
       setAplicando(false);
     }
   };
 
-  const abrirDistribucion = () => {
-    setNombreDist('');
-    setLineasDist([{ centroId: '', porcentaje: '60' }, { centroId: '', porcentaje: '40' }]);
+  // ── Distribuciones ─────────────────────────────────────────────────────
+  const abrirDistribucion = (dist?: DistribucionCentro) => {
+    setDistEditando(dist ?? null);
+    setNombreDist(dist?.nombre ?? '');
+    setLineasDist(
+      dist ? dist.lineas.map((l) => ({ centroId: l.cost_center_id, porcentaje: String(l.porcentaje) })) : LINEAS_INICIALES.map((l) => ({ ...l })),
+    );
+    setErrorDist(null);
     setDistAbierta(true);
   };
 
   const guardarDistribucion = async () => {
-    const nombre = nombreDist.trim();
-    if (!nombre) {
-      toast.error('El nombre es requerido');
-      return;
-    }
-    const lineas = lineasDist.map((linea) => ({
-      cost_center_id: linea.centroId,
-      porcentaje: Number(linea.porcentaje),
-    }));
-    if (lineas.length < 2 || lineas.some((linea) => !linea.cost_center_id || !Number.isFinite(linea.porcentaje) || linea.porcentaje <= 0)) {
-      toast.error('Cada línea necesita un centro y un porcentaje mayor que cero');
-      return;
-    }
-    if (new Set(lineas.map((linea) => linea.cost_center_id)).size !== lineas.length) {
-      toast.error('Un centro no puede repetirse');
-      return;
-    }
-    if (Math.abs(sumaDist - 100) > 0.001) {
-      toast.error('Los porcentajes deben sumar 100');
+    const invalida = validarDistribucion(nombreDist, lineasDist);
+    if (invalida) {
+      setErrorDist(t(`distribucion.errores.${invalida}`));
       return;
     }
     setGuardandoDist(true);
     try {
-      await CostCenterService.guardarDistribucion(nombre, lineas);
-      toast.success('Distribución guardada');
+      await CostCenterService.guardarDistribucion(
+        nombreDist.trim(),
+        lineasDist.map((l) => ({ cost_center_id: l.centroId, porcentaje: porcentajeDe(l.porcentaje) })),
+        distEditando?.id ?? null,
+      );
+      toast.success(t('distribucion.guardada'));
       setDistAbierta(false);
-      await load();
+      await cargarDistribuciones();
     } catch (error) {
-      const texto = error instanceof Error ? error.message : '';
-      if (texto.includes('DISTRIBUCION_SUMA')) toast.error('Los porcentajes deben sumar 100');
-      else if (texto.includes('CENTRO_REPETIDO')) toast.error('Un centro no puede repetirse');
-      else if (texto.includes('NOMBRE_REPETIDO')) toast.error('Ya existe una distribución con ese nombre');
-      else if (texto.includes('CENTRO_INVALIDO')) toast.error('Hay un centro inactivo o que no pertenece a la organización');
-      else if (texto.includes('NOMBRE_REQUERIDO')) toast.error('El nombre es requerido');
-      else toast.error('No se pudo guardar la distribución');
+      const mensaje = error instanceof Error ? error.message : '';
+      setErrorDist(t(`distribucion.errores.${errorRpcDistribucion(mensaje)}`));
     } finally {
       setGuardandoDist(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen space-y-6 bg-background p-4 sm:p-6 lg:p-8">
-        <PageHeaderSkeleton />
-        <CardListSkeleton cards={3} columns="1" />
-      </div>
-    );
-  }
+  // ── Tabla del árbol ────────────────────────────────────────────────────
+  const accionesDe = (c: CostCenter): AccionFila[] => [
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => abrirCentro(c) },
+    { id: 'hijo', etiqueta: t('acciones.agregarHijo'), icono: GitFork, onSelect: () => abrirCentro(undefined, c) },
+    c.is_active
+      ? { id: 'desactivar', etiqueta: t('acciones.desactivar'), icono: PowerOff, separadorAntes: true, onSelect: () => setPorDesactivar(c) }
+      : { id: 'activar', etiqueta: t('acciones.activar'), icono: Power, separadorAntes: true, onSelect: () => void cambiarEstado(c, true) },
+  ];
+
+  const sucursalDe = (c: CostCenter) => c.sucursal ?? nombreSucursal(c.branch_id) ?? t('todas');
+
+  const columnas: ColumnaTabla<FilaCentro<CostCenter>>[] = [
+    {
+      id: 'centro',
+      encabezado: t('columnas.centro'),
+      celda: (f) => (
+        <TreeCell
+          titulo={`${f.centro.code} · ${f.centro.name}`}
+          nivel={f.nivel}
+          tieneHijos={f.tieneHijos}
+          abierto={f.abierto}
+          onAlternar={() => alternar(f.centro.id)}
+          contexto={f.contexto}
+          icono={Building2}
+        />
+      ),
+    },
+    { id: 'sucursal', encabezado: t('columnas.sucursal'), ocultarDebajo: 'md', celda: (f) => <span className="text-fg-secondary">{sucursalDe(f.centro)}</span> },
+    {
+      id: 'estado',
+      encabezado: t('columnas.estado'),
+      ancho: 120,
+      celda: (f) => <StatusBadge estado={f.centro.is_active ? 'activo' : 'inactivo'} etiqueta={f.centro.is_active ? t('activo') : t('inactivo')} />,
+    },
+    {
+      id: 'hijo',
+      encabezado: '',
+      alinear: 'derecha',
+      ancho: 90,
+      celda: (f) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirCentro(undefined, f.centro);
+          }}
+          className="text-sm font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          aria-label={t('acciones.agregarHijoDe', { nombre: f.centro.name })}
+        >
+          {t('hijo')}
+        </button>
+      ),
+    },
+  ];
+
+  const opcionesPadre: OpcionArbol[] = useMemo(() => {
+    const indice = new Map(centros.map((c, i) => [c.id, i + 1]));
+    return centros.map((c, i) => ({
+      id: i + 1,
+      parentId: c.parent_id ? indice.get(c.parent_id) ?? null : null,
+      etiqueta: `${c.code} · ${c.name}`,
+    }));
+  }, [centros]);
+  const idNumerico = (uuid: string) => (uuid ? centros.findIndex((c) => c.id === uuid) + 1 || null : null);
+  const deshabilitadasPadre = useMemo(() => {
+    const mapa = new Map<number, string>();
+    if (!editando) return mapa;
+    for (const id of descendientesYPropio(centros, editando.id)) {
+      const n = centros.findIndex((c) => c.id === id) + 1;
+      if (n > 0) mapa.set(n, t('formulario.padreCiclo'));
+    }
+    return mapa;
+  }, [centros, editando, t]);
+
+  const suma = sumaDistribucion(lineasDist);
+  const sumaOk = Math.abs(suma - 100) <= 0.001;
+  const vacio = estado === 'listo' && centros.length === 0;
 
   return (
-    <div className="min-h-screen space-y-6 bg-background p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-muted p-2">
-            <Building2 className="h-6 w-6 text-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Centros de costo</h1>
-            <p className="text-muted-foreground">Árbol por código, sucursal y estado</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setVistaPrevia(null);
-              setPlantillaAbierta(true);
-              void previsualizar('base');
-            }}
-          >
-            Aplicar plantilla
-          </Button>
-          <Button variant="outline" onClick={abrirDistribucion}>Nueva distribución</Button>
-          <Button onClick={() => abrir()}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={ListTree}
+        migas={[
+          { etiqueta: t('migas.finanzas'), href: '/app/finanzas' },
+          { etiqueta: t('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
+          { etiqueta: t('titulo') },
+        ]}
+        acciones={
+          <>
+            <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={abrirPlantilla}>
+              {t('aplicarPlantilla')}
+            </button>
+            <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => abrirCentro()}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevo')}
+            </button>
+            <RowActionsMenu
+              orientacion="horizontal"
+              tamano="md"
+              titulo={t('titulo')}
+              acciones={[{ id: 'distribucion', etiqueta: t('distribucion.nueva'), icono: Shuffle, onSelect: () => abrirDistribucion() }]}
+            />
+          </>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">{centers.length} centros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {arbol.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">No hay centros de costo registrados</p>
-          ) : (
-            <div className="space-y-1">
-              {arbol.map((nodo) => (
-                <FilaCentro key={nodo.id} nodo={nodo} profundidad={0} onEditar={abrir} onEstado={cambiarEstado} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">Distribuciones</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {distribuciones.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay distribuciones. Cada una reparte un movimiento entre centros y la suma de los porcentajes es 100.</p>
-          ) : (
-            <div className="space-y-2">
-              {distribuciones.map((dist) => (
-                <p key={dist.id} className="text-sm text-foreground">
-                  <span className="font-medium">{dist.nombre}</span>
-                  <span className="text-muted-foreground"> · {dist.lineas.map((linea) => {
-                    const centro = centers.find((item) => item.id === linea.cost_center_id);
-                    return centro ? `${centro.code} ${linea.porcentaje}%` : `${linea.porcentaje}%`;
-                  }).join(' / ')}</span>
-                </p>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Editar' : 'Nuevo'} centro de costo</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Código</Label>
-              <Input
-                value={formData.code}
-                onChange={(event) => setFormData({ ...formData, code: event.target.value })}
-                disabled={!!editing}
-                className="font-mono"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Nombre</Label>
-              <Input value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Centro padre</Label>
-              <select
-                aria-label="Centro padre"
-                value={formData.parent_id}
-                onChange={(event) => setFormData({ ...formData, parent_id: event.target.value })}
-                className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+      {vacio ? (
+        <EmptyState
+          titulo={t('vacio.titulo')}
+          descripcion={t('vacio.descripcion')}
+          icono={ListTree}
+          accion={{ etiqueta: t('aplicarPlantilla'), onClick: abrirPlantilla }}
+          accionSecundaria={{ etiqueta: t('nuevo'), onClick: () => abrirCentro() }}
+        />
+      ) : (
+        <>
+          <ListToolbar
+            busqueda={<SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={t('buscar')} />}
+            filtros={
+              <FilterPanel
+                conteo={conteoFiltros}
+                onLimpiar={() => {
+                  setFiltroEstado('todos');
+                  setFiltroSucursal(null);
+                }}
+                titulo={t('filtros.titulo')}
               >
-                <option value="">Sin padre</option>
-                {centers.filter((centro) => centro.id !== editing?.id).map((centro) => (
-                  <option key={centro.id} value={centro.id}>{centro.code} — {centro.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
-              <Label>Activo</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>Cancelar</Button>
-            <Button onClick={() => void handleSave()}>Guardar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={plantillaAbierta} onOpenChange={setPlantillaAbierta}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Aplicar plantilla</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {PLANTILLAS.map((opcion) => (
-              <button
-                key={opcion.id}
-                type="button"
-                onClick={() => void previsualizar(opcion.id)}
-                className={`w-full rounded-md border px-3 py-2 text-left ${alcance === opcion.id ? 'border-primary bg-muted' : 'border-border'}`}
-              >
-                <span className="block font-medium text-foreground">{opcion.titulo}</span>
-                <span className="text-sm text-muted-foreground">{opcion.detalle}</span>
-              </button>
-            ))}
-            {vistaPrevia ? (
-              <div className="max-h-48 space-y-1 overflow-auto rounded-md border border-border p-2 text-sm">
-                <p className="text-muted-foreground">
-                  Se crearían {vistaPrevia.previstos}. {vistaPrevia.ya_existian} ya existen y no se modifican.
-                </p>
-                {vistaPrevia.centros.map((linea) => (
-                  <p key={`${linea.code}-${linea.branch_id ?? ''}`} className="font-mono text-foreground">
-                    {linea.code} {linea.name} · {linea.accion === 'crear' ? 'se creará' : 'ya existe'}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPlantillaAbierta(false)}>Cancelar</Button>
-            <Button onClick={() => void aplicar()} disabled={aplicando || !vistaPrevia}>
-              {aplicando ? 'Aplicando…' : 'Aplicar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={distAbierta} onOpenChange={setDistAbierta}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nueva distribución</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="nombre-distribucion">Nombre</Label>
-              <Input id="nombre-distribucion" value={nombreDist} onChange={(event) => setNombreDist(event.target.value)} />
-            </div>
-            {lineasDist.map((linea, indice) => (
-              <div key={indice} className="grid grid-cols-[1fr_6rem_auto] items-end gap-2">
-                <div className="space-y-2">
-                  <Label>Centro</Label>
+                <FormField etiqueta={t('filtros.estado')}>
+                  <SegmentedControl
+                    opciones={[
+                      { valor: 'todos', etiqueta: t('filtros.todos') },
+                      { valor: 'activos', etiqueta: t('filtros.activos') },
+                      { valor: 'inactivos', etiqueta: t('filtros.inactivos') },
+                    ]}
+                    valor={filtroEstado}
+                    onValorChange={setFiltroEstado}
+                    anchoCompleto
+                  />
+                </FormField>
+                <FormField etiqueta={t('filtros.sucursal')}>
                   <select
-                    aria-label={`Centro de la línea ${indice + 1}`}
-                    value={linea.centroId}
-                    onChange={(event) => {
-                      const siguientes = [...lineasDist];
-                      siguientes[indice] = { ...linea, centroId: event.target.value };
-                      setLineasDist(siguientes);
-                    }}
-                    className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    className={CAMPO}
+                    value={filtroSucursal === null ? '' : String(filtroSucursal)}
+                    onChange={(e) => setFiltroSucursal(e.target.value === '' ? null : Number(e.target.value))}
                   >
-                    <option value="">Elegir centro</option>
-                    {centrosActivos.map((centro) => (
-                      <option key={centro.id} value={centro.id}>{centro.code} — {centro.name}</option>
+                    <option value="">{t('filtros.todasSucursales')}</option>
+                    <option value="0">{t('filtros.sinSucursal')}</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Porcentaje</Label>
-                  <Input
-                    inputMode="decimal"
-                    aria-label={`Porcentaje de la línea ${indice + 1}`}
-                    value={linea.porcentaje}
-                    onChange={(event) => {
-                      const siguientes = [...lineasDist];
-                      siguientes[indice] = { ...linea, porcentaje: event.target.value };
-                      setLineasDist(siguientes);
-                    }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={lineasDist.length <= 2}
-                  onClick={() => setLineasDist(lineasDist.filter((_, i) => i !== indice))}
+                </FormField>
+              </FilterPanel>
+            }
+          />
+
+          <DataTable
+            etiqueta={t('titulo')}
+            columnas={columnas}
+            filas={filas}
+            obtenerId={(f) => f.centro.id}
+            estado={estado === 'cargando' ? 'cargando' : estado === 'error' ? 'error' : filas.length === 0 && hayFiltros(filtros) ? 'sinResultados' : 'listo'}
+            termino={busqueda}
+            onReintentar={() => void cargarCentros()}
+            onLimpiarFiltros={() => {
+              setBusqueda('');
+              setFiltroEstado('todos');
+              setFiltroSucursal(null);
+            }}
+            acciones={(f) => accionesDe(f.centro)}
+            etiquetaFila={(f) => `${f.centro.code} · ${f.centro.name}`}
+            tarjetaMovil={(f) => (
+              <TreeCard
+                nivel={f.nivel}
+                tieneHijos={f.tieneHijos}
+                abierto={f.abierto}
+                onAlternar={() => alternar(f.centro.id)}
+                titulo={`${f.centro.code} · ${f.centro.name}`}
+                subtitulo={sucursalDe(f.centro)}
+                estado={<StatusBadge estado={f.centro.is_active ? 'activo' : 'inactivo'} etiqueta={f.centro.is_active ? t('activo') : t('inactivo')} />}
+                acciones={accionesDe(f.centro)}
+              />
+            )}
+          />
+        </>
+      )}
+
+      <section className="space-y-3" aria-labelledby="titulo-distribuciones">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="titulo-distribuciones" className="text-lg font-semibold text-fg">{t('distribucion.titulo')}</h2>
+          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => abrirDistribucion()}>
+            {t('distribucion.nueva')}
+          </button>
+        </div>
+        <DataTable
+          etiqueta={t('distribucion.titulo')}
+          columnas={[
+            { id: 'nombre', encabezado: t('distribucion.nombre'), celda: (d) => <span className="font-medium text-fg">{d.nombre}</span> },
+            { id: 'reparto', encabezado: t('distribucion.reparto'), celda: (d) => <span className="text-fg-secondary">{resumenDistribucion(d.lineas, centros, pct)}</span> },
+            {
+              id: 'suma',
+              encabezado: t('distribucion.suma'),
+              alinear: 'derecha',
+              ancho: 100,
+              celda: (d) => <span className="tabular-nums text-fg">{pct(d.lineas.reduce((s, l) => s + l.porcentaje, 0))}</span>,
+            },
+          ]}
+          filas={distribuciones}
+          obtenerId={(d) => d.id}
+          estado={estadoDist === 'cargando' ? 'cargando' : estadoDist === 'error' ? 'error' : 'listo'}
+          onReintentar={() => void cargarDistribuciones()}
+          vacio={{ titulo: t('distribucion.vacioTitulo'), descripcion: t('distribucion.vacioDescripcion'), compacto: true }}
+          acciones={(d) => [{ id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => abrirDistribucion(d) }]}
+          etiquetaFila={(d) => d.nombre}
+        />
+      </section>
+
+      {/* Nuevo / editar centro */}
+      <Dialogo
+        abierto={formAbierto}
+        onAbiertoChange={setFormAbierto}
+        titulo={editando ? t('formulario.tituloEditar') : t('formulario.tituloNuevo')}
+        descripcion={t('formulario.descripcion')}
+        icono={ListTree}
+        ancho={520}
+        primario={{ etiqueta: t('formulario.guardar'), onClick: () => void guardarCentro(), cargando: guardando }}
+      >
+        <div className="space-y-4">
+          {errorForm && <AvisoTonal tono="peligro" rol="alert" titulo={errorForm} compacto />}
+          <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+            <FormField etiqueta={t('formulario.codigo')} obligatorio ayuda={editando ? t('formulario.codigoFijo') : undefined}>
+              <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} disabled={!!editando} className="font-mono" />
+            </FormField>
+            <FormField etiqueta={t('formulario.nombre')} obligatorio>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </FormField>
+          </div>
+          <FormField etiqueta={t('formulario.padre')}>
+            {(campo) => (
+              <TreeSelect
+                id={campo.id}
+                aria-labelledby={campo.idEtiqueta}
+                opciones={opcionesPadre}
+                valor={idNumerico(form.parent_id)}
+                onValorChange={(n) => setForm({ ...form, parent_id: n ? centros[n - 1]?.id ?? '' : '' })}
+                opcionRaiz={{ etiqueta: t('formulario.sinPadre') }}
+                deshabilitadas={deshabilitadasPadre}
+                buscador
+                placeholderBusqueda={t('buscar')}
+                placeholder={t('formulario.sinPadre')}
+              />
+            )}
+          </FormField>
+          <FormField etiqueta={t('formulario.sucursal')} ayuda={t('formulario.sucursalAyuda')}>
+            <select className={CAMPO} value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value })}>
+              <option value="">{t('todas')}</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </FormField>
+          <label className="flex items-center gap-3 text-sm text-fg">
+            <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+            {t('formulario.activo')}
+          </label>
+        </div>
+      </Dialogo>
+
+      {/* Desactivar */}
+      <ConfirmDialog
+        abierto={porDesactivar !== null}
+        onAbiertoChange={(a) => { if (!a) setPorDesactivar(null); }}
+        titulo={t('desactivar.titulo')}
+        descripcion={porDesactivar ? t('desactivar.descripcion', { nombre: `${porDesactivar.code} · ${porDesactivar.name}` }) : ''}
+        textoConfirmar={t('acciones.desactivar')}
+        tono="advertencia"
+        icono={PowerOff}
+        onConfirmar={() => {
+          const c = porDesactivar;
+          setPorDesactivar(null);
+          if (c) void cambiarEstado(c, false);
+        }}
+      />
+
+      {/* Aplicar plantilla */}
+      <Dialogo
+        abierto={plantillaAbierta}
+        onAbiertoChange={setPlantillaAbierta}
+        titulo={t('plantilla.titulo')}
+        descripcion={t('plantilla.descripcion')}
+        ancho={560}
+        primario={{
+          etiqueta: t('plantilla.aplicar'),
+          onClick: () => void aplicarPlantilla(),
+          cargando: aplicando,
+          deshabilitada: !vistaPrevia || vistaPrevia.previstos === 0,
+          motivo: vistaPrevia && vistaPrevia.previstos === 0 ? t('plantilla.nadaQueCrear') : undefined,
+        }}
+      >
+        <div className="space-y-4">
+          <div className="grid gap-2" role="radiogroup" aria-label={t('plantilla.alcance')}>
+            {ALCANCES.map((a) => (
+              <TarjetaSeleccionable
+                key={a}
+                titulo={t(`plantilla.alcances.${a}.titulo`)}
+                descripcion={t(`plantilla.alcances.${a}.detalle`)}
+                seleccionada={alcance === a}
+                onSeleccionar={() => void previsualizar(a)}
+                orientacion="horizontal"
+                rol="radio"
+              />
+            ))}
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-fg">{t('plantilla.vistaPrevia')}</p>
+            {vistaPrevia ? (
+              <>
+                <p className="text-sm text-fg-secondary">{t('plantilla.seCrearan', { n: vistaPrevia.previstos, existen: vistaPrevia.ya_existian })}</p>
+                <ul className="max-h-56 divide-y divide-line overflow-auto rounded-lg border border-line text-sm">
+                  {vistaPrevia.centros.map((l) => (
+                    <li key={`${l.code}-${l.branch_id ?? ''}`} className="flex items-center justify-between gap-3 px-3 py-2">
+                      <span className="min-w-0">
+                        <span className="font-mono text-fg">{l.code}</span> <span className="text-fg">{l.name}</span>
+                        <span className="block text-xs text-fg-muted">{nombreSucursal(l.branch_id) ?? t('todas')}</span>
+                      </span>
+                      <StatusBadge
+                        estado={l.accion === 'existia' ? 'inactivo' : 'activo'}
+                        etiqueta={l.accion === 'existia' ? t('plantilla.yaExiste') : t('plantilla.seCreara')}
+                        tono={l.accion === 'existia' ? 'neutro' : 'informacion'}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="text-sm text-fg-muted">{aplicando ? t('plantilla.calculando') : t('errores.plantillaVista')}</p>
+            )}
+          </div>
+        </div>
+      </Dialogo>
+
+      {/* Nueva / editar distribución */}
+      <Dialogo
+        abierto={distAbierta}
+        onAbiertoChange={setDistAbierta}
+        titulo={distEditando ? t('distribucion.tituloEditar') : t('distribucion.nueva')}
+        descripcion={t('distribucion.descripcion')}
+        icono={Shuffle}
+        ancho={560}
+        primario={{
+          etiqueta: t('distribucion.guardar'),
+          onClick: () => void guardarDistribucion(),
+          cargando: guardandoDist,
+          deshabilitada: !sumaOk,
+          motivo: !sumaOk ? t('distribucion.errores.suma') : undefined,
+        }}
+      >
+        <div className="space-y-4">
+          {errorDist && <AvisoTonal tono="peligro" rol="alert" titulo={errorDist} compacto />}
+          <FormField etiqueta={t('distribucion.nombre')} obligatorio>
+            <Input value={nombreDist} onChange={(e) => setNombreDist(e.target.value)} placeholder={t('distribucion.nombreEjemplo')} />
+          </FormField>
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_6rem_2.5rem] gap-2 text-xs font-medium text-fg-secondary">
+              <span>{t('distribucion.centro')}</span>
+              <span>{t('distribucion.porcentaje')}</span>
+              <span className="sr-only">{t('distribucion.quitar')}</span>
+            </div>
+            {lineasDist.map((linea, i) => (
+              <div key={i} className="grid grid-cols-[1fr_6rem_2.5rem] items-center gap-2">
+                <select
+                  aria-label={t('distribucion.centroLinea', { n: i + 1 })}
+                  className={CAMPO}
+                  value={linea.centroId}
+                  onChange={(e) => setLineasDist(lineasDist.map((l, j) => (j === i ? { ...l, centroId: e.target.value } : l)))}
                 >
-                  Quitar
-                </Button>
+                  <option value="">{t('distribucion.elegirCentro')}</option>
+                  {centrosActivos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.code} · {c.name}</option>
+                  ))}
+                </select>
+                <Input
+                  inputMode="decimal"
+                  aria-label={t('distribucion.porcentajeLinea', { n: i + 1 })}
+                  value={linea.porcentaje}
+                  onChange={(e) => setLineasDist(lineasDist.map((l, j) => (j === i ? { ...l, porcentaje: e.target.value } : l)))}
+                  className="text-right tabular-nums"
+                />
+                <button
+                  type="button"
+                  disabled={lineasDist.length <= 2}
+                  onClick={() => setLineasDist(lineasDist.filter((_, j) => j !== i))}
+                  aria-label={t('distribucion.quitarLinea', { n: i + 1 })}
+                  className="flex size-10 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                </button>
               </div>
             ))}
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setLineasDist([...lineasDist, { centroId: '', porcentaje: '' }])}
-              >
-                Agregar línea
-              </Button>
-              <span className={Math.abs(sumaDist - 100) <= 0.001 ? 'text-foreground' : 'text-destructive'}>
-                Suma {sumaDist}
-              </span>
-            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDistAbierta(false)}>Cancelar</Button>
-            <Button onClick={() => void guardarDistribucion()} disabled={guardandoDist}>
-              {guardandoDist ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+              onClick={() => setLineasDist([...lineasDist, { centroId: '', porcentaje: '' }])}
+            >
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('distribucion.agregarLinea')}
+            </button>
+            <span role="status" className={cn('text-sm font-semibold tabular-nums', sumaOk ? 'text-success-text' : 'text-danger-text')}>
+              {t('distribucion.sumaTotal', { valor: pct(suma) })}
+            </span>
+          </div>
+        </div>
+      </Dialogo>
     </div>
-  );
-}
-
-function FilaCentro({
-  nodo,
-  profundidad,
-  onEditar,
-  onEstado,
-}: {
-  nodo: Nodo;
-  profundidad: number;
-  onEditar: (centro?: CostCenter, padreId?: string) => void;
-  onEstado: (centro: CostCenter, activo: boolean) => void;
-}) {
-  return (
-    <>
-      <div
-        className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted"
-        style={{ paddingLeft: `${12 + profundidad * 20}px` }}
-      >
-        {profundidad > 0 ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : null}
-        <span className="w-24 font-mono text-sm text-muted-foreground">{nodo.code}</span>
-        <span className="flex-1 font-medium text-foreground">{nodo.name}</span>
-        <span className="hidden text-sm text-muted-foreground sm:inline">{nodo.sucursal || '—'}</span>
-        <span className={nodo.is_active ? 'text-xs text-foreground' : 'text-xs text-destructive'}>
-          {nodo.is_active ? 'Activo' : 'Inactivo'}
-        </span>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Editar ${nodo.name}`} onClick={() => onEditar(nodo)}>
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => onEditar(undefined, nodo.id)}>
-          Hijo
-        </Button>
-        <Switch checked={nodo.is_active} onCheckedChange={(checked) => onEstado(nodo, checked)} aria-label={`Estado de ${nodo.name}`} />
-      </div>
-      {nodo.hijos.map((hijo) => (
-        <FilaCentro key={hijo.id} nodo={hijo} profundidad={profundidad + 1} onEditar={onEditar} onEstado={onEstado} />
-      ))}
-    </>
   );
 }

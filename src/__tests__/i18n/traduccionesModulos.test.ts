@@ -82,6 +82,12 @@ const MODULOS: Record<string, string[]> = {
   saldosAFavor: ['src/components/finanzas/saldos-a-favor', 'src/app/app/finanzas/saldos-a-favor'],
   facturacionElectronica: [...FINANZAS, 'src/components/configuracion'],
   notasCredito: FINANZAS,
+  // Finanzas ronda 3, frente D (docs/implementacion/FINANZAS-R3-PLAN.md): cotizaciones, soporte,
+  // notas, saldos, bandeja DIAN, servicio y resoluciones (estas dos viven en Configuración).
+  finanzasDocumentosR3: [...FINANZAS, 'src/components/configuracion'],
+  // Finanzas ronda 3, frente C: inicio, libro diario, detalle, mayor, salud, periodos, PUC, centros,
+  // reglas y comprobante de Contabilidad.
+  finanzasContabilidadR3: FINANZAS,
   documentosSoporte: FINANZAS,
   // Inventario B4 (2026-09-28): seriales, garantías y trazabilidad.
   inventarioSeriales: SERIALES_B4,

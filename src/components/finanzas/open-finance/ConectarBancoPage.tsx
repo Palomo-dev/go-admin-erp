@@ -55,9 +55,9 @@ const ID_PESTANAS = 'conectar-banco';
 const PESTANAS = ['bancos', 'autorizaciones'] as const;
 type Pestana = (typeof PESTANAS)[number];
 
-const RUTA_TESORERIA = '/app/finanzas/bancos/tesoreria';
-const RUTA_ALERTAS = '/app/finanzas/bancos?tab=alertas';
-const RUTA_CONCILIACION = '/app/finanzas/conciliacion-bancaria';
+const RUTA_TESORERIA = '/app/finanzas/tesoreria/cuentas?tab=posicion';
+const RUTA_ALERTAS = '/app/finanzas/tesoreria/cuentas?tab=alertas';
+const RUTA_CONCILIACION = '/app/finanzas/tesoreria/conciliacion';
 
 const TONO_CUENTA: Record<EstadoCuentaConectada, 'exito' | 'advertencia' | 'peligro'> = {
   activa: 'exito',
@@ -215,7 +215,7 @@ export function ConectarBancoPage() {
       id: 'verCuenta',
       etiqueta: t('conectar.fila.verCuenta'),
       icono: Eye,
-      onSelect: () => router.push(`/app/finanzas/bancos/cuentas/${f.cuentaGoId}`),
+      onSelect: () => router.push(`/app/finanzas/tesoreria/cuentas/${f.cuentaGoId}`),
       oculta: f.cuentaGoId === null,
     },
     {
@@ -441,7 +441,7 @@ export function ConectarBancoPage() {
         cargando={cargando}
         migas={[
           { etiqueta: t('migas.finanzas'), href: '/app/finanzas' },
-          { etiqueta: t('migas.tesoreria'), href: '/app/finanzas/bancos' },
+          { etiqueta: t('migas.tesoreria'), href: '/app/finanzas/tesoreria/cuentas' },
           { etiqueta: t('conectar.titulo') },
         ]}
         acciones={acciones}

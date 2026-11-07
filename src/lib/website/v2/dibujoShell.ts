@@ -45,6 +45,9 @@ export type BloquePie = 'horario' | 'contacto' | 'redes' | 'whatsapp' | 'mapa' |
  */
 export type PosicionMenu = 'linea' | 'partido' | 'fila' | 'oculto' | 'categorias' | 'pildora';
 
+export type FormaBotonDibujo = 'pastilla' | 'circulo' | 'pildora' | 'redondeado' | 'cuadrado';
+const FORMA_DIBUJO: Record<string, FormaBotonDibujo> = { circle: 'circulo', pill: 'pildora', rounded: 'redondeado', square: 'cuadrado' };
+
 export interface BotonDibujo {
   texto: string;
   /** Texto abreviado para la miniatura («Reservar mesa» → «Reservar»). */
@@ -61,8 +64,11 @@ export interface DibujoEncabezado {
   /** `null`: sin barra superior. */
   barraSuperior: readonly PiezaBarraSuperior[] | null;
   botones: readonly BotonDibujo[];
-  /** Forma del botón principal (`header_cta_shape`): la de hoy o un círculo con el texto dentro. */
-  formaBoton: 'pastilla' | 'circulo';
+  /**
+   * Forma del botón principal (`header_cta_shape`): `pastilla` = la de hoy (radio del tema), un
+   * círculo con el texto dentro, o la píldora, el redondeado y el cuadrado del 2026-11-07.
+   */
+  formaBoton: FormaBotonDibujo;
   acciones: readonly AccionEncabezado[];
   /** Megamenú abierto con N columnas de categorías. */
   megamenu: { columnas: number } | null;
@@ -200,7 +206,7 @@ export function dibujoEncabezado(e: EntradaShell['encabezado']): DibujoEncabezad
     enlaces: Math.max(1, Math.min(MAX_ENLACES, e.enlaces ?? ENLACES_POR_DEFECTO)),
     barraSuperior: si('show_topbar', o) ? barraSuperior : null,
     botones,
-    formaBoton: opcion('header_cta_shape', o) === 'circle' ? 'circulo' : 'pastilla',
+    formaBoton: FORMA_DIBUJO[String(opcion('header_cta_shape', o))] ?? 'pastilla',
     acciones,
     megamenu: composicion === 'mega' ? { columnas: Number.isFinite(columnas) && columnas >= 2 ? Math.min(columnas, 6) : 4 } : null,
     barraReserva: si('header_booking_bar', o),

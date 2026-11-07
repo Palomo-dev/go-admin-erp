@@ -178,6 +178,8 @@ const ARCHIVOS_TANDA_1 = [
   'src/components/finanzas/periodos-contables/PeriodosContablesPage.tsx',
   'src/components/finanzas/contabilidad/asientos/AsientosPage.tsx',
   'src/components/finanzas/contabilidad/asientos/AsientoDetailPage.tsx',
+  'src/components/finanzas/contabilidad/asientos/NuevoAsientoDialog.tsx',
+  'src/components/finanzas/contabilidad/asientos/RevertirAsientoDialog.tsx',
   'src/components/finanzas/contabilidad/ContabilidadService.ts',
   'src/components/finanzas/contabilidad/balance-comprobacion/BalanceComprobacionPage.tsx',
   'src/components/finanzas/contabilidad/balance-general/BalanceGeneralPage.tsx',
@@ -218,10 +220,12 @@ describe('los archivos de la tanda 1 no vuelven al día UTC', () => {
   });
 
   it('el asiento se guarda como instante y se lee con la zona de su sucursal', () => {
+    // Ronda 3: el alta pasó al diálogo «Nuevo asiento»; la lista sigue en AsientosPage.
     const pagina = leer('src/components/finanzas/contabilidad/asientos/AsientosPage.tsx');
-    expect(pagina).toContain('entry_date: toInstant(formData.entry_date)');
+    const alta = leer('src/components/finanzas/contabilidad/asientos/NuevoAsientoDialog.tsx');
+    expect(alta).toContain('entry_date: toInstant(formData.entry_date)');
     expect(pagina).toContain('{formatDate(asiento.entry_date)}');
-    expect(pagina).not.toContain("toLocaleDateString('es-CO')");
+    for (const fuente of [pagina, alta]) expect(fuente).not.toContain("toLocaleDateString('es-CO')");
 
     // Las fechas del detalle (contable y de creación) viven en «Datos del asiento».
     const detalle = leer('src/components/finanzas/contabilidad/asientos/AsientoDetailPage.tsx');

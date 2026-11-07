@@ -4448,13 +4448,11 @@
       "finanzas_facturas-venta": "Factures de vente",
       "finanzas_cotizaciones": "Devis",
       "finanzas_facturas-compra": "Factures d'achat",
-      "finanzas_notas-credito": "Avoirs",
+      "finanzas_notas-credito": "Avoirs et notes de débit",
       "finanzas_documentos-soporte": "Pièces justificatives",
       "finanzas_facturacion-electronica": "Facturation électronique",
       "finanzas_ingresos": "Encaissements",
       "finanzas_egresos": "Décaissements",
-      "finanzas_transferencias": "Virements",
-      "finanzas_bancos": "Banques",
       "finanzas_open-finance": "Connecter une banque",
       "finanzas_payfac_dispersiones": "Encaissements et versements",
       "finanzas_cuentas-por-cobrar": "Créances clients",
@@ -4463,7 +4461,7 @@
       "finanzas_contabilidad": "Comptabilité",
       "finanzas_contabilidad_plan-cuentas": "Plan comptable",
       "finanzas_contabilidad_actualizar-puc": "Mettre à jour le plan comptable",
-      "finanzas_contabilidad_asientos": "Écritures",
+      "finanzas_contabilidad_asientos": "Journal",
       "finanzas_contabilidad_plantillas": "Modèles d'écritures",
       "finanzas_contabilidad_mayor-contable": "Grand livre",
       "finanzas_contabilidad_libro-diario": "Journal général",
@@ -4471,7 +4469,7 @@
       "finanzas_contabilidad_balance-comprobacion": "Balance de vérification",
       "finanzas_contabilidad_estado-resultados": "État du résultat global",
       "finanzas_contabilidad_balance-general": "État de la situation financière",
-      "finanzas_contabilidad_periodos-fiscales": "Exercices comptables",
+      "finanzas_contabilidad_periodos-fiscales": "Périodes comptables",
       "finanzas_reglas-contables": "Règles comptables",
       "finanzas_centro-costos": "Centres de coûts",
       "finanzas_activos-fijos": "Immobilisations",
@@ -4574,7 +4572,12 @@
       "finanzas_contabilidad_informes_certificacion": "Certification des états financiers",
       "finanzas_contabilidad_informes_indicadores": "Indicateurs financiers",
       "finanzas_contabilidad_informes_presupuesto-real": "Budget contre réel",
-      "finanzas_contabilidad_informes_libros": "Livres comptables"
+      "finanzas_contabilidad_informes_libros": "Livres comptables",
+      "finanzas_tesoreria_movimientos": "Mouvements",
+      "finanzas_tesoreria_cuentas": "Comptes de trésorerie",
+      "finanzas_tesoreria_conciliacion": "Rapprochement",
+      "finanzas_tesoreria_transferencias": "Virements",
+      "finanzas_contabilidad_salud": "Santé comptable"
     },
     "grupos": {
       "venta": "Vente",
@@ -38478,9 +38481,9 @@
         "palabras": "rôles, autorisations, accès, postes"
       },
       "facturacionResumen": {
-        "titulo": "Résumé",
-        "descripcion": "Identifiants, plages DIAN et toujours facturer en électronique",
-        "palabras": "facture électronique, dian, plages, résolution, numérotation, identifiants, toujours électronique"
+        "titulo": "Résolutions et numérotation",
+        "descripcion": "Résolutions DIAN, plages par succursale, consommation et validité",
+        "palabras": "facture électronique, dian, plages, résolution, numérotation, validité"
       },
       "facturacionServicio": {
         "titulo": "Service",
@@ -41528,6 +41531,3585 @@
       "monedaEsBase": "La devise de base n'a pas de taux : elle vaut toujours 1.",
       "monedaNoAsignada": "L'organisation n'a pas cette devise. Ajoutez-la d'abord.",
       "guardar": "Le taux n'a pas pu être enregistré. Réessayez."
+    }
+  },
+  "inicioFinanzas": {
+    "fila": {
+      "badgePendientes": "{n, plural, one {# en attente} other {# en attente}}",
+      "badgeVencidas": "{n, plural, one {# échue} other {# échues}}",
+      "alDia": "À jour",
+      "carteraAlDia": "Créances à jour",
+      "carteraVencida": "Créances échues {valor}",
+      "carteraVencidaCuentas": "{n, plural, one {# compte échu} other {# comptes échus}}",
+      "porPagar": "À payer {valor}",
+      "porPagarCuentas": "{n, plural, one {# compte à payer} other {# comptes à payer}}"
+    },
+    "kpis": {
+      "disponible": "Trésorerie disponible",
+      "noDisponible": "Non disponible",
+      "disponibleMotivo": "Le total par devise reste à calculer sur le serveur",
+      "porCobrarVencido": "Créances échues",
+      "porPagar": "À payer sous 7 jours",
+      "resultado": "Résultat de {mes}",
+      "resultadoDetalle": "Résultat net · grand livre",
+      "resultadoError": "Impossible de lire le grand livre"
+    },
+    "pendientes": {
+      "titulo": "En attente",
+      "soloTusPermisos": "Uniquement ce que vous pouvez traiter avec vos autorisations",
+      "vacio": "Aucun élément en attente dans Finances.",
+      "parcial": "Certains éléments n’ont pas pu être lus : la liste peut être incomplète.",
+      "errorTitulo": "Impossible de lire les éléments en attente",
+      "errorDesc": "Réessayez dans un instant.",
+      "que": {
+        "pendientesContables": "Écritures comptables à résoudre",
+        "conciliacionMes": "Rapprochement de {mes} non clôturé",
+        "conciliaciones": "{n, plural, one {# rapprochement non clôturé} other {# rapprochements non clôturés}}",
+        "dianRechazados": "Documents rejetés par la DIAN",
+        "dianSinEnviar": "Documents non envoyés à la DIAN",
+        "mesSinCerrar": "{mes} non clôturé",
+        "mesesSinCerrar": "{n, plural, one {# mois non clôturé} other {# mois non clôturés}}"
+      },
+      "donde": {
+        "contabilidadPendientes": "Comptabilité · En attente",
+        "bancosConciliacion": "Banques · Rapprochement",
+        "facturacionElectronica": "Facturation électronique",
+        "contabilidadPeriodos": "Comptabilité · Périodes"
+      },
+      "accion": {
+        "resolver": "Résoudre",
+        "continuar": "Continuer",
+        "ver": "Voir",
+        "revisar": "Vérifier",
+        "cerrarPeriodo": "Clôturer la période"
+      }
+    },
+    "reportes": "Rapports de Finances → module Rapports"
+  },
+  "finanzasContabilidadR3": {
+    "asientos": {
+      "titulo": "Journal",
+      "subtitulo": "{asientos, number} écritures · {contra, number} contrepassations · toute l’organisation",
+      "subtituloCorto": "Écritures comptables de toute l’organisation",
+      "exportar": "Exporter",
+      "nuevoAsiento": "Nouvelle écriture",
+      "sinPermisoCrear": "Il vous faut l’autorisation de créer dans Finances",
+      "buscar": "Rechercher n° ou libellé",
+      "todoElLibro": "Tout le journal",
+      "comprobante": "Pièce",
+      "etiquetaFila": "Écriture {numero}",
+      "paresOcultos": "{n, plural, one {# écriture contrepassée masquée sur cette page.} other {# écritures contrepassées masquées sur cette page.}}",
+      "kpis": {
+        "etiqueta": "Résumé du journal",
+        "asientos": "Écritures de la période",
+        "asientosDetalle": "hors {n, number} contrepassations",
+        "movimiento": "Mouvement de la période",
+        "movimientoDetalle": "débits comptabilisés = crédits",
+        "borradores": "Brouillons",
+        "borradoresDetalle": "non comptabilisés sur la période",
+        "rango": "Période",
+        "rangoDetalle": "modifiez la plage dans la barre de filtres"
+      },
+      "columnas": {
+        "numero": "N°",
+        "fecha": "Date",
+        "descripcion": "Libellé",
+        "origen": "Origine et document",
+        "sucursal": "Agence",
+        "importe": "Montant",
+        "estado": "Statut"
+      },
+      "estado": {
+        "publicado": "Comptabilisée",
+        "borrador": "Brouillon"
+      },
+      "acciones": {
+        "ver": "Voir",
+        "publicar": "Comptabiliser",
+        "duplicar": "Dupliquer",
+        "descartar": "Supprimer le brouillon"
+      },
+      "toast": {
+        "publicado": "Écriture {numero} comptabilisée",
+        "errorPublicar": "Impossible de comptabiliser l’écriture",
+        "duplicado": "Copie créée en brouillon {numero}",
+        "errorDuplicar": "Impossible de dupliquer l’écriture",
+        "descartado": "Brouillon supprimé"
+      },
+      "filtros": {
+        "origen": "Origine",
+        "estado": "Statut",
+        "estados": {
+          "todos": "Tous",
+          "publicados": "Comptabilisées",
+          "borradores": "Brouillons"
+        },
+        "cuenta": "Compte",
+        "quitarCuenta": "Retirer le compte",
+        "sucursal": "Agence (facultatif)",
+        "todasSucursales": "Toutes les agences",
+        "ocultarPares": "Masquer les paires contrepassées",
+        "ocultarParesAyuda": "Désactivé : le journal s’affiche en entier, chaque contrepassation à côté de son original",
+        "ver": "Voir {n, number} écritures"
+      },
+      "chips": {
+        "estado": "Statut : {valor}",
+        "origen": "Origine : {valor}",
+        "cuenta": "Compte : {valor}",
+        "sucursal": "Agence : {valor}"
+      },
+      "vacio": {
+        "titulo": "Aucune écriture sur cette période",
+        "descripcion": "Elles se créent seules avec vos ventes, achats, paiements et mouvements de caisse. Vous pouvez aussi en saisir une manuelle."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la comptabilité",
+        "descripcion": "Demandez à un administrateur l’autorisation de voir Finances."
+      },
+      "error": {
+        "titulo": "Impossible de charger le journal",
+        "descripcion": "Vérifiez votre connexion et réessayez. Rien n’a été perdu."
+      },
+      "sustantivo": {
+        "singular": "écriture",
+        "plural": "écritures"
+      },
+      "descartar": {
+        "titulo": "Supprimer le brouillon {numero}",
+        "descripcion": "Un brouillon n’a jamais été comptabilisé et ne laisse aucune trace. Action irréversible.",
+        "confirmar": "Supprimer"
+      },
+      "resultado": {
+        "tituloPublicado": "Écriture comptabilisée",
+        "tituloBorrador": "Brouillon enregistré",
+        "publicado": "Écriture {numero} comptabilisée",
+        "borrador": "Brouillon {numero} enregistré",
+        "ver": "Voir l’écriture",
+        "otro": "En saisir une autre",
+        "cerrar": "Fermer"
+      },
+      "csv": {
+        "numero": "Numéro",
+        "fecha": "Date",
+        "descripcion": "Libellé",
+        "origen": "Origine",
+        "documento": "Document",
+        "sucursal": "Agence",
+        "importe": "Montant",
+        "estado": "Statut",
+        "archivo": "journal.csv",
+        "error": "Impossible d’exporter le journal"
+      },
+      "nuevo": {
+        "titulo": "Nouvelle écriture",
+        "descripcion": "Saisissez une écriture manuelle. Les automatiques se créent à chaque vente, achat, paiement ou mouvement de caisse.",
+        "fecha": "Date comptable",
+        "sucursal": "Agence",
+        "sucursalElegir": "Choisissez l’agence",
+        "periodo": "Période",
+        "periodoCerrado": {
+          "titulo": "La période de {mes} est clôturée",
+          "descripcion": "Choisissez une date d’une période ouverte ou demandez sa réouverture dans Périodes comptables."
+        },
+        "descripcionCampo": "Libellé",
+        "descripcionPlaceholder": "Par exemple : reclassement des frais bancaires de septembre",
+        "lineas": "Lignes",
+        "lineasAyuda": "Comptes de détail uniquement · saisir un débit efface le crédit",
+        "lineaN": "Ligne {n}",
+        "columnas": {
+          "cuenta": "Compte",
+          "descripcion": "Libellé",
+          "centro": "Centre de coût",
+          "debito": "Débit",
+          "credito": "Crédit"
+        },
+        "linea": {
+          "cuenta": "Compte de la ligne {n}",
+          "descripcion": "Libellé de la ligne {n}",
+          "centro": "Centre de coût de la ligne {n}",
+          "debito": "Débit de la ligne {n}",
+          "credito": "Crédit de la ligne {n}",
+          "quitar": "Supprimer la ligne {n}",
+          "distribucion": "Répartition de la ligne {n}",
+          "centroObligatorio": "Centre de coût *",
+          "centroOpcional": "Facultatif",
+          "sinDistribucion": "Sans répartition"
+        },
+        "agregarLinea": "Ajouter une ligne",
+        "enterUltimaFila": "Entrée sur la dernière ligne",
+        "avisoTercero": "Enregistrée en brouillon. Pour la comptabiliser, ajoutez le tiers sur : {cuentas}",
+        "pie": {
+          "nota": "« Comptabiliser » s’active quand débits et crédits sont égaux",
+          "borrador": "Enregistrer le brouillon",
+          "publicar": "Comptabiliser",
+          "publicarSiCuadra": "Débits et crédits doivent être égaux pour comptabiliser"
+        },
+        "errores": {
+          "fechaRequerida": "La date est obligatoire",
+          "sucursalRequerida": "Choisissez l’agence de l’écriture",
+          "descripcionRequerida": "Saisissez le libellé de l’écriture",
+          "minimoLineas": "Au moins 2 lignes avec montants sont requises",
+          "cuentaTitulo": "{cuenta} est un compte de regroupement sans mouvements. Choisissez un compte de détail.",
+          "noCuadra": "L’écriture doit être équilibrée : débits = crédits",
+          "centroObligatorio": "Le compte {cuenta} exige un centre de coût",
+          "periodoCerrado": "La période de cette date est clôturée",
+          "faltaTercero": "Pour comptabiliser, ajoutez le tiers sur : {cuentas}",
+          "guardar": "Impossible d’enregistrer l’écriture"
+        }
+      }
+    },
+    "centros": {
+      "titulo": "Centres de coût",
+      "subtitulo": "Arborescence par code, agence et statut",
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité"
+      },
+      "aplicarPlantilla": "Appliquer un modèle",
+      "nuevo": "Nouveau",
+      "buscar": "Rechercher par code ou nom",
+      "todas": "Toutes",
+      "hijo": "+ Enfant",
+      "activo": "Actif",
+      "inactivo": "Inactif",
+      "columnas": {
+        "centro": "Centre",
+        "sucursal": "Agence",
+        "estado": "Statut"
+      },
+      "filtros": {
+        "titulo": "Filtres",
+        "estado": "Statut",
+        "todos": "Tous",
+        "activos": "Actifs",
+        "inactivos": "Inactifs",
+        "sucursal": "Agence",
+        "todasSucursales": "Toutes les agences",
+        "sinSucursal": "Toute l'organisation"
+      },
+      "acciones": {
+        "editar": "Modifier",
+        "agregarHijo": "Ajouter un sous-centre",
+        "agregarHijoDe": "Ajouter un sous-centre à {nombre}",
+        "activar": "Activer",
+        "desactivar": "Désactiver"
+      },
+      "vacio": {
+        "titulo": "Aucun centre de coût",
+        "descripcion": "Les centres de coût répartissent les dépenses par service, agence ou projet. Commencez par un modèle ou créez le premier."
+      },
+      "exito": {
+        "creado": "Centre de coût créé",
+        "actualizado": "Centre de coût mis à jour",
+        "activado": "Centre activé",
+        "desactivado": "Centre désactivé"
+      },
+      "errores": {
+        "codigoNombre": "Le code et le nom sont obligatoires.",
+        "ciclo": "Ce parent créerait une boucle : choisissez-en un autre.",
+        "codigoRepetido": "Un centre avec ce code existe déjà.",
+        "conMovimientos": "Le centre a des écritures : désactivez-le au lieu de le supprimer.",
+        "desconocido": "Impossible d'enregistrer le centre.",
+        "estado": "Impossible de changer le statut.",
+        "plantillaVista": "Impossible de calculer le modèle.",
+        "plantillaAplicar": "Impossible d'appliquer le modèle."
+      },
+      "formulario": {
+        "tituloNuevo": "Nouveau centre de coût",
+        "tituloEditar": "Modifier le centre de coût",
+        "descripcion": "Les écritures des comptes de résultat sont réparties par centre.",
+        "codigo": "Code",
+        "codigoFijo": "Le code ne change plus après la création.",
+        "nombre": "Nom",
+        "padre": "Centre parent",
+        "sinPadre": "Sans parent (racine)",
+        "padreCiclo": "C'est ce centre ou l'un de ses sous-centres",
+        "sucursal": "Agence",
+        "sucursalAyuda": "« Toutes » si le centre concerne toute l'organisation.",
+        "activo": "Actif",
+        "guardar": "Enregistrer"
+      },
+      "desactivar": {
+        "titulo": "Désactiver le centre de coût",
+        "descripcion": "« {nombre} » ne sera plus proposé dans les écritures et répartitions. Ses écritures sont conservées et vous pourrez le réactiver."
+      },
+      "plantilla": {
+        "titulo": "Appliquer un modèle de centres",
+        "descripcion": "Aperçu avant création. L'existant n'est pas modifié.",
+        "alcance": "Modèle",
+        "alcances": {
+          "base": {
+            "titulo": "Base",
+            "detalle": "100 Administration, 200 Ventes et 300 Exploitation."
+          },
+          "sector": {
+            "titulo": "Secteur",
+            "detalle": "La base plus les centres du type d'organisation."
+          },
+          "sucursal": {
+            "titulo": "Par agence",
+            "detalle": "La base et un sous-centre de ventes par agence."
+          }
+        },
+        "vistaPrevia": "Seront créés",
+        "seCrearan": "{n, plural, one {# centre sera créé} other {# centres seront créés}}. {existen, plural, =0 {} one {# existe déjà et n'est pas modifié.} other {# existent déjà et ne sont pas modifiés.}}",
+        "seCreara": "Sera créé",
+        "yaExiste": "Existe déjà",
+        "calculando": "Calcul en cours…",
+        "nadaQueCrear": "Le modèle est déjà appliqué",
+        "aplicar": "Appliquer",
+        "creados": "{n, plural, one {# centre créé} other {# centres créés}}. {existian} existaient déjà.",
+        "yaAplicada": "Le modèle était déjà appliqué. Aucun doublon créé."
+      },
+      "distribucion": {
+        "titulo": "Répartitions",
+        "nueva": "Nouvelle répartition",
+        "tituloEditar": "Modifier la répartition",
+        "descripcion": "Répartit une dépense entre plusieurs centres",
+        "nombre": "Nom",
+        "nombreEjemplo": "Frais partagés",
+        "reparto": "Répartition",
+        "suma": "Total",
+        "centro": "Centre",
+        "porcentaje": "Pourcentage",
+        "centroLinea": "Centre de la ligne {n}",
+        "porcentajeLinea": "Pourcentage de la ligne {n}",
+        "quitar": "Retirer",
+        "quitarLinea": "Retirer la ligne {n}",
+        "elegirCentro": "Choisir un centre",
+        "agregarLinea": "Ajouter une ligne",
+        "sumaTotal": "Total {valor}",
+        "guardar": "Enregistrer",
+        "guardada": "Répartition enregistrée",
+        "vacioTitulo": "Aucune répartition",
+        "vacioDescripcion": "Chaque répartition ventile une écriture entre centres ; ses pourcentages totalisent 100.",
+        "errores": {
+          "nombre": "Le nom est obligatoire.",
+          "minimo": "Une répartition nécessite au moins deux centres.",
+          "linea": "Chaque ligne nécessite un centre et un pourcentage entre 0 et 100.",
+          "repetido": "Un centre ne peut pas être répété.",
+          "suma": "Les pourcentages doivent totaliser 100 %.",
+          "nombreRepetido": "Une répartition porte déjà ce nom.",
+          "centroInvalido": "Un centre est inactif ou appartient à une autre organisation.",
+          "desconocido": "Impossible d'enregistrer la répartition."
+        }
+      }
+    },
+    "comprobante": {
+      "cargando": "Chargement de la pièce…",
+      "noEncontrado": "Cette écriture n'existe pas ou appartient à une autre organisation.",
+      "volver": "Retour à l'écriture",
+      "imprimir": "Imprimer",
+      "nit": "NIT {nit}",
+      "comprobanteContable": "Pièce comptable",
+      "asiento": "Écriture {numero}",
+      "fecha": "Date : {fecha}",
+      "memo": "Libellé : {memo}",
+      "sucursal": "Agence : {sucursal}",
+      "cuenta": "Compte",
+      "detalle": "Détail",
+      "tercero": "Tiers",
+      "debito": "Débit",
+      "credito": "Crédit",
+      "totales": "Totaux",
+      "elaboro": "Établi par",
+      "aprobo": "Approuvé par",
+      "borrador": "Brouillon : pièce non définitive"
+    },
+    "comun": {
+      "origen": {
+        "venta": "Vente",
+        "factura": "Facture",
+        "cobro": "Encaissement",
+        "compra": "Achat",
+        "pago": "Paiement",
+        "kardex": "Stock",
+        "caja": "Caisse",
+        "banco": "Banque",
+        "comision": "Commission",
+        "nomina": "Paie",
+        "pms": "Hôtel",
+        "manual": "Manuelle",
+        "contraAsiento": "Contrepassation",
+        "cierre": "Clôture",
+        "otro": "Autre"
+      },
+      "reversion": {
+        "revertidoPor": "Contrepassée par {numero}",
+        "reversionDe": "Contrepassation de {numero}",
+        "neutraliza": "Annule l'écriture {numero}",
+        "neutralizadoPor": "Annulée par la contrepassation {numero}",
+        "motivo": "Motif : {motivo}"
+      },
+      "periodo": {
+        "abierto": "Ouverte",
+        "enCierre": "En clôture",
+        "cerrado": "Clôturée"
+      },
+      "cuadre": {
+        "debitos": "Débits",
+        "creditos": "Crédits",
+        "cuadra": "Équilibrée",
+        "diferencia": "Écart {valor}",
+        "sinImportes": "Sans montants"
+      },
+      "tabla": {
+        "etiqueta": "Lignes de l'écriture",
+        "cuenta": "Compte",
+        "descripcion": "Libellé",
+        "tercero": "Tiers",
+        "centro": "Centre de coût",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "totales": "Totaux",
+        "totalesDC": "D {debito} · C {credito}"
+      },
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité"
+      }
+    },
+    "detalle": {
+      "titulo": "Écriture",
+      "tituloNumero": "Écriture {numero}",
+      "comprobante": "Pièce",
+      "sinDescripcion": "Sans libellé",
+      "migaLibro": "Journal",
+      "errorCargar": "Impossible de charger l’écriture",
+      "lineas": "Lignes · {n, number}",
+      "lineasEtiqueta": "Lignes de l’écriture",
+      "estado": {
+        "publicado": "Comptabilisée",
+        "borrador": "Brouillon"
+      },
+      "acciones": {
+        "imprimir": "Imprimer",
+        "duplicar": "Dupliquer",
+        "descartar": "Supprimer le brouillon",
+        "publicar": "Comptabiliser",
+        "revertir": "Contrepasser",
+        "sinPermisoRevertir": "Il vous faut l’autorisation « Contrepasser des écritures »",
+        "irDocumento": "Aller à {documento}"
+      },
+      "toast": {
+        "publicado": "Écriture comptabilisée",
+        "errorPublicar": "Impossible de comptabiliser l’écriture",
+        "duplicado": "Écriture dupliquée en brouillon",
+        "errorDuplicar": "Impossible de dupliquer l’écriture",
+        "descartado": "Brouillon supprimé",
+        "errorDescartar": "Impossible de supprimer le brouillon"
+      },
+      "automatico": {
+        "titulo": "Écriture automatique",
+        "conDocumento": "Générée par le document « {documento} ». Elle ne se modifie ni ne se supprime : pour la contrepasser, annulez ce document.",
+        "sinDocumento": "Elle ne se modifie ni ne se supprime : pour la contrepasser, annulez le document d’origine."
+      },
+      "noEncontrado": {
+        "titulo": "Écriture introuvable",
+        "descripcion": "L’écriture {numero} n’existe pas ou appartient à une autre organisation.",
+        "volver": "Retour au journal"
+      },
+      "descartar": {
+        "titulo": "Supprimer le brouillon {numero}",
+        "descripcion": "Un brouillon n’a jamais été comptabilisé et ne laisse aucune trace. Action irréversible.",
+        "confirmar": "Supprimer"
+      },
+      "revertir": {
+        "titulo": "Contrepasser l’écriture {numero}",
+        "descripcion": "Une contrepassation est enregistrée avec débits et crédits inversés. L’écriture d’origine n’est pas modifiée.",
+        "confirmar": "Contrepasser",
+        "motivo": "Motif",
+        "motivoPlaceholder": "Pourquoi cette écriture est contrepassée",
+        "motivos": {
+          "cuenta": "Erreur de compte",
+          "importe": "Montant erroné",
+          "duplicado": "Doublon"
+        },
+        "consecuencias": {
+          "titulo": "Ce qui se passe",
+          "invertido": "Une contrepassation est créée avec les mêmes comptes, tiers et centre, débit et crédit inversés.",
+          "fechaOriginal": "La contrepassation prend la date d’origine ({fecha}) : sa période est ouverte.",
+          "fechaHoy": "La contrepassation prend la date du jour ({fecha}) car la période d’origine est clôturée.",
+          "fechaRegla": "Si la période d’origine est clôturée, la contrepassation prend la date du jour.",
+          "original": "L’original reste au journal, marqué comme contrepassé. Une écriture ne se contrepasse qu’une fois."
+        },
+        "bloqueo": {
+          "yaRevertido": "Elle a déjà la contrepassation {numero}. Une écriture ne se contrepasse qu’une fois.",
+          "sinPermiso": "Il vous faut l’autorisation « Contrepasser des écritures ».",
+          "periodoCerrado": "Ni la période de l’écriture ni la période actuelle ne sont ouvertes. Rouvrez-en une dans Périodes comptables."
+        },
+        "error": "Impossible de contrepasser l’écriture",
+        "resultado": {
+          "titulo": "Écriture contrepassée",
+          "creado": "Contrepassation {numero} créée",
+          "descripcion": "L’écriture {numero} est neutralisée. Si besoin, saisissez maintenant l’écriture corrigée.",
+          "ver": "Voir la contrepassation",
+          "cerrar": "Fermer"
+        }
+      }
+    },
+    "inicio": {
+      "titulo": "Comptabilité",
+      "subtitulo": "Toute l’organisation · période en cours : {mes} ({estado})",
+      "subtituloCorto": "Toute l’organisation",
+      "actualizar": "Actualiser",
+      "nuevoAsiento": "Nouvelle écriture",
+      "abrir": "Ouvrir",
+      "revisar": "Vérifier",
+      "crear": "Créer",
+      "aviso": {
+        "ambos": "{pendientes, plural, one {# fait non comptabilisé} other {# faits non comptabilisés}} et {descuadres, plural, one {# écart} other {# écarts}}",
+        "pendientes": "{n, plural, one {# fait non comptabilisé} other {# faits non comptabilisés}}",
+        "descuadres": "{n, plural, one {# écriture ne correspond pas à son document} other {# écritures ne correspondent pas à leur document}}",
+        "descripcion": "Les états n’incluent pas ces faits. Vérifiez-les avant de clôturer {mes}.",
+        "abrirSalud": "Ouvrir la santé comptable"
+      },
+      "enOrden": "Tout est comptabilisé : 0 en attente et la balance est équilibrée.",
+      "periodo": {
+        "sinCerrar": "{n, plural, one {{mes} non clôturé} other {# mois non clôturés}}",
+        "alDia": "mois précédents clôturés",
+        "sinGenerar": "Non générée"
+      },
+      "kpis": {
+        "resumen": "Résumé comptable",
+        "asientosDe": "Écritures de {mes}",
+        "asientosMes": "Écritures du mois",
+        "sinContraAsientos": "hors contrepassations",
+        "periodoActual": "Période en cours",
+        "pendientes": "À comptabiliser",
+        "verSalud": "Voir la santé comptable",
+        "descuadres": "Écarts",
+        "descuadresInactivo": "contrôle pas encore activé",
+        "descuadresDetalle": "écriture ≠ document"
+      },
+      "informes": {
+        "titulo": "États",
+        "libroDiario": "Journal",
+        "libroDiarioValor": "{n, plural, one {# écriture} other {# écritures}} en {mes}",
+        "libroDiarioDesc": "Écritures au quotidien",
+        "mayor": "Grand livre",
+        "mayorDesc": "Solde progressif par compte",
+        "balancePrueba": "Balance de vérification",
+        "balancePruebaDesc": "Débits et crédits par compte",
+        "noCuadra": "Déséquilibrée",
+        "estadoResultados": "Compte de résultat",
+        "estadoResultadosDesc": "Produits, coûts et charges de la période",
+        "balanceGeneral": "Bilan",
+        "balanceGeneralDesc": "Actif = Passif + Capitaux propres"
+      },
+      "configuracion": {
+        "titulo": "Paramètres",
+        "plan": "Plan comptable",
+        "planValor": "{cuentas} comptes · {agrupadoras} comptes de regroupement",
+        "planDesc": "Catalogue des comptes PUC",
+        "reglas": "Règles comptables",
+        "reglasValor": "{n, plural, one {# règle} other {# règles}}",
+        "reglasConAvisos": "{n} règles · {avisos} avec des comptes à corriger",
+        "reglasDesc": "Écritures automatiques par événement",
+        "periodos": "Périodes comptables",
+        "periodosDesc": "Ouverture et clôture des périodes",
+        "salud": "Santé comptable",
+        "saludDesc": "En attente, écarts, orphelines et structure",
+        "centros": "Centres de coûts",
+        "centrosVacio": "Aucun centre pour l’instant",
+        "centrosValor": "{n, plural, one {# centre} other {# centres}}",
+        "centrosDesc": "Répartit les charges par service ou projet",
+        "plantillas": "Modèles d’écritures",
+        "plantillasDesc": "Écritures récurrentes",
+        "cuentasAutomaticas": "Paramètres comptables",
+        "cuentasAutomaticasDesc": "Comptes par défaut de l’organisation",
+        "puc": "Mettre à jour le PUC",
+        "pucDesc": "Aperçu et transfert vers le plan corrigé",
+        "activos": "Immobilisations",
+        "activosDesc": "Enregistrement et amortissement",
+        "presupuestos": "Budgets",
+        "presupuestosDesc": "Prévu contre réel"
+      }
+    },
+    "mayor": {
+      "titulo": "Grand livre",
+      "cuenta": "Compte",
+      "periodo": "Période",
+      "exportar": "Exporter",
+      "todaLaOrganizacion": "toute l’organisation",
+      "subtituloSinCuenta": "Choisissez un compte pour voir ses mouvements",
+      "columnas": {
+        "fecha": "Date",
+        "asiento": "Écriture",
+        "documento": "Document",
+        "descripcion": "Libellé de la ligne",
+        "saldo": "Solde"
+      },
+      "saldoInicial": "Solde d’ouverture",
+      "saldoFinalTras": "{n, plural, one {Solde final (après # mouvement)} other {Solde final (après # mouvements)}}",
+      "csv": {
+        "fecha": "Date",
+        "asiento": "Écriture",
+        "descripcion": "Libellé de la ligne",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "saldo": "Solde",
+        "archivo": "grand-livre-{cuenta}.csv"
+      },
+      "filtros": {
+        "nota": "Avec des filtres, le solde d’ouverture ne s’applique pas : vous voyez le cumul du filtre.",
+        "sucursal": "Agence",
+        "todas": "Toutes les agences",
+        "tercero": "Tiers (NIT)",
+        "terceroAyuda": "Saisissez le NIT et appuyez sur Entrée",
+        "centro": "Centre de coût",
+        "todos": "Tous"
+      },
+      "kpis": {
+        "resumen": "Résumé du grand livre",
+        "saldoInicial": "Solde d’ouverture",
+        "inicialConFiltros": "non applicable avec filtres",
+        "debitos": "Débits",
+        "movimientos": "{n, plural, one {# mouvement} other {# mouvements}}",
+        "creditos": "Crédits",
+        "acumulado": "Cumul du filtre",
+        "saldoFinal": "Solde final"
+      },
+      "sinCuenta": {
+        "titulo": "Choisissez un compte",
+        "descripcion": "Recherchez par code ou nom. Un compte de regroupement additionne ses sous-comptes."
+      },
+      "error": {
+        "titulo": "Impossible de charger le grand livre",
+        "descripcion": "La requête a échoué. Réessayez.",
+        "reintentar": "Réessayer"
+      },
+      "truncado": {
+        "titulo": "Les 400 premières lignes sont affichées",
+        "descripcion": "Les soldes d’ouverture et de clôture et les totaux couvrent toute la période. Raccourcissez la période pour tout voir."
+      },
+      "filtrado": {
+        "titulo": "Grand livre filtré",
+        "descripcion": "Les chiffres viennent des lignes du filtre ; le solde progressif part de zéro."
+      },
+      "tabla": "Mouvements du compte",
+      "sustantivo": {
+        "singular": "ligne",
+        "plural": "lignes"
+      }
+    },
+    "periodos": {
+      "titulo": "Périodes comptables",
+      "subtitulo": "{anio} · {meses, plural, one {# mois} other {# mois}}",
+      "subtituloSinCerrar": "{anio} · {meses, plural, one {# mois} other {# mois}} · {lista} non clôturé",
+      "generar": "Générer {anio}",
+      "masAcciones": "Plus d'actions",
+      "actualizar": "Actualiser",
+      "anios": "Année",
+      "anio": "Année {anio}",
+      "cierreAnual": "Clôture annuelle",
+      "cierreAnualSinPermiso": "Il faut l'autorisation Clôturer l'exercice",
+      "rejilla": "Mois de {anio}",
+      "otros": "Autres périodes de {anio}",
+      "periodoAnual": "Période annuelle",
+      "periodoTrimestral": "Trimestre {n}",
+      "tarjeta": {
+        "actual": "{mes} · en cours",
+        "asientos": "{n, plural, one {# écriture} other {# écritures}}",
+        "sinMovimiento": "Aucun mouvement",
+        "pendientes": "{n, plural, =0 {0 en attente} one {# en attente de comptabilisation} other {# en attente de comptabilisation}}",
+        "borradores": "{n, plural, one {# brouillon} other {# brouillons}}",
+        "rango": "Du {desde} au {hasta}",
+        "cerradoPor": "Clôturée par {nombre} · {fecha}",
+        "cerradoEl": "Clôturée le {fecha}",
+        "reabierto": "Rouverte le {fecha} : {motivo}",
+        "enCurso": "En cours",
+        "futuro": "À venir",
+        "pendienteCierre": "À clôturer",
+        "sinCrear": "Non créée",
+        "crearMes": "Créer le mois",
+        "cerrar": "Clôturer",
+        "reabrir": "Rouvrir",
+        "notas": "Notes : {notas}"
+      },
+      "vacio": {
+        "titulo": "Générez les périodes de {anio}",
+        "descripcion": "Sans périodes, aucun mois ne peut être clôturé ni rouvert. Les générer ne crée aucune écriture.",
+        "accion": "Générer les périodes"
+      },
+      "error": {
+        "titulo": "Impossible de charger les périodes",
+        "descripcion": "Vérifiez la connexion et réessayez. Rien n'a été clôturé ni rouvert.",
+        "sinPermisoTitulo": "Vous n'avez pas accès aux périodes",
+        "sinPermisoDescripcion": "Demandez l'accès à la Comptabilité à un administrateur."
+      },
+      "errores": {
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "faltanCuentasCierre": "Il manque le compte de détail 3605, ou 3610 pour la perte.",
+        "periodoNoAbierto": "Cette période n'est pas ouverte.",
+        "periodoNoCerrado": "Cette période n'est pas clôturée.",
+        "conPendientes": "Clôture impossible : il reste des brouillons ou des éléments en attente.",
+        "motivo": "Indiquez le motif de réouverture (5 caractères minimum).",
+        "sinSucursal": "L'organisation n'a pas de succursale.",
+        "duplicado": "Cette période existe déjà.",
+        "desconocido": "L'action n'a pas pu aboutir. Réessayez."
+      },
+      "exito": {
+        "cerrado": "{periodo} est clôturée",
+        "reabierto": "{periodo} est rouverte",
+        "generadosMes": "12 périodes mensuelles générées pour {anio}",
+        "generadoAnual": "Période annuelle générée pour {anio}",
+        "mesCreado": "{periodo} créée",
+        "ejercicio": "Exercice {anio} clôturé sur {cuenta} ({n, plural, one {# écriture} other {# écritures}})"
+      },
+      "cerrar": {
+        "titulo": "Clôturer {periodo}",
+        "descripcion": "Personne ne pourra saisir ni contrepasser d'écritures datées de {periodo}. Réouverture possible avec un motif.",
+        "confirmar": "Clôturer la période",
+        "revisando": "Vérification de la période…",
+        "pie": "Les avertissements ne bloquent pas la clôture",
+        "bloqueado": "Résolvez les points en rouge pour clôturer",
+        "sinPermiso": "Il faut l'autorisation Clôturer une période",
+        "notas": "Notes de clôture",
+        "notasAyuda": "Facultatif. Enregistrées sur la période.",
+        "items": {
+          "balanceOk": "La balance est équilibrée",
+          "balanceOkDetalle": "Débits = crédits en {periodo}",
+          "balanceMal": "La balance n'est pas équilibrée",
+          "balanceMalDetalle": "Écart {valor}. Vérifiez dans Santé comptable",
+          "balanceSinDato": "Impossible de vérifier la balance",
+          "pendientes": "{n, plural, =0 {0 élément à comptabiliser} one {# élément à comptabiliser} other {# éléments à comptabiliser}}",
+          "pendientesOk": "Tout {periodo} a son écriture",
+          "pendientesMal": "Bloque la clôture · voir Santé comptable",
+          "borradores": "{n, plural, =0 {0 brouillon} one {# brouillon} other {# brouillons}}",
+          "borradoresOk": "Toutes les écritures de {periodo} sont validées",
+          "borradoresMal": "Bloque la clôture · validez-les ou supprimez-les",
+          "pendientesSinDato": "Impossible de compter les éléments en attente et brouillons",
+          "consecutivosOk": "Numérotation des pièces sans trou",
+          "consecutivosAviso": "{n, plural, one {# numéro manquant} other {# numéros manquants}} dans la numérotation",
+          "consecutivosDetalle": "Ne bloque pas la clôture",
+          "consecutivo": "{tipo} : du {desde} au {hasta} ({cantidad})",
+          "faltan": "manquent {lista}",
+          "ver": "Voir",
+          "verBorradores": "Voir les brouillons"
+        }
+      },
+      "reabrir": {
+        "titulo": "Rouvrir {periodo}",
+        "descripcion": "Permet de saisir à nouveau des écritures datées de {periodo}.",
+        "confirmar": "Rouvrir",
+        "consecuencia1": "Rouvrir ne contrepasse pas l'écriture de clôture.",
+        "consecuencia2": "Qui l'a rouverte, quand et pourquoi est enregistré.",
+        "etiquetaMotivo": "Motif de réouverture",
+        "placeholder": "Ex. : ajustement d'une facture fournisseur reçue en retard"
+      },
+      "generarDialogo": {
+        "titulo": "Générer les périodes fiscales",
+        "descripcion": "Crée les périodes de l'année",
+        "anio": "Année",
+        "tipo": "Type de période",
+        "mensuales": "Mensuelles (12 périodes)",
+        "anual": "Annuelle (1 période)",
+        "confirmar": "Générer",
+        "yaExiste": "Des périodes de ce type existent déjà en {anio}",
+        "anioInvalido": "Saisissez une année entre 2000 et 2100"
+      },
+      "ejercicio": {
+        "titulo": "Clôturer l'exercice {anio}",
+        "descripcion": "Transfère le résultat de l'année aux capitaux propres",
+        "anio": "Année",
+        "borradoresTitulo": "{n, plural, one {Il reste # brouillon} other {Il reste # brouillons}}",
+        "borradoresTexto": "Impossible de clôturer l'année avec des brouillons. Validez-les ou supprimez-les.",
+        "resultado": "Résultat de l'exercice",
+        "cuentaDestino": "Compte de destination",
+        "valor": "Montant",
+        "utilidad": "Bénéfice",
+        "perdida": "Perte",
+        "cuenta3605": "3605 · Bénéfice de l'exercice",
+        "cuenta3610": "3610 · Perte de l'exercice",
+        "calculando": "Calcul du résultat…",
+        "sinDato": "Impossible de calculer le résultat. La clôture le calcule quand même en base.",
+        "nota": "En cas de perte, elle va au 3610. Rouvrir ne contrepasse pas l'écriture de clôture.",
+        "confirmar": "Clôturer l'exercice"
+      }
+    },
+    "puc": {
+      "titulo": "Mettre à jour le plan comptable",
+      "subtitulo": "L'aperçu n'écrit rien. Appliquer crée l'écriture de transfert et désactive les comptes d'origine.",
+      "subtituloMovil": "Aperçu du transfert",
+      "aplicar": "Appliquer la mise à jour",
+      "aplicarMotivo": "Cochez la case de confirmation pour appliquer",
+      "masAcciones": "Plus d'actions",
+      "recargar": "Actualiser l'aperçu",
+      "revertir": "Annuler la dernière mise à jour",
+      "sector": "Secteur : {sector}",
+      "kpis": {
+        "resumen": "Résumé de la mise à jour",
+        "renombres": "Renommages",
+        "reclasificaciones": "Reclassements",
+        "conMovimientos": "Avec mouvements",
+        "reglas": "Règles à ajuster",
+        "editadas": "{n, plural, one {# modifiée à la main reste telle quelle} other {# modifiées à la main restent telles quelles}}"
+      },
+      "reclasificaciones": {
+        "titulo": "Reclassements avec mouvements",
+        "descripcion": "Le solde net passe au compte cible par une écriture. Le compte d'origine est désactivé et garde son historique.",
+        "origen": "Origine",
+        "destino": "Destination",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "neto": "Net",
+        "motivo": "Motif",
+        "netoCredito": "{valor} C",
+        "vacio": "Aucun solde à transférer."
+      },
+      "renombres": {
+        "titulo": "Renommages sans mouvement",
+        "codigo": "Code",
+        "actual": "Nom actuel",
+        "propuesto": "Nom du décret",
+        "vacio": "Aucun nom à corriger."
+      },
+      "reglas": {
+        "titulo": "Règles comptables",
+        "descripcion": "Seules les règles avec l'ancien code changent. Celles modifiées à la main sont listées sans changement.",
+        "regla": "Règle",
+        "origen": "Origine",
+        "lado": "Côté",
+        "actual": "Actuel",
+        "propuesto": "Proposé",
+        "estado": "Statut",
+        "seActualiza": "Sera mise à jour",
+        "editada": "Modifiée, inchangée",
+        "vacio": "Aucune règle à réaffecter."
+      },
+      "confirmar": "Je confirme le transfert. Il peut être annulé par la contrepassation de l'exécution.",
+      "vacio": {
+        "titulo": "Votre plan est à jour",
+        "descripcion": "Aucun compte à renommer, solde à transférer ni règle à ajuster."
+      },
+      "error": {
+        "titulo": "Impossible de lire l'aperçu",
+        "descripcion": "Rien n'a été appliqué. Réessayez.",
+        "reintentar": "Réessayer"
+      },
+      "resultado": {
+        "aplicado": "Transfert enregistré",
+        "yaAplicado": "Déjà appliqué",
+        "corrida": "Exécution {id}",
+        "verAsiento": "Voir l'écriture de transfert #{id}"
+      },
+      "toast": {
+        "aplicado": "Plan comptable mis à jour",
+        "yaAplicado": "Cette organisation avait déjà le transfert",
+        "revertido": "Mise à jour annulée par sa contrepassation",
+        "error": "Impossible de terminer : {detalle}",
+        "sinCorrida": "Aucune mise à jour appliquée à annuler.",
+        "sinOrganizacion": "Aucune organisation active"
+      },
+      "revertirDialogo": {
+        "titulo": "Annuler la dernière mise à jour du plan",
+        "descripcion": "La contrepassation du transfert est passée et les règles reviennent à l'ancien code. Les écritures validées ne sont pas supprimées.",
+        "confirmar": "Annuler"
+      }
+    },
+    "reglas": {
+      "permiso": "Nécessite l'autorisation « Créer en Finances ».",
+      "noSePuedeGuardar": "Impossible d'enregistrer : un compte est collectif, inactif ou inexistant.",
+      "campo": {
+        "agrupadora": "{cuenta} est un compte collectif : choisissez un sous-compte.",
+        "agrupadoraCon": "{cuenta} est un compte collectif : choisissez un sous-compte ({subcuenta}).",
+        "inactiva": "{cuenta} est inactif.",
+        "inexistente": "{cuenta} n'existe pas dans votre plan comptable."
+      },
+      "vista": {
+        "titulo": "Aperçu",
+        "sinDatos": "Choisissez les comptes de débit et de crédit pour voir l'écriture que générerait la règle.",
+        "ejemplo": "Avec un document d'exemple ({documento}, {total}) cette règle générerait :",
+        "documento": "document",
+        "lado": {
+          "debito": "Débit de la règle",
+          "credito": "Crédit de la règle",
+          "impuesto": "TVA du document"
+        },
+        "agrupadora": "Compte collectif : ne reçoit pas d'écritures",
+        "inexistente": "Absent du plan",
+        "estado": {
+          "cuadra": "L'écriture est équilibrée.",
+          "agrupadora": "Impossible d'enregistrer : un compte est collectif.",
+          "inexistente": "Impossible d'enregistrer : un compte est inexistant ou inactif.",
+          "sinDatos": "Choisissez les comptes pour voir l’écriture."
+        },
+        "aviso": {
+          "agrupadora": "Un compte est collectif : les documents de cette règle resteront en attente de comptabilisation.",
+          "inexistente": "Un compte est inexistant ou inactif : les documents de cette règle resteront en attente de comptabilisation."
+        }
+      }
+    },
+    "salud": {
+      "titulo": "Santé comptable",
+      "subtitulo": "Toute l’organisation",
+      "subtituloRevisado": "Vérifié à {hora} · toute l’organisation",
+      "actualizar": "Actualiser",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la comptabilité",
+        "descripcion": "Demandez à un administrateur l’autorisation de voir Finances."
+      },
+      "kpis": {
+        "resumen": "Résumé de la santé comptable",
+        "balance": "Balance",
+        "cuadra": "Équilibrée",
+        "noCuadra": "Déséquilibrée",
+        "cuadraDetalle": "Σ débits = Σ crédits",
+        "diferencia": "Écart {valor}",
+        "descuadresDetalle": "écriture ≠ document",
+        "huerfanosDetalle": "document supprimé"
+      },
+      "pestanas": {
+        "pendientes": "À comptabiliser",
+        "descuadres": "Écarts",
+        "huerfanos": "Orphelines",
+        "estructura": "Structure"
+      },
+      "inactivo": {
+        "corto": "pas encore activé",
+        "titulo": "Contrôle pas encore activé",
+        "descripcion": "Rapprocher chaque écriture de son document demande la fonction de santé comptable dans la base. Elle est écrite et attend l’approbation ; d’ici là cet onglet n’affiche aucun chiffre, pour qu’une valeur non vérifiée ne passe jamais pour un zéro."
+      },
+      "enOrden": {
+        "titulo": "Tout est comptabilisé",
+        "descripcion": "0 en attente, 0 écart et la balance est équilibrée."
+      },
+      "balanceMal": {
+        "titulo": "La balance n’est pas équilibrée",
+        "descripcion": "Les débits et crédits validés diffèrent de {valor}. Vérifiez la balance avant de clôturer une période."
+      },
+      "error": {
+        "titulo": "Vérification impossible",
+        "descripcion": "La requête a échoué. Cela ne veut pas dire que tout va bien.",
+        "reintentar": "Réessayer"
+      },
+      "columnas": {
+        "documento": "Document",
+        "tipo": "Type",
+        "totalDocumento": "Total du document",
+        "totalAsiento": "Total de l’écriture",
+        "diferencia": "Écart",
+        "asiento": "Écriture",
+        "fecha": "Date",
+        "origen": "Origine",
+        "motivo": "Motif",
+        "importe": "Montant",
+        "cuenta": "Compte",
+        "subcuentas": "Sous-comptes",
+        "movimientos": "Mouvements",
+        "saldo": "Solde",
+        "lado": "Sens",
+        "estado": "Statut",
+        "propuesta": "Proposition"
+      },
+      "subtipos": {
+        "asiento_distinto": "Écriture ≠ document",
+        "devengo_duplicado": "Constatation en double",
+        "borrador_con_asiento": "Brouillon avec écriture"
+      },
+      "vacios": {
+        "descuadres": {
+          "titulo": "Aucun écart",
+          "descripcion": "Chaque facture correspond à son écriture."
+        },
+        "huerfanos": {
+          "titulo": "Aucune écriture orpheline",
+          "descripcion": "Toutes les écritures ont leur document."
+        },
+        "agrupadoras": {
+          "titulo": "Aucun compte de regroupement avec mouvements",
+          "descripcion": "Les mouvements sont dans des comptes de détail."
+        },
+        "reglas": {
+          "titulo": "Toutes les règles pointent vers des comptes valides",
+          "descripcion": "Aucune règle n’utilise un compte de titre, inactif ou inexistant."
+        }
+      },
+      "limite": "{n} affichées sur {total}.",
+      "soloLectura": "Lecture seule : un écart se corrige par contrepassation et réémission du document, jamais en modifiant l’écriture.",
+      "motivos": {
+        "documento_eliminado": "Le document n’existe plus",
+        "sin_lineas": "Écriture sans lignes"
+      },
+      "huerfanosAyuda": "Le document à l’origine de ces écritures a été supprimé. Vérifiez-les avec le comptable avant de les contrepasser.",
+      "estructura": {
+        "agrupadorasTitulo": "Comptes de regroupement avec mouvements",
+        "agrupadorasAyuda": "Ils ont des sous-comptes et reçoivent quand même des écritures : le solde reste hors de leurs sous-comptes.",
+        "reglasTitulo": "Règles avec des comptes à corriger",
+        "reglasAyuda": "Tant qu’une règle pointe vers un compte de titre, inactif ou inexistant, ses documents restent en attente.",
+        "irReglas": "Aller aux règles comptables"
+      },
+      "lados": {
+        "debito": "Débit",
+        "credito": "Crédit",
+        "impuesto": "Taxe",
+        "descuento": "Remise"
+      },
+      "estadosCuenta": {
+        "inexistente": "Inexistant",
+        "inactiva": "Inactif",
+        "titulo": "Compte de titre"
+      }
+    }
+  },
+  "finanzasDocumentosR3": {
+    "bandeja": {
+      "titulo": "Facturation électronique",
+      "subtitulo": {
+        "activo": "Envois à l'administration fiscale (DIAN) · service GO Admin actif depuis le {fecha}",
+        "pendiente": "Envois à l'administration fiscale (DIAN) · service GO Admin en attente d'activation",
+        "suspendido": "Envois à l'administration fiscale (DIAN) · service GO Admin suspendu",
+        "movilActivo": "Service GO Admin · actif",
+        "movilPendiente": "Service GO Admin · non activé"
+      },
+      "migas": {
+        "finanzas": "Finances"
+      },
+      "servicioYResoluciones": "Service et résolutions",
+      "actualizar": "Actualiser",
+      "exportar": "Exporter",
+      "exportando": "Exportation…",
+      "archivoExportacion": "envois_dian",
+      "tabla": "Envois à la DIAN",
+      "sinNumero": "Sans numéro",
+      "sustantivo": {
+        "singular": "envoi",
+        "plural": "envois"
+      },
+      "avisos": {
+        "pendienteTitulo": "Votre compte n'est pas encore actif",
+        "pendienteDescripcion": "GO Admin active la facturation électronique de votre organisation. En attendant, ce que vous facturez en électronique est conservé ici comme retenu.",
+        "suspendidoTitulo": "Le service de facturation électronique est suspendu",
+        "suspendidoDescripcion": "Aucun document n'est envoyé à la DIAN. Contactez le support GO Admin pour le réactiver ; ce que vous facturez est conservé.",
+        "verPasos": "Voir les étapes d'activation",
+        "retenidosTitulo": "{count, plural, one {# document attend votre confirmation} other {# documents attendent votre confirmation}}",
+        "retenidosDescripcion": "Ils ont été enregistrés avant l'activation du service. Si vous les envoyez, la DIAN les émet à la date du jour ; sinon, ils sont annulés avec justificatif.",
+        "revisar": "Examiner"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des envois",
+        "enCola": "En file",
+        "enColaDetalle": "Envoyé en moins de 2 minutes",
+        "retenidos": "Retenus",
+        "retenidosDetalle": "Attendent votre confirmation",
+        "retenidosPendiente": "Attendent l'activation du service",
+        "aceptadosMes": "Acceptés · {mes}",
+        "exito": "{pct} % de réussite",
+        "rechazados": "Rejetés",
+        "rechazadosDetalle": "Corrigez et renvoyez"
+      },
+      "pestanas": {
+        "etiqueta": "Envois par statut",
+        "todos": "Tous",
+        "atender": "À traiter",
+        "aceptados": "Acceptés",
+        "radian": "Reçus (RADIAN) · phase 2",
+        "radianMotivo": "Les événements des factures reçues (RADIAN) arrivent en phase 2 : l'onglet n'a pas encore d'actions."
+      },
+      "buscar": {
+        "placeholder": "Rechercher par numéro, client ou code unique (CUFE)",
+        "etiqueta": "Rechercher des envois"
+      },
+      "filtros": {
+        "periodo": "Période",
+        "tipo": "Type de document",
+        "estado": "Statut",
+        "sucursal": "Succursale",
+        "todos": "Tous",
+        "todasSucursales": "Toutes les succursales",
+        "limpiar": "Effacer les filtres",
+        "verN": "{count, plural, one {Voir # envoi} other {Voir # envois}}",
+        "chipPeriodo": "Période : {rango}",
+        "chipEstado": "Statut : {estado}",
+        "chipTipo": "Type : {tipo}",
+        "chipSucursal": "Succursale : {sucursal}"
+      },
+      "columnas": {
+        "documento": "Document",
+        "tipo": "Type",
+        "tercero": "Tiers",
+        "total": "Total",
+        "estado": "Statut",
+        "estadoDian": "Statut DIAN",
+        "intentos": "Tentatives",
+        "respuesta": "Dernière réponse",
+        "fecha": "Date",
+        "proximoPaso": "Prochaine étape",
+        "codigoUnico": "Code unique (CUFE)"
+      },
+      "tipos": {
+        "invoice": "Facture de vente",
+        "credit_note": "Avoir",
+        "debit_note": "Note de débit",
+        "support_document": "Document justificatif"
+      },
+      "estados": {
+        "retenido": "Retenu",
+        "en_cola": "En file",
+        "reintento": "Erreur",
+        "procesando": "Envoi en cours",
+        "enviado": "Envoyé",
+        "aceptado": "Accepté DIAN",
+        "rechazado": "Rejeté DIAN",
+        "error": "Non envoyé",
+        "cancelado": "Annulé"
+      },
+      "intentos": {
+        "ninguno": "Aucune tentative",
+        "de": "{n} sur {max} tentatives"
+      },
+      "respuesta": {
+        "retenido": "Enregistré avant l'activation du service",
+        "aceptado": "Accepté par la DIAN",
+        "cancelado": "Envoi annulé",
+        "enCola": "En file d'envoi",
+        "esperando": "En attente de la réponse de la DIAN",
+        "servicioNoActivo": "Le service de facturation électronique n'est pas actif",
+        "datosIncompletos": "Il manque des données au document pour l'envoyer",
+        "esperandoFactura": "En attente de l'acceptation de la facture d'origine par la DIAN",
+        "sinRespuesta": "La DIAN n'a pas répondu ; nouvel essai automatique",
+        "rechazo": "La DIAN a rejeté le document",
+        "error": "Le document n'a pas pu être envoyé"
+      },
+      "paso": {
+        "confirmar": "Votre confirmation",
+        "corregir": "Corriger et renvoyer",
+        "envio_pronto": "Envoyé en moins de 2 minutes",
+        "esperando": "En attente de la DIAN",
+        "reintentar": "Vérifier et réessayer",
+        "reintentoA": "Nouvel essai à {hora}",
+        "reintentoPronto": "Nouvel essai automatique"
+      },
+      "rapidas": {
+        "enviarHoy": "Envoyer aujourd'hui",
+        "corregir": "Corriger",
+        "reintentar": "Réessayer",
+        "pdfXml": "PDF et XML"
+      },
+      "acciones": {
+        "verDetalle": "Voir le détail de l'envoi",
+        "verDocumento": "Voir le document",
+        "descargarPdf": "Télécharger le PDF officiel",
+        "descargarXml": "Télécharger le XML",
+        "enviarHoy": "Envoyer à la date du jour",
+        "reintentar": "Réessayer",
+        "cancelar": "Annuler l'envoi"
+      },
+      "motivos": {
+        "servicio_inactivo": "Il pourra être envoyé quand GO Admin activera le service",
+        "sin_permiso": "Vous avez besoin de l'autorisation d'approuver en Finances"
+      },
+      "lote": {
+        "enviarHoy": "Envoyer les retenus aujourd'hui ({n})",
+        "reintentar": "Réessayer ({n})",
+        "cancelar": "Annuler les envois ({n})",
+        "maximo": "Maximum {n} documents par envoi",
+        "sinRetenidos": "La sélection ne contient aucun document retenu que vous pouvez envoyer",
+        "sinReintentables": "La sélection ne contient aucun envoi à réessayer",
+        "sinCancelables": "La sélection ne contient aucun envoi annulable"
+      },
+      "liberar": {
+        "titulo": "{count, plural, one {Envoyer # document retenu} other {Envoyer # documents retenus}}",
+        "descripcion": "Ils ont été enregistrés avant l'activation du service. À l'envoi, la DIAN les émet à la date du jour.",
+        "avisoTitulo": "La DIAN les émet à la date du jour ({fecha})",
+        "avisoDescripcion": "La date de la vente ne peut pas être utilisée. Si vous ne les envoyez pas, ils sont annulés avec justificatif et la vente reste valable comme document interne.",
+        "confirmar": "Envoyer daté du {fecha}",
+        "cancelar": "Annuler",
+        "del": "du {fecha}"
+      },
+      "cancelarEnvio": {
+        "titulo": "{count, plural, one {Annuler l'envoi ?} other {Annuler # envois ?}}",
+        "descripcion": "Le document n'est pas envoyé à la DIAN et reste un document interne. Vous pourrez réessayer plus tard.",
+        "confirmar": "Annuler l'envoi",
+        "volver": "Retour"
+      },
+      "toast": {
+        "reintentados": "{count, plural, one {Envoi programmé pour un nouvel essai} other {# envois programmés pour un nouvel essai}}",
+        "reintentadosAyuda": "Envoyé en moins de 2 minutes.",
+        "errorReintentar": "{count, plural, one {Un envoi n'a pas pu être relancé} other {# envois n'ont pas pu être relancés}}",
+        "liberados": "{count, plural, one {Document envoyé à la DIAN} other {# documents envoyés à la DIAN}}",
+        "liberadosFallidos": "{count, plural, one {Un document n'a pas pu être envoyé} other {# documents n'ont pas pu être envoyés}}",
+        "errorLiberar": "Les documents n'ont pas pu être envoyés",
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
+        "cancelados": "{count, plural, one {Envoi annulé} other {# envois annulés}}",
+        "errorCancelar": "{count, plural, one {Un envoi n'a pas pu être annulé} other {# envois n'ont pas pu être annulés}}",
+        "errorDescarga": "Impossible de télécharger le {tipo}",
+        "errorExportar": "Échec de l'exportation"
+      },
+      "vacio": {
+        "titulo": "Aucun document envoyé pour l'instant",
+        "descripcion": "Quand vous facturez en électronique, chaque envoi à la DIAN apparaît ici avec sa réponse.",
+        "nadaPorAtender": "Rien à traiter : aucun envoi retenu, rejeté ou en erreur."
+      },
+      "vacioServicio": {
+        "titulo": "Vous n'émettez pas encore de factures électroniques",
+        "descripcion": "Quand GO Admin activera votre compte, ce que vous facturez en électronique sera envoyé automatiquement à la DIAN et apparaîtra ici.",
+        "descripcionRetenidos": "Quand GO Admin activera votre compte, ce que vous facturez en électronique sera envoyé automatiquement à la DIAN et apparaîtra ici. {count, plural, one {Votre document retenu est toujours conservé.} other {Vos # documents retenus sont toujours conservés.}}",
+        "verRetenidos": "Voir les retenus"
+      },
+      "sinResultados": "Aucun envoi ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Impossible de charger les envois",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès à la facturation électronique",
+        "descripcion": "Demandez à un administrateur l'autorisation de consulter les Finances."
+      },
+      "detalle": {
+        "cargando": "Chargement de l'envoi…",
+        "documentoDel": "document du {fecha}",
+        "quePaso": "Ce qui s'est passé",
+        "queHacer": "Que faire",
+        "queHacerCliente": "Corrigez les données du client (NIF, chiffre de contrôle, e-mail) dans sa fiche.",
+        "queHacerProveedor": "Corrigez les données du fournisseur (NIF, chiffre de contrôle, e-mail) dans sa fiche.",
+        "queHacerReenviar": "Revenez ici et appuyez sur « Renvoyer ». Il est envoyé avec la même numérotation.",
+        "queHacerError": "Vérifiez le document et appuyez sur « Réessayer ». Si l'erreur se répète, contactez le support GO Admin.",
+        "retenidoAvisoTitulo": "Si vous l'envoyez, la DIAN l'émet à la date du jour ({fecha})",
+        "retenidoAvisoDescripcion": "La date de la vente ne peut pas être utilisée. Si vous ne l'envoyez pas, il est annulé avec justificatif et la vente reste valable comme document interne.",
+        "retenidoAvisoPendiente": "Il pourra être envoyé quand GO Admin activera le service. En attendant, la vente reste valable comme document interne.",
+        "cancelarEnvio": "Annuler l'envoi",
+        "enviarHoy": "Envoyer à la date du jour",
+        "corregirCliente": "Corriger le client",
+        "corregirProveedor": "Corriger le fournisseur",
+        "reenviar": "Renvoyer",
+        "reintentar": "Réessayer",
+        "documentoAceptado": "Document accepté",
+        "pdfOficial": "PDF officiel",
+        "xml": "XML",
+        "numeroDian": "Numéro DIAN",
+        "codigoUnico": "Code unique (CUFE)",
+        "copiar": "Copier le code unique",
+        "copiado": "Code copié",
+        "validado": "Validé",
+        "notificaciones": "Notifications de la DIAN",
+        "tecnicos": "Détails techniques",
+        "codigo": "Code {codigo}",
+        "codigoTecnico": "Code",
+        "mensajeTecnico": "Message",
+        "intentos": "Tentatives",
+        "noEncontrado": "Envoi introuvable",
+        "error": "Impossible de charger l'envoi"
+      },
+      "linea": {
+        "creado": "Document créé",
+        "retenido": "Retenu",
+        "retenidoDetalle": "Le service de facturation électronique n'était pas actif. Aucun envoi n'a été tenté.",
+        "enviado": "Envoyé à la DIAN",
+        "aceptado": "Accepté par la DIAN",
+        "aceptadoDetalle": "Numéro {numero}",
+        "rechazado": "Rejeté par la DIAN",
+        "error": "Envoi impossible",
+        "reintentoManual": "Nouvel essai demandé",
+        "liberado": "Envoi autorisé",
+        "liberadoDetalle": "Émis à la date à laquelle la DIAN le valide.",
+        "cancelado": "Envoi annulé",
+        "envioDian": "Envoi à la DIAN",
+        "esperaConfirmacion": "Attend votre confirmation.",
+        "proximoIntento": "Prochain essai",
+        "respuestaDian": "Réponse de la DIAN"
+      }
+    },
+    "cotizaciones": {
+      "titulo": "Devis",
+      "migas": {
+        "finanzas": "Finances",
+        "ventas": "Ventes"
+      },
+      "estados": {
+        "draft": "Brouillon",
+        "sent": "Envoyé",
+        "accepted": "Accepté",
+        "rejected": "Refusé",
+        "expired": "Expiré",
+        "converted": "Converti"
+      },
+      "listado": {
+        "sustantivo": {
+          "singular": "devis",
+          "plural": "devis"
+        },
+        "todasLasSucursales": "Toutes les succursales",
+        "tambienCrm": "y compris les propositions du CRM",
+        "exportar": "Exporter",
+        "exportando": "Exportation…",
+        "exportarError": "Impossible d'exporter. Réessayez.",
+        "archivoExportacion": "devis",
+        "nueva": "Nouveau devis",
+        "buscar": "Rechercher par numéro, client ou NIF",
+        "buscarEtiqueta": "Rechercher des devis",
+        "vacio": {
+          "titulo": "Créez votre premier devis",
+          "descripcion": "Envoyez à votre client des prix et des conditions ; quand il accepte, convertissez-le en facture. Les devis se créent aussi depuis une opportunité du CRM."
+        },
+        "sinResultados": "Aucun devis ne correspond à la recherche ou aux filtres.",
+        "errorCarga": "Impossible de charger les devis.",
+        "sinPermiso": "Vous n'avez pas accès aux devis",
+        "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation de voir les finances ou de gérer les ventes."
+      },
+      "kpis": {
+        "etiqueta": "Résumé des devis",
+        "abiertas": "Ouverts",
+        "abiertasDetalle": "{valor} en brouillon et envoyés",
+        "porVencer": "Expirent dans 7 jours",
+        "vencidas": "Expirés sans réponse",
+        "vencidasDetalle": "Dupliquez-les pour les renouveler",
+        "sinVencidas": "Aucun expiré",
+        "conversion": "Convertis · {periodo}",
+        "conversionDetalle": "{convertidas} sur {enviadas} envoyés"
+      },
+      "columnas": {
+        "numero": "Numéro",
+        "cliente": "Client",
+        "documento": "Identifiant",
+        "emision": "Émission",
+        "validaHasta": "Valable jusqu'au",
+        "moneda": "Devise",
+        "total": "Total",
+        "estado": "Statut",
+        "vendedor": "Vendeur",
+        "oportunidad": "Opportunité"
+      },
+      "vigencia": {
+        "vencio": "{dias, plural, one {expiré il y a # jour} other {expiré il y a # jours}}",
+        "venceHoy": "expire aujourd'hui",
+        "venceEn": "{dias, plural, one {expire dans # jour} other {expire dans # jours}}"
+      },
+      "filtros": {
+        "periodo": "Période d'émission",
+        "periodoChip": "Émis : {rango}",
+        "estado": "Statut",
+        "estadoChip": "Statut : {estado}",
+        "todos": "Tous",
+        "abiertas": "Ouverts (brouillon et envoyés)",
+        "vigenciaEtiqueta": "Validité",
+        "porVencerCorto": "Bientôt expirés",
+        "vencidasCorto": "Expirés",
+        "vigencia": {
+          "por_vencer": "Expirent dans 7 jours",
+          "vencidas": "Expirés sans réponse"
+        },
+        "cliente": "Client",
+        "clienteChip": "Client : {nombre}",
+        "vendedor": "Vendeur",
+        "vendedorChip": "Vendeur : {nombre}",
+        "buscarVendedor": "Rechercher un vendeur",
+        "oportunidadEtiqueta": "Opportunité du CRM",
+        "conOportunidad": "Avec opportunité",
+        "sinOportunidad": "Sans opportunité",
+        "oportunidad": {
+          "con": "Avec opportunité du CRM",
+          "sin": "Sans opportunité du CRM"
+        },
+        "montoMin": "Total à partir de",
+        "montoMax": "Total jusqu'à",
+        "montoMinChip": "À partir de {monto}",
+        "montoMaxChip": "Jusqu'à {monto}",
+        "verN": "{count, plural, one {Voir {n} devis} other {Voir {n} devis}}",
+        "limpiar": "Effacer les filtres"
+      },
+      "acciones": {
+        "ver": "Voir le détail",
+        "enviar": "Envoyer",
+        "convertir": "Convertir",
+        "verFactura": "Voir la facture",
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "duplicada": "Le devis {numero} a été créé en brouillon.",
+        "descargarPdf": "Télécharger le PDF",
+        "imprimir": "Imprimer",
+        "marcarRechazada": "Marquer refusé",
+        "eliminarBorrador": "Supprimer le brouillon",
+        "marcarEnviada": "Marquer envoyé (sans e-mail)"
+      },
+      "estado": {
+        "aceptada": "Le devis {numero} est accepté.",
+        "rechazada": "Le devis {numero} est refusé.",
+        "enviada": "Le devis {numero} est envoyé."
+      },
+      "eliminar": {
+        "titulo": "Supprimer le devis {numero} ?",
+        "descripcion": "Le devis en brouillon est supprimé et ne peut pas être récupéré.",
+        "confirmar": "Supprimer le devis",
+        "hecho": "Le devis {numero} a été supprimé."
+      },
+      "rechazar": {
+        "titulo": "Marquer le devis {numero} comme refusé ?",
+        "descripcion": "Le client ne l'a pas accepté. Un devis refusé ne se modifie plus et ne se convertit pas en facture ; vous pouvez le dupliquer pour en faire un autre.",
+        "confirmar": "Marquer refusé"
+      },
+      "enviar": {
+        "titulo": "Envoyer le devis {numero}",
+        "descripcion": "Il est envoyé par e-mail avec le PDF du devis en pièce jointe. S'il est en brouillon, il passe à envoyé.",
+        "enviada": "Devis envoyé",
+        "enviadaA": "Envoyé à {destino} avec le PDF en pièce jointe.",
+        "enviadaSinAdjunto": "Envoyé à {destino} sans le PDF : il n'a pas pu être généré pour le moment."
+      },
+      "convertir": {
+        "titulo": "Convertir {numero} en facture",
+        "lineas": "{count, plural, one {# ligne} other {# lignes}}",
+        "sucursal": "Succursale de la facture",
+        "sucursalAyuda": "La numérotation vient de la résolution de cette succursale lors de l'émission.",
+        "eligeSucursal": "Choisissez la succursale de la facture.",
+        "queSeCopia": "Ce qui est copié",
+        "clienteCondiciones": "Client et conditions",
+        "plazo": "Délai de {dias} jours",
+        "contado": "Comptant",
+        "vendedor": "vendeur {nombre}",
+        "lineasEtiqueta": "Lignes",
+        "lineasConDescuento": "{count, plural, one {#, avec sa remise} other {#, avec leurs remises}}",
+        "impuesto": "Taxe",
+        "total": "Total",
+        "nacerBorrador": "La facture naît en brouillon",
+        "nacerBorradorDetalle": "Vérifiez-la et émettez-la depuis son détail : c'est là que le numéro de la résolution est attribué, que les numéros de série sont vendus et, si elle est électronique, qu'elle est envoyée à la DIAN. Le devis devient « Converti » et lié.",
+        "confirmar": "Créer la facture en brouillon"
+      },
+      "detalle": {
+        "titulo": "Devis {numero}",
+        "cargando": "Chargement du devis…",
+        "procesando": "Traitement…",
+        "sinCliente": "Sans client",
+        "noEncontrada": "Devis introuvable",
+        "noEncontradaDescripcion": "Le devis recherché n'existe pas dans cette organisation ou a été supprimé.",
+        "volverListado": "Retour aux devis",
+        "errorCarga": "Impossible de charger le devis.",
+        "validaHasta": "valable jusqu'au {fecha}",
+        "vencioEl": "expiré le {fecha}",
+        "impuesto": "Taxe",
+        "acciones": {
+          "enviar": "Envoyer",
+          "reenviar": "Renvoyer",
+          "convertir": "Convertir en facture",
+          "ver_factura": "Voir la facture",
+          "duplicar": "Dupliquer",
+          "renovar": "Dupliquer valable à partir d'aujourd'hui",
+          "editar": "Modifier",
+          "aceptar": "Marquer accepté",
+          "rechazar": "Marquer refusé",
+          "eliminar": "Supprimer le brouillon",
+          "pdf": "Télécharger le PDF",
+          "imprimir": "Imprimer",
+          "marcar_enviada": "Marquer envoyé (sans e-mail)"
+        },
+        "avisoVencida": {
+          "titulo": "Expiré le {fecha}",
+          "descripcion": "Un devis expiré ne se convertit pas en facture. Dupliquez-le valable à partir d'aujourd'hui : les lignes et les prix sont conservés ; vérifiez-les avant d'envoyer."
+        },
+        "avisoConvertida": {
+          "titulo": "Converti en facture {numero}",
+          "descripcion": "La facture est née en brouillon avec ces lignes et ces taxes. Vérifiez-la et émettez-la depuis son détail."
+        },
+        "clienteCondiciones": "Client et conditions",
+        "cliente": "Client",
+        "emision": "Émission",
+        "validaHastaEtiqueta": "Valable jusqu'au",
+        "vigenciaVencio": "{fecha} · {dias, plural, one {expiré il y a # jour} other {expiré il y a # jours}}",
+        "vigenciaHoy": "{fecha} · expire aujourd'hui",
+        "vigenciaVenceEn": "{fecha} · {dias, plural, one {expire dans # jour} other {expire dans # jours}}",
+        "plazo": "Délai de paiement",
+        "dias": "{dias} jours",
+        "contado": "Comptant",
+        "sucursal": "Succursale",
+        "vendedor": "Vendeur",
+        "moneda": "Devise",
+        "lineas": "Lignes du devis",
+        "descuentos": "Remises",
+        "terminos": "Conditions générales",
+        "notas": "Notes internes",
+        "respuesta": {
+          "titulo": "Réponse du client",
+          "descripcion": "Le client a-t-il répondu ? Indiquez-le pour faire avancer l'opportunité du CRM.",
+          "rechazar": "Refuser"
+        },
+        "cadena": {
+          "titulo": "Chaîne",
+          "oportunidad": "Opportunité du CRM",
+          "factura": "Facture",
+          "alConvertir": "À la conversion",
+          "noSeConvierte": "Non convertible : il a expiré",
+          "rechazada": "Non convertible : il a été refusé"
+        },
+        "historial": {
+          "titulo": "Historique",
+          "creada": "Créé",
+          "creadaDesde": "Créé depuis l'opportunité « {oportunidad} »",
+          "enviada": "Envoyé à {destino}",
+          "vista": "{destino} a ouvert l'e-mail",
+          "convertida": "Converti en facture {numero}"
+        }
+      },
+      "formulario": {
+        "tituloNueva": "Nouveau devis",
+        "tituloEditar": "Modifier le devis {numero}",
+        "sinGuardar": "Non enregistré",
+        "guardarBorrador": "Enregistrer le brouillon",
+        "guardarCambios": "Enregistrer les modifications",
+        "guardarYEnviar": "Enregistrer et envoyer",
+        "creada": "Le devis {numero} a été créé.",
+        "guardada": "Les modifications du devis {numero} ont été enregistrées.",
+        "errorGuardar": "Impossible d'enregistrer le devis. Réessayez.",
+        "errorCarga": "Impossible de charger le formulaire.",
+        "total": "Total",
+        "impuestoLinea": "+ {importe} de taxe",
+        "impuestoIncluido": "Inclut {importe} de taxe",
+        "duplicarLinea": "Dupliquer la ligne",
+        "lineasVacio": "Aucune ligne pour l'instant",
+        "lineasVacioDescripcion": "Recherchez des produits ou ajoutez un article manuel.",
+        "buscarProducto": "Rechercher un produit",
+        "itemManual": "Article manuel",
+        "noEditable": {
+          "titulo": "Le devis {numero} ne peut plus être modifié",
+          "descripcion": "Seuls les devis en brouillon ou envoyés se modifient. Depuis son détail, vous pouvez le dupliquer pour en faire un nouveau.",
+          "verCotizacion": "Voir le devis"
+        },
+        "atajos": {
+          "cliente": "Choisir le client",
+          "productos": "Rechercher des produits",
+          "manual": "Ajouter un article manuel",
+          "guardar": "Enregistrer le brouillon"
+        },
+        "secciones": {
+          "datos": "Données du devis",
+          "cliente": "Client",
+          "lineas": "Lignes ({n})",
+          "lineasEtiqueta": "Lignes du devis",
+          "terminos": "Conditions et notes",
+          "impuestos": "Taxes"
+        },
+        "campos": {
+          "sucursal": "Succursale",
+          "elegirSucursal": "Choisissez la succursale",
+          "emision": "Émission",
+          "validaHasta": "Valable jusqu'au",
+          "validaHastaAyuda": "Après cette date, le devis expire et ne peut plus être converti en facture.",
+          "atajosVigencia": "Validité rapide",
+          "dias": "{dias} jours",
+          "plazo": "Délai de paiement",
+          "contado": "Comptant",
+          "formaPago": "Mode de paiement",
+          "sinDefinir": "Non défini",
+          "moneda": "Devise",
+          "vendedor": "Vendeur",
+          "elegirVendedor": "Choisissez le vendeur",
+          "buscarVendedor": "Rechercher un vendeur",
+          "sinVendedor": "Sans vendeur",
+          "oportunidad": "Opportunité du CRM",
+          "oportunidadAyuda": "Si le devis n'a pas encore de lignes, les produits de l'opportunité sont repris.",
+          "sinOportunidad": "Sans opportunité",
+          "buscarOportunidad": "Rechercher une opportunité",
+          "terminosCondiciones": "Conditions générales",
+          "terminosCondicionesAyuda": "Le client les voit sur le PDF : acompte, livraison, garantie.",
+          "notas": "Notes internes",
+          "notasAyuda": "Uniquement pour votre équipe.",
+          "preciosIncluidos": "Prix taxes incluses",
+          "preciosIncluidosAyuda": "Activez-le si les prix des lignes incluent déjà la taxe."
+        },
+        "errores": {
+          "cliente": "Choisissez le client.",
+          "sucursal": "Choisissez la succursale.",
+          "lineas": "Ajoutez au moins une ligne.",
+          "vigencia": "La validité ne peut pas être antérieure à l'émission.",
+          "linea": "Vérifiez une ligne : {detalle}",
+          "descripcion": "la description manque",
+          "cantidad": "la quantité doit être supérieure à zéro",
+          "precio": "le prix n'est pas valide",
+          "descuento": "la remise ne peut pas dépasser le montant de la ligne"
+        }
+      }
+    },
+    "notas": {
+      "migas": {
+        "finanzas": "Finances",
+        "facturacion": "Facturation",
+        "notas": "Avoirs et notes de débit"
+      },
+      "titulo": "Avoirs et notes de débit",
+      "subtituloSufijo": "avoirs et notes de débit sur vos factures",
+      "pestanas": {
+        "etiqueta": "Type de note",
+        "credito": "Avoirs",
+        "debito": "Débit"
+      },
+      "listado": {
+        "nuevaCredito": "Nouvel avoir",
+        "nuevaDebito": "Nouvelle note de débit",
+        "exportar": "Exporter",
+        "exportando": "Exportation…",
+        "exportarError": "La liste n'a pas pu être exportée.",
+        "archivo": "notes",
+        "todasLasSucursales": "Toutes les succursales",
+        "todasLasFechas": "Toutes les dates",
+        "truncado": "Il y a plus de notes que ce qui peut être compté ici : réduisez la période pour des chiffres exacts.",
+        "kpis": {
+          "etiqueta": "Résumé des notes",
+          "acreditado": "Crédité sur la période",
+          "debitado": "Facturé sur la période",
+          "notas": "{count, plural, =0 {Aucune note} one {# note} other {# notes}}",
+          "excedente": "Excédents en avoir client",
+          "conExcedente": "{count, plural, =0 {Aucune note n'a laissé d'avoir client} one {# note sur factures payées} other {# notes sur factures payées}}",
+          "anuladas": "Annulées",
+          "anuladasDetalle": "Avec leur contrepassation",
+          "sinEnviar": "Non envoyées à la DIAN",
+          "sinEnviarDetalle": "Seules comptent celles des factures acceptées",
+          "porCobrar": "À encaisser",
+          "porCobrarDetalle": "Solde des notes de débit"
+        },
+        "buscar": {
+          "placeholder": "Rechercher par numéro, facture ou client",
+          "etiqueta": "Rechercher des notes"
+        },
+        "filtros": {
+          "periodo": "Période",
+          "todasLasFechas": "Toutes les dates",
+          "estado": "Statut",
+          "dian": "DIAN",
+          "cliente": "Client",
+          "clienteChip": "Client choisi",
+          "todos": "Tous",
+          "limpiar": "Effacer les filtres",
+          "verN": "{count, plural, =0 {Aucune note} one {Voir # note} other {Voir # notes}}"
+        },
+        "columnas": {
+          "numero": "Numéro",
+          "factura": "Facture",
+          "cliente": "Client",
+          "fecha": "Date",
+          "concepto": "Motif DIAN",
+          "valor": "Montant",
+          "saldo": "Solde",
+          "estado": "Statut",
+          "dian": "DIAN",
+          "sucursal": "Succursale",
+          "motivo": "Raison"
+        },
+        "sustantivo": {
+          "singular": "note",
+          "plural": "notes",
+          "genero": "femenino"
+        },
+        "detalleConcepto": {
+          "productos": "Avec produits",
+          "sinMercancia": "Sans marchandise",
+          "excedente": "Excédent en avoir client",
+          "anulada": "Annulée : {motivo}",
+          "anuladaSinMotivo": "Annulée",
+          "porCobrar": "Solde {saldo}"
+        },
+        "vacio": {
+          "tituloCredito": "Aucun avoir pour l'instant",
+          "descripcionCredito": "Un avoir réduit ou annule une facture émise : retours, remises ou erreurs de prix.",
+          "tituloDebito": "Aucune note de débit pour l'instant",
+          "descripcionDebito": "Elles s'émettent depuis une facture pour facturer des intérêts, des frais ou un ajustement de prix."
+        },
+        "sinResultados": "Aucune note ne correspond à la recherche ou aux filtres.",
+        "errorCarga": "Les notes n'ont pas pu être chargées.",
+        "sinNumero": "Sans numéro",
+        "sinCliente": "Sans client",
+        "acciones": {
+          "ver": "Voir le détail",
+          "pdf": "Voir le PDF",
+          "imprimir": "Imprimer",
+          "verFactura": "Voir la facture",
+          "anular": "Annuler",
+          "registrarPago": "Enregistrer un paiement"
+        }
+      },
+      "estados": {
+        "issued": "Émise",
+        "void": "Annulée",
+        "paid": "Payée",
+        "partial": "Paiement partiel",
+        "draft": "Brouillon"
+      },
+      "dian": {
+        "no_aplica": "Non applicable",
+        "espera_factura": "Attend la facture",
+        "sin_enviar": "Non envoyée",
+        "retenido": "Retenue",
+        "en_cola": "En file d'attente",
+        "en_envio": "En cours d'envoi",
+        "aceptada": "Acceptée DIAN",
+        "rechazada": "Rejetée",
+        "error": "En erreur"
+      },
+      "dianDetalle": {
+        "titulo": "Facturation électronique",
+        "no_aplica": "{factura} n'est pas électronique : cette note n'est donc pas envoyée à la DIAN.",
+        "espera_factura": "{factura} n'a pas encore été acceptée par la DIAN : la note part quand la facture le sera.",
+        "sin_enviar": "{factura} a été acceptée par la DIAN et cette note n'a pas encore été envoyée.",
+        "retenido": "Elle est enregistrée et sera envoyée quand GO Admin activera votre service de facturation électronique.",
+        "en_cola": "En file d'attente : elle part dans les prochaines minutes.",
+        "en_envio": "Elle est en cours d'envoi à la DIAN. Attendez la réponse.",
+        "aceptada": "La DIAN a accepté la note.",
+        "rechazada": "La DIAN a rejeté la note. Vérifiez le motif, corrigez et renvoyez.",
+        "error": "L'envoi a échoué. Il est relancé automatiquement ou vous pouvez réessayer maintenant.",
+        "estado": "Statut",
+        "numero": "Numéro DIAN",
+        "cude": "Code unique (CUDE)",
+        "motivo": "Réponse",
+        "actualizado": "Dernière mise à jour",
+        "enviar": "Envoyer à la DIAN",
+        "reintentar": "Relancer l'envoi",
+        "enviando": "Envoi…",
+        "enviada": "La note est entrée dans la file de la DIAN.",
+        "errorEnvio": "La note n'a pas pu être envoyée à la DIAN.",
+        "debitoPendiente": "L'envoi des notes de débit à la DIAN sera activé quand la file de facturation le prendra en charge. La note est enregistrée."
+      },
+      "conceptos": {
+        "credito": {
+          "1": "1 · Retour partiel",
+          "2": "2 · Annulation de facture électronique",
+          "3": "3 · Remise ou rabais",
+          "4": "4 · Ajustement de prix",
+          "5": "5 · Autres"
+        },
+        "debito": {
+          "1": "1 · Intérêts",
+          "2": "2 · Frais de recouvrement",
+          "3": "3 · Changement de valeur",
+          "4": "4 · Autres"
+        }
+      },
+      "detalle": {
+        "tituloCredito": "Avoir {numero}",
+        "tituloDebito": "Note de débit {numero}",
+        "sobre": "sur {factura}",
+        "cargando": "Chargement de la note…",
+        "noEncontrada": "Nous n'avons pas trouvé cette note",
+        "noEncontradaDescripcion": "Elle n'existe pas ou appartient à une autre organisation.",
+        "volver": "Retour aux notes",
+        "sinPermiso": "Vous n'avez pas l'autorisation de voir les notes",
+        "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation de voir les finances.",
+        "errorCarga": "La note n'a pas pu être chargée.",
+        "origenCredito": "Facture d'origine et raison",
+        "origenDebito": "Facture d'origine et motif",
+        "factura": "Facture",
+        "facturaValor": "{numero} · {fecha} · {total}",
+        "facturaAceptada": "{numero} · {fecha} · acceptée par la DIAN",
+        "conceptoDian": "Motif DIAN",
+        "motivo": "Raison",
+        "saldoFactura": "Solde de la facture",
+        "excedente": "Excédent",
+        "excedenteValor": "{monto} en avoir client",
+        "devolucionValor": "{monto} remboursés au client",
+        "inventario": "Stock",
+        "inventarioValor": "{count, plural, one {# produit remis en stock} other {# produits remis en stock}}",
+        "sinInventario": "Aucune marchandise remise en stock",
+        "vence": "Échéance",
+        "lineas": "Lignes de la note",
+        "impuesto": "Taxe",
+        "totalesCredito": "Totaux de la note",
+        "totalesDebito": "Totaux",
+        "cliente": "Client",
+        "sinCliente": "Sans client",
+        "cadena": "Chaîne",
+        "cartera": "Compte client",
+        "saldoAFavor": "Avoir client",
+        "devolucion": "Remboursement",
+        "asiento": "Écriture",
+        "pago": "Paiement",
+        "pagos": "Paiements",
+        "sinPagos": "Aucun paiement pour l'instant.",
+        "historial": "Historique",
+        "anularTitulo": "Annuler",
+        "anularTextoCredito": "Contrepasse l'écriture, le stock et l'avoir client en une transaction. Demande une raison et l'autorisation d'annulation.",
+        "anularTextoDebito": "Contrepasse l'écriture et annule le compte client. Demande une raison et l'autorisation d'annulation.",
+        "anularBotonCredito": "Annuler l'avoir",
+        "anularBotonDebito": "Annuler la note de débit",
+        "descargarPdf": "Télécharger le PDF",
+        "imprimir": "Imprimer",
+        "verPdf": "Voir le PDF",
+        "verFactura": "Voir la facture",
+        "verSaldoAFavor": "Voir l'avoir client",
+        "registrarPago": "Enregistrer un paiement",
+        "pdfError": "Le PDF n'a pas pu être téléchargé.",
+        "pdfDebitoPendiente": "Le PDF de la note de débit arrive avec son modèle dans le moteur de documents.",
+        "enviarPendiente": "L'envoi des notes par e-mail arrive avec la boîte d'envoi de documents."
+      },
+      "anular": {
+        "tituloCredito": "Annuler l'avoir {numero}",
+        "tituloDebito": "Annuler la note de débit {numero}",
+        "descripcion": "La note sera annulée. Cette action est irréversible.",
+        "confirmar": "Annuler la note",
+        "hecho": "Note annulée",
+        "hechoDescripcion": "La note {numero} a été annulée.",
+        "consecuenciasTitulo": "En annulant",
+        "consecuencias": {
+          "factura_vuelve": "La facture {factura} doit de nouveau ce que la note avait déduit.",
+          "asiento": "L'écriture est contrepassée.",
+          "inventario": "Les produits remis en stock sortent à nouveau du stock.",
+          "saldo_a_favor": "L'avoir client de {monto} est annulé.",
+          "devolucion": "Le remboursement au client est annulé.",
+          "cartera_nd": "Le compte client de la note est annulé."
+        },
+        "rapidos": {
+          "error": "Erreur à l'émission de la note",
+          "duplicada": "Note en double",
+          "cliente": "Le client n'a pas accepté l'ajustement"
+        },
+        "bloqueadoTitulo": "Cette note ne peut pas être annulée",
+        "bloqueadoSubtitulo": "{numero} · acceptée par la DIAN",
+        "porQue": "Pourquoi",
+        "bloqueos": {
+          "ya_anulada": "La note est déjà annulée.",
+          "aceptada_dian": "Une note acceptée par la DIAN ne s'annule pas dans le système.",
+          "aceptada_dian_salida_credito": "Pour annuler son effet, émettez une note de débit sur {factura} du même montant.",
+          "aceptada_dian_salida_debito": "Pour annuler son effet, émettez un avoir sur la note de débit.",
+          "en_envio_dian": "Si la note est en cours d'envoi, attendez la réponse de la DIAN.",
+          "con_pagos": "La note de débit a des paiements : annulez-les d'abord.",
+          "sin_permiso": "Vous n'avez pas l'autorisation d'annuler des notes."
+        },
+        "emitirNotaDebito": "Émettre une note de débit",
+        "cerrar": "Fermer",
+        "errores": {
+          "error_desconocido": "La note n'a pas pu être annulée. Réessayez.",
+          "sin_permiso": "Vous n'avez pas l'autorisation d'annuler des notes.",
+          "nota_no_encontrada": "La note n'existe pas ou appartient à une autre organisation.",
+          "motivo_obligatorio": "Indiquez la raison (au moins 5 caractères).",
+          "nota_aceptada_dian": "La DIAN a déjà accepté cette note : elle ne s'annule pas.",
+          "nota_en_envio_dian": "La note est en cours d'envoi à la DIAN : attendez la réponse.",
+          "nota_con_pagos": "La note de débit a des paiements : annulez-les d'abord.",
+          "nota_debito_no_disponible": "La note de débit n'est pas encore active dans cette installation."
+        }
+      },
+      "nueva": {
+        "tituloCredito": "Nouvel avoir",
+        "tituloDebito": "Nouvelle note de débit",
+        "descripcion": "Choisissez la facture émise sur laquelle porte la note.",
+        "factura": "Facture",
+        "buscarPlaceholder": "Rechercher par numéro, client ou NIT",
+        "titulo": "Factures émises",
+        "vacio": "Tapez pour rechercher une facture.",
+        "sinResultados": "Aucune facture émise ne correspond.",
+        "error": "Les factures n'ont pas pu être recherchées.",
+        "cambiar": "Changer de facture",
+        "quitar": "Retirer la facture",
+        "continuar": "Continuer",
+        "cancelar": "Annuler",
+        "elegirPrimero": "Choisissez une facture",
+        "saldo": "Solde {saldo}",
+        "meta": "{fecha} · {total}"
+      },
+      "notaDebito": {
+        "titulo": "Note de débit sur {numero}",
+        "subtitulo": "{cliente} · solde {saldo}",
+        "subtituloAceptada": "{cliente} · facture acceptée par la DIAN · solde {saldo}",
+        "cargando": "Chargement de la facture…",
+        "errorCarga": "La facture n'a pas pu être chargée.",
+        "concepto": "Motif DIAN",
+        "conceptoPlaceholder": "Choisissez le motif",
+        "motivo": "Raison",
+        "motivoPlaceholder": "Pourquoi ce montant est facturé",
+        "lineas": {
+          "etiqueta": "Lignes à facturer",
+          "descripcion": "Description",
+          "descripcionPlaceholder": "Ex. : Frais de recouvrement",
+          "cantidad": "Qté",
+          "valorUnitario": "Prix unit.",
+          "impuesto": "Taxe",
+          "total": "Total",
+          "sinImpuesto": "Sans taxe",
+          "agregar": "Ajouter une ligne",
+          "quitar": "Retirer la ligne {n}",
+          "manual": "Article manuel"
+        },
+        "subtotal": "Sous-total",
+        "total": "Total de la note de débit",
+        "quePasaTitulo": "Ce qui se passe à l'émission",
+        "quePasa": "Un compte client propre de {total} est créé avec le même délai que la facture et se paie avec « Enregistrer un paiement ». {factura} ne change pas.",
+        "quePasaDian": "La facture a été acceptée par la DIAN : la note reste en attente d'envoi jusqu'à l'activation de la file des notes de débit.",
+        "quePasaSinDian": "La facture n'est pas électronique : la note n'est pas envoyée à la DIAN.",
+        "emitir": "Émettre la note de débit",
+        "emitiendo": "Émission…",
+        "emitida": "Note de débit {numero} émise",
+        "emitidaDetalle": "Total {total}. Son compte client est prêt.",
+        "noDisponibleTitulo": "Note de débit en attente d'activation",
+        "noDisponible": "La note de débit est conçue, mais sa fonction en base de données n'est pas encore active. Quand GO Admin l'activera, vous pourrez l'émettre d'ici.",
+        "noAdmite": "La note de débit ne s'émet que sur une facture émise et valide.",
+        "sinImpuestos": "L'organisation n'a pas de taxes configurées : les lignes seront sans taxe.",
+        "faltan": {
+          "concepto": "Choisissez le motif DIAN.",
+          "motivo": "Indiquez la raison (au moins 5 caractères).",
+          "lineas": "Ajoutez au moins une ligne avec description, quantité et prix.",
+          "lineaIncompleta": "Complétez ou retirez les lignes à moitié remplies."
+        },
+        "errores": {
+          "error_desconocido": "La note de débit n'a pas pu être émise. Réessayez.",
+          "datos_invalidos": "Vérifiez les données de la note.",
+          "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+          "sin_permiso": "Vous n'avez pas l'autorisation d'émettre des notes de débit.",
+          "factura_no_encontrada": "La facture n'existe pas ou appartient à une autre organisation.",
+          "nota_no_encontrada": "La note n'existe pas ou appartient à une autre organisation.",
+          "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale de la facture.",
+          "clave_idempotencia_invalida": "Rouvrez la boîte de dialogue et réessayez.",
+          "concepto_invalido": "Choisissez un motif DIAN valide.",
+          "motivo_obligatorio": "Indiquez la raison (au moins 5 caractères).",
+          "documento_invalido": "Elle ne s'émet que sur une facture de vente.",
+          "factura_borrador": "La facture est un brouillon : émettez-la d'abord.",
+          "ya_anulada": "La facture est annulée.",
+          "sin_lineas": "Ajoutez au moins une ligne.",
+          "demasiadas_lineas": "La note accepte jusqu'à 50 lignes.",
+          "linea_invalida": "Vérifiez les lignes : description, quantité et prix supérieurs à zéro.",
+          "impuesto_invalido": "Une des taxes n'est plus active. Choisissez-en une autre.",
+          "monto_invalido": "Le total de la note doit être supérieur à zéro.",
+          "sin_numeracion": "La succursale n'a pas de numérotation de notes de débit en vigueur. Configurez-la dans Résolutions et numérotation.",
+          "nota_aceptada_dian": "La DIAN a déjà accepté cette note.",
+          "nota_en_envio_dian": "La note est en cours d'envoi à la DIAN.",
+          "nota_con_pagos": "La note de débit a des paiements.",
+          "nota_debito_no_disponible": "La note de débit n'est pas encore active dans cette installation."
+        }
+      }
+    },
+    "resoluciones": {
+      "titulo": "Résolutions et numérotation",
+      "descripcion": "Plages autorisées par la DIAN, par type de document et succursale",
+      "sucursal": "Succursale à synchroniser",
+      "sincronizar": "Synchroniser avec le fournisseur",
+      "sincronizadas": "Plages synchronisées",
+      "resumenSincronizacion": "{importados} importées, {desactivados} désactivées.",
+      "motivos": {
+        "eligeSucursal": "Choisissez la succursale"
+      },
+      "servicio": {
+        "linea": "Service de facturation électronique GO Admin :",
+        "ver": "Voir le service",
+        "estados": {
+          "active": "Actif",
+          "pending_activation": "En attente d'activation",
+          "suspended": "Suspendu"
+        }
+      },
+      "avisos": {
+        "agotada": {
+          "titulo": "La numérotation {tipo} ({prefijo}) est épuisée",
+          "descripcion": "Il ne reste aucun numéro. Demandez une nouvelle résolution sur le portail de la DIAN et demandez à GO Admin de l'enregistrer."
+        },
+        "por_agotar": {
+          "titulo": "La numérotation {tipo} ({prefijo}) arrive à épuisement",
+          "descripcion": "{count, plural, one {Il reste # numéro.} other {Il reste # numéros.}} Demandez une nouvelle résolution sur le portail de la DIAN."
+        },
+        "vencida": {
+          "titulo": "La résolution {tipo} ({prefijo}) a expiré",
+          "descripcion": "Elle ne permet plus d'émettre. Demandez-en une nouvelle sur le portail de la DIAN."
+        },
+        "por_vencer": {
+          "titulo": "{count, plural, one {La résolution {tipo} ({prefijo}) expire dans # jour} other {La résolution {tipo} ({prefijo}) expire dans # jours}}",
+          "descripcion": "Demandez la nouvelle à temps sur le portail de la DIAN."
+        },
+        "otros": "{count, plural, one {Il y a # autre alerte dans le tableau.} other {Il y a # autres alertes dans le tableau.}}"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par préfixe ou numéro de résolution",
+        "etiqueta": "Rechercher des plages"
+      },
+      "alcance": {
+        "etiqueta": "Plages à afficher",
+        "activas": "Actives",
+        "todas": "Toutes"
+      },
+      "columnas": {
+        "tipo": "Type",
+        "prefijo": "Préfixe",
+        "resolucion": "Résolution",
+        "rango": "Plage",
+        "consumo": "Consommation",
+        "vigencia": "Validité",
+        "estado": "Statut"
+      },
+      "tipos": {
+        "invoice": "Facture électronique",
+        "credit_note": "Avoir",
+        "debit_note": "Note de débit",
+        "support_document": "Document justificatif"
+      },
+      "estados": {
+        "vigente": "En vigueur",
+        "por_agotar": "Bientôt épuisée",
+        "por_vencer": "Bientôt expirée",
+        "agotada": "Épuisée",
+        "vencida": "Expirée",
+        "inactiva": "Inactive",
+        "futura": "Pas encore en vigueur"
+      },
+      "todasSucursales": "Toutes les succursales",
+      "noRequiere": "Aucune résolution requise",
+      "numeracionPropia": "Numérotation propre",
+      "sinResolucionRegistrada": "Aucune résolution enregistrée",
+      "del": "du {fecha}",
+      "consumoQuedan": "{usados} sur {total} · il en reste {quedan}",
+      "consumoAgotado": "{usados} sur {total} · plus aucun",
+      "consumoDe": "Consommation de la plage {prefijo}",
+      "sinVencimiento": "Sans expiration",
+      "hasta": "Jusqu'au {fecha}",
+      "vencio": "Expirée le {fecha}",
+      "venceEn": "{count, plural, one {Expire dans # jour} other {Expire dans # jours}}",
+      "acciones": {
+        "editar": "Modifier la plage"
+      },
+      "vacio": {
+        "titulo": "Aucune plage de numérotation pour l'instant",
+        "descripcion": "Synchronisez une succursale avec le fournisseur ou demandez à GO Admin d'enregistrer votre résolution."
+      },
+      "sinResultados": "Aucune plage ne correspond à la recherche.",
+      "nota": "Les avoirs et notes de débit utilisent une numérotation propre sans résolution. À l'émission, la plage active de la succursale du document est utilisée ; s'il y en a deux actives du même type, la plus récente est utilisée.",
+      "errores": {
+        "carga": "Impossible de charger les plages",
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
+        "sincronizar": "Impossible de synchroniser les plages",
+        "guardar": "Impossible d'enregistrer la plage",
+        "duplicado": "Ce préfixe existe déjà pour la succursale et le type de document",
+        "datosInvalidos": "Vérifiez les données de la plage"
+      },
+      "editar": {
+        "titulo": "Modifier la plage {prefijo}",
+        "descripcion": "Corrigez les données de la résolution. Les changements s'appliquent aux prochains documents.",
+        "guardar": "Enregistrer",
+        "guardando": "Enregistrement…",
+        "cancelar": "Annuler",
+        "guardado": "Plage enregistrée",
+        "tipo": "Type de document",
+        "sucursal": "Succursale",
+        "prefijo": "Préfixe",
+        "idProveedor": "Identifiant de la plage chez le fournisseur",
+        "idProveedorAyuda": "Fourni par « Synchroniser ». Modifiez-le seulement si le support vous le demande.",
+        "desde": "De",
+        "hasta": "À",
+        "actual": "Dernier numéro utilisé",
+        "actualAyuda": "0 si aucun n'a encore été utilisé.",
+        "alerta": "Alerter quand il reste",
+        "alertaAyuda": "Numéros restants qui déclenchent l'alerte « Bientôt épuisée ».",
+        "resolucion": "Numéro de résolution DIAN",
+        "fechaResolucion": "Date de la résolution",
+        "validoDesde": "Valable du",
+        "validoHasta": "Valable jusqu'au",
+        "claveTecnica": "Clé technique",
+        "claveTecnicaGuardada": "Une clé est enregistrée. Saisissez-en une seulement pour la changer.",
+        "claveTecnicaPlaceholder": "Enregistrée",
+        "setPruebas": "Identifiant du jeu de tests",
+        "activo": "Plage active",
+        "errores": {
+          "tipo": "Choisissez le type de document",
+          "prefijo": "Saisissez un préfixe de 10 caractères maximum",
+          "rango": "« À » doit être supérieur ou égal à « De »",
+          "actual": "Le dernier numéro utilisé doit être dans la plage",
+          "vigencia": "La date de fin doit être postérieure à la date de début"
+        }
+      }
+    },
+    "saldos": {
+      "titulo": "Avoirs clients",
+      "subtitulo": "ce que vous devez à vos clients",
+      "todasLasSucursales": "Toutes les agences",
+      "migas": {
+        "finanzas": "Finances",
+        "cartera": "Créances"
+      },
+      "cargando": "Chargement…",
+      "sinCliente": "Sans client",
+      "sinVencimiento": "Sans échéance",
+      "deValor": "sur {valor}",
+      "etiquetaFila": "Avoir de {cliente} : {monto} disponible",
+      "archivoExportacion": "avoirs_clients",
+      "exportando": "Export en cours…",
+      "exportarError": "Impossible d'exporter. Réessayez.",
+      "errorCarga": "Impossible de charger les avoirs clients.",
+      "sinResultados": "Aucun avoir ne correspond à la recherche ou aux filtres.",
+      "sustantivo": {
+        "singular": "avoir",
+        "plural": "avoirs",
+        "genero": "masculino"
+      },
+      "vacio": {
+        "titulo": "Pas encore d'avoirs clients",
+        "descripcion": "Les acomptes et ce que vous devez à vos clients apparaissent ici : trop-perçus, retours et avoirs."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux avoirs clients",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir Finances."
+      },
+      "acciones": {
+        "registrarAnticipo": "Enregistrer un acompte",
+        "exportar": "Exporter",
+        "aplicar": "Imputer",
+        "aplicarDe": "Imputer l'avoir de {cliente}",
+        "aplicarAFactura": "Imputer à une facture",
+        "devolver": "Rembourser",
+        "devolverDe": "Rembourser l'avoir de {cliente}",
+        "anular": "Annuler",
+        "verMovimientos": "Voir les mouvements",
+        "verCliente": "Voir le client",
+        "verRecibo": "Voir le reçu",
+        "verOrigen": "Voir la note de crédit"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des avoirs clients",
+        "disponible": "Disponible",
+        "enClientes": "{count, plural, =0 {Aucun client avec avoir} one {Pour # client} other {Pour {n} clients}}",
+        "vencidos": "Échus",
+        "vencidosDetalle": "{count, plural, one {# avoir · ne peut plus être imputé} other {{n} avoirs · ne peuvent plus être imputés}}",
+        "sinVencidos": "Aucun échu",
+        "aplicado": "Imputé en {mes}",
+        "facturas": "{count, plural, =0 {Aucune facture} one {# facture} other {{n} factures}}",
+        "devuelto": "Remboursé en {mes}",
+        "devoluciones": "{count, plural, =0 {Aucun remboursement} one {# remboursement} other {{n} remboursements}}",
+        "devolucionesEfectivo": "{count, plural, one {# remboursement en espèces} other {{n} remboursements en espèces}}"
+      },
+      "buscar": {
+        "placeholder": "Rechercher un client ou un document",
+        "etiqueta": "Rechercher des avoirs clients"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "origen": "Origine",
+        "cliente": "Client",
+        "clienteChip": "client choisi",
+        "periodo": "Date",
+        "saldo": "Solde",
+        "conSaldo": "Avec solde uniquement",
+        "todos": "Tous",
+        "limpiar": "Effacer les filtres",
+        "verN": "{count, plural, =0 {Aucun résultat} one {Voir # avoir} other {Voir {n} avoirs}}"
+      },
+      "columnas": {
+        "cliente": "Client",
+        "documento": "Pièce d'identité du client",
+        "origen": "Origine",
+        "fecha": "Date",
+        "valor": "Montant",
+        "usado": "Utilisé",
+        "disponible": "Disponible",
+        "vence": "Échéance",
+        "estado": "Statut"
+      },
+      "estados": {
+        "disponible": "Disponible",
+        "vencido": "Échu",
+        "usado": "Utilisé",
+        "anulado": "Annulé"
+      },
+      "origenes": {
+        "pago": "Acompte",
+        "nota_credito": "Note de crédit",
+        "devolucion": "Retour",
+        "otro": "Autre"
+      },
+      "detalle": {
+        "titulo": "Avoir de {cliente}",
+        "cargando": "Avoir client",
+        "valor": "Montant",
+        "usado": "Utilisé",
+        "disponible": "Disponible",
+        "movimientos": "Mouvements",
+        "datos": "Données",
+        "cliente": "Client",
+        "origen": "Origine",
+        "recibo": "Reçu",
+        "sucursal": "Agence",
+        "vence": "Échéance",
+        "venceEl": "Échéance le {fecha}",
+        "notas": "Notes",
+        "noEncontrado": "Avoir client introuvable",
+        "error": "Impossible de charger l'avoir client.",
+        "movimiento": {
+          "origen": {
+            "pago": "Reçu",
+            "nota_credito": "Note de crédit",
+            "devolucion": "Retour",
+            "otro": "Origine"
+          },
+          "metodo": "Moyen {metodo}",
+          "factura": "Facture",
+          "aplicado": "Imputé {monto} · {fecha}",
+          "devolucion": "Remboursement en argent",
+          "devolucionSinRef": "Remboursement au client",
+          "devuelto": "Remboursé {monto} · {metodo} · {fecha}",
+          "anulacion": "Annulé",
+          "saldo": "Avoir client"
+        }
+      },
+      "aplicar": {
+        "titulo": "Imputer l'avoir client",
+        "descripcion": "{cliente} · disponible {disponible}",
+        "factura": "Facture du client",
+        "facturaPlaceholder": "Choisissez une facture avec solde",
+        "opcionFactura": "{numero} · solde {saldo} · {fecha}",
+        "sinFacturas": "Ce client n'a pas de factures avec un solde dû.",
+        "errorFacturas": "Impossible de charger les factures du client.",
+        "eligeFactura": "Choisissez la facture à laquelle l'imputer.",
+        "monto": "Montant à imputer",
+        "hasta": "Jusqu'à {monto}",
+        "quePasaTitulo": "Ce qui se passe à l'imputation",
+        "quePasa": "La facture {factura} baisse de {monto} et reste due de {restante}. Le client garde {disponible} d'avoir.",
+        "confirmar": "Imputer",
+        "confirmarMonto": "Imputer {monto}",
+        "exito": "{monto} imputés à la facture {factura}."
+      },
+      "devolver": {
+        "titulo": "Rembourser le client",
+        "descripcion": "{cliente} · disponible {disponible}",
+        "valor": "Montant à rembourser",
+        "hasta": "Jusqu'à {monto}",
+        "como": "Mode de remboursement",
+        "cuenta": "Compte bancaire",
+        "cuentaPlaceholder": "Celui du moyen de paiement",
+        "cuentaDelMetodo": "Le compte du moyen de paiement",
+        "saleDe": "Sort de",
+        "cajaAbierta": "Caisse ouverte · session #{id}",
+        "sinCaja": "Aucune caisse ouverte dans l'agence de l'avoir : ouvrez-la ou remboursez par un autre moyen.",
+        "referencia": "Référence",
+        "motivo": "Motif",
+        "motivoPlaceholder": "Pourquoi l'argent est remboursé",
+        "quePasaTitulo": "Ce qui se passe au remboursement",
+        "quePasaEfectivo": "{monto} sortent du comptage de la caisse ({origen}), l'avoir passe à {saldo} et l'écriture est passée sur le compte d'acomptes.",
+        "quePasaBanco": "{monto} sortent de {origen}, l'avoir passe à {saldo} et l'écriture est passée sur le compte d'acomptes.",
+        "confirmar": "Rembourser",
+        "confirmarMonto": "Rembourser {monto}",
+        "exito": "{monto} remboursés à {cliente}."
+      },
+      "anular": {
+        "titulo": "Annuler l'acompte",
+        "descripcion": "{cliente} · {monto} · reçu {recibo}",
+        "confirmar": "Annuler l'acompte",
+        "consecuenciasTitulo": "En annulant",
+        "consecuencias": {
+          "pago": "Le paiement du reçu est annulé et l'argent sort du comptage de caisse ou de la banque.",
+          "saldo": "L'avoir client est annulé et ne peut plus être imputé.",
+          "asiento": "L'écriture d'extourne de l'acompte est passée."
+        },
+        "rapidos": {
+          "error": "Enregistré par erreur",
+          "duplicado": "Acompte en double",
+          "cliente": "Le client s'est désisté"
+        },
+        "bloqueos": {
+          "usado": "Cet acompte a déjà été imputé à des factures ou remboursé : il ne peut pas être annulé. Remboursez le reste.",
+          "no_es_anticipo": "Cet avoir ne vient pas d'un acompte (il vient d'une note de crédit ou d'un retour) : il ne s'annule pas, il se rembourse.",
+          "sin_permiso": "Vous n'avez pas l'autorisation d'annuler.",
+          "anulado": "Cet avoir est déjà annulé."
+        },
+        "devolverEnSuLugar": "Rembourser l'argent",
+        "exito": "L'acompte de {cliente} a été annulé."
+      },
+      "anticipo": {
+        "titulo": "Enregistrer un acompte",
+        "descripcion": "L'argent entre comme un paiement avec son reçu, s'ajoute à la caisse ou à la banque et reste comme avoir du client.",
+        "sucursal": "Agence",
+        "sucursalPlaceholder": "Choisissez l'agence",
+        "cliente": "Client",
+        "monto": "Montant",
+        "metodo": "Moyen de paiement",
+        "cuenta": "Compte bancaire",
+        "cuentaPlaceholder": "Celui du moyen de paiement",
+        "referencia": "Référence",
+        "vence": "Échéance (facultatif)",
+        "venceAyuda": "Sans date, l'avoir n'expire pas.",
+        "notas": "Notes (facultatif)",
+        "notasPlaceholder": "À quoi sert l'acompte",
+        "sinCaja": "Aucune caisse ouverte dans cette agence : ouvrez-la ou utilisez un autre moyen.",
+        "confirmar": "Enregistrer l'acompte",
+        "confirmarMonto": "Enregistrer {monto}",
+        "exito": "Acompte de {monto} enregistré avec le reçu {recibo}."
+      },
+      "validacion": {
+        "vacio": "Saisissez un montant supérieur à zéro.",
+        "excede_disponible": "Dépasse l'avoir disponible ({monto}).",
+        "excede_factura": "Dépasse le solde de la facture ({monto}).",
+        "cliente": "Choisissez le client.",
+        "sucursal": "Choisissez l'agence.",
+        "metodo": "Choisissez le moyen de paiement.",
+        "referencia": "Ce moyen exige une référence.",
+        "motivo": "Saisissez le motif (3 caractères minimum)."
+      },
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "sin_acceso_sucursal": "Vous n'avez pas accès à l'agence de l'avoir ou de la facture.",
+        "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+        "datos_invalidos": "Vérifiez les données.",
+        "clave_idempotencia_invalida": "Impossible d'identifier la tentative. Rouvrez la boîte de dialogue.",
+        "clave_idempotencia_reutilizada": "Cette tentative a déjà été utilisée avec d'autres données. Rouvrez la boîte de dialogue.",
+        "monto_invalido": "Saisissez un montant supérieur à zéro.",
+        "saldo_no_encontrado": "Avoir client introuvable.",
+        "saldo_no_disponible": "L'avoir client n'est plus disponible.",
+        "saldo_vencido": "L'avoir client est échu : il ne peut plus être imputé, mais il peut être remboursé.",
+        "saldo_usado": "L'avoir client a déjà été imputé à des factures : il ne peut pas être annulé.",
+        "saldo_no_anulable": "Cet avoir ne vient pas d'un acompte : il ne s'annule pas, il se rembourse.",
+        "monto_excede_saldo_a_favor": "Le montant dépasse l'avoir disponible.",
+        "factura_no_encontrada": "Facture introuvable.",
+        "documento_invalido": "Le document n'est pas une facture de vente.",
+        "documento_borrador": "La facture est un brouillon : émettez-la avant d'y imputer un avoir.",
+        "documento_anulado": "La facture est annulée.",
+        "cliente_distinto": "La facture appartient à un autre client.",
+        "cliente_no_encontrado": "Client introuvable.",
+        "sucursal_invalida": "Choisissez une agence valide.",
+        "moneda_distinta": "La facture est dans une autre devise.",
+        "monto_excede_saldo": "Le montant dépasse le solde dû de la facture.",
+        "metodo_invalido": "Le moyen de paiement n'est pas disponible.",
+        "referencia_obligatoria": "Ce moyen exige une référence.",
+        "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
+        "sin_caja_abierta": "Aucune caisse ouverte : ouvrez-la ou utilisez un autre moyen.",
+        "pago_en_caja_cerrada": "L'argent est entré dans une caisse déjà fermée : enregistrez une sortie de caisse.",
+        "sin_cuenta_de_dinero": "Le compte de caisse ou de banque du moyen est introuvable.",
+        "sin_cuenta_por_cobrar": "L'organisation n'a pas de compte client configuré.",
+        "vencimiento_invalido": "L'échéance ne peut pas être antérieure à aujourd'hui.",
+        "motivo_obligatorio": "Saisissez le motif.",
+        "asiento_no_creado": "Impossible de comptabiliser. Vérifiez le plan comptable et la période.",
+        "error_desconocido": "Impossible de terminer. Réessayez."
+      }
+    },
+    "servicio": {
+      "titulo": "Facturation électronique — Service",
+      "subtitulo": {
+        "activo": "Fourni par GO Admin · actif depuis le {fecha}",
+        "pendiente": "Fourni par GO Admin · vous ne chargez pas d'identifiants et ne choisissez pas d'environnement"
+      },
+      "migas": {
+        "finanzas": "Finances",
+        "facturacion": "Facturation électronique",
+        "servicio": "Service"
+      },
+      "acciones": {
+        "verBandeja": "Voir la boîte des envois",
+        "verificar": "Vérifier maintenant",
+        "solicitarActivacion": "Demander l'activation"
+      },
+      "motivos": {
+        "solicitudPendiente": "La demande depuis ici arrive bientôt ; en attendant, adressez-vous au support GO Admin.",
+        "sinPermiso": "Vous avez besoin de l'autorisation d'approuver en Finances",
+        "eligeSucursal": "Choisissez la succursale"
+      },
+      "avisos": {
+        "pendienteTitulo": "Votre facturation électronique est en attente d'activation",
+        "pendienteDescripcion": "Ce que vous marquez comme électronique est retenu et n'est pas envoyé à la DIAN. Rien n'est perdu : quand GO Admin activera votre compte, les nouveaux documents partiront automatiquement.",
+        "suspendidoTitulo": "Le service est suspendu",
+        "suspendidoDescripcion": "Aucun document n'est envoyé à la DIAN. Contactez le support GO Admin pour le réactiver."
+      },
+      "pasos": {
+        "titulo": "Étapes d'activation",
+        "listos": "{n} sur {total} terminées",
+        "quien": {
+          "tu": "Vous",
+          "goAdmin": "GO Admin",
+          "automatico": "Automatique"
+        },
+        "estado": {
+          "listo": "Terminé",
+          "actual": "En cours",
+          "pendiente": "En attente"
+        },
+        "emisor": {
+          "titulo": "Données de l'émetteur complètes",
+          "descripcion": "NIF et chiffre de contrôle, raison sociale, obligations fiscales, commune et e-mail de facturation.",
+          "faltan": "Manque : {campos}",
+          "accion": "Modifier dans Organisation"
+        },
+        "resolucion": {
+          "titulo": "Résolution de facturation de la DIAN",
+          "descripcion": "Demandez-la sur le portail de la DIAN en choisissant GO Admin comme fournisseur technologique. Avec le numéro de résolution, GO Admin l'enregistre pour vous.",
+          "accion": "Voir les résolutions"
+        },
+        "cuenta": {
+          "titulo": "Compte activé par GO Admin",
+          "descripcion": "Nous créons votre compte chez le fournisseur, chargeons la résolution et les plages par succursale et réalisons le jeu de tests."
+        },
+        "primerDocumento": {
+          "titulo": "Premier document accepté",
+          "descripcion": "Nous vous prévenons quand la DIAN accepte le premier."
+        },
+        "campos": {
+          "nit": "NIF",
+          "dv": "chiffre de contrôle",
+          "razonSocial": "raison sociale",
+          "responsabilidades": "obligations fiscales",
+          "municipio": "commune",
+          "correo": "e-mail de facturation"
+        },
+        "solicitudAyuda": "Disponible une fois les étapes 1 et 2 terminées. L'auteur et la date de la demande sont enregistrés.",
+        "solicitudListos": "Vos étapes sont terminées."
+      },
+      "resoluciones": {
+        "titulo": "Résolutions et numérotation",
+        "descripcion": "GO Admin les enregistre auprès du fournisseur, par succursale. Ici vous voyez la consommation et la validité.",
+        "sucursal": "Succursale",
+        "sincronizar": "Synchroniser",
+        "sincronizadas": "Plages synchronisées",
+        "resumenSincronizacion": "{importados} importées, {desactivados} désactivées.",
+        "verTodas": "Voir toutes les résolutions",
+        "vacio": "Aucune plage active pour l'instant. Synchronisez une succursale ou demandez à GO Admin d'enregistrer votre résolution.",
+        "todasSucursales": "Toutes les succursales",
+        "numeracionPropia": "Numérotation propre",
+        "del": "du {fecha}",
+        "consumo": "Consommation",
+        "consumoDe": "Consommation de la plage {prefijo}",
+        "usadosDe": "{usados} sur {total}"
+      },
+      "cola": {
+        "titulo": "File d'envoi",
+        "enCola": "En file",
+        "retenidos": "Retenus",
+        "aceptados": "Acceptés",
+        "rechazados": "Rejetés ou en erreur",
+        "abrirBandeja": "Ouvrir la boîte"
+      },
+      "retenidos": {
+        "titulo": "Documents retenus ({n})",
+        "descripcionActivo": "Ils ont été enregistrés avant l'activation du service. Si vous en envoyez un, la DIAN l'émet à la date du jour, pas à celle de la vente.",
+        "descripcionPendiente": "Ils ont été enregistrés car le service n'est pas actif. Une fois activé, vous pourrez les envoyer (à la date de ce jour-là) ou les annuler avec justificatif.",
+        "ventaDel": "Vente du {fecha}",
+        "sinNumero": "Sans numéro",
+        "enviar": "Envoyer à la date du jour",
+        "esperaConfirmacion": "Attend votre confirmation",
+        "cancelar": "Annuler l'envoi",
+        "cancelarDe": "Annuler l'envoi de {numero}",
+        "yMas": "et {n} de plus · Tout voir dans la boîte",
+        "verEnBandeja": "Voir dans la boîte",
+        "confirmarTitulo": "Envoyer ce document à la DIAN ?",
+        "confirmarDescripcion": "La DIAN l'émet à la date du jour ({fecha}), pas à celle de la vente.",
+        "cancelarTitulo": "Annuler l'envoi ?",
+        "cancelarDescripcion": "Le document n'est pas envoyé à la DIAN et reste un document interne.",
+        "volver": "Retour",
+        "enviado": "Document envoyé à la DIAN",
+        "cancelado": "Envoi annulé"
+      },
+      "estado": {
+        "titulo": "État du service",
+        "estado": "État",
+        "estados": {
+          "active": "Actif",
+          "pending_activation": "En attente d'activation",
+          "suspended": "Suspendu"
+        },
+        "prestadoPor": "Fourni par",
+        "goAdmin": "GO Admin",
+        "nit": "NIF d'émission",
+        "activoDesde": "Actif depuis",
+        "solicitud": "Demande",
+        "sinEnviar": "Non envoyée",
+        "ultimaVerificacion": "Dernière vérification",
+        "correcta": "réussie",
+        "fallida": "en erreur",
+        "ayuda": "Un problème avec votre NIF ou votre résolution ? Contactez le support : GO Admin gère le service."
+      },
+      "comportamiento": {
+        "titulo": "Comportement",
+        "siempre": "Toujours facturer en électronique",
+        "siempreAyuda": "Active « électronique » par défaut au point de vente et dans les nouvelles factures.",
+        "siempreActivada": "Les nouvelles factures sont émises en électronique",
+        "siempreDesactivada": "Les nouvelles factures ne sont plus électroniques par défaut",
+        "correo": "Envoyer le PDF et le XML au client",
+        "correoAyuda": "Le fournisseur les envoie à l'e-mail de facturation du client quand la DIAN accepte.",
+        "siempreActivo": "Toujours"
+      },
+      "verificacion": {
+        "activado": "Service activé",
+        "ok": "Compte vérifié"
+      },
+      "tipos": {
+        "invoice": "Facture électronique",
+        "credit_note": "Avoir",
+        "debit_note": "Note de débit",
+        "support_document": "Document justificatif"
+      },
+      "errores": {
+        "carga": "Impossible de charger le service",
+        "sinPermiso": "Vous n'avez pas accès au service de facturation électronique",
+        "sinPermisoDescripcion": "Demandez à un administrateur l'autorisation d'approuver en Finances.",
+        "accion": "L'action n'a pas pu aboutir"
+      }
+    },
+    "soporte": {
+      "migas": {
+        "finanzas": "Finances",
+        "facturacion": "Facturation"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux documents justificatifs",
+        "descripcion": "Demandez à un administrateur l'autorisation de consulter les finances."
+      },
+      "listado": {
+        "titulo": "Documents justificatifs",
+        "subtitulo": "Achats auprès de personnes et fournisseurs non tenus de facturer",
+        "todasLasSucursales": "Toutes les agences",
+        "nuevo": "Nouveau document justificatif",
+        "exportar": "Exporter",
+        "exportando": "Exportation…",
+        "exportarError": "Impossible d'exporter. Réessayez.",
+        "archivoExportacion": "documents-justificatifs",
+        "numeroDian": "N° DIAN {numero}",
+        "sinNumero": "Sans numéro",
+        "sinVendedor": "Sans vendeur",
+        "sinCompra": "Sans facture d'achat",
+        "compraSinNumero": "Achat sans numéro",
+        "sinResultados": "Aucun document justificatif ne correspond à la recherche ou aux filtres.",
+        "errorCarga": "Impossible de charger les documents justificatifs",
+        "sustantivo": {
+          "singular": "document",
+          "plural": "documents"
+        },
+        "buscar": {
+          "placeholder": "Rechercher par référence, numéro ou vendeur",
+          "etiqueta": "Rechercher des documents justificatifs"
+        },
+        "kpis": {
+          "etiqueta": "Résumé des documents justificatifs",
+          "emitidosMes": "Émis en {mes}",
+          "borradores": "Brouillons",
+          "sinEnviar": "Non envoyés à la DIAN",
+          "aceptados": "Acceptés par la DIAN",
+          "validados": "Validés",
+          "rechazados": "Rejetés",
+          "verMotivo": "Touchez pour voir le motif"
+        },
+        "columnas": {
+          "referencia": "Référence",
+          "numeroDian": "Numéro DIAN",
+          "vendedor": "Vendeur",
+          "documentoVendedor": "Pièce du vendeur",
+          "compra": "Facture d'achat",
+          "fecha": "Date",
+          "moneda": "Devise",
+          "total": "Total",
+          "estado": "Statut",
+          "dian": "DIAN"
+        },
+        "filtros": {
+          "estado": "Statut",
+          "periodo": "Période",
+          "vendedor": "Vendeur",
+          "vendedorChip": "Vendeur choisi",
+          "compra": "Facture d'achat",
+          "todos": "Tous",
+          "limpiar": "Effacer les filtres",
+          "verN": "{count, plural, =0 {Aucun résultat} one {Voir # document} other {Voir {n} documents}}",
+          "compraOpcion": {
+            "con": "Avec achat",
+            "sin": "Sans achat"
+          },
+          "estados": {
+            "borrador": "Brouillons",
+            "en_proceso": "En cours auprès de la DIAN",
+            "aceptado": "Acceptés par la DIAN",
+            "rechazado": "Rejetés ou en erreur",
+            "anulado": "Annulés"
+          }
+        },
+        "vacio": {
+          "titulo": "Aucun document justificatif pour l'instant",
+          "descripcion": "Enregistrez-en un quand vous achetez à une personne ou un fournisseur qui ne facture pas : la DIAN l'exige pour déduire l'achat."
+        }
+      },
+      "estadoDocumento": {
+        "borrador": "Brouillon",
+        "emitido": "Émis",
+        "anulado": "Annulé"
+      },
+      "estadoDian": {
+        "sin_enviar": "Non envoyé",
+        "retenido": "Retenu",
+        "en_cola": "En file d'attente",
+        "enviando": "Envoi en cours",
+        "enviado": "Envoyé à la DIAN",
+        "aceptado": "Accepté par la DIAN",
+        "rechazado": "Rejeté par la DIAN",
+        "error": "Erreur d'envoi",
+        "cancelado": "Annulé"
+      },
+      "acciones": {
+        "ver": "Voir",
+        "editar": "Modifier",
+        "corregir": "Corriger et renvoyer",
+        "enviarDian": "Envoyer à la DIAN",
+        "reenviar": "Renvoyer à la DIAN",
+        "verPdf": "Voir le PDF",
+        "descargarPdf": "Télécharger le PDF",
+        "imprimir": "Imprimer",
+        "xml": "Télécharger le XML",
+        "verAsiento": "Aperçu de l'écriture",
+        "actualizar": "Actualiser",
+        "eliminar": "Supprimer",
+        "cancelar": "Annuler"
+      },
+      "envio": {
+        "enviando": "Envoi…",
+        "aceptado": "La DIAN a accepté le document justificatif {referencia}",
+        "enviado": "Le document justificatif {referencia} a été envoyé à la DIAN",
+        "en_cola": "Le document justificatif {referencia} est dans la file d'envoi à la DIAN",
+        "retenido": "Le document justificatif {referencia} a été enregistré : il sera envoyé quand GO Admin activera votre facturation électronique",
+        "rechazado": "La DIAN a rejeté le document justificatif {referencia}",
+        "error": "Impossible d'envoyer à la DIAN"
+      },
+      "eliminar": {
+        "titulo": "Supprimer le document justificatif {referencia} ?",
+        "descripcion": "Il est supprimé avec ses lignes. La DIAN ne l'a pas reçu, rien ne reste donc en attente auprès d'elle. Action irréversible.",
+        "descripcionProveedor": "Il est d'abord retiré du service de facturation électronique, puis supprimé avec ses lignes. Action irréversible.",
+        "confirmar": "Supprimer",
+        "hecho": "Le document justificatif {referencia} a été supprimé",
+        "error": "Impossible de supprimer le document justificatif"
+      },
+      "detalle": {
+        "titulo": "Document justificatif {referencia}",
+        "cargando": "Chargement du document justificatif…",
+        "noEncontrado": "Document justificatif introuvable",
+        "noEncontradoDescripcion": "Il a peut-être été supprimé ou appartient à une autre organisation.",
+        "volverListado": "Retour aux documents justificatifs",
+        "errorCarga": "Impossible de charger le document justificatif",
+        "cadena": "Chaîne du document",
+        "vendedor": "Vendeur",
+        "nombre": "Nom",
+        "documento": "Pièce d'identité",
+        "direccion": "Adresse",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "lineas": "Lignes du document",
+        "observaciones": "Observations",
+        "resumen": "Résumé",
+        "impuesto": "Taxe",
+        "datos": "Données du document",
+        "sucursal": "Agence",
+        "formaPago": "Conditions de paiement",
+        "medioPago": "Moyen de paiement",
+        "vence": "Échéance",
+        "moneda": "Devise",
+        "creado": "Créé",
+        "descargando": "Téléchargement…",
+        "errorDescarga": "Impossible de télécharger le fichier",
+        "cargandoAsiento": "Calcul de l'écriture…",
+        "errorAsiento": "Impossible de calculer l'aperçu de l'écriture",
+        "asientoAviso": "Voici l'écriture selon les règles comptables d'aujourd'hui. C'est un aperçu : rien n'a été comptabilisé.",
+        "avisoRechazo": "La DIAN a rejeté ce document",
+        "avisoError": "Ce document n'a pas pu être envoyé",
+        "avisoRetenido": "Envoi retenu",
+        "dian": {
+          "titulo": "Facturation électronique",
+          "numero": "Numéro DIAN",
+          "validado": "Validé",
+          "intentos": "Tentatives",
+          "intentosValor": "{n} sur {max}",
+          "proximo": "Prochaine tentative",
+          "cuds": "Code unique (CUDS)",
+          "copiarCuds": "Copier le code unique",
+          "cudsCopiado": "Code unique copié",
+          "cudsNoCopiado": "Impossible de copier le code",
+          "historial": "Historique d'envoi",
+          "sinEnviar": "Pas encore envoyé à la DIAN. Une fois envoyé, vous verrez sa réponse ici."
+        },
+        "avisoDeCompra": "Issu de la facture d'achat {compra} : ses lignes sont celles de l'achat. Pour les modifier, corrigez l'achat.",
+        "verCompra": "Voir l'achat"
+      },
+      "eventos": {
+        "sent": "Envoyé à la DIAN",
+        "accepted": "Validé par la DIAN",
+        "rejected": "Rejeté par la DIAN",
+        "retry": "Nouvelle tentative programmée",
+        "notification": "Avis d'envoi",
+        "error": "Erreur d'envoi",
+        "cancelled": "Envoi annulé",
+        "otro": "Nouveauté de l'envoi"
+      },
+      "formasPago": {
+        "contado": "Comptant",
+        "credito": "Crédit"
+      },
+      "medios": {
+        "10": "Espèces",
+        "20": "Chèque",
+        "42": "Dépôt bancaire",
+        "47": "Virement",
+        "48": "Carte de crédit",
+        "49": "Carte de débit"
+      },
+      "tiposDocumento": {
+        "11": "Acte de naissance",
+        "12": "Carte d'identité (mineur)",
+        "13": "C.C.",
+        "21": "Carte d'étranger",
+        "22": "C.E.",
+        "31": "NIT",
+        "41": "Passeport",
+        "42": "Pièce étrangère",
+        "47": "PEP",
+        "48": "PPT",
+        "50": "NIT étranger",
+        "91": "NUIP"
+      },
+      "formulario": {
+        "tituloNuevo": "Nouveau document justificatif",
+        "tituloEditar": "Modifier le document justificatif {referencia}",
+        "subtitulo": "Pour les achats auprès de non-assujettis à la facturation",
+        "guardarBorrador": "Enregistrer le brouillon",
+        "guardarEnviar": "Enregistrer et envoyer à la DIAN",
+        "guardado": "Le document justificatif {referencia} a été enregistré",
+        "total": "Total",
+        "noEditable": "Le document justificatif {referencia} ne peut plus être modifié",
+        "noEditableDescripcion": "Seuls les brouillons et les documents rejetés par la DIAN se modifient, jamais pendant leur envoi.",
+        "verDocumento": "Voir le document",
+        "buscarProducto": "Rechercher un produit",
+        "itemManual": "Ajouter un article manuel",
+        "lineasVacio": "Aucune ligne pour l'instant",
+        "lineasVacioDescripcion": "Recherchez un produit ou ajoutez un article manuel avec ce que vous avez acheté.",
+        "sinImpuesto": "Sans taxe : enregistré au taux 0.",
+        "impuestoTarifa": "Taxe {tarifa} %",
+        "detalleImpuesto": "Taxe {importe}",
+        "faltaDireccion": "L'adresse du vendeur manque",
+        "faltanDatos": "Il manque des données du vendeur",
+        "faltanDatosDescripcion": "La DIAN les exige dans le document justificatif : {datos}. Complétez-les dans la fiche du fournisseur.",
+        "completar": "Compléter",
+        "faltante": {
+          "identificacion": "numéro de pièce",
+          "nombre": "nom",
+          "direccion": "adresse"
+        },
+        "secciones": {
+          "datos": "Données générales",
+          "vendedor": "Vendeur",
+          "vendedorDescripcion": "Personne ou entreprise non tenue de facturer",
+          "lineas": "{n, plural, =0 {Lignes du document} one {Lignes du document · # ligne} other {Lignes du document · # lignes}}",
+          "lineasEtiqueta": "Lignes du document"
+        },
+        "campos": {
+          "sucursal": "Agence",
+          "emision": "Date d'émission",
+          "formaPago": "Conditions de paiement",
+          "medioPago": "Moyen de paiement",
+          "vence": "Échéance",
+          "moneda": "Devise",
+          "monedaBase": "{base} · devise de l'organisation",
+          "compra": "Facture d'achat liée",
+          "compraAyuda": "Facultatif : liez l'achat qui justifie ce document.",
+          "sinCompra": "Sans facture d'achat",
+          "observaciones": "Observations",
+          "observacionesAyuda": "500 caractères maximum · figure sur le document",
+          "impuestoIncluido": "Les prix incluent la taxe",
+          "elegir": "Choisir…",
+          "sinMetodos": "Aucun moyen de paiement actif"
+        },
+        "atajos": {
+          "vendedor": "Choisir le vendeur",
+          "productos": "Rechercher des produits",
+          "manual": "Ajouter un article manuel",
+          "guardar": "Enregistrer le brouillon"
+        },
+        "resolucion": {
+          "titulo": "Résolution utilisée",
+          "eligeSucursal": "Choisissez l'agence pour voir sa résolution.",
+          "cargando": "Recherche de la résolution…",
+          "sinRango": "Cette agence n'a pas de résolution de document justificatif. Vous pouvez enregistrer le brouillon ; pour l'envoyer à la DIAN, il en faut une.",
+          "rango": "Document justificatif · {prefijo}",
+          "consumo": "Consommation de la numérotation",
+          "consumoValor": "{usados} sur {total} · reste {quedan}",
+          "numero": "Résolution {numero}",
+          "hasta": "Jusqu'au {fecha}",
+          "tono": {
+            "ok": "En vigueur",
+            "por_agotar": "Bientôt épuisée",
+            "agotado": "Épuisée",
+            "por_vencer": "Expire bientôt",
+            "vencido": "Expirée"
+          }
+        },
+        "errores": {
+          "sucursal": "Choisissez l'agence",
+          "proveedor": "Choisissez le vendeur",
+          "proveedorIncompleto": "Complétez les données du vendeur exigées par la DIAN",
+          "direccion": "L'adresse du vendeur manque",
+          "emision": "Choisissez la date d'émission",
+          "medioPago": "Choisissez le moyen de paiement",
+          "vence": "Choisissez la date d'échéance",
+          "venceAntes": "L'échéance ne peut pas précéder l'émission",
+          "sinLineas": "Ajoutez au moins une ligne",
+          "descripcion": "Saisissez la description de la ligne",
+          "cantidad": "La quantité doit être supérieure à zéro",
+          "precio": "Vérifiez le prix et la remise de la ligne",
+          "impuesto": "Vérifiez la taxe de la ligne"
+        }
+      },
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "sin_acceso_sucursal": "Vous n'avez pas accès à cette agence.",
+        "datos_invalidos": "Vérifiez les données du document.",
+        "documento_no_encontrado": "Document justificatif introuvable.",
+        "documento_no_editable": "Ce document ne peut plus être modifié : la DIAN l'a reçu ou il est annulé.",
+        "documento_no_eliminable": "Ce document ne peut pas être supprimé : la DIAN l'a déjà validé.",
+        "documento_en_envio": "Le document est en cours d'envoi à la DIAN. Attendez la réponse avant de le modifier.",
+        "documento_sin_lineas": "Ajoutez au moins une ligne.",
+        "linea_invalida": "Une ligne a une quantité, un prix, une remise ou une taxe non valides.",
+        "producto_invalido": "Un produit des lignes n'existe pas dans votre organisation.",
+        "proveedor_invalido": "Le vendeur n'existe pas dans votre organisation.",
+        "proveedor_incompleto": "Il manque au vendeur des données exigées par la DIAN (pièce, nom ou adresse).",
+        "sucursal_invalida": "L'agence n'est pas valide.",
+        "compra_invalida": "La facture d'achat n'existe pas dans votre organisation.",
+        "medio_pago_requerido": "Choisissez le moyen de paiement.",
+        "vencimiento_invalido": "Avec un paiement à crédit, l'échéance est obligatoire et ne peut pas précéder l'émission.",
+        "migracion_pendiente": "L'enregistrement des documents justificatifs n'est pas encore activé dans votre base de données. Prévenez l'équipe GO Admin.",
+        "error_desconocido": "Une erreur s'est produite. Réessayez.",
+        "documento_de_compra": "Ce document provient d'une facture d'achat et utilise ses lignes : corrigez l'achat plutôt que le document."
+      }
+    }
+  },
+  "finanzasTesoreriaR3": {
+    "comun": {
+      "migas": {
+        "finanzas": "Finances",
+        "tesoreria": "Trésorerie"
+      },
+      "tipos": {
+        "entrada": "Entrée",
+        "salida": "Sortie",
+        "traslado": "Virement",
+        "anulado": "Annulé"
+      },
+      "caja": "Caisse",
+      "banco": "Banque",
+      "exportar": "Exporter",
+      "actualizar": "Actualiser",
+      "actualizado": "Données actualisées",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement…",
+      "reintentar": "Réessayer",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès à la Trésorerie",
+        "descripcion": "Demandez à un administrateur l'autorisation Finances · voir."
+      }
+    },
+    "efecto": {
+      "titulo": "Effet sur le compte",
+      "ahora": "Solde actuel",
+      "movimiento": "Ce mouvement",
+      "despues": "Solde après",
+      "oculto": "Masqué",
+      "ocultoAyuda": "Le solde de cette caisse est masqué par la clôture à l'aveugle.",
+      "bloqueaBanco": "Il dépasse le solde du compte bancaire : il ne peut pas être enregistré.",
+      "avisaCaja": "Il dépasse les espèces attendues de la caisse. Vérifiez avant d'enregistrer."
+    },
+    "lista": {
+      "movimientos": {
+        "titulo": "Mouvements",
+        "subtitulo": "Entrées et sorties de vos caisses et banques",
+        "nuevo": "Nouveau mouvement",
+        "vacioTitulo": "Aucun mouvement pour l'instant",
+        "vacioDescripcion": "Enregistrez un encaissement, un décaissement ou déposez votre caisse à la banque."
+      },
+      "ingresos": {
+        "titulo": "Encaissements",
+        "subtitulo": "Encaissements non liés aux ventes",
+        "nuevo": "Nouvel encaissement",
+        "vacioTitulo": "Aucun encaissement pour l'instant",
+        "vacioDescripcion": "Enregistrez l'argent qui entre dans une caisse ou une banque et ne vient pas d'une vente."
+      },
+      "egresos": {
+        "titulo": "Décaissements",
+        "subtitulo": "Décaissements non liés aux achats",
+        "nuevo": "Nouveau décaissement",
+        "vacioTitulo": "Aucun décaissement pour l'instant",
+        "vacioDescripcion": "Enregistrez l'argent qui sort d'une caisse ou d'une banque et n'est pas le paiement d'un achat."
+      },
+      "pestanas": {
+        "etiqueta": "Type de mouvement",
+        "todos": "Tous",
+        "entradas": "Entrées",
+        "salidas": "Sorties",
+        "traslados": "Virements"
+      },
+      "kpi": {
+        "etiqueta": "Résumé",
+        "entradasMes": "Entrées du mois",
+        "salidasMes": "Sorties du mois",
+        "netoMes": "Net du mois",
+        "trasladosMes": "Virements du mois",
+        "trasladosAyuda": "Entre vos comptes",
+        "movimientos": "{n, plural, one {# mouvement} other {# mouvements}}",
+        "total": "Total cumulé",
+        "mes": "Ce mois-ci",
+        "hoy": "Aujourd'hui",
+        "registros": "Enregistrements",
+        "porConciliar": "À rapprocher",
+        "porConciliarAyuda": "{monto} sur {bancos, plural, one {# banque} other {# banques}}",
+        "alDia": "Tout est rapproché"
+      },
+      "buscar": "Rechercher un libellé, un compte ou une référence",
+      "buscarConcepto": "Rechercher par libellé",
+      "columnas": {
+        "fecha": "Date",
+        "numero": "Numéro",
+        "tipo": "Type",
+        "conceptoTercero": "Libellé et tiers",
+        "concepto": "Libellé",
+        "categoria": "Catégorie",
+        "cuentaDinero": "Compte de trésorerie",
+        "origen": "Origine",
+        "importe": "Montant",
+        "monto": "Montant",
+        "conciliacion": "Rapprochement"
+      },
+      "trasladoEntreCuentas": "Virement entre comptes",
+      "acciones": {
+        "ver": "Voir le détail",
+        "duplicar": "Dupliquer",
+        "anular": "Annuler"
+      },
+      "nuevo": {
+        "movimiento": "Nouveau mouvement",
+        "ingreso": "Encaissement",
+        "ingresoAyuda": "De l'argent entre dans une caisse ou une banque",
+        "egreso": "Décaissement",
+        "egresoAyuda": "De l'argent sort d'une caisse ou d'une banque",
+        "traslado": "Virement entre banques",
+        "trasladoAyuda": "Déplacez de l'argent entre vos comptes bancaires",
+        "consignar": "Déposer la caisse à la banque",
+        "consignarAyuda": "Portez les espèces d'une caisse à votre banque"
+      },
+      "anular": {
+        "tituloIngreso": "Annuler l'encaissement",
+        "tituloEgreso": "Annuler le décaissement",
+        "tituloTraslado": "Annuler le virement",
+        "boton": "Annuler",
+        "consecuenciaMovimiento": "Un mouvement inverse est créé sur le même compte, avec son écriture d'extourne.",
+        "consecuenciaTraslado": "Les deux soldes reviennent à leur état antérieur et une écriture d'extourne est passée."
+      },
+      "duplicadoIngreso": "Encaissement dupliqué",
+      "duplicadoEgreso": "Décaissement dupliqué",
+      "anulado": "Mouvement annulé",
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "concepto": "Libellé",
+        "monto": "Montant",
+        "notas": "Notes",
+        "tipo": "Type",
+        "cuenta": "Compte"
+      },
+      "sustantivo": {
+        "uno": "mouvement",
+        "otros": "mouvements"
+      },
+      "conciliacion": {
+        "pendiente": "À rapprocher",
+        "conciliado": "Rapproché",
+        "noAplica": "Sans objet"
+      }
+    },
+    "transferencia": {
+      "titulo": "Nouveau virement",
+      "descripcion": "Déplacez de l'argent entre deux comptes bancaires de l'organisation, dans la même devise.",
+      "origen": "Compte d'origine",
+      "destino": "Compte de destination",
+      "elegir": "Choisissez un compte",
+      "monto": "Montant",
+      "fecha": "Date",
+      "referencia": "Référence",
+      "notas": "Notes",
+      "sinOrigen": "Choisissez le compte d'origine",
+      "asientoNota": "Une seule écriture entre les deux comptes bancaires, sans toucher au résultat.",
+      "confirmar": "Virer",
+      "confirmarCon": "Virer {monto}",
+      "exito": "Virement enregistré",
+      "errores": {
+        "origen": "Choisissez le compte d'origine.",
+        "destino": "Choisissez le compte de destination."
+      }
+    },
+    "consignar": {
+      "titulo": "Déposer la caisse à la banque",
+      "descripcion": "Virement entre vos comptes de trésorerie : il sort de la caisse et entre à la banque en une seule opération.",
+      "desde": "Depuis",
+      "hacia": "Vers",
+      "cargando": "Chargement des caisses…",
+      "elegirCaja": "Choisissez la caisse",
+      "elegirBanco": "Choisissez le compte bancaire",
+      "cajaGlobal": "Caisse de toutes les succursales",
+      "saldoOculto": "solde masqué",
+      "disponible": "disponible {monto}",
+      "monto": "Montant déposé",
+      "comision": "Commission ou taxe bancaire",
+      "comisionAyuda": "Payée avec les mêmes espèces et comptabilisée en frais bancaires.",
+      "fecha": "Date comptable",
+      "referencia": "Référence bancaire",
+      "sinCajaElegida": "Choisissez la caisse",
+      "entraNota": "{monto} entre à la banque · commission {comision} (frais bancaires)",
+      "asientoNota": "Écriture : banques (1110) débit / caisse (1105) crédit ; la commission, frais bancaires (5305) débit / caisse crédit.",
+      "confirmar": "Déposer",
+      "confirmarCon": "Déposer {monto}",
+      "exito": "Dépôt de {monto} enregistré",
+      "sinCaja": {
+        "titulo": "Aucune caisse ouverte",
+        "descripcion": "Pour déposer des espèces, ouvrez d'abord une caisse dans le point de vente.",
+        "abrir": "Aller aux caisses"
+      },
+      "errores": {
+        "caja": "Choisissez la caisse.",
+        "banco": "Choisissez le compte bancaire.",
+        "caja_no_encontrada": "La caisse n'existe plus ou n'appartient pas à cette organisation.",
+        "datos_invalidos": "Il manque des données du dépôt. Fermez la boîte de dialogue et réessayez."
+      }
+    },
+    "cuentas": {
+      "titulo": "Comptes de trésorerie",
+      "subtitulo": "{cajas, plural, one {# caisse ouverte} other {# caisses ouvertes}} · {bancos, plural, one {# compte bancaire} other {# comptes bancaires}} · mode de caisse : {modo}",
+      "subtituloCorto": "Vos caisses et comptes bancaires",
+      "modo": {
+        "branch": "par succursale",
+        "user": "par caissier"
+      },
+      "exportar": "Exporter les soldes",
+      "nuevaCuenta": "Nouveau compte bancaire",
+      "irConciliacion": "Aller au rapprochement",
+      "pestanas": {
+        "etiqueta": "Vues des comptes de trésorerie",
+        "cuentas": "Comptes",
+        "posicion": "Position",
+        "alertas": "Alertes"
+      },
+      "kpi": {
+        "etiqueta": "Résumé de la trésorerie",
+        "disponible": "Total disponible",
+        "disponibleAyuda": "{moneda} · banques + caisses",
+        "disponibleSinCajas": "Sans les caisses masquées par la clôture à l'aveugle",
+        "bancos": "En banque",
+        "bancosAyuda": "{n, plural, one {# compte actif} other {# comptes actifs}}",
+        "bancosSinPuc": "{n, plural, one {# compte} other {# comptes}} · {sin} sans compte comptable",
+        "cajas": "En caisse",
+        "cajasAyuda": "{n, plural, =0 {Aucune ouverte} one {# ouverte} other {# ouvertes}}",
+        "cajasVencidas": "{n, plural, one {# ouverte} other {# ouvertes}} · {vencidas, plural, one {# en retard} other {# en retard}}",
+        "porConciliar": "Rapprochements ouverts",
+        "porConciliarAyuda": "Brouillons et en cours"
+      },
+      "otraMoneda": "{n, plural, one {# compte bancaire est} other {# comptes bancaires sont}} dans une autre devise et ne s'ajoutent pas au total.",
+      "buscar": "Rechercher une caisse, une banque ou un numéro de compte",
+      "sinResultados": "Aucun compte ne correspond à la recherche.",
+      "oculto": "Masqué",
+      "cajaGlobal": "Caisse de toutes les succursales",
+      "cajas": {
+        "titulo": "Caisses",
+        "ayuda": {
+          "branch": "Mode par succursale · une caisse par succursale · le solde est l'espèce attendue",
+          "user": "Mode par caissier · une caisse par personne · le solde est l'espèce attendue"
+        },
+        "vacio": "Aucune caisse ouverte. Vos caisses apparaissent ici quand vous les ouvrez dans le point de vente.",
+        "error": "Les caisses ouvertes n'ont pas pu être chargées"
+      },
+      "caja": {
+        "nombre": "Caisse {sucursal}",
+        "detalle": "{responsable} · ouverte {desde}",
+        "esperado": "Espèces attendues",
+        "ocultoAyuda": "Masqué par la clôture à l'aveugle",
+        "turno": "Service n° {id}",
+        "abierta": "Ouverte",
+        "vencida": "En retard {horas} h",
+        "verTurno": "Voir le service",
+        "consignar": "Déposer à la banque",
+        "cerrarArqueo": "Clôturer avec comptage"
+      },
+      "bancos": {
+        "titulo": "Banques",
+        "ayuda": "Solde comptable = solde initial + mouvements + virements",
+        "vacio": "Aucun compte bancaire pour l'instant."
+      },
+      "banco": {
+        "saldoLibros": "Solde comptable",
+        "activa": "Actif",
+        "inactiva": "Inactif",
+        "inactivaPie": "Compte inactif",
+        "sinCuentaContable": "Sans compte comptable : ses écritures vont au compte bancaire générique",
+        "cuentaContable": "Compte comptable {codigo}",
+        "verMovimientos": "Voir les mouvements",
+        "verCuenta": "Voir le compte",
+        "asignarCuenta": "Attribuer un compte",
+        "conciliar": "Rapprocher"
+      },
+      "error": {
+        "titulo": "Les comptes n'ont pas pu être chargés",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "vacio": {
+        "titulo": "Ajoutez votre premier compte bancaire",
+        "descripcion": "Vos caisses apparaissent ici quand vous les ouvrez dans le point de vente.",
+        "abrirCaja": "Aller aux caisses"
+      },
+      "csv": {
+        "tipo": "Type",
+        "nombre": "Nom",
+        "detalle": "Détail",
+        "moneda": "Devise",
+        "saldo": "Solde"
+      }
+    },
+    "posicion": {
+      "kpi": {
+        "etiqueta": "Position de trésorerie",
+        "total": "Solde consolidé",
+        "totalAyuda": "Tous les comptes bancaires",
+        "entradas": "Entrées prévues (90 jours)",
+        "salidas": "Sorties prévues (90 jours)",
+        "neto": "Flux net prévu"
+      },
+      "cuentasTitulo": "Position par compte",
+      "columnas": {
+        "cuenta": "Compte",
+        "banco": "Banque",
+        "libros": "Solde comptable",
+        "real": "Solde selon la banque",
+        "diferencia": "Écart"
+      },
+      "sinConectar": "Non connecté",
+      "vacio": {
+        "titulo": "Aucun compte bancaire",
+        "descripcion": "Ajoutez un compte pour voir sa position."
+      },
+      "proyeccion": {
+        "titulo": "Prochains mouvements",
+        "descripcion": "Encaissements et paiements attendus dans les 90 prochains jours",
+        "vacia": "Aucun encaissement ni paiement attendu.",
+        "error": "La projection n'a pas pu être chargée."
+      },
+      "alertas": {
+        "titulo": "Alertes de trésorerie",
+        "vacia": "Aucune alerte.",
+        "error": "Les alertes n'ont pas pu être chargées.",
+        "severidad": {
+          "high": "Haute",
+          "medium": "Moyenne",
+          "low": "Basse"
+        },
+        "tipos": {
+          "negative_balance": "Solde négatif",
+          "overdue_payable": "Dette fournisseur échue",
+          "upcoming_payable": "Dette fournisseur à échoir",
+          "concentration_risk": "Risque de concentration",
+          "balance_discrepancy": "Écart de solde"
+        }
+      },
+      "concentracion": {
+        "titulo": "Concentration des paiements de l'année",
+        "proveedor": "Fournisseur",
+        "total": "Total payé",
+        "pagos": "Paiements",
+        "promedio": "Moyenne",
+        "porcentaje": "% du total",
+        "vacia": "Aucun paiement fournisseur cette année"
+      },
+      "parcial": {
+        "titulo": "Une partie de l'information n'a pas été chargée",
+        "descripcion": "Impossible de lire : {partes}."
+      },
+      "partes": {
+        "posicion": "la position",
+        "proyeccion": "la projection",
+        "alertas": "les alertes",
+        "concentracion": "la concentration des paiements"
+      },
+      "reintentar": "Réessayer"
+    },
+    "cuentaBancaria": {
+      "migaCuentas": "Comptes de trésorerie",
+      "cuentaContable": "compte comptable {codigo}",
+      "activa": "Actif",
+      "inactiva": "Inactif",
+      "importarExtracto": "Importer un relevé",
+      "movimientoManual": "Mouvement manuel",
+      "transferir": "Virer vers un autre compte",
+      "sincronizar": "Synchroniser avec la banque",
+      "sincronizando": "Synchronisation…",
+      "sinVinculo": "Ce compte n'est pas connecté à la banque",
+      "sincronizado": "Synchronisation terminée : {sincronizadas} mouvements synchronisés, {importadas} importés",
+      "errorSincronizar": "Impossible de synchroniser avec la banque",
+      "editar": "Modifier",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "activada": "Compte activé",
+      "desactivada": "Compte désactivé",
+      "errorEstado": "Le statut du compte n'a pas pu être modifié",
+      "errorCarga": "Le compte bancaire n'a pas pu être chargé",
+      "noEncontrada": "Compte bancaire introuvable",
+      "volver": "Retour aux comptes de trésorerie",
+      "pestanas": {
+        "etiqueta": "Sections du compte",
+        "movimientos": "Mouvements",
+        "conciliaciones": "Rapprochements",
+        "datos": "Données",
+        "extractos": "Relevés"
+      },
+      "kpi": {
+        "etiqueta": "Résumé du compte",
+        "libros": "Solde comptable",
+        "librosAyuda": "Solde initial + mouvements",
+        "banco": "Solde selon la banque",
+        "sinConectar": "Non connecté",
+        "bancoAyuda": "Connectez la banque ou importez le relevé",
+        "bancoAl": "au {fecha}",
+        "porConciliar": "À rapprocher",
+        "mes": "Mouvements du mois",
+        "mesAyuda": "+{entradas} · −{salidas}"
+      },
+      "buscar": "Rechercher une description ou une référence",
+      "filtro": {
+        "etiqueta": "Rapprochement",
+        "todos": "Tous",
+        "pendientes": "En attente",
+        "conciliados": "Rapprochés"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "descripcion": "Description et référence",
+        "origen": "Origine",
+        "entrada": "Entrée",
+        "salida": "Sortie",
+        "saldo": "Solde",
+        "conciliacion": "Rapprochement"
+      },
+      "origenes": {
+        "deposit": "Dépôt",
+        "withdrawal": "Retrait",
+        "transfer": "Virement",
+        "fee": "Commission",
+        "interest": "Intérêts",
+        "other": "Autre"
+      },
+      "fuentes": {
+        "manual": "Manuel",
+        "anulacion": "Annulation",
+        "consignacion": "Dépôt de caisse",
+        "open_finance": "Banque connectée",
+        "extracto": "Relevé"
+      },
+      "conciliado": "Rapproché",
+      "porConciliar": "À rapprocher",
+      "vacio": {
+        "titulo": "Aucun mouvement",
+        "descripcion": "Les mouvements, virements et encaissements de ce compte apparaissent ici."
+      },
+      "sustantivo": {
+        "uno": "mouvement",
+        "otros": "mouvements"
+      },
+      "limite": "Les 200 derniers mouvements sont affichés.",
+      "datos": {
+        "titulo": "Données du compte",
+        "saldoInicial": "Solde initial",
+        "estado": "Statut",
+        "creada": "Créé"
+      },
+      "puc": {
+        "titulo": "Sans compte comptable",
+        "descripcion": "Attribuez-lui son sous-compte bancaire (1110xx ou 1120xx) pour que ses écritures ne se mélangent pas avec celles d'autres banques.",
+        "asignar": "Attribuer un compte",
+        "sin": "Non attribué",
+        "guardar": "Enregistrer le compte comptable",
+        "falta": "Choisissez le compte comptable (1110, 1120…)",
+        "guardada": "Compte comptable enregistré",
+        "error": "Le compte comptable n'a pas pu être enregistré"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Désactiver le compte ?",
+        "descripcion": "Il n'apparaît plus lors de l'enregistrement des mouvements et virements. Son historique est conservé."
+      },
+      "confirmarActivar": {
+        "titulo": "Activer le compte ?",
+        "descripcion": "Il réapparaît lors de l'enregistrement des mouvements et virements."
+      },
+      "form": {
+        "tituloNueva": "Nouveau compte bancaire",
+        "tituloEditar": "Modifier le compte bancaire",
+        "descripcion": "Le solde évolue tout seul avec les mouvements, virements et encaissements.",
+        "nombre": "Nom",
+        "nombreEjemplo": "Ex. : Bancolombia épargne",
+        "banco": "Banque",
+        "elegir": "Choisissez une banque",
+        "tipo": "Type de compte",
+        "tipos": {
+          "checking": "Courant",
+          "savings": "Épargne",
+          "credit": "Ligne de crédit",
+          "investment": "Placement"
+        },
+        "numero": "Numéro de compte",
+        "numeroAyuda": "Affiché masqué : {mascara}",
+        "moneda": "Devise",
+        "monedaFija": "La devise ne peut pas être modifiée après la création du compte.",
+        "cuentaContable": "Compte comptable",
+        "cuentaContableAyuda": "Obligatoire : chaque banque a son sous-compte 1110xx pour que ses écritures ne se mélangent pas.",
+        "elegirCuenta": "Choisissez le compte comptable",
+        "saldoInicial": "Solde initial",
+        "saldoInicialAyuda": "Le solde du relevé le jour où vous commencez à enregistrer.",
+        "conectar": {
+          "etiqueta": "Connecter la banque · service GO Admin",
+          "valor": "Récupère le relevé tout seul, sans coller de clés",
+          "accion": "Activer"
+        },
+        "crear": "Créer le compte",
+        "guardar": "Enregistrer les modifications",
+        "creada": "Compte bancaire créé",
+        "guardada": "Compte bancaire mis à jour",
+        "errorGuardar": "Le compte bancaire n'a pas pu être enregistré",
+        "errores": {
+          "nombre": "Saisissez le nom du compte.",
+          "banco": "Choisissez la banque.",
+          "cuentaContable": "Le compte comptable est obligatoire (plan comptable 1110, 1120 ou un autre compte bancaire).",
+          "saldoInicial": "Le solde initial ne peut pas être négatif."
+        }
+      },
+      "manual": {
+        "titulo": "Mouvement manuel",
+        "descripcion": "Commissions, taxes bancaires, intérêts et autres mouvements faits par la banque.",
+        "sentido": "Sens du mouvement",
+        "entrada": "Entre sur le compte",
+        "salida": "Sort du compte",
+        "concepto": "Description",
+        "conceptoEjemplo": "Ex. : Commission bancaire de novembre",
+        "monto": "Montant",
+        "fecha": "Date",
+        "referencia": "Référence",
+        "asientoNota": "L'écriture suit la règle des ajustements bancaires.",
+        "registrar": "Enregistrer le mouvement",
+        "exito": "Mouvement enregistré",
+        "errores": {
+          "descripcion": "Saisissez la description.",
+          "monto": "Saisissez un montant supérieur à zéro.",
+          "supera": "Il dépasse le solde du compte bancaire.",
+          "fechaFutura": "La date ne peut pas être dans le futur.",
+          "guardar": "Le mouvement n'a pas pu être enregistré."
+        }
+      },
+      "extractos": {
+        "columnas": {
+          "archivo": "Fichier",
+          "importado": "Importé",
+          "lineas": "Lignes",
+          "estado": "Statut",
+          "movimientos": "Entrées · sorties"
+        },
+        "sinNombre": "Relevé sans nom",
+        "pendientes": "{n, plural, one {# ligne en attente} other {# lignes en attente}}",
+        "completo": "Complet",
+        "ayuda": "Relevés importés lors des rapprochements. Chacun ouvre son rapprochement.",
+        "vacio": {
+          "titulo": "Aucun relevé pour l'instant",
+          "descripcion": "Importez le relevé bancaire en créant un rapprochement."
+        },
+        "resumenMovil": "{lineas} lignes · {pendientes} en attente"
+      }
+    },
+    "conciliacion": {
+      "titulo": "Rapprochement bancaire",
+      "subtitulo": "Comparez le relevé bancaire avec vos mouvements",
+      "tituloDetalle": "Rapprochement · {cuenta}",
+      "migaTesoreria": "Trésorerie",
+      "nueva": "Nouveau rapprochement",
+      "ver": "Voir le rapprochement",
+      "actualizar": "Actualiser",
+      "buscar": "Rechercher par compte ou période",
+      "cuentaSinNombre": "Compte bancaire",
+      "filtros": {
+        "estado": "Statut",
+        "cuenta": "Compte",
+        "todosEstados": "Tous les statuts",
+        "todasCuentas": "Tous les comptes"
+      },
+      "kpi": {
+        "etiqueta": "Résumé des rapprochements",
+        "total": "Total",
+        "borradores": "Brouillons",
+        "enProgreso": "En cours",
+        "cerradas": "Clôturés"
+      },
+      "columnas": {
+        "cuenta": "Compte",
+        "periodo": "Période",
+        "saldoExtracto": "Solde du relevé",
+        "diferencia": "Écart",
+        "estado": "Statut"
+      },
+      "estados": {
+        "draft": "Brouillon",
+        "in_progress": "En cours",
+        "closed": "Clôturé"
+      },
+      "vacio": {
+        "titulo": "Aucun rapprochement pour l'instant",
+        "descripcion": "Rapprochez chaque mois le relevé de votre banque avec vos mouvements."
+      },
+      "pestanas": {
+        "etiqueta": "Sections du rapprochement",
+        "emparejar": "Associer",
+        "extracto": "Relevé",
+        "sugerencias": "Suggestions"
+      },
+      "pendientes": {
+        "titulo": "Mouvements en attente ({n})",
+        "descripcion": "Mouvements du compte non rapprochés sur la période",
+        "vacio": "Tous les mouvements sont rapprochés"
+      },
+      "conciliados": {
+        "titulo": "Rapprochés ({n})",
+        "descripcion": "Mouvements déjà rapprochés",
+        "vacio": "Aucun mouvement rapproché pour l'instant"
+      },
+      "sinDescripcion": "Sans description",
+      "sinFecha": "Sans date",
+      "conciliar": "Rapprocher",
+      "deshacer": "Annuler l'association",
+      "tipoItem": {
+        "payment": "Paiement",
+        "journal": "Écriture",
+        "manual": "Manuel"
+      },
+      "nuevaForm": {
+        "titulo": "Nouveau rapprochement bancaire",
+        "subtitulo": "Le solde actuel sera le solde d'ouverture",
+        "miga": "Rapprochement bancaire",
+        "cuenta": "Compte bancaire",
+        "elegirCuenta": "Choisissez le compte",
+        "saldoSistema": "Solde actuel dans le système",
+        "saldoSistemaAyuda": "C'est le solde d'ouverture du rapprochement.",
+        "inicio": "Date de début",
+        "fin": "Date de fin",
+        "saldoExtracto": "Solde selon le relevé bancaire",
+        "saldoExtractoAyuda": "Facultatif : vous pouvez le saisir plus tard.",
+        "extracto": "Relevé",
+        "extractoElegir": "Glissez le relevé ou choisissez un fichier",
+        "extractoFormatos": "CSV ou Excel",
+        "extractoAyuda": "Facultatif : il est associé automatiquement à vos mouvements.",
+        "extractoLeido": "{lineas, plural, one {# ligne lue} other {# lignes lues}} de {nombre}",
+        "extractoVacio": "Le fichier n'a pas de lignes avec une date et un montant",
+        "extractoIlegible": "Le fichier n'a pas pu être lu. Utilisez CSV ou Excel.",
+        "errorCuentas": "Les comptes bancaires n'ont pas pu être chargés",
+        "crear": "Créer le rapprochement",
+        "creada": "Rapprochement créé",
+        "creadaConExtracto": "Rapprochement créé. Relevé chargé : {emparejadas} sur {lineas} associées",
+        "creadaSinExtracto": "Le rapprochement a été créé, mais le relevé n'a pas pu être chargé",
+        "errores": {
+          "cuenta": "Choisissez le compte bancaire.",
+          "periodo": "Choisissez la période de rapprochement.",
+          "orden": "La date de début doit être antérieure à la date de fin.",
+          "crear": "Le rapprochement n'a pas pu être créé."
+        }
+      }
+    },
+    "transferencias": {
+      "titulo": "Virements bancaires",
+      "subtitulo": "Mouvements entre comptes bancaires",
+      "nueva": "Nouveau virement",
+      "buscar": "Rechercher par référence ou compte",
+      "ver": "Voir le détail",
+      "anular": "Annuler",
+      "anulada": "Virement annulé",
+      "anularTitulo": "Annuler le virement",
+      "anularConsecuencia": "Les deux soldes reviennent à leur état antérieur et une écriture d'extourne est passée.",
+      "kpi": {
+        "etiqueta": "Résumé des virements",
+        "total": "Total viré",
+        "mes": "Ce mois-ci",
+        "operaciones": "Opérations",
+        "pendientes": "En attente"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "origen": "Origine",
+        "destino": "Destination",
+        "monto": "Montant",
+        "referencia": "Référence",
+        "estado": "Statut"
+      },
+      "estados": {
+        "completed": "Effectué",
+        "pending": "En attente",
+        "cancelled": "Annulé"
+      },
+      "vacio": {
+        "titulo": "Aucun virement pour l'instant",
+        "descripcion": "Déplacez de l'argent entre vos comptes bancaires."
+      },
+      "sustantivo": {
+        "uno": "virement",
+        "otros": "virements"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "origen": "Origine",
+        "destino": "Destination",
+        "monto": "Montant",
+        "referencia": "Référence",
+        "estado": "Statut"
+      },
+      "detalleTitulo": "Virement",
+      "detalleTituloRef": "Virement {referencia}",
+      "descargarComprobante": "Télécharger le justificatif",
+      "comprobante": {
+        "titulo": "JUSTIFICATIF DE VIREMENT",
+        "id": "ID du virement"
+      },
+      "datos": "Données du virement",
+      "registro": "Enregistrement",
+      "notas": "Notes",
+      "creada": "Créé",
+      "asiento": "Écriture",
+      "asientoAyuda": "Une seule écriture entre les deux comptes bancaires",
+      "errorCarga": "Le virement n'a pas pu être chargé",
+      "noEncontrada": "Virement introuvable",
+      "volver": "Retour aux virements"
+    },
+    "formulario": {
+      "tituloMovimiento": "Nouveau mouvement",
+      "descripcion": "Enregistrez l'argent qui entre ou sort d'une caisse ou d'une banque. Les ventes et les encaissements s'enregistrent tout seuls.",
+      "registrar": "{tipo, select, ingreso {Enregistrer l'encaissement} other {Enregistrer le décaissement}}",
+      "registrarDeTodosModos": "{tipo, select, ingreso {Enregistrer l'encaissement quand même} other {Enregistrer le décaissement quand même}}",
+      "tipo": {
+        "etiqueta": "Type de mouvement",
+        "ingreso": "Encaissement",
+        "ingresoAyuda": "De l'argent entre",
+        "egreso": "Décaissement",
+        "egresoAyuda": "De l'argent sort",
+        "traslado": "Virement",
+        "trasladoAyuda": "Entre vos comptes"
+      },
+      "sinCaja": {
+        "titulo": "Vous n'avez pas de caisse ouverte dans cette succursale. Ouvrez votre caisse dans le point de vente ou enregistrez le mouvement dans une banque.",
+        "abrir": "Ouvrir la caisse",
+        "banco": "Utiliser une banque"
+      },
+      "cuentaDinero": "Compte de trésorerie",
+      "elegirCuenta": "Choisissez un compte",
+      "cajasError": "Les caisses ouvertes n'ont pas pu être lues ; les banques restent disponibles.",
+      "opcion": {
+        "miCaja": "Ma caisse · {nombre}",
+        "caja": "Caisse {nombre}",
+        "todas": "toutes les succursales",
+        "oculto": "solde masqué"
+      },
+      "motivos": {
+        "otroCajero": "caisse d'un autre caissier",
+        "otraSucursal": "caisse d'une autre succursale"
+      },
+      "cuentaAyuda": "La catégorie apporte le compte ; vous pouvez le changer.",
+      "importe": "Montant",
+      "superaCaja": "Il dépasse les espèces attendues de la caisse ({disponible}).",
+      "superaBanco": "Il dépasse le solde du compte bancaire : il ne peut pas être enregistré.",
+      "tercero": "Tiers (facultatif)",
+      "terceroAyuda": "Fournisseur, employé ou interne.",
+      "referencia": "Référence ou notes",
+      "adjuntar": "Joindre un justificatif (photo ou PDF)",
+      "avisoArqueo": "Vous pouvez l’enregistrer quand même si le comptage physique le confirme ; il sera signalé pour le comptage.",
+      "efectoTitulo": "Effet sur le compte",
+      "efectoVacio": "Choisissez un compte de trésorerie pour voir le solde avant et après.",
+      "vistaVacia": "Choisissez la catégorie ou le compte pour voir l'écriture.",
+      "errores": {
+        "cuentaDinero": "Choisissez une caisse ouverte ou une banque."
+      }
+    },
+    "cadena": {
+      "titulo": "Chaîne de l'argent",
+      "turno": "Service de caisse",
+      "movimiento": "Mouvement",
+      "asiento": "Écriture",
+      "conciliacion": "Rapprochement",
+      "consignacion": "Dépôt en banque",
+      "sinAsiento": "Pas d'écriture",
+      "publicado": "Validée",
+      "borrador": "Brouillon",
+      "conciliado": "Rapproché",
+      "porConciliar": "À rapprocher",
+      "pendiente": "En attente",
+      "abierto": "Ouvert",
+      "cerrado": "Fermé"
     }
   }
 }

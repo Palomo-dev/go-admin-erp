@@ -192,7 +192,8 @@ export class BancosService {
 
   static async crearCuentaBancaria(cuenta: Partial<BankAccount>): Promise<BankAccount> {
     const organizationId = this.getOrganizationId();
-    const branchId = this.getBranchId();
+    // La sucursal elegida en el panel (Tesorería v2); si no viene, la activa.
+    const branchId = cuenta.branch_id ?? this.getBranchId();
 
     try {
       const { data, error } = await supabase

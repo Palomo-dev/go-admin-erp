@@ -283,7 +283,7 @@ export default function AccountMappingForm({
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription className="text-sm dark:text-yellow-200">
                     No tienes cuentas bancarias configuradas.{" "}
-                    <a href="/app/finanzas/bancos/cuentas" className="underline font-medium">
+                    <a href="/app/finanzas/tesoreria/cuentas?nueva=1" className="underline font-medium">
                       Crear cuenta bancaria
                     </a>
                   </AlertDescription>

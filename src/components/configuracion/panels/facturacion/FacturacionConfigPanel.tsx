@@ -1,215 +1,347 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
-import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { electronicInvoicingConfigService, type EstadoFacturacionElectronica } from '@/lib/services/electronicInvoicingConfigService';
-import { CredencialesFactusSection } from './sections/CredencialesFactusSection';
-import { RangosDianSection } from './sections/RangosDianSection';
+/**
+ * Configuración › Facturación electrónica › Resumen: «Resoluciones y
+ * numeración» (Figma `52-documentos-resoluciones-listo.png`; diseño
+ * docs/design/FINANZAS-DOCUMENTOS-V2.md §7.6). Mismo lugar de siempre
+ * (`/app/finanzas/configuracion/secuencias` redirige aquí), sin página nueva.
+ *
+ * Antes: tarjetas `ui/card` que repetían el estado del servicio y la
+ * preferencia «facturar siempre electrónica» (que viven en la sección
+ * Servicio) y escribían `invoice_sequences` desde el navegador, moviendo el
+ * rango a la sucursal guardada en `localStorage` al editar. Ahora:
+ *   - una línea con el estado del servicio y el enlace a Servicio;
+ *   - la tabla de rangos con consumo, vigencia, estado y avisos por
+ *     `alert_threshold` y por vencimiento (30, 15 y 7 días);
+ *   - «Sincronizar con el proveedor» por sucursal (`POST /api/factus/config`,
+ *     como antes) y «Editar» (`POST /api/factus/rangos`), ambos para
+ *     administrador o `finance.approve`.
+ * Crear rangos a mano no se ofrece (no lo ofrecía la pantalla vieja): los
+ * registra GO Admin ante el proveedor y llegan con «Sincronizar».
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { ArrowRight, BarChart3, Hash, Loader2, Pencil, RefreshCw } from 'lucide-react';
+import { DataTable, ListCard, SearchInput, SegmentedControl, StatusBadge, clasesBoton, type AccionFila, type ColumnaTabla } from '@/components/kit';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { BarraProgreso } from '@/components/kit/BarraProgreso';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
+import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { ErrorPeticion, pedirJson } from '@/components/finanzas/facturacion-electronica/bandeja/bandejaCliente';
+import {
+  TONO_RANGO,
+  avisosRangos,
+  leerRango,
+  ordenarRangos,
+  requiereResolucion,
+  type RangoNumeracion,
+} from '@/lib/finanzas/facturacionElectronica/resolucionesLogica';
+import { RangoEditDialog, type RangoEditable } from './RangoEditDialog';
 
-const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  invoice: 'Factura de Venta',
-  credit_note: 'Nota Crédito',
-  debit_note: 'Nota Débito',
-  adjustment_note: 'Nota de Ajuste',
-  support_document: 'Documento Soporte',
-};
+type Rango = RangoEditable & { branch: { name: string } | { name: string }[] | null };
 
-interface RangoData {
-  id: number | null;
-  documentType: string;
-  prefix: string;
-  rangeStart: number;
-  rangeEnd: number;
-  currentNumber: number;
-  resolutionNumber: string;
-  resolutionDate: string;
-  validFrom: string;
-  validUntil: string;
-  technicalKey: string;
-  testSetId: string;
-  factusNumberingRangeId: string | number;
-  isActive: boolean;
+function nombreSucursal(r: Rango): string | null {
+  const b = Array.isArray(r.branch) ? r.branch[0] : r.branch;
+  return b?.name ?? null;
 }
 
 export function FacturacionConfigPanel() {
-  const { toast } = useToast();
-  const orgId = getOrganizationId();
-  const [loading, setLoading] = useState(true);
-  const [servicio, setServicio] = useState<EstadoFacturacionElectronica | null>(null);
-  const [savingRange, setSavingRange] = useState(false);
-  const [fetchingRanges, setFetchingRanges] = useState(false);
-  const [savedRanges, setSavedRanges] = useState<Record<string, unknown>[]>([]);
-  const [editingRangeId, setEditingRangeId] = useState<number | null>(null);
-  const { alwaysEnabled: eInvoiceAlwaysEnabled, savePreference: saveEInvoicePreference, loading: loadingEInvoicePref } = useElectronicInvoicePreference();
-  const [savingEInvoiceToggle, setSavingEInvoiceToggle] = useState(false);
+  const t = useTranslations('finanzasDocumentosR3.resoluciones');
+  const entero = useFormatoEntero();
+  const { branches } = useBranch();
+  const { getToday } = useFormatDate();
+  const hoy = getToday();
 
-  const [range, setRange] = useState<RangoData>({
-    id: null, documentType: 'invoice', prefix: 'FE', rangeStart: 1, rangeEnd: 1000,
-    currentNumber: 1, resolutionNumber: '', resolutionDate: '', validFrom: '', validUntil: '',
-    technicalKey: '', testSetId: '', factusNumberingRangeId: '', isActive: true,
-  });
+  const [rangos, setRangos] = useState<Rango[]>([]);
+  const [puedeEditar, setPuedeEditar] = useState(false);
+  const [servicio, setServicio] = useState<'active' | 'pending_activation' | 'suspended' | null>(null);
+  const [estado, setEstado] = useState<'cargando' | 'listo' | 'error' | 'sinPermiso'>('cargando');
+  const [busqueda, setBusqueda] = useState('');
+  const [alcance, setAlcance] = useState<'activas' | 'todas'>('activas');
+  const [sucursal, setSucursal] = useState('');
+  const [sincronizando, setSincronizando] = useState(false);
+  const [editando, setEditando] = useState<Rango | null>(null);
+
+  const cargar = useCallback(async () => {
+    try {
+      const [r, c] = await Promise.all([
+        pedirJson<{ rangos: Rango[]; puedeEditar: boolean }>('/api/factus/rangos'),
+        pedirJson<{ service: { status: 'active' | 'pending_activation' | 'suspended' } }>('/api/factus/config').catch(() => null),
+      ]);
+      setRangos(r.rangos ?? []);
+      setPuedeEditar(!!r.puedeEditar);
+      setServicio(c?.service.status ?? null);
+      setEstado('listo');
+    } catch (e) {
+      setEstado(e instanceof ErrorPeticion && (e.status === 401 || e.status === 403) ? 'sinPermiso' : 'error');
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadConfig() {
-      if (!orgId) return;
-      // Estado del servicio, sin credenciales: las gestiona la plataforma.
-      setServicio(await electronicInvoicingConfigService.getStatus());
-      const { supabase } = await import('@/lib/supabase/config');
-      const { data: seqs } = await supabase.from('invoice_sequences').select('*').eq('organization_id', orgId).order('document_type');
-      if (seqs && seqs.length > 0) {
-        setSavedRanges(seqs);
-        const invoiceSeq = seqs.find((s) => s.document_type === 'invoice') || seqs[0];
-        setRange({
-          id: invoiceSeq.id, documentType: invoiceSeq.document_type || 'invoice',
-          prefix: invoiceSeq.prefix || 'FE', rangeStart: invoiceSeq.range_start || 1,
-          rangeEnd: invoiceSeq.range_end || 1000, currentNumber: invoiceSeq.current_number || 1,
-          resolutionNumber: invoiceSeq.resolution_number || '', resolutionDate: invoiceSeq.resolution_date || '',
-          validFrom: invoiceSeq.valid_from || '', validUntil: invoiceSeq.valid_until || '',
-          technicalKey: invoiceSeq.technical_key || '', testSetId: invoiceSeq.test_set_id || '',
-          factusNumberingRangeId: invoiceSeq.factus_numbering_range_id || '', isActive: invoiceSeq.is_active,
-        });
-      }
-      setLoading(false);
-    }
-    loadConfig();
-  }, [orgId]);
+    void cargar();
+  }, [cargar]);
 
-  /**
-   * Sincroniza los rangos de la cuenta de Factus DE LA ORGANIZACIÓN en el
-   * servidor (antes: desde el navegador, con la cuenta de la plataforma y la
-   * sucursal «2» de respaldo). Sucursal: la activa; sin ella, se pide ir a la
-   * pantalla de configuración, que deja elegirla.
-   */
-  const handleFetchRanges = async () => {
-    const sucursalActiva = typeof window !== 'undefined' ? Number.parseInt(localStorage.getItem('currentBranchId') || '', 10) : NaN;
-    if (!Number.isInteger(sucursalActiva) || sucursalActiva <= 0) {
-      toast({ title: 'Seleccione una sucursal', description: 'Elija la sucursal en Configuración › Facturación electrónica › Servicio.', variant: 'destructive' });
-      return;
-    }
-    setFetchingRanges(true);
+  const sincronizar = async () => {
+    if (!sucursal) return;
+    setSincronizando(true);
     try {
-      const res = await fetch('/api/factus/config', {
+      const r = await pedirJson<{ importados?: number; desactivados?: number }>('/api/factus/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sincronizar_rangos', branchId: sucursalActiva }),
+        body: JSON.stringify({ action: 'sincronizar_rangos', branchId: Number(sucursal) }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (res.ok) {
-        const { supabase } = await import('@/lib/supabase/config');
-        const { data: allSeqs } = await supabase.from('invoice_sequences').select('*').eq('organization_id', orgId).order('document_type');
-        if (allSeqs) setSavedRanges(allSeqs);
-        toast({ title: 'Rangos sincronizados', description: `${json.importados ?? 0} importado(s), ${json.desactivados ?? 0} desactivado(s).` });
-      } else {
-        toast({ title: 'Error', description: json.error || 'No se pudieron obtener los rangos.', variant: 'destructive' });
+      toastSuccess(t('sincronizadas'), t('resumenSincronizacion', { importados: Number(r.importados ?? 0), desactivados: Number(r.desactivados ?? 0) }));
+      await cargar();
+    } catch (e) {
+      toastError(e instanceof ErrorPeticion && e.status === 403 ? t('errores.sinPermiso') : t('errores.sincronizar'), e instanceof ErrorPeticion && e.status !== 403 ? e.message : undefined);
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const guardar = async (cuerpo: Record<string, unknown>): Promise<string | null> => {
+    try {
+      await pedirJson('/api/factus/rangos', { method: 'POST', body: JSON.stringify(cuerpo) });
+      toastSuccess(t('editar.guardado'));
+      setEditando(null);
+      await cargar();
+      return null;
+    } catch (e) {
+      if (e instanceof ErrorPeticion) {
+        if (e.status === 403) return t('errores.sinPermiso');
+        if (e.codigo === 'duplicado') return t('errores.duplicado');
+        if (e.codigo === 'datos_invalidos') return t('errores.datosInvalidos');
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error desconocido';
-      toast({ title: 'Error', description: message, variant: 'destructive' });
-    }
-    setFetchingRanges(false);
-  };
-
-  const handleEditRange = (seq: Record<string, unknown>) => {
-    setEditingRangeId(seq.id as number);
-    setRange({
-      id: seq.id as number, documentType: (seq.document_type as string) || 'invoice', prefix: (seq.prefix as string) || '',
-      rangeStart: (seq.range_start as number) || 0, rangeEnd: (seq.range_end as number) || 0, currentNumber: (seq.current_number as number) || 0,
-      resolutionNumber: (seq.resolution_number as string) || '', resolutionDate: (seq.resolution_date as string) || '',
-      validFrom: (seq.valid_from as string) || '', validUntil: (seq.valid_until as string) || '',
-      technicalKey: (seq.technical_key as string) || '', testSetId: (seq.test_set_id as string) || '',
-      factusNumberingRangeId: (seq.factus_numbering_range_id as string) || '', isActive: seq.is_active as boolean,
-    });
-  };
-
-  const handleSaveRange = async () => {
-    if (!orgId) return;
-    setSavingRange(true);
-    const { supabase } = await import('@/lib/supabase/config');
-    const branchId = typeof window !== 'undefined' ? parseInt(localStorage.getItem('currentBranchId') || '2', 10) : 2;
-    const data = {
-      organization_id: orgId, branch_id: branchId, document_type: range.documentType,
-      prefix: range.prefix, range_start: Number(range.rangeStart), range_end: Number(range.rangeEnd),
-      current_number: Number(range.currentNumber), resolution_number: range.resolutionNumber || null,
-      resolution_date: range.resolutionDate || null, valid_from: range.validFrom || null,
-      valid_until: range.validUntil || null, technical_key: range.technicalKey || null,
-      test_set_id: range.testSetId || null,
-      factus_numbering_range_id: range.factusNumberingRangeId ? Number(range.factusNumberingRangeId) : null,
-      is_active: range.isActive, updated_at: new Date().toISOString(),
-    };
-    let error;
-    if (range.id) {
-      ({ error } = await supabase.from('invoice_sequences').update(data).eq('id', range.id));
-    } else {
-      ({ error } = await supabase.from('invoice_sequences').insert({ ...data, created_at: new Date().toISOString() }).select().single());
-    }
-    setSavingRange(false);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Rango guardado', description: `Rango ${range.prefix} guardado correctamente.` });
-      setEditingRangeId(null);
-      const { data: allSeqs } = await supabase.from('invoice_sequences').select('*').eq('organization_id', orgId).order('document_type');
-      if (allSeqs) setSavedRanges(allSeqs);
+      return t('errores.guardar');
     }
   };
 
-  if (loading) {
+  const ordenados = useMemo(() => ordenarRangos(rangos), [rangos]);
+  const avisos = useMemo(() => avisosRangos(rangos, hoy), [rangos, hoy]);
+  const visibles = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return ordenados.filter(
+      (r) =>
+        (alcance === 'todas' || r.is_active) &&
+        (!q || (r.prefix ?? '').toLowerCase().includes(q) || (r.resolution_number ?? '').toLowerCase().includes(q)),
+    );
+  }, [ordenados, alcance, busqueda]);
+
+  const textoVigencia = (r: RangoNumeracion) => {
+    const l = leerRango(r, hoy);
+    if (!r.valid_until) return <span className="text-fg-secondary">{t('sinVencimiento')}</span>;
+    if (l.estado === 'vencida') return <span className="text-danger-text">{t('vencio', { fecha: formatPlainDate(r.valid_until) })}</span>;
     return (
-      <div className="space-y-4 max-w-2xl mx-auto">
-        <PageHeaderSkeleton />
-        <CardListSkeleton cards={3} columns="1" />
+      <span className={l.umbralVencimiento ? 'text-warning-text' : 'text-fg'}>
+        {l.umbralVencimiento ? t('venceEn', { dias: entero(l.diasParaVencer ?? 0), count: l.diasParaVencer ?? 0 }) : t('hasta', { fecha: formatPlainDate(r.valid_until) })}
+      </span>
+    );
+  };
+
+  const consumo = (r: RangoNumeracion) => {
+    const l = leerRango(r, hoy);
+    const tono = TONO_RANGO[l.estado];
+    return (
+      <div className="flex min-w-[180px] flex-col gap-1">
+        <span className="text-xs tabular-nums text-fg-secondary">
+          {l.consumo.total === 0
+            ? '—'
+            : l.consumo.quedan === 0
+              ? t('consumoAgotado', { usados: entero(l.consumo.usados), total: entero(l.consumo.total) })
+              : t('consumoQuedan', { usados: entero(l.consumo.usados), total: entero(l.consumo.total), quedan: entero(l.consumo.quedan) })}
+        </span>
+        <BarraProgreso
+          valor={l.consumo.usados}
+          max={Math.max(1, l.consumo.total)}
+          etiqueta={t('consumoDe', { prefijo: r.prefix ?? '' })}
+          tono={tono === 'peligro' ? 'peligro' : tono === 'advertencia' ? 'advertencia' : 'marca'}
+          tamano="sm"
+        />
       </div>
     );
-  }
+  };
+
+  const badge = (r: RangoNumeracion) => {
+    const e = leerRango(r, hoy).estado;
+    return <StatusBadge estado={e} tono={TONO_RANGO[e]} etiqueta={t(`estados.${e}`)} />;
+  };
+
+  const resolucion = (r: Rango) =>
+    requiereResolucion(r.document_type) || r.resolution_number ? (
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-fg">{r.resolution_number || t('sinResolucionRegistrada')}</span>
+        {r.resolution_date && <span className="text-xs text-fg-muted">{t('del', { fecha: formatPlainDate(r.resolution_date) })}</span>}
+      </div>
+    ) : (
+      <div className="flex min-w-0 flex-col">
+        <span className="text-fg">{t('noRequiere')}</span>
+        <span className="text-xs text-fg-muted">{t('numeracionPropia')}</span>
+      </div>
+    );
+
+  const accionesDe = (r: Rango): AccionFila[] => [
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => setEditando(r), oculta: !puedeEditar },
+  ];
+
+  const columnas: ColumnaTabla<Rango>[] = [
+    {
+      id: 'tipo',
+      encabezado: t('columnas.tipo'),
+      celda: (r) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium text-fg">{t(`tipos.${r.document_type}`)}</span>
+          <span className="truncate text-xs text-fg-muted">{nombreSucursal(r) ?? t('todasSucursales')}</span>
+        </div>
+      ),
+    },
+    { id: 'prefijo', encabezado: t('columnas.prefijo'), variante: 'mono', celda: (r) => r.prefix ?? '—' },
+    { id: 'resolucion', encabezado: t('columnas.resolucion'), ocultarDebajo: 'md', celda: resolucion },
+    {
+      id: 'rango',
+      encabezado: t('columnas.rango'),
+      ocultarDebajo: 'lg',
+      celda: (r) => <span className="whitespace-nowrap tabular-nums">{r.range_end ? `${entero(r.range_start ?? 0)} – ${entero(r.range_end)}` : '—'}</span>,
+    },
+    { id: 'consumo', encabezado: t('columnas.consumo'), celda: consumo },
+    { id: 'vigencia', encabezado: t('columnas.vigencia'), ocultarDebajo: 'md', celda: textoVigencia },
+    { id: 'estado', encabezado: t('columnas.estado'), alinear: 'centro', celda: badge },
+  ];
+
+  const aviso = avisos[0];
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
-      <CredencialesFactusSection
-        servicio={servicio}
-        cargando={loading}
-        eInvoiceAlwaysEnabled={eInvoiceAlwaysEnabled}
-        savingEInvoiceToggle={savingEInvoiceToggle}
-        loadingEInvoicePref={loadingEInvoicePref}
-        onEInvoiceToggle={async (checked) => {
-          setSavingEInvoiceToggle(true);
-          const result = await saveEInvoicePreference(checked);
-          setSavingEInvoiceToggle(false);
-          toast({
-            title: result.success ? 'Preferencia guardada' : 'Error',
-            description: result.success ? (checked ? 'Factura electrónica activada globalmente' : 'Factura electrónica desactivada globalmente') : result.error || 'No se pudo guardar',
-            variant: result.success ? 'default' : 'destructive',
-          });
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand" aria-hidden="true">
+            <Hash className="size-5" strokeWidth={1.5} />
+          </span>
+          <div className="flex flex-col">
+            <h2 className="text-base font-semibold text-fg">{t('titulo')}</h2>
+            <p className="text-sm text-fg-secondary">{t('descripcion')}</p>
+          </div>
+        </div>
+        {puedeEditar && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={sucursal} onValueChange={setSucursal}>
+              <SelectTrigger className="h-10 w-48" aria-label={t('sucursal')}>
+                <SelectValue placeholder={t('sucursal')} />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((b) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'secundario' })}
+              onClick={() => void sincronizar()}
+              disabled={!sucursal || sincronizando}
+              title={!sucursal ? t('motivos.eligeSucursal') : undefined}
+            >
+              {sincronizando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+              {t('sincronizar')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {servicio && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-sm">
+          <span className="flex items-center gap-2 text-fg">
+            {t('servicio.linea')}
+            <StatusBadge
+              estado={servicio}
+              tono={servicio === 'active' ? 'exito' : servicio === 'suspended' ? 'peligro' : 'advertencia'}
+              etiqueta={t(`servicio.estados.${servicio}`)}
+            />
+          </span>
+          <Link href={rutaSeccion('facturacion.servicio')} className="inline-flex items-center gap-1 font-medium text-brand hover:underline">
+            {t('servicio.ver')}
+            <ArrowRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          </Link>
+        </div>
+      )}
+
+      {aviso && (
+        <AvisoTonal
+          tono={aviso.tipo === 'agotada' || aviso.tipo === 'vencida' ? 'peligro' : 'advertencia'}
+          titulo={t(`avisos.${aviso.tipo}.titulo`, { tipo: t(`tipos.${aviso.documentType}`), prefijo: aviso.prefijo, dias: entero(Math.abs(aviso.dias ?? 0)), count: Math.abs(aviso.dias ?? 0) })}
+          descripcion={[
+            t(`avisos.${aviso.tipo}.descripcion`, { quedan: entero(aviso.quedan), count: aviso.quedan }),
+            avisos.length > 1 ? t('avisos.otros', { n: entero(avisos.length - 1), count: avisos.length - 1 }) : null,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        />
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />
+        </div>
+        <SegmentedControl
+          etiqueta={t('alcance.etiqueta')}
+          valor={alcance}
+          onValorChange={(v) => setAlcance(v as 'activas' | 'todas')}
+          opciones={[
+            { valor: 'activas', etiqueta: t('alcance.activas') },
+            { valor: 'todas', etiqueta: t('alcance.todas') },
+          ]}
+        />
+      </div>
+
+      <DataTable
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={visibles}
+        obtenerId={(r) => String(r.id)}
+        estado={estado === 'cargando' ? 'cargando' : estado === 'sinPermiso' ? 'sinPermiso' : estado === 'error' ? 'error' : visibles.length === 0 ? (busqueda || (alcance === 'activas' && rangos.length > 0) ? 'sinResultados' : 'vacio') : 'listo'}
+        acciones={puedeEditar ? accionesDe : undefined}
+        onFilaClick={puedeEditar ? (r) => setEditando(r) : undefined}
+        etiquetaFila={(r) => `${r.prefix ?? ''} · ${t(`tipos.${r.document_type}`)}`}
+        tarjetaMovil={(r) => (
+          <ListCard
+            icono={Hash}
+            titulo={`${r.prefix ?? '—'} · ${t(`tipos.${r.document_type}`)}`}
+            subtitulo={nombreSucursal(r) ?? t('todasSucursales')}
+            meta={textoVigencia(r)}
+            datos={[{ icono: BarChart3, etiqueta: t('columnas.consumo'), texto: consumo(r) }]}
+            estado={badge(r)}
+            acciones={puedeEditar ? accionesDe(r) : undefined}
+            onClick={puedeEditar ? () => setEditando(r) : undefined}
+          />
+        )}
+        vacio={{ icono: Hash, titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion') }}
+        sinResultados={{ descripcion: t('sinResultados') }}
+        error={{ titulo: t('errores.carga') }}
+        sinPermiso={{ titulo: t('errores.sinPermiso') }}
+        onReintentar={() => void cargar()}
+        onLimpiarFiltros={() => {
+          setBusqueda('');
+          setAlcance('todas');
         }}
+        termino={busqueda}
       />
 
-      <RangosDianSection
-        savedRanges={savedRanges}
-        editingRangeId={editingRangeId}
-        range={range}
-        fetchingRanges={fetchingRanges}
-        savingRange={savingRange}
-        documentTypeLabels={DOCUMENT_TYPE_LABELS}
-        onFetchRanges={handleFetchRanges}
-        onEditRange={handleEditRange}
-        onRangeChange={setRange}
-        onSaveRange={handleSaveRange}
-        onCancelEdit={() => setEditingRangeId(null)}
-      />
+      <p className="text-xs text-fg-muted">{t('nota')}</p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Información</CardTitle>
-        </CardHeader>
-        <CardContent className="text-xs text-gray-500 space-y-1">
-          <p>• GO Admin presta la facturación electrónica: el equipo de GO Admin gestiona las credenciales del proveedor.</p>
-          <p>• El ambiente de <strong>pruebas</strong> no envía documentos reales a la DIAN.</p>
-          <p>• En <strong>producción</strong> los documentos se envían a la DIAN con el NIT de la organización.</p>
-        </CardContent>
-      </Card>
+      {editando && (
+        <RangoEditDialog
+          rango={editando}
+          sucursales={branches.filter((b): b is typeof b & { id: number } => typeof b.id === 'number').map((b) => ({ id: b.id, name: b.name }))}
+          onCerrar={() => setEditando(null)}
+          onGuardar={guardar}
+        />
+      )}
     </div>
   );
 }

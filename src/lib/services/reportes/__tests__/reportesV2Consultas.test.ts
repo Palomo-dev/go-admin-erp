@@ -139,7 +139,7 @@ describe('balance de prueba y periodo fiscal', () => {
     expect(data.lectura?.map((l) => l.href)).toEqual([
       '/app/finanzas/contabilidad/asientos',
       '/app/pos/cajas',
-      '/app/finanzas/conciliacion-bancaria',
+      '/app/finanzas/tesoreria/conciliacion',
     ]);
     expect(data.vistas?.[0].filas[0]).toMatchObject({ periodo: '09/2026', estado: 'Abierto' });
   });

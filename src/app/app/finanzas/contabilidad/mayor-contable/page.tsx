@@ -1,10 +1,11 @@
-import { redirect } from 'next/navigation';
-import { destinoReporteFinanzas } from '@/lib/services/reportes/redireccionesFinanzas';
+import { MayorContablePage } from '@/components/finanzas/contabilidad/mayor-contable/MayorContablePage';
 
 /**
- * Finanzas no tiene reportes propios: este informe vive en el centro de
- * reportes. La ruta vieja se conserva y redirige con su periodo.
+ * Mayor contable: página de trabajo de Contabilidad (decisión 1 del dueño,
+ * 2026-11-07). El reporte «Mayor por cuenta» de Reportes sigue existiendo y
+ * pinta este mismo componente: los dos leen `ReportesContablesService.getLedger`.
+ * `?cuenta=` (del plan de cuentas o de una tabla contable) abre esa cuenta.
  */
-export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  redirect(destinoReporteFinanzas('/app/finanzas/contabilidad/mayor-contable', await searchParams));
+export default function Page() {
+  return <MayorContablePage />;
 }

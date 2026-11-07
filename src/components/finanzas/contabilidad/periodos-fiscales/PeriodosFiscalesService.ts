@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { rangoDelMes } from '@/lib/services/fiscalCalendar';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { getDateRange } from '@/lib/utils/timezone';
+import { planCierreEjercicio } from '@/lib/finanzas/contabilidad/cierreEjercicio';
 
 export interface FiscalPeriod {
   id: string;
@@ -196,5 +199,92 @@ export class PeriodosFiscalesService {
       });
 
     if (error) throw error;
+  }
+
+  /**
+   * Asientos de cada mes del año (sin contar contra-asientos), para la
+   * rejilla. `entry_date` es timestamptz: cada mes se convierte a instantes con
+   * la zona de la organización. Doce conteos sin traer filas.
+   */
+  static async asientosPorMes(year: number): Promise<Map<number, number>> {
+    const orgId = this.getOrganizationId();
+    const conteos = new Map<number, number>();
+    if (!orgId) return conteos;
+    const timezone = await resolveTimezone(orgId);
+    const resultados = await Promise.all(
+      Array.from({ length: 12 }, async (_, i) => {
+        const { start: desde, end: hasta } = rangoDelMes(year, i + 1);
+        const { start, end } = getDateRange(desde, hasta, timezone);
+        const { count, error } = await supabase
+          .from('journal_entries')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
+          .gte('entry_date', start)
+          .lte('entry_date', end)
+          .or('source.is.null,source.neq.reversal');
+        if (error) throw error;
+        return [i + 1, count ?? 0] as const;
+      }),
+    );
+    for (const [mes, n] of resultados) conteos.set(mes, n);
+    return conteos;
+  }
+
+  /** Σ débitos y Σ créditos publicados del periodo (`fn_saldos_cuentas`). */
+  static async cuadreDelPeriodo(periodo: Pick<FiscalPeriod, 'start_date' | 'end_date'>): Promise<{ debitos: number; creditos: number } | null> {
+    const orgId = this.getOrganizationId();
+    if (!orgId) return null;
+    const timezone = await resolveTimezone(orgId);
+    const { start, end } = getDateRange(periodo.start_date, periodo.end_date, timezone);
+    const { data, error } = await supabase.rpc('fn_saldos_cuentas', { p_organization_id: orgId, p_desde: start, p_hasta: end });
+    if (error || !Array.isArray(data)) return null;
+    let debitos = 0;
+    let creditos = 0;
+    for (const fila of data as { debito: number | string | null; credito: number | string | null }[]) {
+      debitos += Number(fila.debito) || 0;
+      creditos += Number(fila.credito) || 0;
+    }
+    return { debitos: Math.round(debitos * 100) / 100, creditos: Math.round(creditos * 100) / 100 };
+  }
+
+  /** Nombre visible de quien cerró o reabrió (la RLS de `profiles` limita a miembros). */
+  static async nombresUsuarios(ids: string[]): Promise<Map<string, string>> {
+    const unicos = [...new Set(ids.filter(Boolean))];
+    const nombres = new Map<string, string>();
+    if (unicos.length === 0) return nombres;
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', unicos);
+    if (error || !data) return nombres;
+    for (const p of data as { id: string; first_name: string | null; last_name: string | null; email: string | null }[]) {
+      const nombre = [p.first_name, p.last_name].filter((v) => v && v.trim()).join(' ').trim();
+      nombres.set(p.id, nombre || p.email || '');
+    }
+    return nombres;
+  }
+
+  /** Crea el periodo mensual de un mes que falta (lo que hacía «Nuevo periodo» en la pantalla duplicada). */
+  static async crearMes(year: number, month: number): Promise<FiscalPeriod> {
+    const { start, end } = rangoDelMes(year, month);
+    return this.crearPeriodo({ year, month, period_type: 'monthly', start_date: start, end_date: end });
+  }
+
+  /**
+   * Vista previa del cierre de ejercicio: el mismo plan que aplica
+   * `fn_cierre_ejercicio` (`planCierreEjercicio`) sobre los saldos del año. Solo
+   * lee; la cifra definitiva la calcula la base al cerrar.
+   */
+  static async resultadoDelAnio(anio: number): Promise<{ resultado: number; cuentaResultado: string } | null> {
+    const orgId = this.getOrganizationId();
+    if (!orgId) return null;
+    const timezone = await resolveTimezone(orgId);
+    const { start, end } = getDateRange(`${anio}-01-01`, `${anio}-12-31`, timezone);
+    const { data, error } = await supabase.rpc('fn_saldos_cuentas', { p_organization_id: orgId, p_desde: start, p_hasta: end });
+    if (error || !Array.isArray(data)) return null;
+    const saldos = (data as { account_code: string; debito: number | string | null; credito: number | string | null }[]).map((f) => ({
+      codigo: f.account_code,
+      debito: Number(f.debito) || 0,
+      credito: Number(f.credito) || 0,
+    }));
+    const plan = planCierreEjercicio(saldos, anio);
+    return { resultado: plan.resultado, cuentaResultado: plan.cuentaResultado };
   }
 }

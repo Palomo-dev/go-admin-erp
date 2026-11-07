@@ -219,6 +219,8 @@ export function CarteraCliente({ customerId, origen }: { customerId: string; ori
           valor={fmt(cabecera?.saldoAFavor ?? 0)}
           tono={cabecera && cabecera.saldoAFavor > 0 ? 'exito' : 'neutro'}
           detalle={cabecera && cabecera.saldoAFavor === 0 ? t('cliente.sinAnticipos') : undefined}
+          // Desde Finanzas abre los saldos a favor del cliente; en el POS no (puede no tener Finanzas).
+          href={!enPos ? `/app/finanzas/saldos-a-favor?cliente=${encodeURIComponent(customerId)}` : undefined}
         />
         <StatCard
           etiqueta={t('cliente.pagaEnPromedio')}

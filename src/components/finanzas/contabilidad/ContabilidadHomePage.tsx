@@ -1,429 +1,306 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+/**
+ * Inicio de Contabilidad (Figma 987:622311 con avisos · 987:623198 todo en
+ * orden · 987:624072 cargando · 988:626299 tableta · 989:77178 móvil).
+ *
+ * Qué conserva de la pantalla vieja: accesos a todas las páginas de
+ * Contabilidad (plan, PUC, asientos, plantillas, reglas, configuración contable,
+ * periodos, centros, activos, presupuestos), la tarjeta «Reportes contables»,
+ * «Nuevo asiento», los avisos de reglas con fallo (`AlertasFalloContable`) y los
+ * pendientes (ahora en Salud contable). Qué quita: la tarjeta de folios del PMS
+ * (no es contable y leía todos los folios: va en el inicio del PMS) y el KPI
+ * «Publicados», que se contaba sobre las primeras 1.000 filas.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { toast } from 'sonner';
+import { useLocale, useTranslations } from 'next-intl';
 import {
-  StatsSkeleton,
-} from '@/components/common/PageSkeletons';
-import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt, Settings } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
-import { formatNumber } from '@/utils/Utils';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { useBranch } from '@/lib/context/BranchContext';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { AlertasContables } from './AlertasContables';
+  BookOpen,
+  Building,
+  Calculator,
+  CalendarClock,
+  FileText,
+  GitBranch,
+  Landmark,
+  ListChecks,
+  Plus,
+  RefreshCw,
+  Scale,
+  Settings,
+  ShieldCheck,
+  Target,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react';
+import {
+  AvisoTonal,
+  KpiStrip,
+  PageHeader,
+  RelatedLinkCard,
+  StatCard,
+  clasesBoton,
+  inicioDeMes,
+  type TonoRelatedLink,
+} from '@/components/kit';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { AlertasFalloContable } from '@/components/finanzas/configuracion-contable';
-import { useTranslations } from 'next-intl';
+import {
+  contarAgrupadoras,
+  nombreMes,
+  periodoActual,
+  tonoAvisoInicio,
+  type PeriodoActual,
+} from '@/lib/finanzas/contabilidad/inicioContabilidadLogica';
+import { ContabilidadService } from './ContabilidadService';
+import { PeriodosFiscalesService } from './periodos-fiscales/PeriodosFiscalesService';
+import { ReglasContablesService } from '@/components/finanzas/reglas-contables/ReglasContablesService';
+import { SaludContableService } from './salud/SaludContableService';
 
-const MODULES = [
-  {
-    title: 'Actualizar PUC',
-    description: 'Vista previa y traslado de cuentas al plan corregido',
-    icon: Settings,
-    href: '/app/finanzas/contabilidad/actualizar-puc',
-    color: 'purple'
-  },
-  {
-    title: 'Plan de Cuentas',
-    description: 'Gestión del catálogo contable',
-    icon: BookOpen,
-    href: '/app/finanzas/contabilidad/plan-cuentas',
-    color: 'blue'
-  },
-  {
-    title: 'Asientos Contables',
-    description: 'Registro y gestión de asientos',
-    icon: FileText,
-    href: '/app/finanzas/contabilidad/asientos',
-    color: 'green'
-  },
-  {
-    title: 'Plantillas de asientos',
-    description: 'Asientos recurrentes, en borrador hasta publicarlos',
-    icon: FileText,
-    href: '/app/finanzas/contabilidad/plantillas',
-    color: 'blue'
-  },
-  {
-    title: 'Reglas Contables',
-    description: 'Asientos automáticos por evento',
-    icon: Shield,
-    href: '/app/finanzas/reglas-contables',
-    color: 'orange'
-  },
-  {
-    title: 'Configuración contable',
-    description: 'Cuentas por defecto de la organización',
-    icon: Settings,
-    href: '/app/finanzas/configuracion-contable',
-    color: 'purple'
-  },
-  {
-    title: 'Períodos Fiscales',
-    description: 'Apertura y cierre de períodos',
-    icon: CalendarClock,
-    href: '/app/finanzas/contabilidad/periodos-fiscales',
-    color: 'purple'
-  },
-  {
-    title: 'Centro de Costos',
-    description: 'Gestión de centros de costo',
-    icon: LayoutGrid,
-    href: '/app/finanzas/centro-costos',
-    color: 'orange'
-  },
-  {
-    title: 'Activos Fijos',
-    description: 'Registro y depreciación de activos',
-    icon: Package,
-    href: '/app/finanzas/activos-fijos',
-    color: 'green'
-  },
-  {
-    title: 'Presupuestos',
-    description: 'Planificación y control presupuestal',
-    icon: Target,
-    href: '/app/finanzas/presupuestos',
-    color: 'blue'
-  }
-];
+type Lectura<T> = { estado: 'cargando' } | { estado: 'listo'; datos: T } | { estado: 'error' };
+const CARGANDO = { estado: 'cargando' } as const;
+
+interface Datos {
+  asientosMes: Lectura<number>;
+  periodo: Lectura<PeriodoActual>;
+  pendientes: Lectura<number>;
+  /** `null` en datos: la revisión de descuadres aún no está activada en la base. */
+  descuadres: Lectura<number | null>;
+  balance: Lectura<boolean>;
+  plan: Lectura<{ cuentas: number; agrupadoras: number }>;
+  reglas: Lectura<{ reglas: number; conAvisos: number }>;
+  centros: Lectura<number>;
+}
+
+const VACIO: Datos = {
+  asientosMes: CARGANDO,
+  periodo: CARGANDO,
+  pendientes: CARGANDO,
+  descuadres: CARGANDO,
+  balance: CARGANDO,
+  plan: CARGANDO,
+  reglas: CARGANDO,
+  centros: CARGANDO,
+};
 
 export function ContabilidadHomePage() {
-  // Los estados financieros, libros y auxiliares viven en Reportes › Contabilidad.
+  const t = useTranslations('finanzasContabilidadR3.inicio');
+  const tc = useTranslations('finanzasContabilidadR3.comun');
   const tReportes = useTranslations('reportesFinanzasR2.contabilidadInicio');
-  const { branchFilter } = useBranch();
-  // Saldos de folios (sumas de varios documentos): en la moneda base.
-  const { formatear } = useMonedaOrganizacion();
-  const [resumen, setResumen] = useState<ContabilidadResumen | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [foliosResumen, setFoliosResumen] = useState({
-    totalFolios: 0,
-    foliosAbiertos: 0,
-    saldoPendiente: 0,
-    totalItems: 0,
-    itemsPendientes: 0,
-  });
+  const locale = useLocale();
+  const { getToday } = useFormatDate();
+  const { isLoading: tzLoading } = useOrgTimezone();
+  const [datos, setDatos] = useState<Datos>(VACIO);
+  const turno = useRef(0);
 
-  const loadFoliosResumen = useCallback(async () => {
-    const vacio = { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
-    const organizationId = getOrganizationId();
-    if (!organizationId) return vacio;
-
-    try {
-      const { data: folios, error } = await supabase
-        .from('folios')
-        .select(`
-          id, status, balance,
-          reservations!inner (organization_id)
-        `)
-        .eq('reservations.organization_id', organizationId);
-
-      if (error || !folios) return vacio;
-
-      const foliosAbiertos = folios.filter((f) => f.status === 'open');
-      const folioIds = foliosAbiertos.map((f) => f.id);
-
-      let itemsPendientes = 0;
-      let totalItems = 0;
-
-      if (folioIds.length > 0) {
-        const { data: items } = await supabase
-          .from('folio_items')
-          .select('id, payment_status, amount')
-          .in('folio_id', folioIds);
-
-        if (items) {
-          totalItems = items.length;
-          itemsPendientes = items
-            .filter((i) => i.payment_status === 'pending')
-            .reduce((sum, i) => sum + Number(i.amount), 0);
-        }
-      }
-
-      const saldoPendiente = foliosAbiertos.reduce((sum, f) => sum + Number(f.balance), 0);
-
-      return {
-        totalFolios: folios.length,
-        foliosAbiertos: foliosAbiertos.length,
-        saldoPendiente,
-        totalItems,
-        itemsPendientes,
-      };
-    } catch {
-      return vacio;
-    }
-  }, []);
-
-  const loadResumen = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [data, foliosData] = await Promise.all([
-        ContabilidadService.obtenerResumen(branchFilter),
-        loadFoliosResumen(),
-      ]);
-      setResumen(data);
-      setFoliosResumen(foliosData);
-    } catch (error) {
-      console.error('Error cargando resumen:', error);
-      toast.error('Error al cargar el resumen');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [branchFilter, loadFoliosResumen]);
+  const cargar = useCallback(async () => {
+    const mio = ++turno.current;
+    setDatos(VACIO);
+    const hoy = getToday();
+    const fijar = <K extends keyof Datos>(clave: K, lectura: Datos[K]) => {
+      if (mio === turno.current) setDatos((d) => ({ ...d, [clave]: lectura }));
+    };
+    const leer = <K extends keyof Datos, T>(clave: K, promesa: Promise<T>, mapa: (v: T) => Datos[K] extends Lectura<infer U> ? U : never) =>
+      promesa
+        .then((v) => fijar(clave, { estado: 'listo', datos: mapa(v) } as unknown as Datos[K]))
+        .catch((error) => {
+          console.error(`Inicio de Contabilidad: no se pudo leer ${String(clave)}:`, error);
+          fijar(clave, { estado: 'error' } as Datos[K]);
+        });
+    await Promise.all([
+      leer('asientosMes', ContabilidadService.resumenLibroDiario(inicioDeMes(hoy), hoy), (r) => r.asientos),
+      leer('periodo', PeriodosFiscalesService.obtenerPeriodos(), (p) => periodoActual(p, hoy)),
+      leer('pendientes', SaludContableService.pendientes(), (n) => n),
+      leer('descuadres', SaludContableService.cruce(), (c) => (c ? c.totalDescuadres : null)),
+      leer('balance', SaludContableService.balance(), (b) => b.cuadra),
+      leer('plan', ContabilidadService.obtenerCuentasLigero(), (c) => ({ cuentas: c.length, agrupadoras: contarAgrupadoras(c.map((x) => x.account_code)) })),
+      leer(
+        'reglas',
+        Promise.all([ReglasContablesService.obtenerReglas(), ReglasContablesService.obtenerDiagnostico()]),
+        ([r, d]) => ({ reglas: r.length, conAvisos: new Set(d.map((x) => x.regla_id)).size }),
+      ),
+      leer('centros', ContabilidadService.listarCentrosCosto(), (c) => c.length),
+    ]);
+  }, [getToday]);
 
   useEffect(() => {
-    void loadResumen();
-  }, [loadResumen]);
+    if (tzLoading) return;
+    void cargar();
+  }, [tzLoading, cargar]);
 
-  const getColorClasses = (color: string) => {
-    const colors: Record<string, { bg: string; icon: string; hover: string }> = {
-      blue: { 
-        bg: 'bg-blue-100 dark:bg-blue-900/30', 
-        icon: 'text-blue-600 dark:text-blue-400',
-        hover: 'hover:border-blue-300 dark:hover:border-blue-700'
-      },
-      green: { 
-        bg: 'bg-green-100 dark:bg-green-900/30', 
-        icon: 'text-green-600 dark:text-green-400',
-        hover: 'hover:border-green-300 dark:hover:border-green-700'
-      },
-      purple: { 
-        bg: 'bg-purple-100 dark:bg-purple-900/30', 
-        icon: 'text-purple-600 dark:text-purple-400',
-        hover: 'hover:border-purple-300 dark:hover:border-purple-700'
-      },
-      orange: { 
-        bg: 'bg-orange-100 dark:bg-orange-900/30', 
-        icon: 'text-orange-600 dark:text-orange-400',
-        hover: 'hover:border-orange-300 dark:hover:border-orange-700'
-      },
-      red: {
-        bg: 'bg-red-100 dark:bg-red-900/30',
-        icon: 'text-red-600 dark:text-red-400',
-        hover: 'hover:border-red-300 dark:hover:border-red-700'
-      }
-    };
-    return colors[color] || colors.blue;
-  };
+  const v = <T,>(l: Lectura<T>): T | null => (l.estado === 'listo' ? l.datos : null);
+  const periodo = v(datos.periodo);
+  const pendientes = v(datos.pendientes);
+  const descuadres = datos.descuadres.estado === 'listo' ? datos.descuadres.datos : null;
+  const descuadresInactivo = datos.descuadres.estado === 'listo' && datos.descuadres.datos === null;
+  const mes = periodo ? nombreMes(periodo.mes, periodo.anio, locale) : '';
+  const mesMinuscula = mes.toLowerCase();
+  const sinCerrar = periodo?.sinCerrar ?? [];
+  const textoSinCerrar = sinCerrar.length
+    ? t('periodo.sinCerrar', { n: sinCerrar.length, mes: periodo ? nombreMes(sinCerrar[sinCerrar.length - 1], periodo.anio, locale).toLowerCase() : '' })
+    : t('periodo.alDia');
+  const estadoPeriodo = periodo?.estado === 'closed' ? tc('periodo.cerrado') : periodo?.estado ? tc('periodo.abierto') : t('periodo.sinGenerar');
+  const tono = tonoAvisoInicio(pendientes, descuadres);
+  const cargandoTodo = Object.values(datos).every((l) => l.estado === 'cargando');
+
+  const subtitulo = periodo
+    ? t('subtitulo', { mes: nombreMes(periodo.mes, periodo.anio, locale, true).toLowerCase(), estado: estadoPeriodo.toLowerCase() })
+    : t('subtituloCorto');
+
+  const plan = v(datos.plan);
+  const reglas = v(datos.reglas);
+  const centros = v(datos.centros);
+  const asientosMes = v(datos.asientosMes);
+  const balance = v(datos.balance);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-          <Calculator className="h-6 w-6 text-blue-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Contabilidad
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Gestión contable y financiera
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={subtitulo}
+        icono={Calculator}
+        migas={[{ etiqueta: tc('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: tc('migas.contabilidad') }]}
+        acciones={
+          <>
+            <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => void cargar()} aria-label={t('actualizar')}>
+              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              <span className="hidden sm:inline">{t('actualizar')}</span>
+            </button>
+            <Link href="/app/finanzas/contabilidad/asientos?action=new" className={clasesBoton({ variante: 'primario' })}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevoAsiento')}
+            </Link>
+          </>
+        }
+      />
 
-      <BranchBadge className="mb-3" />
+      {tono && (
+        <AvisoTonal
+          tono={tono}
+          rol="alert"
+          titulo={
+            pendientes && descuadres
+              ? t('aviso.ambos', { pendientes, descuadres })
+              : pendientes
+                ? t('aviso.pendientes', { n: pendientes })
+                : t('aviso.descuadres', { n: descuadres ?? 0 })
+          }
+          descripcion={t('aviso.descripcion', { mes: mesMinuscula })}
+          accion={{ etiqueta: t('aviso.abrirSalud'), href: pendientes ? '/app/finanzas/contabilidad/salud' : '/app/finanzas/contabilidad/salud?pestana=descuadres' }}
+        />
+      )}
+      {!cargandoTodo && !tono && pendientes === 0 && (descuadres === 0 || descuadresInactivo) && balance === true && (
+        <AvisoTonal tono="exito" compacto titulo={t('enOrden')} />
+      )}
 
-      <AlertasContables />
+      <KpiStrip etiqueta={t('kpis.resumen')}>
+        <StatCard
+          etiqueta={periodo ? t('kpis.asientosDe', { mes: mesMinuscula }) : t('kpis.asientosMes')}
+          valor={asientosMes ?? (datos.asientosMes.estado === 'error' ? '—' : '')}
+          detalle={t('kpis.sinContraAsientos')}
+          cargando={datos.asientosMes.estado === 'cargando'}
+          href="/app/finanzas/contabilidad/asientos"
+        />
+        <StatCard
+          etiqueta={t('kpis.periodoActual')}
+          valor={periodo ? mes : datos.periodo.estado === 'error' ? '—' : ''}
+          detalle={periodo ? `${estadoPeriodo.toLowerCase()} · ${textoSinCerrar}` : undefined}
+          tono={periodo && sinCerrar.length ? 'advertencia' : periodo?.estado ? 'exito' : undefined}
+          cargando={datos.periodo.estado === 'cargando'}
+          href="/app/finanzas/contabilidad/periodos-fiscales"
+        />
+        <StatCard
+          etiqueta={t('kpis.pendientes')}
+          valor={pendientes ?? (datos.pendientes.estado === 'error' ? '—' : '')}
+          detalle={pendientes ? t('kpis.verSalud') : undefined}
+          tono={pendientes ? 'peligro' : undefined}
+          cargando={datos.pendientes.estado === 'cargando'}
+          href="/app/finanzas/contabilidad/salud"
+        />
+        <StatCard
+          etiqueta={t('kpis.descuadres')}
+          valor={descuadres ?? (datos.descuadres.estado === 'cargando' ? '' : '—')}
+          detalle={descuadresInactivo ? t('kpis.descuadresInactivo') : t('kpis.descuadresDetalle')}
+          tono={descuadres ? 'advertencia' : undefined}
+          cargando={datos.descuadres.estado === 'cargando'}
+          href="/app/finanzas/contabilidad/salud?pestana=descuadres"
+        />
+      </KpiStrip>
+
       <AlertasFalloContable compacto />
 
-      {/* Resumen */}
-      {isLoading ? (
-        <div className="py-8">
-          <StatsSkeleton count={4} />
-        </div>
-      ) : resumen && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Asientos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatNumber(resumen.totalAsientos)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Asientos Publicados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatNumber(resumen.asientosPosted)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Cuentas Contables
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatNumber(resumen.totalCuentas)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Periodos Abiertos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {formatNumber(resumen.periodosAbiertos)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section aria-labelledby="inicio-contabilidad-informes" className="space-y-3">
+          <h2 id="inicio-contabilidad-informes" className="text-base font-semibold text-fg">
+            {t('informes.titulo')}
+          </h2>
+          <Acceso icono={BookOpen} etiqueta={t('informes.libroDiario')} valor={asientosMes != null && periodo ? t('informes.libroDiarioValor', { n: asientosMes, mes: mesMinuscula }) : t('informes.libroDiarioDesc')} href="/app/finanzas/contabilidad/asientos" />
+          <Acceso icono={FileText} etiqueta={t('informes.mayor')} valor={t('informes.mayorDesc')} href="/app/finanzas/contabilidad/mayor-contable" />
+          <Acceso
+            icono={Scale}
+            etiqueta={t('informes.balancePrueba')}
+            valor={balance === null ? t('informes.balancePruebaDesc') : balance ? tc('cuadre.cuadra') : t('informes.noCuadra')}
+            tono={balance === false ? 'danger' : 'neutral'}
+            href="/app/reportes/contabilidad/balance-prueba"
+          />
+          <Acceso icono={TrendingUp} etiqueta={t('informes.estadoResultados')} valor={t('informes.estadoResultadosDesc')} href="/app/reportes/contabilidad/estado-resultados" />
+          <Acceso icono={Landmark} etiqueta={t('informes.balanceGeneral')} valor={t('informes.balanceGeneralDesc')} href="/app/reportes/contabilidad/balance-general" />
+          <Acceso icono={ListChecks} etiqueta={tReportes('titulo')} valor={tReportes('descripcion')} href="/app/reportes/contabilidad" />
+        </section>
 
-      {/* Resumen Folios PMS */}
-      {!isLoading && foliosResumen.totalFolios > 0 && (
-        <Card className="dark:bg-gray-800 dark:border-gray-700 border-blue-200 dark:border-blue-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              Folios PMS - Resumen Contable
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Folios Abiertos</p>
-                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                  {foliosResumen.foliosAbiertos}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Items</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {foliosResumen.totalItems}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Items Pendientes</p>
-                <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
-                  {formatear(foliosResumen.itemsPendientes)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Saldo Total Pendiente</p>
-                <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                  {formatear(foliosResumen.saldoPendiente)}
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t dark:border-gray-700">
-              <Link href="/app/pms/folios">
-                <Button variant="outline" size="sm" className="dark:border-gray-600 dark:hover:bg-gray-700">
-                  <Receipt className="h-3.5 w-3.5 mr-1" />
-                  Ver Folios
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Módulos */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Módulos de Contabilidad
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {MODULES.map((module) => {
-            const colors = getColorClasses(module.color);
-            return (
-              <Link key={module.href} href={module.href}>
-                <Card className={`cursor-pointer transition-all dark:bg-gray-800 dark:border-gray-700 ${colors.hover}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-xl ${colors.bg}`}>
-                          <module.icon className={`h-6 w-6 ${colors.icon}`} />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {module.title}
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {module.description}
-                          </p>
-                        </div>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-          <Link href="/app/reportes/contabilidad">
-            <Card className={`cursor-pointer transition-all dark:bg-gray-800 dark:border-gray-700 ${getColorClasses('blue').hover}`}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-xl ${getColorClasses('blue').bg}`}>
-                      <BarChart3 className={`h-6 w-6 ${getColorClasses('blue').icon}`} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{tReportes('titulo')}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{tReportes('descripcion')}</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-gray-400" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
+        <section aria-labelledby="inicio-contabilidad-config" className="space-y-3">
+          <h2 id="inicio-contabilidad-config" className="text-base font-semibold text-fg">
+            {t('configuracion.titulo')}
+          </h2>
+          <Acceso
+            icono={ListChecks}
+            etiqueta={t('configuracion.plan')}
+            valor={plan ? t('configuracion.planValor', { cuentas: plan.cuentas, agrupadoras: plan.agrupadoras }) : t('configuracion.planDesc')}
+            href="/app/finanzas/contabilidad/plan-cuentas"
+          />
+          <Acceso
+            icono={GitBranch}
+            etiqueta={t('configuracion.reglas')}
+            valor={reglas ? (reglas.conAvisos ? t('configuracion.reglasConAvisos', { n: reglas.reglas, avisos: reglas.conAvisos }) : t('configuracion.reglasValor', { n: reglas.reglas })) : t('configuracion.reglasDesc')}
+            tono={reglas?.conAvisos ? 'warning' : 'neutral'}
+            accion={reglas?.conAvisos ? t('revisar') : undefined}
+            href="/app/finanzas/reglas-contables"
+          />
+          <Acceso icono={CalendarClock} etiqueta={t('configuracion.periodos')} valor={periodo ? textoSinCerrar : t('configuracion.periodosDesc')} href="/app/finanzas/contabilidad/periodos-fiscales" />
+          <Acceso icono={ShieldCheck} etiqueta={t('configuracion.salud')} valor={t('configuracion.saludDesc')} href="/app/finanzas/contabilidad/salud" />
+          <Acceso
+            icono={Building}
+            etiqueta={t('configuracion.centros')}
+            valor={centros === 0 ? t('configuracion.centrosVacio') : centros ? t('configuracion.centrosValor', { n: centros }) : t('configuracion.centrosDesc')}
+            accion={centros === 0 ? t('crear') : undefined}
+            href="/app/finanzas/centro-costos"
+          />
+          <Acceso icono={FileText} etiqueta={t('configuracion.plantillas')} valor={t('configuracion.plantillasDesc')} href="/app/finanzas/contabilidad/plantillas" />
+          <Acceso icono={Settings} etiqueta={t('configuracion.cuentasAutomaticas')} valor={t('configuracion.cuentasAutomaticasDesc')} href="/app/finanzas/configuracion-contable" />
+          <Acceso icono={RefreshCw} etiqueta={t('configuracion.puc')} valor={t('configuracion.pucDesc')} href="/app/finanzas/contabilidad/actualizar-puc" />
+          <Acceso icono={Building} etiqueta={t('configuracion.activos')} valor={t('configuracion.activosDesc')} href="/app/finanzas/activos-fijos" />
+          <Acceso icono={Target} etiqueta={t('configuracion.presupuestos')} valor={t('configuracion.presupuestosDesc')} href="/app/finanzas/presupuestos" />
+        </section>
       </div>
-
-      {/* Acciones Rápidas */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Acciones Rápidas</CardTitle>
-          <CardDescription className="dark:text-gray-400">
-            Accesos directos a operaciones comunes
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/app/finanzas/contabilidad/asientos?action=new">
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <FileText className="h-4 w-4 mr-2" />
-                Nuevo Asiento
-              </Button>
-            </Link>
-            <Link href="/app/finanzas/contabilidad/plan-cuentas?action=new">
-              <Button variant="outline" className="dark:border-gray-600 dark:hover:bg-gray-700">
-                <BookOpen className="h-4 w-4 mr-2" />
-                Nueva Cuenta
-              </Button>
-            </Link>
-            <Link href="/app/finanzas/contabilidad/periodos-fiscales">
-              <Button variant="outline" className="dark:border-gray-600 dark:hover:bg-gray-700">
-                <CalendarClock className="h-4 w-4 mr-2" />
-                Ver Períodos
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
+}
+
+function Acceso({
+  icono,
+  etiqueta,
+  valor,
+  href,
+  tono = 'neutral',
+  accion,
+}: {
+  icono: LucideIcon;
+  etiqueta: string;
+  valor: string;
+  href: string;
+  tono?: TonoRelatedLink;
+  accion?: string;
+}) {
+  const t = useTranslations('finanzasContabilidadR3.inicio');
+  return <RelatedLinkCard icono={icono} etiqueta={etiqueta} valor={valor} href={href} tono={tono} textoAccion={accion ?? t('abrir')} />;
 }

@@ -1,12 +1,14 @@
-import React from 'react';
-import { SupportDocumentDetail } from '@/components/finanzas/documentos-soporte/SupportDocumentDetail';
+'use client';
 
-interface PageProps {
-  params: Promise<{ id: string }>;
-}
+/**
+ * Detalle de un documento soporte. La URL no cambia (la enlazan la factura de
+ * compra y su listado); el contenido lo arma el servidor
+ * (`GET /api/documentos-soporte/[id]`) y lo pinta `DetalleDocumentoSoporte`.
+ */
+import { use } from 'react';
+import { DetalleDocumentoSoporte } from '@/components/finanzas/documentos-soporte/DetalleDocumentoSoporte';
 
-export default async function DocumentoSoporteDetallePage({ params }: PageProps) {
-  const { id } = await params;
-
-  return <SupportDocumentDetail documentId={id} />;
+export default function DocumentoSoporteDetallePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return <DetalleDocumentoSoporte id={id} />;
 }

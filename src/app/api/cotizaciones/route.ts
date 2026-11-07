@@ -1,7 +1,9 @@
 /**
  * /api/cotizaciones
  *
- * GET  — listado con el estado vivo ('expired' derivado al leer en la zona de
+ * GET  — `?vista=listado`: página, orden, filtros y KPI de la pantalla
+ *        (`listadoCotizaciones`, mismo origen `fn_cotizaciones_listado`).
+ *        Sin `vista`: listado con el estado vivo ('expired' derivado al leer en la zona de
  *        la organización, `fn_cotizaciones_listado`). Permiso finance.view o
  *        sales_management. Filtros por lista blanca (`filtrosCotizacionSchema`).
  * POST — crea una cotización en una transacción (`fn_cotizacion_guardar`):
@@ -15,14 +17,27 @@ import { withOrg } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { filtrosCotizacionSchema, guardarCotizacionSchema, PERMISOS_COTIZACION } from '@/lib/finanzas/ventas/contratoCotizaciones';
 import { errorCotizacion, SIN_CACHE, sinClavesDeOrganizacion, tieneAlguno } from '@/lib/finanzas/ventas/rutasCotizaciones.server';
-import { ErrorCotizacionServidor, guardarCotizacion, listarCotizaciones } from '@/lib/services/ventas/cotizaciones.server';
+import { ErrorCotizacionServidor, guardarCotizacion, listadoCotizaciones, listarCotizaciones } from '@/lib/services/ventas/cotizaciones.server';
+import { parametrosListadoSchema } from '@/lib/finanzas/ventas/listadoCotizaciones';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withOrg(async (ctx, req) => {
   await readOrgBody(ctx, req, { route: 'GET /api/cotizaciones' });
   if (!(await tieneAlguno(ctx, PERMISOS_COTIZACION.LEER))) return errorCotizacion(ctx, 'sin_permiso', 'GET /api/cotizaciones');
-  const filtros = filtrosCotizacionSchema.safeParse(Object.fromEntries(new URL(req.url).searchParams));
+  const consulta = Object.fromEntries(new URL(req.url).searchParams);
+  // Pantalla del listado: página, orden y KPI en el servidor (`listadoCotizaciones`).
+  if (consulta.vista === 'listado') {
+    const p = parametrosListadoSchema.safeParse(consulta);
+    if (!p.success) return errorCotizacion(ctx, 'datos_invalidos');
+    try {
+      return NextResponse.json(await listadoCotizaciones(ctx, p.data), { headers: SIN_CACHE });
+    } catch (err) {
+      if (err instanceof ErrorCotizacionServidor) return errorCotizacion(ctx, err.codigo);
+      throw err;
+    }
+  }
+  const filtros = filtrosCotizacionSchema.safeParse(consulta);
   if (!filtros.success) return errorCotizacion(ctx, 'datos_invalidos');
   try {
     return NextResponse.json({ cotizaciones: await listarCotizaciones(ctx, filtros.data) }, { headers: SIN_CACHE });

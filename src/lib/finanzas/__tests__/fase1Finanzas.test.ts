@@ -36,12 +36,12 @@ describe('cuenta bancaria nueva: el select no entra en bucle', () => {
     expect(valorSelect('COP')).toBe('COP');
   });
 
-  it('el formulario usa valorSelect y exige el PUC', () => {
-    const formulario = leer('src/components/finanzas/bancos/cuentas/NuevaCuentaForm.tsx');
-    expect(formulario).toContain('valorSelect(formData.bank_name)');
-    expect(formulario).toContain('valorSelect(formData.currency)');
-    expect(formulario).not.toContain('value={formData.bank_name}');
-    expect(formulario).not.toContain('value={formData.currency}');
+  it('el formulario (panel de Tesorería, ronda 3) no usa el Select de Radix y exige el PUC', () => {
+    // El panel usa un <select> nativo (SelectNativo): el bucle #185 de Radix con '' no puede darse.
+    const formulario = leer('src/components/finanzas/tesoreria/cuentas/CuentaBancariaPanel.tsx');
+    expect(formulario).not.toContain("@/components/ui/select");
+    expect(formulario).toContain('SelectNativo');
+    expect(formulario).toContain('validarCuentaBancaria');
     expect(formulario).toContain('account_code');
     expect(formulario).toContain('cuentasBancariasElegibles');
   });
@@ -273,9 +273,11 @@ describe('asientos manuales y fallos abiertos', () => {
   });
 
   it('la página de asientos no ofrece títulos y muestra los fallos', () => {
+    // Ronda 3: el alta pasó al diálogo «Nuevo asiento»; los avisos siguen en la lista.
     const pagina = leer('src/components/finanzas/contabilidad/asientos/AsientosPage.tsx');
-    expect(pagina).toContain('esCuentaDeTitulo');
-    expect(pagina).toContain('cuentasMovimiento');
+    const alta = leer('src/components/finanzas/contabilidad/asientos/NuevoAsientoDialog.tsx');
+    expect(alta).toContain('esCuentaDeTitulo');
+    expect(alta).toContain('cuentasMovimiento');
     expect(pagina).toContain('AlertasContables');
     const sql = leer('supabase/migrations/20261021225000_finanzas_fase1_asientos.sql');
     expect(sql).toContain('CUENTA_DE_TITULO');

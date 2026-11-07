@@ -1,9 +1,14 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { EditarCotizacion } from '@/components/finanzas/cotizaciones/editar/EditarCotizacion';
+import { FormularioCotizacion } from '@/components/finanzas/cotizaciones/formulario/FormularioCotizacion';
 
-export default function EditarPage() {
+/** Editar una cotización en borrador o enviada (la base rechaza las demás). */
+export default function EditarCotizacionPage() {
   const params = useParams();
-  return <EditarCotizacion cotizacionId={params?.id as string} />;
+  return (
+    <div className="p-4 sm:p-6">
+      <FormularioCotizacion id={params?.id as string} />
+    </div>
+  );
 }

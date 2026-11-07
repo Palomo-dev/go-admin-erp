@@ -12,7 +12,8 @@ import {
   type AlertasContablesDatos,
 } from './ContabilidadService';
 
-const RUTA_PENDIENTES = '/app/finanzas/contabilidad/pendientes';
+// La bandeja es la primera pestaña de Salud contable (ronda 3, decisión 3).
+const RUTA_PENDIENTES = '/app/finanzas/contabilidad/salud';
 /** fn_alertas_contables devuelve como mucho 50 de cada lista. */
 const TOPE_ALERTAS = 50;
 const VISIBLES = 5;

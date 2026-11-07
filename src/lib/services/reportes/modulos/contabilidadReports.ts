@@ -567,7 +567,7 @@ export const contabilidadReports: DefinicionModulo[] = [
         { verificacion: 'Asientos descuadrados', pendientes: num(d.asientos_descuadrados), detalle: 'Débitos distintos de créditos', href: '/app/finanzas/contabilidad/asientos' },
         { verificacion: 'Cajas abiertas', pendientes: num(d.cajas_abiertas), detalle: 'Sesiones de caja sin cerrar al final del periodo', href: '/app/pos/cajas' },
         { verificacion: 'Compras en borrador', pendientes: num(d.compras_en_borrador), detalle: 'Facturas de compra del periodo sin confirmar', href: '/app/finanzas/facturas-compra' },
-        { verificacion: 'Cuentas bancarias sin conciliar', pendientes: Math.max(cuentasBancarias - conciliadas, 0), detalle: `${conciliadas} de ${cuentasBancarias} conciliadas hasta el fin del periodo`, href: '/app/finanzas/conciliacion-bancaria' },
+        { verificacion: 'Cuentas bancarias sin conciliar', pendientes: Math.max(cuentasBancarias - conciliadas, 0), detalle: `${conciliadas} de ${cuentasBancarias} conciliadas hasta el fin del periodo`, href: '/app/finanzas/tesoreria/conciliacion' },
       ];
       const pendientes = verificaciones.filter((v) => v.pendientes > 0);
 

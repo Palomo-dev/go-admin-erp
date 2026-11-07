@@ -1,11 +1,12 @@
 'use client';
 
-import { NotaCreditoDetalle } from '@/components/finanzas/notas-credito';
-import { useParams } from 'next/navigation';
+/**
+ * Detalle de una nota crédito de venta (`GET /api/notas-credito/[id]`, kit).
+ */
+import React from 'react';
+import { DetalleNota } from '@/components/finanzas/notas/DetalleNota';
 
-export default function Page() {
-  const params = useParams();
-  const id = params?.id as string;
-  
-  return <NotaCreditoDetalle id={id} />;
+export default function NotaCreditoPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
+  return <DetalleNota id={id} tipo="credito" />;
 }

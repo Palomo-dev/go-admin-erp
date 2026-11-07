@@ -1,15 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { destinoConciliacion } from '@/lib/finanzas/tesoreria/rutas';
 
-import React, { use } from 'react';
-import { ConciliacionDetailPage } from '@/components/finanzas/conciliacion-bancaria/ConciliacionDetailPage';
-
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export default function ConciliacionDetailAppPage({ params }: PageProps) {
-  const { id } = use(params);
-  return <ConciliacionDetailPage reconciliationId={id} />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(destinoConciliacion(id));
 }

@@ -52,6 +52,7 @@ import {
   Factory,
   FileBarChart,
   FileCheck2,
+  FileMinus,
   FileText,
   FolderKanban,
   FolderOpen,
@@ -88,6 +89,8 @@ import {
   Receipt,
   ReceiptText,
   RefreshCw,
+  Repeat,
+  Scale,
   Search,
   Send,
   Settings,
@@ -470,18 +473,27 @@ export const CATALOGO_NAV: ModuloNav[] = [
     rutas: ['/app/finanzas'],
     paginas: [
       { href: '/app/finanzas/facturas-venta', nombre: 'Facturas de venta', icono: FileText, grupo: 'Documentos' },
-      { href: '/app/finanzas/cotizaciones', nombre: 'Cotizaciones', icono: ClipboardList, grupo: 'Documentos' },
+      // Finanzas ronda 3 (frente D): iconos de ICONO_DOCUMENTO del kit; un solo listado
+      // «Notas» con pestañas Crédito · Débito (`?tipo=debito`); el detalle de la nota
+      // débito vive en /app/finanzas/notas-debito/[id].
+      { href: '/app/finanzas/cotizaciones', nombre: 'Cotizaciones', icono: Calculator, grupo: 'Documentos' },
       { href: '/app/finanzas/facturas-compra', nombre: 'Facturas de compra', icono: ReceiptText, grupo: 'Documentos' },
-      { href: '/app/finanzas/notas-credito', nombre: 'Notas crédito', icono: FileText, grupo: 'Documentos' },
+      { href: '/app/finanzas/notas-credito', nombre: 'Notas crédito y débito', icono: FileMinus, grupo: 'Documentos' },
       { href: '/app/finanzas/documentos-soporte', nombre: 'Documentos soporte', icono: FileCheck2, grupo: 'Documentos' },
       { href: '/app/finanzas/facturacion-electronica', nombre: 'Facturación electrónica', icono: Zap, grupo: 'Documentos' },
+      // Tesorería (ronda 3, mapa 1009:86249): «Tesorería» es el grupo, no una página.
+      // Movimientos es la vista unificada; Ingresos y Egresos, la misma lista con el
+      // tipo fijado (decisión del dueño 2026-11-07). Bancos pasó a Cuentas de dinero
+      // (con las pestañas Posición y Alertas); las rutas viejas redirigen.
+      { href: '/app/finanzas/tesoreria/movimientos', nombre: 'Movimientos', icono: ArrowLeftRight, grupo: 'Tesorería' },
       { href: '/app/finanzas/ingresos', nombre: 'Ingresos', icono: TrendingUp, grupo: 'Tesorería' },
       { href: '/app/finanzas/egresos', nombre: 'Egresos', icono: TrendingDown, grupo: 'Tesorería' },
+      { href: '/app/finanzas/tesoreria/cuentas', nombre: 'Cuentas de dinero', icono: Landmark, grupo: 'Tesorería' },
+      { href: '/app/finanzas/tesoreria/conciliacion', nombre: 'Conciliación', icono: Scale, grupo: 'Tesorería' },
+      { href: '/app/finanzas/tesoreria/transferencias', nombre: 'Transferencias', icono: Repeat, grupo: 'Tesorería' },
       { href: '/app/finanzas/categorias-tesoreria', nombre: 'Categorías de tesorería', icono: Tags, grupo: 'Tesorería' },
-      { href: '/app/finanzas/transferencias', nombre: 'Transferencias', icono: ArrowLeftRight, grupo: 'Tesorería' },
-      { href: '/app/finanzas/bancos', nombre: 'Bancos', icono: Building2, grupo: 'Tesorería' },
       // Finanzas ronda 2 (Figma A3–A10): operación, no reportes. Las alertas de
-      // bancos y los cobros QR son pestañas de Bancos y de Métodos de pago.
+      // bancos y los cobros QR son pestañas de Cuentas de dinero y de Métodos de pago.
       { href: '/app/finanzas/open-finance', nombre: 'Conectar banco', icono: Link2, grupo: 'Tesorería' },
       { href: '/app/finanzas/payfac/dispersiones', nombre: 'Cobros y dispersiones', icono: Banknote, grupo: 'Tesorería' },
       { href: '/app/finanzas/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Tesorería' },
@@ -490,12 +502,17 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/contabilidad', nombre: 'Contabilidad', icono: Calculator, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/plan-cuentas', nombre: 'Plan de cuentas', icono: ListChecks, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/actualizar-puc', nombre: 'Actualizar PUC', icono: RefreshCw, grupo: 'Contabilidad' },
-      { href: '/app/finanzas/contabilidad/asientos', nombre: 'Asientos', icono: FileText, grupo: 'Contabilidad' },
-      { href: '/app/finanzas/contabilidad/pendientes', nombre: 'Pendientes contables', icono: ListChecks, grupo: 'Contabilidad' },
+      // Finanzas ronda 3 (frente C): el libro diario de trabajo es «Asientos»; el mayor
+      // vuelve como página de trabajo (decisión 1, excepción documentada en
+      // __tests__/reportesSoloEnReportes.test.ts) y «Salud contable» absorbe la bandeja
+      // de pendientes como su primera pestaña (`/contabilidad/pendientes` redirige).
+      { href: '/app/finanzas/contabilidad/asientos', nombre: 'Libro diario', icono: FileText, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/mayor-contable', nombre: 'Mayor contable', icono: BookOpen, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/salud', nombre: 'Salud contable', icono: ShieldCheck, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/plantillas', nombre: 'Plantillas de asientos', icono: FileText, grupo: 'Contabilidad' },
-      { href: '/app/finanzas/contabilidad/periodos-fiscales', nombre: 'Períodos fiscales', icono: CalendarClock, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/contabilidad/periodos-fiscales', nombre: 'Periodos contables', icono: CalendarClock, grupo: 'Contabilidad' },
       { href: '/app/finanzas/reglas-contables', nombre: 'Reglas contables', icono: Shield, grupo: 'Contabilidad' },
-      { href: '/app/finanzas/centro-costos', nombre: 'Centros de costos', icono: GitBranch, grupo: 'Contabilidad' },
+      { href: '/app/finanzas/centro-costos', nombre: 'Centros de costo', icono: GitBranch, grupo: 'Contabilidad' },
       { href: '/app/finanzas/activos-fijos', nombre: 'Activos fijos', icono: Building, grupo: 'Contabilidad' },
       { href: '/app/finanzas/presupuestos', nombre: 'Presupuestos', icono: Target, grupo: 'Contabilidad' },
       { href: '/app/finanzas/impuestos', nombre: 'Impuestos', icono: Percent, grupo: 'Configuración' },

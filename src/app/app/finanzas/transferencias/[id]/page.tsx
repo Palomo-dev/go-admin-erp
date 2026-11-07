@@ -1,11 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { destinoTransferencia } from '@/lib/finanzas/tesoreria/rutas';
 
-import { TransferenciaDetalle } from '@/components/finanzas/transferencias';
-import { useParams } from 'next/navigation';
-
-export default function Page() {
-  const params = useParams();
-  const id = params?.id as string;
-  
-  return <TransferenciaDetalle id={id} />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(destinoTransferencia(id));
 }

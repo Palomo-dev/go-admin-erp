@@ -22,6 +22,7 @@ import {
   Download,
   FilePen,
   FileMinus,
+  FilePlus,
   Mail,
   Pencil,
   Printer,
@@ -60,6 +61,8 @@ import { AnularPagoConectado } from '@/components/finanzas/pagos/AnularPagoConec
 import { SendToFactusButton } from '@/components/finanzas/facturacion-electronica';
 import { NotaCreditoVentaDialog } from './NotaCreditoVentaDialog';
 import { EnviarFacturaDialog } from './EnviarFacturaDialog';
+import { NotaDebitoDialog } from '@/components/finanzas/notas/NotaDebitoDialog';
+import { facturaAdmiteNotaDebito } from '@/lib/finanzas/notas/contratoNotas';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 const RUTA_LISTADO = '/app/finanzas/facturas-venta';
@@ -67,6 +70,7 @@ const RUTA_LISTADO = '/app/finanzas/facturas-venta';
 export function DetalleFacturaVenta({ id }: { id: string }) {
   const t = useTranslations('facturasVenta');
   const tAvisos = useTranslations('posCobroServidor.avisos');
+  const tNotas = useTranslations('finanzasDocumentosR3.notas');
   const router = useRouter();
   const permisos = usePermisosFinanzas();
   const moneda = useMonedaOrganizacion();
@@ -83,6 +87,7 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
   const [emitiendo, setEmitiendo] = useState(false);
   const [faltantes, setFaltantes] = useState<FaltanteStock[] | null>(null);
   const [notaAbierta, setNotaAbierta] = useState(false);
+  const [notaDebitoAbierta, setNotaDebitoAbierta] = useState(false);
   const [enviarAbierto, setEnviarAbierto] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -272,6 +277,14 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
           onSelect: () => setNotaAbierta(true),
           oculta: !acciones.has('nota_credito'),
           separadorAntes: true,
+        },
+        {
+          // Nota débito (intereses, gastos o ajuste de precio): diálogo de finanzas/notas.
+          id: 'nota-debito',
+          etiqueta: tNotas('listado.nuevaDebito'),
+          icono: FilePlus,
+          onSelect: () => setNotaDebitoAbierta(true),
+          oculta: !permisos.crear || !facturaAdmiteNotaDebito({ estado: factura.estado, tipoDocumento: factura.tipoDocumento }),
         },
         {
           id: 'anular',
@@ -584,6 +597,7 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
             numero={numero}
             onEmitida={() => void cargar()}
           />
+          <NotaDebitoDialog abierto={notaDebitoAbierta} onAbiertoChange={setNotaDebitoAbierta} facturaId={factura.id} numero={numero} />
         </>
       )}
     </div>

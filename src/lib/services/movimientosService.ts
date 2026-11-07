@@ -5,6 +5,7 @@ import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/h
 import { RPC_MOVIMIENTO_CAJA, parametrosMovimiento } from '@/lib/pos/cajas/movimientoRpc';
 import {
   codigoErrorTesoreria,
+  estaConciliado,
   movimientoBancario,
   tipoBanco,
   tipoCaja,
@@ -53,6 +54,8 @@ export interface UnifiedMovement {
   soporte_path?: string | null;
   /** El movimiento es el reverso de una anulación («ANULACIÓN: …»): no se anula ni se duplica. */
   es_reverso?: boolean;
+  /** Solo banco: `matched`/`reconciled` = conciliado. `undefined` en caja (no se concilia). */
+  conciliado?: boolean;
 }
 
 export interface CashMovement {
@@ -128,6 +131,14 @@ export interface BankAccount {
   account_number: string | null;
   balance: number;
   is_active: boolean;
+}
+
+/** Turno de caja → movimiento → asiento → conciliación (ver `getCadena`). */
+export interface CadenaMovimiento {
+  turno: { id: number; uuid: string; abiertaEn: string; abierta: boolean } | null;
+  asiento: { id: number; fecha: string; publicado: boolean; numero: string | null } | null;
+  /** Solo banco: `null` en caja o si no se pudo leer. */
+  conciliado: boolean | null;
 }
 
 /** Resultado de una escritura: `codigo` se traduce en `tesoreria.errores.<codigo>`. */
@@ -360,6 +371,65 @@ class MovimientosService {
       autor = nombrePersona(perfil);
     }
     return { fecha: data.created_at, motivo: motivoDeNotas(data.notes), autor };
+  }
+
+  /**
+   * Cadena del dinero de un movimiento (Tesorería v2, detalle `1006:82454`):
+   * turno de caja → movimiento → asiento → conciliación. Solo lectura y de la
+   * organización; lo que no se puede leer queda en `null` (la cadena es un
+   * adorno: el detalle se ve igual).
+   */
+  async getCadena(m: Pick<UnifiedMovement, 'id' | 'source'>): Promise<CadenaMovimiento> {
+    const organizationId = getOrganizationId();
+    const vacia: CadenaMovimiento = { turno: null, asiento: null, conciliado: null };
+    if (!organizationId) return vacia;
+
+    let turno: CadenaMovimiento['turno'] = null;
+    let conciliado: boolean | null = null;
+    if (m.source === 'cash') {
+      const { data } = await supabase
+        .from('cash_movements')
+        .select('cash_session:cash_sessions(id, uuid, opened_at, status)')
+        .eq('organization_id', organizationId)
+        .eq('id', m.id)
+        .maybeSingle();
+      const sesion = (Array.isArray(data?.cash_session) ? data?.cash_session[0] : data?.cash_session) as
+        | { id: number; uuid: string; opened_at: string; status: string }
+        | null
+        | undefined;
+      if (sesion) turno = { id: sesion.id, uuid: sesion.uuid, abiertaEn: sesion.opened_at, abierta: sesion.status === 'open' };
+    } else {
+      const { data } = await supabase
+        .from('bank_transactions')
+        .select('status')
+        .eq('organization_id', organizationId)
+        .eq('id', m.id)
+        .maybeSingle();
+      conciliado = data ? estaConciliado(data.status) : null;
+    }
+
+    const { data: asiento } = await supabase
+      .from('journal_entries')
+      .select('id, entry_date, posted, comprobante_prefijo, comprobante_numero')
+      .eq('organization_id', organizationId)
+      .eq('source', m.source === 'cash' ? 'cash_movements' : 'bank_transactions')
+      .eq('source_id', String(m.id))
+      .order('id', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    return {
+      turno,
+      conciliado,
+      asiento: asiento
+        ? {
+            id: asiento.id,
+            fecha: asiento.entry_date,
+            publicado: asiento.posted === true,
+            numero: asiento.comprobante_numero != null ? `${asiento.comprobante_prefijo ?? ''}${asiento.comprobante_numero}` : null,
+          }
+        : null,
+    };
   }
 
   /**
@@ -724,6 +794,7 @@ class MovimientosService {
         amount,
         reference,
         created_at,
+        status,
         categorias_tesoreria(nombre),
         bank_account:bank_accounts(name, bank_name)
       `)
@@ -755,6 +826,7 @@ class MovimientosService {
         created_at: m.created_at,
         bank_account_name: (m.bank_account as { name?: string; bank_name?: string })?.name || (m.bank_account as { name?: string; bank_name?: string })?.bank_name,
         categoria_nombre: nombreRelacion(m.categorias_tesoreria, 'nombre'),
+        conciliado: estaConciliado(m.status),
       })),
     ];
 

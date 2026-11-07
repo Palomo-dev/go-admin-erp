@@ -8,7 +8,7 @@
  */
 import { screen } from '@testing-library/react';
 import { simularAncho } from '@/test-utils/renderConIdioma';
-import { cabeceraPublicada, comprobarDetalleMovil, esperarUnaSolaFlecha, renderEnCelular, visibleEnCelular } from '@/test-utils/dobleAtrasMovil';
+import { cabeceraPublicada, esperarUnaSolaFlecha, renderEnCelular, visibleEnCelular } from '@/test-utils/dobleAtrasMovil';
 import { contextoMoneda } from '@/lib/utils/moneda';
 
 const COP = { ...contextoMoneda('COP', { locale: 'es-CO' }), formatear: String, paraDocumento: () => contextoMoneda('COP', { locale: 'es-CO' }), resuelta: true };
@@ -22,9 +22,13 @@ jest.mock('next/navigation', () => ({
 }));
 jest.mock('@/lib/hooks/useOrgCurrency', () => ({ useMonedaOrganizacion: () => COP }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({
-  useFormatDate: () => ({ formatDate: (v: string | null | undefined) => (v ? String(v).slice(0, 10) : ''), formatDateTime: (v: string | null | undefined) => (v ? String(v) : '') }),
+  useFormatDate: () => ({ formatDate: (v: string | null | undefined) => (v ? String(v).slice(0, 10) : ''), formatDateTime: (v: string | null | undefined) => (v ? String(v) : ''), formatPlain: (v: string | null | undefined) => (v ? String(v).slice(0, 10) : ''), getToday: () => '2026-10-15' }),
 }));
 jest.mock('@/components/shared/HtmlContentRenderer', () => ({ HtmlContentRenderer: () => null }));
+// Permisos del servidor: con «crear», el detalle de la cotización muestra su primaria.
+jest.mock('@/lib/finanzas/usePermisosFinanzas', () => ({
+  usePermisosFinanzas: () => ({ ver: true, crear: true, anular: true, aprobar: false, posVer: false, posCrear: false, posAnular: false, cargando: false }),
+}));
 jest.mock('@/lib/services/movimientosService', () => ({
   movimientosService: {
     getMovementByUuid: jest.fn(async () => ({ id: 71, uuid: 'm1', source: 'cash', concept: 'Compra de insumos', amount: 50000, created_at: '2026-10-08T13:00:00Z' })),
@@ -34,12 +38,14 @@ jest.mock('@/lib/services/movimientosService', () => ({
 
 import { DetalleCotizacion } from '@/components/finanzas/cotizaciones/id/DetalleCotizacion';
 import { EgresoDetalle } from '@/components/finanzas/egresos/EgresoDetalle';
-import type { Quotation } from '@/lib/services/cotizacionesService';
+import type { CotizacionDetalle } from '@/lib/finanzas/ventas/contratoCotizaciones';
 
 afterEach(() => simularAncho(1440));
 
 describe('Finanzas › detalles en celular (390 px): una sola «←»', () => {
-  test('cotización: número, estado e «Imprimir» a la vista', () => {
+  test('cotización: número, estado y acciones a la vista', () => {
+    // Detalle v2 (Finanzas R3, Figma `1022:94293`): «Convertir en factura» es la
+    // primaria de una enviada y «Imprimir» pasó al menú «⋯» (antes era un botón suelto).
     const cotizacion = {
       id: 'q1',
       number: 'COT-0007',
@@ -49,14 +55,23 @@ describe('Finanzas › detalles en celular (390 px): una sola «←»', () => {
       total: 100000,
       subtotal: 100000,
       tax_total: 0,
-      quote_date: '2026-10-01',
-      expiry_date: '2026-10-31',
+      discount_total: 0,
+      issue_date: '2026-10-01',
+      valid_until: '2026-10-31',
+      branch_id: null,
+      customer_id: '',
+      converted_invoice_id: null,
+      opportunity_id: null,
       customers: null,
-      items: [],
-    } as unknown as Quotation;
+      quotation_items: [],
+    } as unknown as CotizacionDetalle;
     renderEnCelular(<DetalleCotizacion cotizacion={cotizacion} />);
-    comprobarDetalleMovil('Cotización COT-0007', ['Cotización COT-0007', 'Enviada']);
-    expect(screen.getByRole('button', { name: /Imprimir/ })).toBeTruthy();
+    // Cabecera del kit (`DocumentoCabecera`): en celular no dibuja «←»; el título va al MobileHeader.
+    esperarUnaSolaFlecha();
+    expect(cabeceraPublicada()?.titulo).toBe('Cotización COT-0007');
+    expect(screen.getAllByText('Enviada').some(visibleEnCelular)).toBe(true);
+    expect(screen.getByRole('button', { name: /Convertir en factura/ })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /COT-0007/ }).length).toBeGreaterThan(0);
     expect(cabeceraPublicada()?.volverA).toBe('/app/finanzas/cotizaciones');
   });
 

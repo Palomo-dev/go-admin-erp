@@ -1,711 +1,674 @@
 'use client';
 
-import React, { Fragment, useState, useEffect, useRef, useMemo } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+/**
+ * Libro diario de trabajo («Asientos»), Contabilidad v2 §4.3. Figma: listo
+ * `981:62898`, filtros `981:63945`, cargando `981:65037`, vacío `981:65700`,
+ * sin resultados `981:66273`, error `981:66920`, sin permiso `981:67541`,
+ * tableta `988:624505`, móvil `989:74744`/`989:75095`/`989:75342`.
+ *
+ * Paginado en el servidor (`ContabilidadService.listarLibroDiario`): antes se
+ * traían todos los asientos y PostgREST los cortaba en 1.000 sin avisar.
+ *
+ * Acciones que tenía la página anterior y dónde quedan: ver (clic en la fila y
+ * menú), publicar y descartar borradores (menú; descartar con confirmación),
+ * duplicar (menú, ahora solo en manuales), crear (diálogo con las mismas
+ * validaciones), buscar por número o descripción, filtrar por estado, origen y
+ * «Ocultar pares revertidos», y los avisos de `AlertasContables`. Nuevas:
+ * rango de fechas, cuenta, sucursal y exportar CSV.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { BookOpen, Check, Copy, Download, Eye, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { FileText, Plus, Loader2, Trash2, Copy, Check, ArrowLeft, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento, lineasSinTerceroParaContabilizar, cuentaRetencionExigeNit } from '../ContabilidadService';
-import { AlertasContables } from '../AlertasContables';
-import { esCuentaDeTitulo } from '@/lib/finanzas/cuentasTitulo';
-import { esCuentaDeMovimiento } from '@/lib/finanzas/contabilidad/cuentaLinea';
-import { textoComprobante, esTipoComprobante, NOMBRE_COMPROBANTE } from '@/lib/finanzas/contabilidad/comprobante';
+import {
+  ChipsOpcion,
+  ConfirmDialog,
+  DataTable,
+  DateRangeButton,
+  FilterChips,
+  FilterPanel,
+  KpiStrip,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  PanelAdaptable,
+  ResultadoOperacion,
+  SearchInput,
+  SegmentedControl,
+  SelectorCuenta,
+  StatCard,
+  StatusBadge,
+  clasesBoton,
+  etiquetaRango,
+  inicioDeMes,
+  type AccionFila,
+  type ChipFiltro,
+  type ColumnaTabla,
+  type RangoFechas,
+} from '@/components/kit';
 import { Switch } from '@/components/ui/switch';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { SearchInput } from '@/components/kit/SearchInput';
-import { CampoTerceroAsiento } from '../CampoTerceroAsiento';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
+import { textoComprobante, esTipoComprobante, NOMBRE_COMPROBANTE } from '@/lib/finanzas/contabilidad/comprobante';
+import { celdasCsv } from '@/lib/finanzas/pendientesContables';
+import {
+  FILTROS_VACIOS,
+  GRUPOS_FILTRO,
+  accionesAsiento,
+  conteoFiltros,
+  fuentesDeGrupos,
+  numeroBuscado,
+  textoBusquedaSeguro,
+  type EstadoFiltro,
+  type FiltrosLibro,
+} from '@/lib/finanzas/contabilidad/asientosLogica';
+import { grupoOrigen, type GrupoOrigen } from '@/lib/finanzas/contabilidad/origenAsiento';
+import { AlertasContables } from '../AlertasContables';
+import { EnlaceAsiento, MarcaReversion, OrigenAsiento, EtiquetaOrigen, useNumeroAsiento } from '../piezas';
+import { NuevoAsientoDialog } from './NuevoAsientoDialog';
+import {
+  ContabilidadService,
+  mensajeErrorAsiento,
+  type ChartAccount,
+  type FilaLibroDiario,
+  type JournalEntry,
+  type PaginaLibroDiario,
+  type ResumenLibroDiario,
+} from '../ContabilidadService';
 
-interface JournalLineInput {
-  account_code: string;
-  description: string;
-  debit: string;
-  credit: string;
-  tercero_nit: string;
-  tercero_nombre: string;
-  cost_center_id: string;
-  distribucion_id: string;
+const OPCIONES_TAMANO = [25, 50, 100] as const;
+const LOTE_EXPORTAR = 500;
+const TOPE_EXPORTAR = 10000;
+
+type Estado = 'cargando' | 'listo' | 'error' | 'sinPermiso';
+
+function esSinPermiso(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === '42501' || /permission denied|SIN_PERMISO/i.test(String(e?.message ?? ''));
 }
 
-const lineaVacia = (): JournalLineInput => ({
-  account_code: '',
-  description: '',
-  debit: '',
-  credit: '',
-  tercero_nit: '',
-  tercero_nombre: '',
-  cost_center_id: '',
-  distribucion_id: '',
-});
-
 export function AsientosPage() {
+  const t = useTranslations('finanzasContabilidadR3.asientos');
+  const tc = useTranslations('finanzasContabilidadR3.comun');
+  const to = useTranslations('finanzasContabilidadR3.comun.origen');
+  const locale = useLocale();
   const router = useRouter();
-  // Los importes contables se llevan en la moneda base de la organizacion.
-  const { formatear } = useMonedaOrganizacion();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { branchFilter, selectedBranchId } = useBranch();
-  // `journal_entries.entry_date` es **timestamptz** (verificado en
-  // `information_schema.columns`). El formulario trabaja con el DIA calendario
-  // de la sucursal dueña del asiento; al guardar se convierte al instante que
-  // le corresponde en esa zona. Mandar `'2026-09-23'` a un timestamptz guarda
-  // las 19:00 del 22 en Bogota, y la lista lo mostraria un dia corrido.
-  const { formatDate } = useFormatDate();
-  const { getToday, toInstant } = useFormatDate(selectedBranchId);
+  const { formatear } = useMonedaOrganizacion();
+  const { formatDate, getToday } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
-  const [asientos, setAsientos] = useState<JournalEntry[]>([]);
+  const { branches } = useBranch();
+  const permisos = usePermisosFinanzas();
+  const numero = useNumeroAsiento();
+
+  const [rango, setRango] = useState<RangoFechas | null>(null);
+  const [iniciado, setIniciado] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  // `?estado=borrador` llega de Periodos (borradores del mes) y del Inicio de Contabilidad.
+  const [filtros, setFiltros] = useState<FiltrosLibro>(() => ({ ...FILTROS_VACIOS, estado: estadoDeUrl(searchParams?.get('estado')) }));
+  const [pagina, setPagina] = useState(1);
+  const [tamano, setTamano] = useState<number>(25);
+  const [estado, setEstado] = useState<Estado>('cargando');
+  const [datos, setDatos] = useState<PaginaLibroDiario | null>(null);
+  const [resumen, setResumen] = useState<ResumenLibroDiario | null>(null);
   const [cuentas, setCuentas] = useState<ChartAccount[]>([]);
   const [centros, setCentros] = useState<{ id: string; code: string; name: string }[]>([]);
   const [distribuciones, setDistribuciones] = useState<{ id: string; nombre: string }[]>([]);
-  const [centroDefecto, setCentroDefecto] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [filterPosted, setFilterPosted] = useState<string>('all');
-  const [filterSource, setFilterSource] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  // Libro diario completo por defecto: los contra-asientos se ven siempre,
-  // enlazados a su original. El filtro solo oculta los pares ya revertidos.
-  const [ocultarRevertidos, setOcultarRevertidos] = useState(false);
-  const [formData, setFormData] = useState({
-    entry_date: '',
-    memo: '',
-    lines: [lineaVacia(), lineaVacia()]
-  });
+  const [dialogo, setDialogo] = useState(false);
+  const [descartar, setDescartar] = useState<FilaLibroDiario | null>(null);
+  const [procesando, setProcesando] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const [resultado, setResultado] = useState<{ asiento: JournalEntry; publicado: boolean } | null>(null);
+  const consulta = useRef(0);
 
-  const fechaPuesta = useRef(false);
+  // Rango por defecto: el mes en curso de la organización (cuando ya se sabe su zona).
   useEffect(() => {
-    if (tzLoading || fechaPuesta.current) return;
-    fechaPuesta.current = true;
-    setFormData((prev) => (prev.entry_date ? prev : { ...prev, entry_date: getToday() }));
-  }, [tzLoading, getToday]);
+    if (tzLoading || iniciado) return;
+    const hoy = getToday();
+    setRango({ desde: inicioDeMes(hoy), hasta: hoy });
+    setIniciado(true);
+  }, [tzLoading, iniciado, getToday]);
+
+  // «Nuevo asiento» desde el inicio de Contabilidad o el buscador: abre y limpia la URL.
+  useEffect(() => {
+    if (searchParams?.get('action') !== 'new') return;
+    setDialogo(true);
+    const q = new URLSearchParams(searchParams.toString());
+    q.delete('action');
+    const resto = q.toString();
+    router.replace(resto ? `${pathname}?${resto}` : pathname ?? '/app/finanzas/contabilidad/asientos');
+  }, [searchParams, router, pathname]);
 
   useEffect(() => {
-    loadData();
-    // Si viene con action=new, abrir dialog
-    if (searchParams?.get('action') === 'new') {
-      setShowDialog(true);
-    }
-    // Solo se recarga al cambiar de sucursal; `?action=new` se mira una vez al entrar.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter]);
+    Promise.all([
+      ContabilidadService.obtenerPlanCuentas(),
+      ContabilidadService.listarCentrosCosto().catch(() => [] as { id: string; code: string; name: string }[]),
+      ContabilidadService.listarDistribuciones(),
+    ])
+      .then(([plan, cc, dist]) => {
+        setCuentas(plan.filter((c) => c.is_active));
+        setCentros(cc);
+        setDistribuciones(dist);
+      })
+      .catch((error) => console.error('Error cargando el plan de cuentas:', error));
+  }, []);
 
-  const loadData = async () => {
+  const texto = textoBusquedaSeguro(busqueda);
+  const consultaFiltros = useMemo(
+    () => ({
+      desde: rango?.desde ?? null,
+      hasta: rango?.hasta ?? null,
+      estado: filtros.estado,
+      fuentes: fuentesDeGrupos(filtros.grupos),
+      cuenta: filtros.cuenta,
+      branchId: filtros.sucursalId,
+      texto,
+      numero: numeroBuscado(busqueda),
+      ocultarPares: filtros.ocultarPares,
+    }),
+    [rango, filtros, texto, busqueda],
+  );
+
+  const cargar = useCallback(async () => {
+    if (!iniciado) return;
+    const turno = ++consulta.current;
+    setEstado('cargando');
     try {
-      setIsLoading(true);
-      const [asientosData, cuentasData, centrosData, distribucionesData, defecto] = await Promise.all([
-        ContabilidadService.obtenerAsientos({ branchId: branchFilter }),
-        ContabilidadService.obtenerPlanCuentas(),
-        ContabilidadService.listarCentrosCosto().catch(() => [] as { id: string; code: string; name: string }[]),
-        ContabilidadService.listarDistribuciones(),
-        ContabilidadService.defectoCentroSucursal(selectedBranchId),
-      ]);
-      setAsientos(asientosData);
-      setCuentas(cuentasData.filter(c => c.is_active));
-      setCentros(centrosData);
-      setDistribuciones(distribucionesData);
-      setCentroDefecto(defecto ?? '');
+      const pag = await ContabilidadService.listarLibroDiario({ ...consultaFiltros, limite: tamano, desplazamiento: (pagina - 1) * tamano });
+      if (turno !== consulta.current) return;
+      setDatos(pag);
+      setEstado('listo');
     } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast.error('Error al cargar los datos');
+      if (turno !== consulta.current) return;
+      console.error('No se pudo consultar el libro diario:', error);
+      setDatos(null);
+      setEstado(esSinPermiso(error) ? 'sinPermiso' : 'error');
+    }
+  }, [iniciado, consultaFiltros, pagina, tamano]);
+
+  const cargarResumen = useCallback(async () => {
+    if (!iniciado) return;
+    try {
+      setResumen(await ContabilidadService.resumenLibroDiario(rango?.desde ?? null, rango?.hasta ?? null));
+    } catch (error) {
+      console.error('No se pudo calcular el resumen del libro diario:', error);
+      setResumen(null);
+    }
+  }, [iniciado, rango]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+  useEffect(() => {
+    void cargarResumen();
+  }, [cargarResumen]);
+
+  const recargar = () => {
+    void cargar();
+    void cargarResumen();
+  };
+
+  const nombreSucursal = useCallback((id: number | null | undefined) => branches.find((b) => b.id === id)?.name ?? '—', [branches]);
+
+  const publicar = async (asiento: FilaLibroDiario) => {
+    setProcesando(true);
+    try {
+      await ContabilidadService.publicarAsiento(asiento.id);
+      toast.success(t('toast.publicado', { numero: numero(asiento.id) }));
+      recargar();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('toast.errorPublicar'));
     } finally {
-      setIsLoading(false);
+      setProcesando(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      entry_date: getToday(),
-      memo: '',
-      lines: [lineaVacia(), lineaVacia()]
-    });
-  };
-
-  const addLine = () => {
-    setFormData({
-      ...formData,
-      lines: [...formData.lines, lineaVacia()]
-    });
-  };
-
-  const removeLine = (index: number) => {
-    if (formData.lines.length <= 2) return;
-    setFormData({
-      ...formData,
-      lines: formData.lines.filter((_, i) => i !== index)
-    });
-  };
-
-  const updateLine = (index: number, field: keyof JournalLineInput, value: string) => {
-    const newLines = [...formData.lines];
-    const linea = { ...newLines[index], [field]: value };
-    if (field === 'account_code') {
-      const cuenta = cuentas.find((c) => c.account_code === value);
-      const modo = cuenta?.centro_costo_modo ?? (cuenta?.requiere_centro_costo ? 'obligatorio' : 'no_aplica');
-      if (modo === 'no_aplica') {
-        linea.cost_center_id = '';
-        linea.distribucion_id = '';
-      } else if (!linea.cost_center_id && !linea.distribucion_id && centroDefecto) {
-        linea.cost_center_id = centroDefecto;
-      }
-    }
-    if (field === 'distribucion_id' && value) linea.cost_center_id = '';
-    if (field === 'cost_center_id' && value) linea.distribucion_id = '';
-    newLines[index] = linea;
-    setFormData({ ...formData, lines: newLines });
-  };
-
-  const fijarTercero = (index: number, nit: string, nombre: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      lines: prev.lines.map((linea, i) => (i === index ? { ...linea, tercero_nit: nit, tercero_nombre: nombre } : linea)),
-    }));
-  };
-
-  const getTotalDebits = () => formData.lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
-  const getTotalCredits = () => formData.lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
-  const isBalanced = () => Math.abs(getTotalDebits() - getTotalCredits()) < 0.01;
-
-  const handleSave = async () => {
-    if (!formData.entry_date) {
-      toast.error('La fecha es requerida');
-      return;
-    }
-
-    const validLines = formData.lines.filter(l => l.account_code && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0));
-    if (validLines.length < 2) {
-      toast.error('Se requieren al menos 2 líneas con valores');
-      return;
-    }
-
-    if (validLines.some((linea) => esCuentaDeTitulo({ account_code: linea.account_code }, cuentas))) {
-      toast.error('Una cuenta de título no recibe movimientos. Elige una cuenta de detalle.');
-      return;
-    }
-
-    if (!isBalanced()) {
-      toast.error('El asiento debe estar balanceado (débitos = créditos)');
-      return;
-    }
-
-    // El tercero no bloquea guardar el borrador: se exige al contabilizar (y el NIT, al transmitir a la DIAN).
-    const sinTercero = lineasSinTerceroParaContabilizar(
-      validLines,
-      (codigo) => !!cuentas.find((c) => c.account_code === codigo)?.requiere_tercero,
-    );
-    if (sinTercero.length > 0) {
-      toast.warning(`Se guarda como borrador. Para contabilizarlo falta el tercero en: ${[...new Set(sinTercero)].join(', ')}`);
-    }
-    for (const linea of validLines) {
-      const cuenta = cuentas.find((c) => c.account_code === linea.account_code);
-      const modoCentro = cuenta?.centro_costo_modo ?? (cuenta?.requiere_centro_costo ? 'obligatorio' : null);
-      if (modoCentro === 'obligatorio' && centros.length > 0 && !linea.cost_center_id && !linea.distribucion_id) {
-        toast.error(`La cuenta ${linea.account_code} exige un centro de costo`);
-        return;
-      }
-    }
-
+  const duplicar = async (asiento: FilaLibroDiario) => {
+    setProcesando(true);
     try {
-      setIsProcessing(true);
-      if (!selectedBranchId) {
-        toast.error('Seleccione una sucursal antes de crear el asiento.');
-        return;
-      }
-      await ContabilidadService.crearAsiento({
-        // Dia calendario de la sucursal -> instante con su offset real.
-        entry_date: toInstant(formData.entry_date),
-        memo: formData.memo,
-        lines: validLines.map(l => ({
-          account_code: l.account_code,
-          description: l.description,
-          debit: parseFloat(l.debit) || 0,
-          credit: parseFloat(l.credit) || 0,
-          tercero_nit: l.tercero_nit,
-          tercero_nombre: l.tercero_nombre,
-          cost_center_id: l.distribucion_id ? null : (l.cost_center_id || null),
-          distribucion_id: l.distribucion_id || null,
-        }))
-      }, selectedBranchId);
-      toast.success('Asiento creado exitosamente');
-      setShowDialog(false);
-      resetForm();
-      loadData();
+      const copia = await ContabilidadService.duplicarAsiento(asiento.id);
+      toast.success(t('toast.duplicado', { numero: numero(copia.id) }));
+      router.push(`/app/finanzas/contabilidad/asientos/${copia.id}`);
     } catch (error) {
-      console.error('Error creando asiento:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al crear el asiento');
+      toast.error(error instanceof Error ? error.message : t('toast.errorDuplicar'));
     } finally {
-      setIsProcessing(false);
+      setProcesando(false);
     }
   };
 
-  const handlePublish = async (id: number) => {
+  const confirmarDescarte = async () => {
+    if (!descartar) return;
+    setProcesando(true);
     try {
-      await ContabilidadService.publicarAsiento(id);
-      toast.success('Asiento publicado exitosamente');
-      loadData();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al publicar el asiento');
-    }
-  };
-
-  const handleDuplicate = async (id: number) => {
-    try {
-      await ContabilidadService.duplicarAsiento(id);
-      toast.success('Asiento duplicado como borrador');
-      loadData();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al duplicar el asiento');
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Descartar este borrador? Un borrador nunca se publicó y no deja rastro contable.')) return;
-    try {
-      await ContabilidadService.eliminarAsiento(id);
-      toast.success('Borrador descartado');
-      loadData();
+      await ContabilidadService.eliminarAsiento(descartar.id);
+      toast.success(t('toast.descartado'));
+      setDescartar(null);
+      recargar();
     } catch (error) {
       toast.error(mensajeErrorAsiento(error instanceof Error ? error : null));
+    } finally {
+      setProcesando(false);
     }
   };
 
-  const reversiones = useMemo(() => mapaDeReversiones(asientos), [asientos]);
-
-  const filteredAsientos = asientos.filter(a => {
-    if (ocultarRevertidos && (reversiones.has(a.id) || a.source === 'reversal')) return false;
-    if (filterPosted === 'posted' && !a.posted) return false;
-    if (filterPosted === 'draft' && a.posted) return false;
-    if (filterSource !== 'all' && a.source !== filterSource) return false;
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      if (!a.memo?.toLowerCase().includes(term) && !a.id.toString().includes(term)) return false;
+  const exportar = async () => {
+    setExportando(true);
+    try {
+      const filas: FilaLibroDiario[] = [];
+      for (;;) {
+        const lote = await ContabilidadService.listarLibroDiario({ ...consultaFiltros, limite: LOTE_EXPORTAR, desplazamiento: filas.length });
+        filas.push(...lote.filas);
+        if (lote.filas.length + lote.paresOcultos === 0 || filas.length + lote.paresOcultos >= lote.total || filas.length >= TOPE_EXPORTAR) break;
+      }
+      const encabezado = ['numero', 'fecha', 'descripcion', 'origen', 'documento', 'sucursal', 'importe', 'estado'].map((c) => t(`csv.${c}`));
+      const lineas = filas.map((asiento) =>
+        [
+          asiento.id,
+          formatDate(asiento.entry_date),
+          asiento.memo ?? '',
+          to(grupoOrigen(asiento.source)),
+          asiento.source_id ?? '',
+          nombreSucursal(asiento.branch_id),
+          asiento.importe,
+          asiento.posted ? t('estado.publicado') : t('estado.borrador'),
+        ]
+          .map(celdasCsv)
+          .join(','),
+      );
+      const contenido = `﻿${[encabezado.map(celdasCsv).join(','), ...lineas].join('\n')}`;
+      const url = URL.createObjectURL(new Blob([contenido], { type: 'text/csv;charset=utf-8' }));
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = t('csv.archivo');
+      enlace.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('No se pudo exportar el libro diario:', error);
+      toast.error(t('csv.error'));
+    } finally {
+      setExportando(false);
     }
-    return true;
-  });
+  };
 
-  const uniqueSources = Array.from(new Set(asientos.map(a => a.source).filter(s => s && s !== 'manual')));
-  const cuentasMovimiento = useMemo(
-    () => cuentas.filter((c) => esCuentaDeMovimiento(c, cuentas)),
+  const accionesFila = (asiento: FilaLibroDiario): AccionFila[] => {
+    const a = accionesAsiento(asiento);
+    const lista: AccionFila[] = [
+      { id: 'ver', etiqueta: t('acciones.ver'), icono: Eye, onSelect: () => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}`) },
+    ];
+    if (a.publicar) lista.push({ id: 'publicar', etiqueta: t('acciones.publicar'), icono: Check, onSelect: () => void publicar(asiento), deshabilitada: procesando });
+    if (a.duplicar) lista.push({ id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => void duplicar(asiento), deshabilitada: procesando });
+    if (a.descartar) lista.push({ id: 'descartar', etiqueta: t('acciones.descartar'), icono: Trash2, onSelect: () => setDescartar(asiento), destructiva: true });
+    return lista;
+  };
+
+  const columnas = useMemo<ColumnaTabla<FilaLibroDiario>[]>(
+    () => [
+      {
+        id: 'numero',
+        encabezado: t('columnas.numero'),
+        ancho: 96,
+        celda: (asiento) => <EnlaceAsiento id={asiento.id} className={asiento.source === 'reversal' ? 'text-fg-secondary' : undefined} />,
+      },
+      { id: 'fecha', encabezado: t('columnas.fecha'), ancho: 120, celda: (asiento) => <span className="whitespace-nowrap">{formatDate(asiento.entry_date)}</span> },
+      {
+        id: 'descripcion',
+        encabezado: t('columnas.descripcion'),
+        celda: (asiento) => {
+          const comprobante = textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero);
+          return (
+            <span className={asiento.source === 'reversal' ? 'text-fg-secondary' : 'text-fg'}>
+              <span className="line-clamp-2 break-words">{asiento.memo || '—'}</span>
+              {comprobante && (
+                <span className="mt-0.5 block text-xs text-fg-muted">
+                  {esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : t('comprobante')} {comprobante}
+                </span>
+              )}
+            </span>
+          );
+        },
+      },
+      { id: 'origen', encabezado: t('columnas.origen'), celda: (asiento) => <OrigenAsiento source={asiento.source} sourceId={asiento.source_id} /> },
+      { id: 'sucursal', encabezado: t('columnas.sucursal'), ocultarDebajo: 'xl', celda: (asiento) => nombreSucursal(asiento.branch_id) },
+      { id: 'importe', encabezado: t('columnas.importe'), variante: 'importe', alinear: 'derecha', celda: (asiento) => formatear(asiento.importe) },
+      {
+        id: 'estado',
+        encabezado: t('columnas.estado'),
+        celda: (asiento) => (
+          <span className="flex flex-wrap gap-1">
+            <StatusBadge estado={asiento.posted ? 'publicado' : 'borrador'} etiqueta={asiento.posted ? t('estado.publicado') : t('estado.borrador')} />
+            {asiento.revertidoPor && <MarcaReversion rol="revertido" numero={asiento.revertidoPor} />}
+            {asiento.source === 'reversal' && Number(asiento.source_id) > 0 && <MarcaReversion rol="contraAsiento" numero={Number(asiento.source_id)} />}
+          </span>
+        ),
+      },
+    ],
+    [t, formatDate, formatear, nombreSucursal],
+  );
+
+  const nFiltros = conteoFiltros(filtros);
+  const hayCriterio = nFiltros > 0 || !!texto;
+  const estadoTabla = estado === 'cargando' ? 'cargando' : estado === 'error' ? 'error' : estado === 'sinPermiso' ? 'sinPermiso' : datos?.filas.length ? 'listo' : hayCriterio ? 'sinResultados' : 'vacio';
+  const cuentaFiltro = filtros.cuenta ? cuentas.find((c) => c.account_code === filtros.cuenta) : null;
+  const buscarCuenta = useCallback(
+    async (q: string, desde: number) => {
+      const s = q.trim().toLowerCase();
+      const todas = s ? cuentas.filter((c) => c.account_code.startsWith(s) || c.name.toLowerCase().includes(s)) : cuentas;
+      return { items: todas.slice(desde, desde + 50).map((c) => ({ account_code: c.account_code, name: c.name })), total: todas.length };
+    },
     [cuentas],
   );
 
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <StatsSkeleton count={4} />
-        <CardListSkeleton cards={3} columns="1" />
-      </div>
-    );
-  }
+  const chips: ChipFiltro[] = [];
+  if (filtros.estado !== 'todos') chips.push({ clave: 'estado', etiqueta: t('chips.estado', { valor: t(`filtros.estados.${filtros.estado}`) }) });
+  if (filtros.grupos.length) chips.push({ clave: 'grupos', etiqueta: t('chips.origen', { valor: filtros.grupos.map((g) => to(g)).join(', ') }) });
+  if (filtros.cuenta) chips.push({ clave: 'cuenta', etiqueta: t('chips.cuenta', { valor: filtros.cuenta }) });
+  if (filtros.sucursalId) chips.push({ clave: 'sucursalId', etiqueta: t('chips.sucursal', { valor: nombreSucursal(filtros.sucursalId) }) });
+  if (filtros.ocultarPares) chips.push({ clave: 'ocultarPares', etiqueta: t('filtros.ocultarPares') });
+
+  const cambiarFiltros = (cambio: Partial<FiltrosLibro>) => {
+    setPagina(1);
+    setFiltros((f) => ({ ...f, ...cambio }));
+  };
+  const quitarChip = (clave: string) => cambiarFiltros({ [clave]: FILTROS_VACIOS[clave as keyof FiltrosLibro] } as Partial<FiltrosLibro>);
+
+  const puedeCrear = permisos.crear;
+  const motivoCrear = !puedeCrear && !permisos.cargando ? t('sinPermisoCrear') : undefined;
+  const totalLibro = resumen ? resumen.asientos + resumen.contraAsientos : null;
+  const cargandoResumen = resumen === null && estado === 'cargando';
+  const rangoTexto = rango ? etiquetaRango(rango, locale) : t('todoElLibro');
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/finanzas/contabilidad">
-            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <FileText className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Asientos Contables
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Registro y gestión de asientos
-            </p>
-          </div>
-        </div>
-
-        <Button onClick={() => setShowDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Asiento
-        </Button>
-      </div>
-
-      <BranchBadge className="mb-3" />
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        titulo={t('titulo')}
+        icono={BookOpen}
+        subtitulo={totalLibro === null ? t('subtituloCorto') : t('subtitulo', { asientos: resumen?.asientos ?? 0, contra: resumen?.contraAsientos ?? 0 })}
+        migas={[
+          { etiqueta: tc('migas.finanzas'), href: '/app/finanzas' },
+          { etiqueta: tc('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
+          { etiqueta: t('titulo') },
+        ]}
+        acciones={
+          <>
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'secundario' })}
+              onClick={() => void exportar()}
+              disabled={exportando || estado !== 'listo' || !datos?.filas.length}
+            >
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('exportar')}
+            </button>
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'primario' })}
+              onClick={() => setDialogo(true)}
+              disabled={!!motivoCrear}
+              title={motivoCrear}
+            >
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevoAsiento')}
+            </button>
+          </>
+        }
+      />
 
       <AlertasContables />
 
-      {/* Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Asientos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{asientos.length}</div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Publicados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {asientos.filter(a => a.posted).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Borradores</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-              {asientos.filter(a => !a.posted).length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <KpiStrip etiqueta={t('kpis.etiqueta')}>
+        <StatCard
+          etiqueta={t('kpis.asientos')}
+          valor={resumen ? resumen.asientos.toLocaleString(locale) : '—'}
+          detalle={resumen ? t('kpis.asientosDetalle', { n: resumen.contraAsientos }) : rangoTexto}
+          cargando={cargandoResumen}
+        />
+        <StatCard
+          etiqueta={t('kpis.movimiento')}
+          valor={resumen ? formatear(resumen.movimiento) : '—'}
+          detalle={t('kpis.movimientoDetalle')}
+          cargando={cargandoResumen}
+        />
+        <StatCard
+          etiqueta={t('kpis.borradores')}
+          valor={resumen ? resumen.borradores.toLocaleString(locale) : '—'}
+          detalle={t('kpis.borradoresDetalle')}
+          tono={resumen && resumen.borradores > 0 ? 'advertencia' : undefined}
+          onClick={resumen && resumen.borradores > 0 ? () => cambiarFiltros({ estado: 'borradores' }) : undefined}
+          cargando={cargandoResumen}
+        />
+        <StatCard etiqueta={t('kpis.rango')} valor={rangoTexto} detalle={t('kpis.rangoDetalle')} cargando={!iniciado} />
+      </KpiStrip>
 
-      {/* Filtros */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardContent className="py-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <SearchInput
-              value={searchTerm}
-              onChange={setSearchTerm}
-              onValueChange={setSearchTerm}
-              placeholder="Buscar por ID o memo..."
-              className="flex-1"
-            />
-            <Select value={filterPosted} onValueChange={setFilterPosted}>
-              <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="posted">Publicados</SelectItem>
-                <SelectItem value="draft">Borradores</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600">
-                <SelectValue placeholder="Origen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los orígenes</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-                {uniqueSources.map(s => s && (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              <Switch checked={ocultarRevertidos} onCheckedChange={setOcultarRevertidos} />
-              Ocultar pares revertidos
-            </label>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabla */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Lista de Asientos</CardTitle>
-          <CardDescription className="dark:text-gray-400">
-            {filteredAsientos.length} asientos encontrados
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="dark:border-gray-700">
-                <TableHead className="dark:text-gray-300">ID</TableHead>
-                <TableHead className="dark:text-gray-300">Fecha</TableHead>
-                <TableHead className="dark:text-gray-300">Memo</TableHead>
-                <TableHead className="dark:text-gray-300">Origen</TableHead>
-                <TableHead className="dark:text-gray-300">Estado</TableHead>
-                <TableHead className="text-right dark:text-gray-300">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAsientos.map((asiento) => (
-                <TableRow key={asiento.id} className="dark:border-gray-700">
-                  <TableCell className="font-mono text-gray-900 dark:text-white">
-                    <CopyableId
-                      label={`#${asiento.id}`}
-                      copyValue={String(asiento.id)}
-                      onClick={() => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}`)}
-                      iconSize={12}
+      <ListToolbar
+        busqueda={
+          <SearchInput
+            value={busqueda}
+            onChange={(v) => {
+              setPagina(1);
+              setBusqueda(v);
+            }}
+            placeholder={t('buscar')}
+          />
+        }
+        filtros={
+          <div className="flex flex-wrap gap-2">
+            {rango ? (
+              <DateRangeButton
+                valor={rango}
+                hoy={getToday()}
+                onValorChange={(r) => {
+                  setPagina(1);
+                  setRango(r);
+                }}
+                onLimpiar={() => {
+                  setPagina(1);
+                  setRango(null);
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className={clasesBoton({ variante: 'secundario' })}
+                onClick={() => {
+                  const hoy = getToday();
+                  setRango({ desde: inicioDeMes(hoy), hasta: hoy });
+                }}
+              >
+                {t('todoElLibro')}
+              </button>
+            )}
+            <FilterPanel
+              conteo={nFiltros}
+              onLimpiar={() => cambiarFiltros(FILTROS_VACIOS)}
+              textoVerResultados={datos ? t('filtros.ver', { n: datos.total }) : undefined}
+            >
+              <div className="space-y-4">
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium text-fg">{t('filtros.origen')}</legend>
+                  <ChipsOpcion<GrupoOrigen>
+                    multiple
+                    etiqueta={t('filtros.origen')}
+                    valor={filtros.grupos}
+                    onValorChange={(grupos) => cambiarFiltros({ grupos })}
+                    opciones={GRUPOS_FILTRO.map((g) => ({ valor: g, etiqueta: to(g) }))}
+                  />
+                </fieldset>
+                <div className="space-y-2">
+                  <span className="block text-sm font-medium text-fg">{t('filtros.estado')}</span>
+                  <SegmentedControl<EstadoFiltro>
+                    etiqueta={t('filtros.estado')}
+                    valor={filtros.estado}
+                    onValorChange={(estadoFiltro) => cambiarFiltros({ estado: estadoFiltro })}
+                    opciones={(['todos', 'publicados', 'borradores'] as const).map((v) => ({ valor: v, etiqueta: t(`filtros.estados.${v}`) }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <SelectorCuenta
+                    etiqueta={t('filtros.cuenta')}
+                    valor={cuentaFiltro ? { account_code: cuentaFiltro.account_code, name: cuentaFiltro.name } : null}
+                    buscar={buscarCuenta}
+                    onCambiar={(c) => cambiarFiltros({ cuenta: c.account_code })}
+                  />
+                  {filtros.cuenta && (
+                    <button type="button" className="text-sm font-medium text-brand hover:underline" onClick={() => cambiarFiltros({ cuenta: null })}>
+                      {t('filtros.quitarCuenta')}
+                    </button>
+                  )}
+                </div>
+                {branches.length > 1 && (
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium text-fg">{t('filtros.sucursal')}</legend>
+                    <ChipsOpcion<string>
+                      etiqueta={t('filtros.sucursal')}
+                      valor={filtros.sucursalId ? String(filtros.sucursalId) : 'todas'}
+                      onValorChange={(v) => cambiarFiltros({ sucursalId: v === 'todas' ? null : Number(v) })}
+                      opciones={[{ valor: 'todas', etiqueta: t('filtros.todasSucursales') }, ...branches.map((b) => ({ valor: String(b.id), etiqueta: b.name }))]}
                     />
-                  </TableCell>
-                  <TableCell className="text-gray-700 dark:text-gray-300">
-                    {formatDate(asiento.entry_date)}
-                  </TableCell>
-                  <TableCell className="text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
-                    {asiento.memo || '-'}
-                    {textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero) && (
-                      <span className="mt-1 block text-xs text-gray-500">
-                        {esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : 'Comprobante'}{' '}
-                        {textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="dark:border-gray-600">
-                      {asiento.source || 'manual'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {asiento.posted
-                        ? <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Publicado</Badge>
-                        : <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Borrador</Badge>
-                      }
-                      {reversiones.has(asiento.id) && (
-                        <Link href={`/app/finanzas/contabilidad/asientos/${reversiones.get(asiento.id)}`}>
-                          <Badge variant="outline" className="border-red-300 text-red-700 dark:border-red-700 dark:text-red-400">
-                            Revertido
-                          </Badge>
-                        </Link>
-                      )}
-                      {asiento.source === 'reversal' && asiento.source_id && (
-                        <Link href={`/app/finanzas/contabilidad/asientos/${asiento.source_id}`}>
-                          <Badge variant="outline" className="border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
-                            Reversión de #{asiento.source_id}
-                          </Badge>
-                        </Link>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Link href={`/app/finanzas/contabilidad/asientos/${asiento.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      {!asiento.posted && (
-                        <Button variant="ghost" size="sm" onClick={() => handlePublish(asiento.id)} className="text-green-600">
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(asiento.id)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      {!asiento.posted && (
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(asiento.id)} className="text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Dialog Nuevo Asiento */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">Nuevo Asiento Contable</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Crea un nuevo asiento con sus líneas de débito y crédito
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Fecha *</Label>
-                <Input
-                  type="date"
-                  value={formData.entry_date}
-                  onChange={(e) => setFormData({ ...formData, entry_date: e.target.value })}
-                  className="dark:bg-gray-900 dark:border-gray-600"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Memo</Label>
-                <Input
-                  value={formData.memo}
-                  onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-                  placeholder="Descripción del asiento"
-                  className="dark:bg-gray-900 dark:border-gray-600"
-                />
-              </div>
-            </div>
-
-            {/* Líneas */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-gray-700 dark:text-gray-300">Líneas del Asiento</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addLine} className="dark:border-gray-600">
-                  <Plus className="h-4 w-4 mr-1" /> Agregar Línea
-                </Button>
-              </div>
-              
-              <div className="border rounded-lg dark:border-gray-700 overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="dark:border-gray-700">
-                      <TableHead className="dark:text-gray-300">Cuenta</TableHead>
-                      <TableHead className="dark:text-gray-300">Descripción</TableHead>
-                      <TableHead className="dark:text-gray-300 w-32">Débito</TableHead>
-                      <TableHead className="dark:text-gray-300 w-32">Crédito</TableHead>
-                      <TableHead className="w-10"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {formData.lines.map((line, index) => (
-                      <Fragment key={index}>
-                      <TableRow className="dark:border-gray-700">
-                        <TableCell>
-                          <select
-                            aria-label="Cuenta de movimiento"
-                            value={line.account_code}
-                            onChange={(e) => updateLine(index, 'account_code', e.target.value)}
-                            className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                          >
-                            <option value="">Seleccionar</option>
-                            {cuentasMovimiento.map((c) => (
-                              <option key={c.account_code} value={c.account_code}>
-                                {c.account_code} - {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={line.description}
-                            onChange={(e) => updateLine(index, 'description', e.target.value)}
-                            placeholder="Descripción"
-                            className="dark:bg-gray-900 dark:border-gray-600"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={line.debit}
-                            onChange={(e) => updateLine(index, 'debit', e.target.value)}
-                            placeholder="0.00"
-                            className="dark:bg-gray-900 dark:border-gray-600"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={line.credit}
-                            onChange={(e) => updateLine(index, 'credit', e.target.value)}
-                            placeholder="0.00"
-                            className="dark:bg-gray-900 dark:border-gray-600"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {formData.lines.length > 2 && (
-                            <Button variant="ghost" size="sm" onClick={() => removeLine(index)} className="text-red-600">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                      {line.account_code && (
-                        <TableRow key={`${index}-tercero`} className="dark:border-gray-700">
-                          <TableCell colSpan={5}>
-                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                              <div className="sm:col-span-2">
-                                <CampoTerceroAsiento
-                                  nit={line.tercero_nit}
-                                  nombre={line.tercero_nombre}
-                                  obligatorio={cuentaRetencionExigeNit(line.account_code) || !!cuentas.find((c) => c.account_code === line.account_code)?.requiere_tercero}
-                                  onCambiar={(nit, nombre) => fijarTercero(index, nit, nombre)}
-                                />
-                              </div>
-                              {cuentas.find((c) => c.account_code === line.account_code)?.centro_costo_modo === 'no_aplica' ? null : (
-                                <>
-                                  <select
-                                    aria-label="Centro de costo"
-                                    value={line.cost_center_id}
-                                    onChange={(e) => updateLine(index, 'cost_center_id', e.target.value)}
-                                    className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                                  >
-                                    <option value="">
-                                      {(cuentas.find((c) => c.account_code === line.account_code)?.centro_costo_modo === 'obligatorio'
-                                        || cuentas.find((c) => c.account_code === line.account_code)?.requiere_centro_costo)
-                                        ? 'Centro de costo *'
-                                        : 'Centro de costo'}
-                                    </option>
-                                    {centros.map((cc) => (
-                                      <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
-                                    ))}
-                                  </select>
-                                  <select
-                                    aria-label="Distribución"
-                                    value={line.distribucion_id}
-                                    onChange={(e) => updateLine(index, 'distribucion_id', e.target.value)}
-                                    className="h-10 w-full rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                                  >
-                                    <option value="">Sin distribución</option>
-                                    {distribuciones.map((fila) => (
-                                      <option key={fila.id} value={fila.id}>{fila.nombre}</option>
-                                    ))}
-                                  </select>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      </Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Totales */}
-              <div className="flex justify-end gap-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Total Débitos:</span>
-                  <span className="ml-2 font-bold text-gray-900 dark:text-white">
-                    {formatear(getTotalDebits())}
+                  </fieldset>
+                )}
+                <label className="flex items-start gap-3">
+                  <Switch checked={filtros.ocultarPares} onCheckedChange={(v) => cambiarFiltros({ ocultarPares: v })} />
+                  <span>
+                    <span className="block text-sm font-medium text-fg">{t('filtros.ocultarPares')}</span>
+                    <span className="block text-xs text-fg-secondary">{t('filtros.ocultarParesAyuda')}</span>
                   </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Total Créditos:</span>
-                  <span className="ml-2 font-bold text-gray-900 dark:text-white">
-                    {formatear(getTotalCredits())}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Diferencia:</span>
-                  <span className={`ml-2 font-bold ${isBalanced() ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatear(Math.abs(getTotalDebits() - getTotalCredits()))}
-                  </span>
-                </div>
+                </label>
               </div>
-            </div>
+            </FilterPanel>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)} className="dark:border-gray-600">
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isProcessing || !isBalanced()} className="bg-blue-600 hover:bg-blue-700">
-              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Crear Asiento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        }
+        chips={chips.length > 0 ? <FilterChips chips={chips} onQuitar={quitarChip} onLimpiarTodo={() => cambiarFiltros(FILTROS_VACIOS)} /> : undefined}
+      />
+
+      {datos && datos.paresOcultos > 0 && <p className="text-sm text-fg-secondary">{t('paresOcultos', { n: datos.paresOcultos })}</p>}
+
+      <DataTable
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={datos?.filas ?? []}
+        obtenerId={(asiento) => String(asiento.id)}
+        estado={estadoTabla}
+        termino={busqueda}
+        onFilaClick={(asiento) => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}`)}
+        etiquetaFila={(asiento) => t('etiquetaFila', { numero: numero(asiento.id) })}
+        acciones={accionesFila}
+        onReintentar={() => void cargar()}
+        onLimpiarFiltros={() => {
+          setBusqueda('');
+          cambiarFiltros(FILTROS_VACIOS);
+        }}
+        vacio={{
+          titulo: t('vacio.titulo'),
+          descripcion: t('vacio.descripcion'),
+          accion: puedeCrear ? { etiqueta: t('nuevoAsiento'), onClick: () => setDialogo(true), icono: Plus } : undefined,
+        }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
+        error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
+        tarjetaMovil={(asiento) => (
+          <TarjetaAsiento asiento={asiento} fecha={formatDate(asiento.entry_date)} importe={formatear(asiento.importe)} onAbrir={() => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}`)} />
+        )}
+        pie={
+          <Pagination
+            pagina={pagina}
+            tamano={tamano}
+            total={datos?.total ?? 0}
+            onPaginaChange={setPagina}
+            onTamanoChange={(n) => {
+              setPagina(1);
+              setTamano(n);
+            }}
+            opcionesTamano={OPCIONES_TAMANO}
+            sustantivo={{ singular: t('sustantivo.singular'), plural: t('sustantivo.plural') }}
+            cargando={estado === 'cargando'}
+          />
+        }
+      />
+
+      <NuevoAsientoDialog
+        abierto={dialogo}
+        onAbiertoChange={setDialogo}
+        cuentas={cuentas}
+        centros={centros}
+        distribuciones={distribuciones}
+        onCreado={(asiento, publicado) => {
+          setDialogo(false);
+          setResultado({ asiento, publicado });
+          recargar();
+        }}
+      />
+
+      <ConfirmDialog
+        abierto={!!descartar}
+        onAbiertoChange={(v) => !v && setDescartar(null)}
+        titulo={t('descartar.titulo', { numero: descartar ? numero(descartar.id) : '' })}
+        descripcion={t('descartar.descripcion')}
+        textoConfirmar={t('descartar.confirmar')}
+        tono="peligro"
+        cargando={procesando}
+        onConfirmar={confirmarDescarte}
+      />
+
+      <PanelAdaptable
+        abierto={!!resultado}
+        onAbiertoChange={(v) => !v && setResultado(null)}
+        titulo={resultado?.publicado ? t('resultado.tituloPublicado') : t('resultado.tituloBorrador')}
+        ancho={520}
+      >
+        {resultado && (
+          <ResultadoOperacion
+            titulo={resultado.publicado ? t('resultado.publicado', { numero: numero(resultado.asiento.id) }) : t('resultado.borrador', { numero: numero(resultado.asiento.id) })}
+            descripcion={resultado.asiento.memo ?? undefined}
+            primaria={{ etiqueta: t('resultado.ver'), onClick: () => router.push(`/app/finanzas/contabilidad/asientos/${resultado.asiento.id}`) }}
+            secundarias={[
+              {
+                etiqueta: t('resultado.otro'),
+                onClick: () => {
+                  setResultado(null);
+                  setDialogo(true);
+                },
+              },
+            ]}
+            onCerrar={() => setResultado(null)}
+            textoCerrar={t('resultado.cerrar')}
+            atajoCerrar={false}
+          />
+        )}
+      </PanelAdaptable>
     </div>
   );
+}
+
+/** Figma «Móvil / Libro diario — listo» `989:74744`. */
+function TarjetaAsiento({ asiento, fecha, importe, onAbrir }: { asiento: FilaLibroDiario; fecha: string; importe: string; onAbrir: () => void }) {
+  const t = useTranslations('finanzasContabilidadR3.asientos');
+  const numero = useNumeroAsiento();
+  return (
+    <div className="space-y-2 rounded-xl border border-line bg-surface p-4">
+      <button type="button" onClick={onAbrir} className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="font-medium text-brand">{numero(asiento.id)}</span>
+          <span className="font-semibold tabular-nums text-fg">{importe}</span>
+        </span>
+        <span className="mt-0.5 block text-sm text-fg-secondary">{fecha}</span>
+        <span className="mt-1 line-clamp-2 block text-sm text-fg">{asiento.memo || '—'}</span>
+      </button>
+      <div className="flex flex-wrap items-center gap-1">
+        <EtiquetaOrigen source={asiento.source} />
+        <StatusBadge estado={asiento.posted ? 'publicado' : 'borrador'} etiqueta={asiento.posted ? t('estado.publicado') : t('estado.borrador')} />
+        {asiento.revertidoPor && <MarcaReversion rol="revertido" numero={asiento.revertidoPor} />}
+        {asiento.source === 'reversal' && Number(asiento.source_id) > 0 && <MarcaReversion rol="contraAsiento" numero={Number(asiento.source_id)} />}
+      </div>
+    </div>
+  );
+}
+
+/** Estado del libro pedido por la URL (`borrador`, `borradores`, `publicados`). */
+function estadoDeUrl(valor: string | null | undefined): EstadoFiltro {
+  if (valor === 'borrador' || valor === 'borradores') return 'borradores';
+  if (valor === 'publicado' || valor === 'publicados') return 'publicados';
+  return 'todos';
 }

@@ -30,6 +30,9 @@ import { calcularTurno, type TurnoCalculado } from './turno';
 import { ErrorInicio } from './errorInicio';
 import { leerActividad, type Actividad, type PedidoActividad } from './actividadInicio';
 import { armarPrimerosPasos, type PrimerosPasos } from './primerosPasos';
+import { armarFinanzas, PAGINAS_FINANZAS, type FinanzasInicio } from './finanzasInicio';
+import { leerFinanzasInicio } from './finanzasInicio.server';
+import { destinoReporteFinanzas } from '@/lib/services/reportes/redireccionesFinanzas';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase' | 'memberId'>;
 
@@ -294,6 +297,13 @@ export interface ModuloInicio {
   href: string;
   oculto: boolean;
   resumen: ResumenModulo | null;
+  /**
+   * Solo Finanzas: indicadores y pendientes del panel desplegado («Inicio —
+   * pendientes de Finanzas en el módulo», 2360:42276). Con él, `resumen.badge`
+   * y `resumen.tono` salen de `finanzas.fila` y sus claves son del namespace
+   * `inicioFinanzas`.
+   */
+  finanzas?: FinanzasInicio | null;
 }
 
 export interface ModulosInicio {
@@ -307,7 +317,12 @@ export interface ModulosInicio {
 
 /** Módulos del menú visibles para la persona, con su enlace (sin «Inicio»). */
 export async function modulosVisibles(ctx: Ctx): Promise<Array<{ codigo: string; idNav: string; etiqueta: string; href: string }>> {
-  const secciones = await seccionesVisiblesServidor(ctx);
+  return modulosDeSecciones(await seccionesVisiblesServidor(ctx));
+}
+
+function modulosDeSecciones(
+  secciones: Awaited<ReturnType<typeof seccionesVisiblesServidor>>,
+): Array<{ codigo: string; idNav: string; etiqueta: string; href: string }> {
   return secciones.flatMap((s) =>
     s.modulos
       .filter((m) => m.modulo.codigo !== null)
@@ -328,13 +343,27 @@ export async function modulosDelInicio(
   sucursal: number | null,
   prefs: PreferenciasInicio,
 ): Promise<ModulosInicio> {
-  const visibles = await modulosVisibles(ctx);
+  const secciones = await seccionesVisiblesServidor(ctx);
+  const visibles = modulosDeSecciones(secciones);
   const codigos = visibles.map((v) => v.codigo);
   const ocultos = prefs.modulosOcultos.filter((c) => codigos.includes(c));
+  const visible = (href: string) => paginaVisible(secciones, href);
 
-  const principal = await ctx.supabase.rpc('fn_inicio_modulos_resumen', { ...argsRango(ctx, rango, sucursal), p_omitir: ocultos });
+  // Finanzas lee sus pendientes en paralelo al resumen (y solo si la fila se
+  // muestra): el panel desplegado no hace otra consulta.
+  const conFinanzas = codigos.includes('finance') && !ocultos.includes('finance');
+  const [principal, crudoFinanzas] = await Promise.all([
+    ctx.supabase.rpc('fn_inicio_modulos_resumen', { ...argsRango(ctx, rango, sucursal), p_omitir: ocultos }),
+    conFinanzas
+      ? leerFinanzasInicio(ctx, sucursal, visible).catch((err: unknown) => {
+          console.error('[inicio/finanzas]', { organizationId: ctx.organizationId, message: err instanceof Error ? err.message : String(err) });
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
   if (principal.error) throw errorRpc('fn_inicio_modulos_resumen', principal.error);
   const crudo = principal.data as CrudoResumen;
+  const hrefReportes = visible(PAGINAS_FINANZAS.reportes) ? destinoReporteFinanzas('/app/finanzas/reportes') : null;
 
   const porCodigo = new Map((crudo.modulos ?? []).map((m) => [m.codigo, m]));
   const filas: ModuloInicio[] = [];
@@ -342,7 +371,23 @@ export async function modulosDelInicio(
     const m = porCodigo.get(v.codigo);
     if (m) {
       const resumen = resumirModulo(m, crudo.moneda);
-      if (resumen) filas.push({ ...v, oculto: false, resumen });
+      if (!resumen) continue;
+      let finanzas: FinanzasInicio | null = null;
+      if (v.codigo === 'finance' && crudoFinanzas && !resumen.error) {
+        finanzas = armarFinanzas({
+          crudo: crudoFinanzas,
+          moneda: crudo.moneda,
+          vencidas: Number(m.cuentas_vencidas ?? 0),
+          kpis: resumen.kpis,
+          href: (pagina) => (visible(pagina) ? pagina : null),
+          hrefResultado: (desde, hasta) =>
+            hrefReportes ? destinoReporteFinanzas('/app/finanzas/contabilidad/estado-resultados', { desde, hasta }) : null,
+          hrefReportes,
+        });
+        resumen.tono = finanzas.fila.tono;
+        resumen.badge = finanzas.fila.badge;
+      }
+      filas.push({ ...v, oculto: false, resumen, ...(finanzas ? { finanzas } : {}) });
     } else if (ocultos.includes(v.codigo)) {
       // Oculto por la persona: no se consulta; se lista para poder volver a
       // mostrarlo. Solo pudo ocultarlo desde esta misma lista, así que es un

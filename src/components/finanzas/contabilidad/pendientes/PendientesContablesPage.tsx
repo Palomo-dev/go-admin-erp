@@ -50,8 +50,11 @@ function mesDe(fecha: string, locale: string): string {
  * Bandeja de pendientes contables: lo que no entró al mayor y por qué. Tres
  * estados distintos: con pendientes, sin pendientes y error de consulta. Un
  * error nunca se muestra como cero: los KPI quedan en «—».
+ *
+ * Desde la ronda 3 es la primera pestaña de «Salud contable»
+ * (`/contabilidad/salud`): `incrustada` quita su cabecera, que pone la página.
  */
-export function PendientesContablesPage() {
+export function PendientesContablesPage({ incrustada = false }: { incrustada?: boolean } = {}) {
   const t = useTranslations('pendientesContables');
   const locale = useLocale();
   const permisos = usePermisosFinanzas();
@@ -186,8 +189,21 @@ export function PendientesContablesPage() {
   const cargandoKpis = estado === 'cargando' && resumen === null;
   const texto = (valor: number | null) => (valor === null ? SIN_DATO : valor);
 
+  const botonExportar = !hayError && (
+    <button
+      type="button"
+      className={clasesBoton({ variante: 'secundario' })}
+      disabled={exportando || estado === 'cargando' || resumen?.pendientes === 0}
+      onClick={() => void exportar()}
+    >
+      <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {t('exportar')}
+    </button>
+  );
+
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className={incrustada ? 'space-y-6' : 'space-y-6 p-4 sm:p-6 lg:p-8'}>
+      {!incrustada && (
       <PageHeader
         titulo={t('titulo')}
         subtitulo={hayError || sinPendientes ? t('subtituloCorto') : t('subtitulo')}
@@ -200,20 +216,10 @@ export function PendientesContablesPage() {
         movil={{
           subtitulo: kpis.pendientes === null ? t('subtituloCorto') : t('movilSinContabilizar', { n: kpis.pendientes }),
         }}
-        acciones={
-          !hayError && (
-            <button
-              type="button"
-              className={clasesBoton({ variante: 'secundario' })}
-              disabled={exportando || estado === 'cargando' || resumen?.pendientes === 0}
-              onClick={() => void exportar()}
-            >
-              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('exportar')}
-            </button>
-          )
-        }
+        acciones={botonExportar}
       />
+      )}
+      {incrustada && botonExportar && !sinPendientes && <div className="flex justify-end">{botonExportar}</div>}
 
       {hayError && (
         <AvisoTonal

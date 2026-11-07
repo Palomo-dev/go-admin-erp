@@ -1,15 +1,14 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { destinoCuentaBancaria } from '@/lib/finanzas/tesoreria/rutas';
 
-import React, { use } from 'react';
-import { CuentaDetailPage } from '@/components/finanzas/bancos/cuentas/CuentaDetailPage';
-
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export default function CuentaBancariaDetailPage({ params }: PageProps) {
-  const { id } = use(params);
-  return <CuentaDetailPage accountId={id} />;
+/** Detalle viejo de cuenta bancaria → el nuevo; `?edit=true` abre la pestaña Datos. */
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { id } = await params;
+  redirect(destinoCuentaBancaria(id, await searchParams));
 }

@@ -18,6 +18,7 @@ import type {
   ResultadoConversion,
   ResultadoGuardarCotizacion,
 } from '@/lib/finanzas/ventas/contratoCotizaciones';
+import type { RespuestaListadoCotizaciones } from '@/lib/finanzas/ventas/listadoCotizaciones';
 
 export type QuotationStatus = EstadoCotizacion;
 
@@ -131,6 +132,18 @@ export class CotizacionesService {
     if (branchId != null) q.set('branch_id', String(branchId));
     const r = await pedir<{ cotizaciones: CotizacionResumen[] }>(`/api/cotizaciones${q.size ? `?${q}` : ''}`);
     return r.cotizaciones.map(aQuotation);
+  }
+
+  /** Listado de la pantalla: página, orden, filtros y KPI calculados en el servidor. */
+  static async listado(consulta: URLSearchParams): Promise<RespuestaListadoCotizaciones> {
+    const q = new URLSearchParams(consulta);
+    q.set('vista', 'listado');
+    return pedir<RespuestaListadoCotizaciones>(`/api/cotizaciones?${q}`);
+  }
+
+  /** Detalle tal cual lo entrega el servidor (con historial y nombres). Lanza `ErrorPeticionCotizacion` (404 si no existe). */
+  static async detalle(id: string): Promise<CotizacionDetalle> {
+    return (await pedir<{ cotizacion: CotizacionDetalle }>(url(id))).cotizacion;
   }
 
   /** null si no existe o es de otra organización (404). */

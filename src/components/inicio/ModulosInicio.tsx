@@ -15,6 +15,9 @@
  * - Reordenar y ocultar: flechas (accesibles con teclado) e interruptor «En
  *   el inicio»; «Listo» guarda en `user_dashboard_preferences`. Ocultar no
  *   cambia permisos y deja de consultar el módulo.
+ * - Finanzas (2360:42276, aprobado el 2026-11-07): con `m.finanzas`, la fila
+ *   lleva su propio badge y resumen (namespace `inicioFinanzas`) y el panel
+ *   desplegado es `PanelFinanzasInicio` (cifras + pendientes).
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -35,6 +38,7 @@ import { moverModulo, type PreferenciasInicio } from '@/lib/dashboard/preferenci
 import type { CifraModulo, KpiModulo, ResumenModulo, TextoModulo } from '@/lib/dashboard/resumenModulos';
 import type { ModuloInicio, ModulosInicio as DatosModulos } from '@/lib/dashboard/inicio.server';
 import { formatoEntero, formatoVariacion, useLecturaInicio } from './useLecturaInicio';
+import { PanelFinanzasInicio } from './PanelFinanzasInicio';
 
 export interface ModulosInicioProps {
   organizationId: number;
@@ -62,7 +66,7 @@ function useFormatoCifra() {
         : t(c.texto.clave, c.texto.params);
 }
 
-function textoResumen(r: ResumenModulo, t: (k: string, p?: Record<string, string | number>) => string, cifra: (c: CifraModulo) => string): string {
+function textoResumen(r: Pick<ResumenModulo, 'resumen'>, t: (k: string, p?: Record<string, string | number>) => string, cifra: (c: CifraModulo) => string): string {
   return r.resumen
     .map((s) => ('cifra' in s ? t(s.clave, { valor: cifra(s.cifra) }) : t((s as TextoModulo).clave, (s as TextoModulo).params)))
     .join(' · ');
@@ -87,6 +91,7 @@ function Kpi({ kpi, cifra }: { kpi: KpiModulo; cifra: (c: CifraModulo) => string
 
 export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal, version = 0, prefs, onGuardar, guardando, onModulos }: ModulosInicioProps) {
   const t = useTranslations('home.modulos');
+  const tFinanzas = useTranslations('inicioFinanzas');
   const tNav = useTranslations('nav');
   const cifra = useFormatoCifra();
   const { formatTime } = useFormatDate();
@@ -241,6 +246,9 @@ export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal
             const abierto = abiertos.includes(m.codigo);
             const idPanel = `inicio-modulo-${m.codigo}`;
             const solido = estado.fase === 'listo' && estado.datos.badgeSolido === m.codigo;
+            // Finanzas: badge y línea plegada con sus propios textos (`inicioFinanzas`).
+            const tFila = m.finanzas ? tFinanzas : t;
+            const lineaResumen = r ? (m.finanzas ? textoResumen(m.finanzas.fila, tFinanzas, cifra) : textoResumen(r, t, cifra)) : null;
             return (
               <li key={m.codigo} className="rounded-lg border border-line bg-surface" data-modulo={m.codigo}>
                 <button
@@ -257,14 +265,14 @@ export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal
                   {r?.badge && (
                     <StatusBadge
                       estado={r.badge.clave}
-                      etiqueta={t(r.badge.clave, r.badge.params)}
+                      etiqueta={tFila(r.badge.clave, r.badge.params)}
                       tono={r.tono}
                       apariencia={solido ? 'solido' : 'suave'}
                       className="shrink-0"
                     />
                   )}
                   <span className="min-w-0 flex-1 truncate text-xs text-fg-secondary max-sm:hidden" data-resumen>
-                    {r?.error ? t('errorModulo') : r ? textoResumen(r, t, cifra) : null}
+                    {r?.error ? t('errorModulo') : lineaResumen}
                   </span>
                   <ChevronDown aria-hidden="true" className={cn('ml-auto size-4 shrink-0 text-fg-secondary transition-transform', abierto && 'rotate-180')} strokeWidth={1.5} />
                 </button>
@@ -272,9 +280,14 @@ export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal
                   <div id={idPanel} className="flex flex-col gap-3 border-t border-line px-3 pb-3 pt-3">
                     {r?.error ? (
                       <EmptyState variante="error" compacto onReintentar={() => recargar(false)} />
+                    ) : r && m.finanzas ? (
+                      <>
+                        <p className="text-xs text-fg-secondary sm:hidden">{lineaResumen}</p>
+                        <PanelFinanzasInicio datos={m.finanzas} cifra={cifra} onReintentar={() => recargar(false)} />
+                      </>
                     ) : r ? (
                       <>
-                        <p className="text-xs text-fg-secondary sm:hidden">{textoResumen(r, t, cifra)}</p>
+                        <p className="text-xs text-fg-secondary sm:hidden">{lineaResumen}</p>
                         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                           {r.kpis.map((k, i) => (
                             <Kpi key={`${k.etiqueta}-${i}`} kpi={k} cifra={cifra} />

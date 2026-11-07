@@ -180,7 +180,10 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
                     valor: leerBotonesSecciones(p.documento),
                     // Tokens y `buttons_theme_active` en el mismo cambio del borrador (como `aplicarPresetDiseno`).
                     onCambiar: (c) => p.onCambiarDocumento((d) => cambiarBotonesSecciones(d, c)),
-                    disponible: tokensDisenoDisponibles(),
+                    // No depende de NEXT_PUBLIC_WEBSITE_TOKENS_DISENO (esa bandera además prende los estilos
+                    // combinables): el sitio ya acepta tokens.boton y solo los pinta con
+                    // buttons_theme_active, que este grupo escribe.
+                    disponible: true,
                   }
                 : undefined
             }

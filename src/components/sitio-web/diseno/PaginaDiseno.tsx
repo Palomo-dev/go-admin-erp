@@ -41,7 +41,7 @@ import { DialogoRevisarCambios } from '../resumen/DialogoRevisarCambios';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
 import { esInicio } from '../paginas/tipoPagina';
 import { estiloEnUso, estilosDelGiro, plantillaEnUso } from '@/lib/website/contrato/catalogoPlantillas';
-import { escribirEstilo, temaParaLienzo, tokensDisenoDisponibles, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { escribirEstilo, temaParaLienzo, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
 import { cambiarBotonesSecciones, leerBotonesSecciones } from '@/lib/website/v2/botonesSecciones';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { CATALOGO_SITIO } from './catalogo';
@@ -309,7 +309,10 @@ export function PaginaDiseno() {
                       ? {
                           valor: leerBotonesSecciones(documento),
                           onCambiar: (c) => void sitio.guardar((d) => cambiarBotonesSecciones(d, c)),
-                          disponible: tokensDisenoDisponibles(),
+                          // No depende de NEXT_PUBLIC_WEBSITE_TOKENS_DISENO (esa bandera además prende los estilos
+                    // combinables): el sitio ya acepta tokens.boton y solo los pinta con
+                    // buttons_theme_active, que este grupo escribe.
+                    disponible: true,
                         }
                       : undefined
                   }

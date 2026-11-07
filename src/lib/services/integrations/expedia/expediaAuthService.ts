@@ -6,7 +6,6 @@
 import type { ChannelManagerClients } from '../channelManagerClients';
 import {
   EXPEDIA_OAUTH_URL,
-  EXPEDIA_CREDENTIAL_PURPOSES,
   EXPEDIA_TOKEN_REFRESH_MARGIN_SEC,
   EXPEDIA_RATE_LIMITS,
   getBasicAuthHeader,
@@ -18,6 +17,7 @@ import type {
   ExpediaTokenInfo,
 } from './expediaTypes';
 import { EXPEDIA_OTA_CONNECTOR_ID } from './expediaTypes';
+import { guardarCredencialesOta, leerCredencialesOta, propiedadDeSettings } from '../conexiones/credencialesOta';
 
 // Cache en memoria de tokens OAuth2 por connectionId (para GraphQL)
 const tokenCache = new Map<string, ExpediaTokenInfo>();
@@ -39,9 +39,13 @@ export function createExpediaAuthService(clients: ChannelManagerClients) {
      */
     async getCredentials(connectionId: string): Promise<ExpediaCredentials | null> {
       try {
+        // Frente INT (2026-11-07): antes se leía `integration_credentials.value_encrypted`, columna
+        // que no existe. La propiedad vive en `settings.property_id`; los secretos, en la bóveda
+        // (lectura dual: bóveda o valor en claro). Las credenciales de máquina son de la cuenta de
+        // proveedor de conectividad: si la conexión no trae las suyas, se usan las del servidor.
         const { data: conn, error: connErr } = await supabase
           .from('integration_connections')
-          .select('id')
+          .select('id, settings')
           .eq('id', connectionId)
           .single();
 
@@ -50,21 +54,10 @@ export function createExpediaAuthService(clients: ChannelManagerClients) {
           return null;
         }
 
-        const { data: creds, error: credsErr } = await clients.secrets()
-          .from('integration_credentials')
-          .select('purpose, value_encrypted')
-          .eq('connection_id', connectionId);
-
-        if (credsErr || !creds || creds.length === 0) {
-          console.error('[ExpediaAuth] Sin credenciales para conexión:', connectionId);
-          return null;
-        }
-
-        const credMap = new Map(creds.map(c => [c.purpose, c.value_encrypted]));
-
-        const eqcUsername = credMap.get(EXPEDIA_CREDENTIAL_PURPOSES.EQC_USERNAME);
-        const eqcPassword = credMap.get(EXPEDIA_CREDENTIAL_PURPOSES.EQC_PASSWORD);
-        const propertyId = credMap.get(EXPEDIA_CREDENTIAL_PURPOSES.PROPERTY_ID);
+        const valores = await leerCredencialesOta(clients.secrets(), connectionId, 'expedia');
+        const eqcUsername = valores.eqc_username || process.env.EXPEDIA_EQC_USERNAME || '';
+        const eqcPassword = valores.eqc_password || process.env.EXPEDIA_EQC_PASSWORD || '';
+        const propertyId = propiedadDeSettings('expedia', (conn as { settings?: unknown }).settings);
 
         if (!eqcUsername || !eqcPassword || !propertyId) {
           console.error('[ExpediaAuth] Credenciales incompletas. Faltan:',
@@ -79,7 +72,7 @@ export function createExpediaAuthService(clients: ChannelManagerClients) {
           eqcUsername,
           eqcPassword,
           propertyId,
-          accessToken: credMap.get(EXPEDIA_CREDENTIAL_PURPOSES.ACCESS_TOKEN) || undefined,
+          accessToken: valores.access_token || undefined,
         };
       } catch (err) {
         console.error('[ExpediaAuth] Error obteniendo credenciales:', err);
@@ -184,23 +177,26 @@ export function createExpediaAuthService(clients: ChannelManagerClients) {
      */
     async persistToken(connectionId: string, tokenInfo: ExpediaTokenInfo): Promise<void> {
       try {
-        const { error } = await clients.secrets()
-          .from('integration_credentials')
-          .upsert(
-            {
-              connection_id: connectionId,
-              purpose: EXPEDIA_CREDENTIAL_PURPOSES.ACCESS_TOKEN,
-              value_encrypted: tokenInfo.accessToken,
-              metadata: { expires_at: tokenInfo.expiresAt },
-            },
-            { onConflict: 'connection_id,purpose' }
-          );
+        // El token va a la bóveda (propósito `access_token`); su vencimiento, a `settings`.
+        const secrets = clients.secrets();
+        await guardarCredencialesOta(secrets, connectionId, 'expedia', { access_token: tokenInfo.accessToken });
+        const { data: conn } = await secrets
+          .from('integration_connections')
+          .select('settings')
+          .eq('id', connectionId)
+          .maybeSingle();
+        const previos = (conn as { settings?: unknown } | null)?.settings;
+        const settings = previos && typeof previos === 'object' && !Array.isArray(previos) ? (previos as Record<string, unknown>) : {};
+        const { error } = await secrets
+          .from('integration_connections')
+          .update({ settings: { ...settings, token_expires_at: tokenInfo.expiresAt }, updated_at: new Date().toISOString() })
+          .eq('id', connectionId);
 
         if (error) {
-          console.warn('[ExpediaAuth] No se pudo persistir token:', error.message);
+          console.warn('[ExpediaAuth] No se pudo guardar el vencimiento del token:', error.message);
         }
       } catch (err) {
-        console.warn('[ExpediaAuth] Error persistiendo token:', err);
+        console.warn('[ExpediaAuth] Error persistiendo token:', err instanceof Error ? err.message : err);
       }
     },
 
@@ -222,34 +218,23 @@ export function createExpediaAuthService(clients: ChannelManagerClients) {
       isActive: boolean;
     }>> {
       try {
-        const { data, error } = await clients.secrets() // credenciales anidadas: service role; filtra por organization_id
+        const { data, error } = await clients.secrets() // service role; filtra por organization_id
           .from('integration_connections')
-          .select(`
-            id,
-            is_active,
-            integration_credentials (
-              purpose,
-              value_encrypted
-            )
-          `)
+          .select('id, status, settings')
           .eq('organization_id', organizationId)
           .eq('connector_id', EXPEDIA_OTA_CONNECTOR_ID)
-          .eq('is_active', true);
+          .eq('status', 'connected');
 
         if (error || !data) {
           console.error('[ExpediaAuth] Error obteniendo conexiones:', error?.message);
           return [];
         }
 
-        return data.map((conn: any) => {
-          const creds = conn.integration_credentials || [];
-          const propIdCred = creds.find((c: any) => c.purpose === EXPEDIA_CREDENTIAL_PURPOSES.PROPERTY_ID);
-          return {
-            connectionId: conn.id,
-            propertyId: propIdCred?.value_encrypted || '',
-            isActive: conn.is_active,
-          };
-        });
+        return (data as { id: string; status: string; settings: unknown }[]).map((conn) => ({
+          connectionId: conn.id,
+          propertyId: propiedadDeSettings('expedia', conn.settings),
+          isActive: conn.status === 'connected',
+        }));
       } catch (err) {
         console.error('[ExpediaAuth] Error inesperado:', err);
         return [];

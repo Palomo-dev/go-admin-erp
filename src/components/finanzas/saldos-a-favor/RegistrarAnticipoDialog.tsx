@@ -1,17 +1,22 @@
 'use client';
 
 /**
- * Registrar un anticipo del cliente (Figma `1021:91385`). Sustituye a
- * `NuevoSaldoFavorDialog` con el mismo flujo de servidor: el dinero entra como
- * un pago real con recibo (payments + caja abierta si es efectivo) y queda como
- * saldo a favor, en UNA RPC (`POST /api/saldos-a-favor` → `fn_saldo_favor_crear`)
- * con clave de idempotencia por apertura. Nunca una cuenta PUC escrita a mano.
+ * Registrar un anticipo (Figma `1021:91385`): del cliente (el dinero entra y
+ * queda como saldo a favor, `POST /api/saldos-a-favor` → `fn_saldo_favor_crear`)
+ * o al proveedor (el dinero sale y queda a favor en la cuenta 1330,
+ * `POST /api/anticipos-proveedor` → `fn_anticipo_proveedor_crear`). UNA pieza
+ * para las dos páginas: el `adaptador` pone el tercero, los textos y el
+ * servicio. Un pago real con recibo (payments + caja abierta si es efectivo),
+ * en UNA RPC con clave de idempotencia por apertura. Nunca una cuenta PUC
+ * escrita a mano.
  *
- * Cliente con `CustomerPicker` (búsqueda en el servidor, nunca la lista
- * completa); sucursal de la sesión por defecto; métodos de la organización.
+ * Cliente con `CustomerPicker` y proveedor con `ElegirProveedor` (búsqueda en
+ * el servidor, nunca la lista completa); sucursal de la sesión por defecto;
+ * métodos de la organización.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { ElegirProveedor, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
 import { HandCoins } from 'lucide-react';
 import {
   CampoFecha,
@@ -31,21 +36,25 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { listarClientes } from '@/lib/services/clientesListadoService';
-import type { ContextoSaldoFavor, ResultadoCrearSaldo } from '@/lib/finanzas/saldosAFavor/contrato';
-import { nuevaClaveIdempotencia, saldosAFavorService } from './saldosAFavorService';
+import type { ContextoSaldoFavor } from '@/lib/finanzas/saldosAFavor/contrato';
+import { nuevaClaveIdempotencia } from './saldosAFavorService';
+import { ADAPTADOR_CLIENTE, type AdaptadorSaldos } from './adaptadorSaldos';
 import { metodoInicial, opcionesMetodoSaldo, requiereReferencia } from './metodosSaldo';
 import { textoErrorSaldo } from './textosSaldo';
 
 export interface RegistrarAnticipoDialogProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
-  /** Cliente ya elegido (desde el filtro del listado). */
+  /** Cliente (o proveedor) ya elegido (desde el filtro del listado). */
   clienteInicial?: ClientePicker | null;
-  onRegistrado: (r: ResultadoCrearSaldo) => void;
+  onRegistrado: (r: { id: string; recibo: string }) => void;
+  /** Cliente (por defecto) o proveedor: tercero, textos y servicio. */
+  adaptador?: AdaptadorSaldos;
 }
 
-export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInicial, onRegistrado }: RegistrarAnticipoDialogProps) {
-  const t = useTranslations('finanzasDocumentosR3.saldos');
+export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInicial, onRegistrado, adaptador = ADAPTADOR_CLIENTE }: RegistrarAnticipoDialogProps) {
+  const t = useTranslations(adaptador.namespace);
+  const esProveedor = adaptador.tercero === 'proveedor';
   const moneda = useMonedaOrganizacion();
   const { branches, selectedBranchId, branchFilter } = useBranch();
   const [sucursal, setSucursal] = useState<number | null>(null);
@@ -85,14 +94,14 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
     let vigente = true;
     setContexto(null);
     setMetodo(null);
-    saldosAFavorService
+    adaptador
       .contexto(sucursal)
       .then((c) => vigente && setContexto(c))
       .catch((e) => vigente && setError(textoErrorSaldo(t, e)));
     return () => {
       vigente = false;
     };
-  }, [abierto, sucursal, t]);
+  }, [abierto, sucursal, t, adaptador]);
 
   const opciones = useMemo(() => opcionesMetodoSaldo(contexto, t('anticipo.sinCaja')), [contexto, t]);
   useEffect(() => {
@@ -137,15 +146,15 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
     setEnviando(true);
     setError(null);
     try {
-      const r = await saldosAFavorService.crear({
-        customerId: cliente.id,
-        amount: monto,
+      const r = await adaptador.registrar({
+        terceroId: cliente.id,
+        monto,
         metodo,
         cuentaBancaria: !esEfectivo && cuenta ? Number(cuenta) : null,
         referencia,
-        notes: notas,
-        expiry: vence || null,
-        branchId: sucursal,
+        notas,
+        vence: adaptador.conVencimiento ? vence || null : null,
+        sucursalId: sucursal,
         claveIdempotencia: clave.current,
       });
       toastSuccess(t('anticipo.exito', { recibo: r.recibo, monto: moneda.formatear(monto) }));
@@ -208,14 +217,23 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
         </div>
 
         <div className="flex flex-col gap-1">
-          <CustomerPicker
-            layout="campo"
-            cliente={cliente}
-            etiqueta={t('anticipo.cliente')}
-            buscar={buscarClientes}
-            onCambiar={setCliente}
-            onQuitar={() => setCliente(null)}
-          />
+          {esProveedor ? (
+            <ElegirProveedor
+              layout="campo"
+              proveedor={cliente as ProveedorDocumento | null}
+              onCambiar={(p) => setCliente({ id: p.id, nombre: p.nombre })}
+              onQuitar={() => setCliente(null)}
+            />
+          ) : (
+            <CustomerPicker
+              layout="campo"
+              cliente={cliente}
+              etiqueta={t('anticipo.cliente')}
+              buscar={buscarClientes}
+              onCambiar={setCliente}
+              onQuitar={() => setCliente(null)}
+            />
+          )}
           {tocado && errores.cliente && (
             <p role="alert" className="text-xs text-danger-text">
               {errores.cliente}
@@ -262,9 +280,11 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
           </FormField>
         )}
 
-        <FormField etiqueta={t('anticipo.vence')} ayuda={t('anticipo.venceAyuda')}>
-          {(c) => <CampoFecha id={c.id} min={contexto?.hoy || undefined} hoy={contexto?.hoy || undefined} valor={vence} onValorChange={setVence} />}
-        </FormField>
+        {adaptador.conVencimiento && (
+          <FormField etiqueta={t('anticipo.vence')} ayuda={t('anticipo.venceAyuda')}>
+            {(c) => <CampoFecha id={c.id} min={contexto?.hoy || undefined} hoy={contexto?.hoy || undefined} valor={vence} onValorChange={setVence} />}
+          </FormField>
+        )}
 
         <FormField etiqueta={t('anticipo.notas')}>
           <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} maxLength={2000} placeholder={t('anticipo.notasPlaceholder')} />

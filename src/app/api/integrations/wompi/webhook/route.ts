@@ -38,6 +38,7 @@ import { verificarChecksumWompi } from '@/lib/services/integrations/wompi/wompiF
 import { getQrSessionForWebhook, type QrSession } from '@/lib/services/integrations/qrShared/qrSessionService';
 import { confirmQrPayment } from '@/lib/services/integrations/qrShared/paymentConfirmation';
 import type { WompiWebhookEvent } from '@/lib/services/integrations/wompi/wompiTypes';
+import { esReferenciaDeBoveda, valorDeSecreto } from '@/lib/services/integrations/conexiones/secretosConexion';
 
 type Fila = Record<string, unknown>;
 
@@ -90,7 +91,13 @@ async function conexionesQueFirmaron(admin: SupabaseClient, event: WompiWebhookE
   if (errSecretos) throw new Error(`integration_credentials: ${errSecretos.message}`);
   const secretoPorConexion = new Map<string, string>();
   for (const s of (secretos as Fila[] | null) ?? []) {
-    if (typeof s.secret_ref === 'string' && s.secret_ref) secretoPorConexion.set(String(s.connection_id), s.secret_ref);
+    if (typeof s.secret_ref !== 'string' || !s.secret_ref) continue;
+    // Frente INT: el secreto guardado hoy (en claro) se usa igual que antes; solo un uuid de la
+    // bóveda se resuelve con fn_get_provider_secret (service role).
+    const valor = esReferenciaDeBoveda(s.secret_ref)
+      ? await valorDeSecreto(admin, String(s.connection_id), { purpose: 'events_secret', secret_ref: s.secret_ref })
+      : s.secret_ref;
+    if (valor) secretoPorConexion.set(String(s.connection_id), valor); // la última fila gana, como antes
   }
 
   return filas

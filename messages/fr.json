@@ -4577,7 +4577,13 @@
       "finanzas_tesoreria_cuentas": "Comptes de trésorerie",
       "finanzas_tesoreria_conciliacion": "Rapprochement",
       "finanzas_tesoreria_transferencias": "Virements",
-      "finanzas_contabilidad_salud": "Santé comptable"
+      "finanzas_contabilidad_salud": "Santé comptable",
+      "finanzas_tributario": "Centre fiscal",
+      "finanzas_tributario_perfil": "Profil fiscal",
+      "finanzas_tributario_certificados": "Certificats de retenue",
+      "finanzas_consignaciones": "Consignations",
+      "finanzas_tesoreria_dinero-de-terceros": "Fonds de tiers",
+      "finanzas_anticipos-proveedores": "Avances aux fournisseurs"
     },
     "grupos": {
       "venta": "Vente",
@@ -4614,7 +4620,8 @@
       "equipo": "Équipe",
       "sedes": "Sites",
       "plan-y-facturacion": "Forfait et facturation",
-      "marca": "Marque"
+      "marca": "Marque",
+      "tributario": "Fiscalité"
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
@@ -45238,6 +45245,2025 @@
       "pendiente": "En attente",
       "abierto": "Ouvert",
       "cerrado": "Fermé"
+    }
+  },
+  "finanzasTributarioR4": {
+    "comun": {
+      "migas": {
+        "finanzas": "Finances",
+        "tributario": "Fiscalité"
+      },
+      "pendiente": {
+        "titulo": "En attente d'activation"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir Finances."
+      },
+      "error": {
+        "titulo": "Chargement impossible",
+        "descripcion": "Un problème est survenu lors de la lecture des données. Aucune valeur n'est affichée tant qu'elles ne peuvent pas être lues.",
+        "reintentar": "Réessayer"
+      },
+      "borradores": {
+        "titulo": "Ce sont des brouillons à vérifier",
+        "descripcion": "Rien n'est déclaré à la DIAN depuis ici. Le comptable vérifie et déclare."
+      },
+      "estados": {
+        "pendienteActivar": "En attente d'activation",
+        "error": "Erreur",
+        "porConfirmar": "À confirmer",
+        "revisar": "À vérifier",
+        "borrador": "Brouillon",
+        "estimado": "Estimé",
+        "ok": "Prêt"
+      },
+      "excel": "Excel",
+      "exportar": "Exporter",
+      "cancelar": "Annuler",
+      "cerrar": "Fermer"
+    },
+    "perfil": {
+      "titulo": "Profil fiscal",
+      "subtitulo": "Définit les obligations de l'entreprise pour chaque période",
+      "nuevaVigencia": "Nouvelle période de validité",
+      "editar": "Modifier",
+      "pendiente": "Le profil fiscal sera activé lorsque sa mise à jour de la base de données sera appliquée. D'ici là, il ne peut pas être enregistré et aucune obligation n'est déduite.",
+      "faltan": {
+        "titulo": "Données manquantes pour les brouillons fiscaux",
+        "completar": "Compléter",
+        "perfil": "Aucune période de validité ne couvre aujourd'hui : sans régime ni périodicité, GO Admin ne sait pas quels formulaires concernent cette entreprise.",
+        "nit": "L'entreprise n'a pas de NIT : sans lui, les échéances ne peuvent pas être localisées.",
+        "periodicidad_iva": "Elle est redevable de la TVA mais n'a pas de périodicité de TVA.",
+        "regimen_simple_sin_o47": "Le régime est SIMPLE mais la responsabilité O-47 manque."
+      },
+      "vigencia": {
+        "rango": "{desde} au {hasta}",
+        "desde": "À partir du {desde}"
+      },
+      "columnas": {
+        "vigencia": "Validité",
+        "regimen": "Régime",
+        "responsabilidades": "Responsabilités",
+        "iva": "TVA",
+        "ica": "ICA"
+      },
+      "regimen": {
+        "ordinario": "Ordinaire",
+        "simple": "Régime SIMPLE",
+        "no_responsable_iva": "Non redevable de la TVA",
+        "especial": "Régime spécial"
+      },
+      "periodicidadIva": {
+        "bimestral": "Bimestrielle",
+        "cuatrimestral": "Quadrimestrielle",
+        "anual": "Annuelle",
+        "no_aplica": "Sans objet"
+      },
+      "periodicidadIca": {
+        "mensual": "Mensuelle",
+        "bimestral": "Bimestrielle",
+        "cuatrimestral": "Quadrimestrielle",
+        "semestral": "Semestrielle",
+        "anual": "Annuelle"
+      },
+      "vacio": {
+        "titulo": "Aucun profil fiscal",
+        "descripcion": "Créez la première période de validité avec le régime, les responsabilités du RUT et la périodicité de la TVA."
+      },
+      "empresa": {
+        "titulo": "Données de l'entreprise",
+        "nit": "NIT",
+        "sinNit": "Sans NIT",
+        "rut": "Responsabilités en facturation électronique",
+        "rutAyuda": "Mises à jour lors de l'enregistrement de la période d'aujourd'hui.",
+        "editarNit": "Modifier le NIT et les données de l'entreprise"
+      },
+      "usos": {
+        "titulo": "À quoi il sert",
+        "descripcion": "Le Centre fiscal utilise la période de validité de chaque période pour savoir quels formulaires préparer et quand ils sont dus. Une période de 2025 lit le profil de 2025.",
+        "irCentro": "Aller au Centre fiscal"
+      },
+      "dialogo": {
+        "tituloNueva": "Nouvelle période de validité",
+        "tituloEditar": "Modifier la période de validité",
+        "descripcionNueva": "La période précédente se termine la veille de celle-ci.",
+        "descripcionEditar": "Corrigez les données de cette période. Pour une autre date de début, créez-en une nouvelle.",
+        "guardar": "Enregistrer"
+      },
+      "campos": {
+        "vigenteDesde": "Valable à partir du",
+        "vigenteDesdeAyuda": "Généralement le 1er janvier de l'année.",
+        "vigenteDesdeFija": "La date de début ne change pas lors de la modification.",
+        "regimen": "Régime",
+        "periodicidadIva": "Périodicité de la TVA",
+        "periodicidadIvaAyuda": "Selon les revenus de l'année précédente. « Sans objet » si elle n'est pas redevable de la TVA.",
+        "responsabilidades": "Responsabilités du RUT",
+        "responsabilidadesAyuda": "Les mêmes que la case 53 du RUT de l'entreprise.",
+        "agenteRetencion": "Agent de retenue à la source",
+        "agenteRetencionAyuda": "Pratique des retenues sur ses fournisseurs et dépose le formulaire 350.",
+        "responsableInc": "Redevable de l'impôt sur la consommation (INC)",
+        "notas": "Notes",
+        "ica": "ICA par commune",
+        "icaAyuda": "Chaque commune où l'entreprise déclare l'impôt sur l'industrie et le commerce, avec sa périodicité.",
+        "icaPeriodicidad": "Périodicité",
+        "icaTarifa": "Taux (pour mille)",
+        "icaQuitar": "Retirer {municipio}",
+        "icaAgregar": "Ajouter une commune",
+        "icaBuscar": "Saisissez la commune",
+        "icaBuscando": "Recherche…",
+        "icaResultados": "Communes trouvées"
+      },
+      "errores": {
+        "datos_invalidos": "Vérifiez les données de la période.",
+        "vigencia_invalida": "Choisissez une date de début valide.",
+        "regimen_invalido": "Choisissez le régime.",
+        "periodicidad_invalida": "Choisissez la périodicité de la TVA.",
+        "responsabilidad_invalida": "Une responsabilité n'existe pas dans le RUT.",
+        "responsabilidades_incompatibles": "Elle ne peut pas être redevable (O-48) et non redevable (O-49) de la TVA à la fois.",
+        "periodicidad_incoherente": "Un non-redevable de la TVA n'a pas de périodicité de TVA : choisissez « Sans objet ».",
+        "falta_periodicidad": "Avec la responsabilité O-48, la périodicité de la TVA est nécessaire.",
+        "ica_invalido": "Vérifiez les communes de l'ICA et leur taux.",
+        "sin_permiso": "Vous n'avez pas l'autorisation de modifier le profil fiscal.",
+        "no_encontrado": "Cette période n'existe plus. Rechargez la page.",
+        "vigencia_duplicada": "Une période commence déjà ce jour-là.",
+        "pendiente_activar": "Le profil fiscal n'est pas encore activé.",
+        "desconocido": "Enregistrement impossible. Réessayez."
+      }
+    },
+    "centro": {
+      "titulo": "Centre fiscal",
+      "subtitulo": "Selon le profil fiscal de l'entreprise",
+      "perfil": "Profil fiscal",
+      "corte": "Périodes clôturées au",
+      "corteAyuda": "Affiche la dernière période de chaque obligation terminée ce mois-là ou avant.",
+      "pendientePerfil": "Le Centre fiscal s'active avec le profil fiscal, lorsque sa mise à jour de la base de données sera appliquée.",
+      "pendienteCalendario": "Le calendrier des échéances s'active lorsque sa mise à jour de la base de données sera appliquée. D'ici là, aucune échéance n'est calculée ni supposée.",
+      "sinPerfil": {
+        "titulo": "Aucun profil fiscal pour cette période",
+        "descripcion": "Sans régime ni périodicité, GO Admin ne sait pas quels formulaires concernent cette entreprise.",
+        "accion": "Compléter le profil"
+      },
+      "faltan": {
+        "titulo": "Données manquantes pour les brouillons fiscaux",
+        "accion": "Compléter",
+        "perfil": "Aucune période de validité ne couvre aujourd'hui.",
+        "nit": "L'entreprise n'a pas de NIT.",
+        "periodicidad_iva": "La périodicité de la TVA manque.",
+        "regimen_simple_sin_o47": "La responsabilité O-47 du régime SIMPLE manque."
+      },
+      "vacio": {
+        "titulo": "Aucune obligation",
+        "descripcion": "Le profil de cette période ne génère aucune obligation."
+      },
+      "columnas": {
+        "obligacion": "Obligation",
+        "periodo": "Période",
+        "vence": "Échéance",
+        "valor": "Montant estimé",
+        "estado": "Statut",
+        "ir": "Détail"
+      },
+      "obligaciones": {
+        "iva": "TVA",
+        "retencion": "Retenue à la source",
+        "ica": "ICA et retenue ICA",
+        "inc": "Impôt sur la consommation",
+        "renta": "Impôt sur le revenu",
+        "simple": "Régime SIMPLE",
+        "exogena": "Information exogène",
+        "conciliacion_fiscal": "Rapprochement fiscal"
+      },
+      "notas": {
+        "sin_autorretencion": "L'estimation n'inclut pas l'autoretenue.",
+        "persona_natural_no_soportada": "Échéance de personne morale ; personne physique pas encore.",
+        "requisitos_por_confirmar": "Confirmez avec le comptable si l'entreprise y est tenue."
+      },
+      "vence": {
+        "sinCargar": "Calendrier {anio} non chargé",
+        "sinNit": "NIT manquant",
+        "noEncontrado": "Absent du calendrier",
+        "municipal": "À confirmer avec la commune",
+        "pendienteActivar": "Calendrier en attente"
+      },
+      "verBorrador": "Voir le brouillon",
+      "verReporte": "Voir le rapport",
+      "informes": "Rapports :",
+      "informeImpuestos": "Impôts",
+      "informeRetenciones": "Retenues pratiquées",
+      "certificados": "Certificats de retenue"
+    },
+    "iva": {
+      "titulo": "Brouillon de TVA",
+      "subtitulo": "{periodo} · comptes {cuentas}",
+      "periodicidad": "Périodicité",
+      "periodicidades": {
+        "bimestral": "Bimestrielle",
+        "cuatrimestral": "Quadrimestrielle",
+        "anual": "Annuelle"
+      },
+      "periodo": "Période",
+      "pendiente": "Le brouillon de TVA s'active lorsque sa mise à jour de la base de données sera appliquée. D'ici là, aucune valeur n'est affichée.",
+      "vacio": {
+        "titulo": "Aucun mouvement de TVA",
+        "descripcion": "Il n'y a ni écriture comptabilisée avec TVA ni vente ou achat sur cette période."
+      },
+      "secciones": {
+        "generado": "TVA collectée",
+        "descontable": "TVA déductible",
+        "otros": "Autres mouvements"
+      },
+      "totales": {
+        "generado": "TVA collectée",
+        "descontable": "TVA déductible",
+        "saldoPagar": "Solde à payer",
+        "saldoFavor": "Solde en faveur"
+      },
+      "columnas": {
+        "concepto": "Poste",
+        "base": "Base",
+        "valor": "Montant",
+        "estado": "Statut",
+        "origen": "Origine",
+        "asientos": "Écritures"
+      },
+      "renglones": {
+        "ventasGravadas": "Ventes taxées à {tarifa} %",
+        "comprasGravadas": "Achats taxés à {tarifa} %",
+        "ventasSinIva": "Ventes sans TVA (exonérées, exclues ou non taxées)",
+        "comprasSinIva": "Achats sans TVA",
+        "devoluciones": "Retours",
+        "ventasSinTarifa": "Ventes avec TVA sans taux identifié",
+        "comprasSinTarifa": "Achats avec TVA sans taux identifié",
+        "ventasNoCuadra": "Ventes dont la TVA ne correspond pas aux livres",
+        "comprasNoCuadra": "Achats dont la TVA ne correspond pas aux livres",
+        "ventasSinLineas": "Ventes sans lignes",
+        "comprasSinLineas": "Achats sans lignes",
+        "redondeo": "Arrondi entre documents et livres",
+        "otros": "Autres mouvements des comptes de TVA"
+      },
+      "verAsientos": "{n, plural, one {# écriture} other {# écritures}}",
+      "explicaciones": {
+        "gravadas": "Documents dont la TVA par ligne correspond à leurs écritures, additionnés par taux.",
+        "sin_iva": "Lignes sans TVA. Vérifiez lesquelles sont exonérées, exclues ou non taxées : le formulaire les sépare.",
+        "devoluciones": "Avoirs de la période, avec la TVA qu'ils annulent.",
+        "tarifa_sin_identificar": "Documents avec TVA sur des lignes qui ne conservent pas leur taux. Le montant vient des livres ; le comptable confirme le taux.",
+        "no_cuadra": "Documents dont la TVA par ligne ne correspond pas à leurs écritures. Le montant vient des livres.",
+        "sin_lineas": "Documents avec écriture mais sans lignes pour connaître leur base. Le montant vient des livres.",
+        "ajuste_redondeo": "Centimes d'écart entre la TVA par ligne et les écritures, pour que les postes totalisent les livres.",
+        "otros_movimientos": "Écritures qui mouvementent les comptes de TVA sans être des ventes ni des achats : manuelles, ajustements ou paiement de l'impôt. Le comptable décide si elles entrent."
+      },
+      "asientos": {
+        "resumen": "{asientos, plural, one {# écriture} other {# écritures}} de {documentos, plural, =0 {autres origines} one {# document} other {# documents}}.",
+        "mas": "Et {n, plural, one {# écriture de plus} other {# écritures de plus}} : cherchez-les dans le journal."
+      },
+      "nota": "Chaque poste renvoie à ses écritures. La numérotation des postes est fixée avec le formulaire en vigueur que confirme le comptable.",
+      "informe": "Rapport des impôts dans Rapports"
+    },
+    "certificados": {
+      "titulo": "Certificats de retenue",
+      "subtitulo": "Retenues pratiquées aux fournisseurs",
+      "anio": "Année",
+      "periodo": "Période",
+      "anioCompleto": "Année complète",
+      "buscar": "Rechercher un fournisseur ou un NIT",
+      "columnas": {
+        "tercero": "Tiers",
+        "nit": "NIT",
+        "retefuente": "Retenue à la source",
+        "reteiva": "Retenue TVA",
+        "reteica": "Retenue ICA",
+        "retenido": "Retenu",
+        "estado": "Statut",
+        "numero": "Certificat"
+      },
+      "faltaNit": "NIT manquant",
+      "estados": {
+        "expedido": "Délivré",
+        "desactualizado": "Modifié",
+        "sin_expedir": "Non délivré",
+        "falta_tercero": "Tiers incomplet"
+      },
+      "expedirTodos": "Délivrer les certificats",
+      "nadaPorExpedir": "Aucun certificat à délivrer sur cette période",
+      "futuro": {
+        "titulo": "Période future",
+        "descripcion": "Cette période n'a pas encore commencé : il n'y a pas de retenues à certifier."
+      },
+      "resultado": {
+        "titulo": "{ok, plural, =0 {Aucun certificat n'a été délivré} one {# certificat a été délivré} other {# certificats ont été délivrés}}",
+        "fallidos": "{n, plural, one {# n'a pas pu être délivré} other {# n'ont pas pu être délivrés}} : ouvrez-les un par un pour voir pourquoi."
+      },
+      "kpis": {
+        "etiqueta": "Résumé de la période",
+        "retenido": "Retenu",
+        "terceros": "{n, plural, one {# tiers} other {# tiers}}",
+        "expedidos": "Délivrés",
+        "pendientes": "À délivrer",
+        "faltaTercero": "Données du tiers manquantes"
+      },
+      "vacio": {
+        "titulo": "Aucune retenue sur la période",
+        "descripcion": "Il n'y a pas d'achats avec retenues sur cette période."
+      },
+      "completarTercero": "Compléter les données du tiers",
+      "verCertificado": "Voir le certificat",
+      "expedir": "Aperçu et délivrance",
+      "informe": "Le détail par concept et par compte est dans Rapports :",
+      "informeEnlace": "Retenues pratiquées",
+      "confirmar": {
+        "titulo": "Délivrer les certificats",
+        "descripcion": "Un certificat numéroté dans la série CR sera délivré à {n, plural, one {# tiers} other {# tiers}} pour {periodo}. Ceux déjà à jour ne changent pas.",
+        "boton": "Délivrer"
+      }
+    }
+  },
+  "finanzasTercerosR4": {
+    "anticipos": {
+      "titulo": "Avances aux fournisseurs",
+      "subtitulo": "Paiements avant la facture, sur le compte d'avances",
+      "subtituloCuenta": "Paiements avant la facture, sur le compte {cuenta}",
+      "migas": {
+        "finanzas": "Finances",
+        "cuentasPorPagar": "Dettes fournisseurs",
+        "anticipos": "Avances"
+      },
+      "cargando": "Chargement…",
+      "sinCliente": "Sans fournisseur",
+      "sinProveedor": "Sans fournisseur",
+      "deValor": "sur {valor}",
+      "etiquetaFila": "Avance à {proveedor}, solde {monto}",
+      "archivoExportacion": "avances-fournisseurs.csv",
+      "errorCarga": "Impossible de charger les avances.",
+      "sinResultados": "Aucune avance ne correspond à la recherche.",
+      "vacio": {
+        "titulo": "Aucune avance fournisseur",
+        "descripcion": "Enregistrez ici l'argent remis à un fournisseur avant de recevoir sa facture ; ensuite, imputez-le à la facture."
+      },
+      "sinPermiso": {
+        "titulo": "Pas d'accès aux avances",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir les finances."
+      },
+      "pendiente": {
+        "titulo": "En attente d'activation",
+        "descripcion": "Les avances aux fournisseurs nécessitent une mise à jour de la base de données qui n'a pas encore été appliquée. Une fois activée, vous verrez ici les avances et leur solde."
+      },
+      "buscar": {
+        "placeholder": "Rechercher un fournisseur",
+        "etiqueta": "Rechercher des avances par fournisseur ou pièce"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "todos": "Toutes"
+      },
+      "estados": {
+        "disponible": "Avec solde",
+        "aplicado": "Imputée",
+        "anulado": "Annulée"
+      },
+      "columnas": {
+        "proveedor": "Fournisseur",
+        "nit": "NIF",
+        "fecha": "Date",
+        "anticipo": "Avance",
+        "aplicado": "Imputé",
+        "saldo": "Solde",
+        "estado": "Statut",
+        "comprobante": "Pièce"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des avances",
+        "saldo": "Solde en votre faveur",
+        "proveedores": "{count, plural, =0 {aucun fournisseur} one {# fournisseur} other {# fournisseurs}}",
+        "anticipado": "Avancé",
+        "aplicado": "Imputé aux factures"
+      },
+      "acciones": {
+        "exportar": "Exporter",
+        "nuevo": "Nouvelle avance",
+        "aplicar": "Imputer à une facture",
+        "aplicarDe": "Imputer l'avance de {proveedor} à une facture",
+        "devolver": "Enregistrer un remboursement",
+        "anular": "Annuler"
+      },
+      "anticipo": {
+        "titulo": "Nouvelle avance fournisseur",
+        "descripcion": "L'argent sort comme un paiement avec sa pièce de décaissement, est déduit de la caisse ou de la banque et reste en votre faveur sur le compte d'avances.",
+        "sucursal": "Succursale",
+        "sucursalPlaceholder": "Choisissez la succursale",
+        "cliente": "Fournisseur",
+        "monto": "Montant",
+        "metodo": "Moyen de paiement",
+        "cuenta": "Compte bancaire",
+        "cuentaPlaceholder": "Celui du moyen de paiement",
+        "referencia": "Référence",
+        "vence": "Échéance (facultatif)",
+        "venceAyuda": "Sans date, l'avance n'expire pas.",
+        "notas": "Notes (facultatif)",
+        "notasPlaceholder": "À quoi sert l'avance",
+        "sinCaja": "Aucune caisse ouverte dans cette succursale : ouvrez-en une ou utilisez un autre moyen.",
+        "confirmar": "Enregistrer l'avance",
+        "confirmarMonto": "Enregistrer {monto}",
+        "exito": "Avance de {monto} enregistrée avec la pièce {recibo}."
+      },
+      "aplicar": {
+        "titulo": "Imputer l'avance à une facture",
+        "descripcion": "{cliente} · disponible {disponible}",
+        "factura": "Dette du fournisseur",
+        "facturaPlaceholder": "Choisissez une facture avec solde",
+        "opcionFactura": "{numero} · solde {saldo} · {fecha}",
+        "sinFacturas": "Ce fournisseur n'a aucune facture avec un solde à payer.",
+        "errorFacturas": "Impossible de charger les dettes du fournisseur.",
+        "eligeFactura": "Choisissez la facture à laquelle l'imputer.",
+        "monto": "Montant à imputer",
+        "hasta": "Jusqu'à {monto}",
+        "quePasaTitulo": "Ce qui se passe à l'imputation",
+        "quePasa": "La facture {factura} baisse de {monto} et reste due de {restante}. Il reste {disponible} d'avance au fournisseur.",
+        "confirmar": "Imputer",
+        "confirmarMonto": "Imputer {monto}",
+        "exito": "{monto} imputés à la facture {factura}."
+      },
+      "devolver": {
+        "titulo": "Remboursement du fournisseur",
+        "descripcion": "{cliente} · disponible {disponible}",
+        "valor": "Montant remboursé",
+        "hasta": "Jusqu'à {monto}",
+        "como": "Comment l'argent entre",
+        "cuenta": "Compte bancaire",
+        "cuentaPlaceholder": "Celui du moyen de paiement",
+        "cuentaDelMetodo": "Le compte du moyen de paiement",
+        "saleDe": "Entre dans",
+        "cajaAbierta": "Caisse ouverte · service n° {id}",
+        "sinCaja": "Aucune caisse ouverte dans la succursale de l'avance : ouvrez-en une ou recevez par un autre moyen.",
+        "referencia": "Référence",
+        "motivo": "Motif",
+        "motivoPlaceholder": "Pourquoi le fournisseur rembourse l'argent",
+        "quePasaTitulo": "Ce qui se passe à l'enregistrement du remboursement",
+        "quePasaEfectivo": "{monto} entrent dans le comptage de la caisse ({origen}), l'avance reste à {saldo} et l'écriture sur le compte d'avances est enregistrée.",
+        "quePasaBanco": "{monto} entrent sur {origen}, l'avance reste à {saldo} et l'écriture sur le compte d'avances est enregistrée.",
+        "confirmar": "Enregistrer le remboursement",
+        "confirmarMonto": "Enregistrer {monto}",
+        "exito": "Remboursement de {monto} de {cliente} enregistré."
+      },
+      "anular": {
+        "titulo": "Annuler l'avance",
+        "descripcion": "Avance à {proveedor} de {monto} (pièce {recibo}).",
+        "confirmar": "Annuler l'avance",
+        "consecuenciasTitulo": "À l'annulation",
+        "consecuencias": {
+          "pago": "Le paiement est annulé ; s'il était en espèces, il revient au comptage de la caisse.",
+          "saldo": "Le solde en votre faveur chez le fournisseur passe à zéro.",
+          "asiento": "L'écriture d'extourne de l'avance est enregistrée."
+        },
+        "rapidos": {
+          "error": "Enregistrée par erreur",
+          "duplicado": "Doublon",
+          "proveedor": "Le fournisseur ne l'a pas reçue"
+        },
+        "exito": "L'avance à {proveedor} a été annulée."
+      },
+      "validacion": {
+        "vacio": "Saisissez un montant supérieur à zéro.",
+        "excede_disponible": "Dépasse le solde de l'avance ({monto}).",
+        "excede_factura": "Dépasse le solde de la facture ({monto}).",
+        "cliente": "Choisissez le fournisseur.",
+        "sucursal": "Choisissez la succursale.",
+        "metodo": "Choisissez le moyen de paiement.",
+        "referencia": "Ce moyen exige une référence.",
+        "motivo": "Indiquez le motif (3 caractères minimum)."
+      },
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale de l'avance ou de la facture.",
+        "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+        "datos_invalidos": "Vérifiez les données.",
+        "pendiente_de_activar": "Les avances aux fournisseurs sont en attente d'activation.",
+        "clave_idempotencia_invalida": "Impossible d'identifier la tentative. Rouvrez la fenêtre.",
+        "clave_idempotencia_reutilizada": "Cette tentative a déjà été utilisée avec d'autres données. Rouvrez la fenêtre.",
+        "monto_invalido": "Saisissez un montant supérieur à zéro.",
+        "saldo_no_encontrado": "L'avance est introuvable.",
+        "saldo_no_disponible": "L'avance n'est plus disponible.",
+        "saldo_vencido": "L'avance a expiré.",
+        "saldo_usado": "L'avance a déjà été utilisée : elle ne peut pas être annulée.",
+        "saldo_no_anulable": "Cette avance ne peut pas être annulée.",
+        "monto_excede_saldo_a_favor": "Le montant dépasse le solde de l'avance.",
+        "factura_no_encontrada": "La facture est introuvable.",
+        "documento_invalido": "Le document n'est pas une facture d'achat.",
+        "documento_borrador": "La facture est un brouillon : confirmez-la avant d'y imputer l'avance.",
+        "documento_anulado": "La facture est annulée.",
+        "cliente_distinto": "La facture appartient à un autre fournisseur.",
+        "cliente_no_encontrado": "Le fournisseur est introuvable.",
+        "sucursal_invalida": "Choisissez une succursale valide.",
+        "moneda_distinta": "La facture est dans une autre devise.",
+        "monto_excede_saldo": "Le montant dépasse le solde à payer de la facture.",
+        "metodo_invalido": "Le moyen de paiement n'est pas disponible.",
+        "referencia_obligatoria": "Ce moyen exige une référence.",
+        "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
+        "sin_caja_abierta": "Aucune caisse ouverte : ouvrez-en une ou utilisez un autre moyen.",
+        "pago_en_caja_cerrada": "L'avance est sortie d'une caisse déjà fermée : enregistrez le remboursement du fournisseur comme une entrée.",
+        "sin_cuenta_de_dinero": "Le compte de caisse ou de banque du moyen est introuvable.",
+        "sin_cuenta_por_cobrar": "Le compte comptable manque.",
+        "vencimiento_invalido": "L'échéance ne peut pas être antérieure à aujourd'hui.",
+        "motivo_obligatorio": "Indiquez le motif.",
+        "asiento_no_creado": "Impossible de comptabiliser. Vérifiez le plan comptable et la période comptable.",
+        "error_desconocido": "Impossible de terminer. Réessayez.",
+        "anticipo_no_encontrado": "L'avance est introuvable.",
+        "anticipo_no_disponible": "L'avance n'a plus de solde disponible.",
+        "anticipo_usado": "L'avance a déjà été en partie imputée ou remboursée : elle ne s'annule pas, enregistrez le remboursement du solde.",
+        "monto_excede_anticipo": "Le montant dépasse le solde de l'avance.",
+        "proveedor_no_encontrado": "Le fournisseur est introuvable.",
+        "proveedor_distinto": "La facture appartient à un autre fournisseur.",
+        "cuenta_no_encontrada": "La dette est introuvable.",
+        "sin_cuenta_anticipos": "Le compte d'avances aux fournisseurs (1330) manque : configurez-le dans Configuration comptable.",
+        "sin_cuenta_por_pagar": "La règle comptable de paiement aux fournisseurs manque."
+      }
+    },
+    "dinero": {
+      "titulo": "Fonds de tiers",
+      "subtitulo": "Ce que vous recevez mais qui n'est pas à vous : pourboires, encaissements et mandats",
+      "migas": {
+        "finanzas": "Finances",
+        "tesoreria": "Trésorerie"
+      },
+      "etiquetaFila": "{concepto} : à payer {monto}",
+      "errorCarga": "Impossible de charger les fonds de tiers.",
+      "sinTercero": "Sans tiers",
+      "sinPermiso": {
+        "titulo": "Pas d'accès",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir les finances."
+      },
+      "acciones": {
+        "liquidar": "Régler",
+        "registrarRecaudo": "Enregistrer un encaissement pour un tiers",
+        "repartirPropinas": "Répartir les pourboires",
+        "configuracion": "Configuration comptable"
+      },
+      "aviso": {
+        "titulo": "Le compte n'est pas défini",
+        "propina": "Aujourd'hui, le pourboire est enregistré comme une charge. Le comptable doit confirmer le compte de passif avant de le changer.",
+        "recaudos": "Le compte des encaissements pour tiers n'est pas confirmé dans la configuration comptable. Le comptable doit le confirmer.",
+        "verPropuesta": "Voir la proposition",
+        "truncadas": "Il y a plus de pourboires que ce qui peut être additionné ici : le total montre les plus récents."
+      },
+      "columnas": {
+        "concepto": "Concept",
+        "recibido": "Reçu",
+        "liquidado": "Réglé",
+        "porPagar": "À payer",
+        "cuenta": "Compte",
+        "tercero": "Tiers"
+      },
+      "conceptos": {
+        "propinas": "Pourboires",
+        "recaudos": "Encaissements pour tiers"
+      },
+      "cuenta": {
+        "porConfirmar": "À confirmer",
+        "porConfirmarCodigo": "À confirmer ({cuenta})",
+        "porConfirmarPropuesta": "À confirmer ({cuenta}) ; aujourd'hui {actual}"
+      },
+      "porTercero": {
+        "titulo": "Encaissements par tiers"
+      },
+      "categorias": {
+        "ingreso": "Encaissements pour tiers",
+        "egreso": "Paiement des encaissements aux tiers",
+        "error": "Impossible de préparer la catégorie d'encaissements. Créez-la dans Catégories de trésorerie."
+      }
+    },
+    "consignaciones": {
+      "titulo": "Consignations",
+      "subtitulo": "Votre marchandise chez un tiers, ou celle d'un tiers chez vous",
+      "migas": {
+        "finanzas": "Finances",
+        "consignacion": "Consignation",
+        "notas": "Bons"
+      },
+      "sinConsignatario": "Sans consignataire",
+      "etiquetaFila": "Bon {numero} de {consignatario}",
+      "unidadesN": "{n} unités",
+      "archivoExportacion": "consignations.csv",
+      "errorCarga": "Impossible de charger les consignations.",
+      "sinResultados": "Aucun bon ne correspond à la recherche.",
+      "vacio": {
+        "titulo": "Aucun bon de consignation",
+        "descripcion": "Remettez de la marchandise à un consignataire pour qu'il la vende pour vous ; réglez quand il déclare ce qui a été vendu."
+      },
+      "sinPermiso": {
+        "titulo": "Pas d'accès aux consignations",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir les finances."
+      },
+      "pendiente": {
+        "titulo": "En attente d'activation",
+        "descripcion": "Les consignations nécessitent une mise à jour de la base de données qui n'a pas encore été appliquée. Une fois activée, vous verrez ici les bons et leurs règlements."
+      },
+      "buscar": {
+        "placeholder": "Rechercher un bon ou un consignataire",
+        "etiqueta": "Rechercher des bons de consignation"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "todos": "Tous"
+      },
+      "estados": {
+        "en_consignacion": "En consignation",
+        "por_liquidar": "À régler",
+        "liquidada": "Réglé"
+      },
+      "estadosLiquidacion": {
+        "por_facturar": "À facturer",
+        "liquidada": "Réglé"
+      },
+      "columnas": {
+        "nota": "Bon",
+        "consignatario": "Consignataire",
+        "fecha": "Date",
+        "unidades": "Unités",
+        "costo": "Coût",
+        "estado": "Statut",
+        "producto": "Produit",
+        "cantidad": "Quantité",
+        "entregado": "Remis",
+        "vendido": "Vendu",
+        "devuelto": "Retourné",
+        "enSuPoder": "En sa possession",
+        "precio": "Prix de vente",
+        "venta": "Vente"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des consignations",
+        "entregado": "Remis",
+        "aCosto": "Au coût",
+        "vendidoSinLiquidar": "Vendu non réglé",
+        "devuelto": "Retourné",
+        "porCobrar": "À encaisser",
+        "netoComision": "Net de commission"
+      },
+      "acciones": {
+        "exportar": "Exporter",
+        "nueva": "Nouveau bon de consignation",
+        "ver": "Voir le règlement",
+        "liquidar": "Régler",
+        "facturarYCerrar": "Facturer et clôturer",
+        "facturar": "Facturer",
+        "reintentar": "Réessayer"
+      },
+      "nueva": {
+        "titulo": "Nouveau bon de consignation",
+        "descripcion": "Ce n'est pas une facture. La marchandise vous appartient toujours.",
+        "ubicacion": "Dépôt de consignation",
+        "ubicacionAyuda": "Où reste la marchandise.",
+        "ubicacionPorDefecto": "Consignation · {consignatario}",
+        "origen": "Sort de la succursale",
+        "origenPlaceholder": "Choisissez la succursale",
+        "agregarProducto": "Ajouter un produit",
+        "buscarProducto": "Rechercher un produit par nom ou code",
+        "sinProductos": "Aucun produit en stock ne correspond.",
+        "motivoSerial": "Les produits avec numéros de série ne se consignent pas encore.",
+        "motivoSinStock": "Le produit ne gère pas le stock.",
+        "stock": "Stock : {n}",
+        "sinLineas": "Ajoutez les produits que vous remettez.",
+        "cantidadDe": "Quantité de {producto}",
+        "quitar": "Retirer",
+        "quitarDe": "Retirer {producto}",
+        "comision": "Commission convenue",
+        "comisionAyuda": "Utilisée au règlement.",
+        "vistaPrevia": "Aperçu de l'écriture",
+        "debito": "Débit",
+        "credito": "Crédit",
+        "cuentaConsignacion": "Marchandise en consignation ({cuenta})",
+        "cuentaInventario": "Stock de la succursale",
+        "costoEstimado": "Coût estimé avec le coût moyen d'aujourd'hui ; le définitif est fixé par le registre de stock à la remise.",
+        "confirmar": "Remettre la marchandise",
+        "exito": "Bon {numero} remis à {consignatario}."
+      },
+      "liquidar": {
+        "titulo": "Règlement {numero}",
+        "noEncontrada": "Le bon de consignation est introuvable.",
+        "procesando": "Facturation…",
+        "vendidoDe": "Vendu de {producto}",
+        "devueltoDe": "Retourné de {producto}",
+        "precioDe": "Prix de vente de {producto}",
+        "resumen": "Règlement",
+        "ventaReportada": "Vente déclarée",
+        "comision": "Commission {pct} %",
+        "neto": "Net à encaisser",
+        "alCerrarTitulo": "À la clôture",
+        "alCerrar": "Ce qui a été vendu est facturé (le produit et le coût des ventes sont reconnus) et la commission devient une charge. Le retour revient dans votre dépôt.",
+        "exito": "Règlement clôturé : net à encaisser {neto}.",
+        "porFacturar": "Le règlement reste à facturer : vérifiez la facture et réessayez.",
+        "porFacturarTitulo": "Règlement à facturer",
+        "porFacturarDescripcion": "La vente déclarée de {venta} n'a pas encore pu être facturée. Vérifiez la facture et utilisez à nouveau « Facturer ».",
+        "cerradaTitulo": "Règlement clôturé",
+        "cerradaDescripcion": "Facture {factura} ; net à encaisser {neto}.",
+        "verFactura": "Voir la facture",
+        "sinFactura": "Sans facture",
+        "dianError": "La facture a été émise mais n'a pas pu être envoyée à la DIAN : envoyez-la depuis la facture.",
+        "anteriores": "Règlements",
+        "lineaAnterior": "Vente {venta} · commission {comision} · net {neto}",
+        "errores": {
+          "excede": "Vendu plus retourné dépasse ce qu'il détient.",
+          "precio": "Saisissez le prix de vente."
+        }
+      },
+      "validacion": {
+        "sucursal": "Choisissez la succursale d'origine.",
+        "consignatario": "Choisissez le consignataire.",
+        "lineas": "Ajoutez au moins un produit.",
+        "cantidad": "Chaque produit doit avoir une quantité supérieure à zéro.",
+        "excedeStock": "Une quantité dépasse le stock de la succursale.",
+        "comision": "La commission va de 0 % à 100 %."
+      },
+      "errores": {
+        "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+        "sin_permiso": "Vous n'avez pas l'autorisation pour cette action (finances et stock).",
+        "sin_acceso_sucursal": "Vous n'avez pas accès à la succursale du bon.",
+        "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+        "datos_invalidos": "Vérifiez les données.",
+        "pendiente_de_activar": "Les consignations sont en attente d'activation.",
+        "clave_idempotencia_invalida": "Impossible d'identifier la tentative. Réessayez.",
+        "clave_idempotencia_reutilizada": "Cette tentative a déjà été utilisée avec d'autres données. Réessayez.",
+        "comision_invalida": "La commission va de 0 % à 100 %.",
+        "sin_lineas": "Il n'y a rien à remettre ou à régler.",
+        "linea_invalida": "Une ligne n'est pas valide.",
+        "cliente_no_encontrado": "Le consignataire est introuvable.",
+        "sucursal_invalida": "Choisissez une succursale valide.",
+        "producto_invalido": "Un produit n'est pas valide.",
+        "producto_sin_seguimiento": "Un produit ne gère pas le stock.",
+        "producto_con_seriales": "Les produits avec numéros de série ne se consignent pas encore.",
+        "producto_con_variantes": "Choisissez la variante, pas le produit parent.",
+        "stock_insuficiente": "Le stock de la succursale est insuffisant.",
+        "sin_cuenta_consignacion": "Le compte de marchandise en consignation manque : configurez-le dans Configuration comptable.",
+        "sin_cuenta_inventario": "Le compte de stock de la succursale manque.",
+        "sin_cuenta_comisiones": "Le compte de commissions manque : configurez-le dans Configuration comptable.",
+        "nota_no_encontrada": "Le bon de consignation est introuvable.",
+        "liquidacion_no_encontrada": "Le règlement est introuvable.",
+        "liquidacion_pendiente": "Un règlement reste à facturer : facturez-le avant d'en enregistrer un autre.",
+        "precio_obligatorio": "Saisissez le prix de vente de ce qui a été vendu.",
+        "excede_en_su_poder": "Vendu plus retourné dépasse ce qu'il détient.",
+        "factura_no_encontrada": "La facture est introuvable.",
+        "factura_distinta": "Le règlement a déjà une autre facture.",
+        "cliente_distinto": "La facture appartient à un autre client.",
+        "documento_anulado": "La facture est annulée.",
+        "factura_no_emitida": "La facture n'a pas pu être émise.",
+        "asiento_no_creado": "Impossible de comptabiliser. Vérifiez le plan comptable et la période comptable.",
+        "error_desconocido": "Impossible de terminer. Réessayez."
+      }
+    }
+  },
+  "integracionesConexiones": {
+    "comun": {
+      "titulo": "Connexions",
+      "migaIntegraciones": "Intégrations",
+      "conectar": "Connecter",
+      "pestanas": "Sections des connexions",
+      "tab": {
+        "catalogo": "Catalogue",
+        "mis": "Mes connexions",
+        "actividad": "Activité",
+        "desarrolladores": "Développeurs"
+      },
+      "oauthOk": "Compte connecté",
+      "oauthError": "Impossible de connecter le compte",
+      "cancelar": "Annuler",
+      "cerrar": "Fermer",
+      "atras": "Retour",
+      "siguiente": "Suivant",
+      "guardar": "Enregistrer",
+      "copiar": "Copier",
+      "copiado": "Copié",
+      "reintentar": "Réessayer",
+      "cargando": "Chargement…",
+      "errorCarga": "Impossible de charger les informations",
+      "produccion": "Production",
+      "pruebas": "Test",
+      "verTodo": "Tout voir"
+    },
+    "grupos": {
+      "todos": {
+        "chip": "Tous",
+        "titulo": "Tous les services",
+        "descripcion": "Tout ce que vous pouvez connecter"
+      },
+      "cobros": {
+        "chip": "Paiements",
+        "titulo": "Paiements avec votre propre compte",
+        "descripcion": "Passerelles de paiement pour la boutique en ligne, les liens de paiement et le point de vente"
+      },
+      "hospedaje": {
+        "chip": "Hébergement",
+        "titulo": "Hébergement et agences de voyage",
+        "descripcion": "Réservations, disponibilités et tarifs synchronisés avec le PMS"
+      },
+      "domicilios": {
+        "chip": "Livraison",
+        "titulo": "Applications de livraison",
+        "descripcion": "Des commandes qui arrivent directement au point de vente et en cuisine"
+      },
+      "publicidad": {
+        "chip": "Publicité",
+        "titulo": "Publicité et réseaux",
+        "descripcion": "Catalogue produits, pixel et conversions pour vos publicités"
+      },
+      "mensajeria": {
+        "chip": "Messagerie",
+        "titulo": "Messagerie et canaux",
+        "descripcion": "Conversations clients dans la boîte du chat"
+      },
+      "envios": {
+        "chip": "Expédition",
+        "titulo": "Expédition",
+        "descripcion": "Calculez, créez des étiquettes et suivez vos envois depuis les commandes"
+      },
+      "go_admin": {
+        "chip": "GO Admin",
+        "titulo": "Services GO Admin · sans clés",
+        "descripcion": "Fournis par GO Admin avec son propre compte : aucun identifiant à coller"
+      }
+    },
+    "estados": {
+      "catalogo": {
+        "conectado": "Connecté",
+        "disponible": "Disponible",
+        "revisar": "À vérifier",
+        "en_construccion": "En construction",
+        "servicio_go_admin": "Service GO Admin"
+      },
+      "conexion": {
+        "activa": "Active",
+        "conErrores": "Avec erreurs",
+        "revisar": "À vérifier",
+        "pausada": "En pause",
+        "desconectada": "Déconnectée",
+        "borrador": "Inachevée"
+      }
+    },
+    "motivos": {
+      "sin_proveedor_en_base": "Ce fournisseur n’est pas encore activé dans GO Admin.",
+      "sin_conector": "Aucun connecteur n’est encore activé pour ce fournisseur.",
+      "cuenta_socio": "GO Admin doit encore obtenir le compte partenaire et l’API du fournisseur. Nous vous préviendrons.",
+      "app_oauth_sin_configurar": "L’application GO Admin chez ce fournisseur doit encore être configurée.",
+      "adaptador_en_construccion": "Le connecteur est en construction : vous pouvez préparer vos informations.",
+      "sin_conector_en_codigo": "Il n’existe pas encore de connecteur réel avec ce fournisseur."
+    },
+    "servicios": {
+      "wompi": {
+        "nombre": "Wompi",
+        "descripcion": "Carte, PSE, Nequi et QR avec votre compte Wompi",
+        "lema": "Paiements par carte, PSE, Nequi et QR avec votre propre compte Wompi",
+        "queHace": [
+          "Encaisse par carte, PSE, Nequi et QR au point de vente et dans la boutique en ligne.",
+          "Confirme chaque paiement automatiquement dès que Wompi l’approuve.",
+          "L’argent arrive sur votre compte Wompi ; GO Admin n’y touche pas."
+        ],
+        "queNecesitas": [
+          "Un compte marchand Wompi approuvé.",
+          "Un accès administrateur au tableau de bord Wompi.",
+          "5 minutes."
+        ]
+      },
+      "mercadopago": {
+        "nombre": "Mercado Pago",
+        "descripcion": "Liens de paiement et checkout",
+        "lema": "Checkout et liens de paiement avec votre compte Mercado Pago",
+        "queHace": [
+          "Encaisse par carte, PSE et espèces dans la boutique en ligne.",
+          "Confirme chaque paiement automatiquement dès que Mercado Pago l’approuve.",
+          "L’argent arrive sur votre compte Mercado Pago ; GO Admin n’y touche pas."
+        ],
+        "queNecesitas": [
+          "Un compte marchand Mercado Pago approuvé.",
+          "Un accès administrateur au tableau de bord Mercado Pago.",
+          "5 minutes."
+        ]
+      },
+      "payu": {
+        "nombre": "PayU",
+        "descripcion": "Cartes, PSE et espèces",
+        "lema": "Paiements par carte, PSE et espèces avec votre compte PayU",
+        "queHace": [
+          "Encaisse par carte, PSE et espèces dans la boutique en ligne.",
+          "Confirme chaque paiement automatiquement dès que PayU l’approuve.",
+          "L’argent arrive sur votre compte PayU ; GO Admin n’y touche pas."
+        ],
+        "queNecesitas": [
+          "Un compte marchand PayU approuvé.",
+          "Un accès administrateur au tableau de bord PayU.",
+          "5 minutes."
+        ]
+      },
+      "bold": {
+        "nombre": "Bold",
+        "descripcion": "Terminal de paiement et liens Bold",
+        "lema": "Terminaux Bold par agence et liens de paiement",
+        "queHace": [
+          "Encaisse avec le terminal Bold de chaque agence depuis le point de vente.",
+          "Crée des liens de paiement Bold pour encaisser à distance.",
+          "L’argent arrive sur votre compte Bold ; GO Admin n’y touche pas."
+        ],
+        "queNecesitas": [
+          "Un compte Bold avec ses clés d’intégration.",
+          "Le numéro de série de chaque terminal et son agence.",
+          "10 minutes."
+        ]
+      },
+      "stripe": {
+        "nombre": "Stripe",
+        "descripcion": "Cartes internationales",
+        "lema": "Paiements par cartes internationales avec votre compte Stripe",
+        "queHace": [
+          "Encaisse par cartes internationales dans la boutique en ligne.",
+          "Confirme chaque paiement automatiquement dès que Stripe l’approuve.",
+          "L’argent arrive sur votre compte Stripe ; GO Admin n’y touche pas."
+        ],
+        "queNecesitas": [
+          "Un compte marchand Stripe approuvé.",
+          "Un accès administrateur au tableau de bord Stripe.",
+          "5 minutes."
+        ]
+      },
+      "paypal": {
+        "nombre": "PayPal",
+        "descripcion": "Paiements de clients à l’étranger",
+        "lema": "Encaissez vos clients à l’étranger avec votre compte PayPal",
+        "queHace": [
+          "Encaisse par PayPal et carte dans la boutique en ligne.",
+          "Confirme chaque paiement automatiquement dès que PayPal l’approuve.",
+          "L’argent arrive sur votre compte PayPal ; GO Admin n’y touche pas."
+        ],
+        "queNecesitas": [
+          "Un compte marchand PayPal approuvé.",
+          "Un accès administrateur au tableau de bord PayPal.",
+          "5 minutes."
+        ]
+      },
+      "booking": {
+        "nombre": "Booking.com",
+        "descripcion": "Réservations, disponibilités et tarifs",
+        "lema": "Réservations, disponibilités et tarifs synchronisés avec le PMS",
+        "queHace": [
+          "Importe les réservations Booking.com dans le PMS sans ressaisie.",
+          "Publie vos disponibilités sur Booking.com et évite le surbooking.",
+          "Chaque chambre est reliée à un espace du PMS."
+        ],
+        "queNecesitas": [
+          "Votre établissement publié sur Booking.com et l’accès à son extranet.",
+          "Les espaces du PMS créés.",
+          "10 minutes."
+        ]
+      },
+      "expedia": {
+        "nombre": "Expedia",
+        "descripcion": "Réservations, disponibilités et tarifs",
+        "lema": "Réservations et disponibilités Expedia dans le PMS",
+        "queHace": [
+          "Importe les réservations Expedia dans le PMS sans ressaisie.",
+          "Publie vos disponibilités sur Expedia et évite le surbooking.",
+          "Chaque chambre est reliée à un espace du PMS."
+        ],
+        "queNecesitas": [
+          "Votre établissement publié sur Expedia et l’accès à son extranet.",
+          "Les espaces du PMS créés.",
+          "10 minutes."
+        ]
+      },
+      "airbnb": {
+        "nombre": "Airbnb",
+        "descripcion": "Calendrier des réservations par logement",
+        "lema": "Calendrier Airbnb synchronisé avec le PMS",
+        "queHace": [
+          "Bloque dans le PMS les dates réservées sur Airbnb.",
+          "Donne votre calendrier à Airbnb pour ne pas vendre des dates occupées.",
+          "Synchronisé par calendrier (iCal), sans clés."
+        ],
+        "queNecesitas": [
+          "Le lien iCal de chaque annonce Airbnb.",
+          "Les espaces du PMS créés.",
+          "5 minutes."
+        ]
+      },
+      "tripadvisor": {
+        "nombre": "Tripadvisor",
+        "descripcion": "Fiche, avis et calendrier",
+        "lema": "Calendrier et avis Tripadvisor",
+        "queHace": [
+          "Bloque dans le PMS les dates réservées sur Tripadvisor.",
+          "Donne votre calendrier à Tripadvisor pour ne pas vendre des dates occupées.",
+          "Synchronisé par calendrier (iCal), sans clés."
+        ],
+        "queNecesitas": [
+          "Le lien iCal de chaque annonce Tripadvisor.",
+          "Les espaces du PMS créés.",
+          "5 minutes."
+        ]
+      },
+      "google_vacation_rentals": {
+        "nombre": "Google Vacation Rentals",
+        "descripcion": "Apparaissez sur Google Travel et Maps",
+        "lema": "Votre logement sur Google Travel et Maps avec son calendrier",
+        "queHace": [
+          "Bloque dans le PMS les dates réservées sur Google.",
+          "Donne votre calendrier à Google pour ne pas vendre des dates occupées.",
+          "Synchronisé par calendrier (iCal), sans clés."
+        ],
+        "queNecesitas": [
+          "Le lien iCal de chaque annonce Google.",
+          "Les espaces du PMS créés.",
+          "5 minutes."
+        ]
+      },
+      "rappi": {
+        "nombre": "Rappi",
+        "descripcion": "Commandes, menu et horaires",
+        "lema": "Commandes Rappi au point de vente et en cuisine",
+        "queHace": [
+          "Les commandes Rappi arrivent directement au point de vente et en cuisine.",
+          "Publie votre menu et vos prix sur Rappi depuis l’inventaire.",
+          "Ouvre et ferme la boutique selon vos horaires."
+        ],
+        "queNecesitas": [
+          "Votre boutique active sur Rappi en tant que partenaire.",
+          "L’intégration partenaire Rappi de GO Admin (en cours).",
+          "Le menu chargé dans l’inventaire."
+        ]
+      },
+      "ubereats": {
+        "nombre": "Uber Eats",
+        "descripcion": "Commandes, menu et horaires",
+        "lema": "Commandes Uber Eats au point de vente et en cuisine",
+        "queHace": [
+          "Les commandes Uber Eats arrivent directement au point de vente et en cuisine.",
+          "Publie votre menu et vos prix sur Uber Eats depuis l’inventaire.",
+          "Ouvre et ferme la boutique selon vos horaires."
+        ],
+        "queNecesitas": [
+          "Votre boutique active sur Uber Eats en tant que partenaire.",
+          "L’intégration partenaire Uber Eats de GO Admin (en cours).",
+          "Le menu chargé dans l’inventaire."
+        ]
+      },
+      "ifood": {
+        "nombre": "iFood",
+        "descripcion": "Commandes et menu · Brésil",
+        "lema": "Commandes iFood au point de vente (Brésil)",
+        "queHace": [
+          "Les commandes iFood arrivent directement au point de vente et en cuisine.",
+          "Publie votre menu et vos prix sur iFood depuis l’inventaire.",
+          "Ouvre et ferme la boutique selon vos horaires."
+        ],
+        "queNecesitas": [
+          "Votre boutique active sur iFood en tant que partenaire.",
+          "L’intégration partenaire iFood de GO Admin (en cours).",
+          "Le menu chargé dans l’inventaire."
+        ]
+      },
+      "meta": {
+        "nombre": "Meta",
+        "descripcion": "Facebook et Instagram : publicités, pixel et catalogue",
+        "lema": "Catalogue, pixel et conversions pour vos publicités Facebook et Instagram",
+        "queHace": [
+          "Envoie vos produits au catalogue Meta.",
+          "Déclare les ventes de la boutique comme conversions.",
+          "Seul ce que vous choisissez est envoyé ; jamais de données de carte."
+        ],
+        "queNecesitas": [
+          "Un compte Meta Business avec des droits d’administrateur.",
+          "Se connecter et autoriser GO Admin (sans copier de clés).",
+          "3 minutes."
+        ]
+      },
+      "tiktok": {
+        "nombre": "TikTok",
+        "descripcion": "Publicités, pixel et TikTok Shop",
+        "lema": "Catalogue et conversions pour vos publicités TikTok",
+        "queHace": [
+          "Envoie vos produits au catalogue TikTok.",
+          "Déclare les ventes comme événements du pixel.",
+          "Seul ce que vous choisissez est envoyé."
+        ],
+        "queNecesitas": [
+          "Un compte TikTok for Business avec des droits d’administrateur.",
+          "Se connecter et autoriser GO Admin (sans copier de clés).",
+          "3 minutes."
+        ]
+      },
+      "google_ads": {
+        "nombre": "Google Ads",
+        "descripcion": "Conversions et audiences",
+        "lema": "Conversions et audiences pour vos campagnes Google Ads",
+        "queHace": [
+          "Déclare les ventes comme conversions de vos campagnes.",
+          "Crée des audiences avec les clients ayant accepté la publicité.",
+          "Affiche les résultats de vos campagnes dans GO Admin."
+        ],
+        "queNecesitas": [
+          "Un compte Google Ads avec des droits d’administrateur.",
+          "Se connecter et autoriser GO Admin (sans copier de clés).",
+          "3 minutes."
+        ]
+      },
+      "whatsapp": {
+        "nombre": "WhatsApp Business",
+        "descripcion": "Messages, modèles et campagnes",
+        "lema": "WhatsApp dans la boîte du chat ; à configurer dans Chat › Canaux",
+        "queHace": [
+          "Recevez et répondez aux messages clients dans la boîte.",
+          "Envoyez des modèles approuvés et des campagnes.",
+          "Un seul endroit pour le configurer : Chat › Canaux."
+        ],
+        "queNecesitas": [
+          "Un numéro WhatsApp Business.",
+          "Un compte Meta Business vérifié.",
+          "10 minutes."
+        ]
+      },
+      "instagram_facebook": {
+        "nombre": "Instagram et Facebook",
+        "descripcion": "Messages directs dans la boîte du chat",
+        "lema": "Messages Instagram et Facebook dans la boîte ; à configurer dans Chat › Canaux",
+        "queHace": [
+          "Recevez les messages directs dans la boîte du chat.",
+          "Répondez depuis GO Admin avec votre équipe.",
+          "Un seul endroit pour le configurer : Chat › Canaux."
+        ],
+        "queNecesitas": [
+          "Une page Facebook ou un compte Instagram professionnel.",
+          "Des droits d’administrateur sur cette page.",
+          "5 minutes."
+        ]
+      },
+      "sendgrid": {
+        "nombre": "SendGrid",
+        "descripcion": "E-mails de campagne avec votre propre compte",
+        "lema": "Envoyez des e-mails de campagne avec votre propre compte SendGrid",
+        "queHace": [
+          "Envoie vos campagnes e-mail depuis votre domaine.",
+          "Enregistre rebonds et ouvertures dans GO Admin.",
+          "Les e-mails système continuent de partir via GO Admin."
+        ],
+        "queNecesitas": [
+          "Un compte SendGrid avec une clé API d’envoi.",
+          "Un expéditeur ou domaine vérifié.",
+          "5 minutes."
+        ]
+      },
+      "coordinadora": {
+        "nombre": "Coordinadora",
+        "descripcion": "Étiquettes, enlèvements et suivi",
+        "lema": "Envois Coordinadora depuis les commandes",
+        "queHace": [
+          "Calcule le tarif d’envoi dans la commande.",
+          "Génère l’étiquette et planifie l’enlèvement.",
+          "Suit l’envoi jusqu’à la livraison."
+        ],
+        "queNecesitas": [
+          "Un compte professionnel chez Coordinadora.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      },
+      "servientrega": {
+        "nombre": "Servientrega",
+        "descripcion": "Étiquettes, enlèvements et suivi",
+        "lema": "Envois Servientrega depuis les commandes",
+        "queHace": [
+          "Calcule le tarif d’envoi dans la commande.",
+          "Génère l’étiquette et planifie l’enlèvement.",
+          "Suit l’envoi jusqu’à la livraison."
+        ],
+        "queNecesitas": [
+          "Un compte professionnel chez Servientrega.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      },
+      "envia": {
+        "nombre": "Envía",
+        "descripcion": "Étiquettes, enlèvements et suivi",
+        "lema": "Envois Envía depuis les commandes",
+        "queHace": [
+          "Calcule le tarif d’envoi dans la commande.",
+          "Génère l’étiquette et planifie l’enlèvement.",
+          "Suit l’envoi jusqu’à la livraison."
+        ],
+        "queNecesitas": [
+          "Un compte professionnel chez Envía.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      },
+      "interrapidisimo": {
+        "nombre": "Interrapidísimo",
+        "descripcion": "Étiquettes, enlèvements et suivi",
+        "lema": "Envois Interrapidísimo depuis les commandes",
+        "queHace": [
+          "Calcule le tarif d’envoi dans la commande.",
+          "Génère l’étiquette et planifie l’enlèvement.",
+          "Suit l’envoi jusqu’à la livraison."
+        ],
+        "queNecesitas": [
+          "Un compte professionnel chez Interrapidísimo.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      },
+      "dropi": {
+        "nombre": "Dropi",
+        "descripcion": "Dropshipping et commandes contre remboursement",
+        "lema": "Commandes dropshipping et contre remboursement avec Dropi",
+        "queHace": [
+          "Envoie les commandes de la boutique à Dropi.",
+          "Suit l’état de chaque envoi.",
+          "Rapproche les encaissements contre remboursement."
+        ],
+        "queNecesitas": [
+          "Un compte professionnel chez Dropi.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      },
+      "effi": {
+        "nombre": "Effi",
+        "descripcion": "Logistique pour boutiques en ligne",
+        "lema": "La logistique de votre boutique en ligne avec Effi",
+        "queHace": [
+          "Calcule le tarif d’envoi dans la commande.",
+          "Génère l’étiquette et planifie l’enlèvement.",
+          "Suit l’envoi jusqu’à la livraison."
+        ],
+        "queNecesitas": [
+          "Un compte professionnel chez Effi.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      },
+      "cobros_qr": {
+        "nombre": "Paiements QR",
+        "descripcion": "Bre-B, QR Bancolombia et Redeban",
+        "lema": "Paiements QR avec le compte de GO Admin, sans clés",
+        "queHace": [
+          "Affiche un QR au point de vente pour que le client paie.",
+          "Confirme le paiement automatiquement.",
+          "S’active dans Finances › Moyens de paiement."
+        ],
+        "queNecesitas": [
+          "Rien : GO Admin le fournit avec son propre compte.",
+          "L’activer dans son module.",
+          "2 minutes."
+        ],
+        "irA": "Aller aux moyens de paiement"
+      },
+      "facturacion_electronica": {
+        "nombre": "Facturation électronique",
+        "descripcion": "Émission auprès de la DIAN",
+        "lema": "Factures électroniques auprès de la DIAN avec le service de GO Admin",
+        "queHace": [
+          "Émet des factures électroniques depuis les ventes et le point de vente.",
+          "Envoie chaque document à la DIAN et conserve sa réponse.",
+          "S’active dans Finances › Facturation électronique."
+        ],
+        "queNecesitas": [
+          "Rien : GO Admin le fournit avec son propre compte.",
+          "L’activer dans son module.",
+          "2 minutes."
+        ],
+        "irA": "Aller à la facturation"
+      },
+      "conectar_banco": {
+        "nombre": "Connecter la banque",
+        "descripcion": "Mouvements et soldes de vos comptes",
+        "lema": "Mouvements bancaires dans la Trésorerie avec le service de GO Admin",
+        "queHace": [
+          "Importe les mouvements et soldes de vos comptes bancaires.",
+          "Aide à rapprocher paiements et encaissements.",
+          "S’active dans Finances › Banques."
+        ],
+        "queNecesitas": [
+          "Rien : GO Admin le fournit avec son propre compte.",
+          "L’activer dans son module.",
+          "2 minutes."
+        ],
+        "irA": "Aller aux banques"
+      },
+      "sms_llamadas": {
+        "nombre": "SMS et appels",
+        "descripcion": "Solde de crédits de la plateforme",
+        "lema": "SMS et appels avec le compte de GO Admin ; vous payez en crédits",
+        "queHace": [
+          "Envoie des SMS et rappels à vos clients.",
+          "Passe et reçoit des appels depuis le CRM.",
+          "Payé avec votre solde de crédits."
+        ],
+        "queNecesitas": [
+          "Rien : GO Admin le fournit avec son propre compte.",
+          "L’activer dans son module.",
+          "2 minutes."
+        ],
+        "irA": "Voir les crédits"
+      }
+    },
+    "catalogo": {
+      "subtitulo": "Les comptes de votre organisation auprès d’autres services",
+      "buscar": "Rechercher un service",
+      "filtroGrupo": "Filtrer par type de service",
+      "descripcionGenerica": "Intégration avec un autre service",
+      "ver": "Voir",
+      "conectar": "Connecter",
+      "conectarA": "Connecter {nombre}"
+    },
+    "ficha": {
+      "irA": "Aller à {nombre}",
+      "conectarMiCuenta": "Connecter mon compte {nombre}",
+      "enConstruccionTitulo": "Impossible de l’activer pour l’instant",
+      "enConstruccionGenerico": "Le connecteur avec ce fournisseur est en construction.",
+      "queHace": "Ce que ça fait",
+      "queNecesitas": "Ce qu’il vous faut",
+      "sinLlavesTitulo": "Vous préférez ne pas gérer de clés ?",
+      "sinLlavesTexto": "Les paiements QR et la passerelle de GO Admin fonctionnent sans compte propre.",
+      "sinLlavesEnlace": "Voir les moyens de paiement",
+      "generico": {
+        "queHace": [
+          "Connecte votre compte fournisseur à GO Admin.",
+          "Enregistre chaque événement dans l’activité de la connexion.",
+          "Vous pouvez la mettre en pause ou la déconnecter à tout moment."
+        ],
+        "queNecesitas": [
+          "Un compte actif chez le fournisseur.",
+          "Ses identifiants d’intégration.",
+          "10 minutes."
+        ]
+      }
+    },
+    "misConexiones": {
+      "subtitulo": "{conectadas, plural, one {# connectée} other {# connectées}} · {atencion, plural, =0 {tout est en ordre} one {# requiert votre attention} other {# requièrent votre attention}}",
+      "buscar": "Rechercher une connexion",
+      "tabla": "Connexions de l’organisation",
+      "col": {
+        "conexion": "Connexion",
+        "ambiente": "Environnement",
+        "usadaPor": "Utilisée par",
+        "ultimaPrueba": "Dernier test",
+        "eventos24h": "Événements 24 h",
+        "estado": "Statut"
+      },
+      "credencial": "Clés {mascara}",
+      "creada": "créée le {fecha}",
+      "nunca": "Jamais",
+      "sinUso": "Non utilisée",
+      "metodo": "Moyen « {codigo} »",
+      "tiendaWeb": "Boutique en ligne",
+      "accion": {
+        "ver": "Voir",
+        "probar": "Tester",
+        "pausar": "Mettre en pause",
+        "reanudar": "Reprendre"
+      },
+      "prueba": {
+        "correcta": "Le fournisseur a accepté les identifiants",
+        "rechazada": "Le fournisseur a refusé les identifiants (HTTP {http})",
+        "sin_respuesta": "Le fournisseur n’a pas répondu ; réessayez",
+        "sin_prueba": "Ce fournisseur n’a pas de test automatique : consultez son activité",
+        "error": "Impossible de tester la connexion"
+      },
+      "pausada": "« {nombre} » est en pause",
+      "reanudada": "« {nombre} » est de nouveau active",
+      "atencionTitulo": "{n, plural, one {# connexion requiert votre attention} other {# connexions requièrent votre attention}}",
+      "erroresHoy": "{n, plural, one {# erreur en 24 h} other {# erreurs en 24 h}}",
+      "verErrores": "Voir les erreurs",
+      "vacioTitulo": "Vous n’avez pas encore de connexions",
+      "vacioTexto": "Connectez vos passerelles, canaux de vente et services depuis le catalogue.",
+      "irCatalogo": "Aller au catalogue"
+    },
+    "actividad": {
+      "subtitulo": "Événements de toutes les connexions",
+      "tabla": "Événements des connexions",
+      "conexionDesconocida": "Connexion retirée",
+      "referencia": "Référence {ref}",
+      "filtro": {
+        "aria": "Filtrer l’activité",
+        "todas": "Toutes",
+        "conError": "Avec erreur · {n}",
+        "hoy": "Aujourd’hui"
+      },
+      "col": {
+        "hora": "Heure",
+        "conexion": "Connexion",
+        "evento": "Événement",
+        "sentido": "Sens",
+        "resultado": "Résultat"
+      },
+      "sentido": {
+        "inbound": "Entrant",
+        "outbound": "Sortant"
+      },
+      "tipos": {
+        "prueba_de_conexion": "Test de connexion",
+        "prueba_de_llaves_nuevas": "Test de nouvelles clés",
+        "llaves_reemplazadas": "Clés remplacées",
+        "transaction_updated": "Paiement mis à jour",
+        "transaction_created": "Paiement créé"
+      },
+      "resultado": {
+        "firmaInvalida": "Signature invalide",
+        "rechazada": "Refusée",
+        "sinRespuesta": "Sans réponse",
+        "conError": "En erreur",
+        "correcta": "Réussie",
+        "aplicada": "Appliquée",
+        "recibida": "Reçue"
+      },
+      "vacioTitulo": "Aucun événement",
+      "vacioTexto": "Les paiements, réservations et tests passant par vos connexions apparaissent ici.",
+      "detalle": {
+        "titulo": "Détail de l’événement",
+        "elige": "Choisissez un événement pour voir son détail.",
+        "conexion": "Connexion",
+        "fecha": "Reçu",
+        "evento": "Événement",
+        "sentido": "Sens",
+        "referencia": "Référence",
+        "verCompleto": "Voir l’événement complet",
+        "irCredenciales": "Aller aux identifiants"
+      },
+      "explicacion": {
+        "rechazada": {
+          "titulo": "Le fournisseur a refusé les clés",
+          "texto": "Les clés enregistrées ne sont plus valides ou appartiennent à un autre environnement. Remplacez-les dans Identifiants."
+        },
+        "sin_respuesta": {
+          "titulo": "Le fournisseur n’a pas répondu",
+          "texto": "Il peut s’agir d’une panne temporaire du fournisseur ou du réseau. Réessayez dans quelques minutes."
+        },
+        "sin_prueba": {
+          "titulo": "Pas de test automatique",
+          "texto": "Ce fournisseur ne permet pas de tester les clés ; vérifiez que ses événements arrivent."
+        },
+        "firma": {
+          "titulo": "La signature ne correspond pas",
+          "texto": "Le secret d’événements enregistré n’est pas celui de votre compte fournisseur. Remplacez-le dans Identifiants. Le paiement reste en attente jusqu’à ce que la signature soit valide."
+        },
+        "otro": {
+          "titulo": "L’événement n’a pas pu être traité",
+          "texto": "Consultez le détail de l’erreur ; si elle se répète, testez la connexion."
+        }
+      }
+    },
+    "desarrolladores": {
+      "subtitulo": "Clés API et notifications vers vos systèmes",
+      "avisoTitulo": "Pour connecter vos propres systèmes",
+      "avisoTexto": "Utilisez une clé API pour lire ou créer des données depuis un autre programme, et un webhook pour que GO Admin le prévienne quand quelque chose se produit.",
+      "alcances": {
+        "read_products": "Lire les produits",
+        "write_products": "Modifier les produits",
+        "read_orders": "Lire les commandes",
+        "write_orders": "Modifier les commandes",
+        "read_customers": "Lire les clients",
+        "write_customers": "Modifier les clients",
+        "read_inventory": "Lire les stocks",
+        "write_inventory": "Modifier les stocks",
+        "read_reports": "Lire les rapports",
+        "webhooks": "Webhooks"
+      },
+      "llaves": {
+        "titulo": "Clés API",
+        "nueva": "Nouvelle clé",
+        "crear": "Créer la clé",
+        "faltan": "Saisissez un nom et choisissez au moins une permission",
+        "nombre": "Nom",
+        "nombreEjemplo": "Ex. : Boutique propre",
+        "permisos": "Permissions",
+        "col": {
+          "nombre": "Nom",
+          "llave": "Clé",
+          "permisos": "Permissions",
+          "ultimoUso": "Dernière utilisation",
+          "estado": "Statut"
+        },
+        "creada": "Créée le {fecha}",
+        "sinUso": "Jamais utilisée",
+        "activa": "Active",
+        "revocadaEstado": "Révoquée",
+        "revocar": "Révoquer",
+        "revocada": "La clé « {nombre} » a été révoquée",
+        "revocarTitulo": "Révoquer cette clé ?",
+        "revocarTexto": "Les systèmes utilisant « {nombre} » cesseront de fonctionner immédiatement. Action irréversible.",
+        "vacio": "Aucune clé API pour l’instant",
+        "nota": "La clé complète n’est affichée qu’une fois, à sa création. Ici, vous ne voyez que ses 4 derniers caractères.",
+        "unaVezTitulo": "Copiez votre clé maintenant",
+        "unaVezTexto": "C’est la seule fois où vous la verrez en entier. Conservez-la en lieu sûr.",
+        "noCopiada": "Copie impossible ; sélectionnez-la et copiez-la manuellement"
+      },
+      "webhooks": {
+        "titulo": "Webhooks sortants",
+        "nuevo": "Nouveau webhook",
+        "col": {
+          "direccion": "Adresse",
+          "eventos": "Événements",
+          "ultimoEnvio": "Dernier envoi",
+          "estado": "Statut"
+        },
+        "firmado": "Signé avec le secret {secreto}",
+        "sinFirma": "Sans secret de signature",
+        "nEventos": "{n, plural, one {# événement} other {# événements}}",
+        "pendienteActivar": "En attente d’activation",
+        "respuesta": "réponse {http}",
+        "fallos": "{n, plural, one {# échec consécutif} other {# échecs consécutifs}}",
+        "nunca": "Aucun envoi",
+        "estado": {
+          "activo": "Actif",
+          "inactivo": "Inactif",
+          "fallando": "En échec"
+        },
+        "probar": "Envoyer un test",
+        "pruebaOk": "La destination a répondu {http} en {ms} ms",
+        "pruebaTiempo": "La destination n’a pas répondu en 8 secondes",
+        "pruebaRed": "Impossible de joindre la destination",
+        "pruebaFallo": "La destination a répondu {http}",
+        "vacio": "Aucun webhook sortant pour l’instant"
+      }
+    },
+    "asistente": {
+      "comun": {
+        "titulo": "Connecter {nombre}",
+        "pasoDe": "Étape {n} sur {total} · {texto}",
+        "pasos": "Étapes de la connexion",
+        "resumenPaso": "Étape {n} sur {total} · {etiqueta}"
+      },
+      "llaves": {
+        "tituloReemplazo": "Remplacer les clés de {nombre}",
+        "pasos": {
+          "ambiente": "Environnement",
+          "llaves": "Clés",
+          "prueba": "Test",
+          "webhook": "Webhook",
+          "uso": "Utilisation"
+        },
+        "subtitulos": {
+          "ambiente": "Avec quel compte allez-vous encaisser ?",
+          "llaves": "Copiez vos clés depuis {nombre}",
+          "prueba": "Collez vos clés et testez-les",
+          "webhook": "Indiquez à {nombre} où envoyer les paiements",
+          "uso": "Où voulez-vous encaisser avec {nombre} ?"
+        },
+        "ambientes": {
+          "production": {
+            "titulo": "Production",
+            "descripcion": "Encaissements réels auprès de vos clients avec votre compte {nombre}."
+          },
+          "sandbox": {
+            "titulo": "Test",
+            "descripcion": "Compte de test {nombre} : aucun argent réel ne circule."
+          }
+        },
+        "donde": {
+          "wompi": {
+            "p1": "Connectez-vous à comercios.wompi.co avec votre utilisateur administrateur.",
+            "p2": "Allez dans Développeurs › Clés d'API.",
+            "p3": "Copiez la clé publique et la clé privée de {ambiente}.",
+            "p4": "Dans Développeurs › Secrets, copiez le secret d'événements et celui d'intégrité."
+          },
+          "mercadopago": {
+            "p1": "Ouvrez le tableau de bord développeur de Mercado Pago.",
+            "p2": "Ouvrez votre application (ou créez-en une) et allez dans les identifiants de {ambiente}.",
+            "p3": "Copiez la clé publique et l'access token.",
+            "p4": "Si vous avez configuré des notifications signées, copiez aussi le secret du webhook."
+          },
+          "payu": {
+            "p1": "Connectez-vous au module commerçants de PayU.",
+            "p2": "Allez dans Configuration › Configuration technique.",
+            "p3": "Copiez l'API key, l'API login, l'id du commerçant et l'id du compte."
+          },
+          "stripe": {
+            "p1": "Ouvrez le tableau de bord Stripe.",
+            "p2": "Allez dans Développeurs › Clés d'API ({ambiente}).",
+            "p3": "Copiez la clé publiable et la clé secrète.",
+            "p4": "Si vous avez déjà créé le webhook, copiez son secret de signature (whsec_…)."
+          },
+          "paypal": {
+            "p1": "Ouvrez le tableau de bord développeur de PayPal.",
+            "p2": "Ouvrez votre application en {ambiente}.",
+            "p3": "Copiez le client id et le secret.",
+            "p4": "Si vous avez déjà créé le webhook, copiez son id."
+          },
+          "sendgrid": {
+            "p1": "Allez dans SendGrid › Settings › API Keys.",
+            "p2": "Créez une clé avec le droit d'envoi d'e-mails.",
+            "p3": "Copiez-la et saisissez l'expéditeur vérifié que vous utiliserez."
+          }
+        },
+        "abrirPanel": "Ouvrir le tableau de bord de {nombre} dans un nouvel onglet",
+        "nuncaCompartas": {
+          "titulo": "Ne partagez jamais vos clés privées par chat ou e-mail",
+          "descripcion": "Collez-les uniquement ici. GO Admin les conserve sur le serveur et ne les affiche plus jamais, même pas à vous."
+        },
+        "yaLasTengo": "Je les ai",
+        "campos": {
+          "public_key": "Clé publique",
+          "private_key": "Clé privée",
+          "events_secret": "Secret d'événements",
+          "integrity_secret": "Secret d'intégrité",
+          "access_token": "Access token",
+          "webhook_secret": "Secret du webhook",
+          "api_key": "API key",
+          "api_login": "API login",
+          "merchant_id": "Id du commerçant",
+          "account_id": "Id du compte",
+          "publishable_key": "Clé publiable",
+          "secret_key": "Clé secrète",
+          "client_id": "Client id",
+          "client_secret": "Client secret",
+          "webhook_id": "Id du webhook",
+          "from_email": "E-mail de l'expéditeur",
+          "from_name": "Nom de l'expéditeur",
+          "identity_key": "Clé d'identité",
+          "machine_client_id": "Utilisateur machine",
+          "machine_client_secret": "Secret machine"
+        },
+        "empiezaPor": "Commence par {prefijo}",
+        "seCifra": "conservée sur le serveur",
+        "formato": {
+          "requerido": "Ce champ est obligatoire",
+          "prefijo": "Doit commencer par {prefijo}",
+          "largo": "C'est trop long"
+        },
+        "notaServidor": "Elles sont envoyées par connexion sécurisée au serveur, qui les teste auprès du fournisseur avant de les enregistrer. Ensuite vous ne verrez que les 4 derniers caractères.",
+        "probarLlaves": "Tester les clés",
+        "probando": "Test avec {nombre}…",
+        "errorGuardar": "Les clés n'ont pas pu être enregistrées",
+        "pendienteActivar": {
+          "titulo": "En attente d'activation",
+          "descripcion": "Ce fournisseur sera prêt quand GO Admin activera la mise à jour des identifiants. Vos clés n'ont pas été enregistrées."
+        },
+        "fallo": {
+          "subtitulo": "Nous n'avons pas pu nous connecter",
+          "rechazada": {
+            "titulo": "{nombre} a refusé les clés (HTTP {http})",
+            "descripcion": "Vérifiez qu'elles proviennent toutes du même commerçant et de l'environnement choisi. Rien n'a été enregistré."
+          },
+          "sinRespuesta": {
+            "titulo": "{nombre} n'a pas répondu",
+            "descripcion": "Nous ne savons pas si les clés sont correctes : rien n'a été enregistré. Réessayez dans quelques minutes."
+          },
+          "sinPrueba": {
+            "titulo": "{nombre} n'a pas de test automatique",
+            "descripcion": "Rien n'a été enregistré."
+          }
+        },
+        "verificacion": {
+          "listo": "Prêt",
+          "rechazada": "Refusée",
+          "sin_probar": "Non testée"
+        },
+        "cambiarLlaves": "Changer les clés",
+        "webhook": {
+          "p1": "Copiez cette adresse.",
+          "donde": {
+            "wompi": "Dans Wompi, allez dans Développeurs › Événements et collez-la dans « URL d'événements ».",
+            "mercadopago": "Dans Mercado Pago, allez dans votre application › Webhooks et collez-la comme URL de production.",
+            "payu": "Dans PayU, collez-la comme URL de confirmation de votre compte.",
+            "stripe": "Dans Stripe, allez dans Développeurs › Webhooks › Ajouter un endpoint et collez-la.",
+            "paypal": "Dans PayPal, ouvrez votre application › Webhooks › Ajouter un webhook et collez-la.",
+            "sendgrid": "Dans SendGrid, allez dans Settings › Mail Settings › Event Webhook et collez-la."
+          },
+          "p3": "Enregistrez dans {nombre} et revenez ici.",
+          "sinUrl": "Ce fournisseur n'envoie pas d'avis à GO Admin",
+          "esperando": "En attente du premier événement de {nombre}… vous pouvez continuer, nous vérifierons plus tard.",
+          "recibido": "Le premier événement de {nombre} est arrivé.",
+          "sinEventos": "Aucun événement",
+          "conEventos": "Réception",
+          "despues": "Je le ferai plus tard"
+        },
+        "uso": {
+          "tienda": {
+            "titulo": "Boutique en ligne",
+            "descripcion": "Bouton de paiement au checkout de votre boutique."
+          },
+          "pos": {
+            "titulo": "Point de vente",
+            "descripcion": "QR et lien de paiement à la caisse."
+          },
+          "metodo": "Elle est liée au moyen de paiement « {metodo} » sans toucher aux autres moyens ni à leurs réglages.",
+          "cuentaDinero": {
+            "titulo": "Sur quel compte arrive l'argent ?",
+            "descripcion": "Le compte de trésorerie et la comptabilité du moyen se définissent dans Finances › Moyens de paiement."
+          },
+          "irMetodos": "Aller aux moyens de paiement",
+          "enUso": "Le moyen de paiement encaisse déjà avec une autre connexion",
+          "error": "Le moyen de paiement n'a pas pu être lié",
+          "omitir": "Le faire plus tard",
+          "guardar": "Enregistrer et activer"
+        },
+        "listo": {
+          "subtitulo": "Connexion active",
+          "titulo": "{nombre} est connecté",
+          "reemplazadas": "Les nouvelles clés ont été enregistrées",
+          "descripcion": "Le fournisseur a accepté les clés et elles ont été enregistrées sur le serveur. Vous ne verrez que leurs 4 derniers caractères.",
+          "webhookPendiente": "Quand le premier événement arrivera, vous le verrez dans Activité.",
+          "verConexion": "Voir la connexion"
+        }
+      },
+      "ota": {
+        "pasos": {
+          "modo": "Mode",
+          "autorizar": "Autoriser",
+          "verificar": "Vérifier",
+          "habitaciones": "Chambres",
+          "sincronizar": "Synchroniser",
+          "calendarios": "Calendriers"
+        },
+        "subtitulos": {
+          "modo": "Choisissez comment connecter",
+          "autorizar": "Autorisez GO Admin dans votre extranet",
+          "verificar": "Nous vérifions l'autorisation",
+          "habitaciones": "Associez vos chambres",
+          "sincronizar": "Première synchronisation",
+          "calendarios": "Calendriers par logement"
+        },
+        "modo": {
+          "api": {
+            "titulo": "Connexion complète",
+            "descripcion": "Réservations, disponibilités et tarifs en temps réel, avec les données du client."
+          },
+          "ical": {
+            "titulo": "Calendrier seul (iCal)",
+            "descripcion": "Croise périodiquement les dates occupées. Ni tarifs ni données du client."
+          }
+        },
+        "cuentaSocio": {
+          "titulo": "La connexion complète avec {nombre} n'est pas encore disponible",
+          "descripcion": "{nombre} la réserve aux fournisseurs de connectivité agréés et GO Admin n'a pas encore ce compte partenaire. En attendant, vous pouvez utiliser le calendrier iCal pour éviter les doubles réservations."
+        },
+        "autorizar": {
+          "booking": {
+            "p1": "Connectez-vous à l'extranet de Booking.com avec l'utilisateur principal de l'établissement.",
+            "p2": "Allez dans Compte › Fournisseur de connectivité et cherchez GO Admin.",
+            "p3": "Acceptez les droits sur les réservations, disponibilités et tarifs.",
+            "propiedad": "Id de l'établissement sur Booking.com",
+            "ayudaPropiedad": "Il apparaît en haut de l'extranet, à côté du nom de l'établissement."
+          },
+          "expedia": {
+            "p1": "Connectez-vous à Expedia Partner Central avec l'utilisateur principal de la propriété.",
+            "p2": "Allez dans Compte › Fournisseur de connectivité et choisissez GO Admin.",
+            "p3": "Acceptez les droits sur les réservations et disponibilités.",
+            "propiedad": "Id de la propriété sur Expedia",
+            "ayudaPropiedad": "Il apparaît dans Partner Central, dans les données de la propriété."
+          }
+        },
+        "yaAutorice": "J'ai autorisé",
+        "verificar": {
+          "explicacion": "Nous allons demander à {nombre} un accès réel à l'établissement {propiedad}.",
+          "boton": "Vérifier",
+          "ok": {
+            "titulo": "{nombre} a confirmé l'autorisation",
+            "descripcion": "Établissement {propiedad} connecté."
+          },
+          "sinAutorizar": {
+            "titulo": "Pas encore autorisé",
+            "descripcion": "{nombre} n'a pas donné accès. Vérifiez l'autorisation dans l'extranet et réessayez."
+          },
+          "yaExiste": "Cet établissement est déjà connecté",
+          "error": "Impossible de vérifier"
+        },
+        "usarIcal": "Utiliser le calendrier seul (iCal)",
+        "habitaciones": {
+          "explicacion": "À côté de chaque espace, saisissez l'id de la chambre sur {nombre}. Ce qui n'est pas associé ne reçoit ni réservations ni disponibilités.",
+          "idExterno": "Id {nombre} pour {espacio}",
+          "placeholder": "Id sur {nombre}",
+          "sinRelacionar": "{n, plural, one {# espace non associé} other {# espaces non associés}}",
+          "sinRelacionarDescripcion": "Ils ne recevront pas de réservations {nombre} tant qu'ils ne seront pas associés. Vous pouvez le faire plus tard."
+        },
+        "errorGuardar": "Impossible d'enregistrer",
+        "sincronizar": {
+          "explicacion": "Nous récupérons les réservations nouvelles et modifiées de {nombre}.",
+          "reservas": "Réservations",
+          "boton": "Synchroniser maintenant",
+          "estado": {
+            "sinIniciar": "Non démarrée",
+            "pendiente": "Synchronisation",
+            "ok": "Terminée",
+            "error": "Échec"
+          },
+          "fallo": "La synchronisation a échoué",
+          "falloDescripcion": "La connexion est enregistrée. Réessayez ou consultez l'activité."
+        },
+        "verConexion": "Voir la connexion"
+      },
+      "ical": {
+        "subtitulo": "Calendrier iCal · par logement",
+        "explicacion": "{nombre} partage le calendrier par liens iCal : les dates occupées sont croisées périodiquement. Ni tarifs ni données du client.",
+        "canalNoSoportado": "Ce canal n'a pas de calendrier iCal",
+        "sinEspacios": {
+          "titulo": "Il n'y a pas d'espaces dans le PMS",
+          "descripcion": "Créez d'abord vos chambres ou logements pour associer leur calendrier.",
+          "accion": "Aller aux espaces"
+        },
+        "sinEnlace": "Sans lien",
+        "conError": "Avec erreur",
+        "enlaceDe": "Lien {nombre}",
+        "dondeImportar": {
+          "airbnb": "Dans Airbnb : Calendrier › Disponibilités › Connecter des calendriers › Exporter le calendrier.",
+          "booking": "Dans l'extranet de Booking.com : Tarifs et disponibilités › Synchroniser les calendriers › Exporter.",
+          "expedia": "Dans Partner Central : Tarifs et inventaire › Synchronisation des calendriers › Exporter.",
+          "tripadvisor": "Dans Tripadvisor Rentals : Calendrier › Synchroniser › Exporter le calendrier.",
+          "google_vacation_rentals": "Dans votre gestionnaire Google Vacation Rentals, copiez le lien iCal d'export.",
+          "generico": "Copiez le lien iCal d'export depuis {nombre}."
+        },
+        "urlInvalida": "Ce doit être un lien https://",
+        "enlaceGoAdmin": "Lien GO Admin · collez-le dans {nombre} › Importer un calendrier",
+        "guardar": "Enregistrer les calendriers",
+        "errorGuardar": "Les calendriers n'ont pas pu être enregistrés",
+        "guardados": "Calendriers enregistrés",
+        "sincronizando": "Première synchronisation en cours…",
+        "sincronizado": "Première synchronisation terminée.",
+        "sincronizacionFallo": "Ils sont enregistrés, mais la première synchronisation a échoué. Elle sera relancée la prochaine fois.",
+        "limite": {
+          "titulo": "Pour les tarifs et réservations en temps réel",
+          "descripcion": "{nombre} ne propose la connexion complète qu'aux fournisseurs agréés. En attendant, le calendrier évite les doubles réservations."
+        },
+        "listo": "Terminé"
+      },
+      "domicilios": {
+        "pasos": {
+          "tienda": "Boutique",
+          "menu": "Menu",
+          "pedidos": "Commandes",
+          "horario": "Horaires"
+        },
+        "subtitulos": {
+          "tienda": "Votre boutique sur {nombre}",
+          "menu": "Votre menu sur {nombre}",
+          "pedidos": "Comment arrivent les commandes",
+          "horario": "Horaires et pauses"
+        },
+        "sinCuenta": {
+          "titulo": "Il manque le compte partenaire de GO Admin avec {nombre}",
+          "descripcion": "{nombre} ne donne son API qu'aux intégrateurs agréés et GO Admin n'a pas encore ce compte. Ce parcours montre comment cela fonctionnera ; rien n'est enregistré."
+        },
+        "explicacion": {
+          "tienda": {
+            "p1": "Vous choisissez la succursale qui reçoit les commandes {nombre}.",
+            "p2": "Vous saisissez l'id de votre boutique depuis le portail partenaires de {nombre}.",
+            "p3": "GO Admin teste la connexion avant de l'activer."
+          },
+          "menu": {
+            "p1": "Vous choisissez quels produits de l'inventaire sont publiés sur {nombre}.",
+            "p2": "Les prix et les stocks se mettent à jour seuls.",
+            "p3": "Un produit épuisé est mis en pause sur {nombre} automatiquement."
+          },
+          "pedidos": {
+            "p1": "Les commandes arrivent directement au point de vente et en cuisine.",
+            "p2": "Vous acceptez ou refusez la commande depuis la caisse.",
+            "p3": "La vente est enregistrée avec le canal {nombre}."
+          },
+          "horario": {
+            "p1": "Les horaires de la boutique viennent de ceux de la succursale.",
+            "p2": "Vous pouvez mettre {nombre} en pause quand la cuisine est pleine.",
+            "p3": "Les jours fériés sont respectés automatiquement."
+          }
+        },
+        "activar": "Activer",
+        "disponibleCuando": "Disponible quand GO Admin aura le compte partenaire."
+      },
+      "oauth": {
+        "subtitulo": "Connectez-vous avec votre compte {nombre}",
+        "queSeEnvia": "Ce qui est envoyé",
+        "envia": {
+          "meta": {
+            "p1": "Votre catalogue de produits avec prix, photo et stock.",
+            "p2": "Les achats de la boutique en ligne comme conversions du pixel.",
+            "p3": "Rien n'est publié comme publicité sans que vous le créiez dans Meta."
+          },
+          "tiktok": {
+            "p1": "Votre catalogue de produits pour TikTok Shop et les publicités.",
+            "p2": "Les achats de la boutique en ligne comme événements du pixel.",
+            "p3": "Rien n'est publié sans que vous le créiez dans TikTok."
+          },
+          "google_ads": {
+            "p1": "Les achats de la boutique en ligne comme conversions.",
+            "p2": "Des listes de clients pour les audiences, chiffrées avant l'envoi.",
+            "p3": "Aucune campagne n'est créée ni modifiée."
+          }
+        },
+        "noSeEnvia": {
+          "titulo": "Ce qui n'est pas envoyé",
+          "descripcion": "Ni données de carte ni mots de passe. GO Admin ne reçoit que l'autorisation que vous approuvez dans {nombre}, et vous pouvez la retirer à tout moment."
+        },
+        "iniciarSesion": "Se connecter avec {nombre}",
+        "sinApp": {
+          "titulo": "En construction : l'application {nombre} n'est pas configurée sur le serveur",
+          "descripcion": "GO Admin n'a pas encore activé son application {nombre}. Quand elle sera prête, vous pourrez vous connecter d'ici."
+        },
+        "error": "La connexion n'a pas pu démarrer. Réessayez."
+      }
+    },
+    "detalle": {
+      "migas": {
+        "integraciones": "Intégrations",
+        "conexiones": "Connexions"
+      },
+      "desde": "depuis le {fecha}",
+      "ultimaPrueba": "Dernier test : {fecha}",
+      "sinPruebas": "Aucun test",
+      "errores24h": "{n, plural, =0 {aucune erreur en 24 h} one {# erreur en 24 h} other {# erreurs en 24 h}}",
+      "probar": "Tester",
+      "probando": "Test en cours…",
+      "pausar": "Mettre en pause",
+      "reanudar": "Reprendre",
+      "errorAccion": "L'action n'a pas pu être effectuée",
+      "noEncontrada": "Connexion introuvable",
+      "noEncontradaDescripcion": "Elle n'existe pas ou n'appartient pas à votre organisation.",
+      "volver": "Retour aux connexions",
+      "estados": {
+        "connected": "Connecté",
+        "paused": "En pause",
+        "error": "Avec erreurs",
+        "draft": "Brouillon",
+        "revoked": "Déconnectée"
+      },
+      "pestanas": {
+        "etiqueta": "Sections de la connexion",
+        "resumen": "Résumé",
+        "credenciales": "Identifiants",
+        "actividad": "Activité"
+      },
+      "prueba": {
+        "correcta": {
+          "titulo": "{nombre} a accepté les identifiants",
+          "descripcion": "Le test a appelé le fournisseur et il a bien répondu."
+        },
+        "rechazada": {
+          "titulo": "{nombre} a refusé les identifiants (HTTP {http})",
+          "descripcion": "Remplacez-les depuis Identifiants. L'état de la connexion n'a pas changé."
+        },
+        "sin_respuesta": {
+          "titulo": "{nombre} n'a pas répondu",
+          "descripcion": "Nous ne savons pas si les identifiants sont bons. L'état de la connexion n'a pas changé ; réessayez dans quelques minutes."
+        },
+        "sin_prueba": {
+          "titulo": "{nombre} n'a pas de test automatique",
+          "descripcion": "Consultez son activité : les événements reçus confirment qu'elle fonctionne."
+        }
+      },
+      "ultimoError": {
+        "titulo": "Dernière erreur",
+        "verActividad": "Voir l'activité"
+      },
+      "webhook": {
+        "titulo": "URL du webhook",
+        "descripcion": "Collez-la dans le tableau de bord de {nombre} pour recevoir ses avis."
+      },
+      "eventos": {
+        "titulo": "Derniers événements",
+        "verTodo": "Voir toute l'activité",
+        "hora": "Heure",
+        "evento": "Événement",
+        "sentido": "Sens",
+        "resultado": "Résultat",
+        "entrada": "{nombre} → GO Admin",
+        "salida": "GO Admin → {nombre}"
+      },
+      "sinEventos": "Il n'y a pas encore d'événements pour cette connexion.",
+      "tiposEvento": {
+        "prueba_de_conexion": "Test de connexion",
+        "prueba_de_llaves_nuevas": "Test des nouvelles clés",
+        "llaves_reemplazadas": "Clés remplacées",
+        "transaction.updated": "Paiement mis à jour"
+      },
+      "estadosEvento": {
+        "received": "Reçu",
+        "processed": "Correct",
+        "error": "Erreur"
+      },
+      "credenciales": {
+        "titulo": "Identifiants",
+        "reemplazar": "Remplacer",
+        "ninguna": "Aucun identifiant enregistré.",
+        "enBoveda": "Coffre chiffré",
+        "enConexion": "Registre de la connexion",
+        "actualizada": "mise à jour le {fecha}",
+        "nota": "Seuls le préfixe et les derniers caractères sont affichés. GO Admin n'affiche plus jamais une clé complète."
+      },
+      "usadaPor": {
+        "titulo": "Utilisée par",
+        "ninguno": "Aucun moyen de paiement ne l'utilise encore.",
+        "metodo": "Moyen de paiement « {metodo} »",
+        "tiendaWeb": "Boutique en ligne",
+        "soloInterno": "Point de vente"
+      },
+      "peligro": {
+        "titulo": "Zone de danger",
+        "descripcion": "Déconnecter révoque les identifiants enregistrés et délie les moyens de paiement. Les paiements et réservations déjà enregistrés sont conservés.",
+        "boton": "Déconnecter {nombre}"
+      },
+      "confirmarPausa": {
+        "titulo": "Mettre {nombre} en pause ?",
+        "descripcion": "Pendant la pause, cette connexion n'encaissera pas et ne recevra pas d'événements, ni au point de vente ni dans la boutique en ligne."
+      },
+      "confirmarDesconexion": {
+        "titulo": "Déconnecter {nombre} ?",
+        "descripcion": "Les identifiants sont révoqués (irrécupérables) et les moyens de paiement qui l'utilisent sont déliés. Pour vous reconnecter, il faudra coller de nouvelles clés."
+      }
     }
   }
 }

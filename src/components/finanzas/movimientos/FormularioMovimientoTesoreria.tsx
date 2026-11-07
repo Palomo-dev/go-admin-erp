@@ -20,7 +20,7 @@
  * de la caja viene del servidor con el cierre ciego aplicado), y la regla del
  * dueño: superar el disponible BLOQUEA en bancos y AVISA en caja.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Paperclip } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
@@ -108,6 +108,12 @@ export interface FormularioMovimientoTesoreriaProps {
   permitirCambiarTipo?: boolean;
   /** «Traslado» abre el diálogo de transferencia (solo con `permitirCambiarTipo`). */
   onTraslado?: () => void;
+  /**
+   * Abre con una categoría ya elegida (y su cuenta) y, si se pide, con el
+   * tercero obligatorio. La usa Dinero de terceros para registrar y liquidar
+   * recaudos con la cuenta de recaudos (2815) sin otra pantalla de alta.
+   */
+  preseleccion?: { categoriaId?: number | null; exigirTercero?: boolean };
 }
 
 export function FormularioMovimientoTesoreria({
@@ -117,6 +123,7 @@ export function FormularioMovimientoTesoreria({
   onSuccess,
   permitirCambiarTipo = false,
   onTraslado,
+  preseleccion,
 }: FormularioMovimientoTesoreriaProps) {
   const t = useTranslations('tesoreria');
   const tf = useTranslations('finanzasTesoreriaR3.formulario');
@@ -159,7 +166,8 @@ export function FormularioMovimientoTesoreria({
   const modoCentro = cuentaElegida?.centro_costo_modo
     ?? (cuentaElegida?.requiere_centro_costo ? 'obligatorio' : null);
   const exigeCentro = modoCentro === 'obligatorio' && centros.length > 0 && !distribucionId;
-  const exigeTercero = cuentaElegida?.requiere_tercero === true;
+  const exigeTercero = cuentaElegida?.requiere_tercero === true || preseleccion?.exigirTercero === true;
+  const preseleccionAplicada = useRef(false);
 
   useAtajos(
     [{ tecla: 'F2', descripcion: t('movimiento.tercero'), accion: () => setTerceroAbierto(true), permitirEnCampo: true }],
@@ -314,6 +322,20 @@ export function FormularioMovimientoTesoreria({
     else if (categoria.rol) setCuenta('');
     if (!conceptoTocado) setConcepto(categoria.nombre);
   };
+
+  // Preselección (una vez por apertura): la categoría pedida, si está entre las imputables del tipo.
+  useEffect(() => {
+    if (!open) {
+      preseleccionAplicada.current = false;
+      return;
+    }
+    const id = preseleccion?.categoriaId;
+    if (preseleccionAplicada.current || !id || !categorias.some((fila) => fila.id === id)) return;
+    preseleccionAplicada.current = true;
+    elegirCategoria(id);
+    // elegirCategoria depende de las categorías ya cargadas; se aplica cuando llegan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, categorias, preseleccion?.categoriaId]);
 
   useEffect(() => {
     if (!open || !cuenta) {

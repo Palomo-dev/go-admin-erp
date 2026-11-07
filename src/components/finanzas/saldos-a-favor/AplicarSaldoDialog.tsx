@@ -1,7 +1,9 @@
 'use client';
 
 /**
- * Aplicar un saldo a favor a una factura del cliente (Figma `1020:91650`).
+ * Aplicar un saldo a favor a una factura del cliente (Figma `1020:91650`) o un
+ * anticipo a una cuenta por pagar del proveedor (Figma `2335:140495`, «Aplicar
+ * a factura»): UNA pieza, el `adaptador` pone textos y servicio.
  *
  * Facturas abiertas del cliente leídas en el servidor con la regla del pago
  * único (`GET /api/saldos-a-favor/contexto?cliente=`) y aplicación en UNA RPC
@@ -18,18 +20,22 @@ import { toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { montoPropuesto, validarMonto, type FilaListadoSaldo } from '@/lib/finanzas/saldosAFavor/listadoLogica';
-import { nuevaClaveIdempotencia, saldosAFavorService, type FacturaPendiente } from './saldosAFavorService';
+import { nuevaClaveIdempotencia, type FacturaPendiente } from './saldosAFavorService';
+import { ADAPTADOR_CLIENTE, type AdaptadorSaldos } from './adaptadorSaldos';
 import { textoErrorSaldo } from './textosSaldo';
 
 export interface AplicarSaldoDialogProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
+  /** `clienteId`/`cliente`: el tercero del saldo (el proveedor en la variante de proveedor). */
   saldo: Pick<FilaListadoSaldo, 'id' | 'clienteId' | 'cliente' | 'disponible'> | null;
   onAplicado: () => void;
+  /** Cliente (por defecto) o proveedor. */
+  adaptador?: AdaptadorSaldos;
 }
 
-export function AplicarSaldoDialog({ abierto, onAbiertoChange, saldo, onAplicado }: AplicarSaldoDialogProps) {
-  const t = useTranslations('finanzasDocumentosR3.saldos');
+export function AplicarSaldoDialog({ abierto, onAbiertoChange, saldo, onAplicado, adaptador = ADAPTADOR_CLIENTE }: AplicarSaldoDialogProps) {
+  const t = useTranslations(adaptador.namespace);
   const moneda = useMonedaOrganizacion();
   const { formatDate } = useFormatDate();
   const [facturas, setFacturas] = useState<FacturaPendiente[] | null>(null);
@@ -51,8 +57,8 @@ export function AplicarSaldoDialog({ abierto, onAbiertoChange, saldo, onAplicado
     setError(null);
     setTocado(false);
     clave.current = nuevaClaveIdempotencia('aplicar');
-    saldosAFavorService
-      .listarFacturasPendientes(saldo.clienteId)
+    adaptador
+      .documentosAbiertos(saldo.clienteId)
       .then((f) => vigente && setFacturas(f))
       .catch(() => {
         if (!vigente) return;
@@ -62,7 +68,7 @@ export function AplicarSaldoDialog({ abierto, onAbiertoChange, saldo, onAplicado
     return () => {
       vigente = false;
     };
-  }, [abierto, saldo]);
+  }, [abierto, saldo, adaptador]);
 
   const factura = useMemo(() => facturas?.find((f) => f.id === facturaId) ?? null, [facturas, facturaId]);
   const disponible = saldo?.disponible ?? 0;
@@ -82,7 +88,7 @@ export function AplicarSaldoDialog({ abierto, onAbiertoChange, saldo, onAplicado
     setEnviando(true);
     setError(null);
     try {
-      await saldosAFavorService.aplicar({ creditId: saldo.id, invoiceId: factura.id, amount: monto, claveIdempotencia: clave.current });
+      await adaptador.aplicar({ saldoId: saldo.id, documentoId: factura.id, monto, claveIdempotencia: clave.current });
       toastSuccess(t('aplicar.exito', { monto: moneda.formatear(monto), factura: factura.number }));
       onAbiertoChange(false);
       onAplicado();

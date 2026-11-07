@@ -1,0 +1,273 @@
+/**
+ * Frente R4-B — lógica sin React de consignaciones, dinero de terceros y
+ * anticipos a proveedores, y la regla «una pieza para varias páginas»: el
+ * anticipo a proveedor usa LOS MISMOS diálogos del saldo a favor de clientes,
+ * y su namespace trae todas las claves que esos diálogos piden.
+ */
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import {
+  BADGE_ESTADO_NOTA,
+  codigoErrorConsignacion,
+  enSuPoder,
+  entregarSchema,
+  estadoHttpErrorConsignacion,
+  filtrarNotas,
+  kpisConsignaciones,
+  liquidacionValida,
+  liquidarSchema,
+  resumenLiquidacion,
+  validarLineaLiquidacion,
+  type NotaConsignacion,
+} from '@/lib/finanzas/consignaciones/consignaciones';
+import {
+  esCuentaPasivo,
+  hayCuentaPorDefinir,
+  resumirPropinas,
+  resumirRecaudos,
+  totalPorPagar,
+  type ConceptoTerceros,
+} from '@/lib/finanzas/dineroTerceros/dineroTercerosLogica';
+import {
+  accionesAnticipo,
+  codigoErrorAnticipo,
+  crearAnticipoSchema,
+  esPendienteDeActivar,
+  estadoAnticipo,
+  estadoHttpErrorAnticipo,
+  filtrarAnticipos,
+  totalesAnticipos,
+  type FilaAnticipoProveedor,
+} from '@/lib/finanzas/anticiposProveedor/contrato';
+import { CLAVES_ETIQUETA_ESTADO } from '@/components/kit/estadoTono';
+
+const raiz = process.cwd();
+const leer = (ruta: string) => readFileSync(join(raiz, ruta), 'utf-8');
+
+// ─── Consignaciones ─────────────────────────────────────────────────────────
+
+const nota = (extra: Partial<NotaConsignacion> = {}): NotaConsignacion => ({
+  id: 'n1',
+  numero: 'NCO-0011',
+  clienteId: 'c1',
+  consignatario: 'Almacén del centro',
+  sucursalId: 7,
+  ubicacion: null,
+  comisionPct: 10,
+  estado: 'en_consignacion',
+  costoTotal: 2400000,
+  fecha: '2026-10-15T12:00:00Z',
+  lineas: [
+    { id: 'l1', productoId: 1, producto: 'Zapatilla', entregado: 40, vendido: 30, devuelto: 5, costoUnitario: 30000 },
+    { id: 'l2', productoId: 2, producto: 'Camiseta', entregado: 40, vendido: 20, devuelto: 0, costoUnitario: 30000 },
+  ],
+  liquidaciones: [],
+  ...extra,
+});
+
+describe('consignaciones', () => {
+  test('en su poder = entregado − vendido − devuelto (Figma: 40 − 30 − 5 = 5)', () => {
+    expect(enSuPoder(nota().lineas[0])).toBe(5);
+    expect(enSuPoder({ entregado: 1, vendido: 1, devuelto: 1 })).toBe(0);
+  });
+
+  test('liquidación del Figma: venta 2.100.000, comisión 10 % = 210.000, neto 1.890.000', () => {
+    const r = resumenLiquidacion(
+      [
+        { lineaId: 'l1', vendido: 30, precio: 60000, devuelto: 5 },
+        { lineaId: 'l2', vendido: 20, precio: 15000, devuelto: 0 },
+      ],
+      10,
+    );
+    expect(r).toEqual({ venta: 2100000, comision: 210000, neto: 1890000 });
+  });
+
+  test('una fila no puede vender más de lo que tiene en su poder, y lo vendido lleva precio', () => {
+    const l = { entregado: 40, vendido: 30, devuelto: 5 };
+    expect(validarLineaLiquidacion({ lineaId: 'l1', vendido: 4, precio: 1, devuelto: 1 }, l)).toBeNull();
+    expect(validarLineaLiquidacion({ lineaId: 'l1', vendido: 5, precio: 1, devuelto: 1 }, l)).toBe('excede');
+    expect(validarLineaLiquidacion({ lineaId: 'l1', vendido: 1, precio: 0, devuelto: 0 }, l)).toBe('precio');
+    expect(validarLineaLiquidacion({ lineaId: 'l1', vendido: 0, precio: 0, devuelto: 2 }, l)).toBeNull();
+  });
+
+  test('liquidar exige alguna fila con movimiento y ninguna inválida', () => {
+    const mapa = new Map(nota().lineas.map((l) => [l.id, l]));
+    expect(liquidacionValida([{ lineaId: 'l1', vendido: 0, precio: 0, devuelto: 0 }], mapa)).toBe(false);
+    expect(liquidacionValida([{ lineaId: 'l1', vendido: 0, precio: 0, devuelto: 5 }], mapa)).toBe(true);
+    expect(liquidacionValida([{ lineaId: 'zz', vendido: 0, precio: 0, devuelto: 1 }], mapa)).toBe(false);
+  });
+
+  test('KPIs: entregado a costo de lo que sigue en su poder, vendido sin liquidar, devuelto y por cobrar neto', () => {
+    const k = kpisConsignaciones([
+      nota({
+        liquidaciones: [
+          { id: 'q1', estado: 'por_facturar', venta: 2100000, comisionPct: 10, comision: 210000, neto: 1890000, costoDevuelto: 0, facturaId: null, facturaNumero: null, facturaSaldo: null, desde: null, hasta: null, creada: '2026-11-01' },
+          { id: 'q0', estado: 'liquidada', venta: 500000, comisionPct: 10, comision: 50000, neto: 450000, costoDevuelto: 0, facturaId: 'f', facturaNumero: 'FV-1', facturaSaldo: 100000, desde: null, hasta: null, creada: '2026-10-20' },
+        ],
+      }),
+    ]);
+    // En su poder: 5 + 20 unidades × 30.000.
+    expect(k.entregado).toBe(750000);
+    expect(k.vendidoSinLiquidar).toBe(2100000);
+    expect(k.devuelto).toBe(150000);
+    expect(k.porCobrar).toBe(1890000 + 100000);
+  });
+
+  test('búsqueda por número o consignatario, y estado', () => {
+    const notas = [nota(), nota({ id: 'n2', numero: 'NCO-0012', consignatario: 'Tienda norte', estado: 'liquidada' })];
+    expect(filtrarNotas(notas, '0012', null).map((n) => n.id)).toEqual(['n2']);
+    expect(filtrarNotas(notas, 'almacén', null).map((n) => n.id)).toEqual(['n1']);
+    expect(filtrarNotas(notas, '', 'liquidada').map((n) => n.id)).toEqual(['n2']);
+  });
+
+  test('los estados de la nota tienen badge conocido por el kit', () => {
+    const normal = (s: string) => s.toLowerCase().replace(/[\s_]/g, '');
+    const conocidas = new Set([...CLAVES_ETIQUETA_ESTADO].map(normal));
+    for (const v of Object.values(BADGE_ESTADO_NOTA)) expect(conocidas.has(normal(v))).toBe(true);
+  });
+
+  test('cuerpos estrictos: ni organización ni cuentas contables desde el navegador', () => {
+    const base = { cliente_id: '11111111-2222-4333-8444-555555555555', sucursal_id: 7, comision: 15, lineas: [{ product_id: 1, qty: 2 }], clave_idempotencia: 'consignacion:1' };
+    expect(entregarSchema.safeParse(base).success).toBe(true);
+    expect(entregarSchema.safeParse({ ...base, cuenta: '1465' }).success).toBe(false);
+    expect(entregarSchema.safeParse({ ...base, comision: 120 }).success).toBe(false);
+    expect(liquidarSchema.safeParse({ lineas: [], clave_idempotencia: 'liquidar:1' }).success).toBe(false);
+  });
+
+  test('códigos de error estables y estado HTTP', () => {
+    expect(codigoErrorConsignacion('excede_en_su_poder')).toBe('excede_en_su_poder');
+    expect(codigoErrorConsignacion('stock_insuficiente')).toBe('stock_insuficiente');
+    expect(codigoErrorConsignacion('algo raro')).toBe('error_desconocido');
+    expect(estadoHttpErrorConsignacion('pendiente_de_activar')).toBe(501);
+    expect(estadoHttpErrorConsignacion('liquidacion_pendiente')).toBe(409);
+  });
+});
+
+// ─── Dinero de terceros ─────────────────────────────────────────────────────
+
+describe('dinero de terceros', () => {
+  test('propinas: recibido sin anuladas, liquidado = repartidas', () => {
+    expect(
+      resumirPropinas([
+        { amount: 1000, is_distributed: true, voided_at: null },
+        { amount: '500', is_distributed: false, voided_at: null },
+        { amount: 900, is_distributed: false, voided_at: '2026-11-01' },
+      ]),
+    ).toEqual({ recibido: 1500, liquidado: 1000, porPagar: 500 });
+  });
+
+  test('recaudos por tercero desde el auxiliar: crédito recibido, débito liquidado, mayor deuda primero', () => {
+    const r = resumirRecaudos([
+      { tercero_nit: '900', tercero_nombre: 'Tercero A', debit: 100, credit: 300 },
+      { tercero_nit: '800', tercero_nombre: 'Tercero B', debit: 0, credit: 1000 },
+      { tercero_nit: '900', tercero_nombre: null, debit: '50', credit: '0' },
+    ]);
+    expect(r.recibido).toBe(1300);
+    expect(r.liquidado).toBe(150);
+    expect(r.porPagar).toBe(1150);
+    expect(r.terceros.map((t) => [t.nit, t.porPagar])).toEqual([
+      ['800', 1000],
+      ['900', 150],
+    ]);
+  });
+
+  test('la cuenta de terceros es de pasivo; si la de propinas es gasto, se avisa', () => {
+    expect(esCuentaPasivo('2815')).toBe(true);
+    expect(esCuentaPasivo('510506')).toBe(false);
+    expect(esCuentaPasivo(null)).toBe(false);
+    const c = (extra: Partial<ConceptoTerceros>): ConceptoTerceros => ({
+      clave: 'recaudos', recibido: 0, liquidado: 0, porPagar: 10, cuenta: '2815', cuentaConfirmada: true, cuentaNoEsPasivo: false, terceros: [], ...extra,
+    });
+    expect(hayCuentaPorDefinir([c({})])).toBe(false);
+    expect(hayCuentaPorDefinir([c({ clave: 'propinas', cuenta: '5105', cuentaNoEsPasivo: true, cuentaConfirmada: false })])).toBe(true);
+    expect(totalPorPagar([c({}), c({ porPagar: 5.5 })])).toBe(15.5);
+  });
+});
+
+// ─── Anticipos a proveedores ────────────────────────────────────────────────
+
+const fila = (extra: Partial<FilaAnticipoProveedor> = {}): FilaAnticipoProveedor => ({
+  id: 'a1', proveedorId: '45', proveedor: 'Distribuidora', proveedorNit: '900', fecha: '2026-11-10', valor: 2000000, aplicado: 1200000, devuelto: 0, saldo: 800000, estado: 'disponible', recibo: 'CE-1', sucursalId: 7, notas: null, ...extra,
+});
+
+describe('anticipos a proveedores', () => {
+  test('estado vivo: disponible con saldo, aplicado sin saldo, anulado', () => {
+    expect(estadoAnticipo('active', 10)).toBe('disponible');
+    expect(estadoAnticipo('used', 0)).toBe('aplicado');
+    expect(estadoAnticipo('cancelled', 0)).toBe('anulado');
+  });
+
+  test('acciones: aplicar con finance.create; devolver y anular con finance.void; anular solo sin usar', () => {
+    const permisos = { crear: true, anular: true };
+    expect(accionesAnticipo(fila(), permisos)).toEqual({ aplicar: true, devolver: true, anular: false });
+    expect(accionesAnticipo(fila({ aplicado: 0, saldo: 2000000 }), permisos).anular).toBe(true);
+    expect(accionesAnticipo(fila(), { crear: false, anular: false })).toEqual({ aplicar: false, devolver: false, anular: false });
+    expect(accionesAnticipo(fila({ estado: 'anulado', saldo: 0 }), permisos)).toEqual({ aplicar: false, devolver: false, anular: false });
+  });
+
+  test('búsqueda, filtro y totales (los anulados no suman)', () => {
+    const filas = [fila(), fila({ id: 'a2', proveedorId: '46', proveedor: 'Servicios del valle', valor: 500000, aplicado: 0, saldo: 500000 }), fila({ id: 'a3', estado: 'anulado', saldo: 0, valor: 99 })];
+    expect(filtrarAnticipos(filas, { texto: 'valle' }).map((f) => f.id)).toEqual(['a2']);
+    expect(filtrarAnticipos(filas, { estado: 'anulado' }).map((f) => f.id)).toEqual(['a3']);
+    expect(totalesAnticipos(filas)).toEqual({ valor: 2500000, aplicado: 1200000, saldo: 1300000, proveedores: 2 });
+  });
+
+  test('pendiente de activar solo con la función o la tabla ausentes, nunca otro error', () => {
+    expect(esPendienteDeActivar({ code: 'PGRST202' })).toBe(true);
+    expect(esPendienteDeActivar({ code: 'PGRST205' })).toBe(true);
+    expect(esPendienteDeActivar({ code: '42P01', message: 'relation "public.supplier_advances" does not exist' })).toBe(true);
+    expect(esPendienteDeActivar({ code: '42501', message: 'permission denied' })).toBe(false);
+    expect(esPendienteDeActivar(null)).toBe(false);
+  });
+
+  test('códigos: los del saldo a favor más los del proveedor', () => {
+    expect(codigoErrorAnticipo('monto_excede_anticipo')).toBe('monto_excede_anticipo');
+    expect(codigoErrorAnticipo('sin_caja_abierta')).toBe('sin_caja_abierta');
+    expect(estadoHttpErrorAnticipo('anticipo_usado')).toBe(409);
+    expect(estadoHttpErrorAnticipo('sin_caja_abierta')).toBe(409);
+    expect(estadoHttpErrorAnticipo('pendiente_de_activar')).toBe(501);
+  });
+
+  test('el cuerpo del anticipo no admite vencimiento ni cuenta PUC', () => {
+    const base = { proveedor_id: 45, sucursal_id: 7, monto: 10, metodo: 'cash', clave_idempotencia: 'anticipo:1' };
+    expect(crearAnticipoSchema.safeParse(base).success).toBe(true);
+    expect(crearAnticipoSchema.safeParse({ ...base, vence: '2026-12-31' }).success).toBe(false);
+    expect(crearAnticipoSchema.safeParse({ ...base, cuenta: '1330' }).success).toBe(false);
+  });
+});
+
+// ─── Una pieza para varias páginas ──────────────────────────────────────────
+
+describe('anticipo a proveedor = espejo del saldo a favor (mismos diálogos)', () => {
+  const DIALOGOS = ['RegistrarAnticipoDialog', 'AplicarSaldoDialog', 'DevolverSaldoDialog'];
+
+  test('la pantalla del proveedor monta los diálogos del saldo a favor con su adaptador, sin copias', () => {
+    const listado = leer('src/components/finanzas/anticipos-proveedor/ListadoAnticiposProveedor.tsx');
+    expect(listado).toContain("from '@/components/finanzas/saldos-a-favor'");
+    for (const d of DIALOGOS) {
+      expect(listado).toMatch(new RegExp(`<${d}[\\s\\S]*?adaptador=\\{ADAPTADOR_PROVEEDOR\\}`));
+    }
+    // Ningún otro diálogo de registrar/aplicar/devolver en la carpeta del proveedor.
+    const servicio = leer('src/components/finanzas/anticipos-proveedor/anticiposProveedorService.ts');
+    expect(servicio).not.toMatch(/from\(['"`](supplier_advances|payments|journal_)/);
+  });
+
+  test('el namespace del proveedor trae todas las claves que piden los diálogos compartidos', () => {
+    const es = JSON.parse(leer('messages/es.json')) as Record<string, Record<string, unknown>>;
+    const ns = (es.finanzasTercerosR4 as Record<string, unknown>).anticipos as Record<string, unknown>;
+    const cliente = (es.finanzasDocumentosR3 as Record<string, unknown>).saldos as Record<string, unknown>;
+    const existe = (obj: Record<string, unknown>, clave: string) =>
+      clave.split('.').reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), obj) !== undefined;
+    const claves = new Set<string>();
+    for (const d of DIALOGOS) {
+      const src = leer(`src/components/finanzas/saldos-a-favor/${d}.tsx`);
+      for (const m of src.matchAll(/\bt\('([a-zA-Z.]+)'/g)) claves.add(m[1]);
+    }
+    for (const extra of ['validacion.excede_disponible', 'validacion.excede_factura', 'devolver.quePasaEfectivo', 'devolver.quePasaBanco']) claves.add(extra);
+    expect(claves.size).toBeGreaterThan(40);
+    for (const c of claves) {
+      expect([c, existe(ns, c)]).toEqual([c, true]);
+      expect([c, existe(cliente, c)]).toEqual([c, true]);
+    }
+  });
+});

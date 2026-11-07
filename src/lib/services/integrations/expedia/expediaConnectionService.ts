@@ -4,9 +4,9 @@
 // ============================================================
 
 import type { ChannelManagerClients } from '../channelManagerClients';
+import { guardarCredencialesOta, propiedadDeSettings, CLAVE_PROPIEDAD } from '../conexiones/credencialesOta';
 import { createExpediaAuthService } from './expediaAuthService';
 import {
-  EXPEDIA_CREDENTIAL_PURPOSES,
   EXPEDIA_ENDPOINTS,
   getApiUrl,
   getXmlHeaders,
@@ -42,8 +42,9 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
     async createConnection(params: {
       organizationId: number;
       propertyId: string;
-      eqcUsername: string;
-      eqcPassword: string;
+      /** Opcional: si no viene, se usa la cuenta de proveedor de conectividad del servidor. */
+      eqcUsername?: string;
+      eqcPassword?: string;
       spaceId?: string;
       connectionName?: string;
     }): Promise<{ success: boolean; connectionId?: string; message: string }> {
@@ -67,17 +68,18 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
           };
         }
 
-        // 2. Crear integration_connection
+        // 2. Crear integration_connection. Frente INT (2026-11-07): la tabla no tiene `is_active`
+        //    ni `config` (era el insert que fallaba siempre); la propiedad va en `settings`.
         const { data: intConn, error: intErr } = await supabase
           .from('integration_connections')
           .insert({
             organization_id: organizationId,
             connector_id: EXPEDIA_OTA_CONNECTOR_ID,
             name: connectionName || `Expedia Group - ${propertyId}`,
-            status: 'active',
-            is_active: true,
-            config: {
+            status: 'draft',
+            settings: {
               property_id: propertyId,
+              modo: 'api',
               connection_types: ['reservations', 'rates_availability'],
             },
           })
@@ -90,38 +92,24 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
 
         const connectionId = intConn.id;
 
-        // 3. Guardar credenciales
-        const credentials = [
-          {
-            connection_id: connectionId,
-            purpose: EXPEDIA_CREDENTIAL_PURPOSES.EQC_USERNAME,
-            value_encrypted: eqcUsername,
-            metadata: {},
-          },
-          {
-            connection_id: connectionId,
-            purpose: EXPEDIA_CREDENTIAL_PURPOSES.EQC_PASSWORD,
-            value_encrypted: eqcPassword,
-            metadata: {},
-          },
-          {
-            connection_id: connectionId,
-            purpose: EXPEDIA_CREDENTIAL_PURPOSES.PROPERTY_ID,
-            value_encrypted: propertyId,
-            metadata: {},
-          },
-        ];
-
-        const { error: credErr } = await clients.secrets()
-          .from('integration_credentials')
-          .insert(credentials);
-
-        if (credErr) {
-          console.error('[ExpediaConnection] Error guardando credenciales:', credErr.message);
+        // 3. Guardar credenciales en la bóveda (antes `value_encrypted`, columna inexistente).
+        try {
+          await guardarCredencialesOta(clients.secrets(), connectionId, 'expedia', {
+            eqc_username: eqcUsername,
+            eqc_password: eqcPassword,
+          });
+        } catch (credErr) {
+          const msg = credErr instanceof Error ? credErr.message : String(credErr);
+          console.error('[ExpediaConnection] Error guardando credenciales:', msg);
           // Rollback: eliminar integration_connection
           await supabase.from('integration_connections').delete().eq('id', connectionId);
-          return { success: false, message: `Error guardando credenciales: ${credErr.message}` };
+          return { success: false, message: 'Error guardando credenciales' };
         }
+
+        await supabase
+          .from('integration_connections')
+          .update({ status: 'connected', connected_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('id', connectionId);
 
         // 4. Crear channel_connection si se especificó espacio
         if (spaceId) {
@@ -166,37 +154,21 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
       try {
         const { data, error } = await supabase
           .from('integration_connections')
-          .select(`
-            id,
-            name,
-            status,
-            is_active,
-            config,
-            created_at,
-            integration_credentials (
-              purpose,
-              value_encrypted
-            )
-          `)
+          .select('id, name, status, settings, created_at')
           .eq('organization_id', organizationId)
           .eq('connector_id', EXPEDIA_OTA_CONNECTOR_ID)
           .order('created_at', { ascending: false });
 
         if (error || !data) return [];
 
-        return data.map((conn: any) => {
-          const creds = conn.integration_credentials || [];
-          const propCred = creds.find((c: any) => c.purpose === EXPEDIA_CREDENTIAL_PURPOSES.PROPERTY_ID);
-
-          return {
-            connectionId: conn.id,
-            propertyId: propCred?.value_encrypted || conn.config?.property_id || '',
-            name: conn.name,
-            status: conn.status,
-            isActive: conn.is_active,
-            createdAt: conn.created_at,
-          };
-        });
+        return (data as { id: string; name: string; status: string; settings: unknown; created_at: string }[]).map((conn) => ({
+          connectionId: conn.id,
+          propertyId: propiedadDeSettings('expedia', conn.settings),
+          name: conn.name,
+          status: conn.status,
+          isActive: conn.status === 'connected',
+          createdAt: conn.created_at,
+        }));
       } catch (err) {
         console.error('[ExpediaConnection] Error obteniendo conexiones:', err);
         return [];
@@ -211,28 +183,20 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
       propertyId: string,
     ): Promise<{ connectionId: string } | null> {
       try {
-        const { data } = await clients.secrets()
-          .from('integration_credentials')
-          .select(`
-            connection_id,
-            integration_connections!inner (
-              organization_id,
-              connector_id,
-              is_active
-            )
-          `)
-          .eq('purpose', EXPEDIA_CREDENTIAL_PURPOSES.PROPERTY_ID)
-          .eq('value_encrypted', propertyId)
+        // Por `settings.property_id` (antes `integration_credentials.value_encrypted`, inexistente).
+        const { data } = await clients.secrets() // service role; filtra por organización y conector
+          .from('integration_connections')
+          .select('id, organization_id')
+          .eq('organization_id', organizationId)
+          .eq('connector_id', EXPEDIA_OTA_CONNECTOR_ID)
+          .neq('status', 'revoked')
+          .eq(`settings->>${CLAVE_PROPIEDAD['expedia']}`, propertyId)
           .limit(1);
 
-        if (!data || data.length === 0) return null;
-
-        const match = data.find((d: any) =>
-          d.integration_connections?.organization_id === organizationId &&
-          d.integration_connections?.connector_id === EXPEDIA_OTA_CONNECTOR_ID
+        const match = ((data as { id: string; organization_id: number }[] | null) ?? []).find(
+          (d) => Number(d.organization_id) === organizationId,
         );
-
-        return match ? { connectionId: match.connection_id } : null;
+        return match ? { connectionId: match.id } : null;
       } catch {
         return null;
       }
@@ -392,9 +356,16 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
      */
     async deactivateConnection(connectionId: string): Promise<boolean> {
       try {
+        const { data: conn } = await supabase
+          .from('integration_connections')
+          .select('organization_id, settings')
+          .eq('id', connectionId)
+          .maybeSingle();
+
+        // `paused` (el CHECK no admite 'inactive' y la tabla no tiene `is_active`).
         const { error } = await supabase
           .from('integration_connections')
-          .update({ is_active: false, status: 'inactive', updated_at: new Date().toISOString() })
+          .update({ status: 'paused', updated_at: new Date().toISOString() })
           .eq('id', connectionId);
 
         if (error) {
@@ -402,13 +373,15 @@ export function createExpediaConnectionService(clients: ChannelManagerClients) {
           return false;
         }
 
-        // Desactivar channel_connections asociadas
-        const creds = await expediaAuthService.getCredentials(connectionId);
-        if (creds?.propertyId) {
+        // Desactivar channel_connections asociadas (de la misma organización).
+        const fila = conn as { organization_id?: number; settings?: unknown } | null;
+        const propiedad = propiedadDeSettings('expedia', fila?.settings);
+        if (propiedad && fila?.organization_id != null) {
           await supabase
             .from('channel_connections')
             .update({ is_active: false, sync_enabled: false })
-            .eq('external_property_id', creds.propertyId)
+            .eq('organization_id', fila.organization_id)
+            .eq('external_property_id', propiedad)
             .eq('channel', 'expedia')
             .eq('connection_type', 'api');
         }

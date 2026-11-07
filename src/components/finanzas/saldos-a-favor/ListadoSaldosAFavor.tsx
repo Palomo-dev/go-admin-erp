@@ -633,7 +633,7 @@ export function ListadoSaldosAFavor() {
         clienteInicial={l.filtros.cliente && nombreCliente ? { id: l.filtros.cliente, nombre: nombreCliente } : null}
         onRegistrado={(r) => {
           recargar();
-          abrirSaldo(r.credito_id);
+          abrirSaldo(r.id);
         }}
       />
       <AplicarSaldoDialog abierto={!!aplicar} onAbiertoChange={(v) => !v && setAplicar(null)} saldo={aplicar} onAplicado={recargar} />

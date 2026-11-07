@@ -88,6 +88,13 @@ const MODULOS: Record<string, string[]> = {
   // Finanzas ronda 3, frente C: inicio, libro diario, detalle, mayor, salud, periodos, PUC, centros,
   // reglas y comprobante de Contabilidad.
   finanzasContabilidadR3: FINANZAS,
+  // Finanzas ronda 4, frente R4-A: perfil tributario, centro tributario, borrador del IVA y certificados.
+  finanzasTributarioR4: FINANZAS,
+  // Finanzas ronda 4, frente R4-B: consignaciones, dinero de terceros y anticipos a proveedores.
+  finanzasTercerosR4: FINANZAS,
+  // Finanzas ronda 4, frente INT: Integraciones › Conexiones (catálogo, mis conexiones, actividad,
+  // desarrolladores, asistentes y detalle).
+  integracionesConexiones: ['src/components/integraciones/conexiones-v2', 'src/app/app/integraciones/conexiones'],
   documentosSoporte: FINANZAS,
   // Inventario B4 (2026-09-28): seriales, garantías y trazabilidad.
   inventarioSeriales: SERIALES_B4,

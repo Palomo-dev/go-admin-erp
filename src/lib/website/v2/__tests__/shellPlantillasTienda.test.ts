@@ -33,6 +33,13 @@ const NUEVAS = {
   header_pill_text_case: null,
   header_float_offset: null,
   header_pill_position: null,
+  header_cta2_shape: null,
+  header_cta2_size: null,
+  header_cta2_style: null,
+  header_cta2_icon: null,
+  header_cta2_icon_side: null,
+  header_cta2_uppercase: null,
+  buttons_theme_active: false,
   buttons_uppercase_active: false,
   footer_brand_display: 'none',
   footer_brand_figure_url: null,
@@ -89,6 +96,9 @@ describe('opciones de shell de las plantillas de tienda', () => {
     expect(normalizarOpcionShell('header_pill_text_case', 'normal')).toBe('normal');
     expect(normalizarOpcionShell('header_float_offset', 20)).toBe(20);
     expect(normalizarOpcionShell('header_pill_position', 'abajo')).toBe('abajo');
+    expect(normalizarOpcionShell('header_cta2_shape', 'rounded')).toBe('rounded');
+    expect(normalizarOpcionShell('header_cta2_style', 'contorno')).toBe('contorno');
+    expect(normalizarOpcionShell('buttons_theme_active', true)).toBe(true);
     expect(MARCAS_PIE).toEqual(['none', 'giant']);
     expect(ESTILOS_ENLACES_PIE).toEqual(['normal', 'display']);
     expect(normalizarOpcionShell('header_cta_shape', 'circle')).toBe('circle');

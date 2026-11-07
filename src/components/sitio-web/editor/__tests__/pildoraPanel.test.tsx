@@ -159,6 +159,54 @@ describe('vista «Botón principal» (P2)', () => {
   });
 });
 
+describe('vista «Segundo botón» (el mismo control, header_cta2_*)', () => {
+  const abrirSegundo = () => fireEvent.click(screen.getByRole('button', { name: /Segundo botón: Forma, tamaño, estilo e ícono/ }));
+
+  test('la fila que abre la vista solo aparece con el segundo prendido', () => {
+    encabezado({ header_style: 'default' }, { pestanaInicial: 'contenido' });
+    expect(screen.queryByRole('button', { name: /Segundo botón: Forma/ })).toBeNull();
+  });
+
+  test('muestra solo forma, tamaño, estilo, ícono, lado y mayúsculas, y escribe header_cta2_*', () => {
+    const onCambiar = encabezado({ header_style: 'default', header_cta2_text: 'WhatsApp', header_cta2_url: 'whatsapp', cta_border_radius: 6 }, { pestanaInicial: 'contenido' });
+    abrirSegundo();
+    expect(screen.getByRole('heading', { name: 'Segundo botón' })).toBeTruthy();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect((screen.getAllByRole('textbox')[0] as HTMLInputElement).value).toBe('WhatsApp');
+    // Sin ancho, alto, relleno, sombra ni colores propios.
+    expect(screen.queryByRole('radiogroup', { name: 'Ancho' })).toBeNull();
+    expect(screen.queryByRole('slider')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Sombra' })).toBeNull();
+    expect(screen.queryByText('Colores')).toBeNull();
+    // Lo de hoy: forma personalizada con el radio del principal y estilo «Contorno».
+    expect(screen.getByText('Ahora: personalizada (radio 6)')).toBeTruthy();
+    expect(within(grupo('Estilo')).getByRole('radio', { name: 'Contorno' }).getAttribute('aria-checked')).toBe('true');
+    expect(within(grupo('Lado del ícono')).getAllByRole('radio').every((r) => (r as HTMLButtonElement).disabled)).toBe(true);
+
+    fireEvent.click(within(grupo('Forma')).getByRole('radio', { name: 'Redondeado' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_cta2_shape: 'rounded' });
+    fireEvent.click(within(grupo('Tamaño')).getByRole('radio', { name: 'S' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_cta2_size: 'sm' });
+    fireEvent.click(within(grupo('Estilo')).getByRole('radio', { name: 'Sólido' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_cta2_style: 'solido' });
+    fireEvent.click(within(grupo('Estilo')).getByRole('radio', { name: 'Contorno' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_cta2_style: null });
+    fireEvent.click(within(grupo('Mayúsculas')).getByRole('radio', { name: 'No' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_cta2_uppercase: false });
+    for (const [c] of onCambiar.mock.calls) for (const k of Object.keys(c)) expect(k.startsWith('header_cta2_')).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al encabezado' }));
+    expect(screen.getByRole('tab', { name: 'Contenido' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('con ícono propio el lado se habilita y escribe header_cta2_icon_side', () => {
+    const onCambiar = encabezado({ header_style: 'default', header_cta2_text: 'Llamar', header_cta2_url: 'tel:1', header_cta2_icon: 'phone' }, { pestanaInicial: 'contenido' });
+    abrirSegundo();
+    fireEvent.click(within(grupo('Lado del ícono')).getByRole('radio', { name: 'Derecha' }));
+    expect(onCambiar).toHaveBeenLastCalledWith({ header_cta2_icon_side: 'derecha' });
+  });
+});
+
 describe('Celular › Menú inferior · Píldora flotante (P4)', () => {
   const guardado = (c: jest.Mock) => (c.mock.calls.at(-1)![0].mobile_header as { bottom_nav: Record<string, unknown> }).bottom_nav as {
     variant: string; items: unknown[]; style: Record<string, unknown>;

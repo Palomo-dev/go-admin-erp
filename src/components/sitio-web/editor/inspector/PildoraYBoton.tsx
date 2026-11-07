@@ -4,7 +4,9 @@
  * Controles nuevos del panel «Encabezado» (Figma «Editor · Encabezado píldora, menú inferior y
  * botones», 2026-11-07):
  * - P1 · grupo «Píldora» de Diseño, solo con la composición `pill`;
- * - P2 · vista «Botón principal», con flecha para volver al encabezado.
+ * - P2 · vista «Botón principal», con flecha para volver al encabezado. La misma vista edita el
+ *   segundo botón (`boton="segundo"`, claves `header_cta2_*`) con solo los controles que tienen
+ *   clave en el contrato: forma, tamaño, estilo, ícono con su lado y mayúsculas.
  * Solo presentación y kit; qué clave escribe cada control está en `pildoraLogica.ts`.
  */
 import { useId, type ReactNode } from 'react';
@@ -76,6 +78,8 @@ import {
   sombraBoton,
   tamanoBoton,
   valorPildora,
+  muestraControl,
+  type BotonEncabezado,
   type EstiloBoton,
   type FormaBoton,
   type LadoIcono,
@@ -85,6 +89,9 @@ import {
 } from './pildoraLogica';
 
 type Cambiar = (c: Record<string, unknown>) => void;
+
+/** Grupo de textos propio de cada botón (título, migas, fila que abre la vista y nota). */
+const TEXTOS_DE_BOTON: Record<BotonEncabezado, string> = { principal: 'zonaGlobal.botonPrincipal', segundo: 'zonaGlobal.segundoBoton' };
 
 /** Íconos del botón principal (nombre de lucide en kebab-case → componente). */
 export const ICONOS_LUCIDE_BOTON: Record<(typeof ICONOS_BOTON)[number], LucideIcon> = {
@@ -191,19 +198,23 @@ function BotonTexto({ children, onClick }: { children: ReactNode; onClick: () =>
   );
 }
 
-/** Fila que abre la vista «Botón principal» (Contenido, Diseño con píldora y Estilo). */
-export function FilaAbrirBoton({ onAbrir }: { onAbrir: () => void }) {
+/**
+ * Fila que abre la vista del botón: «Botón principal» (Contenido, Diseño con píldora y Estilo) o
+ * «Segundo botón» (Contenido, con el segundo prendido).
+ */
+export function FilaAbrirBoton({ onAbrir, boton = 'principal' }: { onAbrir: () => void; boton?: BotonEncabezado }) {
   const t = useTextosEditor();
+  const tv = (k: string) => t(`${TEXTOS_DE_BOTON[boton]}.${k}`);
   return (
     <button
       type="button"
       onClick={onAbrir}
-      aria-label={`${t('zonaGlobal.botonPrincipal.titulo')}: ${t('zonaGlobal.botonPrincipal.abrir')}`}
+      aria-label={`${tv('titulo')}: ${tv('abrir')}`}
       className="flex w-full items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[13px] font-medium leading-[18px] text-fg">{t('zonaGlobal.botonPrincipal.abrir')}</span>
-        <span className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.botonPrincipal.abrirAyuda')}</span>
+        <span className="text-[13px] font-medium leading-[18px] text-fg">{tv('abrir')}</span>
+        <span className="text-[11px] leading-[14px] text-fg-muted">{tv('abrirAyuda')}</span>
       </span>
       <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
     </button>
@@ -298,8 +309,9 @@ export function GrupoPildora({ ajustes: a, cambiar, onAbrirBoton }: { ajustes: R
 // ─── P2 · Vista «Botón principal» ──────────────────────────────────────────────────────────────
 
 /** Cabecera de la vista: flecha para volver, título y de dónde viene. */
-export function CabeceraBotonPrincipal({ onVolver }: { onVolver: () => void }) {
+export function CabeceraBoton({ onVolver, boton = 'principal' }: { onVolver: () => void; boton?: BotonEncabezado }) {
   const t = useTextosEditor();
+  const tv = (k: string) => t(`${TEXTOS_DE_BOTON[boton]}.${k}`);
   return (
     <div className="flex items-start gap-2 px-4 pt-4">
       <button
@@ -312,8 +324,8 @@ export function CabeceraBotonPrincipal({ onVolver }: { onVolver: () => void }) {
         <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={1.5} />
       </button>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <h2 className="text-base font-semibold leading-[22px] text-fg">{t('zonaGlobal.botonPrincipal.titulo')}</h2>
-        <p className="text-xs font-medium leading-4 text-fg-secondary">{t('zonaGlobal.botonPrincipal.migas')}</p>
+        <h2 className="text-base font-semibold leading-[22px] text-fg">{tv('titulo')}</h2>
+        <p className="text-xs font-medium leading-4 text-fg-secondary">{tv('migas')}</p>
       </div>
     </div>
   );
@@ -327,10 +339,10 @@ const DIBUJO_FORMA: Record<FormaBoton, string> = {
   circle: 'size-7 rounded-full',
 };
 
-function TarjetasForma({ ajustes: a, cambiar }: { ajustes: Record<string, unknown>; cambiar: Cambiar }) {
+function TarjetasForma({ ajustes: a, cambiar, boton }: { ajustes: Record<string, unknown>; cambiar: Cambiar; boton: BotonEncabezado }) {
   const t = useTextosEditor();
   const id = useId();
-  const actual = formaBoton(a);
+  const actual = formaBoton(a, boton);
   const radio = radioDeHoy(a);
   return (
     <div className="flex flex-col gap-2">
@@ -344,7 +356,7 @@ function TarjetasForma({ ajustes: a, cambiar }: { ajustes: Record<string, unknow
               type="button"
               role="radio"
               aria-checked={sel}
-              onClick={() => cambiar(cambioFormaBoton(f))}
+              onClick={() => cambiar(cambioFormaBoton(f, boton))}
               className={cn(
                 'flex min-w-0 flex-col items-center gap-1.5 rounded-lg px-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                 sel ? 'border-2 border-brand-action bg-brand-tint' : 'border border-line bg-surface hover:bg-hover',
@@ -363,7 +375,7 @@ function TarjetasForma({ ajustes: a, cambiar }: { ajustes: Record<string, unknow
       {actual === null ? (
         <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.botonPrincipal.formaPersonalizada', { n: radio })}</p>
       ) : (
-        <BotonTexto onClick={() => cambiar(cambioFormaBoton(null))}>{t('zonaGlobal.botonPrincipal.formaVolver', { n: radio })}</BotonTexto>
+        <BotonTexto onClick={() => cambiar(cambioFormaBoton(null, boton))}>{t('zonaGlobal.botonPrincipal.formaVolver', { n: radio })}</BotonTexto>
       )}
     </div>
   );
@@ -371,10 +383,10 @@ function TarjetasForma({ ajustes: a, cambiar }: { ajustes: Record<string, unknow
 
 const SIN_ICONO = '__ninguno';
 
-function SelectorIconoBoton({ ajustes: a, cambiar }: { ajustes: Record<string, unknown>; cambiar: Cambiar }) {
+function SelectorIconoBoton({ ajustes: a, cambiar, boton }: { ajustes: Record<string, unknown>; cambiar: Cambiar; boton: BotonEncabezado }) {
   const t = useTextosEditor();
   const id = useId();
-  const actual = iconoBoton(a);
+  const actual = iconoBoton(a, boton);
   const nombres: string[] = [...ICONOS_BOTON];
   if (actual && !nombres.includes(actual)) nombres.push(actual);
   return (
@@ -383,7 +395,7 @@ function SelectorIconoBoton({ ajustes: a, cambiar }: { ajustes: Record<string, u
         <span id={id} className="text-[13px] font-medium leading-[18px] text-fg">
           {t('zonaGlobal.botonPrincipal.icono')}
         </span>
-        <Select value={actual ?? SIN_ICONO} onValueChange={(v) => cambiar(cambioIconoBoton(v === SIN_ICONO ? null : v))}>
+        <Select value={actual ?? SIN_ICONO} onValueChange={(v) => cambiar(cambioIconoBoton(v === SIN_ICONO ? null : v, boton))}>
           <SelectTrigger aria-labelledby={id} className="h-9 w-44">
             <SelectValue />
           </SelectTrigger>
@@ -403,7 +415,7 @@ function SelectorIconoBoton({ ajustes: a, cambiar }: { ajustes: Record<string, u
           </SelectContent>
         </Select>
       </div>
-      {actual === null && formaBoton(a) === 'circle' && (
+      {boton === 'principal' && actual === null && formaBoton(a, boton) === 'circle' && (
         <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.botonPrincipal.iconoCirculo')}</p>
       )}
     </div>
@@ -411,15 +423,19 @@ function SelectorIconoBoton({ ajustes: a, cambiar }: { ajustes: Record<string, u
 }
 
 /**
- * Vista «Botón principal» (P2). `children` = texto y destino (el mismo campo de Contenido). La nota
- * del diseño sobre el segundo botón y los de las secciones va como ayuda: esos aún no se editan aquí.
+ * Vista del botón del encabezado (P2): «Botón principal» o, con `boton="segundo"`, «Segundo botón»
+ * (Figma: «El mismo control sirve para el segundo botón»). `children` = texto y destino (el mismo
+ * campo de Contenido). El segundo oculta ancho, alto, relleno, sombra y colores: no tienen clave
+ * propia en el contrato (usa el relleno y el radio del principal, como hoy).
  */
-export function VistaBotonPrincipal({
+export function VistaBotonEncabezado({
+  boton = 'principal',
   ajustes: a,
   cambiar,
   coloresTema,
   children,
 }: {
+  boton?: BotonEncabezado;
   ajustes: Record<string, unknown>;
   cambiar: Cambiar;
   coloresTema: { fondo: string; texto: string; acento: string };
@@ -427,93 +443,107 @@ export function VistaBotonPrincipal({
 }) {
   const t = useTextosEditor();
   const tb = (k: string, v?: Record<string, string | number>) => t(`zonaGlobal.botonPrincipal.${k}`, v);
+  const tv = (k: string) => t(`${TEXTOS_DE_BOTON[boton]}.${k}`);
+  const ver = (c: Parameters<typeof muestraControl>[1]) => muestraControl(boton, c);
   const idEstilo = useId();
   const idSombra = useId();
   const ancho = anchoBoton(a);
   const alto = altoBoton(a);
-  const tamano = tamanoBoton(a);
+  const tamano = tamanoBoton(a, boton);
   const relleno = rellenoX(a);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-boton={boton}>
       {children}
-      <TarjetasForma ajustes={a} cambiar={cambiar} />
+      <TarjetasForma ajustes={a} cambiar={cambiar} boton={boton} />
       <FilaSegmento<TamanoBoton | 'hoy'>
         etiqueta={tb('tamano')}
         opciones={(['hoy', 'sm', 'md', 'lg'] as const).map((v) => ({ valor: v, etiqueta: tb(`tamanoOpcion.${v}`) }))}
         valor={tamano ?? 'hoy'}
-        onCambiar={(v) => cambiar(cambioTamanoBoton(a, v === 'hoy' ? null : v))}
+        onCambiar={(v) => cambiar(cambioTamanoBoton(a, v === 'hoy' ? null : v, boton))}
       />
-      <FilaSegmento<'auto' | 'fijo'>
-        etiqueta={tb('ancho')}
-        opciones={(['auto', 'fijo'] as const).map((v) => ({ valor: v, etiqueta: tb(`anchoOpcion.${v}`) }))}
-        valor={ancho === null ? 'auto' : 'fijo'}
-        onCambiar={(v) => cambiar(cambioModoAncho(a, v))}
-      />
-      <FilaDeslizador
-        etiqueta={tb('anchoFijo')}
-        valor={ancho ?? ANCHO_FIJO_INICIAL}
-        texto={tb(ancho === null ? 'anchoOpcion.auto' : 'anchoFijoPx', { n: ancho ?? ANCHO_FIJO_INICIAL })}
-        min={60}
-        max={280}
-        deshabilitado={ancho === null}
-        onCambiar={(v) => cambiar(cambioAncho(v))}
-      />
-      <FilaDeslizador
-        etiqueta={tb('alto')}
-        valor={altoMostrado(a)}
-        texto={alto === null ? tb('altoAuto') : t('zonaGlobal.pildora.px', { n: alto })}
-        min={28}
-        max={80}
-        onCambiar={(v) => cambiar(cambioAlto(a, v))}
-        accion={alto !== null ? <BotonTexto onClick={() => cambiar(cambioAlto(a, null))}>{tb('altoQuitar')}</BotonTexto> : undefined}
-      />
-      <FilaDeslizador
-        etiqueta={tb('relleno')}
-        valor={relleno}
-        texto={t('zonaGlobal.pildora.px', { n: relleno })}
-        min={RELLENO_X.min}
-        max={RELLENO_X.max}
-        onCambiar={(v) => cambiar(cambioRellenoX(v))}
-      />
+      {ver('ancho') && (
+        <>
+          <FilaSegmento<'auto' | 'fijo'>
+            etiqueta={tb('ancho')}
+            opciones={(['auto', 'fijo'] as const).map((v) => ({ valor: v, etiqueta: tb(`anchoOpcion.${v}`) }))}
+            valor={ancho === null ? 'auto' : 'fijo'}
+            onCambiar={(v) => cambiar(cambioModoAncho(a, v))}
+          />
+          <FilaDeslizador
+            etiqueta={tb('anchoFijo')}
+            valor={ancho ?? ANCHO_FIJO_INICIAL}
+            texto={tb(ancho === null ? 'anchoOpcion.auto' : 'anchoFijoPx', { n: ancho ?? ANCHO_FIJO_INICIAL })}
+            min={60}
+            max={280}
+            deshabilitado={ancho === null}
+            onCambiar={(v) => cambiar(cambioAncho(v))}
+          />
+        </>
+      )}
+      {ver('alto') && (
+        <FilaDeslizador
+          etiqueta={tb('alto')}
+          valor={altoMostrado(a)}
+          texto={alto === null ? tb('altoAuto') : t('zonaGlobal.pildora.px', { n: alto })}
+          min={28}
+          max={80}
+          onCambiar={(v) => cambiar(cambioAlto(a, v))}
+          accion={alto !== null ? <BotonTexto onClick={() => cambiar(cambioAlto(a, null))}>{tb('altoQuitar')}</BotonTexto> : undefined}
+        />
+      )}
+      {ver('relleno') && (
+        <FilaDeslizador
+          etiqueta={tb('relleno')}
+          valor={relleno}
+          texto={t('zonaGlobal.pildora.px', { n: relleno })}
+          min={RELLENO_X.min}
+          max={RELLENO_X.max}
+          onCambiar={(v) => cambiar(cambioRellenoX(v))}
+        />
+      )}
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idEstilo}>{tb('estilo')}</EtiquetaGrupo>
         <ChipsOpcion<EstiloBoton>
           aria-labelledby={idEstilo}
           opciones={ESTILOS_BOTON.map((v) => ({ valor: v, etiqueta: tb(`estiloOpcion.${v}`) }))}
-          valor={estiloBoton(a)}
-          onValorChange={(v) => cambiar(cambioEstiloBoton(v))}
+          valor={estiloBoton(a, boton)}
+          onValorChange={(v) => cambiar(cambioEstiloBoton(v, boton))}
         />
       </div>
-      <SelectorIconoBoton ajustes={a} cambiar={cambiar} />
+      <SelectorIconoBoton ajustes={a} cambiar={cambiar} boton={boton} />
       <FilaSegmento<LadoIcono>
         etiqueta={tb('lado')}
         opciones={LADOS_ICONO.map((v) => ({ valor: v, etiqueta: tb(`ladoOpcion.${v}`) }))}
-        valor={ladoIcono(a)}
-        deshabilitado={!ladoAplica(a)}
-        onCambiar={(v) => cambiar(cambioLadoIcono(a, v))}
+        valor={ladoIcono(a, boton)}
+        deshabilitado={!ladoAplica(a, boton)}
+        onCambiar={(v) => cambiar(cambioLadoIcono(a, v, boton))}
       />
       <FilaSegmento<Mayusculas>
         etiqueta={tb('mayusculas')}
         opciones={(['sitio', 'si', 'no'] as const).map((v) => ({ valor: v, etiqueta: tb(`mayusculasOpcion.${v}`) }))}
-        valor={mayusculasBoton(a)}
-        onCambiar={(v) => cambiar(cambioMayusculas(v))}
+        valor={mayusculasBoton(a, boton)}
+        onCambiar={(v) => cambiar(cambioMayusculas(v, boton))}
       />
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idSombra}>{tb('sombra')}</EtiquetaGrupo>
-        <ChipsOpcion<SombraBoton>
-          aria-labelledby={idSombra}
-          opciones={SOMBRAS_BOTON.map((v) => ({ valor: v, etiqueta: tb(`sombraOpcion.${v}`) }))}
-          valor={sombraBoton(a)}
-          onValorChange={(v) => cambiar(cambioSombra(v))}
-        />
-      </div>
-      <section className="flex flex-col gap-3">
-        <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{tb('colores')}</h3>
-        <ColoresBotonPrincipal ajustes={a} cambiar={cambiar} coloresTema={coloresTema} etiquetas={{ fondo: tb('colorFondo'), texto: tb('colorTexto') }} />
-      </section>
+      {ver('sombra') && (
+        <div className="flex flex-col gap-2">
+          <EtiquetaGrupo id={idSombra}>{tb('sombra')}</EtiquetaGrupo>
+          <ChipsOpcion<SombraBoton>
+            aria-labelledby={idSombra}
+            opciones={SOMBRAS_BOTON.map((v) => ({ valor: v, etiqueta: tb(`sombraOpcion.${v}`) }))}
+            valor={sombraBoton(a)}
+            onValorChange={(v) => cambiar(cambioSombra(v))}
+          />
+        </div>
+      )}
+      {ver('colores') && (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{tb('colores')}</h3>
+          <ColoresBotonPrincipal ajustes={a} cambiar={cambiar} coloresTema={coloresTema} etiquetas={{ fondo: tb('colorFondo'), texto: tb('colorTexto') }} />
+        </section>
+      )}
       <div className="flex items-start gap-2 rounded-lg border border-line-info bg-info-subtle px-3 py-2">
         <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-info-text" strokeWidth={1.5} />
-        <p className="text-xs leading-4 text-info-text">{tb('nota')}</p>
+        <p className="text-xs leading-4 text-info-text">{tv('nota')}</p>
       </div>
     </div>
   );

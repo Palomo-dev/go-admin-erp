@@ -16,6 +16,7 @@ import {
   type TransferenciaOrigen,
 } from '../movimientosLista';
 import {
+  periodoAntesDelCorte,
   cajaVencida,
   filtrarCuentas,
   horasAbierta,
@@ -209,8 +210,15 @@ describe('cuentasDinero', () => {
   });
 
   test('caracterización del alta: nombre, banco y PUC obligatorios', () => {
-    const base = { name: 'X', bank_name: 'Bancolombia', account_number: '', account_type: 'savings', currency: 'COP', account_code: '111005', initial_balance: 0 };
+    const base = { name: 'X', bank_name: 'Bancolombia', account_number: '', account_type: 'savings', currency: 'COP', account_code: '111005', initial_balance: 0, initial_balance_date: '' };
     expect(validarCuentaBancaria(base)).toEqual([]);
+    // Fecha de corte: obligatoria al crear, nunca futura; una cuenta vieja se edita sin ella.
+    expect(validarCuentaBancaria(base, { nueva: true, hoy: '2026-11-07' })).toEqual(['fechaCorte']);
+    expect(validarCuentaBancaria({ ...base, initial_balance_date: '2026-11-08' }, { nueva: true, hoy: '2026-11-07' })).toEqual(['fechaCorteFutura']);
+    expect(validarCuentaBancaria({ ...base, initial_balance_date: '2026-10-31' }, { nueva: true, hoy: '2026-11-07' })).toEqual([]);
+    expect(periodoAntesDelCorte('2026-10-01', '2026-10-31')).toBe(true);
+    expect(periodoAntesDelCorte('2026-11-01', '2026-10-31')).toBe(false);
+    expect(periodoAntesDelCorte('2026-11-01', null)).toBe(false);
     expect(validarCuentaBancaria({ ...base, name: ' ', bank_name: '', account_code: '', initial_balance: -1 })).toEqual([
       'nombre',
       'banco',
@@ -372,5 +380,40 @@ describe('extractos de la cuenta y «Por conciliar» de Movimientos', () => {
     expect(filas.find((f) => f.clave === 'caja:2')?.conciliacion).toBeNull();
     const r = resumirMovimientos(filas, '2026-11-07', (iso) => iso.slice(0, 10));
     expect([r.porConciliar, r.importePorConciliar, r.bancosPorConciliar]).toEqual([2, 140, 2]);
+  });
+});
+
+import { barrasPorCuenta, diasEntre, serieSaldoProyectado, tramosProyeccion } from '../posicionTesoreria';
+
+describe('posición de tesorería (gráfica y tramos)', () => {
+  const entradas = [
+    { date: '2026-11-05', inflow: 100, outflow: 0, projectedBalance: 1100 }, // vencido: cae en hoy
+    { date: '2026-11-20', inflow: 0, outflow: 300, projectedBalance: 800 },
+    { date: '2026-12-20', inflow: 500, outflow: 0, projectedBalance: 1300 },
+    { date: '2027-01-30', inflow: 0, outflow: 200, projectedBalance: 1100 },
+  ];
+  test('días entre fechas planas', () => {
+    expect(diasEntre('2026-11-07', '2026-12-07')).toBe(30);
+    expect(Number.isNaN(diasEntre('x', '2026-12-07'))).toBe(true);
+  });
+  test('serie: hoy con el saldo y los vencidos sumados a hoy', () => {
+    const s = serieSaldoProyectado(1000, entradas, '2026-11-07');
+    expect(s.map((p) => [p.fecha, p.saldo])).toEqual([
+      ['2026-11-07', 1100],
+      ['2026-11-20', 800],
+      ['2026-12-20', 1300],
+      ['2027-01-30', 1100],
+    ]);
+    expect(s[0].entra).toBe(100);
+  });
+  test('tramos 0-30, 31-60 y 61-90 con saldo final', () => {
+    expect(tramosProyeccion(1000, entradas, '2026-11-07')).toEqual([
+      { id: '0-30', entradas: 100, salidas: 300, saldoFinal: 800 },
+      { id: '31-60', entradas: 500, salidas: 0, saldoFinal: 1300 },
+      { id: '61-90', entradas: 0, salidas: 200, saldoFinal: 1100 },
+    ]);
+  });
+  test('barras por cuenta de mayor a menor', () => {
+    expect(barrasPorCuenta([{ accountName: 'a', localBalance: 1 }, { accountName: 'b', localBalance: 5 }]).map((c) => c.accountName)).toEqual(['b', 'a']);
   });
 });

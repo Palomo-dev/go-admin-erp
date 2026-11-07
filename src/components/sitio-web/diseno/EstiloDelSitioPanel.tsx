@@ -4,7 +4,9 @@
  * Panel «Estilo del sitio» (Figma A/06a escritorio, A/06g móvil, y el MISMO
  * panel en el estilo global del editor, A/05f): presets del giro, ajustes de
  * fondo, texto y acento con el aviso de contraste AA y «Corregir
- * automáticamente», par tipográfico, redondeo, botones y movimiento.
+ * automáticamente», par tipográfico, redondeo, botones y movimiento. Con
+ * `botonesSecciones`, además el grupo «Botones de las secciones»
+ * (`tema.tokens.boton` + `buttons_theme_active`, 2026-11-07).
  *
  * No guarda ni lee nada: recibe el estilo y avisa cada cambio (`onCambiar`,
  * `onElegirPreset`). Lo montan Diseño (`PaginaDiseno`) y, cuando el área
@@ -40,6 +42,7 @@ import { familiaCss, muestraDeEstilo, nombreFuentes } from './catalogo';
 import { useFuentesSitio } from './useFuentesSitio';
 import { CLASE_TAMANO_ICONO, ICONO_GRUPO_ESTILO, TRAZO_ICONO, type GrupoEstilo } from '../ui/iconosSitio';
 import { useTextosDiseno } from './textos';
+import { BotonesSeccionesGrupo, type BotonesSeccionesGrupoProps } from './BotonesSecciones';
 
 /** Presets visibles antes de «Ver los N presets…» (A/06a: cuatro, 2 × 2). */
 export const PRESETS_VISIBLES = 4;
@@ -66,6 +69,12 @@ export interface EstiloDelSitioPanelProps {
    * editor no lo pasa y conserva su título.
    */
   cabeceraSoloEscritorio?: boolean;
+  /**
+   * «Botones de las secciones» (forma, relleno, tamaño y mayúsculas de `tema.tokens.boton`). Solo
+   * lo pasa quien puede escribir el documento V2 (tokens y `shell.header.opciones`); sin él, el
+   * grupo no aparece (legacy).
+   */
+  botonesSecciones?: Omit<BotonesSeccionesGrupoProps, 'estilo' | 'deshabilitado'>;
   className?: string;
 }
 
@@ -102,6 +111,7 @@ export function EstiloDelSitioPanel({
   extendidos,
   deshabilitado,
   cabeceraSoloEscritorio,
+  botonesSecciones,
   className,
 }: EstiloDelSitioPanelProps) {
   const t = useTextosDiseno();
@@ -292,6 +302,7 @@ export function EstiloDelSitioPanel({
           onValorChange={(estiloBoton) => onCambiar({ estiloBoton })}
         />
       </div>
+      {botonesSecciones && <BotonesSeccionesGrupo {...botonesSecciones} estilo={estilo} deshabilitado={deshabilitado} />}
       <div className="flex flex-col gap-2">
         <TituloGrupo grupo="movimiento" id={etiquetaGrupo('movimiento')}>{t('panel.movimiento')}</TituloGrupo>
         <ChipsOpcion

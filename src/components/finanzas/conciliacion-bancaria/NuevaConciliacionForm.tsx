@@ -14,13 +14,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { ListChecks, Upload } from 'lucide-react';
-import { CampoFecha, CampoNumero, FormField, PageHeader, clasesBoton } from '@/components/kit';
+import { AvisoTonal, CampoFecha, CampoNumero, FormField, PageHeader, clasesBoton } from '@/components/kit';
 import { ConciliacionService } from './ConciliacionService';
 import { BankAccount } from '../bancos/BancosService';
 import { LineaExtracto, matrizDesdeArchivo, parsearMatrizExtracto } from '@/lib/finanzas/conciliacion/extracto';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { RUTAS_TESORERIA, rutaConciliacion } from '@/lib/finanzas/tesoreria/rutas';
+import { periodoAntesDelCorte } from '@/lib/finanzas/tesoreria/cuentasDinero';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
 
 export function NuevaConciliacionForm() {
@@ -138,7 +140,17 @@ export function NuevaConciliacionForm() {
             />
           )}
         </FormField>
-        <FormField etiqueta={t('saldoSistema')} ayuda={t('saldoSistemaAyuda')}>
+        <FormField
+          etiqueta={t('saldoSistema')}
+          ayuda={
+            selectedAccount?.initial_balance_date
+              ? t('saldoInicialCorte', {
+                  saldo: moneda.formatear(selectedAccount.initial_balance ?? 0),
+                  fecha: formatPlainDate(selectedAccount.initial_balance_date),
+                })
+              : t('saldoSistemaAyuda')
+          }
+        >
           {(c) => (
             <p id={c.id} className="flex h-10 items-center rounded-lg border border-line bg-subtle px-3 text-sm tabular-nums text-fg">
               {selectedAccount ? moneda.formatear(selectedAccount.balance) : '—'}
@@ -157,6 +169,13 @@ export function NuevaConciliacionForm() {
             )}
           </FormField>
         </div>
+        {periodoAntesDelCorte(formData.period_start, selectedAccount?.initial_balance_date) && selectedAccount?.initial_balance_date && (
+          <AvisoTonal
+            tono="advertencia"
+            compacto
+            titulo={t('antesDelCorte', { fecha: formatPlainDate(selectedAccount.initial_balance_date) })}
+          />
+        )}
         <FormField etiqueta={t('saldoExtracto')} ayuda={t('saldoExtractoAyuda')}>
           {(c) => <CampoNumero id={c.id} valor={saldoExtracto} onValorChange={setSaldoExtracto} alinear="derecha" />}
         </FormField>

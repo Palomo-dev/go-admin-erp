@@ -6,8 +6,10 @@
  * sin resultados `981:66273`, error `981:66920`, sin permiso `981:67541`,
  * tableta `988:624505`, móvil `989:74744`/`989:75095`/`989:75342`.
  *
- * Paginado en el servidor (`ContabilidadService.listarLibroDiario`): antes se
- * traían todos los asientos y PostgREST los cortaba en 1.000 sin avisar.
+ * Paginado en el servidor (`ContabilidadService.listarLibroDiario` →
+ * `fn_libro_diario_trabajo`): antes se traían todos los asientos y PostgREST
+ * los cortaba en 1.000 sin avisar. «Ocultar pares revertidos» es exacto en la
+ * base: el total y las páginas ya no son aproximados.
  *
  * Acciones que tenía la página anterior y dónde quedan: ver (clic en la fila y
  * menú), publicar y descartar borradores (menú; descartar con confirmación),
@@ -262,7 +264,7 @@ export function AsientosPage() {
       for (;;) {
         const lote = await ContabilidadService.listarLibroDiario({ ...consultaFiltros, limite: LOTE_EXPORTAR, desplazamiento: filas.length });
         filas.push(...lote.filas);
-        if (lote.filas.length + lote.paresOcultos === 0 || filas.length + lote.paresOcultos >= lote.total || filas.length >= TOPE_EXPORTAR) break;
+        if (lote.filas.length === 0 || filas.length >= lote.total || filas.length >= TOPE_EXPORTAR) break;
       }
       const encabezado = ['numero', 'fecha', 'descripcion', 'origen', 'documento', 'sucursal', 'importe', 'estado'].map((c) => t(`csv.${c}`));
       const lineas = filas.map((asiento) =>
@@ -543,8 +545,6 @@ export function AsientosPage() {
         }
         chips={chips.length > 0 ? <FilterChips chips={chips} onQuitar={quitarChip} onLimpiarTodo={() => cambiarFiltros(FILTROS_VACIOS)} /> : undefined}
       />
-
-      {datos && datos.paresOcultos > 0 && <p className="text-sm text-fg-secondary">{t('paresOcultos', { n: datos.paresOcultos })}</p>}
 
       <DataTable
         etiqueta={t('titulo')}

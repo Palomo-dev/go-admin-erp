@@ -10,10 +10,13 @@
  * cuenta (saldo en libros, saldo real del banco y diferencia), proyección de
  * 90 días, alertas de tesorería y concentración de pagos del año.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { AlertTriangle } from 'lucide-react';
-import { AvisoTonal, DataTable, KpiStrip, StatCard, StatusBadge, Tarjeta, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { AlertTriangle, Download } from 'lucide-react';
+import { AvisoTonal, DataTable, KpiStrip, StatCard, StatusBadge, Tarjeta, clasesBoton, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
+import { barrasPorCuenta, serieSaldoProyectado, tramosProyeccion } from '@/lib/finanzas/tesoreria/posicionTesoreria';
+import { descargarCsv } from '../compartido/TesoreriaComun';
+import { GraficaPorCuenta, GraficaSaldoProyectado } from './GraficasPosicion';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -68,9 +71,10 @@ const TONO_SEVERIDAD = { high: 'peligro', medium: 'advertencia', low: 'informaci
 
 export function PosicionTesoreria({ activa }: { activa: boolean }) {
   const t = useTranslations('finanzasTesoreriaR3.posicion');
+  const locale = useLocale();
   const { code, formatear, paraDocumento } = useMonedaOrganizacion();
   const formatEn = (moneda: string | null | undefined, valor: number) => formatMoneda(valor, paraDocumento(moneda));
-  const { getToday, formatPlain } = useFormatDate();
+  const { getToday } = useFormatDate();
   const [estado, setEstado] = useState<EstadoTabla>('cargando');
   const [posicion, setPosicion] = useState<Posicion | null>(null);
   const [proyeccion, setProyeccion] = useState<Proyeccion | null>(null);
@@ -114,6 +118,40 @@ export function PosicionTesoreria({ activa }: { activa: boolean }) {
 
   const totalBase = posicion?.totalByCurrency?.[code] ?? 0;
   const otras = Object.entries(posicion?.totalByCurrency ?? {}).filter(([m]) => m !== code);
+  const hoy = getToday();
+  // La proyección del servicio arranca en el saldo consolidado (todas las monedas sumadas): la gráfica también.
+  const saldoInicioProyeccion = Object.values(posicion?.totalByCurrency ?? {}).reduce((acc, v) => acc + v, 0);
+  const serie = useMemo(
+    () => (proyeccion ? serieSaldoProyectado(saldoInicioProyeccion, proyeccion.entries, hoy) : []),
+    [proyeccion, saldoInicioProyeccion, hoy],
+  );
+  const tramos = useMemo(
+    () => (proyeccion ? tramosProyeccion(saldoInicioProyeccion, proyeccion.entries, hoy) : []),
+    [proyeccion, saldoInicioProyeccion, hoy],
+  );
+  const saldo90 = tramos.length ? tramos[tramos.length - 1].saldoFinal : null;
+  const barras = useMemo(
+    () =>
+      barrasPorCuenta((posicion?.accounts ?? []).filter((a) => a.currency === code)).map((a) => ({
+        id: String(a.bankAccountId),
+        nombre: a.accountName,
+        saldo: a.localBalance,
+      })),
+    [posicion, code],
+  );
+  const minimo = serie.reduce((m, punto) => Math.min(m, punto.saldo), Number.POSITIVE_INFINITY);
+
+  const exportar = () => {
+    const celda = (v: string | number) => (/[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+    const lineas = [
+      [t('tramos.columnas.periodo'), t('tramos.columnas.entradas'), t('tramos.columnas.salidas'), t('tramos.columnas.saldo')].map(celda).join(','),
+      ...tramos.map((x) => [t(`tramos.${x.id}`), x.entradas, x.salidas, x.saldoFinal].map(celda).join(',')),
+      '',
+      [t('columnas.cuenta'), t('columnas.banco'), t('columnas.libros'), t('columnas.real')].map(celda).join(','),
+      ...(posicion?.accounts ?? []).map((a) => [a.accountName, a.bankName, a.localBalance, a.realBalance ?? ''].map(celda).join(',')),
+    ];
+    descargarCsv(`tesoreria_consolidada_${hoy}.csv`, lineas.join('\n'));
+  };
 
   const columnas: ColumnaTabla<PosicionCuenta>[] = [
     { id: 'cuenta', encabezado: t('columnas.cuenta'), celda: (a) => <span className="font-medium text-fg">{a.accountName}</span> },
@@ -142,29 +180,84 @@ export function PosicionTesoreria({ activa }: { activa: boolean }) {
     },
   ];
 
-  const proximas = (proyeccion?.entries ?? []).filter((e) => e.inflow !== 0 || e.outflow !== 0).slice(0, 12);
 
   return (
     <div className="space-y-6">
       {fallas.length > 0 && estado === 'listo' && (
         <AvisoTonal tono="advertencia" titulo={t('parcial.titulo')} descripcion={t('parcial.descripcion', { partes: fallas.map((f) => t(`partes.${f}`)).join(', ') })} accion={{ etiqueta: t('reintentar'), onClick: () => void cargar() }} />
       )}
+      <div className="flex justify-end">
+        <button type="button" onClick={exportar} disabled={estado !== 'listo'} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+          <Download className="h-4 w-4" aria-hidden />
+          {t('exportar')}
+        </button>
+      </div>
+
       <KpiStrip etiqueta={t('kpi.etiqueta')}>
         <StatCard
-          etiqueta={t('kpi.total')}
+          etiqueta={t('kpi.efectivoHoy')}
           valor={formatear(totalBase)}
           detalle={otras.length > 0 ? otras.map(([m, v]) => formatEn(m, v)).join(' · ') : t('kpi.totalAyuda')}
           cargando={estado === 'cargando'}
         />
-        <StatCard etiqueta={t('kpi.entradas')} valor={proyeccion ? formatear(proyeccion.totalInflow) : '—'} tono="exito" cargando={estado === 'cargando'} />
-        <StatCard etiqueta={t('kpi.salidas')} valor={proyeccion ? formatear(proyeccion.totalOutflow) : '—'} tono="peligro" cargando={estado === 'cargando'} />
+        <StatCard etiqueta={t('kpi.porCobrar')} valor={proyeccion ? formatear(proyeccion.totalInflow) : '—'} detalle={t('kpi.porCobrarAyuda')} cargando={estado === 'cargando'} />
+        <StatCard etiqueta={t('kpi.porPagar')} valor={proyeccion ? formatear(proyeccion.totalOutflow) : '—'} detalle={t('kpi.porPagarAyuda')} cargando={estado === 'cargando'} />
         <StatCard
-          etiqueta={t('kpi.neto')}
-          valor={proyeccion ? formatear(proyeccion.netFlow) : '—'}
-          tono={proyeccion && proyeccion.netFlow < 0 ? 'peligro' : 'neutro'}
+          etiqueta={t('kpi.proyeccion90')}
+          valor={saldo90 === null ? '—' : formatear(saldo90)}
+          tono={saldo90 !== null && saldo90 < 0 ? 'peligro' : 'neutro'}
           cargando={estado === 'cargando'}
         />
       </KpiStrip>
+
+      {estado === 'listo' && proyeccion && serie.length > 0 && (
+        <Tarjeta titulo={t('grafica.titulo')} descripcion={t('grafica.descripcion')}>
+          <GraficaSaldoProyectado
+            puntos={serie}
+            formatear={formatear}
+            locale={locale}
+            textos={{
+              titulo: t('grafica.titulo'),
+              resumen: t('grafica.resumen', { hoy: formatear(serie[0].saldo), final: formatear(serie[serie.length - 1].saldo), minimo: formatear(minimo) }),
+              saldo: t('grafica.saldo'),
+              entra: t('grafica.entra'),
+              sale: t('grafica.sale'),
+            }}
+          />
+          {minimo < 0 && <p className="mt-2 text-xs font-medium text-danger-text">{t('grafica.negativo', { minimo: formatear(minimo) })}</p>}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <caption className="sr-only">{t('tramos.titulo')}</caption>
+              <thead>
+                <tr className="border-b border-line text-left text-xs text-fg-secondary">
+                  <th scope="col" className="py-2 font-medium">{t('tramos.columnas.periodo')}</th>
+                  <th scope="col" className="py-2 text-right font-medium">{t('tramos.columnas.entradas')}</th>
+                  <th scope="col" className="py-2 text-right font-medium">{t('tramos.columnas.salidas')}</th>
+                  <th scope="col" className="py-2 text-right font-medium">{t('tramos.columnas.saldo')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tramos.map((x) => (
+                  <tr key={x.id} className="border-b border-line last:border-0">
+                    <th scope="row" className="py-2 text-left font-normal text-fg">{t(`tramos.${x.id}`)}</th>
+                    <td className="py-2 text-right tabular-nums text-fg">{formatear(x.entradas)}</td>
+                    <td className="py-2 text-right tabular-nums text-fg">{formatear(x.salidas)}</td>
+                    <td className={`py-2 text-right font-medium tabular-nums ${x.saldoFinal < 0 ? 'text-danger-text' : 'text-fg'}`}>{formatear(x.saldoFinal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Tarjeta>
+      )}
+
+      {estado === 'listo' && !proyeccion && <AvisoTonal tono="informacion" titulo={t('proyeccion.error')} compacto />}
+
+      {estado === 'listo' && barras.length > 0 && (
+        <Tarjeta titulo={t('porCuenta.titulo')} descripcion={t('porCuenta.descripcion', { moneda: code })}>
+          <GraficaPorCuenta cuentas={barras} formatear={formatear} locale={locale} titulo={t('porCuenta.titulo')} />
+        </Tarjeta>
+      )}
 
       <DataTable<PosicionCuenta>
         etiqueta={t('cuentasTitulo')}
@@ -186,24 +279,7 @@ export function PosicionTesoreria({ activa }: { activa: boolean }) {
       />
 
       {estado === 'listo' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Tarjeta titulo={t('proyeccion.titulo')} descripcion={t('proyeccion.descripcion')}>
-            {proximas.length === 0 ? (
-              <p className="text-sm text-fg-secondary">{proyeccion ? t('proyeccion.vacia') : t('proyeccion.error')}</p>
-            ) : (
-              <ul className="divide-y divide-line text-sm">
-                {proximas.map((e) => (
-                  <li key={`${e.date}-${e.description}`} className="flex items-center justify-between gap-3 py-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-fg">{e.description}</p>
-                      <p className="text-xs text-fg-secondary">{formatPlain(e.date.slice(0, 10))}</p>
-                    </div>
-                    <span className={e.netFlow < 0 ? 'tabular-nums text-danger-text' : 'tabular-nums text-success-text'}>{formatear(e.netFlow)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Tarjeta>
+        <div>
           <Tarjeta titulo={t('alertas.titulo')} icono={AlertTriangle}>
             {alertas === null ? (
               <p className="text-sm text-fg-secondary">{t('alertas.error')}</p>

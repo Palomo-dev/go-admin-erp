@@ -18,6 +18,7 @@ import type { PartidasDeConciliacion } from './ConciliacionService';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
 import { AvisoTonal, KpiStrip, PageHeader, Skeleton, StatCard, StatusBadge, TabBar, Tarjeta, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { RUTAS_TESORERIA } from '@/lib/finanzas/tesoreria/rutas';
+import { periodoAntesDelCorte } from '@/lib/finanzas/tesoreria/cuentasDinero';
 import {
   diferenciaConciliacion,
   errorCierre,
@@ -281,6 +282,21 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           />
         )}
       </KpiStrip>
+
+      {reconciliation.bank_account?.initial_balance_date && (
+        <p className="text-xs text-fg-secondary">
+          {tr('corte.saldoInicial', {
+            saldo: formatearCuenta(reconciliation.bank_account.initial_balance ?? 0),
+            fecha: formatPlainDate(reconciliation.bank_account.initial_balance_date),
+          })}
+        </p>
+      )}
+      {periodoAntesDelCorte(reconciliation.period_start, reconciliation.bank_account?.initial_balance_date) && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={tr('corte.antes', { fecha: formatPlainDate(reconciliation.bank_account?.initial_balance_date ?? '') })}
+        />
+      )}
 
       {errorPartidas && (
         <AvisoTonal

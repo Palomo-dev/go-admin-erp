@@ -2,7 +2,7 @@
  * Salud contable (decisión 3 del dueño, Contabilidad v2 §2 y §4.13), sin React.
  *
  * Cuatro pestañas: Pendientes (`journal_entry_failures`), Descuadres y Huérfanos
- * (`fn_salud_contable`, propuesta) y Estructura (cuentas agrupadoras con
+ * (`fn_salud_contable`, aplicada el 2026-11-08) y Estructura (cuentas agrupadoras con
  * movimiento y reglas que apuntan a cuentas de título o inexistentes).
  * Regla de la pantalla: un dato que no se pudo leer nunca se muestra como cero.
  */
@@ -87,7 +87,8 @@ export function leerCruceSalud(datos: unknown): CruceSalud {
 export function esFuncionInexistente(error: unknown): boolean {
   const e = (error ?? {}) as { code?: unknown; message?: unknown };
   if (e.code === 'PGRST202' || e.code === '42883') return true;
-  return typeof e.message === 'string' && /could not find the function|does not exist/i.test(e.message);
+  // Solo la función ausente: «relation … does not exist» u otro error real no se disfraza de «sin activar».
+  return typeof e.message === 'string' && /could not find the function public\.fn_salud_contable/i.test(e.message);
 }
 
 export interface CuentaPlanSalud {

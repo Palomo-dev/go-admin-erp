@@ -213,6 +213,23 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_cta_icon_side: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LADOS_ICONO_BOTON }, nueva: true },
   /** Mayúsculas en el botón principal. Sin la clave, lo de hoy (buttons_uppercase_active del sitio). */
   header_cta_uppercase: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /**
+   * Segundo botón del encabezado (header_cta2_*), con el mismo control que el principal (Figma
+   * 2392:55484, nota «el mismo control sirve para el segundo botón»). Sin la clave, el de hoy.
+   */
+  header_cta2_shape: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: FORMAS_BOTON_ENCABEZADO }, nueva: true },
+  header_cta2_size: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: TAMANOS_BOTON_ENCABEZADO }, nueva: true },
+  header_cta2_style: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: ESTILOS_BOTON_ENCABEZADO }, nueva: true },
+  header_cta2_icon: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  header_cta2_icon_side: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LADOS_ICONO_BOTON }, nueva: true },
+  header_cta2_uppercase: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /**
+   * Pinta la forma, el relleno y el tamaño de `tema.tokens.boton` en los botones de las secciones
+   * (vive en el shell por la misma razón que buttons_uppercase_active). `false` = lo de hoy: 9 de
+   * los 15 sitios V2 publicados ya guardan `tokens.boton` por un preset y hoy no se pinta (SQL
+   * 2026-11-07); no deben cambiar solos. Lo escribe el editor cuando el dueño toca «Botones».
+   */
+  buttons_theme_active: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
   /** Píldora del menú (composición `pill`): estilo (ESTILOS_PILDORA). Sin la clave, `vidrio`. */
   header_pill_style: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: ESTILOS_PILDORA }, nueva: true },
   /** Opacidad del blanco del vidrio sobre la foto, en %. Sin la clave, 10. */

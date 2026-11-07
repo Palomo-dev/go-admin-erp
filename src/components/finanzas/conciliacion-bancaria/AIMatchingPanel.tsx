@@ -1,26 +1,24 @@
 'use client';
 
 /**
- * Panel de sugerencias de matching con IA para conciliacion bancaria.
- * Fase 3 Open Finance.
+ * Pestaña «Sugerencias» del detalle de conciliación (Figma `2329:130286`), con
+ * el kit. Fase 3 de Open Finance; la lógica y los servicios no cambian:
  *
- * Carga sugerencias desde el endpoint de suggest-matches, las muestra
- * ordenadas por score con badge de confianza y permite aceptar/rechazar
- * cada sugerencia. Incluye accion de auto-conciliar alta confianza.
+ * - Carga las sugerencias de `GET /api/integrations/open-finance/suggest-matches`
+ *   (ordenadas por puntaje, con su desglose monto · fecha · referencia · descripción).
+ * - «Aceptar» concilia con `ConciliacionService.matchTransaccion(…, 'payment', …)`.
+ * - «Rechazar» solo la quita de la lista local.
+ * - «Auto-conciliar alta confianza» = `POST` al mismo endpoint.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import {
-  Sparkles, Check, X, RefreshCw, Zap,
-  DollarSign, Calendar, FileText, MessageSquare,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
+import { Check, RefreshCw, X, Zap } from 'lucide-react';
+import { DataTable, StatusBadge, clasesBoton, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
 import { ConciliacionService } from './ConciliacionService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 
@@ -72,14 +70,23 @@ interface AIMatchingPanelProps {
   monedaCuenta?: string | null;
 }
 
+/** Confianza por puntaje (la regla de siempre: > 80 alta, ≥ 50 media, el resto baja). */
+function confianza(total: number): { clave: 'alta' | 'media' | 'baja'; tono: 'exito' | 'advertencia' | 'peligro' } {
+  if (total > 80) return { clave: 'alta', tono: 'exito' };
+  if (total >= 50) return { clave: 'media', tono: 'advertencia' };
+  return { clave: 'baja', tono: 'peligro' };
+}
+
 // ==================== Componente ====================
 
 export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuenta }: AIMatchingPanelProps) {
+  const t = useTranslations('finanzasTesoreriaR3.conciliacion.sugerencias');
   // Movimiento bancario: en la moneda de la cuenta. Pago candidato: el dato
   // no trae moneda, va en la base.
   const { formatear, paraDocumento } = useMonedaOrganizacion();
+  const { formatDate } = useFormatDate();
   const [suggestions, setSuggestions] = useState<SuggestedMatch[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [estado, setEstado] = useState<EstadoTabla>('cargando');
   const [isAutoMatching, setIsAutoMatching] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +94,7 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
   // Carga sugerencias desde la API
   const loadSuggestions = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setEstado('cargando');
       setError(null);
       const res = await fetch(
         `/api/integrations/open-finance/suggest-matches?reconciliationId=${encodeURIComponent(reconciliationId)}`,
@@ -98,37 +105,30 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
       }
       const json = (await res.json()) as { data: SuggestedMatch[] };
       setSuggestions(json.data ?? []);
+      setEstado('listo');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al cargar sugerencias';
+      const message = err instanceof Error ? err.message : t('errorCargar');
       console.error('[AIMatchingPanel] Error cargando sugerencias:', err);
       setError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
+      setEstado('error');
     }
-  }, [reconciliationId]);
+  }, [reconciliationId, t]);
 
   useEffect(() => {
-    loadSuggestions();
+    void loadSuggestions();
   }, [loadSuggestions]);
 
   // Aceptar un match: concilia via ConciliacionService
   const handleAccept = async (suggestion: SuggestedMatch) => {
     try {
       setActionInProgress(suggestion.transactionId);
-      await ConciliacionService.matchTransaccion(
-        reconciliationId,
-        suggestion.transactionId,
-        'payment',
-        suggestion.candidateId,
-      );
-      toast.success('Match aceptado y conciliado');
-      // Remover de la lista local
+      await ConciliacionService.matchTransaccion(reconciliationId, suggestion.transactionId, 'payment', suggestion.candidateId);
+      toast.success(t('aceptada'));
       setSuggestions((prev) => prev.filter((s) => s.transactionId !== suggestion.transactionId));
       onMatchComplete();
     } catch (err) {
       console.error('[AIMatchingPanel] Error aceptando match:', err);
-      toast.error('Error al aceptar el match');
+      toast.error(t('errorAceptar'));
     } finally {
       setActionInProgress(null);
     }
@@ -137,32 +137,28 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
   // Rechazar un match: solo se remueve de la lista local
   const handleReject = (suggestion: SuggestedMatch) => {
     setSuggestions((prev) => prev.filter((s) => s.transactionId !== suggestion.transactionId));
-    toast.info('Sugerencia rechazada');
+    toast.info(t('rechazada'));
   };
 
   // Auto-conciliar matches de alta confianza
   const handleAutoMatch = async () => {
     try {
       setIsAutoMatching(true);
-      const res = await fetch(
-        '/api/integrations/open-finance/suggest-matches',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reconciliationId }),
-        },
-      );
+      const res = await fetch('/api/integrations/open-finance/suggest-matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reconciliationId }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
       const json = (await res.json()) as { data: { matched: number; pending: number } };
-      toast.success(`${json.data.matched} matches auto-conciliados`);
-      // Recargar sugerencias y refrescar transacciones
+      toast.success(t('autoConciliadas', { n: json.data.matched }));
       await loadSuggestions();
       onMatchComplete();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al auto-conciliar';
+      const message = err instanceof Error ? err.message : t('errorAuto');
       console.error('[AIMatchingPanel] Error auto-conciliando:', err);
       toast.error(message);
     } finally {
@@ -170,237 +166,137 @@ export function AIMatchingPanel({ reconciliationId, onMatchComplete, monedaCuent
     }
   };
 
-  // Formatea fecha corta
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-
-  // Color del badge segun score total
-  const getScoreBadge = (score: number) => {
-    if (score > 80) {
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{score} - Alta</Badge>;
-    }
-    if (score >= 50) {
-      return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">{score} - Media</Badge>;
-    }
-    return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">{score} - Baja</Badge>;
+  const valorBanco = (s: SuggestedMatch) => {
+    const v = formatMoneda(Math.abs(s.transaction.amount), paraDocumento(monedaCuenta));
+    return esEntradaBancaria(s.transaction) ? v : `(${v})`;
   };
+  const desglose = (s: SuggestedMatch) =>
+    t('desglose', { monto: s.score.amount, fecha: s.score.date, referencia: s.score.reference, descripcion: s.score.description });
 
-  // ==================== Render ====================
-
-  if (isLoading) {
-    return (
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-gray-900 dark:text-white">Sugerencias</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-gray-900 dark:text-white">Sugerencias</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-            <Button variant="outline" onClick={loadSuggestions} className="dark:border-gray-600">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reintentar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const columnas: ColumnaTabla<SuggestedMatch>[] = [
+    {
+      id: 'banco',
+      encabezado: t('columnas.banco'),
+      celda: (s) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-fg">
+            {formatDate(s.transaction.trans_date)} · {s.transaction.description || t('sinDescripcion')}
+          </p>
+          {s.transaction.reference && <p className="truncate text-xs text-fg-secondary">{s.transaction.reference}</p>}
+        </div>
+      ),
+    },
+    {
+      id: 'candidato',
+      encabezado: t('columnas.candidato'),
+      celda: (s) => (
+        <div className="min-w-0">
+          <p className="truncate text-fg">{s.candidate.reference || t('sinReferencia')}</p>
+          <p className="truncate text-xs text-fg-secondary">
+            {formatDate(s.candidate.payment_date)} · {s.candidate.method} · {formatear(Math.abs(s.candidate.amount))}
+          </p>
+        </div>
+      ),
+    },
+    { id: 'valor', encabezado: t('columnas.valor'), variante: 'importe', celda: valorBanco },
+    {
+      id: 'confianza',
+      encabezado: t('columnas.confianza'),
+      celda: (s) => {
+        const c = confianza(s.score.total);
+        return (
+          <span title={desglose(s)}>
+            <StatusBadge estado={c.clave} etiqueta={t('confianzaPuntos', { nivel: t(`niveles.${c.clave}`), puntos: s.score.total })} tono={c.tono} />
+          </span>
+        );
+      },
+    },
+  ];
 
   return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-gray-900 dark:text-white">Sugerencias</CardTitle>
-            </div>
-            <CardDescription className="dark:text-gray-400">
-              {suggestions.length} sugerencia(s) encontrada(s)
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadSuggestions}
-              className="dark:border-gray-600"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualizar
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleAutoMatch}
-              disabled={isAutoMatching || suggestions.length === 0}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              {isAutoMatching ? 'Conciliando...' : 'Auto-conciliar alta confianza'}
-            </Button>
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-fg-secondary">{estado === 'listo' ? t('encontradas', { n: suggestions.length }) : t('descripcion')}</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void loadSuggestions()} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            {t('actualizar')}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleAutoMatch()}
+            disabled={isAutoMatching || suggestions.length === 0}
+            className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
+          >
+            <Zap className="h-4 w-4" aria-hidden />
+            {isAutoMatching ? t('conciliando') : t('autoConciliar')}
+          </button>
         </div>
-      </CardHeader>
-      <CardContent>
-        {suggestions.length === 0 ? (
-          <div className="text-center py-8">
-            <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">
-              No hay sugerencias pendientes
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3 max-h-[600px] overflow-y-auto">
-            {suggestions.map((sug) => (
-              <div
-                key={`${sug.transactionId}-${sug.candidateId}`}
-                className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
-              >
-                {/* Fila superior: score y acciones */}
-                <div className="flex items-center justify-between mb-3">
-                  {getScoreBadge(sug.score.total)}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleAccept(sug)}
-                      disabled={actionInProgress === sug.transactionId}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <Check className="h-3 w-3 mr-1" />
-                      Aceptar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleReject(sug)}
-                      disabled={actionInProgress === sug.transactionId}
-                      className="dark:border-gray-600"
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Rechazar
-                    </Button>
-                  </div>
+      </div>
+
+      <DataTable<SuggestedMatch>
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={suggestions}
+        obtenerId={(s) => `${s.transactionId}-${s.candidateId}`}
+        estado={estado}
+        onReintentar={() => void loadSuggestions()}
+        error={error ? { descripcion: error } : undefined}
+        vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), compacto: true }}
+        accionesRapidas={(s) => (
+          <>
+            <button
+              type="button"
+              onClick={() => void handleAccept(s)}
+              disabled={actionInProgress === s.transactionId}
+              aria-label={t('aceptarAria', { banco: s.transaction.description ?? '' })}
+              className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-brand' })}
+            >
+              <Check className="h-4 w-4" aria-hidden />
+              {t('aceptar')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleReject(s)}
+              aria-label={t('rechazarAria', { banco: s.transaction.description ?? '' })}
+              className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+            >
+              <X className="h-4 w-4" aria-hidden />
+              {t('rechazar')}
+            </button>
+          </>
+        )}
+        tarjetaMovil={(s) => {
+          const c = confianza(s.score.total);
+          return (
+            <div className="space-y-2 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-fg">{s.transaction.description || t('sinDescripcion')}</p>
+                  <p className="text-xs text-fg-secondary">
+                    {formatDate(s.transaction.trans_date)} · {s.candidate.reference || t('sinReferencia')}
+                  </p>
                 </div>
-
-                {/* Detalle: transaccion y pago candidato */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Transaccion bancaria */}
-                  <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
-                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      Transaccion bancaria
-                    </p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {sug.transaction.description || 'Sin descripcion'}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Calendar className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(sug.transaction.trans_date)}
-                      </span>
-                    </div>
-                    <p className={`text-sm font-semibold mt-1 ${
-                      esEntradaBancaria(sug.transaction)
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {formatMoneda(Math.abs(sug.transaction.amount), paraDocumento(monedaCuenta))}
-                    </p>
-                  </div>
-
-                  {/* Pago candidato */}
-                  <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
-                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      Pago candidato
-                    </p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {sug.candidate.reference || 'Sin referencia'}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Calendar className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(sug.candidate.payment_date)}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
-                      {formatear(Math.abs(sug.candidate.amount))}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Desglose del score */}
-                <div className="grid grid-cols-4 gap-2 mt-3">
-                  <ScoreDetail icon={<DollarSign className="h-3 w-3" />} label="Monto" value={sug.score.amount} max={40} />
-                  <ScoreDetail icon={<Calendar className="h-3 w-3" />} label="Fecha" value={sug.score.date} max={30} />
-                  <ScoreDetail icon={<FileText className="h-3 w-3" />} label="Ref." value={sug.score.reference} max={20} />
-                  <ScoreDetail icon={<MessageSquare className="h-3 w-3" />} label="Desc." value={sug.score.description} max={10} />
+                <span className="font-semibold tabular-nums text-fg">{valorBanco(s)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <StatusBadge estado={c.clave} etiqueta={t('confianzaPuntos', { nivel: t(`niveles.${c.clave}`), puntos: s.score.total })} tono={c.tono} />
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => void handleAccept(s)} disabled={actionInProgress === s.transactionId} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                    {t('aceptar')}
+                  </button>
+                  <button type="button" onClick={() => handleReject(s)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+                    {t('rechazar')}
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+              <p className="text-xs text-fg-tertiary">{desglose(s)}</p>
+            </div>
+          );
+        }}
+      />
 
-// ==================== Subcomponente ====================
-
-/** Muestra el detalle de un componente del score con barra de progreso. */
-function ScoreDetail({
-  icon,
-  label,
-  value,
-  max,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  max: number;
-}) {
-  const pct = max > 0 ? (value / max) * 100 : 0;
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-purple-500 rounded-full transition-all"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-          {value}/{max}
-        </span>
-      </div>
+      <p className="text-xs text-fg-secondary">{t('regla')}</p>
     </div>
   );
 }

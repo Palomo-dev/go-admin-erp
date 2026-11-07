@@ -52,7 +52,8 @@ import {
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
-import { CabeceraBotonPrincipal, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonPrincipal } from './PildoraYBoton';
+import { CabeceraBoton, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonEncabezado } from './PildoraYBoton';
+import type { BotonEncabezado } from './pildoraLogica';
 import {
   BandaGlobal,
   CabeceraZona,
@@ -115,18 +116,30 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   const cambiar = (c: Record<string, unknown>) => p.onCambiar(c);
   const texto = (k: string) => (typeof a[k] === 'string' ? (a[k] as string) : '');
   // P2 (Figma 2392:55484): el botón principal se edita en una vista propia con «volver», que
-  // reemplaza las pestañas mientras está abierta y regresa a la pestaña de la que se vino.
-  const [vistaBoton, setVistaBoton] = useState(false);
-  const abrirBoton = () => setVistaBoton(true);
+  // reemplaza las pestañas mientras está abierta y regresa a la pestaña de la que se vino. La
+  // misma vista edita el segundo botón (`header_cta2_*`), que se abre desde Contenido.
+  const [vistaBoton, setVistaBoton] = useState<BotonEncabezado | null>(null);
+  const abrirBoton = () => setVistaBoton('principal');
+  const abrirSegundo = () => setVistaBoton('segundo');
 
   if (vistaBoton) {
+    const segundo = vistaBoton === 'segundo';
+    const tituloVista = t(segundo ? 'zonaGlobal.segundoBoton.titulo' : 'zonaGlobal.botonPrincipal.titulo');
     return (
-      <aside aria-label={t('inspector.etiqueta', { nombre: t('zonaGlobal.botonPrincipal.titulo') })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
-        <CabeceraBotonPrincipal onVolver={() => setVistaBoton(false)} />
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista="boton-principal">
-          <VistaBotonPrincipal ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema}>
-            <CampoBoton etiquetaTexto={t('zonaGlobal.botonPrincipal.texto')} claveTexto="header_cta_text" claveUrl="header_cta_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />
-          </VistaBotonPrincipal>
+      <aside aria-label={t('inspector.etiqueta', { nombre: tituloVista })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
+        <CabeceraBoton boton={vistaBoton} onVolver={() => setVistaBoton(null)} />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista={segundo ? 'segundo-boton' : 'boton-principal'}>
+          <VistaBotonEncabezado boton={vistaBoton} ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema}>
+            <CampoBoton
+              key={vistaBoton}
+              etiquetaTexto={t('zonaGlobal.botonPrincipal.texto')}
+              claveTexto={segundo ? 'header_cta2_text' : 'header_cta_text'}
+              claveUrl={segundo ? 'header_cta2_url' : 'header_cta_url'}
+              ajustes={a}
+              cambiar={cambiar}
+              paginas={p.paginas}
+            />
+          </VistaBotonEncabezado>
         </div>
       </aside>
     );
@@ -150,7 +163,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
       />
       <div role="tabpanel" id={idPanel(idTabs, pestana)} aria-labelledby={idPestana(idTabs, pestana)} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
         <BandaGlobal />
-        {pestana === 'contenido' && <Contenido {...p} cambiar={cambiar} texto={texto} onAbrirBoton={abrirBoton} />}
+        {pestana === 'contenido' && <Contenido {...p} cambiar={cambiar} texto={texto} onAbrirBoton={abrirBoton} onAbrirSegundo={abrirSegundo} />}
         {pestana === 'diseno' && (
           <>
             <TarjetaPlantilla nombre={p.porDefecto.nombre} enBorrador={p.enBorrador} />
@@ -164,7 +177,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   );
 }
 
-type Interno = InspectorEncabezadoProps & { cambiar: (c: Record<string, unknown>) => void; onAbrirBoton?: () => void };
+type Interno = InspectorEncabezadoProps & { cambiar: (c: Record<string, unknown>) => void; onAbrirBoton?: () => void; onAbrirSegundo?: () => void };
 
 // ─── Menú (en Contenido y en Diseño, como en Figma) ───────────────────────────────────────────
 
@@ -321,6 +334,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           }
         />
         {segundo && <CampoBoton etiquetaTexto={t('zonaGlobal.boton.texto')} claveTexto="header_cta2_text" claveUrl="header_cta2_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />}
+        {segundo && p.onAbrirSegundo && <FilaAbrirBoton boton="segundo" onAbrir={p.onAbrirSegundo} />}
       </section>
       <MasBotones ajustes={a} cambiar={cambiar} paginas={p.paginas} />
 

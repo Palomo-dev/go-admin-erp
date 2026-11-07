@@ -546,7 +546,16 @@ export function CuentaBancariaDetalle({ id }: { id: string }) {
             <FilaDato etiqueta={t('form.numero')} valor={mascaraCuenta(cuenta.account_number) || '—'} />
             <FilaDato etiqueta={t('form.moneda')} valor={cuenta.currency ?? monedaBase} />
             <FilaDato etiqueta={t('form.cuentaContable')} valor={cuenta.account_code ?? t('puc.sin')} tono={cuenta.account_code ? 'neutro' : 'advertencia'} />
-            <FilaDato etiqueta={t('datos.saldoInicial')} valor={cuenta.initial_balance === null ? '—' : moneda.formatear(cuenta.initial_balance)} />
+            <FilaDato
+              etiqueta={t('datos.saldoInicial')}
+              valor={cuenta.initial_balance === null ? '—' : moneda.formatear(cuenta.initial_balance)}
+              descripcion={cuenta.initial_balance_date ? t('datos.alCorte', { fecha: formatPlain(cuenta.initial_balance_date) }) : undefined}
+            />
+            <FilaDato
+              etiqueta={t('datos.fechaCorte')}
+              valor={cuenta.initial_balance_date ? formatPlain(cuenta.initial_balance_date) : t('datos.sinFechaCorte')}
+              tono={cuenta.initial_balance_date ? 'neutro' : 'advertencia'}
+            />
             <FilaDato etiqueta={t('datos.estado')} valor={cuenta.is_active ? t('activa') : t('inactiva')} />
             <FilaDato etiqueta={t('datos.creada')} valor={formatDate(cuenta.created_at)} />
           </ListaDatos>

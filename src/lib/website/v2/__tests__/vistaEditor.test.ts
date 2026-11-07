@@ -16,6 +16,7 @@ import {
   propagarSeccionesHeredadas,
   restablecerSeccion,
 } from '../vistaEditor';
+import { normalizarOpcionShell } from '../mapeoAjustes';
 
 const ctx = { organizationId: 120, branchId: null };
 
@@ -172,6 +173,51 @@ describe('encabezado píldora y botón principal (2026-11-07): ida y vuelta', ()
     expect(validarDocumentoSitio(doc).ok).toBe(true);
     const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
     expect((a.mobile_header as { bottom_nav: unknown }).bottom_nav).toEqual(bottom_nav);
+  });
+});
+
+describe('segundo botón y botones del tema (2026-11-07): ida y vuelta', () => {
+  const SEGUNDO = {
+    header_cta2_shape: 'circle',
+    header_cta2_size: 'sm',
+    header_cta2_style: 'vidrio',
+    header_cta2_icon: 'phone',
+    header_cta2_icon_side: 'encima',
+    header_cta2_uppercase: true,
+  } as const;
+
+  test('header_cta2_* y buttons_theme_active se guardan en shell.header.opciones y se leen igual', () => {
+    const { documento: doc, noAplicadas } = aplicarAjustesAlDocumento(documento(), { ...SEGUNDO, buttons_theme_active: true });
+    expect(noAplicadas).toEqual([]);
+    expect(doc.shell.header.opciones).toMatchObject({ ...SEGUNDO, buttons_theme_active: true });
+    expect(validarDocumentoSitio(doc).ok).toBe(true);
+    const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
+    for (const [k, v] of Object.entries(SEGUNDO)) expect(a[k]).toBe(v);
+    expect(a.buttons_theme_active).toBe(true);
+  });
+
+  test('null borra las del segundo y buttons_theme_active (ausente = false, lo de hoy)', () => {
+    const conTodo = aplicarAjustesAlDocumento(documento(), { ...SEGUNDO, buttons_theme_active: true }).documento;
+    const nulos = Object.fromEntries([...Object.keys(SEGUNDO), 'buttons_theme_active'].map((k) => [k, null]));
+    const doc = aplicarAjustesAlDocumento(conTodo, nulos).documento;
+    for (const k of Object.keys(SEGUNDO)) expect(doc.shell.header.opciones).not.toHaveProperty(k);
+    const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
+    for (const k of Object.keys(SEGUNDO)) expect(a[k]).toBeNull();
+    expect(normalizarOpcionShell('buttons_theme_active', a.buttons_theme_active)).toBe(false);
+  });
+
+  test('buttons_theme_active: false explícito («Volver a lo de hoy») se lee false', () => {
+    const doc = aplicarAjustesAlDocumento(documento(), { buttons_theme_active: false }).documento;
+    expect(validarDocumentoSitio(doc).ok).toBe(true);
+    expect((ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>).buttons_theme_active).toBe(false);
+  });
+
+  test('un valor fuera del contrato que llegue al documento se lee como lo de hoy', () => {
+    const { documento: doc } = aplicarAjustesAlDocumento(documento(), { header_cta2_shape: 'ovalo', header_cta2_style: 'neon', buttons_theme_active: 'si' });
+    const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
+    expect(normalizarOpcionShell('header_cta2_shape', a.header_cta2_shape)).toBeNull();
+    expect(normalizarOpcionShell('header_cta2_style', a.header_cta2_style)).toBeNull();
+    expect(normalizarOpcionShell('buttons_theme_active', a.buttons_theme_active)).toBe(false);
   });
 });
 

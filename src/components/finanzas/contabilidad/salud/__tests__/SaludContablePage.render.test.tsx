@@ -83,6 +83,19 @@ describe('Salud contable', () => {
     expect(screen.queryByText('Sin descuadres')).toBeNull();
   });
 
+  it('con la función aplicada y sin problemas: vacío revisado en Descuadres y Huérfanos, nunca «pendiente de activar»', async () => {
+    mockCruce.mockResolvedValue({ descuadres: [], totalDescuadres: 0, huerfanos: [], totalHuerfanos: 0 });
+    mockPestana = 'descuadres';
+    const { unmount } = renderConIdioma(<SaludContablePage />);
+    expect((await screen.findAllByText('Sin descuadres')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Revisión pendiente de activar')).toBeNull();
+    unmount();
+    mockPestana = 'huerfanos';
+    renderConIdioma(<SaludContablePage />);
+    expect((await screen.findAllByText('Sin asientos huérfanos')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Revisión pendiente de activar')).toBeNull();
+  });
+
   it('sin permiso de Finanzas no consulta nada', () => {
     mockPermisos = { ver: false, cargando: false };
     renderConIdioma(<SaludContablePage />);

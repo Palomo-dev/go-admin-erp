@@ -4,8 +4,11 @@
  * hoy borra la clave y que lo fuera de rango no se guarda. Lógica pura, datos ficticios (org 120).
  */
 import { leerMenuInferior, MAX_BOTONES, VARIANTES_MENU } from '@/lib/website/menuInferior';
+import { OPCIONES_SHELL } from '@/lib/website/v2/mapeoAjustes';
 import {
   ALTO_TAMANO,
+  CLAVES_BOTON,
+  CONTROLES_BOTON,
   FORMAS_BOTON,
   PILDORA_SIN_CLAVE,
   altoMostrado,
@@ -28,6 +31,7 @@ import {
   ladoAplica,
   ladoIcono,
   mayusculasBoton,
+  muestraControl,
   radioDeHoy,
   rellenoX,
   separacionPildora,
@@ -222,5 +226,61 @@ describe('menú inferior · píldora flotante (P4)', () => {
     expect(tabs.style).not.toHaveProperty('offset');
     const guardado = (cambioMenuV2({}, tabs).mobile_header as { bottom_nav: { style: Record<string, unknown> } }).bottom_nav.style;
     expect(guardado).not.toHaveProperty('glass');
+  });
+});
+
+describe('segundo botón (header_cta2_*): el mismo control con otro prefijo', () => {
+  test('cada control escribe su clave header_cta2_* y nunca toca las del principal', () => {
+    expect(cambioFormaBoton('rounded', 'segundo')).toEqual({ header_cta2_shape: 'rounded' });
+    expect(cambioFormaBoton(null, 'segundo')).toEqual({ header_cta2_shape: null });
+    expect(cambioTamanoBoton({ header_cta_height: 44 }, 'md', 'segundo')).toEqual({ header_cta2_size: 'md' });
+    expect(cambioTamanoBoton({}, null, 'segundo')).toEqual({ header_cta2_size: null });
+    expect(cambioEstiloBoton('vidrio', 'segundo')).toEqual({ header_cta2_style: 'vidrio' });
+    expect(cambioIconoBoton('phone', 'segundo')).toEqual({ header_cta2_icon: 'phone' });
+    expect(cambioIconoBoton(null, 'segundo')).toEqual({ header_cta2_icon: null });
+    expect(cambioLadoIcono({}, 'derecha', 'segundo')).toEqual({ header_cta2_icon_side: 'derecha' });
+    expect(cambioMayusculas('si', 'segundo')).toEqual({ header_cta2_uppercase: true });
+    expect(cambioMayusculas('no', 'segundo')).toEqual({ header_cta2_uppercase: false });
+    expect(cambioMayusculas('sitio', 'segundo')).toEqual({ header_cta2_uppercase: null });
+  });
+
+  test('lee sus claves, no las del principal', () => {
+    const a = { header_cta_shape: 'pill', header_cta2_shape: 'square', header_cta2_icon: 'star', header_cta2_icon_side: 'derecha', header_cta2_uppercase: false };
+    expect(formaBoton(a, 'segundo')).toBe('square');
+    expect(formaBoton(a)).toBe('pill');
+    expect(iconoBoton(a, 'segundo')).toBe('star');
+    expect(iconoBoton(a)).toBeNull();
+    expect(ladoIcono(a, 'segundo')).toBe('derecha');
+    expect(mayusculasBoton(a, 'segundo')).toBe('no');
+    expect(mayusculasBoton(a)).toBe('sitio');
+    expect(formaBoton({ header_cta2_shape: 'ovalo' }, 'segundo')).toBeNull();
+  });
+
+  test('lo de hoy borra la clave: el segundo es «con borde» (contorno), no sólido', () => {
+    expect(estiloBoton({}, 'segundo')).toBe('contorno');
+    expect(estiloBoton({})).toBe('solido');
+    expect(cambioEstiloBoton('contorno', 'segundo')).toEqual({ header_cta2_style: null });
+    expect(cambioEstiloBoton('solido', 'segundo')).toEqual({ header_cta2_style: 'solido' });
+    expect(cambioEstiloBoton('solido')).toEqual({ header_cta_style: null });
+    expect(cambioLadoIcono({}, 'izquierda', 'segundo')).toEqual({ header_cta2_icon_side: null });
+    expect(cambioLadoIcono({ header_cta2_shape: 'circle' }, 'encima', 'segundo')).toEqual({ header_cta2_icon_side: null });
+    expect(cambioMayusculas('sitio', 'segundo')).toEqual({ header_cta2_uppercase: null });
+  });
+
+  test('el lado solo aplica con ícono propio (el calendario del círculo es solo del principal)', () => {
+    expect(ladoAplica({ header_cta2_shape: 'circle' }, 'segundo')).toBe(false);
+    expect(ladoAplica({ header_cta2_icon: 'phone' }, 'segundo')).toBe(true);
+    expect(ladoAplica({ header_cta_shape: 'circle' })).toBe(true);
+  });
+
+  test('el segundo solo muestra los controles con clave en el contrato', () => {
+    expect(CONTROLES_BOTON.segundo).toEqual(['forma', 'tamano', 'estilo', 'icono', 'lado', 'mayusculas']);
+    for (const c of ['ancho', 'alto', 'relleno', 'sombra', 'colores'] as const) {
+      expect(muestraControl('segundo', c)).toBe(false);
+      expect(muestraControl('principal', c)).toBe(true);
+    }
+    // Cada clave del segundo existe en el contrato.
+    for (const k of Object.values(CLAVES_BOTON.segundo)) expect(k in OPCIONES_SHELL).toBe(true);
+    expect(Object.values(CLAVES_BOTON.segundo).every((k) => k.startsWith('header_cta2_'))).toBe(true);
   });
 });

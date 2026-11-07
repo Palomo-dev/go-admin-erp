@@ -48,9 +48,11 @@ describe('catálogo: alcance coherente con el uso de branchId', () => {
   // proveedor» de #265. 80 = + los nueve reportes nuevos de la v2 (cuatro
   // contables, dos de bancos, movimiento valorizado, compras por proveedor y
   // órdenes de compra). 82 = + «Estado de resultados por centro» y
-  // «Comparativo de centros». Si agregas o quitas un reporte, actualízalo aquí.
-  test('el catálogo trae las 82 definiciones y todas declaran alcance', () => {
-    expect(definiciones.length).toBe(82);
+  // «Comparativo de centros». 92 = + los diez informes que eran pantallas de
+  // Finanzas (nueve contables con componente propio y «Ingresos y egresos por
+  // categoría»). Si agregas o quitas un reporte, actualízalo aquí.
+  test('el catálogo trae las 92 definiciones y todas declaran alcance', () => {
+    expect(definiciones.length).toBe(92);
     const sinAlcance = definiciones.filter((d) => d.alcance !== 'sucursal' && d.alcance !== 'organizacion');
     expect(sinAlcance.map((d) => d.id)).toEqual([]);
   });

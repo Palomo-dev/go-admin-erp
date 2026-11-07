@@ -3,6 +3,8 @@
 import { useBranch } from '@/lib/context/BranchContext';
 import { esSucursalRestaurante } from '@/lib/pms/sucursalesPms';
 import { useEffect, useMemo, useState } from 'react';
+import { ProveedorVisorInforme } from './especiales/contextoVisor';
+import { COMPONENTES_REPORTE } from './especiales/registro';
 import { Download, FileSpreadsheet, Mail, Printer, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { EmptyState, RowActionsMenu, TabBar, clasesBoton, type AccionFila } from '@/components/kit';
@@ -43,6 +45,7 @@ export function VisorReporte({
   onCambiar: (parcial: Partial<FiltrosReportes>) => void;
 }) {
   const t = useTranslations('reportes');
+  const tPropio = useTranslations('reportesFinanzasR2.visor');
   const acciones = useAccionesReportes();
   const { formatDateTime } = useFormatDate();
   const formato = useFormatoReporte();
@@ -52,6 +55,17 @@ export function VisorReporte({
   const permitido = !!def && enPlan && reportePermitido(def, ctx.accesoTotal);
   const efectivos = def ? filtrosEfectivos(def, filtros, ctx.resolverSucursal(filtros)) : null;
   const comparado = efectivos?.comparar ? periodoComparado(efectivos.periodo, efectivos.comparar) : null;
+  // Informe con componente propio (estados financieros, libros, mayor…): la
+  // vista principal la pinta su componente; sin tabla, no se ejecuta `fetch`.
+  const Propio = def?.componente ? COMPONENTES_REPORTE[def.componente] : null;
+  const sinTabla = !!def?.sinTabla;
+  const desdePropio = efectivos?.periodo.fechaInicio ?? null;
+  const hastaPropio = efectivos?.periodo.fechaFin ?? null;
+  const sucursalPropia = efectivos?.sucursal ?? null;
+  const periodoPropio = useMemo(
+    () => (desdePropio && hastaPropio ? { desde: desdePropio, hasta: hastaPropio, sucursal: sucursalPropia } : null),
+    [desdePropio, hastaPropio, sucursalPropia],
+  );
 
   const [data, setData] = useState<ReportData | null>(null);
   const [previo, setPrevio] = useState<ReportData | null>(null);
@@ -69,6 +83,12 @@ export function VisorReporte({
 
   useEffect(() => {
     if (!ctx.orgId || !def || !efectivos || !permitido) return;
+    if (def.sinTabla) {
+      setData(null);
+      setPrevio(null);
+      setEstado('listo');
+      return;
+    }
     let vivo = true;
     setEstado('cargando');
     void (async () => {
@@ -200,6 +220,12 @@ export function VisorReporte({
     { id: 'imprimir', etiqueta: t('visor.imprimir'), icono: Printer, onSelect: () => efectivos && imprimirDocumento('reporte', def.id, parametrosDocumento(efectivos)) },
   ];
 
+  // En la vista del componente propio exporta el componente (sus botones);
+  // sin tabla tampoco hay cierre ni envío programado.
+  const enPropio = !!Propio && !vistaId;
+  const SOLO_TABLA = new Set(['pdf', 'excel', 'csv', 'imprimir']);
+  const menuVisible = menu.filter((a) => !(enPropio && SOLO_TABLA.has(a.id)) && !(sinTabla && a.id === 'envio'));
+
   const pestanasVista = data?.vistas?.length
     ? [{ valor: 'principal', etiqueta: data.vistaPrincipal ?? t('pestanas.inicio') }, ...data.vistas.map((v) => ({ valor: v.id, etiqueta: v.titulo }))]
     : [];
@@ -209,10 +235,12 @@ export function VisorReporte({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BarraFiltros filtros={filtros} onCambiar={onCambiar} hoy={hoy} ctx={ctx} def={def} ocultarSucursalIds={restaurantesOcultos} />
         <div className="flex items-center gap-2">
-          <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => acciones.abrirCierre({ plantilla: 'personalizada', reportes: [def.id] })}>
-            {t('visor.agregar')}
-          </button>
-          <RowActionsMenu acciones={menu} etiquetaBoton={t('visor.exportar')} iconoBoton={Download} tamano="md" titulo={def.titulo} />
+          {!sinTabla && (
+            <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => acciones.abrirCierre({ plantilla: 'personalizada', reportes: [def.id] })}>
+              {t('visor.agregar')}
+            </button>
+          )}
+          <RowActionsMenu acciones={menuVisible} etiquetaBoton={t('visor.exportar')} iconoBoton={Download} tamano="md" titulo={def.titulo} />
         </div>
       </div>
       {opcionPms && (
@@ -224,8 +252,14 @@ export function VisorReporte({
       {pestanasVista.length > 0 && (
         <TabBar id="vista" etiqueta={def.titulo} tamano="sm" valor={vistaId ?? 'principal'} onValorChange={(v) => onCambiar({ vista: v === 'principal' ? null : v })} pestanas={pestanasVista} />
       )}
-      {estado === 'error' && <EmptyState variante="error" onReintentar={() => setRecarga((n) => n + 1)} />}
-      {estado !== 'error' && (
+      {sinTabla && <p className="text-xs text-fg-secondary">{tPropio('soloPantalla')}</p>}
+      {enPropio && Propio && periodoPropio && (
+        <ProveedorVisorInforme valor={periodoPropio}>
+          <Propio />
+        </ProveedorVisorInforme>
+      )}
+      {!enPropio && estado === 'error' && <EmptyState variante="error" onReintentar={() => setRecarga((n) => n + 1)} />}
+      {!enPropio && estado !== 'error' && (
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0">
             {estado === 'listo' && data && (
@@ -259,7 +293,7 @@ export function VisorReporte({
           {data && efectivos && <LecturaRapida data={data} def={def} variaciones={variaciones} periodoComparado={comparado ? etiqueta.periodo(comparado) : null} />}
         </div>
       )}
-      {data && <p className="text-xs text-fg-secondary">{t('visor.datosAl', { cuando: formatDateTime(data.generadoEn) })}</p>}
+      {data && !enPropio && <p className="text-xs text-fg-secondary">{t('visor.datosAl', { cuando: formatDateTime(data.generadoEn) })}</p>}
     </div>
   );
 }

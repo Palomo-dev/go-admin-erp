@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
   StatsSkeleton,
 } from '@/components/common/PageSkeletons';
-import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt, Settings, Users } from 'lucide-react';
+import { BookOpen, FileText, Calculator, ArrowRight, BarChart3, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -18,6 +18,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { AlertasContables } from './AlertasContables';
 import { AlertasFalloContable } from '@/components/finanzas/configuracion-contable';
+import { useTranslations } from 'next-intl';
 
 const MODULES = [
   {
@@ -46,97 +47,6 @@ const MODULES = [
     description: 'Asientos recurrentes, en borrador hasta publicarlos',
     icon: FileText,
     href: '/app/finanzas/contabilidad/plantillas',
-    color: 'blue'
-  },
-  {
-    title: 'Balance de Comprobación',
-    description: 'Reporte de saldos por cuenta',
-    icon: BarChart3,
-    href: '/app/finanzas/contabilidad/balance-comprobacion',
-    color: 'blue'
-  },
-  {
-    title: 'Estado del resultado integral',
-    description: 'Ingresos menos costos y gastos, por naturaleza',
-    icon: TrendingUp,
-    href: '/app/finanzas/contabilidad/estado-resultados',
-    color: 'green'
-  },
-  {
-    title: 'Estado de situación financiera',
-    description: 'Activos, pasivos y patrimonio (antes balance general)',
-    icon: Calculator,
-    href: '/app/finanzas/contabilidad/balance-general',
-    color: 'purple'
-  },
-  {
-    title: 'Estado de flujos de efectivo',
-    description: 'Método indirecto, con efectivo inicial y final',
-    icon: BarChart3,
-    href: '/app/finanzas/contabilidad/informes/flujo-efectivo',
-    color: 'blue'
-  },
-  {
-    title: 'Cambios en el patrimonio',
-    description: 'Capital, reservas y resultados del periodo',
-    icon: BarChart3,
-    href: '/app/finanzas/contabilidad/informes/cambios-patrimonio',
-    color: 'purple'
-  },
-  {
-    title: 'Notas a los estados financieros',
-    description: 'Revelaciones del corte, en borrador',
-    icon: FileText,
-    href: '/app/finanzas/contabilidad/informes/notas',
-    color: 'blue'
-  },
-  {
-    title: 'Certificación de estados financieros',
-    description: 'Documento para el representante legal y el contador',
-    icon: FileText,
-    href: '/app/finanzas/contabilidad/informes/certificacion',
-    color: 'blue'
-  },
-  {
-    title: 'Indicadores financieros',
-    description: 'Liquidez, endeudamiento, márgenes y ciclo de caja',
-    icon: BarChart3,
-    href: '/app/finanzas/contabilidad/informes/indicadores',
-    color: 'green'
-  },
-  {
-    title: 'Presupuesto contra lo real',
-    description: 'Presupuestos aprobados frente al mayor',
-    icon: Target,
-    href: '/app/finanzas/contabilidad/informes/presupuesto-real',
-    color: 'orange'
-  },
-  {
-    title: 'Libros contables',
-    description: 'Diario, mayor, inventarios y balances, auxiliares',
-    icon: BookOpen,
-    href: '/app/finanzas/contabilidad/informes/libros',
-    color: 'blue'
-  },
-  {
-    title: 'Mayor Contable',
-    description: 'Libro mayor por cuenta',
-    icon: BookOpen,
-    href: '/app/finanzas/contabilidad/mayor-contable',
-    color: 'blue'
-  },
-  {
-    title: 'Libro diario',
-    description: 'Asientos publicados del periodo',
-    icon: FileText,
-    href: '/app/finanzas/contabilidad/libro-diario',
-    color: 'blue'
-  },
-  {
-    title: 'Auxiliar por tercero',
-    description: 'Saldos por NIT y cuenta',
-    icon: Users,
-    href: '/app/finanzas/contabilidad/auxiliar-tercero',
     color: 'blue'
   },
   {
@@ -184,6 +94,8 @@ const MODULES = [
 ];
 
 export function ContabilidadHomePage() {
+  // Los estados financieros, libros y auxiliares viven en Reportes › Contabilidad.
+  const tReportes = useTranslations('reportesFinanzasR2.contabilidadInicio');
   const { branchFilter } = useBranch();
   // Saldos de folios (sumas de varios documentos): en la moneda base.
   const { formatear } = useMonedaOrganizacion();
@@ -460,6 +372,24 @@ export function ContabilidadHomePage() {
               </Link>
             );
           })}
+          <Link href="/app/reportes/contabilidad">
+            <Card className={`cursor-pointer transition-all dark:bg-gray-800 dark:border-gray-700 ${getColorClasses('blue').hover}`}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-xl ${getColorClasses('blue').bg}`}>
+                      <BarChart3 className={`h-6 w-6 ${getColorClasses('blue').icon}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{tReportes('titulo')}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{tReportes('descripcion')}</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
 

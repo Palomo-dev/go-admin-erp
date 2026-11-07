@@ -12,13 +12,15 @@ import {
   DataTable,
   Dialogo,
   FormField,
+  KpiStrip,
   PageHeader,
+  SearchInput,
+  StatCard,
   clasesBoton,
   type ColumnaTabla,
   type EstadoTabla,
 } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CampoCuentaContable } from '@/components/finanzas/contabilidad/CampoCuentaContable';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -31,6 +33,7 @@ import {
   type FixedAssetInput,
   type ResultadoDepreciacion,
 } from './FixedAssetService';
+import { filtrarActivos, mesPrimeraCuota, mostrarDepreciar, resumenActivos, tieneDepreciacion } from './activosFijosLogica';
 
 const VACIO: FixedAssetInput = {
   code: '',
@@ -47,10 +50,16 @@ const VACIO: FixedAssetInput = {
   account_expense_code: null,
 };
 
+/** La base rechazó el cambio porque el activo ya tiene depreciación (`fn_trg_activo_con_depreciacion`). */
+function esErrorConDepreciacion(e: unknown): boolean {
+  return /ACTIVO_CON_DEPRECIACION/.test((e as { message?: string } | null)?.message ?? '');
+}
+
 const MOTIVOS = ['metodo_no_disponible', 'faltan_cuentas', 'cuenta_no_es_de_movimiento', 'acumulada_sin_detalle', 'period_closed'];
 
 export function ActivosFijosPage() {
   const t = useTranslations('activosFijos');
+  const r2 = useTranslations('finanzasContableR2.activos');
   const fecha = useFormatter();
   const { formatear } = useMonedaOrganizacion();
   const { getToday } = useFormatDate();
@@ -66,6 +75,7 @@ export function ActivosFijosPage() {
   const [procesando, setProcesando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoDepreciacion | null>(null);
   const [borrar, setBorrar] = useState<FixedAsset | null>(null);
+  const [termino, setTermino] = useState('');
   const cargado = useRef(false);
 
   const cargar = useCallback(async () => {
@@ -91,7 +101,12 @@ export function ActivosFijosPage() {
     setHoy(getToday());
   }, [tzLoading, getToday]);
 
-  const nombreMes = hoy ? fecha.dateTime(new Date(`${hoy.slice(0, 7)}-15T12:00:00Z`), { month: 'long', timeZone: 'UTC' }) : '';
+  // Mes `YYYY-MM` -> nombre; el día 15 a mediodía UTC no cambia de mes en ninguna zona.
+  const nombreDeMes = useCallback(
+    (mes: string) => fecha.dateTime(new Date(`${mes}-15T12:00:00Z`), { month: 'long', timeZone: 'UTC' }),
+    [fecha],
+  );
+  const nombreMes = hoy ? nombreDeMes(hoy.slice(0, 7)) : '';
 
   const motivoDe = useCallback(
     (motivo: string) => t(`motivos.${MOTIVOS.includes(motivo) ? motivo : 'otro'}`),
@@ -139,8 +154,9 @@ export function ActivosFijosPage() {
       else await FixedAssetService.create(datos);
       setEdicion(null);
       await cargar();
-    } catch {
-      toast.error(t('errores.guardar'));
+    } catch (e) {
+      // `fn_trg_activo_con_depreciacion`: la base rechaza el cambio aunque la pantalla no lo bloqueara.
+      toast.error(esErrorConDepreciacion(e) ? r2('errorConDepreciacion') : t('errores.guardar'));
     } finally {
       setGuardando(false);
     }
@@ -151,8 +167,8 @@ export function ActivosFijosPage() {
     try {
       await FixedAssetService.delete(borrar.id);
       await cargar();
-    } catch {
-      toast.error(t('errores.borrar'));
+    } catch (e) {
+      toast.error(esErrorConDepreciacion(e) ? r2('errorConDepreciacion') : t('errores.borrar'));
     } finally {
       setBorrar(null);
     }
@@ -179,7 +195,9 @@ export function ActivosFijosPage() {
         encabezado: t('columnas.activo'),
         celda: (a) => (
           <div className="min-w-0">
-            <p className="font-medium text-fg">{a.name}</p>
+            <p className="font-medium text-fg">
+              {a.code} · {a.name}
+            </p>
             {bloqueos.has(a.id) && <p className="text-xs text-warning-text">{motivoDe(bloqueos.get(a.id) ?? '')}</p>}
           </div>
         ),
@@ -200,7 +218,12 @@ export function ActivosFijosPage() {
   const actualizar = <K extends keyof FixedAssetInput>(campo: K, valor: FixedAssetInput[K]) =>
     setForm((f) => ({ ...f, [campo]: valor }));
 
-  const conDepreciacion = edicion !== null && edicion !== 'nuevo' && edicion.accumulated_depreciation > 0;
+  // Bloqueo por el detalle (`asset_depreciations`), que es lo que mira el trigger de la base.
+  const conDepreciacion = edicion !== null && edicion !== 'nuevo' && tieneDepreciacion(edicion);
+  const hayActivos = mostrarDepreciar(activos.length);
+  const resumen = useMemo(() => resumenActivos(activos, estadoProceso?.bloqueos ?? []), [activos, estadoProceso]);
+  const visibles = useMemo(() => filtrarActivos(activos, termino), [activos, termino]);
+  const primeraCuota = mesPrimeraCuota(form.acquisition_date);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -208,24 +231,49 @@ export function ActivosFijosPage() {
         titulo={t('titulo')}
         subtitulo={t('subtitulo')}
         icono={ListChecks}
-        migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('titulo') }]}
+        migas={[
+          { etiqueta: t('migas.finanzas'), href: '/app/finanzas' },
+          { etiqueta: r2('migaContabilidad'), href: '/app/finanzas/contabilidad' },
+          { etiqueta: t('titulo') },
+        ]}
         acciones={
           <>
             <button type="button" onClick={abrirNuevo} className={clasesBoton({ variante: 'secundario' })}>
               <Plus className="h-4 w-4" aria-hidden />
               {t('nuevo')}
             </button>
-            <button
-              type="button"
-              onClick={() => void depreciar()}
-              disabled={!hoy || procesando || activos.length === 0}
-              className={clasesBoton({ variante: 'primario' })}
-            >
-              {t('depreciar', { mes: nombreMes })}
-            </button>
+            {/* Sin activos no hay nada que depreciar: el botón no se muestra (G3). */}
+            {hayActivos && (
+              <button
+                type="button"
+                onClick={() => void depreciar()}
+                disabled={!hoy || procesando}
+                className={clasesBoton({ variante: 'primario' })}
+              >
+                {t('depreciar', { mes: nombreMes })}
+              </button>
+            )}
           </>
         }
       />
+
+      {hayActivos && (
+        <>
+          <SearchInput value={termino} onChange={setTermino} placeholder={r2('buscar')} etiqueta={r2('buscar')} />
+          <KpiStrip etiqueta={r2('kpi.resumen')}>
+            <StatCard etiqueta={r2('kpi.costo')} valor={formatear(resumen.costoTotal)} tamano="sm" />
+            <StatCard etiqueta={r2('kpi.acumulada')} valor={formatear(resumen.depreciacionAcumulada)} tamano="sm" />
+            <StatCard etiqueta={r2('kpi.libros')} valor={formatear(resumen.valorEnLibros)} tamano="sm" />
+            <StatCard
+              etiqueta={r2('kpi.pendientes')}
+              valor={resumen.pendientes}
+              tamano="sm"
+              tono={resumen.pendientes > 0 ? 'advertencia' : 'neutro'}
+              detalle={resumen.pendientes === 0 ? r2('kpi.alDia') : resumen.motivoComun ? motivoDe(resumen.motivoComun) : r2('kpi.variosMotivos')}
+            />
+          </KpiStrip>
+        </>
+      )}
 
       {resultado && (
         <AvisoTonal
@@ -250,18 +298,20 @@ export function ActivosFijosPage() {
       <DataTable<FixedAsset>
         etiqueta={t('titulo')}
         columnas={columnas}
-        filas={activos}
+        filas={visibles}
         obtenerId={(a) => a.id}
-        estado={estado}
+        estado={estado === 'listo' && hayActivos && visibles.length === 0 ? 'sinResultados' : estado}
+        termino={termino}
+        onLimpiarFiltros={() => setTermino('')}
         onReintentar={() => void cargar()}
         onFilaClick={abrirEdicion}
-        vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion') }}
+        vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), accion: { etiqueta: t('nuevo'), onClick: abrirNuevo } }}
         accionesRapidas={(a) => (
           <>
             <button type="button" aria-label={t('editar', { nombre: a.name })} onClick={() => abrirEdicion(a)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
               <Pencil className="h-4 w-4" aria-hidden />
             </button>
-            {a.accumulated_depreciation <= 0 && (
+            {!tieneDepreciacion(a) && (
               <button type="button" aria-label={t('borrar', { nombre: a.name })} onClick={() => setBorrar(a)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
                 <Trash2 className="h-4 w-4" aria-hidden />
               </button>
@@ -270,7 +320,9 @@ export function ActivosFijosPage() {
         )}
         tarjetaMovil={(a) => (
           <div className="flex flex-col gap-1 p-4">
-            <span className="font-medium text-fg">{a.name}</span>
+            <span className="font-medium text-fg">
+              {a.code} · {a.name}
+            </span>
             <span className="text-sm text-fg-secondary">{t('tarjeta.libros', { valor: formatear(a.current_value) })}</span>
             <span className="text-xs text-fg-tertiary">
               {t('tarjeta.acumulada', { valor: formatear(a.accumulated_depreciation) })} · {t('meses', { n: a.useful_life_months })}
@@ -280,12 +332,18 @@ export function ActivosFijosPage() {
         )}
       />
 
-      <AvisoTonal tono="informacion" titulo={t('otrosMetodos.titulo')} descripcion={t('otrosMetodos.descripcion')} />
+      {hayActivos && (
+        <>
+          <AvisoTonal tono="informacion" titulo={r2('idempotente.titulo')} descripcion={r2('idempotente.descripcion', { mes: nombreMes })} />
+          <AvisoTonal tono="informacion" titulo={t('otrosMetodos.titulo')} descripcion={t('otrosMetodos.descripcion')} />
+        </>
+      )}
 
       <Dialogo
         abierto={edicion !== null}
         onAbiertoChange={(a) => !a && setEdicion(null)}
         titulo={edicion === 'nuevo' ? t('form.tituloNuevo') : t('form.tituloEditar')}
+        descripcion={r2('form.subtitulo')}
         ancho={672}
         primario={{ etiqueta: t('form.guardar'), onClick: () => void guardar(), cargando: guardando }}
       >
@@ -332,17 +390,25 @@ export function ActivosFijosPage() {
               {(campo) => <CampoNumero id={campo.id} valor={form.useful_life_months} onValorChange={(v) => actualizar('useful_life_months', v ?? 1)} minimo={1} decimales={0} disabled={conDepreciacion} alinear="derecha" />}
             </FormField>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <FormField etiqueta={t('form.cuentaActivo')}>
-              {(campo) => <CampoCuentaContable id={campo.id} value={form.account_asset_code} onChange={(c) => actualizar('account_asset_code', c)} vacio={t('form.sinCuenta')} />}
-            </FormField>
-            <FormField etiqueta={t('form.cuentaGasto')} ayuda={t('form.ayudaCuentas')}>
-              {(campo) => <CampoCuentaContable id={campo.id} value={form.account_expense_code} onChange={(c) => actualizar('account_expense_code', c)} vacio={t('form.sinCuenta')} />}
-            </FormField>
+          <fieldset className="space-y-4">
+            <legend className="mb-3 text-sm font-semibold text-fg">{r2('form.cuentas')}</legend>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField etiqueta={t('form.cuentaActivo')}>
+                {(campo) => <CampoCuentaContable id={campo.id} value={form.account_asset_code} onChange={(c) => actualizar('account_asset_code', c)} vacio={t('form.sinCuenta')} />}
+              </FormField>
+              <FormField etiqueta={t('form.cuentaGasto')} ayuda={t('form.ayudaCuentas')}>
+                {(campo) => <CampoCuentaContable id={campo.id} value={form.account_expense_code} onChange={(c) => actualizar('account_expense_code', c)} vacio={t('form.sinCuenta')} />}
+              </FormField>
+            </div>
             <FormField etiqueta={t('form.cuentaDepreciacion')}>
               {(campo) => <CampoCuentaContable id={campo.id} value={form.account_depreciation_code} onChange={(c) => actualizar('account_depreciation_code', c)} vacio={t('form.sinCuenta')} />}
             </FormField>
-          </div>
+          </fieldset>
+          {!conDepreciacion && primeraCuota && (
+            <p className="text-sm text-fg-secondary">
+              {r2('form.primeraCuota', { mes: nombreDeMes(primeraCuota), anio: primeraCuota.slice(0, 4) })}
+            </p>
+          )}
         </div>
       </Dialogo>
 

@@ -62,6 +62,27 @@ export async function limpiarSesionMuerta(): Promise<void> {
   await clearSessionCache();
 }
 
+/**
+ * Tras un fallo cualquiera (entrar a una organización, cargar datos): ¿la
+ * sesión murió? Sí si el error ya lo dice, o si al volver a leer la sesión
+ * GoTrue responde un error irrecuperable o ya no hay sesión. Un fallo de red al
+ * leerla NO cuenta: no sabemos, y no se expulsa a nadie por eso.
+ *
+ * Caso del 2026-11-06: GoTrue revocó la familia de tokens por reutilización
+ * («Possible abuse attempt») y el selector mostraba «no se pudieron cargar tus
+ * organizaciones», con reintentos sobre una sesión que ya no existía.
+ */
+export async function sesionMurio(error: unknown): Promise<boolean> {
+  if (esSesionMuerta(error)) return true;
+  try {
+    const { data, error: errSesion } = await supabase.auth.getSession();
+    if (errSesion) return esSesionMuerta(errSesion);
+    return !data.session;
+  } catch (e) {
+    return esSesionMuerta(e);
+  }
+}
+
 /** Texto para el usuario: nunca el mensaje crudo de Supabase. */
 export const MENSAJE_SESION_EXPIRADA =
   'Tu sesión expiró o se cerró desde otro dispositivo. Inicia sesión de nuevo para continuar.';

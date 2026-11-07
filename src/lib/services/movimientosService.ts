@@ -14,6 +14,12 @@ import {
   type CodigoErrorTesoreria,
   type TipoMovimiento,
 } from '@/lib/finanzas/movimientoBancario';
+import {
+  esConceptoReverso,
+  motivoDeNotas,
+  nombrePersona,
+  type AnulacionMovimiento,
+} from '@/lib/finanzas/anulacionMovimiento';
 
 export type MovementType = TipoMovimiento;
 export type MovementSource = 'cash' | 'bank';
@@ -45,6 +51,8 @@ export interface UnifiedMovement {
   tercero_dv?: string | null;
   centro_costo_nombre?: string | null;
   soporte_path?: string | null;
+  /** El movimiento es el reverso de una anulación («ANULACIÓN: …»): no se anula ni se duplica. */
+  es_reverso?: boolean;
 }
 
 export interface CashMovement {
@@ -253,6 +261,7 @@ class MovimientosService {
         soporte_path: cashData.soporte_path,
         categoria_nombre: nombreRelacion(cashData.categorias_tesoreria, 'nombre'),
         centro_costo_nombre: nombreRelacion(cashData.cost_centers, 'name'),
+        es_reverso: esConceptoReverso(cashData.concept),
       };
     }
 
@@ -266,6 +275,7 @@ class MovimientosService {
         amount,
         reference,
         created_at,
+        import_source,
         cuenta_contable,
         tercero_nit,
         tercero_nombre,
@@ -299,10 +309,57 @@ class MovimientosService {
         soporte_path: bankData.soporte_path,
         categoria_nombre: nombreRelacion(bankData.categorias_tesoreria, 'nombre'),
         centro_costo_nombre: nombreRelacion(bankData.cost_centers, 'name'),
+        es_reverso: bankData.import_source === 'anulacion',
       };
     }
 
     return null;
+  }
+
+  /**
+   * La anulación de un movimiento, si la tiene: el reverso que dejó `cancelMovement`
+   * (ver `@/lib/finanzas/anulacionMovimiento`). `null` si sigue vigente. Solo lectura.
+   */
+  async getAnulacion(movement: Pick<UnifiedMovement, 'uuid' | 'source'>): Promise<AnulacionMovimiento | null> {
+    const organizationId = getOrganizationId();
+    if (!organizationId || !movement.uuid) return null;
+
+    if (movement.source === 'bank') {
+      const { data, error } = await supabase
+        .from('bank_transactions')
+        .select('created_at, reference')
+        .eq('organization_id', organizationId)
+        .eq('import_source', 'anulacion')
+        .eq('import_id', movement.uuid)
+        .order('id', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return { fecha: data.created_at, motivo: motivoDeNotas(data.reference), autor: null };
+    }
+
+    const uuidReverso = await uuidDeterminista(`anulacion:${movement.uuid}`);
+    const { data, error } = await supabase
+      .from('cash_movements')
+      .select('created_at, notes, user_id')
+      .eq('organization_id', organizationId)
+      .eq('uuid', uuidReverso)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+
+    let autor: string | null = null;
+    if (data.user_id) {
+      // El nombre es un adorno: si el perfil no se lee, la anulación se muestra igual.
+      const { data: perfil } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', data.user_id)
+        .maybeSingle();
+      autor = nombrePersona(perfil);
+    }
+    return { fecha: data.created_at, motivo: motivoDeNotas(data.notes), autor };
   }
 
   /**

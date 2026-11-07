@@ -250,7 +250,7 @@ export function PanelCuenta({
                 <span>{t('panel.creadaEl', { fecha: formatDate(autor.creadaEn) })}</span>
               ) : null}
               <Link
-                href={`/app/finanzas/contabilidad/mayor-contable?cuenta=${encodeURIComponent(cuenta.account_code)}`}
+                href={`/app/reportes/contabilidad/mayor-cuenta?periodo=anual&cuenta=${encodeURIComponent(cuenta.account_code)}`}
                 className="text-link hover:underline"
               >
                 {t('fila.verMayor')}

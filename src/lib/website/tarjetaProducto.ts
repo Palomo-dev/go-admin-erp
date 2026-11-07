@@ -44,6 +44,33 @@ export const RATIOS_IMAGEN = ['1:1', '4:5', '3:4', '4:3', '16:9'] as const
 export const AJUSTES_IMAGEN = ['contain', 'cover', 'fill'] as const
 export const HOVER_IMAGEN = ['none', 'zoom', 'second'] as const
 
+// ─── Plantillas de tienda (2026-11, PLANO §2 ítems 1-9) ──────────────────────────────────────
+// Ausente = la tarjeta de hoy. Las listas de arriba son las que ofrece hoy el inspector; las
+// `*_TARJETA` de abajo son las que ACEPTA el normalizador (las de arriba + los valores nuevos).
+// El inspector pasa a ofrecer las nuevas cuando la tienda ya las pinte (paquete E2).
+
+/** `soft`: fondo = 8 % del color de texto sobre la tarjeta y texto primario (Radiante). */
+export const ESTILOS_BOTON_TARJETA = [...ESTILOS_BOTON, 'soft'] as const
+/** `beside_title`: el precio en la fila del nombre, a la derecha. */
+export const POSICIONES_PRECIO_TARJETA = [...POSICIONES_PRECIO, 'beside_title'] as const
+/**
+ * Línea bajo el nombre. `none` = la de hoy (nada). `brand` = `products.brand`; `dimensions` =
+ * «L×A×H cm» con `length_cm`/`width_cm`/`height_cm`; `reference` = `products.reference`;
+ * `description` = primera línea de la descripción. Sin el dato, no se pinta la línea.
+ */
+export const SUBTITULOS_TARJETA = ['none', 'brand', 'dimensions', 'reference', 'description'] as const
+/** «Desde» delante del precio, solo en productos padre (con variantes) y sobre el precio que ya se pinta. */
+export const PREFIJOS_PRECIO = ['none', 'desde'] as const
+/** Fuente del nombre: `body` = la de hoy; `heading` = la de títulos del tema. */
+export const FUENTES_TITULO = ['body', 'heading'] as const
+/** Corazón de favoritos. Ausente = lo que decida `card_buttons` de la sección (lo de hoy). */
+export const ESTILOS_FAVORITO = ['none', 'circle', 'ghost'] as const
+export const POSICIONES_FAVORITO = ['top_right', 'top_left'] as const
+/** Cambio a la segunda imagen al pasar el mouse: `fade` = el de hoy. */
+export const TRANSICIONES_HOVER_IMAGEN = ['fade', 'slide'] as const
+/** Largo máximo del texto del botón «Elegir» de los productos padre («Elige un acabado»). */
+export const MAX_TEXTO_ELEGIR = 24
+
 export const TIPOS_SECCION_TARJETA = ['products_grid', 'featured_products', 'offers'] as const
 
 /** En celular el botón con visibilidad `hover` se ve siempre. */
@@ -72,7 +99,7 @@ export const CLASE_TAMANO_PRECIO: Record<(typeof TAMANOS_TEXTO)[number], string>
 const HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
 
 export interface EstiloBotonTarjeta {
-  button_style?: (typeof ESTILOS_BOTON)[number]
+  button_style?: (typeof ESTILOS_BOTON_TARJETA)[number]
   button_shape?: (typeof FORMAS_BOTON)[number]
   button_size?: (typeof TAMANOS_BOTON)[number]
   button_width?: (typeof ANCHOS_BOTON)[number]
@@ -142,7 +169,7 @@ export interface EstiloTarjetaProducto {
   label_discount?: EstiloEtiquetaTarjeta
   label_sold_out?: EstiloEtiquetaTarjeta
   text_align?: (typeof ALINEACIONES)[number]
-  price_position?: (typeof POSICIONES_PRECIO)[number]
+  price_position?: (typeof POSICIONES_PRECIO_TARJETA)[number]
   price_size?: (typeof TAMANOS_TEXTO)[number]
   price_color?: string
   show_compare_price?: boolean
@@ -181,6 +208,23 @@ export interface EstiloTarjetaProducto {
    * de la sección reemplaza a la del sitio; sin lista = como hoy.
    */
   labels_custom?: EtiquetaPropiaTarjeta[]
+  // Plantillas de tienda (2026-11). Ausentes = la tarjeta de hoy; con valor cuentan como estilo.
+  /** Línea bajo el nombre ({@link SUBTITULOS_TARJETA}). Ausente o `none` = nada (lo de hoy). */
+  card_subtitle?: (typeof SUBTITULOS_TARJETA)[number]
+  /** «Desde» delante del precio de los productos padre. Ausente o `none` = sin prefijo. */
+  price_prefix?: (typeof PREFIJOS_PRECIO)[number]
+  /** Fuente del nombre. Ausente o `body` = la de hoy. */
+  title_font?: (typeof FUENTES_TITULO)[number]
+  /** Rejilla con líneas: separación 0 y borde compartido de 1 px. Solo se guarda `true`. */
+  card_grid_lines?: boolean
+  /** Corazón de favoritos. Ausente = lo que decida `card_buttons` de la sección. */
+  wishlist_style?: (typeof ESTILOS_FAVORITO)[number]
+  /** Esquina del corazón. Ausente = la de hoy (`top_right`). */
+  wishlist_position?: (typeof POSICIONES_FAVORITO)[number]
+  /** Transición a la segunda imagen. Ausente o `fade` = la de hoy. */
+  hover_image_transition?: (typeof TRANSICIONES_HOVER_IMAGEN)[number]
+  /** Texto del botón «Elegir» de los productos padre (≤ {@link MAX_TEXTO_ELEGIR}). Ausente = el de hoy. */
+  choose_label?: string
 }
 
 const CLAVES_BOTON = ['add', 'buy', 'choose'] as const
@@ -223,7 +267,7 @@ function boton(crudo: unknown): EstiloBotonTarjeta | undefined {
   if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) return undefined
   const o = crudo as Record<string, unknown>
   const b: EstiloBotonTarjeta = {}
-  const estilo = enLista(ESTILOS_BOTON, o.button_style)
+  const estilo = enLista(ESTILOS_BOTON_TARJETA, o.button_style)
   const forma = enLista(FORMAS_BOTON, o.button_shape)
   if (estilo) b.button_style = estilo
   if (forma) b.button_shape = forma === 'circle' && estilo !== 'icon_only' ? 'pill' : forma
@@ -373,7 +417,7 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   }
   const align = enLista(ALINEACIONES, o.text_align)
   if (align) e.text_align = align
-  const precio = enLista(POSICIONES_PRECIO, o.price_position)
+  const precio = enLista(POSICIONES_PRECIO_TARJETA, o.price_position)
   if (precio) e.price_position = precio
   const tamPrecio = enLista(TAMANOS_TEXTO, o.price_size)
   if (tamPrecio) e.price_size = tamPrecio
@@ -431,6 +475,22 @@ export function normalizarTarjeta(crudo: unknown): EstiloTarjetaProducto | null 
   if (radioImg != null) e.image_radius = radioImg
   const hover = enLista(HOVER_IMAGEN, o.hover_image)
   if (hover) e.hover_image = hover
+  // Plantillas de tienda (2026-11): inválido o ausente = no se escribe (la tarjeta de hoy).
+  const subtitulo = enLista(SUBTITULOS_TARJETA, o.card_subtitle)
+  if (subtitulo) e.card_subtitle = subtitulo
+  const prefijo = enLista(PREFIJOS_PRECIO, o.price_prefix)
+  if (prefijo) e.price_prefix = prefijo
+  const fuenteTitulo = enLista(FUENTES_TITULO, o.title_font)
+  if (fuenteTitulo) e.title_font = fuenteTitulo
+  if (o.card_grid_lines === true) e.card_grid_lines = true
+  const favorito = enLista(ESTILOS_FAVORITO, o.wishlist_style)
+  if (favorito) e.wishlist_style = favorito
+  const posFavorito = enLista(POSICIONES_FAVORITO, o.wishlist_position)
+  if (posFavorito) e.wishlist_position = posFavorito
+  const transicion = enLista(TRANSICIONES_HOVER_IMAGEN, o.hover_image_transition)
+  if (transicion) e.hover_image_transition = transicion
+  const elegir = typeof o.choose_label === 'string' ? o.choose_label.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTO_ELEGIR).trim() : ''
+  if (elegir) e.choose_label = elegir
   return Object.keys(e).length > 0 ? e : null
 }
 

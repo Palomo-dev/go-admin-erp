@@ -1,6 +1,16 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import type { FilaGrilla } from '@/lib/finanzas/presupuestos/presupuestoLogica';
 
+/**
+ * Presupuestos. La lectura va con la sesión del navegador (RLS por
+ * pertenencia); toda escritura pasa por `/api/finanzas/presupuestos`, que toma
+ * la organización de la sesión y exige el permiso en el servidor.
+ *
+ * `upsertLine` y `deleteLine` (escritura directa desde el navegador, sin
+ * permiso y con filas repetidas porque `budget_lines` no tiene clave única) se
+ * sustituyeron por `guardarLineas`, que guarda la grilla completa en el servidor.
+ */
 export interface Budget {
   id: string;
   organization_id: number;
@@ -26,66 +36,74 @@ export interface BudgetLine {
   cost_center_id: string | null;
 }
 
-export interface BudgetInput {
+export interface NuevoPresupuesto {
   name: string;
   fiscal_year: number;
+  origen: 'vacio' | 'copia';
+  copiar_de?: string | null;
 }
 
-export interface BudgetLineInput {
-  account_code: string;
-  period: number;
-  planned_amount: number;
-  cost_center_id?: string | null;
+/** Error de una ruta de presupuestos con su `codigo` (`sin_permiso`, `nombre_repetido`, `no_editable`…). */
+export class ErrorPresupuesto extends Error {
+  constructor(
+    public codigo: string,
+    public estado: number,
+    /** Con `cuenta_invalida`: las cuentas que no son de movimiento. */
+    public cuentas?: string[],
+  ) {
+    super(codigo);
+  }
+}
+
+function organizacionId(): number {
+  return obtenerOrganizacionActiva()?.id || 0;
+}
+
+async function pedir<T>(ruta: string, init: RequestInit): Promise<T> {
+  const org = organizacionId();
+  const r = await fetch(ruta, {
+    ...init,
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', ...(org > 0 ? { 'x-organization-id': String(org) } : {}) },
+  });
+  const cuerpo = (await r.json().catch(() => ({}))) as { codigo?: string; cuentas?: unknown };
+  if (!r.ok) {
+    const cuentas = Array.isArray(cuerpo.cuentas) ? cuerpo.cuentas.filter((c): c is string => typeof c === 'string') : undefined;
+    throw new ErrorPresupuesto(cuerpo.codigo ?? 'error', r.status, cuentas);
+  }
+  return cuerpo as T;
 }
 
 export class BudgetService {
-  private static getOrganizationId(): number {
-    const org = obtenerOrganizacionActiva();
-    return org?.id || 0;
-  }
-
   static async getAll(): Promise<Budget[]> {
-    const orgId = this.getOrganizationId();
+    const orgId = organizacionId();
     const { data, error } = await supabase
       .from('budgets')
       .select('*')
       .eq('organization_id', orgId)
-      .order('fiscal_year', { ascending: false });
+      .order('fiscal_year', { ascending: false })
+      .order('name');
     if (error) throw error;
     return data || [];
   }
 
-  static async create(input: BudgetInput): Promise<Budget> {
-    const orgId = this.getOrganizationId();
+  static async getById(id: string): Promise<Budget | null> {
     const { data, error } = await supabase
       .from('budgets')
-      .insert({ ...input, organization_id: orgId, status: 'draft' })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  static async update(id: string, input: Partial<BudgetInput>): Promise<Budget> {
-    const { data, error } = await supabase
-      .from('budgets')
-      .update({ ...input, updated_at: new Date().toISOString() })
+      .select('*')
+      .eq('organization_id', organizacionId())
       .eq('id', id)
-      .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
-  }
-
-  static async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('budgets').delete().eq('id', id);
-    if (error) throw error;
   }
 
   static async getLines(budgetId: string): Promise<BudgetLine[]> {
     const { data, error } = await supabase
       .from('budget_lines')
       .select('*')
+      .eq('organization_id', organizacionId())
       .eq('budget_id', budgetId)
       .order('account_code')
       .order('period');
@@ -93,26 +111,25 @@ export class BudgetService {
     return data || [];
   }
 
-  static async upsertLine(budgetId: string, input: BudgetLineInput): Promise<BudgetLine> {
-    const orgId = this.getOrganizationId();
-    const { data, error } = await supabase
-      .from('budget_lines')
-      .upsert({
-        budget_id: budgetId,
-        organization_id: orgId,
-        account_code: input.account_code,
-        period: input.period,
-        planned_amount: input.planned_amount,
-        cost_center_id: input.cost_center_id || null,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  /** Vacío o copia de otro presupuesto de la organización. Permiso `finance.create`. */
+  static create(input: NuevoPresupuesto): Promise<Budget> {
+    return pedir<Budget>('/api/finanzas/presupuestos', { method: 'POST', body: JSON.stringify(input) });
   }
 
-  static async deleteLine(id: string): Promise<void> {
-    const { error } = await supabase.from('budget_lines').delete().eq('id', id);
-    if (error) throw error;
+  /** Borrador: `finance.create`; aprobado o cerrado: `finance.approve`. */
+  static delete(id: string): Promise<{ id: string }> {
+    return pedir(`/api/finanzas/presupuestos/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  static approve(id: string): Promise<{ id: string; status: string }> {
+    return pedir(`/api/finanzas/presupuestos/${encodeURIComponent(id)}/aprobar`, { method: 'POST' });
+  }
+
+  /** Guarda la grilla completa de un borrador. Permiso `finance.create`. */
+  static guardarLineas(id: string, filas: readonly FilaGrilla[]): Promise<{ id: string; total: number }> {
+    return pedir(`/api/finanzas/presupuestos/${encodeURIComponent(id)}/lineas`, {
+      method: 'PUT',
+      body: JSON.stringify({ filas }),
+    });
   }
 }

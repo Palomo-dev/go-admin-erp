@@ -20,6 +20,7 @@ import {
 import type { EstadoResultado } from '@/lib/finanzas/estados/tipos';
 import { BotonesExportar } from '../NivelReporte';
 import { pedirInforme } from '../estados/clienteEstados';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 import { Fila, FiltrosPeriodo, PaginaInforme, Tabla, useCifra } from '../estados/PiezasEstado';
 
 type Presentacion = 'naturaleza' | 'funcion';
@@ -38,6 +39,8 @@ export function EstadoResultadosPage() {
   const cifra = useCifra(formatear);
   const { getToday } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
+  // Dentro del visor de Reportes el periodo sale de su barra de filtros.
+  const visor = useVisorInforme();
 
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
@@ -65,6 +68,7 @@ export function EstadoResultadosPage() {
   };
 
   useEffect(() => {
+    if (visor) return;
     if (tzLoading || arrancado.current) return;
     arrancado.current = true;
     const hoy = getToday();
@@ -73,7 +77,15 @@ export function EstadoResultadosPage() {
     setHasta(hoy);
     void loadData(inicio, hoy);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tzLoading, getToday]);
+  }, [visor, tzLoading, getToday]);
+
+  useEffect(() => {
+    if (!visor) return;
+    setDesde(visor.desde);
+    setHasta(visor.hasta);
+    void loadData(visor.desde, visor.hasta);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visor?.desde, visor?.hasta]);
 
   const actual = data?.actual ?? null;
   const anterior = data?.anterior ?? null;

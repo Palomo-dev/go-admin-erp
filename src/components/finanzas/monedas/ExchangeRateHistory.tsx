@@ -1,456 +1,216 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {TrendingUp, 
-  TrendingDown, 
-  History, 
-  Calendar, 
-  RefreshCw,
-  Download,
-  Filter,
-  Globe} from 'lucide-react';
-import { supabase } from '@/lib/supabase/config';
-import { useToast } from '@/components/ui/use-toast';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { History } from 'lucide-react';
+import { CampoFecha, DataTable, FormField, Pagination, type ColumnaTabla } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sincronizarTasasDeCambio } from '@/lib/services/tasasCambioCliente';
-import { ExchangeRateHistoryPagination } from './ExchangeRateHistoryPagination';
-import { TableSkeleton } from '@/components/common/PageSkeletons';
+import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
+import {
+  filasCsvHistorico,
+  historico,
+  monedaPorDefecto,
+  nombreArchivoCsv,
+  puntosGrafica,
+  rangoLectura,
+  rangoPorDefecto,
+  serieTasas,
+  type FilaHistorico,
+} from '@/lib/finanzas/monedas/tasasLogica';
+import type { MonedaOrganizacion } from '@/lib/services/monedasTasasService';
+import { useTasasOrganizacion } from './useTasasOrganizacion';
+import { useFormatoTasas } from './useFormatoTasas';
+import { BadgeFuente, useSincronizarCatalogo, Variacion } from './piezasTasas';
+import GraficaTasas from './ExchangeRatesChart';
 
-interface ExchangeRateRecord {
-  id: string;
-  code: string;
-  rate_date: string;
-  rate: number;
-  source: string;
-  base_currency_code: string;
-  created_at: string;
-  updated_at: string;
+export interface PestanaHistoricoProps {
+  organizationId: number;
+  base: string;
+  monedas: readonly MonedaOrganizacion[];
+  hoy: string;
+  version: number;
+  /** La moneda pedida desde «Ver historial» (Tasas o Monedas). */
+  monedaPedida: string | null;
+  /** La página pone «Exportar» en la cabecera: recibe la función, o null si no hay filas. */
+  onExportable: (exportar: (() => void) | null) => void;
 }
 
-interface ExchangeRateHistoryProps {
-  organizationId?: number;
-}
+const TAMANO_PAGINA = 25;
 
-// `organizationId` no se usa: el catálogo de tasas es global.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ExchangeRateHistory({ organizationId: _organizationId }: ExchangeRateHistoryProps) {
-  // Solo para el nombre del archivo exportado; aun asi sale del dia de la
-  // organizacion, para que dos usuarios que exportan a la vez desde husos
-  // distintos no se manden ficheros con nombres de dias distintos.
-  const { getToday } = useFormatDate();
-  const [rates, setRates] = useState<ExchangeRateRecord[]>([]);
-  const [filteredRates, setFilteredRates] = useState<ExchangeRateRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [currencies, setCurrencies] = useState<string[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('all');
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const { toast } = useToast();
+/**
+ * M2 · Histórico (captura 82-finanzas-r2-14): moneda, desde y hasta; la
+ * gráfica de 30 días arriba de la tabla; «Exportar» (CSV) se conserva y vive en
+ * la cabecera de la página. La tabla muestra la tasa efectiva de cada día
+ * frente a la moneda base: la manual manda sobre la automática.
+ */
+export function ExchangeRateHistory({ organizationId, base, monedas, hoy, version, monedaPedida, onExportable }: PestanaHistoricoProps) {
+  const t = useTranslations('finanzasMonedasR2.historico');
+  const tComun = useTranslations('finanzasMonedasR2.comun');
+  const formato = useFormatoTasas(base);
+  const otras = useMemo(() => monedas.filter((m) => !m.is_base), [monedas]);
+
+  const [moneda, setMoneda] = useState<string | null>(null);
+  const [rango, setRango] = useState(() => rangoPorDefecto(hoy));
+  const [pagina, setPagina] = useState(1);
 
   useEffect(() => {
-    loadExchangeRates();
-  }, []);
-
+    if (monedaPedida) setMoneda(monedaPedida);
+  }, [monedaPedida]);
   useEffect(() => {
-    filterRates();
-    setCurrentPage(1);
-  }, [rates, selectedCurrency, dateFrom, dateTo]);
+    if (!moneda || !otras.some((m) => m.code === moneda)) setMoneda(monedaPorDefecto(otras.map((m) => m.code), base));
+  }, [otras, base, moneda]);
+  useEffect(() => setPagina(1), [moneda, rango]);
 
-  const loadExchangeRates = async () => {
-    setIsLoading(true);
-    try {
-      // Consultar tabla currency_rates (datos reales de API OpenExchangeRates)
-      const { data, error } = await supabase
-        .from('currency_rates')
-        .select('*')
-        .order('rate_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(1000);
+  const lectura = rangoLectura(rango.desde, rango.hasta, { conGrafica: true });
+  const codigos = useMemo(() => (moneda ? [moneda, base] : []), [moneda, base]);
+  const datos = useTasasOrganizacion(moneda ? organizationId : null, codigos, lectura.desde, lectura.hasta, version);
+  const { sincronizando, sincronizarCatalogo } = useSincronizarCatalogo(sincronizarTasasDeCambio, datos.recargar);
 
-      if (error) throw error;
-
-      setRates(data || []);
-      
-      // Extraer monedas únicas
-      const uniqueCurrencies = new Set<string>();
-      data?.forEach(rate => {
-        uniqueCurrencies.add(rate.code);
-      });
-      setCurrencies(Array.from(uniqueCurrencies).sort());
-
-    } catch (error) {
-      console.error('Error cargando tasas de cambio:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las tasas de cambio',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateRates = async () => {
-    setIsUpdating(true);
-    try {
-      const result = await sincronizarTasasDeCambio();
-      
-      if (result.success) {
-        toast({
-          title: 'Tasas actualizadas',
-          description: result.message || `Se actualizaron ${result.updated_count || 0} tasas`,
-        });
-        await loadExchangeRates();
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message || 'No se pudieron actualizar las tasas',
-          variant: 'destructive',
-        });
-      }
-    } catch (error: unknown) {
-      console.error('Error actualizando tasas:', error);
-      toast({
-        title: 'Error',
-        description: (error instanceof Error ? error.message : '') || 'Error al actualizar tasas de cambio',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const filterRates = () => {
-    let filtered = [...rates];
-
-    if (selectedCurrency !== 'all') {
-      filtered = filtered.filter(r => r.code === selectedCurrency);
-    }
-
-    if (dateFrom) {
-      filtered = filtered.filter(r => r.rate_date >= dateFrom);
-    }
-
-    if (dateTo) {
-      filtered = filtered.filter(r => r.rate_date <= dateTo);
-    }
-
-    setFilteredRates(filtered);
-  };
-
-  const calculateVariation = (current: number, previous: number): { value: number; isPositive: boolean } => {
-    if (!previous || previous === 0) return { value: 0, isPositive: true };
-    const variation = ((current - previous) / previous) * 100;
-    return { value: Math.abs(variation), isPositive: variation >= 0 };
-  };
-
-  const exportToCSV = () => {
-    const headers = ['Fecha', 'Moneda Base', 'Moneda', 'Tasa', 'Fuente', 'Fecha Registro'];
-    const rows = filteredRates.map(rate => [
-      rate.rate_date,
-      rate.base_currency_code || 'USD',
-      rate.code,
-      rate.rate.toString(),
-      rate.source || 'openexchangerates',
-      new Date(rate.created_at).toLocaleString('es-CO')
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map(row => row.join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `tasas_cambio_${getToday()}.csv`;
-    link.click();
-
-    toast({
-      title: 'Exportación completada',
-      description: `Se exportaron ${filteredRates.length} registros`,
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatRate = (rate: number) => {
-    return rate.toLocaleString('es-CO', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6
-    });
-  };
-
-  // Agrupar por moneda para mostrar estadísticas
-  const getStats = () => {
-    const stats: Record<string, { min: number; max: number; avg: number; count: number; latest: number }> = {};
-    
-    filteredRates.forEach(rate => {
-      const key = rate.code;
-      if (!stats[key]) {
-        stats[key] = { min: rate.rate, max: rate.rate, avg: rate.rate, count: 1, latest: rate.rate };
-      } else {
-        stats[key].min = Math.min(stats[key].min, rate.rate);
-        stats[key].max = Math.max(stats[key].max, rate.rate);
-        stats[key].avg = (stats[key].avg * stats[key].count + rate.rate) / (stats[key].count + 1);
-        stats[key].count++;
-      }
-    });
-
-    return stats;
-  };
-
-  const stats = getStats();
-
-  const totalPages = Math.max(1, Math.ceil(filteredRates.length / pageSize));
-  const paginatedRates = filteredRates.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
+  const serie = useMemo(
+    () => (moneda ? serieTasas({ moneda, base, catalogo: datos.catalogo, manuales: datos.manuales }) : []),
+    [moneda, base, datos.catalogo, datos.manuales],
   );
+  const filas = useMemo(() => historico(serie, rango.desde, rango.hasta), [serie, rango]);
+  const puntos = useMemo(() => puntosGrafica(serie, rango.hasta), [serie, rango.hasta]);
+  const par = moneda ? `${moneda}/${base}` : '';
+
+  const registro = (f: FilaHistorico) => {
+    if (f.fuente === 'automatica') return t('plataforma');
+    const quien = f.autorId ? datos.autores.get(f.autorId) ?? tComun('alguien') : tComun('alguien');
+    return f.motivo ? t('registroCon', { autor: quien, motivo: f.motivo }) : quien;
+  };
+
+  // «Exportar» de la cabecera: las filas del filtro actual.
+  useEffect(() => {
+    if (!moneda || datos.estado !== 'listo' || filas.length === 0) {
+      onExportable(null);
+      return;
+    }
+    onExportable(() => {
+      const csv = aCsv(
+        filasCsvHistorico(filas, moneda, base, {
+          encabezados: [
+            t('csv.fecha'),
+            t('csv.par'),
+            t('csv.tasa'),
+            t('csv.variacion'),
+            t('csv.fuente'),
+            t('csv.registro'),
+            t('csv.motivo'),
+          ],
+          fuente: (f) => (f === 'manual' ? tComun('manual') : tComun('automatica')),
+          registro: (f) => (f.fuente === 'automatica' ? t('plataforma') : f.autorId ? datos.autores.get(f.autorId) ?? '' : ''),
+        }),
+      );
+      descargarCsv(nombreArchivoCsv(moneda, base, rango.desde, rango.hasta), csv);
+      toast.success(t('exportado', { n: filas.length }));
+    });
+  }, [filas, moneda, base, rango, datos.estado, datos.autores, onExportable, t, tComun]);
+  useEffect(() => () => onExportable(null), [onExportable]);
+
+  const columnas: ColumnaTabla<FilaHistorico>[] = [
+    { id: 'fecha', encabezado: t('columnas.fecha'), celda: (f) => formato.dia(f.dia) },
+    { id: 'par', encabezado: t('columnas.par'), variante: 'mono', ocultarDebajo: 'sm', celda: () => par },
+    { id: 'tasa', encabezado: t('columnas.tasa'), variante: 'importe', celda: (f) => formato.tasa(f.tasa) },
+    { id: 'variacion', encabezado: t('columnas.variacion'), alinear: 'derecha', celda: (f) => <Variacion valor={f.variacion} formato={formato.porcentaje} /> },
+    { id: 'fuente', encabezado: t('columnas.fuente'), celda: (f) => <BadgeFuente fuente={f.fuente} /> },
+    { id: 'registro', encabezado: t('columnas.registro'), ocultarDebajo: 'md', celda: (f) => <span className="text-fg-secondary">{registro(f)}</span> },
+  ];
+
+  const visibles = filas.slice((pagina - 1) * TAMANO_PAGINA, pagina * TAMANO_PAGINA);
+  const estadoTabla = !moneda ? 'vacio' : datos.estado === 'cargando' ? 'cargando' : datos.estado === 'error' ? 'error' : 'listo';
 
   return (
-    <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg dark:text-gray-100">
-          <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          Histórico de Tasas de Cambio
-          <Badge variant="outline" className="ml-2 text-xs font-normal dark:border-gray-600 dark:text-gray-300">
-            <Globe className="h-3 w-3 mr-1" />
-            OpenExchangeRates
-          </Badge>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="default" 
-            size="sm" 
-            onClick={handleUpdateRates} 
-            disabled={isUpdating}
-            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
-          >
-            <Globe className={`h-4 w-4 mr-1 ${isUpdating ? 'animate-pulse' : ''}`} />
-            {isUpdating ? 'Actualizando...' : 'Actualizar desde API'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={loadExchangeRates} disabled={isLoading} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-            Recargar
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredRates.length === 0} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-            <Download className="h-4 w-4 mr-1" />
-            Exportar
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Filtros */}
-        <div className="flex flex-wrap gap-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtros:</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Label className="text-sm dark:text-gray-200">Moneda:</Label>
-            <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-              <SelectTrigger className="w-32 h-8 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
-                <SelectValue placeholder="Todas" />
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-2xl">
+        <FormField etiqueta={t('moneda')}>
+          {(campo) => (
+            <Select value={moneda ?? ''} onValueChange={setMoneda} disabled={otras.length === 0}>
+              <SelectTrigger id={campo.id}>
+                <SelectValue placeholder={t('monedaPlaceholder')} />
               </SelectTrigger>
-              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="all" className="dark:text-gray-200 dark:focus:bg-gray-700">Todas</SelectItem>
-                {currencies.map(currency => (
-                  <SelectItem key={currency} value={currency} className="dark:text-gray-200 dark:focus:bg-gray-700">{currency}</SelectItem>
+              <SelectContent>
+                {otras.map((m) => (
+                  <SelectItem key={m.code} value={m.code}>
+                    {m.code}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Label className="text-sm dark:text-gray-200">Desde:</Label>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-36 h-8 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:[color-scheme:dark]"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Label className="text-sm dark:text-gray-200">Hasta:</Label>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-36 h-8 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:[color-scheme:dark]"
-            />
-          </div>
-
-          {(selectedCurrency !== 'all' || dateFrom || dateTo) && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => {
-                setSelectedCurrency('all');
-                setDateFrom('');
-                setDateTo('');
-              }}
-              className="dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Limpiar filtros
-            </Button>
           )}
-        </div>
-
-        {/* Estadísticas por moneda */}
-        {Object.keys(stats).length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {Object.entries(stats).slice(0, 4).map(([currency, data]) => (
-              <div 
-                key={currency}
-                className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="font-mono dark:border-gray-600 dark:text-gray-300">{currency}</Badge>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{data.count} registros</span>
-                </div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatRate(data.latest)}
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  <span>Min: {formatRate(data.min)}</span>
-                  <span>Max: {formatRate(data.max)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tabla de histórico */}
-        {isLoading ? (
-          <TableSkeleton columns={6} rows={5} />
-        ) : filteredRates.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <History className="h-12 w-12 mx-auto mb-3 opacity-50 dark:text-gray-600" />
-            <p>No hay registros de tasas de cambio</p>
-          </div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden dark:border-gray-700">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-800">
-                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Fecha Efectiva</TableHead>
-                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Par</TableHead>
-                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300 text-right">Tasa</TableHead>
-                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300 text-center">Variación</TableHead>
-                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Fuente</TableHead>
-                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Registro</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedRates.map((rate, index) => {
-                  const globalIndex = (currentPage - 1) * pageSize + index;
-                  const prevRate = filteredRates.find(
-                    (r, i) => i > globalIndex && 
-                    r.code === rate.code && 
-                    r.rate_date < rate.rate_date
-                  );
-                  const variation = prevRate 
-                    ? calculateVariation(rate.rate, prevRate.rate)
-                    : null;
-
-                  return (
-                    <TableRow key={rate.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <TableCell className="dark:text-gray-300">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                          {formatDate(rate.rate_date)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="font-mono dark:bg-gray-700 dark:text-gray-200">
-                          {rate.base_currency_code || 'USD'}/{rate.code}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-medium dark:text-gray-200">
-                        {formatRate(rate.rate)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {variation && variation.value > 0 ? (
-                          <div className={`flex items-center justify-center gap-1 ${
-                            variation.isPositive ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {variation.isPositive ? (
-                              <TrendingUp className="h-4 w-4" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4" />
-                            )}
-                            <span className="text-sm">{variation.value.toFixed(2)}%</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={rate.source === 'openexchangerates' ? 'default' : 'outline'}
-                          className="text-xs dark:border-gray-600 dark:text-gray-300"
-                        >
-                          {rate.source === 'openexchangerates' ? 'API' : rate.source || 'Manual'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-gray-500 dark:text-gray-400 text-sm">
-                        {new Date(rate.created_at).toLocaleString('es-CO', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <ExchangeRateHistoryPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={filteredRates.length}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
+        </FormField>
+        <FormField etiqueta={t('desde')}>
+          {(campo) => (
+            <CampoFecha
+              id={campo.id}
+              valor={rango.desde}
+              onValorChange={(v) => v && setRango((r) => ({ desde: v, hasta: v > r.hasta ? v : r.hasta }))}
+              max={hoy}
+              hoy={hoy}
+              limpiable={false}
             />
+          )}
+        </FormField>
+        <FormField etiqueta={t('hasta')}>
+          {(campo) => (
+            <CampoFecha
+              id={campo.id}
+              valor={rango.hasta}
+              onValorChange={(v) => v && setRango((r) => ({ desde: v < r.desde ? v : r.desde, hasta: v }))}
+              max={hoy}
+              hoy={hoy}
+              limpiable={false}
+            />
+          )}
+        </FormField>
+      </div>
+
+      {moneda && <GraficaTasas puntos={puntos} par={par} formato={formato} cargando={datos.estado === 'cargando'} onSincronizado={datos.recargar} />}
+
+      <DataTable
+        etiqueta={t('etiqueta', { par })}
+        columnas={columnas}
+        filas={visibles}
+        obtenerId={(f) => f.dia}
+        estado={estadoTabla}
+        onReintentar={datos.recargar}
+        filasEsqueleto={4}
+        vacio={
+          moneda
+            ? {
+                titulo: t('vacio.titulo'),
+                descripcion: t('vacio.descripcion'),
+                icono: History,
+                accion: { etiqueta: sincronizando ? tComun('sincronizando') : tComun('sincronizar'), onClick: sincronizarCatalogo },
+              }
+            : { titulo: t('sinMonedas.titulo'), descripcion: t('sinMonedas.descripcion', { base }), icono: History }
+        }
+        error={{ titulo: t('errorCarga') }}
+        tarjetaMovil={(f) => (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-4">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <p className="text-sm font-medium text-fg">{formato.dia(f.dia)}</p>
+              <p className="truncate text-xs text-fg-muted">{registro(f)}</p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <p className="text-sm font-semibold tabular-nums text-fg">{formato.tasa(f.tasa)}</p>
+              <div className="flex items-center gap-2 text-xs">
+                <Variacion valor={f.variacion} formato={formato.porcentaje} />
+                <BadgeFuente fuente={f.fuente} />
+              </div>
+            </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+        pie={
+          filas.length > TAMANO_PAGINA ? (
+            <Pagination pagina={pagina} tamano={TAMANO_PAGINA} total={filas.length} onPaginaChange={setPagina} />
+          ) : undefined
+        }
+      />
+    </div>
   );
 }
+
+export default ExchangeRateHistory;

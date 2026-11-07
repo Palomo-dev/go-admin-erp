@@ -1,264 +1,145 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/config';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { AlertCircle, Loader2, RefreshCw, Search } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { AvisoTonal, Dialogo, FormField, Skeleton } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { agregarMonedaOrganizacion, listarMonedasDisponibles, type MonedaCatalogo } from '@/lib/services/monedasTasasService';
 import { mensajeErrorMoneda } from './erroresMonedas';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-interface CurrencyTemplate {
-  code: string;
-  name: string;
-  symbol: string;
-  decimals: number;
-  auto_update: boolean;
-}
-
-interface CurrencySelectorProps {
+export interface DialogoAgregarMonedaProps {
+  abierto: boolean;
+  onAbiertoChange: (abierto: boolean) => void;
   organizationId: number;
-  onComplete: () => void;
+  /** Moneda base de la organización (no cambia al agregar). */
+  base: string;
+  onAgregada: (codigo: string) => void;
 }
 
-export default function CurrencySelector({ organizationId, onComplete }: CurrencySelectorProps) {
-  const [templates, setTemplates] = useState<CurrencyTemplate[]>([]);
-  const [filteredTemplates, setFilteredTemplates] = useState<CurrencyTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-  const tErr = useTranslations('monedasSeguridad');
+type ModoTasa = 'automatica' | 'manual';
 
-  // Función para cargar plantillas
-  async function loadTemplates() {
+/**
+ * M3 · «Agregar moneda» (captura 82-finanzas-r2-15). Reemplaza el buscador +
+ * select de «Agregar Nueva Moneda»: las mismas RPC (`get_currency_templates`
+ * para las que la organización aún no tiene, `add_organization_currency` con
+ * permiso resuelto en la base). «Tasa» es `auto_update` de la moneda en la
+ * organización.
+ */
+export default function DialogoAgregarMoneda({ abierto, onAbiertoChange, organizationId, base, onAgregada }: DialogoAgregarMonedaProps) {
+  const t = useTranslations('finanzasMonedasR2.agregar');
+  const tSeg = useTranslations('monedasSeguridad');
+  const [disponibles, setDisponibles] = useState<MonedaCatalogo[]>([]);
+  const [estado, setEstado] = useState<'cargando' | 'listo' | 'error'>('cargando');
+  const [moneda, setMoneda] = useState<string | null>(null);
+  const [modo, setModo] = useState<ModoTasa>('automatica');
+  const [intento, setIntento] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState<string | null>(null);
+
+  const cargar = useCallback(async () => {
+    setEstado('cargando');
     try {
-      setLoading(true);
-      setError(null);
-      setTemplates([]);
-      setFilteredTemplates([]);
-
-      // Obtener plantillas de monedas usando RPC para evitar restricciones de RLS
-      // Pasar el organization_id para filtrar las monedas ya añadidas
-      const { data: allTemplates, error: templateError } = await supabase
-        .rpc('get_currency_templates', { p_organization_id: organizationId });
-
-      if (templateError) {
-        console.error('Error al llamar a get_currency_templates:', templateError);
-        throw templateError;
-      }
-      
-      if (!allTemplates || allTemplates.length === 0) {
-        setError('No se encontraron monedas disponibles para añadir');
-        return;
-      }
-      
-      console.log('Total monedas disponibles para añadir:', allTemplates.length);
-
-      // La función RPC ya devuelve solo las monedas que no están añadidas a esta organización
-      setTemplates(allTemplates);
-      setFilteredTemplates(allTemplates);
-    } catch (err: unknown) {
-      console.error('Error al cargar plantillas de monedas:', err);
-      setError('Error al cargar plantillas: ' + mensajeErrorMoneda(err, tErr));
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las plantillas de monedas: ' + mensajeErrorMoneda(err, tErr),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      setDisponibles(await listarMonedasDisponibles(organizationId));
+      setEstado('listo');
+    } catch (error) {
+      console.error('Agregar moneda: no se pudo leer el catálogo', error);
+      setEstado('error');
     }
-  }
-  
-  // Cargar las plantillas de monedas
-  useEffect(() => {
-    if (organizationId) {
-      loadTemplates();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
-  // Filtrar plantillas según búsqueda
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredTemplates(templates);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = templates.filter(
-        template => 
-          template.code.toLowerCase().includes(query) || 
-          template.name.toLowerCase().includes(query)
-      );
-      setFilteredTemplates(filtered);
-    }
-  }, [searchQuery, templates]);
+    if (!abierto) return;
+    setMoneda(null);
+    setModo('automatica');
+    setIntento(false);
+    setErrorServidor(null);
+    cargar();
+  }, [abierto, cargar]);
 
-  // Añadir moneda seleccionada a la organización
-  async function addCurrency() {
-    if (!selectedCurrency) {
-      toast({
-        title: 'Seleccione una moneda',
-        description: 'Debe seleccionar una moneda para añadir.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  async function agregar() {
+    setIntento(true);
+    setErrorServidor(null);
+    if (!moneda) return;
+    setGuardando(true);
     try {
-      setAdding(true);
-      
-      const templateToAdd = templates.find(t => t.code === selectedCurrency);
-      if (!templateToAdd) {
-        throw new Error('No se encontró la plantilla seleccionada');
-      }
-
-      // Usar la función RPC con SECURITY DEFINER para añadir la moneda a la organización
-      // Esta función maneja todas las verificaciones y la inserción
-      const { error } = await supabase
-        .rpc('add_organization_currency', {
-          p_organization_id: organizationId,
-          p_currency_code: templateToAdd.code,
-          p_is_base: false, // Por defecto no es base
-          p_auto_update: true // Activar actualización automática por defecto
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Moneda añadida',
-        description: `La moneda ${templateToAdd.code} ha sido añadida correctamente.`,
-        variant: 'default',
-      });
-
-      onComplete();
-    } catch (err: unknown) {
-      console.error('Error al añadir moneda:', err);
-      toast({
-        title: 'Error',
-        description: 'No se pudo añadir la moneda: ' + mensajeErrorMoneda(err, tErr),
-        variant: 'destructive',
-      });
+      await agregarMonedaOrganizacion(organizationId, moneda, modo === 'automatica');
+      toast.success(t('agregada', { moneda }));
+      onAgregada(moneda);
+      onAbiertoChange(false);
+    } catch (error) {
+      setErrorServidor(mensajeErrorMoneda(error, tSeg));
     } finally {
-      setAdding(false);
+      setGuardando(false);
     }
   }
 
+  const sinOpciones = estado === 'listo' && disponibles.length === 0;
+
   return (
-    <div className="space-y-4">
-      {error && (
-        <Alert variant="destructive" className="dark:bg-red-900 dark:text-white border-red-500">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-auto" 
-            onClick={loadTemplates}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Reintentar
-          </Button>
-        </Alert>
-      )}
-      
-      <div className="flex items-center gap-2">
-        <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-        <Input
-          placeholder="Buscar moneda por código o nombre..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="dark:bg-gray-800 dark:border-gray-700"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <Label htmlFor="currency-select" className="dark:text-gray-300">
-            Seleccione una moneda
-          </Label>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={loadTemplates} 
-            disabled={loading}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-700"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
+    <Dialogo
+      abierto={abierto}
+      onAbiertoChange={onAbiertoChange}
+      titulo={t('titulo')}
+      descripcion={t('subtitulo')}
+      ancho={520}
+      primario={{
+        etiqueta: t('confirmar'),
+        onClick: agregar,
+        cargando: guardando,
+        deshabilitada: estado !== 'listo' || sinOpciones,
+        motivo: sinOpciones ? t('todas') : undefined,
+      }}
+    >
+      {estado === 'cargando' && (
+        <div className="flex flex-col gap-3" aria-busy="true">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
-        
-        <Select value={selectedCurrency || ''} onValueChange={setSelectedCurrency}>
-          <SelectTrigger className="w-full dark:bg-gray-800 dark:border-gray-700">
-            <SelectValue placeholder="Seleccionar moneda" />
-          </SelectTrigger>
-          <SelectContent className="dark:bg-gray-800">
-            {loading ? (
-              <div className="text-center p-4 dark:text-gray-300">
-                <Loader2 className="animate-spin h-4 w-4 mx-auto mb-2" />
-                Cargando monedas...
-              </div>
-            ) : filteredTemplates.length === 0 ? (
-              <div className="text-center p-4 dark:text-gray-300">
-                {searchQuery ? 'No se encontraron monedas con esa búsqueda.' : 
-                 'No hay plantillas de moneda disponibles para añadir.'}
-              </div>
-            ) : (
-              <SelectGroup>
-                <SelectLabel className="dark:text-gray-300">Monedas disponibles ({filteredTemplates.length})</SelectLabel>
-                {filteredTemplates.map((template) => (
-                  <SelectItem 
-                    key={template.code} 
-                    value={template.code}
-                    className="dark:text-gray-200 dark:focus:bg-gray-700"
-                  >
-                    {template.code} - {template.name} ({template.symbol})
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+      )}
+      {estado === 'error' && (
+        <AvisoTonal tono="peligro" rol="alert" titulo={t('errorCarga')} accion={{ etiqueta: t('reintentar'), onClick: cargar }} />
+      )}
+      {sinOpciones && <AvisoTonal tono="informacion" titulo={t('todas')} />}
+      {estado === 'listo' && !sinOpciones && (
+        <>
+          <FormField etiqueta={t('moneda')} obligatorio error={intento && !moneda ? t('monedaRequerida') : null}>
+            {(campo) => (
+              <Select value={moneda ?? ''} onValueChange={setMoneda}>
+                <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} aria-invalid={campo['aria-invalid']}>
+                  <SelectValue placeholder={t('monedaPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {disponibles.map((m) => (
+                    <SelectItem key={m.code} value={m.code}>
+                      {t('opcion', { codigo: m.code, nombre: m.name })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex justify-end gap-2 pt-4">
-        <Button
-          variant="outline"
-          onClick={onComplete}
-          className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-        >
-          Cancelar
-        </Button>
-        <Button
-          onClick={addCurrency}
-          disabled={!selectedCurrency || adding || loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
-        >
-          {adding ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Añadiendo...
-            </>
-          ) : (
-            'Añadir Moneda'
-          )}
-        </Button>
-      </div>
-    </div>
+          </FormField>
+          <FormField etiqueta={t('tasa')} obligatorio ayuda={t('tasaAyuda')}>
+            {(campo) => (
+              <Select value={modo} onValueChange={(v) => setModo(v as ModoTasa)}>
+                <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="automatica">{t('tasaAutomatica')}</SelectItem>
+                  <SelectItem value="manual">{t('tasaManual')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+          <AvisoTonal
+            tono="informacion"
+            titulo={t('baseTitulo', { base })}
+            descripcion={moneda ? t('baseDescripcion', { moneda, base }) : t('baseDescripcionSinMoneda', { base })}
+          />
+        </>
+      )}
+      {errorServidor && <AvisoTonal tono="peligro" rol="alert" titulo={errorServidor} />}
+    </Dialogo>
   );
 }

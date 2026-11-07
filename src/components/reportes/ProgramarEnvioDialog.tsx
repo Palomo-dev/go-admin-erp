@@ -8,7 +8,7 @@ import { ChipsOpcion, Dialogo, SelectorFranja, clasesBoton } from '@/components/
 import { toastSuccess } from '@/components/ui/use-toast';
 import { clienteReportes } from '@/lib/services/reportes/clienteReportes';
 import type { CuerpoProgramado } from '@/lib/services/reportes/contrato';
-import { getReporteById } from '@/lib/services/reportes/reportesCatalogo';
+import { esTabular, getReporteById } from '@/lib/services/reportes/reportesCatalogo';
 import {
   FORMATOS_ENVIO,
   FRECUENCIAS,
@@ -49,7 +49,8 @@ export function ProgramarEnvioDialog({
   const tErr = useTranslations('reportes.errores');
   const mensaje = useMensajeError();
   const editando = pedido?.editar ?? null;
-  const reportes = useMemo(() => ctx.grupos.flatMap((g) => g.reportes), [ctx.grupos]);
+  // Los informes sin tabla (estados financieros, libros) no se envían: se consultan en su pantalla.
+  const reportes = useMemo(() => ctx.grupos.flatMap((g) => g.reportes).filter(esTabular), [ctx.grupos]);
 
   const [nombre, setNombre] = useState('');
   const [reportId, setReportId] = useState('');

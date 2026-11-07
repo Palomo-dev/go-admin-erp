@@ -4458,6 +4458,8 @@
       "finanzas_egresos": "Expenses",
       "finanzas_transferencias": "Transfers",
       "finanzas_bancos": "Banks",
+      "finanzas_open-finance": "Connect bank",
+      "finanzas_payfac_dispersiones": "Collections and payouts",
       "finanzas_cuentas-por-cobrar": "Accounts receivable",
       "finanzas_saldos-a-favor": "Customer credits",
       "finanzas_cuentas-por-pagar": "Accounts payable",
@@ -40384,6 +40386,1148 @@
         "nombre": "Other income",
         "ayuda": "Credit of an actual inventory surplus. Default 42959501 (sub-account of 4295). It is not 4250."
       }
+    }
+  },
+  "finanzasReportesR2": {
+    "presupuestos": {
+      "titulo": "Budgets",
+      "subtitulo": "Planning by account and month",
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting",
+        "presupuestos": "Budgets"
+      },
+      "nuevo": "New budget",
+      "verInforme": "Budget vs. actual",
+      "estado": {
+        "draft": "Draft",
+        "approved": "Approved",
+        "active": "Active",
+        "closed": "Closed",
+        "desconocido": "No status"
+      },
+      "lista": {
+        "aria": "Budget list",
+        "resumen": "{anio} · {total}"
+      },
+      "vacio": {
+        "titulo": "No budgets yet",
+        "descripcion": "Create the first one to plan income and expenses by account and month."
+      },
+      "seleccione": "Choose a budget to see its accounts.",
+      "detalle": {
+        "titulo": "{nombre} · {estado}",
+        "editar": "Edit lines",
+        "ver": "View lines",
+        "aprobar": "Approve",
+        "cuenta": "Account",
+        "planeadoAnio": "Planned for the year",
+        "total": "Total",
+        "centroCosto": "with cost center",
+        "sinLineas": "This budget has no accounts yet.",
+        "agregarCuentas": "Add accounts",
+        "nota": "Actuals and the month-by-month comparison are in the «Budget vs. actual» report.",
+        "abrirInforme": "Open report"
+      },
+      "menu": {
+        "aria": "More actions for {nombre}",
+        "copiar": "Copy as draft",
+        "eliminar": "Delete"
+      },
+      "eliminar": {
+        "titulo": "Delete «{nombre}»?",
+        "descripcionBorrador": "The budget and all its accounts will be deleted. This cannot be undone.",
+        "descripcionAprobado": "It is approved: it will no longer count in the budget vs. actual report. The budget and all its accounts will be deleted. This cannot be undone.",
+        "confirmar": "Delete budget",
+        "sinPermisoBorrador": "You need the create permission in Finance.",
+        "sinPermisoAprobado": "An approved budget can only be deleted by someone who can approve."
+      },
+      "aprobarSinPermiso": "You need the approve permission in Finance.",
+      "nuevoDialogo": {
+        "titulo": "New budget",
+        "descripcion": "Start empty or copy an earlier one",
+        "nombre": "Name",
+        "nombrePlaceholder": "Operations {anio}",
+        "anio": "Fiscal year",
+        "desde": "Start from",
+        "origen": {
+          "vacio": "Empty",
+          "copia": "Copy of {nombre} · {anio}",
+          "realAnterior": "Previous year's actuals"
+        },
+        "ayuda": {
+          "vacio": "You start with no accounts and add them in «Edit lines».",
+          "copia": "Copies the accounts and each month's values. The new one stays as a draft and the original does not change."
+        },
+        "realNoDisponible": "Not available yet: there is no approved source of actual balances by account and month.",
+        "crear": "Create",
+        "nombreObligatorio": "Enter a name.",
+        "anioInvalido": "Enter a year between 2000 and 2100.",
+        "sinPermiso": "You need the create permission in Finance.",
+        "copiaDe": "{nombre} (copy)"
+      },
+      "editor": {
+        "subtitulo": "{estado} · monthly values",
+        "exportar": "Export",
+        "guardar": "Save",
+        "masAcciones": "More actions",
+        "descartar": "Discard changes",
+        "anio": "Year",
+        "agregarCuenta": "Add account",
+        "buscarCuenta": "Posting account",
+        "nota": "Posting accounts only. Typing in «Year» splits the value into 12 equal months. The ⋮ lets you copy a month to the rest or remove the account.",
+        "copiarMes": "Copy {mes} to the rest",
+        "quitar": "Remove account",
+        "valorMes": "{cuenta}, {mes}",
+        "valorAnio": "{cuenta}, year",
+        "sinCuentas": "No accounts yet",
+        "sinCuentasDescripcion": "Add the accounts you are going to plan.",
+        "aprobadoTitulo": "This budget cannot be edited",
+        "aprobadoDescripcion": "Only a draft can be edited. Make a draft copy, change it and approve it.",
+        "sinCambios": "There are no changes to save.",
+        "sinPermiso": "You need the create permission in Finance.",
+        "salirConCambios": "You have unsaved changes.",
+        "noEncontrado": "We couldn't find this budget.",
+        "volver": "Back to budgets",
+        "nombreArchivo": "budget-{nombre}.csv"
+      },
+      "toast": {
+        "creado": "Budget created",
+        "aprobado": "Budget approved",
+        "eliminado": "Budget deleted",
+        "guardado": "Changes saved"
+      },
+      "error": {
+        "cargar": "Budgets could not be loaded.",
+        "cargarLineas": "The budget's accounts could not be loaded.",
+        "sin_permiso": "You don't have permission for this action.",
+        "no_aprobable": "Only a draft budget can be approved.",
+        "no_editable": "This budget is no longer a draft: it cannot be edited.",
+        "nombre_repetido": "There is already a budget with that name for that year.",
+        "origen_no_encontrado": "We couldn't find the budget you wanted to copy.",
+        "cuenta_invalida": "These are not posting accounts: {cuentas}.",
+        "no_encontrado": "We couldn't find this budget.",
+        "datos_invalidos": "Check the data: some values are not valid.",
+        "error": "Something went wrong. Try again."
+      }
+    }
+  },
+  "finanzasContableR2": {
+    "activos": {
+      "migaContabilidad": "Accounting",
+      "buscar": "Search code or name",
+      "errorConDepreciacion": "This asset already has posted depreciation: the date, cost, salvage value and useful life cannot change, and the asset cannot be deleted.",
+      "kpi": {
+        "resumen": "Fixed assets summary",
+        "costo": "Total cost",
+        "acumulada": "Accumulated depreciation",
+        "libros": "Book value",
+        "pendientes": "Pending depreciation",
+        "alDia": "All can be depreciated",
+        "variosMotivos": "Check the reason on each row"
+      },
+      "idempotente": {
+        "titulo": "Depreciating is idempotent",
+        "descripcion": "If {mes} is already posted, the button does not create a second entry. An asset without accounts stays pending and its row explains why."
+      },
+      "form": {
+        "subtitulo": "Depreciated monthly, straight line",
+        "cuentas": "Accounts",
+        "primeraCuota": "First installment: {mes} {anio} (the month after acquisition)."
+      }
+    },
+    "plantillas": {
+      "titulo": "Journal entry templates",
+      "subtitulo": "Recurring entries. Using a template creates a draft; it does not post it.",
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting",
+        "plantillas": "Templates"
+      },
+      "guardada": "Template saved",
+      "nueva": {
+        "titulo": "New template",
+        "nombre": "Name",
+        "nombreRequerido": "Enter the template name.",
+        "memo": "Memo",
+        "linea": "Line",
+        "guardar": "Save template"
+      },
+      "linea": {
+        "cuenta": "Account for line {n}",
+        "cuentaVacia": "Posting account",
+        "debito": "Debit for line {n}",
+        "debitoCorto": "Debit",
+        "credito": "Credit for line {n}",
+        "creditoCorto": "Credit",
+        "quitar": "Remove line {n}",
+        "descripcion": "Description for line {n}",
+        "descripcionCorta": "Description",
+        "centro": "Cost center for line {n}",
+        "centroObligatorio": "Cost center *",
+        "centroOpcional": "Cost center"
+      },
+      "cuadre": {
+        "sinImportes": "No amounts",
+        "cuadra": "Balanced",
+        "noCuadra": "Not balanced · difference {diferencia}",
+        "debitos": "Debits {valor}",
+        "creditos": "Credits {valor}"
+      },
+      "bloqueo": {
+        "nombre": "The template name is missing.",
+        "lineasInsuficientes": "It needs at least two lines with an account and an amount.",
+        "lineaInvalida": "Each line goes to debit or to credit, not both.",
+        "descuadre": "Debits and credits must balance to save."
+      },
+      "guardadas": {
+        "titulo": "Saved",
+        "vacio": "There are no templates yet.",
+        "lineas": "{n, plural, one {# line} other {# lines}}",
+        "usar": "Use"
+      },
+      "usar": {
+        "titulo": "Use template",
+        "fecha": "Entry date",
+        "fechaRequerida": "Choose the entry date.",
+        "sucursal": "Branch",
+        "sucursalRequerida": "Choose the entry branch.",
+        "elegirSucursal": "Choose a branch",
+        "memo": "Memo",
+        "avisoTitulo": "A draft is created",
+        "avisoDescripcion": "You review and post it from the entry detail.",
+        "crear": "Create draft",
+        "creado": "Draft created. Review it before posting."
+      },
+      "archivar": {
+        "accion": "Archive",
+        "titulo": "Archive “{nombre}”?",
+        "descripcion": "It no longer appears under Saved. Entries already created with it do not change.",
+        "confirmar": "Archive",
+        "hecho": "Template archived"
+      },
+      "errores": {
+        "cargar": "The templates could not be loaded.",
+        "aplicar": "The template could not be used.",
+        "archivar": "The template could not be archived."
+      }
+    },
+    "movimiento": {
+      "titulo": {
+        "income": "Income #{id}",
+        "expense": "Expense #{id}"
+      },
+      "migas": {
+        "finanzas": "Finance",
+        "income": "Income",
+        "expense": "Expenses"
+      },
+      "subtitulo": "Recorded on {fecha}",
+      "subtituloAnulado": "Recorded on {fecha} · voided on {anulado}",
+      "estado": {
+        "confirmado": "Confirmed",
+        "anulado": "Voided",
+        "reverso": "Void entry"
+      },
+      "porAutor": "by {autor}",
+      "motivo": "“{motivo}”",
+      "errorEstado": {
+        "titulo": "Could not check whether it is voided",
+        "descripcion": "Meanwhile, voiding and duplicating are not offered."
+      },
+      "tarjetas": {
+        "movimiento": "Transaction",
+        "contables": "Accounting data"
+      },
+      "datos": {
+        "concepto": "Concept",
+        "monto": "Amount",
+        "fecha": "Recorded on",
+        "origen": "Source",
+        "caja": "Cash register",
+        "banco": "Bank",
+        "bancoCuenta": "Bank · {cuenta}",
+        "notas": "Notes",
+        "identificador": "Identifier"
+      },
+      "acciones": {
+        "duplicar": "Duplicate",
+        "anular": "Void"
+      },
+      "avisoAnulado": {
+        "titulo": "Voiding does not delete",
+        "income": "The income is kept and the opposite transaction leaves the balance as it was. “Duplicate” and “Void” are no longer offered.",
+        "expense": "The expense is kept and the opposite transaction leaves the balance as it was. “Duplicate” and “Void” are no longer offered."
+      },
+      "avisoReverso": {
+        "titulo": "This transaction voids another",
+        "descripcion": "It was recorded when a transaction was voided. It cannot be voided or duplicated: if needed, record the transaction again."
+      },
+      "exito": "Done",
+      "anulado": {
+        "income": "Income voided",
+        "expense": "Expense voided"
+      },
+      "duplicado": {
+        "income": "Income duplicated",
+        "expense": "Expense duplicated"
+      },
+      "errorAnular": "It could not be voided.",
+      "errorDuplicar": "It could not be duplicated.",
+      "noEncontrado": {
+        "income": "Income not found",
+        "expense": "Expense not found"
+      },
+      "volverListado": "Back to the list"
+    }
+  },
+  "finanzasCobrosR2": {
+    "titulo": "Collections and payouts",
+    "subtitulo": "What GO Admin collects for you and transfers to you",
+    "migas": {
+      "finanzas": "Finance",
+      "tesoreria": "Treasury",
+      "configuracion": "Settings"
+    },
+    "acciones": {
+      "exportar": "Export",
+      "exportarSinDatos": "There are no payouts to export",
+      "recargar": "Refresh"
+    },
+    "pestanas": {
+      "etiqueta": "Collections and payouts sections",
+      "dispersiones": "Payouts",
+      "cuenta": "Payout account"
+    },
+    "dispersiones": {
+      "buscar": "Search reference",
+      "tabla": "Payouts",
+      "filtros": {
+        "estado": "Status",
+        "todos": "All",
+        "ver": "Show {n} payouts"
+      },
+      "kpis": {
+        "etiqueta": "Payouts summary",
+        "recaudado": "Collected",
+        "recaudadoDetalle": "Since the start",
+        "comision": "Fee",
+        "comisionDetalle": "{pct} % average",
+        "dispersado": "Paid out",
+        "pendiente": "Pending payout",
+        "proxima": "Next: {fecha}"
+      },
+      "columnas": {
+        "referencia": "Reference",
+        "periodo": "Period",
+        "recaudado": "Collected",
+        "comision": "Fee",
+        "neto": "Net",
+        "medio": "Method",
+        "estado": "Status",
+        "fecha": "Date"
+      },
+      "csv": {
+        "periodoInicio": "Period from",
+        "periodoFin": "Period to",
+        "moneda": "Currency"
+      },
+      "estados": {
+        "pending": "Pending",
+        "processing": "Processing",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "medios": {
+        "breb": "Bre-B",
+        "ach": "Bank transfer",
+        "manual": "Manual",
+        "mono_turbo": "Mono Turbo"
+      },
+      "vacio": {
+        "titulo": "No payouts yet",
+        "descripcion": "When GO Admin transfers what it collected, each payout will show up here."
+      },
+      "error": {
+        "titulo": "Payouts could not be loaded"
+      }
+    },
+    "detalle": {
+      "recaudado": "Collected",
+      "comision": "Fee",
+      "neto": "Net",
+      "fallo": {
+        "titulo": "The bank rejected the transfer",
+        "sinMotivo": "The bank gave no reason. GO Admin retries once the payout account is verified.",
+        "revisarCuenta": "Review payout account"
+      },
+      "cancelada": "Payout cancelled",
+      "cobros": "Included payments",
+      "columnas": {
+        "cobro": "Payment",
+        "bruto": "Gross",
+        "comision": "Fee",
+        "neto": "Net"
+      },
+      "sinCobros": "This payout has no itemized payments.",
+      "errorCobros": "Payments could not be loaded",
+      "nota": "Amounts settled by GO Admin. The fee is not booked to the ledger from this screen."
+    },
+    "cuenta": {
+      "nueva": "New payout account",
+      "tabla": "Payout accounts",
+      "aviso": {
+        "titulo": "This is where GO Admin pays you",
+        "descripcion": "Only a verified account receives automatic Bre-B payouts. GO Admin verifies it with the bank."
+      },
+      "columnas": {
+        "banco": "Bank",
+        "tipo": "Type",
+        "numero": "Number",
+        "titular": "Holder",
+        "documento": "ID",
+        "cuentaGoAdmin": "Account in GO Admin",
+        "estado": "Status"
+      },
+      "tipos": {
+        "savings": "Savings",
+        "checking": "Checking"
+      },
+      "estados": {
+        "verificada": "Verified",
+        "pendiente": "Pending"
+      },
+      "sinVincular": "Not linked",
+      "vacio": {
+        "titulo": "No payout account",
+        "descripcion": "Register the organization's account where GO Admin transfers what it collects."
+      },
+      "error": "Payout accounts could not be loaded",
+      "quitar": {
+        "accion": "Remove account",
+        "titulo": "Remove the payout account?",
+        "descripcion": "{cuenta} will stop receiving payouts. You can register it again later.",
+        "confirmar": "Remove",
+        "bloqueada": "It is the only verified account and there are pending payouts: register and verify another one before removing it.",
+        "hecho": "Payout account removed",
+        "error": "The payout account could not be removed"
+      }
+    },
+    "nuevaCuenta": {
+      "titulo": "New payout account",
+      "descripcion": "Where GO Admin transfers what it collects",
+      "guardar": "Save",
+      "sinVincular": "Not linked",
+      "campos": {
+        "cuentaGoAdmin": "Bank account in GO Admin",
+        "banco": "Bank",
+        "tipoCuenta": "Account type",
+        "numero": "Account number",
+        "titular": "Holder",
+        "tipoDocumento": "ID type",
+        "documento": "ID number",
+        "llaveBreb": "Bre-B key"
+      },
+      "ayudas": {
+        "cuentaGoAdmin": "Optional. If you pick one, the fields below are filled in.",
+        "llaveBreb": "Optional. Without a key, the payout goes by bank transfer."
+      },
+      "tiposDocumento": {
+        "NIT": "NIT (tax ID)",
+        "CC": "Citizen ID",
+        "CE": "Foreigner ID",
+        "PEP": "Special stay permit"
+      },
+      "errores": {
+        "obligatorio": "This field is required",
+        "titular": "The holder must be the organization: use its legal name or tax ID.",
+        "guardar": "The payout account could not be saved"
+      },
+      "creada": "Payout account registered"
+    },
+    "metodos": {
+      "titulo": "Payment methods",
+      "subtitulo": "How your customers pay you and where the money goes",
+      "nuevo": "New method",
+      "pestanas": {
+        "etiqueta": "Payment methods sections",
+        "metodos": "Methods",
+        "qr": "QR payments"
+      },
+      "quitar": {
+        "titulo": "Remove payment method",
+        "contando": "Checking whether the method has recorded payments…",
+        "tituloEliminar": "Delete the payment method?",
+        "descripcionEliminar": "{nombre} has no recorded payments. It will no longer be available to your organization; this cannot be undone.",
+        "eliminar": "Delete",
+        "tituloDesactivar": "Deactivate the payment method?",
+        "descripcionDesactivar": "{nombre} has {n, plural, one {# recorded payment} other {# recorded payments}}: it is deactivated, not deleted. Those payments and their reports still refer to it, and you can activate it again.",
+        "descripcionDesactivarSinConteo": "We could not check whether {nombre} has payments: to be safe, it is deactivated instead of deleted.",
+        "desactivar": "Deactivate",
+        "descripcionNinguna": "{nombre} is already inactive and has recorded payments: it is kept so those payments still refer to it.",
+        "entendido": "Got it",
+        "conPagosError": "The method has recorded payments: deactivate it instead of deleting it."
+      }
+    },
+    "metodo": {
+      "tituloNuevo": "New payment method",
+      "tituloEditar": "Edit payment method",
+      "subtitulo": "{nombre} · code {codigo}",
+      "subtituloNuevo": "Pick a method, connect an integration or create your own",
+      "guardar": "Save",
+      "desactivar": "Deactivate",
+      "activar": "Activate",
+      "guardado": "Payment method saved",
+      "activado": "Payment method activated",
+      "desactivado": "Payment method deactivated",
+      "avisoSucursales": "Branch restriction is not enabled in the database yet; for now the method stays available in every branch.",
+      "elegir": "Select a payment method",
+      "crearPersonalizado": "+ Create custom method",
+      "grupos": {
+        "manuales": "Payment methods",
+        "integraciones": "Integrations (require a connection)"
+      },
+      "secciones": {
+        "contabilidad": "Accounting",
+        "masCuentas": "More ledger accounts",
+        "tienda": "Online store"
+      },
+      "campos": {
+        "metodo": "Payment method",
+        "nombre": "Name",
+        "codigo": "Internal code",
+        "referencia": "Ask for reference",
+        "entraA": "Goes into",
+        "cuentaPorCobrar": "Receivable account",
+        "cuentaIngresos": "Income account",
+        "cuentaCaja": "Cash account",
+        "nombreTienda": "Name in the store",
+        "visibleTienda": "Visible in the store",
+        "icono": "Icon in the store",
+        "orden": "Order in the store",
+        "instrucciones": "Instructions for the customer"
+      },
+      "ayudas": {
+        "codigo": "Cannot be changed: recorded payments use it.",
+        "codigoNuevo": "No spaces, unique.",
+        "sinBancos": "There are no active bank accounts.",
+        "sinPlan": "You have no chart of accounts set up.",
+        "irPlan": "Set up chart of accounts",
+        "nombreTienda": "Empty: «{nombre}» is used.",
+        "orden": "You can also drag the methods in the list.",
+        "instrucciones": "E.g.: transfer to the savings account and send the receipt."
+      },
+      "referencia": {
+        "si": "Yes, required",
+        "no": "No"
+      },
+      "si": "Yes",
+      "no": "No",
+      "sinAsignar": "Not assigned",
+      "sinIcono": "No icon",
+      "iconos": {
+        "banknotes": "Banknotes",
+        "coins": "Coins",
+        "credit-card": "Card",
+        "building-bank": "Bank",
+        "arrow-left-right": "Transfer",
+        "wallet": "Wallet",
+        "smartphone": "Mobile",
+        "qr-code": "QR",
+        "globe": "Online",
+        "zap": "Quick pay",
+        "truck": "Cash on delivery",
+        "store": "In store"
+      },
+      "integraciones": "Need Wompi, Nequi or PayU? Connect them from",
+      "irIntegraciones": "Integrations › Connections",
+      "errores": {
+        "metodo": "Pick a payment method",
+        "nombre": "The name must have at least 3 characters",
+        "codigo": "The code must have at least 2 characters",
+        "guardar": "The payment method could not be saved",
+        "estado": "The method status could not be changed"
+      }
+    },
+    "qr": {
+      "buscar": "Search reference",
+      "tabla": "QR payments",
+      "filtroEstado": "Filter by status",
+      "filtros": {
+        "todos": "All",
+        "pending": "Pending",
+        "paid": "Paid",
+        "expired": "Expired",
+        "rejected": "Rejected",
+        "cancelled": "Cancelled"
+      },
+      "estados": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "expired": "Expired",
+        "rejected": "Rejected",
+        "cancelled": "Cancelled"
+      },
+      "columnas": {
+        "referencia": "Reference",
+        "proveedor": "Provider",
+        "monto": "Amount",
+        "estado": "Status",
+        "origen": "Source",
+        "creado": "Created",
+        "pagado": "Paid"
+      },
+      "origenes": {
+        "pos": "Point of sale",
+        "folio": "Folio (hotel)",
+        "web_order": "Online store"
+      },
+      "vacio": {
+        "titulo": "No QR payments yet",
+        "descripcion": "Every QR you generate at the point of sale, the hotel or the store will show up here."
+      },
+      "error": {
+        "titulo": "QR payments could not be loaded",
+        "descripcion": "Check your connection and try again."
+      }
+    }
+  },
+  "reportesFinanzasR2": {
+    "visor": {
+      "soloPantalla": "This report is viewed here only: it is not included in closings, scheduled sends or documents. Use its own buttons to export it."
+    },
+    "contabilidadInicio": {
+      "titulo": "Accounting reports",
+      "descripcion": "Financial statements, books, ledger and subsidiary ledgers, in the reports center"
+    }
+  },
+  "finanzasBancosR2": {
+    "migas": {
+      "finanzas": "Finance",
+      "tesoreria": "Treasury"
+    },
+    "bancos": {
+      "pestanas": {
+        "etiqueta": "Money account sections",
+        "cuentas": "Accounts",
+        "conciliacion": "Reconciliation",
+        "alertas": "Alerts"
+      }
+    },
+    "alertas": {
+      "aviso": {
+        "titulo": "An alert is a signal, not a confirmed error",
+        "descripcion": "Check it against the bank statement. When you mark it as reviewed it keeps your name, the date and the reason, and it won't show up again."
+      },
+      "avisoSinHistorial": {
+        "titulo": "Reviews can't be saved yet",
+        "descripcion": "The review history still has to be enabled in the database. Alerts are visible but stay open until it is enabled."
+      },
+      "cifras": {
+        "etiqueta": "Alert summary",
+        "abiertas": "Open",
+        "severidadAlta": "High severity",
+        "posiblesDuplicados": "Possible duplicates",
+        "diferenciasSaldo": "Balance differences"
+      },
+      "tabla": {
+        "etiqueta": "Money account alerts",
+        "alerta": "Alert",
+        "cuenta": "Account",
+        "detalle": "Detail",
+        "monto": "Amount",
+        "severidad": "Severity",
+        "estado": "Status",
+        "revisar": "Review",
+        "ver": "View",
+        "vacioTitulo": "No alerts",
+        "vacioDescripcion": "There are no duplicates, unusual amounts or balance differences in your accounts.",
+        "errorTitulo": "Alerts could not be loaded",
+        "errorDescripcion": "Check your connection and try again."
+      },
+      "tipos": {
+        "duplicate": "Possible duplicate",
+        "unusual_amount": "Unusual amount",
+        "unusual_time": "Unusual time",
+        "fragmentation": "Possible splitting",
+        "weekend_high_amount": "High amount on a weekend",
+        "balance_discrepancy": "Balance difference"
+      },
+      "detalle": {
+        "duplicate": "{conteo} identical transactions, {fecha}",
+        "duplicateSinFecha": "{conteo} identical transactions",
+        "unusual_amount": "{veces} times the average",
+        "unusual_amountSinPromedio": "Amount out of the ordinary",
+        "balance_discrepancyBanco": "GO Admin vs. bank",
+        "balance_discrepancyMovimientos": "Balance vs. sum of transactions",
+        "fragmentation": "Many small transactions within an hour",
+        "unusual_time": "Outside normal hours, {fecha}",
+        "weekend_high_amount": "Weekend, {fecha}"
+      },
+      "severidad": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "estado": {
+        "abierta": "Open",
+        "revisada": "Reviewed · {nombre}",
+        "revisadaSinNombre": "Reviewed"
+      },
+      "sinCuenta": "No linked account"
+    },
+    "revisar": {
+      "titulo": "Review alert",
+      "descripcion": "{tipo} · {cuenta}",
+      "marcar": "Mark as reviewed",
+      "duplicado": "It's a duplicate: void one",
+      "sinHistorial": "The review can't be saved until the review history is enabled.",
+      "guardada": "Alert marked as reviewed",
+      "movimientos": {
+        "etiqueta": "Transactions in this alert",
+        "movimiento": "Transaction",
+        "fecha": "Date",
+        "monto": "Amount",
+        "sinDescripcion": "Transaction #{id}",
+        "referencia": "ref {referencia}"
+      },
+      "datos": {
+        "etiqueta": "Alert data",
+        "saldoGo": "Balance in GO Admin",
+        "saldoMovimientos": "Balance per transactions",
+        "saldoBanco": "Bank balance",
+        "diferencia": "Difference",
+        "monto": "Amount",
+        "promedio": "Average",
+        "fecha": "Date",
+        "movimiento": "Transaction",
+        "descripcion": "Description"
+      },
+      "campo": {
+        "etiqueta": "What you found",
+        "ayuda": "Required. It stays in the alert's history.",
+        "placeholder": "E.g.: two different payments from the same customer, with different references on the statement."
+      },
+      "errores": {
+        "motivo_vacio": "Write what you found.",
+        "motivo_corto": "Write at least 5 characters.",
+        "motivo_largo": "Use 500 characters at most.",
+        "revision_no_disponible": "The review was not saved: the review history still has to be enabled.",
+        "ya_revisada": "Someone else already reviewed this alert. Refresh the page.",
+        "sin_permiso": "You don't have permission to review alerts.",
+        "referencia_invalida": "The account or transaction no longer exists. Refresh the page.",
+        "clave_invalida": "The alert is not valid. Refresh the page.",
+        "tipo_invalido": "The alert is not valid. Refresh the page.",
+        "resultado_invalido": "The alert is not valid. Refresh the page.",
+        "movimiento_requerido": "Choose the transaction to void.",
+        "desconocido": "The review could not be saved. Try again."
+      },
+      "ver": {
+        "titulo": "Reviewed alert",
+        "revisadaPor": "Reviewed by",
+        "fecha": "Date",
+        "resultado": "Outcome",
+        "motivo": "What they found",
+        "resultados": {
+          "revisada": "It was not an error",
+          "duplicado_anulado": "Transaction #{id} was voided"
+        }
+      }
+    },
+    "anular": {
+      "titulo": "Void the duplicate transaction",
+      "descripcion": "An offsetting transaction is recorded in the same account. Nothing is deleted and the alert is marked as reviewed with this reason.",
+      "boton": "Void transaction",
+      "elegir": "Transaction to void",
+      "sinMovimiento": "Choose the transaction to void.",
+      "anulado": "Transaction voided and alert reviewed",
+      "anuladoSinRevision": "The transaction was voided, but the alert is still open: {error}"
+    },
+    "conectar": {
+      "titulo": "Connect bank",
+      "subtitulo": "Bring in bank transactions without uploading statements",
+      "subtituloConectado": "{n, plural, one {# bank connected} other {# banks connected}} · last sync {fecha}",
+      "subtituloSinSincronizar": "{n, plural, one {# bank connected} other {# banks connected}} · not synced yet",
+      "sincronizar": "Sync now",
+      "conectar": "Connect a bank",
+      "conectarOtro": "Connect another bank",
+      "conectarNoDisponible": "For now the GO Admin team activates the bank connection with you; soon you'll be able to start it from here.",
+      "sincronizado": "Transactions and balances up to date",
+      "sinSaldos": "Transactions imported, but balances could not be refreshed",
+      "sinMovimientos": "Balances refreshed, but transactions could not be imported",
+      "errorSincronizar": "Sync failed. Try again in a few minutes.",
+      "menu": {
+        "tesoreria": "Consolidated treasury",
+        "alertas": "Money account alerts",
+        "conciliacion": "Bank reconciliation"
+      },
+      "pestanas": {
+        "etiqueta": "Connect bank sections",
+        "bancos": "Banks",
+        "autorizaciones": "Authorizations"
+      },
+      "tabla": {
+        "etiqueta": "Accounts at connected banks",
+        "banco": "Bank",
+        "cuentaBanco": "Account at the bank",
+        "cuentaGo": "Account in GO Admin",
+        "saldo": "Bank balance",
+        "sincronizacion": "Last sync",
+        "estado": "Status",
+        "sinVincular": "Not linked",
+        "nunca": "Never",
+        "vacioTitulo": "The bank hasn't reported accounts yet",
+        "vacioDescripcion": "They show up here after the first sync."
+      },
+      "tiposCuenta": {
+        "savings": "Savings",
+        "checking": "Checking",
+        "credit_card": "Credit card",
+        "loan": "Loan"
+      },
+      "estados": {
+        "activa": "Active",
+        "sinVincular": "Not linked",
+        "fallo": "Failed"
+      },
+      "fila": {
+        "verCuenta": "View account in GO Admin",
+        "autorizaciones": "View authorizations"
+      },
+      "cifras": {
+        "etiqueta": "Connection summary",
+        "bancos": "Connected banks",
+        "cuentas": "Linked accounts",
+        "movimientos": "Transactions (30 days)",
+        "porLlevar": "To bring into GO Admin",
+        "porLlevarDetalle": "Review them in reconciliation"
+      },
+      "sinVincularAviso": {
+        "titulo": "{n, plural, one {# bank account not linked} other {# bank accounts not linked}}",
+        "descripcion": "A bank account that isn't linked doesn't import transactions until you choose its account in GO Admin."
+      },
+      "fallo": {
+        "titulo": "{banco} didn't respond in the last sync",
+        "descripcion": "If it keeps failing, the authorization may have expired: renew it in Authorizations.",
+        "verAutorizaciones": "View authorizations"
+      },
+      "servicio": {
+        "titulo": "It's a GO Admin service",
+        "descripcion": "GO Admin runs the connection with the bank. You don't paste keys or set variables. You only authorize access, for 90 days at most, and you can revoke it whenever you want."
+      },
+      "noActivo": {
+        "titulo": "The service isn't active yet",
+        "descripcion": "GO Admin hasn't enabled bank connections for your organization yet."
+      },
+      "beneficios": {
+        "etiqueta": "What you get by connecting a bank",
+        "queObtienes": "What you get",
+        "comoSeUsa": "How it's used",
+        "movimientos": {
+          "titulo": "Daily transactions",
+          "descripcion": "They reach the bank account and reconciliation as a statement"
+        },
+        "saldo": {
+          "titulo": "Bank balance",
+          "descripcion": "Compared with the balance in GO Admin; alerts are raised if they don't match"
+        },
+        "duplicados": {
+          "titulo": "No duplicates",
+          "descripcion": "A transaction already imported is not created again"
+        }
+      },
+      "errorCarga": {
+        "titulo": "The bank connection could not be loaded",
+        "descripcion": "Check your connection and try again.",
+        "reintentar": "Retry"
+      },
+      "errores": {
+        "fuera_de_ventana": "Only authorizations expiring in 7 days or less can be renewed.",
+        "desconocido": "The operation could not be completed. Try again."
+      }
+    },
+    "autorizaciones": {
+      "aviso": {
+        "titulo": "Your rights over your financial data",
+        "descripcion": "Each authorization lasts 90 days at most and can be revoked at any time (Decree 0368 of 2026). Once revoked, GO Admin stops bringing in transactions from that bank."
+      },
+      "renovar": "Renew",
+      "renovando": "Renewing…",
+      "renovada": "Authorization renewed for 90 days",
+      "revocar": "Revoke",
+      "sinBanco": "Unnamed bank",
+      "tipos": {
+        "data_access": "Read transactions and balances",
+        "payment_initiation": "Initiate payments",
+        "account_validation": "Validate accounts"
+      },
+      "tabla": {
+        "etiqueta": "Bank access authorizations",
+        "banco": "Bank",
+        "paraQue": "Purpose",
+        "autorizada": "Authorized",
+        "vence": "Expires",
+        "venceEn": "{fecha} · in {dias, plural, one {# day} other {# days}}",
+        "estado": "Status",
+        "motivo": "Reason: {motivo}",
+        "vacioTitulo": "No authorizations",
+        "vacioDescripcion": "When you authorize access to a bank, it shows up here with its expiry date."
+      },
+      "estados": {
+        "activa": "Active",
+        "porVencer": "Expiring soon",
+        "vencida": "Expired",
+        "revocada": "Revoked"
+      }
+    },
+    "revocar": {
+      "titulo": "Revoke authorization",
+      "descripcion": "{banco} · {paraQue}",
+      "boton": "Revoke authorization",
+      "motivo": "Reason",
+      "placeholder": "E.g.: we switched banks for payroll",
+      "revocada": "Authorization revoked",
+      "aviso": {
+        "titulo": "GO Admin will stop bringing in transactions from this bank",
+        "descripcion": "Anything already imported is kept. To connect again you'll have to authorize again."
+      }
+    }
+  },
+  "finanzasMonedasR2": {
+    "titulo": "Currencies and rates",
+    "subtitulo": "Base currency {base}",
+    "subtituloTasas": "Base currency {base} · rates on your organization's day",
+    "subtituloMovil": "Base {base} · {dia}",
+    "migas": {
+      "finanzas": "Finance",
+      "configuracion": "Settings"
+    },
+    "pestanas": {
+      "etiqueta": "Currency and rate sections",
+      "monedas": "Currencies",
+      "tasas": "Rates",
+      "historico": "History"
+    },
+    "acciones": {
+      "agregarMoneda": "Add currency",
+      "registrarTasa": "Record manual rate",
+      "sinOtrasMonedas": "First add a currency other than the base",
+      "convertir": "Convert amount",
+      "sincronizarDescripcion": "Platform administrators only",
+      "exportar": "Export",
+      "nadaQueExportar": "There are no records to export"
+    },
+    "convertir": {
+      "titulo": "Convert amount",
+      "descripcion": "Using the GO Admin catalog rates",
+      "cerrar": "Close",
+      "listo": "Done"
+    },
+    "comun": {
+      "manual": "Manual",
+      "automatica": "Automatic",
+      "alguien": "A team member",
+      "sinVariacion": "No change",
+      "sube": "Up {valor}",
+      "baja": "Down {valor}",
+      "guardando": "Saving…",
+      "sincronizar": "Sync catalog",
+      "sincronizando": "Syncing…"
+    },
+    "sincronizar": {
+      "listo": "Catalog synced: {n} rates",
+      "error": "The catalog could not be synced"
+    },
+    "monedas": {
+      "etiqueta": "Organization currencies",
+      "base": "Base",
+      "tasaBase": "This is the base",
+      "agregar": "Add currency",
+      "columnas": {
+        "moneda": "Currency",
+        "codigo": "Code",
+        "simbolo": "Symbol",
+        "decimales": "Decimals",
+        "tasa": "Rate"
+      },
+      "tarjeta": "Symbol {simbolo} · {decimales} decimals",
+      "acciones": {
+        "registrarTasa": "Record manual rate",
+        "historial": "View history",
+        "pasarAManual": "Use manual rate only",
+        "pasarAAutomatica": "Use the automatic rate",
+        "usarComoBase": "Use as base currency",
+        "quitar": "Remove currency"
+      },
+      "tasaAhoraAutomatica": "{moneda} now uses the automatic rate",
+      "tasaAhoraManual": "{moneda} now uses manual rates only",
+      "errorTasa": "The rate could not be changed: {detalle}",
+      "quitada": "{moneda} was removed from the organization",
+      "errorQuitar": "The currency could not be removed: {detalle}",
+      "quitarTitulo": "Remove {moneda}?",
+      "quitarDescripcion": "{moneda} will no longer be available for quotes, invoices or payments. Documents that already use it do not change.",
+      "quitarConfirmar": "Remove",
+      "vacio": {
+        "titulo": "No currencies yet",
+        "descripcion": "Add the currencies you quote, invoice or pay in."
+      },
+      "errorCarga": "The currencies could not be loaded"
+    },
+    "base": {
+      "titulo": "Use {moneda} as base currency?",
+      "descripcion": "The organization's base currency changes from {actual} to {nueva}. Rates are expressed against it.",
+      "confirmar": "Use as base",
+      "cambiada": "{moneda} is now the base currency",
+      "error": "The base currency could not be changed: {detalle}"
+    },
+    "agregar": {
+      "titulo": "Add currency",
+      "subtitulo": "To quote, invoice or pay in another currency",
+      "moneda": "Currency",
+      "monedaPlaceholder": "Choose a currency",
+      "monedaRequerida": "Choose the currency",
+      "opcion": "{codigo} · {nombre}",
+      "tasa": "Rate",
+      "tasaAutomatica": "Automatic from the GO Admin catalog",
+      "tasaManual": "Manual: I record it",
+      "tasaAyuda": "You can record a manual rate on any day.",
+      "baseTitulo": "Your base currency is still {base}",
+      "baseDescripcion": "Amounts in {moneda} are converted to {base} using the rate of the document date.",
+      "baseDescripcionSinMoneda": "Amounts in another currency are converted to {base} using the rate of the document date.",
+      "confirmar": "Add currency",
+      "agregada": "{moneda} was added to the organization",
+      "todas": "You already have every currency in the catalog",
+      "errorCarga": "The currency catalog could not be loaded",
+      "reintentar": "Retry"
+    },
+    "tasas": {
+      "fecha": "Date",
+      "fuenteAutomatica": "Automatic source: GO Admin catalog · {hora}",
+      "sinCatalogo": "The GO Admin catalog has no rates for this day",
+      "etiqueta": "Rates for {dia}",
+      "columnas": {
+        "moneda": "Currency",
+        "codigo": "Code",
+        "unidad": "1 unit =",
+        "variacion": "Change vs. yesterday",
+        "fuente": "Source",
+        "accion": "Action"
+      },
+      "sinTasa": "No rate",
+      "sinTasaDia": "{hoy, select, si {No rate today} other {No rate that day}}",
+      "sinTasaUsa": "{hoy, select, si {No rate today} other {No rate that day}} · uses {tasa}",
+      "usaAyer": "Uses yesterday's: {tasa}",
+      "usaDel": "Uses the one from {dia}: {tasa}",
+      "catalogo": "GO Admin catalog",
+      "manualCon": "{autor} · manual · {motivo}",
+      "manualDe": "{autor} · manual",
+      "metaManual": "Manual · {autor}",
+      "verHistorial": "View history",
+      "historial": "History",
+      "registrar": "Record",
+      "catalogoVacioTitulo": "No catalog rates for these days",
+      "catalogoVacio": "The platform updates the catalog every day. Meanwhile you can record a manual rate.",
+      "vacio": {
+        "titulo": "You only have the base currency",
+        "descripcion": "Add another currency to see its rate against {base}.",
+        "accion": "Add currency"
+      },
+      "errorCarga": "The rates could not be loaded",
+      "manualMandaTitulo": "The manual rate prevails that day",
+      "manualManda": "If you record a rate by hand, it prevails over the automatic one on that date and keeps your name and the reason. Only the platform writes the automatic rate.",
+      "tarjetaTitulo": "{codigo} · {nombre}",
+      "unaUnidad": "1 {codigo} = {tasa}"
+    },
+    "historico": {
+      "moneda": "Currency",
+      "monedaPlaceholder": "Choose a currency",
+      "desde": "From",
+      "hasta": "To",
+      "etiqueta": "{par} history",
+      "columnas": {
+        "fecha": "Date",
+        "par": "Pair",
+        "tasa": "Rate",
+        "variacion": "Change",
+        "fuente": "Source",
+        "registro": "Recorded by"
+      },
+      "plataforma": "Platform",
+      "registroCon": "{autor} · “{motivo}”",
+      "exportado": "{n} records exported",
+      "csv": {
+        "fecha": "Date",
+        "par": "Pair",
+        "tasa": "Rate",
+        "variacion": "Change %",
+        "fuente": "Source",
+        "registro": "Recorded by",
+        "motivo": "Reason"
+      },
+      "vacio": {
+        "titulo": "No rates in this range",
+        "descripcion": "Change the dates or wait for the next catalog update."
+      },
+      "sinMonedas": {
+        "titulo": "You only have the base currency",
+        "descripcion": "Add another currency to see its history against {base}."
+      },
+      "errorCarga": "The history could not be loaded"
+    },
+    "grafica": {
+      "titulo": "{par} · last {dias} days",
+      "insuficiente": "There are not enough days with a rate to chart yet.",
+      "descripcion": "Chart of the {par} rate over {n} days. The table below has the same data."
+    },
+    "tasaManual": {
+      "titulo": "Record manual rate",
+      "subtitulo": "{moneda} · {dia}",
+      "subtituloSinMoneda": "Choose the currency and the day",
+      "moneda": "Currency",
+      "monedaPlaceholder": "Choose a currency",
+      "opcionMoneda": "{codigo} · {nombre}",
+      "fecha": "Date",
+      "unidad": "1 {moneda} =",
+      "motivo": "Reason",
+      "motivoAyuda": "It stays in the history with your name.",
+      "motivoPlaceholder": "Accountant's official rate for closing",
+      "guardar": "Save rate",
+      "guardada": "{moneda} rate for {dia} saved",
+      "avisoManual": "There is already a manual rate that day: {tasa}",
+      "avisoReemplazaManual": "You replace it for documents of that date created from now on. Documents already posted do not change.",
+      "avisoAutomatica": "There is already an automatic rate that day: {tasa}",
+      "avisoReemplaza": "The manual rate replaces it for documents of that date created from now on. Documents already posted do not change.",
+      "avisoSinTasaTitulo": "Documents already posted do not change",
+      "avisoSinTasa": "The {moneda} rate applies to documents of that date created from now on.",
+      "validacion": {
+        "moneda": {
+          "requerido": "Choose the currency"
+        },
+        "fecha": {
+          "requerido": "Choose the day",
+          "futura": "Rates cannot be recorded for future days"
+        },
+        "tasa": {
+          "requerido": "Enter the rate",
+          "positiva": "The rate must be greater than zero"
+        },
+        "motivo": {
+          "requerido": "Enter the reason",
+          "corto": "The reason needs at least 5 characters",
+          "largo": "The reason allows up to 500 characters"
+        }
+      }
+    },
+    "errores": {
+      "sinPermiso": "You do not have permission to record rates. Ask an administrator (billing or organization settings permission).",
+      "noDisponible": "Recording manual rates is not available yet: it still has to be enabled in the database.",
+      "tasaInvalida": "The rate must be greater than zero.",
+      "fechaFutura": "Rates cannot be recorded for future days.",
+      "motivoCorto": "The reason needs between 5 and 500 characters.",
+      "monedaEsBase": "The base currency has no rate: it is always 1.",
+      "monedaNoAsignada": "The organization does not have that currency. Add it first.",
+      "guardar": "The rate could not be saved. Try again."
     }
   }
 }

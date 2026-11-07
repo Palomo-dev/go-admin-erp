@@ -2,22 +2,15 @@
 
 import { seleccionarConColumnaOpcional, metodoCatalogoVisible } from "@/lib/finanzas/metodosPagoAlcance";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { supabase } from "@/lib/supabase/config";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Plus, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { CreditCard, Plus, RefreshCw } from "lucide-react";
+import { ListToolbar, PageHeader, RowActionsMenu, SearchInput, TabBar, clasesBoton, idPanel, idPestana, type AccionFila } from "@/components/kit";
 import PaymentMethodsList from "./PaymentMethodsList";
 import PaymentMethodForm from "./PaymentMethodForm";
+import { CobrosQrPestana } from "./CobrosQrPestana";
 
 export interface PaymentMethodCountry {
   country_code: string;
@@ -64,12 +57,25 @@ export interface OrganizationPaymentMethod {
   website_icon?: string;
 }
 
-export default function PaymentMethodsPage() {
+export type PestanaMetodosPago = "metodos" | "qr";
+const ID_TABS = "metodos-pago";
+
+/**
+ * Finanzas › Configuración › Métodos de pago (Finanzas ronda 2, A11 y A12).
+ * Dos pestañas: «Métodos» y «Cobros QR» (antes la página suelta
+ * `/metodos-pago/qr-sessions`, que sigue abriendo esta pestaña). Nuevo y editar
+ * método son un diálogo (antes, una pestaña con el formulario).
+ */
+export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pestanaInicial?: PestanaMetodosPago }) {
+  const t = useTranslations("finanzasCobrosR2");
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const countryCode = organization?.country_code;
-  const [activeTab, setActiveTab] = useState<string>("lista");
+  const [pestana, setPestana] = useState<PestanaMetodosPago>(pestanaInicial);
+  const [busquedaQr, setBusquedaQr] = useState("");
+  const [dialogoAbierto, setDialogoAbierto] = useState(false);
+  const [recargaQr, setRecargaQr] = useState(0);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [orgPaymentMethods, setOrgPaymentMethods] = useState<OrganizationPaymentMethod[]>([]);
   const [recommendedMethods, setRecommendedMethods] = useState<Array<{ code?: string; payment_method_code?: string }>>([]);
@@ -208,120 +214,91 @@ export default function PaymentMethodsPage() {
   // Función para editar un método de pago
   const handleEditMethod = (method: OrganizationPaymentMethod) => {
     setSelectedMethod(method);
-    setActiveTab("editar");
+    setDialogoAbierto(true);
   };
 
   // Función para añadir un nuevo método de pago
   const handleAddMethod = () => {
     setSelectedMethod(null);
-    setActiveTab("editar");
+    setDialogoAbierto(true);
   };
 
-  // Función para volver a la lista después de guardar
-  const handleSaveComplete = () => {
-    loadPaymentMethods();
-    setActiveTab("lista");
-  };
+  const menuCabecera: AccionFila[] = [
+    {
+      id: "recargar",
+      etiqueta: t("acciones.recargar"),
+      icono: RefreshCw,
+      onSelect: () => (pestana === "qr" ? setRecargaQr((n) => n + 1) : void loadPaymentMethods()),
+    },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/finanzas">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
+    <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
+      <PageHeader
+        titulo={t("metodos.titulo")}
+        subtitulo={t("metodos.subtitulo")}
+        icono={CreditCard}
+        migas={[
+          { etiqueta: t("migas.finanzas"), href: "/app/finanzas" },
+          { etiqueta: t("migas.configuracion") },
+          { etiqueta: t("metodos.titulo") },
+        ]}
+        acciones={
+          <div className="flex items-center gap-2">
+            <button type="button" className={clasesBoton({ variante: "primario", tamano: "md" })} onClick={handleAddMethod} disabled={!organizationId}>
+              <Plus aria-hidden className="size-4" />
+              {t("metodos.nuevo")}
+            </button>
+            <RowActionsMenu acciones={menuCabecera} orientacion="horizontal" tamano="md" titulo={t("metodos.titulo")} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Métodos de Pago</h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Finanzas / Métodos de Pago
-            </p>
-          </div>
-        </div>
-        <Button onClick={handleAddMethod} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Método
-        </Button>
+        }
+      />
+
+      {pestana === "qr" && (
+        <ListToolbar
+          busqueda={
+            <SearchInput value={busquedaQr} onChange={setBusquedaQr} onValueChange={setBusquedaQr} placeholder={t("qr.buscar")} etiqueta={t("qr.buscar")} />
+          }
+        />
+      )}
+
+      <TabBar
+        id={ID_TABS}
+        etiqueta={t("metodos.pestanas.etiqueta")}
+        valor={pestana}
+        onValorChange={setPestana}
+        pestanas={[
+          { valor: "metodos", etiqueta: t("metodos.pestanas.metodos") },
+          { valor: "qr", etiqueta: t("metodos.pestanas.qr") },
+        ]}
+      />
+
+      <div role="tabpanel" id={idPanel(ID_TABS, "metodos")} aria-labelledby={idPestana(ID_TABS, "metodos")} hidden={pestana !== "metodos"}>
+        <PaymentMethodsList
+          paymentMethods={paymentMethods}
+          orgPaymentMethods={orgPaymentMethods}
+          recommendedMethods={recommendedMethods}
+          countryCode={actualCountryCode}
+          onEdit={handleEditMethod}
+          isLoading={isLoading}
+          onRefresh={loadPaymentMethods}
+        />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4 sm:mb-6 w-full h-auto sm:w-auto grid grid-cols-2 sm:flex gap-2 p-2 bg-gray-100 dark:bg-gray-800/80 rounded-lg">
-          <TabsTrigger 
-            value="lista"
-            className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md whitespace-nowrap"
-          >
-            Métodos Activos
-          </TabsTrigger>
-          <TabsTrigger 
-            value="editar"
-            className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md whitespace-nowrap"
-          >
-            <span className="hidden sm:inline">{selectedMethod ? "Editar Método" : "Nuevo Método"}</span>
-            <span className="sm:hidden">{selectedMethod ? "Editar" : "Nuevo"}</span>
-          </TabsTrigger>
-        </TabsList>
+      <div role="tabpanel" id={idPanel(ID_TABS, "qr")} aria-labelledby={idPestana(ID_TABS, "qr")} hidden={pestana !== "qr"}>
+        {pestana === "qr" && <CobrosQrPestana organizationId={organizationId} recarga={recargaQr} busqueda={busquedaQr} onLimpiarBusqueda={() => setBusquedaQr("")} />}
+      </div>
 
-        <TabsContent value="lista">
-          <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">Métodos de Pago Disponibles</CardTitle>
-              <CardDescription className="text-sm dark:text-gray-400">
-                Gestiona los métodos de pago que tu organización acepta y configura sus opciones
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <PaymentMethodsList
-                paymentMethods={paymentMethods}
-                orgPaymentMethods={orgPaymentMethods}
-                recommendedMethods={recommendedMethods}
-                countryCode={actualCountryCode}
-                onEdit={handleEditMethod}
-                isLoading={isLoading}
-                onRefresh={loadPaymentMethods}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="editar">
-          <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">
-                {selectedMethod ? "Editar Método de Pago" : "Nuevo Método de Pago"}
-              </CardTitle>
-              <CardDescription className="text-sm dark:text-gray-400">
-                {selectedMethod
-                  ? "Modifica la configuración del método de pago seleccionado"
-                  : "Configura un nuevo método de pago para tu organización"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              {organizationId ? (
-                <PaymentMethodForm
-                  key={selectedMethod ? `edit-${selectedMethod.id}` : 'new'}
-                  organizationId={organizationId}
-                  globalMethods={paymentMethods}
-                  recommendedMethods={recommendedMethods}
-                  countryCode={actualCountryCode}
-                  selectedMethod={selectedMethod}
-                  onSaveComplete={handleSaveComplete}
-                  onCancel={() => setActiveTab("lista")}
-                />
-              ) : (
-                <div className="py-8 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                  No se pudo determinar la organización actual. Por favor, actualice la página.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {organizationId ? (
+        <PaymentMethodForm
+          abierto={dialogoAbierto}
+          onAbiertoChange={setDialogoAbierto}
+          organizationId={organizationId}
+          globalMethods={paymentMethods}
+          selectedMethod={selectedMethod}
+          onSaveComplete={loadPaymentMethods}
+        />
+      ) : null}
     </div>
   );
 }

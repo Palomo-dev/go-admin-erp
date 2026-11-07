@@ -2570,8 +2570,9 @@ describe('28b. Sin moneda fija en escrituras ni pantallas', () => {
     'lib/services/integrations/wompi/wompiTypes.ts': 'Wompi: solo COP',
     'lib/services/integrations/redeban/redebanService.ts': 'Redeban: solo COP',
     'lib/services/integrations/payfac/payoutService.ts': 'dispersiones payfac: solo COP',
-    'app/app/finanzas/payfac/dispersiones/page.tsx': 'dispersiones payfac: solo COP',
-    'app/app/finanzas/metodos-pago/qr-sessions/page.tsx': 'sesiones QR de rieles colombianos',
+    // Salieron (2026-11-07, Finanzas ronda 2, frente B): dispersiones y cobros QR
+    // usan la moneda de cada fila (`organization_payouts.currency`,
+    // `payment_qr_sessions.currency`) con la de la organización de respaldo.
     'components/shared/QrPaymentDialog.tsx': 'diálogo de cobro QR (Bold, Bancolombia, Redeban, Bre-B): solo COP',
     'components/pms/checkout/CheckoutDialog.tsx': 'solo el cobro QR del folio (rieles COP); los importes van en la moneda base',
     // paymentInitiationService.ts salió de la lista (2026-09-24, compras y CxP F11): el pago a

@@ -5,6 +5,7 @@
 // ============================================================
 
 import type {
+  ComponenteReporte,
   DefinicionModulo,
   FiltroReporte,
   GrupoReporte,
@@ -34,6 +35,8 @@ import { pmReports } from './modulos/pmReports';
 import { operacionesReports } from './modulos/operacionesReports';
 import { serialTrackingReports } from './modulos/serialTrackingReports';
 import { comprasFinanzasReports, comprasInventarioReports } from './modulos/comprasReports';
+import { estadosFinancierosReports } from './modulos/estadosFinancierosReports';
+import { tesoreriaReports } from './modulos/tesoreriaReports';
 import { reportePermitido } from './alcanceSucursal';
 
 // ============================================================
@@ -112,12 +115,16 @@ interface MetaReporte {
   filtros: string;
   nuevo?: boolean;
   alias?: { destino: string; vista: string };
+  /** Componente propio del visor (ver `ReportDefinition.componente`). */
+  componente?: ComponenteReporte;
+  /** Sin versión tabular (ver `ReportDefinition.sinTabla`). */
+  sinTabla?: boolean;
 }
 
 const META: Record<string, MetaReporte> = {
   // Contabilidad
-  'estado-resultados': { grupo: 'contabilidad', filtros: 'c k' },
-  'balance-general': { grupo: 'contabilidad', filtros: 'c' },
+  'estado-resultados': { grupo: 'contabilidad', filtros: 'c k', componente: 'estado-resultados' },
+  'balance-general': { grupo: 'contabilidad', filtros: 'c', componente: 'balance-general' },
   'presupuesto-vs-real': { grupo: 'contabilidad', filtros: 'c f' },
   'balance-prueba': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
   'libro-diario-origen': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
@@ -125,6 +132,16 @@ const META: Record<string, MetaReporte> = {
   'periodo-fiscal': { grupo: 'contabilidad', filtros: '', nuevo: true },
   'estado-resultados-centro': { grupo: 'contabilidad', filtros: 'c f', nuevo: true },
   'comparativo-centros': { grupo: 'contabilidad', filtros: 'c f', nuevo: true },
+  // Antes pantallas de Finanzas; se pintan con su componente propio.
+  'estado-flujos-efectivo': { grupo: 'contabilidad', filtros: '', componente: 'flujo-efectivo', sinTabla: true },
+  'cambios-patrimonio': { grupo: 'contabilidad', filtros: '', componente: 'cambios-patrimonio', sinTabla: true },
+  'notas-estados': { grupo: 'contabilidad', filtros: '', componente: 'notas', sinTabla: true },
+  'certificacion-estados': { grupo: 'contabilidad', filtros: '', componente: 'certificacion', sinTabla: true },
+  'indicadores-financieros': { grupo: 'contabilidad', filtros: '', componente: 'indicadores', sinTabla: true },
+  'libros-contables': { grupo: 'contabilidad', filtros: '', componente: 'libros', sinTabla: true },
+  'libro-diario': { grupo: 'contabilidad', filtros: '', componente: 'libro-diario', sinTabla: true },
+  'mayor-cuenta': { grupo: 'contabilidad', filtros: '', componente: 'mayor-contable', sinTabla: true },
+  'auxiliar-tercero': { grupo: 'contabilidad', filtros: '', componente: 'auxiliar-tercero', sinTabla: true },
   // Finanzas y tesorería
   'cxc-vencidas': { grupo: 'finanzas', filtros: 's' },
   'cxc-aging': { grupo: 'finanzas', filtros: 'c s' },
@@ -138,6 +155,7 @@ const META: Record<string, MetaReporte> = {
   'rentabilidad-sucursal': { grupo: 'finanzas', filtros: 'c s f' },
   'bancos-conciliacion': { grupo: 'finanzas', filtros: 'c s f', nuevo: true },
   'caja-bancos-diario': { grupo: 'finanzas', filtros: 'c s', nuevo: true },
+  'categorias-tesoreria': { grupo: 'finanzas', filtros: 'c s f' },
   // Ventas y POS
   'cierre-caja': { grupo: 'ventas', filtros: 'c s f' },
   'ventas-periodo': { grupo: 'ventas', filtros: 'c s f' },
@@ -226,6 +244,8 @@ function enriquecer(def: DefinicionModulo): ReportDefinition {
     filtros,
     ...(meta.nuevo ? { nuevo: true } : {}),
     ...(meta.alias ? { alias: meta.alias } : {}),
+    ...(meta.componente ? { componente: meta.componente } : {}),
+    ...(meta.sinTabla ? { sinTabla: true } : {}),
   };
 }
 
@@ -236,7 +256,7 @@ function enriquecer(def: DefinicionModulo): ReportDefinition {
 const CATALOGO: Record<string, ReportDefinition[]> = Object.fromEntries(
   Object.entries({
     pos: ventasReports,
-    finance: [...finanzasReports, ...contabilidadReports, ...comprasFinanzasReports],
+    finance: [...finanzasReports, ...tesoreriaReports, ...contabilidadReports, ...estadosFinancierosReports, ...comprasFinanzasReports],
     inventory: [...inventarioReports, ...serialTrackingReports, ...comprasInventarioReports],
     crm: crmReports,
     hrm: hrmReports,
@@ -289,6 +309,15 @@ export function getReportesVisibles(activeModuleCodes: string[]): ModuloReportes
 }
 
 /**
+ * El reporte devuelve filas (`fetch`). Los de componente propio sin tabla
+ * (estados financieros, libros, mayor) solo se consultan en el visor: quedan
+ * fuera de cierres, envíos programados, documentos y del asistente.
+ */
+export function esTabular(def: Pick<ReportDefinition, 'sinTabla'>): boolean {
+  return !def.sinTabla;
+}
+
+/**
  * Reportes que una persona puede ejecutar: los de los módulos activos del plan
  * y, sin acceso a todas las sucursales, solo los que se filtran por sucursal.
  * Es la lista blanca del GO Asistente (`consultar_reporte`): los módulos los
@@ -296,7 +325,7 @@ export function getReportesVisibles(activeModuleCodes: string[]): ModuloReportes
  */
 export function getReportesPermitidos(activeModuleCodes: string[], accesoTotal: boolean): ModuloReportes[] {
   return getReportesVisibles(activeModuleCodes)
-    .map((m) => ({ ...m, reportes: m.reportes.filter((r) => reportePermitido(r, accesoTotal)) }))
+    .map((m) => ({ ...m, reportes: m.reportes.filter((r) => reportePermitido(r, accesoTotal) && esTabular(r)) }))
     .filter((m) => m.reportes.length > 0);
 }
 

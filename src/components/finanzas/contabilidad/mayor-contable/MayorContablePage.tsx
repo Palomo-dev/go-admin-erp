@@ -14,6 +14,7 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import { StatsSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
@@ -41,6 +42,8 @@ export function MayorContablePage() {
   // calcularlos en el primer render daria el dia de Bogota para todos.
   const { getToday, formatDate } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
+  // Dentro del visor de Reportes el periodo sale de su barra de filtros.
+  const visor = useVisorInforme();
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -52,11 +55,12 @@ export function MayorContablePage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (visor) return;
     if (tzLoading) return;
     const hoy = getToday();
     setStartDate((prev) => prev || primerDiaDelAnioDe(hoy));
     setEndDate((prev) => prev || hoy);
-  }, [tzLoading, getToday]);
+  }, [visor, tzLoading, getToday]);
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -71,11 +75,11 @@ export function MayorContablePage() {
     void loadAccounts();
   }, [loadAccounts]);
 
-  const loadLedger = async () => {
-    if (!selectedAccount || !startDate || !endDate) return;
+  const loadLedger = async (desde: string = startDate, hasta: string = endDate) => {
+    if (!selectedAccount || !desde || !hasta) return;
     try {
       setIsLoading(true);
-      const data = await ReportesContablesService.getLedger(selectedAccount, startDate, endDate);
+      const data = await ReportesContablesService.getLedger(selectedAccount, desde, hasta);
       setLedger(data);
     } catch (error) {
       console.error('Error cargando mayor:', error);
@@ -84,19 +88,32 @@ export function MayorContablePage() {
     }
   };
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-          <BookOpen className="h-6 w-6 text-indigo-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mayor Contable</h1>
-          <p className="text-gray-500 dark:text-gray-400">Movimientos detallados por cuenta</p>
-        </div>
-      </div>
+  // El visor cambia el periodo: se vuelve a consultar la cuenta elegida.
+  useEffect(() => {
+    if (!visor) return;
+    setStartDate(visor.desde);
+    setEndDate(visor.hasta);
+    void loadLedger(visor.desde, visor.hasta);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visor?.desde, visor?.hasta]);
 
-      <BranchBadge className="mb-3" />
+  return (
+    <div className={visor ? 'space-y-4' : 'p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen'}>
+      {!visor && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+              <BookOpen className="h-6 w-6 text-indigo-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mayor Contable</h1>
+              <p className="text-gray-500 dark:text-gray-400">Movimientos detallados por cuenta</p>
+            </div>
+          </div>
+
+          <BranchBadge className="mb-3" />
+        </>
+      )}
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">
@@ -116,14 +133,18 @@ export function MayorContablePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Fecha Inicio</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
-            </div>
+            {!visor && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-gray-700 dark:text-gray-300">Fecha Inicio</Label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-700 dark:text-gray-300">Fecha Fin</Label>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
+                </div>
+              </>
+            )}
             <Button onClick={() => loadLedger()} className="bg-blue-600 hover:bg-blue-700">
               <Search className="h-4 w-4 mr-2" />
               Consultar

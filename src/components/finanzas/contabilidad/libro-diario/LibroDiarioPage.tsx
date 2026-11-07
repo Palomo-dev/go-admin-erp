@@ -11,6 +11,7 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { primerDiaDelMesDe } from '@/lib/services/fiscalCalendar';
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { BotonesExportar } from '../NivelReporte';
@@ -23,6 +24,8 @@ export function LibroDiarioPage() {
   const formatCifra = crearFormatoCifra(useMonedaOrganizacion());
   const { getToday, formatDate } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
+  // Dentro del visor de Reportes el periodo sale de su barra de filtros.
+  const visor = useVisorInforme();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filas, setFilas] = useState<LineaLibroDiario[]>([]);
@@ -45,6 +48,7 @@ export function LibroDiarioPage() {
   };
 
   useEffect(() => {
+    if (visor) return;
     if (tzLoading || arrancado.current) return;
     arrancado.current = true;
     const hoy = getToday();
@@ -53,7 +57,15 @@ export function LibroDiarioPage() {
     setEndDate(hoy);
     void loadData(inicio, hoy);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tzLoading, getToday]);
+  }, [visor, tzLoading, getToday]);
+
+  useEffect(() => {
+    if (!visor) return;
+    setStartDate(visor.desde);
+    setEndDate(visor.hasta);
+    void loadData(visor.desde, visor.hasta);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visor?.desde, visor?.hasta]);
 
   const exportables = filas.map((fila) => [
     formatDate(fila.entry_date),
@@ -68,25 +80,27 @@ export function LibroDiarioPage() {
 
   if (isLoading && filas.length === 0) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
+      <div className={visor ? 'space-y-4' : 'p-4 sm:p-6 lg:p-8 space-y-4 bg-gray-50 dark:bg-gray-900 min-h-screen'}>
+        {!visor && <PageHeaderSkeleton />}
         <TableSkeleton columns={6} rows={8} />
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-            <BookOpen className="h-6 w-6 text-indigo-600" />
+    <div className={visor ? 'space-y-4' : 'p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen'}>
+      <div className={visor ? 'flex justify-end' : 'flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4'}>
+        {!visor && (
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+              <BookOpen className="h-6 w-6 text-indigo-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Libro diario</h1>
+              <p className="text-gray-500 dark:text-gray-400">Asientos publicados del periodo</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Libro diario</h1>
-            <p className="text-gray-500 dark:text-gray-400">Asientos publicados del periodo</p>
-          </div>
-        </div>
+        )}
         <BotonesExportar
           nombre={`libro-diario-${startDate}-${endDate}`}
           titulo="Libro diario"
@@ -94,25 +108,29 @@ export function LibroDiarioPage() {
           filas={exportables}
         />
       </div>
-      <BranchBadge className="mb-3" />
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardContent className="py-4">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="space-y-2">
-              <Label>Fecha inicio</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha fin</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
-            </div>
-            <Button onClick={() => { void loadData(); }} className="bg-blue-600 hover:bg-blue-700">
-              <Calendar className="h-4 w-4 mr-2" />
-              Consultar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {!visor && (
+        <>
+          <BranchBadge className="mb-3" />
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="py-4">
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="space-y-2">
+                  <Label>Fecha inicio</Label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha fin</Label>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
+                </div>
+                <Button onClick={() => { void loadData(); }} className="bg-blue-600 hover:bg-blue-700">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Consultar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Movimientos</CardTitle>

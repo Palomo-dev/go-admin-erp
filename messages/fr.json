@@ -4455,6 +4455,8 @@
       "finanzas_egresos": "Décaissements",
       "finanzas_transferencias": "Virements",
       "finanzas_bancos": "Banques",
+      "finanzas_open-finance": "Connecter une banque",
+      "finanzas_payfac_dispersiones": "Encaissements et versements",
       "finanzas_cuentas-por-cobrar": "Créances clients",
       "finanzas_saldos-a-favor": "Soldes créditeurs",
       "finanzas_cuentas-por-pagar": "Dettes fournisseurs",
@@ -40384,6 +40386,1148 @@
         "nombre": "Produits divers",
         "ayuda": "Crédit d’un excédent réel de stock. Par défaut 42959501 (sous-compte de 4295). Ce n’est pas le 4250."
       }
+    }
+  },
+  "finanzasReportesR2": {
+    "presupuestos": {
+      "titulo": "Budgets",
+      "subtitulo": "Planification par compte et par mois",
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité",
+        "presupuestos": "Budgets"
+      },
+      "nuevo": "Nouveau budget",
+      "verInforme": "Budget et réalisé",
+      "estado": {
+        "draft": "Brouillon",
+        "approved": "Approuvé",
+        "active": "Actif",
+        "closed": "Clôturé",
+        "desconocido": "Sans statut"
+      },
+      "lista": {
+        "aria": "Liste des budgets",
+        "resumen": "{anio} · {total}"
+      },
+      "vacio": {
+        "titulo": "Aucun budget pour l’instant",
+        "descripcion": "Créez le premier pour planifier recettes et dépenses par compte et par mois."
+      },
+      "seleccione": "Choisissez un budget pour voir ses comptes.",
+      "detalle": {
+        "titulo": "{nombre} · {estado}",
+        "editar": "Modifier les lignes",
+        "ver": "Voir les lignes",
+        "aprobar": "Approuver",
+        "cuenta": "Compte",
+        "planeadoAnio": "Prévu sur l’année",
+        "total": "Total",
+        "centroCosto": "avec centre de coût",
+        "sinLineas": "Ce budget n’a pas encore de comptes.",
+        "agregarCuentas": "Ajouter des comptes",
+        "nota": "Le réalisé et la comparaison mois par mois se trouvent dans le rapport « Budget et réalisé ».",
+        "abrirInforme": "Ouvrir le rapport"
+      },
+      "menu": {
+        "aria": "Plus d’actions pour {nombre}",
+        "copiar": "Copier en brouillon",
+        "eliminar": "Supprimer"
+      },
+      "eliminar": {
+        "titulo": "Supprimer « {nombre} » ?",
+        "descripcionBorrador": "Le budget et tous ses comptes seront supprimés. Action irréversible.",
+        "descripcionAprobado": "Il est approuvé : il ne comptera plus dans le rapport budget et réalisé. Le budget et tous ses comptes seront supprimés. Action irréversible.",
+        "confirmar": "Supprimer le budget",
+        "sinPermisoBorrador": "Il vous faut l’autorisation de créer dans Finances.",
+        "sinPermisoAprobado": "Seule une personne autorisée à approuver peut supprimer un budget approuvé."
+      },
+      "aprobarSinPermiso": "Il vous faut l’autorisation d’approuver dans Finances.",
+      "nuevoDialogo": {
+        "titulo": "Nouveau budget",
+        "descripcion": "Partez de zéro ou copiez un budget précédent",
+        "nombre": "Nom",
+        "nombrePlaceholder": "Exploitation {anio}",
+        "anio": "Exercice",
+        "desde": "Partir de",
+        "origen": {
+          "vacio": "Vide",
+          "copia": "Copie de {nombre} · {anio}",
+          "realAnterior": "Réalisé de l’année précédente"
+        },
+        "ayuda": {
+          "vacio": "Vous partez sans comptes et les ajoutez dans « Modifier les lignes ».",
+          "copia": "Copie les comptes et les montants de chaque mois. Le nouveau reste en brouillon et l’original ne change pas."
+        },
+        "realNoDisponible": "Pas encore disponible : il manque une source approuvée de soldes réels par compte et par mois.",
+        "crear": "Créer",
+        "nombreObligatorio": "Saisissez un nom.",
+        "anioInvalido": "Saisissez une année entre 2000 et 2100.",
+        "sinPermiso": "Il vous faut l’autorisation de créer dans Finances.",
+        "copiaDe": "{nombre} (copie)"
+      },
+      "editor": {
+        "subtitulo": "{estado} · montants par mois",
+        "exportar": "Exporter",
+        "guardar": "Enregistrer",
+        "masAcciones": "Plus d’actions",
+        "descartar": "Annuler les modifications",
+        "anio": "Année",
+        "agregarCuenta": "Ajouter un compte",
+        "buscarCuenta": "Compte de mouvement",
+        "nota": "Comptes de mouvement uniquement. Saisir dans « Année » répartit le montant sur 12 mois égaux. Le ⋮ permet de copier un mois sur les autres ou de retirer le compte.",
+        "copiarMes": "Copier {mes} sur les autres mois",
+        "quitar": "Retirer le compte",
+        "valorMes": "{cuenta}, {mes}",
+        "valorAnio": "{cuenta}, année",
+        "sinCuentas": "Aucun compte pour l’instant",
+        "sinCuentasDescripcion": "Ajoutez les comptes que vous allez planifier.",
+        "aprobadoTitulo": "Ce budget ne peut pas être modifié",
+        "aprobadoDescripcion": "Seul un brouillon se modifie. Faites une copie en brouillon, modifiez-la et approuvez-la.",
+        "sinCambios": "Aucune modification à enregistrer.",
+        "sinPermiso": "Il vous faut l’autorisation de créer dans Finances.",
+        "salirConCambios": "Vous avez des modifications non enregistrées.",
+        "noEncontrado": "Nous n’avons pas trouvé ce budget.",
+        "volver": "Retour aux budgets",
+        "nombreArchivo": "budget-{nombre}.csv"
+      },
+      "toast": {
+        "creado": "Budget créé",
+        "aprobado": "Budget approuvé",
+        "eliminado": "Budget supprimé",
+        "guardado": "Modifications enregistrées"
+      },
+      "error": {
+        "cargar": "Impossible de charger les budgets.",
+        "cargarLineas": "Impossible de charger les comptes du budget.",
+        "sin_permiso": "Vous n’avez pas l’autorisation pour cette action.",
+        "no_aprobable": "Seul un budget en brouillon peut être approuvé.",
+        "no_editable": "Ce budget n’est plus en brouillon : il ne peut pas être modifié.",
+        "nombre_repetido": "Un budget porte déjà ce nom pour cette année.",
+        "origen_no_encontrado": "Nous n’avons pas trouvé le budget à copier.",
+        "cuenta_invalida": "Ces comptes ne sont pas des comptes de mouvement : {cuentas}.",
+        "no_encontrado": "Nous n’avons pas trouvé ce budget.",
+        "datos_invalidos": "Vérifiez les données : certaines valeurs ne sont pas valides.",
+        "error": "Une erreur s’est produite. Réessayez."
+      }
+    }
+  },
+  "finanzasContableR2": {
+    "activos": {
+      "migaContabilidad": "Comptabilité",
+      "buscar": "Rechercher un code ou un nom",
+      "errorConDepreciacion": "Cet actif a déjà un amortissement comptabilisé : la date, le coût, la valeur résiduelle et la durée d’utilité ne changent pas, et l’actif ne se supprime pas.",
+      "kpi": {
+        "resumen": "Résumé des immobilisations",
+        "costo": "Coût total",
+        "acumulada": "Amortissement cumulé",
+        "libros": "Valeur comptable",
+        "pendientes": "En attente d’amortissement",
+        "alDia": "Tous peuvent être amortis",
+        "variosMotivos": "Voir le motif sur chaque ligne"
+      },
+      "idempotente": {
+        "titulo": "Amortir est idempotent",
+        "descripcion": "Si {mes} est déjà comptabilisé, le bouton ne crée pas de deuxième écriture. Un actif sans comptes reste en attente et sa ligne l’explique."
+      },
+      "form": {
+        "subtitulo": "Amorti chaque mois, en linéaire",
+        "cuentas": "Comptes",
+        "primeraCuota": "Première échéance : {mes} {anio} (le mois suivant l’acquisition)."
+      }
+    },
+    "plantillas": {
+      "titulo": "Modèles d’écritures",
+      "subtitulo": "Écritures récurrentes. Utiliser un modèle crée un brouillon, sans le comptabiliser.",
+      "migas": {
+        "finanzas": "Finances",
+        "contabilidad": "Comptabilité",
+        "plantillas": "Modèles"
+      },
+      "guardada": "Modèle enregistré",
+      "nueva": {
+        "titulo": "Nouveau modèle",
+        "nombre": "Nom",
+        "nombreRequerido": "Saisissez le nom du modèle.",
+        "memo": "Mémo",
+        "linea": "Ligne",
+        "guardar": "Enregistrer le modèle"
+      },
+      "linea": {
+        "cuenta": "Compte de la ligne {n}",
+        "cuentaVacia": "Compte de mouvement",
+        "debito": "Débit de la ligne {n}",
+        "debitoCorto": "Débit",
+        "credito": "Crédit de la ligne {n}",
+        "creditoCorto": "Crédit",
+        "quitar": "Retirer la ligne {n}",
+        "descripcion": "Description de la ligne {n}",
+        "descripcionCorta": "Description",
+        "centro": "Centre de coût de la ligne {n}",
+        "centroObligatorio": "Centre de coût *",
+        "centroOpcional": "Centre de coût"
+      },
+      "cuadre": {
+        "sinImportes": "Aucun montant",
+        "cuadra": "Équilibré",
+        "noCuadra": "Non équilibré · écart {diferencia}",
+        "debitos": "Débits {valor}",
+        "creditos": "Crédits {valor}"
+      },
+      "bloqueo": {
+        "nombre": "Le nom du modèle manque.",
+        "lineasInsuficientes": "Il faut au moins deux lignes avec un compte et un montant.",
+        "lineaInvalida": "Chaque ligne va au débit ou au crédit, pas aux deux.",
+        "descuadre": "Les débits et les crédits doivent être équilibrés pour enregistrer."
+      },
+      "guardadas": {
+        "titulo": "Enregistrés",
+        "vacio": "Aucun modèle pour l’instant.",
+        "lineas": "{n, plural, one {# ligne} other {# lignes}}",
+        "usar": "Utiliser"
+      },
+      "usar": {
+        "titulo": "Utiliser le modèle",
+        "fecha": "Date de l’écriture",
+        "fechaRequerida": "Choisissez la date de l’écriture.",
+        "sucursal": "Succursale",
+        "sucursalRequerida": "Choisissez la succursale de l’écriture.",
+        "elegirSucursal": "Choisissez une succursale",
+        "memo": "Mémo",
+        "avisoTitulo": "Un brouillon est créé",
+        "avisoDescripcion": "Vous le vérifiez et le comptabilisez depuis le détail de l’écriture.",
+        "crear": "Créer le brouillon",
+        "creado": "Brouillon créé. Vérifiez-le avant de le comptabiliser."
+      },
+      "archivar": {
+        "accion": "Archiver",
+        "titulo": "Archiver « {nombre} » ?",
+        "descripcion": "Il n’apparaît plus dans Enregistrés. Les écritures déjà créées avec lui ne changent pas.",
+        "confirmar": "Archiver",
+        "hecho": "Modèle archivé"
+      },
+      "errores": {
+        "cargar": "Impossible de charger les modèles.",
+        "aplicar": "Impossible d’utiliser le modèle.",
+        "archivar": "Impossible d’archiver le modèle."
+      }
+    },
+    "movimiento": {
+      "titulo": {
+        "income": "Encaissement n° {id}",
+        "expense": "Décaissement n° {id}"
+      },
+      "migas": {
+        "finanzas": "Finances",
+        "income": "Encaissements",
+        "expense": "Décaissements"
+      },
+      "subtitulo": "Enregistré le {fecha}",
+      "subtituloAnulado": "Enregistré le {fecha} · annulé le {anulado}",
+      "estado": {
+        "confirmado": "Confirmé",
+        "anulado": "Annulé",
+        "reverso": "Annulation"
+      },
+      "porAutor": "par {autor}",
+      "motivo": "« {motivo} »",
+      "errorEstado": {
+        "titulo": "Impossible de vérifier s’il est annulé",
+        "descripcion": "En attendant, l’annulation et la duplication ne sont pas proposées."
+      },
+      "tarjetas": {
+        "movimiento": "Mouvement",
+        "contables": "Données comptables"
+      },
+      "datos": {
+        "concepto": "Libellé",
+        "monto": "Montant",
+        "fecha": "Date d’enregistrement",
+        "origen": "Origine",
+        "caja": "Caisse",
+        "banco": "Banque",
+        "bancoCuenta": "Banque · {cuenta}",
+        "notas": "Notes",
+        "identificador": "Identifiant"
+      },
+      "acciones": {
+        "duplicar": "Dupliquer",
+        "anular": "Annuler"
+      },
+      "avisoAnulado": {
+        "titulo": "L’annulation ne supprime pas",
+        "income": "L’encaissement est conservé et le mouvement inverse laisse le solde tel qu’il était. « Dupliquer » et « Annuler » ne sont plus proposés.",
+        "expense": "Le décaissement est conservé et le mouvement inverse laisse le solde tel qu’il était. « Dupliquer » et « Annuler » ne sont plus proposés."
+      },
+      "avisoReverso": {
+        "titulo": "Ce mouvement en annule un autre",
+        "descripcion": "Il a été enregistré lors de l’annulation d’un mouvement. Il ne s’annule ni ne se duplique : si besoin, enregistrez à nouveau le mouvement."
+      },
+      "exito": "Terminé",
+      "anulado": {
+        "income": "Encaissement annulé",
+        "expense": "Décaissement annulé"
+      },
+      "duplicado": {
+        "income": "Encaissement dupliqué",
+        "expense": "Décaissement dupliqué"
+      },
+      "errorAnular": "Impossible d’annuler.",
+      "errorDuplicar": "Impossible de dupliquer.",
+      "noEncontrado": {
+        "income": "Encaissement introuvable",
+        "expense": "Décaissement introuvable"
+      },
+      "volverListado": "Retour à la liste"
+    }
+  },
+  "finanzasCobrosR2": {
+    "titulo": "Encaissements et versements",
+    "subtitulo": "Ce que GO Admin encaisse pour vous et vous reverse",
+    "migas": {
+      "finanzas": "Finances",
+      "tesoreria": "Trésorerie",
+      "configuracion": "Configuration"
+    },
+    "acciones": {
+      "exportar": "Exporter",
+      "exportarSinDatos": "Aucun versement à exporter",
+      "recargar": "Actualiser"
+    },
+    "pestanas": {
+      "etiqueta": "Sections encaissements et versements",
+      "dispersiones": "Versements",
+      "cuenta": "Compte de versement"
+    },
+    "dispersiones": {
+      "buscar": "Rechercher une référence",
+      "tabla": "Versements",
+      "filtros": {
+        "estado": "Statut",
+        "todos": "Tous",
+        "ver": "Voir {n} versements"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des versements",
+        "recaudado": "Encaissé",
+        "recaudadoDetalle": "Depuis le début",
+        "comision": "Commission",
+        "comisionDetalle": "{pct} % en moyenne",
+        "dispersado": "Versé",
+        "pendiente": "En attente de versement",
+        "proxima": "Prochain : {fecha}"
+      },
+      "columnas": {
+        "referencia": "Référence",
+        "periodo": "Période",
+        "recaudado": "Encaissé",
+        "comision": "Commission",
+        "neto": "Net",
+        "medio": "Moyen",
+        "estado": "Statut",
+        "fecha": "Date"
+      },
+      "csv": {
+        "periodoInicio": "Période du",
+        "periodoFin": "Période au",
+        "moneda": "Devise"
+      },
+      "estados": {
+        "pending": "En attente",
+        "processing": "En cours",
+        "completed": "Terminé",
+        "failed": "Échoué",
+        "cancelled": "Annulé"
+      },
+      "medios": {
+        "breb": "Bre-B",
+        "ach": "Virement",
+        "manual": "Manuel",
+        "mono_turbo": "Mono Turbo"
+      },
+      "vacio": {
+        "titulo": "Aucun versement pour l'instant",
+        "descripcion": "Quand GO Admin vous reversera les encaissements, chaque versement apparaîtra ici."
+      },
+      "error": {
+        "titulo": "Impossible de charger les versements"
+      }
+    },
+    "detalle": {
+      "recaudado": "Encaissé",
+      "comision": "Commission",
+      "neto": "Net",
+      "fallo": {
+        "titulo": "La banque a refusé le virement",
+        "sinMotivo": "La banque n'a pas indiqué de motif. GO Admin réessaie dès que le compte de versement est vérifié.",
+        "revisarCuenta": "Vérifier le compte de versement"
+      },
+      "cancelada": "Versement annulé",
+      "cobros": "Encaissements inclus",
+      "columnas": {
+        "cobro": "Encaissement",
+        "bruto": "Brut",
+        "comision": "Commission",
+        "neto": "Net"
+      },
+      "sinCobros": "Ce versement n'a pas d'encaissements détaillés.",
+      "errorCobros": "Impossible de charger les encaissements",
+      "nota": "Montants réglés par GO Admin. La commission n'est pas comptabilisée depuis cet écran."
+    },
+    "cuenta": {
+      "nueva": "Nouveau compte de versement",
+      "tabla": "Comptes de versement",
+      "aviso": {
+        "titulo": "C'est ici que GO Admin vous verse",
+        "descripcion": "Seul un compte vérifié reçoit les versements automatiques par Bre-B. GO Admin le vérifie auprès de la banque."
+      },
+      "columnas": {
+        "banco": "Banque",
+        "tipo": "Type",
+        "numero": "Numéro",
+        "titular": "Titulaire",
+        "documento": "Pièce d'identité",
+        "cuentaGoAdmin": "Compte dans GO Admin",
+        "estado": "Statut"
+      },
+      "tipos": {
+        "savings": "Épargne",
+        "checking": "Courant"
+      },
+      "estados": {
+        "verificada": "Vérifié",
+        "pendiente": "En attente"
+      },
+      "sinVincular": "Non lié",
+      "vacio": {
+        "titulo": "Aucun compte de versement",
+        "descripcion": "Enregistrez le compte de l'organisation où GO Admin vous reverse les encaissements."
+      },
+      "error": "Impossible de charger les comptes de versement",
+      "quitar": {
+        "accion": "Retirer le compte",
+        "titulo": "Retirer le compte de versement ?",
+        "descripcion": "{cuenta} ne recevra plus de versements. Vous pourrez l'enregistrer à nouveau plus tard.",
+        "confirmar": "Retirer",
+        "bloqueada": "C'est le seul compte vérifié et des versements sont en attente : enregistrez et faites vérifier un autre compte avant de le retirer.",
+        "hecho": "Compte de versement retiré",
+        "error": "Impossible de retirer le compte de versement"
+      }
+    },
+    "nuevaCuenta": {
+      "titulo": "Nouveau compte de versement",
+      "descripcion": "Où GO Admin vous reverse les encaissements",
+      "guardar": "Enregistrer",
+      "sinVincular": "Non lié",
+      "campos": {
+        "cuentaGoAdmin": "Compte bancaire dans GO Admin",
+        "banco": "Banque",
+        "tipoCuenta": "Type de compte",
+        "numero": "Numéro de compte",
+        "titular": "Titulaire",
+        "tipoDocumento": "Type de pièce",
+        "documento": "Numéro de pièce",
+        "llaveBreb": "Clé Bre-B"
+      },
+      "ayudas": {
+        "cuentaGoAdmin": "Facultatif. Si vous en choisissez un, les champs ci-dessous sont remplis.",
+        "llaveBreb": "Facultatif. Sans clé, le versement se fait par virement."
+      },
+      "tiposDocumento": {
+        "NIT": "NIT (identifiant fiscal)",
+        "CC": "Carte d'identité",
+        "CE": "Carte d'étranger",
+        "PEP": "Permis spécial de séjour"
+      },
+      "errores": {
+        "obligatorio": "Ce champ est obligatoire",
+        "titular": "Le titulaire doit être l'organisation : utilisez sa raison sociale ou son NIT.",
+        "guardar": "Impossible d'enregistrer le compte de versement"
+      },
+      "creada": "Compte de versement enregistré"
+    },
+    "metodos": {
+      "titulo": "Moyens de paiement",
+      "subtitulo": "Comment vos clients vous paient et où arrive l'argent",
+      "nuevo": "Nouveau moyen",
+      "pestanas": {
+        "etiqueta": "Sections des moyens de paiement",
+        "metodos": "Moyens",
+        "qr": "Paiements QR"
+      },
+      "quitar": {
+        "titulo": "Retirer le moyen de paiement",
+        "contando": "Vérification des paiements enregistrés avec ce moyen…",
+        "tituloEliminar": "Supprimer le moyen de paiement ?",
+        "descripcionEliminar": "{nombre} n'a aucun paiement enregistré. Il ne sera plus disponible pour votre organisation ; action irréversible.",
+        "eliminar": "Supprimer",
+        "tituloDesactivar": "Désactiver le moyen de paiement ?",
+        "descripcionDesactivar": "{nombre} a {n, plural, one {# paiement enregistré} other {# paiements enregistrés}} : il est désactivé, pas supprimé. Ces paiements et leurs rapports y font toujours référence, et vous pourrez le réactiver.",
+        "descripcionDesactivarSinConteo": "Impossible de vérifier si {nombre} a des paiements : par prudence, il est désactivé au lieu d'être supprimé.",
+        "desactivar": "Désactiver",
+        "descripcionNinguna": "{nombre} est déjà inactif et a des paiements enregistrés : il est conservé pour que ces paiements y fassent toujours référence.",
+        "entendido": "Compris",
+        "conPagosError": "Ce moyen a des paiements enregistrés : désactivez-le au lieu de le supprimer."
+      }
+    },
+    "metodo": {
+      "tituloNuevo": "Nouveau moyen de paiement",
+      "tituloEditar": "Modifier le moyen de paiement",
+      "subtitulo": "{nombre} · code {codigo}",
+      "subtituloNuevo": "Choisissez un moyen, connectez une intégration ou créez le vôtre",
+      "guardar": "Enregistrer",
+      "desactivar": "Désactiver",
+      "activar": "Activer",
+      "guardado": "Moyen de paiement enregistré",
+      "activado": "Moyen de paiement activé",
+      "desactivado": "Moyen de paiement désactivé",
+      "avisoSucursales": "La restriction par agence n'est pas encore activée dans la base de données ; pour l'instant, le moyen reste disponible dans toutes les agences.",
+      "elegir": "Sélectionnez un moyen de paiement",
+      "crearPersonalizado": "+ Créer un moyen personnalisé",
+      "grupos": {
+        "manuales": "Moyens de paiement",
+        "integraciones": "Intégrations (connexion requise)"
+      },
+      "secciones": {
+        "contabilidad": "Comptabilité",
+        "masCuentas": "Autres comptes comptables",
+        "tienda": "Boutique en ligne"
+      },
+      "campos": {
+        "metodo": "Moyen de paiement",
+        "nombre": "Nom",
+        "codigo": "Code interne",
+        "referencia": "Demander une référence",
+        "entraA": "Arrive sur",
+        "cuentaPorCobrar": "Compte client",
+        "cuentaIngresos": "Compte de produits",
+        "cuentaCaja": "Compte de caisse",
+        "nombreTienda": "Nom dans la boutique",
+        "visibleTienda": "Visible dans la boutique",
+        "icono": "Icône dans la boutique",
+        "orden": "Ordre dans la boutique",
+        "instrucciones": "Instructions pour le client"
+      },
+      "ayudas": {
+        "codigo": "Non modifiable : les paiements enregistrés l'utilisent.",
+        "codigoNuevo": "Sans espaces, unique.",
+        "sinBancos": "Aucun compte bancaire actif.",
+        "sinPlan": "Vous n'avez pas de plan comptable configuré.",
+        "irPlan": "Configurer le plan comptable",
+        "nombreTienda": "Vide : « {nombre} » est utilisé.",
+        "orden": "Vous pouvez aussi glisser les moyens dans la liste.",
+        "instrucciones": "Ex. : virez sur le compte épargne et envoyez le justificatif."
+      },
+      "referencia": {
+        "si": "Oui, obligatoire",
+        "no": "Non"
+      },
+      "si": "Oui",
+      "no": "Non",
+      "sinAsignar": "Non attribué",
+      "sinIcono": "Sans icône",
+      "iconos": {
+        "banknotes": "Billets",
+        "coins": "Pièces",
+        "credit-card": "Carte",
+        "building-bank": "Banque",
+        "arrow-left-right": "Virement",
+        "wallet": "Portefeuille",
+        "smartphone": "Mobile",
+        "qr-code": "QR",
+        "globe": "En ligne",
+        "zap": "Paiement rapide",
+        "truck": "Paiement à la livraison",
+        "store": "En magasin"
+      },
+      "integraciones": "Besoin de Wompi, Nequi ou PayU ? Connectez-les depuis",
+      "irIntegraciones": "Intégrations › Connexions",
+      "errores": {
+        "metodo": "Choisissez un moyen de paiement",
+        "nombre": "Le nom doit comporter au moins 3 caractères",
+        "codigo": "Le code doit comporter au moins 2 caractères",
+        "guardar": "Impossible d'enregistrer le moyen de paiement",
+        "estado": "Impossible de changer le statut du moyen"
+      }
+    },
+    "qr": {
+      "buscar": "Rechercher une référence",
+      "tabla": "Paiements QR",
+      "filtroEstado": "Filtrer par statut",
+      "filtros": {
+        "todos": "Tous",
+        "pending": "En attente",
+        "paid": "Payés",
+        "expired": "Expirés",
+        "rejected": "Refusés",
+        "cancelled": "Annulés"
+      },
+      "estados": {
+        "pending": "En attente",
+        "paid": "Payé",
+        "expired": "Expiré",
+        "rejected": "Refusé",
+        "cancelled": "Annulé"
+      },
+      "columnas": {
+        "referencia": "Référence",
+        "proveedor": "Fournisseur",
+        "monto": "Montant",
+        "estado": "Statut",
+        "origen": "Origine",
+        "creado": "Créé",
+        "pagado": "Payé"
+      },
+      "origenes": {
+        "pos": "Point de vente",
+        "folio": "Folio (hôtel)",
+        "web_order": "Boutique en ligne"
+      },
+      "vacio": {
+        "titulo": "Aucun paiement QR pour l'instant",
+        "descripcion": "Chaque QR généré au point de vente, à l'hôtel ou dans la boutique apparaîtra ici."
+      },
+      "error": {
+        "titulo": "Impossible de charger les paiements QR",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      }
+    }
+  },
+  "reportesFinanzasR2": {
+    "visor": {
+      "soloPantalla": "Ce rapport se consulte uniquement ici : il n'entre ni dans les clôtures, ni dans les envois programmés, ni dans les documents. Utilisez ses propres boutons pour l'exporter."
+    },
+    "contabilidadInicio": {
+      "titulo": "Rapports comptables",
+      "descripcion": "États financiers, livres, grand livre et auxiliaires, dans le centre de rapports"
+    }
+  },
+  "finanzasBancosR2": {
+    "migas": {
+      "finanzas": "Finances",
+      "tesoreria": "Trésorerie"
+    },
+    "bancos": {
+      "pestanas": {
+        "etiqueta": "Sections des comptes de trésorerie",
+        "cuentas": "Comptes",
+        "conciliacion": "Rapprochement",
+        "alertas": "Alertes"
+      }
+    },
+    "alertas": {
+      "aviso": {
+        "titulo": "Une alerte est un signal, pas une erreur confirmée",
+        "descripcion": "Vérifiez-la avec le relevé. En la marquant comme vérifiée, elle garde votre nom, la date et le motif, et ne réapparaît plus."
+      },
+      "avisoSinHistorial": {
+        "titulo": "Les vérifications ne peuvent pas encore être enregistrées",
+        "descripcion": "L'historique des vérifications doit encore être activé dans la base de données. Les alertes sont visibles mais restent ouvertes jusque-là."
+      },
+      "cifras": {
+        "etiqueta": "Résumé des alertes",
+        "abiertas": "Ouvertes",
+        "severidadAlta": "Gravité élevée",
+        "posiblesDuplicados": "Doublons possibles",
+        "diferenciasSaldo": "Écarts de solde"
+      },
+      "tabla": {
+        "etiqueta": "Alertes des comptes de trésorerie",
+        "alerta": "Alerte",
+        "cuenta": "Compte",
+        "detalle": "Détail",
+        "monto": "Montant",
+        "severidad": "Gravité",
+        "estado": "Statut",
+        "revisar": "Vérifier",
+        "ver": "Voir",
+        "vacioTitulo": "Aucune alerte",
+        "vacioDescripcion": "Aucun doublon, montant inhabituel ni écart de solde dans vos comptes.",
+        "errorTitulo": "Impossible de charger les alertes",
+        "errorDescripcion": "Vérifiez la connexion et réessayez."
+      },
+      "tipos": {
+        "duplicate": "Doublon possible",
+        "unusual_amount": "Montant inhabituel",
+        "unusual_time": "Horaire inhabituel",
+        "fragmentation": "Fractionnement possible",
+        "weekend_high_amount": "Montant élevé le week-end",
+        "balance_discrepancy": "Écart de solde"
+      },
+      "detalle": {
+        "duplicate": "{conteo} mouvements identiques, {fecha}",
+        "duplicateSinFecha": "{conteo} mouvements identiques",
+        "unusual_amount": "{veces} fois la moyenne",
+        "unusual_amountSinPromedio": "Montant hors de l'ordinaire",
+        "balance_discrepancyBanco": "GO Admin vs banque",
+        "balance_discrepancyMovimientos": "Solde vs somme des mouvements",
+        "fragmentation": "Nombreux petits mouvements en une heure",
+        "unusual_time": "Hors des horaires normaux, {fecha}",
+        "weekend_high_amount": "Week-end, {fecha}"
+      },
+      "severidad": {
+        "high": "Élevée",
+        "medium": "Moyenne",
+        "low": "Faible"
+      },
+      "estado": {
+        "abierta": "Ouverte",
+        "revisada": "Vérifiée · {nombre}",
+        "revisadaSinNombre": "Vérifiée"
+      },
+      "sinCuenta": "Aucun compte lié"
+    },
+    "revisar": {
+      "titulo": "Vérifier l'alerte",
+      "descripcion": "{tipo} · {cuenta}",
+      "marcar": "Marquer comme vérifiée",
+      "duplicado": "C'est un doublon : en annuler un",
+      "sinHistorial": "La vérification ne peut pas être enregistrée tant que l'historique n'est pas activé.",
+      "guardada": "Alerte marquée comme vérifiée",
+      "movimientos": {
+        "etiqueta": "Mouvements de l'alerte",
+        "movimiento": "Mouvement",
+        "fecha": "Date",
+        "monto": "Montant",
+        "sinDescripcion": "Mouvement n° {id}",
+        "referencia": "réf. {referencia}"
+      },
+      "datos": {
+        "etiqueta": "Données de l'alerte",
+        "saldoGo": "Solde dans GO Admin",
+        "saldoMovimientos": "Solde selon les mouvements",
+        "saldoBanco": "Solde de la banque",
+        "diferencia": "Écart",
+        "monto": "Montant",
+        "promedio": "Moyenne",
+        "fecha": "Date",
+        "movimiento": "Mouvement",
+        "descripcion": "Description"
+      },
+      "campo": {
+        "etiqueta": "Ce que vous avez trouvé",
+        "ayuda": "Obligatoire. Reste dans l'historique de l'alerte.",
+        "placeholder": "Ex. : deux paiements distincts du même client, avec des références différentes sur le relevé."
+      },
+      "errores": {
+        "motivo_vacio": "Indiquez ce que vous avez trouvé.",
+        "motivo_corto": "Saisissez au moins 5 caractères.",
+        "motivo_largo": "Utilisez 500 caractères au maximum.",
+        "revision_no_disponible": "La vérification n'a pas été enregistrée : l'historique des vérifications doit encore être activé.",
+        "ya_revisada": "Cette alerte a déjà été vérifiée par une autre personne. Actualisez la page.",
+        "sin_permiso": "Vous n'avez pas l'autorisation de vérifier les alertes.",
+        "referencia_invalida": "Le compte ou le mouvement n'existe plus. Actualisez la page.",
+        "clave_invalida": "L'alerte n'est pas valide. Actualisez la page.",
+        "tipo_invalido": "L'alerte n'est pas valide. Actualisez la page.",
+        "resultado_invalido": "L'alerte n'est pas valide. Actualisez la page.",
+        "movimiento_requerido": "Choisissez le mouvement à annuler.",
+        "desconocido": "Impossible d'enregistrer la vérification. Réessayez."
+      },
+      "ver": {
+        "titulo": "Alerte vérifiée",
+        "revisadaPor": "Vérifiée par",
+        "fecha": "Date",
+        "resultado": "Résultat",
+        "motivo": "Ce qui a été trouvé",
+        "resultados": {
+          "revisada": "Ce n'était pas une erreur",
+          "duplicado_anulado": "Le mouvement n° {id} a été annulé"
+        }
+      }
+    },
+    "anular": {
+      "titulo": "Annuler le mouvement en double",
+      "descripcion": "Un mouvement inverse est enregistré sur le même compte. Rien n'est supprimé et l'alerte est marquée comme vérifiée avec ce motif.",
+      "boton": "Annuler le mouvement",
+      "elegir": "Mouvement à annuler",
+      "sinMovimiento": "Choisissez le mouvement à annuler.",
+      "anulado": "Mouvement annulé et alerte vérifiée",
+      "anuladoSinRevision": "Le mouvement a été annulé, mais l'alerte reste ouverte : {error}"
+    },
+    "conectar": {
+      "titulo": "Connecter une banque",
+      "subtitulo": "Récupère les mouvements bancaires sans importer de relevés",
+      "subtituloConectado": "{n, plural, one {# banque connectée} other {# banques connectées}} · dernière synchronisation {fecha}",
+      "subtituloSinSincronizar": "{n, plural, one {# banque connectée} other {# banques connectées}} · pas encore synchronisée",
+      "sincronizar": "Synchroniser maintenant",
+      "conectar": "Connecter une banque",
+      "conectarOtro": "Connecter une autre banque",
+      "conectarNoDisponible": "Pour l'instant, l'équipe GO Admin active la connexion bancaire avec vous ; bientôt vous pourrez la lancer d'ici.",
+      "sincronizado": "Mouvements et soldes à jour",
+      "sinSaldos": "Mouvements récupérés, mais les soldes n'ont pas pu être actualisés",
+      "sinMovimientos": "Soldes actualisés, mais les mouvements n'ont pas pu être récupérés",
+      "errorSincronizar": "Échec de la synchronisation. Réessayez dans quelques minutes.",
+      "menu": {
+        "tesoreria": "Trésorerie consolidée",
+        "alertas": "Alertes des comptes de trésorerie",
+        "conciliacion": "Rapprochement bancaire"
+      },
+      "pestanas": {
+        "etiqueta": "Sections de la connexion bancaire",
+        "bancos": "Banques",
+        "autorizaciones": "Autorisations"
+      },
+      "tabla": {
+        "etiqueta": "Comptes des banques connectées",
+        "banco": "Banque",
+        "cuentaBanco": "Compte à la banque",
+        "cuentaGo": "Compte dans GO Admin",
+        "saldo": "Solde de la banque",
+        "sincronizacion": "Dernière synchronisation",
+        "estado": "Statut",
+        "sinVincular": "Non lié",
+        "nunca": "Jamais",
+        "vacioTitulo": "La banque n'a pas encore déclaré de comptes",
+        "vacioDescripcion": "Ils apparaissent ici après la première synchronisation."
+      },
+      "tiposCuenta": {
+        "savings": "Épargne",
+        "checking": "Courant",
+        "credit_card": "Carte de crédit",
+        "loan": "Crédit"
+      },
+      "estados": {
+        "activa": "Active",
+        "sinVincular": "Non lié",
+        "fallo": "Échec"
+      },
+      "fila": {
+        "verCuenta": "Voir le compte dans GO Admin",
+        "autorizaciones": "Voir les autorisations"
+      },
+      "cifras": {
+        "etiqueta": "Résumé de la connexion",
+        "bancos": "Banques connectées",
+        "cuentas": "Comptes liés",
+        "movimientos": "Mouvements (30 jours)",
+        "porLlevar": "À intégrer dans GO Admin",
+        "porLlevarDetalle": "Vérifiez-les dans le rapprochement"
+      },
+      "sinVincularAviso": {
+        "titulo": "{n, plural, one {# compte bancaire non lié} other {# comptes bancaires non liés}}",
+        "descripcion": "Un compte bancaire non lié n'importe aucun mouvement tant que vous ne choisissez pas son compte dans GO Admin."
+      },
+      "fallo": {
+        "titulo": "{banco} n'a pas répondu lors de la dernière synchronisation",
+        "descripcion": "Si l'échec persiste, l'autorisation a peut-être expiré : renouvelez-la dans Autorisations.",
+        "verAutorizaciones": "Voir les autorisations"
+      },
+      "servicio": {
+        "titulo": "C'est un service de GO Admin",
+        "descripcion": "GO Admin gère la connexion avec la banque. Vous ne collez pas de clés et ne configurez pas de variables. Vous autorisez seulement l'accès, pour 90 jours au maximum, et vous pouvez le révoquer quand vous voulez."
+      },
+      "noActivo": {
+        "titulo": "Le service n'est pas encore actif",
+        "descripcion": "GO Admin n'a pas encore activé la connexion bancaire pour votre organisation."
+      },
+      "beneficios": {
+        "etiqueta": "Ce que vous obtenez en connectant une banque",
+        "queObtienes": "Ce que vous obtenez",
+        "comoSeUsa": "Comment c'est utilisé",
+        "movimientos": {
+          "titulo": "Mouvements quotidiens",
+          "descripcion": "Ils arrivent sur le compte bancaire et dans le rapprochement comme un relevé"
+        },
+        "saldo": {
+          "titulo": "Solde de la banque",
+          "descripcion": "Comparé au solde dans GO Admin ; des alertes sont créées en cas d'écart"
+        },
+        "duplicados": {
+          "titulo": "Sans doublons",
+          "descripcion": "Un mouvement déjà importé n'est pas recréé"
+        }
+      },
+      "errorCarga": {
+        "titulo": "Impossible de charger la connexion bancaire",
+        "descripcion": "Vérifiez la connexion et réessayez.",
+        "reintentar": "Réessayer"
+      },
+      "errores": {
+        "fuera_de_ventana": "Seules les autorisations qui expirent dans 7 jours ou moins peuvent être renouvelées.",
+        "desconocido": "L'opération n'a pas pu aboutir. Réessayez."
+      }
+    },
+    "autorizaciones": {
+      "aviso": {
+        "titulo": "Vos droits sur les données financières",
+        "descripcion": "Chaque autorisation dure 90 jours au maximum et peut être révoquée à tout moment (décret 0368 de 2026). Une fois révoquée, GO Admin cesse de récupérer les mouvements de cette banque."
+      },
+      "renovar": "Renouveler",
+      "renovando": "Renouvellement…",
+      "renovada": "Autorisation renouvelée pour 90 jours",
+      "revocar": "Révoquer",
+      "sinBanco": "Banque sans nom",
+      "tipos": {
+        "data_access": "Lire les mouvements et les soldes",
+        "payment_initiation": "Initier des paiements",
+        "account_validation": "Valider des comptes"
+      },
+      "tabla": {
+        "etiqueta": "Autorisations d'accès aux banques",
+        "banco": "Banque",
+        "paraQue": "Usage",
+        "autorizada": "Autorisée",
+        "vence": "Expire",
+        "venceEn": "{fecha} · dans {dias, plural, one {# jour} other {# jours}}",
+        "estado": "Statut",
+        "motivo": "Motif : {motivo}",
+        "vacioTitulo": "Aucune autorisation",
+        "vacioDescripcion": "Quand vous autorisez l'accès à une banque, elle apparaît ici avec son expiration."
+      },
+      "estados": {
+        "activa": "Active",
+        "porVencer": "Expire bientôt",
+        "vencida": "Expirée",
+        "revocada": "Révoquée"
+      }
+    },
+    "revocar": {
+      "titulo": "Révoquer l'autorisation",
+      "descripcion": "{banco} · {paraQue}",
+      "boton": "Révoquer l'autorisation",
+      "motivo": "Motif",
+      "placeholder": "Ex. : nous avons changé de banque pour la paie",
+      "revocada": "Autorisation révoquée",
+      "aviso": {
+        "titulo": "GO Admin cessera de récupérer les mouvements de cette banque",
+        "descripcion": "Ce qui a déjà été importé est conservé. Pour vous reconnecter, vous devrez autoriser à nouveau."
+      }
+    }
+  },
+  "finanzasMonedasR2": {
+    "titulo": "Devises et taux",
+    "subtitulo": "Devise de base {base}",
+    "subtituloTasas": "Devise de base {base} · taux du jour de votre organisation",
+    "subtituloMovil": "Base {base} · {dia}",
+    "migas": {
+      "finanzas": "Finances",
+      "configuracion": "Configuration"
+    },
+    "pestanas": {
+      "etiqueta": "Sections devises et taux",
+      "monedas": "Devises",
+      "tasas": "Taux",
+      "historico": "Historique"
+    },
+    "acciones": {
+      "agregarMoneda": "Ajouter une devise",
+      "registrarTasa": "Saisir un taux manuel",
+      "sinOtrasMonedas": "Ajoutez d'abord une devise autre que la devise de base",
+      "convertir": "Convertir un montant",
+      "sincronizarDescripcion": "Administrateurs de la plateforme uniquement",
+      "exportar": "Exporter",
+      "nadaQueExportar": "Aucun enregistrement à exporter"
+    },
+    "convertir": {
+      "titulo": "Convertir un montant",
+      "descripcion": "Avec les taux du catalogue GO Admin",
+      "cerrar": "Fermer",
+      "listo": "Terminé"
+    },
+    "comun": {
+      "manual": "Manuel",
+      "automatica": "Automatique",
+      "alguien": "Un membre de l'équipe",
+      "sinVariacion": "Sans variation",
+      "sube": "Hausse de {valor}",
+      "baja": "Baisse de {valor}",
+      "guardando": "Enregistrement…",
+      "sincronizar": "Synchroniser le catalogue",
+      "sincronizando": "Synchronisation…"
+    },
+    "sincronizar": {
+      "listo": "Catalogue synchronisé : {n} taux",
+      "error": "Le catalogue n'a pas pu être synchronisé"
+    },
+    "monedas": {
+      "etiqueta": "Devises de l'organisation",
+      "base": "Base",
+      "tasaBase": "C'est la base",
+      "agregar": "Ajouter une devise",
+      "columnas": {
+        "moneda": "Devise",
+        "codigo": "Code",
+        "simbolo": "Symbole",
+        "decimales": "Décimales",
+        "tasa": "Taux"
+      },
+      "tarjeta": "Symbole {simbolo} · {decimales} décimales",
+      "acciones": {
+        "registrarTasa": "Saisir un taux manuel",
+        "historial": "Voir l'historique",
+        "pasarAManual": "Utiliser uniquement le taux manuel",
+        "pasarAAutomatica": "Utiliser le taux automatique",
+        "usarComoBase": "Utiliser comme devise de base",
+        "quitar": "Retirer la devise"
+      },
+      "tasaAhoraAutomatica": "{moneda} utilise désormais le taux automatique",
+      "tasaAhoraManual": "{moneda} utilise désormais uniquement le taux manuel",
+      "errorTasa": "Le taux n'a pas pu être modifié : {detalle}",
+      "quitada": "{moneda} a été retirée de l'organisation",
+      "errorQuitar": "La devise n'a pas pu être retirée : {detalle}",
+      "quitarTitulo": "Retirer {moneda} ?",
+      "quitarDescripcion": "{moneda} ne sera plus disponible pour les devis, factures ou paiements. Les documents qui l'utilisent déjà ne changent pas.",
+      "quitarConfirmar": "Retirer",
+      "vacio": {
+        "titulo": "Aucune devise pour l'instant",
+        "descripcion": "Ajoutez les devises dans lesquelles vous établissez des devis, facturez ou payez."
+      },
+      "errorCarga": "Les devises n'ont pas pu être chargées"
+    },
+    "base": {
+      "titulo": "Utiliser {moneda} comme devise de base ?",
+      "descripcion": "La devise de base de l'organisation passe de {actual} à {nueva}. Les taux sont exprimés par rapport à elle.",
+      "confirmar": "Utiliser comme base",
+      "cambiada": "{moneda} est désormais la devise de base",
+      "error": "La devise de base n'a pas pu être modifiée : {detalle}"
+    },
+    "agregar": {
+      "titulo": "Ajouter une devise",
+      "subtitulo": "Pour établir des devis, facturer ou payer dans une autre devise",
+      "moneda": "Devise",
+      "monedaPlaceholder": "Choisissez une devise",
+      "monedaRequerida": "Choisissez la devise",
+      "opcion": "{codigo} · {nombre}",
+      "tasa": "Taux",
+      "tasaAutomatica": "Automatique depuis le catalogue GO Admin",
+      "tasaManual": "Manuel : je le saisis",
+      "tasaAyuda": "Vous pouvez saisir un taux manuel n'importe quel jour.",
+      "baseTitulo": "Votre devise de base reste {base}",
+      "baseDescripcion": "Les montants en {moneda} sont convertis en {base} au taux du jour du document.",
+      "baseDescripcionSinMoneda": "Les montants dans une autre devise sont convertis en {base} au taux du jour du document.",
+      "confirmar": "Ajouter la devise",
+      "agregada": "{moneda} a été ajoutée à l'organisation",
+      "todas": "Vous avez déjà toutes les devises du catalogue",
+      "errorCarga": "Le catalogue des devises n'a pas pu être chargé",
+      "reintentar": "Réessayer"
+    },
+    "tasas": {
+      "fecha": "Date",
+      "fuenteAutomatica": "Source automatique : catalogue GO Admin · {hora}",
+      "sinCatalogo": "Le catalogue GO Admin n'a pas de taux pour ce jour",
+      "etiqueta": "Taux du {dia}",
+      "columnas": {
+        "moneda": "Devise",
+        "codigo": "Code",
+        "unidad": "1 unité =",
+        "variacion": "Variation vs veille",
+        "fuente": "Source",
+        "accion": "Action"
+      },
+      "sinTasa": "Sans taux",
+      "sinTasaDia": "{hoy, select, si {Pas de taux aujourd'hui} other {Pas de taux ce jour-là}}",
+      "sinTasaUsa": "{hoy, select, si {Pas de taux aujourd'hui} other {Pas de taux ce jour-là}} · utilise {tasa}",
+      "usaAyer": "Utilise celui d'hier : {tasa}",
+      "usaDel": "Utilise celui du {dia} : {tasa}",
+      "catalogo": "Catalogue GO Admin",
+      "manualCon": "{autor} · manuel · {motivo}",
+      "manualDe": "{autor} · manuel",
+      "metaManual": "Manuel · {autor}",
+      "verHistorial": "Voir l'historique",
+      "historial": "Historique",
+      "registrar": "Saisir",
+      "catalogoVacioTitulo": "Aucun taux du catalogue pour ces jours",
+      "catalogoVacio": "La plateforme met à jour le catalogue chaque jour. En attendant, vous pouvez saisir un taux manuel.",
+      "vacio": {
+        "titulo": "Vous n'avez que la devise de base",
+        "descripcion": "Ajoutez une autre devise pour voir son taux par rapport à {base}.",
+        "accion": "Ajouter une devise"
+      },
+      "errorCarga": "Les taux n'ont pas pu être chargés",
+      "manualMandaTitulo": "Le taux manuel prévaut ce jour-là",
+      "manualManda": "Si vous saisissez un taux à la main, il prévaut sur le taux automatique à cette date et conserve votre nom et le motif. Seule la plateforme écrit le taux automatique.",
+      "tarjetaTitulo": "{codigo} · {nombre}",
+      "unaUnidad": "1 {codigo} = {tasa}"
+    },
+    "historico": {
+      "moneda": "Devise",
+      "monedaPlaceholder": "Choisissez une devise",
+      "desde": "Du",
+      "hasta": "Au",
+      "etiqueta": "Historique {par}",
+      "columnas": {
+        "fecha": "Date",
+        "par": "Paire",
+        "tasa": "Taux",
+        "variacion": "Variation",
+        "fuente": "Source",
+        "registro": "Saisi par"
+      },
+      "plataforma": "Plateforme",
+      "registroCon": "{autor} · « {motivo} »",
+      "exportado": "{n} enregistrements exportés",
+      "csv": {
+        "fecha": "Date",
+        "par": "Paire",
+        "tasa": "Taux",
+        "variacion": "Variation %",
+        "fuente": "Source",
+        "registro": "Saisi par",
+        "motivo": "Motif"
+      },
+      "vacio": {
+        "titulo": "Aucun taux sur cette période",
+        "descripcion": "Changez les dates ou attendez la prochaine mise à jour du catalogue."
+      },
+      "sinMonedas": {
+        "titulo": "Vous n'avez que la devise de base",
+        "descripcion": "Ajoutez une autre devise pour voir son historique par rapport à {base}."
+      },
+      "errorCarga": "L'historique n'a pas pu être chargé"
+    },
+    "grafica": {
+      "titulo": "{par} · {dias} derniers jours",
+      "insuficiente": "Il n'y a pas encore assez de jours avec un taux pour tracer le graphique.",
+      "descripcion": "Graphique du taux {par} sur {n} jours. Le tableau ci-dessous contient les mêmes données."
+    },
+    "tasaManual": {
+      "titulo": "Saisir un taux manuel",
+      "subtitulo": "{moneda} · {dia}",
+      "subtituloSinMoneda": "Choisissez la devise et le jour",
+      "moneda": "Devise",
+      "monedaPlaceholder": "Choisissez une devise",
+      "opcionMoneda": "{codigo} · {nombre}",
+      "fecha": "Date",
+      "unidad": "1 {moneda} =",
+      "motivo": "Motif",
+      "motivoAyuda": "Il reste dans l'historique avec votre nom.",
+      "motivoPlaceholder": "Taux officiel du comptable pour la clôture",
+      "guardar": "Enregistrer le taux",
+      "guardada": "Taux {moneda} du {dia} enregistré",
+      "avisoManual": "Il y a déjà un taux manuel ce jour-là : {tasa}",
+      "avisoReemplazaManual": "Vous le remplacez pour les documents de cette date créés à partir de maintenant. Les documents déjà comptabilisés ne changent pas.",
+      "avisoAutomatica": "Il y a déjà un taux automatique ce jour-là : {tasa}",
+      "avisoReemplaza": "Le taux manuel le remplace pour les documents de cette date créés à partir de maintenant. Les documents déjà comptabilisés ne changent pas.",
+      "avisoSinTasaTitulo": "Les documents déjà comptabilisés ne changent pas",
+      "avisoSinTasa": "Le taux {moneda} s'applique aux documents de cette date créés à partir de maintenant.",
+      "validacion": {
+        "moneda": {
+          "requerido": "Choisissez la devise"
+        },
+        "fecha": {
+          "requerido": "Choisissez le jour",
+          "futura": "On ne saisit pas de taux pour des jours futurs"
+        },
+        "tasa": {
+          "requerido": "Saisissez le taux",
+          "positiva": "Le taux doit être supérieur à zéro"
+        },
+        "motivo": {
+          "requerido": "Saisissez le motif",
+          "corto": "Le motif doit contenir au moins 5 caractères",
+          "largo": "Le motif accepte jusqu'à 500 caractères"
+        }
+      }
+    },
+    "errores": {
+      "sinPermiso": "Vous n'avez pas l'autorisation de saisir des taux. Demandez-la à un administrateur (autorisation de facturation ou de configuration de l'organisation).",
+      "noDisponible": "La saisie de taux manuels n'est pas encore disponible : elle doit encore être activée dans la base de données.",
+      "tasaInvalida": "Le taux doit être supérieur à zéro.",
+      "fechaFutura": "On ne saisit pas de taux pour des jours futurs.",
+      "motivoCorto": "Le motif doit contenir entre 5 et 500 caractères.",
+      "monedaEsBase": "La devise de base n'a pas de taux : elle vaut toujours 1.",
+      "monedaNoAsignada": "L'organisation n'a pas cette devise. Ajoutez-la d'abord.",
+      "guardar": "Le taux n'a pas pu être enregistré. Réessayez."
     }
   }
 }

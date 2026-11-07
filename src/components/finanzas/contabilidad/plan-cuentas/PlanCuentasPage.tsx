@@ -39,7 +39,6 @@ import {
 import { naturalezaDe, nivelDe, nombreNivel, type NaturalezaPuc } from '@/lib/finanzas/pucJerarquia';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { cn } from '@/utils/Utils';
 import { ContabilidadService, type ChartAccount } from '../ContabilidadService';
 import { AtajosCreacionCuenta, AvisoPadreAlta, FilaAltaAuxiliar, FilaPlanCuenta } from './FilaPlanCuenta';
 import { PanelCuenta } from './PanelCuenta';
@@ -329,7 +328,7 @@ export function PlanCuentasPage() {
         id: 'mayor',
         etiqueta: t('fila.verMayor'),
         icono: ScrollText,
-        onSelect: () => router.push(`/app/finanzas/contabilidad/mayor-contable?cuenta=${encodeURIComponent(cuenta.account_code)}`),
+        onSelect: () => router.push(`/app/reportes/contabilidad/mayor-cuenta?periodo=anual&cuenta=${encodeURIComponent(cuenta.account_code)}`),
       },
       {
         id: 'activa',

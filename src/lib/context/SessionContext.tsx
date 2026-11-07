@@ -9,6 +9,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase/config';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { esSesionMuerta, limpiarSesionMuerta } from '@/lib/auth/deadSession';
+import { initAccountRegistrySync } from '@/lib/auth/accountSwitcher';
 
 // Constants for session management
 // TEMPORALMENTE DESHABILITADO: Conflicto con middleware
@@ -112,6 +113,14 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, []);
   
+  // Registro de cuentas del navegador: cada rotación del refresh token se
+  // guarda ahí. Sin esto el registro conservaba el token del login y un cambio
+  // de cuenta lo reenviaba ya revocado; GoTrue lo toma como reutilización y
+  // revoca toda la familia de la sesión («Possible abuse attempt»).
+  useEffect(() => {
+    initAccountRegistrySync();
+  }, []);
+
   // Setup activity listeners
   useEffect(() => {
     // Initialize last activity time if not set

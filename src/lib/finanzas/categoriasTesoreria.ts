@@ -315,11 +315,19 @@ export function resumirCategorias(
   timezone: string,
   branchId: number | null,
 ): ResumenCategoria[] {
+  return agruparCategorias(filas.filter((fila) => {
+    if (branchId != null && fila.branchId !== branchId) return false;
+    return toPlainDate(new Date(fila.instante), timezone).startsWith(`${mes}-`);
+  }));
+}
+
+/**
+ * Agrupa por categoría y tipo, sin filtrar: las filas ya vienen acotadas al
+ * periodo y a la sucursal (el reporte `categorias-tesoreria` las pide así).
+ */
+export function agruparCategorias(filas: readonly FilaCategoria[]): ResumenCategoria[] {
   const grupos = new Map<string, ResumenCategoria>();
   for (const fila of filas) {
-    if (branchId != null && fila.branchId !== branchId) continue;
-    const dia = toPlainDate(new Date(fila.instante), timezone);
-    if (!dia.startsWith(`${mes}-`)) continue;
     const clave = `${fila.tipo}:${fila.categoriaId ?? ''}`;
     const actual = grupos.get(clave) ?? {
       categoriaId: fila.categoriaId,
@@ -336,4 +344,41 @@ export function resumirCategorias(
     if (a.tipo !== b.tipo) return a.tipo === 'ingreso' ? -1 : 1;
     return b.total - a.total || a.nombre.localeCompare(b.nombre, 'es');
   });
+}
+
+function nombreCategoria(valor: unknown): string | null {
+  const fila = Array.isArray(valor) ? valor[0] : valor;
+  if (!fila || typeof fila !== 'object') return null;
+  const nombre = (fila as { nombre?: unknown }).nombre;
+  return typeof nombre === 'string' ? nombre : null;
+}
+
+function tipoMovimientoBanco(tipo: string, monto: number): TipoCategoria {
+  if (tipo === 'deposit' || tipo === 'interest') return 'ingreso';
+  if (tipo === 'withdrawal' || tipo === 'fee') return 'egreso';
+  return monto < 0 ? 'egreso' : 'ingreso';
+}
+
+/** Fila de `cash_movements` (con `categorias_tesoreria(nombre)`) como movimiento a agrupar. */
+export function filaCategoriaDeCaja(fila: Record<string, unknown>): FilaCategoria {
+  return {
+    tipo: fila.type === 'in' ? 'ingreso' : 'egreso',
+    categoriaId: fila.categoria_id == null ? null : Number(fila.categoria_id),
+    categoriaNombre: nombreCategoria(fila.categorias_tesoreria),
+    branchId: fila.branch_id == null ? null : Number(fila.branch_id),
+    instante: String(fila.created_at),
+    monto: Number(fila.amount),
+  };
+}
+
+/** Fila de `bank_transactions` (con `categorias_tesoreria(nombre)`) como movimiento a agrupar. */
+export function filaCategoriaDeBanco(fila: Record<string, unknown>): FilaCategoria {
+  return {
+    tipo: tipoMovimientoBanco(String(fila.transaction_type), Number(fila.amount)),
+    categoriaId: fila.categoria_id == null ? null : Number(fila.categoria_id),
+    categoriaNombre: nombreCategoria(fila.categorias_tesoreria),
+    branchId: fila.branch_id == null ? null : Number(fila.branch_id),
+    instante: String(fila.trans_date),
+    monto: Number(fila.amount),
+  };
 }

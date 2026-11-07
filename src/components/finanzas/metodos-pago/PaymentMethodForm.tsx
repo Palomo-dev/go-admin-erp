@@ -1,58 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, type Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useTranslations } from "next-intl";
+import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase/config";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Dialogo, FormField, SeccionPlegable, clasesBoton } from "@/components/kit";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { AlertCircle, Loader2, Globe, MapPin, ChevronDown, ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
-import AccountMappingForm from "@/components/finanzas/metodos-pago/AccountMappingForm";
-import { useTranslations } from "next-intl";
 import { claveErrorMetodoPago, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
-import Link from "next/link";
 import { SelectorSucursalesMetodoPago } from "./SucursalesMetodoPago";
 import { normalizarSucursales, esColumnaAusente } from "@/lib/finanzas/metodosPagoAlcance";
 
 interface PaymentMethodFormProps {
+  abierto: boolean;
+  onAbiertoChange: (abierto: boolean) => void;
   organizationId: number;
   globalMethods: PaymentMethod[];
-  recommendedMethods?: unknown[];
-  countryCode?: string | null;
   selectedMethod: OrganizationPaymentMethod | null;
   onSaveComplete: () => void;
-  onCancel: () => void;
 }
 
 // Métodos manuales que SÍ se pueden crear directamente
@@ -73,116 +43,138 @@ const PAYMENT_INTEGRATIONS = [
   { code: 'bold_qr', name: 'Bold QR', providerId: '67e3749b-d8e5-4c0a-ab23-309e46064cad' },
 ];
 
-// Esquema de validación
-const formSchema = z.object({
-  payment_method_code: z.string().min(1, "Debes seleccionar un método de pago"),
-  is_active: z.boolean().default(true),
-  gateway: z.string().optional(),
-  requires_reference: z.boolean().default(false),
-  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres").optional(),
-  code: z.string().min(2, "El código debe tener al menos 2 caracteres").optional(),
-  show_on_website: z.boolean().default(true),
-  website_display_order: z.number().default(0),
-  website_display_name: z.string().optional(),
-  website_description: z.string().optional(),
-  website_icon: z.string().optional(),
-}).passthrough();
+/** Iconos que la tienda web sabe pintar (`website_icon`). */
+const ICONOS_TIENDA = ['banknotes', 'coins', 'credit-card', 'building-bank', 'arrow-left-right', 'wallet', 'smartphone', 'qr-code', 'globe', 'zap', 'truck', 'store'] as const;
 
-interface FormValues {
+/** Claves de `settings.account_mapping` (las mismas de siempre). */
+type ClaveMapeo = 'bank_account_id' | 'receivable_account' | 'income_account' | 'cash_account';
+
+interface CuentaContable { account_code: string; name: string; type: string }
+interface CuentaBancaria { id: number; name: string; bank_name: string; account_number: string }
+
+interface Valores {
   payment_method_code: string;
   is_active: boolean;
+  gateway: string;
   requires_reference: boolean;
-  gateway?: string;
-  name?: string;
-  code?: string;
-  show_on_website?: boolean;
-  website_display_order?: number;
-  website_display_name?: string;
-  website_description?: string;
-  website_icon?: string;
-  [key: string]: unknown;
+  name: string;
+  code: string;
+  show_on_website: boolean;
+  website_display_order: number;
+  website_display_name: string;
+  website_description: string;
+  website_icon: string;
 }
 
+const CLASE_CONTROL = "h-10 border-line-strong bg-surface";
+const NINGUNA = "none";
+
+function valoresDe(m: OrganizationPaymentMethod | null): Valores {
+  return {
+    payment_method_code: m?.payment_method_code || "",
+    is_active: m?.is_active ?? true,
+    gateway: m?.settings?.gateway || "",
+    requires_reference: requiereReferenciaMetodo(m?.settings, m?.payment_method?.requires_reference),
+    name: m?.settings?.display_name || m?.payment_method?.name || "",
+    code: "",
+    show_on_website: m?.show_on_website ?? true,
+    website_display_order: m?.website_display_order ?? 0,
+    website_display_name: m?.website_display_name || "",
+    website_description: m?.website_description || "",
+    website_icon: m?.website_icon || "",
+  };
+}
+
+/**
+ * Diálogo «Nuevo / Editar método de pago» (Finanzas ronda 2, A12; captura
+ * 82-finanzas-r2-12). Antes era una pestaña de la página. Guarda igual que
+ * antes: el nombre y «pedir referencia» van en el vínculo de la organización
+ * (`settings`), nunca en el catálogo global; un método personalizado nuevo lo
+ * crea la RPC. El pie ofrece «Desactivar» (o «Activar»): un método no se borra
+ * desde aquí; eliminarlo solo se ofrece en la lista y si no tiene pagos.
+ */
 export default function PaymentMethodForm({
+  abierto,
+  onAbiertoChange,
   organizationId,
   globalMethods,
-  // recommendedMethods y countryCode llegan por props pero el formulario no los usa.
   selectedMethod,
   onSaveComplete,
-  onCancel
 }: PaymentMethodFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const t = useTranslations("finanzasCobrosR2");
+  const tErr = useTranslations("metodosPagoSeguridad");
   const [isSaving, setIsSaving] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [isNewMethod, setIsNewMethod] = useState(false);
+  const [valores, setValores] = useState<Valores>(() => valoresDe(selectedMethod));
+  const [errores, setErrores] = useState<Partial<Record<"payment_method_code" | "name" | "code", string>>>({});
   const [gatewayConfig, setGatewayConfig] = useState<Record<string, unknown>>({});
   const [accountMapping, setAccountMapping] = useState<Record<string, string>>({});
-  const [showAdvancedAccounting, setShowAdvancedAccounting] = useState(false);
-  const tErr = useTranslations("metodosPagoSeguridad");
   // Sucursales del método (20261028180000): null = todas.
   const [sucursales, setSucursales] = useState<number[] | null>(normalizarSucursales(selectedMethod?.branch_ids));
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema) as unknown as Resolver<FormValues>,
-    defaultValues: {
-      payment_method_code: selectedMethod?.payment_method_code || "",
-      is_active: selectedMethod?.is_active ?? true,
-      gateway: selectedMethod?.settings?.gateway || "",
-      requires_reference: requiereReferenciaMetodo(selectedMethod?.settings, selectedMethod?.payment_method?.requires_reference),
-      name: selectedMethod?.settings?.display_name || "",
-      code: "",
-      show_on_website: selectedMethod?.show_on_website ?? true,
-      website_display_order: selectedMethod?.website_display_order ?? 0,
-      website_display_name: selectedMethod?.website_display_name || "",
-      website_description: selectedMethod?.website_description || "",
-      website_icon: selectedMethod?.website_icon || "",
-    } as FormValues,
-  });
+  const [cuentasContables, setCuentasContables] = useState<CuentaContable[]>([]);
+  const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([]);
 
-  const currentMethodCode = form.watch("payment_method_code");
-  const hasMethodSelected = !!currentMethodCode || isNewMethod || selectedMethod !== null;
-  const currentMethod = globalMethods.find(m => m.code === currentMethodCode);
+  const currentMethod = globalMethods.find((m) => m.code === valores.payment_method_code);
+  const editando = selectedMethod !== null;
+  const hasMethodSelected = Boolean(valores.payment_method_code) || isNewMethod || editando;
 
-  // Cargar datos del método seleccionado
+  // Al abrir: valores del método elegido (o vacíos para uno nuevo).
   useEffect(() => {
-    if (selectedMethod) {
-      setIsNewMethod(false);
-      setGatewayConfig(selectedMethod.settings?.gateway_config || {});
-      setAccountMapping(selectedMethod.settings?.account_mapping || {});
-      setSucursales(normalizarSucursales(selectedMethod.branch_ids));
-      form.reset({
-        payment_method_code: selectedMethod.payment_method_code,
-        is_active: selectedMethod.is_active,
-        gateway: selectedMethod.settings?.gateway || "",
-        requires_reference: requiereReferenciaMetodo(selectedMethod.settings, selectedMethod.payment_method?.requires_reference),
-        name: selectedMethod.settings?.display_name || "",
-        show_on_website: selectedMethod.show_on_website ?? true,
-        website_display_order: selectedMethod.website_display_order ?? 0,
-        website_display_name: selectedMethod.website_display_name || "",
-        website_description: selectedMethod.website_description || "",
-        website_icon: selectedMethod.website_icon || "",
-      });
-    } else {
-      setIsNewMethod(false);
-      setGatewayConfig({});
-      setAccountMapping({});
-      setSucursales(null);
-      form.reset({
-        payment_method_code: "",
-        is_active: true,
-        gateway: "",
-        requires_reference: false,
-        name: "",
-        code: "",
-        show_on_website: true,
-        website_display_order: 0,
-        website_display_name: "",
-        website_description: "",
-        website_icon: "",
-      });
-    }
+    if (!abierto) return;
+    setIsNewMethod(false);
+    setErrores({});
+    setValores(valoresDe(selectedMethod));
+    setGatewayConfig(selectedMethod?.settings?.gateway_config || {});
+    setAccountMapping(selectedMethod?.settings?.account_mapping || {});
+    setSucursales(normalizarSucursales(selectedMethod?.branch_ids));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMethod?.id]);
+  }, [abierto, selectedMethod?.id]);
+
+  // Cuentas para la sección de contabilidad (las mismas lecturas que AccountMappingForm).
+  useEffect(() => {
+    if (!abierto || !organizationId) return;
+    let vigente = true;
+    void supabase
+      .from("chart_of_accounts")
+      .select("account_code, name, type")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .order("account_code", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error("Error al cargar cuentas contables:", error);
+        if (vigente) setCuentasContables((data ?? []) as CuentaContable[]);
+      });
+    void supabase
+      .from("bank_accounts")
+      .select("id, name, bank_name, account_number")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .order("bank_name", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error("Error al cargar cuentas bancarias:", error);
+        if (vigente) setCuentasBancarias((data ?? []) as CuentaBancaria[]);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [abierto, organizationId]);
+
+  const poner = <K extends keyof Valores>(campo: K, valor: Valores[K]) => {
+    setValores((v) => ({ ...v, [campo]: valor }));
+    if (campo === "name" || campo === "code" || campo === "payment_method_code") setErrores((e) => ({ ...e, [campo]: undefined }));
+  };
+
+  const ponerMapeo = (clave: ClaveMapeo, valor: string) => {
+    setAccountMapping((m) => {
+      const siguiente = { ...m };
+      if (!valor || valor === NINGUNA) delete siguiente[clave];
+      else siguiente[clave] = valor;
+      return siguiente;
+    });
+  };
 
   // Manejar cambio en la selección de método de pago
   const handlePaymentMethodChange = (code: string) => {
@@ -198,48 +190,48 @@ export default function PaymentMethodForm({
 
     const isNew = code === "new";
     setIsNewMethod(isNew);
-    
-    if (!isNew) {
-      const method = globalMethods.find(m => m.code === code);
-      if (method) {
-        form.reset({
-          payment_method_code: method.code,
-          name: method.name,
-          code: method.code,
-          requires_reference: method.requires_reference,
-          is_active: true,
-          gateway: "",
-          show_on_website: true,
-          website_display_name: "",
-          website_description: "",
-          website_icon: "",
-          website_display_order: 0,
-        });
-        
-        setGatewayConfig({});
-        setAccountMapping({});
-      }
+    setErrores({});
+    if (isNew) {
+      setValores({ ...valoresDe(null), payment_method_code: "" });
+      return;
+    }
+    const method = globalMethods.find(m => m.code === code);
+    if (method) {
+      setValores({
+        ...valoresDe(null),
+        payment_method_code: method.code,
+        name: method.name,
+        code: method.code,
+        requires_reference: method.requires_reference,
+      });
+      setGatewayConfig({});
+      setAccountMapping({});
     }
   };
 
-  // Guardar mapeo de cuentas
-  const handleSaveAccountMapping = (mapping: Record<string, string>) => {
-    setAccountMapping(mapping);
-    toast({
-      title: "Mapeo guardado",
-      description: "Recuerda guardar el método de pago para confirmar los cambios.",
-    });
+  const validar = (): boolean => {
+    const e: typeof errores = {};
+    if (isNewMethod) {
+      if (valores.name.trim().length < 3) e.name = t("metodo.errores.nombre");
+      if (valores.code.trim().length < 2) e.code = t("metodo.errores.codigo");
+    } else if (!valores.payment_method_code) {
+      e.payment_method_code = t("metodo.errores.metodo");
+    }
+    setErrores(e);
+    return Object.keys(e).length === 0;
   };
 
   // Envío del formulario
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async () => {
+    if (!validar()) return;
+    const values = { ...valores };
     try {
       setIsSaving(true);
-      
+
       if (!organizationId) {
         throw new Error("No se pudo determinar el ID de la organización");
       }
-      
+
       // Si es un nuevo método personalizado. GO-sec (2026-09-28): el código del
       // catálogo global y el vínculo de la organización los crea la base en una
       // transacción, con el permiso de facturación resuelto allí.
@@ -253,19 +245,15 @@ export default function PaymentMethodForm({
         if (rpcError) throw rpcError;
         values.payment_method_code = (codigoCreado as string) || values.code;
       }
-      
+
       if (!values.payment_method_code) {
         throw new Error("No se ha seleccionado un método de pago válido");
       }
-      
+
       // Nombre propio de la organización: solo si difiere del catálogo global.
-      // Los métodos manuales no muestran el campo: conservan el que tuvieran.
       const nombreGlobal = selectedMethod?.payment_method?.name ?? currentMethod?.name ?? "";
       const nombreEscrito = (values.name ?? "").trim();
-      const nombrePropio =
-        selectedMethod && MANUAL_METHODS.includes(selectedMethod.payment_method_code)
-          ? selectedMethod.settings?.display_name ?? null
-          : nombreEscrito && nombreEscrito !== nombreGlobal ? nombreEscrito : null;
+      const nombrePropio = nombreEscrito && nombreEscrito !== nombreGlobal ? nombreEscrito : null;
 
       const settings = {
         // Se conservan las claves que la pantalla no edita (color, etc.).
@@ -276,7 +264,7 @@ export default function PaymentMethodForm({
         gateway_config: Object.keys(gatewayConfig).length > 0 ? gatewayConfig : undefined,
         account_mapping: Object.keys(accountMapping).length > 0 ? accountMapping : undefined,
       };
-      
+
       // `branch_ids` solo viaja si hay restricción o si ya la había (la columna
       // existe); así, antes de aplicar la migración, guardar sigue igual que hoy.
       const conSucursales = sucursales !== null || (selectedMethod?.branch_ids !== undefined && selectedMethod?.branch_ids !== null);
@@ -298,7 +286,7 @@ export default function PaymentMethodForm({
         website_description: values.website_description || null,
         website_icon: values.website_icon || null,
       };
-      
+
       if (!selectedMethod?.id) {
         const { data: existingOrgMethod, error: checkOrgError } = await supabase
           .from("organization_payment_methods")
@@ -306,9 +294,9 @@ export default function PaymentMethodForm({
           .eq("organization_id", organizationId)
           .eq("payment_method_code", values.payment_method_code)
           .maybeSingle();
-          
+
         if (checkOrgError) console.error("Error al verificar método existente:", checkOrgError);
-        
+
         if (existingOrgMethod?.id) {
           const { error } = await conAlcance((extra) => supabase
             .from("organization_payment_methods")
@@ -334,412 +322,282 @@ export default function PaymentMethodForm({
         if (error) throw error;
         if (!filas || filas.length === 0) throw { message: "sin_permiso" };
       }
-      
+
       toast(avisoSucursales
-        ? { title: "Método de pago guardado", description: "La restricción por sucursal todavía no está habilitada en la base de datos; por ahora el método sigue en todas las sucursales." }
-        : { title: "Método de pago guardado", description: "Configurado exitosamente" });
+        ? { title: t("metodo.guardado"), description: t("metodo.avisoSucursales") }
+        : { title: t("metodo.guardado") });
+      onAbiertoChange(false);
       onSaveComplete();
     } catch (error: unknown) {
       console.error("Error al guardar método de pago:", error);
       const clave = claveErrorMetodoPago(error);
       const detalle = clave ? tErr(clave) : error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? error);
-      toast({ title: "Error", description: "No se pudo guardar: " + detalle, variant: "destructive" });
+      toast({ title: t("metodo.errores.guardar"), description: detalle, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    form.handleSubmit(onSubmit)(e);
+  // «Desactivar» / «Activar» del pie: solo cambia `is_active` del vínculo.
+  const alternarActivo = async () => {
+    if (!selectedMethod?.id) return;
+    const activo = !selectedMethod.is_active;
+    setCambiandoEstado(true);
+    try {
+      const { data: filas, error } = await supabase
+        .from("organization_payment_methods")
+        .update({ is_active: activo, updated_at: new Date().toISOString() })
+        .eq("id", selectedMethod.id)
+        .select("id");
+      if (error) throw error;
+      if (!filas || filas.length === 0) throw { message: "sin_permiso" };
+      toast({ title: activo ? t("metodo.activado") : t("metodo.desactivado") });
+      onAbiertoChange(false);
+      onSaveComplete();
+    } catch (error: unknown) {
+      console.error("Error al cambiar el estado del método:", error);
+      const clave = claveErrorMetodoPago(error);
+      toast({ title: t("metodo.errores.estado"), description: clave ? tErr(clave) : undefined, variant: "destructive" });
+    } finally {
+      setCambiandoEstado(false);
+    }
   };
 
+  const nombreMostrado = selectedMethod
+    ? selectedMethod.settings?.display_name || selectedMethod.payment_method?.name || selectedMethod.payment_method_code
+    : "";
+  const ocupado = isSaving || cambiandoEstado;
+
+  const selectCuentaContable = (clave: ClaveMapeo, etiqueta: string, tipo: string, ayuda?: string) => (
+    <FormField etiqueta={etiqueta} ayuda={ayuda}>
+      {(c) => (
+        <Select value={accountMapping[clave] || NINGUNA} onValueChange={(v) => ponerMapeo(clave, v)}>
+          <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c["aria-describedby"]} className={CLASE_CONTROL}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NINGUNA}>{t("metodo.sinAsignar")}</SelectItem>
+            <SelectGroup>
+              {cuentasContables.filter((a) => a.type === tipo).map((a) => (
+                <SelectItem key={a.account_code} value={a.account_code}>
+                  {a.account_code} · {a.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+    </FormField>
+  );
+
   return (
-    <Form {...form}>
-      <form onSubmit={handleFormSubmit} className="space-y-6">
-        {/* ═══════════════ SECCIÓN 1: SELECCIÓN DEL MÉTODO ═══════════════ */}
-        {isNewMethod ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm dark:text-gray-200">Nombre del método</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej. Pago Contraentrega" {...field} className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm dark:text-gray-200">Código interno</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej. pago_contraentrega" {...field} className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm" />
-                  </FormControl>
-                  <FormDescription className="text-xs dark:text-gray-400">Sin espacios, único</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        ) : selectedMethod && !MANUAL_METHODS.includes(selectedMethod.payment_method_code) ? (
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="payment_method_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm dark:text-gray-200">Método de pago</FormLabel>
-                  <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-medium">
-                      {selectedMethod.payment_method?.name || field.value}
-                    </span>
-                    <Badge variant="secondary" className="ml-auto text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                      Editando
-                    </Badge>
-                  </div>
-                  <input type="hidden" {...field} />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm dark:text-gray-200">Nombre del método</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej. Pago Contraentrega" {...field} value={field.value || selectedMethod.payment_method?.name || ''} className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm dark:text-gray-200">Código interno</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej. pago_contraentrega" {...field} value={field.value || selectedMethod.payment_method_code || ''} className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm" />
-                    </FormControl>
-                    <FormDescription className="text-xs dark:text-gray-400">Sin espacios, único</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-        ) : selectedMethod ? (
-          <FormField
-            control={form.control}
-            name="payment_method_code"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm dark:text-gray-200">Método de pago</FormLabel>
-                <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-medium">
-                    {selectedMethod.payment_method?.name || field.value}
-                  </span>
-                  <Badge variant="secondary" className="ml-auto text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                    Editando
-                  </Badge>
-                </div>
-                <input type="hidden" {...field} />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <FormField
-            control={form.control}
-            name="payment_method_code"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm dark:text-gray-200">Método de pago</FormLabel>
-                <Select 
-                  onValueChange={(value) => { field.onChange(value); handlePaymentMethodChange(value); }}
-                  value={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm">
-                      <SelectValue placeholder="Selecciona un método de pago" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                    {/* Métodos manuales */}
-                    <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
-                      Métodos de pago
-                    </div>
-                    {globalMethods
-                      .filter(method => MANUAL_METHODS.includes(method.code))
-                      .map((method) => (
-                        <SelectItem key={method.code} value={method.code} className="dark:text-gray-200 dark:focus:bg-gray-800">
-                          {method.name}
-                        </SelectItem>
-                      ))
-                    }
-                    {/* Integraciones de pago → redirigen */}
-                    <div className="px-2 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 border-b border-t dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/20 mt-1">
-                      Integraciones (requieren conexión)
-                    </div>
-                    {PAYMENT_INTEGRATIONS.map((integration) => (
-                      <SelectItem key={integration.code} value={`integration_${integration.code}`} className="dark:text-gray-200 dark:focus:bg-gray-800">
-                        ⚡ {integration.name}
+    <Dialogo
+      abierto={abierto}
+      onAbiertoChange={(a) => !ocupado && onAbiertoChange(a)}
+      titulo={editando ? t("metodo.tituloEditar") : t("metodo.tituloNuevo")}
+      descripcion={editando ? t("metodo.subtitulo", { nombre: nombreMostrado, codigo: selectedMethod?.payment_method_code ?? "" }) : t("metodo.subtituloNuevo")}
+      ancho={672}
+      primario={{
+        etiqueta: t("metodo.guardar"),
+        onClick: () => void onSubmit(),
+        cargando: isSaving,
+        deshabilitada: !hasMethodSelected || cambiandoEstado,
+        motivo: !hasMethodSelected ? t("metodo.errores.metodo") : undefined,
+      }}
+      pie={
+        editando ? (
+          <button
+            type="button"
+            className={clasesBoton({ variante: "fantasma", tamano: "md" })}
+            onClick={() => void alternarActivo()}
+            disabled={ocupado}
+          >
+            {selectedMethod?.is_active ? t("metodo.desactivar") : t("metodo.activar")}
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col gap-5">
+        {/* Método: elegir uno del catálogo, ir a una integración o crear uno propio (solo al crear). */}
+        {!editando && (
+          <FormField etiqueta={t("metodo.campos.metodo")} obligatorio error={errores.payment_method_code}>
+            {(c) => (
+              <Select value={isNewMethod ? "new" : valores.payment_method_code || undefined} onValueChange={handlePaymentMethodChange}>
+                <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c["aria-describedby"]} className={CLASE_CONTROL}>
+                  <SelectValue placeholder={t("metodo.elegir")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>{t("metodo.grupos.manuales")}</SelectLabel>
+                    {globalMethods.filter((m) => MANUAL_METHODS.includes(m.code)).map((m) => (
+                      <SelectItem key={m.code} value={m.code}>
+                        {m.name}
                       </SelectItem>
                     ))}
-                    <SelectItem value="new" className="dark:text-gray-200 dark:focus:bg-gray-800 border-t dark:border-gray-700 mt-1">+ Crear método personalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>{t("metodo.grupos.integraciones")}</SelectLabel>
+                    {PAYMENT_INTEGRATIONS.map((i) => (
+                      <SelectItem key={i.code} value={`integration_${i.code}`}>
+                        {i.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectItem value="new">{t("metodo.crearPersonalizado")}</SelectItem>
+                </SelectContent>
+              </Select>
             )}
-          />
-        )}
-        
-        {/* Países disponibles */}
-        {currentMethod && currentMethod.countries && currentMethod.countries.length > 0 && (
-          <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-blue-700 dark:text-blue-300">Disponible en:</span>
-              {currentMethod.countries.map((c) => (
-                <Badge key={c.country_code} variant="outline" className="text-[10px] px-1.5 py-0 dark:bg-gray-800 dark:text-gray-300">
-                  {c.country?.name || c.country_code}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {!hasMethodSelected && !isNewMethod && (
-          <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
-              Selecciona un método de pago para configurar sus opciones.
-            </AlertDescription>
-          </Alert>
+          </FormField>
         )}
 
-        {/* ═══════════════ SECCIÓN 2: CONFIGURACIÓN GENERAL + NOMBRES ═══════════════ */}
         {hasMethodSelected && (
           <>
-            <Separator className="dark:bg-gray-700" />
-            
-            {/* Estado activo y requiere referencia */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border dark:border-gray-700 p-3">
-                    <div>
-                      <FormLabel className="text-sm dark:text-gray-200">Activo</FormLabel>
-                      <FormDescription className="text-xs dark:text-gray-400">Disponible en el sistema</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:bg-blue-600" />
-                    </FormControl>
-                  </FormItem>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField etiqueta={t("metodo.campos.nombre")} obligatorio error={errores.name}>
+                <Input value={valores.name} onChange={(e) => poner("name", e.target.value)} className={CLASE_CONTROL} />
+              </FormField>
+              {isNewMethod ? (
+                <FormField etiqueta={t("metodo.campos.codigo")} obligatorio error={errores.code} ayuda={t("metodo.ayudas.codigoNuevo")}>
+                  <Input value={valores.code} onChange={(e) => poner("code", e.target.value)} className={CLASE_CONTROL} />
+                </FormField>
+              ) : (
+                <FormField etiqueta={t("metodo.campos.codigo")} ayuda={t("metodo.ayudas.codigo")}>
+                  <Input value={selectedMethod?.payment_method_code ?? valores.payment_method_code} readOnly disabled className={CLASE_CONTROL} />
+                </FormField>
+              )}
+              <FormField etiqueta={t("metodo.campos.referencia")}>
+                {(c) => (
+                  <Select value={valores.requires_reference ? "si" : "no"} onValueChange={(v) => poner("requires_reference", v === "si")}>
+                    <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_CONTROL}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="si">{t("metodo.referencia.si")}</SelectItem>
+                      <SelectItem value="no">{t("metodo.referencia.no")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="requires_reference"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border dark:border-gray-700 p-3">
-                    <div>
-                      <FormLabel className="text-sm dark:text-gray-200">Requiere referencia</FormLabel>
-                      <FormDescription className="text-xs dark:text-gray-400">Pedir # transacción</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        className="dark:border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              </FormField>
             </div>
 
             {/* Sucursales donde se puede cobrar con el método (NULL = todas) */}
             <SelectorSucursalesMetodoPago organizationId={organizationId} valor={sucursales} onChange={setSucursales} />
 
-            {/* ═══════════════ SECCIÓN 3: PERSONALIZACIÓN PARA WEB ═══════════════ */}
-            <div className="rounded-lg border dark:border-gray-700 overflow-hidden">
-              <div className="bg-gray-50 dark:bg-gray-800/60 px-4 py-3 border-b dark:border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-blue-500" />
-                  Personalización para la Web
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Nombre y descripción que verán los clientes en tu página web
-                </p>
+            <section className="flex flex-col gap-3" aria-labelledby="metodo-contabilidad">
+              <h3 id="metodo-contabilidad" className="text-sm font-semibold text-fg">{t("metodo.secciones.contabilidad")}</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField etiqueta={t("metodo.campos.entraA")} ayuda={cuentasBancarias.length === 0 ? t("metodo.ayudas.sinBancos") : undefined}>
+                  {(c) => (
+                    <Select value={accountMapping.bank_account_id || NINGUNA} onValueChange={(v) => ponerMapeo("bank_account_id", v)}>
+                      <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c["aria-describedby"]} className={CLASE_CONTROL}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NINGUNA}>{t("metodo.sinAsignar")}</SelectItem>
+                        {cuentasBancarias.map((b) => (
+                          <SelectItem key={b.id} value={String(b.id)}>
+                            {b.name}
+                            {b.bank_name ? ` · ${b.bank_name}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+                {selectCuentaContable("receivable_account", t("metodo.campos.cuentaPorCobrar"), "asset")}
               </div>
-              <div className="p-4 space-y-4">
-                {/* Campo: Nombre para web */}
-                <FormField
-                  control={form.control}
-                  name="website_display_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm dark:text-gray-200">Nombre para la Web</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder={`Ej: Pago Contraentrega, Pago en tienda, Tarjeta online...`}
-                          {...field}
-                          value={field.value || ''}
-                          className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs dark:text-gray-400">
-                        Si lo dejas vacío, se usará el nombre del catálogo: &ldquo;{currentMethod?.name || selectedMethod?.payment_method?.name || "—"}&rdquo;
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Campo: Descripción/instrucciones para web */}
-                <FormField
-                  control={form.control}
-                  name="website_description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm dark:text-gray-200">Instrucciones para el cliente</FormLabel>
-                      <FormControl>
-                        <RichTextEditor
-                          value={field.value || ''}
-                          onChange={field.onChange}
-                          placeholder="Ej: Paga al recibir tu pedido en efectivo o con tarjeta al repartidor..."
-                          className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
-                          minHeight={60}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Mostrar en web + Orden + Icono */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="show_on_website"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg border dark:border-gray-700 p-3">
-                        <FormLabel className="text-xs dark:text-gray-200">Visible en Web</FormLabel>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:bg-blue-600" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="website_display_order"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs dark:text-gray-200">Orden</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" min="0" placeholder="0"
-                            {...field}
-                            value={field.value || 0}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="website_icon"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs dark:text-gray-200">Icono</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl>
-                            <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm">
-                              <SelectValue placeholder="Seleccionar icono" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="banknotes">💵 Billetes</SelectItem>
-                            <SelectItem value="coins">🪙 Monedas</SelectItem>
-                            <SelectItem value="credit-card">💳 Tarjeta</SelectItem>
-                            <SelectItem value="building-bank">🏦 Banco</SelectItem>
-                            <SelectItem value="arrow-left-right">🔄 Transferencia</SelectItem>
-                            <SelectItem value="wallet">👛 Billetera</SelectItem>
-                            <SelectItem value="smartphone">📱 Móvil</SelectItem>
-                            <SelectItem value="qr-code">📲 QR</SelectItem>
-                            <SelectItem value="globe">🌐 Online</SelectItem>
-                            <SelectItem value="zap">⚡ Pago rápido</SelectItem>
-                            <SelectItem value="truck">🚚 Contraentrega</SelectItem>
-                            <SelectItem value="store">🏪 En tienda</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
+              <SeccionPlegable
+                titulo={t("metodo.secciones.masCuentas")}
+                abiertaPorDefecto={Boolean(accountMapping.income_account || accountMapping.cash_account)}
+              >
+                <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
+                  {selectCuentaContable("income_account", t("metodo.campos.cuentaIngresos"), "income")}
+                  {selectCuentaContable("cash_account", t("metodo.campos.cuentaCaja"), "asset")}
                 </div>
+              </SeccionPlegable>
+              {cuentasContables.length === 0 && (
+                <p className="text-[13px] leading-[18px] text-fg-secondary">
+                  {t("metodo.ayudas.sinPlan")}{" "}
+                  <Link href="/app/finanzas/contabilidad/plan-cuentas" className="font-medium text-brand underline-offset-2 hover:underline">
+                    {t("metodo.ayudas.irPlan")}
+                  </Link>
+                </p>
+              )}
+            </section>
+
+            <section className="flex flex-col gap-3" aria-labelledby="metodo-tienda">
+              <h3 id="metodo-tienda" className="text-sm font-semibold text-fg">{t("metodo.secciones.tienda")}</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  etiqueta={t("metodo.campos.nombreTienda")}
+                  ayuda={t("metodo.ayudas.nombreTienda", { nombre: currentMethod?.name || selectedMethod?.payment_method?.name || "—" })}
+                >
+                  <Input value={valores.website_display_name} onChange={(e) => poner("website_display_name", e.target.value)} className={CLASE_CONTROL} />
+                </FormField>
+                <FormField etiqueta={t("metodo.campos.visibleTienda")}>
+                  {(c) => (
+                    <Select value={valores.show_on_website ? "si" : "no"} onValueChange={(v) => poner("show_on_website", v === "si")}>
+                      <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_CONTROL}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="si">{t("metodo.si")}</SelectItem>
+                        <SelectItem value="no">{t("metodo.no")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+                <FormField etiqueta={t("metodo.campos.icono")}>
+                  {(c) => (
+                    <Select value={valores.website_icon || NINGUNA} onValueChange={(v) => poner("website_icon", v === NINGUNA ? "" : v)}>
+                      <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_CONTROL}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NINGUNA}>{t("metodo.sinIcono")}</SelectItem>
+                        {ICONOS_TIENDA.map((i) => (
+                          <SelectItem key={i} value={i}>
+                            {t(`metodo.iconos.${i}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+                <FormField etiqueta={t("metodo.campos.orden")} ayuda={t("metodo.ayudas.orden")}>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={valores.website_display_order}
+                    onChange={(e) => poner("website_display_order", Number.parseInt(e.target.value, 10) || 0)}
+                    className={CLASE_CONTROL}
+                  />
+                </FormField>
               </div>
-            </div>
+              <FormField etiqueta={t("metodo.campos.instrucciones")}>
+                {() => (
+                  <RichTextEditor
+                    value={valores.website_description}
+                    onChange={(html) => poner("website_description", html)}
+                    placeholder={t("metodo.ayudas.instrucciones")}
+                    minHeight={60}
+                  />
+                )}
+              </FormField>
+            </section>
 
-            {/* ═══════════════ NOTA: Métodos de integración ═══════════════ */}
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/30">
-              <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                ¿Necesitas métodos como Wompi, Nequi o PayU? Conéctalos desde{" "}
-                <Link href="/app/integraciones/conexiones" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  Integraciones → Conexiones
+            <p className="flex items-center gap-2 text-[13px] leading-[18px] text-fg-secondary">
+              <ExternalLink aria-hidden className="size-4 shrink-0" />
+              <span>
+                {t("metodo.integraciones")}{" "}
+                <Link href="/app/integraciones/conexiones" className="font-medium text-brand underline-offset-2 hover:underline">
+                  {t("metodo.irIntegraciones")}
                 </Link>
-                {" "}y se agregarán automáticamente.
-              </p>
-            </div>
-
-            {/* ═══════════════ SECCIÓN 4: AVANZADO - CONTABILIDAD ═══════════════ */}
-            <Collapsible open={showAdvancedAccounting} onOpenChange={setShowAdvancedAccounting}>
-              <CollapsibleTrigger asChild>
-                <button type="button" className="w-full flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Contabilidad (Mapeo de cuentas)</span>
-                  <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showAdvancedAccounting ? 'rotate-180' : ''}`} />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3">
-                <AccountMappingForm
-                  initialMapping={accountMapping}
-                  onSave={handleSaveAccountMapping}
-                />
-              </CollapsibleContent>
-            </Collapsible>
+              </span>
+            </p>
           </>
         )}
-        
-        {/* ═══════════════ BOTONES ═══════════════ */}
-        <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving} className="w-full sm:w-auto dark:border-gray-600 dark:text-gray-300 text-sm">
-            Cancelar
-          </Button>
-          <Button 
-            type="button" 
-            onClick={(e) => handleFormSubmit(e as unknown as React.FormEvent)} 
-            disabled={isSaving || !hasMethodSelected}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-sm"
-          >
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Guardar
-          </Button>
-        </div>
-      </form>
-    </Form>
+      </div>
+    </Dialogo>
   );
 }

@@ -9,6 +9,13 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { commissionService } from './commissionService';
 import type { CommissionRate } from './commissionService';
+import {
+  ESTADOS_DISPERSION_PENDIENTE,
+  motivoNoQuitarCuentaAbono,
+  TITULAR_NO_COINCIDE,
+  titularCoincideConOrganizacion,
+  UNICA_VERIFICADA_CON_PENDIENTES,
+} from './cuentaAbonoReglas';
 
 /** Estado de un payout */
 export type PayoutStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
@@ -696,9 +703,25 @@ class PayoutService {
       bankAccountId?: number;
     },
     organizationId: number,
-  ): Promise<{ id?: string; error?: string }> {
+  ): Promise<{ id?: string; error?: string; codigo?: typeof TITULAR_NO_COINCIDE }> {
     try {
       const supabase = getSupabaseAdmin();
+
+      // A10 (Finanzas ronda 2): el titular tiene que ser la organización; si
+      // no, GO Admin transferiría el recaudo a un tercero.
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('name, legal_name, nit, tax_id')
+        .eq('id', organizationId)
+        .maybeSingle();
+      if (orgError || !org) {
+        return { error: 'Organizacion no encontrada' };
+      }
+      const titular = { nombre: input.accountHolderName, documento: input.accountHolderId };
+      if (!titularCoincideConOrganizacion(titular, org)) {
+        return { error: 'El titular no coincide con la organizacion', codigo: TITULAR_NO_COINCIDE };
+      }
+
       const { data, error } = await supabase
         .from('organization_payout_accounts')
         .insert({
@@ -727,10 +750,55 @@ class PayoutService {
     }
   }
 
-  /** Desactiva una cuenta de dispersion */
-  static async deactivateAccount(_supabase: unknown, id: string): Promise<{ success: boolean }> {
+  /**
+   * Desactiva una cuenta de dispersion.
+   * A9 (Finanzas ronda 2): no se quita la unica cuenta verificada mientras la
+   * organizacion tenga dispersiones pendientes o en proceso (`codigo`).
+   */
+  static async deactivateAccount(
+    _supabase: unknown,
+    id: string,
+  ): Promise<{ success: boolean; codigo?: typeof UNICA_VERIFICADA_CON_PENDIENTES }> {
     try {
       const supabase = getSupabaseAdmin();
+
+      const { data: cuenta, error: cuentaError } = await supabase
+        .from('organization_payout_accounts')
+        .select('id, organization_id, is_verified, is_active')
+        .eq('id', id)
+        .maybeSingle();
+      if (cuentaError || !cuenta) {
+        return { success: false };
+      }
+
+      if (cuenta.is_verified && cuenta.is_active) {
+        const [otras, pendientes] = await Promise.all([
+          supabase
+            .from('organization_payout_accounts')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', cuenta.organization_id)
+            .eq('is_active', true)
+            .eq('is_verified', true)
+            .neq('id', id),
+          supabase
+            .from('organization_payouts')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', cuenta.organization_id)
+            .in('status', [...ESTADOS_DISPERSION_PENDIENTE]),
+        ]);
+        if (otras.error || pendientes.error) {
+          return { success: false };
+        }
+        const motivo = motivoNoQuitarCuentaAbono({
+          verificada: true,
+          otrasVerificadas: otras.count ?? 0,
+          dispersionesPendientes: pendientes.count ?? 0,
+        });
+        if (motivo) {
+          return { success: false, codigo: motivo };
+        }
+      }
+
       const { error } = await supabase
         .from('organization_payout_accounts')
         .update({ is_active: false, updated_at: new Date().toISOString() })

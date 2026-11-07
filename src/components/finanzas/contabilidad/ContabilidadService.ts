@@ -4,6 +4,7 @@ import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/timezone
 import { obtenerOrganizacionActiva, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import type { SaldoCuenta } from '@/lib/finanzas/planCuentasAlta';
 import type { TrazaRedondeo } from '@/lib/finanzas/contabilidad/redondeoReversa';
+import { validarPlantilla, type ErrorPlantilla } from '@/lib/finanzas/contabilidad/plantillaAsiento';
 
 export interface JournalEntry {
   id: number;
@@ -87,6 +88,14 @@ const MENSAJES_ASIENTO: Record<string, string> = {
   SUCURSAL_INVALIDA: 'Selecciona una sucursal de la organización.',
   ASIENTO_PUBLICADO_INMUTABLE: 'Un asiento publicado no se edita ni se borra: se revierte.',
   REDONDEO_SIN_CUENTA: 'Falta la cuenta de redondeo en la configuración contable.',
+};
+
+/** Error de `validarPlantilla` → código de la base, para dar el mismo mensaje que daría la RPC. */
+const CODIGO_ERROR_PLANTILLA: Record<ErrorPlantilla, string> = {
+  nombre: 'NOMBRE_REQUERIDO',
+  lineasInsuficientes: 'LINEAS_INSUFICIENTES',
+  lineaInvalida: 'LINEA_INVALIDA',
+  descuadre: 'ASIENTO_DESCUADRADO',
 };
 
 /** Traduce el código que devuelve la base a un mensaje para el usuario. */
@@ -882,6 +891,12 @@ export class ContabilidadService {
     memo?: string | null;
     lineas: LineaPlantilla[];
   }): Promise<string> {
+    // La base lo vuelve a exigir (`ASIENTO_DESCUADRADO`, `LINEA_INVALIDA`…); aquí no se llega a llamarla.
+    const invalida = validarPlantilla(
+      plantilla.nombre,
+      plantilla.lineas.map((l) => ({ account_code: l.account_code, debit: l.debito, credit: l.credito })),
+    );
+    if (invalida) throw new Error(MENSAJES_ASIENTO[CODIGO_ERROR_PLANTILLA[invalida]]);
     const { data, error } = await supabase.rpc('fn_plantilla_asiento_guardar', {
       p_organization_id: this.getOrganizationId(),
       p_id: plantilla.id ?? null,

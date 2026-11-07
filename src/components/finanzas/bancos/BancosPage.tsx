@@ -3,26 +3,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslations } from 'next-intl';
+import { TabBar, idPanel, idPestana, useOpcionUrl } from '@/components/kit';
+import { AlertasPanel } from './alertas/AlertasPanel';
+import { useAlertasBancarias } from './alertas/useAlertasBancarias';
 import { BancosPageHeader } from './BancosPageHeader';
 import { BankAccountsGrid } from './BankAccountsGrid';
 import { BankStatsCards } from './BankStatsCards';
 import { BancosService, BankAccount, BankAccountStats } from './BancosService';
-import { ArrowRightLeft, Landmark } from 'lucide-react';
+import { ArrowRightLeft, Landmark, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 
+/**
+ * Finanzas, ronda 2 (A1, 2026-11-07): pestaña «Alertas» (antes la página
+ * suelta /finanzas/bancos/anomalias, sin enlace desde aquí). La pestaña va en
+ * la URL (`?tab=alertas`): la ruta vieja redirige a ella.
+ */
+const ID_PESTANAS = 'bancos-pestanas';
+const PESTANAS = ['cuentas', 'conciliacion', 'alertas'] as const;
+type Pestana = (typeof PESTANAS)[number];
+
 export function BancosPage() {
   const router = useRouter();
+  const t = useTranslations('finanzasBancosR2');
+  const alertas = useAlertasBancarias();
   const { branchFilter } = useBranch();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [stats, setStats] = useState<BankAccountStats | null>(null);
   const [cargandoCuentas, setCargandoCuentas] = useState(true);
   const [cargandoStats, setCargandoStats] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('cuentas');
+  const [activeTab, setActiveTab] = useOpcionUrl<Pestana>('tab', PESTANAS, 'cuentas');
 
   const loadData = useCallback(async () => {
     setCargandoCuentas(true);
@@ -49,7 +63,7 @@ export function BancosPage() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadData();
+    await Promise.all([loadData(), alertas.recargar()]);
     setIsRefreshing(false);
     toast.success('Datos actualizados');
   };
@@ -74,26 +88,26 @@ export function BancosPage() {
       {/* Estadísticas */}
       <BankStatsCards stats={stats} isLoading={cargandoStats} />
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <TabsTrigger 
-            value="cuentas"
-            className="text-xs sm:text-sm py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
-          >
-            <Landmark className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
-            <span className="break-words whitespace-normal min-w-0">Cuentas Bancarias</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="conciliacion"
-            className="text-xs sm:text-sm py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
-          >
-            <ArrowRightLeft className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
-            <span className="break-words whitespace-normal min-w-0">Conciliación Bancaria</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Pestañas (kit): Cuentas · Conciliación · Alertas */}
+      <div className="space-y-4">
+        <TabBar
+          id={ID_PESTANAS}
+          etiqueta={t('bancos.pestanas.etiqueta')}
+          valor={activeTab}
+          onValorChange={setActiveTab}
+          pestanas={[
+            { valor: 'cuentas', etiqueta: t('bancos.pestanas.cuentas'), icono: Landmark },
+            { valor: 'conciliacion', etiqueta: t('bancos.pestanas.conciliacion'), icono: ArrowRightLeft },
+            {
+              valor: 'alertas',
+              etiqueta: t('bancos.pestanas.alertas'),
+              icono: ShieldAlert,
+              contador: alertas.estado === 'listo' ? alertas.cifras.abiertas : undefined,
+            },
+          ]}
+        />
 
-        <TabsContent value="cuentas">
+        <div role="tabpanel" id={idPanel(ID_PESTANAS, 'cuentas')} aria-labelledby={idPestana(ID_PESTANAS, 'cuentas')} hidden={activeTab !== 'cuentas'}>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">
@@ -108,9 +122,9 @@ export function BancosPage() {
               />
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="conciliacion">
+        <div role="tabpanel" id={idPanel(ID_PESTANAS, 'conciliacion')} aria-labelledby={idPestana(ID_PESTANAS, 'conciliacion')} hidden={activeTab !== 'conciliacion'}>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-gray-900 dark:text-white">
@@ -142,8 +156,12 @@ export function BancosPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+
+        <div role="tabpanel" id={idPanel(ID_PESTANAS, 'alertas')} aria-labelledby={idPestana(ID_PESTANAS, 'alertas')} hidden={activeTab !== 'alertas'}>
+          <AlertasPanel alertas={alertas} onMovimientoAnulado={() => void loadData()} />
+        </div>
+      </div>
     </div>
   );
 }

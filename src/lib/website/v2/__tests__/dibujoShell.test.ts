@@ -115,25 +115,30 @@ describe('fiel a la lámina de cada plantilla', () => {
     expect(d.pie).toMatchObject({ composicion: 'three_columns', boletinTitulo: 'Agenda de eventos' });
   });
 
-  test('Café de especialidad (lámina 11): menú en píldora, botón circular «Reservar» y pie oscuro en 3 columnas', () => {
+  test('Café de especialidad (lámina 11): menú en píldora, «Reservar» en píldora y pie oscuro en 3 columnas', () => {
     const p = porId('cafe_especialidad');
     const d = dibujo(p);
-    expect(d.encabezado).toMatchObject({ composicion: 'pill', logo: 'izquierda', menu: 'pildora', formaBoton: 'circulo', acciones: [] });
+    expect(d.encabezado).toMatchObject({ composicion: 'pill', logo: 'izquierda', menu: 'pildora', formaBoton: 'pildora', acciones: [] });
     expect(d.encabezado.botones).toEqual([{ texto: 'Reservar', corto: 'Reservar', variante: 'solido' }]);
     expect(d.pie).toMatchObject({ composicion: 'three_columns', menus: [{ clave: 'la-casa' }, { clave: 'legal' }] });
     expect(d.pie.bloques).toEqual(expect.arrayContaining(['horario', 'redes', 'whatsapp']));
     // Pie «primary»: el acento oliva de la plantilla, con texto legible.
     expect(d.colores.fondoPie).toBe(p.estilo.acento);
     expect(d.barraCelular).toEqual(['reservar', 'como_llegar', 'llamar']);
-    expect(rasgoPrincipalEncabezado(d.encabezado)).toEqual({ clave: 'encabezado.pillCirculo' });
-    expect(rasgosShell(d).encabezado).toContainEqual({ clave: 'rasgo.botonCirculo', valores: { texto: 'Reservar' } });
+    expect(rasgoPrincipalEncabezado(d.encabezado)).toEqual({ clave: 'encabezado.pill' });
+    expect(rasgosShell(d).encabezado).toContainEqual({ clave: 'rasgo.boton', valores: { texto: 'Reservar' } });
   });
 
-  test('la píldora sin forma circular: el botón de siempre', () => {
+  test('la píldora sin forma: el botón de siempre; las formas del 2026-11-07 y el círculo', () => {
     const e = encabezado('pill', {}, ['Reservar']);
     expect(e).toMatchObject({ menu: 'pildora', formaBoton: 'pastilla' });
     expect(rasgoPrincipalEncabezado(e)).toEqual({ clave: 'encabezado.pill' });
     expect(encabezado('default', { header_cta_shape: 'triangulo' }).formaBoton).toBe('pastilla');
+    expect(encabezado('default', { header_cta_shape: 'rounded' }).formaBoton).toBe('redondeado');
+    expect(encabezado('default', { header_cta_shape: 'square' }).formaBoton).toBe('cuadrado');
+    const circulo = encabezado('pill', { header_cta_shape: 'circle' }, ['Reservar']);
+    expect(circulo.formaBoton).toBe('circulo');
+    expect(rasgoPrincipalEncabezado(circulo)).toEqual({ clave: 'encabezado.pillCirculo' });
   });
 
   test('Retail Moderno: megamenú de 4 columnas con barra de búsqueda; pie con boletín y medios de pago', () => {

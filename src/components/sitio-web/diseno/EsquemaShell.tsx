@@ -61,6 +61,14 @@ function Logo({ c, color }: { c: Ctx; color?: string }) {
   );
 }
 
+/** Radio del botón según la forma elegida (`pastilla` = el del tema, lo de hoy). */
+function radioBotonDibujo(forma: DibujoShell['encabezado']['formaBoton'], radioTema: number): number {
+  if (forma === 'pildora') return 999;
+  if (forma === 'redondeado') return 12;
+  if (forma === 'cuadrado') return 0;
+  return Math.min(radioTema, 999);
+}
+
 function Boton({ b, c, escala, lleno, encabezado }: { b: BotonDibujo; c: Ctx; escala?: number; lleno?: boolean; encabezado?: boolean }) {
   const { d, mini } = c;
   const u = escala ?? c.u;
@@ -102,7 +110,7 @@ function Boton({ b, c, escala, lleno, encabezado }: { b: BotonDibujo; c: Ctx; es
         minWidth: 0,
         justifyContent: 'center',
         padding: mini ? '2px 4px' : `${6 * u}px ${12 * u}px`,
-        borderRadius: Math.min(d.radioBoton, 999) * u,
+        borderRadius: radioBotonDibujo(encabezado && solido ? d.encabezado.formaBoton : 'pastilla', d.radioBoton) * u,
         backgroundColor: solido ? d.colores.acento : 'transparent',
         border: solido ? 'none' : `1px solid ${d.colores.acento}`,
         color: solido ? d.colores.textoAcento : d.colores.texto,

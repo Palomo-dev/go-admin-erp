@@ -521,14 +521,17 @@ describe('«Café de especialidad» (Figma 2223:46106, lámina 11): Inicio, Cart
     expect(encabezado.items.map((i) => i.etiqueta)).toEqual(['Inicio', 'Carta', 'Reservas', 'Historia']);
   });
 
-  test('encabezado en píldora con «Reservar» circular hacia Reservas, transparente sobre la portada', () => {
+  test('encabezado en píldora de vidrio con «Reservar» en píldora hacia Reservas, transparente sobre la portada', () => {
     expect(documento.shell.header.composicion).toBe('pill');
     expect(documento.shell.header.opciones).toMatchObject({
       header_cta_text: 'Reservar',
       header_cta_url: '/reservas-mesa',
-      header_cta_shape: 'circle',
+      // Decisión del dueño (2026-11-07): «Reservar» en píldora, ya no en círculo.
+      header_cta_shape: 'pill',
       header_transparent_over_hero: true,
     });
+    // Sin `header_pill_style`: vidrio, lo que el sitio pinta hoy.
+    expect(documento.shell.header.opciones).not.toHaveProperty('header_pill_style');
     expect(documento.shell.footer.composicion).toBe('three_columns');
     expect(documento.shell.footer.opciones).toMatchObject({ footer_background: 'primary', footer_show_whatsapp: true });
     const laCasa = documento.menus.find((m) => m.nombre === 'La casa')!;

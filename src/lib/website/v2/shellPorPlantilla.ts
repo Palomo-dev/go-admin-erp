@@ -174,14 +174,15 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       opciones: { footer_background: 'tema', footer_show_whatsapp: true, footer_show_payment_methods: true, mobile_footer_style: 'stacked' },
     },
   },
-  // «Café de especialidad» (Figma 2223:46106, lámina 11): menú en píldora y botón circular,
-  // transparente sobre la portada; pie oscuro (acento) en 3 columnas.
+  // «Café de especialidad» (Figma 2223:46106, lámina 11): menú en píldora de vidrio y «Reservar» en
+  // píldora (decisión del dueño, 2026-11-07: antes era un círculo), transparente sobre la portada;
+  // pie oscuro (acento) en 3 columnas. `header_pill_style` ausente = vidrio.
   cafe_especialidad: {
     encabezado: {
       composicion: 'pill',
       boton: { texto: 'Reservar', destino: RESERVAR_MESA },
       boton2: null,
-      opciones: { ...SIN_ACCIONES, header_cta_shape: 'circle', header_transparent_over_hero: true, mobile_menu_style: 'fullscreen', mobile_bottom_bar: 'auto' },
+      opciones: { ...SIN_ACCIONES, header_cta_shape: 'pill', header_transparent_over_hero: true, mobile_menu_style: 'fullscreen', mobile_bottom_bar: 'auto' },
     },
     pie: {
       composicion: 'three_columns',

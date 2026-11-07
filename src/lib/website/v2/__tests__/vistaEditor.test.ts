@@ -126,6 +126,55 @@ describe('ajustes', () => {
   });
 });
 
+describe('encabezado píldora y botón principal (2026-11-07): ida y vuelta', () => {
+  const NUEVAS = {
+    header_cta_shape: 'pill',
+    header_cta_size: 'lg',
+    header_cta_width: 140,
+    header_cta_height: 50,
+    header_cta_style: 'vidrio',
+    header_cta_icon: 'calendar-days',
+    header_cta_icon_side: 'derecha',
+    header_cta_uppercase: false,
+    header_pill_style: 'solido',
+    header_pill_glass_opacity: 20,
+    header_pill_blur: 12,
+    header_pill_border: false,
+    header_pill_on_scroll: 'igual',
+    header_pill_text_case: 'normal',
+    header_float_offset: 16,
+    header_pill_position: 'ambas',
+  } as const;
+
+  test('se guardan en shell.header.opciones, el documento sigue válido y se leen igual', () => {
+    const { documento: doc, noAplicadas } = aplicarAjustesAlDocumento(documento(), { ...NUEVAS, cta_padding_x: 20, cta_shadow: 'md' });
+    expect(noAplicadas).toEqual([]);
+    expect(doc.shell.header.opciones).toMatchObject({ ...NUEVAS, cta_padding_x: 20, cta_shadow: 'md' });
+    expect(validarDocumentoSitio(doc).ok).toBe(true);
+    const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
+    for (const [k, v] of Object.entries(NUEVAS)) expect(a[k]).toBe(v);
+  });
+
+  test('null borra la clave (el sitio pinta lo de hoy) y la vista vuelve al default null', () => {
+    const conTodo = aplicarAjustesAlDocumento(documento(), NUEVAS).documento;
+    const nulos = Object.fromEntries(Object.keys(NUEVAS).map((k) => [k, null]));
+    const doc = aplicarAjustesAlDocumento(conTodo, nulos).documento;
+    for (const k of Object.keys(NUEVAS)) expect(doc.shell.header.opciones).not.toHaveProperty(k);
+    expect(doc.shell.header.opciones).toEqual({ show_topbar: true });
+    const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
+    for (const k of Object.keys(NUEVAS)) expect(a[k]).toBeNull();
+  });
+
+  test('el menú inferior flotante viaja dentro de mobile_header', () => {
+    const bottom_nav = { v: 2, enabled: true, variant: 'floating', items: [{ id: 'home', action: 'home', label: 'Inicio', icon: 'home', visible: true }], style: { labels: 'always', glass: false, offset: 8, width: 'full', indicator: 'dot' } };
+    const { documento: doc, noAplicadas } = aplicarAjustesAlDocumento(documento(), { mobile_header: { bottom_nav } });
+    expect(noAplicadas).toEqual([]);
+    expect(validarDocumentoSitio(doc).ok).toBe(true);
+    const a = ajustesDesdeDocumento(doc, legacy, null).ajustes as unknown as Record<string, unknown>;
+    expect((a.mobile_header as { bottom_nav: unknown }).bottom_nav).toEqual(bottom_nav);
+  });
+});
+
 describe('herencia de sede (D6)', () => {
   test('hereda del principal; personalizar, vaciar y restablecer', () => {
     const principal = documento();

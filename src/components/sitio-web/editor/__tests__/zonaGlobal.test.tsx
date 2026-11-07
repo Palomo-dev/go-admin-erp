@@ -241,8 +241,9 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'square', scope: 'all', background: 'accent' } });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Tamaño de los íconos' })).getByRole('radio', { name: '28 px' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'none', scope: 'all', icon: 28 } });
-    fireEvent.click(screen.getByRole('radio', { name: 'Píldora' }));
-    expect(onCambiar).toHaveBeenCalledWith({ cta_border_radius: 999 });
+    // El radio 0/8/999 («Forma del botón de acción») pasó a «Forma» en la vista «Botón principal».
+    expect(screen.queryByRole('radiogroup', { name: 'Forma del botón de acción' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Botón principal: Forma, tamaño, estilo y colores/ })).toBeTruthy();
     expect(screen.queryByText(/Ajustes de versiones anteriores/)).toBeNull();
     fireEvent.click(screen.getByRole('switch', { name: /Sobre la portada, sólido al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent', header_transparent_over_hero: true });

@@ -187,17 +187,34 @@ const Cta = ({ x, y = 10, w = 10 }: { x: number; y?: number; w?: number }) => (
   <span className="absolute h-1.5 rounded-sm bg-brand-action" style={{ left: x, top: y, width: w }} />
 );
 
-/** Miniatura de una composición del encabezado. */
-export function MiniaturaEncabezado({ composicion }: { composicion: string }) {
+/** Píldora del menú en la miniatura: vidrio (translúcida), sólida (con sombra) o solo contorno. */
+const PILDORA_MINIATURA: Record<string, string> = {
+  vidrio: 'border-line-strong bg-surface/60',
+  solido: 'border-transparent bg-surface shadow-sm',
+  contorno: 'border-line-strong bg-transparent',
+};
+
+/** Botón principal en la miniatura según `header_cta_shape` (sin forma: el de hoy). */
+function CtaMiniatura({ forma }: { forma?: string | null }) {
+  if (forma === 'circle') return <span className="absolute size-4 rounded-full bg-brand-action" style={{ left: 128, top: 5 }} />;
+  const radio = forma === 'pill' ? 'rounded-full' : forma === 'rounded' ? 'rounded-[3px]' : forma === 'square' ? 'rounded-none' : 'rounded-sm';
+  return <span className={cn('absolute h-2.5 w-5 bg-brand-action', radio)} style={{ left: 124, top: 8 }} />;
+}
+
+/**
+ * Miniatura de una composición del encabezado. En `pill`, si llegan, refleja el estilo de la
+ * píldora (`header_pill_style`) y la forma del botón (`header_cta_shape`).
+ */
+export function MiniaturaEncabezado({ composicion, pildora, formaBoton }: { composicion: string; pildora?: string | null; formaBoton?: string | null }) {
   switch (composicion) {
     case 'pill':
-      // Menú en píldora flotante centrada y botón circular (plantilla «Café de especialidad»).
+      // Menú en píldora flotante centrada y el botón principal (plantilla «Café de especialidad»).
       return (
         <>
           <Logo x={8} />
-          <span className="absolute h-3.5 w-[66px] rounded-full border border-line-strong bg-surface" style={{ left: 42, top: 6 }} />
+          <span className={cn('absolute h-3.5 w-[66px] rounded-full border', PILDORA_MINIATURA[pildora ?? 'vidrio'] ?? PILDORA_MINIATURA.vidrio)} style={{ left: 42, top: 6 }} />
           {[50, 66, 82].map((x) => <Enlace key={x} x={x} />)}
-          <span className="absolute size-4 rounded-full bg-brand-action" style={{ left: 128, top: 5 }} />
+          <CtaMiniatura forma={formaBoton === undefined ? 'circle' : formaBoton} />
         </>
       );
     case 'centered':

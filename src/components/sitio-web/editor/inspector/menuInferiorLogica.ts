@@ -8,7 +8,9 @@
  */
 import {
   ACCIONES_MENU,
+  ANCHOS_FLOTANTE,
   DEFECTO_ACCION,
+  INDICADORES_FLOTANTE,
   MAX_BOTONES,
   aGuardar,
   barraGuardada,
@@ -90,14 +92,62 @@ export function mover<T>(lista: readonly T[], i: number, d: -1 | 1): T[] {
   return l;
 }
 
-/** Cambiar de variante: si hay más botones que el máximo, se quedan los primeros. */
+/** El botón destacado de pestañas y de la píldora flotante es `centerId`; el de acciones, `primaryId`. */
+export function usaCentro(variant: VarianteMenu): boolean {
+  return variant !== 'actions';
+}
+
+/**
+ * Cambiar de variante: si hay más botones que el máximo, se quedan los primeros. Las opciones de la
+ * píldora flotante (vidrio, separación, ancho, indicador) solo valen en `floating`: al salir se
+ * quitan para no guardar de más.
+ */
 export function conVariante(m: MenuInferior, variant: VarianteMenu): MenuInferior {
   const items = m.items.slice(0, MAX_BOTONES[variant]);
   const ids = items.map((i) => i.id);
   const style = { ...m.style };
-  if (style.centerId && (variant !== 'tabs' || !ids.includes(style.centerId))) delete style.centerId;
+  if (style.centerId && (!usaCentro(variant) || !ids.includes(style.centerId))) delete style.centerId;
   if (style.primaryId && (variant !== 'actions' || !ids.includes(style.primaryId))) delete style.primaryId;
+  if (variant !== 'floating') for (const k of CLAVES_FLOTANTE) delete style[k];
   return { ...m, variant, items, style };
+}
+
+// ─── Píldora flotante (P4) ─────────────────────────────────────────────────────────────────────
+
+/** Lo que pinta la píldora flotante sin la clave (contrato de `menuInferior.ts`). */
+export const FLOTANTE_SIN_CLAVE = { glass: true, offset: 16, width: 'content', indicator: 'fill' } as const;
+const CLAVES_FLOTANTE = ['glass', 'offset', 'width', 'indicator'] as const;
+export type AnchoFlotante = (typeof ANCHOS_FLOTANTE)[number];
+export type IndicadorFlotante = (typeof INDICADORES_FLOTANTE)[number];
+export interface EstiloFlotante { glass: boolean; offset: number; width: AnchoFlotante; indicator: IndicadorFlotante }
+
+/** Valores efectivos de la píldora flotante (los guardados o los de hoy). */
+export function estiloFlotante(m: MenuInferior): EstiloFlotante {
+  return {
+    glass: m.style.glass ?? FLOTANTE_SIN_CLAVE.glass,
+    offset: m.style.offset ?? FLOTANTE_SIN_CLAVE.offset,
+    width: m.style.width ?? FLOTANTE_SIN_CLAVE.width,
+    indicator: m.style.indicator ?? FLOTANTE_SIN_CLAVE.indicator,
+  };
+}
+
+/**
+ * Cambia opciones de la píldora flotante. Elegir el valor de hoy quita la clave; la separación se
+ * redondea y se lleva a 0–32; un ancho o indicador fuera de la lista no se escribe.
+ */
+export function conEstiloFlotante(m: MenuInferior, cambios: Partial<EstiloFlotante>): MenuInferior {
+  const style = { ...m.style };
+  for (const k of CLAVES_FLOTANTE) {
+    if (!(k in cambios)) continue;
+    let v: unknown = cambios[k];
+    if (k === 'offset') v = typeof v === 'number' && Number.isFinite(v) ? Math.min(32, Math.max(0, Math.round(v))) : undefined;
+    if (k === 'glass' && typeof v !== 'boolean') v = undefined;
+    if (k === 'width' && !(ANCHOS_FLOTANTE as readonly unknown[]).includes(v)) v = undefined;
+    if (k === 'indicator' && !(INDICADORES_FLOTANTE as readonly unknown[]).includes(v)) v = undefined;
+    if (v === undefined || v === FLOTANTE_SIN_CLAVE[k]) delete style[k];
+    else (style as Record<string, unknown>)[k] = v;
+  }
+  return { ...m, style };
 }
 
 /** Qué falta para que el botón se vea en la tienda (null = nada). */

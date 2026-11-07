@@ -16,11 +16,15 @@ import { ChipsOpcion, clasesBoton, type AccionFila } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MenuLinkRow, type TipoEnlaceMenu } from '@/components/sitio-web/ui/MenuLinkRow';
-import { ICONOS_MENU, MAX_BOTONES, MAX_TEXTO, VARIANTES_MENU, type AccionMenu, type BotonMenu, type IconoMenu, type MenuInferior } from '@/lib/website/menuInferior';
+import { ANCHOS_FLOTANTE, ICONOS_MENU, INDICADORES_FLOTANTE, MAX_BOTONES, MAX_TEXTO, VARIANTES_MENU, type AccionMenu, type BotonMenu, type IconoMenu, type MenuInferior } from '@/lib/website/menuInferior';
 import { useTextosEditor } from '../textos';
-import { ColorTema, EtiquetaGrupo, FilaInterruptor, TarjetaComposicion } from './PartesZonaGlobal';
+import { ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion } from './PartesZonaGlobal';
+import { FilaDeslizador, FilaSegmento } from './PildoraYBoton';
 import { useDestinosTienda } from './useDestinosTienda';
-import { accionesDisponibles, accionesSinDestino, avisoBoton, botonConAccion, botonNuevo, campoDestino, cambioMenuV2, conVariante, menuDelEditor, mover } from './menuInferiorLogica';
+import {
+  accionesDisponibles, accionesSinDestino, avisoBoton, botonConAccion, botonNuevo, campoDestino, cambioMenuV2, conEstiloFlotante, conVariante,
+  estiloFlotante, menuDelEditor, mover, usaCentro, type AnchoFlotante, type IndicadorFlotante,
+} from './menuInferiorLogica';
 
 export const ICONO_MENU: Record<IconoMenu, LucideIcon> = {
   home: Home, grid: LayoutGrid, search: Search, bag: ShoppingBag, cart: ShoppingCart, user: User, menu: Menu,
@@ -48,6 +52,8 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
   const poner = (m: MenuInferior) => cambiar(cambioMenuV2(a, m));
   const ponerItems = (items: BotonMenu[]) => poner({ ...menu, items });
   const max = MAX_BOTONES[menu.variant];
+  // Pestañas y píldora flotante destacan con `centerId`; acciones, con `primaryId`.
+  const centro = usaCentro(menu.variant);
   const visibles = menu.items.filter((b) => b.visible).length;
 
   const acciones = (b: BotonMenu, i: number): AccionFila[] => [
@@ -62,11 +68,14 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
       <fieldset disabled={!menu.enabled} className={`flex flex-col gap-3 ${menu.enabled ? '' : 'opacity-50'}`}>
         <div className="flex flex-col gap-2">
           <EtiquetaGrupo id={idVariante}>{tm('variante')}</EtiquetaGrupo>
-          <div role="radiogroup" aria-labelledby={idVariante} className="grid grid-cols-2 gap-2">
+          <div role="radiogroup" aria-labelledby={idVariante} className="grid grid-cols-3 gap-2">
             {VARIANTES_MENU.map((v) => (
               <TarjetaComposicion key={v} etiqueta={tm(`varianteOpcion.${v}`)} seleccionada={menu.variant === v} onElegir={() => menu.variant !== v && poner(conVariante(menu, v))}>
                 {v === 'tabs' ? (
                   <><span className="absolute inset-x-0 bottom-0 h-3 bg-surface" />{[20, 35, 50, 65, 80].map((x) => <span key={x} className="absolute bottom-1 size-1.5 rounded-full bg-brand" style={{ left: `${x}%` }} />)}</>
+                ) : v === 'floating' ? (
+                  // Píldora flotante (P4): separada del borde, con el destacado relleno.
+                  <><span className="absolute bottom-2 left-[14%] h-3.5 w-[72%] rounded-full border border-line-strong bg-surface/80" />{[24, 38, 52, 66].map((x) => <span key={x} className="absolute bottom-[13px] size-1.5 rounded-full bg-fg-secondary" style={{ left: `${x}%` }} />)}<span className="absolute bottom-[11px] left-[45%] size-2.5 rounded-full bg-brand" /></>
                 ) : (
                   <><span className="absolute inset-x-0 bottom-0 h-4 bg-surface" /><span className="absolute bottom-1 left-[8%] h-2 w-[40%] rounded-sm bg-brand" /><span className="absolute bottom-1 right-[8%] h-2 w-[40%] rounded-sm border border-brand" /></>
                 )}
@@ -75,6 +84,8 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
           </div>
           <p className="text-[11px] leading-[14px] text-fg-muted">{tm('maximo', { n: max })}</p>
         </div>
+
+        {menu.variant === 'floating' && <OpcionesFlotante menu={menu} poner={poner} />}
 
         <ul className="flex flex-col gap-1" aria-label={tm('botones')}>
           {menu.items.map((b, i) => {
@@ -125,24 +136,24 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
           />
         </div>
         <div className="flex flex-col gap-2">
-          <EtiquetaGrupo id={idDestacado}>{tm(menu.variant === 'tabs' ? 'centro' : 'principal')}</EtiquetaGrupo>
+          <EtiquetaGrupo id={idDestacado}>{tm(centro ? 'centro' : 'principal')}</EtiquetaGrupo>
           <ChipsOpcion
             aria-labelledby={idDestacado}
             opciones={[
-              { valor: '', etiqueta: tm(menu.variant === 'tabs' ? 'centroNinguno' : 'principalPrimero') },
+              { valor: '', etiqueta: tm(centro ? 'centroNinguno' : 'principalPrimero') },
               ...menu.items.filter((b) => b.visible).map((b) => ({ valor: b.id, etiqueta: b.label || tm(`accion.${b.action}`) })),
             ]}
-            valor={(menu.variant === 'tabs' ? menu.style.centerId : menu.style.primaryId) ?? ''}
+            valor={(centro ? menu.style.centerId : menu.style.primaryId) ?? ''}
             onValorChange={(v) => {
               const style = { ...menu.style };
-              const k = menu.variant === 'tabs' ? 'centerId' : 'primaryId';
+              const k = centro ? 'centerId' : 'primaryId';
               if (v) style[k] = v; else delete style[k];
               poner({ ...menu, style });
             }}
           />
         </div>
         <ColorTema etiqueta={tm('fondo')} valor={menu.style.background ?? null} colorTema={coloresTema?.fondo ?? '#ffffff'} onCambiar={(v) => poner({ ...menu, style: { ...menu.style, background: v ?? undefined } })} />
-        <ColorTema etiqueta={tm(menu.variant === 'tabs' ? 'activo' : 'colorPrincipal')} valor={menu.style.active ?? null} colorTema={coloresTema?.texto ?? '#111827'} onCambiar={(v) => poner({ ...menu, style: { ...menu.style, active: v ?? undefined } })} />
+        <ColorTema etiqueta={tm(centro ? 'activo' : 'colorPrincipal')} valor={menu.style.active ?? null} colorTema={coloresTema?.texto ?? '#111827'} onCambiar={(v) => poner({ ...menu, style: { ...menu.style, active: v ?? undefined } })} />
         <ColorTema etiqueta={tm('inactivo')} valor={menu.style.inactive ?? null} colorTema={coloresTema?.texto ?? '#111827'} onCambiar={(v) => poner({ ...menu, style: { ...menu.style, inactive: v ?? undefined } })} />
       </fieldset>
     </section>
@@ -219,6 +230,42 @@ function EditorBoton({ boton: b, disponibles, onCambiar }: { boton: BotonMenu; d
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** P4 · opciones de la píldora flotante (`style.glass`, `offset`, `width`, `indicator`). */
+function OpcionesFlotante({ menu, poner }: { menu: MenuInferior; poner: (m: MenuInferior) => void }) {
+  const t = useTextosEditor();
+  const tf = (k: string, v?: Record<string, string | number>) => t(`zonaGlobal.movilEncabezado.mi.flotante.${k}`, v);
+  const e = estiloFlotante(menu);
+  return (
+    <div className="flex flex-col gap-3 border-t border-line pt-3" data-bloque="pildora-flotante">
+      <h4 className="flex items-center gap-1.5 text-[13px] font-semibold leading-[18px] text-fg">
+        {tf('titulo')}
+        <InsigniaNuevo />
+      </h4>
+      <FilaInterruptor titulo={tf('vidrio')} ayuda={tf('vidrioAyuda')} valor={e.glass} onCambiar={(v) => poner(conEstiloFlotante(menu, { glass: v }))} />
+      <FilaDeslizador
+        etiqueta={tf('separacion')}
+        valor={e.offset}
+        texto={tf('px', { n: e.offset })}
+        min={0}
+        max={32}
+        onCambiar={(v) => poner(conEstiloFlotante(menu, { offset: v }))}
+      />
+      <FilaSegmento<AnchoFlotante>
+        etiqueta={tf('ancho')}
+        opciones={ANCHOS_FLOTANTE.map((v) => ({ valor: v, etiqueta: tf(`anchoOpcion.${v}`) }))}
+        valor={e.width}
+        onCambiar={(v) => poner(conEstiloFlotante(menu, { width: v }))}
+      />
+      <FilaSegmento<IndicadorFlotante>
+        etiqueta={tf('indicador')}
+        opciones={INDICADORES_FLOTANTE.map((v) => ({ valor: v, etiqueta: tf(`indicadorOpcion.${v}`) }))}
+        valor={e.indicator}
+        onCambiar={(v) => poner(conEstiloFlotante(menu, { indicator: v }))}
+      />
     </div>
   );
 }

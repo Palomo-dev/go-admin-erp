@@ -52,6 +52,7 @@ import {
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
+import { CabeceraBotonPrincipal, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonPrincipal } from './PildoraYBoton';
 import {
   BandaGlobal,
   CabeceraZona,
@@ -113,6 +114,23 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   const idTabs = 'inspector-encabezado';
   const cambiar = (c: Record<string, unknown>) => p.onCambiar(c);
   const texto = (k: string) => (typeof a[k] === 'string' ? (a[k] as string) : '');
+  // P2 (Figma 2392:55484): el botón principal se edita en una vista propia con «volver», que
+  // reemplaza las pestañas mientras está abierta y regresa a la pestaña de la que se vino.
+  const [vistaBoton, setVistaBoton] = useState(false);
+  const abrirBoton = () => setVistaBoton(true);
+
+  if (vistaBoton) {
+    return (
+      <aside aria-label={t('inspector.etiqueta', { nombre: t('zonaGlobal.botonPrincipal.titulo') })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
+        <CabeceraBotonPrincipal onVolver={() => setVistaBoton(false)} />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista="boton-principal">
+          <VistaBotonPrincipal ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema}>
+            <CampoBoton etiquetaTexto={t('zonaGlobal.botonPrincipal.texto')} claveTexto="header_cta_text" claveUrl="header_cta_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />
+          </VistaBotonPrincipal>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside aria-label={t('inspector.etiqueta', { nombre: titulo })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
@@ -132,21 +150,21 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
       />
       <div role="tabpanel" id={idPanel(idTabs, pestana)} aria-labelledby={idPestana(idTabs, pestana)} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
         <BandaGlobal />
-        {pestana === 'contenido' && <Contenido {...p} cambiar={cambiar} texto={texto} />}
+        {pestana === 'contenido' && <Contenido {...p} cambiar={cambiar} texto={texto} onAbrirBoton={abrirBoton} />}
         {pestana === 'diseno' && (
           <>
             <TarjetaPlantilla nombre={p.porDefecto.nombre} enBorrador={p.enBorrador} />
-            <Diseno {...p} cambiar={cambiar} />
+            <Diseno {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} />
           </>
         )}
-        {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} />}
+        {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} />}
         {pestana === 'celular' && <CelularEncabezado ajustes={p.ajustes} cambiar={cambiar} coloresTema={p.coloresTema} giro={p.giro} />}
       </div>
     </aside>
   );
 }
 
-type Interno = InspectorEncabezadoProps & { cambiar: (c: Record<string, unknown>) => void };
+type Interno = InspectorEncabezadoProps & { cambiar: (c: Record<string, unknown>) => void; onAbrirBoton?: () => void };
 
 // ─── Menú (en Contenido y en Diseño, como en Figma) ───────────────────────────────────────────
 
@@ -288,6 +306,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.boton.principal')}</TituloBloque>
         <CampoBoton etiquetaTexto={t('zonaGlobal.boton.texto')} claveTexto="header_cta_text" claveUrl="header_cta_url" ajustes={a} cambiar={cambiar} paginas={p.paginas} />
+        {p.onAbrirBoton && <FilaAbrirBoton onAbrir={p.onAbrirBoton} />}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -470,7 +489,6 @@ function Diseno(p: Interno) {
   const idBcPc = useId();
   const idBcCel = useId();
   const idCol = useId();
-  const idFormaBoton = useId();
   const opcionesBuscador = BUSCADORES.map((v) => ({
     valor: v,
     etiqueta: v === 'icon' ? t('zonaGlobal.diseno.icono') : v === 'bar' ? t('zonaGlobal.diseno.barraVisible') : v === 'hidden' ? t('zonaGlobal.diseno.oculto') : t(`zonaGlobal.diseno.buscadorNombre.${v}`),
@@ -491,26 +509,19 @@ function Diseno(p: Interno) {
               seleccionada={composicion === c}
               onElegir={() => { if (c !== composicion) cambiar(cambioComposicion(c)); }}
             >
-              <MiniaturaEncabezado composicion={c} />
+              <MiniaturaEncabezado
+                composicion={c}
+                {...(c === 'pill' ? { pildora: valorOpcion<string>(a, 'header_pill_style') ?? null, formaBoton: valorOpcion<string>(a, 'header_cta_shape') ?? null } : {})}
+              />
             </TarjetaComposicion>
           ))}
         </div>
       </div>
 
       {composicion === 'pill' && (
-        // Botón principal de la píldora: el de hoy o circular (`header_cta_shape`, lámina 11 del café).
-        <div className="flex flex-col gap-2">
-          <EtiquetaGrupo id={idFormaBoton}>{t('zonaGlobal.diseno.formaBoton')}</EtiquetaGrupo>
-          <ChipsOpcion
-            aria-labelledby={idFormaBoton}
-            opciones={[
-              { valor: 'pill', etiqueta: t('zonaGlobal.diseno.formaBotonPastilla') },
-              { valor: 'circle', etiqueta: t('zonaGlobal.diseno.formaBotonCirculo') },
-            ]}
-            valor={String(valorOpcion(a, 'header_cta_shape') ?? 'pill')}
-            onValorChange={(v) => cambiar({ header_cta_shape: v })}
-          />
-        </div>
+        // P1 (Figma 2391:55159): vidrio, letras, al bajar, separación y posición de la píldora. La
+        // forma del botón ya no vive aquí: es de la vista «Botón principal», para toda composición.
+        <GrupoPildora ajustes={a} cambiar={cambiar} onAbrirBoton={p.onAbrirBoton ?? (() => undefined)} />
       )}
 
       {composicionConLado(composicion) ? (
@@ -615,21 +626,9 @@ function Estilo(p: Interno) {
         onCambiar={(v) => cambiar({ header_text_color: v })}
       />
       <ColorTema etiqueta={t('zonaGlobal.estilo.barra')} valor={color('topbar_bg_color')} colorTema={p.coloresTema.texto} onCambiar={(v) => cambiar({ topbar_bg_color: v })} />
-      <ColorTema
-        etiqueta={t('zonaGlobal.estilo.boton')}
-        valor={color('cta_bg_color')}
-        colorTema={p.coloresTema.acento}
-        onCambiar={(v) => cambiar(v === null ? { cta_bg_color: null, cta_text_color: null } : { cta_bg_color: v })}
-      />
-      {color('cta_bg_color') && (
-        <ColorTema
-          etiqueta={t('zonaGlobal.estilo.botonTexto')}
-          valor={color('cta_text_color')}
-          colorTema={p.coloresTema.fondo}
-          fondo={color('cta_bg_color') ?? undefined}
-          onCambiar={(v) => cambiar({ cta_text_color: v })}
-        />
-      )}
+      {/* Colores del botón: aquí siguen, y también en la vista «Botón principal» (mismas claves). */}
+      <ColoresBotonPrincipal ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
+      {p.onAbrirBoton && <FilaAbrirBoton onAbrir={p.onAbrirBoton} />}
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.estilo.iconos')}</TituloBloque>
         <CajaIconos ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
@@ -679,7 +678,6 @@ function Estilo(p: Interno) {
         </div>
       </section>
       <EspaciosEncabezado ajustes={a} cambiar={cambiar} />
-      <FormaBoton ajustes={a} cambiar={cambiar} />
       <AjustesAnteriores ajustes={a} entradas={entradasAnterioresEncabezado(a, CLAVES_ANTERIORES_ENCABEZADO)} cambiar={cambiar} />
       <button
         type="button"
@@ -727,30 +725,11 @@ function EspaciosEncabezado({ ajustes: a, cambiar }: { ajustes: Record<string, u
 export { cambioBuscador } from './anterioresLogica';
 export { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
 
-const FORMAS_BOTON = [
-  { valor: '0', clave: 'recto' },
-  { valor: '8', clave: 'redondeado' },
-  { valor: '999', clave: 'pildora' },
-] as const;
-
-/** Figma 1787:902808 «Forma del botón de acción»: escribe `cta_border_radius` (la tienda lo lee en HeaderCTA, HeaderCTA2 y HeaderCTAMovil). */
-function FormaBoton({ ajustes, cambiar }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void }) {
-  const t = useTextosEditor();
-  const id = useId();
-  const r = typeof ajustes.cta_border_radius === 'number' ? ajustes.cta_border_radius : null;
-  const actual = r === null ? '8' : r >= 999 ? '999' : r <= 0 ? '0' : r === 8 ? '8' : null;
-  return (
-    <div className="flex flex-col gap-2">
-      <EtiquetaGrupo id={id}>{t('zonaGlobal.estilo.formaBoton')}</EtiquetaGrupo>
-      <ChipsOpcion
-        aria-labelledby={id}
-        opciones={FORMAS_BOTON.map((f) => ({ valor: f.valor, etiqueta: t(`zonaGlobal.estilo.forma.${f.clave}`) }))}
-        valor={actual}
-        onValorChange={(v) => cambiar({ cta_border_radius: v === '8' ? null : Number(v) })}
-      />
-    </div>
-  );
-}
+/*
+ * El viejo «Forma del botón de acción» (radio 0 / 8 / 999 en `cta_border_radius`) se reemplazó por
+ * «Forma» en la vista «Botón principal» (`header_cta_shape`, 2026-11-07). Sin forma elegida, el
+ * sitio sigue usando el radio guardado: la vista lo muestra como «personalizada (radio N)».
+ */
 
 /**
  * Íconos de buscar, carrito, cuenta y moneda (pedido de Juan, 28-oct): el set ya lo pinta la tienda

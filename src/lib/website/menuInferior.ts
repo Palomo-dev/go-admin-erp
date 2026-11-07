@@ -22,11 +22,18 @@ export const ICONOS_MENU = [
 ] as const
 export type IconoMenu = (typeof ICONOS_MENU)[number]
 
-export const VARIANTES_MENU = ['tabs', 'actions'] as const
+/**
+ * `floating` (2026-11-07, Figma «Editor · Encabezado píldora…» P4): píldora flotante de pestañas
+ * separada del borde, con vidrio opcional. Las dos primeras son las barras fijas de siempre.
+ */
+export const VARIANTES_MENU = ['tabs', 'actions', 'floating'] as const
 export type VarianteMenu = (typeof VARIANTES_MENU)[number]
 export const TEXTOS_MENU = ['always', 'never'] as const
 
-export const MAX_BOTONES: Record<VarianteMenu, number> = { tabs: 5, actions: 4 }
+export const MAX_BOTONES: Record<VarianteMenu, number> = { tabs: 5, actions: 4, floating: 5 }
+/** Píldora flotante: ancho del contenido o casi todo el ancho; marca del activo. */
+export const ANCHOS_FLOTANTE = ['content', 'full'] as const
+export const INDICADORES_FLOTANTE = ['fill', 'dot', 'line'] as const
 export const MAX_TEXTO = 24
 
 export interface BotonMenu {
@@ -50,6 +57,14 @@ export interface EstiloMenu {
   centerId?: string
   /** Acciones: el botón relleno (por defecto, el primero visible). */
   primaryId?: string
+  /** Píldora flotante: vidrio (blanco translúcido con desenfoque). Sin la clave, sí. */
+  glass?: boolean
+  /** Píldora flotante: separación con el borde inferior en px (0–32). Sin la clave, 16. */
+  offset?: number
+  /** Píldora flotante: ancho. Sin la clave, `content`. */
+  width?: (typeof ANCHOS_FLOTANTE)[number]
+  /** Píldora flotante: marca del botón activo. Sin la clave, `fill`. */
+  indicator?: (typeof INDICADORES_FLOTANTE)[number]
 }
 
 export interface MenuInferior {
@@ -135,6 +150,10 @@ function leerEstilo(v: unknown, ids: string[]): EstiloMenu {
     ...(color(o.inactive) ? { inactive: color(o.inactive) } : {}),
     ...(centro && ids.includes(centro) ? { centerId: centro } : {}),
     ...(principal && ids.includes(principal) ? { primaryId: principal } : {}),
+    ...(typeof o.glass === 'boolean' ? { glass: o.glass } : {}),
+    ...(typeof o.offset === 'number' && Number.isInteger(o.offset) && o.offset >= 0 && o.offset <= 32 ? { offset: o.offset } : {}),
+    ...(enLista(ANCHOS_FLOTANTE, o.width) ? { width: enLista(ANCHOS_FLOTANTE, o.width)! } : {}),
+    ...(enLista(INDICADORES_FLOTANTE, o.indicator) ? { indicator: enLista(INDICADORES_FLOTANTE, o.indicator)! } : {}),
   }
 }
 
@@ -270,6 +289,10 @@ export function aGuardar(m: MenuInferior): Record<string, unknown> {
   for (const k of ['background', 'active', 'inactive'] as const) if (color(m.style[k])) st[k] = m.style[k]
   if (m.style.centerId && ids.includes(m.style.centerId)) st.centerId = m.style.centerId
   if (m.style.primaryId && ids.includes(m.style.primaryId)) st.primaryId = m.style.primaryId
+  if (typeof m.style.glass === 'boolean') st.glass = m.style.glass
+  if (typeof m.style.offset === 'number' && Number.isInteger(m.style.offset) && m.style.offset >= 0 && m.style.offset <= 32) st.offset = m.style.offset
+  if (m.style.width && (ANCHOS_FLOTANTE as readonly string[]).includes(m.style.width)) st.width = m.style.width
+  if (m.style.indicator && (INDICADORES_FLOTANTE as readonly string[]).includes(m.style.indicator)) st.indicator = m.style.indicator
   return { v: 2, enabled: m.enabled, variant: m.variant, items, style: st }
 }
 

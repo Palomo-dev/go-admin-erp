@@ -16,7 +16,23 @@ import {
 import { CLAVES_PIE } from '@/lib/website/ajustesVivos';
 
 const NUEVAS = {
-  header_cta_shape: 'pill',
+  // Sin la clave, el botón de hoy (antes el default era 'pill' con ese mismo significado).
+  header_cta_shape: null,
+  header_cta_size: null,
+  header_cta_width: null,
+  header_cta_height: null,
+  header_cta_style: null,
+  header_cta_icon: null,
+  header_cta_icon_side: null,
+  header_cta_uppercase: null,
+  header_pill_style: null,
+  header_pill_glass_opacity: null,
+  header_pill_blur: null,
+  header_pill_border: null,
+  header_pill_on_scroll: null,
+  header_pill_text_case: null,
+  header_float_offset: null,
+  header_pill_position: null,
   buttons_uppercase_active: false,
   footer_brand_display: 'none',
   footer_brand_figure_url: null,
@@ -55,7 +71,24 @@ describe('opciones de shell de las plantillas de tienda', () => {
 
   test('valores del contrato', () => {
     expect(COMPOSICIONES_HEADER).toContain('pill');
-    expect(FORMAS_BOTON_ENCABEZADO).toEqual(['pill', 'circle']);
+    expect(FORMAS_BOTON_ENCABEZADO).toEqual(['pill', 'circle', 'rounded', 'square']);
+    expect(normalizarOpcionShell('header_cta_shape', 'pill')).toBe('pill');
+    expect(normalizarOpcionShell('header_cta_shape', 'square')).toBe('square');
+    expect(normalizarOpcionShell('header_cta_size', 'lg')).toBe('lg');
+    expect(normalizarOpcionShell('header_cta_width', 120)).toBe(120);
+    expect(normalizarOpcionShell('header_cta_height', 50)).toBe(50);
+    expect(normalizarOpcionShell('header_cta_style', 'vidrio')).toBe('vidrio');
+    expect(normalizarOpcionShell('header_cta_icon', 'calendar-days')).toBe('calendar-days');
+    expect(normalizarOpcionShell('header_cta_icon_side', 'encima')).toBe('encima');
+    expect(normalizarOpcionShell('header_cta_uppercase', true)).toBe(true);
+    expect(normalizarOpcionShell('header_pill_style', 'contorno')).toBe('contorno');
+    expect(normalizarOpcionShell('header_pill_glass_opacity', 20)).toBe(20);
+    expect(normalizarOpcionShell('header_pill_blur', 0)).toBe(0);
+    expect(normalizarOpcionShell('header_pill_border', false)).toBe(false);
+    expect(normalizarOpcionShell('header_pill_on_scroll', 'igual')).toBe('igual');
+    expect(normalizarOpcionShell('header_pill_text_case', 'normal')).toBe('normal');
+    expect(normalizarOpcionShell('header_float_offset', 20)).toBe(20);
+    expect(normalizarOpcionShell('header_pill_position', 'abajo')).toBe('abajo');
     expect(MARCAS_PIE).toEqual(['none', 'giant']);
     expect(ESTILOS_ENLACES_PIE).toEqual(['normal', 'display']);
     expect(normalizarOpcionShell('header_cta_shape', 'circle')).toBe('circle');
@@ -67,7 +100,12 @@ describe('opciones de shell de las plantillas de tienda', () => {
   });
 
   test('valores inválidos = default', () => {
-    expect(normalizarOpcionShell('header_cta_shape', 'triangulo')).toBe('pill');
+    expect(normalizarOpcionShell('header_cta_shape', 'triangulo')).toBe(null);
+    expect(normalizarOpcionShell('header_cta_width', 10)).toBe(null);
+    expect(normalizarOpcionShell('header_cta_width', 1.5)).toBe(null);
+    expect(normalizarOpcionShell('header_pill_glass_opacity', 90)).toBe(null);
+    expect(normalizarOpcionShell('header_pill_style', 'isla')).toBe(null);
+    expect(normalizarOpcionShell('header_pill_position', 'lado')).toBe(null);
     expect(normalizarOpcionShell('footer_brand_display', 'enorme')).toBe('none');
     expect(normalizarOpcionShell('footer_brand_display', true)).toBe('none');
     expect(normalizarOpcionShell('footer_inset', 'true')).toBe(false);

@@ -143,8 +143,38 @@ export const ACCIONES_BARRA_MOVIL = ['pedir', 'reservar', 'agendar', 'prueba', '
 export const PESO_ICONO_ENCABEZADO = ['contorno', 'relleno'] as const;
 /** Forma del carrito. El default `null` no pisa `cart_icon`. */
 export const FORMA_CARRITO_ENCABEZADO = ['bolsa', 'carrito'] as const;
-/** Forma del botón principal del encabezado: la de hoy (`pill`) o un círculo con el texto dentro. */
-export const FORMAS_BOTON_ENCABEZADO = ['pill', 'circle'] as const;
+/**
+ * Forma del botón principal del encabezado (Figma «Editor · Encabezado píldora…» P2, 2026-11-07).
+ * Sin la clave: el botón de hoy (radio `cta_border_radius`, 8 por defecto). `pill` = píldora de
+ * verdad (radio total), `rounded` = 12 px, `square` = esquinas rectas, `circle` = círculo con el
+ * texto dentro (el «Reservar» del café en su primera versión).
+ */
+export const FORMAS_BOTON_ENCABEZADO = ['pill', 'circle', 'rounded', 'square'] as const;
+/** Tamaño del botón principal: alto 36 / 44 / 50 px con su relleno. Sin la clave, el de hoy. */
+export const TAMANOS_BOTON_ENCABEZADO = ['sm', 'md', 'lg'] as const;
+/**
+ * Estilo del botón principal. `tema` = el estilo de botón del sitio (tema.tokens.estiloBoton);
+ * `solido` = relleno con `cta_bg_color` (el de hoy, sin la clave); `contorno`; `vidrio` = blanco
+ * translúcido con desenfoque; `texto` = solo el texto subrayado al pasar.
+ */
+export const ESTILOS_BOTON_ENCABEZADO = ['tema', 'solido', 'contorno', 'vidrio', 'texto'] as const;
+/** Lado del ícono del botón principal. Sin la clave: izquierda (encima en el círculo). */
+export const LADOS_ICONO_BOTON = ['izquierda', 'derecha', 'encima'] as const;
+/**
+ * Píldora del menú (composición `pill`). Sin la clave, `vidrio`: blanco translúcido con desenfoque
+ * sobre la foto (lo que el sitio pinta hoy). `solido` = isla del color del tema con sombra;
+ * `contorno` = solo el borde.
+ */
+export const ESTILOS_PILDORA = ['vidrio', 'solido', 'contorno'] as const;
+/** Al bajar: la píldora toma el fondo del tema al 85 % (`fondo_tema`, hoy) o se queda igual. */
+export const PILDORA_AL_BAJAR = ['fondo_tema', 'igual'] as const;
+/** Letras del menú en la píldora: versalitas espaciadas (hoy) o como se escribieron. */
+export const LETRAS_PILDORA = ['versalitas', 'normal'] as const;
+/**
+ * Dónde va la píldora en el celular: `arriba` = encabezado con logo, píldora «Menú» y botón (hoy
+ * con la composición `pill`); `abajo` = menú inferior flotante con los enlaces del menú; `ambas`.
+ */
+export const POSICIONES_PILDORA = ['arriba', 'abajo', 'ambas'] as const;
 /**
  * Marca del pie (plantillas de tienda, 2026-11): `none` = el pie de hoy; `giant` = el nombre de la
  * tienda en grande a todo el ancho (con la figura de `footer_brand_figure_url` encima, si hay).
@@ -163,8 +193,42 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   mobile_logo_position: { zona: 'header', porDefecto: 'inherit', regla: { tipo: 'opcion', valores: ['inherit', 'left', 'center', 'right'] }, nueva: true },
   header_cta_text: { zona: 'header', porDefecto: null },
   header_cta_url: { zona: 'header', porDefecto: null },
-  /** Botón principal circular («Reservar» del café). `pill` = el botón de hoy. */
-  header_cta_shape: { zona: 'header', porDefecto: 'pill', regla: { tipo: 'opcion', valores: FORMAS_BOTON_ENCABEZADO }, nueva: true },
+  /**
+   * Forma del botón principal (FORMAS_BOTON_ENCABEZADO). Sin la clave, el botón de hoy. Antes el
+   * default era `pill` y significaba «el de hoy»: ningún sitio guardó `pill` (solo la org 374 guarda
+   * `circle`, SQL 2026-11-07), así que `pill` pasa a ser la píldora de verdad sin cambiar a nadie.
+   */
+  header_cta_shape: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: FORMAS_BOTON_ENCABEZADO }, nueva: true },
+  /** Tamaño del botón principal (TAMANOS_BOTON_ENCABEZADO). Sin la clave, el relleno de hoy. */
+  header_cta_size: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: TAMANOS_BOTON_ENCABEZADO }, nueva: true },
+  /** Ancho fijo del botón principal en px. Sin la clave, automático (el texto manda). */
+  header_cta_width: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 60, max: 280 }, nueva: true },
+  /** Alto del botón principal en px (manda sobre el del tamaño). Sin la clave, el del tamaño o el de hoy. */
+  header_cta_height: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 28, max: 80 }, nueva: true },
+  /** Estilo del botón principal (ESTILOS_BOTON_ENCABEZADO). Sin la clave, relleno con cta_bg_color (hoy). */
+  header_cta_style: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: ESTILOS_BOTON_ENCABEZADO }, nueva: true },
+  /** Ícono del botón principal (nombre de lucide en kebab-case, como header_icons). Sin la clave, sin ícono (el círculo que lleva a reservas pone el calendario). */
+  header_cta_icon: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  /** Lado del ícono (LADOS_ICONO_BOTON). */
+  header_cta_icon_side: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LADOS_ICONO_BOTON }, nueva: true },
+  /** Mayúsculas en el botón principal. Sin la clave, lo de hoy (buttons_uppercase_active del sitio). */
+  header_cta_uppercase: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /** Píldora del menú (composición `pill`): estilo (ESTILOS_PILDORA). Sin la clave, `vidrio`. */
+  header_pill_style: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: ESTILOS_PILDORA }, nueva: true },
+  /** Opacidad del blanco del vidrio sobre la foto, en %. Sin la clave, 10. */
+  header_pill_glass_opacity: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 0, max: 40 }, nueva: true },
+  /** Desenfoque del vidrio en px. Sin la clave, 24. */
+  header_pill_blur: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 0, max: 32 }, nueva: true },
+  /** Borde suave de la píldora. Sin la clave, sí. */
+  header_pill_border: { zona: 'header', porDefecto: null, regla: BOOL, nueva: true },
+  /** Al bajar (PILDORA_AL_BAJAR). Sin la clave, `fondo_tema`. */
+  header_pill_on_scroll: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: PILDORA_AL_BAJAR }, nueva: true },
+  /** Letras del menú en la píldora (LETRAS_PILDORA). Sin la clave, versalitas. */
+  header_pill_text_case: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: LETRAS_PILDORA }, nueva: true },
+  /** Separación del encabezado píldora con el borde superior, en px. Sin la clave, la de hoy. */
+  header_float_offset: { zona: 'header', porDefecto: null, regla: { tipo: 'entero', min: 0, max: 32 }, nueva: true },
+  /** Dónde va la píldora en el celular (POSICIONES_PILDORA). Sin la clave, `arriba`. */
+  header_pill_position: { zona: 'header', porDefecto: null, regla: { tipo: 'opcion', valores: POSICIONES_PILDORA }, nueva: true },
   show_header_cart: { zona: 'header', porDefecto: true },
   show_header_auth: { zona: 'header', porDefecto: true },
   show_topbar: { zona: 'header', porDefecto: false },

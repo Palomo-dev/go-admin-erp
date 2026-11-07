@@ -4,10 +4,8 @@
 // ============================================================
 
 import type { ChannelManagerClients } from '../channelManagerClients';
+import { guardarCredencialesOta, propiedadDeSettings, CLAVE_PROPIEDAD } from '../conexiones/credencialesOta';
 import { createBookingAuthService } from './bookingAuthService';
-import {
-  BOOKING_CREDENTIAL_PURPOSES,
-} from './bookingConfig';
 import {
   BOOKING_PROVIDER_ID,
   BOOKING_OTA_CONNECTOR_ID,
@@ -40,8 +38,9 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
     async createConnection(params: {
       organizationId: number;
       hotelId: string;
-      machineClientId: string;
-      machineClientSecret: string;
+      /** Opcional: si no viene, se usa la cuenta de proveedor de conectividad del servidor. */
+      machineClientId?: string;
+      machineClientSecret?: string;
       spaceId?: string;
       connectionName?: string;
     }): Promise<{ success: boolean; connectionId?: string; message: string }> {
@@ -65,17 +64,18 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
           };
         }
 
-        // 2. Crear integration_connection
+        // 2. Crear integration_connection. Frente INT (2026-11-07): la tabla no tiene `is_active`
+        //    ni `config` (era el insert que fallaba siempre); la propiedad va en `settings`.
         const { data: intConn, error: intErr } = await supabase
           .from('integration_connections')
           .insert({
             organization_id: organizationId,
             connector_id: BOOKING_OTA_CONNECTOR_ID,
             name: connectionName || `Booking.com - ${hotelId}`,
-            status: 'active',
-            is_active: true,
-            config: {
+            status: 'draft',
+            settings: {
               hotel_id: hotelId,
+              modo: 'api',
               connection_types: ['reservations', 'rates_availability'],
             },
           })
@@ -88,38 +88,24 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
 
         const connectionId = intConn.id;
 
-        // 3. Guardar credenciales
-        const credentials = [
-          {
-            connection_id: connectionId,
-            purpose: BOOKING_CREDENTIAL_PURPOSES.MACHINE_CLIENT_ID,
-            value_encrypted: machineClientId,
-            metadata: {},
-          },
-          {
-            connection_id: connectionId,
-            purpose: BOOKING_CREDENTIAL_PURPOSES.MACHINE_CLIENT_SECRET,
-            value_encrypted: machineClientSecret,
-            metadata: {},
-          },
-          {
-            connection_id: connectionId,
-            purpose: BOOKING_CREDENTIAL_PURPOSES.HOTEL_ID,
-            value_encrypted: hotelId,
-            metadata: {},
-          },
-        ];
-
-        const { error: credErr } = await clients.secrets()
-          .from('integration_credentials')
-          .insert(credentials);
-
-        if (credErr) {
-          console.error('[BookingConnection] Error guardando credenciales:', credErr.message);
+        // 3. Guardar credenciales en la bóveda (antes `value_encrypted`, columna inexistente).
+        try {
+          await guardarCredencialesOta(clients.secrets(), connectionId, 'booking', {
+            machine_client_id: machineClientId,
+            machine_client_secret: machineClientSecret,
+          });
+        } catch (credErr) {
+          const msg = credErr instanceof Error ? credErr.message : String(credErr);
+          console.error('[BookingConnection] Error guardando credenciales:', msg);
           // Rollback: eliminar integration_connection
           await supabase.from('integration_connections').delete().eq('id', connectionId);
-          return { success: false, message: `Error guardando credenciales: ${credErr.message}` };
+          return { success: false, message: 'Error guardando credenciales' };
         }
+
+        await supabase
+          .from('integration_connections')
+          .update({ status: 'connected', connected_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('id', connectionId);
 
         // 4. Crear channel_connection si se especificó espacio
         if (spaceId) {
@@ -165,37 +151,21 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
       try {
         const { data, error } = await supabase
           .from('integration_connections')
-          .select(`
-            id,
-            name,
-            status,
-            is_active,
-            config,
-            created_at,
-            integration_credentials (
-              purpose,
-              value_encrypted
-            )
-          `)
+          .select('id, name, status, settings, created_at')
           .eq('organization_id', organizationId)
           .eq('connector_id', BOOKING_OTA_CONNECTOR_ID)
           .order('created_at', { ascending: false });
 
         if (error || !data) return [];
 
-        return data.map((conn: any) => {
-          const creds = conn.integration_credentials || [];
-          const hotelCred = creds.find((c: any) => c.purpose === BOOKING_CREDENTIAL_PURPOSES.HOTEL_ID);
-
-          return {
-            connectionId: conn.id,
-            hotelId: hotelCred?.value_encrypted || conn.config?.hotel_id || '',
-            name: conn.name,
-            status: conn.status,
-            isActive: conn.is_active,
-            createdAt: conn.created_at,
-          };
-        });
+        return (data as { id: string; name: string; status: string; settings: unknown; created_at: string }[]).map((conn) => ({
+          connectionId: conn.id,
+          hotelId: propiedadDeSettings('booking', conn.settings),
+          name: conn.name,
+          status: conn.status,
+          isActive: conn.status === 'connected',
+          createdAt: conn.created_at,
+        }));
       } catch (err) {
         console.error('[BookingConnection] Error obteniendo conexiones:', err);
         return [];
@@ -210,28 +180,20 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
       hotelId: string,
     ): Promise<{ connectionId: string } | null> {
       try {
-        const { data } = await clients.secrets()
-          .from('integration_credentials')
-          .select(`
-            connection_id,
-            integration_connections!inner (
-              organization_id,
-              connector_id,
-              is_active
-            )
-          `)
-          .eq('purpose', BOOKING_CREDENTIAL_PURPOSES.HOTEL_ID)
-          .eq('value_encrypted', hotelId)
+        // Por `settings.hotel_id` (antes `integration_credentials.value_encrypted`, inexistente).
+        const { data } = await clients.secrets() // service role; filtra por organización y conector
+          .from('integration_connections')
+          .select('id, organization_id')
+          .eq('organization_id', organizationId)
+          .eq('connector_id', BOOKING_OTA_CONNECTOR_ID)
+          .neq('status', 'revoked')
+          .eq(`settings->>${CLAVE_PROPIEDAD['booking']}`, hotelId)
           .limit(1);
 
-        if (!data || data.length === 0) return null;
-
-        const match = data.find((d: any) =>
-          d.integration_connections?.organization_id === organizationId &&
-          d.integration_connections?.connector_id === BOOKING_OTA_CONNECTOR_ID
+        const match = ((data as { id: string; organization_id: number }[] | null) ?? []).find(
+          (d) => Number(d.organization_id) === organizationId,
         );
-
-        return match ? { connectionId: match.connection_id } : null;
+        return match ? { connectionId: match.id } : null;
       } catch {
         return null;
       }
@@ -244,9 +206,16 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
      */
     async deactivateConnection(connectionId: string): Promise<boolean> {
       try {
+        const { data: conn } = await supabase
+          .from('integration_connections')
+          .select('organization_id, settings')
+          .eq('id', connectionId)
+          .maybeSingle();
+
+        // `paused` (el CHECK no admite 'inactive' y la tabla no tiene `is_active`).
         const { error } = await supabase
           .from('integration_connections')
-          .update({ is_active: false, status: 'inactive', updated_at: new Date().toISOString() })
+          .update({ status: 'paused', updated_at: new Date().toISOString() })
           .eq('id', connectionId);
 
         if (error) {
@@ -254,13 +223,15 @@ export function createBookingConnectionService(clients: ChannelManagerClients) {
           return false;
         }
 
-        // Desactivar channel_connections asociadas
-        const creds = await bookingAuthService.getCredentials(connectionId);
-        if (creds?.hotelId) {
+        // Desactivar channel_connections asociadas (de la misma organización).
+        const fila = conn as { organization_id?: number; settings?: unknown } | null;
+        const propiedad = propiedadDeSettings('booking', fila?.settings);
+        if (propiedad && fila?.organization_id != null) {
           await supabase
             .from('channel_connections')
             .update({ is_active: false, sync_enabled: false })
-            .eq('external_property_id', creds.hotelId)
+            .eq('organization_id', fila.organization_id)
+            .eq('external_property_id', propiedad)
             .eq('channel', 'booking')
             .eq('connection_type', 'api');
         }

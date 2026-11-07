@@ -8,6 +8,7 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Settings, Tag, FileText, ExternalLink, Hash } from 'lucide-react';
 import { IntegrationProvider, IntegrationConnector } from '@/lib/services/integrationsService';
+import { urlWebhookDeConector } from '@/lib/services/integrations/conexiones/urlsWebhook';
 
 interface StepSettingsProps {
   provider: IntegrationProvider | null;
@@ -24,10 +25,11 @@ export function StepSettings({
   connector,
   connectionName,
   settings,
-  organizationDomain,
+  // organizationDomain ya no arma la URL del webhook: el receptor vive en la app.
   onNameChange,
   onSettingsChange,
 }: StepSettingsProps) {
+  const urlWebhook = connector?.capabilities?.webhooks ? urlWebhookDeConector(connector?.code) : null;
   const handleSettingChange = (key: string, value: unknown) => {
     onSettingsChange({
       ...settings,
@@ -113,23 +115,21 @@ export function StepSettings({
             </p>
           </div>
 
-          {/* Webhook URL (solo lectura, se genera automáticamente) */}
-          {connector?.capabilities?.webhooks && (
+          {/* Webhook URL: solo rutas que existen en la app (Frente INT, 2026-11-07). Antes se armaba
+              `/api/webhooks/<conector>`, que no existe para 15 conectores. */}
+          {urlWebhook && (
             <div className="space-y-2">
               <Label htmlFor="webhook_url" className="flex flex-wrap items-center gap-2">
-                <ExternalLink className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 URL de Webhook
               </Label>
               <Input
                 id="webhook_url"
-                value={organizationDomain
-                  ? `https://${organizationDomain}/api/webhooks/${connector?.code || 'provider'}`
-                  : `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/${connector?.code || 'provider'}`
-                }
+                value={urlWebhook}
                 readOnly
-                className="max-w-lg bg-gray-50 dark:bg-gray-800"
+                className="max-w-lg bg-muted"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Configura esta URL en el panel de {provider?.name || 'el proveedor'} para recibir notificaciones
               </p>
             </div>

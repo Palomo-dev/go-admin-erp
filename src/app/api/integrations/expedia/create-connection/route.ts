@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { createExpediaServices } from '@/lib/services/integrations/expedia';
 import { channelManagerClientsFor } from '@/lib/services/integrations/channelManagerAccess';
+import { cuentaDeSocioConfigurada } from '@/lib/services/integrations/conexiones/credencialesOta';
 
 /**
  * POST /api/integrations/expedia/create-connection
@@ -16,9 +17,11 @@ export const POST = withOrg(async (ctx, request) => {
     const body = await readOrgBody(ctx, request, { route: 'integrations/expedia/create-connection' });
     const { propertyId, eqcUsername, eqcPassword, spaceId, connectionName } = body ?? {};
 
-    if (!propertyId || !eqcUsername || !eqcPassword) {
+    // Usuario y clave EQC: los de la cuenta de proveedor de conectividad del servidor si el body no
+    // los trae (EXPEDIA_EQC_USERNAME/PASSWORD). Frente INT, 2026-11-07.
+    if (!propertyId || ((!eqcUsername || !eqcPassword) && !cuentaDeSocioConfigurada('expedia'))) {
       return NextResponse.json(
-        { error: 'propertyId, eqcUsername y eqcPassword son requeridos' },
+        { error: 'propertyId es requerido (y eqcUsername/eqcPassword mientras GO Admin no tenga cuenta de proveedor de conectividad)' },
         { status: 400 }
       );
     }

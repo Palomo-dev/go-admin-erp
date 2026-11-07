@@ -2,7 +2,9 @@
 
 /**
  * Devolver en dinero todo o parte de un saldo a favor (Figma `1020:91750`,
- * captura `73-documentos-saldo-devolver.png`).
+ * captura `73-documentos-saldo-devolver.png`). La misma pieza recibe la
+ * devolución de un anticipo a proveedor (el dinero entra): el `adaptador`
+ * pone textos y servicio.
  *
  * Métodos de la organización y caja abierta de la sucursal del saldo
  * (`GET /api/saldos-a-favor/contexto`); efectivo exige caja abierta. UNA RPC
@@ -19,7 +21,8 @@ import { toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ContextoSaldoFavor } from '@/lib/finanzas/saldosAFavor/contrato';
 import { validarMonto, type FilaListadoSaldo } from '@/lib/finanzas/saldosAFavor/listadoLogica';
-import { nuevaClaveIdempotencia, saldosAFavorService } from './saldosAFavorService';
+import { nuevaClaveIdempotencia } from './saldosAFavorService';
+import { ADAPTADOR_CLIENTE, type AdaptadorSaldos } from './adaptadorSaldos';
 import { metodoInicial, opcionesMetodoSaldo, requiereReferencia } from './metodosSaldo';
 import { textoErrorSaldo } from './textosSaldo';
 
@@ -28,10 +31,12 @@ export interface DevolverSaldoDialogProps {
   onAbiertoChange: (abierto: boolean) => void;
   saldo: Pick<FilaListadoSaldo, 'id' | 'cliente' | 'disponible' | 'sucursalId'> | null;
   onDevuelto: () => void;
+  /** Cliente (por defecto) o proveedor. */
+  adaptador?: AdaptadorSaldos;
 }
 
-export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelto }: DevolverSaldoDialogProps) {
-  const t = useTranslations('finanzasDocumentosR3.saldos');
+export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelto, adaptador = ADAPTADOR_CLIENTE }: DevolverSaldoDialogProps) {
+  const t = useTranslations(adaptador.namespace);
   const moneda = useMonedaOrganizacion();
   const [contexto, setContexto] = useState<ContextoSaldoFavor | null>(null);
   const [monto, setMonto] = useState<number | null>(null);
@@ -56,14 +61,14 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
     setTocado(false);
     setError(null);
     clave.current = nuevaClaveIdempotencia('devolver');
-    saldosAFavorService
+    adaptador
       .contexto(saldo.sucursalId)
       .then((c) => vigente && setContexto(c))
       .catch((e) => vigente && setError(textoErrorSaldo(t, e)));
     return () => {
       vigente = false;
     };
-  }, [abierto, saldo, t]);
+  }, [abierto, saldo, t, adaptador]);
 
   const opciones = useMemo(() => opcionesMetodoSaldo(contexto, t('devolver.sinCaja')), [contexto, t]);
   useEffect(() => {
@@ -85,7 +90,7 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
     setEnviando(true);
     setError(null);
     try {
-      await saldosAFavorService.devolver(saldo.id, {
+      await adaptador.devolver(saldo.id, {
         monto,
         metodo,
         motivo: motivo.trim(),

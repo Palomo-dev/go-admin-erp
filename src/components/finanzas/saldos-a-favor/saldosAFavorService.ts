@@ -212,3 +212,11 @@ export const saldosAFavorService = {
     });
   },
 };
+
+/**
+ * Lectura, envío y cabeceras de las rutas de saldos, para el espejo del
+ * proveedor (`anticiposProveedorService`): mismo manejo de errores
+ * (`ErrorPeticionSaldoFavor` con `codigo`), para que los diálogos compartidos
+ * muestren el texto con la misma función.
+ */
+export { cabeceras as cabecerasSaldo, leer as leerRespuestaSaldo, enviar as enviarSaldo };

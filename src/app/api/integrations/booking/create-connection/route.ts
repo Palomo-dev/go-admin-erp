@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { createBookingServices } from '@/lib/services/integrations/booking';
 import { channelManagerClientsFor } from '@/lib/services/integrations/channelManagerAccess';
+import { cuentaDeSocioConfigurada } from '@/lib/services/integrations/conexiones/credencialesOta';
 
 /**
  * POST /api/integrations/booking/create-connection
@@ -16,9 +17,11 @@ export const POST = withOrg(async (ctx, request) => {
     const body = await readOrgBody(ctx, request, { route: 'integrations/booking/create-connection' });
     const { hotelId, machineClientId, machineClientSecret, connectionName } = body ?? {};
 
-    if (!hotelId || !machineClientId || !machineClientSecret) {
+    // Las credenciales de máquina son de la cuenta de proveedor de conectividad: si el body no las
+    // trae, se usan las del servidor (BOOKING_MACHINE_CLIENT_ID/SECRET). Frente INT, 2026-11-07.
+    if (!hotelId || ((!machineClientId || !machineClientSecret) && !cuentaDeSocioConfigurada('booking'))) {
       return NextResponse.json(
-        { error: 'Se requiere: hotelId, machineClientId, machineClientSecret' },
+        { error: 'Se requiere: hotelId (y machineClientId/machineClientSecret mientras GO Admin no tenga cuenta de proveedor de conectividad)' },
         { status: 400 }
       );
     }

@@ -1071,8 +1071,8 @@ class IntegrationsService {
     await supabase
       .from('organization_payment_methods')
       .update({
+        // Solo se desenlaza: los demás ajustes del método se conservan (Frente INT).
         integration_connection_id: null,
-        settings: {},
         updated_at: new Date().toISOString(),
       })
       .eq('integration_connection_id', connectionId);
@@ -1081,64 +1081,37 @@ class IntegrationsService {
   }
 
   /**
-   * Realiza un health check real de la conexión según el proveedor
+   * «Probar» una conexión: la prueba la hace el SERVIDOR contra el proveedor
+   * (`POST /api/integrations/conexiones/[id]/probar`, Frente INT 2026-11-07).
+   * Antes, cualquier proveedor que no fuera Wompi respondía «Conexión activa» con
+   * solo tener una fila de credenciales, sin llamar a nadie; y Wompi se probaba
+   * leyendo sus llaves desde el navegador y ponía la conexión en `error` ante un
+   * fallo de red (el POS dejaba de encontrarla). El servidor nunca cambia el estado.
    */
   async healthCheck(connectionId: string): Promise<{
     success: boolean;
     message: string;
   }> {
-    // Obtener info de la conexión y su proveedor
-    const { data: connection, error: connError } = await supabase
-      .from('integration_connections')
-      .select(`
-        id, environment, status,
-        connector:integration_connectors(
-          code,
-          provider:integration_providers(code)
-        )
-      `)
-      .eq('id', connectionId)
-      .single();
-
-    if (connError || !connection) {
-      return { success: false, message: 'No se encontró la conexión' };
-    }
-
-    const providerCode = (connection.connector as any)?.provider?.code;
-
-    // Health check específico por proveedor
-    if (providerCode === 'wompi') {
-      try {
-        const { wompiService } = await import('@/lib/services/integrations/wompi/wompiService');
-        const result = await wompiService.healthCheck(connectionId);
-        return { success: result.ok, message: result.message };
-      } catch (err) {
-        return { success: false, message: 'Error al verificar Wompi' };
+    try {
+      const res = await fetch(`/api/integrations/conexiones/${encodeURIComponent(connectionId)}/probar`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      const json = (await res.json().catch(() => ({}))) as { resultado?: string; http?: number; error?: string };
+      if (!res.ok) return { success: false, message: json.error || `No se pudo probar (HTTP ${res.status})` };
+      switch (json.resultado) {
+        case 'correcta':
+          return { success: true, message: 'El proveedor aceptó las credenciales' };
+        case 'rechazada':
+          return { success: false, message: `El proveedor rechazó las credenciales${json.http ? ` (HTTP ${json.http})` : ''}` };
+        case 'sin_prueba':
+          return { success: false, message: 'Este proveedor no tiene prueba automática: revisa su actividad' };
+        default:
+          return { success: false, message: 'El proveedor no respondió; intenta de nuevo' };
       }
+    } catch {
+      return { success: false, message: 'No se pudo probar la conexión' };
     }
-
-    // Para proveedores sin health check específico, verificar que tenga credenciales
-    const { data: creds } = await supabase
-      .from('integration_credentials')
-      .select('id')
-      .eq('connection_id', connectionId)
-      .eq('status', 'active')
-      .limit(1);
-
-    // Actualizar timestamp
-    await supabase
-      .from('integration_connections')
-      .update({
-        last_health_check_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', connectionId);
-
-    if (!creds || creds.length === 0) {
-      return { success: false, message: 'Sin credenciales activas configuradas' };
-    }
-
-    return { success: true, message: `Conexión activa (${providerCode || 'desconocido'})` };
   }
 
   /**
@@ -1149,8 +1122,8 @@ class IntegrationsService {
     await supabase
       .from('organization_payment_methods')
       .update({
+        // Solo se desenlaza: los demás ajustes del método se conservan (Frente INT).
         integration_connection_id: null,
-        settings: {},
         updated_at: new Date().toISOString(),
       })
       .eq('integration_connection_id', connectionId);
@@ -2542,30 +2515,8 @@ class IntegrationsService {
 
   // ==================== API KEY METHODS ====================
 
-  /**
-   * Genera una API key aleatoria
-   */
-  private generateApiKey(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let key = 'goak_'; // go-admin key prefix
-    for (let i = 0; i < 32; i++) {
-      key += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return key;
-  }
-
-  /**
-   * Genera un hash simple de la key (en producción usar bcrypt)
-   */
-  private hashApiKey(key: string): string {
-    let hash = 0;
-    for (let i = 0; i < key.length; i++) {
-      const char = key.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return 'hash_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
-  }
+  // Las llaves de API se generan en el SERVIDOR (`crypto.randomBytes`, solo SHA-256 guardado):
+  // `POST /api/integrations/desarrolladores/llaves`. Antes: `Math.random` y una huella de 32 bits.
 
   /**
    * Obtiene API keys con filtros
@@ -2631,31 +2582,38 @@ class IntegrationsService {
       channel_id?: string;
     }
   ): Promise<{ apiKey: ChannelApiKey; fullKey: string } | null> {
-    const fullKey = this.generateApiKey();
-    const keyHash = this.hashApiKey(fullKey);
-    const keyPrefix = fullKey.substring(0, 12) + '...';
-
-    const { data, error } = await supabase
-      .from('channel_api_keys')
-      .insert({
+    // La organización sale de la sesión en el servidor; `organizationId` se conserva en la firma
+    // por compatibilidad con las pantallas que ya llaman a este método.
+    void organizationId;
+    try {
+      const res = await fetch('/api/integrations/desarrolladores/llaves', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: keyData.name, alcances: keyData.scopes, expira: keyData.expires_at || null }),
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as {
+        completa: string;
+        llave: { id: string; nombre: string; mascara: string; alcances: string[]; expira: string | null; creada: string | null; activa: boolean };
+      };
+      const apiKey: ChannelApiKey = {
+        id: json.llave.id,
         organization_id: organizationId,
-        name: keyData.name,
-        key_hash: keyHash,
-        key_prefix: keyPrefix,
-        scopes: keyData.scopes,
-        expires_at: keyData.expires_at || null,
-        channel_id: keyData.channel_id || null,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating API key:', error);
+        channel_id: keyData.channel_id,
+        name: json.llave.nombre,
+        key_hash: '',
+        key_prefix: json.llave.mascara,
+        scopes: json.llave.alcances,
+        is_active: json.llave.activa,
+        expires_at: json.llave.expira ?? undefined,
+        created_at: json.llave.creada ?? new Date().toISOString(),
+      };
+      return { apiKey, fullKey: json.completa };
+    } catch (error) {
+      console.error('Error creating API key:', error instanceof Error ? error.message : error);
       return null;
     }
-
-    return { apiKey: data, fullKey };
   }
 
   /**
@@ -2757,15 +2715,12 @@ class IntegrationsService {
   // ==================== WEBHOOK ENDPOINT METHODS ====================
 
   /**
-   * Genera un secret para webhook
+   * Genera un secret para webhook con Web Crypto (antes `Math.random`, predecible).
    */
   private generateWebhookSecret(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let secret = 'whsec_';
-    for (let i = 0; i < 24; i++) {
-      secret += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return secret;
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return 'whsec_' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   }
 
   /**
@@ -2937,27 +2892,20 @@ class IntegrationsService {
     statusCode?: number;
     message: string;
   }> {
-    const endpoint = await this.getWebhookEndpointById(endpointId);
-    if (!endpoint) {
-      return { success: false, message: 'Endpoint no encontrado' };
-    }
-
-    // Simular envío de test (en producción haría fetch real)
-    // Por ahora solo validamos la URL y simulamos respuesta
+    // Envío REAL y firmado desde el servidor (Frente INT). Antes se simulaba un 200.
     try {
-      const url = new URL(endpoint.target_url);
-      if (!url.protocol.startsWith('http')) {
-        return { success: false, message: 'URL inválida: debe ser HTTP o HTTPS' };
-      }
-
-      // Simulación de envío exitoso
-      return {
-        success: true,
-        statusCode: 200,
-        message: 'Test enviado exitosamente a ' + endpoint.target_url,
-      };
+      const res = await fetch(`/api/integrations/desarrolladores/webhooks/${encodeURIComponent(endpointId)}/probar`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; http?: number | null; motivo?: string; error?: string };
+      if (!res.ok) return { success: false, message: json.error || `No se pudo enviar la prueba (HTTP ${res.status})` };
+      if (json.ok) return { success: true, statusCode: json.http ?? undefined, message: `El destino respondió ${json.http}` };
+      if (json.motivo === 'tiempo') return { success: false, message: 'El destino no respondió en 8 segundos' };
+      if (json.motivo === 'red') return { success: false, message: 'No se pudo conectar con el destino' };
+      return { success: false, statusCode: json.http ?? undefined, message: `El destino respondió ${json.http}` };
     } catch {
-      return { success: false, message: 'URL inválida' };
+      return { success: false, message: 'No se pudo enviar la prueba' };
     }
   }
 

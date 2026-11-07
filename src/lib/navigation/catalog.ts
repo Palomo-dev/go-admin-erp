@@ -53,6 +53,7 @@ import {
   FileBarChart,
   FileCheck2,
   FileMinus,
+  FileBadge,
   FileText,
   FolderKanban,
   FolderOpen,
@@ -480,6 +481,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/facturas-compra', nombre: 'Facturas de compra', icono: ReceiptText, grupo: 'Documentos' },
       { href: '/app/finanzas/notas-credito', nombre: 'Notas crédito y débito', icono: FileMinus, grupo: 'Documentos' },
       { href: '/app/finanzas/documentos-soporte', nombre: 'Documentos soporte', icono: FileCheck2, grupo: 'Documentos' },
+      // Finanzas ronda 4 (frente R4-B): mercancía propia en poder de un consignatario (nota y liquidación).
+      { href: '/app/finanzas/consignaciones', nombre: 'Consignaciones', icono: ClipboardList, grupo: 'Documentos' },
       { href: '/app/finanzas/facturacion-electronica', nombre: 'Facturación electrónica', icono: Zap, grupo: 'Documentos' },
       // Tesorería (ronda 3, mapa 1009:86249): «Tesorería» es el grupo, no una página.
       // Movimientos es la vista unificada; Ingresos y Egresos, la misma lista con el
@@ -491,6 +494,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/tesoreria/cuentas', nombre: 'Cuentas de dinero', icono: Landmark, grupo: 'Tesorería' },
       { href: '/app/finanzas/tesoreria/conciliacion', nombre: 'Conciliación', icono: Scale, grupo: 'Tesorería' },
       { href: '/app/finanzas/tesoreria/transferencias', nombre: 'Transferencias', icono: Repeat, grupo: 'Tesorería' },
+      // R4-B: propinas y recaudos para terceros; se registran y liquidan con el formulario único de Movimientos.
+      { href: '/app/finanzas/tesoreria/dinero-de-terceros', nombre: 'Dinero de terceros', icono: Users, grupo: 'Tesorería' },
       { href: '/app/finanzas/categorias-tesoreria', nombre: 'Categorías de tesorería', icono: Tags, grupo: 'Tesorería' },
       // Finanzas ronda 2 (Figma A3–A10): operación, no reportes. Las alertas de
       // bancos y los cobros QR son pestañas de Cuentas de dinero y de Métodos de pago.
@@ -499,6 +504,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Tesorería' },
       { href: '/app/finanzas/saldos-a-favor', nombre: 'Saldos a favor', icono: PiggyBank, grupo: 'Tesorería' },
       { href: '/app/finanzas/cuentas-por-pagar', nombre: 'Cuentas por pagar', icono: HandCoins, grupo: 'Tesorería' },
+      // R4-B: espejo de «Saldos a favor» del lado del proveedor (mismos diálogos).
+      { href: '/app/finanzas/anticipos-proveedores', nombre: 'Anticipos a proveedores', icono: DollarSign, grupo: 'Tesorería' },
       { href: '/app/finanzas/contabilidad', nombre: 'Contabilidad', icono: Calculator, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/plan-cuentas', nombre: 'Plan de cuentas', icono: ListChecks, grupo: 'Contabilidad' },
       { href: '/app/finanzas/contabilidad/actualizar-puc', nombre: 'Actualizar PUC', icono: RefreshCw, grupo: 'Contabilidad' },
@@ -515,6 +522,12 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/centro-costos', nombre: 'Centros de costo', icono: GitBranch, grupo: 'Contabilidad' },
       { href: '/app/finanzas/activos-fijos', nombre: 'Activos fijos', icono: Building, grupo: 'Contabilidad' },
       { href: '/app/finanzas/presupuestos', nombre: 'Presupuestos', icono: Target, grupo: 'Contabilidad' },
+      // Finanzas ronda 4 (frente R4-A): páginas de trabajo del tributario. Los informes
+      // (impuestos, retenciones practicadas) siguen en Reportes; el borrador del IVA se abre
+      // desde el Centro tributario (`/tributario/iva?desde=&hasta=`), no desde el menú.
+      { href: '/app/finanzas/tributario', nombre: 'Centro tributario', icono: CalendarCheck, grupo: 'Tributario' },
+      { href: '/app/finanzas/tributario/perfil', nombre: 'Perfil tributario', icono: ClipboardCheck, grupo: 'Tributario' },
+      { href: '/app/finanzas/tributario/certificados', nombre: 'Certificados de retención', icono: FileBadge, grupo: 'Tributario' },
       { href: '/app/finanzas/impuestos', nombre: 'Impuestos', icono: Percent, grupo: 'Configuración' },
       { href: '/app/finanzas/metodos-pago', nombre: 'Métodos de pago', icono: CreditCard, grupo: 'Configuración' },
       { href: '/app/finanzas/monedas', nombre: 'Monedas', icono: Coins, grupo: 'Configuración' },
@@ -654,11 +667,14 @@ export const CATALOGO_NAV: ModuloNav[] = [
     rutas: ['/app/integraciones'],
     paginas: [
       { href: '/app/integraciones/conexiones', nombre: 'Conexiones', icono: Link2 },
-      { href: '/app/integraciones/eventos', nombre: 'Eventos', icono: Activity },
-      { href: '/app/integraciones/jobs', nombre: 'Trabajos', icono: Briefcase },
-      { href: '/app/integraciones/mapeos', nombre: 'Mapeos', icono: GitMerge },
-      { href: '/app/integraciones/api-keys', nombre: 'Llaves de API', icono: Key },
-      { href: '/app/integraciones/webhooks-salientes', nombre: 'Webhooks', icono: Send },
+      // Frente INT (2026-11-07): Conexiones reúne Catálogo · Mis conexiones · Actividad ·
+      // Desarrolladores. Eventos, llaves de API y webhooks salen de esas pestañas; Trabajos y
+      // Mapeos no tienen proceso que los consuma. Las páginas siguen vivas (enlaces y permisos).
+      { href: '/app/integraciones/eventos', nombre: 'Eventos', icono: Activity, enMenu: false },
+      { href: '/app/integraciones/jobs', nombre: 'Trabajos', icono: Briefcase, enMenu: false },
+      { href: '/app/integraciones/mapeos', nombre: 'Mapeos', icono: GitMerge, enMenu: false },
+      { href: '/app/integraciones/api-keys', nombre: 'Llaves de API', icono: Key, enMenu: false },
+      { href: '/app/integraciones/webhooks-salientes', nombre: 'Webhooks', icono: Send, enMenu: false },
     ],
   },
   {

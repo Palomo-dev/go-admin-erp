@@ -6,7 +6,6 @@
 import type { ChannelManagerClients } from '../channelManagerClients';
 import {
   BOOKING_ENDPOINTS,
-  BOOKING_CREDENTIAL_PURPOSES,
   BOOKING_TOKEN_REFRESH_MARGIN_SEC,
   BOOKING_RATE_LIMITS,
   getOAuthUrl,
@@ -18,6 +17,7 @@ import type {
   BookingTokenInfo,
 } from './bookingTypes';
 import { BOOKING_OTA_CONNECTOR_ID } from './bookingTypes';
+import { guardarCredencialesOta, leerCredencialesOta, propiedadDeSettings } from '../conexiones/credencialesOta';
 
 // Cache en memoria de tokens por connectionId
 const tokenCache = new Map<string, BookingTokenInfo>();
@@ -39,10 +39,13 @@ export function createBookingAuthService(clients: ChannelManagerClients) {
      */
     async getCredentials(connectionId: string): Promise<BookingCredentials | null> {
       try {
-        // Obtener la integration_connection para sacar el connection ID real
+        // Frente INT (2026-11-07): antes se leía `integration_credentials.value_encrypted`, columna
+        // que no existe. La propiedad vive en `settings.hotel_id`; los secretos, en la bóveda
+        // (lectura dual: bóveda o valor en claro). Las credenciales de máquina son de la cuenta de
+        // proveedor de conectividad: si la conexión no trae las suyas, se usan las del servidor.
         const { data: conn, error: connErr } = await supabase
           .from('integration_connections')
-          .select('id')
+          .select('id, settings')
           .eq('id', connectionId)
           .single();
 
@@ -51,22 +54,10 @@ export function createBookingAuthService(clients: ChannelManagerClients) {
           return null;
         }
 
-        // Obtener todas las credenciales de esta conexión
-        const { data: creds, error: credsErr } = await clients.secrets()
-          .from('integration_credentials')
-          .select('purpose, value_encrypted')
-          .eq('connection_id', connectionId);
-
-        if (credsErr || !creds || creds.length === 0) {
-          console.error('[BookingAuth] Sin credenciales para conexión:', connectionId);
-          return null;
-        }
-
-        const credMap = new Map(creds.map(c => [c.purpose, c.value_encrypted]));
-
-        const machineClientId = credMap.get(BOOKING_CREDENTIAL_PURPOSES.MACHINE_CLIENT_ID);
-        const machineClientSecret = credMap.get(BOOKING_CREDENTIAL_PURPOSES.MACHINE_CLIENT_SECRET);
-        const hotelId = credMap.get(BOOKING_CREDENTIAL_PURPOSES.HOTEL_ID);
+        const valores = await leerCredencialesOta(clients.secrets(), connectionId, 'booking');
+        const machineClientId = valores.machine_client_id || process.env.BOOKING_MACHINE_CLIENT_ID || '';
+        const machineClientSecret = valores.machine_client_secret || process.env.BOOKING_MACHINE_CLIENT_SECRET || '';
+        const hotelId = propiedadDeSettings('booking', (conn as { settings?: unknown }).settings);
 
         if (!machineClientId || !machineClientSecret || !hotelId) {
           console.error('[BookingAuth] Credenciales incompletas. Faltan:',
@@ -81,7 +72,7 @@ export function createBookingAuthService(clients: ChannelManagerClients) {
           machineClientId,
           machineClientSecret,
           hotelId,
-          accessToken: credMap.get(BOOKING_CREDENTIAL_PURPOSES.ACCESS_TOKEN) || undefined,
+          accessToken: valores.access_token || undefined,
         };
       } catch (err) {
         console.error('[BookingAuth] Error obteniendo credenciales:', err);
@@ -176,23 +167,26 @@ export function createBookingAuthService(clients: ChannelManagerClients) {
      */
     async persistToken(connectionId: string, tokenInfo: BookingTokenInfo): Promise<void> {
       try {
-        const { error } = await clients.secrets()
-          .from('integration_credentials')
-          .upsert(
-            {
-              connection_id: connectionId,
-              purpose: BOOKING_CREDENTIAL_PURPOSES.ACCESS_TOKEN,
-              value_encrypted: tokenInfo.accessToken,
-              metadata: { expires_at: tokenInfo.expiresAt },
-            },
-            { onConflict: 'connection_id,purpose' }
-          );
+        // El token va a la bóveda (propósito `access_token`); su vencimiento, a `settings`.
+        const secrets = clients.secrets();
+        await guardarCredencialesOta(secrets, connectionId, 'booking', { access_token: tokenInfo.accessToken });
+        const { data: conn } = await secrets
+          .from('integration_connections')
+          .select('settings')
+          .eq('id', connectionId)
+          .maybeSingle();
+        const previos = (conn as { settings?: unknown } | null)?.settings;
+        const settings = previos && typeof previos === 'object' && !Array.isArray(previos) ? (previos as Record<string, unknown>) : {};
+        const { error } = await secrets
+          .from('integration_connections')
+          .update({ settings: { ...settings, token_expires_at: tokenInfo.expiresAt }, updated_at: new Date().toISOString() })
+          .eq('id', connectionId);
 
         if (error) {
-          console.warn('[BookingAuth] No se pudo persistir token:', error.message);
+          console.warn('[BookingAuth] No se pudo guardar el vencimiento del token:', error.message);
         }
       } catch (err) {
-        console.warn('[BookingAuth] Error persistiendo token:', err);
+        console.warn('[BookingAuth] Error persistiendo token:', err instanceof Error ? err.message : err);
       }
     },
 
@@ -214,34 +208,23 @@ export function createBookingAuthService(clients: ChannelManagerClients) {
       isActive: boolean;
     }>> {
       try {
-        const { data, error } = await clients.secrets() // credenciales anidadas: service role; filtra por organization_id
+        const { data, error } = await clients.secrets() // service role; filtra por organization_id
           .from('integration_connections')
-          .select(`
-            id,
-            is_active,
-            integration_credentials (
-              purpose,
-              value_encrypted
-            )
-          `)
+          .select('id, status, settings')
           .eq('organization_id', organizationId)
           .eq('connector_id', BOOKING_OTA_CONNECTOR_ID)
-          .eq('is_active', true);
+          .eq('status', 'connected');
 
         if (error || !data) {
           console.error('[BookingAuth] Error obteniendo conexiones:', error?.message);
           return [];
         }
 
-        return data.map((conn: any) => {
-          const creds = conn.integration_credentials || [];
-          const hotelIdCred = creds.find((c: any) => c.purpose === BOOKING_CREDENTIAL_PURPOSES.HOTEL_ID);
-          return {
-            connectionId: conn.id,
-            hotelId: hotelIdCred?.value_encrypted || '',
-            isActive: conn.is_active,
-          };
-        });
+        return (data as { id: string; status: string; settings: unknown }[]).map((conn) => ({
+          connectionId: conn.id,
+          hotelId: propiedadDeSettings('booking', conn.settings),
+          isActive: conn.status === 'connected',
+        }));
       } catch (err) {
         console.error('[BookingAuth] Error inesperado:', err);
         return [];

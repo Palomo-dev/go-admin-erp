@@ -98,6 +98,11 @@ export default function NuevaConexionPage() {
   const mode = (searchParams?.get('mode') as FormMode) || 'create';
   const connectionId = searchParams?.get('id') ?? null;
   const preselectedProviderId = searchParams?.get('provider') ?? null;
+  // `?return=` solo a rutas internas de la app (nunca a otro origen). Antes se ignoraba.
+  const rutaRetorno = (() => {
+    const r = searchParams?.get('return') ?? '';
+    return /^\/app\/[A-Za-z0-9/_?=&.-]*$/.test(r) && !r.startsWith('//') ? r : '/app/integraciones/conexiones';
+  })();
 
   // Determinar pasos según el modo
   const STEPS = mode === 'create' ? STEPS_CREATE : STEPS_EDIT;
@@ -146,7 +151,14 @@ export default function NuevaConexionPage() {
 
       // Si viene un provider preseleccionado desde la URL, auto-seleccionarlo
       if (mode === 'create' && preselectedProviderId) {
-        const preselectedProvider = providersData.find((p) => p.id === preselectedProviderId);
+        // Se acepta el id o el código del proveedor (el catálogo nuevo enlaza por código).
+        const preselectedProvider = providersData.find((p) => p.id === preselectedProviderId || p.code === preselectedProviderId);
+        // Booking.com y Expedia tienen su asistente en Conexiones (modo, autorizar, habitaciones):
+        // este formulario guardaba sus 3 credenciales en una sola fila (Frente INT).
+        if (preselectedProvider && (preselectedProvider.code === 'booking' || preselectedProvider.code === 'expedia')) {
+          router.replace(`/app/integraciones/conexiones?conectar=${preselectedProvider.code}`);
+          return;
+        }
         if (preselectedProvider) {
           // Buscar conectores del proveedor
           const providerConnectors = connectorsData.filter((c) => c.provider_id === preselectedProvider.id);
@@ -242,7 +254,7 @@ export default function NuevaConexionPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, toast, mode, connectionId, preselectedProviderId]);
+  }, [organizationId, toast, mode, connectionId, preselectedProviderId, router]);
 
   useEffect(() => {
     loadData();
@@ -987,7 +999,8 @@ export default function NuevaConexionPage() {
           wompi: ['wompi'],
           payu: ['payu'],
           mercadopago: ['mp'],
-          stripe: ['card'],
+          // Stripe tiene su propio método: 'card' es el de Wompi en la tienda web (Frente INT).
+          stripe: ['stripe'],
           paypal: ['paypal'],
           bancolombia: ['bancolombia_qr'],
           breb: ['breb_qr'],
@@ -1001,7 +1014,7 @@ export default function NuevaConexionPage() {
           // 1. Obtener métodos de pago existentes de la organización
           const { data: orgMethods } = await supabase
             .from('organization_payment_methods')
-            .select('id, payment_method_code, integration_connection_id')
+            .select('id, payment_method_code, integration_connection_id, settings')
             .eq('organization_id', organizationId)
             .in('payment_method_code', methodCodes);
 
@@ -1014,7 +1027,13 @@ export default function NuevaConexionPage() {
                 .from('organization_payment_methods')
                 .update({
                   integration_connection_id: connectionId,
-                  settings: { gateway: wizardData.provider.name },
+                  // Se fusiona: antes se sobrescribía todo `settings` del método (Frente INT).
+                  settings: {
+                    ...((method.settings && typeof method.settings === 'object' && !Array.isArray(method.settings))
+                      ? (method.settings as Record<string, unknown>)
+                      : {}),
+                    gateway: wizardData.provider.name,
+                  },
                   updated_at: ahoraIso,
                 })
                 .eq('id', method.id);
@@ -1045,8 +1064,8 @@ export default function NuevaConexionPage() {
         }
       }
 
-      // Redirigir a la lista de conexiones
-      router.push('/app/integraciones/conexiones');
+      // Volver a donde se pidió (`?return=`) o a la lista de conexiones
+      router.push(rutaRetorno);
     } catch (error) {
       console.error('Error saving connection:', error);
       toast({

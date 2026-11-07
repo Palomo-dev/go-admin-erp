@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { getWompiBaseUrl, WOMPI_CREDENTIAL_PURPOSES } from './wompiConfig';
 import { verificarChecksumWompi } from './wompiFirma';
+import { esReferenciaDeBoveda, resolverSecretos } from '../conexiones/secretosConexion';
 import type {
   WompiCredentials,
   WompiEnvironment,
@@ -59,8 +60,14 @@ class WompiService {
       return null;
     }
 
+    // Frente INT (2026-11-07): las conexiones guardadas hoy (secret_ref con el valor) se leen
+    // exactamente igual que antes y sin RPC. Solo una fila cuyo secret_ref es un uuid de la
+    // bóveda se resuelve con fn_get_provider_secret. Caracterizado en
+    // conexiones/__tests__/caracterizacionWompi.test.ts.
+    const deBoveda = creds.some((c) => esReferenciaDeBoveda(c.secret_ref));
+    const valores = deBoveda ? await resolverSecretos(db, connectionId, creds) : null;
     const findCred = (purpose: string) =>
-      creds.find((c) => c.purpose === purpose)?.secret_ref || '';
+      valores ? valores[purpose] || '' : creds.find((c) => c.purpose === purpose)?.secret_ref || '';
 
     return {
       publicKey: findCred('public_key'),
